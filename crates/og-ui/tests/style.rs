@@ -6,77 +6,72 @@ use crate::support;
 
 use og_draw::TextureHandle;
 use og_ui::*;
+use serde_json::json;
 use support::*;
 
 fn atlas() -> TextureHandle {
     Handles::default().texture()
 }
 
-fn screen(ui: &mut Ui, disabled: bool) {
-    ui.panel("Menu", PanelDesc::default(), |ui| {
-        ui.label("Title", "Menu", LabelDesc::default());
-        ui.button(
-            "Go",
-            "Go",
-            ButtonDesc {
-                disabled,
-                ..ButtonDesc::default()
-            },
-        );
-    });
+const MENU: &str = r#"<meta name="component" content="t">
+<panel id="Menu">
+  <text id="Title">Menu</text>
+  <button id="Go">Go</button>
+</panel>"#;
+
+const COUNT: &str = r#"<meta name="component" content="t">
+<div><og-counter id="Score" value={$score} from="0" duration="900">0</og-counter></div>"#;
+
+/// The number the counter shows now (its grouping commas dropped).
+fn shown(d: &Doc) -> f64 {
+    let text = d.get("Score").text.replace(',', "");
+    text.parse().unwrap_or_else(|_| panic!("a number: {text}"))
 }
 
-fn step(ui: &mut Ui, input: InputFrame, disabled: bool) {
-    ui.begin(input, Viewport::new(800.0, 600.0));
-    screen(ui, disabled);
-    ui.end();
-}
-
-fn count_step(ui: &mut Ui, value: f64) -> f64 {
-    ui.begin(InputFrame::default(), Viewport::new(320.0, 200.0));
-    let v = ui.counter(
-        "Score",
-        value,
-        &CounterDesc {
-            from: Some(0.0),
-            ..CounterDesc::default()
-        },
-    );
-    ui.end();
-    v
+/// One tick of the counter; what it shows after it.
+fn count_step(d: &mut Doc) -> f64 {
+    d.step(InputFrame::default());
+    shown(d)
 }
 
 #[test]
 fn a_counter_counts_by_the_tick_and_replays_after_a_restore() {
-    let mut ui = ui_with_font(test_font_metrics());
-    let shown: Vec<f64> = (0..60).map(|_| count_step(&mut ui, 12840.0)).collect();
-    assert_eq!(shown[0], 0.0, "it starts at `from`");
-    assert!(shown.windows(2).all(|w| w[1] >= w[0]), "it never goes back");
-    assert_eq!(shown[54], 12840.0, "it lands at 900 ms (54 ticks)");
+    let mut d = Doc::new(COUNT, &[("score", json!(12840.0))]);
+    d.viewport = Viewport::new(320.0, 200.0);
+    // The mount's first build is the first tick.
+    let mut shown_by_tick = vec![shown(&d)];
+    shown_by_tick.extend((1..60).map(|_| count_step(&mut d)));
+    assert_eq!(shown_by_tick[0], 0.0, "it starts at `from`");
     assert!(
-        shown[10] > 4000.0 && shown[10] < 12840.0,
+        shown_by_tick.windows(2).all(|w| w[1] >= w[0]),
+        "it never goes back"
+    );
+    assert_eq!(shown_by_tick[54], 12840.0, "it lands at 900 ms (54 ticks)");
+    assert!(
+        shown_by_tick[10] > 4000.0 && shown_by_tick[10] < 12840.0,
         "ease-out: fast first"
     );
-    assert_eq!(ui.element("Score").unwrap().text, "12,840");
+    assert_eq!(d.get("Score").text, "12,840");
     // A new value counts on from where it is.
-    let mut ui = ui_with_font(test_font_metrics());
-    for _ in 0..20 {
-        count_step(&mut ui, 1000.0);
+    let mut d = Doc::new(COUNT, &[("score", json!(1000.0))]);
+    d.viewport = Viewport::new(320.0, 200.0);
+    for _ in 1..20 {
+        count_step(&mut d);
     }
-    let saved = ui.save_state();
-    let a: Vec<f64> = (0..20).map(|_| count_step(&mut ui, 1000.0)).collect();
-    ui.restore_state(&saved).unwrap();
-    let b: Vec<f64> = (0..20).map(|_| count_step(&mut ui, 1000.0)).collect();
+    let saved = d.ui.save_state();
+    let a: Vec<f64> = (0..20).map(|_| count_step(&mut d)).collect();
+    d.ui.restore_state(&saved).unwrap();
+    let b: Vec<f64> = (0..20).map(|_| count_step(&mut d)).collect();
     assert_eq!(a, b, "a restored count replays exactly");
     assert_eq!(format_count(1234567.891, 2), "1,234,567.89");
 }
 
-/// The `Go` button's top edge over `n` ticks of `input` under `style`.
-fn tops(ui: &mut Ui, input: &InputFrame, n: usize) -> Vec<f32> {
+/// The `Go` button's top edge over `n` ticks of `input`.
+fn tops(d: &mut Doc, input: &InputFrame, n: usize) -> Vec<f32> {
     (0..n)
         .map(|_| {
-            step(ui, input.clone(), false);
-            ui.element("Go").expect("the button").y
+            d.step(input.clone());
+            d.get("Go").y
         })
         .collect()
 }
@@ -88,7 +83,8 @@ fn the_hover_lift_moves_on_springs_and_replays() {
     // low damping), never settles exactly, settles somewhere else, or
     // differs after a restore.
     for bounces in [false, true] {
-        let mut ui = ui_with_font(test_font_metrics());
+        let mut d = Doc::new(MENU, &[]);
+        d.viewport = Viewport::new(800.0, 600.0);
         let mut theme = Theme::default();
         theme.art.atlas = Some(atlas());
         theme.art.hover = Some(style_file::Hover {
@@ -99,14 +95,14 @@ fn the_hover_lift_moves_on_springs_and_replays() {
             damping: 0.3,
             response_ms: 300.0,
         });
-        ui.set_theme(theme);
+        d.ui.set_theme(theme);
         for _ in 0..30 {
-            step(&mut ui, InputFrame::default(), false);
+            d.step(InputFrame::default());
         }
-        let rest = ui.element("Go").unwrap().clone();
+        let rest = d.get("Go");
         let (x, y) = rest.center();
         let over = InputFrame::hover(x, y);
-        let ys = tops(&mut ui, &over, 150);
+        let ys = tops(&mut d, &over, 150);
         let end = ys[149];
         assert!(
             end < rest.y - 1.5,
@@ -128,11 +124,11 @@ fn the_hover_lift_moves_on_springs_and_replays() {
             assert!(lowest >= end - 1e-4, "damping 1 never overshoots: {ys:?}");
         }
         // A restore mid-motion replays the same positions.
-        step(&mut ui, InputFrame::hover(0.0, 0.0), false);
-        let saved = ui.save_state();
-        let a = tops(&mut ui, &over, 12);
-        ui.restore_state(&saved).unwrap();
-        let b = tops(&mut ui, &over, 12);
+        d.step(InputFrame::hover(0.0, 0.0));
+        let saved = d.ui.save_state();
+        let a = tops(&mut d, &over, 12);
+        d.ui.restore_state(&saved).unwrap();
+        let b = tops(&mut d, &over, 12);
         assert_eq!(a, b, "the spring is UI state");
     }
 }

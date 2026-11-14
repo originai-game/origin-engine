@@ -585,8 +585,6 @@ pub struct Front {
     /// CSS `accent-color` of the document control being built: its
     /// primary ink (`widgets::controls`' roles).
     pub(crate) accent: Option<crate::Srgba>,
-    /// The HUD layout editor's panel this frame (its key; 0: none).
-    pub(crate) hud_editor_key: u64,
     /// This frame's screen-transition cover.
     pub(crate) cover: Option<crate::juice::Cover>,
 }

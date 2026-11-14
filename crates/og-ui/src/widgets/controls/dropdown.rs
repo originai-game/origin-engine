@@ -170,7 +170,7 @@ impl Ui {
     /// `Dropdown.option`. Role
     /// a listbox of options. Probe: `<id>~list/Option#i`. Answers the
     /// chosen suggestion.
-    pub fn suggestions(
+    pub(crate) fn suggestions(
         &mut self,
         id: &str,
         field: usize,
@@ -304,24 +304,10 @@ impl Ui {
         chosen
     }
 
-    /// A dropdown (a select): a field-like trigger with the chosen option
-    /// and a chevron that turns as it opens; its list opens below it (above
-    /// without room, kept on screen) as a floating layer that takes the
-    /// focus at the chosen option. A press, Enter, Space or A opens it and
-    /// chooses; Back, Escape or a press outside closes it and the focus
-    /// returns to the trigger. Plays open, select and close. Parts:
-    /// `Dropdown.trigger[open][invalid]`, `Dropdown.list`,
-    /// `Dropdown.option[selected]`, `Dropdown.group`. Role combobox and a
-    /// listbox of options. Probe: `<id>/Trigger`,
-    /// `<id>.list/List/Option#i`.
-    pub fn dropdown(&mut self, id: impl Into<Id>, desc: &DropdownDesc) -> DropdownResult {
-        self.dropdown_marked(id, desc, !desc.error.is_empty(), &mut |_, _| {})
-    }
-
     /// [`Ui::dropdown`], its trigger marked invalid without an error line
     /// (a document's `aria-invalid`, its message written beside it), and
     /// `list` styling its open list's node (a document's `::picker(select)`).
-    pub fn dropdown_marked(
+    pub(crate) fn dropdown_marked(
         &mut self,
         id: impl Into<Id>,
         desc: &DropdownDesc,

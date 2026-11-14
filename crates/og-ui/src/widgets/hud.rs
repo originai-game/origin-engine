@@ -7,7 +7,7 @@ impl Ui {
     /// fill is dressed by the region [`MeterRegion::of`] puts the value in
     /// (`Meter.fill[region=optimum|suboptimum|poor]`, undressed success,
     /// warn and danger) over `Meter.track`. Role meter with its range.
-    pub fn gauge(&mut self, id: impl Into<Id>, desc: &GaugeDesc) {
+    pub(crate) fn gauge(&mut self, id: impl Into<Id>, desc: &GaugeDesc) {
         let t = self.env.theme;
         let p = t.palette;
         let (min, max) = (desc.min, desc.max.max(desc.min));

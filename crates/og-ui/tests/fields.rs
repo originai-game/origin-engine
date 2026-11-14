@@ -52,53 +52,57 @@ use crate::support;
 
 use og_core::glam::Vec2;
 use og_ui::*;
+use serde_json::json;
 use support::*;
 
 struct Rig {
-    ui: Ui,
-    value: String,
-    area: String,
-    vp: Viewport,
+    d: Doc,
 }
 
-fn build(ui: &mut Ui, value: &mut String, area: &mut String) {
-    ui.column("Form", Element::column(), |ui| {
-        ui.text_field(
-            "Name",
-            value,
-            &FieldDesc {
-                width: Some(Size::Fixed(300.0)),
-                ..FieldDesc::default()
-            },
-        );
-        ui.text_area(
-            "Notes",
-            area,
-            &TextAreaDesc {
-                width: Some(Size::Fixed(200.0)),
-                rows: 3,
-                ..TextAreaDesc::default()
-            },
-        );
-    });
-}
+const FORM: &str = r#"<meta name="component" content="t">
+<column id="Form">
+  <input id="Name" bind:value={$value} />
+  <textarea id="Notes" rows="3" bind:value={$area} />
+</column>
+<style>
+#Name { width: 300px; }
+#Notes { width: 200px; }
+</style>"#;
 
 impl Rig {
     fn new(value: &str, area: &str) -> Rig {
-        let mut rig = Rig {
-            ui: ui_with_font(test_font()),
-            value: value.into(),
-            area: area.into(),
-            vp: Viewport::new(800.0, 600.0),
-        };
+        let mut d = Doc::with_font(
+            FORM,
+            &[("value", json!(value)), ("area", json!(area))],
+            test_font(),
+        );
+        d.viewport = Viewport::new(800.0, 600.0);
+        let mut rig = Rig { d };
         rig.idle(1);
         rig
     }
 
+    /// The field's text: what it wrote back to its store.
+    fn value(&mut self) -> String {
+        self.d
+            .read("value")
+            .as_str()
+            .unwrap_or_default()
+            .to_string()
+    }
+
+    /// The area's text.
+    fn area(&mut self) -> String {
+        self.d.read("area").as_str().unwrap_or_default().to_string()
+    }
+
+    /// A text the game sets the field to.
+    fn set_value(&mut self, value: &str) {
+        self.d.set("value", json!(value));
+    }
+
     fn step(&mut self, input: InputFrame) {
-        self.ui.begin(input, self.vp);
-        build(&mut self.ui, &mut self.value, &mut self.area);
-        self.ui.end();
+        self.d.step(input);
     }
 
     fn idle(&mut self, ticks: usize) {
@@ -106,9 +110,8 @@ impl Rig {
             self.step(InputFrame::default());
         }
     }
-
     fn rect(&self, id: &str) -> (f32, f32, f32, f32) {
-        let e = self.ui.element(id).expect(id);
+        let e = self.d.get(id);
         (e.x, e.y, e.width, e.height)
     }
 
@@ -167,7 +170,8 @@ impl Rig {
     }
 
     fn selection(&self) -> String {
-        self.ui
+        self.d
+            .ui
             .frame()
             .text_input
             .clone()
@@ -178,7 +182,7 @@ impl Rig {
     /// The field's caret, found by typing a marker there and taking it out.
     fn caret_marked(&mut self) -> String {
         self.typed("|");
-        let marked = self.value.clone();
+        let marked = self.value();
         self.keys(&[UiKey::Backspace], false, false, false);
         marked
     }
@@ -194,7 +198,7 @@ impl Rig {
 #[test]
 fn mac_keys_tell_command_from_control() {
     let mut rig = Rig::new("hello brave, new world", "");
-    rig.vp.mac_keys = true;
+    rig.d.viewport.mac_keys = true;
     rig.focus_field();
     // Command+← and →: the line's ends.
     rig.chord(&[UiKey::Left], false, false, true, false);
@@ -223,11 +227,11 @@ fn mac_keys_tell_command_from_control() {
     rig.chord(&[UiKey::Right], false, false, true, false);
     rig.chord(&[UiKey::Left, UiKey::Left], false, false, false, true);
     rig.chord(&[UiKey::Backspace], false, false, true, false);
-    assert_eq!(rig.value, "new world");
+    assert_eq!(rig.value(), "new world");
     rig.chord(&[UiKey::KeyZ], false, true, false, false);
-    assert_eq!(rig.value, "new world", "Control+Z is no undo on a Mac");
+    assert_eq!(rig.value(), "new world", "Control+Z is no undo on a Mac");
     rig.chord(&[UiKey::KeyZ], false, false, true, false);
-    assert_eq!(rig.value, "hello brave, new world");
+    assert_eq!(rig.value(), "hello brave, new world");
     // Command+↑ and ↓ in an area: the text's ends; Command+← its line's start.
     let (x, y, w, _) = rig.rect("Notes");
     rig.click(Vec2::new(x + w / 2.0, y + 6.0));
@@ -267,31 +271,31 @@ fn mac_keys_keep_an_emacs_kill_buffer() {
     let ctrl = |rig: &mut Rig, k: UiKey| rig.chord(&[k], false, true, false, false);
     let option_right = |rig: &mut Rig| rig.chord(&[UiKey::Right], false, false, false, true);
     let mut rig = Rig::new("hello brave new world", "");
-    rig.vp.mac_keys = true;
+    rig.d.viewport.mac_keys = true;
     rig.focus_field();
     // K kills to the end; Y yanks it back, at the caret, as often as asked.
     ctrl(&mut rig, UiKey::KeyA);
     option_right(&mut rig);
     ctrl(&mut rig, UiKey::KeyK);
-    assert_eq!(rig.value, "hello");
+    assert_eq!(rig.value(), "hello");
     ctrl(&mut rig, UiKey::KeyA);
     ctrl(&mut rig, UiKey::KeyY);
     assert_eq!(rig.caret_marked(), " brave new world|hello");
     ctrl(&mut rig, UiKey::KeyE);
     ctrl(&mut rig, UiKey::KeyY);
-    assert_eq!(rig.value, " brave new worldhello brave new world");
+    assert_eq!(rig.value(), " brave new worldhello brave new world");
     // A yank is one undo step.
     rig.chord(&[UiKey::KeyZ], false, false, true, false);
-    assert_eq!(rig.value, " brave new worldhello");
+    assert_eq!(rig.value(), " brave new worldhello");
     // W in a row: each word before the last, the buffer both of them.
     let mut rig = Rig::new("one two three", "");
-    rig.vp.mac_keys = true;
+    rig.d.viewport.mac_keys = true;
     rig.focus_field();
     ctrl(&mut rig, UiKey::KeyW);
     ctrl(&mut rig, UiKey::KeyW);
-    assert_eq!(rig.value, "one ");
+    assert_eq!(rig.value(), "one ");
     ctrl(&mut rig, UiKey::KeyY);
-    assert_eq!(rig.value, "one two three");
+    assert_eq!(rig.value(), "one two three");
     // A move between two kills ends the chain: the second replaces the
     // buffer.
     ctrl(&mut rig, UiKey::KeyA);
@@ -299,9 +303,9 @@ fn mac_keys_keep_an_emacs_kill_buffer() {
     ctrl(&mut rig, UiKey::KeyK);
     ctrl(&mut rig, UiKey::KeyA);
     ctrl(&mut rig, UiKey::KeyK);
-    assert_eq!(rig.value, "");
+    assert_eq!(rig.value(), "");
     ctrl(&mut rig, UiKey::KeyY);
-    assert_eq!(rig.value, "one");
+    assert_eq!(rig.value(), "one");
     // In an area, K at a line's end kills its break and adds it to the
     // kill before; a field yanks that without the break.
     let (x, y, w, _) = rig.rect("Notes");
@@ -311,29 +315,31 @@ fn mac_keys_keep_an_emacs_kill_buffer() {
     rig.chord(&[UiKey::Up], false, false, true, false);
     ctrl(&mut rig, UiKey::KeyK);
     ctrl(&mut rig, UiKey::KeyK);
-    assert_eq!(rig.area, "cd");
+    assert_eq!(rig.area(), "cd");
     ctrl(&mut rig, UiKey::KeyY);
-    assert_eq!(rig.area, "ab\ncd");
-    rig.value = "x".into();
+    assert_eq!(rig.area(), "ab\ncd");
+    rig.set_value("x");
     rig.focus_field();
     ctrl(&mut rig, UiKey::KeyY);
-    assert_eq!(rig.value, "xab");
+    assert_eq!(rig.value(), "xab");
     // The buffer is UI state: a save and restore keeps it.
-    let saved = rig.ui.save_state();
+    let saved = rig.d.ui.save_state();
     let mut other = Rig::new("y", "");
-    other.vp.mac_keys = true;
-    other.ui.restore_state(&saved).expect("restores");
-    other.step(InputFrame::default());
+    other.d.viewport.mac_keys = true;
+    other.d.ui.restore_state(&saved).expect("restores");
+    // The UI state holds the mount's stores too ("xab"): the game sets
+    // its own text again.
+    other.set_value("y");
     ctrl(&mut other, UiKey::KeyY);
-    assert_eq!(other.value, "yab");
+    assert_eq!(other.value(), "yab");
     // T transposes the characters about the caret, the two before it at
     // the end; at the start nothing.
     let mut rig = Rig::new("abcd", "");
-    rig.vp.mac_keys = true;
+    rig.d.viewport.mac_keys = true;
     rig.focus_field();
     ctrl(&mut rig, UiKey::KeyA);
     ctrl(&mut rig, UiKey::KeyT);
-    assert_eq!(rig.value, "abcd");
+    assert_eq!(rig.value(), "abcd");
     ctrl(&mut rig, UiKey::KeyF);
     ctrl(&mut rig, UiKey::KeyT);
     assert_eq!(rig.caret_marked(), "ba|cd");

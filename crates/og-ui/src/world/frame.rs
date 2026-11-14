@@ -35,11 +35,6 @@ impl Ui {
 
     // ── anchored elements ────────────────────────────────────────────────
 
-    /// Opens an anchored element; its children follow until [`Ui::close`].
-    pub fn open_world_anchor(&mut self, id: impl Into<Id>, desc: WorldAnchorDesc) -> AnchorInfo {
-        self.open_world_anchor_keyed(id.into(), None, desc)
-    }
-
     /// The world layer of an anchor or panel: keyed from its id, or by
     /// `key` itself, `id` then being the full path `key` is the key of (a
     /// document's element: its subtree is keyed and named as if in place).
@@ -59,7 +54,7 @@ impl Ui {
     }
 
     /// [`Ui::open_world_anchor`], its layer keyed by `key` when given.
-    pub fn open_world_anchor_keyed(
+    pub(crate) fn open_world_anchor_keyed(
         &mut self,
         id: Id,
         key: Option<u64>,
@@ -194,29 +189,10 @@ impl Ui {
         }
     }
 
-    /// An anchored element built by `f`, which reads where it stands (its
-    /// level of detail, its distance, whether it is clamped).
-    pub fn world_anchor(
-        &mut self,
-        id: impl Into<Id>,
-        desc: WorldAnchorDesc,
-        f: impl FnOnce(&mut Ui, &AnchorInfo),
-    ) -> AnchorInfo {
-        let info = self.open_world_anchor(id, desc);
-        f(self, &info);
-        self.close();
-        info
-    }
-
     // ── world panels ─────────────────────────────────────────────────────
 
-    /// Opens a world panel; its children follow until [`Ui::close`].
-    pub fn open_world_panel(&mut self, id: impl Into<Id>, desc: WorldPanelDesc) -> PanelInfo {
-        self.open_world_panel_keyed(id.into(), None, desc)
-    }
-
     /// [`Ui::open_world_panel`], its layer keyed by `key` when given.
-    pub fn open_world_panel_keyed(
+    pub(crate) fn open_world_panel_keyed(
         &mut self,
         id: Id,
         key: Option<u64>,
@@ -246,19 +222,6 @@ impl Ui {
             Some((k, info)) if k == key => info,
             _ => PanelInfo::default(),
         }
-    }
-
-    /// A world panel built by `f`.
-    pub fn world_panel(
-        &mut self,
-        id: impl Into<Id>,
-        desc: WorldPanelDesc,
-        f: impl FnOnce(&mut Ui, &PanelInfo),
-    ) -> PanelInfo {
-        let info = self.open_world_panel(id, desc);
-        f(self, &info);
-        self.close();
-        info
     }
 
     // ── mass elements ────────────────────────────────────────────────────

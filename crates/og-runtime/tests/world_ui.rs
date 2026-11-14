@@ -16,19 +16,53 @@ use og_runtime::{
     og_engine_write_resource, og_game_game, og_host_begin_bundle, og_system_define_system,
     og_ui_define_mass, og_ui_mass_count, og_ui_spawn_mass, og_world_spawn, set_hooks, shared_ui,
 };
-use og_ui::{Anchor, AnchorInfo, LabelDesc, WorldAnchorDesc, WorldTarget};
 use serde_json::{Value, json};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 const BUILD: u32 = 1;
 
+/// The tag over entity `{entity}`, and its twin scaled by distance (`5 /
+/// distance`, within 0.5 to 2), whose width over the tag's is how far the
+/// entity is from the eye.
+fn tags(entity: u64) -> String {
+    format!(
+        r#"<meta name="component" content="tags">
+<div id="Root">
+  <anchor id="Tag" entity={{{entity}}}><p id="Name">Brenna</p></anchor>
+  <anchor id="Scaled" entity={{{entity}}} scale-at="5"><p id="Twin">Brenna</p></anchor>
+</div>"#
+    )
+}
+
+/// Where an anchor of [`tags`] was placed: its pivot (a document's anchor
+/// stands on its point by its bottom centre) and width, CSS px.
+#[derive(Clone, Copy, Debug)]
+struct Placed {
+    x: f32,
+    y: f32,
+    width: f32,
+}
+
+fn placed(e: u32, id: &str) -> Placed {
+    let ui = shared_ui(e).expect("the engine's UI");
+    let ui = ui.lock();
+    let el = ui
+        .probe_elements()
+        .into_iter()
+        .find(|el| el.kind == "world" && el.id.ends_with(id))
+        .unwrap_or_else(|| panic!("{id} placed"));
+    Placed {
+        x: el.x + el.width / 2.0,
+        y: el.y + el.height,
+        width: el.width,
+    }
+}
+
 #[derive(Default)]
 struct Seen {
-    entity: Cell<f64>,
     spawn: Cell<bool>,
     template: Cell<u32>,
-    infos: RefCell<Vec<AnchorInfo>>,
     counts: RefCell<Vec<u32>>,
 }
 
@@ -57,17 +91,6 @@ impl Hooks for Host {
             s.counts
                 .borrow_mut()
                 .push(og_ui_mass_count(s.template.get()));
-            let desc = WorldAnchorDesc {
-                target: WorldTarget::Entity(s.entity.get() as u64),
-                pivot: Anchor::Center,
-                ..WorldAnchorDesc::default()
-            };
-            let ui = shared_ui(call.engine).expect("the engine's UI");
-            let mut ui = ui.lock();
-            let info = ui.open_world_anchor("Tag", desc);
-            ui.label("Name", "Brenna", LabelDesc::default());
-            ui.close();
-            s.infos.borrow_mut().push(info);
         }
         Ok(String::new())
     }
@@ -106,14 +129,28 @@ fn an_entity_anchor_follows_the_ticks_camera_and_mass_elements_age_out() {
     let game = og_game_game(Some(json!({ "seed": 1, "systems": [system] }).to_string()));
     let e = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
     let at = json!({ "position": { "x": 1.0, "y": 0.5, "z": 0.0 } });
-    seen.entity.set(
-        value(og_runtime::host_impl::answer(og_world_spawn(
-            e,
-            Some(at.to_string()),
-        )))
-        .as_f64()
-        .unwrap(),
-    );
+    let entity = value(og_runtime::host_impl::answer(og_world_spawn(
+        e,
+        Some(at.to_string()),
+    )))
+    .as_u64()
+    .unwrap();
+    // The game's tags: a document the UI's end builds every tick.
+    {
+        let ui = shared_ui(e).expect("the engine's UI");
+        let mut ui = ui.lock();
+        ui.define_document(
+            og_ui::UiDocument::parse("ui/tags.svelte", &tags(entity)).expect("parses"),
+        );
+        ui.mount_document(
+            og_ui::reactive::SourceId::new("test", "tags"),
+            "tags",
+            Default::default(),
+            Default::default(),
+            &og_ui::bind::NoEnv,
+        )
+        .expect("mounts");
+    }
     camera(e, 0.0);
     seen.spawn.set(true);
     let step = || value(og_engine_frame(e, 1000.0 / 60.0));
@@ -128,13 +165,19 @@ fn an_entity_anchor_follows_the_ticks_camera_and_mass_elements_age_out() {
         (s["x"].as_f64().unwrap(), s["y"].as_f64().unwrap())
     };
     let (sx, sy) = screen(e);
-    // Built a tick after it was placed: the last info is where the end
-    // before put it.
-    let info = *seen.infos.borrow().last().unwrap();
-    assert!(info.in_view, "{info:?}");
+    // Where the last end placed it.
+    let info = placed(e, "Tag");
+    let vp = og_runtime::og_ui_viewport(e);
+    let (w, h) = (vp.width as f32, vp.height as f32);
     assert!(
-        (f64::from(info.distance) - 26.25f64.sqrt()).abs() < 0.05,
-        "{info:?}"
+        info.x > 0.0 && info.x < w && info.y > 0.0 && info.y < h,
+        "in view: {info:?} in {w}x{h}"
+    );
+    // The scaled twin is 5 / distance the tag's width.
+    let distance = 5.0 * info.width / placed(e, "Scaled").width;
+    assert!(
+        (f64::from(distance) - 26.25f64.sqrt()).abs() < 0.05,
+        "{distance} from the eye"
     );
     assert!(
         (f64::from(info.x) - sx).abs() < 0.5 && (f64::from(info.y) - sy).abs() < 0.5,
@@ -145,7 +188,7 @@ fn an_entity_anchor_follows_the_ticks_camera_and_mass_elements_age_out() {
     step();
     step();
     let (mx, _) = screen(e);
-    let moved = *seen.infos.borrow().last().unwrap();
+    let moved = placed(e, "Tag");
     assert!(
         mx < sx - 50.0,
         "the camera did not move the point: {sx} -> {mx}"

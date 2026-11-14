@@ -34,73 +34,66 @@ use support::*;
 mod rig;
 use rig::*;
 
+/// A number input `doc` over store `value`, laid out in `viewport`.
+fn number(doc: &str, value: &str, viewport: Viewport, font: UiFont) -> Doc {
+    let mut d = Doc::with_font(doc, &[("value", json!(value)), ("ro", json!(false))], font);
+    d.viewport = viewport;
+    d.step(InputFrame::default());
+    d
+}
+
+fn value(d: &mut Doc) -> String {
+    d.read("value").as_str().unwrap_or_default().to_string()
+}
+
 #[test]
 fn number_options_wrap_and_step_without_rewriting_formatted_text() {
-    let mut ui = ui_with_font(test_font());
-    let mut value = "1".to_string();
-    let mut desc = FieldDesc {
-        input_type: InputType::Number,
-        width: Some(Size::Fixed(200.0)),
-        number: Some(NumberInputOptions {
-            wrap: true,
-            large_step: 0.3,
-            format: ValueFormat {
-                decimals: Some(2),
-                unit: " kg".into(),
-                ..Default::default()
-            },
-        }),
-        ..Default::default()
-    };
-    desc.constraints.min = Some(0.0);
-    desc.constraints.max = Some(1.0);
-    desc.constraints.step = Some(0.1);
-    let tick = |ui: &mut Ui, value: &mut String, input| {
-        ui.begin(input, Viewport::new(300.0, 100.0));
-        let response = ui.text_field("Number", value, &desc);
-        ui.end();
-        response
-    };
-    tick(&mut ui, &mut value, InputFrame::default());
-    assert_eq!(value, "1");
-    assert!(ui.frame().items.iter().any(|item| matches!(&item.cmd,
-        DrawCmd::Text { text, .. } if text == "1.00 kg")));
+    let mut d = number(
+        r#"<meta name="component" content="t">
+<div><input id="Number" type="number" min="0" max="1" step="0.1" data-wrap data-large-step="0.3" data-format="{value, number} kg" bind:value={$value} /></div>
+<style>#Number { width: 200px; }</style>"#,
+        "1",
+        Viewport::new(300.0, 100.0),
+        test_font(),
+    );
+    // Unfocused it shows its format; the value stays the raw text. (A
+    // document's format is a message, which has no fixed decimals.)
+    assert_eq!(value(&mut d), "1");
+    assert!(d.ui.frame().items.iter().any(|item| matches!(&item.cmd,
+        DrawCmd::Text { text, .. } if text == "1 kg")));
     for (shift, expected) in [(false, "0"), (true, "0.3")] {
-        let button = ui.element("Number/Increment").unwrap();
+        let button = d.get("Number/Increment");
         let pointer = Vec2::new(
             button.x + button.width / 2.0,
             button.y + button.height / 2.0,
         );
         for down in [true, false] {
-            tick(
-                &mut ui,
-                &mut value,
-                InputFrame {
-                    pointer,
-                    pointer_inside: true,
-                    down,
-                    pressed: down,
-                    released: !down,
-                    shift,
-                    ..Default::default()
-                },
-            );
+            d.step(InputFrame {
+                pointer,
+                pointer_inside: true,
+                down,
+                pressed: down,
+                released: !down,
+                shift,
+                ..Default::default()
+            });
         }
-        assert_eq!(value, expected);
+        assert_eq!(value(&mut d), expected);
     }
     for (key, expected) in [(UiKey::Up, "0.6"), (UiKey::Down, "0.3")] {
-        let response = tick(
-            &mut ui,
-            &mut value,
-            InputFrame {
-                keys: vec![key],
-                shift: true,
-                ..Default::default()
-            },
+        d.step(InputFrame {
+            keys: vec![key],
+            shift: true,
+            ..Default::default()
+        });
+        assert!(
+            d.ui.focus_path(0).ends_with("/Number"),
+            "{}",
+            d.ui.focus_path(0)
         );
-        assert!(response.changed && response.focused);
         assert_eq!(
-            value, expected,
+            value(&mut d),
+            expected,
             "Shift arrows use the configured large step"
         );
     }
@@ -108,52 +101,34 @@ fn number_options_wrap_and_step_without_rewriting_formatted_text() {
 
 #[test]
 fn number_buttons_repeat_while_held_and_accelerate() {
-    let mut ui = ui_with_font(test_font_metrics());
-    let mut value = "0".to_string();
-    let mut desc = FieldDesc {
-        input_type: InputType::Number,
-        width: Some(Size::Fixed(277.0)),
-        number: Some(NumberInputOptions {
-            large_step: 1.5,
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-    desc.constraints.step = Some(0.25);
-    let tick = |ui: &mut Ui, value: &mut String, desc: &FieldDesc, input| {
-        ui.begin(input, Viewport::new(1280.0, 720.0));
-        let response = ui.text_field("Number", value, desc);
-        ui.end();
-        response
-    };
-    tick(&mut ui, &mut value, &desc, InputFrame::default());
+    let mut d = number(
+        r#"<meta name="component" content="t">
+<div><input id="Number" type="number" step="0.25" data-large-step="1.5" readonly={$ro} bind:value={$value} /></div>
+<style>#Number { width: 277px; }</style>"#,
+        "0",
+        Viewport::new(1280.0, 720.0),
+        test_font_metrics(),
+    );
     for (button, sign, readonly) in [
         ("Increment", 1.0, false),
         ("Decrement", -1.0, false),
         ("Increment", 1.0, true),
     ] {
-        desc.readonly = readonly;
-        tick(&mut ui, &mut value, &desc, InputFrame::default());
-        let rect = ui.element(&format!("Number/{button}")).unwrap();
+        d.set("ro", json!(readonly));
+        let rect = d.get(&format!("Number/{button}"));
         let pointer = Vec2::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
-        let rate = ui.ticks_per_second();
+        let rate = d.ui.ticks_per_second();
         let mut changes = Vec::new();
         for frame in 0..rate * 2 {
-            let before: f64 = value.parse().unwrap();
-            let response = tick(
-                &mut ui,
-                &mut value,
-                &desc,
-                InputFrame {
-                    pointer,
-                    pointer_inside: true,
-                    down: true,
-                    pressed: frame == 0,
-                    ..Default::default()
-                },
-            );
-            let delta = value.parse::<f64>().unwrap() - before;
-            assert_eq!(response.changed, delta != 0.0);
+            let before: f64 = value(&mut d).parse().unwrap();
+            d.step(InputFrame {
+                pointer,
+                pointer_inside: true,
+                down: true,
+                pressed: frame == 0,
+                ..Default::default()
+            });
+            let delta = value(&mut d).parse::<f64>().unwrap() - before;
             if delta != 0.0 {
                 let age = f64::from(frame) / f64::from(rate);
                 assert!(!readonly);
@@ -175,19 +150,18 @@ fn number_buttons_repeat_while_held_and_accelerate() {
                 "long holds repeat faster"
             );
         }
-        let before = value.clone();
-        tick(
-            &mut ui,
-            &mut value,
-            &desc,
-            InputFrame {
-                pointer,
-                pointer_inside: true,
-                released: true,
-                ..Default::default()
-            },
+        let before = value(&mut d);
+        d.step(InputFrame {
+            pointer,
+            pointer_inside: true,
+            released: true,
+            ..Default::default()
+        });
+        assert_eq!(
+            value(&mut d),
+            before,
+            "release must not add another click step"
         );
-        assert_eq!(value, before, "release must not add another click step");
     }
     let mut rig = Rig::with(
         r#"<meta name="component" content="form"><div><input id="Number" type="number" bind:value={$value} /></div>"#,
@@ -213,27 +187,22 @@ fn number_buttons_repeat_while_held_and_accelerate() {
 #[test]
 fn number_spinner_targets_fit_inside_the_field() {
     for coarse in [false, true] {
-        let mut ui = ui_with_font(test_font_metrics());
         let mut vp = Viewport::new(1280.0, 844.0);
         vp.coarse_pointer = coarse;
-        ui.begin(InputFrame::default(), vp);
-        ui.text_field(
-            "Number",
-            &mut "0.5".into(),
-            &FieldDesc {
-                input_type: InputType::Number,
-                width: Some(Size::Fixed(277.0)),
-                ..Default::default()
-            },
+        let d = number(
+            r#"<meta name="component" content="t">
+<column><input id="Number" type="number" bind:value={$value} /><input id="Sibling" /></column>
+<style>#Number { width: 277px; }</style>"#,
+            "0.5",
+            vp,
+            test_font_metrics(),
         );
-        ui.text_field("Sibling", &mut String::new(), &FieldDesc::default());
-        ui.end();
-        let field = ui.element("Number").unwrap();
-        assert_eq!(field.height, ui.element("Sibling").unwrap().height);
-        let up = ui.element("Number/Increment").unwrap();
-        let down = ui.element("Number/Decrement").unwrap();
+        let field = d.get("Number");
+        assert_eq!(field.height, d.get("Sibling").height);
+        let up = d.get("Number/Increment");
+        let down = d.get("Number/Decrement");
         let minimum = if coarse { 44.0 } else { 24.0 };
-        let inset = ui.theme().space.md;
+        let inset = d.ui.theme().space.md;
         for button in [&up, &down] {
             assert!(button.width >= minimum);
             assert_eq!(button.y, field.y);

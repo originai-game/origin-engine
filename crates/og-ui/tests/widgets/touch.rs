@@ -10,87 +10,130 @@
 //! - a disabled control still answers a finger.
 
 use super::*;
+use og_input::{ActionDesc, ActionKind, ActionMap};
 
-#[derive(Default)]
-struct Pad {
-    stick: JoystickResponse,
-    dpad: DpadResponse,
-    disabled: bool,
+const HUD: &str = r#"<meta name="component" content="t">
+<row id="Hud">
+  <joystick id="Stick" action="move"/>
+  <dpad id="Pad" action="look"/>
+</row>
+<style>
+#Hud { gap: 40px; padding: 40px; }
+#Stick { width: 160px; }
+#Pad { width: 150px; }
+</style>"#;
+
+fn rig() -> (Doc, Fingers) {
+    let mut vp = Viewport::new(800.0, 600.0);
+    vp.coarse_pointer = true;
+    (mount_at(HUD, &[], vp), Fingers::new())
 }
 
-fn controls(ui: &mut Ui, s: &mut Pad) {
-    ui.row(
-        "Hud",
-        Element {
-            gap: 40.0,
-            padding: Insets::all(40.0),
-            ..Element::row()
-        },
-        |ui| {
-            s.stick = ui.joystick(
-                "Stick",
-                JoystickDesc {
-                    size: 160.0,
-                    disabled: s.disabled,
-                    ..JoystickDesc::default()
-                },
-            );
-            s.dpad = ui.dpad(
-                "Pad",
-                DpadDesc {
-                    size: 150.0,
-                    disabled: s.disabled,
-                    ..DpadDesc::default()
-                },
-            );
-        },
-    );
+/// The stick's knob, drawn in the knob's own colour while a finger holds
+/// it (faded into the HUD at rest): its centre, `None` at rest.
+fn held_knob(d: &Doc) -> Option<Vec2> {
+    let knob = d.ui.theme().palette.knob.linear();
+    d.ui.frame().items.iter().find_map(|i| match &i.cmd {
+        DrawCmd::Shape { shape, .. } if shape.paint == og_draw::UiPaint::Solid(knob) => {
+            Some(shape.center)
+        }
+        _ => None,
+    })
 }
 
-fn rig() -> (Rig<Pad>, Fingers) {
-    let mut rig = Rig::new(Pad::default());
-    rig.vp.coarse_pointer = true;
-    rig.idle(2, &mut controls);
-    (rig, Fingers::new())
+/// The action map a game samples, fed the zones the document laid out.
+struct Actions {
+    map: ActionMap,
+    tick: u64,
+}
+
+impl Actions {
+    fn new(d: &mut Doc) -> Actions {
+        let mut map = ActionMap::new();
+        map.define(ActionDesc {
+            name: "move".into(),
+            kind: ActionKind::Axis2,
+            ..ActionDesc::default()
+        })
+        .unwrap();
+        map.set_surface(og_input::Surface {
+            width: 800.0,
+            height: 600.0,
+            coarse: true,
+        });
+        map.set_zones(d.ui.take_control_zones().expect("the stick's zone"));
+        Actions { map, tick: 0 }
+    }
+
+    /// One tick: `input` built, then sampled.
+    fn step(&mut self, d: &mut Doc, input: InputFrame) -> og_input::ActionState {
+        d.step(input.clone());
+        if let Some(zones) = d.ui.take_control_zones() {
+            self.map.set_zones(zones);
+        }
+        self.tick += 1;
+        self.map.sample(
+            &Default::default(),
+            &input.pointers,
+            &Default::default(),
+            self.tick,
+            1.0 / 60.0,
+        );
+        self.map.state("move").unwrap()
+    }
 }
 
 #[test]
 fn the_stick_rises_from_zero_past_its_dead_zone_and_rests_on_release() {
-    let (mut rig, mut f) = rig();
-    let c = rig.center("Hud/Stick");
+    let (mut d, mut f) = rig();
+    let mut actions = Actions::new(&mut d);
+    let c = center(&d, "Stick");
     let r = 80.0;
-    rig.step(f.at(&[(1, c + Vec2::new(0.1 * r, 0.0))]), &mut controls);
-    let s = rig.state.stick;
-    assert!(s.active && s.x == 0.0, "inside the dead zone: {s:?}");
-    rig.step(f.at(&[(1, c + Vec2::new(0.6 * r, 0.0))]), &mut controls);
-    let x = rig.state.stick.x;
+    let s = actions.step(&mut d, f.at(&[(1, c + Vec2::new(0.1 * r, 0.0))]));
+    assert!(held_knob(&d).is_some(), "the finger holds the stick");
+    assert!(
+        s.vector == Vec2::ZERO,
+        "inside the dead zone: {:?}",
+        s.vector
+    );
+    let s = actions.step(&mut d, f.at(&[(1, c + Vec2::new(0.6 * r, 0.0))]));
+    let x = s.vector.x;
     assert!(
         (x - 0.45 / 0.85).abs() < 1e-3,
         "rescaled past the 0.15 dead zone, not the raw 0.6: {x}"
     );
-    rig.step(f.at(&[(1, c + Vec2::new(0.0, 3.0 * r))]), &mut controls);
-    let s = rig.state.stick;
+    // A finger past the base, below it (the action's y is up).
+    let s = actions.step(&mut d, f.at(&[(1, c + Vec2::new(0.0, 3.0 * r))]));
     assert!(
-        s.x.abs() < 1e-3 && (s.y - 1.0).abs() < 1e-3,
-        "a finger past the base still steers, clamped: {s:?}"
+        s.vector.x.abs() < 1e-3 && (s.vector.y + 1.0).abs() < 1e-3,
+        "a finger past the base still steers, clamped: {:?}",
+        s.vector
     );
-    rig.step(f.lift(1), &mut controls);
-    assert_eq!(rig.state.stick, JoystickResponse::default(), "released");
+    let k = held_knob(&d).expect("held");
+    assert!(
+        (k.x - c.x).abs() < 0.5 && k.y > c.y && k.y < c.y + r,
+        "the knob leans down inside the base: {k:?} about {c:?}"
+    );
+    let s = actions.step(&mut d, f.lift(1));
+    assert!(
+        !s.down && s.vector == Vec2::ZERO,
+        "released: {:?}",
+        s.vector
+    );
+    idle(&mut d, 1);
+    assert_eq!(held_knob(&d), None, "the knob rests");
 }
 
 #[test]
 fn the_stick_keeps_the_finger_that_took_it() {
-    let (mut rig, mut f) = rig();
-    let c = rig.center("Hud/Stick");
+    let (mut d, mut f) = rig();
+    let c = center(&d, "Stick");
     // Finger 2 grabs the stick to the right; finger 1 then lands on its left.
-    rig.step(f.at(&[(2, c + Vec2::new(50.0, 0.0))]), &mut controls);
-    rig.step(
-        f.at(&[(2, c + Vec2::new(50.0, 0.0)), (1, c - Vec2::new(50.0, 0.0))]),
-        &mut controls,
-    );
+    d.step(f.at(&[(2, c + Vec2::new(50.0, 0.0))]));
+    d.step(f.at(&[(2, c + Vec2::new(50.0, 0.0)), (1, c - Vec2::new(50.0, 0.0))]));
+    let k = held_knob(&d).expect("held");
     assert!(
-        rig.state.stick.x > 0.3,
-        "the first finger keeps it: {:?}",
-        rig.state.stick
+        k.x - c.x > 0.3 * 50.0,
+        "the first finger keeps it: the knob at {k:?} about {c:?}"
     );
 }

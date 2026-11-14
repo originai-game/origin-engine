@@ -55,14 +55,7 @@ impl Ui {
             })
     }
 
-    /// Opens a virtualised list (a scroll column) and answers which rows to
-    /// build: call [`Ui::list_item`] for each of `first..last`, then
-    /// [`Ui::close`]. Fillers keep the scroll range of all `count` rows.
-    pub fn open_list(&mut self, id: impl Into<Id>, desc: ListDesc) -> ListRange {
-        self.open_list_inner(id.into(), desc, None)
-    }
-
-    pub fn open_list_inner(
+    pub(crate) fn open_list_inner(
         &mut self,
         id: Id,
         desc: ListDesc,
@@ -234,7 +227,7 @@ impl Ui {
     }
 
     /// Closes a list or grid opened with [`Ui::open_list`] / [`Ui::open_grid`].
-    pub fn close_list(&mut self) -> Response {
+    pub(crate) fn close_list(&mut self) -> Response {
         let list = self.tree.parent();
         let rest = self.tree.nodes[list].aux[2];
         if rest >= 0.0 {
@@ -250,7 +243,7 @@ impl Ui {
 
     /// Opens row `index` of the open list (`Row#index`): a selectable,
     /// focusable row; its content follows until [`Ui::close`].
-    pub fn list_item(&mut self, index: u32, selected: bool) -> Response {
+    pub(crate) fn list_item(&mut self, index: u32, selected: bool) -> Response {
         let t = self.env.theme;
         let list = self.tree.parent();
         let h = self.tree.nodes[list].aux[0];
@@ -400,13 +393,7 @@ impl Ui {
             && self.interaction.state.active != 0
     }
 
-    /// Opens a virtualised grid (a wrapping, scrolling row of equal cells):
-    /// call [`Ui::grid_item`] for each of `first..last`, then [`Ui::close_list`].
-    pub fn open_grid(&mut self, id: impl Into<Id>, desc: GridDesc) -> ListRange {
-        self.open_grid_inner(id.into(), desc, None)
-    }
-
-    pub fn open_grid_inner(
+    pub(crate) fn open_grid_inner(
         &mut self,
         id: Id,
         desc: GridDesc,
@@ -525,7 +512,7 @@ impl Ui {
     /// pack's `controlStrong` and its accent hairline: one mark, no second
     /// underline), focusable; its
     /// content follows until [`Ui::close`].
-    pub fn grid_item(&mut self, index: u32, selected: bool) -> Response {
+    pub(crate) fn grid_item(&mut self, index: u32, selected: bool) -> Response {
         let t = self.env.theme;
         let grid = self.tree.parent();
         let [cw, ch, _] = self.tree.nodes[grid].aux;

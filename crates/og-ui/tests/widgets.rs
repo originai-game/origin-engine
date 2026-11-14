@@ -33,52 +33,51 @@ use og_core::glam::Vec2;
 use og_ui::*;
 use support::*;
 
-/// A Ui driven by a build closure.
-struct Rig<S> {
-    ui: Ui,
-    state: S,
-    vp: Viewport,
+/// Document `text` (component `t`, mounted as `test:t`) over `stores`, in
+/// an 800 × 600 viewport (`viewport` another), built twice.
+fn mount_at(text: &str, stores: &[(&str, serde_json::Value)], viewport: Viewport) -> Doc {
+    let mut d = Doc::new(text, stores);
+    d.viewport = viewport;
+    idle(&mut d, 2);
+    d
 }
 
-impl<S> Rig<S> {
-    fn new(state: S) -> Rig<S> {
-        Rig {
-            ui: ui_with_font(test_font_metrics()),
-            state,
-            vp: Viewport::new(800.0, 600.0),
-        }
-    }
+fn mount(text: &str, stores: &[(&str, serde_json::Value)]) -> Doc {
+    mount_at(text, stores, Viewport::new(800.0, 600.0))
+}
 
-    fn step(&mut self, input: InputFrame, build: &mut dyn FnMut(&mut Ui, &mut S)) {
-        self.ui.begin(input, self.vp);
-        build(&mut self.ui, &mut self.state);
-        self.ui.end();
-    }
-
-    fn idle(&mut self, n: u32, build: &mut dyn FnMut(&mut Ui, &mut S)) {
-        for _ in 0..n {
-            self.step(InputFrame::default(), build);
-        }
-    }
-
-    fn center(&self, path: &str) -> Vec2 {
-        let e = self
-            .ui
-            .element(path)
-            .unwrap_or_else(|| panic!("no element {path}: {:?}", ids(&self.ui)));
-        let (x, y) = e.center();
-        Vec2::new(x, y)
-    }
-
-    fn click(&mut self, path: &str, build: &mut dyn FnMut(&mut Ui, &mut S)) {
-        let p = self.center(path);
-        self.step(press(p), build);
-        self.step(release(p), build);
+fn idle(d: &mut Doc, n: u32) {
+    for _ in 0..n {
+        d.step(InputFrame::default());
     }
 }
 
-fn ids(ui: &Ui) -> Vec<String> {
-    ui.elements().iter().map(|e| e.id.clone()).collect()
+/// The centre of the element whose path ends with `id`.
+fn center(d: &Doc, id: &str) -> Vec2 {
+    let (x, y) = d.get(id).center();
+    Vec2::new(x, y)
+}
+
+/// A press and its release on `id`, one tick each (no settling after).
+fn tap(d: &mut Doc, id: &str) {
+    let p = center(d, id);
+    d.step(press(p));
+    d.step(release(p));
+}
+
+/// Pad `pad`'s focus, without the mount's prefix.
+fn focus(d: &Doc, pad: u32) -> String {
+    let path = d.ui.focus_path(pad);
+    path.strip_prefix("test:t/").unwrap_or(path).to_string()
+}
+
+/// The names of the `click` events `d` collected since the last call.
+fn clicks(d: &mut Doc) -> Vec<String> {
+    std::mem::take(&mut d.events)
+        .into_iter()
+        .filter(|e| e.kind == "click")
+        .map(|e| e.path.rsplit('/').next().unwrap_or_default().to_string())
+        .collect()
 }
 
 fn press(p: Vec2) -> InputFrame {

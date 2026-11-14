@@ -464,14 +464,23 @@ mod tests {
             bottom: 23.0,
         };
         ui.begin(InputFrame::default(), viewport);
-        ui.open_anchor(
-            "hud",
-            crate::AnchorDesc {
-                anchor: Anchor::BottomRight,
-                margin: Some(13.0),
+        ui.open_layer(
+            "anchor",
+            "hud".into(),
+            Element {
                 width: Size::grow(),
-                ..Default::default()
+                ..Element::default()
             },
+            crate::layout::Float::Anchored {
+                anchor: Anchor::BottomRight,
+                margin: 13.0,
+                dx: 0.0,
+                dy: 0.0,
+                over: false,
+                tooltip: false,
+                avoid: false,
+            },
+            crate::layout::NONE,
         );
         let container = ui.tree.parent();
         ui.watch_layout_container(ui.tree.nodes[container].key);

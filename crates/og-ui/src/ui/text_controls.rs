@@ -23,7 +23,7 @@ impl Ui {
     /// memory, saved with the UI state; a number takes only a number's
     /// characters; a number, an email or a url whose text is not one is
     /// invalid (HTML's type mismatch), as `desc.invalid` makes it.
-    pub fn text_field(
+    pub(crate) fn text_field(
         &mut self,
         id: impl Into<Id>,
         value: &mut String,
@@ -806,7 +806,7 @@ impl Ui {
     /// breaks, the text wrapped between words at the area's width and
     /// scrolled to keep the caret's line in view (a drag above or below it
     /// scrolls it, faster the further out). `rows` lines show at once.
-    pub fn text_area(
+    pub(crate) fn text_area(
         &mut self,
         id: impl Into<Id>,
         value: &mut String,

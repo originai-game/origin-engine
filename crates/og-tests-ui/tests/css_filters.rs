@@ -16,9 +16,10 @@ use crate::support;
 use og_ui::*;
 use support::*;
 
-/// A tinted image (`ImageDesc::tint`) and the same image through a
-/// linearRGB diagonal `feColorMatrix` draw the same picture, within one
-/// channel value, on both document paths.
+/// An image whose texels a tint multiplied in linear light (on the CPU,
+/// as og-ui's image tint multiplies them) and the untinted image through a
+/// linearRGB diagonal `feColorMatrix` of that tint draw the same picture,
+/// within one channel value, both as documents.
 ///
 /// Both draw into a linear Rgba16Float output, read back through the
 /// capture's exact sRGB encode, so the comparison checks the matrix maths
@@ -49,15 +50,57 @@ fn color_matrix_preserves_texture_tint_multiplication() {
     scene.lighting.environment.background =
         Background::Color(og_core::glam::Vec3::new(0.08, 0.2, 0.4));
     scene.look.post.tonemap = Tonemap::None;
-    let texture = scene.add_texture(TextureData {
-        width: 2,
-        height: 2,
-        rgba: vec![
-            211, 67, 129, 255, 43, 193, 87, 177, 19, 101, 233, 83, 239, 159, 31, 0,
-        ],
-        color_space: ColorSpace::Srgb,
-        mips: Mips::None,
-    });
+    let texels: Vec<u8> = vec![
+        211, 67, 129, 255, 43, 193, 87, 177, 19, 101, 233, 83, 239, 159, 31, 0,
+    ];
+    let mut texture_of = |rgba: Vec<u8>| {
+        scene.add_texture(TextureData {
+            width: 2,
+            height: 2,
+            rgba,
+            color_space: ColorSpace::Srgb,
+            mips: Mips::None,
+        })
+    };
+    let texture = texture_of(texels.clone());
+    // The texels multiplied by a tint in linear light, as a tint
+    // multiplies them (og-ui's image tint is engine-internal: the reference
+    // path is these texels, drawn by a plain `<img>`).
+    let decode = |v: u8| {
+        let c = f32::from(v) / 255.0;
+        if c <= 0.040_45 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    let encode = |c: f32| {
+        let e = if c <= 0.003_130_8 {
+            c * 12.92
+        } else {
+            1.055 * c.powf(1.0 / 2.4) - 0.055
+        };
+        (e * 255.0).round().clamp(0.0, 255.0) as u8
+    };
+    let tinted: Vec<TextureHandle> = ["#80c040", "#d060a080"]
+        .map(|tint| {
+            let l = style_file::parse_color(tint).unwrap().linear();
+            let rgba = texels
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .flat_map(|t| {
+                    [
+                        encode(decode(t[0]) * l[0]),
+                        encode(decode(t[1]) * l[1]),
+                        encode(decode(t[2]) * l[2]),
+                        (f32::from(t[3]) * l[3]).round() as u8,
+                    ]
+                })
+                .collect();
+            texture_of(rgba)
+        })
+        .to_vec();
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width: 64,
         height: 32,
@@ -66,7 +109,7 @@ fn color_matrix_preserves_texture_tint_multiplication() {
     })
     .unwrap();
     let mut maximum = 0;
-    for tint in ["#80c040", "#d060a080"] {
+    for (tint, tinted) in ["#80c040", "#d060a080"].into_iter().zip(tinted) {
         let linear = style_file::parse_color(tint).unwrap().linear();
         let source = |css: &str| {
             format!(
@@ -77,35 +120,20 @@ fn color_matrix_preserves_texture_tint_multiplication() {
                 a = linear[3]
             )
         };
-        let mut render = |css: &str| {
+        let mut render = |css: &str, texture: TextureHandle| {
             let mut ui = ui_with_font(test_font_metrics());
             ui.define_document(UiDocument::parse("tint.svelte", &source(css)).unwrap());
-            if !css.is_empty() {
-                ui.mount_document(
-                    reactive::SourceId::new("test", "tint"),
-                    "t",
-                    Default::default(),
-                    Default::default(),
-                    &Env(texture),
-                )
-                .unwrap();
-            }
+            ui.mount_document(
+                reactive::SourceId::new("test", "tint"),
+                "t",
+                Default::default(),
+                Default::default(),
+                &Env(texture),
+            )
+            .unwrap();
             for _ in 0..2 {
                 ui.begin(InputFrame::default(), Viewport::new(64.0, 32.0));
-                if css.is_empty() {
-                    ui.image(
-                        "Pic",
-                        ImageDesc {
-                            texture: Some(texture),
-                            tint: Some(style_file::parse_color(tint).unwrap()),
-                            width: Size::Fixed(64.0),
-                            height: Size::Fixed(32.0),
-                            ..Default::default()
-                        },
-                    );
-                } else {
-                    ui.build_retained_documents(&Env(texture)).unwrap();
-                }
+                ui.build_retained_documents(&Env(texture)).unwrap();
                 ui.end();
             }
             assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
@@ -115,8 +143,8 @@ fn color_matrix_preserves_texture_tint_multiplication() {
             renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
             renderer.read_offscreen().unwrap().pixels
         };
-        let before = render("");
-        let after = render("filter: url(#Tint);");
+        let before = render("", tinted);
+        let after = render("filter: url(#Tint);", texture);
         assert!(
             before
                 .as_chunks::<4>()

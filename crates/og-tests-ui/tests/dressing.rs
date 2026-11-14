@@ -9,50 +9,34 @@ use og_ui::*;
 #[ignore = "requires GPU"]
 fn css_parts_render_their_background_border_and_shadow() {
     use og_render::*;
-    use og_ui::dress::PartRef;
+    // Three buttons in the states the frame shows: at rest, hovered, and a
+    // primary one of an epic rarity hovered (both forced, as the probe
+    // forces them: the pointer alone never hovers two at once).
+    const STATES: &str = r#"<meta name="component" content="states">
+<row id="States">
+  <button id="Rest"></button>
+  <button id="Hover"></button>
+  <button id="Epic" variant="primary" data-rarity="epic"></button>
+</row>
+<style>
+#States { padding: 24px; gap: 24px; }
+button, button::part(base) { width: 120px; height: 40px; }
+</style>"#;
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
     let mut ui = ui_with_font(font);
     ui.set_part_css(include_str!("../../og-ui/tests/fixtures/parts.css"))
         .unwrap();
     let (width, height) = (464, 96);
-    ui.begin(
-        InputFrame::default(),
-        Viewport::new(width as f32, height as f32),
-    );
-    ui.row(
-        "States",
-        Element {
-            padding: Insets::all(24.0),
-            gap: 24.0,
-            ..Element::row()
-        },
-        |ui| {
-            let base = PartRef::of("Button", "base", None);
-            for (name, part) in [
-                ("Rest", base),
-                ("Hover", base.flag("hover")),
-                (
-                    "Epic",
-                    base.flag("primary")
-                        .flag("hover")
-                        .attr("data-rarity", "epic"),
-                ),
-            ] {
-                let draw = ui.resolve_part(&part, [120.0, 40.0]).unwrap();
-                ui.column(
-                    name,
-                    Element {
-                        width: Size::px(120.0),
-                        height: Size::px(40.0),
-                        ..Element::column()
-                    },
-                    |ui| ui.set_draw(draw),
-                );
-            }
-        },
-    );
-    ui.end();
+    let vp = Viewport::new(width as f32, height as f32);
+    mount_screen_document(&mut ui, "states", STATES, &[]);
+    step_screen(&mut ui, InputFrame::default(), vp);
+    for id in ["Hover", "Epic"] {
+        ui.force_state(&format!("screen:states/{id}"), "interaction", Some("hover"));
+    }
+    for _ in 0..2 {
+        step_screen(&mut ui, InputFrame::default(), vp);
+    }
     let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.ui.overlay = Some(overlay);

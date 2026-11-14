@@ -12,8 +12,9 @@
 //!   proportional figures, so a timer changes width as it ticks →
 //!   `tabular_figures_hold_a_width_without_the_feature`
 
+use crate::support::Doc;
 use og_draw::{Glyph, GlyphKey, MsdfFont, TextureHandle};
-use og_ui::shape::{Features, FontFile};
+use og_ui::shape::FontFile;
 use og_ui::*;
 use std::sync::Arc;
 
@@ -61,6 +62,16 @@ fn font_at(path: &str) -> UiFont {
     }
 }
 
+/// A one-line text `N` of "abcd" (or `text`) sized to its words, under
+/// `css` for `#N`.
+fn label_doc(text: &str, css: &str) -> String {
+    format!(
+        r#"<meta name="component" content="t">
+<row><text id="N">{text}</text></row>
+<style>#N {{ white-space: nowrap; {css} }}</style>"#
+    )
+}
+
 /// A pixel font (`font { pixel 12 }`) is set at whole multiples of its
 /// grid (the typography audit, fix 5): a 14 px body label at 12, a 20 px
 /// one at 24, so each of its pixels is a whole CSS pixel; its tracking is
@@ -68,37 +79,19 @@ fn font_at(path: &str) -> UiFont {
 #[test]
 fn a_pixel_font_is_set_at_multiples_of_its_grid() {
     let width = |metrics: FontMetrics, size: f32, tracking: f32| {
-        let mut ui = Ui::new(UiDesc::default());
         let f = UiFont {
             handle: None,
             metrics,
         };
-        let mut fonts = Fonts {
-            body: f,
-            ..Fonts::default()
-        };
-        fonts.link();
-        ui.set_fonts(fonts);
-        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-        ui.label(
-            "N",
-            "abcd",
-            LabelDesc {
-                nowrap: true,
-                step: Some(TypeStep {
-                    size,
-                    line_height: size * 1.25,
-                    tracking_em: tracking,
-                    cjk_line_height: size * 1.25,
-                    cjk_tracking_em: 0.0,
-                    features: Features::NONE,
-                    ..ui.theme().type_ramp.body
-                }),
-                ..LabelDesc::default()
-            },
+        let d = Doc::with_font(
+            &label_doc(
+                "abcd",
+                &format!("font-size: {size}px; line-height: 1.25; letter-spacing: {tracking}em;"),
+            ),
+            &[],
+            f,
         );
-        ui.end();
-        ui.element("N").expect("the label").width
+        d.get("N").width
     };
     let pixel = || FontMetrics::fixed(0.5).with_pixel(12);
     // Half an em a character: 6 px at 12, 12 px at 24.
@@ -123,7 +116,8 @@ fn display_text_under_the_styles_display_min_takes_the_body_face() {
     narrow.metrics = narrow.metrics.clone().with_file(None);
     let mut wide = font("EBGaramond-Medium.ttf");
     wide.metrics = wide.metrics.clone().with_file(None);
-    let width = |min: f32, size: f32, role: FontRole| {
+    // `fantasy` is the display role (docs/ui.md §3.2), no family the body.
+    let width = |min: f32, size: f32, family: &str| {
         let mut ui = Ui::new(UiDesc::default());
         let mut theme = Theme::default();
         theme.art.display_min = min;
@@ -135,37 +129,28 @@ fn display_text_under_the_styles_display_min_takes_the_body_face() {
         };
         fonts.link();
         ui.set_fonts(fonts);
-        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-        let mut step = ui.type_step(og_ui::tokens::TypeRole::Body);
-        step.size = size;
-        ui.label(
-            "N",
-            "SALVAGE YARD",
-            LabelDesc {
-                nowrap: true,
-                font: role,
-                step: Some(step),
-                ..LabelDesc::default()
-            },
+        let d = Doc::with_ui(
+            ui,
+            &label_doc("SALVAGE YARD", &format!("font-size: {size}px; {family}")),
         );
-        ui.end();
-        ui.element("N").expect("the label").width
+        d.get("N").width
     };
+    let display = "font-family: fantasy;";
     // Wrong: the threshold ignored (14 px display drawn in the display
     // face), or applied at and over it, or to the other roles.
     assert_eq!(
-        width(18.0, 14.0, FontRole::Display),
-        width(0.0, 14.0, FontRole::Body),
+        width(18.0, 14.0, display),
+        width(0.0, 14.0, ""),
         "under: the body face"
     );
     assert_ne!(
-        width(18.0, 14.0, FontRole::Display),
-        width(0.0, 14.0, FontRole::Display),
+        width(18.0, 14.0, display),
+        width(0.0, 14.0, display),
         "the faces differ"
     );
     assert_eq!(
-        width(18.0, 18.0, FontRole::Display),
-        width(0.0, 18.0, FontRole::Display),
+        width(18.0, 18.0, display),
+        width(0.0, 18.0, display),
         "at it: the display face"
     );
 }

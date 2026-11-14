@@ -745,7 +745,7 @@ impl crate::ui::Layout {
 impl Ui {
     /// Opens a container with the element model's props (docs/ui.md §2):
     /// its children follow until [`Ui::close`].
-    pub fn open_with(&mut self, id: impl Into<crate::Id>, el: crate::Element, props: Props) {
+    pub(crate) fn open_with(&mut self, id: impl Into<crate::Id>, el: crate::Element, props: Props) {
         self.open(id, el);
         let i = self.tree.parent();
         *self.tree.props_mut(i) = props;
@@ -753,7 +753,7 @@ impl Ui {
 
     /// Sets the props of the element built just before (any widget, or a
     /// container just closed). Answers false when there is none.
-    pub fn set_props(&mut self, props: Props) -> bool {
+    pub(crate) fn set_props(&mut self, props: Props) -> bool {
         if let Some(node) = self.tree.nodes.get_mut(self.tree.last_closed)
             && let Some(part) = node.part_box.as_mut()
         {
@@ -769,7 +769,7 @@ impl Ui {
     }
 
     /// The props of the element built just before, to change in place.
-    pub fn props_mut(&mut self) -> Option<&mut Props> {
+    pub(crate) fn props_mut(&mut self) -> Option<&mut Props> {
         let i = self.tree.last_closed;
         if i == NONE || i >= self.tree.nodes.len() {
             self.out.warnings.push(
@@ -778,5 +778,117 @@ impl Ui {
             return None;
         }
         Some(self.tree.props_mut(i))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+
+    fn fixed(w: f32, h: f32) -> Element {
+        Element {
+            width: Size::Fixed(w),
+            height: Size::Fixed(h),
+            ..Element::default()
+        }
+    }
+
+    /// A box with a background, `props` on it.
+    fn boxed(ui: &mut Ui, id: &str, w: f32, h: f32, props: Props) {
+        ui.open_with(
+            id,
+            Element {
+                background: Some(Srgba::rgb(128, 128, 128)),
+                interactive: true,
+                ..fixed(w, h)
+            },
+            props,
+        );
+        ui.close();
+    }
+
+    /// An overlap the engine declares on purpose (`Props::overlaps`, which
+    /// documents do not set: a list's marker on its item) is not reported;
+    /// an undeclared one beside it still is.
+    #[test]
+    fn a_declared_overlap_is_not_reported() {
+        let mut ui = Ui::new(UiDesc::default());
+        let frame = |ui: &mut Ui, declared: bool| {
+            ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+            ui.open(
+                "P",
+                Element {
+                    padding: Insets::all(100.0),
+                    ..Element::default()
+                },
+            );
+            ui.open_with(
+                "Card",
+                fixed(120.0, 160.0),
+                Props {
+                    layout: LayoutMode::Stack,
+                    ..Props::default()
+                },
+            );
+            boxed(ui, "Art", 120.0, 160.0, Props::default());
+            // The cost gem sits on the art's corner, on purpose or not.
+            boxed(
+                ui,
+                "Gem",
+                24.0,
+                24.0,
+                Props {
+                    position: Position::Absolute,
+                    insets: Edges {
+                        start: Some(-8.0),
+                        top: Some(-8.0),
+                        ..Edges::default()
+                    },
+                    overlaps: if declared {
+                        vec!["P/Card/Art".into()]
+                    } else {
+                        Vec::new()
+                    },
+                    ..Props::default()
+                },
+            );
+            ui.close();
+            // A label pushed over the card by a negative inset: a bug.
+            boxed(
+                ui,
+                "Tag",
+                40.0,
+                20.0,
+                Props {
+                    position: Position::Absolute,
+                    insets: Edges {
+                        start: Some(100.0),
+                        top: Some(150.0),
+                        ..Edges::default()
+                    },
+                    ..Props::default()
+                },
+            );
+            ui.close();
+            ui.end();
+        };
+        let pairs = |ui: &Ui| -> Vec<(String, String)> {
+            let mut v: Vec<_> = ui
+                .overlaps()
+                .iter()
+                .map(|o| (o.path.clone(), o.other.clone()))
+                .collect();
+            v.sort();
+            v
+        };
+        let gem = ("P/Card/Gem".to_string(), "P/Card/Art".to_string());
+        frame(&mut ui, false);
+        let all = pairs(&ui);
+        assert!(all.contains(&gem), "{all:?}");
+        assert!(all.iter().any(|(a, _)| a == "P/Tag"), "{all:?}");
+        frame(&mut ui, true);
+        let declared = pairs(&ui);
+        assert!(!declared.contains(&gem), "{declared:?}");
+        assert!(declared.iter().any(|(a, _)| a == "P/Tag"), "{declared:?}");
     }
 }

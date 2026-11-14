@@ -117,7 +117,6 @@ impl Ui {
                 kept_texts: Default::default(),
                 button_ink: Vec::new(),
                 accent: None,
-                hud_editor_key: 0,
                 cover: None,
             },
             style: Style {
@@ -522,7 +521,7 @@ impl Ui {
 
     /// Starts a frame with a root of your own (its size is the viewport; the
     /// safe area is added to its padding; its background covers the whole viewport).
-    pub fn begin_with(&mut self, input: InputFrame, viewport: Viewport, root: Element) {
+    pub(crate) fn begin_with(&mut self, input: InputFrame, viewport: Viewport, root: Element) {
         // The og-ui unit (docs/ui.md §6.1): the frame lays out in units of
         // it on the surface's size over it and draws it times larger
         // (`end`), so every length grows with the surface; input comes in
@@ -913,11 +912,10 @@ impl crate::ui::Interaction {
 }
 
 impl crate::ui::Front {
-    /// Starts a frame of the immediate front end: nothing touched, no HUD
-    /// editor, no cover.
+    /// Starts a frame of the immediate front end: nothing touched, no
+    /// cover.
     pub(crate) fn begin(&mut self) {
         self.touched.clear();
-        self.hud_editor_key = 0;
         self.cover = None;
     }
 }

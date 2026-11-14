@@ -5,23 +5,11 @@
 
 use crate::draw::DrawCmd;
 use crate::id::{Id, child_key};
-use crate::layout::{Content, FontRole, NONE, Rect, Size, TextAlign};
+use crate::layout::{Content, FontRole, Rect, Size, TextAlign};
 use crate::motion::Fx;
 use crate::style::{Srgba, TypeStep};
 use crate::ui::{Anim, Ui};
 use og_draw::TextureHandle;
-
-/// A shake of the element built just before (a wrong answer, a locked door):
-/// three decaying swings, as a refused press shakes a button.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct ShakeDesc {
-    /// The first swing, CSS px (0: the style's `motion.shake`, else 6).
-    pub amount: f32,
-    /// 0: `motion.duration.slow`.
-    pub duration_ms: f32,
-    /// Also queue the style's error sound, as a refused press does.
-    pub sound: bool,
-}
 
 /// The tag of a shake's memory (`Anim::h`), so [`Ui::end`] finds them.
 pub(crate) const SHAKE: u64 = 0x5348_414b_4500_0001;
@@ -163,7 +151,7 @@ impl Ui {
     /// A number that counts from where it was to `value` (ease-out cubic
     /// over `duration_ms`) each time `value` changes, and pops when it lands
     /// if the style says so. Returns the number shown this tick.
-    pub fn counter(&mut self, id: impl Into<Id>, value: f64, desc: &CounterDesc) -> f64 {
+    pub(crate) fn counter(&mut self, id: impl Into<Id>, value: f64, desc: &CounterDesc) -> f64 {
         let t = self.env.theme;
         let value = if value.is_finite() { value } else { 0.0 };
         let i = self.leaf(
@@ -258,48 +246,6 @@ impl Ui {
             }
         }
         shown
-    }
-
-    /// Shakes the element built just before from this tick on: it swings
-    /// sideways three times, decaying to rest over the duration, with no
-    /// further call (the shake lives in the UI state, so snapshots carry
-    /// it). A second shake restarts it. Still under reduced motion (the
-    /// sound, when asked, still plays).
-    pub fn shake(&mut self, desc: ShakeDesc) {
-        let anchor = self.tree.last_closed;
-        if anchor == NONE {
-            self.out.warnings.push(
-                "shake with no element before it: call ui.shake() right after the element".into(),
-            );
-            return;
-        }
-        let t = self.env.theme;
-        let amount = if desc.amount > 0.0 {
-            desc.amount
-        } else if t.art.motion.shake > 0.0 {
-            t.art.motion.shake
-        } else {
-            6.0
-        };
-        let ms = if desc.duration_ms > 0.0 {
-            desc.duration_ms
-        } else {
-            t.durations_ms.slow
-        };
-        let key = child_key(self.tree.nodes[anchor].key, "shake");
-        let ticks = self.ticks_for(ms) as f32;
-        self.set_anim(
-            key,
-            Anim {
-                a: amount,
-                b: ticks,
-                t: self.interaction.state.tick,
-                h: SHAKE,
-            },
-        );
-        if desc.sound {
-            self.sound(crate::style_file::UiSound::Error);
-        }
     }
 
     /// Moves every element with a shake in progress (called by `end`

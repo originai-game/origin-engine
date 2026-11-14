@@ -275,19 +275,25 @@ fn a_weight_and_a_locale_pick_the_styles_real_faces() {
         token.weight = 700;
         token.tracking_em = 0.1;
     }
-    let mut ui = Ui::new(UiDesc {
+    let ui = Ui::new(UiDesc {
         theme,
         fonts: fonts.clone(),
         ..UiDesc::default()
     });
+    // A text sized to its words (in a row) at the body role.
+    let mut d = crate::support::Doc::with_ui(
+        ui,
+        r#"<meta name="component" content="t">
+<row><text id="Tracked">Hi</text></row>"#,
+    );
     for (vp, expected) in [
         (Viewport::new(1280.0, 720.0), 39.0),
         (Viewport::new(390.0, 844.0), 30.0),
     ] {
+        d.viewport = vp;
         for _ in 0..2 {
-            ui.begin(InputFrame::default(), vp);
-            ui.label("Tracked", "Hi", LabelDesc::default());
-            ui.end();
+            d.step(InputFrame::default());
+            let ui = &d.ui;
             let text = ui
                 .frame()
                 .items
@@ -306,7 +312,7 @@ fn a_weight_and_a_locale_pick_the_styles_real_faces() {
             assert_eq!(text.1, expected);
             assert_eq!(text.2, 0.1);
             let width = bold.metrics.measure("Hi", expected) + 0.2 * expected;
-            assert!((ui.element("Tracked").unwrap().width - width).abs() < 0.6);
+            assert!((d.get("Tracked").width - width).abs() < 0.6);
         }
     }
     let styled = |fonts: &Fonts, weight, italic, text| {
@@ -376,17 +382,21 @@ fn a_weight_and_a_locale_pick_the_styles_real_faces() {
     assert_eq!(CjkLocale::of_locale("zh_Hant_HK"), CjkLocale::Hant);
     assert_eq!(CjkLocale::of_locale("zh-CN"), CjkLocale::Hans);
 
-    // Rich text's [b] draws the bold face once, with no faked copy; without
+    // Rich text's <b> draws the bold face once, with no faked copy; without
     // one it is the regular face twice (the smear), as before.
     let drawn = |fonts: Fonts| {
-        let mut ui = Ui::new(UiDesc {
+        let ui = Ui::new(UiDesc {
             fonts,
             ..UiDesc::default()
         });
-        ui.begin(InputFrame::default(), Viewport::new(400.0, 200.0));
-        ui.rich_text("Hint", "[b]Go[/b]", RichTextDesc::default());
-        ui.end();
-        commands(ui.frame())
+        let mut d = crate::support::Doc::with_ui(
+            ui,
+            r#"<meta name="component" content="t">
+<row><text id="Hint"><b>Go</b></text></row>"#,
+        );
+        d.viewport = Viewport::new(400.0, 200.0);
+        d.step(InputFrame::default());
+        commands(d.ui.frame())
             .into_iter()
             .map(|c| (c.0, c.1))
             .collect::<Vec<_>>()

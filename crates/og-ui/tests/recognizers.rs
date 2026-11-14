@@ -19,8 +19,10 @@
 //! - the cursor ignores a shape set on an ancestor, or a drag's hand does
 //!   not close while dragged.
 
+use crate::support::Doc;
 use og_core::glam::Vec2;
 use og_ui::*;
+use serde_json::{Value, json};
 
 fn vp() -> Viewport {
     Viewport {
@@ -29,14 +31,6 @@ fn vp() -> Viewport {
         dpr: 1.0,
         coarse_pointer: false,
         ..Viewport::default()
-    }
-}
-
-fn fixed(w: f32, h: f32) -> Element {
-    Element {
-        width: Size::Fixed(w),
-        height: Size::Fixed(h),
-        ..Element::default()
     }
 }
 
@@ -77,85 +71,58 @@ fn keys(k: &[UiKey]) -> InputFrame {
     }
 }
 
+/// `text` mounted with `stores` and laid out at [`vp`].
+fn doc(text: &str, stores: &[(&str, Value)]) -> Doc {
+    let mut d = Doc::new(text, stores);
+    d.viewport = vp();
+    d.step(InputFrame::default());
+    d
+}
+
 // ── focus ───────────────────────────────────────────────────────────────
 
-/// `Tools` (a row of three buttons, `T0`..`T2`, a focus group of `group`)
-/// with `Side` right of it, and `Below` under `T0`. `links` go on `T0`.
-fn focus_screen(ui: &mut Ui, group: Option<FocusGroup>, links: NavLinks) -> Option<String> {
-    let mut focus = None;
-    ui.open(
-        "Top",
-        Element {
-            gap: 40.0,
-            ..Element::row()
-        },
-    );
-    ui.open_with(
-        "Tools",
-        Element {
-            gap: 8.0,
-            ..Element::row()
-        },
-        Props {
-            focus_group: group,
-            ..Props::default()
-        },
-    );
-    for k in 0..3 {
-        let id = format!("T{k}");
-        let r = ui.button(id.as_str(), &id, ButtonDesc::default());
-        if k == 0 {
-            ui.set_props(Props {
-                nav: links.clone(),
-                ..Props::default()
-            });
-        }
-        if r.focused {
-            focus = Some(id);
-        }
-    }
-    ui.close();
-    if ui.button("Side", "Side", ButtonDesc::default()).focused {
-        focus = Some("Side".into());
-    }
-    ui.close();
-    if ui.button("Below", "Below", ButtonDesc::default()).focused {
-        focus = Some("Below".into());
-    }
-    focus
+/// `Tools` (a row of three buttons, `T0`..`T2`, a focus group by the
+/// attributes `group`) with `Side` right of it, and `Below` under `T0`.
+/// `links` are `T0`'s attributes.
+fn focus_screen(group: &str, links: &str) -> String {
+    format!(
+        r#"<meta name="component" content="focus">
+<column id="Screen">
+  <row id="Top">
+    <row id="Tools" {group}>
+      <button id="T0" {links}>T0</button><button id="T1">T1</button><button id="T2">T2</button>
+    </row>
+    <button id="Side">Side</button>
+  </row>
+  <button id="Below">Below</button>
+</column>
+<style>
+#Screen {{ align-items: start; }}
+#Top {{ gap: 40px; }}
+#Tools {{ gap: 8px; }}
+</style>
+"#
+    )
 }
 
-struct Focus {
-    ui: Ui,
-    group: Option<FocusGroup>,
-    links: NavLinks,
-    focus: Option<String>,
-}
+struct Focus(Doc);
 
 impl Focus {
-    fn new(group: Option<FocusGroup>, links: NavLinks) -> Focus {
-        let mut f = Focus {
-            ui: Ui::new(UiDesc::default()),
-            group,
-            links,
-            focus: None,
-        };
-        f.step(InputFrame::default());
-        f
+    fn new(group: &str, links: &str) -> Focus {
+        Focus(doc(&focus_screen(group, links), &[]))
     }
 
-    fn step(&mut self, input: InputFrame) {
-        self.ui.begin(input, vp());
-        let f = focus_screen(&mut self.ui, self.group, self.links.clone());
-        self.ui.end();
-        self.focus = f;
+    /// The id of the control the focus is on (empty: none).
+    fn focus(&self) -> String {
+        let path = self.0.ui.focus_path(0);
+        path.rsplit('/').next().unwrap_or_default().to_owned()
     }
 
     /// Presses `k` and answers where the focus is a tick later.
     fn go(&mut self, k: UiKey) -> String {
-        self.step(keys(&[k]));
-        self.step(InputFrame::default());
-        self.focus.clone().unwrap_or_default()
+        self.0.step(keys(&[k]));
+        self.0.step(InputFrame::default());
+        self.focus()
     }
 }
 
@@ -163,7 +130,7 @@ impl Focus {
 fn a_group_stops_at_its_edge_leaves_it_or_wraps_inside_and_remembers() {
     // No wrap: Right from T2 leaves for Side; Left from T0 has nothing
     // outside that way and stays (today's rule would wrap to Side).
-    let mut f = Focus::new(Some(FocusGroup::default()), NavLinks::default());
+    let mut f = Focus::new(r#"focus-group="stop""#, "");
     assert_eq!(f.go(UiKey::Tab), "T0");
     assert_eq!(f.go(UiKey::Left), "T0", "stays at the group's edge");
     assert_eq!(f.go(UiKey::Right), "T1");
@@ -171,11 +138,7 @@ fn a_group_stops_at_its_edge_leaves_it_or_wraps_inside_and_remembers() {
     assert_eq!(f.go(UiKey::Right), "Side", "leaves for the control outside");
 
     // Wrap: Right from T2 goes round to T0, never out to Side.
-    let wrap = FocusGroup {
-        wrap: true,
-        ..FocusGroup::default()
-    };
-    let mut f = Focus::new(Some(wrap), NavLinks::default());
+    let mut f = Focus::new(r#"focus-group="wrap""#, "");
     f.go(UiKey::Tab);
     f.go(UiKey::Right);
     f.go(UiKey::Right);
@@ -184,23 +147,14 @@ fn a_group_stops_at_its_edge_leaves_it_or_wraps_inside_and_remembers() {
 
     // Memory: back into the group lands on the member it last had, not the
     // nearest one; an explicit move to the group does too.
-    let mem = FocusGroup {
-        memory: true,
-        ..FocusGroup::default()
-    };
-    let mut f = Focus::new(Some(mem), NavLinks::default());
+    let mem = r#"focus-group="stop" focus-memory"#;
+    let mut f = Focus::new(mem, "");
     f.go(UiKey::Tab);
     f.go(UiKey::Right);
     assert_eq!(f.go(UiKey::Right), "T2");
     assert_eq!(f.go(UiKey::Down), "Below");
     assert_eq!(f.go(UiKey::Up), "T2", "T0 is nearer, T2 was last");
-    let mut f = Focus::new(
-        Some(mem),
-        NavLinks {
-            down: "Below".into(),
-            ..NavLinks::default()
-        },
-    );
+    let mut f = Focus::new(mem, r#"nav-down="Below""#);
     f.go(UiKey::Tab);
     assert_eq!(f.go(UiKey::Down), "Below");
     assert_eq!(f.go(UiKey::Up), "T0");
@@ -208,88 +162,83 @@ fn a_group_stops_at_its_edge_leaves_it_or_wraps_inside_and_remembers() {
 
 #[test]
 fn a_list_takes_home_end_the_page_keys_and_typed_letters() {
-    // rune-kit's listbox keys on a dropdown: Down opens it on its value,
+    // rune-kit's listbox keys on a select: Down opens it on its value,
     // Home and End go to the ends, PageDown as far as a view reaches,
     // letters pick by name and the same letter again cycles.
-    let names = ["Apple", "Avocado", "Banana", "Cherry", "Date"];
-    let mut ui = Ui::new(UiDesc::default());
-    let mut sel = 2;
-    let mut open = false;
-    let mut step = |ui: &mut Ui, input: InputFrame| {
-        ui.begin(input, vp());
-        let r = ui.dropdown(
-            "Fruit",
-            &DropdownDesc {
-                options: names
-                    .iter()
-                    .map(|n| DropdownOption {
-                        label: (*n).into(),
-                        ..DropdownOption::default()
-                    })
-                    .collect(),
-                selected: sel,
-                ..DropdownDesc::default()
-            },
-        );
-        ui.end();
-        sel = r.selected;
-        open = r.open;
-        (open, sel)
+    let mut d = doc(
+        r#"<meta name="component" content="fruit">
+<column id="Form">
+  <select id="Fruit" bind:value={$fruit}>
+    <option value="Apple">Apple</option>
+    <option value="Avocado">Avocado</option>
+    <option value="Banana">Banana</option>
+    <option value="Cherry">Cherry</option>
+    <option value="Date">Date</option>
+  </select>
+</column>
+"#,
+        &[("fruit", json!("Banana"))],
+    );
+    let open = |d: &Doc| {
+        d.a11y("Fruit/Trigger")
+            .states
+            .iter()
+            .any(|s| s == "expanded")
     };
     // A key, then a still tick: whether it is open, the focused row's path
     // and the choice.
-    let mut go = |ui: &mut Ui, input: InputFrame| {
-        step(ui, input);
-        let (o, s) = step(ui, InputFrame::default());
-        (o, ui.focus_path(0).to_owned(), s)
+    let go = |d: &mut Doc, input: InputFrame| {
+        d.step(input);
+        d.step(InputFrame::default());
+        (open(d), d.ui.focus_path(0).to_owned(), d.read("fruit"))
     };
     let text = |t: &str| InputFrame {
         text: t.into(),
         ..InputFrame::default()
     };
-    go(&mut ui, InputFrame::default());
-    let (o, trig, _) = go(&mut ui, keys(&[UiKey::Tab]));
+    go(&mut d, InputFrame::default());
+    let (o, trig, _) = go(&mut d, keys(&[UiKey::Tab]));
     assert!(!o);
-    let (o, on, _) = go(&mut ui, keys(&[UiKey::Down]));
-    assert!(o, "Down opens a closed dropdown");
+    let (o, on, _) = go(&mut d, keys(&[UiKey::Down]));
+    assert!(o, "Down opens a closed select");
     assert_ne!(on, trig, "the focus is in the list");
-    let row = |ui: &Ui| ui.focus_path(0).to_owned();
-    let at_value = row(&ui);
-    go(&mut ui, keys(&[UiKey::End]));
-    let last = row(&ui);
+    let row = |d: &Doc| d.ui.focus_path(0).to_owned();
+    let at_value = row(&d);
+    go(&mut d, keys(&[UiKey::End]));
+    let last = row(&d);
     assert_ne!(last, at_value, "End leaves the chosen row");
-    go(&mut ui, keys(&[UiKey::Home]));
-    let first = row(&ui);
+    go(&mut d, keys(&[UiKey::Home]));
+    let first = row(&d);
     assert_ne!(first, last);
-    go(&mut ui, keys(&[UiKey::PageDown]));
-    assert_eq!(row(&ui), last, "the whole list is in one view");
-    go(&mut ui, keys(&[UiKey::PageUp]));
-    assert_eq!(row(&ui), first);
+    go(&mut d, keys(&[UiKey::PageDown]));
+    assert_eq!(row(&d), last, "the whole list is in one view");
+    go(&mut d, keys(&[UiKey::PageUp]));
+    assert_eq!(row(&d), first);
     // Letters: "a" from Apple cycles to Avocado, again back to Apple; "c"
     // after a pause goes to Cherry; Enter chooses it.
-    go(&mut ui, text("a"));
-    let avocado = row(&ui);
+    go(&mut d, text("a"));
+    let avocado = row(&d);
     assert_ne!(avocado, first, "the same letter cycles");
-    go(&mut ui, text("a"));
-    assert_eq!(row(&ui), first, "and wraps round");
-    go(&mut ui, text("c"));
-    assert_eq!(row(&ui), first, "\"aac\" names nothing: it stays");
+    go(&mut d, text("a"));
+    assert_eq!(row(&d), first, "and wraps round");
+    go(&mut d, text("c"));
+    assert_eq!(row(&d), first, "\"aac\" names nothing: it stays");
     for _ in 0..70 {
-        go(&mut ui, InputFrame::default());
+        go(&mut d, InputFrame::default());
     }
-    go(&mut ui, text("c"));
-    let (o, _, s) = go(&mut ui, keys(&[UiKey::Enter]));
+    go(&mut d, text("c"));
+    let (o, _, s) = go(&mut d, keys(&[UiKey::Enter]));
     assert!(
-        !o && s == 3,
+        !o && s == "Cherry",
         "a second's pause starts a new word: Cherry ({o} {s})"
     );
 
     // A group that is not a list keeps its letters for the game.
-    let mut f = Focus::new(Some(FocusGroup::default()), NavLinks::default());
+    let mut f = Focus::new(r#"focus-group="stop""#, "");
     assert_eq!(f.go(UiKey::Tab), "T0");
-    f.step(text("t"));
-    f.step(InputFrame::default());
-    assert_eq!(f.focus.as_deref(), Some("T0"), "a toolbar takes no letters");
+    f.0.step(text("t"));
+    f.0.step(InputFrame::default());
+    assert_eq!(f.focus(), "T0", "a toolbar takes no letters");
     assert_eq!(f.go(UiKey::End), "T2", "but takes End");
     assert_eq!(f.go(UiKey::Home), "T0");
 }
@@ -298,69 +247,53 @@ fn a_list_takes_home_end_the_page_keys_and_typed_letters() {
 
 #[test]
 fn the_cursor_follows_what_the_pointer_is_over_and_what_it_holds() {
-    let mut ui = Ui::new(UiDesc::default());
-    let mut text = String::new();
-    let mut build = |ui: &mut Ui, input: InputFrame| {
-        ui.begin(input, vp());
-        ui.open_with(
-            "Shop",
-            Element::column(),
-            Props {
-                cursor: Cursor::Pointer,
-                ..Props::default()
-            },
-        );
-        ui.button("Buy", "Buy", ButtonDesc::default());
-        ui.button("Sold", "Sold", ButtonDesc::default());
-        ui.set_props(Props {
-            cursor: Cursor::NotAllowed,
-            ..Props::default()
-        });
-        ui.close();
-        ui.text_field("Name", &mut text, &FieldDesc::default());
-        ui.open_with(
-            "Card",
-            Element {
-                interactive: true,
-                background: Some(Srgba::rgb(90, 90, 90)),
-                ..fixed(80.0, 80.0)
-            },
-            Props {
-                drag: Some(DragSpec::default()),
-                ..Props::default()
-            },
-        );
-        ui.close();
-        ui.label("Note", "Nothing here", LabelDesc::default());
-        ui.end().cursor
+    let mut d = doc(
+        r#"<meta name="component" content="shop">
+<column id="Root">
+  <column id="Shop"><button id="Buy">Buy</button><button id="Sold">Sold</button></column>
+  <input id="Name" type="text" bind:value={$name} />
+  <div id="Card" draggable="true"></div>
+  <text id="Note">Nothing here</text>
+</column>
+<style>
+#Root { align-items: start; }
+#Shop { cursor: pointer; }
+#Sold { cursor: not-allowed; }
+#Card { width: 80px; height: 80px; background: #5a5a5a; }
+</style>
+"#,
+        &[("name", json!(""))],
+    );
+    let cursor = |d: &mut Doc, input: InputFrame| {
+        d.step(input);
+        d.ui.frame().cursor
     };
-    build(&mut ui, InputFrame::default());
-    let c = |ui: &Ui, p: &str| {
-        let (x, y) = ui.element(p).expect(p).center();
-        Vec2::new(x, y)
+    let c = |d: &Doc, id: &str| {
+        let e = d.get(id);
+        Vec2::new(e.x + e.width / 2.0, e.y + e.height / 2.0)
     };
-    let buy = c(&ui, "Shop/Buy");
+    let buy = c(&d, "Shop/Buy");
     assert_eq!(
-        build(&mut ui, at(buy)),
+        cursor(&mut d, at(buy)),
         Cursor::Pointer,
         "inherited from Shop"
     );
-    let sold = c(&ui, "Shop/Sold");
-    assert_eq!(build(&mut ui, at(sold)), Cursor::NotAllowed, "its own wins");
-    let name = c(&ui, "Name");
-    assert_eq!(build(&mut ui, at(name)), Cursor::Text);
-    let note = c(&ui, "Note");
-    assert_eq!(build(&mut ui, at(note)), Cursor::Default);
-    let card = c(&ui, "Card");
-    assert_eq!(build(&mut ui, at(card)), Cursor::Grab);
-    build(&mut ui, press(card));
+    let sold = c(&d, "Shop/Sold");
+    assert_eq!(cursor(&mut d, at(sold)), Cursor::NotAllowed, "its own wins");
+    let name = c(&d, "Name");
+    assert_eq!(cursor(&mut d, at(name)), Cursor::Text);
+    let note = c(&d, "Note");
+    assert_eq!(cursor(&mut d, at(note)), Cursor::Default);
+    let card = c(&d, "Card");
+    assert_eq!(cursor(&mut d, at(card)), Cursor::Grab);
+    cursor(&mut d, press(card));
     assert_eq!(
-        build(&mut ui, hold(card + Vec2::new(30.0, 0.0))),
+        cursor(&mut d, hold(card + Vec2::new(30.0, 0.0))),
         Cursor::Grabbing
     );
     // Held off the card, the hand stays closed.
-    assert_eq!(build(&mut ui, hold(note)), Cursor::Grabbing);
-    build(&mut ui, release(note));
+    assert_eq!(cursor(&mut d, hold(note)), Cursor::Grabbing);
+    cursor(&mut d, release(note));
     let empty = Vec2::new(700.0, 500.0);
-    assert_eq!(build(&mut ui, at(empty)), Cursor::Default);
+    assert_eq!(cursor(&mut d, at(empty)), Cursor::Default);
 }

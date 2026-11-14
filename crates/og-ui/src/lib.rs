@@ -89,14 +89,12 @@ pub use style::tokens;
 #[rustfmt::skip]
 pub mod theme;
 pub use paint::particles;
-#[doc(hidden)]
-pub mod ui;
+mod ui;
 #[doc(hidden)]
 pub use layout::virtualize;
 pub(crate) use motion::view_transition;
 pub use world::viewport;
-#[doc(hidden)]
-pub mod widgets;
+mod widgets;
 pub mod world;
 
 pub mod layers;
@@ -123,12 +121,11 @@ pub use element::{
     PointerEvents, Position, Prop, Props, Query, SvgPointer, Template, Track, Transform,
     UserSelect, Values, Variant, Visibility,
 };
-pub use hud_layout::{HudEditInfo, HudEditorDesc, HudEditorResponse, HudPlacement};
+pub use hud_layout::{HudEditInfo, HudPlacement};
 pub use id::{Id, ui_id, ui_idi};
 pub use input::{GamepadFrame, InputFrame, InputSource, Nav, OgInput, UiKey};
-pub use juice::{
-    BurstDesc, CounterDesc, ScreenTransitionDesc, ScreenWipe, ShakeDesc, Side, format_count,
-};
+pub(crate) use juice::{BurstDesc, CounterDesc};
+pub use juice::{ScreenTransitionDesc, ScreenWipe, Side, format_count};
 pub use layer_stack::{LayerInfo, LayerOp};
 pub use layout::anchor;
 pub use layout::float::ImageAlpha;
@@ -144,9 +141,8 @@ pub use motion::{
     VisualState, cubic_bezier, ease_exit, ease_out,
 };
 pub use particles::{EmitFrom, ParticlesDesc};
-pub use rich::{
-    InlineAtom, RichTextDesc, RichTextResponse, TextSpan, TextSpanStyle, TextSpanValue,
-};
+pub(crate) use rich::RichTextDesc;
+pub use rich::{InlineAtom, TextSpan, TextSpanStyle, TextSpanValue};
 pub use slot::{Aspect, SlotKind, SlotSpec};
 pub use style::{
     Breakpoint, Contrast, Controls, Densities, Density, DensityMode, Durations, Palette, READABLE,
@@ -160,27 +156,17 @@ pub use text::{
 pub use text_path::{PathShape, TextPath};
 pub use tokens::StyleTokens;
 pub use ui::{
-    ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP, ButtonDesc, ButtonVariant, CjkLocale,
-    ControlSize, FaceStyle, FamilyFace, FeedbackPlay, FieldDesc, FontFace, FontFamily, Fonts,
-    HUD_MAX_ASPECT, IconAtlas, IconCell, ImageDesc, InlineImage, LabelDesc, NumberInputOptions,
-    PanelDesc, ProgressDesc, Response, ScrollAxes, ScrollDesc, Synth, TextAreaDesc, TextTarget, Ui,
+    ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP, CjkLocale, FaceStyle, FamilyFace, FeedbackPlay,
+    FontFace, FontFamily, Fonts, HUD_MAX_ASPECT, IconAtlas, IconCell, InlineImage, Synth, Ui,
     UiDebugElement, UiDebugStyle, UiDesc, UiFrame, Viewport, debug_overlay,
 };
+pub(crate) use ui::{ControlSize, ImageDesc, LabelDesc, NumberInputOptions, Response};
 pub use vcursor::VirtualCursorDesc;
-pub use viewport::{ViewportDesc, ViewportResponse};
-pub use widgets::{
-    AnchorDesc, ArtDesc, CheckFieldDesc, ChoiceIndexResult, DetailsDesc, DetailsResult, DialogDesc,
-    DpadDesc, DpadResponse, DropdownDesc, DropdownOption, DropdownResult, GaugeDesc, GridDesc,
-    IconDesc, JoystickDesc, JoystickResponse, LabelSide, ListDesc, ListRange, MeterRegion,
-    ModalDesc, ModalResponse, NumberResult, NumberStepperDesc, Presence, RadioGroupDesc,
-    RadioOption, RadioVariant, SegmentItem, SegmentedDesc, SliderMark, SpotlightDesc, SwitchResult,
-    ToastDesc, ToggleSwitchDesc, Tone, ValueFormat, ValueSliderDesc, ValueSliderResult,
-    kept_options,
-};
+pub(crate) use widgets::ListRange;
+pub use widgets::{ToastDesc, Tone};
 pub use world::{
-    AnchorInfo, AnchorPoint, AnchorScale, Declutter, EdgeClamp, GroundQuad, MassHandle, MetaDesc,
-    MetaKind, PanelInfo, WorldAnchorDesc, WorldCmd, WorldFrame, WorldOcclusion, WorldPanelDesc,
-    WorldTarget, WorldView,
+    AnchorPoint, AnchorScale, Declutter, EdgeClamp, GroundQuad, MassHandle, MetaDesc, MetaKind,
+    WorldCmd, WorldFrame, WorldOcclusion, WorldTarget, WorldView,
 };
 
 /// The probe's element type: what `dump_ui` lists and the id and text lookups search.

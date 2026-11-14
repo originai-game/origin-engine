@@ -15,15 +15,7 @@ pub enum LabelSide {
     End,
 }
 
-impl LabelSide {
-    pub fn from_name(s: &str) -> Option<LabelSide> {
-        Some(match s {
-            "start" => LabelSide::Start,
-            "end" => LabelSide::End,
-            _ => return None,
-        })
-    }
-}
+impl LabelSide {}
 
 /// A switch: its label, description and states.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -239,7 +231,7 @@ impl Ui {
     /// toggleOff. Parts: `Toggle.row`, `Toggle.track[on|off]`,
     /// `Toggle.knob[on]`. Role switch. Probe: `<id>`, `<id>/Track`,
     /// `<id>/Track/Knob`.
-    pub fn toggle_switch(
+    pub(crate) fn toggle_switch(
         &mut self,
         id: impl Into<Id>,
         on: bool,
@@ -456,7 +448,7 @@ impl Ui {
     /// toggleOn and toggleOff. Parts: `Checkbox.row`,
     /// `Checkbox.box[checked|mixed][invalid]`, `Checkbox.mark`. Role
     /// checkbox. Probe: `<id>`, `<id>/Box`, `<id>/Box/Mark`.
-    pub fn check_field(
+    pub(crate) fn check_field(
         &mut self,
         id: impl Into<Id>,
         checked: bool,
@@ -720,7 +712,11 @@ impl Ui {
     /// `Radio.option[selected]`, `Radio.ring[selected]`, `Radio.dot`,
     /// `Radio.card[selected]`. Role radiogroup with radio children. Probe:
     /// `<id>`, `<id>/Options/Option#i`.
-    pub fn radio_group(&mut self, id: impl Into<Id>, desc: &RadioGroupDesc) -> ChoiceIndexResult {
+    pub(crate) fn radio_group(
+        &mut self,
+        id: impl Into<Id>,
+        desc: &RadioGroupDesc,
+    ) -> ChoiceIndexResult {
         let t = self.env.theme;
         let cards = desc.variant == RadioVariant::Cards;
         let before = desc.selected;
@@ -918,7 +914,11 @@ impl Ui {
     /// Parts: `Tabs.track`, `Tabs.indicator` (the mark that slides to the
     /// selected tab) and `Tabs.tab[selected]`. Role radiogroup of radios. Probe:
     /// `<id>`, `<id>/Strip/Track/Item#i`, `<id>/Strip/Track/Thumb`.
-    pub fn segmented(&mut self, id: impl Into<Id>, desc: &SegmentedDesc) -> ChoiceIndexResult {
+    pub(crate) fn segmented(
+        &mut self,
+        id: impl Into<Id>,
+        desc: &SegmentedDesc,
+    ) -> ChoiceIndexResult {
         let id = id.into();
         let key = id.as_str().to_owned();
         let t = self.env.theme;

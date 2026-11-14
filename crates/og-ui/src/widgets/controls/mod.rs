@@ -26,16 +26,14 @@ mod keyboard;
 mod ranges;
 
 pub use choices::{
-    CheckFieldDesc, ChoiceIndexResult, LabelSide, RadioGroupDesc, RadioOption, RadioVariant,
-    SegmentItem, SegmentedDesc, SwitchResult, ToggleSwitchDesc,
+    CheckFieldDesc, LabelSide, RadioGroupDesc, RadioOption, SegmentItem, SegmentedDesc,
+    ToggleSwitchDesc,
 };
-pub use details::{DetailsDesc, DetailsResult};
-pub use dropdown::{DropdownDesc, DropdownOption, DropdownResult, kept_options};
+pub use details::DetailsDesc;
+pub use dropdown::{DropdownDesc, DropdownOption};
 pub use keyboard::{KeyboardDesc, KeyboardLayout};
 pub use ranges::RangeSliderDesc;
-pub use ranges::{
-    NumberResult, NumberStepperDesc, SliderMark, ValueFormat, ValueSliderDesc, ValueSliderResult,
-};
+pub use ranges::{NumberStepperDesc, SliderMark, ValueFormat, ValueSliderDesc};
 
 // ── colour, as the controls mix it ──────────────────────────────────────────
 
@@ -374,11 +372,11 @@ impl Ui {
     }
 
     /// A size that holds text, at the player's text scale.
-    pub fn by_text(&self, h: f32) -> f32 {
+    pub(crate) fn by_text(&self, h: f32) -> f32 {
         (h * self.env.theme.text_scale.max(1.0)).round()
     }
 
-    pub fn still(&self) -> bool {
+    pub(crate) fn still(&self) -> bool {
         self.env.theme.reduced_motion
     }
 
@@ -1081,7 +1079,7 @@ impl Ui {
     /// `content` and `build`. A focus scope: Back and a press outside it and
     /// its anchor dismiss it, and the focus goes back where it was when it
     /// closes. It fades and drops in as it opens.
-    pub fn floating(
+    pub(crate) fn floating(
         &mut self,
         id: &str,
         open: bool,

@@ -1355,7 +1355,6 @@ pub enum ScrollAxes {
     #[default]
     Vertical,
     Horizontal,
-    Both,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]

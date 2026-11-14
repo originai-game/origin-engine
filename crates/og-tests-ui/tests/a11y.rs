@@ -19,12 +19,15 @@ fn native_tree_is_incremental_and_actions_round_trip_on_the_tick() {
     };
     use og_render::shared_frames::{Msg, recv, send};
     let mut ui = ui_with_font(test_font_metrics());
-    let mut f = Form {
-        volume: 35.0,
-        name: "Ada".into(),
-        ..Default::default()
-    };
-    tick(&mut ui, &mut f, InputFrame::default());
+    mount_form(
+        &mut ui,
+        &Form {
+            volume: 35.0,
+            name: "Ada",
+            ..Default::default()
+        },
+    );
+    tick(&mut ui, InputFrame::default());
     let mut bridge = Bridge::default();
     let update = bridge.update(&ui, [2.0, 3.0]).unwrap();
     let (volume, slider) = update
@@ -93,9 +96,17 @@ fn native_tree_is_incremental_and_actions_round_trip_on_the_tick() {
             Some(ActionData::NumericValue(73.0)),
         ),
     );
-    assert_eq!(f.volume, 35.0, "socket receipt does not change simulation");
-    tick(&mut ui, &mut f, InputFrame::default());
-    assert_eq!(f.volume, 75.0, "slider quantizes to its step");
+    assert_eq!(
+        read(&mut ui, "volume").as_f64(),
+        Some(35.0),
+        "socket receipt does not change simulation"
+    );
+    tick(&mut ui, InputFrame::default());
+    assert_eq!(
+        read(&mut ui, "volume").as_f64(),
+        Some(75.0),
+        "slider quantizes to its step"
+    );
     dispatch(
         &mut ui,
         request(
@@ -104,11 +115,11 @@ fn native_tree_is_incremental_and_actions_round_trip_on_the_tick() {
             Some(ActionData::Value("Grace".into())),
         ),
     );
-    tick(&mut ui, &mut f, InputFrame::default());
-    assert_eq!(f.name, "Grace");
+    tick(&mut ui, InputFrame::default());
+    assert_eq!(read(&mut ui, "name"), "Grace");
     dispatch(&mut ui, request(check, Action::Click, None));
-    tick(&mut ui, &mut f, InputFrame::default());
-    assert!(f.check);
+    tick(&mut ui, InputFrame::default());
+    assert_eq!(read(&mut ui, "check"), true);
     let diff = bridge.update(&ui, [2.0, 3.0]).unwrap();
     assert!(diff.tree.is_none());
     assert!(diff.nodes.len() < update.nodes.len());
@@ -118,8 +129,8 @@ fn native_tree_is_incremental_and_actions_round_trip_on_the_tick() {
             .iter()
             .any(|(id, n)| *id == volume && n.numeric_value() == Some(75.0))
     );
-    ui.begin(InputFrame::default(), Viewport::new(800.0, 1000.0));
-    ui.end();
+    ui.unmount_document(&mount());
+    tick(&mut ui, InputFrame::default());
     bridge.update(&ui, [2.0, 3.0]).unwrap();
     assert!(
         bridge.action(request(check, Action::Click, None)).is_none(),

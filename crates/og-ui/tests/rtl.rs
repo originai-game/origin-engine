@@ -207,43 +207,27 @@ fn an_arabic_line_is_drawn_as_wide_as_it_was_laid_out() {
             ..UiDesc::default()
         });
         ui.set_direction(Direction::Rtl);
-        ui.begin(
-            InputFrame::default(),
-            Viewport {
-                width: 480.0,
-                height: 400.0,
-                dpr: 1.0,
-                ..Viewport::default()
-            },
+        // A plain text is a label; one holding a named run is rich text.
+        let mut d = crate::support::Doc::with_ui(
+            ui,
+            &format!(
+                r#"<meta name="component" content="t">
+<column id="Box"><text id="Label">{LINE}</text><text id="Rich"><span part="line">{LINE}</span></text></column>
+<style>#Box {{ width: {width}px; }} text {{ width: stretch; }}</style>"#
+            ),
         );
-        ui.column(
-            "Box",
-            Element {
-                width: Size::Fixed(width),
-                ..Element::default()
-            },
-            |ui| {
-                ui.label(
-                    "Label",
-                    LINE,
-                    LabelDesc {
-                        width: Size::grow(),
-                        ..LabelDesc::default()
-                    },
-                );
-                ui.rich_text(
-                    "Rich",
-                    LINE,
-                    RichTextDesc {
-                        width: Size::grow(),
-                        ..RichTextDesc::default()
-                    },
-                );
-            },
-        );
-        let frame = ui.end().clone();
+        d.viewport = Viewport {
+            width: 480.0,
+            height: 400.0,
+            dpr: 1.0,
+            ..Viewport::default()
+        };
+        d.step(InputFrame::default());
+        let frame = d.ui.frame().clone();
+        assert_eq!(d.get("Rich").kind, "richtext");
+        assert_eq!(d.get("Label").kind, "label");
         for id in ["Rich", "Label"] {
-            let e = ui.element(&format!("Box/{id}")).expect(id);
+            let e = d.get(id);
             assert!(
                 e.width <= width + 0.01,
                 "{id} fits its {width} px box: {}",

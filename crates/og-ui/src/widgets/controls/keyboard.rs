@@ -247,7 +247,7 @@ impl Ui {
     /// `Keyboard.candidates`, `Keyboard.candidate`. A dialog named by its
     /// title; keys are buttons named by what they type. Probe:
     /// `<id>/Panel/Content/Keys/Row#r/Key#k`.
-    pub fn on_screen_keyboard(
+    pub(crate) fn on_screen_keyboard(
         &mut self,
         id: &str,
         open: bool,

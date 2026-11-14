@@ -54,6 +54,31 @@ impl Doc {
         d
     }
 
+    /// [`Doc::new`] in `ui`, configured beforehand (its theme, fonts, part
+    /// CSS), with no stores: the first step builds under that setup.
+    pub(crate) fn with_ui(ui: Ui, text: &str) -> Doc {
+        let mut ui = ui;
+        let doc = UiDocument::parse("ui/t.svelte", text).unwrap_or_else(|e| panic!("{e:?}"));
+        let name = doc.name.clone();
+        ui.define_document(doc);
+        ui.mount_document(
+            SourceId::new("test", "t"),
+            &name,
+            BTreeMap::new(),
+            Default::default(),
+            &bind::NoEnv,
+        )
+        .unwrap_or_else(|e| panic!("mounts: {e}"));
+        let mut d = Doc {
+            ui,
+            events: Vec::new(),
+            viewport: Viewport::new(800.0, 900.0),
+            focus: None,
+        };
+        d.step(InputFrame::default());
+        d
+    }
+
     fn apply(&mut self, command: Value) -> Value {
         let reply = wire::decode(
             &self

@@ -80,7 +80,11 @@ pub struct ViewportResponse {
 
 impl Ui {
     /// A viewport: a camera's view shown in the layout, input passed in.
-    pub fn scene_viewport(&mut self, id: impl Into<Id>, desc: ViewportDesc) -> ViewportResponse {
+    pub(crate) fn scene_viewport(
+        &mut self,
+        id: impl Into<Id>,
+        desc: ViewportDesc,
+    ) -> ViewportResponse {
         let i = self.leaf(
             "viewport",
             id.into(),

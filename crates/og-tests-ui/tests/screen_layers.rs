@@ -23,6 +23,11 @@ use og_render::{
 use og_ui::*;
 use support::*;
 
+/// The HUD panel, at the surface's top left.
+const HUD: &str = r#"<meta name="component" content="layers">
+<column id="Root"><panel id="Hud"><text id="Chimes">Chimes</text></panel></column>
+<style>#Hud { width: 220px; height: 110px; }</style>"#;
+
 fn square(x: f32, y: f32, size: f32, color: [f32; 4], layer: i32) -> Sprite {
     Sprite {
         texture: None,
@@ -46,17 +51,8 @@ fn screen_sprites_above_the_ui_layer_draw_over_the_ui() {
     let font = add_test_font(&mut scene);
     let mut ui = ui_with_font(font);
     let vp = Viewport::new(320.0, 180.0);
-    ui.begin(InputFrame::default(), vp);
-    ui.panel(
-        "Hud",
-        PanelDesc {
-            width: Size::Fixed(220.0),
-            height: Size::Fixed(110.0),
-            ..PanelDesc::default()
-        },
-        |ui| ui.label("Chimes", "Chimes", LabelDesc::default()),
-    );
-    ui.end();
+    mount_screen_document(&mut ui, "layers", HUD, &[]);
+    step_screen(&mut ui, InputFrame::default(), vp);
     let hud = ui.element("Hud").expect("the panel").clone();
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(

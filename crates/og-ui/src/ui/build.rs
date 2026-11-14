@@ -109,14 +109,14 @@ impl Ui {
     /// `visual_state` and `force_state` name it; empty at the top level.
     /// A component reads its root's path right after opening it, to name
     /// its parts in those calls.
-    pub fn open_path(&self) -> String {
+    pub(crate) fn open_path(&self) -> String {
         match self.tree.stack.last() {
             Some(&i) if i != 0 => self.tree.probe_path(i),
             _ => String::new(),
         }
     }
 
-    pub fn respond(&self, key: u64) -> Response {
+    pub(crate) fn respond(&self, key: u64) -> Response {
         let s = &self.interaction.state;
         // A forced state is drawn and matched as the real one is, and
         // activates nothing: it never clicks.
@@ -203,7 +203,7 @@ impl Ui {
     /// (`docs/ui.md` §3.3): its shape, fills, strokes, effects, opacity,
     /// blend, how it clips its children and whether its subtree draws
     /// offscreen through a material; over its background.
-    pub fn set_draw(&mut self, draw: crate::paint::ElementDraw) {
+    pub(crate) fn set_draw(&mut self, draw: crate::paint::ElementDraw) {
         if let Some(&last) = self.tree.emitted.last() {
             if self.tree.draws.contains_key(&last) {
                 let path = self.tree.path_of(last);
@@ -223,7 +223,7 @@ impl Ui {
     /// replace the draw's (each list the dressing sets), and its atlas art
     /// replaces the whole draw; the draw's shape stays, so a ring, a star
     /// or a segment keeps its geometry in every style (docs/ui.md §3.2).
-    pub fn set_draw_dressable(&mut self, draw: crate::paint::ElementDraw) {
+    pub(crate) fn set_draw_dressable(&mut self, draw: crate::paint::ElementDraw) {
         if let Some(&last) = self.tree.emitted.last() {
             self.tree.draws.insert(last, draw);
             self.tree.dressable.insert(last);
@@ -231,7 +231,7 @@ impl Ui {
     }
 
     /// Opens a container; children follow until [`Ui::close`].
-    pub fn open(&mut self, id: impl Into<Id>, el: Element) {
+    pub(crate) fn open(&mut self, id: impl Into<Id>, el: Element) {
         let kind = match (el.scroll || el.scroll_x, el.direction) {
             (true, _) => "scroll",
             (false, Direction::Row) => "row",
@@ -242,7 +242,7 @@ impl Ui {
     }
 
     /// Closes the open container. For an `interactive` element, its response.
-    pub fn close(&mut self) -> Response {
+    pub(crate) fn close(&mut self) -> Response {
         if self.tree.stack.len() <= 1 {
             self.out
                 .warnings
@@ -275,53 +275,10 @@ impl Ui {
         }
     }
 
-    /// A container built by `f`.
-    pub fn container(
-        &mut self,
-        id: impl Into<Id>,
-        el: Element,
-        f: impl FnOnce(&mut Ui),
-    ) -> Response {
-        self.open(id, el);
-        f(self);
-        self.close()
-    }
-
-    /// A row built by `f`.
-    pub fn row(&mut self, id: impl Into<Id>, el: Element, f: impl FnOnce(&mut Ui)) {
-        self.container(
-            id,
-            Element {
-                direction: Direction::Row,
-                ..el
-            },
-            f,
-        );
-    }
-
-    /// A column built by `f`.
-    pub fn column(&mut self, id: impl Into<Id>, el: Element, f: impl FnOnce(&mut Ui)) {
-        self.container(
-            id,
-            Element {
-                direction: Direction::Column,
-                ..el
-            },
-            f,
-        );
-    }
-
-    /// A card: `panel`, `radius.panel`, padded and spaced by the style.
-    pub fn panel(&mut self, id: impl Into<Id>, desc: PanelDesc, f: impl FnOnce(&mut Ui)) {
-        self.open_panel(id, desc);
-        f(self);
-        self.close();
-    }
-
     /// Opens a card ([`Ui::panel`] without the closure); its children follow
     /// until [`Ui::close`]. For hosts whose build code cannot pass a closure
     /// (the TypeScript binding).
-    pub fn open_panel(&mut self, id: impl Into<Id>, desc: PanelDesc) {
+    pub(crate) fn open_panel(&mut self, id: impl Into<Id>, desc: PanelDesc) {
         let t = self.env.theme;
         let el = Element {
             direction: if desc.row {
@@ -346,7 +303,7 @@ impl Ui {
     }
 
     /// A vertically scrolling, clipping column built by `f`.
-    pub fn scroll(&mut self, id: impl Into<Id>, desc: ScrollDesc, f: impl FnOnce(&mut Ui)) {
+    pub(crate) fn scroll(&mut self, id: impl Into<Id>, desc: ScrollDesc, f: impl FnOnce(&mut Ui)) {
         self.open_scroll(id, desc);
         f(self);
         self.close();
@@ -354,7 +311,7 @@ impl Ui {
 
     /// Opens a scroll column ([`Ui::scroll`] without the closure); its
     /// children follow until [`Ui::close`].
-    pub fn open_scroll(&mut self, id: impl Into<Id>, desc: ScrollDesc) {
+    pub(crate) fn open_scroll(&mut self, id: impl Into<Id>, desc: ScrollDesc) {
         self.open(
             id,
             Element {
@@ -373,7 +330,7 @@ impl Ui {
         );
     }
 
-    pub fn leaf(&mut self, kind: &'static str, id: Id, el: Element) -> usize {
+    pub(crate) fn leaf(&mut self, kind: &'static str, id: Id, el: Element) -> usize {
         let i = self.push(kind, id, el);
         self.tree.last_closed = i;
         i
@@ -663,7 +620,7 @@ impl Ui {
     /// A tooltip for the element just built: shown below it (above when there
     /// is no room) once the pointer has rested on it for `motion.duration.slow`.
     /// Only interactive elements are hovered, so anchor it to a button or a control.
-    pub fn tooltip(&mut self, text: &str) {
+    pub(crate) fn tooltip(&mut self, text: &str) {
         let anchor = self.tree.last_closed;
         if anchor == NONE {
             self.out.warnings.push(
@@ -719,7 +676,7 @@ impl Ui {
     /// that draws the element (a modal dialog under the root, a spotlight's
     /// callout keyed as the element itself). One key names one node: the
     /// trees' index, motion and interaction state find the layer by it.
-    pub fn layer_place(&mut self, id: &Id, layer: u64) -> usize {
+    pub(crate) fn layer_place(&mut self, id: &Id, layer: u64) -> usize {
         let parent = self.tree.nodes[self.tree.parent()].key;
         let id = if child_key(parent, id.as_str()) == layer {
             Id::from(format!("{}~place", id.as_str()))
@@ -738,7 +695,7 @@ impl Ui {
     /// backdrop, a menu, the toast stack): it lays out and draws over the
     /// tree in its rank, and its children follow until [`Ui::close`]. Its
     /// path is its own id; `anchor` is the node it is placed against.
-    pub fn open_layer(
+    pub(crate) fn open_layer(
         &mut self,
         kind: &'static str,
         id: Id,
@@ -783,7 +740,7 @@ impl Ui {
     /// from its id: a document's `<anchor>` or `<panel world>` keyed by its
     /// own identity, so its children's keys (folded from it with
     /// [`child_key`]) are the ones the retained document gives them.
-    pub fn open_layer_keyed(
+    pub(crate) fn open_layer_keyed(
         &mut self,
         kind: &'static str,
         key: u64,
@@ -799,5 +756,68 @@ impl Ui {
         self.tree.floating.push(index);
         self.tree.stack.push(index);
         index
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{DrawCmd, Element, InputFrame, Size, Srgba, Ui, UiDesc, Viewport};
+
+    /// Moved from tests/dressing.rs: `set_draw` is crate-internal, so no
+    /// document reaches it. A draw paints over its element's background: a
+    /// rim stroked on an element with a background draws after the
+    /// background quad, so the background never covers it (it showed only
+    /// at the corners the radius left uncovered).
+    #[test]
+    fn a_draw_strokes_over_its_elements_background() {
+        let vp = Viewport::new(400.0, 200.0);
+        let mut ui = Ui::new(UiDesc::default());
+        // Twice: the second frame reuses the background's kept commands.
+        for _ in 0..2 {
+            ui.begin(InputFrame::default(), vp);
+            ui.open(
+                "Rimmed",
+                Element {
+                    width: Size::Fixed(120.0),
+                    height: Size::Fixed(60.0),
+                    background: Some(Srgba::rgb(20, 40, 200)),
+                    radius: 12.0,
+                    ..Element::default()
+                },
+            );
+            ui.set_draw(crate::paint::ElementDraw {
+                strokes: vec![crate::paint::Stroke {
+                    width: 3.0,
+                    align: crate::paint::StrokeAlign::Inside,
+                    dash: [0.0; 2],
+                    dash_offset: 0.0,
+                    dash_cap: crate::paint::Cap::Butt,
+                    paint: crate::paint::Paint::Solid(Srgba::rgb(255, 255, 255).into()),
+                }],
+                ..Default::default()
+            });
+            ui.close();
+            ui.end();
+            // Painter order: level, then emission.
+            let items = &ui.frame().items;
+            let order = |want: &dyn Fn(&DrawCmd) -> bool| {
+                items
+                    .iter()
+                    .enumerate()
+                    .find(|(_, it)| want(&it.cmd))
+                    .map(|(k, it)| (it.level, k))
+            };
+            let background =
+                order(&|c| matches!(c, DrawCmd::Quad { .. })).expect("the background quad");
+            let rim = order(&|c| {
+                matches!(c, DrawCmd::Shape { shape, .. }
+                    if matches!(shape.mode, og_draw::UiMode::Stroke(_)))
+            })
+            .expect("the rim");
+            assert!(
+                rim > background,
+                "rim {rim:?} under background {background:?}"
+            );
+        }
     }
 }

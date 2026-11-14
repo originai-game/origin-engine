@@ -121,6 +121,23 @@ const BUILD: u32 = 1;
 
 thread_local! {
     static LABEL: RefCell<Option<String>> = const { RefCell::new(None) };
+    /// The engines whose UI mounts [`STATUS`].
+    static MOUNTED: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
+}
+
+/// The label: store `text` in the ramp's xl4 step.
+const STATUS: &str = r#"<meta name="component" content="status">
+<text id="Status">{$text}</text>
+<style>
+#Status { font: var(--text-xl4); letter-spacing: var(--type-xl4-tracking); }
+</style>"#;
+
+/// One host operation on `ui`'s stores.
+fn store(ui: &mut og_ui::Ui, command: Value) {
+    use og_ui::reactive::wire;
+    let reply =
+        wire::decode(&ui.apply_reactive(&wire::encode(&json!([command])).unwrap())).unwrap();
+    assert_eq!(reply[0]["ok"], true, "{reply}");
 }
 
 impl Hooks for Disk {
@@ -131,14 +148,36 @@ impl Hooks for Disk {
         {
             let ui = shared_ui(call.engine).expect("the engine's UI");
             let mut ui = ui.lock();
-            let step = Some(ui.theme().type_ramp.xl4);
-            ui.label(
-                "Status",
-                &text,
-                og_ui::LabelDesc {
-                    step,
-                    ..Default::default()
-                },
+            let source = og_ui::reactive::SourceId::new("test", "text");
+            let first = MOUNTED.with(|m| {
+                let mut m = m.borrow_mut();
+                let first = !m.contains(&call.engine);
+                if first {
+                    m.push(call.engine);
+                }
+                first
+            });
+            if first {
+                store(
+                    &mut ui,
+                    json!({"op": "signal", "source": source, "initial": text}),
+                );
+                ui.define_document(
+                    og_ui::UiDocument::parse("ui/status.svelte", STATUS).expect("parses"),
+                );
+                ui.mount_document(
+                    og_ui::reactive::SourceId::new("test", "status"),
+                    "status",
+                    [("text".to_string(), source.clone())].into(),
+                    Default::default(),
+                    &og_ui::bind::NoEnv,
+                )
+                .expect("mounts");
+            }
+            // Read when the UI's end builds the document.
+            store(
+                &mut ui,
+                json!({"op": "set", "source": source, "value": text}),
             );
         }
         Ok(String::new())

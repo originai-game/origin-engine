@@ -2,13 +2,13 @@ use super::*;
 
 impl Ui {
     /// Text in MSDF, wrapping at its width unless `nowrap`.
-    pub fn label(&mut self, id: impl Into<Id>, text: &str, desc: LabelDesc) {
+    pub(crate) fn label(&mut self, id: impl Into<Id>, text: &str, desc: LabelDesc) {
         let i = self.leaf("label", id.into(), Element::default());
         self.apply_label(i, text, desc);
     }
 
     /// Replaces label-owned presentation without allocating a node or processing input.
-    pub fn apply_label(&mut self, i: usize, text: &str, desc: LabelDesc) {
+    pub(crate) fn apply_label(&mut self, i: usize, text: &str, desc: LabelDesc) {
         // A centred or end-aligned label left to fit its text in a column
         // takes the column's width, as a CSS block does: aligned in a box
         // only as wide as its text, it would sit at the column's start.
@@ -109,7 +109,7 @@ impl Ui {
     }
 
     /// A capsule button with a label. `clicked` is a press and a release inside it.
-    pub fn button(&mut self, id: impl Into<Id>, text: &str, desc: ButtonDesc) -> Response {
+    pub(crate) fn button(&mut self, id: impl Into<Id>, text: &str, desc: ButtonDesc) -> Response {
         let i = self.leaf("button", id.into(), Element::default());
         self.button_at(i, text, desc)
     }
@@ -118,7 +118,7 @@ impl Ui {
     /// the children built until [`Ui::close_button`] lie in a row in its
     /// frame, its states and its press; text and icons in it without a
     /// colour of their own take its ink.
-    pub fn open_button(&mut self, id: impl Into<Id>, desc: ButtonDesc) -> Response {
+    pub(crate) fn open_button(&mut self, id: impl Into<Id>, desc: ButtonDesc) -> Response {
         let i = self.push("button", id.into(), Element::default());
         self.tree.stack.push(i);
         self.front.button_ink.push((i, self.env.theme.palette.ink));
@@ -126,7 +126,7 @@ impl Ui {
     }
 
     /// Closes a button opened with [`Ui::open_button`].
-    pub fn close_button(&mut self) {
+    pub(crate) fn close_button(&mut self) {
         self.front.button_ink.pop();
         self.close();
     }
@@ -300,12 +300,12 @@ impl Ui {
 
     /// A texture region, or a solid rectangle without a texture; with
     /// `aspect`, a fitting side follows the other.
-    pub fn image(&mut self, id: impl Into<Id>, desc: ImageDesc) {
+    pub(crate) fn image(&mut self, id: impl Into<Id>, desc: ImageDesc) {
         let i = self.leaf("image", id.into(), Element::default());
         self.apply_image(i, desc);
     }
 
-    pub fn apply_image(&mut self, i: usize, desc: ImageDesc) {
+    pub(crate) fn apply_image(&mut self, i: usize, desc: ImageDesc) {
         *self.tree.el_mut(i) = Element {
             width: desc.width,
             height: desc.height,
@@ -322,7 +322,7 @@ impl Ui {
     }
 
     /// A capsule track filled to `value` (0–1).
-    pub fn progress(&mut self, id: impl Into<Id>, value: f32, desc: ProgressDesc) {
+    pub(crate) fn progress(&mut self, id: impl Into<Id>, value: f32, desc: ProgressDesc) {
         let t = self.env.theme;
         let i = self.leaf(
             "progress",

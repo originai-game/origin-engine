@@ -13,7 +13,9 @@
 fn a_text_of_only_missing_glyphs_is_counted_by_the_renderer() {
     use crate::support::*;
     use og_render::*;
-    use og_ui::{EmitDesc, InputFrame, LabelDesc, Viewport};
+    use og_ui::{EmitDesc, InputFrame, Viewport};
+    const MARKER: &str = r#"<meta name="component" content="marker">
+<column id="Root"><text id="Marker">{$text}</text></column>"#;
     for (text, missing) in [
         ("\u{2022}", 1),
         ("a\u{2022}", 1),
@@ -25,10 +27,9 @@ fn a_text_of_only_missing_glyphs_is_counted_by_the_renderer() {
         let mut ui = ui_with_font(font);
         // Two frames: og-ui names a missing character once in its life, on
         // its first frame; the renderer must count it on the later one too.
+        mount_screen_document(&mut ui, "marker", MARKER, &[("text", text.into())]);
         for _ in 0..2 {
-            ui.begin(InputFrame::default(), Viewport::new(200.0, 100.0));
-            ui.label("Marker", text, LabelDesc::default());
-            ui.end();
+            step_screen(&mut ui, InputFrame::default(), Viewport::new(200.0, 100.0));
         }
         let mut overlay = Overlay::new(200.0, 100.0, 1.0);
         ui.frame().emit(&EmitDesc::default(), &mut overlay);

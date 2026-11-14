@@ -296,25 +296,24 @@ fn colr_label(
         dpr: 1.0,
         ..Viewport::default()
     };
-    let size = 128.0;
+    // The body step at 128 px, its line 1.25 times that.
+    let [r, g, b] = color.rgb;
+    let doc = format!(
+        r#"<meta name="component" content="emoji">
+<div id="Root"><text id="Emoji">{{$text}}</text></div>
+<style>
+#Emoji {{ font: var(--type-body-weight) 128px/160px var(--font-body); letter-spacing: var(--type-body-tracking); color: rgb({r} {g} {b} / {a}); white-space: nowrap; }}
+</style>"#,
+        a = color.alpha
+    );
+    crate::support::mount_screen_document(
+        &mut ui,
+        "emoji",
+        &doc,
+        &[("text", serde_json::json!(text))],
+    );
     for _ in 0..2 {
-        ui.begin(InputFrame::default(), vp);
-        let step = TypeStep {
-            size,
-            line_height: size * 1.25,
-            ..ui.theme().type_ramp.body
-        };
-        ui.label(
-            "Emoji",
-            text,
-            LabelDesc {
-                step: Some(step),
-                color: Some(color),
-                nowrap: true,
-                ..LabelDesc::default()
-            },
-        );
-        ui.end();
+        crate::support::step_screen(&mut ui, InputFrame::default(), vp);
     }
     let frame = ui.frame();
     assert!(

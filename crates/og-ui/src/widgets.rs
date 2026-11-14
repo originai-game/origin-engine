@@ -7,8 +7,8 @@
 
 use crate::id::Id;
 use crate::layout::{
-    Align, Anchor, Content, Cross, Direction, Element, Float, FontRole, Frame, Insets, NONE, Shape,
-    Size, TextAlign, Widget,
+    Align, Content, Cross, Direction, Element, Float, FontRole, Frame, Insets, NONE, Shape, Size,
+    TextAlign, Widget,
 };
 use crate::motion::{TransitionKind, fx};
 use crate::style::{READABLE, Srgba};
@@ -18,10 +18,9 @@ use og_draw::TextureHandle;
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
 pub use controls::{
-    CheckFieldDesc, ChoiceIndexResult, DetailsDesc, DetailsResult, DropdownDesc, DropdownOption,
-    DropdownResult, LabelSide, NumberResult, NumberStepperDesc, RadioGroupDesc, RadioOption,
-    RadioVariant, SegmentItem, SegmentedDesc, SliderMark, SwitchResult, ToggleSwitchDesc,
-    ValueFormat, ValueSliderDesc, ValueSliderResult, kept_options,
+    CheckFieldDesc, DetailsDesc, DropdownDesc, DropdownOption, LabelSide, NumberStepperDesc,
+    RadioGroupDesc, RadioOption, SegmentItem, SegmentedDesc, SliderMark, ToggleSwitchDesc,
+    ValueFormat, ValueSliderDesc,
 };
 pub use controls::{KeyboardDesc, KeyboardLayout, RangeSliderDesc};
 
@@ -32,40 +31,6 @@ pub use controls::{KeyboardDesc, KeyboardLayout, RangeSliderDesc};
 pub struct SpotlightDesc {
     /// Room around the target; 0: `space.sm`.
     pub padding: f32,
-}
-
-/// An anchored group: a layer at an anchor of the safe area (HUD corners,
-/// a centred title, the bottom bar of touch controls).
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct AnchorDesc {
-    pub anchor: Anchor,
-    /// Inset from the safe area's edges; `None`: the density's gutter.
-    pub margin: Option<f32>,
-    /// Moves it after placing (CSS px, y down).
-    pub offset: (f32, f32),
-    pub direction: Direction,
-    pub gap: f32,
-    pub padding: Insets,
-    pub align: Align,
-    pub cross: Cross,
-    pub background: Option<Srgba>,
-    pub radius: f32,
-    pub width: Size,
-    pub height: Size,
-    /// Draws over dialogs and spotlights (a tutorial callout, a dragged item).
-    pub over: bool,
-    /// Draws in the tooltip layer, over every other layer including the
-    /// toast stack (a card the player opened).
-    pub tooltip: bool,
-    /// Steps clear of the other anchored groups and the host's control
-    /// (a drift score over the car, which must not cover the map).
-    pub avoid: bool,
-    /// The frame its background takes (`None`: the panel's).
-    pub frame: Option<crate::style_file::StylePart>,
-    /// Shown settled the first time it is built: no style entrance or
-    /// stagger (the screen a game opens on, which the web draws behind its
-    /// play gate).
-    pub instant: bool,
 }
 
 /// Where a transition is.

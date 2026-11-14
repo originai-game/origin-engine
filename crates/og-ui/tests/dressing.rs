@@ -5,6 +5,51 @@
 
 use crate::support::*;
 use og_ui::*;
+use serde_json::{Value, json};
+
+/// `body` (a component document's markup and `<style>`) mounted in `ui`
+/// with `stores`, laid out in `vp`, built once.
+fn mounted(ui: Ui, body: &str, stores: &[(&str, Value)], vp: Viewport) -> Doc {
+    let mut ui = ui;
+    let text = format!("<meta name=\"component\" content=\"t\">\n{body}");
+    ui.define_document(UiDocument::parse("ui/t.svelte", &text).unwrap_or_else(|e| panic!("{e:?}")));
+    mount_stores(&mut ui, reactive::SourceId::new("test", "t"), "t", stores);
+    let mut d = Doc {
+        ui,
+        events: Vec::new(),
+        viewport: vp,
+        focus: None,
+    };
+    d.step(InputFrame::default());
+    d
+}
+
+/// The element (in units) whose path is `path` or ends in `/path`.
+fn at(ui: &Ui, path: &str) -> UiElement {
+    try_at(ui, path).unwrap_or_else(|| panic!("no {path}"))
+}
+
+fn try_at(ui: &Ui, path: &str) -> Option<UiElement> {
+    let end = format!("/{path}");
+    ui.elements()
+        .iter()
+        .find(|e| e.path == path || e.path.ends_with(&end))
+        .cloned()
+}
+
+/// A press and release at `pointer`, a tick each.
+fn press_at(d: &mut Doc, pointer: og_core::math::Vec2) {
+    for down in [true, false] {
+        d.step(InputFrame {
+            pointer,
+            pointer_inside: true,
+            down,
+            pressed: down,
+            released: !down,
+            ..Default::default()
+        });
+    }
+}
 
 #[test]
 fn tabs_and_select_parts_keep_boxes_states_and_host_input() {
@@ -20,56 +65,28 @@ fn tabs_and_select_parts_keep_boxes_states_and_host_input() {
          select::part(option) { background: #ff00ff; padding: 6px; }",
     )
     .unwrap();
-    let mut selected = 1;
-    let tick = |ui: &mut Ui, input, selected: &mut i32| {
-        ui.begin(input, Viewport::new(600.0, 400.0));
-        ui.open("Root", Element::column());
-        *selected = ui
-            .segmented(
-                "Tabs",
-                &SegmentedDesc {
-                    selected: *selected,
-                    items: vec![
-                        SegmentItem {
-                            label: "First".into(),
-                            ..Default::default()
-                        },
-                        SegmentItem {
-                            label: "Second".into(),
-                            ..Default::default()
-                        },
-                    ],
-                    ..Default::default()
-                },
-            )
-            .selected;
-        ui.dropdown(
-            "Select",
-            &DropdownDesc {
-                selected: 0,
-                options: vec![DropdownOption {
-                    label: "Option".into(),
-                    group: "Group".into(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            },
-        );
-        ui.close();
-        ui.end();
-    };
-    for _ in 0..3 {
-        tick(&mut ui, InputFrame::default(), &mut selected);
+    let mut d = mounted(
+        ui,
+        r#"<column id="Root">
+  <tabs id="Tabs" items="First Second" bind:selected={$tab}></tabs>
+  <select id="Select" bind:value={$choice}><optgroup label="Group"><option value="o">Option</option></optgroup></select>
+</column>"#,
+        &[("tab", json!(1)), ("choice", json!("o"))],
+        Viewport::new(600.0, 400.0),
+    );
+    for _ in 0..2 {
+        d.step(InputFrame::default());
     }
-    let indicator = ui.element("Root/Tabs/Strip/Track/Thumb").unwrap();
+    let ui = &d.ui;
+    let indicator = at(ui, "Tabs/Strip/Track/Thumb");
     assert_eq!(indicator.kind, "part");
     assert_eq!(indicator.height, 7.0);
     for (host, part, role) in [
-        ("Root/Tabs/Strip/Track/Item#0", "tab", "radio"),
-        ("Root/Select/Trigger", "trigger", "combobox"),
+        ("Tabs/Strip/Track/Item#0", "tab", "radio"),
+        ("Select/Trigger", "trigger", "combobox"),
     ] {
-        assert_eq!(ui.element(host).unwrap().role, role);
-        let visual = ui.element(&format!("{host}/::part({part})#0")).unwrap();
+        assert_eq!(at(ui, host).role, role);
+        let visual = at(ui, &format!("{host}/::part({part})#0"));
         assert_eq!(visual.kind, "part");
         assert!(visual.role.is_empty());
     }
@@ -83,61 +100,34 @@ fn tabs_and_select_parts_keep_boxes_states_and_host_input() {
             "{rgb:?}"
         );
     }
-    let first = ui.element("Root/Tabs/Strip/Track/Item#0").unwrap();
+    let first = at(ui, "Tabs/Strip/Track/Item#0");
     let pointer =
         og_core::math::Vec2::new(first.x + first.width / 2.0, first.y + first.height / 2.0);
-    for down in [true, false] {
-        tick(
-            &mut ui,
-            InputFrame {
-                pointer,
-                pointer_inside: true,
-                down,
-                pressed: down,
-                released: !down,
-                ..Default::default()
-            },
-            &mut selected,
-        );
-    }
-    assert_eq!(selected, 0);
-    tick(&mut ui, InputFrame::default(), &mut selected);
-    let trigger = ui.element("Root/Select/Trigger").unwrap();
+    press_at(&mut d, pointer);
+    d.step(InputFrame::default());
+    assert_eq!(d.read("tab"), json!(0));
+    let trigger = at(&d.ui, "Select/Trigger");
     let pointer = og_core::math::Vec2::new(
         trigger.x + trigger.width / 2.0,
         trigger.y + trigger.height / 2.0,
     );
-    for down in [true, false] {
-        tick(
-            &mut ui,
-            InputFrame {
-                pointer,
-                pointer_inside: true,
-                down,
-                pressed: down,
-                released: !down,
-                ..Default::default()
-            },
-            &mut selected,
-        );
-    }
+    press_at(&mut d, pointer);
     for _ in 0..15 {
-        tick(&mut ui, InputFrame::default(), &mut selected);
+        d.step(InputFrame::default());
     }
+    let ui = &d.ui;
     let option = ui.elements().iter().find(|e| e.role == "option").unwrap();
-    let visual = ui
-        .element(&format!("{}/::part(option)#0", option.path))
-        .unwrap();
+    let visual = at(ui, &format!("{}/::part(option)#0", option.path));
     assert!(visual.role.is_empty());
     assert_eq!(visual.kind, "part");
-    let list = ui.element("Select.list/::part(list)#0").unwrap();
-    let group = ui.element("Select.list/List/Group#0").unwrap();
+    let list = at(ui, "Select.list/::part(list)#0");
+    let group = at(ui, "Select.list/List/Group#0");
     assert_eq!(list.kind, "part");
     assert!(list.role.is_empty());
     assert_eq!(group.kind, "part");
     assert_eq!(group.height, 37.0);
     assert_eq!(group.x - list.x, 16.0);
-    let text = ui.element("Select.list/List/Group#0/Text").unwrap();
+    let text = at(ui, "Select.list/List/Group#0/Text");
     assert_eq!(text.x - group.x, 19.0);
     assert!(ui.frame().items.iter().any(|i| {
         i.cmd
@@ -147,54 +137,26 @@ fn tabs_and_select_parts_keep_boxes_states_and_host_input() {
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
 }
 
-/// Two sliders and a switch in a 600×400 frame; answers the stepped
-/// slider's value.
-fn range_tick(ui: &mut Ui, input: InputFrame, value: &mut f32) {
-    ui.begin(input, Viewport::new(600.0, 400.0));
-    ui.open(
-        "Root",
-        Element {
-            padding: Insets::all(20.0),
-            gap: 30.0,
-            ..Element::column()
-        },
-    );
-    ui.value_slider(
-        "Plain",
-        0.3,
-        &ValueSliderDesc {
-            width: Some(Size::px(200.0)),
-            ..Default::default()
-        },
-    );
-    *value = ui
-        .value_slider(
-            "Ticks",
-            *value,
-            &ValueSliderDesc {
-                max: 10.0,
-                step: 1.0,
-                ticks: true,
-                label: "Volume".into(),
-                show_value: true,
-                bubble: true,
-                marks: vec![
-                    SliderMark {
-                        value: 0.0,
-                        label: "Lo".into(),
-                    },
-                    SliderMark {
-                        value: 10.0,
-                        label: "Hi".into(),
-                    },
-                ],
-                ..Default::default()
-            },
-        )
-        .value;
-    ui.toggle_switch("Switch", true, &ToggleSwitchDesc::default());
-    ui.close();
-    ui.end();
+/// Two sliders and a switch in a 600×400 frame; the stepped slider's
+/// value is the store `v`.
+const RANGES: &str = r#"<column id="Root">
+  <input type="range" id="Plain" min="0" max="1" value="0.3" />
+  <input type="range" id="Ticks" min="0" max="10" step="1" list="Marks" aria-label="Volume" bind:value={$v} />
+  <datalist id="Marks"><option value="0" label="Lo"></option><option value="10" label="Hi"></option></datalist>
+  <input type="checkbox" switch id="Switch" checked />
+</column>
+<style>
+#Root { padding: 20px; gap: 30px; }
+#Plain { width: 200px; }
+</style>"#;
+
+/// [`RANGES`] in `ui`, built three times.
+fn ranges(ui: Ui) -> Doc {
+    let mut d = mounted(ui, RANGES, &[("v", json!(4))], Viewport::new(600.0, 400.0));
+    for _ in 0..2 {
+        d.step(InputFrame::default());
+    }
+    d
 }
 
 /// The default style, or `css` as the whole part stylesheet.
@@ -207,57 +169,49 @@ fn range_ui(css: Option<&str>) -> Ui {
 }
 
 fn rect(ui: &Ui, path: &str) -> [f32; 4] {
-    let e = ui.element(path).unwrap_or_else(|| panic!("{path}"));
+    let e = at(ui, path);
     [e.x, e.y, e.width, e.height]
+}
+
+/// The stepped slider's value now.
+fn value(d: &mut Doc) -> f64 {
+    d.read("v").as_f64().expect("a number")
 }
 
 #[test]
 fn undressed_range_parts_keep_their_boxes_and_draws() {
     // The boxes and fills the slider drew before its parts were boxes.
-    let mut ui = range_ui(None);
-    let mut value = 4.0;
-    for _ in 0..3 {
-        range_tick(&mut ui, InputFrame::default(), &mut value);
-    }
+    let mut d = ranges(range_ui(None));
+    let ui = &d.ui;
+    // Its datalist's options tick 0 and 10: the first and last of the
+    // eleven steps' ticks.
     for (path, kind, expected) in [
-        ("Root/Plain/Track", "box", [20.0, 44.0, 200.0, 44.0]),
+        ("Plain/Track", "box", [20.0, 44.0, 200.0, 44.0]),
         (
-            "Root/Plain/Track/::part(reach)#0",
+            "Plain/Track/::part(reach)#0",
             "part",
             [20.0, 44.0, 200.0, 44.0],
         ),
-        ("Root/Plain/Track/Rail", "part", [33.0, 63.0, 174.0, 6.0]),
+        ("Plain/Track/Rail", "part", [33.0, 63.0, 174.0, 6.0]),
+        ("Plain/Track/Rail/Fill", "part", [33.0, 63.0, 52.0, 6.0]),
+        ("Plain/Track/Knob", "box", [72.0, 53.0, 26.0, 26.0]),
         (
-            "Root/Plain/Track/Rail/Fill",
-            "part",
-            [33.0, 63.0, 52.0, 6.0],
-        ),
-        ("Root/Plain/Track/Knob", "box", [72.0, 53.0, 26.0, 26.0]),
-        (
-            "Root/Plain/Track/Knob/::part(knob)#0",
+            "Plain/Track/Knob/::part(knob)#0",
             "part",
             [72.0, 53.0, 26.0, 26.0],
         ),
-        (
-            "Root/Ticks/Track/Rail/Tick#0",
-            "part",
-            [32.0, 158.0, 2.0, 12.0],
-        ),
-        (
-            "Root/Ticks/Track/Rail/Tick#10",
-            "part",
-            [206.0, 158.0, 2.0, 12.0],
-        ),
-        ("Root/Ticks/Track/Knob", "box", [90.0, 151.0, 26.0, 26.0]),
+        ("Ticks/Track/Rail/Tick#0", "part", [32.0, 158.0, 2.0, 12.0]),
+        ("Ticks/Track/Rail/Tick#1", "part", [206.0, 158.0, 2.0, 12.0]),
+        ("Ticks/Track/Knob", "box", [90.0, 151.0, 26.0, 26.0]),
     ] {
-        assert_eq!(rect(&ui, path), expected, "{path}");
-        let e = ui.element(path).unwrap();
+        assert_eq!(rect(ui, path), expected, "{path}");
+        let e = at(ui, path);
         assert_eq!(e.kind == "part", kind == "part", "{path}: {}", e.kind);
         if kind == "part" {
             assert!(e.role.is_empty(), "{path}: {}", e.role);
         }
     }
-    assert_eq!(ui.element("Root/Plain/Track").unwrap().role, "slider");
+    assert_eq!(at(ui, "Plain/Track").role, "slider");
     // The rail, fill and passed tick in their roles' colours, the knob's
     // own fill under its CSS rim.
     let fills: Vec<_> = ui
@@ -278,56 +232,51 @@ fn undressed_range_parts_keep_their_boxes_and_draws() {
     // A press on the track: the knob follows, its core shows, the
     // bubble fades in over it (its presence is the part's) and keeps
     // the width its painted rim had.
-    let track = ui.element("Root/Ticks/Track").unwrap().clone();
-    let at = og_core::math::Vec2::new(track.x + track.width * 0.62, track.y + track.height / 2.0);
+    let track = at(ui, "Ticks/Track");
+    let at_ = og_core::math::Vec2::new(track.x + track.width * 0.62, track.y + track.height / 2.0);
     let press = |down, pressed| InputFrame {
-        pointer: at,
+        pointer: at_,
         pointer_inside: true,
         down,
         pressed,
         ..Default::default()
     };
-    range_tick(&mut ui, press(true, true), &mut value);
+    d.step(press(true, true));
     for _ in 0..4 {
-        range_tick(&mut ui, press(true, false), &mut value);
+        d.step(press(true, false));
     }
-    assert_eq!(value, 6.0, "pointer input reaches the slider host");
+    assert_eq!(value(&mut d), 6.0, "pointer input reaches the slider host");
+    let ui = &d.ui;
+    assert_eq!(rect(ui, "Ticks/Track/Knob"), [124.0, 151.0, 26.0, 26.0]);
     assert_eq!(
-        rect(&ui, "Root/Ticks/Track/Knob"),
-        [124.0, 151.0, 26.0, 26.0]
-    );
-    assert_eq!(
-        rect(&ui, "Root/Ticks/Track/Knob/Core"),
+        rect(ui, "Ticks/Track/Knob/Core"),
         [132.0, 159.0, 11.0, 11.0]
     );
-    let bubble = rect(&ui, "Root/Ticks/Track/Bubble");
+    let bubble = rect(ui, "Ticks/Track/Bubble");
     assert_eq!([bubble[0], bubble[2], bubble[3]], [121.0, 24.0, 26.0]);
     assert!(bubble[1] > 113.0, "entering, the bubble rises: {bubble:?}");
     for _ in 0..30 {
-        range_tick(&mut ui, press(true, false), &mut value);
+        d.step(press(true, false));
     }
-    let settled = rect(&ui, "Root/Ticks/Track/Bubble");
+    let ui = &d.ui;
+    let settled = rect(ui, "Ticks/Track/Bubble");
     assert!((settled[1] - 112.0).abs() < 0.01, "{settled:?}");
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
 }
 
 #[test]
 fn range_part_css_sizes_and_states_its_boxes() {
-    let mut ui = range_ui(Some(
+    let mut d = ranges(range_ui(Some(
         "input[type=range]::part(track) { height: 10px; }
          input[type=range]::part(reach) { background: #0000ff; }
          input[type=range]::part(bubble) { padding: 0 11px; border: 2px solid #123456; }
          input[type=range]::part(knob) { width: 30px; }
          input[type=range]::part(knob):active { background: #00ff00; }
          input[type=range]::part(core) { background: #ff00ff; }",
-    ));
-    let mut value = 4.0;
-    for _ in 0..3 {
-        range_tick(&mut ui, InputFrame::default(), &mut value);
-    }
-    let reach = ui.element("Root/Plain/Track/::part(reach)#0").unwrap();
-    let reach = [reach.x, reach.y, reach.width, reach.height];
-    assert_eq!(ui.element("Root/Plain/Track/Rail").unwrap().height, 10.0);
+    )));
+    let ui = &d.ui;
+    let reach = rect(ui, "Plain/Track/::part(reach)#0");
+    assert_eq!(at(ui, "Plain/Track/Rail").height, 10.0);
     let blue = Srgba::rgb(0, 0, 255).linear();
     assert!(
         ui.frame().items.iter().any(|i| i
@@ -336,12 +285,7 @@ fn range_part_css_sizes_and_states_its_boxes() {
             .is_some_and(|(r, c)| c == blue && [r.x, r.y, r.width, r.height] == reach)),
         "the reach paints its own box"
     );
-    assert_eq!(
-        ui.element("Root/Plain/Track/Knob/::part(knob)#0")
-            .unwrap()
-            .width,
-        30.0
-    );
+    assert_eq!(at(ui, "Plain/Track/Knob/::part(knob)#0").width, 30.0);
     let green = Srgba::rgb(0, 255, 0).linear();
     let magenta = Srgba::rgb(255, 0, 255).linear();
     let has = |ui: &Ui, c: [f32; 4]| {
@@ -350,29 +294,27 @@ fn range_part_css_sizes_and_states_its_boxes() {
             .iter()
             .any(|i| i.cmd.filled().is_some_and(|(_, f)| f == c))
     };
-    assert!(!has(&ui, green) && !has(&ui, magenta));
-    let track = ui.element("Root/Ticks/Track").unwrap().clone();
-    let at = og_core::math::Vec2::new(track.x + track.width * 0.62, track.y + track.height / 2.0);
+    assert!(!has(ui, green) && !has(ui, magenta));
+    let track = at(ui, "Ticks/Track");
+    let pointer =
+        og_core::math::Vec2::new(track.x + track.width * 0.62, track.y + track.height / 2.0);
     // Held past the knob's state motion.
     for k in 0..30 {
         let pressed = k == 0;
-        range_tick(
-            &mut ui,
-            InputFrame {
-                pointer: at,
-                pointer_inside: true,
-                down: true,
-                pressed,
-                ..Default::default()
-            },
-            &mut value,
-        );
+        d.step(InputFrame {
+            pointer,
+            pointer_inside: true,
+            down: true,
+            pressed,
+            ..Default::default()
+        });
     }
-    assert_eq!(value, 6.0);
-    assert!(has(&ui, green), "the held knob is :active");
-    assert!(has(&ui, magenta), "the core takes its part's CSS");
-    let bubble = ui.element("Root/Ticks/Track/Bubble").unwrap();
-    let text = ui.element("Root/Ticks/Track/Bubble/Text").unwrap();
+    assert_eq!(value(&mut d), 6.0);
+    let ui = &d.ui;
+    assert!(has(ui, green), "the held knob is :active");
+    assert!(has(ui, magenta), "the core takes its part's CSS");
+    let bubble = at(ui, "Ticks/Track/Bubble");
+    let text = at(ui, "Ticks/Track/Bubble/Text");
     assert_eq!(bubble.width, text.width + 2.0 * (11.0 + 2.0));
     assert_eq!(text.x - bubble.x, 13.0);
 }
@@ -383,24 +325,16 @@ fn widget_part_placement_follows_the_writing_direction() {
     // frame the fill and the switch's knob stay on their track.
     let mut ui = range_ui(None);
     ui.set_direction(og_i18n::Direction::Rtl);
-    let mut value = 4.0;
-    for _ in 0..3 {
-        range_tick(&mut ui, InputFrame::default(), &mut value);
-    }
+    let d = ranges(ui);
+    let ui = &d.ui;
+    assert_eq!(rect(ui, "Plain/Track/Rail"), [393.0, 63.0, 174.0, 6.0]);
+    assert_eq!(rect(ui, "Plain/Track/Rail/Fill"), [515.0, 63.0, 52.0, 6.0]);
     assert_eq!(
-        rect(&ui, "Root/Plain/Track/Rail"),
-        [393.0, 63.0, 174.0, 6.0]
-    );
-    assert_eq!(
-        rect(&ui, "Root/Plain/Track/Rail/Fill"),
-        [515.0, 63.0, 52.0, 6.0]
-    );
-    assert_eq!(
-        rect(&ui, "Root/Ticks/Track/Rail/Tick#0"),
+        rect(ui, "Ticks/Track/Rail/Tick#0"),
         [566.0, 158.0, 2.0, 12.0]
     );
-    let track = rect(&ui, "Root/Switch/Track");
-    let knob = rect(&ui, "Root/Switch/Track/Knob");
+    let track = rect(ui, "Switch/Track");
+    let knob = rect(ui, "Switch/Track/Knob");
     assert!(
         knob[0] >= track[0] && knob[0] + knob[2] <= track[0] + track[2],
         "{knob:?} in {track:?}"
@@ -411,43 +345,29 @@ fn widget_part_placement_follows_the_writing_direction() {
     );
 }
 
-/// A progress bar, a meter and a gauge at 1.5× in a 257 px column.
-fn bars(ui: &mut Ui) {
-    ui.begin(
-        InputFrame::default(),
+/// A progress bar and a meter at 1.5× in a 257 px column, built three
+/// times.
+fn bars(ui: Ui) -> Doc {
+    let mut d = mounted(
+        ui,
+        r#"<column id="Root">
+  <progress id="Load" value="0.6"></progress>
+  <meter id="Gauge" value="0.2" low="0.3" high="0.7" optimum="0.9"></meter>
+</column>
+<style>
+#Root { padding: 13px; gap: 9px; width: 257px; }
+#Load { width: 141px; }
+</style>"#,
+        &[],
         Viewport {
             dpr: 1.5,
             ..Viewport::new(800.0, 500.0)
         },
     );
-    ui.open(
-        "Root",
-        Element {
-            padding: Insets::all(13.0),
-            gap: 9.0,
-            width: Size::px(257.0),
-            ..Element::column()
-        },
-    );
-    ui.progress(
-        "Load",
-        0.6,
-        ProgressDesc {
-            width: Some(Size::px(141.0)),
-        },
-    );
-    ui.gauge(
-        "Gauge",
-        &GaugeDesc {
-            value: 0.2,
-            low: Some(0.3),
-            high: Some(0.7),
-            optimum: Some(0.9),
-            ..Default::default()
-        },
-    );
-    ui.close();
-    ui.end();
+    for _ in 0..2 {
+        d.step(InputFrame::default());
+    }
+    d
 }
 
 fn fill_rects(ui: &Ui) -> Vec<[f32; 4]> {
@@ -461,14 +381,12 @@ fn fill_rects(ui: &Ui) -> Vec<[f32; 4]> {
 
 #[test]
 fn bar_tracks_are_part_boxes_and_fills_keep_their_device_pixels() {
-    let mut ui = ui_with_font(test_font_metrics());
-    for _ in 0..3 {
-        bars(&mut ui);
-    }
-    for (host, role) in [("Root/Load", "progressbar"), ("Root/Gauge", "meter")] {
-        let h = ui.element(host).unwrap();
+    let d = bars(ui_with_font(test_font_metrics()));
+    let ui = &d.ui;
+    for (host, role) in [("Load", "progressbar"), ("Gauge", "meter")] {
+        let h = at(ui, host);
         assert_eq!(h.role, role, "{host}");
-        let track = ui.element(&format!("{host}/::part(track)#0")).unwrap();
+        let track = at(ui, &format!("{host}/::part(track)#0"));
         assert_eq!(track.kind, "part");
         assert!(track.role.is_empty());
         assert_eq!(
@@ -478,8 +396,8 @@ fn bar_tracks_are_part_boxes_and_fills_keep_their_device_pixels() {
     }
     // The fills are fractions of the track's device-pixel box, as before
     // the tracks were boxes: 60% of 140.668 px ends on the 98 px edge.
-    let fills = fill_rects(&ui);
-    let load = ui.element("Root/Load").unwrap();
+    let fills = fill_rects(ui);
+    let load = at(ui, "Load");
     let expected = [load.x, load.y, 98.0 - load.x, 8.0];
     assert!(fills.contains(&expected), "{expected:?} in {fills:?}");
 }
@@ -492,13 +410,12 @@ fn bar_track_css_sizes_the_box_its_fill_is_drawn_in() {
          meter::part(track) { height: 6px; }",
     )
     .unwrap();
-    for _ in 0..3 {
-        bars(&mut ui);
-    }
-    let track = ui.element("Root/Load/::part(track)#0").unwrap();
+    let d = bars(ui);
+    let ui = &d.ui;
+    let track = at(ui, "Load/::part(track)#0");
     assert_eq!(track.height, 4.0);
-    let fills = fill_rects(&ui);
-    let load = ui.element("Root/Load").unwrap();
+    let fills = fill_rects(ui);
+    let load = at(ui, "Load");
     assert!(
         fills.contains(&[load.x, load.y, 98.0 - load.x, 4.0]),
         "the fill is the track's height: {fills:?}"
@@ -509,7 +426,7 @@ fn bar_track_css_sizes_the_box_its_fill_is_drawn_in() {
             .filled()
             .is_some_and(|(r, c)| c == blue && r.height == 4.0)
     }));
-    let gauge = ui.element("Root/Gauge/::part(track)#0").unwrap();
+    let gauge = at(ui, "Gauge/::part(track)#0");
     assert_eq!(gauge.height, 6.0);
     assert!(
         fills
@@ -519,97 +436,88 @@ fn bar_track_css_sizes_the_box_its_fill_is_drawn_in() {
     );
 }
 
-/// A wide-valued number stepper in a 600×500 frame; answers its value.
-fn stepper_tick(ui: &mut Ui, input: InputFrame, value: &mut f32) {
-    ui.begin(input, Viewport::new(600.0, 500.0));
-    ui.open(
-        "Root",
-        Element {
-            padding: Insets::all(13.0),
-            ..Element::column()
-        },
+/// A date input in a 600×500 frame: a stepper per part, the year first;
+/// its value is the store `when`. Built three times.
+fn steppers(ui: Ui) -> Doc {
+    let mut d = mounted(
+        ui,
+        r#"<column id="Root"><input type="date" id="When" bind:value={$when} /></column>
+<style>#Root { padding: 13px; }</style>"#,
+        &[("when", json!("2000-01-01"))],
+        Viewport::new(600.0, 500.0),
     );
-    *value = ui
-        .number_stepper("Wide", *value, &NumberStepperDesc::default())
-        .value;
-    ui.close();
-    ui.end();
+    for _ in 0..2 {
+        d.step(InputFrame::default());
+    }
+    d
 }
 
 #[test]
 fn stepper_buttons_and_value_are_part_boxes_with_their_rims_inside() {
-    let mut ui = ui_with_font(test_font_metrics());
-    let mut value = 12345.67;
-    for _ in 0..3 {
-        stepper_tick(&mut ui, InputFrame::default(), &mut value);
-    }
+    let mut d = steppers(ui_with_font(test_font_metrics()));
+    let ui = &d.ui;
     for (host, part, role) in [
-        ("Root/Wide/Frame/Dec", "button", "button"),
-        ("Root/Wide/Frame/Value", "value", "spinbutton"),
-        ("Root/Wide/Frame/Inc", "button", "button"),
+        ("When/Year/Frame/Dec", "button", "button"),
+        ("When/Year/Frame/Value", "value", "spinbutton"),
+        ("When/Year/Frame/Inc", "button", "button"),
     ] {
-        assert_eq!(ui.element(host).unwrap().role, role, "{host}");
-        let visual = ui.element(&format!("{host}/::part({part})#0")).unwrap();
+        assert_eq!(at(ui, host).role, role, "{host}");
+        let visual = at(ui, &format!("{host}/::part({part})#0"));
         assert_eq!(visual.kind, "part");
         assert!(visual.role.is_empty());
     }
     // The default 1.5 px rim sits inside the value's inset, as it was
-    // painted: the value and its frame keep their widths.
-    assert_eq!(rect(&ui, "Root/Wide/Frame"), [13.0, 13.0, 147.0, 44.0]);
-    assert_eq!(rect(&ui, "Root/Wide/Frame/Value"), [57.0, 13.0, 59.0, 44.0]);
-    assert_eq!(rect(&ui, "Root/Wide/Frame/Value/Text")[0], 65.0);
+    // painted: the frame is its two buttons and its value side by side,
+    // 44 px tall (after the part's label), and the rim moves no text: a
+    // four-digit year is narrower than the value's least width, so it is
+    // centred in it.
+    let frame = rect(ui, "When/Year/Frame");
+    let [dec, value, inc] =
+        ["Dec", "Value", "Inc"].map(|p| rect(ui, &format!("When/Year/Frame/{p}")));
+    assert_eq!([frame[1], frame[3]], [13.0, 44.0]);
+    assert_eq!(frame[2], dec[2] + value[2] + inc[2]);
+    assert_eq!(value[0], frame[0] + dec[2]);
+    let text = rect(ui, "When/Year/Frame/Value/Text");
+    assert!(
+        (text[0] - value[0] - (value[2] - text[2]) / 2.0).abs() <= 0.5,
+        "{text:?} centred in {value:?}"
+    );
     // The button host still takes the press.
-    let inc = ui.element("Root/Wide/Frame/Inc").unwrap().clone();
-    let at = og_core::math::Vec2::new(inc.x + inc.width / 2.0, inc.y + inc.height / 2.0);
-    for down in [true, false] {
-        stepper_tick(
-            &mut ui,
-            InputFrame {
-                pointer: at,
-                pointer_inside: true,
-                down,
-                pressed: down,
-                released: !down,
-                ..Default::default()
-            },
-            &mut value,
-        );
-    }
-    assert!((value - 12346.67).abs() < 0.01, "{value}");
+    let inc = at(ui, "When/Year/Frame/Inc");
+    press_at(
+        &mut d,
+        og_core::math::Vec2::new(inc.x + inc.width / 2.0, inc.y + inc.height / 2.0),
+    );
+    d.step(InputFrame::default());
+    assert_eq!(d.read("when"), json!("2001-01-01"));
 }
 
 #[test]
 fn stepper_part_css_pads_borders_and_states_its_boxes() {
     let mut ui = ui_with_font(test_font_metrics());
     ui.set_part_css(
-        "stepper::part(value) { padding: 0 20px; border: 2px solid #123456; }
-         stepper::part(button):hover { background: #00ff00; transition: none; }",
+        "input[type=date]::part(value) { padding: 0 20px; border: 2px solid #123456; }
+         input[type=date]::part(button):hover { background: #00ff00; transition: none; }",
     )
     .unwrap();
-    let mut value = 12345.67;
-    for _ in 0..3 {
-        stepper_tick(&mut ui, InputFrame::default(), &mut value);
-    }
-    let text = ui.element("Root/Wide/Frame/Value/Text").unwrap().clone();
-    let part = ui.element("Root/Wide/Frame/Value/::part(value)#0").unwrap();
+    let mut d = steppers(ui);
+    let ui = &d.ui;
+    let text = at(ui, "When/Year/Frame/Value/Text");
+    let part = at(ui, "When/Year/Frame/Value/::part(value)#0");
     assert_eq!(part.width, text.width + 2.0 * (20.0 + 2.0));
     assert_eq!(text.x - part.x, 22.0);
     let green = Srgba::rgb(0, 255, 0).linear();
-    let inc = ui.element("Root/Wide/Frame/Inc").unwrap().clone();
-    let at = og_core::math::Vec2::new(inc.x + inc.width / 2.0, inc.y + inc.height / 2.0);
+    let inc = at(ui, "When/Year/Frame/Inc");
+    let pointer = og_core::math::Vec2::new(inc.x + inc.width / 2.0, inc.y + inc.height / 2.0);
     for _ in 0..3 {
-        stepper_tick(
-            &mut ui,
-            InputFrame {
-                pointer: at,
-                pointer_inside: true,
-                ..Default::default()
-            },
-            &mut value,
-        );
+        d.step(InputFrame {
+            pointer,
+            pointer_inside: true,
+            ..Default::default()
+        });
     }
     assert!(
-        ui.frame().items.iter().any(|i| i
+        d.ui.frame().items.iter().any(|i| i
             .cmd
             .filled()
             .is_some_and(|(r, c)| c == green && r.x == inc.x && r.width == inc.width)),
@@ -619,66 +527,35 @@ fn stepper_part_css_pads_borders_and_states_its_boxes() {
 
 #[test]
 fn choice_parts_have_independent_css_layout_and_paint() {
+    // (A radio group's cards variant, `input[type=radio]::part(chosen)`, is
+    // no document's: no element builds it.)
     let mut ui = ui_with_font(test_font());
     ui.set_part_css(r#"
 input { color: #d3b517; font-size: 21px; }
 input[type=checkbox]::part(box) { width: 34px; height: 30px; background: #fb0307; translate: 7px 0; opacity: 0.5; border: none; transition: none; }
 input[type=checkbox][switch]::part(track) { width: 70px; height: 32px; background: #03fb07; border: none; transition: none; }
 input[type=radio]::part(ring) { width: 38px; height: 26px; background: #0307fb; border: none; transition: none; }
-input[type=radio]::part(chosen) { width: 17px; height: 13px; background: #fb07fb; border: none; }
 "#).unwrap();
+    let mut d = mounted(
+        ui,
+        r#"<column id="Root">
+  <label><input type="checkbox" id="Check" checked /> Check</label>
+  <label><input type="checkbox" switch id="Switch" checked /> Switch</label>
+  <label><input type="radio" id="Radio" value="a" bind:group={$pick} /> Radio</label>
+</column>"#,
+        &[("pick", json!("a"))],
+        Viewport::new(600.0, 400.0),
+    );
     for _ in 0..3 {
-        ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
-        ui.open("Root", Element::column());
-        ui.check_field(
-            "Check",
-            true,
-            &CheckFieldDesc {
-                label: "Check".into(),
-                ..Default::default()
-            },
-        );
-        ui.toggle_switch(
-            "Switch",
-            true,
-            &ToggleSwitchDesc {
-                label: "Switch".into(),
-                ..Default::default()
-            },
-        );
-        ui.radio_group(
-            "Radio",
-            &RadioGroupDesc {
-                selected: 0,
-                options: vec![RadioOption {
-                    label: "Radio".into(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            },
-        );
-        ui.radio_group(
-            "Cards",
-            &RadioGroupDesc {
-                variant: RadioVariant::Cards,
-                selected: 0,
-                options: vec![RadioOption {
-                    label: "Card".into(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            },
-        );
-        ui.close();
-        ui.end();
+        d.step(InputFrame::default());
+        let ui = &d.ui;
         assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
         for (path, width, height) in [
-            ("Root/Check/Box", 34.0, 30.0),
-            ("Root/Switch/Track", 70.0, 32.0),
-            ("Root/Radio/Options/Option#0/Ring", 38.0, 26.0),
-            ("Root/Cards/Options/Option#0/Chosen", 17.0, 13.0),
+            ("Check/Box", 34.0, 30.0),
+            ("Switch/Track", 70.0, 32.0),
+            ("Radio/Options/Option#0/Ring", 38.0, 26.0),
         ] {
-            let part = ui.element(path).unwrap();
+            let part = at(ui, path);
             assert_eq!((part.width, part.height), (width, height), "{path}");
         }
         let fills: Vec<_> = ui
@@ -688,17 +565,17 @@ input[type=radio]::part(chosen) { width: 17px; height: 13px; background: #fb07fb
             .filter_map(|i| i.cmd.filled())
             .map(|(_, c)| c)
             .collect();
-        for rgb in [[251, 3, 7], [3, 251, 7], [3, 7, 251], [251, 7, 251]] {
+        for rgb in [[251, 3, 7], [3, 251, 7], [3, 7, 251]] {
             let expected = Srgba::rgb(rgb[0], rgb[1], rgb[2]).linear();
             assert!(
                 fills.iter().any(|c| c[..3] == expected[..3]),
                 "{rgb:?}: {fills:?}"
             );
         }
-        let row = ui.element("Root/Check/::part(row)#0").unwrap();
-        assert_eq!(ui.element("Root/Check").unwrap().role, "checkbox");
+        let row = at(ui, "Check/::part(row)#0");
+        assert_eq!(at(ui, "Check").role, "checkbox");
         assert!(row.role.is_empty());
-        for label in ["Check", "Switch", "Radio", "Card"] {
+        for label in ["Check", "Switch", "Radio"] {
             let text = ui
                 .frame()
                 .items
@@ -1034,37 +911,23 @@ input.poem::part(placeholder) {
             })
             .collect()
     };
-    let run = |ui: &mut Ui, poem: &str, plain: &str| {
-        ui.begin(InputFrame::default(), Viewport::new(600.0, 300.0));
-        ui.column("Page", Element::column(), |ui| {
-            ui.text_field(
-                "Verse",
-                &mut poem.to_string(),
-                &FieldDesc {
-                    placeholder: "A line".into(),
-                    width: Some(Size::Fixed(320.0)),
-                    bare: true,
-                    tight: true,
-                    component: Some("input.poem".into()),
-                    ..FieldDesc::default()
-                },
-            );
-            ui.text_field("Plain", &mut plain.to_string(), &FieldDesc::default());
-        });
-        ui.end();
-    };
-    run(&mut ui, "", "x");
-    let verse = ui
-        .elements()
-        .iter()
-        .find(|e| e.path == "Page/Verse")
-        .cloned()
-        .unwrap();
+    let mut d = mounted(
+        ui,
+        r#"<column id="Page">
+  <input id="Verse" tight component="input.poem" placeholder="A line" bind:value={$poem} />
+  <input id="Plain" bind:value={$plain} />
+</column>
+<style>#Verse { width: 320px; appearance: none; }</style>"#,
+        &[("poem", json!("")), ("plain", json!("x"))],
+        Viewport::new(600.0, 300.0),
+    );
+    let ui = &d.ui;
+    let verse = at(ui, "Verse");
     assert_eq!(
         verse.height, lg.line_height,
         "one line of its lg text, no inset"
     );
-    let t = texts(&ui);
+    let t = texts(ui);
     let hint = t.iter().find(|x| x.0 == "A line").expect("the placeholder");
     assert!(
         (hint.1 - verse.x).abs() < 0.5,
@@ -1084,8 +947,8 @@ input.poem::part(placeholder) {
         .expect("the plain field's value");
     assert_eq!(plain.2, body.size, "an undressed field keeps the body step");
     assert!(near(plain.3, ui.theme().palette.ink));
-    run(&mut ui, "Spring", "x");
-    let line = texts(&ui)
+    d.set("poem", json!("Spring"));
+    let line = texts(&d.ui)
         .into_iter()
         .find(|x| x.0 == "Spring")
         .expect("the value");
@@ -1095,38 +958,27 @@ input.poem::part(placeholder) {
         "{:?}",
         line.3
     );
-    let e = ui
-        .set_part_css("input.poem::part(frame) { -og-ink: red; }")
-        .unwrap_err();
+    let e =
+        d.ui.set_part_css("input.poem::part(frame) { -og-ink: red; }")
+            .unwrap_err();
     assert!(e.contains("-og-ink"), "{e}");
     // On a touch screen a tight field is still a finger's target.
     let touch = Viewport {
         coarse_pointer: true,
         ..Viewport::new(600.0, 300.0)
     };
-    ui.begin(InputFrame::default(), touch);
-    ui.column("Page", Element::column(), |ui| {
-        let tight = FieldDesc {
-            bare: true,
-            tight: true,
-            ..FieldDesc::default()
-        };
-        ui.text_field("Verse", &mut String::new(), &tight);
-        let area = TextAreaDesc {
-            rows: 1,
-            tight: true,
-            ..TextAreaDesc::default()
-        };
-        ui.text_area("Line", &mut String::new(), &area);
-    });
-    ui.end();
-    for path in ["Page/Verse", "Page/Line"] {
-        let e = ui
-            .elements()
-            .iter()
-            .find(|e| e.path == path)
-            .cloned()
-            .unwrap();
+    let d = mounted(
+        ui_with_font(test_font()),
+        r#"<column id="Page">
+  <input id="Verse" tight />
+  <textarea id="Line" tight rows="1"></textarea>
+</column>
+<style>#Verse { appearance: none; }</style>"#,
+        &[],
+        touch,
+    );
+    for path in ["Verse", "Line"] {
+        let e = at(&d.ui, path);
         assert!(
             e.height >= 44.0 - 0.01,
             "{path} is {} tall on a touch screen",
@@ -1142,7 +994,7 @@ fn scroll_bars_and_heading_flourishes_have_independent_dressings() {
             concat!(
                 "scroll[axis=horizontal]::part(bar) { background: #ff00ff; height: 7px; }\n",
                 "scroll[axis=vertical]::part(bar) { background: #00ffff; width: 9px; }\n",
-                "heading::part(flourish) { width: 12px; height: 5px; color: #ff00ff; opacity: 0.4; }\n",
+                "h4::part(flourish) { width: 12px; height: 5px; color: #ff00ff; opacity: 0.4; }\n",
             )
         } else {
             ""
@@ -1162,45 +1014,26 @@ fn scroll_bars_and_heading_flourishes_have_independent_dressings() {
             offset: 0.0,
         });
         ui.set_theme(theme);
-        ui.begin(InputFrame::default(), Viewport::new(200.0, 130.0));
-        ui.column("Content", Element::column(), |ui| {
-            ui.label(
-                "Title",
-                "Go",
-                LabelDesc {
-                    heading: true,
-                    align: TextAlign::Center,
-                    step: Some(TypeStep {
-                        size: 16.0,
-                        ..theme.type_ramp.body
-                    }),
-                    ..Default::default()
-                },
-            );
-            ui.scroll(
-                "List",
-                ScrollDesc {
-                    width: Size::Fixed(100.0),
-                    height: Size::Fixed(50.0),
-                    axes: ScrollAxes::Both,
-                    ..Default::default()
-                },
-                |ui| {
-                    ui.open(
-                        "Content",
-                        Element {
-                            width: Size::Fixed(200.0),
-                            height: Size::Fixed(120.0),
-                            ..Default::default()
-                        },
-                    );
-                    ui.close();
-                },
-            );
-        });
-        ui.end();
+        // A centred 16 px heading over a list that scrolls both ways, in a
+        // column as wide as the frame.
+        let d = mounted(
+            ui,
+            r#"<column id="Content">
+  <h4 id="Title">Go</h4>
+  <scroll id="List"><div id="Inner"></div></scroll>
+</column>
+<style>
+#Content { width: 200px; }
+#Title { text-align: center; font-size: 16px; width: stretch; margin: 0; }
+#List { width: 100px; height: 50px; overflow: auto; }
+#Inner { width: 200px; height: 120px; flex: none; }
+</style>"#,
+            &[],
+            Viewport::new(200.0, 130.0),
+        );
+        let ui = &d.ui;
         let frame = ui.frame();
-        assert_eq!(ui.element("List").unwrap().width, 100.0);
+        assert_eq!(at(ui, "List").width, 100.0);
         let flourishes: Vec<_> = frame
             .items
             .iter()
@@ -1244,93 +1077,29 @@ fn scroll_bars_and_heading_flourishes_have_independent_dressings() {
 /// disabled secondary button the rule does not name keeps its fill.
 #[test]
 fn fill_none_clears_a_controls_own_fill() {
-    let mut ui = dressed("button.quiet::part(base):disabled { background: none; }\n");
-    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-    for (id, variant) in [
-        ("Quiet", ButtonVariant::Quiet),
-        ("Plain", ButtonVariant::Secondary),
-    ] {
-        ui.button(
-            id,
-            "Equip",
-            ButtonDesc {
-                variant,
-                disabled: true,
-                ..ButtonDesc::default()
-            },
-        );
-    }
-    ui.end();
+    let ui = dressed("button.quiet::part(base):disabled { background: none; }\n");
+    let d = mounted(
+        ui,
+        r#"<column>
+  <button id="Quiet" variant="quiet" disabled>Equip</button>
+  <button id="Plain" disabled>Equip</button>
+</column>"#,
+        &[],
+        Viewport::new(800.0, 600.0),
+    );
     let fills = |ui: &Ui, id: &str| {
-        let e = ui.element(id).unwrap();
+        let e = at(ui, id);
         fills_in(ui, Rect::new(e.x, e.y, e.width, e.height))
     };
     assert_eq!(
-        fills(&ui, "Quiet"),
+        fills(&d.ui, "Quiet"),
         Vec::<[f32; 4]>::new(),
         "the cleared quiet button"
     );
     assert!(
-        !fills(&ui, "Plain").is_empty(),
+        !fills(&d.ui, "Plain").is_empty(),
         "a disabled secondary keeps its fill"
     );
-}
-
-/// A game's draw (`set_draw`) paints over its element's background: a rim
-/// stroked on an element with a background draws after the background
-/// quad, so the background never covers it (it showed only at the corners
-/// the radius left uncovered).
-#[test]
-fn a_draw_strokes_over_its_elements_background() {
-    let vp = Viewport::new(400.0, 200.0);
-    let mut ui = Ui::new(UiDesc::default());
-    // Twice: the second frame reuses the background's kept commands.
-    for _ in 0..2 {
-        ui.begin(InputFrame::default(), vp);
-        ui.open(
-            "Rimmed",
-            Element {
-                width: Size::Fixed(120.0),
-                height: Size::Fixed(60.0),
-                background: Some(Srgba::rgb(20, 40, 200)),
-                radius: 12.0,
-                ..Element::default()
-            },
-        );
-        ui.set_draw(og_ui::paint::ElementDraw {
-            strokes: vec![og_ui::paint::Stroke {
-                width: 3.0,
-                align: og_ui::paint::StrokeAlign::Inside,
-                dash: [0.0; 2],
-                dash_offset: 0.0,
-                dash_cap: og_ui::paint::Cap::Butt,
-                paint: og_ui::paint::Paint::Solid(Srgba::rgb(255, 255, 255).into()),
-            }],
-            ..Default::default()
-        });
-        ui.close();
-        ui.end();
-        // Painter order: level, then emission.
-        let items = &ui.frame().items;
-        let order = |want: &dyn Fn(&DrawCmd) -> bool| {
-            items
-                .iter()
-                .enumerate()
-                .find(|(_, it)| want(&it.cmd))
-                .map(|(k, it)| (it.level, k))
-        };
-        let background =
-            order(&|c| matches!(c, DrawCmd::Quad { .. })).expect("the background quad");
-        let rim = order(&|c| {
-            matches!(c, DrawCmd::Shape { shape, .. }
-                if matches!(shape.mode, og_draw::UiMode::Stroke(_)))
-        })
-        .expect("the rim");
-        assert!(
-            rim > background,
-            "rim {rim:?} under background {background:?}"
-        );
-    }
 }
 
 /// A document element's `part` attribute is the part its style dresses
@@ -1604,43 +1373,64 @@ fn css_parts_share_the_css_cascade_and_markup_hosts() {
 
 #[test]
 fn part_transitions_retarget_and_restore_the_rendered_value() {
-    use og_ui::dress::PartRef;
-    let mut ui = ui_with_font(test_font_metrics());
-    ui.set_part_css("button::part(base) { opacity: 0.2; background: #000; transition: opacity 200ms linear, background 200ms linear; } button::part(base):hover { opacity: 1; background: #fff; }").unwrap();
-    let step = |ui: &mut Ui, hovered| {
-        ui.begin(InputFrame::default(), Viewport::new(100.0, 100.0));
-        ui.column(
-            "owner",
-            Element {
-                width: Size::px(80.0),
-                height: Size::px(40.0),
-                part: Some(PartRef::of("Button", "base", None).flag_if(hovered, "hover")),
-                ..Element::column()
-            },
-            |_| {},
+    let mut d = base_part(
+        "button::part(base) { opacity: 0.2; background: #000; transition: opacity 200ms linear, background 200ms linear; } button::part(base):hover { opacity: 1; background: #fff; }",
+    );
+    let step = |d: &mut Doc, hovered| {
+        d.step(over(hovered));
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
         );
-        ui.end();
-        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
-        ui.frame()
-            .items
-            .iter()
-            .find_map(|item| item.cmd.filled().map(|(_, color)| color))
-            .expect("the part's painted box")
+        first_fill(&d.ui)
     };
-    assert_eq!(step(&mut ui, false)[3], 0.2);
-    assert_eq!(step(&mut ui, true)[3], 0.2);
+    assert_eq!(step(&mut d, false)[3], 0.2);
+    assert_eq!(step(&mut d, true)[3], 0.2);
     for _ in 0..5 {
-        step(&mut ui, true);
+        step(&mut d, true);
     }
-    let half = step(&mut ui, true);
+    let half = step(&mut d, true);
     assert!((half[3] - 0.6).abs() < 0.001, "{half:?}");
     assert!(half[0] > 0.0 && half[0] < 1.0, "{half:?}");
-    let saved = ui.save_state();
-    let rest = (0..4).map(|_| step(&mut ui, false)).collect::<Vec<_>>();
-    ui.restore_state(&saved).unwrap();
+    let saved = d.ui.save_state();
+    let rest = (0..4).map(|_| step(&mut d, false)).collect::<Vec<_>>();
+    d.ui.restore_state(&saved).unwrap();
     for expected in rest {
-        assert_eq!(step(&mut ui, false), expected);
+        assert_eq!(step(&mut d, false), expected);
     }
+}
+
+/// One `button` 80 × 40 at the top left of a 100 × 100 frame, its part
+/// CSS `css` alone.
+fn base_part(css: &str) -> Doc {
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_part_css(css).unwrap();
+    mounted(
+        ui,
+        r#"<column><button id="B"></button></column>
+<style>#B { width: 80px; height: 40px; }</style>"#,
+        &[],
+        Viewport::new(100.0, 100.0),
+    )
+}
+
+/// The input of a tick with the pointer over the button or away.
+fn over(hovered: bool) -> InputFrame {
+    if hovered {
+        InputFrame::hover(40.0, 20.0)
+    } else {
+        InputFrame::default()
+    }
+}
+
+/// The first box filled (the button's base part's).
+fn first_fill(ui: &Ui) -> [f32; 4] {
+    ui.frame()
+        .items
+        .iter()
+        .find_map(|item| item.cmd.filled().map(|(_, color)| color))
+        .expect("the part's painted box")
 }
 
 /// A part's style is kept from tick to tick while nothing it is resolved
@@ -1649,27 +1439,12 @@ fn part_transitions_retarget_and_restore_the_rendered_value() {
 /// transition got to instead of taking its unhovered style as it was kept.
 #[test]
 fn a_part_left_right_after_it_is_entered_transitions_back() {
-    use og_ui::dress::PartRef;
-    let mut ui = ui_with_font(test_font_metrics());
-    ui.set_part_css("button::part(base) { opacity: 0.2; background: #000; transition: opacity 200ms linear; } button::part(base):hover { opacity: 1; }").unwrap();
+    let mut d = base_part(
+        "button::part(base) { opacity: 0.2; background: #000; transition: opacity 200ms linear; } button::part(base):hover { opacity: 1; }",
+    );
     let mut step = |hovered| {
-        ui.begin(InputFrame::default(), Viewport::new(100.0, 100.0));
-        ui.column(
-            "owner",
-            Element {
-                width: Size::px(80.0),
-                height: Size::px(40.0),
-                part: Some(PartRef::of("Button", "base", None).flag_if(hovered, "hover")),
-                ..Element::column()
-            },
-            |_| {},
-        );
-        ui.end();
-        ui.frame()
-            .items
-            .iter()
-            .find_map(|item| item.cmd.filled().map(|(_, color)| color[3]))
-            .expect("the part's painted box")
+        d.step(over(hovered));
+        first_fill(&d.ui)[3]
     };
     for _ in 0..3 {
         assert_eq!(step(false), 0.2);
@@ -1731,42 +1506,33 @@ fn document_part_css_is_scoped_and_inherits_authored_host_facts() {
 
 #[test]
 fn part_keyframes_keep_delay_direction_and_replay() {
-    use og_ui::dress::PartRef;
-    let mut ui = ui_with_font(test_font_metrics());
-    ui.set_part_css("button::part(base) { background: red; animation: pulse-ring 200ms 100ms linear 2 alternate both; } @keyframes pulse-ring { from { opacity: 0.2; } to { opacity: 0.8; } }").unwrap();
-    let step = |ui: &mut Ui| {
-        ui.begin(InputFrame::default(), Viewport::new(100.0, 100.0));
-        ui.column(
-            "owner",
-            Element {
-                width: Size::px(80.0),
-                height: Size::px(40.0),
-                part: Some(PartRef::of("Button", "base", None)),
-                ..Element::column()
-            },
-            |_| {},
+    let mut d = base_part(
+        "button::part(base) { background: red; animation: pulse-ring 200ms 100ms linear 2 alternate both; } @keyframes pulse-ring { from { opacity: 0.2; } to { opacity: 0.8; } }",
+    );
+    let step = |d: &mut Doc| {
+        d.step(InputFrame::default());
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
         );
-        ui.end();
-        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
-        ui.frame()
-            .items
-            .iter()
-            .find_map(|i| i.cmd.filled().map(|(_, c)| c[3]))
-            .unwrap()
+        first_fill(&d.ui)[3]
     };
-    let samples: Vec<_> = (0..19).map(|_| step(&mut ui)).collect();
+    // The mount's build is the first tick.
+    let mut samples = vec![first_fill(&d.ui)[3]];
+    samples.extend((1..19).map(|_| step(&mut d)));
     for (tick, expected) in [(0, 0.2), (5, 0.2), (12, 0.5), (18, 0.8)] {
         assert!((samples[tick] - expected).abs() < 0.001, "{samples:?}");
     }
-    let saved = ui.save_state();
-    let back: Vec<_> = (0..13).map(|_| step(&mut ui)).collect();
+    let saved = d.ui.save_state();
+    let back: Vec<_> = (0..13).map(|_| step(&mut d)).collect();
     assert!(
         (back[5] - 0.5).abs() < 0.001 && (back[11] - 0.2).abs() < 0.001,
         "{back:?}"
     );
-    ui.restore_state(&saved).unwrap();
+    d.ui.restore_state(&saved).unwrap();
     for expected in back {
-        assert_eq!(step(&mut ui), expected);
+        assert_eq!(step(&mut d), expected);
     }
 }
 
@@ -1890,15 +1656,18 @@ fn reflected_part_constructors_keep_typed_hosts_and_state_semantics() {
 
 #[test]
 fn progress_part_keyframes_advance_without_host_changes() {
-    let mut ui = dressed(
+    let ui = dressed(
         "progress::part(track) { background: #000; }
          progress::part(fill) { background: #fff; animation: signal 1200ms linear infinite alternate; }
          @keyframes signal { from { opacity: 0.65; } to { opacity: 1; } }",
     );
-    let step = |ui: &mut Ui| {
-        ui.begin(InputFrame::default(), Viewport::new(300.0, 100.0));
-        ui.progress("Meter", 0.5, ProgressDesc::default());
-        ui.end();
+    let mut d = mounted(
+        ui,
+        r#"<column><progress id="Meter" value="0.5"></progress></column>"#,
+        &[],
+        Viewport::new(300.0, 100.0),
+    );
+    let fill = |ui: &Ui| {
         ui.frame()
             .items
             .iter()
@@ -1907,50 +1676,55 @@ fn progress_part_keyframes_advance_without_host_changes() {
             .expect("white progress fill")
             .1[3]
     };
-    let first = step(&mut ui);
+    let step = |d: &mut Doc| {
+        d.step(InputFrame::default());
+        fill(&d.ui)
+    };
+    // The mount's build is the first tick.
+    let first = fill(&d.ui);
     for _ in 0..17 {
-        step(&mut ui);
+        step(&mut d);
     }
-    let quarter = step(&mut ui);
+    let quarter = step(&mut d);
     assert!((first - 0.65).abs() < 0.001, "{first}");
     assert!((quarter - 0.7375).abs() < 0.001, "{quarter}");
-    let saved = ui.save_state();
-    let later: Vec<_> = (0..65).map(|_| step(&mut ui)).collect();
+    let saved = d.ui.save_state();
+    let later: Vec<_> = (0..65).map(|_| step(&mut d)).collect();
     assert!(later[53] > later[64], "alternate reverses after 72 ticks");
-    ui.restore_state(&saved).unwrap();
+    d.ui.restore_state(&saved).unwrap();
     for expected in later {
-        assert_eq!(step(&mut ui), expected);
+        assert_eq!(step(&mut d), expected);
     }
-    ui.set_part_css(
+    d.ui.set_part_css(
         "progress::part(fill) { background: #fff; animation: finish 100ms linear forwards; }
          @keyframes finish { from { opacity: 0.65; } to { opacity: 1; } }",
     )
     .unwrap();
     for _ in 0..10 {
-        step(&mut ui);
+        step(&mut d);
     }
-    assert_eq!(step(&mut ui), 1.0);
+    assert_eq!(step(&mut d), 1.0);
     assert_eq!(
-        ui.frame().stats.painted,
+        d.ui.frame().stats.painted,
         0,
         "finished animation reuses paint"
     );
-    ui.set_part_css(
+    d.ui.set_part_css(
         "progress::part(fill) { background: #fff; animation: again 1200ms linear infinite; }
          @keyframes again { from { opacity: 0.65; } to { opacity: 1; } }",
     )
     .unwrap();
     for _ in 0..3 {
-        step(&mut ui);
+        step(&mut d);
     }
-    ui.set_part_css("progress::part(fill) { background: #fff; opacity: 0.8; }")
+    d.ui.set_part_css("progress::part(fill) { background: #fff; opacity: 0.8; }")
         .unwrap();
     for _ in 0..3 {
-        step(&mut ui);
+        step(&mut d);
     }
-    assert!((step(&mut ui) - 0.8).abs() < 0.001);
+    assert!((step(&mut d) - 0.8).abs() < 0.001);
     assert_eq!(
-        ui.frame().stats.painted,
+        d.ui.frame().stats.painted,
         0,
         "removed animation reuses paint"
     );
@@ -1973,67 +1747,34 @@ fn text_field_and_spinner_parts_keep_boxes_states_and_host_input() {
          textarea::part(frame) { padding: 7px; background: #808000; }",
     )
     .unwrap();
-    let mut values = [
-        "Hi".to_string(),
-        "42".into(),
-        "pw".into(),
-        "x".into(),
-        "Area".into(),
-    ];
-    let tick = |ui: &mut Ui, input, values: &mut [String; 5]| {
-        ui.begin(input, Viewport::new(600.0, 600.0));
-        ui.open("Root", Element::column());
-        let [name, number, secret, bad, area] = values;
-        ui.text_field("Name", name, &FieldDesc::default());
-        ui.text_field(
-            "Count",
-            number,
-            &FieldDesc {
-                input_type: InputType::Number,
-                ..Default::default()
-            },
-        );
-        ui.text_field(
-            "Secret",
-            secret,
-            &FieldDesc {
-                input_type: InputType::Password,
-                ..Default::default()
-            },
-        );
-        ui.text_field(
-            "Bad",
-            bad,
-            &FieldDesc {
-                invalid: true,
-                ..Default::default()
-            },
-        );
-        ui.text_area("Notes", area, &TextAreaDesc::default());
-        ui.close();
-        ui.end();
-    };
-    let press = |ui: &mut Ui, path: &str, dx: f32, values: &mut [String; 5]| {
-        let e = ui.element(path).unwrap().clone();
-        let pointer = og_core::math::Vec2::new(e.x + e.width * dx, e.y + e.height / 2.0);
-        for down in [true, false] {
-            tick(
-                ui,
-                InputFrame {
-                    pointer,
-                    pointer_inside: true,
-                    down,
-                    pressed: down,
-                    released: !down,
-                    ..Default::default()
-                },
-                values,
-            );
-        }
-    };
-    for _ in 0..3 {
-        tick(&mut ui, InputFrame::default(), &mut values);
+    let mut d = mounted(
+        ui,
+        r#"<column id="Root">
+  <input id="Name" bind:value={$name} />
+  <input id="Count" type="number" bind:value={$count} />
+  <input id="Secret" type="password" bind:value={$secret} />
+  <input id="Bad" aria-invalid="true" bind:value={$bad} />
+  <textarea id="Notes" bind:value={$area}></textarea>
+</column>"#,
+        &[
+            ("name", json!("Hi")),
+            ("count", json!("42")),
+            ("secret", json!("pw")),
+            ("bad", json!("x")),
+            ("area", json!("Area")),
+        ],
+        Viewport::new(600.0, 600.0),
+    );
+    for _ in 0..2 {
+        d.step(InputFrame::default());
     }
+    let press = |d: &mut Doc, path: &str, dx: f32| {
+        let e = at(&d.ui, path);
+        press_at(
+            d,
+            og_core::math::Vec2::new(e.x + e.width * dx, e.y + e.height / 2.0),
+        );
+    };
     let texts = |ui: &Ui| -> Vec<(String, f32)> {
         ui.frame()
             .items
@@ -2058,58 +1799,55 @@ fn text_field_and_spinner_parts_keep_boxes_states_and_host_input() {
             .map(|(r, _)| r)
             .collect::<Vec<_>>()
     };
+    let ui = &d.ui;
     for (host, part, role) in [
-        ("Root/Name", "frame", "textbox"),
-        ("Root/Notes", "frame", "textbox"),
-        ("Root/Count/Increment", "button", "button"),
-        ("Root/Secret/Reveal", "reveal", "button"),
+        ("Name", "frame", "textbox"),
+        ("Notes", "frame", "textbox"),
+        ("Count/Increment", "button", "button"),
+        ("Secret/Reveal", "reveal", "button"),
     ] {
-        let h = ui.element(host).unwrap();
+        let h = at(ui, host);
         assert_eq!(h.role, role, "{host}");
-        let p = ui.element(&format!("{host}/::part({part})#0")).unwrap();
+        let p = at(ui, &format!("{host}/::part({part})#0"));
         assert_eq!(p.kind, "part", "{host}");
         assert!(p.role.is_empty(), "{host}");
         assert_eq!((p.x, p.y, p.width, p.height), (h.x, h.y, h.width, h.height));
     }
     // The frame's padding and border inset the text; its background is
     // its own box's, by state.
-    let name = ui.element("Root/Name").unwrap().clone();
-    let hi = texts(&ui).into_iter().find(|t| t.0 == "Hi").unwrap();
+    let name = at(ui, "Name");
+    let hi = texts(ui).into_iter().find(|t| t.0 == "Hi").unwrap();
     assert_eq!(hi.1 - name.x, 13.0);
-    assert!(fill(&ui, [0, 255, 0]).iter().any(|r| r.y == name.y));
-    let bad = ui.element("Root/Bad").unwrap().clone();
-    assert!(fill(&ui, [255, 0, 0]).iter().any(|r| r.y == bad.y));
-    let notes = ui.element("Root/Notes").unwrap().clone();
-    let area = texts(&ui).into_iter().find(|t| t.0 == "Area").unwrap();
+    assert!(fill(ui, [0, 255, 0]).iter().any(|r| r.y == name.y));
+    let bad = at(ui, "Bad");
+    assert!(fill(ui, [255, 0, 0]).iter().any(|r| r.y == bad.y));
+    let notes = at(ui, "Notes");
+    let area = texts(ui).into_iter().find(|t| t.0 == "Area").unwrap();
     assert_eq!(area.1 - notes.x, 7.0);
-    assert!(fill(&ui, [128, 128, 0]).iter().any(|r| r.y == notes.y));
-    let inc = ui.element("Root/Count/Increment").unwrap().clone();
-    assert!(fill(&ui, [255, 0, 255]).iter().any(|r| r.x == inc.x));
-    assert!(fill(&ui, [0, 255, 255]).len() == 1);
+    assert!(fill(ui, [128, 128, 0]).iter().any(|r| r.y == notes.y));
+    let inc = at(ui, "Count/Increment");
+    assert!(fill(ui, [255, 0, 255]).iter().any(|r| r.x == inc.x));
+    assert!(fill(ui, [0, 255, 255]).len() == 1);
     // Presses and typing reach the hosts.
-    press(&mut ui, "Root/Count/Increment", 0.5, &mut values);
-    assert_eq!(values[1], "43");
-    press(&mut ui, "Root/Secret/Reveal", 0.5, &mut values);
-    assert_eq!(
-        ui.element("Root/Secret/Reveal").unwrap().text,
-        "Hide password"
-    );
-    press(&mut ui, "Root/Name", 0.9, &mut values);
-    assert!(ui.focus_path(0).ends_with("/Name"));
-    tick(
-        &mut ui,
-        InputFrame {
-            text: "!".into(),
-            ..Default::default()
-        },
-        &mut values,
-    );
-    assert_eq!(values[0], "Hi!");
+    press(&mut d, "Count/Increment", 0.5);
+    d.step(InputFrame::default());
+    let count = d.read("count");
+    assert!(count == json!("43") || count == json!(43), "{count}");
+    press(&mut d, "Secret/Reveal", 0.5);
+    assert_eq!(at(&d.ui, "Secret/Reveal").text, "Hide password");
+    press(&mut d, "Name", 0.9);
+    assert!(d.ui.focus_path(0).ends_with("/Name"));
+    d.step(InputFrame {
+        text: "!".into(),
+        ..Default::default()
+    });
+    d.step(InputFrame::default());
+    assert_eq!(d.read("name"), json!("Hi!"));
     for _ in 0..20 {
-        tick(&mut ui, InputFrame::default(), &mut values);
+        d.step(InputFrame::default());
     }
-    assert!(fill(&ui, [0, 0, 255]).iter().any(|r| r.y == name.y));
-    assert!(!fill(&ui, [0, 255, 0]).iter().any(|r| r.y == name.y));
+    assert!(fill(&d.ui, [0, 0, 255]).iter().any(|r| r.y == name.y));
+    assert!(!fill(&d.ui, [0, 255, 0]).iter().any(|r| r.y == name.y));
 }
 
 /// An undressed text control draws as before its frame became a box: one
@@ -2118,29 +1856,25 @@ fn text_field_and_spinner_parts_keep_boxes_states_and_host_input() {
 /// moved by the frame's border.
 #[test]
 fn undressed_text_frames_keep_the_hosts_box_and_inset() {
-    let mut ui = ui_with_font(test_font());
-    let mut value = "Hello".to_string();
-    let mut invalid = "Bad".to_string();
-    for _ in 0..3 {
-        ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
-        ui.open("Root", Element::column());
-        ui.text_field("Name", &mut value, &FieldDesc::default());
-        ui.text_field(
-            "Bad",
-            &mut invalid,
-            &FieldDesc {
-                invalid: true,
-                ..Default::default()
-            },
-        );
-        ui.close();
-        ui.end();
+    let d = mounted(
+        ui_with_font(test_font()),
+        r#"<column id="Root">
+  <input id="Name" bind:value={$name} />
+  <input id="Bad" aria-invalid="true" bind:value={$bad} />
+</column>"#,
+        &[("name", json!("Hello")), ("bad", json!("Bad"))],
+        Viewport::new(600.0, 400.0),
+    );
+    let mut d = d;
+    for _ in 0..2 {
+        d.step(InputFrame::default());
     }
+    let ui = &d.ui;
     let pad = ui.theme().space.md;
     let control = ui.theme().palette.control.linear();
-    for (path, text) in [("Root/Name", "Hello"), ("Root/Bad", "Bad")] {
-        let host = ui.element(path).unwrap().clone();
-        let frame = ui.element(&format!("{path}/::part(frame)#0")).unwrap();
+    for (path, text) in [("Name", "Hello"), ("Bad", "Bad")] {
+        let host = at(ui, path);
+        let frame = at(ui, &format!("{path}/::part(frame)#0"));
         assert_eq!(
             (frame.x, frame.y, frame.width, frame.height),
             (host.x, host.y, host.width, host.height)

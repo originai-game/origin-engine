@@ -79,18 +79,60 @@ thread_local! {
     static LABEL: RefCell<Option<String>> = const { RefCell::new(None) };
     /// The engine and the tick its system last built the label on.
     static BUILT: std::cell::Cell<(u32, u64)> = const { std::cell::Cell::new((0, 0)) };
+    /// The engines whose UI mounts [`STATUS`].
+    static MOUNTED: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
+}
+
+/// The label: the text of store `text` (empty: nothing drawn).
+const STATUS: &str = r#"<meta name="component" content="status">
+<text id="Status">{$text}</text>"#;
+
+/// One host operation on `ui`'s stores.
+fn store(ui: &mut og_ui::Ui, command: Value) {
+    use og_ui::reactive::wire;
+    let reply =
+        wire::decode(&ui.apply_reactive(&wire::encode(&json!([command])).unwrap())).unwrap();
+    assert_eq!(reply[0]["ok"], true, "{reply}");
 }
 
 impl Hooks for Disk {
     fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
-        if call.kind == 0
-            && call.id == BUILD
-            && let Some(text) = LABEL.with(|l| l.borrow().clone())
-        {
+        if call.kind == 0 && call.id == BUILD {
+            let label = LABEL.with(|l| l.borrow().clone());
+            let first = MOUNTED.with(|m| !m.borrow().contains(&call.engine));
+            if label.is_none() && first {
+                return Ok(String::new());
+            }
             let ui = shared_ui(call.engine).expect("the engine's UI");
-            ui.lock()
-                .label("Status", &text, og_ui::LabelDesc::default());
-            BUILT.with(|b| b.set((b.get().0, og_world_get_tick(b.get().0) as u64)));
+            let mut ui = ui.lock();
+            let source = og_ui::reactive::SourceId::new("test", "text");
+            let text = label.clone().unwrap_or_default();
+            if first {
+                MOUNTED.with(|m| m.borrow_mut().push(call.engine));
+                store(
+                    &mut ui,
+                    json!({"op": "signal", "source": source, "initial": text}),
+                );
+                ui.define_document(
+                    og_ui::UiDocument::parse("ui/status.svelte", STATUS).expect("parses"),
+                );
+                ui.mount_document(
+                    og_ui::reactive::SourceId::new("test", "status"),
+                    "status",
+                    [("text".to_string(), source.clone())].into(),
+                    Default::default(),
+                    &og_ui::bind::NoEnv,
+                )
+                .expect("mounts");
+            }
+            // Read when the UI's end builds the document.
+            store(
+                &mut ui,
+                json!({"op": "set", "source": source, "value": text}),
+            );
+            if label.is_some() {
+                BUILT.with(|b| b.set((b.get().0, og_world_get_tick(b.get().0) as u64)));
+            }
         }
         Ok(String::new())
     }

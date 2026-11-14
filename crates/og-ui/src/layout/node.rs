@@ -1417,3 +1417,134 @@ impl Node {
         self.layout.used.scroll || self.layout.used.scroll_x
     }
 }
+
+#[cfg(test)]
+mod tests {
+    //! Container variants ([`crate::element::Variant`] with
+    //! `Query::container`), which only the builder sets: a document's
+    //! `@container` rules resolve in its cascade instead.
+    use crate::*;
+
+    fn image(ui: &mut Ui, id: &str, width: Size, height: Size) {
+        ui.image(
+            id,
+            ImageDesc {
+                width,
+                height,
+                ..ImageDesc::default()
+            },
+        );
+    }
+
+    fn rect(ui: &Ui, path: &str) -> [f32; 4] {
+        let e = ui
+            .element(path)
+            .unwrap_or_else(|| panic!("no element {path}"));
+        [e.x, e.y, e.width, e.height]
+    }
+
+    /// A container variant reads its element's inline size: a vertical
+    /// element's height. Its patch sets the physical sides.
+    #[test]
+    fn a_container_variant_follows_the_writing_mode() {
+        let build = |ui: &mut Ui, height: f32| {
+            ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+            let props = Props {
+                variants: vec![Variant {
+                    when: Query {
+                        min_width: 200.0,
+                        container: true,
+                        ..Query::default()
+                    },
+                    set: Patch {
+                        padding: Some(Insets {
+                            top: 7.0,
+                            ..Insets::default()
+                        }),
+                        ..Patch::default()
+                    },
+                }],
+                ..Props::default()
+            };
+            // vertical-rl: block-start the right, inline-start the top.
+            let el = Element {
+                width: Size::Fixed(250.0),
+                height: Size::Fixed(height),
+                vertical: Some([1, 2, 3, 0]),
+                ..Element::column()
+            };
+            ui.open_with("V", el, props);
+            image(ui, "Kid", Size::Fixed(10.0), Size::Fixed(20.0));
+            ui.close();
+            ui.end();
+        };
+        let mut ui = Ui::new(UiDesc::default());
+        build(&mut ui, 300.0);
+        let (v, kid) = (rect(&ui, "V"), rect(&ui, "V/Kid"));
+        assert_eq!(kid[1] - v[1], 7.0, "300px down: the padding on top");
+        build(&mut ui, 150.0);
+        let (v, kid) = (rect(&ui, "V"), rect(&ui, "V/Kid"));
+        assert_eq!(kid[1] - v[1], 0.0, "150px down: none, though 250px across");
+    }
+
+    /// A container variant is matched at the inline size its element ends
+    /// the layout with. A box whose width follows its height by its aspect
+    /// ratio is laid out at its content's width first: a variant that
+    /// matched there and not at its final width sets nothing, neither its
+    /// box nor its arrangement.
+    #[test]
+    fn a_container_variant_that_stops_matching_sets_nothing() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.open(
+            "Column",
+            Element {
+                width: Size::Fixed(700.0),
+                height: Size::Fixed(160.0),
+                cross: Cross::Start,
+                ..Element::column()
+            },
+        );
+        let props = Props {
+            variants: vec![Variant {
+                when: Query {
+                    max_width: 100.0,
+                    container: true,
+                    ..Query::default()
+                },
+                set: Patch {
+                    layout: Some(LayoutMode::Grid),
+                    columns: Some(vec![Track::Px(10.0), Track::Px(60.0)]),
+                    gap: Some(0.0),
+                    ..Patch::default()
+                },
+            }],
+            ..Props::default()
+        };
+        let el = Element {
+            width: Size::fit(),
+            height: Size::grow(),
+            aspect: 4.0,
+            padding: Insets::all(4.0),
+            gap: 4.0,
+            ..Element::row()
+        };
+        ui.open_with("Wide", el, props);
+        ui.label("A", "ab", LabelDesc::default());
+        ui.label("B", "cd", LabelDesc::default());
+        ui.close();
+        ui.close();
+        ui.end();
+        let (wide, a, b) = (
+            rect(&ui, "Column/Wide"),
+            rect(&ui, "Column/Wide/A"),
+            rect(&ui, "Column/Wide/B"),
+        );
+        assert_eq!(wide[2], 616.0, "four times its inner height, padded");
+        assert_eq!(
+            b[0] - a[0],
+            a[2] + 4.0,
+            "a row with its own gap, not the variant's grid: {a:?} {b:?}"
+        );
+    }
+}

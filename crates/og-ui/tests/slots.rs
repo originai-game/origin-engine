@@ -18,21 +18,17 @@ fn missing_art_marks_stay_small_and_square_in_every_slot_kind() {
         for (width, height) in [(390.0, 844.0), (1280.0, 720.0), (32.0, 96.0)] {
             let mut ui = Ui::new(UiDesc::default());
             ui.set_style_name("placeholder-test");
-            ui.begin(InputFrame::default(), Viewport::new(1280.0, 900.0));
-            ui.art(
-                "Art",
-                &ArtDesc {
-                    spec: SlotSpec::new("fixture", kind),
-                    width: Size::Fixed(width),
-                    height: Size::Fixed(height),
-                    texture: None,
-                    size: None,
-                    label: String::new(),
-                    offset: [0.0; 2],
-                    nearest: false,
-                },
+            let mut d = crate::support::Doc::with_ui(
+                ui,
+                &format!(
+                    r#"<meta name="component" content="t">
+<div><art id="Art" kind="{}" style="width: {width}px; height: {height}px"></art></div>"#,
+                    kind.name()
+                ),
             );
-            ui.end();
+            d.viewport = Viewport::new(1280.0, 900.0);
+            d.step(InputFrame::default());
+            let ui = &d.ui;
             let marks: Vec<_> = ui
                 .frame()
                 .items

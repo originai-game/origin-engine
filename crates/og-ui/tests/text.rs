@@ -28,58 +28,41 @@ use crate::support;
 
 use og_core::glam::Vec2;
 use og_ui::*;
+use serde_json::json;
 use support::*;
 
-struct Rig {
-    ui: Ui,
-    value: String,
-    area: String,
-    vp: Viewport,
-}
+/// A 300 px text field over a three-row, 200 px text area.
+const FORM: &str = r#"<meta name="component" content="t">
+<column id="Form">
+  <input id="Name" bind:value={$value} />
+  <textarea id="Notes" bind:value={$area} rows="3"></textarea>
+</column>
+<style>
+#Name { width: 300px; }
+#Notes { width: 200px; }
+</style>"#;
 
-fn build(ui: &mut Ui, value: &mut String, area: &mut String) -> (Response, Response) {
-    let mut r = (Response::default(), Response::default());
-    ui.column("Form", Element::column(), |ui| {
-        r.0 = ui.text_field(
-            "Name",
-            value,
-            &FieldDesc {
-                width: Some(Size::Fixed(300.0)),
-                ..FieldDesc::default()
-            },
-        );
-        r.1 = ui.text_area(
-            "Notes",
-            area,
-            &TextAreaDesc {
-                width: Some(Size::Fixed(200.0)),
-                rows: 3,
-                ..TextAreaDesc::default()
-            },
-        );
-    });
-    r
+struct Rig {
+    d: Doc,
 }
 
 impl Rig {
     fn new(value: &str) -> Rig {
-        Rig {
-            ui: ui_with_font(test_font()),
-            value: value.into(),
-            area: String::new(),
-            vp: Viewport::new(800.0, 600.0),
-        }
+        let mut d = Doc::with_font(
+            FORM,
+            &[("value", json!(value)), ("area", json!(""))],
+            test_font(),
+        );
+        d.viewport = Viewport::new(800.0, 600.0);
+        Rig { d }
     }
 
-    fn step(&mut self, input: InputFrame) -> (Response, Response) {
-        self.ui.begin(input, self.vp);
-        let r = build(&mut self.ui, &mut self.value, &mut self.area);
-        self.ui.end();
-        r
+    fn step(&mut self, input: InputFrame) {
+        self.d.step(input);
     }
 
     fn rect(&self, id: &str) -> (f32, f32, f32, f32) {
-        let e = self.ui.element(id).expect(id);
+        let e = self.d.get(id);
         (e.x, e.y, e.width, e.height)
     }
 
@@ -123,13 +106,32 @@ impl Rig {
         self.click(x + w - 2.0, y + h / 2.0, false);
     }
 
-    fn target(&self) -> TextTarget {
-        self.ui
+    /// The focused text control's selection and whether it is composing
+    /// (`UiFrame::text_input`).
+    fn target(&self) -> (String, bool) {
+        let t = self
+            .d
+            .ui
             .frame()
             .text_input
             .clone()
-            .expect("a focused text control")
+            .expect("a focused text control");
+        (t.selection, t.composing)
     }
+}
+
+/// The text commands drawn: (text, size, width, top).
+fn drawn_texts(ui: &Ui) -> Vec<(String, f32, f32, f32)> {
+    ui.frame()
+        .items
+        .iter()
+        .filter_map(|i| match &i.cmd {
+            DrawCmd::Text {
+                text, size, bounds, ..
+            } => Some((text.clone(), *size, bounds.width, bounds.y)),
+            _ => None,
+        })
+        .collect()
 }
 
 #[test]
@@ -137,54 +139,42 @@ fn an_auto_fit_label_shrinks_by_type_steps_then_cuts() {
     // A title at xl in a 160 px column: a short one keeps xl, a longer one
     // takes the largest smaller step it fits at (never one it would also
     // fit at a step up), and one too long even at meta is meta and cut.
-    let mut ui = ui_with_font(test_font());
-    let ramp = ui.theme().type_ramp;
-    let (xl, meta) = (ramp.xl, ramp.meta);
     let texts = [
         "Gold",
         "Hidden treasures!",
         "The hidden treasures of the drowned bell tower",
     ];
-    let draw = |ui: &mut Ui| {
-        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-        ui.column(
-            "Col",
-            Element {
-                width: Size::Fixed(160.0),
-                ..Element::column()
-            },
-            |ui| {
-                for (k, t) in texts.iter().enumerate() {
-                    ui.label(
-                        ui_idi("T", k as u32),
-                        t,
-                        LabelDesc {
-                            step: Some(xl),
-                            nowrap: true,
-                            ellipsis: true,
-                            fit_min: Some(meta),
-                            width: Size::grow(),
-                            ..LabelDesc::default()
-                        },
-                    );
-                }
-            },
-        );
-        ui.end();
-        ui.frame()
-            .items
-            .iter()
-            .filter_map(|i| match &i.cmd {
-                DrawCmd::Text {
-                    text, size, bounds, ..
-                } => Some((text.clone(), *size, bounds.width)),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-    };
+    let mut d = Doc::with_font(
+        &format!(
+            r#"<meta name="component" content="t">
+<column id="Col">
+  <text id="T0">{}</text>
+  <text id="T1">{}</text>
+  <text id="T2">{}</text>
+</column>
+<style>
+#Col {{ width: 160px; }}
+text {{
+  font: var(--text-xl);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -og-fit-min: meta;
+  width: stretch;
+}}
+</style>"#,
+            texts[0], texts[1], texts[2]
+        ),
+        &[],
+        test_font(),
+    );
+    d.viewport = Viewport::new(800.0, 600.0);
+    let ramp = d.ui.theme().type_ramp;
+    let (xl, meta) = (ramp.xl, ramp.meta);
     // Twice: the second frame lays out from the first's cache.
     for _ in 0..2 {
-        let drawn = draw(&mut ui);
+        d.step(InputFrame::default());
+        let drawn = drawn_texts(&d.ui);
         let at = |k: usize| {
             drawn
                 .iter()
@@ -203,7 +193,7 @@ fn an_auto_fit_label_shrinks_by_type_steps_then_cuts() {
         );
         assert!(mid.2 <= 160.5, "{mid:?}");
         // Not one step smaller than it needs: at the next ramp size up it overflows.
-        let m = ui.fonts().body.metrics.clone();
+        let m = d.ui.fonts().body.metrics.clone();
         let up = [ramp.lg, ramp.xl, ramp.base, ramp.reading]
             .iter()
             .map(|s| s.size)
@@ -221,59 +211,31 @@ fn an_auto_fit_label_shrinks_by_type_steps_then_cuts() {
 
 #[test]
 fn labels_cut_with_an_ellipsis_where_they_do_not_fit() {
-    let mut ui = ui_with_font(test_font());
     let long = "A label far too long for the narrow column it sits in";
-    let step = |ui: &mut Ui| {
-        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-        ui.column(
-            "Col",
-            Element {
-                width: Size::Fixed(160.0),
-                ..Element::column()
-            },
-            |ui| {
-                ui.label(
-                    "One",
-                    long,
-                    LabelDesc {
-                        nowrap: true,
-                        ellipsis: true,
-                        width: Size::grow(),
-                        ..LabelDesc::default()
-                    },
-                );
-                ui.label(
-                    "Two",
-                    long,
-                    LabelDesc {
-                        ellipsis: true,
-                        max_lines: 2,
-                        width: Size::grow(),
-                        ..LabelDesc::default()
-                    },
-                );
-                ui.label(
-                    "Fits",
-                    "Short",
-                    LabelDesc {
-                        nowrap: true,
-                        ellipsis: true,
-                        ..LabelDesc::default()
-                    },
-                );
-            },
-        );
-        ui.end();
-    };
-    step(&mut ui);
-    let texts: Vec<(String, f32, f32)> = ui
-        .frame()
-        .items
-        .iter()
-        .filter_map(|i| match &i.cmd {
-            DrawCmd::Text { text, bounds, .. } => Some((text.clone(), bounds.width, bounds.y)),
-            _ => None,
-        })
+    let mut d = Doc::with_font(
+        &format!(
+            r#"<meta name="component" content="t">
+<column id="Col">
+  <text id="One">{long}</text>
+  <text id="Two">{long}</text>
+  <row><text id="Fits">Short</text></row>
+</column>
+<style>
+#Col {{ width: 160px; }}
+text {{ overflow: hidden; text-overflow: ellipsis; }}
+#One, #Two {{ width: stretch; }}
+#One, #Fits {{ white-space: nowrap; }}
+#Two {{ line-clamp: 2; }}
+</style>"#
+        ),
+        &[],
+        test_font(),
+    );
+    d.viewport = Viewport::new(800.0, 600.0);
+    d.step(InputFrame::default());
+    let texts: Vec<(String, f32, f32)> = drawn_texts(&d.ui)
+        .into_iter()
+        .map(|(text, _, width, y)| (text, width, y))
         .collect();
     // The test font has no "…": its ellipsis is three stops.
     let cut = |t: &str| t.ends_with('…') || t.ends_with("...");
@@ -292,11 +254,7 @@ fn labels_cut_with_an_ellipsis_where_they_do_not_fit() {
         texts.iter().any(|t| t.0 == "Short"),
         "a text that fits is not cut"
     );
-    assert_eq!(
-        ui.element("One").expect("one").text,
-        long,
-        "the probe reads the whole text"
-    );
+    assert_eq!(d.get("One").text, long, "the probe reads the whole text");
 }
 
 #[test]
@@ -305,13 +263,13 @@ fn the_edit_state_is_saved_and_restored() {
     rig.focus_field();
     rig.keys(&[UiKey::Left, UiKey::Left], true, false);
     rig.compose("zz");
-    let saved = rig.ui.save_state();
+    let saved = rig.d.ui.save_state();
     let before = rig.target();
     rig.keys(&[UiKey::Home], false, false);
     rig.compose("");
-    rig.ui.restore_state(&saved).expect("restores");
+    rig.d.ui.restore_state(&saved).expect("restores");
     rig.step(InputFrame::default());
     let after = rig.target();
-    assert_eq!(after.selection, before.selection);
-    assert!(after.composing);
+    assert_eq!(after.0, before.0);
+    assert!(after.1);
 }

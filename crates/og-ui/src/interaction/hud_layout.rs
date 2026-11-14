@@ -3,15 +3,15 @@
 //! scaled and faded by the player in an edit mode, each placement kept per
 //! player under the element's key. The game saves the layout in its
 //! settings ([`Ui::hud_layout`]) and gives it back on the next run
-//! ([`Ui::set_hud_layout`]); [`Ui::hud_layout_editor`] is the edit mode's
+//! ([`Ui::set_hud_layout`]); the built-in `hud-editor` screen is the edit mode's
 //! panel.
 
+use crate::DrawCmd;
 use crate::element::Customize;
 use crate::input::InputFrame;
-use crate::layout::{Rect, Size};
+use crate::layout::Rect;
 use crate::style::Srgba;
-use crate::ui::{ButtonDesc, ButtonVariant, LabelDesc, PanelDesc, Ui};
-use crate::{DrawCmd, Id};
+use crate::ui::Ui;
 use og_core::glam::Vec2;
 use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
@@ -53,26 +53,6 @@ pub struct HudEditInfo {
     pub keys: Vec<String>,
     /// The player changed the layout this tick (a move ended, a step, a
     /// reset): the time to save it.
-    pub changed: bool,
-}
-
-/// What [`Ui::hud_layout_editor`] shows. Empty labels take English ones.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct HudEditorDesc {
-    pub title: String,
-    pub size_label: String,
-    pub opacity_label: String,
-    pub next_label: String,
-    pub reset_label: String,
-    pub done_label: String,
-}
-
-/// What the editor's buttons did this tick.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct HudEditorResponse {
-    /// Done was pressed: the edit mode is off from the next tick.
-    pub done: bool,
-    /// The layout changed this tick.
     pub changed: bool,
 }
 
@@ -425,141 +405,6 @@ impl Ui {
             }
         }
     }
-
-    /// The HUD edit mode's panel (docs/ui.md §2.1): the selected element's
-    /// name, size and opacity steps, Next (the next element, for keys and
-    /// pads), Reset and Done. Build it while [`Ui::hud_edit`] is on; Done
-    /// turns the edit mode off. Presses on it edit nothing behind it.
-    pub fn hud_layout_editor(
-        &mut self,
-        id: impl Into<Id>,
-        desc: &HudEditorDesc,
-    ) -> HudEditorResponse {
-        let or = |s: &str, d: &'static str| {
-            if s.is_empty() {
-                d.to_owned()
-            } else {
-                s.to_owned()
-            }
-        };
-        let info = self.hud_edit();
-        let mut out = HudEditorResponse::default();
-        let t = self.env.theme;
-        self.open_panel(
-            id,
-            PanelDesc {
-                gap: Some(t.space.sm),
-                ..PanelDesc::default()
-            },
-        );
-        self.front.hud_editor_key = self.tree.nodes[self.tree.parent()].key;
-        self.label(
-            "Title",
-            &or(&desc.title, "Edit HUD"),
-            LabelDesc {
-                step: Some(t.type_ramp.lg),
-                nowrap: true,
-                ..LabelDesc::default()
-            },
-        );
-        self.label(
-            "Selected",
-            if info.selected.is_empty() {
-                "—"
-            } else {
-                &info.selected
-            },
-            LabelDesc {
-                color: Some(t.palette.ink_muted),
-                nowrap: true,
-                ..LabelDesc::default()
-            },
-        );
-        let square = ButtonDesc {
-            square: true,
-            disabled: info.selected.is_empty(),
-            ..ButtonDesc::default()
-        };
-        let mut step = |ui: &mut Ui, name: &str, label: String, s: i32, o: i32| {
-            ui.open(
-                Id::from(name),
-                crate::Element {
-                    direction: crate::Direction::Row,
-                    gap: t.space.sm,
-                    cross: crate::Cross::Center,
-                    ..crate::Element::default()
-                },
-            );
-            ui.label(
-                "Name",
-                &label,
-                LabelDesc {
-                    width: Size::grow(),
-                    nowrap: true,
-                    ..LabelDesc::default()
-                },
-            );
-            if ui.button("Less", "−", square).clicked {
-                ui.hud_step(-s, -o);
-                out.changed = true;
-            }
-            if ui.button("More", "+", square).clicked {
-                ui.hud_step(s, o);
-                out.changed = true;
-            }
-            ui.close();
-        };
-        step(self, "Size", or(&desc.size_label, "Size"), 1, 0);
-        step(self, "Opacity", or(&desc.opacity_label, "Opacity"), 0, 1);
-        self.open(
-            "Actions",
-            crate::Element {
-                direction: crate::Direction::Row,
-                gap: t.space.sm,
-                ..crate::Element::default()
-            },
-        );
-        if self
-            .button("Next", &or(&desc.next_label, "Next"), ButtonDesc::default())
-            .clicked
-            && !info.keys.is_empty()
-        {
-            let at = info.keys.iter().position(|k| *k == info.selected);
-            let next = at.map_or(0, |i| (i + 1) % info.keys.len());
-            self.hud_select(&info.keys[next]);
-        }
-        if self
-            .button(
-                "Reset",
-                &or(&desc.reset_label, "Reset"),
-                ButtonDesc {
-                    variant: ButtonVariant::Ghost,
-                    ..ButtonDesc::default()
-                },
-            )
-            .clicked
-        {
-            self.hud_reset(if info.selected.is_empty() { "*" } else { "" });
-            out.changed = true;
-        }
-        if self
-            .button(
-                "Done",
-                &or(&desc.done_label, "Done"),
-                ButtonDesc {
-                    variant: ButtonVariant::Primary,
-                    ..ButtonDesc::default()
-                },
-            )
-            .clicked
-        {
-            self.set_hud_edit(false);
-            out.done = true;
-        }
-        self.close();
-        self.close();
-        out
-    }
 }
 
 impl crate::ui::Interaction {
@@ -610,20 +455,17 @@ impl crate::ui::Interaction {
 
     /// The frame's customisable elements, after its transforms, for the
     /// next tick's edit mode.
-    pub(crate) fn hud_collect(
-        &mut self,
-        order: &[usize],
-        tree: &crate::ui::Tree,
-        front: &crate::ui::Front,
-    ) {
+    pub(crate) fn hud_collect(&mut self, order: &[usize], tree: &crate::ui::Tree) {
         let mut targets = Vec::new();
-        let editor = match front.hud_editor_key {
-            0 => Rect::default(),
-            k => tree
-                .index
-                .find(k)
-                .map_or(Rect::default(), |i| tree.nodes[i].placed.screen),
-        };
+        // The built-in `hud-editor` screen's dock: presses there edit nothing.
+        let editor = order
+            .iter()
+            .map(|&i| &tree.nodes[i])
+            .find(|n| {
+                n.el.part
+                    .is_some_and(|p| p.component == "hud-editor" && p.part == "dock")
+            })
+            .map_or(Rect::default(), |n| n.placed.screen);
         for &i in order {
             let n = &tree.nodes[i];
             let Some(spec) = &n.props.customize else {
@@ -670,5 +512,85 @@ impl crate::ui::Tree {
             let p = interaction.placement(&key);
             self.nodes[i].style.custom = [p.x, p.y, p.scale, p.opacity];
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+    use og_core::glam::Vec2;
+
+    fn at(p: Vec2) -> InputFrame {
+        InputFrame {
+            pointer: p,
+            pointer_inside: true,
+            ..InputFrame::default()
+        }
+    }
+
+    /// A customisable map whose move is locked (`Customize::lock_move`,
+    /// which no document declares) at 450, 60.
+    fn hud(ui: &mut Ui, input: InputFrame) {
+        ui.begin(input, Viewport::new(800.0, 600.0));
+        ui.open(
+            "Map",
+            Element {
+                width: Size::Fixed(120.0),
+                height: Size::Fixed(80.0),
+                ..Element::default()
+            },
+        );
+        ui.close();
+        ui.set_props(Props {
+            position: Position::Absolute,
+            insets: Edges {
+                start: Some(450.0),
+                top: Some(60.0),
+                ..Edges::default()
+            },
+            customize: Some(Customize {
+                lock_move: true,
+                ..Customize::default()
+            }),
+            ..Props::default()
+        });
+        ui.end();
+    }
+
+    fn bounds(ui: &Ui) -> (f32, f32, f32, f32) {
+        let e = ui.element("Map").expect("the map");
+        (e.x, e.y, e.width, e.height)
+    }
+
+    /// In the edit mode a locked element is selected by a press but a
+    /// drag does not move it.
+    #[test]
+    fn a_locked_element_is_selected_but_not_moved() {
+        let mut ui = Ui::new(UiDesc::default());
+        hud(&mut ui, InputFrame::default());
+        ui.set_hud_edit(true);
+        hud(&mut ui, InputFrame::default());
+        let (mx, my, mw, mh) = bounds(&ui);
+        assert_eq!((mx, my, mw, mh), (450.0, 60.0, 120.0, 80.0));
+        for input in [
+            InputFrame {
+                pressed: true,
+                down: true,
+                ..at(Vec2::new(mx + mw / 2.0, my + mh / 2.0))
+            },
+            InputFrame {
+                down: true,
+                ..at(Vec2::new(400.0, 300.0))
+            },
+            InputFrame {
+                released: true,
+                ..at(Vec2::new(400.0, 300.0))
+            },
+        ] {
+            hud(&mut ui, input);
+        }
+        assert_eq!(ui.hud_edit().selected, "Map", "selected by its path");
+        assert_eq!(bounds(&ui), (mx, my, mw, mh));
+        assert_eq!(ui.hud_layout(0), "{}");
     }
 }

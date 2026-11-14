@@ -345,8 +345,34 @@ fn a_60_hz_tick_drawn_at_144_hz_is_blended_by_the_accumulator() {
 
 const TAG: u32 = 2;
 
-/// Tag: moves the entity 0.1 m a tick along x and anchors a box to it.
+/// Tag: moves the entity 0.1 m a tick along x; [`mount_tag`] anchors a box
+/// to it.
 struct Tagger(Rc<std::cell::Cell<f64>>);
+
+/// A 40×20 red box anchored by its centre to `entity`, as a document
+/// mounted in engine `e`'s UI (its end builds it every tick).
+fn mount_tag(e: u32, entity: u64) {
+    let text = format!(
+        r#"<meta name="component" content="tag">
+<div id="Root">
+  <anchor id="Tag" entity={{{entity}}}><div id="Block"></div></anchor>
+</div>
+<style>
+#Block {{ width: 40px; height: 20px; background: rgb(255 0 0); }}
+</style>"#
+    );
+    let ui = og_runtime::shared_ui(e).expect("the engine's UI");
+    let mut ui = ui.lock();
+    ui.define_document(og_ui::UiDocument::parse("ui/tag.svelte", &text).expect("parses"));
+    ui.mount_document(
+        og_ui::reactive::SourceId::new("test", "tag"),
+        "tag",
+        Default::default(),
+        Default::default(),
+        &og_ui::bind::NoEnv,
+    )
+    .expect("mounts");
+}
 
 impl Hooks for Tagger {
     fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
@@ -361,25 +387,6 @@ impl Hooks for Tagger {
                 "og.Transform".into(),
                 at,
             )));
-            let desc = og_ui::WorldAnchorDesc {
-                target: og_ui::WorldTarget::Entity(e as u64),
-                pivot: og_ui::Anchor::Center,
-                ..og_ui::WorldAnchorDesc::default()
-            };
-            let ui = og_runtime::shared_ui(w).expect("the engine's UI");
-            let mut ui = ui.lock();
-            ui.open_world_anchor("Tag", desc);
-            ui.open(
-                "Block",
-                og_ui::Element {
-                    width: og_ui::Size::Fixed(40.0),
-                    height: og_ui::Size::Fixed(20.0),
-                    background: Some(og_ui::Srgba::rgb(255, 0, 0)),
-                    ..og_ui::Element::default()
-                },
-            );
-            ui.close();
-            ui.close();
         }
         Ok(String::new())
     }
@@ -439,6 +446,7 @@ fn an_anchored_element_stays_on_its_entity_between_ticks() {
         .as_f64()
         .unwrap(),
     );
+    mount_tag(e, entity.get() as u64);
     let camera = json!({ "position": { "x": 0, "y": 0, "z": 5 }, "fov": 50.0 }).to_string();
     value(write_resource(e, "og.Camera", &camera));
     let mut offsets = Vec::new();

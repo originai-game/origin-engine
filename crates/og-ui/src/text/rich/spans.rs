@@ -80,7 +80,7 @@ impl Ui {
     /// later explicit declarations winning independently for each property.
     /// Invalid ranges warn and do not style text; all attributes are returned
     /// unchanged, including unknown names and zero-length metadata markers.
-    pub fn rich_text_spans(
+    pub(crate) fn rich_text_spans(
         &mut self,
         id: impl Into<crate::Id>,
         text: &str,
@@ -294,4 +294,72 @@ fn resolve_color(color: &ColorRef, theme: &crate::Theme) -> Srgba {
     color
         .srgb(theme)
         .unwrap_or_else(|| Srgba::from_linear(crate::paint::MISSING_TOKEN))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{DrawCmd, Fonts, InputFrame, UiDesc, UiFont, Viewport};
+
+    fn span(name: &str, position: u32, length: u32) -> TextSpan {
+        TextSpan {
+            name: name.into(),
+            position,
+            length,
+            properties: BTreeMap::new(),
+        }
+    }
+
+    /// Moved from tests/rich.rs (`italic_underline_strike_and_outline_keep_their_span`,
+    /// `structured_scalars_…`): a style's outline reaches only its own span's
+    /// glyphs, and every attribute comes back unchanged, unknown names and
+    /// out-of-range ones included. No document reaches either: a text
+    /// `::part()` takes no `-webkit-text-stroke`, and a document never sees
+    /// the response.
+    #[test]
+    fn outline_keeps_its_span_and_attributes_come_back_unchanged() {
+        let mut ui = Ui::new(UiDesc {
+            fonts: Fonts {
+                body: UiFont {
+                    handle: Some(og_draw::FontHandle::from_bits(1)),
+                    metrics: crate::FontMetrics::fixed(0.55),
+                },
+                ..Fonts::default()
+            },
+            ..UiDesc::default()
+        });
+        let attributes = [
+            span("outline", 4, 4),
+            span("game", 1, 2),
+            span("outside", u32::MAX, 2),
+        ];
+        ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
+        let r = ui.rich_text_spans(
+            "Line",
+            "a b loud c",
+            &attributes,
+            RichTextDesc::default(),
+            |a| TextSpanStyle {
+                outline: (a.name == "outline").then(|| (2.0, ColorRef::token("danger"))),
+                ..Default::default()
+            },
+        );
+        ui.end();
+        assert_eq!(r.spans, attributes);
+        let mut outlined = Vec::new();
+        let mut plain = Vec::new();
+        for i in &ui.frame().items {
+            match &i.cmd {
+                DrawCmd::StyledText { text, effects } => {
+                    if let DrawCmd::Text { text, .. } = &**text {
+                        outlined.push((text.clone(), effects.outline.is_some()));
+                    }
+                }
+                DrawCmd::Text { text, .. } => plain.push(text.clone()),
+                _ => {}
+            }
+        }
+        assert_eq!(outlined, [("loud".to_string(), true)], "{plain:?}");
+        assert!(plain.iter().all(|t| !t.contains("loud")), "{plain:?}");
+    }
 }

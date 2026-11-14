@@ -904,8 +904,7 @@ impl Ui {
         });
         let mapped = self.apply_world(&order, world_seeds.as_deref());
         self.layout.plane_quads(&mut self.world, &self.tree);
-        self.interaction
-            .hud_collect(&custom, &self.tree, &self.front);
+        self.interaction.hud_collect(&custom, &self.tree);
         self.tree.world_finish(
             &mut self.world,
             &self.env,

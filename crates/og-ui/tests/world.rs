@@ -14,7 +14,7 @@
 //! mapped to its layout), particles that differ between two runs.
 
 use crate::support::*;
-use og_core::glam::{Quat, Vec2, Vec3};
+use og_core::glam::{Vec2, Vec3};
 use og_draw::{Overlay, UiMassInstance, UiMassKind, UiMassSpace, UiMassTemplate};
 use og_ui::*;
 
@@ -60,12 +60,6 @@ fn run(ui: &mut Ui, ticks: u32, mut build: impl FnMut(&mut Ui)) {
         build(ui);
         ui.end();
     }
-}
-
-fn tag(ui: &mut Ui, id: &str, desc: WorldAnchorDesc) -> AnchorInfo {
-    ui.world_anchor(id, desc, |ui, _| {
-        ui.label("Name", "Brenna", LabelDesc::default())
-    })
 }
 
 fn rect(ui: &Ui, path: &str) -> (f32, f32, f32, f32) {
@@ -135,50 +129,71 @@ fn mass_elements_pool_age_out_and_replay() {
     assert!(ui.world_frame().batches.is_empty());
 }
 
+/// A world panel takes a press through the pointer ray: the ray meets its
+/// quad where its button is drawn, so the button is pressed, and a
+/// pointer handler on the panel reads the point in its own box; a press
+/// off the quad reaches nothing.
 #[test]
 fn a_world_panel_takes_a_press_through_the_pointer_ray() {
     let mut ui = ui();
-    let desc = WorldPanelDesc {
-        target: None,
-        width: 480.0,
-        height: 320.0,
-        quad: Some((
-            WorldTarget::Point(Vec3::ZERO),
-            Quat::IDENTITY,
-            Vec2::new(3.0, 2.0),
-        )),
-        ..WorldPanelDesc::default()
-    };
+    let doc = r#"<meta name="component" content="term">
+<div id="Root">
+<panel id="Terminal" world at="0 0 0" size="3 2" onpointerdown={down}>
+  <text id="Title">Terminal</text>
+  <button id="Run" onclick={run}>Run</button>
+</panel>
+</div>
+<style>#Terminal { width: 480px; height: 320px; }</style>"#;
+    ui.define_document(UiDocument::parse("term.svelte", doc).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "term"),
+        "term",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
     let tick = |ui: &mut Ui, i: InputFrame| {
         ui.begin(i, vp());
         ui.set_world_view(Some(view()));
-        let mut clicked = false;
-        let info = ui.world_panel("Terminal", desc.clone(), |ui, _| {
-            ui.label("Title", "Terminal", LabelDesc::default());
-            clicked = ui.button("Run", "Run", ButtonDesc::default()).clicked;
-        });
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
         ui.end();
-        (info, clicked)
+        ui.take_doc_events()
     };
-    tick(&mut ui, InputFrame::default());
+    for _ in 0..2 {
+        tick(&mut ui, InputFrame::default());
+    }
     // Where the button is on the panel, as a world point, on the screen.
-    let (bx, by, bw, bh) = rect(&ui, "Terminal/Run");
-    let (px, py, ..) = rect(&ui, "Terminal");
+    let (bx, by, bw, bh) = rect(&ui, "test:term/Terminal/Run");
+    let (px, py, ..) = rect(&ui, "test:term/Terminal");
     let u = (bx + bw / 2.0 - px) / 480.0;
     let v = (by + bh / 2.0 - py) / 320.0;
     let p = Vec3::new((u - 0.5) * 3.0, (0.5 - v) * 2.0, 0.0);
     let (sx, sy, _) = view().project(p, W, H).unwrap();
     let at = Vec2::new(sx, sy);
-    let (info, _) = tick(&mut ui, input(at, true, true, false));
-    assert!(info.pointed, "{info:?}");
-    assert!((info.x - u * 480.0).abs() < 1.0 && (info.y - v * 320.0).abs() < 1.0);
-    let (_, clicked) = tick(&mut ui, input(at, false, false, true));
-    assert!(clicked, "the panel's button took no press");
+    let events = tick(&mut ui, input(at, true, true, false));
+    let down = events
+        .iter()
+        .find(|e| e.name == "down")
+        .unwrap_or_else(|| panic!("the ray met no panel: {events:?}"));
+    let (x, y) = (
+        down.value["x"].as_f64().unwrap() as f32,
+        down.value["y"].as_f64().unwrap() as f32,
+    );
+    assert!(
+        (x - u * 480.0).abs() < 1.0 && (y - v * 320.0).abs() < 1.0,
+        "the point in the panel's box: {x}, {y}"
+    );
+    let events = tick(&mut ui, input(at, false, false, true));
+    assert!(
+        events.iter().any(|e| e.name == "run"),
+        "the panel's button took no press: {events:?}"
+    );
     // Off the quad: nothing.
     let off = Vec2::new(40.0, 40.0);
-    tick(&mut ui, input(off, true, true, false));
-    let (info, clicked) = tick(&mut ui, input(off, false, false, true));
-    assert!(!clicked && !info.pointed);
+    let mut events = tick(&mut ui, input(off, true, true, false));
+    events.extend(tick(&mut ui, input(off, false, false, true)));
+    assert!(events.is_empty(), "{events:?}");
 }
 
 /// A document's `<panel world>` takes presses through the pointer ray on
@@ -430,82 +445,4 @@ fn a_document_ground_follows_the_camera_and_builds_nothing() {
         InputFrame::default(),
     );
     assert!(ui.frame().grounds.is_empty());
-}
-
-/// §15.1: a HUD plus 2,000 mass elements and 100 anchored elements in
-/// ≤ 1 ms of CPU a tick (build, lay out, place and record). A measurement
-/// for the reference machines, not the orb: `cargo test -p og-ui --release
-/// --test tests world::perf -- --ignored --nocapture`.
-#[test]
-#[ignore = "perf: run on the reference machines in release"]
-fn perf_hud_2000_mass_and_100_anchors_within_a_millisecond() {
-    let mut ui = ui();
-    let h = ui.define_mass("damage", numbers(), UiMassSpace::World);
-    let mut times = Vec::new();
-    for tick in 0..240u32 {
-        let start = std::time::Instant::now();
-        ui.begin(InputFrame::default(), vp());
-        ui.set_world_view(Some(view()));
-        ui.panel("Hud", PanelDesc::default(), |ui| {
-            for k in 0..12 {
-                ui.label(format!("Stat{k}"), "Health 100", LabelDesc::default());
-            }
-            ui.button("Menu", "Menu", ButtonDesc::default());
-        });
-        // About 2,000 alive: 42 a tick over a 48-tick life.
-        for i in 0..42 {
-            ui.spawn_mass(
-                h,
-                UiMassInstance {
-                    position: [(i as f32 - 21.0) * 0.2, 1.0, -((tick % 10) as f32)],
-                    value: (tick * 42 + i) as f32,
-                    color: [1.0; 4],
-                    scale: 1.0,
-                    ..Default::default()
-                },
-            );
-        }
-        for k in 0..100 {
-            let a = k as f32 * 0.37;
-            tag(
-                &mut ui,
-                &format!("Plate{k}"),
-                WorldAnchorDesc {
-                    target: WorldTarget::Point(Vec3::new(
-                        og_core::math::cos(a) * 4.0,
-                        1.0,
-                        og_core::math::sin(a) * 4.0 - 4.0,
-                    )),
-                    declutter: Declutter::Stack,
-                    occlusion: WorldOcclusion::Fade { alpha: 0.3 },
-                    scale: AnchorScale::Distance {
-                        reference: 5.0,
-                        min: 0.5,
-                        max: 1.5,
-                    },
-                    priority: k % 3,
-                    ..WorldAnchorDesc::default()
-                },
-            );
-        }
-        ui.end();
-        let mut o = Overlay::new(W, H, 1.0);
-        ui.frame().emit(
-            &EmitDesc {
-                layer: 1000,
-                time: 0.0,
-            },
-            &mut o,
-        );
-        ui.world_frame().emit(1000, &mut o);
-        if tick >= 48 {
-            times.push(start.elapsed().as_secs_f64() * 1000.0);
-        }
-    }
-    assert!(ui.mass_count(h) >= 1900, "{}", ui.mass_count(h));
-    times.sort_by(f64::total_cmp);
-    let median = times[times.len() / 2];
-    let p95 = times[times.len() * 95 / 100];
-    println!("world perf: median {median:.3} ms, p95 {p95:.3} ms a tick");
-    assert!(median <= 1.0, "median {median:.3} ms a tick");
 }

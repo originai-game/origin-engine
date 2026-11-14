@@ -5,29 +5,95 @@
 //! does not depend on a font. The rectangles the reasoning below predicts
 //! are asserted too, so the golden is checked, not just recorded.
 
-use crate::support;
+use crate::support::{self, mount_stores, set_store};
 
+use og_ui::reactive::SourceId;
 use og_ui::*;
 use serde_json::{Value, json};
 use std::path::PathBuf;
 use support::out_dir;
 
-fn image(ui: &mut Ui, id: impl Into<Id>, width: Size, height: Size) {
-    ui.image(
-        id,
-        ImageDesc {
-            width,
-            height,
-            ..ImageDesc::default()
-        },
-    );
+/// A UI measuring text at the fixed 0.5 em a character, with `text`
+/// defined and mounted (as `test:t`) with the test stores `stores`.
+fn mounted(text: &str, stores: &[(&str, Value)]) -> Ui {
+    let mut ui = Ui::new(UiDesc::default());
+    let doc = UiDocument::parse("ui/layout.svelte", text).unwrap_or_else(|e| panic!("{e:?}"));
+    let name = doc.name.clone();
+    ui.define_document(doc);
+    mount_stores(&mut ui, SourceId::new("test", "t"), &name, stores);
+    ui
 }
 
-fn label(ui: &mut Ui, id: &str, text: &str) {
-    ui.label(id, text, LabelDesc::default());
+/// One frame of the mounted documents at `viewport`.
+fn frame(ui: &mut Ui, viewport: Viewport) {
+    ui.begin(InputFrame::default(), viewport);
+    ui.build_retained_documents(&bind::NoEnv).expect("builds");
+    ui.end();
 }
 
-fn tree(ui: &mut Ui) {
+/// A list of `count` rows keyed `0`, `1`, …: each row's path is
+/// `Item#<n>`, as `ui_idi` named a repeated element.
+fn rows(count: u32) -> Value {
+    (0..count).map(|n| json!({ "id": n.to_string() })).collect()
+}
+
+const TREE: &str = r#"<meta name="component" content="layout">
+<column id="Tree">
+  <!-- A bar: fixed icon, text, a growing spacer and a growing badge capped at 50. -->
+  <row id="Bar">
+    <img id="Icon" />
+    <text id="Title">Hello</text>
+    <column id="Spacer"></column>
+    <img id="Badge" />
+  </row>
+  <!-- Six 50-wide tiles wrap three to a line in 190 inner pixels; a growing
+       seventh joins the second line and takes what is left of it. -->
+  <row id="Wrap">
+    {#each $tiles as tile (tile.id)}<img id="Tile" />{/each}
+    <img id="Fill" />
+  </row>
+  <!-- 98 + 35 + 40 = 173 in 150: the wrapping label gives up 23 and wraps. -->
+  <row id="Shrink">
+    <text id="Long">aaaa bbbb cccc</text>
+    <text id="Short">dd ee</text>
+    <img id="Box" />
+  </row>
+  <!-- Centred both ways; a quarter-width child next to a growing one. -->
+  <row id="Split">
+    <column id="Center"><text id="Mid">Hi</text></column>
+    <img id="Quarter" />
+    <img id="Rest" />
+  </row>
+  <!-- Free space between three boxes; a stretched column child. -->
+  <row id="Between">
+    {#each $dots as dot (dot.id)}<img id="Dot" />{/each}
+  </row>
+  <column id="Stack"><img id="Wide" /></column>
+</column>
+<style>
+#Tree { width: stretch; height: stretch; align-items: start; }
+#Bar { width: stretch; height: 40px; padding: 4px; gap: 8px; align-items: center; }
+#Icon { width: 32px; height: 32px; }
+#Spacer { width: stretch; }
+#Badge { width: stretch; max-width: 50px; height: 10px; }
+#Wrap { width: 200px; padding: 5px; gap: 10px; flex-wrap: wrap; }
+#Tile { width: 50px; height: 20px; }
+#Fill { width: stretch; height: 20px; }
+#Shrink { width: 150px; }
+#Box { width: 40px; height: 10px; }
+#Split { width: 200px; }
+#Center { width: 100px; height: 60px; justify-content: center; align-items: center; }
+#Quarter { width: 25%; height: 10px; }
+#Rest { width: stretch; height: stretch; }
+#Between { width: 200px; justify-content: space-between; }
+#Dot { width: 20px; height: 10px; }
+#Stack { width: 120px; padding: 0 10px; align-items: stretch; }
+#Wide { height: 5px; }
+</style>
+"#;
+
+fn tree() -> Ui {
+    let mut ui = mounted(TREE, &[("tiles", rows(6)), ("dots", rows(3))]);
     let viewport = Viewport {
         width: 400.0,
         height: 300.0,
@@ -41,163 +107,49 @@ fn tree(ui: &mut Ui) {
         coarse_pointer: false,
         ..Viewport::default()
     };
-    ui.begin(InputFrame::default(), viewport);
-    // A bar: fixed icon, text, a growing spacer and a growing badge capped at 50.
-    ui.row(
-        "Bar",
-        Element {
-            width: Size::grow(),
-            height: Size::Fixed(40.0),
-            padding: Insets::all(4.0),
-            gap: 8.0,
-            cross: Cross::Center,
-            ..Element::default()
-        },
-        |ui| {
-            image(ui, "Icon", Size::Fixed(32.0), Size::Fixed(32.0));
-            label(ui, "Title", "Hello");
-            ui.column(
-                "Spacer",
-                Element {
-                    width: Size::grow(),
-                    ..Element::default()
-                },
-                |_| {},
-            );
-            image(
-                ui,
-                "Badge",
-                Size::Grow {
-                    min: 0.0,
-                    max: 50.0,
-                },
-                Size::Fixed(10.0),
-            );
-        },
-    );
-    // Six 50-wide tiles wrap three to a line in 190 inner pixels; a growing
-    // seventh joins the second line and takes what is left of it.
-    ui.row(
-        "Wrap",
-        Element {
-            width: Size::Fixed(200.0),
-            padding: Insets::all(5.0),
-            gap: 10.0,
-            wrap: true,
-            ..Element::default()
-        },
-        |ui| {
-            for n in 0..6 {
-                image(ui, ui_idi("Tile", n), Size::Fixed(50.0), Size::Fixed(20.0));
-            }
-            image(ui, "Fill", Size::grow(), Size::Fixed(20.0));
-        },
-    );
-    // 98 + 35 + 40 = 173 in 150: the widest (a wrapping label) gives up 23 and wraps.
-    ui.row(
-        "Shrink",
-        Element {
-            width: Size::Fixed(150.0),
-            ..Element::default()
-        },
-        |ui| {
-            label(ui, "Long", "aaaa bbbb cccc");
-            label(ui, "Short", "dd ee");
-            image(ui, "Box", Size::Fixed(40.0), Size::Fixed(10.0));
-        },
-    );
-    // Centred both ways; a quarter-width child next to a growing one.
-    ui.row(
-        "Split",
-        Element {
-            width: Size::Fixed(200.0),
-            ..Element::default()
-        },
-        |ui| {
-            ui.column(
-                "Center",
-                Element {
-                    width: Size::Fixed(100.0),
-                    height: Size::Fixed(60.0),
-                    align: Align::Center,
-                    cross: Cross::Center,
-                    ..Element::default()
-                },
-                |ui| label(ui, "Mid", "Hi"),
-            );
-            image(ui, "Quarter", Size::percent(0.25), Size::Fixed(10.0));
-            image(ui, "Rest", Size::grow(), Size::grow());
-        },
-    );
-    // Free space between three boxes; a stretched column child.
-    ui.row(
-        "Between",
-        Element {
-            width: Size::Fixed(200.0),
-            align: Align::SpaceBetween,
-            ..Element::default()
-        },
-        |ui| {
-            for n in 0..3 {
-                image(ui, ui_idi("Dot", n), Size::Fixed(20.0), Size::Fixed(10.0));
-            }
-        },
-    );
-    ui.column(
-        "Stack",
-        Element {
-            width: Size::Fixed(120.0),
-            padding: Insets::xy(10.0, 0.0),
-            cross: Cross::Stretch,
-            ..Element::default()
-        },
-        |ui| image(ui, "Wide", Size::fit(), Size::Fixed(5.0)),
-    );
-    ui.end();
+    frame(&mut ui, viewport);
+    ui
 }
 
 fn rect(ui: &Ui, path: &str) -> [f32; 4] {
-    let e = ui
-        .element(path)
-        .unwrap_or_else(|| panic!("no element {path}"));
+    let e = ui.element(path).unwrap_or_else(|| {
+        let all: Vec<&str> = ui.elements().iter().map(|e| e.path.as_str()).collect();
+        panic!("no element {path}: {all:?}")
+    });
     [e.x, e.y, e.width, e.height]
+}
+
+/// Twelve nested columns around `Box` (140 wide; 100 high when `fixed`,
+/// else fitting its text `$text`) with a 30 × 10 `After` beside it.
+fn nested(fixed: bool) -> String {
+    let open: String = (0..12)
+        .map(|i| format!(r#"<column id="Ancestor{i}">"#))
+        .collect();
+    let height = if fixed { "height: 100px;" } else { "" };
+    format!(
+        r#"<meta name="component" content="nested">
+{open}<column id="Box"><text id="Text">{{$text}}</text></column><img id="After" />{close}
+<style>
+#Box {{ width: 140px; {height} }}
+#After {{ width: 30px; height: 10px; }}
+</style>
+"#,
+        close = "</column>".repeat(12)
+    )
 }
 
 #[test]
 fn fixed_boxes_bound_layout_invalidation_but_fitting_boxes_propagate_it() {
-    let build = |ui: &mut Ui, fixed: bool, text: &str| {
-        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-        for i in 0..12 {
-            ui.open(ui_idi("Ancestor", i), Element::column());
-        }
-        ui.open(
-            "Box",
-            Element {
-                width: Size::Fixed(140.0),
-                height: if fixed {
-                    Size::Fixed(100.0)
-                } else {
-                    Size::fit()
-                },
-                ..Element::column()
-            },
-        );
-        ui.label("Text", text, LabelDesc::default());
-        ui.close();
-        image(ui, "After", Size::Fixed(30.0), Size::Fixed(10.0));
-        for _ in 0..12 {
-            ui.close();
-        }
-        ui.end();
-    };
+    let vp = Viewport::new(800.0, 600.0);
     for fixed in [true, false] {
-        let mut cached = Ui::new(UiDesc::default());
-        build(&mut cached, fixed, "short");
+        let mut cached = mounted(&nested(fixed), &[("text", json!("short"))]);
+        frame(&mut cached, vp);
         let before = rect(&cached, "After");
         let text = "one two three four five six seven eight nine ten eleven twelve";
-        build(&mut cached, fixed, text);
-        let mut fresh = Ui::new(UiDesc::default());
-        build(&mut fresh, fixed, text);
+        set_store(&mut cached, "text", json!(text));
+        frame(&mut cached, vp);
+        let mut fresh = mounted(&nested(fixed), &[("text", json!(text))]);
+        frame(&mut fresh, vp);
         let geometry = |ui: &Ui| {
             ui.elements()
                 .iter()
@@ -208,46 +160,44 @@ fn fixed_boxes_bound_layout_invalidation_but_fitting_boxes_propagate_it() {
         assert!(rect(&cached, "Text")[3] > 20.0);
         if fixed {
             assert_eq!(rect(&cached, "After"), before);
-            assert!(cached.frame().stats.laid_out <= 2);
+            assert!(
+                cached.frame().stats.laid_out <= 2,
+                "{:?}",
+                cached.frame().stats
+            );
         } else {
             assert!(rect(&cached, "After")[1] > before[1]);
-            assert!(cached.frame().stats.laid_out > 12);
+            assert!(
+                cached.frame().stats.laid_out > 12,
+                "{:?}",
+                cached.frame().stats
+            );
         }
     }
 }
 
 #[test]
 fn fixed_box_size_and_placement_changes_still_invalidate_the_parent() {
-    let mut ui = Ui::new(UiDesc::default());
+    let px = |v: f32| json!(format!("{v}px"));
+    let mut ui = mounted(
+        r#"<meta name="component" content="placed">
+<div id="Root"><div id="Child" style:left={$x} style:width={$w} style:height={$h}></div></div>
+<style>#Child { position: absolute; top: 15px; }</style>
+"#,
+        &[("x", px(20.0)), ("w", px(30.0)), ("h", px(10.0))],
+    );
     for (x, width, height) in [(20.0, 30.0, 10.0), (80.0, 30.0, 10.0), (80.0, 70.0, 40.0)] {
-        ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
-        ui.open_with(
-            "Child",
-            Element {
-                width: Size::Fixed(width),
-                height: Size::Fixed(height),
-                ..Element::default()
-            },
-            Props {
-                position: Position::Absolute,
-                insets: Edges {
-                    start: Some(x),
-                    top: Some(15.0),
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-        );
-        ui.close();
-        ui.end();
+        set_store(&mut ui, "x", px(x));
+        set_store(&mut ui, "w", px(width));
+        set_store(&mut ui, "h", px(height));
+        frame(&mut ui, Viewport::new(400.0, 300.0));
         assert_eq!(rect(&ui, "Child"), [x, 15.0, width, height]);
     }
 }
 
 #[test]
 fn nested_rows_and_columns_lay_out_as_the_golden() {
-    let mut ui = Ui::new(UiDesc::default());
-    tree(&mut ui);
+    let ui = tree();
     let frame = ui.frame();
     assert!(frame.warnings.is_empty(), "{:?}", frame.warnings);
 
@@ -300,13 +250,29 @@ fn nested_rows_and_columns_lay_out_as_the_golden() {
     );
 }
 
-/// A screen document's full-bleed art (Position::Screen) stands on the
+/// A screen document's full-bleed art (`position: fixed`) stands on the
 /// whole surface, under the safe area its layer keeps clear; an absolute
 /// sibling stays in its parent's box; a fixed one sits by its end and
 /// bottom insets on the surface's corner.
 #[test]
 fn a_screen_placed_element_bleeds_under_the_safe_area() {
     let mut ui = Ui::new(UiDesc::default());
+    ui.define_document(
+        UiDocument::parse(
+            "ui/loading.svelte",
+            r#"<meta name="screen" content="loading">
+<column id="Loading"><div id="Art"></div><div id="Scrim"></div><div id="Corner"></div></column>
+<style>
+#Loading { width: stretch; height: stretch; }
+#Art { position: fixed; inset: 0; }
+#Scrim { position: absolute; inset: 0; }
+#Corner { position: fixed; right: 0; bottom: 0; width: 50px; height: 20px; }
+</style>
+"#,
+        )
+        .unwrap(),
+    );
+    support::mount_screen(&mut ui, "loading", &[]);
     let viewport = Viewport {
         width: 390.0,
         height: 844.0,
@@ -319,62 +285,7 @@ fn a_screen_placed_element_bleeds_under_the_safe_area() {
         },
         ..Viewport::default()
     };
-    let at = |p: Position, ins: Edges, w: Size, h: Size| {
-        (
-            Element {
-                width: w,
-                height: h,
-                ..Element::default()
-            },
-            Props {
-                position: p,
-                insets: ins,
-                ..Props::default()
-            },
-        )
-    };
-    let all = Edges {
-        start: Some(0.0),
-        top: Some(0.0),
-        end: Some(0.0),
-        bottom: Some(0.0),
-        ..Edges::default()
-    };
-    ui.begin(InputFrame::default(), viewport);
-    ui.column(
-        "Loading",
-        Element {
-            width: Size::grow(),
-            height: Size::grow(),
-            ..Element::default()
-        },
-        |ui| {
-            for (id, (el, props)) in [
-                ("Art", at(Position::Screen, all, Size::grow(), Size::grow())),
-                (
-                    "Scrim",
-                    at(Position::Absolute, all, Size::grow(), Size::grow()),
-                ),
-                (
-                    "Corner",
-                    at(
-                        Position::Screen,
-                        Edges {
-                            end: Some(0.0),
-                            bottom: Some(0.0),
-                            ..Edges::default()
-                        },
-                        Size::Fixed(50.0),
-                        Size::Fixed(20.0),
-                    ),
-                ),
-            ] {
-                ui.open_with(id, el, props);
-                ui.close();
-            }
-        },
-    );
-    ui.end();
+    frame(&mut ui, viewport);
     let r = |p: &str| {
         let e = ui.element(p).expect(p);
         (e.x, e.y, e.width, e.height)
@@ -382,109 +293,4 @@ fn a_screen_placed_element_bleeds_under_the_safe_area() {
     assert_eq!(r("Loading/Art"), (0.0, 0.0, 390.0, 844.0));
     assert_eq!(r("Loading/Scrim"), (0.0, 47.0, 390.0, 763.0));
     assert_eq!(r("Loading/Corner"), (340.0, 824.0, 50.0, 20.0));
-}
-
-/// A container variant reads its element's inline size: a vertical
-/// element's height. Its patch sets the physical sides.
-#[test]
-fn a_container_variant_follows_the_writing_mode() {
-    let build = |ui: &mut Ui, height: f32| {
-        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-        let props = Props {
-            variants: vec![Variant {
-                when: Query {
-                    min_width: 200.0,
-                    container: true,
-                    ..Query::default()
-                },
-                set: Patch {
-                    padding: Some(Insets {
-                        top: 7.0,
-                        ..Insets::default()
-                    }),
-                    ..Patch::default()
-                },
-            }],
-            ..Props::default()
-        };
-        // vertical-rl: block-start the right, inline-start the top.
-        let el = Element {
-            width: Size::Fixed(250.0),
-            height: Size::Fixed(height),
-            vertical: Some([1, 2, 3, 0]),
-            ..Element::column()
-        };
-        ui.open_with("V", el, props);
-        image(ui, "Kid", Size::Fixed(10.0), Size::Fixed(20.0));
-        ui.close();
-        ui.end();
-    };
-    let mut ui = Ui::new(UiDesc::default());
-    build(&mut ui, 300.0);
-    let (v, kid) = (rect(&ui, "V"), rect(&ui, "V/Kid"));
-    assert_eq!(kid[1] - v[1], 7.0, "300px down: the padding on top");
-    build(&mut ui, 150.0);
-    let (v, kid) = (rect(&ui, "V"), rect(&ui, "V/Kid"));
-    assert_eq!(kid[1] - v[1], 0.0, "150px down: none, though 250px across");
-}
-
-/// A container variant is matched at the inline size its element ends the
-/// layout with. A box whose width follows its height by its aspect ratio
-/// is laid out at its content's width first: a variant that matched there
-/// and not at its final width sets nothing, neither its box nor its
-/// arrangement.
-#[test]
-fn a_container_variant_that_stops_matching_sets_nothing() {
-    let mut ui = Ui::new(UiDesc::default());
-    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-    ui.open(
-        "Column",
-        Element {
-            width: Size::Fixed(700.0),
-            height: Size::Fixed(160.0),
-            cross: Cross::Start,
-            ..Element::column()
-        },
-    );
-    let props = Props {
-        variants: vec![Variant {
-            when: Query {
-                max_width: 100.0,
-                container: true,
-                ..Query::default()
-            },
-            set: Patch {
-                layout: Some(LayoutMode::Grid),
-                columns: Some(vec![Track::Px(10.0), Track::Px(60.0)]),
-                gap: Some(0.0),
-                ..Patch::default()
-            },
-        }],
-        ..Props::default()
-    };
-    let el = Element {
-        width: Size::fit(),
-        height: Size::grow(),
-        aspect: 4.0,
-        padding: Insets::all(4.0),
-        gap: 4.0,
-        ..Element::row()
-    };
-    ui.open_with("Wide", el, props);
-    label(&mut ui, "A", "ab");
-    label(&mut ui, "B", "cd");
-    ui.close();
-    ui.close();
-    ui.end();
-    let (wide, a, b) = (
-        rect(&ui, "Column/Wide"),
-        rect(&ui, "Column/Wide/A"),
-        rect(&ui, "Column/Wide/B"),
-    );
-    assert_eq!(wide[2], 616.0, "four times its inner height, padded");
-    assert_eq!(
-        b[0] - a[0],
-        a[2] + 4.0,
-        "a row with its own gap, not the variant's grid: {a:?} {b:?}"
-    );
 }

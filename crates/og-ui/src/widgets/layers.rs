@@ -3,55 +3,6 @@ use super::*;
 impl Ui {
     // ── layers ─────────────────────────────────────────────────────────────
 
-    /// Opens an anchored group; children follow until [`Ui::close`].
-    pub fn open_anchor(&mut self, id: impl Into<Id>, desc: AnchorDesc) {
-        let margin = desc.margin.unwrap_or(self.sizes().gutter);
-        let el = Element {
-            direction: desc.direction,
-            width: desc.width,
-            height: desc.height,
-            padding: desc.padding,
-            gap: desc.gap,
-            align: desc.align,
-            cross: desc.cross,
-            background: desc.background,
-            radius: desc.radius,
-            frame: desc.frame.or(Some(crate::style_file::StylePart::Panel)),
-            ..Element::default()
-        };
-        let i = self.open_layer(
-            "anchor",
-            id.into(),
-            el,
-            Float::Anchored {
-                anchor: desc.anchor,
-                margin,
-                dx: desc.offset.0,
-                dy: desc.offset.1,
-                over: desc.over,
-                tooltip: desc.tooltip,
-                avoid: desc.avoid,
-            },
-            NONE,
-        );
-        // A style's entrance and stagger for a screen panel, from the tick it
-        // first appears; an instant panel is settled from there (`h` 1).
-        let m = self.env.theme.art.motion;
-        if desc.background.is_some() && (m.enter.is_some() || m.stagger_ms > 0.0) {
-            let key = crate::id::child_key(self.tree.nodes[i].key, "enter");
-            let fresh = !self.has_anim(key);
-            let mut a = self.anim(key);
-            if fresh {
-                a.t = self.interaction.state.tick;
-                a.h = u64::from(desc.instant);
-            }
-            self.set_anim(key, a);
-            if a.h == 0 {
-                self.enter(i, a.t, m.enter);
-            }
-        }
-    }
-
     /// Plays a style entrance on layer `i` from tick `since`: its own
     /// transition (`kind`) and its controls' stagger.
     fn enter(&mut self, i: usize, since: u64, kind: Option<TransitionKind>) {
@@ -129,7 +80,12 @@ impl Ui {
     /// stays there while it is the topmost; Back and the backdrop dismiss it
     /// unless `locked`. The probe sees the backdrop as `<id>` and the panel
     /// as `<id>/Panel`.
-    pub fn open_modal(&mut self, id: impl Into<Id>, open: bool, desc: &ModalDesc) -> ModalResponse {
+    pub(crate) fn open_modal(
+        &mut self,
+        id: impl Into<Id>,
+        open: bool,
+        desc: &ModalDesc,
+    ) -> ModalResponse {
         let t = self.env.theme;
         let backdrop = self.open_layer(
             "modal",
@@ -255,7 +211,7 @@ impl Ui {
     }
 
     /// Closes a dialog opened with [`Ui::open_modal`] (its panel and backdrop).
-    pub fn close_modal(&mut self) {
+    pub(crate) fn close_modal(&mut self) {
         self.close();
         self.close();
     }
@@ -269,7 +225,7 @@ impl Ui {
     /// focus inside, the focus returns to what held it when it opened. Its
     /// content follows until [`Ui::close_dialog`]. Role dialog, named
     /// `desc.name`.
-    pub fn open_dialog(
+    pub(crate) fn open_dialog(
         &mut self,
         id: impl Into<Id>,
         open: bool,
@@ -376,7 +332,7 @@ impl Ui {
     }
 
     /// Closes a dialog opened with [`Ui::open_dialog`].
-    pub fn close_dialog(&mut self, desc: &DialogDesc) {
+    pub(crate) fn close_dialog(&mut self, desc: &DialogDesc) {
         if desc.modal {
             self.close_modal();
         } else {
@@ -480,7 +436,7 @@ impl Ui {
     /// presses in the hole reach what is under it. Focus stays with the
     /// controls under the hole and the layers above it. The probe sees the
     /// shades as `<id>/Top`, `Left`, `Right`, `Bottom` and the hole as `<id>/Hole`.
-    pub fn spotlight(
+    pub(crate) fn spotlight(
         &mut self,
         id: impl Into<Id>,
         hole: Option<crate::Rect>,

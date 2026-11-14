@@ -530,7 +530,7 @@ impl Ui {
     /// `Slider.reach`, `Slider.track`, `Slider.fill`, `Slider.knob`,
     /// `Slider.core`, `Slider.tick[passed]`, `Slider.bubble`. Role slider.
     /// Probe: `<id>`, `<id>/Track`, `<id>/Track/Knob`, `<id>/Head/Value`.
-    pub fn value_slider(
+    pub(crate) fn value_slider(
         &mut self,
         id: impl Into<Id>,
         value: f32,
@@ -753,7 +753,7 @@ impl Ui {
     /// past the other and kept `min_gap` apart; each knob is its own focus
     /// stop that Left and Right step. Probe: `<id>/Track/Low`,
     /// `<id>/Track/High`, `<id>/Head/Value`.
-    pub fn range_slider(
+    pub(crate) fn range_slider(
         &mut self,
         id: impl Into<Id>,
         (low, high): (f32, f32),
@@ -1030,7 +1030,7 @@ impl Ui {
     /// `Stepper.value`. Role spinbutton; its − and + are buttons under a
     /// finger and named images on a fine pointer. Probe: `<id>/Frame/Dec`,
     /// `<id>/Frame/Value`, `<id>/Frame/Inc`.
-    pub fn number_stepper(
+    pub(crate) fn number_stepper(
         &mut self,
         id: impl Into<Id>,
         value: f32,

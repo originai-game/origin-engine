@@ -17,6 +17,7 @@
 //! - grid tracks, stacks and the overlap report place things wrongly;
 //! - an unchanged frame lays out or rebuilds commands again.
 
+use crate::support::Doc;
 use og_ui::*;
 
 fn vp() -> Viewport {
@@ -29,26 +30,13 @@ fn vp() -> Viewport {
     }
 }
 
-fn fixed(w: f32, h: f32) -> Element {
-    Element {
-        width: Size::Fixed(w),
-        height: Size::Fixed(h),
-        ..Element::default()
-    }
-}
-
-/// A box with a background, `props` on it.
-fn boxed(ui: &mut Ui, id: &str, w: f32, h: f32, props: Props) {
-    ui.open_with(
-        id,
-        Element {
-            background: Some(Srgba::rgb(128, 128, 128)),
-            interactive: true,
-            ..fixed(w, h)
-        },
-        props,
-    );
-    ui.close();
+/// `text` mounted and laid out at [`vp`]; its root's path is the mount's,
+/// `test:t`.
+fn doc(text: &str) -> Doc {
+    let mut d = Doc::new(text, &[]);
+    d.viewport = vp();
+    d.step(InputFrame::default());
+    d
 }
 
 fn rect(ui: &Ui, path: &str) -> [f32; 4] {
@@ -57,7 +45,6 @@ fn rect(ui: &Ui, path: &str) -> [f32; 4] {
         .unwrap_or_else(|| panic!("no element {path}"));
     [e.x, e.y, e.width, e.height]
 }
-
 #[test]
 fn shared_curves_drive_ui_channels_and_survive_restore() {
     use og_tween::StepPosition::*;
@@ -135,95 +122,44 @@ fn shared_curves_drive_ui_channels_and_survive_restore() {
     }
 }
 
+/// A card stacking its art and a cost gem, and a tag placed over the card
+/// by its insets. The engine's own declared overlaps (a list's marker on
+/// its item), which a document cannot write, are checked where they are
+/// found (`element::frame`'s tests).
 #[test]
 fn a_stack_overlays_and_undeclared_overlap_is_reported() {
-    let mut ui = Ui::new(UiDesc::default());
-    let frame = |ui: &mut Ui, declared: bool| {
-        ui.begin(InputFrame::default(), vp());
-        ui.open(
-            "P",
-            Element {
-                padding: Insets::all(100.0),
-                ..Element::default()
-            },
-        );
-        ui.open_with(
-            "Card",
-            fixed(120.0, 160.0),
-            Props {
-                layout: LayoutMode::Stack,
-                ..Props::default()
-            },
-        );
-        boxed(ui, "Art", 120.0, 160.0, Props::default());
-        // The cost gem sits on the art's corner, on purpose or not.
-        boxed(
-            ui,
-            "Gem",
-            24.0,
-            24.0,
-            Props {
-                position: Position::Absolute,
-                insets: Edges {
-                    start: Some(-8.0),
-                    top: Some(-8.0),
-                    ..Edges::default()
-                },
-                overlaps: if declared {
-                    vec!["P/Card/Art".into()]
-                } else {
-                    Vec::new()
-                },
-                ..Props::default()
-            },
-        );
-        ui.close();
-        // A label pushed over the card by a negative inset: a bug.
-        boxed(
-            ui,
-            "Tag",
-            40.0,
-            20.0,
-            Props {
-                position: Position::Absolute,
-                insets: Edges {
-                    start: Some(100.0),
-                    top: Some(150.0),
-                    ..Edges::default()
-                },
-                ..Props::default()
-            },
-        );
-        ui.close();
-        ui.end();
-    };
-    frame(&mut ui, false);
-    assert_eq!(rect(&ui, "P/Card/Art"), [100.0, 100.0, 120.0, 160.0]);
-    assert_eq!(rect(&ui, "P/Card/Gem"), [92.0, 92.0, 24.0, 24.0]);
+    let d = doc(r#"<meta name="component" content="stack">
+<div id="P">
+  <stack id="Card"><div id="Art"></div><div id="Gem"></div></stack>
+  <div id="Tag"></div>
+</div>
+<style>
+#P { padding: 100px; }
+#Card { width: 120px; height: 160px; }
+#Art, #Gem, #Tag { background: #808080; }
+#Art { width: 120px; height: 160px; }
+/* The cost gem sits on the art's corner. */
+#Gem { position: absolute; left: -8px; top: -8px; width: 24px; height: 24px; }
+/* A label pushed over the card by its inset: a bug. */
+#Tag { position: absolute; left: 100px; top: 150px; width: 40px; height: 20px; }
+</style>
+"#);
+    let ui = &d.ui;
+    assert_eq!(rect(ui, "test:t/Card/Art"), [100.0, 100.0, 120.0, 160.0]);
+    assert_eq!(rect(ui, "test:t/Card/Gem"), [92.0, 92.0, 24.0, 24.0]);
     // Insets are from the parent's padding box, as CSS places them.
-    assert_eq!(rect(&ui, "P/Tag"), [100.0, 150.0, 40.0, 20.0]);
-    let pairs = |ui: &Ui| -> Vec<(String, String)> {
-        let mut v: Vec<_> = ui
-            .overlaps()
-            .iter()
-            .map(|o| (o.path.clone(), o.other.clone()))
-            .collect();
-        v.sort();
-        v
-    };
-    let all = pairs(&ui);
+    assert_eq!(rect(ui, "test:t/Tag"), [100.0, 150.0, 40.0, 20.0]);
+    let mut all: Vec<(String, String)> = ui
+        .overlaps()
+        .iter()
+        .map(|o| (o.path.clone(), o.other.clone()))
+        .collect();
+    all.sort();
     assert!(
-        all.contains(&("P/Card/Gem".into(), "P/Card/Art".into())),
+        all.contains(&("test:t/Card/Gem".into(), "test:t/Card/Art".into())),
         "{all:?}"
     );
-    assert!(all.iter().any(|(a, _)| a == "P/Tag"), "{all:?}");
-    frame(&mut ui, true);
-    let declared = pairs(&ui);
-    assert!(
-        !declared.contains(&("P/Card/Gem".into(), "P/Card/Art".into())),
-        "{declared:?}"
-    );
-    assert!(declared.iter().any(|(a, _)| a == "P/Tag"), "{declared:?}");
+    assert!(all.iter().any(|(a, _)| a == "test:t/Tag"), "{all:?}");
 }
 
 /// Siblings in a row's or a column's flow moved over each other (here by
@@ -233,37 +169,26 @@ fn a_stack_overlays_and_undeclared_overlap_is_reported() {
 /// the cross axis that stops early, the pairs in another order.
 #[test]
 fn siblings_moved_over_each_other_in_a_flow_are_reported_in_order() {
-    let mut ui = Ui::new(UiDesc::default());
-    let moved = |x: f32, y: f32| Props {
-        transform: Transform {
-            x,
-            y,
-            ..Transform::IDENTITY
-        },
-        ..Props::default()
-    };
-    ui.begin(InputFrame::default(), vp());
-    ui.open("Col", Element::column());
-    // Rows at y 0, 40, … 160; the first moved to 130..170.
-    boxed(&mut ui, "A0", 100.0, 40.0, moved(0.0, 130.0));
-    for k in 1..5 {
-        boxed(&mut ui, &format!("A{k}"), 100.0, 40.0, Props::default());
-    }
-    ui.close();
-    ui.open("Row", Element::row());
-    // Cells at x 0, 100, 200, 300; the first moved to 220..320.
-    boxed(&mut ui, "B0", 100.0, 40.0, moved(220.0, 0.0));
-    for k in 1..4 {
-        boxed(&mut ui, &format!("B{k}"), 100.0, 40.0, Props::default());
-    }
-    ui.close();
-    ui.end();
-    let shown: Vec<(String, String, bool)> = ui
-        .overlaps()
-        .iter()
-        .map(|o| (o.path.clone(), o.other.clone(), o.in_flow))
-        .collect();
-    let pair = |a: &str, b: &str| (a.to_string(), b.to_string(), true);
+    let d = doc(r#"<meta name="component" content="flow">
+<column id="Root">
+  <column id="Col"><div id="A0"></div><div id="A1"></div><div id="A2"></div><div id="A3"></div><div id="A4"></div></column>
+  <row id="Row"><div id="B0"></div><div id="B1"></div><div id="B2"></div><div id="B3"></div></row>
+</column>
+<style>
+#Root { align-items: start; }
+#Col > div, #Row > div { width: 100px; height: 40px; background: #808080; }
+/* Rows at y 0, 40, … 160; the first moved to 130..170. */
+#A0 { translate: 0 130px; }
+/* Cells at x 0, 100, 200, 300; the first moved to 220..320. */
+#B0 { translate: 220px 0; }
+</style>
+"#);
+    let shown: Vec<(String, String, bool)> =
+        d.ui.overlaps()
+            .iter()
+            .map(|o| (o.path.clone(), o.other.clone(), o.in_flow))
+            .collect();
+    let pair = |a: &str, b: &str| (format!("test:t/{a}"), format!("test:t/{b}"), true);
     assert_eq!(
         shown,
         [
@@ -277,98 +202,55 @@ fn siblings_moved_over_each_other_in_a_flow_are_reported_in_order() {
 
 #[test]
 fn a_badge_scrolled_out_of_its_list_overlaps_nothing_outside_it() {
-    let mut ui = Ui::new(UiDesc::default());
-    let frame = |ui: &mut Ui, list_h: f32| {
-        ui.begin(InputFrame::default(), vp());
-        ui.open(
-            "P",
-            Element {
-                direction: Direction::Column,
-                ..Element::default()
-            },
-        );
-        ui.open(
-            "List",
-            Element {
-                scroll: true,
-                ..fixed(200.0, list_h)
-            },
-        );
-        ui.open("Item", fixed(200.0, 300.0));
-        // A count badge low on a tall item: below the list's view when the
-        // list is short, over the bar that follows the list.
-        boxed(
-            ui,
-            "Count",
-            30.0,
-            20.0,
-            Props {
-                position: Position::Absolute,
-                insets: Edges {
-                    start: Some(10.0),
-                    top: Some(110.0),
-                    ..Edges::default()
-                },
-                ..Props::default()
-            },
-        );
-        ui.close();
-        ui.close();
-        boxed(ui, "Bar", 200.0, 50.0, Props::default());
-        ui.close();
-        ui.end();
-        ui.overlaps()
+    // A count badge low on a tall item: below the list's view when the
+    // list is short, over the bar that follows the list.
+    let pairs = |d: &Doc| {
+        d.ui.overlaps()
             .iter()
             .map(|o| (o.path.clone(), o.other.clone()))
             .collect::<Vec<_>>()
     };
     // The list shows 0..100 and the bar sits at 100..150: the badge at
     // 110..130 is scrolled out of view, so it is over nothing on screen.
-    let hidden = frame(&mut ui, 100.0);
+    let d = doc(r#"<meta name="component" content="scrolled">
+<column id="P">
+  <div id="List"><div id="Item"><div id="Count"></div></div></div>
+  <div id="Bar"></div>
+</column>
+<style>
+#P { align-items: start; }
+#List { width: 200px; height: 100px; overflow-y: auto; }
+#Item { width: 200px; height: 300px; }
+#Count, #Bar { background: #808080; }
+#Count { position: absolute; left: 10px; top: 110px; width: 30px; height: 20px; }
+#Bar { width: 200px; height: 50px; }
+</style>
+"#);
+    let count = "test:t/List/Item/Count";
+    let hidden = pairs(&d);
     assert!(
-        !hidden
-            .iter()
-            .any(|(a, b)| a == "P/List/Item/Count" || b == "P/List/Item/Count"),
+        !hidden.iter().any(|(a, b)| a == count || b == count),
         "{hidden:?}"
     );
     // Without a scroll around it the same badge over the bar is reported.
-    ui.begin(InputFrame::default(), vp());
-    ui.open(
-        "Q",
-        Element {
-            direction: Direction::Column,
-            ..Element::default()
-        },
-    );
-    ui.open("Item", fixed(200.0, 100.0));
-    boxed(
-        &mut ui,
-        "Count",
-        30.0,
-        20.0,
-        Props {
-            position: Position::Absolute,
-            insets: Edges {
-                start: Some(10.0),
-                top: Some(90.0),
-                ..Edges::default()
-            },
-            ..Props::default()
-        },
-    );
-    ui.close();
-    boxed(&mut ui, "Bar", 200.0, 50.0, Props::default());
-    ui.close();
-    ui.end();
-    let shown: Vec<_> = ui
-        .overlaps()
-        .iter()
-        .map(|o| (o.path.clone(), o.other.clone()))
-        .collect();
+    let d = doc(r#"<meta name="component" content="unscrolled">
+<column id="Q">
+  <div id="Item"><div id="Count"></div></div>
+  <div id="Bar"></div>
+</column>
+<style>
+#Q { align-items: start; }
+#Item { width: 200px; height: 100px; }
+#Count, #Bar { background: #808080; }
+#Count { position: absolute; left: 10px; top: 90px; width: 30px; height: 20px; }
+#Bar { width: 200px; height: 50px; }
+</style>
+"#);
+    let shown = pairs(&d);
     assert!(
         shown
             .iter()
-            .any(|(a, b)| a == "Q/Item/Count" && b == "Q/Bar"),
+            .any(|(a, b)| a == "test:t/Item/Count" && b == "test:t/Bar"),
         "{shown:?}"
     );
 }

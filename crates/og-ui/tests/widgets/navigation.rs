@@ -1,46 +1,31 @@
 use super::*;
 
-/// A 3×3 grid of buttons for local multiplayer: who pressed what.
-#[derive(Default)]
-struct Lobby {
-    players: u32,
-    presses: Vec<(String, Option<u32>)>,
-    rings: Vec<(String, u32)>,
+/// A 3×3 grid of buttons for local multiplayer.
+const LOBBY: &str = r#"<meta name="component" content="t">
+<div id="Root">
+<column id="Lobby">
+  <row id="R0"><button id="B00">B00</button><button id="B01">B01</button><button id="B02">B02</button></row>
+  <row id="R1"><button id="B10">B10</button><button id="B11">B11</button><button id="B12">B12</button></row>
+  <row id="R2"><button id="B20">B20</button><button id="B21">B21</button><button id="B22">B22</button></row>
+</column>
+</div>
+<style>
+#Lobby, #R0, #R1, #R2 { gap: 8px; }
+</style>"#;
+
+/// One tick with `players` players: a game declares them every tick.
+fn step(d: &mut Doc, players: u32, input: InputFrame) {
+    d.ui.begin(input, d.viewport);
+    d.ui.set_players(players);
+    d.ui.build_retained_documents(&bind::NoEnv).expect("builds");
+    d.ui.end();
+    d.events.extend(d.ui.take_doc_events());
 }
 
-fn lobby(ui: &mut Ui, s: &mut Lobby) {
-    ui.set_players(s.players);
-    s.rings.clear();
-    ui.column(
-        "Lobby",
-        Element {
-            gap: 8.0,
-            ..Element::column()
-        },
-        |ui| {
-            for r in 0..3u32 {
-                ui.row(
-                    ui_idi("R", r),
-                    Element {
-                        gap: 8.0,
-                        ..Element::default()
-                    },
-                    |ui| {
-                        for c in 0..3u32 {
-                            let name = format!("B{r}{c}");
-                            let resp = ui.button(name.as_str(), &name, ButtonDesc::default());
-                            if resp.clicked {
-                                s.presses.push((name.clone(), resp.pad));
-                            }
-                            if resp.focused_by != 0 {
-                                s.rings.push((name, resp.focused_by));
-                            }
-                        }
-                    },
-                );
-            }
-        },
-    );
+fn idle_with(d: &mut Doc, players: u32, n: u32) {
+    for _ in 0..n {
+        step(d, players, InputFrame::default());
+    }
 }
 
 fn pad(n: usize, bit: u32) -> InputFrame {
@@ -54,62 +39,60 @@ fn pad(n: usize, bit: u32) -> InputFrame {
 }
 
 /// Pads beyond the first: with `set_players(3)`, pads 1 and 2 each move a
-/// focus of their own and press with A (the response names the pad); pad 0
-/// keeps the shared focus; `focus_path` answers each; their rings are
-/// drawn; the state replays after a restore. Ways it could fail: an extra
-/// pad moves the shared focus, presses the shared focus's control, is heard
-/// while the screen takes one player, or loses its place after a restore.
+/// focus of their own and press with A; pad 0 keeps the shared focus;
+/// `focus_path` answers each; their rings are drawn; the state replays
+/// after a restore. Ways it could fail: an extra pad moves the shared
+/// focus, presses the shared focus's control, is heard while the screen
+/// takes one player, or loses its place after a restore.
 #[test]
 fn pads_beyond_the_first_move_their_own_focus_and_press() {
-    let mut rig = Rig::new(Lobby {
-        players: 1,
-        ..Lobby::default()
-    });
-    let b = &mut lobby;
-    rig.idle(2, b);
+    let mut d = mount(LOBBY, &[]);
+    let mut players = 1;
+    idle_with(&mut d, players, 2);
     // One player: pad 1 does nothing.
-    rig.step(pad(1, GamepadFrame::RIGHT), b);
-    rig.step(pad(1, GamepadFrame::A), b);
-    rig.idle(1, b);
-    assert!(rig.state.presses.is_empty(), "pad 1 is not a player yet");
-    assert_eq!(rig.ui.focus_path(1), "");
-    rig.state.players = 3;
-    rig.idle(2, b);
+    step(&mut d, players, pad(1, GamepadFrame::RIGHT));
+    step(&mut d, players, pad(1, GamepadFrame::A));
+    idle_with(&mut d, players, 1);
+    assert!(clicks(&mut d).is_empty(), "pad 1 is not a player yet");
+    assert_eq!(focus(&d, 1), "");
+    players = 3;
+    idle_with(&mut d, players, 2);
     // Pad 1: its first move lands on the control nearest the surface's
     // centre (B22, the grid sits top left), then left to B21.
-    rig.step(pad(1, GamepadFrame::RIGHT), b);
-    rig.step(pad(1, GamepadFrame::LEFT), b);
+    step(&mut d, players, pad(1, GamepadFrame::RIGHT));
+    step(&mut d, players, pad(1, GamepadFrame::LEFT));
     // Pad 2: onto B22 the same way, then up to B12.
-    rig.step(pad(2, GamepadFrame::DOWN), b);
-    rig.step(pad(2, GamepadFrame::UP), b);
+    step(&mut d, players, pad(2, GamepadFrame::DOWN));
+    step(&mut d, players, pad(2, GamepadFrame::UP));
     // Pad 0: the shared focus, its own place.
-    rig.step(pad(0, GamepadFrame::DOWN), b);
-    rig.idle(1, b);
-    assert_eq!(rig.ui.focus_path(1), "Lobby/R#2/B21");
-    assert_eq!(rig.ui.focus_path(2), "Lobby/R#1/B12");
-    assert_eq!(rig.ui.focus_path(0), "Lobby/R#0/B00");
-    assert_eq!(rig.ui.focus_path(3), "", "pad 3 has not moved");
-    let saved = rig.ui.save_state();
-    rig.step(pad(1, GamepadFrame::A), b);
-    rig.step(pad(2, GamepadFrame::A), b);
-    rig.step(pad(0, GamepadFrame::A), b);
-    rig.idle(1, b);
+    step(&mut d, players, pad(0, GamepadFrame::DOWN));
+    idle_with(&mut d, players, 1);
+    assert_eq!(focus(&d, 1), "Lobby/R2/B21");
+    assert_eq!(focus(&d, 2), "Lobby/R1/B12");
+    assert_eq!(focus(&d, 0), "Lobby/R0/B00");
+    assert_eq!(focus(&d, 3), "", "pad 3 has not moved");
+    let saved = d.ui.save_state();
+    clicks(&mut d);
+    // Each pad's A presses the control under its own focus.
+    let presses = |d: &mut Doc| {
+        let mut presses = Vec::new();
+        for n in [1, 2, 0] {
+            step(d, players, pad(n, GamepadFrame::A));
+            idle_with(d, players, 1);
+            presses.push((n, clicks(d)));
+        }
+        presses
+    };
+    let pressed = presses(&mut d);
+    let want = |name: &str| vec![name.to_string()];
     assert_eq!(
-        rig.state.presses,
-        vec![
-            ("B21".to_string(), Some(1)),
-            ("B12".to_string(), Some(2)),
-            ("B00".to_string(), Some(0)),
-        ],
+        pressed,
+        vec![(1, want("B21")), (2, want("B12")), (0, want("B00"))],
         "each pad pressed the control under its own focus"
     );
-    let ring = |name: &str| rig.state.rings.iter().find(|r| r.0 == name).map(|r| r.1);
-    assert_eq!(ring("B21"), Some(2), "B21 shows pad 1's ring");
-    assert_eq!(ring("B12"), Some(4), "B12 shows pad 2's ring");
-    let info = rig.ui.theme().palette.info.linear();
+    let info = d.ui.theme().palette.info.linear();
     assert!(
-        rig.ui
-            .frame()
+        d.ui.frame()
             .items
             .iter()
             .any(|i| matches!(&i.cmd, DrawCmd::Shape { shape, .. }
@@ -118,100 +101,83 @@ fn pads_beyond_the_first_move_their_own_focus_and_press() {
         "pad 1's ring is drawn in its player colour"
     );
     // A restore before the presses replays them identically.
-    let before = rig.state.presses.clone();
-    rig.state.presses.clear();
-    rig.ui.restore_state(&saved).expect("restore");
-    rig.step(pad(1, GamepadFrame::A), b);
-    rig.step(pad(2, GamepadFrame::A), b);
-    rig.step(pad(0, GamepadFrame::A), b);
-    rig.idle(1, b);
-    assert_eq!(rig.state.presses, before, "the pads' focus is UI state");
+    d.ui.restore_state(&saved).expect("restore");
+    assert_eq!(presses(&mut d), pressed, "the pads' focus is UI state");
     // Back to one player: the extra focus is dropped.
-    rig.state.players = 1;
-    rig.idle(2, b);
-    assert_eq!(rig.ui.focus_path(1), "");
+    players = 1;
+    idle_with(&mut d, players, 2);
+    assert_eq!(focus(&d, 1), "");
 }
 
-/// A split screen: two `Props::player` regions side by side and a shared
-/// button outside both. Pads 1 and 2 each move only inside their own region
-/// (their first move lands at its centre) and a press says whose region it
-/// was in; pad 0 (no region) reaches only the shared button. Ways it could
-/// fail: a pad's focus crosses into the other player's view, the shared
-/// controls are lost, or the response names the wrong player.
+/// A split screen: two `player` regions side by side and a shared button
+/// outside both. Pads 1 and 2 each move only inside their own region
+/// (their first move lands at its centre) and press there; pad 0 (no
+/// region) reaches only the shared button. Ways it could fail: a pad's
+/// focus crosses into the other player's view, or the shared controls are
+/// lost.
 #[test]
 fn split_screen_regions_confine_each_pads_focus() {
-    #[derive(Default)]
-    struct Split {
-        presses: Vec<(String, Option<u32>)>,
-    }
-    let build = &mut |ui: &mut Ui, s: &mut Split| {
-        ui.set_players(3);
-        ui.open("Screen", Element::row());
-        for k in 1..3u8 {
-            ui.open_with(
-                ui_idi("View", u32::from(k)),
-                Element {
-                    gap: 8.0,
-                    ..Element::column()
-                },
-                Props {
-                    player: Some(k),
-                    ..Props::default()
-                },
-            );
-            for b in 0..3 {
-                let name = format!("P{k}B{b}");
-                let r = ui.button(name.as_str(), &name, ButtonDesc::default());
-                if r.clicked {
-                    s.presses.push((name, r.player));
-                }
-            }
-            ui.close();
-        }
-        let r = ui.button("Quit", "Quit", ButtonDesc::default());
-        if r.clicked {
-            s.presses.push(("Quit".into(), r.player));
-        }
-        ui.close();
-    };
-    let mut rig = Rig::new(Split::default());
-    rig.idle(2, build);
+    let mut d = mount(
+        r#"<meta name="component" content="t">
+<div id="Root">
+<row id="Screen">
+  <column id="View1" player="1"><button id="P1B0">P1B0</button><button id="P1B1">P1B1</button><button id="P1B2">P1B2</button></column>
+  <column id="View2" player="2"><button id="P2B0">P2B0</button><button id="P2B1">P2B1</button><button id="P2B2">P2B2</button></column>
+  <button id="Quit">Quit</button>
+</row>
+</div>
+<style>
+#View1, #View2 { gap: 8px; }
+</style>"#,
+        &[],
+    );
+    let players = 3;
+    idle_with(&mut d, players, 2);
     // Pad 1 lands on its region's centre, then runs right and down: it
     // stays in view 1.
-    rig.step(pad(1, GamepadFrame::DOWN), build);
-    assert_eq!(rig.ui.focus_path(1), "Screen/View#1/P1B1");
+    step(&mut d, players, pad(1, GamepadFrame::DOWN));
+    assert_eq!(focus(&d, 1), "Screen/View1/P1B1");
     for _ in 0..3 {
-        rig.step(pad(1, GamepadFrame::RIGHT), build);
-        rig.step(pad(1, GamepadFrame::DOWN), build);
+        step(&mut d, players, pad(1, GamepadFrame::RIGHT));
+        step(&mut d, players, pad(1, GamepadFrame::DOWN));
     }
     assert!(
-        rig.ui.focus_path(1).starts_with("Screen/View#1/"),
+        focus(&d, 1).starts_with("Screen/View1/"),
         "{}",
-        rig.ui.focus_path(1)
+        focus(&d, 1)
     );
     // Pad 2 lands in view 2 and runs left: it stays there.
-    rig.step(pad(2, GamepadFrame::UP), build);
-    assert_eq!(rig.ui.focus_path(2), "Screen/View#2/P2B1");
+    step(&mut d, players, pad(2, GamepadFrame::UP));
+    assert_eq!(focus(&d, 2), "Screen/View2/P2B1");
     for _ in 0..3 {
-        rig.step(pad(2, GamepadFrame::LEFT), build);
+        step(&mut d, players, pad(2, GamepadFrame::LEFT));
     }
     assert!(
-        rig.ui.focus_path(2).starts_with("Screen/View#2/"),
+        focus(&d, 2).starts_with("Screen/View2/"),
         "{}",
-        rig.ui.focus_path(2)
+        focus(&d, 2)
     );
     // Pad 0 has no region: only the shared button.
-    rig.step(pad(0, GamepadFrame::DOWN), build);
-    rig.step(pad(0, GamepadFrame::LEFT), build);
-    assert_eq!(rig.ui.focus_path(0), "Screen/Quit");
-    rig.step(pad(1, GamepadFrame::A), build);
-    rig.step(pad(2, GamepadFrame::A), build);
-    rig.step(pad(0, GamepadFrame::A), build);
-    rig.idle(1, build);
-    let who: Vec<_> = rig.state.presses.iter().map(|p| p.1).collect();
-    assert_eq!(who, vec![Some(1), Some(2), None], "{:?}", rig.state.presses);
-    assert!(rig.state.presses[0].0.starts_with("P1"));
-    assert!(rig.state.presses[1].0.starts_with("P2"));
+    step(&mut d, players, pad(0, GamepadFrame::DOWN));
+    step(&mut d, players, pad(0, GamepadFrame::LEFT));
+    assert_eq!(focus(&d, 0), "Screen/Quit");
+    clicks(&mut d);
+    let mut who = Vec::new();
+    for n in [1, 2, 0] {
+        step(&mut d, players, pad(n, GamepadFrame::A));
+        idle_with(&mut d, players, 1);
+        who.push(clicks(&mut d));
+    }
+    assert_eq!(who.len(), 3);
+    assert!(
+        who[0].len() == 1 && who[0][0].starts_with("P1"),
+        "pad 1 pressed in view 1: {who:?}"
+    );
+    assert!(
+        who[1].len() == 1 && who[1][0].starts_with("P2"),
+        "pad 2 pressed in view 2: {who:?}"
+    );
+    assert_eq!(who[2], ["Quit"], "pad 0 the shared button");
 }
 
 /// A UI state saved at version 12 (before each hit carried its focusable
@@ -219,33 +185,14 @@ fn split_screen_regions_confine_each_pads_focus() {
 /// next frame fills them: a press on the item focuses its grid again.
 #[test]
 fn a_version_12_state_upgrades_and_restores() {
-    let build = &mut |ui: &mut Ui, _: &mut ()| {
-        ui.open(
-            "Grid",
-            Element {
-                interactive: true,
-                focusable: true,
-                padding: Insets::all(8.0),
-                ..Element::row()
-            },
-        );
-        for id in ["A", "B"] {
-            ui.open(
-                id,
-                Element {
-                    interactive: true,
-                    width: Size::Fixed(40.0),
-                    height: Size::Fixed(40.0),
-                    ..Element::default()
-                },
-            );
-            ui.close();
-        }
-        ui.close();
-    };
-    let mut rig = Rig::new(());
-    rig.idle(2, build);
-    let now = rig.ui.save_state();
+    const GRID: &str = r#"<meta name="component" content="t">
+<div id="Root"><row id="Grid" interactive focusable><div id="A" interactive></div><div id="B" interactive></div></row></div>
+<style>
+#Grid { padding: 8px; }
+#A, #B { width: 40px; height: 40px; }
+</style>"#;
+    let mut d = mount(GRID, &[]);
+    let now = d.ui.save_state();
     // This version's layout: each hit's owner (8 bytes) after its key, rect,
     // full rect, flags, scope and scroller, and its focus group and
     // recogniser (16) after its maps and rects; version 12 had neither, nor
@@ -294,18 +241,17 @@ fn a_version_12_state_upgrades_and_restores() {
     assert_eq!(owners, 2, "both items had the grid as their owner");
 
     assert!(
-        rig.ui.restore_state(&v12).is_err(),
+        d.ui.restore_state(&v12).is_err(),
         "a v12 block is not read as this version"
     );
     let upgraded = Ui::upgrade_state(&v12).expect("version 12 upgrades");
     assert_eq!(upgraded, zeroed, "the same state, its owners unset");
-    let mut other = Rig::new(());
-    other.idle(1, build);
+    let mut other = mount(GRID, &[]);
     other
         .ui
         .restore_state(&upgraded)
         .expect("the upgraded state restores");
-    other.idle(1, build);
-    other.click("Grid/B", build);
-    assert_eq!(other.ui.focus_path(0), "Grid");
+    idle(&mut other, 1);
+    tap(&mut other, "Grid/B");
+    assert_eq!(focus(&other, 0), "Grid");
 }

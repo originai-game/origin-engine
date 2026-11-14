@@ -42,9 +42,24 @@ fn the_widget_set_matches_its_reference_frame() {
     );
 }
 
+/// A stick centred on the surface, the input source of the action `move`.
+const STICK_DOC: &str = r#"<meta name="component" content="stick">
+<row id="Pad"><joystick id="Stick" action="move"/></row>
+<style>#Pad { width: stretch; height: stretch; justify-content: center; align-items: center; }</style>"#;
+
+/// What the stick answers: the action's value (y up, as og-input reads a
+/// stick) and whether a press holds it.
+#[derive(Debug)]
+struct Stick {
+    x: f32,
+    y: f32,
+    active: bool,
+}
+
 /// The on-screen stick at rest and held by a finger pushed past its rim up
-/// and to the right, 240×240 at 2×, with its answer.
-fn stick_shot(font: &FontFiles, push: Option<Vec2>) -> (Shot, JoystickResponse) {
+/// and to the right, 240×240 at 2×, with its answer: its zone read by
+/// og-input as the action map reads it, from the press that started on it.
+fn stick_shot(font: &FontFiles, push: Option<Vec2>) -> (Shot, Stick) {
     let vp = Viewport {
         width: 240.0,
         height: 240.0,
@@ -55,25 +70,11 @@ fn stick_shot(font: &FontFiles, push: Option<Vec2>) -> (Shot, JoystickResponse) 
     let mut scene = RenderScene::new();
     let font = add_font(&mut scene, font);
     let mut ui = ui_with_font(font);
-    let mut out = JoystickResponse::default();
-    let mut step = |ui: &mut Ui, input: InputFrame| {
-        ui.begin(input, vp);
-        ui.row(
-            "Pad",
-            Element {
-                width: Size::grow(),
-                height: Size::grow(),
-                align: Align::Center,
-                cross: Cross::Center,
-                ..Element::default()
-            },
-            |ui| out = ui.joystick("Stick", JoystickDesc::default()),
-        );
-        ui.end();
-    };
-    step(&mut ui, InputFrame::default());
+    mount_screen_document(&mut ui, "stick", STICK_DOC, &[]);
+    step_screen(&mut ui, InputFrame::default(), vp);
+    let mut pointers = og_input::Pointers::default();
     if let Some(push) = push {
-        let (x, y) = ui.element("Pad/Stick").expect("the stick").center();
+        let (x, y) = ui.element("Stick").expect("the stick").center();
         let at = |p: Vec2, pressed: bool| InputFrame {
             pointer: p,
             pointer_inside: true,
@@ -81,10 +82,35 @@ fn stick_shot(font: &FontFiles, push: Option<Vec2>) -> (Shot, JoystickResponse) 
             down: true,
             ..InputFrame::default()
         };
-        step(&mut ui, at(Vec2::new(x, y), true));
-        step(&mut ui, at(Vec2::new(x, y) + push, false));
-        step(&mut ui, at(Vec2::new(x, y) + push, false));
+        step_screen(&mut ui, at(Vec2::new(x, y), true), vp);
+        step_screen(&mut ui, at(Vec2::new(x, y) + push, false), vp);
+        step_screen(&mut ui, at(Vec2::new(x, y) + push, false), vp);
+        pointers.held = 1;
+        pointers.start0 = Vec2::new(x, y);
+        pointers.position0 = Vec2::new(x, y) + push;
     }
+    let zones = ui.take_control_zones().expect("the stick's zone");
+    let [zone] = &zones[..] else {
+        panic!("one zone: {zones:?}")
+    };
+    assert_eq!(zone.action, "move");
+    let reading = og_input::control::Reader {
+        input: &og_input::Input::default(),
+        pointers: &pointers,
+        pads: &og_input::Gamepad::default(),
+        deadzones: &[og_input::PadDeadzone::default(); og_input::MAX_GAMEPADS],
+        surface: og_input::Surface {
+            width: vp.width,
+            height: vp.height,
+            coarse: true,
+        },
+    }
+    .read_zone(zone);
+    let out = Stick {
+        x: reading.value.x,
+        y: reading.value.y,
+        active: reading.device.is_some(),
+    };
     (shot(ui, scene, vp), out)
 }
 
@@ -99,7 +125,7 @@ fn a_held_stick_draws_its_knob_pushed_inside_its_base() {
         let (shot, out) = with_test_font(|f| stick_shot(f, push));
         let f = shot.ui.frame();
         assert!(f.warnings.is_empty(), "{:?}", f.warnings);
-        let base = shot.ui.element("Pad/Stick").expect("the stick").clone();
+        let base = shot.ui.element("Stick").expect("the stick").clone();
         // The knob's rim disc (the widest round quad but the base) and the arcs.
         // A disc's corner radius is drawn a little under half its width (27.4
         // for a 55 px knob), so round is within half a pixel of it.
@@ -143,7 +169,8 @@ fn a_held_stick_draws_its_knob_pushed_inside_its_base() {
     // Pushed 100 CSS px up and right: past the 64 px rim, so full.
     let (held, out, _, knob, arcs) = render(Some(Vec2::new(100.0, -100.0)));
     let full = (out.x * out.x + out.y * out.y).sqrt();
-    assert!(out.active && out.x > 0.6 && out.y < -0.6, "{out:?}");
+    // Up is +y as og-input reads a stick (the widget's own answer was y down).
+    assert!(out.active && out.x > 0.6 && out.y > 0.6, "{out:?}");
     assert!((full - 1.0).abs() < 1e-3, "clamped to the rim: {full}");
     let moved = off(&knob);
     let radius = base.width / 2.0;

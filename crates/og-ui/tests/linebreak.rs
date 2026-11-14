@@ -25,29 +25,30 @@ fn rich_soft_hyphens_reserve_the_styled_glyph_at_a_break() {
     let mut font = crate::features::font("Inter-Display.ttf");
     font.handle = test_font().handle;
     let m = font.metrics.clone();
-    let mut ui = ui_with_font(font);
-    let mut step = ui.theme().type_ramp.body;
-    step.tracking_em = 0.0;
-    let narrow = m.measure("ab-", step.size) + 0.01;
-    let wide = m.measure("abcd", step.size) + 1.0;
-    let no_hyphen = m.measure("ab", step.size).max(m.measure("cd", step.size)) + 0.01;
-    ui.define_action(ActionDesc {
-        name: "jump".into(),
-        keys: vec!["KeyE".into()],
-        ..Default::default()
-    });
+    let size = ui_with_font(font.clone()).theme().type_ramp.body.size;
+    let narrow = m.measure("ab-", size) + 0.01;
+    let wide = m.measure("abcd", size) + 1.0;
+    let no_hyphen = m.measure("ab", size).max(m.measure("cd", size)) + 0.01;
     for (width, hyphen) in [(narrow, true), (wide, false), (no_hyphen, false)] {
-        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-        ui.rich_text(
-            "Text",
-            "a[color=danger]b\u{ad}[/color]cd[action=jump]",
-            RichTextDesc {
-                step: Some(step),
-                width: Size::Fixed(width),
-                ..Default::default()
-            },
+        let mut ui = ui_with_font(font.clone());
+        ui.define_action(ActionDesc {
+            name: "jump".into(),
+            keys: vec!["KeyE".into()],
+            ..Default::default()
+        });
+        // The body step without tracking; `b` and its soft hyphen in the
+        // danger ink, the action's keycap after `cd`.
+        let mut d = Doc::with_ui(
+            ui,
+            &format!(
+                "<meta name=\"component\" content=\"t\">
+<div><text id=\"Text\">a<span part=\"d\">b\u{ad}</span>cd<kbd data-action=\"jump\"></kbd></text></div>
+<style>#Text {{ width: {width}px; letter-spacing: 0; }} text::part(d) {{ color: var(--danger); }}</style>"
+            ),
         );
-        ui.end();
+        d.viewport = Viewport::new(800.0, 600.0);
+        d.step(InputFrame::default());
+        let ui = &d.ui;
         assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
         let drawn: Vec<_> = ui
             .frame()
@@ -81,7 +82,7 @@ fn rich_soft_hyphens_reserve_the_styled_glyph_at_a_break() {
             1,
             "the inline keycap is not split or lost: {drawn:?}"
         );
-        let left = ui.element("Text").unwrap().x;
+        let left = d.get("Text").x;
         assert!(
             drawn
                 .iter()
@@ -124,19 +125,29 @@ fn long_kerned_line_measurement_is_not_quadratic() {
         let mut ui = ui_with_font(font.clone());
         let size = ui.theme().type_ramp.body.size;
         let width = (n as f32 * 0.02 + 1.0) * size;
-        let mut step = ui.theme().type_ramp.body;
-        step.tracking_em = 0.0;
-        ui.begin(InputFrame::default(), Viewport::new(4000.0, 600.0));
         let text = "漢".repeat(n);
-        ui.label(
-            "Text",
-            &text,
-            LabelDesc {
-                step: Some(step),
-                width: Size::Fixed(width),
-                ..Default::default()
-            },
-        );
+        // The body step without tracking, mounted and built once: the
+        // first layout is the one timed.
+        let doc = UiDocument::parse(
+            "ui/t.svelte",
+            &format!(
+                r#"<meta name="component" content="t">
+<div><text id="Text">{text}</text></div>
+<style>#Text {{ width: {width}px; letter-spacing: 0; }}</style>"#
+            ),
+        )
+        .expect("parses");
+        ui.define_document(doc);
+        ui.mount_document(
+            og_ui::reactive::SourceId::new("test", "t"),
+            "t",
+            Default::default(),
+            Default::default(),
+            &bind::NoEnv,
+        )
+        .expect("mounts");
+        ui.begin(InputFrame::default(), Viewport::new(4000.0, 600.0));
+        ui.build_retained_documents(&bind::NoEnv).expect("builds");
         let start = Instant::now();
         ui.end();
         let elapsed = start.elapsed().as_secs_f64();

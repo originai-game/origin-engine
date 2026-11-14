@@ -14,7 +14,7 @@ impl Ui {
     /// its `inkMuted` moves wherever it does not read on it, and where even
     /// white or black would not, the fill moves away from the ink instead
     /// (scifi's mid-blue fill darkens under its pale ink).
-    pub fn badge(&mut self, id: impl Into<Id>, text: &str, tone: Tone) {
+    pub(crate) fn badge(&mut self, id: impl Into<Id>, text: &str, tone: Tone) {
         let t = self.env.theme;
         let p = t.palette;
         let (bg, fg) = match tone {
@@ -82,7 +82,7 @@ impl Ui {
     }
 
     /// A hairline (`line`) across its parent; `vertical` stands it up.
-    pub fn divider(&mut self, id: impl Into<Id>, vertical: bool) {
+    pub(crate) fn divider(&mut self, id: impl Into<Id>, vertical: bool) {
         let c = self.env.theme.palette.line;
         let px = 1.0 / self.env.viewport.dpr().max(1.0);
         let px = px.max(0.5);
@@ -107,7 +107,7 @@ impl Ui {
     }
 
     /// Empty space: `size` along both axes (the zero value grows).
-    pub fn spacer(&mut self, id: impl Into<Id>, size: Option<Size>) {
+    pub(crate) fn spacer(&mut self, id: impl Into<Id>, size: Option<Size>) {
         let s = size.unwrap_or(Size::grow());
         let i = self.leaf(
             "spacer",
@@ -123,7 +123,7 @@ impl Ui {
 
     /// An icon of the atlas (`set_icons`) by name; a missing name draws an
     /// empty slot and warns.
-    pub fn icon(&mut self, id: impl Into<Id>, name: &str, desc: IconDesc) {
+    pub(crate) fn icon(&mut self, id: impl Into<Id>, name: &str, desc: IconDesc) {
         let i = self.leaf("icon", id.into(), Element::default());
         self.apply_icon(i, name, desc);
     }
@@ -169,7 +169,7 @@ impl Ui {
     /// mark from the kind's icon set, with the slot's name in the default
     /// style only. The mark never stretches with the slot. With a
     /// height left to fit it takes the slot's aspect.
-    pub fn art(&mut self, id: impl Into<Id>, desc: &ArtDesc) {
+    pub(crate) fn art(&mut self, id: impl Into<Id>, desc: &ArtDesc) {
         let i = self.leaf("art", id.into(), Element::default());
         self.apply_art(i, desc);
     }

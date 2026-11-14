@@ -239,28 +239,25 @@ fn the_default_css_puts_glass_on_floating_chrome_only() {
 /// wins, and the text scale multiplies over the unit.
 #[test]
 fn the_unit_zooms_the_whole_ui_on_a_mouse_surface() {
-    use crate::support::{test_font, ui_with_font};
-    use og_ui::{ButtonDesc, DrawCmd, InputFrame, Size, Theme, Viewport};
+    use crate::support::{Doc, test_font, ui_with_font};
+    use og_ui::{Cursor, DrawCmd, InputFrame, Theme, Viewport};
+    // The button's pointer cursor is what the frame answers while the
+    // pointer is over it.
+    const GO: &str = r#"<meta name="component" content="t">
+<column><button id="Go">Go</button></column>
+<style>#Go { width: 300px; cursor: pointer; }</style>"#;
     let frame = |vp: Viewport, configure: &dyn Fn(&mut Theme), input: InputFrame| {
         let mut ui = ui_with_font(test_font());
         let mut t = *ui.theme();
         configure(&mut t);
         ui.set_theme(t);
-        let mut hovered = false;
+        let mut d = Doc::with_ui(ui, GO);
+        d.viewport = vp;
         for _ in 0..2 {
-            ui.begin(input.clone(), vp);
-            hovered = ui
-                .button(
-                    "Go",
-                    "Go",
-                    ButtonDesc {
-                        width: Some(Size::Fixed(300.0)),
-                        ..ButtonDesc::default()
-                    },
-                )
-                .hovered;
-            ui.end();
+            d.step(input.clone());
         }
+        let ui = d.ui;
+        let hovered = ui.frame().cursor == Cursor::Pointer;
         let text = ui
             .frame()
             .items
@@ -291,7 +288,8 @@ fn the_unit_zooms_the_whole_ui_on_a_mouse_surface() {
         t.type_ramp.body.size, body,
         "lengths stay the style's, in units"
     );
-    assert_eq!(ui.element("Go").expect("the button").width, 300.0);
+    let units = ui.elements().iter().find(|e| e.id == "Go");
+    assert_eq!(units.expect("the button").width, 300.0);
     assert_eq!(size, body * 1.5, "drawn at 1.5 CSS px a unit");
     assert_eq!(
         t.type_ramp.xs.size * 1.5,
@@ -301,7 +299,7 @@ fn the_unit_zooms_the_whole_ui_on_a_mouse_surface() {
     let css = ui.probe_elements();
     let go = css
         .iter()
-        .find(|e| e.path == "Go")
+        .find(|e| e.id == "Go")
         .expect("the probe's button");
     assert_eq!(go.width, 450.0, "the probe reports CSS px");
     // A pointer at the button's CSS centre is over it; one past its CSS
@@ -340,27 +338,23 @@ fn the_unit_zooms_the_whole_ui_on_a_mouse_surface() {
 /// the origin (a clip scaled about its own centre cut the rows' fills).
 #[test]
 fn a_zoomed_scroll_view_clips_where_it_stands() {
-    use crate::support::{test_font, ui_with_font};
-    use og_ui::{ButtonDesc, EmitDesc, InputFrame, ScrollDesc, Size, Viewport};
+    use crate::support::{Doc, test_font, ui_with_font};
+    use og_ui::{EmitDesc, InputFrame, Viewport};
+    let rows: String = (0..8)
+        .map(|i| format!(r#"<button id="B{i}">Row</button>"#))
+        .collect();
+    let text = format!(
+        r#"<meta name="component" content="t">
+<column><scroll id="S">{rows}</scroll></column>
+<style>#S {{ width: 300px; height: 200px; }}</style>"#
+    );
     let clips = |vp: Viewport| {
-        let mut ui = ui_with_font(test_font());
+        let mut d = Doc::with_ui(ui_with_font(test_font()), &text);
+        d.viewport = vp;
         for _ in 0..2 {
-            ui.begin(InputFrame::default(), vp);
-            ui.scroll(
-                "S",
-                ScrollDesc {
-                    width: Size::Fixed(300.0),
-                    height: Size::Fixed(200.0),
-                    ..ScrollDesc::default()
-                },
-                |ui| {
-                    for i in 0..8 {
-                        ui.button(format!("B{i}"), "Row", ButtonDesc::default());
-                    }
-                },
-            );
-            ui.end();
+            d.step(InputFrame::default());
         }
+        let ui = d.ui;
         let mut overlay = og_draw::Overlay::new(vp.width, vp.height, 0.0);
         ui.frame().emit(&EmitDesc::default(), &mut overlay);
         overlay

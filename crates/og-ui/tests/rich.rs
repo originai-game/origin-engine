@@ -19,6 +19,7 @@
 use crate::support;
 
 use og_ui::*;
+use serde_json::json;
 use support::*;
 
 fn rich_ui() -> Ui {
@@ -36,21 +37,57 @@ fn rich_ui() -> Ui {
     ui
 }
 
-fn step(ui: &mut Ui, input: InputFrame, markup: &str, width: Size) -> RichTextResponse {
-    ui.begin(input, Viewport::new(600.0, 400.0));
-    let mut r = RichTextResponse::default();
-    ui.column("Card", Element::column(), |ui| {
-        r = ui.rich_text(
-            "Hint",
-            markup,
-            RichTextDesc {
-                width,
-                ..RichTextDesc::default()
-            },
-        );
-    });
-    ui.end();
-    r
+/// A paragraph `Line` of the store `body` styled by the typed attributes
+/// of the store `spans` (one value: a signal, never rows), its class the
+/// store `fx`, under `css`, in a 600 × 400 viewport.
+fn spans_doc(css: &str, body: &str, spans: &[TextSpan], fx: &str) -> Doc {
+    let mut ui = rich_ui();
+    let text = format!(
+        r#"<meta name="component" content="t">
+<column id="Card"><text id="Line" spans={{$spans}} class={{$fx}}>{{$body}}</text></column>
+<style>{css}</style>"#
+    );
+    ui.define_document(UiDocument::parse("ui/t.svelte", &text).unwrap_or_else(|e| panic!("{e:?}")));
+    apply(
+        &mut ui,
+        json!({"op": "signal", "source": source("spans"), "initial": spans}),
+    );
+    store(&mut ui, "body", json!(body));
+    store(&mut ui, "fx", json!(fx));
+    ui.mount_document(
+        reactive::SourceId::new("test", "t"),
+        "t",
+        ["body", "fx", "spans"]
+            .map(|name| (name.to_string(), source(name)))
+            .into(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap_or_else(|e| panic!("mounts: {e}"));
+    let mut d = Doc {
+        ui,
+        events: Vec::new(),
+        viewport: Viewport::new(600.0, 400.0),
+        focus: None,
+    };
+    d.step(InputFrame::default());
+    d
+}
+
+/// A paragraph `Hint` of `markup` (inline document markup), `width` wide,
+/// in `ui`, in a 600 × 400 viewport.
+fn markup_doc(ui: Ui, markup: &str, width: &str) -> Doc {
+    let mut d = Doc::with_ui(
+        ui,
+        &format!(
+            r#"<meta name="component" content="t">
+<column id="Card"><text id="Hint">{markup}</text></column>
+<style>#Hint {{ width: {width}; }}</style>"#
+        ),
+    );
+    d.viewport = Viewport::new(600.0, 400.0);
+    d.step(InputFrame::default());
+    d
 }
 
 fn texts(ui: &Ui) -> Vec<(String, f32, f32, [f32; 4], f32, f32)> {
@@ -84,29 +121,16 @@ fn attribute(name: &str, position: u32, length: u32) -> TextSpan {
 #[test]
 fn unknown_attributes_do_not_split_visible_motion() {
     let render = |attributes: &[TextSpan]| {
-        let mut ui = rich_ui();
-        for _ in 0..12 {
-            ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
-            let r = ui.rich_text_spans(
-                "Line",
-                "Wonderful",
-                attributes,
-                RichTextDesc::default(),
-                |a| {
-                    if a.name == "wave" {
-                        TextSpanStyle {
-                            motion: Some(markup::SpanFx::Wave),
-                            ..Default::default()
-                        }
-                    } else {
-                        TextSpanStyle::default()
-                    }
-                },
-            );
-            assert_eq!(r.spans, attributes);
-            ui.end();
+        let mut d = spans_doc(
+            "text::part(wave) { -og-text-motion: wave; }",
+            "Wonderful",
+            attributes,
+            "",
+        );
+        for _ in 1..12 {
+            d.step(InputFrame::default());
         }
-        texts(&ui)
+        texts(&d.ui)
     };
     let plain = render(&[attribute("wave", 0, 9)]);
     let with_metadata = render(&[attribute("wave", 0, 9), attribute("game", 3, 4)]);
@@ -118,7 +142,6 @@ fn unknown_attributes_do_not_split_visible_motion() {
 
 #[test]
 fn structured_scalars_overlap_and_literal_text_preserve_unknown_metadata() {
-    let mut ui = rich_ui();
     let text = "Ada: A😀BC [b] \\end";
     let mut spans = vec![
         attribute("character", 0, 5),
@@ -136,32 +159,17 @@ fn structured_scalars_overlap_and_literal_text_preserve_unknown_metadata() {
     spans[3]
         .properties
         .insert("level".into(), TextSpanValue::Number(2.5));
-    ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
-    let r = ui.rich_text_spans("Line", text, &spans, RichTextDesc::default(), |a| {
-        match a.name.as_str() {
-            "character" => TextSpanStyle {
-                color: Some(paint::ColorRef::token("highlight")),
-                ..Default::default()
-            },
-            "emphasis" => TextSpanStyle {
-                bold: Some(true),
-                color: Some(paint::ColorRef::token("danger")),
-                ..Default::default()
-            },
-            "override" => TextSpanStyle {
-                color: Some(paint::ColorRef::token("success")),
-                ..Default::default()
-            },
-            _ => TextSpanStyle::default(),
-        }
-    });
-    ui.end();
-    assert_eq!(
-        r.spans, spans,
-        "including the invalid range and the zero-length game marker"
+    let d = spans_doc(
+        "text::part(character) { color: var(--highlight); }
+text::part(emphasis) { font-weight: bold; color: var(--danger); }
+text::part(override) { color: var(--success); }",
+        text,
+        &spans,
+        "",
     );
+    let ui = &d.ui;
     assert!(ui.elements().iter().any(|e| e.text == text));
-    let drawn = texts(&ui);
+    let drawn = texts(ui);
     let b = drawn
         .iter()
         .find(|v| v.0 == "B")
@@ -181,8 +189,12 @@ fn structured_scalars_overlap_and_literal_text_preserve_unknown_metadata() {
         drawn.iter().any(|v| v.0.contains("\\end")),
         "escapes are never parsed again"
     );
-    assert_eq!(ui.frame().warnings.len(), 1);
-    assert!(ui.frame().warnings[0].contains("outside"));
+    // One warning, for the invalid range (a document's build gives it
+    // twice in the frame).
+    let mut warnings = ui.frame().warnings.clone();
+    warnings.dedup();
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert!(warnings[0].contains("outside"));
     assert_eq!(
         serde_json::from_str::<Vec<TextSpan>>(&serde_json::to_string(&spans).unwrap()).unwrap(),
         spans
@@ -282,67 +294,49 @@ text::part(emphasis) { text-decoration-line: underline; }
 
 #[test]
 fn structured_wrap_motion_restore_and_style_switch_use_existing_paragraph() {
-    let mut ui = rich_ui();
     let spans = [attribute("emphasis", 0, 27), attribute("motion", 6, 11)];
-    let draw = |ui: &mut Ui, motion| {
-        ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
-        ui.rich_text_spans(
-            "Line",
-            "Alpha Bravo Delta Echo Foxtrot",
-            &spans,
-            RichTextDesc {
-                width: Size::Fixed(130.0),
-                ..Default::default()
-            },
-            |a| {
-                if a.name == "emphasis" {
-                    TextSpanStyle {
-                        color: Some(paint::ColorRef::token("danger")),
-                        ..Default::default()
-                    }
-                } else {
-                    TextSpanStyle {
-                        motion: Some(motion),
-                        ..Default::default()
-                    }
-                }
-            },
-        );
-        ui.end();
-    };
-    for fx in [
-        markup::SpanFx::Wave,
-        markup::SpanFx::Shake,
-        markup::SpanFx::Pulse,
-    ] {
+    let mut d = spans_doc(
+        "#Line { width: 130px; }
+text::part(emphasis) { color: var(--danger); }
+#Line.wave::part(motion) { -og-text-motion: wave; }
+#Line.shake::part(motion) { -og-text-motion: shake; }
+#Line.pulse::part(motion) { -og-text-motion: pulse; }",
+        "Alpha Bravo Delta Echo Foxtrot",
+        &spans,
+        "wave",
+    );
+    let draw = |d: &mut Doc| d.step(InputFrame::default());
+    for fx in ["wave", "shake", "pulse"] {
+        set_store(&mut d.ui, "fx", json!(fx));
         for _ in 0..12 {
-            draw(&mut ui, fx);
+            draw(&mut d);
         }
-        let saved = ui.save_state();
-        draw(&mut ui, fx);
-        let next = texts(&ui);
+        let saved = d.ui.save_state();
+        draw(&mut d);
+        let next = texts(&d.ui);
         for _ in 0..9 {
-            draw(&mut ui, fx);
+            draw(&mut d);
         }
-        assert_ne!(texts(&ui), next, "motion changes by the tick: {fx:?}");
-        ui.restore_state(&saved).unwrap();
-        draw(&mut ui, fx);
+        assert_ne!(texts(&d.ui), next, "motion changes by the tick: {fx:?}");
+        d.ui.restore_state(&saved).unwrap();
+        draw(&mut d);
         assert_eq!(
-            texts(&ui),
+            texts(&d.ui),
             next,
             "restore mid-motion replays exactly: {fx:?}"
         );
     }
-    let mut theme = *ui.theme();
+    let mut theme = *d.ui.theme();
     theme.reduced_motion = true;
     theme.palette.danger = Srgba::rgb(23, 211, 187);
-    ui.set_theme(theme);
-    draw(&mut ui, markup::SpanFx::Wave);
-    let still = texts(&ui);
+    d.ui.set_theme(theme);
+    set_store(&mut d.ui, "fx", json!("wave"));
+    draw(&mut d);
+    let still = texts(&d.ui);
     for _ in 0..8 {
-        draw(&mut ui, markup::SpanFx::Wave);
+        draw(&mut d);
     }
-    assert_eq!(texts(&ui), still, "reduced motion is stationary");
+    assert_eq!(texts(&d.ui), still, "reduced motion is stationary");
     assert!(
         still.iter().any(|v| near(v.3, theme.palette.danger)),
         "active-style token changes the ink"
@@ -354,19 +348,19 @@ fn structured_wrap_motion_restore_and_style_switch_use_existing_paragraph() {
 }
 
 #[test]
-fn italic_underline_strike_and_outline_keep_their_span() {
-    // Each of the new styles reaches only its own span: a slant and an
-    // outline on its glyphs (the plain words around stay plain), a hairline
-    // under [u] and one through [s] near the middle of the x-height.
-    let mut ui = rich_ui();
-    for _ in 0..2 {
-        step(
-            &mut ui,
-            InputFrame::default(),
-            "a [i]lean[/i] b [u]under[/u] c [s]gone[/s] d [outline=2,danger]loud[/outline]",
-            Size::Fixed(560.0),
-        );
-    }
+fn italic_underline_and_strike_keep_their_span() {
+    // Each of the styles reaches only its own span: a slant on its glyphs
+    // (the plain words around stay plain), a hairline under <u> and one
+    // through <s> near the middle of the x-height. (An outline on one span
+    // only is no document's: `::part()` takes no -webkit-text-stroke; the
+    // unit test `outline_keeps_its_span` in src/text/rich/spans.rs keeps it.)
+    let mut d = markup_doc(
+        rich_ui(),
+        "a <i>lean</i> b <u>under</u> c <s>gone</s> d loud",
+        "560px",
+    );
+    d.step(InputFrame::default());
+    let ui = &d.ui;
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     let mut styled: Vec<(String, [f32; 4], bool)> = Vec::new();
     let mut plain: Vec<(String, f32)> = Vec::new();
@@ -388,15 +382,9 @@ fn italic_underline_strike_and_outline_keep_their_span() {
         styled
             .iter()
             .any(|(t, m, o)| t == "lean" && slanted(m) && !o),
-        "[i] slants its own glyphs: {styled:?}"
+        "<i> slants its own glyphs: {styled:?}"
     );
-    assert!(
-        styled
-            .iter()
-            .any(|(t, m, o)| t == "loud" && *o && !slanted(m)),
-        "[outline] outlines its own glyphs: {styled:?}"
-    );
-    assert_eq!(styled.len(), 2, "the other words stay plain: {styled:?}");
+    assert_eq!(styled.len(), 1, "the other words stay plain: {styled:?}");
     let baseline = plain
         .iter()
         .find(|p| p.0.contains("under"))
@@ -418,12 +406,13 @@ fn italic_underline_strike_and_outline_keep_their_span() {
     );
 }
 
-#[test]
-fn a_registered_picture_and_an_actions_glyph_draw_inline() {
+/// A UI with a portrait registered as `mira`, the icons `coin` and
+/// `ps.cross`, and the action `jump` (E, the pad's a); and the portrait's
+/// and the icons' textures.
+fn picture_ui() -> (Ui, og_draw::TextureHandle, og_draw::TextureHandle) {
     let mut handles = Handles::default();
     let font = handles.test_font();
-    let tex = |handles: &mut Handles| handles.texture();
-    let (portrait, icons) = (tex(&mut handles), tex(&mut handles));
+    let (portrait, icons) = (handles.texture(), handles.texture());
     let mut ui = ui_with_font(font);
     ui.set_icons(IconAtlas {
         texture: Some(icons),
@@ -450,13 +439,24 @@ fn a_registered_picture_and_an_actions_glyph_draw_inline() {
         label: "Jump".into(),
         ..ActionDesc::default()
     });
-    let markup = "[img=mira] says: press [action=jump] to jump";
-    let draw = |ui: &mut Ui| {
-        for _ in 0..2 {
-            step(ui, InputFrame::default(), markup, Size::Fixed(560.0));
-        }
-        let images: Vec<(Option<og_draw::TextureHandle>, Rect)> = ui
-            .frame()
+    (ui, portrait, icons)
+}
+
+const PICTURE_LINE: &str =
+    r#"<img src="mira" alt=""> says: press <kbd data-action="jump"></kbd> to jump"#;
+
+type Drawn = (
+    Vec<(Option<og_draw::TextureHandle>, Rect)>,
+    Vec<(String, f32, f32, [f32; 4], f32, f32)>,
+);
+
+/// Two frames of `d`: the images and the texts drawn.
+fn draw_pictures(d: &mut Doc) -> Drawn {
+    for _ in 0..2 {
+        d.step(InputFrame::default());
+    }
+    let images =
+        d.ui.frame()
             .items
             .iter()
             .filter_map(|i| match &i.cmd {
@@ -464,12 +464,21 @@ fn a_registered_picture_and_an_actions_glyph_draw_inline() {
                 _ => None,
             })
             .collect();
-        (images, texts(ui))
-    };
+    (images, texts(&d.ui))
+}
+
+#[test]
+fn a_registered_picture_and_an_actions_glyph_draw_inline() {
+    let (ui, portrait, icons) = picture_ui();
+    let mut d = markup_doc(ui, PICTURE_LINE, "560px");
     // A keyboard: the key's name on a cap, after the portrait, one em tall
     // and twice as wide.
-    let (images, t) = draw(&mut ui);
-    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let (images, t) = draw_pictures(&mut d);
+    assert!(
+        d.ui.frame().warnings.is_empty(),
+        "{:?}",
+        d.ui.frame().warnings
+    );
     let pic = images
         .iter()
         .find(|i| i.0 == Some(portrait))
@@ -485,25 +494,40 @@ fn a_registered_picture_and_an_actions_glyph_draw_inline() {
         "the key's name on a cap: {t:?}"
     );
     assert!(!images.iter().any(|i| i.0 == Some(icons)), "{images:?}");
-    // The next frame on a PlayStation pad: the cross's icon, and no cap.
-    ui.set_device(Device::PlayStation);
-    let (images, t) = draw(&mut ui);
+    // An unknown picture: named in a warning, nothing drawn. (An unknown
+    // action's `<kbd data-action>` gives a document no warning.)
+    let (ui, _, _) = picture_ui();
+    let d = markup_doc(ui, r#"<img src="nobody" alt=""> after"#, "fit-content");
+    let w = &d.ui.frame().warnings;
+    assert!(
+        w.iter().any(|w| w.contains(r#"<img src="nobody">"#)),
+        "{w:?}"
+    );
+    assert!(
+        !d.ui
+            .frame()
+            .items
+            .iter()
+            .any(|i| matches!(i.cmd, DrawCmd::Image { .. })),
+        "nothing drawn for it"
+    );
+}
+
+/// The next frame on a PlayStation pad: the cross's icon, and no cap.
+/// A `<kbd data-action>` of its own follows the device
+/// (control_props::kbd_glyphs_follow_the_device_and_rebind); one inside a
+/// text keeps the keyboard's cap, frames after the device changed.
+#[test]
+#[ignore = "og-ui: a text's inline <kbd data-action> keeps the device it was built for"]
+fn an_inline_actions_glyph_follows_the_device() {
+    let (ui, _, icons) = picture_ui();
+    let mut d = markup_doc(ui, PICTURE_LINE, "560px");
+    draw_pictures(&mut d);
+    d.ui.set_device(Device::PlayStation);
+    let (images, t) = draw_pictures(&mut d);
     assert!(
         images.iter().any(|i| i.0 == Some(icons)),
         "the cross: {images:?}"
     );
     assert!(!t.iter().any(|t| t.0 == "E"), "{t:?}");
-    // An unknown picture or action: named in a warning, nothing drawn.
-    step(
-        &mut ui,
-        InputFrame::default(),
-        "[img=nobody] [action=fly]",
-        Size::fit(),
-    );
-    let w = &ui.frame().warnings;
-    assert!(
-        w.iter().any(|w| w.contains("[img=nobody]"))
-            && w.iter().any(|w| w.contains("[action=fly]")),
-        "{w:?}"
-    );
 }

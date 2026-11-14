@@ -673,7 +673,8 @@ impl Ui {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ButtonDesc, InputFrame, Ui, Viewport};
+    use crate::ui::ButtonDesc;
+    use crate::{InputFrame, Ui, Viewport};
 
     /// Asked while a frame is built, the inspection answers for the last
     /// completed frame, not for the half-built one.

@@ -242,29 +242,40 @@ fn vp() -> Viewport {
     }
 }
 
-fn panel(ui: &mut Ui, f: impl FnOnce(&mut Ui)) {
-    band(ui, 0.0, f);
+/// Mounts in `ui` a document `name` of `body` in a column starting `top`
+/// CSS px down the surface (several UIs, each with its own focus, are
+/// drawn into one frame, one band each), dressed by `style`, and builds it
+/// twice.
+fn band(ui: &mut Ui, name: &str, top: f32, body: &str, style: &str) {
+    band_with(ui, name, top, body, style, &[]);
 }
 
-/// A column starting `top` CSS px down the surface: several UIs (each with
-/// its own focus) drawn into one frame, one band each.
-fn band(ui: &mut Ui, top: f32, f: impl FnOnce(&mut Ui)) {
-    let t = *ui.theme();
-    ui.column(
-        "Panel",
-        Element {
-            width: Size::grow(),
-            padding: Insets {
-                left: t.space.lg,
-                top: t.space.lg + top,
-                right: t.space.lg,
-                bottom: 0.0,
-            },
-            gap: t.space.sm,
-            ..Element::column()
-        },
-        f,
+/// [`band`] reading the stores `stores`.
+fn band_with(
+    ui: &mut Ui,
+    name: &str,
+    top: f32,
+    body: &str,
+    style: &str,
+    stores: &[(&str, serde_json::Value)],
+) {
+    let doc = format!(
+        r#"<meta name="component" content="{name}">
+<column id="Panel">{body}</column>
+<style>
+#Panel {{ width: stretch; padding: calc(var(--space-lg) + {top}px) var(--space-lg) 0; gap: var(--space-sm); }}
+{style}
+</style>"#
     );
+    super::scenes::mount_screen_document(ui, name, &doc, stores);
+    for _ in 0..2 {
+        step(ui, InputFrame::default());
+    }
+}
+
+/// One frame of `ui`'s mounted documents at [`vp`].
+fn step(ui: &mut Ui, input: InputFrame) {
+    super::scenes::step_screen(ui, input, vp());
 }
 
 /// A colour font's pages in the scene as og-runtime adds them
@@ -366,40 +377,22 @@ fn colr_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
     let pages = add_pages(&mut scene, &fonts[6]);
     let colr = UiFont::new(pages[0], scene.font(pages[0]).expect("the field page"));
     let mut ui = ui_of(&f, &colr, &f.body);
-    for _ in 0..2 {
-        ui.begin(InputFrame::default(), vp());
-        panel(&mut ui, |ui| {
-            let t = *ui.theme();
-            ui.label(
-                "Caption",
-                "COLR v1: gradients, a composite, the text's colour",
-                LabelDesc::default(),
-            );
-            // A linear and a radial gradient, a composite, then a gradient
-            // through the text's colour and the text's colour alone.
-            for (id, color) in [
-                ("Green", Srgba::rgb(0, 200, 60)),
-                ("Magenta", Srgba::rgb(220, 40, 200)),
-            ] {
-                ui.label(
-                    id,
-                    "\u{F0100}\u{F0503}\u{F0600} \u{F0B00}\u{F0B06}",
-                    LabelDesc {
-                        step: Some(TypeStep {
-                            size: 64.0,
-                            line_height: 80.0,
-                            ..t.type_ramp.body
-                        }),
-                        font: FontRole::Display,
-                        color: Some(color),
-                        nowrap: true,
-                        ..LabelDesc::default()
-                    },
-                );
-            }
-        });
-        ui.end();
-    }
+    // A linear and a radial gradient, a composite, then a gradient through
+    // the text's colour and the text's colour alone, in the display face.
+    let glyphs = "\u{F0100}\u{F0503}\u{F0600} \u{F0B00}\u{F0B06}";
+    band(
+        &mut ui,
+        "colr",
+        0.0,
+        &format!(
+            r#"<text id="Caption">COLR v1: gradients, a composite, the text's colour</text>
+<text id="Green" class="colr">{glyphs}</text>
+<text id="Magenta" class="colr">{glyphs}</text>"#
+        ),
+        ".colr { font-size: 64px; line-height: 80px; font-family: fantasy; white-space: nowrap; }
+#Green { color: rgb(0 200 60); }
+#Magenta { color: rgb(220 40 200); }",
+    );
     let (mut scene, desc) = shot(&[&ui], scene);
     // The colour font's other pages draw each of its texts too.
     let overlay = scene.ui.overlay.as_mut().expect("the frame's overlay");
@@ -422,65 +415,32 @@ fn bidi_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
     let mut scene = RenderScene::new();
     let f = faces(&mut scene, fonts);
     let mut ui = ui_of(&f, &f.display, &f.body);
-    for _ in 0..2 {
-        ui.begin(InputFrame::default(), vp());
-        panel(&mut ui, |ui| {
-            let t = *ui.theme();
-            let big = Some(t.type_ramp.xl);
-            ui.label(
-                "Joined",
-                "مغامرة صغيرة",
-                LabelDesc {
-                    step: big,
-                    ..LabelDesc::default()
-                },
-            );
-            ui.label("Rtl", "الإصدار 0.1.0 متابعة", LabelDesc::default());
-            ui.label("Mixed", "Level 1-2: مغامرة صغيرة!", LabelDesc::default());
-            ui.rich_text(
-                "Span",
-                "[color=primary]Go مغامرة صغيرة now[/color], then [b]العب[/b] 2",
-                RichTextDesc::default(),
-            );
-            ui.label(
-                "Hebrew",
-                "שלום עולם",
-                LabelDesc {
-                    step: big,
-                    ..LabelDesc::default()
-                },
-            );
-            ui.label(
-                "Devanagari",
-                "नमस्ते दुनिया हिन्दी",
-                LabelDesc {
-                    step: big,
-                    ..LabelDesc::default()
-                },
-            );
-        });
-        ui.end();
-    }
+    band(
+        &mut ui,
+        "bidi",
+        0.0,
+        r#"<text id="Joined" class="big">مغامرة صغيرة</text>
+<text id="Rtl">الإصدار 0.1.0 متابعة</text>
+<text id="Mixed">Level 1-2: مغامرة صغيرة!</text>
+<text id="Span"><span part="primary">Go مغامرة صغيرة now</span>, then <b>العب</b> 2</text>
+<text id="Hebrew" class="big">שלום עולם</text>
+<text id="Devanagari" class="big">नमस्ते दुनिया हिन्दी</text>"#,
+        ".big { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
+#Span::part(primary) { color: var(--primary); }",
+    );
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     // A right-to-left UI: start is the right edge, and a Latin word and a
     // number keep their own order inside the Arabic line.
     let mut rtl = ui_of(&f, &f.display, &f.body);
     rtl.set_direction(og_i18n::Direction::Rtl);
-    for _ in 0..2 {
-        rtl.begin(InputFrame::default(), vp());
-        band(&mut rtl, 300.0, |ui| {
-            ui.label("Title", "الإعدادات", LabelDesc::default());
-            ui.rich_text(
-                "Line",
-                "حذف [b]Slot 2[/b] مغامرة صغيرة؟",
-                RichTextDesc {
-                    width: Size::grow(),
-                    ..RichTextDesc::default()
-                },
-            );
-        });
-        rtl.end();
-    }
+    band(
+        &mut rtl,
+        "rtl",
+        300.0,
+        r#"<text id="Title">الإعدادات</text>
+<text id="Line">حذف <b>Slot 2</b> مغامرة صغيرة؟</text>"#,
+        "#Line { width: stretch; }",
+    );
     shot(&[&ui, &rtl], scene)
 }
 
@@ -488,61 +448,30 @@ fn kerning_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
     let mut scene = RenderScene::new();
     let f = faces(&mut scene, fonts);
     // The same lines with and without the fonts' kerning pairs, one band each.
-    let lines = |ui: &mut Ui, top: f32| {
-        band(ui, top, |ui| {
-            let t = *ui.theme();
-            ui.label(
-                "Title",
-                "AVATAR Toyota WAVE",
-                LabelDesc {
-                    step: Some(t.type_ramp.display_md),
-                    font: FontRole::Display,
-                    nowrap: true,
-                    ..LabelDesc::default()
-                },
-            );
-            ui.label(
-                "Body",
-                "Tower, Yo-yo, AV, To, LT: kerned pairs",
-                LabelDesc::default(),
-            );
-        });
+    let lines = |ui: &mut Ui, name: &str, top: f32| {
+        band(
+            ui,
+            name,
+            top,
+            r#"<text id="Title">AVATAR Toyota WAVE</text>
+<text id="Body">Tower, Yo-yo, AV, To, LT: kerned pairs</text>"#,
+            "#Title { font: var(--text-display-md); font-family: fantasy; letter-spacing: var(--type-display-md-tracking); white-space: nowrap; width: max-content; }",
+        );
     };
     let mut kerned = ui_of(&f, &f.display, &f.body);
+    lines(&mut kerned, "kerned", 0.0);
     let mut flat = ui_of(&f, &f.display_flat, &f.body_flat);
+    lines(&mut flat, "flat", 96.0);
     let mut cut = ui_of(&f, &f.display, &f.body);
-    for _ in 0..2 {
-        kerned.begin(InputFrame::default(), vp());
-        lines(&mut kerned, 0.0);
-        kerned.end();
-        flat.begin(InputFrame::default(), vp());
-        lines(&mut flat, 96.0);
-        flat.end();
-        cut.begin(InputFrame::default(), vp());
-        band(&mut cut, 210.0, |ui| {
-            ui.label(
-                "Cut",
-                "A label far too long for its one line ends in an ellipsis where it meets the edge of its column, however much of it is left",
-                LabelDesc {
-                    nowrap: true,
-                    ellipsis: true,
-                    width: Size::grow(),
-                    ..LabelDesc::default()
-                },
-            );
-            ui.label(
-                "Clamp",
-                "A paragraph clamped to two lines keeps what fits on them and ends the second with an ellipsis, so the rest of this sentence, which runs on well past two lines of the column, never shows below it.",
-                LabelDesc {
-                    ellipsis: true,
-                    max_lines: 2,
-                    width: Size::grow(),
-                    ..LabelDesc::default()
-                },
-            );
-        });
-        cut.end();
-    }
+    band(
+        &mut cut,
+        "cut",
+        210.0,
+        r#"<text id="Cut">A label far too long for its one line ends in an ellipsis where it meets the edge of its column, however much of it is left</text>
+<text id="Clamp">A paragraph clamped to two lines keeps what fits on them and ends the second with an ellipsis, so the rest of this sentence, which runs on well past two lines of the column, never shows below it.</text>"#,
+        "#Cut { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: stretch; }
+#Clamp { line-clamp: 2; text-overflow: ellipsis; overflow: hidden; width: stretch; }",
+    );
     let w = |ui: &Ui| ui.element("Title").expect("title").width;
     println!(
         "title {} px kerned, {} px without the pairs",
@@ -593,9 +522,9 @@ fn kerning_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
 }
 
 /// A tap at a point: press, then release a tick later.
-fn tap(ui: &mut Ui, build: &mut dyn FnMut(&mut Ui, InputFrame), at: Vec2) {
+fn tap(ui: &mut Ui, at: Vec2) {
     for (pressed, released) in [(true, false), (false, true)] {
-        build(
+        step(
             ui,
             InputFrame {
                 pointer: at,
@@ -609,9 +538,9 @@ fn tap(ui: &mut Ui, build: &mut dyn FnMut(&mut Ui, InputFrame), at: Vec2) {
     }
 }
 
-fn keys(ui: &mut Ui, build: &mut dyn FnMut(&mut Ui, InputFrame), k: UiKey, n: usize, shift: bool) {
+fn keys(ui: &mut Ui, k: UiKey, n: usize, shift: bool) {
     for _ in 0..n {
-        build(
+        step(
             ui,
             InputFrame {
                 keys: vec![k],
@@ -683,33 +612,23 @@ fn mixed_runs_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
         keys: vec!["KeyE".into()],
         ..Default::default()
     });
-    discretionary.begin(InputFrame::default(), vp());
-    discretionary.column(
-        "Discretionary",
-        Element {
-            width: Size::grow(),
-            padding: Insets {
-                left: 420.0,
-                top: 240.0,
-                ..Insets::default()
-            },
-            gap: 12.0,
-            ..Element::column()
-        },
-        |ui| {
-            for (id, width) in [("Narrow", 80.0), ("Wide", 190.0)] {
-                ui.rich_text(
-                    id,
-                    "[color=primary]extra\u{ad}[/color]ordinary [action=jump]",
-                    RichTextDesc {
-                        width: Size::Fixed(width),
-                        ..RichTextDesc::default()
-                    },
-                );
-            }
-        },
+    super::scenes::mount_screen_document(
+        &mut discretionary,
+        "discretionary",
+        "<meta name=\"component\" content=\"discretionary\">
+<column id=\"Discretionary\">
+  <text id=\"Narrow\"><span part=\"primary\">extra\u{ad}</span>ordinary <kbd data-action=\"jump\"></kbd></text>
+  <text id=\"Wide\"><span part=\"primary\">extra\u{ad}</span>ordinary <kbd data-action=\"jump\"></kbd></text>
+</column>
+<style>
+#Discretionary { width: stretch; padding: 240px 0 0 420px; gap: 12px; }
+#Narrow { width: 80px; }
+#Wide { width: 190px; }
+#Narrow::part(primary), #Wide::part(primary) { color: var(--primary); }
+</style>",
+        &[],
     );
-    discretionary.end();
+    step(&mut discretionary, InputFrame::default());
     assert!(
         discretionary.frame().warnings.is_empty(),
         "{:?}",
@@ -724,67 +643,61 @@ fn edit_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
     // Three UIs, each with its own focus: a field with a selection, a
     // field with a composition, a text area with a selection over a soft
     // line break and its caret.
-    let mut name = "Ada Lovelace".to_string();
     let mut select = ui_of(&f, &f.display, &f.body);
-    let mut b = |ui: &mut Ui, input: InputFrame| {
-        ui.begin(input, vp());
-        band(ui, 0.0, |ui| {
-            ui.text_field("Select", &mut name, &FieldDesc::default());
-        });
-        ui.end();
-    };
-    b(&mut select, InputFrame::default());
+    band_with(
+        &mut select,
+        "select",
+        0.0,
+        r#"<input id="Select" bind:value={$name}>"#,
+        "#Select { width: stretch; }",
+        &[("name", serde_json::json!("Ada Lovelace"))],
+    );
     let at = end_of(&select, "Select");
-    tap(&mut select, &mut b, at);
-    keys(&mut select, &mut b, UiKey::Left, 8, true);
+    tap(&mut select, at);
+    keys(&mut select, UiKey::Left, 8, true);
     assert_eq!(
         select.frame().text_input.clone().expect("field").selection,
         "Lovelace"
     );
 
-    let mut hello = "Hello ".to_string();
     let mut compose = ui_of(&f, &f.display, &f.body);
-    let mut b = |ui: &mut Ui, input: InputFrame| {
-        ui.begin(input, vp());
-        band(ui, 60.0, |ui| {
-            ui.text_field("Compose", &mut hello, &FieldDesc::default());
-        });
-        ui.end();
-    };
-    b(&mut compose, InputFrame::default());
+    band_with(
+        &mut compose,
+        "compose",
+        60.0,
+        r#"<input id="Compose" bind:value={$hello}>"#,
+        "#Compose { width: stretch; }",
+        &[("hello", serde_json::json!("Hello "))],
+    );
     let at = end_of(&compose, "Compose");
-    tap(&mut compose, &mut b, at);
-    b(
+    tap(&mut compose, at);
+    step(
         &mut compose,
         InputFrame::default().with_text(&og_input::TextInput::split("café", true)),
     );
     assert!(compose.frame().text_input.clone().expect("field").composing);
 
-    let mut notes =
-        "First line\nSecond line, long enough to wrap past the width of the area it is typed in, so it breaks between two words\nThird".to_string();
     let mut area = ui_of(&f, &f.display, &f.body);
-    let mut b = |ui: &mut Ui, input: InputFrame| {
-        ui.begin(input, vp());
-        band(ui, 120.0, |ui| {
-            ui.text_area(
-                "Area",
-                &mut notes,
-                &TextAreaDesc {
-                    rows: 4,
-                    ..TextAreaDesc::default()
-                },
-            );
-        });
-        ui.end();
-    };
-    b(&mut area, InputFrame::default());
+    band_with(
+        &mut area,
+        "area",
+        120.0,
+        r#"<textarea id="Area" rows="4" bind:value={$notes}/>"#,
+        "#Area { width: stretch; }",
+        &[(
+            "notes",
+            serde_json::json!(
+                "First line\nSecond line, long enough to wrap past the width of the area it is typed in, so it breaks between two words\nThird"
+            ),
+        )],
+    );
     let e = area.element("Area").expect("area");
     let at = Vec2::new(e.x + 4.0, e.y + 4.0);
-    tap(&mut area, &mut b, at);
-    keys(&mut area, &mut b, UiKey::Down, 1, false);
-    keys(&mut area, &mut b, UiKey::Home, 1, false);
-    keys(&mut area, &mut b, UiKey::Right, 11, false);
-    keys(&mut area, &mut b, UiKey::Right, 6, true);
+    tap(&mut area, at);
+    keys(&mut area, UiKey::Down, 1, false);
+    keys(&mut area, UiKey::Home, 1, false);
+    keys(&mut area, UiKey::Right, 11, false);
+    keys(&mut area, UiKey::Right, 6, true);
     assert_eq!(
         area.frame().text_input.clone().expect("area").selection,
         ", long"

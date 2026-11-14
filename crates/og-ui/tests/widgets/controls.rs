@@ -1,39 +1,44 @@
 use super::*;
+use serde_json::{Value, json};
+
+/// Row `key`'s content height: 31, 54 or 77 px by the number in its key.
+fn row(key: &str) -> Value {
+    let n: usize = key.trim_start_matches("item").parse().unwrap_or(0);
+    json!({ "id": key, "h": format!("{}px", 31 + (n % 3) * 23) })
+}
+
+const ROWS: &str = r#"<meta name="component" content="t">
+<column id="Root">
+<list id="Rows" row-height="40" width="240" height="150">
+{#each $rows as r (r.id)}<div id="Content" style:height={r.h}></div>{/each}
+</list>
+</column>
+<style>#Rows { gap: 3px; }</style>"#;
+
+/// The rows built under list `list` (its window), as probe elements.
+fn built(d: &Doc, list: &str, item: &str) -> Vec<UiElement> {
+    d.ui.probe_elements()
+        .into_iter()
+        .filter(|e| e.parent == list && e.id.starts_with(item))
+        .collect()
+}
 
 #[test]
 fn keyed_rows_measure_anchor_navigate_and_restore() {
-    let mut rig = Rig::new((0..100).map(|n| format!("item{n}")).collect::<Vec<_>>());
-    let b = &mut |ui: &mut Ui, keys: &mut Vec<String>| {
-        let range = ui.open_list_inner(
-            "Rows".into(),
-            ListDesc {
-                row_height: 40.0,
-                width: Size::Fixed(240.0),
-                height: Some(Size::Fixed(150.0)),
-                gap: 3.0,
-                ..Default::default()
-            },
-            Some(og_ui::virtualize::Order::Untracked(keys)),
-        );
-        assert!(range.last - range.first < 15, "only a window is built");
-        for i in range.first..range.last {
-            ui.list_item(i, false);
-            let n: usize = keys[i as usize]
-                .trim_start_matches("item")
-                .parse()
-                .unwrap_or(0);
-            ui.spacer("Content", Some(Size::Fixed(31.0 + (n % 3) as f32 * 23.0)));
-            ui.close();
-        }
-        ui.close_list();
-    };
-    rig.idle(4, b);
-    assert_ne!(
-        rig.ui.element("Rows/Row#item0").unwrap().height,
-        rig.ui.element("Rows/Row#item1").unwrap().height
+    let keys: Vec<String> = (0..100).map(|n| format!("item{n}")).collect();
+    let rows: Vec<Value> = keys.iter().map(|k| row(k)).collect();
+    let mut d = mount(ROWS, &[("rows", json!(rows))]);
+    idle(&mut d, 2);
+    assert!(
+        built(&d, "Rows", "Row#").len() < 15,
+        "only a window is built"
     );
-    rig.ui.navigate(Nav::Next);
-    rig.idle(1, b);
+    assert_ne!(
+        d.get("Rows/Row#item0").height,
+        d.get("Rows/Row#item1").height
+    );
+    d.ui.navigate(Nav::Next);
+    idle(&mut d, 1);
     for i in 1..25 {
         let input = if i % 2 == 0 {
             InputFrame {
@@ -49,37 +54,45 @@ fn keyed_rows_measure_anchor_navigate_and_restore() {
                 ..Default::default()
             }
         };
-        rig.step(input, b);
-        assert_eq!(rig.ui.focus_path(0), format!("Rows/Row#item{i}"));
+        d.step(input);
+        assert_eq!(focus(&d, 0), format!("Rows/Row#item{i}"));
     }
-    rig.idle(3, b);
-    let anchor = rig
-        .ui
-        .elements()
-        .iter()
-        .filter(|e| e.parent == "Rows" && e.id.starts_with("Row#") && e.y >= 0.0)
+    idle(&mut d, 3);
+    let anchor = built(&d, "Rows", "Row#")
+        .into_iter()
+        .filter(|e| e.y >= 0.0)
         .min_by(|a, b| a.y.total_cmp(&b.y))
-        .unwrap()
-        .clone();
-    rig.state.insert(0, "inserted".into());
-    rig.state.swap(1, 3);
-    rig.state.remove(5);
-    rig.idle(3, b);
+        .unwrap();
+    // Above the viewport: an insert at the start, rows 1 and 3 swapped,
+    // row 5 removed.
+    d.edit(
+        "rows",
+        json!({"op": "insert", "row": row("inserted"), "before": "item0"}),
+    );
+    d.edit(
+        "rows",
+        json!({"op": "move", "key": "item2", "before": "item0"}),
+    );
+    d.edit(
+        "rows",
+        json!({"op": "move", "key": "item0", "before": "item3"}),
+    );
+    d.edit("rows", json!({"op": "remove", "key": "item4"}));
+    idle(&mut d, 3);
     assert!(
-        (rig.ui.element(&anchor.path).unwrap().y - anchor.y).abs() < 0.01,
+        (d.get(anchor.path.strip_prefix("test:t/").unwrap()).y - anchor.y).abs() < 0.01,
         "edits above the viewport preserve the visible item's position"
     );
-    assert_eq!(
-        rig.ui.focus_path(0),
-        "Rows/Row#item24",
-        "focus belongs to the key"
-    );
-    let saved = rig.ui.save_state();
-    rig.idle(1, b);
-    let expected = rig.ui.frame().items.clone();
-    let mut restored = Rig::new(rig.state.clone());
+    assert_eq!(focus(&d, 0), "Rows/Row#item24", "focus belongs to the key");
+    let saved = d.ui.save_state();
+    idle(&mut d, 1);
+    let expected = d.ui.frame().items.clone();
+    let mut now: Vec<&str> = vec!["inserted", "item2", "item1", "item0", "item3"];
+    now.extend(keys[5..].iter().map(String::as_str));
+    let rows: Vec<Value> = now.iter().map(|k| row(k)).collect();
+    let mut restored = mount(ROWS, &[("rows", json!(rows))]);
     restored.ui.restore_state(&saved).unwrap();
-    restored.idle(1, b);
+    idle(&mut restored, 1);
     assert_eq!(
         restored.ui.frame().items,
         expected,
@@ -89,58 +102,40 @@ fn keyed_rows_measure_anchor_navigate_and_restore() {
 
 #[test]
 fn keyed_grid_uses_tallest_cells_and_reaches_unbuilt_end() {
-    let mut rig = Rig::new((0..41).map(|n| n.to_string()).collect::<Vec<_>>());
-    let b = &mut |ui: &mut Ui, keys: &mut Vec<String>| {
-        let range = ui.open_grid_inner(
-            "Cells".into(),
-            GridDesc {
-                columns: 2,
-                cell_width: 100.0,
-                cell_height: 60.0,
-                width: Size::fit(),
-                height: Some(Size::Fixed(180.0)),
-                gap: 4.0,
-                ..Default::default()
-            },
-            Some(og_ui::virtualize::Order::Untracked(keys)),
-        );
-        for i in range.first..range.last {
-            ui.grid_item(i, false);
-            ui.spacer(
-                "Content",
-                Some(Size::Fixed(if i % 2 == 0 { 35.0 } else { 81.0 })),
-            );
-            ui.close();
-        }
-        ui.close_list();
-    };
-    rig.idle(4, b);
-    let short = rig.ui.element("Cells/Cell#0").unwrap();
-    let tall = rig.ui.element("Cells/Cell#1").unwrap();
-    let next = rig.ui.element("Cells/Cell#2").unwrap();
+    let cells: Vec<Value> = (0..41)
+        .map(|n| json!({ "id": n.to_string(), "h": if n % 2 == 0 { "35px" } else { "81px" } }))
+        .collect();
+    let mut d = mount(
+        r#"<meta name="component" content="t">
+<column id="Root">
+<cells id="Cells" cell-columns="2" cell-width="100" cell-height="60" height="180">
+{#each $cells as c (c.id)}<div id="Content" style:height={c.h}></div>{/each}
+</cells>
+</column>
+<style>#Cells { gap: 4px; width: fit-content; }</style>"#,
+        &[("cells", json!(cells))],
+    );
+    idle(&mut d, 2);
+    let short = d.get("Cells/Cell#0");
+    let tall = d.get("Cells/Cell#1");
+    let next = d.get("Cells/Cell#2");
     assert_eq!(short.y, tall.y);
     assert!((next.y - (tall.y + tall.height + 4.0)).abs() < 0.01);
-    assert!(rig.ui.element("Cells/Cell#40").is_none());
-    rig.ui.navigate(Nav::Next);
-    rig.idle(1, b);
-    rig.step(
-        InputFrame {
-            keys: vec![UiKey::End],
-            ..Default::default()
-        },
-        b,
-    );
-    rig.idle(3, b);
-    assert_eq!(rig.ui.focus_path(0), "Cells/Cell#40");
-    assert!(rig.ui.element("Cells/Cell#40").unwrap().y < 180.0);
-    rig.step(
-        InputFrame {
-            keys: vec![UiKey::Home],
-            ..Default::default()
-        },
-        b,
-    );
-    assert_eq!(rig.ui.focus_path(0), "Cells/Cell#0");
+    assert!(d.el("Cells/Cell#40").is_none());
+    d.ui.navigate(Nav::Next);
+    idle(&mut d, 1);
+    d.step(InputFrame {
+        keys: vec![UiKey::End],
+        ..Default::default()
+    });
+    idle(&mut d, 3);
+    assert_eq!(focus(&d, 0), "Cells/Cell#40");
+    assert!(d.get("Cells/Cell#40").y < 180.0);
+    d.step(InputFrame {
+        keys: vec![UiKey::Home],
+        ..Default::default()
+    });
+    assert_eq!(focus(&d, 0), "Cells/Cell#0");
 }
 
 /// A grid below a scroll view's fold builds the rows of its own box, not a
@@ -149,110 +144,71 @@ fn keyed_grid_uses_tallest_cells_and_reaches_unbuilt_end() {
 /// laid out four across, three times its height).
 #[test]
 fn a_grid_out_of_view_builds_only_its_own_rows() {
-    let mut rig = Rig::new(Vec::<(u32, u32)>::new());
-    let b = &mut |ui: &mut Ui, built: &mut Vec<(u32, u32)>| {
-        ui.scroll(
-            "Page",
-            ScrollDesc {
-                width: Size::Fixed(400.0),
-                height: Size::Fixed(300.0),
-                ..ScrollDesc::default()
-            },
-            |ui| {
-                ui.open(
-                    "Spacer",
-                    Element {
-                        height: Size::Fixed(900.0),
-                        ..Element::default()
-                    },
-                );
-                ui.close();
-                // As a data grid builds it: a frame of a fixed height, the
-                // grid growing to fill it.
-                ui.open(
-                    "Frame",
-                    Element {
-                        direction: Direction::Column,
-                        width: Size::Fixed(300.0),
-                        height: Size::Fixed(150.0),
-                        ..Element::default()
-                    },
-                );
-                let range = ui.open_grid(
-                    "Bag",
-                    GridDesc {
-                        count: 120,
-                        cell_width: 64.0,
-                        width: Size::grow(),
-                        height: Some(Size::grow()),
-                        ..GridDesc::default()
-                    },
-                );
-                for i in range.first..range.last {
-                    ui.grid_item(i, false);
-                    ui.close();
-                }
-                ui.close_list();
-                ui.close();
-                built.push((range.first, range.last));
-            },
-        );
-    };
-    rig.idle(3, b);
-    let (first, last) = *rig.state.last().expect("built");
+    let bag: Vec<Value> = (0..120).map(|n| json!({ "id": n.to_string() })).collect();
+    let d = mount(
+        r#"<meta name="component" content="t">
+<column id="Root">
+<scroll id="Page">
+  <div id="Spacer"></div>
+  <column id="Frame">
+    <cells id="Bag" cell-width="64">{#each $bag as c (c.id)}<div id="Item"></div>{/each}</cells>
+  </column>
+</scroll>
+</column>
+<style>
+#Page { width: 400px; height: 300px; }
+#Spacer { height: 900px; }
+#Frame { width: 300px; height: 150px; }
+#Bag { width: 100%; height: 100%; }
+#Item { height: 64px; }
+</style>"#,
+        &[("bag", json!(bag))],
+    );
+    // Out of view the cells are not shown, but a screen reader still
+    // reads every one built.
+    let built =
+        d.ui.a11y()
+            .nodes
+            .iter()
+            .filter(|n| n.path.contains("/Bag/Cell#") && !n.path.ends_with("/Item"))
+            .count();
+    assert!(built > 0, "the grid is built");
     // 300 px holds four 64 px cells across; 150 px shows two or three rows,
     // plus one past each edge: at most five rows of four.
-    assert!(last - first <= 20, "built cells {first}..{last}");
+    assert!(built <= 20, "built {built} cells");
 }
 
 /// Small controls' reach (docs/ui.md §2.1): on a touch screen a control's
 /// box grows to the 44 px touch target, and where two reaches overlap the
 /// nearest box wins; a box around them (a panel behind) never takes a
-/// press from a reach, a sibling's own box does; `hitSlop` reaches on any
-/// pointer, the touch minimum only on a coarse one.
+/// press from a reach, a sibling's own box does; `data-hit-slop` reaches
+/// on any pointer, the touch minimum only on a coarse one.
 #[test]
 fn a_small_controls_reach_grows_to_the_touch_target_and_the_nearest_box_wins() {
-    let build = |ui: &mut Ui, hits: &mut Vec<&'static str>| {
-        let place = |x: f32, y: f32, w: f32, h: f32, slop: f32| {
-            (
-                Element {
-                    width: Size::Fixed(w),
-                    height: Size::Fixed(h),
-                    interactive: true,
-                    ..Element::default()
-                },
-                Props {
-                    position: Position::Absolute,
-                    insets: Edges {
-                        start: Some(x),
-                        top: Some(y),
-                        ..Edges::default()
-                    },
-                    hit_slop: slop,
-                    ..Props::default()
-                },
-            )
-        };
-        for (id, (el, props)) in [
-            ("Panel", place(40.0, 40.0, 400.0, 300.0, 0.0)),
-            ("A", place(100.0, 100.0, 20.0, 20.0, 0.0)),
-            ("B", place(126.0, 100.0, 20.0, 20.0, 0.0)),
-            ("C", place(300.0, 100.0, 20.0, 20.0, 8.0)),
-        ] {
-            ui.open_with(id, el, props);
-            if ui.close().clicked {
-                hits.push(id);
-            }
-        }
-    };
+    const BOXES: &str = r#"<meta name="component" content="t">
+<div id="Root">
+  <div id="Panel" interactive></div>
+  <div id="A" interactive></div>
+  <div id="B" interactive></div>
+  <div id="C" interactive data-hit-slop="8"></div>
+</div>
+<style>
+#Panel, #A, #B, #C { position: fixed; }
+#Panel { left: 40px; top: 40px; width: 400px; height: 300px; }
+#A, #B, #C { top: 100px; width: 20px; height: 20px; }
+#A { left: 100px; }
+#B { left: 126px; }
+#C { left: 300px; }
+</style>"#;
     let tap = |touch: bool, x: f32, y: f32| {
-        let mut rig = Rig::new(Vec::new());
-        rig.vp.coarse_pointer = touch;
-        rig.idle(2, &mut |ui, s| build(ui, s));
+        let mut vp = Viewport::new(800.0, 600.0);
+        vp.coarse_pointer = touch;
+        let mut d = mount_at(BOXES, &[], vp);
+        clicks(&mut d);
         let p = Vec2::new(x, y);
-        rig.step(press(p), &mut |ui, s| build(ui, s));
-        rig.step(release(p), &mut |ui, s| build(ui, s));
-        rig.state.first().copied().unwrap_or("")
+        d.step(press(p));
+        d.step(release(p));
+        clicks(&mut d).first().cloned().unwrap_or_default()
     };
     // Between A (100–120) and B (126–146): the nearer box.
     assert_eq!(tap(true, 124.0, 110.0), "B");

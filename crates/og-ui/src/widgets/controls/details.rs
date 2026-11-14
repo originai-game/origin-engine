@@ -31,7 +31,7 @@ impl Ui {
     /// (`Details.content`) that is hidden while closed. Build the content,
     /// then call [`Ui::close_details`]. Role button with `expanded` on the
     /// summary, group on the whole. Probe: `<id>/Summary`, `<id>/Content`.
-    pub fn open_details(&mut self, id: impl Into<Id>, desc: &DetailsDesc) -> DetailsResult {
+    pub(crate) fn open_details(&mut self, id: impl Into<Id>, desc: &DetailsDesc) -> DetailsResult {
         let t = self.env.theme;
         let mut open = desc.open;
         self.open(
@@ -122,7 +122,7 @@ impl Ui {
     }
 
     /// Closes a disclosure opened with [`Ui::open_details`].
-    pub fn close_details(&mut self) {
+    pub(crate) fn close_details(&mut self) {
         self.close();
         self.close();
         self.semantics(&Semantics {

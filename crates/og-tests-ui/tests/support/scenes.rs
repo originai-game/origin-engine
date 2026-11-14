@@ -75,8 +75,7 @@ pub fn sample_screen_shot(font: &FontFiles) -> (Shot, Sample) {
     let mut scene = RenderScene::new();
     let font = add_font(&mut scene, font);
     let mut ui = ui_with_font(font);
-    let mut s = Sample::default();
-    sample_session(&mut ui, &mut s);
+    let s = sample_session(&mut ui);
     (shot(ui, scene, vp), s)
 }
 
@@ -92,29 +91,25 @@ pub fn widget_set_shot(font: &FontFiles) -> Shot {
     let mut scene = RenderScene::new();
     let font = add_font(&mut scene, font);
     let mut ui = ui_with_font(font);
-    let mut s = Kit {
-        amount: 3.0,
-        checks: [true, false],
-        pick: 1,
-        ..Kit::default()
-    };
-    let step = |ui: &mut Ui, s: &mut Kit, input: InputFrame| {
-        ui.begin(input, vp);
-        kit_screen(ui, s);
-        ui.end();
-    };
-    step(&mut ui, &mut s, InputFrame::default());
-    for _ in 0..4 {
-        step(&mut ui, &mut s, InputFrame::default());
+    kit_screen(
+        &mut ui,
+        &Kit {
+            amount: 3.0,
+            checks: [true, false],
+            pick: "normal".into(),
+            ..Kit::default()
+        },
+    );
+    for _ in 0..5 {
+        step_screen(&mut ui, InputFrame::default(), vp);
     }
     // Open the select with a press: its menu floats over the panel and
     // takes focus; Tab moves it to Hard with the ring and its gap.
     let sel = ui.element("Difficulty").expect("select").clone();
     let (x, y) = sel.center();
     let p = Vec2::new(x, y);
-    step(
+    step_screen(
         &mut ui,
-        &mut s,
         InputFrame {
             pointer: p,
             pointer_inside: true,
@@ -122,27 +117,28 @@ pub fn widget_set_shot(font: &FontFiles) -> Shot {
             pressed: true,
             ..InputFrame::default()
         },
+        vp,
     );
-    step(
+    step_screen(
         &mut ui,
-        &mut s,
         InputFrame {
             pointer: p,
             pointer_inside: true,
             released: true,
             ..InputFrame::default()
         },
+        vp,
     );
-    step(
+    step_screen(
         &mut ui,
-        &mut s,
         InputFrame {
             keys: vec![UiKey::Tab],
             ..InputFrame::hover(p.x, p.y)
         },
+        vp,
     );
     for _ in 0..20 {
-        step(&mut ui, &mut s, InputFrame::hover(p.x, p.y));
+        step_screen(&mut ui, InputFrame::hover(p.x, p.y), vp);
     }
     shot(ui, scene, vp)
 }
@@ -174,6 +170,20 @@ pub fn text_fields_shot(font: &FontFiles) -> Shot {
     Shot { ui, scene, desc }
 }
 
+/// The card of [`glow_scene`]: a `Title#<k>` per row of `$titles`, at a
+/// shader fixture's type (34/38 px, weight 400, -0.1 em tracking: tight
+/// tracking overlaps quads), independent of the style's responsive ramp.
+pub const GLOW_DOC: &str = r#"<meta name="component" content="glow">
+<column id="Card">
+  {#each $titles as title (title.id)}
+    <text id="Title">Wall 42</text>
+  {/each}
+</column>
+<style>
+#Card { width: stretch; height: stretch; padding: var(--space-lg); background: var(--backdrop); }
+#Title { font: 400 34px/38px var(--font-body); letter-spacing: -0.1em; font-feature-settings: normal; text-transform: none; }
+</style>"#;
+
 /// A dark card of display-size labels, with or without a style's text
 /// glow, as a scene ready to render.
 pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, RenderDesc) {
@@ -193,43 +203,17 @@ pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, 
         });
     }
     ui.set_theme(theme);
+    let titles: Vec<serde_json::Value> = (0..labels)
+        .map(|k| serde_json::json!({ "id": k.to_string() }))
+        .collect();
+    mount_screen_document(
+        &mut ui,
+        "glow",
+        GLOW_DOC,
+        &[("titles", serde_json::Value::Array(titles))],
+    );
     for _ in 0..2 {
-        ui.begin(InputFrame::default(), vp);
-        let t = *ui.theme();
-        ui.column(
-            "Card",
-            Element {
-                width: Size::grow(),
-                height: Size::grow(),
-                padding: Insets::all(t.space.lg),
-                background: Some(t.palette.backdrop),
-                ..Element::default()
-            },
-            |ui| {
-                for k in 0..labels {
-                    ui.label(
-                        ui_idi("Title", k as u32),
-                        "Wall 42",
-                        LabelDesc {
-                            // A shader fixture, independent of the style's
-                            // responsive ramp. Tight tracking overlaps quads.
-                            step: Some(TypeStep {
-                                size: 34.0,
-                                line_height: 38.0,
-                                tracking_em: -0.1,
-                                cjk_line_height: 44.0,
-                                cjk_tracking_em: 0.0,
-                                features: og_ui::shape::Features::NONE,
-                                weight: 400,
-                                uppercase: false,
-                            }),
-                            ..LabelDesc::default()
-                        },
-                    );
-                }
-            },
-        );
-        ui.end();
+        step_screen(&mut ui, InputFrame::default(), vp);
     }
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);

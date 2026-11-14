@@ -55,7 +55,7 @@ impl Ui {
     /// on it (the primary pointer, or any of og.Pointers), so another finger
     /// can hold a button at once; one that slides onto it from elsewhere
     /// does not take it. Disabled, it answers nothing and shows faded.
-    pub fn joystick(&mut self, id: impl Into<Id>, desc: JoystickDesc) -> JoystickResponse {
+    pub(crate) fn joystick(&mut self, id: impl Into<Id>, desc: JoystickDesc) -> JoystickResponse {
         let p = self.env.theme.palette;
         let size = if desc.size > 0.0 {
             desc.size
@@ -229,7 +229,7 @@ impl Ui {
     /// in its middle, and the thumb rolling around it moves between them
     /// without lifting. It keeps the finger that started on it, as the
     /// joystick does; disabled, it answers nothing and shows faded.
-    pub fn dpad(&mut self, id: impl Into<Id>, desc: DpadDesc) -> DpadResponse {
+    pub(crate) fn dpad(&mut self, id: impl Into<Id>, desc: DpadDesc) -> DpadResponse {
         let p = self.env.theme.palette;
         let arm = (if desc.size > 0.0 {
             desc.size

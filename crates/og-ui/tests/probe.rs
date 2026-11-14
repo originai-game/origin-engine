@@ -15,7 +15,8 @@ struct Rig {
     world: World,
     probe: Probe,
     ui: SharedUi,
-    sample: Arc<Mutex<Sample>>,
+    /// Every click the sample screen sent, as [`clicks`] names it.
+    clicks: Arc<Mutex<Vec<String>>>,
 }
 
 impl Rig {
@@ -27,11 +28,17 @@ impl Rig {
         .expect("world");
         // The probe's default sink is og-input's layer: og.Input as the UI reads it.
         let mut probe = Probe::new(&mut world).expect("probe");
-        let ui = SharedUi::new(ui_with_font(test_font_metrics()));
-        let sample = Arc::new(Mutex::new(Sample::default()));
-        let state = sample.clone();
+        let mut screen = ui_with_font(test_font_metrics());
+        sample_screen(&mut screen);
+        let ui = SharedUi::new(screen);
+        let clicked = Arc::new(Mutex::new(Vec::new()));
+        let log = clicked.clone();
         let (desc, run) = ui.system("ui", viewport, move |ui, _| {
-            sample_screen(ui, &mut state.lock().expect("sample"));
+            ui.build_retained_documents(&bind::NoEnv)
+                .expect("the sample screen builds");
+            log.lock()
+                .expect("clicks")
+                .extend(clicks(&ui.take_doc_events()));
             Ok(())
         });
         world.add_system(desc, run).expect("ui system");
@@ -40,7 +47,7 @@ impl Rig {
             world,
             probe,
             ui,
-            sample,
+            clicks: clicked,
         };
         rig.ticks(1);
         rig
@@ -87,8 +94,10 @@ impl Rig {
         (p.x, p.y)
     }
 
+    /// The sample screen's stores and clicks now.
     fn sample(&self) -> Sample {
-        self.sample.lock().expect("sample").clone()
+        let clicks = self.clicks.lock().expect("clicks").clone();
+        Sample::read(&mut self.ui.lock(), clicks)
     }
 }
 
@@ -159,7 +168,8 @@ fn dump_ui_lists_every_visible_element_with_bounds_and_text() {
     ] {
         assert_eq!(by_id(path).text, text, "{path}");
     }
-    for path in ["Volume", "Loading", "List", "Screen", "Store/Header"] {
+    // The screen's root element takes its mount's name.
+    for path in ["Volume", "Loading", "List", "screen:sample", "Store/Header"] {
         by_id(path);
     }
     // Rows scrolled out of the list are not on screen, so not listed.
@@ -216,7 +226,7 @@ fn move_to_text_resolves_exact_substring_and_nth_matches() {
     rig.run("0:move_to_text:=Item 1;0.05:touch_start;0.1:touch_end");
     assert_eq!(rig.pointer(), center(rig.element("Row#1/Name")));
     rig.run("0:move_to_text:Buy@-2;0.05:touch_start;0.1:touch_end");
-    assert_eq!(rig.sample().clicks, ["Row#1/Buy"]);
+    assert_eq!(rig.sample().clicks, ["Store/List/Row#1/Buy"]);
 }
 
 #[test]
@@ -234,7 +244,8 @@ fn restoring_the_world_and_the_ui_state_replays_the_same_frames() {
 
     assert!(rig.probe.restore(&mut rig.world, &id));
     rig.ui.lock().restore_state(&ui_state).expect("ui state");
-    *rig.sample.lock().expect("sample") = sample;
+    // The stores are in the UI state; the clicks are the game's.
+    *rig.clicks.lock().expect("clicks") = sample.clicks;
     rig.run(script);
     assert_eq!((rig.elements(), rig.sample()), first);
     assert_eq!(first.1.search, "ab");

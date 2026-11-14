@@ -382,49 +382,47 @@ fn missing_art_slot_kinds_have_intentional_placeholders() {
     theme.unit_pin = 1.0;
     ui.set_theme(theme);
     ui.set_style_name("placeholder-review");
-    ui.begin(InputFrame::default(), vp);
-    for (index, (kind, width, height, x, y)) in placements.iter().copied().enumerate() {
-        ui.open_with(
-            format!("Cell{index}"),
-            Element {
-                direction: Direction::Column,
-                width: Size::Fixed(width.max(150.0)),
-                height: Size::Fixed(height + 48.0),
-                ..Element::default()
-            },
-            Props {
-                position: Position::Absolute,
-                insets: Edges {
-                    start: Some(x),
-                    top: Some(y),
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-        );
-        ui.label(
-            "Label",
-            &format!("{}\n{width:.0} x {height:.0}", kind.name()),
-            LabelDesc::default(),
-        );
-        ui.art(
-            "Art",
-            &ArtDesc {
-                spec: slot::SlotSpec::new(kind.name(), kind),
-                width: Size::Fixed(width),
-                height: Size::Fixed(height),
-                texture: None,
-                size: None,
-                label: String::new(),
-                offset: [0.0; 2],
-                nearest: false,
-            },
-        );
-        ui.close();
-    }
-    ui.end();
+    // Each cell placed absolutely at its shelf position: its kind's name
+    // and size over an empty art slot of that kind.
+    const SLOTS: &str = r#"<meta name="component" content="slots">
+<column id="Root">
+  {#each $cells as c (c.id)}
+    <column id="Cell" style:inset-inline-start={c.x} style:top={c.y} style:width={c.cw} style:height={c.ch}>
+      <text id="Label">{c.label}</text>
+      <art id="Art" kind={c.kind} style:width={c.w} style:height={c.h}></art>
+    </column>
+  {/each}
+</column>
+<style>
+#Root { width: stretch; height: stretch; }
+#Cell { position: absolute; }
+#Label { white-space: pre-line; }
+</style>"#;
+    let px = |v: f32| format!("{v}px");
+    let cells: Vec<serde_json::Value> = placements
+        .iter()
+        .enumerate()
+        .map(|(index, &(kind, width, height, x, y))| {
+            serde_json::json!({
+                "id": index.to_string(),
+                "kind": kind.name(),
+                "label": format!("{}\n{width:.0} x {height:.0}", kind.name()),
+                "x": px(x), "y": px(y),
+                "cw": px(width.max(150.0)), "ch": px(height + 48.0),
+                "w": px(width), "h": px(height),
+            })
+        })
+        .collect();
+    mount_screen_document(
+        &mut ui,
+        "slots",
+        SLOTS,
+        &[("cells", serde_json::Value::Array(cells))],
+    );
+    step_screen(&mut ui, InputFrame::default(), vp);
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     for (index, (_, width, height, _, _)) in placements.iter().enumerate() {
-        let rect = ui.element(&format!("Cell{index}/Art")).unwrap();
+        let rect = ui.element(&format!("Cell#{index}/Art")).unwrap();
         assert!(
             (rect.width - width).abs() <= 1.0 && (rect.height - height).abs() <= 1.0,
             "pixel-snapped slot {index}: {rect:?}, expected {width}x{height}"
@@ -465,7 +463,8 @@ fn document_spans_match_core_pixels_and_restore_motion() {
     let vp = Viewport::new(640.0, 180.0);
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
-    // The document in one UI, the widget in another, stepped alike.
+    // The spans document in one UI, the same runs written as inline markup
+    // in another, stepped alike.
     let mut ui = ui_with_font(font.clone());
     let mut core = ui_with_font(font);
     let mut theme = *ui.theme();
@@ -510,35 +509,31 @@ text::part(motion) { color: var(--danger); -og-text-motion: wave; }
         &serde_json::json!({"body": body, "spans": spans}),
     )
     .unwrap();
-    let draw = |ui: &mut Ui, document: bool| {
+    // The same runs as `<span part>` markup, dressed by the same rules.
+    core.define_document(
+        UiDocument::parse(
+            "inline.svelte",
+            r#"
+<meta name="component" content="inline">
+<text id="Line"><span part="speaker">Ada:</span> <span part="motion">Keep moving slowly</span>. [b] remains plain text.</text>
+<style>
+text { width: 560px; }
+text::part(speaker) { color: var(--highlight); font-weight: bold; }
+text::part(motion) { color: var(--danger); -og-text-motion: wave; }
+</style>
+"#,
+        )
+        .unwrap(),
+    );
+    core.mount_with_values(
+        reactive::SourceId::new("test", "line"),
+        "inline",
+        &serde_json::Value::Null,
+    )
+    .unwrap();
+    let draw = |ui: &mut Ui| {
         ui.begin(InputFrame::default(), vp);
-        if document {
-            ui.build_retained_documents(&bind::NoEnv).unwrap();
-        } else {
-            ui.rich_text_spans(
-                "Line",
-                body,
-                &spans,
-                RichTextDesc {
-                    width: Size::Fixed(560.0),
-                    ..Default::default()
-                },
-                |span| match span.name.as_str() {
-                    "speaker" => TextSpanStyle {
-                        color: Some(paint::ColorRef::token("highlight")),
-                        bold: Some(true),
-                        weight: Some(700),
-                        ..Default::default()
-                    },
-                    "motion" => TextSpanStyle {
-                        color: Some(paint::ColorRef::token("danger")),
-                        motion: Some(markup::SpanFx::Wave),
-                        ..Default::default()
-                    },
-                    _ => Default::default(),
-                },
-            );
-        }
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
         ui.end();
     };
     let mut renderer = Renderer::new_blocking(&RenderDesc {
@@ -556,12 +551,12 @@ text::part(motion) { color: var(--danger); -og-text-motion: wave; }
         renderer.read_offscreen().unwrap()
     };
     for _ in 0..13 {
-        draw(&mut ui, true);
-        draw(&mut core, false);
+        draw(&mut ui);
+        draw(&mut core);
     }
     let saved = ui.save_state();
-    draw(&mut ui, true);
-    draw(&mut core, false);
+    draw(&mut ui);
+    draw(&mut core);
     let document = capture(&ui);
     assert_eq!(
         document.pixels,
@@ -569,7 +564,7 @@ text::part(motion) { color: var(--danger); -og-text-motion: wave; }
         "document cascade must match core rendering, RMSE 0"
     );
     ui.restore_state(&saved).unwrap();
-    draw(&mut ui, true);
+    draw(&mut ui);
     assert_eq!(document.pixels, capture(&ui).pixels);
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     let path = out_dir().join("document-rich-text.png");
@@ -578,10 +573,10 @@ text::part(motion) { color: var(--danger); -og-text-motion: wave; }
     theme.reduced_motion = true;
     theme.palette.danger = Srgba::rgb(64, 218, 182);
     ui.set_theme(theme);
-    draw(&mut ui, true);
+    draw(&mut ui);
     let still = capture(&ui);
     for _ in 0..13 {
-        draw(&mut ui, true);
+        draw(&mut ui);
     }
     assert_eq!(still.pixels, capture(&ui).pixels);
     assert_ne!(document.pixels, still.pixels);
@@ -621,76 +616,34 @@ fn structured_rich_text_draws_wraps_and_restores_mid_motion() {
         properties: Default::default(),
     })
     .collect();
+    // The dialogue's ranges dressed by part: an unknown one by no rule.
+    const REVIEW: &str = r#"<meta name="component" content="review">
+<column id="Review">
+  <text id="Title">Structured dialogue / plain text + spans</text>
+  <text id="State">Wave + emphasis / restored tick</text>
+  <text id="Still">Reduced motion / active-style token changed</text>
+  <text id="Dialogue" spans={$spans}>{$text}</text>
+  <text id="Legend">Speaker prefix retained. Unknown attributes stay in game data.</text>
+</column>
+<style>
+#Still { display: none; }
+@media (prefers-reduced-motion: reduce) { #State { display: none; } #Still { display: block; } }
+#Review { width: stretch; height: stretch; padding: 36px; gap: 24px; background: var(--backdrop); }
+#Title { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
+#Dialogue { width: 620px; font-size: 26px; line-height: 36px; }
+#Dialogue::part(character) { font-weight: bold; color: var(--highlight); }
+#Dialogue::part(emphasis) { font-weight: bold; color: var(--danger); }
+#Dialogue::part(motion) { -og-text-motion: wave; }
+</style>"#;
+    ui.define_document(UiDocument::parse("ui/review.svelte", REVIEW).unwrap());
+    ui.mount_with_values(
+        reactive::SourceId::new("test", "review"),
+        "review",
+        &serde_json::json!({"spans": attrs, "text": text}),
+    )
+    .unwrap();
     let build = |ui: &mut Ui| {
-        ui.begin(InputFrame::default(), vp);
-        let t = *ui.theme();
-        ui.column(
-            "Review",
-            Element {
-                width: Size::grow(),
-                height: Size::grow(),
-                padding: Insets::all(36.0),
-                gap: 24.0,
-                background: Some(t.palette.backdrop),
-                ..Default::default()
-            },
-            |ui| {
-                ui.label(
-                    "Title",
-                    "Structured dialogue / plain text + spans",
-                    LabelDesc {
-                        step: Some(t.type_ramp.xl),
-                        ..Default::default()
-                    },
-                );
-                ui.label(
-                    "State",
-                    if t.reduced_motion {
-                        "Reduced motion / active-style token changed"
-                    } else {
-                        "Wave + emphasis / restored tick"
-                    },
-                    LabelDesc::default(),
-                );
-                ui.rich_text_spans(
-                    "Dialogue",
-                    text,
-                    &attrs,
-                    RichTextDesc {
-                        width: Size::Fixed(620.0),
-                        step: Some(TypeStep {
-                            size: 26.0,
-                            line_height: 36.0,
-                            ..t.type_ramp.body
-                        }),
-                        ..Default::default()
-                    },
-                    |a| match a.name.as_str() {
-                        "character" => TextSpanStyle {
-                            bold: Some(true),
-                            color: Some(paint::ColorRef::token("highlight")),
-                            ..Default::default()
-                        },
-                        "emphasis" => TextSpanStyle {
-                            bold: Some(true),
-                            color: Some(paint::ColorRef::token("danger")),
-                            ..Default::default()
-                        },
-                        "motion" => TextSpanStyle {
-                            motion: Some(markup::SpanFx::Wave),
-                            ..Default::default()
-                        },
-                        _ => TextSpanStyle::default(),
-                    },
-                );
-                ui.label(
-                    "Legend",
-                    "Speaker prefix retained. Unknown attributes stay in game data.",
-                    LabelDesc::default(),
-                );
-            },
-        );
-        ui.end();
+        step_screen(ui, InputFrame::default(), vp);
     };
     let capture = |ui: &Ui, renderer: &mut Renderer, scene: &mut RenderScene| {
         let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
@@ -812,54 +765,34 @@ fn keyed_virtual_content_is_measured_and_clipped_on_gpu() {
             },
             ..Default::default()
         });
-        let keys: Vec<String> = (0..50).map(|i| i.to_string()).collect();
+        // Fifty keyed rows, every other one tall, each a white box.
+        let container = if grid {
+            r#"<cells id="Items" cell-width="100" cell-columns="2" width="220" height="128">"#
+        } else {
+            r#"<list id="Items" row-height="40" width="220" height="128">"#
+        };
+        let close = if grid { "</cells>" } else { "</list>" };
+        let doc = format!(
+            r#"<meta name="component" content="keyed">
+{container}{{#each $items as item (item.id)}}<column id="Paint" class:tall={{item.tall}}/>{{/each}}{close}
+<style>
+#Paint {{ width: 64px; height: 24px; background: #ffffff; border-radius: 0; }}
+#Paint.tall {{ height: 56px; }}
+</style>"#
+        );
+        let items: Vec<serde_json::Value> = (0..50)
+            .map(|i| serde_json::json!({"id": i.to_string(), "tall": i % 2 == 1}))
+            .collect();
+        mount_screen_document(
+            &mut ui,
+            "keyed",
+            &doc,
+            &[("items", serde_json::Value::Array(items))],
+        );
         for _ in 0..4 {
-            ui.begin(InputFrame::default(), Viewport::new(240.0, 160.0));
-            let range = if grid {
-                ui.open_grid_inner(
-                    "Items".into(),
-                    GridDesc {
-                        columns: 2,
-                        cell_width: 100.0,
-                        width: Size::Fixed(220.0),
-                        height: Some(Size::Fixed(128.0)),
-                        ..Default::default()
-                    },
-                    Some(og_ui::virtualize::Order::Untracked(&keys)),
-                )
-            } else {
-                ui.open_list_inner(
-                    "Items".into(),
-                    ListDesc {
-                        row_height: 40.0,
-                        width: Size::Fixed(220.0),
-                        height: Some(Size::Fixed(128.0)),
-                        ..Default::default()
-                    },
-                    Some(og_ui::virtualize::Order::Untracked(&keys)),
-                )
-            };
-            for i in range.first..range.last {
-                if grid {
-                    ui.grid_item(i, false);
-                } else {
-                    ui.list_item(i, false);
-                }
-                ui.open(
-                    "Paint",
-                    Element {
-                        width: Size::Fixed(64.0),
-                        height: Size::Fixed(if i % 2 == 0 { 24.0 } else { 56.0 }),
-                        background: Some(Srgba::WHITE),
-                        ..Default::default()
-                    },
-                );
-                ui.close();
-                ui.close();
-            }
-            ui.close_list();
-            ui.end();
+            step_screen(&mut ui, InputFrame::default(), Viewport::new(240.0, 160.0));
         }
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
         let mut overlay = og_render::Overlay::new(240.0, 160.0, 1.0);
         ui.frame().emit(&EmitDesc::default(), &mut overlay);
         let mut scene = RenderScene::new();
@@ -945,35 +878,30 @@ fn a_scroll_container_clips_everything_it_draws() {
     let font = add_test_font(&mut scene);
     let mut ui = ui_with_font(font);
     let vp = Viewport::new(300.0, 200.0);
-    let red = Srgba::rgb(230, 26, 26);
+    // Ten red rows in a 200 × 100 scroll.
+    const LIST: &str = r#"<meta name="component" content="list">
+<column id="Root">
+  <scroll id="List">
+    {#each $rows as row (row.id)}
+      <row id="Row"><text id="Name">{row.name}</text></row>
+    {/each}
+  </scroll>
+</column>
+<style>
+#List { width: 200px; height: 100px; gap: var(--space-xs); }
+#Row { width: stretch; padding: var(--space-sm); background: rgb(230 26 26); border-radius: 0; }
+</style>"#;
+    let rows: Vec<serde_json::Value> = (0..10)
+        .map(|n| serde_json::json!({"id": n.to_string(), "name": format!("Item {n}")}))
+        .collect();
+    mount_screen_document(
+        &mut ui,
+        "list",
+        LIST,
+        &[("rows", serde_json::Value::Array(rows))],
+    );
     let build = |ui: &mut Ui, input: InputFrame| {
-        let t = *ui.theme();
-        ui.begin(input, vp);
-        ui.scroll(
-            "List",
-            ScrollDesc {
-                width: Size::Fixed(200.0),
-                height: Size::Fixed(100.0),
-                gap: t.space.xs,
-                ..ScrollDesc::default()
-            },
-            |ui| {
-                for n in 0..10 {
-                    ui.row(
-                        ui_idi("Row", n),
-                        Element {
-                            width: Size::grow(),
-                            padding: Insets::all(t.space.sm),
-                            background: Some(red),
-                            radius: 0.0,
-                            ..Element::default()
-                        },
-                        |ui| ui.label("Name", &format!("Item {n}"), LabelDesc::default()),
-                    );
-                }
-            },
-        );
-        ui.end();
+        step_screen(ui, input, vp);
     };
     build(&mut ui, InputFrame::default());
     let list = ui.element("List").expect("list").clone();
@@ -1120,16 +1048,17 @@ fn a_text_glow_is_a_halo_from_the_distance_field() {
 /// A type step of the ramp.
 type StepOf = fn(&TypeRamp) -> TypeStep;
 
-/// One line of rich text rendered through og-render at a type step.
-fn rich_frame(markup: &str, step: StepOf) -> (Vec<u8>, usize, usize, [u8; 3]) {
-    inked_frame(markup, step, None)
+/// One line of text (`markup`: HTML's inline `<b>` runs) rendered through
+/// og-render at the type step `css` names (`xs`, `reading`, `display-md`).
+fn rich_frame(markup: &str, css: &str) -> (Vec<u8>, usize, usize, [u8; 3]) {
+    inked_frame(markup, css, None)
 }
 
 /// [`rich_frame`] in an ink over a ground (`None`: the theme's ink over
 /// its backdrop).
 fn inked_frame(
     markup: &str,
-    step: StepOf,
+    css: &str,
     colors: Option<(Srgba, Srgba)>,
 ) -> (Vec<u8>, usize, usize, [u8; 3]) {
     let vp = Viewport {
@@ -1139,34 +1068,23 @@ fn inked_frame(
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
     let mut ui = ui_with_font(font);
+    let hex = |c: Srgba| format!("#{:02x}{:02x}{:02x}", c.rgb[0], c.rgb[1], c.rgb[2]);
+    let (ink, ground) = colors.map_or(("var(--ink)".into(), "var(--backdrop)".into()), |c| {
+        (hex(c.0), hex(c.1))
+    });
+    let doc = format!(
+        r#"<meta name="component" content="card">
+<column id="Card"><text id="Line">{markup}</text></column>
+<style>
+#Card {{ width: stretch; height: stretch; padding: var(--space-md); gap: var(--space-md); background: {ground}; }}
+#Line {{ font: var(--text-{css}); letter-spacing: var(--type-{css}-tracking); color: {ink}; }}
+</style>"#
+    );
+    mount_screen_document(&mut ui, "card", &doc, &[]);
     for _ in 0..2 {
-        ui.begin(InputFrame::default(), vp);
-        let t = *ui.theme();
-        ui.column(
-            "Card",
-            Element {
-                width: Size::grow(),
-                height: Size::grow(),
-                padding: Insets::all(t.space.md),
-                gap: t.space.md,
-                background: Some(colors.map_or(t.palette.backdrop, |c| c.1)),
-                ..Element::default()
-            },
-            |ui| {
-                let step = step(&t.type_ramp);
-                ui.rich_text(
-                    "Line",
-                    markup,
-                    RichTextDesc {
-                        step: Some(step),
-                        color: colors.map(|c| c.0),
-                        ..RichTextDesc::default()
-                    },
-                );
-            },
-        );
-        ui.end();
+        step_screen(&mut ui, InputFrame::default(), vp);
     }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.ui.overlay = Some(overlay);
@@ -1203,10 +1121,10 @@ fn inked_frame(
 #[test]
 #[ignore = "requires GPU"]
 fn bold_rich_text_is_heavier_ink_never_a_box() {
-    let steps: [(&str, StepOf); 3] = [
-        ("xs", |r| r.xs),
-        ("reading", |r| r.reading),
-        ("display", |r| r.display_md),
+    let steps: [(&str, &str, StepOf); 3] = [
+        ("xs", "xs", |r| r.xs),
+        ("reading", "reading", |r| r.reading),
+        ("display", "display-md", |r| r.display_md),
     ];
     const LINE: &str = "Slot 42 W";
     let metrics = test_font_metrics().metrics;
@@ -1215,9 +1133,9 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
     // breakpoint, not the desktop ramp returned before begin().
     ui.begin(InputFrame::default(), Viewport::new(360.0, 120.0));
     let theme = *ui.theme();
-    for (name, step) in steps {
-        let (plain, w, h, bg) = rich_frame(LINE, step);
-        let (bold, ..) = rich_frame(&format!("[b]{LINE}[/b]"), step);
+    for (name, css, step) in steps {
+        let (plain, w, h, bg) = rich_frame(LINE, css);
+        let (bold, ..) = rich_frame(&format!("<b>{LINE}</b>"), css);
         // Each glyph's advance in the plain line (from the card's padding, at
         // 1 device pixel a CSS px) and how far bold moves it: a bold
         // face's added stem (og-ui's 0.056 em) for each glyph before it.
@@ -1301,17 +1219,16 @@ fn dark_small_text_on_light_keeps_its_weight() {
     let light = Srgba::rgb(0xec, 0xec, 0xee);
     // Ink drawn: each pixel's sRGB distance from its ground, as a fraction
     // of the ink's own.
-    let mass = |ink: Srgba, ground: Srgba, step: StepOf| {
-        let (px, w, h, bg) = inked_frame("Play Continue 42", step, Some((ink, ground)));
+    let mass = |ink: Srgba, ground: Srgba, css: &str| {
+        let (px, w, h, bg) = inked_frame("Play Continue 42", css, Some((ink, ground)));
         let full: f64 = (ink.rgb[0] as f64 - bg[0] as f64).abs();
         (0..w * h)
             .map(|i| (px[i * 4] as f64 - bg[0] as f64).abs() / full)
             .sum::<f64>()
     };
-    let steps: [(&str, StepOf); 2] = [("xs", |r| r.xs), ("reading", |r| r.reading)];
-    for (name, step) in steps {
-        let on_light = mass(dark, light, step);
-        let on_dark = mass(light, dark, step);
+    for name in ["xs", "reading"] {
+        let on_light = mass(dark, light, name);
+        let on_dark = mass(light, dark, name);
         let ratio = on_light / on_dark;
         eprintln!(
             "{name}: dark on light {on_light:.0}, light on dark {on_dark:.0}, ratio {ratio:.3}"
@@ -1778,59 +1695,32 @@ fn a_skewed_element_draws_its_parallelogram() {
         dpr: 1.0,
         ..Viewport::default()
     };
-    let skew = Props {
-        transform: Transform {
-            skew_x: 30f32.to_radians(),
-            ..Transform::IDENTITY
-        },
-        ..Props::default()
-    };
-    let red = Srgba::rgb(255, 0, 0);
+    // A red box and a red ellipse (its box clipped to the ellipse), both
+    // skewed 30° along x while `$skew` holds.
+    const SKEW: &str = r#"<meta name="component" content="skew">
+<row id="Row"><column id="Quad" class:skew={$skew}/><column id="Drawn" class:skew={$skew}/></row>
+<style>
+#Row { padding: 60px; gap: 80px; }
+#Quad, #Drawn { width: 100px; height: 60px; background: #ff0000; border-radius: 0; }
+#Drawn { clip-path: ellipse(50% 50% at 50% 50%); }
+.skew { transform: skewX(30deg); }
+</style>"#;
     let mut ui = Ui::new(UiDesc::default());
-    let build = |ui: &mut Ui, props: &Props| {
-        ui.begin(InputFrame::default(), vp);
-        ui.open(
-            "Row",
-            Element {
-                direction: Direction::Row,
-                padding: Insets::all(60.0),
-                gap: 80.0,
-                ..Element::default()
-            },
-        );
-        for (id, draw) in [("Quad", false), ("Drawn", true)] {
-            ui.open_with(
-                id,
-                Element {
-                    width: Size::Fixed(100.0),
-                    height: Size::Fixed(60.0),
-                    background: (!draw).then_some(red),
-                    radius: 0.0,
-                    ..Element::default()
-                },
-                props.clone(),
-            );
-            if draw {
-                ui.set_draw(og_ui::paint::ElementDraw {
-                    shape: og_ui::paint::ShapeKind::Ellipse,
-                    fills: vec![og_ui::paint::Paint::Solid(red.into())],
-                    ..Default::default()
-                });
-            }
-            ui.close();
-        }
-        ui.close();
-        ui.end();
+    mount_screen_document(&mut ui, "skew", SKEW, &[("skew", false.into())]);
+    let build = |ui: &mut Ui, skew: bool| {
+        set_screen_value(ui, "skew", skew.into());
+        step_screen(ui, InputFrame::default(), vp);
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     };
-    build(&mut ui, &Props::default());
-    let boxes: Vec<[f32; 4]> = ["Row/Quad", "Row/Drawn"]
+    build(&mut ui, false);
+    let boxes: Vec<[f32; 4]> = ["Quad", "Drawn"]
         .iter()
         .map(|p| {
             let e = ui.element(p).expect("laid out");
             [e.x, e.y, e.width, e.height]
         })
         .collect();
-    build(&mut ui, &skew);
+    build(&mut ui, true);
     let mut scene = RenderScene::new();
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
@@ -1911,88 +1801,32 @@ fn a_skewed_element_draws_its_parallelogram() {
 #[test]
 #[ignore = "requires GPU"]
 fn a_gradient_mask_fades_as_it_reads() {
-    use og_ui::paint::{Clip, ElementDraw, Gradient, Mask, Paint, Stop};
     let vp = Viewport {
         width: 400.0,
         height: 200.0,
         dpr: 1.0,
         ..Viewport::default()
     };
-    let white = Srgba::rgb(255, 255, 255);
-    let black = Srgba::rgb(0, 0, 0);
-    let fade = || {
-        Clip::Mask(Mask::Gradient(Gradient {
-            from: [0.0, 0.0],
-            to: [1.0, 0.0],
-            stops: vec![
-                Stop {
-                    offset: 0.0,
-                    color: white.into(),
-                },
-                Stop {
-                    offset: 1.0,
-                    color: white.fade(0.0).into(),
-                },
-            ],
-            dither: false,
-            ..Gradient::default()
-        }))
-    };
+    // A black box masking its own fill, and over an opaque black backing a
+    // group that draws nothing masking its white child, each by a mask from
+    // whole to none left to right: an SVG `<mask>` of a gradient, the
+    // document's gradient mask (`clip: mask`). CSS `mask-image` composes
+    // its fade in linear light instead (188 halfway).
+    const MASK: &str = r##"<meta name="component" content="mask">
+<svg id="Art" width="400" height="200" viewBox="0 0 400 200">
+  <linearGradient id="Ramp"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>
+  <mask id="FadeOwn"><rect x="50" y="50" width="125" height="100" fill="url(#Ramp)"/></mask>
+  <mask id="FadeParent"><rect x="225" y="50" width="125" height="100" fill="url(#Ramp)"/></mask>
+  <g id="Own" mask="url(#FadeOwn)"><rect x="50" y="50" width="125" height="100" fill="#000"/></g>
+  <rect id="Backing" x="225" y="50" width="125" height="100" fill="#000"/>
+  <g id="Parent" mask="url(#FadeParent)"><rect id="Child" x="225" y="50" width="125" height="100" fill="#fff"/></g>
+</svg>"##;
     let mut ui = Ui::new(UiDesc::default());
-    ui.begin(InputFrame::default(), vp);
-    ui.open(
-        "Row",
-        Element {
-            direction: Direction::Row,
-            padding: Insets::all(50.0),
-            gap: 50.0,
-            ..Element::default()
-        },
-    );
-    let boxed = Element {
-        width: Size::Fixed(125.0),
-        height: Size::Fixed(100.0),
-        radius: 0.0,
-        ..Element::default()
-    };
-    ui.open("Own", boxed);
-    ui.set_draw(ElementDraw {
-        fills: vec![Paint::Solid(black.into())],
-        clip: fade(),
-        ..Default::default()
-    });
-    ui.close();
-    ui.open(
-        "Backing",
-        Element {
-            background: Some(black),
-            ..boxed
-        },
-    );
-    ui.open("Parent", boxed);
-    ui.set_draw(ElementDraw {
-        clip: fade(),
-        ..Default::default()
-    });
-    ui.open(
-        "Child",
-        Element {
-            background: Some(white),
-            ..boxed
-        },
-    );
-    ui.close();
-    ui.close();
-    ui.close();
-    ui.close();
-    ui.end();
-    let boxes: Vec<[f32; 4]> = ["Row/Own", "Row/Backing/Parent"]
-        .iter()
-        .map(|p| {
-            let e = ui.element(p).expect("laid out");
-            [e.x, e.y, e.width, e.height]
-        })
-        .collect();
+    mount_screen_document(&mut ui, "mask", MASK, &[]);
+    step_screen(&mut ui, InputFrame::default(), vp);
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    // The boxes, in the `<svg>`'s units (one a CSS px).
+    let boxes: Vec<[f32; 4]> = vec![[50.0, 50.0, 125.0, 100.0], [225.0, 50.0, 125.0, 100.0]];
     let mut scene = RenderScene::new();
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
@@ -2107,40 +1941,18 @@ fn a_turned_rive_frame_is_cut_by_its_turned_box() {
         draws: vec![1],
         ..Artboard::default()
     });
+    // The artboard played in a 100 px box turned 45°, centred on the stage.
+    const STAGE: &str = r#"<meta name="component" content="stage">
+<row id="Stage"><og-rive id="Turned" src="ui/board.riv#Board"></og-rive></row>
+<style>
+#Stage { width: 300px; height: 300px; justify-content: center; align-items: center; }
+#Turned { width: 100px; height: 100px; rotate: 45deg; }
+</style>"#;
     let mut ui = Ui::new(UiDesc::default());
-    ui.begin(InputFrame::default(), vp);
-    ui.open(
-        "Stage",
-        Element {
-            width: Size::Fixed(300.0),
-            height: Size::Fixed(300.0),
-            align: Align::Center,
-            cross: Cross::Center,
-            ..Element::default()
-        },
-    );
-    ui.open_with(
-        "Turned",
-        Element {
-            width: Size::Fixed(100.0),
-            height: Size::Fixed(100.0),
-            ..Element::default()
-        },
-        Props {
-            transform: Transform {
-                rotate: 45f32.to_radians(),
-                ..Transform::IDENTITY
-            },
-            ..Props::default()
-        },
-    );
-    ui.set_draw(og_ui::paint::ElementDraw {
-        rive: Some(og_ui::paint::RiveDraw(Player::new(board, None))),
-        ..Default::default()
-    });
-    ui.close();
-    ui.close();
-    ui.end();
+    ui.define_rive("ui/board.riv#Board", board);
+    mount_screen_document(&mut ui, "stage", STAGE, &[]);
+    step_screen(&mut ui, InputFrame::default(), vp);
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     let mut scene = RenderScene::new();
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);

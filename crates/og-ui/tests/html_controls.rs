@@ -213,64 +213,86 @@ fn details_shows_its_content_only_while_open() {
     assert!(rig.el("LitBody").is_some(), "its state saves and restores");
 }
 
+/// The solid fills drawn across the middle of meter `hp`.
+fn meter_fills(ui: &Ui, hp: &UiElement) -> Vec<[f32; 4]> {
+    ui.frame()
+        .items
+        .iter()
+        .filter_map(|it| match &it.cmd {
+            DrawCmd::Shape { shape, .. }
+                if (shape.center.y - (hp.y + hp.height / 2.0)).abs() < 1.0
+                    && shape.center.x > hp.x
+                    && shape.center.x < hp.x + hp.width =>
+            {
+                match shape.paint {
+                    og_draw::UiPaint::Solid(c) => Some(c),
+                    _ => None,
+                }
+            }
+            _ => None,
+        })
+        .collect()
+}
+
 #[test]
 fn meter_regions_follow_the_html_rules() {
-    use MeterRegion::*;
-    let d = |value, low, high, optimum| GaugeDesc {
-        value,
-        min: 0.0,
-        max: 100.0,
-        low: Some(low),
-        high: Some(high),
-        optimum: Some(optimum),
-        ..GaugeDesc::default()
+    // A meter over its bounds' stores: its region is the colour its fill
+    // is drawn in (undressed: success, warn, danger).
+    let mut d = Doc::new(
+        r#"<meta name="component" content="t">
+<column id="Form"><meter id="M" value={$v} min="0" max="100" low={$low} high={$high} optimum={$opt} /></column>"#,
+        &[
+            ("v", json!(0)),
+            ("low", json!(25)),
+            ("high", json!(75)),
+            ("opt", json!(90)),
+        ],
+    );
+    let palette = d.ui.theme().palette;
+    let regions = [
+        ("optimum", palette.success.linear()),
+        ("suboptimum", palette.warn.linear()),
+        ("poor", palette.danger.linear()),
+    ];
+    let region = |d: &mut Doc, value: f64, low: f64, high: f64, optimum: f64| {
+        for (store, v) in [("v", value), ("low", low), ("high", high), ("opt", optimum)] {
+            d.set(store, json!(v));
+        }
+        let fills = meter_fills(&d.ui, &d.get("M"));
+        let drawn: Vec<&str> = regions
+            .iter()
+            .filter(|(_, c)| fills.contains(c))
+            .map(|(name, _)| *name)
+            .collect();
+        assert_eq!(drawn.len(), 1, "one region's colour: {drawn:?}");
+        drawn[0]
     };
     for (value, optimum, want) in [
         // Optimum high: above high best, the middle next, below low poor.
-        (80.0, 90.0, Optimum),
-        (75.0, 90.0, Suboptimum),
-        (25.0, 90.0, Suboptimum),
-        (24.0, 90.0, Poor),
+        (80.0, 90.0, "optimum"),
+        (75.0, 90.0, "suboptimum"),
+        (25.0, 90.0, "suboptimum"),
+        (24.0, 90.0, "poor"),
         // Optimum low: the mirror.
-        (10.0, 5.0, Optimum),
-        (50.0, 5.0, Suboptimum),
-        (76.0, 5.0, Poor),
+        (10.0, 5.0, "optimum"),
+        (50.0, 5.0, "suboptimum"),
+        (76.0, 5.0, "poor"),
         // Optimum in the middle: either end only suboptimal.
-        (50.0, 50.0, Optimum),
-        (10.0, 50.0, Suboptimum),
-        (90.0, 50.0, Suboptimum),
+        (50.0, 50.0, "optimum"),
+        (10.0, 50.0, "suboptimum"),
+        (90.0, 50.0, "suboptimum"),
     ] {
         assert_eq!(
-            MeterRegion::of(&d(value, 25.0, 75.0, optimum)),
+            region(&mut d, value, 25.0, 75.0, optimum),
             want,
             "{value} with {optimum}"
         );
     }
     // Bounds out of order clamp as HTML's do: high under low is low.
-    assert_eq!(MeterRegion::of(&d(30.0, 40.0, 20.0, 90.0)), Poor);
-    // In a document, the fill is drawn in its region's colour.
+    assert_eq!(region(&mut d, 30.0, 40.0, 20.0, 90.0), "poor");
+    // In the form, the fill is drawn in its region's colour.
     let mut rig = rig();
-    let fill = |rig: &Rig| -> Vec<[f32; 4]> {
-        let hp = rig.el("Hp").expect("the meter");
-        rig.ui
-            .frame()
-            .items
-            .iter()
-            .filter_map(|it| match &it.cmd {
-                DrawCmd::Shape { shape, .. }
-                    if (shape.center.y - (hp.y + hp.height / 2.0)).abs() < 1.0
-                        && shape.center.x > hp.x
-                        && shape.center.x < hp.x + hp.width =>
-                {
-                    match shape.paint {
-                        og_draw::UiPaint::Solid(c) => Some(c),
-                        _ => None,
-                    }
-                }
-                _ => None,
-            })
-            .collect()
-    };
+    let fill = |rig: &Rig| meter_fills(&rig.ui, &rig.el("Hp").expect("the meter"));
     let palette = rig.ui.theme().palette;
     rig.set("hp", json!(20));
     assert_eq!(rig.a11y("Hp").role, "meter");

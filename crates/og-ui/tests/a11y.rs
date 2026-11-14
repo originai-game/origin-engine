@@ -32,17 +32,20 @@ use form::*;
 #[test]
 fn every_widget_has_a_role_a_name_and_its_state() {
     let mut ui = ui_with_font(test_font_metrics());
-    let mut f = Form {
-        on: true,
-        volume: 35.0,
-        name: "Ada".into(),
-        nick: "Mei".into(),
-        tab: 1,
-        count: 3.0,
-        ..Form::default()
-    };
+    mount_form(
+        &mut ui,
+        &Form {
+            on: true,
+            volume: 35.0,
+            name: "Ada",
+            nick: "Mei",
+            tab: 1,
+            count: "3",
+            ..Form::default()
+        },
+    );
     for _ in 0..2 {
-        tick(&mut ui, &mut f, InputFrame::default());
+        tick(&mut ui, InputFrame::default());
     }
     let tree = ui.a11y().clone();
     let has = |path: &str, role: &str, name: &str| {
@@ -87,7 +90,7 @@ fn every_widget_has_a_role_a_name_and_its_state() {
         "the label names it, the placeholder describes it"
     );
     // An area after a field is not labelled by it: its placeholder names it.
-    let area = has("Form/Player/Note", "textbox", "A note");
+    let area = has("Form/Player/Memo", "textbox", "A note");
     assert_eq!(area.description, "");
     has("Form/Mode", "radiogroup", "Mode");
     assert!(
@@ -103,22 +106,26 @@ fn every_widget_has_a_role_a_name_and_its_state() {
     let q = has("Form/Quality/Trigger", "combobox", "Quality");
     assert_eq!(q.value, "Low");
     assert!(!q.states.contains(&"expanded".to_owned()));
-    assert_eq!(
-        has("Form/Count/Frame/Value", "spinbutton", "Count").value,
-        "3"
-    );
-    has("Form/Count/Frame/Dec", "button", "Decrease");
-    has("Form/Count/Frame/Inc", "button", "Increase");
+    // A document's number is <input type="number">, an editable field
+    // with its buttons (the stepper widget is engine-internal): read by
+    // its name and value, not its role.
+    let count = node(&tree, "Form/Count");
+    assert_eq!((count.name.as_str(), count.value.as_str()), ("Count", "3"));
+    has("Form/Count/Decrement", "button", "Decrease");
+    has("Form/Count/Increment", "button", "Increase");
     has("Form/Size", "radiogroup", "Size");
     assert!(
-        has("Form/Size/Options/Option#0", "radio", "Small")
+        has("Form/Size/Small/Options/Option#0", "radio", "Small")
             .states
             .contains(&"checked".to_owned())
     );
     assert_eq!(has("Form/Load", "progressbar", "Load").value, "40%");
     has("Form/Help", "text", "Read the rules.");
-    let link = has("Form/Help/rules", "link", "rules");
-    assert_eq!(link.parent, "Form/Help", "a link hangs under its paragraph");
+    let link = has("Form/Help/link0", "link", "rules");
+    assert_eq!(
+        link.parent, "test:form/Form/Help",
+        "a link hangs under its paragraph"
+    );
     // Every control keys reach is named; every node has bounds.
     for n in &tree.nodes {
         assert!(n.width > 0.0 && n.height > 0.0, "{} has bounds", n.path);
@@ -128,15 +135,19 @@ fn every_widget_has_a_role_a_name_and_its_state() {
     }
     // The probe reads the same: dump_ui's elements carry role, name, value
     // and states.
-    let e = ui.element("Form/Volume/Track").expect("the slider element");
+    let e = ui
+        .element("test:form/Form/Volume/Track")
+        .expect("the slider element");
     assert_eq!(
         (e.role.as_str(), e.name.as_str(), e.value.as_str()),
         ("slider", "Volume", "35")
     );
-    let e = ui.element("Form/Music").expect("the switch element");
+    let e = ui
+        .element("test:form/Form/Music")
+        .expect("the switch element");
     assert!(e.states.contains(&"checked".to_owned()) && e.states.contains(&"focusable".to_owned()));
     // A layout column has no role and is not in the tree.
-    assert!(tree.nodes.iter().all(|n| n.path != "Form"));
+    assert!(tree.nodes.iter().all(|n| n.path != "test:form/Form"));
 }
 
 /// A screen reader reads only what changed: an idle tick reads no record

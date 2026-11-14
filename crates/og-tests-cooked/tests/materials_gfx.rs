@@ -165,116 +165,74 @@ fn vp() -> Viewport {
     }
 }
 
-fn build(ui: &mut Ui, tex: og_render::TextureHandle) {
-    let t = *ui.theme();
-    ui.panel(
-        "Card",
-        PanelDesc {
-            width: Size::grow(),
-            height: Size::grow(),
-            ..PanelDesc::default()
-        },
-        |ui| {
-            ui.row(
-                "Icons",
-                Element {
-                    gap: t.space.sm,
-                    cross: Cross::Center,
-                    ..Element::row()
-                },
-                |ui| {
-                    for (i, name) in ICONS.iter().enumerate() {
-                        let accent = i % 5 == 0;
-                        ui.icon(
-                            ui_idi("Icon", i as u32),
-                            name,
-                            IconDesc {
-                                size: if i == 0 { 48.0 } else { 24.0 },
-                                tint: Some(if accent {
-                                    t.palette.primary
-                                } else {
-                                    t.palette.ink_muted
-                                }),
-                                ..IconDesc::default()
-                            },
-                        );
-                    }
-                },
-            );
-            ui.rich_text(
-                "Rich",
-                "Collect [icon=coins] coins, then claim the [icon=trophy] trophy.",
-                RichTextDesc::default(),
-            );
-            ui.row(
-                "Pictures",
-                Element {
-                    width: Size::grow(),
-                    gap: t.space.md,
-                    ..Element::row()
-                },
-                |ui| {
-                    ui.column(
-                        "Left",
-                        Element {
-                            width: Size::grow(),
-                            ..Element::column()
-                        },
-                        |ui| {
-                            ui.image(
-                                "Picture",
-                                ImageDesc {
-                                    texture: Some(tex),
-                                    width: Size::grow(),
-                                    aspect: 16.0 / 9.0,
-                                    ..ImageDesc::default()
-                                },
-                            )
-                        },
-                    );
-                    ui.column(
-                        "Middle",
-                        Element {
-                            width: Size::grow(),
-                            ..Element::column()
-                        },
-                        |ui| {
-                            ui.image(
-                                "Map",
-                                ImageDesc {
-                                    texture: Some(tex),
-                                    width: Size::grow(),
-                                    aspect: 16.0 / 9.0,
-                                    ..ImageDesc::default()
-                                },
-                            )
-                        },
-                    );
-                    ui.scroll(
-                        "Quests",
-                        ScrollDesc {
-                            width: Size::px(140.0),
-                            height: Size::px(150.0),
-                            gap: t.space.xs,
-                            ..ScrollDesc::default()
-                        },
-                        |ui| {
-                            for k in 0..10 {
-                                ui.button(
-                                    ui_idi("Quest", k),
-                                    &format!("Quest {}", k + 1),
-                                    ButtonDesc {
-                                        size: ControlSize::Small,
-                                        width: Some(Size::grow()),
-                                        ..ButtonDesc::default()
-                                    },
-                                );
-                            }
-                        },
-                    );
-                },
-            );
-        },
+/// The card: a row of [`ICONS`] (the first 48 px, every fifth in the
+/// primary ink, the rest muted), a line with two inline icons, two 16:9
+/// pictures in growing columns and a scrolled list of ten small buttons.
+/// `src={1}` is the picture ([`Pictures`]).
+const CARD: &str = r#"<meta name="component" content="materials">
+<panel id="Card">
+  <row id="Icons">
+    {#each $icons as icon (icon.id)}
+      <og-icon id="Icon" icon={icon.name} iconSize={icon.size} class:accent={icon.accent}/>
+    {/each}
+  </row>
+  <text id="Rich">Collect <og-icon name="coins"/> coins, then claim the <og-icon name="trophy"/> trophy.</text>
+  <row id="Pictures">
+    <column id="Left"><img id="Picture" src={1} alt=""/></column>
+    <column id="Middle"><img id="Map" src={1} alt=""/></column>
+    <scroll id="Quests">
+      {#each $quests as quest (quest.id)}
+        <button id="Quest" class="small">{quest.label}</button>
+      {/each}
+    </scroll>
+  </row>
+</panel>
+<style>
+#Card { width: stretch; height: stretch; }
+#Icons { gap: var(--space-sm); align-items: center; }
+#Icons og-icon { color: var(--ink-muted); }
+#Icons og-icon.accent { color: var(--primary); }
+#Pictures { width: stretch; gap: var(--space-md); }
+#Left, #Middle { flex: 1 1 0; }
+#Picture, #Map { width: stretch; aspect-ratio: 16 / 9; }
+#Quests { width: 140px; height: 150px; gap: var(--space-xs); }
+.small { width: stretch; }
+.small, .small::part(base) { height: var(--control-sm); }
+.small::part(base) { padding: 0 var(--space-md); }
+</style>"#;
+
+/// The picture every `src` of [`CARD`] names.
+struct Pictures(og_render::TextureHandle);
+
+impl bind::Env for Pictures {
+    fn texture(&self, _: f64) -> Option<og_render::TextureHandle> {
+        Some(self.0)
+    }
+}
+
+/// Mounts [`CARD`] in `ui` (built with [`Pictures`]).
+fn mount(ui: &mut Ui) {
+    use serde_json::json;
+    let icons: Vec<_> = ICONS
+        .iter()
+        .enumerate()
+        .map(|(i, name)| {
+            json!({
+                "id": format!("i{i}"),
+                "name": name,
+                "size": if i == 0 { 48 } else { 24 },
+                "accent": i % 5 == 0,
+            })
+        })
+        .collect();
+    let quests: Vec<_> = (0..10)
+        .map(|k| json!({ "id": format!("q{k}"), "label": format!("Quest {}", k + 1) }))
+        .collect();
+    mount_screen_document(
+        ui,
+        "materials",
+        CARD,
+        &[("icons", json!(icons)), ("quests", json!(quests))],
     );
 }
 
@@ -364,9 +322,11 @@ fn the_materials_frame_matches_its_reference() {
         names: set.names.clone(),
         ..IconAtlas::default()
     });
+    mount(&mut ui);
     let step = |ui: &mut Ui, input: InputFrame| {
         ui.begin(input, vp());
-        build(ui, tex);
+        ui.build_retained_documents(&Pictures(tex))
+            .expect("the card builds");
         ui.end();
     };
     for _ in 0..30 {
@@ -377,7 +337,7 @@ fn the_materials_frame_matches_its_reference() {
         Vec2::new(x, y)
     };
     // Two fingers up the list by 60.
-    let list = center(&ui, "Card/Pictures/Quests");
+    let list = center(&ui, "Pictures/Quests");
     let mut q = og_input::Pointers::default();
     for dy in [0.0, 30.0, 60.0] {
         step(
@@ -394,7 +354,7 @@ fn the_materials_frame_matches_its_reference() {
     for _ in 0..3 {
         step(&mut ui, InputFrame::default());
     }
-    let pic = ui.element("Card/Pictures/Left/Picture").expect("picture");
+    let pic = ui.element("Pictures/Left/Picture").expect("picture");
     assert!(
         (pic.width / pic.height - 16.0 / 9.0).abs() < 0.02,
         "the picture keeps 16:9 ({}x{})",

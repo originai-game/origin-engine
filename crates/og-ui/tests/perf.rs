@@ -1,24 +1,32 @@
 //! The CPU budgets of docs/ui.md §6.3 for menus, measured per tick on the
 //! reference machines in release (the perf lane: `scripts/perf.sh`, or
 //! `cargo test -p og-ui --release --test tests perf_ -- --ignored
-//! --nocapture`). A tick is what a host pays: `begin`, the build, `end`
-//! (layout, motion, the accessibility tree) and recording the commands into
-//! an overlay. Each test prints its median and 95th percentile with the
-//! frame's element and command counts, so the numbers can be reported
-//! whether or not they meet the budget.
+//! --nocapture`). A tick is what a host pays: the game's store writes,
+//! `begin`, building the mounted documents, `end` (layout, motion, the
+//! accessibility tree) and recording the commands into an overlay. Each test
+//! prints its median and 95th percentile with the frame's element and
+//! command counts, so the numbers can be reported whether or not they meet
+//! the budget. Every surface is a document over named stores, as a game
+//! builds it.
 //!
-//! - `perf_dense_menu_300_elements_40_animating`: the budget's own screen,
-//!   built by code: a shop of 48 cards, 40 of them in a spring at every
-//!   tick (retargeted before they settle), ≤ 0.5 ms.
+//! - `perf_dense_menu_300_elements_40_animating`: the budget's own screen:
+//!   a shop of 49 cards, 40 of them in a spring at every tick (retargeted
+//!   by a store write before they settle), ≤ 0.5 ms.
 //! - `perf_every_library_and_kit_screen`: each screen document of the
 //!   library and the kits mounted with its default fixture, ≤ 0.5 ms each;
 //!   the fullest is named with its count.
 //! - `perf_scaling_inventory_table_and_raid_hud`: a 2,000-row table and a
 //!   40-frame raid HUD, ms a tick against the element count; no budget.
+//! - `perf_ui_retained_change_budgets`: a large surface idle, one label
+//!   changing, and 1,000-row lists scrolled.
+//! - `perf_hud_2000_mass_and_100_anchors_within_a_millisecond`: a HUD, 2,000
+//!   mass elements and 100 world anchors, ≤ 1 ms.
 
 use crate::support::*;
-use og_draw::Overlay;
+use og_core::glam::Vec3;
+use og_draw::{Overlay, UiMassInstance, UiMassKind, UiMassSpace, UiMassTemplate};
 use og_ui::*;
+use serde_json::{Value, json};
 use std::path::PathBuf;
 
 const BUDGET_MS: f64 = 0.5;
@@ -45,23 +53,25 @@ fn record(ui: &Ui, seconds: f32) -> usize {
 struct Measured {
     median: f64,
     p95: f64,
-    /// The medians of the build (`begin` and the calls), `end` and recording.
+    /// The medians of the build (the writes, `begin` and the documents),
+    /// `end` and recording.
     parts: [f64; 3],
     elements: u32,
     commands: usize,
 }
 
-/// `TICKS` ticks of `build` after `WARM`, timed from `begin` to the recorded
-/// overlay.
-fn measure(ui: &mut Ui, mut build: impl FnMut(&mut Ui, u32)) -> Measured {
+/// `TICKS` ticks after `WARM`, timed from the game's store writes
+/// (`write`, before `begin`) to the recorded overlay.
+fn measure(ui: &mut Ui, mut write: impl FnMut(&mut Ui, u32)) -> Measured {
     let mut times = Vec::new();
     let mut parts: [Vec<f64>; 3] = Default::default();
     let mut commands = 0;
     let ms = |t: std::time::Instant| t.elapsed().as_secs_f64() * 1000.0;
     for tick in 0..WARM + TICKS {
         let start = std::time::Instant::now();
+        write(ui, tick);
         ui.begin(InputFrame::default(), vp());
-        build(ui, tick);
+        ui.build_layers(&bind::NoEnv);
         let built = ms(start);
         let t = std::time::Instant::now();
         ui.end();
@@ -76,6 +86,7 @@ fn measure(ui: &mut Ui, mut build: impl FnMut(&mut Ui, u32)) -> Measured {
             }
         }
     }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     let median = |v: &mut Vec<f64>| {
         v.sort_by(f64::total_cmp);
         v[v.len() / 2]
@@ -100,84 +111,85 @@ fn release_only() {
     }
 }
 
-/// One card of the shop: its frame, art, name, price, a rarity badge and a
-/// stock bar.
-fn card(ui: &mut Ui, k: usize, tick: u32) {
-    let animating = k < 40;
-    // Retargeted every 12 ticks, before a 300 ms spring settles: always in flight.
-    let lifted = animating && (tick / 12 + k as u32) % 2 == 0;
-    ui.open_with(
-        format!("Card{k}"),
-        Element {
-            width: Size::Fixed(200.0),
-            height: Size::Fixed(150.0),
-            padding: Insets::all(8.0),
-            gap: 4.0,
-            background: Some(Srgba::rgb(30, 34, 44)),
-            radius: 6.0,
-            interactive: true,
-            ..Element::default()
-        },
-        Props {
-            transform: Transform {
-                scale_x: if lifted { 1.05 } else { 1.0 },
-                scale_y: if lifted { 1.05 } else { 1.0 },
-                ..Transform::IDENTITY
-            },
-            opacity: if lifted { 1.0 } else { 0.9 },
-            motion: Some(Transition::Spring(SpringSpec::new(300.0, 0.1))),
-            ..Props::default()
-        },
-    );
-    ui.icon("Art", "sword", IconDesc::default());
-    ui.label("Name", &format!("Item {k}"), LabelDesc::default());
-    let caption = ui.theme().type_ramp.caption;
-    ui.label(
-        "Price",
-        &format!("{} gold", 100 + k * 25),
-        LabelDesc {
-            step: Some(caption),
-            ..LabelDesc::default()
-        },
-    );
-    ui.badge("Rarity", ["Common", "Rare", "Epic"][k % 3], Tone::Primary);
-    ui.progress("Stock", (k % 10) as f32 / 10.0, ProgressDesc::default());
-    ui.close();
+/// A UI with `text` defined and mounted over the test stores `stores`.
+fn mounted(text: &str, stores: &[(&str, Value)]) -> Ui {
+    let mut ui = ui_with_font(test_font_metrics());
+    let doc = UiDocument::parse("ui/perf.svelte", text).unwrap_or_else(|e| panic!("{e:?}"));
+    let name = doc.name.clone();
+    ui.define_document(doc);
+    mount_stores(&mut ui, source("screen"), &name, stores);
+    ui
 }
+
+/// The shop: a header, then 49 cards of art, name, price, a rarity badge and
+/// a stock bar. A card springs its scale and opacity when it is lifted; the
+/// first 40 are lifted on alternate phases, so each phase change retargets
+/// them.
+const SHOP: &str = r#"<meta name="component" content="shop">
+<div id="Shop">
+  <div id="Header">
+    <h2 id="Title">Shop</h2>
+    {#each $tabs as tab (tab.id)}<button id="Tab">{tab.name}</button>{/each}
+  </div>
+  <div id="Cards">
+    {#each $cards as c (c.id)}
+      <button id="Card" class:lifted={c.animated && c.parity == $phase}><div id="Body">
+        <og-icon id="Art" icon="sword"></og-icon>
+        <p id="Name">{c.name}</p>
+        <small id="Price">{c.price}</small>
+        <span id="Rarity" class="badge">{c.rarity}</span>
+        <progress id="Stock" value={c.stock}></progress>
+      </div></button>
+    {/each}
+  </div>
+</div>
+<style>
+#Shop { display: flex; flex-direction: column; gap: 8px; padding: 16px; height: 100%; background: var(--panel); }
+#Header { display: flex; gap: 8px; }
+#Cards { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; flex: 1; min-height: 0; overflow-y: auto; }
+#Card {
+  width: 140px; height: 150px; padding: 8px;
+  background: #1e222c; border-radius: 6px; opacity: 0.9;
+  transition: scale 300ms -og-spring(300ms, 0.1), opacity 300ms -og-spring(300ms, 0.1);
+}
+#Card.lifted { scale: 1.05; opacity: 1; }
+#Body { display: flex; flex-direction: column; gap: 4px; }
+</style>"#;
 
 #[test]
 #[ignore = "perf: run on the reference machines in release"]
 fn perf_dense_menu_300_elements_40_animating() {
     release_only();
-    let mut ui = ui_with_font(test_font_metrics());
+    let tabs: Vec<Value> = ["Weapons", "Armour", "Potions", "Gems"]
+        .iter()
+        .map(|t| json!({"id": t, "name": t}))
+        .collect();
+    let cards: Vec<Value> = (0..49)
+        .map(|k| {
+            json!({
+                "id": format!("c{k}"),
+                "animated": k < 40,
+                "parity": k % 2,
+                "name": format!("Item {k}"),
+                "price": format!("{} gold", 100 + k * 25),
+                "rarity": (["Common", "Rare", "Epic"][k % 3]),
+                "stock": (k % 10) as f32 / 10.0,
+            })
+        })
+        .collect();
+    let mut ui = mounted(
+        SHOP,
+        &[
+            ("tabs", Value::Array(tabs)),
+            ("cards", Value::Array(cards)),
+            ("phase", json!(0)),
+        ],
+    );
+    // Retargeted every 12 ticks, before a 300 ms spring settles: always in flight.
     let m = measure(&mut ui, |ui, tick| {
-        ui.panel("Shop", PanelDesc::default(), |ui| {
-            ui.row("Header", Element::row(), |ui| {
-                ui.label("Title", "Shop", LabelDesc::default());
-                for t in ["Weapons", "Armour", "Potions", "Gems"] {
-                    ui.button(t, t, ButtonDesc::default());
-                }
-            });
-            ui.open_with(
-                "Cards",
-                Element {
-                    gap: 8.0,
-                    ..Element::default()
-                },
-                Props {
-                    layout: LayoutMode::Grid,
-                    grid: GridSpec {
-                        columns: vec![Track::Fr(1.0); 8],
-                        ..GridSpec::default()
-                    },
-                    ..Props::default()
-                },
-            );
-            for k in 0..49 {
-                card(ui, k, tick);
-            }
-            ui.close();
-        });
+        if tick % 12 == 0 {
+            set_store(ui, "phase", json!((tick / 12) % 2));
+        }
     });
     let animating = ui
         .motion_dump()
@@ -258,120 +270,103 @@ fn perf_every_library_and_kit_screen() {
     assert!(over.is_empty(), "over {BUDGET_MS} ms a tick: {over:?}");
 }
 
-/// One frame of the raid HUD: the member's class, name, health and mana,
-/// its health springing toward a value that moves every tick (a fight).
-fn raid_frame(ui: &mut Ui, k: usize, tick: u32) {
-    let hit = (tick as usize + k * 7) % 23 == 0;
-    ui.open_with(
-        format!("Member{k}"),
-        Element {
-            width: Size::Fixed(120.0),
-            height: Size::Fixed(44.0),
-            padding: Insets::all(4.0),
-            gap: 2.0,
-            background: Some(Srgba::rgb(20, 22, 28)),
-            radius: 3.0,
-            ..Element::column()
-        },
-        Props {
-            opacity: if hit { 0.7 } else { 1.0 },
-            motion: Some(Transition::Spring(SpringSpec::new(200.0, 0.1))),
-            ..Props::default()
-        },
-    );
-    ui.row("Top", Element::row(), |ui| {
-        ui.icon(
-            "Class",
-            ["shield", "sword", "heart"][k % 3],
-            IconDesc::default(),
-        );
-        ui.label("Name", &format!("Member {k}"), LabelDesc::default());
-    });
-    let hp = ((tick as usize * 3 + k * 37) % 100) as f32 / 100.0;
-    ui.progress("Health", hp, ProgressDesc::default());
-    ui.progress(
-        "Mana",
-        ((k * 13) % 100) as f32 / 100.0,
-        ProgressDesc::default(),
-    );
-    ui.close();
+/// An inventory table in a scroller (every row built, as a table of plain
+/// boxes is) beside a 40-frame raid HUD in a fight: each member's health
+/// moves every tick and a hit dips its opacity through a spring.
+const RAID: &str = r#"<meta name="component" content="raid">
+<div id="Screen">
+  <div id="Inventory">
+    {#each $items as item (item.id)}
+      <div id="Item">
+        <og-icon id="Icon" icon="gem"></og-icon>
+        <p id="Name">{item.name}</p>
+        <p id="Count">{item.count}</p>
+        <p id="Weight">{item.weight}</p>
+        <p id="Value">{item.value}</p>
+      </div>
+    {/each}
+  </div>
+  <div id="Raid">
+    {#each $members as m (m.id)}
+      <div id="Frame" class:hit={m.hit}>
+        <div id="Top"><og-icon id="Class" icon={m.class}></og-icon><p id="Member">{m.name}</p></div>
+        <progress id="Health" value={m.hp}></progress>
+        <progress id="Mana" value={m.mana}></progress>
+      </div>
+    {/each}
+  </div>
+</div>
+<style>
+#Screen { display: flex; width: 100%; height: 100%; }
+#Inventory { display: flex; flex-direction: column; gap: 2px; width: 900px; height: 100%; overflow-y: auto; }
+#Item { display: flex; gap: 8px; }
+#Raid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+#Frame {
+  display: flex; flex-direction: column; width: 120px; height: 44px; padding: 4px; gap: 2px;
+  background: #14161c; border-radius: 3px; opacity: 1;
+  transition: opacity 200ms -og-spring(200ms, 0.1);
+}
+#Frame.hit { opacity: 0.7; }
+#Top { display: flex; }
+</style>"#;
+
+/// The raid's members at `tick`: health moves every tick, a few are hit.
+fn members(tick: u32) -> Vec<Value> {
+    (0..40usize)
+        .map(|k| {
+            json!({
+                "id": format!("m{k}"),
+                "class": (["shield", "sword", "heart"][k % 3]),
+                "name": format!("Member {k}"),
+                "hp": ((tick as usize * 3 + k * 37) % 100) as f32 / 100.0,
+                "mana": ((k * 13) % 100) as f32 / 100.0,
+                "hit": (tick as usize + k * 7) % 23 == 0,
+            })
+        })
+        .collect()
 }
 
-/// One row of the inventory table: icon, name, count, weight, value.
-fn inventory_row(ui: &mut Ui, k: usize) {
-    ui.row(
-        format!("Item{k}"),
-        Element {
-            gap: 8.0,
-            ..Element::row()
-        },
-        |ui| {
-            ui.icon("Icon", "gem", IconDesc::default());
-            ui.label("Name", &format!("Item {k}"), LabelDesc::default());
-            ui.label("Count", &format!("x{}", k % 99 + 1), LabelDesc::default());
-            ui.label(
-                "Weight",
-                &format!("{}.{} kg", k % 20, k % 10),
-                LabelDesc::default(),
-            );
-            ui.label("Value", &format!("{} gold", k * 5), LabelDesc::default());
-        },
-    );
-}
-
-/// Well past today's screens: an inventory table of `rows` rows in a
-/// scroller (every row built, as an immediate-mode table is) beside a
-/// 40-frame raid HUD in a fight, from no rows to 2,000. Prints ms a tick
+/// Well past today's screens: the inventory table from no rows to 2,000
+/// beside the raid HUD, its 40 members patched every tick. Prints ms a tick
 /// against the elements built, how the cost scales; no budget is asserted.
 #[test]
 #[ignore = "perf: run on the reference machines in release"]
 fn perf_scaling_inventory_table_and_raid_hud() {
     release_only();
     for rows in [0usize, 250, 500, 1000, 2000] {
-        let mut ui = ui_with_font(test_font_metrics());
+        let items: Vec<Value> = (0..rows)
+            .map(|k| {
+                json!({
+                    "id": format!("i{k}"),
+                    "name": format!("Item {k}"),
+                    "count": format!("x{}", k % 99 + 1),
+                    "weight": format!("{}.{} kg", k % 20, k % 10),
+                    "value": format!("{} gold", k * 5),
+                })
+            })
+            .collect();
+        let mut ui = mounted(
+            RAID,
+            &[
+                ("items", Value::Array(items)),
+                ("members", Value::Array(members(0))),
+            ],
+        );
         let m = measure(&mut ui, |ui, tick| {
-            ui.row(
-                "Screen",
-                Element {
-                    width: Size::grow(),
-                    height: Size::grow(),
-                    ..Element::row()
-                },
-                |ui| {
-                    ui.scroll(
-                        "Inventory",
-                        ScrollDesc {
-                            width: Size::Fixed(900.0),
-                            height: Size::grow(),
-                            gap: 2.0,
-                            ..ScrollDesc::default()
-                        },
-                        |ui| {
-                            for k in 0..rows {
-                                inventory_row(ui, k);
-                            }
-                        },
-                    );
-                    ui.open_with(
-                        "Raid",
-                        Element {
-                            gap: 4.0,
-                            ..Element::default()
-                        },
-                        Props {
-                            layout: LayoutMode::Grid,
-                            grid: GridSpec {
-                                columns: vec![Track::Fr(1.0); 5],
-                                ..GridSpec::default()
-                            },
-                            ..Props::default()
-                        },
-                    );
-                    for k in 0..40 {
-                        raid_frame(ui, k, tick);
-                    }
-                    ui.close();
-                },
+            let patches: Vec<Value> = members(tick)
+                .into_iter()
+                .map(|m| {
+                    json!({"op": "patch", "source": source("members"), "key": m["id"].clone(),
+                        "fields": {"hp": m["hp"].clone(), "hit": m["hit"].clone()}})
+                })
+                .collect();
+            let reply = og_ui::reactive::wire::decode(
+                &ui.apply_reactive(&og_ui::reactive::wire::encode(&Value::Array(patches)).unwrap()),
+            )
+            .unwrap();
+            assert!(
+                reply.as_array().unwrap().iter().all(|r| r["ok"] == true),
+                "{reply}"
             );
         });
         let per_k = m.median * 1000.0 / f64::from(m.elements);
@@ -382,121 +377,7 @@ fn perf_scaling_inventory_table_and_raid_hud() {
     }
 }
 
-/// The same large surface with no change, one text mutation, and a real
-/// wheel-driven virtual list. Include authoring and overlay recording:
-/// skipping layout alone must not look like an idle-frame improvement.
-#[test]
-#[ignore = "perf: run on the reference machines in release"]
-fn perf_ui_change_budgets() {
-    release_only();
-    for scenario in ["idle", "one-label", "scroll-1000"] {
-        let mut ui = ui_with_font(test_font());
-        let mut samples = Vec::new();
-        let mut max_first = 0;
-        let mut commands = 0;
-        for tick in 0..WARM + TICKS {
-            let start = std::time::Instant::now();
-            ui.begin(
-                InputFrame {
-                    pointer_inside: true,
-                    pointer: og_core::glam::Vec2::new(50.0, 80.0),
-                    wheel: og_core::glam::Vec2::new(
-                        0.0,
-                        if scenario == "scroll-1000" && tick > 0 {
-                            24.0
-                        } else {
-                            0.0
-                        },
-                    ),
-                    ..InputFrame::default()
-                },
-                Viewport::new(2560.0, 1440.0),
-            );
-            if scenario == "scroll-1000" {
-                let range = ui.open_list(
-                    "Rows",
-                    ListDesc {
-                        count: 1000,
-                        row_height: 24.0,
-                        width: Size::Fixed(2560.0),
-                        height: Some(Size::Fixed(1440.0)),
-                        ..ListDesc::default()
-                    },
-                );
-                max_first = max_first.max(range.first);
-                for row in range.first..range.last {
-                    ui.list_item(row, false);
-                    ui.label(
-                        "Name",
-                        &format!("Inventory item {row}"),
-                        LabelDesc::default(),
-                    );
-                    ui.close();
-                }
-                ui.close_list();
-            } else {
-                ui.row("Screen", Element::row(), |ui| {
-                    for column in 0..20 {
-                        ui.open(
-                            format!("Column{column}"),
-                            Element {
-                                width: Size::Fixed(128.0),
-                                height: Size::Fixed(1440.0),
-                                ..Element::column()
-                            },
-                        );
-                        for row in 0..50 {
-                            let label = if scenario == "one-label" && column == 7 && row == 19 {
-                                format!("Value {tick}")
-                            } else {
-                                format!("Cell {column}:{row}")
-                            };
-                            ui.label(format!("Label{row}"), &label, LabelDesc::default());
-                        }
-                        ui.close();
-                    }
-                });
-            }
-            ui.end();
-            let mut overlay = Overlay::new(2560.0, 1440.0, 1.0);
-            ui.frame().emit(&EmitDesc::default(), &mut overlay);
-            std::hint::black_box(&overlay);
-            commands = ui.frame().items.len();
-            if tick >= WARM {
-                samples.push(start.elapsed().as_secs_f64() * 1000.0);
-            }
-        }
-        assert!(commands > 0);
-        if scenario == "scroll-1000" {
-            assert!(max_first > 100, "the measured list must actually scroll");
-        } else {
-            let text = ui
-                .probe_elements()
-                .into_iter()
-                .find(|e| e.path == "Screen/Column7/Label19")
-                .unwrap()
-                .text;
-            assert_eq!(
-                text,
-                if scenario == "one-label" {
-                    format!("Value {}", WARM + TICKS - 1)
-                } else {
-                    "Cell 7:19".to_owned()
-                }
-            );
-        }
-        samples.sort_by(f64::total_cmp);
-        println!(
-            "perf ui change {scenario}: median {:.3} ms, p95 {:.3} ms; {} elements, {} laid out, {commands} commands, first row {max_first}",
-            samples[samples.len() / 2],
-            samples[samples.len() * 95 / 100],
-            ui.frame().stats.elements,
-            ui.frame().stats.laid_out,
-        );
-    }
-}
-
-/// The authored path of `perf_ui_change_budgets`: the same three surfaces as
+/// A large surface (20 columns of 50 labels) and a 1,000-row list as
 /// Svelte documents over named stores, mounted once and driven only by store
 /// writes and input, with the tick's executed work. Idle writes nothing; one
 /// label patches one row's field each tick; the list scrolls by the wheel.
@@ -508,7 +389,6 @@ fn perf_ui_change_budgets() {
 #[ignore = "perf: run on the reference machines in release"]
 fn perf_ui_retained_change_budgets() {
     use og_ui::reactive::{SourceId, wire};
-    use serde_json::json;
     use std::collections::BTreeMap;
     release_only();
     let apply = |ui: &mut Ui, commands: serde_json::Value| {
@@ -539,8 +419,7 @@ fn perf_ui_retained_change_budgets() {
                 json!([{"op":"collection","source":source,"key":"id","items":rows}]),
             );
             inputs.insert("items".to_owned(), source);
-            // row-999 fits the screen (its last row on it); scroll-1000 is
-            // perf_ui_change_budgets' list.
+            // row-999 fits the screen (its last row on it).
             let (width, height) = if scenario == "row-999" {
                 (1200, 600)
             } else {
@@ -695,4 +574,129 @@ fn perf_ui_retained_change_budgets() {
             max(|s| s.rebuilt),
         );
     }
+}
+
+/// A HUD of 12 readouts and a menu button over 100 world anchors (name
+/// plates around the camera's target that stack, fade behind geometry and
+/// scale with distance).
+const PLATES: &str = r#"<meta name="component" content="plates">
+<div id="Root">
+  <div id="Hud">
+    {#each $stats as s (s.id)}<p id="Stat">{s.text}</p>{/each}
+    <button id="Menu">Menu</button>
+  </div>
+  {#each $plates as p (p.id)}
+    <anchor id="Plate" at={p.at} declutter="stack" occlusion="fade" scale-at="5" priority={p.priority}>
+      <p id="Name">Brenna</p>
+    </anchor>
+  {/each}
+</div>
+<style>
+#Hud { display: flex; flex-direction: column; gap: 4px; padding: 12px; background: var(--panel); }
+</style>"#;
+
+/// §15.1: a HUD plus 2,000 mass elements and 100 anchored elements in
+/// ≤ 1 ms of CPU a tick (build, lay out, place and record).
+#[test]
+#[ignore = "perf: run on the reference machines in release"]
+fn perf_hud_2000_mass_and_100_anchors_within_a_millisecond() {
+    const W: f32 = 1280.0;
+    const H: f32 = 720.0;
+    release_only();
+    let stats: Vec<Value> = (0..12)
+        .map(|k| json!({"id": format!("s{k}"), "text": "Health 100"}))
+        .collect();
+    let plates: Vec<Value> = (0..100)
+        .map(|k| {
+            let a = k as f32 * 0.37;
+            json!({
+                "id": format!("p{k}"),
+                "at": format!(
+                    "{} 1 {}",
+                    og_core::math::cos(a) * 4.0,
+                    og_core::math::sin(a) * 4.0 - 4.0
+                ),
+                "priority": k % 3,
+            })
+        })
+        .collect();
+    let mut ui = mounted(
+        PLATES,
+        &[
+            ("stats", Value::Array(stats)),
+            ("plates", Value::Array(plates)),
+        ],
+    );
+    let h = ui.define_mass(
+        "damage",
+        UiMassTemplate {
+            kind: UiMassKind::Number {
+                decimals: 0,
+                plus: false,
+                compact: false,
+            },
+            lifetime: 48,
+            ..UiMassTemplate::default()
+        },
+        UiMassSpace::World,
+    );
+    let view = WorldView::look_at(
+        Vec3::new(0.0, 0.0, 5.0),
+        Vec3::ZERO,
+        Vec3::Y,
+        50.0,
+        W / H,
+        0.1,
+        100.0,
+    );
+    let mut times = Vec::new();
+    for tick in 0..240u32 {
+        let start = std::time::Instant::now();
+        ui.begin(InputFrame::default(), Viewport::new(W, H));
+        ui.set_world_view(Some(view));
+        ui.build_layers(&bind::NoEnv);
+        // About 2,000 alive: 42 a tick over a 48-tick life.
+        for i in 0..42 {
+            ui.spawn_mass(
+                h,
+                UiMassInstance {
+                    position: [(i as f32 - 21.0) * 0.2, 1.0, -((tick % 10) as f32)],
+                    value: (tick * 42 + i) as f32,
+                    color: [1.0; 4],
+                    scale: 1.0,
+                    ..Default::default()
+                },
+            );
+        }
+        ui.end();
+        let mut o = Overlay::new(W, H, 1.0);
+        ui.frame().emit(
+            &EmitDesc {
+                layer: 1000,
+                time: 0.0,
+            },
+            &mut o,
+        );
+        ui.world_frame().emit(1000, &mut o);
+        std::hint::black_box(&o);
+        if tick >= 48 {
+            times.push(start.elapsed().as_secs_f64() * 1000.0);
+        }
+    }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let plates = ui
+        .probe_elements()
+        .iter()
+        .filter(|e| e.kind == "world")
+        .count();
+    assert_eq!(plates, 100, "every plate placed");
+    assert!(ui.mass_count(h) >= 1900, "{}", ui.mass_count(h));
+    times.sort_by(f64::total_cmp);
+    let median = times[times.len() / 2];
+    let p95 = times[times.len() * 95 / 100];
+    println!(
+        "perf ui hud: median {median:.3} ms, p95 {p95:.3} ms a tick; {} elements",
+        ui.frame().stats.elements
+    );
+    assert!(median <= 1.0, "median {median:.3} ms a tick");
 }

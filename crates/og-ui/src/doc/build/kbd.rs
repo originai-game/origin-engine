@@ -49,9 +49,9 @@ impl Ui {
             let resp = self.button(
                 id,
                 &shown,
-                crate::ButtonDesc {
+                crate::ui::ButtonDesc {
                     size: crate::ControlSize::Small,
-                    ..crate::ButtonDesc::default()
+                    ..crate::ui::ButtonDesc::default()
                 },
             );
             if resp.clicked {

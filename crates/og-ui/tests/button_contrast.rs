@@ -18,11 +18,12 @@ use og_core::glam::Vec2;
 use og_ui::*;
 use support::*;
 
-const ROLES: [(&str, ButtonVariant); 4] = [
-    ("Primary", ButtonVariant::Primary),
-    ("Secondary", ButtonVariant::Secondary),
-    ("Quiet", ButtonVariant::Quiet),
-    ("Danger", ButtonVariant::Danger),
+/// Each role's button id (its label) and its `variant`.
+const ROLES: [(&str, &str); 4] = [
+    ("Primary", "primary"),
+    ("Secondary", "secondary"),
+    ("Quiet", "quiet"),
+    ("Danger", "danger"),
 ];
 
 fn luminance(c: [f32; 3]) -> f32 {
@@ -48,33 +49,36 @@ fn contains(r: &Rect, (x, y): (f32, f32)) -> bool {
     x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height
 }
 
-/// The four buttons, in a panel of `ground` (or on the screen when `None`).
-fn build(ui: &mut Ui, ground: Option<Srgba>) {
-    let buttons = |ui: &mut Ui| {
-        for (name, variant) in ROLES {
-            ui.button(
-                name,
-                name,
-                ButtonDesc {
-                    variant,
-                    ..ButtonDesc::default()
-                },
-            );
-        }
-    };
-    match ground {
-        Some(bg) => ui.panel(
-            "G",
-            PanelDesc {
-                background: Some(bg),
-                ..PanelDesc::default()
-            },
-            buttons,
-        ),
-        None => buttons(ui),
-    }
+/// `c` as a CSS colour.
+fn css(c: Srgba) -> String {
+    let [r, g, b] = c.rgb;
+    format!("rgb({r} {g} {b} / {})", c.alpha)
 }
 
+/// The four buttons, in a panel of `ground` (or on the screen when `None`).
+fn buttons(ground: Option<Srgba>) -> String {
+    let buttons: String = ROLES
+        .iter()
+        .map(|(name, variant)| {
+            format!(r#"<button id="{name}" variant="{variant}">{name}</button>"#)
+        })
+        .collect();
+    let body = match ground {
+        Some(bg) => format!(
+            r#"<panel id="G" style="background: {}">{buttons}</panel>"#,
+            css(bg)
+        ),
+        None => buttons,
+    };
+    format!("<meta name=\"component\" content=\"t\">\n<column>{body}</column>")
+}
+
+/// A UI in `theme` with the drawing test font.
+fn themed(theme: Theme) -> Ui {
+    let mut ui = ui_with_font(test_font());
+    ui.set_theme(theme);
+    ui
+}
 /// The label's colour over its button's fill over the ground, from the
 /// frame: (label, what it sits on), linear.
 fn measured(ui: &Ui, label: &str, ground: [f32; 3]) -> ([f32; 3], [f32; 3]) {
@@ -127,24 +131,11 @@ fn every_button_role_reads_at_4_5_to_1_on_its_fill_in_both_themes_and_every_stat
         for (ground_name, panel, ground) in grounds {
             for (label, _) in ROLES {
                 for state in ["rest", "hovered", "pressed"] {
-                    let mut ui = ui_with_font(test_font());
-                    ui.set_theme(theme);
-                    let vp = Viewport::new(800.0, 600.0);
-                    let step = |ui: &mut Ui, input: InputFrame| {
-                        ui.begin(input, vp);
-                        build(ui, panel);
-                        ui.end();
-                    };
-                    step(&mut ui, InputFrame::default());
-                    let path = if panel.is_some() {
-                        format!("G/{label}")
-                    } else {
-                        label.to_string()
-                    };
-                    let (x, y) = ui
-                        .element(&path)
-                        .unwrap_or_else(|| panic!("no button {path}"))
-                        .center();
+                    let mut d = Doc::with_ui(themed(theme), &buttons(panel));
+                    d.viewport = Viewport::new(800.0, 600.0);
+                    let step = |d: &mut Doc, input: InputFrame| d.step(input);
+                    step(&mut d, InputFrame::default());
+                    let (x, y) = d.get(label).center();
                     let at = Vec2::new(x, y);
                     let hover = InputFrame {
                         pointer: at,
@@ -153,12 +144,12 @@ fn every_button_role_reads_at_4_5_to_1_on_its_fill_in_both_themes_and_every_stat
                     };
                     match state {
                         "hovered" => {
-                            step(&mut ui, hover.clone());
-                            step(&mut ui, hover);
+                            step(&mut d, hover.clone());
+                            step(&mut d, hover);
                         }
                         "pressed" => {
                             step(
-                                &mut ui,
+                                &mut d,
                                 InputFrame {
                                     down: true,
                                     pressed: true,
@@ -166,16 +157,16 @@ fn every_button_role_reads_at_4_5_to_1_on_its_fill_in_both_themes_and_every_stat
                                 },
                             );
                             step(
-                                &mut ui,
+                                &mut d,
                                 InputFrame {
                                     down: true,
                                     ..hover
                                 },
                             );
                         }
-                        _ => step(&mut ui, InputFrame::default()),
+                        _ => step(&mut d, InputFrame::default()),
                     }
-                    let (ink, fill) = measured(&ui, label, rgb(ground));
+                    let (ink, fill) = measured(&d.ui, label, rgb(ground));
                     let r = ratio(ink, fill);
                     rows.push(format!(
                         "{theme_name:5} {label:9} {state:7} on {ground_name:13} {r:5.2}:1"
@@ -207,38 +198,20 @@ fn every_tab_label_reads_at_3_to_1_selected_or_not_in_both_themes() {
     let mut failing = Vec::new();
     for (theme_name, theme) in [("light", Theme::light()), ("dark", Theme::dark())] {
         let p = theme.palette;
-        let mut ui = ui_with_font(test_font());
-        ui.set_theme(theme);
-        let vp = Viewport::new(800.0, 600.0);
+        let mut d = Doc::with_ui(
+            themed(theme),
+            &format!(
+                r#"<meta name="component" content="t">
+<column><panel id="G" style="background: {}"><tabs id="Tabs" items="Audio Graphics Controls" selected="1"></tabs></panel></column>"#,
+                css(p.panel_raised)
+            ),
+        );
+        d.viewport = Viewport::new(800.0, 600.0);
         for _ in 0..120 {
-            ui.begin(InputFrame::default(), vp);
-            ui.panel(
-                "G",
-                PanelDesc {
-                    background: Some(p.panel_raised),
-                    ..PanelDesc::default()
-                },
-                |ui| {
-                    ui.segmented(
-                        "Tabs",
-                        &SegmentedDesc {
-                            items: ["Audio", "Graphics", "Controls"]
-                                .map(|l| SegmentItem {
-                                    label: l.into(),
-                                    ..SegmentItem::default()
-                                })
-                                .to_vec(),
-                            selected: 1,
-                            width: Some(Size::fit()),
-                            ..SegmentedDesc::default()
-                        },
-                    );
-                },
-            );
-            ui.end();
+            d.step(InputFrame::default());
         }
         for label in ["Audio", "Graphics", "Controls"] {
-            let (ink, fill) = measured(&ui, label, rgb(p.panel_raised));
+            let (ink, fill) = measured(&d.ui, label, rgb(p.panel_raised));
             let r = ratio(ink, fill);
             if r < 3.0 {
                 failing.push(format!("{theme_name} {label}: {r:.2}:1"));
