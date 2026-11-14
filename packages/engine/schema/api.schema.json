@@ -56731,6 +56731,13 @@
             "b": 1
           }
         },
+        "emission": {
+          "type": "number",
+          "description": "The share of its emitters' particles that are born (0 to 1): 0.5 draws half the sparks and smoke of the same effect, each emitter thinned by its own pick, so a smaller fire or a distant one costs less.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
         "despawn": {
           "type": "boolean",
           "description": "Despawn the entity on the tick after a non-looping effect ends.",
@@ -56836,6 +56843,13 @@
             "g": 1,
             "b": 1
           }
+        },
+        "emission": {
+          "type": "number",
+          "description": "The share of its particles born (og.Vfx.emission).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
         },
         "seed": {
           "type": "integer",

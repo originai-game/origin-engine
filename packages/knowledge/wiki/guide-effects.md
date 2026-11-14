@@ -178,7 +178,8 @@ is measured:
 - Large sprites' cost does not fall with their number: if an effect is
   over budget because it covers the screen, shrink its sprites or use a
   few large parts instead (a `glow`, a `mesh`). Fewer particles helps
-  only an effect of many small ones.
+  only an effect of many small ones: og.Vfx.emission thins one instance
+  (a distant fire at 0.5) without another file.
 - An emitter with `subEmitter` lines runs on the CPU; one with `events`
   is stepped in the tick. Keep both to the effects that need them.
 - The frame as a whole is `testing §6`.

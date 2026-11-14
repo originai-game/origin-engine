@@ -28,6 +28,9 @@ pub struct ParticleSystem {
     /// Multiplies its emitter's colour (linear): a composed effect
     /// instance's tint. 1 draws the emitter as it is.
     pub tint: Vec3,
+    /// Multiplies its emitter's `emission` (0..1): a composed effect
+    /// instance's share of the particles born.
+    pub emission: f32,
 }
 
 impl ParticleSystem {
@@ -43,6 +46,7 @@ impl ParticleSystem {
             time_scale: 1.0,
             air: Vec3::ZERO,
             tint: Vec3::ONE,
+            emission: 1.0,
         }
     }
 }

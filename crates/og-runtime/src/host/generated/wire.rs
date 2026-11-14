@@ -26561,6 +26561,7 @@ pub struct VfxSpawnDesc {
     pub parent: Option<u64>,
     pub scale: f32,
     pub tint: Color,
+    pub emission: f32,
     pub seed: u32,
 }
 
@@ -26573,6 +26574,7 @@ impl Default for VfxSpawnDesc {
             parent: Default::default(),
             scale: 1.0_f32,
             tint: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+            emission: 1.0_f32,
             seed: Default::default(),
         }
     }
@@ -26591,6 +26593,7 @@ impl FromJson for VfxSpawnDesc {
             parent: field(o, "parent", d.parent)?,
             scale: field(o, "scale", d.scale)?,
             tint: field(o, "tint", d.tint)?,
+            emission: field(o, "emission", d.emission)?,
             seed: field(o, "seed", d.seed)?,
         })
     }
@@ -26605,6 +26608,7 @@ impl ToJson for VfxSpawnDesc {
         o.insert("parent".into(), self.parent.to_json());
         o.insert("scale".into(), self.scale.to_json());
         o.insert("tint".into(), self.tint.to_json());
+        o.insert("emission".into(), self.emission.to_json());
         o.insert("seed".into(), self.seed.to_json());
         Value::Object(o)
     }
@@ -37276,6 +37280,7 @@ pub mod record {
         pub start_tick: u32,
         pub scale: f32,
         pub tint: Color,
+        pub emission: f32,
         pub despawn: bool,
         pub ran: u32,
     }
@@ -37288,6 +37293,7 @@ pub mod record {
                 start_tick: 4294967295,
                 scale: 1.0_f32,
                 tint: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                emission: 1.0_f32,
                 despawn: true,
                 ran: 4294967295,
             }
@@ -37306,6 +37312,7 @@ pub mod record {
                 start_tick: field(o, "startTick", d.start_tick)?,
                 scale: field(o, "scale", d.scale)?,
                 tint: field(o, "tint", d.tint)?,
+                emission: field(o, "emission", d.emission)?,
                 despawn: field(o, "despawn", d.despawn)?,
                 ran: field(o, "ran", d.ran)?,
             })

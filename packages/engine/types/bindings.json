@@ -8177,6 +8177,11 @@
           }
         },
         {
+          "name": "emission",
+          "column": "f32",
+          "default": 1
+        },
+        {
           "name": "despawn",
           "column": "bool",
           "default": true

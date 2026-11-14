@@ -32798,6 +32798,13 @@ export interface Vfx {
    */
   tint: Color;
   /**
+   * The share of its emitters' particles that are born (0 to 1): 0.5 draws half the sparks and smoke of the same effect, each emitter thinned by its own pick, so a smaller fire or a distant one costs less.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  emission: number;
+  /**
    * Despawn the entity on the tick after a non-looping effect ends.
    *
    * @default true
@@ -32876,6 +32883,13 @@ export interface VfxSpawnDesc {
    * @default { r: 1, g: 1, b: 1 }
    */
   readonly tint?: Color;
+  /**
+   * The share of its particles born (og.Vfx.emission).
+   *
+   * @default 1
+   * @range 0..1
+   */
+  readonly emission?: number;
   /**
    * Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it.
    *
@@ -37822,7 +37836,7 @@ export declare namespace og {
   /**
    * Plays a composed effect at the entity's MatrixWorld from startTick (og.vfx.spawn makes one in a call).
    */
-  const Vfx: ComponentType<{ readonly asset: FieldSpec<"VfxAsset">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly despawn: FieldSpec<"bool">; readonly ran: FieldSpec<"u32"> }, Vfx>;
+  const Vfx: ComponentType<{ readonly asset: FieldSpec<"VfxAsset">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly emission: FieldSpec<"f32">; readonly despawn: FieldSpec<"bool">; readonly ran: FieldSpec<"u32"> }, Vfx>;
   /**
    * A composed effect reached one of its `event` lines (an `impact` line included, named `impact`): the frame a fireball lands, a slash connects, a spell resolves. Read in the tick after, like every event; a replay sends the same.
    */

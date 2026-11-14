@@ -18,6 +18,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `parent` | `Entity \| null` | `null` | — | — | — | An entity to follow (a sword's tip, a character's chest): the effect's entity becomes its child, so it moves with it and despawns with it. |
 | `scale` | `number` | `1` | ≥ 0 | — | — | Its size (og.Vfx.scale). |
 | `tint` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Its tint (og.Vfx.tint). |
+| `emission` | `number` | `1` | 0 … 1 | — | — | The share of its particles born (og.Vfx.emission). |
 | `seed` | `number` | `0` | — | — | — | Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it. |
 
 ```ogt
@@ -37,8 +38,13 @@ struct VfxSpawnDesc {
   field tint Color "Its tint (og.Vfx.tint)." {
     default 1 1 1
   }
+  field emission f32 "The share of its particles born (og.Vfx.emission)." {
+    default 1
+    min 0
+    max 1
+  }
   field seed u32 "Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it."
 }
 ```
 
-<sub>Module `vfx` line 49</sub>
+<sub>Module `vfx` line 54</sub>

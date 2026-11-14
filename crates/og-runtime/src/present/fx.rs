@@ -529,6 +529,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
                 .as_ref()
                 .map_or(1.0, |g| world.group_scale(g, og_ecs::Entity::from_bits(e))),
             tint: Vec3::ONE,
+            emission: 1.0,
         });
     }
     for (e, v) in rows(world, layouts.trail.as_ref()) {

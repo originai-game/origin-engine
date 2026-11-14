@@ -57,14 +57,15 @@ fn a_600_tick_cpu_particle_run_is_deterministic() {
     particles_are_deterministic(ParticleSimulation::Cpu);
 }
 
-/// A system's tint multiplies its emitter's colour on both simulation
-/// paths: the particles scene with every system tinted draws, pixel for
-/// pixel, what it draws with each emitter's colour multiplied by the same
-/// tint, and not what it draws untinted.
+/// A system's tint multiplies its emitter's colour and its emission the
+/// emitter's emission, on both simulation paths: the particles scene with
+/// every system tinted and at half emission draws, pixel for pixel, what
+/// it draws with each emitter's colour and emission multiplied by the
+/// same, and not what it draws as it is.
 #[test]
 #[ignore = "requires GPU"]
-fn a_system_tint_draws_as_its_emitter_tinted() {
-    let tint = Vec3::new(1.0, 0.45, 0.2);
+fn a_systems_tint_and_emission_draw_as_its_emitters() {
+    let (tint, emission) = (Vec3::new(1.0, 0.45, 0.2), 0.5);
     for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
         let desc = RenderDesc {
             particles: path,
@@ -76,6 +77,7 @@ fn a_system_tint_draws_as_its_emitter_tinted() {
         let mut tinted = fx::particles_scene();
         for sys in &mut tinted.effects.particles {
             sys.tint = tint;
+            sys.emission = emission;
         }
         let tinted = frame(&mut tinted);
         let mut copied = fx::particles_scene();
@@ -87,16 +89,17 @@ fn a_system_tint_draws_as_its_emitter_tinted() {
             for (c, t) in e.color.iter_mut().zip(tint.to_array()) {
                 *c *= t;
             }
+            e.emission *= emission;
             copied.effects.particles[i].emitter = copied.add_emitter(e);
         }
         let copied = frame(&mut copied);
         assert_ne!(
             plain.pixels, tinted.pixels,
-            "{path:?}: the tint drew nothing"
+            "{path:?}: tint and emission drew nothing"
         );
         assert_eq!(
             tinted.pixels, copied.pixels,
-            "{path:?}: a tinted system differs from its emitter tinted"
+            "{path:?}: a system differs from its emitter with its tint and emission"
         );
     }
 }

@@ -39,22 +39,24 @@ impl ParticleRenderer {
             e.validate().map_err(|m| {
                 RenderError::InvalidData(format!("emitter {}: {m}", sys.emitter.index()))
             })?;
-            // The system's tint on its emitter's colour, for both paths.
-            let tinted;
-            let e = if sys.tint == Vec3::ONE {
+            // The system's tint on its emitter's colour and its share on
+            // its emission, for both paths.
+            let own;
+            let e = if sys.tint == Vec3::ONE && sys.emission == 1.0 {
                 e
             } else {
                 let t = sys.tint;
-                tinted = ParticleEmitter {
+                own = ParticleEmitter {
                     color: [
                         e.color[0] * t.x,
                         e.color[1] * t.y,
                         e.color[2] * t.z,
                         e.color[3],
                     ],
+                    emission: e.emission * sys.emission.clamp(0.0, 1.0),
                     ..e.clone()
                 };
-                &tinted
+                &own
             };
             if let Some(t) = e.texture
                 && t.index() >= texture_count

@@ -27,6 +27,11 @@ module vfx {
     field tint Color "Multiplies the colour of everything it draws (linear; above 1 brightens)." {
       default 1 1 1
     }
+    field emission f32 "The share of its emitters' particles that are born (0 to 1): 0.5 draws half the sparks and smoke of the same effect, each emitter thinned by its own pick, so a smaller fire or a distant one costs less." {
+      default 1
+      min 0
+      max 1
+    }
     field despawn bool "Despawn the entity on the tick after a non-looping effect ends." {
       default true
     }
@@ -61,6 +66,11 @@ module vfx {
     }
     field tint Color "Its tint (og.Vfx.tint)." {
       default 1 1 1
+    }
+    field emission f32 "The share of its particles born (og.Vfx.emission)." {
+      default 1
+      min 0
+      max 1
     }
     field seed u32 "Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it."
   }

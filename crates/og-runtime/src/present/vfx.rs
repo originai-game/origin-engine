@@ -49,6 +49,7 @@ pub(crate) fn extract(
         }
         let tint = Vec3::new(row.tint.r, row.tint.g, row.tint.b);
         let scale = row.scale.max(0.0);
+        let emission = row.emission;
         let instance = VfxInstance {
             id: e,
             seed: row.seed,
@@ -75,6 +76,7 @@ pub(crate) fn extract(
                         start_tick,
                         air: air.at(transform.w_axis.truncate()),
                         tint,
+                        emission,
                         ..ParticleSystem::new(id, *handle, transform, seed, tick)
                     });
                 }
