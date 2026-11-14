@@ -354,13 +354,18 @@ fn clock_ms() -> f64 {
 
 /// Where `scene`'s frame goes: each render-graph pass's CPU encoding and
 /// GPU time, averaged over 60 frames after a warm-up, and the CPU's time
-/// in `render` per frame (submitting without waiting for the GPU).
+/// in `render` per frame by stage (`Renderer::stage_timings`). The GPU is
+/// idle as each timed `render` begins (the wait is not counted), so the
+/// call's time is its own: a driver that blocks a write or a submit on
+/// the frames before it (lavapipe does, for seconds) would otherwise put
+/// their GPU time in the CPU's stages.
 fn profile(scene: &str) {
     let mut built = scenes::build(scene).expect("scene");
     let mut renderer = Renderer::new_blocking(&built.desc).expect("renderer");
     renderer.set_clock(Some(clock_ms));
     let frames = 60u32;
     let mut cpu: Vec<(String, f64)> = Vec::new();
+    let mut stages: Vec<(String, f64)> = Vec::new();
     let (mut render_ms, mut update_ms) = (0.0, 0.0);
     for frame in 0..frames + 20 {
         let t = Instant::now();
@@ -368,6 +373,7 @@ fn profile(scene: &str) {
             update(&mut built.scene, frame);
         }
         let u = t.elapsed().as_secs_f64() * 1000.0;
+        renderer.wait_idle().expect("idle");
         let t = Instant::now();
         renderer
             .render(&built.scene, &RenderTarget::Offscreen)
@@ -378,13 +384,29 @@ fn profile(scene: &str) {
         }
         render_ms += r;
         update_ms += u;
-        for p in renderer.pass_timings() {
-            match cpu.iter_mut().find(|c| c.0 == p.name) {
-                Some(c) => c.1 += p.ms,
-                None => cpu.push((p.name.clone(), p.ms)),
+        for (list, timings) in [
+            (&mut cpu, renderer.pass_timings()),
+            (&mut stages, renderer.stage_timings()),
+        ] {
+            for p in timings {
+                match list.iter_mut().find(|c| c.0 == p.name) {
+                    Some(c) => c.1 += p.ms,
+                    None => list.push((p.name.clone(), p.ms)),
+                }
             }
         }
     }
+    let n = f64::from(frames);
+    println!(
+        "profile {scene}: render {:.3} ms CPU per frame, the scene's update {:.3} ms",
+        render_ms / n,
+        update_ms / n
+    );
+    println!("  CPU by stage:");
+    for (name, ms) in &stages {
+        println!("    {name:<36} {:.3}", ms / n);
+    }
+    // The GPU's passes after the CPU's (timing them costs the CPU).
     let mut frame = frames + 20;
     let gpu = pass_times(&mut renderer, frames, |r| {
         if let Some(update) = built.update {
@@ -394,12 +416,6 @@ fn profile(scene: &str) {
         r.render(&built.scene, &RenderTarget::Offscreen)
             .expect("render");
     });
-    let n = f64::from(frames);
-    println!(
-        "profile {scene}: render {:.3} ms CPU per frame, the scene's update {:.3} ms",
-        render_ms / n,
-        update_ms / n
-    );
     let total: f64 = gpu.iter().map(|g| g.1).sum();
     println!("  GPU {total:.3} ms per frame:");
     for (name, ms) in &gpu {

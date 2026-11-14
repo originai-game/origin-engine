@@ -600,6 +600,8 @@ pub struct Renderer {
     /// The last frame's passes in execution order, each with the start and
     /// length of its encoding (`pass_timings`).
     pass_ms: Vec<PassTiming>,
+    /// The last frame's CPU stages in order (`stage_timings`).
+    stage_ms: Vec<PassTiming>,
     /// Each pass's GPU time where the device has timestamp queries and a
     /// clock is set (`timing.rs`, `gpu_timings`).
     gpu_timer: Option<timing::GpuTimer>,
