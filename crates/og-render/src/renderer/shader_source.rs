@@ -29,7 +29,9 @@ pub(crate) fn fx_layout_entries(planar: bool) -> Vec<wgpu::BindGroupLayoutEntry>
 pub fn shader_sources() -> Vec<ShaderSource> {
     let mut out = Vec::new();
     shaders::mechanism_sources(&mut out);
-    crate::systems::shader_sources(&mut |label, wgsl| out.push(ShaderSource::plain(label, wgsl)));
+    let mut add = |label: &str, wgsl: String| out.push(ShaderSource::plain(label, wgsl));
+    crate::sprites::shader_sources(&mut add);
+    crate::systems::shader_sources(&mut add);
     shaders::with_variants(out)
 }
 

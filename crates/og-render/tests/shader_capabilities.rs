@@ -71,7 +71,6 @@ pbr lean                                 | full         | full    | full   | ful
 pbr lean, two planar reflections         | full         | full    | full   | full | full              | full      | full     | full
 volumetric (water)                       | full         | -       | -      | -    | -                 | -         | -        | -
 volumetric raymarch (water)              | full         | -       | -      | -    | -                 | -         | -        | -
-fluid 3d                                 | full         | -       | -      | -    | -                 | stub      | -        | full
 sprite                                   | -            | -       | -      | full | -                 | -         | -        | -
 sprite hooks                             | -            | -       | -      | full | -                 | -         | -        | -
 sprite hooks (colour only)               | -            | -       | -      | full | -                 | -         | -        | -
@@ -79,6 +78,7 @@ sprite array                             | -            | -       | -      | -  
 sprite mesh                              | -            | -       | -      | full | -                 | -         | -        | -
 sprite skin                              | -            | -       | -      | full | -                 | -         | -        | -
 tiles                                    | -            | -       | -      | full | -                 | -         | -        | -
+fluid 3d                                 | full         | -       | -      | -    | -                 | stub      | -        | full
 stylise object                           | full         | full    | full   | full | stub              | full      | full     | full
 terrain                                  | full         | full    | full   | -    | stub              | stub      | -        | full
 terrain (layer arrays)                   | full         | full    | full   | -    | stub              | stub      | -        | full
