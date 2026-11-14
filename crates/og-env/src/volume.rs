@@ -1,6 +1,7 @@
 //! The one shape of a region of the world (og.Volume): a box along its
 //! entity's axes or a sphere about it, with a fade past its surface. A
-//! region component on the same entity (og.ReverbZone, og.StreamCell)
+//! region component on the same entity (og.ReverbZone, og.StreamCell,
+//! og.ForceField, og.FogVolume, og.ReflectionProbe, og.LightVolume)
 //! takes its extent from it, so every region is placed, turned, scaled
 //! and faded the same way, and one entity may be several regions of one
 //! shape.
@@ -9,7 +10,7 @@
 //! every host, so the tick may branch on it.
 
 use og_core::Reflect;
-use og_core::glam::{Quat, Vec3};
+use og_core::glam::{Mat3, Quat, Vec3};
 
 /// Where a region's entity puts it in the world.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -78,6 +79,21 @@ impl Volume {
         }
     }
 
+    /// The box along the world's axes that holds the region placed at `at`
+    /// (its fade not counted): what a region read along the world's axes
+    /// covers (a reflection probe's box projection, a light volume's grid).
+    pub fn bounds(&self, at: &Placement) -> (Vec3, Vec3) {
+        let scale = at.scale.abs();
+        let half = if self.radius > 0.0 {
+            Vec3::splat(self.radius * scale.max_element())
+        } else {
+            let h = self.size.abs() * scale * 0.5;
+            let m = Mat3::from_quat(at.quaternion.normalize());
+            m.x_axis.abs() * h.x + m.y_axis.abs() * h.y + m.z_axis.abs() * h.z
+        };
+        (at.position - half, at.position + half)
+    }
+
     /// How much of the region reaches `p`: 1 inside, falling linearly to 0
     /// at `fade` metres from its surface (0 outside a hard edge).
     pub fn weight(&self, at: &Placement, p: Vec3) -> f32 {
@@ -131,6 +147,31 @@ mod tests {
         let hard = Volume { fade: 0.0, ..ball };
         assert_eq!(hard.weight(&at, Vec3::new(0.0, 3.0, 0.0)), 1.0);
         assert_eq!(hard.weight(&at, Vec3::new(0.0, 3.01, 0.0)), 0.0);
+    }
+
+    /// The world-axis box around a region: its own box unturned, the box
+    /// around it turned, the cube around a sphere.
+    #[test]
+    fn the_bounds_hold_the_region() {
+        let v = Volume {
+            size: Vec3::new(10.0, 2.0, 4.0),
+            radius: 0.0,
+            fade: 3.0,
+        };
+        let mut at = Placement::at(Vec3::new(1.0, 2.0, 3.0));
+        at.scale = Vec3::new(1.0, 2.0, 1.0);
+        assert_eq!(
+            v.bounds(&at),
+            (Vec3::new(-4.0, 0.0, 1.0), Vec3::new(6.0, 4.0, 5.0))
+        );
+        at.quaternion = Quat::from_rotation_y(std::f32::consts::FRAC_PI_2);
+        let (lo, hi) = v.bounds(&at);
+        assert!((hi - lo - Vec3::new(4.0, 4.0, 10.0)).abs().max_element() < 1e-4);
+        let ball = Volume { radius: 1.5, ..v };
+        assert_eq!(
+            ball.bounds(&at),
+            (Vec3::new(-2.0, -1.0, 0.0), Vec3::new(4.0, 5.0, 6.0))
+        );
     }
 
     /// A region without a volume reaches everywhere; with one, only it.

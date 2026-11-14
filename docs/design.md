@@ -1077,7 +1077,8 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   whose error projects under one pixel, with hysteresis, scaled by
   `og.Model.lodBias × RenderSettings.lodBias`. Every view and shadow pass
   draws the level the camera picked.
-- **Reflection probes** (`og.ReflectionProbe`): box-projected cubes captured
+- **Reflection probes** (`og.ReflectionProbe`): box-projected cubes (the
+  box and fade of the `og.Volume` on the entity, as every region) captured
   with the lit pipelines and prefiltered like the environment, chosen per
   instance, at most `MAX_REFLECTION_PROBES`. A `baked` probe is rendered by
   `og bake probes` into the cook cache under a key of its content, so a

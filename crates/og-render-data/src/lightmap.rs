@@ -22,8 +22,10 @@ fn probe_irradiance(at: u32, n: vec3<f32>) -> vec3<f32> {
 
 // The light volumes' irradiance over π at p for normal n: the baked ones'
 // (`baked`) and the realtime ones' (`live`, probe_grid.rs), each with how
-// much of it to take (w: 0 outside every volume of its kind, 1 a spacing
-// inside one). A header's packed counts carry bit 21 on a realtime volume.
+// much of it to take (w: 1 inside a volume of its kind, falling to 0 over
+// the volume's fade past its faces). A volume's header is three rows: its
+// min and first probe, its max and packed counts (bit 21 on a realtime
+// volume), its fade.
 struct VolumeLight { baked: vec4<f32>, live: vec4<f32> };
 
 fn light_volumes(p: vec3<f32>, n: vec3<f32>) -> VolumeLight {
@@ -31,20 +33,17 @@ fn light_volumes(p: vec3<f32>, n: vec3<f32>) -> VolumeLight {
   var sum = array<vec3<f32>, 2>(vec3<f32>(0.0), vec3<f32>(0.0));
   var weight = array<f32, 2>(0.0, 0.0);
   for (var i = 0u; i < PROBE_VOLUMES; i++) {
-    let h0 = probe_data.v[2u * i];
-    let h1 = probe_data.v[2u * i + 1u];
+    let h0 = probe_data.v[3u * i];
+    let h1 = probe_data.v[3u * i + 1u];
     if (h0.w < 0.0) { break; }
     let packed = u32(h1.w);
     let kind = (packed >> 21u) & 1u;
     let c = vec3<u32>(packed & 127u, (packed >> 7u) & 127u, (packed >> 14u) & 127u);
     let cmax = vec3<f32>(c - vec3<u32>(1u));
     let size = max(h1.xyz - h0.xyz, vec3<f32>(1e-4));
-    let d = min(p - h0.xyz, h1.xyz - p) / (size / cmax);
-    // A baked volume fades in over its outer spacing; a realtime one is
-    // whole up to its faces and fades out over a spacing beyond them, so
-    // the walls, floor and ceiling just outside its probes take them.
-    let inside = min(d.x, min(d.y, d.z));
-    let w = clamp(select(inside, inside + 1.0, kind == 1u), 0.0, 1.0);
+    // Whole up to its faces, so the walls, floor and ceiling on them take
+    // its probes, and fading out over its fade beyond (frame.wgsl).
+    let w = region_weight(box_outside(p, h0.xyz, h1.xyz), probe_data.v[3u * i + 2u].x);
     if (w <= 0.0) { continue; }
     let g = clamp((p - h0.xyz) / size * cmax, vec3<f32>(0.0), cmax);
     let g0 = min(vec3<u32>(floor(g)), c - vec3<u32>(2u));

@@ -28,7 +28,7 @@ module transform {
 
   component Volume {
     aliases "zone shape, region bounds, the box or sphere a zone covers, area an effect applies in, size of a zone, soft edge of a zone, area of effect"
-    doc "The shape of a region of the world: a box along the entity's axes, or a sphere about it, with a fade past its surface. A region component on the same entity takes its extent from it: og.ReverbZone (where the room is heard) and og.StreamCell (the box its anchors approach). So every region is placed, turned, scaled and faded the same way, and one entity can be several regions of one shape. Alone it does nothing."
+    doc "The shape of a region of the world: a box along the entity's axes, or a sphere about it, with a fade past its surface. A region component on the same entity takes its extent from it: og.ReverbZone (where the room is heard), og.StreamCell (the box its anchors approach), og.ForceField, og.FogVolume, og.ReflectionProbe and og.LightVolume. So every region is placed, turned, scaled and faded the same way, and one entity can be several regions of one shape. Alone it does nothing."
     field size Vector3 "The box's full size along the entity's axes, centred on it (times og.Transform.scale)." {
       default 1 1 1
       unit m

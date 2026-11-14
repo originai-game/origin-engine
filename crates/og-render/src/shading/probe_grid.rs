@@ -23,7 +23,7 @@
 //! volume), and `lightmap.rs`'s `ambient_irradiance` blends the realtime
 //! volumes over the baked ones by the same edge weight.
 
-use crate::lightmap::{PROBE_CAPACITY, PROBE_VOLUMES, fit_counts, header};
+use crate::lightmap::{PROBE_CAPACITY, PROBE_VOLUMES, VOLUME_ROWS, fit_counts, header};
 use glam::Vec3;
 
 /// The most probes relit in one frame, over every realtime volume.
@@ -47,6 +47,9 @@ pub struct RealtimeLightVolume {
     pub id: u64,
     pub min: Vec3,
     pub max: Vec3,
+    /// How far past the box's faces its light fades out (m; 0: a hard
+    /// edge).
+    pub fade: f32,
     /// The most distance between neighbouring probes (at most 64 a side).
     pub spacing: f32,
     /// Probes relit a frame once swept (0: none, the first sweep kept).
@@ -118,7 +121,7 @@ impl ProbeGrid {
         volumes: &[RealtimeLightVolume],
         end: usize,
         baked: usize,
-    ) -> (Vec<[[f32; 4]; 2]>, Vec<GridCapture>) {
+    ) -> (Vec<[[f32; 4]; VOLUME_ROWS]>, Vec<GridCapture>) {
         let mut next = Vec::new();
         let mut at = end;
         for v in volumes.iter().take(PROBE_VOLUMES.saturating_sub(baked)) {
@@ -146,7 +149,10 @@ impl ProbeGrid {
             .volumes
             .iter()
             .filter(|g| g.swept)
-            .map(|g| header(g.volume.min, g.volume.max, g.first, g.counts, true))
+            .map(|g| {
+                let v = &g.volume;
+                header(v.min, v.max, v.fade, g.first, g.counts, true)
+            })
             .collect();
         let mut captures = Vec::new();
         let count = self.volumes.len();
@@ -346,6 +352,7 @@ mod tests {
             id,
             min: Vec3::ZERO,
             max: Vec3::new(4.0, 2.0, 4.0),
+            fade: 0.0,
             spacing,
             updates_per_frame: per_frame,
             intensity: 1.0,

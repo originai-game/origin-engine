@@ -357,6 +357,12 @@ from above, the play area lies at one depth and falls in one band.
 
 - Use a probe for interiors that the sky must not light: a chrome
   sphere in a room shows the room.
+- Its box is the og.Volume on its entity, as the world's axes bound it
+  (a turned box takes the box around it, a radius the cube around the
+  sphere). Size it to the room: surfaces on its faces take the probe
+  whole, and og.Volume.fade is how far past them it fades into the
+  environment map. Without an og.Volume the probe reaches everywhere and
+  reflects as at infinity: one capture of an open place.
 - The probe holds light as it reaches surfaces: the sky scaled by the
   environment's intensity (RenderSettings.environmentIntensity,
   og.Environment.intensity), as outside the box, and the surfaces as

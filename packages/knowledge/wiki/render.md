@@ -143,7 +143,7 @@ module render {
 | [`MAX_REFLECTION_PROBES`](#const-MAX_REFLECTION_PROBES) | constant |  | The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped. |
 | [`ReflectionProbeMode`](render/type-ReflectionProbeMode.md) | enum |  | When a reflection probe's cube is rendered. |
 | [`ReflectionProbeMode()`](#column-ReflectionProbeMode) | column kind |  | A ReflectionProbeMode field: the variant's index. |
-| [`og.ReflectionProbe`](render/record-ReflectionProbe.md) | component |  | A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity) and blende… |
+| [`og.ReflectionProbe`](render/record-ReflectionProbe.md) | component |  | A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity), fading in… |
 | [`og.render.standardMaterial`](render/fn-standardMaterial.md) | function | `(world: World, desc?: StandardMaterialDesc): Result<Material>` | Create a standard material. |
 | [`og.render.updateMaterial`](render/fn-updateMaterial.md) | function | `(world: World, material: Material, desc?: StandardMaterialDesc): Result<void>` | Change some parameters of a standard material. |
 | [`Shader`](render/type-Shader.md) | handle |  | A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read. |
@@ -235,7 +235,7 @@ module render {
 | [`og.render.postErrors`](render/fn-postErrors.md) | function | `(world: World): readonly PostError[]` | The custom post passes PostEffects.custom names that failed to compile on this device, each skipped (the frame draws as without it). |
 | [`VolumetricFog`](render/type-VolumetricFog.md) | enum |  | How the device draws Fog.volumetric (RenderCapabilities.volumetricFog). |
 | [`og.RectLight`](render/record-RectLight.md) | component |  | A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z, emitting color * intensity from its front (both faces w… |
-| [`og.LightVolume`](render/record-LightVolume.md) | component |  | A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (off static models, the sky, emissive surfaces) at a grid of points spacing metres apart… |
+| [`og.LightVolume`](render/record-LightVolume.md) | component |  | A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene at a grid of points spacing metres apart inside it. |
 | [`og.RealtimeLightVolume`](render/record-RealtimeLightVolume.md) | component |  | Relights the LightVolume on the same entity while the game runs: each probe captures the scene around it (six small views), a few a frame, following moving lights, doors and the sun, gaining a bounce… |
 | [`BakedScene`](render/type-BakedScene.md) | struct |  | One instantiated scene's baked lighting, as og.render.bakedLighting reports it. |
 | [`og.render.bakedLighting`](render/fn-bakedLighting.md) | function | `(world: World): readonly BakedScene[]` | The baked lighting of every scene instantiated in the world, in instantiation order: whether it is drawn, and why not. |
@@ -609,7 +609,7 @@ column Shader {
 }
 ```
 
-<sub>Module `render` line 2955</sub>
+<sub>Module `render` line 2947</sub>
 
 ```ogt
 column LineMode {
@@ -620,7 +620,7 @@ column LineMode {
 }
 ```
 
-<sub>Module `render` line 3762</sub>
+<sub>Module `render` line 3754</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -631,7 +631,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>Module `render` line 3973</sub>
+<sub>Module `render` line 3965</sub>
 
 ```ogt
 column RenderTarget {
@@ -642,7 +642,7 @@ column RenderTarget {
 }
 ```
 
-<sub>Module `render` line 3982</sub>
+<sub>Module `render` line 3974</sub>
 
 ```ogt
 column Post {
@@ -653,7 +653,7 @@ column Post {
 }
 ```
 
-<sub>Module `render` line 4122</sub>
+<sub>Module `render` line 4114</sub>
 
 ## Constants
 

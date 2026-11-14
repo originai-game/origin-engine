@@ -1,0 +1,17 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og.ReflectionProbe.size, og.ReflectionProbe.blendDistance",
+      "change": "A reflection probe's box and fade are the og.Volume on its entity, as every region's: `size` and `blendDistance` are removed. The fade lies past the box's faces, not inside them, so surfaces on the faces take the probe whole. The box follows the entity's scale and, turned, is the box around it. A probe without an og.Volume reaches everywhere and reflects as at infinity.",
+      "fix": "Add `og.Volume` to the probe's entity: `world.add(e, og.Volume, { size: <the old size, 10 10 10 when it was omitted>, fade: <the old blendDistance, 1 when it was omitted> })`, or in a scene a `Volume { size …  fade … }` row on the entity, and drop the two fields from og.ReflectionProbe. Bake again (`og bake probes`).",
+      "find": ["ReflectionProbe", "blendDistance"]
+    },
+    {
+      "member": "og.LightVolume.size",
+      "change": "A light volume's box is the og.Volume on its entity, as every region's: `size` is removed. Baked and realtime volumes now share one edge: whole up to the box's faces, fading out over og.Volume.fade past them (a baked one faded in over its outer spacing, a realtime one out over one spacing). The box follows the entity's scale and, turned, is the box around it. A light volume without an og.Volume has no box: nothing is baked or relit.",
+      "fix": "Add `og.Volume` to the volume's entity: `world.add(e, og.Volume, { size: <the old size, 4 4 4 when it was omitted>, fade: <the spacing> })`, or in a scene a `Volume { size …  fade … }` row on the entity, and drop `size` from og.LightVolume. Bake again (`og bake lightmaps`).",
+      "find": ["LightVolume"]
+    }
+  ]
+}

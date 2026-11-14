@@ -25,7 +25,7 @@
 //   4..: its distance moments (mean, mean²) on a GI_DEPTH² octahedral map,
 //      two texels a vec4
 
-const GI_HEADER_AT: u32 = 16u;
+const GI_HEADER_AT: u32 = 24u;
 const GI_CASCADES: u32 = 4u;
 const GI_DEPTH: u32 = 12u;
 const GI_STRIDE: u32 = 76u;

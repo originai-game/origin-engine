@@ -2460,7 +2460,7 @@ export interface MatrixWorld {
 }
 
 /**
- * The shape of a region of the world: a box along the entity's axes, or a sphere about it, with a fade past its surface. A region component on the same entity takes its extent from it: og.ReverbZone (where the room is heard) and og.StreamCell (the box its anchors approach). So every region is placed, turned, scaled and faded the same way, and one entity can be several regions of one shape. Alone it does nothing.
+ * The shape of a region of the world: a box along the entity's axes, or a sphere about it, with a fade past its surface. A region component on the same entity takes its extent from it: og.ReverbZone (where the room is heard), og.StreamCell (the box its anchors approach), og.ForceField, og.FogVolume, og.ReflectionProbe and og.LightVolume. So every region is placed, turned, scaled and faded the same way, and one entity can be several regions of one shape. Alone it does nothing.
  *
  * The value of the `Volume` component (token `og.Volume`).
  */
@@ -10747,18 +10747,12 @@ export type ReflectionProbeMode = "baked" | "realtime";
 export declare function ReflectionProbeMode(value?: ReflectionProbeMode, options?: FieldOptions): FieldSpec<"ReflectionProbeMode">;
 
 /**
- * A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it and without the probes' own reflections, and holds the light as it reaches surfaces.
+ * A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity), fading into the environment map over og.Volume.fade past the box's faces. The box is the og.Volume on its entity, as the world's axes bound it; none: everywhere, as at infinity. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it and without the probes' own reflections, and holds the light as it reaches surfaces.
  * See `looks §15`.
  *
  * The value of the `ReflectionProbe` component (token `og.ReflectionProbe`).
  */
 export interface ReflectionProbe {
-  /**
-   * The box's full extents in world units, centred on the entity (its rotation is ignored: the box is axis-aligned).
-   *
-   * @default { x: 10, y: 10, z: 10 }
-   */
-  size: Vector3;
   /**
    * The side of each cube face in texels; it is rounded to a power of two.
    *
@@ -10786,14 +10780,6 @@ export interface ReflectionProbe {
    * @tunable
    */
   intensity: number;
-  /**
-   * The distance inside the box's faces over which the probe fades into the environment map.
-   *
-   * @default 1
-   * @range 0..
-   * @unit m (metres)
-   */
-  blendDistance: number;
   /**
    * Whether it is sampled.
    *
@@ -12677,20 +12663,13 @@ export interface RectLight {
 }
 
 /**
- * A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (off static models, the sky, emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every surface drawn inside it without a lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing.
- * The box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Unbaked, it lights nothing and og doctor --project names the scene.
+ * A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene at a grid of points spacing metres apart inside it. Every surface drawn inside it without a lightmap takes its ambient light from the probes instead of the sky's, fading out over og.Volume.fade past the box's faces.
+ * The box is the og.Volume on its entity, as the world's axes bound it; without one it has no box and nothing is baked. Unbaked, it lights nothing and og doctor --project names the scene.
  * See `render §4`.
  *
  * The value of the `LightVolume` component (token `og.LightVolume`).
  */
 export interface LightVolume {
-  /**
-   * The box's extent along world x, y and z.
-   *
-   * @default { x: 4, y: 4, z: 4 }
-   * @unit m (metres)
-   */
-  size: Vector3;
   /**
    * The most distance between neighbouring probes (the box is divided evenly, with probes on its faces; at most 64 a side).
    *
@@ -32918,7 +32897,7 @@ export declare namespace og {
    */
   const MatrixWorld: ComponentType<{ readonly matrix: FieldSpec<"Matrix4"> }, MatrixWorld>;
   /**
-   * The shape of a region of the world: a box along the entity's axes, or a sphere about it, with a fade past its surface. A region component on the same entity takes its extent from it: og.ReverbZone (where the room is heard) and og.StreamCell (the box its anchors approach). So every region is placed, turned, scaled and faded the same way, and one entity can be several regions of one shape. Alone it does nothing.
+   * The shape of a region of the world: a box along the entity's axes, or a sphere about it, with a fade past its surface. A region component on the same entity takes its extent from it: og.ReverbZone (where the room is heard), og.StreamCell (the box its anchors approach), og.ForceField, og.FogVolume, og.ReflectionProbe and og.LightVolume. So every region is placed, turned, scaled and faded the same way, and one entity can be several regions of one shape. Alone it does nothing.
    */
   const Volume: ComponentType<{ readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly fade: FieldSpec<"f32"> }, Volume>;
   /**
@@ -33613,10 +33592,10 @@ export declare namespace og {
    */
   const Afterimage: ComponentType<{ readonly count: FieldSpec<"u32">; readonly interval: FieldSpec<"u32">; readonly opacity: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly additive: FieldSpec<"bool">; readonly active: FieldSpec<"bool"> }, Afterimage>;
   /**
-   * A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it and without the probes' own reflections, and holds the light as it reaches surfaces.
+   * A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity), fading into the environment map over og.Volume.fade past the box's faces. The box is the og.Volume on its entity, as the world's axes bound it; none: everywhere, as at infinity. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it and without the probes' own reflections, and holds the light as it reaches surfaces.
    * See `looks §15`.
    */
-  const ReflectionProbe: ComponentType<{ readonly size: FieldSpec<"Vector3">; readonly resolution: FieldSpec<"u32">; readonly mode: FieldSpec<"ReflectionProbeMode">; readonly interval: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly blendDistance: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, ReflectionProbe>;
+  const ReflectionProbe: ComponentType<{ readonly resolution: FieldSpec<"u32">; readonly mode: FieldSpec<"ReflectionProbeMode">; readonly interval: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, ReflectionProbe>;
   /**
    * Draws a geometry's vertices as lines at the entity's MatrixWorld, every frame (three.js Line, LineSegments or LineLoop over a BufferGeometry): a static set of lines kept as data, a level's outline, a track, a constellation. The vertices are taken in order (the geometry's indices are not read), with its vertex colours times color.
    */
@@ -33642,11 +33621,11 @@ export declare namespace og {
    */
   const RectLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly twoSided: FieldSpec<"bool">; readonly castShadow: FieldSpec<"bool"> }, RectLight>;
   /**
-   * A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (off static models, the sky, emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every surface drawn inside it without a lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing.
-   * The box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Unbaked, it lights nothing and og doctor --project names the scene.
+   * A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene at a grid of points spacing metres apart inside it. Every surface drawn inside it without a lightmap takes its ambient light from the probes instead of the sky's, fading out over og.Volume.fade past the box's faces.
+   * The box is the og.Volume on its entity, as the world's axes bound it; without one it has no box and nothing is baked. Unbaked, it lights nothing and og doctor --project names the scene.
    * See `render §4`.
    */
-  const LightVolume: ComponentType<{ readonly size: FieldSpec<"Vector3">; readonly spacing: FieldSpec<"f32"> }, LightVolume>;
+  const LightVolume: ComponentType<{ readonly spacing: FieldSpec<"f32"> }, LightVolume>;
   /**
    * Relights the LightVolume on the same entity while the game runs: each probe captures the scene around it (six small views), a few a frame, following moving lights, doors and the sun, gaining a bounce each sweep. Shiny surfaces inside reflect the probes' light, not the sky.
    * Until every probe is relit, and while GlobalIllumination.allowed is false, the box takes its LightVolume's baked probes, else the sky's. Realtime probes win over baked ones; static models keep their lightmaps. Up to eight volumes are drawn. Presentation only; a world that never names it keeps its type table, saves and hash.

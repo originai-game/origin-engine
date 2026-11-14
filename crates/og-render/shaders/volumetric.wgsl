@@ -44,7 +44,7 @@ struct Vol {
 @group(1) @binding(0) var<uniform> vol: Vol;
 
 // How much of a fog volume reaches p: 1 inside, falling linearly to 0 over its fade past its surface
-// (og_env::volume::Volume::weight, term for term).
+// (og_env::volume::Volume::outside, term for term, then frame.wgsl's region_weight).
 fn fog_volume_weight(v: FogVolume, p: vec3<f32>) -> f32 {
   if (v.at.w < 0.0) { return 1.0; }
   let d = p - v.at.xyz;
@@ -53,8 +53,7 @@ fn fog_volume_weight(v: FogVolume, p: vec3<f32>) -> f32 {
     let local = d + 2.0 * cross(v.turn.xyz, cross(v.turn.xyz, d) + v.turn.w * d);
     outside = length(max(abs(local) - v.half.xyz, vec3<f32>(0.0)));
   }
-  if (outside <= 0.0) { return 1.0; }
-  return select(0.0, max(1.0 - outside / max(v.half.w, 1e-6), 0.0), v.half.w > 0.0);
+  return region_weight(outside, v.half.w);
 }
 
 // The medium at p: what it scatters of the light it is lit by per metre (rgb: colour × scattering × extinction) and

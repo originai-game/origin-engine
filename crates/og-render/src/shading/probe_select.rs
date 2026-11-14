@@ -1,8 +1,9 @@
 //! Which reflection probe a draw samples (`docs/design.md` §2.6), per
 //! instance.
 //!
-//! An instance samples the smallest probe box holding the centre of its
-//! bounds (none: the frame's environment); a skinned instance's bounds are
+//! An instance samples the smallest probe whose reach (its box grown by
+//! its fade) holds the centre of its bounds (none: the frame's
+//! environment); a skinned instance's bounds are
 //! its pose's, its joints' bind-pose boxes moved by its palette
 //! (`skin.rs` `posed_centre`). The choice is made per
 //! instance and carried by the batch: the instance sort keys on it
@@ -19,9 +20,9 @@
 //! each, by [`pick_sphere`]: the box holding the draw's centre, else the
 //! smallest box its bounds reach into, since such a draw is often larger
 //! than a room). Inside every draw the shader blends the probe with the
-//! environment per fragment by the distance to the box's faces
-//! (`frame.wgsl` `probe_weight`, 0 outside the box), so the part of a
-//! draw outside its probe's box shows the environment.
+//! environment per fragment by the distance past the box's faces
+//! (`frame.wgsl` `probe_weight`, 0 past the fade), so the part of a
+//! draw outside its probe's reach shows the environment.
 
 use crate::probes::ReflectionProbe;
 use glam::Vec3;
@@ -29,9 +30,10 @@ use glam::Vec3;
 /// No probe: the frame's environment.
 pub(crate) const NONE: u8 = u8::MAX;
 
-/// The probes' boxes (min and max corners), in the frame's active order.
+/// The boxes the probes reach (min and max corners), in the frame's
+/// active order.
 pub(crate) fn boxes(probes: &[ReflectionProbe]) -> Vec<(Vec3, Vec3)> {
-    probes.iter().map(ReflectionProbe::bounds).collect()
+    probes.iter().map(ReflectionProbe::reach).collect()
 }
 
 /// The probe sampled at `p`: the smallest of `boxes` holding it (boxes

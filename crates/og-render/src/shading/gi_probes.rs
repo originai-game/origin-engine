@@ -84,7 +84,7 @@ pub const COUNTS: [u32; 3] = [16, 8, 16];
 /// The header rows after the light volumes' (`gi_common.wgsl`).
 pub(crate) const HEADER_ROWS: usize = 1 + 2 * CASCADES;
 /// Where those rows start (`GI_HEADER_AT`).
-const HEADER_AT: usize = 2 * crate::lightmap::PROBE_VOLUMES;
+const HEADER_AT: usize = crate::lightmap::VOLUME_HEADER;
 /// A probe's vec4 (`GI_STRIDE`): its state, harmonics and distance map.
 pub(crate) const STRIDE: usize = 76;
 /// The distance map's texels a side (`GI_DEPTH`).
@@ -108,7 +108,7 @@ const PARAMS_STRIDE: u64 = 256;
 const MAX_SLICES: usize = CASCADES;
 
 const _: () = assert!(STRIDE == 1 + 3 + DEPTH * DEPTH / 2);
-const _: () = assert!(HEADER_AT == 16, "GI_HEADER_AT in gi_common.wgsl");
+const _: () = assert!(HEADER_AT == 24, "GI_HEADER_AT in gi_common.wgsl");
 
 /// The probes of one cascade.
 const fn probes_per_cascade() -> usize {

@@ -208,8 +208,16 @@ fn apply_quality_writes_the_presets_row_and_the_renderer_reads_it() {
     );
 }
 
-/// A renderer that keeps the last frame's realtime light volumes and GI switch.
-struct VolumeRecorder(Rc<RefCell<(Vec<og_render::RealtimeLightVolume>, bool)>>);
+/// What [`VolumeRecorder`] keeps of the last frame: its realtime light
+/// volumes, GI switch and reflection probes.
+type Regions = (
+    Vec<og_render::RealtimeLightVolume>,
+    bool,
+    Vec<og_render::ReflectionProbe>,
+);
+
+/// A renderer that keeps the last frame's regions.
+struct VolumeRecorder(Rc<RefCell<Regions>>);
 
 impl RenderBackend for VolumeRecorder {
     fn tier(&self) -> String {
@@ -222,6 +230,7 @@ impl RenderBackend for VolumeRecorder {
         *self.0.borrow_mut() = (
             scene.lighting.light_volumes.clone(),
             scene.frame.quality.global_illumination,
+            scene.lighting.reflection_probes.clone(),
         );
         Ok(())
     }
@@ -231,9 +240,11 @@ impl RenderBackend for VolumeRecorder {
 }
 
 /// og.RealtimeLightVolume relights the og.LightVolume of its entity: the
-/// renderer is handed that volume's box (centred on the entity) and
-/// spacing with the realtime one's rate; one without a LightVolume is
-/// nothing. The low preset leaves it in the scene and turns the quality's
+/// renderer is handed the box and fade of the og.Volume there and the
+/// light volume's spacing with the realtime one's rate; one without a
+/// LightVolume, or without an og.Volume and so without a box, is nothing.
+/// An og.ReflectionProbe takes the same og.Volume (turned, the box around
+/// it), and one without reaches everywhere. The low preset leaves it in the scene and turns the quality's
 /// GI switch, which stops its relighting, off.
 #[test]
 fn a_realtime_light_volume_reaches_the_renderer_with_its_light_volume() {
@@ -243,7 +254,7 @@ fn a_realtime_light_volume_reaches_the_renderer_with_its_light_volume() {
     let engine = answer(og_engine_create(game, "{}".into()))["value"]
         .as_u64()
         .unwrap() as u32;
-    let seen = Rc::new(RefCell::new((Vec::new(), false)));
+    let seen = Rc::new(RefCell::new((Vec::new(), false, Vec::new())));
     set_render_backend(engine, Some(Box::new(VolumeRecorder(seen.clone())))).unwrap();
     let spawn = |x: f32| {
         let desc = json!({ "position": { "x": x, "y": 2, "z": 3 } });
@@ -266,9 +277,11 @@ fn a_realtime_light_volume_reaches_the_renderer_with_its_light_volume() {
     let room = spawn(1.0);
     insert(
         room,
-        "og.LightVolume",
-        json!({ "size": { "x": 4, "y": 2, "z": 6 }, "spacing": 0.5 }),
+        "og.Volume",
+        json!({ "size": { "x": 4, "y": 2, "z": 6 }, "fade": 0.25 }),
     );
+    insert(room, "og.LightVolume", json!({ "spacing": 0.5 }));
+    insert(room, "og.ReflectionProbe", json!({}));
     insert(
         room,
         "og.RealtimeLightVolume",
@@ -276,8 +289,51 @@ fn a_realtime_light_volume_reaches_the_renderer_with_its_light_volume() {
     );
     let alone = spawn(20.0);
     insert(alone, "og.RealtimeLightVolume", json!({}));
+    let unbounded = spawn(40.0);
+    insert(unbounded, "og.LightVolume", json!({}));
+    insert(unbounded, "og.RealtimeLightVolume", json!({}));
+    insert(unbounded, "og.ReflectionProbe", json!({}));
+    // A quarter turn about y: the box around a 2 × 2 × 8 box is 8 × 2 × 2.
+    let turned = answer(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some(
+            json!({
+                "position": { "x": 60, "y": 2, "z": 3 },
+                "quaternion": { "x": 0, "y": 0.70710677, "z": 0, "w": 0.70710677 },
+            })
+            .to_string(),
+        ),
+    )))["value"]
+        .as_f64()
+        .unwrap();
+    insert(
+        turned,
+        "og.Volume",
+        json!({ "size": { "x": 2, "y": 2, "z": 8 } }),
+    );
+    insert(turned, "og.ReflectionProbe", json!({}));
     answer(og_engine_frame(engine, 1000.0 / 60.0));
-    let (volumes, gi) = seen.borrow().clone();
+    let (volumes, gi, probes) = seen.borrow().clone();
+    let probe = |x: f32| {
+        *probes
+            .iter()
+            .find(|p| p.position.x == x)
+            .unwrap_or_else(|| panic!("no probe at {x}: {probes:?}"))
+    };
+    assert_eq!(probes.len(), 3, "{probes:?}");
+    assert_eq!(
+        (probe(1.0).size, probe(1.0).fade),
+        (glam::Vec3::new(4.0, 2.0, 6.0), 0.25)
+    );
+    assert!(probe(40.0).size.min_element() >= 1e6, "{:?}", probe(40.0));
+    assert!(
+        (probe(60.0).size - glam::Vec3::new(8.0, 2.0, 2.0))
+            .abs()
+            .max_element()
+            < 1e-4,
+        "{:?}",
+        probe(60.0)
+    );
     assert!(gi, "GI allowed by default");
     assert_eq!(volumes.len(), 1, "{volumes:?}");
     let v = volumes[0];
@@ -288,12 +344,15 @@ fn a_realtime_light_volume_reaches_the_renderer_with_its_light_volume() {
             glam::Vec3::new(3.0, 3.0, 6.0)
         )
     );
-    assert_eq!((v.spacing, v.updates_per_frame, v.intensity), (0.5, 3, 1.0));
+    assert_eq!(
+        (v.fade, v.spacing, v.updates_per_frame, v.intensity),
+        (0.25, 0.5, 3, 1.0)
+    );
     answer(og_runtime::host_impl::answer(og_render_apply_quality(
         engine,
         "low".into(),
     )));
     answer(og_engine_frame(engine, 1000.0 / 60.0));
-    let (volumes, gi) = seen.borrow().clone();
+    let (volumes, gi, _) = seen.borrow().clone();
     assert_eq!((volumes.len(), gi), (1, false));
 }

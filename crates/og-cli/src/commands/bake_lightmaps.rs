@@ -510,15 +510,34 @@ fn bake_scene(
         }
     }
     if let Some(t) = table(s, "LightVolume") {
+        let shapes = table(s, "Volume");
         for (e, m) in world.iter().enumerate() {
             if t.get(e).is_none() {
                 continue;
             }
-            let center = m.transform_point3(Vec3::ZERO);
-            let half = vec3(t, e, "size", Vec3::splat(4.0)).abs() * 0.5;
+            // Its box is the og.Volume on its entity, as the world's axes
+            // bound it (the runtime's `present::probes`).
+            let Some(shapes) = shapes.filter(|v| v.get(e).is_some()) else {
+                eprintln!(
+                    "og bake lightmaps: {id}: the LightVolume on '{}' has no og.Volume, so no box: nothing baked for it",
+                    s.entities[e].name
+                );
+                continue;
+            };
+            let shape = og_env::volume::Volume {
+                size: vec3(shapes, e, "size", Vec3::ONE),
+                radius: num(shapes, e, "radius", 0.0),
+                fade: num(shapes, e, "fade", 0.0),
+            };
+            let (scale, quaternion, position) = m.to_scale_rotation_translation();
+            let (min, max) = shape.bounds(&og_env::volume::Placement {
+                position,
+                quaternion,
+                scale,
+            });
             let desc = VolumeDesc {
-                min: center - half,
-                max: center + half,
+                min,
+                max,
                 spacing: num(t, e, "spacing", 1.0).max(0.1),
             };
             let v =
@@ -527,6 +546,7 @@ fn bake_scene(
                 entity: s.entities[e].name.clone(),
                 min: v.min.to_array(),
                 max: v.max.to_array(),
+                fade: shape.fade.max(0.0),
                 counts: v.counts,
                 probes: v.probes,
             });

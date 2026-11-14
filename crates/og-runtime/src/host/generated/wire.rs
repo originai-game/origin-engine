@@ -29708,24 +29708,20 @@ pub mod record {
     /// `ReflectionProbe`: packages/knowledge/wiki/render.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct ReflectionProbe {
-        pub size: Vec3,
         pub resolution: u32,
         pub mode: ReflectionProbeMode,
         pub interval: u32,
         pub intensity: f32,
-        pub blend_distance: f32,
         pub visible: bool,
     }
 
     impl Default for ReflectionProbe {
         fn default() -> Self {
             Self {
-                size: Vec3::new(10.0_f32, 10.0_f32, 10.0_f32),
                 resolution: 128,
                 mode: Default::default(),
                 interval: 30,
                 intensity: 1.0_f32,
-                blend_distance: 1.0_f32,
                 visible: true,
             }
         }
@@ -29738,12 +29734,10 @@ pub mod record {
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
-                size: field(o, "size", d.size)?,
                 resolution: field(o, "resolution", d.resolution)?,
                 mode: field(o, "mode", d.mode)?,
                 interval: field(o, "interval", d.interval)?,
                 intensity: field(o, "intensity", d.intensity)?,
-                blend_distance: field(o, "blendDistance", d.blend_distance)?,
                 visible: field(o, "visible", d.visible)?,
             })
         }
@@ -30014,14 +30008,12 @@ pub mod record {
     /// `LightVolume`: packages/knowledge/wiki/render.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct LightVolume {
-        pub size: Vec3,
         pub spacing: f32,
     }
 
     impl Default for LightVolume {
         fn default() -> Self {
             Self {
-                size: Vec3::new(4.0_f32, 4.0_f32, 4.0_f32),
                 spacing: 1.0_f32,
             }
         }
@@ -30034,7 +30026,6 @@ pub mod record {
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
-                size: field(o, "size", d.size)?,
                 spacing: field(o, "spacing", d.spacing)?,
             })
         }

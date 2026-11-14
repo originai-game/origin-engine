@@ -2081,15 +2081,6 @@
       "module": "render",
       "fields": [
         {
-          "name": "size",
-          "column": "Vector3",
-          "default": {
-            "x": 10,
-            "y": 10,
-            "z": 10
-          }
-        },
-        {
           "name": "resolution",
           "column": "u32",
           "default": 128
@@ -2109,11 +2100,6 @@
           "column": "f32",
           "default": 1,
           "tunable": true
-        },
-        {
-          "name": "blendDistance",
-          "column": "f32",
-          "default": 1
         },
         {
           "name": "visible",
@@ -2438,15 +2424,6 @@
       "schema": "og.LightVolume",
       "module": "render",
       "fields": [
-        {
-          "name": "size",
-          "column": "Vector3",
-          "default": {
-            "x": 4,
-            "y": 4,
-            "z": 4
-          }
-        },
         {
           "name": "spacing",
           "column": "f32",

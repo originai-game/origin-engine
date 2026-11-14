@@ -287,6 +287,7 @@ pub(crate) fn scene_spawned(
         .map(|v| ProbeVolume {
             min: Vec3::from(v.min),
             max: Vec3::from(v.max),
+            fade: v.fade,
             counts: v.counts,
             probes: Arc::new(v.probes.clone()),
         })
