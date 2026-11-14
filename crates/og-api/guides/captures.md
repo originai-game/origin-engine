@@ -70,3 +70,11 @@ A gfx reference frame that fails its test writes the same heat map and its three
 | A run | `keyframes.png`, four to a row |
 
 Send the smallest image that answers the question. A crop beats a larger whole frame; one sheet beats many frames.
+
+## 6. Effects
+
+An effect lasts a second or less, so key frames (§3) keep at most one frame of it. Capture it on purpose:
+
+- **Alone:** `og vfx preview <effect.ogt>` plays it on a dark stage and tiles six frames in time order into one sheet, one of them two ticks after its `impact`. Read that sheet first. Its record also lists the engine's warnings about the effect.
+- **In the game:** `og render --commands "..." --from <S> --to <S + length> --fps 30 --contact-sheet 6` around the moment it plays, at the play camera, gives every frame of it on one sheet. A 0.6 s hit at 30 fps is 18 frames.
+- Look at three moments: the first frames (it appears at once, with no empty or late start), the impact frame (its largest and brightest) and the last frames (it fades out instead of vanishing). Then crop one at full resolution (§1 `region`) to check edges and texture.

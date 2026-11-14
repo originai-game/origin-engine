@@ -127,7 +127,9 @@ must(og.vfx.spawn(world, { asset: hit, position: at }));
   does; `effect-files` lists them all with their defaults.
 - Look at it before playing it in the game: `og vfx preview fx/hit.ogt`
   writes six frames in time order, the impact among them, and prints its
-  measured size, anchor, draw calls and peak GPU milliseconds (§4).
+  measured size, anchor, draw calls and peak GPU milliseconds (§4), and
+  the engine's warnings about it. Judge its frames as `art-review §7`
+  says, and capture it in the game as `captures §6` says.
 - Read og.VfxEvent for the frame the hit lands; the drawn parts never
   feed gameplay.
 - An effect that stands on its origin (a pillar of fire) is spawned on the

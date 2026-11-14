@@ -120,3 +120,15 @@ the frame, these say what the assets themselves must be.
 - Writing them changes neither the frame nor the simulation. The cook's
   conformance (§3), the run-time defaults taken from them and
   `og style check` are docs/art.md §2.3 to §2.5.
+
+## 7. Reviewing effects
+
+Capture an effect's first frames, its impact and its last frames (captures §6), at the play camera and at the target size, over the game's real ground and characters as well as on the preview's dark stage. On each frame, look for:
+
+- **Shapes that show the quad.** A soft glow or smoke puff must not read as a square or show its sprite's straight edges; a sprite flat on the ground must not be cut by it into steps or half-buried rings.
+- **Blown-out colour.** Overlapping additive sprites must not burn to flat white over a large area; the impact may be bright, but it keeps a colour and a falloff.
+- **Timing.** It appears on the tick it is triggered, peaks at its impact, and fades out instead of vanishing; a looping effect has no visible seam.
+- **Scale and reading.** It is sized to what caused it (a sword hit is smaller than a fireball's explosion) and reads against the ground, and it never hides the player or a threat for longer than its impact.
+- **Agreement.** Its colours and shapes belong to the game's style and to the other effects: one set of sparks, one kind of smoke.
+
+An effect that fails is fixed in its files and previewed again. A warning in its preview (a decal with no atlas, say) is fixed first.
