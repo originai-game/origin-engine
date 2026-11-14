@@ -269,7 +269,7 @@ camera's x and y).
 A reflection probe's face has no clusters (its uniform's `cluster` is
 zero, `probes.rs`): every lit shader loops every light record of the
 frame there (terrain, scattered copies, the 3D fluid's composite and full
-material shaders through area.wgsl's `surface_local_lights`). *Limit:*
+material shaders through area.wgsl's `local_lights_on`). *Limit:*
 the records are the main camera's kept lights, so a light whose range
 misses the main view lights nothing in a capture either.
 

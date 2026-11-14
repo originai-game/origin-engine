@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.render.shaderMaterial",
+      "summary": "A `mode full lit` shader's surface now takes the frame's decals, the weather (wet, puddles, snow, dust, scaled by the material's weathering) and screen-space reflections by its roughness and metalness, as the standard material does. Before, decals and weather skipped it without a message."
+    }
+  ]
+}

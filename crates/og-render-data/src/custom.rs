@@ -70,8 +70,9 @@ fn user_section(shader: &MaterialShader) -> String {
 }
 
 /// The lit (and prepass) module of a full shader: the built-in lit
-/// shader's groups, with the effect group, the screen AO and the shared
-/// shading its lit fragment hands its surface to (custom_lit.wgsl).
+/// shader's groups, with the effect group, the decals, the weather, the
+/// screen AO and the shared shading its lit fragment hands its surface to
+/// (custom_lit.wgsl).
 pub fn lit_source(shader: &MaterialShader, lit: bool) -> String {
     crate::assemble(
         &[
@@ -86,6 +87,7 @@ pub fn lit_source(shader: &MaterialShader, lit: bool) -> String {
             crate::MATERIAL_DISSOLVE_WGSL,
             &crate::skin::palette_wgsl(3),
             crate::LIGHTING_WGSL,
+            crate::WEATHER_SURFACE_WGSL,
             &crate::lightmap::probe_wgsl(),
             crate::AREA_WGSL,
             crate::INSTANCE_WGSL,

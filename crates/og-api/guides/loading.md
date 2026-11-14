@@ -270,8 +270,11 @@ noise, a texture and sprite sheet, and blending.
   and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over
   the binding contract: camera(), the model with its skin, Params, and
   tex0 to tex7 for the material's eight texture slots. A full shader is
-  lit by the frame's lights or drawn as returned. The prepass and every
-  shadow pass draw through the same entries.
+  lit by the frame's lights or drawn as returned. A lit one takes what
+  the standard material takes around its own surface: decals, rain,
+  puddles and snow, and screen-space reflections by its roughness and
+  metalness. The prepass and every shadow pass draw through the same
+  entries.
 - A UI style is an `.ogt` of `type style`. Version 3 is the CSS dialect
   (docs/ui.md §3.2), which `og style upgrade`, `og style new` and
   `og ui migrate` write and every built-in style uses. It holds the
