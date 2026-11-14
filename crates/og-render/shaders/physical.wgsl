@@ -71,7 +71,26 @@ struct Lobes {
   aniso_t: vec3<f32>,         // the stretch's direction on the surface
   aniso_b: vec3<f32>,
   alpha_t: f32,               // GGX alpha along aniso_t (roughness² across it)
+  // Light that spreads under the surface (subsurface.wgsl).
+  subsurface: f32,            // how much of the diffuse light does (0: none)
+  scatter: vec3<f32>,         // its scatter distance per channel (m)
+  curvature: f32,             // the surface's curvature here (1 / m)
+  through: vec3<f32>,         // what comes through from the far side (0: nothing: no thickness)
+  thickness: f32,             // how far off the far side is (m)
 };
+
+// How far towards a light a subsurface material's shadow is read: light
+// entering within the widest lobe of a point reaches it, so a point just
+// past the terminator is not shadowed by its own surface.
+fn subsurface_reach(k: Lobes) -> f32 {
+  return select(0.0, 3.0 * max(k.scatter.r, max(k.scatter.g, k.scatter.b)), k.subsurface > 0.0);
+}
+
+// What comes through a subsurface material from a light behind it, of
+// that light's radiance (its shadow read where it enters, by the caller).
+fn subsurface_transmitted(s: Surface, k: Lobes, n: vec3<f32>, l: vec3<f32>) -> vec3<f32> {
+  return k.subsurface * (1.0 - s.metallic) * s.albedo / PI * k.through * subsurface_back(n, l);
+}
 
 // What one light gives: the diffuse part (which transmission replaces)
 // and the rest.
@@ -206,7 +225,13 @@ fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>)
     spec = f * d_ggx(n_dot_h, a) * v_ggx(n_dot_v, n_dot_l, a);
   }
   var o: Shade;
-  o.diffuse = (vec3<f32>(1.0) - f) * (1.0 - s.metallic) * s.albedo / PI * n_dot_l + leaf_transmission(s, n, v, l);
+  // The light's falloff: the cosine, spread past the terminator where the
+  // light scatters under the surface.
+  var falloff = vec3<f32>(n_dot_l);
+  if (k.subsurface > 0.0) {
+    falloff = mix(falloff, subsurface_cosine(dot(n, l), k.curvature, k.scatter), k.subsurface);
+  }
+  o.diffuse = (vec3<f32>(1.0) - f) * (1.0 - s.metallic) * s.albedo / PI * falloff + leaf_transmission(s, n, v, l);
   o.specular = spec * n_dot_l;
   if (any(k.sheen_color > vec3<f32>(0.0))) {
     // The sheen layer takes its albedo from what it covers.
@@ -242,13 +267,23 @@ fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3
     o.specular = a.specular * shadow;
     return o;
   }
-  let r = local_reach(light, s.translucency, p, n);
+  let r = local_reach(light, max(s.translucency, k.subsurface), p, n);
   if (!r.lit) { return o; }
   var radiance = r.radiance;
-  if (receives) { radiance *= local_shadow(light, p, leaf_shadow_normal(s, n, r.l)) * contact_shadow(light, p); }
+  if (receives) {
+    radiance *= local_shadow(light, p + r.l * subsurface_reach(k), leaf_shadow_normal(s, n, r.l));
+    // The screen's contact shadow is the surface's own past the terminator.
+    if (k.subsurface <= 0.0 || dot(n, r.l) > 0.0) { radiance *= contact_shadow(light, p); }
+  }
   let b = physical_brdf(s, k, n, v, r.l);
   o.diffuse = b.diffuse * radiance;
   o.specular = b.specular * radiance;
+  if (k.subsurface > 0.0 && k.thickness > 0.0 && dot(n, r.l) < 0.3) {
+    // The light that comes through from behind: shadowed where it enters.
+    var open = 1.0;
+    if (receives) { open = local_shadow(light, p + r.l * (k.thickness + subsurface_reach(k)), r.l); }
+    o.diffuse += subsurface_transmitted(s, k, n, r.l) * r.radiance * open;
+  }
   return o;
 }
 
@@ -326,6 +361,9 @@ fn fs_oit_mark(in: PhysicalOut, @builtin(front_facing) front_facing: bool) {
 // The physical shading of a fragment (`fs`, and lightmap_physical.wgsl's
 // `fs_physical_lightmap`).
 fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
+  // The surface's curvature (1 / m): how fast its normal turns across it
+  // (Penner and Borshukov's), from the vertex normal, which no map bends.
+  let curvature = length(fwidth(normalize(in.normal))) / max(length(fwidth(in.world_pos)), 1e-6);
   let uv = stylised_uv(in.uv, in.affine);
   let base_uv = material_uv(UV_MAP, uv);
   let base_sample = textureSample(base_color_tex, material_sampler, base_uv);
@@ -457,16 +495,31 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     k.alpha_t = mix(s.roughness * s.roughness, 1.0, k.anisotropy * k.anisotropy);
   }
 
+  // Light that spreads under the surface (subsurface.wgsl).
+  k.subsurface = physical.subsurface.w;
+  k.scatter = physical.subsurface.rgb;
+  k.curvature = curvature;
+  // (`thickness` is in the mesh's own units: by its scale, the mean of the three.)
+  k.thickness = select(0.0, physical.transmission.y * coat_maps.a * dot(in.scale, vec3<f32>(1.0 / 3.0)), k.subsurface > 0.0);
+  k.through = select(vec3<f32>(0.0), subsurface_through(k.thickness, k.scatter), k.thickness > 0.0);
+
   // The directional light.
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
   let receives = look_receives(in.look);
+  let shadowed = frame.light_dir.w > 0.5 && receives;
   var shadow = 1.0;
-  if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0) && receives) {
-    shadow = cascade_shadow(in.world_pos, leaf_shadow_normal(s, normalize(in.normal), l), abs(dot(n, l)));
+  if (shadowed && (n_dot_l > 0.0 || s.translucency > 0.0 || k.subsurface > 0.0)) {
+    shadow = cascade_shadow(in.world_pos + l * subsurface_reach(k), leaf_shadow_normal(s, normalize(in.normal), l), abs(dot(n, l)));
   }
   let sun = physical_brdf(s, k, n, v, l);
   var diffuse = sun.diffuse * frame.light_color.rgb * shadow;
+  if (k.subsurface > 0.0 && k.thickness > 0.0 && dot(n, l) < 0.3) {
+    // The sun through it from behind: shadowed where it enters.
+    var open = 1.0;
+    if (shadowed) { open = cascade_shadow(in.world_pos + l * (k.thickness + subsurface_reach(k)), l, 1.0); }
+    diffuse += subsurface_transmitted(s, k, n, l) * frame.light_color.rgb * open;
+  }
   var specular = sun.specular * frame.light_color.rgb * shadow;
   diffuse += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world_pos);
   // The material style's shadow darkness (pbr.wgsl shadow_keep).

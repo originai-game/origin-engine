@@ -6610,6 +6610,24 @@ export interface StandardMaterialDesc {
    * @default null
    */
   readonly anisotropyMap?: Texture | null;
+  /**
+   * How much of the diffuse light spreads under the surface before it leaves (skin, wax, marble, jade, milk): the shading softens past the terminator where the surface curves, and with a thickness, light from behind comes through. 0 is none.
+   * See `render §6`.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly subsurface?: number;
+  /**
+   * How far light of the red, green and blue channel travels under the surface: skin's by default, red farthest.
+   * See `render §6`.
+   *
+   * @default { x: 0.0037, y: 0.0014, z: 0.0007 }
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly subsurfaceRadius?: Vector3;
   // ── Texture arrays ──
   /**
    * The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map, each Mesh picking its layer (Mesh.materialLayer), in one draw. With mapArray or normalMapArray, colour and normals come from arrays only (map and normalMap unread). Physical and shader materials take none.

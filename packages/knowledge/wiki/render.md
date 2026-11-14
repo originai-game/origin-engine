@@ -323,7 +323,7 @@ column ToneMapping {
 }
 ```
 
-<sub>Module `render` line 603</sub>
+<sub>Module `render` line 615</sub>
 
 ```ogt
 column AoResolutionSetting {
@@ -334,7 +334,7 @@ column AoResolutionSetting {
 }
 ```
 
-<sub>Module `render` line 625</sub>
+<sub>Module `render` line 637</sub>
 
 ```ogt
 column QualityPreset {
@@ -345,7 +345,7 @@ column QualityPreset {
 }
 ```
 
-<sub>Module `render` line 640</sub>
+<sub>Module `render` line 652</sub>
 
 ```ogt
 column Texture {
@@ -356,7 +356,7 @@ column Texture {
 }
 ```
 
-<sub>Module `render` line 818</sub>
+<sub>Module `render` line 830</sub>
 
 ```ogt
 column Lut {
@@ -367,7 +367,7 @@ column Lut {
 }
 ```
 
-<sub>Module `render` line 825</sub>
+<sub>Module `render` line 837</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -378,7 +378,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>Module `render` line 832</sub>
+<sub>Module `render` line 844</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -389,7 +389,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>Module `render` line 900</sub>
+<sub>Module `render` line 912</sub>
 
 ```ogt
 column AoMethod {
@@ -400,7 +400,7 @@ column AoMethod {
 }
 ```
 
-<sub>Module `render` line 916</sub>
+<sub>Module `render` line 928</sub>
 
 ```ogt
 column AoResolution {
@@ -411,7 +411,7 @@ column AoResolution {
 }
 ```
 
-<sub>Module `render` line 929</sub>
+<sub>Module `render` line 941</sub>
 
 ```ogt
 column DofQuality {
@@ -422,7 +422,7 @@ column DofQuality {
 }
 ```
 
-<sub>Module `render` line 942</sub>
+<sub>Module `render` line 954</sub>
 
 ```ogt
 column ScreenBlur {
@@ -433,7 +433,7 @@ column ScreenBlur {
 }
 ```
 
-<sub>Module `render` line 957</sub>
+<sub>Module `render` line 969</sub>
 
 ```ogt
 column SpriteBlend {
@@ -444,7 +444,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>Module `render` line 970</sub>
+<sub>Module `render` line 982</sub>
 
 ```ogt
 column SpriteFacing {
@@ -455,7 +455,7 @@ column SpriteFacing {
 }
 ```
 
-<sub>Module `render` line 985</sub>
+<sub>Module `render` line 997</sub>
 
 ```ogt
 column StripBlend {
@@ -466,7 +466,7 @@ column StripBlend {
 }
 ```
 
-<sub>Module `render` line 998</sub>
+<sub>Module `render` line 1010</sub>
 
 ```ogt
 column GiMethod {
@@ -477,7 +477,7 @@ column GiMethod {
 }
 ```
 
-<sub>Module `render` line 1427</sub>
+<sub>Module `render` line 1439</sub>
 
 ```ogt
 column Palette {
@@ -488,7 +488,7 @@ column Palette {
 }
 ```
 
-<sub>Module `render` line 1499</sub>
+<sub>Module `render` line 1511</sub>
 
 ```ogt
 column Look {
@@ -499,7 +499,7 @@ column Look {
 }
 ```
 
-<sub>Module `render` line 1506</sub>
+<sub>Module `render` line 1518</sub>
 
 ```ogt
 column DitherPattern {
@@ -510,7 +510,7 @@ column DitherPattern {
 }
 ```
 
-<sub>Module `render` line 1523</sub>
+<sub>Module `render` line 1535</sub>
 
 ```ogt
 column MaterialSurface {
@@ -521,7 +521,7 @@ column MaterialSurface {
 }
 ```
 
-<sub>Module `render` line 1538</sub>
+<sub>Module `render` line 1550</sub>
 
 ```ogt
 column OutlinePlace {
@@ -532,7 +532,7 @@ column OutlinePlace {
 }
 ```
 
-<sub>Module `render` line 1552</sub>
+<sub>Module `render` line 1564</sub>
 
 ```ogt
 column StyliseSpace {
@@ -543,7 +543,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>Module `render` line 1567</sub>
+<sub>Module `render` line 1579</sub>
 
 ```ogt
 column PosterizeMode {
@@ -554,7 +554,7 @@ column PosterizeMode {
 }
 ```
 
-<sub>Module `render` line 1580</sub>
+<sub>Module `render` line 1592</sub>
 
 ```ogt
 column HalftoneMode {
@@ -565,7 +565,7 @@ column HalftoneMode {
 }
 ```
 
-<sub>Module `render` line 1594</sub>
+<sub>Module `render` line 1606</sub>
 
 ```ogt
 column HalftoneRegion {
@@ -576,7 +576,7 @@ column HalftoneRegion {
 }
 ```
 
-<sub>Module `render` line 1608</sub>
+<sub>Module `render` line 1620</sub>
 
 ```ogt
 column Light2DKind {
@@ -587,7 +587,7 @@ column Light2DKind {
 }
 ```
 
-<sub>Module `render` line 2039</sub>
+<sub>Module `render` line 2051</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -598,7 +598,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>Module `render` line 2867</sub>
+<sub>Module `render` line 2879</sub>
 
 ```ogt
 column Shader {
@@ -609,7 +609,7 @@ column Shader {
 }
 ```
 
-<sub>Module `render` line 2925</sub>
+<sub>Module `render` line 2937</sub>
 
 ```ogt
 column LineMode {
@@ -620,7 +620,7 @@ column LineMode {
 }
 ```
 
-<sub>Module `render` line 3732</sub>
+<sub>Module `render` line 3744</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -631,7 +631,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>Module `render` line 3943</sub>
+<sub>Module `render` line 3955</sub>
 
 ```ogt
 column RenderTarget {
@@ -642,7 +642,7 @@ column RenderTarget {
 }
 ```
 
-<sub>Module `render` line 3952</sub>
+<sub>Module `render` line 3964</sub>
 
 ```ogt
 column Post {
@@ -653,7 +653,7 @@ column Post {
 }
 ```
 
-<sub>Module `render` line 4092</sub>
+<sub>Module `render` line 4104</sub>
 
 ## Constants
 
@@ -669,28 +669,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>Module `render` line 2164</sub>
+<sub>Module `render` line 2176</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>Module `render` line 2785</sub>
+<sub>Module `render` line 2797</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>Module `render` line 2786</sub>
+<sub>Module `render` line 2798</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included, in their layers' order either way."
 ```
 
-<sub>Module `render` line 2787</sub>
+<sub>Module `render` line 2799</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>Module `render` line 2859</sub>
+<sub>Module `render` line 2871</sub>

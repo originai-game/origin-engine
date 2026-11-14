@@ -4033,6 +4033,8 @@ pub struct StandardMaterialDesc {
     pub anisotropy: f32,
     pub anisotropy_rotation: f32,
     pub anisotropy_map: Option<u64>,
+    pub subsurface: f32,
+    pub subsurface_radius: Vec3,
     pub map_array: Option<u64>,
     pub map_layer: u32,
     pub normal_map_array: Option<u64>,
@@ -4125,6 +4127,8 @@ impl Default for StandardMaterialDesc {
             anisotropy: Default::default(),
             anisotropy_rotation: Default::default(),
             anisotropy_map: Default::default(),
+            subsurface: Default::default(),
+            subsurface_radius: Vec3::new(0.0037_f32, 0.0014_f32, 0.0007_f32),
             map_array: Default::default(),
             map_layer: Default::default(),
             normal_map_array: Default::default(),
@@ -4223,6 +4227,8 @@ impl FromJson for StandardMaterialDesc {
             anisotropy: field(o, "anisotropy", d.anisotropy)?,
             anisotropy_rotation: field(o, "anisotropyRotation", d.anisotropy_rotation)?,
             anisotropy_map: field(o, "anisotropyMap", d.anisotropy_map)?,
+            subsurface: field(o, "subsurface", d.subsurface)?,
+            subsurface_radius: field(o, "subsurfaceRadius", d.subsurface_radius)?,
             map_array: field(o, "mapArray", d.map_array)?,
             map_layer: field(o, "mapLayer", d.map_layer)?,
             normal_map_array: field(o, "normalMapArray", d.normal_map_array)?,
@@ -4317,6 +4323,8 @@ impl ToJson for StandardMaterialDesc {
         o.insert("anisotropy".into(), self.anisotropy.to_json());
         o.insert("anisotropyRotation".into(), self.anisotropy_rotation.to_json());
         o.insert("anisotropyMap".into(), self.anisotropy_map.to_json());
+        o.insert("subsurface".into(), self.subsurface.to_json());
+        o.insert("subsurfaceRadius".into(), self.subsurface_radius.to_json());
         o.insert("mapArray".into(), self.map_array.to_json());
         o.insert("mapLayer".into(), self.map_layer.to_json());
         o.insert("normalMapArray".into(), self.normal_map_array.to_json());

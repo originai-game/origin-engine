@@ -318,6 +318,8 @@ const STANDARD_FIELDS: &[&str] = &[
     "sheenRoughnessMap",
     "side",
     "styled",
+    "subsurface",
+    "subsurfaceRadius",
     "thickness",
     "thicknessMap",
     "toon",

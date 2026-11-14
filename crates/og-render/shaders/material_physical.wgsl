@@ -16,6 +16,7 @@ struct PhysicalFactors {
   anisotropy: vec4<f32>,    // x: strength, yz: direction (cos and sin of the rotation)
   layers: vec4<f32>,        // pack layers (-1: none): metalness/roughness/ao/dissolve, clearcoat/clearcoat roughness/transmission/thickness, sheen colour/roughness, coat normal/iridescence
   layers2: vec4<f32>,       // x: pack layer of anisotropy/film thickness
+  subsurface: vec4<f32>,    // rgb: the scatter distance per channel (m), w: how much of the diffuse light scatters (0: none)
 };
 
 @group(1) @binding(1) var base_color_tex: texture_2d<f32>;

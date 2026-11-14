@@ -307,6 +307,17 @@ pub struct StandardMaterial {
     /// The direction (red and green, -1..1 in the tangent frame, rotated by
     /// `anisotropyRotation`) and strength (blue, times `anisotropy`).
     pub anisotropyMap: u32,
+    /// How much of the diffuse light spreads under the surface before it
+    /// leaves: skin, wax, marble, jade, milk. Its falloff softens past the
+    /// terminator by the surface's curvature, a channel that travels
+    /// farther bleeding into the shadow, and with a `thickness` light
+    /// from behind comes through. 0: none.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
+    pub subsurface: f32,
+    /// How far light of each channel travels under the surface, in metres
+    /// (the default is skin's: red farthest).
+    #[reflect(min = 0.0, default = [0.0037, 0.0014, 0.0007], tunable)]
+    pub subsurfaceRadius: Vec3,
     /// The base colour from layer `mapLayer` of a texture array (sRGB)
     /// instead of `map`: a texture-array slot,
     /// [`crate::TextureArrayHandle::slot`] (0: none). Variants of one
@@ -476,6 +487,8 @@ impl Default for StandardMaterial {
             anisotropy: 0.0,
             anisotropyRotation: 0.0,
             anisotropyMap: 0,
+            subsurface: 0.0,
+            subsurfaceRadius: SKIN_RADIUS,
             mapArray: 0,
             mapLayer: 0,
             normalMapArray: 0,
@@ -594,6 +607,7 @@ impl StandardMaterial {
                 || self.transmission > 0.0
                 || self.iridescence > 0.0
                 || self.anisotropy > 0.0
+                || self.subsurface > 0.0
                 || self.ior != 1.5)
     }
 
@@ -608,6 +622,7 @@ impl StandardMaterial {
             || self.transmission > 0.0
             || self.iridescence > 0.0
             || self.anisotropy > 0.0
+            || self.subsurface > 0.0
             || self.ior != 1.5
     }
 
@@ -794,6 +809,10 @@ pub struct PhysicalExtensions<T> {
     pub anisotropy_rotation: f32,
     pub anisotropy_texture: Option<T>,
 }
+
+/// Skin's scatter distance per channel, in metres:
+/// [`StandardMaterial::subsurfaceRadius`]'s default.
+pub const SKIN_RADIUS: Vec3 = Vec3::new(0.0037, 0.0014, 0.0007);
 
 impl<T> Default for PhysicalExtensions<T> {
     fn default() -> Self {
