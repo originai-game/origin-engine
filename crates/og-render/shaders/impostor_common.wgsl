@@ -210,20 +210,90 @@ fn imp_inside(uv: vec2<f32>) -> f32 {
   return select(0.0, 1.0, all(abs(uv) <= vec2<f32>(1.0)));
 }
 
+// Frame `f`'s depth towards its viewer (radii) at its point `at`, read at
+// `level`, and whether a surface covers that point.
+struct ImpDepthAt {
+  depth: f32,
+  covered: bool,
+};
+
+fn imp_depth_at(f: u32, at: vec2<f32>, level: f32) -> ImpDepthAt {
+  let a = imp_atlas(f, at);
+  var o: ImpDepthAt;
+  o.depth = textureSampleLevel(normal_tex, material_sampler, a, level).a * 2.0 - 1.0;
+  o.covered = textureSampleLevel(base_color_tex, material_sampler, a, level).a * imp_inside(at) > 0.5;
+  return o;
+}
+
+// How far a landing's fine depth may stand from the fixed point's (radii,
+// at level 0; doubling a level) and still be the surface the ray meets.
+const IMP_LANDED: f32 = 0.06;
+// The march's steps across the model's sphere, front to back.
+const IMP_MARCH: i32 = 16;
+// How many levels coarser an uncovered landing's coverage is read to say
+// the model is near it (none: the ray passes clear, and is not marched).
+const IMP_NEAR: f32 = 1.0;
+// The level from which a card no longer marches.
+const IMP_MARCH_LEVEL: f32 = 1.0;
+// How far behind a frame's front surface a step may land and still meet
+// it: two steps' depth, past the surface's slope over one step.
+const IMP_THICK: f32 = 4.0 / f32(IMP_MARCH);
+
 // Where frame `f` sees the surface the eye's ray through the card's point
-// meets, from its image `uv` of the card's point moved by the depth it
-// holds (`par`: imp_frame_par of that ray; `pd`: imp_depths). The depth is
-// read two levels coarser than the colour, smooth where it falls steeply
-// at the silhouette; a point moved past the frame's square is uncovered.
-fn imp_parallax(f: u32, uv: vec2<f32>, par: vec2<f32>, pd: f32) -> vec2<f32> {
-  // Two fixed-point steps: the depth read where the last step landed (one
-  // step read it at the card's own image, off by the depth's slope).
+// meets, from its image `uv` of the card's point (`par`: imp_frame_par of
+// that ray; `pd`: imp_depths). The ray's point at frame depth z is
+// uv + par (z - pd); the surface is the first z, from the eye's side, whose
+// frame depth is at least z on a covered texel. A point moved past the
+// frame's square, or a ray that meets nothing, is uncovered.
+//
+// Two fixed-point steps on the depth two levels coarser find it where the
+// depth is smooth (most of a card, and every card seen from above). Seen
+// from below, a thin trunk stands before the crown: the fixed point jumps
+// between the two sides of that step in depth, each frame lands on a
+// different one, and the blend drew a blotched trunk with loose pieces of
+// crown beside it. With `march` (the eye below the card's horizon), a
+// landing the fine depth disagrees with, or an uncovered one beside the
+// model, marches the ray instead. Only cards read at the atlas's finest
+// level march: a coarser card's trunk is a few pixels wide, and marching
+// a screen of them cost the main pass as much again (Metal, 300 cards).
+fn imp_parallax(f: u32, uv: vec2<f32>, par: vec2<f32>, pd: f32, march: bool) -> vec2<f32> {
   var at = uv;
+  var z = 0.0;
   for (var k = 0; k < 2; k++) {
-    let depth = textureSampleLevel(normal_tex, material_sampler, imp_atlas(f, at), imp_level + 2.0).a * 2.0 - 1.0;
-    at = uv + par * (depth - pd);
+    z = imp_depth_at(f, at, imp_level + 2.0).depth;
+    at = uv + par * (z - pd);
   }
-  return at;
+  if (!march || imp_level >= IMP_MARCH_LEVEL) {
+    return at;
+  }
+  // The fine depth where the fixed point landed agrees with it.
+  let landed = imp_depth_at(f, at, imp_level);
+  if (landed.covered && abs(landed.depth - z) < IMP_LANDED * exp2(imp_level)) {
+    return at;
+  }
+  if (!landed.covered && textureSampleLevel(base_color_tex, material_sampler, imp_atlas(f, at), imp_level + IMP_NEAR).a <= 0.0) {
+    return at;
+  }
+  var prev_z = 1.0;
+  var prev_gap = -1.0;
+  for (var k = 0; k <= IMP_MARCH; k++) {
+    let zk = 1.0 - 2.0 * f32(k) / f32(IMP_MARCH);
+    let p = uv + par * (zk - pd);
+    let s = imp_depth_at(f, p, imp_level);
+    let gap = s.depth - zk;
+    if (s.covered && gap >= 0.0) {
+      // The frame holds one layer: a step landing well behind its front
+      // surface went behind it, where the frame cannot see what the ray
+      // meets, so it shows none (a crown's edge seen past the trunk).
+      if (gap > IMP_THICK) { break; }
+      // Between the last step in front of the surface and this one.
+      let t = select(0.0, prev_gap / (prev_gap - gap), k > 0 && prev_gap < 0.0);
+      return uv + par * (mix(prev_z, zk, clamp(t, 0.0, 1.0)) - pd);
+    }
+    prev_z = zk;
+    prev_gap = gap;
+  }
+  return vec2<f32>(4.0);
 }
 
 // The frames' images of the card's point, each moved by one parallax step.
@@ -232,10 +302,10 @@ struct ImpUvs {
   uv2: vec2<f32>,
 };
 
-fn imp_uvs(uv01: vec4<f32>, uv2: vec2<f32>, par01: vec4<f32>, par2: vec2<f32>, frames: vec3<u32>, pd: vec3<f32>) -> ImpUvs {
+fn imp_uvs(uv01: vec4<f32>, uv2: vec2<f32>, par01: vec4<f32>, par2: vec2<f32>, frames: vec3<u32>, pd: vec3<f32>, march: bool) -> ImpUvs {
   var o: ImpUvs;
-  o.uv01 = vec4<f32>(imp_parallax(frames.x, uv01.xy, par01.xy, pd.x), imp_parallax(frames.y, uv01.zw, par01.zw, pd.y));
-  o.uv2 = imp_parallax(frames.z, uv2, par2, pd.z);
+  o.uv01 = vec4<f32>(imp_parallax(frames.x, uv01.xy, par01.xy, pd.x, march), imp_parallax(frames.y, uv01.zw, par01.zw, pd.y, march));
+  o.uv2 = imp_parallax(frames.z, uv2, par2, pd.z, march);
   return o;
 }
 

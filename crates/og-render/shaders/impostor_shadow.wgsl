@@ -69,7 +69,7 @@ fn fs_impostor_shadow(in: ImpostorShadowOut, @builtin(front_facing) front: bool)
   var dd: ImpDepths;
   dd.pd = in.pd;
   dd.vd = in.vd;
-  let uvs = imp_uvs(in.uv01, in.uv2, in.par01, in.par2, in.frames, dd.pd);
+  let uvs = imp_uvs(in.uv01, in.uv2, in.par01, in.par2, in.frames, dd.pd, false);
   let cover = imp_coverage(uvs.uv01, uvs.uv2, in.frames, in.weights);
   let surface = in.world + in.toward * imp_blended_step(cover, dd) * in.extent;
   if (cover.alpha < imp_cutoff() || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {

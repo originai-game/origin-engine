@@ -96,7 +96,12 @@ fn a_cards_trunk_is_in_its_own_crowns_shadow() {
 /// mesh's outline: its bounds were 1.4 and 1.6 times as tall), the lower
 /// hemisphere's frames never read or read from the upper half (the card
 /// from 70 degrees below less than half the mesh's size), or read mirrored
-/// or from the wrong cell (a card far off the mesh's outline).
+/// or from the wrong cell (a card far off the mesh's outline), or each
+/// frame reprojected to a different side of a step in depth (the thin
+/// trunk before the crown: crown pieces loose beside the trunk, 192 px
+/// from 45 degrees, and the trunk blotched), or a frame drawing what lies
+/// behind the one surface it holds (specks of crown beside the trunk, 49
+/// px).
 #[test]
 #[ignore = "requires GPU"]
 fn a_card_seen_from_below_is_whole() {
@@ -129,6 +134,15 @@ fn a_card_seen_from_below_is_whole() {
             assert!(
                 card.1 < 1.12 * mesh.1 && card.2 < 1.1 * mesh.2,
                 "from {name} degrees below (impostorBelow {below}) the card's pieces reach {card:?}, the mesh {mesh:?}"
+            );
+            let (mesh_loose, card_loose) = (
+                loose_pixels(&img, 0, img.width / 2),
+                loose_pixels(&img, img.width / 2, img.width),
+            );
+            println!("  loose pixels: mesh {mesh_loose}, card {card_loose}");
+            assert!(
+                card_loose <= mesh_loose + 10,
+                "from {name} degrees below (impostorBelow {below}) the card has {card_loose} pixels apart from its tree, the mesh {mesh_loose}"
             );
             if below {
                 assert!(
@@ -233,13 +247,65 @@ fn a_swaying_models_card_bends_from_its_foot() {
 
 /// The tree's pixels (anything not the sky's blue) in the columns from
 /// `x0` to `x1`: how many, and their bounds' width and height.
+/// A tree pixel of `img`: not the sky's blue.
+fn is_tree(img: &og_render::RgbaImage, x: u32, y: u32) -> bool {
+    let i = ((y * img.width + x) * 4) as usize;
+    let p = &img.pixels[i..i + 3];
+    !(p[2] > p[0] && p[2] > p[1])
+}
+
+/// The tree pixels in columns `x0..x1` apart from the largest 8-connected
+/// piece of them (the tree itself).
+fn loose_pixels(img: &og_render::RgbaImage, x0: u32, x1: u32) -> usize {
+    let w = (x1 - x0) as usize;
+    let mut seen = vec![false; w * img.height as usize];
+    let (mut total, mut largest) = (0, 0);
+    for start in 0..seen.len() {
+        let (sx, sy) = ((start % w) as u32 + x0, (start / w) as u32);
+        if seen[start] || !is_tree(img, sx, sy) {
+            continue;
+        }
+        seen[start] = true;
+        let (mut stack, mut size) = (vec![(sx, sy)], 0);
+        while let Some((x, y)) = stack.pop() {
+            size += 1;
+            for (dx, dy) in [
+                (-1, -1),
+                (0, -1),
+                (1, -1),
+                (-1, 0),
+                (1, 0),
+                (-1, 1),
+                (0, 1),
+                (1, 1),
+            ] {
+                let (nx, ny) = (x as i64 + dx, y as i64 + dy);
+                if nx < i64::from(x0)
+                    || nx >= i64::from(x1)
+                    || ny < 0
+                    || ny >= i64::from(img.height)
+                {
+                    continue;
+                }
+                let (nx, ny) = (nx as u32, ny as u32);
+                let k = (ny as usize) * w + (nx - x0) as usize;
+                if !seen[k] && is_tree(img, nx, ny) {
+                    seen[k] = true;
+                    stack.push((nx, ny));
+                }
+            }
+        }
+        total += size;
+        largest = largest.max(size);
+    }
+    total - largest
+}
+
 fn tree_pixels(img: &og_render::RgbaImage, x0: u32, x1: u32) -> (f32, f32, f32) {
     let (mut n, mut lo, mut hi) = (0.0, [u32::MAX; 2], [0u32; 2]);
     for y in 0..img.height {
         for x in x0..x1 {
-            let i = ((y * img.width + x) * 4) as usize;
-            let p = &img.pixels[i..i + 3];
-            if p[2] > p[0] && p[2] > p[1] {
+            if !is_tree(img, x, y) {
                 continue;
             }
             n += 1.0;
