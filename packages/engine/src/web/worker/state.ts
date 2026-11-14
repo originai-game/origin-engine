@@ -5,11 +5,11 @@
 // requests waiting for an answer (ProbeRequests). startWorker holds the run
 // itself: the engine, the clock and the frame loop.
 
-import { boundHost, type CursorImage, type Engine } from "../runtime.ts";
-import { Trace, unixMs, type TraceDocument } from "../trace.ts";
-import * as pipelines from "./pipelines.ts";
-import type { PipelineChoice, PipelineStats } from "./pipelines.ts";
-import { readFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
+import { boundHost, type CursorImage, type Engine } from "../../runtime.ts";
+import { Trace, unixMs, type TraceDocument } from "../../trace.ts";
+import * as pipelines from "../pipelines.ts";
+import type { PipelineChoice, PipelineStats } from "../pipelines.ts";
+import { readFrames, writeFrame, type RpcRings } from "../rpc-ring.ts";
 
 /** A message to the shell. */
 type Post = (message: Record<string, unknown>) => void;
