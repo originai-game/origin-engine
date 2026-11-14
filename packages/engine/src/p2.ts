@@ -36,6 +36,17 @@ export const stream = Object.freeze({
   setBudget: (world: W, bytes: number) => parse(abi().og_stream_set_budget(world.id, bytes)),
 });
 
+/** og.sight: fog of war, what each team sees and has seen (IDL `sight`). */
+export const sight = Object.freeze({
+  visible: (world: W, team: number, point: unknown) =>
+    parse(abi().og_sight_visible(world.id, team, JSON.stringify(point))),
+  explored: (world: W, team: number, point: unknown) =>
+    parse(abi().og_sight_explored(world.id, team, JSON.stringify(point))),
+  reveal: (world: W, team: number, point: unknown, radius: number) =>
+    parse(abi().og_sight_reveal(world.id, team, JSON.stringify(point), radius)),
+  forget: (world: W, team: number) => parse(abi().og_sight_forget(world.id, team)),
+});
+
 // Depth S2 (IDL `path`, `timeline`).
 /** og.procgen: pure generators, every draw from the seed they are given. */
 export const procgen = Object.freeze({

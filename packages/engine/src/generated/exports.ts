@@ -247,3 +247,6 @@ export const CAUSE_CARVE: typeof Api.CAUSE_CARVE = 6;
 
 // vfx
 export const VfxAsset = ((value = 0 as Api.VfxAsset, options) => spec("VfxAsset", value, options)) as typeof Api.VfxAsset;
+
+// sight
+export const SightPlane = ((value = "ground" as Api.SightPlane, options) => spec("SightPlane", value, options)) as typeof Api.SightPlane;

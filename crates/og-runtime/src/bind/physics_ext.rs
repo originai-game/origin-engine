@@ -283,7 +283,7 @@ pub(crate) enum Reader<'a> {
 }
 
 impl<'a> Reader<'a> {
-    fn of(eng: &'a Engine, world: u32) -> Result<Reader<'a>, String> {
+    pub(crate) fn of(eng: &'a Engine, world: u32) -> Result<Reader<'a>, String> {
         Ok(match running(world) {
             // SAFETY: the frame is published while its system runs.
             Some(f) => Reader::System(unsafe { f.ctx() }),
@@ -362,6 +362,26 @@ impl<'a> Reader<'a> {
             |p| self.get::<Transform>(p),
         );
         Some(at)
+    }
+
+    /// The og.Volume on `e` (as [`crate::world::region::volume_of`]).
+    pub(crate) fn volume(
+        &self,
+        layout: Option<&crate::host::codec::Layout>,
+        e: Entity,
+    ) -> Option<og_env::volume::Volume> {
+        let c = match self {
+            Reader::World(w) => return crate::world::region::volume_of(w, layout, e),
+            Reader::System(c) => c,
+        };
+        let l = layout?;
+        let id = c.id_by_name(&l.schema).ok()?;
+        let v: record::Volume = l.read(&c.get_bytes(e, id).ok()?).ok()?;
+        Some(og_env::volume::Volume {
+            size: v.size,
+            radius: v.radius,
+            fade: v.fade,
+        })
     }
 
     /// An entity's world position and rotation (its og.Transform after its

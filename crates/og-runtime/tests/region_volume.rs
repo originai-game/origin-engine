@@ -17,6 +17,11 @@
 //! could fail: the fog is drawn without its entity's shape or pose (it
 //! fills the world, or sits at the origin), or one without an og.Volume is
 //! dropped instead of drawn everywhere.
+//!
+//! og.SightMap reaches the renderer as the cells its team sees. Ways this
+//! could fail: the map is never cast (no cell seen), the frame is given
+//! another team's cells or a stale tick's, or the map is laid somewhere
+//! other than its entity's og.Volume.
 
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_game_game, og_host_begin_bundle,
@@ -253,4 +258,104 @@ fn a_fog_volume_reaches_the_renderer_with_the_volume_on_its_entity() {
         (0.3, 0.2, glam::Vec3::new(0.5, 0.25, 1.0))
     );
     assert_eq!((seen[1].volume, seen[1].density), (None, 0.02));
+}
+
+/// What the renderer was last given of the world's fog of war.
+struct SightSeen(Rc<std::cell::RefCell<Option<og_render::FogOfWar>>>);
+
+impl og_runtime::RenderBackend for SightSeen {
+    fn tier(&self) -> String {
+        "none".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (320, 180)
+    }
+    fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
+        *self.0.borrow_mut() = scene.look.fog_of_war.clone();
+        Ok(())
+    }
+    fn capture(
+        &mut self,
+        _: &og_render::RenderScene,
+        _: u32,
+        _: u32,
+    ) -> Option<og_render::RgbaImage> {
+        None
+    }
+}
+
+#[test]
+fn a_sight_map_reaches_the_renderer_with_the_cells_its_team_sees() {
+    set_hooks(Rc::new(NoAssets));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let engine = answer(og_engine_create(game, "{}".into()))["value"]
+        .as_u64()
+        .unwrap() as u32;
+    let seen = Rc::new(std::cell::RefCell::new(None));
+    og_runtime::set_render_backend(engine, Some(Box::new(SightSeen(seen.clone())))).unwrap();
+    // A 16 by 8 m map of 2 m cells about (0, 1, 12), drawn for team 3.
+    let map = spawn(
+        engine,
+        12.0,
+        &[
+            ("og.Volume", json!({ "size": { "x": 16, "y": 2, "z": 8 } })),
+            (
+                "og.SightMap",
+                json!({ "cell": 2, "team": 3, "explored": 0.5, "color": { "r": 0, "g": 0, "b": 0.25 } }),
+            ),
+        ],
+    );
+    // Team 3's eye in the map's first cell, another team's in its last.
+    let eye = |x: f32, z: f32, team: u32| {
+        let desc = json!({ "position": { "x": x, "y": 1, "z": z } });
+        let id = answer(og_runtime::host_impl::answer(og_world_spawn(
+            engine,
+            Some(desc.to_string()),
+        )))["value"]
+            .as_f64()
+            .unwrap();
+        insert(engine, id, "og.Sight", json!({ "team": team, "radius": 3 }));
+        id
+    };
+    let ours = eye(-7.0, 9.0, 3);
+    eye(7.0, 15.0, 0);
+    answer(og_engine_frame(engine, 1000.0 / 60.0));
+    let fog = seen.borrow().clone().expect("the map is drawn");
+    assert_eq!((fog.columns, fog.rows, fog.cell), (8, 4, 2.0));
+    assert_eq!(fog.min, glam::Vec2::new(-8.0, 8.0));
+    assert_eq!(fog.plane, og_render::SightPlane::Ground);
+    assert_eq!(
+        (fog.color, fog.explored),
+        (glam::Vec3::new(0.0, 0.0, 0.25), 0.5)
+    );
+    // Team 3 sees the cells within 1.5 cells of its own: the corner's four.
+    let visible = og_env::sight::VISIBLE;
+    let lit: Vec<usize> = (0..32).filter(|&i| fog.levels[i] == visible).collect();
+    assert_eq!(lit, [0, 1, 8, 9], "{:?}", fog.levels);
+    assert!(fog.levels.iter().all(|&l| l != og_env::sight::EXPLORED));
+
+    // The eye walks to the far end: where it was is explored, at the next frame.
+    insert(
+        engine,
+        ours,
+        "og.Transform",
+        json!({ "position": { "x": 7, "y": 1, "z": 9 } }),
+    );
+    answer(og_engine_frame(engine, 1000.0 / 60.0));
+    let fog = seen.borrow().clone().expect("the map is drawn");
+    assert_eq!(fog.levels[0], og_env::sight::EXPLORED, "{:?}", fog.levels);
+    assert_eq!(fog.levels[7], visible, "{:?}", fog.levels);
+
+    // Not drawn: the frame is given none, and the map still answers.
+    insert(
+        engine,
+        map,
+        "og.SightMap",
+        json!({ "cell": 2, "team": 3, "drawn": false }),
+    );
+    answer(og_engine_frame(engine, 1000.0 / 60.0));
+    assert!(seen.borrow().is_none());
+    let at = json!({ "x": 7, "y": 1, "z": 9 }).to_string();
+    assert_eq!(og_runtime::og_sight_visible(engine, 3, at), Ok(true));
 }

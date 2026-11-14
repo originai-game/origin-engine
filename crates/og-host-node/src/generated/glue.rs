@@ -3901,3 +3901,27 @@ pub fn og_vfx_info(env: Env, world: u32, asset: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as VfxApi>::og_vfx_info(&Host, world, asset)
 }
+
+#[napi(js_name = "og_sight_visible")]
+pub fn og_sight_visible(env: Env, world: u32, team: u32, point: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SightApi>::og_sight_visible(&Host, world, team, point)
+}
+
+#[napi(js_name = "og_sight_explored")]
+pub fn og_sight_explored(env: Env, world: u32, team: u32, point: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SightApi>::og_sight_explored(&Host, world, team, point)
+}
+
+#[napi(js_name = "og_sight_reveal")]
+pub fn og_sight_reveal(env: Env, world: u32, team: u32, point: String, radius: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SightApi>::og_sight_reveal(&Host, world, team, point, radius)
+}
+
+#[napi(js_name = "og_sight_forget")]
+pub fn og_sight_forget(env: Env, world: u32, team: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SightApi>::og_sight_forget(&Host, world, team)
+}

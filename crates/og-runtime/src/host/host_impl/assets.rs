@@ -1,4 +1,4 @@
-//! The bindings of what a game loads and generates (LoadApi, StreamApi, ProcgenApi).
+//! The bindings of what a game loads and generates (LoadApi, StreamApi, ProcgenApi, SightApi).
 //! Expanded for a host by [`crate::host_bindings!`].
 
 #[doc(hidden)]
@@ -202,6 +202,21 @@ macro_rules! __og_host_bindings_assets {
             }
             fn og_stream_set_budget(&self, world: u32, bytes: f64) -> String {
                 $crate::host_impl::answer($crate::og_stream_set_budget(world, bytes))
+            }
+        }
+
+        impl $crate::host_impl::api::SightApi for $host {
+            fn og_sight_visible(&self, world: u32, team: u32, point: String) -> String {
+                $crate::host_impl::answer($crate::og_sight_visible(world, team, point))
+            }
+            fn og_sight_explored(&self, world: u32, team: u32, point: String) -> String {
+                $crate::host_impl::answer($crate::og_sight_explored(world, team, point))
+            }
+            fn og_sight_reveal(&self, world: u32, team: u32, point: String, radius: f64) -> String {
+                $crate::host_impl::answer($crate::og_sight_reveal(world, team, point, radius))
+            }
+            fn og_sight_forget(&self, world: u32, team: u32) -> String {
+                $crate::host_impl::answer($crate::og_sight_forget(world, team))
             }
         }
 

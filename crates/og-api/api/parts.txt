@@ -60,3 +60,4 @@ art.ogt
 motion.ogt
 destruction.ogt
 vfx.ogt
+sight.ogt

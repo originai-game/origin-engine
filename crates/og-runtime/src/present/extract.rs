@@ -119,6 +119,8 @@ pub(crate) struct DrawLayouts {
     /// og.Volume: the box of a reflection probe or light volume on its
     /// entity.
     pub volume: Option<Layout>,
+    /// og.SightMap (`crate::bind::sight`): the fog of war's look.
+    pub sight: Option<Layout>,
     /// og.Interpolation (`crate::present::interpolate`).
     pub interpolation: Option<Layout>,
     /// og.WorldOrigin (R12): the render origin's grid is in the absolute world.

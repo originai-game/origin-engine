@@ -26467,6 +26467,44 @@ impl ToJson for VfxInfo {
     }
 }
 
+/// `SightPlane`: packages/knowledge/wiki/sight.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum SightPlane {
+    #[default]
+    Ground,
+    Flat,
+}
+
+impl SightPlane {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["ground", "flat"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Ground, Self::Flat];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("SightPlane", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for SightPlane {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "SightPlane", Self::NAMES)?)
+    }
+}
+
+impl ToJson for SightPlane {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// The rows of the engine's records (IDL `component`, `resource` and
 /// `event`), as their layouts decode them: every field, with its IDL
 /// default, read through the same rules as the wire types.
@@ -37105,6 +37143,102 @@ pub mod record {
                 asset: field(o, "asset", d.asset)?,
                 name: field(o, "name", d.name)?,
                 time: field(o, "time", d.time)?,
+            })
+        }
+    }
+
+    /// `SightMap`: packages/knowledge/wiki/sight.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SightMap {
+        pub cell: f32,
+        pub plane: SightPlane,
+        pub team: u32,
+        pub color: Color,
+        pub explored: f32,
+        pub drawn: bool,
+    }
+
+    impl Default for SightMap {
+        fn default() -> Self {
+            Self {
+                cell: 1.0_f32,
+                plane: Default::default(),
+                team: Default::default(),
+                color: Color { r: 0.0_f32, g: 0.0_f32, b: 0.0_f32 },
+                explored: 0.35_f32,
+                drawn: true,
+            }
+        }
+    }
+
+    impl FromJson for SightMap {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                cell: field(o, "cell", d.cell)?,
+                plane: field(o, "plane", d.plane)?,
+                team: field(o, "team", d.team)?,
+                color: field(o, "color", d.color)?,
+                explored: field(o, "explored", d.explored)?,
+                drawn: field(o, "drawn", d.drawn)?,
+            })
+        }
+    }
+
+    /// `Sight`: packages/knowledge/wiki/sight.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Sight {
+        pub team: u32,
+        pub radius: f32,
+    }
+
+    impl Default for Sight {
+        fn default() -> Self {
+            Self {
+                team: Default::default(),
+                radius: 8.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for Sight {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                team: field(o, "team", d.team)?,
+                radius: field(o, "radius", d.radius)?,
+            })
+        }
+    }
+
+    /// `SightBlocker`: packages/knowledge/wiki/sight.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SightBlocker {
+        pub enabled: bool,
+    }
+
+    impl Default for SightBlocker {
+        fn default() -> Self {
+            Self {
+                enabled: true,
+            }
+        }
+    }
+
+    impl FromJson for SightBlocker {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                enabled: field(o, "enabled", d.enabled)?,
             })
         }
     }

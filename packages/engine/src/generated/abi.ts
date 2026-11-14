@@ -1292,6 +1292,14 @@ export interface HostAbi<A, V> {
   og_vfx_spawn(world: number, desc: string | undefined): string;
   /** `og.vfx.info` */
   og_vfx_info(world: number, asset: number): string;
+  /** `og.sight.visible` */
+  og_sight_visible(world: number, team: number, point: string): string;
+  /** `og.sight.explored` */
+  og_sight_explored(world: number, team: number, point: string): string;
+  /** `og.sight.reveal` */
+  og_sight_reveal(world: number, team: number, point: string, radius: number): string;
+  /** `og.sight.forget` */
+  og_sight_forget(world: number, team: number): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -1907,6 +1915,10 @@ export const SYMBOLS: readonly string[] = [
   "og_destruction_cell2d",
   "og_vfx_spawn",
   "og_vfx_info",
+  "og_sight_visible",
+  "og_sight_explored",
+  "og_sight_reveal",
+  "og_sight_forget",
   "og_host_set_dispatcher",
   "og_host_shared",
   "og_engine_create",

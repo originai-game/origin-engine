@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.sight",
+      "summary": "Fog of war. og.SightMap lays a grid over the og.Volume on its entity (the ground's x and z, or x and y with plane flat in a 2D world); og.Sight is a team's eyes and og.SightBlocker beside an og.Volume stops them, by symmetric shadow casting. The map is cast as each tick starts and is world state: saved, restored and hashed. og.sight.visible and og.sight.explored answer for a team and a point, og.sight.reveal and og.sight.forget change what is explored, and the renderer draws the same cells over the lit frame for og.SightMap.team: seen ground as it is, explored ground dimmed, the rest covered. A world that names none of them keeps its type table and hash."
+    }
+  ]
+}

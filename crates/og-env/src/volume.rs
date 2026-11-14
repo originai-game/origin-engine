@@ -83,15 +83,21 @@ impl Volume {
     /// (its fade not counted): what a region read along the world's axes
     /// covers (a reflection probe's box projection, a light volume's grid).
     pub fn bounds(&self, at: &Placement) -> (Vec3, Vec3) {
+        let half = self.half_extent(at);
+        (at.position - half, at.position + half)
+    }
+
+    /// Half the size of [`Volume::bounds`]' box along each world axis: the
+    /// same wherever the region stands (its position is not read).
+    pub fn half_extent(&self, at: &Placement) -> Vec3 {
         let scale = at.scale.abs();
-        let half = if self.radius > 0.0 {
+        if self.radius > 0.0 {
             Vec3::splat(self.radius * scale.max_element())
         } else {
             let h = self.size.abs() * scale * 0.5;
             let m = Mat3::from_quat(at.quaternion.normalize());
             m.x_axis.abs() * h.x + m.y_axis.abs() * h.y + m.z_axis.abs() * h.z
-        };
-        (at.position - half, at.position + half)
+        }
     }
 
     /// How much of the region reaches `p`: 1 inside, falling linearly to 0
