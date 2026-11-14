@@ -15,6 +15,12 @@ pub(crate) struct FeelRender {
     blob: Option<og_render::TextureHandle>,
     /// Per (entity, layer): the map handle, the chunk versions and the chunks.
     tiles: BTreeMap<(u64, usize), TileCache>,
+    /// The wind parts of the textures cooked with them (`<id>#sway`), by
+    /// the texture's render handle: what og.Sprite.sway draws (`sway.rs`).
+    pub sway: BTreeMap<og_render::TextureHandle, SwayTexture>,
+    /// Textures an og.Sprite.sway drew whole for want of parts, each
+    /// warned of once.
+    sway_warned: BTreeSet<og_render::TextureHandle>,
 }
 
 fn blob_texture(scene: &mut og_render::RenderScene) -> og_render::TextureHandle {
@@ -282,6 +288,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let arrays = &rs.texture_arrays;
     let scene = &mut rs.scene;
     let (art, notes) = (&mut rs.art, &mut rs.notes);
+    let (sway_parts, sway_warned) = (&rs.feel.sway, &mut rs.feel.sway_warned);
+    // What og.Sprite.sway's parts move in: og.Wind as vegetation takes it,
+    // at the frame's tick, along each quad as the main camera faces it.
+    let wind = scene.atmosphere.wind.filter(|w| w.strength > 0.0);
+    let (tick, rate) = (scene.frame.tick, scene.frame.tick_rate);
+    let step_fps = art.frame.step_fps;
+    let (camera_right, camera_up) = {
+        let c = &scene.frame.camera;
+        let forward = (c.target - c.position).normalize_or_zero();
+        let right = forward.cross(c.up).normalize_or(Vec3::X);
+        (right, right.cross(forward))
+    };
     // og.Sprite rows' sprites by index, for the probe's id pass.
     let mut drawn: Vec<(u32, u64)> = Vec::new();
     for (e, v) in sprites.iter() {
@@ -488,30 +506,92 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let drop_shadow_height = f(&v, &s.drop_shadow_height, 0.0);
         // A faced nine-slice turns as one panel about the sprite's anchor.
         let one_panel = facing != og_render::SpriteFacing::None && pieces.len() > 1;
-        for (i, &p) in pieces.iter().enumerate() {
-            drawn.push((scene.sprite.sprites.len() as u32, e));
-            push(
-                scene,
-                SpriteOut {
-                    sprite: if one_panel {
-                        p.anchored_at(base.position)
-                    } else {
-                        p
+        // og.Sprite.sway: a sprite drawn whole from a texture cooked with
+        // wind parts is those parts, each where the wind moves it.
+        let sway = f(&v, &s.sway, 0.0);
+        let whole = pieces.len() == 1
+            && flipbook.is_none()
+            && palette.is_none()
+            && material.is_none()
+            && (lo, hi) == (Vec2::ZERO, Vec2::ONE);
+        let parts = match image.texture().filter(|_| sway > 0.0 && whole) {
+            Some(t) => {
+                let parts = sway_parts.get(&t);
+                if parts.is_none() && sway_warned.insert(t) {
+                    notes.push(format!(
+                        "og.Sprite.sway: texture {} has no wind parts (its import settings take `texture {{ sway clumps }}` for a broadleaf tree or a bush, `sway tiers` for a conifer): drawn whole",
+                        t.index()
+                    ));
+                }
+                parts.zip(wind.as_ref())
+            }
+            None => None,
+        };
+        if let Some((tex, wind)) = parts {
+            let stance = sway::Stance {
+                wind,
+                tick,
+                rate,
+                step_fps,
+                axes: og_render::face_axes(facing, camera_right, camera_up),
+                plane: facing == og_render::SpriteFacing::None,
+            };
+            // Its 2D shadow is its rectangle's, as when it is drawn whole.
+            if cast {
+                scene
+                    .sprite
+                    .occluders_2d
+                    .push(og_render::Occluder2d::from_sprite(&base, 0.0));
+            }
+            sway::parts(&base, flip, sway, tex, &stance, |sprite, stands| {
+                drawn.push((scene.sprite.sprites.len() as u32, e));
+                push(
+                    scene,
+                    SpriteOut {
+                        sprite,
+                        key,
+                        flash,
+                        glow,
+                        additive,
+                        cast_shadow: false,
+                        array: None,
+                        // The parts that stand never overlap: the drop
+                        // shadow is theirs, once.
+                        drop_shadow: if stands { drop_shadow } else { 0.0 },
+                        drop_shadow_height,
+                        tone_mapped,
+                        facing,
+                        outline: None,
+                        material: None,
                     },
-                    key,
-                    flash,
-                    glow,
-                    additive,
-                    cast_shadow: cast && i == 0,
-                    array: image.array(),
-                    drop_shadow,
-                    drop_shadow_height,
-                    tone_mapped,
-                    facing,
-                    outline,
-                    material,
-                },
-            );
+                );
+            });
+        } else {
+            for (i, &p) in pieces.iter().enumerate() {
+                drawn.push((scene.sprite.sprites.len() as u32, e));
+                push(
+                    scene,
+                    SpriteOut {
+                        sprite: if one_panel {
+                            p.anchored_at(base.position)
+                        } else {
+                            p
+                        },
+                        key,
+                        flash,
+                        glow,
+                        additive,
+                        cast_shadow: cast && i == 0,
+                        array: image.array(),
+                        drop_shadow,
+                        drop_shadow_height,
+                        tone_mapped,
+                        facing,
+                        outline,
+                        material,
+                    },
+                );
+            }
         }
         // Its blob shadow, afterimages and pieces carry its mask.
         if layers != 1 {

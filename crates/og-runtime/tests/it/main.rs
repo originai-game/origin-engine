@@ -128,6 +128,8 @@ mod sky_directions;
 mod sky_off;
 #[path = "../sprite_arrays.rs"]
 mod sprite_arrays;
+#[path = "../sprite_sway.rs"]
+mod sprite_sway;
 #[path = "../stream_chunked.rs"]
 mod stream_chunked;
 #[path = "../stream_fetch.rs"]

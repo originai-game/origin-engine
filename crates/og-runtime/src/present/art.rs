@@ -54,6 +54,9 @@ pub(crate) struct ArtFrame {
     pub clean_edge: bool,
     /// `ArtCamera.pixelPerfect`.
     pub pixel_perfect: bool,
+    /// `ArtMotion.stepFps`: the poses a second the style's motion holds
+    /// (0 none): what og.Sprite.sway's parts step by.
+    pub step_fps: f32,
     /// `ArtPalette.colors` when `strict` (sRGB).
     pub strict: Vec<[u8; 3]>,
     /// `ArtPalette.colors`: the palette `Stylise.palette` defaults to.
@@ -165,6 +168,7 @@ pub(crate) fn frame(world: &World, rs: &mut RenderState) {
         .iter()
         .chain(rs.art.index_of.values())
         .copied()
+        .chain(rs.feel.sway.values().map(|s| s.texture))
         .collect::<Vec<_>>();
     for t in filters {
         match (scene.texture_filter(t), frame.clean_edge) {
@@ -192,6 +196,7 @@ fn read(world: &World, rs: &RenderState) -> ArtFrame {
     let line: record::ArtLine = row(world, l.art_line.as_ref());
     let camera: record::ArtCamera = row(world, l.art_camera.as_ref());
     let palette: record::ArtPalette = row(world, l.art_palette.as_ref());
+    let motion: record::ArtMotion = row(world, l.art_motion.as_ref());
     let unit = pixels.unit.max(0.0);
     let width = line.width.max(0.0);
     let colors = crate::world::assets::index_of(palette.colors as f64)
@@ -222,6 +227,7 @@ fn read(world: &World, rs: &RenderState) -> ArtFrame {
         logical_height: pixels.logical_height,
         clean_edge: pixels.rotation == ArtRotation::CleanEdge,
         pixel_perfect: camera.pixel_perfect,
+        step_fps: motion.step_fps.max(0.0),
         strict,
         palette: colors,
     }

@@ -29803,6 +29803,7 @@ pub mod record {
         pub palette: u64,
         pub palette_row: u32,
         pub material: u64,
+        pub sway: f32,
     }
 
     impl Default for Sprite {
@@ -29844,6 +29845,7 @@ pub mod record {
                 palette: Default::default(),
                 palette_row: Default::default(),
                 material: Default::default(),
+                sway: Default::default(),
             }
         }
     }
@@ -29891,6 +29893,7 @@ pub mod record {
                 palette: field(o, "palette", d.palette)?,
                 palette_row: field(o, "paletteRow", d.palette_row)?,
                 material: field(o, "material", d.material)?,
+                sway: field(o, "sway", d.sway)?,
             })
         }
     }

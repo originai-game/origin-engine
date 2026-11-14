@@ -51,6 +51,7 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
         .insert(format!("texture:{id}"), i);
     link_index(eng, &id, handle);
     link_normal(eng, &id, handle);
+    link_sway(eng, &id, handle);
     link_conformed(eng, &id);
     Ok(i)
 }
@@ -251,6 +252,49 @@ pub(crate) fn retranscode(eng: &Engine) {
     let mut rs = eng.render.borrow_mut();
     rs.decoded.pending = pending;
     rs.decoded.arrays_pending = arrays_pending;
+}
+
+/// A 2D plant's wind parts: the cook's `<id>#sway` beside the texture (a
+/// `sway` line in its import settings, og-cook's sway2d.rs), added to the
+/// renderer only and kept by the texture's handle, so an og.Sprite with a
+/// `sway` draws it as its parts in the wind. None without one.
+fn link_sway(eng: &Engine, id: &str, texture: og_render::TextureHandle) {
+    let name = og_bundle::runtime::sway_id(id);
+    let parts = {
+        let assets = eng.assets.borrow();
+        let Ok((bytes, bundle)) = assets.blob(&name) else {
+            return;
+        };
+        bundle.sway(&name, bytes.bytes()).map_err(|e| e.to_string())
+    };
+    let decoded = decode_texture(eng, &name);
+    let mut rs = eng.render.borrow_mut();
+    match (parts, decoded) {
+        (Ok(Some(parts)), Ok((data, pixel))) => {
+            let (w, h) = data.size();
+            let added = rs.scene.add_texture_source(data);
+            if pixel {
+                rs.scene
+                    .set_texture_filter(added, og_render::TextureFilter::Nearest);
+            }
+            rs.decoded.ids.insert(added, name);
+            rs.feel.sway.insert(
+                texture,
+                crate::present::feel::SwayTexture {
+                    texture: added,
+                    atlas: [w, h],
+                    parts,
+                    pixel,
+                },
+            );
+        }
+        (Ok(None), _) => rs.notes.push(format!(
+            "{name}: holds no wind parts; the texture stands still"
+        )),
+        (Err(e), _) | (_, Err(e)) => rs.notes.push(format!(
+            "{name}: not loaded ({e}); the texture stands still"
+        )),
+    }
 }
 
 /// A palette swap's index texture (docs/art.md §2.4,

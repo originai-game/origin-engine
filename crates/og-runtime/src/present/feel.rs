@@ -52,12 +52,14 @@ mod camera;
 mod floating_text;
 mod install;
 mod sprites;
+mod sway;
 mod time;
 
 pub use camera::*;
 pub use floating_text::*;
 pub(crate) use install::*;
 use sprites::*;
+pub(crate) use sway::SwayTexture;
 pub use time::*;
 
 pub(crate) const TILEMAP_SYSTEM: &str = "og.tilemap";
@@ -335,6 +337,7 @@ slots!(
         palette: "palette",
         palette_row: "paletteRow",
         material: "material",
+        sway: "sway",
     }
 );
 

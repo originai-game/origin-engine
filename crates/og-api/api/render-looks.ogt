@@ -1112,6 +1112,13 @@
     field material Material "Draw through a material shader's hooks: a material from og.render.shaderMaterial (a shader of `mode hooks` or `mode sprite`). vertex_offset moves the quad's corners, surface_color changes its colour before the 2D light, surface_emissive adds light after it; surface_normal is not called. 0 is none." {
       guide "looks §13"
     }
+    group "Wind"
+    field sway f32 "How much og.Wind moves the sprite's parts: 0 still, 1 as it blows. Its texture is cooked with `sway` in its import settings; the wood stands, the leaves lean and loop downwind (whole texels on pixel art). A flipbook, slices, a palette or a material draw it whole. Visual only." {
+      guide "looks §13"
+      min 0
+      max 2
+      tunable true
+    }
   }
 
   component Afterimage {

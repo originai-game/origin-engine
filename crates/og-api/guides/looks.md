@@ -316,6 +316,28 @@ from above, the play area lies at one depth and falls in one band.
   plain; dump_render's spriteShaderErrors names it.
 - A HUD element made of sprites on a UI panel sits under or over the
   whole UI (UI_LAYER). Draw it only while its screen shows.
+- Sprite.sway is for a drawn plant in og.Wind: a tree, a bush. Its
+  texture's import settings cut the picture into parts: `texture { sway
+  clumps }` for a broadleaf tree or a bush (each bright mass of leaves a
+  part, the wood standing), `sway tiers` for a conifer (each tier of
+  branches a part, the trunk bending). The parts lean downwind with the
+  gusts and walk a small loop as the wind's wave passes, in step with
+  the grass and the trees of a 3D set; in still air, or at sway 0, the
+  sprite is its texture, texel for texel.
+- Sway 1 suits a tree in any wind: on a 60-texel tree the leaves move 1
+  texel in a light breeze (3 m/s), 3 to 6 in a fresh one (8), and never
+  past 0.07 of its height and the loop on top in a gale, so a crown
+  stays over its trunk. Less is a stiff shrub, 2 a reed bed.
+- Pixel art (`kind pixel`) sways by whole texels and holds each pose:
+  ArtMotion.stepFps poses a second, else 10. Other art moves smoothly.
+- The cook reads the picture and its report says what it found (`wind
+  parts: 6 clumps (found)`). Where it reads one wrong, paint a parts
+  map the texture's size and name it (`sway clumps "oak_parts.png"`):
+  one flat colour for each part, clear where the plant stands still.
+- A swaying sprite is one whole texture: a tree of its own file, not a
+  cell of a sheet. With a flipbook, slices, a palette, a material or a
+  uv region it draws whole, as does a texture without parts (a render
+  note names it). The parts read og.Wind's gusts, not a WindMotor.
 
 ## 14. Particles and decals
 

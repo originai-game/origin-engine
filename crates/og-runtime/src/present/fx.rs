@@ -63,6 +63,7 @@ pub(crate) struct FxLayouts {
     pub art_pixels: Option<Layout>,
     pub art_camera: Option<Layout>,
     pub art_palette: Option<Layout>,
+    pub art_motion: Option<Layout>,
 }
 
 impl FxLayouts {
@@ -88,6 +89,7 @@ impl FxLayouts {
             art_pixels: get("og.ArtPixels"),
             art_camera: get("og.ArtCamera"),
             art_palette: get("og.ArtPalette"),
+            art_motion: get("og.ArtMotion"),
         }
     }
 }

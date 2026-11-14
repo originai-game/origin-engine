@@ -110,6 +110,12 @@ Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type 
 |---|---|---|---|---|---|---|
 | `material` | `Material` | `0` | — | — | — | Draw through a material shader's hooks: a material from og.render.shaderMaterial (a shader of `mode hooks` or `mode sprite`). vertex_offset moves the quad's corners, surface_color changes its colour before the 2D light, surface_emissive adds light after it; surface_normal is not called. 0 is none. See `looks §13`. |
 
+#### Wind
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `sway` | `number` | `0` | 0 … 2 | — | tunable | How much og.Wind moves the sprite's parts: 0 still, 1 as it blows. Its texture is cooked with `sway` in its import settings; the wood stands, the leaves lean and loop downwind (whole texels on pixel art). A flipbook, slices, a palette or a material draw it whole. Visual only. See `looks §13`. |
+
 ```ogt
 component Sprite {
   doc "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame."
@@ -230,6 +236,13 @@ component Sprite {
   group "Shader"
   field material Material "Draw through a material shader's hooks: a material from og.render.shaderMaterial (a shader of `mode hooks` or `mode sprite`). vertex_offset moves the quad's corners, surface_color changes its colour before the 2D light, surface_emissive adds light after it; surface_normal is not called. 0 is none." {
     guide "looks §13"
+  }
+  group "Wind"
+  field sway f32 "How much og.Wind moves the sprite's parts: 0 still, 1 as it blows. Its texture is cooked with `sway` in its import settings; the wood stands, the leaves lean and loop downwind (whole texels on pixel art). A flipbook, slices, a palette or a material draw it whole. Visual only." {
+    guide "looks §13"
+    min 0
+    max 2
+    tunable true
   }
 }
 ```
