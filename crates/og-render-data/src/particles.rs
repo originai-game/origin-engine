@@ -1,5 +1,17 @@
-use crate::scene::{MeshHandle, TextureArrayHandle, TextureHandle};
-use glam::{Vec3, Vec4};
+use crate::scene::{MeshData, MeshHandle, TextureArrayHandle, TextureHandle};
+use glam::{Mat4, Vec3, Vec4};
+// The CPU path's transcendentals: bit-identical on every host, so a host's
+// tick can run it (ParticleEvent, sub-emitters).
+use og_core::math;
+
+mod cpu;
+mod noise;
+mod schedule;
+mod system;
+pub use cpu::*;
+pub use noise::*;
+pub use schedule::*;
+pub use system::*;
 
 /// The most keys a [`Curve`] or [`ColorCurve`] can have.
 pub const MAX_CURVE_KEYS: usize = 8;
