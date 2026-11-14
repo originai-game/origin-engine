@@ -1305,3 +1305,97 @@ pub fn displaced_scene(displacement: f32) -> RenderScene {
     );
     scene
 }
+
+/// `terrain-snow-track`'s footprints: one pressed each tick (a tick a
+/// second), its frames.
+pub const SNOW_TRACK_STEPS: u32 = 12;
+
+/// The snowfield's gentle swell (m).
+fn snowfield_height(x: f32, z: f32) -> f32 {
+    0.35 * (x * 0.17).sin() * (z * 0.13 + 0.6).cos() + 0.2 * (x * 0.05 - z * 0.09).sin()
+}
+
+/// Where `terrain-snow-track`'s foot comes down on step `k`: left and right
+/// of a line along +x, 0.75 m a stride.
+fn snow_track_foot(k: u32) -> Vec3 {
+    let (x, z) = (-4.2 + 0.75 * k as f32, if k % 2 == 0 { 0.2 } else { -0.2 });
+    Vec3::new(x, snowfield_height(x, z), z)
+}
+
+/// A snowfield under a low morning sun after a night's fall (lying snow,
+/// og.Weather's), a walker's footprints across it from left to right: an
+/// og.GrassPusher stepping once a tick ([`snow_track_update`]), each
+/// footprint packed darker with its sides shaded as a hollow, the first
+/// ones already filling in. A few rocks under the snow for scale.
+pub fn snow_track_scene() -> RenderScene {
+    let (size, samples) = (512.0f32, 257u32);
+    let cell = size / (samples - 1) as f32;
+    let heights: Vec<f32> = (0..samples * samples)
+        .map(|i| {
+            let (c, r) = ((i % samples) as f32, (i / samples) as f32);
+            snowfield_height(-size / 2.0 + c * cell, -size / 2.0 + r * cell)
+        })
+        .collect();
+    let mut scene = RenderScene::new();
+    crate::sky_scenes::physical_light(&mut scene, 8.0, og_render::PhysicalAtmosphere::EARTH);
+    let h = scene.add_terrain(TerrainData {
+        heights: heights.into(),
+        ..TerrainData::flat(Vec2::splat(size), samples, samples)
+    });
+    scene.world.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            color: Vec3::new(0.32, 0.3, 0.27),
+            roughness: 0.9,
+            ..Default::default()
+        }],
+        fade_in: false,
+        ..Terrain::new(h)
+    });
+    let rock = scene.add_mesh(shapes::sphere(32, 24));
+    let stone = scene.add_material(Material {
+        base_color: [0.24, 0.23, 0.22, 1.0],
+        roughness: 0.8,
+        ..Default::default()
+    });
+    for (x, z, r) in [
+        (-2.6f32, -2.4f32, 0.6f32),
+        (3.4, -3.6, 0.9),
+        (1.6, 1.9, 0.35),
+    ] {
+        scene.add_instance(
+            rock,
+            stone,
+            Mat4::from_scale_rotation_translation(
+                Vec3::new(r * 1.3, r * 0.7, r),
+                glam::Quat::from_rotation_y(x),
+                Vec3::new(x, snowfield_height(x, z) + r * 0.15, z),
+            ),
+        );
+    }
+    scene.atmosphere.surface_weather = Some(og_render::SurfaceWeather {
+        snow: 1.0,
+        snow_depth: 0.1,
+        shelter: 0.0,
+        ..Default::default()
+    });
+    scene.frame.tick_rate = 1.0;
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.6, 3.8, 5.2),
+        target: Vec3::new(0.0, 0.0, -0.3),
+        exposure: Exposure::Manual { ev: -0.3 },
+        ..Default::default()
+    };
+    scene
+}
+
+/// `terrain-snow-track` at `frame`: tick `frame + 1`, the foot down on
+/// step `frame`.
+pub fn snow_track_update(scene: &mut RenderScene, frame: u32) {
+    scene.frame.tick = u64::from(frame) + 1;
+    scene.atmosphere.grass_pushers = vec![og_render::GrassPusher {
+        position: snow_track_foot(frame),
+        radius: 0.32,
+        height: 1.8,
+        strength: 1.0,
+    }];
+}
