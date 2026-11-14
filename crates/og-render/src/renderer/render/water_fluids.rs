@@ -176,7 +176,7 @@ impl Renderer {
                     probe_faces[d].iter().map(move |f| (t, f))
                 })
                 .map(|(t, f)| {
-                    let views = t.fluid.as_ref().expect("made with the fluids").views(
+                    let views = self.world.fluid3d.face(t.size).views(
                         &t.prepass.lindepth,
                         t.copy.as_ref().expect("made with the fluids"),
                     );

@@ -315,18 +315,15 @@ impl ProbeSlot {
 
 /// What a due face draws besides its capture, for the captures of one face
 /// size: its depth prepass (the linear depth water, soft particles and 3D
-/// fluids read), the copy of the face drawn so far (what water and 3D
-/// fluids show through) and the 3D fluids' own targets. One
-/// set serves every face of that size, as the faces are drawn one after
-/// the other; made the first frame a capture needs it, kept while a capture
+/// fluids read) and the copy of the face drawn so far (what water and 3D
+/// fluids show through). One set serves every face of that size, as the
+/// faces are drawn one after the other; made the first frame a capture needs it, kept while a capture
 /// of that size is due or a realtime probe of that size draws its own
 /// (`face_target_sizes`), so a baked probe's are freed after its capture.
 pub(crate) struct FaceTargets {
     pub size: u32,
     pub prepass: crate::views::DepthPrepass,
     pub copy: Option<wgpu::TextureView>,
-    /// The 3D fluids' depth, thickness and smoothing targets.
-    pub fluid: Option<crate::fluid3d::Fluid3dTargets>,
 }
 
 /// What the frame does with its probes ([`Probes::prepare`]).
@@ -493,16 +490,10 @@ impl Probes {
         frame
     }
 
-    /// Makes the depth prepass (with `copy`, the face copy; with `fluid`,
-    /// the 3D fluids' targets) of every face size `frame` captures at. Only
-    /// due captures pay: nothing is made or drawn in a frame without one.
-    pub fn ensure_targets(
-        &mut self,
-        device: &wgpu::Device,
-        frame: &ProbeFrame,
-        copy: bool,
-        fluid: bool,
-    ) {
+    /// Makes the depth prepass (with `copy`, the face copy) of every face
+    /// size `frame` captures at. Only due captures pay: nothing is made or
+    /// drawn in a frame without one.
+    pub fn ensure_targets(&mut self, device: &wgpu::Device, frame: &ProbeFrame, copy: bool) {
         for &(slot, _) in &frame.due {
             let size = self.slots[slot].size;
             let at = match self.targets.iter().position(|t| t.size == size) {
@@ -516,7 +507,6 @@ impl Probes {
                             "probe face",
                         ),
                         copy: None,
-                        fluid: None,
                     });
                     self.targets.len() - 1
                 }
@@ -527,10 +517,12 @@ impl Probes {
                 let copy = texture(device, "probe face copy", size, 1, 1, 1, HDR_FORMAT, usage);
                 t.copy = Some(copy.create_view(&Default::default()));
             }
-            if fluid && t.fluid.is_none() {
-                t.fluid = Some(crate::fluid3d::Fluid3dTargets::new(device, size));
-            }
         }
+    }
+
+    /// The sizes of the faces that have targets.
+    pub fn target_sizes(&self) -> Vec<u32> {
+        self.targets.iter().map(|t| t.size).collect()
     }
 
     /// The targets of the faces of due capture `slot` (after

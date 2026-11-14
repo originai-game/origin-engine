@@ -113,7 +113,7 @@ impl Renderer {
                 // Its 3D fluids' depth, thickness and smoothing.
                 let fluid = face_fluids.get(k).and_then(Option::as_ref);
                 if let (Some(f), Some(t)) = (fluid, targets) {
-                    let views = t.fluid.as_ref().expect("made with the fluids").views(
+                    let views = self.world.fluid3d.face(t.size).views(
                         &t.prepass.lindepth,
                         t.copy.as_ref().expect("made with the fluids"),
                     );
