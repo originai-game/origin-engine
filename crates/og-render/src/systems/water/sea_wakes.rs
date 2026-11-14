@@ -13,8 +13,9 @@
 //! calm water. The square follows the camera in whole cells, moving its
 //! state with it at the next step.
 
+use crate::fields::window;
 use crate::water::{WaterCut, WaterWakes};
-use glam::{DVec2, Vec2};
+use glam::{DVec2, IVec2, Vec2};
 
 /// Points along the square's side (the transform's length).
 pub(crate) const SIDE: u32 = 256;
@@ -81,7 +82,7 @@ pub(crate) struct SeaWakes {
     at: Option<(u64, u64)>,
     /// The square's centre cell (absolute world cells: its centre is
     /// `cell * CELL`).
-    cell: Option<glam::I64Vec2>,
+    cell: Option<IVec2>,
     /// Whether both states were set calm since the last reset.
     cleared: bool,
     /// The seconds stepped since a body last cut the water.
@@ -100,10 +101,10 @@ struct Pending {
     steps: usize,
 }
 
-/// The square's cell nearest `eye` (absolute world xz).
-fn centre_cell(eye: DVec2) -> glam::I64Vec2 {
-    let c = (eye / f64::from(CELL)).round();
-    glam::I64Vec2::new(c.x as i64, c.y as i64)
+/// The cell at the square's centre for a camera at `eye` (absolute world
+/// xz): the camera's own.
+fn centre_cell(eye: DVec2) -> IVec2 {
+    window::camera_cell(eye, f64::from(CELL))
 }
 
 /// The seconds since a body last cut the water, `quiet` of them before
@@ -339,8 +340,7 @@ impl SeaWakes {
     /// The square's centre in the frame (xz) at the scene's `origin`
     /// (absolute world xz), for the sea's uniform (`WaterGpu::wake`).
     pub(crate) fn centre(&self, origin: DVec2) -> Vec2 {
-        let c = self.cell.unwrap_or_default().as_dvec2() * f64::from(CELL) - origin;
-        c.as_vec2()
+        window::corner_from(self.cell.unwrap_or_default(), f64::from(CELL), origin)
     }
 
     /// Plans the steps of the ticks of `wakes` since the last frame and
@@ -374,15 +374,15 @@ impl SeaWakes {
         // it stays where the state is until the next).
         let mut shift = match self.cell {
             Some(c) if !ticks.steps.is_empty() => target - c,
-            Some(_) => glam::I64Vec2::ZERO,
+            Some(_) => IVec2::ZERO,
             None => {
                 self.cell = Some(target);
-                glam::I64Vec2::ZERO
+                IVec2::ZERO
             }
         };
-        if shift.abs().max_element() >= i64::from(SIDE) {
+        if shift.abs().max_element() >= SIDE as i32 {
             self.cleared = false;
-            shift = glam::I64Vec2::ZERO;
+            shift = IVec2::ZERO;
         }
         if !ticks.steps.is_empty() {
             self.cell = Some(target);
@@ -405,7 +405,7 @@ impl SeaWakes {
         for (k, (before, now)) in ticks.steps.iter().enumerate() {
             let first = cuts.len();
             cuts.extend(cuts_gpu(*before, now, at, dt));
-            let moved = if k == 0 { shift } else { glam::I64Vec2::ZERO };
+            let moved = if k == 0 { shift } else { IVec2::ZERO };
             let p = Params {
                 shift: [
                     moved.x as f32,
@@ -525,10 +525,7 @@ mod tests {
     /// state moves by whole cells and a far origin places it to the cell.
     #[test]
     fn the_square_stands_on_whole_cells_of_the_world() {
-        assert_eq!(
-            centre_cell(DVec2::new(10.26, -0.24)),
-            glam::I64Vec2::new(21, 0)
-        );
+        assert_eq!(centre_cell(DVec2::new(10.26, -0.24)), IVec2::new(20, -1));
         let mut w = DVec2::new(1.0e7 + 0.3, 2.0e6);
         let c = centre_cell(w);
         w.x += 0.1;

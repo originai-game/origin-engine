@@ -1,9 +1,14 @@
 //! What is read at a place in the world. The wind ([`wind`]) and the
 //! ground ([`ground`]: the height field the terrain draws and what grows
-//! on it reads), and what every camera-centred map shares (the wind field, the grass
-//! trample, the sea's foam, the visual bodies and fluids): where its
-//! window sits in the world ([`window`]) and which ticks a frame steps it
-//! through ([`catch_up`]).
+//! on it reads), and what every camera-centred map shares: where its
+//! window sits in the world ([`window`]: the wind field, the grass
+//! trample, the sea's foam, wakes and caustics, the weather's shelter)
+//! and which ticks a frame steps it through ([`catch_up`]: the wind
+//! field, the trample, the visual bodies and fluids). Two maps keep a
+//! schedule of their own because their steps are not the world's ticks:
+//! the foam steps the tick's time at 30 Hz and holds on a step back
+//! (`ocean_fft::foam::schedule`), and the wakes step the ticks the world
+//! recorded cuts for (`water_ripples::plan`).
 //!
 //! A map of this kind is presentation state: stepped once per tick on the
 //! GPU, never read by the tick and never read back. Its window is snapped

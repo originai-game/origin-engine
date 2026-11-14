@@ -1,7 +1,8 @@
 //! The weather occlusion map: where a roof keeps the rain and snow off.
 
 use super::SurfaceWeather;
-use glam::Vec3;
+use crate::fields::window;
+use glam::{DVec2, IVec2, Vec3};
 
 /// How far above and below the camera the shelter map reaches, in metres
 /// along the fall.
@@ -24,16 +25,17 @@ pub(crate) fn shelter_view(
     w: &SurfaceWeather,
     camera: Vec3,
     origin: Vec3,
-) -> Option<(glam::Mat4, [i64; 2])> {
+) -> Option<(glam::Mat4, IVec2)> {
     if w.shelter <= 0.0 {
         return None;
     }
     let side = w.shelter.clamp(4.0, 1024.0);
     let cell = side / SHELTER_CELLS;
-    let world = camera + origin;
-    let ix = (world.x / cell).floor() as i64;
-    let iz = (world.z / cell).floor() as i64;
-    let centre = Vec3::new((ix as f32 + 0.5) * cell, world.y, (iz as f32 + 0.5) * cell) - origin;
+    let origin_xz = DVec2::new(f64::from(origin.x), f64::from(origin.z));
+    let world = DVec2::new(f64::from(camera.x), f64::from(camera.z)) + origin_xz;
+    let at = window::camera_cell(world, f64::from(cell));
+    let corner = window::corner_from(at, f64::from(cell), origin_xz);
+    let centre = Vec3::new(corner.x + 0.5 * cell, camera.y, corner.y + 0.5 * cell);
     let d = w.fall.normalize_or(Vec3::NEG_Y);
     let up = if d.y.abs() > 0.9 { Vec3::Z } else { Vec3::Y };
     let eye = centre - d * SHELTER_REACH;
@@ -41,7 +43,7 @@ pub(crate) fn shelter_view(
     let h = side * 0.5;
     let proj =
         glam::camera::rh::proj::directx::orthographic(-h, h, -h, h, 0.0, 2.0 * SHELTER_REACH);
-    Some((proj * view, [ix, iz]))
+    Some((proj * view, at))
 }
 
 /// What the shelter map was drawn from: its cell, its fall and side, and
@@ -52,7 +54,7 @@ pub(crate) fn shelter_view(
 /// later live with theirs).
 pub(crate) fn shelter_key(
     w: &SurfaceWeather,
-    cell: [i64; 2],
+    cell: IVec2,
     spheres: impl Iterator<Item = (Vec3, f32)>,
     terrains: usize,
 ) -> u64 {
@@ -60,7 +62,7 @@ pub(crate) fn shelter_key(
     let weather = [w.fall.x, w.fall.y, w.fall.z, w.shelter].map(bits);
     let spheres = spheres.flat_map(|(c, r)| [c.x, c.y, c.z, r].map(bits));
     og_core::hash::hash_words(
-        [cell[0] as u64, cell[1] as u64]
+        [cell.x as u64, cell.y as u64]
             .into_iter()
             .chain(weather)
             .chain([terrains as u64])
