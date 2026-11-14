@@ -234,7 +234,7 @@ impl Tiles {
             params.resize(self.draws.len() * 256, 0);
         }
         let size = self.params.size();
-        crate::renderer::grow_and_write(
+        crate::gpu::buffers::grow_and_write(
             device,
             queue,
             &mut self.params,

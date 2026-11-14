@@ -26,7 +26,7 @@
 
 use crate::fields::catch_up::catch_up;
 use crate::fields::window;
-use crate::renderer::history::GpuCopy;
+use crate::gpu::copy::GpuCopy;
 use glam::{DVec2, IVec2, Vec3};
 
 /// wind_field.wgsl, after wind_common.wgsl.

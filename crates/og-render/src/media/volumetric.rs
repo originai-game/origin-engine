@@ -584,7 +584,7 @@ impl Volumetric {
     /// GPU bytes of the froxel volumes, when made.
     pub(crate) fn bytes(&self) -> u64 {
         self.froxels.as_ref().map_or(0, |f| {
-            crate::renderer::view_bytes(&f.scatter) + crate::renderer::view_bytes(&f.sum)
+            crate::gpu::texture::view_bytes(&f.scatter) + crate::gpu::texture::view_bytes(&f.sum)
         })
     }
 }

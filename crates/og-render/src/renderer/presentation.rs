@@ -144,41 +144,6 @@ impl Successor {
     }
 }
 
-/// What `texture` allocates: every level of every layer, times its samples.
-pub(crate) fn texture_bytes(texture: &wgpu::Texture) -> u64 {
-    let size = texture.size();
-    let format = texture.format();
-    let layers = match texture.dimension() {
-        wgpu::TextureDimension::D3 => 1,
-        _ => size.depth_or_array_layers.max(1),
-    };
-    let mut bytes = 0;
-    for level in 0..texture.mip_level_count() {
-        let w = (size.width >> level).max(1);
-        let h = (size.height >> level).max(1);
-        let d = match texture.dimension() {
-            wgpu::TextureDimension::D3 => (size.depth_or_array_layers >> level).max(1),
-            _ => 1,
-        };
-        let (bw, bh) = format.block_dimensions();
-        let block = format.block_copy_size(None).unwrap_or(match format {
-            wgpu::TextureFormat::Depth16Unorm => 2,
-            wgpu::TextureFormat::Stencil8 => 1,
-            wgpu::TextureFormat::Depth32FloatStencil8 => 8,
-            _ => 4,
-        });
-        let footprint =
-            u64::from(w.div_ceil(bw)) * u64::from(h.div_ceil(bh)) * u64::from(d) * u64::from(block);
-        bytes += footprint;
-    }
-    bytes * u64::from(layers) * u64::from(texture.sample_count().max(1))
-}
-
-/// What a view's texture allocates.
-pub(crate) fn view_bytes(view: &wgpu::TextureView) -> u64 {
-    texture_bytes(view.texture())
-}
-
 impl Renderer {
     /// Draws the 3D scene at `scale` times the output's size from the next
     /// frame on, scaled to the output by the last post pass (bilinear;

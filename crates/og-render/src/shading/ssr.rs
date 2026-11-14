@@ -52,8 +52,8 @@ use bytemuck::{Pod, Zeroable};
 use glam::Mat4;
 
 use crate::AoResolution;
-use crate::renderer::history::GpuCopy;
-use crate::renderer::{sampler_entry, uniform_entry};
+use crate::gpu::copy::GpuCopy;
+use crate::gpu::layout::{sampler_entry, uniform_entry};
 
 const SSR_WGSL: &str = wgsl_library!("ssr.wgsl");
 

@@ -2,55 +2,6 @@
 
 use super::*;
 
-pub(crate) fn uniform_entry(
-    binding: u32,
-    visibility: wgpu::ShaderStages,
-) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Uniform,
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
-}
-
-pub(crate) fn texture_entry(
-    binding: u32,
-    filterable: bool,
-    dimension: wgpu::TextureViewDimension,
-) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::FRAGMENT,
-        ty: wgpu::BindingType::Texture {
-            sample_type: wgpu::TextureSampleType::Float { filterable },
-            view_dimension: dimension,
-            multisampled: false,
-        },
-        count: None,
-    }
-}
-
-pub(crate) fn sampler_entry(
-    binding: u32,
-    kind: wgpu::SamplerBindingType,
-) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::FRAGMENT,
-        ty: wgpu::BindingType::Sampler(kind),
-        count: None,
-    }
-}
-
-pub(crate) fn tex2d(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    texture_entry(binding, true, wgpu::TextureViewDimension::D2)
-}
-
 /// The sRGB view format of a non-sRGB 8-bit output, when the backend can
 /// view the texture (`surface`: a surface's) in it: the overlay blends
 /// there in linear light, as on an sRGB output. `None` on an sRGB output,
@@ -68,58 +19,6 @@ pub(crate) fn linear_view_format(
     };
     let srgb = output.add_srgb_suffix();
     (srgb != output && adapter.get_downlevel_capabilities().flags.contains(flag)).then_some(srgb)
-}
-
-pub(crate) fn target_texture(
-    device: &wgpu::Device,
-    label: &str,
-    width: u32,
-    height: u32,
-    format: wgpu::TextureFormat,
-    usage: wgpu::TextureUsages,
-) -> wgpu::Texture {
-    device.create_texture(&wgpu::TextureDescriptor {
-        label: Some(label),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format,
-        usage,
-        view_formats: &[],
-    })
-}
-
-pub(crate) fn solid_texture(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    rgba: [u8; 4],
-) -> wgpu::TextureView {
-    device
-        .create_texture_with_data(
-            queue,
-            &wgpu::TextureDescriptor {
-                label: Some("default texture"),
-                size: wgpu::Extent3d {
-                    width: 1,
-                    height: 1,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                view_formats: &[],
-            },
-            wgpu::util::TextureDataOrder::LayerMajor,
-            &rgba,
-        )
-        .create_view(&Default::default())
 }
 
 pub(crate) fn shader(device: &wgpu::Device, label: &str, source: String) -> wgpu::ShaderModule {

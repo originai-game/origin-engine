@@ -176,7 +176,7 @@ impl IblGenerator {
     pub(crate) fn bytes(&self) -> u64 {
         self._textures
             .iter()
-            .map(crate::renderer::texture_bytes)
+            .map(crate::gpu::texture::texture_bytes)
             .sum()
     }
 }
