@@ -58,40 +58,30 @@
 // frame. The keyboard layout's printed keys reach og.input's glyphs
 // (keyboard-layout.ts).
 
-import { createRing, writeRing, type InjectedInput } from "./input.ts";
+import { writeRing, type InjectedInput } from "./input.ts";
 import type { CursorImage } from "../runtime.ts";
-import { TextEntry, type TextTarget } from "./text-input.ts";
-import { A11yMirror, type A11yTree } from "./a11y.ts";
+import type { TextEntry, TextTarget } from "./text-input.ts";
+import type { A11yMirror, A11yTree } from "./a11y.ts";
 import { playHaptics, type HapticPulse } from "./haptics.ts";
 import { playRumble, type RumbleRequest } from "./gamepad.ts";
-import { laneChoice } from "./lanes.ts";
-import { PointerLockMachine, type LockAction } from "./pointer-lock.ts";
-import { LayoutLearner, readLayoutMap, type KeyLabel } from "./keyboard-layout.ts";
-import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
-import { localPlatform, storagePersistence, type PlatformAnswer, type PlatformCall, type PlatformHost, type PlatformLink, type PlatformNotice } from "../platform-local.ts";
-import type { RoomProvider } from "../provider.ts";
-import { Pending } from "./pending.ts";
+import type { RpcRings } from "./rpc-ring.ts";
+import type { PlatformCall, PlatformHost, PlatformNotice } from "../platform-local.ts";
 import type { BootPhases } from "./worker/state.ts";
 import type { TraceDocument } from "../trace.ts";
+import { bootWorker, type HostError, type Ready } from "./shell/boot.ts";
+import { FrameDeadline } from "./shell/deadline.ts";
+import { wireInput } from "./shell/input.ts";
+import { PlatformBridge, type RoomHost } from "./shell/platform.ts";
+import { Presentation } from "./shell/presentation.ts";
+import { Requests } from "./shell/requests.ts";
+import { pagePreferences, pixelSize, viewportExtremes } from "./shell/viewport.ts";
 
-/** The PNG data URL of the last cursor image drawn, by the image it was drawn from. */
-let cursorUrl: [CursorImage, string] | null = null;
-
-/** CSS `cursor` for the UI's shape: its `url()` image (RGBA from the engine) as a PNG at its hotspot, then the keyword. */
-function cursorCss(keyword: string, image: CursorImage | null): string {
-  if (!image) return keyword;
-  let url = cursorUrl?.[0] === image ? cursorUrl[1] : "";
-  if (!url) {
-    const canvas = document.createElement("canvas");
-    canvas.width = image.width;
-    canvas.height = image.height;
-    const bytes = Uint8ClampedArray.from(atob(image.rgba), (ch) => ch.charCodeAt(0));
-    canvas.getContext("2d")?.putImageData(new ImageData(bytes, image.width, image.height), 0, 0);
-    url = canvas.toDataURL("image/png");
-    cursorUrl = [image, url];
-  }
-  return `url(${url}) ${image.hotspot[0]} ${image.hotspot[1]}, ${keyword}`;
-}
+export { BOOT_DEADLINE_MS, webGpuMissing, type HostError, type Ready } from "./shell/boot.ts";
+export { FRAME_DEADLINE_MS } from "./shell/deadline.ts";
+export { releaseHeld } from "./shell/input.ts";
+export type { RoomHost } from "./shell/platform.ts";
+export { PAGE_PREFERENCES, macKeys, pagePreferences, pixelSize, storedLowPower, viewportExtremes, watchPixelRatio } from "./shell/viewport.ts";
+export { LANES_MAX_THREADS, laneChoice } from "./lanes.ts";
 
 export interface ShellOptions {
   /** The play surface. Its pixel size is set from its CSS size and the device pixel ratio. */
@@ -163,211 +153,14 @@ export interface ShellOptions {
   readonly displayKey?: string;
 }
 
-/** The power preference kept for the next load under `key` (localStorage), false where none is or storage is closed. */
-export function storedLowPower(key: string, storage: Pick<Storage, "getItem"> | null = safeStorage()): boolean {
-  try {
-    return (JSON.parse(storage?.getItem(key) ?? "null") as { lowPower?: unknown } | null)?.lowPower === true;
-  } catch {
-    return false;
-  }
-}
-
-function safeStorage(): Storage | null {
-  try {
-    return globalThis.localStorage ?? null;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Calls `changed` with the new device pixel ratio whenever it changes (a
- * window moved to a monitor of another scale, the page zoomed): a
- * `(resolution: <dpr>dppx)` query that stops matching, re-armed at the new
- * ratio each time. Answers the function that stops it.
+ * The engine Worker as the page holds it. Its concerns live under shell/:
+ * the boot (boot.ts), the calls and probe requests waiting for an answer
+ * (requests.ts), the frame deadline (deadline.ts), the page's input
+ * (input.ts), what a frame's answer asks of the page (presentation.ts),
+ * og.platform and the rooms (platform.ts), and what the shell measures of
+ * the page (viewport.ts).
  */
-export function watchPixelRatio(
-  changed: (dpr: number) => void,
-  env: { matchMedia?: ((q: string) => MediaQueryList | undefined) | undefined; dpr: () => number } = {
-    matchMedia: globalThis.matchMedia ? (q) => globalThis.matchMedia(q) : undefined,
-    dpr: () => globalThis.devicePixelRatio || 1,
-  },
-): () => void {
-  let media: MediaQueryList | undefined;
-  let at = env.dpr();
-  const fire = () => {
-    media?.removeEventListener("change", fire);
-    const was = at;
-    arm();
-    if (at !== was) changed(at);
-  };
-  const arm = () => {
-    at = env.dpr();
-    media = env.matchMedia?.(`(resolution: ${at}dppx)`);
-    media?.addEventListener?.("change", fire);
-  };
-  arm();
-  return () => media?.removeEventListener?.("change", fire);
-}
-
-/** The pixel size of a canvas laid out at `cssWidth`×`cssHeight` on this display, with the DPR cap. */
-export function pixelSize(cssWidth: number, cssHeight: number, devicePixelRatio: number, dprCap = 2): { width: number; height: number; dpr: number } {
-  const dpr = Math.max(0.5, Math.min(devicePixelRatio || 1, dprCap > 0 ? dprCap : 2));
-  return { width: Math.max(1, Math.round(cssWidth * dpr)), height: Math.max(1, Math.round(cssHeight * dpr)), dpr };
-}
-
-/**
- * The play surface's size with the browser's own controls shown and hidden
- * (CSS's small and large viewports, og-ui's `Viewport.small`/`large`): the
- * canvas's `width`×`height` moved by how far the page's 100svw/100svh and
- * 100lvw/100lvh are from its 100dvw/100dvh, which `measure` reads. Empty
- * where the browser has no such units (the surface's own size then).
- */
-export function viewportExtremes(
-  width: number,
-  height: number,
-  measure: (w: string, h: string) => [number, number] | undefined = measureViewport,
-): { smallWidth?: number; smallHeight?: number; largeWidth?: number; largeHeight?: number } {
-  const [d, s, l] = [measure("100dvw", "100dvh"), measure("100svw", "100svh"), measure("100lvw", "100lvh")];
-  if (!d || !s || !l || !(d[0] > 0 && d[1] > 0 && s[1] > 0 && l[1] > 0)) return {};
-  return {
-    smallWidth: Math.max(1, width - Math.max(0, d[0] - s[0])),
-    smallHeight: Math.max(1, height - Math.max(0, d[1] - s[1])),
-    largeWidth: width + Math.max(0, l[0] - d[0]),
-    largeHeight: height + Math.max(0, l[1] - d[1]),
-  };
-}
-
-/** The CSS px a fixed box of `w`×`h` takes on this page. */
-function measureViewport(w: string, h: string): [number, number] | undefined {
-  const doc = globalThis.document;
-  if (!doc?.body || !globalThis.CSS?.supports?.("height", "1dvh")) return undefined;
-  const probe = doc.createElement("div");
-  probe.style.cssText = `position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;width:${w};height:${h}`;
-  doc.body.appendChild(probe);
-  const r = probe.getBoundingClientRect();
-  probe.remove();
-  return [r.width, r.height];
-}
-
-/** The page's preferences og-ui follows, each with the viewport field it sets. */
-export const PAGE_PREFERENCES = [
-  ["reducedMotion", "(prefers-reduced-motion: reduce)"],
-  ["highContrast", "(prefers-contrast: more)"],
-  ["reducedTransparency", "(prefers-reduced-transparency: reduce)"],
-] as const;
-
-/**
- * What carries og.platform's rooms on the web (docs/design.md §2.8): the engine's room ops
- * (`{ op: "create" | "join" | "quick" | "leave" | "send", ... }`, og-net's protocol) in, its room events
- * (`joined`, `peer_joined`, `peer_left`, `message`, `left`, `error`) out, in order. The provider
- * contract's RoomProvider (`@origingame/engine/provider`).
- */
-export type RoomHost = RoomProvider;
-
-/** The page's motion, contrast and transparency preferences and the platform's editing keys, as the viewport carries them to og-ui. */
-export function pagePreferences(): { reducedMotion: boolean; highContrast: boolean; reducedTransparency: boolean; macKeys: boolean } {
-  const query = (q: string) => globalThis.matchMedia?.(q).matches ?? false;
-  const [motion, contrast, transparency] = PAGE_PREFERENCES.map(([, q]) => query(q));
-  return { reducedMotion: motion!, highContrast: contrast!, reducedTransparency: transparency!, macKeys: macKeys() };
-}
-
-/** Whether the page runs on an Apple platform, whose text fields take Command and Option (og-ui's `Viewport.macKeys`). */
-export function macKeys(nav: { platform?: string; userAgentData?: { platform?: string } } | undefined = globalThis.navigator as never): boolean {
-  const platform = nav?.userAgentData?.platform || nav?.platform || "";
-  return /^(mac|iphone|ipad|ipod)/i.test(platform);
-}
-
-/** The modifier keys' codes: held through other keys, released on their own keyup. */
-const MODIFIER_KEYS = new Set(["ShiftLeft", "ShiftRight", "ControlLeft", "ControlRight", "AltLeft", "AltRight", "MetaLeft", "MetaRight", "CapsLock"]);
-
-/** Keys the page would act on itself (scroll, focus); the shell keeps them for the game. */
-const KEPT_KEYS = new Set(["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab", "PageUp", "PageDown", "Home", "End", "Backspace"]);
-
-export { LANES_MAX_THREADS, laneChoice } from "./lanes.ts";
-
-/** The key ups that release every key in `held` (the codes sent down and not yet up), which it empties: what the shell sends when the window loses focus. */
-export function releaseHeld(held: Set<string>, time?: number): InjectedInput[] {
-  const out: InjectedInput[] = [...held].map((key) => ({ kind: "key", key, action: "up", ...(time !== undefined ? { time } : {}) }));
-  held.clear();
-  return out;
-}
-
-/**
- * Why the engine stopped, as the Worker or the shell's frame deadline
- * reported it (docs/web-export.md §Errors): `panic`, a Rust panic on the
- * engine's thread or inside a lane (`lane` names the lanes site; the wasm
- * recorded it before it trapped); `error`, a failing system, a trap without
- * a panic or an uncaught error; `hang`, a playing engine Worker that sent
- * no frame for FRAME_DEADLINE_MS.
- */
-export interface HostError {
-  readonly kind: "panic" | "error" | "hang";
-  readonly message: string;
-  /** The tick the world was running, when known. */
-  readonly tick: number | null;
-  /** The lanes site a panic happened in (`anim`, `extract`, `cull`, `physics`); null on the engine's thread. */
-  readonly lane: string | null;
-  /** A panic's `file:line:column`. */
-  readonly location: string | null;
-}
-
-/**
- * How long a playing, visible page may go without a frame from the engine
- * Worker before the shell gives up on it (a Worker stuck in a loop, or in
- * `Atomics.wait` for a lane that never ends): it terminates the Worker and
- * reports a `hang`. A panicking lane is caught sooner, at the lane boundary.
- */
-// Fork s61: 120 s (was 15 s): a first frame that compiles and uploads a large scene's pipelines and
-// textures on a slow GPU (a cold shader cache on Windows) took more than 15 s and was stopped as a hang.
-export const FRAME_DEADLINE_MS = 120_000;
-
-/** What the Worker reported when the engine was ready. */
-export interface Ready {
-  /** The mode the engine got: lanes on with the pool's threads, or why it runs single-threaded. */
-  readonly lanes: { readonly on: boolean; readonly threads: number; readonly why: string };
-  readonly tier: string;
-  readonly transport: "ring" | "message";
-  readonly rpc: "ring" | "message";
-  /** The encodings the bundle's Basis textures reached the renderer in (`bc7+bc5`, `astc4x4`, `etc2+eacrg11`, `rgba8`), or null without a bundle. */
-  readonly textureFormat: string | null;
-  readonly files: number;
-  readonly textures: number;
-  /** With `telemetry`: the device the renderer runs on (boot.ts deviceReport; shell/telemetry.ts gpuOf reads it). */
-  readonly gpu?: { readonly info?: unknown; readonly limits?: unknown; readonly features?: readonly string[] };
-}
-
-const BUTTONS = ["left", "middle", "right"] as const;
-
-/**
- * How long the boot may go without a word from the Worker (progress, a log
- * line) before it fails: generous, since a slow network moves the progress
- * and only a hung Worker says nothing for this long.
- */
-export const BOOT_DEADLINE_MS = 120_000;
-
-/**
- * Why this browser cannot run the engine, or null when it can. The engine
- * draws on WebGPU only, with no fallback (docs/design.md §8): a page with
- * no `navigator.gpu` (an older browser, or an insecure context: WebGPU
- * needs https or localhost) or no adapter is not supported, and the player
- * shell says so instead of starting the engine. A device the adapter then
- * refuses is the engine Worker's start failure (`og_web_attach_canvas`).
- */
-export async function webGpuMissing(): Promise<string | null> {
-  const gpu = (globalThis.navigator as { gpu?: { requestAdapter(): Promise<unknown> } } | undefined)?.gpu;
-  if (!gpu) {
-    return globalThis.isSecureContext === false
-      ? "this page is not a secure context (WebGPU needs https or localhost), so navigator.gpu is missing"
-      : "navigator.gpu is missing";
-  }
-  try {
-    return (await gpu.requestAdapter()) ? null : "the browser found no WebGPU adapter";
-  } catch (e) {
-    return `the browser's WebGPU did not start: ${e instanceof Error ? e.message : String(e)}`;
-  }
-}
-
 export class Shell {
   readonly worker: Worker;
   readonly tier: string;
@@ -377,11 +170,11 @@ export class Shell {
   readonly ready: Ready;
   /** Where the Worker's boot went (worker.ts BootPhases), once the first frame is drawn. */
   boot: BootPhases | null = null;
-  /** The calls and the probe requests the Worker has not answered yet. */
-  readonly #calls = new Pending();
-  readonly #probes = new Pending();
+  readonly #requests: Requests;
+  readonly #deadline = new FrameDeadline();
+  readonly #presentation: Presentation;
+  readonly #platform: PlatformBridge;
   readonly #listeners: Array<() => void> = [];
-  readonly #rpc: RpcRings | undefined;
   #onLog: ShellOptions["onLog"];
   #onCrash: ShellOptions["onCrash"];
   #onFirstFrame: ShellOptions["onFirstFrame"];
@@ -389,14 +182,9 @@ export class Shell {
   #onScenesSaved: ShellOptions["onScenesSaved"];
   #onProgress: ShellOptions["onProgress"];
   #onStage: ShellOptions["onStage"];
-  #pumping = false;
   #ring: SharedArrayBuffer | undefined;
   #dprCap = 2;
-  /** Engine pointer ids (0 to 4) of the page pointers held down, by PointerEvent.pointerId. */
-  #pointers = new Map<number, number>();
   #playing = false;
-  /** Why the engine no longer answers (it crashed, or the shell was disposed); every call after it fails with it. */
-  #stopped: Error | null = null;
   /** The hidden textarea that takes the page's text for the UI's focused field (text-input.ts). */
   #text: TextEntry | undefined;
   /** The DOM mirror of the UI's accessibility tree (a11y.ts). */
@@ -405,32 +193,18 @@ export class Shell {
   #viewport: Record<string, unknown> = {};
   /** What stopped the engine, once something did. */
   #error: HostError | null = null;
-  /** When the Worker last said it plays (`beat`), and the tick it reached. */
-  #beat = 0;
-  #beatTick: number | null = null;
-  /** When the deadline was last looked at: a late look means the page itself was blocked. */
-  #watched = 0;
-  #watchdog: ReturnType<typeof setInterval> | undefined;
-  #rooms: RoomHost | null = null;
-  /** The pointer lock's state machine (pointer-lock.ts): og.PointerLock.wanted and og.input's raw input in, requests out. */
-  readonly #lock = new PointerLockMachine();
-  /** What the last frame asked of the page: fullscreen and the power preference for the next load. */
-  #fullWanted = false;
-  /** A fullscreen request waits for the next gesture (the browser refused one without it). */
-  #fullArmed = false;
-  #displayKey = `og.display:${globalThis.location?.pathname ?? "/"}`;
   /** The canvas's CSS box, safe area and covered region as the page last laid it out: what a DPR change resizes again. */
   #layout: { width: number; height: number; safeArea?: Record<string, number>; covered?: Record<string, number> } | null = null;
-  /** The canvas the shell wired (the pointer lock's element). */
-  #canvas: HTMLCanvasElement | undefined;
-  #platform: PlatformHost = localPlatform(storagePersistence(`og.platform:${globalThis.location?.pathname ?? "/"}`));
 
-  private constructor(worker: Worker, ready: Ready, rpc: RpcRings | undefined) {
+  private constructor(worker: Worker, ready: Ready, rpc: RpcRings | undefined, canvas: HTMLCanvasElement, displayKey: string) {
     this.worker = worker;
     this.tier = ready.tier;
     this.transport = ready.transport;
     this.ready = ready;
-    this.#rpc = rpc;
+    const post = (message: Record<string, unknown>) => worker.postMessage(message);
+    this.#requests = new Requests(worker, rpc);
+    this.#presentation = new Presentation(canvas, post, displayKey);
+    this.#platform = new PlatformBridge(post, () => this.#deadline.tick, (on) => this.play(on));
     worker.addEventListener("message", (e: MessageEvent) => {
       const m = e.data as { type: string; id?: number; value?: unknown; error?: string; frame?: string; lines?: string[]; message?: string };
       if (m.type === "log" && m.lines) {
@@ -439,7 +213,7 @@ export class Shell {
       }
       if (m.type === "crash") {
         const message = m.message ?? "the engine stopped";
-        const error = (m as unknown as { error?: HostError }).error ?? { kind: "error", message, tick: this.#beatTick, lane: null, location: null };
+        const error = (m as unknown as { error?: HostError }).error ?? { kind: "error", message, tick: this.#deadline.tick, lane: null, location: null };
         this.#crashed(message, error);
         return;
       }
@@ -448,10 +222,9 @@ export class Shell {
         return;
       }
       if (m.type === "beat") {
-        this.#beat = performance.now();
-        this.#beatTick = (m as { tick?: number | null }).tick ?? this.#beatTick;
+        this.#deadline.beat((m as { tick?: number | null }).tick);
         // A host that answers later (an ad's answer after the resume) or sends notices on its own.
-        this.#platform.poll?.(this.#link);
+        this.#platform.beat();
         return;
       }
       // Fork s61: the stages after "ready" (the first tick, the first frame's pipelines) move the bar too.
@@ -503,153 +276,42 @@ export class Shell {
         return;
       }
       if (m.type === "cursor") {
-        // The UI's pointer shape over what the pointer is on (og.ui.frameCursor):
-        // its url() image at its hotspot, the keyword after it as CSS falls back.
         const c = m as unknown as { cursor: string; image?: CursorImage | null };
-        if (this.#canvas) this.#canvas.style.cursor = cursorCss(c.cursor || "default", c.image ?? null);
+        this.#presentation.cursor(c.cursor || "default", c.image ?? null);
         return;
       }
       if (m.type === "pointer-lock") {
         const ask = m as unknown as { wanted: boolean; raw?: boolean };
-        // Releasing needs no gesture: the lock ends at once. Taking it waits for the next press.
-        this.#act(this.#lock.want(ask.wanted === true, ask.raw !== false));
+        this.#presentation.want(ask.wanted === true, ask.raw !== false);
         return;
       }
       if (m.type === "page") {
-        const ask = m as unknown as { fullscreen?: boolean; lowPower?: boolean };
-        if (typeof ask.lowPower === "boolean") this.#keepLowPower(ask.lowPower);
-        if (typeof ask.fullscreen === "boolean") this.#fullscreen(ask.fullscreen);
+        this.#presentation.page(m as unknown as { fullscreen?: boolean; lowPower?: boolean });
         return;
       }
       if (m.type === "rpc" && m.frame !== undefined) {
-        this.#answer(m.frame);
+        this.#requests.answer(m.frame);
         return;
       }
       if (m.type === "room") {
-        const ops = (m as unknown as { ops: Record<string, unknown>[] }).ops ?? [];
-        const deliver = this.#deliverRooms;
-        if (this.#rooms) this.#rooms.handle(ops, deliver);
-        // No room host: what asked for a room hears so (the engine refuses first while its host is none).
-        else deliver(ops.filter((o) => o["op"] === "create" || o["op"] === "join" || o["op"] === "quick").map((o) => ({ type: "error", op: o["op"], code: "unavailable", message: "this page carries no rooms" })));
+        this.#platform.rooms((m as unknown as { ops: Record<string, unknown>[] }).ops ?? []);
         return;
       }
       if (m.type === "platform") {
-        const calls = (m as unknown as { calls: PlatformCall[] }).calls ?? [];
-        this.#platform.handle(calls, this.#link.answer, this.#link);
-        this.#platform.poll?.(this.#link);
+        this.#platform.calls((m as unknown as { calls: PlatformCall[] }).calls ?? []);
         return;
       }
       if (m.type !== "result" || m.id === undefined) return;
-      this.#calls.settle(m.id, m.error === undefined ? undefined : new Error(m.error), m.value);
+      this.#requests.result(m.id, m.error === undefined ? undefined : new Error(m.error), m.value);
     });
   }
 
   /** Start the engine in the Worker and wire the page's input to it. */
   static async start(options: ShellOptions): Promise<Shell> {
     const { canvas, worker } = options;
-    const size = pixelSize(canvas.clientWidth || 1, canvas.clientHeight || 1, globalThis.devicePixelRatio || 1, options.dprCap);
-    const dpr = size.dpr;
-    canvas.width = size.width;
-    canvas.height = size.height;
-    // Logs and a crash during the boot reach the page as well as after it.
-    const early = (e: MessageEvent) => {
-      const m = e.data as { type: string; lines?: string[] };
-      if (m.type === "log" && m.lines) options.onLog?.(m.lines);
-      if (m.type === "load-failure") options.onLoadFailure?.(m as unknown as { file: string; reason: string });
-    };
-    worker.addEventListener("message", early);
-    const offscreen = canvas.transferControlToOffscreen();
-    const ring = globalThis.crossOriginIsolated ? createRing() : undefined;
-    const rpc = globalThis.crossOriginIsolated ? createRpcRings() : undefined;
-    // The boot fails (and the Worker stops) when the Worker says so, when it
-    // does not load or throws while loading (game.js missing, a syntax error,
-    // a top-level throw: an `error` event and no message), when its message
-    // cannot be read, or when it says nothing for BOOT_DEADLINE_MS.
-    const ready = new Promise<Ready>((resolve, reject) => {
-      let deadline: ReturnType<typeof setTimeout> | undefined;
-      const settle = () => {
-        clearTimeout(deadline);
-        worker.removeEventListener("message", on);
-        worker.removeEventListener("error", onError);
-        worker.removeEventListener("messageerror", onMessageError);
-      };
-      const failed = (message: string, error?: HostError) => {
-        settle();
-        worker.terminate();
-        reject(Object.assign(new Error(message), { error: error ?? { kind: "error", message, tick: null, lane: null, location: null } }));
-      };
-      const arm = () => {
-        clearTimeout(deadline);
-        deadline = setTimeout(() => failed(`the engine Worker said nothing for ${BOOT_DEADLINE_MS / 1000} s while starting`), BOOT_DEADLINE_MS);
-      };
-      const onError = (e: Event) => {
-        const message = (e as ErrorEvent).message;
-        failed(message ? `the engine Worker failed: ${message}` : "the engine Worker did not load (game.js is missing, or it failed while loading)");
-      };
-      const onMessageError = () => failed("a message from the engine Worker could not be read");
-      const on = (e: MessageEvent) => {
-        arm();
-        const m = e.data as { type: string; value?: number; stage?: string; fraction?: number; message?: string } & Partial<Ready>;
-        if (m.type === "progress") options.onProgress?.(m.value ?? 0, m.stage ?? "", m.fraction);
-        else if (m.type === "ready") {
-          settle();
-          resolve({
-            lanes: m.lanes ?? { on: false, threads: 1, why: "the Worker did not report lanes" },
-            tier: m.tier ?? "none",
-            transport: m.transport ?? "message",
-            rpc: m.rpc ?? "message",
-            textureFormat: m.textureFormat ?? null,
-            files: m.files ?? 0,
-            textures: m.textures ?? 0,
-            ...(m.gpu ? { gpu: m.gpu } : {}),
-          });
-        } else if (m.type === "error") failed(m.message ?? "the engine did not start", (m as { error?: HostError }).error);
-      };
-      worker.addEventListener("message", on);
-      worker.addEventListener("error", onError);
-      worker.addEventListener("messageerror", onMessageError);
-      arm();
-    });
-    const choice = laneChoice(!!options.lanes, !!globalThis.crossOriginIsolated, globalThis.navigator?.hardwareConcurrency ?? 0);
-    const displayKey = options.displayKey ?? `og.display:${globalThis.location?.pathname ?? "/"}`;
-    const lowPower = options.lowPower ?? storedLowPower(displayKey);
-    worker.postMessage(
-      {
-        type: "start",
-        lowPower,
-        glue: options.glue,
-        wasm: options.wasm,
-        ...("threads" in choice ? { lanes: { ...options.lanes!, threads: choice.threads } } : { lanesWhy: choice.why }),
-        canvas: offscreen,
-        seed: options.seed,
-        ring,
-        rpc,
-        autoplay: options.autoplay ?? true,
-        root: options.root,
-        basis: options.basis,
-        ...(options.av1 ? { av1: options.av1 } : {}),
-        profile: options.profile,
-        ...(options.project === undefined ? {} : { project: options.project }),
-        locale: options.locale ?? globalThis.navigator?.language,
-        ...(options.expect ? { expect: options.expect } : {}),
-        ...(options.prime ? { prime: true } : {}),
-        ...(options.trace ? { trace: true } : {}),
-        ...(options.telemetry ? { telemetry: true } : {}),
-        ...(options.onStage ? { stages: true } : {}),
-        ...(options.pipelines ? { pipelines: options.pipelines } : {}),
-        viewport: { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false, ...pagePreferences() },
-      },
-      [offscreen],
-    );
-    let answered: Ready;
-    try {
-      answered = await ready;
-    } finally {
-      worker.removeEventListener("message", early);
-    }
-    const shell = new Shell(worker, answered, rpc);
+    const { ready, ring, rpc, dpr, displayKey } = await bootWorker(options);
+    const shell = new Shell(worker, ready, rpc, canvas, displayKey);
     shell.#ring = ring;
-    shell.#displayKey = displayKey;
     shell.#dprCap = options.dprCap ?? 2;
     shell.#onLog = options.onLog;
     shell.#onCrash = options.onCrash;
@@ -661,11 +323,29 @@ export class Shell {
     shell.#playing = options.autoplay ?? true;
     shell.#viewport = { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false };
     shell.#layout = { width: shell.#viewport["width"] as number, height: shell.#viewport["height"] as number };
-    shell.#beat = shell.#watched = performance.now();
-    shell.#watchdog = setInterval(() => shell.#watch(), 1000);
-    if (options.platform) shell.setPlatform(options.platform);
-    else shell.setPlatform(shell.#platform);
-    shell.#wire(canvas, ring);
+    shell.#deadline.start({
+      playing: () => shell.#playing,
+      stopped: () => shell.#requests.stopped !== null,
+      hung: (message, error) => {
+        shell.#crashed(message, error);
+        shell.worker.terminate();
+      },
+    });
+    shell.setPlatform(options.platform ?? shell.#platform.platform);
+    const wired = wireInput(canvas, {
+      send: (e) => shell.#send(ring, e),
+      post: (message) => shell.worker.postMessage(message),
+      viewport: () => shell.#viewport,
+      stopped: () => shell.#requests.stopped !== null,
+      resized: () => {
+        const l = shell.#layout;
+        if (l) shell.resize(l.width, l.height, l.safeArea, l.covered);
+      },
+      presentation: shell.#presentation,
+      listeners: shell.#listeners,
+    });
+    shell.#a11y = wired.mirror;
+    shell.#text = wired.text;
     return shell;
   }
 
@@ -677,36 +357,9 @@ export class Shell {
    * readback has landed (the Worker retries it on the following frames).
    */
   probe(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
-    if (this.#stopped) return Promise.reject(this.#stopped);
-    return this.#probes.ask((id) => {
-      const frame = JSON.stringify({ jsonrpc: "2.0", id, method, params });
-      if (this.#rpc && writeFrame(this.#rpc.requests, frame)) void this.#pump();
-      else this.worker.postMessage({ type: "rpc", frame });
-    });
+    return this.#requests.probe(method, params);
   }
 
-  #answer(frame: string): void {
-    const m = JSON.parse(frame) as { id?: number; result?: unknown; error?: { code?: number; message?: string } };
-    // The JSON-RPC code rides on the error: -32601 is a member this build does not serve.
-    const error = m.error ? Object.assign(new Error(m.error.message ?? "probe error"), { code: m.error.code ?? -32603 }) : undefined;
-    this.#probes.settle(m.id, error, m.result);
-  }
-
-  /** Read answers from the ring while calls are outstanding. */
-  async #pump(): Promise<void> {
-    if (this.#pumping || !this.#rpc) return;
-    this.#pumping = true;
-    try {
-      while (this.#probes.size > 0 && !this.#stopped) {
-        await waitForFrames(this.#rpc.answers, 100);
-        for (const frame of readFrames(this.#rpc.answers)) this.#answer(frame);
-      }
-    } finally {
-      this.#pumping = false;
-    }
-  }
-
-  /** Call the engine in the Worker: `advance`, `command`, `hash`, `frame`, or `probe` with a member name. */
   /**
    * The run's trace in the Chrome trace format, as `og run --trace` writes it natively (src/trace.ts):
    * buffered in the engine Worker, taken here. `take` (the default) answers the document so far (null
@@ -728,9 +381,9 @@ export class Shell {
     return true;
   }
 
+  /** Call the engine in the Worker: `advance`, `command`, `hash`, `frame`, or `probe` with a member name. */
   call(method: string, ...args: unknown[]): Promise<unknown> {
-    if (this.#stopped) return Promise.reject(this.#stopped);
-    return this.#calls.ask((id) => this.worker.postMessage({ type: "call", id, method, args }));
+    return this.#requests.call(method, args);
   }
 
   /**
@@ -742,44 +395,22 @@ export class Shell {
    * this page carries no rooms), and og.platform.roomInfo's `link` names it.
    */
   setRooms(host: RoomHost | null, link?: string): void {
-    this.#rooms = host;
-    this.worker.postMessage({ type: "room-host", host: host ? host.host : "none", ...(link ? { join: link } : {}) });
-    // After the engine knows its host: what the provider heard already (a room joined at connect) follows.
-    host?.attach?.(this.#deliverRooms);
+    this.#platform.setRooms(host, link);
   }
-
-  /** Room events to the engine, in order (og_room_deliver). */
-  readonly #deliverRooms = (events: unknown[]): void => this.worker.postMessage({ type: "room-events", events });
-
-  /** What answers og.platform's calls from now on (og.platform.info reports its host and capabilities). */
-  /** What the platform host may do besides answering: notices, and pausing the game while an ad shows (onPlatformPause). */
-  readonly #link: PlatformLink = (() => {
-    const shell = this;
-    return {
-      get tick() {
-        return shell.#beatTick ?? 0;
-      },
-      answer: (request: number, answer: PlatformAnswer) => shell.worker.postMessage({ type: "platform-answer", request, answer }),
-      notify: (notice: PlatformNotice) => shell.notify(notice),
-      pause: () => shell.#platformPause(true),
-      resume: () => shell.#platformPause(false),
-    };
-  })();
-  #platformPause: (on: boolean) => void = (on) => this.play(!on);
 
   /** How the page pauses the game for its platform host (ticks and audio, as its own pause does); default: the clock alone. */
   onPlatformPause(pause: (on: boolean) => void): void {
-    this.#platformPause = pause;
+    this.#platform.onPause(pause);
   }
 
   /** Unasked platform input (a Player's pushed notice): applied at the next tick's start as og.PlatformNotice. */
   notify(notice: PlatformNotice): void {
-    this.worker.postMessage({ type: "platform-notice", notice });
+    this.#platform.notify(notice);
   }
 
+  /** What answers og.platform's calls from now on (og.platform.info reports its host and capabilities). */
   setPlatform(host: PlatformHost): void {
-    this.#platform = host;
-    this.worker.postMessage({ type: "platform-host", host: host.host, capabilities: host.capabilities, time: host.time });
+    this.#platform.setPlatform(host);
   }
 
   /** What stopped the engine (a panic, an error, a hang), or null while it runs. */
@@ -791,37 +422,15 @@ export class Shell {
   #crashed(message: string, error: HostError): void {
     if (this.#error) return;
     this.#error = error;
-    this.#stop(`the engine stopped: ${message}`);
-    clearInterval(this.#watchdog);
+    this.#requests.stop(`the engine stopped: ${message}`);
+    this.#deadline.stop();
     this.#onCrash?.(message, error);
-  }
-
-  /**
-   * The frame deadline: a playing page whose Worker sent no `beat` for
-   * FRAME_DEADLINE_MS is stuck; the Worker is terminated and the page told.
-   * A hidden page (no display frames) and a paused clock do not count.
-   */
-  #watch(): void {
-    const now = performance.now();
-    const late = now - this.#watched > 3000;
-    this.#watched = now;
-    const hidden = globalThis.document?.visibilityState === "hidden";
-    // A page that was blocked or throttled itself has not been hearing the Worker: start over.
-    if (!this.#playing || hidden || this.#stopped || late) {
-      this.#beat = now;
-      return;
-    }
-    if (now - this.#beat < FRAME_DEADLINE_MS) return;
-    const tick = this.#beatTick;
-    const message = `the engine Worker sent no frame for ${FRAME_DEADLINE_MS / 1000} s${tick === null ? "" : ` (last at tick ${tick})`}: it is stuck, so it was stopped`;
-    this.#crashed(message, { kind: "hang", message, tick, lane: null, location: null });
-    this.worker.terminate();
   }
 
   /** Start or stop ticking with the display. */
   play(on: boolean): void {
     this.#playing = on;
-    this.#beat = performance.now();
+    this.#deadline.restart();
     this.worker.postMessage({ type: "play", on });
   }
 
@@ -832,7 +441,7 @@ export class Shell {
    * for the next one on the canvas. A lock not wanted asks nothing.
    */
   gesture(): void {
-    this.#act(this.#lock.press(performance.now()));
+    this.#presentation.press();
   }
 
   /** Whether the clock ticks with the display (the last `play`). */
@@ -880,303 +489,10 @@ export class Shell {
     else this.worker.postMessage({ type: "input", event });
   }
 
-  /** Do what the pointer lock's machine says: request the lock (raw or not) or release it. */
-  #act(actions: readonly LockAction[]): void {
-    const doc = globalThis.document;
-    const canvas = this.#canvas;
-    for (const a of actions) {
-      if (a.kind === "exit") {
-        if (doc?.pointerLockElement && doc.pointerLockElement === canvas) doc.exitPointerLock?.();
-        continue;
-      }
-      if (!canvas) continue;
-      let asked: unknown;
-      try {
-        asked = (canvas.requestPointerLock as (o?: unknown) => unknown).call(canvas, a.raw ? { unadjustedMovement: true } : undefined);
-      } catch {
-        // Refused at once (no gesture, a sandboxed frame): armed for the next press.
-        this.#act(this.#lock.refused(performance.now(), false));
-        this.#reportMouse();
-        continue;
-      }
-      if (asked instanceof Promise) {
-        asked.then(
-          () => {
-            this.#lock.answered(true);
-            this.#reportMouse();
-          },
-          (e: unknown) => {
-            this.#act(this.#lock.refused(performance.now(), (e as { name?: string } | null)?.name === "NotSupportedError"));
-            this.#reportMouse();
-          },
-        );
-      } else {
-        this.#lock.answered(false);
-        this.#reportMouse();
-      }
-    }
-  }
-
-  #mouseSent = "";
-  /** og.input.mouse's rawActive and rawUnsupported, when they changed. */
-  #reportMouse(): void {
-    const report = { active: this.#lock.rawActive, unsupported: this.#lock.rawUnsupported };
-    const text = JSON.stringify(report);
-    if (text === this.#mouseSent) return;
-    this.#mouseSent = text;
-    this.worker.postMessage({ type: "mouse-report", ...report });
-  }
-
-  #lowPowerKept: boolean | null = null;
-  /** The power preference for the next load, kept in the page's storage. */
-  #keepLowPower(lowPower: boolean): void {
-    if (lowPower === this.#lowPowerKept) return;
-    this.#lowPowerKept = lowPower;
-    try {
-      safeStorage()?.setItem(this.#displayKey, JSON.stringify({ lowPower }));
-    } catch {
-      /* storage full or closed: the next load asks for high performance */
-    }
-  }
-
-  /** Enter or leave fullscreen as the last frame asks; a refused entry waits for the next gesture. */
-  #fullscreen(wanted: boolean): void {
-    if (wanted === this.#fullWanted) return;
-    this.#fullWanted = wanted;
-    this.#fullArmed = false;
-    const doc = globalThis.document;
-    if (!doc) return;
-    if (!wanted) {
-      if (doc.fullscreenElement) void doc.exitFullscreen?.().catch(() => {});
-      return;
-    }
-    this.#enterFullscreen();
-  }
-
-  #enterFullscreen(): void {
-    const doc = globalThis.document;
-    if (!doc || doc.fullscreenElement || !this.#fullWanted) return;
-    const gesture = (globalThis.navigator as { userActivation?: { isActive?: boolean } } | undefined)?.userActivation?.isActive;
-    const asked = doc.documentElement?.requestFullscreen?.({ navigationUI: "hide" });
-    const refused = () => {
-      // Refused inside a gesture (a frame without allow="fullscreen"): the page is not
-      // fullscreen and the setting says so. Without one: the next press or key asks again.
-      if (gesture === true || this.#fullArmed) {
-        this.#fullArmed = false;
-        this.#fullWanted = false;
-        this.worker.postMessage({ type: "fullscreen", on: false });
-      } else this.#fullArmed = true;
-    };
-    if (asked instanceof Promise) asked.catch(refused);
-    else if (!asked) refused();
-  }
-
-  /** The keyboard layout's printed keys, sent when they change (og.input.setKeyboardLayout). */
-  #layoutSent = "";
-  #sendLayout(labels: readonly KeyLabel[]): void {
-    const text = JSON.stringify(labels);
-    if (text === this.#layoutSent) return;
-    this.#layoutSent = text;
-    this.worker.postMessage({ type: "keyboard-layout", labels });
-  }
-
-  #wire(canvas: HTMLCanvasElement, ring: SharedArrayBuffer | undefined): void {
-    this.#canvas = canvas;
-    const listen = <K extends keyof HTMLElementEventMap>(target: EventTarget, type: K, fn: (e: HTMLElementEventMap[K]) => void) => {
-      target.addEventListener(type, fn as EventListener, { passive: false });
-      this.#listeners.push(() => target.removeEventListener(type, fn as EventListener));
-    };
-    // When an event happened on a clock the Worker shares (its `at` within the tick, input.ts stampAt).
-    const stamp = (e: Event) => performance.timeOrigin + e.timeStamp;
-    // The UI's text fields take the page's text through a hidden textarea
-    // (text-input.ts); its keys still reach the engine, except an input
-    // method's while it composes.
-    // The accessibility tree over the canvas; what a screen reader does there reaches the UI as input.
-    const mirror = new A11yMirror(canvas, (e) => this.#send(ring, e));
-    this.#a11y = mirror;
-    // The textarea is named after the field's node in the mirror (text-input.ts).
-    const text = new TextEntry(canvas, (e) => this.#send(ring, e), mirror);
-    this.#text = text;
-    this.#listeners.push(() => text.dispose());
-    this.#listeners.push(() => mirror.dispose());
-    // The page's motion, contrast and transparency preferences, followed as the reader changes them.
-    for (const [, q] of PAGE_PREFERENCES) {
-      const media = globalThis.matchMedia?.(q);
-      if (!media?.addEventListener) continue;
-      const changed = () => this.worker.postMessage({ type: "viewport", viewport: { ...this.#viewport, ...pagePreferences() } });
-      media.addEventListener("change", changed);
-      this.#listeners.push(() => media.removeEventListener("change", changed));
-    }
-    const typing = (e: KeyboardEvent) => {
-      if (text.owns(e.target)) return e.isComposing || text.composing || e.keyCode === 229;
-      // The mirror's elements (a slider's native range among them) pass their keys to the game.
-      if (mirror.owns(e.target)) return false;
-      const t = e.target as { tagName?: string; isContentEditable?: boolean } | null;
-      return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable === true);
-    };
-    // Keys that went down while Command was held: a Mac's browser sends no
-    // keyup for them, so they are released when Command is.
-    const underCommand = new Set<string>();
-    // Every key sent down and not yet up: released when the window loses focus.
-    const heldKeys = new Set<string>();
-    // The layout's printed keys: the layout map where the browser has one, else learnt from the keys pressed.
-    let mapped = false;
-    const learner = new LayoutLearner();
-    const readLayout = () =>
-      void readLayoutMap().then((labels) => {
-        if (!labels || this.#stopped) return;
-        mapped = true;
-        this.#sendLayout(labels);
-      });
-    readLayout();
-    listen(globalThis as unknown as EventTarget, "focus", readLayout);
-    const keyboard = (globalThis.navigator as { keyboard?: EventTarget } | undefined)?.keyboard;
-    if (keyboard?.addEventListener) listen(keyboard, "layoutchange" as keyof HTMLElementEventMap, readLayout);
-    listen(globalThis as unknown as EventTarget, "keydown", (e) => {
-      if (typing(e) || !e.code) return;
-      // In the text target Space types and shortcuts copy, cut and paste.
-      const shortcut = text.owns(e.target) && (e.ctrlKey || e.metaKey || e.code === "Space");
-      if (KEPT_KEYS.has(e.code) && !shortcut) e.preventDefault();
-      if (e.metaKey && !MODIFIER_KEYS.has(e.code)) underCommand.add(e.code);
-      if (!mapped && learner.learn(e)) this.#sendLayout(learner.labels());
-      // A key is a gesture: a fullscreen the browser refused without one is asked again.
-      if (this.#fullArmed) this.#enterFullscreen();
-      heldKeys.add(e.code);
-      if (!e.repeat) this.#send(ring, { kind: "key", key: e.code, action: "down", time: stamp(e) });
-    });
-    const releaseAll = () => {
-      underCommand.clear();
-      for (const e of releaseHeld(heldKeys, performance.timeOrigin + performance.now())) this.#send(ring, e);
-      // The browser drops the lock (and a request still out) with the focus.
-      this.#act(this.#lock.blurred());
-    };
-    listen(globalThis as unknown as EventTarget, "blur", releaseAll);
-    if (globalThis.document) {
-      listen(globalThis.document as unknown as EventTarget, "visibilitychange" as keyof HTMLElementEventMap, () => {
-        if (globalThis.document?.visibilityState === "hidden") releaseAll();
-      });
-    }
-    listen(globalThis as unknown as EventTarget, "keyup", (e) => {
-      if (typing(e) || !e.code) return;
-      underCommand.delete(e.code);
-      heldKeys.delete(e.code);
-      this.#send(ring, { kind: "key", key: e.code, action: "up", time: stamp(e) });
-      if ((e.code === "MetaLeft" || e.code === "MetaRight") && !e.metaKey) {
-        for (const key of underCommand) {
-          heldKeys.delete(key);
-          this.#send(ring, { kind: "key", key, action: "up", time: stamp(e) });
-        }
-        underCommand.clear();
-      }
-    });
-    // The pointer lock: whether the canvas holds it, and the position it began at (held while locked).
-    let locked = false;
-    let held = { x: 0, y: 0 };
-    const doc = globalThis.document as Document | undefined;
-    if (doc) {
-      listen(doc as unknown as EventTarget, "pointerlockchange" as keyof HTMLElementEventMap, () => {
-        const now = doc.pointerLockElement === canvas;
-        if (now === locked) return;
-        locked = now;
-        this.#send(ring, { kind: "pointerLock", locked: now });
-        this.#act(this.#lock.changed(now));
-        this.#reportMouse();
-      });
-      listen(doc as unknown as EventTarget, "pointerlockerror" as keyof HTMLElementEventMap, () => {
-        this.#act(this.#lock.refused(performance.now(), false));
-        this.#reportMouse();
-      });
-      listen(doc as unknown as EventTarget, "fullscreenchange" as keyof HTMLElementEventMap, () => {
-        const on = !!doc.fullscreenElement;
-        // Left by the player (Escape, F11): the setting follows, and nothing asks again.
-        if (!on) {
-          this.#fullWanted = false;
-          this.#fullArmed = false;
-        }
-        this.worker.postMessage({ type: "fullscreen", on });
-      });
-    }
-    // A window moved to a monitor of another DPR: the canvas and the UI's viewport again, before the next frame.
-    const stopDpr = watchPixelRatio(() => {
-      const l = this.#layout;
-      if (l) this.resize(l.width, l.height, l.safeArea, l.covered);
-    });
-    this.#listeners.push(stopDpr);
-    // Relative to the canvas's CSS box, whichever element the event landed on; while locked, where the lock began.
-    const at = (e: PointerEvent | WheelEvent) => {
-      if (locked) return held;
-      const r = canvas.getBoundingClientRect();
-      return (held = { x: e.clientX - r.left, y: e.clientY - r.top });
-    };
-    const point = (e: PointerEvent, action: "move" | "down" | "up", id: number) => {
-      const p = at(e);
-      // The mouse's relative movement (touches and pens report none worth reading).
-      const mx = e.pointerType === "mouse" ? e.movementX || 0 : 0;
-      const my = e.pointerType === "mouse" ? e.movementY || 0 : 0;
-      this.#send(ring, {
-        kind: "pointer",
-        action,
-        x: p.x,
-        y: p.y,
-        button: action === "move" ? "none" : (BUTTONS[e.button] ?? "left"),
-        ...(id > 0 ? { id } : {}),
-        ...(mx !== 0 || my !== 0 ? { movementX: mx, movementY: my } : {}),
-        time: stamp(e),
-      });
-    };
-    listen(canvas, "pointerdown", (e) => {
-      // The game wants the lock: this press is the gesture browsers grant it to.
-      if (e.pointerType === "mouse") this.#act(this.#lock.press(performance.now()));
-      if (this.#fullArmed) this.#enterFullscreen();
-      let id = this.#pointers.get(e.pointerId);
-      if (id === undefined) {
-        const taken = new Set(this.#pointers.values());
-        id = [0, 1, 2, 3, 4].find((i) => !taken.has(i));
-        if (id === undefined) return; // a sixth finger: ignored
-        this.#pointers.set(e.pointerId, id);
-      }
-      try {
-        canvas.setPointerCapture(e.pointerId);
-      } catch {
-        /* a synthetic event has no active pointer */
-      }
-      if (e.pointerType !== "mouse") e.preventDefault();
-      point(e, "down", id);
-    });
-    listen(canvas, "pointermove", (e) => {
-      const id = this.#pointers.get(e.pointerId);
-      if (id !== undefined) point(e, "move", id);
-      // A hovering mouse moves the primary pointer while nothing is held (and, locked, only its movement).
-      else if ((this.#pointers.size === 0 || locked) && e.pointerType === "mouse") point(e, "move", 0);
-    });
-    const end = (e: PointerEvent) => {
-      const id = this.#pointers.get(e.pointerId);
-      if (id === undefined) return;
-      this.#pointers.delete(e.pointerId);
-      point(e, "up", id);
-    };
-    listen(canvas, "pointerup", end);
-    listen(canvas, "pointercancel", end);
-    listen(canvas, "contextmenu", (e) => e.preventDefault());
-    listen(canvas, "wheel", (e) => {
-      e.preventDefault();
-      const p = at(e);
-      this.#send(ring, { kind: "wheel", x: p.x, y: p.y, deltaX: e.deltaX, deltaY: e.deltaY });
-    });
-  }
-
-  /** The engine answers nothing more: every pending probe and call fails with `reason`, and so does every later one. */
-  #stop(reason: string): void {
-    if (this.#stopped) return;
-    this.#stopped = Object.assign(new Error(reason), { code: -32603 });
-    this.#calls.fail(this.#stopped);
-    this.#probes.fail(this.#stopped);
-  }
-
   /** Remove the page listeners and stop the Worker. */
   dispose(): void {
-    clearInterval(this.#watchdog);
-    this.#stop("the shell was disposed");
+    this.#deadline.stop();
+    this.#requests.stop("the shell was disposed");
     for (const off of this.#listeners.splice(0)) off();
     this.worker.terminate();
   }
