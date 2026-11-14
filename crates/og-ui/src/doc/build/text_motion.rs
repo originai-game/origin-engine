@@ -7,11 +7,23 @@ use super::*;
 
 impl Ui {
     /// A counter that interpolates to `value` over its duration in ms
-    /// (900 by default).
-    pub(crate) fn count_text(&mut self, id: &str, value: f32, desc: &LabelDesc, r: &Resolved) {
+    /// (900 by default), written as its format says in `language`; with a
+    /// format, its decimals are the format's digit count.
+    pub(crate) fn count_text(
+        &mut self,
+        id: &str,
+        value: f64,
+        language: &str,
+        desc: &LabelDesc,
+        r: &Resolved,
+    ) {
+        let decimals = r.num("countDecimals").map(|d| d.clamp(0.0, 17.0) as u8);
+        let format = r
+            .str("countFormat")
+            .and_then(|name| crate::bind::Format::new(name, decimals).ok());
         let shown = self.counter(
             id,
-            f64::from(value),
+            value,
             &crate::CounterDesc {
                 step: desc.step,
                 font: desc.font,
@@ -19,12 +31,15 @@ impl Ui {
                 align: desc.align,
                 width: desc.width,
                 duration_ms: r.num("countDuration").unwrap_or(0.0),
-                decimals: r.num("countDecimals").unwrap_or(0.0) as u32,
+                decimals: u32::from(decimals.unwrap_or(0)),
+                from: r.handle("countFrom"),
+                format,
+                language: language.into(),
                 ..crate::CounterDesc::default()
             },
         );
         // Still counting: it builds again next tick (its memory is still).
-        if shown != f64::from(value)
+        if shown != value
             && let Some(owned) = self.tree.owning_mut().last_mut()
         {
             owned.moved = true;

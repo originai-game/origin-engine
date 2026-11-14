@@ -481,7 +481,9 @@ Its own props, beside every element's:
 | `heading` | `bool` | A heading (a style's flourish frames it). |
 | `<og-counter value>` | `number` | The target value of <og-counter value={$score}>. Changes interpolate over its duration in engine ticks. |
 | `<og-counter duration>` | `number` | The counter's duration in milliseconds (900 by default; zero also selects the default). |
-| `<og-counter decimals>` | `number` | The counter's digits after the decimal point. |
+| `<og-counter decimals>` | `number` | The counter's digits after the decimal point; with a format, the format's digit count. |
+| `<og-counter from>` | `number` | Where <og-counter from="0"> starts its first count (a result's score counting up as its screen opens). Left out, the counter shows its value at once and counts only when it changes. |
+| `<og-counter format>` | `plain \| grouped \| fixed \| compact \| engineering \| scientific \| letters \| percent \| duration \| clock \| countdown \| ordinal` | How <og-counter format="compact"> writes its number, in the UI's language: a binding's formats (grouped, compact 1.2K, percent 0.62 as 62%, clock, duration, letters …). The count runs through what the format shows. Without one: thousands grouped, decimals digits after the point. |
 | `<og-typewriter rate>` | `number` | The typewriter's extended grapheme clusters per second; onrevealed fires once when the text is whole. Text changes restart it. Reduced motion shows the whole text. Progress follows engine ticks and checkpoints. |
 | `href` | `text` | An `<a>`'s destination: a click sends a `link` event named by it (as `onclick` fires). |
 

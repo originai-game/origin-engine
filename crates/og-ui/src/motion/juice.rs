@@ -43,6 +43,12 @@ pub struct CounterDesc {
     pub from: Option<f64>,
     /// Digits after the point.
     pub decimals: u32,
+    /// How the number is written (`compact`, `percent`, `clock`; a
+    /// binding's formats), the format rounding for itself. `None`:
+    /// thousands grouped, `decimals` digits after the point.
+    pub format: Option<crate::bind::Format>,
+    /// The language `format` writes in.
+    pub language: String,
     pub prefix: String,
     pub suffix: String,
 }
@@ -207,17 +213,19 @@ impl Ui {
         self.set_anim(kf, from);
         self.set_anim(kt, to);
         let shown = at(&from, &to);
-        let shown = if desc.decimals == 0 {
+        // A format counts through what it shows (a percent's fractions).
+        let shown = if desc.decimals == 0 && desc.format.is_none() {
             shown.round()
         } else {
             shown
         };
-        let text = format!(
-            "{}{}{}",
-            desc.prefix,
-            format_count(shown, desc.decimals),
-            desc.suffix
-        );
+        let number = match desc.format {
+            Some(format) => {
+                crate::bind::format_num(crate::bind::Num::from_f64(shown), format, &desc.language)
+            }
+            None => format_count(shown, desc.decimals),
+        };
+        let text = format!("{}{number}{}", desc.prefix, desc.suffix);
         let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
         *n.content.write(build) = Content::Text(crate::layout::TextContent {

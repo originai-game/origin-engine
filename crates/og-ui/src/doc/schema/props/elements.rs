@@ -1123,7 +1123,19 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "countDecimals",
         Ty::Num,
         [Label],
-        "The counter's digits after the decimal point."
+        "The counter's digits after the decimal point; with a format, the format's digit count."
+    ),
+    p!(
+        "countFrom",
+        Ty::Num,
+        [Label],
+        "Where <og-counter from=\"0\"> starts its first count (a result's score counting up as its screen opens). Left out, the counter shows its value at once and counts only when it changes."
+    ),
+    p!(
+        "countFormat",
+        Ty::Word(&crate::bind::Format::NAMES),
+        [Label],
+        "How <og-counter format=\"compact\"> writes its number, in the UI's language: a binding's formats (grouped, compact 1.2K, percent 0.62 as 62%, clock, duration, letters …). The count runs through what the format shows. Without one: thousands grouped, decimals digits after the point."
     ),
     p!(
         "reveal",

@@ -21,6 +21,8 @@ pub const ELEMENT_ATTRIBUTES: &[(&str, &str, &str)] = &[
     ("og-counter", "value", "count"),
     ("og-counter", "duration", "countDuration"),
     ("og-counter", "decimals", "countDecimals"),
+    ("og-counter", "format", "countFormat"),
+    ("og-counter", "from", "countFrom"),
     ("og-typewriter", "rate", "reveal"),
     ("og-spotlight", "target", "spotlight"),
     ("og-rive", "src", "rive"),

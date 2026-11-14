@@ -250,7 +250,11 @@ on a secondary or long press, `ontoggle` for `<details>` and popovers,
 
 #### Counters, typewriters, cyclers, spotlights and colour inputs
 
-`<og-counter value duration decimals>` counts to its value as it changes.
+`<og-counter value duration decimals format from>` counts to its value as
+it changes; `from` starts its first count there (a score counting up as its
+screen opens), and `format` writes the number as a binding's format does
+(`compact`, `percent`, `clock` …), `decimals` then being the format's digit
+count.
 `<og-typewriter rate>` reveals grapheme clusters per second, restarts when
 its text changes, shows the whole text under reduced motion and fires
 `onrevealed` once. `<select data-cycle>` is previous, option and next,

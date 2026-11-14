@@ -2172,7 +2172,8 @@ fn core_controls_choose_step_hold_and_report() {
 /// `og-spotlight` dims the page but for its target, and `<input
 /// type="color">` opens a picker whose hex writes `#rrggbb` back.
 ///
-/// Ways it could fail: a count that jumps or never arrives, a reveal shown
+/// Ways it could fail: a count that jumps or never arrives, a percent rounded to a whole on its
+/// way, a large value written inexactly, a reveal shown
 /// whole at once or firing every tick, a cycler that does not wrap or skips
 /// the bound value, a spotlight without its callout, or a colour input that
 /// writes a malformed value.
@@ -2181,6 +2182,7 @@ fn counters_reveals_cyclers_spotlights_and_colours() {
     for rejected in [
         "<p count=\"3\" />",
         "<og-counter count-duration=\"200\" />",
+        "<og-counter format=\"money\" />",
         "<p reveal=\"20\" />",
         "<dialog spotlight=\"Target\" />",
         "<p/><style>p { -og-count-duration: 200; }</style>",
@@ -2197,6 +2199,11 @@ fn counters_reveals_cyclers_spotlights_and_colours() {
     let text = r#"<meta name="component" content="t">
 <div id="Page">
   <og-counter id="Score" value={$score} duration="200" decimals="1">0</og-counter>
+  <og-counter id="Share" value={$share} duration="200" format="percent">0</og-counter>
+  <og-counter id="Rate" value={$rate} duration="200" format="percent" decimals="1">0</og-counter>
+  <og-counter id="Gold" value={$gold} duration="200" format="compact">0</og-counter>
+  <og-counter id="Big" value={$gold} duration="200">0</og-counter>
+  <og-counter id="Total" value="40" from="0" duration="200">0</og-counter>
   <og-typewriter id="Line" rate="20" onrevealed={done}>Hello there</og-typewriter>
   <select id="Diff" data-cycle bind:value={$diff}><option value="easy">Easy</option><option value="hard">Hard</option></select>
   <button id="Target">Here</button>
@@ -2208,6 +2215,9 @@ fn counters_reveals_cyclers_spotlights_and_colours() {
 </style>"#;
     let stores = [
         ("score", json!(0)),
+        ("share", json!(0)),
+        ("rate", json!(0)),
+        ("gold", json!(0)),
         ("diff", json!("easy")),
         ("tint", json!("#3366cc")),
         ("tour", json!(false)),
@@ -2218,6 +2228,11 @@ fn counters_reveals_cyclers_spotlights_and_colours() {
         d.get("Line").text.len() < "Hello there".len(),
         "typed out, not whole"
     );
+    let first: f64 = d.get("Total").text.parse().unwrap_or(-1.0);
+    assert!(
+        (0.0..40.0).contains(&first),
+        "counting from its start: {first}"
+    );
     let mut revealed = 0;
     for _ in 0..60 {
         d.step(InputFrame::default());
@@ -2225,14 +2240,27 @@ fn counters_reveals_cyclers_spotlights_and_colours() {
         d.events.clear();
     }
     assert_eq!(d.get("Line").text, "Hello there");
+    assert_eq!(d.get("Total").text, "40", "the first count lands");
     assert_eq!(revealed, 1, "onrevealed fires once");
     d.set("score", json!(25.5));
+    d.set("share", json!(0.62));
+    d.set("rate", json!(0.625));
+    d.set("gold", json!(16_777_217));
     d.step(InputFrame::default());
     let mid: f64 = d.get("Score").text.parse().unwrap_or(-1.0);
     assert!(mid > 0.0 && mid < 25.5, "counting: {mid}");
+    // A format counts through what it shows: a share is never rounded to
+    // 0% or 100% on its way.
+    let share = d.get("Share").text;
+    let mid: f64 = share.trim_end_matches('%').parse().unwrap_or(-1.0);
+    assert!(mid > 0.0 && mid < 62.0, "counting a percent: {share}");
     for _ in 0..12 {
         d.step(InputFrame::default());
     }
+    assert_eq!(d.get("Share").text, "62%", "a fraction as a percent");
+    assert_eq!(d.get("Rate").text, "62.5%", "decimals are the format's");
+    assert_eq!(d.get("Gold").text, "16.8M", "compact");
+    assert_eq!(d.get("Big").text, "16,777,217", "exact past 2^24");
     assert_eq!(
         d.get("Score").text,
         "25.5",

@@ -1,0 +1,18 @@
+{
+  "added": [
+    {
+      "member": "<og-counter format>",
+      "summary": "A counter writes its number as a binding's format does, in the UI's language: format=\"compact\" (1.2K), percent (0.62 as 62%), clock, duration, letters and the rest. The count runs through what the format shows, and decimals is then the format's digit count. Without a format it groups thousands as before."
+    },
+    {
+      "member": "<og-counter from>",
+      "summary": "A counter starts its first count at from (a score counting up from 0 as its screen opens). Left out, it shows its value at once and counts only when the value changes, as before."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "<og-counter value>",
+      "summary": "A counter lands on its value exactly; a value past 16,777,216 was rounded to a float and shown a few units off."
+    }
+  ]
+}

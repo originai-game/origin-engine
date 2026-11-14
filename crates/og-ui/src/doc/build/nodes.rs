@@ -1229,8 +1229,9 @@ impl Ui {
                 )
                 .response;
         } else {
-            if let Some(count) = styled.num("count") {
-                self.count_text(id.as_str(), count, &desc, styled);
+            // Every bit of the value: a score past 2^24 counts exactly.
+            if let Some(count) = styled.handle("count") {
+                self.count_text(id.as_str(), count, b.env.language(), &desc, styled);
             } else {
                 let part = self.reveal(key, &source, styled.num("reveal"));
                 let i = self.leaf("label", id.as_str().into(), Default::default());
