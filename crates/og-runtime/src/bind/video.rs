@@ -234,6 +234,13 @@ pub(crate) struct StreamSource {
     height: u32,
     nearest: bool,
     units: Option<Arc<og_video::stream::Units>>,
+    /// An H.264 or HEVC rendition's codec (`hevc`, `h264`) read in place
+    /// of the AV1 where the web's WebCodecs decodes no AV1; `None`: AV1.
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    rendition: Option<og_video::mp4::Codec>,
+    /// The units' codec configuration (`config`), read with them.
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    config: Vec<u8>,
     /// Its Video handle: the host's key for it on the web.
     #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
     key: u64,
@@ -274,6 +281,7 @@ impl StreamSource {
                 match og_bundle::runtime::video_stream_of(&bytes, &self.path, self.stamp, &self.id)
                 {
                     Ok(c) => {
+                        self.config = c.config;
                         let units = c
                             .units
                             .into_iter()
@@ -665,7 +673,29 @@ fn show_stream(
         source.handed = true;
         // The host keeps the units; this copy is dropped.
         source.units = Some(Arc::new(og_video::stream::Units::new(Vec::new())));
-        if !hooks.video_stream(source.key, (source.width, source.height), &table, &data) {
+        let codec = match source.rendition {
+            Some(c) => match og_video::mp4::codec_string(c, &source.config) {
+                Ok(name) => name,
+                Err(e) => {
+                    source.error = Some(format!("{}: {e}", source.id));
+                    return;
+                }
+            },
+            None => String::new(),
+        };
+        let config: &[u8] = if source.rendition.is_some() {
+            &source.config
+        } else {
+            &[]
+        };
+        if !hooks.video_stream(
+            source.key,
+            (source.width, source.height),
+            &codec,
+            config,
+            &table,
+            &data,
+        ) {
             return;
         }
     }
@@ -706,16 +736,46 @@ fn load_video(eng: &Engine, path: &str) -> Result<VideoInfo, String> {
     };
     let player = eng.state.borrow().layouts.get(PLAYER).cloned();
     let nearest = meta.kind == og_bundle::format::kind::PIXEL;
+    let mut codec = "av1";
     let (view, stream, format, bytes, poster) = if meta.streamed == 1 {
-        // The web's software fallback plays the 720p rendition the cook adds
-        // beside a larger stream (og_video::stream::fallback_size).
-        let software =
-            crate::engine::hooks().is_some_and(|h| h.video_decoder().name == "rav1d-wasm");
-        let rendition = og_video::stream::fallback_size((meta.width, meta.height))
-            .filter(|_| software)
+        let decoder = crate::engine::hooks()
+            .map_or_else(crate::engine::VideoDecoder::default, |h| h.video_decoder());
+        // Where AV1 has no decoder but software, a browser whose WebCodecs
+        // decodes HEVC or H.264 plays that rendition (its first the cook
+        // made, in the browser's order), never the AV1 as well.
+        let has = |stream: &str| {
+            let a = eng.assets.borrow();
+            a.bundle_for(stream)
+                .is_ok_and(|(b, _)| b.output(stream).is_ok())
+        };
+        let other = if matches!(decoder.name.as_str(), "rav1d" | "webcodecs") {
+            None
+        } else {
+            decoder.codecs.iter().find_map(|c| {
+                let kind = match c.as_str() {
+                    "hevc" => og_video::mp4::Codec::Hevc,
+                    "h264" => og_video::mp4::Codec::H264,
+                    _ => return None,
+                };
+                let stream = format!("{id}#stream{c}");
+                has(&stream).then_some((stream, kind, c.as_str()))
+            })
+        };
+        // Otherwise the web's software fallback plays the 720p rendition the
+        // cook adds beside a larger stream (og_video::stream::fallback_size).
+        let software = decoder.name == "rav1d-wasm";
+        let small = og_video::stream::fallback_size((meta.width, meta.height))
+            .filter(|_| software && other.is_none())
             .map(|size| (format!("{id}#stream720"), size));
-        let (stream_id, (width, height)) =
-            rendition.unwrap_or_else(|| (format!("{id}#stream"), (meta.width, meta.height)));
+        let rendition = other.as_ref().map(|(_, k, _)| *k);
+        if let Some((_, _, word)) = &other {
+            codec = if *word == "hevc" { "hevc" } else { "h264" };
+        }
+        let (stream_id, (width, height)) = match (other, small) {
+            (Some((s, _, _)), _) => (s, (meta.width, meta.height)),
+            (None, Some(s)) => s,
+            (None, None) => (format!("{id}#stream"), (meta.width, meta.height)),
+        };
         let (path, stamp) = {
             let a = eng.assets.borrow();
             let (bundle, dir) = a.bundle_for(&stream_id)?;
@@ -731,6 +791,8 @@ fn load_video(eng: &Engine, path: &str) -> Result<VideoInfo, String> {
             height,
             nearest,
             units: None,
+            rendition,
+            config: Vec::new(),
             key: assets::handle(eng.render.borrow().videos.len()),
             handed: false,
             error: None,
@@ -783,7 +845,7 @@ fn load_video(eng: &Engine, path: &str) -> Result<VideoInfo, String> {
         format: format.to_string(),
         bytes,
         streamed: stream.is_some(),
-        codec: if stream.is_some() { "av1" } else { "" }.to_string(),
+        codec: if stream.is_some() { codec } else { "" }.to_string(),
         poster: poster.unwrap_or(texture),
     };
     rs.videos.push(LoadedVideo {
@@ -827,11 +889,24 @@ pub fn og_video_capabilities(world: u32) -> crate::host::wire::VideoCapabilities
     let d = crate::engine::hooks()
         .map_or_else(crate::engine::VideoDecoder::default, |h| h.video_decoder());
     let streamed = rendered && d.name != "none";
+    // AV1 first where it has a decoder of its own, last where only software.
+    let mut codecs = Vec::new();
+    if streamed {
+        let others = d.codecs.iter().cloned();
+        if d.name == "rav1d-wasm" {
+            codecs.extend(others);
+            codecs.push("av1".to_string());
+        } else {
+            codecs.push("av1".to_string());
+            codecs.extend(others);
+        }
+    }
     VideoCapabilities {
         streamed,
         decoder: if streamed { d.name.as_str() } else { "none" }.to_string(),
         hardware: streamed && d.hardware,
         max_width: if streamed { d.max_width } else { 0 },
         max_height: if streamed { d.max_height } else { 0 },
+        codecs,
     }
 }

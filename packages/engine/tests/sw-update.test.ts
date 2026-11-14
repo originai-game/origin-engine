@@ -67,6 +67,18 @@ test("a font pack's faces are cached when fetched, never precached nor counted i
   expect(d.later.fonts).toEqual({ files: 1, bytes: 900_000, compressed: 900_000 });
 });
 
+test("a streamed video's units and every rendition are cached when fetched, never precached nor counted in the boot", () => {
+  const meta = "cooked/clips/intro.ogt.ogb";
+  const poster = "cooked/clips/intro.ogt.poster.ogb";
+  const streams = ["stream", "stream720", "streamhevc", "streamh264"].map((s) => `cooked/clips/intro.ogt.${s}.ogb`);
+  const lists = serviceWorkerLists(["cooked/.cook.ogt", meta, poster, ...streams], new Set());
+  expect(lists.lazy).toEqual([...streams].sort());
+  expect(lists.files).toEqual(["./", "cooked/.cook.ogt", meta, poster]);
+  const row = (path: string, bytes: number) => ({ path, bytes, compressed: bytes, codec: "brotli-11" as const });
+  const d = downloadsOf([row(meta, 100), row(poster, 2_000), ...streams.map((s) => row(s, 1_000_000))]);
+  expect(d.boot.single.cooked.bytes).toBe(2_100);
+});
+
 const SCOPE = "https://play.example/g/r/";
 const swSource = (async () => {
   const r = await Bun.build({ entrypoints: [join(dirname(fileURLToPath(import.meta.url)), "..", "shell", "sw.ts")], target: "browser", format: "esm" });

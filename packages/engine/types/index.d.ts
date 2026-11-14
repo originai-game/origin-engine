@@ -30032,7 +30032,10 @@ export interface VideoInfo {
    * Whether it is a stream (`stream true`: decoded as it plays) rather than a clip of cooked frames.
    */
   readonly streamed: boolean;
-  /** A stream's codec (`av1`); empty for a clip. */
+  /**
+   * The codec this host plays a stream in: `av1`, or `hevc` or `h264` where the browser decodes no AV1 and the cook made that rendition; empty for a clip.
+   * See `audio §8`.
+   */
   readonly codec: string;
   /**
    * A stream's first frame as an ordinary texture, ready as soon as the bundle is (a menu's thumbnail, the picture while the stream is fetched); for a clip, VideoInfo.texture.
@@ -30063,6 +30066,11 @@ export interface VideoCapabilities {
   readonly maxWidth: number;
   /** The tallest, as maxWidth. */
   readonly maxHeight: number;
+  /**
+   * The codecs streams decode in here, preferred first (`av1`, `hevc`, `h264`; AV1 last where only rav1d-wasm decodes it): a stream plays the first it was cooked in (VideoInfo.codec). Empty where nothing streams.
+   * See `audio §8`.
+   */
+  readonly codecs: readonly string[];
 }
 
 

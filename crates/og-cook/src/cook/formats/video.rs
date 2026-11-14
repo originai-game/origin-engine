@@ -34,6 +34,12 @@
 //! - `<id>#stream720`, beside a stream larger than 1280x720 (720x1280 portrait): the same at
 //!   that size or less (its aspect kept), which the web's software
 //!   fallback decoder plays instead (it holds 30 fps at 720p, not 1080p);
+//! - `<id>#streamhevc` and `<id>#streamh264`, as `renditions` names them
+//!   (HEVC by default): the same frames in HEVC (ffmpeg's `libx265`) or
+//!   H.264 (`libx264`), with no B-frames, read from the MP4 ffmpeg writes
+//!   ([`og_video::mp4`]), for a browser whose WebCodecs decodes no AV1 but
+//!   decodes these (Safari on devices without AV1 hardware). Only the web
+//!   host reads them; an executor always decodes the AV1;
 //! - `<id>#poster`: frame 0 as rav1d decodes it, a texture of the video's
 //!   kind, shown until the stream's first frame and on a host with no AV1
 //!   decoder;
@@ -46,11 +52,14 @@
 //! keyframe 1                 # seconds between key frames (default 1): a seek decodes at most this much
 //! crf 32                     # AV1 quality, 0 (best) to 63 (default 32)
 //! crf720 38                  # the 720p rendition's (default crf + 6, at most 63)
+//! renditions hevc h264       # beside the AV1: hevc, h264, both, or none (default hevc)
 //! ```
 //!
 //! The encoder is ffmpeg's `libsvtav1`, else `libaom-av1` (`og doctor`
 //! names the one it finds); the stamp covers which, as they write different
-//! bytes.
+//! bytes. A rendition's quality follows `crf` ([`Rendition::crf`]: x264's
+//! 23 and x265's 26 at AV1's 32). An ffmpeg without `libx265` cooks no
+//! HEVC rendition by default and says so; one a file names is refused.
 //!
 //! The frame count is `ceil(min(duration, maxSeconds) · fps)`, at most 256
 //! (a texture array's layers): frame n is the source at `n / fps` seconds
@@ -109,6 +118,53 @@ pub struct VideoDecl {
     /// Its 720p rendition's (`crf720`); `None`: [`RENDITION_CRF`] more than
     /// `crf`, at most 63.
     pub crf720: Option<u32>,
+    /// The renditions beside a stream's AV1 (`renditions`); `None`: HEVC
+    /// where this ffmpeg encodes it.
+    pub renditions: Option<Vec<Rendition>>,
+}
+
+/// A stream's copy in a codec other than AV1, for browsers whose WebCodecs
+/// decodes no AV1.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Rendition {
+    Hevc,
+    H264,
+}
+
+impl Rendition {
+    /// Its word in `renditions`, and its output's suffix (`<id>#stream<word>`).
+    pub fn word(self) -> &'static str {
+        match self {
+            Rendition::Hevc => "hevc",
+            Rendition::H264 => "h264",
+        }
+    }
+
+    /// The ffmpeg encoder that writes it.
+    pub fn encoder(self) -> &'static str {
+        match self {
+            Rendition::Hevc => "libx265",
+            Rendition::H264 => "libx264",
+        }
+    }
+
+    /// Its [`format::video_codec`].
+    pub fn codec(self) -> u32 {
+        match self {
+            Rendition::Hevc => format::video_codec::HEVC,
+            Rendition::H264 => format::video_codec::H264,
+        }
+    }
+
+    /// Its encoder's crf for a stream of AV1 `crf`: linear, x264's 23 and
+    /// x265's 26 (their defaults' look) at AV1's default 32, at most 51.
+    pub fn crf(self, crf: u32) -> u32 {
+        let at32 = match self {
+            Rendition::Hevc => 26,
+            Rendition::H264 => 23,
+        };
+        ((crf * at32 + 16) / 32).min(51)
+    }
 }
 
 /// How much coarser the 720p rendition is encoded than its stream by
@@ -144,7 +200,14 @@ pub struct VideoPlan {
     /// Whether `<id>#audio` is cooked.
     pub audio: bool,
     /// A stream's AV1 encoder (`libsvtav1` or `libaom-av1`); empty for a clip.
+    /// A rendition's plan: its encoder (`libx265` or `libx264`).
     pub encoder: String,
+    /// A stream's renditions this ffmpeg encodes (set when the cook plans).
+    pub renditions: Vec<Rendition>,
+    /// The default renditions this ffmpeg cannot encode (said, not refused).
+    pub missing: Vec<Rendition>,
+    /// Set in a rendition's own plan ([`rendition_plan`]).
+    pub rendition: Option<Rendition>,
 }
 
 impl VideoPlan {
@@ -160,7 +223,15 @@ impl VideoPlan {
             self.decl.kind,
             self.audio
         );
-        if self.decl.stream {
+        if let Some(r) = self.rendition {
+            d.push_str(&format!(
+                " stream {} {} keyframe {} crf {}",
+                r.word(),
+                self.encoder,
+                self.decl.keyframe,
+                r.crf(self.decl.crf)
+            ));
+        } else if self.decl.stream {
             d.push_str(&format!(
                 " stream av1 {} keyframe {} crf {} crf720 {}",
                 self.encoder,
@@ -203,6 +274,7 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
         keyframe: 1.0,
         crf: 32,
         crf720: None,
+        renditions: None,
     };
     let mut max_given = false;
     for e in &doc.body.entries {
@@ -278,6 +350,28 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
                 }
                 out.crf720 = Some(v as u32);
             }
+            "renditions" => {
+                let mut list = Vec::new();
+                for i in 0..e.values.len() {
+                    match e.word(i).map_err(err)? {
+                        "hevc" => list.push(Rendition::Hevc),
+                        "h264" => list.push(Rendition::H264),
+                        "none" if e.values.len() == 1 => {}
+                        w => {
+                            return Err(format!(
+                                "line {line}: renditions takes hevc, h264, both, or none alone, not '{w}'"
+                            ));
+                        }
+                    }
+                }
+                if e.values.is_empty() {
+                    return Err(format!(
+                        "line {line}: renditions takes hevc, h264, both, or none"
+                    ));
+                }
+                list.dedup();
+                out.renditions = Some(list);
+            }
             "size" => {
                 let w = e.number(0).map_err(err)?.as_f64();
                 let h = e.number(1).map_err(err)?.as_f64();
@@ -305,7 +399,7 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
             }
             k => {
                 return Err(format!(
-                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, stream, keyframe, crf, crf720)"
+                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, stream, keyframe, crf, crf720, renditions)"
                 ));
             }
         }
@@ -321,9 +415,9 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
             .body
             .entries
             .iter()
-            .any(|e| matches!(e.key.as_str(), "keyframe" | "crf" | "crf720"))
+            .any(|e| matches!(e.key.as_str(), "keyframe" | "crf" | "crf720" | "renditions"))
     {
-        return Err("keyframe, crf and crf720 are a stream's (`stream true`)".into());
+        return Err("keyframe, crf, crf720 and renditions are a stream's (`stream true`)".into());
     }
     Ok(out)
 }
@@ -445,6 +539,9 @@ pub fn plan(decl: &VideoDecl, probe: Probe, encoder: &str) -> Result<VideoPlan, 
         } else {
             String::new()
         },
+        renditions: Vec::new(),
+        missing: Vec::new(),
+        rendition: None,
     })
 }
 
@@ -554,7 +651,7 @@ pub fn cook_meta(plan: &VideoPlan, stamp: u64) -> Result<(Vec<u8>, Vec<String>),
         return Ok((
             w.finish(),
             vec![format!(
-                "video: streamed, {} frames of {}x{} at {} fps ({:.2} s of {:.2} s, {}), AV1 by {}, a key frame every {} frames{}",
+                "video: streamed, {} frames of {}x{} at {} fps ({:.2} s of {:.2} s, {}), AV1 by {}{}, a key frame every {} frames{}{}",
                 plan.frames,
                 plan.size.0,
                 plan.size.1,
@@ -563,12 +660,20 @@ pub fn cook_meta(plan: &VideoPlan, stamp: u64) -> Result<(Vec<u8>, Vec<String>),
                 plan.probe.duration,
                 plan.decl.source,
                 plan.encoder,
+                plan.renditions
+                    .iter()
+                    .map(|r| format!(", {} by {}", codec_name(r.codec()), r.encoder()))
+                    .collect::<String>(),
                 plan.key_interval(),
                 if plan.audio {
                     ", with sound (Opus)"
                 } else {
                     ""
-                }
+                },
+                plan.missing
+                    .iter()
+                    .map(|r| format!("; no {} rendition: this ffmpeg has no {}, so a browser without AV1 plays the slower software decoder", codec_name(r.codec()), r.encoder()))
+                    .collect::<String>()
             )],
         ));
     }
@@ -686,25 +791,70 @@ pub fn fallback_plan(plan: &VideoPlan, size: (u32, u32)) -> VideoPlan {
     }
 }
 
+/// The id of a stream's rendition in `r` (`<id>#streamhevc`, `<id>#streamh264`).
+pub fn rendition_id(id: &str, r: Rendition) -> String {
+    format!("{id}#stream{}", r.word())
+}
+
+/// The plan of a stream's rendition in `r`: the same frames by its encoder.
+pub fn rendition_plan(plan: &VideoPlan, r: Rendition) -> VideoPlan {
+    VideoPlan {
+        encoder: r.encoder().to_string(),
+        rendition: Some(r),
+        renditions: Vec::new(),
+        missing: Vec::new(),
+        ..plan.clone()
+    }
+}
+
+/// The renditions a stream cooks, and the default ones this ffmpeg cannot
+/// encode; refused when one the file names cannot be encoded.
+pub fn renditions(decl: &VideoDecl) -> Result<(Vec<Rendition>, Vec<Rendition>), String> {
+    let has = |r: Rendition| has_encoder(r.encoder());
+    match &decl.renditions {
+        None => Ok(if has(Rendition::Hevc) {
+            (vec![Rendition::Hevc], Vec::new())
+        } else {
+            (Vec::new(), vec![Rendition::Hevc])
+        }),
+        Some(list) => {
+            if let Some(r) = list.iter().find(|r| !has(**r)) {
+                return Err(format!(
+                    "renditions {}: this ffmpeg has no {} (og doctor says what it finds; brew install ffmpeg, or apt install ffmpeg)",
+                    r.word(),
+                    r.encoder()
+                ));
+            }
+            Ok((list.clone(), Vec::new()))
+        }
+    }
+}
+
 /// The id of a stream's poster frame.
 pub fn poster_id(id: &str) -> String {
     format!("{id}#poster")
 }
 
+/// Whether this ffmpeg has the encoder `name` (false without ffmpeg).
+pub fn has_encoder(name: &str) -> bool {
+    static LIST: OnceLock<String> = OnceLock::new();
+    LIST.get_or_init(|| {
+        Command::new(ffmpeg_bin())
+            .args(["-hide_banner", "-encoders"])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+            .unwrap_or_default()
+    })
+    .lines()
+    .any(|l| l.split_whitespace().nth(1) == Some(name))
+}
+
 /// The AV1 encoder this ffmpeg has: `libsvtav1`, else `libaom-av1`
 /// (`None` without either, or without ffmpeg).
 pub fn av1_encoder() -> Option<&'static str> {
-    static FOUND: OnceLock<Option<&'static str>> = OnceLock::new();
-    *FOUND.get_or_init(|| {
-        let out = Command::new(ffmpeg_bin())
-            .args(["-hide_banner", "-encoders"])
-            .output()
-            .ok()?;
-        let list = String::from_utf8_lossy(&out.stdout);
-        ["libsvtav1", "libaom-av1"]
-            .into_iter()
-            .find(|e| list.lines().any(|l| l.split_whitespace().nth(1) == Some(e)))
-    })
+    ["libsvtav1", "libaom-av1"]
+        .into_iter()
+        .find(|e| has_encoder(e))
 }
 
 /// What a stream needs of its encoder: refused without one.
@@ -714,9 +864,14 @@ pub fn stream_encoder() -> Result<&'static str, String> {
     })
 }
 
-/// A stream encoded: its IVF read into units.
+/// A stream encoded: its IVF (AV1) or MP4 (a rendition) read into units.
 pub struct Encoded {
-    pub ivf: og_video::ivf::Ivf,
+    /// Its [`format::video_codec`].
+    pub codec: u32,
+    pub units: Vec<og_video::ivf::Unit>,
+    /// The decoder's configuration: AV1's sequence header OBU, or the
+    /// `avcC` or `hvcC` record.
+    pub config: Vec<u8>,
 }
 
 type EncodedSlot = Arc<OnceLock<Result<Arc<Encoded>, String>>>;
@@ -738,15 +893,21 @@ fn encoded(path: &Path, hash: u64, plan: &VideoPlan) -> Result<Arc<Encoded>, Coo
         .map_err(CookError)
 }
 
-/// Runs ffmpeg for the AV1: the `fps` filter, bicubic scale to BT.709
-/// limited range 4:2:0, the last frame held so the count is exactly the
-/// plan's, one temporal unit per frame, a key frame every key interval.
+/// Runs ffmpeg for the AV1 (or a rendition's H.264 or HEVC): the `fps`
+/// filter, bicubic scale to BT.709 limited range 4:2:0, the last frame held
+/// so the count is exactly the plan's, one unit per frame in presentation
+/// order (no B-frames), a key frame every key interval and nowhere else.
 fn encode(path: &Path, plan: &VideoPlan) -> Result<Encoded, String> {
     let (w, h) = plan.size;
     let tmp = std::env::temp_dir().join(format!(
-        "og-video-{}-{:016x}.ivf",
+        "og-video-{}-{:016x}.{}",
         std::process::id(),
-        og_core::hash::hash_bytes(format!("{}|{}", path.display(), plan.describe()).as_bytes())
+        og_core::hash::hash_bytes(format!("{}|{}", path.display(), plan.describe()).as_bytes()),
+        if plan.rendition.is_some() {
+            "mp4"
+        } else {
+            "ivf"
+        }
     ));
     let seconds = f64::from(plan.frames) / f64::from(plan.decl.fps);
     let key = plan.key_interval().to_string();
@@ -762,11 +923,38 @@ fn encode(path: &Path, plan: &VideoPlan) -> Result<Encoded, String> {
                 plan.decl.fps
             ),
         ])
-        .args(["-frames:v", &plan.frames.to_string()])
-        .args(["-c:v", &plan.encoder, "-crf", &crf, "-g", &key]);
+        .args(["-frames:v", &plan.frames.to_string()]);
+    let crf = plan
+        .rendition
+        .map_or(crf, |r| r.crf(plan.decl.crf).to_string());
+    cmd.args(["-c:v", &plan.encoder, "-crf", &crf, "-g", &key]);
     match plan.encoder.as_str() {
         // No scene-cut key frames: one every key interval, no more.
         "libsvtav1" => cmd.args(["-preset", "8", "-svtav1-params", "scd=0"]),
+        "libx264" => cmd.args([
+            "-preset",
+            "medium",
+            "-profile:v",
+            "high",
+            "-bf",
+            "0",
+            "-keyint_min",
+            &key,
+            "-sc_threshold",
+            "0",
+        ]),
+        // `hvc1`: the parameter sets in the hvcC record, as Safari wants;
+        // no encoder settings SEI in it.
+        "libx265" => cmd.args([
+            "-preset",
+            "fast",
+            "-tag:v",
+            "hvc1",
+            "-x265-params",
+            &format!(
+                "keyint={key}:min-keyint={key}:scenecut=0:bframes=0:open-gop=0:info=0:log-level=error"
+            ),
+        ]),
         _ => cmd.args([
             "-b:v",
             "0",
@@ -788,7 +976,11 @@ fn encode(path: &Path, plan: &VideoPlan) -> Result<Encoded, String> {
         "-color_range",
         "tv",
         "-f",
-        "ivf",
+        if plan.rendition.is_some() {
+            "mp4"
+        } else {
+            "ivf"
+        },
     ])
     .arg(&tmp);
     let out = cmd.output().map_err(|e| format!("{NO_FFMPEG} ({e})"))?;
@@ -803,18 +995,40 @@ fn encode(path: &Path, plan: &VideoPlan) -> Result<Encoded, String> {
         ));
     }
     let bytes = bytes.map_err(|e| format!("{}: {e}", tmp.display()))?;
-    let ivf = og_video::ivf::read(&bytes).map_err(|e| format!("{}'s AV1: {e}", path.display()))?;
-    if ivf.units.len() != plan.frames as usize || (ivf.width, ivf.height) != (w, h) {
+    let (e, size) = if let Some(r) = plan.rendition {
+        let m = og_video::mp4::read(&bytes)
+            .map_err(|e| format!("{}'s {}: {e}", path.display(), r.word()))?;
+        (
+            Encoded {
+                codec: r.codec(),
+                units: m.units,
+                config: m.config,
+            },
+            (m.width, m.height),
+        )
+    } else {
+        let ivf =
+            og_video::ivf::read(&bytes).map_err(|e| format!("{}'s AV1: {e}", path.display()))?;
+        (
+            Encoded {
+                codec: format::video_codec::AV1,
+                units: ivf.units,
+                config: ivf.sequence_header,
+            },
+            (ivf.width, ivf.height),
+        )
+    };
+    if e.units.len() != plan.frames as usize || size != (w, h) {
         return Err(format!(
             "ffmpeg encoded {} frames of {}x{} from {}, not the {} of {w}x{h} planned",
-            ivf.units.len(),
-            ivf.width,
-            ivf.height,
+            e.units.len(),
+            size.0,
+            size.1,
             path.display(),
             plan.frames
         ));
     }
-    Ok(Encoded { ivf })
+    Ok(e)
 }
 
 /// The `og.VideoStream` blob of a stream's units.
@@ -826,8 +1040,8 @@ pub fn cook_stream(
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let e = encoded(path, hash, plan)?;
     let mut data = Vec::new();
-    let mut rows = Vec::with_capacity(e.ivf.units.len());
-    for u in &e.ivf.units {
+    let mut rows = Vec::with_capacity(e.units.len());
+    for u in &e.units {
         rows.push(format::VideoUnitRow {
             offset: data.len() as u32,
             size: u.data.len() as u32,
@@ -837,9 +1051,10 @@ pub fn cook_stream(
     }
     if data.len() > u32::MAX as usize {
         return Err(CookError(format!(
-            "{}: {} bytes of AV1, past the 4 GiB a stream holds: raise crf or lower size",
+            "{}: {} bytes of {}, past the 4 GiB a stream holds: raise crf or lower size",
             path.display(),
-            data.len()
+            data.len(),
+            codec_name(e.codec)
         )));
     }
     let keys = rows.iter().filter(|r| r.key != 0).count();
@@ -855,7 +1070,7 @@ pub fn cook_stream(
         gap.max(rows.len() as u32 - last)
     };
     let meta = format::VideoStreamMeta {
-        codec: format::video_codec::AV1,
+        codec: e.codec,
         width: plan.size.0,
         height: plan.size.1,
         frames: rows.len() as u32,
@@ -869,15 +1084,25 @@ pub fn cook_stream(
     );
     w.table("meta", &[meta], row_hash::<format::VideoStreamMeta>());
     w.table("units", &rows, row_hash::<format::VideoUnitRow>());
-    w.raw("config", e.ivf.sequence_header.clone(), 4);
+    w.raw("config", e.config.clone(), 4);
     let kbps =
         data.len() as f64 * 8.0 / 1000.0 / (f64::from(plan.frames) / f64::from(plan.decl.fps));
     let note = format!(
-        "the video's AV1: {:.1} MiB ({kbps:.0} kb/s), {keys} key frame(s)",
+        "the video's {}: {:.1} MiB ({kbps:.0} kb/s), {keys} key frame(s)",
+        codec_name(e.codec),
         data.len() as f64 / f64::from(1u32 << 20)
     );
     w.raw("data", data, 16);
     Ok((w.finish(), vec![note]))
+}
+
+/// A [`format::video_codec`]'s name in notes and errors.
+fn codec_name(codec: u32) -> &'static str {
+    match codec {
+        format::video_codec::H264 => "H.264",
+        format::video_codec::HEVC => "HEVC",
+        _ => "AV1",
+    }
 }
 
 /// The poster: frame 0 as rav1d decodes it, a texture of the video's kind.
@@ -891,7 +1116,7 @@ pub fn cook_poster(
     let e = encoded(path, hash, plan)?;
     let mut d = og_video::decode::Decoder::new(1).map_err(CookError)?;
     let pic = d
-        .decode(&e.ivf.units[0].data)
+        .decode(&e.units[0].data)
         .map_err(|x| CookError(format!("{}: frame 0: {x}", path.display())))?
         .ok_or_else(|| CookError(format!("{}: frame 0 shows no picture", path.display())))?;
     let img = texture::Image {
@@ -929,7 +1154,10 @@ fn plan_video<'a>(
         let src = root.join(&d.source);
         let bytes = std::fs::read(&src).map_err(|e| format!("{}: {e}", src.display()))?;
         let encoder = if d.stream { stream_encoder()? } else { "" };
-        let plan = plan(&d, probe(&src)?, encoder)?;
+        let mut plan = plan(&d, probe(&src)?, encoder)?;
+        if d.stream {
+            (plan.renditions, plan.missing) = renditions(&d)?;
+        }
         Ok((src, hash_bytes(&bytes), plan))
     });
     match planned {
@@ -966,6 +1194,17 @@ fn plan_video<'a>(
                             src_hash,
                             Box::new(fallback_plan(&plan, size)),
                         )),
+                    ));
+                }
+                for &r in &plan.renditions {
+                    let rp = rendition_plan(&plan, r);
+                    outs.push((
+                        rendition_id(&s.rel, r),
+                        format::VideoStream::NAME,
+                        stamp(
+                            &[&base[..], &[r.word().as_bytes(), rp.describe().as_bytes()]].concat(),
+                        ),
+                        Box::new(VideoStreamJob(src.clone(), src_hash, Box::new(rp))),
                     ));
                 }
                 outs.push((
@@ -1157,6 +1396,7 @@ mod tests {
             keyframe: 1.0,
             crf: 32,
             crf720: None,
+            renditions: None,
         };
         let probe = Probe {
             duration: 5.0,
@@ -1199,6 +1439,28 @@ mod tests {
         assert_eq!(d.rendition_crf(), 63);
         let d = parse("a.ogt", &doc("stream true\nmaxSeconds 30"), &exists).unwrap();
         assert_eq!(d.max_seconds, 30.0);
+        let d = parse("a.ogt", &doc("stream true\nrenditions h264 hevc"), &exists).unwrap();
+        assert_eq!(d.renditions, Some(vec![Rendition::H264, Rendition::Hevc]));
+        let d = parse("a.ogt", &doc("stream true\nrenditions none"), &exists).unwrap();
+        assert_eq!(d.renditions, Some(vec![]));
+        assert_eq!(
+            parse("a.ogt", &doc("stream true"), &exists)
+                .unwrap()
+                .renditions,
+            None
+        );
+        for bad in ["renditions vp9", "renditions none hevc", "renditions"] {
+            let e = parse("a.ogt", &doc(&format!("stream true\n{bad}")), &exists).unwrap_err();
+            assert!(e.contains("renditions takes"), "{bad}: {e}");
+        }
+        assert!(
+            parse("a.ogt", &doc("renditions hevc"), &exists)
+                .unwrap_err()
+                .contains("stream true")
+        );
+        // Each rendition's crf follows the stream's: their defaults at AV1's 32.
+        assert_eq!((Rendition::H264.crf(32), Rendition::Hevc.crf(32)), (23, 26));
+        assert_eq!((Rendition::H264.crf(63), Rendition::Hevc.crf(0)), (45, 0));
         assert!(
             parse("a.ogt", &doc("crf 40"), &exists)
                 .unwrap_err()

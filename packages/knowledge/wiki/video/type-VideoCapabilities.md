@@ -15,6 +15,7 @@ How this host plays streams. Backend limits are reported here, never by missing 
 | `hardware` | `boolean` | `false` | — | — | — | Whether the browser reports its decoder as hardware-accelerated (WebCodecs' `prefer-hardware` is supported); false for rav1d. |
 | `maxWidth` | `number` | `0` | — | — | — | The widest stream this decoder plays in real time at 30 fps; wider ones still play, with frames held where decoding falls behind. rav1d-wasm plays a larger stream's 720p rendition, cooked beside it, instead. See `audio §8`. |
 | `maxHeight` | `number` | `0` | — | — | — | The tallest, as maxWidth. |
+| `codecs` | `readonly string[]` | `[]` | — | — | — | The codecs streams decode in here, preferred first (`av1`, `hevc`, `h264`; AV1 last where only rav1d-wasm decodes it): a stream plays the first it was cooked in (VideoInfo.codec). Empty where nothing streams. See `audio §8`. |
 
 ```ogt
 struct VideoCapabilities {
@@ -26,7 +27,10 @@ struct VideoCapabilities {
     guide "audio §8"
   }
   field maxHeight u32 "The tallest, as maxWidth."
+  field codecs List.String "The codecs streams decode in here, preferred first (`av1`, `hevc`, `h264`; AV1 last where only rav1d-wasm decodes it): a stream plays the first it was cooked in (VideoInfo.codec). Empty where nothing streams." {
+    guide "audio §8"
+  }
 }
 ```
 
-<sub>Module `video` line 36</sub>
+<sub>Module `video` line 38</sub>

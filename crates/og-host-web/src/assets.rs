@@ -226,10 +226,13 @@ pub fn og_web_fail_inflated(key: f64, reason: String) {
 }
 
 /// The Worker's streamed-video decoders (packages/engine/src/web/video.ts):
-/// `stream(key, width, height, table, data)` takes a stream's AV1 units
-/// once, `frame(stream, player, frame, looped)` answers the VideoFrame a
-/// player shows now or null; `decoder` is what og.video.capabilities
-/// reports (`webcodecs`, `rav1d-wasm` or `none`).
+/// `stream(key, width, height, codec, config, table, data)` takes a
+/// stream's units once (`codec` and `config` empty for AV1, else an H.264
+/// or HEVC rendition's codec string and record), `frame(stream, player,
+/// frame, looped)` answers the VideoFrame a player shows now or null;
+/// `decoder` is what og.video.capabilities reports (`webcodecs`,
+/// `rav1d-wasm` or `none`), and `codecs` the other codecs WebCodecs decodes
+/// (`hevc`, `h264`), preferred first.
 #[wasm_bindgen]
 pub fn og_web_install_video(
     stream: js_sys::Function,
@@ -238,12 +241,14 @@ pub fn og_web_install_video(
     hardware: bool,
     max_width: u32,
     max_height: u32,
+    codecs: Vec<String>,
 ) {
     let d = og_runtime::VideoDecoder {
         name: decoder,
         hardware,
         max_width,
         max_height,
+        codecs,
     };
     VIDEO.with(|v| *v.borrow_mut() = Some((stream, frame, d)));
 }

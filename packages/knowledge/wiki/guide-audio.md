@@ -214,3 +214,13 @@ og.AudioSource in step with the picture.
 
   Wider streams still play, with frames held where decoding falls behind
   (measured; docs/design.md §2.9).
+- A browser whose WebCodecs decodes no AV1 (Safari on an iPhone or Mac
+  without AV1 hardware) but decodes HEVC or H.264 plays the stream's
+  rendition in that codec instead, at full size and in hardware where the
+  device has it: VideoInfo.codec says which, and og.video.capabilities'
+  `codecs` lists what this browser decodes, preferred first. The cook adds
+  an HEVC rendition to every stream by default; a video file's
+  `renditions h264` (or `hevc h264`) adds H.264 for browsers without HEVC,
+  and `renditions none` leaves them out. Every rendition has the stream's
+  frames and key frames, so a player is at the same frame whichever codec
+  it plays; an executor always decodes the AV1.

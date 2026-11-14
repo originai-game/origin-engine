@@ -186,12 +186,13 @@ export async function installVideo(glue: WebExtras, av1: string | undefined): Pr
   const choice = await chooseDecoder();
   const streams = new VideoStreams(choice, av1 ?? FALLBACK_URL);
   glue.og_web_install_video(
-    (key, width, height, table, data) => streams.stream(key, width, height, 0, table, data),
+    (key, width, height, codec, config, table, data) => streams.stream(key, width, height, 0, table, data, codec, config),
     (stream, player, frame, looped) => streams.want(player, stream, frame, looped),
     choice.name,
     choice.hardware,
     choice.maxWidth,
     choice.maxHeight,
+    [...choice.codecs],
   );
   return streams;
 }

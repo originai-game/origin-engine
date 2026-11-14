@@ -1,0 +1,18 @@
+{
+  "added": [
+    {
+      "member": "type video renditions",
+      "summary": "A streamed video (`stream true`) now also cooks an HEVC rendition of the same frames and key frames by default (ffmpeg's libx265), and an H.264 one with `renditions h264` or `renditions hevc h264` (libx264); `renditions none` leaves them out. A browser whose WebCodecs decodes no AV1 but decodes HEVC or H.264, such as Safari on an iPhone or Mac without AV1 hardware, plays that rendition in place of the AV1, at full size and in hardware where the device has it, instead of the 720p software decoder. Only one copy is fetched. An ffmpeg without libx265 cooks no default rendition and says so; og doctor reports the encoders."
+    },
+    {
+      "member": "VideoCapabilities.codecs",
+      "summary": "The codecs streams decode in on this host, preferred first (`av1`, `hevc`, `h264`)."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "VideoInfo.codec",
+      "summary": "Names the codec this host plays the stream in (`av1`, `hevc` or `h264`) instead of always `av1`."
+    }
+  ]
+}

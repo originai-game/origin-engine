@@ -23951,6 +23951,7 @@ pub struct VideoCapabilities {
     pub hardware: bool,
     pub max_width: u32,
     pub max_height: u32,
+    pub codecs: Vec<String>,
 }
 
 impl Default for VideoCapabilities {
@@ -23961,6 +23962,7 @@ impl Default for VideoCapabilities {
             hardware: Default::default(),
             max_width: Default::default(),
             max_height: Default::default(),
+            codecs: Default::default(),
         }
     }
 }
@@ -23977,6 +23979,7 @@ impl FromJson for VideoCapabilities {
             hardware: field(o, "hardware", d.hardware)?,
             max_width: field(o, "maxWidth", d.max_width)?,
             max_height: field(o, "maxHeight", d.max_height)?,
+            codecs: field(o, "codecs", d.codecs)?,
         })
     }
 }
@@ -23989,6 +23992,7 @@ impl ToJson for VideoCapabilities {
         o.insert("hardware".into(), self.hardware.to_json());
         o.insert("maxWidth".into(), self.max_width.to_json());
         o.insert("maxHeight".into(), self.max_height.to_json());
+        o.insert("codecs".into(), self.codecs.to_json());
         Value::Object(o)
     }
 }

@@ -183,12 +183,13 @@ export interface WebExtras {
   og_web_set_fetcher(fetch: (path: string) => void): void;
   /** Streamed video's decoders (video.ts); absent in an older engine module. */
   og_web_install_video?(
-    stream: (key: number, width: number, height: number, table: Uint32Array, data: Uint8Array) => boolean,
+    stream: (key: number, width: number, height: number, codec: string, config: Uint8Array, table: Uint32Array, data: Uint8Array) => boolean,
     frame: (stream: number, player: number, frame: number, looped: boolean) => VideoFrame | null,
     decoder: string,
     hardware: boolean,
     maxWidth: number,
     maxHeight: number,
+    codecs: string[],
   ): void;
   og_web_set_transcoder?(transcode: (id: string, ktx2: Uint8Array, target: string) => void): void;
   og_web_fail_texture?(id: string, reason: string): void;

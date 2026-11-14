@@ -20,7 +20,7 @@
 //! | texture (`og.Texture`; a PNG, JPEG, KTX2, WebP, TGA, PSD or DDS source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
 //! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: a clip's frames are the texture array `<id>#frames`, a stream's the `og.VideoStream` `<id>#stream` with its poster `<id>#poster`; its sound `<id>#audio` |
-//! | video stream (`og.VideoStream`, `<id>#stream` of a streamed video, fetched when it loads) | [`VideoStreamMeta`] | `config` (AV1's sequence header OBU), `units` [`VideoUnitRow`], `data` (the AV1 temporal units) |
+//! | video stream (`og.VideoStream`, `<id>#stream` of a streamed video, fetched when it loads; its renditions `<id>#stream720`, `<id>#streamhevc` and `<id>#streamh264` the same) | [`VideoStreamMeta`] | `config` (AV1's sequence header OBU, H.264's `avcC` or HEVC's `hvcC` record), `units` [`VideoUnitRow`], `data` (the AV1 temporal units, or the H.264 or HEVC samples as MP4 holds them) |
 //! | sound (`og.Sound`; a `.wav`, `.mp3`, `.ogg` (Vorbis), `.flac` or `.opus`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (`codec` QOA: a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) or `opus` (`codec` Opus: an Opus sound, `crate::opus`) |
 //! | sound chunk (`og.SoundChunk`, `<id>#chunk<n>` of a sound cooked in chunks) | [`SoundChunkMeta`] | `qoa` (the chunk's QOA frames) |
 //! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `kerning` [`KernRow`] (sorted by left, right), `atlas.<n>` (KTX2 RGBA8, zlib), `ttf` (the font file, when shaped or `runtime`) |
@@ -705,6 +705,12 @@ row!(
 pub mod video_codec {
     /// AV1, 8-bit 4:2:0, in temporal units of the low-overhead OBU format.
     pub const AV1: u32 = 1;
+    /// H.264, 8-bit 4:2:0, no B-frames: each unit an MP4 sample (NAL units
+    /// behind their lengths), `config` the `avcC` record.
+    pub const H264: u32 = 2;
+    /// HEVC, 8-bit 4:2:0, no B-frames: each unit an MP4 sample, `config`
+    /// the `hvcC` record.
+    pub const HEVC: u32 = 3;
 }
 
 /// The video blob.
@@ -718,8 +724,9 @@ impl BlobKind for Video {
 
 row!(
     /// The root of a video stream blob (`<id>#stream` of a streamed
-    /// `type video`): the `config` section is the codec's configuration
-    /// (AV1: the sequence header OBU), `units` one [`VideoUnitRow`] per
+    /// `type video`, or one of its renditions): the `config` section is the
+    /// codec's configuration (AV1: the sequence header OBU; H.264 and HEVC:
+    /// the `avcC` or `hvcC` record), `units` one [`VideoUnitRow`] per
     /// frame (frame n is unit n, shown at n / fps), `data` the units' bytes.
     VideoStreamMeta, "og.VideoStream", 1 {
         /// [`video_codec`].

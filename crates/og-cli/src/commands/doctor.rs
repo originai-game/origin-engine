@@ -266,6 +266,29 @@ pub fn run(args: &[&str]) -> ExitCode {
             Some("brew install ffmpeg, or an ffmpeg built with libsvtav1".into()),
         ),
     }
+    // The encoders of a stream's HEVC and H.264 renditions (`renditions`).
+    let has = og_cook::cook::video::has_encoder;
+    match (has("libx265"), has("libx264")) {
+        (true, true) => out.check(
+            "ok",
+            "rendition encoders",
+            "libx265 and libx264 (og cook adds HEVC and H.264 copies of streamed footage for browsers without AV1)",
+            None,
+        ),
+        (hevc, h264) => out.check(
+            "optional",
+            "rendition encoders",
+            &format!(
+                "ffmpeg has no {}: og cook leaves out the default HEVC rendition without libx265 and refuses `renditions` naming a codec it has no encoder for",
+                [(!hevc).then_some("libx265"), (!h264).then_some("libx264")]
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<_>>()
+                    .join(" or ")
+            ),
+            Some("brew install ffmpeg, or apt install ffmpeg".into()),
+        ),
+    }
     let engine = engine_checks(&mut out, &cwd);
     let unchecked_count = usize::from(engine.renderer["ok"].as_bool() == Some(false));
     let ok = out.problems == 0 && (!require_checked || unchecked_count == 0);

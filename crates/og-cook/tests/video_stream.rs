@@ -106,6 +106,144 @@ fn a_stream_cooks_to_av1_units_with_its_key_frames_poster_and_opus_sound() {
     );
 }
 
+/// The H.264 samples of a stream as an Annex B stream ffmpeg reads: the
+/// avcC record's parameter sets first, each NAL unit behind a start code.
+fn annex_b(config: &[u8], units: &[(bool, Vec<u8>)]) -> Vec<u8> {
+    let mut out = Vec::new();
+    let mut at = 6;
+    let sets = |count: usize, at: &mut usize, out: &mut Vec<u8>| {
+        for _ in 0..count {
+            let len = usize::from(u16::from_be_bytes([config[*at], config[*at + 1]]));
+            out.extend_from_slice(&[0, 0, 0, 1]);
+            out.extend_from_slice(&config[*at + 2..*at + 2 + len]);
+            *at += 2 + len;
+        }
+    };
+    sets(usize::from(config[5] & 0x1f), &mut at, &mut out);
+    let pps = usize::from(config[at]);
+    at += 1;
+    sets(pps, &mut at, &mut out);
+    let len = usize::from(config[4] & 3) + 1;
+    for (_, u) in units {
+        let mut i = 0;
+        while i + len <= u.len() {
+            let n = u[i..i + len]
+                .iter()
+                .fold(0usize, |v, &b| (v << 8) | usize::from(b));
+            out.extend_from_slice(&[0, 0, 0, 1]);
+            out.extend_from_slice(&u[i + len..i + len + n]);
+            i += len + n;
+        }
+    }
+    out
+}
+
+#[test]
+fn a_stream_cooks_hevc_and_h264_renditions_frame_for_frame_with_its_key_frames() {
+    let has = og_cook::cook::video::has_encoder;
+    if og_cook::cook::video::av1_encoder().is_none() || !has("libx264") || !has("libx265") {
+        eprintln!("skipped: no ffmpeg with AV1, libx264 and libx265");
+        return;
+    }
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-video-renditions");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("assets/clips")).unwrap();
+    std::fs::copy(fixture(), root.join("assets/clips/count.mp4")).unwrap();
+    // 2 s at 30 fps, a key frame every half second; the default (HEVC), both, and none.
+    for (name, line) in [
+        ("default", ""),
+        ("both", "renditions h264 hevc\n"),
+        ("none", "renditions none\n"),
+    ] {
+        std::fs::write(
+            root.join(format!("assets/clips/{name}.ogt")),
+            format!("type video\nversion 1\n---\nsource \"count.mp4\"\nstream true\nfps 30\nmaxSeconds 2\nsize 192 108\nkeyframe 0.5\naudio false\n{line}"),
+        )
+        .unwrap();
+    }
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let b = Bundle::open(&root.join("cooked")).unwrap();
+    let stream = |id: &str| b.video_stream(id, b.read(id).unwrap().as_slice()).unwrap();
+    let av1 = stream("clips/both.ogt#stream");
+    let keys = |s: &og_cook::runtime::CookedVideoStream| {
+        s.units
+            .iter()
+            .enumerate()
+            .filter(|(_, u)| u.0)
+            .map(|(i, _)| i)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(keys(&av1), [0, 15, 30, 45]);
+    for (id, codec, record) in [
+        (
+            "clips/both.ogt#streamhevc",
+            format::video_codec::HEVC,
+            "hvc1",
+        ),
+        (
+            "clips/both.ogt#streamh264",
+            format::video_codec::H264,
+            "avc1",
+        ),
+        (
+            "clips/default.ogt#streamhevc",
+            format::video_codec::HEVC,
+            "hvc1",
+        ),
+    ] {
+        let s = stream(id);
+        assert_eq!(
+            (
+                s.meta.codec,
+                s.meta.width,
+                s.meta.height,
+                s.meta.fps,
+                s.units.len()
+            ),
+            (codec, 192, 108, 30, 60),
+            "{id}"
+        );
+        // The AV1's key frames exactly: a seek starts at the same frame on every decoder.
+        assert_eq!(keys(&s), keys(&av1), "{id}");
+        assert_eq!(s.meta.key_interval, 15, "{id}");
+        let kind = if codec == format::video_codec::HEVC {
+            og_video::mp4::Codec::Hevc
+        } else {
+            og_video::mp4::Codec::H264
+        };
+        let name = og_video::mp4::codec_string(kind, &s.config).unwrap();
+        assert!(name.starts_with(record), "{id}: {name}");
+    }
+    assert!(
+        b.output("clips/default.ogt#streamh264").is_err(),
+        "H.264 only when named"
+    );
+    assert!(
+        b.output("clips/none.ogt#streamhevc").is_err(),
+        "renditions none: none"
+    );
+
+    // ffmpeg decodes the H.264 units, in order, to all 60 frames.
+    let h264 = stream("clips/both.ogt#streamh264");
+    let file = root.join("units.h264");
+    std::fs::write(&file, annex_b(&h264.config, &h264.units)).unwrap();
+    let out = std::process::Command::new(og_cook::cook::video::ffprobe_bin())
+        .args([
+            "-v",
+            "error",
+            "-count_frames",
+            "-select_streams",
+            "v",
+            "-show_entries",
+        ])
+        .args(["stream=nb_read_frames,width,height", "-of", "csv=p=0"])
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "192,108,60");
+}
+
 #[test]
 fn a_stream_wider_than_720p_gets_a_720p_rendition_for_the_webs_fallback() {
     if og_cook::cook::video::av1_encoder().is_none() {

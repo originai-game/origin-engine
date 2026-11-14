@@ -200,12 +200,22 @@ pub trait Hooks {
     fn video_decoder(&self) -> VideoDecoder {
         VideoDecoder::default()
     }
-    /// On the web: a stream's AV1 units handed to the host's decoder once
-    /// (`table`: offset, size and key per frame into `data`). False: this
-    /// host has no decoder.
+    /// On the web: a stream's units handed to the host's decoder once
+    /// (`table`: offset, size and key per frame into `data`). `codec` is
+    /// WebCodecs' codec string of an H.264 or HEVC rendition and `config`
+    /// its `avcC` or `hvcC` record (the decoder's description); both empty
+    /// for AV1. False: this host has no decoder.
     #[cfg(target_arch = "wasm32")]
-    fn video_stream(&self, stream: u64, size: (u32, u32), table: &[u32], data: &[u8]) -> bool {
-        let _ = (stream, size, table, data);
+    fn video_stream(
+        &self,
+        stream: u64,
+        size: (u32, u32),
+        codec: &str,
+        config: &[u8],
+        table: &[u32],
+        data: &[u8],
+    ) -> bool {
+        let _ = (stream, size, codec, config, table, data);
         false
     }
     /// On the web: the frame player `player` of `stream` should show now
@@ -233,6 +243,10 @@ pub struct VideoDecoder {
     /// The largest stream it decodes in real time at 30 fps.
     pub max_width: u32,
     pub max_height: u32,
+    /// The codecs besides AV1 the browser's WebCodecs decodes (`hevc`,
+    /// `h264`), preferred first: a stream plays its rendition in the first
+    /// one where `name` is not `webcodecs`. None natively.
+    pub codecs: Vec<String>,
 }
 
 impl Default for VideoDecoder {
@@ -245,6 +259,7 @@ impl Default for VideoDecoder {
                 hardware: false,
                 max_width: 0,
                 max_height: 0,
+                codecs: Vec::new(),
             }
         } else {
             VideoDecoder {
@@ -252,6 +267,7 @@ impl Default for VideoDecoder {
                 hardware: false,
                 max_width: 7680,
                 max_height: 4320,
+                codecs: Vec::new(),
             }
         }
     }

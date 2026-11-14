@@ -11,6 +11,10 @@
 //
 // - WebCodecs' VideoDecoder, in this Worker, where the browser decodes AV1
 //   (`VideoDecoder.isConfigSupported`): asynchronous, never blocks a frame.
+//   Where it decodes no AV1 but decodes HEVC or H.264 (Safari on devices
+//   without AV1 hardware), the runtime hands over that rendition of the
+//   stream instead, with its codec string and its avcC or hvcC record, and
+//   WebCodecs plays it the same way.
 // - Otherwise rav1d built for wasm32-wasip1 (crates/og-video-wasm,
 //   dist/av1/og-av1.wasm), fetched only then, in a Worker of its own made
 //   from `av1WorkerSource()`; it answers packed I420 planes, which become a
@@ -112,6 +116,10 @@ export interface StreamUnits {
   readonly height: number;
   readonly fps: number;
   readonly frames: number;
+  /** An H.264 or HEVC rendition's codec string (`avc1.…`, `hvc1.…`); empty for AV1. */
+  readonly codec: string;
+  /** Its avcC or hvcC record, WebCodecs' `description`; empty for AV1. */
+  readonly config: Uint8Array;
   /** offset, size, key (1 or 0) per frame. */
   readonly table: Uint32Array;
   readonly data: Uint8Array;
@@ -119,12 +127,28 @@ export interface StreamUnits {
 }
 
 /** A stream's units from its table and bytes (as `og_web_video_stream`'s hook hands them over). */
-export function streamUnits(width: number, height: number, fps: number, table: Uint32Array, data: Uint8Array): StreamUnits {
+export function streamUnits(width: number, height: number, fps: number, table: Uint32Array, data: Uint8Array, codec = "", config: Uint8Array = new Uint8Array(0)): StreamUnits {
   const frames = table.length / 3;
   const keys: number[] = [];
   for (let i = 0; i < frames; i++) if (table[i * 3 + 2]) keys.push(i);
-  return { width, height, fps, frames, table, data, keys: Uint32Array.from(keys) };
+  return { width, height, fps, frames, codec, config, table, data, keys: Uint32Array.from(keys) };
 }
+
+/** WebCodecs' configuration for a stream: AV1, or its rendition's codec with its record. */
+export function decoderConfig(s: StreamUnits): VideoDecoderConfig {
+  const base = { codedWidth: s.width, codedHeight: s.height, optimizeForLatency: true };
+  return s.codec ? { ...base, codec: s.codec, description: s.config } : { ...base, codec: av1Codec(s.width, s.height) };
+}
+
+/**
+ * The renditions' codecs a probe asks WebCodecs about, at 1080p: HEVC Main
+ * at level 4.1 and H.264 High at 4.1, what the cook's libx265 and libx264
+ * write for a stream up to 1920 wide.
+ */
+const RENDITION_PROBES = [
+  ["hevc", "hvc1.1.6.L123.90"],
+  ["h264", "avc1.640029"],
+] as const;
 
 function unitOf(s: StreamUnits, n: number): { data: Uint8Array; key: boolean } {
   const o = s.table[n * 3]!;
@@ -144,6 +168,8 @@ export interface VideoDecoderChoice {
   /** The largest stream it plays in real time at 30 fps. */
   readonly maxWidth: number;
   readonly maxHeight: number;
+  /** The renditions' codecs WebCodecs decodes here (`hevc`, `h264`), preferred first. */
+  readonly codecs: readonly string[];
 }
 
 /**
@@ -157,23 +183,31 @@ export const FALLBACK_MAX = { width: 1280, height: 720 } as const;
 /** The fallback module in the package (a built page passes `av1/og-av1.wasm` beside it). */
 export const FALLBACK_URL = new URL("../../dist/av1/og-av1.wasm", import.meta.url).href;
 
-/** Which decoder this browser plays AV1 with. */
+/** Which decoder this browser plays AV1 with, and which renditions' codecs WebCodecs decodes. */
 export async function chooseDecoder(): Promise<VideoDecoderChoice> {
   const g = globalThis as { VideoDecoder?: typeof VideoDecoder; VideoFrame?: typeof VideoFrame };
+  const codecs: string[] = [];
   if (g.VideoDecoder) {
+    for (const [word, codec] of RENDITION_PROBES) {
+      try {
+        if ((await g.VideoDecoder.isConfigSupported({ codec, codedWidth: 1920, codedHeight: 1080 })).supported) codecs.push(word);
+      } catch {
+        /* not this one */
+      }
+    }
     try {
       const base = { codec: av1Codec(1920, 1080), codedWidth: 1920, codedHeight: 1080 };
       if ((await g.VideoDecoder.isConfigSupported(base)).supported) {
         const hw = await g.VideoDecoder.isConfigSupported({ ...base, hardwareAcceleration: "prefer-hardware" });
-        return { name: "webcodecs", hardware: hw.supported === true, maxWidth: 3840, maxHeight: 2160 };
+        return { name: "webcodecs", hardware: hw.supported === true, maxWidth: 3840, maxHeight: 2160, codecs };
       }
     } catch {
       /* fall back */
     }
   }
   // The fallback hands I420 planes to the browser as a VideoFrame.
-  if (g.VideoFrame && typeof WebAssembly === "object") return { name: "rav1d-wasm", hardware: false, maxWidth: FALLBACK_MAX.width, maxHeight: FALLBACK_MAX.height };
-  return { name: "none", hardware: false, maxWidth: 0, maxHeight: 0 };
+  if (g.VideoFrame && typeof WebAssembly === "object") return { name: "rav1d-wasm", hardware: false, maxWidth: FALLBACK_MAX.width, maxHeight: FALLBACK_MAX.height, codecs };
+  return { name: "none", hardware: false, maxWidth: 0, maxHeight: 0, codecs };
 }
 
 /** One player's decoder, as the runtime asks it each frame. */
@@ -251,7 +285,7 @@ class WebCodecsPlayer implements Player {
   }
 
   #configure(): void {
-    this.#decoder.configure({ codec: av1Codec(this.#s.width, this.#s.height), codedWidth: this.#s.width, codedHeight: this.#s.height, optimizeForLatency: true });
+    this.#decoder.configure(decoderConfig(this.#s));
   }
 
   #output(f: VideoFrame): void {
@@ -498,8 +532,12 @@ export class VideoStreams {
     this.fallbackUrl = fallbackUrl;
   }
 
-  /** A stream's units, handed over once by the runtime. */
-  stream(key: number, width: number, height: number, fps: number, table: Uint32Array, data: Uint8Array): boolean {
+  /** A stream's units, handed over once by the runtime: AV1, or an H.264 or HEVC rendition (`codec`, `config`) WebCodecs decodes. */
+  stream(key: number, width: number, height: number, fps: number, table: Uint32Array, data: Uint8Array, codec = "", config: Uint8Array = new Uint8Array(0)): boolean {
+    if (codec) {
+      this.#streams.set(key, streamUnits(width, height, fps, table.slice(), data.slice(), codec, config.slice()));
+      return true;
+    }
     if (this.choice.name === "none") return false;
     const s = streamUnits(width, height, fps, table.slice(), data.slice());
     this.#streams.set(key, s);
@@ -549,7 +587,7 @@ export class VideoStreams {
     if (!p) {
       const s = this.#streams.get(stream);
       if (!s) return null;
-      if (this.choice.name === "webcodecs") p = new WebCodecsPlayer(s);
+      if (this.choice.name === "webcodecs" || s.codec) p = new WebCodecsPlayer(s);
       else if (this.choice.name === "rav1d-wasm" && this.#worker) p = new WasmPlayer(player, stream, s.frames, this.#worker);
       else return null;
       this.#players.set(player, p);

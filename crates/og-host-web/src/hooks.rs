@@ -178,18 +178,27 @@ impl Hooks for WebHooks {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn video_stream(&self, stream: u64, size: (u32, u32), table: &[u32], data: &[u8]) -> bool {
+    fn video_stream(
+        &self,
+        stream: u64,
+        size: (u32, u32),
+        codec: &str,
+        config: &[u8],
+        table: &[u32],
+        data: &[u8],
+    ) -> bool {
         VIDEO.with(|v| {
             let Some((put, _, _)) = &*v.borrow() else {
                 return false;
             };
-            let args = js_sys::Array::of5(
-                &JsValue::from_f64(stream as f64),
-                &JsValue::from(size.0),
-                &JsValue::from(size.1),
-                &js_sys::Uint32Array::from(table),
-                &js_sys::Uint8Array::from(data),
-            );
+            let args = js_sys::Array::new();
+            args.push(&JsValue::from_f64(stream as f64));
+            args.push(&JsValue::from(size.0));
+            args.push(&JsValue::from(size.1));
+            args.push(&JsValue::from_str(codec));
+            args.push(&js_sys::Uint8Array::from(config));
+            args.push(&js_sys::Uint32Array::from(table));
+            args.push(&js_sys::Uint8Array::from(data));
             put.apply(&JsValue::NULL, &args)
                 .ok()
                 .and_then(|r| r.as_bool())

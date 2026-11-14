@@ -100,5 +100,6 @@ pub fn og_video_capabilities(_world: u32) -> crate::host::wire::VideoCapabilitie
         hardware: false,
         max_width: 0,
         max_height: 0,
+        codecs: Vec::new(),
     }
 }
