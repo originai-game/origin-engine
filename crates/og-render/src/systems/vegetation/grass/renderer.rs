@@ -10,6 +10,7 @@ pub(crate) fn lit_source() -> String {
             crate::FRAME_WGSL,
             &crate::clusters::wgsl(),
             crate::LIGHTING_WGSL,
+            crate::WEATHER_RAIN_WGSL,
             crate::WEATHER_SURFACE_WGSL,
             &og_render_data::lightmap::probe_wgsl(),
             crate::AREA_WGSL,

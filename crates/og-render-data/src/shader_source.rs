@@ -49,6 +49,9 @@ pub const LIGHTING_WGSL: &str = concat!(
 );
 /// Rain, puddles and snow on lit surfaces (weather.rs), after
 /// lighting.wgsl, in the standard, physical and terrain lit modules.
+/// The weather's noise, its shelter test and the rain's rings: before
+/// [`WEATHER_SURFACE_WGSL`] in the lit modules, and the water's.
+pub const WEATHER_RAIN_WGSL: &str = wgsl!("weather_rain.wgsl");
 pub const WEATHER_SURFACE_WGSL: &str = wgsl!("weather_surface.wgsl");
 
 /// Rect lights and cookies (area.rs), after lighting.wgsl.
@@ -111,6 +114,7 @@ pub fn lit_source_with(hooks: &str, planar: bool) -> String {
             &skin::palette_wgsl(3),
             hooks,
             LIGHTING_WGSL,
+            WEATHER_RAIN_WGSL,
             WEATHER_SURFACE_WGSL,
             &lightmap::probe_wgsl(),
             AREA_WGSL,
@@ -150,6 +154,7 @@ pub fn physical_source(hooks: &str) -> String {
             &skin::palette_wgsl(3),
             hooks,
             LIGHTING_WGSL,
+            WEATHER_RAIN_WGSL,
             WEATHER_SURFACE_WGSL,
             &lightmap::probe_wgsl(),
             AREA_WGSL,

@@ -76,7 +76,6 @@ struct Weathered {
   s: Surface,
   n: vec3<f32>,
 };
-override OG_WEATHER: bool = false;
 fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32, standing: f32) -> Weathered {
   return Weathered(s_in, n_in);
 }
