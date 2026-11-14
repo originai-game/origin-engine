@@ -1759,4 +1759,66 @@ mod tests {
         // Settled: no layer, a solid stroke.
         assert_eq!(seen[39], (None, Some(([0.0; 2], 0.0))));
     }
+
+    /// A rule that sets a prop by a binding (`top: bind(y)`) places its
+    /// element by the bound value, and follows it.
+    ///
+    /// Ways it could fail: the rule's prop left out of the element's
+    /// inputs (resolving it finds no value), or read once.
+    #[test]
+    fn a_rule_s_bound_prop_follows_its_binding() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(
+            UiDocument::parse(
+                "placed.svelte",
+                r#"<meta name="component" content="placed">
+<meta name="prop:y" content="number">
+<div id="Box"><div id="Card"></div></div>
+<style>
+#Box { width: 200px; height: 200px; }
+#Card { position: absolute; top: bind(y); width: 10px; height: 10px; }
+</style>"#,
+            )
+            .unwrap(),
+        );
+        let y = SourceId::new("test", "y");
+        ui.docs
+            .execute(Command::Signal {
+                source: y.clone(),
+                initial: json!(40),
+                readable: false,
+            })
+            .unwrap();
+        ui.mount_document(
+            SourceId::new("test", "placed"),
+            "placed",
+            BTreeMap::from([("y".into(), y.clone())]),
+            Default::default(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let top = |ui: &mut Ui| {
+            ui.begin(InputFrame::default(), Viewport::new(640.0, 480.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end();
+            let elements = ui.probe_elements();
+            let of = |id: &str| {
+                elements
+                    .iter()
+                    .find(|e| e.path == id || e.path.ends_with(&format!("/{id}")))
+                    .unwrap_or_else(|| panic!("no {id}"))
+                    .y
+            };
+            of("Card") - of("test:placed")
+        };
+        assert_eq!(top(&mut ui), 40.0);
+        ui.docs
+            .execute(Command::Set {
+                source: y,
+                value: json!(64),
+                force: false,
+            })
+            .unwrap();
+        assert_eq!(top(&mut ui), 64.0);
+    }
 }

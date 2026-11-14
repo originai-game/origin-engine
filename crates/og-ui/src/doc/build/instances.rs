@@ -47,7 +47,7 @@ impl CachedInputs {
         self.properties
             .iter()
             .find(|(p, t, _)| p == property && *t == ty)
-            .expect("compiled property input")
+            .unwrap_or_else(|| panic!("no compiled input for the property {property:?} as {ty:?}"))
             .2
             .clone()
     }

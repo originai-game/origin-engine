@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "bind()",
+      "summary": "A style rule that sets a property by a binding (#Card { top: bind(y) }) works in a mounted document and follows the bound value. Mounting such a document stopped the engine with \"compiled property input\"."
+    }
+  ]
+}

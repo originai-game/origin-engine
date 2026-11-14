@@ -134,10 +134,13 @@ impl RetainedHost {
             run_events: Default::default(),
             run_reads: false,
         };
+        // Its own props, and those its rules set by a binding
+        // (`top: bind(y)`).
         let properties = node
             .props
             .iter()
-            .chain(node.at.iter().flat_map(|(_, props)| props));
+            .chain(node.at.iter().flat_map(|(_, props)| props))
+            .chain(node.rules.iter().flat_map(|rule| &rule.props));
         for p in properties {
             let expression = match &p.value {
                 PropValue::Lit(_) => continue,
