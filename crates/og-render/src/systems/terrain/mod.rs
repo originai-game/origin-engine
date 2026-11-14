@@ -754,3 +754,34 @@ pub(crate) struct TerrainPassLayouts<'a> {
 
 #[cfg(test)]
 mod tests;
+
+/// The system's modules for [`crate::shader_sources`]: a label and its WGSL.
+pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
+    add(
+        "terrain",
+        crate::terrain::terrain_lit_source(
+            crate::FRAME_WGSL,
+            &crate::clusters::wgsl(),
+            crate::LIGHTING_WGSL,
+        ),
+    );
+    add("terrain shadow", crate::terrain::terrain_shadow_source());
+    let terrain = crate::terrain::terrain_lit_source(
+        crate::FRAME_WGSL,
+        &crate::clusters::wgsl(),
+        crate::LIGHTING_WGSL,
+    );
+    add(
+        "terrain (layer arrays)",
+        crate::terrain::terrain_array_source(&terrain),
+    );
+    add(
+        "terrain shadow (layer arrays)",
+        crate::terrain::terrain_shadow_array_source(),
+    );
+    add("terrain corners", crate::terrain::terrain_corners_source());
+    add(
+        "terrain corners (layer arrays)",
+        crate::terrain::terrain_array_source(&crate::terrain::terrain_corners_source()),
+    );
+}

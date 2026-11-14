@@ -61,24 +61,9 @@ pbr array maps                           | full         | full    | full   | ful
 pbr, two planar reflections              | full         | full    | full   | full | full              | full      | full     | full
 pbr array maps, two planar reflections   | full         | full    | full   | full | full              | full      | full     | full
 physical                                 | full         | full    | full   | full | stub              | full      | full     | full
-wind                                     | full         | full    | full   | full | stub              | full      | full     | full
 meshlet lit                              | full         | full    | full   | full | stub              | full      | full     | full
 meshlet lit (planar)                     | full         | full    | full   | full | full              | full      | full     | full
-stylise object                           | full         | full    | full   | full | stub              | full      | full     | full
 custom full lit=true                     | full         | full    | full   | full | -                 | full      | -        | full
-sprite                                   | -            | -       | -      | full | -                 | -         | -        | -
-sprite hooks                             | -            | -       | -      | full | -                 | -         | -        | -
-sprite hooks (colour only)               | -            | -       | -      | full | -                 | -         | -        | -
-sprite array                             | -            | -       | -      | -    | -                 | -         | -        | -
-sprite mesh                              | -            | -       | -      | full | -                 | -         | -        | -
-sprite skin                              | -            | -       | -      | full | -                 | -         | -        | -
-tiles                                    | -            | -       | -      | full | -                 | -         | -        | -
-scatter                                  | full         | full    | full   | -    | stub              | full      | -        | full
-grass                                    | full         | full    | full   | -    | stub              | full      | -        | full
-terrain                                  | full         | full    | full   | -    | stub              | stub      | -        | full
-terrain (layer arrays)                   | full         | full    | full   | -    | stub              | stub      | -        | full
-water                                    | full         | -       | -      | -    | -                 | stub      | -        | full
-fluid 3d                                 | full         | -       | -      | -    | -                 | stub      | -        | full
 volumetric                               | full         | -       | -      | -    | -                 | -         | -        | -
 volumetric raymarch                      | full         | -       | -      | -    | -                 | -         | -        | -
 particles                                | full         | -       | -      | full | -                 | stub      | -        | full
@@ -86,6 +71,21 @@ pbr lean                                 | full         | full    | full   | ful
 pbr lean, two planar reflections         | full         | full    | full   | full | full              | full      | full     | full
 volumetric (water)                       | full         | -       | -      | -    | -                 | -         | -        | -
 volumetric raymarch (water)              | full         | -       | -      | -    | -                 | -         | -        | -
+fluid 3d                                 | full         | -       | -      | -    | -                 | stub      | -        | full
+sprite                                   | -            | -       | -      | full | -                 | -         | -        | -
+sprite hooks                             | -            | -       | -      | full | -                 | -         | -        | -
+sprite hooks (colour only)               | -            | -       | -      | full | -                 | -         | -        | -
+sprite array                             | -            | -       | -      | -    | -                 | -         | -        | -
+sprite mesh                              | -            | -       | -      | full | -                 | -         | -        | -
+sprite skin                              | -            | -       | -      | full | -                 | -         | -        | -
+tiles                                    | -            | -       | -      | full | -                 | -         | -        | -
+stylise object                           | full         | full    | full   | full | stub              | full      | full     | full
+terrain                                  | full         | full    | full   | -    | stub              | stub      | -        | full
+terrain (layer arrays)                   | full         | full    | full   | -    | stub              | stub      | -        | full
+wind                                     | full         | full    | full   | full | stub              | full      | full     | full
+scatter                                  | full         | full    | full   | -    | stub              | full      | -        | full
+grass                                    | full         | full    | full   | -    | stub              | full      | -        | full
+water                                    | full         | -       | -      | -    | -                 | stub      | -        | full
 ";
     let table = table();
     assert!(

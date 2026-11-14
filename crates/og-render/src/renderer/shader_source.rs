@@ -22,6 +22,17 @@ pub(crate) fn fx_layout_entries(planar: bool) -> Vec<wgpu::BindGroupLayoutEntry>
     entries
 }
 
+/// Every module the renderer can compile, in each variant it has: with and
+/// without the planar reflection in the lit modules' effect group,
+/// multisampled or single depth for the occlusion pyramid, the volumetric
+/// fog's froxel grid or raymarch.
+pub fn shader_sources() -> Vec<ShaderSource> {
+    let mut out = Vec::new();
+    shaders::mechanism_sources(&mut out);
+    crate::systems::shader_sources(&mut |label, wgsl| out.push(ShaderSource::plain(label, wgsl)));
+    shaders::with_variants(out)
+}
+
 /// The shadow pass slot of the weather occlusion map (weather.rs
 /// `shelter_view`), after the cascades' and the local faces'.
 pub(crate) const SHELTER_SLOT: usize = CASCADES + LOCAL_SHADOW_LAYERS;

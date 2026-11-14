@@ -17,6 +17,17 @@ pub struct ShaderSource {
     pub constants: Vec<(String, f64)>,
 }
 
+impl ShaderSource {
+    /// A module with no overrides set.
+    pub(crate) fn plain(label: &str, wgsl: String) -> ShaderSource {
+        ShaderSource {
+            label: label.to_string(),
+            wgsl,
+            constants: Vec::new(),
+        }
+    }
+}
+
 /// The renderer's own modules made without wgpu's loop bounding
 /// (`unbounded_shader`), by their label in [`shader_sources`]
 /// (their variants too). `tests/shader_loops.rs` proves every loop in them
@@ -29,19 +40,12 @@ pub const UNBOUNDED_MODULES: &[&str] = &[
     "volumetric raymarch",
 ];
 
-/// Every module the renderer can compile, in each variant it has: with and
-/// without the planar reflection in the lit modules' effect group,
-/// multisampled or single depth for the occlusion pyramid, the volumetric
-/// fog's froxel grid or raymarch.
-pub fn shader_sources() -> Vec<ShaderSource> {
-    let mut out = Vec::new();
-    let mut add = |label: &str, wgsl: String| {
-        out.push(ShaderSource {
-            label: label.to_string(),
-            wgsl,
-            constants: Vec::new(),
-        })
-    };
+/// The mechanisms' modules, in each variant they have: with and without
+/// the planar reflection in the lit modules' effect group, multisampled
+/// or single depth for the occlusion pyramid, the volumetric fog's froxel
+/// grid or raymarch. A world system lists its own (`systems/`).
+pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
+    let mut add = |label: &str, wgsl: String| out.push(ShaderSource::plain(label, wgsl));
     let hooks = crate::hooks::default_hooks();
     // With two planar reflections (RenderDesc::planar_reflections) the lit
     // module reads the effect group's planar reflection.
@@ -56,11 +60,6 @@ pub fn shader_sources() -> Vec<ShaderSource> {
         );
     }
     add("physical", crate::physical_source(&hooks));
-    add("simulation surface", crate::surface::WGSL.to_string());
-    add("garment draw", crate::garment_gpu::WGSL.to_string());
-    add("visual body", crate::visual_sim::surface_source());
-    add("visual garment", crate::visual_sim::garment_source());
-    add("visual fluid", crate::visual_fluid::source());
     add(
         "meshlet cull",
         crate::meshlet_gpu::MESHLET_CULL_WGSL.to_string(),
@@ -72,13 +71,6 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     add("shadow", crate::shadow_source(&hooks));
     // The vegetation's simulated wind field (G2).
     add("wind field", crate::wind_field::source());
-    add("grass trample", crate::trample::source());
-    add("debris", crate::debris::source());
-    add("scatter cull", crate::scatter_cull::source());
-    // Wind on placed models (R6): the lit and shadow modules with its hook.
-    let wind = crate::wind_shader().hooks_wgsl();
-    add("wind", crate::lit_source_with(&wind, false));
-    add("wind shadow", crate::shadow_source(&wind));
     add("meshlet lit", crate::meshlet_gpu::lit_source(false));
     add("meshlet lit (planar)", crate::meshlet_gpu::lit_source(true));
     add("meshlet shadow", crate::meshlet_gpu::shadow_source());
@@ -88,7 +80,6 @@ pub fn shader_sources() -> Vec<ShaderSource> {
         "shadow array maps",
         crate::material::array_shadow_source(&crate::shadow_source(&hooks)),
     );
-    add("stylise object", crate::stylise_object::object_source());
     // A full custom shader (custom.rs), lit and unlit, and its casters.
     let example = crate::custom::example();
     for lit in [true, false] {
@@ -107,93 +98,11 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     // A target's depth texture: from the view's linear depth prepass.
     add("view resolve depth", crate::views::resolve_depth_source());
     add("lines", crate::lines::LINES_WGSL.to_string());
-    add("sky", crate::sky_source());
-    add("sprite", crate::sprite_source());
-    // A sprite drawn with a material shader: every hook, parameters and
-    // the sprite-only `sprite_texel` (sprite_hooks.rs).
-    let example = crate::sprite_hooks::example();
-    add("sprite hooks", crate::sprite_hooks::source(&example));
-    // Without vertex_offset: the built-in one fills in.
-    let colour_only = crate::MaterialShader {
-        code: example
-            .code
-            .split("fn surface_color")
-            .nth(1)
-            .map_or_else(String::new, |rest| format!("fn surface_color{rest}")),
-        ..example
-    };
-    add(
-        "sprite hooks (colour only)",
-        crate::sprite_hooks::source(&colour_only),
-    );
     // The probe GI's trace and blend (gi_probes.rs).
     add("gi probes trace", crate::gi_probes::trace_source());
     add("gi probes blend", crate::gi_probes::blend_source());
     add("ssr", crate::ssr::source());
-    add("sprite array", crate::sprite_array::source());
-    add("sprite mesh", crate::sprite_mesh::source());
-    add("sprite skin", crate::sprite_skin::source());
-    add("tiles", crate::tiles_gpu::source());
     add("ribbon", crate::ribbon_source());
-    add(
-        "scatter",
-        crate::scatter_lit_source(&crate::hooks::default_hooks()),
-    );
-    add("scatter shadow", crate::scatter_shadow_source());
-    add("grass", crate::grass::lit_source());
-    add("grass shadow", crate::grass::shadow_source());
-    add("grass generate", crate::grass::generate_source(false));
-    add(
-        "grass generate (layer arrays)",
-        crate::grass::generate_source(true),
-    );
-    add(
-        "terrain",
-        crate::terrain::terrain_lit_source(
-            crate::FRAME_WGSL,
-            &crate::clusters::wgsl(),
-            crate::LIGHTING_WGSL,
-        ),
-    );
-    add("terrain shadow", crate::terrain::terrain_shadow_source());
-    let terrain = crate::terrain::terrain_lit_source(
-        crate::FRAME_WGSL,
-        &crate::clusters::wgsl(),
-        crate::LIGHTING_WGSL,
-    );
-    add(
-        "terrain (layer arrays)",
-        crate::terrain::terrain_array_source(&terrain),
-    );
-    add(
-        "terrain shadow (layer arrays)",
-        crate::terrain::terrain_shadow_array_source(),
-    );
-    add("terrain corners", crate::terrain::terrain_corners_source());
-    add(
-        "terrain corners (layer arrays)",
-        crate::terrain::terrain_array_source(&crate::terrain::terrain_corners_source()),
-    );
-    add(
-        "water",
-        crate::water::water_source(crate::pipeline_features::Features::NONE),
-    );
-    for (label, wgsl) in crate::ocean_fft::sources() {
-        add(label, wgsl);
-    }
-    {
-        let (label, wgsl) = crate::water::caustics_source();
-        add(label, wgsl);
-    }
-    add(
-        "metaballs",
-        crate::metaballs::metaballs_source(crate::FRAME_WGSL),
-    );
-    add(
-        "fluid 3d",
-        crate::fluid3d::fluid_source(&crate::fluid_shared_source()),
-    );
-    add("fluid 3d blur", crate::fluid3d::FLUID_BLUR_WGSL.to_string());
     add("volumetric", crate::volumetric::source(true));
     // RenderDesc::volumetric's raymarch.
     add("volumetric raymarch", crate::volumetric::source(false));
@@ -214,44 +123,17 @@ pub fn shader_sources() -> Vec<ShaderSource> {
         "color filter",
         crate::color_vision::COLOR_FILTER_WGSL.to_string(),
     );
-    add("overlay", crate::overlay::overlay_source());
-    // The UI pass (src/ui): its shapes, the built-in materials' composite
-    // and a custom material's.
-    add("ui", crate::ui::pass::ui_source());
-    add("ui builtin materials", crate::ui::pass::builtin_source());
-    add("ui mass", crate::ui::pass::mass_source());
-    add(
-        "ui material (duotone)",
-        crate::ui::ui_material_module_source(&crate::ui::example_ui_material()),
-    );
-    add(
-        "overlay array",
-        crate::sprite_array::OVERLAY_ARRAY_WGSL.to_string(),
-    );
     add("mipmap", crate::mips::MIPMAP_WGSL.to_string());
     add("ibl", crate::ibl::ibl_source());
     add("cloud noise", crate::clouds::NOISE_WGSL.to_string());
     add("cloud shadow", crate::clouds::bake_source());
-    add(
-        "aurora footprint",
-        crate::aurora::FOOTPRINT_WGSL.to_string(),
-    );
-    add("water ripples", crate::water_ripples::WGSL.to_string());
-    add("sea wakes", crate::sea_wakes::WGSL.to_string());
     add("trails", crate::ribbons_gpu::WGSL.to_string());
     add("probe grid", crate::probe_grid::PROBE_GRID_WGSL.to_string());
     add("particle sprites", crate::particles_gpu::sprites_source());
-    add("lights 2d", crate::light2d::LIGHT2D_WGSL.to_string());
-    add(
-        "lights 2d shadows",
-        crate::light2d::LIGHT2D_SHADOW_WGSL.to_string(),
-    );
     add("pack", crate::physical::PACK_WGSL.to_string());
     // Compute: GPU particles and GPU culling.
     add("particle sim", crate::particles_gpu::sim_source());
     add("cull", crate::cull_gpu::CULL_WGSL.to_string());
-    add("crowd cull", crate::crowd::CROWD_CULL_WGSL.to_string());
-    add("crowd bake", crate::crowd_bake_source());
     add("depth pyramid", crate::cull_gpu::hiz_source(false));
     add(
         "depth pyramid (multisampled)",
@@ -283,6 +165,10 @@ pub fn shader_sources() -> Vec<ShaderSource> {
             constants: vec![("VOL_WATER".to_string(), 1.0)],
         });
     }
+}
+
+/// `out` and its modules' variants.
+pub(crate) fn with_variants(mut out: Vec<ShaderSource>) -> Vec<ShaderSource> {
     // Each module with lit features, as its variant without any
     // (pipeline_features.rs): the code the overrides fold away must leave a
     // module every backend takes.

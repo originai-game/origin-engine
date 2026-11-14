@@ -330,7 +330,7 @@ pub use og_render_data::{Capability, Holds};
 use particles::ribbons_gpu::ribbon_source;
 use particles::scene_colliders;
 use shader::shaders;
-pub use shaders::{ShaderSource, UNBOUNDED_MODULES, shader_sources};
+pub use shaders::{ShaderSource, UNBOUNDED_MODULES};
 use shading::lit_prelude::fluid_shared_source;
 use shading::shadow_cache;
 use shading::shadow_fit;

@@ -56,6 +56,19 @@ impl crate::RenderScene {
     }
 }
 
+/// The system's modules for [`crate::shader_sources`]: a label and its WGSL.
+pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
+    // The UI pass (src/ui): its shapes, the built-in materials' composite
+    // and a custom material's.
+    add("ui", crate::ui::pass::ui_source());
+    add("ui builtin materials", crate::ui::pass::builtin_source());
+    add("ui mass", crate::ui::pass::mass_source());
+    add(
+        "ui material (duotone)",
+        crate::ui::ui_material_module_source(&crate::ui::example_ui_material()),
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

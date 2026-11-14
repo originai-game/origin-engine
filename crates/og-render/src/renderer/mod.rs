@@ -27,4 +27,5 @@ pub(crate) use pipelines::*;
 pub(crate) use presentation::LostFlag;
 pub use presentation::{GpuMemory, MAX_RENDER_SCALE, MIN_RENDER_SCALE, Successor};
 pub(crate) use resources::*;
+pub use shader_source::shader_sources;
 pub(crate) use shader_source::*;

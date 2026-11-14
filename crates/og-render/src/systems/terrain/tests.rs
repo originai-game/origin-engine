@@ -48,7 +48,7 @@ fn the_layer_array_variant_reads_two_arrays() {
 
 /// The lit terrain module as the renderer compiles it.
 fn lit_module() -> naga::Module {
-    let src = crate::shaders::shader_sources()
+    let src = crate::shader_sources()
         .into_iter()
         .find(|s| s.label == "terrain")
         .expect("the terrain module");
