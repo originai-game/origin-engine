@@ -248,16 +248,38 @@ pub(crate) fn check_instances(
     Ok(())
 }
 
-/// The content a mount is given, by name: `document` (its root) or
-/// `document#snippet` (one of its snippets), rendered with the mount's
-/// stores.
-pub(super) fn mount_content(
+/// What a mount's root reads beyond its stores (`$name`). Its document's
+/// declared props are each the mount's store of that name, as an
+/// instance's are its user's attributes; one the mount leaves out reads
+/// its default. The content it is given, by name, is `document` (its
+/// root) or `document#snippet` (one of its snippets), rendered with the
+/// mount's stores.
+pub(super) fn mount_lexical(
     ui: &Ui,
+    document: &UiDocument,
     content: &BTreeMap<String, String>,
     context: &BindingContext,
 ) -> Result<Lexical, String> {
     let mut lexical = Lexical::default();
     let written = Arc::new(context.clone());
+    for prop in &document.props {
+        let store = format!("${}", prop.name);
+        let (expression, model) = if context.inputs.contains_key(&prop.name) {
+            (Expr::Path(store.clone()), Some(store))
+        } else if let Some(default) = &prop.default {
+            (Expr::Lit(default.clone()), None)
+        } else {
+            continue;
+        };
+        lexical.props.insert(
+            prop.name.clone(),
+            PropRef {
+                expression: expression.into(),
+                model,
+                context: written.clone(),
+            },
+        );
+    }
     for (name, reference) in content {
         if !crate::doc::syntax::identifier(name) {
             return Err(format!("mount content name '{name}' is not an identifier"));
@@ -552,6 +574,51 @@ mod tests {
             )
             .unwrap_err();
         assert!(error.contains("no snippet 'nowhere'"), "{error}");
+    }
+
+    /// A mount's root reads its document's declared props bare: each is
+    /// the mount's store of that name and follows it, and one the mount
+    /// leaves out reads its default.
+    ///
+    /// Ways it could fail: a prop read only as `$name` (the bare name is
+    /// unknown), the default shown over a store the mount has, or the
+    /// store read once.
+    #[test]
+    fn a_mount_s_root_reads_its_declared_props_bare() {
+        let mut ui = ui();
+        ui.define_document(
+            UiDocument::parse(
+                "sign.svelte",
+                r#"<meta name="component" content="sign">
+<meta name="prop:footer" content="string" data-default="nobody">
+<meta name="prop:title" content="string" data-default="Untitled">
+<column id="Sign"><p id="Title">{title}</p><p id="By">{footer}</p></column>"#,
+            )
+            .unwrap(),
+        );
+        ui.mount_document(
+            SourceId::new("test", "sign"),
+            "sign",
+            inputs(),
+            BTreeMap::new(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        step(&mut ui);
+        let shown = |ui: &Ui| -> Vec<String> { texts(ui).into_iter().map(|(_, t)| t).collect() };
+        assert_eq!(shown(&ui), ["Untitled", "Ann"]);
+        ui.docs
+            .state_mut()
+            .memory
+            .reactive
+            .execute(Command::Set {
+                source: SourceId::new("test", "footer"),
+                value: json!("Bea"),
+                force: false,
+            })
+            .unwrap();
+        step(&mut ui);
+        assert_eq!(shown(&ui), ["Untitled", "Bea"]);
     }
 
     /// An element a snippet renders keeps its own content: its node is the

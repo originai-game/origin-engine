@@ -26,42 +26,7 @@ impl RetainedHost {
     pub(crate) fn restore_instances(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
         while let Some(mount) = self.pending_mounts.first().cloned() {
             let registration = self.registrations[&mount].clone();
-            let document = ui
-                .docs
-                .library
-                .documents
-                .get(&registration.document)
-                .cloned()
-                .ok_or_else(|| format!("missing document '{}'", registration.document))?;
-            let context = BindingContext {
-                node: MountedNode {
-                    mount: mount.clone(),
-                    key: 0,
-                },
-                inputs: Arc::new(registration.inputs.clone()),
-                rows: Arc::default(),
-                row_key: String::new(),
-                selector_nodes: Arc::default(),
-                lexical: Arc::default(),
-            };
-            let compiled =
-                content::mount_content(ui, &registration.content, &context).map(|lexical| {
-                    BindingContext {
-                        lexical: Arc::new(lexical),
-                        ..context
-                    }
-                });
-            let compiled = compiled.and_then(|context| {
-                self.compile(
-                    ui,
-                    (document.clone(), document.root),
-                    context,
-                    None,
-                    root_path(&mount, &document),
-                    env,
-                )
-            });
-            match compiled {
+            match self.compile_mount(ui, &mount, &registration, env) {
                 Ok(root) => {
                     self.pending_mounts.remove(&mount);
                     self.roots.insert(mount, root);
@@ -80,6 +45,49 @@ impl RetainedHost {
         }
         self.restoring = false;
         Ok(())
+    }
+
+    /// Compiles `mount`'s root as `registration` declares it: its document,
+    /// read through its stores and the content it is given.
+    pub(crate) fn compile_mount(
+        &mut self,
+        ui: &mut Ui,
+        mount: &SourceId,
+        registration: &Registration,
+        env: &dyn Env,
+    ) -> Result<Child, String> {
+        let document = ui
+            .docs
+            .library
+            .documents
+            .get(&registration.document)
+            .cloned()
+            .ok_or_else(|| format!("missing document '{}'", registration.document))?;
+        let context = BindingContext {
+            node: MountedNode {
+                mount: mount.clone(),
+                key: 0,
+            },
+            inputs: Arc::new(registration.inputs.clone()),
+            rows: Arc::default(),
+            row_key: String::new(),
+            selector_nodes: Arc::default(),
+            lexical: Arc::default(),
+        };
+        let lexical = content::mount_lexical(ui, &document, &registration.content, &context)?;
+        let context = BindingContext {
+            lexical: Arc::new(lexical),
+            ..context
+        };
+        let path = root_path(mount, &document);
+        self.compile(
+            ui,
+            (document.clone(), document.root),
+            context,
+            None,
+            path,
+            env,
+        )
     }
 
     pub(crate) fn document_replaced(&mut self, ui: &mut Ui, document: &str) {

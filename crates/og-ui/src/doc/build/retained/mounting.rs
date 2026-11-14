@@ -10,13 +10,9 @@ impl Ui {
         env: &dyn Env,
     ) -> Result<(), String> {
         mount.validate()?;
-        let doc = self
-            .docs
-            .library
-            .documents
-            .get(document)
-            .cloned()
-            .ok_or_else(|| format!("missing document '{document}'"))?;
+        if !self.docs.library.documents.contains_key(document) {
+            return Err(format!("missing document '{document}'"));
+        }
         content::check_instances(&self.docs.library.documents, document)?;
         // Every mount reads the engine's `$ui` unless it binds its own.
         let mut inputs = inputs;
@@ -34,40 +30,10 @@ impl Ui {
         }
         let registration = Registration {
             document: document.into(),
-            inputs: inputs.clone(),
-            content: content.clone(),
+            inputs,
+            content,
         };
-        let context = BindingContext {
-            node: MountedNode {
-                mount: mount.clone(),
-                key: 0,
-            },
-            inputs: Arc::new(inputs),
-            rows: Arc::default(),
-            row_key: String::new(),
-            selector_nodes: Arc::default(),
-            lexical: Arc::default(),
-        };
-        let lexical = match content::mount_content(self, &content, &context) {
-            Ok(lexical) => lexical,
-            Err(error) => {
-                self.docs.state_mut().memory.retained = host;
-                return Err(error);
-            }
-        };
-        let context = BindingContext {
-            lexical: Arc::new(lexical),
-            ..context
-        };
-        let root = host.compile(
-            self,
-            (doc.clone(), doc.root),
-            context,
-            None,
-            root_path(&mount, &doc),
-            env,
-        );
-        let result = match root {
+        let result = match host.compile_mount(self, &mount, &registration, env) {
             Ok(root) => {
                 host.registrations.insert(mount.clone(), registration);
                 host.roots.insert(mount.clone(), root);

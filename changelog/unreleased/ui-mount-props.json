@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "prop",
+      "summary": "A mounted document reads its declared props bare, as an instance does: with <meta name=\"prop:objective\" content=\"string\">, {objective} at the mount's root is the mount's store of that name, and a prop the mount leaves out reads its default."
+    }
+  ]
+}
