@@ -38,8 +38,8 @@
 //! kept for the motion vectors. A chunk's bounds grow by the furthest lean.
 
 use crate::ground::{
-    Ground, MAX_TERRAIN_LAYERS, Terrain, TerrainData, TerrainSource, TileGround, horizontal_scale,
-    smoothstep,
+    Ground, GroundDraw, GroundGpu, MAX_TERRAIN_LAYERS, Terrain, TerrainData, TerrainSource,
+    TileGround, horizontal_scale, smoothstep,
 };
 use crate::material::Side;
 use crate::scene::{MaterialHandle, MeshHandle};

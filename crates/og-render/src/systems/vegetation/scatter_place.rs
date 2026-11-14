@@ -460,7 +460,7 @@ impl ScatterPlace {
         &mut self,
         device: &wgpu::Device,
         encoder: &mut crate::Encoder,
-        terrain_draws: &[crate::terrain::TerrainDraw],
+        terrain_draws: &[impl crate::ground::GroundDraw],
         chunks: &[&wgpu::BindGroup],
     ) {
         if self.jobs.is_empty() {
@@ -499,7 +499,7 @@ impl ScatterPlace {
             let Some(td) = terrain_draws.get(job.terrain_draw) else {
                 continue;
             };
-            pass.set_bind_group(1, &td.group, &[0]);
+            pass.set_bind_group(1, td.group(), &[0]);
             pass.set_bind_group(2, *chunk, &[]);
             for r in 0..job.rows {
                 let row = job.first + r;

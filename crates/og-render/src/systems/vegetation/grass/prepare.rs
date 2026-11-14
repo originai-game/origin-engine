@@ -118,8 +118,8 @@ impl GrassRenderer {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         scene: &crate::RenderScene,
-        terrain: &crate::terrain::TerrainRenderer,
-        terrain_draws: &[crate::terrain::TerrainDraw],
+        terrain: &dyn GroundGpu,
+        terrain_draws: &[impl GroundDraw],
         view: GrassView,
         frustum: &crate::frame::Frustum,
         textures: &dyn Fn(crate::TextureHandle) -> Option<&'t wgpu::TextureView>,
@@ -149,7 +149,10 @@ impl GrassRenderer {
             let Some(t) = scene.world.terrains.get(d.terrain) else {
                 continue;
             };
-            let Some(k) = terrain_draws.iter().position(|td| td.terrain == d.terrain) else {
+            let Some(k) = terrain_draws
+                .iter()
+                .position(|td| td.terrain() == d.terrain)
+            else {
                 continue;
             };
             let td = &terrain_draws[k];
@@ -159,12 +162,12 @@ impl GrassRenderer {
             if !g.usable() || (g.layer as usize) >= t.layers.len().max(1) {
                 continue;
             }
-            let Some(terrain_layout) = terrain.group_layout(td.arrayed) else {
+            let Some(terrain_layout) = terrain.group_layout(td.arrayed()) else {
                 continue;
             };
-            let a = usize::from(td.arrayed);
+            let a = usize::from(td.arrayed());
             if self.generate[a].is_none() {
-                self.generate[a] = Some(self.make_generate(device, terrain_layout, td.arrayed));
+                self.generate[a] = Some(self.make_generate(device, terrain_layout, td.arrayed()));
             }
             let cast = g.cast_shadows && scene.lighting.light.cast_shadows && sun_on;
             // With its shadow: the box swept along the sun's reach.
@@ -328,7 +331,7 @@ impl GrassRenderer {
                 slot,
                 maps,
                 terrain_draw: k,
-                arrayed: td.arrayed,
+                arrayed: td.arrayed(),
                 slices: slices.len() as u32,
                 cast,
                 // A level starts half a dither band before its distance;
