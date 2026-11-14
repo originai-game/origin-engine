@@ -1,18 +1,20 @@
 // A farm at dusk (README.md): a tilemap of grass, paths and tilled plots
-// (tiles/farm-map.ogt), crops, fences, trees and props from loose PNGs the
-// cook packs into one texture (props/props.ogt), a farmer walking down the
-// path (a flipbook from a GIF) and warm lamps whose light the fences and the
-// trunks shadow (og.Light2D, og.Occluder2D).
+// (tiles/farm-map.ogt), crops, fences and props from loose PNGs the cook
+// packs into one texture (props/props.ogt), trees of a texture each whose
+// leaves og.Wind moves (og.Sprite.sway, trees/*.png.ogt), a farmer walking
+// down the path (a flipbook from a GIF) and warm lamps whose light the
+// fences and the trunks shadow (og.Light2D, og.Occluder2D).
 //
 //   og run tests/fixtures/top-down --size 960x540 --commands "0.3:walk;2.5:quit"
 //
 // Measurement commands (README.md §Numbers): `crowd:N` adds N crop sprites
 // in view, `lamps:N` swaps the lamps for N shadowed lights in view and
 // `penumbra:R` shows one light of sourceRadius R behind one wall, far from
-// the farm.
+// the farm. `wind:S` blows at S m/s and `look:X:Y` turns the camera from the
+// farmer to a place on the farm (tests/sway.og.ts).
 import { og, math, defineResource, defineSystem, u32, f32 } from "@origingame/engine";
 import type { World } from "@origingame/engine";
-import { MAP, PROPS } from "./art.ts";
+import { MAP, PROPS, TREES } from "./art.ts";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   if (!r.ok) throw new Error(r.reason);
@@ -54,8 +56,16 @@ function prop(world: World, name: keyof typeof PROPS, x: number, y: number, opts
   must(world.insert(e, og.Flipbook, { sheet: s.sheet, clip: og.anim.clip(s, name), playing: false }));
 }
 
-function tree(world: World, kind: "tree" | "pine", x: number, y: number): void {
-  prop(world, kind, x, y, { shadow: 0.35 });
+/**
+ * A tree standing on its feet at (x, y): a texture of its own, which the
+ * cook cut into the parts og.Wind moves (its import settings' `sway`). In
+ * still air it is its picture, as a prop of the sheet is.
+ */
+function tree(world: World, kind: keyof typeof TREES, x: number, y: number): void {
+  const t = TREES[kind];
+  const texture = must(og.load.texture(world, `trees/${kind}.png`));
+  const e = must(world.spawn({ position: { x, y, z: 0 } }));
+  must(world.insert(e, og.Sprite, { texture, width: t.w * TEX, height: t.h * TEX, anchor: t.anchor, sortY: true, shadow: 0.35, sway: 1 }));
   const trunk = must(world.spawn({ position: { x, y: y + 0.2, z: 0 } }));
   must(world.insert(trunk, og.Occluder2D, { width: 0.45, height: 0.35 }));
 }
@@ -183,6 +193,14 @@ export default og.game({
       must(og.tilemap.setTile(world, { entity: farm, layer: "ground", x, y, tile: WATERED }));
       must(world.resource(Play)).tilled += 1;
     },
+    wind: (world, args) => {
+      must(world.resource(og.Wind)).speed = Number(args[0] ?? 8);
+    },
+    look: (world, args) => {
+      const farmer = world.find("farmer");
+      if (farmer !== null) must(world.remove(farmer, og.Follow2D));
+      must(world.resource(og.Camera)).position = { x: Number(args[0] ?? 10), y: Number(args[1] ?? 11.5), z: 10 };
+    },
     crowd: (world, args) => {
       const n = Number(args[0] ?? 1000);
       const kinds = ["parsnip_2", "cauliflower", "pumpkin", "wheat_a", "tomato", "sunflower", "flowers_a", "bush_a"] as const;
@@ -222,6 +240,8 @@ export default og.game({
     walk: { usage: "", doc: "The farmer walks down the path." },
     stop: { usage: "", doc: "The farmer stops." },
     till: { usage: "[x y]", doc: "Water the soil at map cell (x, y)." },
+    wind: { usage: "[S]", doc: "og.Wind blows along +x at S m/s (8, a fresh breeze): the trees' leaves move." },
+    look: { usage: "[x y]", doc: "The camera leaves the farmer and looks at (x, y): by default the west meadow, a tree and a pine." },
     crowd: { usage: "N", doc: "Add N crop sprites in view (the sprite-count measurement)." },
     lamps: { usage: "N", doc: "Replace every light with N shadowed lights in view (the light-pass measurement)." },
     penumbra: { usage: "R", doc: "Show one light of sourceRadius R behind one wall, far from the farm (the penumbra measurement)." },

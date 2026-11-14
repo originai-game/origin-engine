@@ -14,11 +14,17 @@ stack together on the real engine:
   brings it to its own grid with `scale 0.0909`; `align none` keeps the
   walk's own motion (its centroid drifts under 2 px). Steps are frame
   events 1 and 5.
-- **Loose PNGs packed into one texture.** The 29 crop and prop PNGs in
+- **Loose PNGs packed into one texture.** The 27 crop and prop PNGs in
   `assets/props/` are the still sources of one sheet, `props.ogt` with
   `crop each`: the cook cuts each to its bounds and shelf-packs them into
-  `props/props.ogt#sheet`. Every prop, crop, fence and tree is an og.Sprite
-  with an og.Flipbook on its still clip, sorted by y (`sortY`).
+  `props/props.ogt#sheet`. Every prop, crop and fence is an og.Sprite with
+  an og.Flipbook on its still clip, sorted by y (`sortY`).
+- **Trees in the wind.** The tree and the pine are textures of their own
+  in `assets/trees/`, cooked with `sway clumps` and `sway tiers`
+  (`*.png.ogt`): the cook cuts each into the parts og.Wind moves. Each
+  tree is an og.Sprite with `sway 1`, standing on a whole texel. In still
+  air it draws as its picture; `wind:S` blows at S m/s and its leaves and
+  tiers lean and loop downwind.
 - **2D light at dusk.** og.Lighting2D with a violet ambient and five warm
   lamps (og.Light2D, `castShadows`, `sourceRadius` 0.25); fences and crates
   cast with their sprite rectangle (`castShadow`), trees through an
@@ -39,6 +45,9 @@ farmer's step events fire (`the farmer steps`, `steps>=3`), she walks
 3.5 tiles or more and ends on a path tile (`onPath==1`, read with
 og.tilemap.getTile), `till:12:9` changes the map (`watered==7`), and the
 frame at 2.2 s matches `references/vulkan/farm.png` (rmse ≤ 3).
+`tests/sway.og.ts` turns the camera to the west meadow (`look`, a tree and
+a pine), blows at 8 m/s (`wind`) and matches the frame at 2.2 s, the trees
+drawn as their parts, to `references/vulkan/farm-wind.png` (rmse ≤ 3).
 
 Budget: under 10 s warm. Measured 1.5 s of run, 1.9 s with its cook and
 check.
@@ -49,14 +58,14 @@ Measured on macrunner (Apple M-series, Metal) at 960×540. `crowd`,
 `lamps` and `penumbra` are commands of the fixture for this; the playtest
 never calls them.
 
-**a. Packing loose PNGs.** 29 PNGs (4 to 44 texels wide) pack into a
-112×143 texture: 16,016 texels, 6,437 of them drawn (alpha ≥ 16), a fill of
-40.2 % (the cells' one texel of padding and the gap between them are most
+**a. Packing loose PNGs.** 27 PNGs (5 to 24 texels wide) pack into a
+94×113 texture: 10,622 texels, 4,389 of them drawn (alpha ≥ 16), a fill of
+41.3 % (the cells' one texel of padding and the gap between them are most
 of the rest). The default `crop all` cuts every source to the union of
-all, 44×61, and packs them 314×309: 6.6 %. Building the pack takes about
-10 ms (`og sprite inspect props.ogt --out`, best of 5: 42 ms, less 32 ms
-for the process and one still); the cold cook of the whole fixture is
-417 ms. Method: `og sprite inspect assets/props/props.ogt --out sheet.png`,
+all, 26×35, and packs them 188×143: 16.3 %. With the two trees in the
+sheet (29 PNGs) building the pack took about 10 ms (`og sprite inspect
+props.ogt --out`, best of 5: 42 ms, less 32 ms for the process and one
+still) and the cold cook of the whole fixture 417 ms. Method: `og sprite inspect assets/props/props.ogt --out sheet.png`,
 then count the texels of `sheet.png` with alpha ≥ 16.
 
 **b. 2D soft shadows.** `penumbra:R` puts one light (distance 30, falloff
