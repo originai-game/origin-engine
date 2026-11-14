@@ -19,10 +19,7 @@ struct BlobOut {
 
 @vertex
 fn vs_field(@builtin(vertex_index) vi: u32, b: BlobIn) -> BlobOut {
-  var corners = array<vec2<f32>, 6>(
-    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
-    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0));
-  let c = corners[vi];
+  let c = quad_corner(vi) * 2.0 - 1.0;
   var o: BlobOut;
   let p = vec3<f32>(b.position_radius.xy + c * b.position_radius.w, b.position_radius.z);
   o.clip = frame.view_proj * vec4<f32>(p, 1.0);

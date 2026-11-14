@@ -198,16 +198,13 @@ fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
 // by a material shader's vertex_offset).
 fn sprite_vertex(vi: u32, s: SpriteIn) -> SpriteOut {
   // Two triangles: (0,0) (1,0) (1,1) / (0,0) (1,1) (0,1), counter-clockwise.
-  var corners = array<vec2<f32>, 6>(
-    vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0),
-    vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0));
   let key = oit_key4(s.position_rotation, vec3<f32>(f32(vi / 3u), s.ground.x, s.flash.x));
   if (s.ground.x > 1.5) {
-    var b = bent_vertex(corners[vi], s);
+    var b = bent_vertex(quad_corner(vi), s);
     b.oit_key = key;
     return b;
   }
-  let c = corners[vi];
+  let c = quad_corner(vi);
   // A pixel outline grows the quad by its width on every side (in uv, then
   // as a fraction of the quad), so the line fits outside the art; without
   // one the corner is c exactly.

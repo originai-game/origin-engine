@@ -40,10 +40,7 @@ struct SphereOut {
 
 @vertex
 fn vs_sphere(@builtin(vertex_index) vi: u32, @location(0) center_radius: vec4<f32>, @location(1) color_k: vec4<f32>) -> SphereOut {
-  var corners = array<vec2<f32>, 6>(
-    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
-    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0));
-  let c = corners[vi];
+  let c = quad_corner(vi) * 2.0 - 1.0;
   let r = center_radius.w;
   let world = center_radius.xyz + (fluid.right.xyz * c.x + fluid.up.xyz * c.y) * r;
   var o: SphereOut;

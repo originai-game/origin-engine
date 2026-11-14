@@ -225,13 +225,10 @@ fn height_at(local: vec2<f32>) -> f32 {
 fn vs(@builtin(vertex_index) vi: u32) -> WaterOut {
   let segs = u32(water.size.z);
   let quad = vi / 6u;
-  var corners = array<vec2<f32>, 6>(
-    vec2<f32>(0.0, 0.0), vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 1.0),
-    vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(1.0, 0.0));
   if (OG_SEA) {
     if (water.fft.x > 0.5) { return vs_sea(vi); }
   }
-  let c = corners[vi % 6u];
+  let c = quad_corner(vi).yx;
   let cell = vec2<f32>(f32(quad % segs), f32(quad / segs)) + c;
   let local = (cell / f32(segs) - 0.5) * water.size.xy;
   let h = height_at(local);

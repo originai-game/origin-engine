@@ -178,6 +178,7 @@ fn a_mechanisms_shader_code_is_written_once() {
                 "fn view_point(",
                 "fn ign(",
                 "fn is_sky_depth(",
+                "fn quad_corner(",
                 "const SKY_VIEW_DEPTH",
             ],
         ),

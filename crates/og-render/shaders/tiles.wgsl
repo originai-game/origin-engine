@@ -27,8 +27,7 @@ fn vs_tile(@builtin(vertex_index) vi: u32, @builtin(instance_index) qi: u32) -> 
       t -= f.duration.x;
     }
   }
-  var corners = array<vec2<f32>, 6>(vec2f(0, 0), vec2f(1, 0), vec2f(1, 1), vec2f(0, 0), vec2f(1, 1), vec2f(0, 1));
-  let c = corners[vi];
+  let c = quad_corner(vi);
   let world = vec3f(tile_params.origin_time.xy + q.min_size.xy + c * q.min_size.zw, tile_params.origin_time.z);
   var o: SpriteOut;
   o.clip = frame.view_proj * vec4f(world, 1.0);

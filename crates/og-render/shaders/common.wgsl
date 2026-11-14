@@ -56,3 +56,12 @@ const SKY_VIEW_DEPTH: f32 = 1.0e9;
 fn is_sky_depth(d: f32) -> bool {
   return d >= 0.5 * SKY_VIEW_DEPTH;
 }
+
+// Corner `i` (mod 6) of a unit quad drawn as two counter-clockwise
+// triangles, (0,0) (1,0) (1,1) / (0,0) (1,1) (0,1): the quad every
+// vertex-pulled sprite, card and billboard draws (2 * c - 1 for -1..1;
+// .yx for the clockwise order in the xz plane).
+fn quad_corner(i: u32) -> vec2<f32> {
+  let k = i % 6u;
+  return vec2<f32>(select(0.0, 1.0, k == 1u || k == 2u || k == 4u), select(0.0, 1.0, k == 2u || k == 4u || k == 5u));
+}

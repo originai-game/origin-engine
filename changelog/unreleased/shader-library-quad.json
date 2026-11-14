@@ -1,0 +1,11 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "shaders: the WGSL library",
+      "change": "Every game shader now has `quad_corner(i: u32) -> vec2<f32>` (corner i mod 6 of a unit quad drawn as two counter-clockwise triangles) in scope from the engine's one copy; a shader that declares its own `quad_corner` no longer compiles.",
+      "fix": "Delete your own copy and call the library's, or rename yours.",
+      "find": ["quad_corner"]
+    }
+  ]
+}

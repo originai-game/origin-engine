@@ -174,10 +174,7 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
     size = floor_size;
   }
   if (alpha < 1e-3) { return o; }
-  var corners = array<vec2<f32>, 6>(
-    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
-    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0));
-  let c = corners[vi % 6u];
+  let c = quad_corner(vi) * 2.0 - 1.0;
   // Drawn as a wisp along its flight, not a round puff: spindrift
   // streams off a crest, and a lone round sprite read as a dot hanging over the sea.
   let to_eye = normalize(frame.view_pos.xyz - p);

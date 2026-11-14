@@ -148,11 +148,7 @@ const IMP_ROWS: u32 = 4u;
 // The card's corner `vertex` (0..6 × IMP_ROWS, two triangles a strip) of
 // the copy `model` facing `toward` (a point, or a direction when `is_dir`).
 fn imp_card(model: mat4x4<f32>, vertex: u32, toward: vec3<f32>, is_dir: bool) -> ImpCard {
-  var corners = array<vec2<f32>, 6>(
-    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
-    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0),
-  );
-  let corner = corners[vertex % 6u];
+  let corner = quad_corner(vertex) * 2.0 - 1.0;
   let strip = f32(min(vertex / 6u, IMP_ROWS - 1u));
   let q = vec2<f32>(corner.x, (strip + corner.y * 0.5 + 0.5) / f32(IMP_ROWS) * 2.0 - 1.0);
   let m3 = mat3x3<f32>(model[0].xyz, model[1].xyz, model[2].xyz);

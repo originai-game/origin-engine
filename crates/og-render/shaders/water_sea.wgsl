@@ -358,9 +358,6 @@ struct SeaVertex {
 };
 
 fn sea_vertex(vi: u32) -> SeaVertex {
-  var corners = array<vec2<f32>, 6>(
-    vec2<f32>(0.0, 0.0), vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 1.0),
-    vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(1.0, 0.0));
   let s = u32(water.clip.y);
   let per_level = s * s * 6u;
   let levels = u32(water.clip.x);
@@ -370,7 +367,7 @@ fn sea_vertex(vi: u32) -> SeaVertex {
   if (level >= levels) {
     // The horizon ring: the outermost level's edge (its even vertices) to the ring's radius.
     let k = vi - levels * per_level;
-    let corner = corners[k % 6u];
+    let corner = quad_corner(k).yx;
     let half = s / 2u;
     let t = (k / 6u + u32(corner.x)) % (4u * half);
     let last = water.levels[levels - 1u];
@@ -406,7 +403,7 @@ fn sea_vertex(vi: u32) -> SeaVertex {
       return o;
     }
   }
-  let g = cell_ij + corners[k % 6u] - half;
+  let g = cell_ij + quad_corner(k).yx - half;
   let p = lv.xy + g * c;
   o.rest = sea_clamp(p);
   let m = smoothstep(0.7, 0.95, max(abs(g.x), abs(g.y)) / half);

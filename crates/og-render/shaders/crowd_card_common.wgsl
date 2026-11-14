@@ -59,11 +59,7 @@ struct Card {
 // (a point, or a direction when `is_dir`) around the vertical, tilted to
 // the bake's elevation; `place`: its record's look.x.
 fn card_make(model: mat4x4<f32>, vertex: u32, toward: vec3<f32>, is_dir: bool, place: f32) -> Card {
-  var corners = array<vec2<f32>, 6>(
-    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
-    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0),
-  );
-  let q = corners[vertex % 6u];
+  let q = quad_corner(vertex) * 2.0 - 1.0;
   let m3 = mat3x3<f32>(model[0].xyz, model[1].xyz, model[2].xyz);
   let c = scatter.impostor.xyz;
   let radius = scatter.impostor.w;
