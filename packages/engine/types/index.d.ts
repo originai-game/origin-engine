@@ -5659,7 +5659,7 @@ export interface VirtualCamera {
   blendEase: Ease;
   // ── Collision ──
   /**
-   * Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over damping. Against the colliders as the tick started (og.physics' query view): it never moves a body.
+   * Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over recoverTime. Against the colliders as the tick started (og.physics' query view): it never moves a body.
    */
   collide: boolean;
   /**
@@ -5678,7 +5678,7 @@ export interface VirtualCamera {
    * @unit s (seconds of simulation time)
    * @tunable
    */
-  damping: number;
+  recoverTime: number;
   /**
    * The physics layers collision considers (a collider counts when its layers meet these); 0 every layer.
    */
@@ -15186,10 +15186,11 @@ export interface Rope {
    */
   iterations: number;
   /**
-   * How much of its velocity each point keeps per tick (1: none lost).
+   * How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping.
    *
-   * @default 0.99
-   * @range 0..1
+   * @default 0.6
+   * @range 0..100
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
    * @tunable
    */
   damping: number;
@@ -15305,10 +15306,11 @@ export interface Cloth {
    */
   iterations: number;
   /**
-   * How much of its velocity each point keeps per tick.
+   * How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping.
    *
-   * @default 0.985
-   * @range 0..1
+   * @default 0.9
+   * @range 0..100
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
    * @tunable
    */
   damping: number;
@@ -15453,10 +15455,11 @@ export interface Garment {
    */
   substeps: number;
   /**
-   * How much of its velocity each point keeps per tick.
+   * How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping.
    *
-   * @default 0.97
-   * @range 0..1
+   * @default 1.85
+   * @range 0..100
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
    * @tunable
    */
   damping: number;
@@ -15600,10 +15603,11 @@ export interface SoftBody {
    */
   substeps: number;
   /**
-   * How much of its velocity each point keeps per tick.
+   * How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping.
    *
-   * @default 0.995
-   * @range 0..1
+   * @default 0.3
+   * @range 0..100
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
    * @tunable
    */
   damping: number;
@@ -16120,10 +16124,11 @@ export interface WaterSurface {
    */
   waveSpeed: number;
   /**
-   * How much of a wave survives a second (1: no loss).
+   * How fast waves die (0: no loss): each tick a wave keeps 1 / (1 + damping * dt) of its motion, as RigidBody.linearDamping.
    *
-   * @default 0.4
-   * @range 0..1
+   * @default 0.9
+   * @range 0..100
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
    * @tunable
    */
   damping: number;
@@ -16194,10 +16199,11 @@ export interface WaterLine {
    */
   tension: number;
   /**
-   * How fast a spring's motion dies.
+   * How fast a spring's motion dies (0: never).
    *
    * @default 2.5
    * @range 0..
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
    * @tunable
    */
   damping: number;
@@ -33551,7 +33557,7 @@ export declare namespace og {
    * Registered when a game first names it (with og.CameraBrain and og.CameraCut), so a world without one keeps its hash. Its pose is tick state, drawing on no randomness; it changes only og.Camera and, with focus, og.PostEffects' depth of field. While a timeline's camera track plays, the timeline drives og.Camera; the brain waits.
    * See `camera §2`.
    */
-  const VirtualCamera: ComponentType<{ readonly priority: FieldSpec<"i32">; readonly enabled: FieldSpec<"bool">; readonly follow: FieldSpec<"Entity">; readonly followOffset: FieldSpec<"Vector3">; readonly followRotation: FieldSpec<"bool">; readonly smoothTime: FieldSpec<"f32">; readonly lookAt: FieldSpec<"Entity">; readonly lookOffset: FieldSpec<"Vector3">; readonly fov: FieldSpec<"f32">; readonly roll: FieldSpec<"f32">; readonly focus: FieldSpec<"f32">; readonly focusRange: FieldSpec<"f32">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly collide: FieldSpec<"bool">; readonly radius: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly collisionMask: FieldSpec<"u32">; readonly eased: FieldSpec<"Vector3">; readonly pull: FieldSpec<"f32">; readonly activated: FieldSpec<"u32">; readonly primed: FieldSpec<"bool"> }, VirtualCamera>;
+  const VirtualCamera: ComponentType<{ readonly priority: FieldSpec<"i32">; readonly enabled: FieldSpec<"bool">; readonly follow: FieldSpec<"Entity">; readonly followOffset: FieldSpec<"Vector3">; readonly followRotation: FieldSpec<"bool">; readonly smoothTime: FieldSpec<"f32">; readonly lookAt: FieldSpec<"Entity">; readonly lookOffset: FieldSpec<"Vector3">; readonly fov: FieldSpec<"f32">; readonly roll: FieldSpec<"f32">; readonly focus: FieldSpec<"f32">; readonly focusRange: FieldSpec<"f32">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly collide: FieldSpec<"bool">; readonly radius: FieldSpec<"f32">; readonly recoverTime: FieldSpec<"f32">; readonly collisionMask: FieldSpec<"u32">; readonly eased: FieldSpec<"Vector3">; readonly pull: FieldSpec<"f32">; readonly activated: FieldSpec<"u32">; readonly primed: FieldSpec<"bool"> }, VirtualCamera>;
   /**
    * Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is.
    * Registered with og.VirtualCamera. Its state fields are world state, so a replay or a restore mid-blend continues the same blend.

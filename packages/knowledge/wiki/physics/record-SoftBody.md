@@ -22,7 +22,7 @@ Token `og.SoftBody`, registered under the schema name `og.SoftBody`; its value t
 | `volumeStiffness` | `number` | `1` | 0 … 1 | — | tunable | How much of its volume a pass restores, 0 to 1. |
 | `iterations` | `number` | `8` | 1 … 64 | — | tunable | Constraint passes per substep. |
 | `substeps` | `number` | `2` | 1 … 16 | — | — | Simulation steps per tick. |
-| `damping` | `number` | `0.995` | 0 … 1 | — | tunable | How much of its velocity each point keeps per tick. |
+| `damping` | `number` | `0.3` | 0 … 100 | `perSecond` | tunable | How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping. |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
 | `thickness` | `number` | `0.03` | ≥ 0 | `m` | tunable | The distance its points keep from solids (0: no collision). |
 | `friction` | `number` | `0.3` | 0 … 1 | — | tunable | How much of its sliding a point touching a solid loses each step. |
@@ -87,10 +87,11 @@ component SoftBody {
     min 1
     max 16
   }
-  field damping f32 "How much of its velocity each point keeps per tick." {
-    default 0.995
+  field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+    default 0.3
     min 0
-    max 1
+    max 100
+    unit perSecond
     tunable true
   }
   field gravityScale f32 "Multiplies og.Physics.gravity." {
@@ -136,4 +137,4 @@ component SoftBody {
 }
 ```
 
-<sub>Module `physics` line 1238</sub>
+<sub>Module `physics` line 1241</sub>

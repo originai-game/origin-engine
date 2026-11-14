@@ -65,10 +65,10 @@ pub struct WaterWakes {
     /// A new world (made, restored or gone back) has a new epoch: the
     /// ripples start calm again.
     pub epoch: u64,
-    /// The waves' speed (m/s), the fraction of a wave kept after a second,
+    /// The waves' speed (m/s), the fraction of a wave kept each tick,
     /// the surface's splash factor and the tick's length (s).
     pub wave_speed: f32,
-    pub damping: f32,
+    pub keep: f32,
     pub splash: f32,
     pub dt: f32,
     /// (tick, the bodies cutting the surface after it), oldest first.

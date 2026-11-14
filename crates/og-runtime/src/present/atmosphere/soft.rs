@@ -46,6 +46,7 @@ pub(super) fn extract(world: &World, rs: &mut RenderState) -> Vec<(u64, u32)> {
     let Some(physics) = layouts.physics.as_ref() else {
         return keys;
     };
+    let dt = world.time().dt;
     let orthographic = matches!(
         scene.frame.camera.projection,
         Projection::Orthographic { .. }
@@ -139,7 +140,7 @@ pub(super) fn extract(world: &World, rs: &mut RenderState) -> Vec<(u64, u32)> {
             let body = og_render::VisualBody {
                 pinned: c.pinned.into(),
                 substeps: small_steps(row.substeps, row.iterations),
-                damping: row.damping,
+                keep: og_core::math::damping_keep(row.damping, dt),
                 gravity: gravity * row.gravity_scale,
                 wind: row.wind + blowing,
                 gust: row.gust,
@@ -193,7 +194,7 @@ pub(super) fn extract(world: &World, rs: &mut RenderState) -> Vec<(u64, u32)> {
             let body = og_render::VisualBody {
                 pinned: s.pinned.into(),
                 substeps: small_steps(row.substeps, row.iterations),
-                damping: row.damping,
+                keep: og_core::math::damping_keep(row.damping, dt),
                 gravity: gravity * row.gravity_scale,
                 radius: row.thickness,
                 friction: row.friction,

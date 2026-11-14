@@ -75,8 +75,9 @@ pub struct VisualBody {
     pub backstop: f32,
     /// Small solver steps per tick, each one pass over the constraints.
     pub substeps: u32,
-    /// The velocity a point keeps per tick.
-    pub damping: f32,
+    /// The share of its velocity a point keeps per tick (the component's
+    /// `damping`, a rate, through `og_core::math::damping_keep`).
+    pub keep: f32,
     /// The acceleration of gravity (og.Physics.gravity times the scale).
     pub gravity: Vec3,
     /// A steady wind and its gusting (a cloth's push along its normal).
@@ -117,7 +118,7 @@ impl Default for VisualBody {
             reach: Arc::from([]),
             backstop: 0.0,
             substeps: 16,
-            damping: 0.985,
+            keep: 0.985,
             gravity: Vec3::new(0.0, -9.81, 0.0),
             wind: Vec3::ZERO,
             gust: 0.0,
@@ -567,7 +568,7 @@ pub(crate) fn frame_header(
     world: Mat4,
 ) {
     let sub = body.substeps.clamp(1, 128);
-    let keep = body.damping.clamp(0.0, 1.0).powf(1.0 / sub as f32);
+    let keep = body.keep.clamp(0.0, 1.0).powf(1.0 / sub as f32);
     let f = |w: &mut [u32], at: usize, v: f32| w[at] = v.to_bits();
     let alpha = |s: f32| {
         let s = s.clamp(0.0, 1.0);

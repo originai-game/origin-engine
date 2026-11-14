@@ -21944,7 +21944,7 @@
         },
         "collide": {
           "type": "boolean",
-          "description": "Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over damping. Against the colliders as the tick started (og.physics' query view): it never moves a body.",
+          "description": "Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over recoverTime. Against the colliders as the tick started (og.physics' query view): it never moves a body.",
           "default": false
         },
         "radius": {
@@ -21954,7 +21954,7 @@
           "minimum": 0,
           "x-og-unit": "m"
         },
-        "damping": {
+        "recoverTime": {
           "type": "number",
           "description": "Roughly how long it takes to ease back out once the way is clear; 0 snaps.",
           "default": 0.4,
@@ -32581,10 +32581,11 @@
         },
         "damping": {
           "type": "number",
-          "description": "How much of its velocity each point keeps per tick (1: none lost).",
-          "default": 0.99,
+          "description": "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping.",
+          "default": 0.6,
           "minimum": 0,
-          "maximum": 1,
+          "maximum": 100,
+          "x-og-unit": "perSecond",
           "x-og-tunable": true
         },
         "gravityScale": {
@@ -32689,10 +32690,11 @@
         },
         "damping": {
           "type": "number",
-          "description": "How much of its velocity each point keeps per tick.",
-          "default": 0.985,
+          "description": "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping.",
+          "default": 0.9,
           "minimum": 0,
-          "maximum": 1,
+          "maximum": 100,
+          "x-og-unit": "perSecond",
           "x-og-tunable": true
         },
         "gravityScale": {
@@ -32851,10 +32853,11 @@
         },
         "damping": {
           "type": "number",
-          "description": "How much of its velocity each point keeps per tick.",
-          "default": 0.97,
+          "description": "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping.",
+          "default": 1.85,
           "minimum": 0,
-          "maximum": 1,
+          "maximum": 100,
+          "x-og-unit": "perSecond",
           "x-og-tunable": true
         },
         "gravityScale": {
@@ -33005,10 +33008,11 @@
         },
         "damping": {
           "type": "number",
-          "description": "How much of its velocity each point keeps per tick.",
-          "default": 0.995,
+          "description": "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping.",
+          "default": 0.3,
           "minimum": 0,
-          "maximum": 1,
+          "maximum": 100,
+          "x-og-unit": "perSecond",
           "x-og-tunable": true
         },
         "gravityScale": {
@@ -33598,10 +33602,11 @@
         },
         "damping": {
           "type": "number",
-          "description": "How much of a wave survives a second (1: no loss).",
-          "default": 0.4,
+          "description": "How fast waves die (0: no loss): each tick a wave keeps 1 / (1 + damping * dt) of its motion, as RigidBody.linearDamping.",
+          "default": 0.9,
           "minimum": 0,
-          "maximum": 1,
+          "maximum": 100,
+          "x-og-unit": "perSecond",
           "x-og-tunable": true
         },
         "splash": {
@@ -33669,9 +33674,10 @@
         },
         "damping": {
           "type": "number",
-          "description": "How fast a spring's motion dies.",
+          "description": "How fast a spring's motion dies (0: never).",
           "default": 2.5,
           "minimum": 0,
+          "x-og-unit": "perSecond",
           "x-og-tunable": true
         },
         "spread": {

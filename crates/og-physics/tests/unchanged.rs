@@ -42,7 +42,10 @@ use support::beyond::*;
 /// per meaning moved both pins (og.Collider.quaternion, and
 /// og.PlatformerController's run, addVelocity and oneWayMask); hashing
 /// those four under their old names reproduced both previous pins.
-const PINNED: [(u32, u64); 2] = [(3, 0x8ad8f6da64100e5b), (2, 0x9d87a6f8cce70810)];
+/// `damping` as a decay rate moved the 3D pin (its rope, cloths and water
+/// surface: the new defaults keep 0.03% to 0.05% more or less a tick than
+/// the shares they replace) and left the 2D one.
+const PINNED: [(u32, u64); 2] = [(3, 0x7f8d4c4a27693755), (2, 0x9d87a6f8cce70810)];
 
 /// What G2-3 added to the types the world registers: left out of the
 /// table, as an older engine's trace leaves them.

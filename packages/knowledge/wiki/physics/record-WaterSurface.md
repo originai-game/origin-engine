@@ -15,7 +15,7 @@ Token `og.WaterSurface`, registered under the schema name `og.WaterSurface`; its
 | `resolution` | `number` | `64` | 8 … 256 | — | — | Grid points along each side. |
 | `size` | `number` | `16` | ≥ 0.1 | `m` | tunable | The side of the square of water. |
 | `waveSpeed` | `number` | `3` | ≥ 0 | `mps` | tunable | How fast waves travel. |
-| `damping` | `number` | `0.4` | 0 … 1 | — | tunable | How much of a wave survives a second (1: no loss). |
+| `damping` | `number` | `0.9` | 0 … 100 | `perSecond` | tunable | How fast waves die (0: no loss): each tick a wave keeps 1 / (1 + damping * dt) of its motion, as RigidBody.linearDamping. |
 | `splash` | `number` | `1` | ≥ 0 | — | tunable | How strongly bodies push waves. |
 | `buoyancy` | `number` | `9.81` | ≥ 0 | — | tunable | The upward force on a submerged body per cubic metre of its box under water (0: bodies sink). |
 | `drag` | `number` | `1.5` | ≥ 0 | `perSecond` | tunable | How much a submerged body's velocity is slowed. |
@@ -40,10 +40,11 @@ component WaterSurface {
     unit mps
     tunable true
   }
-  field damping f32 "How much of a wave survives a second (1: no loss)." {
-    default 0.4
+  field damping f32 "How fast waves die (0: no loss): each tick a wave keeps 1 / (1 + damping * dt) of its motion, as RigidBody.linearDamping." {
+    default 0.9
     min 0
-    max 1
+    max 100
+    unit perSecond
     tunable true
   }
   field splash f32 "How strongly bodies push waves." {
@@ -65,4 +66,4 @@ component WaterSurface {
 }
 ```
 
-<sub>Module `physics` line 1608</sub>
+<sub>Module `physics` line 1612</sub>

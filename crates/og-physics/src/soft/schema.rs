@@ -21,7 +21,7 @@ pub const SOFT_MESH: u32 = 2;
 /// state (the og.physics block's trailer), og.physics.softBodyPoints reads
 /// them and the renderer draws the surface.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.SoftBody", version = 2)]
+#[reflect(name = "og.SoftBody", version = 3)]
 pub struct SoftBody {
     /// SOFT_SPHERE 0, SOFT_BOX 1, SOFT_MESH 2.
     #[reflect(min = 0, max = 2)]
@@ -52,8 +52,8 @@ pub struct SoftBody {
     /// Steps per tick.
     #[reflect(min = 1, max = 16, default = 2)]
     pub substeps: u32,
-    /// How much of its velocity each point keeps per tick.
-    #[reflect(min = 0, max = 1, default = 0.995, tunable)]
+    /// How fast its points' velocity decays (0: none lost).
+    #[reflect(min = 0, max = 100, unit = "1/s", default = 0.3, tunable)]
     pub damping: f32,
     /// Multiplies og.Physics.gravity.
     #[reflect(name = "gravityScale", min = -10, max = 10, default = 1, tunable)]
@@ -96,7 +96,7 @@ impl Default for SoftBody {
             volume_stiffness: 1.0,
             iterations: 8,
             substeps: 2,
-            damping: 0.995,
+            damping: 0.3,
             gravity_scale: 1.0,
             thickness: 0.03,
             friction: 0.3,
@@ -120,7 +120,7 @@ impl Default for SoftBody {
 /// before each step; its points are world state (the og.physics block's
 /// trailer).
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.Garment", version = 2)]
+#[reflect(name = "og.Garment", version = 3)]
 pub struct Garment {
     /// The glTF mesh of the entity's model that is the garment.
     pub mesh: u32,
@@ -145,8 +145,8 @@ pub struct Garment {
     /// Steps per tick.
     #[reflect(min = 1, max = 16, default = 1)]
     pub substeps: u32,
-    /// How much of its velocity each point keeps per tick.
-    #[reflect(min = 0, max = 1, default = 0.97, tunable)]
+    /// How fast its points' velocity decays (0: none lost).
+    #[reflect(min = 0, max = 100, unit = "1/s", default = 1.85, tunable)]
     pub damping: f32,
     /// Multiplies og.Physics.gravity.
     #[reflect(name = "gravityScale", min = -10, max = 10, default = 1, tunable)]
@@ -179,7 +179,7 @@ impl Default for Garment {
             bending: 0.1,
             iterations: 6,
             substeps: 1,
-            damping: 0.97,
+            damping: 1.85,
             gravity_scale: 1.0,
             wind: Vec3::ZERO,
             gust: 0.6,
@@ -198,7 +198,7 @@ impl Default for Garment {
 /// og.physics.ropePoints reads them and the renderer draws the rope as a
 /// strip of `width` and `color`.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Rope")]
+#[reflect(name = "og.Rope", version = 2)]
 pub struct Rope {
     /// The number of links (points minus one).
     #[reflect(min = 1, max = 256, default = 16)]
@@ -217,8 +217,8 @@ pub struct Rope {
     /// Constraint passes per step: more is stiffer, at more cost.
     #[reflect(min = 1, max = 64, default = 12, tunable)]
     pub iterations: u32,
-    /// How much of its velocity each point keeps per tick (1: none lost).
-    #[reflect(min = 0, max = 1, default = 0.99, tunable)]
+    /// How fast its points' velocity decays (0: none lost).
+    #[reflect(min = 0, max = 100, unit = "1/s", default = 0.6, tunable)]
     pub damping: f32,
     /// Multiplies og.Physics.gravity.
     #[reflect(name = "gravityScale", min = -10, max = 10, default = 1, tunable)]
@@ -249,7 +249,7 @@ impl Default for Rope {
             end: 0,
             end_offset: Vec3::ZERO,
             iterations: 12,
-            damping: 0.99,
+            damping: 0.6,
             gravity_scale: 1.0,
             wind: Vec3::ZERO,
             radius: 0.05,
@@ -279,7 +279,7 @@ pub const PIN_TOP_RINGS: u32 = 8;
 /// its points are world state. Drawn as a double-sided mesh with
 /// `material` (og.render.standardMaterial; 0: a plain cloth colour).
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Cloth", version = 2)]
+#[reflect(name = "og.Cloth", version = 3)]
 pub struct Cloth {
     /// Points across.
     #[reflect(min = 2, max = 64, default = 12)]
@@ -296,8 +296,8 @@ pub struct Cloth {
     /// Constraint passes per step.
     #[reflect(min = 1, max = 64, default = 8, tunable)]
     pub iterations: u32,
-    /// How much of its velocity each point keeps per tick.
-    #[reflect(min = 0, max = 1, default = 0.985, tunable)]
+    /// How fast its points' velocity decays (0: none lost).
+    #[reflect(min = 0, max = 100, unit = "1/s", default = 0.9, tunable)]
     pub damping: f32,
     /// Multiplies og.Physics.gravity.
     #[reflect(name = "gravityScale", min = -10, max = 10, default = 1, tunable)]
@@ -345,7 +345,7 @@ impl Default for Cloth {
             spacing: 0.15,
             pins: PIN_TOP,
             iterations: 8,
-            damping: 0.985,
+            damping: 0.9,
             gravity_scale: 1.0,
             wind: Vec3::ZERO,
             gust: 0.6,

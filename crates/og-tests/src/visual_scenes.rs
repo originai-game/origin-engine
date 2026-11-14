@@ -284,7 +284,7 @@ pub fn visual_bodies_scene(visual: bool) -> RenderScene {
     let cloth = |pinned: Vec<u32>, wind: Vec3| VisualBody {
         pinned: pinned.into(),
         substeps: 16,
-        damping: 0.985,
+        keep: 0.985,
         wind,
         gust: 0.7,
         radius: 0.03,
@@ -364,7 +364,7 @@ pub fn visual_bodies_scene(visual: bool) -> RenderScene {
     let soft = |pinned: Vec<u32>, stiffness: f32| VisualBody {
         pinned: pinned.into(),
         substeps: 32,
-        damping: 0.995,
+        keep: 0.995,
         radius: 0.02,
         friction: 0.3,
         stiffness,
@@ -573,7 +573,7 @@ pub fn visual_garment_scene(visual: bool) -> RenderScene {
         // windward side.
         backstop: 0.3,
         substeps: 24,
-        damping: 0.985,
+        keep: 0.985,
         wind: Vec3::new(4.5, 0.0, 1.2),
         gust: 0.7,
         radius: 0.015,

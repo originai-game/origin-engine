@@ -91,7 +91,7 @@ pub(super) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             Arc::new(WaterWakes {
                 epoch: w.epoch,
                 wave_speed: w.wave_speed,
-                damping: w.damping,
+                keep: w.keep,
                 splash: w.splash,
                 dt: w.dt,
                 ticks: w

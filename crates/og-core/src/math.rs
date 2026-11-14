@@ -343,6 +343,16 @@ fn is_odd_integer(y: f32) -> bool {
     is_integer(y) && y.abs() < 16_777_216.0 && (y as i64) & 1 == 1
 }
 
+/// The share of its velocity a thing keeps over a step of `dt` seconds at
+/// the decay rate `damping` (per second, 0: none lost): `1 / (1 + damping *
+/// dt)`, what rapier applies to a rigid body's `linearDamping`. Every
+/// `damping` of the API that is a rate (ropes, cloth, soft bodies, garments,
+/// water surfaces) goes through here, in the tick and on the GPU, so one
+/// value dies as fast at any tick rate (to first order in `dt`).
+pub fn damping_keep(damping: f32, dt: f32) -> f32 {
+    1.0 / (1.0 + damping.max(0.0) * dt.max(0.0))
+}
+
 /// x^y, deterministic on every host. Special cases follow C99 `pow`:
 /// `pow(x, ±0) = 1`, `pow(1, y) = 1`, a negative base needs an integer
 /// exponent (otherwise NaN), and zeros and infinities keep the sign of an

@@ -13,6 +13,18 @@ use crate::schema::{Cloth, PIN_LEFT, PIN_TOP, PIN_TOP_CORNERS, PIN_TOP_RINGS, Ro
 use og_core::glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
+/// The velocity a point keeps each of a tick's `substeps` at the decay
+/// rate `damping` (per second): the tick's share
+/// ([`og_core::math::damping_keep`]) spread over them by its root.
+pub(crate) fn keep_per_substep(damping: f32, dt: f32, substeps: u32) -> f32 {
+    let keep = og_core::math::damping_keep(damping, dt);
+    if substeps <= 1 {
+        keep
+    } else {
+        og_core::math::pow(keep, 1.0 / substeps as f32)
+    }
+}
+
 /// What points collide with: solid colliders near them, read only (a
 /// fluid's collision pass asks from several lanes at once).
 pub(crate) trait Solids: Sync {
@@ -94,7 +106,7 @@ impl RopeState {
         let n = self.points.len();
         let z = start.z;
         let accel = gravity * rope.gravity_scale + rope.wind;
-        let keep = rope.damping.clamp(0.0, 1.0);
+        let keep = og_core::math::damping_keep(rope.damping, dt);
         let last = n - 1;
         for i in 0..n {
             let pinned = i == 0 || (i == last && end.is_some());
@@ -258,13 +270,7 @@ impl ClothState {
         let z = origin.z;
         let substeps = cloth.substeps.clamp(1, 16);
         let ds = dt / substeps as f32;
-        // The velocity kept per tick, spread over the substeps.
-        let damping = cloth.damping.clamp(0.0, 1.0);
-        let keep = if substeps == 1 {
-            damping
-        } else {
-            og_core::math::pow(damping, 1.0 / substeps as f32)
-        };
+        let keep = keep_per_substep(cloth.damping, dt, substeps);
         let g = gravity * cloth.gravity_scale;
         let wind = cloth.wind;
         let wind_len = wind.length();
@@ -492,4 +498,62 @@ fn separate(points: &mut [Vec3], a: usize, b: usize, thickness: f32, wa: f32, wb
     let k = (len - thickness) / (len * w);
     points[a] += d * (k * wa);
     points[b] -= d * (k * wb);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Nothing;
+    impl Solids for Nothing {
+        fn push_out(&self, _: Vec3, _: f32) -> Option<(Vec3, Vec3)> {
+            None
+        }
+    }
+
+    /// The share of its speed a free cloth thrown sideways loses in one
+    /// second of ticks at `rate`.
+    fn lost_in_a_second(rate: u32, substeps: u32) -> f32 {
+        let cloth = Cloth {
+            pins: 0,
+            gravity_scale: 0.0,
+            radius: 0.0,
+            damping: 1.5,
+            substeps,
+            ..Cloth::default()
+        };
+        let dt = 1.0 / rate as f32;
+        let mut state = ClothState::new(&cloth, Vec3::ZERO, Quat::IDENTITY);
+        let thrown = Vec3::new(2.0, 0.0, 0.0);
+        for p in &mut state.previous {
+            *p -= thrown * dt;
+        }
+        for tick in 0..rate {
+            state.step(
+                &cloth,
+                dt,
+                u64::from(tick),
+                Vec3::ZERO,
+                Vec3::ZERO,
+                Quat::IDENTITY,
+                false,
+                &Nothing,
+            );
+        }
+        let speed = (state.points[0] - state.previous[0]).length() / dt;
+        1.0 - speed / thrown.length()
+    }
+
+    /// `damping` is a rate per second: the same value loses the same share
+    /// of a cloth's speed in a second whatever the tick rate and however
+    /// many substeps. As the share kept per tick (its meaning before) 30
+    /// ticks lost far less than 60.
+    #[test]
+    fn damping_loses_the_same_share_of_speed_in_a_second_at_30_and_60_hz() {
+        let (slow, fast) = (lost_in_a_second(30, 1), lost_in_a_second(60, 1));
+        assert!((0.7..0.85).contains(&fast), "at 60 Hz: {fast}");
+        assert!((slow - fast).abs() < 0.03, "30 Hz {slow}, 60 Hz {fast}");
+        let split = lost_in_a_second(60, 4);
+        assert!((split - fast).abs() < 1e-3, "4 substeps {split}, 1 {fast}");
+    }
 }

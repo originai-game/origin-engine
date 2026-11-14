@@ -52,8 +52,9 @@ pub struct Wakes {
     /// The waves' speed as the height field runs them (held under its grid's
     /// limit), m/s.
     pub wave_speed: f32,
-    /// The fraction of a wave kept after a second.
-    pub damping: f32,
+    /// The fraction of a wave kept each tick (og.WaterSurface.damping over
+    /// `dt`).
+    pub keep: f32,
     pub splash: f32,
     /// The tick's length, s.
     pub dt: f32,
@@ -79,7 +80,7 @@ impl Wakes {
         floaters: &[Floater],
     ) {
         self.wave_speed = w.wave_speed.min(0.5 * cell / dt.max(1e-6));
-        self.damping = w.damping.clamp(0.0, 1.0);
+        self.keep = og_core::math::damping_keep(w.damping, dt);
         self.splash = w.splash;
         self.dt = dt;
         let half = size * 0.5;
@@ -111,7 +112,7 @@ impl Wakes {
     /// no wave settings travel with them.
     pub(crate) fn record_water(&mut self, dt: f32, tick: u64, cuts: Vec<WaterCut>) {
         self.wave_speed = 0.0;
-        self.damping = 0.0;
+        self.keep = 0.0;
         self.splash = 0.0;
         self.dt = dt;
         self.push(tick, cuts);

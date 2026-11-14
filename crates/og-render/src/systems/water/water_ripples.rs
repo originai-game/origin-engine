@@ -317,7 +317,7 @@ impl Ripples {
         let c = wakes.wave_speed.max(0.0).min(0.5 * cell / dts);
         // The ripples die twice as fast as the CPU's waves: they are the
         // short-lived detail over them.
-        let keep = wakes.damping.clamp(0.0, 1.0).powf(2.0 * dts);
+        let keep = wakes.keep.clamp(0.0, 1.0).powf(2.0 * dts / dt);
         let mut params: Vec<u8> = Vec::new();
         let mut cuts: Vec<CutGpu> = Vec::new();
         let base = Params {
@@ -470,7 +470,7 @@ mod tests {
         WaterWakes {
             epoch,
             wave_speed: 2.0,
-            damping: 0.5,
+            keep: 0.99,
             splash: 1.0,
             dt: 1.0 / 60.0,
             ticks: ticks

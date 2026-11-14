@@ -1,0 +1,30 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {
+      "member": "og.Rope.damping, og.Cloth.damping, og.Garment.damping, og.SoftBody.damping",
+      "change": "damping is a decay rate per second (unit perSecond), 0 for none, no longer the share of its velocity a point keeps per tick (1 for none): each tick a point keeps 1 / (1 + damping * dt), as RigidBody.linearDamping, so one value dies as fast at 30 as at 60 ticks a second. Range 0 to 100. The defaults keep what they did at 60 Hz: Rope 0.99 is 0.6, Cloth 0.985 is 0.9, Garment 0.97 is 1.85, SoftBody 0.995 is 0.3. A value left as it was (0.98) now damps as a rate of 0.98 per second: at 60 Hz far lighter than it did.",
+      "fix": "Replace each explicit damping with (1 / old - 1) * tickRate, tickRate being GameDesc.tick (60 by default): 0.99 becomes 0.6, 0.98 becomes 1.2, 0.95 becomes 3.2, 0.9 becomes 6.7; 1 (none lost) becomes 0. In code and in scene text. A saved world converts itself at the tick rate it was saved at.",
+      "find": [
+        "damping"
+      ]
+    },
+    {
+      "member": "og.WaterSurface.damping",
+      "change": "damping is a decay rate per second (unit perSecond), 0 for no loss, no longer the share of a wave left after a second (1 for no loss): each tick a wave keeps 1 / (1 + damping * dt). Range 0 to 100; the default 0.4 is 0.9.",
+      "fix": "Replace an explicit damping with (old ^ (-1 / tickRate) - 1) * tickRate, close to -ln(old): 0.4 becomes 0.9, 0.5 becomes 0.7, 0.8 becomes 0.22, 0.1 becomes 2.3; 1 becomes 0.",
+      "find": [
+        "damping"
+      ]
+    },
+    {
+      "member": "og.VirtualCamera.recoverTime",
+      "change": "Renamed from damping: it is a time in seconds (how long the camera takes to ease back out once the way is clear), and damping now always means a decay rate. Same value, default 0.4.",
+      "fix": "Rename damping to recoverTime on og.VirtualCamera, in code and in scene text; leave every other damping.",
+      "find": [
+        "og.VirtualCamera",
+        "damping"
+      ]
+    }
+  ]
+}

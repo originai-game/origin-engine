@@ -270,7 +270,7 @@ fn collision_pulls_in_at_once_and_eases_out() {
                 "lookOffset": { "x": 0, "y": 0, "z": 0 },
                 "collide": true,
                 "radius": 0.2,
-                "damping": 0.5,
+                "recoverTime": 0.5,
             }),
         )],
     );
@@ -299,7 +299,7 @@ fn collision_pulls_in_at_once_and_eases_out() {
         engine, wall,
     )));
     ticks(engine, 1);
-    // Out by damping: the pull shrinks by dt / damping of itself a tick.
+    // Out by recoverTime: the pull shrinks by dt / recoverTime of itself a tick.
     let mut last = z(engine);
     let mut pull = 6.0 - pulled;
     let mut eased = Vec::new();
@@ -312,7 +312,7 @@ fn collision_pulls_in_at_once_and_eases_out() {
         eased.push(now);
     }
     // Independent of where the first easing tick fell: every tick after
-    // one keeps (1 - dt / damping) of the pull.
+    // one keeps (1 - dt / recoverTime) of the pull.
     for w in eased.windows(2) {
         let (p0, p1) = (6.0 - w[0], 6.0 - w[1]);
         assert!(

@@ -340,6 +340,54 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         note: "the input API's one word per state: the button edges say justPressed and justReleased (pressed0-7, released0-7)",
         run: Some(|e| renamed(e, "og.Gamepad", 3)),
     },
+    Migration {
+        target: Target::Record,
+        name: "og.Rope",
+        from: 1,
+        to: 2,
+        note: "damping is a rate: the share kept per tick becomes the decay per second that keeps as much at the save's tick rate, (1 / keep - 1) / dt",
+        run: Some(|e| revalued(e, "og.Rope", 2, "damping", rate_of_keep_per_tick)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Cloth",
+        from: 2,
+        to: 3,
+        note: "damping is a rate: the share kept per tick becomes the decay per second that keeps as much at the save's tick rate",
+        run: Some(|e| revalued(e, "og.Cloth", 3, "damping", rate_of_keep_per_tick)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Garment",
+        from: 2,
+        to: 3,
+        note: "damping is a rate: the share kept per tick becomes the decay per second that keeps as much at the save's tick rate",
+        run: Some(|e| revalued(e, "og.Garment", 3, "damping", rate_of_keep_per_tick)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.SoftBody",
+        from: 2,
+        to: 3,
+        note: "damping is a rate: the share kept per tick becomes the decay per second that keeps as much at the save's tick rate",
+        run: Some(|e| revalued(e, "og.SoftBody", 3, "damping", rate_of_keep_per_tick)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.WaterSurface",
+        from: 1,
+        to: 2,
+        note: "damping is a rate: the share of a wave left after a second becomes the decay per second that keeps as much each tick",
+        run: Some(|e| revalued(e, "og.WaterSurface", 2, "damping", rate_of_keep_per_second)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.VirtualCamera",
+        from: 2,
+        to: 3,
+        note: "damping means a decay rate: the camera's time to ease back out is recoverTime",
+        run: Some(|e| renamed(e, "og.VirtualCamera", 3)),
+    },
 ];
 
 /// A record's fields under the name each had before and the name it has
@@ -377,6 +425,7 @@ const RENAMES: &[Rename] = &[
         2,
         &[("collisionLayers", "collisionMask")],
     ),
+    ("og.VirtualCamera", 3, &[("damping", "recoverTime")]),
     ("og.CameraView", 2, &[("every", "everyTicks")]),
     ("og.Mirror", 2, &[("every", "everyTicks")]),
     ("og.Afterimage", 2, &[("interval", "intervalTicks")]),
@@ -448,6 +497,69 @@ fn renamed(edit: &mut SnapshotEdit, name: &str, to: u32) -> Result<(), String> {
     }
     edit.map_type(name, schema, &mut |v| Ok(v.to_vec()))
         .map_err(|e| e.reason().to_string())
+}
+
+/// The tick's length the save ran at (its og.Time's `dt`), 1/60 s where it
+/// holds none (a selection).
+fn tick_dt(edit: &SnapshotEdit) -> f32 {
+    let saved = edit.schema("og.Time").zip(edit.resource("og.Time"));
+    saved
+        .and_then(|(schema, v)| {
+            let (_, dt) = f32s(schema, v).into_iter().find(|(n, _)| *n == "dt")?;
+            dt.first().copied()
+        })
+        .filter(|dt| dt.is_finite() && *dt > 0.0)
+        .unwrap_or(1.0 / 60.0)
+}
+
+/// The most a converted `damping` is: a point that kept nothing.
+const MAX_DAMPING: f32 = 1.0e6;
+
+/// The decay rate (`og_core::math::damping_keep`'s) that keeps `keep` of a
+/// velocity over a tick of `dt`: what a rope's, a cloth's, a garment's and
+/// a soft body's `damping` was before it became a rate.
+fn rate_of_keep_per_tick(keep: f32, dt: f32) -> f32 {
+    let keep = keep.clamp(0.0, 1.0);
+    if keep <= 0.0 {
+        return MAX_DAMPING;
+    }
+    ((1.0 / keep - 1.0) / dt).min(MAX_DAMPING)
+}
+
+/// The decay rate that keeps each tick what og.WaterSurface's `damping`
+/// kept when it was the share of a wave left after a second.
+fn rate_of_keep_per_second(left: f32, dt: f32) -> f32 {
+    rate_of_keep_per_tick(og_core::math::pow(left.clamp(0.0, 1.0), dt), dt)
+}
+
+/// A record whose f32 `field` keeps its name and takes another meaning
+/// with its version `to`: each saved value through `convert`, which also
+/// takes the tick's length the save ran at.
+fn revalued(
+    edit: &mut SnapshotEdit,
+    name: &str,
+    to: u32,
+    field: &str,
+    convert: fn(f32, f32) -> f32,
+) -> Result<(), String> {
+    let Some(mut schema) = edit.schema(name).cloned() else {
+        return Ok(());
+    };
+    let i = schema
+        .fields
+        .iter()
+        .position(|f| f.name == field && f.ty == og_core::reflect::FieldType::F32)
+        .ok_or_else(|| format!("the saved {name} has no f32 {field}"))?;
+    let at: usize = schema.fields[..i].iter().map(|f| f.ty.size()).sum();
+    let dt = tick_dt(edit);
+    schema.version = to;
+    edit.map_type(name, schema, &mut |v| {
+        let old = f32::from_le_bytes(v[at..at + 4].try_into().expect("an f32"));
+        let mut out = v.to_vec();
+        out[at..at + 4].copy_from_slice(&convert(old, dt).to_le_bytes());
+        Ok(out)
+    })
+    .map_err(|e| e.reason().to_string())
 }
 
 /// A record that became lazy with its version 1 -> 2 (R11's 2D lighting):
@@ -898,10 +1010,19 @@ mod tests {
                 "og.Gamepad" => <og_input::Gamepad as og_core::Reflect>::schema(),
                 _ => crate::engine::versioned(layout.schema()),
             };
-            assert_eq!(now.version, to, "{name}: the version this build registers");
+            // Later steps of the record run after this one: the save as the
+            // build before this step wrote it undoes them too, newest first.
+            let mut later: Vec<&Rename> =
+                RENAMES.iter().filter(|r| r.0 == name && r.1 > to).collect();
+            later.sort_by_key(|r| std::cmp::Reverse(r.1));
+            assert_eq!(
+                now.version,
+                later.first().map_or(to, |r| r.1),
+                "{name}: the version this build registers"
+            );
             let mut old = now.clone();
             old.version = to - 1;
-            for (before, after) in fields {
+            for (before, after) in later.iter().flat_map(|r| r.2).chain(fields) {
                 let f = old
                     .fields
                     .iter_mut()
@@ -923,7 +1044,7 @@ mod tests {
             let (upgraded, steps) = upgrade(&world.snapshot())
                 .unwrap()
                 .unwrap_or_else(|| panic!("{name}: no step ran"));
-            assert_eq!(steps.len(), 1, "{name}: {steps:?}");
+            assert_eq!(steps.len(), 1 + later.len(), "{name}: {steps:?}");
             let edit = SnapshotEdit::from_bytes(&upgraded).unwrap();
             let saved = edit.schema(name).unwrap();
             assert_eq!(saved.layout_hash(), now.layout_hash(), "{name}: {saved:?}");
@@ -935,6 +1056,74 @@ mod tests {
                 upgrade(&upgraded).unwrap().is_none(),
                 "{name}: upgraded twice"
             );
+        }
+    }
+
+    /// A save from before `damping` was a rate: each soft thing's share
+    /// kept per tick, and the water surface's share left after a second,
+    /// restore as the rate that keeps as much a tick at the save's tick
+    /// rate (30 Hz here), the other fields where they were.
+    #[test]
+    fn a_saved_damping_becomes_the_rate_that_keeps_as_much_a_tick() {
+        use og_core::Reflect;
+        let dt = 1.0 / 30.0;
+        for (now, kept_per_tick) in [
+            (og_physics::Rope::schema(), 0.99f32),
+            (og_physics::Cloth::schema(), 0.985),
+            (og_physics::Garment::schema(), 0.97),
+            (og_physics::SoftBody::schema(), 0.995),
+            (og_physics::WaterSurface::schema(), 0.0),
+        ] {
+            let name = now.name.clone();
+            let water = name == "og.WaterSurface";
+            // The value the old build saved: the water's is per second.
+            let (saved, keep) = if water {
+                (0.4f32, og_core::math::pow(0.4, dt))
+            } else {
+                (kept_per_tick, kept_per_tick)
+            };
+            let decl = og_api::host::RECORDS
+                .iter()
+                .find(|d| d.schema == name)
+                .unwrap();
+            let layout = crate::host::codec::Layout::from_decl(decl).unwrap();
+            assert_eq!(
+                crate::engine::versioned(layout.schema()).version,
+                now.version,
+                "{name}"
+            );
+            let mut old = crate::engine::versioned(layout.schema());
+            old.version -= 1;
+            let at: usize = old
+                .fields
+                .iter()
+                .take_while(|f| f.name != "damping")
+                .map(|f| f.ty.size())
+                .sum();
+            let mut bytes = layout.encode(None, None).unwrap();
+            bytes[at..at + 4].copy_from_slice(&saved.to_le_bytes());
+            let mut world = og_ecs::World::new(&og_ecs::WorldDesc {
+                tick_rate: 30,
+                seed: 1,
+            })
+            .unwrap();
+            let id = world.register_schema(old).unwrap();
+            let e = world.spawn_bytes(vec![(id, bytes.clone())]).unwrap();
+            let (upgraded, steps) = upgrade(&world.snapshot())
+                .unwrap()
+                .unwrap_or_else(|| panic!("{name}: no step ran"));
+            assert_eq!(steps.len(), 1, "{name}: {steps:?}");
+            let edit = SnapshotEdit::from_bytes(&upgraded).unwrap();
+            assert_eq!(edit.schema(&name).unwrap().version, now.version, "{name}");
+            let rows = edit.components(&name);
+            let (entity, row) = &rows[0];
+            assert_eq!(*entity, e);
+            let rate = f32::from_le_bytes(row[at..at + 4].try_into().unwrap());
+            let kept = og_core::math::damping_keep(rate, dt);
+            assert!((kept - keep).abs() < 1e-5, "{name}: {rate} keeps {kept}");
+            assert_eq!(row[..at], bytes[..at], "{name}");
+            assert_eq!(row[at + 4..], bytes[at + 4..], "{name}");
+            assert!(upgrade(&upgraded).unwrap().is_none(), "{name}: twice");
         }
     }
 

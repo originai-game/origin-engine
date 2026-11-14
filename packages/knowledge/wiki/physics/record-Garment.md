@@ -22,7 +22,7 @@ Token `og.Garment`, registered under the schema name `og.Garment`; its value typ
 | `bending` | `number` | `0.1` | 0 … 1 | — | tunable | How much it resists folding, 0 to 1 a pass (across each pair of triangles that share an edge): 0 drapes like silk, near 1 like leather. |
 | `iterations` | `number` | `6` | 1 … 64 | — | tunable | Constraint passes per substep. |
 | `substeps` | `number` | `1` | 1 … 16 | — | — | Simulation steps per tick. |
-| `damping` | `number` | `0.97` | 0 … 1 | — | tunable | How much of its velocity each point keeps per tick. |
+| `damping` | `number` | `1.85` | 0 … 100 | `perSecond` | tunable | How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping. |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
 | `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s. See `physics §8`. |
 | `gust` | `number` | `0.6` | 0 … 2 | — | tunable | How much the wind varies over the garment and the tick (0: steady). |
@@ -75,10 +75,11 @@ component Garment {
     min 1
     max 16
   }
-  field damping f32 "How much of its velocity each point keeps per tick." {
-    default 0.97
+  field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+    default 1.85
     min 0
-    max 1
+    max 100
+    unit perSecond
     tunable true
   }
   field gravityScale f32 "Multiplies og.Physics.gravity." {
@@ -116,4 +117,4 @@ component Garment {
 }
 ```
 
-<sub>Module `physics` line 1150</sub>
+<sub>Module `physics` line 1152</sub>
