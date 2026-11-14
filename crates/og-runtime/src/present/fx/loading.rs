@@ -77,7 +77,7 @@ pub(crate) fn load_emitter(eng: &crate::engine::Engine, path: &str) -> Result<us
     eng.render.borrow_mut().fx.loading.pop();
     let (emitter, array) = parsed.map_err(|e| format!("{id}: {e}"))?;
     let mut rs = eng.render.borrow_mut();
-    let host = crate::present::particle_events::shared(eng);
+    let host = crate::bind::particles::shared(eng);
     rs.fx.host = Some(host.clone());
     // An emitter that sends events: the tick simulates its systems.
     let definition = (!emitter.events.is_empty()).then(|| {
@@ -97,13 +97,13 @@ pub(crate) fn load_emitter(eng: &crate::engine::Engine, path: &str) -> Result<us
     rs.fx.emitters.push(h);
     let i = rs.fx.emitters.len() - 1;
     if let Some((emitter, subs, points)) = definition {
-        let d = crate::present::particle_events::Definition {
+        let d = crate::bind::particles::Definition {
             handle: h,
             emitter,
             subs,
             points,
         };
-        crate::present::particle_events::lock(&host)
+        crate::bind::particles::lock(&host)
             .emitters
             .insert(i, Arc::new(d));
     }

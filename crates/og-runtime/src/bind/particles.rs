@@ -30,7 +30,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 pub(crate) const SYSTEM: &str = "og.particles";
 pub(crate) const EVENT: &str = "og.ParticleEvent";
 const SYSTEMS: &str = "og.ParticleSystem";
-/// og.ParticleSystem.startTick's unwritten value (`fx::PARTICLES_ARMED`).
+/// og.ParticleSystem.startTick's unwritten value (`crate::present::fx::PARTICLES_ARMED`).
 const ARMED: u64 = u32::MAX as u64;
 
 /// What the tick needs of a loaded emitter that sends events.

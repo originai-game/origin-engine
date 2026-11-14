@@ -17,7 +17,6 @@ pub(crate) mod glyphs;
 pub(crate) mod interpolate;
 pub(crate) mod light2d_at;
 pub(crate) mod look;
-pub(crate) mod particle_events;
 pub(crate) mod presentation;
 pub(crate) mod probes;
 pub(crate) mod ui_draw;

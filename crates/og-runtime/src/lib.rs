@@ -157,6 +157,7 @@ pub use bind::timeline::{
     og_path_sample, og_timeline_info, og_timeline_pause, og_timeline_play, og_timeline_seek,
     og_timeline_stop,
 };
+pub use bind::vfx::{og_load_vfx, og_vfx_info, og_vfx_spawn};
 pub use bind::video::{og_load_video, og_load_video_info, og_video_capabilities};
 pub use engine::invariants::og_assert_record;
 pub use engine::{
@@ -221,7 +222,6 @@ pub use present::geometry::{
 };
 pub use present::light2d_at::og_render_light2d_at;
 pub use present::ui_draw::{og_load_ui_material, og_load_vector};
-pub use present::vfx::{og_load_vfx, og_vfx_info, og_vfx_spawn};
 pub use present::views::{
     og_load_post, og_render_post_errors, og_render_render_target, og_render_set_post_param,
 };

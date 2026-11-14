@@ -79,7 +79,7 @@ impl FxLayouts {
             particles: get("og.ParticleSystem"),
             trail: get("og.Trail"),
             beam: get("og.Beam"),
-            vfx: get(crate::present::vfx::COMPONENT),
+            vfx: get(crate::bind::vfx::COMPONENT),
             skeleton: get("og.Skeleton"),
             crowd: get("og.CrowdAnimation"),
             stylise: get("og.Stylise"),
@@ -201,9 +201,9 @@ pub(crate) struct FxState {
     /// Emitters being loaded, outermost first: a sub-emitter naming one of
     /// them is a cycle.
     pub loading: Vec<String>,
-    /// og.particles' state (`crate::present::particle_events`): the systems the
+    /// og.particles' state (`crate::bind::particles`): the systems the
     /// tick simulates, drawn as they stand. Set at the first emitter load.
-    pub host: Option<Arc<std::sync::Mutex<crate::present::particle_events::Hosted>>>,
+    pub host: Option<Arc<std::sync::Mutex<crate::bind::particles::Hosted>>>,
     /// Trail styles made from Trail components, by their fields' bits.
     pub trail_styles: BTreeMap<Vec<u32>, TrailStyleHandle>,
     /// Ribbons and sprites queued this tick (`og.render.ribbon`, `.sprite`).
@@ -375,10 +375,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
     scene.effects.particle_layers.clear();
     scene.effects.effect_meshes.clear();
     scene.effects.hosted_particles.clear();
-    let hosted = fx
-        .host
-        .as_ref()
-        .map(|h| crate::present::particle_events::lock(h));
+    let hosted = fx.host.as_ref().map(|h| crate::bind::particles::lock(h));
     scene.effects.trails.clear();
     scene.effects.beams.clear();
     scene.effects.ribbons.clear();

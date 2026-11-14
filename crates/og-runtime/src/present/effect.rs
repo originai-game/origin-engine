@@ -9,8 +9,8 @@ use std::collections::BTreeMap;
 pub(crate) struct EffectState {
     pub handles: Vec<og_render::EffectMaterialHandle>,
     pub paths: BTreeMap<String, usize>,
-    /// The composed effects loaded (`crate::present::vfx`), once one is.
-    pub vfx: Option<crate::present::vfx::Registry>,
+    /// The composed effects loaded (`crate::bind::vfx`), once one is.
+    pub vfx: Option<crate::bind::vfx::Registry>,
     /// The vfx flash's material, made once.
     pub flash: Option<og_render::EffectMaterialHandle>,
     /// Emitters copied with a vfx instance's tint, by emitter and tint.

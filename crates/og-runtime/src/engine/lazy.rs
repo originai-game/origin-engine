@@ -319,18 +319,18 @@ pub(crate) const LAZY: &[Lazy] = &[
     // 3D VFX: og.vfx plays composed effects, sends og.VfxEvent and
     // despawns them, once a game names og.Vfx or og.VfxEvent.
     Lazy {
-        name: crate::present::vfx::COMPONENT,
-        enable: crate::present::vfx::enable,
+        name: crate::bind::vfx::COMPONENT,
+        enable: crate::bind::vfx::enable,
     },
     Lazy {
-        name: crate::present::vfx::EVENT,
-        enable: crate::present::vfx::enable,
+        name: crate::bind::vfx::EVENT,
+        enable: crate::bind::vfx::enable,
     },
     // R7: og.particles simulates the systems whose emitters send events
     // and sends them, once a game names the event.
     Lazy {
-        name: crate::present::particle_events::EVENT,
-        enable: crate::present::particle_events::enable,
+        name: crate::bind::particles::EVENT,
+        enable: crate::bind::particles::enable,
     },
     // R10: virtual cameras; og.camera's brain writes them (and
     // og.PostEffects, for a shot's focus). Naming one registers all three.
@@ -467,7 +467,7 @@ const TOGETHER: &[&[&str]] = &[
     &crate::bind::sight::RECORDS,
     &crate::bind::destruction::RECORDS,
     &crate::bind::destruction2d::RECORDS,
-    &crate::present::vfx::RECORDS,
+    &crate::bind::vfx::RECORDS,
     &[
         crate::world::stream::cells::CELL,
         crate::world::stream::cells::MEMBER,

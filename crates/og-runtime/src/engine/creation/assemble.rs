@@ -202,7 +202,7 @@ pub(crate) fn assemble(
             || super::feel::REGISTERED_BY_FEEL.contains(&decl.schema)
             || super::timeline::REGISTERED_BY_TIMELINE.contains(&decl.schema)
             || decl.schema == super::stream::EVENT
-            || decl.schema == crate::present::vfx::EVENT
+            || decl.schema == crate::bind::vfx::EVENT
         {
             continue;
         }
@@ -254,7 +254,7 @@ pub(crate) fn assemble(
     // registered lazily (crate::engine::lazy) like og.Vfx.
     {
         use og_core::Reflect;
-        let l = Layout::from_schema(&crate::present::vfx::VfxEvent::schema(), RecordKind::Event);
+        let l = Layout::from_schema(&crate::bind::vfx::VfxEvent::schema(), RecordKind::Event);
         layouts.insert(l.schema.clone(), l);
     }
     // og.stream's event (its group is a str64), registered as it is sent.

@@ -46,6 +46,7 @@ pub(crate) mod nav;
 #[path = "bind/absent/nav.rs"]
 pub(crate) mod nav;
 pub(crate) mod net;
+pub(crate) mod particles;
 pub(crate) mod physics_ext;
 pub(crate) mod procgen;
 pub(crate) mod seabed;
@@ -71,6 +72,7 @@ pub(crate) mod timeline;
 pub(crate) mod video;
 // Without the `video` feature og-video is not linked: og.video answers the
 // refusal (bind/absent/video.rs).
+pub(crate) mod vfx;
 #[cfg(not(feature = "video"))]
 #[path = "bind/absent/video.rs"]
 pub(crate) mod video;

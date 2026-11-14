@@ -8,9 +8,9 @@
 
 use crate::{
     bind::agents, bind::destruction, bind::destruction2d, bind::i18n, bind::modules, bind::motion,
-    bind::net, bind::sight, bind::story, bind::terrain, bind::timeline, bind::video, bind::wind,
-    engine::invariants, host::platform, present::atmosphere, present::particle_events,
-    present::vfx, world::origin, world::stream,
+    bind::net, bind::particles, bind::sight, bind::story, bind::terrain, bind::timeline, bind::vfx,
+    bind::video, bind::wind, engine::invariants, host::platform, present::atmosphere,
+    world::origin, world::stream,
 };
 
 /// Each module's state on one engine (an optional module left out of the
@@ -31,7 +31,7 @@ pub(crate) struct Modules {
     pub destruction: destruction::ModuleState,
     pub destruction2d: destruction2d::ModuleState,
     pub motion: motion::ModuleState,
-    pub particles: particle_events::ModuleState,
+    pub particles: particles::ModuleState,
     pub vfx: vfx::ModuleState,
     pub timeline: timeline::ModuleState,
     pub terrain: terrain::ModuleState,
