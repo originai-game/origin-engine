@@ -30842,7 +30842,7 @@ export interface TimelineEnded {
 /** One track of a loaded timeline. */
 export interface TimelineTrackInfo {
   /**
-   * camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot or vfx.
+   * camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx or video.
    */
   readonly kind: string;
   /**

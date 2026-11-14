@@ -336,6 +336,8 @@ pub(super) struct Rec {
     /// og.Vfx's and og.Parent's, for a vfx track, likewise.
     pub(super) vfx: Option<Layout>,
     pub(super) parent: Option<Layout>,
+    /// og.VideoPlayer's layout, for a video track (registered lazily).
+    pub(super) video: Option<Layout>,
 }
 
 /// Registers the timeline events (their layouts into `layouts`).
@@ -388,6 +390,7 @@ pub(crate) fn install(
         brain: layouts.get(crate::present::feel::vcam::BRAIN).cloned(),
         vfx: layouts.get(crate::bind::vfx::COMPONENT).cloned(),
         parent: layouts.get("og.Parent").cloned(),
+        video: layouts.get(crate::bind::video::PLAYER).cloned(),
     };
     let names =
         |ids: &[&(SchemaId, Layout)]| ids.iter().map(|x| x.1.schema.clone()).collect::<Vec<_>>();

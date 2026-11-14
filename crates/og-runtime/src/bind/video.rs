@@ -1149,6 +1149,12 @@ fn load_video(eng: &Engine, path: &str) -> Result<VideoInfo, String> {
     Ok(info)
 }
 
+/// A video's og.VideoPlayer.video handle, loaded as og.load.video does (a
+/// timeline's video track).
+pub(crate) fn load_handle(eng: &Engine, path: &str) -> Result<u64, String> {
+    load_video(eng, path).map(|i| i.video)
+}
+
 /// `og.load.video`.
 pub fn og_load_video(world: u32, path: String) -> Result<crate::host::wire::VideoInfo, String> {
     engine(world).and_then(|eng| load_video(&eng, &path))

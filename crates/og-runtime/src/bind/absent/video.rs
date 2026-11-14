@@ -30,6 +30,11 @@ pub(crate) const PLAYER_VERSION: u32 = 3;
 const AUDIO: &str = "og.AudioSource";
 pub(crate) const MEDIA_INTENT: &str = "og.MediaIntent";
 
+/// A timeline's video track: refused.
+pub(crate) fn load_handle(_eng: &crate::engine::Engine, _path: &str) -> Result<u64, String> {
+    Err(ABSENT.to_string())
+}
+
 /// Lazy og.VideoPlayer or og.MediaIntent was named: refused.
 pub(crate) fn refuse_lazy(
     _world: &mut World,

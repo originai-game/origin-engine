@@ -21,7 +21,7 @@ pub(super) fn track(e: &Entry, read: &mut Read<'_>) -> Result<Track, String> {
     };
     let needs_target = matches!(
         kind,
-        "transform" | "animation" | "light" | "visibility" | "blendshape" | "material"
+        "transform" | "animation" | "light" | "visibility" | "blendshape" | "material" | "video"
     );
     let may_target = needs_target || kind == "property";
     match (&target, needs_target) {
@@ -53,6 +53,7 @@ pub(super) fn track(e: &Entry, read: &mut Read<'_>) -> Result<Track, String> {
         "timeline" => Track::Timeline(nested(block)?),
         "shot" => Track::Shot(shots(block)?),
         "vfx" => Track::Vfx(effects(block)?),
+        "video" => Track::Video(video(block, target)?),
         k => match FieldsKind::from_name(k) {
             Some(kind) => Track::Fields(fields(block, kind, target)?),
             None => {
@@ -786,6 +787,48 @@ fn nested(block: &Block) -> Result<Vec<NestedKey>, String> {
         out.push(k);
     }
     Ok(sorted(out, |k| k.time))
+}
+
+fn video(block: &Block, entity: String) -> Result<VideoTrack, String> {
+    let mut out = Vec::new();
+    for e in only_keys(block, "video")? {
+        let mut k = VideoKey {
+            time: key_time(e)?,
+            video: String::new(),
+            from: 0.0,
+            speed: 1.0,
+        };
+        for f in key_block(e)? {
+            no_block(f)?;
+            match f.key.as_str() {
+                "video" => k.video = string(f)?,
+                "from" => {
+                    k.from = one_number(f)?;
+                    if k.from < 0.0 {
+                        return Err(at(f, "from is seconds into the video, ≥ 0"));
+                    }
+                }
+                "speed" => {
+                    k.speed = one_number(f)?;
+                    if !(0.0..=4.0).contains(&k.speed) {
+                        return Err(at(f, "speed is 0 to 4 (og.VideoPlayer.speed)"));
+                    }
+                }
+                _ => return Err(unknown(f, "video key entry", "video, from or speed")),
+            }
+        }
+        if k.video.is_empty() {
+            return Err(at(
+                e,
+                "a video key names what it plays: `video \"clips/kitchen.ogt\"`",
+            ));
+        }
+        out.push(k);
+    }
+    Ok(VideoTrack {
+        entity,
+        keys: sorted(out, |k| k.time),
+    })
 }
 
 fn shots(block: &Block) -> Result<Vec<ShotKey>, String> {

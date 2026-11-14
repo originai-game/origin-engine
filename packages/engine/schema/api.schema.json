@@ -54381,7 +54381,7 @@
       "properties": {
         "kind": {
           "type": "string",
-          "description": "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot or vfx."
+          "description": "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx or video."
         },
         "target": {
           "type": "string",

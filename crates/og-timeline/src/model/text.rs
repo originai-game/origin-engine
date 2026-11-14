@@ -185,6 +185,7 @@ fn track_end(t: &Track) -> f32 {
         Track::Timeline(c) => max(&mut c.iter().map(|k| k.time)),
         Track::Vfx(c) => max(&mut c.iter().map(|k| k.time)),
         Track::Shot(c) => max(&mut c.iter().map(|k| k.time)),
+        Track::Video(c) => max(&mut c.keys.iter().map(|k| k.time)),
     }
 }
 
@@ -441,6 +442,16 @@ fn write_track(tr: &Track) -> Entry {
                 b.push(key_entry(k.time, kb));
             }
         }
+        Track::Video(v) => {
+            head = head.with(Value::String(v.entity.clone()));
+            for k in &v.keys {
+                let mut kb = Block::new();
+                kb.push(Entry::new("video").with(Value::String(k.video.clone())));
+                kb.push(Entry::new("from").with(num(k.from)));
+                kb.push(Entry::new("speed").with(num(k.speed)));
+                b.push(key_entry(k.time, kb));
+            }
+        }
     }
     head.with_block(b)
 }
@@ -503,6 +514,16 @@ track marker {
     name "drop"
   }
 }
+track video "deck" {
+  key 4 {
+    video "clips/hall.ogt"
+    from 12.5
+    speed 0.5
+  }
+  key 0 {
+    video "clips/kitchen.ogt"
+  }
+}
 "#;
 
     fn read(file: &str) -> Result<String, String> {
@@ -540,6 +561,23 @@ track marker {
                 (7.0, 10.0, "Press \"Start\"")
             ]
         );
+        let Track::Video(v) = &t.tracks[6] else {
+            panic!()
+        };
+        let keys: Vec<_> = v
+            .keys
+            .iter()
+            .map(|k| (k.time, k.video.as_str(), k.from, k.speed))
+            .collect();
+        assert_eq!(
+            keys,
+            vec![
+                (0.0, "clips/kitchen.ogt", 0.0, 1.0),
+                (4.0, "clips/hall.ogt", 12.5, 0.5)
+            ]
+        );
+        assert_eq!(crate::eval::video_at(v, 6.0), Some((1, 13.5)));
+        assert_eq!(crate::eval::video_at(v, 3.0), Some((0, 3.0)));
         let text = t.to_text();
         let back = Timeline::parse(&text, &mut |_| Err("no files".into())).unwrap();
         assert_eq!(

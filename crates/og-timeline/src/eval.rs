@@ -256,6 +256,14 @@ pub fn clip_at(track: &AnimationTrack, t: f32) -> Option<(usize, f32)> {
     Some((i, (t - k.time) * k.speed))
 }
 
+/// The video key playing at `t` and the video's time then: `from + (t −
+/// key) · speed` (`None` before the first key).
+pub fn video_at(track: &VideoTrack, t: f32) -> Option<(usize, f32)> {
+    let i = track.keys.iter().rposition(|k| k.time <= t)?;
+    let k = &track.keys[i];
+    Some((i, k.from + (t - k.time) * k.speed))
+}
+
 /// The caption showing at `t`: the latest started that has not ended.
 pub fn caption_at(track: &CaptionTrack, t: f32) -> Option<(usize, &CaptionKey)> {
     let showing = |(_, k): &(usize, &CaptionKey)| k.time <= t && t < k.end;

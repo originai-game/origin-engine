@@ -420,6 +420,25 @@ pub struct VfxKey {
     pub seed: u32,
 }
 
+/// A key of a `video` track: from its time (until the next key), the
+/// entity's og.VideoPlayer plays `video` (a `type video` asset id), its
+/// time `from + (t − time) · speed` at the timeline's time `t`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct VideoKey {
+    pub time: f32,
+    pub video: String,
+    /// Seconds into the video at the key's time.
+    pub from: f32,
+    pub speed: f32,
+}
+
+/// A track that plays footage on an entity's og.VideoPlayer.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct VideoTrack {
+    pub entity: String,
+    pub keys: Vec<VideoKey>,
+}
+
 /// How deep timelines nest (a timeline's own tracks are depth 0).
 pub const NEST_DEPTH: usize = 4;
 
@@ -443,10 +462,12 @@ pub enum Track {
     Shot(Vec<ShotKey>),
     /// Composed effects.
     Vfx(Vec<VfxKey>),
+    /// Footage on an entity's og.VideoPlayer.
+    Video(VideoTrack),
 }
 
 /// Every track kind the file may name, for the refusal of another.
-pub const TRACK_KINDS: &str = "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot or vfx";
+pub const TRACK_KINDS: &str = "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx or video";
 
 impl Track {
     /// The track's kind as the file names it.
@@ -465,6 +486,7 @@ impl Track {
             Track::Timeline(_) => "timeline",
             Track::Shot(_) => "shot",
             Track::Vfx(_) => "vfx",
+            Track::Video(_) => "video",
         }
     }
 
@@ -484,6 +506,7 @@ impl Track {
             Track::Timeline(c) => c.iter().map(|k| k.time).collect(),
             Track::Shot(c) => c.iter().map(|k| k.time).collect(),
             Track::Vfx(c) => c.iter().map(|k| k.time).collect(),
+            Track::Video(c) => c.keys.iter().map(|k| k.time).collect(),
         }
     }
 
@@ -498,6 +521,7 @@ impl Track {
             Track::Transform(t) => &t.entity,
             Track::Animation(a) => &a.entity,
             Track::Fields(f) => &f.entity,
+            Track::Video(v) => &v.entity,
             _ => "",
         }
     }
@@ -517,6 +541,7 @@ impl Track {
             Track::Timeline(k) => k.len(),
             Track::Shot(k) => k.len(),
             Track::Vfx(k) => k.len(),
+            Track::Video(v) => v.keys.len(),
         }
     }
 }

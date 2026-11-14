@@ -107,7 +107,7 @@ pub(crate) fn cook_timeline(
             .map_err(|e| format!("{rel} (beside the timeline or under assets/): {e}"))
     };
     let t = Timeline::parse(text, &mut read).map_err(CookError)?;
-    // Every sound and model it names is a cooked asset.
+    // Every sound, model, timeline and video it names is a cooked asset.
     let mut missing = Vec::new();
     let mut need = |id: &str, what: &str| {
         if !known(id) {
@@ -124,6 +124,7 @@ pub(crate) fn cook_timeline(
             Track::Fields(f) => check_fields(f).map_err(CookError)?,
             Track::Timeline(keys) => keys.iter().for_each(|k| need(&k.play, "timeline")),
             Track::Vfx(keys) => keys.iter().for_each(|k| need(&k.effect, "vfx")),
+            Track::Video(v) => v.keys.iter().for_each(|k| need(&k.video, "video")),
             _ => {}
         }
     }

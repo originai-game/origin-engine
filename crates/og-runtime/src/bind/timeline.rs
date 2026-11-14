@@ -122,6 +122,9 @@ pub(crate) struct Loaded {
     pub nested: BTreeMap<String, Arc<Mutex<Loaded>>>,
     /// The effects its `vfx` tracks play: (handle, seconds, looping).
     pub effects: BTreeMap<String, (f64, f32, bool)>,
+    /// The videos its `video` tracks play: their og.VideoPlayer.video
+    /// handles, by the id they name.
+    pub videos: BTreeMap<String, u64>,
 }
 
 #[derive(Default)]
@@ -389,6 +392,7 @@ fn decode(eng: &Engine, id: &str, chain: &mut Vec<String>) -> Result<Loaded, Str
     let mut clips = IdMap::new();
     let mut nested = BTreeMap::new();
     let mut effects = BTreeMap::new();
+    let mut videos = BTreeMap::new();
     for tr in &timeline.tracks {
         if let Track::Vfx(keys) = tr {
             for k in keys {
@@ -396,6 +400,15 @@ fn decode(eng: &Engine, id: &str, chain: &mut Vec<String>) -> Result<Loaded, Str
                     let e = crate::bind::vfx::load_timed(eng, &k.effect)
                         .map_err(|e| format!("{id}: vfx {}: {e}", k.effect))?;
                     effects.insert(k.effect.clone(), e);
+                }
+            }
+        }
+        if let Track::Video(v) = tr {
+            for k in &v.keys {
+                if !videos.contains_key(&k.video) {
+                    let h = crate::bind::video::load_handle(eng, &k.video)
+                        .map_err(|e| format!("{id}: video {}: {e}", k.video))?;
+                    videos.insert(k.video.clone(), h);
                 }
             }
         }
@@ -443,6 +456,7 @@ fn decode(eng: &Engine, id: &str, chain: &mut Vec<String>) -> Result<Loaded, Str
         clips,
         nested,
         effects,
+        videos,
     })
 }
 
@@ -476,6 +490,9 @@ fn needs(eng: &Engine, lt: &Loaded, out: &mut std::collections::BTreeSet<String>
             Track::Vfx(_) => {
                 out.insert(crate::bind::vfx::COMPONENT.to_string());
                 out.insert("og.Parent".into());
+            }
+            Track::Video(_) => {
+                out.insert(crate::bind::video::PLAYER.to_string());
             }
             Track::Camera(c)
                 if c.keys.iter().any(|k| {
@@ -530,6 +547,12 @@ fn grant_loaded(eng: &Engine, lt: &Loaded, mut world: Option<&mut World>) -> Res
         {
             crate::engine::lazy::ensure(eng, w, lazy)?;
         }
+    }
+    // A video track registers og.VideoPlayer, as naming it would.
+    if want.contains(crate::bind::video::PLAYER)
+        && let Some(w) = world.as_deref_mut()
+    {
+        crate::engine::lazy::ensure(eng, w, crate::bind::video::PLAYER)?;
     }
     // A lazy record no game has used yet is not registered: its tracks
     // write nothing until it is and the timeline loads again.

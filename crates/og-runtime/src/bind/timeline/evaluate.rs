@@ -103,6 +103,7 @@ pub(super) fn evaluate(
             Track::Vfx(keys) if playing => {
                 effects(ctx, engine_id, r, lt, run, (ti32, keys), t, spans, dt)?;
             }
+            Track::Video(v) => video(ctx, engine_id, r, lt, v, t, playing.then_some(speed))?,
             Track::Fields(f) if f.kind != og_timeline::FieldsKind::Material => {
                 fields(ctx, engine_id, &lt.id, f, t)?;
             }
@@ -560,6 +561,58 @@ fn shot(
             set_solo(ctx, r, found, k.blend, k.ease)?;
         }
         _ => {}
+    }
+    Ok(())
+}
+
+/// A video track at `t`: the entity's og.VideoPlayer plays the key's video
+/// from `from + (t − key) · speed`, at the timeline's speed while it plays
+/// (`speed` None: paused, the player holds that frame). og.video runs
+/// before og.timeline, so the time written is the one its next tick
+/// advances from.
+fn video(
+    ctx: &mut SystemContext<'_>,
+    engine_id: u32,
+    r: &Rec,
+    lt: &Loaded,
+    v: &og_timeline::VideoTrack,
+    t: f32,
+    speed: Option<f32>,
+) -> og_core::Result<()> {
+    let Some((ki, vt)) = eval::video_at(v, t) else {
+        return Ok(());
+    };
+    let (Ok(id), Some(l)) = (ctx.id_by_name(crate::bind::video::PLAYER), &r.video) else {
+        return Ok(());
+    };
+    let Some(e) = ctx.find(&v.entity) else {
+        note(
+            engine_id,
+            format!(
+                "timeline {}: no entity '{}' for its video track",
+                lt.id, v.entity
+            ),
+        );
+        return Ok(());
+    };
+    let key = &v.keys[ki];
+    let Some(&handle) = lt.videos.get(&key.video) else {
+        return Ok(());
+    };
+    let old = ctx.get_bytes(e, id).ok();
+    let mut p = match &old {
+        Some(b) => l.decode(b),
+        None => json!({}),
+    };
+    p["video"] = json!(handle);
+    p["time"] = json!(vt.max(0.0));
+    p["playing"] = json!(speed.is_some());
+    p["speed"] = json!(key.speed * speed.unwrap_or(1.0));
+    let out = l.encode(old.as_deref(), Some(&p)).map_err(invalid)?;
+    match old {
+        Some(b) if b == out => {}
+        Some(_) => ctx.set_bytes(e, id, &out)?,
+        None => ctx.insert_bytes(e, id, &out)?,
     }
     Ok(())
 }
