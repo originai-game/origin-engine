@@ -253,3 +253,74 @@ fn a_moving_hdr_sun_stays_stable_through_temporal_resolves() {
         assert!(largest_lag < 2.0, "{name}: solar history lags the camera");
     }
 }
+
+/// The clouds have a place in the world and keep their shapes as the
+/// clock runs. Drawn over the fair-weather sky looking up:
+///
+/// - the frame a tick before the wind's offset wraps (four tiles of the
+///   noise) and the frame a tick after differ as two neighbouring ticks
+///   anywhere do. The shape, the blend and the high layer were read at
+///   scales four tiles are no period of, so every cloud changed shape at
+///   the wrap (every 50 minutes of clock at the default wind);
+/// - an eye 1200 m along x sees what the eye at the origin sees with the
+///   clouds' offset 1200 m on: they stand over the world, where they
+///   followed the eye before, the same sky over every place.
+#[test]
+#[ignore = "requires GPU"]
+fn the_clouds_stand_over_the_world_and_keep_their_shapes() {
+    let draw_with = |tick: u64, eye_x: f32, high: bool| {
+        let mut scene = og_tests::sky_scenes::sky_scene("clouds-fair");
+        let c = scene.atmosphere.clouds.as_mut().expect("clouds");
+        c.wind = Vec3::new(12.0, 0.0, 0.0);
+        if !high {
+            c.layer = 0.0;
+        }
+        scene.objects.instances.clear();
+        scene.frame.tick = tick;
+        scene.frame.tick_rate = 60.0;
+        scene.frame.camera = Camera {
+            position: Vec3::new(eye_x, 2.0, 0.0),
+            target: Vec3::new(eye_x, 2.0 + 1.0, -1.0),
+            ..Default::default()
+        };
+        let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+        renderer
+            .render_capture(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        renderer.read_offscreen().expect("capture")
+    };
+    let draw = |tick: u64, eye_x: f32| draw_with(tick, eye_x, true);
+    let apart = |a: &RgbaImage, b: &RgbaImage| {
+        let sum: f64 = a
+            .pixels
+            .iter()
+            .zip(&b.pixels)
+            .map(|(x, y)| f64::from(x.abs_diff(*y)))
+            .sum();
+        sum / a.pixels.len() as f64
+    };
+    // The default scale's wrap: 36 km at 12 m/s, 3000 s in.
+    let scale = og_render::Clouds::default().scale;
+    let wrap = (f64::from(scale) * 4.0 / 12.0 * 60.0) as u64;
+    let steady = apart(&draw(1000, 0.0), &draw(1001, 0.0));
+    let across = apart(&draw(wrap - 1, 0.0), &draw(wrap, 0.0));
+    let later = apart(&draw(1000, 0.0), &draw(1000 + 100 * 60, 0.0));
+    println!("one tick apart: {steady:.3}; across the wrap: {across:.3}; 100 s apart: {later:.3}");
+    assert!(
+        later > 2.0,
+        "the clouds do not move with the wind ({later:.3})"
+    );
+    assert!(
+        across < 2.0 * steady + 0.2,
+        "the clouds change shape where the wind's offset wraps ({across:.3} against {steady:.3} a tick)"
+    );
+    // 100 s of a 12 m/s wind is 1200 m (the high layer's wind is twice
+    // that, so without it).
+    let carried = draw_with(1000 + 100 * 60, 0.0, false);
+    let walked = apart(&carried, &draw_with(1000, 1200.0, false));
+    println!("the eye 1200 m along x against the clouds' offset 1200 m on: {walked:.3}");
+    assert!(
+        walked < 2.0 * steady + 0.2,
+        "the clouds follow the eye ({walked:.3} against {steady:.3} a tick)"
+    );
+}

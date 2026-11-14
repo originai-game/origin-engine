@@ -23,7 +23,7 @@ use glam::Vec3;
 /// The noise volume's size per side.
 pub(crate) const NOISE_SIZE: u32 = 64;
 /// The vec4s of the frame uniform's cloud block (`frame.clouds`).
-pub(crate) const CLOUD_VEC4S: usize = 10;
+pub(crate) const CLOUD_VEC4S: usize = 12;
 /// The first of the clouds' block's rows that hold the clear sky's light
 /// ([`crate::atmosphere::AtmosphereGpu::new`]): overhead, then horizontal
 /// towards the sun, away from it and across.
@@ -85,13 +85,22 @@ impl Clouds {
     /// `radius` metres: (coverage, density, base, thickness), (the wind's
     /// offset, scale), (colour, detail), (layer, layer altitude, steps, on),
     /// (radius, the sun's and the sky's dimming by [`Clouds::light`],
-    /// which the scene's light is assumed to carry). The offset wraps every
-    /// four tiles (the coverage channel's period) so f32 keeps its
-    /// precision however long the clock runs.
-    pub(crate) fn gpu(&self, seconds: f64, radius: f32) -> [[f32; 4]; CLOUD_VEC4S] {
+    /// which the scene's light is assumed to carry), and after the clear
+    /// sky's rows where the eye stands in the world (`eye`: its x and z):
+    /// the clouds stand over the world, not over the eye. The offset and
+    /// the eye's place wrap every four tiles (a period of every scale the
+    /// sky reads the noise at) so f32 keeps its precision however long the
+    /// clock runs and however far the eye goes.
+    pub(crate) fn gpu(
+        &self,
+        seconds: f64,
+        radius: f32,
+        eye: glam::DVec2,
+    ) -> [[f32; 4]; CLOUD_VEC4S] {
         let scale = self.scale.clamp(500.0, 200_000.0);
         let period = f64::from(scale) * 4.0;
         let offset = |v: f32| (f64::from(v) * seconds).rem_euclid(period) as f32;
+        let place = |v: f64| v.rem_euclid(period) as f32;
         [
             [
                 self.coverage.clamp(0.0, 1.0),
@@ -127,6 +136,8 @@ impl Clouds {
             [0.0; 4],
             [0.0; 4],
             [0.0; 4],
+            [0.0; 4],
+            [place(eye.x), place(eye.y), 0.0, 0.0],
             [0.0; 4],
         ]
     }
@@ -406,11 +417,11 @@ mod tests {
     #[test]
     fn the_cloud_block_moves_with_the_clock_and_wraps() {
         let c = Clouds::default();
-        let a = c.gpu(10.0, 6.36e6);
+        let a = c.gpu(10.0, 6.36e6, glam::DVec2::ZERO);
         assert_eq!(a[3][3], 1.0);
         assert!((a[1][0] - 120.0).abs() < 1e-3 && (a[1][2] - 40.0).abs() < 1e-3);
         let period = f64::from(c.scale) * 4.0 / f64::from(c.wind.x);
-        let b = c.gpu(10.0 + period * 3.0, 6.36e6);
+        let b = c.gpu(10.0 + period * 3.0, 6.36e6, glam::DVec2::ZERO);
         assert!(
             (a[1][0] - b[1][0]).abs() < 0.05,
             "{} vs {}",
@@ -418,17 +429,26 @@ mod tests {
             b[1][0]
         );
         // A day of clock keeps sub-metre steps.
-        let late = c.gpu(86_400.0, 6.36e6)[1][0];
-        let later = c.gpu(86_400.0 + 1.0 / 60.0, 6.36e6)[1][0];
+        let late = c.gpu(86_400.0, 6.36e6, glam::DVec2::ZERO)[1][0];
+        let later = c.gpu(86_400.0 + 1.0 / 60.0, 6.36e6, glam::DVec2::ZERO)[1][0];
         assert!((later - late - 0.2).abs() < 0.01, "{late} {later}");
         let low = Clouds {
             layer_altitude: 100.0,
             steps: 1000,
             ..c
         };
-        let g = low.gpu(0.0, 6.36e6);
+        let g = low.gpu(0.0, 6.36e6, glam::DVec2::ZERO);
         assert_eq!(g[3][2], 256.0);
         assert_eq!(g[3][1], c.base + c.thickness);
+        // The eye's place wraps as the offset does, far from the origin too.
+        let far = glam::DVec2::new(1.0e7 + 250.0, -50.0);
+        let at = c.gpu(0.0, 6.36e6, far)[10];
+        let tile = f64::from(c.scale) * 4.0;
+        assert!(
+            (f64::from(at[0]) - far.x.rem_euclid(tile)).abs() < 0.5,
+            "{at:?}"
+        );
+        assert!((f64::from(at[1]) - (tile - 50.0)).abs() < 0.01, "{at:?}");
     }
 
     /// A broken sky barely dims the sun; overcast takes most of it, and
