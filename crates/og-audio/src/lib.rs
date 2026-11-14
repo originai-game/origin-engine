@@ -76,7 +76,8 @@ pub use music::{MUSIC_SYSTEM, next_times};
 pub use schema::{
     Audio, AudioBusFx, AudioBusNode, AudioEvent, AudioEventVoice, AudioListener, AudioMix,
     AudioPlayback, AudioSnapshot, AudioSource, AudioStream, Bus, MAX_BUSES, Music, MusicBeat,
-    Parent, ReverbZone, SoundEnded, SoundStarted, Transform, end_reason, event_order,
+    Parent, ReverbZone, SoundEnded, SoundStarted, Transform, Volume, end_reason, event_order,
+    zone_weight,
 };
 pub use sink::{HeadlessMode, HeadlessSink, SinkStats, wav};
 pub use sound::{
@@ -84,5 +85,6 @@ pub use sound::{
     chunks_wanted,
 };
 pub use system::{
-    AudioDesc, AudioLink, Occluder, SYSTEM_NAME, install, link, publish_link, restored, retire_link,
+    AudioDesc, AudioLink, Occluder, SYSTEM_NAME, enable_volumes, install, link, publish_link,
+    restored, retire_link,
 };

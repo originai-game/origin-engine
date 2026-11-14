@@ -39,7 +39,7 @@ fn a_placed_sub_scene_is_its_own_blob_named_by_the_entity_that_places_it() {
         &root,
         "scenes/world.ogt",
         &scene(
-            "entity \"village\" {\n  scene \"scenes/village.ogt\"\n  StreamCell {\n    size 20 10 20\n    load 10\n  }\n}\nentity \"plain\" {\n}\n",
+            "entity \"village\" {\n  scene \"scenes/village.ogt\"\n  StreamCell {\n    load 10\n  }\n}\nentity \"plain\" {\n}\n",
         ),
     );
     write(
@@ -73,7 +73,7 @@ fn a_cell_group_packs_its_sub_scenes_blob_with_its_assets() {
         &root,
         "scenes/world.ogt",
         &scene(
-            "entity \"village\" {\n  scene \"scenes/village.ogt\"\n  StreamCell {\n    size 20 10 20\n    load 10\n  }\n}\n",
+            "entity \"village\" {\n  scene \"scenes/village.ogt\"\n  StreamCell {\n    load 10\n  }\n}\n",
         ),
     );
     write(

@@ -409,6 +409,12 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.GrassPusher",
         enable: |_, _| Ok(()),
     },
+    // The shape of a region on its entity: og.audio bounds an
+    // og.ReverbZone by it, and the cells read it as the tick starts.
+    Lazy {
+        name: "og.Volume",
+        enable: |w, _| og_audio::enable_volumes(w),
+    },
     // G4: the kinds of blade og.Grass fields list.
     Lazy {
         name: "og.GrassType",

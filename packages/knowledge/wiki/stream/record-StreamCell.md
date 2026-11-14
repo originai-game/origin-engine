@@ -6,7 +6,7 @@ Module [`stream`](../stream.md) · [index](../index.md)
 
 ### `og.StreamCell` (component)
 
-A world cell: loads its sub-scene's entities while an og.StreamAnchor is near its box, and despawns them when none is (the module's doc). The box is the entity's world position ± half `size`, turned with it; a zero size is a point.
+A world cell: loads its sub-scene's entities while an og.StreamAnchor is near its box, and despawns them when none is (the module's doc). Its box (or sphere) is the og.Volume on its entity; without one the cell is a point at the entity's position. The volume's `fade` is not read: `load` and `unload` are the cell's distances.
 
 Also known as: open world streaming, load parts of the world near the player, level streaming, world partition
 
@@ -15,7 +15,6 @@ Token `og.StreamCell`, registered under the schema name `og.StreamCell`; its val
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `scene` | `Asset` | `0` | — | — | — | The sub-scene it loads: set from the entity's `scene "<id>"` line when its scene spawns, or og.load.scene's handle for a cell spawned by game code. 0: none (the cell never loads). |
-| `size` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The box's full extents, in metres along the entity's axes (its scale does not apply). Zero: a point at the entity's position. |
 | `load` | `number` | `0` | ≥ 0 | `m` | — | Loads while an anchor is within this distance of the box (0: only while one is inside it). |
 | `unload` | `number` | `0` | ≥ 0 | `m` | — | Unloads once every anchor is farther than this from the box, so an anchor on the edge does not load and unload it every tick; 0: 1.25 × load. Less than `load` is taken as `load`. |
 | `pin` | `boolean` | `false` | — | — | — | Loaded whatever the anchors while true (a cell game code needs, such as a quest's destination); set it false and the anchors decide again. |
@@ -26,11 +25,8 @@ Token `og.StreamCell`, registered under the schema name `og.StreamCell`; its val
 ```ogt
 component StreamCell {
   aliases "open world streaming, load parts of the world near the player, level streaming, world partition"
-  doc "A world cell: loads its sub-scene's entities while an og.StreamAnchor is near its box, and despawns them when none is (the module's doc). The box is the entity's world position ± half `size`, turned with it; a zero size is a point."
+  doc "A world cell: loads its sub-scene's entities while an og.StreamAnchor is near its box, and despawns them when none is (the module's doc). Its box (or sphere) is the og.Volume on its entity; without one the cell is a point at the entity's position. The volume's `fade` is not read: `load` and `unload` are the cell's distances."
   field scene Asset "The sub-scene it loads: set from the entity's `scene \"<id>\"` line when its scene spawns, or og.load.scene's handle for a cell spawned by game code. 0: none (the cell never loads)."
-  field size Vector3 "The box's full extents, in metres along the entity's axes (its scale does not apply). Zero: a point at the entity's position." {
-    unit m
-  }
   field load f32 "Loads while an anchor is within this distance of the box (0: only while one is inside it)." {
     unit m
     min 0

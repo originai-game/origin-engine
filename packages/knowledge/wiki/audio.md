@@ -48,7 +48,7 @@ module audio {
 | [`AudioEventOrder()`](#column-AudioEventOrder) | column kind |  | A AudioEventOrder field: the variant's index. |
 | [`og.AudioEvent`](audio/record-AudioEvent.md) | component |  | An audio event: one of a set of sounds played on each trigger, with pitch and volume jitter, a cooldown and a voice limit (footsteps, impacts, gunshots). |
 | [`SoundDesc`](audio/type-SoundDesc.md) | desc struct |  | PCM a game made itself (og.audio.createSound): a tone, a procedural effect, a recording it synthesised. |
-| [`og.ReverbZone`](audio/record-ReverbZone.md) | component |  | A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. |
+| [`og.ReverbZone`](audio/record-ReverbZone.md) | component |  | The shared reverb sounds like this room inside the og.Volume on its entity (none: everywhere). |
 | [`og.Music`](audio/record-Music.md) | component |  | A musical clock: tempo, metre and where bar 1 starts. |
 | [`og.MusicBeat`](audio/record-MusicBeat.md) | event |  | A beat of a Music clock, sent in the tick whose interval holds it (systems read it the tick after). |
 | [`og.SoundStarted`](audio/record-SoundStarted.md) | event |  | A source started, sent in the tick it happens (systems read it the tick after). |

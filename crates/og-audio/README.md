@@ -35,7 +35,7 @@ dependency.
 | Module | Entry points |
 |---|---|
 | `system` | `install(&mut World, &AudioDesc) -> AudioLink`, `restored(&mut World)` (after a restore: makes og.AudioMix for a save without one), `AudioLink` (`bank`, `attach`, `detach`, `drain`, `next_tick`, `dropped`), `publish_link`/`link`/`retire_link` (engine id → link), `SYSTEM_NAME` = `og.audio` |
-| `schema` | `AudioSource`, `AudioListener`, `Audio`, `ReverbZone` (`weight_at`), `AudioBusFx`, `AudioBusNode`, `AudioSnapshot`, `AudioEvent` (`event_order`), `SoundStarted`, `SoundEnded`, `end_reason`, `panning_model`, engine-owned `AudioPlayback`, `AudioStream`, `AudioMix`, `AudioEventVoice`, the `og.Transform` mirror, `Bus`, `MAX_BUSES` |
+| `schema` | `AudioSource`, `AudioListener`, `Audio`, `ReverbZone` (`zone_weight`), `AudioBusFx`, `AudioBusNode`, `AudioSnapshot`, `AudioEvent` (`event_order`), `SoundStarted`, `SoundEnded`, `end_reason`, `panning_model`, engine-owned `AudioPlayback`, `AudioStream`, `AudioMix`, `AudioEventVoice`, the `og.Transform` mirror, `Bus`, `MAX_BUSES` |
 | `events` | the `og.audioEvents` system (`EVENTS_SYSTEM`), before `og.audio` (§Bus graph, snapshots, audio events, Opus) |
 | `opus` | og-bundle's `src/opus.rs` by path: `encode`, `index`, `decode_block`, `BlockDecoder`, `decode` |
 | `command` | `Command`, `Op`, `encode`/`decode` (56-byte records), `TickPacket` |
@@ -236,11 +236,11 @@ Records (`schema.rs`, IDL module `audio`):
   (from the next tick on). `og.MusicBeat` (event) per beat, in the tick
   whose interval holds it.
 - `og.SoundEnded.reason` 4 (`SOUND_CULLED`): the voice cap.
-- `og.ReverbZone` (component): a box (`size`
-  along the entity's axes) or a sphere (`radius`) with `fade` (m), `bus`,
-  `send`, `room`, `damping`, and `weight` written back. Each tick the
-  listener's weight in each zone is `ReverbZone::weight_at`: 1 inside, then
-  linear to 0 at `fade` metres from the surface. The strongest zone (ties to
+- `og.ReverbZone` (component): `bus`, `send`, `room`, `damping`, and
+  `weight` written back, in the region the `og.Volume` on its entity
+  shapes (a box or a sphere with a fade; none: no bounds). Each tick the
+  listener's weight in each zone is `zone_weight`: 1 inside, then
+  linear to 0 at the volume's `fade` from the surface. The strongest zone (ties to
   the first in query order) eases `reverbRoom`, `reverbDamping` and its
   bus's `AudioBusFx.reverb` towards its own by that weight before the fx
   state is hashed and sent, so a zone is the same fx commands as a game

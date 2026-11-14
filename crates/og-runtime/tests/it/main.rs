@@ -94,6 +94,8 @@ mod profile2d;
 mod publish;
 #[path = "../raycast_record_cost.rs"]
 mod raycast_record_cost;
+#[path = "../region_volume.rs"]
+mod region_volume;
 #[path = "../render_interpolation.rs"]
 mod render_interpolation;
 #[path = "../render_origin.rs"]

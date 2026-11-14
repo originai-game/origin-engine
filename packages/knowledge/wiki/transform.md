@@ -6,7 +6,7 @@ Transforms in the three.js vocabulary: position, quaternion and scale, composed 
 
 - **TypeScript**: functions are the namespace `og.transform`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Transform`, `og.MatrixWorld`, `og.transform.lookAt`, `og.transform.fromAxisAngle`; 13 more are advanced (`og api show transform --all`).
+- **Core** (what most games use): `og.Transform`, `og.MatrixWorld`, `og.transform.lookAt`, `og.transform.fromAxisAngle`; 14 more are advanced (`og api show transform --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -24,6 +24,7 @@ module transform {
 | [`og.Transform`](transform/record-Transform.md) | component |  | Where an entity is, relative to its parent (or the world). |
 | [`og.Parent`](transform/record-Parent.md) | component |  | The entity this one's Transform is relative to. |
 | [`og.MatrixWorld`](transform/record-MatrixWorld.md) | component |  | The world matrix the engine composes after the systems run, as three.js Object3D.matrixWorld. |
+| [`og.Volume`](transform/record-Volume.md) | component |  | The shape of a region of the world: a box along the entity's axes, or a sphere about it, with a fade past its surface. |
 | [`WorldOriginPlane`](transform/type-WorldOriginPlane.md) | enum |  | The axes og.WorldOrigin moves the world's zero along. |
 | [`WorldOriginPlane()`](#column-WorldOriginPlane) | column kind |  | A WorldOriginPlane field: the variant's index. |
 | [`og.WorldOrigin`](transform/record-WorldOrigin.md) | resource |  | Large worlds: naming it keeps every place near the zero. |
@@ -56,4 +57,4 @@ column WorldOriginPlane {
 }
 ```
 
-<sub>Module `transform` line 36</sub>
+<sub>Module `transform` line 55</sub>

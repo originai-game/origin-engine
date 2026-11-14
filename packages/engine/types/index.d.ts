@@ -2458,6 +2458,37 @@ export interface MatrixWorld {
 }
 
 /**
+ * The shape of a region of the world: a box along the entity's axes, or a sphere about it, with a fade past its surface. A region component on the same entity takes its extent from it: og.ReverbZone (where the room is heard) and og.StreamCell (the box its anchors approach). So every region is placed, turned, scaled and faded the same way, and one entity can be several regions of one shape. Alone it does nothing.
+ *
+ * The value of the `Volume` component (token `og.Volume`).
+ */
+export interface Volume {
+  /**
+   * The box's full size along the entity's axes, centred on it (times og.Transform.scale).
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   * @unit m (metres)
+   */
+  size: Vector3;
+  /**
+   * A sphere of this radius about the entity instead of the box (times the largest of og.Transform.scale); 0 uses the box.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * How far past the surface the region fades out, linearly; 0 is a hard edge.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  fade: number;
+}
+
+/**
  * The axes og.WorldOrigin moves the world's zero along.
  * - `"xz"`: x and z: the ground plane of a 3D world (heights stay absolute).
  * - `"xyz"`: x, y and z: a world that is also deep or high (space, flight).
@@ -21757,37 +21788,13 @@ export interface SoundDesc {
 }
 
 /**
- * A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size, damping and one bus's send towards the zone's, fading out linearly over `fade` metres past its surface.
+ * The shared reverb sounds like this room inside the og.Volume on its entity (none: everywhere). While the og.AudioListener is inside, og.audio eases the reverb's room size, damping and one bus's send towards the zone's, fading with the volume's `fade`.
  * Each tick the listener's weight in every zone (`weight`) is a function of its position, the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream. It never writes Audio.reverbRoom, Audio.reverbDamping or AudioBusFx.reverb, the open air's; it sits at its world transform.
  * See `audio §4`.
  *
  * The value of the `ReverbZone` component (token `og.ReverbZone`).
  */
 export interface ReverbZone {
-  /**
-   * The box's full size along the entity's axes, centred on it (times og.Transform.scale).
-   *
-   * @default { x: 10, y: 4, z: 10 }
-   * @unit m (metres)
-   */
-  size: Vector3;
-  /**
-   * A sphere of this radius about the entity instead of the box (times the largest of og.Transform.scale); 0 uses the box.
-   *
-   * @range 0..
-   * @unit m (metres)
-   * @tunable
-   */
-  radius: number;
-  /**
-   * How far past the volume's surface the zone fades out, linearly; 0 is a hard edge.
-   *
-   * @default 2
-   * @range 0..
-   * @unit m (metres)
-   * @tunable
-   */
-  fade: number;
   /**
    * The bus whose reverb send the zone sets.
    *
@@ -29591,7 +29598,7 @@ export interface TerrainLayerDesc {
 // See `world §4`.
 
 /**
- * A world cell: loads its sub-scene's entities while an og.StreamAnchor is near its box, and despawns them when none is (the module's doc). The box is the entity's world position ± half `size`, turned with it; a zero size is a point.
+ * A world cell: loads its sub-scene's entities while an og.StreamAnchor is near its box, and despawns them when none is (the module's doc). Its box (or sphere) is the og.Volume on its entity; without one the cell is a point at the entity's position. The volume's `fade` is not read: `load` and `unload` are the cell's distances.
  *
  * The value of the `StreamCell` component (token `og.StreamCell`).
  */
@@ -29600,12 +29607,6 @@ export interface StreamCell {
    * The sub-scene it loads: set from the entity's `scene "<id>"` line when its scene spawns, or og.load.scene's handle for a cell spawned by game code. 0: none (the cell never loads).
    */
   scene: Asset;
-  /**
-   * The box's full extents, in metres along the entity's axes (its scale does not apply). Zero: a point at the entity's position.
-   *
-   * @unit m (metres)
-   */
-  size: Vector3;
   /**
    * Loads while an anchor is within this distance of the box (0: only while one is inside it).
    *
@@ -32772,6 +32773,10 @@ export declare namespace og {
    */
   const MatrixWorld: ComponentType<{ readonly matrix: FieldSpec<"Matrix4"> }, MatrixWorld>;
   /**
+   * The shape of a region of the world: a box along the entity's axes, or a sphere about it, with a fade past its surface. A region component on the same entity takes its extent from it: og.ReverbZone (where the room is heard) and og.StreamCell (the box its anchors approach). So every region is placed, turned, scaled and faded the same way, and one entity can be several regions of one shape. Alone it does nothing.
+   */
+  const Volume: ComponentType<{ readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly fade: FieldSpec<"f32"> }, Volume>;
+  /**
    * Large worlds: naming it keeps every place near the zero. As a tick starts, before any system, a focus over `step` from the zero along a plane axis shifts the world by the multiple of `step` nearest it: every root Transform and every `worldspace` field (bodies with contacts and warm starts, paths, particles, tweens, the camera) moves by the same amount, and nothing sees a change but the numbers.
    * The shift is world state, decided from world state alone: replays, rollbacks, restores and every og.net peer shift alike, on the same tick. A world that never names it keeps its hash and frames.
    */
@@ -35098,11 +35103,11 @@ export declare namespace og {
    */
   const AudioEvent: ComponentType<{ readonly sounds: ListSpec<"Sound">; readonly weights: ListSpec<"f32">; readonly order: FieldSpec<"AudioEventOrder">; readonly volume: FieldSpec<"f32">; readonly volumeJitter: FieldSpec<"f32">; readonly playbackRate: FieldSpec<"f32">; readonly pitchJitter: FieldSpec<"f32">; readonly cooldown: FieldSpec<"f32">; readonly maxVoices: FieldSpec<"u32">; readonly steal: FieldSpec<"bool">; readonly bus: FieldSpec<"AudioBus">; readonly userBus: FieldSpec<"u32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly priority: FieldSpec<"u32">; readonly trigger: FieldSpec<"bool">; readonly played: FieldSpec<"u32">; readonly last: FieldSpec<"f64">; readonly index: FieldSpec<"u32">; readonly bag: FieldSpec<"u32">; readonly voices: FieldSpec<"u32"> }, AudioEvent>;
   /**
-   * A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size, damping and one bus's send towards the zone's, fading out linearly over `fade` metres past its surface.
+   * The shared reverb sounds like this room inside the og.Volume on its entity (none: everywhere). While the og.AudioListener is inside, og.audio eases the reverb's room size, damping and one bus's send towards the zone's, fading with the volume's `fade`.
    * Each tick the listener's weight in every zone (`weight`) is a function of its position, the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream. It never writes Audio.reverbRoom, Audio.reverbDamping or AudioBusFx.reverb, the open air's; it sits at its world transform.
    * See `audio §4`.
    */
-  const ReverbZone: ComponentType<{ readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly bus: FieldSpec<"AudioBus">; readonly send: FieldSpec<"f32">; readonly room: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly weight: FieldSpec<"f32"> }, ReverbZone>;
+  const ReverbZone: ComponentType<{ readonly bus: FieldSpec<"AudioBus">; readonly send: FieldSpec<"f32">; readonly room: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly weight: FieldSpec<"f32"> }, ReverbZone>;
   /**
    * A musical clock: tempo, metre and where bar 1 starts. The og.music system (before og.audio) writes the bar and beat and the times of the next beat and bar line every tick, and sends MusicBeat for every beat; an AudioSource whose startAt is nextBar starts on the bar line to the sample, so stems started together stay in step and a stinger lands on the downbeat.
    */
@@ -36756,9 +36761,9 @@ export declare namespace og {
     function setLayer(world: World, data: TerrainData, index: number, layer?: TerrainLayerDesc): Result<void>;
   }
   /**
-   * A world cell: loads its sub-scene's entities while an og.StreamAnchor is near its box, and despawns them when none is (the module's doc). The box is the entity's world position ± half `size`, turned with it; a zero size is a point.
+   * A world cell: loads its sub-scene's entities while an og.StreamAnchor is near its box, and despawns them when none is (the module's doc). Its box (or sphere) is the og.Volume on its entity; without one the cell is a point at the entity's position. The volume's `fade` is not read: `load` and `unload` are the cell's distances.
    */
-  const StreamCell: ComponentType<{ readonly scene: FieldSpec<"Asset">; readonly size: FieldSpec<"Vector3">; readonly load: FieldSpec<"f32">; readonly unload: FieldSpec<"f32">; readonly pin: FieldSpec<"bool">; readonly persist: FieldSpec<"bool">; readonly budget: FieldSpec<"u32">; readonly loaded: FieldSpec<"bool"> }, StreamCell>;
+  const StreamCell: ComponentType<{ readonly scene: FieldSpec<"Asset">; readonly load: FieldSpec<"f32">; readonly unload: FieldSpec<"f32">; readonly pin: FieldSpec<"bool">; readonly persist: FieldSpec<"bool">; readonly budget: FieldSpec<"u32">; readonly loaded: FieldSpec<"bool"> }, StreamCell>;
   /**
    * What loads cells: every entity with one (the player, a vehicle, each player of a networked game) loads the cells within their StreamCell.load of it, from its world position. Without any anchor the og.Camera resource's position anchors (refused in an og.net session).
    */

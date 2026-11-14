@@ -1,0 +1,20 @@
+{
+  "added": [
+    {
+      "member": "og.Volume",
+      "summary": "The shape of a region on its entity: a box along the entity's axes or a sphere about it, with a fade past its surface. og.ReverbZone and og.StreamCell take their extent from it, so regions are placed, turned, scaled and faded the same way and one entity can be several regions of one shape."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "og.ReverbZone",
+      "change": "og.ReverbZone has no `size`, `radius` or `fade`: the og.Volume on its entity shapes it. A zone without an og.Volume has no bounds and is heard everywhere; before, a bare zone was a 10 x 4 x 10 m box with a 2 m fade. A snapshot or save holding an og.ReverbZone does not restore across the version.",
+      "fix": "Add og.Volume beside each og.ReverbZone with the zone's old size, radius and fade: `world.insert(e, og.Volume, { size: { x: 10, y: 4, z: 10 }, fade: 2 })` keeps the old default."
+    },
+    {
+      "member": "og.StreamCell",
+      "change": "og.StreamCell has no `size`: the og.Volume on its entity is its box (or sphere), and the entity's scale now applies to it. A cell without an og.Volume is a point at the entity's position, as a zero size was. A snapshot or save holding an og.StreamCell does not restore across the version.",
+      "fix": "Move `size` from the entity's StreamCell block to a Volume block beside it (`Volume { size 20 10 20 }` in scene text, or `world.insert(e, og.Volume, { size })`)."
+    }
+  ]
+}

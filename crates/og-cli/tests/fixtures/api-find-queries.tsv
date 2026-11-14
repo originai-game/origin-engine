@@ -68,6 +68,7 @@ load a gltf model	og.load.gltf
 use a picture the player uploaded as a texture at run time	og.load.imageData
 laod a textur for a sprite	og.load.texture
 load parts of the open world as the player gets near them	og.StreamCell
+the box or sphere a zone covers	og.Volume
 terrain height at a point	og.terrain.sample
 dig a crater in the landscape	og.terrain.edit
 remove the block the player mines from the 2D level grid	og.tilemap.setTile
