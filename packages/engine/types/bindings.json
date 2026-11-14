@@ -11248,6 +11248,12 @@
           "tunable": true
         },
         {
+          "name": "shadows",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
           "name": "steps",
           "column": "u32",
           "default": 48

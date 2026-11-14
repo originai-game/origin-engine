@@ -54,7 +54,7 @@ struct Frame {
   sky_moon_look: vec4<f32>,   // rgb: the lit moon's colour, w: phase (0 new, 0.5 full)
   time: vec4<f32>,            // x: seconds, y: tick, z: ticks per second, w: previous drawn seconds
   sky_scatter: array<vec4<f32>, 38>,  // the physical sky (sky_scatter.wgsl; [0].w 0: the gradient)
-  clouds: array<vec4<f32>, 12>,  // the clouds (clouds.rs Clouds::gpu; [3].w 0: none; [4].w 1: captured in IBL; [6..10] the clear sky's light)
+  clouds: array<vec4<f32>, 12>,  // the clouds (clouds.rs Clouds::gpu; [3].w 0: none; [4].w 1: captured in IBL; [6..10] the clear sky's light; [10].zw, [11] their shadow)
   aurora: array<vec4<f32>, 5>,  // the aurora (aurora.rs Aurora::gpu; [0].y 0: none)
   weather: vec4<f32>,         // weather_surface.wgsl: x wetness, y puddles, z snow cover, w rain ripples
   weather_look: vec4<f32>,    // rgb: snow colour, w: puddle size (m)
@@ -130,6 +130,9 @@ fn params_moved(stamp: u32) -> bool {
 // share of the lobe the screen resolved, a that share. A storage texture, so it takes none of the lit pipelines'
 // sixteen texture slots.
 @group(0) @binding(13) var ssr_tex: texture_storage_2d<rgba16float, read>;
+// The clouds' shadow (clouds/shadow.rs, cloud_shadow_bake.wgsl): how much of the sun's beam the layer lets through,
+// over one period of the cloud field. A storage texture as the reflections are, read by lighting.wgsl `cloud_shadow`.
+@group(0) @binding(14) var cloud_shadow_map: texture_storage_2d<r32float, read>;
 
 // The radiance a surface at `p` drawn at fragment `clip` reflects:
 // `prefiltered` (the probes, the probe GI and the environment) with the

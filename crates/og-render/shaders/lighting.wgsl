@@ -311,6 +311,42 @@ fn cascade_shadow(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
 }
 
 fn cascade_shadow_lookup(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) -> f32 {
+  return cloud_shadow(p) * cascade_occlusion(p, n, n_dot_l, wide);
+}
+
+// How much of the sun's beam the clouds over `p` (frame coordinates) let
+// through: the map of one period of the cloud field (cloud_shadow_bake.wgsl),
+// read where the ray from `p` to the sun leaves the layer's base. The
+// clouds stand over the world and go with the wind, and so do their
+// shadows: `p`'s place in the world less the wind's offset is its place in
+// the noise (clouds_shape.wgsl), the same from every camera. frame.clouds[10].zw is the ray's run per
+// metre it rises, [11].x the map's side (0: no map, all open) and [11].y
+// how much of the shadow falls: the scene's sun is already dimmed by the
+// share a closing deck hides (Clouds::light), and under a closed one there
+// is no gap to cast a shadow's edge, so the shadows fade as it closes.
+// Past the cascades as within them: a cloud's shadow reaches the horizon.
+fn cloud_shadow(p: vec3<f32>) -> f32 {
+  let c = frame.clouds;
+  let side = i32(c[11].x);
+  if (side == 0) { return 1.0; }
+  let y = p.y + frame.origin.y;
+  let at = p.xz + frame.origin.xz - c[1].xz + c[10].zw * max(c[0].z - y, 0.0);
+  let texel = at / (4.0 * c[1].w) * f32(side) - 0.5;
+  let cell = floor(texel);
+  let f = texel - cell;
+  // The map tiles.
+  let a = ((vec2<i32>(cell) % side) + side) % side;
+  let b = (a + 1) % side;
+  let through = mix(
+    mix(textureLoad(cloud_shadow_map, a).r, textureLoad(cloud_shadow_map, vec2<i32>(b.x, a.y)).r, f.x),
+    mix(textureLoad(cloud_shadow_map, vec2<i32>(a.x, b.y)).r, textureLoad(cloud_shadow_map, b).r, f.x),
+    f.y);
+  // Nothing shades what stands above the layer.
+  let under = 1.0 - smoothstep(c[0].z, c[0].z + c[0].w, y);
+  return 1.0 - c[11].y * under * (1.0 - through);
+}
+
+fn cascade_occlusion(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) -> f32 {
   let c = cascade_index(p);
   if (c >= CASCADES) { return 1.0; }
   let count = u32(frame.light_dir.w);

@@ -152,13 +152,14 @@ impl SkyState {
             Sampled<wgpu::RenderPipeline>,
         ),
         clouds_low: clouds::CloudsLow,
-        cloud_noise: clouds::CloudNoise,
+        (cloud_noise, cloud_shadow): (clouds::CloudNoise, clouds::CloudShadow),
         sky_params: wgpu::Buffer,
         aurora_map: aurora::AuroraMap,
     ) -> SkyState {
         SkyState {
             sky_layout,
             cloud_noise,
+            cloud_shadow,
             sky_params,
             aurora_map,
             sky_pipeline,

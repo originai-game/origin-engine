@@ -20,6 +20,9 @@
 
 use glam::Vec3;
 
+mod shadow;
+pub(crate) use shadow::{CloudShadow, bake_source};
+
 /// The noise volume's size per side.
 pub(crate) const NOISE_SIZE: u32 = 64;
 /// The vec4s of the frame uniform's cloud block (`frame.clouds`).
@@ -53,6 +56,9 @@ pub struct Clouds {
     /// The high thin layer's cover (0: none) and height in metres.
     pub layer: f32,
     pub layer_altitude: f32,
+    /// How dark the layer's shadow falls on the world: 1 the shadow it
+    /// casts, 0 none (`clouds/shadow.rs`).
+    pub shadows: f32,
     /// Samples along a view ray through the layer (16 to 128).
     pub steps: u32,
     /// A lightning flash lighting the cloud from inside: where (frame
@@ -74,6 +80,7 @@ impl Default for Clouds {
             detail: 0.35,
             layer: 0.3,
             layer_altitude: 8000.0,
+            shadows: 1.0,
             steps: 48,
             flash: glam::Vec4::ZERO,
         }
@@ -151,7 +158,8 @@ pub const DECK_BEAM: f32 = 9.1e-4;
 impl Clouds {
     /// How much of the sun's light (and, its second value, of the sky's)
     /// reaches the ground under this cover: a scattered sky keeps the sun
-    /// (the clouds passing over it hide a share, `0.8 k`), and a deck that
+    /// (the clouds passing over it hide a share, `0.8 k`, of a sun whose
+    /// clouds cast no shadow: [`Clouds::shadows`]), and a deck that
     /// closes the sky, as the sky draws it closing (sky_look.wgsl `cloud_deck`,
     /// over 0.6 to 0.95 cover), hides it: its direct beam through a deck
     /// of full thickness is the e⁻⁷ of an optical depth of some 7, and the
@@ -164,10 +172,21 @@ impl Clouds {
             (self.density / 0.04).clamp(0.0, 1.5) * (self.thickness / 1800.0).clamp(0.0, 1.5);
         let cover = self.coverage.clamp(0.0, 1.0);
         let k = (cover.powi(3) * thick.min(1.0)).clamp(0.0, 1.0);
-        let t = ((cover - 0.6) / 0.35).clamp(0.0, 1.0);
-        let closed = t * t * (3.0 - 2.0 * t) * thick.min(1.0);
-        let hidden = (0.8 * k).max(closed).min(1.0 - DECK_BEAM);
+        // (What the clouds passing over the sun hide is their shadow on
+        // the world where they cast one, not a dimmer sun everywhere.)
+        let passing = 0.8 * k * (1.0 - self.shadows.clamp(0.0, 1.0));
+        let hidden = passing.max(self.closed()).min(1.0 - DECK_BEAM);
         (1.0 - hidden, 1.0 - 0.45 * k)
+    }
+
+    /// How far the cover has closed into a deck (0 broken, 1 closed), as
+    /// the sky draws it closing over 0.6 to 0.95 cover; a thin deck never
+    /// closes whole.
+    pub(crate) fn closed(&self) -> f32 {
+        let thick =
+            (self.density / 0.04).clamp(0.0, 1.5) * (self.thickness / 1800.0).clamp(0.0, 1.5);
+        let t = ((self.coverage.clamp(0.0, 1.0) - 0.6) / 0.35).clamp(0.0, 1.0);
+        t * t * (3.0 - 2.0 * t) * thick.min(1.0)
     }
 
     /// Dims `scene`'s light under this cover, as every scene with clouds
@@ -469,8 +488,16 @@ mod tests {
         let (sun, sky) = at(1.0, 0.04);
         assert!((sun - DECK_BEAM).abs() < 1e-6 && sky > 0.5, "{sun} {sky}");
         assert!(at(1.0, 0.01).0 > 0.7);
-        // Broken cover under the deck's closing keeps the old dimming.
-        assert!((at(0.5, 0.04).0 - (1.0 - 0.8 * 0.125)).abs() < 1e-5);
+        // Broken cover under the deck's closing: its clouds' shadows fall
+        // on the world, and the sun between them is whole; without them
+        // the sun is dimmed by the share they hide.
+        assert_eq!(at(0.5, 0.04).0, 1.0);
+        let unshadowed = Clouds {
+            coverage: 0.5,
+            shadows: 0.0,
+            ..Clouds::default()
+        };
+        assert!((unshadowed.light().0 - (1.0 - 0.8 * 0.125)).abs() < 1e-5);
         // Closing: monotonic, from the broken sky's dimming to the deck's.
         let mut last = 1.0;
         for i in 0..=40 {

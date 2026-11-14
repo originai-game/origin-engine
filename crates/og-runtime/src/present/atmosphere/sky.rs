@@ -221,6 +221,7 @@ pub(super) fn extract(
             detail: c.detail,
             layer: c.layer,
             layer_altitude: c.layer_altitude,
+            shadows: c.shadows,
             steps: c.steps,
             // A strike's flash, set by lightning_and_surfaces.
             flash: glam::Vec4::ZERO,

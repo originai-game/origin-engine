@@ -229,11 +229,11 @@ pub(crate) fn pipeline(
     })
 }
 
-/// The arena's entry in the linked-list frame group: binding 14, after
-/// the frame group's own (`frame.wgsl`, bindings 0 to 13).
+/// The arena's entry in the linked-list frame group: binding 15, after
+/// the frame group's own (`frame.wgsl`, bindings 0 to 14).
 pub(crate) fn arena_layout_entry() -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
-        binding: 14,
+        binding: 15,
         visibility: wgpu::ShaderStages::FRAGMENT,
         ty: wgpu::BindingType::Buffer {
             ty: wgpu::BufferBindingType::Storage { read_only: false },

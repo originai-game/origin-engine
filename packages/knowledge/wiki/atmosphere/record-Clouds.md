@@ -6,7 +6,7 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 ### `og.Clouds` (resource)
 
-Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only.
+Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover, and the cumulus casts its shadows on the world (`shadows`). Visual only.
 
 See `render §7`.
 
@@ -25,11 +25,12 @@ Token `og.Clouds`, registered under the schema name `og.Clouds`; its value type 
 | `detail` | `number` | `0.35` | 0 … 1 | `ratio` | tunable | How much fine noise erodes their edges (0: smooth blobs, 1: wispy). |
 | `layer` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | The high thin layer's cover (0: none). |
 | `layerAltitude` | `number` | `8000` | ≥ 0 | `m` | tunable | The high layer's height (kept above the cumulus). |
+| `shadows` | `number` | `1` | 0 … 1 | `ratio` | tunable | How dark the cumulus's shadows fall on the world, drifting with the clouds: 1 the shadows they cast, 0 none (the sun a little dimmer everywhere instead). They fall where the sun casts shadows and fade as the cover closes into an overcast. See `render §7`. |
 | `steps` | `number` | `48` | 8 … 256 | — | — | Samples along each view ray through the cumulus: more is smoother and costs more. |
 
 ```ogt
 resource Clouds {
-  doc "Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only."
+  doc "Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover, and the cumulus casts its shadows on the world (`shadows`). Visual only."
   guide "render §7"
   field enabled bool "Draw the clouds."
   field coverage f32 "How much of the sky the cumulus covers: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast." {
@@ -91,6 +92,14 @@ resource Clouds {
     min 0
     unit m
     tunable true
+  }
+  field shadows f32 "How dark the cumulus's shadows fall on the world, drifting with the clouds: 1 the shadows they cast, 0 none (the sun a little dimmer everywhere instead). They fall where the sun casts shadows and fade as the cover closes into an overcast." {
+    default 1
+    min 0
+    max 1
+    unit ratio
+    tunable true
+    guide "render §7"
   }
   field steps u32 "Samples along each view ray through the cumulus: more is smoother and costs more." {
     default 48

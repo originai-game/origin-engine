@@ -255,6 +255,17 @@ depth-normal prepass: the first one pays for it.
 - Clouds: bright tops, dark bases, silver edges against the sun. A broken
   sky hides the sun a share of the time; an overcast deck leaves flat grey
   light on every surface. `steps` is their cost.
+- Cloud shadows: the cumulus shades the world under it, along the sun's
+  ray: the ground, the water, the grass, particles and the volumetric
+  fog's shafts take it, in every camera, out to the horizon. A cloud is
+  `scale` across, so a place stands in the sun or in a shadow for a
+  minute or more as the wind carries them over: in a shadow the sun's
+  light is gone and the sky's stays, and the exposure opens for it with
+  `autoExposure`. `shadows` below 1 lets that much of the sun
+  through a cloud; 0 casts none and dims the sun a little everywhere, as
+  a level lit the same from start to end wants. They fall where the sun
+  casts shadows and fade as the cover closes past 0.6; the shadow's edge
+  is tens of metres soft, and the high layer casts none.
 - Weather: og.Weather is one state for the air. Rain and snow close the
   sky as they build (og.Clouds' cover raised to theirs over the first
   half of `intensity`, or a deck of the weather's own under a procedural

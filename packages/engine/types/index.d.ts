@@ -17275,7 +17275,7 @@ export interface PhysicalSky {
 }
 
 /**
- * Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only.
+ * Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover, and the cumulus casts its shadows on the world (`shadows`). Visual only.
  * See `render §7`.
  *
  * The `Clouds` resource (token `og.Clouds`).
@@ -17368,6 +17368,16 @@ export interface Clouds {
    * @tunable
    */
   layerAltitude: number;
+  /**
+   * How dark the cumulus's shadows fall on the world, drifting with the clouds: 1 the shadows they cast, 0 none (the sun a little dimmer everywhere instead). They fall where the sun casts shadows and fade as the cover closes into an overcast.
+   * See `render §7`.
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  shadows: number;
   /**
    * Samples along each view ray through the cumulus: more is smoother and costs more.
    *
@@ -34767,10 +34777,10 @@ export declare namespace og {
    */
   const PhysicalSky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly haze: FieldSpec<"f32">; readonly airDensity: FieldSpec<"f32">; readonly ozone: FieldSpec<"f32">; readonly groundAlbedo: FieldSpec<"Color">; readonly altitude: FieldSpec<"f32">; readonly night: FieldSpec<"Color"> }, PhysicalSky>;
   /**
-   * Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only.
+   * Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover, and the cumulus casts its shadows on the world (`shadows`). Visual only.
    * See `render §7`.
    */
-  const Clouds: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly coverage: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly base: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly scale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly detail: FieldSpec<"f32">; readonly layer: FieldSpec<"f32">; readonly layerAltitude: FieldSpec<"f32">; readonly steps: FieldSpec<"u32"> }, Clouds>;
+  const Clouds: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly coverage: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly base: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly scale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly detail: FieldSpec<"f32">; readonly layer: FieldSpec<"f32">; readonly layerAltitude: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly steps: FieldSpec<"u32"> }, Clouds>;
   /**
    * The aurora: curtains of light in the upper atmosphere raymarched in the procedural sky (after Lawlor and Genetti 2011), each a sheet of falling electrons along the auroral oval, folded by travelling waves and curled by a Kelvin-Helmholtz instability, glowing by height as the electrons' energy deposits (green oxygen near 114 km, a nitrogen border below, red oxygen above 200 km; Whiter et al. 2023). Emission only, under the clouds; invisible against a daylight sky. It follows the tick's clock. Drawn over the procedural sky. Visual only.
    * See `render §7`.

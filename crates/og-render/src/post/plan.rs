@@ -36,6 +36,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             | FramePass::WaterFields
             | FramePass::Trails
             | FramePass::Aurora
+            | FramePass::CloudShadow
             | FramePass::Visual
             | FramePass::Surfaces
             | FramePass::TerrainCorners

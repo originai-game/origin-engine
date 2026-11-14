@@ -165,6 +165,44 @@ impl Renderer {
             self.sky.cloud_noise.make(&self.device, &self.queue);
             self.lights.environment = None;
         }
+        // The clouds' shadow on the world (clouds/shadow.rs): planned every
+        // frame, baked when the layer or the sun moved it; the first frame
+        // with one makes its map, and the frame groups again. Baked by
+        // compute: without it the clouds cast none.
+        {
+            let rate = if scene.frame.tick_rate > 0.0 {
+                scene.frame.tick_rate
+            } else {
+                60.0
+            };
+            let procedural = matches!(
+                scene.lighting.environment.background,
+                Background::Procedural { .. }
+            );
+            let clouds = scene
+                .atmosphere
+                .clouds
+                .as_ref()
+                .filter(|_| procedural && self.info.caps.contains(crate::Caps::COMPUTE))
+                .map(|c| {
+                    (
+                        c,
+                        scene.frame.tick as f64 / f64::from(rate),
+                        scene.lighting.light.direction_to_light,
+                    )
+                });
+            let made = self.sky.cloud_shadow.made();
+            self.sky.cloud_shadow.update(
+                &self.device,
+                &self.queue,
+                clouds,
+                &self.sky.cloud_noise,
+                &self.lights.frame_buffer,
+            );
+            if !made && self.sky.cloud_shadow.made() {
+                self.lights.environment = None;
+            }
+        }
         // The aurora's footprint follows the clock every frame; the first
         // frame with one makes its texture, and the sky group again. It is
         // drawn by compute: without it the sky keeps the empty footprint.

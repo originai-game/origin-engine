@@ -393,6 +393,7 @@ impl Renderer {
             clouds_low,
             ibl,
             cloud_noise,
+            cloud_shadow,
             sky_params,
             aurora_map,
         } = Self::sky_resources(SkyResourcesInputs {
@@ -617,7 +618,7 @@ impl Renderer {
                 sky_layout,
                 (sky_pipeline, sky_look_pipeline),
                 clouds_low,
-                cloud_noise,
+                (cloud_noise, cloud_shadow),
                 sky_params,
                 aurora_map,
             ),

@@ -399,6 +399,8 @@ impl Froxels {
                 entry(9, compute, table_ty),
                 // The water's light (caustics.wgsl `water_focus`).
                 entry(12, compute, uniform_ty()),
+                // The clouds' shadow (lighting.wgsl `cloud_shadow`).
+                crate::clouds::CloudShadow::layout_entry(14, compute),
             ],
         });
         let inject_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -756,7 +758,7 @@ impl Volumetric {
         cascades: &wgpu::TextureView,
         locals: &wgpu::TextureView,
         tables: [&wgpu::Buffer; 3],
-        caustics: &wgpu::Buffer,
+        (caustics, cloud_shadow): (&wgpu::Buffer, &wgpu::TextureView),
     ) {
         let Some(f) = &self.froxels else {
             return;
@@ -776,6 +778,7 @@ impl Volumetric {
                 (8, tables[1].as_entire_binding()),
                 (9, tables[2].as_entire_binding()),
                 (12, caustics.as_entire_binding()),
+                (14, wgpu::BindingResource::TextureView(cloud_shadow)),
             ],
         );
         let inject = bind_at(

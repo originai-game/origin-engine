@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.Clouds.shadows",
+      "summary": "The cumulus casts its shadows on the world: on every lit surface, the water and the volumetric fog, along the sun's ray, drifting with the clouds. On by default: a scene with og.Clouds now stands in the sun or in a cloud's shadow as they pass, and its sun between the clouds is no longer dimmed by the share they hide. Set `shadows: 0` for the light as it was."
+    }
+  ]
+}

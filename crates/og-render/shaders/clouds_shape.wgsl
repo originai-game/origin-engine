@@ -1,5 +1,6 @@
 // The clouds' shape (clouds.rs): the noise volume and the density it
-// gives a point of the layer. Before sky.wgsl in the sky's module.
+// gives a point of the layer. Before sky.wgsl in the sky's module and
+// before cloud_shadow_bake.wgsl in the shadow bake's.
 
 // The clouds' noise volume (clouds.rs): r Perlin-Worley, g and b Worley
 // detail, a coverage; tiling, sampled with repeat.
@@ -21,7 +22,15 @@ fn cloud_density(p: vec3<f32>, h: f32, cheap: bool) -> f32 {
   let hf = (h - c[0].z) / max(c[0].w, 1.0);
   if (hf <= 0.0 || hf >= 1.0) { return 0.0; }
   // (Less the offset: the wind carries the shapes along it.)
-  let at = vec3<f32>(p.x + c[10].x, h, p.z + c[10].y) - c[1].xyz;
+  return cloud_density_in(vec3<f32>(p.x + c[10].x, h, p.z + c[10].y) - c[1].xyz, hf, cheap);
+}
+
+// The density at `at`, a point of the noise in metres (the world's x and
+// z and the height, less the wind's offset), `hf` of the way up the layer
+// (0 to 1, exclusive): what the sky marches and what the clouds' shadow
+// is baked from (cloud_shadow_bake.wgsl), so a shadow lies under its cloud.
+fn cloud_density_in(at: vec3<f32>, hf: f32, cheap: bool) -> f32 {
+  let c = frame.clouds;
   let uvw = at / c[1].w;
   // The lobes vary in size: the shape is read at two scales, blended by a
   // slow noise across the sky (small popcorn here, broad towers there).
