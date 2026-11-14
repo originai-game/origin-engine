@@ -181,18 +181,6 @@ fn curve(uv: vec2<f32>) -> vec3<f32> {
   return aces(c);
 }
 
-fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
-  let lo = c * 12.92;
-  let hi = 1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055;
-  return select(hi, lo, c <= vec3<f32>(0.0031308));
-}
-
-fn srgb_decode(c: vec3<f32>) -> vec3<f32> {
-  let lo = c / 12.92;
-  let hi = pow((c + 0.055) / 1.055, vec3<f32>(2.4));
-  return select(hi, lo, c <= vec3<f32>(0.04045));
-}
-
 fn grain_hash(p: vec2<u32>, seed: u32) -> f32 {
   var h = p.x * 1664525u + p.y * 1013904223u + seed * 2654435761u;
   h = (h ^ (h >> 16u)) * 2246822519u;
@@ -320,7 +308,7 @@ fn unreal_tap(i: i32, k: i32) -> f32 {
 // channel), then exposed, so the threshold stays an exposed brightness.
 fn unreal_high_pass(lit: vec3<f32>) -> vec3<f32> {
   let c = 0.18 * pow(max(lit, vec3<f32>(0.0)) / 0.18, vec3<f32>(post.unreal.w)) * exposure();
-  let v = dot(c, vec3<f32>(0.2126, 0.7152, 0.0722));
+  let v = luma(c);
   return c * smoothstep(post.bloom.x, post.bloom.x + post.bloom.y, v);
 }
 

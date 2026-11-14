@@ -4,7 +4,6 @@
 // No primaries conversion, saturation/contrast/shoulder powers are one.
 // Curve anchors are calibrated on the CPU; output is relative to paper white.
 fn hdr_lpm(input: vec3f, settings: vec4f) -> vec3f {
-  let LUMA = vec3f(0.2126, 0.7152, 0.0722);
   let color = max(input, vec3f(0.0));
   if (settings.x == 1.0) { return min(color, vec3f(1.0)); }
   let largest = max(color.r, max(color.g, color.b));

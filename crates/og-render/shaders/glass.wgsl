@@ -16,17 +16,11 @@ struct GlassParams {
 };
 @group(0) @binding(2) var<uniform> glass: GlassParams;
 
-fn decode(c: vec3<f32>) -> vec3<f32> {
-  let lo = c / 12.92;
-  let hi = pow((c + 0.055) / 1.055, vec3<f32>(2.4));
-  return select(hi, lo, c <= vec3<f32>(0.04045));
-}
-
 // bloom_chain.wgsl's tap: the source's colour in linear light.
 fn bloom_tap(uv: vec2<f32>) -> vec3<f32> {
   let c = textureSampleLevel(source, linear_sampler, uv, 0.0).rgb;
   if (glass.params.x > 0.5) {
-    return decode(c);
+    return srgb_decode(c);
   }
   return c;
 }

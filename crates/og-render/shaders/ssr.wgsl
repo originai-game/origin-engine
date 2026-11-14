@@ -175,10 +175,6 @@ fn ssr_screen(p: vec3<f32>) -> vec3<f32> {
   return vec3<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5, 1.0 / p.z);
 }
 
-fn ssr_luma(c: vec3<f32>) -> f32 {
-  return dot(c, vec3<f32>(0.2126, 0.7152, 0.0722));
-}
-
 // PCG3D (Jarzynski and Olano 2020, "Hash Functions for GPU Rendering"):
 // three decorrelated words from pixel, frame and a stream.
 fn ssr_pcg3d(seed: vec3<u32>) -> vec3<u32> {
@@ -603,7 +599,7 @@ fn resolve(@builtin(global_invocation_id) gid: vec3<u32>) {
     let r = textureLoad(ray_radiance, rt, 0);
     // Weighted by 1 / (1 + luma) (Karis 2014) so a lone bright hit cannot
     // dominate the lobe as a firefly.
-    let tw = 1.0 / (1.0 + ssr_luma(r.rgb));
+    let tw = 1.0 / (1.0 + luma(r.rgb));
     sum_w += w;
     sum_c += w * r.a;
     sum_tc += w * r.a * tw;
@@ -842,8 +838,8 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
         // got through enters at a fraction of its weight instead of
         // lingering for the next 64 frames as a firefly.
         let a = 1.0 / samples;
-        let wh = (1.0 - a) / (1.0 + ssr_luma(clipped.rgb));
-        let wf = a / (1.0 + ssr_luma(fresh.rgb));
+        let wh = (1.0 - a) / (1.0 + luma(clipped.rgb));
+        let wf = a / (1.0 + luma(fresh.rgb));
         out = (clipped * wh + fresh * wf) / max(wh + wf, 1e-6);
       }
     }

@@ -42,9 +42,6 @@ fn gi_cosine_dir(n: vec3<f32>, u: vec2<f32>) -> vec3<f32> {
   return normalize(t * (r * cos(phi)) + b * (r * sin(phi)) + n * sqrt(max(1.0 - u.x, 0.0)));
 }
 
-fn gi_luma(c: vec3<f32>) -> f32 {
-  return dot(c, vec3<f32>(0.2126, 0.7152, 0.0722));
-}
 
 // How far along `dir` from `origin` (view space) a ray stays on screen and
 // in front of the near plane, at most `t_max`: the projected ray is linear
@@ -111,7 +108,7 @@ fn gi_ray(origin: vec3<f32>, dir: vec3<f32>, jitter: f32, probes: bool, max_dist
       var light = max(textureSampleLevel(tex_a, fx_linear, prev, 0.0).rgb, vec3<f32>(0.0));
       // Fireflies: a few rays meeting a tiny bright emitter are held to a
       // level the blur can spread.
-      let l = gi_luma(light);
+      let l = luma(light);
       light *= min(1.0, 32.0 / max(l, 1e-4));
       let edge = min(min(prev.x, 1.0 - prev.x), min(prev.y, 1.0 - prev.y));
       // Fading out by the screen's edge, a hit gives way to the probes.

@@ -5,9 +5,13 @@ use crate::{Shading, particles_gpu, skin};
 /// What any shader may call, one copy for every module: the integer
 /// hashes (hash.wgsl), then the octahedral map, the fullscreen triangle,
 /// the view-space point under a pixel and interleaved gradient noise
-/// (common.wgsl). [`FRAME_WGSL`] starts with it, and a module without the
-/// frame group puts this first.
-pub const LIBRARY_WGSL: &str = concat!(wgsl!("hash.wgsl"), wgsl!("common.wgsl"));
+/// (common.wgsl), the sRGB curve and luminance (color.wgsl). [`FRAME_WGSL`]
+/// starts with it, and a module without the frame group puts this first.
+pub const LIBRARY_WGSL: &str = concat!(
+    wgsl!("hash.wgsl"),
+    wgsl!("common.wgsl"),
+    wgsl!("color.wgsl")
+);
 /// The frame group (frame.wgsl) after the library ([`LIBRARY_WGSL`]), with
 /// what the air and the water do to a point's light (media.wgsl), the sky
 /// of a chosen look (sky_look.wgsl), the light volumes' buffer and the
@@ -15,6 +19,7 @@ pub const LIBRARY_WGSL: &str = concat!(wgsl!("hash.wgsl"), wgsl!("common.wgsl"))
 pub const FRAME_WGSL: &str = concat!(
     wgsl!("hash.wgsl"),
     wgsl!("common.wgsl"),
+    wgsl!("color.wgsl"),
     wgsl!("frame.wgsl"),
     wgsl!("media.wgsl"),
     wgsl!("sky_look.wgsl"),

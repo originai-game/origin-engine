@@ -114,10 +114,6 @@ fn max3(c: vec3<f32>) -> f32 {
   return max(c.x, max(c.y, c.z));
 }
 
-fn srgb_decode(c: vec3<f32>) -> vec3<f32> {
-  return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
-}
-
 // The sheen's directional albedo E(cos, roughness) (sheen.wgsl), from the
 // BRDF table's blue channel (ibl.wgsl fs_brdf_lut).
 fn sheen_albedo(cos_theta: f32, roughness: f32) -> f32 {

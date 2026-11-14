@@ -63,8 +63,3 @@ fn neutral(color: vec3<f32>) -> vec3<f32> {
   return clamp(mix(c, vec3<f32>(new_peak), g), vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
-fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
-  let lo = c * 12.92;
-  let hi = 1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055;
-  return select(hi, lo, c <= vec3<f32>(0.0031308));
-}

@@ -69,10 +69,9 @@ fn weather_cavity(uv: vec2<f32>) -> f32 {
 // chrome drew as a white ball and gold as cream. 1 where the environment
 // is black: nothing to reflect.
 fn toon_metal_bands(s: Surface, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>) -> f32 {
-  let w = vec3<f32>(0.2126, 0.7152, 0.0722);
-  let flat_env = dot(reflected_light(vec3<f32>(0.0, 1.0, 0.0), p, frame.params.y), w);
+  let flat_env = luma(reflected_light(vec3<f32>(0.0, 1.0, 0.0), p, frame.params.y));
   if (flat_env < 1e-3) { return 1.0; }
-  let k = dot(reflected_light(reflect(-v, n), p, s.roughness * frame.params.y), w) / flat_env;
+  let k = luma(reflected_light(reflect(-v, n), p, s.roughness * frame.params.y)) / flat_env;
   return toon_ramp(0.45 * k * k) / max(toon_ramp(1.0), 1e-3);
 }
 
@@ -529,8 +528,8 @@ fn material_surface(kind: u32, k: f32, p: vec3<f32>, surface: Surface, detail: f
     o.height = value_noise3(p, 31u) * 0.04 * kd;
     o.s.roughness = mix(o.s.roughness, clamp(o.s.roughness, 0.3, 0.45), k);
     o.s.metallic = o.s.metallic * (1.0 - k);
-    let luma = dot(o.s.albedo, vec3<f32>(0.2126, 0.7152, 0.0722));
-    o.s.albedo = max(mix(vec3<f32>(luma), o.s.albedo, 1.0 + 0.35 * k), vec3<f32>(0.0));
+    let grey = luma(o.s.albedo);
+    o.s.albedo = max(mix(vec3<f32>(grey), o.s.albedo, 1.0 + 0.35 * k), vec3<f32>(0.0));
     o.wrap = 0.3 * k;
     o.tint = vec3<f32>(1.0, 0.9, 0.82);
   }

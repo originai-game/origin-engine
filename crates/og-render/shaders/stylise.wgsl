@@ -71,26 +71,10 @@ struct Stylise {
 @group(0) @binding(12) var scene_colour: texture_2d<f32>;  // the lit scene before exposure and the tone curve (the quantize and lines passes' conformed test; the source in the others)
 @group(0) @binding(11) var conformed_colors: texture_2d<u32>;  // the conformed colours' hash table (stylise.rs conformed_table); 1 x 1 without
 
-fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
-  let lo = c * 12.92;
-  let hi = 1.055 * pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.4)) - 0.055;
-  return select(hi, lo, c <= vec3<f32>(0.0031308));
-}
-
-fn srgb_decode(c: vec3<f32>) -> vec3<f32> {
-  let lo = c / 12.92;
-  let hi = pow((c + 0.055) / 1.055, vec3<f32>(2.4));
-  return select(hi, lo, c <= vec3<f32>(0.04045));
-}
-
 fn load(px: vec2<i32>) -> vec3<f32> {
   let size = vec2<i32>(textureDimensions(source));
   // Paint, ink and quantization describe SDR paper/ink, even on an HDR surface.
   return clamp(textureLoad(source, clamp(px, vec2<i32>(0), size - 1), 0).rgb, vec3<f32>(0.0), vec3<f32>(1.0));
-}
-
-fn luma(c: vec3<f32>) -> f32 {
-  return dot(c, LUMA);
 }
 
 // The tone as displayed (sRGB-encoded luminance), which the print looks
@@ -1210,7 +1194,7 @@ fn lines(in: VsOut) -> vec3<f32> {
       // sketchbook warms every wash and a weak tint reads as the page. The
       // paper's colour at the page's own lightness (over its luminance): a
       // cream sheet warms the wash without greying it.
-      let sheet = st.hatching_paper.rgb / max(dot(st.hatching_paper.rgb, vec3<f32>(0.2126, 0.7152, 0.0722)), 1e-3);
+      let sheet = st.hatching_paper.rgb / max(luma(st.hatching_paper.rgb), 1e-3);
       let ground = clamp(clamp(oklab_to_linear(wash), vec3<f32>(0.0), vec3<f32>(1.0)) * sheet, vec3<f32>(0.0), vec3<f32>(1.0));
       let stroke = c * 0.3 + st.hatching_color.rgb * 0.5;
       c = mix(ground, stroke, ink * st.hatching.x);

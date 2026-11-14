@@ -15,10 +15,6 @@ struct Pack {
 @group(0) @binding(4) var t3: texture_2d<f32>;
 @group(0) @binding(5) var pack_sampler: sampler;
 
-fn srgb_encode(c: f32) -> f32 {
-  return select(1.055 * pow(c, 1.0 / 2.4) - 0.055, c * 12.92, c <= 0.0031308);
-}
-
 @fragment
 fn fs(in: VsOut) -> @location(0) vec4<f32> {
   var s = array<vec4<f32>, 4>(
@@ -34,7 +30,7 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
     let k = picks[c];
     if (k < 16u) {
       var v = s[k >> 2u][k & 3u];
-      if (((pack.flags.x >> c) & 1u) != 0u) { v = srgb_encode(clamp(v, 0.0, 1.0)); }
+      if (((pack.flags.x >> c) & 1u) != 0u) { v = srgb_encode(vec3<f32>(clamp(v, 0.0, 1.0))).x; }
       o[c] = v;
     }
   }

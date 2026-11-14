@@ -128,12 +128,6 @@ fn fxaa(pos: vec2<f32>) -> vec3<f32> {
   return sample_exact(source, source_sampler, final_uv).rgb;
 }
 
-fn fxaa_srgb_encode(c: vec3<f32>) -> vec3<f32> {
-  let lo = c * 12.92;
-  let hi = 1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055;
-  return select(hi, lo, c <= vec3<f32>(0.0031308));
-}
-
 @fragment
 fn fs(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(fxaa(in.pos.xy), 1.0);
@@ -142,5 +136,5 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
 // A non-sRGB output (web canvases) gets the sRGB curve in the shader.
 @fragment
 fn fs_srgb_encode(in: VsOut) -> @location(0) vec4<f32> {
-  return vec4<f32>(fxaa_srgb_encode(clamp(fxaa(in.pos.xy), vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
+  return vec4<f32>(srgb_encode(clamp(fxaa(in.pos.xy), vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
 }

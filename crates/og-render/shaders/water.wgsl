@@ -381,7 +381,7 @@ fn off_sun(r: vec3<f32>, mip: f32) -> vec3<f32> {
 // overhead than at the horizon (a clear horizon mirrored at the sea's grazing rim drew a white line under a storm).
 fn overcast(c: vec3<f32>, r: vec3<f32>) -> vec3<f32> {
   if (frame.clouds[3].w < 0.5) { return c; }
-  let grey = mix(c, vec3<f32>(dot(c, vec3<f32>(0.2126, 0.7152, 0.0722))), frame.clouds[0].x * 0.7);
+  let grey = mix(c, vec3<f32>(luma(c)), frame.clouds[0].x * 0.7);
   let dk = cloud_deck(r);
   return mix(grey, dk.rgb * (1.0 + 0.6 * max(r.y, 0.0)), dk.a);
 }
@@ -561,7 +561,7 @@ if (rippled() && !is_sea()) {
   // Full from 1.5 (the sun some 25° up on a clear day), then falling with the square of the light: a moonlit body
   // (the moon's light is a fair share of the sun's in the day-night look, so land reads at night) sits under the night
   // sky it lies beneath, as a real sea's does (its water-leaving light is a few percent of the sky's).
-  let daylight_k = min(dot(light_in, vec3<f32>(0.2126, 0.7152, 0.0722)) / 1.5, 1.0);
+  let daylight_k = min(luma(light_in) / 1.5, 1.0);
   let daylight = daylight_k * daylight_k;
   var deep = water.deep.rgb * mix(0.4, 1.0, sun) * daylight;
   let sea = is_sea();
@@ -754,8 +754,8 @@ if (sea) {
     let glint = sun_e * spec * water.look.x * lake_glints(in.local, foot_area, share, t);
     // Each glint soft-capped at some eight times the sunlit white: a facet mirrors the sun's own radiance, which no
     // display holds, and uncapped each pinpoint bloomed into a halo many pixels wide.
-    let gl = dot(glint, vec3<f32>(0.2126, 0.7152, 0.0722));
-    let cap = 8.0 * max(dot(sun_e, vec3<f32>(0.2126, 0.7152, 0.0722)), 1e-4);
+    let gl = luma(glint);
+    let cap = 8.0 * max(luma(sun_e), 1e-4);
     color += glint / (1.0 + gl / cap);
   }
 
@@ -833,7 +833,7 @@ if (sea) {
     let alb = water.foam.rgb * (0.78 + 0.3 * mix(sea_f.bubbles, 0.5, wet)) * mix(1.0, 0.65, wet)
       * mix(0.75, 1.0, sea_f.thick);
     let amb = amb_up + amb_n * 0.3;
-    let amb_grey = mix(amb, vec3<f32>(dot(amb, vec3<f32>(0.2126, 0.7152, 0.0722))), 0.85);
+    let amb_grey = mix(amb, vec3<f32>(luma(amb)), 0.85);
     // The deck's irradiance over its radiance: its cosine-weighted mean, brighter overhead (overcast()'s 1 + 0.6 r.y)
     // as 1 + 0.6 * 2/3.
     // As bright as the sky lights it, without the twilight's adaptation (water.ao.w, as the mirrored sky above): the

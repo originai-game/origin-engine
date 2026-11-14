@@ -9,8 +9,6 @@ fn vs(@builtin(vertex_index) i: u32) -> VsOut {
   return o;
 }
 
-const LUMA: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
-
 // A linear read of `t` at `uv`, exact where `uv` is one of its texel
 // centres: there the filter's answer is that texel, so it is loaded. A
 // centre is rarely representable ((x + 0.5) / width), and a filter rounds

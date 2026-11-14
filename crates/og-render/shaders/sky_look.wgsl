@@ -68,13 +68,12 @@ fn clear_sky_light(n: vec3<f32>) -> vec3<f32> {
 fn cloud_deck(d: vec3<f32>) -> vec4<f32> {
   let c = frame.clouds;
   if (c[3].w < 0.5 || c[0].w <= 0.0 || c[0].y <= 0.0) { return vec4<f32>(0.0); }
-  let luma = vec3<f32>(0.2126, 0.7152, 0.0722);
   let sky_scale = frame.params.x / max(c[4].z, 0.05);
   let to_light = normalize(frame.light_dir.xyz);
   let sun_side = clear_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
   let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
-  let side = dot(mix(view_side, sun_side, 0.5), luma) * sky_scale;
-  let light = dot(frame.light_color.rgb, luma) / max(c[4].y, 9.1e-4);
+  let side = dot(mix(view_side, sun_side, 0.5), LUMA) * sky_scale;
+  let light = dot(frame.light_color.rgb, LUMA) / max(c[4].y, 9.1e-4);
   return vec4<f32>(vec3<f32>(side * 0.21 + light * 0.02) * c[2].rgb * 2.0, smoothstep(0.6, 0.95, c[0].x));
 }
 
@@ -106,7 +105,7 @@ fn sky_look(d: vec3<f32>) -> vec3<f32> {
     let h = lattice3(vec3<i32>(cell), 0u);
     let f = fract(g) - 0.5;
     let star = smoothstep(0.985, 1.0, h) * smoothstep(0.32, 0.0, length(f));
-    let dark = 1.0 - clamp(dot(sky, vec3<f32>(0.2126, 0.7152, 0.0722)) * 4.0, 0.0, 1.0);
+    let dark = 1.0 - clamp(luma(sky) * 4.0, 0.0, 1.0);
     color += vec3<f32>(star * frame.sky_ground.w * dark * 3.0) * smoothstep(0.0, 0.15, up) * (1.0 - moon.a) * star_veil();
   }
   return color + moon.rgb;

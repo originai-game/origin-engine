@@ -239,7 +239,7 @@ fn fs_spray(in: SprayOut) -> @location(0) vec4<f32> {
   // the crest and a dense cloud of droplets scatters as much; lit at 0.9 of the sky's radiance, it sat at a third of
   // the foam it leaves and vanished under an overcast.
   // (Without the twilight's adaptation, water.ao.w, as the foam.)
-  let sky_grey = mix(sky, vec3<f32>(dot(sky, vec3<f32>(0.2126, 0.7152, 0.0722))), 0.85) * 1.55 * water.ao.w;
+  let sky_grey = mix(sky, vec3<f32>(luma(sky)), 0.85) * 1.55 * water.ao.w;
   let ambient = mix(sky_grey, deck_up.rgb * 1.4, deck_up.a);
   let lit = water.foam.rgb * (sun_e * (0.6 * hg + 0.4 * 0.0795775) + ambient);
   let fogged = apply_fog(lit, in.world);

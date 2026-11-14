@@ -40,9 +40,8 @@ fn gi_ambient(env: vec3<f32>, n: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
 fn gi_reflected_from(prefiltered: vec3<f32>, r: vec3<f32>, p: vec3<f32>, s: GiSample) -> vec3<f32> {
   if (s.w <= 0.0) { return prefiltered; }
   let captured = select(0.0, probe_weight(p), frame.probe_min.w > 0.5);
-  let luma = vec3<f32>(0.2126, 0.7152, 0.0722);
-  let seen = dot(gi_eval(s, r), luma) / max(frame.params.x, 1e-4);
-  let sky = max(dot(ambient_light_level(r, p), luma), 1e-4);
+  let seen = dot(gi_eval(s, r), LUMA) / max(frame.params.x, 1e-4);
+  let sky = max(dot(ambient_light_level(r, p), LUMA), 1e-4);
   let k = mix(1.0, clamp(seen / sky, 0.0, 1.0), s.w);
   return prefiltered * mix(k, 1.0, captured);
 }

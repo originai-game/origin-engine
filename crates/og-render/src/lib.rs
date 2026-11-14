@@ -49,7 +49,7 @@ macro_rules! wgsl {
 /// shader may call ([`LIBRARY_WGSL`]), as one `const` text.
 macro_rules! wgsl_library {
     ($($file:literal),+) => {
-        concat!(wgsl!("hash.wgsl"), wgsl!("common.wgsl"), $(wgsl!($file)),+)
+        concat!(wgsl!("hash.wgsl"), wgsl!("common.wgsl"), wgsl!("color.wgsl"), $(wgsl!($file)),+)
     };
 }
 

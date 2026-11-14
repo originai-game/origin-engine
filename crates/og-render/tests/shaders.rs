@@ -179,6 +179,15 @@ fn a_mechanisms_shader_code_is_written_once() {
                 "fn ign(",
             ],
         ),
+        (
+            &["color.wgsl"],
+            &[
+                "fn srgb_encode(",
+                "fn srgb_decode(",
+                "fn luma(",
+                "const LUMA",
+            ],
+        ),
         (&["shadow_pass.wgsl"], &["local_value(", "local_distance("]),
         (
             &["media.wgsl"],

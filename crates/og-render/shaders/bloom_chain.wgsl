@@ -61,7 +61,7 @@ fn downsample13_karis(uv: vec2<f32>, scale: f32) -> vec3<f32> {
   );
   for (var n = 0; n < 5; n++) {
     let box = boxes[n];
-    let w = select(0.125, 0.5, n == 0) / (1.0 + dot(box * scale, vec3<f32>(0.2126, 0.7152, 0.0722)));
+    let w = select(0.125, 0.5, n == 0) / (1.0 + luma(box * scale));
     sum += box * w;
     norm += w;
   }

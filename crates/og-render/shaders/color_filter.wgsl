@@ -17,25 +17,13 @@ struct FilterParams {
 };
 @group(0) @binding(2) var<uniform> cvd: FilterParams;
 
-fn decode(c: vec3<f32>) -> vec3<f32> {
-  let lo = c / 12.92;
-  let hi = pow((c + 0.055) / 1.055, vec3<f32>(2.4));
-  return select(hi, lo, c <= vec3<f32>(0.04045));
-}
-
-fn encode(c: vec3<f32>) -> vec3<f32> {
-  let lo = c * 12.92;
-  let hi = 1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055;
-  return select(hi, lo, c <= vec3<f32>(0.0031308));
-}
-
 @fragment
 fn fs_filter(in: VsOut) -> @location(0) vec4<f32> {
   let texel = textureLoad(source, vec2<i32>(in.pos.xy), 0);
   let coded = cvd.plane.w > 0.5;
   var rgb = texel.rgb;
   if (coded) {
-    rgb = decode(rgb);
+    rgb = srgb_decode(rgb);
   }
   var o: vec3<f32>;
   if (dot(cvd.plane.xyz, rgb) >= 0.0) {
@@ -45,7 +33,7 @@ fn fs_filter(in: VsOut) -> @location(0) vec4<f32> {
   }
   o = max(o, vec3<f32>(0.0));
   if (coded) {
-    o = encode(min(o, vec3<f32>(1.0)));
+    o = srgb_encode(min(o, vec3<f32>(1.0)));
   }
   return vec4<f32>(o, texel.a);
 }

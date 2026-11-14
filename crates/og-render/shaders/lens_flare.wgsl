@@ -116,7 +116,7 @@ fn fs_flare_occlusion(in: VsOut) -> @location(0) vec4<f32> {
         let q = center + o * min(r * 0.5, max(r - 1.0, 0.0));
         let sp = vec2<i32>(q * vec2<f32>(textureDimensions(flare_source)) / size);
         let c = textureLoad(flare_source, sp, 0).rgb;
-        seen *= clamp(dot(c, vec3<f32>(0.2126, 0.7152, 0.0722)) / flare.sun.x, 0.0, 1.0);
+        seen *= clamp(luma(c) / flare.sun.x, 0.0, 1.0);
       }
       visible += seen;
     }

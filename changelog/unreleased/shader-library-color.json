@@ -1,0 +1,17 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "shaders: the WGSL library",
+      "change": "Every game shader (material, post and UI shaders) now has `srgb_encode`, `srgb_decode`, `luma` and `const LUMA` (Rec.709 weights) in scope, from the engine's one copy; a shader that declares one of these names no longer compiles.",
+      "fix": "Delete your own copy and call the library's (it is the standard sRGB curve and Rec.709 luminance), or rename yours.",
+      "find": ["srgb_encode", "srgb_decode", "luma", "LUMA"]
+    }
+  ],
+  "added": [
+    {
+      "member": "shaders: srgb_encode, srgb_decode, luma",
+      "summary": "A game shader may call the sRGB curve both ways and the luminance of linear light without writing them."
+    }
+  ]
+}

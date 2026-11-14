@@ -174,7 +174,7 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
     let h = lattice3(vec3<i32>(cell), 0u);
     let f = fract(g) - 0.5;
     let star = smoothstep(0.985, 1.0, h) * smoothstep(0.32, 0.0, length(f));
-    let dark = 1.0 - clamp(dot(sky, vec3<f32>(0.2126, 0.7152, 0.0722)) * 4.0, 0.0, 1.0);
+    let dark = 1.0 - clamp(luma(sky) * 4.0, 0.0, 1.0);
     color += vec3<f32>(star * frame.sky_ground.w * dark * 3.0) * smoothstep(0.0, 0.15, up) * (1.0 - moon.a) * star_veil();
   }
   return color + moon.rgb;
@@ -302,7 +302,6 @@ fn cloud_air(color: vec4<f32>, scattered: vec3<f32>, transmittance: f32, at: f32
   // clouds (cloud_sun), not the scene's light: that is the clouds' own
   // dimming of it only where the scene was lit by Clouds::light_scene,
   // and a lightning flash turns it towards the bolt.
-  let luma = vec3<f32>(0.2126, 0.7152, 0.0722);
   let sky_scale = frame.params.x / max(c[4].z, 0.05);
   let sun_dir = normalize(frame.sky_sun_dir.xyz);
   let sun_side = clear_sky_light(normalize(vec3<f32>(sun_dir.x, 0.0, sun_dir.z) + vec3<f32>(0.0, 1e-3, 0.0)));
@@ -312,7 +311,7 @@ fn cloud_air(color: vec4<f32>, scattered: vec3<f32>, transmittance: f32, at: f32
   // towards the glow), greyed by the cover as the march greys a cloud's
   // ambient: a cloud scatters every wavelength alike.
   let lit_base = (mix(view_side, sun_side, 0.5) * sky_scale * 0.21 + above * 0.02) * c[2].rgb * 2.0;
-  let base = mix(lit_base, vec3<f32>(dot(lit_base, luma)), c[0].x * 0.7);
+  let base = mix(lit_base, vec3<f32>(dot(lit_base, LUMA)), c[0].x * 0.7);
   let cover = cloud_deck(vec3<f32>(0.0, 1.0, 0.0)).a;
   let scale = frame.sky_glow.yzw * frame.sky_horizon.w;
   let under = 0.5 * base * (vec3<f32>(1.0) - air.through);
@@ -354,7 +353,7 @@ fn far_clouds(color: vec4<f32>, d: vec3<f32>, a: f32, b: f32, o: vec3<f32>, to_l
     e *= 0.3;
   }
   var ambient = mix(sky_side * 0.6, sky_top, 0.5) * 0.675;
-  ambient = mix(ambient, vec3<f32>(dot(ambient, vec3<f32>(0.2126, 0.7152, 0.0722))), c[0].x * 0.7);
+  ambient = mix(ambient, vec3<f32>(luma(ambient)), c[0].x * 0.7);
   let lit = cloud_view_fog((sun + ambient) * c[2].rgb, d, at);
   if (physical) { return cloud_air(color, lit * opacity, 1.0 - opacity, at, d, to_light); }
   // The gradient sky has no air to integrate: fade into it over 27 km.
@@ -505,7 +504,7 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
       var ambient = mix(sky_side * 0.6, sky_top, hf) * (0.35 + 0.65 * hf);
       // Under a cover of cloud the light between them is the clouds' own,
       // grey, not the clear sky's blue.
-      ambient = mix(ambient, vec3<f32>(dot(ambient, vec3<f32>(0.2126, 0.7152, 0.0722))), c[0].x * 0.7);
+      ambient = mix(ambient, vec3<f32>(luma(ambient)), c[0].x * 0.7);
       let s = cloud_view_fog((sun + ambient) * c[2].rgb, d, t) * sigma;
       let seg = exp(-sigma * dt);
       scattered += transmittance * (s - s * seg) / sigma;
