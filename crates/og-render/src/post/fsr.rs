@@ -11,7 +11,7 @@
 //! it.
 
 use super::*;
-use crate::renderer::history::GpuCopy;
+use crate::gpu::copy::GpuCopy;
 use glam::{Mat4, Vec2};
 
 /// The passes in dispatch order, with their entry points and modules.
@@ -418,7 +418,7 @@ impl State {
             .chain(&self.accumulation)
             .chain(&self.luma_history)
             .chain(&self.locks)
-            .map(crate::renderer::view_bytes)
+            .map(crate::gpu::texture::view_bytes)
             .sum::<u64>()
             + self.reconstructed_depth.size()
             + self.new_locks.size()

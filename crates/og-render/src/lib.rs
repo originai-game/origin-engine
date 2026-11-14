@@ -86,7 +86,11 @@ mod shader;
 mod shading;
 mod systems;
 mod visibility;
+use gpu::buffers::{grow, grow_and_write};
+use gpu::copy::GpuCopy;
 use gpu::indirect_own;
+use gpu::layout::{sampler_entry, tex2d, texture_entry, uniform_entry};
+use gpu::texture::{solid_texture, target_texture, texture_bytes, view_bytes};
 pub use renderer::*;
 
 pub use systems::environment::wind_field;

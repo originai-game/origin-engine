@@ -359,7 +359,7 @@ pub(crate) struct Probes {
 impl Probes {
     /// GPU bytes of the probes' faces and their capture targets.
     pub(crate) fn bytes(&self) -> u64 {
-        use crate::renderer::{texture_bytes, view_bytes};
+        use crate::gpu::texture::{texture_bytes, view_bytes};
         let slots: u64 = self
             .slots
             .iter()

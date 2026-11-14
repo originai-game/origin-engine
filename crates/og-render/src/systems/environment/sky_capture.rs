@@ -192,7 +192,7 @@ impl SkyCapture {
 
     /// GPU bytes of its cubes.
     pub(crate) fn bytes(&self) -> u64 {
-        use crate::renderer::texture_bytes;
+        use crate::gpu::texture::texture_bytes;
         self._textures
             .iter()
             .chain([&self.irradiance, &self.prefiltered])

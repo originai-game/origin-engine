@@ -92,9 +92,9 @@ pub(crate) struct GlassTargets {
 impl GlassTargets {
     /// GPU bytes of its source, pyramid and copy.
     pub(crate) fn bytes(&self) -> u64 {
-        crate::renderer::texture_bytes(&self.source)
-            + crate::renderer::texture_bytes(&self.behind)
-            + crate::renderer::view_bytes(&self.pyramid_view)
+        crate::gpu::texture::texture_bytes(&self.source)
+            + crate::gpu::texture::texture_bytes(&self.behind)
+            + crate::gpu::texture::view_bytes(&self.pyramid_view)
     }
 }
 

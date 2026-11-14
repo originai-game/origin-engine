@@ -127,7 +127,7 @@ impl ShadowKeep {
     ) -> KeptLayer {
         let usage = wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING;
         let texture = |label, format| {
-            crate::renderer::target_texture(device, label, size, size, format, usage)
+            crate::gpu::texture::target_texture(device, label, size, size, format, usage)
         };
         let color = texture("kept shadow", format);
         let local = format == LOCAL_SHADOW_FORMAT;

@@ -86,7 +86,7 @@ impl FrameGraph {
     pub fn target_bytes(&self) -> u64 {
         self.pool
             .iter()
-            .map(|(_, v)| crate::renderer::view_bytes(v))
+            .map(|(_, v)| crate::gpu::texture::view_bytes(v))
             .sum()
     }
 

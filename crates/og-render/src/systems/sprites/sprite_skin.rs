@@ -98,14 +98,14 @@ impl SkinRenderer {
             }
         }
         let sizes = (self.bones.size(), self.influences.size());
-        crate::renderer::grow_and_write(
+        crate::gpu::buffers::grow_and_write(
             device,
             queue,
             &mut self.bones,
             "sprite bones",
             bytemuck::cast_slice(&bones),
         );
-        crate::renderer::grow_and_write(
+        crate::gpu::buffers::grow_and_write(
             device,
             queue,
             &mut self.influences,
