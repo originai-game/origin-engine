@@ -145,7 +145,7 @@ fn effect_channel(c: vec4<f32>, ch: u32) -> vec4<f32> {
 
 // A texel as one number: the channel, or luminance times alpha for rgba.
 fn effect_scalar(c: vec4<f32>, ch: u32) -> f32 {
-  if (ch == 0u) { return dot(c.rgb, vec3<f32>(0.2126, 0.7152, 0.0722)) * c.a; }
+  if (ch == 0u) { return luma(c.rgb) * c.a; }
   return effect_channel(c, ch).a;
 }
 
@@ -283,7 +283,7 @@ fn effect_shade(f: EffectFragment, surface: texture_2d<f32>) -> vec4<f32> {
   }
   // Fresnel: by the angle to the eye.
   if ((bits & FX_FRESNEL) != 0u) {
-    let v = select(normalize(frame.view_pos.xyz - f.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+    let v = toward_eye(f.world);
     // A rim brightens towards the limb; inverted, (n·v)^power is a soft
     // silhouette whose alpha is well down before the limb (the higher the
     // power, the further in), so no mesh edge shows.

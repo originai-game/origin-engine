@@ -17,10 +17,6 @@ struct DecalResult {
   normal: vec4<f32>,
 };
 
-fn decal_stored(c: vec3<f32>) -> vec3<f32> {
-  return select(1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055, c * 12.92, c <= vec3<f32>(0.0031308));
-}
-
 fn frame_decals(frag: vec2<f32>, p: vec3<f32>) -> vec2<u32> {
   if (fx.decal_info.x < 0.0 || frame.cluster.x <= 0.0) {
     return vec2<u32>(NO_CLUSTER, u32(abs(fx.decal_info.x)));
@@ -107,7 +103,7 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
     r.emissive += d.emissive.rgb * texel.rgb * a;
     if (d.normal.x != 0.0 && fx.decal_info.y > 0.5) {
       var m = decal_sample(d.normal_rect, t, gx, gy).xyz;
-      if (fx.decal_info.y > 1.5) { m = decal_stored(m); }
+      if (fx.decal_info.y > 1.5) { m = srgb_encode(m); }
       let ts = vec3<f32>((m.xy * 2.0 - 1.0) * d.normal.x, max(m.z * 2.0 - 1.0, 1e-3));
       let ux = vec3<f32>(d.inv[0].x, d.inv[1].x, d.inv[2].x);
       var tu = ux - n * dot(n, ux);

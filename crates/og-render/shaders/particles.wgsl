@@ -84,10 +84,7 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
     o.clip = vec4<f32>(2.0, 2.0, 2.0, 1.0);
     return o;
   }
-  var corners = array<vec2<f32>, 6>(
-    vec2<f32>(-0.5, -0.5), vec2<f32>(0.5, -0.5), vec2<f32>(0.5, 0.5),
-    vec2<f32>(-0.5, -0.5), vec2<f32>(0.5, 0.5), vec2<f32>(-0.5, 0.5));
-  let c = corners[vi];
+  let c = quad_corner(vi) - 0.5;
   o.oit_key = oit_key4(p.pos_age, vec3<f32>(f32(vi / 3u), p.misc.x, 0.0));
   let age = p.pos_age.w;
   let t = clamp(age / max(p.vel_life.w, 1e-6), 0.0, 1.0);
@@ -152,7 +149,7 @@ fn particle_light(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
   s.coat = 0.0;
   s.coat_roughness = 1.0;
   s.coat_normal = n;
-  let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(p);
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
@@ -178,7 +175,7 @@ fn particle_gloss(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, c: vec4<f32>, rou
   s.coat = 0.0;
   s.coat_roughness = 1.0;
   s.coat_normal = n;
-  let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(p);
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
