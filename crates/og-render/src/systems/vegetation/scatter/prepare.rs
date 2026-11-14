@@ -476,7 +476,7 @@ impl ScatterRenderer {
                     place.push(device, terrain_layout, (k, arrayed), plan);
                     // Its bounds: its rectangle over the data's height range.
                     let (h0, h1) = source.range();
-                    let (center, radius) = crate::terrain::world_sphere(
+                    let (center, radius) = crate::visibility::bounds::world_sphere(
                         t.transform,
                         Vec3::new(a.x, h0, a.y),
                         Vec3::new(b.x.min(half.x), h1, b.y.min(half.y)),

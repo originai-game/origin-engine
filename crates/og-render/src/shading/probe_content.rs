@@ -213,7 +213,7 @@ impl ProbeContent {
             let (s, range) = (d.size, d.range());
             let a = Vec3::new(-s.x * 0.5, range.0, -s.y * 0.5);
             let b = Vec3::new(s.x * 0.5, range.1, s.y * 0.5);
-            Some(crate::terrain::world_sphere(t.transform, a, b))
+            Some(crate::visibility::bounds::world_sphere(t.transform, a, b))
         };
         let mut terrains_in = Vec::new();
         for (i, t) in scene.world.terrains.iter().enumerate() {

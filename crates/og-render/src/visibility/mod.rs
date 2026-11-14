@@ -1,5 +1,6 @@
 //! What a frame draws of the scene: instances, culling, levels of detail, meshlets.
 
+pub(crate) mod bounds;
 pub(crate) mod cull_gpu;
 pub(crate) mod instances;
 pub mod lod;
