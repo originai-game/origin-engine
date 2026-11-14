@@ -34,7 +34,7 @@ Token `og.CameraView`, registered under the schema name `og.CameraView`; its val
 | `order` | `number` | `0` | — | — | — | Views draw in ascending order (ties in entity order), all before the frame. |
 | `clear` | `boolean` | `false` | — | — | — | Clear to clearColor instead of drawing the scene's background (sky or colour). |
 | `clearColor` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | The linear colour it clears to with clear. |
-| `every` | `number` | `1` | — | — | — | Draw once every this many ticks (when the tick is a multiple of it); the target keeps its image between. 0 and 1 draw every frame: a security monitor at 4 costs a quarter. |
+| `everyTicks` | `number` | `1` | — | — | — | Draw once every this many ticks (when the tick is a multiple of it); the target keeps its image between. 0 and 1 draw every frame: a security monitor at 4 costs a quarter. |
 | `active` | `boolean` | `true` | — | — | — | Whether it draws. |
 
 ```ogt
@@ -104,7 +104,7 @@ component CameraView {
   field clearColor Color "The linear colour it clears to with clear." {
     default 0 0 0
   }
-  field every u32 "Draw once every this many ticks (when the tick is a multiple of it); the target keeps its image between. 0 and 1 draw every frame: a security monitor at 4 costs a quarter." {
+  field everyTicks u32 "Draw once every this many ticks (when the tick is a multiple of it); the target keeps its image between. 0 and 1 draw every frame: a security monitor at 4 costs a quarter." {
     default 1
   }
   field active bool "Whether it draws." {
@@ -113,4 +113,4 @@ component CameraView {
 }
 ```
 
-<sub>Module `render` line 4014</sub>
+<sub>Module `render` line 4018</sub>

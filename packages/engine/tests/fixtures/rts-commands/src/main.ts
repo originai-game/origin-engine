@@ -69,7 +69,7 @@ function start(world: World): void {
   const lock = must(world.resource(og.Lockstep));
   lock.enabled = true;
   lock.players = 2;
-  lock.hashEvery = 10;
+  lock.hashEveryTicks = 10;
   for (const player of [0, 1]) {
     must(world.insert(must(world.spawn({ name: `cursor-${player}` })), Cursor, { player }));
     for (const index of [0, 1, 2]) must(world.insert(must(world.spawn({ name: `unit-${player}-${index}` })), Unit, { owner: player, index }));
@@ -86,7 +86,7 @@ export default og.game({
     rollback: (world, args) => {
       const lock = must(world.resource(og.Lockstep));
       lock.mode = "rollback";
-      lock.maxPrediction = Number(args[0] ?? 8);
+      lock.maxPredictionTicks = Number(args[0] ?? 8);
     },
   },
   facts: (world) => {

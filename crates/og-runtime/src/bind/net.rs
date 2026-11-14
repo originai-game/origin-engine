@@ -14,10 +14,10 @@
 //! snapshot at a lockstep start or late join); the `og.net` system then
 //! writes every og.PlayerInput from the seats' inputs for the tick; after
 //! the tick [`after_tick`] sends this peer's input for the tick
-//! `inputDelay` on and hashes the world.
+//! `inputDelayTicks` on and hashes the world.
 //!
 //! Rollback (og.Lockstep `mode` rollback): the gate lets a tick run up to
-//! `maxPrediction` past the last confirmed one on predicted inputs, and
+//! `maxPredictionTicks` past the last confirmed one on predicted inputs, and
 //! when a real input differs it rewinds the world to this process's own
 //! snapshot ([`crate::world::save::rewind`]) and the ticks run again in the same
 //! frame. A re-simulated tick sends the game the room events its first run

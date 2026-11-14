@@ -188,7 +188,7 @@ fn colliders(
         for &e in a.entities() {
             let v: record::Collider = l.read(&ctx.get_bytes(e, *id)?).map_err(invalid)?;
             let world = places.world(ctx, e);
-            let m = world * Mat4::from_rotation_translation(v.rotation.normalize(), v.offset);
+            let m = world * Mat4::from_rotation_translation(v.quaternion.normalize(), v.offset);
             out.push(match v.shape {
                 0 => SceneCollider::Box {
                     transform: m,

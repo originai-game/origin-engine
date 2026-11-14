@@ -93,7 +93,7 @@ function vfx2d(world: World, name: "hit" | "dust", at: { x: number; y: number })
   must(world.insert(e, og.Flipbook, { sheet: fx.sheet, clip: 0 }));
   must(world.insert(e, Fx, { name: name === "hit" ? 1 : 0 }));
   // The blade's spark lights what it throws, fading with its clip (Fade).
-  if (name === "hit") must(world.insert(e, og.Light2D, { color: { r: 0.75, g: 0.85, b: 1 }, intensity: HIT_LIGHT, radius: 4, falloff: 1.4, castShadows: false }));
+  if (name === "hit") must(world.insert(e, og.Light2D, { color: { r: 0.75, g: 0.85, b: 1 }, intensity: HIT_LIGHT, distance: 4, falloff: 1.4, castShadows: false }));
 }
 
 /** A prop of the packed sheet (props/props.ogt), standing on its feet at `at`, one texel two screen pixels. */
@@ -174,7 +174,7 @@ function build(world: World): void {
   l.ambient = { r: 0.05, g: 0.06, b: 0.1 };
   const torch = (x: number, y: number) => {
     const e = must(world.spawn({ name: `torch${x}`, position: { x, y, z: 0 } }));
-    must(world.insert(e, og.Light2D, { color: { r: 1, g: 0.55, b: 0.22 }, intensity: 1.8, radius: 7, falloff: 1.6, sourceRadius: 0.3, castShadows: true }));
+    must(world.insert(e, og.Light2D, { color: { r: 1, g: 0.55, b: 0.22 }, intensity: 1.8, distance: 7, falloff: 1.6, sourceRadius: 0.3, castShadows: true }));
     return e;
   };
   const floorFill = must(world.spawn({ name: "floorFill", position: { x: 0, y: 0, z: 0 } }));
@@ -182,7 +182,7 @@ function build(world: World): void {
   torch(-3, FLOOR + 2.3);
   torch(8.4, FLOOR + 2.3);
   const moon = must(world.spawn({ name: "moon", position: { x: 2, y: 8, z: 0 } }));
-  must(world.insert(moon, og.Light2D, { kind: "spot", color: { r: 0.5, g: 0.62, b: 1 }, intensity: 1.2, radius: 16, falloff: 1, sourceRadius: 1.2, innerAngle: 0.2, outerAngle: 0.45, castShadows: true }));
+  must(world.insert(moon, og.Light2D, { kind: "spot", color: { r: 0.5, g: 0.62, b: 1 }, intensity: 1.2, distance: 16, falloff: 1, sourceRadius: 1.2, innerAngle: 0.2, outerAngle: 0.45, castShadows: true }));
   must(world.set(moon, og.Transform, { quaternion: og.transform.fromAxisAngle({ x: 0, y: 0, z: 1 }, -Math.PI / 2 - 0.25) }));
 
   const post = must(world.resource(og.PostEffects));

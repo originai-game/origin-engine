@@ -22,8 +22,8 @@ A string: one of the variants below. The zero value is `"a"`.
 | `"rightTrigger"` | The right trigger, as a button. |
 | `"back"` | Back, Select or View. |
 | `"start"` | Start, Options or Menu. |
-| `"leftStick"` | The left stick pressed in. |
-| `"rightStick"` | The right stick pressed in. |
+| `"leftStick"` | The left stick clicked in. |
+| `"rightStick"` | The right stick clicked in. |
 | `"up"` | The d-pad's up. |
 | `"down"` | The d-pad's down. |
 | `"left"` | The d-pad's left. |
@@ -43,8 +43,8 @@ enum GamepadButton {
   variant rightTrigger "The right trigger, as a button."
   variant back "Back, Select or View."
   variant start "Start, Options or Menu."
-  variant leftStick "The left stick pressed in."
-  variant rightStick "The right stick pressed in."
+  variant leftStick "The left stick clicked in."
+  variant rightStick "The right stick clicked in."
   variant up "The d-pad's up."
   variant down "The d-pad's down."
   variant left "The d-pad's left."

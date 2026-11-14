@@ -215,7 +215,7 @@ fn evaluate(
                 direction: dir,
                 max_distance: dist,
                 filter: QueryFilter {
-                    mask: row.collision_layers,
+                    mask: row.collision_mask,
                     include_sensors: false,
                     exclude: Some(follow.map_or(excluded, |(fe, _)| fe)),
                 },

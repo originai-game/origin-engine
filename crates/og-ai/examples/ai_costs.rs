@@ -61,7 +61,7 @@ tree {
 }
 "#;
 
-fn world(think_every: u32, active: bool) -> (World, Vec<Entity>) {
+fn world(think_every_ticks: u32, active: bool) -> (World, Vec<Entity>) {
     let mut world = World::new(&WorldDesc {
         tick_rate: 60,
         seed: 3,
@@ -134,7 +134,7 @@ fn world(think_every: u32, active: bool) -> (World, Vec<Entity>) {
                 AiAgent {
                     behaviour: b,
                     active,
-                    think_every,
+                    think_every_ticks,
                     ..Default::default()
                 },
                 Perception {
@@ -169,8 +169,8 @@ fn world(think_every: u32, active: bool) -> (World, Vec<Entity>) {
 /// Mean ms per tick over `ticks`, after `warm` ticks, the heroes circling.
 // A cost example: its scene setup never runs in the tick.
 #[allow(clippy::disallowed_methods)]
-fn run(think_every: u32, active: bool, warm: u32, ticks: u32) -> f64 {
-    let (mut w, heroes) = world(think_every, active);
+fn run(think_every_ticks: u32, active: bool, warm: u32, ticks: u32) -> f64 {
+    let (mut w, heroes) = world(think_every_ticks, active);
     let mut total = 0.0;
     for t in 0..warm + ticks {
         for (k, &h) in heroes.iter().enumerate() {

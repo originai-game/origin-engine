@@ -6,7 +6,7 @@ Module [`input`](../input.md) · [index](../index.md)
 
 ### `og.Gamepad` (resource)
 
-Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout. A pad is world state and replays.
+Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays.
 
 Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice).
 
@@ -34,31 +34,31 @@ Token `og.Gamepad`, registered under the schema name `og.Gamepad`; its value typ
 | `buttons6` | `number` | `0` | — | — | read only | Held buttons of pad 6. |
 | `buttons7` | `number` | `0` | — | — | read only | Held buttons of pad 7. |
 
-#### Pressed this tick
+#### Went down this tick
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `pressed0` | `number` | `0` | — | — | read only | Buttons of pad 0 that went down this tick. |
-| `pressed1` | `number` | `0` | — | — | read only | Buttons of pad 1 that went down this tick. |
-| `pressed2` | `number` | `0` | — | — | read only | Buttons of pad 2 that went down this tick. |
-| `pressed3` | `number` | `0` | — | — | read only | Buttons of pad 3 that went down this tick. |
-| `pressed4` | `number` | `0` | — | — | read only | Buttons of pad 4 that went down this tick. |
-| `pressed5` | `number` | `0` | — | — | read only | Buttons of pad 5 that went down this tick. |
-| `pressed6` | `number` | `0` | — | — | read only | Buttons of pad 6 that went down this tick. |
-| `pressed7` | `number` | `0` | — | — | read only | Buttons of pad 7 that went down this tick. |
+| `justPressed0` | `number` | `0` | — | — | read only | Buttons of pad 0 that went down this tick. |
+| `justPressed1` | `number` | `0` | — | — | read only | Buttons of pad 1 that went down this tick. |
+| `justPressed2` | `number` | `0` | — | — | read only | Buttons of pad 2 that went down this tick. |
+| `justPressed3` | `number` | `0` | — | — | read only | Buttons of pad 3 that went down this tick. |
+| `justPressed4` | `number` | `0` | — | — | read only | Buttons of pad 4 that went down this tick. |
+| `justPressed5` | `number` | `0` | — | — | read only | Buttons of pad 5 that went down this tick. |
+| `justPressed6` | `number` | `0` | — | — | read only | Buttons of pad 6 that went down this tick. |
+| `justPressed7` | `number` | `0` | — | — | read only | Buttons of pad 7 that went down this tick. |
 
-#### Released this tick
+#### Went up this tick
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `released0` | `number` | `0` | — | — | read only | Buttons of pad 0 that went up this tick. |
-| `released1` | `number` | `0` | — | — | read only | Buttons of pad 1 that went up this tick. |
-| `released2` | `number` | `0` | — | — | read only | Buttons of pad 2 that went up this tick. |
-| `released3` | `number` | `0` | — | — | read only | Buttons of pad 3 that went up this tick. |
-| `released4` | `number` | `0` | — | — | read only | Buttons of pad 4 that went up this tick. |
-| `released5` | `number` | `0` | — | — | read only | Buttons of pad 5 that went up this tick. |
-| `released6` | `number` | `0` | — | — | read only | Buttons of pad 6 that went up this tick. |
-| `released7` | `number` | `0` | — | — | read only | Buttons of pad 7 that went up this tick. |
+| `justReleased0` | `number` | `0` | — | — | read only | Buttons of pad 0 that went up this tick. |
+| `justReleased1` | `number` | `0` | — | — | read only | Buttons of pad 1 that went up this tick. |
+| `justReleased2` | `number` | `0` | — | — | read only | Buttons of pad 2 that went up this tick. |
+| `justReleased3` | `number` | `0` | — | — | read only | Buttons of pad 3 that went up this tick. |
+| `justReleased4` | `number` | `0` | — | — | read only | Buttons of pad 4 that went up this tick. |
+| `justReleased5` | `number` | `0` | — | — | read only | Buttons of pad 5 that went up this tick. |
+| `justReleased6` | `number` | `0` | — | — | read only | Buttons of pad 6 that went up this tick. |
+| `justReleased7` | `number` | `0` | — | — | read only | Buttons of pad 7 that went up this tick. |
 
 #### Left sticks
 
@@ -101,7 +101,7 @@ Token `og.Gamepad`, registered under the schema name `og.Gamepad`; its value typ
 
 ```ogt
 resource Gamepad {
-  doc "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout. A pad is world state and replays."
+  doc "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays."
   doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice)."
   guide "input §4"
   group "Pads"
@@ -136,54 +136,54 @@ resource Gamepad {
   field buttons7 u32 "Held buttons of pad 7." {
     readonly true
   }
-  group "Pressed this tick"
-  field pressed0 u32 "Buttons of pad 0 that went down this tick." {
+  group "Went down this tick"
+  field justPressed0 u32 "Buttons of pad 0 that went down this tick." {
     readonly true
   }
-  field pressed1 u32 "Buttons of pad 1 that went down this tick." {
+  field justPressed1 u32 "Buttons of pad 1 that went down this tick." {
     readonly true
   }
-  field pressed2 u32 "Buttons of pad 2 that went down this tick." {
+  field justPressed2 u32 "Buttons of pad 2 that went down this tick." {
     readonly true
   }
-  field pressed3 u32 "Buttons of pad 3 that went down this tick." {
+  field justPressed3 u32 "Buttons of pad 3 that went down this tick." {
     readonly true
   }
-  field pressed4 u32 "Buttons of pad 4 that went down this tick." {
+  field justPressed4 u32 "Buttons of pad 4 that went down this tick." {
     readonly true
   }
-  field pressed5 u32 "Buttons of pad 5 that went down this tick." {
+  field justPressed5 u32 "Buttons of pad 5 that went down this tick." {
     readonly true
   }
-  field pressed6 u32 "Buttons of pad 6 that went down this tick." {
+  field justPressed6 u32 "Buttons of pad 6 that went down this tick." {
     readonly true
   }
-  field pressed7 u32 "Buttons of pad 7 that went down this tick." {
+  field justPressed7 u32 "Buttons of pad 7 that went down this tick." {
     readonly true
   }
-  group "Released this tick"
-  field released0 u32 "Buttons of pad 0 that went up this tick." {
+  group "Went up this tick"
+  field justReleased0 u32 "Buttons of pad 0 that went up this tick." {
     readonly true
   }
-  field released1 u32 "Buttons of pad 1 that went up this tick." {
+  field justReleased1 u32 "Buttons of pad 1 that went up this tick." {
     readonly true
   }
-  field released2 u32 "Buttons of pad 2 that went up this tick." {
+  field justReleased2 u32 "Buttons of pad 2 that went up this tick." {
     readonly true
   }
-  field released3 u32 "Buttons of pad 3 that went up this tick." {
+  field justReleased3 u32 "Buttons of pad 3 that went up this tick." {
     readonly true
   }
-  field released4 u32 "Buttons of pad 4 that went up this tick." {
+  field justReleased4 u32 "Buttons of pad 4 that went up this tick." {
     readonly true
   }
-  field released5 u32 "Buttons of pad 5 that went up this tick." {
+  field justReleased5 u32 "Buttons of pad 5 that went up this tick." {
     readonly true
   }
-  field released6 u32 "Buttons of pad 6 that went up this tick." {
+  field justReleased6 u32 "Buttons of pad 6 that went up this tick." {
     readonly true
   }
-  field released7 u32 "Buttons of pad 7 that went up this tick." {
+  field justReleased7 u32 "Buttons of pad 7 that went up this tick." {
     readonly true
   }
   group "Left sticks"
@@ -269,14 +269,14 @@ resource Gamepad {
     returns bool
   }
   fn down {
-    doc "Whether a button is held."
+    doc "Whether a button is down."
     param button GamepadButton "The button."
     param pad u32 "The pad, 0 to 7; omitted is 0." {
       optional true
     }
     returns bool
   }
-  fn pressed {
+  fn justPressed {
     doc "Whether a button went down this tick."
     param button GamepadButton "The button."
     param pad u32 "The pad, 0 to 7; omitted is 0." {
@@ -284,7 +284,7 @@ resource Gamepad {
     }
     returns bool
   }
-  fn released {
+  fn justReleased {
     doc "Whether a button went up this tick."
     param button GamepadButton "The button."
     param pad u32 "The pad, 0 to 7; omitted is 0." {
@@ -339,7 +339,7 @@ fn connected {
 
 #### `Gamepad.down`
 
-Whether a button is held.
+Whether a button is down.
 
 ```ts
 Gamepad.down(button: GamepadButton, pad?: number): boolean
@@ -356,7 +356,7 @@ Binding symbol `og_gamepad_down` · publish builds: kept
 
 ```ogt
 fn down {
-  doc "Whether a button is held."
+  doc "Whether a button is down."
   param button GamepadButton "The button."
   param pad u32 "The pad, 0 to 7; omitted is 0." {
     optional true
@@ -367,14 +367,14 @@ fn down {
 
 <sub>Module `input` line 1178</sub>
 
-<a id="member-Gamepad-pressed"></a>
+<a id="member-Gamepad-justPressed"></a>
 
-#### `Gamepad.pressed`
+#### `Gamepad.justPressed`
 
 Whether a button went down this tick.
 
 ```ts
-Gamepad.pressed(button: GamepadButton, pad?: number): boolean
+Gamepad.justPressed(button: GamepadButton, pad?: number): boolean
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -384,10 +384,10 @@ Gamepad.pressed(button: GamepadButton, pad?: number): boolean
 
 **Returns** `boolean`.
 
-Binding symbol `og_gamepad_pressed` · publish builds: kept
+Binding symbol `og_gamepad_just_pressed` · publish builds: kept
 
 ```ogt
-fn pressed {
+fn justPressed {
   doc "Whether a button went down this tick."
   param button GamepadButton "The button."
   param pad u32 "The pad, 0 to 7; omitted is 0." {
@@ -399,14 +399,14 @@ fn pressed {
 
 <sub>Module `input` line 1186</sub>
 
-<a id="member-Gamepad-released"></a>
+<a id="member-Gamepad-justReleased"></a>
 
-#### `Gamepad.released`
+#### `Gamepad.justReleased`
 
 Whether a button went up this tick.
 
 ```ts
-Gamepad.released(button: GamepadButton, pad?: number): boolean
+Gamepad.justReleased(button: GamepadButton, pad?: number): boolean
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -416,10 +416,10 @@ Gamepad.released(button: GamepadButton, pad?: number): boolean
 
 **Returns** `boolean`.
 
-Binding symbol `og_gamepad_released` · publish builds: kept
+Binding symbol `og_gamepad_just_released` · publish builds: kept
 
 ```ogt
-fn released {
+fn justReleased {
   doc "Whether a button went up this tick."
   param button GamepadButton "The button."
   param pad u32 "The pad, 0 to 7; omitted is 0." {

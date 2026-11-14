@@ -395,10 +395,10 @@ fn button(name: &str) -> og_probe::input::PointerButton {
 pub fn og_input_down(world: u32, key: String) -> bool {
     input(world, |i| i.down(&key), false)
 }
-pub fn og_input_pressed(world: u32, key: String) -> bool {
+pub fn og_input_just_pressed(world: u32, key: String) -> bool {
     input(world, |i| i.pressed(&key), false)
 }
-pub fn og_input_released(world: u32, key: String) -> bool {
+pub fn og_input_just_released(world: u32, key: String) -> bool {
     input(world, |i| i.released(&key), false)
 }
 pub fn og_input_axis(world: u32, negative: String, positive: String) -> f64 {
@@ -420,10 +420,10 @@ pub fn og_input_axis2(
 pub fn og_input_button_down(world: u32, b: String) -> bool {
     input(world, |i| i.button_down(button(&b)), false)
 }
-pub fn og_input_button_pressed(world: u32, b: String) -> bool {
+pub fn og_input_button_just_pressed(world: u32, b: String) -> bool {
     input(world, |i| i.button_pressed(button(&b)), false)
 }
-pub fn og_input_button_released(world: u32, b: String) -> bool {
+pub fn og_input_button_just_released(world: u32, b: String) -> bool {
     input(world, |i| i.button_released(button(&b)), false)
 }
 
@@ -450,10 +450,10 @@ pub(super) fn input_res<R: og_core::Reflect + Copy + Send + Sync + 'static, T>(
 pub fn og_pointers_down(world: u32, id: u32) -> bool {
     input_res(world, |p: &og_input::Pointers| p.down(id), false)
 }
-pub fn og_pointers_pressed(world: u32, id: u32) -> bool {
+pub fn og_pointers_just_pressed(world: u32, id: u32) -> bool {
     input_res(world, |p: &og_input::Pointers| p.is_pressed(id), false)
 }
-pub fn og_pointers_released(world: u32, id: u32) -> bool {
+pub fn og_pointers_just_released(world: u32, id: u32) -> bool {
     input_res(world, |p: &og_input::Pointers| p.is_released(id), false)
 }
 pub fn og_pointers_position(world: u32, id: u32) -> glam::Vec2 {
@@ -492,7 +492,7 @@ pub fn og_gamepad_down(world: u32, button: String, pad: Option<u32>) -> bool {
         )
     })
 }
-pub fn og_gamepad_pressed(world: u32, button: String, pad: Option<u32>) -> bool {
+pub fn og_gamepad_just_pressed(world: u32, button: String, pad: Option<u32>) -> bool {
     pad_button(&button).is_some_and(|b| {
         input_res(
             world,
@@ -501,7 +501,7 @@ pub fn og_gamepad_pressed(world: u32, button: String, pad: Option<u32>) -> bool 
         )
     })
 }
-pub fn og_gamepad_released(world: u32, button: String, pad: Option<u32>) -> bool {
+pub fn og_gamepad_just_released(world: u32, button: String, pad: Option<u32>) -> bool {
     pad_button(&button).is_some_and(|b| {
         input_res(
             world,

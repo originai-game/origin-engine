@@ -347,7 +347,7 @@ pub fn stamp_of(event: &Value) -> f32 {
 
 /// og.Time as game code reads it (`world.resource(og.Time)`, a system's
 /// `time`): the clock, its rate, and the time scale the world keeps in
-/// og.TimeScale (scale, hitStop, scaledDt, scaledElapsed).
+/// og.TimeScale (scale, hitStopTicks, scaledDt, scaledElapsed).
 /// A resource's fields as JSON by name (a UI viewmodel's reflected root,
 /// docs/ui.md §2.1): `None` for a name that is no resource of the world.
 pub fn resource_json(world: &World, name: &str) -> Option<Value> {
@@ -372,7 +372,7 @@ pub fn time_json(world: &World) -> Map<String, Value> {
         "elapsed": t.elapsed,
         "rate": tick_rate(world),
         "scale": s.scale,
-        "hitStop": s.hit_stop,
+        "hitStopTicks": s.hit_stop,
         "scaledDt": s.dt(&t),
         "scaledElapsed": s.elapsed,
     }) else {

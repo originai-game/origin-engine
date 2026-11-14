@@ -39,7 +39,7 @@ pub trait Lifecycle: Wire {
     fn og_engine_advance(&self, engine: u32, steps: u32) -> String;
     /// Run a registered command action now, between ticks (`args` is a JSON list of strings). The scheduled channel is `og.commands.schedule`.
     fn og_engine_command(&self, engine: u32, action: String, args: String) -> String;
-    /// One display frame: feed `elapsed_ms` of wall clock to the fixed-tick accumulator (unless paused), run the command steps due, take the ticks it allows up to `GameDesc.maxCatchUp` through the probe, then render when a renderer is attached. JSON `{ ok, ticks, tick, rendered, paused, quit }` or a refusal; `quit` is true once a `quit` command ran.
+    /// One display frame: feed `elapsed_ms` of wall clock to the fixed-tick accumulator (unless paused), run the command steps due, take the ticks it allows up to `GameDesc.maxCatchUpTicks` through the probe, then render when a renderer is attached. JSON `{ ok, ticks, tick, rendered, paused, quit }` or a refusal; `quit` is true once a `quit` command ran.
     fn og_engine_frame(&self, engine: u32, elapsed_ms: f64) -> String;
     /// A new game bundle is about to be imported (hot reload): its component, resource and command declarations replace the previous bundle's; systems and games keep their handles. The probe's `reload` then assembles the latest `og.game` and restores the world into it.
     fn og_host_begin_bundle(&self);
@@ -317,14 +317,14 @@ pub trait InputApi: Wire {
     fn og_input_actions(&self, world: u32) -> String;
     /// `og.input.action`
     fn og_input_action(&self, world: u32, name: String) -> String;
-    /// `og.input.isActionPressed`
-    fn og_input_is_action_pressed(&self, world: u32, name: String) -> bool;
+    /// `og.input.isActionDown`
+    fn og_input_is_action_down(&self, world: u32, name: String) -> bool;
     /// `og.input.isActionJustPressed`
     fn og_input_is_action_just_pressed(&self, world: u32, name: String) -> bool;
     /// `og.input.isActionJustReleased`
     fn og_input_is_action_just_released(&self, world: u32, name: String) -> bool;
-    /// `og.input.actionHeld`
-    fn og_input_action_held(&self, world: u32, name: String) -> bool;
+    /// `og.input.isActionHeld`
+    fn og_input_is_action_held(&self, world: u32, name: String) -> bool;
     /// `og.input.actionValue`
     fn og_input_action_value(&self, world: u32, name: String) -> f64;
     /// `og.input.actionVector`
@@ -383,26 +383,26 @@ pub trait InputApi: Wire {
     fn og_input_rumble(&self, world: u32, desc: Option<String>) -> String;
     /// `Input.down`
     fn og_input_down(&self, world: u32, key: String) -> bool;
-    /// `Input.pressed`
-    fn og_input_pressed(&self, world: u32, key: String) -> bool;
-    /// `Input.released`
-    fn og_input_released(&self, world: u32, key: String) -> bool;
+    /// `Input.justPressed`
+    fn og_input_just_pressed(&self, world: u32, key: String) -> bool;
+    /// `Input.justReleased`
+    fn og_input_just_released(&self, world: u32, key: String) -> bool;
     /// `Input.axis`
     fn og_input_axis(&self, world: u32, negative: String, positive: String) -> f64;
     /// `Input.axis2`
     fn og_input_axis2(&self, world: u32, left: String, right: String, down: String, up: String) -> String;
     /// `Input.buttonDown`
     fn og_input_button_down(&self, world: u32, button: String) -> bool;
-    /// `Input.buttonPressed`
-    fn og_input_button_pressed(&self, world: u32, button: String) -> bool;
-    /// `Input.buttonReleased`
-    fn og_input_button_released(&self, world: u32, button: String) -> bool;
+    /// `Input.buttonJustPressed`
+    fn og_input_button_just_pressed(&self, world: u32, button: String) -> bool;
+    /// `Input.buttonJustReleased`
+    fn og_input_button_just_released(&self, world: u32, button: String) -> bool;
     /// `Pointers.down`
     fn og_pointers_down(&self, world: u32, id: u32) -> bool;
-    /// `Pointers.pressed`
-    fn og_pointers_pressed(&self, world: u32, id: u32) -> bool;
-    /// `Pointers.released`
-    fn og_pointers_released(&self, world: u32, id: u32) -> bool;
+    /// `Pointers.justPressed`
+    fn og_pointers_just_pressed(&self, world: u32, id: u32) -> bool;
+    /// `Pointers.justReleased`
+    fn og_pointers_just_released(&self, world: u32, id: u32) -> bool;
     /// `Pointers.position`
     fn og_pointers_position(&self, world: u32, id: u32) -> String;
     /// `Pointers.start`
@@ -413,10 +413,10 @@ pub trait InputApi: Wire {
     fn og_gamepad_connected(&self, world: u32, pad: Option<u32>) -> bool;
     /// `Gamepad.down`
     fn og_gamepad_down(&self, world: u32, button: String, pad: Option<u32>) -> bool;
-    /// `Gamepad.pressed`
-    fn og_gamepad_pressed(&self, world: u32, button: String, pad: Option<u32>) -> bool;
-    /// `Gamepad.released`
-    fn og_gamepad_released(&self, world: u32, button: String, pad: Option<u32>) -> bool;
+    /// `Gamepad.justPressed`
+    fn og_gamepad_just_pressed(&self, world: u32, button: String, pad: Option<u32>) -> bool;
+    /// `Gamepad.justReleased`
+    fn og_gamepad_just_released(&self, world: u32, button: String, pad: Option<u32>) -> bool;
     /// `Gamepad.axis`
     fn og_gamepad_axis(&self, world: u32, axis: String, pad: Option<u32>) -> f64;
 }
@@ -1030,9 +1030,9 @@ pub trait I18nApi: Wire {
     /// `og.i18n.formatCurrency`
     fn og_i18n_format_currency(&self, world: u32, amount: f64, currency: String) -> String;
     /// `og.i18n.formatDate`
-    fn og_i18n_format_date(&self, world: u32, seconds: f64, format: Option<String>) -> String;
+    fn og_i18n_format_date(&self, world: u32, time_ms: f64, format: Option<String>) -> String;
     /// `og.i18n.formatTime`
-    fn og_i18n_format_time(&self, world: u32, seconds: f64, format: Option<String>) -> String;
+    fn og_i18n_format_time(&self, world: u32, time_ms: f64, format: Option<String>) -> String;
     /// `og.i18n.formatDuration`
     fn og_i18n_format_duration(&self, world: u32, seconds: f64, style: Option<String>) -> String;
 }
@@ -1576,10 +1576,10 @@ pub const SYMBOLS: &[&str] = &[
     "og_input_define_action",
     "og_input_actions",
     "og_input_action",
-    "og_input_is_action_pressed",
+    "og_input_is_action_down",
     "og_input_is_action_just_pressed",
     "og_input_is_action_just_released",
-    "og_input_action_held",
+    "og_input_is_action_held",
     "og_input_action_value",
     "og_input_action_vector",
     "og_input_move_relative",
@@ -1609,23 +1609,23 @@ pub const SYMBOLS: &[&str] = &[
     "og_input_mouse",
     "og_input_rumble",
     "og_input_down",
-    "og_input_pressed",
-    "og_input_released",
+    "og_input_just_pressed",
+    "og_input_just_released",
     "og_input_axis",
     "og_input_axis2",
     "og_input_button_down",
-    "og_input_button_pressed",
-    "og_input_button_released",
+    "og_input_button_just_pressed",
+    "og_input_button_just_released",
     "og_pointers_down",
-    "og_pointers_pressed",
-    "og_pointers_released",
+    "og_pointers_just_pressed",
+    "og_pointers_just_released",
     "og_pointers_position",
     "og_pointers_start",
     "og_pointers_count",
     "og_gamepad_connected",
     "og_gamepad_down",
-    "og_gamepad_pressed",
-    "og_gamepad_released",
+    "og_gamepad_just_pressed",
+    "og_gamepad_just_released",
     "og_gamepad_axis",
     "og_camera_look_at",
     "og_camera_world_to_screen",

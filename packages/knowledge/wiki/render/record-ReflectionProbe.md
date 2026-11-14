@@ -15,8 +15,8 @@ Token `og.ReflectionProbe`, registered under the schema name `og.ReflectionProbe
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `resolution` | `number` | `128` | 16 … 1024 | — | — | The side of each cube face in texels; it is rounded to a power of two. |
-| `mode` | `ReflectionProbeMode` | `"baked"` | — | — | — | baked (rendered once, or loaded from `og bake probes`) or realtime (every interval ticks). |
-| `interval` | `number` | `30` | ≥ 1 | `ticks` | — | With realtime: ticks between updates (1 is every frame). |
+| `mode` | `ReflectionProbeMode` | `"baked"` | — | — | — | baked (rendered once, or loaded from `og bake probes`) or realtime (every intervalTicks ticks). |
+| `intervalTicks` | `number` | `30` | ≥ 1 | `ticks` | — | With realtime: ticks between updates (1 is every frame). |
 | `intensity` | `number` | `1` | ≥ 0 | — | tunable | A multiplier on the probe's light. |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is sampled. |
 
@@ -29,8 +29,8 @@ component ReflectionProbe {
     min 16
     max 1024
   }
-  field mode ReflectionProbeMode "baked (rendered once, or loaded from `og bake probes`) or realtime (every interval ticks)."
-  field interval u32 "With realtime: ticks between updates (1 is every frame)." {
+  field mode ReflectionProbeMode "baked (rendered once, or loaded from `og bake probes`) or realtime (every intervalTicks ticks)."
+  field intervalTicks u32 "With realtime: ticks between updates (1 is every frame)." {
     default 30
     min 1
     unit ticks
@@ -46,4 +46,4 @@ component ReflectionProbe {
 }
 ```
 
-<sub>Module `render` line 2904</sub>
+<sub>Module `render` line 2908</sub>

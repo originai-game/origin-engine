@@ -121,7 +121,7 @@ pub const DEFAULT_PUSH_STRENGTH: f32 = 1000.0;
 /// designer units (jump height and time to apex, not gravity), coyote time,
 /// jump buffering, variable jump height (releasing jump while rising cuts
 /// the jump), apex hang, air jumps, wall slide and wall jump, one-way
-/// platforms (colliders on `oneWayLayers` are solid from above only; hold
+/// platforms (colliders on `oneWayMask` are solid from above only; hold
 /// `down` to drop through), moving platforms (it rides what it stands on)
 /// and corner correction (a jump that clips a ceiling corner by less than
 /// `cornerCorrection` slides past it). It keeps `skin` off every surface;
@@ -132,11 +132,11 @@ pub const DEFAULT_PUSH_STRENGTH: f32 = 1000.0;
 /// it runs into (`pushBodies`) with at most `pushStrength`, so a heavy one
 /// holds where a light one is shoved.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.PlatformerController")]
+#[reflect(name = "og.PlatformerController", version = 2)]
 pub struct PlatformerController {
     /// The run input, -1 (left) to 1 (right). Set it every tick.
-    #[reflect(name = "moveX", min = -1, max = 1)]
-    pub move_x: f32,
+    #[reflect(min = -1, max = 1)]
+    pub run: f32,
     /// Held to jump: a press is buffered for jumpBuffer; releasing while rising cuts the jump.
     pub jump: bool,
     /// Held to drop through a one-way platform.
@@ -145,8 +145,8 @@ pub struct PlatformerController {
     /// recoil): added to `velocity`, then set back to zero. One with an
     /// upward y leaves the ground; the run's acceleration and gravity act
     /// on the result from then on.
-    #[reflect(unit = "m/s")]
-    pub impulse: Vec2,
+    #[reflect(name = "addVelocity", unit = "m/s")]
+    pub add_velocity: Vec2,
     /// The top running speed.
     #[reflect(name = "maxSpeed", min = 0, unit = "m/s", default = 8, tunable)]
     pub max_speed: f32,
@@ -217,8 +217,8 @@ pub struct PlatformerController {
     #[reflect(name = "wallJumpLock", min = 0, unit = "s", default = 0.14, tunable)]
     pub wall_jump_lock: f32,
     /// The collision layers that are one-way platforms (solid from above), as bits.
-    #[reflect(name = "oneWayLayers")]
-    pub one_way_layers: u32,
+    #[reflect(name = "oneWayMask")]
+    pub one_way_mask: u32,
     /// How far a rising jump is nudged sideways past a ceiling corner (0: never).
     #[reflect(
         name = "cornerCorrection",
@@ -288,10 +288,10 @@ pub struct PlatformerController {
 impl Default for PlatformerController {
     fn default() -> Self {
         PlatformerController {
-            move_x: 0.0,
+            run: 0.0,
             jump: false,
             down: false,
-            impulse: Vec2::ZERO,
+            add_velocity: Vec2::ZERO,
             max_speed: 8.0,
             acceleration: 70.0,
             deceleration: 80.0,
@@ -311,7 +311,7 @@ impl Default for PlatformerController {
             wall_slide_speed: 3.0,
             wall_jump: Vec2::new(8.0, 12.0),
             wall_jump_lock: 0.14,
-            one_way_layers: 0,
+            one_way_mask: 0,
             corner_correction: 0.15,
             max_slope: 50.0,
             snap_distance: 0.1,

@@ -413,20 +413,20 @@ pub fn og_i18n_format_currency(world: u32, amount: f64, currency: String) -> Str
     og_i18n::format_currency(amount, &currency, &tag(world))
 }
 
-pub fn og_i18n_format_date(world: u32, seconds: f64, format: Option<String>) -> String {
+pub fn og_i18n_format_date(world: u32, time_ms: f64, format: Option<String>) -> String {
     let f: crate::host::wire::DateFormat =
         crate::host::wire::arg(format.as_deref(), "format").unwrap_or_default();
     let style = og_i18n::DateStyle::named(f.style.as_str()).unwrap_or(og_i18n::DateStyle::Medium);
     let offset = f.offset_minutes.clamp(-1440, 1440);
-    og_i18n::format_date(seconds, offset, style, &tag(world))
+    og_i18n::format_date(time_ms, offset, style, &tag(world))
 }
 
-pub fn og_i18n_format_time(world: u32, seconds: f64, format: Option<String>) -> String {
+pub fn og_i18n_format_time(world: u32, time_ms: f64, format: Option<String>) -> String {
     let f: crate::host::wire::TimeFormat =
         crate::host::wire::arg(format.as_deref(), "format").unwrap_or_default();
     let style = og_i18n::TimeStyle::named(f.style.as_str()).unwrap_or(og_i18n::TimeStyle::Short);
     let offset = f.offset_minutes.clamp(-1440, 1440);
-    og_i18n::format_time(seconds, offset, style, &tag(world))
+    og_i18n::format_time(time_ms, offset, style, &tag(world))
 }
 
 pub fn og_i18n_format_duration(world: u32, seconds: f64, style: Option<String>) -> String {

@@ -570,9 +570,10 @@ fn pattern(p: &str, seconds: f64, offset_minutes: i32, d: &LocaleData) -> String
 }
 
 /// A date as the locale writes it in `style` ("Nov 2, 2026", "2.11.26"):
-/// `seconds` since 1970-01-01 00:00 UTC, shown `offset_minutes` ahead of
-/// UTC (a player's time zone, which the game passes in).
-pub fn format_date(seconds: f64, offset_minutes: i32, style: DateStyle, locale: &str) -> String {
+/// `time_ms` milliseconds since 1970-01-01 00:00 UTC (the host clock's
+/// unit), shown `offset_minutes` ahead of UTC (a player's time zone, which
+/// the game passes in).
+pub fn format_date(time_ms: f64, offset_minutes: i32, style: DateStyle, locale: &str) -> String {
     let d = data(locale);
     let p = match style {
         DateStyle::Full => d.date[0],
@@ -584,18 +585,18 @@ pub fn format_date(seconds: f64, offset_minutes: i32, style: DateStyle, locale: 
         DateStyle::Weekday => "EEEE",
         DateStyle::WeekdayShort => "EEE",
     };
-    finish(pattern(p, seconds, offset_minutes, d), locale)
+    finish(pattern(p, time_ms / 1000.0, offset_minutes, d), locale)
 }
 
 /// A time of day as the locale writes it ("3:05 PM", "15:05"), as
 /// [`format_date`] takes its moment.
-pub fn format_time(seconds: f64, offset_minutes: i32, style: TimeStyle, locale: &str) -> String {
+pub fn format_time(time_ms: f64, offset_minutes: i32, style: TimeStyle, locale: &str) -> String {
     let d = data(locale);
     let p = d.time[match style {
         TimeStyle::Medium => 0,
         TimeStyle::Short => 1,
     }];
-    finish(pattern(p, seconds, offset_minutes, d), locale)
+    finish(pattern(p, time_ms / 1000.0, offset_minutes, d), locale)
 }
 
 /// A length of time on a clock face: "1:02:03" from an hour, else "2:03",
@@ -671,7 +672,7 @@ mod tests {
                 .format("hi-IN", &args),
             "12,34,567.5"
         );
-        let t = 1_793_631_909.0;
+        let t = 1_793_631_909_000.0;
         assert_eq!(format_date(t, 0, DateStyle::MonthYear, "ja"), "2026年11月");
         assert_eq!(format_date(t, 0, DateStyle::MonthName, "ru"), "ноябрь");
         assert_eq!(format_date(t, 0, DateStyle::WeekdayShort, "de"), "Mo.");
@@ -783,7 +784,7 @@ mod tests {
     #[test]
     fn dates_and_times_are_civil_utc_plus_the_offset() {
         // 2026-11-02 15:05:09 UTC, a Monday.
-        let t = 1_793_631_909.0;
+        let t = 1_793_631_909_000.0;
         assert_eq!(
             format_date(t, 0, DateStyle::Full, "en"),
             "Monday, November 2, 2026"
@@ -811,14 +812,17 @@ mod tests {
         );
         // A leap day, the epoch, before it, and before 1901.
         assert_eq!(
-            format_date(1_709_164_800.0, 0, DateStyle::Medium, "en"),
+            format_date(1_709_164_800_000.0, 0, DateStyle::Medium, "en"),
             "Feb 29, 2024"
         );
         assert_eq!(format_date(0.0, 0, DateStyle::Medium, "en"), "Jan 1, 1970");
         assert_eq!(format_time(-1.0, 0, TimeStyle::Medium, "de"), "23:59:59");
         assert_eq!(format_date(-1.0, 0, DateStyle::Short, "en"), "12/31/69");
+        // Milliseconds: a fraction of a second is dropped, a whole one counts.
+        assert_eq!(format_time(999.0, 0, TimeStyle::Medium, "de"), "00:00:00");
+        assert_eq!(format_time(1000.0, 0, TimeStyle::Medium, "de"), "00:00:01");
         assert_eq!(
-            format_date(-2_203_891_200.0, 0, DateStyle::Full, "en"),
+            format_date(-2_203_891_200_000.0, 0, DateStyle::Full, "en"),
             "Thursday, March 1, 1900"
         );
     }

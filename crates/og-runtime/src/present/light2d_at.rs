@@ -273,7 +273,7 @@ fn gather(
                 position: Vec2::new(p.x, p.y),
                 axis: if len > 0.0 { axis / len } else { Vec2::X },
                 color: Vec3::new(v.color.r, v.color.g, v.color.b) * v.intensity,
-                radius: v.radius,
+                radius: v.distance,
                 falloff: v.falloff,
                 cast_shadows: v.cast_shadows,
                 kind: v.kind as u32,

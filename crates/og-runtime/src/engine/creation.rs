@@ -103,7 +103,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         name_ops: Vec::new(),
         held_names: BTreeSet::new(),
         rate: a.game.tick,
-        max_catch_up: a.game.max_catch_up.max(1),
+        max_catch_up_ticks: a.game.max_catch_up_ticks.max(1),
         accumulator_ms: 0.0,
         facts: a.game.facts,
         boot_scene: None,

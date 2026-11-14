@@ -74,7 +74,7 @@ function world2d(world: World): void {
   box(world, "ground", { x: 0, y: -0.5, z: 0 }, { x: 40, y: 1, z: 1 });
   const hero = must(world.spawn({ name: "hero", position: { x: 0, y: 1, z: 0 } }));
   world.insert(hero, og.Collider, { shape: SHAPE_BOX, size: { x: 0.6, y: 1, z: 1 } });
-  world.insert(hero, og.PlatformerController, { moveX: 1 });
+  world.insert(hero, og.PlatformerController, { run: 1 });
   const fluid = must(world.spawn({ name: "fluid", position: { x: 8, y: 2, z: 0 } }));
   world.insert(fluid, og.Fluid2D, { count: 200, size: { x: 2, y: 2 } });
   const pond = must(world.spawn({ name: "pond", position: { x: -8, y: 0.5, z: 0 } }));

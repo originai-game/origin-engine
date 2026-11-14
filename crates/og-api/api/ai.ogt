@@ -23,7 +23,7 @@ module ai {
     field active bool "Thinks while true." {
       default true
     }
-    field thinkEvery u32 "Thinks every this many ticks (1: every tick); agents are staggered by their order." {
+    field thinkEveryTicks u32 "Thinks every this many ticks (1: every tick); agents are staggered by their order." {
       default 1
       min 1
       max 600
@@ -68,7 +68,7 @@ module ai {
     field occlude bool "Colliders hide what is behind them." {
       default true
     }
-    field occluders u32 "Collision layers that block sight (0: every layer)."
+    field occluderMask u32 "Collision layers that block sight (0: every layer)."
     field hearing f32 "How far it hears a sound of loudness 1 (a source's volume)." {
       default 6
       min 0

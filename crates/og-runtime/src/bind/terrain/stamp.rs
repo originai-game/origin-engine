@@ -314,7 +314,11 @@ fn triangles(
         })?;
     let mesh = crate::bind::modules::mesh_of(mesh);
     let terrain = placement(&given["origin"], &given["quaternion"], &given["scale"]);
-    let stamp = placement(&given["position"], &given["rotation"], &given["size"]);
+    let stamp = placement(
+        &given["meshPosition"],
+        &given["meshQuaternion"],
+        &given["meshScale"],
+    );
     let m: Mat4 = terrain.inverse() * stamp;
     let p: Vec<Vec3> = mesh
         .positions

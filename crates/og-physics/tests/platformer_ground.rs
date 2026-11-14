@@ -46,12 +46,12 @@ fn hero(w: &mut World, x: f32, top: f32, max_speed: f32) -> Entity {
     .unwrap()
 }
 
-/// Runs with `move_x` for `ticks`: each tick's x velocity and feet height.
-fn run_for(w: &mut World, e: Entity, move_x: f32, ticks: u32) -> Vec<(f32, f32)> {
+/// Runs with `run` for `ticks`: each tick's x velocity and feet height.
+fn run_for(w: &mut World, e: Entity, run: f32, ticks: u32) -> Vec<(f32, f32)> {
     (0..ticks)
         .map(|_| {
             let mut c = w.get::<PlatformerController>(e).unwrap();
-            c.move_x = move_x;
+            c.run = run;
             w.insert(e, c).unwrap();
             w.step().unwrap();
             let c = w.get::<PlatformerController>(e).unwrap();
@@ -174,7 +174,7 @@ fn it_runs_up_and_down_a_walkable_slope_at_its_speed_and_not_up_a_steep_one() {
     let mut top = 0.0f32;
     for _ in 0..360 {
         let mut c = w.get::<PlatformerController>(e).unwrap();
-        c.move_x = 1.0;
+        c.run = 1.0;
         w.insert(e, c).unwrap();
         w.step().unwrap();
         let c = w.get::<PlatformerController>(e).unwrap();

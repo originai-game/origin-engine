@@ -203,7 +203,7 @@ export interface GameDescIn {
   readonly resources?: readonly Token[];
   readonly commands?: Readonly<Record<string, Function>>;
   readonly commandHelp?: Readonly<Record<string, { readonly usage?: string; readonly doc?: string }>>;
-  readonly maxCatchUp?: number;
+  readonly maxCatchUpTicks?: number;
   readonly facts?: Function | null;
   readonly start?: Function | null;
   readonly ui?: Function | null;
@@ -258,7 +258,7 @@ export function defineGame(desc: GameDescIn = {}): GameToken {
       resources: (desc.resources ?? []).map((r) => r.name),
       commands,
       commandHelp: desc.commandHelp ?? {},
-      maxCatchUp: desc.maxCatchUp ?? 4,
+      maxCatchUpTicks: desc.maxCatchUpTicks ?? 4,
       facts,
       start,
       ui,

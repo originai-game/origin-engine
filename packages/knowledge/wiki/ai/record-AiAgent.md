@@ -14,7 +14,7 @@ Token `og.AiAgent`, registered under the schema name `og.AiAgent`; its value typ
 |---|---|---|---|---|---|---|
 | `behaviour` | `Behaviour` | `0` | — | — | — | The behaviour it runs (og.ai.load); 0 runs nothing. |
 | `active` | `boolean` | `true` | — | — | — | Thinks while true. |
-| `thinkEvery` | `number` | `1` | 1 … 600 | `ticks` | — | Thinks every this many ticks (1: every tick); agents are staggered by their order. |
+| `thinkEveryTicks` | `number` | `1` | 1 … 600 | `ticks` | — | Thinks every this many ticks (1: every tick); agents are staggered by their order. |
 | `status` | `number` | `0` | — | — | read only | AI_RUNNING, AI_SUCCESS or AI_FAILURE after the last think (0 before the first; written by og.ai). |
 | `state` | `number` | `0` | — | — | read only | The state machine's state, an index into BehaviourInfo.states (written by og.ai). |
 | `node` | `number` | `0` | — | — | read only | The node it ran last, an index into BehaviourInfo.nodes (written by og.ai). |
@@ -27,7 +27,7 @@ component AiAgent {
   field active bool "Thinks while true." {
     default true
   }
-  field thinkEvery u32 "Thinks every this many ticks (1: every tick); agents are staggered by their order." {
+  field thinkEveryTicks u32 "Thinks every this many ticks (1: every tick); agents are staggered by their order." {
     default 1
     min 1
     max 600

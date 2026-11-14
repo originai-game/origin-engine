@@ -165,7 +165,7 @@ fn coyote_time_and_the_jump_buffer_forgive_late_and_early_presses() {
         );
         let e = hero(&mut w, -1.0, 0.0, PlatformerController::default());
         run(&mut w, 5);
-        set_platformer(&mut w, e, |c| c.move_x = 1.0);
+        set_platformer(&mut w, e, |c| c.run = 1.0);
         let mut left_at = None;
         for tick in 0..120 {
             w.step().unwrap();

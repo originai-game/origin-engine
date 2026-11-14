@@ -21,11 +21,11 @@ Lockstep on this peer, as the probe and a HUD read it.
 | `waits` | `number` | `0` | — | — | — | Tick boundaries this peer waited at for an input. |
 | `desync` | `number \| null` | `null` | — | — | — | The first divergent tick, once og.Desync was sent. |
 | `rollback` | `boolean` | `false` | — | — | — | Whether the room runs in rollback (og.Lockstep.mode, the authority's). |
-| `maxPrediction` | `number \| null` | `null` | — | `ticks` | — | The room's maxPrediction while running in rollback; 0 in lockstep. |
+| `maxPredictionTicks` | `number \| null` | `null` | — | `ticks` | — | The room's maxPredictionTicks while running in rollback; 0 in lockstep. |
 | `confirmedTick` | `number \| null` | `null` | — | `ticks` | — | The last tick whose every seat's input has arrived. |
 | `finalTick` | `number \| null` | `null` | — | `ticks` | — | The last tick whose world is final: run on real inputs only, the world og.net.finalHash and the hashes the peers compare cover. |
 | `acknowledged` | `number \| null` | `null` | — | `ticks` | — | The last tick through which every other running peer has all of this peer's inputs (each input message acknowledges); null alone or before the start. |
-| `predicted` | `number` | `0` | — | `ticks` | — | Ticks the world now runs past its last confirmed tick (0 in lockstep). |
+| `predictedTicks` | `number` | `0` | — | `ticks` | — | Ticks the world now runs past its last confirmed tick (0 in lockstep). |
 | `rollbacks` | `number` | `0` | — | — | — | Rewinds this peer made since lockstep started. |
 | `resimulatedTicks` | `number` | `0` | — | `ticks` | — | Ticks this peer ran again after a rewind. |
 | `stalled` | `readonly number[]` | `[]` | — | — | — | The running peers silent for a second or more (og.PeerStalled). |
@@ -48,7 +48,7 @@ struct LockstepStatus {
   field waits f64 "Tick boundaries this peer waited at for an input."
   field desync Option.u32 "The first divergent tick, once og.Desync was sent."
   field rollback bool "Whether the room runs in rollback (og.Lockstep.mode, the authority's)."
-  field maxPrediction Option.u32 "The room's maxPrediction while running in rollback; 0 in lockstep." {
+  field maxPredictionTicks Option.u32 "The room's maxPredictionTicks while running in rollback; 0 in lockstep." {
     unit ticks
   }
   field confirmedTick Option.f64 "The last tick whose every seat's input has arrived." {
@@ -60,7 +60,7 @@ struct LockstepStatus {
   field acknowledged Option.f64 "The last tick through which every other running peer has all of this peer's inputs (each input message acknowledges); null alone or before the start." {
     unit ticks
   }
-  field predicted u32 "Ticks the world now runs past its last confirmed tick (0 in lockstep)." {
+  field predictedTicks u32 "Ticks the world now runs past its last confirmed tick (0 in lockstep)." {
     unit ticks
   }
   field rollbacks f64 "Rewinds this peer made since lockstep started."

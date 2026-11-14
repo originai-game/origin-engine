@@ -199,7 +199,7 @@ pub fn og_story_view(world: u32, conversation: u32) -> Option<crate::host::wire:
             spans,
             voice: l.voice.clone(),
             voice_ticks: if l.voice.is_empty() { 0 } else { l.voice_ticks },
-            voice_left: if c.wait == Wait::Ended {
+            voice_ticks_left: if c.wait == Wait::Ended {
                 0
             } else {
                 l.voice_left(s.tick)

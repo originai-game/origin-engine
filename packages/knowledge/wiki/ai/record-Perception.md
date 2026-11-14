@@ -18,7 +18,7 @@ Token `og.Perception`, registered under the schema name `og.Perception`; its val
 | `fov` | `number` | `120` | 0 … 360 | `deg` | tunable | The width of its view cone (360: all round). |
 | `eyeHeight` | `number` | `0` | -10 … 10 | `m` | — | Its eyes are this far above its position (+y). |
 | `occlude` | `boolean` | `true` | — | — | — | Colliders hide what is behind them. |
-| `occluders` | `number` | `0` | — | — | — | Collision layers that block sight (0: every layer). |
+| `occluderMask` | `number` | `0` | — | — | — | Collision layers that block sight (0: every layer). |
 | `hearing` | `number` | `6` | 0 … 500 | `m` | tunable | How far it hears a sound of loudness 1 (a source's volume). |
 | `memory` | `number` | `3` | 0 … 600 | `s` | tunable | How long a lost target stays its target. |
 | `team` | `number` | `0` | — | — | — | Its team: it perceives og.Perceivable entities of other teams. |
@@ -57,7 +57,7 @@ component Perception {
   field occlude bool "Colliders hide what is behind them." {
     default true
   }
-  field occluders u32 "Collision layers that block sight (0: every layer)."
+  field occluderMask u32 "Collision layers that block sight (0: every layer)."
   field hearing f32 "How far it hears a sound of loudness 1 (a source's volume)." {
     default 6
     min 0

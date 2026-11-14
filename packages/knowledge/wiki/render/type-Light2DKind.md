@@ -13,16 +13,16 @@ A string: one of the variants below. The zero value is `"point"`.
 | Variant | Doc |
 |---|---|
 | `"point"` | Light all around its position, to radius. |
-| `"spot"` | A cone along the entity's local +x (turned with its Transform about z), innerAngle to outerAngle either side of the axis, to radius. |
-| `"global"` | Light on every lit pixel of its layers at full intensity, from the direction of the entity's local +x at height (for normal maps); no radius and no shadows. |
+| `"spot"` | A cone along the entity's local +x (turned with its Transform about z), innerAngle to outerAngle either side of the axis, to distance. |
+| `"global"` | Light on every lit pixel of its layers at full intensity, from the direction of the entity's local +x at height (for normal maps); no distance and no shadows. |
 
 ```ogt
 enum Light2DKind {
   doc "What shape of light a Light2D is."
   variant point "Light all around its position, to radius."
-  variant spot "A cone along the entity's local +x (turned with its Transform about z), innerAngle to outerAngle either side of the axis, to radius."
-  variant global "Light on every lit pixel of its layers at full intensity, from the direction of the entity's local +x at height (for normal maps); no radius and no shadows."
+  variant spot "A cone along the entity's local +x (turned with its Transform about z), innerAngle to outerAngle either side of the axis, to distance."
+  variant global "Light on every lit pixel of its layers at full intensity, from the direction of the entity's local +x at height (for normal maps); no distance and no shadows."
 }
 ```
 
-<sub>Module `render` line 2062</sub>
+<sub>Module `render` line 2064</sub>

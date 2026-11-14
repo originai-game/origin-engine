@@ -372,7 +372,7 @@ pub fn scene2d(w: &mut World, physics: &PhysicsSystem) -> Cast {
             at(0.0, 0.81, 0.0),
             Collider::cuboid(Vec3::new(0.8, 1.6, 1.0)),
             PlatformerController {
-                one_way_layers: 2,
+                one_way_mask: 2,
                 air_jumps: 1,
                 ..PlatformerController::default()
             },
@@ -555,7 +555,7 @@ pub fn drive(w: &mut World, physics: &PhysicsSystem, cast: &Cast, tick: u64, pro
         }
     } else {
         let mut p = w.get::<PlatformerController>(cast.walker).unwrap();
-        p.move_x = if (tick / 120).is_multiple_of(2) {
+        p.run = if (tick / 120).is_multiple_of(2) {
             1.0
         } else {
             -0.6

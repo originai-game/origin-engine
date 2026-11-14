@@ -92,7 +92,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         if paused || !elapsed_ms.is_finite() || elapsed_ms < 0.0 {
             (0, before, tick_ms)
         } else {
-            let cap = f64::from(st.max_catch_up) * tick_ms;
+            let cap = f64::from(st.max_catch_up_ticks) * tick_ms;
             st.accumulator_ms = (st.accumulator_ms + elapsed_ms).min(cap);
             let n = (st.accumulator_ms / tick_ms).floor() as u32;
             st.accumulator_ms -= f64::from(n) * tick_ms;

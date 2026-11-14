@@ -177,7 +177,7 @@ pub(crate) fn polygon(shape: u32, hx: f32, hy: f32) -> Vec<[f32; 2]> {
 /// no RigidBody, a static collider at its Transform). Sizes are scaled by
 /// og.Transform.scale.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Collider", version = 2)]
+#[reflect(name = "og.Collider", version = 3)]
 pub struct Collider {
     /// 0 box, 1 sphere (circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (polygon in 2D), 5 triangle mesh of `mesh` (its outline in 2D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both).
     #[reflect(min = 0, max = 8, label = "Shape")]
@@ -198,7 +198,7 @@ pub struct Collider {
     pub offset: Vec3,
     /// Rotation of the shape relative to the entity.
     #[reflect(default = [0, 0, 0, 1])]
-    pub rotation: Quat,
+    pub quaternion: Quat,
     /// Coulomb friction (0 = ice, 1 = rubber); a pair uses the mean of both colliders.
     #[reflect(min = 0, max = 2, default = 0.5, tunable)]
     pub friction: f32,
@@ -227,7 +227,7 @@ impl Default for Collider {
             height: 1.0,
             mesh: 0,
             offset: Vec3::ZERO,
-            rotation: Quat::IDENTITY,
+            quaternion: Quat::IDENTITY,
             friction: 0.5,
             restitution: 0.0,
             density: 1.0,

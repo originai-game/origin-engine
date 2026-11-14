@@ -2,14 +2,14 @@
 
 Module [`input`](../input.md) · [index](../index.md)
 
-<a id="fn-actionHeld"></a>
+<a id="fn-isActionHeld"></a>
 
-### `og.input.actionHeld`
+### `og.input.isActionHeld`
 
 Whether an action has been down for its holdMs.
 
 ```ts
-og.input.actionHeld(world: World, name: string): boolean
+og.input.isActionHeld(world: World, name: string): boolean
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -19,10 +19,10 @@ og.input.actionHeld(world: World, name: string): boolean
 
 **Returns** `boolean`.
 
-Binding symbol `og_input_action_held` · publish builds: kept
+Binding symbol `og_input_is_action_held` · publish builds: kept
 
 ```ogt
-fn actionHeld {
+fn isActionHeld {
   doc "Whether an action has been down for its holdMs."
   param world World "The world."
   param name String "The action."

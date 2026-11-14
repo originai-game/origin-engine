@@ -51,7 +51,7 @@ test("saved 2D lights restore with every field", () => {
   expect([l.enabled, l.maxLayer, l.shadowAngles]).toEqual([true, 40, 1024]);
   expect(near(l.ambient.r, 0.2) && near(l.ambient.g, 0.25) && near(l.ambient.b, 0.3)).toBe(true);
   const lamp = must(engine.world.get(engine.world.find("lamp")!, og.Light2D));
-  expect([lamp.radius, lamp.intensity, lamp.falloff, lamp.sourceRadius, lamp.castShadows]).toEqual([6, 2, 1.5, 0.5, false]);
+  expect([lamp.distance, lamp.intensity, lamp.falloff, lamp.sourceRadius, lamp.castShadows]).toEqual([6, 2, 1.5, 0.5, false]);
   expect([lamp.kind, lamp.layers, lamp.height]).toEqual(["point", 4294967295, 1]);
   expect(near(lamp.innerAngle, 0.35) && near(lamp.outerAngle, 0.6)).toBe(true);
   const wall = must(engine.world.get(engine.world.find("wall")!, og.Occluder2D));

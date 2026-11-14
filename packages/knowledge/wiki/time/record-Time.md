@@ -17,7 +17,7 @@ Token `og.Time`, registered under the schema name `og.Time`; its value type is `
 | `elapsed` | `number` | `0` | — | `s` | read only | Simulation time since load: tick * dt. |
 | `rate` | `number` | `0` | — | `hz` | read only | The tick rate, from GameDesc.tick. |
 | `scale` | `number` | `1` | 0 … 10 | — | read only | Global slow motion, set with og.time.setScale: 1 is normal, 0.5 half speed, 0 stopped. Physics, animation, flipbooks and tweens advance by scaledDt; the tick itself, the UI, input and the probe keep their pace. |
-| `hitStop` | `number` | `0` | — | `ticks` | read only | Ticks of hit stop left (og.time.hitStop): while above 0, scaledDt is 0. |
+| `hitStopTicks` | `number` | `0` | — | `ticks` | read only | Ticks of hit stop left (og.time.hitStop): while above 0, scaledDt is 0. |
 | `scaledDt` | `number` | `0` | — | `s` | read only | This tick's scaled length: 0 during a hit stop, else dt * scale. Move gameplay by it so slow motion and hit stop reach game code too. |
 | `scaledElapsed` | `number` | `0` | — | `s` | read only | Scaled seconds since load: the sum of every finished tick's scaledDt. |
 
@@ -46,7 +46,7 @@ resource Time {
     min 0
     max 10
   }
-  field hitStop u32 "Ticks of hit stop left (og.time.hitStop): while above 0, scaledDt is 0." {
+  field hitStopTicks u32 "Ticks of hit stop left (og.time.hitStop): while above 0, scaledDt is 0." {
     readonly true
     unit ticks
   }

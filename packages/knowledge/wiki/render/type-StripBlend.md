@@ -23,4 +23,4 @@ enum StripBlend {
 }
 ```
 
-<sub>Module `render` line 1022</sub>
+<sub>Module `render` line 1024</sub>

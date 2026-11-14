@@ -6,7 +6,7 @@ Module [`net`](../net.md) · [index](../index.md)
 
 ### `og.PeerStalled` (event)
 
-A running peer has sent nothing for a second (or half of stallTimeout, if shorter): for a "waiting for player" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent.
+A running peer has sent nothing for a second (or half of stallTimeoutMs, if shorter): for a "waiting for player" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent.
 
 Token `og.PeerStalled`, registered under the schema name `og.PeerStalled`; its value type is `PeerStalled`.
 
@@ -18,7 +18,7 @@ Token `og.PeerStalled`, registered under the schema name `og.PeerStalled`; its v
 
 ```ogt
 event PeerStalled {
-  doc "A running peer has sent nothing for a second (or half of stallTimeout, if shorter): for a \"waiting for player\" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent."
+  doc "A running peer has sent nothing for a second (or half of stallTimeoutMs, if shorter): for a \"waiting for player\" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent."
   field peer u32 "The silent peer."
   field seat u32 "Its seat; og.Lockstep.players for a spectator."
   field silentMs u32 "How long it has been silent, in milliseconds." {

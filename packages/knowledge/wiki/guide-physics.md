@@ -207,12 +207,12 @@ PlatformerController is tuned in designer units: `jumpHeight` and
 `timeToApex` set gravity and the jump speed; `fallGravity` 1.5 to 2.5 gives
 a snappy landing, `jumpCut` lets a released jump stop short, `apexGravity`
 under 1 gives hang time. `coyoteTime` 0.08 to 0.12 s and `jumpBuffer` 0.1
-to 0.15 s forgive late and early presses. Colliders on `oneWayLayers` are
+to 0.15 s forgive late and early presses. Colliders on `oneWayMask` are
 solid from above only; `down` drops through. `cornerCorrection` slides a
 jump that clips a ceiling corner past it.
 
-A knock-back, a spring or a recoil is `impulse`, taken on the next step:
-`{ x: away * 6, y: 7 }` with `moveX` 0 for its few ticks. An upward y leaves
+A knock-back, a spring or a recoil is `addVelocity`, taken on the next step:
+`{ x: away * 6, y: 7 }` with `run` 0 for its few ticks. An upward y leaves
 the ground.
 
 Pushing: each tick the bodies a character walks into share an impulse of at

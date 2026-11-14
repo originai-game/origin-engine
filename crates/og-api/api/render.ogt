@@ -372,7 +372,9 @@ module render {
       max 1
       unit ratio
     }
-    field anisotropyRotation f32 "The stretch's direction in radians from the tangent (+u) towards the bitangent."
+    field anisotropyRotation f32 "The stretch's direction from the tangent (+u) towards the bitangent." {
+      unit rad
+    }
     field anisotropyMap Option.Texture "The stretch's direction in red and green (-1 to 1 in the tangent frame, turned by anisotropyRotation) and its strength in blue, times anisotropy."
     field subsurface f32 "How much of the diffuse light spreads under the surface before it leaves (skin, wax, marble, jade, milk): the shading softens past the terminator where the surface curves, and with a thickness, light from behind comes through. 0 is none." {
       min 0

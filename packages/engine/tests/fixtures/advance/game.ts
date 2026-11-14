@@ -5,13 +5,13 @@ const Input = defineSystem("AdvanceInput", { reads: [og.Input], writes: [State] 
   const state = world.resource(State);
   const input = world.resource(og.Input);
   if (!state.ok || !input.ok) throw new Error("advance fixture resources are missing");
-  if (input.value.pressed("KeyW")) {
+  if (input.value.justPressed("KeyW")) {
     state.value.pressedAt = time.tick;
     const request = og.platform.storeGet(world, "record");
     if (!request.ok) throw new Error(request.reason);
     state.value.request = request.value;
   }
-  if (input.value.released("KeyW")) state.value.releasedAt = time.tick;
+  if (input.value.justReleased("KeyW")) state.value.releasedAt = time.tick;
   if (state.value.request && og.platform.result(world, state.value.request)) state.value.answered++;
 });
 

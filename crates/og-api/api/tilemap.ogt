@@ -128,15 +128,15 @@ module tilemap {
       default 16
       min 1
     }
-    field tileWidth u32 "A tile's width in pixels (its cell's)." {
+    field tilePixelWidth u32 "A tile's width in pixels (its cell's)." {
       default 16
       min 1
     }
-    field tileHeight u32 "A tile's height in pixels (its cell's; half the width for the usual isometric diamond)." {
+    field tilePixelHeight u32 "A tile's height in pixels (its cell's; half the width for the usual isometric diamond)." {
       default 16
       min 1
     }
-    field unit f32 "World units per tile width." {
+    field tileSize f32 "World units per tile width." {
       default 1
     }
     field orientation TileOrientation "How the cells are laid out."

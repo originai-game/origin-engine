@@ -375,7 +375,7 @@ test("a stamp carves the ground under its mesh for sample, physics and the hash;
   const before = engine.probe.snapshot() as { id: string; hash: string };
   // A 20 m tall rock, 4 × 4 m, standing at (20, 20) with its foot 10 m down.
   const rock = must(og.render.boxGeometry(w, { width: 4, height: 20, depth: 4 }));
-  const stamp = { data, geometry: rock, position: { x: 20, y: 0, z: 20 }, mode: "carve" as never };
+  const stamp = { data, geometry: rock, meshPosition: { x: 20, y: 0, z: 20 }, mode: "carve" as never };
   const carved = must(og.terrain.stamp(w, stamp));
   expect(carved.stamp).toBe(1);
   expect(carved.samples).toBe(9 * 9); // the half-metre samples from 18 to 22 along x and z
@@ -411,7 +411,7 @@ test("a stamp carves the ground under its mesh for sample, physics and the hash;
   expect(hole.stamp).toBe(2);
   expect(must(og.terrain.sample(w, { data, x: 20, z: 20 })).hole).toBeTrue();
   expect(must(og.terrain.sample(w, { data, x: 23, z: 20 })).hole).toBeFalse();
-  const miss = og.terrain.stamp(w, { ...stamp, position: { x: 500, y: 0, z: 0 } });
+  const miss = og.terrain.stamp(w, { ...stamp, meshPosition: { x: 500, y: 0, z: 0 } });
   expect(miss.ok).toBeFalse();
   if (!miss.ok) expect(miss.reason).toContain("misses the terrain");
 }, 30_000);

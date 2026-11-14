@@ -55,8 +55,8 @@ function start(world: World): void {
   const lock = must(world.resource(og.Lockstep));
   lock.enabled = true;
   lock.players = 2;
-  lock.inputDelay = 2;
-  lock.hashEvery = 10;
+  lock.inputDelayTicks = 2;
+  lock.hashEveryTicks = 10;
   for (const player of [0, 1]) {
     must(world.insert(must(world.spawn({ name: `seat-${player}` })), og.PlayerInput, { player }));
   }
@@ -73,9 +73,9 @@ export default og.game({
     rollback: (world, args) => {
       const lock = must(world.resource(og.Lockstep));
       lock.mode = "rollback";
-      lock.maxPrediction = Number(args[0] ?? 8);
+      lock.maxPredictionTicks = Number(args[0] ?? 8);
     },
-    stall: (world, args) => { must(world.resource(og.Lockstep)).stallTimeout = Number(args[0]); },
+    stall: (world, args) => { must(world.resource(og.Lockstep)).stallTimeoutMs = Number(args[0]); },
     quick: (world, args) => {
       must(og.platform.quickPlay(world, { mode: args[0] || "duel", players: 2, timeoutMs: Number(args[1] ?? 30000) }));
     },

@@ -12,8 +12,8 @@ The API: `og api show net`; rooms are og.platform's (`og api show platform`).
 | | lockstep (the default) | rollback |
 |---|---|---|
 | a late input | holds the world until it arrives | the tick runs on a prediction (the player's last input) and is re-run when the real input differs |
-| feel at 100 ms | every input lags by `inputDelay` | local input answers within `inputDelay`, others snap when corrected |
-| cost | one world per tick | a snapshot per unconfirmed tick and up to `maxPrediction` ticks re-run in a frame |
+| feel at 100 ms | every input lags by `inputDelayTicks` | local input answers within `inputDelayTicks`, others snap when corrected |
+| cost | one world per tick | a snapshot per unconfirmed tick and up to `maxPredictionTicks` ticks re-run in a frame |
 | choose for | RTS, turn-based, co-op, many units; at most 16 seats (engine limit) | fighting, sports, action with few players |
 
 - Both modes keep the same seats, inputs and hashes. Set og.Lockstep's
@@ -30,7 +30,7 @@ The API: `og api show net`; rooms are og.platform's (`og api show platform`).
 ```ts
 // GameDesc.start
 const ls = world.resource(og.Lockstep).value!;
-ls.enabled = true; ls.players = 2; ls.inputDelay = 3;
+ls.enabled = true; ls.players = 2; ls.inputDelayTicks = 3;
 og.platform.roomJoin(world, roomId);   // or og.platform.roomCreate, og.platform.quickPlay
 ```
 
@@ -45,7 +45,7 @@ og.platform.roomJoin(world, roomId);   // or og.platform.roomCreate, og.platform
   (the lowest peer number) starts: every other peer takes its world's
   snapshot, and the seats go to the peers in number order.
 - Once the room is full the other peers' worlds hold for that snapshot,
-  for at most `stallTimeout` (5 s when it is 0), so a slow authority's
+  for at most `stallTimeoutMs` (5 s when it is 0), so a slow authority's
   start does not find them far into a lobby it replaces.
 - A peer that joins a running room takes a free seat, or watches, from a
   snapshot a running peer hands it.
@@ -64,7 +64,7 @@ local player's og.PlayerInput the next tick, so the same game plays alone.
 ```ts
 const Send = defineSystem("Send", { reads: [og.Input], writes: [] }, (q, time, world) => {
   const move = og.input.actionVector(world, "move");
-  og.net.submit(world, { x: move.x, y: move.y, buttons: og.input.isActionPressed(world, "fire") ? 1 : 0 });
+  og.net.submit(world, { x: move.x, y: move.y, buttons: og.input.isActionDown(world, "fire") ? 1 : 0 });
 });
 ```
 
@@ -78,16 +78,16 @@ const Send = defineSystem("Send", { reads: [og.Input], writes: [] }, (q, time, w
   one tick only (an RTS's orders, a card played) are commands
   (og.net.command, read with og.net.commands): never repeated by a
   prediction.
-- An input acts `inputDelay` ticks after it is submitted: the time it has
+- An input acts `inputDelayTicks` ticks after it is submitted: the time it has
   to cross the room. Local feedback (a sound, a flash, an animation start)
   may react at once from the presentation; the simulation may not.
 
 | og.Lockstep | Value | Source |
 |---|---|---|
-| `inputDelay` | 2 ticks (33 ms at 60 Hz) | engine default |
-| `inputDelay`, recommended | 2 on a LAN, 4 to 6 over the internet | engine guidance (IDL at 9ba5b0957) |
-| `maxPrediction` | 8 ticks (133 ms at 60 Hz) | engine default |
-| `maxPrediction`, recommended | 8 covers most internet latency on top of `inputDelay` | engine guidance (IDL at 9ba5b0957) |
+| `inputDelayTicks` | 2 ticks (33 ms at 60 Hz) | engine default |
+| `inputDelayTicks`, recommended | 2 on a LAN, 4 to 6 over the internet | engine guidance (IDL at 9ba5b0957) |
+| `maxPredictionTicks` | 8 ticks (133 ms at 60 Hz) | engine default |
+| `maxPredictionTicks`, recommended | 8 covers most internet latency on top of `inputDelayTicks` | engine guidance (IDL at 9ba5b0957) |
 | `players` | at most 16 | engine limit |
 
   An input delay must cover the room's round trip, or lockstep waits and
@@ -116,10 +116,10 @@ const Send = defineSystem("Send", { reads: [og.Input], writes: [] }, (q, time, w
 
 - A peer that goes silent (a frozen tab, a lost connection the room has
   not noticed yet) is reported as og.PeerStalled after a second (or half of
-  `stallTimeout`, if shorter): show "waiting for player" then. It is this
+  `stallTimeoutMs`, if shorter): show "waiting for player" then. It is this
   peer's own report, never hashed, and repeats each time the peer falls
   silent again.
-- After `stallTimeout` the seat is dropped: the authority (the lowest
+- After `stallTimeoutMs` the seat is dropped: the authority (the lowest
   running peer that is not itself silent) agrees with every other running
   peer how far the seat's inputs reach, and every peer empties the seat
   from the tick after its last input. og.SeatDropped arrives at one tick
@@ -141,7 +141,7 @@ const Send = defineSystem("Send", { reads: [og.Input], writes: [] }, (q, time, w
 - Keep nothing by peer number across og.RoomJoined: key a player's state
   by seat (og.SeatDropped and og.SeatRejoined name both).
 - Wall time decides only when a peer is reported and dropped, never what
-  the confirmed world is. `stallTimeout` 0 never drops a peer still in the
+  the confirmed world is. `stallTimeoutMs` 0 never drops a peer still in the
   room: the room waits as long as it takes.
 
 <a id="guide-networking-6"></a>
@@ -150,7 +150,7 @@ const Send = defineSystem("Send", { reads: [og.Input], writes: [] }, (q, time, w
 Every tick each peer hashes its world without its own session: og.Input,
 og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep,
 the gameplay actions of og.input, the input, room, platform, asset and
-stream events, and the UI's focus and hover. Every `hashEvery` ticks it
+stream events, and the UI's focus and hover. Every `hashEveryTicks` ticks it
 sends the hashes since its last batch; the first tick whose hashes differ
 is reported once as og.Desync.
 
@@ -164,7 +164,7 @@ is reported once as og.Desync.
   over a Set of objects, a module variable, input read from og.Input or
   og.input's actions outside the one submitting system, and Math's
   transcendental functions (`determinism §1`).
-- `hashEvery` 10 finds the tick exactly (every tick is hashed) at little
+- `hashEveryTicks` 10 finds the tick exactly (every tick is hashed) at little
   traffic; 0 compares nothing and hides desyncs.
 - Recovery: a desync is a bug to fix, not to paper over. A shipped game that
   meets one ends the match rather than keep playing two worlds.

@@ -54,11 +54,11 @@ export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed,
       const system = systems.get(id);
       if (!system || !fn) return `the dispatcher has no system with callback id ${id}: the bundle declared ${systems.size} system(s); was the engine built from another bundle?`;
       rt.running = { system, tick };
-      // The shared buffer opens with the time scale: scale, hitStop, scaledDt, scaledElapsed.
+      // The shared buffer opens with the time scale: scale, hitStopTicks, scaledDt, scaledElapsed.
       words();
       const time = Object.freeze({
         tick, dt, elapsed, rate: rates.get(engine) ?? Math.round(1 / dt),
-        scale: rt.sharedFloats[0]!, hitStop: rt.sharedFloats[1]!, scaledDt: rt.sharedFloats[2]!, scaledElapsed: rt.sharedFloats[3]!,
+        scale: rt.sharedFloats[0]!, hitStopTicks: rt.sharedFloats[1]!, scaledDt: rt.sharedFloats[2]!, scaledElapsed: rt.sharedFloats[3]!,
       });
       fn(new QueryImpl(query, system, engine, described), time, world);
       flushRecords();

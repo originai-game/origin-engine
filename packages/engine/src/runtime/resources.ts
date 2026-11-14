@@ -191,20 +191,20 @@ function methods(id: number, name: string, out: Record<string, unknown>): void {
   if (name === "og.Input") {
     Object.assign(out, {
       down: (key: string) => abi().og_input_down(id, key),
-      pressed: (key: string) => abi().og_input_pressed(id, key),
-      released: (key: string) => abi().og_input_released(id, key),
+      justPressed: (key: string) => abi().og_input_just_pressed(id, key),
+      justReleased: (key: string) => abi().og_input_just_released(id, key),
       axis: (negative: string, positive: string) => abi().og_input_axis(id, negative, positive),
       axis2: (left: string, right: string, down: string, up: string) => parse(abi().og_input_axis2(id, left, right, down, up)),
       buttonDown: (button: string) => abi().og_input_button_down(id, button),
-      buttonPressed: (button: string) => abi().og_input_button_pressed(id, button),
-      buttonReleased: (button: string) => abi().og_input_button_released(id, button),
+      buttonJustPressed: (button: string) => abi().og_input_button_just_pressed(id, button),
+      buttonJustReleased: (button: string) => abi().og_input_button_just_released(id, button),
     });
   }
   if (name === "og.Pointers") {
     Object.assign(out, {
       down: (pointer: number) => abi().og_pointers_down(id, pointer),
-      pressed: (pointer: number) => abi().og_pointers_pressed(id, pointer),
-      released: (pointer: number) => abi().og_pointers_released(id, pointer),
+      justPressed: (pointer: number) => abi().og_pointers_just_pressed(id, pointer),
+      justReleased: (pointer: number) => abi().og_pointers_just_released(id, pointer),
       position: (pointer: number) => parse(abi().og_pointers_position(id, pointer)),
       start: (pointer: number) => parse(abi().og_pointers_start(id, pointer)),
       count: () => abi().og_pointers_count(id),
@@ -214,8 +214,8 @@ function methods(id: number, name: string, out: Record<string, unknown>): void {
     Object.assign(out, {
       connected: (pad?: number) => abi().og_gamepad_connected(id, pad),
       down: (button: string, pad?: number) => abi().og_gamepad_down(id, button, pad),
-      pressed: (button: string, pad?: number) => abi().og_gamepad_pressed(id, button, pad),
-      released: (button: string, pad?: number) => abi().og_gamepad_released(id, button, pad),
+      justPressed: (button: string, pad?: number) => abi().og_gamepad_just_pressed(id, button, pad),
+      justReleased: (button: string, pad?: number) => abi().og_gamepad_just_released(id, button, pad),
       axis: (axis: string, pad?: number) => abi().og_gamepad_axis(id, axis, pad),
     });
   }

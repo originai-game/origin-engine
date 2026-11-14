@@ -539,8 +539,8 @@
   enum Light2DKind {
     doc "What shape of light a Light2D is."
     variant point "Light all around its position, to radius."
-    variant spot "A cone along the entity's local +x (turned with its Transform about z), innerAngle to outerAngle either side of the axis, to radius."
-    variant global "Light on every lit pixel of its layers at full intensity, from the direction of the entity's local +x at height (for normal maps); no radius and no shadows."
+    variant spot "A cone along the entity's local +x (turned with its Transform about z), innerAngle to outerAngle either side of the axis, to distance."
+    variant global "Light on every lit pixel of its layers at full intensity, from the direction of the entity's local +x at height (for normal maps); no distance and no shadows."
   }
 
   column Light2DKind {
@@ -551,7 +551,7 @@
   }
 
   component Light2D {
-    doc "A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn."
+    doc "A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at distance with (1 - d/distance)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn."
     field color Color "The light's linear colour." {
       default 1 1 1
     }
@@ -560,7 +560,7 @@
       min 0
       tunable true
     }
-    field radius f32 "Where the light reaches zero, in world units." {
+    field distance f32 "Where the light reaches zero, in world units." {
       default 5
       min 0
       unit m
@@ -579,15 +579,17 @@
       default true
     }
     field kind Light2DKind "Point, spot or global."
-    field innerAngle f32 "A spot's half-angle at full intensity, in radians." {
+    field innerAngle f32 "A spot's half-angle at full intensity." {
       default 0.35
       min 0
       max 3.14159
+      unit rad
     }
-    field outerAngle f32 "A spot's half-angle where it reaches zero, in radians (at least innerAngle)." {
+    field outerAngle f32 "A spot's half-angle where it reaches zero (at least innerAngle)." {
       default 0.6
       min 0
       max 3.14159
+      unit rad
     }
     field height f32 "How far above the 2D plane the light is, in world units: the slant normal-mapped sprites see it at (0 grazes the surface)." {
       default 1
@@ -1106,13 +1108,13 @@
   }
 
   component Afterimage {
-    doc "Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block)."
+    doc "Ghosts of the entity's og.Sprite: every `intervalTicks` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block)."
     field count u32 "How many ghosts." {
       default 4
       min 0
       max 16
     }
-    field interval u32 "Ticks between ghosts." {
+    field intervalTicks u32 "Ticks between ghosts." {
       default 3
       min 1
       unit ticks
@@ -1386,8 +1388,8 @@
       min 16
       max 1024
     }
-    field mode ReflectionProbeMode "baked (rendered once, or loaded from `og bake probes`) or realtime (every interval ticks)."
-    field interval u32 "With realtime: ticks between updates (1 is every frame)." {
+    field mode ReflectionProbeMode "baked (rendered once, or loaded from `og bake probes`) or realtime (every intervalTicks ticks)."
+    field intervalTicks u32 "With realtime: ticks between updates (1 is every frame)." {
       default 30
       min 1
       unit ticks

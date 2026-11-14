@@ -34,7 +34,7 @@ export default og.game({
     if (!lock.ok) throw new Error(lock.reason);
     lock.value.enabled = true;
     lock.value.players = 2;
-    lock.value.hashEvery = 10;
+    lock.value.hashEveryTicks = 10;
     const e = world.spawn({ name: "wobbler" });
     if (!e.ok) throw new Error(e.reason);
     world.insert(e.value, Wobble);

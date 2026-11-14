@@ -250,5 +250,5 @@ pub(super) fn centred(
 }
 
 pub(super) fn local_pose(c: &Collider, scale: Vec3) -> rp::Pose {
-    pose(c.offset * scale, c.rotation)
+    pose(c.offset * scale, c.quaternion)
 }

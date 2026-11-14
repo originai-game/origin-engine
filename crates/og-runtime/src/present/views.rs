@@ -338,7 +338,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
             layers: v.layers,
             order: v.order,
             clear: v.clear.then(|| Vec3::new(c.r, c.g, c.b)),
-            every: v.every,
+            every: v.every_ticks,
             mirror: None,
         });
         rs.views.entities.push(e);
@@ -359,7 +359,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
             layers: v.layers,
             order: 0,
             clear: None,
-            every: v.every,
+            every: v.every_ticks,
             mirror: Some(og_render::MirrorQuad {
                 transform: h.world_of(e),
                 width: v.width,

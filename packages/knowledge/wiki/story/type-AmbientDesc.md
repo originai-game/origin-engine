@@ -15,8 +15,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `entity` | `Entity` | `0` | — | — | — | Who barks. |
 | `topic` | `string` | `""` | — | — | — | The topic it asks for. |
 | `dialogue` | `string` | `""` | — | — | — | Only this dialogue's barks (empty: any). |
-| `every` | `number` | `600` | — | — | — | Ticks between asks (0 stops it). |
-| `jitter` | `number` | `0` | — | — | — | Up to this many ticks more each time, drawn on the story's stream. |
+| `everyTicks` | `number` | `600` | — | — | — | Ticks between asks (0 stops it). |
+| `jitterTicks` | `number` | `0` | — | — | — | Up to this many ticks more each time, drawn on the story's stream. |
 
 ```ogt
 struct AmbientDesc {
@@ -25,10 +25,10 @@ struct AmbientDesc {
   field entity Entity "Who barks."
   field topic String "The topic it asks for."
   field dialogue String "Only this dialogue's barks (empty: any)."
-  field every u32 "Ticks between asks (0 stops it)." {
+  field everyTicks u32 "Ticks between asks (0 stops it)." {
     default 600
   }
-  field jitter u32 "Up to this many ticks more each time, drawn on the story's stream."
+  field jitterTicks u32 "Up to this many ticks more each time, drawn on the story's stream."
 }
 ```
 

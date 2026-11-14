@@ -164,7 +164,7 @@ export const i18n = Object.freeze({
   formatNumber: (world: W, value: number, format?: unknown) => abi().og_i18n_format_number(world.id, value, json(format)),
   formatCompact: (world: W, value: number, decimals?: number) => abi().og_i18n_format_compact(world.id, value, decimals),
   formatCurrency: (world: W, amount: number, currency: string) => abi().og_i18n_format_currency(world.id, amount, currency),
-  formatDate: (world: W, seconds: number, format?: unknown) => abi().og_i18n_format_date(world.id, seconds, json(format)),
-  formatTime: (world: W, seconds: number, format?: unknown) => abi().og_i18n_format_time(world.id, seconds, json(format)),
+  formatDate: (world: W, timeMs: number, format?: unknown) => abi().og_i18n_format_date(world.id, timeMs, json(format)),
+  formatTime: (world: W, timeMs: number, format?: unknown) => abi().og_i18n_format_time(world.id, timeMs, json(format)),
   formatDuration: (world: W, seconds: number, style?: string) => abi().og_i18n_format_duration(world.id, seconds, style),
 });

@@ -162,7 +162,7 @@ fn main() {
                 at(i as f32 * 2.0, 1.0, 0.0),
                 Collider::cuboid(Vec3::new(0.6, 1.0, 1.0)),
                 PlatformerController {
-                    move_x: 1.0,
+                    run: 1.0,
                     ..PlatformerController::default()
                 },
             ))

@@ -7,7 +7,7 @@ module net {
   enum NetMode {
     doc "How a room's peers take their ticks (og.Lockstep.mode)."
     variant lockstep "Each tick waits until every seated player's input for it is in: no prediction, no rollback; a late input holds the world."
-    variant rollback "A tick runs on a missing input predicted as the player's last, up to maxPrediction ticks past the last tick whose inputs are all in; when the real input differs the world is rewound to its snapshot and the ticks re-run within the frame (GGPO-style). Hashes and og.Desync cover the confirmed world."
+    variant rollback "A tick runs on a missing input predicted as the player's last, up to maxPredictionTicks past the last tick whose inputs are all in; when the real input differs the world is rewound to its snapshot and the ticks re-run within the frame (GGPO-style). Hashes and og.Desync cover the confirmed world."
   }
 
   column NetMode {
@@ -18,7 +18,7 @@ module net {
   }
 
   resource Lockstep {
-    doc "Lockstep's settings and this peer's place. The game sets enabled, players, inputDelay and hashEvery (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared."
+    doc "Lockstep's settings and this peer's place. The game sets enabled, players, inputDelayTicks and hashEveryTicks (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared."
     aliases "deterministic lockstep, input sync, RTS networking, peer to peer simulation, same simulation on every peer, only inputs sent"
     guide "networking §1"
     field enabled bool "Whether the world takes its ticks in lockstep when in a room."
@@ -30,14 +30,14 @@ module net {
     field localPlayer u32 "This peer's seat, the og.PlayerInput.player its input drives; `players` while it watches (a peer beyond the seats). 0 before the start." {
       readonly true
     }
-    field inputDelay u32 "Ticks between a player's input and the tick it acts on: the time the input has to cross the room." {
+    field inputDelayTicks u32 "Ticks between a player's input and the tick it acts on: the time the input has to cross the room." {
       guide "networking §3"
       default 2
       min 1
       max 30
       unit ticks
     }
-    field hashEvery u32 "How often the peers exchange their world hashes, in ticks (every tick is hashed, so the first divergent tick is exact); 0 compares nothing." {
+    field hashEveryTicks u32 "How often the peers exchange their world hashes, in ticks (every tick is hashed, so the first divergent tick is exact); 0 compares nothing." {
       default 10
       min 0
       max 600
@@ -47,7 +47,7 @@ module net {
       readonly true
     }
     field mode NetMode "lockstep (the default: every tick waits for every input) or rollback (ticks run on predicted inputs and are rewound when an input differs; set before the room starts, the authority's is the room's)."
-    field stallTimeout u32 "Milliseconds a running peer may stay silent before its seat is dropped (og.SeatDropped); 0 never drops a peer still in the room, so the room waits for it as long as it takes. The authority's is the room's." {
+    field stallTimeoutMs u32 "Milliseconds a running peer may stay silent before its seat is dropped (og.SeatDropped); 0 never drops a peer still in the room, so the room waits for it as long as it takes. The authority's is the room's." {
       default 5000
       min 0
       max 600000
@@ -56,7 +56,7 @@ module net {
     field rejoin bool "Whether a dropped player that comes back (also under a new peer number after a lost connection, or as a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's." {
       default true
     }
-    field maxPrediction u32 "In rollback, the most ticks this peer runs past the last tick whose inputs are all in before it waits (a peer also predicts no further than it can re-simulate in half a frame)." {
+    field maxPredictionTicks u32 "In rollback, the most ticks this peer runs past the last tick whose inputs are all in before it waits (a peer also predicts no further than it can re-simulate in half a frame)." {
       guide "networking §3"
       default 8
       min 1
@@ -94,7 +94,7 @@ module net {
   }
 
   event SeatDropped {
-    doc "A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeout. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined."
+    doc "A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeoutMs. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined."
     field seat u32 "The seat, og.PlayerInput.player."
     field peer u32 "The peer that held it."
     field tick u32 "The first tick the seat is empty (og.Time.tick now)."
@@ -109,7 +109,7 @@ module net {
   }
 
   event PeerStalled {
-    doc "A running peer has sent nothing for a second (or half of stallTimeout, if shorter): for a \"waiting for player\" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent."
+    doc "A running peer has sent nothing for a second (or half of stallTimeoutMs, if shorter): for a \"waiting for player\" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent."
     field peer u32 "The silent peer."
     field seat u32 "Its seat; og.Lockstep.players for a spectator."
     field silentMs u32 "How long it has been silent, in milliseconds." {
@@ -167,7 +167,7 @@ module net {
     field waits f64 "Tick boundaries this peer waited at for an input."
     field desync Option.u32 "The first divergent tick, once og.Desync was sent."
     field rollback bool "Whether the room runs in rollback (og.Lockstep.mode, the authority's)."
-    field maxPrediction Option.u32 "The room's maxPrediction while running in rollback; 0 in lockstep." {
+    field maxPredictionTicks Option.u32 "The room's maxPredictionTicks while running in rollback; 0 in lockstep." {
       unit ticks
     }
     field confirmedTick Option.f64 "The last tick whose every seat's input has arrived." {
@@ -179,7 +179,7 @@ module net {
     field acknowledged Option.f64 "The last tick through which every other running peer has all of this peer's inputs (each input message acknowledges); null alone or before the start." {
       unit ticks
     }
-    field predicted u32 "Ticks the world now runs past its last confirmed tick (0 in lockstep)." {
+    field predictedTicks u32 "Ticks the world now runs past its last confirmed tick (0 in lockstep)." {
       unit ticks
     }
     field rollbacks f64 "Rewinds this peer made since lockstep started."
@@ -194,7 +194,7 @@ module net {
   }
 
   fn submit {
-    doc "Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call. Callable from a system."
+    doc "Give this peer's player's input: in lockstep, for the tick inputDelayTicks ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call. Callable from a system."
     guide "networking §3"
     param world World "The world."
     param input InputDesc "The buttons and axes."
@@ -218,7 +218,7 @@ module net {
   }
 
   fn command {
-    doc "Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system."
+    doc "Give a command for this peer's player: in lockstep, for the tick inputDelayTicks ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system."
     generic C AnyComponent
     param world World "The world."
     param component C "The command component og.net.shape named."
@@ -247,7 +247,7 @@ module net {
   }
 
   fn finalHash {
-    doc "The shared hash (og.net.hash) of the final world of `tick`, hex: the world every peer agrees on once each input for the ticks before it arrived, kept for the last 1024 final ticks while hashing (hashEvery above 0). In lockstep every tick run is final; in rollback a tick is final some ticks after it first ran. Null before the tick is final, after it is no longer kept, or outside lockstep."
+    doc "The shared hash (og.net.hash) of the final world of `tick`, hex: the world every peer agrees on once each input for the ticks before it arrived, kept for the last 1024 final ticks while hashing (hashEveryTicks above 0). In lockstep every tick run is final; in rollback a tick is final some ticks after it first ran. Null before the tick is final, after it is no longer kept, or outside lockstep."
     param world World "The world."
     param tick f64 "The tick, in ticks: the world after tick - 1 ran, as og.Time.tick reads."
     returns Option.String

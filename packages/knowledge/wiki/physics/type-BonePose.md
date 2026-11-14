@@ -11,7 +11,7 @@ A ragdoll bone's pose as the last step left it (blended with the animation by og
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The bone's position in world space. |
-| `rotation` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | Its rotation in world space. |
+| `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | Its rotation in world space. |
 
 ```ogt
 struct BonePose {
@@ -19,7 +19,7 @@ struct BonePose {
   field position Vector3 "The bone's position in world space." {
     unit m
   }
-  field rotation Quaternion "Its rotation in world space."
+  field quaternion Quaternion "Its rotation in world space."
 }
 ```
 

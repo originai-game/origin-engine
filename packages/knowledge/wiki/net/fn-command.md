@@ -6,7 +6,7 @@ Module [`net`](../net.md) · [index](../index.md)
 
 ### `og.net.command`
 
-Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system.
+Give a command for this peer's player: in lockstep, for the tick inputDelayTicks ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system.
 
 ```ts
 og.net.command<C extends AnyComponent>(world: World, component: C, value: Partial<Value<C>>): Result<void>
@@ -24,7 +24,7 @@ Binding symbol `og_net_command` · publish builds: kept
 
 ```ogt
 fn command {
-  doc "Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system."
+  doc "Give a command for this peer's player: in lockstep, for the tick inputDelayTicks ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system."
   generic C AnyComponent
   param world World "The world."
   param component C "The command component og.net.shape named."

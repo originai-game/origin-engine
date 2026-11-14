@@ -25,9 +25,9 @@ pub(super) fn draw_desc(eng: &Engine, desc: Option<String>) -> DrawDesc {
         color: color4(&d.color, 1.0),
         width: if w.is_finite() { w.max(0.0) } else { 2.0 },
         // Drawn at the frame after the tick that asked (its world reads
-        // the next tick), and `duration` ticks past it.
-        until: tick(eng) + 1 + u64::from(d.duration),
-        rotation: unit(d.rotation),
+        // the next tick), and `ticks` ticks past it.
+        until: tick(eng) + 1 + u64::from(d.ticks),
+        rotation: unit(d.quaternion),
     }
 }
 

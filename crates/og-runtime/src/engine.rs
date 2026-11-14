@@ -367,7 +367,7 @@ pub(crate) struct GameDecl {
     pub commands: Vec<(String, u32)>,
     /// GameDesc.commandHelp: each action's usage and doc.
     pub command_help: BTreeMap<String, (String, String)>,
-    pub max_catch_up: u32,
+    pub max_catch_up_ticks: u32,
     pub facts: Option<u32>,
     pub scene: String,
     pub scenes: BTreeMap<String, String>,
@@ -740,7 +740,7 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
             .into_iter()
             .map(|(k, c)| (k, (c.usage, c.doc)))
             .collect(),
-        max_catch_up: g.max_catch_up,
+        max_catch_up_ticks: g.max_catch_up_ticks,
         facts: g.facts,
         scene: g.scene,
         scenes: g.scenes,

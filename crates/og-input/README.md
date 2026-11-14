@@ -11,10 +11,10 @@ ring. It depends on `og-core` and `og-ecs` only and reads no clock.
 
 | Item | Entry points |
 |---|---|
-| `Input` (`og.Input`, version 2) | `down(code)`, `pressed`, `released`, `axis(neg, pos)`, `axis2`, `button_down(PointerButton)`, `button_pressed`, `button_released`, `contains(KeySet, i)`, `word(KeySet, w)`; `apply(&InjectedInput) -> Option<Vec<InputEvent>>`, `end_tick() -> Vec<InputEvent>` |
-| `Pointers` (`og.Pointers`, version 1) | `position(id)`, `start(id)`, `down(id)`, `is_pressed(id)`, `is_released(id)`, `count()`; masks `held`, `pressed`, `released` (bit `id`); `movement` (pointer 0's relative movement this tick); `apply`, `end_tick` |
+| `Input` (`og.Input`, version 3) | `down(code)`, `pressed`, `released`, `axis(neg, pos)`, `axis2`, `button_down(PointerButton)`, `button_pressed`, `button_released`, `contains(KeySet, i)`, `word(KeySet, w)`; `apply(&InjectedInput) -> Option<Vec<InputEvent>>`, `end_tick() -> Vec<InputEvent>` |
+| `Pointers` (`og.Pointers`, version 2) | `position(id)`, `start(id)`, `down(id)`, `is_pressed(id)`, `is_released(id)`, `count()`; masks `held`, `pressed`, `released` (bit `id`); `movement` (pointer 0's relative movement this tick); `apply`, `end_tick` |
 | `PointerLock` (`og.PointerLock`, version 1) | `wanted` (the game's), `locked` (the host's, from `InjectedInput::PointerLock`) |
-| `Gamepad` (`og.Gamepad`, version 2) | `masks(pad) -> (held, pressed, released)`, `is_connected(pad)`, `device(pad) -> Option<Device>`, `down(button, pad)`, `pressed`, `released`, `axis(GamepadAxis, pad)`; `GAMEPAD_BUTTONS` (17 standard-mapping names, bit order), `gamepad_button(name)`, `MAX_GAMEPADS = 8`, `MAX_POINTERS = 5` |
+| `Gamepad` (`og.Gamepad`, version 3) | `masks(pad) -> (held, pressed, released)`, `is_connected(pad)`, `device(pad) -> Option<Device>`, `down(button, pad)`, `pressed`, `released`, `axis(GamepadAxis, pad)`; `GAMEPAD_BUTTONS` (17 standard-mapping names, bit order), `gamepad_button(name)`, `MAX_GAMEPADS = 8`, `MAX_POINTERS = 5` |
 | `ActionMap` (`og.input.*`) | `define(ActionDesc)`, `state(name) -> ActionState`, `infos`, `bindings`, `set_contexts`, `set_deadzone`, `set_toggle`, `rebind(RebindDesc) -> RebindAnswer`, `conflicts`, `reset`, `save_bindings`/`load_bindings`, `start_capture(CaptureDesc)`/`capture()`/`cancel_capture`/`apply_capture(ConflictPolicy)`, `glyphs(action, device)`, `device()`, `rumble`/`take_rumble`, `sample(input, pointers, pads, tick, dt)`, `feed()`; `install(world, shared, surface)` adds the `og.input.actions` system and state block |
 | controls | `Control::parse("pad.leftXY")`, `name`, `shape`, `class`, `glyph(device)`; `Binding` (a control or a composite: `negative`/`positive`, `up`/`down`/`left`/`right`; `scale`, `invert_y`, `deadzone`, `zone`, `radius`); `PadDeadzone`, `Zone`, `Surface` |
 | glyphs | `Device` (`keyboardMouse xbox playstation switch gamepad touch`), `Glyph { icon, text }`, `key_glyph`, `pad_glyph`, `binding_glyphs`, `combined_glyph`: og-ui's UI actions draw from the same tables |
@@ -34,8 +34,8 @@ layout this crate registers:
 
 | fields | type | meaning |
 |---|---|---|
-| `buttons`, `buttonsPressed`, `buttonsReleased`, `buttonsReleaseNext` | u32 | masks: left 1, middle 2, right 4 |
-| `keys0..3`, `pressed0..3`, `released0..3`, `releaseNext0..3` | u32 | 128-bit key sets over `KEY_CODES`: code `i` is word `i / 32`, bit `i % 32` |
+| `buttons`, `buttonsJustPressed`, `buttonsJustReleased`, `buttonsReleaseNext` | u32 | masks: left 1, middle 2, right 4 |
+| `keys0..3`, `justPressed0..3`, `justReleased0..3`, `releaseNext0..3` | u32 | 128-bit key sets over `KEY_CODES`: code `i` is word `i / 32`, bit `i % 32` |
 
 A TypeScript `Input.down("KeyW")` is `keys[i >> 5] >>> (i & 31) & 1` with
 `i = KEY_CODES.indexOf("KeyW")`. `KEY_CODES` only ever grows at the end.
@@ -124,11 +124,14 @@ and `og.input.actionMaps` for action-map membership and priority. Action
 names remain world-global, not map-local as in Unity. Controls remain W3C
 key codes and the engine's dotted pad and mouse controls.
 
-Polling uses Godot's distinction: `isActionPressed` is down continuously;
+Polling has one word per state: `isActionDown` is down continuously;
 `isActionJustPressed` and `isActionJustReleased` are edges in the current
 fixed tick, not the render frame. A tap between ticks sets both edges.
-`actionHeld` instead means down for `holdMs`. Raw `Input` polling and the
-`ActionState.down/pressed/released` fields keep their existing names.
+`isActionHeld` instead means down for `holdMs`. Raw `Input`, `Pointers` and
+`Gamepad` polling and `ActionState` use the same words: `down`,
+`justPressed`, `justReleased`. The Rust fields and methods of this crate
+keep `pressed` and `released` for the edges; `#[reflect(name)]` carries the
+API's names.
 
 `ActionMap` (`src/actions.rs`) is what a game reads instead of keys: named
 actions of kind `button`, `axis` (one value) or `axis2` (two, x right and

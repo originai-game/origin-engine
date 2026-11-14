@@ -119,7 +119,7 @@ fn a_made_and_resized_map_saves_whole_and_restores_in_a_fresh_session() {
     let root = project("tilemap-runtime");
     let engine = start(&root);
     let desc = json!({
-        "width": 9, "height": 7, "tileWidth": 16, "tileHeight": 16,
+        "width": 9, "height": 7, "tilePixelWidth": 16, "tilePixelHeight": 16,
         "orientation": "hex", "tilesets": ["tiles.ogt"],
         "layers": [{ "name": "floor", "collision": true }],
     });

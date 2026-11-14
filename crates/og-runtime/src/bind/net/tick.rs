@@ -16,11 +16,11 @@ pub(super) fn config(eng: &Engine, world: &World) -> Config {
     Config {
         enabled: v.enabled,
         players: v.players.clamp(1, 16),
-        input_delay: v.input_delay.clamp(1, 30),
-        hash_every: v.hash_every,
+        input_delay_ticks: v.input_delay_ticks.clamp(1, 30),
+        hash_every_ticks: v.hash_every_ticks,
         rollback: v.mode == NetMode::Rollback,
-        max_prediction: v.max_prediction.clamp(1, 30),
-        stall_timeout: v.stall_timeout.min(600_000),
+        max_prediction_ticks: v.max_prediction_ticks.clamp(1, 30),
+        stall_timeout_ms: v.stall_timeout_ms.min(600_000),
         rejoin: v.rejoin,
         budget: with(eng.id, |n| n.cost.budget(f64::from(world.time().dt))),
         state_bytes: with(eng.id, |n| n.shape.state_bytes as u32),
@@ -125,7 +125,7 @@ pub(crate) fn gate(engine: u32, world: &mut World) -> bool {
     }
 }
 
-/// After every tick: this peer's input for the tick inputDelay on, and the
+/// After every tick: this peer's input for the tick inputDelayTicks on, and the
 /// world's hash.
 pub(crate) fn after_tick(engine: u32, world: &mut World) {
     if !with(engine, |n| n.ls.running()) {
@@ -134,7 +134,7 @@ pub(crate) fn after_tick(engine: u32, world: &mut World) {
     let tick = world.time().tick;
     with(engine, |n| {
         let ran = crate::author::probe::now_ms();
-        // This tick's commands go with this peer's input inputDelay on,
+        // This tick's commands go with this peer's input inputDelayTicks on,
         // after its state (whole, so the commands start where every peer
         // reads them).
         let given = std::mem::take(&mut n.given);

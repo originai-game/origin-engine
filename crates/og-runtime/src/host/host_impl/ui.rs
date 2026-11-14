@@ -288,18 +288,18 @@ macro_rules! __og_host_bindings_ui {
             fn og_i18n_format_date(
                 &self,
                 world: u32,
-                seconds: f64,
+                time_ms: f64,
                 format: Option<String>,
             ) -> String {
-                $crate::og_i18n_format_date(world, seconds, format)
+                $crate::og_i18n_format_date(world, time_ms, format)
             }
             fn og_i18n_format_time(
                 &self,
                 world: u32,
-                seconds: f64,
+                time_ms: f64,
                 format: Option<String>,
             ) -> String {
-                $crate::og_i18n_format_time(world, seconds, format)
+                $crate::og_i18n_format_time(world, time_ms, format)
             }
             fn og_i18n_format_duration(
                 &self,

@@ -63,7 +63,7 @@ function tree(world: World, kind: "tree" | "pine", x: number, y: number): void {
 function lamp(world: World, x: number, y: number): void {
   prop(world, "lamp", x, y, { shadow: 0.3, glow: 0.6 });
   const light = must(world.spawn({ name: `lamp${x},${y}`, position: { x, y: y + 1.7, z: 0 } }));
-  must(world.insert(light, og.Light2D, { color: { r: 1, g: 0.7, b: 0.38 }, intensity: 1.4, radius: 4, falloff: 1.8, sourceRadius: 0.25, castShadows: true }));
+  must(world.insert(light, og.Light2D, { color: { r: 1, g: 0.7, b: 0.38 }, intensity: 1.4, distance: 4, falloff: 1.8, sourceRadius: 0.25, castShadows: true }));
 }
 
 const CROPS = [["parsnip_2", "cauliflower", "parsnip_1", "pumpkin"], ["wheat_a", "wheat_b", "sunflower", "tomato"], ["parsnip_0", "parsnip_1", "cauliflower", "tomato"]] as const;
@@ -195,7 +195,7 @@ export default og.game({
       for (const e of lit) must(world.despawn(e));
       inView(world, n, (x, y) => {
         const e = must(world.spawn({ position: { x, y, z: 0 } }));
-        must(world.insert(e, og.Light2D, { color: { r: 1, g: 0.7, b: 0.38 }, intensity: 1.2, radius: 5, falloff: 1.4, sourceRadius: 0.25, castShadows: true }));
+        must(world.insert(e, og.Light2D, { color: { r: 1, g: 0.7, b: 0.38 }, intensity: 1.2, distance: 5, falloff: 1.4, sourceRadius: 0.25, castShadows: true }));
       });
       must(world.resource(Play)).lights = n;
     },
@@ -206,7 +206,7 @@ export default og.game({
       const floor = must(world.spawn({ position: { x: at.x, y: at.y, z: 0 } }));
       must(world.insert(floor, og.Sprite, { width: 24, height: 14, layer: -5 }));
       const light = must(world.spawn({ name: "probe-light", position: { x: at.x - 6, y: at.y, z: 0 } }));
-      must(world.insert(light, og.Light2D, { intensity: 1, radius: 30, falloff: 0.1, sourceRadius: Number(args[0] ?? 0.25), castShadows: true }));
+      must(world.insert(light, og.Light2D, { intensity: 1, distance: 30, falloff: 0.1, sourceRadius: Number(args[0] ?? 0.25), castShadows: true }));
       const wall = must(world.spawn({ position: { x: at.x - 3, y: at.y + 1.5, z: 0 } }));
       must(world.insert(wall, og.Occluder2D, { width: 0.3, height: 3 }));
       const farmer = world.find("farmer");

@@ -228,7 +228,227 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         note: "the world's wind: strength (the lean per metre) is gone and speed is the air's, so the saved lean becomes the speed that leans as far (strength / 0.05 m/s)",
         run: Some(wind_2_to_3),
     },
+    Migration {
+        target: Target::Record,
+        name: "og.Collider",
+        from: 2,
+        to: 3,
+        note: "one name per meaning: rotation is quaternion",
+        run: Some(|e| renamed(e, "og.Collider", 3)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Light2D",
+        from: 2,
+        to: 3,
+        note: "one name per meaning: radius is distance, as og.PointLight's",
+        run: Some(|e| renamed(e, "og.Light2D", 3)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.AiAgent",
+        from: 1,
+        to: 2,
+        note: "one name per meaning: thinkEvery is thinkEveryTicks",
+        run: Some(|e| renamed(e, "og.AiAgent", 2)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Perception",
+        from: 1,
+        to: 2,
+        note: "one name per meaning: occluders is occluderMask",
+        run: Some(|e| renamed(e, "og.Perception", 2)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.PlatformerController",
+        from: 1,
+        to: 2,
+        note: "one name per meaning: moveX is run, impulse is addVelocity, oneWayLayers is oneWayMask",
+        run: Some(|e| renamed(e, "og.PlatformerController", 2)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Lockstep",
+        from: 1,
+        to: 2,
+        note: "one name per meaning: inputDelay, hashEvery and maxPrediction say Ticks, stallTimeout says Ms",
+        run: Some(|e| renamed(e, "og.Lockstep", 2)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.VirtualCamera",
+        from: 1,
+        to: 2,
+        note: "one name per meaning: collisionLayers is collisionMask",
+        run: Some(|e| renamed(e, "og.VirtualCamera", 2)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.CameraView",
+        from: 1,
+        to: 2,
+        note: "one name per meaning: every is everyTicks",
+        run: Some(|e| renamed(e, "og.CameraView", 2)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Mirror",
+        from: 1,
+        to: 2,
+        note: "one name per meaning: every is everyTicks",
+        run: Some(|e| renamed(e, "og.Mirror", 2)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Afterimage",
+        from: 1,
+        to: 2,
+        note: "one name per meaning: interval is intervalTicks",
+        run: Some(|e| renamed(e, "og.Afterimage", 2)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.ReflectionProbe",
+        from: 1,
+        to: 2,
+        note: "one name per meaning: interval is intervalTicks",
+        run: Some(|e| renamed(e, "og.ReflectionProbe", 2)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Input",
+        from: 2,
+        to: 3,
+        note: "the input API's one word per state: the key and button edges say justPressed and justReleased (pressed0-3, released0-3, buttonsPressed, buttonsReleased)",
+        run: Some(|e| renamed(e, "og.Input", 3)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Pointers",
+        from: 1,
+        to: 2,
+        note: "the input API's one word per state: pressedMask and releasedMask say justPressedMask and justReleasedMask",
+        run: Some(|e| renamed(e, "og.Pointers", 2)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Gamepad",
+        from: 2,
+        to: 3,
+        note: "the input API's one word per state: the button edges say justPressed and justReleased (pressed0-7, released0-7)",
+        run: Some(|e| renamed(e, "og.Gamepad", 3)),
+    },
 ];
+
+/// A record's fields under the name each had before and the name it has
+/// from the record's version `.1` on.
+type Rename = (&'static str, u32, &'static [(&'static str, &'static str)]);
+
+/// The fields that took another name with a record's version, their order,
+/// types and values as they were.
+const RENAMES: &[Rename] = &[
+    ("og.Collider", 3, &[("rotation", "quaternion")]),
+    ("og.Light2D", 3, &[("radius", "distance")]),
+    ("og.AiAgent", 2, &[("thinkEvery", "thinkEveryTicks")]),
+    ("og.Perception", 2, &[("occluders", "occluderMask")]),
+    (
+        "og.PlatformerController",
+        2,
+        &[
+            ("moveX", "run"),
+            ("impulse", "addVelocity"),
+            ("oneWayLayers", "oneWayMask"),
+        ],
+    ),
+    (
+        "og.Lockstep",
+        2,
+        &[
+            ("inputDelay", "inputDelayTicks"),
+            ("hashEvery", "hashEveryTicks"),
+            ("stallTimeout", "stallTimeoutMs"),
+            ("maxPrediction", "maxPredictionTicks"),
+        ],
+    ),
+    (
+        "og.VirtualCamera",
+        2,
+        &[("collisionLayers", "collisionMask")],
+    ),
+    ("og.CameraView", 2, &[("every", "everyTicks")]),
+    ("og.Mirror", 2, &[("every", "everyTicks")]),
+    ("og.Afterimage", 2, &[("interval", "intervalTicks")]),
+    ("og.ReflectionProbe", 2, &[("interval", "intervalTicks")]),
+    (
+        "og.Input",
+        3,
+        &[
+            ("buttonsPressed", "buttonsJustPressed"),
+            ("buttonsReleased", "buttonsJustReleased"),
+            ("pressed0", "justPressed0"),
+            ("pressed1", "justPressed1"),
+            ("pressed2", "justPressed2"),
+            ("pressed3", "justPressed3"),
+            ("released0", "justReleased0"),
+            ("released1", "justReleased1"),
+            ("released2", "justReleased2"),
+            ("released3", "justReleased3"),
+        ],
+    ),
+    (
+        "og.Pointers",
+        2,
+        &[
+            ("pressedMask", "justPressedMask"),
+            ("releasedMask", "justReleasedMask"),
+        ],
+    ),
+    (
+        "og.Gamepad",
+        3,
+        &[
+            ("pressed0", "justPressed0"),
+            ("pressed1", "justPressed1"),
+            ("pressed2", "justPressed2"),
+            ("pressed3", "justPressed3"),
+            ("pressed4", "justPressed4"),
+            ("pressed5", "justPressed5"),
+            ("pressed6", "justPressed6"),
+            ("pressed7", "justPressed7"),
+            ("released0", "justReleased0"),
+            ("released1", "justReleased1"),
+            ("released2", "justReleased2"),
+            ("released3", "justReleased3"),
+            ("released4", "justReleased4"),
+            ("released5", "justReleased5"),
+            ("released6", "justReleased6"),
+            ("released7", "justReleased7"),
+        ],
+    ),
+];
+
+/// A record whose fields took other names with its version `to`
+/// ([`RENAMES`]): the saved type takes the new names, and every component,
+/// resource and event of it keeps its bytes.
+fn renamed(edit: &mut SnapshotEdit, name: &str, to: u32) -> Result<(), String> {
+    let (_, _, fields) = RENAMES
+        .iter()
+        .find(|r| r.0 == name && r.1 == to)
+        .ok_or_else(|| format!("{name} has no renames at version {to}"))?;
+    let Some(mut schema) = edit.schema(name).cloned() else {
+        return Ok(());
+    };
+    schema.version = to;
+    for f in &mut schema.fields {
+        if let Some((_, new)) = fields.iter().find(|(old, _)| f.name == *old) {
+            f.name = (*new).to_string();
+        }
+    }
+    edit.map_type(name, schema, &mut |v| Ok(v.to_vec()))
+        .map_err(|e| e.reason().to_string())
+}
 
 /// A record that became lazy with its version 1 -> 2 (R11's 2D lighting):
 /// dropped where it holds nothing a game set (no component,
@@ -657,6 +877,65 @@ mod tests {
             names,
             ["direction", "speed", "gust", "turbulence", "gustSize"]
         );
+    }
+
+    /// Each record of [`RENAMES`] as the build before wrote it (the old
+    /// names, the version before) upgrades to the layout this build
+    /// registers, so the restore takes it, with its values where they were.
+    #[test]
+    fn a_renamed_records_save_upgrades_to_this_builds_layout_with_its_values() {
+        use crate::host::codec::RecordKind;
+        for &(name, to, fields) in RENAMES {
+            let decl = og_api::host::RECORDS
+                .iter()
+                .find(|d| d.schema == name)
+                .unwrap_or_else(|| panic!("{name} is not an engine record"));
+            let layout = crate::host::codec::Layout::from_decl(decl).unwrap();
+            // og-input registers its own records; the runtime the rest.
+            let now = match name {
+                "og.Input" => <og_input::Input as og_core::Reflect>::schema(),
+                "og.Pointers" => <og_input::Pointers as og_core::Reflect>::schema(),
+                "og.Gamepad" => <og_input::Gamepad as og_core::Reflect>::schema(),
+                _ => crate::engine::versioned(layout.schema()),
+            };
+            assert_eq!(now.version, to, "{name}: the version this build registers");
+            let mut old = now.clone();
+            old.version = to - 1;
+            for (before, after) in fields {
+                let f = old
+                    .fields
+                    .iter_mut()
+                    .find(|f| f.name == *after)
+                    .unwrap_or_else(|| panic!("{name} has no field {after}"));
+                f.name = (*before).to_string();
+            }
+            // The record at its declared defaults: bytes every field type takes.
+            let bytes = layout.encode(None, None).unwrap();
+            let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
+            let id = world.register_schema(old).unwrap();
+            let entity = match layout.kind {
+                RecordKind::Resource => {
+                    world.insert_resource_bytes(id, &bytes).unwrap();
+                    None
+                }
+                _ => Some(world.spawn_bytes(vec![(id, bytes.clone())]).unwrap()),
+            };
+            let (upgraded, steps) = upgrade(&world.snapshot())
+                .unwrap()
+                .unwrap_or_else(|| panic!("{name}: no step ran"));
+            assert_eq!(steps.len(), 1, "{name}: {steps:?}");
+            let edit = SnapshotEdit::from_bytes(&upgraded).unwrap();
+            let saved = edit.schema(name).unwrap();
+            assert_eq!(saved.layout_hash(), now.layout_hash(), "{name}: {saved:?}");
+            match entity {
+                None => assert_eq!(edit.resource(name), Some(&bytes[..]), "{name}"),
+                Some(e) => assert_eq!(edit.components(name), vec![(e, bytes)], "{name}"),
+            }
+            assert!(
+                upgrade(&upgraded).unwrap().is_none(),
+                "{name}: upgraded twice"
+            );
+        }
     }
 
     #[test]

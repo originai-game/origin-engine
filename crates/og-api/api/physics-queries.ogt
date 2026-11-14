@@ -113,7 +113,7 @@
     field position Vector3 "Where the sweep starts." {
       unit m
     }
-    field rotation Quaternion "The shape's rotation; a zero quaternion is no rotation."
+    field quaternion Quaternion "The shape's rotation; a zero quaternion is no rotation."
     field direction Vector3 "Where it sweeps; it need not be normalised and must not be zero." {
       default 0 -1 0
     }
@@ -141,7 +141,7 @@
     field position Vector3 "Where it is." {
       unit m
     }
-    field rotation Quaternion "Its rotation; a zero quaternion is no rotation."
+    field quaternion Quaternion "Its rotation; a zero quaternion is no rotation."
     field filter QueryFilter "Which colliders count."
   }
 
@@ -243,7 +243,7 @@
     field position Vector3 "The wheel's centre in world space." {
       unit m
     }
-    field rotation Quaternion "Its rotation (steering and spin) in world space."
+    field quaternion Quaternion "Its rotation (steering and spin) in world space."
     field contact bool "Whether it touches the ground."
     field slip f32 "How much the tyre slides (rapier's skid info turned round): 0 it grips, towards 1 it asks for more than its grip holds (0.5 is twice as much); 0 in the air and in 2D." {
       guide "physics §7"
@@ -265,7 +265,7 @@
     field position Vector3 "The bone's rest position relative to the entity." {
       unit m
     }
-    field rotation Quaternion "The bone's rest rotation relative to the entity; a zero quaternion is no rotation."
+    field quaternion Quaternion "The bone's rest rotation relative to the entity; a zero quaternion is no rotation."
     field length f32 "How long the bone is (to its child)." {
       default 0.25
       unit m
@@ -290,7 +290,7 @@
     field position Vector3 "The bone's position in world space." {
       unit m
     }
-    field rotation Quaternion "Its rotation in world space."
+    field quaternion Quaternion "Its rotation in world space."
   }
 
   fn ropePoints {

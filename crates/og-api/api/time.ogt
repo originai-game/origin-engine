@@ -27,7 +27,7 @@ module time {
       min 0
       max 10
     }
-    field hitStop u32 "Ticks of hit stop left (og.time.hitStop): while above 0, scaledDt is 0." {
+    field hitStopTicks u32 "Ticks of hit stop left (og.time.hitStop): while above 0, scaledDt is 0." {
       readonly true
       unit ticks
     }

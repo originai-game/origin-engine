@@ -20,7 +20,7 @@ export interface HostAbi<A, V> {
   og_engine_advance(engine: number, steps: number): string;
   /** Run a registered command action now, between ticks (`args` is a JSON list of strings). The scheduled channel is `og.commands.schedule`. */
   og_engine_command(engine: number, action: string, args: string): string;
-  /** One display frame: feed `elapsed_ms` of wall clock to the fixed-tick accumulator (unless paused), run the command steps due, take the ticks it allows up to `GameDesc.maxCatchUp` through the probe, then render when a renderer is attached. JSON `{ ok, ticks, tick, rendered, paused, quit }` or a refusal; `quit` is true once a `quit` command ran. */
+  /** One display frame: feed `elapsed_ms` of wall clock to the fixed-tick accumulator (unless paused), run the command steps due, take the ticks it allows up to `GameDesc.maxCatchUpTicks` through the probe, then render when a renderer is attached. JSON `{ ok, ticks, tick, rendered, paused, quit }` or a refusal; `quit` is true once a `quit` command ran. */
   og_engine_frame(engine: number, elapsed_ms: number): string;
   /** A new game bundle is about to be imported (hot reload): its component, resource and command declarations replace the previous bundle's; systems and games keep their handles. The probe's `reload` then assembles the latest `og.game` and restores the world into it. */
   og_host_begin_bundle(): void;
@@ -262,14 +262,14 @@ export interface HostAbi<A, V> {
   og_input_actions(world: number): string;
   /** `og.input.action` */
   og_input_action(world: number, name: string): string;
-  /** `og.input.isActionPressed` */
-  og_input_is_action_pressed(world: number, name: string): boolean;
+  /** `og.input.isActionDown` */
+  og_input_is_action_down(world: number, name: string): boolean;
   /** `og.input.isActionJustPressed` */
   og_input_is_action_just_pressed(world: number, name: string): boolean;
   /** `og.input.isActionJustReleased` */
   og_input_is_action_just_released(world: number, name: string): boolean;
-  /** `og.input.actionHeld` */
-  og_input_action_held(world: number, name: string): boolean;
+  /** `og.input.isActionHeld` */
+  og_input_is_action_held(world: number, name: string): boolean;
   /** `og.input.actionValue` */
   og_input_action_value(world: number, name: string): number;
   /** `og.input.actionVector` */
@@ -328,26 +328,26 @@ export interface HostAbi<A, V> {
   og_input_rumble(world: number, desc: string | undefined): string;
   /** `Input.down` */
   og_input_down(world: number, key: string): boolean;
-  /** `Input.pressed` */
-  og_input_pressed(world: number, key: string): boolean;
-  /** `Input.released` */
-  og_input_released(world: number, key: string): boolean;
+  /** `Input.justPressed` */
+  og_input_just_pressed(world: number, key: string): boolean;
+  /** `Input.justReleased` */
+  og_input_just_released(world: number, key: string): boolean;
   /** `Input.axis` */
   og_input_axis(world: number, negative: string, positive: string): number;
   /** `Input.axis2` */
   og_input_axis2(world: number, left: string, right: string, down: string, up: string): string;
   /** `Input.buttonDown` */
   og_input_button_down(world: number, button: string): boolean;
-  /** `Input.buttonPressed` */
-  og_input_button_pressed(world: number, button: string): boolean;
-  /** `Input.buttonReleased` */
-  og_input_button_released(world: number, button: string): boolean;
+  /** `Input.buttonJustPressed` */
+  og_input_button_just_pressed(world: number, button: string): boolean;
+  /** `Input.buttonJustReleased` */
+  og_input_button_just_released(world: number, button: string): boolean;
   /** `Pointers.down` */
   og_pointers_down(world: number, id: number): boolean;
-  /** `Pointers.pressed` */
-  og_pointers_pressed(world: number, id: number): boolean;
-  /** `Pointers.released` */
-  og_pointers_released(world: number, id: number): boolean;
+  /** `Pointers.justPressed` */
+  og_pointers_just_pressed(world: number, id: number): boolean;
+  /** `Pointers.justReleased` */
+  og_pointers_just_released(world: number, id: number): boolean;
   /** `Pointers.position` */
   og_pointers_position(world: number, id: number): string;
   /** `Pointers.start` */
@@ -358,10 +358,10 @@ export interface HostAbi<A, V> {
   og_gamepad_connected(world: number, pad: number | undefined): boolean;
   /** `Gamepad.down` */
   og_gamepad_down(world: number, button: string, pad: number | undefined): boolean;
-  /** `Gamepad.pressed` */
-  og_gamepad_pressed(world: number, button: string, pad: number | undefined): boolean;
-  /** `Gamepad.released` */
-  og_gamepad_released(world: number, button: string, pad: number | undefined): boolean;
+  /** `Gamepad.justPressed` */
+  og_gamepad_just_pressed(world: number, button: string, pad: number | undefined): boolean;
+  /** `Gamepad.justReleased` */
+  og_gamepad_just_released(world: number, button: string, pad: number | undefined): boolean;
   /** `Gamepad.axis` */
   og_gamepad_axis(world: number, axis: string, pad: number | undefined): number;
   /** `Camera.lookAt` */
@@ -919,9 +919,9 @@ export interface HostAbi<A, V> {
   /** `og.i18n.formatCurrency` */
   og_i18n_format_currency(world: number, amount: number, currency: string): string;
   /** `og.i18n.formatDate` */
-  og_i18n_format_date(world: number, seconds: number, format: string | undefined): string;
+  og_i18n_format_date(world: number, time_ms: number, format: string | undefined): string;
   /** `og.i18n.formatTime` */
-  og_i18n_format_time(world: number, seconds: number, format: string | undefined): string;
+  og_i18n_format_time(world: number, time_ms: number, format: string | undefined): string;
   /** `og.i18n.formatDuration` */
   og_i18n_format_duration(world: number, seconds: number, style: string | undefined): string;
   /** `og.ui.configure` */
@@ -1400,10 +1400,10 @@ export const SYMBOLS: readonly string[] = [
   "og_input_define_action",
   "og_input_actions",
   "og_input_action",
-  "og_input_is_action_pressed",
+  "og_input_is_action_down",
   "og_input_is_action_just_pressed",
   "og_input_is_action_just_released",
-  "og_input_action_held",
+  "og_input_is_action_held",
   "og_input_action_value",
   "og_input_action_vector",
   "og_input_move_relative",
@@ -1433,23 +1433,23 @@ export const SYMBOLS: readonly string[] = [
   "og_input_mouse",
   "og_input_rumble",
   "og_input_down",
-  "og_input_pressed",
-  "og_input_released",
+  "og_input_just_pressed",
+  "og_input_just_released",
   "og_input_axis",
   "og_input_axis2",
   "og_input_button_down",
-  "og_input_button_pressed",
-  "og_input_button_released",
+  "og_input_button_just_pressed",
+  "og_input_button_just_released",
   "og_pointers_down",
-  "og_pointers_pressed",
-  "og_pointers_released",
+  "og_pointers_just_pressed",
+  "og_pointers_just_released",
   "og_pointers_position",
   "og_pointers_start",
   "og_pointers_count",
   "og_gamepad_connected",
   "og_gamepad_down",
-  "og_gamepad_pressed",
-  "og_gamepad_released",
+  "og_gamepad_just_pressed",
+  "og_gamepad_just_released",
   "og_gamepad_axis",
   "og_camera_look_at",
   "og_camera_world_to_screen",

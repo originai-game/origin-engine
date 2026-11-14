@@ -55,8 +55,8 @@ if [ "$rc" = 0 ]; then
   cargo test -p og-tests -p og-runtime -p og-audio -p og-ui --release --no-fail-fast -- --ignored perf --nocapture --test-threads=1 2>&1 | tee -a "$out/perf.log"
   rc="${PIPESTATUS[0]}"
   # Real-time room behaviour paced on the wall clock (a peer stalled past
-  # stallTimeout), which a loaded gate cannot pace.
-  (cd packages/engine && OG_PERF=1 bun test tests/rooms.test.ts -t "frozen past stallTimeout") 2>&1 | tee -a "$out/perf.log"
+  # stallTimeoutMs), which a loaded gate cannot pace.
+  (cd packages/engine && OG_PERF=1 bun test tests/rooms.test.ts -t "frozen past stallTimeoutMs") 2>&1 | tee -a "$out/perf.log"
   [ "${PIPESTATUS[0]}" = 0 ] || rc=1
   og_lock_release
 fi

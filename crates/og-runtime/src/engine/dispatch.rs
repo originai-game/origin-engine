@@ -121,7 +121,7 @@ pub(crate) struct State {
     /// anything else until then.
     pub held_names: std::collections::BTreeSet<String>,
     pub rate: u32,
-    pub max_catch_up: u32,
+    pub max_catch_up_ticks: u32,
     pub accumulator_ms: f64,
     pub facts: Option<u32>,
     /// The scene GameDesc.scene names, while its bundle is still loading.

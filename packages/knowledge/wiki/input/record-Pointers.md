@@ -15,8 +15,8 @@ Token `og.Pointers`, registered under the schema name `og.Pointers`; its value t
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `heldMask` | `number` | `0` | — | — | read only | Pointers held down, as a mask. |
-| `pressedMask` | `number` | `0` | — | — | read only | Pointers that went down this tick. |
-| `releasedMask` | `number` | `0` | — | — | read only | Pointers that went up this tick. |
+| `justPressedMask` | `number` | `0` | — | — | read only | Pointers that went down this tick. |
+| `justReleasedMask` | `number` | `0` | — | — | read only | Pointers that went up this tick. |
 | `releaseNextMask` | `number` | `0` | — | — | read only | Pointers a click releases at the end of the next tick. |
 | `position0` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only, worldspace `none` | Where pointer 0 is. |
 | `position1` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only, worldspace `none` | Where pointer 1 is. |
@@ -37,10 +37,10 @@ resource Pointers {
   field heldMask u32 "Pointers held down, as a mask." {
     readonly true
   }
-  field pressedMask u32 "Pointers that went down this tick." {
+  field justPressedMask u32 "Pointers that went down this tick." {
     readonly true
   }
-  field releasedMask u32 "Pointers that went up this tick." {
+  field justReleasedMask u32 "Pointers that went up this tick." {
     readonly true
   }
   field releaseNextMask u32 "Pointers a click releases at the end of the next tick." {
@@ -102,16 +102,16 @@ resource Pointers {
     unit cssPx
   }
   fn down {
-    doc "Whether a pointer is held."
+    doc "Whether a pointer is down."
     param id u32 "The pointer, 0 to 4."
     returns bool
   }
-  fn pressed {
+  fn justPressed {
     doc "Whether a pointer went down this tick."
     param id u32 "The pointer, 0 to 4."
     returns bool
   }
-  fn released {
+  fn justReleased {
     doc "Whether a pointer went up this tick."
     param id u32 "The pointer, 0 to 4."
     returns bool
@@ -139,7 +139,7 @@ resource Pointers {
 
 #### `Pointers.down`
 
-Whether a pointer is held.
+Whether a pointer is down.
 
 ```ts
 Pointers.down(id: number): boolean
@@ -155,7 +155,7 @@ Binding symbol `og_pointers_down` · publish builds: kept
 
 ```ogt
 fn down {
-  doc "Whether a pointer is held."
+  doc "Whether a pointer is down."
   param id u32 "The pointer, 0 to 4."
   returns bool
 }
@@ -163,14 +163,14 @@ fn down {
 
 <sub>Module `input` line 969</sub>
 
-<a id="member-Pointers-pressed"></a>
+<a id="member-Pointers-justPressed"></a>
 
-#### `Pointers.pressed`
+#### `Pointers.justPressed`
 
 Whether a pointer went down this tick.
 
 ```ts
-Pointers.pressed(id: number): boolean
+Pointers.justPressed(id: number): boolean
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -179,10 +179,10 @@ Pointers.pressed(id: number): boolean
 
 **Returns** `boolean`.
 
-Binding symbol `og_pointers_pressed` · publish builds: kept
+Binding symbol `og_pointers_just_pressed` · publish builds: kept
 
 ```ogt
-fn pressed {
+fn justPressed {
   doc "Whether a pointer went down this tick."
   param id u32 "The pointer, 0 to 4."
   returns bool
@@ -191,14 +191,14 @@ fn pressed {
 
 <sub>Module `input` line 974</sub>
 
-<a id="member-Pointers-released"></a>
+<a id="member-Pointers-justReleased"></a>
 
-#### `Pointers.released`
+#### `Pointers.justReleased`
 
 Whether a pointer went up this tick.
 
 ```ts
-Pointers.released(id: number): boolean
+Pointers.justReleased(id: number): boolean
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -207,10 +207,10 @@ Pointers.released(id: number): boolean
 
 **Returns** `boolean`.
 
-Binding symbol `og_pointers_released` · publish builds: kept
+Binding symbol `og_pointers_just_released` · publish builds: kept
 
 ```ogt
-fn released {
+fn justReleased {
   doc "Whether a pointer went up this tick."
   param id u32 "The pointer, 0 to 4."
   returns bool

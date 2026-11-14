@@ -1,11 +1,11 @@
 {
   "fixed": [
     {
-      "member": "Lockstep.maxPrediction",
-      "summary": "A lockstep tick's cost now counts the world's snapshot and hash taken after it, so a rollback peer's maxPrediction budget (the ticks it can re-simulate in half a frame) is no longer over-estimated; dump_room reports it as cost { tickMs, keepMs, rewindMs }."
+      "member": "Lockstep.maxPredictionTicks",
+      "summary": "A lockstep tick's cost now counts the world's snapshot and hash taken after it, so a rollback peer's maxPredictionTicks budget (the ticks it can re-simulate in half a frame) is no longer over-estimated; dump_room reports it as cost { tickMs, keepMs, rewindMs }."
     },
     {
-      "member": "Lockstep.hashEvery",
+      "member": "Lockstep.hashEveryTicks",
       "summary": "The per-tick hash reads the snapshot's columns in place instead of decoding every entity (about half the time, the same values), and the snapshot kept for a rollback is shared with the one kept for comparison instead of copied."
     }
   ]

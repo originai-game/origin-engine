@@ -979,7 +979,7 @@ pub fn migrate(src: &str) -> Option<Migration> {
                     ),
                     (
                         "addEventListener",
-                        "events reach the tick as og.Input (input.pressed(\"Space\")), read in a system; the engine handles resizing",
+                        "events reach the tick as og.Input (input.justPressed(\"Space\")), read in a system; the engine handles resizing",
                         S_TICK,
                     ),
                 ] {

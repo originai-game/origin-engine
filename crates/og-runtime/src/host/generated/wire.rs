@@ -807,7 +807,7 @@ pub struct GameDesc {
     pub resources: Vec<Value>,
     pub commands: BTreeMap<String, u32>,
     pub command_help: BTreeMap<String, CommandDesc>,
-    pub max_catch_up: u32,
+    pub max_catch_up_ticks: u32,
     pub facts: Option<u32>,
     pub start: Option<u32>,
     pub ui: Option<u32>,
@@ -831,7 +831,7 @@ impl Default for GameDesc {
             resources: Default::default(),
             commands: Default::default(),
             command_help: Default::default(),
-            max_catch_up: 4,
+            max_catch_up_ticks: 4,
             facts: Default::default(),
             start: Default::default(),
             ui: Default::default(),
@@ -861,7 +861,7 @@ impl FromJson for GameDesc {
             resources: field(o, "resources", d.resources)?,
             commands: field(o, "commands", d.commands)?,
             command_help: field(o, "commandHelp", d.command_help)?,
-            max_catch_up: field(o, "maxCatchUp", d.max_catch_up)?,
+            max_catch_up_ticks: field(o, "maxCatchUpTicks", d.max_catch_up_ticks)?,
             facts: field(o, "facts", d.facts)?,
             start: field(o, "start", d.start)?,
             ui: field(o, "ui", d.ui)?,
@@ -887,7 +887,7 @@ impl ToJson for GameDesc {
         o.insert("resources".into(), self.resources.to_json());
         o.insert("commands".into(), self.commands.to_json());
         o.insert("commandHelp".into(), self.command_help.to_json());
-        o.insert("maxCatchUp".into(), self.max_catch_up.to_json());
+        o.insert("maxCatchUpTicks".into(), self.max_catch_up_ticks.to_json());
         o.insert("facts".into(), self.facts.to_json());
         o.insert("start".into(), self.start.to_json());
         o.insert("ui".into(), self.ui.to_json());
@@ -1441,7 +1441,7 @@ pub struct WfcCell {
     pub x: u32,
     pub y: u32,
     pub tile: u32,
-    pub rotation: u32,
+    pub quarter_turns: u32,
 }
 
 impl Default for WfcCell {
@@ -1450,7 +1450,7 @@ impl Default for WfcCell {
             x: Default::default(),
             y: Default::default(),
             tile: Default::default(),
-            rotation: Default::default(),
+            quarter_turns: Default::default(),
         }
     }
 }
@@ -1465,7 +1465,7 @@ impl FromJson for WfcCell {
             x: field(o, "x", d.x)?,
             y: field(o, "y", d.y)?,
             tile: field(o, "tile", d.tile)?,
-            rotation: field(o, "rotation", d.rotation)?,
+            quarter_turns: field(o, "quarterTurns", d.quarter_turns)?,
         })
     }
 }
@@ -1476,7 +1476,7 @@ impl ToJson for WfcCell {
         o.insert("x".into(), self.x.to_json());
         o.insert("y".into(), self.y.to_json());
         o.insert("tile".into(), self.tile.to_json());
-        o.insert("rotation".into(), self.rotation.to_json());
+        o.insert("quarterTurns".into(), self.quarter_turns.to_json());
         Value::Object(o)
     }
 }
@@ -1906,8 +1906,8 @@ impl ToJson for ActionDesc {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ActionState {
     pub down: bool,
-    pub pressed: bool,
-    pub released: bool,
+    pub just_pressed: bool,
+    pub just_released: bool,
     pub held: bool,
     pub value: f32,
     pub vector: Vec2,
@@ -1918,8 +1918,8 @@ impl Default for ActionState {
     fn default() -> Self {
         Self {
             down: Default::default(),
-            pressed: Default::default(),
-            released: Default::default(),
+            just_pressed: Default::default(),
+            just_released: Default::default(),
             held: Default::default(),
             value: Default::default(),
             vector: Default::default(),
@@ -1936,8 +1936,8 @@ impl FromJson for ActionState {
         let o = object(v)?;
         Ok(Self {
             down: field(o, "down", d.down)?,
-            pressed: field(o, "pressed", d.pressed)?,
-            released: field(o, "released", d.released)?,
+            just_pressed: field(o, "justPressed", d.just_pressed)?,
+            just_released: field(o, "justReleased", d.just_released)?,
             held: field(o, "held", d.held)?,
             value: field(o, "value", d.value)?,
             vector: field(o, "vector", d.vector)?,
@@ -1950,8 +1950,8 @@ impl ToJson for ActionState {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("down".into(), self.down.to_json());
-        o.insert("pressed".into(), self.pressed.to_json());
-        o.insert("released".into(), self.released.to_json());
+        o.insert("justPressed".into(), self.just_pressed.to_json());
+        o.insert("justReleased".into(), self.just_released.to_json());
         o.insert("held".into(), self.held.to_json());
         o.insert("value".into(), self.value.to_json());
         o.insert("vector".into(), self.vector.to_json());
@@ -9348,7 +9348,7 @@ impl ToJson for ShapeDesc {
 pub struct ShapeCastDesc {
     pub shape: ShapeDesc,
     pub position: Vec3,
-    pub rotation: Quat,
+    pub quaternion: Quat,
     pub direction: Vec3,
     pub max_distance: f32,
     pub filter: QueryFilter,
@@ -9359,7 +9359,7 @@ impl Default for ShapeCastDesc {
         Self {
             shape: Default::default(),
             position: Default::default(),
-            rotation: Default::default(),
+            quaternion: Default::default(),
             direction: Vec3::new(0.0_f32, -1.0_f32, 0.0_f32),
             max_distance: Default::default(),
             filter: Default::default(),
@@ -9376,7 +9376,7 @@ impl FromJson for ShapeCastDesc {
         Ok(Self {
             shape: field(o, "shape", d.shape)?,
             position: field(o, "position", d.position)?,
-            rotation: field(o, "rotation", d.rotation)?,
+            quaternion: field(o, "quaternion", d.quaternion)?,
             direction: field(o, "direction", d.direction)?,
             max_distance: field(o, "maxDistance", d.max_distance)?,
             filter: field(o, "filter", d.filter)?,
@@ -9389,7 +9389,7 @@ impl ToJson for ShapeCastDesc {
         let mut o = Map::new();
         o.insert("shape".into(), self.shape.to_json());
         o.insert("position".into(), self.position.to_json());
-        o.insert("rotation".into(), self.rotation.to_json());
+        o.insert("quaternion".into(), self.quaternion.to_json());
         o.insert("direction".into(), self.direction.to_json());
         o.insert("maxDistance".into(), self.max_distance.to_json());
         o.insert("filter".into(), self.filter.to_json());
@@ -9448,7 +9448,7 @@ impl ToJson for ShapeCastHit {
 pub struct OverlapDesc {
     pub shape: ShapeDesc,
     pub position: Vec3,
-    pub rotation: Quat,
+    pub quaternion: Quat,
     pub filter: QueryFilter,
 }
 
@@ -9457,7 +9457,7 @@ impl Default for OverlapDesc {
         Self {
             shape: Default::default(),
             position: Default::default(),
-            rotation: Default::default(),
+            quaternion: Default::default(),
             filter: Default::default(),
         }
     }
@@ -9472,7 +9472,7 @@ impl FromJson for OverlapDesc {
         Ok(Self {
             shape: field(o, "shape", d.shape)?,
             position: field(o, "position", d.position)?,
-            rotation: field(o, "rotation", d.rotation)?,
+            quaternion: field(o, "quaternion", d.quaternion)?,
             filter: field(o, "filter", d.filter)?,
         })
     }
@@ -9483,7 +9483,7 @@ impl ToJson for OverlapDesc {
         let mut o = Map::new();
         o.insert("shape".into(), self.shape.to_json());
         o.insert("position".into(), self.position.to_json());
-        o.insert("rotation".into(), self.rotation.to_json());
+        o.insert("quaternion".into(), self.quaternion.to_json());
         o.insert("filter".into(), self.filter.to_json());
         Value::Object(o)
     }
@@ -9531,7 +9531,7 @@ impl ToJson for MeshDesc {
 #[derive(Clone, Debug, PartialEq)]
 pub struct WheelPose {
     pub position: Vec3,
-    pub rotation: Quat,
+    pub quaternion: Quat,
     pub contact: bool,
     pub slip: f32,
     pub side_speed: f32,
@@ -9542,7 +9542,7 @@ impl Default for WheelPose {
     fn default() -> Self {
         Self {
             position: Default::default(),
-            rotation: Default::default(),
+            quaternion: Default::default(),
             contact: Default::default(),
             slip: Default::default(),
             side_speed: Default::default(),
@@ -9559,7 +9559,7 @@ impl FromJson for WheelPose {
         let o = object(v)?;
         Ok(Self {
             position: field(o, "position", d.position)?,
-            rotation: field(o, "rotation", d.rotation)?,
+            quaternion: field(o, "quaternion", d.quaternion)?,
             contact: field(o, "contact", d.contact)?,
             slip: field(o, "slip", d.slip)?,
             side_speed: field(o, "sideSpeed", d.side_speed)?,
@@ -9572,7 +9572,7 @@ impl ToJson for WheelPose {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("position".into(), self.position.to_json());
-        o.insert("rotation".into(), self.rotation.to_json());
+        o.insert("quaternion".into(), self.quaternion.to_json());
         o.insert("contact".into(), self.contact.to_json());
         o.insert("slip".into(), self.slip.to_json());
         o.insert("sideSpeed".into(), self.side_speed.to_json());
@@ -9586,7 +9586,7 @@ impl ToJson for WheelPose {
 pub struct RagdollBoneDesc {
     pub parent: i32,
     pub position: Vec3,
-    pub rotation: Quat,
+    pub quaternion: Quat,
     pub length: f32,
     pub axis: Vec3,
     pub joint: i32,
@@ -9597,7 +9597,7 @@ impl Default for RagdollBoneDesc {
         Self {
             parent: -1,
             position: Default::default(),
-            rotation: Default::default(),
+            quaternion: Default::default(),
             length: 0.25_f32,
             axis: Vec3::new(0.0_f32, 1.0_f32, 0.0_f32),
             joint: -1,
@@ -9614,7 +9614,7 @@ impl FromJson for RagdollBoneDesc {
         Ok(Self {
             parent: field(o, "parent", d.parent)?,
             position: field(o, "position", d.position)?,
-            rotation: field(o, "rotation", d.rotation)?,
+            quaternion: field(o, "quaternion", d.quaternion)?,
             length: field(o, "length", d.length)?,
             axis: field(o, "axis", d.axis)?,
             joint: field(o, "joint", d.joint)?,
@@ -9627,7 +9627,7 @@ impl ToJson for RagdollBoneDesc {
         let mut o = Map::new();
         o.insert("parent".into(), self.parent.to_json());
         o.insert("position".into(), self.position.to_json());
-        o.insert("rotation".into(), self.rotation.to_json());
+        o.insert("quaternion".into(), self.quaternion.to_json());
         o.insert("length".into(), self.length.to_json());
         o.insert("axis".into(), self.axis.to_json());
         o.insert("joint".into(), self.joint.to_json());
@@ -9677,14 +9677,14 @@ impl ToJson for RagdollRigDesc {
 #[derive(Clone, Debug, PartialEq)]
 pub struct BonePose {
     pub position: Vec3,
-    pub rotation: Quat,
+    pub quaternion: Quat,
 }
 
 impl Default for BonePose {
     fn default() -> Self {
         Self {
             position: Default::default(),
-            rotation: Default::default(),
+            quaternion: Default::default(),
         }
     }
 }
@@ -9697,7 +9697,7 @@ impl FromJson for BonePose {
         let o = object(v)?;
         Ok(Self {
             position: field(o, "position", d.position)?,
-            rotation: field(o, "rotation", d.rotation)?,
+            quaternion: field(o, "quaternion", d.quaternion)?,
         })
     }
 }
@@ -9706,7 +9706,7 @@ impl ToJson for BonePose {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("position".into(), self.position.to_json());
-        o.insert("rotation".into(), self.rotation.to_json());
+        o.insert("quaternion".into(), self.quaternion.to_json());
         Value::Object(o)
     }
 }
@@ -11680,9 +11680,9 @@ impl ToJson for TileLayerDesc {
 pub struct TilemapDesc {
     pub width: u32,
     pub height: u32,
-    pub tile_width: u32,
-    pub tile_height: u32,
-    pub unit: f32,
+    pub tile_pixel_width: u32,
+    pub tile_pixel_height: u32,
+    pub tile_size: f32,
     pub orientation: TileOrientation,
     pub tilesets: Vec<String>,
     pub layers: Vec<TileLayerDesc>,
@@ -11693,9 +11693,9 @@ impl Default for TilemapDesc {
         Self {
             width: 16,
             height: 16,
-            tile_width: 16,
-            tile_height: 16,
-            unit: 1.0_f32,
+            tile_pixel_width: 16,
+            tile_pixel_height: 16,
+            tile_size: 1.0_f32,
             orientation: Default::default(),
             tilesets: Default::default(),
             layers: Default::default(),
@@ -11712,9 +11712,9 @@ impl FromJson for TilemapDesc {
         Ok(Self {
             width: field(o, "width", d.width)?,
             height: field(o, "height", d.height)?,
-            tile_width: field(o, "tileWidth", d.tile_width)?,
-            tile_height: field(o, "tileHeight", d.tile_height)?,
-            unit: field(o, "unit", d.unit)?,
+            tile_pixel_width: field(o, "tilePixelWidth", d.tile_pixel_width)?,
+            tile_pixel_height: field(o, "tilePixelHeight", d.tile_pixel_height)?,
+            tile_size: field(o, "tileSize", d.tile_size)?,
             orientation: field(o, "orientation", d.orientation)?,
             tilesets: field(o, "tilesets", d.tilesets)?,
             layers: field(o, "layers", d.layers)?,
@@ -11727,9 +11727,9 @@ impl ToJson for TilemapDesc {
         let mut o = Map::new();
         o.insert("width".into(), self.width.to_json());
         o.insert("height".into(), self.height.to_json());
-        o.insert("tileWidth".into(), self.tile_width.to_json());
-        o.insert("tileHeight".into(), self.tile_height.to_json());
-        o.insert("unit".into(), self.unit.to_json());
+        o.insert("tilePixelWidth".into(), self.tile_pixel_width.to_json());
+        o.insert("tilePixelHeight".into(), self.tile_pixel_height.to_json());
+        o.insert("tileSize".into(), self.tile_size.to_json());
         o.insert("orientation".into(), self.orientation.to_json());
         o.insert("tilesets".into(), self.tilesets.to_json());
         o.insert("layers".into(), self.layers.to_json());
@@ -13518,7 +13518,7 @@ pub struct DialogueView {
     pub spans: Vec<TextSpan>,
     pub voice: String,
     pub voice_ticks: u32,
-    pub voice_left: u32,
+    pub voice_ticks_left: u32,
     pub speaker: SpeakerView,
     pub shot: String,
     pub choices: Vec<ChoiceView>,
@@ -13540,7 +13540,7 @@ impl Default for DialogueView {
             spans: Default::default(),
             voice: Default::default(),
             voice_ticks: Default::default(),
-            voice_left: Default::default(),
+            voice_ticks_left: Default::default(),
             speaker: Default::default(),
             shot: Default::default(),
             choices: Default::default(),
@@ -13568,7 +13568,7 @@ impl FromJson for DialogueView {
             spans: field(o, "spans", d.spans)?,
             voice: field(o, "voice", d.voice)?,
             voice_ticks: field(o, "voiceTicks", d.voice_ticks)?,
-            voice_left: field(o, "voiceLeft", d.voice_left)?,
+            voice_ticks_left: field(o, "voiceTicksLeft", d.voice_ticks_left)?,
             speaker: field(o, "speaker", d.speaker)?,
             shot: field(o, "shot", d.shot)?,
             choices: field(o, "choices", d.choices)?,
@@ -13592,7 +13592,7 @@ impl ToJson for DialogueView {
         o.insert("spans".into(), self.spans.to_json());
         o.insert("voice".into(), self.voice.to_json());
         o.insert("voiceTicks".into(), self.voice_ticks.to_json());
-        o.insert("voiceLeft".into(), self.voice_left.to_json());
+        o.insert("voiceTicksLeft".into(), self.voice_ticks_left.to_json());
         o.insert("speaker".into(), self.speaker.to_json());
         o.insert("shot".into(), self.shot.to_json());
         o.insert("choices".into(), self.choices.to_json());
@@ -13763,8 +13763,8 @@ pub struct AmbientDesc {
     pub entity: u64,
     pub topic: String,
     pub dialogue: String,
-    pub every: u32,
-    pub jitter: u32,
+    pub every_ticks: u32,
+    pub jitter_ticks: u32,
 }
 
 impl Default for AmbientDesc {
@@ -13773,8 +13773,8 @@ impl Default for AmbientDesc {
             entity: Default::default(),
             topic: Default::default(),
             dialogue: Default::default(),
-            every: 600,
-            jitter: Default::default(),
+            every_ticks: 600,
+            jitter_ticks: Default::default(),
         }
     }
 }
@@ -13789,8 +13789,8 @@ impl FromJson for AmbientDesc {
             entity: field(o, "entity", d.entity)?,
             topic: field(o, "topic", d.topic)?,
             dialogue: field(o, "dialogue", d.dialogue)?,
-            every: field(o, "every", d.every)?,
-            jitter: field(o, "jitter", d.jitter)?,
+            every_ticks: field(o, "everyTicks", d.every_ticks)?,
+            jitter_ticks: field(o, "jitterTicks", d.jitter_ticks)?,
         })
     }
 }
@@ -13801,8 +13801,8 @@ impl ToJson for AmbientDesc {
         o.insert("entity".into(), self.entity.to_json());
         o.insert("topic".into(), self.topic.to_json());
         o.insert("dialogue".into(), self.dialogue.to_json());
-        o.insert("every".into(), self.every.to_json());
-        o.insert("jitter".into(), self.jitter.to_json());
+        o.insert("everyTicks".into(), self.every_ticks.to_json());
+        o.insert("jitterTicks".into(), self.jitter_ticks.to_json());
         Value::Object(o)
     }
 }
@@ -13820,7 +13820,7 @@ pub struct BarkView {
     pub spans: Vec<TextSpan>,
     pub speaker: SpeakerView,
     pub voice: String,
-    pub voice_left: u32,
+    pub voice_ticks_left: u32,
     pub ticks_left: u32,
     pub priority: i32,
 }
@@ -13838,7 +13838,7 @@ impl Default for BarkView {
             spans: Default::default(),
             speaker: Default::default(),
             voice: Default::default(),
-            voice_left: Default::default(),
+            voice_ticks_left: Default::default(),
             ticks_left: Default::default(),
             priority: Default::default(),
         }
@@ -13862,7 +13862,7 @@ impl FromJson for BarkView {
             spans: field(o, "spans", d.spans)?,
             speaker: field(o, "speaker", d.speaker)?,
             voice: field(o, "voice", d.voice)?,
-            voice_left: field(o, "voiceLeft", d.voice_left)?,
+            voice_ticks_left: field(o, "voiceTicksLeft", d.voice_ticks_left)?,
             ticks_left: field(o, "ticksLeft", d.ticks_left)?,
             priority: field(o, "priority", d.priority)?,
         })
@@ -13882,7 +13882,7 @@ impl ToJson for BarkView {
         o.insert("spans".into(), self.spans.to_json());
         o.insert("speaker".into(), self.speaker.to_json());
         o.insert("voice".into(), self.voice.to_json());
-        o.insert("voiceLeft".into(), self.voice_left.to_json());
+        o.insert("voiceTicksLeft".into(), self.voice_ticks_left.to_json());
         o.insert("ticksLeft".into(), self.ticks_left.to_json());
         o.insert("priority".into(), self.priority.to_json());
         Value::Object(o)
@@ -23282,9 +23282,9 @@ pub struct TerrainStampDesc {
     pub quaternion: Quat,
     pub scale: Vec3,
     pub geometry: u64,
-    pub position: Vec3,
-    pub rotation: Quat,
-    pub size: Vec3,
+    pub mesh_position: Vec3,
+    pub mesh_quaternion: Quat,
+    pub mesh_scale: Vec3,
     pub mode: TerrainStampMode,
     pub depth: f32,
 }
@@ -23297,9 +23297,9 @@ impl Default for TerrainStampDesc {
             quaternion: Default::default(),
             scale: Vec3::new(1.0_f32, 1.0_f32, 1.0_f32),
             geometry: Default::default(),
-            position: Default::default(),
-            rotation: Default::default(),
-            size: Vec3::new(1.0_f32, 1.0_f32, 1.0_f32),
+            mesh_position: Default::default(),
+            mesh_quaternion: Default::default(),
+            mesh_scale: Vec3::new(1.0_f32, 1.0_f32, 1.0_f32),
             mode: Default::default(),
             depth: 0.25_f32,
         }
@@ -23318,9 +23318,9 @@ impl FromJson for TerrainStampDesc {
             quaternion: field(o, "quaternion", d.quaternion)?,
             scale: field(o, "scale", d.scale)?,
             geometry: field(o, "geometry", d.geometry)?,
-            position: field(o, "position", d.position)?,
-            rotation: field(o, "rotation", d.rotation)?,
-            size: field(o, "size", d.size)?,
+            mesh_position: field(o, "meshPosition", d.mesh_position)?,
+            mesh_quaternion: field(o, "meshQuaternion", d.mesh_quaternion)?,
+            mesh_scale: field(o, "meshScale", d.mesh_scale)?,
             mode: field(o, "mode", d.mode)?,
             depth: field(o, "depth", d.depth)?,
         })
@@ -23335,9 +23335,9 @@ impl ToJson for TerrainStampDesc {
         o.insert("quaternion".into(), self.quaternion.to_json());
         o.insert("scale".into(), self.scale.to_json());
         o.insert("geometry".into(), self.geometry.to_json());
-        o.insert("position".into(), self.position.to_json());
-        o.insert("rotation".into(), self.rotation.to_json());
-        o.insert("size".into(), self.size.to_json());
+        o.insert("meshPosition".into(), self.mesh_position.to_json());
+        o.insert("meshQuaternion".into(), self.mesh_quaternion.to_json());
+        o.insert("meshScale".into(), self.mesh_scale.to_json());
         o.insert("mode".into(), self.mode.to_json());
         o.insert("depth".into(), self.depth.to_json());
         Value::Object(o)
@@ -23756,8 +23756,8 @@ impl ToJson for VideoCapabilities {
 pub struct DebugDrawDesc {
     pub color: Color,
     pub width: f32,
-    pub duration: u32,
-    pub rotation: Quat,
+    pub ticks: u32,
+    pub quaternion: Quat,
 }
 
 impl Default for DebugDrawDesc {
@@ -23765,8 +23765,8 @@ impl Default for DebugDrawDesc {
         Self {
             color: Color { r: 1.0_f32, g: 1.0_f32, b: 0.0_f32 },
             width: 2.0_f32,
-            duration: Default::default(),
-            rotation: Default::default(),
+            ticks: Default::default(),
+            quaternion: Default::default(),
         }
     }
 }
@@ -23780,8 +23780,8 @@ impl FromJson for DebugDrawDesc {
         Ok(Self {
             color: field(o, "color", d.color)?,
             width: field(o, "width", d.width)?,
-            duration: field(o, "duration", d.duration)?,
-            rotation: field(o, "rotation", d.rotation)?,
+            ticks: field(o, "ticks", d.ticks)?,
+            quaternion: field(o, "quaternion", d.quaternion)?,
         })
     }
 }
@@ -23791,8 +23791,8 @@ impl ToJson for DebugDrawDesc {
         let mut o = Map::new();
         o.insert("color".into(), self.color.to_json());
         o.insert("width".into(), self.width.to_json());
-        o.insert("duration".into(), self.duration.to_json());
-        o.insert("rotation".into(), self.rotation.to_json());
+        o.insert("ticks".into(), self.ticks.to_json());
+        o.insert("quaternion".into(), self.quaternion.to_json());
         Value::Object(o)
     }
 }
@@ -24896,11 +24896,11 @@ pub struct LockstepStatus {
     pub waits: f64,
     pub desync: Option<u32>,
     pub rollback: bool,
-    pub max_prediction: Option<u32>,
+    pub max_prediction_ticks: Option<u32>,
     pub confirmed_tick: Option<f64>,
     pub final_tick: Option<f64>,
     pub acknowledged: Option<f64>,
-    pub predicted: u32,
+    pub predicted_ticks: u32,
     pub rollbacks: f64,
     pub resimulated_ticks: f64,
     pub stalled: Vec<u32>,
@@ -24922,11 +24922,11 @@ impl Default for LockstepStatus {
             waits: Default::default(),
             desync: Default::default(),
             rollback: Default::default(),
-            max_prediction: Default::default(),
+            max_prediction_ticks: Default::default(),
             confirmed_tick: Default::default(),
             final_tick: Default::default(),
             acknowledged: Default::default(),
-            predicted: Default::default(),
+            predicted_ticks: Default::default(),
             rollbacks: Default::default(),
             resimulated_ticks: Default::default(),
             stalled: Default::default(),
@@ -24954,11 +24954,11 @@ impl FromJson for LockstepStatus {
             waits: field(o, "waits", d.waits)?,
             desync: field(o, "desync", d.desync)?,
             rollback: field(o, "rollback", d.rollback)?,
-            max_prediction: field(o, "maxPrediction", d.max_prediction)?,
+            max_prediction_ticks: field(o, "maxPredictionTicks", d.max_prediction_ticks)?,
             confirmed_tick: field(o, "confirmedTick", d.confirmed_tick)?,
             final_tick: field(o, "finalTick", d.final_tick)?,
             acknowledged: field(o, "acknowledged", d.acknowledged)?,
-            predicted: field(o, "predicted", d.predicted)?,
+            predicted_ticks: field(o, "predictedTicks", d.predicted_ticks)?,
             rollbacks: field(o, "rollbacks", d.rollbacks)?,
             resimulated_ticks: field(o, "resimulatedTicks", d.resimulated_ticks)?,
             stalled: field(o, "stalled", d.stalled)?,
@@ -24982,11 +24982,11 @@ impl ToJson for LockstepStatus {
         o.insert("waits".into(), self.waits.to_json());
         o.insert("desync".into(), self.desync.to_json());
         o.insert("rollback".into(), self.rollback.to_json());
-        o.insert("maxPrediction".into(), self.max_prediction.to_json());
+        o.insert("maxPredictionTicks".into(), self.max_prediction_ticks.to_json());
         o.insert("confirmedTick".into(), self.confirmed_tick.to_json());
         o.insert("finalTick".into(), self.final_tick.to_json());
         o.insert("acknowledged".into(), self.acknowledged.to_json());
-        o.insert("predicted".into(), self.predicted.to_json());
+        o.insert("predictedTicks".into(), self.predicted_ticks.to_json());
         o.insert("rollbacks".into(), self.rollbacks.to_json());
         o.insert("resimulatedTicks".into(), self.resimulated_ticks.to_json());
         o.insert("stalled".into(), self.stalled.to_json());
@@ -26311,7 +26311,7 @@ impl ToJson for Fracture2dDesc {
 pub struct VfxSpawnDesc {
     pub asset: u64,
     pub position: Vec3,
-    pub rotation: Quat,
+    pub quaternion: Quat,
     pub parent: Option<u64>,
     pub scale: f32,
     pub tint: Color,
@@ -26323,7 +26323,7 @@ impl Default for VfxSpawnDesc {
         Self {
             asset: Default::default(),
             position: Default::default(),
-            rotation: Default::default(),
+            quaternion: Default::default(),
             parent: Default::default(),
             scale: 1.0_f32,
             tint: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
@@ -26341,7 +26341,7 @@ impl FromJson for VfxSpawnDesc {
         Ok(Self {
             asset: field(o, "asset", d.asset)?,
             position: field(o, "position", d.position)?,
-            rotation: field(o, "rotation", d.rotation)?,
+            quaternion: field(o, "quaternion", d.quaternion)?,
             parent: field(o, "parent", d.parent)?,
             scale: field(o, "scale", d.scale)?,
             tint: field(o, "tint", d.tint)?,
@@ -26355,7 +26355,7 @@ impl ToJson for VfxSpawnDesc {
         let mut o = Map::new();
         o.insert("asset".into(), self.asset.to_json());
         o.insert("position".into(), self.position.to_json());
-        o.insert("rotation".into(), self.rotation.to_json());
+        o.insert("quaternion".into(), self.quaternion.to_json());
         o.insert("parent".into(), self.parent.to_json());
         o.insert("scale".into(), self.scale.to_json());
         o.insert("tint".into(), self.tint.to_json());
@@ -26697,7 +26697,7 @@ pub mod record {
         pub elapsed: f64,
         pub rate: u32,
         pub scale: f32,
-        pub hit_stop: u32,
+        pub hit_stop_ticks: u32,
         pub scaled_dt: f32,
         pub scaled_elapsed: f64,
     }
@@ -26710,7 +26710,7 @@ pub mod record {
                 elapsed: Default::default(),
                 rate: Default::default(),
                 scale: 1.0_f32,
-                hit_stop: Default::default(),
+                hit_stop_ticks: Default::default(),
                 scaled_dt: Default::default(),
                 scaled_elapsed: Default::default(),
             }
@@ -26729,7 +26729,7 @@ pub mod record {
                 elapsed: field(o, "elapsed", d.elapsed)?,
                 rate: field(o, "rate", d.rate)?,
                 scale: field(o, "scale", d.scale)?,
-                hit_stop: field(o, "hitStop", d.hit_stop)?,
+                hit_stop_ticks: field(o, "hitStopTicks", d.hit_stop_ticks)?,
                 scaled_dt: field(o, "scaledDt", d.scaled_dt)?,
                 scaled_elapsed: field(o, "scaledElapsed", d.scaled_elapsed)?,
             })
@@ -26850,21 +26850,21 @@ pub mod record {
         pub pointer_inside: bool,
         pub wheel: Vec2,
         pub buttons: u32,
-        pub buttons_pressed: u32,
-        pub buttons_released: u32,
+        pub buttons_just_pressed: u32,
+        pub buttons_just_released: u32,
         pub buttons_release_next: u32,
         pub keys0: u32,
         pub keys1: u32,
         pub keys2: u32,
         pub keys3: u32,
-        pub pressed0: u32,
-        pub pressed1: u32,
-        pub pressed2: u32,
-        pub pressed3: u32,
-        pub released0: u32,
-        pub released1: u32,
-        pub released2: u32,
-        pub released3: u32,
+        pub just_pressed0: u32,
+        pub just_pressed1: u32,
+        pub just_pressed2: u32,
+        pub just_pressed3: u32,
+        pub just_released0: u32,
+        pub just_released1: u32,
+        pub just_released2: u32,
+        pub just_released3: u32,
         pub release_next0: u32,
         pub release_next1: u32,
         pub release_next2: u32,
@@ -26878,21 +26878,21 @@ pub mod record {
                 pointer_inside: Default::default(),
                 wheel: Default::default(),
                 buttons: Default::default(),
-                buttons_pressed: Default::default(),
-                buttons_released: Default::default(),
+                buttons_just_pressed: Default::default(),
+                buttons_just_released: Default::default(),
                 buttons_release_next: Default::default(),
                 keys0: Default::default(),
                 keys1: Default::default(),
                 keys2: Default::default(),
                 keys3: Default::default(),
-                pressed0: Default::default(),
-                pressed1: Default::default(),
-                pressed2: Default::default(),
-                pressed3: Default::default(),
-                released0: Default::default(),
-                released1: Default::default(),
-                released2: Default::default(),
-                released3: Default::default(),
+                just_pressed0: Default::default(),
+                just_pressed1: Default::default(),
+                just_pressed2: Default::default(),
+                just_pressed3: Default::default(),
+                just_released0: Default::default(),
+                just_released1: Default::default(),
+                just_released2: Default::default(),
+                just_released3: Default::default(),
                 release_next0: Default::default(),
                 release_next1: Default::default(),
                 release_next2: Default::default(),
@@ -26912,21 +26912,21 @@ pub mod record {
                 pointer_inside: field(o, "pointerInside", d.pointer_inside)?,
                 wheel: field(o, "wheel", d.wheel)?,
                 buttons: field(o, "buttons", d.buttons)?,
-                buttons_pressed: field(o, "buttonsPressed", d.buttons_pressed)?,
-                buttons_released: field(o, "buttonsReleased", d.buttons_released)?,
+                buttons_just_pressed: field(o, "buttonsJustPressed", d.buttons_just_pressed)?,
+                buttons_just_released: field(o, "buttonsJustReleased", d.buttons_just_released)?,
                 buttons_release_next: field(o, "buttonsReleaseNext", d.buttons_release_next)?,
                 keys0: field(o, "keys0", d.keys0)?,
                 keys1: field(o, "keys1", d.keys1)?,
                 keys2: field(o, "keys2", d.keys2)?,
                 keys3: field(o, "keys3", d.keys3)?,
-                pressed0: field(o, "pressed0", d.pressed0)?,
-                pressed1: field(o, "pressed1", d.pressed1)?,
-                pressed2: field(o, "pressed2", d.pressed2)?,
-                pressed3: field(o, "pressed3", d.pressed3)?,
-                released0: field(o, "released0", d.released0)?,
-                released1: field(o, "released1", d.released1)?,
-                released2: field(o, "released2", d.released2)?,
-                released3: field(o, "released3", d.released3)?,
+                just_pressed0: field(o, "justPressed0", d.just_pressed0)?,
+                just_pressed1: field(o, "justPressed1", d.just_pressed1)?,
+                just_pressed2: field(o, "justPressed2", d.just_pressed2)?,
+                just_pressed3: field(o, "justPressed3", d.just_pressed3)?,
+                just_released0: field(o, "justReleased0", d.just_released0)?,
+                just_released1: field(o, "justReleased1", d.just_released1)?,
+                just_released2: field(o, "justReleased2", d.just_released2)?,
+                just_released3: field(o, "justReleased3", d.just_released3)?,
                 release_next0: field(o, "releaseNext0", d.release_next0)?,
                 release_next1: field(o, "releaseNext1", d.release_next1)?,
                 release_next2: field(o, "releaseNext2", d.release_next2)?,
@@ -26939,8 +26939,8 @@ pub mod record {
     #[derive(Clone, Debug, PartialEq)]
     pub struct Pointers {
         pub held_mask: u32,
-        pub pressed_mask: u32,
-        pub released_mask: u32,
+        pub just_pressed_mask: u32,
+        pub just_released_mask: u32,
         pub release_next_mask: u32,
         pub position0: Vec2,
         pub position1: Vec2,
@@ -26959,8 +26959,8 @@ pub mod record {
         fn default() -> Self {
             Self {
                 held_mask: Default::default(),
-                pressed_mask: Default::default(),
-                released_mask: Default::default(),
+                just_pressed_mask: Default::default(),
+                just_released_mask: Default::default(),
                 release_next_mask: Default::default(),
                 position0: Default::default(),
                 position1: Default::default(),
@@ -26985,8 +26985,8 @@ pub mod record {
             let o = object(v)?;
             Ok(Self {
                 held_mask: field(o, "heldMask", d.held_mask)?,
-                pressed_mask: field(o, "pressedMask", d.pressed_mask)?,
-                released_mask: field(o, "releasedMask", d.released_mask)?,
+                just_pressed_mask: field(o, "justPressedMask", d.just_pressed_mask)?,
+                just_released_mask: field(o, "justReleasedMask", d.just_released_mask)?,
                 release_next_mask: field(o, "releaseNextMask", d.release_next_mask)?,
                 position0: field(o, "position0", d.position0)?,
                 position1: field(o, "position1", d.position1)?,
@@ -27045,22 +27045,22 @@ pub mod record {
         pub buttons5: u32,
         pub buttons6: u32,
         pub buttons7: u32,
-        pub pressed0: u32,
-        pub pressed1: u32,
-        pub pressed2: u32,
-        pub pressed3: u32,
-        pub pressed4: u32,
-        pub pressed5: u32,
-        pub pressed6: u32,
-        pub pressed7: u32,
-        pub released0: u32,
-        pub released1: u32,
-        pub released2: u32,
-        pub released3: u32,
-        pub released4: u32,
-        pub released5: u32,
-        pub released6: u32,
-        pub released7: u32,
+        pub just_pressed0: u32,
+        pub just_pressed1: u32,
+        pub just_pressed2: u32,
+        pub just_pressed3: u32,
+        pub just_pressed4: u32,
+        pub just_pressed5: u32,
+        pub just_pressed6: u32,
+        pub just_pressed7: u32,
+        pub just_released0: u32,
+        pub just_released1: u32,
+        pub just_released2: u32,
+        pub just_released3: u32,
+        pub just_released4: u32,
+        pub just_released5: u32,
+        pub just_released6: u32,
+        pub just_released7: u32,
         pub left_stick0: Vec2,
         pub left_stick1: Vec2,
         pub left_stick2: Vec2,
@@ -27100,22 +27100,22 @@ pub mod record {
                 buttons5: Default::default(),
                 buttons6: Default::default(),
                 buttons7: Default::default(),
-                pressed0: Default::default(),
-                pressed1: Default::default(),
-                pressed2: Default::default(),
-                pressed3: Default::default(),
-                pressed4: Default::default(),
-                pressed5: Default::default(),
-                pressed6: Default::default(),
-                pressed7: Default::default(),
-                released0: Default::default(),
-                released1: Default::default(),
-                released2: Default::default(),
-                released3: Default::default(),
-                released4: Default::default(),
-                released5: Default::default(),
-                released6: Default::default(),
-                released7: Default::default(),
+                just_pressed0: Default::default(),
+                just_pressed1: Default::default(),
+                just_pressed2: Default::default(),
+                just_pressed3: Default::default(),
+                just_pressed4: Default::default(),
+                just_pressed5: Default::default(),
+                just_pressed6: Default::default(),
+                just_pressed7: Default::default(),
+                just_released0: Default::default(),
+                just_released1: Default::default(),
+                just_released2: Default::default(),
+                just_released3: Default::default(),
+                just_released4: Default::default(),
+                just_released5: Default::default(),
+                just_released6: Default::default(),
+                just_released7: Default::default(),
                 left_stick0: Default::default(),
                 left_stick1: Default::default(),
                 left_stick2: Default::default(),
@@ -27161,22 +27161,22 @@ pub mod record {
                 buttons5: field(o, "buttons5", d.buttons5)?,
                 buttons6: field(o, "buttons6", d.buttons6)?,
                 buttons7: field(o, "buttons7", d.buttons7)?,
-                pressed0: field(o, "pressed0", d.pressed0)?,
-                pressed1: field(o, "pressed1", d.pressed1)?,
-                pressed2: field(o, "pressed2", d.pressed2)?,
-                pressed3: field(o, "pressed3", d.pressed3)?,
-                pressed4: field(o, "pressed4", d.pressed4)?,
-                pressed5: field(o, "pressed5", d.pressed5)?,
-                pressed6: field(o, "pressed6", d.pressed6)?,
-                pressed7: field(o, "pressed7", d.pressed7)?,
-                released0: field(o, "released0", d.released0)?,
-                released1: field(o, "released1", d.released1)?,
-                released2: field(o, "released2", d.released2)?,
-                released3: field(o, "released3", d.released3)?,
-                released4: field(o, "released4", d.released4)?,
-                released5: field(o, "released5", d.released5)?,
-                released6: field(o, "released6", d.released6)?,
-                released7: field(o, "released7", d.released7)?,
+                just_pressed0: field(o, "justPressed0", d.just_pressed0)?,
+                just_pressed1: field(o, "justPressed1", d.just_pressed1)?,
+                just_pressed2: field(o, "justPressed2", d.just_pressed2)?,
+                just_pressed3: field(o, "justPressed3", d.just_pressed3)?,
+                just_pressed4: field(o, "justPressed4", d.just_pressed4)?,
+                just_pressed5: field(o, "justPressed5", d.just_pressed5)?,
+                just_pressed6: field(o, "justPressed6", d.just_pressed6)?,
+                just_pressed7: field(o, "justPressed7", d.just_pressed7)?,
+                just_released0: field(o, "justReleased0", d.just_released0)?,
+                just_released1: field(o, "justReleased1", d.just_released1)?,
+                just_released2: field(o, "justReleased2", d.just_released2)?,
+                just_released3: field(o, "justReleased3", d.just_released3)?,
+                just_released4: field(o, "justReleased4", d.just_released4)?,
+                just_released5: field(o, "justReleased5", d.just_released5)?,
+                just_released6: field(o, "justReleased6", d.just_released6)?,
+                just_released7: field(o, "justReleased7", d.just_released7)?,
                 left_stick0: field(o, "leftStick0", d.left_stick0)?,
                 left_stick1: field(o, "leftStick1", d.left_stick1)?,
                 left_stick2: field(o, "leftStick2", d.left_stick2)?,
@@ -27850,7 +27850,7 @@ pub mod record {
         pub collide: bool,
         pub radius: f32,
         pub damping: f32,
-        pub collision_layers: u32,
+        pub collision_mask: u32,
         pub eased: Vec3,
         pub pull: f32,
         pub activated: u32,
@@ -27877,7 +27877,7 @@ pub mod record {
                 collide: Default::default(),
                 radius: 0.2_f32,
                 damping: 0.4_f32,
-                collision_layers: Default::default(),
+                collision_mask: Default::default(),
                 eased: Default::default(),
                 pull: Default::default(),
                 activated: Default::default(),
@@ -27910,7 +27910,7 @@ pub mod record {
                 collide: field(o, "collide", d.collide)?,
                 radius: field(o, "radius", d.radius)?,
                 damping: field(o, "damping", d.damping)?,
-                collision_layers: field(o, "collisionLayers", d.collision_layers)?,
+                collision_mask: field(o, "collisionMask", d.collision_mask)?,
                 eased: field(o, "eased", d.eased)?,
                 pull: field(o, "pull", d.pull)?,
                 activated: field(o, "activated", d.activated)?,
@@ -29157,7 +29157,7 @@ pub mod record {
     pub struct Light2D {
         pub color: Color,
         pub intensity: f32,
-        pub radius: f32,
+        pub distance: f32,
         pub falloff: f32,
         pub source_radius: f32,
         pub cast_shadows: bool,
@@ -29173,7 +29173,7 @@ pub mod record {
             Self {
                 color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
                 intensity: 1.0_f32,
-                radius: 5.0_f32,
+                distance: 5.0_f32,
                 falloff: 2.0_f32,
                 source_radius: 0.25_f32,
                 cast_shadows: true,
@@ -29195,7 +29195,7 @@ pub mod record {
             Ok(Self {
                 color: field(o, "color", d.color)?,
                 intensity: field(o, "intensity", d.intensity)?,
-                radius: field(o, "radius", d.radius)?,
+                distance: field(o, "distance", d.distance)?,
                 falloff: field(o, "falloff", d.falloff)?,
                 source_radius: field(o, "sourceRadius", d.source_radius)?,
                 cast_shadows: field(o, "castShadows", d.cast_shadows)?,
@@ -29657,7 +29657,7 @@ pub mod record {
     #[derive(Clone, Debug, PartialEq)]
     pub struct Afterimage {
         pub count: u32,
-        pub interval: u32,
+        pub interval_ticks: u32,
         pub opacity: f32,
         pub color: Color,
         pub additive: bool,
@@ -29668,7 +29668,7 @@ pub mod record {
         fn default() -> Self {
             Self {
                 count: 4,
-                interval: 3,
+                interval_ticks: 3,
                 opacity: 0.5_f32,
                 color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
                 additive: Default::default(),
@@ -29685,7 +29685,7 @@ pub mod record {
             let o = object(v)?;
             Ok(Self {
                 count: field(o, "count", d.count)?,
-                interval: field(o, "interval", d.interval)?,
+                interval_ticks: field(o, "intervalTicks", d.interval_ticks)?,
                 opacity: field(o, "opacity", d.opacity)?,
                 color: field(o, "color", d.color)?,
                 additive: field(o, "additive", d.additive)?,
@@ -29699,7 +29699,7 @@ pub mod record {
     pub struct ReflectionProbe {
         pub resolution: u32,
         pub mode: ReflectionProbeMode,
-        pub interval: u32,
+        pub interval_ticks: u32,
         pub intensity: f32,
         pub visible: bool,
     }
@@ -29709,7 +29709,7 @@ pub mod record {
             Self {
                 resolution: 128,
                 mode: Default::default(),
-                interval: 30,
+                interval_ticks: 30,
                 intensity: 1.0_f32,
                 visible: true,
             }
@@ -29725,7 +29725,7 @@ pub mod record {
             Ok(Self {
                 resolution: field(o, "resolution", d.resolution)?,
                 mode: field(o, "mode", d.mode)?,
-                interval: field(o, "interval", d.interval)?,
+                interval_ticks: field(o, "intervalTicks", d.interval_ticks)?,
                 intensity: field(o, "intensity", d.intensity)?,
                 visible: field(o, "visible", d.visible)?,
             })
@@ -29854,7 +29854,7 @@ pub mod record {
         pub order: i32,
         pub clear: bool,
         pub clear_color: Color,
-        pub every: u32,
+        pub every_ticks: u32,
         pub active: bool,
     }
 
@@ -29877,7 +29877,7 @@ pub mod record {
                 order: Default::default(),
                 clear: Default::default(),
                 clear_color: Color { r: 0.0_f32, g: 0.0_f32, b: 0.0_f32 },
-                every: 1,
+                every_ticks: 1,
                 active: true,
             }
         }
@@ -29906,7 +29906,7 @@ pub mod record {
                 order: field(o, "order", d.order)?,
                 clear: field(o, "clear", d.clear)?,
                 clear_color: field(o, "clearColor", d.clear_color)?,
-                every: field(o, "every", d.every)?,
+                every_ticks: field(o, "everyTicks", d.every_ticks)?,
                 active: field(o, "active", d.active)?,
             })
         }
@@ -29919,7 +29919,7 @@ pub mod record {
         pub width: f32,
         pub height: f32,
         pub layers: u32,
-        pub every: u32,
+        pub every_ticks: u32,
         pub active: bool,
     }
 
@@ -29930,7 +29930,7 @@ pub mod record {
                 width: 1.0_f32,
                 height: 1.0_f32,
                 layers: 1,
-                every: 1,
+                every_ticks: 1,
                 active: true,
             }
         }
@@ -29947,7 +29947,7 @@ pub mod record {
                 width: field(o, "width", d.width)?,
                 height: field(o, "height", d.height)?,
                 layers: field(o, "layers", d.layers)?,
-                every: field(o, "every", d.every)?,
+                every_ticks: field(o, "everyTicks", d.every_ticks)?,
                 active: field(o, "active", d.active)?,
             })
         }
@@ -30266,7 +30266,7 @@ pub mod record {
         pub height: f32,
         pub mesh: u64,
         pub offset: Vec3,
-        pub rotation: Quat,
+        pub quaternion: Quat,
         pub friction: f32,
         pub restitution: f32,
         pub density: f32,
@@ -30284,7 +30284,7 @@ pub mod record {
                 height: 1.0_f32,
                 mesh: Default::default(),
                 offset: Default::default(),
-                rotation: Default::default(),
+                quaternion: Default::default(),
                 friction: 0.5_f32,
                 restitution: Default::default(),
                 density: 1.0_f32,
@@ -30308,7 +30308,7 @@ pub mod record {
                 height: field(o, "height", d.height)?,
                 mesh: field(o, "mesh", d.mesh)?,
                 offset: field(o, "offset", d.offset)?,
-                rotation: field(o, "rotation", d.rotation)?,
+                quaternion: field(o, "quaternion", d.quaternion)?,
                 friction: field(o, "friction", d.friction)?,
                 restitution: field(o, "restitution", d.restitution)?,
                 density: field(o, "density", d.density)?,
@@ -30893,10 +30893,10 @@ pub mod record {
     /// `PlatformerController`: packages/knowledge/wiki/physics.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct PlatformerController {
-        pub move_x: f32,
+        pub run: f32,
         pub jump: bool,
         pub down: bool,
-        pub impulse: Vec2,
+        pub add_velocity: Vec2,
         pub max_speed: f32,
         pub acceleration: f32,
         pub deceleration: f32,
@@ -30916,7 +30916,7 @@ pub mod record {
         pub wall_slide_speed: f32,
         pub wall_jump: Vec2,
         pub wall_jump_lock: f32,
-        pub one_way_layers: u32,
+        pub one_way_mask: u32,
         pub corner_correction: f32,
         pub max_slope: f32,
         pub snap_distance: f32,
@@ -30940,10 +30940,10 @@ pub mod record {
     impl Default for PlatformerController {
         fn default() -> Self {
             Self {
-                move_x: Default::default(),
+                run: Default::default(),
                 jump: Default::default(),
                 down: Default::default(),
-                impulse: Default::default(),
+                add_velocity: Default::default(),
                 max_speed: 8.0_f32,
                 acceleration: 70.0_f32,
                 deceleration: 80.0_f32,
@@ -30963,7 +30963,7 @@ pub mod record {
                 wall_slide_speed: 3.0_f32,
                 wall_jump: Vec2::new(8.0_f32, 12.0_f32),
                 wall_jump_lock: 0.14_f32,
-                one_way_layers: Default::default(),
+                one_way_mask: Default::default(),
                 corner_correction: 0.15_f32,
                 max_slope: 50.0_f32,
                 snap_distance: 0.1_f32,
@@ -30993,10 +30993,10 @@ pub mod record {
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
-                move_x: field(o, "moveX", d.move_x)?,
+                run: field(o, "run", d.run)?,
                 jump: field(o, "jump", d.jump)?,
                 down: field(o, "down", d.down)?,
-                impulse: field(o, "impulse", d.impulse)?,
+                add_velocity: field(o, "addVelocity", d.add_velocity)?,
                 max_speed: field(o, "maxSpeed", d.max_speed)?,
                 acceleration: field(o, "acceleration", d.acceleration)?,
                 deceleration: field(o, "deceleration", d.deceleration)?,
@@ -31016,7 +31016,7 @@ pub mod record {
                 wall_slide_speed: field(o, "wallSlideSpeed", d.wall_slide_speed)?,
                 wall_jump: field(o, "wallJump", d.wall_jump)?,
                 wall_jump_lock: field(o, "wallJumpLock", d.wall_jump_lock)?,
-                one_way_layers: field(o, "oneWayLayers", d.one_way_layers)?,
+                one_way_mask: field(o, "oneWayMask", d.one_way_mask)?,
                 corner_correction: field(o, "cornerCorrection", d.corner_correction)?,
                 max_slope: field(o, "maxSlope", d.max_slope)?,
                 snap_distance: field(o, "snapDistance", d.snap_distance)?,
@@ -34639,7 +34639,7 @@ pub mod record {
     pub struct AiAgent {
         pub behaviour: u64,
         pub active: bool,
-        pub think_every: u32,
+        pub think_every_ticks: u32,
         pub status: u32,
         pub state: u32,
         pub node: u32,
@@ -34651,7 +34651,7 @@ pub mod record {
             Self {
                 behaviour: Default::default(),
                 active: true,
-                think_every: 1,
+                think_every_ticks: 1,
                 status: Default::default(),
                 state: Default::default(),
                 node: Default::default(),
@@ -34669,7 +34669,7 @@ pub mod record {
             Ok(Self {
                 behaviour: field(o, "behaviour", d.behaviour)?,
                 active: field(o, "active", d.active)?,
-                think_every: field(o, "thinkEvery", d.think_every)?,
+                think_every_ticks: field(o, "thinkEveryTicks", d.think_every_ticks)?,
                 status: field(o, "status", d.status)?,
                 state: field(o, "state", d.state)?,
                 node: field(o, "node", d.node)?,
@@ -34685,7 +34685,7 @@ pub mod record {
         pub fov: f32,
         pub eye_height: f32,
         pub occlude: bool,
-        pub occluders: u32,
+        pub occluder_mask: u32,
         pub hearing: f32,
         pub memory: f32,
         pub team: u32,
@@ -34706,7 +34706,7 @@ pub mod record {
                 fov: 120.0_f32,
                 eye_height: Default::default(),
                 occlude: true,
-                occluders: Default::default(),
+                occluder_mask: Default::default(),
                 hearing: 6.0_f32,
                 memory: 3.0_f32,
                 team: Default::default(),
@@ -34733,7 +34733,7 @@ pub mod record {
                 fov: field(o, "fov", d.fov)?,
                 eye_height: field(o, "eyeHeight", d.eye_height)?,
                 occlude: field(o, "occlude", d.occlude)?,
-                occluders: field(o, "occluders", d.occluders)?,
+                occluder_mask: field(o, "occluderMask", d.occluder_mask)?,
                 hearing: field(o, "hearing", d.hearing)?,
                 memory: field(o, "memory", d.memory)?,
                 team: field(o, "team", d.team)?,
@@ -36143,13 +36143,13 @@ pub mod record {
         pub enabled: bool,
         pub players: u32,
         pub local_player: u32,
-        pub input_delay: u32,
-        pub hash_every: u32,
+        pub input_delay_ticks: u32,
+        pub hash_every_ticks: u32,
         pub running: bool,
         pub mode: NetMode,
-        pub stall_timeout: u32,
+        pub stall_timeout_ms: u32,
         pub rejoin: bool,
-        pub max_prediction: u32,
+        pub max_prediction_ticks: u32,
     }
 
     impl Default for Lockstep {
@@ -36158,13 +36158,13 @@ pub mod record {
                 enabled: Default::default(),
                 players: 2,
                 local_player: Default::default(),
-                input_delay: 2,
-                hash_every: 10,
+                input_delay_ticks: 2,
+                hash_every_ticks: 10,
                 running: Default::default(),
                 mode: Default::default(),
-                stall_timeout: 5000,
+                stall_timeout_ms: 5000,
                 rejoin: true,
-                max_prediction: 8,
+                max_prediction_ticks: 8,
             }
         }
     }
@@ -36179,13 +36179,13 @@ pub mod record {
                 enabled: field(o, "enabled", d.enabled)?,
                 players: field(o, "players", d.players)?,
                 local_player: field(o, "localPlayer", d.local_player)?,
-                input_delay: field(o, "inputDelay", d.input_delay)?,
-                hash_every: field(o, "hashEvery", d.hash_every)?,
+                input_delay_ticks: field(o, "inputDelayTicks", d.input_delay_ticks)?,
+                hash_every_ticks: field(o, "hashEveryTicks", d.hash_every_ticks)?,
                 running: field(o, "running", d.running)?,
                 mode: field(o, "mode", d.mode)?,
-                stall_timeout: field(o, "stallTimeout", d.stall_timeout)?,
+                stall_timeout_ms: field(o, "stallTimeoutMs", d.stall_timeout_ms)?,
                 rejoin: field(o, "rejoin", d.rejoin)?,
-                max_prediction: field(o, "maxPrediction", d.max_prediction)?,
+                max_prediction_ticks: field(o, "maxPredictionTicks", d.max_prediction_ticks)?,
             })
         }
     }

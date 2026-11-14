@@ -44,7 +44,7 @@ pub(super) fn sprite_system(
             .read(&ctx.get_bytes(e, r.transform.0)?)
             .map_err(invalid)?;
         let count = row.count.min(16) as usize;
-        let interval = u64::from(row.interval).max(1);
+        let interval = u64::from(row.interval_ticks).max(1);
         let list = sh.ghosts.entry(key).or_default();
         // Ghosts older than the whole trail have faded out.
         let span = interval * count as u64;

@@ -6,7 +6,7 @@ Module [`net`](../net.md) · [index](../index.md)
 
 ### `og.SeatDropped` (event)
 
-A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeout. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined.
+A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeoutMs. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined.
 
 Token `og.SeatDropped`, registered under the schema name `og.SeatDropped`; its value type is `SeatDropped`.
 
@@ -19,7 +19,7 @@ Token `og.SeatDropped`, registered under the schema name `og.SeatDropped`; its v
 
 ```ogt
 event SeatDropped {
-  doc "A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeout. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined."
+  doc "A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeoutMs. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined."
   field seat u32 "The seat, og.PlayerInput.player."
   field peer u32 "The peer that held it."
   field tick u32 "The first tick the seat is empty (og.Time.tick now)."

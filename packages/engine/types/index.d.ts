@@ -2294,7 +2294,7 @@ export interface GameDesc {
    * @range 1..60
    * @unit ticks (fixed simulation steps)
    */
-  readonly maxCatchUp?: number;
+  readonly maxCatchUpTicks?: number;
   /**
    * The game's own facts for the probe's state().
    *
@@ -2658,7 +2658,7 @@ export interface Time {
    * @unit ticks (fixed simulation steps)
    * @readonly written by the engine
    */
-  readonly hitStop: number;
+  readonly hitStopTicks: number;
   /**
    * This tick's scaled length: 0 during a hit stop, else dt * scale. Move gameplay by it so slow motion and hit stop reach game code too.
    *
@@ -3114,7 +3114,7 @@ export interface WfcCell {
   /** The tile's index in WfcDesc.tiles. */
   readonly tile: number;
   /** Quarter turns clockwise, 0 to 3. */
-  readonly rotation: number;
+  readonly quarterTurns: number;
 }
 
 /**
@@ -3237,7 +3237,7 @@ export type InputDevice = "keyboardMouse" | "xbox" | "playstation" | "switch" | 
 
 /**
  * What an action gives.
- * - `"button"`: On or off: down, pressed, released, held. An analog control (a trigger, a half axis) presses it at ActionDesc.threshold and lets go under three quarters of it.
+ * - `"button"`: On or off: down, justPressed, justReleased, held. An analog control (a trigger, a half axis) presses it at ActionDesc.threshold and lets go under three quarters of it.
  * - `"axis"`: One value, -1 to 1: A and D, a stick's x, a trigger (0 to 1), the wheel, the mouse's x movement (CSS px).
  * - `"axis2"`: Two values, x right and y up: WASD, a stick, the d-pad, a touch stick, the mouse's movement.
  */
@@ -3446,9 +3446,9 @@ export interface ActionState {
   /** Its binding is past the threshold (or its toggle is on). */
   readonly down: boolean;
   /** It went down this tick (a press and a release between two ticks set both edges). */
-  readonly pressed: boolean;
+  readonly justPressed: boolean;
   /** It went up this tick. */
-  readonly released: boolean;
+  readonly justReleased: boolean;
   /** Down for its holdMs. */
   readonly held: boolean;
   /**
@@ -3561,7 +3561,7 @@ export interface RebindAnswer {
 export type CaptureAccept = "any" | "keyboardMouse" | "gamepad";
 
 /**
- * A capture of the player's next input for a slot of an action: a controls screen's "press a key". From the next tick every action reads nothing until it ends; what was pressed for it moves no action until it is let go.
+ * A capture of the player's next input for a slot of an action: a controls screen's "press a key". From the next tick every action reads nothing until it ends; the control that went down for it moves no action until it is let go.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -3846,8 +3846,8 @@ export interface RumbleDesc {
  * - `"rightTrigger"`: The right trigger, as a button.
  * - `"back"`: Back, Select or View.
  * - `"start"`: Start, Options or Menu.
- * - `"leftStick"`: The left stick pressed in.
- * - `"rightStick"`: The right stick pressed in.
+ * - `"leftStick"`: The left stick clicked in.
+ * - `"rightStick"`: The right stick clicked in.
  * - `"up"`: The d-pad's up.
  * - `"down"`: The d-pad's down.
  * - `"left"`: The d-pad's left.
@@ -3871,7 +3871,7 @@ export type GamepadAxis = "leftX" | "leftY" | "rightX" | "rightY" | "leftTrigger
  * What an injected key event does.
  * - `"press"`: Down, then up on the next tick.
  * - `"down"`: Held down until an up.
- * - `"up"`: Released.
+ * - `"up"`: Let go.
  */
 export type KeyAction = "press" | "down" | "up";
 
@@ -3971,7 +3971,7 @@ export interface PointerInput {
  * The host reports whether the pointer is locked to the play surface now (an engine extension of protocol 5): the web shell sends one from the page's pointerlockchange, and a playtest can send its own; og.PointerLock.locked follows it.
  */
 export interface PointerLockReport {
-  /** Locked now (true) or released (false). */
+  /** Locked now (true) or unlocked (false). */
   readonly locked: boolean;
 }
 
@@ -4078,7 +4078,7 @@ export type InjectedInput =
   | ({ readonly kind: "pointerLock" } & PointerLockReport);
 
 /**
- * The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods.
+ * The input state at the start of this tick (og-input's og.Input, version 3). Edges (justPressed, justReleased) last exactly one tick; read the state through the methods.
  * Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4.
  *
  * The `Input` resource (token `og.Input`).
@@ -4117,13 +4117,13 @@ export interface Input {
    *
    * @readonly written by the engine
    */
-  readonly buttonsPressed: number;
+  readonly buttonsJustPressed: number;
   /**
    * Buttons that went up this tick.
    *
    * @readonly written by the engine
    */
-  readonly buttonsReleased: number;
+  readonly buttonsJustReleased: number;
   /**
    * Buttons a click releases at the end of the next tick.
    *
@@ -4155,56 +4155,56 @@ export interface Input {
    * @readonly written by the engine
    */
   readonly keys3: number;
-  // ── Keys pressed this tick ──
+  // ── Keys that went down this tick ──
   /**
    * Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES.
    *
    * @readonly written by the engine
    */
-  readonly pressed0: number;
+  readonly justPressed0: number;
   /**
    * Keys that went down this tick, word 1: codes 32 to 63 of KEY_CODES.
    *
    * @readonly written by the engine
    */
-  readonly pressed1: number;
+  readonly justPressed1: number;
   /**
    * Keys that went down this tick, word 2: codes 64 to 95 of KEY_CODES.
    *
    * @readonly written by the engine
    */
-  readonly pressed2: number;
+  readonly justPressed2: number;
   /**
    * Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES.
    *
    * @readonly written by the engine
    */
-  readonly pressed3: number;
-  // ── Keys released this tick ──
+  readonly justPressed3: number;
+  // ── Keys that went up this tick ──
   /**
    * Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES.
    *
    * @readonly written by the engine
    */
-  readonly released0: number;
+  readonly justReleased0: number;
   /**
    * Keys that went up this tick, word 1: codes 32 to 63 of KEY_CODES.
    *
    * @readonly written by the engine
    */
-  readonly released1: number;
+  readonly justReleased1: number;
   /**
    * Keys that went up this tick, word 2: codes 64 to 95 of KEY_CODES.
    *
    * @readonly written by the engine
    */
-  readonly released2: number;
+  readonly justReleased2: number;
   /**
    * Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES.
    *
    * @readonly written by the engine
    */
-  readonly released3: number;
+  readonly justReleased3: number;
   // ── Keys a press releases next tick ──
   /**
    * Keys a press releases at the end of the next tick, word 0: codes 0 to 31 of KEY_CODES.
@@ -4231,7 +4231,7 @@ export interface Input {
    */
   readonly releaseNext3: number;
   /**
-   * Whether a key is held.
+   * Whether a key is down.
    *
    * @param key A KeyboardEvent.code name, such as KeyW or Space.
    */
@@ -4241,13 +4241,13 @@ export interface Input {
    *
    * @param key A KeyboardEvent.code name.
    */
-  pressed(key: string): boolean;
+  justPressed(key: string): boolean;
   /**
    * Whether a key went up this tick.
    *
    * @param key A KeyboardEvent.code name.
    */
-  released(key: string): boolean;
+  justReleased(key: string): boolean;
   /**
    * -1, 0 or 1 from two keys, such as `axis("KeyA", "KeyD")`.
    *
@@ -4265,7 +4265,7 @@ export interface Input {
    */
   axis2(left: string, right: string, down: string, up: string): Vector2;
   /**
-   * Whether a pointer button is held.
+   * Whether a pointer button is down.
    *
    * @param button The button.
    */
@@ -4275,13 +4275,13 @@ export interface Input {
    *
    * @param button The button.
    */
-  buttonPressed(button: PointerButton): boolean;
+  buttonJustPressed(button: PointerButton): boolean;
   /**
    * Whether a pointer button went up this tick.
    *
    * @param button The button.
    */
-  buttonReleased(button: PointerButton): boolean;
+  buttonJustReleased(button: PointerButton): boolean;
 }
 
 /**
@@ -4302,13 +4302,13 @@ export interface Pointers {
    *
    * @readonly written by the engine
    */
-  readonly pressedMask: number;
+  readonly justPressedMask: number;
   /**
    * Pointers that went up this tick.
    *
    * @readonly written by the engine
    */
-  readonly releasedMask: number;
+  readonly justReleasedMask: number;
   /**
    * Pointers a click releases at the end of the next tick.
    *
@@ -4404,7 +4404,7 @@ export interface Pointers {
    */
   readonly movement: Vector2;
   /**
-   * Whether a pointer is held.
+   * Whether a pointer is down.
    *
    * @param id The pointer, 0 to 4.
    */
@@ -4414,13 +4414,13 @@ export interface Pointers {
    *
    * @param id The pointer, 0 to 4.
    */
-  pressed(id: number): boolean;
+  justPressed(id: number): boolean;
   /**
    * Whether a pointer went up this tick.
    *
    * @param id The pointer, 0 to 4.
    */
-  released(id: number): boolean;
+  justReleased(id: number): boolean;
   /**
    * Where a pointer is, in CSS pixels.
    *
@@ -4456,7 +4456,7 @@ export interface PointerLock {
 }
 
 /**
- * Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout. A pad is world state and replays.
+ * Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays.
  * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice).
  * See `input §4`.
  *
@@ -4525,104 +4525,104 @@ export interface Gamepad {
    * @readonly written by the engine
    */
   readonly buttons7: number;
-  // ── Pressed this tick ──
+  // ── Went down this tick ──
   /**
    * Buttons of pad 0 that went down this tick.
    *
    * @readonly written by the engine
    */
-  readonly pressed0: number;
+  readonly justPressed0: number;
   /**
    * Buttons of pad 1 that went down this tick.
    *
    * @readonly written by the engine
    */
-  readonly pressed1: number;
+  readonly justPressed1: number;
   /**
    * Buttons of pad 2 that went down this tick.
    *
    * @readonly written by the engine
    */
-  readonly pressed2: number;
+  readonly justPressed2: number;
   /**
    * Buttons of pad 3 that went down this tick.
    *
    * @readonly written by the engine
    */
-  readonly pressed3: number;
+  readonly justPressed3: number;
   /**
    * Buttons of pad 4 that went down this tick.
    *
    * @readonly written by the engine
    */
-  readonly pressed4: number;
+  readonly justPressed4: number;
   /**
    * Buttons of pad 5 that went down this tick.
    *
    * @readonly written by the engine
    */
-  readonly pressed5: number;
+  readonly justPressed5: number;
   /**
    * Buttons of pad 6 that went down this tick.
    *
    * @readonly written by the engine
    */
-  readonly pressed6: number;
+  readonly justPressed6: number;
   /**
    * Buttons of pad 7 that went down this tick.
    *
    * @readonly written by the engine
    */
-  readonly pressed7: number;
-  // ── Released this tick ──
+  readonly justPressed7: number;
+  // ── Went up this tick ──
   /**
    * Buttons of pad 0 that went up this tick.
    *
    * @readonly written by the engine
    */
-  readonly released0: number;
+  readonly justReleased0: number;
   /**
    * Buttons of pad 1 that went up this tick.
    *
    * @readonly written by the engine
    */
-  readonly released1: number;
+  readonly justReleased1: number;
   /**
    * Buttons of pad 2 that went up this tick.
    *
    * @readonly written by the engine
    */
-  readonly released2: number;
+  readonly justReleased2: number;
   /**
    * Buttons of pad 3 that went up this tick.
    *
    * @readonly written by the engine
    */
-  readonly released3: number;
+  readonly justReleased3: number;
   /**
    * Buttons of pad 4 that went up this tick.
    *
    * @readonly written by the engine
    */
-  readonly released4: number;
+  readonly justReleased4: number;
   /**
    * Buttons of pad 5 that went up this tick.
    *
    * @readonly written by the engine
    */
-  readonly released5: number;
+  readonly justReleased5: number;
   /**
    * Buttons of pad 6 that went up this tick.
    *
    * @readonly written by the engine
    */
-  readonly released6: number;
+  readonly justReleased6: number;
   /**
    * Buttons of pad 7 that went up this tick.
    *
    * @readonly written by the engine
    */
-  readonly released7: number;
+  readonly justReleased7: number;
   // ── Left sticks ──
   /**
    * The left stick of pad 0, -1 to 1, y down.
@@ -4777,7 +4777,7 @@ export interface Gamepad {
    */
   connected(pad?: number): boolean;
   /**
-   * Whether a button is held.
+   * Whether a button is down.
    *
    * @param button The button.
    * @param pad The pad, 0 to 7; omitted is 0.
@@ -4789,14 +4789,14 @@ export interface Gamepad {
    * @param button The button.
    * @param pad The pad, 0 to 7; omitted is 0.
    */
-  pressed(button: GamepadButton, pad?: number): boolean;
+  justPressed(button: GamepadButton, pad?: number): boolean;
   /**
    * Whether a button went up this tick.
    *
    * @param button The button.
    * @param pad The pad, 0 to 7; omitted is 0.
    */
-  released(button: GamepadButton, pad?: number): boolean;
+  justReleased(button: GamepadButton, pad?: number): boolean;
   /**
    * An analog input, raw: a stick's x or y (-1 to 1, y down) or a trigger (0 to 1). Actions read sticks past their dead zones and y up (og.input.defineAction).
    *
@@ -5682,7 +5682,7 @@ export interface VirtualCamera {
   /**
    * The physics layers collision considers (a collider counts when its layers meet these); 0 every layer.
    */
-  collisionLayers: number;
+  collisionMask: number;
   // ── Controller state ──
   /**
    * Controller state: the followed point after smoothing, before collision, in world space (a floating-origin rebase shifts it).
@@ -6603,9 +6603,10 @@ export interface StandardMaterialDesc {
    */
   readonly anisotropy?: number;
   /**
-   * The stretch's direction in radians from the tangent (+u) towards the bitangent.
+   * The stretch's direction from the tangent (+u) towards the bitangent.
    *
    * @default 0
+   * @unit rad (radians)
    */
   readonly anisotropyRotation?: number;
   /**
@@ -9232,8 +9233,8 @@ export interface Lighting2D {
 /**
  * What shape of light a Light2D is.
  * - `"point"`: Light all around its position, to radius.
- * - `"spot"`: A cone along the entity's local +x (turned with its Transform about z), innerAngle to outerAngle either side of the axis, to radius.
- * - `"global"`: Light on every lit pixel of its layers at full intensity, from the direction of the entity's local +x at height (for normal maps); no radius and no shadows.
+ * - `"spot"`: A cone along the entity's local +x (turned with its Transform about z), innerAngle to outerAngle either side of the axis, to distance.
+ * - `"global"`: Light on every lit pixel of its layers at full intensity, from the direction of the entity's local +x at height (for normal maps); no distance and no shadows.
  */
 export type Light2DKind = "point" | "spot" | "global";
 
@@ -9247,7 +9248,7 @@ export type Light2DKind = "point" | "spot" | "global";
 export declare function Light2DKind(value?: Light2DKind, options?: FieldOptions): FieldSpec<"Light2DKind">;
 
 /**
- * A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.
+ * A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at distance with (1 - d/distance)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.
  *
  * The value of the `Light2D` component (token `og.Light2D`).
  */
@@ -9274,7 +9275,7 @@ export interface Light2D {
    * @unit m (metres)
    * @tunable
    */
-  radius: number;
+  distance: number;
   /**
    * The exponent of the fade.
    *
@@ -9299,17 +9300,19 @@ export interface Light2D {
   /** Point, spot or global. */
   kind: Light2DKind;
   /**
-   * A spot's half-angle at full intensity, in radians.
+   * A spot's half-angle at full intensity.
    *
    * @default 0.35
    * @range 0..3.14159
+   * @unit rad (radians)
    */
   innerAngle: number;
   /**
-   * A spot's half-angle where it reaches zero, in radians (at least innerAngle).
+   * A spot's half-angle where it reaches zero (at least innerAngle).
    *
    * @default 0.6
    * @range 0..3.14159
+   * @unit rad (radians)
    */
   outerAngle: number;
   /**
@@ -10297,7 +10300,7 @@ export interface Sprite {
 }
 
 /**
- * Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
+ * Ghosts of the entity's og.Sprite: every `intervalTicks` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
  *
  * The value of the `Afterimage` component (token `og.Afterimage`).
  */
@@ -10316,7 +10319,7 @@ export interface Afterimage {
    * @range 1..
    * @unit ticks (fixed simulation steps)
    */
-  interval: number;
+  intervalTicks: number;
   /**
    * The newest ghost's alpha.
    *
@@ -10765,7 +10768,7 @@ export interface ReflectionProbe {
    */
   resolution: number;
   /**
-   * baked (rendered once, or loaded from `og bake probes`) or realtime (every interval ticks).
+   * baked (rendered once, or loaded from `og bake probes`) or realtime (every intervalTicks ticks).
    */
   mode: ReflectionProbeMode;
   /**
@@ -10775,7 +10778,7 @@ export interface ReflectionProbe {
    * @range 1..
    * @unit ticks (fixed simulation steps)
    */
-  interval: number;
+  intervalTicks: number;
   /**
    * A multiplier on the probe's light.
    *
@@ -12530,7 +12533,7 @@ export interface CameraView {
    *
    * @default 1
    */
-  every: number;
+  everyTicks: number;
   /**
    * Whether it draws.
    *
@@ -12570,11 +12573,11 @@ export interface Mirror {
    */
   layers: number;
   /**
-   * Draw once every this many ticks, as CameraView.every.
+   * Draw once every this many ticks, as CameraView.everyTicks.
    *
    * @default 1
    */
-  every: number;
+  everyTicks: number;
   /**
    * Whether it draws.
    *
@@ -13702,7 +13705,7 @@ export interface Collider {
    */
   offset: Vector3;
   /** Rotation of the shape relative to the entity. */
-  rotation: Quaternion;
+  quaternion: Quaternion;
   /**
    * Coulomb friction (0 is ice, 1 rubber); a pair uses the mean of both colliders.
    *
@@ -14384,7 +14387,7 @@ export interface CharacterController {
 }
 
 /**
- * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayLayers`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
+ * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayMask`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
  * See `physics §6`.
  *
  * The value of the `PlatformerController` component (token `og.PlatformerController`).
@@ -14395,7 +14398,7 @@ export interface PlatformerController {
    *
    * @range -1..1
    */
-  moveX: number;
+  run: number;
   /** Held to jump: a press is buffered for jumpBuffer; releasing while rising cuts the jump. */
   jump: boolean;
   /** Held to drop through a one-way platform. */
@@ -14406,7 +14409,7 @@ export interface PlatformerController {
    *
    * @unit mps (metres per second)
    */
-  impulse: Vector2;
+  addVelocity: Vector2;
   /**
    * The top running speed.
    *
@@ -14569,7 +14572,7 @@ export interface PlatformerController {
    */
   wallJumpLock: number;
   /** The collision layers that are one-way platforms (solid from above only), as bits. */
-  oneWayLayers: number;
+  oneWayMask: number;
   /**
    * How far a rising jump that clips a ceiling corner is nudged sideways past it (0: never).
    *
@@ -16597,7 +16600,7 @@ export interface ShapeCastDesc {
    *
    * @default { x: 0, y: 0, z: 0, w: 1 }
    */
-  readonly rotation?: Quaternion;
+  readonly quaternion?: Quaternion;
   /**
    * Where it sweeps; it need not be normalised and must not be zero.
    *
@@ -16660,7 +16663,7 @@ export interface OverlapDesc {
    *
    * @default { x: 0, y: 0, z: 0, w: 1 }
    */
-  readonly rotation?: Quaternion;
+  readonly quaternion?: Quaternion;
   /**
    * Which colliders count.
    *
@@ -16708,7 +16711,7 @@ export interface WheelPose {
    */
   readonly position: Vector3;
   /** Its rotation (steering and spin) in world space. */
-  readonly rotation: Quaternion;
+  readonly quaternion: Quaternion;
   /** Whether it touches the ground. */
   readonly contact: boolean;
   /**
@@ -16752,7 +16755,7 @@ export interface RagdollBoneDesc {
    *
    * @default { x: 0, y: 0, z: 0, w: 1 }
    */
-  readonly rotation?: Quaternion;
+  readonly quaternion?: Quaternion;
   /**
    * How long the bone is (to its child).
    *
@@ -16805,7 +16808,7 @@ export interface BonePose {
    */
   readonly position: Vector3;
   /** Its rotation in world space. */
-  readonly rotation: Quaternion;
+  readonly quaternion: Quaternion;
 }
 
 
@@ -20817,20 +20820,20 @@ export interface TilemapDesc {
    * @default 16
    * @range 1..
    */
-  readonly tileWidth?: number;
+  readonly tilePixelWidth?: number;
   /**
    * A tile's height in pixels (its cell's; half the width for the usual isometric diamond).
    *
    * @default 16
    * @range 1..
    */
-  readonly tileHeight?: number;
+  readonly tilePixelHeight?: number;
   /**
    * World units per tile width.
    *
    * @default 1
    */
-  readonly unit?: number;
+  readonly tileSize?: number;
   /**
    * How the cells are laid out.
    *
@@ -23053,7 +23056,7 @@ export interface AiAgent {
    * @range 1..600
    * @unit ticks (fixed simulation steps)
    */
-  thinkEvery: number;
+  thinkEveryTicks: number;
   /**
    * AI_RUNNING, AI_SUCCESS or AI_FAILURE after the last think (0 before the first; written by og.ai).
    *
@@ -23118,7 +23121,7 @@ export interface Perception {
    */
   occlude: boolean;
   /** Collision layers that block sight (0: every layer). */
-  occluders: number;
+  occluderMask: number;
   /**
    * How far it hears a sound of loudness 1 (a source's volume).
    *
@@ -23633,7 +23636,7 @@ export interface DialogueView {
   /**
    * Ticks of the voice still to play: voiceTicks until it starts, 0 once it has ended (advance then, for auto-advance).
    */
-  readonly voiceLeft: number;
+  readonly voiceTicksLeft: number;
   /** Who says it. */
   readonly speaker: SpeakerView;
   /**
@@ -23740,13 +23743,13 @@ export interface AmbientDesc {
    *
    * @default 600
    */
-  readonly every?: number;
+  readonly everyTicks?: number;
   /**
    * Up to this many ticks more each time, drawn on the story's stream.
    *
    * @default 0
    */
-  readonly jitter?: number;
+  readonly jitterTicks?: number;
 }
 
 /** A bark being said. */
@@ -23772,7 +23775,7 @@ export interface BarkView {
   /** Its voice clip (empty: none), played as a conversation's. */
   readonly voice: string;
   /** Ticks of its voice still to play. */
-  readonly voiceLeft: number;
+  readonly voiceTicksLeft: number;
   /** Ticks it still shows. */
   readonly ticksLeft: number;
   /** Its priority: only a higher one interrupts it. */
@@ -24579,7 +24582,7 @@ export interface RoomMessage {
 
 // ── i18n ────────────────────────────────────────────────────────
 // Localization: one string table per locale (`.ogt` of `type strings`), messages in a subset of ICU MessageFormat with CLDR plural rules, and the locale the host asks for. The active locale is the best loaded table for the request, else the base table; a key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain and direction.
-// Formatting writes from a CLDR subset built into the engine. A date or time is seconds since 1970-01-01 00:00 UTC that the game passes in: nothing reads a clock, so the same value gives the same text on every host and in a replay.
+// Formatting writes from a CLDR subset built into the engine. A date or time is milliseconds since 1970-01-01 00:00 UTC that the game passes in: nothing reads a clock, so the same value gives the same text on every host and in a replay.
 // See `localization`.
 
 /**
@@ -29539,19 +29542,19 @@ export interface TerrainStampDesc {
    * @default { x: 0, y: 0, z: 0 }
    * @unit m (metres)
    */
-  readonly position?: Vector3;
+  readonly meshPosition?: Vector3;
   /**
    * How the mesh is turned: its entity's world rotation.
    *
    * @default { x: 0, y: 0, z: 0, w: 1 }
    */
-  readonly rotation?: Quaternion;
+  readonly meshQuaternion?: Quaternion;
   /**
    * How the mesh is scaled: its entity's world scale.
    *
    * @default { x: 1, y: 1, z: 1 }
    */
-  readonly size?: Vector3;
+  readonly meshScale?: Vector3;
   /**
    * What it does to the ground.
    *
@@ -30147,13 +30150,13 @@ export interface DebugDrawDesc {
    * @default 0
    * @unit ticks (fixed simulation steps)
    */
-  readonly duration?: number;
+  readonly ticks?: number;
   /**
    * The shape's rotation: a box's or a sphere's circles', the axes' frame.
    *
    * @default { x: 0, y: 0, z: 0, w: 1 }
    */
-  readonly rotation?: Quaternion;
+  readonly quaternion?: Quaternion;
 }
 
 
@@ -30721,7 +30724,7 @@ export interface TimelineInfo {
 /**
  * How a room's peers take their ticks (og.Lockstep.mode).
  * - `"lockstep"`: Each tick waits until every seated player's input for it is in: no prediction, no rollback; a late input holds the world.
- * - `"rollback"`: A tick runs on a missing input predicted as the player's last, up to maxPrediction ticks past the last tick whose inputs are all in; when the real input differs the world is rewound to its snapshot and the ticks re-run within the frame (GGPO-style). Hashes and og.Desync cover the confirmed world.
+ * - `"rollback"`: A tick runs on a missing input predicted as the player's last, up to maxPredictionTicks past the last tick whose inputs are all in; when the real input differs the world is rewound to its snapshot and the ticks re-run within the frame (GGPO-style). Hashes and og.Desync cover the confirmed world.
  */
 export type NetMode = "lockstep" | "rollback";
 
@@ -30735,7 +30738,7 @@ export type NetMode = "lockstep" | "rollback";
 export declare function NetMode(value?: NetMode, options?: FieldOptions): FieldSpec<"NetMode">;
 
 /**
- * Lockstep's settings and this peer's place. The game sets enabled, players, inputDelay and hashEvery (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.
+ * Lockstep's settings and this peer's place. The game sets enabled, players, inputDelayTicks and hashEveryTicks (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.
  * See `networking §1`.
  *
  * The `Lockstep` resource (token `og.Lockstep`).
@@ -30764,7 +30767,7 @@ export interface Lockstep {
    * @range 1..30
    * @unit ticks (fixed simulation steps)
    */
-  inputDelay: number;
+  inputDelayTicks: number;
   /**
    * How often the peers exchange their world hashes, in ticks (every tick is hashed, so the first divergent tick is exact); 0 compares nothing.
    *
@@ -30772,7 +30775,7 @@ export interface Lockstep {
    * @range 0..600
    * @unit ticks (fixed simulation steps)
    */
-  hashEvery: number;
+  hashEveryTicks: number;
   /**
    * Whether lockstep runs: the room filled the seats and the authority started (until this peer leaves the room or turns it off).
    *
@@ -30790,7 +30793,7 @@ export interface Lockstep {
    * @range 0..600000
    * @unit ms (milliseconds)
    */
-  stallTimeout: number;
+  stallTimeoutMs: number;
   /**
    * Whether a dropped player that comes back (also under a new peer number after a lost connection, or as a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's.
    *
@@ -30805,7 +30808,7 @@ export interface Lockstep {
    * @range 1..30
    * @unit ticks (fixed simulation steps)
    */
-  maxPrediction: number;
+  maxPredictionTicks: number;
 }
 
 /**
@@ -30862,7 +30865,7 @@ export interface Desync {
 }
 
 /**
- * A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeout. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined.
+ * A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeoutMs. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined.
  *
  * The payload of the `SeatDropped` event (token `og.SeatDropped`).
  */
@@ -30892,7 +30895,7 @@ export interface SeatRejoined {
 }
 
 /**
- * A running peer has sent nothing for a second (or half of stallTimeout, if shorter): for a "waiting for player" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent.
+ * A running peer has sent nothing for a second (or half of stallTimeoutMs, if shorter): for a "waiting for player" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent.
  *
  * The payload of the `PeerStalled` event (token `og.PeerStalled`).
  */
@@ -31025,11 +31028,11 @@ export interface LockstepStatus {
   /** Whether the room runs in rollback (og.Lockstep.mode, the authority's). */
   readonly rollback: boolean;
   /**
-   * The room's maxPrediction while running in rollback; 0 in lockstep.
+   * The room's maxPredictionTicks while running in rollback; 0 in lockstep.
    *
    * @unit ticks (fixed simulation steps)
    */
-  readonly maxPrediction: number | null;
+  readonly maxPredictionTicks: number | null;
   /**
    * The last tick whose every seat's input has arrived.
    *
@@ -31053,7 +31056,7 @@ export interface LockstepStatus {
    *
    * @unit ticks (fixed simulation steps)
    */
-  readonly predicted: number;
+  readonly predictedTicks: number;
   /** Rewinds this peer made since lockstep started. */
   readonly rollbacks: number;
   /**
@@ -32811,7 +32814,7 @@ export interface VfxSpawnDesc {
    *
    * @default { x: 0, y: 0, z: 0, w: 1 }
    */
-  readonly rotation?: Quaternion;
+  readonly quaternion?: Quaternion;
   /**
    * An entity to follow (a sword's tip, a character's chest): the effect's entity becomes its child, so it moves with it and despawns with it.
    *
@@ -33096,7 +33099,7 @@ export declare namespace og {
   /**
    * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script.
    */
-  const Time: ResourceType<{ readonly tick: FieldSpec<"u32">; readonly dt: FieldSpec<"f32">; readonly elapsed: FieldSpec<"f64">; readonly rate: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly hitStop: FieldSpec<"u32">; readonly scaledDt: FieldSpec<"f32">; readonly scaledElapsed: FieldSpec<"f64"> }, Time>;
+  const Time: ResourceType<{ readonly tick: FieldSpec<"u32">; readonly dt: FieldSpec<"f32">; readonly elapsed: FieldSpec<"f64">; readonly rate: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly hitStopTicks: FieldSpec<"u32">; readonly scaledDt: FieldSpec<"f32">; readonly scaledElapsed: FieldSpec<"f64"> }, Time>;
   /**
    * Which time group the entity is in (0 to 15): its animation (og.anim, flipbooks, 2D skeletons), its scaled tweens and its og.nav agent advance by scaledDt times og.time.setGroupScale's scale for the group, and its og.ParticleSystem's particles spawn, age and move at the group's scale alone (they follow neither the global scale nor hit stop). Physics stays on the global scale: a body in a slowed group falls at the world's pace. An entity without one is at the global pace.
    */
@@ -33195,15 +33198,15 @@ export declare namespace og {
    */
   const PauseIntent: EventType<PauseIntent>;
   /**
-   * The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods.
+   * The input state at the start of this tick (og-input's og.Input, version 3). Edges (justPressed, justReleased) last exactly one tick; read the state through the methods.
    * Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4.
    */
-  const Input: ResourceType<{ readonly pointer: FieldSpec<"Vector2">; readonly pointerInside: FieldSpec<"bool">; readonly wheel: FieldSpec<"Vector2">; readonly buttons: FieldSpec<"u32">; readonly buttonsPressed: FieldSpec<"u32">; readonly buttonsReleased: FieldSpec<"u32">; readonly buttonsReleaseNext: FieldSpec<"u32">; readonly keys0: FieldSpec<"u32">; readonly keys1: FieldSpec<"u32">; readonly keys2: FieldSpec<"u32">; readonly keys3: FieldSpec<"u32">; readonly pressed0: FieldSpec<"u32">; readonly pressed1: FieldSpec<"u32">; readonly pressed2: FieldSpec<"u32">; readonly pressed3: FieldSpec<"u32">; readonly released0: FieldSpec<"u32">; readonly released1: FieldSpec<"u32">; readonly released2: FieldSpec<"u32">; readonly released3: FieldSpec<"u32">; readonly releaseNext0: FieldSpec<"u32">; readonly releaseNext1: FieldSpec<"u32">; readonly releaseNext2: FieldSpec<"u32">; readonly releaseNext3: FieldSpec<"u32"> }, Input>;
+  const Input: ResourceType<{ readonly pointer: FieldSpec<"Vector2">; readonly pointerInside: FieldSpec<"bool">; readonly wheel: FieldSpec<"Vector2">; readonly buttons: FieldSpec<"u32">; readonly buttonsJustPressed: FieldSpec<"u32">; readonly buttonsJustReleased: FieldSpec<"u32">; readonly buttonsReleaseNext: FieldSpec<"u32">; readonly keys0: FieldSpec<"u32">; readonly keys1: FieldSpec<"u32">; readonly keys2: FieldSpec<"u32">; readonly keys3: FieldSpec<"u32">; readonly justPressed0: FieldSpec<"u32">; readonly justPressed1: FieldSpec<"u32">; readonly justPressed2: FieldSpec<"u32">; readonly justPressed3: FieldSpec<"u32">; readonly justReleased0: FieldSpec<"u32">; readonly justReleased1: FieldSpec<"u32">; readonly justReleased2: FieldSpec<"u32">; readonly justReleased3: FieldSpec<"u32">; readonly releaseNext0: FieldSpec<"u32">; readonly releaseNext1: FieldSpec<"u32">; readonly releaseNext2: FieldSpec<"u32">; readonly releaseNext3: FieldSpec<"u32"> }, Input>;
   /**
    * Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. Pointer 0 is og.Input's pointer; ids 1 to 4 are further touches, in the order they landed (the lowest free id).
    * Edges last exactly one tick, as og.Input's do. Masks are bit `id`; read them through the methods.
    */
-  const Pointers: ResourceType<{ readonly heldMask: FieldSpec<"u32">; readonly pressedMask: FieldSpec<"u32">; readonly releasedMask: FieldSpec<"u32">; readonly releaseNextMask: FieldSpec<"u32">; readonly position0: FieldSpec<"Vector2">; readonly position1: FieldSpec<"Vector2">; readonly position2: FieldSpec<"Vector2">; readonly position3: FieldSpec<"Vector2">; readonly position4: FieldSpec<"Vector2">; readonly start0: FieldSpec<"Vector2">; readonly start1: FieldSpec<"Vector2">; readonly start2: FieldSpec<"Vector2">; readonly start3: FieldSpec<"Vector2">; readonly start4: FieldSpec<"Vector2">; readonly movement: FieldSpec<"Vector2"> }, Pointers>;
+  const Pointers: ResourceType<{ readonly heldMask: FieldSpec<"u32">; readonly justPressedMask: FieldSpec<"u32">; readonly justReleasedMask: FieldSpec<"u32">; readonly releaseNextMask: FieldSpec<"u32">; readonly position0: FieldSpec<"Vector2">; readonly position1: FieldSpec<"Vector2">; readonly position2: FieldSpec<"Vector2">; readonly position3: FieldSpec<"Vector2">; readonly position4: FieldSpec<"Vector2">; readonly start0: FieldSpec<"Vector2">; readonly start1: FieldSpec<"Vector2">; readonly start2: FieldSpec<"Vector2">; readonly start3: FieldSpec<"Vector2">; readonly start4: FieldSpec<"Vector2">; readonly movement: FieldSpec<"Vector2"> }, Pointers>;
   /**
    * Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), the host hides the cursor and locks the pointer to the play surface, and og.Pointers.movement carries the mouse's movement each tick. Off by default.
    * While locked, og.Input.pointer and og.Pointers' positions stand still and the mouse's buttons still press. `locked` is the host's session state: a restore keeps it, lockstep peers do not compare it.
@@ -33211,11 +33214,11 @@ export declare namespace og {
    */
   const PointerLock: ResourceType<{ readonly wanted: FieldSpec<"bool">; readonly locked: FieldSpec<"bool"> }, PointerLock>;
   /**
-   * Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout. A pad is world state and replays.
+   * Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays.
    * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice).
    * See `input §4`.
    */
-  const Gamepad: ResourceType<{ readonly connectedMask: FieldSpec<"u32">; readonly devices: FieldSpec<"u32">; readonly buttons0: FieldSpec<"u32">; readonly buttons1: FieldSpec<"u32">; readonly buttons2: FieldSpec<"u32">; readonly buttons3: FieldSpec<"u32">; readonly buttons4: FieldSpec<"u32">; readonly buttons5: FieldSpec<"u32">; readonly buttons6: FieldSpec<"u32">; readonly buttons7: FieldSpec<"u32">; readonly pressed0: FieldSpec<"u32">; readonly pressed1: FieldSpec<"u32">; readonly pressed2: FieldSpec<"u32">; readonly pressed3: FieldSpec<"u32">; readonly pressed4: FieldSpec<"u32">; readonly pressed5: FieldSpec<"u32">; readonly pressed6: FieldSpec<"u32">; readonly pressed7: FieldSpec<"u32">; readonly released0: FieldSpec<"u32">; readonly released1: FieldSpec<"u32">; readonly released2: FieldSpec<"u32">; readonly released3: FieldSpec<"u32">; readonly released4: FieldSpec<"u32">; readonly released5: FieldSpec<"u32">; readonly released6: FieldSpec<"u32">; readonly released7: FieldSpec<"u32">; readonly leftStick0: FieldSpec<"Vector2">; readonly leftStick1: FieldSpec<"Vector2">; readonly leftStick2: FieldSpec<"Vector2">; readonly leftStick3: FieldSpec<"Vector2">; readonly leftStick4: FieldSpec<"Vector2">; readonly leftStick5: FieldSpec<"Vector2">; readonly leftStick6: FieldSpec<"Vector2">; readonly leftStick7: FieldSpec<"Vector2">; readonly rightStick0: FieldSpec<"Vector2">; readonly rightStick1: FieldSpec<"Vector2">; readonly rightStick2: FieldSpec<"Vector2">; readonly rightStick3: FieldSpec<"Vector2">; readonly rightStick4: FieldSpec<"Vector2">; readonly rightStick5: FieldSpec<"Vector2">; readonly rightStick6: FieldSpec<"Vector2">; readonly rightStick7: FieldSpec<"Vector2">; readonly triggers0: FieldSpec<"Vector2">; readonly triggers1: FieldSpec<"Vector2">; readonly triggers2: FieldSpec<"Vector2">; readonly triggers3: FieldSpec<"Vector2">; readonly triggers4: FieldSpec<"Vector2">; readonly triggers5: FieldSpec<"Vector2">; readonly triggers6: FieldSpec<"Vector2">; readonly triggers7: FieldSpec<"Vector2"> }, Gamepad>;
+  const Gamepad: ResourceType<{ readonly connectedMask: FieldSpec<"u32">; readonly devices: FieldSpec<"u32">; readonly buttons0: FieldSpec<"u32">; readonly buttons1: FieldSpec<"u32">; readonly buttons2: FieldSpec<"u32">; readonly buttons3: FieldSpec<"u32">; readonly buttons4: FieldSpec<"u32">; readonly buttons5: FieldSpec<"u32">; readonly buttons6: FieldSpec<"u32">; readonly buttons7: FieldSpec<"u32">; readonly justPressed0: FieldSpec<"u32">; readonly justPressed1: FieldSpec<"u32">; readonly justPressed2: FieldSpec<"u32">; readonly justPressed3: FieldSpec<"u32">; readonly justPressed4: FieldSpec<"u32">; readonly justPressed5: FieldSpec<"u32">; readonly justPressed6: FieldSpec<"u32">; readonly justPressed7: FieldSpec<"u32">; readonly justReleased0: FieldSpec<"u32">; readonly justReleased1: FieldSpec<"u32">; readonly justReleased2: FieldSpec<"u32">; readonly justReleased3: FieldSpec<"u32">; readonly justReleased4: FieldSpec<"u32">; readonly justReleased5: FieldSpec<"u32">; readonly justReleased6: FieldSpec<"u32">; readonly justReleased7: FieldSpec<"u32">; readonly leftStick0: FieldSpec<"Vector2">; readonly leftStick1: FieldSpec<"Vector2">; readonly leftStick2: FieldSpec<"Vector2">; readonly leftStick3: FieldSpec<"Vector2">; readonly leftStick4: FieldSpec<"Vector2">; readonly leftStick5: FieldSpec<"Vector2">; readonly leftStick6: FieldSpec<"Vector2">; readonly leftStick7: FieldSpec<"Vector2">; readonly rightStick0: FieldSpec<"Vector2">; readonly rightStick1: FieldSpec<"Vector2">; readonly rightStick2: FieldSpec<"Vector2">; readonly rightStick3: FieldSpec<"Vector2">; readonly rightStick4: FieldSpec<"Vector2">; readonly rightStick5: FieldSpec<"Vector2">; readonly rightStick6: FieldSpec<"Vector2">; readonly rightStick7: FieldSpec<"Vector2">; readonly triggers0: FieldSpec<"Vector2">; readonly triggers1: FieldSpec<"Vector2">; readonly triggers2: FieldSpec<"Vector2">; readonly triggers3: FieldSpec<"Vector2">; readonly triggers4: FieldSpec<"Vector2">; readonly triggers5: FieldSpec<"Vector2">; readonly triggers6: FieldSpec<"Vector2">; readonly triggers7: FieldSpec<"Vector2"> }, Gamepad>;
   /**
    * A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems.
    */
@@ -33293,7 +33296,7 @@ export declare namespace og {
      * @param world The world.
      * @param name The action.
      */
-    function isActionPressed(world: World, name: string): boolean;
+    function isActionDown(world: World, name: string): boolean;
     /**
      * Whether an action went down this tick.
      *
@@ -33314,7 +33317,7 @@ export declare namespace og {
      * @param world The world.
      * @param name The action.
      */
-    function actionHeld(world: World, name: string): boolean;
+    function isActionHeld(world: World, name: string): boolean;
     /**
      * An action's value: a button's strength (0 to 1), an axis's value, a two-axis value's length. 0 for an unknown action.
      *
@@ -33548,7 +33551,7 @@ export declare namespace og {
    * Registered when a game first names it (with og.CameraBrain and og.CameraCut), so a world without one keeps its hash. Its pose is tick state, drawing on no randomness; it changes only og.Camera and, with focus, og.PostEffects' depth of field. While a timeline's camera track plays, the timeline drives og.Camera; the brain waits.
    * See `camera §2`.
    */
-  const VirtualCamera: ComponentType<{ readonly priority: FieldSpec<"i32">; readonly enabled: FieldSpec<"bool">; readonly follow: FieldSpec<"Entity">; readonly followOffset: FieldSpec<"Vector3">; readonly followRotation: FieldSpec<"bool">; readonly smoothTime: FieldSpec<"f32">; readonly lookAt: FieldSpec<"Entity">; readonly lookOffset: FieldSpec<"Vector3">; readonly fov: FieldSpec<"f32">; readonly roll: FieldSpec<"f32">; readonly focus: FieldSpec<"f32">; readonly focusRange: FieldSpec<"f32">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly collide: FieldSpec<"bool">; readonly radius: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly collisionLayers: FieldSpec<"u32">; readonly eased: FieldSpec<"Vector3">; readonly pull: FieldSpec<"f32">; readonly activated: FieldSpec<"u32">; readonly primed: FieldSpec<"bool"> }, VirtualCamera>;
+  const VirtualCamera: ComponentType<{ readonly priority: FieldSpec<"i32">; readonly enabled: FieldSpec<"bool">; readonly follow: FieldSpec<"Entity">; readonly followOffset: FieldSpec<"Vector3">; readonly followRotation: FieldSpec<"bool">; readonly smoothTime: FieldSpec<"f32">; readonly lookAt: FieldSpec<"Entity">; readonly lookOffset: FieldSpec<"Vector3">; readonly fov: FieldSpec<"f32">; readonly roll: FieldSpec<"f32">; readonly focus: FieldSpec<"f32">; readonly focusRange: FieldSpec<"f32">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly collide: FieldSpec<"bool">; readonly radius: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly collisionMask: FieldSpec<"u32">; readonly eased: FieldSpec<"Vector3">; readonly pull: FieldSpec<"f32">; readonly activated: FieldSpec<"u32">; readonly primed: FieldSpec<"bool"> }, VirtualCamera>;
   /**
    * Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is.
    * Registered with og.VirtualCamera. Its state fields are world state, so a replay or a restore mid-blend continues the same blend.
@@ -33655,9 +33658,9 @@ export declare namespace og {
    */
   const Lighting2D: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly ambient: FieldSpec<"Color">; readonly minLayer: FieldSpec<"i32">; readonly maxLayer: FieldSpec<"i32">; readonly resolution: FieldSpec<"f32">; readonly shadowAngles: FieldSpec<"u32"> }, Lighting2D>;
   /**
-   * A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.
+   * A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at distance with (1 - d/distance)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.
    */
-  const Light2D: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly falloff: FieldSpec<"f32">; readonly sourceRadius: FieldSpec<"f32">; readonly castShadows: FieldSpec<"bool">; readonly kind: FieldSpec<"Light2DKind">; readonly innerAngle: FieldSpec<"f32">; readonly outerAngle: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly layers: FieldSpec<"u32"> }, Light2D>;
+  const Light2D: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly falloff: FieldSpec<"f32">; readonly sourceRadius: FieldSpec<"f32">; readonly castShadows: FieldSpec<"bool">; readonly kind: FieldSpec<"Light2DKind">; readonly innerAngle: FieldSpec<"f32">; readonly outerAngle: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly layers: FieldSpec<"u32"> }, Light2D>;
   /**
    * A shape that blocks 2D light (walls, crates, characters), centred on the entity's position and turned and scaled with it about z: a width by height rectangle, or the polygon `points` gives. Pixels inside it are not shadowed by it. At most 128 are drawn.
    */
@@ -33694,14 +33697,14 @@ export declare namespace og {
    */
   const Sprite: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly array: FieldSpec<"TextureArray">; readonly arrayLayer: FieldSpec<"u32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly anchor: FieldSpec<"Vector2">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly layer: FieldSpec<"i32">; readonly sortY: FieldSpec<"bool">; readonly facing: FieldSpec<"SpriteFacing">; readonly flipX: FieldSpec<"bool">; readonly flipY: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly glow: FieldSpec<"f32">; readonly blend: FieldSpec<"SpriteBlend">; readonly castShadow: FieldSpec<"bool">; readonly sliceX: FieldSpec<"Vector2">; readonly sliceY: FieldSpec<"Vector2">; readonly sliceScale: FieldSpec<"f32">; readonly shadow: FieldSpec<"f32">; readonly shadowSize: FieldSpec<"Vector2">; readonly shadowOffset: FieldSpec<"Vector2">; readonly dropShadow: FieldSpec<"f32">; readonly dropShadowHeight: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32">; readonly outline: FieldSpec<"f32">; readonly outlineColor: FieldSpec<"Color">; readonly palette: FieldSpec<"Texture">; readonly paletteRow: FieldSpec<"u32">; readonly material: FieldSpec<"Material"> }, Sprite>;
   /**
-   * Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
+   * Ghosts of the entity's og.Sprite: every `intervalTicks` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
    */
-  const Afterimage: ComponentType<{ readonly count: FieldSpec<"u32">; readonly interval: FieldSpec<"u32">; readonly opacity: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly additive: FieldSpec<"bool">; readonly active: FieldSpec<"bool"> }, Afterimage>;
+  const Afterimage: ComponentType<{ readonly count: FieldSpec<"u32">; readonly intervalTicks: FieldSpec<"u32">; readonly opacity: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly additive: FieldSpec<"bool">; readonly active: FieldSpec<"bool"> }, Afterimage>;
   /**
    * A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity), fading into the environment map over og.Volume.fade past the box's faces. The box is the og.Volume on its entity, as the world's axes bound it; none: everywhere, as at infinity. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it and without the probes' own reflections, and holds the light as it reaches surfaces.
    * See `looks §15`.
    */
-  const ReflectionProbe: ComponentType<{ readonly resolution: FieldSpec<"u32">; readonly mode: FieldSpec<"ReflectionProbeMode">; readonly interval: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, ReflectionProbe>;
+  const ReflectionProbe: ComponentType<{ readonly resolution: FieldSpec<"u32">; readonly mode: FieldSpec<"ReflectionProbeMode">; readonly intervalTicks: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, ReflectionProbe>;
   /**
    * Draws a geometry's vertices as lines at the entity's MatrixWorld, every frame (three.js Line, LineSegments or LineLoop over a BufferGeometry): a static set of lines kept as data, a level's outline, a track, a constellation. The vertices are taken in order (the geometry's indices are not read), with its vertex colours times color.
    */
@@ -33715,11 +33718,11 @@ export declare namespace og {
    * It draws what the main camera draws on its own layers. An ldr target and a viewport carry its exposure and the frame's tone curve; an hdr target carries linear radiance. Neither runs the frame's post effects; screen sprites, the UI, debug draw, trails and 2D fluids stay on the main frame.
    * See `render §11`.
    */
-  const CameraView: ComponentType<{ readonly target: FieldSpec<"RenderTarget">; readonly viewportX: FieldSpec<"f32">; readonly viewportY: FieldSpec<"f32">; readonly viewportWidth: FieldSpec<"f32">; readonly viewportHeight: FieldSpec<"f32">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly exposure: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly order: FieldSpec<"i32">; readonly clear: FieldSpec<"bool">; readonly clearColor: FieldSpec<"Color">; readonly every: FieldSpec<"u32">; readonly active: FieldSpec<"bool"> }, CameraView>;
+  const CameraView: ComponentType<{ readonly target: FieldSpec<"RenderTarget">; readonly viewportX: FieldSpec<"f32">; readonly viewportY: FieldSpec<"f32">; readonly viewportWidth: FieldSpec<"f32">; readonly viewportHeight: FieldSpec<"f32">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly exposure: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly order: FieldSpec<"i32">; readonly clear: FieldSpec<"bool">; readonly clearColor: FieldSpec<"Color">; readonly everyTicks: FieldSpec<"u32">; readonly active: FieldSpec<"bool"> }, CameraView>;
   /**
    * A planar mirror: the main camera reflected in the entity's xy plane (its local +Z the mirror's facing side), drawn into target fitted to a width by height rect centred on the entity, as a mirrored og.CameraView. Give the mirror's mesh (an og.render.planeGeometry of the same size) a material that reads the target: an hdr target as emissiveMap with color black, or an ldr target as an unlit map. Nothing behind the glass is drawn; seen from behind, it draws nothing.
    */
-  const Mirror: ComponentType<{ readonly target: FieldSpec<"RenderTarget">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly every: FieldSpec<"u32">; readonly active: FieldSpec<"bool"> }, Mirror>;
+  const Mirror: ComponentType<{ readonly target: FieldSpec<"RenderTarget">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly everyTicks: FieldSpec<"u32">; readonly active: FieldSpec<"bool"> }, Mirror>;
   /**
    * A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z, emitting color * intensity from its front (both faces with twoSided). Shaded with linearly transformed cosines (Heitz et al. 2016). og bake lightmaps traces its exact soft shadows into the bounce light, castShadow or not.
    * Rect lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches where it would light a white surface facing it at one hundredth of one, fading smoothly to zero there.
@@ -34564,7 +34567,7 @@ export declare namespace og {
    * A Collider without a RigidBody whose og.Parent chain reaches one is part of the nearest such body (a compound), placed relative to it; its density adds to the body's mass, and its friction, restitution, layers and sensor flag are its own. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children.
    * See `physics §1`.
    */
-  const Collider: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly rotation: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"bool">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32"> }, Collider>;
+  const Collider: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"bool">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32"> }, Collider>;
   /**
    * An acceleration on what is inside the og.Volume on its entity (none: everywhere), whatever its mass, as gravity is. Dynamic bodies, ropes, cloths, garments, soft bodies and fluids take it; a character controller takes its vertical part. The same on every run.
    * See `physics §8`.
@@ -34622,10 +34625,10 @@ export declare namespace og {
    */
   const CharacterController: ComponentType<{ readonly move: FieldSpec<"Vector3">; readonly jump: FieldSpec<"bool">; readonly jumpSpeed: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly stepHeight: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly pushStrength: FieldSpec<"f32">; readonly waterSpeed: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly sliding: FieldSpec<"bool">; readonly velocity: FieldSpec<"Vector3">; readonly groundNormal: FieldSpec<"Vector3">; readonly coyote: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, CharacterController>;
   /**
-   * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayLayers`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
+   * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayMask`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
    * See `physics §6`.
    */
-  const PlatformerController: ComponentType<{ readonly moveX: FieldSpec<"f32">; readonly jump: FieldSpec<"bool">; readonly down: FieldSpec<"bool">; readonly impulse: FieldSpec<"Vector2">; readonly maxSpeed: FieldSpec<"f32">; readonly acceleration: FieldSpec<"f32">; readonly deceleration: FieldSpec<"f32">; readonly airAcceleration: FieldSpec<"f32">; readonly airDeceleration: FieldSpec<"f32">; readonly jumpHeight: FieldSpec<"f32">; readonly timeToApex: FieldSpec<"f32">; readonly fallGravity: FieldSpec<"f32">; readonly jumpCut: FieldSpec<"f32">; readonly apexGravity: FieldSpec<"f32">; readonly apexThreshold: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly jumpBuffer: FieldSpec<"f32">; readonly airJumps: FieldSpec<"u32">; readonly wallJumps: FieldSpec<"bool">; readonly wallSlideSpeed: FieldSpec<"f32">; readonly wallJump: FieldSpec<"Vector2">; readonly wallJumpLock: FieldSpec<"f32">; readonly oneWayLayers: FieldSpec<"u32">; readonly cornerCorrection: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly pushStrength: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly onWall: FieldSpec<"i32">; readonly facing: FieldSpec<"i32">; readonly velocity: FieldSpec<"Vector3">; readonly jumping: FieldSpec<"bool">; readonly airJumpsLeft: FieldSpec<"u32">; readonly coyote: FieldSpec<"f32">; readonly buffer: FieldSpec<"f32">; readonly wallLock: FieldSpec<"f32">; readonly dropTime: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, PlatformerController>;
+  const PlatformerController: ComponentType<{ readonly run: FieldSpec<"f32">; readonly jump: FieldSpec<"bool">; readonly down: FieldSpec<"bool">; readonly addVelocity: FieldSpec<"Vector2">; readonly maxSpeed: FieldSpec<"f32">; readonly acceleration: FieldSpec<"f32">; readonly deceleration: FieldSpec<"f32">; readonly airAcceleration: FieldSpec<"f32">; readonly airDeceleration: FieldSpec<"f32">; readonly jumpHeight: FieldSpec<"f32">; readonly timeToApex: FieldSpec<"f32">; readonly fallGravity: FieldSpec<"f32">; readonly jumpCut: FieldSpec<"f32">; readonly apexGravity: FieldSpec<"f32">; readonly apexThreshold: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly jumpBuffer: FieldSpec<"f32">; readonly airJumps: FieldSpec<"u32">; readonly wallJumps: FieldSpec<"bool">; readonly wallSlideSpeed: FieldSpec<"f32">; readonly wallJump: FieldSpec<"Vector2">; readonly wallJumpLock: FieldSpec<"f32">; readonly oneWayMask: FieldSpec<"u32">; readonly cornerCorrection: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly pushStrength: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly onWall: FieldSpec<"i32">; readonly facing: FieldSpec<"i32">; readonly velocity: FieldSpec<"Vector3">; readonly jumping: FieldSpec<"bool">; readonly airJumpsLeft: FieldSpec<"u32">; readonly coyote: FieldSpec<"f32">; readonly buffer: FieldSpec<"f32">; readonly wallLock: FieldSpec<"f32">; readonly dropTime: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, PlatformerController>;
   /**
    * Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick: the controllers move in the physics step, after the game's systems, so a jump pressed in tick T moves the character in T and its CHARACTER_JUMPED is read in T + 1.
    */
@@ -35585,11 +35588,11 @@ export declare namespace og {
   /**
    * An entity that thinks with a behaviour. Give it an og.NavAgent to move and an og.Perception to see and hear.
    */
-  const AiAgent: ComponentType<{ readonly behaviour: FieldSpec<"Behaviour">; readonly active: FieldSpec<"bool">; readonly thinkEvery: FieldSpec<"u32">; readonly status: FieldSpec<"u32">; readonly state: FieldSpec<"u32">; readonly node: FieldSpec<"u32">; readonly changes: FieldSpec<"u32"> }, AiAgent>;
+  const AiAgent: ComponentType<{ readonly behaviour: FieldSpec<"Behaviour">; readonly active: FieldSpec<"bool">; readonly thinkEveryTicks: FieldSpec<"u32">; readonly status: FieldSpec<"u32">; readonly state: FieldSpec<"u32">; readonly node: FieldSpec<"u32">; readonly changes: FieldSpec<"u32"> }, AiAgent>;
   /**
    * What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness, except its own: a sound of its entity or of an entity under it (og.Parent), or a noise whose NoiseDesc.source is one of them.
    */
-  const Perception: ComponentType<{ readonly sight: FieldSpec<"f32">; readonly fov: FieldSpec<"f32">; readonly eyeHeight: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly occluders: FieldSpec<"u32">; readonly hearing: FieldSpec<"f32">; readonly memory: FieldSpec<"f32">; readonly team: FieldSpec<"u32">; readonly forward: FieldSpec<"Vector3">; readonly target: FieldSpec<"Entity">; readonly sees: FieldSpec<"bool">; readonly lastSeen: FieldSpec<"Vector3">; readonly sinceSeen: FieldSpec<"f32">; readonly heard: FieldSpec<"bool">; readonly heardAt: FieldSpec<"Vector3">; readonly sinceHeard: FieldSpec<"f32"> }, Perception>;
+  const Perception: ComponentType<{ readonly sight: FieldSpec<"f32">; readonly fov: FieldSpec<"f32">; readonly eyeHeight: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly occluderMask: FieldSpec<"u32">; readonly hearing: FieldSpec<"f32">; readonly memory: FieldSpec<"f32">; readonly team: FieldSpec<"u32">; readonly forward: FieldSpec<"Vector3">; readonly target: FieldSpec<"Entity">; readonly sees: FieldSpec<"bool">; readonly lastSeen: FieldSpec<"Vector3">; readonly sinceSeen: FieldSpec<"f32">; readonly heard: FieldSpec<"bool">; readonly heardAt: FieldSpec<"Vector3">; readonly sinceHeard: FieldSpec<"f32"> }, Perception>;
   /** Something agents of other teams can see. */
   const Perceivable: ComponentType<{ readonly team: FieldSpec<"u32">; readonly eyeHeight: FieldSpec<"f32"> }, Perceivable>;
   /** An agent's state or running node changed (systems read it the tick after). */
@@ -35798,7 +35801,7 @@ export declare namespace og {
      */
     function bark(world: World, desc?: BarkDesc): Result<void>;
     /**
-     * Let an entity bark a topic on its own, every `every` ticks (and up to `jitter` more), as og.story.bark would; `every` 0 stops it. In saves; a despawned entity stops.
+     * Let an entity bark a topic on its own, every `everyTicks` ticks (and up to `jitterTicks` more), as og.story.bark would; `everyTicks` 0 stops it. In saves; a despawned entity stops.
      *
      * @param world The world.
      * @param desc Who, which topic and how often.
@@ -36281,7 +36284,7 @@ export declare namespace og {
   }
   /**
    * Localization: one string table per locale (`.ogt` of `type strings`), messages in a subset of ICU MessageFormat with CLDR plural rules, and the locale the host asks for. The active locale is the best loaded table for the request, else the base table; a key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain and direction.
-   * Formatting writes from a CLDR subset built into the engine. A date or time is seconds since 1970-01-01 00:00 UTC that the game passes in: nothing reads a clock, so the same value gives the same text on every host and in a replay.
+   * Formatting writes from a CLDR subset built into the engine. A date or time is milliseconds since 1970-01-01 00:00 UTC that the game passes in: nothing reads a clock, so the same value gives the same text on every host and in a replay.
    * See `localization`.
    */
   namespace i18n {
@@ -36349,18 +36352,18 @@ export declare namespace og {
      * A date in the active locale, in the style asked for: `Nov 2, 2026` (en), `02.11.2026` (de).
      *
      * @param world The world (its active locale).
-     * @param seconds Seconds since 1970-01-01 00:00 UTC; fractions are dropped.
+     * @param timeMs Milliseconds since 1970-01-01 00:00 UTC, as og.platform.now and PlatformResult.time; fractions of a second are dropped.
      * @param format The style and offset (medium, UTC).
      */
-    function formatDate(world: World, seconds: number, format?: DateFormat): string;
+    function formatDate(world: World, timeMs: number, format?: DateFormat): string;
     /**
      * A time of day in the active locale: `3:05 PM` (en), `15:05` (de).
      *
      * @param world The world (its active locale).
-     * @param seconds Seconds since 1970-01-01 00:00 UTC; fractions are dropped.
+     * @param timeMs Milliseconds since 1970-01-01 00:00 UTC, as og.platform.now and PlatformResult.time; fractions of a second are dropped.
      * @param format The style and offset (short, UTC).
      */
-    function formatTime(world: World, seconds: number, format?: TimeFormat): string;
+    function formatTime(world: World, timeMs: number, format?: TimeFormat): string;
     /**
      * A length of time as a clock face, `1:02:03` from an hour and `2:05` below, in the locale's digits; whole seconds, rounded down. og.ui's `duration` and `clock` formats are the in-document equivalents.
      *
@@ -37350,10 +37353,10 @@ export declare namespace og {
     function stop(world: World, entity: Entity): Result<void>;
   }
   /**
-   * Lockstep's settings and this peer's place. The game sets enabled, players, inputDelay and hashEvery (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.
+   * Lockstep's settings and this peer's place. The game sets enabled, players, inputDelayTicks and hashEveryTicks (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.
    * See `networking §1`.
    */
-  const Lockstep: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly players: FieldSpec<"u32">; readonly localPlayer: FieldSpec<"u32">; readonly inputDelay: FieldSpec<"u32">; readonly hashEvery: FieldSpec<"u32">; readonly running: FieldSpec<"bool">; readonly mode: FieldSpec<"NetMode">; readonly stallTimeout: FieldSpec<"u32">; readonly rejoin: FieldSpec<"bool">; readonly maxPrediction: FieldSpec<"u32"> }, Lockstep>;
+  const Lockstep: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly players: FieldSpec<"u32">; readonly localPlayer: FieldSpec<"u32">; readonly inputDelayTicks: FieldSpec<"u32">; readonly hashEveryTicks: FieldSpec<"u32">; readonly running: FieldSpec<"bool">; readonly mode: FieldSpec<"NetMode">; readonly stallTimeoutMs: FieldSpec<"u32">; readonly rejoin: FieldSpec<"bool">; readonly maxPredictionTicks: FieldSpec<"u32"> }, Lockstep>;
   /**
    * One player's input for this tick, the same on every peer: the engine writes every field but `player` at the start of each tick from the seat's input (zero for a seat nobody holds, and before its holder's first input). Its packed bytes are what crosses the room, read through this layout.
    */
@@ -37364,7 +37367,7 @@ export declare namespace og {
    */
   const Desync: EventType<Desync>;
   /**
-   * A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeout. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined.
+   * A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeoutMs. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined.
    */
   const SeatDropped: EventType<SeatDropped>;
   /**
@@ -37372,7 +37375,7 @@ export declare namespace og {
    */
   const SeatRejoined: EventType<SeatRejoined>;
   /**
-   * A running peer has sent nothing for a second (or half of stallTimeout, if shorter): for a "waiting for player" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent.
+   * A running peer has sent nothing for a second (or half of stallTimeoutMs, if shorter): for a "waiting for player" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent.
    */
   const PeerStalled: EventType<PeerStalled>;
   /**
@@ -37382,7 +37385,7 @@ export declare namespace og {
    */
   namespace net {
     /**
-     * Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call. Callable from a system.
+     * Give this peer's player's input: in lockstep, for the tick inputDelayTicks ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call. Callable from a system.
      * See `networking §3`.
      *
      * @param world The world.
@@ -37408,7 +37411,7 @@ export declare namespace og {
      */
     function submitInput<C extends AnyComponent>(world: World, component: C, value: Partial<Value<C>>): Result<void>;
     /**
-     * Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system.
+     * Give a command for this peer's player: in lockstep, for the tick inputDelayTicks ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system.
      *
      * @param world The world.
      * @param component The command component og.net.shape named.
@@ -37437,7 +37440,7 @@ export declare namespace og {
      */
     function resimulating(world: World): boolean;
     /**
-     * The shared hash (og.net.hash) of the final world of `tick`, hex: the world every peer agrees on once each input for the ticks before it arrived, kept for the last 1024 final ticks while hashing (hashEvery above 0). In lockstep every tick run is final; in rollback a tick is final some ticks after it first ran. Null before the tick is final, after it is no longer kept, or outside lockstep.
+     * The shared hash (og.net.hash) of the final world of `tick`, hex: the world every peer agrees on once each input for the ticks before it arrived, kept for the last 1024 final ticks while hashing (hashEveryTicks above 0). In lockstep every tick run is final; in rollback a tick is final some ticks after it first ran. Null before the tick is final, after it is no longer kept, or outside lockstep.
      *
      * @param world The world.
      * @param tick The tick, in ticks: the world after tick - 1 ran, as og.Time.tick reads.

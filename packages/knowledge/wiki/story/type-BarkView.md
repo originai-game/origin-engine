@@ -20,7 +20,7 @@ A bark being said.
 | `spans` | `readonly TextSpan[]` | `[]` | — | — | — | Localized Yarn attributes in Unicode scalar offsets. |
 | `speaker` | `SpeakerView` | `{ id: "", name: "", entity: 0, portrait: "", expression: "", side: "" }` | — | — | — | The bark's speaker (entity: who says it). |
 | `voice` | `string` | `""` | — | — | — | Its voice clip (empty: none), played as a conversation's. |
-| `voiceLeft` | `number` | `0` | — | — | — | Ticks of its voice still to play. |
+| `voiceTicksLeft` | `number` | `0` | — | — | — | Ticks of its voice still to play. |
 | `ticksLeft` | `number` | `0` | — | — | — | Ticks it still shows. |
 | `priority` | `number` | `0` | — | — | — | Its priority: only a higher one interrupts it. |
 
@@ -37,7 +37,7 @@ struct BarkView {
   field spans List.TextSpan "Localized Yarn attributes in Unicode scalar offsets."
   field speaker SpeakerView "The bark's speaker (entity: who says it)."
   field voice String "Its voice clip (empty: none), played as a conversation's."
-  field voiceLeft u32 "Ticks of its voice still to play."
+  field voiceTicksLeft u32 "Ticks of its voice still to play."
   field ticksLeft u32 "Ticks it still shows."
   field priority i32 "Its priority: only a higher one interrupts it."
 }

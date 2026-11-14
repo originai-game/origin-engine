@@ -97,15 +97,15 @@
   }
 
   component PlatformerController {
-    doc "A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayLayers`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`)."
+    doc "A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayMask`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`)."
     guide "physics §6"
-    field moveX f32 "The run input, -1 (left) to 1 (right). Set it every tick." {
+    field run f32 "The run input, -1 (left) to 1 (right). Set it every tick." {
       min -1
       max 1
     }
     field jump bool "Held to jump: a press is buffered for jumpBuffer; releasing while rising cuts the jump."
     field down bool "Held to drop through a one-way platform."
-    field impulse Vector2 "A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on." {
+    field addVelocity Vector2 "A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on." {
       guide "physics §6"
       unit mps
     }
@@ -215,7 +215,7 @@
       unit s
       tunable true
     }
-    field oneWayLayers u32 "The collision layers that are one-way platforms (solid from above only), as bits."
+    field oneWayMask u32 "The collision layers that are one-way platforms (solid from above only), as bits."
     field cornerCorrection f32 "How far a rising jump that clips a ceiling corner is nudged sideways past it (0: never)." {
       default 0.15
       min 0

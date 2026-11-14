@@ -153,7 +153,7 @@ module story {
     field spans List.TextSpan "Localized Yarn attributes in Unicode scalar offsets. The character span covers the full Speaker: prefix, including its whitespace."
     field voice String "Its voice clip's asset path (empty: none). og.story plays it on its own entity (an og.AudioSource on the sfx bus) from the tick after the line is shown, and stops it when the line moves on."
     field voiceTicks u32 "The voice's length in ticks (0: no voice, or one that did not load)."
-    field voiceLeft u32 "Ticks of the voice still to play: voiceTicks until it starts, 0 once it has ended (advance then, for auto-advance)."
+    field voiceTicksLeft u32 "Ticks of the voice still to play: voiceTicks until it starts, 0 once it has ended (advance then, for auto-advance)."
     field speaker SpeakerView "Who says it."
     field shot String "The camera shot it is shown in: its `shot`, else its node's (a virtual camera's entity name or a cast role); empty: none. While it shows, og.story makes that og.VirtualCamera og.CameraBrain.solo, and hands the game's own solo back when no line has a shot." {
       guide "yarn §8"
@@ -199,10 +199,10 @@ module story {
     field entity Entity "Who barks."
     field topic String "The topic it asks for."
     field dialogue String "Only this dialogue's barks (empty: any)."
-    field every u32 "Ticks between asks (0 stops it)." {
+    field everyTicks u32 "Ticks between asks (0 stops it)." {
       default 600
     }
-    field jitter u32 "Up to this many ticks more each time, drawn on the story's stream."
+    field jitterTicks u32 "Up to this many ticks more each time, drawn on the story's stream."
   }
 
   struct BarkView {
@@ -217,7 +217,7 @@ module story {
     field spans List.TextSpan "Localized Yarn attributes in Unicode scalar offsets."
     field speaker SpeakerView "The bark's speaker (entity: who says it)."
     field voice String "Its voice clip (empty: none), played as a conversation's."
-    field voiceLeft u32 "Ticks of its voice still to play."
+    field voiceTicksLeft u32 "Ticks of its voice still to play."
     field ticksLeft u32 "Ticks it still shows."
     field priority i32 "Its priority: only a higher one interrupts it."
   }
@@ -350,7 +350,7 @@ module story {
   }
 
   fn ambient {
-    doc "Let an entity bark a topic on its own, every `every` ticks (and up to `jitter` more), as og.story.bark would; `every` 0 stops it. In saves; a despawned entity stops."
+    doc "Let an entity bark a topic on its own, every `everyTicks` ticks (and up to `jitterTicks` more), as og.story.bark would; `everyTicks` 0 stops it. In saves; a despawned entity stops."
     aliases "idle barks, ambient dialogue, chatter, random lines, background banter"
     param world World "The world."
     param desc AmbientDesc "Who, which topic and how often."

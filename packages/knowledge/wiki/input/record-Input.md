@@ -6,7 +6,7 @@ Module [`input`](../input.md) · [index](../index.md)
 
 ### `og.Input` (resource)
 
-The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods.
+The input state at the start of this tick (og-input's og.Input, version 3). Edges (justPressed, justReleased) last exactly one tick; read the state through the methods.
 
 Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4.
 
@@ -20,8 +20,8 @@ Token `og.Input`, registered under the schema name `og.Input`; its value type is
 | `pointerInside` | `boolean` | `false` | — | — | read only | Whether a pointer event has placed the pointer over the play surface. |
 | `wheel` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Scroll accumulated during this tick. |
 | `buttons` | `number` | `0` | — | — | read only | Held pointer buttons, as a mask. |
-| `buttonsPressed` | `number` | `0` | — | — | read only | Buttons that went down this tick. |
-| `buttonsReleased` | `number` | `0` | — | — | read only | Buttons that went up this tick. |
+| `buttonsJustPressed` | `number` | `0` | — | — | read only | Buttons that went down this tick. |
+| `buttonsJustReleased` | `number` | `0` | — | — | read only | Buttons that went up this tick. |
 | `buttonsReleaseNext` | `number` | `0` | — | — | read only | Buttons a click releases at the end of the next tick. |
 
 #### Keys held
@@ -33,23 +33,23 @@ Token `og.Input`, registered under the schema name `og.Input`; its value type is
 | `keys2` | `number` | `0` | — | — | read only | Held keys, word 2: codes 64 to 95 of KEY_CODES. |
 | `keys3` | `number` | `0` | — | — | read only | Held keys, word 3: codes 96 to 127 of KEY_CODES. |
 
-#### Keys pressed this tick
+#### Keys that went down this tick
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `pressed0` | `number` | `0` | — | — | read only | Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES. |
-| `pressed1` | `number` | `0` | — | — | read only | Keys that went down this tick, word 1: codes 32 to 63 of KEY_CODES. |
-| `pressed2` | `number` | `0` | — | — | read only | Keys that went down this tick, word 2: codes 64 to 95 of KEY_CODES. |
-| `pressed3` | `number` | `0` | — | — | read only | Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES. |
+| `justPressed0` | `number` | `0` | — | — | read only | Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES. |
+| `justPressed1` | `number` | `0` | — | — | read only | Keys that went down this tick, word 1: codes 32 to 63 of KEY_CODES. |
+| `justPressed2` | `number` | `0` | — | — | read only | Keys that went down this tick, word 2: codes 64 to 95 of KEY_CODES. |
+| `justPressed3` | `number` | `0` | — | — | read only | Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES. |
 
-#### Keys released this tick
+#### Keys that went up this tick
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `released0` | `number` | `0` | — | — | read only | Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES. |
-| `released1` | `number` | `0` | — | — | read only | Keys that went up this tick, word 1: codes 32 to 63 of KEY_CODES. |
-| `released2` | `number` | `0` | — | — | read only | Keys that went up this tick, word 2: codes 64 to 95 of KEY_CODES. |
-| `released3` | `number` | `0` | — | — | read only | Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES. |
+| `justReleased0` | `number` | `0` | — | — | read only | Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES. |
+| `justReleased1` | `number` | `0` | — | — | read only | Keys that went up this tick, word 1: codes 32 to 63 of KEY_CODES. |
+| `justReleased2` | `number` | `0` | — | — | read only | Keys that went up this tick, word 2: codes 64 to 95 of KEY_CODES. |
+| `justReleased3` | `number` | `0` | — | — | read only | Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES. |
 
 #### Keys a press releases next tick
 
@@ -62,7 +62,7 @@ Token `og.Input`, registered under the schema name `og.Input`; its value type is
 
 ```ogt
 resource Input {
-  doc "The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods."
+  doc "The input state at the start of this tick (og-input's og.Input, version 3). Edges (justPressed, justReleased) last exactly one tick; read the state through the methods."
   doc "Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4."
   group "Pointer"
   field pointer Vector2 "The pointer position." {
@@ -80,10 +80,10 @@ resource Input {
   field buttons u32 "Held pointer buttons, as a mask." {
     readonly true
   }
-  field buttonsPressed u32 "Buttons that went down this tick." {
+  field buttonsJustPressed u32 "Buttons that went down this tick." {
     readonly true
   }
-  field buttonsReleased u32 "Buttons that went up this tick." {
+  field buttonsJustReleased u32 "Buttons that went up this tick." {
     readonly true
   }
   field buttonsReleaseNext u32 "Buttons a click releases at the end of the next tick." {
@@ -102,30 +102,30 @@ resource Input {
   field keys3 u32 "Held keys, word 3: codes 96 to 127 of KEY_CODES." {
     readonly true
   }
-  group "Keys pressed this tick"
-  field pressed0 u32 "Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES." {
+  group "Keys that went down this tick"
+  field justPressed0 u32 "Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES." {
     readonly true
   }
-  field pressed1 u32 "Keys that went down this tick, word 1: codes 32 to 63 of KEY_CODES." {
+  field justPressed1 u32 "Keys that went down this tick, word 1: codes 32 to 63 of KEY_CODES." {
     readonly true
   }
-  field pressed2 u32 "Keys that went down this tick, word 2: codes 64 to 95 of KEY_CODES." {
+  field justPressed2 u32 "Keys that went down this tick, word 2: codes 64 to 95 of KEY_CODES." {
     readonly true
   }
-  field pressed3 u32 "Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES." {
+  field justPressed3 u32 "Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES." {
     readonly true
   }
-  group "Keys released this tick"
-  field released0 u32 "Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES." {
+  group "Keys that went up this tick"
+  field justReleased0 u32 "Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES." {
     readonly true
   }
-  field released1 u32 "Keys that went up this tick, word 1: codes 32 to 63 of KEY_CODES." {
+  field justReleased1 u32 "Keys that went up this tick, word 1: codes 32 to 63 of KEY_CODES." {
     readonly true
   }
-  field released2 u32 "Keys that went up this tick, word 2: codes 64 to 95 of KEY_CODES." {
+  field justReleased2 u32 "Keys that went up this tick, word 2: codes 64 to 95 of KEY_CODES." {
     readonly true
   }
-  field released3 u32 "Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES." {
+  field justReleased3 u32 "Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES." {
     readonly true
   }
   group "Keys a press releases next tick"
@@ -142,16 +142,16 @@ resource Input {
     readonly true
   }
   fn down {
-    doc "Whether a key is held."
+    doc "Whether a key is down."
     param key String "A KeyboardEvent.code name, such as KeyW or Space."
     returns bool
   }
-  fn pressed {
+  fn justPressed {
     doc "Whether a key went down this tick."
     param key String "A KeyboardEvent.code name."
     returns bool
   }
-  fn released {
+  fn justReleased {
     doc "Whether a key went up this tick."
     param key String "A KeyboardEvent.code name."
     returns bool
@@ -171,16 +171,16 @@ resource Input {
     returns Vector2
   }
   fn buttonDown {
-    doc "Whether a pointer button is held."
+    doc "Whether a pointer button is down."
     param button PointerButton "The button."
     returns bool
   }
-  fn buttonPressed {
+  fn buttonJustPressed {
     doc "Whether a pointer button went down this tick."
     param button PointerButton "The button."
     returns bool
   }
-  fn buttonReleased {
+  fn buttonJustReleased {
     doc "Whether a pointer button went up this tick."
     param button PointerButton "The button."
     returns bool
@@ -194,7 +194,7 @@ resource Input {
 
 #### `Input.down`
 
-Whether a key is held.
+Whether a key is down.
 
 ```ts
 Input.down(key: string): boolean
@@ -210,7 +210,7 @@ Binding symbol `og_input_down` · publish builds: kept
 
 ```ogt
 fn down {
-  doc "Whether a key is held."
+  doc "Whether a key is down."
   param key String "A KeyboardEvent.code name, such as KeyW or Space."
   returns bool
 }
@@ -218,14 +218,14 @@ fn down {
 
 <sub>Module `input` line 853</sub>
 
-<a id="member-Input-pressed"></a>
+<a id="member-Input-justPressed"></a>
 
-#### `Input.pressed`
+#### `Input.justPressed`
 
 Whether a key went down this tick.
 
 ```ts
-Input.pressed(key: string): boolean
+Input.justPressed(key: string): boolean
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -234,10 +234,10 @@ Input.pressed(key: string): boolean
 
 **Returns** `boolean`.
 
-Binding symbol `og_input_pressed` · publish builds: kept
+Binding symbol `og_input_just_pressed` · publish builds: kept
 
 ```ogt
-fn pressed {
+fn justPressed {
   doc "Whether a key went down this tick."
   param key String "A KeyboardEvent.code name."
   returns bool
@@ -246,14 +246,14 @@ fn pressed {
 
 <sub>Module `input` line 858</sub>
 
-<a id="member-Input-released"></a>
+<a id="member-Input-justReleased"></a>
 
-#### `Input.released`
+#### `Input.justReleased`
 
 Whether a key went up this tick.
 
 ```ts
-Input.released(key: string): boolean
+Input.justReleased(key: string): boolean
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -262,10 +262,10 @@ Input.released(key: string): boolean
 
 **Returns** `boolean`.
 
-Binding symbol `og_input_released` · publish builds: kept
+Binding symbol `og_input_just_released` · publish builds: kept
 
 ```ogt
-fn released {
+fn justReleased {
   doc "Whether a key went up this tick."
   param key String "A KeyboardEvent.code name."
   returns bool
@@ -342,7 +342,7 @@ fn axis2 {
 
 #### `Input.buttonDown`
 
-Whether a pointer button is held.
+Whether a pointer button is down.
 
 ```ts
 Input.buttonDown(button: PointerButton): boolean
@@ -358,7 +358,7 @@ Binding symbol `og_input_button_down` · publish builds: kept
 
 ```ogt
 fn buttonDown {
-  doc "Whether a pointer button is held."
+  doc "Whether a pointer button is down."
   param button PointerButton "The button."
   returns bool
 }
@@ -366,14 +366,14 @@ fn buttonDown {
 
 <sub>Module `input` line 882</sub>
 
-<a id="member-Input-buttonPressed"></a>
+<a id="member-Input-buttonJustPressed"></a>
 
-#### `Input.buttonPressed`
+#### `Input.buttonJustPressed`
 
 Whether a pointer button went down this tick.
 
 ```ts
-Input.buttonPressed(button: PointerButton): boolean
+Input.buttonJustPressed(button: PointerButton): boolean
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -382,10 +382,10 @@ Input.buttonPressed(button: PointerButton): boolean
 
 **Returns** `boolean`.
 
-Binding symbol `og_input_button_pressed` · publish builds: kept
+Binding symbol `og_input_button_just_pressed` · publish builds: kept
 
 ```ogt
-fn buttonPressed {
+fn buttonJustPressed {
   doc "Whether a pointer button went down this tick."
   param button PointerButton "The button."
   returns bool
@@ -394,14 +394,14 @@ fn buttonPressed {
 
 <sub>Module `input` line 887</sub>
 
-<a id="member-Input-buttonReleased"></a>
+<a id="member-Input-buttonJustReleased"></a>
 
-#### `Input.buttonReleased`
+#### `Input.buttonJustReleased`
 
 Whether a pointer button went up this tick.
 
 ```ts
-Input.buttonReleased(button: PointerButton): boolean
+Input.buttonJustReleased(button: PointerButton): boolean
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -410,10 +410,10 @@ Input.buttonReleased(button: PointerButton): boolean
 
 **Returns** `boolean`.
 
-Binding symbol `og_input_button_released` · publish builds: kept
+Binding symbol `og_input_button_just_released` · publish builds: kept
 
 ```ogt
-fn buttonReleased {
+fn buttonJustReleased {
   doc "Whether a pointer button went up this tick."
   param button PointerButton "The button."
   returns bool

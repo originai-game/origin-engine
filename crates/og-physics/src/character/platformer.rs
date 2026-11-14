@@ -73,16 +73,16 @@ pub(crate) fn platformers(
         };
         let centre = centre + ride;
 
-        // The game's impulse, taken once: an upward one leaves the ground.
+        // The game's `addVelocity`, taken once: an upward one leaves the ground.
         let was_grounded = p.grounded;
-        if p.impulse != Vec2::ZERO {
-            p.velocity += Vec3::new(p.impulse.x, p.impulse.y, 0.0);
-            if p.impulse.y > 0.0 {
+        if p.add_velocity != Vec2::ZERO {
+            p.velocity += Vec3::new(p.add_velocity.x, p.add_velocity.y, 0.0);
+            if p.add_velocity.y > 0.0 {
                 p.grounded = false;
                 p.jumping = false;
                 p.coyote = 0.0;
             }
-            p.impulse = Vec2::ZERO;
+            p.add_velocity = Vec2::ZERO;
         }
 
         // Timers and the jump press.
@@ -102,9 +102,9 @@ pub(crate) fn platformers(
         if p.grounded {
             p.air_jumps_left = p.air_jumps;
         }
-        if p.down && p.grounded && p.one_way_layers != 0 {
+        if p.down && p.grounded && p.one_way_mask != 0 {
             // Standing on a one-way platform? Drop through it.
-            if ground_is_one_way(&sim.world, p.ground, p.one_way_layers) {
+            if ground_is_one_way(&sim.world, p.ground, p.one_way_mask) {
                 p.drop_time = 0.25;
                 p.grounded = false;
             }
@@ -113,7 +113,7 @@ pub(crate) fn platformers(
         // Run.
         let mut vx = p.velocity.x;
         let mut vy = p.velocity.y;
-        let input = p.move_x.clamp(-1.0, 1.0);
+        let input = p.run.clamp(-1.0, 1.0);
         if p.wall_lock <= 0.0 {
             let target = input * p.max_speed;
             let (accel, decel) = if p.grounded {
@@ -187,7 +187,7 @@ pub(crate) fn platformers(
         // The move, with one-way platforms passable from below.
         let feet = centre.y - half_height;
         let dropping = p.drop_time > 0.0;
-        let one_way = p.one_way_layers;
+        let one_way = p.one_way_mask;
         let rising = vy;
         let predicate = move |_: rp::ColliderHandle, c: &rp::Collider| {
             one_way == 0
