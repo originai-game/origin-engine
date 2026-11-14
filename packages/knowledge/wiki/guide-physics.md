@@ -87,8 +87,10 @@ is absorbed before it counts.
 <a id="guide-physics-2"></a>
 ### `physics §2` Units, scales and the profile
 
-Metres, kilograms, seconds, radians. Keep moving things between about
-0.05 m and 100 m; scale the game, not gravity (`determinism §2`).
+Metres, kilograms, seconds, and radians for every rotation, joint limit
+and steering angle; a slope (`maxSlope`) is in degrees. Keep moving things
+between about 0.05 m and 100 m; scale the game, not gravity
+(`determinism §2`).
 
 The profile is project.ogt's `profile "2d"` or `"3d"`, and the same
 components serve both. In 2D (rapier2d) bodies move in the xy plane and turn

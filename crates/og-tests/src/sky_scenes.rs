@@ -63,7 +63,7 @@ pub fn physical_light(
     hours: f32,
     air: PhysicalAtmosphere,
 ) -> og_render::DayNightLook {
-    let look = day_night(hours, 25.0, -20.0).with_atmosphere(&air);
+    let look = day_night(hours, 25.0, 70.0).with_atmosphere(&air);
     scene.lighting.light = DirectionalLight {
         direction_to_light: look.light_direction,
         color: look.light_color,

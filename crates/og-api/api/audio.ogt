@@ -152,21 +152,21 @@ module audio {
       max 10
       tunable true
     }
-    field coneInnerAngle f32 "Directivity, as three.js PositionalAudio.setDirectionalCone and Web Audio's PannerNode: a spatial source plays at full volume while the listener is within this full angle about the source's +Z; 360 with coneOuterAngle 360 is omnidirectional." {
-      default 360
+    field innerAngle f32 "Directivity: a spatial source plays at full volume while the listener is within this half-angle of the source's +Z, as SpotLight.angle counts a cone; pi with outerAngle pi is omnidirectional. Half of Web Audio's and three.js PositionalAudio's coneInnerAngle, in radians." {
+      default 3.1415927
       min 0
-      max 360
-      unit deg
+      max 3.1416
+      unit rad
       tunable true
     }
-    field coneOuterAngle f32 "Past this full angle about the source's +Z it plays at coneOuterGain; between coneInnerAngle and this the gain falls linearly with the angle." {
-      default 360
+    field outerAngle f32 "Past this half-angle from the source's +Z it plays at outerGain; between innerAngle and this the gain falls linearly with the angle." {
+      default 3.1415927
       min 0
-      max 360
-      unit deg
+      max 3.1416
+      unit rad
       tunable true
     }
-    field coneOuterGain f32 "The gain outside coneOuterAngle." {
+    field outerGain f32 "The gain outside outerAngle." {
       min 0
       max 1
       tunable true

@@ -99,8 +99,8 @@ Field units the docs and Tune use.
 | `m` | metres |
 | `s` | seconds of simulation time |
 | `ms` | milliseconds |
-| `rad` | radians |
-| `deg` | degrees |
+| `rad` | radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle |
+| `deg` | degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract |
 | `hz` | ticks or cycles per second |
 | `ticks` | fixed simulation steps |
 | `cssPx` | CSS pixels of the play surface, origin at the top left |

@@ -138,7 +138,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     rs.scene.lighting.environment.intensity = v.intensity.max(0.0);
     rs.scene.lighting.environment_map = Some(og_render::EnvironmentMap {
         map,
-        rotation: v.rotation.to_radians(),
+        rotation: v.rotation,
         background_intensity: v.background_intensity.max(0.0),
         blend,
     });

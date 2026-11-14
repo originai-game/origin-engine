@@ -563,15 +563,16 @@ fn doppler(ear: &Ear, p: Vec3, v: Vec3, s: &AudioSource, speed: f32) -> f32 {
 }
 
 /// Web Audio's PannerNode cone gain (three.js PositionalAudio's
-/// `setDirectionalCone`): 1 while the listener is within half of
-/// `coneInnerAngle` of the source's forward (its world +Z, as three.js
-/// orients a PositionalAudio), `coneOuterGain` past half of
-/// `coneOuterAngle`, linear in the angle between. Exactly 1 for the
-/// default 360/360. The angle is og-core's deterministic `atan2`.
+/// `setDirectionalCone`), its cone given as half-angles in radians: 1
+/// while the listener is within `innerAngle` of the source's forward (its
+/// world +Z, as three.js orients a PositionalAudio), `outerGain` past
+/// `outerAngle`, linear in the angle between. Exactly 1 for the default
+/// pi/pi. The angle is og-core's deterministic `atan2`.
 fn cone_gain(s: &AudioSource, t: &Transform, ear: Vec3) -> f32 {
-    let inner = s.cone_inner_angle.clamp(0.0, 360.0);
-    let outer = s.cone_outer_angle.clamp(0.0, 360.0);
-    if inner >= 360.0 && outer >= 360.0 {
+    use std::f32::consts::PI;
+    let hi = s.inner_angle.clamp(0.0, PI);
+    let ho = s.outer_angle.clamp(0.0, PI);
+    if hi >= PI && ho >= PI {
         return 1.0;
     }
     let to = (ear - t.position).normalize_or_zero();
@@ -580,9 +581,8 @@ fn cone_gain(s: &AudioSource, t: &Transform, ear: Vec3) -> f32 {
         return 1.0;
     }
     let c = to.dot(forward).clamp(-1.0, 1.0);
-    let angle = og_core::math::atan2((1.0 - c * c).max(0.0).sqrt(), c).to_degrees();
-    let (hi, ho) = (inner * 0.5, outer * 0.5);
-    let outer_gain = s.cone_outer_gain.clamp(0.0, 1.0);
+    let angle = og_core::math::atan2((1.0 - c * c).max(0.0).sqrt(), c);
+    let outer_gain = s.outer_gain.clamp(0.0, 1.0);
     if angle <= hi {
         1.0
     } else if angle >= ho {

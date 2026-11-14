@@ -18,7 +18,7 @@ Token `og.DayNight`, registered under the schema name `og.DayNight`; its value t
 | `start` | `number` | `9` | 0 … 24 | — | tunable | The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset). |
 | `speed` | `number` | `0.05` | 0 … 24 | — | tunable | Game hours per simulated second (0.05: a day in 8 minutes; 0 holds the time). |
 | `tilt` | `number` | `25` | 0 … 89 | `deg` | tunable | How far the sun's path leans from overhead. |
-| `azimuth` | `number` | `0` | — | `deg` | tunable | Where the sun rises, turned about +y from +x. |
+| `azimuth` | `number` | `90` | — | `deg` | tunable | The heading the sun rises at: about +Y from +Z towards +X, so 0 rises in +Z and 90 in +X. Its path leans by tilt towards the heading azimuth + 90. |
 | `lightIntensity` | `number` | `1` | 0 … 10 | — | tunable | A multiplier on the sun and moon light. |
 | `tintFog` | `boolean` | `true` | — | — | — | Turn the og.Fog colour towards the horizon's. |
 | `step` | `number` | `10` | 1 … 120 | — | tunable | Game minutes between steps of the sky's colours (the image-based light follows the sky as drawn). |
@@ -49,7 +49,8 @@ resource DayNight {
     unit deg
     tunable true
   }
-  field azimuth f32 "Where the sun rises, turned about +y from +x." {
+  field azimuth f32 "The heading the sun rises at: about +Y from +Z towards +X, so 0 rises in +Z and 90 in +X. Its path leans by tilt towards the heading azimuth + 90." {
+    default 90
     unit deg
     tunable true
   }

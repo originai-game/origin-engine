@@ -289,9 +289,9 @@ Records (`schema.rs`, IDL module `audio`):
 | record | field | type | default | meaning |
 |---|---|---|---|---|
 | `og.AudioSource` | `dopplerFactor` | f32 | 1 (0–10, tunable) | how much motion shifts a spatial source's pitch; 0 off |
-| | `coneInnerAngle` | f32 | 360 (deg) | full volume within this full angle about the source's +Z |
-| | `coneOuterAngle` | f32 | 360 (deg) | `coneOuterGain` past this full angle |
-| | `coneOuterGain` | f32 | 0 (0–1) | the gain outside the outer angle |
+| | `innerAngle` | f32 | π (rad) | full volume within this half-angle of the source's +Z |
+| | `outerAngle` | f32 | π (rad) | `outerGain` past this half-angle |
+| | `outerGain` | f32 | 0 (0–1) | the gain outside the outer angle |
 | `og.AudioListener` | `dopplerFactor` | f32 | 1 (0–10) | scales every source's shift; 0 turns Doppler off for the listener |
 | | `panningModel` | enum | `equalpower` | `equalpower` (speakers) or `hrtf` (headphones) |
 | `og.Audio` | `speedOfSound` | f32 | 343.3 (m/s) | what Doppler divides by |
@@ -316,8 +316,9 @@ Records (`schema.rs`, IDL module `audio`):
 - **Cones** (Web Audio's PannerNode cone, three.js PositionalAudio's
   `setDirectionalCone`): with θ the angle between the source's world +Z
   (three.js orients a PositionalAudio by +Z) and the listener, the gain is
-  1 for θ ≤ inner/2, `coneOuterGain` for θ ≥ outer/2, linear in θ
-  between; 360/360 is exactly 1. θ is og-core's deterministic `atan2`.
+  1 for θ ≤ `innerAngle`, `outerGain` for θ ≥ `outerAngle` (half-angles
+  in radians, half of Web Audio's cone angles), linear in θ between; π/π
+  is exactly 1. θ is og-core's deterministic `atan2`.
 - **HRTF** (`panningModel` hrtf): the tick sends op 8 `hrtf` per spatial
   voice after its play (and its params) whenever its direction in the
   listener's frame changed (x, y, z in `gain`, `pitch`, `pan`), and with

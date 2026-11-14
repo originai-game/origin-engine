@@ -4975,7 +4975,7 @@ export interface Camera {
    *
    * @default 50
    * @range 1..179
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   fov: number;
@@ -5058,7 +5058,7 @@ export interface Camera {
    *
    * @default 2
    * @range 0..
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   shakeRoll: number;
@@ -5223,9 +5223,9 @@ export interface OrbitCamera {
    */
   maxDistance: number;
   /**
-   * The horizontal angle about +Y; 0 puts the camera on the +Z side of the point.
+   * The heading of the camera from the orbited point: about +Y from +Z towards +X, so 0 puts the camera on the +Z side of the point and half pi on its +X side.
    *
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    * @tunable
    */
   azimuth: number;
@@ -5234,7 +5234,7 @@ export interface OrbitCamera {
    *
    * @default 1.1
    * @range 0..3.1416
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    * @tunable
    */
   polar: number;
@@ -5243,7 +5243,7 @@ export interface OrbitCamera {
    *
    * @default 0.05
    * @range 0..3.1416
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   minPolarAngle: number;
   /**
@@ -5251,7 +5251,7 @@ export interface OrbitCamera {
    *
    * @default 3.0916
    * @range 0..3.1416
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   maxPolarAngle: number;
   /**
@@ -5615,14 +5615,14 @@ export interface VirtualCamera {
    *
    * @default 50
    * @range 1..179
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   fov: number;
   /**
    * A turn about the view direction, applied after the look (a Dutch angle).
    *
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   roll: number;
@@ -5811,7 +5811,7 @@ export interface CameraBrain {
   /**
    * Its field of view.
    *
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @readonly written by the engine
    */
   readonly fromFov: number;
@@ -6606,7 +6606,7 @@ export interface StandardMaterialDesc {
    * The stretch's direction from the tangent (+u) towards the bitangent.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly anisotropyRotation?: number;
   /**
@@ -6704,7 +6704,7 @@ export interface StandardMaterialDesc {
    * The uv rotation of map, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly mapRotation?: number;
   /**
@@ -6723,7 +6723,7 @@ export interface StandardMaterialDesc {
    * The uv rotation of metalnessMap and roughnessMap (and the maps packed with them, as metalnessMapOffset), counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly metalnessMapRotation?: number;
   /**
@@ -6742,7 +6742,7 @@ export interface StandardMaterialDesc {
    * The uv rotation of normalMap, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly normalMapRotation?: number;
   /**
@@ -6761,7 +6761,7 @@ export interface StandardMaterialDesc {
    * The uv rotation of emissiveMap, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly emissiveMapRotation?: number;
   /**
@@ -6780,7 +6780,7 @@ export interface StandardMaterialDesc {
    * The uv rotation of aoMap, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly aoMapRotation?: number;
   // ── Wireframe ──
@@ -6796,7 +6796,7 @@ export interface StandardMaterialDesc {
    *
    * @default 0
    * @range 0..180
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   readonly wireframeAngle?: number;
   /**
@@ -7055,7 +7055,7 @@ export interface SpotLight {
    *
    * @default 0.5236
    * @range 0..1.5708
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    * @tunable
    */
   angle: number;
@@ -7452,7 +7452,7 @@ export interface Environment {
   /**
    * Turns the map about +Y, as three.js scene.environmentRotation.y: positive turns what was at +X towards -Z. The light and the background turn together.
    *
-   * @unit deg (degrees)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    * @tunable
    */
   rotation: number;
@@ -7830,7 +7830,7 @@ export interface PostEffects {
   /**
    * Directional's direction, counter-clockwise from the right (90 is vertical).
    *
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   screenBlurAngle: number;
@@ -7973,7 +7973,7 @@ export interface PostEffects {
    * Turns every hue about the grey axis (red towards green at 120); 0 is off.
    *
    * @range -180..180
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   hue: number;
@@ -8120,7 +8120,7 @@ export interface PostEffects {
    *
    * @default 3
    * @range 0..
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   shakeMaxRoll: number;
   /**
@@ -8654,7 +8654,7 @@ export interface Stylise {
    * The dot grid's angle.
    *
    * @default 45
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   halftoneAngle: number;
   /**
@@ -8694,7 +8694,7 @@ export interface Stylise {
    * The direction of the first stroke set.
    *
    * @default 45
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   hatchingAngle: number;
   /**
@@ -9149,7 +9149,7 @@ export interface MaterialStyle {
    *
    * @default 30
    * @range 0..180
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   wireframeAngle: number;
   /**
@@ -9304,7 +9304,7 @@ export interface Light2D {
    *
    * @default 0.35
    * @range 0..3.14159
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   innerAngle: number;
   /**
@@ -9312,7 +9312,7 @@ export interface Light2D {
    *
    * @default 0.6
    * @range 0..3.14159
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   outerAngle: number;
   /**
@@ -9429,7 +9429,7 @@ export interface Decal {
    *
    * @default 75
    * @range 0..90
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   angleFade: number;
   /**
@@ -9789,7 +9789,7 @@ export interface TextDesc {
    * Rotation about +z.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly rotation?: number;
   /**
@@ -9947,7 +9947,7 @@ export interface SpriteDesc {
    * Counter-clockwise rotation about the anchor.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly rotation?: number;
   // ── Colour ──
@@ -11139,14 +11139,14 @@ export interface CylinderGeometryDesc {
    * Where the side starts around y, from +Z towards +X.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly thetaStart?: number;
   /**
    * How far around the side goes; 2 pi is whole.
    *
    * @default 6.283185307179586
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly thetaLength?: number;
   /**
@@ -11298,7 +11298,7 @@ export interface TorusGeometryDesc {
    * How far around the ring goes.
    *
    * @default 6.283185307179586
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly arc?: number;
   /**
@@ -11349,14 +11349,14 @@ export interface RingGeometryDesc {
    * Where it starts, from +X towards +Y.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly thetaStart?: number;
   /**
    * How far around it goes.
    *
    * @default 6.283185307179586
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly thetaLength?: number;
   /**
@@ -11392,14 +11392,14 @@ export interface CircleGeometryDesc {
    * Where it starts, from +X towards +Y.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly thetaStart?: number;
   /**
    * How far around it goes.
    *
    * @default 6.283185307179586
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly thetaLength?: number;
   /**
@@ -11640,14 +11640,14 @@ export interface LatheGeometryDesc {
    * Where the turn starts, from +Z towards +X.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly phiStart?: number;
   /**
    * How far it turns; 2 pi is whole (clamped to it).
    *
    * @default 6.283185307179586
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly phiLength?: number;
   /**
@@ -12467,7 +12467,7 @@ export interface CameraView {
    *
    * @default 50
    * @range 1..179
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   fov: number;
@@ -14267,7 +14267,7 @@ export interface CharacterController {
    *
    * @default 45
    * @range 0..89
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   maxSlope: number;
@@ -14587,7 +14587,7 @@ export interface PlatformerController {
    *
    * @default 50
    * @range 0..89
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   maxSlope: number;
@@ -14894,7 +14894,7 @@ export interface Vehicle {
    *
    * @default 0.55
    * @range 0..1.2
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    * @tunable
    */
   maxSteer: number;
@@ -16069,7 +16069,7 @@ export interface Ragdoll {
    *
    * @default 0.9
    * @range 0..3.1
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    * @tunable
    */
   jointLimit: number;
@@ -17103,7 +17103,7 @@ export interface Sky {
    *
    * @default 1.8
    * @range 0..20
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   sunSize: number;
@@ -17151,7 +17151,7 @@ export interface Sky {
    * The moon disc's angular radius (0: no moon). It sets below the horizon and hides the stars behind it.
    *
    * @range 0..20
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   moonSize: number;
@@ -17212,14 +17212,15 @@ export interface DayNight {
    *
    * @default 25
    * @range 0..89
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   tilt: number;
   /**
-   * Where the sun rises, turned about +y from +x.
+   * The heading the sun rises at: about +Y from +Z towards +X, so 0 rises in +Z and 90 in +X. Its path leans by tilt towards the heading azimuth + 90.
    *
-   * @unit deg (degrees)
+   * @default 90
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   azimuth: number;
@@ -17250,7 +17251,7 @@ export interface DayNight {
    *
    * @default 1.6
    * @range 0..20
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   moonSize: number;
@@ -17467,10 +17468,10 @@ export interface Aurora {
    */
   curtains: number;
   /**
-   * Where the arcs lie, turned about +y from +x (the convention of og.DayNight's azimuth).
+   * The heading the arcs lie at from the world's origin: about +Y from +Z towards +X (as og.DayNight's azimuth), so 180 puts them towards -Z.
    *
-   * @default 90
-   * @unit deg (degrees)
+   * @default 180
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   direction: number;
@@ -18869,7 +18870,7 @@ export interface LookAt {
    *
    * @default 3.1416
    * @range 0..3.1416
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    * @tunable
    */
   maxYaw: number;
@@ -18878,7 +18879,7 @@ export interface LookAt {
    *
    * @default 1.5708
    * @range 0..1.5708
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    * @tunable
    */
   maxPitch: number;
@@ -18923,7 +18924,7 @@ export interface JointLimit {
    *
    * @default 3.1416
    * @range 0..3.1416
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    * @tunable
    */
   swing: number;
@@ -18932,7 +18933,7 @@ export interface JointLimit {
    *
    * @default -3.1416
    * @range -3.1416..3.1416
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    * @tunable
    */
   twistMin: number;
@@ -18941,7 +18942,7 @@ export interface JointLimit {
    *
    * @default 3.1416
    * @range -3.1416..3.1416
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    * @tunable
    */
   twistMax: number;
@@ -21235,30 +21236,30 @@ export interface AudioSource {
    */
   dopplerFactor: number;
   /**
-   * Directivity, as three.js PositionalAudio.setDirectionalCone and Web Audio's PannerNode: a spatial source plays at full volume while the listener is within this full angle about the source's +Z; 360 with coneOuterAngle 360 is omnidirectional.
+   * Directivity: a spatial source plays at full volume while the listener is within this half-angle of the source's +Z, as SpotLight.angle counts a cone; pi with outerAngle pi is omnidirectional. Half of Web Audio's and three.js PositionalAudio's coneInnerAngle, in radians.
    *
-   * @default 360
-   * @range 0..360
-   * @unit deg (degrees)
+   * @default 3.1415927
+   * @range 0..3.1416
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    * @tunable
    */
-  coneInnerAngle: number;
+  innerAngle: number;
   /**
-   * Past this full angle about the source's +Z it plays at coneOuterGain; between coneInnerAngle and this the gain falls linearly with the angle.
+   * Past this half-angle from the source's +Z it plays at outerGain; between innerAngle and this the gain falls linearly with the angle.
    *
-   * @default 360
-   * @range 0..360
-   * @unit deg (degrees)
+   * @default 3.1415927
+   * @range 0..3.1416
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    * @tunable
    */
-  coneOuterAngle: number;
+  outerAngle: number;
   /**
-   * The gain outside coneOuterAngle.
+   * The gain outside outerAngle.
    *
    * @range 0..1
    * @tunable
    */
-  coneOuterGain: number;
+  outerGain: number;
   // ── Voice and routing ──
   /**
    * Past Audio.maxVoices it goes virtual instead of being culled: silent, its playhead running on (a one-shot still ends on its tick), and heard again from where it would be, fading in, once it stands within the cap. Without it the source is culled (SOUND_CULLED, playing false).
@@ -22412,7 +22413,7 @@ export interface Steering {
   /**
    * The wander angle (written by og.nav).
    *
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    * @readonly written by the engine
    */
   readonly wanderAngle: number;
@@ -22637,7 +22638,7 @@ export interface NavShape {
    * orientedBox: its turn about +y.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly yaw?: number;
   /**
@@ -23109,7 +23110,7 @@ export interface Perception {
    *
    * @default 120
    * @range 0..360
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    * @tunable
    */
   fov: number;
@@ -26905,7 +26906,7 @@ export interface MassInstance {
    * Its starting rotation, clockwise.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly rotation?: number;
 }
@@ -28319,7 +28320,7 @@ export interface DescribedCamera {
   /**
    * The vertical field of view (perspective).
    *
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   readonly fov: number | null;
   /**
@@ -29386,7 +29387,7 @@ export interface TerrainSample {
   /**
    * The normal's angle from straight up.
    *
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   readonly slope: number;
   /** Whether the point is over the terrain (outside, the nearest edge answers). */
@@ -29615,7 +29616,7 @@ export interface TerrainLayerDesc {
    *
    * @default 0
    * @range 0..90
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   readonly projectSlope?: number;
   /**
@@ -29672,7 +29673,7 @@ export interface TerrainLayerDesc {
    *
    * @default 0
    * @range 0..90
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   readonly slopeMin?: number;
   /**
@@ -29680,7 +29681,7 @@ export interface TerrainLayerDesc {
    *
    * @default 90
    * @range 0..90
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   readonly slopeMax?: number;
   /**
@@ -29688,7 +29689,7 @@ export interface TerrainLayerDesc {
    *
    * @default 4
    * @range 0..90
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   readonly slopeFade?: number;
   /**
@@ -31347,7 +31348,7 @@ export interface ArtShape {
    *
    * @default 30
    * @range 0..180
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   normalAngle: number;
   /**
@@ -31448,28 +31449,28 @@ export interface ArtCamera {
    * With fixedAngle: how far below the horizon the camera looks (0 side-on, 90 straight down, 30 the 2:1 pixel isometric, 35.264 true isometric).
    *
    * @range -90..90
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   pitch: number;
   /**
    * With fixedAngle: its turn about the vertical axis (45 for isometric).
    *
    * @range -180..180
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   yaw: number;
   /**
    * The narrowest vertical field of view a perspective camera of the style takes; 0 is no limit.
    *
    * @range 0..179
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   fovMin: number;
   /**
    * The widest vertical field of view a perspective camera of the style takes; 0 is no limit.
    *
    * @range 0..179
-   * @unit deg (degrees)
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   fovMax: number;
   /**
@@ -31590,7 +31591,7 @@ export interface PlaceGoalDesc {
    * Its facing: 0 looks down +Z, π/2 down +X.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly heading?: number;
   /**
@@ -31613,7 +31614,7 @@ export interface FaceGoalDesc {
    * The facing: 0 looks down +Z, π/2 down +X.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly heading?: number;
   /**
@@ -31657,7 +31658,7 @@ export interface WalkGoalDesc {
    * Facing after arrival; omitted keeps the travel heading. The goal ends only after this turn completes.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly arrivalHeading?: number;
   /**
@@ -31705,7 +31706,7 @@ export interface JumpGoalDesc {
    * The way it faces and travels: 0 looks down +Z, π/2 down +X; omitted keeps its facing when the jump starts. It turns there at turnSpeed while preparing.
    *
    * @default 0
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly heading?: number;
   /**
@@ -31766,7 +31767,7 @@ export interface LookAtDesc {
    *
    * @default 1.92
    * @range 0..3.141593
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly maxYaw?: number;
   /**
@@ -31774,7 +31775,7 @@ export interface LookAtDesc {
    *
    * @default 0.6
    * @range 0..1.570796
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly maxPitch?: number;
   /**
@@ -31847,7 +31848,7 @@ export interface MotionStatus {
   /**
    * The heading the current goal faces (walkTo: towards its target).
    *
-   * @unit rad (radians)
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   readonly heading: number;
   /**
@@ -35320,7 +35321,7 @@ export declare namespace og {
    * A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded.
    * A one-shot of F frames at rate R and pitch p started in tick S ends in tick S + ceil(F * tickRate / (R * p)) - 1. A despawned entity's voice is silenced without an event.
    */
-  const AudioSource: ComponentType<{ readonly sound: FieldSpec<"Sound">; readonly bus: FieldSpec<"AudioBus">; readonly volume: FieldSpec<"f32">; readonly playbackRate: FieldSpec<"f32">; readonly pan: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f32">; readonly loopEnd: FieldSpec<"f32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly rolloffFactor: FieldSpec<"f32">; readonly playing: FieldSpec<"bool">; readonly priority: FieldSpec<"u32">; readonly lowpass: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly distanceCutoff: FieldSpec<"f32">; readonly startAt: FieldSpec<"f64">; readonly startOffset: FieldSpec<"f64">; readonly fade: FieldSpec<"f32">; readonly dopplerFactor: FieldSpec<"f32">; readonly coneInnerAngle: FieldSpec<"f32">; readonly coneOuterAngle: FieldSpec<"f32">; readonly coneOuterGain: FieldSpec<"f32">; readonly virtualize: FieldSpec<"bool">; readonly retrigger: FieldSpec<"bool">; readonly userBus: FieldSpec<"u32"> }, AudioSource>;
+  const AudioSource: ComponentType<{ readonly sound: FieldSpec<"Sound">; readonly bus: FieldSpec<"AudioBus">; readonly volume: FieldSpec<"f32">; readonly playbackRate: FieldSpec<"f32">; readonly pan: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f32">; readonly loopEnd: FieldSpec<"f32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly rolloffFactor: FieldSpec<"f32">; readonly playing: FieldSpec<"bool">; readonly priority: FieldSpec<"u32">; readonly lowpass: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly distanceCutoff: FieldSpec<"f32">; readonly startAt: FieldSpec<"f64">; readonly startOffset: FieldSpec<"f64">; readonly fade: FieldSpec<"f32">; readonly dopplerFactor: FieldSpec<"f32">; readonly innerAngle: FieldSpec<"f32">; readonly outerAngle: FieldSpec<"f32">; readonly outerGain: FieldSpec<"f32">; readonly virtualize: FieldSpec<"bool">; readonly retrigger: FieldSpec<"bool">; readonly userBus: FieldSpec<"u32"> }, AudioSource>;
   /**
    * Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (three.js's convention). The first listener in query order is used; with none, the origin looking down -Z.
    * See `audio §2`.

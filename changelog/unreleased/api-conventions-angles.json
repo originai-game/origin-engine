@@ -1,0 +1,48 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {
+      "member": "og.AudioSource.innerAngle, og.AudioSource.outerAngle, og.AudioSource.outerGain",
+      "change": "Renamed from coneInnerAngle, coneOuterAngle and coneOuterGain, and the two angles are half-angles in radians, as SpotLight.angle and Light2D.innerAngle give a cone; they were full angles in degrees (Web Audio's). Range 0 to pi; the defaults 360 are pi (omnidirectional). outerGain keeps its value.",
+      "fix": "Rename the three fields and replace each angle with old / 2 * pi / 180: 360 becomes Math.PI, 90 becomes Math.PI / 4, 240 becomes 2 * Math.PI / 3. In code and in scene text.",
+      "find": [
+        "coneInnerAngle",
+        "coneOuterAngle",
+        "coneOuterGain"
+      ]
+    },
+    {
+      "member": "og.Environment.rotation",
+      "change": "In radians, as three.js scene.environmentRotation.y and every other rotation of the API; it was degrees. The sense is unchanged (positive turns what was at +X towards -Z). A value left in degrees turns the map many times round.",
+      "fix": "Multiply an explicit rotation by Math.PI / 180 (90 becomes Math.PI / 2), in code and in scene text. An environment asset's own `rotation` line (the cook's, in degrees) is unchanged.",
+      "find": [
+        "og.Environment",
+        "rotation"
+      ]
+    },
+    {
+      "member": "og.DayNight.azimuth",
+      "change": "A heading, as every horizontal direction given as an angle: about +Y from +Z towards +X, still in degrees. It was counted from +X towards -Z. The default 0 is 90, so the default sun rises in +X as before.",
+      "fix": "Add 90 to an explicit azimuth (0 becomes 90, -20 becomes 70).",
+      "find": [
+        "azimuth"
+      ]
+    },
+    {
+      "member": "og.Aurora.direction",
+      "change": "A heading, about +Y from +Z towards +X, still in degrees; it was counted from +X towards -Z. The default 90 is 180, so the default arcs still lie towards -Z.",
+      "fix": "Add 90 to an explicit direction (90 becomes 180, 0 becomes 90).",
+      "find": [
+        "og.Aurora",
+        "direction"
+      ]
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.OrbitCamera.azimuth",
+      "summary": "The doc states its sense: the heading of the camera from the orbited point, from +Z towards +X (unchanged)."
+    },
+    "The angle rule is stated on the units: radians for every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone (a half-angle); degrees for a field of view (the full angle), slopes, the sky's angles, camera roll, and the angles of post effects, styles and the art contract. The physics guide no longer says every angle is in radians (maxSlope is degrees)."
+  ]
+}

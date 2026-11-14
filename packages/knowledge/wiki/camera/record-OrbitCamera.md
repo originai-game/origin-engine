@@ -22,7 +22,7 @@ Token `og.OrbitCamera`, registered under the schema name `og.OrbitCamera`; its v
 | `distance` | `number` | `10` | ≥ 0.01 | `m` | tunable | How far the camera is from the orbited point, as three.js OrbitControls' distance. |
 | `minDistance` | `number` | `1` | ≥ 0.01 | `m` | — | The closest the wheel zooms in, as three.js OrbitControls.minDistance. |
 | `maxDistance` | `number` | `100` | ≥ 0.01 | `m` | — | The farthest the wheel zooms out, as three.js OrbitControls.maxDistance. |
-| `azimuth` | `number` | `0` | — | `rad` | tunable | The horizontal angle about +Y; 0 puts the camera on the +Z side of the point. |
+| `azimuth` | `number` | `0` | — | `rad` | tunable | The heading of the camera from the orbited point: about +Y from +Z towards +X, so 0 puts the camera on the +Z side of the point and half pi on its +X side. |
 | `polar` | `number` | `1.1` | 0 … 3.1416 | `rad` | tunable | The angle from +Y: near 0 looks straight down, half pi is level with the point. |
 | `minPolarAngle` | `number` | `0.05` | 0 … 3.1416 | `rad` | — | The smallest polar angle a drag reaches, as three.js OrbitControls.minPolarAngle. |
 | `maxPolarAngle` | `number` | `3.0916` | 0 … 3.1416 | `rad` | — | The largest polar angle a drag reaches, as three.js OrbitControls.maxPolarAngle. |
@@ -60,7 +60,7 @@ component OrbitCamera {
     min 0.01
     unit m
   }
-  field azimuth f32 "The horizontal angle about +Y; 0 puts the camera on the +Z side of the point." {
+  field azimuth f32 "The heading of the camera from the orbited point: about +Y from +Z towards +X, so 0 puts the camera on the +Z side of the point and half pi on its +X side." {
     unit rad
     tunable true
   }

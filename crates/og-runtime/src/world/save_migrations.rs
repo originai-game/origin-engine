@@ -346,7 +346,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         from: 1,
         to: 2,
         note: "damping is a rate: the share kept per tick becomes the decay per second that keeps as much at the save's tick rate, (1 / keep - 1) / dt",
-        run: Some(|e| revalued(e, "og.Rope", 2, "damping", rate_of_keep_per_tick)),
+        run: Some(|e| {
+            revalued(
+                e,
+                "og.Rope",
+                2,
+                &[("damping", "damping", rate_of_keep_per_tick)],
+            )
+        }),
     },
     Migration {
         target: Target::Record,
@@ -354,7 +361,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         from: 2,
         to: 3,
         note: "damping is a rate: the share kept per tick becomes the decay per second that keeps as much at the save's tick rate",
-        run: Some(|e| revalued(e, "og.Cloth", 3, "damping", rate_of_keep_per_tick)),
+        run: Some(|e| {
+            revalued(
+                e,
+                "og.Cloth",
+                3,
+                &[("damping", "damping", rate_of_keep_per_tick)],
+            )
+        }),
     },
     Migration {
         target: Target::Record,
@@ -362,7 +376,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         from: 2,
         to: 3,
         note: "damping is a rate: the share kept per tick becomes the decay per second that keeps as much at the save's tick rate",
-        run: Some(|e| revalued(e, "og.Garment", 3, "damping", rate_of_keep_per_tick)),
+        run: Some(|e| {
+            revalued(
+                e,
+                "og.Garment",
+                3,
+                &[("damping", "damping", rate_of_keep_per_tick)],
+            )
+        }),
     },
     Migration {
         target: Target::Record,
@@ -370,7 +391,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         from: 2,
         to: 3,
         note: "damping is a rate: the share kept per tick becomes the decay per second that keeps as much at the save's tick rate",
-        run: Some(|e| revalued(e, "og.SoftBody", 3, "damping", rate_of_keep_per_tick)),
+        run: Some(|e| {
+            revalued(
+                e,
+                "og.SoftBody",
+                3,
+                &[("damping", "damping", rate_of_keep_per_tick)],
+            )
+        }),
     },
     Migration {
         target: Target::Record,
@@ -378,7 +406,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         from: 1,
         to: 2,
         note: "damping is a rate: the share of a wave left after a second becomes the decay per second that keeps as much each tick",
-        run: Some(|e| revalued(e, "og.WaterSurface", 2, "damping", rate_of_keep_per_second)),
+        run: Some(|e| {
+            revalued(
+                e,
+                "og.WaterSurface",
+                2,
+                &[("damping", "damping", rate_of_keep_per_second)],
+            )
+        }),
     },
     Migration {
         target: Target::Record,
@@ -387,6 +422,70 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         to: 3,
         note: "damping means a decay rate: the camera's time to ease back out is recoverTime",
         run: Some(|e| renamed(e, "og.VirtualCamera", 3)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.AudioSource",
+        from: 3,
+        to: 4,
+        note: "one angle rule: the cone is innerAngle and outerAngle, half-angles in radians (coneInnerAngle and coneOuterAngle were full angles in degrees), and coneOuterGain is outerGain",
+        run: Some(|e| {
+            revalued(
+                e,
+                "og.AudioSource",
+                4,
+                &[
+                    ("coneInnerAngle", "innerAngle", half_angle_of_degrees),
+                    ("coneOuterAngle", "outerAngle", half_angle_of_degrees),
+                    ("coneOuterGain", "outerGain", same),
+                ],
+            )
+        }),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Environment",
+        from: 1,
+        to: 2,
+        note: "one angle rule: rotation is in radians, as every other rotation (it was degrees)",
+        run: Some(|e| {
+            revalued(
+                e,
+                "og.Environment",
+                2,
+                &[("rotation", "rotation", radians_of_degrees)],
+            )
+        }),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.DayNight",
+        from: 1,
+        to: 2,
+        note: "one angle rule: azimuth is a heading, from +z towards +x (it counted from +x), so the saved angle gains a quarter turn and the sun rises where it did",
+        run: Some(|e| {
+            revalued(
+                e,
+                "og.DayNight",
+                2,
+                &[("azimuth", "azimuth", heading_of_from_x)],
+            )
+        }),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Aurora",
+        from: 1,
+        to: 2,
+        note: "one angle rule: direction is a heading, from +z towards +x (it counted from +x), so the saved angle gains a quarter turn and the arcs lie where they did",
+        run: Some(|e| {
+            revalued(
+                e,
+                "og.Aurora",
+                2,
+                &[("direction", "direction", heading_of_from_x)],
+            )
+        }),
     },
 ];
 
@@ -532,34 +631,72 @@ fn rate_of_keep_per_second(left: f32, dt: f32) -> f32 {
     rate_of_keep_per_tick(og_core::math::pow(left.clamp(0.0, 1.0), dt), dt)
 }
 
-/// A record whose f32 `field` keeps its name and takes another meaning
-/// with its version `to`: each saved value through `convert`, which also
-/// takes the tick's length the save ran at.
+/// One f32 field of a record that took another meaning: its name before,
+/// its name now, and its saved value (with the tick's length the save ran
+/// at) as the value that means the same now.
+type Revalue = (&'static str, &'static str, fn(f32, f32) -> f32);
+
+/// A record whose f32 fields took another meaning (and perhaps another
+/// name) with its version `to`: each saved value through its conversion,
+/// every other field where it was.
 fn revalued(
     edit: &mut SnapshotEdit,
     name: &str,
     to: u32,
-    field: &str,
-    convert: fn(f32, f32) -> f32,
+    fields: &[Revalue],
 ) -> Result<(), String> {
     let Some(mut schema) = edit.schema(name).cloned() else {
         return Ok(());
     };
-    let i = schema
-        .fields
-        .iter()
-        .position(|f| f.name == field && f.ty == og_core::reflect::FieldType::F32)
-        .ok_or_else(|| format!("the saved {name} has no f32 {field}"))?;
-    let at: usize = schema.fields[..i].iter().map(|f| f.ty.size()).sum();
+    let mut moves = Vec::with_capacity(fields.len());
+    for &(old, new, convert) in fields {
+        let i = schema
+            .fields
+            .iter()
+            .position(|f| f.name == old && f.ty == og_core::reflect::FieldType::F32)
+            .ok_or_else(|| format!("the saved {name} has no f32 {old}"))?;
+        let at: usize = schema.fields[..i].iter().map(|f| f.ty.size()).sum();
+        schema.fields[i].name = new.to_string();
+        moves.push((at, convert));
+    }
     let dt = tick_dt(edit);
     schema.version = to;
     edit.map_type(name, schema, &mut |v| {
-        let old = f32::from_le_bytes(v[at..at + 4].try_into().expect("an f32"));
         let mut out = v.to_vec();
-        out[at..at + 4].copy_from_slice(&convert(old, dt).to_le_bytes());
+        for &(at, convert) in &moves {
+            let old = f32::from_le_bytes(v[at..at + 4].try_into().expect("an f32"));
+            out[at..at + 4].copy_from_slice(&convert(old, dt).to_le_bytes());
+        }
         Ok(out)
     })
     .map_err(|e| e.reason().to_string())
+}
+
+/// A cone's full angle in degrees (Web Audio's) as its half-angle in
+/// radians; all round (360) is exactly pi, og.AudioSource's default.
+fn half_angle_of_degrees(full: f32, _dt: f32) -> f32 {
+    if full >= 360.0 {
+        std::f32::consts::PI
+    } else {
+        (full.max(0.0) * 0.5).to_radians()
+    }
+}
+
+/// A value the step keeps as it is (a field that only took another name).
+fn same(v: f32, _dt: f32) -> f32 {
+    v
+}
+
+/// Degrees as radians (og.Environment.rotation).
+fn radians_of_degrees(v: f32, _dt: f32) -> f32 {
+    v.to_radians()
+}
+
+/// An angle about +y counted from +x (og.DayNight.azimuth and
+/// og.Aurora.direction before) as the heading of the same direction,
+/// counted from +z: a quarter turn more, in degrees.
+fn heading_of_from_x(degrees: f32, _dt: f32) -> f32 {
+    degrees + 90.0
 }
 
 /// A record that became lazy with its version 1 -> 2 (R11's 2D lighting):
@@ -1125,6 +1262,110 @@ mod tests {
             assert_eq!(row[at + 4..], bytes[at + 4..], "{name}");
             assert!(upgrade(&upgraded).unwrap().is_none(), "{name}: twice");
         }
+    }
+
+    /// A record as the build before its last step saved it (`fields`: a
+    /// field's name now, its name then, the value saved), upgraded: the
+    /// values of those fields now, in order. Every other field holds its
+    /// default and must come through untouched.
+    fn upgraded(name: &str, fields: &[(&str, &str, f32)]) -> Vec<f32> {
+        use crate::host::codec::RecordKind;
+        let decl = og_api::host::RECORDS
+            .iter()
+            .find(|d| d.schema == name)
+            .unwrap_or_else(|| panic!("{name} is not an engine record"));
+        let layout = crate::host::codec::Layout::from_decl(decl).unwrap();
+        let now = crate::engine::versioned(layout.schema());
+        let at = |field: &str| -> usize {
+            now.fields
+                .iter()
+                .take_while(|f| f.name != field)
+                .map(|f| f.ty.size())
+                .sum()
+        };
+        let mut old = now.clone();
+        old.version -= 1;
+        let mut bytes = layout.encode(None, None).unwrap();
+        let defaults = bytes.clone();
+        for &(field, before, saved) in fields {
+            let f = old.fields.iter_mut().find(|f| f.name == field).unwrap();
+            f.name = before.to_string();
+            bytes[at(field)..at(field) + 4].copy_from_slice(&saved.to_le_bytes());
+        }
+        let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
+        let id = world.register_schema(old).unwrap();
+        let resource = layout.kind == RecordKind::Resource;
+        if resource {
+            world.insert_resource_bytes(id, &bytes).unwrap();
+        } else {
+            world.spawn_bytes(vec![(id, bytes)]).unwrap();
+        }
+        let (upgraded, steps) = upgrade(&world.snapshot())
+            .unwrap()
+            .unwrap_or_else(|| panic!("{name}: no step ran"));
+        assert_eq!(steps.len(), 1, "{name}: {steps:?}");
+        let edit = SnapshotEdit::from_bytes(&upgraded).unwrap();
+        let saved = edit.schema(name).unwrap();
+        assert_eq!(saved.layout_hash(), now.layout_hash(), "{name}: {saved:?}");
+        let row = if resource {
+            edit.resource(name).unwrap().to_vec()
+        } else {
+            edit.components(name).remove(0).1
+        };
+        let mut rest = row.clone();
+        let mut values = Vec::new();
+        for &(field, _, _) in fields {
+            let i = at(field);
+            values.push(f32::from_le_bytes(row[i..i + 4].try_into().unwrap()));
+            rest[i..i + 4].copy_from_slice(&defaults[i..i + 4]);
+        }
+        assert_eq!(rest, defaults, "{name}: another field moved");
+        assert!(upgrade(&upgraded).unwrap().is_none(), "{name}: twice");
+        values
+    }
+
+    /// Saves from before the one angle rule mean what they did: a sound's
+    /// cone (full angles in degrees) as half-angles in radians, all round
+    /// exactly pi; an environment's turn in radians; the sun's rise and
+    /// the aurora's arcs, counted from +x, as headings.
+    #[test]
+    fn saved_angles_take_the_one_rule_and_point_where_they_did() {
+        use std::f32::consts::PI;
+        let cone = upgraded(
+            "og.AudioSource",
+            &[
+                ("innerAngle", "coneInnerAngle", 90.0),
+                ("outerAngle", "coneOuterAngle", 240.0),
+                ("outerGain", "coneOuterGain", 0.25),
+            ],
+        );
+        assert!((cone[0] - PI / 4.0).abs() < 1e-6, "{cone:?}");
+        assert!((cone[1] - 2.0 * PI / 3.0).abs() < 1e-6, "{cone:?}");
+        assert_eq!(cone[2], 0.25);
+        let all_round = upgraded(
+            "og.AudioSource",
+            &[
+                ("innerAngle", "coneInnerAngle", 360.0),
+                ("outerAngle", "coneOuterAngle", 360.0),
+                ("outerGain", "coneOuterGain", 0.0),
+            ],
+        );
+        assert_eq!(
+            all_round,
+            [PI, PI, 0.0],
+            "the default stays omnidirectional"
+        );
+        let turn = upgraded("og.Environment", &[("rotation", "rotation", 90.0)]);
+        assert!((turn[0] - PI / 2.0).abs() < 1e-6, "{turn:?}");
+        // The old default rose in +x (0 from +x): the heading 90.
+        assert_eq!(
+            upgraded("og.DayNight", &[("azimuth", "azimuth", 0.0)]),
+            [90.0]
+        );
+        assert_eq!(
+            upgraded("og.Aurora", &[("direction", "direction", 90.0)]),
+            [180.0]
+        );
     }
 
     #[test]

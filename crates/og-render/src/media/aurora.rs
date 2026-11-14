@@ -95,8 +95,8 @@ pub struct Aurora {
     pub activity: f32,
     /// How many arcs, one behind the other (1 to 6).
     pub curtains: u32,
-    /// Where the arcs lie, degrees about +y from +x (the DayNight azimuth's
-    /// convention).
+    /// Where the arcs lie: a heading in degrees, about +y from +z towards +x
+    /// (`og_core::facing`'s, as the DayNight azimuth).
     pub direction: f32,
     /// How far the first arc is from the world's origin over the ground,
     /// metres (0: overhead).
@@ -125,7 +125,7 @@ impl Default for Aurora {
             intensity: 1.0,
             activity: 0.4,
             curtains: 3,
-            direction: 90.0,
+            direction: 180.0,
             distance: 150_000.0,
             spread: 70_000.0,
             energy: 2.0,
@@ -213,7 +213,7 @@ impl Aurora {
         ];
         p.look = [activity * 3.0, hw, red_sigma, red_scale];
         let t = seconds * f64::from(self.speed.max(0.0));
-        let toward = Quat::from_rotation_y(self.direction.to_radians()) * Vec3::X;
+        let toward = Quat::from_rotation_y((self.direction - 90.0).to_radians()) * Vec3::X;
         let toward = glam::DVec2::new(f64::from(toward.x), f64::from(toward.z));
         let side = glam::DVec2::new(-toward.y, toward.x);
         let viewer = glam::DVec2::new(f64::from(viewer.x), f64::from(viewer.y));

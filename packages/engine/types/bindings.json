@@ -6058,19 +6058,19 @@
           "tunable": true
         },
         {
-          "name": "coneInnerAngle",
+          "name": "innerAngle",
           "column": "f32",
-          "default": 360,
+          "default": 3.1415927,
           "tunable": true
         },
         {
-          "name": "coneOuterAngle",
+          "name": "outerAngle",
           "column": "f32",
-          "default": 360,
+          "default": 3.1415927,
           "tunable": true
         },
         {
-          "name": "coneOuterGain",
+          "name": "outerGain",
           "column": "f32",
           "default": 0,
           "tunable": true
@@ -11144,7 +11144,7 @@
         {
           "name": "azimuth",
           "column": "f32",
-          "default": 0,
+          "default": 90,
           "tunable": true
         },
         {
@@ -11355,7 +11355,7 @@
         {
           "name": "direction",
           "column": "f32",
-          "default": 90,
+          "default": 180,
           "tunable": true
         },
         {

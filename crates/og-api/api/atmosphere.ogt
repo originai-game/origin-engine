@@ -213,7 +213,8 @@ module atmosphere {
       unit deg
       tunable true
     }
-    field azimuth f32 "Where the sun rises, turned about +y from +x." {
+    field azimuth f32 "The heading the sun rises at: about +Y from +Z towards +X, so 0 rises in +Z and 90 in +X. Its path leans by tilt towards the heading azimuth + 90." {
+      default 90
       unit deg
       tunable true
     }
@@ -385,8 +386,8 @@ module atmosphere {
       min 1
       max 6
     }
-    field direction f32 "Where the arcs lie, turned about +y from +x (the convention of og.DayNight's azimuth)." {
-      default 90
+    field direction f32 "The heading the arcs lie at from the world's origin: about +Y from +Z towards +X (as og.DayNight's azimuth), so 180 puts them towards -Z." {
+      default 180
       unit deg
       tunable true
     }

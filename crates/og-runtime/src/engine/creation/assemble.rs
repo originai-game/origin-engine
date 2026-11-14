@@ -148,6 +148,10 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         "og.Rope" => og_physics::Rope::schema().version,
         "og.WaterSurface" => og_physics::WaterSurface::schema().version,
         "og.VirtualCamera" => 3,
+        // One angle rule: og.Environment.rotation in radians, and
+        // og.DayNight.azimuth and og.Aurora.direction as headings
+        // (og.AudioSource's cone is og-audio's version above).
+        "og.Environment" | "og.DayNight" | "og.Aurora" => 2,
         _ => return schema,
     };
     schema

@@ -19,6 +19,7 @@ use og_audio::{
 };
 use og_core::glam::Vec3;
 use og_ecs::{Entity, World, WorldDesc};
+use std::f32::consts::{FRAC_PI_3, FRAC_PI_4, PI};
 use std::f64::consts::TAU;
 use std::time::Instant;
 
@@ -108,9 +109,9 @@ fn measure(v: Variant) -> (f64, f64) {
                         } else {
                             0.0
                         },
-                        cone_inner_angle: if cones { 90.0 } else { 360.0 },
-                        cone_outer_angle: if cones { 240.0 } else { 360.0 },
-                        cone_outer_gain: 0.2,
+                        inner_angle: if cones { FRAC_PI_4 } else { PI },
+                        outer_angle: if cones { 2.0 * FRAC_PI_3 } else { PI },
+                        outer_gain: 0.2,
                         ..AudioSource::new(tones[k % 4])
                     },
                 ))

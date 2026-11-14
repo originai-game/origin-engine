@@ -130,7 +130,7 @@ fn the_curtains_follow_the_clock() {
         }
     }
     // The first arc's middle lies `distance` out along `direction`
-    // (90°: towards -z).
+    // (the heading 180°: towards -z).
     let mid = p.points[CURTAIN_POINTS / 2];
     assert!(mid[1] < -100.0 && mid[0].abs() < 80.0, "{mid:?}");
 }
