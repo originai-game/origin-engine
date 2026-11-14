@@ -169,6 +169,10 @@ is measured:
 - `og vfx preview --together a.ogt b.ogt ...` plays several at once on a
   grid and reports the frame's and each pass's milliseconds: the
   on-screen total.
+- For scale: the twenty starter effects playing at once on the reference
+  host add 0.32 ms to the frame at their peak and 0.18 ms typically.
+  Almost all of it is the main pass drawing their sprites (overdraw); the
+  particle step is 0.02 ms.
 - Large sprites' cost does not fall with their number: if an effect is
   over budget because it covers the screen, shrink its sprites or use a
   few large parts instead (a `glow`, a `mesh`). Fewer particles helps
