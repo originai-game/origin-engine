@@ -80,7 +80,6 @@ pub fn lit_source(shader: &MaterialShader, lit: bool) -> String {
             crate::FRAME_WGSL,
             crate::oit::OIT_WGSL,
             crate::oit::ARENA_WGSL,
-            crate::particles_gpu::NOISE_WGSL,
             crate::MATERIAL_WGSL,
             crate::MATERIAL_MAPS_WGSL,
             crate::MATERIAL_DISSOLVE_WGSL,
@@ -102,7 +101,6 @@ pub fn shadow_source(shader: &MaterialShader) -> String {
         &[
             crate::LIBRARY_WGSL,
             crate::oit::OIT_WGSL,
-            crate::particles_gpu::NOISE_WGSL,
             crate::MATERIAL_WGSL,
             crate::MATERIAL_MAPS_WGSL,
             crate::MATERIAL_DISSOLVE_WGSL,

@@ -188,6 +188,14 @@ fn a_mechanisms_shader_code_is_written_once() {
                 "const LUMA",
             ],
         ),
+        (
+            &["noise.wgsl"],
+            &[
+                "fn value_noise2(",
+                "fn value_noise3(",
+                "fn value_noise3_at(",
+            ],
+        ),
         (&["shadow_pass.wgsl"], &["local_value(", "local_distance("]),
         (
             &["media.wgsl"],

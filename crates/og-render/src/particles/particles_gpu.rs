@@ -17,7 +17,6 @@ mod emitter;
 mod prepare;
 mod renderer;
 pub(crate) use emitter::*;
-pub use og_render_data::particles_gpu::*;
 
 const COMMON_WGSL: &str = wgsl!("particle_common.wgsl");
 const SIM_WGSL: &str = wgsl!("particles_sim.wgsl");
@@ -420,7 +419,7 @@ pub(crate) fn sprites_source() -> String {
 /// The particle simulation's module (compute).
 pub(crate) fn sim_source() -> String {
     format!(
-        "{}{NOISE_WGSL}{COMMON_WGSL}{COLLIDERS_WGSL}{SIM_WGSL}",
+        "{}{COMMON_WGSL}{COLLIDERS_WGSL}{SIM_WGSL}",
         crate::LIBRARY_WGSL
     )
 }
@@ -481,7 +480,6 @@ pub(crate) fn draw_source(frame_wgsl: &str, hook: Option<&crate::MaterialShader>
             frame_wgsl,
             crate::oit::OIT_WGSL,
             crate::oit::ARENA_WGSL,
-            NOISE_WGSL,
             COMMON_WGSL,
             crate::effect::EFFECT_WGSL,
             &crate::effect::hooks_source(hook),

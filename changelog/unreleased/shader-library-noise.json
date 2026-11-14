@@ -1,0 +1,17 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "shaders: the WGSL library",
+      "change": "Every game shader now has `value_noise2(p: vec2<f32>, layer: i32)`, `value_noise3` and `value_noise3_at` in scope from the engine's one copy (value_noise3 was already there in material shaders; sprite, post and UI shaders get it now); a shader that declares one of these names no longer compiles.",
+      "fix": "Delete your own copy and call the library's, or rename yours.",
+      "find": ["value_noise2", "value_noise3", "value_noise3_at"]
+    }
+  ],
+  "added": [
+    {
+      "member": "shaders: value_noise2",
+      "summary": "A game shader may call smooth 2D value noise in [0, 1) over the engine's integer hash, on a lattice layer of its choosing."
+    }
+  ]
+}

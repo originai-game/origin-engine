@@ -15,9 +15,8 @@ use crate::hooks::MaterialShader;
 /// The module's source as the renderer compiles it for `shader`.
 pub fn source(shader: &MaterialShader) -> String {
     format!(
-        "{}{}{}{}",
+        "{}{}{}",
         crate::sprite_source(),
-        crate::particles_gpu::NOISE_WGSL,
         crate::hooks::hook_functions(&shader.params, &shader.code),
         wgsl!("sprite_hooks.wgsl")
     )

@@ -48,7 +48,6 @@ pub mod material;
 pub mod meshlet;
 pub mod oit;
 pub mod particles;
-pub mod particles_gpu;
 pub mod post_custom;
 #[cfg(feature = "reach")]
 pub mod reach;

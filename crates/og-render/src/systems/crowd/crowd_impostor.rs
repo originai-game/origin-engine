@@ -13,7 +13,7 @@
 //! (`mips.rs`, a box filter) average them as coverage does. The bake is
 //! one instanced draw per part, an instance per tile.
 
-use crate::{particles_gpu, skin};
+use crate::skin;
 use og_render_data::shader_source::{LIBRARY_WGSL, MATERIAL_MAPS_WGSL, MATERIAL_WGSL};
 use std::collections::HashMap;
 
@@ -347,8 +347,7 @@ impl CrowdImpostors {
 /// (group 1) and the palette (group 2) under `crowd_bake.wgsl`.
 pub(crate) fn crowd_bake_source() -> String {
     format!(
-        "{LIBRARY_WGSL}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{}{}",
-        particles_gpu::NOISE_WGSL,
+        "{LIBRARY_WGSL}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{}{}",
         skin::palette_wgsl(2),
         wgsl3d!("crowd_bake.wgsl")
     )

@@ -1,16 +1,17 @@
 use crate::oit::{ARENA_WGSL, OIT_WGSL};
 use crate::shader_capability::{Capability, assemble};
-use crate::{Shading, particles_gpu, skin};
+use crate::{Shading, skin};
 
 /// What any shader may call, one copy for every module: the integer
 /// hashes (hash.wgsl), then the octahedral map, the fullscreen triangle,
 /// the view-space point under a pixel and interleaved gradient noise
-/// (common.wgsl), the sRGB curve and luminance (color.wgsl). [`FRAME_WGSL`]
-/// starts with it, and a module without the frame group puts this first.
+/// (common.wgsl), the sRGB curve and luminance (color.wgsl), value noise
+/// (noise.wgsl). [`FRAME_WGSL`] starts with it, and a module without the frame group puts this first.
 pub const LIBRARY_WGSL: &str = concat!(
     wgsl!("hash.wgsl"),
     wgsl!("common.wgsl"),
-    wgsl!("color.wgsl")
+    wgsl!("color.wgsl"),
+    wgsl!("noise.wgsl")
 );
 /// The frame group (frame.wgsl) after the library ([`LIBRARY_WGSL`]), with
 /// what the air and the water do to a point's light (media.wgsl), the sky
@@ -20,6 +21,7 @@ pub const FRAME_WGSL: &str = concat!(
     wgsl!("hash.wgsl"),
     wgsl!("common.wgsl"),
     wgsl!("color.wgsl"),
+    wgsl!("noise.wgsl"),
     wgsl!("frame.wgsl"),
     wgsl!("media.wgsl"),
     wgsl!("sky_look.wgsl"),
@@ -122,7 +124,6 @@ pub fn lit_source_with(hooks: &str, planar: bool) -> String {
             FRAME_WGSL,
             OIT_WGSL,
             ARENA_WGSL,
-            particles_gpu::NOISE_WGSL,
             MATERIAL_WGSL,
             MATERIAL_MAPS_WGSL,
             MATERIAL_DISSOLVE_WGSL,
@@ -149,7 +150,6 @@ pub fn physical_source(hooks: &str) -> String {
             FRAME_WGSL,
             OIT_WGSL,
             ARENA_WGSL,
-            particles_gpu::NOISE_WGSL,
             MATERIAL_WGSL,
             MATERIAL_PHYSICAL_WGSL,
             MATERIAL_DISSOLVE_WGSL,
@@ -186,7 +186,6 @@ pub fn shadow_source(hooks: &str) -> String {
     assemble(
         &[
             LIBRARY_WGSL,
-            particles_gpu::NOISE_WGSL,
             MATERIAL_WGSL,
             MATERIAL_MAPS_WGSL,
             MATERIAL_DISSOLVE_WGSL,

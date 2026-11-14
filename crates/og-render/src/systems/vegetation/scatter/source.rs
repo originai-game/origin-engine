@@ -1,6 +1,6 @@
 //! The scattered copies' modules.
 
-use crate::{Capability, particles_gpu};
+use crate::Capability;
 use og_render_data::assemble;
 use og_render_data::shader_source::*;
 
@@ -15,7 +15,6 @@ pub(crate) fn scatter_lit_source(hooks: &str) -> String {
     assemble(
         &[
             FRAME_WGSL,
-            particles_gpu::NOISE_WGSL,
             MATERIAL_WGSL,
             MATERIAL_MAPS_WGSL,
             MATERIAL_DISSOLVE_WGSL,
@@ -40,8 +39,7 @@ pub(crate) fn scatter_lit_source(hooks: &str) -> String {
 /// The scattered copies' shadow module.
 pub(crate) fn scatter_shadow_source() -> String {
     format!(
-        "{LIBRARY_WGSL}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}{}{}{}{}{}{}{}",
-        particles_gpu::NOISE_WGSL,
+        "{LIBRARY_WGSL}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}{}{}{}{}{}{}{}",
         crate::wind::WIND_COMMON_WGSL,
         crate::wind::WIND_LEAN_WGSL,
         crate::trample::READ_WGSL,

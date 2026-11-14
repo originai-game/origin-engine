@@ -1,6 +1,22 @@
-// Value noise over hash.wgsl's lattice. `value_noise3` matches
+// Value noise over hash.wgsl's lattice, one copy for every shader
+// (LIBRARY_WGSL, after color.wgsl). `value_noise3` matches
 // `og_render::particles::value_noise3` operation for operation, so the CPU
 // and GPU particle paths draw the same random numbers.
+
+// Bilinear value noise with a smoothstep fade over the plane, in [0, 1):
+// the lattice's layer `layer` (z), so two users with different layers draw
+// unrelated patterns.
+fn value_noise2(p: vec2<f32>, layer: i32) -> f32 {
+  let fl = floor(p);
+  let f = p - fl;
+  let u = f * f * (3.0 - 2.0 * f);
+  let c = vec2<i32>(fl);
+  let a = lattice3(vec3<i32>(c, layer), 0u);
+  let b = lattice3(vec3<i32>(c + vec2<i32>(1, 0), layer), 0u);
+  let d = lattice3(vec3<i32>(c + vec2<i32>(0, 1), layer), 0u);
+  let e = lattice3(vec3<i32>(c + vec2<i32>(1, 1), layer), 0u);
+  return mix(mix(a, b, u.x), mix(d, e, u.x), u.y);
+}
 
 // Trilinear value noise with a smoothstep fade, in [0, 1).
 fn value_noise3(p: vec3<f32>, seed: u32) -> f32 {

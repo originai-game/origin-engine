@@ -7,17 +7,9 @@
 // Whether a pipeline has the weather's code (pipeline_features.rs).
 override OG_WEATHER: bool = true;
 
-// Smooth value noise over the plane, 0..1.
+// The weather's value noise over the plane, 0..1 (its own lattice layer).
 fn weather_noise(p: vec2<f32>) -> f32 {
-  let c = floor(p);
-  let f = p - c;
-  let u = f * f * (3.0 - 2.0 * f);
-  let ci = vec2<i32>(c);
-  let a = lattice3(vec3<i32>(ci, 11), 0u);
-  let b = lattice3(vec3<i32>(ci + vec2<i32>(1, 0), 11), 0u);
-  let d = lattice3(vec3<i32>(ci + vec2<i32>(0, 1), 11), 0u);
-  let e = lattice3(vec3<i32>(ci + vec2<i32>(1, 1), 11), 0u);
-  return mix(mix(a, b, u.x), mix(d, e, u.x), u.y);
+  return value_noise2(p, 11);
 }
 
 fn weather_fbm(p: vec2<f32>) -> f32 {

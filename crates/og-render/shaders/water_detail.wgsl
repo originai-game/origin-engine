@@ -277,21 +277,13 @@ fn flowed_slope(p: vec2<f32>, uv: vec2<f32>, t: f32, w: f32) -> Detail {
   return Detail(mix(s0.slope, s1.slope, k), mix(s0.cov, s1.cov, k));
 }
 
-fn value_hash(p: vec2<f32>) -> f32 {
-  return lattice3(vec3<i32>(vec2<i32>(p), 3), 0u);
-}
-
 // A stream's bank foam at point q (its drift taken out): patches cut at their middle, so half of a bank has none (a
 // lower cut left a faint foam all along it: a bright line).
 fn bank_patches(q: vec2<f32>) -> f32 {
   return smoothstep(0.55, 0.75, foam_noise(q * 0.9) * 0.7 + foam_noise(q * 3.3) * 0.3);
 }
 
-// A cheap smooth noise for breaking up the foam.
+// The water's value noise for breaking up the foam (its own lattice layer).
 fn foam_noise(p: vec2<f32>) -> f32 {
-  let i = floor(p);
-  let f = fract(p);
-  let u = f * f * (3.0 - 2.0 * f);
-  return mix(mix(value_hash(i), value_hash(i + vec2<f32>(1.0, 0.0)), u.x),
-             mix(value_hash(i + vec2<f32>(0.0, 1.0)), value_hash(i + vec2<f32>(1.0, 1.0)), u.x), u.y);
+  return value_noise2(p, 3);
 }
