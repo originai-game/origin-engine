@@ -761,7 +761,9 @@ None of these has a web standard; each is named for what it does.
   d-pad reads eight ways; a button is held while touched. A control keeps
   the finger that started on it; a finger sliding onto one takes nothing;
   disabled or `display: none` controls are no source. Hide them with
-  `@media (pointer: fine)`. They are written only while touched.
+  `@media (pointer: fine)`. They are written only while touched. The
+  built-in `TouchControls` lays a stick or d-pad and its action buttons
+  out this way.
 - `<anchor entity|at offset occlusion declutter clamp priority
   max-distance scale-at>` holds a column over a world point, placed every
   tick; a moving camera builds nothing.

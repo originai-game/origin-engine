@@ -484,7 +484,9 @@ and a `fixture:default`, so `og ui preview` shows it at once.
   panned from its wheel, pinch and pointer events).
 - Buttons: `hero-button` (the main call to action with its keycap),
   `action-button` (a touch button feeding an og-input action through
-  `data-og-touch`), `hold-button` (hold to confirm, filling as it is held),
+  `data-og-touch`), `touch-controls` (the on-screen pad: a stick or d-pad
+  and action buttons feeding og-input actions, shown where the pointer is
+  a finger), `hold-button` (hold to confirm, filling as it is held),
   `action-hints` (the action bar: each action's `<kbd data-action>` glyph
   and hint), `ribbon` (a corner ribbon on a card).
 - World: `nameplate`, `waypoint`, `loot-label`, `speech-bubble` and

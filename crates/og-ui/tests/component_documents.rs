@@ -59,3 +59,148 @@ fn ground_mark_documents_reach_the_renderer_as_draped_grounds() {
         assert_eq!(grounds, 1, "{name}: {grounds} draped ground layer(s)");
     }
 }
+
+/// The touch controls are sources of the actions they name where the
+/// primary pointer is a finger, and of nothing under a mouse or while
+/// disabled: each control shown is one zone of the action map, the stick at
+/// the start side and the buttons at the end with the first nearest the
+/// corner. Fails when a hidden or disabled control still feeds its action,
+/// when `always` does not show them under a mouse, when the d-pad or the
+/// second stick names the wrong action, or when the buttons leave the
+/// corner.
+#[test]
+fn touch_controls_feed_their_actions_under_a_finger_only() {
+    use og_input::ZoneKind;
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    let doc = docs.iter().find(|d| d.doc.name == "TouchControls").unwrap();
+    let (width, height) = (844.0, 390.0);
+    // A game's HUD page uses the component by name, its props from stores,
+    // and the engine mounts the page.
+    let page = r#"<meta name="screen" content="pad" data-layer="hud">
+<div id="Page"><TouchControls move={$move} pad={$pad} look={$look} deadZone={$deadZone} actions={$actions} always={$always} disabled={$disabled} /></div>
+<style>
+#Page { display: flex; flex-direction: column; justify-content: end; width: stretch; height: stretch; }
+</style>"#;
+    let zones = |coarse: bool, change: serde_json::Value| -> Vec<og_input::ControlZone> {
+        use og_ui::reactive::{SourceId, wire};
+        use serde_json::json;
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+        for d in &docs {
+            ui.define_document(d.doc.clone());
+        }
+        ui.define_document(UiDocument::parse("pad.svelte", page).unwrap());
+        let mut props = doc.props.clone();
+        props["always"] = json!(false);
+        for (name, value) in change.as_object().unwrap() {
+            props[name] = value.clone();
+        }
+        let mut inputs = std::collections::BTreeMap::new();
+        for (name, value) in props.as_object().unwrap() {
+            let source = SourceId::new("test", name);
+            let command = match value {
+                serde_json::Value::Array(items) => {
+                    json!({"op": "collection", "source": source, "key": "id", "items": items})
+                }
+                _ => json!({"op": "signal", "source": source, "initial": value}),
+            };
+            let reply = wire::decode(&ui.apply_reactive(&wire::encode(&json!([command])).unwrap()))
+                .unwrap();
+            assert_eq!(reply[0]["ok"], true, "{reply}");
+            inputs.insert(name.clone(), source);
+        }
+        ui.mount_document(
+            SourceId::new("test", "pad"),
+            "pad",
+            inputs,
+            Default::default(),
+            &messages,
+        )
+        .unwrap();
+        let mut zones = Vec::new();
+        for _ in 0..4 {
+            let mut viewport = Viewport::new(width, height);
+            viewport.coarse_pointer = coarse;
+            ui.begin(InputFrame::default(), viewport);
+            ui.build_retained_documents(&messages).unwrap();
+            ui.end();
+            assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+            if let Some(now) = ui.take_control_zones() {
+                zones = now;
+            }
+        }
+        zones.sort_by(|a, b| a.x.total_cmp(&b.x));
+        zones
+    };
+    let named = |zones: &[og_input::ControlZone]| -> Vec<(String, ZoneKind)> {
+        zones.iter().map(|z| (z.action.clone(), z.kind)).collect()
+    };
+    let none = serde_json::json!({});
+
+    let shown = zones(true, none.clone());
+    assert_eq!(
+        named(&shown),
+        [
+            ("move".to_string(), ZoneKind::Stick),
+            ("use".to_string(), ZoneKind::Button),
+            ("dash".to_string(), ZoneKind::Button),
+            ("jump".to_string(), ZoneKind::Button),
+        ],
+        "the stick, then the buttons toward the end corner"
+    );
+    let (stick, jump) = (&shown[0], &shown[3]);
+    assert!(
+        stick.x + stick.width < width / 2.0,
+        "the stick is at the start"
+    );
+    assert!(shown[1].x > width / 2.0, "the buttons are at the end");
+    assert!(
+        jump.x + jump.width > width - 48.0 && jump.y + jump.height > height - 48.0,
+        "the first button is in the corner: {jump:?}"
+    );
+    assert!(shown.iter().all(|z| z.x >= 0.0 && z.x + z.width <= width));
+
+    assert!(
+        zones(false, none.clone()).is_empty(),
+        "nothing under a mouse"
+    );
+    assert_eq!(
+        zones(false, serde_json::json!({"always": true})).len(),
+        4,
+        "always shows them under a mouse"
+    );
+    assert!(
+        zones(true, serde_json::json!({"disabled": true})).is_empty(),
+        "disabled controls feed nothing"
+    );
+    assert_eq!(
+        named(&zones(
+            true,
+            serde_json::json!({"pad": true, "actions": []})
+        )),
+        [("move".to_string(), ZoneKind::Pad)]
+    );
+    let twin = zones(
+        true,
+        serde_json::json!({"look": "look", "actions": [], "deadZone": 0.3}),
+    );
+    assert_eq!(
+        named(&twin),
+        [
+            ("move".to_string(), ZoneKind::Stick),
+            ("look".to_string(), ZoneKind::Stick)
+        ]
+    );
+    assert!(twin.iter().all(|z| z.dead_zone == 0.3), "{twin:?}");
+    assert!(twin[1].x > width / 2.0, "the second stick is at the end");
+    // Five buttons: three in the corner's row, the rest in a row above.
+    let many = docs.iter().find(|d| d.doc.name == "TouchControls").unwrap();
+    let many = many.doc.fixtures.iter().find(|(n, _)| n == "many").unwrap();
+    let rows = zones(true, serde_json::json!({"actions": many.1["actions"]}));
+    let attack = rows.iter().find(|z| z.action == "attack").unwrap();
+    let above = rows
+        .iter()
+        .filter(|z| z.kind == ZoneKind::Button && z.y + z.height <= attack.y)
+        .count();
+    assert_eq!((rows.len(), above), (6, 2), "{rows:?}");
+}

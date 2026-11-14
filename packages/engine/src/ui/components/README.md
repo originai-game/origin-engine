@@ -43,6 +43,7 @@ test cooks every one from its fixture at desktop and phone sizes.
 | Skill trees and run maps | `node-graph` |
 | Data views (inventories, level selects) | `data-grid` |
 | Buttons and badges (hero button, touch action, hold to confirm, action bar, ribbon) | `hero-button`, `action-button`, `hold-button`, `action-hints`, `ribbon` |
+| Touch controls (a stick or d-pad and the action buttons, shown under a finger) | `touch-controls` |
 | World tags over units and items | `nameplate`, `waypoint`, `loot-label`, `speech-bubble`, `interaction-prompt` |
 | Ground marks (selection, telegraphs, paths, placement) | `selection-ring`, `telegraph`, `path-line`, `placement-ghost` |
 | Mass world elements (overhead bars, damage numbers) | `overhead-bars`, `damage-numbers` |
@@ -59,3 +60,17 @@ test cooks every one from its fixture at desktop and phone sizes.
 | Rhythm song and difficulty selection, score HUD, judgement, results (`rhythm/README.md`) | `rhythm/song-select`, `rhythm/difficulty`, `rhythm/score-hud`, `rhythm/judgement`, `rhythm/results` |
 | Arena roster, draft, versus, lobby, round HUD, scoreboard (`arena/README.md`) | `arena/roster`, `arena/draft`, `arena/versus`, `arena/lobby`, `arena/round-hud`, `arena/scoreboard` |
 | Shop, achievements, daily quests and rewards, chat, friends (`general/README.md`) | `general/shop`, `general/shop-confirm`, `general/achievements`, `general/daily-quests`, `general/daily-rewards`, `general/chat`, `general/friends` |
+
+A chip, a tag or a filter toggle has no component: it is a
+`<button aria-pressed={on}>`. The attribute carries its state to a screen
+reader and qualifies its part for a pack (`Shop::filter:checked`). The
+default style gives a pressed button no look of its own, so the document
+dresses `[aria-pressed=true]` from tokens, as `overlay-bar` does with
+`--selection` and `--on-selection`.
+
+`touch-controls` is the whole on-screen pad: a `<joystick>` or `<dpad>` at
+the start side, `action-button`s at the end side and an optional second
+stick, each an input source of the og-input action it names. It reports no
+events and shows only where the primary pointer is a finger (`always`
+shows it under a mouse too). Its parts are `frame`, `stick`, `actions` and
+`look`.

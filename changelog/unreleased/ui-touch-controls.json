@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "TouchControls",
+      "summary": "A built-in on-screen pad: <TouchControls move=\"move\" actions={$actions} /> puts a stick (or a d-pad with pad) at the start side and ActionButtons at the end side, the first nearest the corner, with an optional second stick (look). Each control is an input source of the og-input action it names, so the game reads the same actions as from keys or a pad. It shows only where the primary pointer is a finger unless always is set; disabled stops every control feeding."
+    }
+  ]
+}
