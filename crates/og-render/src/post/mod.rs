@@ -34,6 +34,7 @@ pub(crate) const FULLSCREEN_WGSL: &str = wgsl_library!("fullscreen.wgsl");
 /// with a view's glow, `views_glow.wgsl`).
 const POST_WGSL: &str = concat!(
     wgsl!("hdr_lpm.wgsl"),
+    wgsl!("tonemap.wgsl"),
     wgsl!("post.wgsl"),
     wgsl!("bloom_chain.wgsl")
 );
