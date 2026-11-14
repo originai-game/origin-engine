@@ -83,7 +83,7 @@ impl ModelLods {
     }
 
     /// Mesh level `k`'s error (0: the full mesh, 0).
-    pub(super) fn mesh_error(&self, k: usize) -> f32 {
+    pub(crate) fn mesh_error(&self, k: usize) -> f32 {
         if k == 0 {
             return 0.0;
         }

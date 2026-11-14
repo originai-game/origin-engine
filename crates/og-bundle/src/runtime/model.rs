@@ -114,6 +114,22 @@ impl CookedPrimitive {
             .collect();
         MeshData { vertices, indices }
     }
+
+    /// The vertex of the full mesh each vertex of [`Self::mesh_compact`]
+    /// `(lod)` is, in its order: what carries a per-vertex stream the blob
+    /// keeps beside the mesh (a skin's joints and weights) to that level.
+    pub fn lod_sources(&self, lod: usize) -> Vec<u32> {
+        let l = self.lods[lod.min(self.lods.len() - 1)];
+        let mut seen = vec![false; self.vertices.len()];
+        let mut out = Vec::new();
+        for &i in &self.indices[l.first..l.first + l.count] {
+            if !seen[i as usize] {
+                seen[i as usize] = true;
+                out.push(i);
+            }
+        }
+        out
+    }
 }
 
 /// A glTF mesh: a range of [`CookedModel::primitives`].

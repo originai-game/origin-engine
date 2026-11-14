@@ -317,6 +317,7 @@ pub(crate) fn insert_model(
     // The coarser levels of detail join the scene after the full meshes (a
     // shared mesh's are shared too). A streamed model draws its proxy (one
     // level) and then its full meshes without levels.
+    let mut lod_sources = Vec::new();
     let lods = match group {
         Some(_) => None,
         None => {
@@ -327,6 +328,21 @@ pub(crate) fn insert_model(
                 }
                 false => model.add_lod_levels(&mut rs.scene),
             };
+            // A skinned model's levels keep which vertex each of theirs
+            // is, for their skinned copies (og.CrowdAnimation's far levels).
+            if model.skipped_skins > 0 {
+                lod_sources = model
+                    .primitives
+                    .iter()
+                    .zip(&levels)
+                    .map(|(p, l)| {
+                        l.iter()
+                            .enumerate()
+                            .map(|(k, &(mesh, _))| (mesh, p.lod_sources(k + 1)))
+                            .collect()
+                    })
+                    .collect();
+            }
             let prim_of = |mesh| prim_meshes.iter().position(|&m| m == mesh);
             // Each part's levels with their errors in the model's units: a
             // part's node scale is folded in.
@@ -465,6 +481,7 @@ pub(crate) fn insert_model(
             part_nodes: parts.nodes,
             part_shown: parts.shown,
             part_variants: parts.variants,
+            lod_sources,
         },
     );
     rs.fx.model_materials.insert(handle(index), parts.materials);

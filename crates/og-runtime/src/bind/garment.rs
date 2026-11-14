@@ -498,6 +498,7 @@ mod tests {
             part_nodes: vec![],
             part_shown: vec![],
             part_variants: vec![],
+            lod_sources: vec![],
         };
         let stream = |primitive| og_anim::cooked::SkinStream {
             primitive,

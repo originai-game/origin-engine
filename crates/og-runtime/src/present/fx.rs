@@ -145,6 +145,11 @@ pub(crate) struct ModelInfo {
     /// Per `KHR_materials_variants` variant, each part's material
     /// (`ModelParts::variants`): og.Model.variant draws with these.
     pub part_variants: Vec<Vec<og_render::MaterialHandle>>,
+    /// A skinned model's coarser levels by primitive (empty for a model
+    /// without skins): each level's mesh and, per vertex of it, the full
+    /// mesh's vertex it is (`CookedPrimitive::lod_sources`), which gives
+    /// the level's skinned copy its joints and weights.
+    pub lod_sources: Vec<Vec<(og_render::MeshHandle, Vec<u32>)>>,
 }
 
 impl ModelInfo {
@@ -165,6 +170,9 @@ pub(crate) struct SkinnedModel {
     pub streams: Vec<og_anim::cooked::SkinStream>,
     pub morphs: Vec<og_anim::cooked::MorphTargets>,
     pub meshes: Option<Vec<Option<MeshHandle>>>,
+    /// The skinned copies of each primitive's coarser levels, made with
+    /// `meshes` (`ModelInfo::lod_sources`): what a crowd draws far away.
+    pub levels: Vec<Vec<MeshHandle>>,
 }
 
 /// The effect side of a render state.

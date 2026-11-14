@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.CrowdAnimation",
+      "summary": "A crowd's members draw the model's cooked levels of detail by distance, as the model's unposed instances do; every member drew the full mesh. A far crowd costs a fraction of what it did."
+    }
+  ]
+}
