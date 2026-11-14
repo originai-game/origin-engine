@@ -6,7 +6,7 @@
 use crate::host::wire::{ForceFieldKind, FromJson, record};
 use og_ecs::World;
 use og_env::force::{Field, FieldKind, Forces};
-use og_env::volume::{Placement, Volume};
+use og_env::volume::Placement;
 
 /// How a field accelerates, as og-env takes it.
 fn kind_of(kind: ForceFieldKind) -> FieldKind {
@@ -32,16 +32,6 @@ pub(crate) fn before_tick(eng: &crate::engine::Engine, world: &World) {
         return;
     };
     let r = crate::bind::physics_ext::Reader::World(world);
-    let volume_of = |e: og_ecs::Entity| -> Option<Volume> {
-        let l = volumes.as_ref()?;
-        let id = world.id_by_name(&l.schema).ok()?;
-        let v: record::Volume = l.read(&world.get_bytes(e, id).ok()?).ok()?;
-        Some(Volume {
-            size: v.size,
-            radius: v.radius,
-            fade: v.fade,
-        })
-    };
     let fields = r
         .rows(fields.as_ref())
         .unwrap_or_default()
@@ -59,7 +49,7 @@ pub(crate) fn before_tick(eng: &crate::engine::Engine, world: &World) {
                     quaternion,
                     scale,
                 },
-                volume: volume_of(e),
+                volume: crate::world::region::volume_of(world, volumes.as_ref(), e),
                 kind: kind_of(v.kind),
                 direction: (quaternion * v.direction).normalize_or_zero(),
                 strength: v.strength,

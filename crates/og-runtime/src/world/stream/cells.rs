@@ -252,14 +252,9 @@ fn cells(eng: &Engine, world: &World) -> Vec<(Entity, record::StreamCell)> {
 /// The distance from `p` (world) to a cell: to the og.Volume on its
 /// entity, placed, turned and scaled with it, or to the entity's position
 /// when it has none.
-fn distance(cell: Pose, volume: Option<&record::Volume>, p: glam::Vec3) -> f32 {
-    let Some(v) = volume else {
+fn distance(cell: Pose, volume: Option<&og_env::volume::Volume>, p: glam::Vec3) -> f32 {
+    let Some(region) = volume else {
         return (p - cell.0).length();
-    };
-    let region = og_env::volume::Volume {
-        size: v.size,
-        radius: v.radius,
-        fade: 0.0,
     };
     let at = og_env::volume::Placement {
         position: cell.0,
@@ -310,7 +305,7 @@ fn seen(
         let scene = v.scene;
         let pose = pose_of(world, &transform, cell);
         let reach = reach_of(&v, v.loaded || loading);
-        let shape: Option<record::Volume> = volume.as_ref().and_then(|l| row(world, l, cell));
+        let shape = crate::world::region::volume_of(world, volume.as_ref(), cell);
         let within = |lead: f32| {
             anchors.iter().any(|&(p, extra, speed)| {
                 distance(pose, shape.as_ref(), p) <= reach + extra + speed * lead

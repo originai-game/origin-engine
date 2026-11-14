@@ -153,17 +153,6 @@ fn fog_volumes(
     layouts: &AtmoLayouts,
     h: &mut Hierarchy,
 ) {
-    let volume_of = |e: u64| -> Option<og_env::volume::Volume> {
-        let l = layouts.volume.as_ref()?;
-        let id = world.id_by_name(&l.schema).ok()?;
-        let bytes = world.get_bytes(og_ecs::Entity::from_bits(e), id).ok()?;
-        let v: record::Volume = l.read(&bytes).ok()?;
-        Some(og_env::volume::Volume {
-            size: v.size,
-            radius: v.radius,
-            fade: v.fade,
-        })
-    };
     scene.atmosphere.fog_volumes =
         crate::present::fx::kept_rows(world, layouts.fog_volume.as_ref())
             .into_iter()
@@ -176,7 +165,11 @@ fn fog_volumes(
                         quaternion,
                         scale,
                     },
-                    volume: volume_of(e),
+                    volume: crate::world::region::volume_of(
+                        world,
+                        layouts.volume.as_ref(),
+                        og_ecs::Entity::from_bits(e),
+                    ),
                     color: rgb(&v.color),
                     density: v.density,
                     scattering: v.scattering,
