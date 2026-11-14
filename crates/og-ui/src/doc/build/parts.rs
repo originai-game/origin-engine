@@ -161,13 +161,17 @@ struct PartContext {
 
 /// One part's style and what it was resolved from: its reference, its
 /// host and its document (held, so neither address is reused while it is
-/// kept), the theme of the element painted around it, if any.
+/// kept), and the theme it is painted with (the environment's outside
+/// paint), so a part built and then painted under one theme resolves once.
 #[derive(Clone)]
 struct PartStyle {
     part: crate::dress::PartRef,
     host: Option<Arc<PartHost>>,
     document: Option<Arc<UiDocument>>,
-    theme: Option<crate::Theme>,
+    theme: crate::Theme,
+    /// The part's transition state it was resolved from: until the build
+    /// commits the one it leaves (`values`), the same inputs ask again.
+    from: Option<crate::motion::css::StyleState>,
     values: Arc<Resolved>,
 }
 
@@ -586,7 +590,7 @@ impl Ui {
     ) -> Arc<Resolved> {
         let host = key.and_then(|k| self.tree.part_host(k));
         let document = host.and_then(|h| self.docs.library.documents.get(&h.document));
-        let theme = self.paint.ctx.as_ref().map(|c| c.theme);
+        let theme = *self.paint_theme();
         let state = key
             .and_then(|k| self.interaction.state.motion.part_styles.get(&k))
             .and_then(|s| s.get(part.part));
@@ -596,7 +600,8 @@ impl Ui {
                 && same_arc(&kept.host, host)
                 && same_arc(&kept.document, document)
                 && kept.theme == theme
-                && kept.values.style.as_ref().and_then(|c| c.state.as_ref()) == state
+                && (kept.values.style.as_ref().and_then(|c| c.state.as_ref()) == state
+                    || kept.from.as_ref() == state)
         };
         {
             let mut styles = self.style.part_styles.borrow_mut();
@@ -624,6 +629,7 @@ impl Ui {
                     host: host.cloned(),
                     document: document.cloned(),
                     theme,
+                    from: state.cloned(),
                     values: values.clone(),
                 },
             );

@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"og.ui","summary":"Restyling many controls at once costs less: a control part resolved while building is reused when it is painted under the same theme, and asked again in the same build before its transition state is committed, instead of resolving again each time. When the 40 cards of a dense menu change class in one tick, the end of that tick takes 13 ms instead of 21 on Windows."}
+  ]
+}
