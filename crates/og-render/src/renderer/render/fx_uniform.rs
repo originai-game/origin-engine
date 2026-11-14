@@ -88,7 +88,7 @@ impl Renderer {
         };
         self.world
             .terrain
-            .decals
+            .fx
             .write(&self.queue, fx_uniform.decal_info);
         // w: 1 with the GI's bounce in the AO texture's gba, 2 with GTAO's
         // bent normal there.

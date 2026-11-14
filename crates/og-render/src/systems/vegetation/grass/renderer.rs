@@ -38,10 +38,11 @@ pub(crate) fn shadow_source() -> String {
 /// layer-array variant's).
 pub(crate) fn generate_source(arrayed: bool) -> String {
     let s = format!(
-        "{}{}{}{}{}{}",
+        "{}{}{}{}{}{}{}",
         crate::LIBRARY_WGSL,
         crate::wind::WIND_COMMON_WGSL,
         crate::wind::WIND_LEAN_WGSL,
+        crate::trample::READ_WGSL,
         crate::ground::GRASS_COMMON_WGSL,
         crate::ground::TERRAIN_WGSL,
         wgsl3d!("grass_generate.wgsl"),

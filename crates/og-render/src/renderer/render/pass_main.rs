@@ -236,7 +236,7 @@ impl Renderer {
             main_list.indirect,
         );
         if let Some(indices) = terrain_indices {
-            pass.set_bind_group(3, self.world.terrain.decals.group(true), &[]);
+            pass.set_bind_group(3, self.world.terrain.fx.group(true), &[]);
             let (n, tris) = terrain::draw_levels(
                 &mut pass,
                 terrain_draws,

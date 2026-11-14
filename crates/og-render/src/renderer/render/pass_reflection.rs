@@ -130,7 +130,7 @@ impl Renderer {
         stats.reflection_draws += n;
         if let (Some(indices), Some(r)) = (terrain_indices, reflections.get(k)) {
             let frustum = Frustum::from_view_proj(r.3);
-            pass.set_bind_group(3, self.world.terrain.decals.group(false), &[]);
+            pass.set_bind_group(3, self.world.terrain.fx.group(false), &[]);
             let (n, _) = terrain::draw_levels(
                 &mut pass,
                 terrain_draws,

@@ -59,7 +59,7 @@
 //! terrain first uses it. A terrain of separate textures draws exactly as
 //! before.
 
-mod decals;
+mod fx;
 mod renderer;
 pub(crate) use renderer::*;
 
@@ -347,7 +347,7 @@ type GroupKey = (
 pub(crate) struct TerrainRenderer {
     layout: wgpu::BindGroupLayout,
     passes: TerrainPasses,
-    pub decals: decals::TerrainDecals,
+    pub fx: fx::TerrainFx,
     /// Draw every resident streamed tile faded in, without stepping the
     /// fades (a capture, `Renderer::render_capture`: tiles arrive by wall
     /// time, so a capture draws them settled).
@@ -506,7 +506,7 @@ pub(crate) struct TerrainPassLayouts<'a> {
     pub shadow: &'a wgpu::BindGroupLayout,
     pub terrain: &'a wgpu::BindGroupLayout,
     pub stamp: &'a wgpu::BindGroupLayout,
-    pub decals: &'a wgpu::BindGroupLayout,
+    pub fx: &'a wgpu::BindGroupLayout,
     /// The corner cache read (the levels' passes) and written.
     pub corners: &'a wgpu::BindGroupLayout,
     pub corners_write: &'a wgpu::BindGroupLayout,

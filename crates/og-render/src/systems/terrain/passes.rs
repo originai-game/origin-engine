@@ -27,12 +27,7 @@ pub(super) fn terrain_passes(
     };
     let lit_layout = pl(
         "terrain",
-        &[
-            layouts.frame,
-            layouts.terrain,
-            layouts.corners,
-            layouts.decals,
-        ],
+        &[layouts.frame, layouts.terrain, layouts.corners, layouts.fx],
     );
     let prepass_layout = pl(
         "terrain prepass",
@@ -45,12 +40,7 @@ pub(super) fn terrain_passes(
     let corners_layout = pl("terrain corners", &[layouts.corners_write, layouts.terrain]);
     let stamp_lit_layout = pl(
         "terrain stamp",
-        &[
-            layouts.frame,
-            layouts.terrain,
-            layouts.stamp,
-            layouts.decals,
-        ],
+        &[layouts.frame, layouts.terrain, layouts.stamp, layouts.fx],
     );
     let stamp_prepass_layout = pl(
         "terrain stamp prepass",
