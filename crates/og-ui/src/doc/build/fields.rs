@@ -472,7 +472,9 @@ impl Ui {
     ) {
         let i = base.index;
         *self.tree.el_mut(i) = base.element;
-        if let Some(host) = self.tree.nodes.iter_mut().rfind(|n| n.key == base.host_key) {
+        if let Some(host) = self.tree.nodes.iter_mut().rfind(|n| n.key == base.host_key)
+            && host.part_host.as_deref() != r.part_host.as_deref()
+        {
             host.part_host = r.part_host.clone();
         }
         *self.tree.props_mut(i) = base.widget_props.clone();

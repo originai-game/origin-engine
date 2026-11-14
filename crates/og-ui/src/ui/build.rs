@@ -437,6 +437,17 @@ impl crate::ui::Tree {
         };
         self.slot_present[i] = true;
         self.emitted.push(i);
+        if let Some((key, host)) = &self.pending_host
+            && *key == self.nodes[i].key
+        {
+            // The host it had, where nothing in it changed: what was
+            // resolved against it holds.
+            let kept = self.replaced.get(&i).and_then(|p| p.part_host.as_ref());
+            self.nodes[i].part_host = Some(match kept {
+                Some(kept) if **kept == **host => kept.clone(),
+                _ => host.clone(),
+            });
+        }
         // A rewritten node sets its draw and layer again as it builds.
         self.draws.remove(&i);
         self.dressable.remove(&i);

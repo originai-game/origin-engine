@@ -88,7 +88,7 @@ pub struct Resolved {
 }
 
 /// Authored host facts shared by all parts of a document control.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PartHost {
     pub document: String,
     pub tag: String,

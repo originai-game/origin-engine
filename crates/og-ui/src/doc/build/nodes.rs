@@ -214,6 +214,7 @@ impl Ui {
         // A button with only text is the leaf control; with content it holds it.
         let container = kind.container() && (kind != Kind::Button || !n.children.is_empty());
         if container {
+            self.tree.pending_host = None;
             return self.doc_container(
                 b,
                 n,
@@ -233,6 +234,7 @@ impl Ui {
         let styled = r;
         let r = styled.intrinsic();
         let mut texture = None;
+        self.tree.pending_host = styled.part_host.clone().map(|host| (key, host));
         *self.front.accent_mut() = styled.text.as_deref().and_then(|t| t.accent);
         match kind {
             Kind::Label => {
@@ -335,6 +337,7 @@ impl Ui {
             | Kind::Details
             | Kind::Box => unreachable!("'{kind}' is built before the leaf controls"),
         }
+        self.tree.pending_host = None;
         *self.front.accent_mut() = None;
         let last = self.tree.last_closed();
         if last != NONE && last < self.tree.nodes().len() {

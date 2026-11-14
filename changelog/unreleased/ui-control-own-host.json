@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui documents","summary":"A control a document builds styles its parts as itself from the tick it is built: a rebuilt <button> no longer matched its parts against the enclosing element (a <column part=…>) for that tick, so a focused primary button in a screen no longer switched between two looks on alternate ticks and rebuilt itself while nothing changed."}
+  ]
+}

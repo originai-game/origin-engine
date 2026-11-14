@@ -69,6 +69,7 @@ impl Ui {
                 persistent: Vec::new(),
                 owning: Vec::new(),
                 in_place: None,
+                pending_host: None,
                 scope: None,
                 built: Default::default(),
                 anonymous: Default::default(),

@@ -465,6 +465,10 @@ pub struct Tree {
     /// A retained element re-emitted into the slot it already holds in its
     /// parent's children: `(key, parent)` of the push that must not append.
     pub(crate) in_place: Option<(u64, usize)>,
+    /// The document host of the control about to be built, by its key:
+    /// the node written with that key holds it from the start, so the
+    /// control's parts resolve against their own host as it builds them.
+    pub(crate) pending_host: Option<(u64, std::sync::Arc<crate::doc::build::PartHost>)>,
     /// The content scope the next node is written in: the name of the
     /// snippet a mounted document renders it from (`body`; `a/b` when
     /// nested). Its id and key carry the scope between its parent's and
