@@ -31,6 +31,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     shaders::mechanism_sources(&mut out);
     let mut add = |label: &str, wgsl: String| out.push(ShaderSource::plain(label, wgsl));
     crate::sprites::shader_sources(&mut add);
+    crate::media::shader_sources(&mut add);
     crate::systems::shader_sources(&mut add);
     shaders::with_variants(out)
 }
