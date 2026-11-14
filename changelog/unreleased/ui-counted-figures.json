@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "results screen: stats",
+      "summary": "A stat with count: true counts up from 0 as the screen opens, written whole or with its decimals digits after the point (a percent stat as a percent). The other stats show their value as before."
+    },
+    {
+      "member": "IdleResources: currencies",
+      "summary": "An amount the component formats itself (no value string) counts to each new amount instead of jumping. A formatted value the game passes is shown as it is."
+    }
+  ]
+}

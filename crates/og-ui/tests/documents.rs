@@ -269,6 +269,7 @@ fn core_screen_readouts_preserve_units_and_unbroken_ranks() {
             stats.push(
                 json!({"id":"percentage", "name":"Completion", "format":"percent", "value":0.125}),
             );
+            stats.push(json!({"id":"rate", "name":"Rate", "format":"percent", "count":true, "decimals":1, "value":0.625}));
         }
         let table = og_i18n::StringTable::parse(
             &std::fs::read_to_string(root.join(format!("{name}.en.ogt"))).unwrap(),
@@ -286,10 +287,18 @@ fn core_screen_readouts_preserve_units_and_unbroken_ranks() {
             let mut ui = ui_with_font(test_font());
             ui.define_document(doc.clone());
             ui.push_screen(name, vm.clone()).unwrap();
-            for _ in 0..30 {
+            // A counted stat (the fixture's score) is on its way up from 0
+            // at first and has landed after its 900 ms.
+            let mut counting = false;
+            for tick in 0..if name == "results" { 60 } else { 30 } {
                 ui.begin(InputFrame::default(), Viewport::new(width, 844.0));
                 ui.build_layers(&env);
                 ui.end();
+                if tick == 5 {
+                    counting = !ui.frame().items.iter().any(|item| {
+                        matches!(&item.cmd, DrawCmd::Text { text, .. } if text == "48,210" || text == "62.5%")
+                    });
+                }
             }
             let lines: Vec<_> = ui
                 .frame()
@@ -305,9 +314,12 @@ fn core_screen_readouts_preserve_units_and_unbroken_ranks() {
                 .collect();
             let valid = match name {
                 "leaderboard" => lines.contains(&"1284th") && !lines.contains(&"1284t"),
-                "results" => ["62%", "48,210", "0.375", "12.5%"]
-                    .iter()
-                    .all(|value| lines.contains(value)),
+                "results" => {
+                    counting
+                        && ["62%", "48,210", "0.375", "12.5%", "62.5%"]
+                            .iter()
+                            .all(|value| lines.contains(value))
+                }
                 "calibration" => lines.contains(&"24 ms") && !lines.contains(&"24"),
                 "save-load" => lines.contains(&"Back"),
                 _ => unreachable!(),
