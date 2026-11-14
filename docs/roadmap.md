@@ -101,11 +101,11 @@ and is verified once on the GPU host. Open work is collected on PR #40.
   with the one it replaced; a control becomes an element kind; the tree
   takes explicit insert, update and remove; the immediate API becomes an
   engine-internal front end; og-ui's tests stop linking `og-render`.
-- **og-render:** culling, batches, the frame uniform and group 0 become
-  stages shared by the passes. The sources are grouped by owner (its
-  README, Layout); `tests/structure.rs` lists what still reaches the
-  wrong way (a mechanism into a world system or the renderer, one system
-  into another), and that list is worked down to nothing.
+- **og-render:** batches, the frame uniform and group 0 become stages
+  shared by the passes, as culling is. The sources are grouped by owner
+  (its README, Layout); `tests/structure.rs` refuses a mechanism that
+  reaches into a world system or the renderer, and one system that
+  reaches into another.
 - **Tiers (§2.6):** the mini-game tier end to end (passes that read the
   depth prepass build no graph without MRT yet, and secondary views draw
   nothing), then the GL tier on a device.
@@ -143,6 +143,11 @@ and is verified once on the GPU host. Open work is collected on PR #40.
   and the wasm build's Windows command-line limit under sccache.
 - The performance pass also finishes the paused `gi-screen` and
   `gate-presentation` branches.
+- Crowds at 50k are bound by the CPU on the L4, not by a pass: the frame
+  is 9.2 ms, its GPU passes 5.5 ms, and the render call takes 11.4 ms of
+  CPU in profile mode, 5.4 ms of it the scene's update.
+- og-audio's busy mix renders one second of audio in 98 ms on the L4's
+  Xeon, against perf.sh's 50 ms bound.
 - Mobile: before 0.8.0 the UI runs on at least one real iPhone and one
   real Android phone.
 - The asset store's cook stat index: sessions still run the incremental
