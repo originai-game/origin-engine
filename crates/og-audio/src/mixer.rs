@@ -263,8 +263,9 @@ impl Voice {
     /// windowed sinc (`sinc`) or linearly; false once it is done.
     fn render_add(&mut self, out: &mut [f32], sinc: bool) -> bool {
         let step = self.base_step * f64::from(self.pitch);
-        let span = (self.loop_end - self.loop_start) as f64;
-        for o in out.as_chunks_mut::<2>().0.iter_mut() {
+        let frames = out.len() / 2;
+        let mut f = 0;
+        while f < frames {
             if self.pos < 0.0 {
                 if self.pos > -1e-6 {
                     // Rounding of a start time: this is its frame.
@@ -285,29 +286,88 @@ impl Voice {
                             return false;
                         }
                     }
+                    f += 1;
                     continue;
                 }
             }
-            let i = self.pos as u64;
-            let frac = (self.pos - i as f64) as f32;
-            let (il, ir) = if sinc {
-                let region = Region {
-                    looping: self.looping,
-                    start: self.loop_start,
-                    end: self.loop_end,
-                };
-                self.hist.get_or_insert_with(History::new).frame(
-                    &mut self.reader,
-                    region,
-                    i,
-                    frac,
-                    step,
-                )
-            } else {
+            let (played, sounding) = self.play_add(&mut out[f * 2..], step, sinc);
+            if !sounding {
+                return false;
+            }
+            f += played;
+        }
+        !self.done
+    }
+
+    /// Plays up to [`RUN`] frames from the playhead into `out`: their
+    /// source positions, their source frames, then the low-pass, the
+    /// panner and the gain ramp on each. The frames played, and false
+    /// once the voice is done.
+    fn play_add(&mut self, out: &mut [f32], step: f64, sinc: bool) -> (usize, bool) {
+        let mut limit = (out.len() / 2).min(RUN);
+        if self.done {
+            // Ended by a cue: this frame, then gone.
+            limit = 1;
+        } else if self.stopping && self.ramp > 0 {
+            // Its fade ends on this frame.
+            limit = limit.min(self.ramp as usize);
+        }
+        let mut at = [(0u64, 0.0f32); RUN];
+        let (mut n, mut ended) = (0, false);
+        let span = (self.loop_end - self.loop_start) as f64;
+        while n < limit {
+            // Through i64 (one instruction each way; the playhead is ≥ 0).
+            let i = self.pos as i64;
+            at[n] = (i as u64, (self.pos - i as f64) as f32);
+            n += 1;
+            self.pos += step;
+            if self.looping {
+                let end = self.loop_end as f64;
+                if self.pos >= end {
+                    self.pos = self.loop_start as f64 + (self.pos - end) % span;
+                }
+            } else if self.pos >= self.frames as f64 {
+                ended = true;
+                break;
+            }
+        }
+        let at = &at[..n];
+        let mut input = [(0.0f32, 0.0f32); RUN];
+        let input = &mut input[..n];
+        if sinc {
+            let region = Region {
+                looping: self.looping,
+                start: self.loop_start,
+                end: self.loop_end,
+            };
+            self.hist.get_or_insert_with(History::new).render(
+                &mut self.reader,
+                region,
+                at,
+                step,
+                input,
+            );
+        } else {
+            for (x, &(i, frac)) in input.iter_mut().zip(at) {
                 let (al, ar) = self.reader.frame(i);
                 let (bl, br) = self.reader.frame(self.next_index(i));
-                (al + (bl - al) * frac, ar + (br - ar) * frac)
-            };
+                *x = (al + (bl - al) * frac, ar + (br - ar) * frac);
+            }
+        }
+        let frames = out.as_chunks_mut::<2>().0.iter_mut().zip(&*input);
+        if !self.lp.on() && self.hrtf.is_none() && self.ramp == 0 {
+            // Nothing between the source and the matrix, which holds still.
+            let m = self.cur;
+            for (o, &(l, r)) in frames {
+                o[0] += m[0] * l + m[1] * r;
+                o[1] += m[2] * l + m[3] * r;
+            }
+            if ended {
+                self.done = true;
+            }
+            return (n, !self.done);
+        }
+        for (o, &(il, ir)) in frames {
             let (mut l, mut r) = self.lp.process(il, ir);
             if let Some(h) = &mut self.hrtf {
                 (l, r) = h.process(if self.stereo { 0.5 * (l + r) } else { l });
@@ -327,23 +387,16 @@ impl Voice {
             let m = self.cur;
             o[0] += m[0] * l + m[1] * r;
             o[1] += m[2] * l + m[3] * r;
-            if self.done {
-                return false;
-            }
-            self.pos += step;
-            if self.looping {
-                let end = self.loop_end as f64;
-                if self.pos >= end {
-                    self.pos = self.loop_start as f64 + (self.pos - end) % span;
-                }
-            } else if self.pos >= self.frames as f64 {
-                self.done = true;
-                return false;
-            }
         }
-        !self.done
+        if ended {
+            self.done = true;
+        }
+        (n, !self.done)
     }
 }
+
+/// Frames a voice plays in one run of [`Voice::play_add`].
+const RUN: usize = 64;
 
 struct Limiter {
     env: f32,

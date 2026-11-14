@@ -21,12 +21,22 @@
 //!   returned as it is: such a voice renders the same samples as the
 //!   linear resampler, bit for bit, and costs no taps.
 //!
-//! A voice keeps the frames around its playhead in a 128-frame history,
-//! filled one source frame at a time as the playhead passes it (the loop
-//! seam included: the frames after `loopEnd − 1` are `loopStart`'s, as the
-//! linear resampler reads them), so a frame costs one decoded source frame
-//! and the taps. The tables are built once per process from `+ − × ÷` and
-//! `sqrt` only (a series for sin and I0), so they are the same on every host.
+//! - **The sum**: a frame's taps in pairs (2p, 2p + 1), left and right of
+//!   both as four lanes, summed lane by lane from the first pair to the
+//!   last; then lanes 0 + 2 are the left and 1 + 3 the right. One SSE add
+//!   carries a pair on x86_64, and other targets (wasm) do the same
+//!   operations a lane at a time, so the samples are the same on every host.
+//!   Eight frames' sums run side by side, so their adds do not wait on one
+//!   another.
+//!
+//! A voice keeps the frames around its playhead in a 128-frame history
+//! (the loop seam included: the frames after `loopEnd − 1` are
+//! `loopStart`'s, as the linear resampler reads them), rendered in
+//! segments: the frames of a run whose windows the history holds together,
+//! with the history filled once for them, from the decoded block at hand,
+//! so a frame costs about one decoded source frame and the taps. The
+//! tables are built once per process from `+ − × ÷` and `sqrt` only (a
+//! series for sin and I0), so they are the same on every host.
 
 use crate::sound::Reader;
 use std::sync::OnceLock;
@@ -214,16 +224,77 @@ impl History {
         self.end += 1;
     }
 
-    /// The voice's frame at source position `i + frac` moving `step` source
-    /// frames per output frame.
-    pub fn frame(
+    /// Pushes source frames until `end` reaches at least `need`, and on
+    /// up to `most` while they are in the block at hand.
+    #[inline]
+    fn fill(&mut self, reader: &mut Reader, region: Region, need: u64, most: u64) {
+        while self.end < need {
+            // The frames before the loop seam.
+            let straight = if region.looping && region.end > region.start && self.src < region.end {
+                region.end - self.src
+            } else {
+                u64::MAX
+            };
+            let (ring, end) = (&mut self.ring, &mut self.end);
+            let n = reader.frames(self.src, straight.min(most - *end), |f| {
+                let at = (*end & MASK) as usize;
+                ring[at] = [f.0, f.1];
+                ring[at + HISTORY] = [f.0, f.1];
+                *end += 1;
+            });
+            self.src = region.after(self.src, n);
+        }
+    }
+
+    /// The playhead's virtual index at source frame `i` if it got there by
+    /// playing on (forwards, or wrapped at the loop seam); `None` when it
+    /// jumped and the history restarts.
+    #[inline]
+    fn follow(&self, region: Region, i: u64, step: f64) -> Option<u64> {
+        if !self.valid {
+            None
+        } else if i >= self.i {
+            Some(self.vi + (i - self.i))
+        } else if region.looping && step < (region.end - region.start) as f64 {
+            // Wrapped: the rest of the region, then from its start.
+            Some(self.vi + (region.end - self.i) + (i - region.start))
+        } else {
+            None
+        }
+    }
+
+    /// Restarts at source frame `i`: BACK frames behind (silence before
+    /// the sound), then on.
+    fn restart(&mut self, reader: &mut Reader, i: u64) {
+        self.vi = BACK + HISTORY as u64;
+        self.i = i;
+        self.end = self.vi - BACK;
+        for k in (1..=BACK).rev() {
+            let f = if i >= k {
+                reader.frame(i - k)
+            } else {
+                (0.0, 0.0)
+            };
+            self.push(f);
+        }
+        self.src = i;
+        self.valid = true;
+    }
+
+    /// The voice's frames at the source positions `at` (frame, fraction),
+    /// moving `step` source frames per output frame, into `out`.
+    ///
+    /// In segments: the playhead is followed over as many frames as the
+    /// ring holds the windows of together, the ring is filled once for
+    /// them, then each window is summed.
+    pub fn render(
         &mut self,
         reader: &mut Reader,
         region: Region,
-        i: u64,
-        frac: f32,
+        at: &[(u64, f32)],
         step: f64,
-    ) -> (f32, f32) {
+        out: &mut [(f32, f32)],
+    ) {
         if step != self.step {
             // Width bucket: the spread rounded up to an eighth (0: pitch ≤ 1).
             self.step = step;
@@ -235,71 +306,178 @@ impl History {
             self.reach =
                 (SINC_ZEROS as f64 * (1.0 + self.bucket as f64 / SPREAD_STEPS)).ceil() as u64;
         }
-        let (bucket, reach) = (self.bucket, self.reach);
-        if self.valid && i != self.i {
-            if i > self.i {
-                self.vi += i - self.i;
-            } else if region.looping && step < (region.end - region.start) as f64 {
-                // Wrapped: the rest of the region, then from its start.
-                self.vi += (region.end - self.i) + (i - region.start);
-            } else {
-                self.valid = false;
+        let bucket = self.bucket;
+        if bucket != 0 && self.wide.as_ref().is_none_or(|w| w.0 != bucket) {
+            self.wide = Some((bucket, wide(bucket)));
+        }
+        // Out of `self` while the ring fills, and back after.
+        let wide = if bucket != 0 { self.wide.take() } else { None };
+        self.render_with(reader, region, at, step, out, wide.as_ref().map(|w| &*w.1));
+        if wide.is_some() {
+            self.wide = wide;
+        }
+    }
+
+    fn render_with(
+        &mut self,
+        reader: &mut Reader,
+        region: Region,
+        at: &[(u64, f32)],
+        step: f64,
+        out: &mut [(f32, f32)],
+        wide: Option<&Wide>,
+    ) {
+        let reach = self.reach;
+        let (table, phases) = match wide {
+            None => (narrow(), SINC_PHASES),
+            Some(w) => {
+                debug_assert_eq!(w.reach as u64, reach);
+                (&w.weights[..], WIDE_PHASES)
             }
-            self.i = i;
-        }
-        if !self.valid {
-            // Restart: BACK frames behind (silence before the sound), then on.
-            self.vi = BACK + HISTORY as u64;
-            self.i = i;
-            self.end = self.vi - BACK;
-            for k in (1..=BACK).rev() {
-                let f = if i >= k {
-                    reader.frame(i - k)
-                } else {
-                    (0.0, 0.0)
-                };
-                self.push(f);
-            }
-            self.src = i;
-            self.valid = true;
-        }
-        let need = self.vi + reach + 1;
-        if need > self.end + HISTORY as u64 - BACK {
-            // A step past the history: skip the frames no tap reads.
-            let skip = need - self.end - (HISTORY as u64 - BACK);
-            self.src = region.after(self.src, skip);
-            self.end += skip;
-        }
-        while self.end < need {
-            let f = reader.frame(self.src);
-            self.push(f);
-            self.src = region.after(self.src, 1);
-        }
-        if frac == 0.0 {
-            // On a source frame: the frame itself.
-            let f = self.ring[(self.vi & MASK) as usize];
-            return (f[0], f[1]);
-        }
-        let taps = 2 * reach as usize;
-        let row = if bucket == 0 {
-            let phase = ((frac * SINC_PHASES as f32 + 0.5) as usize).min(SINC_PHASES);
-            &narrow()[phase * taps..(phase + 1) * taps]
-        } else {
-            if self.wide.as_ref().is_none_or(|w| w.0 != bucket) {
-                self.wide = Some((bucket, wide(bucket)));
-            }
-            let w = &self.wide.as_ref().expect("just set").1;
-            debug_assert_eq!(w.reach * 2, taps);
-            let phase = ((frac * WIDE_PHASES as f32 + 0.5) as usize).min(WIDE_PHASES);
-            &w.weights[phase * taps..(phase + 1) * taps]
         };
-        let first = ((self.vi + 1 - reach) & MASK) as usize;
-        let window = &self.ring[first..first + taps];
-        let (mut l, mut r) = (0.0f32, 0.0f32);
-        for (w, f) in row.iter().zip(window) {
-            l += w * f[0];
-            r += w * f[1];
+        let taps = 2 * reach as usize;
+        // The most a segment's windows span, so a skip (below) keeps them.
+        let span = HISTORY as u64 - BACK;
+        let mut j = 0;
+        while j < at.len() {
+            let i0 = at[j].0;
+            match self.follow(region, i0, step) {
+                Some(vi) => self.vi = vi,
+                None => self.restart(reader, i0),
+            }
+            // The segment: the frames played on from `i0` (no wrap) whose
+            // windows the ring holds together.
+            let reachable = i0 + span - 2 * reach;
+            let mut k = j + 1;
+            while k < at.len() && at[k].0 >= at[k - 1].0 && at[k].0 <= reachable {
+                k += 1;
+            }
+            let last = at[k - 1].0;
+            let vi = self.vi;
+            self.vi = vi + (last - i0);
+            self.i = last;
+            let need = self.vi + reach + 1;
+            if need > self.end + span {
+                // A step past the history: skip the frames no tap reads.
+                let skip = need - self.end - span;
+                self.src = region.after(self.src, skip);
+                self.end += skip;
+            }
+            if self.end < need {
+                // What the block at hand holds is read ahead, as far as the
+                // ring keeps every frame a window may still read: the
+                // segment's and the widest kernel's around the playhead (a
+                // later render may be pitched further up).
+                self.fill(reader, region, need, vi + 1 - BACK + HISTORY as u64);
+            }
+            // Ring slot of source frame `i`'s window, and of `i` itself.
+            let window = (vi + 1 - reach).wrapping_sub(i0);
+            let centre = vi.wrapping_sub(i0);
+            let mut group = [(0usize, 0usize, 0usize); GROUP];
+            let mut queued = 0;
+            for (o, &(i, frac)) in at[j..k].iter().enumerate() {
+                if frac == 0.0 {
+                    // On a source frame: the frame itself.
+                    let f = self.ring[(centre.wrapping_add(i) & MASK) as usize];
+                    out[j + o] = (f[0], f[1]);
+                    continue;
+                }
+                // Through i32 (one instruction; the value is in [0.5, phases + 0.5]).
+                let phase = ((frac * phases as f32 + 0.5) as i32 as usize).min(phases);
+                group[queued] = (
+                    j + o,
+                    (window.wrapping_add(i) & MASK) as usize,
+                    phase * taps,
+                );
+                queued += 1;
+                if queued == GROUP {
+                    sum(&self.ring, table, taps, &group, out);
+                    queued = 0;
+                }
+            }
+            sum(&self.ring, table, taps, &group[..queued], out);
+            j = k;
         }
-        (l, r)
+    }
+}
+
+/// Frames whose taps are summed at once: independent sums, so the adds of
+/// one do not wait for another's.
+const GROUP: usize = 8;
+
+/// Each queued frame's windowed sum, into `out`. The even taps and the odd
+/// taps sum in two partial sums, each from the first tap to the last, then
+/// the odd sum joins the even: four lanes (left and right of a tap pair) a
+/// vector add carries, in an order fixed here, so every host and every
+/// grouping gives the same samples.
+#[inline]
+fn sum(
+    ring: &[[f32; 2]; 2 * HISTORY],
+    table: &[f32],
+    taps: usize,
+    queued: &[(usize, usize, usize)],
+    out: &mut [(f32, f32)],
+) {
+    debug_assert!(taps % 2 == 0);
+    let flat = ring.as_flattened();
+    let rows = |row: usize| table[row..][..taps].as_chunks::<2>().0;
+    let windows = |first: usize| flat[2 * first..][..2 * taps].as_chunks::<4>().0;
+    if let Ok(group) = <&[_; GROUP]>::try_from(queued) {
+        let acc = dot::<GROUP>(
+            std::array::from_fn(|k| rows(group[k].2)),
+            std::array::from_fn(|k| windows(group[k].1)),
+        );
+        for (q, a) in group.iter().zip(acc) {
+            out[q.0] = (a[0] + a[2], a[1] + a[3]);
+        }
+        return;
+    }
+    for &(j, first, row) in queued {
+        let [a] = dot([rows(row)], [windows(first)]);
+        out[j] = (a[0] + a[2], a[1] + a[3]);
+    }
+}
+
+/// `N` frames' tap pairs summed lane by lane: for each frame, the left and
+/// right of its even taps (lanes 0, 1) and of its odd taps (lanes 2, 3).
+/// SSE2 on x86_64 (four lanes, one add); elsewhere the same operations a
+/// lane at a time, to the same bits.
+#[inline(always)]
+fn dot<const N: usize>(rows: [&[[f32; 2]]; N], windows: [&[[f32; 4]]; N]) -> [[f32; 4]; N] {
+    let pairs = rows[0].len();
+    assert!(rows.iter().all(|r| r.len() == pairs) && windows.iter().all(|w| w.len() == pairs));
+    #[cfg(target_arch = "x86_64")]
+    // SAFETY: SSE and SSE2 are in x86_64's baseline; each load reads the 8
+    // bytes of a `[f32; 2]` or the 16 of a `[f32; 4]` it is given, and the
+    // store writes the 16 bytes of `lanes`.
+    unsafe {
+        use std::arch::x86_64::*;
+        let mut acc = [_mm_setzero_ps(); N];
+        for t in 0..pairs {
+            for k in 0..N {
+                let w = _mm_castpd_ps(_mm_load_sd(rows[k][t].as_ptr().cast()));
+                let x = _mm_loadu_ps(windows[k][t].as_ptr());
+                acc[k] = _mm_add_ps(acc[k], _mm_mul_ps(_mm_unpacklo_ps(w, w), x));
+            }
+        }
+        acc.map(|a| {
+            let mut lanes = [0.0f32; 4];
+            _mm_storeu_ps(lanes.as_mut_ptr(), a);
+            lanes
+        })
+    }
+    #[cfg(not(target_arch = "x86_64"))]
+    {
+        let mut acc = [[0.0f32; 4]; N];
+        for t in 0..pairs {
+            for k in 0..N {
+                let (w, x) = (rows[k][t], windows[k][t]);
+                let w = [w[0], w[0], w[1], w[1]];
+                for m in 0..4 {
+                    acc[k][m] += w[m] * x[m];
+                }
+            }
+        }
+        acc
     }
 }

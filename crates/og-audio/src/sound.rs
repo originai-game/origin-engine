@@ -993,6 +993,10 @@ pub(crate) struct Reader {
     evict: usize,
     /// A chunked sound's chunk being read and the next.
     held: Vec<(usize, Arc<Chunk>)>,
+    /// The block the last frame was read from: its first frame, its
+    /// frames (0: none) and its slot, so the next frame in it is read
+    /// without finding its block again.
+    hot: (u64, u64, usize),
 }
 
 const EMPTY: usize = usize::MAX;
@@ -1006,6 +1010,7 @@ impl Reader {
             slots: [(EMPTY, Arc::from([])), (EMPTY, Arc::from([]))],
             evict: 0,
             held: Vec::new(),
+            hot: (0, 0, 0),
         }
     }
 
@@ -1016,6 +1021,10 @@ impl Reader {
         if i >= self.data.frames {
             return (0.0, 0.0);
         }
+        let (lo, len, slot) = self.hot;
+        if i.wrapping_sub(lo) < len {
+            return sample(&self.slots[slot].1, (i - lo) as usize * ch, ch);
+        }
         let (buf, at): (&[i16], usize) = match &self.data.storage {
             Storage::Resident(s) => (s, i as usize * ch),
             Storage::Silent(cell) => match cell.get() {
@@ -1023,6 +1032,7 @@ impl Reader {
                     self.block = real.block_len();
                     self.data = real.clone();
                     self.slots = [(EMPTY, Arc::from([])), (EMPTY, Arc::from([]))];
+                    self.hot = (0, 0, 0);
                     return self.frame(i);
                 }
                 None => return (0.0, 0.0),
@@ -1047,16 +1057,47 @@ impl Reader {
                 };
                 // The slot the next miss evicts is the one not just used.
                 self.evict = slot ^ 1;
+                self.hot = (k as u64 * self.block, self.block, slot);
                 (&self.slots[slot].1, off)
             }
         };
-        let l = buf.get(at).copied().unwrap_or(0);
-        let r = if ch > 1 {
-            buf.get(at + 1).copied().unwrap_or(0)
-        } else {
-            l
+        sample(buf, at, ch)
+    }
+
+    /// Frame `i` as [`Reader::frame`] reads it, then the frames after it
+    /// in the same block (decoded or resident), up to `max` in all, each
+    /// into `push`; the frames read (at least 1).
+    #[inline]
+    pub fn frames(&mut self, i: u64, max: u64, mut push: impl FnMut((f32, f32))) -> u64 {
+        push(self.frame(i));
+        let ch = self.data.channels;
+        let (buf, lo, len): (&[i16], u64, u64) = match &self.data.storage {
+            Storage::Resident(s) => (s, 0, self.data.frames),
+            _ => (&self.slots[self.hot.2].1, self.hot.0, self.hot.1),
         };
-        (f32::from(l) * SCALE, f32::from(r) * SCALE)
+        let end = (lo + len).min(self.data.frames).min(i.saturating_add(max));
+        if i < lo || i + 1 >= end {
+            return 1;
+        }
+        let from = (i + 1 - lo) as usize * ch;
+        let Some(run) = buf.get(from..(end - lo) as usize * ch) else {
+            // A short last block: frame by frame, silence past its samples.
+            for j in i + 1..end {
+                push(sample(buf, (j - lo) as usize * ch, ch));
+            }
+            return end - i;
+        };
+        if ch == 1 {
+            for &s in run {
+                let x = f32::from(s) * SCALE;
+                push((x, x));
+            }
+        } else {
+            for f in run.chunks_exact(ch) {
+                push((f32::from(f[0]) * SCALE, f32::from(f[1]) * SCALE));
+            }
+        }
+        end - i
     }
 
     /// QOA frame `k`: decoded beside the tick, or (a miss) decoded here, to
@@ -1101,6 +1142,19 @@ impl Reader {
         }
         Some(())
     }
+}
+
+/// The frame at sample `at` of interleaved `buf` as (left, right); a mono
+/// sound's in both, past the end silence.
+#[inline]
+fn sample(buf: &[i16], at: usize, ch: usize) -> (f32, f32) {
+    let l = buf.get(at).copied().unwrap_or(0);
+    let r = if ch > 1 {
+        buf.get(at + 1).copied().unwrap_or(0)
+    } else {
+        l
+    };
+    (f32::from(l) * SCALE, f32::from(r) * SCALE)
 }
 
 /// Seconds of a chunked sound kept behind each playhead (a free-running
