@@ -147,6 +147,10 @@ pub struct KeyedCollection {
 }
 
 impl KeyedCollection {
+    /// The field of each row that holds its key.
+    pub fn key_field(&self) -> &str {
+        &self.key_field
+    }
     pub fn keys(&self) -> &[String] {
         &self.keys
     }

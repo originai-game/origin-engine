@@ -162,6 +162,57 @@ impl Ui {
         }
     }
 
+    /// Makes `mount`, mounted with values, hold `values` (an object of some
+    /// of its fields): a list of rows replaces its collection's rows by
+    /// key, so a row that stays keeps its elements, and any other value is
+    /// set where it changed. A field it does not hold is refused.
+    pub fn set_mount_values(&mut self, mount: &SourceId, values: &Value) -> Result<(), String> {
+        let Value::Object(fields) = values else {
+            return Err("mount values are an object of named fields".into());
+        };
+        let scope = held_scope(mount);
+        let registration = self
+            .docs
+            .state()
+            .memory
+            .retained
+            .registrations
+            .get(mount)
+            .ok_or_else(|| format!("mount '{}:{}' is not mounted", mount.scope, mount.id))?;
+        let mut held = Vec::new();
+        for (name, value) in fields {
+            let source = registration
+                .inputs
+                .get(name)
+                .filter(|source| source.scope == scope)
+                .ok_or_else(|| format!("mount '{}' holds no value '{name}'", mount.id))?;
+            held.push((source.clone(), value));
+        }
+        for (source, value) in held {
+            let sources = &self.docs.state().memory.reactive.sources;
+            if let Ok(collection) = sources.keyed(&source) {
+                let key = collection.key_field().to_owned();
+                let rows = value
+                    .as_array()
+                    .and_then(|items| rows(items, &key))
+                    .ok_or_else(|| {
+                        format!(
+                            "the value '{}' is a list of rows, each with its own string '{key}'",
+                            source.id
+                        )
+                    })?;
+                self.set_rows(&source, &rows);
+            } else if sources.read(&source).ok() != Some(value) {
+                self.docs.execute(Command::Set {
+                    source,
+                    value: value.clone(),
+                    force: false,
+                })?;
+            }
+        }
+        Ok(())
+    }
+
     /// The values `mount` holds now, by field: what it was mounted with
     /// and what its document's two-way bindings wrote since. None when it
     /// is not mounted.

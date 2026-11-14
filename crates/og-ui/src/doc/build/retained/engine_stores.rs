@@ -49,16 +49,21 @@ impl Ui {
         }
     }
 
-    /// Makes the collection `source` hold `rows`, in order, each with an
-    /// `id` no other has. A row that stays keeps its place in the
-    /// collection and is patched only in the fields that changed, so only
-    /// what changed is built again.
-    fn set_rows(&mut self, source: &SourceId, rows: &[Map<String, Value>]) {
-        self.declare_rows(source);
+    /// Makes the collection `source` hold `rows`, in order, each with a
+    /// key no other has in its collection's key field. A row that stays
+    /// keeps its place in the collection and is patched only in the fields
+    /// that changed, so only what changed is built again.
+    pub(super) fn set_rows(&mut self, source: &SourceId, rows: &[Map<String, Value>]) {
         let Ok(held) = self.docs.state().memory.reactive.sources.keyed(source) else {
             return;
         };
-        let id = |row: &Map<String, Value>| row["id"].as_str().unwrap_or_default().to_owned();
+        let field = held.key_field().to_owned();
+        let id = |row: &Map<String, Value>| {
+            row.get(&field)
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned()
+        };
         if held.keys().len() == rows.len()
             && rows
                 .iter()
@@ -132,6 +137,7 @@ impl Ui {
                 .collect()
             })
             .collect();
+        self.declare_rows(&CAPTIONS_STORE);
         self.set_rows(&CAPTIONS_STORE, &rows);
     }
 
@@ -157,6 +163,7 @@ impl Ui {
                 .collect()
             })
             .collect();
+        self.declare_rows(&TOASTS_STORE);
         self.set_rows(&TOASTS_STORE, &rows);
     }
 
