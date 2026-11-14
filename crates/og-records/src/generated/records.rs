@@ -34059,7 +34059,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Its size: offsets, meshes, trails, beams, lights' reach, decals and flashes scale with it; its emitters are placed and shaped by the scaled transform."),
+                doc: doc!("Its size: offsets, meshes, trails, beams, lights' reach, decals and glows scale with it; its emitters are placed and shaped by the scaled transform."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

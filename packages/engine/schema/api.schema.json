@@ -16414,7 +16414,7 @@
     },
     {
       "name": "vfx",
-      "doc": "Composed effects: one effect (a fireball's impact, a heal, a level-up) as a timeline of elements in an `.ogt` of `type vfx`: emitters, meshes, trails, beams, lights, decals, flashes, flipbooks, shakes and sounds.\nAn og.Vfx plays one from its startTick at its entity's MatrixWorld. Its visuals come from (asset, seed, startTick, the tick) alone, never world state, so a replay, restore or seek draws the same. In the tick the og.vfx system sends an og.VfxEvent for each `event` line, plays each `shake` and `sound`, and despawns an ended non-looping effect with its sounds (unless `despawn` is false).\nSee `loading §11`.",
+      "doc": "Composed effects: one effect (a fireball's impact, a heal, a level-up) as a timeline of elements in an `.ogt` of `type vfx`: emitters, meshes, trails, beams, lights, decals, glows, flipbooks, shakes and sounds.\nAn og.Vfx plays one from its startTick at its entity's MatrixWorld. Its visuals come from (asset, seed, startTick, the tick) alone, never world state, so a replay, restore or seek draws the same. In the tick the og.vfx system sends an og.VfxEvent for each `event` line, plays each `shake` and `sound`, and despawns an ended non-looping effect with its sounds (unless `despawn` is false).\nSee `loading §11`.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -56710,7 +56710,7 @@
         },
         "scale": {
           "type": "number",
-          "description": "Its size: offsets, meshes, trails, beams, lights' reach, decals and flashes scale with it; its emitters are placed and shaped by the scaled transform.",
+          "description": "Its size: offsets, meshes, trails, beams, lights' reach, decals and glows scale with it; its emitters are placed and shaped by the scaled transform.",
           "default": 1,
           "minimum": 0
         },

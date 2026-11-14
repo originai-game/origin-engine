@@ -32738,7 +32738,7 @@ export interface Fracture2dDesc {
 
 
 // ── vfx ─────────────────────────────────────────────────────────
-// Composed effects: one effect (a fireball's impact, a heal, a level-up) as a timeline of elements in an `.ogt` of `type vfx`: emitters, meshes, trails, beams, lights, decals, flashes, flipbooks, shakes and sounds.
+// Composed effects: one effect (a fireball's impact, a heal, a level-up) as a timeline of elements in an `.ogt` of `type vfx`: emitters, meshes, trails, beams, lights, decals, glows, flipbooks, shakes and sounds.
 // An og.Vfx plays one from its startTick at its entity's MatrixWorld. Its visuals come from (asset, seed, startTick, the tick) alone, never world state, so a replay, restore or seek draws the same. In the tick the og.vfx system sends an og.VfxEvent for each `event` line, plays each `shake` and `sound`, and despawns an ended non-looping effect with its sounds (unless `despawn` is false).
 // See `loading §11`.
 
@@ -32777,7 +32777,7 @@ export interface Vfx {
    */
   startTick: number;
   /**
-   * Its size: offsets, meshes, trails, beams, lights' reach, decals and flashes scale with it; its emitters are placed and shaped by the scaled transform.
+   * Its size: offsets, meshes, trails, beams, lights' reach, decals and glows scale with it; its emitters are placed and shaped by the scaled transform.
    *
    * @default 1
    * @range 0..
@@ -37820,7 +37820,7 @@ export declare namespace og {
    */
   const VfxEvent: EventType<VfxEvent>;
   /**
-   * Composed effects: one effect (a fireball's impact, a heal, a level-up) as a timeline of elements in an `.ogt` of `type vfx`: emitters, meshes, trails, beams, lights, decals, flashes, flipbooks, shakes and sounds.
+   * Composed effects: one effect (a fireball's impact, a heal, a level-up) as a timeline of elements in an `.ogt` of `type vfx`: emitters, meshes, trails, beams, lights, decals, glows, flipbooks, shakes and sounds.
    * An og.Vfx plays one from its startTick at its entity's MatrixWorld. Its visuals come from (asset, seed, startTick, the tick) alone, never world state, so a replay, restore or seek draws the same. In the tick the og.vfx system sends an og.VfxEvent for each `event` line, plays each `shake` and `sound`, and despawns an ended non-looping effect with its sounds (unless `despawn` is false).
    * See `loading §11`.
    */
