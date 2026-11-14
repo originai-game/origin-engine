@@ -52,11 +52,9 @@ impl Renderer {
         let water = water::WaterRenderer::new(
             device,
             frame_layout,
-            &off.leave_out(FRAME_WGSL.to_string()),
-            &off.leave_out(LIGHTING_WGSL.to_string()),
+            off,
             samples,
             flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS),
-            off.contains(crate::pipeline_features::Features::CAUSTICS),
         );
         // The vegetation's wind field (G2), simulated where compute runs.
         let vegetation_compute = WORLD_3D && flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS);

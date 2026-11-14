@@ -261,7 +261,11 @@ depth-normal prepass: the first one pays for it.
   puddles fill level hollows (a terrain's layer heights first) and ripple;
   snow settles on what faces up, deeper snow reaching steeper faces,
   lifting the drawn terrain; dust settles up and low; a strike flashes the
-  scene with a bolt. Shelter is a weather occlusion map looking along the
+  scene with a bolt. Meshes (the standard and physical materials, hooks
+  and `mode full lit` shaders), terrain, grass and scattered copies take
+  all of it. Water takes the rain alone: rings where the sky is open over
+  it, and from afar a duller mirror; no snow or dust lies on it. The 3D
+  fluid, particles and unlit shaders take none. Shelter is a weather occlusion map looking along the
   rain as the wind slants it (og.Wind and og.Weather's own); a game that needs to know whether a
   place is sheltered casts a ray up against the colliders.
 

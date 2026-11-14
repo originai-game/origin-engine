@@ -193,6 +193,77 @@ fn a_lake_draws_the_wake_of_the_boat_that_cuts_it() {
     );
 }
 
+/// The rain rings a lake as it rings a puddle (weather_rain.wgsl): seen
+/// from the bank, the windless lake under SurfaceWeather's rain differs
+/// from the same lake dry over its near water, where a pixel holds the
+/// rings; seen from 16 m up, where none does, their slopes' spread still
+/// dulls its mirror. A renderer made without the weather draws either as
+/// the dry lake. The water took the rain's sky and light alone before,
+/// its surface untouched.
+#[test]
+#[ignore = "requires GPU"]
+fn the_rain_rings_a_lake() {
+    use og_render::{LitFeatures, RenderDesc, SurfaceWeather};
+    use og_tests::ocean_scenes::{ocean_scene, wake_update};
+    let draw = |bank: bool, rain: f32, without: LitFeatures| {
+        let desc = RenderDesc {
+            without,
+            ..scenes::base_desc()
+        };
+        let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+        let mut scene = ocean_scene("water-wake-lake");
+        wake_update(&mut scene, 30);
+        // The lake alone: no boat to wet, no wake.
+        scene.world.water[0].wakes = None;
+        scene.objects.instances.clear();
+        if bank {
+            scene.frame.camera.position = Vec3::new(0.0, 1.6, 4.0);
+            scene.frame.camera.target = Vec3::new(0.0, 0.0, -2.0);
+        }
+        if rain > 0.0 {
+            scene.atmosphere.surface_weather = Some(SurfaceWeather {
+                wetness: 1.0,
+                rain,
+                ..Default::default()
+            });
+        }
+        renderer
+            .render_capture(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        renderer.read_offscreen().expect("capture")
+    };
+    for (bank, least) in [(true, 1.0), (false, 0.3)] {
+        let dry = draw(bank, 0.0, LitFeatures::NONE);
+        let rained = draw(bank, 1.0, LitFeatures::NONE);
+        if let Ok(dir) = std::env::var("OG_RAIN_LAKE_OUT") {
+            for (image, name) in [(&dry, "dry"), (&rained, "rain")] {
+                og_tests::gfx::save_png(
+                    std::path::Path::new(&format!("{dir}/lake-{bank}-{name}.png")),
+                    image,
+                )
+                .expect("save");
+            }
+        }
+        // The water: the frame's lower half.
+        let half = dry.pixels.len() / 2;
+        let lower = |image: &RgbaImage| RgbaImage {
+            width: image.width,
+            height: image.height / 2,
+            pixels: image.pixels[half..].to_vec(),
+        };
+        let rings = difference(&lower(&dry), &lower(&rained));
+        let left_out = difference(&dry, &draw(bank, 1.0, LitFeatures::SURFACE_WEATHER));
+        println!(
+            "a lake in the rain against the same lake dry (from the bank: {bank}): mean difference {rings}; made without the weather {left_out}"
+        );
+        assert!(rings > least, "the rain left the lake as it was ({rings})");
+        assert!(
+            left_out == 0.0,
+            "a renderer made without the weather still rains on the lake ({left_out})"
+        );
+    }
+}
+
 /// A lamp over the water lights it as it lights every surface: a red point
 /// light 3 m above the night sea ahead of the camera reddens the water
 /// under it (its facets mirror it and its body scatters it back), where

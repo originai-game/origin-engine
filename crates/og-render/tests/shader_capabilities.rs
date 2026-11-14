@@ -9,6 +9,15 @@
 //! may hold one (the part is dead weight and the row would claim what the
 //! surface does not do). The two a material shader's hooks may call
 //! (`Capability::HOOKS_CALL`) are there for the hooks.
+//!
+//! The empty cells that are a decision, not a debt: the water and the 3D
+//! fluid take no decals, puddles or snow (a mark on water is its own foam
+//! or wake, and the rain rings it through weather_rain.wgsl, which is not
+//! this capability); the water reads the screen's occlusion through its
+//! own binding; only meshes are lightmapped. The guides say the same to
+//! an author (render.md, looks.md). One is a debt: the terrain's stub for
+//! the screen's occlusion (its pipelines have no texture slot left), so
+//! what stands on the ground darkens no ground around its foot.
 #![cfg(not(feature = "profile2d"))]
 
 use naga::Statement as St;

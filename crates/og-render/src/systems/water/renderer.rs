@@ -190,21 +190,24 @@ impl WaterRenderer {
 /// The water module after the frame group, the light tables, the lighting,
 /// the light volumes' hook, the area lights and the shared shading (the
 /// surface gathers the light around it and takes the local lights as every
-/// lit surface; its reflection, glitter and foam are its own). It reads no
-/// screen occlusion through the shared shading: its own binding holds it.
-pub(crate) fn water_source(frame_wgsl: &str, lighting_wgsl: &str) -> String {
-    crate::assemble(
+/// lit surface; its reflection, glitter and foam are its own), with the
+/// rain's part: the rain rings it as it rings a puddle. It reads no screen
+/// occlusion through the shared shading: its own binding holds it.
+/// Without the features in `off` (a renderer made without them).
+pub(crate) fn water_source(off: crate::pipeline_features::Features) -> String {
+    off.leave_out(crate::assemble(
         &[
-            frame_wgsl,
+            crate::FRAME_WGSL,
             &crate::clusters::wgsl(),
-            lighting_wgsl,
+            crate::LIGHTING_WGSL,
+            crate::WEATHER_RAIN_WGSL,
             &og_render_data::lightmap::probe_wgsl(),
             crate::AREA_WGSL,
             crate::SURFACE_SHADE_WGSL,
             &water_parts(),
         ],
         &[crate::Capability::ScreenAo],
-    )
+    ))
 }
 
 /// The water's own parts.
