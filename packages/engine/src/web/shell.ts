@@ -70,7 +70,8 @@ import { LayoutLearner, readLayoutMap, type KeyLabel } from "./keyboard-layout.t
 import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import { localPlatform, storagePersistence, type PlatformAnswer, type PlatformCall, type PlatformHost, type PlatformLink, type PlatformNotice } from "../platform-local.ts";
 import type { RoomProvider } from "../provider.ts";
-import type { BootPhases } from "./worker.ts";
+import { Pending } from "./pending.ts";
+import type { BootPhases } from "./worker-state.ts";
 import type { TraceDocument } from "../trace.ts";
 
 /** The PNG data URL of the last cursor image drawn, by the image it was drawn from. */
@@ -376,8 +377,9 @@ export class Shell {
   readonly ready: Ready;
   /** Where the Worker's boot went (worker.ts BootPhases), once the first frame is drawn. */
   boot: BootPhases | null = null;
-  readonly #pending = new Map<number, { resolve(v: unknown): void; reject(e: Error): void }>();
-  readonly #rpcPending = new Map<number, { resolve(v: unknown): void; reject(e: Error): void }>();
+  /** The calls and the probe requests the Worker has not answered yet. */
+  readonly #calls = new Pending();
+  readonly #probes = new Pending();
   readonly #listeners: Array<() => void> = [];
   readonly #rpc: RpcRings | undefined;
   #onLog: ShellOptions["onLog"];
@@ -387,8 +389,6 @@ export class Shell {
   #onScenesSaved: ShellOptions["onScenesSaved"];
   #onProgress: ShellOptions["onProgress"];
   #onStage: ShellOptions["onStage"];
-  #next = 1;
-  #rpcNext = 1;
   #pumping = false;
   #ring: SharedArrayBuffer | undefined;
   #dprCap = 2;
@@ -540,10 +540,7 @@ export class Shell {
         return;
       }
       if (m.type !== "result" || m.id === undefined) return;
-      const p = this.#pending.get(m.id);
-      this.#pending.delete(m.id);
-      if (m.error !== undefined) p?.reject(new Error(m.error));
-      else p?.resolve(m.value);
+      this.#calls.settle(m.id, m.error === undefined ? undefined : new Error(m.error), m.value);
     });
   }
 
@@ -681,10 +678,8 @@ export class Shell {
    */
   probe(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
     if (this.#stopped) return Promise.reject(this.#stopped);
-    const id = this.#rpcNext++;
-    const frame = JSON.stringify({ jsonrpc: "2.0", id, method, params });
-    return new Promise((resolve, reject) => {
-      this.#rpcPending.set(id, { resolve, reject });
+    return this.#probes.ask((id) => {
+      const frame = JSON.stringify({ jsonrpc: "2.0", id, method, params });
       if (this.#rpc && writeFrame(this.#rpc.requests, frame)) void this.#pump();
       else this.worker.postMessage({ type: "rpc", frame });
     });
@@ -692,12 +687,9 @@ export class Shell {
 
   #answer(frame: string): void {
     const m = JSON.parse(frame) as { id?: number; result?: unknown; error?: { code?: number; message?: string } };
-    const p = typeof m.id === "number" ? this.#rpcPending.get(m.id) : undefined;
-    if (!p) return;
-    this.#rpcPending.delete(m.id!);
     // The JSON-RPC code rides on the error: -32601 is a member this build does not serve.
-    if (m.error) p.reject(Object.assign(new Error(m.error.message ?? "probe error"), { code: m.error.code ?? -32603 }));
-    else p.resolve(m.result);
+    const error = m.error ? Object.assign(new Error(m.error.message ?? "probe error"), { code: m.error.code ?? -32603 }) : undefined;
+    this.#probes.settle(m.id, error, m.result);
   }
 
   /** Read answers from the ring while calls are outstanding. */
@@ -705,7 +697,7 @@ export class Shell {
     if (this.#pumping || !this.#rpc) return;
     this.#pumping = true;
     try {
-      while (this.#rpcPending.size > 0 && !this.#stopped) {
+      while (this.#probes.size > 0 && !this.#stopped) {
         await waitForFrames(this.#rpc.answers, 100);
         for (const frame of readFrames(this.#rpc.answers)) this.#answer(frame);
       }
@@ -738,11 +730,7 @@ export class Shell {
 
   call(method: string, ...args: unknown[]): Promise<unknown> {
     if (this.#stopped) return Promise.reject(this.#stopped);
-    const id = this.#next++;
-    return new Promise((resolve, reject) => {
-      this.#pending.set(id, { resolve, reject });
-      this.worker.postMessage({ type: "call", id, method, args });
-    });
+    return this.#calls.ask((id) => this.worker.postMessage({ type: "call", id, method, args }));
   }
 
   /**
@@ -1181,10 +1169,8 @@ export class Shell {
   #stop(reason: string): void {
     if (this.#stopped) return;
     this.#stopped = Object.assign(new Error(reason), { code: -32603 });
-    for (const pending of [this.#pending, this.#rpcPending]) {
-      for (const p of pending.values()) p.reject(this.#stopped);
-      pending.clear();
-    }
+    this.#calls.fail(this.#stopped);
+    this.#probes.fail(this.#stopped);
   }
 
   /** Remove the page listeners and stop the Worker. */

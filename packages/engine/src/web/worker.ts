@@ -48,21 +48,21 @@
 // Worker's animation frames while the clock played, so isolated pages never
 // answered.
 
-import { boundHost, createEngine, isPublishBuild, systemClock, type CursorImage, type Engine, type GameToken } from "../runtime.ts";
+import { boundHost, createEngine, isPublishBuild, systemClock, type Engine, type GameToken } from "../runtime.ts";
 import { SourceMap } from "../sourcemap.ts";
 import { useSourceMap } from "../spawn-site.ts";
 import type { PlatformAnswer, PlatformHost, PlatformNotice } from "../platform-local.ts";
 import { loadWebHost, type WebExtras, type WebGlue } from "./host.ts";
 import { FrameCounter } from "./frames.ts";
+import { BootClock, EngineTrace, FrameRecords, PageRelay, ProbeRequests } from "./worker-state.ts";
+export type { BootPhases } from "./worker-state.ts";
 import { FramePacer } from "./pacing.ts";
 import { drainRing, stampAt, type InjectedInput } from "./input.ts";
 import { WorkerAudio, type AudioLatencyMessage, type AudioMessage, type WebAudioGlue } from "./audio.ts";
-import { readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
+import { waitForFrames, type RpcRings } from "./rpc-ring.ts";
 import type { HostError } from "./shell.ts";
 import { PlatformCounter, settle, SETTLE_FIRST_MS, SETTLE_MS } from "./settle.ts";
-import { Trace, unixMs } from "../trace.ts";
 import * as pipelines from "./pipelines.ts";
-import type { PipelineChoice, PipelineStats } from "./pipelines.ts";
 import * as gpuErrors from "./gpu-errors.ts";
 import { type Fetched, Received, TRACE_BEFORE_ENGINE, UPLOAD_BUDGET, basisJob, deviceReport, installFetcher, installImageDecoder, installInflater, installVideo, onBar, preloadBundle, transcodeBundle } from "./boot.ts";
 
@@ -269,54 +269,13 @@ async function loadOwnSourceMap(): Promise<void> {
 }
 
 /**
- * A `capture`, `marks` or `sweep` answered null: on the web the readback finishes on
- * a later call, and a sweep goes on from the frames it has each time it is
- * asked again. (A sweep refused outright, an unknown entity, answers null
- * too: it is asked again until its budget runs out.)
- */
-function isPendingCapture(frame: string, answer: string): boolean {
-  // Every null result is written `"result":null` (the probe's compact JSON);
-  // a frame's answer is megabytes of base64 not worth parsing to learn it is not null.
-  if (!answer.includes('"result":null')) return false;
-  try {
-    const request = JSON.parse(frame) as { method?: string };
-    if (request.method !== "capture" && request.method !== "marks" && request.method !== "sweep") return false;
-    const response = JSON.parse(answer) as { result?: unknown; error?: unknown };
-    return response.error === undefined && response.result === null;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Fork s75: the warmed pipelines compiling at once (s60/s70 warm). Chrome compiles
  * `createRenderPipelineAsync` off its GPU-process main thread, so two at a time left
  * it idle: the warm tail after the 1072-cell boot was 4-8 s at two.
  */
 const WARM_COMPILING = 6;
-/**
- * How long a pending `capture` is asked again, once a display frame, before it is given up on (ms).
- * Wall-clock, not frames: at 60 frames a playing page gave up after 1 s, while a GPU process with
- * a cold shader cache (Edge on D3D12) was still compiling the pipelines queued before the readback.
- */
-const CAPTURE_MS = 20_000;
-
-/** How long a request may wait for its readbacks: a `sweep` 250 ms more for each value (at most 64). */
-function waitOf(frame: string): number {
-  try {
-    const request = JSON.parse(frame) as { method?: string; params?: { values?: unknown[] } };
-    if (request.method === "sweep") return 250 * (request.params?.values?.length ?? 0) + CAPTURE_MS;
-  } catch {
-    /* not a sweep */
-  }
-  return CAPTURE_MS;
-}
-
 /** The most log lines the Worker keeps for a crash card. */
 export const LOG_LINES = 200;
-
-/** Played frames whose timings the Worker keeps (`timings`). */
-const FRAME_RECORDS = 4096;
 
 /** How often, at most, a playing Worker tells the shell it is alive (`beat`), ms. */
 export const BEAT_MS = 1000;
@@ -344,27 +303,10 @@ export function describeHostError(e: HostError): string {
   return `panic at tick ${e.tick ?? "?"}${e.lane ? ` in a lane (${e.lane})` : ""}: ${e.message}${e.location ? ` (${e.location})` : ""}`;
 }
 
-/**
- * Where the boot went, ms on the Worker's clock: each phase's duration, in
- * order (`wasm`: the engine module fetched and instantiated, the lanes
- * pool started; `bundle`: the first group fetched; `create`: the engine and
- * the game's declarations; `attach`: the renderer created on the canvas;
- * `transcode`: the Basis textures; `prime`: the tick behind the gate;
- * `settle`: the ticks that applied the platform's answers behind the gate;
- * `present`: the first frame rendered, its pipelines compiled), and `at`,
- * the Worker's time at the first frame from its own start.
- */
-export type BootPhases = Partial<Record<"wasm" | "bundle" | "create" | "attach" | "transcode" | "prime" | "settle" | "present", number>> & {
-  at?: number;
-  /** Fork s60: the render pipelines made each way (pipelines.ts), at the first frame and again when the warm-up ends or play stops it, with the mode chosen and why (`auto`'s pick) and `bypassed` when the frame pipelines lost createRenderPipelineAsync. */
-  pipelines?: PipelineStats & Partial<PipelineChoice> & { bypassed?: string };
-};
-
 /** Run `game` in this Worker, driven by the shell's messages. */
 export function startWorker(game: GameToken): void {
   let engine: Engine | null = null;
   let ring: SharedArrayBuffer | undefined;
-  let rpc: RpcRings | undefined;
   let canvas: OffscreenCanvas | undefined;
   let rendering = false;
   let playing = false;
@@ -378,16 +320,9 @@ export function startWorker(game: GameToken): void {
   let lastBeat = 0;
   /** What the page was asked and answered: the ticks behind the gate apply its answers (settle.ts). */
   const platformCounter = new PlatformCounter();
+  const post = (message: Record<string, unknown>) => self.postMessage(message);
   /** Where the boot went (BootPhases), sent with the first frame. */
-  const boot: BootPhases = {};
-  let phaseAt = performance.now();
-  const phase = (name: Exclude<keyof BootPhases, "at" | "pipelines">) => {
-    const now = performance.now();
-    boot[name] = Math.round((boot[name] ?? 0) + now - phaseAt);
-    phaseAt = now;
-    console.info(`[og] boot stage "${name}" done in ${boot[name]} ms`);
-  };
-  const firstFrameMessage = () => (console.info(`[og] first frame at ${Math.round(performance.now())} ms`), { type: "frame", first: true, boot: { ...boot, at: Math.round(performance.now()), pipelines: pipelines.stats() } });
+  const boot = new BootClock();
   /** Fork s60: the pipelines' counts once `warmed` pipelines are made, said loudly when the frame pipelines bypassed createRenderPipelineAsync. */
   const reportPipelines = (warmed: number) => {
     const stats = pipelines.stats();
@@ -400,8 +335,6 @@ export function startWorker(game: GameToken): void {
   let lanesState: unknown = null;
   let glueRef: (WebGlue & WebExtras & WebAudioGlue) | null = null;
   let audio: WorkerAudio | null = null;
-  /** Captures waiting for their readback (requested on tick N, answered on N + 1). */
-  const retries: Array<{ frame: string; until: number; viaRing: boolean }> = [];
 
   // The console and the engine's log reach the shell (the crash card's last lines).
   const log = (text: string) => self.postMessage({ type: "log", lines: [text] });
@@ -449,25 +382,10 @@ export function startWorker(game: GameToken): void {
 
   /** Real time not yet simulated after the last frame (its answer's `behind`), ms. */
   let behind = 0;
-  /** The text target last sent to the shell, as JSON. */
-  let textTarget = "null";
-  /** og.PointerLock.wanted as last sent to the shell. */
-  let lockWanted = false;
-  let lockRaw = true;
-  /** The canvas's CSS cursor as the last frame answer set it, and its `url()` image. */
-  let cursor = "default";
-  let cursorImage: CursorImage | null = null;
-  /** The page asks the last frame relayed ([fullscreen, lowPower]), so only a change is posted. */
-  let pageAsks = "";
-  /**
-   * The played frames' timings, the last FRAME_RECORDS of them (the shell's
-   * `timings` call, which `og run --device` reads): the display interval
-   * (this frame's timestamp minus the last one's) and the engine's work
-   * (`engine.frame`: input, ticks, render submission), ms.
-   */
-  const intervals = new Float32Array(FRAME_RECORDS);
-  const work = new Float32Array(FRAME_RECORDS);
-  let recorded = 0;
+  /** What the page was last told of a frame's answer. */
+  const page = new PageRelay(post);
+  /** The played frames' timings (the shell's `timings` call). */
+  const records = new FrameRecords();
   /** Field telemetry's frame counts (frames.ts), when the page's build has telemetry on; null otherwise. */
   let frameCounter: FrameCounter | null = null;
   /**
@@ -485,106 +403,14 @@ export function startWorker(game: GameToken): void {
     if (engine && ring) for (const event of drainRing(ring)) engine.probe.input(stamped(event, now));
   };
 
-  /** What a frame's answer tells the shell: the UI's focused text control (text-input.ts), a copy, the accessibility tree when it changed (a11y.ts), and og.PointerLock.wanted when it changed. */
-  /** The run's trace while one is recorded (src/trace.ts): taken after every frame, so the engine holds a frame's spans at most. */
-  let trace: Trace | null = null;
-  const takeTrace = (last = false) => {
-    const abi = boundHost()?.abi;
-    if (!trace || !engine || !abi) return;
-    trace.append(abi.og_engine_trace_take(engine.id, last), unixMs());
-  };
-  const traceOn = (on: boolean) => {
-    const abi = boundHost()?.abi;
-    if (!engine || !abi) return false;
-    if (on && !trace) trace = new Trace({ producer: "og web trace", process: "og web" });
-    if (!on) trace = null;
-    abi.og_engine_trace(engine.id, on);
-    return true;
-  };
+  /** The run's trace while one is recorded. */
+  const trace = new EngineTrace();
   const relay = (answered: ReturnType<Engine["frame"]>) => {
-    takeTrace();
-    if (!answered.ok) return;
-    const target = JSON.stringify(answered.text ?? null);
-    if (target !== textTarget) {
-      textTarget = target;
-      self.postMessage({ type: "text", target: answered.text ?? null });
-    }
-    if (answered.copy !== undefined) self.postMessage({ type: "copy", text: answered.copy });
-    if (answered.saved?.scenes.length) self.postMessage({ type: "saved", scenes: answered.saved.scenes });
-    if (answered.a11y !== undefined) self.postMessage({ type: "a11y", tree: answered.a11y });
-    if (answered.haptics?.length) self.postMessage({ type: "haptics", patterns: answered.haptics });
-    if (answered.rumble?.length) self.postMessage({ type: "rumble", rumble: answered.rumble });
-    const shape = typeof answered.cursor === "string" ? answered.cursor : "default";
-    const image = answered.cursorImage !== undefined && answered.cursorImage !== cursorImage;
-    if (shape !== cursor || image) {
-      cursor = shape;
-      if (image) cursorImage = answered.cursorImage ?? null;
-      self.postMessage({ type: "cursor", cursor, image: cursorImage });
-    }
-    const wanted = answered.pointerLock === true;
-    const raw = answered.rawMouse !== false;
-    if (wanted !== lockWanted || raw !== lockRaw) {
-      lockWanted = wanted;
-      lockRaw = raw;
-      self.postMessage({ type: "pointer-lock", wanted, raw });
-    }
-    // The player's graphics settings that are the page's to carry out: fullscreen, and the power preference for the next load.
-    const asks = JSON.stringify([answered.fullscreen === true, answered.lowPower === true]);
-    if (asks !== pageAsks) {
-      pageAsks = asks;
-      self.postMessage({ type: "page", fullscreen: answered.fullscreen === true, lowPower: answered.lowPower === true });
-    }
+    trace.take(engine);
+    page.relay(answered);
   };
-
-  const answer = (frame: string, viaRing: boolean) => {
-    if (!viaRing || !rpc || !writeFrame(rpc.answers, frame)) self.postMessage({ type: "rpc", frame });
-  };
-
-  /** A JSON-RPC error answer to a request frame (its id, or null when it has none). */
-  const refusal = (frame: string, message: string) => {
-    const id = (() => {
-      try {
-        return (JSON.parse(frame) as { id?: unknown }).id ?? null;
-      } catch {
-        return null;
-      }
-    })();
-    return JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32603, message } });
-  };
-
-  /** One request frame: answered now, or kept for a retry when it is a capture whose readback has not landed. */
-  const serve = (frame: string, viaRing: boolean) => {
-    if (!engine) return answer(refusal(frame, "the engine has not started"), viaRing);
-    let out: string;
-    try {
-      // Fork s60: a probe call that renders (capture, sweep) draws its frame whole, never one with draws skipped.
-      out = pipelines.drawnWhole(() => engine!.call(frame));
-    } catch (e) {
-      answer(refusal(frame, e instanceof Error ? e.message : String(e)), viaRing);
-      crash(e instanceof Error ? e.message : String(e));
-      return;
-    }
-    if (rendering && isPendingCapture(frame, out)) {
-      retries.push({ frame, until: performance.now() + waitOf(frame), viaRing });
-      schedule();
-    } else answer(out, viaRing);
-  };
-
-  const retry = () => {
-    if (!engine) return;
-    for (let i = retries.length - 1; i >= 0; i--) {
-      const r = retries[i]!;
-      const out = pipelines.drawnWhole(() => engine!.call(r.frame));
-      if (!isPendingCapture(r.frame, out) || performance.now() >= r.until) {
-        retries.splice(i, 1);
-        answer(out, r.viaRing);
-      }
-    }
-  };
-
-  const drainRpc = () => {
-    if (engine && rpc) for (const frame of readFrames(rpc.requests)) serve(frame, true);
-  };
+  /** The probe's requests: answered between frames, a pending capture on a later one. */
+  const probes = new ProbeRequests({ engine: () => engine, rendering: () => rendering, crash: (message) => crash(message), schedule: () => schedule() }, post);
 
   /** The frame cap (og.render.setDisplay, each frame's `maxFps`) and the display's measured interval (pacing.ts). */
   const pacer = new FramePacer();
@@ -600,9 +426,9 @@ export function startWorker(game: GameToken): void {
       // Input on every display frame, drawn or not: a capped frame's input is no later than the cap's interval.
       pumpInput(now);
       // Retries first: a capture asked this frame is requested now and answered on a later frame.
-      retry();
-      drainRpc();
-      if (playing && retries.length === 0) {
+      probes.retry();
+      probes.drain();
+      if (playing && probes.waiting === 0) {
         drawn = pacer.frame(now, maxFps);
         const d = pacer.displayMs;
         if (d > 0 && Math.abs(d - toldDisplayMs) > toldDisplayMs * 0.05) {
@@ -613,7 +439,7 @@ export function startWorker(game: GameToken): void {
       // The clock holds while a capture waits for its readback; a display
       // frame the cap skips is not drawn, and the next drawn one is handed
       // the time since the last drawn one, so the fixed tick runs on.
-      if (playing && retries.length === 0 && drawn) {
+      if (playing && probes.waiting === 0 && drawn) {
         const began = performance.now();
         const answered = engine.frame(last ? now - last : 0);
         if (!answered.ok) {
@@ -623,10 +449,10 @@ export function startWorker(game: GameToken): void {
           return;
         }
         if (last) {
-          intervals[recorded % FRAME_RECORDS] = now - last;
-          work[recorded % FRAME_RECORDS] = performance.now() - began;
-          frameCounter?.add(now - last, work[recorded % FRAME_RECORDS]!);
-          recorded++;
+          // As the records keep it (single precision), so both count the same frame.
+          const spent = Math.fround(performance.now() - began);
+          records.add(now - last, spent);
+          frameCounter?.add(now - last, spent);
         }
         behind = answered.behind ?? 0;
         if (typeof answered.maxFps === "number") maxFps = answered.maxFps;
@@ -644,7 +470,7 @@ export function startWorker(game: GameToken): void {
         }
         if (!firstFrame && answered.rendered !== false) {
           firstFrame = true;
-          self.postMessage(firstFrameMessage());
+          post(boot.firstFrame());
         }
         audio?.pump();
       }
@@ -659,7 +485,7 @@ export function startWorker(game: GameToken): void {
       self.postMessage({ type: "beat", tick: lastTick });
     }
     if (drawn) last = now;
-    if (playing || retries.length > 0) schedule();
+    if (playing || probes.waiting > 0) schedule();
   };
   /**
    * The next frame on the display (requestAnimationFrame in the Worker); a
@@ -681,12 +507,12 @@ export function startWorker(game: GameToken): void {
 
   /** Requests are answered between frames, whether the clock plays or not. */
   const requests = async () => {
-    while (rpc && !crashed) {
-      await waitForFrames(rpc.requests, 1000);
+    while (probes.rings && !crashed) {
+      await waitForFrames(probes.rings.requests, 1000);
       if (!engine) continue;
       try {
         pumpInput(performance.now());
-        drainRpc();
+        probes.drain();
       } catch (e) {
         crash(e instanceof Error ? e.message : String(e));
       }
@@ -791,8 +617,8 @@ export function startWorker(game: GameToken): void {
         }
         if (waiting.since) console.info(`renderer: the first frame waited ${Math.round(performance.now() - waiting.since)} ms (${waiting.frames} frames behind the gate)`);
         firstFrame = true;
-        phase("present");
-        self.postMessage(firstFrameMessage());
+        boot.phase("present");
+        post(boot.firstFrame());
         warmBehindGate();
       }
       flushLog();
@@ -852,16 +678,10 @@ export function startWorker(game: GameToken): void {
       const abi = boundHost()!.abi;
       return { status: JSON.parse(abi.og_net_status(e.id)), hash: JSON.parse(abi.og_net_hash(e.id)), room: JSON.parse(abi.og_platform_room_info(e.id)) };
     },
-    // The frames played since the last reset (at most FRAME_RECORDS, oldest first); `true` resets.
+    // The frames played since the last reset (oldest first); `true` resets.
     /** Field telemetry: the frames played since the last take (frames.ts FrameStats), counting from now on; null when the page's build has telemetry off. */
     telemetry: () => frameCounter?.take() ?? null,
-    timings: (_, [reset]) => {
-      const n = Math.min(recorded, FRAME_RECORDS);
-      const at = (a: Float32Array) => Array.from({ length: n }, (_, i) => Math.round(a[(recorded - n + i) % FRAME_RECORDS]! * 1000) / 1000);
-      const answer = { frames: recorded, intervals: at(intervals), work: at(work) };
-      if (reset) recorded = 0;
-      return answer;
-    },
+    timings: (_, [reset]) => records.take(Boolean(reset)),
     /**
      * The run's trace (src/trace.ts): `start` begins one (dropping any), `stop` ends it, `take` (the
      * default) answers the document so far, a Chrome trace as `og run --trace` writes it; null when
@@ -870,13 +690,11 @@ export function startWorker(game: GameToken): void {
     trace: (_, [action]) => {
       const a = String(action ?? "take");
       if (a === "start") {
-        traceOn(false);
-        return traceOn(true);
+        trace.turn(engine, false);
+        return trace.turn(engine, true);
       }
-      if (a === "stop") return traceOn(false);
-      if (!trace) return null;
-      takeTrace(true);
-      return trace.document({ tier: lastTier, lanes: lanesState });
+      if (a === "stop") return trace.turn(engine, false);
+      return trace.document(engine, { tier: lastTier, lanes: lanesState });
     },
     probe: (e, [member, ...rest]) => {
       const f = (e.probe as unknown as Record<string, unknown>)[String(member)];
@@ -898,7 +716,7 @@ export function startWorker(game: GameToken): void {
         const progress = (value: number, stage: string) =>
           self.postMessage({ type: "progress", value: onBar(stage, value), fraction: Math.max(0, Math.min(1, value)), stage, loaded: received.loaded, total: received.total });
         progress(0, "wasm");
-        phaseAt = performance.now();
+        boot.restart();
         // The wasm streams through a counting body, so its bytes move the bar while it compiles.
         const counted = async (url: string, expected: number | undefined): Promise<unknown> => {
           if (!expected || typeof Response !== "function" || typeof ReadableStream !== "function") return url;
@@ -962,7 +780,7 @@ export function startWorker(game: GameToken): void {
         }
         // Fork s70: frames prepare without drawing while the page's loading screen covers the canvas.
         if (covered) glue.og_web_covered?.(true);
-        phase("wasm");
+        boot.phase("wasm");
         // Terrain tiles are inflated by the browser off the engine's thread where it can.
         installInflater(glue);
         // Streamed video: WebCodecs where the browser decodes AV1, else rav1d's own wasm module (fetched only then).
@@ -975,7 +793,7 @@ export function startWorker(game: GameToken): void {
           fetched = await preloadBundle(glue, data.root, progress, data.expect ? received : undefined);
           installFetcher(glue, fetched.manifest ?? "", data.basis, () => (rendering && engine ? engine.id : null));
         }
-        phase("bundle");
+        boot.phase("bundle");
         // A trace from the boot on records the boot scene's loads too.
         if (data.trace) boundHost()?.abi.og_engine_trace(TRACE_BEFORE_ENGINE, true);
         const created = createEngine(game, {
@@ -992,7 +810,7 @@ export function startWorker(game: GameToken): void {
         // A dev build serves its bundle's map beside it: the game's spawns name their lines with it (spawn-site.ts).
         const sourceMap = isPublishBuild() === true ? null : loadOwnSourceMap();
         if (data.trace) {
-          traceOn(true);
+          trace.turn(engine, true);
           boundHost()?.abi.og_engine_trace(TRACE_BEFORE_ENGINE, false);
         }
         // og.platform: calls go to the page, which answers them (the Player, or the browser's storage).
@@ -1001,8 +819,8 @@ export function startWorker(game: GameToken): void {
         engine.attachPlatform(toPage("none", [], platformCounter));
         if (data.viewport) glue.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
         ring = data.ring;
-        rpc = data.rpc;
-        phase("create");
+        probes.rings = data.rpc;
+        boot.phase("create");
         let tier = "none";
         if (data.canvas) {
           canvas = data.canvas;
@@ -1012,14 +830,14 @@ export function startWorker(game: GameToken): void {
           });
           rendering = true;
         }
-        phase("attach");
+        boot.phase("attach");
         // Field telemetry: the device the renderer runs on, never a second adapter (gpuOf, shell/telemetry.ts).
         const gpu = data.telemetry && rendering ? deviceReport(glue, engine.id, canvas) : null;
         lastTier = tier;
         lanesState = lanes;
         // The textures go to the renderer's encodings, so after it is attached (the game starts later).
         const loaded = fetched ? await transcodeBundle(glue, rendering ? engine.id : null, fetched, data.basis, progress, data.expect ? received : undefined) : null;
-        phase("transcode");
+        boot.phase("transcode");
         await sourceMap;
         progress(1, "ready");
         ready = true;
@@ -1028,7 +846,7 @@ export function startWorker(game: GameToken): void {
           engine: engine.id,
           tier,
           transport: ring ? "ring" : "message",
-          rpc: rpc ? "ring" : "message",
+          rpc: probes.rings ? "ring" : "message",
           textureFormat: loaded?.textureFormat ?? null,
           files: loaded?.files ?? 0,
           textures: loaded?.textures ?? 0,
@@ -1046,7 +864,7 @@ export function startWorker(game: GameToken): void {
             if (!first.ok) throw new Error(first.reason);
             primed = true;
           }
-          phase("prime");
+          boot.phase("prime");
           progress(1, "prime");
           // The platform's answers to the first tick's reads (the saved language, a slot's
           // meta) applied behind the gate: before the first frame while they come quickly,
@@ -1065,7 +883,7 @@ export function startWorker(game: GameToken): void {
               settling = false;
             }
           }
-          phase("settle");
+          boot.phase("settle");
           present();
           if (primed && (platformCounter.waiting > 0 || platformCounter.fresh || behindGate.pending() > 0)) {
             void settle(platformCounter, behindGate.advance, { until: at + SETTLE_MS, stop: behindGate.stop, pending: behindGate.pending, drawn: present })
@@ -1082,7 +900,7 @@ export function startWorker(game: GameToken): void {
       // A request is answered even now, so that nothing on the page waits for an answer that never comes.
       const why = crashed ? "the engine stopped" : "the engine has not started";
       if (data.type === "call") self.postMessage({ type: "result", id: data.id, error: why });
-      if (data.type === "rpc") answer(refusal(data.frame, why), false);
+      if (data.type === "rpc") probes.refuse(data.frame, why, false);
       return;
     }
     if (data.type === "input") engine.probe.input(stamped(data.event, performance.now()));
@@ -1105,7 +923,7 @@ export function startWorker(game: GameToken): void {
       if (attached.ok) audio = attached.value;
       else log(`warn: audio: ${attached.reason}`);
     }
-    if (data.type === "rpc") serve(data.frame, false);
+    if (data.type === "rpc") probes.serve(data.frame, false);
     if (data.type === "platform-answer") {
       engine.answerPlatform(data.request, data.answer);
       platformCounter.answered();
