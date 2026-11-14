@@ -1,7 +1,7 @@
 <meta name="component" content="LootLabel">
 <meta name="parts" content="LootLabel.tag LootLabel.name LootLabel.count">
 <meta name="prop:entity" content="number" data-doc="The item, by its bits (0: use at).">
-<meta name="prop:at" content="string" data-doc="A world point it sits over without an entity (x y z).">
+<meta name="prop:at" content="string" data-default="0 0 0" data-doc="A world point it sits over without an entity (x y z).">
 <meta name="prop:height" content="number" data-doc="World units above it.">
 <meta name="prop:name" content="string" data-doc="The item's name.">
 <meta name="prop:count" content="number" data-doc="A stack's size, shown as ×n from 2.">

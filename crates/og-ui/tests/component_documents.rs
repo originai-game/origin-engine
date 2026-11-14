@@ -52,6 +52,43 @@ fn every_built_in_document_mounts_from_its_fixture() {
     }
 }
 
+/// Every built-in component is usable at its zero value: a game's page
+/// that writes `<Name />` with no props mounts it and builds with no
+/// warning, each prop read at its default.
+///
+/// Ways it could fail: a prop that must be passed (mount refused), a
+/// default its markup cannot take (a word attribute given "", a divisor
+/// of 0 reaching a length), or a group's component warning on art its
+/// sheet would give.
+#[test]
+fn every_built_in_component_builds_with_no_props() {
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    let mut failures = Vec::new();
+    for doc in &docs {
+        let name = &doc.doc.name;
+        let page = format!(
+            "<meta name=\"component\" content=\"page\">\n<div id=\"Page\"><{name} /></div>"
+        );
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+        let page = EngineDocument {
+            path: format!("page of {}", doc.path),
+            doc: UiDocument::parse("page.svelte", &page).unwrap(),
+            props: serde_json::json!({}),
+        };
+        ui.define_document(page.doc.clone());
+        let mounted = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            preview(&mut ui, &docs, &page, &messages, 1280.0, 720.0)
+        }));
+        match mounted {
+            Ok(warnings) if warnings.is_empty() => {}
+            Ok(warnings) => failures.push(format!("{}: {warnings:?}", doc.path)),
+            Err(_) => failures.push(format!("{}: does not mount with no props", doc.path)),
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// The ground marks drape over the scene (c8e4b7a8c): each document's
 /// `<ground>` reaches the renderer as one layer carrying its drape. Fails
 /// when a mark is rebuilt as a flat panel or a screen-space box.

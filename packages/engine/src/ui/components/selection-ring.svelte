@@ -1,8 +1,8 @@
 <meta name="component" content="SelectionRing">
 <meta name="parts" content="SelectionRing.ring">
 <meta name="prop:entity" content="number" data-doc="The unit it rings, by its bits (0: use at).">
-<meta name="prop:at" content="string" data-doc="Its centre on the ground without an entity (x y z: a unit's feet).">
-<meta name="prop:radius" content="number" data-doc="Its radius in world units.">
+<meta name="prop:at" content="string" data-default="0 0 0" data-doc="Its centre on the ground without an entity (x y z: a unit's feet).">
+<meta name="prop:radius" content="number" data-default="1" data-doc="Its radius in world units.">
 <meta name="prop:reaction" content="string" data-doc="Its colour: friendly (empty, green), hostile (red) or neutral (yellow).">
 <meta name="prop:hover" content="bool" data-doc="Hovered, not selected: thin and dim.">
 <meta name="prop:segmented" content="bool" data-doc="Broken into arcs turning slowly (a target ring).">

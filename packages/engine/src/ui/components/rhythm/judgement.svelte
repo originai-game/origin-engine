@@ -1,7 +1,7 @@
 <meta name="component" content="RhythmJudgement">
 <meta name="strings" content="./rhythm.en.ogt">
 <meta name="parts" content="RhythmJudgement.frame RhythmJudgement.plate RhythmJudgement.title RhythmJudgement.badge RhythmJudgement.combo">
-<meta name="prop:judgement" content="string" data-doc="The last hit's judgement as the game judged it: perfect, great, good, bad, miss, or none (nothing shown); on data-judgement for the pack, and always a word.">
+<meta name="prop:judgement" content="string" data-default="none" data-doc="The last hit's judgement as the game judged it: perfect, great, good, bad, miss, or none (nothing shown); on data-judgement for the pack, and always a word.">
 <meta name="prop:label" content="string" data-doc="The judgement's word as the game names it (Critical, Marvelous); empty takes the kit's word for judgement.">
 <meta name="prop:timing" content="string" data-doc="early or late beside the word (Early, Late); empty hides it.">
 <meta name="prop:hit" content="number" data-doc="The hit's id: a new value draws the word afresh (each note judged), so a pack's entrance animation on the plate replays.">

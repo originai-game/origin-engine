@@ -3,8 +3,8 @@
 <meta name="parts" content="NodeGraph.well NodeGraph.link NodeGraph.node NodeGraph.icon NodeGraph.label">
 <meta name="prop:nodes" content="list" data-doc="The nodes: each { id, x, y, label, icon, state, shape, team }, x and y in graph units (CSS px at zoom 1), state available, locked, active, done or current (a ring and a mark as well as a colour), shape circle, square, hex or diamond, team ally, enemy or empty (pair a side with a shape so sides are not told by colour alone).">
 <meta name="prop:links" content="list" data-doc="The links under the nodes: each { id, d, active }, d its SVG path data in graph units (the game draws a curve or a line), active a path taken.">
-<meta name="prop:view" content="string" data-doc="The graph's extent in graph units, as an SVG viewBox (0 0 600 400).">
-<meta name="prop:zoom" content="number" data-doc="Its zoom: the game keeps it, from the wheel and pinch events, within its limits.">
+<meta name="prop:view" content="string" data-default="0 0 600 400" data-doc="The graph's extent in graph units, as an SVG viewBox (0 0 600 400).">
+<meta name="prop:zoom" content="number" data-default="1" data-doc="Its zoom: the game keeps it, from the wheel and pinch events, within its limits.">
 <meta name="prop:panX" content="number" data-doc="How far it is panned across, CSS px (from its pointer events).">
 <meta name="prop:panY" content="number" data-doc="How far it is panned down.">
 <meta name="prop:selected" content="string" data-doc="The selected node's id: ringed in the focus ink.">

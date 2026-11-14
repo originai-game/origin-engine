@@ -2,8 +2,8 @@
 <meta name="strings" content="./stat-bar.en.ogt">
 <meta name="parts" content="StatBar.shield StatBar.frame StatBar.label StatBar.track StatBar.fill StatBar.inside StatBar.figure">
 <meta name="prop:value" content="number" data-doc="The value.">
-<meta name="prop:max" content="number" data-doc="Its maximum.">
-<meta name="prop:kind" content="string" data-doc="What it measures (its colour): health, mana, stamina or xp; health turns warn and danger as it falls.">
+<meta name="prop:max" content="number" data-default="1" data-doc="Its maximum.">
+<meta name="prop:kind" content="string" data-default="health" data-doc="What it measures (its colour): health, mana, stamina or xp; health turns warn and danger as it falls.">
 <meta name="prop:segment" content="number" data-doc="Value per block: a notch at each block's end (0: one bar).">
 <meta name="prop:shield" content="number" data-doc="Shield or armour on top of the value, a strip over the bar.">
 <meta name="prop:shieldMax" content="number" data-doc="The most shield; 0 hides the strip.">
@@ -14,14 +14,14 @@
 <meta name="prop:showValue" content="bool" data-doc="The value as text at its end.">
 <meta name="prop:valueInside" content="bool" data-doc="The value inside the track at its end, so the bar keeps its length.">
 <meta name="prop:valueText" content="string" data-doc="The value as text instead of value / max.">
-<meta name="prop:low" content="number" data-doc="The fraction under which it is low (0.3).">
-<meta name="prop:critical" content="number" data-doc="The fraction under which it is critical (0.15).">
+<meta name="prop:low" content="number" data-default="0.3" data-doc="The fraction under which it is low (0.3).">
+<meta name="prop:critical" content="number" data-default="0.15" data-doc="The fraction under which it is critical (0.15).">
 <meta name="prop:bare" content="bool" data-doc="No HUD plate behind it.">
 <meta name="prop:name" content="string" data-doc="What a screen reader calls it; empty is the label, else Health.">
 <meta name="fixture:default" content='{"value":72,"max":100,"kind":"health","segment":25,"shield":60,"shieldMax":100,"heal":12,"recoverable":0,"label":"HP","icon":"heart","showValue":true,"valueInside":false,"valueText":"","low":0.3,"critical":0.15,"bare":false,"name":""}'>
 
 <div id="StatBar" role="meter" aria-label={name || label || t("component.stat-bar.health")} aria-valuemin="0" aria-valuemax={max} aria-valuenow={value} aria-valuetext={valueText || t("component.stat-bar.value", { value: value, max: max })} class:mana={kind == 'mana'} class:stamina={kind == 'stamina'} class:xp={kind == 'xp'} class:low={kind == 'health' && value / max <= low && value / max > critical} class:critical={kind == 'health' && value / max <= critical} class:bare={bare}>
-  <div id="Shield" part="StatBar.shield" hidden={!(shieldMax > 0)} style:--shield={shield / shieldMax}><div id="ShieldFill"></div></div>
+  <div id="Shield" part="StatBar.shield" hidden={!(shieldMax > 0)} style:--shield={shieldMax > 0 ? shield / shieldMax : 0}><div id="ShieldFill"></div></div>
   <div id="Main" part="StatBar.frame" class:hud={!bare} class:bare={bare}>
     <og-icon id="Icon" icon={icon} hidden={!icon}></og-icon>
     <span id="Label" part="StatBar.label" hidden={!label}>{label}</span>

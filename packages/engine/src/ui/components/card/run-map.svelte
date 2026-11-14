@@ -5,8 +5,8 @@
 <meta name="prop:floor" content="string" data-doc="Where the run stands as the game words it (Floor 6 of 15); empty hides it.">
 <meta name="prop:nodes" content="list" data-doc="The rooms, NodeGraph's nodes: keyed rows of { id, x, y, label, icon, state, shape, team }. A room's kind is its icon and shape (fight sword circle, elite skull diamond, rest fire square, shop coin square, event flag hex, treasure gem hex, boss crown diamond, or the game's own) and its label; state is done (visited), current (where the player stands), available (reachable next, the game's answer) or locked (out of reach).">
 <meta name="prop:links" content="list" data-doc="The paths, NodeGraph's links: keyed rows of { id, d, active }, d SVG path data in graph units, active a path taken.">
-<meta name="prop:view" content="string" data-doc="The map's extent in graph units, an SVG viewBox (0 0 360 240).">
-<meta name="prop:zoom" content="number" data-doc="NodeGraph's zoom, kept by the game from the zoom and pinch intents.">
+<meta name="prop:view" content="string" data-default="0 0 360 240" data-doc="The map's extent in graph units, an SVG viewBox (0 0 360 240).">
+<meta name="prop:zoom" content="number" data-default="1" data-doc="NodeGraph's zoom, kept by the game from the zoom and pinch intents.">
 <meta name="prop:panX" content="number" data-doc="NodeGraph's pan across, from the pan intent.">
 <meta name="prop:panY" content="number" data-doc="NodeGraph's pan down.">
 <meta name="prop:selected" content="string" data-doc="The room ringed as chosen or focused; empty is none.">

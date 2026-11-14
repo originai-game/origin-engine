@@ -6,7 +6,7 @@
 <meta name="prop:action" content="string" data-doc="The action whose glyph the hotkey cap shows on the device used last (it follows a rebinding); empty is none.">
 <meta name="prop:hotkey" content="string" data-doc="A label for the cap instead of the action's glyph (Q, LB); empty shows the action's.">
 <meta name="prop:cooldown" content="number" data-doc="Seconds of cooldown left; 0 is ready.">
-<meta name="prop:cooldownMax" content="number" data-doc="The cooldown's length; the sweep shows cooldown over it.">
+<meta name="prop:cooldownMax" content="number" data-default="1" data-doc="The cooldown's length; the sweep shows cooldown over it.">
 <meta name="prop:charges" content="number" data-doc="Charges ready, in a corner badge when maxCharges is over 1.">
 <meta name="prop:maxCharges" content="number" data-doc="Charges it holds; 0 or 1 is none.">
 <meta name="prop:cost" content="string" data-doc="Its cost (40) at the bottom left while ready; empty is none.">
@@ -15,7 +15,7 @@
 <meta name="prop:active" content="bool" data-doc="Toggled on or channelling: a breathing glow and a primary edge.">
 <meta name="prop:locked" content="bool" data-doc="Not learnt yet: dark art under a lock.">
 <meta name="prop:disabled" content="bool" data-doc="Cannot be used now: the art washed out under a red slash.">
-<meta name="prop:ultimate" content="number" data-doc="An ultimate's charge 0 to 1: larger, a gold ring filling round it and a percent; negative is a plain slot.">
+<meta name="prop:ultimate" content="number" data-default="-1" data-doc="An ultimate's charge 0 to 1: larger, a gold ring filling round it and a percent; negative is a plain slot.">
 <meta name="prop:level" content="number" data-doc="Ranks learnt (pips right under it).">
 <meta name="prop:maxLevel" content="number" data-doc="Ranks it has; 0 draws no pips.">
 <meta name="action:use" content="Use">

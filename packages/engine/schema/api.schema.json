@@ -13175,7 +13175,7 @@
               "doc": "The screen's name."
             }
           ],
-          "returns": "Option<ScreenProps<S>>",
+          "returns": "Option<ScreenValues<S>>",
           "publish": true
         },
         {

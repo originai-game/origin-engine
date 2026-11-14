@@ -14,7 +14,9 @@ built-in one of its name.
 
 They follow the screen conventions (`../screens/README.md`): each declares
 `<meta name="component">`, its props and actions, and a
-`<meta name="fixture:default">` JSON fixture; structure is scriptless markup,
+`<meta name="fixture:default">` JSON fixture. Every prop has a default, so
+`<StatBar />` draws an empty health bar and a game passes only what it
+shows; structure is scriptless markup,
 look is scoped CSS and tokens, rings and bars are inline SVG, world tags are
 `<anchor>`, ground marks `<ground>`, and overhead bars and damage numbers are
 `<anchor mass>` rows drawn on the GPU. Visible words come from the companion

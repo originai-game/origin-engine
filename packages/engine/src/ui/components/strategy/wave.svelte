@@ -4,7 +4,7 @@
 <meta name="prop:wave" content="number" data-doc="The wave on now or last fought, from 1; 0 before the first.">
 <meta name="prop:waves" content="number" data-doc="Waves in the level; 0 is an endless run (no total shown).">
 <meta name="prop:phase" content="string" data-doc="countdown (the next wave is coming), active (a wave is on) or done (every wave cleared), as the game says: data-phase and a word.">
-<meta name="prop:next" content="number" data-doc="Seconds to the next wave (HudTimer); negative hides the clock.">
+<meta name="prop:next" content="number" data-default="-1" data-doc="Seconds to the next wave (HudTimer); negative hides the clock.">
 <meta name="prop:nextTotal" content="number" data-doc="The whole wait, for the timer's ring; 0 draws none.">
 <meta name="prop:finalWave" content="bool" data-doc="The coming or current wave is the last: the Final wave badge.">
 <meta name="prop:enemies" content="list" data-doc="The next wave's enemies by kind, keyed rows of { id, name, icon, count, boss, scouted }: count shown as ×n; boss marks it with a Boss badge (data-boss); scouted false hides name and count behind Not yet scouted.">

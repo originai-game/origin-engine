@@ -164,6 +164,8 @@ export type ScreenName = (keyof UiScreens & string) | (string & {});
 export type ComponentName = (keyof UiComponents & string) | (string & {});
 /** A declared screen's viewmodel; `unknown` for an undeclared name. */
 export type ScreenProps<S> = S extends keyof UiScreens ? UiScreens[S]["props"] : unknown;
+/** A declared screen's values as it holds them: every prop, a left-out one at its default. */
+export type ScreenValues<S> = S extends keyof UiScreens ? Required<UiScreens[S]["props"]> : unknown;
 /** A declared component's props; `unknown` for an undeclared name. */
 export type ComponentProps<C> = C extends keyof UiComponents ? UiComponents[C]["props"] : unknown;
 "#;
@@ -716,8 +718,10 @@ impl<'a> Gen<'a, '_> {
                 let one = arg(0);
                 format!("[{}]", vec![one; n].join(", "))
             }
-            "ComponentType" | "ResourceType" | "ScreenProps" | "ComponentProps" | "UiReadable"
-            | "UiWritable" | "UiStart" | "UiCollection" => format!("{name}<{}>", arg(0)),
+            "ComponentType" | "ResourceType" | "ScreenProps" | "ScreenValues"
+            | "ComponentProps" | "UiReadable" | "UiWritable" | "UiStart" | "UiCollection" => {
+                format!("{name}<{}>", arg(0))
+            }
             "EventType" => format!("EventType<FieldValues<{}>>", arg(0)),
             "UiDerive" => format!("UiDerive<{}, {}>", arg(0), arg(1)),
             other => other.to_string(),

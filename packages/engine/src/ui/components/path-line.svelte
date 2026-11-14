@@ -1,7 +1,7 @@
 <meta name="component" content="PathLine">
 <meta name="parts" content="PathLine.line PathLine.badge">
-<meta name="prop:at" content="string" data-doc="The ground box's centre (x y z), the path laid in it.">
-<meta name="prop:size" content="number" data-doc="The box's side in world units; the path's points are in its 0 0 200 200 view box.">
+<meta name="prop:at" content="string" data-default="0 0 0" data-doc="The ground box's centre (x y z), the path laid in it.">
+<meta name="prop:size" content="number" data-default="1" data-doc="The box's side in world units; the path's points are in its 0 0 200 200 view box.">
 <meta name="prop:path" content="string" data-doc="The path from the mover as SVG path data in the box (M x y L x y …), the game's world points projected onto it.">
 <meta name="prop:reach" content="string" data-doc="The part past the mover's reach this turn, as path data, drawn in danger; empty is none.">
 <meta name="prop:endX" content="number" data-doc="The path's end in the box, across.">

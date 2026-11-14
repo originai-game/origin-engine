@@ -1,12 +1,12 @@
 <meta name="component" content="Telegraph">
 <meta name="parts" content="Telegraph.area">
 <meta name="prop:entity" content="number" data-doc="Its origin's entity, by its bits (0: use at).">
-<meta name="prop:at" content="string" data-doc="Its origin on the ground without an entity (x y z).">
+<meta name="prop:at" content="string" data-default="0 0 0" data-doc="Its origin on the ground without an entity (x y z).">
 <meta name="prop:shape" content="string" data-doc="Its area: disc (empty), ring, cone or line.">
-<meta name="prop:radius" content="number" data-doc="A disc's or ring's radius, a cone's or line's length, in world units.">
+<meta name="prop:radius" content="number" data-default="1" data-doc="A disc's or ring's radius, a cone's or line's length, in world units.">
 <meta name="prop:inner" content="number" data-doc="A ring's inner radius as a fraction of radius (0 to 1).">
-<meta name="prop:angle" content="number" data-doc="A cone's width in degrees.">
-<meta name="prop:width" content="number" data-doc="A line's width as a fraction of its length (0 to 1).">
+<meta name="prop:angle" content="number" data-default="90" data-doc="A cone's width in degrees.">
+<meta name="prop:width" content="number" data-default="0.2" data-doc="A line's width as a fraction of its length (0 to 1).">
 <meta name="prop:direction" content="number" data-doc="Which way a cone or line faces, degrees clockwise from +z seen from above.">
 <meta name="prop:progress" content="number" data-doc="The wind-up 0 to 1: the fill grows to the edge as the hit nears.">
 <meta name="prop:friendly" content="bool" data-doc="An ally's (info); false is an enemy's (danger).">

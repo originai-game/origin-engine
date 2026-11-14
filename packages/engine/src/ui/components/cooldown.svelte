@@ -1,7 +1,7 @@
 <meta name="component" content="Cooldown">
 <meta name="parts" content="Cooldown.cell Cooldown.icon Cooldown.figure">
 <meta name="prop:remaining" content="number" data-doc="Seconds left; 0 is ready.">
-<meta name="prop:total" content="number" data-doc="The whole cooldown in seconds.">
+<meta name="prop:total" content="number" data-default="1" data-doc="The whole cooldown in seconds.">
 <meta name="prop:icon" content="string" data-doc="An icon of the atlas under the sweep.">
 <meta name="prop:label" content="string" data-doc="Its accessible name (Dash).">
 <meta name="action:use" content="Use">

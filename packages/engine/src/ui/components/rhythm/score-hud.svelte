@@ -3,7 +3,7 @@
 <meta name="parts" content="RhythmScoreHud.frame RhythmScoreHud.cell RhythmScoreHud.title RhythmScoreHud.figure RhythmScoreHud.row RhythmScoreHud.badge">
 <meta name="prop:score" content="number" data-doc="The score as the game counts it, shown with grouping.">
 <meta name="prop:accuracy" content="string" data-doc="The accuracy as the game words it (98.73%); empty hides it.">
-<meta name="prop:life" content="number" data-doc="The life gauge, 0 to 1; negative hides it (a mode without one).">
+<meta name="prop:life" content="number" data-default="-1" data-doc="The life gauge, 0 to 1; negative hides it (a mode without one).">
 <meta name="prop:danger" content="bool" data-doc="The game says life is low: the gauge turns to its danger tone and Danger shows beside it.">
 <meta name="prop:failed" content="bool" data-doc="The game says the run is failed (life gone): Failed shows and the frame takes data-failed.">
 <meta name="prop:progress" content="number" data-doc="How far through the song, 0 to 1 (a ProgressBar).">

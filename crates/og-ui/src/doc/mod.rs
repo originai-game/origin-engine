@@ -73,6 +73,11 @@ pub static UI_STORE: std::sync::LazyLock<crate::reactive::SourceId> =
 pub static CAPTIONS_STORE: std::sync::LazyLock<crate::reactive::SourceId> =
     std::sync::LazyLock::new(|| crate::reactive::SourceId::new("og", "captions"));
 
+/// The list an `{#each}` iterates where its user passed none: a prop of
+/// type list left out reads `[]`, held here, a collection never written.
+pub(crate) static NO_ROWS: std::sync::LazyLock<crate::reactive::SourceId> =
+    std::sync::LazyLock::new(|| crate::reactive::SourceId::new("og", "no-rows"));
+
 /// The engine's `$toasts` store, read like `$ui`: the toasts up
 /// ([`crate::Ui::toast`]), a collection of `{ id, text, tone, leaving }`
 /// keyed by `id`, oldest first.
@@ -572,8 +577,9 @@ pub struct ContractProp {
     pub name: String,
     pub ty: String,
     pub doc: String,
-    /// Its default (`data-default` on its metadata): what it reads when the
-    /// user passes none.
+    /// What it reads when the user passes none: its `data-default`, else
+    /// its type's zero value. None for content and for a `data-required`
+    /// prop, which its user must pass.
     pub default: Option<serde_json::Value>,
 }
 

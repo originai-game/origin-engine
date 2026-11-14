@@ -106,11 +106,14 @@ tick.
   reason }` (`Promise.allSettled`'s words), written by a TS system; no
   promise runs in the tick.
 - A prop is declared once, as `<meta name="prop:name" content="type"
-  data-doc="…">`. `data-default="…"` gives its default: a string's is the
-  attribute's text, the other types' are JSON of that type (`5`, `true`,
-  `[1, 2]`). A prop with a default is optional in the generated `.d.ts`; a
-  prop with none is required, and a mount leaving it out returns an error
-  naming the instance and prop. `$props()` is refused.
+  data-doc="…">`. Left out, it reads its type's zero value (`""`, `0`,
+  `false`, `[]` with no rows, `{}`, null for `any`), so a component is
+  usable as `<Name />`; `data-default="…"` gives another: a string's is
+  the attribute's text, the other types' are JSON of that type (`5`,
+  `true`). A list prop's default is `[]`: its rows come from the
+  collection its user binds. Only a `data-required` prop must be passed:
+  it is required in the generated `.d.ts`, and a mount leaving it out
+  returns an error naming the instance and prop. `$props()` is refused.
 - `<script lang="ts">` holds only `const name = $derived(expr)` and
   `$derived.by(() => expr)` over pure expressions. Derived values are
   replaced where read. State and logic live in a TS system.

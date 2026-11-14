@@ -8,7 +8,7 @@
 <meta name="prop:gain" content="string" data-doc="How much a reset now would give, as the game formats it.">
 <meta name="prop:rows" content="list" data-doc="What changes, keyed rows of { id, icon, label, now, after }: now the value before the reset and after the value it would be after, both as the game words them.">
 <meta name="prop:requirement" content="string" data-doc="What a reset needs, as the game words it (Reach 1M gold); empty hides it.">
-<meta name="prop:progress" content="number" data-doc="Toward the requirement, 0 to 1, for its bar; negative hides the bar.">
+<meta name="prop:progress" content="number" data-default="-1" data-doc="Toward the requirement, 0 to 1, for its bar; negative hides the bar.">
 <meta name="prop:progressText" content="string" data-doc="That progress in words (640K / 1M); empty shows the percent.">
 <meta name="prop:met" content="bool" data-doc="The requirement is met: Prestige is enabled and the requirement reads Ready (else Not yet).">
 <meta name="prop:confirming" content="bool" data-doc="The game is asking the player to confirm (set after request): Reset and Cancel stand in for Prestige.">

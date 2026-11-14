@@ -1,7 +1,7 @@
 <meta name="component" content="SpeechBubble">
 <meta name="parts" content="SpeechBubble.frame SpeechBubble.label SpeechBubble.line SpeechBubble.tail">
 <meta name="prop:entity" content="number" data-doc="Who speaks, by its bits (0: use at).">
-<meta name="prop:at" content="string" data-doc="A world point it speaks from without an entity (x y z).">
+<meta name="prop:at" content="string" data-default="0 0 0" data-doc="A world point it speaks from without an entity (x y z).">
 <meta name="prop:height" content="number" data-doc="World units above the point (over the head).">
 <meta name="prop:speaker" content="string" data-doc="Who speaks, over the line; empty is none.">
 <meta name="prop:text" content="string" data-doc="The line.">

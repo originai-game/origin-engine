@@ -373,16 +373,17 @@ mod tests {
     }
 
     /// A mount whose document uses a component without a prop that
-    /// component declares with no default returns the error, naming the
+    /// component declares `data-required` returns the error, naming the
     /// instance and the prop, instead of returning ok and building nothing
     /// (the bound name was unbound, and the deferred compile's error went
-    /// only to the warnings). A prop with a `data-default` may be left
-    /// out and reads its default.
+    /// only to the warnings). Any other prop may be left out and reads its
+    /// `data-default`, else its type's zero value.
     ///
     /// Ways it could fail: only the page's own instances checked (a
     /// component inside a component still mounts nothing), the check run
     /// only on the immediate `mount_document` (the host's `scope.mount`
-    /// registers and still returns ok), or a defaulted prop refused.
+    /// registers and still returns ok), or a prop with a default (declared
+    /// or zero) refused.
     #[test]
     fn a_mount_refuses_an_instance_that_leaves_out_a_declared_prop() {
         let mut ui = Ui::new(UiDesc::default());
@@ -391,8 +392,8 @@ mod tests {
                 "card.svelte",
                 r#"<meta name="component" content="Card">
             <meta name="prop:title" content="string">
-            <meta name="prop:orientation" content="string">
-            <column class:h={orientation == "horizontal"}><text id="Title">{title}</text></column>"#,
+            <meta name="prop:orientation" content="string" data-required>
+            <column class:h={orientation == "horizontal"}><text id="Title">[{title}]</text></column>"#,
             ),
             (
                 "tag.svelte",
@@ -413,7 +414,7 @@ mod tests {
             (
                 "fixed.svelte",
                 r#"<meta name="component" content="fixed">
-            <column><Card title="hi" orientation="vertical" /><Tag /></column>"#,
+            <column><Card title="hi" orientation="vertical" /><Card orientation="vertical" /><Tag /></column>"#,
             ),
         ] {
             ui.define_document(UiDocument::parse(file, text).unwrap());
@@ -428,7 +429,9 @@ mod tests {
         };
         let error = mount(&mut ui, "page").unwrap_err();
         assert!(
-            error.starts_with("row.svelte:2: <Card> leaves out its prop 'orientation'"),
+            error.starts_with(
+                "row.svelte:2: <Card> leaves out its prop 'orientation', which it requires"
+            ),
             "{error}"
         );
         assert!(ui.docs.state().memory.retained.registrations.is_empty());
@@ -444,7 +447,7 @@ mod tests {
             .map(|n| n.text)
             .collect();
         texts.sort();
-        assert_eq!(texts, ["hi", "plain"]);
+        assert_eq!(texts, ["[]", "[hi]", "plain"]);
     }
 
     #[test]

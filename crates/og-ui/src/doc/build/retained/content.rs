@@ -220,8 +220,8 @@ impl RetainedHost {
 }
 
 /// An instance at `doc.nodes[index]` that leaves out a prop `instance`
-/// declares with no default (`data-default` on its `<meta name="prop:…">`)
-/// is refused: the prop would be unbound, and the document built nothing.
+/// declares `data-required` is refused: the prop would be unbound, and the
+/// document built nothing. Every other prop has a default.
 /// Content props are passed as snippets and children, not arguments.
 /// The style props of the instance `context` is inside: its props named as
 /// custom properties.
@@ -242,8 +242,8 @@ fn unpassed(doc: &UiDocument, index: usize, instance: &UiDocument) -> Result<(),
     });
     match missing {
         Some(p) => Err(format!(
-            "{}:{}: <{}> leaves out its prop '{}'; pass it, or give it a default in the component (data-default=\"…\" on <meta name=\"prop:{}\">)",
-            doc.source, node.line, instance.name, p.name, p.name
+            "{}:{}: <{}> leaves out its prop '{}', which it requires (data-required); pass it",
+            doc.source, node.line, instance.name, p.name
         )),
         None => Ok(()),
     }
@@ -350,9 +350,10 @@ pub(super) fn mount_lexical(
 }
 
 /// The keyed list an `{#each}` reads: a `$name` collection, a list held in
-/// a row of an enclosing each (`r.cells`), or a component prop its user
-/// bound to one (`<List items={$inventory}>`). `key` is the path in each
-/// item of a held list's key, which a collection does not need.
+/// a row of an enclosing each (`r.cells`), a component prop its user
+/// bound to one (`<List items={$inventory}>`), or a list prop left out,
+/// which has no rows. `key` is the path in each item of a held list's
+/// key, which a collection does not need.
 pub(super) fn collection(
     context: &BindingContext,
     path: &str,
@@ -377,6 +378,21 @@ pub(super) fn collection(
             collection(user, inner, key)
         } else {
             collection(user, &format!("{inner}.{rest}"), key)
+        };
+    }
+    if let Some(PropRef {
+        expression: BindingExpression::Expression(Expr::Lit(value)),
+        ..
+    }) = context.lexical.props.get(root)
+        && rest.is_empty()
+    {
+        return match value {
+            Value::Array(items) if items.is_empty() => {
+                Ok(ListRef::Collection(crate::doc::NO_ROWS.clone()))
+            }
+            _ => Err(format!(
+                "each over '{path}' reads a literal list; its default is [] (none), and its user binds it to a collection"
+            )),
         };
     }
     match context.rows.get(root) {

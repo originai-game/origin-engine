@@ -5,7 +5,7 @@
 <meta name="prop:hint" content="string" data-doc="A line under it, what to do (Hold to delete); empty for none.">
 <meta name="prop:icon" content="string" data-doc="An icon of the atlas before the label; empty for none.">
 <meta name="prop:action" content="string" data-doc="An og-input action whose hold holds it too (confirm); empty for none.">
-<meta name="prop:variant" content="string" data-doc="Its role: danger (the default, a destructive confirm), primary or secondary.">
+<meta name="prop:variant" content="string" data-default="danger" data-doc="Its role: danger (the default, a destructive confirm), primary or secondary.">
 <meta name="prop:disabled" content="bool" data-doc="Shown but inert.">
 <meta name="action:confirm" content="Confirm">
 <meta name="fixture:default" content='{"label":"Delete save","holding":"Keep holding…","hint":"Hold to delete","icon":"close","action":"","variant":"danger","disabled":false}'>

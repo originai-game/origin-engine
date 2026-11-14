@@ -1,20 +1,20 @@
 <meta name="component" content="Nameplate">
 <meta name="parts" content="Nameplate.frame Nameplate.icon Nameplate.badge Nameplate.name Nameplate.subtitle Nameplate.well Nameplate.fill Nameplate.shield Nameplate.cast Nameplate.spell">
 <meta name="prop:entity" content="number" data-doc="The unit it sits over, by its bits (0: use at).">
-<meta name="prop:at" content="string" data-doc="A world point it sits over without an entity (x y z).">
+<meta name="prop:at" content="string" data-default="0 0 0" data-doc="A world point it sits over without an entity (x y z).">
 <meta name="prop:height" content="number" data-doc="World units above the point (its head).">
 <meta name="prop:name" content="string" data-doc="The name.">
 <meta name="prop:title" content="string" data-doc="A line under it (a guild, a role); empty is none.">
 <meta name="prop:level" content="string" data-doc="Its level on a badge; empty is none.">
 <meta name="prop:reaction" content="string" data-doc="Its colour: neutral (empty), friendly, hostile or player.">
-<meta name="prop:health" content="number" data-doc="Health 0 to 1 for a bar under the name; negative draws none.">
+<meta name="prop:health" content="number" data-default="-1" data-doc="Health 0 to 1 for a bar under the name; negative draws none.">
 <meta name="prop:shield" content="number" data-doc="An absorb over the health, 0 to 1.">
 <meta name="prop:castName" content="string" data-doc="What it is casting; empty is nothing.">
 <meta name="prop:castProgress" content="number" data-doc="How far the cast is, 0 to 1.">
 <meta name="prop:icon" content="string" data-doc="A class, quest or role icon before the name; empty is none.">
 <meta name="prop:boss" content="bool" data-doc="A boss or elite: a gold frame.">
 <meta name="prop:targeted" content="bool" data-doc="The player's target: larger, outlined, drawn over the rest.">
-<meta name="prop:maxDistance" content="number" data-doc="Hidden past this many world units (80).">
+<meta name="prop:maxDistance" content="number" data-default="80" data-doc="Hidden past this many world units (80).">
 <meta name="fixture:default" content='{"entity":0,"at":"0 0 0","height":2.1,"name":"Grimtooth","title":"Warlord","level":"32","reaction":"hostile","health":0.62,"shield":0.15,"castName":"Cleave","castProgress":0.4,"icon":"skull","boss":true,"targeted":true,"maxDistance":80}'>
 
 <anchor id="Nameplate" entity={entity || null} at={at} offset={"0 " + height + " 0"} occlusion="fade" declutter="stack" priority={targeted ? 1100 : 100} max-distance={maxDistance}>

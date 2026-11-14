@@ -9,10 +9,10 @@
 <meta name="prop:best" content="string" data-doc="The player's best lap, formatted; empty shows the blank time.">
 <meta name="prop:last" content="string" data-doc="The last lap, formatted; empty shows the blank time.">
 <meta name="prop:split" content="string" data-doc="The split delta as the game words it (-0.412, +1.204); empty hides it.">
-<meta name="prop:splitState" content="string" data-doc="ahead, behind or even: the delta's sense, named in words beside it and on data-state.">
+<meta name="prop:splitState" content="string" data-default="even" data-doc="ahead, behind or even: the delta's sense, named in words beside it and on data-state.">
 <meta name="prop:freshBest" content="bool" data-doc="The last lap was a new best: the Best lap badge shows on the last row.">
 <meta name="prop:finalLap" content="bool" data-doc="The player is on the final lap: the Final lap badge shows on the lap cell.">
-<meta name="prop:timeLeft" content="number" data-doc="Seconds left to the next checkpoint or the session's end (HudTimer); negative hides it.">
+<meta name="prop:timeLeft" content="number" data-default="-1" data-doc="Seconds left to the next checkpoint or the session's end (HudTimer); negative hides it.">
 <meta name="prop:timeTotal" content="number" data-doc="The checkpoint's whole time, for the timer's ring; 0 draws none.">
 <meta name="prop:warnAt" content="number" data-default="10" data-doc="Seconds left when the timer turns warn (HudTimer's warnAt); 10 when left out.">
 <meta name="fixture:default" content='{"lap":2,"laps":3,"position":3,"racers":8,"current":"0:48.207","best":"1:21.904","last":"1:23.116","split":"-0.412","splitState":"ahead","freshBest":false,"finalLap":false,"timeLeft":-1,"timeTotal":0}'>

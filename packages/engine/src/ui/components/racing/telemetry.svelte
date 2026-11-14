@@ -5,7 +5,7 @@
 <meta name="prop:units" content="string" data-doc="The speed's unit as the game words it (km/h, mph); shown under the figure and read with it.">
 <meta name="prop:gear" content="string" data-doc="The gear as the game names it: R, N, 1 to 8; empty hides the gear plate.">
 <meta name="prop:rpm" content="number" data-doc="Engine speed now.">
-<meta name="prop:rpmMax" content="number" data-doc="The top of the rev range; the dial or bar shows rpm over it.">
+<meta name="prop:rpmMax" content="number" data-default="1" data-doc="The top of the rev range; the dial or bar shows rpm over it.">
 <meta name="prop:redline" content="number" data-doc="The engine speed where the red zone starts (marked on the dial); 0 is none.">
 <meta name="prop:shift" content="bool" data-doc="The game's shift cue: the Shift badge shows and the frame takes data-shift.">
 <meta name="prop:boost" content="number" data-doc="Boost, nitro or turbo pressure now.">

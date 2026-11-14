@@ -933,7 +933,7 @@ impl<'a> Validator<'a, '_> {
                         );
                     }
                 }
-                "ScreenProps" | "ComponentProps" => {
+                "ScreenProps" | "ScreenValues" | "ComponentProps" => {
                     let a = args[0].name();
                     let bound = if name.starts_with("Screen") {
                         "ScreenName"

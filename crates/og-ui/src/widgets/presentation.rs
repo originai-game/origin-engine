@@ -148,6 +148,10 @@ impl Ui {
                 desc.secondary_tint.unwrap_or(self.env.theme.palette.accent),
             )
         })) {
+            // An empty name is no icon, as a prop left out reads.
+            if name.is_empty() {
+                continue;
+            }
             match self.icon_shape(part.reference(None), name, Frame::FULL, tint) {
                 Some(shape) => self.tree.shapes_mut(i).push(shape),
                 None => self.out.warnings.push(format!(

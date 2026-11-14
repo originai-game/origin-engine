@@ -4,10 +4,10 @@
 <meta name="prop:result" content="string" data-doc="How the level ended: win or lose.">
 <meta name="prop:level" content="string" data-doc="The level's name as the game words it (Level 12); empty hides it.">
 <meta name="prop:score" content="number" data-doc="The final score, as the game counts it.">
-<meta name="prop:scoreMax" content="number" data-doc="The score of the star bar's end (its last threshold).">
+<meta name="prop:scoreMax" content="number" data-default="1" data-doc="The score of the star bar's end (its last threshold).">
 <meta name="prop:thresholds" content="list" data-doc="The star bar's thresholds, keyed rows of { id, at }: at a fraction of scoreMax (0 to 1), as the game's star rules place them.">
 <meta name="prop:stars" content="number" data-doc="Stars the game awarded (0 to maxStars): spoken and written beside the bar.">
-<meta name="prop:maxStars" content="number" data-doc="Stars the level can award.">
+<meta name="prop:maxStars" content="number" data-default="3" data-doc="Stars the level can award.">
 <meta name="prop:record" content="bool" data-doc="The game says the score is a new best: a badge with its word.">
 <meta name="prop:rows" content="list" data-doc="The score breakdown, keyed rows of { id, label, value }: value already worded by the game (+2,400, ×3).">
 <meta name="prop:total" content="string" data-doc="The breakdown's total as the game words it; empty hides the total row.">

@@ -9,7 +9,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 A layer's viewmodel as its two-way bindings left it (the top layer of that screen); null when it is not on the stack.
 
 ```ts
-og.ui.screenVm<S extends ScreenName>(world: World, screen: S): ScreenProps<S> | null
+og.ui.screenVm<S extends ScreenName>(world: World, screen: S): ScreenValues<S> | null
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -17,7 +17,7 @@ og.ui.screenVm<S extends ScreenName>(world: World, screen: S): ScreenProps<S> | 
 | `world` | `World` | no | The world. |
 | `screen` | `S` | no | The screen's name. |
 
-**Returns** `ScreenProps<S> | null`.
+**Returns** `ScreenValues<S> | null`.
 
 Binding symbol `og_ui_screen_vm` · publish builds: kept
 
@@ -27,7 +27,7 @@ fn screenVm {
   generic S ScreenName
   param world World "The world."
   param screen S "The screen's name."
-  returns Option.ScreenProps.S
+  returns Option.ScreenValues.S
 }
 ```
 

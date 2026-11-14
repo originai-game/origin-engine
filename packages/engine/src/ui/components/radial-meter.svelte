@@ -2,7 +2,7 @@
 <meta name="strings" content="./radial-meter.en.ogt">
 <meta name="parts" content="RadialMeter.wheels">
 <meta name="prop:value" content="number" data-doc="The value in wheels: 1 is one full wheel, up to 3.">
-<meta name="prop:wheels" content="number" data-doc="Wheels (an extended stamina's second and third ring), 1 to 3.">
+<meta name="prop:wheels" content="number" data-default="1" data-doc="Wheels (an extended stamina's second and third ring), 1 to 3.">
 <meta name="prop:exhausted" content="bool" data-doc="Ran out: red until full again.">
 <meta name="prop:hidden" content="bool" data-doc="Faded out (the game hides it once it has been full a while).">
 <meta name="prop:name" content="string" data-doc="What a screen reader calls it; empty is Stamina.">

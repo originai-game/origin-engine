@@ -8,9 +8,9 @@
 <meta name="prop:scoreA" content="number" data-doc="The first team's score (rounds won) as the game counts it.">
 <meta name="prop:scoreB" content="number" data-doc="The second team's score as the game counts it.">
 <meta name="prop:localTeam" content="string" data-doc="The local player's team, a or b (its plate is marked You); empty is a spectator.">
-<meta name="prop:timeLeft" content="number" data-doc="Seconds left in the round as the game counts them (a HudTimer); negative hides it.">
+<meta name="prop:timeLeft" content="number" data-default="-1" data-doc="Seconds left in the round as the game counts them (a HudTimer); negative hides it.">
 <meta name="prop:timeTotal" content="number" data-doc="The round's whole time, for the timer's ring (0: no ring).">
-<meta name="prop:outcome" content="string" data-doc="The round's end as the game decided it, for the local side: won, lost, draw, or none (no banner).">
+<meta name="prop:outcome" content="string" data-default="none" data-doc="The round's end as the game decided it, for the local side: won, lost, draw, or none (no banner).">
 <meta name="prop:at" content="number" data-doc="The banner's id: a new value replays its entrance.">
 <meta name="prop:detail" content="string" data-doc="A line under the banner as the game words it (Flawless, Match point); empty hides it.">
 <meta name="fixture:default" content='{"round":4,"rounds":7,"nameA":"","nameB":"","scoreA":2,"scoreB":1,"localTeam":"a","timeLeft":74,"timeTotal":120,"outcome":"none","at":0,"detail":""}'>

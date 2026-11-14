@@ -1,8 +1,8 @@
 <meta name="component" content="PlacementGhost">
 <meta name="parts" content="PlacementGhost.reach PlacementGhost.footprint PlacementGhost.badge">
-<meta name="prop:at" content="string" data-doc="Its footprint's centre on the ground (x y z).">
-<meta name="prop:width" content="number" data-doc="Its width along x before rotation, world units.">
-<meta name="prop:depth" content="number" data-doc="Its depth along z, world units.">
+<meta name="prop:at" content="string" data-default="0 0 0" data-doc="Its footprint's centre on the ground (x y z).">
+<meta name="prop:width" content="number" data-default="1" data-doc="Its width along x before rotation, world units.">
+<meta name="prop:depth" content="number" data-default="1" data-doc="Its depth along z, world units.">
 <meta name="prop:rotation" content="number" data-doc="Its turn about y in degrees, clockwise from above.">
 <meta name="prop:cells" content="number" data-doc="Grid cells across its width, drawn on the footprint (0: none).">
 <meta name="prop:valid" content="bool" data-doc="It can be placed here (success); false is danger with hatching.">

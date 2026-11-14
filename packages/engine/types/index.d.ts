@@ -141,6 +141,8 @@ export type ScreenName = (keyof UiScreens & string) | (string & {});
 export type ComponentName = (keyof UiComponents & string) | (string & {});
 /** A declared screen's viewmodel; `unknown` for an undeclared name. */
 export type ScreenProps<S> = S extends keyof UiScreens ? UiScreens[S]["props"] : unknown;
+/** A declared screen's values as it holds them: every prop, a left-out one at its default. */
+export type ScreenValues<S> = S extends keyof UiScreens ? Required<UiScreens[S]["props"]> : unknown;
 /** A declared component's props; `unknown` for an undeclared name. */
 export type ComponentProps<C> = C extends keyof UiComponents ? UiComponents[C]["props"] : unknown;
 
@@ -36749,7 +36751,7 @@ export declare namespace og {
      * @param world The world.
      * @param screen The screen's name.
      */
-    function screenVm<S extends ScreenName>(world: World, screen: S): ScreenProps<S> | null;
+    function screenVm<S extends ScreenName>(world: World, screen: S): ScreenValues<S> | null;
     /**
      * Take the events of the documents built this frame: pushed layers and store-driven mounts.
      *

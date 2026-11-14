@@ -7,7 +7,7 @@
 <meta name="prop:nameA" content="string" data-doc="The first team's name; empty takes the kit's (Blue team).">
 <meta name="prop:nameB" content="string" data-doc="The second team's name; empty takes the kit's (Red team).">
 <meta name="prop:slots" content="list" data-doc="Both teams' ban and pick slots in the game's order, keyed rows of { id, team, kind, name, portrait, icon, player, active }: team a or b; kind ban or pick; name the character placed (empty: the slot is open); portrait a texture (0 shows the icon); player who the pick belongs to (empty hides); active the slot being filled now (Banning, Picking).">
-<meta name="prop:timeLeft" content="number" data-doc="Seconds left in the turn as the game counts them (a HudTimer); negative hides it.">
+<meta name="prop:timeLeft" content="number" data-default="-1" data-doc="Seconds left in the turn as the game counts them (a HudTimer); negative hides it.">
 <meta name="prop:timeTotal" content="number" data-doc="The turn's whole time, for the timer's ring (0: no ring).">
 <meta name="prop:canConfirm" content="bool" data-doc="Lock in is offered (false: disabled; the game decides when the local player may lock in).">
 <meta name="action:details" content="Lock in">

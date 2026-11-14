@@ -24161,7 +24161,7 @@
           "optional": false
         }
       ],
-      "returns": "Option<ScreenProps<S>>",
+      "returns": "Option<ScreenValues<S>>",
       "publish": true
     },
     {

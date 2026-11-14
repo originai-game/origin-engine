@@ -2,7 +2,7 @@
 <meta name="strings" content="./star-bar.en.ogt">
 <meta name="parts" content="StarBar.label StarBar.figure StarBar.track StarBar.fill StarBar.star">
 <meta name="prop:value" content="number" data-doc="The score.">
-<meta name="prop:max" content="number" data-doc="The bar's full score (its last threshold).">
+<meta name="prop:max" content="number" data-default="1" data-doc="The bar's full score (its last threshold).">
 <meta name="prop:stars" content="list" data-doc="The thresholds: each { id, at } with at a fraction of max (0 to 1) and lit once the score reaches it.">
 <meta name="prop:label" content="string" data-doc="A caption over the score; empty is none.">
 <meta name="prop:valueText" content="string" data-doc="The score in words instead of the grouped number.">

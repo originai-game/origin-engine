@@ -103,7 +103,10 @@ impl<'a> Gen<'a, '_> {
             return;
         }
         for a in ty.args() {
-            if matches!(name, "Value" | "Partial" | "ScreenProps" | "ComponentProps") {
+            if matches!(
+                name,
+                "Value" | "Partial" | "ScreenProps" | "ScreenValues" | "ComponentProps"
+            ) {
                 break;
             }
             self.want(f, a);

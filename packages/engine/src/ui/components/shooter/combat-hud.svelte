@@ -1,20 +1,20 @@
 <meta name="component" content="CombatHud">
 <meta name="strings" content="./shooter.en.ogt">
 <meta name="prop:health" content="number" data-doc="Health now.">
-<meta name="prop:healthMax" content="number" data-doc="Most health.">
+<meta name="prop:healthMax" content="number" data-default="1" data-doc="Most health.">
 <meta name="prop:shield" content="number" data-doc="Shield now, a strip over the health bar.">
 <meta name="prop:shieldMax" content="number" data-doc="Most shield; 0 hides the strip.">
 <meta name="prop:spread" content="number" data-doc="Crosshair spread, 0 to 1 (Crosshair).">
-<meta name="prop:hit" content="string" data-doc="Crosshair hit mark: none, hit, headshot, kill or shieldBreak.">
+<meta name="prop:hit" content="string" data-default="none" data-doc="Crosshair hit mark: none, hit, headshot, kill or shieldBreak.">
 <meta name="prop:hitAt" content="number" data-doc="The hit's id; a new one replays the mark.">
 <meta name="prop:aimed" content="bool" data-doc="The aim rests on an enemy.">
-<meta name="prop:shape" content="string" data-doc="Crosshair shape: cross, dot or circle.">
+<meta name="prop:shape" content="string" data-default="cross" data-doc="Crosshair shape: cross, dot or circle.">
 <meta name="prop:weapon" content="string" data-doc="Weapon name (AmmoCounter).">
-<meta name="prop:mode" content="string" data-doc="Fire mode: auto, burst or single.">
+<meta name="prop:mode" content="string" data-default="auto" data-doc="Fire mode: auto, burst or single.">
 <meta name="prop:magazine" content="number" data-doc="Rounds in the magazine.">
 <meta name="prop:capacity" content="number" data-doc="Magazine size.">
 <meta name="prop:reserve" content="number" data-doc="Rounds in reserve.">
-<meta name="prop:reloading" content="number" data-doc="Reload progress 0 to 1; negative when not reloading.">
+<meta name="prop:reloading" content="number" data-default="-1" data-doc="Reload progress 0 to 1; negative when not reloading.">
 <meta name="prop:hits" content="list" data-doc="Incoming hits (DamageDirection).">
 <meta name="prop:feed" content="list" data-doc="Killfeed rows, newest first (Killfeed).">
 <meta name="fixture:default" content='{"health":72,"healthMax":100,"shield":50,"shieldMax":100,"spread":0.25,"hit":"headshot","hitAt":1,"aimed":true,"shape":"cross","weapon":"Halcyon Carbine","mode":"auto","magazine":24,"capacity":28,"reserve":112,"reloading":-1,"hits":[{"id":"h1","angle":0.9,"strength":0.9,"kind":"normal"}],"feed":[{"id":"k1","killer":"Kestrel","victim":"Vanta","weapon":"Halcyon","headshot":true,"self":true,"team":"ally"}]}'>

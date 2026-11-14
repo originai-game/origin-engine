@@ -4,7 +4,7 @@
 <meta name="prop:label" content="string" data-doc="Its words, its accessible name; shown when it has no icon.">
 <meta name="prop:icon" content="string" data-doc="An icon of the atlas on its face; empty shows the label.">
 <meta name="prop:primary" content="bool" data-doc="The main action: the primary fill and a larger disc.">
-<meta name="prop:charge" content="number" data-doc="A charge round its rim, 0 to 1 (an ultimate); negative is none.">
+<meta name="prop:charge" content="number" data-default="-1" data-doc="A charge round its rim, 0 to 1 (an ultimate); negative is none.">
 <meta name="prop:disabled" content="bool" data-doc="It feeds nothing and shows faded.">
 <meta name="fixture:default" content='{"action":"jump","label":"Jump","icon":"bolt","primary":true,"charge":0.7,"disabled":false}'>
 

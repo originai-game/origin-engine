@@ -1,0 +1,18 @@
+{
+  "added": [
+    {
+      "member": "document",
+      "summary": "A component's prop that its user leaves out reads its type's zero value (\"\", 0, false, [] with no rows, {}, null for any) unless its <meta name=\"prop:…\"> gives a data-default, so <StatBar /> or <AbilityBar /> builds with no props and a game passes only what it shows; the generated .d.ts marks those props optional. A screen pushed without a prop holds its default too, so og.ui.screenVm answers every prop (typed ScreenValues<S>, whose fields are all present) where it answered null for one the push left out. A {#each} over a list prop left out iterates no rows. data-required marks a prop its user must pass; a mount or push leaving it out is refused with an error naming the instance and the prop."
+    },
+    {
+      "member": "document",
+      "summary": "The built-in components declare a default wherever the zero value would draw something wrong: a meter's max is 1, a \"negative is none\" figure (an ultimate's charge, a timer, a reload, a nameplate's health, a waypoint's distance) is -1, a world mark's at is \"0 0 0\", a word prop takes its neutral word (StatBar kind health, Crosshair shape cross and hit none, RacingBanner kind none), and the values their docs named (InteractionPrompt maxDistance 6, Nameplate 80, StatBar low 0.3 and critical 0.15, AmmoCounter low 0.25, Minimap size 160, SplitView ratio 0.5). None is data-required."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "document",
+      "summary": "<og-icon> with an empty icon name draws no icon and no longer warns that '' is in neither the icon atlas nor the fallback icons. StatBar with shieldMax 0 no longer warns that its shield width is invalid."
+    }
+  ]
+}

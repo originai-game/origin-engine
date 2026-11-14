@@ -4,7 +4,7 @@
 //! the toasts up. The engine draws none of them: a document does.
 
 use super::*;
-use crate::doc::{CAPTIONS_STORE, TOASTS_STORE, UI_STORE};
+use crate::doc::{CAPTIONS_STORE, NO_ROWS, TOASTS_STORE, UI_STORE};
 use crate::reactive::session::Command;
 use serde_json::Map;
 
@@ -27,6 +27,8 @@ impl Ui {
                 inputs.insert(name.into(), source.clone());
             }
         }
+        // What an `{#each}` over a list prop left out iterates.
+        self.declare_rows(&NO_ROWS);
     }
 
     /// Declares the collection `source`, empty, unless it is there.

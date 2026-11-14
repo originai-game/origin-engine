@@ -123,7 +123,7 @@
     generic S ScreenName
     param world World "The world."
     param screen S "The screen's name."
-    returns Option.ScreenProps.S
+    returns Option.ScreenValues.S
   }
 
   fn docEvents {

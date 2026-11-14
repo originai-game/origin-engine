@@ -188,7 +188,8 @@ and diagnostics show the angle-bracket form.
   bound, or `Fields`) and use `C` in its signature.
 - Documents: a function may declare `generic S ScreenName` (or `C
   ComponentName`) for a document's name and use `ScreenProps.S`
-  (`ComponentProps.C`) in its signature; TypeScript reads them from the `UiScreens` and `UiComponents`
+  (`ComponentProps.C`) in its signature, or `ScreenValues.S` for a screen's
+  values as it holds them, every prop present; TypeScript reads them from the `UiScreens` and `UiComponents`
   registries that `og ui types` fills per document, and the wire carries
   the name as a string and the props as JSON.
 - Text in a component or resource field: a text column (`column str`,

@@ -1,12 +1,12 @@
 <meta name="component" content="AmmoCounter">
 <meta name="strings" content="./shooter.en.ogt">
 <meta name="prop:weapon" content="string" data-doc="The weapon's name.">
-<meta name="prop:mode" content="string" data-doc="Its fire mode: auto, burst or single.">
+<meta name="prop:mode" content="string" data-default="auto" data-doc="Its fire mode: auto, burst or single.">
 <meta name="prop:magazine" content="number" data-doc="Rounds in the magazine.">
 <meta name="prop:capacity" content="number" data-doc="Rounds a full magazine holds; the strip under the count shows magazine over it.">
 <meta name="prop:reserve" content="number" data-doc="Rounds carried beyond the magazine.">
-<meta name="prop:reloading" content="number" data-doc="The reload's progress, 0 to 1; negative while not reloading.">
-<meta name="prop:low" content="number" data-doc="The fraction of capacity at or under which the count turns low (0.25).">
+<meta name="prop:reloading" content="number" data-default="-1" data-doc="The reload's progress, 0 to 1; negative while not reloading.">
+<meta name="prop:low" content="number" data-default="0.25" data-doc="The fraction of capacity at or under which the count turns low (0.25).">
 <meta name="parts" content="Ammo.frame Ammo.count Ammo.reserve Ammo.mode Ammo.reload">
 <meta name="fixture:default" content='{"weapon":"Halcyon Carbine","mode":"auto","magazine":24,"capacity":28,"reserve":112,"reloading":-1,"low":0.25}'>
 <meta name="fixture:low" content='{"weapon":"Brace-12","mode":"single","magazine":2,"capacity":6,"reserve":18,"reloading":-1,"low":0.34}'>

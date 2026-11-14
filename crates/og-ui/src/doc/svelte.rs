@@ -418,6 +418,21 @@ fn text_value(children: &[Node], at: usize) -> Result<Option<(PropValue, String)
     Ok((!literal.is_empty()).then_some((PropValue::Lit(Lit::Str(literal)), source)))
 }
 
+/// The value a prop of type `ty` reads when it is left out and declares
+/// no default: none for content, which its user passes as children.
+fn zero(ty: &str) -> Option<serde_json::Value> {
+    use serde_json::json;
+    Some(match ty {
+        "number" => json!(0),
+        "string" => json!(""),
+        "bool" => json!(false),
+        "list" => json!([]),
+        "object" => json!({}),
+        "any" => serde_json::Value::Null,
+        _ => return None,
+    })
+}
+
 /// A prop's `data-default`, read by the type its metadata declares: a
 /// string's is the attribute's text, the others' are JSON of that type.
 /// Content is passed as children and snippets and has none.
@@ -606,9 +621,21 @@ impl Parser {
             {
                 return Err((at, "prop metadata needs a name and type number/string/bool/list/object/any/content".into()));
             }
-            let default = match attrs.iter().find(|a| a.name == "data-default") {
-                Some(a) => Some(prop_default(name, content, &a.value).map_err(|why| (a.at, why))?),
-                None => None,
+            // Left out, a prop reads its default, else its type's zero
+            // value; only a `data-required` one must be passed.
+            let required = attrs.iter().find(|a| a.name == "data-required");
+            let default = match (attrs.iter().find(|a| a.name == "data-default"), required) {
+                (Some(a), Some(_)) => {
+                    return Err((
+                        a.at,
+                        format!("{name} is data-required, so it has no default"),
+                    ));
+                }
+                (Some(a), None) => {
+                    Some(prop_default(name, content, &a.value).map_err(|why| (a.at, why))?)
+                }
+                (None, Some(_)) => None,
+                (None, None) => zero(content),
             };
             self.doc.props.push(ContractProp {
                 name: name.into(),

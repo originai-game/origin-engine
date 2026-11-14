@@ -39,6 +39,7 @@ pub const GENERICS: &[(&str, usize)] = &[
     ("ResourceType", 1),
     ("EventType", 1),
     ("ScreenProps", 1),
+    ("ScreenValues", 1),
     ("ComponentProps", 1),
     ("UiReadable", 1),
     ("UiWritable", 1),

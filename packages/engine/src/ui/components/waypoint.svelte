@@ -1,12 +1,12 @@
 <meta name="component" content="Waypoint">
 <meta name="parts" content="Waypoint.pin Waypoint.label Waypoint.figure">
 <meta name="prop:entity" content="number" data-doc="What it marks, by its bits (0: use at).">
-<meta name="prop:at" content="string" data-doc="A world point it marks without an entity (x y z).">
+<meta name="prop:at" content="string" data-default="0 0 0" data-doc="A world point it marks without an entity (x y z).">
 <meta name="prop:height" content="number" data-doc="World units above the point.">
 <meta name="prop:kind" content="string" data-doc="What it is: objective (empty), ping, danger, ally or loot.">
 <meta name="prop:icon" content="string" data-doc="Its icon; empty is the kind's mark.">
 <meta name="prop:label" content="string" data-doc="A word under it (Defend, Enemy spotted); empty is none.">
-<meta name="prop:distance" content="number" data-doc="How far it is, shown under it; negative is none.">
+<meta name="prop:distance" content="number" data-default="-1" data-doc="How far it is, shown under it; negative is none.">
 <meta name="prop:units" content="string" data-doc="The distance's unit (m).">
 <meta name="fixture:default" content='{"entity":0,"at":"0 0 0","height":1.5,"kind":"objective","icon":"","label":"Defend","distance":142,"units":"m"}'>
 

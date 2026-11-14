@@ -1,7 +1,7 @@
 <meta name="component" content="SplitView">
 <meta name="strings" content="./split-view.en.ogt">
 <meta name="parts" content="SplitView.frame SplitView.start SplitView.divider SplitView.grip SplitView.end">
-<meta name="prop:ratio" content="number" data-doc="The start pane's share of the room, 0 to 1; the game keeps it from the divider's drag events.">
+<meta name="prop:ratio" content="number" data-default="0.5" data-doc="The start pane's share of the room, 0 to 1; the game keeps it from the divider's drag events.">
 <meta name="prop:column" content="bool" data-doc="One pane over the other; false is side by side.">
 <meta name="prop:label" content="string" data-doc="What a screen reader calls the divider; empty is Resize.">
 <meta name="action:resize" content="Resize">

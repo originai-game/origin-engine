@@ -3,7 +3,7 @@
 <meta name="parts" content="Chart.frame Chart.title Chart.subtitle Chart.tick Chart.grid Chart.bar Chart.area Chart.line Chart.label">
 <meta name="prop:title" content="string" data-doc="A title over it; empty is none.">
 <meta name="prop:subtitle" content="string" data-doc="A line under the title.">
-<meta name="prop:max" content="number" data-doc="The value axis' top (its bottom is 0).">
+<meta name="prop:max" content="number" data-default="1" data-doc="The value axis' top (its bottom is 0).">
 <meta name="prop:bars" content="list" data-doc="Bars, one per category, left to right: each { id, label, value, color }; color #rrggbb, empty is the primary.">
 <meta name="prop:line" content="string" data-doc="A line series as SVG path data in the plot's 350 by 180 px box (y down), drawn over the bars; empty is none. The game builds it from its values (M x y L x y …).">
 <meta name="prop:area" content="bool" data-doc="Fill under the line.">

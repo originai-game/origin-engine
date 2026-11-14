@@ -302,8 +302,10 @@ measurements are `og style check-project`.
 - Use `<meta name="screen" content="pause" data-layer="menu"
   data-focus="Menu/Resume" data-pause="true">` for a screen.
   Components use `name="component"`. Props use `name="prop:volume"`,
-  `content="number"`, `data-doc="…"` and, for a prop its user may leave
-  out, `data-default="0.8"`; actions use `name="action:back"`;
+  `content="number"`, `data-doc="…"` and, where its zero value (`0`,
+  `""`, `false`, `[]`) is not what a user who leaves it out should read,
+  `data-default="0.8"` (`data-required` for one that must be passed);
+  actions use `name="action:back"`;
   fixtures use `name="fixture:default"` with JSON content.
 - Mount a screen with stores, not a viewmodel: `og.ui.scope(world,
   "menus").mount("pause", "pause", { volume })` puts it on the layer stack

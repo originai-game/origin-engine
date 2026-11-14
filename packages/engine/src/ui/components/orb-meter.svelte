@@ -2,7 +2,7 @@
 <meta name="strings" content="./orb-meter.en.ogt">
 <meta name="parts" content="OrbMeter.orb OrbMeter.fill OrbMeter.value OrbMeter.label">
 <meta name="prop:value" content="number" data-doc="The value.">
-<meta name="prop:max" content="number" data-doc="Its maximum.">
+<meta name="prop:max" content="number" data-default="1" data-doc="Its maximum.">
 <meta name="prop:kind" content="string" data-doc="Its liquid's colour: health (the style's --health) or mana (--mana).">
 <meta name="prop:showValue" content="bool" data-doc="The value in the middle.">
 <meta name="prop:label" content="string" data-doc="A caption under it; empty is none.">

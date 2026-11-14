@@ -12,8 +12,8 @@
     },
     {
       "member": "og.ui.push",
-      "change": "A pushed screen whose component instance leaves out a prop the component declares with no default is refused with \"<file>:<line>: <Component> leaves out its prop '<name>'; pass it, or give it a default in the component\", as a mounted document already was; the push used to build it with the prop unset.",
-      "fix": "Pass every prop the component declares without a default (the built-in components declare none, so a built-in instance passes all its props, as the built-in screens do), or give your own component's prop a default with data-default on its <meta name=\"prop:…\">."
+      "change": "A pushed screen whose component instance leaves out a prop the component declares data-required is refused with \"<file>:<line>: <Component> leaves out its prop '<name>', which it requires (data-required); pass it\", as a mounted document already is; the push used to build it with the prop unset. A prop without data-required reads its default (ui-props-have-defaults).",
+      "fix": "Pass the props your own components mark data-required. The built-in components require none."
     },
     {
       "member": "document",
@@ -24,7 +24,7 @@
   "added": [
     {
       "member": "og.ui.screenVm",
-      "summary": "og.ui.screenVm(screen) returns the screen's values as they are now: what was pushed, with what the screen's controls wrote through bind:, and each value the screen reads that the push left out (its prop's default, else null, or [] where the screen iterates it). It is null once the screen has left the stack."
+      "summary": "og.ui.screenVm(screen) returns the screen's values as they are now: what was pushed, with what the screen's controls wrote through bind:, and each value the screen reads that the push left out (its prop's default, else its type's zero value: \"\", 0, false, [], {}, or null for a store that is no prop). It is null once the screen has left the stack."
     }
   ],
   "fixed": [

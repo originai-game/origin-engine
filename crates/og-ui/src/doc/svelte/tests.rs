@@ -312,6 +312,10 @@ fn rejects_wrong_syntax_and_reports_authored_locations() {
             "<meta name='prop:a' content='content' data-default='x'><text/>",
             "has no default",
         ),
+        (
+            "<meta name='prop:a' content='number' data-default='1' data-required><text/>",
+            "data-required, so it has no default",
+        ),
         ("<text>{@html $raw}</text>", "TS system"),
         ("<column>{@const a = 1}</column>", "directly inside a block"),
         (

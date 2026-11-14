@@ -1,7 +1,7 @@
 <meta name="component" content="RacingBanner">
 <meta name="strings" content="./racing.en.ogt">
 <meta name="parts" content="RacingBanner.frame RacingBanner.plate RacingBanner.title RacingBanner.badge">
-<meta name="prop:kind" content="string" data-doc="What the banner calls: countdown (the count), go, finalLap, finish, or none (nothing shown, as for any other word).">
+<meta name="prop:kind" content="string" data-default="none" data-doc="What the banner calls: countdown (the count), go, finalLap, finish, or none (nothing shown, as for any other word).">
 <meta name="prop:figure" content="number" data-doc="The countdown's figure (3, 2, 1); the game steps it.">
 <meta name="prop:at" content="number" data-doc="The call's id: a new value replays the entrance (each count, the go, the flag).">
 <meta name="prop:place" content="number" data-doc="On the finish banner, the player's place as an ordinal (1st); 0 hides it.">

@@ -4,7 +4,7 @@
 <meta name="prop:texture" content="number" data-doc="The map texture (og.load.texture); 0 draws the well with a grid.">
 <meta name="prop:centerX" content="number" data-doc="The map point at its centre (the player's), 0 to 1 across.">
 <meta name="prop:centerY" content="number" data-doc="The map point at its centre, 0 to 1 down.">
-<meta name="prop:zoom" content="number" data-doc="How much of the map it shows across, 0 to 1 (0.3).">
+<meta name="prop:zoom" content="number" data-default="0.3" data-doc="How much of the map it shows across, 0 to 1 (0.3).">
 <meta name="prop:heading" content="number" data-doc="The player's heading in degrees clockwise from north.">
 <meta name="prop:rotate" content="bool" data-doc="Player-up: the map turns with the heading; false keeps north up and turns the player's arrow.">
 <meta name="prop:square" content="bool" data-doc="A square frame; false is round.">
