@@ -41,6 +41,7 @@ use std::sync::Arc;
 pub(crate) const MESHLET_WGSL: &str = wgsl!("meshlet.wgsl");
 pub(crate) const MESHLET_CULL_WGSL: &str = concat!(
     wgsl!("meshlet_cull.wgsl"),
+    wgsl!("cull_plane.wgsl"),
     wgsl!("cull_hiz.wgsl"),
     wgsl!("lod.wgsl")
 );

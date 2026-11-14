@@ -10,9 +10,9 @@
 //! `lib.rs` says which directory each of those names lives in. An item
 //! re-exported at the root by a glob (`crate::Renderer`) is not seen.
 //!
-//! [`KNOWN`] is what the tree named before the mechanisms were separated,
-//! one line per file and the directory it reaches into. It only shrinks:
-//! a line that no longer applies fails the test as well as a new one.
+//! [`KNOWN`] listed what the tree named before the mechanisms were
+//! separated, one line per file and the directory it reached into. It is
+//! empty now and stays so: a new line fails the test.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -34,9 +34,7 @@ const MECHANISMS: &[&str] = &[
 ];
 
 /// `(file under src/, the directory it names)`.
-const KNOWN: &[(&str, &str)] = &[
-    ("systems/vegetation/scatter.rs", "systems/crowd"),
-];
+const KNOWN: &[(&str, &str)] = &[];
 
 /// The directory that owns a module path below the root: its first
 /// segment, or `systems/<name>`.

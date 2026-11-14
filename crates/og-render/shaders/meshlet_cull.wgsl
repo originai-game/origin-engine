@@ -97,7 +97,7 @@ const SOFT_PIXELS: f32 = 24.0;
 fn outside(view: u32, c: vec3<f32>, r: f32) -> bool {
   for (var i = 0u; i < VIEW_PLANES; i++) {
     let p = views[view * VIEW_ROWS + i];
-    if (dot(p.xyz, c) + p.w < -r * length(p.xyz)) { return true; }
+    if (!plane_keeps(p, c, r * length(p.xyz))) { return true; }
   }
   return false;
 }

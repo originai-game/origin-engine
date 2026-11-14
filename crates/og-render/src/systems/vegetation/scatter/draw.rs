@@ -252,12 +252,7 @@ impl ScatterRenderer {
                 let Some(group) = &b.group else { continue };
                 let source = match (cards, b.input.cpu, &self.card_instances) {
                     (CardSource::Gpu(cc, row), _, _) => {
-                        let at = cc.row_offset(row);
-                        Some((
-                            cc.records.slice(at..cc.row_offset(row + 1)),
-                            Some((cc, row)),
-                            0,
-                        ))
+                        Some((cc.row_records(row), Some((cc, row)), 0))
                     }
                     (CardSource::Cpu, Some((first, count)), Some((buffer, _))) => {
                         let stride = crate::skin::SKINNED_INSTANCE_STRIDE;

@@ -192,7 +192,7 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
       let plane = row.planes[p];
       // The box's corner farthest inside the plane.
       let reach = dot(abs(plane.xyz), we) * (1.0 + 1e-5);
-      inside = dot(plane.xyz, wc) + plane.w >= -reach;
+      inside = plane_keeps(plane, wc, reach);
     }
     let parts = c.info.x;
     if (kind == MAIN && on_layers && !inside) { hidden.x = parts; }

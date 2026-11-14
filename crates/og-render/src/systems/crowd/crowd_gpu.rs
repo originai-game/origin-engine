@@ -455,3 +455,14 @@ impl CrowdCulling {
         }
     }
 }
+
+impl crate::cull_gpu::CulledRows for CrowdCulling {
+    fn row_records(&self, row: u32) -> wgpu::BufferSlice<'_> {
+        self.records
+            .slice(self.row_offset(row)..self.row_offset(row + 1))
+    }
+
+    fn draw_args(&self, row: u32, draw: u32) -> (&wgpu::Buffer, u64) {
+        CrowdCulling::draw_args(self, row, draw)
+    }
+}

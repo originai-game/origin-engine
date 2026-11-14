@@ -65,7 +65,7 @@ const CULL_SET_WORDS: u32 = 20u;
 
 fn cull_outside(c: vec3<f32>, r: f32) -> bool {
   for (var i = 0; i < 6; i++) {
-    if (dot(view.planes[i].xyz, c) + view.planes[i].w < -r) { return true; }
+    if (!plane_keeps(view.planes[i], c, r)) { return true; }
   }
   return false;
 }
