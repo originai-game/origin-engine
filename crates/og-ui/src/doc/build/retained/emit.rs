@@ -1,6 +1,19 @@
 use super::*;
 use crate::doc::schema::Kind;
 
+/// An element that changes without a binding, so is built every frame: a
+/// player, whose picture and time are its media's, and a viewport whose
+/// camera-controls turn it by the tick.
+pub(super) fn every_frame(node: &DocNode) -> bool {
+    match node.kind {
+        NodeKind::Element(Kind::Video | Kind::Audio) => true,
+        NodeKind::Element(Kind::Viewport) => {
+            node.props.iter().any(|p| p.name() == "cameraControls")
+        }
+        _ => false,
+    }
+}
+
 impl RetainedHost {
     pub(crate) fn emit(
         &mut self,
@@ -201,11 +214,7 @@ impl RetainedHost {
         } else {
             self.rive.remove(identity);
         }
-        // A viewport whose camera-controls turn it by the tick.
-        let node = &e.document.nodes[e.index];
-        let volatile = owned.moved
-            || (node.kind == NodeKind::Element(Kind::Viewport)
-                && node.props.iter().any(|p| p.name() == "cameraControls"));
+        let volatile = owned.moved || every_frame(&e.document.nodes[e.index]);
         if volatile {
             self.volatile.insert(identity.clone());
         } else {

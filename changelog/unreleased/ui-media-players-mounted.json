@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "video",
+      "summary": "A <video> or <audio> in a mounted document reads its player every frame: bind:currentTime, bind:paused and bind:ended follow the media while nothing else changes. They were read only on a frame some other value rebuilt the element, so a clip's end reached the game late or never."
+    }
+  ]
+}
