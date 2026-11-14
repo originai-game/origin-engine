@@ -54,17 +54,28 @@ The platform computes the pack's content hash (sha256 over the lines
 Inside the pack, stored by the library and never installed:
 
 - `preview/<effect>.png`: six 960×540 frames in time order, the impact
-  frame among them, 3 columns × 2 rows (2880×1080).
+  frame among them, 3 columns × 2 rows (2880×1080), the effect alone at
+  the origin of a dark stage with the camera placed so its measured core
+  fills the view (`og vfx preview`, below).
 - `preview/<effect>.cost.json`: `{ "format": 1, "engine", "device",
   "peakFrameMs": { "total", "sim", "transparent" }, "peakParticles",
-  "draws" }`. `total` is the 90th percentile of the effect's GPU frame
+  "draws", "bounds" }`. `total` is the 90th percentile of the effect's GPU frame
   time over the empty frames before it in its own timed run (from the fifth tick after the spawn: the first
-  frames upload its textures once); `sim` the particle simulation pass;
+  frames upload its textures once), framed as its shots are, so an effect
+  is timed filling the view; `sim` the particle simulation pass;
   `transparent` the growth of the main pass, which draws blended surfaces,
   sprites and particles after the opaque scene. `peakParticles` is the most
   particle slots its systems held (`dump_render`'s `particles.capacity`,
   plus the live ones on the CPU path); `draws` the most draw calls of a
-  frame.
+  frame. `bounds` is the box the effect was measured to reach, metres from
+  its origin: `{ "min", "max", "size", "anchor": "ground" | "centre",
+  "belowOrigin", "clipped" }` (`belowOrigin`: the share of what it drew
+  that lies below its origin; `anchor` is `centre` from a tenth, an effect
+  whose origin is inside it, such as a ring or a shield, which the shots
+  raise to stand on the ground, and `ground` for one that stands on its
+  origin; `clipped`: it reached past the widest measuring view, so
+  the box is at least this), or null for an effect that draws nothing
+  over black and for a `vfx2d`.
 - `preview/cover.png`: one 960×540 frame, the search thumbnail.
 
 ## 4. Making a pack
@@ -79,17 +90,21 @@ title, category, element and keywords (the script's docstring has its
 shape). `preview` needs the native addon the gate builds
 (`OG_GATE=1 sh packages/engine/scripts/build.sh --native` copies it after
 `scripts/check.sh`) and takes its GPU locks itself
-(scripts/lock.sh), each for one `og run`, so run it without a lock of your
-own. It installs the pack into a scratch game, then:
+(scripts/lock.sh), each for one call of `og vfx preview`, so run it without
+a lock of your own. It installs the pack into a scratch game, then has
+`og vfx preview` play its effects there (`og vfx preview --help`'s steps:
+timing, measured bounds, shots, cost):
 
-1. measures each effect's length, loop and impact in one headless run (no
-   GPU slot);
-2. takes the six shots and render dumps a few effects per run, each run
-   holding one GPU slot (`og_gpu_acquire`);
-3. times each effect in its own short traced run, an empty scene (that
-   run's baseline) and then the effect, holding every slot
-   (`og_gpu_acquire_all`) for that run only and releasing them before the
+1. the timing, bounds and six shots, a few effects per call
+   (`--no-cost`), each call holding one GPU slot (`og_gpu_acquire`);
+2. each effect's cost in a call of its own (`--cost-only`): an empty scene
+   (that run's baseline) and then the effect, holding every slot
+   (`og_gpu_acquire_all`) for that call only and releasing them before the
    next effect.
+
+A game previews its own effects the same way:
+`og vfx preview fx/hit.ogt` writes the sheet and the numbers to
+`og-out/vfx-preview/`.
 
 ## 5. The engine's packs: bundled and downloadable
 

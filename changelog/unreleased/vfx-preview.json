@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og vfx preview",
+      "summary": "`og vfx preview <effect.ogt>...` plays each effect of a project (type vfx, or type vfx2d in a 2D project) alone on a dark stage and reports it without a scene written for it: six frames in time order, the impact frame among them, tiled into og-out/vfx-preview/<effect>.png with the camera placed by the box the effect was measured to cover; its length, impact time, measured size and anchor (ground or centre), draw calls, particle slots and its peak GPU milliseconds over an empty frame, printed and written to <effect>.json. `--decal-atlas <texture>` sets the stage's decal atlas for effects with decals; `--no-cost` skips the timed run."
+    }
+  ]
+}

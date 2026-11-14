@@ -20,24 +20,23 @@ catalog fields of extension.json (minEngine, tags, keywords) from a spec:
                                   "keywords": ["..."]}}
     }
 
-`preview` installs the pack into a scratch game and writes, per effect,
-preview/<effect>.png (six 960x540 frames in time order, the impact frame
-among them, 3 x 2), preview/<effect>.cost.json (the effect's peak GPU
-milliseconds over an empty frame: the 90th percentile of its frames from a
-trace, and the render dump's draws and particle slots at the six frames)
-and preview/cover.png, in three passes:
+`preview` installs the pack into a scratch game and has `og vfx preview`
+(crates/og-cli/src/commands/vfx_preview.rs, which owns the stage, the
+camera, the shots and the timing) play each effect there, then writes, per
+effect, preview/<effect>.png (six 960x540 frames in time order, the impact
+frame among them, 3 x 2, the camera placed by the effect's measured core),
+preview/<effect>.cost.json (its peak GPU milliseconds over an empty frame,
+its draws, particle slots and measured bounds) and preview/cover.png, and
+its timing back into assets.json's effects:
 
-1. timing (duration, loop, impact), one headless run that watches each
-   effect's events, written back into assets.json's effects; no GPU slot;
-2. the shots and render dumps, a run per CHUNK effects, each run holding
-   one GPU slot (scripts/lock.sh's og_gpu_acquire);
-3. the cost, one short traced run per effect, an empty scene (that run's
-   own baseline) and then the effect, holding every slot
-   (og_gpu_acquire_all) for that run only.
+1. the shots, `og vfx preview --no-cost` for CHUNK effects at a time, each
+   call holding one GPU slot (scripts/lock.sh's og_gpu_acquire);
+2. the cost, `og vfx preview --cost-only` per effect, holding every slot
+   (og_gpu_acquire_all) for that call only.
 
-The script takes its locks itself, each for one `og run` (`run`'s `lock`),
-so a pack never holds the GPU across a series and other lanes' GPU work
-runs between its effects. Run it without a lock of your own.
+The script takes its locks itself, each for one call, so a pack never holds
+the GPU across a series and other lanes' GPU work runs between its
+effects. Run it without a lock of your own.
 """
 
 import argparse
@@ -47,21 +46,14 @@ import json
 import os
 import platform
 import shutil
-import statistics
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 W, H = 960, 540
-TICK = 60
-GAP = 0.8          # seconds of empty scene before an effect's timed run spawns it (its baseline)
-BASE_FROM = 0.4    # seconds into a timed run its baseline frames start (after start-up)
-CHUNK = 6          # effects per screenshot run (one GPU slot each)
+CHUNK = 6          # effects per `og vfx preview --no-cost` call (one GPU slot each)
 LOCK_SH = Path(__file__).resolve().parent / "lock.sh"
-LOOP_SHOW = 2.0    # seconds a looping effect is shown
-WARM = 5           # ticks after a spawn its cost is not counted (one-off uploads)
-FRACTIONS = [0.04, 0.15, 0.3, 0.5, 0.7, 0.9]
 
 
 def ogt_type(path):
@@ -159,148 +151,29 @@ def git_head():
     return subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
 
 
-MAIN_TS = r"""
-import { og, defineSystem } from "@origingame/engine";
-import type { World } from "@origingame/engine";
-
-function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
-  if (!r.ok) throw new Error(r.reason);
-  return r.value;
-}
-const DIM = "__DIM__";
-const shown: number[] = [];
-const log: { name: string; tick: number }[] = [];
-const starts: { path: string; tick: number; duration: number; loop: boolean }[] = [];
-
-function build(world: World): void {
-  const cam = must(world.resource(og.Camera));
-  cam.background = { r: 0.035, g: 0.04, b: 0.055 };
-  const rs = must(world.resource(og.RenderSettings));
-  rs.bloom = true;
-  if (DIM === "2d") {
-    cam.orthographic = true;
-    cam.height = 10;
-    cam.position = { x: 0, y: 0, z: 10 };
-    return;
-  }
-  rs.environmentIntensity = 0.15;
-  const box = must(og.render.boxGeometry(world, {}));
-  const ground = must(world.spawn({ position: { x: 0, y: -0.25, z: 0 } }));
-  must(world.set(ground, og.Transform, { scale: { x: 30, y: 0.5, z: 30 } }));
-  must(world.insert(ground, og.Mesh, { geometry: box, material: must(og.render.standardMaterial(world, { color: { r: 0.12, g: 0.12, b: 0.13 }, roughness: 0.85 })) }));
-  const moon = must(world.spawn({ quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: -0.3, y: -0.6, z: -0.6 }) }));
-  must(world.insert(moon, og.DirectionalLight, { color: { r: 0.55, g: 0.6, b: 0.9 }, intensity: 0.25, castShadow: true }));
-  cam.position = { x: 0, y: 2.2, z: 5.2 };
-  cam.quaternion = og.transform.lookAt(cam.position, { x: 0, y: 0.8, z: 0 });
-  cam.fov = 50;
-}
-
-function clear(world: World): void {
-  for (const e of shown.splice(0)) world.despawn(e);
-}
-
-function play(world: World, path: string): void {
-  clear(world);
-  if (path.endsWith(".ogt") && __VFX2D__.includes(path)) {
-    const info = must(og.load.flipbook(world, path));
-    const clip = info.clips[0]!;
-    // Whole screen pixels per art pixel, the frame filling at most 80% of
-    // the view (Camera.height 10 m over __H__ px).
-    const k = Math.max(1, Math.floor(Math.min((0.8 * __H__) / info.frameHeight, (0.8 * __W__) / info.frameWidth)));
-    const m = 10 / __H__;
-    const e = must(world.spawn({ position: { x: 0, y: 0, z: 0 } }));
-    must(world.insert(e, og.Sprite, { texture: info.texture, width: info.frameWidth * k * m, height: info.frameHeight * k * m }));
-    must(world.insert(e, og.Flipbook, { sheet: info.sheet, clip: clip.clip }));
-    shown.push(e);
-    starts.push({ path, tick: world.tick, duration: clip.duration, loop: clip.mode !== "once" });
-    return;
-  }
-  const asset = must(og.load.vfx(world, path));
-  const info = must(og.vfx.info(world, asset));
-  shown.push(must(og.vfx.spawn(world, { asset, position: { x: 0, y: 0, z: 0 } })));
-  starts.push({ path, tick: world.tick, duration: info.duration, loop: info.loop });
-}
-
-export default og.game({
-  tick: __TICK__,
-  seed: 1,
-  systems: [
-    defineSystem("Watch", { reads: [og.VfxEvent, og.FlipbookEvent], writes: [] }, (_q, _t, world) => {
-      for (const e of world.events(og.VfxEvent)) log.push({ name: e.name, tick: world.tick });
-      for (const e of world.events(og.FlipbookEvent)) log.push({ name: e.name, tick: world.tick });
-    }),
-  ],
-  start: build,
-  // Pixel art keeps its pixels: no temporal antialiasing to soften them.
-  render: DIM === "2d" ? { antialias: "off" } : {},
-  commands: {
-    play: (world, args) => play(world, String(args[0])),
-    clear: (world) => clear(world),
-  },
-  facts: () => ({ starts, log }),
-});
-"""
-
-
-def scratch_game(pack, og, dim, vfx2d):
+def scratch_game(pack, og):
     root = Path(tempfile.mkdtemp(prefix="vfx-preview-"))
     game = root / "game"
     engine = Path(__file__).resolve().parent.parent
     subprocess.run(["bun", str(engine / "packages/create/bin/create.ts"), str(game)], check=True, capture_output=True)
     (game / "assets").mkdir(exist_ok=True)
-    main = MAIN_TS.replace("__DIM__", dim).replace("__TICK__", str(TICK)).replace("__W__", str(W)).replace("__H__", str(H))
-    main = main.replace("__VFX2D__", json.dumps(vfx2d))
-    (game / "src/main.ts").write_text(main)
     name = json.loads((pack / "extension.json").read_text())["name"]
     r = subprocess.run([og, "vfx", "add", str(pack), str(game), "--any-engine"], capture_output=True, text=True)
-    if r.returncode != 0:
-        sys.exit(r.stdout + r.stderr)
-    r = subprocess.run([og, "cook", str(game)], capture_output=True, text=True)
     if r.returncode != 0:
         sys.exit(r.stdout + r.stderr)
     return root, game, name
 
 
-def run(og, game, commands, extra, seconds, lock=None):
-    """One `og run`; with `lock` (suffix, label) it holds one GPU slot
-    (`""`, og_gpu_acquire) or every slot (`"_all"`, og_gpu_acquire_all)
-    for this run only: scripts/lock.sh's own functions, taken by the shell
-    that runs og and released by its exit trap when og ends."""
-    cmd = [og, "run", str(game), "--size", f"{W}x{H}", "--json", "--no-check",
-           "--commands", ";".join(commands + [f"{seconds:.3f}:quit"])] + extra
-    if lock is not None:
-        suffix, label = lock
-        cmd = ["bash", "-c", f'. "$0" && og_gpu_acquire{suffix} "$1" && shift && "$@"',
-               str(LOCK_SH), label] + cmd
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
-    last = [l for l in r.stdout.splitlines() if l.startswith("{")]
-    if r.returncode != 0 or not last:
-        sys.exit(f"og run failed ({r.returncode}):\n{r.stdout[-3000:]}\n{r.stderr[-3000:]}")
-    return json.loads(last[-1])
-
-
-def gpu_frames(trace_path):
-    """Per rendered frame: (tick, total GPU ms, {pass: ms})."""
-    d = json.loads(Path(trace_path).read_text())
-    ev = d["traceEvents"] if isinstance(d, dict) else d
-    renders = sorted((e for e in ev if e.get("ph") == "X" and e.get("cat") == "render"
-                      and e["name"].startswith("frame ")), key=lambda e: e["ts"])
-    ticks = [e["args"]["tick"] for e in renders]
-    frames = {}
-    for e in ev:
-        if e.get("cat") != "gpu" or e.get("ph") != "X":
-            continue
-        f = e["args"]["frame"]
-        slot = frames.setdefault(f, {"total": 0.0, "passes": {}})
-        if e["name"].startswith("gpu frame"):
-            slot["total"] = e["dur"] / 1000.0
-        else:
-            slot["passes"][e["name"]] = slot["passes"].get(e["name"], 0.0) + e["dur"] / 1000.0
-    out = []
-    for f, slot in sorted(frames.items()):
-        if f < len(ticks):
-            out.append((ticks[f], slot["total"], slot["passes"]))
-    return out
+def og_preview(og, game, out, ids, flags, lock):
+    """One `og vfx preview` of `ids`, holding one GPU slot (`""`,
+    og_gpu_acquire) or every slot (`"_all"`, og_gpu_acquire_all) for this
+    call only: scripts/lock.sh's own functions, taken by the shell that runs
+    og and released by its exit trap when og ends. Its error text, or None."""
+    suffix, label = lock
+    cmd = ["bash", "-c", f'. "$0" && og_gpu_acquire{suffix} "$1" && shift && "$@"', str(LOCK_SH), label,
+           og, "vfx", "preview", *ids, "--project", str(game), "--out", str(out), "--size", f"{W}x{H}", "--json", *flags]
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+    return None if r.returncode == 0 else (r.stdout[-2000:] + r.stderr[-2000:])
 
 
 def device_name():
@@ -315,9 +188,7 @@ def preview(args):
 
     pack = Path(args.pack).resolve()
     og = str(Path(args.og).resolve())
-    ext = json.loads((pack / "extension.json").read_text())
     assets = json.loads((pack / "assets.json").read_text())
-    dim = ext.get("tags", {}).get("dim", "3d")
     effects = [e["path"] for e in assets["effects"]]
     if args.only:
         # Re-render these effects alone; the pack's other sheets stay.
@@ -325,139 +196,84 @@ def preview(args):
         if only - set(effects):
             sys.exit(f"not effects of the pack: {sorted(only - set(effects))}")
         effects = [e for e in effects if e in only]
-    vfx2d_ids = [f"vfx/{ext['name']}/{e['path']}" for e in assets["effects"] if e["type"] == "vfx2d"]
-    root, game, name = scratch_game(pack, og, dim, vfx2d_ids)
-    ids = [f"vfx/{name}/{p}" for p in effects]
+    root, game, name = scratch_game(pack, og)
+    work = root / "out"
+    ids = {rel: f"vfx/{name}/{rel}" for rel in effects}
     try:
-        # Pass 1, headless: each effect's length, loop and impact tick.
-        t, cmds = 0.5, []
-        for i in ids:
-            cmds.append(f"{t:.3f}:play:{i}")
-            t += 4.0
-        cmds.append(f"{t:.3f}:clear")
-        facts = run(og, game, cmds, ["--headless"], t + 0.2)["facts"]
-        timing = {}
-        for s in facts["starts"]:
-            end = s["tick"] + (LOOP_SHOW if s["loop"] else min(max(s["duration"], 0.2), 3.9)) * TICK
-            impact = next((l["tick"] for l in facts["log"] if l["name"] == "impact" and s["tick"] <= l["tick"] <= s["tick"] + 4 * TICK), None)
-            timing[s["path"]] = {
-                "duration": s["duration"], "loop": s["loop"],
-                "impact": None if impact is None else (impact - s["tick"]) / TICK,
-                "show": (end - s["tick"]) / TICK,
-            }
-        missing = [i for i in ids if i not in timing]
-        if missing and not args.skip_failed:
-            sys.exit(f"never started: {missing}")
-        if missing:
+        # The shots, a few effects per call; a call that fails is taken apart
+        # to find the effect that does not play.
+        failed = {}
+        for k in range(0, len(effects), CHUNK):
+            chunk = effects[k:k + CHUNK]
+            label = f"vfx-pack preview {name}: shots {k + 1}-{min(k + CHUNK, len(effects))} of {len(effects)}"
+            if og_preview(og, game, work, [ids[r] for r in chunk], ["--no-cost"], ("", label)) is not None:
+                for rel in chunk:
+                    err = og_preview(og, game, work, [ids[rel]], ["--no-cost"], ("", f"vfx-pack preview {name}/{rel}"))
+                    if err is not None:
+                        failed[rel] = err
+        if failed and not args.skip_failed:
+            sys.exit("\n".join(f"{rel}: {err}" for rel, err in failed.items()))
+        if failed:
             # Reviewing a pack that is not finished: sheets for the rest.
-            print(f"never started, skipped: {missing}", file=sys.stderr)
-            keep = [(i, rel) for i, rel in zip(ids, effects) if i not in missing]
-            ids, effects = [k[0] for k in keep], [k[1] for k in keep]
+            print(f"do not play, skipped: {sorted(failed)}", file=sys.stderr)
+            effects = [rel for rel in effects if rel not in failed]
 
-        # Pass 2, one GPU slot per run of a few effects: shots and render dumps.
-        plan = {}
-        for k in range(0, len(ids), CHUNK):
-            out_dir = root / f"out{k // CHUNK:03d}"
-            t, cmds = 0.5, []
-            for i in ids[k:k + CHUNK]:
-                tm = timing[i]
-                start = t + 0.2
-                times = [f * tm["show"] for f in FRACTIONS]
-                if tm["impact"] is not None:
-                    j = min(range(len(times)), key=lambda j: abs(times[j] - tm["impact"]))
-                    times[j] = tm["impact"] + 1 / TICK
-                    times.sort()
-                cmds.append(f"{start:.3f}:play:{i}")
-                shots = []
-                for n, dt in enumerate(times):
-                    at = start + max(dt, 1 / TICK)
-                    stem = f"{len(plan):03d}-{n}"
-                    cmds.append(f"{at:.3f}:screenshot:{stem}.png")
-                    cmds.append(f"{at:.3f}:dump_render:{stem}.json")
-                    shots.append(out_dir / stem)
-                end = start + tm["show"]
-                cmds.append(f"{end:.3f}:clear")
-                plan[i] = shots
-                t = end
-            run(og, game, cmds, ["--out", str(out_dir)], t + 0.3,
-                lock=("", f"vfx-pack preview {name}: shots {k + 1}-{min(k + CHUNK, len(ids))} of {len(ids)}"))
-
-        # Pass 3, every GPU slot for one effect's traced run at a time: an
-        # empty scene (its own baseline), then the effect.
         device = device_name()
         out = pack / "preview"
         if out.exists() and not args.only:
             shutil.rmtree(out)
         out.mkdir(exist_ok=True)
-        rows = []
-        for n, (i, rel) in enumerate(zip(ids, effects)):
-            tm = timing[i]
-            start = BASE_FROM + GAP
-            end = start + tm["show"]
-            trace = root / f"trace-{n:03d}.json"
-            run(og, game, [f"{start:.3f}:play:{i}", f"{end:.3f}:clear"], ["--trace", str(trace)], end + 0.1,
-                lock=("_all", f"vfx-pack cost {name}/{rel}"))
-            frames = gpu_frames(trace)
-            base = [f for f in frames if BASE_FROM * TICK <= f[0] < start * TICK]
-            base_total = statistics.median([f[1] for f in base]) if base else 0.0
-            base_main = statistics.median([f[2].get("main", 0.0) for f in base]) if base else 0.0
-            sheet = Image.new("RGB", (W * 3, H * 2))
-            draws = particles = 0
-            for m, stem in enumerate(plan[i]):
-                im = Image.open(f"{stem}.png").convert("RGB")
-                sheet.paste(im, ((m % 3) * W, (m // 3) * H))
-                dump = json.loads(Path(f"{stem}.json").read_text())
-                draws = max(draws, dump.get("draws", 0))
-                pt = dump.get("particles", {})
-                particles = max(particles, pt.get("capacity", 0) + pt.get("cpu", 0))
+        rows, records = [], {}
+        for rel in effects:
+            # Every GPU slot for one effect's timed run at a time.
+            err = og_preview(og, game, work, [ids[rel]], ["--cost-only"], ("_all", f"vfx-pack cost {name}/{rel}"))
+            if err is not None:
+                sys.exit(f"{rel}: {err}")
+            record = json.loads((work / (ids[rel][:-4] + ".json")).read_text())
+            records[rel] = record
             target = out / (rel[:-4] + ".png")
             target.parent.mkdir(parents=True, exist_ok=True)
-            sheet.save(target, optimize=True)
-            # From the fifth tick: the first frames upload the effect's
-            # textures and make its pipelines, once, not per frame.
-            window = [f for f in frames if start * TICK + WARM <= f[0] <= end * TICK]
-            # The 90th percentile over the effect's frames: its heavy moment
-            # without one frame's scheduling noise.
-            def p90(xs, default):
-                xs = sorted(xs)
-                return xs[min(len(xs) - 1, int(0.9 * len(xs)))] if xs else default
+            shutil.copyfile(record["sheet"], target)
             cost = {
                 "format": 1,
                 "engine": assets["engine"],
                 "device": device,
-                "peakFrameMs": {
-                    "total": round(max(0.0, p90([f[1] for f in window], base_total) - base_total), 3),
-                    "sim": round(p90([f[2].get("particles", 0.0) for f in window], 0.0), 3),
-                    # The main pass draws the blended surfaces, sprites and
-                    # particles after the opaque scene: its growth is theirs.
-                    "transparent": round(max(0.0, p90([f[2].get("main", 0.0) for f in window], base_main) - base_main), 3),
-                },
-                "peakParticles": particles,
-                "draws": draws,
+                "peakFrameMs": record["cost"]["peakFrameMs"],
+                "peakParticles": record["peakParticles"],
+                "draws": record["draws"],
+                # Measured by the preview: null for an effect that draws
+                # nothing over black (and for a vfx2d).
+                "bounds": record["bounds"],
             }
             (out / (rel[:-4] + ".cost.json")).write_text(json.dumps(cost, indent=2) + "\n")
             rows.append((rel, cost))
-            print(f"{rel}\tbaseline {base_total:.3f} ms\t+{cost['peakFrameMs']['total']:.3f} ms", flush=True)
-        if f"vfx/{name}/{args.cover}" not in timing:
+            print(f"{rel}\tbaseline {record['cost']['baselineMs']:.3f} ms\t+{cost['peakFrameMs']['total']:.3f} ms", flush=True)
+
+        # The cover: one frame of the named effect (else the first with an
+        # impact, else the first), its impact's when it has one.
+        if args.cover not in records:
             args.cover = None
         if args.only and args.cover is None:
             # The cover is one of the pack's effects, maybe not re-rendered.
             cover = None
         else:
-            cover = args.cover or next((e["path"] for e in assets["effects"] if timing[f"vfx/{name}/{e['path']}"]["impact"] is not None), effects[0])
+            cover = args.cover or next((r for r in effects if records[r]["impactSeconds"] is not None), effects[0] if effects else None)
         if cover is not None:
-            cp = plan[f"vfx/{name}/{cover}"]
-            tm = timing[f"vfx/{name}/{cover}"]
-            pick = cp[2] if tm["impact"] is None else cp[min(range(6), key=lambda n: abs(FRACTIONS[n] * tm["show"] - tm["impact"]))]
-            Image.open(f"{pick}.png").convert("RGB").save(out / "cover.png", optimize=True)
+            record = records[cover]
+            n = 2
+            if record["impactSeconds"] is not None:
+                fractions = [0.04, 0.15, 0.3, 0.5, 0.7, 0.9]
+                n = min(range(6), key=lambda n: abs(fractions[n] * record["shownSeconds"] - record["impactSeconds"]))
+            sheet = Image.open(record["sheet"]).convert("RGB")
+            sheet.crop(((n % 3) * W, (n // 3) * H, (n % 3 + 1) * W, (n // 3 + 1) * H)).save(out / "cover.png", optimize=True)
 
         for e in assets["effects"]:
-            tm = timing.get(f"vfx/{name}/{e['path']}")
-            if tm is None:
+            record = records.get(e["path"])
+            if record is None:
                 continue
-            e["loop"] = tm["loop"]
-            e["durationSeconds"] = round(tm["duration"], 3)
-            e["impact"] = tm["impact"] is not None
+            e["loop"] = record["loop"]
+            e["durationSeconds"] = record["durationSeconds"]
+            e["impact"] = record["impactSeconds"] is not None
         (pack / "assets.json").write_text(json.dumps(assets, indent=2) + "\n")
         print(f"on {device}, each effect over its own run's empty frames")
         for rel, c in rows:

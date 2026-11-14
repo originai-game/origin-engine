@@ -11,7 +11,7 @@ mod commands;
 use commands::{
     api, assets, bake_lightmaps, bake_probes, bake_projection, bundle, cache, check, compare, cook,
     dev, doctor, explore, fmt, frame, i18n, migrate, prefab, probe, render, replay, run,
-    serve_relay, session, sfx, sprite, style, test, ui, upgrade, vfx_import,
+    serve_relay, session, sfx, sprite, style, test, ui, upgrade, vfx_import, vfx_preview,
 };
 mod api_lookup;
 mod bundle_cache;
@@ -186,6 +186,16 @@ commands:
                       effects imported there; asset ids from --root, default the
                       nearest assets/ above <out-dir>), listing what did not convert; an
                       Effekseer file in assets/ is converted the same way by og cook
+  vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--decal-atlas <texture>]
+              [--no-cost | --cost-only] [--keep] [--json]
+                      play each effect (type vfx, or type vfx2d in a 2D project) alone on a
+                      dark stage and report it: six frames in time order tiled into
+                      <out>/<effect>.png (default out: og-out/vfx-preview), the camera placed
+                      by the box the effect was measured to reach; its length, impact time,
+                      measured size and anchor, draw calls, particle slots and its peak GPU
+                      milliseconds over an empty frame (--no-cost skips the timed run,
+                      --cost-only adds it to an earlier preview in --out), also written to
+                      <out>/<effect>.json
   style list [project] [--json]
                       list bundled and installed CSS style directories
   style add <directory> [project]
@@ -389,6 +399,7 @@ fn main() -> ExitCode {
         ["font", "add", rest @ ..] => ui::extensions::add(rest, "font"),
         ["font", "list", rest @ ..] => ui::extensions::list_fonts(rest),
         ["vfx", "import", rest @ ..] => vfx_import::run(rest),
+        ["vfx", "preview", rest @ ..] => vfx_preview::run(rest),
         ["frame", rest @ ..] => frame::run(rest),
         [] => {
             eprint!("{USAGE}");
