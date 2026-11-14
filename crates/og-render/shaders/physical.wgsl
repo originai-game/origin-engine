@@ -3,8 +3,10 @@
 // pbr_prepass.wgsl, with material_physical.wgsl's bindings: the standard
 // shading plus clearcoat maps, sheen (Charlie distribution, Neubelt
 // visibility), transmission through the copy of the opaque scene,
-// iridescence (Belcour and Barla's thin film) and anisotropic GGX. Every
-// lobe is behind a branch on its factor.
+// iridescence (Belcour and Barla's thin film), anisotropic GGX, light
+// that spreads under the surface (subsurface.wgsl), strands of hair
+// (hair.wgsl) and an iris under its cornea (eye.wgsl). Every lobe is
+// behind a branch on its factor.
 
 // The opaque scene copied after its last opaque draw, with a box-filtered
 // mip chain for rough refraction (the effects group of the physical
@@ -71,12 +73,15 @@ struct Lobes {
   aniso_t: vec3<f32>,         // the stretch's direction on the surface
   aniso_b: vec3<f32>,
   alpha_t: f32,               // GGX alpha along aniso_t (roughness² across it)
+  // Strands of hair along the surface (hair.wgsl).
+  hair: f32,                  // how much of the surface is hair (0: none)
+  strand: vec3<f32>,          // the strands' direction, towards their roots
   // Light that spreads under the surface (subsurface.wgsl).
   subsurface: f32,            // how much of the diffuse light does (0: none)
   scatter: vec3<f32>,         // its scatter distance per channel (m)
   curvature: f32,             // the surface's curvature here (1 / m)
   through: vec3<f32>,         // what comes through from the far side (0: nothing: no thickness)
-  thickness: f32,             // how far off the far side is (m)
+  thickness: f32,             // how far off the far side is (m): 0 lets nothing through
 };
 
 // How far towards a light a subsurface material's shadow is read: light
@@ -92,11 +97,17 @@ fn subsurface_transmitted(s: Surface, k: Lobes, n: vec3<f32>, l: vec3<f32>) -> v
   return k.subsurface * (1.0 - s.metallic) * s.albedo / PI * k.through * subsurface_back(n, l);
 }
 
-// What one light gives: the diffuse part (which transmission replaces)
-// and the rest.
+// What one light gives: the diffuse part (which transmission replaces),
+// the rest, and what comes through the surface from a light behind it,
+// which is shadowed where that light enters: `enters` towards the light
+// (m), on the far side. (A closed caster's far side is what the shadow
+// maps hold, lighting.wgsl `shadow_closed`: a body never shadows what
+// comes through itself, so each lobe says how much does.)
 struct Shade {
   diffuse: vec3<f32>,
   specular: vec3<f32>,
+  through: vec3<f32>,
+  enters: f32,
 };
 
 fn max3(c: vec3<f32>) -> f32 {
@@ -204,8 +215,9 @@ fn schlick_to_f0(f: vec3<f32>, cos_theta: f32) -> vec3<f32> {
   return (f - vec3<f32>(x5)) / (1.0 - x5);
 }
 
-// One light's shading: the GGX lobe (anisotropic, with the film's Fresnel),
-// the diffuse base, the sheen over them and the coat over all.
+// One light's shading: the GGX lobe (anisotropic, with the film's Fresnel)
+// and the diffuse base, or hair's lobes in their place, the sheen over
+// them and the coat over all.
 fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> Shade {
   let h = normalize(v + l);
   let n_dot_l = max(dot(n, l), 0.0);
@@ -233,6 +245,22 @@ fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>)
   }
   o.diffuse = (vec3<f32>(1.0) - f) * (1.0 - s.metallic) * s.albedo / PI * falloff + leaf_transmission(s, n, v, l);
   o.specular = spec * n_dot_l;
+  o.through = vec3<f32>(0.0);
+  o.enters = k.thickness + subsurface_reach(k);
+  if (k.subsurface > 0.0 && k.thickness > 0.0) { o.through = subsurface_transmitted(s, k, n, l); }
+  if (k.hair > 0.0) {
+    let path = hair_path(k.thickness, k.curvature, shadow_closed, n, l);
+    let hair = hair_lobes(s.albedo, s.roughness, k.strand, v, l, path.x);
+    // The hair behind a strand shades it: its light fades past the
+    // mesh's terminator.
+    let lit = smoothstep(-0.4, 0.4, dot(n, l));
+    o.diffuse = mix(o.diffuse, hair.scatter * lit, k.hair);
+    o.specular = mix(o.specular, hair.front * lit, k.hair);
+    if (k.thickness > 0.0) {
+      o.through = mix(o.through, hair.through * path.y, k.hair);
+      o.enters = max(o.enters, path.x);
+    }
+  }
   if (any(k.sheen_color > vec3<f32>(0.0))) {
     // The sheen layer takes its albedo from what it covers.
     let scale = sheen_scale(k, n_dot_l);
@@ -267,22 +295,22 @@ fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3
     o.specular = a.specular * shadow;
     return o;
   }
-  let r = local_reach(light, max(s.translucency, k.subsurface), p, n);
+  let r = local_reach(light, max(s.translucency, max(k.subsurface, k.hair)), p, n);
   if (!r.lit) { return o; }
   var radiance = r.radiance;
   if (receives) {
     radiance *= local_shadow(light, p + r.l * subsurface_reach(k), leaf_shadow_normal(s, n, r.l));
     // The screen's contact shadow is the surface's own past the terminator.
-    if (k.subsurface <= 0.0 || dot(n, r.l) > 0.0) { radiance *= contact_shadow(light, p); }
+    if (max(k.subsurface, k.hair) <= 0.0 || dot(n, r.l) > 0.0) { radiance *= contact_shadow(light, p); }
   }
   let b = physical_brdf(s, k, n, v, r.l);
   o.diffuse = b.diffuse * radiance;
   o.specular = b.specular * radiance;
-  if (k.subsurface > 0.0 && k.thickness > 0.0 && dot(n, r.l) < 0.3) {
+  if (any(b.through > vec3<f32>(0.0))) {
     // The light that comes through from behind: shadowed where it enters.
     var open = 1.0;
-    if (receives) { open = local_shadow(light, p + r.l * (k.thickness + subsurface_reach(k)), r.l); }
-    o.diffuse += subsurface_transmitted(s, k, n, r.l) * r.radiance * open;
+    if (receives) { open = local_shadow(light, p + r.l * b.enters, r.l); }
+    o.diffuse += b.through * r.radiance * open;
   }
   return o;
 }
@@ -365,7 +393,29 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   // (Penner and Borshukov's), from the vertex normal, which no map bends.
   let curvature = length(fwidth(normalize(in.normal))) / max(length(fwidth(in.world_pos)), 1e-6);
   let uv = stylised_uv(in.uv, in.affine);
-  let base_uv = material_uv(UV_MAP, uv);
+  let mode = u32(material.flags.w);
+  let dpx = dpdxFine(in.world_pos);
+  let dpy = dpdyFine(in.world_pos);
+  var n = normalize(in.normal);
+  if ((mode & 1u) != 0u) {
+    n = normalize(cross(dpx, dpy));
+  }
+  let v = select(normalize(frame.view_pos.xyz - in.world_pos), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let n_vertex = n;
+  let face = select(1.0, -1.0, dot(n, v) < 0.0);
+  n = n * face;
+  // The vertex tangent frame (pbr_fs.wgsl's), for the normal maps, the stretch and the iris.
+  var t = in.tangent.xyz - n_vertex * dot(n_vertex, in.tangent.xyz);
+  let framed = dot(t, t) > 1e-12;
+  t = select(normalize(cross(select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(n_vertex.y) > 0.9), n_vertex)), normalize(t), framed);
+  let bt = cross(n_vertex, t) * select(1.0, -1.0, in.tangent.w < 0.0);
+  let tbn = mat3x3<f32>(t, bt, n_vertex);
+  // An eye: the base colour inside the iris lies under the cornea (eye.wgsl).
+  var base_at = uv;
+  if (physical.layers2.y > 0.0) {
+    base_at = iris_uv(uv, t, bt, n_vertex * face, v, physical.transmission.z, physical.layers2.y, physical.layers2.z);
+  }
+  let base_uv = material_uv(UV_MAP, base_at);
   let base_sample = textureSample(base_color_tex, material_sampler, base_uv);
   var hook: Hook;
   hook.world = in.world_pos;
@@ -382,7 +432,6 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let base = surface_color(hook, params, look_tint(material.base_color * base_sample * in.color, in.look));
   var dissolve = vec4<f32>(0.0);
   if (EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
-  let mode = u32(material.flags.w);
   // A closed, single-sided surface (mode 32): its shadows compare past its depth (lighting.wgsl shadow_closed).
   shadow_closed = (mode & 32u) != 0u;
   // Alpha to coverage (mode 16): as pbr_fs.wgsl.
@@ -400,21 +449,11 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let sheen_maps = pack_sample(physical.layers.z, pack_uv); // sheen colour (sRGB), its roughness
   let film_maps = pack_sample(physical.layers.w, pack_uv);  // the coat's normal, iridescence
   let aniso_maps = pack_sample(physical.layers2.x, pack_uv); // anisotropy, the film's thickness
-  let dpx = dpdxFine(in.world_pos);
-  let dpy = dpdyFine(in.world_pos);
   var s: Surface;
   s.metallic = clamp(material.mr.x * maps.r, 0.0, 1.0);
   s.roughness = clamp(material.mr.y * maps.g, 0.04, 1.0);
   s.albedo = base.rgb;
 
-  var n = normalize(in.normal);
-  if ((mode & 1u) != 0u) {
-    n = normalize(cross(dpx, dpy));
-  }
-  let v = select(normalize(frame.view_pos.xyz - in.world_pos), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
-  let n_vertex = n;
-  let face = select(1.0, -1.0, dot(n, v) < 0.0);
-  n = n * face;
   var decal_emissive = vec3<f32>(0.0);
   var decal_normal = vec4<f32>(0.0);
   if (EFFECTS && abs(fx.decal_info.x) > 0.5) {
@@ -428,12 +467,6 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let ior = physical.transmission.z;
   let f0 = ior_to_f0(ior, 1.0);
   s.f0 = mix(vec3<f32>(f0), s.albedo, s.metallic);
-  // The vertex tangent frame (pbr_fs.wgsl's), for the normal maps and the stretch.
-  var t = in.tangent.xyz - n_vertex * dot(n_vertex, in.tangent.xyz);
-  let framed = dot(t, t) > 1e-12;
-  t = select(normalize(cross(select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(n_vertex.y) > 0.9), n_vertex)), normalize(t), framed);
-  let bt = cross(n_vertex, t) * select(1.0, -1.0, in.tangent.w < 0.0);
-  let tbn = mat3x3<f32>(t, bt, n_vertex);
   let normal_uv = material_uv(UV_NORMAL, uv);
   let normal_sample = textureSample(normal_tex, material_sampler, normal_uv);
   if (material.flags.x > 0.5) {
@@ -477,7 +510,9 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   k.alpha_t = s.roughness * s.roughness;
   k.aniso_t = t;
   k.aniso_b = bt;
-  if (physical.anisotropy.x > 0.0) {
+  k.hair = physical.anisotropy.w;
+  k.strand = bt;
+  if (physical.anisotropy.x > 0.0 || k.hair > 0.0) {
     var dir = physical.anisotropy.yz;
     var strength = physical.anisotropy.x;
     if (physical.coat.w > 0.5) {
@@ -493,6 +528,10 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     k.aniso_t = normalize(ta - n * dot(n, ta));
     k.aniso_b = cross(n, k.aniso_t);
     k.alpha_t = mix(s.roughness * s.roughness, 1.0, k.anisotropy * k.anisotropy);
+    // The strands run across the stretch, from root to tip the way v
+    // does: their roots up the image, where the bitangent points.
+    let root = bt * dir.x - t * dir.y;
+    k.strand = normalize(root - n * dot(n, root));
   }
 
   // Light that spreads under the surface (subsurface.wgsl).
@@ -500,7 +539,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   k.scatter = physical.subsurface.rgb;
   k.curvature = curvature;
   // (`thickness` is in the mesh's own units: by its scale, the mean of the three.)
-  k.thickness = select(0.0, physical.transmission.y * coat_maps.a * dot(in.scale, vec3<f32>(1.0 / 3.0)), k.subsurface > 0.0);
+  k.thickness = select(0.0, physical.transmission.y * coat_maps.a * dot(in.scale, vec3<f32>(1.0 / 3.0)), k.subsurface > 0.0 || k.hair > 0.0);
   k.through = select(vec3<f32>(0.0), subsurface_through(k.thickness, k.scatter), k.thickness > 0.0);
 
   // The directional light.
@@ -509,16 +548,16 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let receives = look_receives(in.look);
   let shadowed = frame.light_dir.w > 0.5 && receives;
   var shadow = 1.0;
-  if (shadowed && (n_dot_l > 0.0 || s.translucency > 0.0 || k.subsurface > 0.0)) {
+  if (shadowed && (n_dot_l > 0.0 || s.translucency > 0.0 || k.subsurface > 0.0 || k.hair > 0.0)) {
     shadow = cascade_shadow(in.world_pos + l * subsurface_reach(k), leaf_shadow_normal(s, normalize(in.normal), l), abs(dot(n, l)));
   }
   let sun = physical_brdf(s, k, n, v, l);
   var diffuse = sun.diffuse * frame.light_color.rgb * shadow;
-  if (k.subsurface > 0.0 && k.thickness > 0.0 && dot(n, l) < 0.3) {
+  if (any(sun.through > vec3<f32>(0.0))) {
     // The sun through it from behind: shadowed where it enters.
     var open = 1.0;
-    if (shadowed) { open = cascade_shadow(in.world_pos + l * (k.thickness + subsurface_reach(k)), l, 1.0); }
-    diffuse += subsurface_transmitted(s, k, n, l) * frame.light_color.rgb * open;
+    if (shadowed) { open = cascade_shadow(in.world_pos + l * sun.enters, l, 1.0); }
+    diffuse += sun.through * frame.light_color.rgb * open;
   }
   var specular = sun.specular * frame.light_color.rgb * shadow;
   diffuse += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world_pos);

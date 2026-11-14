@@ -41,6 +41,21 @@ pub fn stripes(size: u32, n: f32, across: bool) -> TextureData {
     })
 }
 
+/// An eye's base colour, painted flat (sRGB): white, a blue iris of
+/// `iris` (uv) round the centre and a black pupil of `pupil` in it.
+pub fn eye(size: u32, iris: f32, pupil: f32) -> TextureData {
+    texture(size, ColorSpace::Srgb, |u, v| {
+        let r = Vec2::new(u - 0.5, v - 0.5).length();
+        if r < pupil {
+            [0.0, 0.0, 0.0, 1.0]
+        } else if r < iris {
+            [0.1, 0.3, 0.6, 1.0]
+        } else {
+            [0.9, 0.9, 0.9, 1.0]
+        }
+    })
+}
+
 /// A ramp down the image (v) in every channel: 0 at the top, 1 at the bottom.
 pub fn ramp(size: u32) -> TextureData {
     texture(size, ColorSpace::Linear, |_, v| [v, v, v, v])

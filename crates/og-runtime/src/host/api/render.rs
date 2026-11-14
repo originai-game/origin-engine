@@ -162,6 +162,9 @@ pub(crate) fn material(
         subsurfaceRadius,
         given("subsurfaceRadius").then_some(t.subsurface_radius)
     );
+    set!(hair, num("hair", t.hair));
+    set!(irisRadius, num("irisRadius", t.iris_radius));
+    set!(irisDepth, num("irisDepth", t.iris_depth));
     // Each slot's uv transform (KHR_texture_transform, three.js Texture.offset/repeat/rotation).
     set!(mapOffset, vec2("mapOffset", t.map_offset));
     set!(mapRepeat, vec2("mapRepeat", t.map_repeat));

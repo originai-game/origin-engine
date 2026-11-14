@@ -228,6 +228,29 @@ depth-normal prepass: the first one pays for it.
   `thicknessMap`, thin where the ear is) the sun and the lamps behind
   come through the subsurface material, red most: 1 cm of skin passes a
   third of red and under a hundredth of blue. Rect lights and the sky's light are not spread.
+- Hair: `hair: 1` shades the surface as strands, in place of the glossy
+  and the diffuse lobe: a white highlight in a band across them, a second
+  in the hair's `color` nearer the tips, and `color` in the light they
+  pass between them. The strands run along v with their roots at the top
+  of the image, the way hair cards and hair textures are laid out;
+  `anisotropyRotation` turns them (π/2: along u) and an `anisotropyMap`
+  combs them. `roughness` is how wide the highlights are along the
+  strand: 0.3 to 0.5, lower for wet or straight hair. With a `thickness`
+  the light behind hair comes through it, once through every strand on
+  its way: a card or a lock drawn from both sides (`side: "double"`) is a
+  layer `thickness` deep, darker and redder the deeper (1 cm is a strand
+  or two); a closed head of hair glows at its rim only, where the light's
+  way stays within `thickness` of the surface. Rect lights and the sky's
+  light shade hair as a plain surface of its `color`.
+- Eyes: a sphere per eye, its texture painted flat with the iris round
+  the centre of the uv square. `irisRadius`, the iris's radius in uv, puts
+  what is painted within it under the cornea: it is seen refracted by
+  `ior` (1.34 for an eye), `irisDepth` radii down at its middle and level
+  with the white at its rim, so the iris has depth, shifts against the
+  white as the eye turns and stays in view from the side. The cornea's
+  wet reflection is the clear coat (`clearcoat: 1`,
+  `clearcoatRoughness: 0.03`, `roughness` 0.4 or more under it), and the
+  white of the eye takes `subsurface`.
 - Texture arrays put variants of one look (tiles, skins, damage states) in
   one material and one draw.
 - Wireframe is drawn as lines, not a polygon mode (WebGPU has none).

@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "og.StandardMaterialDesc.hair",
+      "summary": "Hair on the physical material: `hair: 1` shades the surface as strands running along v (roots at the top of the image, turned by `anisotropyRotation` and `anisotropyMap`) in place of the glossy and the diffuse lobe. A white highlight lies in a band across the strands, a second in the hair's `color` nearer the tips, and `roughness` is how wide they are. With a `thickness` the light behind comes through, once through every strand on its way: all over a card drawn from both sides, at the rim of a closed head of hair. The sun, point and spot lights take it, in the lit pass on every backend."
+    },
+    {
+      "member": "og.StandardMaterialDesc.irisRadius",
+      "summary": "Eyes on the physical material: `irisRadius` (the iris's radius in uv, round the centre of the uv square) puts the base colour within it under the cornea, `irisDepth` radii deep at its middle. It is seen refracted by `ior`, so the iris has depth, shifts against the white of the eye as the eye turns and stays in view from the side. The cornea's reflection is the clear coat."
+    }
+  ]
+}

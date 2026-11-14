@@ -32,6 +32,8 @@ const PBR_PREPASS_WGSL: &str = wgsl!("pbr_prepass.wgsl");
 const PBR_LEAN_WGSL: &str = wgsl!("pbr_lean.wgsl");
 const PHYSICAL_WGSL: &str = wgsl!("physical.wgsl");
 const SUBSURFACE_WGSL: &str = wgsl!("subsurface.wgsl");
+const HAIR_WGSL: &str = wgsl!("hair.wgsl");
+const EYE_WGSL: &str = wgsl!("eye.wgsl");
 use crate::ibl::SHEEN_WGSL;
 /// `instance_matrix`: an instance's transform from its columns in the
 /// instance buffers ([`instances::GpuTransform`]); `mul_point`: how the
@@ -166,6 +168,8 @@ pub fn physical_source(hooks: &str) -> String {
             SURFACE_SHADE_WGSL,
             SHEEN_WGSL,
             SUBSURFACE_WGSL,
+            HAIR_WGSL,
+            EYE_WGSL,
             PHYSICAL_WGSL,
             LIGHTMAP_PAGES_WGSL,
             LIGHTMAP_PHYSICAL_WGSL,
