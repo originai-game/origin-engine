@@ -17077,9 +17077,7 @@ export interface Sky {
    */
   ground: Color;
   /**
-   * Towards the sun (match your DirectionalLight).
-   *
-   * @default { x: 0.45, y: 0.8, z: 0.35 }
+   * Towards the sun: the opposite of the way its light shines. Zero (the default) follows the frame's light: towards the first DirectionalLight (its entity's +Z; it shines down -Z), or the built-in sun's (0.45, 0.8, 0.35) with none. A non-zero direction is used as given.
    */
   sunDirection: Vector3;
   /**

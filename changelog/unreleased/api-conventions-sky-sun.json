@@ -1,0 +1,12 @@
+{
+  "breaking": [
+    {
+      "member": "Sky.sunDirection",
+      "change": "The default is zero, and zero follows the light the frame is lit by: the sky's sun stands towards the first DirectionalLight (the opposite of the way it shines), or towards the built-in sun (0.45, 0.8, 0.35) in a world with no DirectionalLight. Before, the default was the fixed direction (0.45, 0.8, 0.35), so a sky beside a DirectionalLight drew its sun away from the light unless the game set the opposite of the light's direction by hand. A non-zero sunDirection is used as given, as before; a saved world keeps the direction it stored.",
+      "fix": "Remove a sunDirection that only mirrored the DirectionalLight: the sky follows it now, also when the light turns. Keep one that is meant to differ from the light. A game that relied on the default beside a DirectionalLight pointing elsewhere sets sunDirection { x: 0.45, y: 0.8, z: 0.35 } to keep its old frames.",
+      "find": [
+        "sunDirection"
+      ]
+    }
+  ]
+}

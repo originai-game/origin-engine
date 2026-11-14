@@ -18,7 +18,7 @@ Token `og.Sky`, registered under the schema name `og.Sky`; its value type is `Sk
 | `zenith` | `Color` | `{ r: 0.18, g: 0.36, b: 0.78 }` | — | — | — | Overhead. |
 | `horizon` | `Color` | `{ r: 0.78, g: 0.84, b: 0.92 }` | — | — | — | At the horizon. |
 | `ground` | `Color` | `{ r: 0.16, g: 0.14, b: 0.12 }` | — | — | — | Below the horizon. |
-| `sunDirection` | `Vector3` | `{ x: 0.45, y: 0.8, z: 0.35 }` | — | — | — | Towards the sun (match your DirectionalLight). |
+| `sunDirection` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | Towards the sun: the opposite of the way its light shines. Zero (the default) follows the frame's light: towards the first DirectionalLight (its entity's +Z; it shines down -Z), or the built-in sun's (0.45, 0.8, 0.35) with none. A non-zero direction is used as given. |
 | `sunColor` | `Color` | `{ r: 1, g: 0.95, b: 0.88 }` | — | — | — | The sun's colour. |
 | `sunSize` | `number` | `1.8` | 0 … 20 | `deg` | tunable | The sun disc's angular radius (0: no disc). |
 | `sunIntensity` | `number` | `40` | ≥ 0 | — | tunable | The disc's brightness. |
@@ -46,9 +46,7 @@ resource Sky {
   field ground Color "Below the horizon." {
     default 0.16 0.14 0.12
   }
-  field sunDirection Vector3 "Towards the sun (match your DirectionalLight)." {
-    default 0.45 0.8 0.35
-  }
+  field sunDirection Vector3 "Towards the sun: the opposite of the way its light shines. Zero (the default) follows the frame's light: towards the first DirectionalLight (its entity's +Z; it shines down -Z), or the built-in sun's (0.45, 0.8, 0.35) with none. A non-zero direction is used as given."
   field sunColor Color "The sun's colour." {
     default 1 0.95 0.88
   }
