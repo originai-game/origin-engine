@@ -177,7 +177,25 @@ const PART_VARIANTS: usize = 8;
 impl PartStyles {
     /// Starts tick `tick` under `context`: a new context keeps nothing,
     /// and a new tick drops the styles of nodes no longer in the tree.
-    fn turn(&mut self, tick: u64, context: PartContext, alive: impl Fn(u64) -> bool) {
+    /// Within a tick the theme and media context change only with the
+    /// presentation epoch (`Ui::set_theme`, `begin`), so a part asked again
+    /// in the same tick, epoch and direction compares nothing else.
+    fn turn(
+        &mut self,
+        tick: u64,
+        (epoch, direction): (u64, og_i18n::Direction),
+        context: impl FnOnce() -> PartContext,
+        alive: impl Fn(u64) -> bool,
+    ) {
+        if self.tick == tick
+            && self
+                .context
+                .as_ref()
+                .is_some_and(|c| c.epoch == epoch && c.direction == direction)
+        {
+            return;
+        }
+        let context = context();
         if self.context.as_ref() != Some(&context) {
             *self = PartStyles {
                 context: Some(context),
@@ -584,7 +602,8 @@ impl Ui {
             let mut styles = self.style.part_styles.borrow_mut();
             styles.turn(
                 self.tick(),
-                PartContext {
+                (self.tree.invalidation.epoch, self.env.direction),
+                || PartContext {
                     epoch: self.tree.invalidation.epoch,
                     media: self.media_context(),
                     direction: self.env.direction,

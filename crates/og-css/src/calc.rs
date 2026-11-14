@@ -487,34 +487,47 @@ pub fn has_math(text: &str) -> bool {
 /// The first math function in `s`: where its name starts, and the name.
 fn next_function(s: &str) -> Option<(usize, &'static str)> {
     let b = s.as_bytes();
+    // Every value the cascade resolves is asked, each frame it resolves:
+    // most hold no call at all, and a name starts only at an ASCII letter.
+    if !b.contains(&b'(') {
+        return None;
+    }
     let mut quote = None;
     let mut escaped = false;
-    s.char_indices().find_map(|(i, c)| {
+    for (i, &c) in b.iter().enumerate() {
         if escaped {
             escaped = false;
-            return None;
+            continue;
         }
-        if c == '\\' {
+        if c == b'\\' {
             escaped = true;
-            return None;
+            continue;
         }
         if let Some(q) = quote {
             if c == q {
                 quote = None;
             }
-            return None;
+            continue;
         }
-        if c == '"' || c == '\'' {
+        if c == b'"' || c == b'\'' {
             quote = Some(c);
-            return None;
+            continue;
         }
-        let boundary = i == 0
-            || !(b[i - 1].is_ascii_alphanumeric() || matches!(b[i - 1], b'-' | b'_' | 128..=255));
-        FUNCTIONS
+        if !c.is_ascii_lowercase()
+            || (i > 0
+                && (b[i - 1].is_ascii_alphanumeric()
+                    || matches!(b[i - 1], b'-' | b'_' | 128..=255)))
+        {
+            continue;
+        }
+        if let Some(f) = FUNCTIONS
             .iter()
-            .find(|f| boundary && s[i..].starts_with(*f) && b.get(i + f.len()) == Some(&b'('))
-            .map(|f| (i, *f))
-    })
+            .find(|f| b[i..].starts_with(f.as_bytes()) && b.get(i + f.len()) == Some(&b'('))
+        {
+            return Some((i, f));
+        }
+    }
+    None
 }
 
 /// The index of the `)` closing the `(` at `open`.
