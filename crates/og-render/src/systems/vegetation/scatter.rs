@@ -51,8 +51,10 @@ mod pipelines;
 mod placement;
 mod prepare;
 mod renderer;
+mod source;
 pub(crate) use placement::*;
 use renderer::*;
+pub(crate) use source::{scatter_lit_source, scatter_shadow_source};
 
 /// The most instances one [`TerrainScatter`] places in a frame on the CPU.
 pub const MAX_SCATTER_INSTANCES: usize = 65_536;
@@ -191,76 +193,6 @@ impl Default for TerrainScatter {
             gpu: true,
         }
     }
-}
-
-/// The wind the renderer sways vegetation with ([`crate::RenderScene::wind`]):
-/// [`ScatterDraw`] copies lean downwind and sway in gusts that sweep
-/// across the field (the module's documentation has the shape). Visual
-/// only, a function of the tick.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Wind {
-    /// The mean lean: how far a copy's tip moves downwind per metre of its
-    /// height (0.2: a 1 m stem's tip leans 20 cm); 0 is still.
-    pub strength: f32,
-    /// Where it blows: its horizontal part, normalised.
-    pub direction: Vec3,
-    /// How fast the gusts travel downwind (m/s).
-    pub speed: f32,
-    /// How much the lean varies in the gusts, 0..1: 0 a steady lean, 1
-    /// from upright to twice the mean.
-    pub gust: f32,
-    /// How much the simulated field (`wind_field.rs`) swirls on its own,
-    /// 0..1: curl noise of the gusts' size, at this share of the speed.
-    pub turbulence: f32,
-    /// The gust patches' size (m).
-    pub gust_size: f32,
-}
-
-impl Wind {
-    /// How far a stem's tip leans downwind per metre of its height, for
-    /// each m/s the air moves: what og.Wind's speed and an og.WindMotor's
-    /// push lean vegetation by.
-    pub const LEAN_PER_MPS: f32 = 0.05;
-
-    /// The wind of air moving at `speed` m/s along `direction`, with the
-    /// default gusts: vegetation leans by [`Wind::LEAN_PER_MPS`] of it.
-    pub fn blowing(direction: Vec3, speed: f32) -> Wind {
-        Wind {
-            strength: Wind::LEAN_PER_MPS * speed,
-            direction,
-            speed,
-            ..Wind::default()
-        }
-    }
-}
-
-impl Default for Wind {
-    fn default() -> Self {
-        Wind {
-            strength: 0.2,
-            direction: Vec3::X,
-            speed: 3.0,
-            gust: 0.6,
-            turbulence: 0.3,
-            gust_size: 14.0,
-        }
-    }
-}
-
-/// The length of the wind's gust wave (metres).
-pub const WIND_WAVELENGTH: f32 = 10.0;
-
-/// The wind's second octave: its wavenumber and time phase over the
-/// first's (scatter_common.wgsl `scatter_sway`).
-const WIND_OCTAVE: f64 = 2.3;
-
-/// The wind's two time phases at `tick` (radians, reduced in f64): the
-/// first octave's `k speed t` and the second's.
-pub fn wind_phases(wind: &Wind, tick: u64, tick_rate: f32) -> [f32; 2] {
-    let t = tick as f64 / f64::from(tick_rate.max(1e-3));
-    let k = std::f64::consts::TAU / f64::from(WIND_WAVELENGTH);
-    let first = k * f64::from(wind.speed) * t;
-    [first, first * WIND_OCTAVE].map(|p| p.rem_euclid(std::f64::consts::TAU) as f32)
 }
 
 /// The material shader that sways a placed model in the wind (R6): its

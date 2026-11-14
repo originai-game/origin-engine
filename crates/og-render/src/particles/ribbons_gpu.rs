@@ -21,6 +21,7 @@
 //! code taken.
 
 use crate::deferred::{Deferred, Sampled};
+use crate::oit::{ARENA_WGSL, OIT_WGSL};
 use crate::particles::{MAX_CURVE_KEYS, ParticleBlend};
 use crate::ribbons::{
     Beam, MAX_TRAIL_POINTS, Ribbon, RibbonFrame, RibbonRun, StripPoint, Trail, TrailStyle,
@@ -28,6 +29,7 @@ use crate::ribbons::{
 };
 use crate::scene::TextureHandle;
 use glam::Vec3;
+use og_render_data::shader_source::FRAME_WGSL;
 use std::collections::HashMap;
 
 const POINT_BYTES: u64 = std::mem::size_of::<StripPoint>() as u64;
@@ -592,6 +594,17 @@ impl GpuTrails {
 
 /// The trail step's module (compute).
 pub(crate) const WGSL: &str = wgsl!("trails.wgsl");
+
+pub(crate) const RIBBON_WGSL: &str = wgsl!("ribbon.wgsl");
+
+/// The strips' module (alpha strips join the order-independent passes).
+pub(crate) fn ribbon_source() -> String {
+    format!(
+        "{FRAME_WGSL}{OIT_WGSL}{ARENA_WGSL}{}{}{RIBBON_WGSL}",
+        crate::effect::EFFECT_WGSL,
+        crate::effect::hooks_source(None)
+    )
+}
 
 #[cfg(test)]
 mod tests {

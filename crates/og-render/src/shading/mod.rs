@@ -7,6 +7,7 @@ pub(crate) mod gi_probes;
 pub(crate) mod gi_scene;
 pub(crate) mod ibl;
 pub(crate) mod lightmap;
+pub(crate) mod lit_prelude;
 pub(crate) mod material;
 pub(crate) mod oit;
 pub(crate) mod physical;

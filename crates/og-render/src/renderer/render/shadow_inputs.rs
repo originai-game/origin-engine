@@ -45,7 +45,7 @@ impl Renderer {
         // The static shadow cache's split (shadow_cache.rs): which batches
         // stood still long enough to stay in the cached shadow layers.
         let shadow_split = {
-            let wind = |w: Option<&crate::scatter::Wind>| w.is_some_and(|w| w.strength != 0.0);
+            let wind = |w: Option<&crate::Wind>| w.is_some_and(|w| w.strength != 0.0);
             let swaying = wind(scene.atmosphere.wind.as_ref())
                 || wind(self.history.previous_wind.as_ref().map(|w| &w.0));
             let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
