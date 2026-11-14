@@ -25,4 +25,4 @@ enum WindMotorKind {
 }
 ```
 
-<sub>Module `atmosphere` line 627</sub>
+<sub>Module `atmosphere` line 635</sub>

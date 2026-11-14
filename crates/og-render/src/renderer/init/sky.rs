@@ -21,6 +21,7 @@ pub(super) struct SkyResourcesOutputs {
     pub clouds_low: clouds::CloudsLow,
     pub ibl: ibl::IblGenerator,
     pub cloud_noise: clouds::CloudNoise,
+    pub cloud_shadow: clouds::CloudShadow,
     pub sky_params: wgpu::Buffer,
     pub aurora_map: aurora::AuroraMap,
 }
@@ -125,6 +126,7 @@ impl Renderer {
         };
         let ibl = ibl::IblGenerator::new(device);
         let cloud_noise = clouds::CloudNoise::placeholder(device, queue);
+        let cloud_shadow = clouds::CloudShadow::placeholder(device);
         let sky_params = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("sky params"),
             size: std::mem::size_of::<SkyParams>() as u64,
@@ -138,6 +140,7 @@ impl Renderer {
             clouds_low,
             ibl,
             cloud_noise,
+            cloud_shadow,
             sky_params,
             aurora_map,
         }

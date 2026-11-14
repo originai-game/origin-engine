@@ -327,3 +327,116 @@ fn the_clouds_stand_over_the_world_and_keep_their_shapes() {
         "the clouds follow the eye or go against the wind ({walked:.3} against {steady:.3} a tick)"
     );
 }
+
+/// The clouds cast their shadows on the world (`og_render::Clouds::shadows`):
+/// - a place on the ground is sunlit where the sun is seen from it between
+///   the clouds and shaded where a cloud stands before it, at places
+///   kilometres apart, after the wind has carried the clouds 12 km and
+///   under a sun well off the zenith: the shadow lies under its cloud,
+///   along the sun's ray, and goes with it;
+/// - without the shadows every place is lit alike.
+#[test]
+#[ignore = "requires GPU"]
+fn the_clouds_shade_the_ground_under_them() {
+    let scene_at = |place: Vec3, shadows: f32| {
+        let mut scene = og_tests::sky_scenes::sky_scene("clouds-fair");
+        let c = scene.atmosphere.clouds.as_mut().expect("clouds");
+        c.wind = Vec3::new(12.0, 0.0, 5.0);
+        c.layer = 0.0;
+        c.shadows = shadows;
+        scene.atmosphere.adaptation = Default::default();
+        scene.objects.instances.clear();
+        let ground = scene.add_mesh(og_render::shapes::plane(200.0, 1.0));
+        let grey = scene.add_standard_material(og_render::StandardMaterial {
+            color: Vec3::splat(0.35),
+            roughness: 0.9,
+            ..Default::default()
+        });
+        scene.add_instance(ground, grey, Mat4::from_translation(place));
+        scene.frame.tick = 60_000;
+        scene.frame.tick_rate = 60.0;
+        scene
+    };
+    let capture = |scene: &RenderScene| {
+        let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+        renderer
+            .render_capture(scene, &RenderTarget::Offscreen)
+            .expect("render");
+        renderer.read_offscreen().expect("capture")
+    };
+    // The middle of the frame.
+    let middle = |img: &RgbaImage| {
+        let (cx, cy) = (img.width / 2, img.height / 2);
+        let mut sum = 0.0;
+        for y in cy - 8..=cy + 8 {
+            for x in cx - 8..=cx + 8 {
+                sum += luma(px(img, x, y));
+            }
+        }
+        sum / (17.0 * 17.0)
+    };
+    // The ground under the eye, seen from 30 m over it.
+    let ground = |place: Vec3, shadows: f32| {
+        let mut scene = scene_at(place, shadows);
+        scene.frame.camera = Camera {
+            position: place + Vec3::Y * 30.0,
+            target: place,
+            up: Vec3::NEG_Z,
+            ..Default::default()
+        };
+        middle(&capture(&scene))
+    };
+    // The sun from that place, in a narrow view.
+    let sun = |place: Vec3| {
+        let mut scene = scene_at(place, 1.0);
+        let to_light = scene.lighting.light.direction_to_light.normalize();
+        scene.frame.camera = Camera {
+            position: place + Vec3::Y * 2.0,
+            target: place + Vec3::Y * 2.0 + to_light,
+            projection: og_render::Projection::Perspective { fov_y_degrees: 8.0 },
+            ..Default::default()
+        };
+        middle(&capture(&scene))
+    };
+    let places: Vec<Vec3> = (0..16)
+        .map(|i| Vec3::new(i as f32 * 1700.0 - 9000.0, 0.0, i as f32 * 900.0 - 3000.0))
+        .collect();
+    let mut rows = Vec::new();
+    for p in &places {
+        let sky_mean = sun(*p);
+        let lit = ground(*p, 1.0);
+        let plain = ground(*p, 0.0);
+        println!(
+            "at {:>6.0} {:>6.0}: sun {sky_mean:6.1}, ground {lit:6.1}, without shadows {plain:6.1}",
+            p.x, p.z
+        );
+        rows.push((sky_mean, lit, plain));
+    }
+    // The sun's disc fills the middle of the narrow view: white where
+    // nothing stands before it.
+    let covered = |sky: f32| sky < 252.0;
+    let shaded = rows.iter().filter(|r| covered(r.0)).count();
+    assert!(
+        shaded >= 3 && rows.len() - shaded >= 3,
+        "{shaded} of {} places under a cloud: the places do not tell the shadows from the sun",
+        rows.len()
+    );
+    let plain = rows.iter().map(|r| r.2).sum::<f32>() / rows.len() as f32;
+    for (p, (sky, lit, unshaded)) in places.iter().zip(&rows) {
+        assert!(
+            (unshaded - plain).abs() < 0.05 * plain,
+            "without the shadows the ground at {p} is lit {unshaded}, {plain} on average"
+        );
+        if covered(*sky) {
+            assert!(
+                *lit < 0.75 * unshaded,
+                "a cloud stands before the sun at {p} and the ground is lit {lit} of {unshaded}"
+            );
+        } else {
+            assert!(
+                (lit - unshaded).abs() < 0.03 * unshaded,
+                "the sun is open at {p} and the ground is lit {lit} of {unshaded}"
+            );
+        }
+    }
+}

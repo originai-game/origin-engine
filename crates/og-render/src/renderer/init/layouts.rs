@@ -62,6 +62,8 @@ impl Renderer {
             // The main camera's screen-space reflections (ssr.rs): a
             // read-only storage texture, so it takes no texture slot.
             ssr::SsrRenderer::lit_layout_entry(13),
+            // The clouds' shadow (clouds/shadow.rs): as the reflections.
+            clouds::CloudShadow::layout_entry(14, wgpu::ShaderStages::FRAGMENT),
         ];
         let frame_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("frame"),

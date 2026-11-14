@@ -32237,6 +32237,7 @@ pub mod record {
         pub detail: f32,
         pub layer: f32,
         pub layer_altitude: f32,
+        pub shadows: f32,
         pub steps: u32,
     }
 
@@ -32254,6 +32255,7 @@ pub mod record {
                 detail: 0.35_f32,
                 layer: 0.3_f32,
                 layer_altitude: 8000.0_f32,
+                shadows: 1.0_f32,
                 steps: 48,
             }
         }
@@ -32277,6 +32279,7 @@ pub mod record {
                 detail: field(o, "detail", d.detail)?,
                 layer: field(o, "layer", d.layer)?,
                 layer_altitude: field(o, "layerAltitude", d.layer_altitude)?,
+                shadows: field(o, "shadows", d.shadows)?,
                 steps: field(o, "steps", d.steps)?,
             })
         }

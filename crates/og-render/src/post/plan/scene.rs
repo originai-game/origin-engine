@@ -22,6 +22,7 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         | FramePass::WaterFields
         | FramePass::Trails
         | FramePass::Aurora
+        | FramePass::CloudShadow
         | FramePass::Visual
         | FramePass::Surfaces
         | FramePass::TerrainCorners

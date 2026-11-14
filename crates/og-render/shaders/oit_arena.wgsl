@@ -14,7 +14,7 @@
 // fragments in never decides which pixel keeps a fragment: a pixel keeps
 // its first nodes-per-pixel fragments, and one with more is counted once
 // in the header and resolved whole from the weighted targets.
-@group(0) @binding(14) var<storage, read_write> oit_arena: array<atomic<u32>>;
+@group(0) @binding(15) var<storage, read_write> oit_arena: array<atomic<u32>>;
 
 const OIT_HEADER_WORDS: u32 = 4u;
 const OIT_NODE_WORDS: u32 = 7u;

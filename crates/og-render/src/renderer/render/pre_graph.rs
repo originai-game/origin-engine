@@ -53,6 +53,14 @@ pub(crate) const AURORA: PassDesc = PassDesc {
     needs: Caps::COMPUTE,
 };
 
+/// The clouds' shadow on the world, baked when the layer or the sun moved
+/// it (clouds/shadow.rs), before every pass that lights a surface.
+pub(crate) const CLOUD_SHADOW: PassDesc = PassDesc {
+    pass: FramePass::CloudShadow,
+    name: "cloud shadow",
+    needs: Caps::COMPUTE,
+};
+
 /// The visual bodies' and the visual fluids' steps (visual_sim.rs,
 /// visual_fluid.rs): simulated in compute, drawn from storage.
 pub(crate) const VISUAL: PassDesc = PassDesc {

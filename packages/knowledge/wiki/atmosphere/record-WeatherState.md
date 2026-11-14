@@ -189,4 +189,4 @@ resource WeatherState {
 }
 ```
 
-<sub>Module `atmosphere` line 422</sub>
+<sub>Module `atmosphere` line 430</sub>

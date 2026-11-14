@@ -120,6 +120,12 @@ impl Renderer {
                 self.sky.aurora_map.encode(encoder);
                 Vec::new()
             }
+            FramePass::CloudShadow => {
+                self.sky
+                    .cloud_shadow
+                    .encode(&self.device, &self.sky.cloud_noise, encoder);
+                Vec::new()
+            }
             FramePass::Visual => {
                 if let Some(pipelines) = &self.world.visual {
                     for mesh in &self.cache.meshes {

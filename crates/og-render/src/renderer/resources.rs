@@ -741,6 +741,9 @@ pub(crate) struct SkyState {
     /// The sky pass's own uniform (sky.wgsl `SkyParams`): the background's
     /// blurriness and the map it draws, written every frame.
     pub(crate) sky_params: wgpu::Buffer,
+    /// The clouds' shadow on the world, bound in every frame group
+    /// (`clouds/shadow.rs`).
+    pub(crate) cloud_shadow: clouds::CloudShadow,
     /// The aurora's footprint and table, bound in the sky group (`aurora.rs`).
     pub(crate) aurora_map: aurora::AuroraMap,
     pub(crate) sky_pipeline: Sampled<wgpu::RenderPipeline>,

@@ -60,7 +60,7 @@ impl Pass for VolumetricPass {
                 &r.lights.light_buffers[1],
                 &r.lights.light_buffers[2],
             ],
-            &r.lights.caustic_grid,
+            (&r.lights.caustic_grid, &r.sky.cloud_shadow.view),
         );
     }
 }

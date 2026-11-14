@@ -20,6 +20,7 @@ pub(crate) enum FramePass {
     WaterFields,
     Trails,
     Aurora,
+    CloudShadow,
     Visual,
     Surfaces,
     TerrainCorners,
@@ -230,6 +231,7 @@ impl FramePass {
                 | FramePass::WaterFields
                 | FramePass::Trails
                 | FramePass::Aurora
+                | FramePass::CloudShadow
                 | FramePass::Visual
                 | FramePass::Surfaces
                 | FramePass::TerrainCorners
@@ -292,6 +294,7 @@ impl FramePass {
             FramePass::WaterFields => "water fields".into(),
             FramePass::Trails => "trails".into(),
             FramePass::Aurora => "aurora".into(),
+            FramePass::CloudShadow => "cloud shadow".into(),
             FramePass::Visual => "visual simulation".into(),
             FramePass::Surfaces => "surfaces".into(),
             FramePass::TerrainCorners => "terrain corners".into(),

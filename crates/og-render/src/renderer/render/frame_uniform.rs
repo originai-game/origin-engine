@@ -243,6 +243,14 @@ impl Renderer {
                 };
             }
         }
+        // The clouds' shadow this frame casts (clouds/shadow.rs), in the
+        // clouds' block: only with clouds the sky draws.
+        if let Some((run, row)) = self.sky.cloud_shadow.rows()
+            && uniform.atmosphere.clouds[3][3] > 0.0
+        {
+            uniform.atmosphere.clouds[10][2..].copy_from_slice(&run);
+            uniform.atmosphere.clouds[11] = row;
+        }
         // The weather occlusion map: its view and its layer, the array's
         // last (never a constant: cascades or cached layers may come first).
         if let Some((view_proj, ..)) = &shelter {

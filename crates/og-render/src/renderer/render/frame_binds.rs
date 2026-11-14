@@ -64,7 +64,7 @@ impl Renderer {
         // irradiance and prefiltered cubes; per due capture face, the
         // frame's own cubes under the face camera's uniform.
         // With the linked lists (oit.rs) the OIT pass binds the frame's and
-        // its probes' groups again with the arena at binding 14.
+        // its probes' groups again with the arena at binding 15.
         let oit_arena = self
             .oit
             .frame_list_layout

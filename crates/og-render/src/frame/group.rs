@@ -37,6 +37,7 @@ impl crate::Renderer {
             self.lights.ltc.as_entire_binding(),
             self.lights.caustic_grid.as_entire_binding(),
             wgpu::BindingResource::TextureView(parts.ssr),
+            wgpu::BindingResource::TextureView(&self.sky.cloud_shadow.view),
         ]
     }
 }

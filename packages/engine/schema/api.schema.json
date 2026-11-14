@@ -34842,7 +34842,7 @@
     "Clouds": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only.\nSee `render §7`.",
+      "description": "Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover, and the cumulus casts its shadows on the world (`shadows`). Visual only.\nSee `render §7`.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -34936,6 +34936,15 @@
           "default": 8000,
           "minimum": 0,
           "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "shadows": {
+          "type": "number",
+          "description": "How dark the cumulus's shadows fall on the world, drifting with the clouds: 1 the shadows they cast, 0 none (the sun a little dimmer everywhere instead). They fall where the sun casts shadows and fade as the cover closes into an overcast.\nSee `render §7`.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
           "x-og-tunable": true
         },
         "steps": {

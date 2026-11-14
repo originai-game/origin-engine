@@ -231,6 +231,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     add("mipmap", crate::mips::MIPMAP_WGSL.to_string());
     add("ibl", crate::ibl::ibl_source());
     add("cloud noise", crate::clouds::NOISE_WGSL.to_string());
+    add("cloud shadow", crate::clouds::bake_source());
     add(
         "aurora footprint",
         crate::aurora::FOOTPRINT_WGSL.to_string(),
