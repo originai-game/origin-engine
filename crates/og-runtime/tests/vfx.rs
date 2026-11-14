@@ -57,6 +57,17 @@ fn project() -> &'static Path {
             "fx/pixel.ogt",
             "type vfx\nversion 1\n---\nduration 1\nflipbook \"fx/burst.ogt\" {\n  at 0.1\n  size 2\n}\n",
         );
+        // A sound 0.1 s in, its playback rate picked from a range.
+        let pcm: Vec<f32> = (0..2400)
+            .map(|i| og_core::math::sin(i as f32 * 0.1) * 0.25)
+            .collect();
+        let p = root.join("assets/sfx/blip.wav");
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, og_audio::wav(&pcm, 1, 48_000)).unwrap();
+        write(
+            "fx/loud.ogt",
+            "type vfx\nversion 1\n---\nduration 0.4\nsound \"sfx/blip.wav\" {\n  at 0.1\n  volume 0.8\n  playbackRate 0.9 1.1\n}\n",
+        );
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
@@ -342,4 +353,67 @@ fn a_flipbook_element_plays_its_sheet_and_passes_its_impact_on() {
     // 2 m tall, its width by the 16 x 32 frame.
     assert_eq!(sprites(0.3), vec![(1.0, 2.0)]);
     assert!(sprites(0.75).is_empty(), "gone after its 0.5 s clip");
+}
+
+/// The archetype tables of the world dump that hold `component`: their rows.
+fn rows_with(engine: u32, component: &str) -> u64 {
+    og_runtime::og_engine_probe_commands(engine, "0:dump_world".into());
+    ticks(engine, 1);
+    let outputs: Value = serde_json::from_str(&og_runtime::og_engine_take_outputs(engine)).unwrap();
+    let dump: Value = outputs
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|o| o["kind"] == "json")
+        .map(|o| serde_json::from_str(o["data"].as_str().unwrap()).unwrap())
+        .expect("a world dump");
+    dump["archetypes"]
+        .as_array()
+        .expect("archetypes")
+        .iter()
+        .filter(|a| {
+            a["components"]
+                .as_array()
+                .is_some_and(|c| c.iter().any(|n| n == component))
+        })
+        .map(|a| a["count"].as_u64().expect("an archetype's entity count"))
+        .sum()
+}
+
+/// A `sound` element plays its sound from its time on a source of the
+/// effect's, which goes with the effect at its end.
+///
+/// Ways it could fail: the tick the sound is due stops the run (the source
+/// spawned from a value without og.AudioSource's defaults), the source
+/// never spawned, or left behind when the effect ends.
+#[test]
+fn a_sound_element_plays_on_a_source_that_ends_with_the_effect() {
+    set_hooks(Rc::new(Game(Seen::default())));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(json!({ "seed": 5 }).to_string()));
+    let options = json!({ "root": project().to_str().unwrap() }).to_string();
+    let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    ticks(engine, 1);
+    let fx = value(og_runtime::host_impl::answer(og_load_vfx(
+        engine,
+        "fx/loud.ogt".into(),
+    )));
+    value(og_runtime::host_impl::answer(og_vfx_spawn(
+        engine,
+        Some(json!({ "asset": fx }).to_string()),
+    )));
+    ticks(engine, 3);
+    assert_eq!(rows_with(engine, "og.AudioSource"), 0, "none before 0.1 s");
+    ticks(engine, 8);
+    assert_eq!(
+        rows_with(engine, "og.AudioSource"),
+        1,
+        "its source, playing"
+    );
+    ticks(engine, 20);
+    assert_eq!(
+        rows_with(engine, "og.AudioSource"),
+        0,
+        "gone with the effect"
+    );
 }

@@ -373,7 +373,7 @@ pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_c
     let r = Records {
         vfx: layout(world, COMPONENT, RecordKind::Component)?,
         event,
-        source: layout(world, "og.AudioSource", RecordKind::Component)?,
+        source: spawned(world, "og.AudioSource")?,
         transform: spawned(world, "og.Transform")?,
         parent: spawned(world, "og.Parent")?,
         sprite: spawned(world, "og.Sprite")?,

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "type vfx: sound",
+      "summary": "A composed effect's `sound` element stopped the run on the tick it was due (\"'og.AudioSource.pan' default: the value is a number, got null\"): its source was spawned without og.AudioSource's defaults. It now plays on a source that is a child of the effect and goes with it at its end."
+    }
+  ]
+}
