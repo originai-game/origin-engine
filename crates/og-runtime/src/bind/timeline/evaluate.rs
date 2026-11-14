@@ -44,6 +44,15 @@ pub(super) fn nest_id(parent: u32, key: usize) -> u32 {
     NESTED | (h & !(NESTED | (NESTED_TRACKS - 1)))
 }
 
+/// What a tick's evaluation of one timeline leaves its caller.
+#[derive(Default)]
+pub(super) struct Evaluated {
+    /// The nested timelines evaluated, by their base id.
+    pub touched: Vec<u32>,
+    /// The caption keys showing, each `(track id, key index, text)`.
+    pub captions: Vec<(u32, usize, String)>,
+}
+
 /// What a tick's evaluation of one timeline is given.
 pub(super) struct Step<'a> {
     pub t: f32,
@@ -66,7 +75,7 @@ pub(super) fn evaluate(
     lt: &mut Loaded,
     run: &mut Run,
     step: &Step<'_>,
-    touched: &mut Vec<u32>,
+    out: &mut Evaluated,
 ) -> og_core::Result<()> {
     let Step {
         t,
@@ -108,7 +117,7 @@ pub(super) fn evaluate(
                 let cretro =
                     retro.and_then(|(a, b)| eval::child_spans(k, until, d, a, b).first().copied());
                 let cbase = nest_id(ti32, ki);
-                touched.push(cbase);
+                out.touched.push(cbase);
                 evaluate(
                     ctx,
                     engine_id,
@@ -126,7 +135,7 @@ pub(super) fn evaluate(
                         base: cbase,
                         depth: depth + 1,
                     },
-                    touched,
+                    out,
                 )?;
             }
             Track::Transform(tt) => {
@@ -313,8 +322,8 @@ pub(super) fn evaluate(
                 }
             }
             Track::Caption(c) => {
-                if let Some(k) = eval::caption_at(c, t) {
-                    caption(ui, ti32, k, c);
+                if let Some((ki, k)) = eval::caption_at(c, t) {
+                    out.captions.push((ti32, ki, k.text.clone()));
                 }
             }
             Track::Event(ks) => {
@@ -863,46 +872,4 @@ fn fields(
         }
     }
     Ok(())
-}
-
-fn caption(
-    ui: &og_ui::SharedUi,
-    ti: u32,
-    k: &og_timeline::CaptionKey,
-    c: &og_timeline::CaptionTrack,
-) {
-    let mut ui = ui.lock();
-    let theme = *ui.theme();
-    let style = k.style.as_deref().unwrap_or(&c.style);
-    let anchor = k.anchor.as_deref().unwrap_or(&c.anchor);
-    let id = format!("timeline-caption-{ti}");
-    ui.open_anchor(
-        id.as_str(),
-        og_ui::AnchorDesc {
-            anchor: super::modules::anchor_of(&json!(anchor)).unwrap_or(og_ui::Anchor::Bottom),
-            padding: og_ui::Insets::xy(16.0, 8.0),
-            background: Some(og_ui::Srgba {
-                rgb: [0, 0, 0],
-                alpha: 0.62,
-            }),
-            radius: 8.0,
-            over: true,
-            instant: true,
-            ..Default::default()
-        },
-    );
-    ui.label(
-        format!("{id}-text").as_str(),
-        &k.text,
-        og_ui::LabelDesc {
-            step: super::modules::step(&theme, style),
-            color: Some(og_ui::Srgba {
-                rgb: [255, 255, 255],
-                alpha: 1.0,
-            }),
-            align: og_ui::TextAlign::Center,
-            ..Default::default()
-        },
-    );
-    ui.close();
 }

@@ -348,18 +348,10 @@ fn write_track(tr: &Track) -> Entry {
             }
         }
         Track::Caption(c) => {
-            b.push(Entry::new("style").with(Value::Word(c.style.clone())));
-            b.push(Entry::new("anchor").with(Value::Word(c.anchor.clone())));
             for k in &c.keys {
                 let mut kb = Block::new();
                 kb.push(Entry::new("text").with(Value::String(k.text.clone())));
                 kb.push(Entry::new("end").with(num(k.end)));
-                if let Some(s) = &k.style {
-                    kb.push(Entry::new("style").with(Value::Word(s.clone())));
-                }
-                if let Some(a) = &k.anchor {
-                    kb.push(Entry::new("anchor").with(Value::Word(a.clone())));
-                }
                 b.push(key_entry(k.time, kb));
             }
         }
@@ -598,6 +590,15 @@ track marker {
                 "path 'p': an open bezier",
             ),
             ("track wobble {\n}\n", "track kind 'wobble'"),
+            // A caption is text only: its look is the UI's.
+            (
+                "track caption {\n  anchor top\n}\n",
+                "line 5: a caption is text only",
+            ),
+            (
+                "track caption {\n  key 1 {\n    text \"Hi\"\n    style xl2\n  }\n}\n",
+                "line 7: a caption is text only: the screen that shows `$captions`",
+            ),
         ];
         for (body, want) in cases {
             let text = format!("type timeline\nversion 1\n---\n{body}");

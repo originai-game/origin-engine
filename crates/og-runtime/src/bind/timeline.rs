@@ -26,8 +26,8 @@ mod playback;
 mod present;
 pub(crate) use present::present;
 
-use crate::{bind::modules, present::feel, world::assets};
-use evaluate::{NESTED, NESTED_TRACKS, Step, drop_ended_voices, evaluate};
+use crate::{present::feel, world::assets};
+use evaluate::{Evaluated, NESTED, NESTED_TRACKS, Step, drop_ended_voices, evaluate};
 use playback::{Op, Rec, Run, shared};
 pub(crate) use playback::{install, register_records};
 pub use playback::{og_timeline_pause, og_timeline_play, og_timeline_seek, og_timeline_stop};

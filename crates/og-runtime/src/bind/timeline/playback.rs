@@ -538,6 +538,9 @@ fn timeline_system(
         }
     }
     let reg = registry(engine_id);
+    // The caption keys showing this tick, in the timelines' order: the
+    // UI's `$captions` (docs/ui.md §2). Nothing here draws them.
+    let mut captions: Vec<(String, String)> = Vec::new();
     for e in rows {
         let key = e.to_bits();
         let cb = ctx.get_bytes(e, r.timeline.0)?;
@@ -684,7 +687,7 @@ fn timeline_system(
         let retro = (seeked && run.num > before).then(|| (secs(before), secs(run.num)));
         drop_ended_voices(ctx, r, &mut run, playing)?;
         if run.active {
-            let mut touched = Vec::new();
+            let mut out = Evaluated::default();
             evaluate(
                 ctx,
                 engine_id,
@@ -702,8 +705,17 @@ fn timeline_system(
                     base: 0,
                     depth: 0,
                 },
-                &mut touched,
+                &mut out,
             )?;
+            let Evaluated {
+                touched,
+                captions: showing,
+            } = out;
+            captions.extend(
+                showing
+                    .into_iter()
+                    .map(|(track, k, text)| (format!("{key}:{track}:{k}"), text)),
+            );
             // Voices of a nested timeline whose key ended go with it.
             let mut gone = Vec::new();
             run.voices.retain(|v| {
@@ -746,6 +758,7 @@ fn timeline_system(
         ctx.set_bytes(e, r.timeline.0, &out)?;
         lock(state).runs.insert(key, run);
     }
+    ui.lock().set_captions(&captions);
     Ok(())
 }
 

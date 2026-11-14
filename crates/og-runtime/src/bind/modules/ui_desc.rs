@@ -12,7 +12,7 @@ fn token(theme: &Theme, name: &str) -> Option<Srgba> {
 pub const THEME_COLORS: &[&str] = og_ui::Palette::NAMES;
 
 /// A type step by its TypeStepName.
-pub(crate) fn step(theme: &Theme, name: &str) -> Option<TypeStep> {
+fn step(theme: &Theme, name: &str) -> Option<TypeStep> {
     let r = &theme.type_ramp;
     Some(match name {
         "body" => r.body,

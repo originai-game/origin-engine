@@ -257,8 +257,9 @@ pub fn clip_at(track: &AnimationTrack, t: f32) -> Option<(usize, f32)> {
 }
 
 /// The caption showing at `t`: the latest started that has not ended.
-pub fn caption_at(track: &CaptionTrack, t: f32) -> Option<&CaptionKey> {
-    track.keys.iter().rev().find(|k| k.time <= t && t < k.end)
+pub fn caption_at(track: &CaptionTrack, t: f32) -> Option<(usize, &CaptionKey)> {
+    let showing = |(_, k): &(usize, &CaptionKey)| k.time <= t && t < k.end;
+    track.keys.iter().enumerate().rev().find(showing)
 }
 
 /// How a transition track covers the screen at a time.

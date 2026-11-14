@@ -27,8 +27,6 @@
 //! }
 //! track caption {
 //!   captions "narration.srt"
-//!   style lg
-//!   anchor bottom
 //! }
 //! ```
 //!
@@ -187,27 +185,13 @@ pub struct CaptionKey {
     /// [`CAPTION_SECONDS`] later).
     pub end: f32,
     pub text: String,
-    /// A UI type step (`lg`, `xl2`, ...); `None`: the track's.
-    pub style: Option<String>,
-    /// A UI anchor (`bottom`, `top`, `center`, ...); `None`: the track's.
-    pub anchor: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+/// What is said over time. A caption is text only: where and how it is
+/// drawn belongs to the UI that shows it (`$captions`, docs/ui.md §2).
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct CaptionTrack {
-    pub style: String,
-    pub anchor: String,
     pub keys: Vec<CaptionKey>,
-}
-
-impl Default for CaptionTrack {
-    fn default() -> Self {
-        CaptionTrack {
-            style: "lg".into(),
-            anchor: "bottom".into(),
-            keys: Vec::new(),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]

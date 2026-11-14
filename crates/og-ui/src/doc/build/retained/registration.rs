@@ -45,14 +45,7 @@ impl Ui {
     /// Registers `mount` as `registration` declares it, unchecked and
     /// without its layer: it compiles at the next build.
     pub(crate) fn register_mount(&mut self, mount: SourceId, mut registration: Registration) {
-        // Every mount reads the engine's `$ui` unless it binds its own, as
-        // `Ui::mount_document`'s do.
-        if !registration.inputs.contains_key("ui") {
-            self.publish_ui_store();
-            registration
-                .inputs
-                .insert("ui".into(), crate::doc::UI_STORE.clone());
-        }
+        self.bind_engine_stores(&mut registration.inputs);
         if self.docs.state().memory.retained.registrations.get(&mount) == Some(&registration) {
             return;
         }

@@ -51,8 +51,6 @@ track animation "trickster" {
 }
 track caption {
   captions "narration.srt"
-  style lg
-  anchor bottom
 }
 track audio {
   key 1 {

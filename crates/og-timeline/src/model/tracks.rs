@@ -366,22 +366,18 @@ fn music(block: &Block) -> Result<Vec<MusicKey>, String> {
     Ok(sorted(ks, |k| k.time))
 }
 
-/// A caption as written: time, end if given, text, style, anchor.
-type RawCaption = (f32, Option<f32>, String, Option<String>, Option<String>);
+/// A caption as written: time, end if given, text.
+type RawCaption = (f32, Option<f32>, String);
+
+/// What `style` and `anchor`, which a caption had, are answered with.
+const CAPTION_LOOK: &str = "a caption is text only: the screen that shows `$captions` (the built-in `subtitles`) and the style pack decide where and how it is drawn";
 
 fn caption(block: &Block, read: &mut Read<'_>) -> Result<CaptionTrack, String> {
     let mut c = CaptionTrack::default();
     let mut raw: Vec<RawCaption> = Vec::new();
     for e in &block.entries {
         match e.key.as_str() {
-            "style" => {
-                no_block(e)?;
-                c.style = word(e)?.to_string();
-            }
-            "anchor" => {
-                no_block(e)?;
-                c.anchor = word(e)?.to_string();
-            }
+            "style" | "anchor" => return Err(at(e, CAPTION_LOOK)),
             "captions" => {
                 no_block(e)?;
                 let (file, offset) = match e.values.as_slice() {
@@ -407,45 +403,34 @@ fn caption(block: &Block, read: &mut Read<'_>) -> Result<CaptionTrack, String> {
                             ),
                         ));
                     }
-                    raw.push((start, Some(q.end + offset), q.text, None, None));
+                    raw.push((start, Some(q.end + offset), q.text));
                 }
             }
             "key" => {
                 let time = key_time(e)?;
-                let (mut end, mut text, mut style, mut anchor) = (None, None, None, None);
+                let (mut end, mut text) = (None, None);
                 for f in key_block(e)? {
                     no_block(f)?;
                     match f.key.as_str() {
                         "text" => text = Some(string(f)?),
                         "end" => end = Some(one_number(f)?),
-                        "style" => style = Some(word(f)?.to_string()),
-                        "anchor" => anchor = Some(word(f)?.to_string()),
-                        _ => {
-                            return Err(unknown(
-                                f,
-                                "caption key entry",
-                                "text, end, style or anchor",
-                            ));
-                        }
+                        "style" | "anchor" => return Err(at(f, CAPTION_LOOK)),
+                        _ => return Err(unknown(f, "caption key entry", "text or end")),
                     }
                 }
                 let text = text.ok_or_else(|| at(e, "a caption key has `text \"...\"`"))?;
                 if end.is_some_and(|x| x <= time) {
                     return Err(at(e, "a caption's end comes after its time"));
                 }
-                raw.push((time, end, text, style, anchor));
+                raw.push((time, end, text));
             }
             _ => {
-                return Err(unknown(
-                    e,
-                    "caption track entry",
-                    "style, anchor, captions or key",
-                ));
+                return Err(unknown(e, "caption track entry", "captions or key"));
             }
         }
     }
     let raw = sorted(raw, |r| r.0);
-    for (i, (time, end, text, style, anchor)) in raw.iter().enumerate() {
+    for (i, (time, end, text)) in raw.iter().enumerate() {
         let next = raw.get(i + 1).map(|r| r.0);
         let end = end.unwrap_or_else(|| {
             next.unwrap_or(time + CAPTION_SECONDS)
@@ -455,8 +440,6 @@ fn caption(block: &Block, read: &mut Read<'_>) -> Result<CaptionTrack, String> {
             time: *time,
             end,
             text: text.clone(),
-            style: style.clone(),
-            anchor: anchor.clone(),
         });
     }
     Ok(c)

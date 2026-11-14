@@ -67,6 +67,15 @@ pub const COMPONENT_TYPE: &str = "component";
 pub static UI_STORE: std::sync::LazyLock<crate::reactive::SourceId> =
     std::sync::LazyLock::new(|| crate::reactive::SourceId::new("og", "ui"));
 
+/// The engine's `$captions` store, read like `$ui`: the lines the engine
+/// is saying now (a timeline's caption keys), a collection of
+/// `{ id, text }` keyed by `id` ([`crate::Ui::set_captions`]).
+pub static CAPTIONS_STORE: std::sync::LazyLock<crate::reactive::SourceId> =
+    std::sync::LazyLock::new(|| crate::reactive::SourceId::new("og", "captions"));
+
+/// The names every mounted document reads the engine's stores under.
+pub const ENGINE_STORES: [&str; 2] = ["ui", "captions"];
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DocKind {
     Screen,

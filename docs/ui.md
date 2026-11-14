@@ -226,6 +226,13 @@ Every document reads the engine's `$ui` store unless a mount binds its own
 `$ui.actions`, the top layer's action bar, each `{ action, hint, icon,
 text, hold }`. It publishes only on change.
 
+`$captions` is read the same way: the lines the engine is saying now, a
+collection of `{ id, text }` keyed by `id`, in the order of the timelines
+playing and of their caption tracks. A timeline's caption track draws
+nothing itself; the built-in `subtitles` screen shows `$captions` after
+the game's own `$lines`, and any document may iterate it. A line that
+stays keeps its row.
+
 #### ARIA
 
 Any element takes ARIA over its kind's semantics: `role` (one of og.ui's

@@ -169,8 +169,8 @@ impl UiDocument {
                         || locals.iter().any(|l| l == root)
                         || root.starts_with(|c: char| c.is_ascii_uppercase())
                         || root.starts_with('$')
-                        // The engine's `$ui` store (docs/ui.md §2), bound at every mount.
-                        || (root == "ui" && path.starts_with('$'));
+                        // The engine's stores (docs/ui.md §2), bound at every mount.
+                        || (super::ENGINE_STORES.contains(&root) && path.starts_with('$'));
                     if !known {
                         errors.push(format!("line {line}: '{path}' reads '{root}', which is not a prop of the document (props {{ … }}), a list item, or a resource (Capitalised)"));
                     }
@@ -231,7 +231,7 @@ impl UiDocument {
     }
 
     /// The stores it reads by name (`$gold` is `gold`), without the
-    /// engine's `$ui`.
+    /// engine's (`$ui`, `$captions`).
     pub fn stores(&self) -> std::collections::BTreeSet<String> {
         let mut out = std::collections::BTreeSet::new();
         for (i, n) in self.nodes.iter().enumerate() {
@@ -241,7 +241,7 @@ impl UiDocument {
             for path in paths {
                 let root = path.split('.').next().unwrap_or_default();
                 if let Some(name) = root.strip_prefix('$')
-                    && name != "ui"
+                    && !super::ENGINE_STORES.contains(&name)
                     && !locals.iter().any(|local| local == root)
                 {
                     out.insert(name.to_owned());

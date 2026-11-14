@@ -14,12 +14,8 @@ impl Ui {
             return Err(format!("missing document '{document}'"));
         }
         content::check_instances(&self.docs.library.documents, document)?;
-        // Every mount reads the engine's `$ui` unless it binds its own.
         let mut inputs = inputs;
-        if !inputs.contains_key("ui") {
-            self.publish_ui_store();
-            inputs.insert("ui".into(), crate::doc::UI_STORE.clone());
-        }
+        self.bind_engine_stores(&mut inputs);
         let mut host = std::mem::take(&mut self.docs.state_mut().memory.retained);
         if host.roots.contains_key(&mount) {
             self.docs.state_mut().memory.retained = host;

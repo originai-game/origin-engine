@@ -10,6 +10,7 @@ use crate::reactive::{
 pub(crate) mod compile;
 pub(crate) mod content;
 pub(crate) mod emit;
+pub(crate) mod engine_stores;
 pub(crate) mod frame;
 pub(crate) mod mounting;
 pub(crate) mod pointer;
