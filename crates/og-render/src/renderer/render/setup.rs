@@ -69,7 +69,7 @@ impl Renderer {
         if off.is_empty() {
             return;
         }
-        let used = crate::pipeline_features::Features::of(scene);
+        let used = scene_features(scene);
         for (feature, name) in LitFeatures::NAMED {
             if off.contains(feature)
                 && used.contains(feature.features())
@@ -159,4 +159,9 @@ impl Renderer {
             self.ensure_full(scene, m.index());
         }
     }
+}
+
+/// The lit features `scene` draws with: the mechanisms' and the systems'.
+pub(crate) fn scene_features(scene: &RenderScene) -> crate::pipeline_features::Features {
+    crate::pipeline_features::Features::of(scene) | crate::systems::features(scene)
 }

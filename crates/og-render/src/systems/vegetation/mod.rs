@@ -7,6 +7,13 @@ pub(crate) mod scatter_cull;
 pub(crate) mod scatter_place;
 pub mod trample;
 
+/// The lit features the scene's vegetation asks for
+/// (`pipeline_features.rs`): the far grass on the ground.
+pub(crate) fn features(scene: &crate::RenderScene) -> crate::pipeline_features::Features {
+    use crate::pipeline_features::Features;
+    Features::NONE.with(Features::GRASS, !scene.world.grass.is_empty())
+}
+
 /// The system's modules for [`crate::shader_sources`]: a label and its WGSL.
 pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add("grass trample", crate::trample::source());

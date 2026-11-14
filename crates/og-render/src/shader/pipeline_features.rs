@@ -100,7 +100,7 @@ impl Features {
         self.0 & other.0 == other.0
     }
 
-    fn with(self, other: Features, on: bool) -> Features {
+    pub(crate) fn with(self, other: Features, on: bool) -> Features {
         if on { Features(self.0 | other.0) } else { self }
     }
 
@@ -142,29 +142,20 @@ impl Features {
             })
     }
 
-    /// The features `scene` draws with: every one whose runtime test could
-    /// pass this frame (a superset is always safe; a missing one would
-    /// leave it undrawn).
+    /// The features `scene` draws with that no world system decides (each
+    /// system adds its own: `systems::features`): every one whose runtime
+    /// test could pass this frame (a superset is always safe; a missing
+    /// one would leave it undrawn).
     pub(crate) fn of(scene: &crate::RenderScene) -> Features {
-        let shore = scene
-            .world
-            .water
-            .iter()
-            .any(|w| w.mesh.is_none() && w.shore.is_some());
         Features::NONE
             .with(
                 Features::WEATHER,
-                scene.atmosphere.surface_weather.is_some() || shore,
+                scene.atmosphere.surface_weather.is_some(),
             )
             .with(Features::LOCAL_LIGHTS, !scene.lighting.lights.is_empty())
             .with(Features::DECALS, !scene.effects.decals.is_empty())
             .with(Features::GI, scene.look.post.gi_probes.is_some())
-            .with(
-                Features::CAUSTICS,
-                scene.world.water.iter().any(|w| w.caustics > 0.0),
-            )
             .with(Features::DEBUG, scene.frame.debug.lit_code() != 0.0)
-            .with(Features::GRASS, !scene.world.grass.is_empty())
             .with(
                 Features::SURFACE,
                 scene.look.stylise.material.surface_uniform()[0] > 0.5,
@@ -172,24 +163,6 @@ impl Features {
             .with(
                 Features::SOFT_SHADOWS,
                 scene.lighting.light.shadow_softness_and_fill().0 > 0.0,
-            )
-            .with(
-                Features::SEA,
-                scene
-                    .world
-                    .water
-                    .iter()
-                    .any(|w| crate::water::ocean(w).is_some()),
-            )
-            .with(
-                Features::FLOW,
-                scene.world.water.iter().any(|w| {
-                    w.flow.length_squared() >= 1e-12 || w.flow_map.is_some() || w.river.is_some()
-                }),
-            )
-            .with(
-                Features::RIPPLES,
-                scene.world.water.iter().any(|w| w.heights.is_some()),
             )
             .with(
                 Features::AREA,
@@ -293,7 +266,7 @@ impl LitFeatures {
 
     /// The override of a single feature (its first, in `NAMES` order).
     #[cfg(test)]
-    fn override_name(self) -> &'static str {
+    pub(crate) fn override_name(self) -> &'static str {
         NAMES
             .iter()
             .find(|(bit, _)| self.0.contains(*bit))
@@ -502,76 +475,6 @@ mod tests {
         assert_eq!(declared, Features::GI);
         assert!(Features::ALL.constants(declared).is_empty());
         assert_eq!(Features::NONE.constants(declared), vec![("OG_GI", 0.0)]);
-    }
-
-    /// The weather on surfaces left out leaves its text too: each module
-    /// that carries it (the standard, physical, grass and terrain lit
-    /// modules) has the stub in its place and the override, which the
-    /// rain's part before it declares (weather_rain.wgsl), false, so no
-    /// pipeline sets it. Another feature left out keeps it.
-    #[test]
-    fn the_weather_left_out_leaves_the_module_text() {
-        let hooks = crate::hooks::default_hooks();
-        for source in [
-            crate::lit_source_with(&hooks, false),
-            crate::physical_source(&hooks),
-            crate::grass::lit_source(),
-            crate::terrain::terrain_lit_source("", "", ""),
-        ] {
-            assert!(source.contains(crate::WEATHER_SURFACE_WGSL));
-            let others = Features::GI | Features::AREA | Features::DECALS | Features::CAUSTICS;
-            assert!(
-                others
-                    .leave_out(source.clone())
-                    .contains(crate::WEATHER_SURFACE_WGSL)
-            );
-            let lean = Features::WEATHER.leave_out(source.clone());
-            assert!(!lean.contains(crate::WEATHER_SURFACE_WGSL));
-            assert!(!lean.contains("fn weather_streaks("));
-            assert!(lean.contains("override OG_WEATHER: bool = false;"));
-            // (`true` to `false` in the override is one character more.)
-            assert_eq!(
-                source.len() + 1 - lean.len(),
-                crate::WEATHER_SURFACE_WGSL.len() - crate::WEATHER_SURFACE_STUB.len()
-            );
-            assert!(!Features::declared(&lean).contains(Features::WEATHER));
-        }
-    }
-
-    /// Each listed feature is an override the lit modules declare (a
-    /// renamed constant or a feature whose code is not behind one would
-    /// leave its code in every pipeline), and leaving every one out leaves
-    /// none of them declared in any of those modules.
-    #[test]
-    fn every_lit_feature_is_an_override_of_the_lit_modules() {
-        let all = LitFeatures::NAMED
-            .iter()
-            .fold(LitFeatures::NONE, |a, (f, _)| a | *f);
-        let hooks = crate::hooks::default_hooks();
-        let modules = [
-            crate::lit_source_with(&hooks, false),
-            crate::physical_source(&hooks),
-            crate::grass::lit_source(),
-        ];
-        for source in &modules {
-            let declared = Features::declared(source);
-            let lean = Features::declared(&all.features().leave_out(source.clone()));
-            for (f, name) in LitFeatures::NAMED {
-                // Grass carries no decals (and nothing else it lacks is
-                // declared there either).
-                if source.contains(&format!("override {}", f.override_name())) {
-                    assert!(declared.contains(f.features()), "{name}");
-                    assert!(!lean.contains(f.features()), "{name} left out");
-                }
-            }
-        }
-        let standard = Features::declared(&modules[0]);
-        for (f, name) in LitFeatures::NAMED {
-            assert!(
-                standard.contains(f.features()),
-                "the standard lit module lacks {name}"
-            );
-        }
     }
 
     /// The IDL's names, each its own feature.
