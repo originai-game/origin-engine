@@ -21,6 +21,7 @@ Token `og.Trail`, registered under the schema name `og.Trail`; its value type is
 | `colorEnd` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The linear colour at the tail. |
 | `opacityEnd` | `number` | `0` | 0 … 1 | — | — | The alpha at the tail. |
 | `texture` | `Texture` | `0` | — | — | — | A texture along the strip; 0 is solid. |
+| `effect` | `EffectMaterial` | `0` | — | — | — | An effect material (og.load.effect) it is drawn with instead of its texture: scrolling, eroding and fresnel strips (a sword's slash). 0 none. |
 | `uvTile` | `number` | `0` | ≥ 0 | `m` | — | The texture repeats every this many world units; 0 stretches it once over the length. |
 | `blend` | `Blend` | `"additive"` | — | — | — | Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks). |
 | `layered` | `boolean` | `false` | — | — | — | Draw it in the 2D sprite order at `layer` (a sprite's trail over a tile background) instead of with the 3D scene. |
@@ -66,6 +67,7 @@ component Trail {
     max 1
   }
   field texture Texture "A texture along the strip; 0 is solid."
+  field effect EffectMaterial "An effect material (og.load.effect) it is drawn with instead of its texture: scrolling, eroding and fresnel strips (a sword's slash). 0 none."
   field uvTile f32 "The texture repeats every this many world units; 0 stretches it once over the length." {
     min 0
     unit m
@@ -78,4 +80,4 @@ component Trail {
 }
 ```
 
-<sub>Module `render` line 2225</sub>
+<sub>Module `render` line 2233</sub>

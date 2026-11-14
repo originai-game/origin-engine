@@ -1533,6 +1533,12 @@ pub fn og_load_emitter(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_emitter(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_effect")]
+pub fn og_load_effect(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_effect(&Host, world, path)
+}
+
 #[napi(js_name = "og_load_shader")]
 pub fn og_load_shader(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);

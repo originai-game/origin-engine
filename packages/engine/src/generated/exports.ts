@@ -38,6 +38,7 @@ export const Texture = ((value = 0 as Api.Texture, options) => spec("Texture", v
 export const Lut = ((value = 0 as Api.Lut, options) => spec("Lut", value, options)) as typeof Api.Lut;
 export const EnvironmentMap = ((value = 0 as Api.EnvironmentMap, options) => spec("EnvironmentMap", value, options)) as typeof Api.EnvironmentMap;
 export const ParticleEmitter = ((value = 0 as Api.ParticleEmitter, options) => spec("ParticleEmitter", value, options)) as typeof Api.ParticleEmitter;
+export const EffectMaterial = ((value = 0 as Api.EffectMaterial, options) => spec("EffectMaterial", value, options)) as typeof Api.EffectMaterial;
 export const AoMethod = ((value = "auto" as Api.AoMethod, options) => spec("AoMethod", value, options)) as typeof Api.AoMethod;
 export const AoResolution = ((value = "full" as Api.AoResolution, options) => spec("AoResolution", value, options)) as typeof Api.AoResolution;
 export const DofQuality = ((value = "low" as Api.DofQuality, options) => spec("DofQuality", value, options)) as typeof Api.DofQuality;

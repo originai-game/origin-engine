@@ -28,4 +28,4 @@ fn completions {
 }
 ```
 
-<sub>Module `load` line 622</sub>
+<sub>Module `load` line 630</sub>

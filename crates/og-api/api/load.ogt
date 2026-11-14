@@ -302,6 +302,14 @@ module load {
     returns Result.ParticleEmitter "Refused for a path not in the bundle, or a texture, texture array, model or sub-emitter it cannot load."
   }
 
+  fn effect {
+    doc "An effect material for og.Trail.effect and og.Beam.effect, from a cooked `.ogt` of `type effect` (the file emitters and composed effects name with `effect`): its textures, UV motion, erosion, fresnel and hook shader, loaded with it. Loaded once per path."
+    guide "effect-files §2"
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `fx/slash.ogt`."
+    returns Result.EffectMaterial "Refused for a path not in the bundle, not an effect, or a texture or shader it cannot load."
+  }
+
   fn shader {
     doc "A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end): `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines its own vertex and fragment entries over the binding contract, which the prepass and every shadow pass draw through too. Loaded once per path."
     guide "loading §6"

@@ -197,6 +197,8 @@ export interface ColumnKinds {
   EnvironmentMap: { readonly array: Uint32Array; readonly stride: 2; readonly value: EnvironmentMap };
   /** A ParticleEmitter handle field (0 is none). */
   ParticleEmitter: { readonly array: Uint32Array; readonly stride: 2; readonly value: ParticleEmitter };
+  /** An EffectMaterial handle field (0 is none). */
+  EffectMaterial: { readonly array: Uint32Array; readonly stride: 2; readonly value: EffectMaterial };
   /** An AoMethod field: the variant's index. */
   AoMethod: { readonly array: Uint32Array; readonly stride: 1; readonly value: AoMethod };
   /** An AoResolution field: the variant's index. */
@@ -7427,6 +7429,13 @@ export type EnvironmentMap = number & { readonly [handleType]: "EnvironmentMap" 
 export type ParticleEmitter = number & { readonly [handleType]: "ParticleEmitter" };
 
 /**
+ * An effect material for og.Trail.effect and og.Beam.effect, from og.load.effect (an `.ogt` of `type effect`).
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type EffectMaterial = number & { readonly [handleType]: "EffectMaterial" };
+
+/**
  * A Texture handle field (0 is none).
  *
  * A `Texture` field: stored in a `Uint32Array` with stride 2.
@@ -7564,6 +7573,15 @@ export interface Environment {
  * @param options Range, unit, label, docs and the tunable flag.
  */
 export declare function ParticleEmitter(value?: ParticleEmitter, options?: FieldOptions): FieldSpec<"ParticleEmitter">;
+
+/**
+ * An EffectMaterial handle field (0 is none).
+ *
+ * A `EffectMaterial` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function EffectMaterial(value?: EffectMaterial, options?: FieldOptions): FieldSpec<"EffectMaterial">;
 
 /**
  * Which ambient occlusion algorithm runs.
@@ -9600,6 +9618,10 @@ export interface Trail {
   /** A texture along the strip; 0 is solid. */
   texture: Texture;
   /**
+   * An effect material (og.load.effect) it is drawn with instead of its texture: scrolling, eroding and fresnel strips (a sword's slash). 0 none.
+   */
+  effect: EffectMaterial;
+  /**
    * The texture repeats every this many world units; 0 stretches it once over the length.
    *
    * @range 0..
@@ -9655,8 +9677,14 @@ export interface Beam {
    * @range 0..1
    */
   opacity: number;
+  /**
+   * An entity the far end follows (a tether's other end, a laser on its mark): its position each frame instead of `end`. 0 uses `end`; a despawned target draws no beam.
+   */
+  target: Entity;
   /** A texture along the beam; 0 is solid. */
   texture: Texture;
+  /** An effect material (og.load.effect) it is drawn with instead of its texture. 0 none. */
+  effect: EffectMaterial;
   /**
    * The texture repeats every this many world units along the beam, as a trail's; 0 stretches it once from the entity to `end`.
    *
@@ -13295,6 +13323,7 @@ export interface EnvironmentSun {
    */
   readonly intensity: number;
 }
+
 
 
 
@@ -33819,11 +33848,11 @@ export declare namespace og {
   /**
    * A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail.
    */
-  const Trail: ComponentType<{ readonly lifetime: FieldSpec<"f32">; readonly minDistance: FieldSpec<"f32">; readonly widthStart: FieldSpec<"f32">; readonly widthEnd: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly colorEnd: FieldSpec<"Color">; readonly opacityEnd: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly uvTile: FieldSpec<"f32">; readonly blend: FieldSpec<"Blend">; readonly layered: FieldSpec<"bool">; readonly layer: FieldSpec<"i32"> }, Trail>;
+  const Trail: ComponentType<{ readonly lifetime: FieldSpec<"f32">; readonly minDistance: FieldSpec<"f32">; readonly widthStart: FieldSpec<"f32">; readonly widthEnd: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly colorEnd: FieldSpec<"Color">; readonly opacityEnd: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly effect: FieldSpec<"EffectMaterial">; readonly uvTile: FieldSpec<"f32">; readonly blend: FieldSpec<"Blend">; readonly layered: FieldSpec<"bool">; readonly layer: FieldSpec<"i32"> }, Trail>;
   /**
    * A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter).
    */
-  const Beam: ComponentType<{ readonly end: FieldSpec<"Vector3">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly uvTile: FieldSpec<"f32">; readonly scroll: FieldSpec<"f32">; readonly segments: FieldSpec<"u32">; readonly jitter: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly blend: FieldSpec<"Blend"> }, Beam>;
+  const Beam: ComponentType<{ readonly end: FieldSpec<"Vector3">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly target: FieldSpec<"Entity">; readonly texture: FieldSpec<"Texture">; readonly effect: FieldSpec<"EffectMaterial">; readonly uvTile: FieldSpec<"f32">; readonly scroll: FieldSpec<"f32">; readonly segments: FieldSpec<"u32">; readonly jitter: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly blend: FieldSpec<"Blend"> }, Beam>;
   /**
    * A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.
    * Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.
@@ -34410,6 +34439,15 @@ export declare namespace og {
      * @returns Refused for a path not in the bundle, or a texture, texture array, model or sub-emitter it cannot load.
      */
     function emitter(world: World, path: string): Result<ParticleEmitter>;
+    /**
+     * An effect material for og.Trail.effect and og.Beam.effect, from a cooked `.ogt` of `type effect` (the file emitters and composed effects name with `effect`): its textures, UV motion, erosion, fresnel and hook shader, loaded with it. Loaded once per path.
+     * See `effect-files §2`.
+     *
+     * @param world The world whose renderer owns it.
+     * @param path The asset id, such as `fx/slash.ogt`.
+     * @returns Refused for a path not in the bundle, not an effect, or a texture or shader it cannot load.
+     */
+    function effect(world: World, path: string): Result<EffectMaterial>;
     /**
      * A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end): `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines its own vertex and fragment entries over the binding contract, which the prepass and every shadow pass draw through too. Loaded once per path.
      * See `loading §6`.

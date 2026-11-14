@@ -516,6 +516,8 @@ export interface HostAbi<A, V> {
   og_load_environment_sun(world: number, map: number): string;
   /** `og.load.emitter` */
   og_load_emitter(world: number, path: string): string;
+  /** `og.load.effect` */
+  og_load_effect(world: number, path: string): string;
   /** `og.load.shader` */
   og_load_shader(world: number, path: string): string;
   /** `og.load.post` */
@@ -1539,6 +1541,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_environment",
   "og_load_environment_sun",
   "og_load_emitter",
+  "og_load_effect",
   "og_load_shader",
   "og_load_post",
   "og_load_vector",

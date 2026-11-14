@@ -12,7 +12,7 @@ See `loading §1`.
 
 - **TypeScript**: functions are the namespace `og.load`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.document`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 66 more are advanced (`og api show load --all`).
+- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.document`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 67 more are advanced (`og api show load --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -63,6 +63,7 @@ module load {
 | [`EnvironmentSun`](load/type-EnvironmentSun.md) | struct |  | The sun a cooked environment's `sun extract` took out of its image, for the DirectionalLight that puts it back. |
 | [`og.load.environmentSun`](load/fn-environmentSun.md) | function | `(world: World, map: EnvironmentMap): Result<EnvironmentSun>` | The sun a cooked environment map holds apart from its image (`sun extract` in its `.ogt`): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows an… |
 | [`og.load.emitter`](load/fn-emitter.md) | function | `(world: World, path: string): Result<ParticleEmitter>` | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles`: its shape, emission, motion, look, rendering (billboards, meshes or 2D sprites), collision, sub-emitters… |
+| [`og.load.effect`](load/fn-effect.md) | function | `(world: World, path: string): Result<EffectMaterial>` | An effect material for og.Trail.effect and og.Beam.effect, from a cooked `.ogt` of `type effect` (the file emitters and composed effects name with `effect`): its textures, UV motion, erosion, fresnel… |
 | [`og.load.shader`](load/fn-shader.md) | function | `(world: World, path: string): Result<Shader>` | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end): `mode hooks` (the default) defines hooks of the lit shader; `… |
 | [`og.load.post`](load/fn-post.md) | function | `(world: World, path: string): Result<Post>` | A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> flo… |
 | [`og.load.vector`](load/fn-vector.md) | function | `(world: World, path: string): Result<VectorArt>` | A cooked vector for og.ui's VectorFill, from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and… |

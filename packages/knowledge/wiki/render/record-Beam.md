@@ -18,7 +18,9 @@ Token `og.Beam`, registered under the schema name `og.Beam`; its value type is `
 | `width` | `number` | `0.1` | ≥ 0 | `m` | tunable | The beam's width. |
 | `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The linear colour; above 1 blooms. |
 | `opacity` | `number` | `1` | 0 … 1 | — | — | The alpha. |
+| `target` | `Entity` | `0` | — | — | — | An entity the far end follows (a tether's other end, a laser on its mark): its position each frame instead of `end`. 0 uses `end`; a despawned target draws no beam. |
 | `texture` | `Texture` | `0` | — | — | — | A texture along the beam; 0 is solid. |
+| `effect` | `EffectMaterial` | `0` | — | — | — | An effect material (og.load.effect) it is drawn with instead of its texture. 0 none. |
 | `uvTile` | `number` | `1` | ≥ 0 | `m` | — | The texture repeats every this many world units along the beam, as a trail's; 0 stretches it once from the entity to `end`. |
 | `scroll` | `number` | `0` | — | — | tunable | Texture scroll in repeats per second (a whole beam is one repeat when uvTile is 0). |
 | `segments` | `number` | `1` | 1 … 64 | — | — | Segments: 1 is straight, more let jitter bend it. |
@@ -48,7 +50,9 @@ component Beam {
     min 0
     max 1
   }
+  field target Entity "An entity the far end follows (a tether's other end, a laser on its mark): its position each frame instead of `end`. 0 uses `end`; a despawned target draws no beam."
   field texture Texture "A texture along the beam; 0 is solid."
+  field effect EffectMaterial "An effect material (og.load.effect) it is drawn with instead of its texture. 0 none."
   field uvTile f32 "The texture repeats every this many world units along the beam, as a trail's; 0 stretches it once from the entity to `end`." {
     default 1
     min 0
@@ -73,4 +77,4 @@ component Beam {
 }
 ```
 
-<sub>Module `render` line 2275</sub>
+<sub>Module `render` line 2284</sub>

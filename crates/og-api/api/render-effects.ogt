@@ -3,6 +3,7 @@
   handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
   handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`, a KTX2 cube map, or six face images)."
   handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
+  handle EffectMaterial "An effect material for og.Trail.effect and og.Beam.effect, from og.load.effect (an `.ogt` of `type effect`)."
 
   column Texture {
     doc "A Texture handle field (0 is none)."
@@ -91,6 +92,13 @@
     array Uint32Array
     stride 2
     value ParticleEmitter
+  }
+
+  column EffectMaterial {
+    doc "An EffectMaterial handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value EffectMaterial
   }
 
   enum AoMethod {

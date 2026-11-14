@@ -1279,6 +1279,11 @@ pub fn og_load_emitter(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_effect(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_effect(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_load_shader(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_shader(&Host, world, path)
 }

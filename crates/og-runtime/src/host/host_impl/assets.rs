@@ -91,6 +91,9 @@ macro_rules! __og_host_bindings_assets {
             fn og_load_emitter(&self, world: u32, path: String) -> String {
                 $crate::host_impl::answer($crate::og_load_emitter(world, path))
             }
+            fn og_load_effect(&self, world: u32, path: String) -> String {
+                $crate::host_impl::answer($crate::og_load_effect(world, path))
+            }
             fn og_load_style(&self, world: u32, path: String) -> String {
                 $crate::host_impl::answer($crate::og_load_style(world, path))
             }

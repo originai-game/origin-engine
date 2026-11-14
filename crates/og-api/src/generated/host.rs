@@ -583,6 +583,8 @@ pub trait LoadApi: Wire {
     fn og_load_environment_sun(&self, world: u32, map: f64) -> String;
     /// `og.load.emitter`
     fn og_load_emitter(&self, world: u32, path: String) -> String;
+    /// `og.load.effect`
+    fn og_load_effect(&self, world: u32, path: String) -> String;
     /// `og.load.shader`
     fn og_load_shader(&self, world: u32, path: String) -> String;
     /// `og.load.post`
@@ -1715,6 +1717,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_environment",
     "og_load_environment_sun",
     "og_load_emitter",
+    "og_load_effect",
     "og_load_shader",
     "og_load_post",
     "og_load_vector",

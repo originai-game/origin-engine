@@ -367,6 +367,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         textures,
         texture_arrays,
         draw,
+        effects,
         ..
     } = rs;
     let layouts = &draw.fx;
@@ -384,6 +385,10 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
     let texture =
         |h: u64| crate::world::assets::index_of(h as f64).and_then(|i| textures.get(i).copied());
     let rgb = |c: &wire::Color| Vec3::new(c.r, c.g, c.b);
+    // og.load.effect's handle: its load index.
+    let effect = |h: u64| {
+        crate::world::assets::index_of(h as f64).and_then(|i| effects.handles.get(i).copied())
+    };
     // Time groups (og.TimeGroups), once a game uses them.
     let groups = world.time_groups();
     for (e, v) in rows(world, layouts.light_2d.as_ref()) {
@@ -560,7 +565,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             } else {
                 ParticleBlend::Alpha
             },
-            effect: None,
+            effect: effect(v.effect),
         };
         let key = style_key(&style);
         let handle = match fx.trail_styles.get(&key) {
@@ -585,10 +590,17 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         let Ok(v) = record::Beam::from_json(&v) else {
             continue;
         };
+        // Its far end at its target's place, or `end`; a target gone
+        // draws no beam.
+        let end = match v.target {
+            0 => v.end,
+            t if world.is_alive(og_ecs::Entity::from_bits(t)) => h.world_of(t).w_axis.truncate(),
+            _ => continue,
+        };
         let c = &v.color;
         scene.effects.beams.push(Beam {
             start: h.world_of(e).w_axis.truncate(),
-            end: v.end,
+            end,
             width: v.width,
             color: [c.r, c.g, c.b, v.opacity],
             texture: texture(v.texture),
@@ -606,7 +618,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             } else {
                 ParticleBlend::Alpha
             },
-            effect: None,
+            effect: effect(v.effect),
         });
     }
 }
@@ -632,6 +644,8 @@ pub(crate) fn style_key(s: &TrailStyle) -> Vec<u32> {
         RibbonUv::Tile { length } => length.to_bits(),
     });
     k.push(s.blend as u32);
+    // Two trails differing only in their effect material are two styles.
+    k.push(s.effect.map_or(u32::MAX, |m| m.index() as u32));
     k
 }
 

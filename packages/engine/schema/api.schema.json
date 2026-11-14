@@ -4695,11 +4695,13 @@
         "Lut",
         "EnvironmentMap",
         "ParticleEmitter",
+        "EffectMaterial",
         "Texture",
         "Lut",
         "EnvironmentMap",
         "Environment",
         "ParticleEmitter",
+        "EffectMaterial",
         "AoMethod",
         "AoMethod",
         "AoResolution",
@@ -6748,6 +6750,27 @@
           ],
           "returns": "Result<ParticleEmitter>",
           "returnsDoc": "Refused for a path not in the bundle, or a texture, texture array, model or sub-emitter it cannot load.",
+          "publish": true
+        },
+        {
+          "name": "effect",
+          "doc": "An effect material for og.Trail.effect and og.Beam.effect, from a cooked `.ogt` of `type effect` (the file emitters and composed effects name with `effect`): its textures, UV motion, erosion, fresnel and hook shader, loaded with it. Loaded once per path.\nSee `effect-files §2`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The asset id, such as `fx/slash.ogt`."
+            }
+          ],
+          "returns": "Result<EffectMaterial>",
+          "returnsDoc": "Refused for a path not in the bundle, not an effect, or a texture or shader it cannot load.",
           "publish": true
         },
         {
@@ -23863,6 +23886,13 @@
       "type": "integer",
       "minimum": 0
     },
+    "EffectMaterial": {
+      "x-og-kind": "handle",
+      "x-og-module": "render",
+      "description": "An effect material for og.Trail.effect and og.Beam.effect, from og.load.effect (an `.ogt` of `type effect`).",
+      "type": "integer",
+      "minimum": 0
+    },
     "Environment": {
       "x-og-kind": "resource",
       "x-og-module": "render",
@@ -26197,6 +26227,11 @@
           "description": "A texture along the strip; 0 is solid.",
           "default": 0
         },
+        "effect": {
+          "$ref": "#/$defs/EffectMaterial",
+          "description": "An effect material (og.load.effect) it is drawn with instead of its texture: scrolling, eroding and fresnel strips (a sword's slash). 0 none.",
+          "default": 0
+        },
         "uvTile": {
           "type": "number",
           "description": "The texture repeats every this many world units; 0 stretches it once over the length.",
@@ -26265,9 +26300,19 @@
           "minimum": 0,
           "maximum": 1
         },
+        "target": {
+          "$ref": "#/$defs/Entity",
+          "description": "An entity the far end follows (a tether's other end, a laser on its mark): its position each frame instead of `end`. 0 uses `end`; a despawned target draws no beam.",
+          "default": 0
+        },
         "texture": {
           "$ref": "#/$defs/Texture",
           "description": "A texture along the beam; 0 is solid.",
+          "default": 0
+        },
+        "effect": {
+          "$ref": "#/$defs/EffectMaterial",
+          "description": "An effect material (og.load.effect) it is drawn with instead of its texture. 0 none.",
           "default": 0
         },
         "uvTile": {

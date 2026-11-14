@@ -5,9 +5,10 @@
 use og_render::RenderScene;
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_game_game,
-    og_host_begin_bundle, og_load_vfx, og_system_define_system, og_vfx_info, og_vfx_spawn,
-    og_world_alive, og_world_events, og_world_get_tick, og_world_restore, og_world_snapshot,
-    set_hooks, set_render_backend,
+    og_host_begin_bundle, og_load_effect, og_load_vfx, og_system_define_system, og_vfx_info,
+    og_vfx_spawn, og_world_alive, og_world_despawn, og_world_events, og_world_get_tick,
+    og_world_insert, og_world_restore, og_world_snapshot, og_world_spawn, set_hooks,
+    set_render_backend,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -464,4 +465,100 @@ fn a_params_value_given_at_spawn_gates_the_element_that_names_it() {
     let d = drawn.borrow().clone();
     let last = d.last().expect("a frame");
     assert_eq!((last.2, last.3), (1, 2), "one ring, two lights: {d:?}");
+}
+
+/// Per frame: each beam's (end, drawn with an effect material) and each
+/// trail's style.
+type Ribbons = Rc<RefCell<Vec<(Vec<([f32; 3], bool)>, Vec<u32>)>>>;
+
+struct RibbonRecorder(Ribbons);
+
+impl RenderBackend for RibbonRecorder {
+    fn tier(&self) -> String {
+        "none".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (320, 180)
+    }
+    fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+        self.0.borrow_mut().push((
+            scene
+                .effects
+                .beams
+                .iter()
+                .map(|b| (b.end.to_array(), b.effect.is_some()))
+                .collect(),
+            scene
+                .effects
+                .trails
+                .iter()
+                .map(|t| t.style.index() as u32)
+                .collect(),
+        ));
+        Ok(())
+    }
+    fn frame_stats(&self) -> og_render::FrameStats {
+        Default::default()
+    }
+    fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
+        None
+    }
+}
+
+/// og.load.effect's material reaches the beam and the trail that name it,
+/// and a beam's far end follows its target: drawn at the target's place,
+/// not `end`, and not drawn once the target is gone. Two trails that
+/// differ only in their material are drawn with two styles.
+#[test]
+fn a_beam_follows_its_target_and_ribbons_draw_their_effect_material() {
+    set_hooks(Rc::new(Game(Seen::default())));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(json!({ "seed": 5 }).to_string()));
+    let options = json!({ "root": project().to_str().unwrap() }).to_string();
+    let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let seen = Ribbons::default();
+    set_render_backend(engine, Some(Box::new(RibbonRecorder(seen.clone())))).unwrap();
+    ticks(engine, 1);
+    let shock = value(og_runtime::host_impl::answer(og_load_effect(
+        engine,
+        "fx/shock.ogt".into(),
+    )));
+    let spawn = |x: f32| {
+        value(og_runtime::host_impl::answer(og_world_spawn(
+            engine,
+            Some(json!({ "position": { "x": x, "y": 0, "z": 0 } }).to_string()),
+        )))
+        .as_f64()
+        .unwrap()
+    };
+    let insert = |e: f64, component: &str, v: Value| {
+        value(og_runtime::host_impl::answer(og_world_insert(
+            engine,
+            e,
+            component.into(),
+            Some(v.to_string()),
+        )));
+    };
+    let target = spawn(4.0);
+    let beam = spawn(0.0);
+    insert(
+        beam,
+        "og.Beam",
+        json!({ "target": target, "end": { "x": 0, "y": 9, "z": 0 }, "effect": shock }),
+    );
+    for (x, material) in [(1.0, json!(shock)), (2.0, json!(0))] {
+        let t = spawn(x);
+        insert(t, "og.Trail", json!({ "effect": material }));
+    }
+    ticks(engine, 2);
+    let (beams, trails) = seen.borrow().last().cloned().expect("a frame");
+    assert_eq!(beams, vec![([4.0, 0.0, 0.0], true)], "at its target");
+    assert_eq!(trails.len(), 2);
+    assert_ne!(trails[0], trails[1], "a material makes its own style");
+    value(og_runtime::host_impl::answer(og_world_despawn(
+        engine, target,
+    )));
+    ticks(engine, 2);
+    let (beams, _) = seen.borrow().last().cloned().expect("a frame");
+    assert!(beams.is_empty(), "a gone target draws no beam: {beams:?}");
 }

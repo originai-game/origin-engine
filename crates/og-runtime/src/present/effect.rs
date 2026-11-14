@@ -20,9 +20,16 @@ pub(crate) fn load_effect(
     eng: &crate::engine::Engine,
     path: &str,
 ) -> Result<og_render::EffectMaterialHandle, String> {
+    let i = load_effect_index(eng, path)?;
+    Ok(eng.render.borrow().effects.handles[i])
+}
+
+/// An effect material's load index (og.load.effect's handle is
+/// `assets::handle` of it), loaded once per path.
+pub(crate) fn load_effect_index(eng: &crate::engine::Engine, path: &str) -> Result<usize, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(&i) = eng.render.borrow().effects.paths.get(&id) {
-        return Ok(eng.render.borrow().effects.handles[i]);
+        return Ok(i);
     }
     let text = {
         let assets = eng.assets.borrow();
@@ -53,5 +60,5 @@ pub(crate) fn load_effect(
     rs.effects.handles.push(h);
     let i = rs.effects.handles.len() - 1;
     rs.effects.paths.insert(id, i);
-    Ok(h)
+    Ok(i)
 }

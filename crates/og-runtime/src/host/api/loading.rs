@@ -185,6 +185,11 @@ pub fn og_load_emitter(world: u32, path: String) -> Result<serde_json::Value, St
     engine(world).and_then(|eng| super::fx::load_emitter(&eng, &path).map(asset_value))
 }
 
+pub fn og_load_effect(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world)
+        .and_then(|eng| crate::present::effect::load_effect_index(&eng, &path).map(asset_value))
+}
+
 pub fn og_load_font(world: u32, path: String) -> Result<serde_json::Value, String> {
     engine(world).and_then(|eng| assets::load_font(&eng, &path).map(asset_value))
 }
