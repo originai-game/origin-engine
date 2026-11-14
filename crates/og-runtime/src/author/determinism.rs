@@ -248,6 +248,21 @@ pub fn anim_hash() -> u64 {
     h.finish()
 }
 
+/// What [`text_layout_hash`] lays out: a paragraph that breaks, one whose
+/// scripts fall back, and one with a styled run and an action's glyph.
+const TEXT_LAYOUT: &str = r#"<meta name="component" content="text-layout">
+<meta name="prop:width" content="string">
+<meta name="prop:plain" content="string">
+<meta name="prop:fallback" content="string">
+<column>
+  <p id="Plain" style:width={width}>{plain}</p>
+  <p id="Fallback" style:width={width}>{fallback}</p>
+  <p id="Rich" style:width={width}>office <span part="hot">affine</span> <kbd data-action="jump"></kbd> end</p>
+</column>
+<style>
+#Rich::part(hot) { color: var(--danger); }
+</style>"#;
+
 /// Actual paragraph positions, fallback glyphs and rich inline boxes, with
 /// the same cooked OpenType bytes on both hosts. No renderer or system fonts.
 pub fn text_layout_hash() -> u64 {
@@ -303,34 +318,25 @@ pub fn text_layout_hash() -> u64 {
         keys: vec!["Space".into()],
         ..Default::default()
     });
+    ui.define_document(UiDocument::parse("text-layout.svelte", TEXT_LAYOUT).expect("it parses"));
+    let mount = og_ui::reactive::SourceId::new("og.determinism", "text");
     let mut h = StableHasher::new();
-    for width in [53.25, 91.75, 231.5] {
-        ui.begin(InputFrame::default(), Viewport::new(640.0, 480.0));
-        ui.label(
-            "Plain",
-            "office cafe\u{301}\tA\u{a0}B a/b-c\u{200b}def ab\u{ad}cdef",
-            LabelDesc {
-                width: Size::Fixed(width),
-                ..Default::default()
-            },
-        );
-        ui.label(
-            "Fallback",
-            "مرحبا 42 नमस्ते",
-            LabelDesc {
-                width: Size::Fixed(width),
-                ..Default::default()
-            },
-        );
-        ui.rich_text(
-            "Rich",
-            "office [color=#ff0000]affine[/color] [action=jump] end",
-            RichTextDesc {
-                width: Size::Fixed(width),
-                ..Default::default()
-            },
-        );
-        ui.end();
+    for width in ["53.25px", "91.75px", "231.5px"] {
+        let values = serde_json::json!({
+            "width": width,
+            "plain": "office cafe\u{301}\tA\u{a0}B a/b-c\u{200b}def ab\u{ad}cdef",
+            "fallback": "مرحبا 42 नमस्ते",
+        });
+        ui.mount_with_values(mount.clone(), "text-layout", &values)
+            .expect("it mounts");
+        // The frame it is built in, then the frame it is laid out in.
+        for _ in 0..2 {
+            ui.begin(InputFrame::default(), Viewport::new(640.0, 480.0));
+            ui.build_retained_documents(&bind::NoEnv)
+                .expect("it builds");
+            ui.end();
+        }
+        ui.unmount_document(&mount);
         for item in &ui.frame().items {
             if let DrawCmd::Text {
                 text,
