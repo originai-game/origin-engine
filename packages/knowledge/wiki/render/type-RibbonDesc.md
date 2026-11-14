@@ -15,7 +15,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `points` | `readonly RibbonPoint[]` | `[]` | — | — | — | The points, in order (at least two). |
 | `texture` | `Texture \| null` | `null` | — | — | — | A texture along the strip; null is solid. |
 | `uvTile` | `number` | `0` | ≥ 0 | `m` | — | The texture repeats every this many world units; 0 stretches it once. |
-| `blend` | `StripBlend` | `"additive"` | — | — | — | Additive or alpha blended. |
+| `blend` | `Blend` | `"additive"` | — | — | — | Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks). |
 
 ```ogt
 struct RibbonDesc {
@@ -27,8 +27,10 @@ struct RibbonDesc {
     min 0
     unit m
   }
-  field blend StripBlend "Additive or alpha blended."
+  field blend Blend "Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks)." {
+    default additive
+  }
 }
 ```
 
-<sub>Module `render` line 2349</sub>
+<sub>Module `render` line 2340</sub>

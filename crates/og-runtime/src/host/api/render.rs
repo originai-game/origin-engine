@@ -733,7 +733,7 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> Result<(), String> 
                 },
                 flash,
                 glow: d.glow.max(0.0),
-                additive: d.blend == wire::SpriteBlend::Additive,
+                additive: d.blend == wire::Blend::Additive,
                 cast_shadow: i == 0 && d.cast_shadow,
                 screen,
                 clip: d.clip,
@@ -788,7 +788,7 @@ pub fn og_render_ribbon(world: u32, desc: Option<String>) -> Result<(), String> 
             } else {
                 og_render::RibbonUv::Stretch
             },
-            blend: if d.blend == wire::StripBlend::Alpha {
+            blend: if d.blend == wire::Blend::Alpha {
                 og_render::ParticleBlend::Alpha
             } else {
                 og_render::ParticleBlend::Additive

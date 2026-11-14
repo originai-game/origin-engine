@@ -56,7 +56,7 @@ Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type 
 | `flash` | `number` | `0` | 0 … 1 | — | tunable | A hit flash: the colour mixed towards flashColor by this much (og.tween.flash fades it out). |
 | `flashColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The flash's linear colour. |
 | `glow` | `number` | `0` | ≥ 0 | — | — | Strength in the 2D glow buffer (PostEffects.glow); 0 none. |
-| `blend` | `SpriteBlend` | `"alpha"` | — | — | — | Alpha or additive. |
+| `blend` | `Blend` | `"alpha"` | — | — | — | Alpha (the default) or additive. |
 
 #### 2D light
 
@@ -171,7 +171,7 @@ component Sprite {
   field glow f32 "Strength in the 2D glow buffer (PostEffects.glow); 0 none." {
     min 0
   }
-  field blend SpriteBlend "Alpha or additive."
+  field blend Blend "Alpha (the default) or additive."
   group "2D light"
   field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
   group "Nine-slice"
@@ -234,4 +234,4 @@ component Sprite {
 }
 ```
 
-<sub>Module `render` line 2513</sub>
+<sub>Module `render` line 2506</sub>

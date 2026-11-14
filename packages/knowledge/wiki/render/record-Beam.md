@@ -24,7 +24,7 @@ Token `og.Beam`, registered under the schema name `og.Beam`; its value type is `
 | `segments` | `number` | `1` | 1 … 64 | — | — | Segments: 1 is straight, more let jitter bend it. |
 | `jitter` | `number` | `0` | ≥ 0 | `m` | — | Sideways jitter in world units, new every tick (lightning). |
 | `seed` | `number` | `0` | — | — | — | The jitter's seed. |
-| `blend` | `StripBlend` | `"additive"` | — | — | — | Additive or alpha blended. |
+| `blend` | `Blend` | `"additive"` | — | — | — | Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks). |
 
 ```ogt
 component Beam {
@@ -66,8 +66,10 @@ component Beam {
     unit m
   }
   field seed u32 "The jitter's seed."
-  field blend StripBlend "Additive or alpha blended."
+  field blend Blend "Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks)." {
+    default additive
+  }
 }
 ```
 
-<sub>Module `render` line 2286</sub>
+<sub>Module `render` line 2275</sub>

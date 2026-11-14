@@ -4680,15 +4680,15 @@ impl ToJson for ScreenBlur {
     }
 }
 
-/// `SpriteBlend`: packages/knowledge/wiki/render.md.
+/// `Blend`: packages/knowledge/wiki/render.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum SpriteBlend {
+pub enum Blend {
     #[default]
     Alpha,
     Additive,
 }
 
-impl SpriteBlend {
+impl Blend {
     /// The variants' IDL names, in index order.
     pub const NAMES: &'static [&'static str] = &["alpha", "additive"];
     /// Every variant, in index order.
@@ -4701,18 +4701,18 @@ impl SpriteBlend {
     pub fn parse(s: &str) -> Result<Self, String> {
         match Self::NAMES.iter().position(|n| *n == s) {
             Some(i) => Ok(Self::ALL[i]),
-            None => Err(unknown_variant("SpriteBlend", s, Self::NAMES)),
+            None => Err(unknown_variant("Blend", s, Self::NAMES)),
         }
     }
 }
 
-impl FromJson for SpriteBlend {
+impl FromJson for Blend {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(variant(v, "SpriteBlend", Self::NAMES)?)
+        Self::parse(variant(v, "Blend", Self::NAMES)?)
     }
 }
 
-impl ToJson for SpriteBlend {
+impl ToJson for Blend {
     fn to_json(&self) -> Value {
         Value::String(self.as_str().into())
     }
@@ -4752,44 +4752,6 @@ impl FromJson for SpriteFacing {
 }
 
 impl ToJson for SpriteFacing {
-    fn to_json(&self) -> Value {
-        Value::String(self.as_str().into())
-    }
-}
-
-/// `StripBlend`: packages/knowledge/wiki/render.md.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum StripBlend {
-    #[default]
-    Additive,
-    Alpha,
-}
-
-impl StripBlend {
-    /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["additive", "alpha"];
-    /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::Additive, Self::Alpha];
-    /// The IDL name.
-    pub fn as_str(self) -> &'static str {
-        Self::NAMES[self as usize]
-    }
-    /// The variant named `s`, or a refusal naming them all.
-    pub fn parse(s: &str) -> Result<Self, String> {
-        match Self::NAMES.iter().position(|n| *n == s) {
-            Some(i) => Ok(Self::ALL[i]),
-            None => Err(unknown_variant("StripBlend", s, Self::NAMES)),
-        }
-    }
-}
-
-impl FromJson for StripBlend {
-    fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(variant(v, "StripBlend", Self::NAMES)?)
-    }
-}
-
-impl ToJson for StripBlend {
     fn to_json(&self) -> Value {
         Value::String(self.as_str().into())
     }
@@ -5301,7 +5263,7 @@ pub struct RibbonDesc {
     pub points: Vec<RibbonPoint>,
     pub texture: Option<u64>,
     pub uv_tile: f32,
-    pub blend: StripBlend,
+    pub blend: Blend,
 }
 
 impl Default for RibbonDesc {
@@ -5310,7 +5272,7 @@ impl Default for RibbonDesc {
             points: Default::default(),
             texture: Default::default(),
             uv_tile: Default::default(),
-            blend: Default::default(),
+            blend: Blend::Additive,
         }
     }
 }
@@ -5529,7 +5491,7 @@ pub struct SpriteDesc {
     pub flash: f32,
     pub flash_color: Color,
     pub glow: f32,
-    pub blend: SpriteBlend,
+    pub blend: Blend,
     pub cast_shadow: bool,
     pub drop_shadow: f32,
     pub drop_shadow_height: f32,
@@ -29697,7 +29659,7 @@ pub mod record {
         pub opacity_end: f32,
         pub texture: u64,
         pub uv_tile: f32,
-        pub blend: StripBlend,
+        pub blend: Blend,
         pub layered: bool,
         pub layer: i32,
     }
@@ -29715,7 +29677,7 @@ pub mod record {
                 opacity_end: Default::default(),
                 texture: Default::default(),
                 uv_tile: Default::default(),
-                blend: Default::default(),
+                blend: Blend::Additive,
                 layered: Default::default(),
                 layer: Default::default(),
             }
@@ -29759,7 +29721,7 @@ pub mod record {
         pub segments: u32,
         pub jitter: f32,
         pub seed: u32,
-        pub blend: StripBlend,
+        pub blend: Blend,
     }
 
     impl Default for Beam {
@@ -29775,7 +29737,7 @@ pub mod record {
                 segments: 1,
                 jitter: Default::default(),
                 seed: Default::default(),
-                blend: Default::default(),
+                blend: Blend::Additive,
             }
         }
     }
@@ -29823,7 +29785,7 @@ pub mod record {
         pub flash: f32,
         pub flash_color: Color,
         pub glow: f32,
-        pub blend: SpriteBlend,
+        pub blend: Blend,
         pub cast_shadow: bool,
         pub slice_x: Vec2,
         pub slice_y: Vec2,

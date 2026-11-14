@@ -543,7 +543,71 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         note: "codes become enums: drive is a VehicleDrive and model a VehicleModel, their saved codes the variants' indices",
         run: Some(|e| enumerated(e, "og.Vehicle", 3)),
     },
+    Migration {
+        target: Target::Record,
+        name: "og.Trail",
+        from: 1,
+        to: 2,
+        note: "one Blend for effects: blend is a Blend, alpha 0 and additive 1 as a sprite's (StripBlend had additive 0), each saved value kept by its name",
+        run: Some(|e| revariant(e, "og.Trail", 2, "blend", BLEND)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Beam",
+        from: 1,
+        to: 2,
+        note: "one Blend for effects: blend is a Blend, alpha 0 and additive 1 as a sprite's (StripBlend had additive 0), each saved value kept by its name",
+        run: Some(|e| revariant(e, "og.Beam", 2, "blend", BLEND)),
+    },
 ];
+
+/// Blend's variants in code order (og.Trail, og.Beam 2).
+const BLEND: &[&str] = &["alpha", "additive"];
+
+/// A record whose enum `field` took `variants`, in this order, with its
+/// version `to`: each saved value moves to its variant's index there,
+/// found by name, so a saved alpha trail restores alpha.
+fn revariant(
+    edit: &mut SnapshotEdit,
+    name: &str,
+    to: u32,
+    field: &str,
+    variants: &[&str],
+) -> Result<(), String> {
+    use og_core::reflect::FieldType;
+    let Some(old) = edit.schema(name).cloned() else {
+        return Ok(());
+    };
+    let i = old
+        .fields
+        .iter()
+        .position(|f| f.name == field && f.ty == FieldType::Enum)
+        .ok_or_else(|| format!("the saved {name} has no enum {field}"))?;
+    let start: usize = old.fields[..i].iter().map(|f| f.ty.size()).sum();
+    let codes = old.fields[i]
+        .variants
+        .iter()
+        .map(|v| {
+            variants
+                .iter()
+                .position(|w| w == v)
+                .map(|j| j as u32)
+                .ok_or_else(|| format!("the saved {name}.{field} has {v}, which {to} has not"))
+        })
+        .collect::<Result<Vec<u32>, String>>()?;
+    let mut schema = old;
+    schema.version = to;
+    schema.fields[i].variants = variants.iter().map(|v| (*v).to_string()).collect();
+    edit.map_type(name, schema, &mut |v| {
+        let mut out = v.to_vec();
+        let at = start..start + 4;
+        let code = u32::from_le_bytes(out[at.clone()].try_into().expect("an enum is a u32"));
+        let new = codes.get(code as usize).copied().unwrap_or(0);
+        out[at].copy_from_slice(&new.to_le_bytes());
+        Ok(out)
+    })
+    .map_err(|e| e.reason().to_string())
+}
 
 /// A record's fields under the name each had before and the name it has
 /// from the record's version `.1` on.
@@ -1188,6 +1252,47 @@ mod tests {
     }
 
     /// A world's save holding og.Wind as version 1 or 2 declared it.
+    /// A trail and a beam saved before Blend (StripBlend: additive 0,
+    /// alpha 1) restore as this build lays them out, each blend the one it
+    /// was saved with: an alpha smoke trail stays alpha.
+    #[test]
+    fn a_saved_strip_keeps_its_blend_under_the_one_blend_enum() {
+        for name in ["og.Trail", "og.Beam"] {
+            let decl = og_api::host::RECORDS
+                .iter()
+                .find(|d| d.schema == name)
+                .unwrap();
+            let layout = crate::host::codec::Layout::from_decl(decl).unwrap();
+            let now = crate::engine::versioned(layout.schema());
+            assert_eq!(now.version, 2, "{name}");
+            let i = now.fields.iter().position(|f| f.name == "blend").unwrap();
+            let at: usize = now.fields[..i].iter().map(|f| f.ty.size()).sum();
+            let mut old = now.clone();
+            old.version = 1;
+            old.fields[i].variants = vec!["additive".into(), "alpha".into()];
+            let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
+            let id = world.register_schema(old).unwrap();
+            let mut saved = Vec::new();
+            for (old_code, blend) in [(1u32, "alpha"), (0, "additive")] {
+                let want = layout
+                    .encode(None, Some(&serde_json::json!({ "blend": blend })))
+                    .unwrap();
+                let mut bytes = want.clone();
+                bytes[at..at + 4].copy_from_slice(&old_code.to_le_bytes());
+                saved.push((world.spawn_bytes(vec![(id, bytes)]).unwrap(), want));
+            }
+            let (upgraded, steps) = upgrade(&world.snapshot()).unwrap().expect("a step ran");
+            assert_eq!(steps.len(), 1, "{name}: {steps:?}");
+            let edit = SnapshotEdit::from_bytes(&upgraded).unwrap();
+            assert_eq!(
+                edit.schema(name).unwrap().layout_hash(),
+                now.layout_hash(),
+                "{name}"
+            );
+            assert_eq!(edit.components(name), saved, "{name}");
+        }
+    }
+
     fn saved_wind(version: u32, strength: f32, speed: f32) -> Vec<u8> {
         use og_core::reflect::{FieldSchema, FieldType, Schema};
         let mut fields = vec![

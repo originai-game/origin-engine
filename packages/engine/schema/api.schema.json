@@ -4708,12 +4708,10 @@
         "DofQuality",
         "ScreenBlur",
         "ScreenBlur",
-        "SpriteBlend",
-        "SpriteBlend",
+        "Blend",
+        "Blend",
         "SpriteFacing",
         "SpriteFacing",
-        "StripBlend",
-        "StripBlend",
         "PostEffects",
         "LensFlare",
         "GiMethod",
@@ -24042,18 +24040,18 @@
         "directional": "Along screenBlurAngle across the whole frame, each way by screenBlurStrength pixels at 720 lines (scaled with the frame's height): a fast pan, a sideways dash."
       }
     },
-    "SpriteBlend": {
+    "Blend": {
       "x-og-kind": "enum",
       "x-og-module": "render",
-      "description": "How a sprite is blended over what is below it.",
+      "description": "How a sprite, trail, ribbon or beam is blended over what is below it. Sprites default to alpha; trails, ribbons and beams to additive.",
       "type": "string",
       "enum": [
         "alpha",
         "additive"
       ],
       "x-og-variants": {
-        "alpha": "Ordinary alpha blending.",
-        "additive": "Added (light, fire, magic): order-independent within a layer."
+        "alpha": "Ordinary alpha blending: smoke, dust, tyre marks, solid shapes.",
+        "additive": "Added (light, fire, magic, glowing streaks, lasers): order-independent within a layer."
       }
     },
     "SpriteFacing": {
@@ -24070,20 +24068,6 @@
         "none": "In the world's xy plane facing +z, as every sprite before billboards.",
         "camera": "In the camera's view plane: its x along the camera's right, its y along its up, as particle billboards (smoke, glints, impostors seen from any side).",
         "cameraY": "Upright, turned about the world's y axis towards the camera: its y stays +y, its x the camera's right laid level. Trees, characters and props that must stand while the camera looks down on them."
-      }
-    },
-    "StripBlend": {
-      "x-og-kind": "enum",
-      "x-og-module": "render",
-      "description": "How a trail, ribbon or beam is blended.",
-      "type": "string",
-      "enum": [
-        "additive",
-        "alpha"
-      ],
-      "x-og-variants": {
-        "additive": "Added: glowing streaks, lasers, magic.",
-        "alpha": "Alpha blended: smoke trails, tyre marks."
       }
     },
     "PostEffects": {
@@ -26221,8 +26205,8 @@
           "x-og-unit": "m"
         },
         "blend": {
-          "$ref": "#/$defs/StripBlend",
-          "description": "Additive or alpha blended.",
+          "$ref": "#/$defs/Blend",
+          "description": "Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks).",
           "default": "additive"
         },
         "layered": {
@@ -26322,8 +26306,8 @@
           "default": 0
         },
         "blend": {
-          "$ref": "#/$defs/StripBlend",
-          "description": "Additive or alpha blended.",
+          "$ref": "#/$defs/Blend",
+          "description": "Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks).",
           "default": "additive"
         }
       },
@@ -26405,8 +26389,8 @@
           "x-og-unit": "m"
         },
         "blend": {
-          "$ref": "#/$defs/StripBlend",
-          "description": "Additive or alpha blended.",
+          "$ref": "#/$defs/Blend",
+          "description": "Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks).",
           "default": "additive"
         }
       },
@@ -26729,8 +26713,8 @@
           "minimum": 0
         },
         "blend": {
-          "$ref": "#/$defs/SpriteBlend",
-          "description": "Alpha or additive.",
+          "$ref": "#/$defs/Blend",
+          "description": "Alpha (the default) or additive.",
           "default": "alpha"
         },
         "castShadow": {
@@ -26958,8 +26942,8 @@
           "minimum": 0
         },
         "blend": {
-          "$ref": "#/$defs/SpriteBlend",
-          "description": "Alpha or additive.",
+          "$ref": "#/$defs/Blend",
+          "description": "Alpha (the default) or additive.",
           "default": "alpha"
         },
         "castShadow": {

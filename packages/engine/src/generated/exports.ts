@@ -42,9 +42,8 @@ export const AoMethod = ((value = "auto" as Api.AoMethod, options) => spec("AoMe
 export const AoResolution = ((value = "full" as Api.AoResolution, options) => spec("AoResolution", value, options)) as typeof Api.AoResolution;
 export const DofQuality = ((value = "low" as Api.DofQuality, options) => spec("DofQuality", value, options)) as typeof Api.DofQuality;
 export const ScreenBlur = ((value = "none" as Api.ScreenBlur, options) => spec("ScreenBlur", value, options)) as typeof Api.ScreenBlur;
-export const SpriteBlend = ((value = "alpha" as Api.SpriteBlend, options) => spec("SpriteBlend", value, options)) as typeof Api.SpriteBlend;
+export const Blend = ((value = "alpha" as Api.Blend, options) => spec("Blend", value, options)) as typeof Api.Blend;
 export const SpriteFacing = ((value = "none" as Api.SpriteFacing, options) => spec("SpriteFacing", value, options)) as typeof Api.SpriteFacing;
-export const StripBlend = ((value = "additive" as Api.StripBlend, options) => spec("StripBlend", value, options)) as typeof Api.StripBlend;
 export const GiMethod = ((value = "screen" as Api.GiMethod, options) => spec("GiMethod", value, options)) as typeof Api.GiMethod;
 export const Palette = ((value = 0 as Api.Palette, options) => spec("Palette", value, options)) as typeof Api.Palette;
 export const Look = ((value = 0 as Api.Look, options) => spec("Look", value, options)) as typeof Api.Look;

@@ -49,7 +49,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `flash` | `number` | `0` | 0 … 1 | — | — | A hit flash: the colour mixed towards flashColor by this much, keeping the alpha. |
 | `flashColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The flash's linear colour. |
 | `glow` | `number` | `0` | ≥ 0 | — | — | Strength in the 2D glow buffer (PostEffects.glow); 0 none. |
-| `blend` | `SpriteBlend` | `"alpha"` | — | — | — | Alpha or additive. |
+| `blend` | `Blend` | `"alpha"` | — | — | — | Alpha (the default) or additive. |
 
 #### Shadows and light
 
@@ -141,7 +141,7 @@ struct SpriteDesc {
   field glow f32 "Strength in the 2D glow buffer (PostEffects.glow); 0 none." {
     min 0
   }
-  field blend SpriteBlend "Alpha or additive."
+  field blend Blend "Alpha (the default) or additive."
   group "Shadows and light"
   field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
   field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground (dropShadowHeight, or the og.Terrain), drawn before its layer's sprites, faded in the sun's shadow; none with the sun set." {
@@ -174,4 +174,4 @@ struct SpriteDesc {
 }
 ```
 
-<sub>Module `render` line 2421</sub>
+<sub>Module `render` line 2414</sub>

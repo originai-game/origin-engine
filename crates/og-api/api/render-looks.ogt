@@ -753,7 +753,9 @@
       min 0
       unit m
     }
-    field blend StripBlend "Additive or alpha blended."
+    field blend Blend "Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks)." {
+      default additive
+    }
     field layered bool "Draw it in the 2D sprite order at `layer` (a sprite's trail over a tile background) instead of with the 3D scene."
     field layer i32 "With layered: the sprite layer it is drawn in, before that layer's sprites."
   }
@@ -797,7 +799,9 @@
       unit m
     }
     field seed u32 "The jitter's seed."
-    field blend StripBlend "Additive or alpha blended."
+    field blend Blend "Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks)." {
+      default additive
+    }
   }
 
   struct RibbonPoint {
@@ -830,7 +834,9 @@
       min 0
       unit m
     }
-    field blend StripBlend "Additive or alpha blended."
+    field blend Blend "Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks)." {
+      default additive
+    }
   }
 
   fn ribbon {
@@ -945,7 +951,7 @@
     field glow f32 "Strength in the 2D glow buffer (PostEffects.glow); 0 none." {
       min 0
     }
-    field blend SpriteBlend "Alpha or additive."
+    field blend Blend "Alpha (the default) or additive."
     group "Shadows and light"
     field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
     field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground (dropShadowHeight, or the og.Terrain), drawn before its layer's sprites, faded in the sun's shadow; none with the sun set." {
@@ -1045,7 +1051,7 @@
     field glow f32 "Strength in the 2D glow buffer (PostEffects.glow); 0 none." {
       min 0
     }
-    field blend SpriteBlend "Alpha or additive."
+    field blend Blend "Alpha (the default) or additive."
     group "2D light"
     field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
     group "Nine-slice"

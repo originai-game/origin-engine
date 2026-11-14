@@ -205,12 +205,10 @@ export interface ColumnKinds {
   DofQuality: { readonly array: Uint32Array; readonly stride: 1; readonly value: DofQuality };
   /** A ScreenBlur field: the variant's index. */
   ScreenBlur: { readonly array: Uint32Array; readonly stride: 1; readonly value: ScreenBlur };
-  /** A SpriteBlend field: the variant's index. */
-  SpriteBlend: { readonly array: Uint32Array; readonly stride: 1; readonly value: SpriteBlend };
+  /** A Blend field: the variant's index. */
+  Blend: { readonly array: Uint32Array; readonly stride: 1; readonly value: Blend };
   /** A SpriteFacing field: the variant's index. */
   SpriteFacing: { readonly array: Uint32Array; readonly stride: 1; readonly value: SpriteFacing };
-  /** A StripBlend field: the variant's index. */
-  StripBlend: { readonly array: Uint32Array; readonly stride: 1; readonly value: StripBlend };
   /** A GiMethod field: the variant's index. */
   GiMethod: { readonly array: Uint32Array; readonly stride: 1; readonly value: GiMethod };
   /** A Palette handle field (0 is none). */
@@ -7637,20 +7635,20 @@ export type ScreenBlur = "none" | "zoom" | "spin" | "directional";
 export declare function ScreenBlur(value?: ScreenBlur, options?: FieldOptions): FieldSpec<"ScreenBlur">;
 
 /**
- * How a sprite is blended over what is below it.
- * - `"alpha"`: Ordinary alpha blending.
- * - `"additive"`: Added (light, fire, magic): order-independent within a layer.
+ * How a sprite, trail, ribbon or beam is blended over what is below it. Sprites default to alpha; trails, ribbons and beams to additive.
+ * - `"alpha"`: Ordinary alpha blending: smoke, dust, tyre marks, solid shapes.
+ * - `"additive"`: Added (light, fire, magic, glowing streaks, lasers): order-independent within a layer.
  */
-export type SpriteBlend = "alpha" | "additive";
+export type Blend = "alpha" | "additive";
 
 /**
- * A SpriteBlend field: the variant's index.
+ * A Blend field: the variant's index.
  *
- * A `SpriteBlend` field: stored in a `Uint32Array` with stride 1.
+ * A `Blend` field: stored in a `Uint32Array` with stride 1.
  * @param value The field's default; omitted, the column's zero value.
  * @param options Range, unit, label, docs and the tunable flag.
  */
-export declare function SpriteBlend(value?: SpriteBlend, options?: FieldOptions): FieldSpec<"SpriteBlend">;
+export declare function Blend(value?: Blend, options?: FieldOptions): FieldSpec<"Blend">;
 
 /**
  * How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite), a mode of og.Sprite and SpriteDesc. The turn is computed on the GPU from each drawing camera's own axes, so it never feeds back into the simulation. It turns about its anchor (a nine-slice as one panel), `rotation` still turns it in its plane, and its drop shadow is cast by the quad stood upright facing the sun. Without sortY, and tone mapped, it sorts back to front among the transparent meshes by its anchor's view depth; otherwise it keeps the sprite order. World text takes the same modes.
@@ -7669,22 +7667,6 @@ export type SpriteFacing = "none" | "camera" | "cameraY";
  * @param options Range, unit, label, docs and the tunable flag.
  */
 export declare function SpriteFacing(value?: SpriteFacing, options?: FieldOptions): FieldSpec<"SpriteFacing">;
-
-/**
- * How a trail, ribbon or beam is blended.
- * - `"additive"`: Added: glowing streaks, lasers, magic.
- * - `"alpha"`: Alpha blended: smoke trails, tyre marks.
- */
-export type StripBlend = "additive" | "alpha";
-
-/**
- * A StripBlend field: the variant's index.
- *
- * A `StripBlend` field: stored in a `Uint32Array` with stride 1.
- * @param value The field's default; omitted, the column's zero value.
- * @param options Range, unit, label, docs and the tunable flag.
- */
-export declare function StripBlend(value?: StripBlend, options?: FieldOptions): FieldSpec<"StripBlend">;
 
 /**
  * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then records no pass. Read after each tick; it never feeds back into the simulation.
@@ -9624,8 +9606,12 @@ export interface Trail {
    * @unit m (metres)
    */
   uvTile: number;
-  /** Additive or alpha blended. */
-  blend: StripBlend;
+  /**
+   * Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks).
+   *
+   * @default "additive"
+   */
+  blend: Blend;
   /**
    * Draw it in the 2D sprite order at `layer` (a sprite's trail over a tile background) instead of with the 3D scene.
    */
@@ -9700,8 +9686,12 @@ export interface Beam {
   jitter: number;
   /** The jitter's seed. */
   seed: number;
-  /** Additive or alpha blended. */
-  blend: StripBlend;
+  /**
+   * Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks).
+   *
+   * @default "additive"
+   */
+  blend: Blend;
 }
 
 /**
@@ -9767,11 +9757,11 @@ export interface RibbonDesc {
    */
   readonly uvTile?: number;
   /**
-   * Additive or alpha blended.
+   * Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks).
    *
    * @default "additive"
    */
-  readonly blend?: StripBlend;
+  readonly blend?: Blend;
 }
 
 
@@ -10021,11 +10011,11 @@ export interface SpriteDesc {
    */
   readonly glow?: number;
   /**
-   * Alpha or additive.
+   * Alpha (the default) or additive.
    *
    * @default "alpha"
    */
-  readonly blend?: SpriteBlend;
+  readonly blend?: Blend;
   // ── Shadows and light ──
   /**
    * Block 2D light (Lighting2D) with the sprite's rectangle.
@@ -10218,8 +10208,8 @@ export interface Sprite {
    * @range 0..
    */
   glow: number;
-  /** Alpha or additive. */
-  blend: SpriteBlend;
+  /** Alpha (the default) or additive. */
+  blend: Blend;
   // ── 2D light ──
   /** Block 2D light (Lighting2D) with the sprite's rectangle. */
   castShadow: boolean;
@@ -33765,16 +33755,16 @@ export declare namespace og {
   /**
    * A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail.
    */
-  const Trail: ComponentType<{ readonly lifetime: FieldSpec<"f32">; readonly minDistance: FieldSpec<"f32">; readonly widthStart: FieldSpec<"f32">; readonly widthEnd: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly colorEnd: FieldSpec<"Color">; readonly opacityEnd: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly uvTile: FieldSpec<"f32">; readonly blend: FieldSpec<"StripBlend">; readonly layered: FieldSpec<"bool">; readonly layer: FieldSpec<"i32"> }, Trail>;
+  const Trail: ComponentType<{ readonly lifetime: FieldSpec<"f32">; readonly minDistance: FieldSpec<"f32">; readonly widthStart: FieldSpec<"f32">; readonly widthEnd: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly colorEnd: FieldSpec<"Color">; readonly opacityEnd: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly uvTile: FieldSpec<"f32">; readonly blend: FieldSpec<"Blend">; readonly layered: FieldSpec<"bool">; readonly layer: FieldSpec<"i32"> }, Trail>;
   /**
    * A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter).
    */
-  const Beam: ComponentType<{ readonly end: FieldSpec<"Vector3">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly tile: FieldSpec<"f32">; readonly scroll: FieldSpec<"f32">; readonly segments: FieldSpec<"u32">; readonly jitter: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly blend: FieldSpec<"StripBlend"> }, Beam>;
+  const Beam: ComponentType<{ readonly end: FieldSpec<"Vector3">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly tile: FieldSpec<"f32">; readonly scroll: FieldSpec<"f32">; readonly segments: FieldSpec<"u32">; readonly jitter: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly blend: FieldSpec<"Blend"> }, Beam>;
   /**
    * A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.
    * Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.
    */
-  const Sprite: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly array: FieldSpec<"TextureArray">; readonly arrayLayer: FieldSpec<"u32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly anchor: FieldSpec<"Vector2">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly layer: FieldSpec<"i32">; readonly sortY: FieldSpec<"bool">; readonly facing: FieldSpec<"SpriteFacing">; readonly flipX: FieldSpec<"bool">; readonly flipY: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly glow: FieldSpec<"f32">; readonly blend: FieldSpec<"SpriteBlend">; readonly castShadow: FieldSpec<"bool">; readonly sliceX: FieldSpec<"Vector2">; readonly sliceY: FieldSpec<"Vector2">; readonly sliceScale: FieldSpec<"f32">; readonly shadow: FieldSpec<"f32">; readonly shadowSize: FieldSpec<"Vector2">; readonly shadowOffset: FieldSpec<"Vector2">; readonly dropShadow: FieldSpec<"f32">; readonly dropShadowHeight: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32">; readonly outline: FieldSpec<"f32">; readonly outlineColor: FieldSpec<"Color">; readonly palette: FieldSpec<"Texture">; readonly paletteRow: FieldSpec<"u32">; readonly material: FieldSpec<"Material"> }, Sprite>;
+  const Sprite: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly array: FieldSpec<"TextureArray">; readonly arrayLayer: FieldSpec<"u32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly anchor: FieldSpec<"Vector2">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly layer: FieldSpec<"i32">; readonly sortY: FieldSpec<"bool">; readonly facing: FieldSpec<"SpriteFacing">; readonly flipX: FieldSpec<"bool">; readonly flipY: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly glow: FieldSpec<"f32">; readonly blend: FieldSpec<"Blend">; readonly castShadow: FieldSpec<"bool">; readonly sliceX: FieldSpec<"Vector2">; readonly sliceY: FieldSpec<"Vector2">; readonly sliceScale: FieldSpec<"f32">; readonly shadow: FieldSpec<"f32">; readonly shadowSize: FieldSpec<"Vector2">; readonly shadowOffset: FieldSpec<"Vector2">; readonly dropShadow: FieldSpec<"f32">; readonly dropShadowHeight: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32">; readonly outline: FieldSpec<"f32">; readonly outlineColor: FieldSpec<"Color">; readonly palette: FieldSpec<"Texture">; readonly paletteRow: FieldSpec<"u32">; readonly material: FieldSpec<"Material"> }, Sprite>;
   /**
    * Ghosts of the entity's og.Sprite: every `intervalTicks` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
    */

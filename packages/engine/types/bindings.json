@@ -171,22 +171,16 @@
       "value": "ScreenBlur"
     },
     {
-      "name": "SpriteBlend",
+      "name": "Blend",
       "array": "Uint32Array",
       "stride": 1,
-      "value": "SpriteBlend"
+      "value": "Blend"
     },
     {
       "name": "SpriteFacing",
       "array": "Uint32Array",
       "stride": 1,
       "value": "SpriteFacing"
-    },
-    {
-      "name": "StripBlend",
-      "array": "Uint32Array",
-      "stride": 1,
-      "value": "StripBlend"
     },
     {
       "name": "GiMethod",
@@ -1764,7 +1758,7 @@
         },
         {
           "name": "blend",
-          "column": "StripBlend",
+          "column": "Blend",
           "default": "additive"
         },
         {
@@ -1847,7 +1841,7 @@
         },
         {
           "name": "blend",
-          "column": "StripBlend",
+          "column": "Blend",
           "default": "additive"
         }
       ]
@@ -1971,7 +1965,7 @@
         },
         {
           "name": "blend",
-          "column": "SpriteBlend",
+          "column": "Blend",
           "default": "alpha"
         },
         {

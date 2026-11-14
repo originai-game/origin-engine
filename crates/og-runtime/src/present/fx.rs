@@ -6,7 +6,7 @@
 //! extraction it reads the world and never writes it.
 
 use crate::host::codec::Layout;
-use crate::host::wire::{self, FromJson, StripBlend, record};
+use crate::host::wire::{self, Blend, FromJson, record};
 use crate::present::extract::{Hierarchy, RenderState};
 use glam::{Mat4, Vec2, Vec3};
 use og_core::IdMap;
@@ -534,7 +534,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         };
         let (c0, c1) = (v.color, v.color_end);
         let tile = v.uv_tile;
-        let additive = v.blend == StripBlend::Additive;
+        let additive = v.blend == Blend::Additive;
         let style = TrailStyle {
             lifetime: v.lifetime,
             min_distance: v.min_distance,
@@ -592,7 +592,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             segments: v.segments.max(1),
             jitter: v.jitter,
             seed: u64::from(v.seed),
-            blend: if v.blend == StripBlend::Additive {
+            blend: if v.blend == Blend::Additive {
                 ParticleBlend::Additive
             } else {
                 ParticleBlend::Alpha

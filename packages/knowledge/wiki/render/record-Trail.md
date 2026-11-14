@@ -22,7 +22,7 @@ Token `og.Trail`, registered under the schema name `og.Trail`; its value type is
 | `opacityEnd` | `number` | `0` | 0 … 1 | — | — | The alpha at the tail. |
 | `texture` | `Texture` | `0` | — | — | — | A texture along the strip; 0 is solid. |
 | `uvTile` | `number` | `0` | ≥ 0 | `m` | — | The texture repeats every this many world units; 0 stretches it once over the length. |
-| `blend` | `StripBlend` | `"additive"` | — | — | — | Additive or alpha blended. |
+| `blend` | `Blend` | `"additive"` | — | — | — | Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks). |
 | `layered` | `boolean` | `false` | — | — | — | Draw it in the 2D sprite order at `layer` (a sprite's trail over a tile background) instead of with the 3D scene. |
 | `layer` | `number` | `0` | — | — | — | With layered: the sprite layer it is drawn in, before that layer's sprites. |
 
@@ -70,10 +70,12 @@ component Trail {
     min 0
     unit m
   }
-  field blend StripBlend "Additive or alpha blended."
+  field blend Blend "Additive (the default: a glowing streak) or alpha blended (smoke, tyre marks)." {
+    default additive
+  }
   field layered bool "Draw it in the 2D sprite order at `layer` (a sprite's trail over a tile background) instead of with the 3D scene."
   field layer i32 "With layered: the sprite layer it is drawn in, before that layer's sprites."
 }
 ```
 
-<sub>Module `render` line 2238</sub>
+<sub>Module `render` line 2225</sub>

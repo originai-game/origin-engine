@@ -1,0 +1,22 @@
+{
+  "breaking": [
+    {
+      "member": "Blend",
+      "change": "SpriteBlend and StripBlend are one enum, Blend: alpha 0 and additive 1 everywhere (StripBlend had additive 0). og.Trail, og.Beam and RibbonDesc still default to additive, sprites to alpha; the variant strings are unchanged, so `blend: \"alpha\"` means what it did. A saved og.Trail or og.Beam keeps its blend (og.Trail and og.Beam take version 2 and a save step).",
+      "fix": "Rename the type SpriteBlend or StripBlend to Blend where game code names it.",
+      "codemod": {
+        "from": "StripBlend",
+        "to": "Blend"
+      }
+    },
+    {
+      "member": "Blend",
+      "change": "SpriteBlend is now Blend (see StripBlend).",
+      "fix": "Rename SpriteBlend to Blend.",
+      "codemod": {
+        "from": "SpriteBlend",
+        "to": "Blend"
+      }
+    }
+  ]
+}
