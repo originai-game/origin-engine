@@ -1,9 +1,12 @@
 //! A mount fed by values instead of its user's stores: a screen pushed
 //! with a viewmodel, a document shown with one of its fixtures. The mount
-//! holds a store for each field, in a scope of its own that goes with it:
-//! a list of rows, each an object with its own `id`, is a collection keyed
-//! by it, anything else a writable store, which the document's two-way
-//! bindings write and [`Ui::mount_values`] reads back.
+//! holds a store, in a scope of its own that goes with it, for each field
+//! of the values and for each name its document reads that they leave
+//! out: a prop's default, else nothing (null, or no rows where the
+//! document iterates it). A list of rows, each an object with its own key
+//! (the field the document's `{#each}` keys it by, else `id`), is a
+//! collection keyed by it, anything else a writable store, which the
+//! document's two-way bindings write and [`Ui::mount_values`] reads back.
 
 use super::*;
 use crate::reactive::session::Command;
@@ -13,18 +16,55 @@ fn held_scope(mount: &SourceId) -> String {
     format!("og.values/{}:{}", mount.scope, mount.id)
 }
 
-/// A list a collection can hold: rows, each an object with an `id` (a
-/// nonempty string) no other has.
-fn rows(items: &[Value]) -> Option<Vec<serde_json::Map<String, Value>>> {
-    let mut ids = BTreeSet::new();
+/// A list a collection keyed by `key` can hold: rows, each an object
+/// whose `key` is a nonempty string no other has.
+fn rows(items: &[Value], key: &str) -> Option<Vec<serde_json::Map<String, Value>>> {
+    let mut keys = BTreeSet::new();
     items
         .iter()
         .map(|item| {
             let row = item.as_object()?;
-            let id = row.get("id")?.as_str().filter(|id| !id.is_empty())?;
-            ids.insert(id).then(|| row.clone())
+            let key = row.get(key)?.as_str().filter(|key| !key.is_empty())?;
+            keys.insert(key).then(|| row.clone())
         })
         .collect()
+}
+
+/// What a mount of `document` reads by name: its props, and the stores it
+/// and the components it uses read (`$name`). Each has the field its rows
+/// are keyed by where an `{#each}` iterates it.
+fn names(
+    documents: &BTreeMap<String, Arc<UiDocument>>,
+    document: &str,
+) -> BTreeMap<String, Option<String>> {
+    let mut out: BTreeMap<String, Option<String>> = BTreeMap::new();
+    let mut seen = BTreeSet::new();
+    let mut queue = vec![document.to_owned()];
+    while let Some(name) = queue.pop() {
+        let Some(doc) = documents.get(&name).filter(|_| seen.insert(name.clone())) else {
+            continue;
+        };
+        let props = doc
+            .props
+            .iter()
+            .filter(|p| name == document && p.ty != "content")
+            .map(|p| (p.name.clone(), doc.each_key(&p.name)));
+        let stores = doc.stores().into_iter().map(|store| {
+            let key = doc.each_key(&format!("${store}"));
+            (store, key)
+        });
+        for (name, key) in props.chain(stores) {
+            let held = out.entry(name).or_default();
+            if held.is_none() {
+                *held = key.map(str::to_owned);
+            }
+        }
+        queue.extend(doc.nodes.iter().filter_map(|node| match &node.kind {
+            NodeKind::Use(component) => Some(component.clone()),
+            _ => None,
+        }));
+    }
+    out
 }
 
 impl Ui {
@@ -55,7 +95,7 @@ impl Ui {
         values: &Value,
     ) -> Result<BTreeMap<String, SourceId>, String> {
         mount.validate()?;
-        let fields = match values {
+        let mut fields = match values {
             Value::Object(fields) => fields.clone(),
             Value::Null => Default::default(),
             _ => {
@@ -70,14 +110,30 @@ impl Ui {
                 mount.scope, mount.id
             ));
         }
+        let documents = &self.docs.library.documents;
+        let doc = documents
+            .get(document)
+            .ok_or_else(|| format!("missing document '{document}'"))?;
+        let names = names(documents, document);
+        for (name, key) in &names {
+            if fields.contains_key(name) {
+                continue;
+            }
+            let prop = doc.props.iter().find(|p| p.name == *name);
+            let iterated = key.is_some() || prop.is_some_and(|p| p.ty == "list");
+            let unset = if iterated { json!([]) } else { Value::Null };
+            let value = prop.and_then(|p| p.default.clone()).unwrap_or(unset);
+            fields.insert(name.clone(), value);
+        }
         let scope = held_scope(mount);
         let mut inputs = BTreeMap::new();
         for (name, value) in fields {
             let source = SourceId::new(&scope, &name);
-            let command = match value.as_array().map(|items| rows(items)) {
+            let key = names.get(&name).cloned().flatten().unwrap_or("id".into());
+            let command = match value.as_array().map(|items| rows(items, &key)) {
                 Some(Some(items)) => Command::Collection {
                     source: source.clone(),
-                    key: String::new(),
+                    key,
                     items,
                 },
                 _ => Command::Signal {

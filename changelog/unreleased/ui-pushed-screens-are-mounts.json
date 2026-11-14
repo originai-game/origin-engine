@@ -7,8 +7,8 @@
     },
     {
       "member": "og.ui.push",
-      "change": "A list a pushed screen iterates with {#each} has rows that each carry a unique nonempty string id, the key the each names ((row.id)). A screen iterating any other list reports \"each over '$rows' needs a keyed list; give each of its rows a unique string id\" and is not drawn. A list the screen only reads whole is unaffected.",
-      "fix": "Give each row of an iterated list a unique string id and key the each by it."
+      "change": "A list a pushed screen iterates with {#each} has rows that each carry the key the each names ((row.id): a unique nonempty string id). A screen iterating any other list reports \"each over '$rows' needs a keyed list; give each of its rows a unique string id\" and is not drawn. A list the screen only reads whole is unaffected.",
+      "fix": "Give each row of an iterated list a unique string in the field the each keys it by."
     },
     {
       "member": "document",
@@ -19,7 +19,7 @@
   "added": [
     {
       "member": "og.ui.screenVm",
-      "summary": "og.ui.screenVm(screen) returns the screen's values as they are now: what was pushed, with what the screen's controls wrote through bind:. It is null once the screen has left the stack."
+      "summary": "og.ui.screenVm(screen) returns the screen's values as they are now: what was pushed, with what the screen's controls wrote through bind:, and each value the screen reads that the push left out (its prop's default, else null, or [] where the screen iterates it). It is null once the screen has left the stack."
     }
   ],
   "fixed": [

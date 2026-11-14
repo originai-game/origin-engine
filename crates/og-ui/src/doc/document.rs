@@ -230,6 +230,44 @@ impl UiDocument {
         out
     }
 
+    /// The stores it reads by name (`$gold` is `gold`), without the
+    /// engine's `$ui`.
+    pub fn stores(&self) -> std::collections::BTreeSet<String> {
+        let mut out = std::collections::BTreeSet::new();
+        for (i, n) in self.nodes.iter().enumerate() {
+            let locals = self.locals(i);
+            let mut paths = Vec::new();
+            self.node_paths(n, &mut paths);
+            for path in paths {
+                let root = path.split('.').next().unwrap_or_default();
+                if let Some(name) = root.strip_prefix('$')
+                    && name != "ui"
+                    && !locals.iter().any(|local| local == root)
+                {
+                    out.insert(name.to_owned());
+                }
+            }
+        }
+        out
+    }
+
+    /// The field an `{#each}` over `list` (as written: `$items`, or a prop
+    /// `items`) keys its rows by: `id` for `(item.id)`.
+    pub fn each_key(&self, list: &str) -> Option<&str> {
+        self.nodes.iter().find_map(|n| match &n.kind {
+            NodeKind::For {
+                var,
+                list: Expr::Path(path),
+                key: Expr::Path(key),
+                ..
+            } if path == list => key
+                .strip_prefix(var.as_str())?
+                .strip_prefix('.')
+                .filter(|field| !field.contains('.')),
+            _ => None,
+        })
+    }
+
     /// The Rive artboards its elements play (`<og-rive src="id">`), each
     /// once, in document order: what loading it loads beside it.
     pub fn rive_ids(&self) -> Vec<String> {

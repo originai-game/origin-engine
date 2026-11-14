@@ -265,13 +265,15 @@ impl RetainedHost {
         let (order, revision, binding) = match &list {
             ListRef::Collection(source) => {
                 let sources = &ui.docs.state().memory.reactive.sources;
-                // A list held as one value (a viewmodel's, whose rows have
-                // no `id`) has no rows to keep by key.
+                // A list held as one value (a viewmodel's, whose rows lack
+                // the key) has no rows to keep by key.
                 let collection = sources.keyed(source).map_err(|error| {
                     if sources.read(source).is_ok() {
                         format!(
-                            "{}:{}: each over '{path}' needs a keyed list; give each of its rows a unique string id",
-                            doc.source, doc.nodes[index].line
+                            "{}:{}: each over '{path}' needs a keyed list; give each of its rows a unique string {}",
+                            doc.source,
+                            doc.nodes[index].line,
+                            item_key.unwrap_or("id")
                         )
                     } else {
                         error
