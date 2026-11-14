@@ -262,9 +262,10 @@ fn a_moving_hdr_sun_stays_stable_through_temporal_resolves() {
 ///   anywhere do. The shape, the blend and the high layer were read at
 ///   scales four tiles are no period of, so every cloud changed shape at
 ///   the wrap (every 50 minutes of clock at the default wind);
-/// - an eye 1200 m along x sees what the eye at the origin sees with the
-///   clouds' offset 1200 m on: they stand over the world, where they
-///   followed the eye before, the same sky over every place.
+/// - once the wind has carried the clouds 1200 m, an eye 1200 m downwind
+///   sees what the eye at the origin saw before: they stand over the
+///   world, where they followed the eye before (the same sky over every
+///   place), and they go with the wind, where they went against it.
 #[test]
 #[ignore = "requires GPU"]
 fn the_clouds_stand_over_the_world_and_keep_their_shapes() {
@@ -316,11 +317,13 @@ fn the_clouds_stand_over_the_world_and_keep_their_shapes() {
     );
     // 100 s of a 12 m/s wind is 1200 m (the high layer's wind is twice
     // that, so without it).
-    let carried = draw_with(1000 + 100 * 60, 0.0, false);
-    let walked = apart(&carried, &draw_with(1000, 1200.0, false));
-    println!("the eye 1200 m along x against the clouds' offset 1200 m on: {walked:.3}");
+    let carried = draw_with(1000 + 100 * 60, 1200.0, false);
+    let walked = apart(&carried, &draw_with(1000, 0.0, false));
+    println!(
+        "the eye 1200 m downwind of the clouds carried 1200 m, against the eye and the clouds before: {walked:.3}"
+    );
     assert!(
         walked < 2.0 * steady + 0.2,
-        "the clouds follow the eye ({walked:.3} against {steady:.3} a tick)"
+        "the clouds follow the eye or go against the wind ({walked:.3} against {steady:.3} a tick)"
     );
 }

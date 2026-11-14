@@ -218,7 +218,8 @@ fn cloud_density(p: vec3<f32>, h: f32, cheap: bool) -> f32 {
   let c = frame.clouds;
   let hf = (h - c[0].z) / max(c[0].w, 1.0);
   if (hf <= 0.0 || hf >= 1.0) { return 0.0; }
-  let at = vec3<f32>(p.x + c[10].x, h, p.z + c[10].y) + c[1].xyz;
+  // (Less the offset: the wind carries the shapes along it.)
+  let at = vec3<f32>(p.x + c[10].x, h, p.z + c[10].y) - c[1].xyz;
   let uvw = at / c[1].w;
   // The lobes vary in size: the shape is read at two scales, blended by a
   // slow noise across the sky (small popcorn here, broad towers there).
@@ -460,7 +461,7 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
     if (t > 0.0) {
       let p = o + d * t;
       // (Twice the wind up there; scales the offsets' wrap repeats in.)
-      let uv = (vec2<f32>(p.x, p.z) + c[10].xy + c[1].xz * 2.0) / (c[1].w * 2.0);
+      let uv = (vec2<f32>(p.x, p.z) + c[10].xy - c[1].xz * 2.0) / (c[1].w * 2.0);
       let n = textureSampleLevel(cloud_noise, cloud_sampler, vec3<f32>(uv.x * 0.25, uv.y, 0.37), 0.0);
       let wisp = cloud_remap(n.r * 0.7 + n.g * 0.3, 1.0 - c[3].x, 1.0 - c[3].x * 0.3) * (0.5 + 0.5 * n.b);
       let fade = exp(-t / 120000.0);
