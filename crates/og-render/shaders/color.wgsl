@@ -1,5 +1,6 @@
 // Colour, one copy for every shader (LIBRARY_WGSL, after common.wgsl): the
-// sRGB transfer curve both ways and the luminance of linear Rec.709 light.
+// sRGB transfer curve both ways, the luminance of linear Rec.709 light and
+// a hue rotation.
 // Callers clamp where they need 0..1; below the knee the curve is linear,
 // so a negative channel encodes and decodes to a negative one.
 
@@ -23,4 +24,12 @@ const LUMA: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
 // The luminance of linear light `c`.
 fn luma(c: vec3<f32>) -> f32 {
   return dot(c, LUMA);
+}
+
+// `rgb` with its hue turned by `a` radians: Rodrigues' rotation about the
+// grey axis, so grey stays grey and the sum of the channels is kept.
+fn hue_rotate(rgb: vec3<f32>, a: f32) -> vec3<f32> {
+  let k = vec3<f32>(0.57735);
+  let c = cos(a);
+  return rgb * c + cross(k, rgb) * sin(a) + k * dot(k, rgb) * (1.0 - c);
 }

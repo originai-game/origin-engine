@@ -19,13 +19,6 @@ fn material_params() -> Params {
   return p;
 }
 
-fn hue_rotate(rgb: vec3<f32>, a: f32) -> vec3<f32> {
-  // Rotation about the grey axis.
-  let k = vec3<f32>(0.57735);
-  let c = cos(a);
-  return rgb * c + cross(k, rgb) * sin(a) + k * dot(k, rgb) * (1.0 - c);
-}
-
 fn material(m: MaterialInput, p: Params) -> vec4<f32> {
   let kind = u32(layer_params.info.x);
   let texel = layer_texel();

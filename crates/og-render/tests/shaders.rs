@@ -191,6 +191,7 @@ fn a_mechanisms_shader_code_is_written_once() {
                 "fn srgb_decode(",
                 "fn luma(",
                 "const LUMA",
+                "fn hue_rotate(",
             ],
         ),
         (
