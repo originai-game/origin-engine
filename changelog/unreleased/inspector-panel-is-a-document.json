@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "probe.dump_inspector",
+      "change": "The inspector's panel is a built-in document now, styled only by tokens, so dump_inspector names its elements by the document's ids: a component's or resource's header is Inspector/Detail/Group#C:<Component>/Section (Group#R:<Resource>/Section), a field's row Inspector/Detail/Group#…/Field#<target>/Row and its text boxes …/Row/Part#<target>%23<n>, a hierarchy row Inspector/Tree/Row#<bits>/Entry#<bits>/Label. The toolbar keeps its paths (Inspector/Bar/Save, Inspector/Tools/Undo, Inspector/View/Strip/Track/Item#1).",
+      "fix": "Find a field's text box by its set target: Inspector/Detail/F:Score.best/P0 is Inspector/Detail/Group#R:Score/Field#Score.best/Row/Part#Score.best%230, and Inspector/Detail/S:Score is Inspector/Detail/Group#R:Score/Section."
+    }
+  ]
+}

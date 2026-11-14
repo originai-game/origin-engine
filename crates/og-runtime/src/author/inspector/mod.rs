@@ -4,7 +4,9 @@
 //! one's components, every field edited through the reflected schema.
 //!
 //! - **Its own UI.** An og-ui `Ui` of its own, in the default style at the
-//!   mouse density, drawn above every layer of the game's (`emit`), so the
+//!   mouse density, its panel the built-in document `panel.svelte` given
+//!   the inspector's state as values each frame (`panel`), drawn above
+//!   every layer of the game's (`emit`), so the
 //!   same panel shows wherever a development run is seen: Origin Desktop
 //!   through shared frames, the web page, a capture.
 //! - **Its own input.** The probe's input filter ([`filter`]) hands it the
@@ -234,18 +236,10 @@ pub(crate) struct Inspector {
 
 impl Inspector {
     fn new(ticks_per_second: u32) -> Inspector {
-        let theme = og_ui::Theme {
-            density: og_ui::DensityMode::Mouse,
-            ..og_ui::Theme::default()
-        };
         Inspector {
             open: false,
             key: DEFAULT_KEY.into(),
-            ui: Some(og_ui::Ui::new(og_ui::UiDesc {
-                theme,
-                ticks_per_second,
-                fonts: og_ui::Fonts::default(),
-            })),
+            ui: Some(panel::ui(ticks_per_second)),
             input: og_input::Input::default(),
             typed: Vec::new(),
             panel: None,

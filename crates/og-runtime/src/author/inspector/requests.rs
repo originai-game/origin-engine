@@ -177,6 +177,7 @@ pub(super) fn apply(eng: &Engine, request: Request) {
                 ins.open = false;
                 ins.panel = None;
                 ins.editing = false;
+                ins.draft = None;
                 ins.captured = false;
                 ins.tool.drag = None;
                 ins.tool.hover = None;

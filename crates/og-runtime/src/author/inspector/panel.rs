@@ -1,27 +1,20 @@
-//! The inspector's panel, built with og-ui each frame it is open: a
-//! toolbar, the Entities and Resources tabs, the hierarchy, and the
-//! selected entity's components with an editor per field.
+//! The inspector's panel: the built-in document `panel.svelte`, mounted
+//! in the inspector's own UI and given the inspector's state and the
+//! world as its values each frame it is open ([`values`]). Its events are
+//! the inspector's requests ([`events`]).
 
 use super::model::{self, Editor};
 use super::{Edit, Inspector, Request};
 use crate::host::codec::Layout as HostLayout;
-use og_core::reflect::{FieldSchema, Layout, Schema};
+use og_core::reflect::{FieldSchema, Layout};
 use og_ecs::{Entity, World};
 use og_probe::Names;
-use og_ui::{
-    Align, ButtonDesc, ButtonVariant, CheckFieldDesc, ControlSize, Cross, Direction, DropdownDesc,
-    DropdownOption, Element, FieldDesc, InputFrame, Insets, LabelDesc, ListDesc, PanelDesc,
-    ScrollDesc, SegmentItem, SegmentedDesc, Size, Srgba, Ui, UiKey, ValueSliderDesc, Viewport,
-};
+use og_ui::reactive::SourceId;
+use og_ui::{InputFrame, UiDocument, UiKey, Viewport};
 use std::collections::BTreeMap;
 
-mod bars;
-mod fields;
-mod lists;
-
-use bars::*;
-use fields::*;
-pub(crate) use lists::*;
+mod events;
+mod values;
 
 /// What the panel reads of the engine this frame.
 pub(super) struct Ctx<'a> {
@@ -39,19 +32,40 @@ pub(super) struct Ctx<'a> {
     pub prefab: Option<&'a serde_json::Value>,
 }
 
-/// The panel's width in CSS pixels at the og-ui unit.
-const WIDTH: f32 = 368.0;
-/// A hierarchy row's height.
-const ROW: f32 = 26.0;
-/// A field name's column.
-const NAME: f32 = 112.0;
-/// The detail's right margin: its scrollbar draws over the content's edge.
-const GUTTER: Insets = Insets {
-    left: 0.0,
-    top: 0.0,
-    right: 10.0,
-    bottom: 0.0,
-};
+/// The panel's mount in the inspector's UI.
+fn mount() -> SourceId {
+    SourceId::new("og.inspector", "panel")
+}
+
+/// The inspector's UI, its panel mounted: in the default style at the
+/// mouse density.
+pub(super) fn ui(ticks_per_second: u32) -> og_ui::Ui {
+    let theme = og_ui::Theme {
+        density: og_ui::DensityMode::Mouse,
+        ..og_ui::Theme::default()
+    };
+    let mut ui = og_ui::Ui::new(og_ui::UiDesc {
+        theme,
+        ticks_per_second,
+        fonts: og_ui::Fonts::default(),
+    });
+    let doc = UiDocument::parse("inspector.svelte", include_str!("panel.svelte"))
+        .unwrap_or_else(|e| panic!("the inspector's panel: {}", e.join("; ")));
+    ui.define_document(doc);
+    if let Err(e) = ui.mount_with_values(mount(), "inspector", &serde_json::Value::Null) {
+        panic!("the inspector's panel: {e}");
+    }
+    ui
+}
+
+/// The panel element's path: what the pointer is over when it is on it.
+const PANEL: &str = "og.inspector:panel/Inspector";
+
+/// An element's path in the panel, as `dump_inspector` gives it (the
+/// mount's left out: `Inspector/Tools/Undo`); none for the mount itself.
+pub(super) fn local_path(path: &str) -> Option<&str> {
+    path.strip_prefix("og.inspector:panel/")
+}
 
 /// The column kind a host layout gives a field, if the host declared it.
 fn kind_of(
@@ -97,32 +111,14 @@ pub(super) fn read_parts(
     Some(model::parts(editor, &f, &bytes, &|e| Names.id_of(world, e)))
 }
 
-fn label(ui: &mut Ui, id: &str, text: &str, color: Srgba, small: bool, width: Size) {
-    let t = *ui.theme();
-    ui.label(
-        id,
-        text,
-        LabelDesc {
-            step: Some(if small {
-                t.type_ramp.xs
-            } else {
-                t.type_ramp.sm
-            }),
-            color: Some(color),
-            nowrap: true,
-            ellipsis: true,
-            width,
-            ..LabelDesc::default()
-        },
-    );
-}
-
-fn small(variant: ButtonVariant) -> ButtonDesc {
-    ButtonDesc {
-        variant,
-        size: ControlSize::Small,
-        ..ButtonDesc::default()
-    }
+/// A prefab instance's field as `apply_prefab` names it: `Component.field`
+/// with the engine's `og.` dropped (`og.Transform.position` is
+/// `Transform.position`, as the scene's text writes it).
+pub(crate) fn prefab_field(component_field: &str) -> String {
+    component_field
+        .strip_prefix("og.")
+        .unwrap_or(component_field)
+        .to_string()
 }
 
 /// Builds the panel and lays it out; what it asks for is left in
@@ -143,114 +139,31 @@ pub(super) fn build(ins: &mut Inspector, cx: &Ctx) {
             ins.requests.push(Request::Redo);
         }
     }
+    // Escape leaves the field being typed in as it was.
+    if escape {
+        ins.draft = None;
+    }
     let Some(mut ui) = ins.ui.take() else {
         return;
     };
-    ui.begin_with(
-        input,
-        cx.viewport,
-        Element {
-            direction: Direction::Row,
-            align: Align::End,
-            padding: Insets::all(12.0),
-            ..Element::default()
-        },
-    );
-    let t = *ui.theme();
-    let mut s = State {
-        ins,
-        editing: false,
-        escape,
-        overridden: Default::default(),
-    };
-    ui.open_panel(
-        "Inspector",
-        PanelDesc {
-            width: Size::Fixed(WIDTH),
-            height: Size::grow(),
-            padding: Some(Insets::all(t.space.md)),
-            gap: Some(t.space.sm),
-            ..PanelDesc::default()
-        },
-    );
-    toolbar(&mut ui, &mut s, cx);
-    let tab = ui
-        .segmented(
-            "View",
-            &SegmentedDesc {
-                items: ["Entities", "Resources", "UI"]
-                    .map(|l| SegmentItem {
-                        label: l.into(),
-                        ..SegmentItem::default()
-                    })
-                    .to_vec(),
-                selected: s.ins.tab as i32,
-                size: ControlSize::Small,
-                width: Some(Size::grow()),
-                label: "Inspector view".into(),
-                ..SegmentedDesc::default()
-            },
-        )
-        .selected
-        .max(0) as usize;
-    s.ins.tab = tab;
-    let mut filter = s.ins.filter.clone();
-    let r = ui.text_field(
-        "Filter",
-        &mut filter,
-        &FieldDesc {
-            placeholder: match tab {
-                0 => "Filter entities by name".into(),
-                super::ui_debug::TAB => "Filter styles and bindings by name".into(),
-                _ => "Filter resources by name".into(),
-            },
-            ..FieldDesc::default()
-        },
-    );
-    s.editing |= r.focused;
-    s.ins.filter = filter;
-    let view = s.ins.ui_view.clone();
-    match tab {
-        0 => entities(&mut ui, &mut s, cx),
-        super::ui_debug::TAB => {
-            let filter = s.ins.filter.trim().to_lowercase();
-            super::ui_debug::detail(&mut ui, &view, &filter, &mut s.ins.ui_bounds)
-        }
-        _ => resources(&mut ui, &mut s, cx),
+    let (values, shown) = values::of(ins, cx, ui.frame().unit.max(1.0));
+    if let Err(e) = ui.set_mount_values(&mount(), &values) {
+        ins.status = format!("inspector: {e}");
     }
-    footer(&mut ui, &mut s, cx);
-    ui.close();
-    if tab == super::ui_debug::TAB {
-        let unit = ui.frame().unit;
-        og_ui::debug_overlay(
-            &mut ui,
-            view.element.as_ref(),
-            view.hover.as_ref(),
-            &view.bounds,
-            unit,
-        );
+    ui.begin(input, cx.viewport);
+    if let Err(e) = ui.build_retained_documents(&og_ui::bind::NoEnv) {
+        ins.status = format!("inspector: {e}");
     }
     ui.end();
+    events::apply(ins, &shown, cx.paused, &ui.take_doc_events());
     let u = ui.frame().unit;
-    s.ins.panel = ui
-        .element_bounds("Inspector")
+    ins.panel = ui
+        .element_bounds(PANEL)
         .map(|e| [e.x * u, e.y * u, e.width * u, e.height * u]);
-    let editing = s.editing;
-    s.ins.editing = editing;
-    if !editing {
-        s.ins.draft = None;
-    }
-    s.ins.input.end_tick();
-    s.ins.ui = Some(ui);
-}
-
-/// The panel's state while it is built.
-struct State<'a> {
-    ins: &'a mut Inspector,
-    /// A field has the keyboard this frame.
-    editing: bool,
-    /// Escape this frame: a field being typed in is left unchanged.
-    escape: bool,
-    /// The selected prefab instance's overridden fields, by `set` target.
-    overridden: std::collections::BTreeSet<String>,
+    // A text box has the keyboard: the filter or a field's part.
+    let focus = ui.focus_path(0);
+    ins.editing = focus.ends_with("/Filter") || focus.contains("/Part#");
+    events::commit_draft(ins, &shown, focus);
+    ins.input.end_tick();
+    ins.ui = Some(ui);
 }

@@ -353,9 +353,13 @@ fn a_resource_edited_in_its_tab_saves_as_its_one_line() {
     let p = panel(e);
     click(e, &p, "Inspector/View/Strip/Track/Item#1");
     let p = panel(e);
-    click(e, &p, "Inspector/Detail/S:Score");
+    click(e, &p, "Inspector/Detail/Group#R:Score/Section");
     let p = panel(e);
-    click(e, &p, "Inspector/Detail/F:Score.best/P0");
+    click(
+        e,
+        &p,
+        "Inspector/Detail/Group#R:Score/Field#Score.best/Row/Part#Score.best%230",
+    );
     commands(
         e,
         "0:key_down:End;0.02:key_up:End;0.04:key_down:Backspace;0.06:key_up:Backspace;0.15:type:9;0.3:key_down:Enter;0.33:key_up:Enter",

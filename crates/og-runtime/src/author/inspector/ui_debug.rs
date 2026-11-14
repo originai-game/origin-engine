@@ -9,7 +9,8 @@
 //! the element picked (or under the pointer while picking).
 
 use super::Inspector;
-use og_ui::{Insets, LabelDesc, Rect, ScrollDesc, Size, Srgba, Ui, UiDebugElement};
+use og_ui::{Insets, Rect, Ui, UiDebugElement};
+use serde_json::{Value, json};
 
 /// What the view read of the game's UI this frame, in CSS px.
 #[derive(Clone, Debug, Default)]
@@ -91,108 +92,115 @@ fn scale(mut e: UiDebugElement, u: f32) -> UiDebugElement {
     e
 }
 
-/// The panel's detail: the picked element, or how to pick one.
+/// The panel's lines about the picked element (none when none is):
 /// `filter` (lower case) keeps the styles, rules and bindings whose name
 /// holds it.
-pub(super) fn detail(ui: &mut Ui, view: &View, filter: &str, bounds: &mut bool) {
+pub(super) fn lines(view: &View, filter: &str) -> Option<Vec<Value>> {
+    let e = view.element.as_ref()?;
     let kept = |name: &str| filter.is_empty() || name.to_lowercase().contains(filter);
-    let t = *ui.theme();
-    let p = t.palette;
-    let r = ui.check_field(
-        "LayoutBounds",
-        *bounds,
-        &og_ui::CheckFieldDesc {
-            label: "Layout bounds".into(),
-            ..Default::default()
-        },
-    );
-    *bounds = r.on;
-    ui.scroll(
-        "Detail",
-        ScrollDesc {
-            width: Size::grow(),
-            height: Size::grow(),
-            gap: t.space.xs,
-            ..ScrollDesc::default()
-        },
-        |ui| {
-            let Some(e) = &view.element else {
-                text(ui, "Empty", "Pick an element of the game's UI", p.ink_muted);
-                return;
-            };
-            text(ui, "Path", &e.path, p.ink);
-            text(ui, "Kind", &format!("<{}>", e.kind), p.ink_muted);
-            heading(ui, "BoxHead", "Box model");
-            let b = &e.border_box;
-            for (id, name, i) in [
-                ("Margin", "margin", e.margin),
-                ("Border", "border", e.border),
-                ("Padding", "padding", e.padding),
-            ] {
-                text(ui, id, &format!("{name}  {}", insets(i)), p.ink);
-            }
-            text(
-                ui,
-                "Content",
-                &format!(
-                    "content  {} × {}  (box {} × {} at {}, {})",
-                    px(e.content.width),
-                    px(e.content.height),
-                    px(b.width),
-                    px(b.height),
-                    px(b.x),
-                    px(b.y)
-                ),
-                p.ink,
-            );
-            if !e.boundaries.is_empty() {
-                text(
-                    ui,
-                    "Boundaries",
-                    &format!("layout boundary: {}", e.boundaries.join(", ")),
-                    p.ink,
-                );
-            }
-            heading(ui, "StylesHead", "Computed styles");
-            if e.styles.is_empty() {
-                text(ui, "NoStyles", "No document declarations", p.ink_muted);
-            }
-            for (k, s) in e.styles.iter().enumerate().filter(|(_, s)| kept(&s.name)) {
-                text(
-                    ui,
-                    &format!("Style{k}"),
-                    &format!("{}: {}   {}", s.name, s.value, s.source),
-                    p.ink,
-                );
-            }
-            heading(ui, "RulesHead", "Style rules");
-            if e.rules.is_empty() {
-                text(ui, "NoRules", "No style rule dresses it", p.ink_muted);
-            }
-            for (k, s) in e.rules.iter().enumerate().filter(|(_, s)| kept(&s.name)) {
-                text(
-                    ui,
-                    &format!("Rule{k}"),
-                    &format!("{}   {}", s.name, s.source),
-                    p.ink,
-                );
-            }
-            heading(ui, "BindingsHead", "Bindings");
-            if e.bindings.is_empty() {
-                text(ui, "NoBindings", "No bindings", p.ink_muted);
-            }
-            for (k, (prop, expr, value)) in
-                e.bindings.iter().enumerate().filter(|(_, b)| kept(&b.0))
-            {
-                text(
-                    ui,
-                    &format!("Binding{k}"),
-                    &format!("{prop} = {expr} → {value}"),
-                    p.ink,
-                );
-            }
-        },
-    );
+    let mut out: Vec<(&str, String)> =
+        vec![("line", e.path.clone()), ("muted", format!("<{}>", e.kind))];
+    out.push(("head", "Box model".into()));
+    for (name, i) in [
+        ("margin", e.margin),
+        ("border", e.border),
+        ("padding", e.padding),
+    ] {
+        out.push(("line", format!("{name}  {}", insets(i))));
+    }
+    let b = &e.border_box;
+    out.push((
+        "line",
+        format!(
+            "content  {} × {}  (box {} × {} at {}, {})",
+            px(e.content.width),
+            px(e.content.height),
+            px(b.width),
+            px(b.height),
+            px(b.x),
+            px(b.y)
+        ),
+    ));
+    if !e.boundaries.is_empty() {
+        out.push((
+            "line",
+            format!("layout boundary: {}", e.boundaries.join(", ")),
+        ));
+    }
+    out.push(("head", "Computed styles".into()));
+    if e.styles.is_empty() {
+        out.push(("muted", "No document declarations".into()));
+    }
+    for s in e.styles.iter().filter(|s| kept(&s.name)) {
+        out.push(("line", format!("{}: {}   {}", s.name, s.value, s.source)));
+    }
+    out.push(("head", "Style rules".into()));
+    if e.rules.is_empty() {
+        out.push(("muted", "No style rule dresses it".into()));
+    }
+    for s in e.rules.iter().filter(|s| kept(&s.name)) {
+        out.push(("line", format!("{}   {}", s.name, s.source)));
+    }
+    out.push(("head", "Bindings".into()));
+    if e.bindings.is_empty() {
+        out.push(("muted", "No bindings".into()));
+    }
+    for (prop, expr, value) in e.bindings.iter().filter(|b| kept(&b.0)) {
+        out.push(("line", format!("{prop} = {expr} → {value}")));
+    }
+    Some(
+        out.into_iter()
+            .enumerate()
+            .map(|(k, (kind, text))| json!({ "id": k.to_string(), "kind": kind, "text": text }))
+            .collect(),
+    )
+}
+
+/// The boxes drawn over the game, in the panel's CSS px (`unit` is its
+/// UI's): every element's bounds while Layout bounds is on, then the
+/// element under the pointer and the one picked, each as its margin,
+/// border and padding rings around its content, as Chrome draws them.
+pub(super) fn boxes(view: &View, unit: f32) -> Vec<Value> {
+    let u = unit.max(1.0);
+    let mut out = Vec::new();
+    let mut push = |kind: &str, r: Rect, ring: Option<Insets>| {
+        let ring = ring.unwrap_or_default();
+        out.push(json!({
+            "id": out.len().to_string(),
+            "kind": kind,
+            "x": r.x / u, "y": r.y / u, "w": r.width / u, "h": r.height / u,
+            "t": ring.top / u, "r": ring.right / u, "b": ring.bottom / u, "l": ring.left / u,
+        }));
+    };
+    for r in &view.bounds {
+        push("bound", *r, Some(Insets::all(u)));
+    }
+    for e in [&view.hover, &view.element].into_iter().flatten() {
+        let b = e.border_box;
+        let margin = Rect {
+            x: b.x - e.margin.left,
+            y: b.y - e.margin.top,
+            width: b.width + e.margin.left + e.margin.right,
+            height: b.height + e.margin.top + e.margin.bottom,
+        };
+        let padding = Rect {
+            x: b.x + e.border.left,
+            y: b.y + e.border.top,
+            width: (b.width - e.border.left - e.border.right).max(0.0),
+            height: (b.height - e.border.top - e.border.bottom).max(0.0),
+        };
+        let between = |outer: Rect, inner: Rect| Insets {
+            left: inner.x - outer.x,
+            top: inner.y - outer.y,
+            right: outer.x + outer.width - inner.x - inner.width,
+            bottom: outer.y + outer.height - inner.y - inner.height,
+        };
+        push("margin", margin, Some(e.margin));
+        push("border", b, Some(e.border));
+        push("padding", padding, Some(between(padding, e.content)));
+        push("content", e.content, None);
+    }
+    out
 }
 
 fn px(v: f32) -> String {
@@ -213,31 +221,4 @@ fn insets(i: Insets) -> String {
         px(i.bottom),
         px(i.left)
     )
-}
-
-fn heading(ui: &mut Ui, id: &str, text_: &str) {
-    let t = *ui.theme();
-    ui.label(
-        id,
-        text_,
-        LabelDesc {
-            step: Some(t.type_ramp.sm),
-            color: Some(t.palette.ink),
-            ..LabelDesc::default()
-        },
-    );
-}
-
-fn text(ui: &mut Ui, id: &str, s: &str, color: Srgba) {
-    let t = *ui.theme();
-    ui.label(
-        id,
-        s,
-        LabelDesc {
-            step: Some(t.type_ramp.xs),
-            color: Some(color),
-            width: Size::grow(),
-            ..LabelDesc::default()
-        },
-    );
 }

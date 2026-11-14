@@ -51,7 +51,16 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
             let elements: Vec<serde_json::Value> = if ins.open {
                 ins.ui
                     .as_ref()
-                    .map(|u| u.probe_elements().iter().map(|e| e.to_json()).collect())
+                    .map(|u| {
+                        u.probe_elements()
+                            .iter()
+                            .filter_map(|e| {
+                                let mut json = e.to_json();
+                                json["path"] = panel::local_path(&e.path)?.into();
+                                Some(json)
+                            })
+                            .collect()
+                    })
                     .unwrap_or_default()
             } else {
                 Vec::new()

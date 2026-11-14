@@ -1712,9 +1712,12 @@ and border boxes with positions); the layout boundaries it sets (`scroll`,
 computed styles: each winning document declaration with its value and
 `file:line`, the pack rules dressing its part with their source, and its
 bindings with expression and current value. The frame draws the picked
-element's boxes in Chrome's colours; Layout bounds outlines every drawn
-element; the filter field keeps styles, rules and bindings whose name
-holds it. `inspect:ui[:<path>]` opens the view from a script and
+element's margin, border, padding and content boxes, as Chrome does;
+Layout bounds outlines every drawn element; the filter field keeps
+styles, rules and bindings whose name holds it. The panel is a built-in
+document (`inspector`, mounted in the inspector's own UI and given its
+state as values each frame), dressed by tokens alone: the boxes take
+`--warn`, `--gold`, `--success` and `--info`, the bounds `--danger`. `inspect:ui[:<path>]` opens the view from a script and
 `dump_inspector` carries the pick as `ui`.
 
 The view reads the last finished frame through the inspection API
