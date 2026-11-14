@@ -139,10 +139,7 @@ fn frame(g: &mut RenderGraph, cx: &PlanCx) {
         )
         .transient("outline-id", desc(w, h, OUTLINE_FORMAT, 1, ATTACH_BIND));
         if cfg.object_space {
-            g.transient(
-                "object-space",
-                desc(w, h, crate::stylise_object::OBJECT_FORMAT, 1, ATTACH_BIND),
-            );
+            g.transient("object-space", desc(w, h, OBJECT_FORMAT, 1, ATTACH_BIND));
         }
     }
 }

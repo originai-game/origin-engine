@@ -441,12 +441,7 @@ impl PostPasses {
         );
         let white = one_texel(device, queue, AO_FORMAT, &[255]);
         let no_reactive = one_texel(device, queue, wgpu::TextureFormat::Rg8Unorm, &[255, 255]);
-        let no_object = one_texel(
-            device,
-            queue,
-            crate::stylise_object::OBJECT_FORMAT,
-            &[0; 16],
-        );
+        let no_object = one_texel(device, queue, crate::post::OBJECT_FORMAT, &[0; 16]);
         let blue_noise = texture_with_data(
             device,
             queue,

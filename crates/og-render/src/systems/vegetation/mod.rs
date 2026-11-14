@@ -1,6 +1,5 @@
-//! Vegetation: grass, scattered copies, foliage wind, impostors and trample.
+//! Vegetation: grass, scattered copies, impostors and trample.
 
-pub mod foliage;
 pub(crate) mod grass;
 pub(crate) mod impostor;
 pub(crate) mod scatter;

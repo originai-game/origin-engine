@@ -19,14 +19,11 @@
 //! `stylise_object.wgsl`) and its pipelines are made the first frame a
 //! look lays a pattern in object space; nothing is built or drawn before.
 
+use crate::post::OBJECT_FORMAT;
 use crate::{Faces, skin};
 use std::collections::HashMap;
 
 pub(crate) const STYLISE_OBJECT_WGSL: &str = wgsl!("stylise_object.wgsl");
-
-/// The object pass's target: xyz the position's bits, w the packed normal
-/// with bit 0 set (0: no instance).
-pub(crate) const OBJECT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Uint;
 
 /// The object pass's depth bias towards the camera (units of the depth
 /// format's precision at the triangle), so a surface whose vertices land a

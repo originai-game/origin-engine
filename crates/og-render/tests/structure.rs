@@ -37,12 +37,9 @@ const KNOWN: &[(&str, &str)] = &[
     ("debug/id_pass.rs", "systems/terrain"),
     ("debug/id_pass.rs", "systems/vegetation"),
     ("frame/mod.rs", "systems/environment"),
-    ("frame/mod.rs", "systems/vegetation"),
     ("frame/views/write.rs", "systems/sprites"),
     ("particles/particles_gpu.rs", "systems/sprites"),
     ("particles/particles_gpu/prepare.rs", "systems/sprites"),
-    ("post/passes.rs", "systems/stylise"),
-    ("post/plan/targets.rs", "systems/stylise"),
     ("shader/pipeline_features.rs", "systems/terrain"),
     ("shader/pipeline_features.rs", "systems/vegetation"),
     ("shader/pipeline_features.rs", "systems/water"),
@@ -66,9 +63,6 @@ const KNOWN: &[(&str, &str)] = &[
     ("systems/vegetation/scatter/placement.rs", "systems/terrain"),
     ("systems/vegetation/scatter/prepare.rs", "systems/terrain"),
     ("systems/vegetation/scatter_place.rs", "systems/terrain"),
-    ("visibility/meshlet_gpu.rs", "systems/vegetation"),
-    ("visibility/meshlet_gpu/encode.rs", "systems/vegetation"),
-    ("visibility/meshlet_gpu/vis.rs", "systems/vegetation"),
 ];
 
 /// The directory that owns a module path below the root: its first
