@@ -57,6 +57,7 @@ impl Renderer {
                     depth,
                     prepass: prepass_views,
                     reveal,
+                    reactive: self.graph.try_view("oit.reveal").is_some(),
                     output,
                     previous_output,
                     sharpened,

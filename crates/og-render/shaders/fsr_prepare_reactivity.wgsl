@@ -28,7 +28,7 @@
 @group(0) @binding(12) var<storage, read_write> new_locks: array<f32>;
 @group(0) @binding(13) var luma_history_tex: texture_2d<f32>;
 @group(0) @binding(14) var luma_history_out: texture_storage_2d<rgba16float, write>;
-@group(0) @binding(15) var luma_instability_out: texture_storage_2d<r32float, write>;
+@group(0) @binding(15) var luma_instability_out: texture_storage_2d<rgba8unorm, write>;
 
 fn exposure() -> f32 { return exposure_of(frame_info); }
 
@@ -123,7 +123,9 @@ fn reactive_at(p: vec2<i32>, x: i32, y: i32) -> f32 {
   return load_reactive_mask(clamp_load(p, vec2<i32>(x, y), render_size()));
 }
 
+// None without OIT (`fsr.misc.z` 0): its placeholder reveals everything.
 fn dilate_reactive_masks(p: vec2<i32>) -> f32 {
+  if (fsr.misc.z == 0.0) { return 0.0; }
   return max(max(max(reactive_at(p, -1, -1), reactive_at(p, 0, -1)), max(reactive_at(p, 1, -1), reactive_at(p, -1, 0))),
     max(max(reactive_at(p, 0, 0), reactive_at(p, 1, 0)), max(max(reactive_at(p, -1, 1), reactive_at(p, 0, 1)), reactive_at(p, 1, 1))));
 }
@@ -149,19 +151,45 @@ fn luma_at(p: vec2<i32>, x: i32, y: i32) -> f32 {
   return textureLoad(current_luma_tex, clamp_load(p, vec2<i32>(x, y), render_size()), 0).r * exposure();
 }
 
-// ComputeThinFeatureConfidence over the 3x3 (1 2 3 / 4 0 5 / 6 7 8),
-// written out: naga's guarded loops are not unrolled on Metal, and its
-// nine samples sat in stack memory.
-fn compute_thin_feature_confidence(p: vec2<i32>) -> f32 {
-  let s0 = luma_at(p, 0, 0);
-  let s1 = luma_at(p, -1, -1);
-  let s2 = luma_at(p, 0, -1);
-  let s3 = luma_at(p, 1, -1);
-  let s4 = luma_at(p, -1, 0);
-  let s5 = luma_at(p, 1, 0);
-  let s6 = luma_at(p, -1, 1);
-  let s7 = luma_at(p, 0, 1);
-  let s8 = luma_at(p, 1, 1);
+// The exposed luma's 3x3 around a pixel (1 2 3 / 4 0 5 / 6 7 8), loaded
+// once for the thin features and the instability. Written out: naga's
+// guarded loops are not unrolled on Metal, and nine samples in an array
+// sat in stack memory.
+struct Luma3x3 {
+  s0: f32, s1: f32, s2: f32, s3: f32, s4: f32, s5: f32, s6: f32, s7: f32, s8: f32,
+};
+
+fn load_luma_3x3(p: vec2<i32>) -> Luma3x3 {
+  return Luma3x3(luma_at(p, 0, 0), luma_at(p, -1, -1), luma_at(p, 0, -1), luma_at(p, 1, -1),
+    luma_at(p, -1, 0), luma_at(p, 1, 0), luma_at(p, -1, 1), luma_at(p, 0, 1), luma_at(p, 1, 1));
+}
+
+// The luma bilinear at the pixel's jittered place: the pixel plus the
+// jitter (at most half a pixel), so its 2x2 lies in the 3x3 (whose
+// clamped edge texels are a clamp-to-edge sampler's).
+fn jittered_luma(l: Luma3x3) -> f32 {
+  let left = jitter().x < 0.0;
+  let f = fract(jitter());
+  let top = vec2<f32>(select(l.s2, l.s1, left), select(l.s3, l.s2, left));
+  let middle = vec2<f32>(select(l.s0, l.s4, left), select(l.s5, l.s0, left));
+  let bottom = vec2<f32>(select(l.s7, l.s6, left), select(l.s8, l.s7, left));
+  let up = jitter().y < 0.0;
+  let r0 = select(middle, top, up);
+  let r1 = select(bottom, middle, up);
+  return mix(mix(r0.x, r0.y, f.x), mix(r1.x, r1.y, f.x), f.y);
+}
+
+// ComputeThinFeatureConfidence over the 3x3.
+fn compute_thin_feature_confidence(l: Luma3x3) -> f32 {
+  let s0 = l.s0;
+  let s1 = l.s1;
+  let s2 = l.s2;
+  let s3 = l.s3;
+  let s4 = l.s4;
+  let s5 = l.s5;
+  let s6 = l.s6;
+  let s7 = l.s7;
+  let s8 = l.s8;
   let luma_min = min(min(min(s0, s1), min(s2, s3)), min(min(s4, s5), min(min(s6, s7), s8)));
   let luma_max = max(max(max(s0, s1), max(s2, s3)), max(max(s4, s5), max(max(s6, s7), s8)));
   // AMD divides by the range unguarded: with every sample equal it is
@@ -217,15 +245,15 @@ fn similar_frame(max_similarity: f32, current: f32, diff0: f32, earlier: f32) ->
 // four frames, and where a well-accumulated pixel's luma returns to an
 // earlier frame's (flickering rather than changing) it is unstable, so the
 // accumulation trusts its history over the clamp. `masks` are the pixel's
-// dilated reactive, disocclusion, shading change and accumulation.
-fn update_luma_instability(p: vec2<i32>, uv: vec2<f32>, mv: vec2<f32>, masks: vec4<f32>) {
+// dilated reactive, disocclusion, shading change and accumulation, and
+// `luma` its exposed luma's 3x3.
+fn update_luma_instability(p: vec2<i32>, uv: vec2<f32>, mv: vec2<f32>, masks: vec4<f32>, luma: Luma3x3) {
   var instability = 0.0;
   var history = vec4<f32>(0.0);
-  let uv_cur_j = uv + jitter() / vec2<f32>(render_size());
   let uv_prev_j = uv + previous_jitter() / vec2<f32>(previous_render_size());
   let reprojected = uv_prev_j + mv;
   if (is_uv_inside(reprojected) & (saturate(masks[ACCUMULATION]) > 0.9)) {
-    let current = bilinear_r(current_luma_tex, clamp_uv(uv_cur_j, render_size(), max_render_size())) * exposure();
+    let current = jittered_luma(luma);
     let reprojected_hw = clamp_uv(reprojected, previous_render_size(), max_render_size());
     history = textureSampleLevel(luma_history_tex, linear_clamp, reprojected_hw, 0.0) * delta_pre_exposure() * exposure();
     // ComputeLumaInstabilityFactor (the farthest depth it is handed is
@@ -270,9 +298,10 @@ fn cs(@builtin(global_invocation_id) id: vec3<u32>) {
 
   let masks = vec4<f32>(final_reactiveness, disocclusion, shading_change, accumulation);
   textureStore(dilated_reactive_out, p, masks);
-  update_luma_instability(p, uv, mv, masks);
+  let luma = load_luma_3x3(p);
+  update_luma_instability(p, uv, mv, masks, luma);
 
-  let lock_strength = compute_thin_feature_confidence(p);
+  let lock_strength = compute_thin_feature_confidence(luma);
   if (lock_strength > 1.0 / 100.0) {
     let hr = compute_hr_pos_from_lr_pos(p);
     if (is_on_screen(hr, upscale_size())) {

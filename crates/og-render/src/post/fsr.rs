@@ -172,7 +172,7 @@ const PREPARE_REACTIVITY: &[B] = &[
     B::Rw,
     B::Tex(true),
     B::Storage(F::Rgba16Float),
-    B::Storage(F::R32Float),
+    B::Storage(F::Rgba8Unorm),
 ];
 const ACCUMULATE: &[B] = &[
     B::Uniform,
@@ -181,7 +181,7 @@ const ACCUMULATE: &[B] = &[
     B::Tex(false),
     B::Tex(true),
     B::Tex(true),
-    B::Tex(false),
+    B::Tex(true),
     B::Ro,
     B::Rw,
     B::Sampler,
@@ -357,11 +357,13 @@ impl State {
             )),
             accumulation: pair(device, "fsr accumulation", upscale, F::Rgba8Unorm),
             luma_history: pair(device, "fsr luma history", upscale, F::Rgba16Float),
+            // Read with one filtered fetch (r32float filters nowhere in
+            // core WebGPU); its values are products of fractions.
             luma_instability: view(&texture(
                 device,
                 "fsr luma instability",
                 upscale,
-                F::R32Float,
+                F::Rgba8Unorm,
                 1,
             )),
             locks: pair(device, "fsr locks", upscale, F::R32Float),
@@ -454,6 +456,9 @@ pub(crate) struct FsrFrame<'a> {
     /// The prepass's gbuffer and view depth, when it drew.
     pub prepass: Option<(&'a wgpu::TextureView, &'a wgpu::TextureView)>,
     pub reveal: &'a wgpu::TextureView,
+    /// Whether `reveal` is the OIT's (else a white placeholder: no
+    /// reactive mask, and its reads are skipped).
+    pub reactive: bool,
     /// The engine's history this frame writes and the one it read.
     pub output: &'a wgpu::TextureView,
     pub previous_output: &'a wgpu::TextureView,
@@ -654,7 +659,7 @@ impl FsrPasses {
             misc: [
                 (luma_groups.0 * luma_groups.1) as f32,
                 REACTIVE_CAP,
-                0.0,
+                f32::from(u8::from(f.reactive)),
                 0.0,
             ],
         };

@@ -91,6 +91,14 @@ Halton sequence are `ffxFsr3UpscalerGetJitterPhaseCount` and
   weight by the square of that, keeping AMD's convergence rate; the
   narrowing eases back to AMD's kernel as the history weight falls
   (motion, disocclusion, a cut), where few frames are blended and a
-  narrow kernel keeps each frame's aliasing.
+  narrow kernel keeps each frame's aliasing. Where the biased kernel's
+  radius leaves out the 3x3's outer ring, its weights are not made.
+- **Fewer reads.** The reactivity pass loads the luma's 3x3 once for the
+  thin-feature locks and the instability's luma at the jittered place
+  (bilinear from the same nine), and skips the reactive mask's dilation
+  when no OIT drew. The instability is stored in `rgba8unorm` and read
+  with one filtered fetch. The accumulation takes the engine's alpha
+  from its workgroup tile and the history's middle 2x2 it already loads,
+  and reads the new lock once.
 - Frame generation, the debug view and the auto-generated reactive and T&C
   masks are not ported.

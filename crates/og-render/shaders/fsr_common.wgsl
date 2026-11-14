@@ -38,7 +38,8 @@ struct Fsr {
   // RCAS sharpness (linear, exp2(-stops)).
   extra: vec4<f32>,
   // x: the luma pyramid's workgroups (luma_partials' length), y: the
-  // OIT revealage's reactive cap, zw: 0.
+  // OIT revealage's reactive cap, z: 1 when the OIT drew (its revealage is
+  // the reactive mask), w: 0.
   misc: vec4<f32>,
 };
 

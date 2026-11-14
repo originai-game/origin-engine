@@ -44,7 +44,13 @@ struct Params {
   farthest_depth_m: f32,
   is_existing_sample: bool,
   is_new_sample: bool,
+  // The lock the reactivity pass set here this frame (0 for none).
+  new_lock: f32,
 };
+
+fn new_lock_index(hr: vec2<i32>) -> u32 {
+  return u32(hr.y) * u32(upscale_size().x) + u32(hr.x);
+}
 
 struct Box {
   center: vec3<f32>,
@@ -62,6 +68,8 @@ struct Data {
   history_weight: f32,
   lock: f32,
   lock_contribution: f32,
+  // The engine's alpha in the history (the previous output's).
+  history_alpha: f32,
 };
 
 // RectificationBoxAddSample, on the pass data's box (a pointer to the
@@ -93,8 +101,8 @@ fn box_variance(d: ptr<function, Data>) {
   (*d).clipping_box = b;
 }
 
-fn load_history(p: vec2<i32>) -> vec3<f32> {
-  return textureLoad(previous_output_tex, p, 0).rgb;
+fn load_history(p: vec2<i32>) -> vec4<f32> {
+  return textureLoad(previous_output_tex, p, 0);
 }
 
 // The history at `p` (previous_output_tex) with its texel coordinates in
@@ -132,8 +140,9 @@ fn lanczos2_weights(t: f32) -> vec4<f32> {
 // edge's middle pair (two positive weights) is one filtered fetch at their
 // ratio, and the corners (together at most 1/64 of the weight, at a half-texel offset
 // on both axes) are left
-// out and the sum renormalised: 8 fetches, not 16.
-fn history_sample(uv: vec2<f32>, size: vec2<i32>) -> vec3<f32> {
+// out and the sum renormalised: 8 fetches, not 16. The alpha (the
+// engine's, not FSR's) is the middle 2x2's, bilinear.
+fn history_sample(uv: vec2<f32>, size: vec2<i32>) -> vec4<f32> {
   var px = uv * vec2<f32>(size) - 0.5;
   let f = fract(px);
   px = clamp(px, vec2<f32>(0.0), vec2<f32>(size - 1));
@@ -144,10 +153,14 @@ fn history_sample(uv: vec2<f32>, size: vec2<i32>) -> vec3<f32> {
   let mid0 = clamp_coord(ip, vec2<i32>(0), size);
   let mid1 = clamp_coord(ip, vec2<i32>(1), size);
   let hi = clamp_coord(ip, vec2<i32>(2), size);
-  let c11 = load_history(mid0);
-  let c21 = load_history(vec2<i32>(mid1.x, mid0.y));
-  let c12 = load_history(vec2<i32>(mid0.x, mid1.y));
-  let c22 = load_history(mid1);
+  let h11 = load_history(mid0);
+  let h21 = load_history(vec2<i32>(mid1.x, mid0.y));
+  let h12 = load_history(vec2<i32>(mid0.x, mid1.y));
+  let h22 = load_history(mid1);
+  let c11 = h11.rgb;
+  let c21 = h21.rgb;
+  let c12 = h12.rgb;
+  let c22 = h22.rgb;
   let mx = wx.y + wx.z;
   let my = wy.y + wy.z;
   let xs = vec2<i32>(mid0.x, mid1.x);
@@ -160,12 +173,14 @@ fn history_sample(uv: vec2<f32>, size: vec2<i32>) -> vec3<f32> {
     + mx * (wy.x * top + wy.w * bottom)
     + my * (wx.x * left + wx.w * right);
   let total = mx * my + mx * (wy.x + wy.w) + my * (wx.x + wx.w);
-  return clamp(c / total, min(min(c11, c21), min(c12, c22)), max(max(c11, c21), max(c12, c22)));
+  let a = mix(mix(h11.a, h21.a, f.x), mix(h12.a, h22.a, f.x), f.y);
+  return vec4<f32>(clamp(c / total, min(min(c11, c21), min(c12, c22)), max(max(c11, c21), max(c12, c22))), a);
 }
 
-fn prepared_color(p: vec2<i32>) -> vec3<f32> {
-  let rgb = max(vec3<f32>(0.0), textureLoad(color_tex, p, 0).rgb) * exposure();
-  return rgb_to_ycocg(rgb);
+// The current colour exposed, in YCoCg, with the engine's alpha beside it.
+fn prepared_color(p: vec2<i32>) -> vec4<f32> {
+  let c = textureLoad(color_tex, p, 0);
+  return vec4<f32>(rgb_to_ycocg(max(vec3<f32>(0.0), c.rgb) * exposure()), c.a);
 }
 
 fn init_params(hr: vec2<i32>) -> Params {
@@ -179,7 +194,7 @@ fn init_params(hr: vec2<i32>) -> Params {
   p.velocity_4k = get_4k_velocity(p.motion);
   p.reprojected_hr_uv = p.hr_uv + p.motion;
   p.is_existing_sample = is_uv_inside(p.reprojected_hr_uv);
-  p.luma_instability = bilinear_r(luma_instability_tex, clamp_uv(p.hr_uv, render_size(), max_render_size()));
+  p.luma_instability = textureSampleLevel(luma_instability_tex, linear_clamp, clamp_uv(p.hr_uv, render_size(), max_render_size()), 0.0).r;
   let farthest_uv = clamp_uv(p.lr_uv_jittered, render_size() / 2, vec2<i32>(textureDimensions(farthest_depth_mip1_tex)));
   p.farthest_depth_m = textureSampleLevel(farthest_depth_mip1_tex, linear_clamp, farthest_uv, 0.0).r;
   p.is_new_sample = !p.is_existing_sample | (frame_index() == 0.0);
@@ -189,12 +204,14 @@ fn init_params(hr: vec2<i32>) -> Params {
   p.shading_change = saturate(masks[SHADING_CHANGE]);
   p.accumulation = saturate(masks[ACCUMULATION]);
   p.accumulation *= f32(round(p.accumulation * 100.0) > 1.0);
+  p.new_lock = new_locks[new_lock_index(hr)];
   return p;
 }
 
 fn reproject_history_color(p: Params, d: ptr<function, Data>) {
   let h = history_sample(p.reprojected_hr_uv, previous_upscale_size());
-  (*d).history_color = rgb_to_ycocg(h * delta_pre_exposure() * exposure());
+  (*d).history_color = rgb_to_ycocg(h.rgb * delta_pre_exposure() * exposure());
+  (*d).history_alpha = h.a;
   // The lock beside it, bilinear (AMD's rides in the history's alpha
   // through the same Lanczos and deringing, whose result lies in the
   // middle 2x2's range as a bilinear one does).
@@ -206,8 +223,7 @@ fn update_lock_status(p: Params, d: ptr<function, Data>) {
   let decrease = max(saturate(p.shading_change), max(p.reactive, p.disocclusion));
   (*d).lock = max(0.0, (*d).lock - decrease * LOCK_MAX);
   (*d).lock_contribution = saturate(saturate((*d).lock - LOCK_THRESHOLD) * (LOCK_MAX - LOCK_THRESHOLD));
-  let i = u32(p.hr_pos.y) * u32(upscale_size().x) + u32(p.hr_pos.x);
-  let new_lock = new_locks[i] * (1.0 - max(p.shading_change * 0.0, p.reactive));
+  let new_lock = p.new_lock * (1.0 - max(p.shading_change * 0.0, p.reactive));
   (*d).lock = max(0.0, min((*d).lock + new_lock, LOCK_MAX));
   let lifetime_decrease = (0.1 / jitter_sequence_length()) * (1.0 - decrease);
   (*d).lock = max(0.0, (*d).lock - lifetime_decrease);
@@ -221,14 +237,15 @@ fn compute_base_accumulation_weight(p: Params, d: ptr<function, Data>) {
   (*d).history_weight = base;
 }
 
-// The prepared current colour (exposed, YCoCg) under a workgroup's 8x8
-// output pixels: their 3x3 footprints, src_input - 1 to src_input + 1, span
-// at most 10 render texels a side when the render is no larger than the
-// output (the pass's condition), one more for rounding. Neighbouring
-// output pixels share most of their nine taps, so each texel is loaded and
-// prepared once per group rather than nine times per pixel.
+// The prepared current colour (exposed, YCoCg, with the alpha) under a
+// workgroup's 8x8 output pixels: their 3x3 footprints, src_input - 1 to
+// src_input + 1, span at most 10 render texels a side when the render is
+// no larger than the output (the pass's condition), one more for
+// rounding. Neighbouring output pixels share most of their nine taps, so
+// each texel is loaded and prepared once per group rather than nine times
+// per pixel; the alpha's 2x2 at the jittered place lies in the same 3x3.
 const TILE: i32 = 11;
-var<workgroup> tile: array<vec3<f32>, 121>;
+var<workgroup> tile: array<vec4<f32>, 121>;
 var<private> tile_origin: vec2<i32>;
 
 // Where the history is whole, the upsample's Lanczos-2 is twice as narrow
@@ -264,13 +281,16 @@ fn upsample_tap(t: Taps, d: ptr<function, Data>, col: i32, row: i32) {
   let cr = vec2<i32>(select(col, 3 - col, t.flip_col), select(row, 3 - row, t.flip_row));
   let src = t.src_input + t.offset_tl + cr;
   let k = src - tile_origin;
-  var s = tile[k.y * TILE + k.x];
+  var s = tile[k.y * TILE + k.x].xyz;
   if (t.initial) {
     s = rgb_to_ycocg(tonemap(ycocg_to_rgb(s)));
   }
   let sample_offset = t.base_offset + vec2<f32>(t.offset_tl) + vec2<f32>(cr);
   let on_screen = f32(is_on_screen(src, render_size()));
-  if (!t.initial) {
+  // The outer ring lies at least a render pixel off on one axis, where a
+  // kernel biased by 2 or more (KERNEL_NARROWING) is zero: its weight is
+  // not made.
+  if (!t.initial & ((t.kernel_bias < 2.0) | ((col > 0) & (row > 0)))) {
     // GetUpsampleLanczosWeight, LANCZOS_TYPE_APPROXIMATE.
     let biased = sample_offset * t.kernel_bias;
     let w = on_screen * lanczos2_approx_sq(dot(biased, biased));
@@ -387,27 +407,26 @@ fn cs(@builtin(global_invocation_id) id: vec3<u32>, @builtin(workgroup_id) wg: v
   let color = max(d.history_color / exposure(), vec3<f32>(0.0));
   textureStore(lock_out, hr, vec4<f32>(d.lock, 0.0, 0.0, 0.0));
 
-  // The engine's alpha: the current frame's (bilinear at the jittered
-  // place), with the previous output's along the motion.
-  let size = vec2<f32>(render_size());
-  let a_cur = textureSampleLevel(color_tex, linear_clamp, p.lr_uv_jittered, 0.0).a;
-  let c = clamp(vec2<i32>(floor(p.lr_uv_jittered * size - 0.5)), vec2<i32>(0), render_size() - 1);
-  let c2 = min(c + 1, render_size() - 1);
-  let a0 = textureLoad(color_tex, c, 0).a;
-  let a1 = textureLoad(color_tex, vec2<i32>(c2.x, c.y), 0).a;
-  let a2 = textureLoad(color_tex, vec2<i32>(c.x, c2.y), 0).a;
-  let a3 = textureLoad(color_tex, c2, 0).a;
-  var a = a_cur;
+  // The engine's alpha: the current frame's, bilinear at the jittered
+  // place from the tile (its clamped texels are a clamp-to-edge
+  // sampler's), with the previous output's along the motion clamped to
+  // the range of the same four samples.
+  let q = p.lr_uv_jittered * vec2<f32>(render_size()) - 0.5;
+  let k = vec2<i32>(floor(q)) - tile_origin;
+  let fq = fract(q);
+  let a0 = tile[k.y * TILE + k.x].w;
+  let a1 = tile[k.y * TILE + k.x + 1].w;
+  let a2 = tile[(k.y + 1) * TILE + k.x].w;
+  let a3 = tile[(k.y + 1) * TILE + k.x + 1].w;
+  var a = mix(mix(a0, a1, fq.x), mix(a2, a3, fq.x), fq.y);
   if (p.is_existing_sample & !p.is_new_sample) {
-    let a_hist = clamp(sample_exact(previous_output_tex, linear_clamp, p.reprojected_hr_uv).a,
-      min(min(a0, a1), min(a2, a3)), max(max(a0, a1), max(a2, a3)));
-    a = mix(a_hist, a_cur, alpha);
+    let a_hist = clamp(d.history_alpha, min(min(a0, a1), min(a2, a3)), max(max(a0, a1), max(a2, a3)));
+    a = mix(a_hist, a, alpha);
   }
   textureStore(output, hr, vec4<f32>(color, a));
   // Cleared where the reactivity pass set one (few pixels): no store
   // for the rest.
-  let li_ = u32(hr.y) * u32(upscale_size().x) + u32(hr.x);
-  if (new_locks[li_] != 0.0) {
-    new_locks[li_] = 0.0;
+  if (p.new_lock != 0.0) {
+    new_locks[new_lock_index(hr)] = 0.0;
   }
 }
