@@ -65,10 +65,71 @@ pub(crate) trait CulledRows {
     fn draw_args(&self, row: u32, draw: u32) -> (&wgpu::Buffer, u64);
 }
 
+/// The four stages of a cull that keeps what it keeps in order (the
+/// instances' and the crowds'): each item's visibility and count, the
+/// blocks' sums into their prefix, each item's prefix
+/// (`shaders/cull_compact.wgsl`), then the module's own scatter of what it
+/// keeps to where the prefix says.
+pub(crate) struct CullStages {
+    visibility: wgpu::ComputePipeline,
+    scan_blocks: wgpu::ComputePipeline,
+    prefix: wgpu::ComputePipeline,
+    scatter: wgpu::ComputePipeline,
+}
+
+impl CullStages {
+    /// The stages of `module` (its `visibility`, `scan_blocks`, `prefix`
+    /// and `scatter` entry points) over `layout`.
+    pub(crate) fn new(
+        device: &wgpu::Device,
+        layout: &wgpu::PipelineLayout,
+        module: &wgpu::ShaderModule,
+    ) -> CullStages {
+        let stage = |entry: &str| compute_stage(device, layout, module, entry);
+        CullStages {
+            visibility: stage("visibility"),
+            scan_blocks: stage("scan_blocks"),
+            prefix: stage("prefix"),
+            scatter: stage("scatter"),
+        }
+    }
+
+    /// Runs the stages over `rows` rows of `blocks` workgroups of items
+    /// each, with the bind group already set.
+    pub(crate) fn run(&self, pass: &mut wgpu::ComputePass<'_>, blocks: u32, rows: u32) {
+        pass.set_pipeline(&self.visibility);
+        pass.dispatch_workgroups(blocks, rows, 1);
+        pass.set_pipeline(&self.scan_blocks);
+        pass.dispatch_workgroups(1, rows, 1);
+        pass.set_pipeline(&self.prefix);
+        pass.dispatch_workgroups(blocks, rows, 1);
+        pass.set_pipeline(&self.scatter);
+        pass.dispatch_workgroups(blocks, rows, 1);
+    }
+}
+
+/// One compute stage of a cull's module.
+pub(crate) fn compute_stage(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    module: &wgpu::ShaderModule,
+    entry: &str,
+) -> wgpu::ComputePipeline {
+    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        label: Some(entry),
+        layout: Some(layout),
+        module,
+        entry_point: Some(entry),
+        compilation_options: Default::default(),
+        cache: crate::pipeline_cache::of(device).as_ref(),
+    })
+}
+
 pub(crate) const CULL_WGSL: &str = concat!(
     wgsl!("instance.wgsl"),
     wgsl!("cull.wgsl"),
     wgsl!("cull_scan.wgsl"),
+    wgsl!("cull_compact.wgsl"),
     wgsl!("cull_plane.wgsl"),
     wgsl!("cull_box.wgsl"),
     wgsl!("cull_hiz.wgsl")
@@ -321,10 +382,7 @@ struct Pyramid {
 
 pub(crate) struct GpuCulling {
     layout: wgpu::BindGroupLayout,
-    visibility: wgpu::ComputePipeline,
-    scan_blocks: wgpu::ComputePipeline,
-    prefix: wgpu::ComputePipeline,
-    scatter: wgpu::ComputePipeline,
+    stages: CullStages,
     hiz_base_layout: [wgpu::BindGroupLayout; 2],
     hiz_reduce_layout: wgpu::BindGroupLayout,
     hiz_base: [Option<wgpu::ComputePipeline>; 2],

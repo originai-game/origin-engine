@@ -95,7 +95,8 @@ struct BatchGpu {
 
 fn pass_at(row: u32) -> u32 { return params.motion.y + row; }
 
-var<workgroup> shared_sum: array<u32, 256>;
+alias Sum = u32;
+var<workgroup> shared_sum: array<Sum, 256>;
 var<workgroup> shared_inside: atomic<u32>;
 // The camera pass's hidden instances of the workgroup's first two batches
 // (the instances are sorted by batch), and the first one's index.
@@ -231,19 +232,7 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
 fn scan_blocks(@builtin(local_invocation_index) li: u32,
                @builtin(workgroup_id) wid: vec3<u32>) {
   let g = passes[pass_at(wid.y)].info.z;
-  let at = blocks_at(g);
-  var carry = 0u;
-  for (var base = 0u; base < params.sizes.x; base += WG) {
-    let i = base + li;
-    var v = 0u;
-    if (i < params.sizes.x) { v = scan[at + i]; }
-    shared_sum[li] = v;
-    workgroupBarrier();
-    scan_shared(li);
-    if (i < params.sizes.x) { scan[at + i] = carry + shared_sum[li] - v; }
-    carry += shared_sum[WG - 1u];
-    workgroupBarrier();
-  }
+  scan_row_blocks(li, blocks_at(g), params.sizes.x);
 }
 
 @compute @workgroup_size(256)
@@ -251,18 +240,7 @@ fn prefix(@builtin(global_invocation_id) gid: vec3<u32>,
           @builtin(local_invocation_index) li: u32,
           @builtin(workgroup_id) wid: vec3<u32>) {
   let g = passes[pass_at(wid.y)].info.z;
-  let n = n_instances();
-  let k = gid.x;
-  var v = 0u;
-  if (k < n) { v = scan[prefix_at(g) + k]; }
-  shared_sum[li] = v;
-  workgroupBarrier();
-  scan_shared(li);
-  let before = scan[blocks_at(g) + wid.x];
-  if (k < n) {
-    scan[prefix_at(g) + k] = before + shared_sum[li] - v;
-    if (k == n - 1u) { scan[prefix_at(g) + n] = before + shared_sum[li]; }
-  }
+  scan_row_prefix(li, gid.x, n_instances(), prefix_at(g), blocks_at(g) + wid.x);
 }
 
 @compute @workgroup_size(256)

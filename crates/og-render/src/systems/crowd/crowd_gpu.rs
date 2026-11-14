@@ -52,10 +52,7 @@ pub(crate) struct CrowdView<'a> {
 
 pub(crate) struct CrowdCulling {
     layout: wgpu::BindGroupLayout,
-    visibility: wgpu::ComputePipeline,
-    scan_blocks: wgpu::ComputePipeline,
-    prefix: wgpu::ComputePipeline,
-    scatter: wgpu::ComputePipeline,
+    stages: crate::cull_gpu::CullStages,
     totals: wgpu::ComputePipeline,
     params: wgpu::Buffer,
     members: wgpu::Buffer,
@@ -153,16 +150,6 @@ impl CrowdCulling {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let compute = |entry: &str| {
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some(entry),
-                layout: Some(&pipeline_layout),
-                module: &module,
-                entry_point: Some(entry),
-                compilation_options: Default::default(),
-                cache: crate::pipeline_cache::of(device).as_ref(),
-            })
-        };
         let no_pyramid = device
             .create_texture(&wgpu::TextureDescriptor {
                 label: Some("crowd cull: no pyramid"),
@@ -181,11 +168,8 @@ impl CrowdCulling {
             .create_view(&Default::default());
         let read = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
         CrowdCulling {
-            visibility: compute("visibility"),
-            scan_blocks: compute("scan_blocks"),
-            prefix: compute("prefix"),
-            scatter: compute("scatter"),
-            totals: compute("totals"),
+            stages: crate::cull_gpu::CullStages::new(device, &pipeline_layout, &module),
+            totals: crate::cull_gpu::compute_stage(device, &pipeline_layout, &module, "totals"),
             params: buffer(
                 device,
                 "crowd cull params",
@@ -428,14 +412,7 @@ impl CrowdCulling {
                 timestamp_writes: None,
             });
             pass.set_bind_group(0, &group, &[]);
-            pass.set_pipeline(&self.visibility);
-            pass.dispatch_workgroups(blocks, r, 1);
-            pass.set_pipeline(&self.scan_blocks);
-            pass.dispatch_workgroups(1, r, 1);
-            pass.set_pipeline(&self.prefix);
-            pass.dispatch_workgroups(blocks, r, 1);
-            pass.set_pipeline(&self.scatter);
-            pass.dispatch_workgroups(blocks, r, 1);
+            self.stages.run(&mut pass, blocks, r);
             pass.set_pipeline(&self.totals);
             pass.dispatch_workgroups(1, 1, 1);
             drop(pass);

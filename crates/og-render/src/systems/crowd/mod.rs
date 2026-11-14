@@ -80,6 +80,7 @@ pub(crate) const CROWD_CULL_WGSL: &str = concat!(
     wgsl!("instance.wgsl"),
     wgsl!("crowd_cull.wgsl"),
     wgsl!("cull_scan.wgsl"),
+    wgsl!("cull_compact.wgsl"),
     wgsl!("cull_plane.wgsl"),
     wgsl!("cull_box.wgsl"),
     wgsl!("cull_hiz.wgsl"),
