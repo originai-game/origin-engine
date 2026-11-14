@@ -487,6 +487,46 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
             )
         }),
     },
+    Migration {
+        target: Target::Record,
+        name: "og.Collider",
+        from: 3,
+        to: 4,
+        note: "codes become enums: shape is a ColliderShape, its saved code the variant's index",
+        run: Some(|e| enumerated(e, "og.Collider", 4)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Cloth",
+        from: 3,
+        to: 4,
+        note: "codes become enums: simulation is a Simulation, its saved code the variant's index",
+        run: Some(|e| enumerated(e, "og.Cloth", 4)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Garment",
+        from: 3,
+        to: 4,
+        note: "codes become enums: simulation is a Simulation, its saved code the variant's index",
+        run: Some(|e| enumerated(e, "og.Garment", 4)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.SoftBody",
+        from: 3,
+        to: 4,
+        note: "codes become enums: shape is a SoftBodyShape and simulation a Simulation, their saved codes the variants' indices",
+        run: Some(|e| enumerated(e, "og.SoftBody", 4)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Fluid3D",
+        from: 2,
+        to: 3,
+        note: "codes become enums: simulation is a Simulation, its saved code the variant's index",
+        run: Some(|e| enumerated(e, "og.Fluid3D", 3)),
+    },
 ];
 
 /// A record's fields under the name each had before and the name it has
@@ -593,6 +633,77 @@ fn renamed(edit: &mut SnapshotEdit, name: &str, to: u32) -> Result<(), String> {
         if let Some((_, new)) = fields.iter().find(|(old, _)| f.name == *old) {
             f.name = (*new).to_string();
         }
+    }
+    edit.map_type(name, schema, &mut |v| Ok(v.to_vec()))
+        .map_err(|e| e.reason().to_string())
+}
+
+/// A record's `u32` code fields that became enums with its version `.1`:
+/// each field and its variants in code order, as that version declared
+/// them.
+type Enumerated = (
+    &'static str,
+    u32,
+    &'static [(&'static str, &'static [&'static str])],
+);
+
+/// Simulation's variants (og.Cloth, og.Garment, og.SoftBody, og.Fluid3D).
+const SIMULATION: &[&str] = &["gameplay", "visual"];
+
+/// The code fields that became enums, the stored code the variant's index.
+const ENUMS: &[Enumerated] = &[
+    (
+        "og.Collider",
+        4,
+        &[(
+            "shape",
+            &[
+                "box",
+                "sphere",
+                "capsule",
+                "cylinder",
+                "convex",
+                "trimesh",
+                "heightfield",
+                "diamond",
+                "hexagon",
+            ],
+        )],
+    ),
+    ("og.Cloth", 4, &[("simulation", SIMULATION)]),
+    ("og.Garment", 4, &[("simulation", SIMULATION)]),
+    (
+        "og.SoftBody",
+        4,
+        &[
+            ("shape", &["sphere", "box", "mesh"]),
+            ("simulation", SIMULATION),
+        ],
+    ),
+    ("og.Fluid3D", 3, &[("simulation", SIMULATION)]),
+];
+
+/// A record whose code fields became enums with its version `to`
+/// ([`ENUMS`]): the saved type takes the enums, and every value keeps its
+/// bytes, a code being its variant's index.
+fn enumerated(edit: &mut SnapshotEdit, name: &str, to: u32) -> Result<(), String> {
+    use og_core::reflect::FieldType;
+    let (_, _, fields) = ENUMS
+        .iter()
+        .find(|r| r.0 == name && r.1 == to)
+        .ok_or_else(|| format!("{name} has no enums at version {to}"))?;
+    let Some(mut schema) = edit.schema(name).cloned() else {
+        return Ok(());
+    };
+    schema.version = to;
+    for (field, variants) in *fields {
+        let f = schema
+            .fields
+            .iter_mut()
+            .find(|f| f.name == *field && f.ty == FieldType::U32)
+            .ok_or_else(|| format!("the saved {name} has no u32 {field}"))?;
+        f.ty = FieldType::Enum;
+        f.variants = variants.iter().map(|v| (*v).to_string()).collect();
     }
     edit.map_type(name, schema, &mut |v| Ok(v.to_vec()))
         .map_err(|e| e.reason().to_string())
@@ -1128,13 +1239,98 @@ mod tests {
         );
     }
 
+    /// `now` as the build that registered it at `version` laid it out:
+    /// every later rename and enum step undone, newest first. A step that
+    /// only changed what a value means left the layout alone.
+    fn laid_out_at(now: &og_core::reflect::Schema, version: u32) -> og_core::reflect::Schema {
+        let mut old = now.clone();
+        let name = now.name.as_str();
+        for v in (version + 1..=now.version).rev() {
+            if let Some((_, _, fields)) = RENAMES.iter().find(|r| r.0 == name && r.1 == v) {
+                for (before, after) in *fields {
+                    let f = old
+                        .fields
+                        .iter_mut()
+                        .find(|f| f.name == *after)
+                        .unwrap_or_else(|| panic!("{name} has no field {after}"));
+                    f.name = (*before).to_string();
+                }
+            }
+            if let Some((_, _, fields)) = ENUMS.iter().find(|r| r.0 == name && r.1 == v) {
+                for (field, _) in *fields {
+                    let f = old
+                        .fields
+                        .iter_mut()
+                        .find(|f| f.name == *field)
+                        .unwrap_or_else(|| panic!("{name} has no field {field}"));
+                    f.ty = og_core::reflect::FieldType::U32;
+                    f.variants.clear();
+                }
+            }
+        }
+        old.version = version;
+        old
+    }
+
+    /// How many steps the table runs on the record `name` saved at `version`.
+    fn steps_from(name: &str, version: u32) -> usize {
+        MIGRATIONS
+            .iter()
+            .filter(|m| {
+                m.target == Target::Record && m.name == name && m.from >= version && m.run.is_some()
+            })
+            .count()
+    }
+
+    /// Each record of [`ENUMS`] as the build before wrote it (plain codes)
+    /// upgrades to the layout this build registers, each code where it
+    /// was: the variant's index.
+    #[test]
+    fn a_saved_code_restores_as_the_enum_variant_of_that_index() {
+        for &(name, to, fields) in ENUMS {
+            let decl = og_api::host::RECORDS
+                .iter()
+                .find(|d| d.schema == name)
+                .unwrap_or_else(|| panic!("{name} is not an engine record"));
+            let layout = crate::host::codec::Layout::from_decl(decl).unwrap();
+            let now = crate::engine::versioned(layout.schema());
+            let old = laid_out_at(&now, to - 1);
+            let mut bytes = layout.encode(None, None).unwrap();
+            for (field, variants) in fields {
+                let declared = now.fields.iter().find(|f| f.name == *field).unwrap();
+                assert_eq!(declared.variants, *variants, "{name}.{field}");
+                // The last code: the last variant.
+                let at: usize = now
+                    .fields
+                    .iter()
+                    .take_while(|f| f.name != *field)
+                    .map(|f| f.ty.size())
+                    .sum();
+                let code = variants.len() as u32 - 1;
+                bytes[at..at + 4].copy_from_slice(&code.to_le_bytes());
+            }
+            let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
+            let id = world.register_schema(old).unwrap();
+            let e = world.spawn_bytes(vec![(id, bytes.clone())]).unwrap();
+            let (upgraded, steps) = upgrade(&world.snapshot())
+                .unwrap()
+                .unwrap_or_else(|| panic!("{name}: no step ran"));
+            assert_eq!(steps.len(), steps_from(name, to - 1), "{name}: {steps:?}");
+            let edit = SnapshotEdit::from_bytes(&upgraded).unwrap();
+            let saved = edit.schema(name).unwrap();
+            assert_eq!(saved.layout_hash(), now.layout_hash(), "{name}: {saved:?}");
+            assert_eq!(edit.components(name), vec![(e, bytes)], "{name}");
+            assert!(upgrade(&upgraded).unwrap().is_none(), "{name}: twice");
+        }
+    }
+
     /// Each record of [`RENAMES`] as the build before wrote it (the old
     /// names, the version before) upgrades to the layout this build
     /// registers, so the restore takes it, with its values where they were.
     #[test]
     fn a_renamed_records_save_upgrades_to_this_builds_layout_with_its_values() {
         use crate::host::codec::RecordKind;
-        for &(name, to, fields) in RENAMES {
+        for &(name, to, _) in RENAMES {
             let decl = og_api::host::RECORDS
                 .iter()
                 .find(|d| d.schema == name)
@@ -1148,25 +1344,8 @@ mod tests {
                 _ => crate::engine::versioned(layout.schema()),
             };
             // Later steps of the record run after this one: the save as the
-            // build before this step wrote it undoes them too, newest first.
-            let mut later: Vec<&Rename> =
-                RENAMES.iter().filter(|r| r.0 == name && r.1 > to).collect();
-            later.sort_by_key(|r| std::cmp::Reverse(r.1));
-            assert_eq!(
-                now.version,
-                later.first().map_or(to, |r| r.1),
-                "{name}: the version this build registers"
-            );
-            let mut old = now.clone();
-            old.version = to - 1;
-            for (before, after) in later.iter().flat_map(|r| r.2).chain(fields) {
-                let f = old
-                    .fields
-                    .iter_mut()
-                    .find(|f| f.name == *after)
-                    .unwrap_or_else(|| panic!("{name} has no field {after}"));
-                f.name = (*before).to_string();
-            }
+            // build before this step wrote it undoes them too.
+            let old = laid_out_at(&now, to - 1);
             // The record at its declared defaults: bytes every field type takes.
             let bytes = layout.encode(None, None).unwrap();
             let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
@@ -1181,7 +1360,7 @@ mod tests {
             let (upgraded, steps) = upgrade(&world.snapshot())
                 .unwrap()
                 .unwrap_or_else(|| panic!("{name}: no step ran"));
-            assert_eq!(steps.len(), 1 + later.len(), "{name}: {steps:?}");
+            assert_eq!(steps.len(), steps_from(name, to - 1), "{name}: {steps:?}");
             let edit = SnapshotEdit::from_bytes(&upgraded).unwrap();
             let saved = edit.schema(name).unwrap();
             assert_eq!(saved.layout_hash(), now.layout_hash(), "{name}: {saved:?}");
@@ -1204,12 +1383,13 @@ mod tests {
     fn a_saved_damping_becomes_the_rate_that_keeps_as_much_a_tick() {
         use og_core::Reflect;
         let dt = 1.0 / 30.0;
-        for (now, kept_per_tick) in [
-            (og_physics::Rope::schema(), 0.99f32),
-            (og_physics::Cloth::schema(), 0.985),
-            (og_physics::Garment::schema(), 0.97),
-            (og_physics::SoftBody::schema(), 0.995),
-            (og_physics::WaterSurface::schema(), 0.0),
+        // Each with the version it had before its damping became a rate.
+        for (now, before, kept_per_tick) in [
+            (og_physics::Rope::schema(), 1, 0.99f32),
+            (og_physics::Cloth::schema(), 2, 0.985),
+            (og_physics::Garment::schema(), 2, 0.97),
+            (og_physics::SoftBody::schema(), 2, 0.995),
+            (og_physics::WaterSurface::schema(), 1, 0.0),
         ] {
             let name = now.name.clone();
             let water = name == "og.WaterSurface";
@@ -1229,8 +1409,7 @@ mod tests {
                 now.version,
                 "{name}"
             );
-            let mut old = crate::engine::versioned(layout.schema());
-            old.version -= 1;
+            let old = laid_out_at(&crate::engine::versioned(layout.schema()), before);
             let at: usize = old
                 .fields
                 .iter()
@@ -1249,7 +1428,7 @@ mod tests {
             let (upgraded, steps) = upgrade(&world.snapshot())
                 .unwrap()
                 .unwrap_or_else(|| panic!("{name}: no step ran"));
-            assert_eq!(steps.len(), 1, "{name}: {steps:?}");
+            assert_eq!(steps.len(), steps_from(&name, before), "{name}: {steps:?}");
             let edit = SnapshotEdit::from_bytes(&upgraded).unwrap();
             assert_eq!(edit.schema(&name).unwrap().version, now.version, "{name}");
             let rows = edit.components(&name);

@@ -4,7 +4,7 @@
 
 Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.
 
-Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape SHAPE_HEIGHTFIELD naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident.
+Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident.
 
 See `world §1`.
 
@@ -16,7 +16,7 @@ See `world §1`.
 ```ogt
 module terrain {
   doc "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes."
-  doc "Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape SHAPE_HEIGHTFIELD naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident."
+  doc "Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident."
   # declarations follow, each on its own page
 ```
 

@@ -45,7 +45,7 @@ const rotate = (q: Q, v: V): V => {
 /** Every chunk of `prop` by its index, at its place in the world. */
 function chunks(world: World, prop: number): Map<number, V> {
   const out = new Map<number, V>();
-  const near: readonly Entity[] = must(og.physics.overlap(world, { shape: { shape: 0, size: { x: 30, y: 10, z: 20 } }, position: { x: 1, y: 4, z: 0 } } as never));
+  const near: readonly Entity[] = must(og.physics.overlap(world, { shape: { shape: "box", size: { x: 30, y: 10, z: 20 } }, position: { x: 1, y: 4, z: 0 } } as never));
   for (const e of near) {
     const c = world.get(e as never, og.Chunk as never) as { ok: boolean; value?: { destructible: number; chunk: number } };
     if (!c.ok || c.value!.destructible !== prop) continue;

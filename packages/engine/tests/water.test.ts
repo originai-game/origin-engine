@@ -9,7 +9,7 @@
 // and a hull rides a gale's sea, the same on every run and through a
 // restore.
 import { beforeAll, expect, test } from "bun:test";
-import { og, defineSystem, SHAPE_BOX } from "@origingame/engine";
+import { og, defineSystem } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
@@ -131,7 +131,7 @@ test("og.physics.water reads the waves a stone raised on an og.WaterSurface", ()
     world.insert(water, og.WaterSurface, { size: 16, resolution: 64 });
     const stone = must(world.spawn({ name: "stone", position: { x: 2, y: 3, z: 1 } }));
     world.insert(stone, og.RigidBody);
-    world.insert(stone, og.Collider, { shape: SHAPE_BOX, size: { x: 0.6, y: 0.6, z: 0.6 }, density: 4 });
+    world.insert(stone, og.Collider, { shape: "box", size: { x: 0.6, y: 0.6, z: 0.6 }, density: 4 });
   };
   const r = createEngine(og.game({ start: pool }) as GameToken, {});
   if (!r.ok) throw new Error(r.reason);
@@ -153,7 +153,7 @@ test("og.physics.water reads the waves a stone raised on an og.WaterSurface", ()
 function body(world: World, name: string, position: { x: number; y: number; z: number }, size: { x: number; y: number; z: number }, density: number): void {
   const e = must(world.spawn({ name, position }));
   world.insert(e, og.RigidBody);
-  world.insert(e, og.Collider, { shape: SHAPE_BOX, size, density });
+  world.insert(e, og.Collider, { shape: "box", size, density });
   world.insert(e, og.Buoyancy, { samples: 6 });
 }
 
@@ -242,7 +242,7 @@ test("a stone dropped into a pond is an og.Splash at its level", () => {
     world.insert(water, og.Water, { size: { x: 20, y: 20 } });
     const stone = must(world.spawn({ name: "stone", position: { x: 2, y: 3, z: 1 } }));
     world.insert(stone, og.RigidBody);
-    world.insert(stone, og.Collider, { shape: SHAPE_BOX, size: { x: 0.4, y: 0.4, z: 0.4 } });
+    world.insert(stone, og.Collider, { shape: "box", size: { x: 0.4, y: 0.4, z: 0.4 } });
   };
   const r = createEngine(og.game({ start: pond, systems: [Listen] }) as GameToken, {});
   if (!r.ok) throw new Error(r.reason);

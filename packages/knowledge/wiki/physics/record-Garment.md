@@ -24,11 +24,11 @@ Token `og.Garment`, registered under the schema name `og.Garment`; its value typ
 | `substeps` | `number` | `1` | 1 … 16 | — | — | Simulation steps per tick. |
 | `damping` | `number` | `1.85` | 0 … 100 | `perSecond` | tunable | How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping. |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
-| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s. See `physics §8`. |
+| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (simulation visual) takes the sum as air moving at its magnitude in m/s. See `physics §8`. |
 | `gust` | `number` | `0.6` | 0 … 2 | — | tunable | How much the wind varies over the garment and the tick (0: steady). |
 | `radius` | `number` | `0` | ≥ 0 | `m` | tunable | The thickness it collides with solid colliders at (0: no collision; the skinned pose, through `maxDistance` and `backstop`, holds it on the body). A character's own collider counts: keep it inside the body, or leave this 0. |
 | `friction` | `number` | `0` | 0 … 1 | — | tunable | How much of its sliding a point touching a solid loses each step. |
-| `simulation` | `number` | `0` | 0 … 1 | — | — | SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL). See `physics §8`. |
+| `simulation` | `Simulation` | `"gameplay"` | — | — | — | gameplay (in the tick, world state) or visual (on the GPU, for looks only). See `physics §8`. |
 
 ```ogt
 component Garment {
@@ -88,7 +88,7 @@ component Garment {
     max 10
     tunable true
   }
-  field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s." {
+  field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (simulation visual) takes the sum as air moving at its magnitude in m/s." {
     guide "physics §8"
     unit mps2
     tunable true
@@ -109,12 +109,10 @@ component Garment {
     max 1
     tunable true
   }
-  field simulation u32 "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL)." {
+  field simulation Simulation "gameplay (in the tick, world state) or visual (on the GPU, for looks only)." {
     guide "physics §8"
-    min 0
-    max 1
   }
 }
 ```
 
-<sub>Module `physics` line 1152</sub>
+<sub>Module `physics` line 1172</sub>

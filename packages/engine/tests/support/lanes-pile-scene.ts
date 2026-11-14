@@ -7,7 +7,7 @@
 // `og_physics::pool_bodies` for the pool's thread count (500 bodies on two
 // to four lanes, 1,000 on five or six, 1,500 from seven).
 
-import { og, SHAPE_BOX } from "@origingame/engine";
+import { og } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
@@ -21,7 +21,7 @@ export function pile(world: World, bodies: number, drawn = false): void {
   const perLayer = Math.ceil(bodies / layers);
   const side = Math.ceil(Math.sqrt(perLayer));
   const ground = must(world.spawn({ name: "ground", position: { x: 0, y: -0.5, z: 0 } }));
-  world.insert(ground, og.Collider, { shape: SHAPE_BOX, size: { x: 80, y: 1, z: 80 } });
+  world.insert(ground, og.Collider, { shape: "box", size: { x: 80, y: 1, z: 80 } });
   let draw: ((e: Parameters<World["insert"]>[0]) => void) | null = null;
   if (drawn) {
     const camera = must(world.resource(og.Camera));
@@ -46,7 +46,7 @@ export function pile(world: World, bodies: number, drawn = false): void {
     const position = { x: ((k % side) - side / 2) * 0.7 + shift, y: 0.3 + layer * 0.62, z: (Math.floor(k / side) - side / 2) * 0.7 - shift };
     const e = must(world.spawn({ name: `box-${i}`, position }));
     world.insert(e, og.RigidBody, {});
-    world.insert(e, og.Collider, { shape: SHAPE_BOX, size: { x: 0.5, y: 0.5, z: 0.5 } });
+    world.insert(e, og.Collider, { shape: "box", size: { x: 0.5, y: 0.5, z: 0.5 } });
     draw?.(e);
   }
 }

@@ -189,7 +189,7 @@ fn colliders(
             let v: record::Collider = l.read(&ctx.get_bytes(e, *id)?).map_err(invalid)?;
             let world = places.world(ctx, e);
             let m = world * Mat4::from_rotation_translation(v.quaternion.normalize(), v.offset);
-            out.push(match v.shape {
+            out.push(match v.shape as u32 {
                 0 => SceneCollider::Box {
                     transform: m,
                     half_extents: v.size * 0.5,

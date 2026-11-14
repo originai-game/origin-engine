@@ -1,0 +1,158 @@
+{
+  "breaking": [
+    {
+      "member": "og.Collider.shape, ShapeDesc.shape, og.SoftBody.shape, og.Cloth.simulation, og.Garment.simulation, og.SoftBody.simulation, og.Fluid3D.simulation",
+      "change": "Each is a string enum, no longer a u32 code: ColliderShape (box, sphere, capsule, cylinder, convex, trimesh, heightfield, diamond, hexagon), SoftBodyShape (sphere, box, mesh) and Simulation (gameplay, visual). Code 0 was a box on a collider and a sphere on a soft body; the names say which. Reading the field gives the name. The stored codes are the variants' indices, so saved worlds and cooked rows keep their meaning; scene text takes the variant's name, as RigidBody.kind does.",
+      "fix": "Write the variant's name where a number or a constant was: shape: \"sphere\", simulation: \"visual\". Drop the SHAPE_*, SOFT_* and SIMULATION_* names from imports of @origingame/engine (the codemods below rewrite the og.-qualified ones), and compare a read shape or simulation with the name, not a number.",
+      "find": [
+        "shape:",
+        "simulation:",
+        "SHAPE_",
+        "SOFT_SPHERE",
+        "SOFT_BOX",
+        "SOFT_MESH",
+        "SIMULATION_"
+      ]
+    },
+    {
+      "member": "og.SHAPE_BOX",
+      "change": "Removed: og.Collider.shape, ShapeDesc.shape is the enum ColliderShape, and this code is its variant \"box\".",
+      "fix": "Write \"box\" where og.SHAPE_BOX was; a bare imported SHAPE_BOX takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.SHAPE_BOX",
+        "to": "\"box\""
+      }
+    },
+    {
+      "member": "og.SHAPE_SPHERE",
+      "change": "Removed: og.Collider.shape, ShapeDesc.shape is the enum ColliderShape, and this code is its variant \"sphere\".",
+      "fix": "Write \"sphere\" where og.SHAPE_SPHERE was; a bare imported SHAPE_SPHERE takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.SHAPE_SPHERE",
+        "to": "\"sphere\""
+      }
+    },
+    {
+      "member": "og.SHAPE_CAPSULE",
+      "change": "Removed: og.Collider.shape, ShapeDesc.shape is the enum ColliderShape, and this code is its variant \"capsule\".",
+      "fix": "Write \"capsule\" where og.SHAPE_CAPSULE was; a bare imported SHAPE_CAPSULE takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.SHAPE_CAPSULE",
+        "to": "\"capsule\""
+      }
+    },
+    {
+      "member": "og.SHAPE_CYLINDER",
+      "change": "Removed: og.Collider.shape, ShapeDesc.shape is the enum ColliderShape, and this code is its variant \"cylinder\".",
+      "fix": "Write \"cylinder\" where og.SHAPE_CYLINDER was; a bare imported SHAPE_CYLINDER takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.SHAPE_CYLINDER",
+        "to": "\"cylinder\""
+      }
+    },
+    {
+      "member": "og.SHAPE_CONVEX",
+      "change": "Removed: og.Collider.shape, ShapeDesc.shape is the enum ColliderShape, and this code is its variant \"convex\".",
+      "fix": "Write \"convex\" where og.SHAPE_CONVEX was; a bare imported SHAPE_CONVEX takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.SHAPE_CONVEX",
+        "to": "\"convex\""
+      }
+    },
+    {
+      "member": "og.SHAPE_TRIMESH",
+      "change": "Removed: og.Collider.shape, ShapeDesc.shape is the enum ColliderShape, and this code is its variant \"trimesh\".",
+      "fix": "Write \"trimesh\" where og.SHAPE_TRIMESH was; a bare imported SHAPE_TRIMESH takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.SHAPE_TRIMESH",
+        "to": "\"trimesh\""
+      }
+    },
+    {
+      "member": "og.SHAPE_HEIGHTFIELD",
+      "change": "Removed: og.Collider.shape, ShapeDesc.shape is the enum ColliderShape, and this code is its variant \"heightfield\".",
+      "fix": "Write \"heightfield\" where og.SHAPE_HEIGHTFIELD was; a bare imported SHAPE_HEIGHTFIELD takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.SHAPE_HEIGHTFIELD",
+        "to": "\"heightfield\""
+      }
+    },
+    {
+      "member": "og.SHAPE_DIAMOND",
+      "change": "Removed: og.Collider.shape, ShapeDesc.shape is the enum ColliderShape, and this code is its variant \"diamond\".",
+      "fix": "Write \"diamond\" where og.SHAPE_DIAMOND was; a bare imported SHAPE_DIAMOND takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.SHAPE_DIAMOND",
+        "to": "\"diamond\""
+      }
+    },
+    {
+      "member": "og.SHAPE_HEXAGON",
+      "change": "Removed: og.Collider.shape, ShapeDesc.shape is the enum ColliderShape, and this code is its variant \"hexagon\".",
+      "fix": "Write \"hexagon\" where og.SHAPE_HEXAGON was; a bare imported SHAPE_HEXAGON takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.SHAPE_HEXAGON",
+        "to": "\"hexagon\""
+      }
+    },
+    {
+      "member": "og.SOFT_SPHERE",
+      "change": "Removed: og.SoftBody.shape is the enum SoftBodyShape, and this code is its variant \"sphere\".",
+      "fix": "Write \"sphere\" where og.SOFT_SPHERE was; a bare imported SOFT_SPHERE takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.SOFT_SPHERE",
+        "to": "\"sphere\""
+      }
+    },
+    {
+      "member": "og.SOFT_BOX",
+      "change": "Removed: og.SoftBody.shape is the enum SoftBodyShape, and this code is its variant \"box\".",
+      "fix": "Write \"box\" where og.SOFT_BOX was; a bare imported SOFT_BOX takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.SOFT_BOX",
+        "to": "\"box\""
+      }
+    },
+    {
+      "member": "og.SOFT_MESH",
+      "change": "Removed: og.SoftBody.shape is the enum SoftBodyShape, and this code is its variant \"mesh\".",
+      "fix": "Write \"mesh\" where og.SOFT_MESH was; a bare imported SOFT_MESH takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.SOFT_MESH",
+        "to": "\"mesh\""
+      }
+    },
+    {
+      "member": "og.SIMULATION_GAMEPLAY",
+      "change": "Removed: the simulation of og.Cloth, og.Garment, og.SoftBody and og.Fluid3D is the enum Simulation, and this code is its variant \"gameplay\".",
+      "fix": "Write \"gameplay\" where og.SIMULATION_GAMEPLAY was; a bare imported SIMULATION_GAMEPLAY takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.SIMULATION_GAMEPLAY",
+        "to": "\"gameplay\""
+      }
+    },
+    {
+      "member": "og.SIMULATION_VISUAL",
+      "change": "Removed: the simulation of og.Cloth, og.Garment, og.SoftBody and og.Fluid3D is the enum Simulation, and this code is its variant \"visual\".",
+      "fix": "Write \"visual\" where og.SIMULATION_VISUAL was; a bare imported SIMULATION_VISUAL takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.SIMULATION_VISUAL",
+        "to": "\"visual\""
+      }
+    }
+  ],
+  "added": [
+    {
+      "member": "ColliderShape",
+      "summary": "The enum of og.Collider.shape and ShapeDesc.shape: box, sphere, capsule, cylinder, convex, trimesh, heightfield, diamond, hexagon."
+    },
+    {
+      "member": "SoftBodyShape",
+      "summary": "The enum of og.SoftBody.shape: sphere, box, mesh."
+    },
+    {
+      "member": "Simulation",
+      "summary": "The enum of the simulation field of og.Cloth, og.Garment, og.SoftBody and og.Fluid3D: gameplay, visual."
+    }
+  ]
+}

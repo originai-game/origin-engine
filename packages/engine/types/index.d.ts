@@ -265,8 +265,14 @@ export interface ColumnKinds {
   Style: { readonly array: Uint32Array; readonly stride: 2; readonly value: Style };
   /** A RigidBodyType field: the variant's index. */
   RigidBodyType: { readonly array: Uint32Array; readonly stride: 1; readonly value: RigidBodyType };
+  /** A ColliderShape field: the variant's index. */
+  ColliderShape: { readonly array: Uint32Array; readonly stride: 1; readonly value: ColliderShape };
   /** A ForceFieldKind field: the variant's index. */
   ForceFieldKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: ForceFieldKind };
+  /** A Simulation field: the variant's index. */
+  Simulation: { readonly array: Uint32Array; readonly stride: 1; readonly value: Simulation };
+  /** A SoftBodyShape field: the variant's index. */
+  SoftBodyShape: { readonly array: Uint32Array; readonly stride: 1; readonly value: SoftBodyShape };
   /** A WindMotorKind field: the variant's index. */
   WindMotorKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: WindMotorKind };
   /** A SkeletonAsset handle field. */
@@ -10720,13 +10726,13 @@ export interface RenderCapabilities {
   readonly visibilityBufferRefused: string | null;
   // ── Visual simulation ──
   /**
-   * Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with SIMULATION_VISUAL) simulate here: the device runs compute and reads storage in the vertex stage. Where false they draw their rest shape, as their points read in the tick; false without a renderer.
+   * Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with simulation visual) simulate here: the device runs compute and reads storage in the vertex stage. Where false they draw their rest shape, as their points read in the tick; false without a renderer.
    * See `looks §18`.
    */
   readonly visualSimulation: boolean;
   // ── 3D world ──
   /**
-   * Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, where og.terrain's calls and a SHAPE_HEIGHTFIELD collider are refused naming this field; true elsewhere.
+   * Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, where og.terrain's calls and a heightfield collider are refused naming this field; true elsewhere.
    * See `looks §18`.
    */
   readonly world3d: boolean;
@@ -11053,7 +11059,7 @@ export interface BufferGeometryDesc {
    */
   readonly dynamic?: boolean;
   /**
-   * Register it as a physics mesh too, so an og.Collider with it as `mesh` (SHAPE_MESH or SHAPE_CONVEX) collides with what is drawn; equivalent to og.physics.setMesh with its positions and indices. An update re-registers it.
+   * Register it as a physics mesh too, so an og.Collider with it as `mesh` (shape trimesh or convex) collides with what is drawn; equivalent to og.physics.setMesh with its positions and indices. An update re-registers it.
    *
    * @default true
    */
@@ -13506,45 +13512,6 @@ export declare const LOCK_ROTATION_Y: 16;
 /** RigidBody.lock bit: no rotation about z (the 2D profile's only rotation). */
 export declare const LOCK_ROTATION_Z: 32;
 
-/** Collider.shape: a box of `size` (both profiles). */
-export declare const SHAPE_BOX: 0;
-
-/** Collider.shape: a sphere of `radius` (a circle in 2D). */
-export declare const SHAPE_SPHERE: 1;
-
-/**
- * Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles).
- */
-export declare const SHAPE_CAPSULE: 2;
-
-/** Collider.shape: a cylinder along y of `radius` and `height` (3D only). */
-export declare const SHAPE_CYLINDER: 3;
-
-/**
- * Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D).
- */
-export declare const SHAPE_CONVEX: 4;
-
-/**
- * Collider.shape: the triangles of `mesh` (for static and kinematic bodies); in 2D the outline of their xy (the edges no two triangles share) as a hollow polyline, which stops what comes from outside.
- */
-export declare const SHAPE_TRIMESH: 5;
-
-/**
- * Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry).
- */
-export declare const SHAPE_HEIGHTFIELD: 6;
-
-/**
- * Collider.shape: a rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles).
- */
-export declare const SHAPE_DIAMOND: 7;
-
-/**
- * Collider.shape: a pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles).
- */
-export declare const SHAPE_HEXAGON: 8;
-
 /** Physics.profile: rapier2d, bodies in the xy plane rotating about z. */
 export declare const PROFILE_2D: 2;
 
@@ -13653,6 +13620,30 @@ export interface RigidBody {
 }
 
 /**
+ * What a collider is shaped as: Collider.shape and ShapeDesc.shape.
+ * See `physics §1`.
+ * - `"box"`: A box of `size` (both profiles).
+ * - `"sphere"`: A sphere of `radius` (a circle in 2D).
+ * - `"capsule"`: A capsule along y of `radius`, with `height` between the cap centres (both profiles).
+ * - `"cylinder"`: A cylinder along y of `radius` and `height` (3D only).
+ * - `"convex"`: The convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D).
+ * - `"trimesh"`: The triangles of `mesh` (for static and kinematic bodies); in 2D the outline of their xy (the edges no two triangles share) as a hollow polyline, which stops what comes from outside.
+ * - `"heightfield"`: The height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry).
+ * - `"diamond"`: A rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles).
+ * - `"hexagon"`: A pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles).
+ */
+export type ColliderShape = "box" | "sphere" | "capsule" | "cylinder" | "convex" | "trimesh" | "heightfield" | "diamond" | "hexagon";
+
+/**
+ * A ColliderShape field: the variant's index.
+ *
+ * A `ColliderShape` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ColliderShape(value?: ColliderShape, options?: FieldOptions): FieldSpec<"ColliderShape">;
+
+/**
  * The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.
  * A Collider without a RigidBody whose og.Parent chain reaches one is part of the nearest such body (a compound), placed relative to it; its density adds to the body's mass, and its friction, restitution, layers and sensor flag are its own. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children.
  * See `physics §1`.
@@ -13661,12 +13652,11 @@ export interface RigidBody {
  */
 export interface Collider {
   /**
-   * One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (its outline in 2D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both).
+   * What it is shaped as: box, sphere (a circle in 2D), capsule, cylinder (3D), convex (the hull of `mesh`; a polygon in 2D), trimesh (the triangles of `mesh`; its outline in 2D), heightfield (`mesh` is a terrain's height field, 3D), diamond or hexagon (in `size`, both profiles).
    *
-   * @range 0..8
    * @label Shape
    */
-  shape: number;
+  shape: ColliderShape;
   /**
    * Full extents of a box, as three.js BoxGeometry(width, height, depth).
    *
@@ -13695,7 +13685,7 @@ export interface Collider {
    */
   height: number;
   /**
-   * The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for SHAPE_HEIGHTFIELD, a terrain's height field (og.terrain.load's TerrainInfo.geometry).
+   * The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for a heightfield shape, a terrain's height field (og.terrain.load's TerrainInfo.geometry).
    */
   mesh: Geometry;
   /**
@@ -15241,14 +15231,21 @@ export interface Rope {
 }
 
 /**
- * `Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated in the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default.
+ * Where a cloth, a garment, a soft body or a 3D fluid is simulated: Cloth.simulation, Garment.simulation, SoftBody.simulation and Fluid3D.simulation.
+ * See `physics §8`.
+ * - `"gameplay"`: In the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default.
+ * - `"visual"`: By the renderer on the GPU for looks only, never read back. The tick's points are the rest shape carried rigidly by the entity (a garment's: the skinned pose). Without RenderCapabilities.visualSimulation it draws that shape.
  */
-export declare const SIMULATION_GAMEPLAY: 0;
+export type Simulation = "gameplay" | "visual";
 
 /**
- * `Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated by the renderer on the GPU for looks only, never read back. The tick's points are the rest shape carried rigidly by the entity (a garment's: the skinned pose). Without RenderCapabilities.visualSimulation it draws that shape.
+ * A Simulation field: the variant's index.
+ *
+ * A `Simulation` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
  */
-export declare const SIMULATION_VISUAL: 1;
+export declare function Simulation(value?: Simulation, options?: FieldOptions): FieldSpec<"Simulation">;
 
 /** `Cloth.pins` bit: the whole top row is pinned. */
 export declare const PIN_TOP: 1;
@@ -15323,7 +15320,7 @@ export interface Cloth {
    */
   gravityScale: number;
   /**
-   * A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the cloth flutters with both. A visual cloth (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s.
+   * A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the cloth flutters with both. A visual cloth (simulation visual) takes the sum as air moving at its magnitude in m/s.
    * See `physics §8`.
    *
    * @unit mps2 (metres per second squared)
@@ -15378,12 +15375,10 @@ export interface Cloth {
    */
   visible: boolean;
   /**
-   * SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL).
+   * gameplay (in the tick, world state) or visual (on the GPU, for looks only).
    * See `physics §8`.
-   *
-   * @range 0..1
    */
-  simulation: number;
+  simulation: Simulation;
 }
 
 /**
@@ -15472,7 +15467,7 @@ export interface Garment {
    */
   gravityScale: number;
   /**
-   * A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s.
+   * A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (simulation visual) takes the sum as air moving at its magnitude in m/s.
    * See `physics §8`.
    *
    * @unit mps2 (metres per second squared)
@@ -15503,24 +15498,28 @@ export interface Garment {
    */
   friction: number;
   /**
-   * SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL).
+   * gameplay (in the tick, world state) or visual (on the GPU, for looks only).
    * See `physics §8`.
-   *
-   * @range 0..1
    */
-  simulation: number;
+  simulation: Simulation;
 }
 
-/** `SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring). */
-export declare const SOFT_SPHERE: 0;
+/**
+ * What a soft body is built as: SoftBody.shape.
+ * - `"sphere"`: A sphere of `radius` (an icosphere; 2D a ring).
+ * - `"box"`: A box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle).
+ * - `"mesh"`: The closed surface of geometry `mesh` (3D only).
+ */
+export type SoftBodyShape = "sphere" | "box" | "mesh";
 
 /**
- * `SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle).
+ * A SoftBodyShape field: the variant's index.
+ *
+ * A `SoftBodyShape` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
  */
-export declare const SOFT_BOX: 1;
-
-/** `SoftBody.shape`: the closed surface of geometry `mesh` (3D only). */
-export declare const SOFT_MESH: 2;
+export declare function SoftBodyShape(value?: SoftBodyShape, options?: FieldOptions): FieldSpec<"SoftBodyShape">;
 
 /**
  * A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state; og.physics.softBodyPoints reads them and the renderer draws its surface with `material`.
@@ -15528,12 +15527,8 @@ export declare const SOFT_MESH: 2;
  * The value of the `SoftBody` component (token `og.SoftBody`).
  */
 export interface SoftBody {
-  /**
-   * SOFT_SPHERE 0, SOFT_BOX 1 or SOFT_MESH 2.
-   *
-   * @range 0..2
-   */
-  shape: number;
+  /** sphere, box or mesh. */
+  shape: SoftBodyShape;
   /**
    * A sphere's radius.
    *
@@ -15560,7 +15555,7 @@ export interface SoftBody {
    */
   detail: number;
   /**
-   * SOFT_MESH's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet.
+   * The mesh shape's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet.
    */
   mesh: Geometry;
   /**
@@ -15652,14 +15647,12 @@ export interface SoftBody {
    */
   visible: boolean;
   /**
-   * SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL).
+   * gameplay (in the tick, world state) or visual (on the GPU, for looks only).
    * See `physics §8`.
-   *
-   * @range 0..1
    */
-  simulation: number;
+  simulation: Simulation;
   /**
-   * Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when SIMULATION_VISUAL.
+   * Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when simulation is visual.
    *
    * @default 1
    * @readonly written by the engine
@@ -15824,7 +15817,7 @@ export interface Fluid2D {
  */
 export interface Fluid3D {
   /**
-   * How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (SIMULATION_VISUAL) up to 262144.
+   * How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (simulation visual) up to 262144.
    *
    * @default 2000
    * @range ..262144
@@ -16017,12 +16010,10 @@ export interface Fluid3D {
    */
   visible: boolean;
   /**
-   * SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still.
+   * gameplay (in the tick, world state) or visual (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still.
    * See `physics §8`.
-   *
-   * @range 0..1
    */
-  simulation: number;
+  simulation: Simulation;
 }
 
 /**
@@ -16547,12 +16538,11 @@ export interface PointProjection {
  */
 export interface ShapeDesc {
   /**
-   * One of the SHAPE_* codes.
+   * The shape, as Collider.shape; a cast or an overlap is made for box, sphere, capsule, cylinder, convex and trimesh.
    *
-   * @default 0
-   * @range 0..5
+   * @default "box"
    */
-  readonly shape?: number;
+  readonly shape?: ColliderShape;
   /**
    * Full extents of a box.
    *
@@ -28663,7 +28653,7 @@ export interface EngineProbe extends RuntimeProbe {
 
 // ── terrain ─────────────────────────────────────────────────────
 // Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.
-// Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape SHAPE_HEIGHTFIELD naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident.
+// Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident.
 // See `world §1`.
 
 /**
@@ -29288,7 +29278,7 @@ export interface TerrainInfo {
   /** Its handle, for og.Terrain.data and this module's functions. */
   readonly data: TerrainData;
   /**
-   * The height field registered with physics under this handle: the mesh of an og.Collider of shape SHAPE_HEIGHTFIELD.
+   * The height field registered with physics under this handle: the mesh of an og.Collider of shape heightfield.
    */
   readonly geometry: Geometry;
   /**
@@ -32408,7 +32398,7 @@ export interface DestructionCapabilities {
 
 /**
  * Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics).
- * Each `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (SHAPE_TRIMESH) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.
+ * Each `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (shape trimesh) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.
  * See `physics §9`.
  *
  * The value of the `PixelTerrain` component (token `og.PixelTerrain`).
@@ -32536,7 +32526,7 @@ export interface PixelTerrain {
 }
 
 /**
- * A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the convex hull of its cells (SHAPE_CONVEX, a polygon in 2D), drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.
+ * A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the convex hull of its cells (shape convex, a polygon in 2D), drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.
  *
  * The value of the `PixelPiece` component (token `og.PixelPiece`).
  */
@@ -34578,7 +34568,7 @@ export declare namespace og {
    * A Collider without a RigidBody whose og.Parent chain reaches one is part of the nearest such body (a compound), placed relative to it; its density adds to the body's mass, and its friction, restitution, layers and sensor flag are its own. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children.
    * See `physics §1`.
    */
-  const Collider: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"bool">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32"> }, Collider>;
+  const Collider: ComponentType<{ readonly shape: FieldSpec<"ColliderShape">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"bool">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32"> }, Collider>;
   /**
    * An acceleration on what is inside the og.Volume on its entity (none: everywhere), whatever its mass, as gravity is. Dynamic bodies, ropes, cloths, garments, soft bodies and fluids take it; a character controller takes its vertical part. The same on every run.
    * See `physics §8`.
@@ -34662,16 +34652,16 @@ export declare namespace og {
   /**
    * A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
    */
-  const Cloth: ComponentType<{ readonly columns: FieldSpec<"u32">; readonly rows: FieldSpec<"u32">; readonly spacing: FieldSpec<"f32">; readonly pins: FieldSpec<"u32">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly friction: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"u32"> }, Cloth>;
+  const Cloth: ComponentType<{ readonly columns: FieldSpec<"u32">; readonly rows: FieldSpec<"u32">; readonly spacing: FieldSpec<"f32">; readonly pins: FieldSpec<"u32">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly friction: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"Simulation"> }, Cloth>;
   /**
    * Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick its points swing under gravity and wind behind the motion, but stay within `maxDistance` of the skinned pose and `backstop` behind it, keeping their edges' lengths. Points within `pinTop` of its top, or whose vertex colour's red or alpha is 0, stay on the pose; red times alpha scales `maxDistance`. One-way like og.Cloth, simulated in the physics step as world state. 3D only; its blendshapes are not applied.
    * See `physics §8`.
    */
-  const Garment: ComponentType<{ readonly mesh: FieldSpec<"u32">; readonly maxDistance: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly backstop: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly bending: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly simulation: FieldSpec<"u32"> }, Garment>;
+  const Garment: ComponentType<{ readonly mesh: FieldSpec<"u32">; readonly maxDistance: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly backstop: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly bending: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly simulation: FieldSpec<"Simulation"> }, Garment>;
   /**
    * A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state; og.physics.softBodyPoints reads them and the renderer draws its surface with `material`.
    */
-  const SoftBody: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly radius: FieldSpec<"f32">; readonly size: FieldSpec<"Vector3">; readonly detail: FieldSpec<"u32">; readonly mesh: FieldSpec<"Geometry">; readonly stiffness: FieldSpec<"f32">; readonly pressure: FieldSpec<"f32">; readonly volumeStiffness: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"u32">; readonly volume: FieldSpec<"f32">; readonly center: FieldSpec<"Vector3"> }, SoftBody>;
+  const SoftBody: ComponentType<{ readonly shape: FieldSpec<"SoftBodyShape">; readonly radius: FieldSpec<"f32">; readonly size: FieldSpec<"Vector3">; readonly detail: FieldSpec<"u32">; readonly mesh: FieldSpec<"Geometry">; readonly stiffness: FieldSpec<"f32">; readonly pressure: FieldSpec<"f32">; readonly volumeStiffness: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"Simulation">; readonly volume: FieldSpec<"f32">; readonly center: FieldSpec<"Vector3"> }, SoftBody>;
   /**
    * A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: one thresholded surface of `color` on sprite layer `layer`.
    */
@@ -34680,7 +34670,7 @@ export declare namespace og {
    * A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider and the terrain (they push nothing back) and stay inside `bounds` when set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes them. Fluids of one `group` layer by `density` and blend by `mixing`. Drawn as a screen-space surface that refracts and reflects.
    * See `physics §8`.
    */
-  const Fluid3D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly bounds: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly maxCount: FieldSpec<"u32">; readonly emitRate: FieldSpec<"f32">; readonly emitOffset: FieldSpec<"Vector3">; readonly emitVelocity: FieldSpec<"Vector3">; readonly emitRadius: FieldSpec<"f32">; readonly sinkOffset: FieldSpec<"Vector3">; readonly sinkSize: FieldSpec<"Vector3">; readonly color: FieldSpec<"Vector3">; readonly opacity: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly drawScale: FieldSpec<"f32">; readonly smoothing: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"u32"> }, Fluid3D>;
+  const Fluid3D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly bounds: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly maxCount: FieldSpec<"u32">; readonly emitRate: FieldSpec<"f32">; readonly emitOffset: FieldSpec<"Vector3">; readonly emitVelocity: FieldSpec<"Vector3">; readonly emitRadius: FieldSpec<"f32">; readonly sinkOffset: FieldSpec<"Vector3">; readonly sinkSize: FieldSpec<"Vector3">; readonly color: FieldSpec<"Vector3">; readonly opacity: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly drawScale: FieldSpec<"f32">; readonly smoothing: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"Simulation"> }, Fluid3D>;
   /**
    * A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state, not entities.
    */
@@ -36938,7 +36928,7 @@ export declare namespace og {
   const GrassPusher: ComponentType<{ readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly strength: FieldSpec<"f32"> }, GrassPusher>;
   /**
    * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.
-   * Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape SHAPE_HEIGHTFIELD naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident.
+   * Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident.
    * See `world §1`.
    */
   namespace terrain {
@@ -37633,12 +37623,12 @@ export declare namespace og {
   const Destruction: ResourceType<{ readonly maxChunks: FieldSpec<"u32">; readonly debrisVolume: FieldSpec<"f32">; readonly debrisLifetime: FieldSpec<"f32">; readonly fxLifetime: FieldSpec<"f32">; readonly stressIterations: FieldSpec<"u32">; readonly stressBudget: FieldSpec<"u32"> }, Destruction>;
   /**
    * Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics).
-   * Each `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (SHAPE_TRIMESH) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.
+   * Each `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (shape trimesh) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.
    * See `physics §9`.
    */
   const PixelTerrain: ComponentType<{ readonly width: FieldSpec<"u32">; readonly height: FieldSpec<"u32">; readonly cellSize: FieldSpec<"f32">; readonly chunk: FieldSpec<"u32">; readonly ground: FieldSpec<"f32">; readonly bedrock: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly color: FieldSpec<"Color">; readonly bedrockColor: FieldSpec<"Color">; readonly grain: FieldSpec<"f32">; readonly layer: FieldSpec<"i32">; readonly friction: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32">; readonly tolerance: FieldSpec<"f32">; readonly minPiece: FieldSpec<"u32">; readonly maxPieces: FieldSpec<"u32">; readonly solid: FieldSpec<"u32"> }, PixelTerrain>;
   /**
-   * A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the convex hull of its cells (SHAPE_CONVEX, a polygon in 2D), drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.
+   * A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the convex hull of its cells (shape convex, a polygon in 2D), drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.
    */
   const PixelPiece: ComponentType<{ readonly terrain: FieldSpec<"Entity">; readonly width: FieldSpec<"u32">; readonly height: FieldSpec<"u32">; readonly cells: FieldSpec<"u32">; readonly tick: FieldSpec<"u32"> }, PixelPiece>;
   /**

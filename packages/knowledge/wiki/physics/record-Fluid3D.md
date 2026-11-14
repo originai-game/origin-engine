@@ -14,7 +14,7 @@ Token `og.Fluid3D`, registered under the schema name `og.Fluid3D`; its value typ
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `count` | `number` | `2000` | ≤ 262144 | — | — | How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (SIMULATION_VISUAL) up to 262144. |
+| `count` | `number` | `2000` | ≤ 262144 | — | — | How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (simulation visual) up to 262144. |
 | `size` | `Vector3` | `{ x: 2, y: 1, z: 2 }` | — | `m` | — | The spawn box, centred on the entity. |
 | `bounds` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `none` | The container around the entity (0 on an axis: open on that axis; colliders and the terrain still hold it). |
 | `radius` | `number` | `0.2` | ≥ 0.02 | `m` | tunable | The interaction radius: particles closer than this push and drag each other. |
@@ -42,13 +42,13 @@ Token `og.Fluid3D`, registered under the schema name `og.Fluid3D`; its value typ
 | `drawScale` | `number` | `0.6` | 0.1 … 2 | — | — | The drawn size of each particle (times radius). |
 | `smoothing` | `number` | `1` | 0 … 2 | — | — | How much the surface is smoothed (0: beads, 1: one surface). |
 | `visible` | `boolean` | `true` | — | — | — | Whether the renderer draws it. |
-| `simulation` | `number` | `0` | 0 … 1 | — | — | SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still. See `physics §8`. |
+| `simulation` | `Simulation` | `"gameplay"` | — | — | — | gameplay (in the tick, world state) or visual (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still. See `physics §8`. |
 
 ```ogt
 component Fluid3D {
   doc "A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider and the terrain (they push nothing back) and stay inside `bounds` when set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes them. Fluids of one `group` layer by `density` and blend by `mixing`. Drawn as a screen-space surface that refracts and reflects."
   guide "physics §8"
-  field count u32 "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (SIMULATION_VISUAL) up to 262144." {
+  field count u32 "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (simulation visual) up to 262144." {
     default 2000
     max 262144
   }
@@ -171,12 +171,10 @@ component Fluid3D {
   field visible bool "Whether the renderer draws it." {
     default true
   }
-  field simulation u32 "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still." {
+  field simulation Simulation "gameplay (in the tick, world state) or visual (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still." {
     guide "physics §8"
-    min 0
-    max 1
   }
 }
 ```
 
-<sub>Module `physics` line 1433</sub>
+<sub>Module `physics` line 1457</sub>

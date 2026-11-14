@@ -128,7 +128,7 @@ fn run(renderer: bool, script: &str) -> Run {
             ("og.RigidBody", json!({ "kind": "fixed" })),
             (
                 "og.Collider",
-                json!({ "shape": 0, "size": { "x": 20, "y": 1, "z": 20 } }),
+                json!({ "shape": "box", "size": { "x": 20, "y": 1, "z": 20 } }),
             ),
         ],
     );
@@ -142,7 +142,7 @@ fn run(renderer: bool, script: &str) -> Run {
                 ("og.RigidBody", json!({})),
                 (
                     "og.Collider",
-                    json!({ "shape": 0, "size": { "x": 0.5, "y": 0.5, "z": 0.5 } }),
+                    json!({ "shape": "box", "size": { "x": 0.5, "y": 0.5, "z": 0.5 } }),
                 ),
                 ("og.Sprite", json!({ "width": 1, "height": 1 })),
             ],

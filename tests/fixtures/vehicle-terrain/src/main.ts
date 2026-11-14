@@ -1,13 +1,13 @@
 // The vehicle on terrain: one og.Vehicle (a raycast car on a box chassis)
 // driven over cooked hills (og.terrain.load, og.Terrain and a
-// SHAPE_HEIGHTFIELD collider), with a HUD speed readout (og.ui), a chase
+// "heightfield" collider), with a HUD speed readout (og.ui), a chase
 // camera that eases after the car, tyre smoke while the rear slides
 // (og.ParticleSystem) and skid marks (a ring of og.Decal), and an engine
 // tone whose pitch follows the speed (og.audio.createSound). README.md says
 // which tests read it.
 //
 //   og run tests/fixtures/vehicle-terrain --commands "0.2:key_down:KeyW;2:key_down:KeyD;3:key_up:KeyD;3.5:quit"
-import { og, math, defineComponent, defineResource, defineSystem, f32, u32, SHAPE_BOX, SHAPE_HEIGHTFIELD } from "@origingame/engine";
+import { og, math, defineComponent, defineResource, defineSystem, f32, u32 } from "@origingame/engine";
 import type { Entity, Quaternion, Vector3, World } from "@origingame/engine";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
@@ -70,7 +70,7 @@ function build(world: World): void {
   const info = must(og.terrain.load(world, "terrain/hills.ogt"));
   const hills = must(world.spawn({ name: "hills" }));
   must(world.insert(hills, og.Terrain, { data: info.data }));
-  must(world.insert(hills, og.Collider, { shape: SHAPE_HEIGHTFIELD, mesh: info.geometry, friction: 1 }));
+  must(world.insert(hills, og.Collider, { shape: "heightfield", mesh: info.geometry, friction: 1 }));
   const ground = must(og.terrain.sample(world, { data: info.data, origin: { x: 0, y: 0, z: 0 }, x: START.x, z: START.z })).height;
   // A flattened track in the terrain itself: its heightfield carries the
   // car and its surface receives the skid decals, with no covering mesh.
@@ -80,7 +80,7 @@ function build(world: World): void {
 
   const car = must(world.spawn({ name: "car", position: { x: START.x, y: ground + 1, z: START.z } }));
   must(world.insert(car, og.RigidBody, { kind: "dynamic", mass: 1000, angularDamping: 0.4, ccd: true }));
-  must(world.insert(car, og.Collider, { shape: SHAPE_BOX, size: { x: 1.7, y: 0.25, z: 4 }, friction: 0.05 }));
+  must(world.insert(car, og.Collider, { shape: "box", size: { x: 1.7, y: 0.25, z: 4 }, friction: 0.05 }));
   must(world.insert(car, og.Velocity, {}));
   must(world.insert(car, og.Vehicle, { wheelBase: 2.6, track: 1.7, wheelRadius: 0.35, mountHeight: -0.3, suspensionRest: 0.3, suspensionTravel: 0.18, suspensionStiffness: 50, suspensionDamping: 4.5, maxSteer: 0.5, rollInfluence: 0.1, engineForce: 6000, maxSpeed: 30, grip: 1.2, driftGrip: 0.6 }));
   const box = must(og.render.boxGeometry(world, {}));

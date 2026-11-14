@@ -14,10 +14,9 @@ use std::sync::Arc;
 /// for it; the tick's solve has no bending): enough to round its folds.
 const CLOTH_BENDING: f32 = 0.2;
 
-/// Whether a Cloth, SoftBody, Garment or Fluid3D `simulation` is
-/// SIMULATION_VISUAL.
-pub(crate) fn visual(simulation: u32) -> bool {
-    simulation == og_physics::SIMULATION_VISUAL
+/// Whether a Cloth, SoftBody, Garment or Fluid3D `simulation` is visual.
+pub(crate) fn visual(simulation: crate::host::wire::Simulation) -> bool {
+    simulation == crate::host::wire::Simulation::Visual
 }
 
 /// The GPU solver's small steps per tick for a row's `substeps` and

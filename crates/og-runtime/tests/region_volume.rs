@@ -139,7 +139,7 @@ fn a_force_field_accelerates_the_bodies_in_the_volume_beside_it() {
             z,
             &[
                 ("og.RigidBody", json!({ "gravityScale": 0 })),
-                ("og.Collider", json!({ "shape": 1, "radius": 0.25 })),
+                ("og.Collider", json!({ "shape": "sphere", "radius": 0.25 })),
             ],
         )
     };

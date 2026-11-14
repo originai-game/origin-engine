@@ -24,7 +24,7 @@
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { og, defineComponent, defineResource, defineSystem, u32, SHAPE_BOX, SHAPE_SPHERE } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, u32 } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { createEngine, type GameToken } from "../../src/runtime.ts";
 
@@ -86,19 +86,19 @@ function scene(world: World): void {
   // 200 m across: the paddle really sweeps since the kinematic rule (a
   // kinematic body with a Velocity moves by it), and a body it flings must
   // still land on the floor for the settle check below.
-  world.insert(floor.value, og.Collider, { shape: SHAPE_BOX, size: { x: 200, y: 1, z: 200 } });
+  world.insert(floor.value, og.Collider, { shape: "box", size: { x: 200, y: 1, z: 200 } });
   const ramp = world.spawn({ name: "ramp", position: { x: -3, y: 1, z: 0 }, quaternion: { x: 0, y: 0, z: 0.2588, w: 0.9659 } });
   if (!ramp.ok) throw new Error(ramp.reason);
-  world.insert(ramp.value, og.Collider, { shape: SHAPE_BOX, size: { x: 6, y: 0.4, z: 4 } });
+  world.insert(ramp.value, og.Collider, { shape: "box", size: { x: 6, y: 0.4, z: 4 } });
   const paddle = world.spawn({ name: "paddle", position: { x: 0, y: 0.5, z: 2 } });
   if (!paddle.ok) throw new Error(paddle.reason);
   world.insert(paddle.value, og.RigidBody, { kind: "kinematic" });
   world.insert(paddle.value, og.Velocity);
   world.insert(paddle.value, PaddleTag);
-  world.insert(paddle.value, og.Collider, { shape: SHAPE_BOX, size: { x: 1, y: 1, z: 3 } });
+  world.insert(paddle.value, og.Collider, { shape: "box", size: { x: 1, y: 1, z: 3 } });
   const sensor = world.spawn({ name: "sensor", position: { x: 3, y: 0.5, z: 0 } });
   if (!sensor.ok) throw new Error(sensor.reason);
-  world.insert(sensor.value, og.Collider, { shape: SHAPE_BOX, size: { x: 2, y: 1, z: 6 }, sensor: true });
+  world.insert(sensor.value, og.Collider, { shape: "box", size: { x: 2, y: 1, z: 6 }, sensor: true });
   const rng = world.resource(og.Rng);
   if (!rng.ok) throw new Error(rng.reason);
   for (let i = 0; i < bodies; i++) {
@@ -110,7 +110,7 @@ function scene(world: World): void {
     });
     if (!e.ok) throw new Error(e.reason);
     world.insert(e.value, og.RigidBody, { linearDamping: 0.05 });
-    world.insert(e.value, og.Collider, i % 2 ? { shape: SHAPE_SPHERE, radius: 0.35, restitution: 0.3 } : { shape: SHAPE_BOX, size: { x: 0.6, y: 0.6, z: 0.6 } });
+    world.insert(e.value, og.Collider, i % 2 ? { shape: "sphere", radius: 0.35, restitution: 0.3 } : { shape: "box", size: { x: 0.6, y: 0.6, z: 0.6 } });
   }
 }
 

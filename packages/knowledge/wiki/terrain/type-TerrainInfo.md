@@ -11,7 +11,7 @@ A loaded terrain.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `data` | `TerrainData` | `0` | — | — | — | Its handle, for og.Terrain.data and this module's functions. |
-| `geometry` | `Geometry` | `0` | — | — | — | The height field registered with physics under this handle: the mesh of an og.Collider of shape SHAPE_HEIGHTFIELD. |
+| `geometry` | `Geometry` | `0` | — | — | — | The height field registered with physics under this handle: the mesh of an og.Collider of shape heightfield. |
 | `size` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | Its extent along x and z, centred on its entity. |
 | `columns` | `number` | `0` | — | — | — | Height samples along x. |
 | `rows` | `number` | `0` | — | — | — | Height samples along z. |
@@ -27,7 +27,7 @@ A loaded terrain.
 struct TerrainInfo {
   doc "A loaded terrain."
   field data TerrainData "Its handle, for og.Terrain.data and this module's functions."
-  field geometry Geometry "The height field registered with physics under this handle: the mesh of an og.Collider of shape SHAPE_HEIGHTFIELD."
+  field geometry Geometry "The height field registered with physics under this handle: the mesh of an og.Collider of shape heightfield."
   field size Vector2 "Its extent along x and z, centred on its entity." {
     unit m
   }

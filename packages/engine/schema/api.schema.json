@@ -7372,6 +7372,8 @@
         "RigidBodyType",
         "RigidBodyType",
         "RigidBody",
+        "ColliderShape",
+        "ColliderShape",
         "Collider",
         "ForceFieldKind",
         "ForceFieldKind",
@@ -7394,8 +7396,12 @@
         "Vehicle",
         "VehicleWheel",
         "Rope",
+        "Simulation",
+        "Simulation",
         "Cloth",
         "Garment",
+        "SoftBodyShape",
+        "SoftBodyShape",
         "SoftBody",
         "Fluid2D",
         "Fluid3D",
@@ -7466,60 +7472,6 @@
           "type": "u32",
           "value": 32,
           "doc": "RigidBody.lock bit: no rotation about z (the 2D profile's only rotation)."
-        },
-        {
-          "name": "SHAPE_BOX",
-          "type": "u32",
-          "value": 0,
-          "doc": "Collider.shape: a box of `size` (both profiles)."
-        },
-        {
-          "name": "SHAPE_SPHERE",
-          "type": "u32",
-          "value": 1,
-          "doc": "Collider.shape: a sphere of `radius` (a circle in 2D)."
-        },
-        {
-          "name": "SHAPE_CAPSULE",
-          "type": "u32",
-          "value": 2,
-          "doc": "Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles)."
-        },
-        {
-          "name": "SHAPE_CYLINDER",
-          "type": "u32",
-          "value": 3,
-          "doc": "Collider.shape: a cylinder along y of `radius` and `height` (3D only)."
-        },
-        {
-          "name": "SHAPE_CONVEX",
-          "type": "u32",
-          "value": 4,
-          "doc": "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
-        },
-        {
-          "name": "SHAPE_TRIMESH",
-          "type": "u32",
-          "value": 5,
-          "doc": "Collider.shape: the triangles of `mesh` (for static and kinematic bodies); in 2D the outline of their xy (the edges no two triangles share) as a hollow polyline, which stops what comes from outside."
-        },
-        {
-          "name": "SHAPE_HEIGHTFIELD",
-          "type": "u32",
-          "value": 6,
-          "doc": "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
-        },
-        {
-          "name": "SHAPE_DIAMOND",
-          "type": "u32",
-          "value": 7,
-          "doc": "Collider.shape: a rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles)."
-        },
-        {
-          "name": "SHAPE_HEXAGON",
-          "type": "u32",
-          "value": 8,
-          "doc": "Collider.shape: a pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles)."
         },
         {
           "name": "PROFILE_2D",
@@ -7654,18 +7606,6 @@
           "doc": "`Vehicle.model`: an engine with a torque curve driving through a gearbox."
         },
         {
-          "name": "SIMULATION_GAMEPLAY",
-          "type": "u32",
-          "value": 0,
-          "doc": "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated in the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default."
-        },
-        {
-          "name": "SIMULATION_VISUAL",
-          "type": "u32",
-          "value": 1,
-          "doc": "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated by the renderer on the GPU for looks only, never read back. The tick's points are the rest shape carried rigidly by the entity (a garment's: the skinned pose). Without RenderCapabilities.visualSimulation it draws that shape."
-        },
-        {
           "name": "PIN_TOP",
           "type": "u32",
           "value": 1,
@@ -7688,24 +7628,6 @@
           "type": "u32",
           "value": 8,
           "doc": "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
-        },
-        {
-          "name": "SOFT_SPHERE",
-          "type": "u32",
-          "value": 0,
-          "doc": "`SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring)."
-        },
-        {
-          "name": "SOFT_BOX",
-          "type": "u32",
-          "value": 1,
-          "doc": "`SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle)."
-        },
-        {
-          "name": "SOFT_MESH",
-          "type": "u32",
-          "value": 2,
-          "doc": "`SoftBody.shape`: the closed surface of geometry `mesh` (3D only)."
         }
       ],
       "functions": [
@@ -14385,7 +14307,7 @@
     },
     {
       "name": "terrain",
-      "doc": "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.\nLoad it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape SHAPE_HEIGHTFIELD naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident.\nSee `world §1`.",
+      "doc": "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.\nLoad it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident.\nSee `world §1`.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -27609,11 +27531,11 @@
         },
         "visualSimulation": {
           "type": "boolean",
-          "description": "Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with SIMULATION_VISUAL) simulate here: the device runs compute and reads storage in the vertex stage. Where false they draw their rest shape, as their points read in the tick; false without a renderer.\nSee `looks §18`."
+          "description": "Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with simulation visual) simulate here: the device runs compute and reads storage in the vertex stage. Where false they draw their rest shape, as their points read in the tick; false without a renderer.\nSee `looks §18`."
         },
         "world3d": {
           "type": "boolean",
-          "description": "Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, where og.terrain's calls and a SHAPE_HEIGHTFIELD collider are refused naming this field; true elsewhere.\nSee `looks §18`."
+          "description": "Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, where og.terrain's calls and a heightfield collider are refused naming this field; true elsewhere.\nSee `looks §18`."
         }
       },
       "required": [
@@ -28072,7 +27994,7 @@
         },
         "physics": {
           "type": "boolean",
-          "description": "Register it as a physics mesh too, so an og.Collider with it as `mesh` (SHAPE_MESH or SHAPE_CONVEX) collides with what is drawn; equivalent to og.physics.setMesh with its positions and indices. An update re-registers it.",
+          "description": "Register it as a physics mesh too, so an og.Collider with it as `mesh` (shape trimesh or convex) collides with what is drawn; equivalent to og.physics.setMesh with its positions and indices. An update re-registers it.",
           "default": true
         }
       },
@@ -30916,6 +30838,34 @@
       },
       "additionalProperties": false
     },
+    "ColliderShape": {
+      "x-og-kind": "enum",
+      "x-og-module": "physics",
+      "description": "What a collider is shaped as: Collider.shape and ShapeDesc.shape.\nSee `physics §1`.",
+      "type": "string",
+      "enum": [
+        "box",
+        "sphere",
+        "capsule",
+        "cylinder",
+        "convex",
+        "trimesh",
+        "heightfield",
+        "diamond",
+        "hexagon"
+      ],
+      "x-og-variants": {
+        "box": "A box of `size` (both profiles).",
+        "sphere": "A sphere of `radius` (a circle in 2D).",
+        "capsule": "A capsule along y of `radius`, with `height` between the cap centres (both profiles).",
+        "cylinder": "A cylinder along y of `radius` and `height` (3D only).",
+        "convex": "The convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D).",
+        "trimesh": "The triangles of `mesh` (for static and kinematic bodies); in 2D the outline of their xy (the edges no two triangles share) as a hollow polyline, which stops what comes from outside.",
+        "heightfield": "The height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry).",
+        "diamond": "A rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles).",
+        "hexagon": "A pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles)."
+      }
+    },
     "Collider": {
       "x-og-kind": "component",
       "x-og-module": "physics",
@@ -30923,13 +30873,9 @@
       "type": "object",
       "properties": {
         "shape": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (its outline in 2D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both).",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 8,
+          "$ref": "#/$defs/ColliderShape",
+          "description": "What it is shaped as: box, sphere (a circle in 2D), capsule, cylinder (3D), convex (the hull of `mesh`; a polygon in 2D), trimesh (the triangles of `mesh`; its outline in 2D), heightfield (`mesh` is a terrain's height field, 3D), diamond or hexagon (in `size`, both profiles).",
+          "default": "box",
           "x-og-label": "Shape"
         },
         "size": {
@@ -30962,7 +30908,7 @@
         },
         "mesh": {
           "$ref": "#/$defs/Geometry",
-          "description": "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for SHAPE_HEIGHTFIELD, a terrain's height field (og.terrain.load's TerrainInfo.geometry).",
+          "description": "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for a heightfield shape, a terrain's height field (og.terrain.load's TerrainInfo.geometry).",
           "default": 0
         },
         "offset": {
@@ -32639,6 +32585,20 @@
       },
       "additionalProperties": false
     },
+    "Simulation": {
+      "x-og-kind": "enum",
+      "x-og-module": "physics",
+      "description": "Where a cloth, a garment, a soft body or a 3D fluid is simulated: Cloth.simulation, Garment.simulation, SoftBody.simulation and Fluid3D.simulation.\nSee `physics §8`.",
+      "type": "string",
+      "enum": [
+        "gameplay",
+        "visual"
+      ],
+      "x-og-variants": {
+        "gameplay": "In the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default.",
+        "visual": "By the renderer on the GPU for looks only, never read back. The tick's points are the rest shape carried rigidly by the entity (a garment's: the skinned pose). Without RenderCapabilities.visualSimulation it draws that shape."
+      }
+    },
     "Cloth": {
       "x-og-kind": "component",
       "x-og-module": "physics",
@@ -32707,7 +32667,7 @@
         },
         "wind": {
           "$ref": "#/$defs/Vector3",
-          "description": "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the cloth flutters with both. A visual cloth (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s.\nSee `physics §8`.",
+          "description": "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the cloth flutters with both. A visual cloth (simulation visual) takes the sum as air moving at its magnitude in m/s.\nSee `physics §8`.",
           "default": {
             "x": 0,
             "y": 0,
@@ -32768,13 +32728,9 @@
           "default": true
         },
         "simulation": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL).\nSee `physics §8`.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 1
+          "$ref": "#/$defs/Simulation",
+          "description": "gameplay (in the tick, world state) or visual (on the GPU, for looks only).\nSee `physics §8`.",
+          "default": "gameplay"
         }
       },
       "additionalProperties": false
@@ -32870,7 +32826,7 @@
         },
         "wind": {
           "$ref": "#/$defs/Vector3",
-          "description": "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s.\nSee `physics §8`.",
+          "description": "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (simulation visual) takes the sum as air moving at its magnitude in m/s.\nSee `physics §8`.",
           "default": {
             "x": 0,
             "y": 0,
@@ -32904,16 +32860,28 @@
           "x-og-tunable": true
         },
         "simulation": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL).\nSee `physics §8`.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 1
+          "$ref": "#/$defs/Simulation",
+          "description": "gameplay (in the tick, world state) or visual (on the GPU, for looks only).\nSee `physics §8`.",
+          "default": "gameplay"
         }
       },
       "additionalProperties": false
+    },
+    "SoftBodyShape": {
+      "x-og-kind": "enum",
+      "x-og-module": "physics",
+      "description": "What a soft body is built as: SoftBody.shape.",
+      "type": "string",
+      "enum": [
+        "sphere",
+        "box",
+        "mesh"
+      ],
+      "x-og-variants": {
+        "sphere": "A sphere of `radius` (an icosphere; 2D a ring).",
+        "box": "A box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle).",
+        "mesh": "The closed surface of geometry `mesh` (3D only)."
+      }
     },
     "SoftBody": {
       "x-og-kind": "component",
@@ -32922,13 +32890,9 @@
       "type": "object",
       "properties": {
         "shape": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "SOFT_SPHERE 0, SOFT_BOX 1 or SOFT_MESH 2.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 2
+          "$ref": "#/$defs/SoftBodyShape",
+          "description": "sphere, box or mesh.",
+          "default": "sphere"
         },
         "radius": {
           "type": "number",
@@ -32960,7 +32924,7 @@
         },
         "mesh": {
           "$ref": "#/$defs/Geometry",
-          "description": "SOFT_MESH's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet.",
+          "description": "The mesh shape's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet.",
           "default": 0
         },
         "stiffness": {
@@ -33057,17 +33021,13 @@
           "default": true
         },
         "simulation": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL).\nSee `physics §8`.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 1
+          "$ref": "#/$defs/Simulation",
+          "description": "gameplay (in the tick, world state) or visual (on the GPU, for looks only).\nSee `physics §8`.",
+          "default": "gameplay"
         },
         "volume": {
           "type": "number",
-          "description": "Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when SIMULATION_VISUAL.",
+          "description": "Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when simulation is visual.",
           "default": 1,
           "readOnly": true
         },
@@ -33259,7 +33219,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (SIMULATION_VISUAL) up to 262144.",
+          "description": "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (simulation visual) up to 262144.",
           "default": 2000,
           "maximum": 262144
         },
@@ -33484,13 +33444,9 @@
           "default": true
         },
         "simulation": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still.\nSee `physics §8`.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 1
+          "$ref": "#/$defs/Simulation",
+          "description": "gameplay (in the tick, world state) or visual (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still.\nSee `physics §8`.",
+          "default": "gameplay"
         }
       },
       "additionalProperties": false
@@ -34089,13 +34045,9 @@
       "type": "object",
       "properties": {
         "shape": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "One of the SHAPE_* codes.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 5
+          "$ref": "#/$defs/ColliderShape",
+          "description": "The shape, as Collider.shape; a cast or an overlap is made for box, sphere, capsule, cylinder, convex and trimesh.",
+          "default": "box"
         },
         "size": {
           "$ref": "#/$defs/Vector3",
@@ -52118,7 +52070,7 @@
         },
         "geometry": {
           "$ref": "#/$defs/Geometry",
-          "description": "The height field registered with physics under this handle: the mesh of an og.Collider of shape SHAPE_HEIGHTFIELD."
+          "description": "The height field registered with physics under this handle: the mesh of an og.Collider of shape heightfield."
         },
         "size": {
           "$ref": "#/$defs/Vector2",
@@ -56299,7 +56251,7 @@
     "PixelTerrain": {
       "x-og-kind": "component",
       "x-og-module": "destruction",
-      "description": "Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics).\nEach `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (SHAPE_TRIMESH) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.\nSee `physics §9`.",
+      "description": "Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics).\nEach `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (shape trimesh) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.\nSee `physics §9`.",
       "type": "object",
       "properties": {
         "width": {
@@ -56454,7 +56406,7 @@
     "PixelPiece": {
       "x-og-kind": "component",
       "x-og-module": "destruction",
-      "description": "A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the convex hull of its cells (SHAPE_CONVEX, a polygon in 2D), drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.",
+      "description": "A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the convex hull of its cells (shape convex, a polygon in 2D), drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.",
       "type": "object",
       "properties": {
         "terrain": {

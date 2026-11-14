@@ -12,11 +12,11 @@ Token `og.SoftBody`, registered under the schema name `og.SoftBody`; its value t
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `shape` | `number` | `0` | 0 … 2 | — | — | SOFT_SPHERE 0, SOFT_BOX 1 or SOFT_MESH 2. |
+| `shape` | `SoftBodyShape` | `"sphere"` | — | — | — | sphere, box or mesh. |
 | `radius` | `number` | `0.5` | ≥ 0.01 | `m` | tunable | A sphere's radius. |
 | `size` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | ≥ 0 | `m` | — | A box's full extents. |
 | `detail` | `number` | `2` | 0 … 7 | — | — | How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one). See `physics §8`. |
-| `mesh` | `Geometry` | `0` | — | — | — | SOFT_MESH's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet. |
+| `mesh` | `Geometry` | `0` | — | — | — | The mesh shape's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet. |
 | `stiffness` | `number` | `1` | 0 … 1 | — | tunable | How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower lets the surface stretch and wobble. |
 | `pressure` | `number` | `1` | 0 … 4 | — | tunable | The volume it keeps, as a share of its rest volume: 1 holds it, above inflates it, 0 holds none (it slumps like cloth). |
 | `volumeStiffness` | `number` | `1` | 0 … 1 | — | tunable | How much of its volume a pass restores, 0 to 1. |
@@ -29,17 +29,14 @@ Token `og.SoftBody`, registered under the schema name `og.SoftBody`; its value t
 | `pinTop` | `number` | `0` | ≥ 0 | `m` | — | Points within this height of its top at rest are pinned to the entity and follow it (0: none): a water balloon on a string. |
 | `material` | `Material` | `0` | — | — | — | The material it is drawn with (og.render.standardMaterial); 0 is a plain one. |
 | `visible` | `boolean` | `true` | — | — | — | Whether the renderer draws it. |
-| `simulation` | `number` | `0` | 0 … 1 | — | — | SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL). See `physics §8`. |
-| `volume` | `number` | `1` | — | — | read only | Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when SIMULATION_VISUAL. |
+| `simulation` | `Simulation` | `"gameplay"` | — | — | — | gameplay (in the tick, world state) or visual (on the GPU, for looks only). See `physics §8`. |
+| `volume` | `number` | `1` | — | — | read only | Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when simulation is visual. |
 | `center` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only, worldspace `world` | Written: the mean of its points, in world space. |
 
 ```ogt
 component SoftBody {
   doc "A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state; og.physics.softBodyPoints reads them and the renderer draws its surface with `material`."
-  field shape u32 "SOFT_SPHERE 0, SOFT_BOX 1 or SOFT_MESH 2." {
-    min 0
-    max 2
-  }
+  field shape SoftBodyShape "sphere, box or mesh."
   field radius f32 "A sphere's radius." {
     default 0.5
     min 0.01
@@ -57,7 +54,7 @@ component SoftBody {
     min 0
     max 7
   }
-  field mesh Geometry "SOFT_MESH's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet."
+  field mesh Geometry "The mesh shape's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet."
   field stiffness f32 "How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower lets the surface stretch and wobble." {
     default 1
     min 0
@@ -120,12 +117,10 @@ component SoftBody {
   field visible bool "Whether the renderer draws it." {
     default true
   }
-  field simulation u32 "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL)." {
+  field simulation Simulation "gameplay (in the tick, world state) or visual (on the GPU, for looks only)." {
     guide "physics §8"
-    min 0
-    max 1
   }
-  field volume f32 "Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when SIMULATION_VISUAL." {
+  field volume f32 "Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when simulation is visual." {
     default 1
     readonly true
   }
@@ -137,4 +132,4 @@ component SoftBody {
 }
 ```
 
-<sub>Module `physics` line 1241</sub>
+<sub>Module `physics` line 1270</sub>

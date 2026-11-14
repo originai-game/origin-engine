@@ -285,9 +285,9 @@ A SoftBody at detail 3 (642 points) with stiffness below 1 needs more than
 the default 8 iterations to hold its shape.
 
 **Simulated or visual.** Cloth, SoftBody, Garment and Fluid3D take
-`simulation`. SIMULATION_GAMEPLAY (the default) runs in the tick, on the CPU:
+`simulation`. `gameplay` (the default) runs in the tick, on the CPU:
 its points are world state that the game can read (`clothPoints`,
-`softBodyPoints`, `garmentPoints`, `fluid3dParticles`). SIMULATION_VISUAL runs
+`softBodyPoints`, `garmentPoints`, `fluid3dParticles`). `visual` runs
 on the GPU in the renderer, for looks only, and a headless server pays
 nothing. Choose it for anything the game never asks about: a flag, a cape,
 a decorative pool. What it means for the rest of the world:
@@ -551,7 +551,7 @@ pieces stay.
 - Damaging `hit.entity` of a compound child instead of `hit.body`.
 - A character that cannot climb a kerb: `stepHeight` must be at least the
   kerb's height over the ground it stands on.
-- Game logic that reads a SIMULATION_VISUAL cloth or fluid: it reads the
+- Game logic that reads a `visual` cloth or fluid: it reads the
   rest shape, or nothing.
 - A garment with `radius` above 0 snagging on the character's own collider.
 - Destructible props scaled non-uniformly: chunks take the scale's mean.

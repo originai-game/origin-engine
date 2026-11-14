@@ -303,7 +303,7 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             w,
             g,
             "og.Collider".into(),
-            Some(json!({ "shape": 0, "size": { "x": 20, "y": 0.5, "z": 20 } }).to_string()),
+            Some(json!({ "shape": "box", "size": { "x": 20, "y": 0.5, "z": 20 } }).to_string()),
         )));
         frames(w, 10);
         // Where each chunk stands before the blast (every one static, at
@@ -311,7 +311,7 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
         let before = value(og_runtime::host_impl::answer(og_runtime::og_physics_overlap(
             w,
             Some(
-                json!({ "shape": { "shape": 0, "size": { "x": 12, "y": 6, "z": 12 } }, "position": { "x": 0, "y": 2.5, "z": 0 } })
+                json!({ "shape": { "shape": "box", "size": { "x": 12, "y": 6, "z": 12 } }, "position": { "x": 0, "y": 2.5, "z": 0 } })
                     .to_string(),
             ),
         )));
@@ -359,7 +359,7 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
         let near = value(og_runtime::host_impl::answer(og_runtime::og_physics_overlap(
             w,
             Some(
-                json!({ "shape": { "shape": 0, "size": { "x": 12, "y": 6, "z": 12 } }, "position": { "x": 0, "y": 2.5, "z": 0 } })
+                json!({ "shape": { "shape": "box", "size": { "x": 12, "y": 6, "z": 12 } }, "position": { "x": 0, "y": 2.5, "z": 0 } })
                     .to_string(),
             ),
         )));
@@ -419,7 +419,7 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
         let all = value(og_runtime::host_impl::answer(og_runtime::og_physics_overlap(
             w,
             Some(
-                json!({ "shape": { "shape": 0, "size": { "x": 60, "y": 20, "z": 60 } }, "position": { "x": 0, "y": 5, "z": 0 } })
+                json!({ "shape": { "shape": "box", "size": { "x": 60, "y": 20, "z": 60 } }, "position": { "x": 0, "y": 5, "z": 0 } })
                     .to_string(),
             ),
         )));
@@ -644,7 +644,7 @@ fn a_struck_pillar_falls_to_its_stump() {
         w,
         g,
         "og.Collider".into(),
-        Some(json!({ "shape": 0, "size": { "x": 20, "y": 0.5, "z": 20 } }).to_string()),
+        Some(json!({ "shape": "box", "size": { "x": 20, "y": 0.5, "z": 20 } }).to_string()),
     )));
     let asset = value(og_runtime::host_impl::answer(og_load_gltf(
         w,
@@ -662,7 +662,7 @@ fn a_struck_pillar_falls_to_its_stump() {
     frames(w, 10);
     value(og_runtime::host_impl::answer(og_destruction_damage(w, p, Some(json!({ "point": { "x": 0, "y": 1.4, "z": 0.25 }, "radius": 0.5, "innerRadius": 0.25, "amount": 8000 }).to_string()))));
     frames(w, 200);
-    let near = value(og_runtime::host_impl::answer(og_runtime::og_physics_overlap(w, Some(json!({ "shape": { "shape": 0, "size": { "x": 8, "y": 8, "z": 8 } }, "position": { "x": 0, "y": 4, "z": 0 } }).to_string()))));
+    let near = value(og_runtime::host_impl::answer(og_runtime::og_physics_overlap(w, Some(json!({ "shape": { "shape": "box", "size": { "x": 8, "y": 8, "z": 8 } }, "position": { "x": 0, "y": 4, "z": 0 } }).to_string()))));
     // At 48 cells the pillar once cooked a sliver chunk of no mass, which
     // physics disabled mid-flight: the pieces over the blow froze where
     // they were thrown and stood as a column in the air.

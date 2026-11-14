@@ -258,7 +258,7 @@ impl SoftState {
             } else if soft.shape == SOFT_MESH {
                 return Err(Error::new(
                     ErrorKind::Invalid,
-                    "og.SoftBody.shape SOFT_MESH (2) is 3D only: the 2D profile takes SOFT_SPHERE or SOFT_BOX",
+                    "og.SoftBody.shape mesh is 3D only: the 2D profile takes sphere or box",
                 ));
             } else {
                 let n = 12u32 << detail.min(3);

@@ -50,11 +50,11 @@ function build(world: World): void {
   const ground = must(world.spawn({ name: "ground", position: { x: 5, y: 0, z: 0 }, quaternion: floor() }));
   world.insert(ground, og.Mesh, { geometry: plane, material: field, receiveShadow: true });
   const slab = must(world.spawn({ name: "ground-collider", position: { x: 5, y: -0.5, z: 0 } }));
-  world.insert(slab, og.Collider, { shape: 0, size: { x: 40, y: 1, z: 40 } });
+  world.insert(slab, og.Collider, { shape: "box", size: { x: 40, y: 1, z: 40 } });
   // The ledge: 0.4 m high from x 9.5 on.
   block(world, "ledge", { x: 11.5, y: 0.2, z: 0 }, { x: 4, y: 0.4, z: 1.6 }, { r: 0.5, g: 0.42, b: 0.34 });
   const ledge = must(world.spawn({ name: "ledge-collider", position: { x: 11.5, y: 0.2, z: 0 } }));
-  world.insert(ledge, og.Collider, { shape: 0, size: { x: 4, y: 0.4, z: 1.6 } });
+  world.insert(ledge, og.Collider, { shape: "box", size: { x: 4, y: 0.4, z: 1.6 } });
   // A metre grid, so travel and planted feet read against the ground.
   for (let k = -2; k <= 14; k++) {
     block(world, `grid-x${k}`, { x: k, y: 0.002, z: -1 }, { x: 0.02, y: 0.004, z: 6 }, { r: 0.25, g: 0.27, b: 0.25 });
@@ -67,7 +67,7 @@ function build(world: World): void {
   const s = must(world.instantiate(must(og.load.gltf(world, "models/strider.glb")), { name: "strider", position: { x: 0, y: 0, z: 0 } }));
   world.insert(s, og.Skeleton, { asset: must(og.load.animation(world, "models/strider.glb")).skeleton, rootMotion: "off" });
   world.insert(s, og.MotionAgent, { rig: must(og.load.rig(world, "rigs/strider.ogt")), drive: true });
-  world.insert(s, og.Collider, { shape: 2, radius: 0.3, height: 1.2, offset: { x: 0, y: 0.9, z: 0 } });
+  world.insert(s, og.Collider, { shape: "capsule", radius: 0.3, height: 1.2, offset: { x: 0, y: 0.9, z: 0 } });
   world.insert(s, og.CharacterController, {});
   strider(world, s);
 

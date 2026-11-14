@@ -62,8 +62,20 @@
     }
   }
 
-  const SIMULATION_GAMEPLAY u32 0 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated in the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default."
-  const SIMULATION_VISUAL u32 1 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated by the renderer on the GPU for looks only, never read back. The tick's points are the rest shape carried rigidly by the entity (a garment's: the skinned pose). Without RenderCapabilities.visualSimulation it draws that shape."
+  enum Simulation {
+    doc "Where a cloth, a garment, a soft body or a 3D fluid is simulated: Cloth.simulation, Garment.simulation, SoftBody.simulation and Fluid3D.simulation."
+    guide "physics §8"
+    variant gameplay "In the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default."
+    variant visual "By the renderer on the GPU for looks only, never read back. The tick's points are the rest shape carried rigidly by the entity (a garment's: the skinned pose). Without RenderCapabilities.visualSimulation it draws that shape."
+  }
+
+  column Simulation {
+    doc "A Simulation field: the variant's index."
+    array Uint32Array
+    stride 1
+    value Simulation
+  }
+
   const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
   const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
   const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
@@ -110,7 +122,7 @@
       max 10
       tunable true
     }
-    field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the cloth flutters with both. A visual cloth (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s." {
+    field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the cloth flutters with both. A visual cloth (simulation visual) takes the sum as air moving at its magnitude in m/s." {
       guide "physics §8"
       unit mps2
       tunable true
@@ -146,10 +158,8 @@
     field visible bool "Whether the renderer draws it." {
       default true
     }
-    field simulation u32 "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL)." {
+    field simulation Simulation "gameplay (in the tick, world state) or visual (on the GPU, for looks only)." {
       guide "physics §8"
-      min 0
-      max 1
     }
   }
 
@@ -210,7 +220,7 @@
       max 10
       tunable true
     }
-    field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s." {
+    field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (simulation visual) takes the sum as air moving at its magnitude in m/s." {
       guide "physics §8"
       unit mps2
       tunable true
@@ -231,23 +241,29 @@
       max 1
       tunable true
     }
-    field simulation u32 "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL)." {
+    field simulation Simulation "gameplay (in the tick, world state) or visual (on the GPU, for looks only)." {
       guide "physics §8"
-      min 0
-      max 1
     }
   }
 
-  const SOFT_SPHERE u32 0 "`SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring)."
-  const SOFT_BOX u32 1 "`SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle)."
-  const SOFT_MESH u32 2 "`SoftBody.shape`: the closed surface of geometry `mesh` (3D only)."
+
+  enum SoftBodyShape {
+    doc "What a soft body is built as: SoftBody.shape."
+    variant sphere "A sphere of `radius` (an icosphere; 2D a ring)."
+    variant box "A box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle)."
+    variant mesh "The closed surface of geometry `mesh` (3D only)."
+  }
+
+  column SoftBodyShape {
+    doc "A SoftBodyShape field: the variant's index."
+    array Uint32Array
+    stride 1
+    value SoftBodyShape
+  }
 
   component SoftBody {
     doc "A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state; og.physics.softBodyPoints reads them and the renderer draws its surface with `material`."
-    field shape u32 "SOFT_SPHERE 0, SOFT_BOX 1 or SOFT_MESH 2." {
-      min 0
-      max 2
-    }
+    field shape SoftBodyShape "sphere, box or mesh."
     field radius f32 "A sphere's radius." {
       default 0.5
       min 0.01
@@ -265,7 +281,7 @@
       min 0
       max 7
     }
-    field mesh Geometry "SOFT_MESH's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet."
+    field mesh Geometry "The mesh shape's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet."
     field stiffness f32 "How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower lets the surface stretch and wobble." {
       default 1
       min 0
@@ -328,12 +344,10 @@
     field visible bool "Whether the renderer draws it." {
       default true
     }
-    field simulation u32 "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL)." {
+    field simulation Simulation "gameplay (in the tick, world state) or visual (on the GPU, for looks only)." {
       guide "physics §8"
-      min 0
-      max 1
     }
-    field volume f32 "Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when SIMULATION_VISUAL." {
+    field volume f32 "Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when simulation is visual." {
       default 1
       readonly true
     }
@@ -437,7 +451,7 @@
   component Fluid3D {
     doc "A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider and the terrain (they push nothing back) and stay inside `bounds` when set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes them. Fluids of one `group` layer by `density` and blend by `mixing`. Drawn as a screen-space surface that refracts and reflects."
     guide "physics §8"
-    field count u32 "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (SIMULATION_VISUAL) up to 262144." {
+    field count u32 "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (simulation visual) up to 262144." {
       default 2000
       max 262144
     }
@@ -560,10 +574,8 @@
     field visible bool "Whether the renderer draws it." {
       default true
     }
-    field simulation u32 "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still." {
+    field simulation Simulation "gameplay (in the tick, world state) or visual (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still." {
       guide "physics §8"
-      min 0
-      max 1
     }
   }
 

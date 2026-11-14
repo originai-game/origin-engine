@@ -30,7 +30,7 @@ export function start(world: World): void {
     world.insert(e.value, Wallet, { gold: 10 * i, rate: 1 + i / 4 });
     if (i % 3 === 0) {
       world.insert(e.value, og.RigidBody, {});
-      world.insert(e.value, og.Collider, { shape: 1, radius: 0.25 });
+      world.insert(e.value, og.Collider, { shape: "sphere", radius: 0.25 });
     }
   }
   const floor = world.spawn({ name: "floor" });

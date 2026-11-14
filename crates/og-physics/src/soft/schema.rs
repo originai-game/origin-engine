@@ -21,10 +21,10 @@ pub const SOFT_MESH: u32 = 2;
 /// state (the og.physics block's trailer), og.physics.softBodyPoints reads
 /// them and the renderer draws the surface.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.SoftBody", version = 3)]
+#[reflect(name = "og.SoftBody", version = 4)]
 pub struct SoftBody {
-    /// SOFT_SPHERE 0, SOFT_BOX 1, SOFT_MESH 2.
-    #[reflect(min = 0, max = 2)]
+    /// sphere, box or mesh: SOFT_SPHERE, SOFT_BOX and SOFT_MESH, in order.
+    #[reflect(variants = ["sphere", "box", "mesh"])]
     pub shape: u32,
     /// A sphere's radius.
     #[reflect(min = 0.01, unit = "m", default = 0.5, tunable)]
@@ -72,8 +72,8 @@ pub struct SoftBody {
     /// Whether the renderer draws it.
     #[reflect(default = 1)]
     pub visible: bool,
-    /// SIMULATION_GAMEPLAY 0 (in the tick) or SIMULATION_VISUAL 1 (on the GPU, for looks only).
-    #[reflect(min = 0, max = 1)]
+    /// gameplay (in the tick: SIMULATION_GAMEPLAY) or visual (on the GPU, for looks only: SIMULATION_VISUAL).
+    #[reflect(variants = ["gameplay", "visual"])]
     pub simulation: u32,
     /// Written: its volume (2D: area) now over its rest volume: below 1 squashed.
     #[reflect(default = 1)]
@@ -120,7 +120,7 @@ impl Default for SoftBody {
 /// before each step; its points are world state (the og.physics block's
 /// trailer).
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.Garment", version = 3)]
+#[reflect(name = "og.Garment", version = 4)]
 pub struct Garment {
     /// The glTF mesh of the entity's model that is the garment.
     pub mesh: u32,
@@ -163,8 +163,8 @@ pub struct Garment {
     /// How much of its sliding a point touching a solid loses each step.
     #[reflect(min = 0, max = 1, tunable)]
     pub friction: f32,
-    /// SIMULATION_GAMEPLAY 0 (in the tick) or SIMULATION_VISUAL 1 (on the GPU, for looks only).
-    #[reflect(min = 0, max = 1)]
+    /// gameplay (in the tick: SIMULATION_GAMEPLAY) or visual (on the GPU, for looks only: SIMULATION_VISUAL).
+    #[reflect(variants = ["gameplay", "visual"])]
     pub simulation: u32,
 }
 
@@ -279,7 +279,7 @@ pub const PIN_TOP_RINGS: u32 = 8;
 /// its points are world state. Drawn as a double-sided mesh with
 /// `material` (og.render.standardMaterial; 0: a plain cloth colour).
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Cloth", version = 3)]
+#[reflect(name = "og.Cloth", version = 4)]
 pub struct Cloth {
     /// Points across.
     #[reflect(min = 2, max = 64, default = 12)]
@@ -332,8 +332,8 @@ pub struct Cloth {
     /// Whether the renderer draws it.
     #[reflect(default = 1)]
     pub visible: bool,
-    /// SIMULATION_GAMEPLAY 0 (in the tick) or SIMULATION_VISUAL 1 (on the GPU, for looks only).
-    #[reflect(min = 0, max = 1)]
+    /// gameplay (in the tick: SIMULATION_GAMEPLAY) or visual (on the GPU, for looks only: SIMULATION_VISUAL).
+    #[reflect(variants = ["gameplay", "visual"])]
     pub simulation: u32,
 }
 

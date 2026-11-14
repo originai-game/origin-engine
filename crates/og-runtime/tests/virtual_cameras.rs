@@ -284,7 +284,7 @@ fn collision_pulls_in_at_once_and_eases_out() {
             ("og.Transform", at(0.0, 0.0, 3.0)),
             (
                 "og.Collider",
-                json!({ "shape": 0, "size": { "x": 4, "y": 4, "z": 0.2 } }),
+                json!({ "shape": "box", "size": { "x": 4, "y": 4, "z": 0.2 } }),
             ),
         ],
     );

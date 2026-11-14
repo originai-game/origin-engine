@@ -11,7 +11,7 @@
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { og, defineComponent, defineResource, defineSystem, f32, u32, SHAPE_BOX } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, f32, u32 } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { createEngine, type GameToken } from "../../src/runtime.ts";
 
@@ -56,7 +56,7 @@ const game = og.game({
   start: (w: World) => {
     const box = must(w.spawn({ name: "box", position: { x: 0, y: 6, z: 0 } }));
     w.insert(box, og.RigidBody);
-    w.insert(box, og.Collider, { shape: SHAPE_BOX });
+    w.insert(box, og.Collider, { shape: "box" });
     const runner = must(w.spawn({ name: "runner", position: { x: -4, y: 0, z: 0 } }));
     w.insert(runner, Runner);
     const a = must(w.spawn({ name: "a", position: { x: 0, y: 0, z: 0 } }));

@@ -274,7 +274,7 @@ commands:
                       static word embeddings, one line each; --json adds the scores
   api show <name> [--all] [--guide]
                       one API entry in full: signature, fields, doc (og.CharacterController,
-                      og.physics.castRay, SHAPE_BOX, \"saves §2\"; og. may be left out); a module
+                      og.physics.castRay, MAX_RAYCAST_HITS, \"saves §2\"; og. may be left out); a module
                       shows its overview and its core members, --all every member; --guide shows
                       the guide named like a module (physics, input, camera, audio, render)
   api gen [--wiki] [--root <dir>]

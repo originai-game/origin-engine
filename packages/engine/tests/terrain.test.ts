@@ -11,7 +11,7 @@ import { expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { og, SHAPE_HEIGHTFIELD, SHAPE_SPHERE, SHAPE_CAPSULE } from "@origingame/engine";
+import { og } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
 import { loadNativeHost, native } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
@@ -64,7 +64,7 @@ function start(origin = { x: 0, y: 0, z: 0 }, size?: [number, number]): { engine
       info = must(og.terrain.load(world, "terrain/hill.ogt")) as unknown as Info;
       terrain = must(world.spawn({ name: "hill", position: origin }));
       world.insert(terrain, og.Terrain, { data: info.data as never });
-      world.insert(terrain, og.Collider, { shape: SHAPE_HEIGHTFIELD, mesh: info.geometry as never });
+      world.insert(terrain, og.Collider, { shape: "heightfield", mesh: info.geometry as never });
     },
   });
   const r = createEngine(game as GameToken, { root: fixture });
@@ -114,7 +114,7 @@ test("a turned and scaled terrain: sample, bounds, edit and physics follow its e
       info = must(og.terrain.load(world, "terrain/hill.ogt")) as unknown as Info;
       const e = must(world.spawn({ name: "hill", position: place.origin, quaternion: turn, scale: place.scale }));
       world.insert(e, og.Terrain, { data: info.data as never });
-      world.insert(e, og.Collider, { shape: SHAPE_HEIGHTFIELD, mesh: info.geometry as never });
+      world.insert(e, og.Collider, { shape: "heightfield", mesh: info.geometry as never });
     },
   });
   const r = createEngine(game as GameToken, { root: fixture });
@@ -163,9 +163,9 @@ test("a ball rests on the terrain and a character walks up the hill", () => {
   const w = engine.world;
   const ball = must(w.spawn({ name: "ball", position: { x: -20, y: 12, z: 10 } }));
   w.insert(ball, og.RigidBody, {});
-  w.insert(ball, og.Collider, { shape: SHAPE_SPHERE, radius: 0.5 });
+  w.insert(ball, og.Collider, { shape: "sphere", radius: 0.5 });
   const hero = must(w.spawn({ name: "hero", position: { x: -24, y: ground(-24, 0) + 1.2, z: 0 } }));
-  w.insert(hero, og.Collider, { shape: SHAPE_CAPSULE, radius: 0.35, height: 1 });
+  w.insert(hero, og.Collider, { shape: "capsule", radius: 0.35, height: 1 });
   w.insert(hero, og.CharacterController, { maxSlope: 50 });
   expect(engine.advance(30).ok).toBeTrue();
   w.set(hero, og.CharacterController, { move: { x: 3, y: 0, z: 0 } });
@@ -263,7 +263,7 @@ test("a restore within a run that edited the terrain goes on tick for tick as th
   must(og.terrain.edit(w, info.data as never, { mode: "raise" as never, center: { x: -20, y: 0, z: 10 }, radius: 6, strength: 2 }));
   const ball = must(w.spawn({ name: "ball", position: { x: -20, y: 14, z: 10 } }));
   w.insert(ball, og.RigidBody, {});
-  w.insert(ball, og.Collider, { shape: SHAPE_SPHERE, radius: 0.5 });
+  w.insert(ball, og.Collider, { shape: "sphere", radius: 0.5 });
   expect(engine.advance(40).ok).toBeTrue();
   const saved = engine.probe.snapshot() as { id: string };
   const hashes = (): string[] => Array.from({ length: 30 }, () => (expect(engine.advance(1).ok).toBeTrue(), engine.hash()));
@@ -294,7 +294,7 @@ test("the hole brush cuts the terrain out for sample and physics, and fill close
   expect(ray(20, 24)).toBeCloseTo(ground(20, 24), 1);
   const ball = must(w.spawn({ name: "ball", position: { x: 20, y: ground(20, 20) + 3, z: 20 } }));
   w.insert(ball, og.RigidBody, {});
-  w.insert(ball, og.Collider, { shape: SHAPE_SPHERE, radius: 0.4 });
+  w.insert(ball, og.Collider, { shape: "sphere", radius: 0.4 });
   expect(engine.advance(90).ok).toBeTrue();
   expect(must(w.get(ball, og.Transform)).position.y).toBeLessThan(ground(20, 20) - 5); // fell through
   must(og.terrain.edit(w, data, { mode: "fill" as never, center: { x: 20, y: 0, z: 20 }, radius: 5, falloff: 0 }));

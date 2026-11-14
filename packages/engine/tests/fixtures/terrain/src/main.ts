@@ -6,7 +6,7 @@
 // `grass` grows a default og.Grass over it, and `wind` blows og.Wind (R6's grass):
 //   og run packages/engine/tests/fixtures/terrain --size 1280x720 --out og-out \
 //     --commands "0.2:grass;0.4:screenshot:grass.png;0.5:wind:6;1.0:screenshot:grass-wind.png;1.1:quit"
-import { og, SHAPE_HEIGHTFIELD, type World } from "@origingame/engine";
+import { og, type World } from "@origingame/engine";
 
 // The hill and its terrain data live in the world (the entity named "hill"
 // and its og.Terrain), so a restore or a fork brings them back with it.
@@ -25,7 +25,7 @@ export default og.game({
     const spawned = world.spawn({ name: "hill" });
     if (!spawned.ok) throw new Error(spawned.reason);
     world.insert(spawned.value, og.Terrain, { data: info.value.data });
-    world.insert(spawned.value, og.Collider, { shape: SHAPE_HEIGHTFIELD, mesh: info.value.geometry });
+    world.insert(spawned.value, og.Collider, { shape: "heightfield", mesh: info.value.geometry });
     const cam = world.resource(og.Camera);
     if (cam.ok) {
       const eye = { x: 20, y: 22, z: 38 };

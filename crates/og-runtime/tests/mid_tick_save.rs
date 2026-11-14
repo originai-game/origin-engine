@@ -171,7 +171,7 @@ fn engine(game: u32) -> u32 {
             ("og.RigidBody", json!({ "kind": "fixed" })),
             (
                 "og.Collider",
-                json!({ "shape": 0, "size": { "x": 20, "y": 1, "z": 20 } }),
+                json!({ "shape": "box", "size": { "x": 20, "y": 1, "z": 20 } }),
             ),
         ],
     );
@@ -181,7 +181,7 @@ fn engine(game: u32) -> u32 {
             ("og.RigidBody", json!({ "mass": 2 })),
             (
                 "og.Collider",
-                json!({ "shape": 0, "size": { "x": 0.5, "y": 0.5, "z": 0.5 } }),
+                json!({ "shape": "box", "size": { "x": 0.5, "y": 0.5, "z": 0.5 } }),
             ),
         ],
     );

@@ -80,7 +80,7 @@ fn ball(e: u32, x: f32, y: f32) -> f64 {
     .unwrap();
     for (name, v) in [
         ("og.RigidBody", json!({})),
-        ("og.Collider", json!({ "shape": 1, "radius": 0.25 })),
+        ("og.Collider", json!({ "shape": "sphere", "radius": 0.25 })),
     ] {
         value(og_runtime::host_impl::answer(og_world_insert(
             e,

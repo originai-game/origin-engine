@@ -69,7 +69,7 @@ fn engine(game: u32, profile: &str) -> (u32, f64, f64) {
             ("og.RigidBody", json!({ "mass": mass })),
             (
                 "og.Collider",
-                json!({ "shape": 1, "radius": 0.5, "friction": 0 }),
+                json!({ "shape": "sphere", "radius": 0.5, "friction": 0 }),
             ),
             (
                 "og.Velocity",
