@@ -3,77 +3,10 @@
 //! checks it with this parser (and that what it names is in the bundle);
 //! the runtime loads it with it.
 //!
-//! ```text
-//! type vfx
-//! version 2
-//! ---
-//! duration 1.2                      # seconds the effect lasts (its elements' ends within)
-//! loop false                        # start over at the end
-//! impact 0.25                       # = event 0.25 "impact" (at most one)
-//! event 0.8 "linger"                # og.VfxEvent with this name at this time
-//! emitter "fx/sparks.ogt" {         # an og.load.emitter asset (`type particles`)
-//!   at 0.25                         # starts (seconds from the effect's start)
-//!   until 0.5                       # stops emitting; its particles live out
-//!   offset 0 0.5 0                  # from the effect's origin, in its space
-//!   rotate 0 90 0                   # degrees
-//!   move 0 2 0                      # metres per second it moves from its offset
-//!   accelerate 0 -1 0               # metres per second squared
-//!   seed 3                          # added to the effect's seed
-//! }
-//! mesh ring {                       # sphere | quad | ring | box | cylinder | "<model id>"
-//!   at 0.25
-//!   inner 0.6  band 0.5             # a ring's own shape (any of these lines): inner radius
-//!   height 0 0                      # (outer 1), middle band, the outer and inner edge's
-//!   arc 90 180  segments 64         # height up +z (a cone, a tube), arc (start, length in
-//!   colors 1 1 1 0  1 1 1 1  1 1 1 0  # degrees from +x), segments; rgba at outer, band,
-//!                                   # inner (u along the arc, v 0 outer to 1 inner)
-//!   life 0.4                        # seconds
-//!   effect "fx/shock.ogt"           # its effect material (`type effect`)
-//!   scale curve 0 0.5 1 3           # a value over its life: uniform scale
-//!   spin 0 180 0                    # degrees per second
-//!   color 1 1 1 1
-//!   blend additive                  # additive | alpha
-//! }
-//! trail {                           # a trail at the element's point
-//!   at 0  until 0.6
-//!   effect "fx/streak.ogt"
-//!   width 0.3 0.05                  # at its head, at its tail
-//!   lifetime 0.4                    # how long a point lasts
-//!   orbit 0.6 1.5                   # <radius> <turns per second> about the element's y
-//!   rise 0.8                        # metres per second up the element's y
-//! }
-//! beam {
-//!   at 0.1  until 0.6
-//!   to 0 4 0                        # its far end, from the element's point
-//!   width 0.4  effect "fx/core.ogt"  segments 8  jitter 0.1
-//! }
-//! light {                           # a point light
-//!   at 0.25  life 0.4  color 1 0.6 0.3
-//!   intensity curve 0 12 1 0        # a value over its life (candela)
-//!   distance 6
-//! }
-//! decal {                          # projected down the element's -y
-//!   at 0.25
-//!   life 4
-//!   uv 0 0 0.5 0.5                  # its region of og.RenderSettings.decalAtlas
-//!   size 2 1 2                      # x, the depth it reaches, z
-//!   fade 1                          # seconds it fades out over at its end
-//! }
-//! glow {                            # a soft bright glow that faces the eye
-//!   at 0.25  life 0.15  size curve 0 1 1 3  color 4 3 2 1
-//! }
-//! shake {                           # og.camera.shake trauma
-//!   at 0.25  trauma 0.3
-//! }
-//! sound "sfx/boom.wav" {
-//!   at 0.25  volume 0.8  playbackRate 0.9 1.1   # a playback rate picked from the range by the seed
-//! }
-//! flipbook "fx/slash.ogt" {         # a flipbook sheet (a `type vfx2d` pixel effect, or `type flipbook`)
-//!   at 0.1                          # its first clip, once, facing the eye; it ends with the clip
-//!   size 2                          # metres tall (its width by the frame's shape)
-//!   color 1 1 1 1  blend alpha      # alpha (default) | additive
-//! }
-//! ```
+//! Its lines are the rows of [`VFX_LINES`] (the header lines and the
+//! elements) and [`ELEMENT_LINES`] (an element's block, with the elements
+//! that take each), which the parser holds every line to and `og api gen`
+//! writes into the `effect-files` guide.
 //!
 //! Every element takes `at`, `offset`, `rotate`, `move` and `accelerate`
 //! (its offset moves from its start: an emitter spawns along the path, a
@@ -93,8 +26,421 @@ mod play;
 pub use play::{VfxCue, VfxDraw, VfxDrawKind, VfxInstance, element_id, random};
 
 use crate::effect::{flag, nums, one, value};
+use crate::grammar::{Line, find, keys};
 use og_core::ogt::{Document, Entry, Value};
 use og_render_data::{EffectValue, ParticleBlend};
+
+/// Every line of a composed effect's body: the header lines, then the
+/// elements, each a block (`crate::grammar`).
+pub const VFX_LINES: &[Line] = &[
+    Line::new(
+        "duration",
+        "<seconds>",
+        "",
+        "How long the effect lasts; its elements end within it. Required.",
+        "duration 1.2",
+    ),
+    Line::new(
+        "loop",
+        "true | false",
+        "false",
+        "Start over at the end.",
+        "loop true",
+    ),
+    Line::new(
+        "impact",
+        "<seconds>",
+        "",
+        "The same as `event <seconds> \"impact\"`; at most one.",
+        "impact 0.25",
+    ),
+    Line::new(
+        "event",
+        "<seconds> \"<name>\"",
+        "",
+        "An og.VfxEvent with this name at this time.",
+        "event 0.8 \"linger\"",
+    ),
+    Line::new(
+        "emitter",
+        "\"<id>\" { ... }",
+        "",
+        "An emitter asset (§1) playing its own cycle; `until` stops its emission and its particles live out.",
+        "emitter \"fx/sparks.ogt\" {\n  at 0.25\n  until 0.5\n}",
+    ),
+    Line::new(
+        "mesh",
+        "sphere | quad | ring | box | cylinder | \"<model id>\" { ... }",
+        "",
+        "A mesh drawn with an effect material (§2); a ring builds its own shape at load.",
+        "mesh ring {\n  at 0.25\n  life 0.4\n  effect \"fx/shock.ogt\"\n}",
+    ),
+    Line::new(
+        "trail",
+        "{ ... }",
+        "",
+        "A trail behind the element's point.",
+        "trail {\n  at 0\n  until 0.6\n}",
+    ),
+    Line::new(
+        "beam",
+        "{ ... }",
+        "",
+        "A beam from the element's point to `to`.",
+        "beam {\n  at 0.1\n  until 0.6\n  to 0 4 0\n}",
+    ),
+    Line::new(
+        "light",
+        "{ ... }",
+        "",
+        "A point light.",
+        "light {\n  at 0.25\n  life 0.4\n}",
+    ),
+    Line::new(
+        "decal",
+        "{ ... }",
+        "",
+        "A decal projected down the element's -y, from og.RenderSettings.decalAtlas.",
+        "decal {\n  at 0.25\n  life 4\n}",
+    ),
+    Line::new(
+        "glow",
+        "{ ... }",
+        "",
+        "A soft bright glow facing the eye (version 1 named it `flash`).",
+        "glow {\n  at 0.25\n  life 0.15\n}",
+    ),
+    Line::new(
+        "shake",
+        "{ ... }",
+        "",
+        "og.camera.shake, at once.",
+        "shake {\n  at 0.25\n  trauma 0.3\n}",
+    ),
+    Line::new(
+        "sound",
+        "\"<id>\" { ... }",
+        "",
+        "A sound asset, played at once by a child entity with og.AudioSource, cut when the effect despawns.",
+        "sound \"sfx/boom.wav\" {\n  at 0.25\n}",
+    ),
+    Line::new(
+        "flipbook",
+        "\"<id>\" { ... }",
+        "",
+        "A camera-facing og.Sprite with og.Flipbook playing a sheet's first clip once (a `type vfx2d` pixel effect or any og.load.flipbook sheet); its og.FlipbookEvent events, the impact among them, reach the game as this effect's og.VfxEvent.",
+        "flipbook \"fx/slash.ogt\" {\n  at 0.1\n}",
+    ),
+];
+
+const MESH: &[&str] = &["mesh"];
+const TRAIL: &[&str] = &["trail"];
+const BEAM: &[&str] = &["beam"];
+const LIGHT: &[&str] = &["light"];
+const DECAL: &[&str] = &["decal"];
+const RING: &[&str] = &["ring"];
+
+/// Every line of an element's block, with the elements that take it.
+pub const ELEMENT_LINES: &[Line] = &[
+    Line::of(
+        &[],
+        "at",
+        "<seconds>",
+        "0",
+        "When it starts, from the effect's start.",
+        "at 0.25",
+    ),
+    Line::of(
+        &[],
+        "life",
+        "<seconds>",
+        "",
+        "How long it lasts (an element that lasts takes `life` or `until`; an emitter runs its cycle and a flipbook its clip without either).",
+        "life 0.4",
+    ),
+    Line::of(
+        &[],
+        "until",
+        "<seconds>",
+        "",
+        "When it ends, instead of `life`.",
+        "until 0.6",
+    ),
+    Line::of(
+        &[],
+        "offset",
+        "<x> <y> <z>",
+        "0 0 0",
+        "Where it starts, in the effect's space.",
+        "offset 0 0.5 0",
+    ),
+    Line::of(
+        &[],
+        "rotate",
+        "<x> <y> <z>",
+        "0 0 0",
+        "Degrees, in the effect's space.",
+        "rotate -90 0 0",
+    ),
+    Line::of(
+        &[],
+        "move",
+        "<x> <y> <z>",
+        "0 0 0",
+        "Metres per second it moves from its offset: an emitter spawns along the path, a mesh, trail or light goes with it.",
+        "move 0 2 0",
+    ),
+    Line::of(
+        &[],
+        "accelerate",
+        "<x> <y> <z>",
+        "0 0 0",
+        "Metres per second squared.",
+        "accelerate 0 -1 0",
+    ),
+    Line::of(
+        &["emitter"],
+        "seed",
+        "<u32>",
+        "0",
+        "Added to the effect's seed.",
+        "seed 3",
+    ),
+    Line::of(
+        &["mesh", "trail", "beam"],
+        "effect",
+        "\"<id>\"",
+        "",
+        "Its effect material (§2); a mesh needs one.",
+        "effect \"fx/shock.ogt\"",
+    ),
+    Line::of(
+        MESH,
+        "scale",
+        "<value>",
+        "1",
+        "Uniform scale over its life.",
+        "scale curve 0 0.5 1 3",
+    ),
+    Line::of(
+        MESH,
+        "spin",
+        "<x> <y> <z>",
+        "0 0 0",
+        "Degrees per second.",
+        "spin 0 180 0",
+    ),
+    Line::of(
+        &["mesh", "flipbook"],
+        "blend",
+        "additive | alpha",
+        "",
+        "A mesh adds by default, a flipbook blends alpha.",
+        "blend alpha",
+    ),
+    Line::of(
+        &[
+            "mesh", "trail", "beam", "decal", "glow", "flipbook", "light",
+        ],
+        "color",
+        "<r> <g> <b> [<a>]",
+        "1 1 1 1",
+        "A linear colour; above 1 blooms (a light's alpha is ignored).",
+        "color 4 3 2",
+    ),
+    Line::of(
+        TRAIL,
+        "width",
+        "<head> [<tail>]",
+        "0.2 0",
+        "Metres across at its head and its tail.",
+        "width 0.3 0.05",
+    ),
+    Line::of(
+        BEAM,
+        "width",
+        "<metres>",
+        "0.2",
+        "Metres across.",
+        "width 0.4",
+    ),
+    Line::of(
+        TRAIL,
+        "lifetime",
+        "<seconds>",
+        "0.4",
+        "How long a point stays in the trail.",
+        "lifetime 0.6",
+    ),
+    Line::of(
+        TRAIL,
+        "orbit",
+        "<radius> <turns per second>",
+        "0 0",
+        "Circles the element's y.",
+        "orbit 0.6 1.5",
+    ),
+    Line::of(
+        TRAIL,
+        "rise",
+        "<metres per second>",
+        "0",
+        "Climbs the element's y.",
+        "rise 0.8",
+    ),
+    Line::of(
+        BEAM,
+        "to",
+        "<x> <y> <z>",
+        "0 1 0",
+        "Its far end, from the element's point.",
+        "to 0 4 0",
+    ),
+    Line::of(
+        BEAM,
+        "segments",
+        "<n>",
+        "1",
+        "1 to 256: more let `jitter` bend it.",
+        "segments 8",
+    ),
+    Line::of(
+        BEAM,
+        "jitter",
+        "<metres>",
+        "0",
+        "Sideways jitter, new every tick (lightning).",
+        "jitter 0.1",
+    ),
+    Line::of(
+        LIGHT,
+        "intensity",
+        "<value>",
+        "1",
+        "Candela over its life.",
+        "intensity curve 0 12 1 0",
+    ),
+    Line::of(
+        LIGHT,
+        "distance",
+        "<metres>",
+        "5",
+        "Where it reaches zero.",
+        "distance 6",
+    ),
+    Line::of(
+        DECAL,
+        "uv",
+        "<u0> <v0> <u1> <v1>",
+        "0 0 1 1",
+        "Its region of og.RenderSettings.decalAtlas.",
+        "uv 0 0 0.5 0.5",
+    ),
+    Line::of(
+        DECAL,
+        "size",
+        "<s> | <x> <y> <z>",
+        "1 1 1",
+        "x, the depth it reaches down its -y, and z.",
+        "size 2 1 2",
+    ),
+    Line::of(
+        DECAL,
+        "fade",
+        "<seconds>",
+        "0",
+        "Fades out over its last this many seconds.",
+        "fade 1",
+    ),
+    Line::of(
+        &["glow"],
+        "size",
+        "<value>",
+        "1",
+        "Metres across over its life.",
+        "size curve 0 1 1 3",
+    ),
+    Line::of(
+        &["flipbook"],
+        "size",
+        "<metres>",
+        "1",
+        "Its height; the width follows the frame's shape.",
+        "size 2",
+    ),
+    Line::of(
+        &["shake"],
+        "trauma",
+        "<0..1>",
+        "0.2",
+        "og.camera.shake's trauma.",
+        "trauma 0.4",
+    ),
+    Line::of(
+        &["sound"],
+        "volume",
+        "<gain>",
+        "1",
+        "Its volume.",
+        "volume 0.8",
+    ),
+    Line::of(
+        &["sound"],
+        "playbackRate",
+        "<rate> | <min> <max>",
+        "1",
+        "A rate picked from the range by the effect's seed.",
+        "playbackRate 0.9 1.1",
+    ),
+    Line::of(
+        RING,
+        "inner",
+        "<radius>",
+        "",
+        "The inner radius (the outer is 1).",
+        "inner 0.6",
+    ),
+    Line::of(
+        RING,
+        "band",
+        "<0..1>",
+        "",
+        "Where its middle row lies between the edges.",
+        "band 0.5",
+    ),
+    Line::of(
+        RING,
+        "height",
+        "<outer> <inner>",
+        "",
+        "Its edges raised along its axis: a cone, a tube.",
+        "height 0 0.5",
+    ),
+    Line::of(
+        RING,
+        "arc",
+        "<start> <length>",
+        "",
+        "Degrees from +x.",
+        "arc 90 180",
+    ),
+    Line::of(
+        RING,
+        "segments",
+        "<n>",
+        "",
+        "3 to 256 around it.",
+        "segments 64",
+    ),
+    Line::of(
+        RING,
+        "colors",
+        "<outer rgba> <band rgba> <inner rgba>",
+        "",
+        "Its vertex colours; u runs along the arc and v from the outer edge (0) to the inner (1).",
+        "colors 1 1 1 0  1 1 1 1  1 1 1 0",
+    ),
+];
 
 /// The `.ogt` type of a composed effect file.
 pub const VFX_TYPE: &str = "vfx";
@@ -433,7 +779,13 @@ pub fn parse_vfx(text: &str) -> Result<Vfx, String> {
 
 fn element(e: &Entry, version: u32) -> Result<VfxElement, String> {
     let line = e.line;
-    let kinds = "emitter, mesh, trail, beam, light, decal, glow, shake, sound, flipbook";
+    let kinds = keys(VFX_LINES, &[]);
+    if e.key != "flash" && find(VFX_LINES, &e.key, &[]).is_none() {
+        return Err(format!(
+            "line {line}: unknown `{}` (a vfx takes {kinds})",
+            e.key
+        ));
+    }
     let mut el = VfxElement {
         at: 0.0,
         life: 0.0,
@@ -528,9 +880,7 @@ fn element(e: &Entry, version: u32) -> Result<VfxElement, String> {
                 blend: ParticleBlend::Alpha,
             },
             other => {
-                return Err(format!(
-                    "line {line}: unknown `{other}` (duration, loop, impact, event, or an element: {kinds})"
-                ));
+                return Err(format!("line {line}: `{other}` is not read yet ({kinds})"));
             }
         },
     };
@@ -540,8 +890,28 @@ fn element(e: &Entry, version: u32) -> Result<VfxElement, String> {
         .ok_or_else(|| format!("line {line}: {} {{ at <seconds> ... }}", e.key))?;
     let mut until: Option<f32> = None;
     let mut life: Option<f32> = None;
+    let ring = matches!(
+        el.kind,
+        VfxKind::Mesh {
+            shape: VfxShape::Ring(_),
+            ..
+        }
+    );
+    let labels: &[&str] = if ring {
+        &["mesh", "ring"]
+    } else {
+        &[el.kind.name()]
+    };
     for k in &block.entries {
         let kl = k.line;
+        if find(ELEMENT_LINES, &k.key, labels).is_none() {
+            return Err(format!(
+                "line {kl}: a {} takes no `{}` (it takes {})",
+                el.kind.name(),
+                k.key,
+                keys(ELEMENT_LINES, labels)
+            ));
+        }
         match (k.key.as_str(), &mut el.kind) {
             ("at", _) => el.at = time(k)?,
             ("life", _) => life = Some(time(k)?),

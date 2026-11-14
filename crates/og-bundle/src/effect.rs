@@ -2,51 +2,16 @@
 //! `type effect`, or an `effect { ... }` block inside an emitter. The
 //! cook checks both with this parser and the runtime loads them with it.
 //!
-//! ```text
-//! type effect
-//! version 1
-//! ---
-//! main "fx/noise.png" red {         # the main texture [rgba | red | green | blue | alpha];
-//!   tile 3 1                        #   omitted: the surface's own (the emitter's texture)
-//!   offset 0 0
-//!   scroll 0.15 -0.6                # uv per second
-//!   rotate 0                        # degrees per second about the centre
-//!   polar true                      # u the angle, v the radius
-//! }
-//! ramp {                            # a gradient map: the texture's value picks the colour
-//!   key 0 0 0 0 0                   #   <t> <r> <g> <b> <a> (at most 8)
-//!   key 1 6 3 1 1
-//! }
-//! mask "fx/bar.png" red {
-//!   polar true
-//! }
-//! noise "fx/cells.png" red {         # the erosion's noise; omitted: value noise
-//!   tile 2 2
-//! }
-//! erosion curve 0 0 1 1             # the cut, a value (below)
-//! erosionSoftness 0.1
-//! erosionEdge 0.05 8 4 1 [1]        # <width> <r> <g> <b> [<a>]: a glowing border
-//! flowMap "fx/swirl.png"           # red and green push the main uv (0.5 still)
-//! flow 0.08 0.6                     # <strength> <cycles per second>
-//! fresnel 2.5 [1] [invert]          # <power> [<strength>]: a rim, or soft silhouettes
-//! softDepth 0.3                     # fade against the scene behind (particles, meshes)
-//! color 1 1 1 [1]                   # a linear tint, above 1 glows
-//! intensity 1                       # a value
-//! alpha 1                           # a value
-//! offsetU 0                         # a value, added to the main uv
-//! offsetV 0
-//! custom 1 random 2 6               # <slot 1 to 8> <value>: effect_custom1().x .. effect_custom2().w
-//! blend additive                    # additive | alpha: over the surface's own
-//! doubleSided true                  # meshes: both faces
-//! shader "fx/bands.ogt"             # a material shader (hooks) whose surface_color runs last
-//! param tint 4 0.6 2.5 1            # one of its parameters by name
-//! ```
+//! Its lines are the rows of [`EFFECT_LINES`] (a texture's block
+//! [`UV_LINES`]), which the parser holds every line to and `og api gen`
+//! writes into the `effect-files` guide.
 //!
 //! A value is a number, `random <min> <max>` (fixed per particle, strip or
 //! mesh) or `curve <t> <v> ...` (over the life: a particle's age over its
 //! lifetime, a strip's length from its start, an effect mesh's life; at
 //! most 8 keys).
 
+use crate::grammar::{Line, find, keys};
 use og_core::ogt::{Block, Document, Entry, Value};
 use og_render_data::{
     ColorCurve, Curve, EFFECT_PARAMS, EffectChannel, EffectMaterial, EffectTexture, EffectUv,
@@ -56,6 +21,197 @@ use og_render_data::{
 
 /// The `.ogt` type of an effect material file.
 pub const EFFECT_TYPE: &str = "effect";
+
+/// Every line an effect material takes: the parser refuses any other
+/// (`crate::grammar`).
+pub const EFFECT_LINES: &[Line] = &[
+    Line::new(
+        "main",
+        "[\"<id>\"] [rgba | red | green | blue | alpha] [{ uv }]",
+        "",
+        "The main texture and the channel read; left out, the surface's own (an emitter's texture).",
+        "main \"fx/noise.png\" red {\n  tile 3 1\n  scroll 0.15 -0.6\n}",
+    ),
+    Line::new(
+        "ramp",
+        "{ key <t> <r> <g> <b> <a> ... }",
+        "",
+        "A gradient map: the texture's value picks the linear colour; at most 8 keys.",
+        "ramp {\n  key 0 0 0 0 0\n  key 1 6 3 1 1\n}",
+    ),
+    Line::new(
+        "mask",
+        "[\"<id>\"] [<channel>] [{ uv }]",
+        "",
+        "A texture (red by default) multiplied into the alpha.",
+        "mask \"fx/bar.png\" red {\n  polar true\n}",
+    ),
+    Line::new(
+        "noise",
+        "[\"<id>\"] [<channel>] [{ uv }]",
+        "",
+        "The erosion's noise (red by default); left out, value noise. Needs an `erosion` line.",
+        "noise \"fx/cells.png\" red {\n  tile 2 2\n}\nerosion curve 0 0 1 1",
+    ),
+    Line::new(
+        "erosion",
+        "<value>",
+        "",
+        "The cut: where the noise is below it the surface is gone (a dissolve over the life).",
+        "erosion curve 0 0 1 1",
+    ),
+    Line::new(
+        "erosionSoftness",
+        "<width>",
+        "0.05",
+        "How soft the cut's edge is.",
+        "erosionSoftness 0.1",
+    ),
+    Line::new(
+        "erosionEdge",
+        "<width> <r> <g> <b> [<a>]",
+        "",
+        "A glowing border of this width and linear colour along the cut.",
+        "erosionEdge 0.05 8 4 1",
+    ),
+    Line::new(
+        "flowMap",
+        "[\"<id>\"] [<channel>] [{ uv }]",
+        "",
+        "Red and green push the main uv (0.5 still).",
+        "flowMap \"fx/swirl.png\"",
+    ),
+    Line::new(
+        "flow",
+        "<strength> [<cycles per second>]",
+        "0.05 0.5",
+        "How far and how fast the flow map pushes.",
+        "flow 0.08 0.6",
+    ),
+    Line::new(
+        "fresnel",
+        "<power> [<strength>] [invert]",
+        "",
+        "A rim brighter at grazing angles (strength 1), or with `invert` soft silhouettes.",
+        "fresnel 2.5 1 invert",
+    ),
+    Line::new(
+        "softDepth",
+        "<metres>",
+        "0",
+        "Fade against the scene behind (particles, meshes).",
+        "softDepth 0.3",
+    ),
+    Line::new(
+        "color",
+        "<r> <g> <b> [<a>]",
+        "1 1 1 1",
+        "A linear tint; above 1 glows.",
+        "color 4 2 1",
+    ),
+    Line::new(
+        "intensity",
+        "<value>",
+        "1",
+        "Multiplies the colour.",
+        "intensity curve 0 2 1 0",
+    ),
+    Line::new(
+        "alpha",
+        "<value>",
+        "1",
+        "Multiplies the alpha.",
+        "alpha random 0.6 1",
+    ),
+    Line::new(
+        "offsetU",
+        "<value>",
+        "0",
+        "Added to the main u.",
+        "offsetU curve 0 0 1 1",
+    ),
+    Line::new(
+        "offsetV",
+        "<value>",
+        "0",
+        "Added to the main v.",
+        "offsetV 0.5",
+    ),
+    Line::new(
+        "custom",
+        "<slot 1 to 8> <value>",
+        "",
+        "A number a material shader reads: slots 1 to 4 are effect_custom1().x to .w, 5 to 8 effect_custom2().",
+        "custom 1 random 2 6",
+    ),
+    Line::new(
+        "blend",
+        "additive | alpha",
+        "",
+        "Over the surface's own blend.",
+        "blend additive",
+    ),
+    Line::new(
+        "doubleSided",
+        "true | false",
+        "false",
+        "Meshes: draw both faces.",
+        "doubleSided true",
+    ),
+    Line::new(
+        "shader",
+        "\"<id>\"",
+        "",
+        "A material shader (`type shader`) whose surface_color hook runs last; it reads effect_life(), effect_random(), effect_custom1() and effect_custom2().",
+        "shader \"fx/bands.ogt\"",
+    ),
+    Line::new(
+        "param",
+        "<name> <1 to 4 numbers>",
+        "",
+        "One of the shader's parameters by name.",
+        "shader \"fx/bands.ogt\"\nparam tint 4 0.6 2.5 1",
+    ),
+];
+
+/// Every line a texture's `{ uv }` block takes.
+pub const UV_LINES: &[Line] = &[
+    Line::new(
+        "tile",
+        "<u> [<v>]",
+        "1 1",
+        "Repeats across the surface.",
+        "main {\n  tile 3 1\n}",
+    ),
+    Line::new(
+        "offset",
+        "<u> [<v>]",
+        "0 0",
+        "Added to the uv.",
+        "main {\n  offset 0.5\n}",
+    ),
+    Line::new(
+        "scroll",
+        "<u> [<v>]",
+        "0 0",
+        "Uv per second.",
+        "main {\n  scroll 0.15 -0.6\n}",
+    ),
+    Line::new(
+        "rotate",
+        "<degrees per second>",
+        "0",
+        "Turns about the centre.",
+        "main {\n  rotate 45\n}",
+    ),
+    Line::new(
+        "polar",
+        "true | false",
+        "false",
+        "u the angle about the centre, v the radius: rings and portals.",
+        "main {\n  polar true\n}",
+    ),
+];
 
 /// A linked material shader and the parameters it declares.
 pub type ShaderLink = (ShaderHandle, Vec<ShaderParam>);
@@ -212,18 +368,21 @@ fn slot(
     let mut uv = EffectUv::default();
     if let Some(b) = &e.block {
         for k in &b.entries {
+            if find(UV_LINES, &k.key, &[]).is_none() {
+                return Err(format!(
+                    "line {}: unknown uv setting `{}` ({})",
+                    k.line,
+                    k.key,
+                    keys(UV_LINES, &[])
+                ));
+            }
             match k.key.as_str() {
                 "tile" => uv.tile = pair(k)?,
                 "offset" => uv.offset = pair(k)?,
                 "scroll" => uv.scroll = pair(k)?,
                 "rotate" => uv.rotation = one(k)?,
                 "polar" => uv.polar = flag(k)?,
-                other => {
-                    return Err(format!(
-                        "line {}: unknown uv setting `{other}` (tile, offset, scroll, rotate, polar)",
-                        k.line
-                    ));
-                }
+                other => return Err(format!("line {}: `{other}` is not read yet", k.line)),
             }
         }
     }
@@ -252,6 +411,13 @@ pub fn parse_effect_block(
     let mut named: Vec<(usize, String, Vec<f32>)> = Vec::new();
     for e in &block.entries {
         let line = e.line;
+        if find(EFFECT_LINES, &e.key, &[]).is_none() {
+            return Err(format!(
+                "line {line}: unknown effect setting `{}` (an effect takes {})",
+                e.key,
+                keys(EFFECT_LINES, &[])
+            ));
+        }
         match e.key.as_str() {
             "main" => m.main = slot(e, *texture, EffectChannel::Rgba)?,
             "mask" => m.mask = Some(slot(e, *texture, EffectChannel::Red)?),
@@ -366,7 +532,8 @@ pub fn parse_effect_block(
                 }
                 named.push((line, name.to_string(), v));
             }
-            other => return Err(format!("line {line}: unknown effect setting `{other}`")),
+            // A row of EFFECT_LINES with no arm; the table's tests parse every row.
+            other => return Err(format!("line {line}: `{other}` is not read yet")),
         }
     }
     if let Some(amount) = erosion {

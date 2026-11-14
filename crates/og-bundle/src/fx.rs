@@ -3,80 +3,10 @@
 //! blobs; the runtime turns them into og-render's [`ParticleEmitter`] and
 //! [`ColorLut`]. One parser serves both sides, so what cooks loads.
 //!
-//! An emitter, every line optional (the defaults are og-render's: a small
-//! fountain of soft white points); `[min, max]` pairs are uniform random
-//! ranges per particle, a single number is both:
-//!
-//! ```text
-//! type particles
-//! version 1
-//! ---
-//! maxParticles 256                  # the ring: the newest overwrite the oldest
-//! shape cone 15 0.05                # point | sphere <radius> [surface] | cone <angle°> <radius> | box <x> <y> <z> (half extents)
-//! spread 0                          # degrees of random deviation (180: every direction)
-//! rate 40                           # particles per second
-//! burst 0 30                        # <time> <count> [<cycles> <interval>]; repeatable
-//! duration 1                        # seconds per emission cycle
-//! looping true
-//! lifetime 1 1.5
-//! speed 1.5 2.5
-//! size 0.08 0.12
-//! sizeOverLife 0 1 1 0              # <t> <value> pairs, t 0..1 over the life (at most 8 keys)
-//! colorOverLife {                   # keys <t> <r> <g> <b> <a>, linear (at most 8)
-//!   key 0 1 1 1 1
-//!   key 1 1 1 1 0
-//! }
-//! color 1 1 1 1                     # a tint; above 1 blooms
-//! rotation 0 360                    # start rotation, degrees
-//! angularVelocity -90 90            # degrees per second
-//! gravity 0 -2 0
-//! drag 0
-//! noise 0 0.5 0.3                   # <strength> [<frequency> <scroll>]
-//! texture "textures/spark.png"      # an asset id (og.load.texture's); omitted: a soft dot
-//! sheet 4 4 16 life 1               # <columns> <rows> [<frames> [off | life <cycles> | fps <n> | random]]
-//! blend additive                    # additive | alpha; omitted: alpha for a lit
-//!                                   #   mesh (a solid chip, added, glows white),
-//!                                   #   additive for everything else
-//! space world                       # world | local
-//! align camera                      # camera | velocity <stretch>
-//! softDistance 0
-//! collision 0.4 0.2 depth           # <bounce> <friction> [depth | colliders]: in compute,
-//!                                   #   the depth prepass (what the camera sees) or the
-//!                                   #   scene's colliders (og.Collider shapes, on or off
-//!                                   #   screen); sprite mode always meets the colliders
-//! render billboard                  # billboard | sprite <layer> (2D: drawn as sprites)
-//!                                   #   | mesh <box | sphere | tetrahedron | "<model asset id>">
-//! lit false                         # lit by the scene's lights (3D: billboards and meshes)
-//! roughness 1                       # a lit mesh's surface: 1 matte; below it smooth, its
-//!                                   #   reflection over an alpha body (glass shards)
-//! distortion 0                      # > 0: bends the scene behind (heat haze), this fraction
-//!                                   #   of the screen at most; billboards only
-//! subEmitter death "fx/sparks.ogt" 8 0.3
-//!                                   # <birth | death | collision> "<emitter asset id>" <count>
-//!                                   #   [<inherit velocity>], or life "<emitter asset id>"
-//!                                   #   [<inherit velocity>]; at most 4, one level deep
-//! glow 0                            # sprite mode: strength in the 2D glow buffer
-//! array "fx/smoke.ogt" random       # sprite mode: draw from a texture array (`type texture-array`)
-//!                                   #   instead of `texture`, a layer per particle:
-//!                                   #   [<layers>] [off | life <cycles> | fps <n> | random]
-//! round false                       # sprite mode: the soft dot's round edge over the texture or layer
-//! effect "fx/fire.ogt"              # an effect material (`type effect`, og_bundle::effect) the
-//!                                   #   billboards or meshes draw with, over the texture and curves
-//! speedOverLife 0 1 1 0.2           # <t> <value> pairs: how fast they move over life (a burst that slows)
-//! spinOverLife 0 1 1 0              # <t> <value> pairs: the angular velocity over life
-//! rateOverTime 0 1 0.8 1 1 0        # <t> <value> pairs over each cycle (t of `duration`): the rate
-//! attractor 0 1 0 6 2               # <x> <y> <z> <strength> [<radius>]: pulls (negative pushes);
-//!                                   #   in the emitter's space; at most 4
-//! field curl 3 0.8 0.2              # curl <strength> [<frequency> <scroll>]: swirling, divergence free
-//! field "fx/wind.png" 2 4           # "<texture>" <strength> <size>: a vector grid the cook bakes from
-//!                                   #   an image N² wide and N high (N to 16): pixel (x + z·N, y from
-//!                                   #   the bottom) is the vector at cell (x, y, z), rgb 0..1 as -1..1
-//! shape spline 0 0 0  1 1 0  2 0 0 [closed]
-//!                                   # 2 to 8 control points of a Catmull-Rom curve, evenly by length
-//! inheritVelocity 0.5               # the share of the emitter's own velocity particles start with
-//! wind 1                            # 0..1: how much of the air's motion (og.Wind and the og.WindMotors
-//!                                   #   where the system is) `drag` closes on; 0 slows to rest
-//! ```
+//! An emitter's lines are the rows of [`EMITTER_LINES`]: every line is
+//! optional (the defaults are og-render's: a small fountain of soft white
+//! points), the parser refuses a line the table does not list, and `og api
+//! gen` writes the table into the `effect-files` guide.
 //!
 //! `array` names a texture array's asset id and picks each particle's layer
 //! as `sheet` picks a frame: `life <cycles>` steps through the layers over
@@ -95,6 +25,7 @@
 //! run the other emitter's own emission (rate, bursts, duration, looping)
 //! from its birth while it lives, born where it is at each tick.
 
+use crate::grammar::Line;
 use og_core::ogt::{Document, Entry, Value};
 use og_render_data::{Attractor, MAX_ATTRACTORS, MAX_SPLINE_POINTS, VectorField};
 use og_render_data::{
@@ -133,6 +64,312 @@ pub struct EmitterLinks<'a> {
 /// baked grid (`fieldGrid <cells> <size> <strength>` and the vectors, x
 /// fastest), which the runtime reads back.
 pub const FIELD_GRID: &str = "fieldGrid";
+
+/// Every line an emitter takes, in the order the guide lists them: the
+/// parser refuses any other (`crate::grammar`).
+pub const EMITTER_LINES: &[Line] = &[
+    Line::new(
+        "maxParticles",
+        "<n>",
+        "256",
+        "The ring of particles, 1 to 1048576: the newest overwrite the oldest.",
+        "maxParticles 512",
+    ),
+    Line::new(
+        "shape",
+        "point | sphere <radius> [surface] | cone <angle°> <radius> | box <x> <y> <z> | spline <x> <y> <z> ... [closed]",
+        "cone 15 0.05",
+        "Where particles are born and which way they start: a box by its half extents, a spline through 2 to 8 Catmull-Rom points, emitted evenly along it and along its tangent.",
+        "shape sphere 0.5 surface",
+    ),
+    Line::new(
+        "spread",
+        "<degrees>",
+        "0",
+        "Random deviation from the shape's direction; 180 is every direction.",
+        "spread 30",
+    ),
+    Line::new(
+        "rate",
+        "<per second>",
+        "40",
+        "Particles born per second.",
+        "rate 120",
+    ),
+    Line::new(
+        "burst",
+        "<time> <count> [<cycles> <interval>]",
+        "",
+        "Particles born at once at a time of each cycle, repeated `cycles` times `interval` apart; any number of lines.",
+        "burst 0 30 3 0.1",
+    ),
+    Line::new(
+        "duration",
+        "<seconds>",
+        "1",
+        "Seconds per emission cycle.",
+        "duration 0.5",
+    ),
+    Line::new(
+        "looping",
+        "true | false",
+        "true",
+        "Start a new cycle at the end of each.",
+        "looping false",
+    ),
+    Line::new(
+        "lifetime",
+        "<min> [<max>]",
+        "1 1.5",
+        "Seconds a particle lives.",
+        "lifetime 0.4 0.8",
+    ),
+    Line::new(
+        "speed",
+        "<min> [<max>]",
+        "1.5 2.5",
+        "Metres per second at birth.",
+        "speed 4 6",
+    ),
+    Line::new(
+        "size",
+        "<min> [<max>]",
+        "0.08 0.12",
+        "Metres across at birth.",
+        "size 0.2",
+    ),
+    Line::new(
+        "sizeOverLife",
+        "<t> <value> ...",
+        "",
+        "A curve that scales the size over the life (1 when left out).",
+        "sizeOverLife 0 0.2 0.3 1 1 0",
+    ),
+    Line::new(
+        "colorOverLife",
+        "{ key <t> <r> <g> <b> <a> ... }",
+        "",
+        "Linear colour keys over the life, at most 8; left out, white fading over the last quarter.",
+        "colorOverLife {\n  key 0 4 2 0.6 1\n  key 1 1 0.2 0 0\n}",
+    ),
+    Line::new(
+        "color",
+        "<r> <g> <b> [<a>]",
+        "1 1 1 1",
+        "A linear tint over the colour keys; above 1 blooms.",
+        "color 2 1 0.5",
+    ),
+    Line::new(
+        "rotation",
+        "<min> [<max>]",
+        "0",
+        "The start rotation in degrees.",
+        "rotation 0 360",
+    ),
+    Line::new(
+        "angularVelocity",
+        "<min> [<max>]",
+        "0",
+        "Degrees per second.",
+        "angularVelocity -90 90",
+    ),
+    Line::new(
+        "gravity",
+        "<x> <y> <z>",
+        "0 -2 0",
+        "Metres per second squared.",
+        "gravity 0 -9.8 0",
+    ),
+    Line::new(
+        "drag",
+        "<per second>",
+        "0",
+        "How fast motion relative to the air dies.",
+        "drag 1.5",
+    ),
+    Line::new(
+        "wind",
+        "<0..1>",
+        "0",
+        "The share of the air's motion (og.Wind and every og.WindMotor where the system is) that `drag` closes on: smoke and dust drift downwind; 0 slows to rest.",
+        "wind 1",
+    ),
+    Line::new(
+        "noise",
+        "<strength> [<frequency> <scroll>]",
+        "0 0.5 0.3",
+        "Turbulence: value noise pushing the particles.",
+        "noise 0.6 0.8 0.2",
+    ),
+    Line::new(
+        "texture",
+        "\"<id>\"",
+        "",
+        "A texture asset; left out, a soft dot.",
+        "texture \"textures/spark.png\"",
+    ),
+    Line::new(
+        "sheet",
+        "<columns> <rows> [<frames> [off | life <cycles> | fps <n> | random]]",
+        "1 1",
+        "The texture as a sprite sheet: a frame by age, at a rate, or one at random.",
+        "sheet 4 4 16 life 1",
+    ),
+    Line::new(
+        "blend",
+        "additive | alpha",
+        "",
+        "Left out: alpha for a lit mesh (a solid chip; added it would glow white), additive for everything else.",
+        "blend alpha",
+    ),
+    Line::new(
+        "space",
+        "world | local",
+        "world",
+        "Particles left behind in the world, or carried with the emitter.",
+        "space local",
+    ),
+    Line::new(
+        "align",
+        "camera | velocity [<stretch>]",
+        "camera",
+        "Billboards face the camera, or stretch along their velocity (stretch 0.05 when left out).",
+        "align velocity 0.1",
+    ),
+    Line::new(
+        "softDistance",
+        "<metres>",
+        "0",
+        "Fade where a billboard meets the scene behind it.",
+        "softDistance 0.3",
+    ),
+    Line::new(
+        "collision",
+        "[<bounce> [<friction>]] [depth | colliders]",
+        "",
+        "Bounce (0.4) with friction (0.2) off the drawn depth (what the camera sees), or off the scene's og.Collider shapes on or off screen; sprite mode always meets the colliders.",
+        "collision 0.3 0.1 colliders",
+    ),
+    Line::new(
+        "render",
+        "billboard | sprite [<layer>] | mesh box | sphere | tetrahedron | \"<model id>\"",
+        "billboard",
+        "3D billboards, 2D sprites in a sprite layer, or a small mesh per particle that tumbles with its rotation (a model's first mesh).",
+        "render mesh tetrahedron",
+    ),
+    Line::new(
+        "lit",
+        "true | false",
+        "false",
+        "Billboards and meshes shaded by the sun, the sky and local lights.",
+        "lit true",
+    ),
+    Line::new(
+        "roughness",
+        "<0..1>",
+        "1",
+        "A lit mesh's surface: 1 matte; smoother reflects over an alpha body (glass shards).",
+        "roughness 0.2",
+    ),
+    Line::new(
+        "distortion",
+        "<0..1>",
+        "0",
+        "Billboards bend the scene behind them by this fraction of the screen at most: heat haze, shock rings.",
+        "distortion 0.05",
+    ),
+    Line::new(
+        "events",
+        "birth | death | collision ...",
+        "",
+        "Send og.ParticleEvent for these; the emitter's systems then simulate in the tick.",
+        "events death collision",
+    ),
+    Line::new(
+        "subEmitter",
+        "birth | death | collision \"<id>\" <count> [<inherit>] | life \"<id>\" [<inherit>]",
+        "",
+        "Another emitter's particles born where this one's are born, die or bounce (count 1 to 4096, moving at their start velocity plus `inherit` times the parent's), or each particle running the other's own emission while it lives; up to 4, one level deep.",
+        "subEmitter death \"fx/sparks.ogt\" 8 0.3",
+    ),
+    Line::new(
+        "glow",
+        "<strength>",
+        "0",
+        "Sprite mode: strength in the 2D glow buffer (PostEffects.glow).",
+        "glow 1.5",
+    ),
+    Line::new(
+        "array",
+        "\"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]",
+        "",
+        "Sprite mode: a layer of a texture array (`type texture-array`) per particle instead of `texture`, picked as `sheet` picks a frame from the first `layers`; one draw per emitter.",
+        "array \"fx/smoke.ogt\" random",
+    ),
+    Line::new(
+        "round",
+        "true | false",
+        "false",
+        "Fade each particle to the soft dot's round edge over its texture or layer.",
+        "round true",
+    ),
+    Line::new(
+        "effect",
+        "\"<id>\"",
+        "",
+        "Draw billboards or mesh particles with an effect material (`type effect`, §2).",
+        "effect \"fx/fire.ogt\"",
+    ),
+    Line::new(
+        "speedOverLife",
+        "<t> <value> ...",
+        "",
+        "A curve that scales the velocity over the life (a burst that slows).",
+        "speedOverLife 0 1 1 0.2",
+    ),
+    Line::new(
+        "spinOverLife",
+        "<t> <value> ...",
+        "",
+        "A curve that scales the angular velocity over the life.",
+        "spinOverLife 0 1 1 0",
+    ),
+    Line::new(
+        "rateOverTime",
+        "<t> <value> ...",
+        "",
+        "A curve that scales `rate` over each cycle (t a fraction of `duration`).",
+        "rateOverTime 0 1 0.8 1 1 0",
+    ),
+    Line::new(
+        "inheritVelocity",
+        "<fraction>",
+        "0",
+        "The share of the emitter's own velocity, in world space, particles start with.",
+        "inheritVelocity 0.5",
+    ),
+    Line::new(
+        "attractor",
+        "<x> <y> <z> <strength> [<radius>]",
+        "",
+        "A point in the emitter's space that pulls, or pushes when negative; up to 4.",
+        "attractor 0 1 0 6 2",
+    ),
+    Line::new(
+        "field",
+        "curl <strength> [<frequency> <scroll>] | \"<texture>\" <strength> <size>",
+        "",
+        "Divergence-free curl noise (frequency 0.5, scroll 0.2), or a vector grid `og cook` bakes from an image N² pixels wide and N high (N to 16): pixel x + z·N holds cell (x, y, z), y from the bottom, rgb 0..1 as -1..1.",
+        "field curl 3 0.8 0.2",
+    ),
+    Line::new(
+        FIELD_GRID,
+        "<cells> <size> <strength> <vectors>",
+        "",
+        "What `og cook` writes in place of a texture field: the baked grid, x fastest. Not written by hand.",
+        "fieldGrid 1 2 1 0 1 0",
+    ),
+];
 
 /// `<t> <value>` pairs, 1 to [`MAX_CURVE_KEYS`] of them.
 fn curve(e: &Entry) -> Result<Curve, String> {
@@ -299,6 +536,13 @@ pub fn parse_emitter_linked(
     let mut blend = None;
     for e in &doc.body.entries {
         let line = e.line;
+        if crate::grammar::find(EMITTER_LINES, &e.key, &[]).is_none() {
+            return Err(format!(
+                "line {line}: unknown emitter setting `{}` (an emitter takes {})",
+                e.key,
+                crate::grammar::keys(EMITTER_LINES, &[])
+            ));
+        }
         match e.key.as_str() {
             "maxParticles" => {
                 let v = one(e)?;
@@ -799,7 +1043,8 @@ pub fn parse_emitter_linked(
                     vectors,
                 });
             }
-            other => return Err(format!("line {line}: unknown emitter setting `{other}`")),
+            // A row of EMITTER_LINES with no arm; the table's tests parse every row.
+            other => return Err(format!("line {line}: `{other}` is not read yet")),
         }
     }
     em.bursts = bursts;

@@ -12,6 +12,7 @@
 //! | [`opus`] | Opus sounds: Opus packets in self-contained blocks (music and long sounds) |
 //! | [`lightmap`] | a scene's baked lighting (`<scene>.lightmap.ogt` and its KTX2 pages) |
 //! | [`fx`] | particle emitter files (`.ogt` of `type particles`) and `.cube` colour tables |
+//! | [`grammar`] | the effect files' line tables and the `effect-files` guide written from them |
 //! | [`look`] | looks (`.ogt` of `type look`): the text, merging over a base, hex colours, `.hex`/`.gpl` palettes |
 //! | [`scene_text`] | scene write-back: a scene's `.ogt` rewritten line by line from current values, comments and order kept |
 //! | [`shader`] | material shaders (`.ogt` of `type shader`): parsing and the cooked text (og-cook compiles them with naga) |
@@ -23,6 +24,7 @@
 pub mod effect;
 pub mod format;
 pub mod fx;
+pub mod grammar;
 pub mod ktx2;
 pub mod lightmap;
 pub mod look;

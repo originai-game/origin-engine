@@ -151,7 +151,7 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
 }
 
 /// The guides `og api gen` writes from other sources than the IDL, as (path, text).
-fn written_guides(root: &Path) -> [(&'static str, String); 2] {
+fn written_guides(root: &Path) -> [(&'static str, String); 3] {
     [
         (
             og_ui::doc::catalogue::PATH,
@@ -161,6 +161,7 @@ fn written_guides(root: &Path) -> [(&'static str, String); 2] {
             crate::vfx_catalogue::PATH,
             crate::vfx_catalogue::markdown(root),
         ),
+        (og_cook::grammar::PATH, og_cook::grammar::markdown()),
     ]
 }
 

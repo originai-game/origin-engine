@@ -230,34 +230,14 @@ An `.ogt` of `type particles` describes an emitter: shape, rate and
 bursts, lifetime, speed, size and colour over life, gravity, drag,
 noise, a texture and sprite sheet, and blending.
 
-| Line | Does |
-|---|---|
-| `wind <0..1>` | the share of the air's motion (og.Wind and every og.WindMotor where the system is) `drag` closes on: smoke and dust drift downwind; 0, the default, slows to rest |
-| `collision <bounce> <friction> [depth \| colliders]` | bounce off the drawn depth, or off the scene's colliders on the GPU |
-| `render mesh box \| sphere \| tetrahedron \| "<model id>"` | each particle a small lit shape that tumbles with its rotation; otherwise billboards or 2D sprites |
-| `lit true` | billboards and meshes shaded by the sun, the sky and local lights |
-| `distortion <0..1>` | billboards that bend the scene behind them: heat haze, shock rings |
-| `subEmitter <birth \| death \| collision> "<id>" <count> [<inherit velocity>]` | another emitter's particles born where this one's are born, die or bounce; up to 4 |
-| `subEmitter life "<id>" [<inherit velocity>]` | each particle runs the other emitter's own emission (rate, bursts, duration, looping) from its birth while it lives |
-| `events <birth \| death \| collision>...` | og.ParticleEvent; its systems simulate in the tick |
-| `array "<id>" [<layers>] [off \| life <cycles> \| fps <n> \| random]` | sprite mode: a layer of a texture array by age, at a rate, or one at random; one draw per array |
-| `round true` | fade each particle to the soft dot's round edge |
-| `effect "<id>"` | draw billboards or mesh particles with an effect material |
-| `speedOverLife`, `spinOverLife`, `rateOverTime` | curves of `<t> <value>` pairs against the velocity, the angular velocity, and `rate` over each cycle |
-| `attractor <x> <y> <z> <strength> [<radius>]` | up to 4 points in the emitter's space that pull, or push when negative |
-| `field curl <strength> [<frequency> <scroll>]` | divergence-free curl noise |
-| `field "<texture>" <strength> <size>` | a vector grid baked from an image |
-| `shape spline <x> <y> <z> ... [closed]` | 2 to 8 Catmull-Rom points, emitted evenly along it and along its tangent |
-| `inheritVelocity <fraction>` | a fraction of the emitter's own velocity, in world space |
+Every line, with its default, is in `effect-files §1`; the parser
+refuses any other and names the ones it takes.
 
 - Sub-emitters go one level deep. A sub-emitter that fires its parent is
   refused.
-- A vector-grid image is N² pixels wide and N high, N up to 16. Pixel x
-  + z·N holds a cell, y counts from the bottom, and rgb 0..1 maps to
-  -1..1.
-- An effect material is an `.ogt` of `type effect`. It has a main
-  texture, gradient ramp, mask, noise erosion, flow map, fresnel and soft
-  depth fade, each texture with its own tile, scroll, turn and polar
+- An effect material is an `.ogt` of `type effect` (its lines are
+  `effect-files §2`). It has a main texture, gradient ramp, mask, noise
+  erosion, flow map, fresnel and soft depth fade, each texture with its own tile, scroll, turn and polar
   coordinates. Intensity, alpha, the uv offset, the erosion and eight
   custom numbers can each be a constant, a random range per particle or
   a curve over the particle's life. An optional material shader's
@@ -482,25 +462,12 @@ Every element takes:
 A value is a number, `random <min> <max>` (fixed per instance) or
 `curve <t> <v> ...` over the element's life.
 
-| Element | Lines |
-|---|---|
-| `emitter "<id>"` | an og.load.emitter asset; `until` stops its emission and its particles live out; `seed` |
-| `mesh sphere \| quad \| ring \| box \| cylinder \| "<model id>"` | drawn with `effect "<id>"`, an effect material; `scale` (a value), `spin` (degrees per second), `color`, `blend additive \| alpha` |
-| `trail` | `effect`, `width <head> <tail>`, `lifetime`, `color`, `orbit <radius> <turns per second>`, `rise <metres per second>` about and up the element's y |
-| `beam` | `to <x> <y> <z>` from the element, `width`, `effect`, `segments`, `jitter`, `color` |
-| `light` | a point light: `color`, `intensity` (a value), `distance` |
-| `decal` | projected down the element's -y: `uv <u0> <v0> <u1> <v1>` (a region of RenderSettings.decalAtlas), `size <x> <y> <z>` with y the depth it reaches, `fade <seconds>` at its end, `color` |
-| `glow` | a soft glow facing the eye: `size` (a value), `color` (version 1 named it `flash`) |
-| `shake` | `trauma` (og.camera.shake) |
-| `flipbook "<id>"` | a camera-facing og.Sprite with og.Flipbook playing the sheet's first clip; `size` its height, the width by the frame's shape; `color`, `blend additive \| alpha`; for `life` or the clip's length |
-| `sound "<id>"` | `volume`, `playbackRate <min> <max>` picked by the seed; a child entity with og.AudioSource, cut when the effect despawns |
+The elements are `emitter`, `mesh`, `trail`, `beam`, `light`, `decal`,
+`glow`, `shake`, `sound` and `flipbook`; every line each takes, with its
+default, is in `effect-files §3`.
 
-- A `ring` takes its own shape: `inner <radius>` (outer 1), `band <0..1>`
-  (its middle row), `height <outer> <inner>` (its edges raised along its
-  axis: a cone, a tube), `arc <start> <length>` (degrees from +x),
-  `segments <n>` and `colors <outer rgba> <band rgba> <inner rgba>`. Its
-  u runs along the arc and v from the outer edge to the inner. It is
-  built at load.
+- A `mesh ring` builds its own shape at load: u runs along the arc and v
+  from the outer edge to the inner.
 - A `flipbook` takes a pixel effect (`type vfx2d`) or any og.load.flipbook
   sheet. Its og.FlipbookEvent events, the impact frame among them, reach
   the game as this effect's og.VfxEvent of the same name.
