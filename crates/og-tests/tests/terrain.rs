@@ -34,6 +34,8 @@ mod sampling_scatter;
 mod stamps;
 #[path = "terrain/streaming_wind.rs"]
 mod streaming_wind;
+#[path = "terrain/tracks.rs"]
+mod tracks;
 #[path = "terrain/wind_models.rs"]
 mod wind_models;
 

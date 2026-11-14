@@ -29237,7 +29237,7 @@ export interface GrassType {
 }
 
 /**
- * Presses og.Grass blades and og.TerrainScatter copies where the entity stands: a vertical capsule from its position up `height`, reaching `radius` on the ground. Blades under it bend away from it and flatten, and stay pressed after it passes, standing again over the field's `recovery` (a trail behind a walker or a horse); swaying copies part the same way. Blades shorter than the gap under a pusher floating above them are not touched. Visual only, where the renderer can (RenderCapabilities.compute; elsewhere it does nothing): nothing in the simulation reads it. The 32 nearest the camera press.
+ * Presses what covers the ground where the entity stands: a vertical capsule from its position up `height`, reaching `radius` on the ground. og.Grass blades bend away and flatten, standing again over the field's `recovery` after it passes (a trail behind a walker); og.TerrainScatter copies part the same way; snow and sand lying on a terrain (og.Weather) keep a track that fills in over four minutes. What a pusher floats above is not touched. Visual only, where the renderer can (RenderCapabilities.compute; elsewhere nothing): the simulation reads none of it. The 32 nearest the camera press.
  *
  * The value of the `GrassPusher` component (token `og.GrassPusher`).
  */
@@ -36812,7 +36812,7 @@ export declare namespace og {
    */
   const GrassType: ComponentType<{ readonly height: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly curve: FieldSpec<"f32">; readonly baseColor: FieldSpec<"Color">; readonly tipColor: FieldSpec<"Color">; readonly share: FieldSpec<"f32"> }, GrassType>;
   /**
-   * Presses og.Grass blades and og.TerrainScatter copies where the entity stands: a vertical capsule from its position up `height`, reaching `radius` on the ground. Blades under it bend away from it and flatten, and stay pressed after it passes, standing again over the field's `recovery` (a trail behind a walker or a horse); swaying copies part the same way. Blades shorter than the gap under a pusher floating above them are not touched. Visual only, where the renderer can (RenderCapabilities.compute; elsewhere it does nothing): nothing in the simulation reads it. The 32 nearest the camera press.
+   * Presses what covers the ground where the entity stands: a vertical capsule from its position up `height`, reaching `radius` on the ground. og.Grass blades bend away and flatten, standing again over the field's `recovery` after it passes (a trail behind a walker); og.TerrainScatter copies part the same way; snow and sand lying on a terrain (og.Weather) keep a track that fills in over four minutes. What a pusher floats above is not touched. Visual only, where the renderer can (RenderCapabilities.compute; elsewhere nothing): the simulation reads none of it. The 32 nearest the camera press.
    */
   const GrassPusher: ComponentType<{ readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly strength: FieldSpec<"f32"> }, GrassPusher>;
   /**

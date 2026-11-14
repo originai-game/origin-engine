@@ -14,12 +14,17 @@
 // StandardMaterial (cascaded shadows, local lights, image-based light),
 // caustics under the frame's water, then fog.
 
-struct TerrainFx { decal_info: vec4<f32> };
+// `trample`: the trample map (trample.rs `Trample::grid`): its min corner
+// (x, z from the frame's origin), cell and cells a side (0: none).
+struct TerrainFx { decal_info: vec4<f32>, trample: vec4<f32> };
 @group(3) @binding(0) var<uniform> fx: TerrainFx;
 @group(3) @binding(2) var decal_atlas: texture_2d<f32>;
 @group(3) @binding(3) var fx_sampler: sampler;
 @group(3) @binding(5) var<storage, read> decal_list: array<DecalGpu>;
 @group(3) @binding(6) var<storage, read> decal_cells: array<u32>;
+// The trample map (trample.rs; trample_read.wgsl): read-only storage, the
+// stage's sixteen texture slots being taken.
+@group(3) @binding(7) var trample_map: texture_storage_2d<rgba32float, read>;
 
 struct TerrainOut {
   @builtin(position) clip: vec4<f32>,
@@ -293,6 +298,30 @@ fn layers_height(pick: LayerPick, w: vec4<f32>, heights_of: vec4<f32>) -> f32 {
 // hollows, kept off the extremes (as pbr_fs.wgsl weather_cavity).
 fn terrain_cavity(height: f32) -> f32 {
   return 0.15 + 0.7 * height;
+}
+
+// Seconds a track in lying snow or sand takes to fill in again.
+const TRACK_FILLS: f32 = 240.0;
+
+// The track og.GrassPushers leave in what lies on the ground at `p`
+// (frame coordinates), `lying` how much snow or sand covers it
+// (weather_surface.wgsl): xy how its sides lean the normal (x, z: in,
+// against the push, steepest halfway down and steeper in deeper snow), z
+// how far it is packed down (0..1). A pusher passing above the cover
+// leaves none. Drawn by the lit pass only: the prepass and the shadows
+// keep the untrodden surface.
+fn ground_track(p: vec3<f32>, lying: f32) -> vec3<f32> {
+  let t = trample_tap(fx.trample, p.xz);
+  if (!t.ok) { return vec3<f32>(0.0); }
+  let depth = max(frame.weather_depth.x, 0.05);
+  let tr = trample_blend(
+    textureLoad(trample_map, t.i),
+    textureLoad(trample_map, vec2<i32>(t.j.x, t.i.y)),
+    textureLoad(trample_map, vec2<i32>(t.i.x, t.j.y)),
+    textureLoad(trample_map, t.j),
+    t.f, p.y + depth + 0.1, TRACK_FILLS);
+  let side = -tr.xy * (1.0 - tr.z) * clamp(16.0 * depth, 1.0, 3.0);
+  return vec3<f32>(side, tr.z) * lying;
 }
 
 // Whether the weather lays anything on the ground this frame (never in a
@@ -578,6 +607,13 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, gr
   let weathered = weather_surface_at(s, n, n_geo, p, terrain_cavity(height), 1.0, WEATHER_GROUND);
   s = weathered.s;
   n = weathered.n;
+  // Where something walked through the lying snow or sand: packed darker,
+  // the track's sides facing in.
+  if (weathered.lying > 0.0) {
+    let track = ground_track(p, weathered.lying);
+    s.albedo *= 1.0 - 0.25 * track.z;
+    n = normalize(n + vec3<f32>(track.x, 0.0, track.y));
+  }
   if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) {
     return debug_unsupported(clip);
   }

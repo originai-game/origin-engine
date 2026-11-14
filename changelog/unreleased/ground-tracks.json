@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.GrassPusher",
+      "summary": "Snow and sand lying on a terrain (og.Weather) keep a track where an og.GrassPusher walked: packed darker, its sides shaded as a hollow, filling in over four minutes. Bare ground and a pusher passing above the cover keep none. Drawn only, where the renderer has compute."
+    }
+  ]
+}

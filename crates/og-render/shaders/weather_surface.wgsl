@@ -30,6 +30,9 @@ const WEATHER_GROUND: f32 = 2.0;
 struct Weathered {
   s: Surface,
   n: vec3<f32>,
+  // How much snow or sand lies on it, 0..1: what a track presses into
+  // (terrain_lit.wgsl ground_track).
+  lying: f32,
 };
 
 // How wet a sea's surf leaves `p` (frame coordinates; W1, water.rs shore_wet): everything over its seabed up to the
@@ -115,6 +118,7 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   var o: Weathered;
   o.s = s_in;
   o.n = n_in;
+  o.lying = 0.0;
   if (!OG_WEATHER) { return o; }
   var w = frame.weather * amount;
   var dust = frame.weather_dust.w * amount;
@@ -161,6 +165,7 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
     o.s.roughness = mix(o.s.roughness, 0.95, dull);
     o.s.f0 = mix(o.s.f0, vec3<f32>(0.04), d);
     o.n = normalize(mix(o.n, geo, d * 0.6));
+    o.lying = lying;
   }
 
   // Snow settles on what faces up, deeper cover reaching steeper faces
@@ -285,6 +290,7 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
     o.s.roughness = mix(o.s.roughness, 0.8, snow);
     o.s.f0 = mix(o.s.f0, vec3<f32>(0.04), snow);
     o.n = normalize(mix(o.n, geo, snow * 0.85));
+    o.lying = max(o.lying, snow);
   }
   return o;
 }
@@ -316,7 +322,7 @@ fn weather_gloss(roughness: f32, metalness: f32, n: vec3<f32>, geo: vec3<f32>, p
 // cover, higher up), so a snowed meadow is a white blanket with the tips
 // standing out of it, not frosted grass.
 fn weather_grass(s_in: Surface, n_in: vec3<f32>, p_frame: vec3<f32>, t: f32) -> Weathered {
-  if (!OG_WEATHER) { return Weathered(s_in, n_in); }
+  if (!OG_WEATHER) { return Weathered(s_in, n_in, 0.0); }
   let geo = normalize(n_in * 0.35 + vec3<f32>(0.0, 1.0, 0.0));
   var o = weather_surface_at(s_in, n_in, geo, p_frame, 0.5, 1.0, WEATHER_RUNS_OFF);
   let cover = frame.weather.z;

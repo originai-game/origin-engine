@@ -28,6 +28,7 @@ impl Renderer {
                 atlas_view,
                 &self.trilinear_sampler,
                 &self.lights.decal_buffers,
+                &self.world.trample.view,
             );
             let ao_view = if ao {
                 self.graph.view("ao")

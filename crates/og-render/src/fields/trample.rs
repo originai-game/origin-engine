@@ -1,10 +1,12 @@
-//! Grass trample (G3): where [`GrassPusher`]s (characters, horses, carts)
-//! press the vegetation, a camera-centred map of [`N`]² cells of [`CELL`]
-//! metres records the push away from them, the lowest they reached, and the
-//! seconds since each cell was last pressed (`shaders/grass_trample.wgsl`).
-//! og.Grass blades bend away and flatten under it and rise again over the
-//! field's `recovery`; scattered copies part the same way. After Wohllaib,
-//! *Procedural Grass in Ghost of Tsushima* (GDC 2021).
+//! The trample map (G3): where [`GrassPusher`]s (characters, horses, carts)
+//! press what covers the ground, a camera-centred map of [`N`]² cells of
+//! [`CELL`] metres records the push away from them, the lowest they reached,
+//! and the seconds since each cell was last pressed
+//! (`shaders/grass_trample.wgsl`). og.Grass blades bend away and flatten
+//! under it and rise again over the field's `recovery`; scattered copies
+//! part the same way; a terrain's lying snow and sand keep a track
+//! (terrain_lit.wgsl `ground_track`). After Wohllaib, *Procedural Grass in
+//! Ghost of Tsushima* (GDC 2021).
 //!
 //! Stepped once per tick on the GPU, like the wind field
 //! ([`crate::fields`]): a frame at a tick already drawn steps
@@ -23,6 +25,9 @@ pub const N: u32 = 256;
 pub const CELL: f64 = 0.25;
 /// The most pushers a tick presses with (the nearest the camera).
 pub const MAX_PUSHERS: usize = 32;
+/// The map's format: a pipeline with no texture slot left reads it as
+/// read-only storage (`systems/terrain/fx.rs`).
+pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
 
 /// Something that presses the grass (og.GrassPusher): a vertical capsule
 /// standing at `position` (its bottom), in the scene's space.
@@ -149,7 +154,7 @@ impl Trample {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba32Float,
+            format: FORMAT,
             usage: if compute {
                 wgpu::TextureUsages::TEXTURE_BINDING
                     | wgpu::TextureUsages::STORAGE_BINDING
@@ -195,7 +200,7 @@ impl Trample {
                         visibility: c,
                         ty: wgpu::BindingType::StorageTexture {
                             access: wgpu::StorageTextureAccess::WriteOnly,
-                            format: wgpu::TextureFormat::Rgba32Float,
+                            format: FORMAT,
                             view_dimension: wgpu::TextureViewDimension::D2,
                         },
                         count: None,
@@ -311,7 +316,14 @@ impl Trample {
         self.steps = 0;
         let wanted = !scene.atmosphere.grass_pushers.is_empty() || self.last.is_some();
         let vegetation = !scene.world.grass.is_empty() || !scene.world.scatters.is_empty();
-        if self.layout.is_none() || !crate::WORLD_3D || !wanted || !vegetation {
+        // Snow or sand lying on a terrain keeps a track.
+        let cover = !scene.world.terrains.is_empty()
+            && scene
+                .atmosphere
+                .surface_weather
+                .as_ref()
+                .is_some_and(|w| w.snow > 0.0 || w.dust > 0.0);
+        if self.layout.is_none() || !crate::WORLD_3D || !wanted || !(vegetation || cover) {
             self.grid = [0.0; 4];
             self.last = None;
             return;

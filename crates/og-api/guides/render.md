@@ -311,7 +311,10 @@ depth-normal prepass: the first one pays for it.
   puddles fill level hollows (a terrain's layer heights first) and ripple;
   snow settles on what faces up, deeper snow reaching steeper faces,
   lifting the drawn terrain; dust settles up and low; a strike flashes the
-  scene with a bolt. Meshes (the standard and physical materials, hooks
+  scene with a bolt. An og.GrassPusher walking through snow or sand lying
+  on a terrain leaves a track (packed darker, its sides shaded), which
+  fills in over four minutes; it is a trail at the map's 0.25 m cells,
+  not a shoe print (stamp those as og.Decal), and meshes keep none. Meshes (the standard and physical materials, hooks
   and `mode full lit` shaders), terrain, grass and scattered copies take
   all of it. Water takes the rain alone: rings where the sky is open over
   it, and from afar a duller mirror; no snow or dust lies on it. The 3D
