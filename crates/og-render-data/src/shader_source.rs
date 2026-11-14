@@ -1,6 +1,6 @@
 use crate::oit::{ARENA_WGSL, OIT_WGSL};
 use crate::shader_capability::{Capability, assemble};
-use crate::{clusters, lightmap, particles_gpu, skin};
+use crate::{Shading, particles_gpu, skin};
 
 /// What any shader may call, one copy for every module: the integer
 /// hashes (hash.wgsl), then the octahedral map, the fullscreen triangle,
@@ -22,10 +22,13 @@ pub const FRAME_WGSL: &str = concat!(
     wgsl!("gi_sample.wgsl"),
     wgsl!("gi_probes.wgsl")
 );
-/// The lit shader's vertex stages, lights and decals; the standard
-/// fragment shader and the prepass's follow it (`pbr_fs.wgsl`,
-/// `pbr_prepass.wgsl`), the physical one replaces both (`physical.wgsl`).
-const PBR_WGSL: &str = concat!(wgsl!("pbr.wgsl"), wgsl!("decals.wgsl"));
+/// The lit shader's vertex stages and lights; the standard fragment
+/// shader and the prepass's follow it (`pbr_fs.wgsl`, `pbr_prepass.wgsl`),
+/// the physical one replaces both (`physical.wgsl`).
+const PBR_WGSL: &str = wgsl!("pbr.wgsl");
+/// Projected decals on a surface (decals.wgsl), over the effect group's
+/// decal bindings or a module's own ([`Shading::decals`]).
+pub const DECALS_WGSL: &str = wgsl!("decals.wgsl");
 const PBR_FS_WGSL: &str = wgsl!("pbr_fs.wgsl");
 const PBR_PREPASS_WGSL: &str = wgsl!("pbr_prepass.wgsl");
 /// The lean entry points plain materials draw through ([`GpuMaterial::lean`]).
@@ -100,6 +103,11 @@ pub fn planar_slot(planar_reflections: u32) -> bool {
     planar_reflections > 1
 }
 
+/// What a mesh's lit surface takes of the shared shading (the standard,
+/// physical and full custom modules): the weather, the effect group at
+/// group 2 with the screen AO, and the decals.
+pub const SURFACE: Shading = Shading::lit().weather().effects(2).decals();
+
 /// The lit shader's source with `hooks` (`hooks.rs`); with `planar`
 /// ([`planar_slot`]) `planar_reflection` reads the effect group's binding 4,
 /// else it is its stub.
@@ -109,28 +117,15 @@ pub fn lit_source_with(hooks: &str, planar: bool) -> String {
             FRAME_WGSL,
             OIT_WGSL,
             ARENA_WGSL,
-            &clusters::wgsl(),
             particles_gpu::NOISE_WGSL,
             MATERIAL_WGSL,
             MATERIAL_MAPS_WGSL,
             MATERIAL_DISSOLVE_WGSL,
             &skin::palette_wgsl(3),
             hooks,
-            LIGHTING_WGSL,
-            WEATHER_RAIN_WGSL,
-            WEATHER_SURFACE_WGSL,
-            &lightmap::probe_wgsl(),
-            AREA_WGSL,
+            &SURFACE.planar(planar).text(),
             INSTANCE_WGSL,
-            &fx_wgsl(2),
             PBR_WGSL,
-            &if planar {
-                planar_wgsl(2)
-            } else {
-                String::new()
-            },
-            SCREEN_AO_WGSL,
-            SURFACE_SHADE_WGSL,
             PBR_FS_WGSL,
             PBR_PREPASS_WGSL,
             PBR_LEAN_WGSL,
@@ -149,23 +144,15 @@ pub fn physical_source(hooks: &str) -> String {
             FRAME_WGSL,
             OIT_WGSL,
             ARENA_WGSL,
-            &clusters::wgsl(),
             particles_gpu::NOISE_WGSL,
             MATERIAL_WGSL,
             MATERIAL_PHYSICAL_WGSL,
             MATERIAL_DISSOLVE_WGSL,
             &skin::palette_wgsl(3),
             hooks,
-            LIGHTING_WGSL,
-            WEATHER_RAIN_WGSL,
-            WEATHER_SURFACE_WGSL,
-            &lightmap::probe_wgsl(),
-            AREA_WGSL,
+            &SURFACE.text(),
             INSTANCE_WGSL,
-            &fx_wgsl(2),
             PBR_WGSL,
-            SCREEN_AO_WGSL,
-            SURFACE_SHADE_WGSL,
             SHEEN_WGSL,
             SUBSURFACE_WGSL,
             HAIR_WGSL,

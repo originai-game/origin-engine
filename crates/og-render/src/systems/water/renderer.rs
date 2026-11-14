@@ -198,12 +198,7 @@ pub(crate) fn water_source(off: crate::pipeline_features::Features) -> String {
     off.leave_out(crate::assemble(
         &[
             crate::FRAME_WGSL,
-            &crate::clusters::wgsl(),
-            crate::LIGHTING_WGSL,
-            crate::WEATHER_RAIN_WGSL,
-            &og_render_data::lightmap::probe_wgsl(),
-            crate::AREA_WGSL,
-            crate::SURFACE_SHADE_WGSL,
+            &crate::Shading::lit().rain().text(),
             &water_parts(),
         ],
         &[crate::Capability::ScreenAo],

@@ -91,7 +91,7 @@ pub use material::{PhysicalExtensions, Side, StandardMaterial, UvTransform};
 pub use particles::*;
 pub use post_custom::{MAX_CUSTOM_POSTS, PostShader, example_crt, post_module_source};
 pub use scene::*;
-pub use shader_capability::{Capability, Holds, WEATHER_SURFACE_STUB, assemble};
+pub use shader_capability::{Capability, Holds, Shading, WEATHER_SURFACE_STUB, assemble};
 pub use shader_source::*;
 pub use targets::{TargetFormat, TargetKind, TargetTexture};
 pub use terrain::{

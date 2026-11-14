@@ -2,22 +2,16 @@
 
 use super::*;
 
-/// The grass lit module: the frame, the light tables, the lighting, the
-/// weather on surfaces, the area lights, the effect group, then the blades.
+/// What a blade takes of the shared shading: the weather, the effect
+/// group at group 2 with the screen AO, and the decals.
+const SHADING: crate::Shading = crate::Shading::lit().weather().effects(2).decals();
+
+/// The grass lit module: the frame, the shared shading, then the blades.
 pub(crate) fn lit_source() -> String {
     crate::assemble(
         &[
             crate::FRAME_WGSL,
-            &crate::clusters::wgsl(),
-            crate::LIGHTING_WGSL,
-            crate::WEATHER_RAIN_WGSL,
-            crate::WEATHER_SURFACE_WGSL,
-            &og_render_data::lightmap::probe_wgsl(),
-            crate::AREA_WGSL,
-            &crate::fx_wgsl(2),
-            wgsl3d!("decals.wgsl"),
-            crate::SCREEN_AO_WGSL,
-            crate::SURFACE_SHADE_WGSL,
+            &SHADING.text(),
             crate::wind::WIND_COMMON_WGSL,
             crate::ground::GRASS_COMMON_WGSL,
             wgsl3d!("grass_blade.wgsl"),

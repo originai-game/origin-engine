@@ -201,3 +201,150 @@ pub fn assemble(parts: &[&str], closes: &[Capability]) -> String {
     }
     source
 }
+
+/// What a lit surface's module takes of the renderer's shared shading, as
+/// a declaration: the module names what its surface has and
+/// [`Shading::text`] is the one place that knows the files, so no module
+/// lists them. Every lit surface has the light tables, the lighting, the
+/// light volumes, the area lights and the one gather and sum of the light
+/// around it ([`Shading::lit`]); the rest it asks for.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Shading {
+    rain: bool,
+    weather: bool,
+    effects: Option<u32>,
+    decals: bool,
+    planar: bool,
+}
+
+impl Shading {
+    /// The shading every lit surface has, and nothing more.
+    pub const fn lit() -> Shading {
+        Shading {
+            rain: false,
+            weather: false,
+            effects: None,
+            decals: false,
+            planar: false,
+        }
+    }
+
+    /// With the rain's rings and the weather's shelter test alone
+    /// (weather_rain.wgsl): a surface that wets in its own way (the water).
+    pub const fn rain(self) -> Shading {
+        Shading { rain: true, ..self }
+    }
+
+    /// With rain, puddles and snow on the surface ([`Capability::Weather`]).
+    pub const fn weather(self) -> Shading {
+        Shading {
+            rain: true,
+            weather: true,
+            ..self
+        }
+    }
+
+    /// With the frame's effect group at bind group `group` (fx.wgsl) and
+    /// the screen AO it holds ([`Capability::ScreenAo`]).
+    pub const fn effects(self, group: u32) -> Shading {
+        Shading {
+            effects: Some(group),
+            ..self
+        }
+    }
+
+    /// With projected decals ([`Capability::Decals`]), read from the
+    /// effect group or from the bindings the module declares itself (the
+    /// terrain's).
+    pub const fn decals(self) -> Shading {
+        Shading {
+            decals: true,
+            ..self
+        }
+    }
+
+    /// With the effect group's planar reflection when `on`
+    /// ([`Capability::PlanarReflection`], [`crate::planar_slot`]).
+    pub const fn planar(self, on: bool) -> Shading {
+        Shading { planar: on, ..self }
+    }
+
+    /// Whether the declaration gives the surface `c`'s code. The blend
+    /// passes and the lightmap pages are not shading a surface asks for
+    /// here: a module lists their parts itself.
+    pub fn holds(self, c: Capability) -> bool {
+        match c {
+            Capability::LocalLights | Capability::SharedShade => true,
+            Capability::Weather => self.weather,
+            Capability::Decals => self.decals,
+            Capability::ScreenAo => self.effects.is_some(),
+            Capability::PlanarReflection => self.planar && self.effects.is_some(),
+            Capability::Oit | Capability::Lightmap => false,
+        }
+    }
+
+    /// The declared shading's WGSL, for a module that has the frame group
+    /// ([`crate::FRAME_WGSL`]).
+    pub fn text(self) -> String {
+        use crate::shader_source as s;
+        let mut out = crate::clusters::wgsl();
+        out.push_str(s::LIGHTING_WGSL);
+        if self.rain {
+            out.push_str(s::WEATHER_RAIN_WGSL);
+        }
+        if self.weather {
+            out.push_str(s::WEATHER_SURFACE_WGSL);
+        }
+        out.push_str(&crate::lightmap::probe_wgsl());
+        out.push_str(s::AREA_WGSL);
+        if let Some(group) = self.effects {
+            out.push_str(&s::fx_wgsl(group));
+            if self.planar {
+                out.push_str(&s::planar_wgsl(group));
+            }
+            out.push_str(s::SCREEN_AO_WGSL);
+        }
+        if self.decals {
+            out.push_str(s::DECALS_WGSL);
+        }
+        out.push_str(s::SURFACE_SHADE_WGSL);
+        out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A declaration carries the code of exactly what it says it holds:
+    /// each choice adds its capability and no other, so a module's
+    /// declaration can be read for what its surface has.
+    #[test]
+    fn a_declaration_holds_what_it_says() {
+        let lit = Shading::lit();
+        for shading in [
+            lit,
+            lit.rain(),
+            lit.weather(),
+            lit.decals(),
+            lit.effects(2),
+            lit.effects(3).decals(),
+            lit.effects(2).planar(true),
+            lit.weather().effects(2).decals().planar(true),
+            lit.planar(true),
+        ] {
+            let source = assemble(&[crate::FRAME_WGSL, &shading.text()], &[]);
+            for c in Capability::ALL {
+                let held = c.held_by(&source) == Holds::Full;
+                assert_eq!(held, shading.holds(c), "{shading:?} {}", c.name());
+            }
+        }
+        assert!(lit.rain().text().contains(crate::WEATHER_RAIN_WGSL));
+        assert!(!lit.rain().text().contains(crate::WEATHER_SURFACE_WGSL));
+        assert!(
+            lit.effects(3)
+                .text()
+                .contains("@group(3) @binding(0) var<uniform> fx")
+        );
+    }
+}

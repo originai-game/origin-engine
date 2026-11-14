@@ -98,7 +98,7 @@ mod tests {
             crate::lit_source_with(&hooks, false),
             crate::physical_source(&hooks),
             crate::grass::lit_source(),
-            crate::terrain::terrain_lit_source("", "", ""),
+            crate::terrain::terrain_lit_source(),
         ] {
             assert!(source.contains(crate::WEATHER_SURFACE_WGSL));
             let others = Features::GI | Features::AREA | Features::DECALS | Features::CAUSTICS;

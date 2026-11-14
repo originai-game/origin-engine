@@ -54,9 +54,6 @@ impl Renderer {
             terrain::TerrainPipelines {
                 frame_layout,
                 shadow_layout: shadow_bind_layout,
-                frame_wgsl: FRAME_WGSL,
-                lighting_wgsl: LIGHTING_WGSL,
-                light_tables_wgsl: &clusters::wgsl(),
                 off,
                 samples,
                 white: default_white.clone(),
