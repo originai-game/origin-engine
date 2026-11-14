@@ -12,7 +12,7 @@ use super::schema::{self, PROPS, Ty};
 use super::{Act, DocNode, Lit, NodeKind, Paint, PropValue, StateValue, UiDocument, When};
 use super::{css, motion};
 use crate::Rect;
-use crate::bind::{Env, Scope, number, set_path, text, truthy};
+use crate::bind::{Env, Scope, number, text, truthy};
 use crate::doc::schema::Kind;
 use crate::element::{Edges, GridFlow, GridPlace, GridSpec, LayoutMode, Position, Prop, Props};
 use crate::layout::{Align, Cross, Direction, Element, FontRole, Insets, NONE, Size, TextAlign};
@@ -54,8 +54,6 @@ pub struct Resolved {
     timeline_scope: Vec<String>,
     /// The layout key this element publishes as a query container.
     pub container: Option<u64>,
-    /// An immediate build's inputs under a query container (settlement replay).
-    replay: Option<Arc<containers::Replay>>,
     /// A numbered `<li>`'s number ([`super::lists::ordinal`]).
     pub ordinal: Option<i64>,
     /// Its effective CSS text and font style ([`super::text_css`]); `None`
@@ -436,69 +434,41 @@ pub fn inline_link(k: usize) -> String {
     }
 }
 
-/// One mount's build: the document, its viewmodel and the item variables in scope.
+/// One element's build: its document, what it inherits, and the inputs
+/// its mount compiled for it (`cached`). A static build (an element
+/// image's, [`Ui::build_static`]) has none: its bindings read nothing.
 pub struct Build<'a> {
     pub doc: Arc<UiDocument>,
     pub mount: String,
-    pub vm: &'a Value,
     pub env: &'a dyn Env,
-    /// `(name, value, the viewmodel path it came from)`.
-    pub locals: Vec<(String, Value, Option<String>)>,
     pub row_key: String,
     pub inherited: Arc<super::variables::Computed>,
     pub events: Vec<DocEvent>,
     pub writes: Vec<(String, Value)>,
     pub cached: Option<&'a instances::CachedInputs>,
-    /// While resolving an element under a query container, what `eval` and
-    /// `value` computed, so settlement can resolve it again without a model.
-    pub recording: std::cell::RefCell<Option<instances::CachedInputs>>,
 }
 
 impl Build<'_> {
-    pub fn scope(&self) -> Scope<'_> {
+    /// The scope a static build evaluates in: no values.
+    fn scope(&self) -> Scope<'_> {
         Scope {
-            vm: self.vm,
-            locals: self
-                .locals
-                .iter()
-                .map(|(n, v, _)| (n.as_str(), v.clone()))
-                .collect(),
+            vm: &Value::Null,
+            locals: Vec::new(),
             env: self.env,
         }
     }
 
     pub fn eval(&self, e: &crate::bind::Expr) -> Value {
-        if let Some(cached) = self.cached {
-            return cached.expression(e);
+        match self.cached {
+            Some(cached) => cached.expression(e),
+            None => e.eval(&self.scope()),
         }
-        let value = e.eval(&self.scope());
-        if let Some(recording) = self.recording.borrow_mut().as_mut() {
-            recording.remember_expression(e, &value);
-        }
-        value
     }
 
-    /// Where a write to `path` lands in the viewmodel: through an item
-    /// variable to its list's entry.
+    /// The path a write to `path` goes to: its mount's binding of it. A
+    /// static build writes nothing.
     pub fn write_path(&self, path: &str) -> Option<String> {
-        if self.cached.is_some() {
-            return Some(path.to_owned());
-        }
-        let (root, rest) = path.split_once('.').unwrap_or((path, ""));
-        for (n, _, origin) in self.locals.iter().rev() {
-            if n == root {
-                let o = origin.as_ref()?;
-                return Some(if rest.is_empty() {
-                    o.clone()
-                } else {
-                    format!("{o}.{rest}")
-                });
-            }
-        }
-        if root.starts_with('$') || root.starts_with(|c: char| c.is_ascii_uppercase()) {
-            return None;
-        }
-        Some(path.to_string())
+        self.cached.map(|_| path.to_owned())
     }
 
     pub fn event(&mut self, path: &str, kind: &str, name: &str, value: Value) {
@@ -518,13 +488,7 @@ impl Build<'_> {
         {
             return cached.property(v, ty);
         }
-        let value = self.evaluate(ui, ty, v);
-        if !matches!(v, PropValue::Lit(_))
-            && let Some(recording) = self.recording.borrow_mut().as_mut()
-        {
-            recording.remember_property(v, ty, &value);
-        }
-        value
+        self.evaluate(ui, ty, v)
     }
 
     fn evaluate(&self, ui: &Ui, ty: Ty, v: &PropValue) -> Option<V> {
@@ -699,34 +663,6 @@ impl Ui {
         let context = self.media_context();
         let mut media_reads = super::media::Reads::default();
         let chain = super::container::chain(inherited);
-        // Under a container, an immediate build records every input this
-        // element can read, including branches the current sizes skip.
-        let recording = b.cached.is_none() && !chain.is_empty();
-        let mut decisions = Vec::new();
-        if recording {
-            *b.recording.borrow_mut() = Some(Default::default());
-            for (_, props) in &n.at {
-                for p in props {
-                    b.value(self, PROPS[p.spec].ty, &p.value);
-                }
-            }
-            let conditions = n.rules.iter().map(|r| &r.condition);
-            for e in conditions
-                .chain(n.span_rules.iter().map(|r| &r.condition))
-                .flatten()
-            {
-                b.eval(e);
-            }
-            for s in n.rules.iter().filter_map(|rule| rule.structure.as_ref()) {
-                decisions.push((Arc::as_ptr(s) as usize, structure(s)));
-            }
-        }
-        let structure = &mut |s: &super::selectors::Selector| {
-            decisions
-                .iter()
-                .find(|(at, _)| *at == s as *const _ as usize)
-                .map_or_else(|| structure(s), |&(_, matched)| matched)
-        };
         let scroll = |key: u64| {
             self.docs
                 .containers
@@ -1326,13 +1262,6 @@ impl Ui {
                 plate,
             })
         });
-        if recording {
-            let cached = b.recording.borrow_mut().take().unwrap_or_default();
-            r.replay = Some(Arc::new(containers::Replay {
-                cached,
-                decisions: decisions.clone(),
-            }));
-        }
         // Its box pseudo-elements inherit from it and match as it does
         // (their selectors' subject is this element); what they read
         // beyond it is read through it.
@@ -1501,7 +1430,7 @@ pub(crate) mod text_motion;
 pub(crate) mod touch;
 pub(crate) mod viewport;
 pub(crate) mod world;
-pub use host::{Built, DocEvent, DocMemory, DocResponse, Edit};
+pub use host::{Built, DocEvent, DocMemory, Edit};
 pub use instances::RetainedHost;
 
 /// The computed-value entry carrying the inherited `quotes`.

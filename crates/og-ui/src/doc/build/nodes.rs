@@ -29,189 +29,28 @@ fn css_text<'a>(r: &Resolved, language: &str, raw: &'a str) -> std::borrow::Cow<
 }
 
 impl Ui {
-    /// Builds node `i` (and its subtree); `root_id` names a mount's root.
-    /// Answers its path (none when it is not shown).
-    pub(crate) fn build_node(
-        &mut self,
-        b: &mut Build<'_>,
-        i: usize,
-        root_id: Option<&str>,
-    ) -> Option<String> {
+    /// Builds element `i` and the elements written in it with no stores to
+    /// read: what an element image draws (`<feImage href="#id">`,
+    /// [`Ui::build_element_images`]). Its bindings read nothing, and the
+    /// blocks and components in it are not built. Answers its path (none
+    /// when it is not shown).
+    pub(crate) fn build_static(&mut self, b: &mut Build<'_>, i: usize) -> Option<String> {
         let doc = b.doc.clone();
         let n = &doc.nodes[i];
-        match &n.kind {
-            NodeKind::If(e) => {
-                if truthy(&b.eval(e)) {
-                    for &c in &n.children {
-                        self.build_node(b, c, None);
-                    }
-                }
-                return None;
-            }
-            // An immediate build makes every element each tick: a key block
-            // is its content.
-            NodeKind::Key(_) => {
-                for &c in &n.children {
-                    self.build_node(b, c, None);
-                }
-                return None;
-            }
-            NodeKind::Snippet(_) => return None,
-            NodeKind::Render { name, optional } => {
-                if let Some(snippet) = doc
-                    .nodes
-                    .iter()
-                    .find(|n| n.kind == NodeKind::Snippet(name.clone()))
-                {
-                    for &child in &snippet.children {
-                        self.build_node(b, child, None);
-                    }
-                } else if !optional {
-                    self.out.warnings_mut().push(format!(
-                        "{}:{}: supply content '{name}' at mount",
-                        doc.source, n.line
-                    ));
-                }
-                return None;
-            }
-            NodeKind::For {
-                var, list, empty, ..
-            } => {
-                let items = b.eval(list);
-                let origin = match list {
-                    crate::bind::Expr::Path(p) => b.write_path(p),
-                    _ => None,
-                };
-                let items = items.as_array().cloned().unwrap_or_default();
-                if items.is_empty() {
-                    for &child in empty {
-                        self.build_node(b, child, None);
-                    }
-                }
-                for (k, item) in items.into_iter().enumerate() {
-                    self.build_item(b, n, var, item, k, origin.as_deref());
-                }
-                return None;
-            }
-            NodeKind::Use(comp) => {
-                let Some(cdoc) = self.docs.library.documents.get(comp).cloned() else {
-                    self.out.warnings_mut().push(format!(
-                        "{}:{}: no component '{comp}' (load its document)",
-                        doc.source, n.line
-                    ));
-                    return None;
-                };
-                let mut props = serde_json::Map::new();
-                let mut links = Vec::new();
-                for (k, v, _) in &n.args {
-                    let x = match v {
-                        PropValue::Lit(l) => match l {
-                            Lit::Num(x) => json!(x),
-                            Lit::Bool(x) => json!(x),
-                            Lit::Str(s) => json!(s),
-                            Lit::Strs(s) => json!(s),
-                            _ => Value::Null,
-                        },
-                        PropValue::Model(p) => {
-                            if let Some(w) = b.write_path(p) {
-                                links.push((k.clone(), w));
-                            }
-                            b.scope().get(p)
-                        }
-                        PropValue::Bind(e, f) => {
-                            if let crate::bind::Expr::Path(p) = e
-                                && let Some(w) = b.write_path(p)
-                            {
-                                links.push((k.clone(), w));
-                            }
-                            let x = b.eval(e);
-                            match f {
-                                Some(f) => {
-                                    json!(crate::bind::format_value(&x, *f, b.env.language()))
-                                }
-                                None => x,
-                            }
-                        }
-                        PropValue::Template(t) => json!(t.format(&b.scope())),
-                    };
-                    props.insert(k.clone(), x);
-                }
-                for p in &cdoc.props {
-                    if let Some(default) = &p.default {
-                        props
-                            .entry(p.name.clone())
-                            .or_insert_with(|| default.clone());
-                    }
-                }
-                let mut vm = Value::Object(props);
-                let id = root_id.unwrap_or(if n.id.is_empty() {
-                    comp.as_str()
-                } else {
-                    n.id.as_str()
-                });
-                let mount = format!("{}/{id}", self.tree.path_of(self.tree.parent()));
-                let before = vm.clone();
-                let mut built = Built::default();
-                let opened = self.enter_structure(b, i);
-                let rp = self.resolve(b, n, &mount, &mut built, &b.inherited, &mut |s| {
-                    self.docs.structure_matches(&doc, s)
-                });
-                self.docs.state.component_root = self.docs.library.structure.any;
-                self.out.warnings_mut().extend(
-                    rp.cascade
-                        .diagnostics
-                        .iter()
-                        .map(|error| format!("{}:{} ({mount}): {error}", doc.source, n.line)),
-                );
-                let r =
-                    self.mount_doc(cdoc, mount, id, &mut vm, b.env, rp.cascade.computed.clone());
-                self.docs.state.component_root = false;
-                if opened {
-                    self.docs.state.levels.pop();
-                }
-                // The instance's own element props apply to its root.
-                if !rp.vals.is_empty()
-                    && let Some(&last) = Some(&self.tree.last_closed())
-                    && last != NONE
-                {
-                    let el = Ui::box_of(
-                        &rp,
-                        *self.tree.nodes()[last].el,
-                        self.style.em_of(&rp, &self.env),
-                    );
-                    let props = self.props_of(b, n, self.tree.nodes()[last].key, &rp, &mut built);
-                    *self.tree.el_mut(last) = el;
-                    if props != Props::default() {
-                        *self.tree.props_mut(last) = props;
-                    }
-                }
-                // Its two-way writes reach the bound paths of the user.
-                for (k, w) in links {
-                    if vm[&k] != before[&k] {
-                        b.writes.push((w, vm[&k].clone()));
-                    }
-                }
-                b.events.extend(r.events);
-                return Some(r.path);
-            }
-            NodeKind::Element(_) => {}
-        }
         let NodeKind::Element(kind) = n.kind else {
             return None;
         };
-        let id = match root_id {
-            Some(r) => r.to_string(),
-            None if n.id.is_empty() => {
-                // Anonymous: its kind and its place among same-kind siblings.
-                let k = doc.nodes[n.parent]
-                    .children
-                    .iter()
-                    .take_while(|&&c| c != i)
-                    .filter(|&&c| doc.nodes[c].id.is_empty() && doc.nodes[c].kind == n.kind)
-                    .count();
-                format!("{kind}#{k}")
-            }
-            None => n.id.clone(),
+        let id = if n.id.is_empty() {
+            // Anonymous: its kind and its place among same-kind siblings.
+            let k = doc.nodes[n.parent]
+                .children
+                .iter()
+                .take_while(|&&c| c != i)
+                .filter(|&&c| doc.nodes[c].id.is_empty() && doc.nodes[c].kind == n.kind)
+                .count();
+            format!("{kind}#{k}")
+        } else {
+            n.id.clone()
         };
         let parent_path = self.tree.path_of(self.tree.parent());
         let path = if parent_path == "root" {
@@ -257,7 +96,7 @@ impl Ui {
             },
             |ui, b, _| {
                 for &child in &n.children {
-                    ui.build_node(b, child, None);
+                    ui.build_static(b, child);
                 }
             },
         );
@@ -314,7 +153,6 @@ impl Ui {
         }
         self.docs.state_mut().memory.seen_now.insert(key);
         self.note_selection(key, &r);
-        self.docs.remember_queried(b, i, &path, key, &r);
         self.docs
             .containers
             .scroll_read
@@ -823,11 +661,7 @@ impl Ui {
             }
             Kind::List | Kind::Cells => {
                 let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
-                if b.cached.is_some() {
-                    build_children(self, b, Some(props.clone()));
-                } else {
-                    self.build_virtual(b, n, kind, id, r, props.clone(), &path);
-                }
+                build_children(self, b, Some(props.clone()));
                 b.inherited = inherited;
                 let at = self.tree.last_closed();
                 if at != NONE && at < self.tree.nodes().len() && self.tree.nodes()[at].key == key {

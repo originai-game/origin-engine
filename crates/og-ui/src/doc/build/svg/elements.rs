@@ -136,18 +136,15 @@ impl Ui {
                 let mut ib = Build {
                     doc: doc.clone(),
                     mount: b.mount.clone(),
-                    vm: b.vm,
                     env: b.env,
-                    locals: b.locals.clone(),
                     row_key: b.row_key.clone(),
                     inherited: std::sync::Arc::new(inherited),
                     events: Vec::new(),
                     writes: Vec::new(),
                     cached: None,
-                    recording: Default::default(),
                 };
                 self.docs.state_mut().element_images += 1;
-                self.build_node(&mut ib, target, None);
+                self.build_static(&mut ib, target);
                 self.docs.state_mut().element_images -= 1;
                 self.close();
             }

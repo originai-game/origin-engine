@@ -65,27 +65,27 @@ fn settled_document_fields_match_fresh_styles_without_rebuilding_controls() {
             );
             ui.build_retained_documents(&env).unwrap();
         }
-        let build = Build {
-            doc: target.clone(),
-            mount: mount.id.clone(),
-            vm: &vm,
-            env: &env,
-            locals: Vec::new(),
-            row_key: String::new(),
-            inherited: Arc::default(),
-            events: Vec::new(),
-            writes: Vec::new(),
-            cached: None,
-            recording: Default::default(),
-        };
         // Resolve before settlement; the callback has only evaluated values
-        // and the existing controls, not a viewmodel or a second build. The
-        // elements are the mount's, as it recorded them when it emitted them.
+        // and the existing controls, not a second build. The elements are
+        // the mount's, as it recorded them when it emitted them, each
+        // resolved with the inputs its mount compiled for it.
         let replacements: Vec<_> = patched
             .doc_built()
             .iter()
             .map(|node| {
                 let key = crate::id::key_of_path(&node.path);
+                let host = &patched.docs.state().memory.retained;
+                let cached = host.elements[&host.by_key[&key]].cached.clone();
+                let build = Build {
+                    doc: target.clone(),
+                    mount: mount.id.clone(),
+                    env: &env,
+                    row_key: String::new(),
+                    inherited: Arc::default(),
+                    events: Vec::new(),
+                    writes: Vec::new(),
+                    cached: Some(&cached),
+                };
                 let values = patched.resolve(
                     &build,
                     &target.nodes[node.node],

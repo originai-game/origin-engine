@@ -6,7 +6,6 @@
 use super::*;
 use crate::bind::InteractionState;
 use crate::doc::matching::{self, Facts, MatchWork, Tree};
-use crate::doc::schema::Kind;
 use crate::doc::selectors::Selector;
 
 static NO_STATES: BTreeSet<InteractionState> = BTreeSet::new();
@@ -28,8 +27,6 @@ pub struct Level {
     entries: Vec<Entry>,
     /// The entry being built.
     current: Option<usize>,
-    /// For a virtual container, each row item's first entry.
-    items: Vec<usize>,
 }
 
 struct Levels<'a>(&'a [Level]);
@@ -180,9 +177,6 @@ impl Ui {
         if !self.docs.library.structure.any {
             return false;
         }
-        if std::mem::take(&mut self.docs.state.component_root) {
-            return false;
-        }
         let root = self.docs.state.levels.is_empty();
         if root {
             let entry = self.entry(b, &b.doc, i);
@@ -207,9 +201,8 @@ impl Ui {
             return None;
         }
         let mut level = Level::default();
-        let virtual_rows = matches!(n.kind, NodeKind::Element(Kind::List | Kind::Cells));
         let doc = b.doc.clone();
-        self.instantiate(b, &doc, &n.children, &mut level, virtual_rows);
+        self.instantiate(b, &doc, &n.children, &mut level);
         Some(level)
     }
 
@@ -234,91 +227,35 @@ impl Ui {
         }
     }
 
-    /// Lists the elements `children` instantiate, mirroring [`Ui::build_node`].
+    /// Lists the elements `children` instantiate, mirroring [`Ui::build_static`].
     fn instantiate(
         &self,
         b: &mut Build<'_>,
         doc: &Arc<UiDocument>,
         children: &[usize],
         level: &mut Level,
-        virtual_rows: bool,
     ) {
-        for &c in children {
-            let n = &doc.nodes[c];
-            match &n.kind {
-                NodeKind::Element(_) | NodeKind::Use(_) => {
-                    let mut entry = self.entry(b, doc, c);
-                    let structure = &self.docs.library.structure;
-                    if (structure.empty || structure.has) && matches!(n.kind, NodeKind::Element(_))
-                    {
-                        let mut inner = Level::default();
-                        self.instantiate(b, doc, &n.children, &mut inner, false);
-                        entry.children = !inner.entries.is_empty();
-                        if self.docs.library.structure.has {
-                            entry.kids = inner.entries;
-                        }
-                    }
-                    level.entries.push(entry);
-                }
-                NodeKind::If(e) => {
-                    if truthy(&b.eval(e)) {
-                        self.instantiate(b, doc, &n.children, level, false);
-                    }
-                }
-                NodeKind::Key(_) => self.instantiate(b, doc, &n.children, level, false),
-                NodeKind::Snippet(_) => {}
-                NodeKind::Render { name, .. } => {
-                    if let Some(snippet) = doc
-                        .nodes
-                        .iter()
-                        .find(|s| s.kind == NodeKind::Snippet(name.clone()))
-                    {
-                        self.instantiate(b, doc, &snippet.children, level, false);
-                    }
-                }
-                NodeKind::For {
-                    var,
-                    index,
-                    list,
-                    key,
-                    empty,
-                } => {
-                    let items = b.eval(list).as_array().cloned().unwrap_or_default();
-                    if items.is_empty() {
-                        self.instantiate(b, doc, empty, level, false);
-                    }
-                    for (k, item) in items.into_iter().enumerate() {
-                        if virtual_rows {
-                            level.items.push(level.entries.len());
-                        }
-                        b.locals.push((var.clone(), item, None));
-                        b.locals.push((
-                            index.clone().unwrap_or_else(|| "$index".into()),
-                            json!(k),
-                            None,
-                        ));
-                        if b.eval(key).as_str().is_some_and(|key| !key.is_empty()) {
-                            self.instantiate(b, doc, &n.children, level, false);
-                        }
-                        b.locals.pop();
-                        b.locals.pop();
-                    }
+        // A static build makes elements only.
+        let elements = children
+            .iter()
+            .filter(|&&c| matches!(doc.nodes[c].kind, NodeKind::Element(_)));
+        for &c in elements {
+            let mut entry = self.entry(b, doc, c);
+            let structure = &self.docs.library.structure;
+            if structure.empty || structure.has {
+                let mut inner = Level::default();
+                self.instantiate(b, doc, &doc.nodes[c].children, &mut inner);
+                entry.children = !inner.entries.is_empty();
+                if self.docs.library.structure.has {
+                    entry.kids = inner.entries;
                 }
             }
+            level.entries.push(entry);
         }
     }
 }
 
 impl crate::ui::Docs {
-    /// Positions the next build at a virtual container's row `k`.
-    pub fn structure_row(&mut self, k: usize) {
-        if let Some(level) = self.state.levels.last_mut()
-            && let Some(&first) = level.items.get(k)
-        {
-            level.current = first.checked_sub(1);
-        }
-    }
-
     /// Whether the element being built is the subject of `selector`.
     pub fn structure_matches(&self, doc: &UiDocument, selector: &Selector) -> bool {
         let levels = &self.state.levels;

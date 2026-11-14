@@ -17,23 +17,6 @@ pub struct CachedInputs {
 }
 
 impl CachedInputs {
-    /// Records an immediate build's evaluated input (container-query replay).
-    pub(crate) fn remember_expression(&mut self, expression: &Expr, value: &Value) {
-        if !self.expressions.iter().any(|(e, _)| e == expression) {
-            self.expressions.push((expression.clone(), value.clone()));
-        }
-    }
-
-    pub(crate) fn remember_property(&mut self, property: &PropValue, ty: Ty, value: &Option<V>) {
-        if !self
-            .properties
-            .iter()
-            .any(|(p, t, _)| p == property && *t == ty)
-        {
-            self.properties.push((property.clone(), ty, value.clone()));
-        }
-    }
-
     pub fn expression(&self, expression: &Expr) -> Value {
         self.expressions
             .iter()
@@ -466,15 +449,12 @@ impl ElementInstance {
         Build {
             doc: self.document.clone(),
             mount: self.context.node.mount.id.clone(),
-            vm: &Value::Null,
             env,
-            locals: Vec::new(),
             row_key: self.context.row_key.clone(),
             inherited,
             events: Vec::new(),
             writes: Vec::new(),
             cached: Some(&self.cached),
-            recording: Default::default(),
         }
     }
 }

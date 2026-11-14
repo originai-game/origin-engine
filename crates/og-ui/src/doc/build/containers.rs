@@ -13,39 +13,15 @@ use crate::ui::settlement::{ContainerMeasurement, SettlementError};
 pub(crate) struct Containers {
     /// Query containers' settled content boxes, by layout key.
     pub(crate) sizes: crate::doc::container::Sizes,
-    /// This tick's immediate-built elements under a query container, in
-    /// build order, with what settlement needs to resolve them again.
-    pub(crate) queried: Vec<Queried>,
     /// Query containers watched for settlement, and those built this tick.
     pub(crate) watched: BTreeSet<u64>,
     pub(crate) built: BTreeSet<u64>,
     /// `scroll-state()` containers read: their offset and flags
-    /// (`media::scroll`) at this tick's start, those immediate builds read
-    /// this tick, and those whose flags changed at its start.
+    /// (`media::scroll`) at this tick's start, those the elements built
+    /// this tick read, and those whose flags changed at its start.
     pub(crate) scroll_states: BTreeMap<u64, (og_core::glam::Vec2, u16)>,
     pub(crate) scroll_read: BTreeSet<u64>,
     pub(crate) scroll_changed: BTreeSet<u64>,
-}
-
-/// What an immediate build evaluated for one element under a container:
-/// its expression and property inputs, and its structural selector results.
-#[derive(Clone, Debug, Default)]
-pub(crate) struct Replay {
-    pub(crate) cached: super::instances::CachedInputs,
-    pub(crate) decisions: Vec<(usize, bool)>,
-}
-
-/// One immediate-built element under a query container, in build order.
-#[derive(Clone, Debug)]
-pub(crate) struct Queried {
-    pub(crate) doc: Arc<UiDocument>,
-    pub(crate) node: usize,
-    pub(crate) path: String,
-    pub(crate) key: u64,
-    pub(crate) inherited: Arc<crate::doc::variables::Computed>,
-    pub(crate) computed: Arc<crate::doc::variables::Computed>,
-    pub(crate) reads: BTreeSet<u64>,
-    pub(crate) replay: Arc<Replay>,
 }
 
 impl Ui {
@@ -95,12 +71,8 @@ impl Ui {
                 .insert(change.key, (change.current.width, change.current.height));
             changed.insert(change.key);
         }
-        let mut dirty = self.requery_immediate(&changed);
-        dirty.extend(
-            self.requery_mounted(&changed)
-                .map_err(SettlementError::Resolver)?,
-        );
-        Ok(dirty)
+        self.requery_mounted(&changed)
+            .map_err(SettlementError::Resolver)
     }
 
     /// Restyles the mounted elements that read the query containers in
@@ -110,64 +82,6 @@ impl Ui {
         let restyled = mounts.requery(self, changed);
         self.docs.state_mut().memory.retained = mounts;
         restyled
-    }
-
-    fn requery_immediate(&mut self, changed: &BTreeSet<u64>) -> Vec<usize> {
-        let mut queried = std::mem::take(&mut self.docs.containers.queried);
-        // Elements restyled in this pass whose computed values changed, by
-        // path: their descendants resolve again under the new values.
-        let mut restyled: BTreeMap<String, Arc<crate::doc::variables::Computed>> = BTreeMap::new();
-        let mut dirty = Vec::new();
-        for q in &mut queried {
-            let parent = q
-                .path
-                .rsplit_once('/')
-                .and_then(|(parent, _)| restyled.get(parent).cloned());
-            if parent.is_none() && q.reads.is_disjoint(changed) {
-                continue;
-            }
-            let inherited = parent.unwrap_or_else(|| q.inherited.clone());
-            let b = Build {
-                doc: q.doc.clone(),
-                mount: String::new(),
-                vm: &Value::Null,
-                env: &crate::bind::NoEnv,
-                locals: Vec::new(),
-                row_key: String::new(),
-                inherited: inherited.clone(),
-                events: Vec::new(),
-                writes: Vec::new(),
-                cached: Some(&q.replay.cached),
-                recording: Default::default(),
-            };
-            let decisions = &q.replay.decisions;
-            let r = self.resolve(
-                &b,
-                &q.doc.nodes[q.node],
-                &q.path,
-                &mut Built::default(),
-                &inherited,
-                &mut |s| {
-                    decisions
-                        .iter()
-                        .any(|&(at, matched)| matched && at == s as *const _ as usize)
-                },
-            );
-            q.inherited = inherited;
-            q.reads = r.cascade.container_reads.clone();
-            if r.cascade.computed != q.computed {
-                restyled.insert(q.path.clone(), r.cascade.computed.clone());
-                q.computed = r.cascade.computed.clone();
-            }
-            let fields = self.docs.state.render_fields.get(&q.key).cloned();
-            if let Some(index) =
-                self.replace_fields(fields, &q.path, &q.doc, &q.doc.nodes[q.node], &r)
-            {
-                dirty.push(index);
-            }
-        }
-        self.docs.containers.queried = queried;
-        dirty
     }
 
     /// Replaces one built element's document fields from its unstyled
@@ -231,33 +145,8 @@ impl Ui {
 }
 
 impl crate::ui::Docs {
-    /// Remembers an immediate-built element that settlement may restyle.
-    pub fn remember_queried(
-        &mut self,
-        b: &Build<'_>,
-        node: usize,
-        path: &str,
-        key: u64,
-        r: &Resolved,
-    ) {
-        let Some(replay) = r.replay.clone() else {
-            return;
-        };
-        self.containers.queried.push(Queried {
-            doc: b.doc.clone(),
-            node,
-            path: path.to_owned(),
-            key,
-            inherited: b.inherited.clone(),
-            computed: r.cascade.computed.clone(),
-            reads: r.cascade.container_reads.clone(),
-            replay,
-        });
-    }
-
     /// Samples the `scroll-state()` containers read last tick: a container
-    /// whose flags changed restyles its readers (mounted ones through
-    /// `scroll_changed`; immediate builds read the new flags as they build).
+    /// whose flags changed restyles its readers (through `scroll_changed`).
     /// `scrolled` keeps each axis's most recent direction.
     pub(super) fn sync_scroll_states(
         &mut self,

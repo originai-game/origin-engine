@@ -207,39 +207,6 @@ impl Ui {
             }
         }
         let appeared = !self.docs.state().memory.seen.contains(&key);
-        // `use:` in an immediate build: made the first tick it is built,
-        // updated when its params change; gone is found in docs_begin. A
-        // mounted element's are sent by the retained host.
-        if b.cached.is_none() && !n.uses.is_empty() {
-            for (k, (name, params)) in n.uses.iter().enumerate() {
-                let value = params.as_ref().map_or(Value::Null, |p| b.eval(p));
-                let old = self
-                    .docs
-                    .state_mut()
-                    .memory
-                    .last
-                    .insert((key, usize::MAX - k), value.clone());
-                let phase = match old {
-                    None => "create",
-                    Some(old) if old != value => "update",
-                    Some(_) => continue,
-                };
-                b.event(
-                    path,
-                    "use",
-                    name,
-                    json!({ "phase": phase, "params": value }),
-                );
-            }
-            let names = n.uses.iter().map(|(name, _)| name.clone()).collect();
-            let event = DocEvent {
-                mount: b.mount.clone(),
-                path: path.to_string(),
-                row_key: b.row_key.clone(),
-                ..DocEvent::default()
-            };
-            self.docs.state_mut().uses.insert(key, (event, names));
-        }
         let happened = std::mem::take(&mut self.docs.state_mut().happened);
         let held = n.triggers.iter().any(|t| t.when == When::Hold) && self.held(key, n);
         let context = long

@@ -3,9 +3,9 @@
 //! between ticks. The stages hold it in [`crate::ui::Docs`].
 
 use super::host::{DocRecord, FieldValidity, PopoverLink, Revealing};
-use super::{Built, DocEvent, DocMemory, Edit};
+use super::{DocEvent, DocMemory, Edit};
 use crate::style::Srgba;
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -17,9 +17,6 @@ pub struct DocState {
     /// The records of the retained elements being emitted, innermost last.
     pub capture: Vec<DocRecord>,
     pub edits: Vec<Edit>,
-    /// Immediately built elements with `use:` actions, by key: who they
-    /// are and their actions' names, for their `destroy` once not built.
-    pub uses: BTreeMap<u64, (DocEvent, Vec<String>)>,
     /// Text fields' constraint validity as last built, by key: what a
     /// form's submit reads. Kept while their element is.
     pub validity: BTreeMap<u64, FieldValidity>,
@@ -36,10 +33,6 @@ pub struct DocState {
     pub popovers: BTreeMap<u64, PopoverLink>,
     /// The id the last `#fragment` link named: CSS `:target`.
     pub target: Option<String>,
-    /// This tick's builds and art slots.
-    pub built: Vec<Built>,
-    pub arts: Vec<(String, crate::slot::SlotSpec)>,
-    pub render_fields: BTreeMap<u64, super::fields::RenderFields>,
     /// Events queued for code (screens built at the end of a tick reach
     /// code the next).
     pub queued: Vec<DocEvent>,
@@ -72,8 +65,6 @@ pub struct DocState {
     pub zones_changed: bool,
     /// The instantiated sibling levels of the screen being built.
     pub levels: Vec<super::structure::Level>,
-    /// A component's root continues its instance's place among siblings.
-    pub component_root: bool,
     /// `data-og-instant` elements whose first entrance has landed: a
     /// later one plays (presentation, outside `world_hash`).
     pub(crate) entered: BTreeSet<u64>,
@@ -93,28 +84,6 @@ impl DocState {
     pub(crate) fn begin_tick(&mut self) {
         self.run.clear();
         self.memory.begin();
-        let d = self;
-        let gone: Vec<u64> = d
-            .uses
-            .keys()
-            .filter(|k| !d.memory.seen.contains(k))
-            .copied()
-            .collect();
-        for key in gone {
-            let (event, names) = d.uses.remove(&key).unwrap();
-            for (k, name) in names.into_iter().enumerate() {
-                d.memory.last.remove(&(key, usize::MAX - k));
-                d.queued.push(DocEvent {
-                    kind: "use".into(),
-                    name,
-                    value: json!({ "phase": "destroy", "params": Value::Null }),
-                    ..event.clone()
-                });
-            }
-        }
-        d.built.clear();
-        d.arts.clear();
-        d.render_fields.clear();
     }
     /// Restores what a snapshot carried.
     pub(crate) fn restore(&mut self, v: &Value) -> Result<(), String> {
@@ -122,12 +91,9 @@ impl DocState {
         self.built_tick = 0;
         Ok(())
     }
-    /// The art slot registered last, by the element being emitted or this tick.
+    /// The art slot registered last by the element being emitted.
     pub(crate) fn last_art_entry(&self) -> Option<&(String, crate::slot::SlotSpec)> {
-        match self.capture.last() {
-            Some(record) => record.arts.last(),
-            None => self.arts.last(),
-        }
+        self.capture.last()?.arts.last()
     }
     /// The art slot `path`'s spec, where it was registered.
     pub(crate) fn art_slot_mut(&mut self, path: &str) -> Option<&mut crate::slot::SlotSpec> {
@@ -138,9 +104,6 @@ impl DocState {
             .flat_map(|r| r.arts.iter_mut())
             .find(|(p, _)| p == path)
         {
-            return Some(spec);
-        }
-        if let Some((_, spec)) = self.arts.iter_mut().find(|(p, _)| p == path) {
             return Some(spec);
         }
         self.memory.record_art_slot_mut(path)

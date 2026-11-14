@@ -37,14 +37,6 @@ impl DocEvent {
     }
 }
 
-/// What a mount answers: its events this tick, and whether its viewmodel changed.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct DocResponse {
-    pub events: Vec<DocEvent>,
-    /// Its root's path (empty: it was not built).
-    pub path: String,
-}
-
 /// A probe edit of a prop (`ui:set`): presentation only, marked in the dump.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Edit {
@@ -256,8 +248,7 @@ impl Ui {
     pub(crate) fn docs_begin(&mut self) {
         self.docs.state.begin_tick();
         let c = &mut self.docs.containers;
-        c.queried.clear();
-        // Last tick's containers, immediate and mounted, stay watched.
+        // Last tick's containers stay watched.
         let mut live = std::mem::take(&mut c.built);
         live.extend(self.docs.state.memory.retained.containers());
         self.watch_document_containers(live);

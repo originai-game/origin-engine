@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "feImage",
+      "change": "The element an <feImage href=\"#id\"> draws is built from what is written: its bound attributes read nothing, and the {#if} and {#each} blocks and the components inside it are not built. In a pushed screen they read the viewmodel; in a mounted document they already read nothing.",
+      "fix": "Write the element an feImage draws with literal attributes and plain elements."
+    }
+  ]
+}

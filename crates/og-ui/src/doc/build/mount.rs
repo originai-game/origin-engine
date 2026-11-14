@@ -56,33 +56,6 @@ impl Ui {
             .insert(path.to_owned(), (handle, defaults));
     }
 
-    /// Mounts a component here: `props` is its viewmodel (writes of its
-    /// two-way bindings land in it), `id` its root's id.
-    pub fn component(
-        &mut self,
-        id: &str,
-        name: &str,
-        props: &mut Value,
-        env: &dyn Env,
-    ) -> DocResponse {
-        let Some(doc) = self.docs.library.documents.get(name).cloned() else {
-            self.out.warnings_mut().push(format!(
-                "Ui::component: no document named '{name}' (load its .ogt with og.load.document)"
-            ));
-            return DocResponse::default();
-        };
-        let mount = format!("{}/{id}", self.tree.path_of(self.tree.parent()));
-        // An immediate document reads `$ui` from its viewmodel.
-        if let Some(vm) = props.as_object_mut() {
-            vm.insert("$ui".into(), self.ui_store_value());
-        }
-        let game = self.game_input();
-        let accepts = std::mem::replace(&mut self.docs.state_mut().accepts, game);
-        let r = self.mount_doc(doc, mount, id, props, env, Arc::default());
-        self.docs.state_mut().accepts = accepts;
-        r
-    }
-
     /// Events of documents built where code did not see them (screens
     /// built at the end of a tick), taken.
     /// The play, pause, seek, gain and loop requests documents' `<video>`
@@ -96,33 +69,17 @@ impl Ui {
         std::mem::take(&mut self.docs.state_mut().queued)
     }
 
-    /// What documents built this tick (the probe's `dump_ui`): the
-    /// immediate documents' elements, then the mounted ones' in tree order.
+    /// What the mounted documents have built (the probe's `dump_ui`), in
+    /// tree order.
     pub fn doc_built(&self) -> Vec<Built> {
-        let mut out = self.docs.state().built.clone();
-        out.extend(
-            self.docs
-                .state()
-                .memory
-                .retained
-                .records()
-                .flat_map(|r| r.built.iter().cloned()),
-        );
-        out
+        let records = self.docs.state().memory.retained.records();
+        records.flat_map(|r| r.built.iter().cloned()).collect()
     }
 
-    /// The art slots documents declared this tick, by path.
+    /// The art slots the mounted documents declare, by path.
     pub fn art_slots(&self) -> Vec<(String, crate::slot::SlotSpec)> {
-        let mut out = self.docs.state().arts.clone();
-        out.extend(
-            self.docs
-                .state()
-                .memory
-                .retained
-                .records()
-                .flat_map(|r| r.arts.iter().cloned()),
-        );
-        out
+        let records = self.docs.state().memory.retained.records();
+        records.flat_map(|r| r.arts.iter().cloned()).collect()
     }
 
     /// The probe's edits in effect.
@@ -266,42 +223,6 @@ impl Ui {
 }
 
 impl Ui {
-    /// Builds `doc` here with root id `id`.
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn mount_doc(
-        &mut self,
-        doc: Arc<UiDocument>,
-        mount: String,
-        id: &str,
-        vm: &mut Value,
-        env: &dyn Env,
-        inherited: Arc<super::super::variables::Computed>,
-    ) -> DocResponse {
-        let root = doc.root;
-        let mut b = Build {
-            doc: doc.clone(),
-            mount: mount.clone(),
-            vm,
-            env,
-            locals: Vec::new(),
-            row_key: String::new(),
-            inherited,
-            events: Vec::new(),
-            writes: Vec::new(),
-            cached: None,
-            recording: Default::default(),
-        };
-        let path = self.build_node(&mut b, root, Some(id));
-        let (events, writes) = (b.events, b.writes);
-        for (p, v) in writes {
-            set_path(vm, &p, v);
-        }
-        DocResponse {
-            events,
-            path: path.unwrap_or_default(),
-        }
-    }
-
     pub(crate) fn timeline_name(&self, path: &str, timeline: &str) -> Result<String, String> {
         if timeline.contains('/') {
             return if self.timeline(timeline).is_some() {
@@ -310,19 +231,10 @@ impl Ui {
                 Err(format!("no timeline '{timeline}'"))
             };
         }
-        let doc = self
-            .doc_element(path)
-            .map(|(d, _)| d.to_string())
-            .or_else(|| {
-                // A path below a mount: the nearest built ancestor's document.
-                self.docs
-                    .state()
-                    .built
-                    .iter()
-                    .filter(|b| path.starts_with(&format!("{}/", b.path)))
-                    .max_by_key(|b| b.path.len())
-                    .map(|b| b.doc.clone())
-            });
+        // The element's document, or its nearest mounted ancestor's.
+        let doc = std::iter::successors(Some(path), |path| path.rsplit_once('/').map(|p| p.0))
+            .find_map(|path| self.doc_element(path))
+            .map(|(d, _)| d.to_string());
         match doc {
             Some(d) if self.timeline(&format!("{d}/{timeline}")).is_some() => {
                 Ok(format!("{d}/{timeline}"))
@@ -347,26 +259,22 @@ impl Ui {
 }
 
 impl crate::ui::Docs {
+    /// What the element being emitted built: kept in its record.
     pub(crate) fn note_built(&mut self, built: Built) {
-        match self.state_mut().capture.last_mut() {
-            Some(record) => record.built.push(built),
-            None => self.state_mut().built.push(built),
+        if let Some(record) = self.state_mut().capture.last_mut() {
+            record.built.push(built);
         }
     }
 
     pub(crate) fn note_render_fields(&mut self, key: u64, fields: super::fields::RenderFields) {
-        match self.state_mut().capture.last_mut() {
-            Some(record) => record.render_fields.push((key, fields)),
-            None => {
-                self.state_mut().render_fields.insert(key, fields);
-            }
+        if let Some(record) = self.state_mut().capture.last_mut() {
+            record.render_fields.push((key, fields));
         }
     }
 
     pub(crate) fn note_art(&mut self, path: String, spec: crate::slot::SlotSpec) {
-        match self.state_mut().capture.last_mut() {
-            Some(record) => record.arts.push((path, spec)),
-            None => self.state_mut().arts.push((path, spec)),
+        if let Some(record) = self.state_mut().capture.last_mut() {
+            record.arts.push((path, spec));
         }
     }
 
@@ -378,14 +286,12 @@ impl crate::ui::Docs {
     /// The render fields element `key` was emitted with.
     #[cfg(test)]
     pub(crate) fn render_fields(&self, key: u64) -> Option<&super::fields::RenderFields> {
-        self.state().render_fields.get(&key).or_else(|| {
-            self.state()
-                .memory
-                .retained
-                .record(key)
-                .and_then(|r| r.render_fields.iter().find(|(k, _)| *k == key))
-                .map(|(_, fields)| fields)
-        })
+        self.state()
+            .memory
+            .retained
+            .record(key)
+            .and_then(|r| r.render_fields.iter().find(|(k, _)| *k == key))
+            .map(|(_, fields)| fields)
     }
 }
 

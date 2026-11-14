@@ -229,17 +229,16 @@ gem} other {# gems}}"`).
 
 ### Documents and code
 
-`Ui::screen(name, vm, env)` mounts a screen as a layer (pushed when it is
-not on the stack), with its viewmodel for this tick, and builds it where it
-is called, so code fills its slots right after (`open_slot(path)` …
-`close()`); `Ui::component(id, name, &mut props, env)` builds a component
-in place, inside whatever code has open. Both answer a `DocResponse`: the
-document's events this tick (`click`, `changed`, `select` of a list row,
-`emit`, `action`, `set` for each two-way write with the path it wrote,
-`back` when the layer's Back is `emit`). Layers code does not build this
-tick are built by `build_layers(env)` (and by `end` with no host), their
-events kept for `take_doc_events`. Code and documents build one tree: a
-document's elements have the same props, states, motion and checks as
+A document is mounted, not called. `mount_document(mount, document, inputs,
+content, env)` mounts it reading named stores; `mount_with_values(mount,
+document, &values)` holds its values for it, as a pushed screen's viewmodel
+is held (its mount is `og.screen:<name>`). The mounts are built once a tick
+by `build_retained_documents(env)` (and by `end` with no host), and an
+element is resolved again only when a value it reads changes. Their events
+are kept for `take_doc_events`: `click`, `changed`, `select` of a list row,
+`emit`, `action`, `set` for each two-way write with the path it wrote, and
+`back` when the layer's Back is `emit`. Code and documents build one tree:
+a document's elements have the same props, states, motion and checks as
 code's.
 
 ### The layer stack (`src/layers.rs`)
