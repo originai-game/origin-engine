@@ -40,16 +40,6 @@ impl GpuCulling {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let compute = |layout: &wgpu::PipelineLayout, module: &wgpu::ShaderModule, entry: &str| {
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some(entry),
-                layout: Some(layout),
-                module,
-                entry_point: Some(entry),
-                compilation_options: Default::default(),
-                cache: crate::pipeline_cache::of(device).as_ref(),
-            })
-        };
         let hiz_base_layout = [false, true].map(|multisampled| {
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("depth pyramid base"),
@@ -116,11 +106,8 @@ impl GpuCulling {
         });
         let readbacks = Vec::new();
         GpuCulling {
-            visibility: compute(&pipeline_layout, &module, "visibility"),
-            scan_blocks: compute(&pipeline_layout, &module, "scan_blocks"),
-            prefix: compute(&pipeline_layout, &module, "prefix"),
-            scatter: compute(&pipeline_layout, &module, "scatter"),
-            hiz_reduce: compute(&reduce_layout, &hiz_module, "reduce"),
+            stages: CullStages::new(device, &pipeline_layout, &module),
+            hiz_reduce: compute_stage(device, &reduce_layout, &hiz_module, "reduce"),
             hiz_base: [None, None],
             hiz_base_layout,
             hiz_reduce_layout,

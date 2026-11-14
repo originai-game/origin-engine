@@ -447,14 +447,7 @@ impl GpuCulling {
         );
         let run = |pass: &mut wgpu::ComputePass, group: &wgpu::BindGroup, stage_passes: u32| {
             pass.set_bind_group(0, group, &[]);
-            pass.set_pipeline(&self.visibility);
-            pass.dispatch_workgroups(blocks, stage_passes, 1);
-            pass.set_pipeline(&self.scan_blocks);
-            pass.dispatch_workgroups(1, stage_passes, 1);
-            pass.set_pipeline(&self.prefix);
-            pass.dispatch_workgroups(blocks, stage_passes, 1);
-            pass.set_pipeline(&self.scatter);
-            pass.dispatch_workgroups(blocks, stage_passes, 1);
+            self.stages.run(pass, blocks, stage_passes);
         };
         let mut occluder_draws = 0;
         if let Some(pyramid) = pyramid {
