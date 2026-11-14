@@ -80,5 +80,17 @@ Halton sequence are `ffxFsr3UpscalerGetJitterPhaseCount` and
   both positive, as one filtered fetch at their ratio, and leaves out the
   four corners (together at most 1/64 of the weight, at a half-texel
   offset on both axes), renormalising the rest.
+- **A narrower upsample kernel where the history is whole.** AMD's
+  Lanczos-2 upsample reaches one output pixel from each sample, so the
+  accumulation converges to the image filtered by that kernel, which
+  drops a thin feature's contrast (poles and wires a render pixel wide
+  came out lighter than a supersampled frame, 0.8 to 1.7 dB under TAAU
+  in `fsr::compare`). The accumulate pass multiplies AMD's kernel bias
+  (the factor on each sample's offset) by up to 2 (`KERNEL_NARROWING`:
+  the first zero half an output pixel off) and scales the frame's
+  weight by the square of that, keeping AMD's convergence rate; the
+  narrowing eases back to AMD's kernel as the history weight falls
+  (motion, disocclusion, a cut), where few frames are blended and a
+  narrow kernel keeps each frame's aliasing.
 - Frame generation, the debug view and the auto-generated reactive and T&C
   masks are not ported.

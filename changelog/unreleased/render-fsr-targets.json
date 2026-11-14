@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "RenderSettings.upscaler (fsr3)",
+      "summary": "FSR 3.1 keeps thin static geometry (poles, wires, fences) as dark and sharp as a supersampled frame: where its history is whole it accumulates with an upsample kernel half as wide as AMD's, easing back to AMD's while the camera or the scene moves. Against a 4-samples-a-pixel ground truth thin static geometry is 1.1 to 1.8 dB nearer (now ahead of TAAU), a panning thin scene 0.2 to 0.6 dB nearer and grass unchanged."
+    }
+  ]
+}

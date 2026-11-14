@@ -231,6 +231,19 @@ const TILE: i32 = 11;
 var<workgroup> tile: array<vec3<f32>, 121>;
 var<private> tile_origin: vec2<i32>;
 
+// Where the history is whole, the upsample's Lanczos-2 is twice as narrow
+// as AMD's: its first zero half an output pixel from the sample (AMD's at
+// one), so what the frames accumulate converges to a box over the output
+// pixel, as a supersampled frame does, rather than to a Lanczos-2 a pixel
+// wide that drops a thin feature's contrast (fsr::compare, thin static
+// geometry: 1.1 to 1.8 dB nearer the reference). The narrowing eases back
+// to AMD's kernel as the history weight falls (motion, disocclusion, a
+// cut): there few frames are blended and a narrow kernel keeps each
+// frame's aliasing (grass while panning lost 0.3 dB with it fixed). The
+// kernel covers 1/n^2 of the area, so a frame's weight is n^2 times AMD's
+// average, keeping its convergence rate.
+const KERNEL_NARROWING: f32 = 2.0;
+
 // What every one of the 3x3 taps of the upsample shares.
 struct Taps {
   src_input: vec2<i32>,
@@ -279,6 +292,7 @@ fn compute_upsampled_color_and_weight(p: Params, d: ptr<function, Data>) {
   // ComputeMaxKernelWeight.
   let kernel_bias_max = min(1.99, 1.0 + (1.0 / downscale_factor().x - 1.0));
   let kernel_bias_min = max(1.0, (1.0 + kernel_bias_max) * 0.3);
+  let narrowing = mix(KERNEL_NARROWING, 1.0, 1.0 - saturate((*d).history_weight));
   let kernel_bias_weight = min(1.0 - p.disocclusion * 0.5, min(1.0 - p.shading_change, saturate((*d).history_weight * 5.0)));
 
   let t = Taps(
@@ -288,7 +302,7 @@ fn compute_upsampled_color_and_weight(p: Params, d: ptr<function, Data>) {
     flip_row,
     src_unjittered - src_output,
     p.accumulation == 0.0,
-    mix(kernel_bias_min, kernel_bias_max, kernel_bias_weight),
+    mix(kernel_bias_min, kernel_bias_max, kernel_bias_weight) * narrowing,
   );
   upsample_tap(t, d, 0, 0);
   upsample_tap(t, d, 1, 0);
@@ -304,7 +318,7 @@ fn compute_upsampled_color_and_weight(p: Params, d: ptr<function, Data>) {
   (*d).upsampled_weight *= f32((*d).upsampled_weight > EPSILON);
   if ((*d).upsampled_weight > EPSILON) {
     (*d).upsampled_color /= (*d).upsampled_weight;
-    (*d).upsampled_weight *= AVERAGE_LANCZOS_WEIGHT_PER_FRAME;
+    (*d).upsampled_weight *= AVERAGE_LANCZOS_WEIGHT_PER_FRAME * narrowing * narrowing;
     // Deringing.
     (*d).upsampled_color = clamp((*d).upsampled_color, (*d).clipping_box.aabb_min, (*d).clipping_box.aabb_max);
   }
