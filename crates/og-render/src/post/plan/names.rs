@@ -24,7 +24,10 @@ pub(in crate::post) fn bloom_name(i: u32) -> String {
 /// pass (and outlines), after TAA (`None`: the history; its sharpening:
 /// `hdr.sharp`), after depth of field and motion blur.
 pub(in crate::post) struct LitNames {
-    /// The lit image after the main pass and the depth bands.
+    /// The lit image after the main pass and the depth bands (the fog of
+    /// war reads it).
+    pub(in crate::post) banded: &'static str,
+    /// The lit image after the bands and the fog of war.
     pub(in crate::post) lit: &'static str,
     pub(in crate::post) main: &'static str,
     /// `None` when TAA writes the history and nothing sharpens it.
@@ -52,10 +55,15 @@ pub(crate) const CUSTOM_POST_NAMES: [&str; crate::post_custom::MAX_CUSTOM_POSTS]
 
 pub(in crate::post) fn lit_names(passes: &[FramePass]) -> LitNames {
     let has = |p| passes.contains(&p);
-    let lit = if has(FramePass::DepthBands) {
+    let banded = if has(FramePass::DepthBands) {
         "hdr.bands"
     } else {
         "hdr"
+    };
+    let lit = if has(FramePass::FogOfWar) {
+        "hdr.sight"
+    } else {
+        banded
     };
     let main = if has(FramePass::OutlineWide) {
         "hdr.wide"
@@ -93,6 +101,7 @@ pub(in crate::post) fn lit_names(passes: &[FramePass]) -> LitNames {
         n => Some(CUSTOM_POST_NAMES[n - 1]),
     };
     LitNames {
+        banded,
         lit,
         main,
         aa,

@@ -509,6 +509,7 @@ impl PostPasses {
             sampler,
             nearest_sampler,
             black: black_texture.create_view(&Default::default()),
+            sight: sight::SightTexture::new(device),
             post_buffer: uniform("post", std::mem::size_of::<PostUniform>()),
             taa_buffer: uniform("taa", std::mem::size_of::<TaaUniform>()),
         }

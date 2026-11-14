@@ -26,6 +26,8 @@ mod particles;
 mod post;
 #[path = "effects/quality.rs"]
 mod quality;
+#[path = "effects/sight.rs"]
+mod sight;
 #[path = "effects/sprites.rs"]
 mod sprites;
 

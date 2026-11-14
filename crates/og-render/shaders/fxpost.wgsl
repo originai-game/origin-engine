@@ -669,6 +669,44 @@ fn fs_depth_bands(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(mix(tinted, color, fxp.bands.w), c.a);
 }
 
+// A view-space point in the frame's world space (`fxp.view` is rigid).
+fn world_of_view(v: vec3<f32>) -> vec3<f32> {
+  let turn = mat3x3<f32>(fxp.view[0].xyz, fxp.view[1].xyz, fxp.view[2].xyz);
+  return (v - fxp.view[3].xyz) * turn;
+}
+
+// Fog of war (post/sight.rs): the lit image under a team's sight map
+// (tex_b: a texel per cell, 0 unseen, a half explored, 1 seen, read
+// bilinearly so a cell's edge is a ramp a cell wide). What the team sees
+// stays; what it has only explored shows through at `explored`; the rest
+// is the fog's colour. On the ground the pixel's surface decides (the sky
+// stays); in the x, y plane where its ray meets z = 0. Outside the map
+// nothing is covered.
+@fragment
+fn fs_sight(in: VsOut) -> @location(0) vec4<f32> {
+  let px = vec2<i32>(in.pos.xy);
+  let c = textureLoad(tex_a, px, 0);
+  if (fxp.sight[2].x < 0.5) { return c; }
+  let uv_px = (vec2<f32>(px) + 0.5) * fxp.screen.zw;
+  var at: vec2<f32>;
+  if (fxp.sight[2].y > 0.5) {
+    let a = world_of_view(view_pos(uv_px, fxp.cam.z));
+    let b = world_of_view(view_pos(uv_px, fxp.cam.x));
+    if (abs(a.z - b.z) < 1e-6) { return c; }
+    at = mix(a, b, a.z / (a.z - b.z)).xy;
+  } else {
+    let d = depth_at(px);
+    if (is_sky(d)) { return c; }
+    at = world_of_view(view_pos(uv_px, d)).xz;
+  }
+  let uv = (at - fxp.sight[0].xy) * fxp.sight[0].zw;
+  if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) { return c; }
+  let level = textureSampleLevel(tex_b, fx_linear, uv, 0.0).r;
+  let explored = fxp.sight[1].w;
+  let shown = mix(explored * min(2.0 * level, 1.0), 1.0, max(2.0 * level - 1.0, 0.0));
+  return vec4<f32>(mix(fxp.sight[1].rgb, c.rgb, shown), c.a);
+}
+
 // The colour `t` of the way from `a` to `b` (linear RGB) in OkLCh:
 // lightness and chroma straight, hue the short way round (a grey end takes
 // the other's hue), so a plum to gold ramp passes through rose and amber

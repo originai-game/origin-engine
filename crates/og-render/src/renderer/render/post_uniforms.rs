@@ -198,6 +198,12 @@ impl Renderer {
             bands_far: depth_bands.map_or([0.0; 4], |b| {
                 [b.far_color[0], b.far_color[1], b.far_color[2], 1.0]
             }),
+            sight: scene
+                .look
+                .fog_of_war
+                .as_ref()
+                .filter(|f| f.drawn())
+                .map_or([[0.0; 4]; 3], |f| f.rows()),
             blur: screen_blur.map_or([[0.0; 4]; 2], |b| {
                 b.rows(self.width as f32, self.height as f32)
             }),

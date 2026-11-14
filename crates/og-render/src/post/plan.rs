@@ -68,6 +68,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 ao::declare
             }
             FramePass::DepthBands
+            | FramePass::FogOfWar
             | FramePass::Outline
             | FramePass::OutlineSeed
             | FramePass::OutlineJump(_)

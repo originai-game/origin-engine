@@ -34,6 +34,8 @@ pub(super) struct FrameEffects {
     pub flare_sources_on: bool,
     pub fluids_3d: bool,
     pub depth_bands: Option<DepthBands>,
+    /// The scene's fog of war is drawn (`post/sight.rs`).
+    pub fog_of_war: bool,
     pub ssr: Option<ssr::ScreenSpaceReflections>,
     pub custom_posts: Vec<usize>,
     pub motion_read: bool,
@@ -139,6 +141,10 @@ impl Renderer {
                 .iter()
                 .any(|f| !f.particles.is_empty() || f.visual.is_some());
         let depth_bands = scene.look.stylise.depth_bands.filter(|b| b.count >= 2);
+        let fog_of_war = scene.look.fog_of_war.as_ref().filter(|f| f.drawn());
+        // On the ground it reads each pixel's surface from the prepass.
+        let fog_depth = fog_of_war.is_some_and(|f| f.plane == crate::SightPlane::Ground);
+        let fog_of_war = fog_of_war.is_some();
         // Ink or hatching on depth edges reads the prepass in the lines
         // pass, a canvas, hatching or halftone on surfaces in the paint or
         // lines pass.
@@ -171,6 +177,7 @@ impl Renderer {
             // Volumetric fog reads each pixel's depth.
             || volumetric_fog.is_some()
             || depth_bands.is_some()
+            || fog_depth
             || ink_depth
             || scene.look.stylise.on_surfaces()
             // The painterly filter's object edges and detail, and the
@@ -215,6 +222,7 @@ impl Renderer {
             flare_sources_on,
             fluids_3d,
             depth_bands,
+            fog_of_war,
             ssr,
             custom_posts,
             motion_read,

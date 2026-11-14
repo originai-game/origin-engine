@@ -13,6 +13,13 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
     let name = p.name();
     match p {
         FramePass::DepthBands => g.pass(name, &["hdr", "lindepth"], &["hdr.bands"]),
+        FramePass::FogOfWar => {
+            let mut reads = vec![names.banded];
+            if prepass {
+                reads.push("lindepth");
+            }
+            g.pass(name, &reads, &["hdr.sight"])
+        }
         FramePass::Outline => g.pass(
             name,
             &[names.lit, "gbuffer", "lindepth", "outline-id"],

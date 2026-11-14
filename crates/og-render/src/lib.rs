@@ -308,6 +308,7 @@ mod post;
 use particles::ribbons;
 use particles::ribbons_gpu;
 use post::post_custom;
+pub use post::sight::{FogOfWar, SightPlane};
 use systems::vegetation::scatter;
 use systems::vegetation::scatter_cull;
 use systems::vegetation::scatter_place;
