@@ -95,13 +95,6 @@ fn receiver_slope(a: vec3<f32>, b: vec3<f32>, c: vec3<f32>, size: vec2<f32>, n_d
   return g * min(1.0, 4.0 * n_dot_l / max(sin_l, 1e-6));
 }
 
-// Two directions along the plane of normal n.
-fn plane_tangents(n: vec3<f32>) -> array<vec3<f32>, 2> {
-  let k = select(vec3<f32>(1.0, 0.0, 0.0), vec3<f32>(0.0, 1.0, 0.0), abs(n.x) > 0.9);
-  let t = normalize(cross(n, k));
-  return array<vec3<f32>, 2>(t, cross(n, t));
-}
-
 // How far p is from the point the cascades are nested round (the camera;
 // shadow_fit.rs): what picks its cascade, the same in every view of the
 // frame.
@@ -284,7 +277,7 @@ fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) 
   var depth = sp.z + 0.25 * bias.y;
   var slope = vec2<f32>(0.0);
   if (!shadow_closed || bias.w < 0.0) {
-    let t = plane_tangents(n);
+    let t = orthonormal_basis(n);
     let sb = frame.cascade_view_proj[c] * vec4<f32>(offset + t[0] * bias.x, 1.0);
     let sc = frame.cascade_view_proj[c] * vec4<f32>(offset + t[1] * bias.x, 1.0);
     let size = vec2<f32>(textureDimensions(cascade_map));
@@ -534,7 +527,7 @@ fn local_shadow_lookup(light: LocalLight, p: vec3<f32>, n: vec3<f32>, wide: bool
   let plane = wide;
   // The receiver plane, about a texel along each tangent (a 90-degree
   // face's texel at this distance; the plane is what matters, not the step).
-  let t = plane_tangents(n);
+  let t = orthonormal_basis(n);
   let h = dist * 2.0 / size.x;
   if (paraboloid) {
     let below = offset.y - light.position_range.y <= 0.0;

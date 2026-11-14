@@ -74,8 +74,7 @@ fn ltc_edge(v1: vec3<f32>, v2: vec3<f32>) -> vec3<f32> {
 fn ltc_evaluate(n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, m_inv: mat3x3<f32>, rect: array<vec3<f32>, 4>) -> f32 {
   var t1 = v - n * dot(v, n);
   if (dot(t1, t1) < 1e-10) {
-    t1 = select(vec3<f32>(1.0, 0.0, 0.0), vec3<f32>(0.0, 1.0, 0.0), abs(n.x) > 0.9);
-    t1 = t1 - n * dot(t1, n);
+    t1 = orthonormal_basis(n)[0];
   }
   t1 = normalize(t1);
   let t2 = -cross(n, t1);

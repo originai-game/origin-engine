@@ -65,3 +65,17 @@ fn quad_corner(i: u32) -> vec2<f32> {
   let k = i % 6u;
   return vec2<f32>(select(0.0, 1.0, k == 1u || k == 2u || k == 4u), select(0.0, 1.0, k == 2u || k == 4u || k == 5u));
 }
+
+// An orthonormal basis about the unit vector `n`: columns (t, b, n),
+// right-handed, continuous everywhere but n.z = -1 (Duff et al. 2017,
+// "Building an Orthonormal Basis, Revisited"). For anything whose answer
+// does not depend on which way the tangents turn about `n`: a plane's
+// span, a sampling frame, a fallback for a degenerate direction.
+fn orthonormal_basis(n: vec3<f32>) -> mat3x3<f32> {
+  let s = select(-1.0, 1.0, n.z >= 0.0);
+  let a = -1.0 / (s + n.z);
+  let b = n.x * n.y * a;
+  let t = vec3<f32>(1.0 + s * n.x * n.x * a, s * b, -s * n.x);
+  let bt = vec3<f32>(b, s + n.y * n.y * a, -n.y);
+  return mat3x3<f32>(t, bt, n);
+}

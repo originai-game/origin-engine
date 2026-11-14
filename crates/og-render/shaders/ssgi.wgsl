@@ -36,10 +36,8 @@ const GI_PLASTIC: f32 = 0.75487766625;
 fn gi_cosine_dir(n: vec3<f32>, u: vec2<f32>) -> vec3<f32> {
   let r = sqrt(u.x);
   let phi = 2.0 * FX_PI * u.y;
-  let up = select(vec3<f32>(1.0, 0.0, 0.0), vec3<f32>(0.0, 1.0, 0.0), abs(n.x) > 0.9);
-  let t = normalize(cross(up, n));
-  let b = cross(n, t);
-  return normalize(t * (r * cos(phi)) + b * (r * sin(phi)) + n * sqrt(max(1.0 - u.x, 0.0)));
+  let f = orthonormal_basis(n);
+  return normalize(f[0] * (r * cos(phi)) + f[1] * (r * sin(phi)) + n * sqrt(max(1.0 - u.x, 0.0)));
 }
 
 

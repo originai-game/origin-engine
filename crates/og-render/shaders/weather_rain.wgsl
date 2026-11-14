@@ -79,9 +79,9 @@ fn weather_open(p: vec3<f32>, geo: vec3<f32>) -> f32 {
   // The receiver's plane in the map's clip space: two tangents through the
   // view's linear part span it; its depth per texel follows from their
   // normal (uv runs x with clip x, y against clip y, 2 / side per texel).
-  let helper = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(geo.y) > 0.9);
-  let t1 = normalize(cross(geo, helper));
-  let t2 = cross(geo, t1);
+  let span = orthonormal_basis(geo);
+  let t1 = span[0];
+  let t2 = span[1];
   let nc = cross((frame.weather_view_proj * vec4<f32>(t1, 0.0)).xyz, (frame.weather_view_proj * vec4<f32>(t2, 0.0)).xyz);
   let per_texel = 2.0 / ws.z;
   var gradient = vec2<f32>(0.0);

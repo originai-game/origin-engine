@@ -232,17 +232,6 @@ fn ssr_alpha(roughness: f32) -> f32 {
   return max(roughness * roughness, 1e-3);
 }
 
-// An orthonormal basis about `n` (Duff et al. 2017, "Building an
-// Orthonormal Basis, Revisited").
-fn ssr_basis(n: vec3<f32>) -> mat3x3<f32> {
-  let s = select(-1.0, 1.0, n.z >= 0.0);
-  let a = -1.0 / (s + n.z);
-  let b = n.x * n.y * a;
-  let t = vec3<f32>(1.0 + s * n.x * n.x * a, s * b, -s * n.x);
-  let bt = vec3<f32>(b, s + n.y * n.y * a, -n.y);
-  return mat3x3<f32>(t, bt, n);
-}
-
 // A microfacet normal from the visible normals of `wi` (tangent space,
 // z up) for `alpha`: Dupuy and Benyoub 2023, "Sampling Visible GGX Normals
 // with Spherical Caps".
@@ -457,7 +446,7 @@ fn trace(@builtin(global_invocation_id) gid: vec3<u32>) {
   let v = -normalize(p);
   let alpha = ssr_alpha(roughness);
   let a2 = alpha * alpha;
-  let basis = ssr_basis(n);
+  let basis = orthonormal_basis(n);
   let wi = vec3<f32>(dot(v, basis[0]), dot(v, basis[1]), max(dot(v, n), 1e-4));
   var l: vec3<f32>;
   var pdf: f32;

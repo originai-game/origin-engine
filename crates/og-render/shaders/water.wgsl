@@ -369,7 +369,7 @@ fn off_sun(r: vec3<f32>, mip: f32) -> vec3<f32> {
   let side = r - l * c;
   let len = length(side);
   // (Straight at the sun: any side.)
-  let t = select(normalize(cross(l, select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(l.y) > 0.9))), side / len, len > 1e-5);
+  let t = select(orthonormal_basis(l)[0], side / len, len > 1e-5);
   return l * cos(edge) + t * sin(edge);
 }
 

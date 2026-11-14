@@ -100,18 +100,10 @@ fn fs_sky(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(color, 1.0);
 }
 
-fn tangent_frame(n: vec3<f32>) -> mat3x3<f32> {
-  var up = vec3<f32>(0.0, 1.0, 0.0);
-  if (abs(n.y) > 0.999) { up = vec3<f32>(1.0, 0.0, 0.0); }
-  let t = normalize(cross(up, n));
-  let b = cross(n, t);
-  return mat3x3<f32>(t, b, n);
-}
-
 @fragment
 fn fs_irradiance(in: VsOut) -> @location(0) vec4<f32> {
   let n = face_dir(params.face, in.uv);
-  let frame = tangent_frame(n);
+  let frame = orthonormal_basis(n);
   var sum = vec3<f32>(0.0);
   var count = 0.0;
   let step_phi = 2.0 * PI / 64.0;
@@ -148,7 +140,7 @@ fn importance_sample_ggx(xi: vec2<f32>, n: vec3<f32>, roughness: f32) -> vec3<f3
   let cos_theta = sqrt((1.0 - xi.y) / (1.0 + (a * a - 1.0) * xi.y));
   let sin_theta = sqrt(1.0 - cos_theta * cos_theta);
   let h = vec3<f32>(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
-  return normalize(tangent_frame(n) * h);
+  return normalize(orthonormal_basis(n) * h);
 }
 
 fn d_ggx(n_dot_h: f32, roughness: f32) -> f32 {
