@@ -25,7 +25,7 @@ Token `og.Rope`, registered under the schema name `og.Rope`; its value type is `
 | `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second). |
 | `radius` | `number` | `0.05` | ≥ 0 | `m` | tunable | The thickness it collides at (0: no collision). |
 | `width` | `number` | `0.08` | ≥ 0 | `m` | — | The drawn width. |
-| `color` | `Vector3` | `{ x: 0.55, y: 0.42, z: 0.28 }` | — | — | — | The drawn linear colour. |
+| `color` | `Color` | `{ r: 0.55, g: 0.42, b: 0.28 }` | — | — | — | The drawn colour. |
 | `visible` | `boolean` | `true` | — | — | — | Whether the renderer draws it. |
 
 ```ogt
@@ -85,7 +85,7 @@ component Rope {
     min 0
     unit m
   }
-  field color Vector3 "The drawn linear colour." {
+  field color Color "The drawn colour." {
     default 0.55 0.42 0.28
   }
   field visible bool "Whether the renderer draws it." {

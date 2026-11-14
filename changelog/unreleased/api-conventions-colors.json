@@ -1,0 +1,14 @@
+{
+  "breaking": [
+    {
+      "member": "Rope.color, Fluid2D.color, Fluid3D.color",
+      "change": "The three are a Color (linear RGB: r, g, b), as every other colour of the API. Before, each was a Vector3 whose x, y and z stood for red, green and blue, so a colour written as { r, g, b } was refused there and one written as { x, y, z } was refused everywhere else. The stored bytes and the defaults are unchanged: a saved world and a cooked scene read as before, and scene text keeps its three numbers.",
+      "fix": "Write the colour as { r, g, b } (or from color.fromHex) where code set { x, y, z } or a Vector3 on Rope.color, Fluid2D.color or Fluid3D.color, and read .r, .g and .b where it read .x, .y and .z.",
+      "find": [
+        "Rope",
+        "Fluid2D",
+        "Fluid3D"
+      ]
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 //! og.Fluid3D as a screen-space surface (a group's particles coloured by
 //! their mix), from the physics' last step or simulated by the renderer.
 
+use super::rgb;
 use super::soft::visual;
 use crate::host::wire::{FromJson, record};
 use crate::present::extract::{Hierarchy, RenderState};
@@ -44,8 +45,7 @@ pub(super) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             particles: Arc::from(particles),
             radius: v.radius * v.blob_scale,
             threshold: v.threshold,
-            // Fluid2D.color is a Vector3 (x, y, z are r, g, b).
-            color: v.color.extend(v.opacity),
+            color: rgb(&v.color).extend(v.opacity),
             layer: v.layer,
             z: h.world_of(e).transform_point3(Vec3::ZERO).z,
             group,
@@ -57,7 +57,6 @@ pub(super) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     // 3D fluids as a screen-space surface. A fluid sharing a group colours
     // its particles by their mix over the group's fluids' colours (lanes as
     // og-physics' fluid3d_mix gives them).
-    // Fluid3D.color is a Vector3 (x, y, z are r, g, b).
     let fluids3: Vec<(u64, record::Fluid3D)> = kept_rows(world, layouts.fluid3d.as_ref())
         .into_iter()
         .filter_map(|(e, v)| {
@@ -73,7 +72,7 @@ pub(super) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let mut mixes = BTreeMap::new();
     for (e, v) in &fluids3 {
         if let Some((lane, mix)) = physics.fluid3d_mix(Entity::from_bits(*e)) {
-            lanes.insert((v.group, lane), v.color);
+            lanes.insert((v.group, lane), rgb(&v.color));
             mixes.insert(*e, (v.group, mix));
         }
     }
@@ -121,7 +120,7 @@ pub(super) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             scene.world.fluids_3d.push(og_render::Fluid3d {
                 particles: Arc::from(Vec::new()),
                 colors: None,
-                color: v.color,
+                color: rgb(&v.color),
                 opacity: v.opacity,
                 radius: (radius * v.draw_scale).max(0.9 * volume.cbrt()),
                 volume,
@@ -147,7 +146,7 @@ pub(super) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         scene.world.fluids_3d.push(og_render::Fluid3d {
             particles: Arc::from(particles),
             colors,
-            color: v.color,
+            color: rgb(&v.color),
             opacity: v.opacity,
             radius: radius * v.draw_scale,
             // The share of the volume each particle stands for: at rest

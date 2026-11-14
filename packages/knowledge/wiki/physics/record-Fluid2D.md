@@ -26,7 +26,7 @@ Token `og.Fluid2D`, registered under the schema name `og.Fluid2D`; its value typ
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
 | `substeps` | `number` | `2` | 1 … 8 | — | — | Simulation steps per tick. |
 | `seed` | `number` | `0` | — | — | — | The seed of the spawn jitter. |
-| `color` | `Vector3` | `{ x: 0.15, y: 0.45, z: 0.95 }` | — | — | — | The surface's linear colour. |
+| `color` | `Color` | `{ r: 0.15, g: 0.45, b: 0.95 }` | — | — | — | The surface's colour. |
 | `opacity` | `number` | `0.9` | 0 … 1 | — | — | The surface's opacity. |
 | `blobScale` | `number` | `1.6` | 0.1 … 4 | — | — | The drawn size of each particle's blob (times radius). |
 | `threshold` | `number` | `0.45` | 0.01 … 4 | — | — | The field value where the surface starts (higher: thinner, separate drops). |
@@ -100,7 +100,7 @@ component Fluid2D {
     max 8
   }
   field seed u32 "The seed of the spawn jitter."
-  field color Vector3 "The surface's linear colour." {
+  field color Color "The surface's colour." {
     default 0.15 0.45 0.95
   }
   field opacity f32 "The surface's opacity." {

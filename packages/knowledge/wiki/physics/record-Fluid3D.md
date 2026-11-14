@@ -35,7 +35,7 @@ Token `og.Fluid3D`, registered under the schema name `og.Fluid3D`; its value typ
 | `emitRadius` | `number` | `0.1` | ≥ 0 | `m` | tunable | The half-size of the cube new particles appear in around the emitter. |
 | `sinkOffset` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The sink's centre, from the entity (world axes). |
 | `sinkSize` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The sink box: particles that enter it are removed (0 0 0: no sink). |
-| `color` | `Vector3` | `{ x: 0.2, y: 0.55, z: 0.9 }` | — | — | — | The fluid's linear colour (what light passing through it keeps). |
+| `color` | `Color` | `{ r: 0.2, g: 0.55, b: 0.9 }` | — | — | — | The fluid's colour (what light passing through it keeps). |
 | `opacity` | `number` | `0.6` | 0 … 1 | — | — | How opaque a metre of it is (0: clear as glass, 1: opaque). |
 | `reflectivity` | `number` | `1` | 0 … 2 | — | — | How much it reflects (scales the Fresnel term). |
 | `refraction` | `number` | `1` | 0 … 4 | — | — | How far refraction bends what is seen through it. |
@@ -140,7 +140,7 @@ component Fluid3D {
   field sinkSize Vector3 "The sink box: particles that enter it are removed (0 0 0: no sink)." {
     unit m
   }
-  field color Vector3 "The fluid's linear colour (what light passing through it keeps)." {
+  field color Color "The fluid's colour (what light passing through it keeps)." {
     default 0.2 0.55 0.9
   }
   field opacity f32 "How opaque a metre of it is (0: clear as glass, 1: opaque)." {
