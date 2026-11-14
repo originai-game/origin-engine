@@ -527,6 +527,22 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         note: "codes become enums: simulation is a Simulation, its saved code the variant's index",
         run: Some(|e| enumerated(e, "og.Fluid3D", 3)),
     },
+    Migration {
+        target: Target::Record,
+        name: "og.Joint",
+        from: 2,
+        to: 3,
+        note: "codes become enums: kind is a JointType and motor a JointMotor, their saved codes the variants' indices",
+        run: Some(|e| enumerated(e, "og.Joint", 3)),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Vehicle",
+        from: 2,
+        to: 3,
+        note: "codes become enums: drive is a VehicleDrive and model a VehicleModel, their saved codes the variants' indices",
+        run: Some(|e| enumerated(e, "og.Vehicle", 3)),
+    },
 ];
 
 /// A record's fields under the name each had before and the name it has
@@ -681,6 +697,25 @@ const ENUMS: &[Enumerated] = &[
         ],
     ),
     ("og.Fluid3D", 3, &[("simulation", SIMULATION)]),
+    (
+        "og.Joint",
+        3,
+        &[
+            (
+                "kind",
+                &["fixed", "revolute", "prismatic", "spring", "rope", "ball"],
+            ),
+            ("motor", &["none", "velocity", "position"]),
+        ],
+    ),
+    (
+        "og.Vehicle",
+        3,
+        &[
+            ("drive", &["rear", "front", "all"]),
+            ("model", &["arcade", "drivetrain"]),
+        ],
+    ),
 ];
 
 /// A record whose code fields became enums with its version `to`

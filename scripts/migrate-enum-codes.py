@@ -19,6 +19,12 @@ COLLIDER = ["box", "sphere", "capsule", "cylinder", "convex", "trimesh", "height
 CONSTANTS = {f"SHAPE_{name.upper()}": name for name in COLLIDER}
 CONSTANTS |= {"SOFT_SPHERE": "sphere", "SOFT_BOX": "box", "SOFT_MESH": "mesh"}
 CONSTANTS |= {"SIMULATION_GAMEPLAY": "gameplay", "SIMULATION_VISUAL": "visual"}
+# og.Joint.kind (JointType) and motor (JointMotor), og.Vehicle.drive
+# (VehicleDrive) and model (VehicleModel).
+CONSTANTS |= {f"JOINT_{name.upper()}": name for name in ["fixed", "revolute", "prismatic", "spring", "rope", "ball"]}
+CONSTANTS |= {f"MOTOR_{name.upper()}": name for name in ["none", "velocity", "position"]}
+CONSTANTS |= {f"DRIVE_{name.upper()}": name for name in ["rear", "front", "all"]}
+CONSTANTS |= {"VEHICLE_ARCADE": "arcade", "VEHICLE_DRIVETRAIN": "drivetrain"}
 
 # Where a collider's shape is written as its code.
 NUMERIC = [

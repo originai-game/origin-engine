@@ -14,7 +14,7 @@ Token `og.Joint`, registered under the schema name `og.Joint`; its value type is
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `kind` | `number` | `0` | 0 … 5 | — | label “Kind” | JOINT_FIXED 0, JOINT_REVOLUTE 1 (hinge), JOINT_PRISMATIC 2 (slider), JOINT_SPRING 3, JOINT_ROPE 4, JOINT_BALL 5. |
+| `kind` | `JointType` | `"fixed"` | — | — | label “Kind” | fixed, revolute (a hinge), prismatic (a slider), spring, rope or ball. |
 | `body` | `Entity` | `0` | — | — | — | The first body; 0 is this entity. |
 | `other` | `Entity` | `0` | — | — | — | The second body; 0 joins the first one to the world at `otherAnchor`. |
 | `anchor` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `none` | Where the joint sits on the first body, in its frame. |
@@ -23,7 +23,7 @@ Token `og.Joint`, registered under the schema name `og.Joint`; its value type is
 | `limits` | `boolean` | `false` | — | — | — | Whether `min`..`max` bound the hinge angle (rad) or the slide (m). |
 | `min` | `number` | `0` | — | — | — | The lower limit: radians for a hinge, metres for a slider. |
 | `max` | `number` | `0` | — | — | — | The upper limit. |
-| `motor` | `number` | `0` | 0 … 2 | — | — | MOTOR_NONE 0, MOTOR_VELOCITY 1 (drive at motorTarget speed), MOTOR_POSITION 2 (spring to motorTarget). |
+| `motor` | `JointMotor` | `"none"` | — | — | — | none, velocity (drive at motorTarget speed) or position (spring to motorTarget). |
 | `motorTarget` | `number` | `0` | — | — | tunable | The motor's target speed (rad/s, m/s) or angle or position (rad, m). |
 | `motorStiffness` | `number` | `50` | ≥ 0 | — | tunable | A position motor's stiffness; a velocity motor's strength. |
 | `motorDamping` | `number` | `5` | ≥ 0 | — | tunable | A position motor's damping. |
@@ -42,9 +42,7 @@ Token `og.Joint`, registered under the schema name `og.Joint`; its value type is
 component Joint {
   doc "A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are."
   guide "physics §1"
-  field kind u32 "JOINT_FIXED 0, JOINT_REVOLUTE 1 (hinge), JOINT_PRISMATIC 2 (slider), JOINT_SPRING 3, JOINT_ROPE 4, JOINT_BALL 5." {
-    min 0
-    max 5
+  field kind JointType "fixed, revolute (a hinge), prismatic (a slider), spring, rope or ball." {
     label "Kind"
   }
   field body Entity "The first body; 0 is this entity."
@@ -63,9 +61,7 @@ component Joint {
   field limits bool "Whether `min`..`max` bound the hinge angle (rad) or the slide (m)."
   field min f32 "The lower limit: radians for a hinge, metres for a slider."
   field max f32 "The upper limit."
-  field motor u32 "MOTOR_NONE 0, MOTOR_VELOCITY 1 (drive at motorTarget speed), MOTOR_POSITION 2 (spring to motorTarget)." {
-    min 0
-    max 2
+  field motor JointMotor "none, velocity (drive at motorTarget speed) or position (spring to motorTarget)." {
   }
   field motorTarget f32 "The motor's target speed (rad/s, m/s) or angle or position (rad, m)." {
     tunable true
@@ -124,4 +120,4 @@ component Joint {
 }
 ```
 
-<sub>Module `physics` line 358</sub>
+<sub>Module `physics` line 381</sub>

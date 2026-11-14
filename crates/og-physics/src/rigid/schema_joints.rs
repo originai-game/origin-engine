@@ -31,10 +31,13 @@ pub const MOTOR_POSITION: u32 = 2;
 /// second anchor is a world point. A joint whose bodies are not both
 /// `og.RigidBody` entities does nothing until they are.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Joint", version = 2)]
+#[reflect(name = "og.Joint", version = 3)]
 pub struct Joint {
-    /// JOINT_FIXED 0, JOINT_REVOLUTE 1 (hinge), JOINT_PRISMATIC 2 (slider), JOINT_SPRING 3, JOINT_ROPE 4, JOINT_BALL 5.
-    #[reflect(min = 0, max = 5, label = "Kind")]
+    /// fixed, revolute (a hinge), prismatic (a slider), spring, rope or ball: the `JOINT_*` codes.
+    #[reflect(
+        variants = ["fixed", "revolute", "prismatic", "spring", "rope", "ball"],
+        label = "Kind"
+    )]
     pub kind: u32,
     /// The first body; 0 is this entity.
     pub body: u64,
@@ -55,8 +58,8 @@ pub struct Joint {
     pub min: f32,
     /// The upper limit.
     pub max: f32,
-    /// MOTOR_NONE 0, MOTOR_VELOCITY 1 (drive at motorTarget speed), MOTOR_POSITION 2 (spring to motorTarget).
-    #[reflect(min = 0, max = 2)]
+    /// none, velocity (drive at motorTarget speed) or position (spring to motorTarget): the `MOTOR_*` codes.
+    #[reflect(variants = ["none", "velocity", "position"])]
     pub motor: u32,
     /// The motor's target speed (rad/s, m/s) or angle or position (rad, m).
     #[reflect(name = "motorTarget", tunable)]

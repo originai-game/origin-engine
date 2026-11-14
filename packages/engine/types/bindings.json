@@ -339,6 +339,30 @@
       "value": "ForceFieldKind"
     },
     {
+      "name": "JointType",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "JointType"
+    },
+    {
+      "name": "JointMotor",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "JointMotor"
+    },
+    {
+      "name": "VehicleDrive",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "VehicleDrive"
+    },
+    {
+      "name": "VehicleModel",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "VehicleModel"
+    },
+    {
       "name": "Simulation",
       "array": "Uint32Array",
       "stride": 1,
@@ -2859,8 +2883,8 @@
       "fields": [
         {
           "name": "kind",
-          "column": "u32",
-          "default": 0
+          "column": "JointType",
+          "default": "fixed"
         },
         {
           "name": "body",
@@ -2916,8 +2940,8 @@
         },
         {
           "name": "motor",
-          "column": "u32",
-          "default": 0
+          "column": "JointMotor",
+          "default": "none"
         },
         {
           "name": "motorTarget",
@@ -3495,8 +3519,8 @@
         },
         {
           "name": "drive",
-          "column": "u32",
-          "default": 0
+          "column": "VehicleDrive",
+          "default": "rear"
         },
         {
           "name": "wheelMass",
@@ -3530,8 +3554,8 @@
         },
         {
           "name": "model",
-          "column": "u32",
-          "default": 0
+          "column": "VehicleModel",
+          "default": "arcade"
         },
         {
           "name": "handbrake",

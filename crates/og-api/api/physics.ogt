@@ -345,22 +345,43 @@ module physics {
     field sensor u32 "0 for two solids; an overlap with a sensor otherwise: 1 a is the sensor, 2 b is, 3 both are."
   }
 
-  const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
-  const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
-  const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
-  const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
-  const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
-  const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
-  const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
-  const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
-  const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
+  enum JointType {
+    doc "How a joint holds its two bodies: Joint.kind."
+    guide "physics §1"
+    variant fixed "The two bodies move as one."
+    variant revolute "A hinge about `axis` (2D: about z), with optional limits and a motor."
+    variant prismatic "A slider along `axis`, with optional limits and a motor."
+    variant spring "A damped spring pulling the anchors to `restLength` apart."
+    variant rope "A rope: the anchors stay at most `length` apart, free inside it."
+    variant ball "A ball and socket (3D; the 2D profile treats it as a hinge)."
+  }
+
+  column JointType {
+    doc "A JointType field: the variant's index."
+    array Uint32Array
+    stride 1
+    value JointType
+  }
+
+  enum JointMotor {
+    doc "What drives a joint: Joint.motor."
+    guide "physics §1"
+    variant none "No motor."
+    variant velocity "Drive towards `motorTarget` speed (rad/s or m/s)."
+    variant position "Spring towards `motorTarget` angle or position (a servo)."
+  }
+
+  column JointMotor {
+    doc "A JointMotor field: the variant's index."
+    array Uint32Array
+    stride 1
+    value JointMotor
+  }
 
   component Joint {
     doc "A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are."
     guide "physics §1"
-    field kind u32 "JOINT_FIXED 0, JOINT_REVOLUTE 1 (hinge), JOINT_PRISMATIC 2 (slider), JOINT_SPRING 3, JOINT_ROPE 4, JOINT_BALL 5." {
-      min 0
-      max 5
+    field kind JointType "fixed, revolute (a hinge), prismatic (a slider), spring, rope or ball." {
       label "Kind"
     }
     field body Entity "The first body; 0 is this entity."
@@ -379,9 +400,7 @@ module physics {
     field limits bool "Whether `min`..`max` bound the hinge angle (rad) or the slide (m)."
     field min f32 "The lower limit: radians for a hinge, metres for a slider."
     field max f32 "The upper limit."
-    field motor u32 "MOTOR_NONE 0, MOTOR_VELOCITY 1 (drive at motorTarget speed), MOTOR_POSITION 2 (spring to motorTarget)." {
-      min 0
-      max 2
+    field motor JointMotor "none, velocity (drive at motorTarget speed) or position (spring to motorTarget)." {
     }
     field motorTarget f32 "The motor's target speed (rad/s, m/s) or angle or position (rad, m)." {
       tunable true

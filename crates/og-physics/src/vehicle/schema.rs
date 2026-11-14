@@ -29,7 +29,7 @@ pub const VEHICLE_DRIVETRAIN: u32 = 1;
 /// layers and mask), so cars on layers that do not collide pass through
 /// each other.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Vehicle", version = 2)]
+#[reflect(name = "og.Vehicle", version = 3)]
 pub struct Vehicle {
     /// The accelerator, -1 (reverse) to 1. Set it every tick.
     #[reflect(min = -1, max = 1)]
@@ -92,8 +92,8 @@ pub struct Vehicle {
         tunable
     )]
     pub max_steer: f32,
-    /// DRIVE_REAR 0, DRIVE_FRONT 1, DRIVE_ALL 2.
-    #[reflect(min = 0, max = 2)]
+    /// Which wheels drive: rear, front or all (the `DRIVE_*` codes).
+    #[reflect(variants = ["rear", "front", "all"])]
     pub drive: u32,
     /// The wheels' mass (2D: the wheel bodies; 3D ignores it).
     #[reflect(name = "wheelMass", min = 0.01, unit = "kg", default = 20, tunable)]
@@ -109,8 +109,8 @@ pub struct Vehicle {
     /// Written: the largest slip of its wheels (og.physics.vehicleWheels' `slip`): 0 every tyre grips, towards 1 one slides (3D; 0 in 2D).
     #[reflect(min = 0, max = 1)]
     pub slip: f32,
-    /// VEHICLE_ARCADE 0 (engineForce, faded out towards maxSpeed) or VEHICLE_DRIVETRAIN 1 (an engine with a torque curve through a gearbox).
-    #[reflect(min = 0, max = 1)]
+    /// arcade (engineForce, faded out towards maxSpeed) or drivetrain (an engine with a torque curve through a gearbox): the `VEHICLE_*` codes.
+    #[reflect(variants = ["arcade", "drivetrain"])]
     #[serde(skip)]
     pub model: u32,
     /// The handbrake, 0 to 1: brakes the handbrake wheels (the rear pair, or the og.VehicleWheel children flagged `handbrake`) with brakeForce, takes their drive and loosens their grip.
