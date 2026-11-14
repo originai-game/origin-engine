@@ -3,6 +3,24 @@
 // scatter_common.wgsl (group 2: the impostor's sphere and grid) and
 // material.wgsl (group 1: the atlas as base_color_tex and normal_tex).
 
+// Whether the atlases hold the lower hemisphere's frames too, in their
+// right half (impostor.rs `Impostor::below`).
+fn imp_below() -> bool { return scatter.impostor_light.w > 0.5; }
+
+// The direction the card is drawn for when the eye (or the light) stands
+// along `v`: `v` itself where the atlases hold frames around it; without
+// the lower hemisphere's a view from below is the view from the horizon
+// above it, on a card standing upright. (Facing the eye there, the card
+// showed the horizon's frames reprojected 20 degrees and more along
+// their depth, which tore the model apart: its trunk's foot and the
+// crown's edge drew as loose pieces.)
+fn imp_view(v: vec3<f32>) -> vec3<f32> {
+  if (imp_below() || v.y >= 0.0) { return v; }
+  let level = vec3<f32>(v.x, 0.0, v.z);
+  if (dot(level, level) < 1e-8) { return vec3<f32>(0.0, 1.0, 0.0); }
+  return normalize(level);
+}
+
 // impostor.rs `hemi_oct_encode`: +y at the centre, the horizon on the
 // border; below the horizon, the horizon above it.
 fn imp_oct_encode(d: vec3<f32>) -> vec2<f32> {
@@ -20,11 +38,35 @@ fn imp_oct_decode(p: vec2<f32>) -> vec3<f32> {
 
 fn imp_grid() -> u32 { return max(u32(scatter.impostor_grid.x), 2u); }
 
-// Frame `f` (column + row × grid) looks from this direction.
+// Frame `f` (column + row × grid; from grid × grid on, the lower
+// hemisphere's, each the frame of the upper one mirrored in y) looks from
+// this direction.
 fn imp_frame_dir(f: u32) -> vec3<f32> {
   let g = imp_grid();
   let n = f32(g - 1u);
-  return imp_oct_decode(vec2<f32>(f32(f % g), f32(f / g)) / n * 2.0 - 1.0);
+  let k = f % (g * g);
+  let d = imp_oct_decode(vec2<f32>(f32(k % g), f32(k / g)) / n * 2.0 - 1.0);
+  return vec3<f32>(d.x, select(d.y, -d.y, f >= g * g), d.z);
+}
+
+// The grid cell around the direction `d` (impostor.rs `blend_frames`): its
+// first frame, and `d`'s place in it. A direction below the horizon is in
+// the lower hemisphere's frames where the atlases hold them.
+struct ImpCell {
+  base: u32,
+  at: vec2<f32>,
+};
+
+fn imp_cell(d: vec3<f32>) -> ImpCell {
+  let g = imp_grid();
+  let n = f32(g - 1u);
+  let lower = imp_below() && d.y < 0.0;
+  let at = clamp((imp_oct_encode(vec3<f32>(d.x, abs(d.y), d.z)) * 0.5 + 0.5) * n, vec2<f32>(0.0), vec2<f32>(n));
+  let cell = min(floor(at), vec2<f32>(n - 1.0));
+  var o: ImpCell;
+  o.base = u32(cell.x) + u32(cell.y) * g + select(0u, g * g, lower);
+  o.at = at - cell;
+  return o;
 }
 
 // impostor.rs `frame_basis`: the right of a view from `d` (up = cross(d, right)).
@@ -95,21 +137,31 @@ fn imp_frame_par(v: vec3<f32>, f: u32) -> vec2<f32> {
   return imp_frame_uv(v, f) / max(dot(v, imp_frame_dir(f)), 0.2);
 }
 
-// The card's corner `vertex` (0..6, two triangles) of the copy `model`
-// facing `toward` (a point, or a direction when `is_dir`).
+// The card's strips up its height (scatter.rs IMPOSTOR_CARD_VERTICES: six
+// vertices each). The wind leans a model by its height squared
+// (scatter_sway); one quad's two heights drew that as a straight line, so
+// a trunk's lower half stood twice and more too far downwind and its foot
+// slid with the gusts, a second image beside its mesh through the
+// crossfade.
+const IMP_ROWS: u32 = 4u;
+
+// The card's corner `vertex` (0..6 × IMP_ROWS, two triangles a strip) of
+// the copy `model` facing `toward` (a point, or a direction when `is_dir`).
 fn imp_card(model: mat4x4<f32>, vertex: u32, toward: vec3<f32>, is_dir: bool) -> ImpCard {
   var corners = array<vec2<f32>, 6>(
     vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
     vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0),
   );
-  let q = corners[vertex % 6u];
+  let corner = corners[vertex % 6u];
+  let strip = f32(min(vertex / 6u, IMP_ROWS - 1u));
+  let q = vec2<f32>(corner.x, (strip + corner.y * 0.5 + 0.5) / f32(IMP_ROWS) * 2.0 - 1.0);
   let m3 = mat3x3<f32>(model[0].xyz, model[1].xyz, model[2].xyz);
   let c = scatter.impostor.xyz;
   let radius = scatter.impostor.w;
   let centre = mul_point(model, vec4<f32>(c, 1.0)).xyz;
   let to_eye = select(toward - centre, toward, is_dir);
   // The eye's direction in the model's space (its scale divides out).
-  let v = normalize(transpose(m3) * to_eye);
+  let v = imp_view(normalize(transpose(m3) * to_eye));
   let r = imp_right(v);
   let u = cross(v, r);
   let p = (r * q.x + u * q.y) * radius;
@@ -118,11 +170,9 @@ fn imp_card(model: mat4x4<f32>, vertex: u32, toward: vec3<f32>, is_dir: bool) ->
   o.local = c + p;
   // The three frames around v (impostor.rs `blend_frames`).
   let g = imp_grid();
-  let n = f32(g - 1u);
-  let at = clamp((imp_oct_encode(v) * 0.5 + 0.5) * n, vec2<f32>(0.0), vec2<f32>(n));
-  let cell = min(floor(at), vec2<f32>(n - 1.0));
-  let f = at - cell;
-  let base = u32(cell.x) + u32(cell.y) * g;
+  let cell = imp_cell(v);
+  let f = cell.at;
+  let base = cell.base;
   if (f.x + f.y <= 1.0) {
     o.frames = vec3<u32>(base, base + 1u, base + g);
     o.weights = vec3<f32>(1.0 - f.x - f.y, f.x, f.y);
@@ -146,10 +196,14 @@ fn imp_card(model: mat4x4<f32>, vertex: u32, toward: vec3<f32>, is_dir: bool) ->
 // the frame's square; `w` is zeroed outside it.
 fn imp_atlas(f: u32, uv: vec2<f32>) -> vec2<f32> {
   let g = imp_grid();
+  // Frames across and down: the lower hemisphere's stand right of the
+  // upper one's.
+  let cells = vec2<f32>(f32(select(g, 2u * g, imp_below())), f32(g));
   let size = vec2<f32>(textureDimensions(base_color_tex, 0));
-  let half = 0.5 * f32(g) / size;
+  let half = 0.5 * cells / size;
   let inside = clamp(vec2<f32>(uv.x * 0.5 + 0.5, 0.5 - uv.y * 0.5), half, vec2<f32>(1.0) - half);
-  return (vec2<f32>(f32(f % g), f32(f / g)) + inside) / f32(g);
+  let k = f % (g * g);
+  return (vec2<f32>(f32(k % g + (f / (g * g)) * g), f32(k / g)) + inside) / cells;
 }
 
 fn imp_inside(uv: vec2<f32>) -> f32 {
@@ -205,9 +259,9 @@ fn imp_fade(at: vec3<f32>) -> vec2<f32> {
 // How the wind moves the card's vertex `card` of the copy `i` scaled by
 // `size`: as scatter_sway moves its mesh's point at the same height in the
 // model's space, so the card leans and sways with the mesh it stands for
-// through the crossfade (a model impostor: still, its sway is the mesh's).
+// through the crossfade. A model impostor's the same, by og.Model.sway
+// (scatter.wind.z; 0: still).
 fn imp_sway(card: ImpCard, i: ScatterInstance, size: f32, previous: bool) -> vec3<f32> {
-  if (scatter.impostor_grid.y <= 0.0) { return vec3<f32>(0.0); }
   return scatter_sway(card.local, i.m3, length(i.m1) * size, previous);
 }
 
@@ -264,7 +318,7 @@ var<private> imp_level: f32;
 // Sets imp_level from frame coordinates `uv` ([-1, 1]² a frame) before
 // any sample; called first in a fragment stage, in uniform control flow.
 fn imp_set_level(uv: vec2<f32>) {
-  let texels = f32(textureDimensions(base_color_tex, 0).x) / (2.0 * f32(imp_grid()));
+  let texels = f32(textureDimensions(base_color_tex, 0).y) / (2.0 * f32(imp_grid()));
   let d = max(length(dpdxFine(uv)), length(dpdyFine(uv))) * texels;
   imp_level = max(log2(max(d, 1e-6)), 0.0);
 }

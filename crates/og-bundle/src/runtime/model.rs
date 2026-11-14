@@ -278,6 +278,9 @@ pub struct CookedImpostor {
     pub radius: f32,
     /// In the model's units, as a level's error.
     pub error: f32,
+    /// Whether the atlases hold the lower hemisphere's frames
+    /// (`impostorBelow`).
+    pub below: bool,
 }
 
 /// What [`CookedModel::add_to`] added: per part the mesh, the material and
@@ -776,6 +779,7 @@ impl CookedModel {
                 center: Vec3::new(i.center_x, i.center_y, i.center_z),
                 radius: i.radius,
                 error: i.error,
+                below: i.below != 0,
             }),
         };
         Ok(CookedModel {

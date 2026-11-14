@@ -875,7 +875,12 @@ fn plan_model<'a>(
         .and_then(|m| m.impostor)
         .map(|b| b.resolved(g))
     {
-        let size = [b.grid.to_le_bytes(), b.frame.to_le_bytes()].concat();
+        let size = [
+            b.grid.to_le_bytes(),
+            b.frame.to_le_bytes(),
+            u32::from(b.below).to_le_bytes(),
+        ]
+        .concat();
         for (kind, id) in impostor_ids(&s.rel).into_iter().enumerate() {
             // `6`: the atlas's layout version (2, the
             // hemi-octahedron; 3, 16 samples a texel, filtered

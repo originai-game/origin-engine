@@ -526,12 +526,20 @@ pub fn cook(
             center_z: center.z,
             radius,
             error: 2.0 * radius / b.frame as f32,
+            below: u32::from(b.below),
         });
         notes.push(format!(
-            "impostor: {g}×{g} frames of {f} px ({s}×{s} atlas), one texel {e:.3} units",
+            "impostor: {c}×{g} frames of {f} px ({w}×{s} atlas{below}), one texel {e:.3} units",
+            c = b.columns(),
             g = b.grid,
             f = b.frame,
+            w = b.columns() * b.frame,
             s = b.grid * b.frame,
+            below = if b.below {
+                ", the right half from below"
+            } else {
+                ""
+            },
             e = 2.0 * radius / b.frame as f32
         ));
     }

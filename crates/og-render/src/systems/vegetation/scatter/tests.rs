@@ -261,3 +261,23 @@ fn chunk_keys_compare_by_value() {
     };
     assert!(!chunks.contains_key(&gpu), "placed the other way");
 }
+
+/// Ways this could fail: the card's strips changed in one place only, so
+/// a GPU-placed or GPU-culled chunk draws a part of each card (or reads
+/// vertices past it) while the CPU path draws it whole.
+#[test]
+fn every_path_draws_the_cards_strips() {
+    let rows = IMPOSTOR_CARD_VERTICES / 6;
+    assert!(
+        include_str!("../../../../shaders/impostor_common.wgsl")
+            .contains(&format!("const IMP_ROWS: u32 = {rows}u;"))
+    );
+    assert!(
+        include_str!("../../../../shaders/scatter_place.wgsl")
+            .contains(&format!("bitcast<f32>({IMPOSTOR_CARD_VERTICES}u), total"))
+    );
+    assert!(
+        include_str!("../../../../shaders/scatter_cull.wgsl")
+            .contains(&format!("draws[row + 15u] = {IMPOSTOR_CARD_VERTICES}u;"))
+    );
+}

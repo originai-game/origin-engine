@@ -42,7 +42,11 @@ fn vs_impostor_shadow(@builtin(vertex_index) vertex: u32, i: ScatterInstance) ->
   o.par2 = card.par2;
   o.frames = card.frames;
   o.weights = card.weights;
-  o.toward = normalize(select(toward, toward - centre, local) + vec3<f32>(0.0, 1e-9, 0.0));
+  // The card's own view of the light (imp_view), in the world.
+  let m3 = mat3x3<f32>(normalize(model[0].xyz), normalize(model[1].xyz), normalize(model[2].xyz));
+  let to_light = normalize(select(toward, toward - centre, local) + vec3<f32>(0.0, 1e-9, 0.0));
+  let seen = transpose(m3) * to_light;
+  o.toward = to_light + m3 * (imp_view(seen) - seen);
   o.extent = card.extent;
   o.pd = card.pd;
   o.vd = card.vd;

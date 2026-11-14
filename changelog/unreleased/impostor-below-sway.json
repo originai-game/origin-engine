@@ -1,0 +1,19 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "cook: model { impostorBelow }",
+      "summary": "`impostorBelow true` beside `impostor true` bakes the impostor's views from under the model's horizon too (the atlas twice as wide), for a model seen from below: on a cliff over the camera, hanging, flying."
+    },
+    {
+      "member": "og.Model.sway",
+      "summary": "A swaying model drawn as its impostor sways too, in the wind every vegetation tier reads; its card was still."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "rendering: impostors",
+      "summary": "An impostor seen from under its horizon draws whole, as the view from the horizon on an upright card; its trunk's foot and crown's edge drew as loose pieces. A swaying card bends from its foot as its mesh does; it leant as one straight quad, its foot sliding downwind."
+    }
+  ]
+}

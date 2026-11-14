@@ -97,7 +97,15 @@ fn imp_surface(in: ImpostorOut) -> ImpSurface {
   // stage faces it to the centre): at a few metres they part by several
   // degrees, which tilted every sample's normal towards the rim.
   let toward = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
-  let ray = transpose(m3) * toward;
+  // Turned as the card is (imp_view of its centre's view): not at all
+  // where the atlases hold frames around the eye, else from the eye to
+  // the horizon above it.
+  let eye = transpose(m3) * toward;
+  let centre_eye = normalize(transpose(m3) * select(frame.view_pos.xyz - in.centre, -frame.view_forward.xyz, frame.view_pos.w > 0.5));
+  let turn = imp_view(centre_eye) - centre_eye;
+  var ray = eye;
+  if (any(turn != vec3<f32>(0.0))) { ray = normalize(eye + turn); }
+  let along = toward + m3 * (ray - eye);
   let dd = imp_depths(transpose(m3) * (in.rest - in.centre) / in.extent, ray, in.frames);
   let par01 = vec4<f32>(imp_frame_par(ray, in.frames.x), imp_frame_par(ray, in.frames.y));
   let uvs = imp_uvs(in.uv01, in.uv2, par01, imp_frame_par(ray, in.frames.z), in.frames, dd.pd);
@@ -114,7 +122,7 @@ fn imp_surface(in: ImpostorOut) -> ImpSurface {
   s.albedo = material.base_color.rgb * rgb / total;
   s.normal = normalize(m3 * nd.xyz + vec3<f32>(0.0, 1e-6, 0.0));
   s.agree = clamp(length(nd.xyz) / total, 0.0, 1.0);
-  s.world = in.world + toward * imp_blended_step(c, dd) * in.extent;
+  s.world = in.world + along * imp_blended_step(c, dd) * in.extent;
   return s;
 }
 

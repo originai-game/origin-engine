@@ -386,7 +386,7 @@ impl ScatterGpu {
             f32::from(u8::from(msaa)),
             f32::from(u8::from(i.material_atlas)),
         ];
-        self.impostor_light = light.extend(0.0).to_array();
+        self.impostor_light = light.extend(f32::from(u8::from(i.below))).to_array();
     }
 }
 
@@ -535,7 +535,16 @@ pub(crate) struct ScatterBatch {
     impostor: Option<usize>,
 }
 
-/// The model impostors of one atlas drawn this frame
+/// The vertices of an impostor's card: four strips up its height, two
+/// triangles each (impostor_common.wgsl `IMP_ROWS`; scatter_place.wgsl and
+/// scatter_cull.wgsl write the same count into their cards' draws).
+pub(crate) const IMPOSTOR_CARD_VERTICES: u32 = 24;
+
+/// What one batch of model impostors shares: the atlas, and the bits of
+/// their sway and top ([`crate::ImpostorDraw`]; 0 and 0: still).
+pub(crate) type ImpostorKey = (crate::Impostor, u32, u32);
+
+/// The model impostors of one atlas and sway drawn this frame
 /// ([`crate::RenderScene::impostors`]): a range of the frame's impostor
 /// instances, with their bounds.
 pub(crate) struct ImpostorBatch {

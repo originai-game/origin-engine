@@ -41,19 +41,21 @@ mod tests {
             assert!(frame_direction(0, k, 8).y.abs() < 1e-6);
         }
         // A level view blends frames on the horizon and above it only.
-        for &((i, j), w) in &blend_frames(Vec3::new(0.3, 0.02, 0.95).normalize(), 8) {
-            assert!(w < 1e-4 || frame_direction(i, j, 8).y >= -1e-6);
+        for below in [false, true] {
+            for &((i, j), w) in &blend_frames(Vec3::new(0.3, 0.02, 0.95).normalize(), 8, below) {
+                assert!(w < 1e-4 || (i < 8 && frame_direction(i, j, 8).y >= -1e-6));
+            }
         }
         // A direction on a frame weighs that frame alone.
         let d = frame_direction(5, 2, 8);
-        let w = blend_frames(d, 8);
+        let w = blend_frames(d, 8, false);
         let on: Vec<_> = w.iter().filter(|(_, x)| *x > 1e-4).collect();
         assert_eq!(on.len(), 1);
         assert_eq!(on[0].0, (5, 2));
         // Between frames: three of them, weights summing to 1, the
         // nearest weighing most; their directions blend to near d.
         let d = Vec3::new(0.4, 0.3, -0.6).normalize();
-        let w = blend_frames(d, 8);
+        let w = blend_frames(d, 8, false);
         assert!((w.iter().map(|x| x.1).sum::<f32>() - 1.0).abs() < 1e-5);
         let mix: Vec3 = w
             .iter()
@@ -70,6 +72,36 @@ mod tests {
             })
             .unwrap();
         assert_eq!(best, nearest);
+    }
+
+    /// Ways this could fail: the lower half's frames not the upper one's
+    /// mirrored (a view from below drawn from above), a view from below
+    /// blending a frame from above the horizon or the reverse (the
+    /// undersides showing in a level view), the weights not the mirror
+    /// view's, or a view from below without the lower half leaving the
+    /// upper one's frames.
+    #[test]
+    fn the_lower_hemispheres_frames_mirror_the_upper_ones() {
+        for (i, j) in [(0, 0), (3, 3), (5, 2), (7, 7)] {
+            let (up, down) = (frame_direction(i, j, 8), frame_direction(i + 8, j, 8));
+            assert_eq!(down, Vec3::new(up.x, -up.y, up.z));
+        }
+        let d = Vec3::new(0.4, -0.3, -0.6).normalize();
+        let mirror = Vec3::new(d.x, -d.y, d.z);
+        let (lower, upper) = (blend_frames(d, 8, true), blend_frames(mirror, 8, false));
+        for (&((i, j), w), &((ui, uj), uw)) in lower.iter().zip(&upper) {
+            assert_eq!((i, j, w), (ui + 8, uj, uw));
+            assert!(w < 1e-4 || frame_direction(i, j, 8).y <= 1e-6);
+        }
+        let mix: Vec3 = lower
+            .iter()
+            .map(|&((i, j), x)| frame_direction(i, j, 8) * x)
+            .sum();
+        assert!(mix.normalize().dot(d) > 0.98);
+        // Without the lower half: the horizon's frames above the view.
+        for &((i, j), w) in &blend_frames(d, 8, false) {
+            assert!(i < 8 && (w < 1e-4 || frame_direction(i, j, 8).y.abs() < 1e-6));
+        }
     }
 
     #[test]

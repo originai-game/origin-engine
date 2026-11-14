@@ -10,8 +10,8 @@ impl ScatterRenderer {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         scene: &crate::RenderScene,
-        base: ScatterGpu,
-        groups: &[(crate::Impostor, Vec<usize>)],
+        (base, wind_dir, lean_cap): (ScatterGpu, Vec2, f32),
+        groups: &[(ImpostorKey, Vec<usize>)],
         first_slot: usize,
     ) -> Vec<ImpostorBatch> {
         let total: usize = groups.iter().map(|g| g.1.len()).sum();
@@ -36,7 +36,8 @@ impl ScatterRenderer {
             .light
             .direction_to_light
             .normalize_or(Vec3::Y);
-        for (k, (imp, members)) in groups.iter().enumerate() {
+        for (k, ((imp, sway, top), members)) in groups.iter().enumerate() {
+            let (sway, top) = (f32::from_bits(*sway), f32::from_bits(*top));
             let first = transforms.len() as u32;
             let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
             let mut grow = 0.0f32;
@@ -52,13 +53,18 @@ impl ScatterRenderer {
                     .max_element();
                 lo = lo.min(c);
                 hi = hi.max(c);
-                grow = grow.max(imp.radius * s);
+                // Its sphere, and how far the wind moves its top at most.
+                grow = grow.max((imp.radius + lean_cap * sway * top) * s);
                 cast |= d.cast_shadows;
                 transforms.push(crate::instances::gpu_transform(&d.transform));
             }
             let slot = first_slot + k;
             let mut gpu = base;
             gpu.impostor(imp, 0.0, light, self.samples > 1);
+            if sway > 0.0 && lean_cap > 0.0 {
+                gpu.wind = [wind_dir.x, wind_dir.y, sway, 0.0];
+                gpu.wind_shape[1] = top;
+            }
             queue.write_buffer(&self.uniform, slot as u64 * SLOT, bytemuck::bytes_of(&gpu));
             out.push(ImpostorBatch {
                 material: imp.material.index(),
@@ -140,12 +146,19 @@ impl ScatterRenderer {
             .map_or(crate::Grass::default().recovery, |g| g.grass.recovery);
         // `lean_cap`: the most a copy leans this frame (wind_field.rs; its
         // chunks' bounds widen by its tip's reach).
-        // The model impostors by atlas, in the order each first appears.
-        let mut groups: Vec<(crate::Impostor, Vec<usize>)> = Vec::new();
+        // The model impostors by atlas and sway, in the order each first
+        // appears.
+        let mut groups: Vec<(ImpostorKey, Vec<usize>)> = Vec::new();
         for (i, d) in scene.objects.impostors.iter().enumerate() {
-            match groups.iter_mut().find(|g| g.0 == d.impostor) {
+            let swaying = d.sway > 0.0 && d.top > 0.0;
+            let key = (
+                d.impostor,
+                if swaying { d.sway.to_bits() } else { 0 },
+                if swaying { d.top.to_bits() } else { 0 },
+            );
+            match groups.iter_mut().find(|g| g.0 == key) {
                 Some(g) => g.1.push(i),
-                None => groups.push((d.impostor, vec![i])),
+                None => groups.push((key, vec![i])),
             }
         }
         let slots = (scene.world.scatters.len() + groups.len() + card_inputs.len()) as u64;
@@ -162,7 +175,7 @@ impl ScatterRenderer {
             self.group = g;
         }
         // A model impostor is drawn at any distance (the level pick
-        // decides), never faded or swayed.
+        // decides), never faded; a swaying model's takes the wind below.
         let base = ScatterGpu {
             camera: camera.extend(f32::MAX).to_array(),
             fade: [f32::MAX, noise, 0.0, 0.0],
@@ -176,11 +189,15 @@ impl ScatterRenderer {
             trample: [0.0; 4],
             canopy: [0.0; 4],
         };
+        let wind_dir = {
+            let d = wind.map_or(Vec3::X, |w| w.direction);
+            Vec2::new(d.x, d.z).normalize_or(Vec2::X)
+        };
         let impostors = self.prepare_impostors(
             device,
             queue,
             scene,
-            base,
+            (base, wind_dir, lean_cap),
             &groups,
             scene.world.scatters.len(),
         );

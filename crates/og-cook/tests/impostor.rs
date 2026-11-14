@@ -45,6 +45,7 @@ fn impostor_true_bakes_two_atlases_the_model_names() {
     assert_eq!(i.albedo, "models/dropship.glb#impostor");
     assert_eq!(i.normal, "models/dropship.glb#impostor-normal");
     assert_eq!((i.grid, i.frame), (4, 64));
+    assert!(!i.below);
     let center = (model.min + model.max) * 0.5;
     let radius = ((model.max - model.min) * 0.5).length();
     assert!((i.center - center).length() < 1e-5 && (i.radius - radius).abs() < 1e-5);
@@ -69,6 +70,29 @@ fn impostor_true_bakes_two_atlases_the_model_names() {
     assert!(bundle.output("models/dropship.glb#impostor").is_err());
 }
 
+/// Ways this could fail: `impostorBelow` not read, or not carried to the
+/// model's row (the renderer then reads a twice as wide atlas as a square
+/// one: every frame squeezed).
+#[test]
+fn impostor_below_is_carried_to_the_models_row() {
+    let (root, ok) = project(
+        "og-cook-impostor-below",
+        "  impostor true\n  impostorGrid 4\n  impostorSize 64\n  impostorBelow true",
+    );
+    assert!(ok);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let model = bundle.load_model("models/dropship.glb").unwrap();
+    let i = model.impostor.clone().expect("an impostor row");
+    assert!(i.below);
+    assert_eq!((i.grid, i.frame), (4, 64));
+    let atlas = bundle
+        .load_texture(&i.albedo)
+        .unwrap()
+        .to_texture_data()
+        .unwrap();
+    assert_eq!((atlas.width, atlas.height), (512, 256));
+}
+
 #[test]
 fn impostor_sizes_out_of_range_are_refused() {
     for (k, bad) in [
@@ -76,6 +100,9 @@ fn impostor_sizes_out_of_range_are_refused() {
         "  impostor true\n  impostorGrid 1",
         "  impostor true\n  impostorSize 1024",
         "  impostor true\n  impostorGrid 32\n  impostorSize 256",
+        "  impostorBelow true",
+        "  impostor true\n  impostorBelow maybe",
+        "  impostor true\n  impostorGrid 16\n  impostorSize 256\n  impostorBelow true",
         "  impostor sometimes",
     ]
     .into_iter()

@@ -42,9 +42,9 @@ pub struct MeshOptions {
     /// for every asset that does not opt out; `None` conforms nothing.
     pub conform: Option<conform::mesh::Conform>,
     /// Bake the model's octahedral impostor (`model { impostor true
-    /// impostorGrid 8 impostorSize 128 }`): two atlases, `<id>#impostor`
-    /// and `<id>#impostor-normal`, drawn as the model's last level far
-    /// away. Off by default.
+    /// impostorGrid 8 impostorSize 128 impostorBelow false }`): two
+    /// atlases, `<id>#impostor` and `<id>#impostor-normal`, drawn as the
+    /// model's last level far away. Off by default.
     pub impostor: Option<model::ImpostorBake>,
 }
 
@@ -166,14 +166,34 @@ impl MeshOptions {
                 _ => bake.frame = v as u32,
             }
         }
+        if let Some(e) = b.get("impostorBelow") {
+            let on = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
+                format!(
+                    "line {}: impostorBelow takes true (bake the impostor's frames from below the horizon too, for a model seen from under it: the atlases twice as wide) or false (the default)",
+                    e.line
+                )
+            })?;
+            let Some(bake) = o.impostor.as_mut() else {
+                return Err(format!(
+                    "line {}: impostorBelow shapes the impostor; add `impostor true`",
+                    e.line
+                ));
+            };
+            bake.below = on;
+        }
         if let Some(bake) = o.impostor
-            && bake.grid * bake.frame > 4096
+            && bake.columns() * bake.frame > 4096
         {
             return Err(format!(
-                "impostorGrid {} × impostorSize {} makes an atlas {} pixels wide, past 4096",
+                "impostorGrid {} × impostorSize {}{} makes an atlas {} pixels wide, past 4096",
                 bake.grid,
                 bake.frame,
-                bake.grid * bake.frame
+                if bake.below {
+                    " with impostorBelow (twice the frames across)"
+                } else {
+                    ""
+                },
+                bake.columns() * bake.frame
             ));
         }
         if let Some(e) = b.get("collider") {

@@ -295,6 +295,8 @@ pub(super) fn models(
                 impostor,
                 transform: m,
                 cast_shadows: look.cast,
+                sway,
+                top: rs.wind.tops.get(&asset).copied().unwrap_or(0.0),
             });
             continue;
         }

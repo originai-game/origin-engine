@@ -366,6 +366,7 @@ pub(crate) fn insert_model(
                             center: i.center,
                             radius: i.radius,
                             material_atlas: atlas.is_some(),
+                            below: i.below,
                         },
                         i.error,
                     ))

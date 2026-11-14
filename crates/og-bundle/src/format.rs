@@ -57,7 +57,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r19");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r20");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
@@ -317,7 +317,7 @@ row!(
     /// og-render's `impostor`): the whole model drawn as one camera-facing
     /// card from its two atlases, the last level of its chain. At most one
     /// per model (the optional `impostors` table; absent or empty: none).
-    ImpostorRow, "og.ModelImpostor", 1 {
+    ImpostorRow, "og.ModelImpostor", 2 {
         /// The atlases' `og.Texture` ids (in `strings`): the albedo with
         /// its coverage in alpha, and the normal (in each frame's basis)
         /// with the depth towards the viewer.
@@ -337,6 +337,9 @@ row!(
         /// would be drawn (a chain's errors only rise: the impostor
         /// replaces the mesh levels no finer than it).
         error: f32,
+        /// 1: the atlases are twice as wide, their right half the lower
+        /// hemisphere's frames (`impostorBelow`, og-render's `impostor`).
+        below: u32,
     }
 );
 
