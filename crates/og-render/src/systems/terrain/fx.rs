@@ -9,7 +9,7 @@ pub(crate) struct TerrainFx {
 
 impl TerrainFx {
     pub fn new(device: &wgpu::Device) -> Self {
-        let records = crate::fx::decal_layout_entries();
+        let records = crate::decals::decal_layout_entries();
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("terrain decals"),
             entries: &[
@@ -62,7 +62,7 @@ impl TerrainFx {
         device: &wgpu::Device,
         atlas: &wgpu::TextureView,
         sampler: &wgpu::Sampler,
-        records: &crate::fx::DecalBuffers,
+        records: &crate::decals::DecalBuffers,
         trample: &wgpu::TextureView,
     ) {
         self.groups = Some(std::array::from_fn(|i| {

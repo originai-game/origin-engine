@@ -18,7 +18,7 @@ pub(crate) fn fx_layout_entries(planar: bool) -> Vec<wgpu::BindGroupLayoutEntry>
     if planar {
         entries.push(tex2d(4));
     }
-    entries.extend(crate::fx::decal_layout_entries());
+    entries.extend(crate::decals::decal_layout_entries());
     entries
 }
 

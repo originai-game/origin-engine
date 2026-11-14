@@ -111,6 +111,7 @@ use post::color_vision;
 use shader::blue_noise;
 use shading::area;
 use shading::clusters;
+use shading::decals;
 use systems::crowd;
 use systems::crowd::crowd_gpu;
 use systems::crowd::crowd_impostor;

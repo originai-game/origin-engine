@@ -2,6 +2,7 @@
 
 pub(crate) mod area;
 pub(crate) mod clusters;
+pub(crate) mod decals;
 pub(crate) mod environment;
 pub(crate) mod gi_probes;
 pub(crate) mod gi_scene;
