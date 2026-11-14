@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "og.Clouds",
+      "summary": "The clouds stand over the world: walking or flying under them passes them overhead. Before, they followed the camera, the same sky over every place."
+    },
+    {
+      "member": "og.Clouds",
+      "summary": "The clouds keep their shapes as the clock runs. Before, every cloud changed shape in one frame each time the wind had carried them four times `scale` (every 50 minutes at the default wind and scale)."
+    }
+  ]
+}

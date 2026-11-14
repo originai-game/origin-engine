@@ -189,7 +189,9 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
 // offset (xyz), the tile's size; [2] albedo, detail; [3] the high
 // layer's cover and height, steps, on; [4] x the planet's radius, y and z
 // the sun's and the sky's dimming by the cover (Clouds::light); [5] a
-// lightning flash in the cloud: where (frame coordinates), how bright.
+// lightning flash in the cloud: where (frame coordinates), how bright;
+// [6..10] the clear sky's light; [10] xy the viewer's place in the world
+// (x and z, wrapped as the wind's offset is).
 
 fn cloud_remap(v: f32, lo: f32, hi: f32) -> f32 {
   return clamp((v - lo) / max(hi - lo, 1e-4), 0.0, 1.0);
@@ -207,20 +209,24 @@ fn cloud_sphere(o: vec3<f32>, d: vec3<f32>, r: f32) -> vec2<f32> {
 }
 
 // The cloud density at `p` (metres, planet-centred, the viewer over the
-// origin's xz) of height `h` above the ground.
+// origin's xz) of height `h` above the ground. The clouds stand over the
+// world: the viewer's place in it ([10].xy) and the wind's offset ([1])
+// place the point in the noise, each wrapped at four tiles, which every
+// scale below repeats in (a scale four tiles are no period of changed
+// every cloud's shape at a wrap).
 fn cloud_density(p: vec3<f32>, h: f32, cheap: bool) -> f32 {
   let c = frame.clouds;
   let hf = (h - c[0].z) / max(c[0].w, 1.0);
   if (hf <= 0.0 || hf >= 1.0) { return 0.0; }
-  let at = vec3<f32>(p.x, h, p.z) + c[1].xyz;
+  let at = vec3<f32>(p.x + c[10].x, h, p.z + c[10].y) + c[1].xyz;
   let uvw = at / c[1].w;
   // The lobes vary in size: the shape is read at two scales, blended by a
   // slow noise across the sky (small popcorn here, broad towers there).
   let small = textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy, 0.0).r;
-  let broad = textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy * 0.45 + vec3<f32>(0.31, 0.17, 0.53), 0.0).r;
+  let broad = textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy * 0.5 + vec3<f32>(0.31, 0.17, 0.53), 0.0).r;
   let cover_px = textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy * 0.25, 0.0);
   let cover = cover_px.a;
-  let shape = mix(small, broad, smoothstep(0.3, 0.7, textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy * 0.21 + vec3<f32>(0.6, 0.0, 0.2), 0.0).a));
+  let shape = mix(small, broad, smoothstep(0.3, 0.7, textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy * 0.25 + vec3<f32>(0.6, 0.0, 0.2), 0.0).a));
   // The coverage varies across the sky most when it is broken, and not
   // at all when clear or overcast (an overcast stays a ceiling).
   // (The power: the cells at different heights overlap, so a column
@@ -453,8 +459,9 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
     let t = cloud_sphere(o, d, radius + c[3].y).y;
     if (t > 0.0) {
       let p = o + d * t;
-      let uv = (vec2<f32>(p.x, p.z) + c[1].xz * 2.0) / (c[1].w * 2.5);
-      let n = textureSampleLevel(cloud_noise, cloud_sampler, vec3<f32>(uv.x * 0.35, uv.y, 0.37), 0.0);
+      // (Twice the wind up there; scales the offsets' wrap repeats in.)
+      let uv = (vec2<f32>(p.x, p.z) + c[10].xy + c[1].xz * 2.0) / (c[1].w * 2.0);
+      let n = textureSampleLevel(cloud_noise, cloud_sampler, vec3<f32>(uv.x * 0.25, uv.y, 0.37), 0.0);
       let wisp = cloud_remap(n.r * 0.7 + n.g * 0.3, 1.0 - c[3].x, 1.0 - c[3].x * 0.3) * (0.5 + 0.5 * n.b);
       let fade = exp(-t / 120000.0);
       let lit = cloud_sun(p, radius, to_light, light, physical) * (0.25 + phase * 1.5) * 0.2 + sky_top * 0.8;

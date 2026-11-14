@@ -197,6 +197,8 @@ pub(crate) struct AtmosphereGpu {
 impl AtmosphereGpu {
     /// `sky`: the drawn sky's look, sun direction and sun colour. `clouds`:
     /// with whether the live sky captures them (RenderScene::sky_captured).
+    /// `eye`: the camera's x and z in the world, which the clouds stand over.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         fog: Option<&Fog>,
         sky: Option<(&SkyLook, Vec3, Vec3)>,
@@ -205,6 +207,7 @@ impl AtmosphereGpu {
         weather: Option<&crate::SurfaceWeather>,
         tick: u64,
         rate: f32,
+        eye: glam::DVec2,
     ) -> AtmosphereGpu {
         let mut a: AtmosphereGpu = bytemuck::Zeroable::zeroed();
         if let Some(f) = fog {
@@ -251,7 +254,7 @@ impl AtmosphereGpu {
                 .physical
                 .map_or(6_360_000.0, |p| p.planet_radius.clamp(10.0, 1.0e5) * 1000.0);
             if let Some((c, live)) = clouds {
-                a.clouds = c.gpu(tick as f64 / f64::from(rate), radius);
+                a.clouds = c.gpu(tick as f64 / f64::from(rate), radius, eye);
                 // The clouds' ambient is the clear sky's, never the image-based
                 // light's: the live sky captures the clouds into it, and lit by
                 // their own capture they converged several times too dark (an

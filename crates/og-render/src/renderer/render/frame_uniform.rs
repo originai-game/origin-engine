@@ -119,6 +119,10 @@ impl Renderer {
                 scene.atmosphere.surface_weather.as_ref(),
                 scene.frame.tick,
                 scene.frame.tick_rate,
+                {
+                    let eye = (scene.frame.origin + scene.frame.camera.position).as_dvec3();
+                    glam::DVec2::new(eye.x, eye.z)
+                },
             ),
             caustics: water::caustics(scene_water, scene.frame.origin, scene.frame.camera.position),
             shadow: {
