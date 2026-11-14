@@ -2,9 +2,9 @@
 // tests of the web export (wire.ts, export.ts): launch, open a page, evaluate,
 // screenshot, dispatch real input. No dependency beyond bun's WebSocket.
 //
-// Chrome: --chrome <path>, $CHROME, or the agent-browser install
-// (~/.agent-browser/browsers/chrome-150.0.7871.115). A missing Chrome is an
-// error, never a skip.
+// Chrome: --chrome <path>, $CHROME, or the newest agent-browser install
+// (~/.agent-browser/browsers/chrome-<version>, as .agents/environment picks
+// it). A missing Chrome is an error, never a skip.
 //
 // --android [serial] (Browser.android): Chrome on a phone over adb instead,
 // its DevTools socket forwarded here and the test server's ports reversed to
@@ -14,7 +14,7 @@
 // and hover media queries as a desktop's mouse (MOUSE below) unless opened
 // with `touch`.
 
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { testTempDir } from "../support/temp";
 
@@ -48,11 +48,26 @@ export function chromePath(argv: string[] = process.argv): string {
   const path =
     (i >= 0 ? argv[i + 1] : undefined) ??
     process.env.CHROME ??
-    (process.platform === "darwin"
-      ? `${process.env.HOME}/.agent-browser/browsers/chrome-150.0.7871.115/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`
-      : `${process.env.HOME}/.agent-browser/browsers/chrome-150.0.7871.115/chrome`);
-  if (!existsSync(path)) throw new Error(`no Chrome at ${path}: pass --chrome <path> or set CHROME (Chrome for Testing 150 is what the evidence used)`);
+    agentBrowserChrome();
+  if (!path || !existsSync(path)) throw new Error(`no Chrome at ${path ?? "~/.agent-browser/browsers/chrome-*"}: pass --chrome <path> or set CHROME`);
   return path;
+}
+
+/** The newest Chrome for Testing agent-browser installed, by version. */
+function agentBrowserChrome(): string | undefined {
+  const dir = join(process.env.HOME ?? "", ".agent-browser", "browsers");
+  const version = (name: string) => name.slice("chrome-".length).split(".").map(Number);
+  const newest = (existsSync(dir) ? readdirSync(dir) : [])
+    .filter((n) => /^chrome-\d+(\.\d+)*$/.test(n))
+    .sort((a, b) => {
+      const x = version(a), y = version(b);
+      for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (y[i] ?? 0) - (x[i] ?? 0);
+      return 0;
+    })[0];
+  if (!newest) return undefined;
+  return process.platform === "darwin"
+    ? join(dir, newest, "Google Chrome for Testing.app", "Contents", "MacOS", "Google Chrome for Testing")
+    : join(dir, newest, "chrome");
 }
 
 /** Poll `read` (the test's own state, a server's requests) until it is truthy; throws naming `what` after `timeoutMs`. */

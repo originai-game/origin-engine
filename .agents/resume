@@ -2,4 +2,10 @@
 set -euo pipefail
 # No backing services or per-thread authentication are required. Toolchains
 # and dependency caches survive pause/resume; never reinstall them here.
+# Chrome's sandbox needs unprivileged user namespaces (.agents/setup); a
+# resumed VM may have restored AppArmor's default.
+userns=/proc/sys/kernel/apparmor_restrict_unprivileged_userns
+if [[ -e $userns && $(cat "$userns") != 0 ]]; then
+  echo 0 | sudo tee "$userns" >/dev/null
+fi
 printf 'Origin Engine: cached toolchains and dependencies ready.\n'

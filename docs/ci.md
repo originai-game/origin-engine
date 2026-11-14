@@ -66,7 +66,7 @@ installed by `scripts/install-tools.sh` (cargo-nextest when absent).
 | mold (Linux native linker) | distribution package | `.agents/setup`, `scripts/install-tools.sh`; `.cargo/config.toml` selects it |
 | cargo-zigbuild, zig (`build.sh --linux-x64`, release packing's Linux x86_64 addon and og against glibc 2.31) | 0.23.4, 0.17.0 | `CARGO_ZIGBUILD_VERSION`, `ZIG_VERSION` and their sha256 in `scripts/install-tools.sh` (Linux x86_64 only); outside the gate |
 | minisign (signs and checks a release's `SHA256SUMS`) | 0.11, the distribution's | `.agents/setup`; Homebrew's on macOS |
-| Chrome for Testing (`make web-reference`, browser tests) | 150 | `CHROME_PATH`; outside the gate |
+| Chrome for Testing (`make web-reference`, browser tests) | the newest agent-browser install | `CHROME`, else `~/.agent-browser/browsers/chrome-<version>` (`tests/web/cdp.ts`); `libnss3`, `libnspr4` and unprivileged user namespaces from `.agents/setup`; outside the gate |
 | Mesa lavapipe (CPU rendering in orbs) | minimum 25.0.7 | `.agents/setup`; Debian bookworm-backports supplies Mesa and apt resolves its dependencies |
 
 Every target and profile uses LLVM with four frontend threads
@@ -290,7 +290,9 @@ evidence of a pass.
 `.agents/setup` installs the prerequisites and pinned tools and fetches the
 dependencies; it does not compile the engine or run the gate.
 `.agents/environment` points `CHROME` at the orb's agent-browser Chrome,
-which is not claimed pixel-equivalent to the reference Chrome. Validate
+which is not claimed pixel-equivalent to the reference Chrome. Setup
+installs its libraries and lifts AppArmor's user-namespace restriction for
+its sandbox; `.agents/resume` lifts it again on a resumed VM. Validate
 changes with `shellcheck -s bash .agents/{setup,resume,environment}`,
 `time .agents/setup` twice, and the tools from a new `bash -lc` shell.
 

@@ -18,6 +18,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { webBuild } from "../../src/node/web-build.ts";
 import { cookProject } from "../support/og-bin.ts";
+import { chromePath } from "./cdp.ts";
 
 declare const Bun: {
   serve(o: { port: number; fetch(req: Request): Response | Promise<Response> }): { port: number; stop(): void };
@@ -34,14 +35,7 @@ const repo = join(pkg, "..", "..");
 const project = resolve(opt("--project") ?? join(repo, "tests", "fixtures", "vehicle-terrain"));
 const script = opt("--commands");
 const advance = Number(opt("--advance") ?? 0);
-const chrome =
-  opt("--chrome") ??
-  process.env.CHROME ??
-  `${process.env.HOME}/.agent-browser/browsers/chrome-150.0.7871.115/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`;
-if (!existsSync(chrome)) {
-  console.error(`no Chrome at ${chrome}: pass --chrome <path> or set CHROME`);
-  process.exit(1);
-}
+const chrome = chromePath(args);
 cookProject(project, repo);
 const entry = resolve(opt("--entry") ?? (existsSync(join(project, "src", "main.ts")) ? join(project, "src", "main.ts") : join(pkg, "examples", "hello.ts")));
 const out = join(pkg, "dist", "test-template");

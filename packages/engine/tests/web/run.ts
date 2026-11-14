@@ -8,6 +8,7 @@
 import { fileURLToPath } from "node:url";
 import { existsSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { chromePath } from "./cdp.ts";
 
 declare const Bun: {
   build(o: { entrypoints: string[]; outdir: string; target: string; format: string }): Promise<{ success: boolean; logs: unknown[] }>;
@@ -20,10 +21,7 @@ const args = process.argv.slice(2);
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const out = join(pkg, "dist", "test-web");
-const chrome =
-  args[args.indexOf("--chrome") + 1] && args.includes("--chrome")
-    ? args[args.indexOf("--chrome") + 1]!
-    : (process.env.CHROME ?? `${process.env.HOME}/.agent-browser/browsers/chrome-150.0.7871.115/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`);
+const chrome = chromePath(args);
 if (!existsSync(join(pkg, "dist", "web", "origin-engine_bg.wasm"))) {
   console.error("no dist/web: run `bun run build` in packages/engine first");
   process.exit(1);

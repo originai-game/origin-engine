@@ -11,7 +11,9 @@ step() {
 
 # Cache prerequisites and a warm dev build (prewarm, at the end) in the
 # project snapshot.
-packages=(build-essential mold pkg-config libasound2-dev brotli shellcheck curl ca-certificates unzip xz-utils minisign)
+# libnss3 and libnspr4 are Chrome's own libraries (the browser tests and
+# web-reference run the orb's agent-browser Chrome, .agents/environment).
+packages=(build-essential mold pkg-config libasound2-dev brotli shellcheck curl ca-certificates unzip xz-utils minisign libnss3 libnspr4)
 missing=()
 for package in "${packages[@]}"; do
   if [[ $(dpkg-query -W -f='${Status}' "$package" 2>/dev/null || true) != 'install ok installed' ]]; then
@@ -105,8 +107,17 @@ case "\$PWD/" in
 esac
 EOF
 fi
+# Chrome's sandbox needs unprivileged user namespaces, which Ubuntu's
+# AppArmor restricts by default ("No usable sandbox"). sysctl.d keeps the
+# setting across a reboot; .agents/resume applies it again on a resumed VM.
+userns=/proc/sys/kernel/apparmor_restrict_unprivileged_userns
+if [[ -e $userns ]]; then
+  printf 'kernel.apparmor_restrict_unprivileged_userns = 0\n' \
+    | sudo tee /etc/sysctl.d/60-origin-engine-chrome.conf >/dev/null
+  [[ $(cat "$userns") == 0 ]] || echo 0 | sudo tee "$userns" >/dev/null
+fi
 # shellcheck disable=SC2016 # Expand CHROME in the new login shell, not setup.
-step bash -lc 'command -v cargo bun sccache og-sccache-wrap wasm-bindgen node; test -x "$CHROME"'
+step bash -lc 'command -v cargo bun sccache og-sccache-wrap wasm-bindgen node; test -x "$CHROME" && "$CHROME" --headless=new --version'
 
 # Prewarm (the owner, 2026-11-01): the snapshot carries target/ with what an
 # agent's loop builds (clippy over every target, the test binaries the gate's
