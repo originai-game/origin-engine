@@ -81,36 +81,6 @@ impl TerrainRenderer {
         self.indices.as_ref().map(|(b, _)| b)
     }
 
-    /// Its group layout: the standard one, or (`arrayed`, once made) the
-    /// layer-array variant's.
-    pub(crate) fn group_layout(&self, arrayed: bool) -> Option<&wgpu::BindGroupLayout> {
-        if arrayed {
-            self.arrays.as_ref().map(|(l, _)| l)
-        } else {
-            Some(&self.layout)
-        }
-    }
-
-    /// Level-0 tiles `tiles` of terrain data `data` as the GPU holds them
-    /// this frame (each one's data, as its address: another when it is
-    /// replaced), or `None` while one is not resident.
-    pub(crate) fn level0_slots(&self, data: usize, tiles: &[u32]) -> Option<Vec<usize>> {
-        let d = self.datas.get(data)?.as_ref()?;
-        tiles
-            .iter()
-            .map(|t| {
-                let st = d.slots[*d.by_tile.get(t)?].as_ref()?;
-                Some(Arc::as_ptr(&st.data) as usize)
-            })
-            .collect()
-    }
-
-    /// A terrain data's size along x and z and its height range, once uploaded.
-    pub(crate) fn extent_of(&self, data: usize) -> Option<(Vec2, (f32, f32))> {
-        let d = self.datas.get(data)?.as_ref()?;
-        Some((d.layout.size, d.range))
-    }
-
     /// The world bounds of the terrains drawn this frame (centre, radius),
     /// for the shadow fit.
     pub(crate) fn bounds(&self, scene: &crate::RenderScene) -> Vec<(Vec3, f32)> {
@@ -126,5 +96,45 @@ impl TerrainRenderer {
                 Some(world_sphere(t.transform, lo, hi))
             })
             .collect()
+    }
+}
+
+impl GroundGpu for TerrainRenderer {
+    fn group_layout(&self, arrayed: bool) -> Option<&wgpu::BindGroupLayout> {
+        if arrayed {
+            self.arrays.as_ref().map(|(l, _)| l)
+        } else {
+            Some(&self.layout)
+        }
+    }
+
+    fn level0_slots(&self, data: usize, tiles: &[u32]) -> Option<Vec<usize>> {
+        let d = self.datas.get(data)?.as_ref()?;
+        tiles
+            .iter()
+            .map(|t| {
+                let st = d.slots[*d.by_tile.get(t)?].as_ref()?;
+                Some(Arc::as_ptr(&st.data) as usize)
+            })
+            .collect()
+    }
+
+    fn extent_of(&self, data: usize) -> Option<(Vec2, (f32, f32))> {
+        let d = self.datas.get(data)?.as_ref()?;
+        Some((d.layout.size, d.range))
+    }
+}
+
+impl GroundDraw for TerrainDraw {
+    fn group(&self) -> &wgpu::BindGroup {
+        &self.group
+    }
+
+    fn terrain(&self) -> usize {
+        self.terrain
+    }
+
+    fn arrayed(&self) -> bool {
+        self.arrayed
     }
 }

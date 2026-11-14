@@ -8,7 +8,7 @@ impl GrassRenderer {
         &self,
         encoder: &mut crate::Encoder,
         frame: &GrassFrame,
-        terrain_draws: &[crate::terrain::TerrainDraw],
+        terrain_draws: &[impl GroundDraw],
     ) {
         if frame.fields.is_empty() {
             return;
@@ -23,7 +23,7 @@ impl GrassRenderer {
             };
             let f = &self.fields[field.slot];
             pass.set_bind_group(0, &f.gen_group, &[]);
-            pass.set_bind_group(1, &terrain_draws[field.terrain_draw].group, &[0]);
+            pass.set_bind_group(1, terrain_draws[field.terrain_draw].group(), &[0]);
             pass.set_bind_group(2, &field.maps, &[]);
             pass.set_pipeline(evaluate);
             pass.dispatch_workgroups(field.slices, 1, 1);

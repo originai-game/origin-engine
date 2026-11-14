@@ -53,7 +53,7 @@
 //! FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 //! DEALINGS IN THE SOFTWARE.
 
-use crate::ground::horizontal_scale;
+use crate::ground::{GroundDraw, GroundGpu, horizontal_scale};
 use crate::wind::WindFieldGpu;
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use std::sync::OnceLock;

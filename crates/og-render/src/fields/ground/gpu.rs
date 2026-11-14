@@ -1,6 +1,34 @@
 //! The ground on the GPU, as what grows on it reads it.
 
 use crate::wind::WindFieldGpu;
+use glam::Vec2;
+
+/// The grounds on the GPU as what grows on them reads them; the terrain
+/// renderer, which holds their tiles, answers.
+pub(crate) trait GroundGpu {
+    /// A ground group's layout: the standard one, or (`arrayed`, once
+    /// made) the layer-array variant's.
+    fn group_layout(&self, arrayed: bool) -> Option<&wgpu::BindGroupLayout>;
+
+    /// Level-0 tiles `tiles` of terrain data `data` as the GPU holds them
+    /// this frame (each one's data, as its address: another when it is
+    /// replaced), or `None` while one is not resident.
+    fn level0_slots(&self, data: usize, tiles: &[u32]) -> Option<Vec<usize>>;
+
+    /// A terrain data's size along x and z and its height range, once
+    /// uploaded.
+    fn extent_of(&self, data: usize) -> Option<(Vec2, (f32, f32))>;
+}
+
+/// One ground drawn this frame, as what grows on it binds it.
+pub(crate) trait GroundDraw {
+    /// Its group ([`TERRAIN_WGSL`]'s declarations), at group 1.
+    fn group(&self) -> &wgpu::BindGroup;
+    /// Its index in [`crate::RenderScene::terrains`].
+    fn terrain(&self) -> usize;
+    /// Whether its group is the layer-array variant's.
+    fn arrayed(&self) -> bool;
+}
 
 pub(crate) const TERRAIN_WGSL: &str = wgsl3d!("terrain.wgsl");
 /// What terrain.wgsl's far grass needs declared (after wind_common.wgsl).

@@ -20,6 +20,7 @@ impl TerrainRenderer {
         prev_view_proj: Mat4,
         textures: impl Fn(TextureHandle) -> Option<&'t wgpu::TextureView>,
         arrays: impl Fn(TextureArrayHandle) -> Option<&'t wgpu::Texture>,
+        far_cover: &dyn Fn(usize) -> FarGpu,
     ) -> Result<Vec<TerrainDraw>, crate::RenderError> {
         if scene.world.terrains.is_empty() {
             self.uploads = 0;
@@ -248,7 +249,7 @@ impl TerrainRenderer {
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
                 pyramid,
                 layers,
-                grass: crate::grass::far_gpu(scene, ti),
+                grass: far_cover(ti),
             };
             let slot = &mut self.slots[ti];
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));

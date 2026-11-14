@@ -35,13 +35,7 @@ const MECHANISMS: &[&str] = &[
 
 /// `(file under src/, the directory it names)`.
 const KNOWN: &[(&str, &str)] = &[
-    ("systems/terrain/renderer/prepare.rs", "systems/vegetation"),
-    ("systems/vegetation/grass/draw.rs", "systems/terrain"),
-    ("systems/vegetation/grass/prepare.rs", "systems/terrain"),
     ("systems/vegetation/scatter.rs", "systems/crowd"),
-    ("systems/vegetation/scatter/draw.rs", "systems/terrain"),
-    ("systems/vegetation/scatter/prepare.rs", "systems/terrain"),
-    ("systems/vegetation/scatter_place.rs", "systems/terrain"),
 ];
 
 /// The directory that owns a module path below the root: its first

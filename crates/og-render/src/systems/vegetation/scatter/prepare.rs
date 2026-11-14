@@ -99,10 +99,7 @@ impl ScatterRenderer {
         shader_of: impl Fn(usize) -> Option<usize>,
         hooks_of: impl Fn(usize) -> String,
         (card_inputs, cpu_cards): (&[CardInput], &[crate::skin::SkinnedInstanceGpu]),
-        (terrain, terrain_draws): (
-            &crate::terrain::TerrainRenderer,
-            &[crate::terrain::TerrainDraw],
-        ),
+        (terrain, terrain_draws): (&dyn GroundGpu, &[impl GroundDraw]),
     ) -> ScatterBatches {
         self.frame += 1;
         self.built = 0;
@@ -357,9 +354,13 @@ impl ScatterRenderer {
                 .place
                 .as_ref()
                 .filter(|_| s.gpu)
-                .and_then(|_| terrain_draws.iter().position(|td| td.terrain == d.terrain))
+                .and_then(|_| {
+                    terrain_draws
+                        .iter()
+                        .position(|td| td.terrain() == d.terrain)
+                })
                 .and_then(|k| {
-                    let arrayed = terrain_draws[k].arrayed;
+                    let arrayed = terrain_draws[k].arrayed();
                     Some((k, arrayed, terrain.group_layout(arrayed)?))
                 });
             let frame_waters: Vec<(Mat4, Vec2)> = match gpu {

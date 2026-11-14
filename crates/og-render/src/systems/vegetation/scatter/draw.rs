@@ -13,7 +13,7 @@ impl ScatterRenderer {
         encoder: &mut crate::Encoder,
         view: &crate::scatter_cull::CullView,
         textures: &dyn Fn(crate::TextureHandle) -> Option<&'t wgpu::TextureView>,
-        terrain_draws: &[crate::terrain::TerrainDraw],
+        terrain_draws: &[impl GroundDraw],
     ) -> Vec<(&'static str, std::ops::Range<u32>)> {
         let mut queries = Vec::new();
         let mut timed = |name, q0: u32, encoder: &crate::Encoder| {

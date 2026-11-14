@@ -65,6 +65,8 @@ impl Renderer {
                         .filter(|a| a.generation == h.generation())
                         .map(|a| &a.texture)
                 },
+                // The far colour of what grows on each (the grass).
+                &|terrain| crate::grass::far_gpu(scene, terrain),
             )?
         };
         let terrain_casters = terrain_draws.iter().any(|d| d.cast_shadows);
