@@ -1419,7 +1419,10 @@ fn hash_replay() -> serde_json::Value {
         for (name, desc) in [
             ("og.Transform", json!({"position":{"x":0,"y":1,"z":0}})),
             ("og.MotionAgent", json!({"drive":true})),
-            ("og.Collider", json!({"shape":2,"radius":0.4,"height":1.0})),
+            (
+                "og.Collider",
+                json!({"shape":"capsule","radius":0.4,"height":1.0}),
+            ),
             ("og.CharacterController", json!({})),
         ] {
             value(og_runtime::host_impl::answer(og_world_insert(
@@ -1442,7 +1445,7 @@ fn hash_replay() -> serde_json::Value {
             w,
             ground,
             "og.Collider".into(),
-            Some(json!({"shape":0,"size":{"x":20,"y":1,"z":20}}).to_string()),
+            Some(json!({"shape":"box","size":{"x":20,"y":1,"z":20}}).to_string()),
         )));
         value(og_runtime::host_impl::answer(og_motion_walk_to(
             w,

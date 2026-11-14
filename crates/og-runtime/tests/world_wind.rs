@@ -197,7 +197,7 @@ fn a_wind_motor_carries_the_body_in_its_reach_along_its_forward() {
             json!({ "position": { "x": 0, "y": 3, "z": z } }),
             &[
                 ("og.RigidBody", json!({ "gravityScale": 0, "airDrag": 2 })),
-                ("og.Collider", json!({ "shape": 1, "radius": 0.25 })),
+                ("og.Collider", json!({ "shape": "sphere", "radius": 0.25 })),
             ],
         )
     };

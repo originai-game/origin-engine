@@ -30,19 +30,20 @@ pub(super) fn colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) 
         let q = v.quaternion.normalize();
         let local = Mat4::from_rotation_translation(q, v.offset);
         let m = world_m * local;
+        use crate::host::wire::ColliderShape as Shape;
         let collider = match v.shape {
-            0 => og_render::SceneCollider::Box {
+            Shape::Box => og_render::SceneCollider::Box {
                 transform: m,
                 half_extents: v.size * 0.5,
             },
-            1 => {
+            Shape::Sphere => {
                 let scale = world_m.to_scale_rotation_translation().0.max_element();
                 og_render::SceneCollider::Sphere {
                     center: m.transform_point3(Vec3::ZERO),
                     radius: v.radius * scale,
                 }
             }
-            2 => {
+            Shape::Capsule => {
                 let scale = world_m.to_scale_rotation_translation().0.max_element();
                 let half = v.height * 0.5;
                 og_render::SceneCollider::Capsule {
@@ -51,7 +52,7 @@ pub(super) fn colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) 
                     radius: v.radius * scale,
                 }
             }
-            6 => {
+            Shape::Heightfield => {
                 let geometry = v.mesh;
                 let Some(data) = super::terrain::field_of_geometry(&rs.terrain, geometry) else {
                     continue;

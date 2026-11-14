@@ -12,7 +12,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `shape` | `number` | `0` | 0 … 5 | — | — | One of the SHAPE_* codes. |
+| `shape` | `ColliderShape` | `"box"` | — | — | — | The shape, as Collider.shape; a cast or an overlap is made for box, sphere, capsule, cylinder, convex and trimesh. |
 | `size` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | `m` | — | Full extents of a box. |
 | `radius` | `number` | `0.5` | — | `m` | — | Radius of a sphere, circle, capsule or cylinder. |
 | `height` | `number` | `1` | — | `m` | — | Capsule or cylinder height. |
@@ -22,10 +22,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct ShapeDesc {
   doc "The shape of a shape cast or an overlap test: the shape fields of a Collider. The zero value is a 1 m box."
   desc true
-  field shape u32 "One of the SHAPE_* codes." {
-    min 0
-    max 5
-  }
+  field shape ColliderShape "The shape, as Collider.shape; a cast or an overlap is made for box, sphere, capsule, cylinder, convex and trimesh."
   field size Vector3 "Full extents of a box." {
     default 1 1 1
     unit m
@@ -42,4 +39,4 @@ struct ShapeDesc {
 }
 ```
 
-<sub>Module `physics` line 1881</sub>
+<sub>Module `physics` line 1903</sub>

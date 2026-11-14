@@ -70,7 +70,7 @@ fn engine_at(x: f64, gap: f64, shifts: bool) -> (u32, f64, Vec<f64>) {
         .unwrap();
         for (name, v) in [
             ("og.RigidBody", json!({ "kind": kind })),
-            ("og.Collider", json!({ "shape": 0, "size": size })),
+            ("og.Collider", json!({ "shape": "box", "size": size })),
         ] {
             value(og_runtime::host_impl::answer(og_world_insert(
                 e,

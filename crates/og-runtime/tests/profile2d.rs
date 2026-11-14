@@ -1,7 +1,7 @@
 //! The 2D profile's runtime (`--features profile2d`: the 2D web modules)
 //! leaves the terrain out with the rest of the 3D world: every og.terrain
 //! call, on a terrain the full build loads, answers the refusal naming
-//! RenderCapabilities.world3d, and so does a SHAPE_HEIGHTFIELD collider.
+//! RenderCapabilities.world3d, and so does a heightfield collider.
 //!
 //! Ways this could fail: a call still loads, samples or edits (the module
 //! is still built); a call answers some other error (a missing file, a
@@ -118,11 +118,11 @@ fn the_terrain_and_its_height_fields_answer_the_profile() {
         og_runtime::host_impl::answer(og_terrain_set_layer(engine, data, 0, Some("{}".into()))),
     );
 
-    // A SHAPE_HEIGHTFIELD collider naming a terrain's geometry.
+    // A heightfield collider naming a terrain's geometry.
     let e = wire(&og_runtime::host_impl::answer(og_world_spawn(engine, None)))["value"]
         .as_f64()
         .unwrap();
-    let collider = json!({ "shape": 6, "mesh": (0x7eu64 << 32) as f64 });
+    let collider = json!({ "shape": "heightfield", "mesh": (0x7eu64 << 32) as f64 });
     let inserted = og_runtime::host_impl::answer(og_world_insert(
         engine,
         e,
@@ -134,7 +134,7 @@ fn the_terrain_and_its_height_fields_answer_the_profile() {
     let log = og_engine_take_log(engine);
     let said = format!("{frame}\n{log}");
     assert!(
-        said.contains("og.Collider.shape 6 (SHAPE_HEIGHTFIELD, a terrain's height field)")
+        said.contains("og.Collider.shape heightfield (a terrain's height field)")
             && said.contains("RenderCapabilities.world3d is false"),
         "{said}"
     );

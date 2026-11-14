@@ -36,7 +36,7 @@ pub(super) fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp
     {
         return Err(Error::new(
             ErrorKind::Invalid,
-            format!("og.Collider.shape 6 (SHAPE_HEIGHTFIELD, a terrain's height field): {why}"),
+            format!("og.Collider.shape heightfield (a terrain's height field): {why}"),
         ));
     }
     if let Some(k) = crate::key_chunk(c.shape) {

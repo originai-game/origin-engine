@@ -14,7 +14,7 @@ import { gpuTest } from "./support/gpu.ts";
 // must stay a frame effect) or never decays; a restored world animates
 // differently.
 import { beforeAll, expect, test } from "bun:test";
-import { og, defineResource, defineSystem, f32, u32, SHAPE_BOX } from "@origingame/engine";
+import { og, defineResource, defineSystem, f32, u32 } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
 import { loadNativeHost, native } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
@@ -254,7 +254,7 @@ test("a hit stop holds physics and scaled tweens while systems keep ticking, and
     start: (w: World) => {
       const box = must(w.spawn({ name: "box", position: { x: 0, y: 5, z: 0 } }));
       w.insert(box, og.RigidBody);
-      w.insert(box, og.Collider, { shape: SHAPE_BOX });
+      w.insert(box, og.Collider, { shape: "box" });
       const mover = must(w.spawn({ name: "mover", position: { x: 0, y: 0, z: 0 } }));
       must(og.tween.to(w, { entity: mover, field: "position.y", to: [10], duration: 2, ease: "none" }));
     },

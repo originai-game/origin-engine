@@ -31,7 +31,7 @@ cave mouth, a pit, a tunnel through a hill). `og cook` cooks it into tiles.
 const t = og.terrain.load(world, "terrain/valley.ogt").value!;
 const ground = world.spawn({ name: "ground" }).value!;
 world.insert(ground, og.Terrain, { data: t.data });
-world.insert(ground, og.Collider, { shape: 6, mesh: t.geometry });  // SHAPE_HEIGHTFIELD
+world.insert(ground, og.Collider, { shape: "heightfield", mesh: t.geometry });
 ```
 
 - An og.Terrain draws it placed by its entity's world transform (centred on

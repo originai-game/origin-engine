@@ -6,7 +6,7 @@
 // 160 more walkers (og-anim splits from 128 skeletons) and 48 boxes dropped
 // on a floor collider (the rapier step).
 
-import { og, SHAPE_BOX } from "@origingame/engine";
+import { og } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
@@ -32,13 +32,13 @@ export function crowd(world: World): void {
     world.insert(e, og.AnimationPlayer, { clip: clips[i % clips.length]!, speed: 0.7 + (i % 9) * 0.05, time: (i * 0.071) % 1, loop: true, fade: 0 });
   }
   const ground = must(world.spawn({ name: "ground", position: { x: 0, y: -0.5, z: 0 } }));
-  world.insert(ground, og.Collider, { shape: SHAPE_BOX, size: { x: 80, y: 1, z: 80 } });
+  world.insert(ground, og.Collider, { shape: "box", size: { x: 80, y: 1, z: 80 } });
   const crate = must(og.render.boxGeometry(world, { width: 0.6, height: 0.6, depth: 0.6 }));
   for (let i = 0; i < 48; i++) {
     const position = { x: ((i % 6) - 2.5) * 0.9 + (i % 3) * 0.05, y: 3 + Math.floor(i / 6) * 0.8, z: 14 + ((i * 7) % 5) * 0.2 };
     const e = must(world.spawn({ name: `crate-${i}`, position }));
     world.insert(e, og.RigidBody, {});
-    world.insert(e, og.Collider, { shape: SHAPE_BOX, size: { x: 0.6, y: 0.6, z: 0.6 } });
+    world.insert(e, og.Collider, { shape: "box", size: { x: 0.6, y: 0.6, z: 0.6 } });
     world.insert(e, og.Mesh, { geometry: crate, material: paint, castShadow: true, receiveShadow: true });
   }
 }

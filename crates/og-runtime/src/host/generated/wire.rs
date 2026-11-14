@@ -8912,6 +8912,51 @@ impl ToJson for RigidBodyType {
     }
 }
 
+/// `ColliderShape`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ColliderShape {
+    #[default]
+    Box,
+    Sphere,
+    Capsule,
+    Cylinder,
+    Convex,
+    Trimesh,
+    Heightfield,
+    Diamond,
+    Hexagon,
+}
+
+impl ColliderShape {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["box", "sphere", "capsule", "cylinder", "convex", "trimesh", "heightfield", "diamond", "hexagon"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Box, Self::Sphere, Self::Capsule, Self::Cylinder, Self::Convex, Self::Trimesh, Self::Heightfield, Self::Diamond, Self::Hexagon];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("ColliderShape", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for ColliderShape {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "ColliderShape", Self::NAMES)?)
+    }
+}
+
+impl ToJson for ColliderShape {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `ForceFieldKind`: packages/knowledge/wiki/physics.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ForceFieldKind {
@@ -8946,6 +8991,83 @@ impl FromJson for ForceFieldKind {
 }
 
 impl ToJson for ForceFieldKind {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `Simulation`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Simulation {
+    #[default]
+    Gameplay,
+    Visual,
+}
+
+impl Simulation {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["gameplay", "visual"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Gameplay, Self::Visual];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("Simulation", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for Simulation {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "Simulation", Self::NAMES)?)
+    }
+}
+
+impl ToJson for Simulation {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `SoftBodyShape`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum SoftBodyShape {
+    #[default]
+    Sphere,
+    Box,
+    Mesh,
+}
+
+impl SoftBodyShape {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["sphere", "box", "mesh"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Sphere, Self::Box, Self::Mesh];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("SoftBodyShape", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for SoftBodyShape {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "SoftBodyShape", Self::NAMES)?)
+    }
+}
+
+impl ToJson for SoftBodyShape {
     fn to_json(&self) -> Value {
         Value::String(self.as_str().into())
     }
@@ -9296,7 +9418,7 @@ impl ToJson for PointProjection {
 /// `ShapeDesc`: packages/knowledge/wiki/physics.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ShapeDesc {
-    pub shape: u32,
+    pub shape: ColliderShape,
     pub size: Vec3,
     pub radius: f32,
     pub height: f32,
@@ -30260,7 +30382,7 @@ pub mod record {
     /// `Collider`: packages/knowledge/wiki/physics.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct Collider {
-        pub shape: u32,
+        pub shape: ColliderShape,
         pub size: Vec3,
         pub radius: f32,
         pub height: f32,
@@ -31341,7 +31463,7 @@ pub mod record {
         pub friction: f32,
         pub material: u64,
         pub visible: bool,
-        pub simulation: u32,
+        pub simulation: Simulation,
     }
 
     impl Default for Cloth {
@@ -31411,7 +31533,7 @@ pub mod record {
         pub gust: f32,
         pub radius: f32,
         pub friction: f32,
-        pub simulation: u32,
+        pub simulation: Simulation,
     }
 
     impl Default for Garment {
@@ -31465,7 +31587,7 @@ pub mod record {
     /// `SoftBody`: packages/knowledge/wiki/physics.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct SoftBody {
-        pub shape: u32,
+        pub shape: SoftBodyShape,
         pub radius: f32,
         pub size: Vec3,
         pub detail: u32,
@@ -31482,7 +31604,7 @@ pub mod record {
         pub pin_top: f32,
         pub material: u64,
         pub visible: bool,
-        pub simulation: u32,
+        pub simulation: Simulation,
         pub volume: f32,
         pub center: Vec3,
     }
@@ -31659,7 +31781,7 @@ pub mod record {
         pub draw_scale: f32,
         pub smoothing: f32,
         pub visible: bool,
-        pub simulation: u32,
+        pub simulation: Simulation,
     }
 
     impl Default for Fluid3D {

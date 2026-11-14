@@ -9,7 +9,7 @@
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { og, defineResource, defineSystem, u32, MATERIAL_BRICK, MATERIAL_CONCRETE, MATERIAL_GLASS, SHAPE_BOX, SHAPE_SPHERE } from "@origingame/engine";
+import { og, defineResource, defineSystem, u32, MATERIAL_BRICK, MATERIAL_CONCRETE, MATERIAL_GLASS } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { createEngine, type GameToken } from "../../src/runtime.ts";
 
@@ -79,7 +79,7 @@ const beats: Array<[number, (world: World) => void]> = [
   [60, (world) => {
     const ball = must(world.spawn({ name: "ball", position: { x: 5.4, y: 1.2, z: 3 } }));
     must(world.insert(ball, og.RigidBody, { kind: "dynamic", mass: 6, ccd: true }));
-    must(world.insert(ball, og.Collider, { shape: SHAPE_SPHERE, radius: 0.15 }));
+    must(world.insert(ball, og.Collider, { shape: "sphere", radius: 0.15 }));
     must(world.insert(ball, og.Velocity, { linear: { x: 0, y: 1, z: -14 } }));
   }],
 ];
@@ -87,7 +87,7 @@ const beats: Array<[number, (world: World) => void]> = [
 function start(world: World): void {
   const ground = must(world.spawn({ name: "ground", position: { x: 1, y: -0.25, z: 0 } }));
   world.insert(ground, og.RigidBody, { kind: "fixed" });
-  world.insert(ground, og.Collider, { shape: SHAPE_BOX, size: { x: 24, y: 0.5, z: 14 }, friction: 0.8 });
+  world.insert(ground, og.Collider, { shape: "box", size: { x: 24, y: 0.5, z: 14 }, friction: 0.8 });
   const prop = (model: string, name: string, x: number, y: number, z: number, kind: number) => {
     const e = must(world.instantiate(must(og.load.gltf(world, model)), { name, position: { x, y, z } }));
     must(world.insert(e, og.Destructible, must(og.destruction.material(world, kind))));

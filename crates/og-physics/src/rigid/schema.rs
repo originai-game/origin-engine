@@ -2,8 +2,9 @@
 //! the inspector, the probe, scene text and the TypeScript IDL show, so the
 //! doc comments are the user-facing documentation.
 //!
-//! RigidBody.kind stores stable `u32` codes and reflects public enum names.
-//! Other numeric codes are the `pub const`s below.
+//! RigidBody.kind and Collider.shape store stable `u32` codes and reflect
+//! public enum names (the `SHAPE_*` consts are those codes, for this
+//! crate and the runtime). Other numeric codes are the `pub const`s below.
 
 use og_core::glam::{Quat, Vec3};
 use og_core::{List, Reflect};
@@ -177,10 +178,23 @@ pub(crate) fn polygon(shape: u32, hx: f32, hy: f32) -> Vec<[f32; 2]> {
 /// no RigidBody, a static collider at its Transform). Sizes are scaled by
 /// og.Transform.scale.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Collider", version = 3)]
+#[reflect(name = "og.Collider", version = 4)]
 pub struct Collider {
-    /// 0 box, 1 sphere (circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (polygon in 2D), 5 triangle mesh of `mesh` (its outline in 2D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both).
-    #[reflect(min = 0, max = 8, label = "Shape")]
+    /// box, sphere (circle in 2D), capsule, cylinder (3D), convex hull of `mesh` (polygon in 2D), triangle mesh of `mesh` (its outline in 2D), the height field `mesh` (3D: a terrain), a diamond and a hexagon in `size` (both): the `SHAPE_*` codes, in order.
+    #[reflect(
+        variants = [
+            "box",
+            "sphere",
+            "capsule",
+            "cylinder",
+            "convex",
+            "trimesh",
+            "heightfield",
+            "diamond",
+            "hexagon"
+        ],
+        label = "Shape"
+    )]
     pub shape: u32,
     /// Full extents of a box, as three.js BoxGeometry(width, height, depth).
     #[reflect(min = 0, unit = "m", default = [1, 1, 1], tunable)]

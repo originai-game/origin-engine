@@ -1,6 +1,6 @@
 module terrain {
   doc "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes."
-  doc "Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape SHAPE_HEIGHTFIELD naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident."
+  doc "Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident."
   guide "world §1"
   core Terrain load sample edit TerrainInfo TerrainSampleDesc TerrainSample TerrainBrush
 
@@ -418,7 +418,7 @@ module terrain {
   struct TerrainInfo {
     doc "A loaded terrain."
     field data TerrainData "Its handle, for og.Terrain.data and this module's functions."
-    field geometry Geometry "The height field registered with physics under this handle: the mesh of an og.Collider of shape SHAPE_HEIGHTFIELD."
+    field geometry Geometry "The height field registered with physics under this handle: the mesh of an og.Collider of shape heightfield."
     field size Vector2 "Its extent along x and z, centred on its entity." {
       unit m
     }

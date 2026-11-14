@@ -11,9 +11,6 @@ import {
   defineResource,
   defineSystem,
   u32,
-  SHAPE_BOX,
-  SHAPE_CAPSULE,
-  SHAPE_SPHERE,
   CHARACTER_JUMPED,
   JOINT_REVOLUTE,
   MOTOR_VELOCITY,
@@ -40,7 +37,7 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
 
 function box(world: World, name: string, position: { x: number; y: number; z: number }, size: { x: number; y: number; z: number }) {
   const e = must(world.spawn({ name, position }));
-  world.insert(e, og.Collider, { shape: SHAPE_BOX, size });
+  world.insert(e, og.Collider, { shape: "box", size });
   return e;
 }
 
@@ -48,15 +45,15 @@ function box(world: World, name: string, position: { x: number; y: number; z: nu
 function world3d(world: World): void {
   box(world, "floor", { x: 0, y: -0.5, z: 0 }, { x: 60, y: 1, z: 60 });
   const hero = must(world.spawn({ name: "hero", position: { x: 0, y: 1, z: 0 } }));
-  world.insert(hero, og.Collider, { shape: SHAPE_CAPSULE, radius: 0.3, height: 1 });
+  world.insert(hero, og.Collider, { shape: "capsule", radius: 0.3, height: 1 });
   world.insert(hero, og.CharacterController, { move: { x: 2, y: 0, z: 0 } });
   const door = must(world.spawn({ name: "door", position: { x: -5, y: 1, z: 3 } }));
   world.insert(door, og.RigidBody);
-  world.insert(door, og.Collider, { shape: SHAPE_BOX, size: { x: 1, y: 2, z: 0.1 } });
+  world.insert(door, og.Collider, { shape: "box", size: { x: 1, y: 2, z: 0.1 } });
   world.insert(door, og.Joint, { kind: JOINT_REVOLUTE, anchor: { x: -0.5, y: 0, z: 0 }, otherAnchor: { x: -5.5, y: 1, z: 3 }, axis: { x: 0, y: 1, z: 0 }, motor: MOTOR_VELOCITY, motorTarget: 1 });
   const car = must(world.spawn({ name: "car", position: { x: 10, y: 1, z: 10 } }));
   world.insert(car, og.RigidBody, { mass: 800 });
-  world.insert(car, og.Collider, { shape: SHAPE_BOX, size: { x: 1.8, y: 0.6, z: 4 } });
+  world.insert(car, og.Collider, { shape: "box", size: { x: 1.8, y: 0.6, z: 4 } });
   world.insert(car, og.Vehicle, { throttle: 0.6 });
   const rope = must(world.spawn({ name: "rope", position: { x: 4, y: 5, z: -4 } }));
   world.insert(rope, og.Rope, { segments: 12, length: 3 });
@@ -66,14 +63,14 @@ function world3d(world: World): void {
   world.insert(pool, og.WaterSurface, { resolution: 32, size: 8 });
   const crate = must(world.spawn({ name: "crate", position: { x: 0, y: 3, z: -12 } }));
   world.insert(crate, og.RigidBody, { mass: 50 });
-  world.insert(crate, og.Collider, { shape: SHAPE_BOX, size: { x: 0.8, y: 0.8, z: 0.8 } });
+  world.insert(crate, og.Collider, { shape: "box", size: { x: 0.8, y: 0.8, z: 0.8 } });
 }
 
 /** A 2D world with a platformer, a fluid and a water line. */
 function world2d(world: World): void {
   box(world, "ground", { x: 0, y: -0.5, z: 0 }, { x: 40, y: 1, z: 1 });
   const hero = must(world.spawn({ name: "hero", position: { x: 0, y: 1, z: 0 } }));
-  world.insert(hero, og.Collider, { shape: SHAPE_BOX, size: { x: 0.6, y: 1, z: 1 } });
+  world.insert(hero, og.Collider, { shape: "box", size: { x: 0.6, y: 1, z: 1 } });
   world.insert(hero, og.PlatformerController, { run: 1 });
   const fluid = must(world.spawn({ name: "fluid", position: { x: 8, y: 2, z: 0 } }));
   world.insert(fluid, og.Fluid2D, { count: 200, size: { x: 2, y: 2 } });
@@ -81,7 +78,7 @@ function world2d(world: World): void {
   world.insert(pond, og.WaterLine, { width: 6, depth: 2, columns: 48 });
   const rock = must(world.spawn({ name: "rock", position: { x: -8, y: 4, z: 0 } }));
   world.insert(rock, og.RigidBody);
-  world.insert(rock, og.Collider, { shape: SHAPE_SPHERE, radius: 0.4 });
+  world.insert(rock, og.Collider, { shape: "sphere", radius: 0.4 });
 }
 
 const Jumps = defineResource("PhysicsJumps", { jumped: u32(), hold: u32() });
@@ -121,7 +118,7 @@ test("Rapier names preserve full sizes, sensors and engine kinematics", () => {
   expect(must(og.physics.castRayAll(w, ray)).map(h => h.entity)).toEqual([near, w.find("far")!]);
   expect(must(og.physics.castRayAll(w, { ...ray, maxHits: 1 })).map(h => h.entity)).toEqual([near]);
   expect(must(og.physics.castRay(w, { ...ray, filter: { includeSensors: true } }))?.entity).toBe(w.find("sensor")!);
-  expect(must(og.physics.castShape(w, { position: ray.origin, direction: ray.direction, shape: { shape: SHAPE_SPHERE, radius: 0.25 } }))?.distance).toBeCloseTo(2.75, 4);
+  expect(must(og.physics.castShape(w, { position: ray.origin, direction: ray.direction, shape: { shape: "sphere", radius: 0.25 } }))?.distance).toBeCloseTo(2.75, 4);
   expect(must(w.get(lift, og.RigidBody)).ccd).toBeTrue();
   expect(must(w.get(near, og.Collider)).sensor).toBeFalse();
   must(og.physics.applyForce(w, ball, { x: 120, y: 0, z: 0 }));

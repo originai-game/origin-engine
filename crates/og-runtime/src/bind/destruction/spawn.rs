@@ -76,16 +76,15 @@ pub(super) fn mass_of(
     let s = world_pose(ctx, l, e).map_or(Vec3::ONE, |p| p.2.abs());
     let (r, h) = (c.radius, c.height);
     let pi = std::f32::consts::PI;
+    use crate::host::wire::ColliderShape as Shape;
     let volume = match c.shape {
-        og_physics::SHAPE_BOX => {
+        Shape::Box => {
             let z = c.size;
             z.x * z.y * z.z * s.x * s.y * s.z
         }
-        og_physics::SHAPE_SPHERE => 4.0 / 3.0 * pi * r * r * r * s.x * s.y * s.z,
-        og_physics::SHAPE_CAPSULE => {
-            (pi * r * r * h + 4.0 / 3.0 * pi * r * r * r) * s.x * s.y * s.z
-        }
-        og_physics::SHAPE_CYLINDER => pi * r * r * h * s.x * s.y * s.z,
+        Shape::Sphere => 4.0 / 3.0 * pi * r * r * r * s.x * s.y * s.z,
+        Shape::Capsule => (pi * r * r * h + 4.0 / 3.0 * pi * r * r * r) * s.x * s.y * s.z,
+        Shape::Cylinder => pi * r * r * h * s.x * s.y * s.z,
         _ => return Mass::Unknown,
     };
     Mass::Finite(volume * c.density.max(0.0))

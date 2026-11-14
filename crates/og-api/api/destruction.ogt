@@ -307,7 +307,7 @@ module destruction {
 
   component PixelTerrain {
     doc "Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics)."
-    doc "Each `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (SHAPE_TRIMESH) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities."
+    doc "Each `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (shape trimesh) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities."
     guide "physics §9"
     aliases "destructible terrain, pixel terrain, worms terrain, noita, carve ground, deformable terrain, 2D destruction"
     field width u32 "Its cells across. Changing it starts the terrain over, filled again." {
@@ -386,7 +386,7 @@ module destruction {
   }
 
   component PixelPiece {
-    doc "A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the convex hull of its cells (SHAPE_CONVEX, a polygon in 2D), drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away."
+    doc "A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the convex hull of its cells (shape convex, a polygon in 2D), drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away."
     field terrain Entity "The og.PixelTerrain it was part of." {
       readonly true
     }

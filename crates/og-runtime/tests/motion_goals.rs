@@ -334,7 +334,7 @@ fn controller_world(ledge: Option<f64>) -> (u32, f64) {
         ),
         (
             "og.Collider",
-            json!({ "shape": 2, "radius": 0.3, "height": 0.6 }),
+            json!({ "shape": "capsule", "radius": 0.3, "height": 0.6 }),
         ),
         ("og.CharacterController", json!({})),
     ] {
@@ -369,7 +369,7 @@ fn controller_world(ledge: Option<f64>) -> (u32, f64) {
             w,
             b,
             "og.Collider".into(),
-            Some(json!({ "shape": 0, "size": size }).to_string()),
+            Some(json!({ "shape": "box", "size": size }).to_string()),
         )));
     }
     frames(w, 30);

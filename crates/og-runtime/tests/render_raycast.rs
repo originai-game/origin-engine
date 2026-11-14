@@ -124,7 +124,10 @@ fn the_mesh_raycast_answers_the_collider_raycast() {
             json!({ "geometry": geometry, "material": material }),
         ),
         ("og.RigidBody", json!({ "kind": "fixed" })),
-        ("og.Collider", json!({ "shape": 5, "mesh": geometry })),
+        (
+            "og.Collider",
+            json!({ "shape": "trimesh", "mesh": geometry }),
+        ),
     ] {
         answer(og_runtime::host_impl::answer(og_world_insert(
             w,

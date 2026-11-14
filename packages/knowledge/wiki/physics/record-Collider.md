@@ -18,11 +18,11 @@ Token `og.Collider`, registered under the schema name `og.Collider`; its value t
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `shape` | `number` | `0` | 0 … 8 | — | label “Shape” | One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (its outline in 2D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both). |
+| `shape` | `ColliderShape` | `"box"` | — | — | label “Shape” | What it is shaped as: box, sphere (a circle in 2D), capsule, cylinder (3D), convex (the hull of `mesh`; a polygon in 2D), trimesh (the triangles of `mesh`; its outline in 2D), heightfield (`mesh` is a terrain's height field, 3D), diamond or hexagon (in `size`, both profiles). |
 | `size` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | ≥ 0 | `m` | tunable | Full extents of a box, as three.js BoxGeometry(width, height, depth). |
 | `radius` | `number` | `0.5` | ≥ 0 | `m` | tunable | Radius of a sphere, circle, capsule or cylinder. |
 | `height` | `number` | `1` | ≥ 0 | `m` | tunable | A capsule's distance between its cap centres (three.js CapsuleGeometry length); a cylinder's height. |
-| `mesh` | `Geometry` | `0` | — | — | — | The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for SHAPE_HEIGHTFIELD, a terrain's height field (og.terrain.load's TerrainInfo.geometry). |
+| `mesh` | `Geometry` | `0` | — | — | — | The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for a heightfield shape, a terrain's height field (og.terrain.load's TerrainInfo.geometry). |
 | `offset` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Position of the shape relative to the entity. |
 | `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | Rotation of the shape relative to the entity. |
 | `friction` | `number` | `0.5` | 0 … 2 | — | tunable | Coulomb friction (0 is ice, 1 rubber); a pair uses the mean of both colliders. |
@@ -38,9 +38,7 @@ component Collider {
   doc "A Collider without a RigidBody whose og.Parent chain reaches one is part of the nearest such body (a compound), placed relative to it; its density adds to the body's mass, and its friction, restitution, layers and sensor flag are its own. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children."
   guide "physics §1"
   aliases "trigger, sensor, hitbox, collision shape, Unity Collider isTrigger, Godot CollisionShape"
-  field shape u32 "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (its outline in 2D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both)." {
-    min 0
-    max 8
+  field shape ColliderShape "What it is shaped as: box, sphere (a circle in 2D), capsule, cylinder (3D), convex (the hull of `mesh`; a polygon in 2D), trimesh (the triangles of `mesh`; its outline in 2D), heightfield (`mesh` is a terrain's height field, 3D), diamond or hexagon (in `size`, both profiles)." {
     label "Shape"
   }
   field size Vector3 "Full extents of a box, as three.js BoxGeometry(width, height, depth)." {
@@ -61,7 +59,7 @@ component Collider {
     unit m
     tunable true
   }
-  field mesh Geometry "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for SHAPE_HEIGHTFIELD, a terrain's height field (og.terrain.load's TerrainInfo.geometry)."
+  field mesh Geometry "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for a heightfield shape, a terrain's height field (og.terrain.load's TerrainInfo.geometry)."
   field offset Vector3 "Position of the shape relative to the entity." {
     unit m
   }
@@ -93,4 +91,4 @@ component Collider {
 }
 ```
 
-<sub>Module `physics` line 96</sub>
+<sub>Module `physics` line 108</sub>

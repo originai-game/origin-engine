@@ -21,7 +21,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `tangents` | `Float32Array \| null` | `null` | — | — | — | Tangents, x y z w per vertex (glTF's: w the bitangent's sign); null generates them. |
 | `indices` | `Uint32Array \| null` | `null` | — | — | — | Triangles, three vertex indices each, counter-clockwise seen from the front; null takes every three vertices as one. |
 | `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it (a mesh made each tick: water, a deforming terrain, a trail of geometry). A static geometry is refused there. |
-| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too, so an og.Collider with it as `mesh` (SHAPE_MESH or SHAPE_CONVEX) collides with what is drawn; equivalent to og.physics.setMesh with its positions and indices. An update re-registers it. |
+| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too, so an og.Collider with it as `mesh` (shape trimesh or convex) collides with what is drawn; equivalent to og.physics.setMesh with its positions and indices. An update re-registers it. |
 
 ```ogt
 struct BufferGeometryDesc {
@@ -35,7 +35,7 @@ struct BufferGeometryDesc {
   field tangents Option.Float32Array "Tangents, x y z w per vertex (glTF's: w the bitangent's sign); null generates them."
   field indices Option.Uint32Array "Triangles, three vertex indices each, counter-clockwise seen from the front; null takes every three vertices as one."
   field dynamic bool "Whether og.render.updateGeometry may rewrite it (a mesh made each tick: water, a deforming terrain, a trail of geometry). A static geometry is refused there."
-  field physics bool "Register it as a physics mesh too, so an og.Collider with it as `mesh` (SHAPE_MESH or SHAPE_CONVEX) collides with what is drawn; equivalent to og.physics.setMesh with its positions and indices. An update re-registers it." {
+  field physics bool "Register it as a physics mesh too, so an og.Collider with it as `mesh` (shape trimesh or convex) collides with what is drawn; equivalent to og.physics.setMesh with its positions and indices. An update re-registers it." {
     default true
   }
 }

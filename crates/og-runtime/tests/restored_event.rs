@@ -129,7 +129,10 @@ fn controller_save_load_differs_only_by_the_restore_notification() {
     for (name, desc) in [
         ("og.Transform", json!({"position":{"x":0,"y":1,"z":0}})),
         ("og.MotionAgent", json!({"drive":true})),
-        ("og.Collider", json!({"shape":2,"radius":0.4,"height":1})),
+        (
+            "og.Collider",
+            json!({"shape":"capsule","radius":0.4,"height":1}),
+        ),
         ("og.CharacterController", json!({})),
     ] {
         value(og_runtime::host_impl::answer(og_world_insert(
@@ -146,7 +149,7 @@ fn controller_save_load_differs_only_by_the_restore_notification() {
         ("og.Transform", json!({"position":{"x":0,"y":-0.5,"z":0}})),
         (
             "og.Collider",
-            json!({"shape":0,"size":{"x":20,"y":1,"z":20}}),
+            json!({"shape":"box","size":{"x":20,"y":1,"z":20}}),
         ),
     ] {
         value(og_runtime::host_impl::answer(og_world_insert(

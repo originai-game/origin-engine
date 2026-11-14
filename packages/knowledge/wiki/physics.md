@@ -12,7 +12,7 @@ See `physics`.
 
 - **TypeScript**: functions are the namespace `og.physics`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `SHAPE_BOX`, `SHAPE_SPHERE`, `SHAPE_HEIGHTFIELD`, `og.RigidBody`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 116 more are advanced (`og api show physics --all`).
+- **Core** (what most games use): `og.RigidBody`, `ColliderShape`, `ColliderShape()`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 109 more are advanced (`og api show physics --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -36,20 +36,13 @@ module physics {
 | [`LOCK_ROTATION_X`](#const-LOCK_ROTATION_X) | constant |  | RigidBody.lock bit: no rotation about x. |
 | [`LOCK_ROTATION_Y`](#const-LOCK_ROTATION_Y) | constant |  | RigidBody.lock bit: no rotation about y. |
 | [`LOCK_ROTATION_Z`](#const-LOCK_ROTATION_Z) | constant |  | RigidBody.lock bit: no rotation about z (the 2D profile's only rotation). |
-| [`SHAPE_BOX`](#const-SHAPE_BOX) | constant |  | Collider.shape: a box of `size` (both profiles). |
-| [`SHAPE_SPHERE`](#const-SHAPE_SPHERE) | constant |  | Collider.shape: a sphere of `radius` (a circle in 2D). |
-| [`SHAPE_CAPSULE`](#const-SHAPE_CAPSULE) | constant |  | Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles). |
-| [`SHAPE_CYLINDER`](#const-SHAPE_CYLINDER) | constant |  | Collider.shape: a cylinder along y of `radius` and `height` (3D only). |
-| [`SHAPE_CONVEX`](#const-SHAPE_CONVEX) | constant |  | Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D). |
-| [`SHAPE_TRIMESH`](#const-SHAPE_TRIMESH) | constant |  | Collider.shape: the triangles of `mesh` (for static and kinematic bodies); in 2D the outline of their xy (the edges no two triangles share) as a hollow polyline, which stops what comes from outside. |
-| [`SHAPE_HEIGHTFIELD`](#const-SHAPE_HEIGHTFIELD) | constant |  | Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry). |
-| [`SHAPE_DIAMOND`](#const-SHAPE_DIAMOND) | constant |  | Collider.shape: a rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles). |
-| [`SHAPE_HEXAGON`](#const-SHAPE_HEXAGON) | constant |  | Collider.shape: a pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3… |
 | [`PROFILE_2D`](#const-PROFILE_2D) | constant |  | Physics.profile: rapier2d, bodies in the xy plane rotating about z. |
 | [`PROFILE_3D`](#const-PROFILE_3D) | constant |  | Physics.profile: rapier3d. |
 | [`RigidBodyType`](physics/type-RigidBodyType.md) | enum |  | A body's simulation mode. |
 | [`RigidBodyType()`](#column-RigidBodyType) | column kind |  | A RigidBodyType field: the variant's index. |
 | [`og.RigidBody`](physics/record-RigidBody.md) | component |  | A body the physics step simulates. |
+| [`ColliderShape`](physics/type-ColliderShape.md) | enum |  | What a collider is shaped as: Collider.shape and ShapeDesc.shape. |
+| [`ColliderShape()`](#column-ColliderShape) | column kind |  | A ColliderShape field: the variant's index. |
 | [`og.Collider`](physics/record-Collider.md) | component |  | The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). |
 | [`ForceFieldKind`](physics/type-ForceFieldKind.md) | enum |  | How an og.ForceField accelerates. |
 | [`ForceFieldKind()`](#column-ForceFieldKind) | column kind |  | A ForceFieldKind field: the variant's index. |
@@ -92,17 +85,16 @@ module physics {
 | [`og.Vehicle`](physics/record-Vehicle.md) | component |  | A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). |
 | [`og.VehicleWheel`](physics/record-VehicleWheel.md) | component |  | A wheel of the og.Vehicle it is a child of (down its og.Parent chain), at its og.Transform relative to the chassis: the hard point its suspension hangs from. |
 | [`og.Rope`](physics/record-Rope.md) | component |  | A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind… |
-| [`SIMULATION_GAMEPLAY`](#const-SIMULATION_GAMEPLAY) | constant |  | `Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated in the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash car… |
-| [`SIMULATION_VISUAL`](#const-SIMULATION_VISUAL) | constant |  | `Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated by the renderer on the GPU for looks only, never read back. |
+| [`Simulation`](physics/type-Simulation.md) | enum |  | Where a cloth, a garment, a soft body or a 3D fluid is simulated: Cloth.simulation, Garment.simulation, SoftBody.simulation and Fluid3D.simulation. |
+| [`Simulation()`](#column-Simulation) | column kind |  | A Simulation field: the variant's index. |
 | [`PIN_TOP`](#const-PIN_TOP) | constant |  | `Cloth.pins` bit: the whole top row is pinned. |
 | [`PIN_TOP_CORNERS`](#const-PIN_TOP_CORNERS) | constant |  | `Cloth.pins` bit: the top-left and top-right corners are pinned. |
 | [`PIN_LEFT`](#const-PIN_LEFT) | constant |  | `Cloth.pins` bit: the whole left column is pinned (a flag on a pole). |
 | [`PIN_TOP_RINGS`](#const-PIN_TOP_RINGS) | constant |  | `Cloth.pins` bit: every fourth point of the top row (curtain rings). |
 | [`og.Cloth`](physics/record-Cloth.md) | component |  | A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the e… |
 | [`og.Garment`](physics/record-Garment.md) | component |  | Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. |
-| [`SOFT_SPHERE`](#const-SOFT_SPHERE) | constant |  | `SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring). |
-| [`SOFT_BOX`](#const-SOFT_BOX) | constant |  | `SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle). |
-| [`SOFT_MESH`](#const-SOFT_MESH) | constant |  | `SoftBody.shape`: the closed surface of geometry `mesh` (3D only). |
+| [`SoftBodyShape`](physics/type-SoftBodyShape.md) | enum |  | What a soft body is built as: SoftBody.shape. |
+| [`SoftBodyShape()`](#column-SoftBodyShape) | column kind |  | A SoftBodyShape field: the variant's index. |
 | [`og.SoftBody`](physics/record-SoftBody.md) | component |  | A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under g… |
 | [`og.Fluid2D`](physics/record-Fluid2D.md) | component |  | A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. |
 | [`og.Fluid3D`](physics/record-Fluid3D.md) | component |  | A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. |
@@ -161,7 +153,10 @@ Each is a factory, `RigidBodyType(value?, options?)`, that makes one field of a 
 | Column | Value | Typed array | Stride | Doc |
 |---|---|---|---|---|
 | <a id="column-RigidBodyType"></a>`RigidBodyType` | `RigidBodyType` | `Uint32Array` | 1 | A RigidBodyType field: the variant's index. |
+| <a id="column-ColliderShape"></a>`ColliderShape` | `ColliderShape` | `Uint32Array` | 1 | A ColliderShape field: the variant's index. |
 | <a id="column-ForceFieldKind"></a>`ForceFieldKind` | `ForceFieldKind` | `Uint32Array` | 1 | A ForceFieldKind field: the variant's index. |
+| <a id="column-Simulation"></a>`Simulation` | `Simulation` | `Uint32Array` | 1 | A Simulation field: the variant's index. |
+| <a id="column-SoftBodyShape"></a>`SoftBodyShape` | `SoftBodyShape` | `Uint32Array` | 1 | A SoftBodyShape field: the variant's index. |
 
 ```ogt
 column RigidBodyType {
@@ -172,7 +167,18 @@ column RigidBodyType {
 }
 ```
 
-<sub>Module `physics` line 35</sub>
+<sub>Module `physics` line 26</sub>
+
+```ogt
+column ColliderShape {
+  doc "A ColliderShape field: the variant's index."
+  array Uint32Array
+  stride 1
+  value ColliderShape
+}
+```
+
+<sub>Module `physics` line 101</sub>
 
 ```ogt
 column ForceFieldKind {
@@ -183,7 +189,29 @@ column ForceFieldKind {
 }
 ```
 
-<sub>Module `physics` line 162</sub>
+<sub>Module `physics` line 172</sub>
+
+```ogt
+column Simulation {
+  doc "A Simulation field: the variant's index."
+  array Uint32Array
+  stride 1
+  value Simulation
+}
+```
+
+<sub>Module `physics` line 1078</sub>
+
+```ogt
+column SoftBodyShape {
+  doc "A SoftBodyShape field: the variant's index."
+  array Uint32Array
+  stride 1
+  value SoftBodyShape
+}
+```
+
+<sub>Module `physics` line 1263</sub>
 
 ## Constants
 
@@ -196,15 +224,6 @@ column ForceFieldKind {
 | <a id="const-LOCK_ROTATION_X"></a>`LOCK_ROTATION_X` | `number` | `8` | RigidBody.lock bit: no rotation about x. |
 | <a id="const-LOCK_ROTATION_Y"></a>`LOCK_ROTATION_Y` | `number` | `16` | RigidBody.lock bit: no rotation about y. |
 | <a id="const-LOCK_ROTATION_Z"></a>`LOCK_ROTATION_Z` | `number` | `32` | RigidBody.lock bit: no rotation about z (the 2D profile's only rotation). |
-| <a id="const-SHAPE_BOX"></a>`SHAPE_BOX` | `number` | `0` | Collider.shape: a box of `size` (both profiles). |
-| <a id="const-SHAPE_SPHERE"></a>`SHAPE_SPHERE` | `number` | `1` | Collider.shape: a sphere of `radius` (a circle in 2D). |
-| <a id="const-SHAPE_CAPSULE"></a>`SHAPE_CAPSULE` | `number` | `2` | Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles). |
-| <a id="const-SHAPE_CYLINDER"></a>`SHAPE_CYLINDER` | `number` | `3` | Collider.shape: a cylinder along y of `radius` and `height` (3D only). |
-| <a id="const-SHAPE_CONVEX"></a>`SHAPE_CONVEX` | `number` | `4` | Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D). |
-| <a id="const-SHAPE_TRIMESH"></a>`SHAPE_TRIMESH` | `number` | `5` | Collider.shape: the triangles of `mesh` (for static and kinematic bodies); in 2D the outline of their xy (the edges no two triangles share) as a hollow polyline, which stops what comes from outside. |
-| <a id="const-SHAPE_HEIGHTFIELD"></a>`SHAPE_HEIGHTFIELD` | `number` | `6` | Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry). |
-| <a id="const-SHAPE_DIAMOND"></a>`SHAPE_DIAMOND` | `number` | `7` | Collider.shape: a rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles). |
-| <a id="const-SHAPE_HEXAGON"></a>`SHAPE_HEXAGON` | `number` | `8` | Collider.shape: a pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles). |
 | <a id="const-PROFILE_2D"></a>`PROFILE_2D` | `number` | `2` | Physics.profile: rapier2d, bodies in the xy plane rotating about z. |
 | <a id="const-PROFILE_3D"></a>`PROFILE_3D` | `number` | `3` | Physics.profile: rapier3d. |
 | <a id="const-JOINT_FIXED"></a>`JOINT_FIXED` | `number` | `0` | `Joint.kind`: the two bodies move as one. |
@@ -227,15 +246,10 @@ column ForceFieldKind {
 | <a id="const-DRIVE_ALL"></a>`DRIVE_ALL` | `number` | `2` | `Vehicle.drive`: every wheel drives. |
 | <a id="const-VEHICLE_ARCADE"></a>`VEHICLE_ARCADE` | `number` | `0` | `Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed. |
 | <a id="const-VEHICLE_DRIVETRAIN"></a>`VEHICLE_DRIVETRAIN` | `number` | `1` | `Vehicle.model`: an engine with a torque curve driving through a gearbox. |
-| <a id="const-SIMULATION_GAMEPLAY"></a>`SIMULATION_GAMEPLAY` | `number` | `0` | `Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated in the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default. |
-| <a id="const-SIMULATION_VISUAL"></a>`SIMULATION_VISUAL` | `number` | `1` | `Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated by the renderer on the GPU for looks only, never read back. The tick's points are the rest shape carried rigidly by the entity (a garment's: the skinned pose). Without RenderCapabilities.visualSimulation it draws that shape. |
 | <a id="const-PIN_TOP"></a>`PIN_TOP` | `number` | `1` | `Cloth.pins` bit: the whole top row is pinned. |
 | <a id="const-PIN_TOP_CORNERS"></a>`PIN_TOP_CORNERS` | `number` | `2` | `Cloth.pins` bit: the top-left and top-right corners are pinned. |
 | <a id="const-PIN_LEFT"></a>`PIN_LEFT` | `number` | `4` | `Cloth.pins` bit: the whole left column is pinned (a flag on a pole). |
 | <a id="const-PIN_TOP_RINGS"></a>`PIN_TOP_RINGS` | `number` | `8` | `Cloth.pins` bit: every fourth point of the top row (curtain rings). |
-| <a id="const-SOFT_SPHERE"></a>`SOFT_SPHERE` | `number` | `0` | `SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring). |
-| <a id="const-SOFT_BOX"></a>`SOFT_BOX` | `number` | `1` | `SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle). |
-| <a id="const-SOFT_MESH"></a>`SOFT_MESH` | `number` | `2` | `SoftBody.shape`: the closed surface of geometry `mesh` (3D only). |
 
 ```ogt
 const MAX_RAYCAST_HITS u32 256 "The most hits og.physics.castRayAll returns."
@@ -280,241 +294,157 @@ const LOCK_ROTATION_Z u32 32 "RigidBody.lock bit: no rotation about z (the 2D pr
 <sub>Module `physics` line 14</sub>
 
 ```ogt
-const SHAPE_BOX u32 0 "Collider.shape: a box of `size` (both profiles)."
+const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
 ```
 
 <sub>Module `physics` line 15</sub>
 
 ```ogt
-const SHAPE_SPHERE u32 1 "Collider.shape: a sphere of `radius` (a circle in 2D)."
+const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 ```
 
 <sub>Module `physics` line 16</sub>
 
 ```ogt
-const SHAPE_CAPSULE u32 2 "Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles)."
-```
-
-<sub>Module `physics` line 17</sub>
-
-```ogt
-const SHAPE_CYLINDER u32 3 "Collider.shape: a cylinder along y of `radius` and `height` (3D only)."
-```
-
-<sub>Module `physics` line 18</sub>
-
-```ogt
-const SHAPE_CONVEX u32 4 "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
-```
-
-<sub>Module `physics` line 19</sub>
-
-```ogt
-const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (for static and kinematic bodies); in 2D the outline of their xy (the edges no two triangles share) as a hollow polyline, which stops what comes from outside."
-```
-
-<sub>Module `physics` line 20</sub>
-
-```ogt
-const SHAPE_HEIGHTFIELD u32 6 "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
-```
-
-<sub>Module `physics` line 21</sub>
-
-```ogt
-const SHAPE_DIAMOND u32 7 "Collider.shape: a rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles)."
-```
-
-<sub>Module `physics` line 22</sub>
-
-```ogt
-const SHAPE_HEXAGON u32 8 "Collider.shape: a pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles)."
-```
-
-<sub>Module `physics` line 23</sub>
-
-```ogt
-const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
-```
-
-<sub>Module `physics` line 24</sub>
-
-```ogt
-const PROFILE_3D u32 3 "Physics.profile: rapier3d."
-```
-
-<sub>Module `physics` line 25</sub>
-
-```ogt
 const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
 ```
 
-<sub>Module `physics` line 338</sub>
+<sub>Module `physics` line 348</sub>
 
 ```ogt
 const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
 ```
 
-<sub>Module `physics` line 339</sub>
+<sub>Module `physics` line 349</sub>
 
 ```ogt
 const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
 ```
 
-<sub>Module `physics` line 340</sub>
+<sub>Module `physics` line 350</sub>
 
 ```ogt
 const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
 ```
 
-<sub>Module `physics` line 341</sub>
+<sub>Module `physics` line 351</sub>
 
 ```ogt
 const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
 ```
 
-<sub>Module `physics` line 342</sub>
+<sub>Module `physics` line 352</sub>
 
 ```ogt
 const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
 ```
 
-<sub>Module `physics` line 343</sub>
+<sub>Module `physics` line 353</sub>
 
 ```ogt
 const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
 ```
 
-<sub>Module `physics` line 344</sub>
+<sub>Module `physics` line 354</sub>
 
 ```ogt
 const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
 ```
 
-<sub>Module `physics` line 345</sub>
+<sub>Module `physics` line 355</sub>
 
 ```ogt
 const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
 ```
 
-<sub>Module `physics` line 346</sub>
+<sub>Module `physics` line 356</sub>
 
 ```ogt
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>Module `physics` line 728</sub>
+<sub>Module `physics` line 738</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>Module `physics` line 729</sub>
+<sub>Module `physics` line 739</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>Module `physics` line 730</sub>
+<sub>Module `physics` line 740</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>Module `physics` line 731</sub>
+<sub>Module `physics` line 741</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>Module `physics` line 732</sub>
+<sub>Module `physics` line 742</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>Module `physics` line 733</sub>
+<sub>Module `physics` line 743</sub>
 
 ```ogt
 const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
 ```
 
-<sub>Module `physics` line 747</sub>
+<sub>Module `physics` line 757</sub>
 
 ```ogt
 const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
 ```
 
-<sub>Module `physics` line 748</sub>
+<sub>Module `physics` line 758</sub>
 
 ```ogt
 const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
 ```
 
-<sub>Module `physics` line 749</sub>
+<sub>Module `physics` line 759</sub>
 
 ```ogt
 const VEHICLE_ARCADE u32 0 "`Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed."
 ```
 
-<sub>Module `physics` line 750</sub>
+<sub>Module `physics` line 760</sub>
 
 ```ogt
 const VEHICLE_DRIVETRAIN u32 1 "`Vehicle.model`: an engine with a torque curve driving through a gearbox."
 ```
 
-<sub>Module `physics` line 751</sub>
-
-```ogt
-const SIMULATION_GAMEPLAY u32 0 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated in the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default."
-```
-
-<sub>Module `physics` line 1061</sub>
-
-```ogt
-const SIMULATION_VISUAL u32 1 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated by the renderer on the GPU for looks only, never read back. The tick's points are the rest shape carried rigidly by the entity (a garment's: the skinned pose). Without RenderCapabilities.visualSimulation it draws that shape."
-```
-
-<sub>Module `physics` line 1062</sub>
+<sub>Module `physics` line 761</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>Module `physics` line 1063</sub>
+<sub>Module `physics` line 1085</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>Module `physics` line 1064</sub>
+<sub>Module `physics` line 1086</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>Module `physics` line 1065</sub>
+<sub>Module `physics` line 1087</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>Module `physics` line 1066</sub>
-
-```ogt
-const SOFT_SPHERE u32 0 "`SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring)."
-```
-
-<sub>Module `physics` line 1237</sub>
-
-```ogt
-const SOFT_BOX u32 1 "`SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle)."
-```
-
-<sub>Module `physics` line 1238</sub>
-
-```ogt
-const SOFT_MESH u32 2 "`SoftBody.shape`: the closed surface of geometry `mesh` (3D only)."
-```
-
-<sub>Module `physics` line 1239</sub>
+<sub>Module `physics` line 1088</sub>

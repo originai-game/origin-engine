@@ -124,13 +124,13 @@ What the renderer can do on this device. Backend limits are reported here, never
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `visualSimulation` | `boolean` | `false` | — | — | — | Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with SIMULATION_VISUAL) simulate here: the device runs compute and reads storage in the vertex stage. Where false they draw their rest shape, as their points read in the tick; false without a renderer. See `looks §18`. |
+| `visualSimulation` | `boolean` | `false` | — | — | — | Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with simulation visual) simulate here: the device runs compute and reads storage in the vertex stage. Where false they draw their rest shape, as their points read in the tick; false without a renderer. See `looks §18`. |
 
 #### 3D world
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `world3d` | `boolean` | `false` | — | — | — | Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, where og.terrain's calls and a SHAPE_HEIGHTFIELD collider are refused naming this field; true elsewhere. See `looks §18`. |
+| `world3d` | `boolean` | `false` | — | — | — | Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, where og.terrain's calls and a heightfield collider are refused naming this field; true elsewhere. See `looks §18`. |
 
 ```ogt
 struct RenderCapabilities {
@@ -194,11 +194,11 @@ struct RenderCapabilities {
   }
   field visibilityBufferRefused Option.String "What the device said when it refused the visibility buffer's resolve pipelines (Chrome on the Pixel 10's PowerVR D-Series answers VK_ERROR_UNKNOWN), or null."
   group "Visual simulation"
-  field visualSimulation bool "Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with SIMULATION_VISUAL) simulate here: the device runs compute and reads storage in the vertex stage. Where false they draw their rest shape, as their points read in the tick; false without a renderer." {
+  field visualSimulation bool "Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with simulation visual) simulate here: the device runs compute and reads storage in the vertex stage. Where false they draw their rest shape, as their points read in the tick; false without a renderer." {
     guide "looks §18"
   }
   group "3D world"
-  field world3d bool "Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, where og.terrain's calls and a SHAPE_HEIGHTFIELD collider are refused naming this field; true elsewhere." {
+  field world3d bool "Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, where og.terrain's calls and a heightfield collider are refused naming this field; true elsewhere." {
     guide "looks §18"
   }
 }

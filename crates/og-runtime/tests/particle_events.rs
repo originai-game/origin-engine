@@ -175,7 +175,7 @@ fn an_emitter_with_events_sends_them_from_the_tick_and_replays_them() {
             ("og.Transform", at(0.0)),
             (
                 "og.Collider",
-                json!({ "shape": 0, "size": { "x": 20, "y": 0.2, "z": 20 } }),
+                json!({ "shape": "box", "size": { "x": 20, "y": 0.2, "z": 20 } }),
             ),
         ],
     );

@@ -8,7 +8,7 @@ Module [`destruction`](../destruction.md) · [index](../index.md)
 
 Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics).
 
-Each `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (SHAPE_TRIMESH) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.
+Each `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (shape trimesh) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.
 
 See `physics §9`.
 
@@ -41,7 +41,7 @@ Token `og.PixelTerrain`, registered under the schema name `og.PixelTerrain`; its
 ```ogt
 component PixelTerrain {
   doc "Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics)."
-  doc "Each `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (SHAPE_TRIMESH) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities."
+  doc "Each `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (shape trimesh) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities."
   guide "physics §9"
   aliases "destructible terrain, pixel terrain, worms terrain, noita, carve ground, deformable terrain, 2D destruction"
   field width u32 "Its cells across. Changing it starts the terrain over, filled again." {

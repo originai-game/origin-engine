@@ -464,7 +464,7 @@ mod tests {
             "{ray}"
         );
         // A table row (a constant) is an entry too.
-        let c = show(&all, "SHAPE_BOX", false);
+        let c = show(&all, "MAX_RAYCAST_HITS", false);
         assert_eq!((c.len(), c[0].kind.as_str()), (1, "const"));
         assert!(show(&all, "NoSuchThing", false).is_empty());
         // Words only a field's doc carries find the record; a word nothing

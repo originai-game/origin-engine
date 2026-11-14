@@ -138,7 +138,7 @@ fn degenerate(c: &Collider) -> Error {
 pub(crate) fn from_heightfield(_f: &crate::HeightfieldDesc, _s: Vec3) -> Result<rp::SharedShape> {
     Err(Error::new(
         ErrorKind::Invalid,
-        "og.Collider.shape 6 (a height field) is 3D only",
+        "og.Collider.shape heightfield is 3D only",
     ))
 }
 

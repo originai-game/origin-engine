@@ -426,7 +426,7 @@ fn filter(f: wire::QueryFilter) -> Result<QueryFilter, String> {
 
 fn shape(s: wire::ShapeDesc) -> ShapeDesc {
     ShapeDesc {
-        shape: s.shape,
+        shape: s.shape as u32,
         size: s.size,
         radius: s.radius,
         height: s.height,

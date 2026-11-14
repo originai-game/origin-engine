@@ -124,7 +124,7 @@ impl Default for Fluid2D {
 /// surface, refracting what is behind by its thickness and reflecting the
 /// sky, lit by the scene's lights.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Fluid3D", version = 2)]
+#[reflect(name = "og.Fluid3D", version = 3)]
 pub struct Fluid3D {
     /// How many particles to spawn in the box (when the component appears
     /// or count or seed changes; 0: none, the emitter fills it). The tick
@@ -217,8 +217,8 @@ pub struct Fluid3D {
     /// Whether the renderer draws it.
     #[reflect(default = 1)]
     pub visible: bool,
-    /// SIMULATION_GAMEPLAY 0 (in the tick) or SIMULATION_VISUAL 1 (on the GPU, for looks only).
-    #[reflect(min = 0, max = 1)]
+    /// gameplay (in the tick: SIMULATION_GAMEPLAY) or visual (on the GPU, for looks only: SIMULATION_VISUAL).
+    #[reflect(variants = ["gameplay", "visual"])]
     pub simulation: u32,
 }
 
