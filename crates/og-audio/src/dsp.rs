@@ -56,6 +56,12 @@ impl OnePole {
         }
     }
 
+    /// Whether it filters (else it passes its input through).
+    #[inline]
+    pub fn on(&self) -> bool {
+        self.on
+    }
+
     #[inline]
     pub fn process(&mut self, l: f32, r: f32) -> (f32, f32) {
         if !self.on {

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Audio: the cost of mixing",
+      "summary": "The mixer took about 9 % of a core to render 32 busy voices (16 streamed stereo QOA loops at assorted pitches, 16 resident ones) with the windowed-sinc resampler: one serial chain of adds per voice frame and per-frame bookkeeping. A voice now renders in runs of 64 frames: their source positions, the history filled once from the decoded block, eight frames' taps summed side by side with SSE (the same order everywhere else, so every host renders the same samples), then the filter, panner and ramp. The same mix takes about 4 %. Pitched or resampled voices move by rounding only: at most -138 dBFS dry, about -96 dBFS (one 16-bit step) once bus effects carry it; unpitched voices at the output's rate and the linear resampler are unchanged, bit for bit."
+    }
+  ]
+}
