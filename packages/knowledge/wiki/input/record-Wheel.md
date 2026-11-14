@@ -12,14 +12,14 @@ Token `og.Wheel`, registered under the schema name `og.Wheel`; its value type is
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `deltaX` | `number` | `0` | — | — | — | Horizontal scroll in CSS pixels. |
-| `deltaY` | `number` | `0` | — | — | — | Vertical scroll in CSS pixels. |
+| `deltaX` | `number` | `0` | — | — | — | Horizontal scroll in CSS pixels: positive scrolls right. |
+| `deltaY` | `number` | `0` | — | — | — | Vertical scroll in CSS pixels, as the browser's deltaY: positive scrolls down (the wheel rolled towards the player). |
 
 ```ogt
 event Wheel {
   doc "A wheel or trackpad scroll."
-  field deltaX f32 "Horizontal scroll in CSS pixels."
-  field deltaY f32 "Vertical scroll in CSS pixels."
+  field deltaX f32 "Horizontal scroll in CSS pixels: positive scrolls right."
+  field deltaY f32 "Vertical scroll in CSS pixels, as the browser's deltaY: positive scrolls down (the wheel rolled towards the player)."
 }
 ```
 

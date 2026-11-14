@@ -19799,12 +19799,12 @@
         },
         "deltaX": {
           "type": "number",
-          "description": "Horizontal scroll amount.",
+          "description": "Horizontal scroll amount, as the browser's deltaX: positive scrolls right.",
           "x-og-unit": "cssPx"
         },
         "deltaY": {
           "type": "number",
-          "description": "Vertical scroll amount.",
+          "description": "Vertical scroll amount, as the browser's deltaY: positive scrolls down (the wheel rolled towards the player).",
           "x-og-unit": "cssPx"
         }
       },
@@ -19993,12 +19993,12 @@
             },
             "deltaX": {
               "type": "number",
-              "description": "Horizontal scroll amount.",
+              "description": "Horizontal scroll amount, as the browser's deltaX: positive scrolls right.",
               "x-og-unit": "cssPx"
             },
             "deltaY": {
               "type": "number",
-              "description": "Vertical scroll amount.",
+              "description": "Vertical scroll amount, as the browser's deltaY: positive scrolls down (the wheel rolled towards the player).",
               "x-og-unit": "cssPx"
             }
           },
@@ -20155,7 +20155,7 @@
         },
         "wheel": {
           "$ref": "#/$defs/Vector2",
-          "description": "Scroll accumulated during this tick.",
+          "description": "Scroll accumulated during this tick, the browser's wheel deltas summed: x positive scrolls right, y positive scrolls down (the wheel rolled towards the player). An action's `wheel.y` control reads it the other way up, in notches.",
           "default": {
             "x": 0,
             "y": 0
@@ -21143,11 +21143,11 @@
       "properties": {
         "deltaX": {
           "type": "number",
-          "description": "Horizontal scroll in CSS pixels."
+          "description": "Horizontal scroll in CSS pixels: positive scrolls right."
         },
         "deltaY": {
           "type": "number",
-          "description": "Vertical scroll in CSS pixels."
+          "description": "Vertical scroll in CSS pixels, as the browser's deltaY: positive scrolls down (the wheel rolled towards the player)."
         }
       },
       "required": [

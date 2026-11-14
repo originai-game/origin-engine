@@ -4026,13 +4026,13 @@ export interface WheelInput {
    */
   readonly y: number;
   /**
-   * Horizontal scroll amount.
+   * Horizontal scroll amount, as the browser's deltaX: positive scrolls right.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly deltaX: number;
   /**
-   * Vertical scroll amount.
+   * Vertical scroll amount, as the browser's deltaY: positive scrolls down (the wheel rolled towards the player).
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
@@ -4112,7 +4112,7 @@ export interface Input {
    */
   readonly pointerInside: boolean;
   /**
-   * Scroll accumulated during this tick.
+   * Scroll accumulated during this tick, the browser's wheel deltas summed: x positive scrolls right, y positive scrolls down (the wheel rolled towards the player). An action's `wheel.y` control reads it the other way up, in notches.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    * @readonly written by the engine
@@ -4942,9 +4942,11 @@ export interface PointerMove {
  * The payload of the `Wheel` event (token `og.Wheel`).
  */
 export interface Wheel {
-  /** Horizontal scroll in CSS pixels. */
+  /** Horizontal scroll in CSS pixels: positive scrolls right. */
   readonly deltaX: number;
-  /** Vertical scroll in CSS pixels. */
+  /**
+   * Vertical scroll in CSS pixels, as the browser's deltaY: positive scrolls down (the wheel rolled towards the player).
+   */
   readonly deltaY: number;
 }
 

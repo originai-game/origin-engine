@@ -12,8 +12,8 @@ A wheel or trackpad scroll at a point.
 |---|---|---|---|---|---|---|
 | `x` | `number` | `0` | — | `cssPx` | — | Horizontal position. |
 | `y` | `number` | `0` | — | `cssPx` | — | Vertical position. |
-| `deltaX` | `number` | `0` | — | `cssPx` | — | Horizontal scroll amount. |
-| `deltaY` | `number` | `0` | — | `cssPx` | — | Vertical scroll amount. |
+| `deltaX` | `number` | `0` | — | `cssPx` | — | Horizontal scroll amount, as the browser's deltaX: positive scrolls right. |
+| `deltaY` | `number` | `0` | — | `cssPx` | — | Vertical scroll amount, as the browser's deltaY: positive scrolls down (the wheel rolled towards the player). |
 
 ```ogt
 struct WheelInput {
@@ -24,10 +24,10 @@ struct WheelInput {
   field y f32 "Vertical position." {
     unit cssPx
   }
-  field deltaX f32 "Horizontal scroll amount." {
+  field deltaX f32 "Horizontal scroll amount, as the browser's deltaX: positive scrolls right." {
     unit cssPx
   }
-  field deltaY f32 "Vertical scroll amount." {
+  field deltaY f32 "Vertical scroll amount, as the browser's deltaY: positive scrolls down (the wheel rolled towards the player)." {
     unit cssPx
   }
 }
