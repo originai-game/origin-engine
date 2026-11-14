@@ -4,12 +4,11 @@ impl WaterRenderer {
     pub(crate) fn new(
         device: &wgpu::Device,
         frame_layout: &wgpu::BindGroupLayout,
-        frame_wgsl: &str,
-        lighting_wgsl: &str,
+        off: crate::pipeline_features::Features,
         samples: u32,
         compute: bool,
-        caustics_left_out: bool,
     ) -> WaterRenderer {
+        let caustics_left_out = off.contains(crate::pipeline_features::Features::CAUSTICS);
         let tex = |binding, filterable| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
@@ -97,8 +96,7 @@ impl WaterRenderer {
                 },
             ],
         });
-        let module =
-            crate::deferred::module(device, "water", water_source(frame_wgsl, lighting_wgsl));
+        let module = crate::deferred::module(device, "water", water_source(off));
         let probe_module = module.clone();
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("water"),

@@ -176,7 +176,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     );
     add(
         "water",
-        crate::water::water_source(crate::FRAME_WGSL, crate::LIGHTING_WGSL),
+        crate::water::water_source(crate::pipeline_features::Features::NONE),
     );
     for (label, wgsl) in crate::ocean_fft::sources() {
         add(label, wgsl);

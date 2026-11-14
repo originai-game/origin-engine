@@ -24,13 +24,24 @@ fn weather_fbm(p: vec2<f32>) -> f32 {
   return weather_noise(p) * 0.57 + weather_noise(p * 2.03 + 17.1) * 0.29 + weather_noise(p * 4.07 + 3.3) * 0.14;
 }
 
+// How much of the rings a pixel that covers `footprint` metres holds. A
+// ring's crests are about 4 cm apart: where a pixel covers a centimetre
+// they alias into stripes, so they fade out first.
+fn weather_ripples_held(footprint: f32) -> f32 {
+  return 1.0 - smoothstep(0.004, 0.012, footprint);
+}
+
+// The mean square of weather_ripples' tilt along one axis at the rain's
+// full strength, over a cell and a cycle (summed numerically from the
+// function below: 0.0041 a layer, two layers, times 0.35 squared): what
+// the rings a pixel cannot hold add to a surface's slope variance.
+const WEATHER_RIPPLES_SPREAD: f32 = 0.001;
+
 // Raindrop rings on standing water: a drop per cell, each at its own time
 // in a one-second cycle, its ring widening and fading. The normal's
 // horizontal tilt.
 fn weather_ripples(p: vec2<f32>, t: f32, footprint: f32) -> vec2<f32> {
-  // A ring's crests are about 4 cm apart: where a pixel covers a
-  // centimetre they alias into stripes, so they fade out first.
-  let fade = 1.0 - smoothstep(0.004, 0.012, footprint);
+  let fade = weather_ripples_held(footprint);
   if (fade <= 0.0) { return vec2<f32>(0.0); }
   var tilt = vec2<f32>(0.0);
   for (var k = 0; k < 2; k++) {

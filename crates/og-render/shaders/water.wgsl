@@ -466,6 +466,24 @@ if (rippled() && !is_sea()) {
     base = normalize(base - vec3<f32>(wake.y, 0.0, wake.z));
     ripple_foam = max(ripple_foam, wake.w * 0.5);
   }
+  // The rain's rings (weather_rain.wgsl), a lake's as a puddle's: where the sky is open over the water, at the rain's
+  // strength (frame.weather.w). Where a pixel cannot hold them they fade from the normal and stay as their slopes'
+  // spread, as the detail waves' do: the far water in the rain is a duller mirror, its glitter wider. (The branch is on
+  // a uniform.)
+  if (OG_WEATHER && frame.weather.w > 0.0) {
+    let rain_at = in.world + frame.origin.xyz;
+    let rain_foot = length(fwidthFine(in.world));
+    let rain = frame.weather.w * weather_open(in.world, vec3<f32>(0.0, 1.0, 0.0));
+    let tilt = weather_ripples(rain_at.xz, t, rain_foot) * rain;
+    base = normalize(base + vec3<f32>(tilt.x, 0.0, tilt.y));
+    let held = weather_ripples_held(rain_foot);
+    let spread = WEATHER_RIPPLES_SPREAD * rain * rain * (1.0 - held * held);
+    if (is_sea()) {
+      sea_cov += vec3<f32>(spread, spread, 0.0);
+    } else {
+      detail.cov += vec3<f32>(spread, spread, 0.0);
+    }
+  }
   var n = normalize(base - tangent_x * slope.x - tangent_z * slope.y);
   let v = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
   // Seen from below: the camera is under the surface.
