@@ -64,8 +64,9 @@ impl Ui {
         } else {
             24.0_f32.max(self.layout.touch_min(&self.env))
         };
+        // A number's spin buttons are cells flush with its end.
         let reveal_w = if number {
-            2.0 * spinner + pad
+            2.0 * spinner
         } else if secret || search {
             height.min(sizes.control_md)
         } else {
@@ -105,7 +106,7 @@ impl Ui {
         if cleared {
             value.clear();
         }
-        let stepped = number && self.number_buttons(i, base, [spinner, height, pad], value, desc);
+        let stepped = number && self.number_buttons(i, base, [spinner, height, 0.0], value, desc);
         self.tree.last_closed = i;
         let mut r = self.respond(key);
         r.changed |= cleared || stepped;

@@ -202,13 +202,14 @@ fn number_spinner_targets_fit_inside_the_field() {
         let up = d.get("Number/Increment");
         let down = d.get("Number/Decrement");
         let minimum = if coarse { 44.0 } else { 24.0 };
-        let inset = d.ui.theme().space.md;
         for button in [&up, &down] {
             assert!(button.width >= minimum);
             assert_eq!(button.y, field.y);
             assert_eq!(button.height, field.height);
-            assert!(button.x + button.width <= field.x + field.width - inset);
+            assert!(button.x + button.width <= field.x + field.width);
         }
+        // The cells end at the field's end: no strip of its plate past them.
+        assert_eq!(up.x + up.width, field.x + field.width);
         assert!(down.x + down.width <= up.x, "targets must not overlap");
     }
     let mut rig = Rig::with(

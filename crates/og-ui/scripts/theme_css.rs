@@ -580,7 +580,11 @@ const FALLBACKS: &str = r#"
   button:disabled { color: var(--ink-faint); }
   button::part(base) { background: var(--control); }
   button::part(base):hover, button::part(base):active { background: var(--control-strong); }
-  input[type=number]::part(button) { background: var(--control); }
+  /* Spin cells sit inside the field's border, the last one at its end. */
+  input[type=number]::part(button) {
+    background: var(--control); margin-block: var(--field-border-width);
+  }
+  input[type=number].inc::part(button) { margin-inline-end: var(--field-border-width); }
   input[type=number]::part(button):hover, input[type=number]::part(button):active {
     background: var(--control-strong);
   }

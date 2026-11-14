@@ -1,6 +1,6 @@
 {
   "simulation": "unchanged",
   "fixed": [
-    {"member":"og.ui","summary":"A number input's spin buttons draw as control cells: the default style gives input[type=number]::part(button) the button plate, border, hover and press, where they drew as bare chevrons beside 1 px divider bars. A style pack restyles them through that part."}
+    {"member":"og.ui","summary":"A number input's spin buttons draw as control cells: the default style gives input[type=number]::part(button) the button plate, border, hover and press, where they drew as bare chevrons beside 1 px divider bars, and they sit inside the field's border, flush with its end. A style pack restyles them through that part."}
   ]
 }
