@@ -469,7 +469,10 @@ pub(crate) use timing::Encoder;
 pub use timing::{GpuFrame, GpuPass, PassTiming, gpu_timing_absent};
 pub use video::FrameTexture;
 pub use views::{MirrorQuad, View, ViewTarget};
-pub use volumetric::{FROXELS, RAYMARCH_LIGHTS, RAYMARCH_STEPS, VolumetricFog, VolumetricMethod};
+pub use volumetric::{
+    FOG_VOLUMES, FROXELS, FogVolume, RAYMARCH_LIGHTS, RAYMARCH_STEPS, VolumetricFog,
+    VolumetricMethod,
+};
 pub use water::{WAKE_TICKS, Water, Water2d, WaterCut, WaterHeights, WaterShore, WaterWakes};
 pub use weather::{
     BOLT_CORE, SurfaceWeather, WEATHER_DUST, WEATHER_MIST, WEATHER_NONE, WEATHER_RAIN,

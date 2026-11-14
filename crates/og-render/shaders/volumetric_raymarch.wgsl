@@ -18,11 +18,12 @@ fn fs_raymarch(in: VolOut) -> @location(0) vec4<f32> {
   var transmittance = 1.0;
   for (var i = 0u; i < steps; i++) {
     let p = frame.view_pos.xyz + dir * (f32(i) + jitter) * dt;
-    let sigma = vol_density(p);
+    let m = vol_medium(p);
+    let sigma = m.a;
     if (sigma <= 0.0) { continue; }
     let tr = exp(-sigma * dt);
     // A step holds the water's light as far as its length.
-    let s = vol.scatter.rgb * sigma * medium_in(p, dir, in.pos.xy, RAYMARCH_LIGHTS, 0.5 * dt);
+    let s = m.rgb * medium_in(p, dir, in.pos.xy, RAYMARCH_LIGHTS, 0.5 * dt);
     acc += transmittance * s * (1.0 - tr) / sigma;
     transmittance *= tr;
   }

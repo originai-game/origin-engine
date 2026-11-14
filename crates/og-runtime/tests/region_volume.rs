@@ -12,6 +12,11 @@
 //! field ignores its volume (the far body moves) or its entity's turn (the
 //! body rises instead of going where the turned field points), or a field
 //! switched off keeps pushing.
+//!
+//! og.FogVolume reaches the renderer with the volume beside it. Ways this
+//! could fail: the fog is drawn without its entity's shape or pose (it
+//! fills the world, or sits at the origin), or one without an og.Volume is
+//! dropped instead of drawn everywhere.
 
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_game_game, og_host_begin_bundle,
@@ -178,4 +183,74 @@ fn a_force_field_accelerates_the_bodies_in_the_volume_beside_it() {
     frames(30);
     let b = position(engine, near).x;
     assert!(((a - b) - 1.5).abs() < 0.08, "coasting at 3 m/s: {}", a - b);
+}
+
+/// What the renderer was last given of the world's fog volumes.
+struct FogSeen(Rc<std::cell::RefCell<Vec<og_render::FogVolume>>>);
+
+impl og_runtime::RenderBackend for FogSeen {
+    fn tier(&self) -> String {
+        "none".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (320, 180)
+    }
+    fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
+        *self.0.borrow_mut() = scene.atmosphere.fog_volumes.clone();
+        Ok(())
+    }
+    fn capture(
+        &mut self,
+        _: &og_render::RenderScene,
+        _: u32,
+        _: u32,
+    ) -> Option<og_render::RgbaImage> {
+        None
+    }
+}
+
+#[test]
+fn a_fog_volume_reaches_the_renderer_with_the_volume_on_its_entity() {
+    set_hooks(Rc::new(NoAssets));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let engine = answer(og_engine_create(game, "{}".into()))["value"]
+        .as_u64()
+        .unwrap() as u32;
+    let seen = Rc::new(std::cell::RefCell::new(Vec::new()));
+    og_runtime::set_render_backend(engine, Some(Box::new(FogSeen(seen.clone())))).unwrap();
+    // A smoke-filled room 12 m down the z axis, and a haze with no bounds.
+    spawn(
+        engine,
+        12.0,
+        &[
+            (
+                "og.Volume",
+                json!({ "size": { "x": 6, "y": 3, "z": 4 }, "fade": 1.5 }),
+            ),
+            (
+                "og.FogVolume",
+                json!({ "density": 0.3, "scattering": 0.2, "color": { "r": 0.5, "g": 0.25, "b": 1 } }),
+            ),
+        ],
+    );
+    spawn(engine, 0.0, &[("og.FogVolume", json!({ "density": 0.02 }))]);
+    answer(og_engine_frame(engine, 1000.0 / 60.0));
+    let seen = seen.borrow();
+    assert_eq!(seen.len(), 2, "{seen:?}");
+    let room = &seen[0];
+    assert_eq!(room.at.position, glam::Vec3::new(0.0, 1.0, 12.0));
+    assert_eq!(
+        room.volume,
+        Some(og_env::volume::Volume {
+            size: glam::Vec3::new(6.0, 3.0, 4.0),
+            radius: 0.0,
+            fade: 1.5,
+        })
+    );
+    assert_eq!(
+        (room.density, room.scattering, room.color),
+        (0.3, 0.2, glam::Vec3::new(0.5, 0.25, 1.0))
+    );
+    assert_eq!((seen[1].volume, seen[1].density), (None, 0.02));
 }

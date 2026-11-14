@@ -223,6 +223,15 @@ depth-normal prepass: the first one pays for it.
   depth and fog just in front of surfaces. Froxel cells take the mean of
   eight samples over their depth; the raymarch path lights each step
   through shadows and cookies too.
+- Local fog: og.FogVolume beside an og.Volume fills that box or sphere
+  with fog (mist in a hollow, smoke in a room, haze for a lamp's shaft),
+  lit as volumetric fog is. It needs no og.Fog: alone it lies over the
+  plain fog, out to the farthest volume; with `Fog.volumetric` it adds to
+  that medium, within `volumetricDistance`. Give the og.Volume a `fade`
+  of a metre or more: a hard edge shows the froxels. The 16 nearest the
+  camera are drawn; nothing is drawn for an orthographic camera, with
+  RenderQuality.volumetricFog off, or in the 2D profile. Blended surfaces
+  and sprites inside one are not fogged by it.
 - Sky: reflections and the ambient light follow the drawn sky within
   sixteen frames, about a quarter of a second at 60 fps, so a drifting
   cloud, lightning or a fast day shows in them.

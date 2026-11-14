@@ -29,6 +29,7 @@ module atmosphere {
 | [`WEATHER_DUST`](#const-WEATHER_DUST) | constant |  | Weather.kind: dust blowing along the wind near the ground, a warm thick fog. |
 | [`WEATHER_MIST`](#const-WEATHER_MIST) | constant |  | Weather.kind: no particles, a dense low height fog. |
 | [`og.Fog`](atmosphere/record-Fog.md) | resource |  | Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ram… |
+| [`og.FogVolume`](atmosphere/record-FogVolume.md) | component |  | Fog inside the og.Volume on its entity (none: everywhere), lit by the sun through its shadows and by the point, spot and rect lights: mist in a hollow, smoke in a room, the haze a light shaft shows i… |
 | [`og.Sky`](atmosphere/record-Sky.md) | resource |  | A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as dr… |
 | [`og.DayNight`](atmosphere/record-DayNight.md) | resource |  | A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and t… |
 | [`og.PhysicalSky`](atmosphere/record-PhysicalSky.md) | resource |  | A physical sky: sunlight scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). |
@@ -62,7 +63,7 @@ column WindMotorKind {
 }
 ```
 
-<sub>Module `atmosphere` line 613</sub>
+<sub>Module `atmosphere` line 634</sub>
 
 ## Constants
 

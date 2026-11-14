@@ -47,6 +47,10 @@ pub struct SceneAtmosphere {
     /// It replaces [`RenderScene::fog`] over the frame while it is set
     /// (and [`crate::RenderQuality::volumetric_fog`] lets it).
     pub volumetric_fog: Option<crate::VolumetricFog>,
+    /// Fog inside regions (og.FogVolume), drawn in the volumetric medium:
+    /// in [`Self::volumetric_fog`], or alone over [`Self::fog`] where the
+    /// scene has none.
+    pub fog_volumes: Vec<crate::FogVolume>,
     /// Clouds in the procedural sky (`clouds.rs`; `None`: none). Drawn
     /// only with [`crate::Background::Procedural`].
     pub clouds: Option<crate::Clouds>,

@@ -415,6 +415,11 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.ForceField",
         enable: |_, _| Ok(()),
     },
+    // Fog inside a region, read by extraction alone.
+    Lazy {
+        name: "og.FogVolume",
+        enable: |_, _| Ok(()),
+    },
     // The shape of a region on its entity: og.audio bounds an
     // og.ReverbZone by it, and the cells read it as the tick starts.
     Lazy {

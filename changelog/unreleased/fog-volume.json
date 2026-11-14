@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.FogVolume",
+      "summary": "Fog inside the og.Volume on its entity: mist in a hollow, smoke in a room, the haze a lamp's shaft shows in, lit by the sun through its shadows and by the point, spot and rect lights. It needs no og.Fog and adds to a volumetric one; the 16 nearest the camera are drawn."
+    }
+  ]
+}

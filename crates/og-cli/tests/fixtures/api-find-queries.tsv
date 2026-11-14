@@ -161,3 +161,4 @@ check the game reaches the boss room at least once during the run	og.assert.reac
 how long the frame may take on a 120 Hz phone	testing §6
 how to keep the simulation the same on every machine when moving bodies	determinism §2
 a 3D crate written as text instead of a glb file	models §1
+fill a room with smoke or mist in one area	og.FogVolume
