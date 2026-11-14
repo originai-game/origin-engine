@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "{@render}",
+      "summary": "An element a snippet renders in a mounted document keeps the elements written inside it. Its node was held without the snippet's name, so the engine released its children every frame: a <row id=\"Foot\"> in {#snippet card()} drew empty. Its path is <parent>/card/Foot, as docs/ui.md gives it."
+    }
+  ]
+}

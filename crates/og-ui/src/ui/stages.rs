@@ -466,6 +466,11 @@ pub struct Tree {
     /// A retained element re-emitted into the slot it already holds in its
     /// parent's children: `(key, parent)` of the push that must not append.
     pub(crate) in_place: Option<(u64, usize)>,
+    /// The content scope the next node is written in: the name of the
+    /// snippet a mounted document renders it from (`body`; `a/b` when
+    /// nested). Its id and key carry the scope between its parent's and
+    /// its own, as its path does.
+    pub(crate) scope: Option<String>,
     /// This frame's element keys under a parent, which a repeated id
     /// would take again (`Ui::push` renames it), and the anonymous
     /// elements of each kind under each parent: kept as built, so a
@@ -534,6 +539,9 @@ impl Tree {
     }
     pub fn in_place_mut(&mut self) -> &mut Option<(u64, usize)> {
         &mut self.in_place
+    }
+    pub fn scope_mut(&mut self) -> &mut Option<String> {
+        &mut self.scope
     }
     pub fn stack_mut(&mut self) -> &mut Vec<usize> {
         &mut self.stack

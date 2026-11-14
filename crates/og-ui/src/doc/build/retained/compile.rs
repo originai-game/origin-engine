@@ -94,12 +94,27 @@ impl RetainedHost {
                 materialization,
             },
         )?;
+        // What its id has before its own name: the snippets it is rendered
+        // from, after the item node a virtual list writes around its row.
+        let scope = parent.and_then(|parent| {
+            let (before, _) = id.rsplit_once('/')?;
+            let list = &self.elements[parent];
+            if matches!(
+                list.document.nodes[list.index].kind,
+                NodeKind::Element(Kind::List | Kind::Cells)
+            ) {
+                before.split_once('/').map(|(_, scope)| scope.to_owned())
+            } else {
+                Some(before.to_owned())
+            }
+        });
         let mut element = ElementInstance {
             document: doc.clone(),
             index,
             context,
             path,
             id: id.rsplit('/').next().unwrap().to_owned(),
+            scope,
             cached: CachedInputs::default(),
             resolved: None,
             style_dirty: true,

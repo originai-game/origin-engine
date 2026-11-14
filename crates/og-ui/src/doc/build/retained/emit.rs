@@ -129,7 +129,9 @@ impl RetainedHost {
         let mut result = Ok(());
         let mut children_built = false;
         ui.docs.run_enter(&resolved.values);
+        *ui.tree.scope_mut() = e.scope.clone();
         ui.build_resolved_node(&mut b, e.index, resolved.clone(), |ui, b, virtual_props| {
+            *ui.tree.scope_mut() = None;
             children_built = true;
             result = if let Some(props) = virtual_props {
                 self.emit_virtual(ui, &e, b, props, env, events, writes)
@@ -139,6 +141,7 @@ impl RetainedHost {
                     .try_for_each(|child| self.emit(ui, child, env, events, writes))
             };
         });
+        *ui.tree.scope_mut() = None;
         ui.docs.run_exit();
         let run_events = if uses_run {
             ui.docs.state().run.since(run_mark)

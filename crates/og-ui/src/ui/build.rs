@@ -38,7 +38,11 @@ impl Ui {
         let owner = self.tree.parent();
         let parent = self.tree.content_parent();
         let anonymous = id.is_empty();
-        let parent_key = self.tree.nodes[owner].key;
+        let scope = self.tree.scope.take();
+        let parent_key = scope
+            .iter()
+            .flat_map(|scope| scope.split('/'))
+            .fold(self.tree.nodes[owner].key, child_key);
         let mut local = if anonymous {
             let n = self
                 .tree
@@ -75,6 +79,9 @@ impl Ui {
                 self.tree.path_of(parent)
             ));
             local = renamed;
+        }
+        if let Some(scope) = scope {
+            local = format!("{scope}/{local}");
         }
         let in_place = self.tree.in_place == Some((key, parent));
         let index = self

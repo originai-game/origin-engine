@@ -67,6 +67,10 @@ pub struct ElementInstance {
     pub context: BindingContext,
     pub path: String,
     pub id: String,
+    /// The content scope it is written in ([`crate::ui::Tree`]'s): what
+    /// its path has between its parent's and its id, for an element a
+    /// snippet renders.
+    pub scope: Option<String>,
     pub cached: CachedInputs,
     pub resolved: Option<ResolvedNode>,
     pub style_dirty: bool,

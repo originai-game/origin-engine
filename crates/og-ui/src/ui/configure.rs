@@ -70,6 +70,7 @@ impl Ui {
                 persistent: Vec::new(),
                 owning: Vec::new(),
                 in_place: None,
+                scope: None,
                 built: Default::default(),
                 anonymous: Default::default(),
                 stack: Vec::new(),

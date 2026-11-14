@@ -553,4 +553,45 @@ mod tests {
             .unwrap_err();
         assert!(error.contains("no snippet 'nowhere'"), "{error}");
     }
+
+    /// An element a snippet renders keeps its own content: its node is the
+    /// one its path names, under the snippet's name, so it is held from
+    /// frame to frame with what stands under it.
+    ///
+    /// Ways it could fail: the node keyed without the snippet's name (its
+    /// element never finds it, and releases its children as unbuilt), or
+    /// the name written as a node of its own.
+    #[test]
+    fn rendered_content_keeps_its_nested_elements() {
+        let mut ui = ui();
+        ui.define_document(
+            UiDocument::parse(
+                "nest.svelte",
+                r#"<meta name="component" content="nest">
+<column id="Page">{@render card()}</column>
+{#snippet card()}<row id="Foot"><p id="Step">step {$footer}</p></row>{/snippet}"#,
+            )
+            .unwrap(),
+        );
+        ui.mount_document(
+            SourceId::new("test", "nest"),
+            "nest",
+            inputs(),
+            BTreeMap::new(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        for _ in 0..2 {
+            step(&mut ui);
+            assert_eq!(
+                texts(&ui),
+                [(
+                    "test:nest/card/Foot/Step".to_string(),
+                    "step Ann".to_string()
+                )]
+            );
+        }
+        let idle = step(&mut ui);
+        assert_eq!(idle.reconciled, 0, "{idle:?}");
+    }
 }
