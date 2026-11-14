@@ -1,11 +1,14 @@
-//! The one shape of a region of the world: a box along its entity's axes
-//! or a sphere about it, with a fade past its surface. A zone that changes
-//! what is inside it (og.ReverbZone, og.FogVolume) reads its weight here,
-//! so every region is placed, turned, scaled and faded the same way.
+//! The one shape of a region of the world (og.Volume): a box along its
+//! entity's axes or a sphere about it, with a fade past its surface. A
+//! region component on the same entity (og.ReverbZone, og.StreamCell)
+//! takes its extent from it, so every region is placed, turned, scaled
+//! and faded the same way, and one entity may be several regions of one
+//! shape.
 //!
 //! Subtractions, a square root and a quaternion product: the same on
 //! every host, so the tick may branch on it.
 
+use og_core::Reflect;
 use og_core::glam::{Quat, Vec3};
 
 /// Where a region's entity puts it in the world.
@@ -27,18 +30,38 @@ impl Placement {
     }
 }
 
-/// A region's shape. See the module documentation.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// A region's shape (og.Volume). See the module documentation.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.Volume")]
 pub struct Volume {
     /// The box's full size along the entity's axes, centred on it (times
-    /// its scale).
+    /// og.Transform.scale).
+    #[reflect(default = [1, 1, 1], unit = "m")]
     pub size: Vec3,
     /// A sphere of this radius about the entity instead of the box (times
-    /// the largest of its scale); 0 uses the box.
+    /// the largest of og.Transform.scale); 0 uses the box.
+    #[reflect(min = 0, unit = "m", tunable)]
     pub radius: f32,
-    /// How far past the surface the region fades out, linearly (m); 0 is a
+    /// How far past the surface the region fades out, linearly; 0 is a
     /// hard edge.
+    #[reflect(min = 0, unit = "m", tunable)]
     pub fade: f32,
+}
+
+impl Default for Volume {
+    fn default() -> Self {
+        Volume {
+            size: Vec3::ONE,
+            radius: 0.0,
+            fade: 0.0,
+        }
+    }
+}
+
+/// How much of a region reaches `p`, its entity at `at`: a region without
+/// an og.Volume has no bounds, so it is whole everywhere.
+pub fn weight(volume: Option<&Volume>, at: &Placement, p: Vec3) -> f32 {
+    volume.map_or(1.0, |v| v.weight(at, p))
 }
 
 impl Volume {
@@ -108,5 +131,15 @@ mod tests {
         let hard = Volume { fade: 0.0, ..ball };
         assert_eq!(hard.weight(&at, Vec3::new(0.0, 3.0, 0.0)), 1.0);
         assert_eq!(hard.weight(&at, Vec3::new(0.0, 3.01, 0.0)), 0.0);
+    }
+
+    /// A region without a volume reaches everywhere; with one, only it.
+    #[test]
+    fn a_region_without_a_volume_has_no_bounds() {
+        let at = Placement::at(Vec3::ZERO);
+        let far = Vec3::new(1e6, 0.0, 0.0);
+        assert_eq!(weight(None, &at, far), 1.0);
+        assert_eq!(weight(Some(&Volume::default()), &at, far), 0.0);
+        assert_eq!(weight(Some(&Volume::default()), &at, Vec3::splat(0.4)), 1.0);
     }
 }

@@ -103,8 +103,10 @@ world.set(feet, og.AudioEvent, { trigger: true });   // the engine resets it
 - Snapshots never write og.Audio or og.AudioBusFx: what the game set stays,
   and the snapshot multiplies it. Turn a snapshot off to go back.
 - og.ReverbZone makes the shared reverb sound like a room while the
-  listener is inside. Past its surface it fades out over `fade` metres, so
-  walking in through a door the room grows around the listener. A zone on
+  listener is inside the og.Volume on its entity. Past the volume's surface
+  it fades out over the volume's `fade`, so walking in through a door the
+  room grows around the listener. A zone without an og.Volume has no
+  bounds: it is heard everywhere, which is rarely what a room wants. A zone on
   a child of a moving room moves with it. Outside every zone the reverb is
   og.Audio's `reverbRoom` and `reverbDamping` and the bus's send.
 

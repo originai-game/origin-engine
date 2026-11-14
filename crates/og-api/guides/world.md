@@ -206,7 +206,8 @@ from og.load.scene) is a cell.
 - Loading is decided as each tick starts, before any system runs, from
   world state alone: a cell loads while an og.StreamAnchor (a player, a
   vehicle, each player of a networked game) is within StreamCell.load of
-  its box, unloads once every anchor is past StreamCell.unload, and stays
+  its box (the og.Volume on its entity; without one, the entity's
+  position), unloads once every anchor is past StreamCell.unload, and stays
   while `pin` is set. Without any anchor og.Camera's position anchors, for a
   single-player game; a lockstep or rollback session refuses that, since
   each peer's camera is its own.

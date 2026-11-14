@@ -30,4 +30,4 @@ component StreamAnchor {
 }
 ```
 
-<sub>Module `stream` line 33</sub>
+<sub>Module `stream` line 30</sub>

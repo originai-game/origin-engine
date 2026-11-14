@@ -38,6 +38,8 @@ use std::collections::BTreeMap;
 
 /// The cell component.
 pub(crate) const CELL: &str = "og.StreamCell";
+/// The shape of a cell, on its entity.
+const VOLUME: &str = "og.Volume";
 /// The anchor component.
 pub(crate) const ANCHOR: &str = "og.StreamAnchor";
 /// What every entity a cell spawned carries.
@@ -247,18 +249,22 @@ fn cells(eng: &Engine, world: &World) -> Vec<(Entity, record::StreamCell)> {
         .collect()
 }
 
-/// The distance from `p` (world) to a cell's box: `size` about the cell's
-/// world position, turned with it (its scale does not apply).
-fn distance(cell: Pose, size: glam::Vec3, p: glam::Vec3) -> f32 {
+/// The distance from `p` (world) to a cell: to the og.Volume on its
+/// entity, placed, turned and scaled with it, or to the entity's position
+/// when it has none.
+fn distance(cell: Pose, volume: Option<&record::Volume>, p: glam::Vec3) -> f32 {
+    let Some(v) = volume else {
+        return (p - cell.0).length();
+    };
     let region = og_env::volume::Volume {
-        size,
-        radius: 0.0,
+        size: v.size,
+        radius: v.radius,
         fade: 0.0,
     };
     let at = og_env::volume::Placement {
         position: cell.0,
         quaternion: cell.1,
-        scale: glam::Vec3::ONE,
+        scale: cell.2,
     };
     region.outside(&at, p)
 }
@@ -297,17 +303,18 @@ fn seen(
         Err(e) => return Some(Err(e)),
     };
     let transform = layout(eng, "og.Transform")?;
+    let volume = layout(eng, VOLUME);
     let mut out = Vec::with_capacity(list.len());
     for (cell, v) in list {
         let loading = lock(store).loading.contains_key(&cell.to_bits());
         let scene = v.scene;
         let pose = pose_of(world, &transform, cell);
         let reach = reach_of(&v, v.loaded || loading);
-        let size = v.size;
+        let shape: Option<record::Volume> = volume.as_ref().and_then(|l| row(world, l, cell));
         let within = |lead: f32| {
-            anchors
-                .iter()
-                .any(|&(p, extra, speed)| distance(pose, size, p) <= reach + extra + speed * lead)
+            anchors.iter().any(|&(p, extra, speed)| {
+                distance(pose, shape.as_ref(), p) <= reach + extra + speed * lead
+            })
         };
         let want = scene != 0 && (v.pin || within(0.0));
         let ahead = scene != 0 && (v.pin || within(ahead));

@@ -9,13 +9,14 @@ use crate::command::{
 use crate::schema::{
     Audio, AudioBusFx, AudioBusNode, AudioEvent, AudioEventVoice, AudioListener, AudioMix,
     AudioPlayback, AudioSnapshot, AudioSource, AudioStream, BUS_COUNT, GRAPH_LEN, GRAPH_STRIDE,
-    MAX_BUSES, Parent, ReverbZone, SoundEnded, SoundStarted, Transform, end_reason, panning_model,
+    MAX_BUSES, Parent, ReverbZone, SoundEnded, SoundStarted, Transform, Volume, end_reason,
+    panning_model, zone_weight,
 };
 use crate::sound::SoundBank;
 use og_core::IdMap;
-use og_core::Result;
 use og_core::glam::{Quat, Vec3, Vec4};
 use og_core::hash::StableHasher;
+use og_core::{Reflect, Result};
 use og_ecs::{Entity, QueryDesc, SystemContext, SystemDesc, World};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
@@ -347,6 +348,14 @@ pub fn retire_link(engine: u32) -> Option<AudioLink> {
         l.detach();
     }
     link
+}
+
+/// Registers `og.Volume` and grants og.audio its read: what a host calls
+/// the first time a game uses the component, so an og.ReverbZone is
+/// bounded by the volume on its entity.
+pub fn enable_volumes(world: &mut World) -> Result<()> {
+    world.register::<Volume>()?;
+    world.grant(SYSTEM_NAME, &[Volume::NAME])
 }
 
 /// Registers audio's records (`og.AudioSource`, `og.AudioListener`,
@@ -1094,7 +1103,10 @@ fn zones(
     let mut best: Option<(ReverbZone, f32)> = None;
     for e in entities {
         let z = ctx.get::<ReverbZone>(e)?;
-        let w = z.weight_at(&places.world(ctx, e)?, ear);
+        // og.Volume is the game's to add (enable_volumes): a zone without
+        // one, or in a world that never named it, has no bounds.
+        let volume = ctx.get::<Volume>(e).ok();
+        let w = zone_weight(volume.as_ref(), &places.world(ctx, e)?, ear);
         if w.to_bits() != z.weight.to_bits() {
             ctx.set(e, ReverbZone { weight: w, ..z })?;
         }

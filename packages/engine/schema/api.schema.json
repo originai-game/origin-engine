@@ -3111,6 +3111,7 @@
         "Transform",
         "Parent",
         "MatrixWorld",
+        "Volume",
         "WorldOriginPlane",
         "WorldOriginPlane",
         "WorldOrigin",
@@ -17724,6 +17725,41 @@
             "elements": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
           },
           "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Volume": {
+      "x-og-kind": "component",
+      "x-og-module": "transform",
+      "description": "The shape of a region of the world: a box along the entity's axes, or a sphere about it, with a fade past its surface. A region component on the same entity takes its extent from it: og.ReverbZone (where the room is heard) and og.StreamCell (the box its anchors approach). So every region is placed, turned, scaled and faded the same way, and one entity can be several regions of one shape. Alone it does nothing.",
+      "type": "object",
+      "properties": {
+        "size": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The box's full size along the entity's axes, centred on it (times og.Transform.scale).",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "x-og-unit": "m"
+        },
+        "radius": {
+          "type": "number",
+          "description": "A sphere of this radius about the entity instead of the box (times the largest of og.Transform.scale); 0 uses the box.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "fade": {
+          "type": "number",
+          "description": "How far past the surface the region fades out, linearly; 0 is a hard edge.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false
@@ -40035,35 +40071,9 @@
     "ReverbZone": {
       "x-og-kind": "component",
       "x-og-module": "audio",
-      "description": "A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size, damping and one bus's send towards the zone's, fading out linearly over `fade` metres past its surface.\nEach tick the listener's weight in every zone (`weight`) is a function of its position, the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream. It never writes Audio.reverbRoom, Audio.reverbDamping or AudioBusFx.reverb, the open air's; it sits at its world transform.\nSee `audio §4`.",
+      "description": "The shared reverb sounds like this room inside the og.Volume on its entity (none: everywhere). While the og.AudioListener is inside, og.audio eases the reverb's room size, damping and one bus's send towards the zone's, fading with the volume's `fade`.\nEach tick the listener's weight in every zone (`weight`) is a function of its position, the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream. It never writes Audio.reverbRoom, Audio.reverbDamping or AudioBusFx.reverb, the open air's; it sits at its world transform.\nSee `audio §4`.",
       "type": "object",
       "properties": {
-        "size": {
-          "$ref": "#/$defs/Vector3",
-          "description": "The box's full size along the entity's axes, centred on it (times og.Transform.scale).",
-          "default": {
-            "x": 10,
-            "y": 4,
-            "z": 10
-          },
-          "x-og-unit": "m"
-        },
-        "radius": {
-          "type": "number",
-          "description": "A sphere of this radius about the entity instead of the box (times the largest of og.Transform.scale); 0 uses the box.",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "m",
-          "x-og-tunable": true
-        },
-        "fade": {
-          "type": "number",
-          "description": "How far past the volume's surface the zone fades out, linearly; 0 is a hard edge.",
-          "default": 2,
-          "minimum": 0,
-          "x-og-unit": "m",
-          "x-og-tunable": true
-        },
         "bus": {
           "$ref": "#/$defs/AudioBus",
           "description": "The bus whose reverb send the zone sets.",
@@ -52401,23 +52411,13 @@
     "StreamCell": {
       "x-og-kind": "component",
       "x-og-module": "stream",
-      "description": "A world cell: loads its sub-scene's entities while an og.StreamAnchor is near its box, and despawns them when none is (the module's doc). The box is the entity's world position ± half `size`, turned with it; a zero size is a point.",
+      "description": "A world cell: loads its sub-scene's entities while an og.StreamAnchor is near its box, and despawns them when none is (the module's doc). Its box (or sphere) is the og.Volume on its entity; without one the cell is a point at the entity's position. The volume's `fade` is not read: `load` and `unload` are the cell's distances.",
       "type": "object",
       "properties": {
         "scene": {
           "$ref": "#/$defs/Asset",
           "description": "The sub-scene it loads: set from the entity's `scene \"<id>\"` line when its scene spawns, or og.load.scene's handle for a cell spawned by game code. 0: none (the cell never loads).",
           "default": 0
-        },
-        "size": {
-          "$ref": "#/$defs/Vector3",
-          "description": "The box's full extents, in metres along the entity's axes (its scale does not apply). Zero: a point at the entity's position.",
-          "default": {
-            "x": 0,
-            "y": 0,
-            "z": 0
-          },
-          "x-og-unit": "m"
         },
         "load": {
           "type": "number",

@@ -43,8 +43,10 @@ entity \"village\" {
   Transform {
     position 100 0 0
   }
-  StreamCell {
+  Volume {
     size 20 10 20
+  }
+  StreamCell {
     load 10
   }
 }
@@ -53,8 +55,10 @@ entity \"farm\" {
   Transform {
     position 130 0 0
   }
-  StreamCell {
+  Volume {
     size 10 10 10
+  }
+  StreamCell {
     load 5
   }
 }
@@ -324,14 +328,12 @@ const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
 fn world_with(persist: bool, budget: u32) -> String {
     WORLD
         .replace(
-            "    size 20 10 20\n    load 10\n",
-            &format!(
-                "    size 20 10 20\n    load 10\n    persist {persist}\n    budget {budget}\n"
-            ),
+            "    load 10\n",
+            &format!("    load 10\n    persist {persist}\n    budget {budget}\n"),
         )
         .replace(
-            "    size 10 10 10\n    load 5\n",
-            "    size 10 10 10\n    load 5\n    persist false\n    budget 0\n",
+            "    load 5\n",
+            "    load 5\n    persist false\n    budget 0\n",
         )
 }
 

@@ -36,7 +36,8 @@ use crate::support;
 use og_audio::command::fx;
 use og_audio::{
     Audio, AudioBusFx, AudioDesc, AudioLink, AudioListener, AudioSource, AudioStream, Bus,
-    HeadlessMode, HeadlessSink, Op, ReverbZone, SoundBank, Transform, install,
+    HeadlessMode, HeadlessSink, Op, ReverbZone, SoundBank, Transform, Volume, enable_volumes,
+    install,
 };
 use og_core::glam::Vec3;
 use og_ecs::{Entity, World, WorldDesc};
@@ -108,9 +109,10 @@ fn reverb_sent(link: &AudioLink) -> Option<(f32, f32, f32)> {
 }
 
 /// kestrel-stair #21: an og.ReverbZone eases the shared reverb (room,
-/// damping, a bus's send) towards its own while the listener is inside,
-/// fading over `fade` metres past its edge, as a function of the
-/// listener's position each tick.
+/// damping, a bus's send) towards its own while the listener is inside the
+/// og.Volume on its entity, fading over the volume's `fade` past its
+/// edge, as a function of the listener's position each tick. Without the
+/// volume the zone has no bounds.
 #[test]
 fn a_reverb_zone_eases_the_shared_reverb_by_where_the_listener_is() {
     let bank = SoundBank::new();
@@ -119,6 +121,7 @@ fn a_reverb_zone_eases_the_shared_reverb_by_where_the_listener_is() {
         let (mut world, link) = world_with(&bank, |w| {
             w.register::<AudioListener>().unwrap();
         });
+        enable_volumes(&mut world).unwrap();
         *world.resource_mut::<Audio>().unwrap() = Audio {
             reverb_room: 0.5,
             reverb_damping: 0.5,
@@ -142,9 +145,12 @@ fn a_reverb_zone_eases_the_shared_reverb_by_where_the_listener_is() {
                     quaternion: og_core::glam::Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
                     ..Transform::default()
                 },
-                ReverbZone {
+                Volume {
                     size: Vec3::new(10.0, 4.0, 10.0),
                     fade: 4.0,
+                    ..Volume::default()
+                },
+                ReverbZone {
                     send: 0.6,
                     room: 0.9,
                     damping: 0.2,
@@ -200,6 +206,15 @@ fn a_reverb_zone_eases_the_shared_reverb_by_where_the_listener_is() {
     // The open air's own settings were never written.
     let audio = *world.resource::<Audio>().unwrap();
     assert_eq!((audio.reverb_room, audio.reverb_damping), (0.5, 0.5));
+    // Without its volume the zone is the whole world: heard from as far.
+    world.remove::<Volume>(crypt).unwrap();
+    at(&mut world, ear, 0.0);
+    let everywhere = reverb_sent(&link).expect("the unbounded zone is heard");
+    assert!(
+        near(everywhere, (0.9, 0.2, 0.6)),
+        "unbounded {everywhere:?}"
+    );
+    assert_eq!(world.get::<ReverbZone>(crypt).unwrap().weight, 1.0);
 
     // The same walk twice is the same stream; a restore mid-walk goes on
     // as the walk did.

@@ -26527,6 +26527,38 @@ pub mod record {
         }
     }
 
+    /// `Volume`: packages/knowledge/wiki/transform.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Volume {
+        pub size: Vec3,
+        pub radius: f32,
+        pub fade: f32,
+    }
+
+    impl Default for Volume {
+        fn default() -> Self {
+            Self {
+                size: Vec3::new(1.0_f32, 1.0_f32, 1.0_f32),
+                radius: Default::default(),
+                fade: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Volume {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                size: field(o, "size", d.size)?,
+                radius: field(o, "radius", d.radius)?,
+                fade: field(o, "fade", d.fade)?,
+            })
+        }
+    }
+
     /// `WorldOrigin`: packages/knowledge/wiki/transform.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct WorldOrigin {
@@ -34044,9 +34076,6 @@ pub mod record {
     /// `ReverbZone`: packages/knowledge/wiki/audio.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct ReverbZone {
-        pub size: Vec3,
-        pub radius: f32,
-        pub fade: f32,
         pub bus: AudioBus,
         pub send: f32,
         pub room: f32,
@@ -34057,9 +34086,6 @@ pub mod record {
     impl Default for ReverbZone {
         fn default() -> Self {
             Self {
-                size: Vec3::new(10.0_f32, 4.0_f32, 10.0_f32),
-                radius: Default::default(),
-                fade: 2.0_f32,
                 bus: AudioBus::Sfx,
                 send: 0.5_f32,
                 room: 0.85_f32,
@@ -34076,9 +34102,6 @@ pub mod record {
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
-                size: field(o, "size", d.size)?,
-                radius: field(o, "radius", d.radius)?,
-                fade: field(o, "fade", d.fade)?,
                 bus: field(o, "bus", d.bus)?,
                 send: field(o, "send", d.send)?,
                 room: field(o, "room", d.room)?,
@@ -35551,7 +35574,6 @@ pub mod record {
     #[derive(Clone, Debug, PartialEq)]
     pub struct StreamCell {
         pub scene: u64,
-        pub size: Vec3,
         pub load: f32,
         pub unload: f32,
         pub pin: bool,
@@ -35564,7 +35586,6 @@ pub mod record {
         fn default() -> Self {
             Self {
                 scene: Default::default(),
-                size: Default::default(),
                 load: Default::default(),
                 unload: Default::default(),
                 pin: Default::default(),
@@ -35583,7 +35604,6 @@ pub mod record {
             let o = object(v)?;
             Ok(Self {
                 scene: field(o, "scene", d.scene)?,
-                size: field(o, "size", d.size)?,
                 load: field(o, "load", d.load)?,
                 unload: field(o, "unload", d.unload)?,
                 pin: field(o, "pin", d.pin)?,

@@ -585,10 +585,11 @@ impl Default for AudioBusFx {
     }
 }
 
-/// A reverb zone: a box (or a sphere) where the shared reverb sounds like
-/// this room. While the listener is inside, og.audio eases the reverb's
-/// room size and damping, and one bus's send to it, towards the zone's;
-/// past its edge the zone fades out over `fade` metres. The listener's
+/// A reverb zone: a region where the shared reverb sounds like this room,
+/// shaped by the og.Volume on its entity (without one it has no bounds).
+/// While the listener is inside, og.audio eases the reverb's room size and
+/// damping, and one bus's send to it, towards the zone's; past its edge the
+/// zone fades out with the volume's `fade`. The listener's
 /// weight in each zone is a function of its position that tick (the
 /// strongest zone wins, ties to the first in query order), so it is
 /// deterministic and the stream carries it. og.Audio's `reverbRoom` and
@@ -596,18 +597,6 @@ impl Default for AudioBusFx {
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
 #[reflect(name = "og.ReverbZone")]
 pub struct ReverbZone {
-    /// The box's full size along the entity's axes, centred on it (times
-    /// og.Transform.scale).
-    #[reflect(default = [10, 4, 10], unit = "m")]
-    pub size: Vec3,
-    /// A sphere of this radius about the entity instead of the box (times
-    /// the largest of og.Transform.scale); 0 uses the box.
-    #[reflect(min = 0, unit = "m", tunable)]
-    pub radius: f32,
-    /// How far past the volume's surface the zone fades out, linearly; 0 is
-    /// a hard edge.
-    #[reflect(min = 0, default = 2, unit = "m", tunable)]
-    pub fade: f32,
     /// The bus whose reverb send the zone sets.
     #[reflect(variants = ["master", "music", "sfx", "ui"], default = 2)]
     pub bus: u32,
@@ -631,9 +620,6 @@ pub struct ReverbZone {
 impl Default for ReverbZone {
     fn default() -> Self {
         ReverbZone {
-            size: Vec3::new(10.0, 4.0, 10.0),
-            radius: 0.0,
-            fade: 2.0,
             bus: Bus::Sfx as u32,
             send: 0.5,
             room: 0.85,
@@ -643,23 +629,19 @@ impl Default for ReverbZone {
     }
 }
 
-impl ReverbZone {
-    /// How much of the zone a listener at `p` hears, the zone's entity at
-    /// `t`: 1 inside the volume, falling linearly to 0 at `fade` metres
-    /// from its surface (0 outside a hard edge).
-    pub fn weight_at(&self, t: &Transform, p: Vec3) -> f32 {
-        let volume = og_env::volume::Volume {
-            size: self.size,
-            radius: self.radius,
-            fade: self.fade,
-        };
-        let at = og_env::volume::Placement {
-            position: t.position,
-            quaternion: t.quaternion,
-            scale: t.scale,
-        };
-        volume.weight(&at, p)
-    }
+/// `og.Volume`, og-env's: the shape of a region on its entity.
+pub use og_env::volume::Volume;
+
+/// How much of a zone a listener at `p` hears, the zone's entity at `t`
+/// with `volume` (og.Volume) on it: 1 inside the volume, falling linearly
+/// to 0 at its `fade` from its surface; 1 everywhere without a volume.
+pub fn zone_weight(volume: Option<&Volume>, t: &Transform, p: Vec3) -> f32 {
+    let at = og_env::volume::Placement {
+        position: t.position,
+        quaternion: t.quaternion,
+        scale: t.scale,
+    };
+    og_env::volume::weight(volume, &at, p)
 }
 
 /// A musical clock: tempo and metre. The engine's og.music system writes
