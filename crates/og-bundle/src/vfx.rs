@@ -88,6 +88,10 @@
 //! og.VfxEvent of the effect with the same name, so a file whose impact a
 //! pixel effect carries needs no `impact` line of its own.
 
+mod play;
+
+pub use play::{VfxCue, VfxDraw, VfxDrawKind, VfxInstance, element_id, random};
+
 use crate::effect::{flag, nums, one, value};
 use og_core::ogt::{Document, Entry, Value};
 use og_render_data::{EffectValue, ParticleBlend};
