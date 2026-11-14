@@ -244,6 +244,9 @@ pub(crate) struct Fluid3dRenderer {
     scratch: Vec<Instance>,
     /// This frame's visual fluids (`prepare`), after the CPU particles.
     pub(crate) visual: Vec<VisualSlot>,
+    /// Its targets for the cameras outside the frame graph, by their
+    /// square size ([`Fluid3dRenderer::keep_faces`]).
+    faces: Vec<(u32, Fluid3dTargets)>,
 }
 
 fn uniform_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
@@ -490,6 +493,7 @@ impl Fluid3dRenderer {
             capacity: 1024,
             scratch: Vec::new(),
             visual: Vec::new(),
+            faces: Vec::new(),
         }
     }
 
@@ -581,6 +585,24 @@ impl Fluid3dRenderer {
     /// face: probes.rs), into `views` of `screen` pixels, after
     /// [`Fluid3dRenderer::prepare`] uploaded the particles for `main`:
     /// uniforms of its own over the same instances.
+    /// Its targets for the square faces another camera draws it into (a
+    /// reflection probe's): kept for the `sizes` those faces have, and made
+    /// for the ones of `due` (the faces a fluid is drawn into this frame).
+    pub(crate) fn keep_faces(&mut self, device: &wgpu::Device, sizes: &[u32], due: &[u32]) {
+        self.faces.retain(|(s, _)| sizes.contains(s));
+        for &size in due {
+            if !self.faces.iter().any(|(s, _)| *s == size) {
+                self.faces.push((size, Fluid3dTargets::new(device, size)));
+            }
+        }
+    }
+
+    /// Its targets for a face of `size` ([`Fluid3dRenderer::keep_faces`]).
+    pub(crate) fn face(&self, size: u32) -> &Fluid3dTargets {
+        let at = self.faces.iter().find(|(s, _)| *s == size);
+        &at.expect("made with the fluids").1
+    }
+
     /// The instance buffer visual fluids write into.
     pub(crate) fn instances(&self) -> &wgpu::Buffer {
         &self.instances

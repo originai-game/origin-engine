@@ -75,8 +75,18 @@ impl Renderer {
         let face_depth = face_copy || (due && particle_frame.soft);
         if face_depth {
             self.probes
-                .ensure_targets(&self.device, probe_frame, face_copy, face_fluid);
+                .ensure_targets(&self.device, probe_frame, face_copy);
         }
+        // The 3D fluids' own targets of those faces.
+        let fluid_faces: Vec<u32> = if face_fluid {
+            let size = |&(slot, _): &(usize, usize)| self.probes.targets_of(slot).size;
+            probe_frame.due.iter().map(size).collect()
+        } else {
+            Vec::new()
+        };
+        self.world
+            .fluid3d
+            .keep_faces(&self.device, &self.probes.target_sizes(), &fluid_faces);
         // A local light's shadow faces may be drawn this frame (frame.rs
         // `local_lights` shadows only the lights that cast).
         let local_shadows = scene
