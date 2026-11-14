@@ -193,22 +193,22 @@ mod web {
         Renderer::debug_cull_direct(false);
         for knob in spec.split(',').map(str::trim).filter(|k| !k.is_empty()) {
             let scene = &mut built.scene;
-            let mesh = scene.instances.first().map(|i| i.mesh);
+            let mesh = scene.objects.instances.first().map(|i| i.mesh);
             match knob.split_once(':') {
                 None if knob == "gpu" => built.desc.culling = og_render::Culling::Gpu,
-                None if knob == "first" => scene.instances.retain(|i| Some(i.mesh) == mesh),
-                None if knob == "noshadow" => scene.light.cast_shadows = false,
-                None if knob == "nomeshlets" => scene.meshlets = false,
+                None if knob == "first" => scene.objects.instances.retain(|i| Some(i.mesh) == mesh),
+                None if knob == "noshadow" => scene.lighting.light.cast_shadows = false,
+                None if knob == "nomeshlets" => scene.objects.meshlets = false,
                 None if knob == "apart" => Renderer::debug_cull_apart(true),
                 None if knob == "direct" => Renderer::debug_cull_direct(true),
                 None if knob == "samemat" => {
-                    let m = scene.instances.first().map(|i| i.material);
-                    for i in &mut scene.instances {
+                    let m = scene.objects.instances.first().map(|i| i.material);
+                    for i in &mut scene.objects.instances {
                         i.material = m.expect("an instance");
                     }
                 }
                 None if knob == "samemesh" => {
-                    for i in &mut scene.instances {
+                    for i in &mut scene.objects.instances {
                         i.mesh = mesh.expect("an instance");
                     }
                 }
@@ -218,14 +218,19 @@ mod web {
                         .and_then(|(a, b)| Some((a.parse().ok()?, b.parse().ok()?)))
                         .ok_or_else(|| format!("bisect: sphere:{sr}"))?;
                     let m = scene.add_mesh(og_render::shapes::sphere(a, b));
-                    for i in scene.instances.iter_mut().filter(|i| Some(i.mesh) == mesh) {
+                    for i in scene
+                        .objects
+                        .instances
+                        .iter_mut()
+                        .filter(|i| Some(i.mesh) == mesh)
+                    {
                         i.mesh = m;
                     }
                 }
                 Some(("keep", n)) => {
                     let n: usize = n.parse().map_err(|_| format!("bisect: keep:{n}"))?;
                     let mut kept = 0;
-                    scene.instances.retain(|i| {
+                    scene.objects.instances.retain(|i| {
                         if Some(i.mesh) != mesh {
                             return true;
                         }
@@ -482,7 +487,7 @@ mod web {
         OPEN.with(|o| {
             let mut o = o.borrow_mut();
             let open = o.as_mut().ok_or_else(|| err("no scene open"))?;
-            open.built.scene.color_filter = f;
+            open.built.scene.look.color_filter = f;
             Ok(())
         })
     }
