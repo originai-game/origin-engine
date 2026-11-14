@@ -118,6 +118,7 @@ most; `--all` lists every member.
 |---|---|---|
 | begin a game, find the API | `start` | `og.game`, `defineComponent`, `defineSystem` (`og api show system`) |
 | write systems that replay and save | determinism §1 | `World`, `og.Time`, `og.Rng` |
+| read a unit, an angle, a row or a name the right way round | `conventions`, `facing` | `og.transform.face`, `og.transform.face2d` |
 | test the loop, measure frames | `testing` | `og.assert.always`, `og.assert.sometimes`, `og.assert.reachable` |
 | save and load progress | `saves` | `World.snapshot`, `World.restore`, `og.platform.saveSlot`, `og.platform.loadSlot` |
 | call the platform (store, scores, purchases) | saves §7 | `og.platform.storeGet`, `og.platform.result` |

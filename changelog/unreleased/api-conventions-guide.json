@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "the conventions guide",
+      "summary": "One guide states the rules every member follows, once each: units (metres, kilograms, seconds; a time is seconds unless its name ends in Ms or Ticks), angles (radians but for fov, slopes, the sky, camera roll, post effects, styles and the art contract; a fov is the full angle and a cone its half), names (quaternion and rotation, layers and masks, damping, the input words), which way each grid's rows run, where an anchor and a pivot count from, colours and handles. Read it with `og api show conventions`."
+    },
+    {
+      "member": "Input.wheel, og.Wheel, WheelInput",
+      "summary": "The wheel's sign is stated in the fields' docs and in facing §3: Input.wheel and og.Wheel's deltaX and deltaY are the browser's, positive scrolling right and down (the wheel rolled towards the player), while an action's wheel.y control is up-positive, +1 a notch. The facing guide's input table also gains og.PointerMove's movementX and movementY (down positive)."
+    }
+  ]
+}

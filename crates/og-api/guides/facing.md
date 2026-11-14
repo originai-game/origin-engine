@@ -1,6 +1,6 @@
 # Facing: the axes, forward and camera-relative movement
 
-Which way things face in the engine, how to turn them and read their directions, and how to turn a stick or WASD into a world direction that matches the screen. Read before writing movement, aiming or a camera rig; it is the one place the axes are stated.
+Which way things face in the engine, how to turn them and read their directions, and how to turn a stick or WASD into a world direction that matches the screen. Read before writing movement, aiming or a camera rig; it is the one place the axes are stated. Units, angles, names and which way rows run are in `conventions`.
 
 The API: `og api show transform`, `og api show input`, `og api show camera`.
 
@@ -78,10 +78,14 @@ The directions input reports:
 |---|---|---|
 | `og.input.actionVector` (an `axis2` action) | right is +1 | up or forward is +1 (W, a stick pushed away) |
 | og.Pointers.movement, a pointer's x and y | right is positive | down is positive (CSS px) |
+| og.PointerMove's movementX and movementY | right is positive | down is positive (CSS px) |
+| og.Input.wheel, og.Wheel's deltaX and deltaY | scrolling right is positive | scrolling down is positive: the wheel rolled towards the player (CSS px, the browser's) |
+| an action's `wheel.y` control | | the wheel rolled away from the player is +1 a notch |
 | og.Gamepad's raw stick axes | right is +1 | down is +1 (the Gamepad API's) |
 
 Read movement through an action, never the raw axes, so the sign is the
-same for keys, pads and touch.
+same for keys, pads and touch: an action's y is up-positive whatever it is
+bound to, the wheel included.
 
 In a 3D game the action's y has to become a world direction, and which one
 depends on the camera. `og.input.moveRelative` does it: y goes into the

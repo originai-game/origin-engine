@@ -728,10 +728,10 @@ module input {
     field y f32 "Vertical position." {
       unit cssPx
     }
-    field deltaX f32 "Horizontal scroll amount." {
+    field deltaX f32 "Horizontal scroll amount, as the browser's deltaX: positive scrolls right." {
       unit cssPx
     }
-    field deltaY f32 "Vertical scroll amount." {
+    field deltaY f32 "Vertical scroll amount, as the browser's deltaY: positive scrolls down (the wheel rolled towards the player)." {
       unit cssPx
     }
   }
@@ -782,7 +782,7 @@ module input {
     field pointerInside bool "Whether a pointer event has placed the pointer over the play surface." {
       readonly true
     }
-    field wheel Vector2 "Scroll accumulated during this tick." {
+    field wheel Vector2 "Scroll accumulated during this tick, the browser's wheel deltas summed: x positive scrolls right, y positive scrolls down (the wheel rolled towards the player). An action's `wheel.y` control reads it the other way up, in notches." {
       readonly true
       unit cssPx
     }
@@ -1274,8 +1274,8 @@ module input {
 
   event Wheel {
     doc "A wheel or trackpad scroll."
-    field deltaX f32 "Horizontal scroll in CSS pixels."
-    field deltaY f32 "Vertical scroll in CSS pixels."
+    field deltaX f32 "Horizontal scroll in CSS pixels: positive scrolls right."
+    field deltaY f32 "Vertical scroll in CSS pixels, as the browser's deltaY: positive scrolls down (the wheel rolled towards the player)."
   }
 
   event A11yAction {

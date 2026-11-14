@@ -84,7 +84,8 @@ is absorbed before it counts.
 ## 2. Units, scales and the profile
 
 Metres, kilograms, seconds, and radians for every rotation, joint limit
-and steering angle; a slope (`maxSlope`) is in degrees. Keep moving things
+and steering angle; a slope (`maxSlope`) is in degrees (`conventions §2`
+has the whole rule). Keep moving things
 between about 0.05 m and 100 m; scale the game, not gravity
 (`determinism §2`).
 

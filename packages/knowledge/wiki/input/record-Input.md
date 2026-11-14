@@ -18,7 +18,7 @@ Token `og.Input`, registered under the schema name `og.Input`; its value type is
 |---|---|---|---|---|---|---|
 | `pointer` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only, worldspace `none` | The pointer position. |
 | `pointerInside` | `boolean` | `false` | — | — | read only | Whether a pointer event has placed the pointer over the play surface. |
-| `wheel` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Scroll accumulated during this tick. |
+| `wheel` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Scroll accumulated during this tick, the browser's wheel deltas summed: x positive scrolls right, y positive scrolls down (the wheel rolled towards the player). An action's `wheel.y` control reads it the other way up, in notches. |
 | `buttons` | `number` | `0` | — | — | read only | Held pointer buttons, as a mask. |
 | `buttonsJustPressed` | `number` | `0` | — | — | read only | Buttons that went down this tick. |
 | `buttonsJustReleased` | `number` | `0` | — | — | read only | Buttons that went up this tick. |
@@ -73,7 +73,7 @@ resource Input {
   field pointerInside bool "Whether a pointer event has placed the pointer over the play surface." {
     readonly true
   }
-  field wheel Vector2 "Scroll accumulated during this tick." {
+  field wheel Vector2 "Scroll accumulated during this tick, the browser's wheel deltas summed: x positive scrolls right, y positive scrolls down (the wheel rolled towards the player). An action's `wheel.y` control reads it the other way up, in notches." {
     readonly true
     unit cssPx
   }
