@@ -46,3 +46,13 @@ fn view_point(inv_proj: mat4x4<f32>, uv: vec2<f32>, d: f32) -> vec3<f32> {
 fn ign(px: vec2<f32>) -> f32 {
   return fract(52.9829189 * fract(dot(px, vec2<f32>(0.06711056, 0.00583715))));
 }
+
+// The view depth the prepass clears to where it drew nothing (post.rs
+// FAR_DEPTH): the sky. A camera's far plane stays far under it.
+const SKY_VIEW_DEPTH: f32 = 1.0e9;
+
+// Whether a prepass view depth `d` is the sky's: past half the cleared
+// value, so filtering and half-float rounding never decide it.
+fn is_sky_depth(d: f32) -> bool {
+  return d >= 0.5 * SKY_VIEW_DEPTH;
+}

@@ -214,7 +214,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     n = normalize(cross(dpx, dpy));
   }
   // Perspective: towards the eye; orthographic: against the view direction.
-  let v = select(normalize(frame.view_pos.xyz - in.world_pos), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(in.world_pos);
   let n_vertex = n;
   let face = select(1.0, -1.0, dot(n, v) < 0.0);
   n = n * face;

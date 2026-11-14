@@ -49,7 +49,7 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   if ((u32(material.flags.w) & 1u) != 0u) {
     n = normalize(cross(world_dx(in.world_pos), world_dy(in.world_pos)));
   }
-  let v = select(normalize(frame.view_pos.xyz - in.world_pos), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(in.world_pos);
   if (dot(n, v) < 0.0) { n = -n; }
   let cur = in.cur_clip.xy / in.cur_clip.w;
   let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);

@@ -96,7 +96,7 @@ fn imp_surface(in: ImpostorOut) -> ImpSurface {
   // The pixel's own eye ray, not the card centre's (the card's vertex
   // stage faces it to the centre): at a few metres they part by several
   // degrees, which tilted every sample's normal towards the rim.
-  let toward = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let toward = toward_eye(in.world);
   // Turned as the card is (imp_view of its centre's view): not at all
   // where the atlases hold frames around the eye, else from the eye to
   // the horizon above it.
@@ -272,7 +272,7 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   // Lit from behind, foliage lets the sun through, as its mesh does.
   s.translucency = mat.y;
-  let v = select(normalize(frame.view_pos.xyz - surface.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(surface.world);
   var n = surface.normal;
   if (dot(n, v) < 0.0) { n = normalize(n - v * dot(n, v) * 1.01); }
   // The decals over the card, then the rain, snow and dust on it, as on
@@ -343,7 +343,7 @@ fn fs_impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
   if (surface.coverage.alpha < imp_cutoff() || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
     discard;
   }
-  let v = select(normalize(frame.view_pos.xyz - surface.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(surface.world);
   var n = surface.normal;
   if (dot(n, v) < 0.0) { n = normalize(n - v * dot(n, v) * 1.01); }
   let cur = in.cur_clip.xy / in.cur_clip.w;

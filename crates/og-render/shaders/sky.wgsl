@@ -683,10 +683,10 @@ fn clouds_covered(pos: vec2<f32>, texel: vec2<f32>) -> bool {
   let hi = vec2<i32>(ceil((pos + 1.0) * scale - 0.5));
   let last = vec2<i32>(size) - 1;
   // The pixel under the texel's centre first: over the sky that is the only read.
-  if (textureLoad(clouds_depth, clamp(vec2<i32>(pos * scale), vec2<i32>(0), last), 0).r >= 1.0e8) { return false; }
+  if (is_sky_depth(textureLoad(clouds_depth, clamp(vec2<i32>(pos * scale), vec2<i32>(0), last), 0).r)) { return false; }
   for (var y = lo.y; y < hi.y; y++) {
     for (var x = lo.x; x < hi.x; x++) {
-      if (textureLoad(clouds_depth, clamp(vec2<i32>(x, y), vec2<i32>(0), last), 0).r >= 1.0e8) { return false; }
+      if (is_sky_depth(textureLoad(clouds_depth, clamp(vec2<i32>(x, y), vec2<i32>(0), last), 0).r)) { return false; }
     }
   }
   return true;

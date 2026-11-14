@@ -135,7 +135,7 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   if ((mode & 1u) != 0u) {
     n = normalize(cross(dpx, dpy));
   }
-  let v = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(in.world);
   if (dot(n, v) < 0.0) { n = -n; }
   let n_geo = n;
   n = normalize(surface_normal(h, shader_params(), n));
@@ -195,7 +195,7 @@ fn fs_prepass(in: ScatterOut, @builtin(front_facing) front: bool) -> ScatterPrep
   }
   var n = normalize(in.normal);
   if ((u32(material.flags.w) & 1u) != 0u) { n = flat_n; }
-  let v = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(in.world);
   if (dot(n, v) < 0.0) { n = -n; }
   let cur = in.cur_clip.xy / in.cur_clip.w;
   let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);

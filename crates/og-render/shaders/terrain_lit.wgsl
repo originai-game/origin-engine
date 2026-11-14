@@ -449,7 +449,7 @@ fn grass_far(albedo: vec3<f32>, p: vec3<f32>, local: vec3<f32>, n: vec3<f32>, c:
   let amount = smoothstep(g.fade.x, g.fade.y, distance(p, frame.view_pos.xyz)) * g.fade.w * grass_layer_share(p, n, c, u32(g.color.w));
   if (amount <= 0.0) { return o; }
   let at = p.xz + frame.origin.xz;
-  let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(p);
   let m = grass_mean(g.canopy.x, g.canopy.y, g.canopy.w, n, v, normalize(frame.light_dir.xyz));
   // Tufts of a few blades: lit tips beside the shade between them.
   let tuft = g.canopy.z * 2.0;
@@ -620,7 +620,7 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, gr
   if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) {
     return vec4<f32>(s.albedo, 1.0);
   }
-  let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(p);
 
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);

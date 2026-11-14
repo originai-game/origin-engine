@@ -168,7 +168,7 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
     let prev_clip = taa.prev_view_proj * vec4<f32>(world, 1.0);
     motion = (cur_clip.xy / cur_clip.w - prev_clip.xy / prev_clip.w) * vec2<f32>(0.5, -0.5);
   }
-  if (taa.still.y > 0.5 && textureLoad(view_depth_tex, at, 0).r < 1.0e8) {
+  if (taa.still.y > 0.5 && !is_sky_depth(textureLoad(view_depth_tex, at, 0).r)) {
     let v = textureLoad(velocity_tex, at, 0).zw;
     own_motion = any(abs(v - motion) * out_size > vec2<f32>(0.5));
     motion = v;
@@ -266,7 +266,7 @@ fn moving_nearby(at: vec2<i32>, size: vec2<i32>, out_size: vec2<f32>) -> bool {
   for (var r = 0; r < 4; r++) {
     for (var k = 0; k < 8; k++) {
       let q = clamp(at + dirs[k] * rings[r], vec2<i32>(0), size - 1);
-      if (textureLoad(view_depth_tex, q, 0).r >= 1.0e8) { continue; }
+      if (is_sky_depth(textureLoad(view_depth_tex, q, 0).r)) { continue; }
       let own = textureLoad(velocity_tex, q, 0).zw - camera_motion(q, size);
       let moving = any(abs(own) * out_size > vec2<f32>(0.5));
       let reach = 2.0 + 8.0 * length(own * vec2<f32>(size));

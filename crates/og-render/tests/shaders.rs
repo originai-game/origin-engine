@@ -177,6 +177,8 @@ fn a_mechanisms_shader_code_is_written_once() {
                 "fn fullscreen_clip(",
                 "fn view_point(",
                 "fn ign(",
+                "fn is_sky_depth(",
+                "const SKY_VIEW_DEPTH",
             ],
         ),
         (
@@ -196,6 +198,7 @@ fn a_mechanisms_shader_code_is_written_once() {
                 "fn value_noise3_at(",
             ],
         ),
+        (&["frame.wgsl"], &["fn toward_eye("]),
         (&["shadow_pass.wgsl"], &["local_value(", "local_distance("]),
         (
             &["media.wgsl"],

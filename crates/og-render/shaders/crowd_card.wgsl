@@ -91,7 +91,7 @@ fn fs_crowd_card(in: CardOut) -> CardLit {
   surface.roughness = clamp(part.a, 0.04, 1.0);
   surface.albedo = albedo;
   surface.f0 = vec3<f32>(0.04);
-  let v = select(normalize(frame.view_pos.xyz - world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(world);
   var n = normalize(m3 * s.normal);
   if (dot(n, v) < 0.0) { n = normalize(n - v * dot(n, v) * 1.01); }
   // The decals over the card, then the rain, snow and dust on it, as on
@@ -141,7 +141,7 @@ fn fs_crowd_card_prepass(in: CardOut) -> CardPrepass {
   }
   let world = card_surface(in, s);
   let m3 = mat3x3<f32>(in.m0, in.m1, in.m2);
-  let v = select(normalize(frame.view_pos.xyz - world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(world);
   var n = normalize(m3 * s.normal);
   if (dot(n, v) < 0.0) { n = normalize(n - v * dot(n, v) * 1.01); }
   let cur = in.cur_clip.xy / in.cur_clip.w;

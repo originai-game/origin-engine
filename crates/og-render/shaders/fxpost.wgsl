@@ -299,16 +299,13 @@ fn ssao_term(in: VsOut) -> f32 {
   return pow(ao, max(fxp.ao.y, 0.0));
 }
 
-// The view depth the prepass clears to (post.rs FAR_DEPTH): the sky.
-const FX_FAR_DEPTH: f32 = 1.0e9;
-
 // The blur's answer without its taps, when it is known: 1 on the cleared
 // sky. There every sky tap weighs exp(0) = 1 and holds the raw AO's 1, and
 // a surface tap (nearer than 1e8 m, so with a far plane under it) weighs
 // below exp(-22) = 3e-10, which sixteen of cannot move a sum of whole ones
 // in f32: the 4x4 blur returns exactly 1 there too.
 fn ao_blur_sky(d0: f32) -> bool {
-  return d0 >= FX_FAR_DEPTH && fxp.cam.x < 1.0e8;
+  return is_sky_depth(d0) && fxp.cam.x < 1.0e8;
 }
 
 // A 4x4 depth-aware blur of the raw AO (tex_b) over its noise pattern, at

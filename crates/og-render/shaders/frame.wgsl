@@ -101,6 +101,13 @@ struct Frame {
   drawn: vec4<u32>,           // x: the renderer's frames drawn before this one (it counts on while the clock is paused), yzw unused
 };
 
+// The unit direction from the surface point `p` towards the eye: towards
+// the camera in perspective, against the view's forward in orthographic
+// (every ray parallel). One copy for every lit surface.
+fn toward_eye(p: vec3<f32>) -> vec3<f32> {
+  return select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+}
+
 // The hemisphere light (three.js HemisphereLight) as irradiance in the IBL's units: added beside the environment's
 // irradiance at its own strength (not the environment's intensity), so it reaches only the diffuse term (no
 // reflection) and is scaled, like it, by AO and the material's envMapIntensity.

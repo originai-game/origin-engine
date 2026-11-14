@@ -13,7 +13,7 @@ override OG_GI: bool = true;
 fn gi_sample_at(p: vec3<f32>, n: vec3<f32>) -> GiSample {
   if (!OG_GI) { return GiSample(vec4<f32>(0.0), vec4<f32>(0.0), vec4<f32>(0.0), 0.0); }
   if (probe_data.v[GI_HEADER_AT].x < 0.5) { return GiSample(vec4<f32>(0.0), vec4<f32>(0.0), vec4<f32>(0.0), 0.0); }
-  let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(p);
   return gi_gather(p, n, v, true);
 }
 

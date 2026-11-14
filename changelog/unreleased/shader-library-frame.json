@@ -1,0 +1,23 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "shaders: the WGSL library",
+      "change": "Every game shader now has `is_sky_depth(d)` and `const SKY_VIEW_DEPTH` in scope, and lit material shaders `toward_eye(p)`, from the engine's one copy; a shader that declares one of these names no longer compiles.",
+      "fix": "Delete your own copy and call the library's, or rename yours.",
+      "find": ["is_sky_depth", "SKY_VIEW_DEPTH", "toward_eye"]
+    }
+  ],
+  "added": [
+    {
+      "member": "shaders: toward_eye, is_sky_depth",
+      "summary": "A game shader may ask for the direction from a surface point to the eye (orthographic cameras included) and whether a prepass view depth is the sky."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "rendering: sky test",
+      "summary": "The anti-aliasing and the clouds' depth test call a pixel sky only where the prepass drew nothing; with a camera far plane past 100 km they took far surfaces for sky."
+    }
+  ]
+}

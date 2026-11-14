@@ -396,7 +396,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   if ((mode & 1u) != 0u) {
     n = normalize(cross(dpx, dpy));
   }
-  let v = select(normalize(frame.view_pos.xyz - in.world_pos), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(in.world_pos);
   let n_vertex = n;
   let face = select(1.0, -1.0, dot(n, v) < 0.0);
   n = n * face;

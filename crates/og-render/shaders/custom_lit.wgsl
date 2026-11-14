@@ -21,10 +21,6 @@ fn project(world: vec3<f32>) -> vec4<f32> {
   return frame.view_proj * vec4<f32>(world, 1.0);
 }
 
-fn custom_view(p: vec3<f32>) -> vec3<f32> {
-  return select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
-}
-
 @vertex
 fn vs(v: CustomVertexIn, i: CustomInstanceIn) -> CustomOut {
   return custom_plain(v, i);
@@ -69,7 +65,7 @@ fn custom_fragment(in: CustomOut) -> vec4<f32> {
   // Before the shader's code, whose branches derivatives may not follow.
   let dpx = dpdx(in.world);
   let dpy = dpdy(in.world);
-  let v = custom_view(in.world);
+  let v = toward_eye(in.world);
   let out = custom_surface(in, v);
   if (custom_cut(out)) { discard; }
   let mode = u32(material.flags.w);
@@ -188,7 +184,7 @@ fn fs_prepass(in: CustomPrepassOut) -> CustomPrepassTargets {
   o.color = in.color;
   o.local = in.local;
   o.data = in.data;
-  let v = custom_view(in.world);
+  let v = toward_eye(in.world);
   let out = custom_surface(o, v);
   if (custom_cut(out)) { discard; }
   var n = normalize(out.normal);

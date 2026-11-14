@@ -4,8 +4,6 @@
 // is seen inside a cone 97 degrees wide overhead: Snell's window. Inside it the surface passes what Fresnel leaves
 // at the angle the ray takes in the air; outside it the surface is a mirror of the water under it.
 
-// The view depth the prepass clears to (post.rs FAR_DEPTH): the sky.
-const FAR_VIEW_DEPTH: f32 = 1.0e9;
 // The sun's disc through the surface, in the sun's light on a surface facing it: bright enough to bloom, as the sky
 // pass draws it, without the disc's true radiance (tens of thousands of times the sky's), which no frame holds.
 const SUN_THROUGH: f32 = 6.0;

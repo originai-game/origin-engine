@@ -157,7 +157,7 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   if (view == 3u) { return vec4<f32>(in.color, 1.0); }
   // Two-sided: the back face is lit with the flipped normal.
   let n0 = normalize(mix(normalize(in.normal) * select(-1.0, 1.0, front), vec3<f32>(0.0, 1.0, 0.0), 0.85 * in.far));
-  let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(p);
   let l = normalize(frame.light_dir.xyz);
   let backlit = dot(n0, l) < 0.0;
   let n = select(n0, -n0, backlit);

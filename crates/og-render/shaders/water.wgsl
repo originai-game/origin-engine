@@ -485,7 +485,7 @@ if (rippled() && !is_sea()) {
     }
   }
   var n = normalize(base - tangent_x * slope.x - tangent_z * slope.y);
-  let v = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(in.world);
   // Seen from below: the camera is under the surface.
   let below_view = dot(in.normal, v) < 0.0;
   // three.js Water / Water2 (below) never turn a ripple's normal to the eye: a wavelet facing away at a grazing view
@@ -544,7 +544,7 @@ if (rippled() && !is_sea()) {
       facet = normalize(select(n, -n, n.y < 0.0) - tangent_x * fine.slope.x - tangent_z * fine.slope.y);
       unseen += 0.5 * (fine.cov.x + fine.cov.y);
     }
-    let colour = below_surface(in.world, facet, v, below, scene_at > 0.5 * FAR_VIEW_DEPTH, sun, unseen);
+    let colour = below_surface(in.world, facet, v, below, is_sky_depth(scene_at), sun, unseen);
     return vec4<f32>(apply_fog(colour, in.world), 1.0);
   }
   let thickness = max(scene_at - here, 0.0);

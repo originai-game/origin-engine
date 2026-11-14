@@ -164,7 +164,7 @@ fn fs_composite(in: FullOut) -> CompositeOut {
   let p = world_at(in.pos.xy, d);
   let tx = tangent(px, p, d, vec2<i32>(1, 0));
   let ty = tangent(px, p, d, vec2<i32>(0, 1));
-  let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let v = toward_eye(p);
   // A pixel whose neighbours are all at its own point (a lone sphere's
   // rim) has no tangent plane: it faces the eye.
   let nc = cross(ty, tx);
