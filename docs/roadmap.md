@@ -117,10 +117,6 @@ and is verified once on the GPU host. Open work is collected on PR #40.
   probes, destruction's body weights, a stamp's quaternion without `w`).
   The thread-locals left are the process's roots, named where they are
   declared (`engine.rs`); nothing an engine owns is kept on the thread.
-- **Engine package:** `startWorker` (`web/worker.ts`) and the `Shell`
-  class (`web/shell.ts`) each keep their state in one closure or class of
-  about 800 lines; a state object comes first, then a split by concern, as
-  `runtime/` was split.
 - **Optional runtime modules (§2.1):** variants that leave modules out,
   then separate artifacts loaded after the first frame.
 - **One host implementation (§2.1):** native counterparts of the web
