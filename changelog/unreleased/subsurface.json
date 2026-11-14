@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.StandardMaterialDesc.subsurface",
+      "summary": "Light that spreads under the surface before it leaves: skin, wax, marble, jade, milk. `subsurface: 1` softens the shading past the terminator where the surface curves, the channel that travels farthest (`subsurfaceRadius`, metres per channel; the default is skin's) bleeding into the shadow first, and with `thickness` the sun and the lamps behind a thin part come through it. In closed form in the lit pass, on every backend: no extra pass and no texture."
+    }
+  ]
+}

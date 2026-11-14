@@ -59,6 +59,9 @@ pub(crate) struct PhysicalUniform {
     pub layers: [f32; 4],
     /// x: the pack layer of the anisotropy group.
     pub layers2: [f32; 4],
+    /// rgb: the scatter distance per channel (m), w: how much of the
+    /// diffuse light scatters under the surface.
+    pub subsurface: [f32; 4],
 }
 
 /// `struct Pack` in pack.wgsl.
@@ -251,6 +254,10 @@ pub(crate) fn uniform(m: &StandardMaterial, layers: [f32; 5]) -> PhysicalUniform
         ],
         layers: [layers[0], layers[1], layers[2], layers[3]],
         layers2: [layers[4], 0.0, 0.0, 0.0],
+        subsurface: {
+            let r = m.subsurfaceRadius.max(glam::Vec3::ZERO);
+            [r.x, r.y, r.z, m.subsurface.clamp(0.0, 1.0)]
+        },
     }
 }
 

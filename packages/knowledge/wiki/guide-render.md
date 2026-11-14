@@ -217,6 +217,17 @@ depth-normal prepass: the first one pays for it.
   reflections, unlike opacity. Sheen never glows: velvet is a very dark
   base, a bright desaturated sheenColor and sheenRoughness about 0.5;
   cotton and wool a dim sheenColor at 0.8 to 1; roughness 1 on both.
+- Subsurface: `subsurface: 1` is skin, wax, marble, jade or milk, by
+  `subsurfaceRadius`, how far each channel travels in metres. The shading
+  softens past the terminator where the surface curves: a face barely
+  (a head's radius is 30 times red's 3.7 mm), a nose, an ear or a finger
+  clearly, red first. The default `subsurfaceRadius` is skin's, for a
+  body in metres; a small or stylised character wants it a few times
+  larger, and wax or jade one distance in every channel (0.005 to 0.02). Flat faces and flat-shaded
+  meshes do not curve and stay as they are. With `thickness` (and a
+  `thicknessMap`, thin where the ear is) the sun and the lamps behind
+  come through the subsurface material, red most: 1 cm of skin passes a
+  third of red and under a hundredth of blue. Rect lights and the sky's light are not spread.
 - Texture arrays put variants of one look (tiles, skins, damage states) in
   one material and one draw.
 - Wireframe is drawn as lines, not a polygon mode (WebGPU has none).

@@ -157,6 +157,11 @@ pub(crate) fn material(
         num("anisotropyRotation", t.anisotropy_rotation)
     );
     set!(anisotropyMap, tex("anisotropyMap", t.anisotropy_map)?);
+    set!(subsurface, num("subsurface", t.subsurface));
+    set!(
+        subsurfaceRadius,
+        given("subsurfaceRadius").then_some(t.subsurface_radius)
+    );
     // Each slot's uv transform (KHR_texture_transform, three.js Texture.offset/repeat/rotation).
     set!(mapOffset, vec2("mapOffset", t.map_offset));
     set!(mapRepeat, vec2("mapRepeat", t.map_repeat));

@@ -101,6 +101,8 @@ MeshPhysicalMaterial's fields under three.js's names and glTF's KHR_materials_* 
 | `anisotropy` | `number` | `0` | 0 … 1 | `ratio` | — | Stretches the specular highlight along a direction of the surface, as MeshPhysicalMaterial.anisotropy (brushed metal, hair, satin); 0 is none, 1 fully stretched. Needs the geometry's tangents (generated when it has none). |
 | `anisotropyRotation` | `number` | `0` | — | — | — | The stretch's direction in radians from the tangent (+u) towards the bitangent. |
 | `anisotropyMap` | `Texture \| null` | `null` | — | — | — | The stretch's direction in red and green (-1 to 1 in the tangent frame, turned by anisotropyRotation) and its strength in blue, times anisotropy. |
+| `subsurface` | `number` | `0` | 0 … 1 | `ratio` | — | How much of the diffuse light spreads under the surface before it leaves (skin, wax, marble, jade, milk): the shading softens past the terminator where the surface curves, and with a thickness, light from behind comes through. 0 is none. See `render §6`. |
+| `subsurfaceRadius` | `Vector3` | `{ x: 0.0037, y: 0.0014, z: 0.0007 }` | ≥ 0 | `m` | — | How far light of the red, green and blue channel travels under the surface: skin's by default, red farthest. See `render §6`. |
 
 #### Texture arrays
 
@@ -331,6 +333,18 @@ struct StandardMaterialDesc {
   }
   field anisotropyRotation f32 "The stretch's direction in radians from the tangent (+u) towards the bitangent."
   field anisotropyMap Option.Texture "The stretch's direction in red and green (-1 to 1 in the tangent frame, turned by anisotropyRotation) and its strength in blue, times anisotropy."
+  field subsurface f32 "How much of the diffuse light spreads under the surface before it leaves (skin, wax, marble, jade, milk): the shading softens past the terminator where the surface curves, and with a thickness, light from behind comes through. 0 is none." {
+    min 0
+    max 1
+    unit ratio
+    guide "render §6"
+  }
+  field subsurfaceRadius Vector3 "How far light of the red, green and blue channel travels under the surface: skin's by default, red farthest." {
+    default 0.0037 0.0014 0.0007
+    min 0
+    unit m
+    guide "render §6"
+  }
   group "Texture arrays"
   field mapArray Option.TextureArray "The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map, each Mesh picking its layer (Mesh.materialLayer), in one draw. With mapArray or normalMapArray, colour and normals come from arrays only (map and normalMap unread). Physical and shader materials take none." {
     guide "render §6"

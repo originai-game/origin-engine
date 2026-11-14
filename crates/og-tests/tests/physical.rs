@@ -206,3 +206,206 @@ fn a_transmission_map_masks_the_glass() {
         "the map's black stripes are opaque"
     );
 }
+
+/// A ball of radius `radius` at the frame's centre under `m`, seen by
+/// `studio`'s camera: per pixel on it, the cosine between its normal and
+/// the light and its colour.
+fn ball_falloff(m: StandardMaterial, radius: f32) -> Vec<(f32, [f32; 3])> {
+    ball_falloff_in(studio(), m, radius)
+}
+
+/// [`ball_falloff`] in `scene`.
+fn ball_falloff_in(
+    mut scene: RenderScene,
+    m: StandardMaterial,
+    radius: f32,
+) -> Vec<(f32, [f32; 3])> {
+    let sphere = scene.add_mesh(shapes::sphere(96, 64));
+    let h = scene.add_standard_material(m);
+    scene.add_instance(sphere, h, Mat4::from_scale(Vec3::splat(2.0 * radius)));
+    let img = frame(&scene);
+    let l = scene.lighting.light.direction_to_light.normalize();
+    let eye = scene.frame.camera.position;
+    let og_render::Projection::Perspective { fov_y_degrees } = scene.frame.camera.projection else {
+        panic!("a perspective camera");
+    };
+    let half = (fov_y_degrees.to_radians() * 0.5).tan();
+    let (w, h) = (img.width as f32, img.height as f32);
+    let mut out = Vec::new();
+    for y in 0..img.height {
+        for x in 0..img.width {
+            let ray = Vec3::new(
+                ((x as f32 + 0.5) / w * 2.0 - 1.0) * half * w / h,
+                (1.0 - (y as f32 + 0.5) / h * 2.0) * half,
+                -1.0,
+            )
+            .normalize();
+            // Where the ray meets the ball, short of its rim.
+            let b = eye.dot(ray);
+            let disc = b * b - (eye.length_squared() - radius * radius);
+            if disc < 0.02 * radius * radius {
+                continue;
+            }
+            let n = (eye + ray * (-b - disc.sqrt())) / radius;
+            out.push((n.dot(l), px(&img, x, y)));
+        }
+    }
+    out
+}
+
+/// The mean colour where the cosine to the light is within `x0..x1`.
+fn falloff_mean(pixels: &[(f32, [f32; 3])], x0: f32, x1: f32) -> [f32; 3] {
+    let (mut sum, mut n) = ([0.0f32; 3], 0.0f32);
+    for (x, p) in pixels.iter().filter(|(x, _)| *x >= x0 && *x < x1) {
+        let _ = x;
+        for c in 0..3 {
+            sum[c] += p[c];
+        }
+        n += 1.0;
+    }
+    assert!(n > 50.0, "{n} pixels between {x0} and {x1}");
+    sum.map(|s| s / n)
+}
+
+/// Light spreads under a subsurface material (`StandardMaterial::subsurface`,
+/// subsurface.wgsl), by the surface's curvature:
+/// - past the terminator a white ball is lit where the plain one is dark,
+///   most in the channel that travels farthest, and its brightest part is
+///   dimmer by the light that went there, the same channel most;
+/// - a ball of half the radius, twice as curved, bleeds farther;
+/// - with one distance for every channel the bleed has no colour;
+/// - no distance, or no `subsurface`, is the plain material.
+#[test]
+#[ignore = "requires GPU"]
+fn light_spreads_under_a_subsurface_surface() {
+    let white = StandardMaterial {
+        color: Vec3::splat(0.8),
+        roughness: 0.9,
+        ..Default::default()
+    };
+    let skin = StandardMaterial {
+        subsurface: 1.0,
+        subsurfaceRadius: Vec3::new(0.12, 0.04, 0.012),
+        ..white
+    };
+    let plain = ball_falloff(white, 0.5);
+    let soft = ball_falloff(skin, 0.5);
+    let small = ball_falloff(skin, 0.25);
+    let grey = ball_falloff(
+        StandardMaterial {
+            subsurfaceRadius: Vec3::splat(0.12),
+            ..skin
+        },
+        0.5,
+    );
+    let none = ball_falloff(
+        StandardMaterial {
+            subsurfaceRadius: Vec3::ZERO,
+            ..skin
+        },
+        0.5,
+    );
+    let past = |f: &[(f32, [f32; 3])]| falloff_mean(f, -0.3, -0.1);
+    let peak = |f: &[(f32, [f32; 3])]| falloff_mean(f, 0.9, 1.0);
+    let (dark, lit) = (past(&plain), past(&soft));
+    println!("past the terminator: plain {dark:?}, subsurface {lit:?}");
+    // Red travels ten times as far as blue: it bleeds most, blue hardly.
+    let bled = [0, 1, 2].map(|c| lit[c] - dark[c]);
+    assert!(
+        bled[0] > 50.0 && bled[0] > 3.0 * bled[1] && bled[1] > 3.0 * bled[2] && bled[2] > 0.5,
+        "{bled:?}"
+    );
+    // What went past the terminator left the lit side.
+    let (full, less) = (peak(&plain), peak(&soft));
+    println!("facing the light: plain {full:?}, subsurface {less:?}");
+    let lost = [0, 1, 2].map(|c| full[c] - less[c]);
+    assert!(
+        lost[0] > 8.0 && lost[0] > 3.0 * lost[1] && lost[1] > lost[2] && lost[2] >= 0.0,
+        "{lost:?}"
+    );
+    // Twice the curvature: farther into the shadow, in every channel.
+    let more = past(&small);
+    println!("half the radius: {more:?}");
+    assert!(
+        more[0] > lit[0] + 15.0 && more[1] > lit[1] + 15.0 && more[2] > lit[2] + 2.0,
+        "{more:?} against {lit:?}"
+    );
+    // One distance for every channel: red's bleed in each.
+    let even = past(&grey);
+    assert!((even[0] - lit[0]).abs() < 0.5, "{even:?}");
+    assert!(even[1] > lit[0] && even[2] > even[1], "{even:?}");
+    // Under a sun that casts shadows the ball's own shadow does not take
+    // the bleed back: light entering beside a point reaches it.
+    let mut shadowed = studio();
+    shadowed.lighting.light.cast_shadows = true;
+    let kept = past(&ball_falloff_in(shadowed, skin, 0.5));
+    println!("with the sun's shadows: {kept:?}");
+    assert!(kept[0] > dark[0] + 0.8 * bled[0], "{kept:?} of {lit:?}");
+    // No distance: the plain material at every pixel, to the last bit.
+    let worst = none
+        .iter()
+        .zip(&plain)
+        .flat_map(|(a, b)| (0..3).map(move |c| (a.1[c] - b.1[c]).abs()))
+        .fold(0.0, f32::max);
+    assert!(worst <= 1.0, "scattering nowhere differs by {worst}");
+}
+
+/// With a `thickness`, light from behind comes through a subsurface
+/// material: a sheet lit from its far side glows, red most, less the
+/// thicker it is, and not at all without `subsurface`; lit from the front
+/// a flat sheet, which does not curve, is shaded as the plain one.
+#[test]
+#[ignore = "requires GPU"]
+fn light_comes_through_a_thin_subsurface_sheet() {
+    let sheet = |m: StandardMaterial, to_light: Vec3| {
+        let mut scene = studio();
+        scene.lighting.light.direction_to_light = to_light;
+        let quad = scene.add_mesh(shapes::plane_xy(1.0, 1.0));
+        let h = scene.add_standard_material(m);
+        scene.add_instance(quad, h, Mat4::IDENTITY);
+        let img = frame(&scene);
+        mean(&img, area(600, 680, 320, 400))
+    };
+    let white = StandardMaterial {
+        color: Vec3::splat(0.8),
+        roughness: 0.9,
+        ..Default::default()
+    };
+    let thin = StandardMaterial {
+        subsurface: 1.0,
+        subsurfaceRadius: Vec3::new(0.02, 0.008, 0.003),
+        thickness: 0.01,
+        ..white
+    };
+    let thick = StandardMaterial {
+        thickness: 0.05,
+        ..thin
+    };
+    let solid = StandardMaterial {
+        thickness: 0.0,
+        ..thin
+    };
+    let behind = Vec3::new(0.2, 0.3, -1.0);
+    let (dark, glow, dim, shut) = (
+        sheet(white, behind),
+        sheet(thin, behind),
+        sheet(thick, behind),
+        sheet(solid, behind),
+    );
+    println!("lit from behind: plain {dark:?}, 1 cm {glow:?}, 5 cm {dim:?}, no thickness {shut:?}");
+    // 1 cm lets 0.79, 0.57 and 0.26 of red, green and blue through; 5 cm
+    // 0.35, 0.09 and under 0.01.
+    assert!(
+        glow[0] > dark[0] + 60.0 && glow[0] > glow[1] + 10.0 && glow[1] > glow[2] + 10.0,
+        "{glow:?}"
+    );
+    assert!(
+        dim[0] > dark[0] + 20.0 && dim[0] < glow[0] - 20.0 && dim[2] < dark[2] + 3.0,
+        "{dim:?}"
+    );
+    assert_eq!(shut, dark);
+    let front = Vec3::new(0.2, 0.3, 1.0);
+    let (a, b) = (sheet(white, front), sheet(thin, front));
+    println!("lit from the front: plain {a:?}, subsurface {b:?}");
+    assert!((0..3).all(|c| (a[c] - b[c]).abs() < 0.6), "{a:?} {b:?}");
+}
