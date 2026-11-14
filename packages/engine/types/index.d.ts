@@ -6628,6 +6628,32 @@ export interface StandardMaterialDesc {
    * @unit m (metres)
    */
   readonly subsurfaceRadius?: Vector3;
+  /**
+   * How much of the surface is strands of hair, running along v with their roots at the top of the image (turned by anisotropyRotation): a white highlight across them, a second in the hair's color nearer the tips, and with a thickness the light behind them comes through. 0 is none.
+   * See `render §6`.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly hair?: number;
+  /**
+   * An eye: the radius of the iris in uv, round the centre of the uv square. The base colour within it lies under the cornea and is seen refracted by ior, so the iris has depth and stays in view from the side. 0 is no eye.
+   * See `render §6`.
+   *
+   * @default 0
+   * @range 0..0.5
+   */
+  readonly irisRadius?: number;
+  /**
+   * How deep the iris lies under the top of the cornea, in iris radii.
+   * See `render §6`.
+   *
+   * @default 0.4
+   * @range 0..2
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly irisDepth?: number;
   // ── Texture arrays ──
   /**
    * The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map, each Mesh picking its layer (Mesh.materialLayer), in one draw. With mapArray or normalMapArray, colour and normals come from arrays only (map and normalMap unread). Physical and shader materials take none.

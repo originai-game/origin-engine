@@ -103,6 +103,9 @@ MeshPhysicalMaterial's fields under three.js's names and glTF's KHR_materials_* 
 | `anisotropyMap` | `Texture \| null` | `null` | — | — | — | The stretch's direction in red and green (-1 to 1 in the tangent frame, turned by anisotropyRotation) and its strength in blue, times anisotropy. |
 | `subsurface` | `number` | `0` | 0 … 1 | `ratio` | — | How much of the diffuse light spreads under the surface before it leaves (skin, wax, marble, jade, milk): the shading softens past the terminator where the surface curves, and with a thickness, light from behind comes through. 0 is none. See `render §6`. |
 | `subsurfaceRadius` | `Vector3` | `{ x: 0.0037, y: 0.0014, z: 0.0007 }` | ≥ 0 | `m` | — | How far light of the red, green and blue channel travels under the surface: skin's by default, red farthest. See `render §6`. |
+| `hair` | `number` | `0` | 0 … 1 | `ratio` | — | How much of the surface is strands of hair, running along v with their roots at the top of the image (turned by anisotropyRotation): a white highlight across them, a second in the hair's color nearer the tips, and with a thickness the light behind them comes through. 0 is none. See `render §6`. |
+| `irisRadius` | `number` | `0` | 0 … 0.5 | — | — | An eye: the radius of the iris in uv, round the centre of the uv square. The base colour within it lies under the cornea and is seen refracted by ior, so the iris has depth and stays in view from the side. 0 is no eye. See `render §6`. |
+| `irisDepth` | `number` | `0.4` | 0 … 2 | `ratio` | — | How deep the iris lies under the top of the cornea, in iris radii. See `render §6`. |
 
 #### Texture arrays
 
@@ -343,6 +346,24 @@ struct StandardMaterialDesc {
     default 0.0037 0.0014 0.0007
     min 0
     unit m
+    guide "render §6"
+  }
+  field hair f32 "How much of the surface is strands of hair, running along v with their roots at the top of the image (turned by anisotropyRotation): a white highlight across them, a second in the hair's color nearer the tips, and with a thickness the light behind them comes through. 0 is none." {
+    min 0
+    max 1
+    unit ratio
+    guide "render §6"
+  }
+  field irisRadius f32 "An eye: the radius of the iris in uv, round the centre of the uv square. The base colour within it lies under the cornea and is seen refracted by ior, so the iris has depth and stays in view from the side. 0 is no eye." {
+    min 0
+    max 0.5
+    guide "render §6"
+  }
+  field irisDepth f32 "How deep the iris lies under the top of the cornea, in iris radii." {
+    default 0.4
+    min 0
+    max 2
+    unit ratio
     guide "render §6"
   }
   group "Texture arrays"

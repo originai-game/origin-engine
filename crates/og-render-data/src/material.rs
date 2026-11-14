@@ -318,6 +318,24 @@ pub struct StandardMaterial {
     /// (the default is skin's: red farthest).
     #[reflect(min = 0.0, default = [0.0037, 0.0014, 0.0007], tunable)]
     pub subsurfaceRadius: Vec3,
+    /// How much of the surface is strands of hair (hair.wgsl): in place
+    /// of the glossy and the diffuse lobe, a white highlight across the
+    /// strands, a second in the hair's `color` nearer their tips, the
+    /// light they pass between them, and with a `thickness` the light
+    /// behind them through them (all over an open sheet, at the rim of a
+    /// closed body). The strands run across the
+    /// anisotropy's stretch: along v, roots at the top of the image,
+    /// turned by `anisotropyRotation` and `anisotropyMap`. 0: none.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
+    pub hair: f32,
+    /// An eye: the radius of the iris in uv, round the centre of the uv
+    /// square (eye.wgsl). The base colour within it is seen through the
+    /// cornea, refracted by `ior`. 0: no eye.
+    #[reflect(min = 0.0, max = 0.5, default = 0.0, tunable)]
+    pub irisRadius: f32,
+    /// How deep the iris lies under the top of the cornea, in iris radii.
+    #[reflect(min = 0.0, max = 2.0, default = 0.4, tunable)]
+    pub irisDepth: f32,
     /// The base colour from layer `mapLayer` of a texture array (sRGB)
     /// instead of `map`: a texture-array slot,
     /// [`crate::TextureArrayHandle::slot`] (0: none). Variants of one
@@ -489,6 +507,9 @@ impl Default for StandardMaterial {
             anisotropyMap: 0,
             subsurface: 0.0,
             subsurfaceRadius: SKIN_RADIUS,
+            hair: 0.0,
+            irisRadius: 0.0,
+            irisDepth: 0.4,
             mapArray: 0,
             mapLayer: 0,
             normalMapArray: 0,
@@ -596,8 +617,8 @@ impl StandardMaterial {
 
     /// Whether it draws through the physical lit pipelines: any
     /// `MeshPhysicalMaterial` lobe or map beyond the scalar clear coat
-    /// (clearcoat maps, sheen, transmission, iridescence, anisotropy, an
-    /// `ior` other than 1.5). `unlit` and `toon` replace the lighting
+    /// (clearcoat maps, sheen, transmission, iridescence, anisotropy,
+    /// subsurface, hair, an iris, an `ior` other than 1.5). `unlit` and `toon` replace the lighting
     /// model, so neither is ever physical.
     pub fn is_physical(&self) -> bool {
         self.unlit == 0
@@ -608,6 +629,8 @@ impl StandardMaterial {
                 || self.iridescence > 0.0
                 || self.anisotropy > 0.0
                 || self.subsurface > 0.0
+                || self.hair > 0.0
+                || self.irisRadius > 0.0
                 || self.ior != 1.5)
     }
 
@@ -623,6 +646,8 @@ impl StandardMaterial {
             || self.iridescence > 0.0
             || self.anisotropy > 0.0
             || self.subsurface > 0.0
+            || self.hair > 0.0
+            || self.irisRadius > 0.0
             || self.ior != 1.5
     }
 

@@ -33,4 +33,4 @@ fn sprite {
 }
 ```
 
-<sub>Module `render` line 2483</sub>
+<sub>Module `render` line 2501</sub>

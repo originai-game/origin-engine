@@ -27,4 +27,4 @@ enum ToneMapping {
 }
 ```
 
-<sub>Module `render` line 607</sub>
+<sub>Module `render` line 625</sub>

@@ -22998,6 +22998,29 @@
           "minimum": 0,
           "x-og-unit": "m"
         },
+        "hair": {
+          "type": "number",
+          "description": "How much of the surface is strands of hair, running along v with their roots at the top of the image (turned by anisotropyRotation): a white highlight across them, a second in the hair's color nearer the tips, and with a thickness the light behind them comes through. 0 is none.\nSee `render §6`.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "irisRadius": {
+          "type": "number",
+          "description": "An eye: the radius of the iris in uv, round the centre of the uv square. The base colour within it lies under the cornea and is seen refracted by ior, so the iris has depth and stays in view from the side. 0 is no eye.\nSee `render §6`.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 0.5
+        },
+        "irisDepth": {
+          "type": "number",
+          "description": "How deep the iris lies under the top of the cornea, in iris radii.\nSee `render §6`.",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-unit": "ratio"
+        },
         "mapArray": {
           "anyOf": [
             {

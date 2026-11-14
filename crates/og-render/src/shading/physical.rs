@@ -53,11 +53,13 @@ pub(crate) struct PhysicalUniform {
     pub attenuation: [f32; 4],
     /// x: iridescence, y: the film's ior, zw: its thickness range (nm).
     pub iridescence: [f32; 4],
-    /// x: anisotropy, yz: cos and sin of its rotation.
+    /// x: anisotropy, yz: cos and sin of its rotation, w: how much of the
+    /// surface is hair.
     pub anisotropy: [f32; 4],
     /// The pack layer of the standard, coat, sheen and film groups (-1: none).
     pub layers: [f32; 4],
-    /// x: the pack layer of the anisotropy group.
+    /// x: the pack layer of the anisotropy group, y: the iris's radius in
+    /// uv (0: no eye), z: its depth under the cornea in radii.
     pub layers2: [f32; 4],
     /// rgb: the scatter distance per channel (m), w: how much of the
     /// diffuse light scatters under the surface.
@@ -250,10 +252,10 @@ pub(crate) fn uniform(m: &StandardMaterial, layers: [f32; 5]) -> PhysicalUniform
             m.anisotropy.clamp(0.0, 1.0),
             m.anisotropyRotation.cos(),
             m.anisotropyRotation.sin(),
-            0.0,
+            m.hair.clamp(0.0, 1.0),
         ],
         layers: [layers[0], layers[1], layers[2], layers[3]],
-        layers2: [layers[4], 0.0, 0.0, 0.0],
+        layers2: [layers[4], m.irisRadius.max(0.0), m.irisDepth.max(0.0), 0.0],
         subsurface: {
             let r = m.subsurfaceRadius.max(glam::Vec3::ZERO);
             [r.x, r.y, r.z, m.subsurface.clamp(0.0, 1.0)]
