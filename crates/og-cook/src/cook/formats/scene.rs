@@ -41,6 +41,9 @@
 //! entries are fields as a component's are, packed with the resource's
 //! schema or inferred from the text; the fields it does not list keep the
 //! values the world holds. `save_scene` writes tuned resources there.
+//!
+//! `hlod { size 64 error 0.25 texels 1024 }` merges the scene's distant
+//! static models into proxies, cooked beside it (cook/systems/hlod.rs).
 
 use super::{
     CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, hash_bytes, prefab, stamp,
@@ -538,6 +541,9 @@ pub fn cook(
             }
             // Streaming groups: read by the cook's planner (cook/pipeline/stream.rs).
             "stream" => {}
+            // The scene's distant proxies: built by the cook's planner
+            // (cook/systems/hlod.rs).
+            "hlod" => {}
             // Named paths (og.path.find, a timeline's `rail`), made when
             // the scene is instantiated.
             "path" => {
@@ -552,7 +558,7 @@ pub fn cook(
             }
             k => {
                 return Err(CookError(format!(
-                    "line {}: unknown scene entry '{k}' (expected name, entity, resource, stream or path)",
+                    "line {}: unknown scene entry '{k}' (expected name, entity, resource, stream, hlod or path)",
                     e.line
                 )));
             }
@@ -949,7 +955,6 @@ fn plan_scene<'a>(
         schema_hash,
         ..
     } = *cx;
-    let PlanState { parsed_refs, .. } = state;
     let text = String::from_utf8_lossy(&s.bytes);
     // Every prefab it reaches, transitively, with its text's
     // hash: editing a prefab re-cooks what places it.
@@ -967,7 +972,8 @@ fn plan_scene<'a>(
             t.map_or(0, |t| hash_bytes(t.as_bytes()))
         ));
     }
-    parsed_refs
+    state
+        .parsed_refs
         .entry(s.rel.clone())
         .or_default()
         .extend(refs.iter().chain(reached.iter()).cloned());
@@ -994,6 +1000,9 @@ fn plan_scene<'a>(
         st,
         Box::new(SceneJob(s)),
     ));
+    if s.kind == &SCENE {
+        super::hlod::plan(cx, state, s, &text, outs);
+    }
 }
 
 /// A scene's or prefab's one output.

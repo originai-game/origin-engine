@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render-data/bake", "dep:resvg", "dep:blake3", "dep:og-story", "dep:og-i18n", "og-ai/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:skrifa", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-video", "dep:ufbx", "dep:libm"]
+cook = ["og-render-data/bake", "dep:resvg", "dep:blake3", "dep:og-story", "dep:og-i18n", "og-ai/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:skrifa", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-video", "dep:ufbx", "dep:libm", "dep:og-bake"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -48,6 +48,9 @@ og-video = { path = "../og-video", optional = true }
 og-timeline = { path = "../og-timeline" }
 # The cook checks looks against the IDL's records (the reflected resources).
 og-records = { path = "../og-records", optional = true }
+# A scene's HLOD proxies (cook/systems/hlod.rs): their charts (xatlas) and
+# the transfer of their members' look into them. The cook only.
+og-bake = { path = "../og-bake", optional = true }
 # Navmeshes load into og-ai's nav types; the cook bakes them (og-ai's
 # `bake`) and validates behaviours with its parser.
 og-ai = { path = "../og-ai" }

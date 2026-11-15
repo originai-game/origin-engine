@@ -40,6 +40,8 @@ mod fracture;
 mod fx;
 #[path = "../gltf_formats.rs"]
 mod gltf_formats;
+#[path = "../hlod.rs"]
+mod hlod;
 #[path = "../impostor.rs"]
 mod impostor;
 #[path = "../lod.rs"]

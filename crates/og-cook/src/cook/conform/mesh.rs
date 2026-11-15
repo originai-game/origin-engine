@@ -758,7 +758,9 @@ pub(in crate::cook) fn extent(src: &GltfSource) -> f32 {
 
 /// The primitives of the model's default scene, each with its node's
 /// placement.
-fn scene_primitives(src: &GltfSource) -> Vec<(gltf::Primitive<'_>, glam::Mat4)> {
+pub(in crate::cook) fn scene_primitives(
+    src: &GltfSource,
+) -> Vec<(gltf::Primitive<'_>, glam::Mat4)> {
     use glam::{Mat4, Quat};
     let mut out = Vec::new();
     // A skinned mesh is placed by its bind pose (model.rs `skin_binds`).

@@ -12,6 +12,7 @@ pub(super) mod flipbook;
 pub(super) mod fracture;
 pub(super) mod fracture_cache;
 pub(super) mod fx_field;
+pub(super) mod hlod;
 pub(super) mod lightmap;
 pub mod look;
 pub(super) mod look_assets;

@@ -415,7 +415,9 @@ pub(crate) fn output_group(
     let chunk = id
         .rsplit_once("#chunk")
         .is_some_and(|(_, n)| n.parse::<u32>().is_ok());
-    if id.ends_with("#proxy") || id.ends_with("#anim") || chunk {
+    // A scene's HLOD stays too: its proxies draw while a cell group's
+    // sub-scene is away.
+    if id.ends_with("#proxy") || id.ends_with("#anim") || chunk || crate::hlod::is_hlod_output(id) {
         return None;
     }
     group_of.get(rel).cloned()

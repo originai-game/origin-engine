@@ -1106,6 +1106,16 @@ pub fn cook_report_json(report: &Report, cooked: &Path, budgets: &Budgets) -> Va
                     .map(|n| json!({"kind": "skinStretch", "message": n})),
             );
         }
+        // A scene's HLOD (`systems/hlod.rs`): its tree, each proxy, the
+        // models left to themselves by reason.
+        let hlod: Vec<_> = a
+            .notes
+            .iter()
+            .filter(|n| n.starts_with("hlod:") || n.contains("#hlod-"))
+            .collect();
+        if !hlod.is_empty() {
+            entry["hlod"] = json!(hlod);
+        }
         warnings.extend(a.notes.iter().filter_map(|n| {
             let kind = if n.starts_with("warning: emissive texture:") {
                 "emissiveTexture"

@@ -2903,6 +2903,7 @@ dependencies = [
  "og-ai",
  "og-anim",
  "og-audio",
+ "og-bake",
  "og-blob",
  "og-bundle",
  "og-core",
