@@ -84,11 +84,13 @@ band for buoyancy) and wgpu 31 (unpublished). Ray tracing is a non-goal.
   the fixtures.
 - **HLOD follow-ups** (`docs/design.md` §10.6): a node over several
   cells, a dithered cross-fade, proxies lit by their models' bake, normal
-  maps on proxies, proxy textures streamed (a scene's proxies all load
-  with it), and one draw for a tree's proxies (each is a batch of its own
-  in every pass that sees it, so a town of few instanced kinds still
-  draws more at middle distances: 244 to 404 looking across the bench
-  town).
+  maps on proxies, and proxy textures streamed (a scene's proxies all load
+  with it). Not planned: one draw for a tree's proxies. Each proxy is a
+  batch of its own in every pass that sees it (404 draws against 244
+  looking across the bench town), but on the L4 cutting that view from 699
+  to 404 draws left its frame at 24 ms, and merging the proxies would save
+  about 110 more. It would need the tree's textures packed into shared
+  atlases and the cluster path's mesh table to hold a level per node.
 - **Agent observability:** a `visible` reason code in the probe and
   `dump_entity`, a record of what was drawn after culling, borrow-conflict
   errors naming component, entity and source line, and captures from
