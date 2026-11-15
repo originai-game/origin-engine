@@ -2352,3 +2352,63 @@ fn a_gradient_part_background_drops_the_widgets_ground() {
         assert_eq!((solid, gradient), (0, 1), "{doc}");
     }
 }
+
+/// A keycap reads on what its element's CSS background draws under it,
+/// as on a widget's own fill: a `<kbd>` on a light gradient face (a hero
+/// button's) in the dark theme takes an ink that holds 4.5:1 on its
+/// translucent cap over that face. Fails when the badge reads the panel
+/// behind the face instead (the dark theme's pale muted ink on a pale
+/// face, 1.16:1).
+#[test]
+fn a_keycap_reads_on_a_css_gradient_ground() {
+    let mut ui = ui_with_font(test_font());
+    ui.set_theme(Theme::dark());
+    let face = Srgba::rgb(0xe0, 0xe0, 0xe5);
+    let mut d = Doc::with_ui(
+        ui,
+        r#"<meta name="component" content="t">
+<div id="Face"><kbd>K</kbd></div>
+<style>#Face { padding: 16px; background: linear-gradient(#e0e0e5, #e0e0e5); }</style>"#,
+    );
+    d.step(InputFrame::default());
+    d.step(InputFrame::default());
+    let items = &d.ui.frame().items;
+    let (k, ink, centre) = items
+        .iter()
+        .enumerate()
+        .find_map(|(k, it)| match it.cmd.unstyled() {
+            DrawCmd::Text {
+                text,
+                color,
+                bounds,
+                ..
+            } if text == "K" => Some((
+                k,
+                *color,
+                (
+                    bounds.x + bounds.width / 2.0,
+                    bounds.y + bounds.height / 2.0,
+                ),
+            )),
+            _ => None,
+        })
+        .expect("the keycap's text");
+    let over = |top: [f32; 4], below: [f32; 3]| -> [f32; 3] {
+        [0, 1, 2].map(|i| top[i] * top[3] + below[i] * (1.0 - top[3]))
+    };
+    let l = face.linear();
+    let mut ground = [l[0], l[1], l[2]];
+    for it in &items[..k] {
+        if let Some((rect, c)) = it.cmd.filled()
+            && rect.x <= centre.0
+            && centre.0 <= rect.x + rect.width
+            && rect.y <= centre.1
+            && centre.1 <= rect.y + rect.height
+        {
+            ground = over(c, ground);
+        }
+    }
+    let srgb = |c: [f32; 3]| Srgba::from_linear([c[0], c[1], c[2], 1.0]);
+    let ratio = srgb(over(ink, ground)).contrast(srgb(ground));
+    assert!(ratio >= 4.5, "the cap reads {ratio:.2}:1");
+}
