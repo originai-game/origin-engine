@@ -11,7 +11,7 @@ import { og, type World } from "@origingame/engine";
 import { CMD_NAMES, EQUIPMENT, localized, ITEM_NAMES, SKILL_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
 
 const PAGES = ["inventory", "journal", "equipment", "explore", "combat"] as const;
-const STYLES = ["fantasy"] as const;
+const STYLES = ["fantasy", "scifi"] as const;
 
 const DOCUMENTS = [
   "ui/inventory.svelte",

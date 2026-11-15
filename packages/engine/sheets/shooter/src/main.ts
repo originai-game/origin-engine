@@ -16,7 +16,7 @@ import { COMBAT, FEED, LOADOUT } from "./fixtures.ts";
 const PAGES = ["combat", "loadout"] as const;
 const HITS = ["none", "hit", "headshot", "kill", "shieldBreak"] as const;
 const KINDS = ["normal", "shield", "critical"] as const;
-const STYLES = ["fantasy", "default"] as const;
+const STYLES = ["fantasy", "scifi", "default"] as const;
 
 const DOCUMENTS = [
   "ui/combat.svelte",
