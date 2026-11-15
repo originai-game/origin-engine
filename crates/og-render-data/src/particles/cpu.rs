@@ -243,9 +243,7 @@ impl SceneCollider {
                 (d.length_squared() < radius * radius).then(|| d.normalize_or(Vec3::Y))
             }
             SceneCollider::Capsule { a, b, radius } => {
-                let ab = *b - *a;
-                let t = ((p - *a).dot(ab) / ab.length_squared().max(1e-12)).clamp(0.0, 1.0);
-                let d = p - (*a + ab * t);
+                let d = p - og_core::math::closest_on_segment(p, *a, *b);
                 (d.length_squared() < radius * radius).then(|| d.normalize_or(Vec3::Y))
             }
             SceneCollider::Box {

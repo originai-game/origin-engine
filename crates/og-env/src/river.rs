@@ -103,9 +103,8 @@ impl River {
         for (i, w) in self.points.windows(2).enumerate() {
             let a = w[0].xz().as_dvec2();
             let b = w[1].xz().as_dvec2();
-            let ab = b - a;
-            let t = ((q - a).dot(ab) / ab.length_squared()).clamp(0.0, 1.0);
-            let d = q.distance(a + ab * t);
+            let t = og_core::math::segment_t(q, a, b);
+            let d = q.distance(a + (b - a) * t);
             if best.is_none_or(|(_, _, e)| d < e) {
                 best = Some((i, t, d));
             }

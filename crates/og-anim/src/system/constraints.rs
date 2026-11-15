@@ -174,12 +174,7 @@ struct Placed {
 
 /// The point of segment `a`…`b` nearest `x`.
 fn nearest_on_segment(a: Vec3, b: Vec3, x: Vec3) -> Vec3 {
-    let ab = b - a;
-    let len2 = ab.dot(ab);
-    if len2 <= 0.0 {
-        return a;
-    }
-    a + ab * ((x - a).dot(ab) / len2).clamp(0.0, 1.0)
+    og_core::math::closest_on_segment(x, a, b)
 }
 
 /// Where a tail at `x`, `length` from `head`, comes to rest outside a ball

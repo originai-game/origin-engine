@@ -88,9 +88,7 @@ fn contains(poly: &[Vec2], p: Vec2) -> bool {
 
 /// The distance from `p` to the segment ab.
 fn to_segment(p: Vec2, a: Vec2, b: Vec2) -> f32 {
-    let s = b - a;
-    let t = ((p - a).dot(s) / s.length_squared().max(1e-12)).clamp(0.0, 1.0);
-    (a + s * t).distance(p)
+    og_core::math::closest_on_segment(p, a, b).distance(p)
 }
 
 /// Each shadow-casting light's row and edges: the edges of the occluders

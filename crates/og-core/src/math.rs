@@ -466,6 +466,49 @@ pub fn quat_slerp(a: Quat, b: Quat, t: f32) -> Quat {
     (a * s1 + end * s2) * (1.0 / sin(theta))
 }
 
+/// A vector the segment helpers work on: glam's `Vec2`, `Vec3`, `DVec2`
+/// and `DVec3`.
+pub trait SegmentVector: Copy {
+    type Scalar;
+    /// [`segment_t`].
+    fn segment_t(p: Self, a: Self, b: Self) -> Self::Scalar;
+    /// [`closest_on_segment`].
+    fn closest_on_segment(p: Self, a: Self, b: Self) -> Self;
+}
+
+macro_rules! segment_vector {
+    ($($v:ty => $s:ty),*) => {$(
+        impl SegmentVector for $v {
+            type Scalar = $s;
+            fn segment_t(p: Self, a: Self, b: Self) -> $s {
+                let ab = b - a;
+                let len2 = ab.dot(ab);
+                if len2 > 0.0 {
+                    ((p - a).dot(ab) / len2).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                }
+            }
+            fn closest_on_segment(p: Self, a: Self, b: Self) -> Self {
+                a + (b - a) * Self::segment_t(p, a, b)
+            }
+        }
+    )*};
+}
+segment_vector!(Vec2 => f32, Vec3 => f32, DVec2 => f64, DVec3 => f64);
+
+/// How far along segment `a`–`b` (0 at `a`, 1 at `b`) its point nearest
+/// `p` lies; 0 for a segment of zero length.
+pub fn segment_t<V: SegmentVector>(p: V, a: V, b: V) -> V::Scalar {
+    V::segment_t(p, a, b)
+}
+
+/// The point of segment `a`–`b` nearest `p` (`a` for a segment of zero
+/// length).
+pub fn closest_on_segment<V: SegmentVector>(p: V, a: V, b: V) -> V {
+    V::closest_on_segment(p, a, b)
+}
+
 /// A transform as `og.Transform` holds it: position, rotation and scale
 /// (three.js Object3D's `position`, `quaternion` and `scale`).
 pub type Pose = (Vec3, Quat, Vec3);
@@ -517,6 +560,20 @@ mod math_contracts {
         Quat, Vec3, acos, atan, atan2, cos, exp, ln, pow, quat_from_axis_angle, quat_slerp, sin,
         sin_cos,
     };
+
+    #[test]
+    fn the_nearest_point_of_a_segment_stays_on_it() {
+        use crate::math::{DVec2, Vec2, closest_on_segment, segment_t};
+        let (a, b) = (Vec3::new(1.0, 0.0, 0.0), Vec3::new(3.0, 0.0, 0.0));
+        assert_eq!(segment_t(Vec3::new(2.5, 4.0, 0.0), a, b), 0.75);
+        assert_eq!(closest_on_segment(Vec3::new(-5.0, 1.0, 0.0), a, b), a);
+        assert_eq!(closest_on_segment(Vec3::new(9.0, 1.0, 0.0), a, b), b);
+        // A point: its one point, never NaN.
+        let p = Vec2::new(2.0, 2.0);
+        assert_eq!(closest_on_segment(Vec2::new(5.0, -1.0), p, p), p);
+        let q = DVec2::new(1.0, 1.0);
+        assert_eq!(segment_t(DVec2::ZERO, q, q), 0.0);
+    }
 
     const SIN: &[(u32, u32)] = &[
         (0x00000000, 0x00000000), // sin(0.0)

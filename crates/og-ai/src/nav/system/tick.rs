@@ -281,13 +281,8 @@ pub(super) fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) 
                             plane.to_plane(ps.corners[n - 1]),
                             plane.to_plane(ps.corners[n]),
                         );
-                        let ab = b - a;
-                        let t = if ab.length_squared() > 1e-12 {
-                            ((p2 - a).dot(ab) / ab.length_squared()).clamp(0.0, 1.0)
-                        } else {
-                            0.0
-                        };
-                        p2.distance(a + ab * t) > OFF_PATH.max(agent.radius * 4.0)
+                        p2.distance(og_core::math::closest_on_segment(p2, a, b))
+                            > OFF_PATH.max(agent.radius * 4.0)
                     };
                     let stale = ps.nav != agent.nav
                         || ps.version != version

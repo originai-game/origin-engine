@@ -54,14 +54,7 @@ pub(super) fn polyline_distance(view: &View, at: Vec2, pts: &[Vec3]) -> Option<f
 
 /// The distance from `p` to the segment `a`–`b`.
 pub fn segment_distance(p: Vec2, a: Vec2, b: Vec2) -> f32 {
-    let ab = b - a;
-    let len = ab.length_squared();
-    let t = if len > 1e-9 {
-        ((p - a).dot(ab) / len).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-    p.distance(a + ab * t)
+    p.distance(og_core::math::closest_on_segment(p, a, b))
 }
 
 /// Whether `p` is inside the convex quad `q` (either winding).

@@ -62,13 +62,7 @@ impl NavMesh {
         for i in 0..n {
             let a = tile.verts[poly.verts[i] as usize];
             let b = tile.verts[poly.verts[(i + 1) % n] as usize];
-            let ab = Self::xz(b) - Self::xz(a);
-            let len2 = ab.length_squared();
-            let t = if len2 > 0.0 {
-                ((q - Self::xz(a)).dot(ab) / len2).clamp(0.0, 1.0)
-            } else {
-                0.0
-            };
+            let t = og_core::math::segment_t(q, Self::xz(a), Self::xz(b));
             let c = a + (b - a) * t;
             let d = (Self::xz(c) - q).length_squared();
             if d < best.0 {
@@ -102,14 +96,7 @@ impl NavMesh {
                 let a = tile.verts[poly.verts[i] as usize];
                 let b = tile.verts[poly.verts[(i + 1) % n] as usize];
                 let (a2, b2) = (Self::xz(a), Self::xz(b));
-                let ab = b2 - a2;
-                let len2 = ab.length_squared();
-                let t = if len2 > 0.0 {
-                    ((q - a2).dot(ab) / len2).clamp(0.0, 1.0)
-                } else {
-                    0.0
-                };
-                if (a2 + ab * t - q).length_squared() > r2 {
+                if (og_core::math::closest_on_segment(q, a2, b2) - q).length_squared() > r2 {
                     continue;
                 }
                 match poly.links[i] {

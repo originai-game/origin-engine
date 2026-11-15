@@ -354,7 +354,11 @@ pub(crate) fn twist_bones(
         }
         let local = rest[a].inverse().transform_point(rest[c].translation);
         let axis = local / local.length();
-        let at = ((rest[n].translation - rest[a].translation).dot(along) / len2).clamp(0.0, 1.0);
+        let at = og_core::math::segment_t(
+            rest[n].translation,
+            rest[a].translation,
+            rest[c].translation,
+        );
         let parent = match skeleton.nodes[a].parent {
             NONE => None,
             q => Some(q as usize),

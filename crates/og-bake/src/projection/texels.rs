@@ -22,11 +22,7 @@ const MAGIC: &[u8; 8] = b"OGTEXEL1";
 const REACH: f32 = 0.75;
 
 fn closest_on_triangle(p: Vec2, t: [Vec2; 3]) -> Vec2 {
-    let seg = |a: Vec2, b: Vec2| {
-        let ab = b - a;
-        let s = ((p - a).dot(ab) / ab.length_squared().max(1e-12)).clamp(0.0, 1.0);
-        a + ab * s
-    };
+    let seg = |a: Vec2, b: Vec2| og_core::math::closest_on_segment(p, a, b);
     [seg(t[0], t[1]), seg(t[1], t[2]), seg(t[2], t[0])]
         .into_iter()
         .min_by(|a, b| {
