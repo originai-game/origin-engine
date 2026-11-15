@@ -32,14 +32,17 @@
 </div>
 
 <style>
-[part="NodeGraph.well"] { width: var(--measure-lg); max-width: 100%; height: var(--size-7xl); max-height: 100%; overflow: hidden; }
+/* It sizes as a box does: across its container and down it, never under a
+   graph's worth of height. */
+[part="NodeGraph.well"] { width: stretch; height: stretch; min-height: var(--size-6xl); overflow: hidden; }
 #Canvas { position: absolute; top: 0; inset-inline-start: 0; width: var(--measure-md); height: var(--size-6xl); translate: calc(var(--pan-x) + var(--space-xl)) calc(var(--pan-y) + var(--space-xl)); scale: var(--zoom); transform-origin: 0% 0%; }
 #Links { position: absolute; top: 0; inset-inline-start: 0; }
 [part="NodeGraph.link"] { fill: none; stroke: var(--line-strong); stroke-width: 3; stroke-dasharray: 6 6; }
 .link.active { stroke: var(--primary); stroke-dasharray: none; }
 [part="NodeGraph.node"] { position: absolute; top: calc(var(--y) - var(--size-lg) / 2); inset-inline-start: calc(var(--x) - var(--size-lg) / 2); width: var(--size-lg); height: var(--size-lg); padding: 0; border-radius: var(--radius-capsule); border: var(--stroke-thick) solid var(--line-strong); background: var(--panel-raised); }
 .node.square { border-radius: var(--radius-card); }
-.node.hex { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); border-radius: 0; }
+/* A hexagon as its corners, not a clip: a clip-path would cut its caption too. */
+.node.hex { corner-shape: bevel; border-radius: 25% / 50%; }
 .node.diamond { rotate: 45deg; border-radius: var(--radius-field); }
 .node.diamond .icon, .node.diamond .caption { rotate: -45deg; }
 .node.done { border-color: var(--success); }
