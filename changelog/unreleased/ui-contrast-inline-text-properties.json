@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "style attribute",
+      "summary": "An element's style attribute (and style: directive) takes the inherited text properties a <style> rule takes, such as accent-color, caret-color, color-scheme, text-wrap-style and -webkit-text-fill-color; they were refused as unsupported."
+    }
+  ]
+}

@@ -305,11 +305,8 @@ impl Paint {
     /// the theme.
     pub(crate) fn accent(&mut self, env: &Env, accent: Option<Srgba>) -> bool {
         let Some(a) = accent else { return false };
-        let t = &mut *self.accented;
-        *t = env.theme;
-        t.palette.primary = a;
-        t.palette.primary_hover = a;
-        t.palette.primary_active = a;
+        *self.accented = env.theme;
+        self.accented.palette = env.theme.palette.with_accent(a);
         true
     }
 }
