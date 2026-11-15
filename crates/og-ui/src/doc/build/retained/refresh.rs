@@ -634,14 +634,22 @@ impl RetainedHost {
         );
         self.css.selectors += work.selectors;
         self.css.candidates += work.candidates;
-        ui.out
-            .warnings_mut()
-            .extend(values.cascade.diagnostics.iter().map(|error| {
+        let said: Vec<String> = values
+            .cascade
+            .diagnostics
+            .iter()
+            .map(|error| {
                 format!(
                     "{}:{} ({}): {error}",
                     e.document.source, e.document.nodes[e.index].line, e.path
                 )
-            }));
+            })
+            .collect();
+        if said.is_empty() {
+            self.diagnostics.remove(identity);
+        } else {
+            self.diagnostics.insert(identity.clone(), said);
+        }
         let text = values.str("text").unwrap_or_default().to_owned();
         let previous = e.resolved.as_ref().map(|r| &r.values.cascade);
         let mut reads = values.cascade.viewport_reads;

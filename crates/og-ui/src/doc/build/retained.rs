@@ -211,6 +211,7 @@ impl RetainedHost {
         });
         self.by_key.retain(|_, node| &node.mount != mount);
         self.dirty.retain(|node| &node.mount != mount);
+        self.diagnostics.retain(|node, _| &node.mount != mount);
         self.inherited.retain(|(node, _), _| &node.mount != mount);
         for readers in &mut self.media {
             readers.retain(|node| &node.mount != mount);

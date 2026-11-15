@@ -141,6 +141,11 @@ impl Ui {
                 host.built_tick = Some(self.tick());
             }
         }
+        // Every element's warnings, each frame (they were cleared at its
+        // begin): an element not resolved again still has what it had.
+        self.out
+            .warnings_mut()
+            .extend(host.diagnostics.values().flatten().cloned());
         self.docs.state_mut().memory.retained = host;
         result
     }

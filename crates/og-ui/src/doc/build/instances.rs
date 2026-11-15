@@ -111,6 +111,10 @@ pub struct RetainedHost {
     pub uses: Vec<DocEvent>,
     pub collections: BTreeMap<SourceId, BTreeSet<MountedNode>>,
     pub dirty: BTreeSet<MountedNode>,
+    /// Each element's warnings from its last resolution (its cascade's
+    /// diagnostics, with where it is): a frame reports them all, not only
+    /// those of the elements it resolved again.
+    pub diagnostics: BTreeMap<MountedNode, Vec<String>>,
     pub inherited: BTreeMap<(MountedNode, String), BTreeSet<MountedNode>>,
     pub by_key: BTreeMap<u64, MountedNode>,
     /// The elements matching `:hover`, `:active`, `:focus` and

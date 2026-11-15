@@ -96,7 +96,8 @@ pub(super) fn inherit(kind: Kind, r: &mut Resolved) {
     let computed = &r.cascade.computed;
     let inherited = |name: &str| computed.get(name).cloned().flatten();
     if kind == Kind::Svg {
-        let vb = match r.str("svgViewBox") {
+        let authored = r.str("svgViewBox");
+        let vb = match authored {
             Some(v) => v.to_string(),
             None => {
                 let w = fixed(r.size("width")).unwrap_or(DEFAULT_SIZE[0]);
@@ -104,7 +105,10 @@ pub(super) fn inherit(kind: Kind, r: &mut Resolved) {
                 format!("0 0 {w} {h}")
             }
         };
-        if view_box(&vb).is_none() {
+        // Only a viewBox its author wrote can be wrong: one taken from a
+        // zero size (`<svg width="0" height="0">` holding only `<defs>`)
+        // draws nothing, as it says.
+        if authored.is_some() && view_box(&vb).is_none() {
             r.cascade
                 .diagnostics
                 .push(format!("viewBox \"{vb}\" is not four numbers with a size"));

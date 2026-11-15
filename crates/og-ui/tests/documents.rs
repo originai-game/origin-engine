@@ -917,13 +917,18 @@ fn length_tokens_follow_the_active_style_in_layout_and_states() {
         let mut ui = ui_with_font(test_font_metrics());
         ui.define_document(doc);
         ui.push_screen("tokens", Value::Null).unwrap();
-        tick(&mut ui, InputFrame::default());
-        assert!(
-            ui.frame()
-                .warnings
-                .iter()
-                .any(|error| error.contains(missing) && error.contains("computed-value"))
-        );
+        // Reported every frame, not only the one the element resolves in.
+        for frame in 0..3 {
+            tick(&mut ui, InputFrame::default());
+            assert!(
+                ui.frame()
+                    .warnings
+                    .iter()
+                    .any(|error| error.contains(missing) && error.contains("computed-value")),
+                "frame {frame}: {:?}",
+                ui.frame().warnings
+            );
+        }
     }
 }
 
