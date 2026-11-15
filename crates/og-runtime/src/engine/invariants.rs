@@ -249,8 +249,9 @@ fn check(
 pub(crate) fn after_tick(eng: &Engine, world: &World) {
     let t0 = crate::author::probe::now_ms();
     // The tick whose systems produced this state, the one og.assert sees as og.Time.tick
-    // (og.Time has moved on to the next tick by now).
-    let tick = og_ecs::last_tick();
+    // (og.Time has moved on to the next tick by now). This world's own:
+    // `og_ecs::last_tick` is the last step of any world in the process.
+    let tick = world.time().tick.saturating_sub(1);
     let layouts = eng.state.borrow().layouts.len();
     let mut failures: Vec<(String, String, Seen)> = Vec::new();
     let mut values = 0u64;
