@@ -676,8 +676,9 @@ impl crate::ui::Tree {
         let motion = self.nodes[i].props.motion;
         let css_transitions = self.nodes[i].props.transitions.clone();
         let mut row = target;
+        let keys = channel_keys(key);
         for c in 0..CHANNELS {
-            let ck = channel_key(key, c);
+            let ck = keys[c];
             let stepped = Prop::stepped(c);
             // A state group's own transition, then CSS `transition`.
             let css =
@@ -1376,8 +1377,7 @@ impl crate::ui::Style {
                 if tree.index.by_key.contains_key(&key) {
                     continue;
                 }
-                for c in 0..CHANNEL_NAMES.len() {
-                    let ck = channel_key(key, c);
+                for ck in channel_keys(key) {
                     if !touched.contains(&ck)
                         && m.channels.get(&ck).is_some_and(|ch| ch.stepped < now)
                     {
@@ -1397,8 +1397,7 @@ impl crate::ui::Style {
             let written = seeds.unwrap_or_default().iter().chain(&visited);
             for &i in written.filter(|&&i| i < tree.nodes.len()) {
                 let key = tree.nodes[i].key;
-                for c in 0..CHANNEL_NAMES.len() {
-                    let ck = channel_key(key, c);
+                for ck in channel_keys(key) {
                     if !touched.contains(&ck)
                         && m.channels.get(&ck).is_some_and(|ch| ch.stepped < now)
                     {
@@ -1791,8 +1790,9 @@ impl Ui {
                     moving.push("glitch".to_owned());
                 }
             }
-            for c in 0..CHANNELS + 6 {
-                if let Some(ch) = m.channels.get(&channel_key(n.key, c))
+            let keys = channel_keys(n.key);
+            for (c, k) in keys.iter().enumerate() {
+                if let Some(ch) = m.channels.get(k)
                     && !ch.done(now, tps)
                 {
                     let name = names(c).to_owned();

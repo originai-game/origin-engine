@@ -174,8 +174,19 @@ pub(crate) fn zoom_items(mut items: Vec<DrawItem>, unit: f32) -> Vec<DrawItem> {
     if unit == 1.0 {
         return items;
     }
-    let s = Affine::scale(unit, unit);
     for item in &mut items {
+        zoom_item(item, unit);
+    }
+    items
+}
+
+/// One item drawn `unit` times larger ([`zoom_items`]).
+pub(crate) fn zoom_item(item: &mut DrawItem, unit: f32) {
+    if unit == 1.0 {
+        return;
+    }
+    let s = Affine::scale(unit, unit);
+    {
         let cmd = std::mem::replace(&mut item.cmd, DrawCmd::PopClip);
         let (mut cmd, rest) = if item.transform.is_identity() {
             crate::ui::bake(cmd, s)
@@ -222,7 +233,6 @@ pub(crate) fn zoom_items(mut items: Vec<DrawItem>, unit: f32) -> Vec<DrawItem> {
         item.cmd = cmd;
         item.transform = rest;
     }
-    items
 }
 
 /// A mass batch drawn `unit` times larger ([`zoom_items`]): each

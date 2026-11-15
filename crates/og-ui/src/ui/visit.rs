@@ -170,6 +170,9 @@ pub(crate) struct Orders {
     /// Per slot: the visit that last reached it.
     seen: Vec<u32>,
     stamp: u32,
+    /// Per drawing position: the node a visit has still to take there
+    /// (`usize::MAX`: none); empty between visits.
+    pending: Vec<usize>,
     /// Per slot: the focus scope, scroll container and focus owner
     /// around it, and its focus group and gesture recogniser (0: none),
     /// kept where nothing above it changed.
@@ -252,14 +255,30 @@ impl Ui {
             o.stamp = 1;
         }
         let stamp = o.stamp;
-        let mut heap: std::collections::BinaryHeap<std::cmp::Reverse<(u32, usize)>> = seeds
-            .iter()
-            .filter(|&&i| o.pos[i] != u32::MAX)
-            .map(|&i| std::cmp::Reverse((o.pos[i], i)))
-            .collect();
+        // The nodes still to visit by drawing position, taken lowest
+        // first: what a visit reaches is mostly whole subtrees, so a scan
+        // up the positions finds them without ordering each one.
+        let mut pending = std::mem::take(&mut o.pending);
+        let mut at = usize::MAX;
+        let mark = |pending: &mut Vec<usize>, p: u32, i: usize| {
+            let p = p as usize;
+            if p >= pending.len() {
+                pending.resize(p + 1, usize::MAX);
+            }
+            pending[p] = i;
+            p
+        };
+        for &i in seeds {
+            if o.pos[i] != u32::MAX {
+                at = at.min(mark(&mut pending, o.pos[i], i));
+            }
+        }
         let mut out = Vec::new();
-        while let Some(std::cmp::Reverse((_, i))) = heap.pop() {
-            if self.tree.orders.seen[i] == stamp {
+        let mut p = at;
+        while p < pending.len() {
+            let i = std::mem::replace(&mut pending[p], usize::MAX);
+            p += 1;
+            if i == usize::MAX || self.tree.orders.seen[i] == stamp {
                 continue;
             }
             self.tree.orders.seen[i] = stamp;
@@ -267,13 +286,16 @@ impl Ui {
             if step(self, i) {
                 for k in 0..self.tree.nodes[i].ordered_children.len() {
                     let c = self.tree.nodes[i].ordered_children[k];
-                    let p = self.tree.orders.pos[c];
-                    if p != u32::MAX && self.tree.orders.seen[c] != stamp {
-                        heap.push(std::cmp::Reverse((p, c)));
+                    let cp = self.tree.orders.pos[c];
+                    if cp != u32::MAX && self.tree.orders.seen[c] != stamp {
+                        // One drawn before it is the next to take.
+                        p = p.min(mark(&mut pending, cp, c));
                     }
                 }
             }
         }
+        pending.clear();
+        self.tree.orders.pending = pending;
         out
     }
 

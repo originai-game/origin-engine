@@ -415,16 +415,24 @@ impl Ui {
             let over_background = |ui: &Self| -> Vec<(DrawCmd, Affine)> {
                 let Some(d) = &draw else { return Vec::new() };
                 let n = &ui.tree.nodes[i];
-                // CSS accent-color: the primary ink of its control's parts.
-                let mut theme = theme;
-                if let Some(a) = ui.tree.nearest(i, |n| n.accent) {
-                    theme.palette.primary = a;
-                    theme.palette.primary_hover = a;
-                    theme.palette.primary_active = a;
-                }
-                let mut out = d.enter(&theme, &placed(n));
+                // CSS accent-color: the primary ink of its control's parts
+                // (a theme of its own only where one is set: a theme is
+                // large, and most nodes draw under the frame's).
+                let accented;
+                let theme = match ui.tree.nearest(i, |n| n.accent) {
+                    Some(a) => {
+                        let mut t = theme;
+                        t.palette.primary = a;
+                        t.palette.primary_hover = a;
+                        t.palette.primary_active = a;
+                        accented = t;
+                        &accented
+                    }
+                    None => &theme,
+                };
+                let mut out = d.enter(theme, &placed(n));
                 if !marked(n) {
-                    out.extend(d.strokes(&theme, &placed(n)));
+                    out.extend(d.strokes(theme, &placed(n)));
                 }
                 undraw(&mut out, n.style.sampled.draw);
                 if let Some(decor) = &n.decor {

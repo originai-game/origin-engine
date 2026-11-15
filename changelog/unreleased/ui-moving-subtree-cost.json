@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"og.ui","summary":"Elements that animate their transform or opacity cost less per tick. Their draws no longer copy the theme, the passes over moved nodes take them in drawing order without a heap, and the draw levels of moved commands are found again without allocating. A dense menu with 40 cards springing in scale and opacity spends 0.39 ms a tick instead of 0.48 ms on Windows."}
+  ]
+}

@@ -1,4 +1,6 @@
-use super::{Batch, DrawCmd, DrawItem, Ground, LayerRole, mapped_bounds, union, zoom_items};
+use super::{
+    Batch, DrawCmd, DrawItem, Ground, LayerRole, mapped_bounds, union, zoom_item, zoom_items,
+};
 use crate::element::Affine;
 use crate::layout::Rect;
 use crate::world::WorldCmd;
@@ -499,16 +501,13 @@ impl Levels {
             };
             let shown = bracket || !key.0.is_empty() || unmeasured_text(&cmd);
             let item = shown.then(|| {
-                zoom_items(
-                    vec![DrawItem {
-                        level: 0,
-                        cmd,
-                        transform: m,
-                    }],
-                    unit,
-                )
-                .pop()
-                .expect("one item")
+                let mut item = DrawItem {
+                    level: 0,
+                    cmd,
+                    transform: m,
+                };
+                zoom_item(&mut item, unit);
+                item
             });
             // Moved as one with the others, exactly (`exact`).
             let same = s.from.filter(|&o| {
@@ -550,17 +549,22 @@ impl Levels {
                 grid.file(&mut cells, r, e as u32);
             }
         }
-        let near = |grid: &Grid, cells: &[Vec<u32>], r: &Rect| {
+        fn near<'a>(
+            grid: &'a Grid,
+            cells: &'a [Vec<u32>],
+            r: &Rect,
+        ) -> impl Iterator<Item = u32> + 'a {
             let (cols, rows) = grid.span(r);
             rows.flat_map(move |row| cols.clone().map(move |col| row * grid.cols + col))
-                .flat_map(|c| cells[c].iter().copied())
-                .collect::<Vec<u32>>()
-        };
-        let mut work = std::collections::BTreeSet::new();
+                .flat_map(move |c| cells[c].iter().copied())
+        }
+        // The entries to level again, taken lowest first: each one adds
+        // only entries after it.
+        let mut work = vec![false; n];
         // What is new or changed: levelled, and what follows it after.
         for e in 0..n {
             if kept[e].is_none() && !keyed[e].0.is_empty() {
-                work.insert(e);
+                work[e] = true;
             }
         }
         // What a dropped or changed command overlapped, where it was.
@@ -572,7 +576,7 @@ impl Levels {
             for q in near(&self.grid, &self.cells, &r) {
                 let q = q as usize;
                 if q > o && carried[q] != u32::MAX && self.keyed[q].0.overlaps(&r) {
-                    work.insert(carried[q] as usize);
+                    work[carried[q] as usize] = true;
                 }
             }
         }
@@ -590,11 +594,11 @@ impl Levels {
                 if all || none {
                     continue;
                 }
-                work.insert(s);
+                work[s] = true;
                 for q in near(&grid, &cells, &r) {
                     let q = q as usize;
                     if q > s && moved[q] && keyed[q].0.overlaps(&r) {
-                        work.insert(q);
+                        work[q] = true;
                     }
                 }
                 let o = kept[s].expect("kept") as usize;
@@ -603,12 +607,15 @@ impl Levels {
                     let now = carried[q] as usize;
                     if q > o && carried[q] != u32::MAX && moved[now] && self.keyed[q].0.overlaps(&r)
                     {
-                        work.insert(now);
+                        work[now] = true;
                     }
                 }
             }
         }
-        while let Some(e) = work.pop_first() {
+        for e in 0..n {
+            if !work[e] {
+                continue;
+            }
             let level = Some(grid.level(&keyed, &levels, &cells, e));
             if levels[e] == level && kept[e].is_some() {
                 continue;
@@ -616,7 +623,7 @@ impl Levels {
             levels[e] = level;
             for q in near(&grid, &cells, &keyed[e].0) {
                 if q as usize > e && keyed[q as usize].0.overlaps(&keyed[e].0) {
-                    work.insert(q as usize);
+                    work[q as usize] = true;
                 }
             }
         }

@@ -40,7 +40,7 @@ mod emit;
 mod order;
 
 pub use emit::{EmitDesc, LAYER_BASE, LAYER_SPAN, MAX_LAYERS, drawn_lines};
-pub(crate) use emit::{emit, scale_effects, zoom_items, zoom_mass};
+pub(crate) use emit::{emit, scale_effects, zoom_item, zoom_items, zoom_mass};
 pub(crate) use order::{Levels, Spliced, assign_levels_kept};
 
 /// One thing to draw, in CSS pixels.

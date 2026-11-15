@@ -189,11 +189,17 @@ pub struct MotionState {
         std::collections::BTreeMap<u64, std::collections::BTreeMap<String, super::css::StyleState>>,
 }
 
-/// The key of channel `c` of element `key`. The motion pass asks for every
-/// channel of each node it steps or forgets, each tick, so an element's
-/// channel keys are hashed once and kept on the thread (they are a pure
-/// function of its key).
+/// The key of channel `c` of element `key`.
 pub(crate) fn channel_key(key: u64, c: usize) -> u64 {
+    channel_keys(key)[c]
+}
+
+/// The keys of every channel of element `key`. The motion pass asks for
+/// every channel of each node it steps or forgets, each tick, so an
+/// element's channel keys are hashed once and kept on the thread (they
+/// are a pure function of its key); a pass over one node's channels takes
+/// them once.
+pub(crate) fn channel_keys(key: u64) -> [u64; CHANNEL_NAMES.len()] {
     /// The most elements whose keys are kept; past it, it starts again.
     const CAP: usize = 8192;
     type Keys = crate::id::KeyMap<[u64; CHANNEL_NAMES.len()]>;
@@ -201,12 +207,15 @@ pub(crate) fn channel_key(key: u64, c: usize) -> u64 {
         static KEYS: std::cell::RefCell<Keys> = Default::default();
     }
     KEYS.with_borrow_mut(|keys| {
-        if keys.len() >= CAP && !keys.contains_key(&key) {
+        if let Some(k) = keys.get(&key) {
+            return *k;
+        }
+        if keys.len() >= CAP {
             keys.clear();
         }
-        keys.entry(key)
-            .or_insert_with(|| std::array::from_fn(|c| crate::id::child_key(key, CHANNEL_NAMES[c])))
-            [c]
+        let k = std::array::from_fn(|c| crate::id::child_key(key, CHANNEL_NAMES[c]));
+        keys.insert(key, k);
+        k
     })
 }
 
