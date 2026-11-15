@@ -6,7 +6,7 @@
     },
     {
       "member": "--common",
-      "summary": "The six rarity colours are tokens of the default style: --common, --uncommon, --rare, --epic, --legendary and --mythic, each the status colour a rarity borrowed before (--line-strong, --success, --info, --xp, --warn, --danger). A style that names its own still wins, and var(--rare) needs no fallback. A loot label's common tier is the scene's ink under every style."
+      "summary": "The six rarity colours are tokens of the default style: --common, --uncommon, --rare, --epic, --legendary and --mythic, each the status colour a rarity borrowed before (--line-strong, --success, --info, --xp, --warn, --danger). A style that names its own still wins, and var(--rare) needs no fallback. A loot label's common tier wears --common as its rim, and its name stays the scene's ink."
     },
     {
       "member": "--opacity-wash",
