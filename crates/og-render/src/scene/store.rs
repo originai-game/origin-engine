@@ -93,6 +93,7 @@ impl RenderScene {
                 instance_layers: Vec::new(),
                 instance_levels: Vec::new(),
                 previous_transforms: Vec::new(),
+                kept: Default::default(),
                 skinned_instances: Vec::new(),
                 skinned_layers: Vec::new(),
                 joint_palettes: Vec::new(),

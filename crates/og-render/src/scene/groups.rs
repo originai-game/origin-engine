@@ -263,6 +263,23 @@ pub struct SceneSprites {
     pub metaballs: Vec<crate::Metaballs>,
 }
 
+/// A producer's promise about a frame's [`SceneObjects::instances`]
+/// against a list it numbered before: the renderer skips comparing what it
+/// promises with the list it last read, so a broken promise draws a stale
+/// frame. The default promises nothing.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct KeptInstances {
+    /// This list's number (0: unnumbered).
+    pub list: u64,
+    /// The list whose first `count` instances these are, bit for bit, at
+    /// the same places (0: none).
+    pub from: u64,
+    pub count: usize,
+    /// Whether those `count` instances' previous transforms (when there is
+    /// one per instance) are their transforms, bit for bit.
+    pub still: bool,
+}
+
 /// The 3D objects: mesh instances (layers, levels, previous transforms),
 /// skinned instances with their palettes, morphs and baked clips, crowds,
 /// deformed vertices, impostors, debris, and how meshes are drawn (meshlets,
@@ -293,6 +310,10 @@ pub struct SceneObjects {
     /// `instances`), for per-object motion blur. Ignored unless its length
     /// equals `instances`'; then only the camera's motion blurs.
     pub previous_transforms: Vec<Mat4>,
+    /// What the producer of `instances` promises of them against a list it
+    /// made before, so the renderer need not compare them again
+    /// ([`KeptInstances`]); the default promises nothing.
+    pub kept: KeptInstances,
     pub skinned_instances: Vec<SkinnedInstance>,
     /// The same for `skinned_instances`.
     pub skinned_layers: Vec<u32>,

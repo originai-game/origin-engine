@@ -216,6 +216,9 @@ pub(crate) struct SortedInstances {
     /// Moves on whenever a sorted instance's GPU transform may have
     /// changed ([`Sorted::content`]).
     content: u64,
+    /// The producer's number of the list last read
+    /// ([`crate::KeptInstances::list`]; 0: none).
+    list: u64,
     /// Counts the updates ([`Sorted::serial`]).
     serial: u64,
     /// The materials whose shader parameters moved this frame, ascending
@@ -405,18 +408,33 @@ impl SortedInstances {
         // transform. A still town of 94,865 instances walked them four
         // times a frame for these (the keys, the refresh, the motion
         // test, the sway kept for the next frame).
+        // The instances the producer promises are the list last read
+        // (`SceneObjects::kept`) are not compared, nor, when it promises
+        // they did not move, tested for motion.
+        let kept = scene.objects.kept;
+        let vouched = match keyed && kept.from != 0 && kept.from == self.list {
+            true => kept.count.min(n),
+            false => 0,
+        };
+        self.list = kept.list;
         let previous = &scene.objects.previous_transforms;
         let previous = (previous.len() == n).then_some(previous.as_slice());
         let mut objects_moved = false;
         let mut differ: Vec<u32> = Vec::new();
         if keyed {
-            for (i, (a, b)) in self.seen.iter().zip(instances).enumerate() {
+            for (i, (a, b)) in self.seen.iter().zip(instances).enumerate().skip(vouched) {
                 if !same_instance(a, b) {
                     differ.push(i as u32);
                 }
                 if !objects_moved && let Some(p) = previous {
                     objects_moved = p[i] != b.transform;
                 }
+            }
+            // The promised instances' motion, unless promised too.
+            let unpromised = if kept.still { 0 } else { vouched };
+            if !objects_moved && let Some(p) = previous {
+                let (p, i) = (&p[..unpromised], &instances[..unpromised]);
+                objects_moved = p.iter().zip(i).any(|(p, i)| *p != i.transform);
             }
         } else if let Some(p) = previous {
             objects_moved = p.iter().zip(instances).any(|(p, i)| *p != i.transform);
@@ -1016,6 +1034,71 @@ mod tests {
         assert_eq!(runs(&scene), vec![(a.index(), 1), (b.index(), 2)]);
         assert!(scene.set_material_shader(b, Some(shader)));
         assert_eq!(runs(&scene), vec![(a.index(), 3)]);
+    }
+
+    /// A producer's promise (`SceneObjects::kept`) spares comparing the
+    /// instances it keeps of the list last read, and nothing else: a change
+    /// past the promised ones is found, a promise about another list than
+    /// the one last read is ignored, and the promised instances are tested
+    /// for motion unless promised still. What is promised is believed (a
+    /// broken promise is the producer's bug), which is what makes it cheap.
+    #[test]
+    fn a_promise_spares_only_what_it_keeps_of_the_list_last_read() {
+        let mut scene = scene();
+        let n = scene.objects.instances.len();
+        let mut kept = SortedInstances::default();
+        // The update's still and moved flags, checked against a fresh sort
+        // unless the promise is broken on purpose.
+        let mut step = |scene: &RenderScene, honest: bool| {
+            let s = kept
+                .update(scene, 3, info, 2, |_, _| None, |_| false, |_| false)
+                .unwrap();
+            if honest {
+                assert_same(&s, &fresh(scene));
+            }
+            let flags = (s.still, s.objects_moved);
+            kept.restore(s.transforms, s.spheres);
+            flags
+        };
+        let promise = |list, from, count, still| crate::KeptInstances {
+            list,
+            from,
+            count,
+            still,
+        };
+        scene.objects.kept = promise(1, 0, 0, false);
+        step(&scene, true);
+        // Half promised, and one past them moved: found.
+        scene.objects.kept = promise(2, 1, n / 2, false);
+        scene.objects.instances[n / 2 + 3].transform.w_axis.x += 1.0;
+        assert_eq!(step(&scene, true), (false, false));
+        // All promised, but of list 1 where list 2 was read last: the
+        // change at the start is found.
+        scene.objects.kept = promise(3, 1, n, false);
+        scene.objects.instances[0].transform.w_axis.x += 1.0;
+        assert!(!step(&scene, true).0);
+        // All promised of list 3, the one read last: still.
+        scene.objects.kept = promise(4, 3, n, false);
+        assert_eq!(step(&scene, true), (true, false));
+        // A promised instance whose previous transform is not its own:
+        // moved, unless promised still.
+        let objects = &mut scene.objects;
+        objects.previous_transforms = objects.instances.iter().map(|i| i.transform).collect();
+        objects.previous_transforms[2].w_axis.y += 1.0;
+        objects.kept = promise(5, 4, n, false);
+        assert_eq!(step(&scene, true), (true, true));
+        scene.objects.kept = promise(6, 5, n, true);
+        assert_eq!(
+            step(&scene, false),
+            (true, false),
+            "a promise of stillness believed"
+        );
+        // And a promised instance is not compared at all.
+        scene.objects.instances[1].fx.flash = 0.5;
+        scene.objects.kept = promise(7, 6, n, true);
+        assert!(step(&scene, false).0, "a promised instance compared");
+        scene.objects.kept = promise(8, 0, 0, false);
+        assert!(!step(&scene, true).0, "no promise: the change is found");
     }
 
     /// Kept, refreshed or rebuilt, a frame's sorted instances are a fresh
