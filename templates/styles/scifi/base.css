@@ -459,6 +459,11 @@
   --scifi-text-shadow: 0 1px 2px var(--scifi-shade);
   --scifi-label-shadow: 0 0 8px var(--scifi-glow-35), 0 1px 3px var(--scifi-shade);
   --figure-shadow: 0 1px 2px var(--scifi-shade), 0 0 6px var(--scifi-glow-20);
+  /* World tags over the scene: on a strip of the scene's plate. */
+  --tag-halo: none;
+  --tag-fill: var(--scene-plate);
+  --tag-pad: 0 var(--space-xs);
+  --tag-radius: 0;
   --scifi-rule:
     linear-gradient(90deg, var(--accent), var(--accent)) center / 28px 3px no-repeat,
     linear-gradient(90deg, rgb(from var(--line-strong) r g b / 0), var(--line-strong) 50%, rgb(from var(--line-strong) r g b / 0)) center / 100% 1px no-repeat;

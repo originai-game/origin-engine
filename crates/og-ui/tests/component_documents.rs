@@ -450,3 +450,40 @@ fn interaction_prompts_over_one_spot_stand_apart() {
         || b.y + b.height <= a.y;
     assert!(apart, "one prompt over the other: {a:#?} {b:#?}");
 }
+
+/// A pack's tokens reach the parts that read them: the tag tokens the
+/// text a status grid, a nameplate and a waypoint draw over the scene.
+/// Fails when a component writes its own value over the token (the status
+/// grid's figures kept their own halo whatever a pack set).
+#[test]
+fn packs_dress_text_over_the_scene_through_its_tokens() {
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    let drawn = |name: &str, root: String| {
+        let mut ui = ui_with_font(test_font());
+        ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+        let css = format!(":root {{ {root} }}");
+        let pack = og_ui::style_pack::StylePack::parse(
+            "styles/test",
+            vec![("styles/test/main.css".into(), css)],
+        );
+        ui.set_style_pack(&pack.unwrap()).unwrap();
+        let doc = docs.iter().find(|d| d.doc.name == name).unwrap();
+        let warnings = preview(&mut ui, &docs, doc, &messages, 1280.0, 720.0);
+        assert!(warnings.is_empty(), "{name}: {warnings:?}");
+        format!("{:?}", ui.frame().items)
+    };
+    for (name, token, a, b) in [
+        ("StatusGrid", "--tag-halo", "none", "0 0 4px #ff0000"),
+        ("StatusGrid", "--tag-fill", "none", "#ff0000"),
+        ("Nameplate", "--tag-halo", "none", "0 0 4px #ff0000"),
+        ("Nameplate", "--tag-fill", "none", "#ff0000"),
+        ("Waypoint", "--tag-halo", "none", "0 0 4px #ff0000"),
+        ("Waypoint", "--tag-fill", "none", "#ff0000"),
+    ] {
+        assert_ne!(
+            drawn(name, format!("{token}: {a};")),
+            drawn(name, format!("{token}: {b};")),
+            "{name} draws the same whatever {token} is"
+        );
+    }
+}

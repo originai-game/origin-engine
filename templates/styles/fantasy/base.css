@@ -325,6 +325,8 @@
   --fantasy-text-shadow: 0 1px 2px var(--color-shadow);
   --fantasy-label-shadow: 0 1px 3px var(--color-shadow);
   --figure-shadow: 0 1px 2px var(--color-shadow), 0 0 4px var(--color-shadow);
+  /* World tags over the scene: an inked outline, as the figures wear. */
+  --tag-halo: 0 0 2px var(--color-shadow), 0 1px 2px var(--color-shadow), 0 0 4px var(--color-shadow);
   --fantasy-rule:
     var(--mark-diamond) center / 10px 10px no-repeat,
     linear-gradient(90deg, #b8924d00, var(--accent) 50%, #b8924d00) center / 100% 1px no-repeat;

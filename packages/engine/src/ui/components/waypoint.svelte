@@ -32,8 +32,8 @@
 .ping [part="Waypoint.pin"] { animation-name: pulse; animation-duration: var(--motion-duration-ping); animation-timing-function: var(--motion-easing-out); animation-iteration-count: infinite; }
 #Diamond { width: var(--size-sm); height: var(--size-sm); fill: var(--tone); stroke: var(--scene-shadow); stroke-width: 1.5; }
 #Icon { width: var(--size-sm); height: var(--size-sm); color: var(--tone); }
-/* In the world, over any scene: the kind's tone and the scene's ink, through the role tokens. */
-[part="Waypoint.label"] { font: var(--text-caption); font-family: var(--label-font); white-space: nowrap; text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); --ink-label: var(--tone); }
-[part="Waypoint.figure"] { font: var(--text-caption); font-family: var(--figure-font); white-space: nowrap; text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); --figure-ink: var(--scene-ink); }
+/* In the world, over any scene: the kind's tone and the scene's ink, through the role tokens; the tag tokens outline them, and give them a ground where a pack sets one. */
+[part="Waypoint.label"] { font: var(--text-caption); font-family: var(--label-font); white-space: nowrap; text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); --ink-label: var(--tone); }
+[part="Waypoint.figure"] { font: var(--text-caption); font-family: var(--figure-font); white-space: nowrap; text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); --figure-ink: var(--scene-ink); }
 @keyframes pulse { 0% { scale: 1.3; } 100% { scale: 1; } }
 </style>

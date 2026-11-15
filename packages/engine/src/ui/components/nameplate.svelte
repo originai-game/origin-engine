@@ -47,9 +47,10 @@
 [part="Nameplate.icon"] { width: var(--size-xs); height: var(--size-xs); color: var(--tone); }
 [part="Nameplate.badge"] { font: var(--text-caption); padding: 0 var(--space-xs); }
 .boss [part="Nameplate.badge"] { border: var(--stroke-hairline) solid var(--gold); }
-[part="Nameplate.name"] { font: var(--text-sm); color: var(--tone); white-space: nowrap; text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
+/* Over the scene: the tag tokens outline it, and give it a ground where a pack sets one. */
+[part="Nameplate.name"] { font: var(--text-sm); color: var(--tone); white-space: nowrap; text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); }
 .targeted [part="Nameplate.name"] { color: var(--scene-ink); }
-[part="Nameplate.subtitle"] { font: var(--text-caption); color: var(--ink-muted); white-space: nowrap; text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
+[part="Nameplate.subtitle"] { font: var(--text-caption); color: var(--ink-muted); white-space: nowrap; text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); }
 [part="Nameplate.well"] { width: var(--bar); overflow: hidden; }
 #Health { height: var(--space-sm); border: var(--stroke-hairline) solid transparent; }
 .targeted #Health { border: var(--stroke-hairline) solid var(--highlight); }

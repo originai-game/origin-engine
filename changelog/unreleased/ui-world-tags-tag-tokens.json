@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "Nameplate",
+      "summary": "Tokens `--tag-halo`, `--tag-fill`, `--tag-pad` and `--tag-radius` dress the text built-in components draw over the scene (a nameplate's name and subtitle, a waypoint's label and distance, a status grid's time left): an outline by default, and a ground of their own where a pack sets one, so they read over a bright sky."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "StatusGrid",
+      "summary": "An effect's time left wears the pack's tag tokens; the component's own shadow no longer overrides what a pack sets."
+    }
+  ]
+}

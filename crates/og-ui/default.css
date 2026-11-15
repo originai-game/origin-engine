@@ -434,6 +434,10 @@
     --sfx-reward: none;
     --sfx-tap: none;
     --sfx-tap2: none;
+    --tag-fill: none;
+    --tag-halo: 0 0 var(--stroke-regular) var(--scene-shadow), 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow);
+    --tag-pad: 0px;
+    --tag-radius: var(--radius-control);
     --title-font: var(--type-title-font);
     --title-ink: var(--ink);
     --title-lead-size: var(--font-step-xl);

@@ -489,6 +489,9 @@
   --well-fill: var(--well);
   --well-radius: var(--radius-sm);
   --figure-shadow: var(--cartoon-text-drop-small);
+  /* World tags over the scene: ringed in the scene's shadow (white under
+     the light scheme), with the small drop. */
+  --tag-halo: 0 0 2px var(--scene-shadow), 0 0 2px var(--scene-shadow), var(--cartoon-text-drop-small);
   --label-tracking: 0.03em;
   --label-transform: uppercase;
 
@@ -612,6 +615,7 @@
   --ink-down: #8d8ab3;
   --figure-ink: #211d52;
   --figure-shadow: none;
+  --tag-halo: 0 0 2px var(--scene-shadow), 0 0 2px var(--scene-shadow);
   --trend-up: #15802a;
   --trend-down: #cc1f3a;
   --tone-damage: #cc1f3a;

@@ -106,6 +106,16 @@
   --role-figure-font: var(--type-numeric-font);
   --role-figure-shadow: none;
 
+  /* Tag: a name, label or figure drawn straight over the scene (a
+     nameplate's name, a waypoint's label and distance, a status grid's
+     time left). Its halo outlines it against any ground; a pack may also
+     give it a ground of its own, a fill padded and rounded (none by
+     default). */
+  --role-tag-halo: 0 0 var(--stroke-regular) var(--scene-shadow), 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow);
+  --role-tag-fill: none;
+  --role-tag-pad: 0px;
+  --role-tag-radius: var(--radius-control);
+
   /* Label: a caption or column heading. */
   --role-label-font: var(--type-label-font);
   --role-label-tracking: 0em;

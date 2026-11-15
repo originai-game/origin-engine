@@ -53,7 +53,8 @@ ul, ol { list-style-type: none; }
 .sweep { position: absolute; top: 0; inset-inline-start: 0; width: var(--size-md); height: var(--size-md); stroke: var(--scrim); }
 .notch { position: absolute; top: 0; inset-inline-start: 0; width: var(--space-sm); height: var(--space-sm); background: var(--edge); clip-path: polygon(0% 0%, 100% 0%, 0% 100%); }
 [part="StatusGrid.badge"] { position: absolute; bottom: 0; inset-inline-end: 0; padding: 0 var(--space-xxs); font: var(--text-caption); font-family: var(--figure-font); }
-[part="StatusGrid.figure"] { font: var(--text-caption); font-family: var(--figure-font); white-space: nowrap; text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
+/* Over the scene under its cell: the figure role's ink and font, and the tag tokens outline it and give it a ground where a pack sets one. */
+[part="StatusGrid.figure"] { font: var(--text-caption); font-family: var(--figure-font); white-space: nowrap; text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); }
 .expiring [part="StatusGrid.cell"] { animation-name: blink; animation-duration: var(--motion-duration-spring); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
 #Count { font: var(--text-sm); color: var(--ink-muted); }
 @keyframes blink { from { opacity: 1; } to { opacity: 0.35; } }
