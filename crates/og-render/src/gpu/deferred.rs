@@ -84,12 +84,14 @@ impl<T> Make<T> {
 /// A value being made on a compile worker ([`spawn`]).
 ///
 /// Dropped unreceived, it owns its job still: one not yet started is taken
-/// off the queues and dropped here, and one running is waited for. A job's
-/// closure owns GPU objects (the device, layouts, modules); detached, it
-/// went on compiling in the driver after its renderer was gone, and on
-/// NVIDIA's Linux driver a worker still inside the shader compiler when
-/// the process exited crashed it (SIGSEGV, heap corruption) after the
-/// test had passed.
+/// off the queues and dropped here, with what its closure owns (the
+/// device, layouts, modules). One a worker is running is left to finish
+/// there, and its value is dropped on the worker: the driver cannot stop
+/// a compile, and waiting here held a renderer's drop for its slowest
+/// background variant (about 0.7 s on Metal for `terrain-near`). The
+/// process waits for them when it exits ([`wait_at_exit`]): on NVIDIA's
+/// Linux driver a worker still inside the shader compiler when the process
+/// exited crashed it (SIGSEGV, heap corruption) after the test had passed.
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) struct Pending<T> {
     answer: std::sync::mpsc::Receiver<std::thread::Result<T>>,
@@ -100,14 +102,35 @@ pub(crate) struct Pending<T> {
 #[cfg(not(target_arch = "wasm32"))]
 impl<T> Drop for Pending<T> {
     fn drop(&mut self) {
-        if let Some(job) = cancel(self.id) {
-            drop(job);
-            return;
-        }
-        // Running, or done (its answer, received or not, is dropped here;
-        // a panic of work nobody uses is not raised again).
-        let _ = self.answer.recv();
+        // Running or done otherwise: its answer is dropped where it is (a
+        // panic of work nobody uses is not raised again).
+        drop(cancel(self.id));
     }
+}
+
+/// At the process's exit, the jobs no worker has started are dropped and
+/// those running are waited for (see [`Pending`]): registered with the C
+/// runtime's `atexit` when the workers start, so it runs after `main`
+/// returns or `std::process::exit`, before the process ends.
+#[cfg(not(target_arch = "wasm32"))]
+extern "C" fn wait_at_exit() {
+    // Nothing unwinds out of the C runtime's exit.
+    let _ = std::panic::catch_unwind(|| {
+        let pool = pool();
+        let mut queued: Vec<(u64, Job)> = Vec::new();
+        let mut q = pool.queues.lock().unwrap_or_else(|e| e.into_inner());
+        loop {
+            queued.extend(q.frame.drain(..));
+            queued.extend(q.background.drain(..));
+            queued.append(&mut q.held);
+            if q.running == 0 {
+                break;
+            }
+            q = pool.idle.wait(q).unwrap_or_else(|e| e.into_inner());
+        }
+        drop(q);
+        drop(queued);
+    });
 }
 
 /// A worker's value, waited for, its panic passed on.
@@ -333,13 +356,21 @@ fn pool() -> &'static Pool {
                         job();
                         let mut q = pool.queues.lock().unwrap_or_else(|e| e.into_inner());
                         q.running -= 1;
-                        if q.idle() {
+                        // (`settle` waits for idle, the exit for no job
+                        // running: `wait_at_exit`.)
+                        if q.running == 0 {
                             pool.idle.notify_all();
                         }
                     }
                 })
                 .expect("a pipeline compile worker");
         }
+        unsafe extern "C" {
+            fn atexit(f: extern "C" fn()) -> std::ffi::c_int;
+        }
+        // SAFETY: `wait_at_exit` is an `extern "C"` function that does not
+        // unwind; the C runtime calls it once, at exit.
+        unsafe { atexit(wait_at_exit) };
         pool
     })
 }
@@ -888,8 +919,9 @@ mod tests {
     }
 
     /// A started value dropped before its first use leaves no work behind:
-    /// one still queued is dropped with it, with what its closure owns, and
-    /// one a worker is making is waited for.
+    /// one still queued is dropped with it, with what its closure owns; one
+    /// a worker is making does not hold the drop, and finishes there (the
+    /// process's exit waits for it, as `settle_pipelines` does here).
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn a_dropped_started_value_owns_its_compile() {
@@ -914,9 +946,10 @@ mod tests {
             Arc::new(AtomicBool::new(false)),
         );
         let (b, d) = (began.clone(), done.clone());
+        let (go, gate) = std::sync::mpsc::channel::<()>();
         let running = Deferred::anywhere(move || {
             b.store(true, SeqCst);
-            std::thread::sleep(std::time::Duration::from_millis(200));
+            let _ = gate.recv();
             d.store(true, SeqCst);
         });
         running.start();
@@ -924,6 +957,15 @@ mod tests {
             std::thread::yield_now();
         }
         drop(running);
-        assert!(done.load(SeqCst), "a running compile is waited for");
+        assert!(
+            !done.load(SeqCst),
+            "a running compile does not hold the drop"
+        );
+        go.send(()).unwrap();
+        settle_pipelines();
+        assert!(
+            done.load(SeqCst),
+            "a running compile finishes on its worker"
+        );
     }
 }
