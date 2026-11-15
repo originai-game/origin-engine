@@ -4751,6 +4751,7 @@
         "ParticleEventKind",
         "ParticleEvent",
         "Trail",
+        "EffectMesh",
         "Beam",
         "RibbonPoint",
         "RibbonDesc",
@@ -26255,6 +26256,62 @@
           "maximum": 2147483647,
           "description": "With layered: the sprite layer it is drawn in, before that layer's sprites.",
           "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "EffectMesh": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "A mesh drawn with an effect material (og.load.effect) at the entity's MatrixWorld: a shockwave dome, a slash arc, a portal's swirl, with the material's scrolling textures, erosion and fresnel. Its curves run on `life`, which the game or a tween drives from 0 to 1 (a composed effect's `mesh` element is one og.vfx drives).",
+      "type": "object",
+      "properties": {
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "The mesh (og.render's geometries, a glTF's); 0 draws nothing.",
+          "default": 0
+        },
+        "effect": {
+          "$ref": "#/$defs/EffectMaterial",
+          "description": "The material (og.load.effect); 0 draws nothing.",
+          "default": 0
+        },
+        "life": {
+          "type": "number",
+          "description": "Where it is in its life, 0 to 1, for the material's curves: tween it from 0 to 1 for a one-shot.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "A linear tint times the material's; above 1 blooms.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "opacity": {
+          "type": "number",
+          "description": "The alpha it is multiplied by.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its random value's seed (the material's `random` and noise offset).",
+          "default": 0
+        },
+        "blend": {
+          "$ref": "#/$defs/Blend",
+          "description": "Its blend when the material names none: additive (the default, a glow) or alpha.",
+          "default": "additive"
         }
       },
       "additionalProperties": false

@@ -29731,6 +29731,50 @@ pub mod record {
         }
     }
 
+    /// `EffectMesh`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct EffectMesh {
+        pub geometry: u64,
+        pub effect: u64,
+        pub life: f32,
+        pub color: Color,
+        pub opacity: f32,
+        pub seed: u32,
+        pub blend: Blend,
+    }
+
+    impl Default for EffectMesh {
+        fn default() -> Self {
+            Self {
+                geometry: Default::default(),
+                effect: Default::default(),
+                life: Default::default(),
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                opacity: 1.0_f32,
+                seed: Default::default(),
+                blend: Blend::Additive,
+            }
+        }
+    }
+
+    impl FromJson for EffectMesh {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                geometry: field(o, "geometry", d.geometry)?,
+                effect: field(o, "effect", d.effect)?,
+                life: field(o, "life", d.life)?,
+                color: field(o, "color", d.color)?,
+                opacity: field(o, "opacity", d.opacity)?,
+                seed: field(o, "seed", d.seed)?,
+                blend: field(o, "blend", d.blend)?,
+            })
+        }
+    }
+
     /// `Beam`: packages/knowledge/wiki/render.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct Beam {

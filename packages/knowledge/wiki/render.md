@@ -6,7 +6,7 @@ What is drawn: meshes with materials. Draws are instanced by (geometry, material
 
 - **TypeScript**: functions are the namespace `og.render`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `RenderOptions`, `StandardMaterialDesc`, `og.Mesh`, `og.DirectionalLight`, `og.SpotLight`, `og.RenderSettings`, `og.PostEffects`, `og.Lighting2D`, `og.Light2D`, `og.Occluder2D`, `og.LightMask2D`, `og.Decal`, `og.ParticleSystem`, `og.Sprite`, `BoxGeometryDesc`, `PlaneGeometryDesc`, `SphereGeometryDesc`, `og.render.boxGeometry`, `og.render.planeGeometry`, `og.render.sphereGeometry`, `og.render.standardMaterial`, `CylinderGeometryDesc`, `og.render.cylinderGeometry`; 195 more are advanced (`og api show render --all`).
+- **Core** (what most games use): `RenderOptions`, `StandardMaterialDesc`, `og.Mesh`, `og.DirectionalLight`, `og.SpotLight`, `og.RenderSettings`, `og.PostEffects`, `og.Lighting2D`, `og.Light2D`, `og.Occluder2D`, `og.LightMask2D`, `og.Decal`, `og.ParticleSystem`, `og.Sprite`, `BoxGeometryDesc`, `PlaneGeometryDesc`, `SphereGeometryDesc`, `og.render.boxGeometry`, `og.render.planeGeometry`, `og.render.sphereGeometry`, `og.render.standardMaterial`, `CylinderGeometryDesc`, `og.render.cylinderGeometry`; 196 more are advanced (`og api show render --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -116,6 +116,7 @@ module render {
 | [`ParticleEventKind`](render/type-ParticleEventKind.md) | enum |  | What happened to a particle (og.ParticleEvent.kind; an emitter's `events` and `subEmitter` lines name them). |
 | [`og.ParticleEvent`](render/record-ParticleEvent.md) | event |  | A particle of an og.ParticleSystem was born, died or hit something in the last tick (read in the tick after, like every event): a bullet's spark that lands, a firework's shell that bursts, debris tha… |
 | [`og.Trail`](render/record-Trail.md) | component |  | A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail. |
+| [`og.EffectMesh`](render/record-EffectMesh.md) | component |  | A mesh drawn with an effect material (og.load.effect) at the entity's MatrixWorld: a shockwave dome, a slash arc, a portal's swirl, with the material's scrolling textures, erosion and fresnel. |
 | [`og.Beam`](render/record-Beam.md) | component |  | A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter). |
 | [`RibbonPoint`](render/type-RibbonPoint.md) | desc struct |  | One point of a ribbon. |
 | [`RibbonDesc`](render/type-RibbonDesc.md) | desc struct |  | An explicit camera-facing strip through points, drawn this frame only (immediate mode, as og.render.sprite): submit it every tick it should show. |
@@ -598,7 +599,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>Module `render` line 2913</sub>
+<sub>Module `render` line 2938</sub>
 
 ```ogt
 column Shader {
@@ -609,7 +610,7 @@ column Shader {
 }
 ```
 
-<sub>Module `render` line 2963</sub>
+<sub>Module `render` line 2988</sub>
 
 ```ogt
 column LineMode {
@@ -620,7 +621,7 @@ column LineMode {
 }
 ```
 
-<sub>Module `render` line 3770</sub>
+<sub>Module `render` line 3795</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -631,7 +632,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>Module `render` line 3981</sub>
+<sub>Module `render` line 4006</sub>
 
 ```ogt
 column RenderTarget {
@@ -642,7 +643,7 @@ column RenderTarget {
 }
 ```
 
-<sub>Module `render` line 3990</sub>
+<sub>Module `render` line 4015</sub>
 
 ```ogt
 column Post {
@@ -653,7 +654,7 @@ column Post {
 }
 ```
 
-<sub>Module `render` line 4130</sub>
+<sub>Module `render` line 4155</sub>
 
 ## Constants
 
@@ -675,22 +676,22 @@ const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never 
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>Module `render` line 2831</sub>
+<sub>Module `render` line 2856</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>Module `render` line 2832</sub>
+<sub>Module `render` line 2857</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included, in their layers' order either way."
 ```
 
-<sub>Module `render` line 2833</sub>
+<sub>Module `render` line 2858</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>Module `render` line 2905</sub>
+<sub>Module `render` line 2930</sub>

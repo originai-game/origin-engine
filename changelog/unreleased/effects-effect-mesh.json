@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.EffectMesh",
+      "summary": "A component that draws a mesh (a geometry handle) with an effect material (og.load.effect) at its entity: a shield dome, a portal's swirl, a slash arc. The material's curves run on its `life` (0 to 1, which the game or a tween drives); `color`, `opacity`, `seed` and `blend` as a composed effect's mesh element. Without a geometry or a material it draws nothing."
+    }
+  ]
+}

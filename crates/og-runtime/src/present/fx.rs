@@ -53,6 +53,7 @@ pub(crate) struct FxLayouts {
     pub particles: Option<Layout>,
     pub trail: Option<Layout>,
     pub beam: Option<Layout>,
+    pub effect_mesh: Option<Layout>,
     pub vfx: Option<Layout>,
     pub skeleton: Option<Layout>,
     pub crowd: Option<Layout>,
@@ -80,6 +81,7 @@ impl FxLayouts {
             particles: get("og.ParticleSystem"),
             trail: get("og.Trail"),
             beam: get("og.Beam"),
+            effect_mesh: get("og.EffectMesh"),
             vfx: get(crate::bind::vfx::COMPONENT),
             skeleton: get("og.Skeleton"),
             crowd: get("og.CrowdAnimation"),
@@ -368,6 +370,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         texture_arrays,
         draw,
         effects,
+        geometries,
         ..
     } = rs;
     let layouts = &draw.fx;
@@ -619,6 +622,33 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
                 ParticleBlend::Alpha
             },
             effect: effect(v.effect),
+        });
+    }
+    for (e, v) in rows(world, layouts.effect_mesh.as_ref()) {
+        let Ok(v) = record::EffectMesh::from_json(&v) else {
+            continue;
+        };
+        let mesh = crate::world::assets::index_of(v.geometry as f64)
+            .and_then(|i| geometries.get(i).copied());
+        let (Some(mesh), Some(material)) = (mesh, effect(v.effect)) else {
+            continue;
+        };
+        let c = &v.color;
+        scene.effects.effect_meshes.push(og_render::EffectMesh {
+            id: e,
+            mesh,
+            material,
+            transform: h.world_of(e),
+            life: v.life.clamp(0.0, 1.0),
+            seed: u64::from(v.seed),
+            color: [c.r, c.g, c.b, v.opacity],
+            blend: if v.blend == Blend::Additive {
+                ParticleBlend::Additive
+            } else {
+                ParticleBlend::Alpha
+            },
+            layers: 1,
+            hue: 0.0,
         });
     }
 }

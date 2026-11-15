@@ -5,11 +5,11 @@
 use og_render::RenderScene;
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_game_game,
-    og_host_begin_bundle, og_load_effect, og_load_timeline, og_load_vfx, og_system_define_system,
-    og_timeline_play, og_timeline_seek, og_timeline_stop, og_vfx_info, og_vfx_spawn,
-    og_world_alive, og_world_children, og_world_despawn, og_world_events, og_world_get_tick,
-    og_world_insert, og_world_restore, og_world_snapshot, og_world_spawn, set_hooks,
-    set_render_backend,
+    og_host_begin_bundle, og_load_effect, og_load_timeline, og_load_vfx, og_render_box_geometry,
+    og_system_define_system, og_timeline_play, og_timeline_seek, og_timeline_stop, og_vfx_info,
+    og_vfx_spawn, og_world_alive, og_world_children, og_world_despawn, og_world_events,
+    og_world_get_tick, og_world_insert, og_world_restore, og_world_snapshot, og_world_spawn,
+    set_hooks, set_render_backend,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -699,4 +699,83 @@ fn a_timelines_vfx_key_plays_its_effect_and_a_seek_joins_it_midway() {
     answer!(og_timeline_stop(engine, timeline));
     ticks(engine, 2);
     assert!(lit_now().is_empty(), "a stop takes its effect");
+}
+
+/// Per frame: each effect mesh's (position, life, colour).
+type Meshes = Rc<RefCell<Vec<Vec<([f32; 3], f32, [f32; 4])>>>>;
+
+struct MeshRecorder(Meshes);
+
+impl RenderBackend for MeshRecorder {
+    fn tier(&self) -> String {
+        "none".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (320, 180)
+    }
+    fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+        self.0.borrow_mut().push(
+            scene
+                .effects
+                .effect_meshes
+                .iter()
+                .map(|m| (m.transform.w_axis.truncate().to_array(), m.life, m.color))
+                .collect(),
+        );
+        Ok(())
+    }
+    fn frame_stats(&self) -> og_render::FrameStats {
+        Default::default()
+    }
+    fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
+        None
+    }
+}
+
+/// An og.EffectMesh draws its geometry with its effect material at its
+/// entity, at the life and colour it holds; without a geometry or a
+/// material it draws nothing.
+#[test]
+fn an_effect_mesh_draws_its_geometry_with_its_material_at_its_life() {
+    set_hooks(Rc::new(Game(Seen::default())));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(json!({ "seed": 5 }).to_string()));
+    let options = json!({ "root": project().to_str().unwrap() }).to_string();
+    let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let seen = Meshes::default();
+    set_render_backend(engine, Some(Box::new(MeshRecorder(seen.clone())))).unwrap();
+    ticks(engine, 1);
+    macro_rules! answer {
+        ($call:expr) => {
+            value(og_runtime::host_impl::answer($call))
+        };
+    }
+    let shock = answer!(og_load_effect(engine, "fx/shock.ogt".into()));
+    let dome = answer!(og_render_box_geometry(engine, Some("{}".into())));
+    for (x, mesh) in [
+        (
+            3.0,
+            json!({ "geometry": dome, "effect": shock, "life": 0.25, "color": { "r": 2, "g": 1, "b": 0.5 }, "opacity": 0.5 }),
+        ),
+        (5.0, json!({ "geometry": dome })),
+        (7.0, json!({ "effect": shock })),
+    ] {
+        let e = answer!(og_world_spawn(
+            engine,
+            Some(json!({ "position": { "x": x, "y": 0, "z": 0 } }).to_string()),
+        ))
+        .as_f64()
+        .unwrap();
+        answer!(og_world_insert(
+            engine,
+            e,
+            "og.EffectMesh".into(),
+            Some(mesh.to_string())
+        ));
+    }
+    ticks(engine, 2);
+    assert_eq!(
+        seen.borrow().last().cloned().expect("a frame"),
+        vec![([3.0, 0.0, 0.0], 0.25, [2.0, 1.0, 0.5, 0.5])]
+    );
 }

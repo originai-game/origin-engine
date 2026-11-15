@@ -761,6 +761,31 @@
     field layer i32 "With layered: the sprite layer it is drawn in, before that layer's sprites."
   }
 
+  component EffectMesh {
+    doc "A mesh drawn with an effect material (og.load.effect) at the entity's MatrixWorld: a shockwave dome, a slash arc, a portal's swirl, with the material's scrolling textures, erosion and fresnel. Its curves run on `life`, which the game or a tween drives from 0 to 1 (a composed effect's `mesh` element is one og.vfx drives)."
+    aliases "effect mesh, VFX mesh, shockwave mesh, Effekseer model, Niagara mesh renderer"
+    field geometry Geometry "The mesh (og.render's geometries, a glTF's); 0 draws nothing."
+    field effect EffectMaterial "The material (og.load.effect); 0 draws nothing."
+    field life f32 "Where it is in its life, 0 to 1, for the material's curves: tween it from 0 to 1 for a one-shot." {
+      min 0
+      max 1
+      tunable true
+    }
+    field color Color "A linear tint times the material's; above 1 blooms." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha it is multiplied by." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field seed u32 "Its random value's seed (the material's `random` and noise offset)."
+    field blend Blend "Its blend when the material names none: additive (the default, a glow) or alpha." {
+      default additive
+    }
+  }
+
   component Beam {
     doc "A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter)."
     aliases "laser beam, laser, LineRenderer, tether, lightning bolt"

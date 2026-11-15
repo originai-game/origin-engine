@@ -247,4 +247,4 @@ component Sprite {
 }
 ```
 
-<sub>Module `render` line 2518</sub>
+<sub>Module `render` line 2543</sub>

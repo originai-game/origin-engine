@@ -9643,6 +9643,47 @@ export interface Trail {
 }
 
 /**
+ * A mesh drawn with an effect material (og.load.effect) at the entity's MatrixWorld: a shockwave dome, a slash arc, a portal's swirl, with the material's scrolling textures, erosion and fresnel. Its curves run on `life`, which the game or a tween drives from 0 to 1 (a composed effect's `mesh` element is one og.vfx drives).
+ *
+ * The value of the `EffectMesh` component (token `og.EffectMesh`).
+ */
+export interface EffectMesh {
+  /** The mesh (og.render's geometries, a glTF's); 0 draws nothing. */
+  geometry: Geometry;
+  /** The material (og.load.effect); 0 draws nothing. */
+  effect: EffectMaterial;
+  /**
+   * Where it is in its life, 0 to 1, for the material's curves: tween it from 0 to 1 for a one-shot.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  life: number;
+  /**
+   * A linear tint times the material's; above 1 blooms.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  color: Color;
+  /**
+   * The alpha it is multiplied by.
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  opacity: number;
+  /** Its random value's seed (the material's `random` and noise offset). */
+  seed: number;
+  /**
+   * Its blend when the material names none: additive (the default, a glow) or alpha.
+   *
+   * @default "additive"
+   */
+  blend: Blend;
+}
+
+/**
  * A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter).
  *
  * The value of the `Beam` component (token `og.Beam`).
@@ -33858,6 +33899,10 @@ export declare namespace og {
    * A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail.
    */
   const Trail: ComponentType<{ readonly lifetime: FieldSpec<"f32">; readonly minDistance: FieldSpec<"f32">; readonly widthStart: FieldSpec<"f32">; readonly widthEnd: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly colorEnd: FieldSpec<"Color">; readonly opacityEnd: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly effect: FieldSpec<"EffectMaterial">; readonly uvTile: FieldSpec<"f32">; readonly blend: FieldSpec<"Blend">; readonly layered: FieldSpec<"bool">; readonly layer: FieldSpec<"i32"> }, Trail>;
+  /**
+   * A mesh drawn with an effect material (og.load.effect) at the entity's MatrixWorld: a shockwave dome, a slash arc, a portal's swirl, with the material's scrolling textures, erosion and fresnel. Its curves run on `life`, which the game or a tween drives from 0 to 1 (a composed effect's `mesh` element is one og.vfx drives).
+   */
+  const EffectMesh: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly effect: FieldSpec<"EffectMaterial">; readonly life: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly blend: FieldSpec<"Blend"> }, EffectMesh>;
   /**
    * A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter).
    */

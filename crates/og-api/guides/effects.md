@@ -12,12 +12,14 @@ The API: `og api show vfx`, `og api show og.ParticleSystem`, `og api show og.Dec
 | a 2D game's effect | a pixel effect (`type vfx2d`, `pixel-vfx`), or a `flipbook` element in a composed effect | baked into a sheet at cook: hard pixels, no per-frame simulation |
 | a 3D effect with parts in time (sparks, then a ring, a light, a scorch, a shake) | a composed effect (`type vfx`, §2) | one timeline, one spawn, events back to the game |
 | a lasting source (a torch, smoke from a chimney, rain round the camera) | one emitter (`type particles`) on an og.ParticleSystem | no timeline needed; it runs while the entity lives |
-| a streak behind a moving thing (a sword, a dash, a projectile) | og.Trail, or a `trail` element | the positions it passed through, faded by age |
+| a streak behind a moving thing (a sword, a dash, a projectile) | og.Trail (its `effect` an effect material for a scrolling slash), or a `trail` element | the positions it passed through, faded by age |
 | a line between two points (a laser, a tether, lightning) | og.Beam, or a `beam` element; og.render.ribbon through your own points | scrolls and jitters on the tick |
+| a shaped glow that lasts (a shield dome, a portal's swirl, a slash arc held on a weapon) | og.EffectMesh with an effect material (og.load.effect), or a `mesh` element | a mesh the game owns, its scrolling, eroding and fresnel look run on `life` |
 | a mark on the ground or a wall (a scorch, a footprint, a bullet hole) | og.Decal, or a `decal` element | projected on whatever is there, lasting |
 | a sprite's hit flash, a dissolve | og.tween.flash, an effect material's `erosion` on a mesh | changes the thing hit, not a new object |
 | the whole screen (a white flash, a blur, a vignette) | og.PostEffects | after the scene; one frame or a tween |
 | weight on an impact | og.time.hitStop and og.camera.shake (a `shake` element) | the frame holds, the view kicks |
+| an effect in a cutscene, or where a prop breaks | a timeline's `vfx` track (`animation §13`); og.Destructible.breakVfx and hitVfx | the timeline or og.destruction spawns the og.Vfx and it ends itself |
 | ghosts of a moving sprite | og.Afterimage | its own past poses |
 
 Several entries name the same idea twice, a component and an element: the
