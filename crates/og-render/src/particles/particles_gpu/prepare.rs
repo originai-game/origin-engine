@@ -498,8 +498,15 @@ impl ParticleRenderer {
                     }
                 }
                 out.cpu_alive += state.cpu.alive() as u32;
-                upload(device, queue, &mut state.upload, &state.cpu.slots);
                 let stepped = state.cpu.last_tick == Some(sys.tick);
+                // A hosted system's state may stand at another tick.
+                let slots = drawn(
+                    state.cpu.slots.len() as u32,
+                    stepped.then(|| {
+                        crate::particles::live_spawns(e, sys, tick_rate, &state.cpu.clock)
+                    }),
+                );
+                upload(device, queue, &mut state.upload, &state.cpu.slots, &slots);
                 entries.push(emitter_gpu(
                     e,
                     sys.transform,
@@ -523,13 +530,7 @@ impl ParticleRenderer {
                     depth,
                     layers,
                     child: None,
-                    // A hosted system's state may stand at another tick.
-                    slots: drawn(
-                        state.cpu.slots.len() as u32,
-                        stepped.then(|| {
-                            crate::particles::live_spawns(e, sys, tick_rate, &state.cpu.clock)
-                        }),
-                    ),
+                    slots,
                     bound: stepped
                         .then(|| swept_bound(e, sys, tick_rate, &state.cpu.clock, &mut state.path)),
                     kind,
@@ -548,8 +549,10 @@ impl ParticleRenderer {
                 if c.slots.is_empty() {
                     continue;
                 }
-                out.cpu_alive += c.slots.iter().filter(|p| p.alive()).count() as u32;
-                upload(device, queue, &mut state.children[k], &c.slots);
+                let (alive, live) = child_live(c);
+                out.cpu_alive += alive;
+                let slots = drawn(c.slots.len() as u32, Some(live));
+                upload(device, queue, &mut state.children[k], &c.slots, &slots);
                 let kind = draw_kind(ce);
                 out.distortion |= kind == DrawKind::Distort;
                 let (effect, material) =
@@ -595,7 +598,7 @@ impl ParticleRenderer {
                     depth,
                     layers,
                     child: Some(k),
-                    slots: drawn(c.slots.len() as u32, None),
+                    slots,
                     bound: None,
                     kind,
                     mesh: match ce.render {
@@ -666,13 +669,14 @@ impl ParticleRenderer {
                     mapped_at_creation: false,
                 });
             }
-            let mut bytes = vec![0u8; size as usize];
+            let bytes = &mut self.emitter_bytes;
+            bytes.resize(size as usize, 0);
             for (i, e) in entries.iter().enumerate() {
                 let at = i * EMITTER_STRIDE as usize;
                 bytes[at..at + std::mem::size_of::<EmitterGpu>()]
                     .copy_from_slice(bytemuck::bytes_of(e));
             }
-            queue.write_buffer(&self.emitter_buffer, 0, &bytes);
+            queue.write_buffer(&self.emitter_buffer, 0, bytes);
         }
         Ok(out)
     }
@@ -792,12 +796,15 @@ impl ParticleRenderer {
     }
 }
 
-/// Writes `slots` into a CPU system's vertex buffer, made (again) at its size.
+/// Writes the slots a system draws (`ranges`, [`drawn`]) into its vertex
+/// buffer, made to hold every slot: the others are never drawn, so they
+/// are not sent.
 fn upload(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     buffer: &mut Option<wgpu::Buffer>,
     slots: &[ParticleState],
+    ranges: &[std::ops::Range<u32>; 2],
 ) {
     let bytes: &[u8] = bytemuck::cast_slice(slots);
     if bytes.is_empty() {
@@ -814,7 +821,29 @@ fn upload(
             mapped_at_creation: false,
         }));
     }
-    queue.write_buffer(buffer.as_ref().expect("made"), 0, bytes);
+    let buffer = buffer.as_ref().expect("made");
+    for r in ranges.iter().filter(|r| !r.is_empty()) {
+        let at = r.start as usize * std::mem::size_of::<ParticleState>();
+        let to = r.end as usize * std::mem::size_of::<ParticleState>();
+        queue.write_buffer(buffer, at as u64, &bytes[at..to]);
+    }
+}
+
+/// A sub-emitter's living particles and the births they are among (for
+/// [`drawn`]): from its oldest living one's to the next one's. Its ring
+/// fills in birth order, so slot `s` holds the latest birth `n` with
+/// `n % max == s`.
+fn child_live(c: &crate::particles::ChildParticles) -> (u32, std::ops::Range<u64>) {
+    let m = c.slots.len() as u64;
+    let last = c.born.wrapping_sub(1);
+    let (mut alive, mut oldest) = (0, c.born);
+    for (s, p) in c.slots.iter().enumerate() {
+        if p.alive() {
+            alive += 1;
+            oldest = oldest.min(last - (last % m + m - s as u64) % m);
+        }
+    }
+    (alive, oldest..c.born)
 }
 
 /// A host's own simulation of a system as the frame draws it: its slots
@@ -987,6 +1016,7 @@ impl ParticleRenderer {
                 queue,
                 &mut state.upload,
                 std::slice::from_ref(&particle),
+                &drawn(1, None),
             );
             let soft = if scene.frame.quality.soft_particles {
                 material.soft_depth.max(0.0)
@@ -1033,5 +1063,33 @@ impl ParticleRenderer {
             });
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_sub_emitters_draw_covers_its_living_particles_across_the_wrap() {
+        // Eight slots after 13 births: slots 0..5 hold births 8..13, slots
+        // 5..8 births 5..8. Births 5 and 6 (slots 5, 6) are dead.
+        let living = |alive: bool| ParticleState {
+            pos_age: [0.0, 0.0, 0.0, if alive { 0.0 } else { 2.0 }],
+            vel_life: [0.0, 0.0, 0.0, 1.0],
+            misc: [0.0; 4],
+        };
+        let c = crate::particles::ChildParticles {
+            slots: (0..8).map(|s| living(s != 5 && s != 6)).collect(),
+            born: 13,
+        };
+        let (alive, live) = child_live(&c);
+        assert_eq!((alive, live.clone()), (6, 7..13));
+        assert_eq!(drawn(8, Some(live)), [0..5, 7..8]);
+        let none = crate::particles::ChildParticles {
+            slots: vec![living(false); 8],
+            born: 3,
+        };
+        assert_eq!(drawn(8, Some(child_live(&none).1)), [3..3, 0..0]);
     }
 }

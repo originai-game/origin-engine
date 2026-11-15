@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: particle draws",
+      "summary": "A CPU-simulated particle system and each of its sub-emitters now send the GPU only the slots their living particles are in, not their whole ring, every frame, and the frame's emitter entries are written from a buffer kept between frames instead of a fresh zeroed one. Twenty starter effects on screen took 1.77 ms of CPU a frame in the particle renderer's prepare before and 1.58 ms after (median; 2.74 and 2.32 ms at the 90th percentile; release, on a CPU Vulkan). Frames do not change."
+    }
+  ]
+}

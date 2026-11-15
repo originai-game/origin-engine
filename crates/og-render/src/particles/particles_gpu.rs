@@ -326,6 +326,9 @@ pub(crate) struct ParticleRenderer {
     /// The effect materials (group 3 of every particle and strip draw).
     pub(crate) effects: crate::effect::EffectRenderer,
     emitter_buffer: wgpu::Buffer,
+    /// The frame's emitter entries at [`EMITTER_STRIDE`], kept between
+    /// frames (their padding is never read).
+    emitter_bytes: Vec<u8>,
     pub view_buffer: wgpu::Buffer,
     /// The scene's colliders as `scene_colliders.rs` packs them, with a
     /// list per system that meets them (`emitter.info.z`).

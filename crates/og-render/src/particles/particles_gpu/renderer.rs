@@ -164,6 +164,7 @@ impl ParticleRenderer {
             draw_pl,
             effects,
             emitter_buffer,
+            emitter_bytes: Vec::new(),
             view_buffer,
             colliders: collider_buffer(device, 256),
             systems: HashMap::new(),
