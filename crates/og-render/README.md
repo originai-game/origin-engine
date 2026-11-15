@@ -1033,6 +1033,11 @@ its default records no pass and costs nothing
   its own tick and hands the renderer its state
   (`RenderScene::hosted_particles`): og-runtime does this for emitters
   with an `events` line once a game names og.ParticleEvent.
+  Particle-like things kept outside it on purpose: the ocean's foam is a
+  closed-form function of its waves with no state (an emitter cannot say
+  where a crest folds), destruction's debris are rigid bodies, the UI's
+  `<og-emitter>` is og-ui's (which never depends on the renderer) and a
+  pixel effect's particles are baked into its sheet at cook.
 - **Trails, ribbons and beams**: `Trail` keeps a per-id history for its
   `TrailStyle`'s lifetime; `Ribbon` is an explicit polyline; `Beam` joins
   two points and scrolls with the tick.

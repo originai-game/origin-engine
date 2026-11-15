@@ -36,6 +36,17 @@ whole fight), the element for a part of one effect (a dash's trail for its
   Use the effect material inside an effect.
 - Distortion is an emitter's `distortion` (heat haze, shock rings on
   billboards) or a material shader; a full-screen ripple is og.PostEffects.
+  An effect material's `flowMap` warps its own texture (a swirling
+  portal), not what is behind it.
+- Lightning is a beam's `jitter` (og.Beam or a `beam` element: one bolt
+  between two points, re-jittered every tick), a pixel effect's `bolt`
+  layer (`pixel-vfx`, baked) or og.render.ribbon through points you
+  compute (forks). Use the beam in 3D, `bolt` in 2D.
+- Some particles are their system's own and stay so: the ocean's foam
+  comes from its waves (`render`), destruction's debris are rigid
+  bodies (`physics`), `<og-emitter>` is the UI's (`components`) and a
+  pixel effect's `particles` layer is baked at cook. Use them where they
+  are; an emitter beside them is for what they do not draw.
 
 ## 2. A composed effect from nothing
 
