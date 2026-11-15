@@ -792,25 +792,18 @@ Sizes per axis: `Size::Fit { min, max }` (content; the default),
 center, end, stretch), `wrap` (rows), `scroll`, `interactive`, `background`,
 `radius`.
 
-One layout per frame, in five walks over the tree (`src/layout.rs`):
-
-1. widths bottom-up: preferred (content) and minimum widths (a wrapping
-   text's longest word; a wrapping row's widest child);
-2. widths top-down: a row gives each child its preferred width, then grows
-   `Grow` children into the free space by water-filling (the smallest rise
-   first, until they level or reach their `max`), or, when it overflows,
-   shrinks `Fit`/`Grow` children the same way from the widest down to their
-   minimums; a wrapping row breaks its children into lines at its inner width
-   and grows within each line; a column gives `Grow` (or `Cross::Stretch`)
-   children its inner width and caps the others at it; text then wraps at its
-   final width;
-3. heights bottom-up from the wrapped lines (`lineHeight` of the type step,
-   the CJK leading when the text has CJK) and the line breaks;
-4. heights top-down: the same grow/shrink along a column; a scroll container
-   never shrinks its children;
-5. positions (alignment, scroll offsets clamped to the content), clip
-   rectangles (the intersection of every scrolling ancestor), and device-pixel
-   snapping of every rectangle (`Viewport::dpr`).
+One layout per frame, as a browser lays the same CSS out (`src/layout.rs`):
+Taffy runs CSS Flexbox, Grid and block flow (margin collapsing, floats,
+clearance) over the node tree; og-ui lays out what Taffy leaves to a box's
+content: text and its lines (`lineHeight` of the type step, the CJK
+leading when the text has CJK), line boxes beside floats and their
+`shape-outside` contours, tables' boxes, multi-column, writing modes,
+stacks, out-of-flow and anchored boxes. A `Fit` size is CSS's automatic
+size (`fit-content` in a block flow) and a `Grow` size shares its flex
+line's free space (`flex: 1`). Only boxes whose input changed lay out
+again; positions then take scroll offsets clamped to the content, clip
+rectangles (the intersection of every scrolling ancestor) and device-pixel
+snapping of every rectangle (`Viewport::dpr`).
 
 Text is measured and drawn with its font's kerning (§Text) and its type
 step's tracking (`tracking_em`, og-render's `Text::tracking`: the default

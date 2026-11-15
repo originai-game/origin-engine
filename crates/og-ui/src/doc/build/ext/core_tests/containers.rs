@@ -22,7 +22,7 @@ const DOC: &str = r#"<meta name="screen" content="q" data-layer="hud">
 #Hint { height: 5px; }
 @container (width > 300px) { #Wide { display: initial; } }
 @container (width <= 300px) { #Hint { display: none; } }
-panel { width: 10px; height: 10px; }
+panel { width: 10px; height: 10px; padding: 0px; }
 #MainBadge { width: var(--badge, 10px); }
 @container (width > 300px) { #Inner { --badge: 40px; } }
 @container rail (width < 200px) { #SideBadge { height: 33px; } }

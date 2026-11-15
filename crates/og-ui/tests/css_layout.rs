@@ -331,6 +331,26 @@ fn the_box_model_sizes_as_css_does() {
     });
 }
 
+/// `stretch` is the room the parent leaves (docs/ui.md, Sizes): along a
+/// block's flow, a `height: stretch` box takes the height its siblings
+/// leave, as a column's `flex: 1` would, not its content's (none here).
+#[test]
+fn a_stretch_height_in_a_block_takes_the_room_left() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root"><div id="Head"></div><div id="Body"><div id="Abs"></div></div></div></div>
+<style>
+#Root { width: 100px; height: 300px; }
+#Head { height: 40px; }
+#Body { position: relative; height: stretch; }
+#Abs { position: absolute; left: 0; bottom: 0; width: 10px; height: 10px; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let (root, body) = (d.get("Root"), d.get("Body"));
+        assert_eq!((body.y - root.y, body.height), (40.0, 260.0));
+        assert_eq!(d.get("Abs").y - root.y, 290.0, "placed in the stretched box");
+    });
+}
+
 #[test]
 fn flex_lays_out_as_css_flexbox_does() {
     let text = r#"<meta name="component" content="t">
@@ -397,9 +417,11 @@ fn flex_lays_out_as_css_flexbox_does() {
             [at("W1", "Wrap").1, at("W2", "Wrap").1, at("W3", "Wrap").1],
             [32.0, 16.0, 0.0]
         );
+        // align-content: normal stretches the two 30px lines across the
+        // 300px container (CSS Flexbox 1 §8.4): 146 each, the second at 154.
         assert_eq!(
             (at("C2", "Col"), at("C3", "Col")),
-            ((0.0, 20.0), (38.0, 0.0))
+            ((0.0, 20.0), (154.0, 0.0))
         );
     });
 }

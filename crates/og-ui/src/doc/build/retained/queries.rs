@@ -91,7 +91,7 @@ mod tests {
 </column>
 <style>
 #Shelf { width: 60%; padding: 0px; container-type: inline-size; }
-panel { width: 10px; height: 10px; }
+panel { width: 10px; height: 10px; padding: 0px; }
 @container (width > 250px) { #Badge { width: 44px; } }
 </style>"#,
             )
@@ -151,7 +151,7 @@ panel { width: 10px; height: 10px; }
 <style>
 #Shelf { width: 60%; padding: 0px; container: shelf / inline-size; --tone: cool; }
 @media (width > 450px) { #Shelf { --tone: warm; } }
-panel { width: 10px; height: 10px; }
+panel { width: 10px; height: 10px; padding: 0px; }
 #Unit { width: 10cqi; }
 @container shelf style(--tone: warm) { #Badge { width: 44px; } }
 @container style(--tone: cool) { #Dot { width: 33px; } }
@@ -208,7 +208,7 @@ panel { width: 10px; height: 10px; }
 <style>
 #List { height: 100px; padding: 0px; overflow-y: auto; container-type: scroll-state; }
 #Gap { height: 40px; }
-panel { width: 10px; height: 10px; }
+panel { width: 10px; height: 10px; padding: 0px; }
 #Tall { height: 300px; }
 @container scroll-state(scrollable: top) { #Up { width: 44px; } }
 @container scroll-state(scrolled: bottom) { #Down { width: 33px; } }

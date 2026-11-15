@@ -24,7 +24,7 @@ use support::*;
 const MEDIA: &str = r#"<meta name="component" content="cv">
 <column id="Root"><panel id="Any"/><panel id="Tri"/><panel id="Typical"/></column>
 <style>
-panel { width: 10px; height: 10px; }
+panel { width: 10px; height: 10px; padding: 0px; }
 @media (-og-color-vision) { #Any { width: 20px; } }
 @media (-og-color-vision: tritanopia) { #Tri { width: 30px; } }
 @media (-og-color-vision: none) { #Typical { width: 40px; } }
