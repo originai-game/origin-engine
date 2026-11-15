@@ -55,7 +55,26 @@ struct ParticleOut {
   @location(10) @interpolate(flat) fx_c1: vec4<f32>,
   @location(11) @interpolate(flat) fx_c2: vec4<f32>,
   @location(12) shape_uv: vec2<f32>,
+  // A blended sheet's next frame (xy) and how far into it (z; 0 without).
+  @location(13) uv_next: vec3<f32>,
 };
+
+// Corner `c` (-0.5 to 0.5) of frame `f` on a sheet of `columns` × `rows`.
+fn sheet_uv(f: f32, c: vec2<f32>, columns: f32, rows: f32) -> vec2<f32> {
+  let col = f % columns;
+  let row = floor(f / columns);
+  return vec2<f32>((col + c.x + 0.5) / columns, (row + 0.5 - c.y) / rows);
+}
+
+// The particle's texture where the fragment is: a blended sheet's frame
+// cross-faded into the next (sampled with the first's gradients, the same
+// on every frame of a sheet).
+fn particle_tex(in: ParticleOut) -> vec4<f32> {
+  let a = textureSample(sprite_tex, sprite_sampler, in.uv);
+  if (emitter.sheet2.z < 0.5) { return a; }
+  let b = textureSampleGrad(sprite_tex, sprite_sampler, in.uv_next.xy, dpdx(in.uv), dpdy(in.uv));
+  return mix(a, b, in.uv_next.z);
+}
 
 // A particle's effect inputs: its driven values at life `t`, from its
 // random value (misc.w) as bits.
@@ -129,13 +148,20 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
   let rows = max(emitter.sheet.y, 1.0);
   let frames = max(emitter.sheet.z, 1.0);
   let mode = u32(emitter.sheet.w);
-  var f = 0.0;
-  if (mode == 1u) { f = floor(t * emitter.sheet2.x * frames) % frames; }
-  if (mode == 2u) { f = floor(age * emitter.sheet2.x) % frames; }
+  // Where it is in the frames played so far (a blended sheet fades by
+  // its fraction into the next; one playing once holds its last frame).
+  var played = 0.0;
+  if (mode == 1u) { played = t * emitter.sheet2.x * frames; }
+  if (mode == 2u) { played = age * emitter.sheet2.x; }
+  var f = floor(played) % frames;
   if (mode == 3u) { f = min(floor(p.misc.w * frames), frames - 1.0); }
-  let col = f % columns;
-  let row = floor(f / columns);
-  o.uv = vec2<f32>((col + c.x + 0.5) / columns, (row + 0.5 - c.y) / rows);
+  o.uv = sheet_uv(f, c, columns, rows);
+  var fade = 0.0;
+  if (emitter.sheet2.z > 0.5 && (mode == 1u || mode == 2u)) {
+    fade = fract(played);
+    if (mode == 1u && played >= ceil(emitter.sheet2.x) * frames - 1.0) { fade = 0.0; }
+  }
+  o.uv_next = vec3<f32>(sheet_uv((f + 1.0) % frames, c, columns, rows), fade);
   o.local = c;
   o.shape_uv = vec2<f32>(c.x + 0.5, 0.5 - c.y);
   particle_effect(&o, t, p.misc.w);
@@ -477,7 +503,7 @@ fn particle_fog(c: vec4<f32>, world: vec3<f32>) -> vec4<f32> {
 // differently shifted copies over each other (shards).
 @fragment
 fn fs_distort(in: ParticleOut) -> @location(0) vec4<f32> {
-  let tex = textureSample(sprite_tex, sprite_sampler, in.uv);
+  let tex = particle_tex(in);
   var bend: vec2<f32>;
   var mask: f32;
   if (emitter.sheet2.y > 0.5) {
@@ -536,7 +562,7 @@ fn fs_oit_mark(in: ParticleOut) {
 }
 
 fn particle_fragment(in: ParticleOut) -> vec4<f32> {
-  let tex = textureSample(sprite_tex, sprite_sampler, in.uv);
+  let tex = particle_tex(in);
   // No texture: a soft round dot.
   let dot_d = clamp(1.0 - length(in.local) * 2.0, 0.0, 1.0);
   var c = in.color;

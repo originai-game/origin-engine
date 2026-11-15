@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "particles: sheet ... blend",
+      "summary": "A particles file's `sheet <columns> <rows> <frames> life <cycles> | fps <n> blend` cross-fades each flipbook frame into the next as it plays, so a 16-frame smoke or fire sheet rolls smoothly instead of stepping; a sheet played once holds its last frame rather than fading back to the first. Billboards on the GPU and CPU paths; refused with `off`, `random` or sprite mode. Without `blend`, sheets draw as before."
+    }
+  ]
+}

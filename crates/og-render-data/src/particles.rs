@@ -298,6 +298,9 @@ pub struct SpriteSheet {
     /// Frames used (0: columns × rows).
     pub frames: u32,
     pub mode: SheetMode,
+    /// Cross-fade each frame into the next as it plays (`life` and `fps`):
+    /// a smooth flipbook from few frames. Billboards only.
+    pub blend: bool,
 }
 
 impl Default for SpriteSheet {
@@ -307,6 +310,7 @@ impl Default for SpriteSheet {
             rows: 1,
             frames: 0,
             mode: SheetMode::Off,
+            blend: false,
         }
     }
 }
@@ -820,6 +824,17 @@ impl ParticleEmitter {
                 "a subtractive or multiply blend draws billboards and meshes, not sprite mode"
                     .into(),
             );
+        }
+        if self.sheet.blend {
+            if !matches!(
+                self.sheet.mode,
+                SheetMode::OverLife { .. } | SheetMode::Fps(_)
+            ) {
+                return Err("a blended sheet plays its frames (life or fps)".into());
+            }
+            if self.render != ParticleRender::Billboard {
+                return Err("a blended sheet is drawn by billboards (render billboard)".into());
+            }
         }
         if !(self.distortion.is_finite() && self.distortion >= 0.0) {
             return Err(format!("distortion {}", self.distortion));

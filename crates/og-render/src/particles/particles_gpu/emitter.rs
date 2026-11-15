@@ -155,7 +155,12 @@ pub(super) fn emitter_gpu(
             sheet_frames(&e.sheet) as f32,
             mode,
         ],
-        sheet2: [param, textured as u32 as f32, 0.0, 0.0],
+        sheet2: [
+            param,
+            textured as u32 as f32,
+            e.sheet.blend as u32 as f32,
+            0.0,
+        ],
         render: [
             align,
             stretch,

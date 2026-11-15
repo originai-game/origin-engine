@@ -182,6 +182,7 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
             rows: 4,
             frames: 16,
             mode: SheetMode::OverLife { cycles: 1.0 },
+            blend: false,
         },
         render: ParticleRender::Sprite { layer: 4 },
         glow: 0.8,

@@ -18,7 +18,7 @@ struct Emitter {
   color_t: array<vec4<f32>, 2>,
   color_v: array<vec4<f32>, 8>,
   sheet: vec4<f32>,        // columns, rows, frames, mode (0 off, 1 over life, 2 fps, 3 random)
-  sheet2: vec4<f32>,       // x: cycles or fps, y: 1 with a texture
+  sheet2: vec4<f32>,       // x: cycles or fps, y: 1 with a texture, z: 1 cross-fading frames
   render: vec4<f32>,       // x: align (0 camera, 1 velocity, 2 upright, 3 facing), y: stretch, z: soft distance, w: blend (0 additive, 1 alpha, 2 subtractive, 3 multiply)
   counts: vec4<f32>,       // x: size keys, y: colour keys, z: the share of the spawns that are born, w: the hue turn (rad)
   spawn: vec4<u32>,        // first index (low 32 bits), count, first % max, bursts

@@ -291,6 +291,20 @@ fn mesh_lit_distorting_emitters_with_events_and_sub_emitters() {
     )
     .unwrap();
     assert_eq!(haze.distortion, 0.05);
+    let smoke = parse_emitter(
+        "type particles\nversion 1\n---\nsheet 4 4 16 fps 12 blend\n",
+        &mut |_| Ok(None),
+    )
+    .unwrap();
+    assert!(smoke.sheet.blend);
+    assert_eq!(smoke.sheet.mode, og_render::SheetMode::Fps(12.0));
+    // Only frames that play blend.
+    let still = parse_emitter(
+        "type particles\nversion 1\n---\nsheet 4 4 16 blend\n",
+        &mut |_| Ok(None),
+    )
+    .unwrap_err();
+    assert!(still.contains("life or fps"), "{still}");
 
     let five = format!(
         "type particles\nversion 1\n---\n{}",

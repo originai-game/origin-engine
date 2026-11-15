@@ -231,10 +231,10 @@ pub const EMITTER_LINES: &[Line] = &[
     ),
     Line::new(
         "sheet",
-        "<columns> <rows> [<frames> [off | life <cycles> | fps <n> | random]]",
+        "<columns> <rows> [<frames> [off | life <cycles> | fps <n> | random] [blend]]",
         "1 1",
-        "The texture as a sprite sheet: a frame by age, at a rate, or one at random.",
-        "sheet 4 4 16 life 1",
+        "The texture as a sprite sheet: a frame by age, at a rate, or one at random. `blend` cross-fades each frame into the next as it plays (life and fps, billboards), so 16 frames of smoke roll smoothly instead of stepping; a sheet played once holds its last frame.",
+        "sheet 4 4 16 life 1 blend",
     ),
     Line::new(
         "blend",
@@ -768,7 +768,13 @@ pub fn parse_emitter_linked(
                 em.sheet.columns = v[0] as u32;
                 em.sheet.rows = v[1] as u32;
                 em.sheet.frames = v.get(2).map_or(0, |f| *f as u32);
-                let rest = &e.values[v.len()..];
+                let mut rest = &e.values[v.len()..];
+                if let [head @ .., last] = rest
+                    && last.as_word() == Some("blend")
+                {
+                    em.sheet.blend = true;
+                    rest = head;
+                }
                 em.sheet.mode = sheet_mode(line, "sheet", rest)?;
             }
             "blend" => {

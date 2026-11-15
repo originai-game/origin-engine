@@ -46,6 +46,7 @@ pub fn campfire(scene: &mut RenderScene) -> Campfire {
             rows: 4,
             frames: 16,
             mode: SheetMode::OverLife { cycles: 1.0 },
+            blend: false,
         },
         blend: ParticleBlend::Additive,
         soft_distance: 0.3,

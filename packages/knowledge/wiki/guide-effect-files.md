@@ -34,7 +34,7 @@ Every line the three effect formats take, from the tables their parsers read: an
 | `forceFields <0..1>` | `0` | The share of the og.ForceField acceleration where each particle is that it takes (1: as a body does): an updraft lifting smoke, a vortex swirling sparks. World-space particles only. |
 | `noise <strength> [<frequency> <scroll>]` | `0 0.5 0.3` | Turbulence: value noise pushing the particles. |
 | `texture "<id>"` |  | A texture asset; left out, a soft dot. |
-| `sheet <columns> <rows> [<frames> [off \| life <cycles> \| fps <n> \| random]]` | `1 1` | The texture as a sprite sheet: a frame by age, at a rate, or one at random. |
+| `sheet <columns> <rows> [<frames> [off \| life <cycles> \| fps <n> \| random] [blend]]` | `1 1` | The texture as a sprite sheet: a frame by age, at a rate, or one at random. `blend` cross-fades each frame into the next as it plays (life and fps, billboards), so 16 frames of smoke roll smoothly instead of stepping; a sheet played once holds its last frame. |
 | `blend additive \| alpha \| subtractive \| multiply` |  | Left out: alpha for a lit mesh (a solid chip; added it would glow white), additive for everything else. Subtractive takes the colour away from what is behind (dark smoke), multiply tints what is behind by it (scorch); neither in sprite mode. |
 | `space world \| local` | `world` | Particles left behind in the world, or carried with the emitter. |
 | `align camera \| velocity [<stretch>] \| upright [<x> <y> <z>] \| facing <x> <y> <z>` | `camera` | Billboards face the camera, stretch along their velocity (stretch 0.05 when left out), stand on an axis of the emitter turning to face the eye (0 1 0 when left out: flames), or lie across one whatever the camera (facing 0 1 0: flat on the ground). |

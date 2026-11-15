@@ -1,7 +1,7 @@
 //! Particle simulation, trails and beam frame tests.
 
 use super::*;
-use og_render::ParticleAlign;
+use og_render::{ParticleAlign, SheetMode, SpriteSheet};
 
 // ---------------------------------------------------------------------------
 // Particles.
@@ -1312,4 +1312,95 @@ fn particles_take_their_share_of_the_force_fields_where_they_are() {
         (full[0] - full[1]).abs() < 0.1 * full[1],
         "the paths disagree: {full:?}"
     );
+}
+
+/// A blended sheet cross-fades each frame into the next, on both paths:
+/// one particle on a two-frame sheet (red, then blue) played once over its
+/// one-second life. A quarter through, halfway between the frames, it
+/// draws red and blue alike, where an unblended sheet draws red; three
+/// quarters through, in its last frame, it holds blue instead of fading
+/// back into the first frame.
+#[test]
+#[ignore = "requires GPU"]
+fn a_blended_sheet_fades_into_the_next_frame_and_holds_the_last() {
+    let draw = |path: ParticleSimulation, blend: bool, ticks: u32| {
+        let mut scene = RenderScene::new();
+        let mut rgba = Vec::new();
+        for _ in 0..4 {
+            for x in 0..8 {
+                rgba.extend(if x < 4 {
+                    [255, 0, 0, 255]
+                } else {
+                    [0, 0, 255, 255]
+                });
+            }
+        }
+        let sheet = scene.add_texture(og_render::TextureData {
+            width: 8,
+            height: 4,
+            rgba,
+            ..Default::default()
+        });
+        let e = scene.add_emitter(ParticleEmitter {
+            max_particles: 1,
+            rate: 0.0,
+            bursts: vec![og_render::Burst::once(0.0, 1)],
+            looping: false,
+            duration: 10.0,
+            lifetime: [1.0, 1.0],
+            speed: [0.0, 0.0],
+            size: [1.5, 1.5],
+            color_over_life: og_render::ColorCurve::constant([1.0; 4]),
+            gravity: Vec3::ZERO,
+            texture: Some(sheet),
+            sheet: SpriteSheet {
+                columns: 2,
+                rows: 1,
+                frames: 2,
+                mode: SheetMode::OverLife { cycles: 1.0 },
+                blend,
+            },
+            blend: og_render::ParticleBlend::Alpha,
+            ..Default::default()
+        });
+        scene.effects.particles.push(ParticleSystem::new(
+            1,
+            e,
+            Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0)),
+            3,
+            0,
+        ));
+        scene.frame.camera = Camera {
+            position: Vec3::new(0.0, 1.0, 4.0),
+            target: Vec3::new(0.0, 1.0, 0.0),
+            ..Default::default()
+        };
+        let desc = RenderDesc {
+            particles: path,
+            ..small()
+        };
+        let (img, _, _) = run(&desc, &mut scene, ticks + 1, |s, f| {
+            fx::tick_all(s, f as u64)
+        });
+        let [r, _, b] = px(&img, img.width / 2, img.height / 2).map(f32::from);
+        (r, b)
+    };
+    for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
+        let mid = draw(path, true, 15);
+        let stepped = draw(path, false, 15);
+        let last = draw(path, true, 45);
+        println!("{path:?}: halfway {mid:?}, unblended {stepped:?}, last frame {last:?}");
+        assert!(
+            mid.0 > 60.0 && mid.1 > 60.0 && (mid.0 - mid.1).abs() < 0.35 * mid.0.max(mid.1),
+            "{path:?}: halfway between the frames {mid:?}"
+        );
+        assert!(
+            stepped.0 > 150.0 && stepped.1 < 15.0,
+            "{path:?}: unblended {stepped:?}"
+        );
+        assert!(
+            last.1 > 150.0 && last.0 < 15.0,
+            "{path:?}: the last frame {last:?}"
+        );
+    }
 }
