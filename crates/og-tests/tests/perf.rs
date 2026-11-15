@@ -284,6 +284,14 @@ fn perf_sprites_20k() {
     perf("sprites-20k");
 }
 
+/// Twenty campfires' particles at once (60 systems): the effects' on-screen
+/// budget (`effects §4`), its main and particles passes held per pass.
+#[test]
+#[ignore = "requires GPU; perf"]
+fn perf_effects_busy() {
+    perf("effects-busy");
+}
+
 /// Phase 2's Forward+ pair: the night scene's seven lights and the
 /// 256-light plaza.
 #[test]

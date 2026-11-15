@@ -355,6 +355,33 @@ pub fn particles_scene() -> RenderScene {
     scene
 }
 
+/// Twenty campfires on a 5 × 4 grid at night, 60 particle systems in all
+/// (additive flame sheets, soft alpha smoke, embers bouncing on the depth),
+/// framed so every one is in view: the effects' on-screen budget
+/// (`effects §4`) as a frame-time baseline. Perf only.
+pub fn effects_busy_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    terrain(&mut scene, 40.0);
+    night(&mut scene);
+    let fire = campfire(&mut scene);
+    for i in 0..20u64 {
+        let at = Vec3::new((i % 5) as f32 * 3.0 - 6.0, 0.0, (i / 5) as f32 * -3.0 + 2.0);
+        light_campfire(&mut scene, &fire, at, 100 + i * 10);
+    }
+    scene.look.post.bloom = Some(Bloom {
+        threshold: 1.0,
+        knee: 0.6,
+        intensity: 0.7,
+    });
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 6.5, 11.0),
+        target: Vec3::new(0.0, 0.8, -2.5),
+        exposure: Exposure::linear(1.4),
+        ..Default::default()
+    };
+    scene
+}
+
 /// R7's particle looks under a low sun: lit smoke (left), lit mesh debris
 /// tumbling out of a crater that bounces on the ground and kicks a dust
 /// puff at each bounce (a collision sub-emitter, so the CPU path), and a

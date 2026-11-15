@@ -785,6 +785,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.update = Some(fx::tick_update);
             Ok(())
         },
+        // Twenty campfires at once: the effects' on-screen budget as a
+        // frame time. Perf only (no reference).
+        "effects-busy" => |g, _| {
+            g.scene = fx::effects_busy_scene();
+            g.frames = 120;
+            g.update = Some(fx::tick_update);
+            Ok(())
+        },
         // The same simulated on the CPU path (no collision).
         "particles-cpu" => |g, _| {
             g.scene = fx::particles_scene();
