@@ -541,9 +541,10 @@ impl RetainedHost {
                     readers.remove(&id);
                 }
                 if let Some(resolved) = element.resolved {
-                    for name in resolved.values.cascade.inherited_reads {
+                    for name in &resolved.values.cascade.inherited_reads {
                         if let Some(parent) = &parent
-                            && let Some(readers) = self.inherited.get_mut(&(parent.clone(), name))
+                            && let Some(readers) =
+                                self.inherited.get_mut(&(parent.clone(), name.clone()))
                         {
                             readers.remove(&id);
                         }

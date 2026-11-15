@@ -162,10 +162,12 @@ impl Resolved {
     }
 
     pub fn get(&self, name: &str) -> Option<&V> {
+        // The catalogue once, not a lazy read for each value.
+        let props = PROPS.as_slice();
         self.vals
             .iter()
             .rev()
-            .find(|(s, _)| PROPS[*s].name == name)
+            .find(|(s, _)| props[*s].name == name)
             .map(|(_, v)| v)
     }
     pub fn has(&self, name: &str) -> bool {

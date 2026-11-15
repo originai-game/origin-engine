@@ -46,7 +46,7 @@ impl Ui {
         &mut self,
         b: &mut Build<'_>,
         i: usize,
-        resolved: ResolvedNode,
+        resolved: &ResolvedNode,
         build_inner: impl FnMut(&mut Ui, &mut Build<'_>, Inner<'_>),
     ) -> Option<String> {
         let doc = b.doc.clone();
@@ -59,8 +59,10 @@ impl Ui {
             path,
             key,
             values: r,
-            probe: mut built,
+            probe,
         } = resolved;
+        let (id, path, key) = (id.clone(), path.clone(), *key);
+        let mut built = probe.clone();
         if let Some(commit) = &r.style {
             self.style
                 .commit_styles(commit, &mut self.interaction, &mut self.tree);

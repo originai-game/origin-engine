@@ -55,7 +55,8 @@ pub struct ElementInstance {
     /// snippet renders.
     pub scope: Option<String>,
     pub cached: CachedInputs,
-    pub resolved: Option<ResolvedNode>,
+    /// Its resolution, shared: a build reads it without copying it.
+    pub resolved: Option<Arc<ResolvedNode>>,
     pub style_dirty: bool,
     pub theme_epoch: u64,
     pub children: Vec<Child>,

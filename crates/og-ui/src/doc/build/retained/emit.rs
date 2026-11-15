@@ -147,7 +147,7 @@ impl RetainedHost {
         let mut images = Vec::new();
         ui.docs.run_enter(&resolved.values);
         *ui.tree.scope_mut() = e.scope.clone();
-        ui.build_resolved_node(&mut b, e.index, resolved.clone(), |ui, b, inner| {
+        ui.build_resolved_node(&mut b, e.index, resolved, |ui, b, inner| {
             let built = match inner {
                 Inner::Children(virtual_props) => {
                     *ui.tree.scope_mut() = None;

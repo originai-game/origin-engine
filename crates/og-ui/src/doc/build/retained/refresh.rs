@@ -707,7 +707,7 @@ impl RetainedHost {
             values,
             probe,
         };
-        self.elements.get_mut(identity).unwrap().resolved = Some(resolved);
+        self.elements.get_mut(identity).unwrap().resolved = Some(Arc::new(resolved));
         self.emit.insert(identity.clone());
         self.elements.get_mut(identity).unwrap().style_dirty = false;
         self.elements.get_mut(identity).unwrap().theme_epoch = self.theme_epoch;

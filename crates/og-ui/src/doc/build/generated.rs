@@ -48,7 +48,7 @@ impl Ui {
         };
         match self.style.pseudo_node(b, r, path, &name[2..]) {
             Some((at, node)) => {
-                self.build_resolved_node(b, at, node, |ui, b, inner| match inner {
+                self.build_resolved_node(b, at, &node, |ui, b, inner| match inner {
                     Inner::Children(_) => run(ui),
                     image => build_inner(ui, b, image),
                 });
