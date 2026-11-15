@@ -485,13 +485,10 @@ impl GiScene {
                 };
                 let srgb = t.color_space == crate::ColorSpace::Srgb;
                 let decode = |b: u8| {
-                    let c = b as f32 / 255.0;
-                    if !srgb {
-                        c
-                    } else if c <= 0.04045 {
-                        c / 12.92
+                    if srgb {
+                        og_core::color::srgb8_to_linear(b)
                     } else {
-                        ((c + 0.055) / 1.055).powf(2.4)
+                        b as f32 / 255.0
                     }
                 };
                 // At most 4096 texels, evenly through the image.

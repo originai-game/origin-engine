@@ -200,25 +200,8 @@ impl ColorFilter {
     /// What the pass makes of an 8-bit sRGB pixel: decoded, filtered,
     /// encoded and rounded, as an sRGB target stores it.
     pub fn apply_srgb8(&self, rgb: [u8; 3]) -> [u8; 3] {
-        let decode = |v: u8| {
-            let c = f32::from(v) / 255.0;
-            if c <= 0.04045 {
-                c / 12.92
-            } else {
-                ((c + 0.055) / 1.055).powf(2.4)
-            }
-        };
-        let encode = |v: f32| {
-            let c = v.clamp(0.0, 1.0);
-            let e = if c <= 0.003_130_8 {
-                c * 12.92
-            } else {
-                1.055 * c.powf(1.0 / 2.4) - 0.055
-            };
-            (e * 255.0).round() as u8
-        };
-        let o = self.apply(rgb.map(decode));
-        o.map(encode)
+        use og_core::color::{linear_to_srgb8, srgb8_to_linear};
+        self.apply(rgb.map(srgb8_to_linear)).map(linear_to_srgb8)
     }
 
     /// Its uniform (`FilterParams` in color_filter.wgsl): `a`'s rows, `b`'s

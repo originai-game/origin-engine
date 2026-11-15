@@ -334,6 +334,29 @@ pub fn ln(x: f32) -> f32 {
     ln64(f64::from(x)) as f32
 }
 
+/// x^y in f64 for a positive, finite `x` (`exp(y ln x)`, the exponent held
+/// to ±200): what [`crate::color`]'s f64 transfer functions raise with.
+pub(crate) fn pow64_positive(x: f64, y: f64) -> f64 {
+    exp64((y * ln64(x)).clamp(-200.0, 200.0))
+}
+
+/// The cube root of `x` (negative for a negative `x`), deterministic on
+/// every host: a first guess from the exponent bits, then Newton steps in
+/// `f64` and one rounding (`f32::cbrt` calls the host `libm`).
+pub fn cbrt(x: f32) -> f32 {
+    if x == 0.0 || !x.is_finite() {
+        return x;
+    }
+    let a = f64::from(x.abs());
+    // A third of the exponent: within a factor 1.26 of the root, so six
+    // quadratically converging steps reach f64 precision.
+    let mut y = f64::from_bits(a.to_bits() / 3 + (1023 << 52) / 3 * 2);
+    for _ in 0..6 {
+        y -= (y * y * y - a) / (3.0 * y * y);
+    }
+    (if x < 0.0 { -y } else { y }) as f32
+}
+
 fn is_integer(y: f32) -> bool {
     y.floor() == y
 }

@@ -218,8 +218,7 @@ fn canvas_stats(t: &TextureData) -> [f32; 2] {
     let decode = |v: u8| {
         let c = f64::from(v) / 255.0;
         match t.color_space {
-            ColorSpace::Srgb if c > 0.04045 => ((c + 0.055) / 1.055).powf(2.4),
-            ColorSpace::Srgb => c / 12.92,
+            ColorSpace::Srgb => og_core::color::srgb_to_linear_f64(c),
             ColorSpace::Linear => c,
         }
     };

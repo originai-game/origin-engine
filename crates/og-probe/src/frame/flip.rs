@@ -67,14 +67,6 @@ pub struct FlipRegion {
     pub max: f32,
 }
 
-fn srgb_to_linear(c: f32) -> f32 {
-    if c <= 0.04045 {
-        c / 12.92
-    } else {
-        pow((c + 0.055) / 1.055, 2.4)
-    }
-}
-
 fn linear_to_xyz(c: C3) -> C3 {
     let a11 = 10135552.0 / 24577794.0;
     let a12 = 8788810.0 / 24577794.0;
@@ -242,7 +234,7 @@ fn feature_filter(ppd: f32) -> Vec<C3> {
 /// The image's pixels in YCxCz (alpha ignored, as the reference reads an
 /// 8-bit image).
 fn ycxcz(image: &Rgba) -> Vec<C3> {
-    let lut: Vec<f32> = (0..256).map(|v| srgb_to_linear(v as f32 / 255.0)).collect();
+    let lut: Vec<f32> = (0..=255u8).map(og_core::color::srgb8_to_linear).collect();
     image
         .pixels
         .as_chunks::<4>()

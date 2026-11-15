@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "og bake projection: the grey clay a view is painted over is encoded with the sRGB curve, as every other image the engine writes; it used a 2.2 power, which left its mid tones about two codes darker (0.5 linear was 186, now 188)."
+  ]
+}

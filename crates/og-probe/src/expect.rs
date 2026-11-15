@@ -229,13 +229,10 @@ fn numbers(text: &str) -> Result<Vec<f32>, String> {
 
 fn hex_color(text: &str) -> Result<[u8; 3], String> {
     let h = text.trim().trim_start_matches('#');
-    if h.len() != 6 {
-        return Err(format!("'{text}' is not a colour; write #rrggbb"));
+    match og_core::color::parse_hex(h) {
+        Some([r, g, b, _]) if h.len() == 6 => Ok([r, g, b]),
+        _ => Err(format!("'{text}' is not a colour; write #rrggbb")),
     }
-    let byte = |i: usize| {
-        u8::from_str_radix(&h[i..i + 2], 16).map_err(|_| format!("'{text}' is not a colour"))
-    };
-    Ok([byte(0)?, byte(2)?, byte(4)?])
 }
 
 /// Parses an expectation from its arguments (the step's, after `expect`).

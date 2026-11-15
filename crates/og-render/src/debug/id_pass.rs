@@ -757,8 +757,7 @@ fn red_at(m: &crate::TextureData, uv: Vec2) -> f32 {
             .unwrap_or(255) as f32
             / 255.0;
         match m.color_space {
-            crate::ColorSpace::Srgb if v <= 0.04045 => v / 12.92,
-            crate::ColorSpace::Srgb => ((v + 0.055) / 1.055).powf(2.4),
+            crate::ColorSpace::Srgb => og_core::color::srgb_to_linear(v),
             crate::ColorSpace::Linear => v,
         }
     };

@@ -9,15 +9,7 @@ pub(crate) struct PixelRender {
     pub(super) textures: BTreeMap<u64, (og_render::TextureHandle, u64, u64)>,
 }
 
-pub(super) fn srgb(c: f32) -> u8 {
-    let c = c.clamp(0.0, 1.0);
-    let s = if c <= 0.003_130_8 {
-        c * 12.92
-    } else {
-        1.055 * og_core::math::pow(c, 1.0 / 2.4) - 0.055
-    };
-    (s * 255.0).round() as u8
-}
+pub(super) use og_core::color::linear_to_srgb8 as srgb;
 
 /// A grid's pixels, top row first: ground in its colour with a fixed grain
 /// per cell (by its place in the terrain), bedrock, empty clear.

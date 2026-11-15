@@ -404,18 +404,11 @@ pub fn project_look(body: &Block) -> Result<Option<String>, String> {
 /// `Color.setHex` gives under its colour management.
 pub fn hex_to_linear(hex: &str) -> Option<[f64; 3]> {
     let h = hex.strip_prefix('#').unwrap_or(hex);
-    if h.len() != 6 || !h.chars().all(|c| c.is_ascii_hexdigit()) {
+    if h.len() != 6 {
         return None;
     }
-    let ch = |i: usize| {
-        let c = f64::from(u8::from_str_radix(&h[i..i + 2], 16).ok()?) / 255.0;
-        Some(if c <= 0.04045 {
-            c / 12.92
-        } else {
-            ((c + 0.055) / 1.055).powf(2.4)
-        })
-    };
-    Some([ch(0)?, ch(2)?, ch(4)?])
+    let [r, g, b, _] = og_core::color::parse_hex(h)?;
+    Some([r, g, b].map(|c| og_core::color::srgb_to_linear_f64(f64::from(c) / 255.0)))
 }
 
 /// The colours of a palette file: `.hex` (one `rrggbb` per line, `#`
@@ -457,9 +450,8 @@ pub fn parse_palette(name: &str, text: &str) -> Result<Vec<[u8; 3]>, String> {
         } else {
             let h = line.strip_prefix('#').unwrap_or(line);
             let h = h.split_whitespace().next().unwrap_or("");
-            let byte = |k: usize| u8::from_str_radix(h.get(k..k + 2).unwrap_or("x"), 16);
-            match (h.len(), byte(0), byte(2), byte(4)) {
-                (6, Ok(r), Ok(g), Ok(b)) => out.push([r, g, b]),
+            match og_core::color::parse_hex(h) {
+                Some([r, g, b, _]) if h.len() == 6 => out.push([r, g, b]),
                 _ => return Err(format!("line {n}: '{line}' is not an rrggbb colour")),
             }
         }

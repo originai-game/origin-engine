@@ -72,14 +72,7 @@ pub struct UiGlassStyle {
 
 /// sRGB bytes and a straight alpha as linear RGBA.
 fn srgb(r: u8, g: u8, b: u8, a: f32) -> [f32; 4] {
-    let l = |c: u8| {
-        let c = f32::from(c) / 255.0;
-        if c <= 0.04045 {
-            c / 12.92
-        } else {
-            ((c + 0.055) / 1.055).powf(2.4)
-        }
-    };
+    let l = og_core::color::srgb8_to_linear;
     [l(r), l(g), l(b), a]
 }
 

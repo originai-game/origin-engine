@@ -111,24 +111,10 @@ fn srgb_tables() -> &'static SrgbTables {
         let at = |i: usize| i as f32 / SRGB_STEPS as f32;
         SrgbTables {
             decode: (0..=SRGB_STEPS)
-                .map(|i| {
-                    let v = at(i);
-                    if v <= 0.04045 {
-                        v / 12.92
-                    } else {
-                        ((v + 0.055) / 1.055).powf(2.4)
-                    }
-                })
+                .map(|i| og_core::color::srgb_to_linear(at(i)))
                 .collect(),
             encode: (0..=SRGB_STEPS)
-                .map(|i| {
-                    let v = at(i);
-                    if v <= 0.003_130_8 {
-                        v * 12.92
-                    } else {
-                        1.055 * v.powf(1.0 / 2.4) - 0.055
-                    }
-                })
+                .map(|i| og_core::color::linear_to_srgb(at(i)))
                 .collect(),
         }
     })

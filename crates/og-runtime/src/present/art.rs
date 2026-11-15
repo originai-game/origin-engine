@@ -347,7 +347,7 @@ fn nearest(palette: &[[u8; 3]], linear: [f32; 3]) -> [f32; 3] {
     let target = og_render::oklab(linear);
     let mut best = (f32::MAX, linear);
     for c in palette {
-        let lin = c.map(|v| srgb_to_linear(v as f32 / 255.0));
+        let lin = c.map(og_core::color::srgb8_to_linear);
         let p = og_render::oklab(lin);
         let d = (0..3)
             .map(|i| (p[i] - target[i]) * (p[i] - target[i]))
@@ -357,16 +357,6 @@ fn nearest(palette: &[[u8; 3]], linear: [f32; 3]) -> [f32; 3] {
         }
     }
     best.1
-}
-
-// Rendering only: the UI's icon tint, never read by the tick.
-#[allow(clippy::disallowed_methods)]
-fn srgb_to_linear(c: f32) -> f32 {
-    if c <= 0.04045 {
-        c / 12.92
-    } else {
-        ((c + 0.055) / 1.055).powf(2.4)
-    }
 }
 
 /// A look's `ArtCamera` on the main camera, as it is applied under the
@@ -510,7 +500,7 @@ mod tests {
         // Python: 0.084 against 0.099 squared). White the lightest, black the
         // darkest.
         let greens = [[15, 56, 15], [48, 98, 48], [139, 172, 15], [155, 188, 15]];
-        let lin = |c: [u8; 3]| c.map(|v| srgb_to_linear(v as f32 / 255.0));
+        let lin = |c: [u8; 3]| c.map(og_core::color::srgb8_to_linear);
         let red = nearest(&greens, [0.8, 0.05, 0.05]);
         assert_eq!(red, lin([139, 172, 15]));
         assert_eq!(nearest(&greens, [1.0, 1.0, 1.0]), lin([155, 188, 15]));

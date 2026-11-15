@@ -87,16 +87,12 @@ pub(crate) type Spare = Arc<Mutex<Option<wgpu::Buffer>>>;
 /// RGBA16F display-linear pixel to an SDR screenshot, not an HDR encoding.
 fn sdr_preview(pixel: &[u8]) -> [u8; 4] {
     std::array::from_fn(|i| {
-        let value = crate::probes::f16_to_f32(u16::from_le_bytes([pixel[i * 2], pixel[i * 2 + 1]]))
-            .clamp(0.0, 1.0);
-        let encoded = if i == 3 {
-            value
-        } else if value <= 0.0031308 {
-            value * 12.92
+        let value = crate::probes::f16_to_f32(u16::from_le_bytes([pixel[i * 2], pixel[i * 2 + 1]]));
+        if i == 3 {
+            (value.clamp(0.0, 1.0) * 255.0).round() as u8
         } else {
-            1.055 * value.powf(1.0 / 2.4) - 0.055
-        };
-        (encoded * 255.0).round() as u8
+            og_core::color::linear_to_srgb8(value)
+        }
     })
 }
 

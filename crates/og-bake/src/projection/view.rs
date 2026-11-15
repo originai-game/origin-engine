@@ -262,5 +262,5 @@ pub fn clay(level: &Level, g: &GBuffer, light: &ClayLight) -> Vec<[u8; 3]> {
 }
 
 fn srgb(v: f32) -> u8 {
-    (v.clamp(0.0, 1.0).powf(1.0 / 2.2) * 255.0 + 0.5) as u8
+    og_core::color::linear_to_srgb8(v)
 }

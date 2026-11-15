@@ -400,14 +400,7 @@ fn theme_wire(theme: Theme, sizes: og_ui::Density, style: &str) -> crate::host::
 /// A colour as `#rrggbb`, or `#rrggbbaa` when it is translucent.
 fn hex(c: Srgba) -> String {
     let [r, g, b] = c.rgb;
-    if c.alpha >= 1.0 {
-        format!("#{r:02x}{g:02x}{b:02x}")
-    } else {
-        format!(
-            "#{r:02x}{g:02x}{b:02x}{:02x}",
-            (c.alpha.clamp(0.0, 1.0) * 255.0).round() as u8
-        )
-    }
+    og_core::color::hex_string([r, g, b, (c.alpha.clamp(0.0, 1.0) * 255.0).round() as u8])
 }
 
 /// The style's tokens (docs/ui.md §3.1) as og.ui.theme answers them

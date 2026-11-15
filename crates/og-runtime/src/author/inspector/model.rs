@@ -95,22 +95,11 @@ pub fn number_text(v: f64) -> String {
 }
 
 fn srgb_byte(linear: f64) -> u8 {
-    let x = linear.clamp(0.0, 1.0);
-    let s = if x <= 0.003_130_8 {
-        x * 12.92
-    } else {
-        1.055 * x.powf(1.0 / 2.4) - 0.055
-    };
-    (s * 255.0).round() as u8
+    (og_core::color::linear_to_srgb_f64(linear.clamp(0.0, 1.0)) * 255.0).round() as u8
 }
 
 fn linear_of(byte: u8) -> f64 {
-    let s = f64::from(byte) / 255.0;
-    if s <= 0.04045 {
-        s / 12.92
-    } else {
-        ((s + 0.055) / 1.055).powf(2.4)
-    }
+    og_core::color::srgb_to_linear_f64(f64::from(byte) / 255.0)
 }
 
 /// The quaternion `x, y, z, w` as Euler degrees, in three.js's XYZ order
@@ -286,24 +275,19 @@ pub fn command(
         Editor::Enum | Editor::Text => Ok(typed.to_string()),
         Editor::Color => {
             let hex = typed.strip_prefix('#').unwrap_or(typed);
-            let bad = || format!("'{typed}' is not a colour (#rrggbb)");
-            if !(hex.len() == 6 || hex.len() == 8) || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
-                return Err(bad());
-            }
-            let byte = |i: usize| u8::from_str_radix(&hex[i..i + 2], 16).map_err(|_| bad());
-            let mut lanes = vec![
-                linear_of(byte(0)?),
-                linear_of(byte(2)?),
-                linear_of(byte(4)?),
-            ];
+            let [r, g, b, a] = og_core::color::parse_hex(hex)
+                .filter(|_| hex.len() == 6 || hex.len() == 8)
+                .ok_or_else(|| format!("'{typed}' is not a colour (#rrggbb)"))?;
+            let mut lanes = vec![linear_of(r), linear_of(g), linear_of(b)];
             // A colour of four lanes keeps its alpha unless one was typed.
             let was = shown
                 .first()
                 .map(|s| s.trim_start_matches('#'))
                 .filter(|s| s.len() == 8)
-                .and_then(|s| u8::from_str_radix(&s[6..8], 16).ok());
+                .and_then(og_core::color::parse_hex)
+                .map(|[_, _, _, a]| a);
             match (hex.len(), was) {
-                (8, _) => lanes.push(f64::from(byte(6)?) / 255.0),
+                (8, _) => lanes.push(f64::from(a) / 255.0),
                 (_, Some(a)) => lanes.push(f64::from(a) / 255.0),
                 _ => {}
             }
