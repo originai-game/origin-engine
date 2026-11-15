@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "fantasy style pack",
+      "summary": "shooter.css dresses the shooter components' new parts: the vitals plate in the ammunition's brass rim (CombatHud.vitals), the keyline on both edges of the circle reticle's ring (Crosshair.ring), the magazine strip in gold on a brass track (Ammo.magazine, Ammo.track), the weapon's name and the reload's words in letter-spaced small caps (Ammo.weapon, Ammo.label, Ammo.prompt), and the killfeed's headshot mark in gold (Killfeed.headshot). The low magazine and the empty prompt keep --warn and --danger."
+    }
+  ]
+}

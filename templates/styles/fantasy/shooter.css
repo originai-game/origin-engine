@@ -7,18 +7,31 @@
    mark that has no plate. The components' own <style> holds layout only.
    Every value is a token set in base.css. */
 
+/* ── Vitals: the same thin plate as the ammunition's, at the other corner. */
+[part="CombatHud.vitals"] {
+  border: var(--stroke-hairline) solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--fantasy-hud-plate);
+  box-shadow: var(--fantasy-keyline-shadow), var(--fantasy-shadow-sm);
+}
+
 /* ── Crosshair: parchment marks. Aimed at a foe they take --danger, as the
    component's own ring does; a hit confirms in parchment, a headshot in
-   gold, a kill in red and heavier, a broken shield in the shield's blue. */
+   gold, a kill in red and heavier, a broken shield in the shield's blue.
+   The circle's ring keeps the component's inks and takes the keyline on
+   both of its edges. */
 :is([part="Crosshair.arm"], [part="Crosshair.dot"], [part="Crosshair.hit"]) { background: var(--scene-ink); box-shadow: var(--fantasy-reticle-keyline); }
 :is([part="Crosshair.arm"], [part="Crosshair.dot"]).aimed { background: var(--danger); }
 [part="Crosshair.hit"].headshot { background: var(--gold); }
 [part="Crosshair.hit"].kill { background: var(--danger); scale: 1.5 1.25; }
 [part="Crosshair.hit"].shieldBreak { background: var(--info); }
+[part="Crosshair.ring"] { box-shadow: var(--fantasy-reticle-keyline), var(--fantasy-keyline-shadow); }
 
 /* ── Ammunition: a lamp-black plate in a brass rim, the count in display
-   figures, the fire mode on a crimson tag. The low and the empty count keep
-   the component's --warn and --danger. */
+   figures, the weapon and the reload's words in small caps, the fire mode
+   on a crimson tag, the magazine in gold on a brass track. The low and the
+   empty count, the low magazine and the empty prompt keep the component's
+   --warn and --danger. */
 [part="Ammo.frame"] {
   border: var(--stroke-hairline) solid var(--line-strong);
   border-radius: var(--radius-sm);
@@ -37,7 +50,12 @@
   font-family: var(--label-font);
   letter-spacing: var(--font-tracking-lg);
 }
+[part="Ammo.track"] { background: var(--line-strong-33); }
+[part="Ammo.magazine"] { background: var(--fantasy-gold-fill); }
+[part="Ammo.magazine"].low { background: var(--warn); }
 [part="Ammo.reload"] { background: var(--fantasy-gold-fill); }
+:is([part="Ammo.weapon"], [part="Ammo.label"], [part="Ammo.prompt"]) { font-family: var(--label-font); letter-spacing: var(--font-tracking-lg); }
+[part="Ammo.label"] { color: var(--ink-label); }
 
 /* ── Incoming damage: an arc in the hit's tone; a shield's keeps the
    component's --info. */
@@ -45,12 +63,14 @@
 [part="DamageDirection.arc"].critical { stroke: var(--tone-crit); }
 
 /* ── Killfeed: one thin plate a row, the names in their side's ink, the
-   weapon in small caps. The player's rows wear a gold rim and leading edge. */
+   weapon in small caps, a headshot's mark in gold as on the reticle. The
+   player's rows wear a gold rim and leading edge. */
 [part="Killfeed.row"] { border: var(--stroke-hairline) solid var(--line); border-radius: var(--radius-xs); background: var(--fantasy-hud-plate); }
 [part="Killfeed.row"].self { border-color: var(--accent-60); border-inline-start: var(--stroke-thick) solid var(--gold); }
 [part="Killfeed.name"].ally { color: var(--team1); }
 [part="Killfeed.name"].enemy { color: var(--team2); }
 [part="Killfeed.weapon"] { font-family: var(--label-font); letter-spacing: var(--font-tracking-lg); color: var(--ink-label); }
+og-icon[part="Killfeed.headshot"]::part(image) { color: var(--gold); }
 
 /* ── Loadout: each category under a crimson band, each slot a soot plate
    in a brass rim. */
