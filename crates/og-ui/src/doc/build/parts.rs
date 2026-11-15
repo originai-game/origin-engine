@@ -475,19 +475,48 @@ impl Ui {
         let mut inline = self.style.root_tokens.clone();
         inline.extend_from_slice(&self.style.root_type_tokens[self.breakpoint() as usize]);
         inline.extend(self.env.theme.density_tokens(&self.env.viewport));
-        cascade::values_with(
-            &self.style.part_rules,
-            &cascade::Options {
-                inline: &inline,
-                inherited: &Default::default(),
-                basis: None,
-                attr: &|_| None,
-                sheet: Some(&self.style.part_sheet),
-                starting: false,
-                carry: false,
-            },
-            |rule| self.part_matches(rule, &facts),
-        )
+        let compute = |inline: &[(String, String)]| {
+            cascade::values_with(
+                &self.style.part_rules,
+                &cascade::Options {
+                    inline,
+                    inherited: &Default::default(),
+                    basis: None,
+                    attr: &|_| None,
+                    sheet: Some(&self.style.part_sheet),
+                    starting: false,
+                    carry: false,
+                },
+                |rule| self.part_matches(rule, &facts),
+            )
+        };
+        let authored = compute(&inline);
+        // The type ramp's tokens are authored at 100 %, and the player's
+        // text scale grows them as it grows the ramp widgets draw with
+        // (Theme::to_text_scale), so text sized by them (`font:
+        // var(--text-sm)`) follows it as text sized in em does. Whoever set
+        // them (the default style, a pack, the game), the values that won
+        // are set again grown, before the tokens built from them resolve.
+        let scale = self.css_text_scale();
+        if scale == 1.0 {
+            return authored;
+        }
+        inline.extend(authored.computed.iter().filter_map(|(name, value)| {
+            let px = type_length(name, value.as_deref()?)?;
+            Some((name.clone(), format!("{}px", px * scale)))
+        }));
+        compute(&inline)
+    }
+
+    /// The text scale the root's type tokens are grown by: the configured
+    /// theme's, clamped as [`crate::Theme::to_text_scale`] clamps it.
+    pub(crate) fn css_text_scale(&self) -> f32 {
+        let s = self.env.configured.text_scale;
+        if s.is_finite() {
+            s.clamp(1.0, crate::style::MAX_TEXT_SCALE)
+        } else {
+            1.0
+        }
     }
 
     /// Replace the global part stylesheet. Invalid CSS leaves the current
@@ -988,4 +1017,14 @@ impl crate::ui::Tree {
             i = parent;
         }
     }
+}
+
+/// A type ramp length token's px (`--type-<step>-size`, `-line-height`,
+/// `-cjk-line-height`, written in px), which the text scale grows.
+pub(crate) fn type_length(name: &str, value: &str) -> Option<f32> {
+    let rest = name.strip_prefix("--type-")?;
+    if !(rest.ends_with("-size") || rest.ends_with("-line-height")) {
+        return None;
+    }
+    value.trim().strip_suffix("px")?.trim().parse::<f32>().ok()
 }

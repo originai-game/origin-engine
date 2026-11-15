@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"Text sized by the type ramp's tokens (`font: var(--text-sm)`, `font-size: var(--type-sm-size)`) follows `UiDesc.textScale`, as text sized in em and the widgets' own text already did. Under a 150 % text scale a core `StatBar`'s \"64 / 100\" stayed at its 100 % size."}
+  ]
+}

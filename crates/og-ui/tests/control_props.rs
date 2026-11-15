@@ -249,6 +249,37 @@ fn root_relative_text_sizes_follow_the_root_not_the_parent() {
     }
 }
 
+/// Text sized by the type ramp's tokens (`font: var(--text-sm)`, the
+/// house form) follows the player's text scale as the ramp widgets draw
+/// with does, and as text sized in em does; a widget's own text is not
+/// grown twice. Ways it could fail: the tokens kept at their authored px
+/// (text that never grows), or read back into the ramp grown and grown
+/// again.
+#[test]
+fn type_ramp_tokens_follow_the_text_scale() {
+    let source = r#"<meta name="component" content="t"><div><p id="Token">Token</p><label><input type="checkbox"/> Widget</label></div><style>#Token { font: var(--text-sm); }</style>"#;
+    for scale in [1.0, 1.5] {
+        let mut d = Doc::with_font(source, &[], crate::support::test_font());
+        let mut theme = *d.ui.theme();
+        theme.text_scale = scale;
+        d.ui.set_theme(theme);
+        d.step(InputFrame::default());
+        d.step(InputFrame::default());
+        let sizes: Vec<_> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|i| match &i.cmd {
+                    DrawCmd::Text { text, size, .. } => Some((text.clone(), *size)),
+                    _ => None,
+                })
+                .collect();
+        let sm = 14.0 * scale;
+        assert!(sizes.contains(&("Token".into(), sm)), "{scale}: {sizes:?}");
+        assert!(sizes.contains(&("Widget".into(), sm)), "{scale}: {sizes:?}");
+    }
+}
+
 #[test]
 fn scene_text_shadows_follow_the_font_size() {
     for (font, size, line, offset, blur) in [

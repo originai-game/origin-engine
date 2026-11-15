@@ -395,6 +395,9 @@ impl Ui {
                 *target = value;
             }
         }
+        // The root's type lengths are grown by the text scale (the root
+        // cascade); the theme keeps them as authored, and grows them itself.
+        let grown = self.css_text_scale();
         let read_step = |name: &str, step: &mut TypeStep| {
             let value = |field: &str| {
                 root.get(&format!("--type-{name}-{field}"))
@@ -404,10 +407,10 @@ impl Ui {
                 value(field)?.strip_suffix(unit)?.trim().parse::<f32>().ok()
             };
             if let Some(v) = number("size", "px") {
-                step.size = v;
+                step.size = v / grown;
             }
             if let Some(v) = number("line-height", "px") {
-                step.line_height = v;
+                step.line_height = v / grown;
             }
             if let Some(v) = number("weight", "") {
                 step.weight = v as u16;
@@ -419,7 +422,7 @@ impl Ui {
                 step.cjk_tracking_em = v;
             }
             if let Some(v) = number("cjk-line-height", "px") {
-                step.cjk_line_height = v;
+                step.cjk_line_height = v / grown;
             }
             if let Some(v) = value("features") {
                 step.features = crate::shape::Features::parse(
