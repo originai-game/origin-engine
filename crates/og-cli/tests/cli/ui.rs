@@ -21,7 +21,17 @@ fn css_style_authoring_checks_sources_and_installs_without_a_manifest() {
     let valid = run(&["style", "check", pack.to_str().unwrap(), "--json"]);
     assert!(valid.status.success(), "{}", text(&valid));
     let report: serde_json::Value = serde_json::from_slice(&valid.stdout).unwrap();
-    assert_eq!(report["rootTokenContrast"].as_array().unwrap().len(), 6);
+    // Every text the sheets draw, read on its ground in both schemes, and
+    // the team and state colours under each colour vision.
+    let pairs = report["contrast"].as_array().unwrap();
+    assert!(pairs.iter().any(|p| p["sheet"] == "sheet:controls"));
+    assert!(pairs.iter().any(|p| p["scheme"] == "light"));
+    assert!(
+        pairs
+            .iter()
+            .all(|p| p["ratio"].as_f64().unwrap() >= 1.0 && p["apca"].is_number())
+    );
+    assert_eq!(report["colorVision"].as_array().unwrap().len(), 16);
     let original = std::fs::read_to_string(pack.join("main.css")).unwrap();
     assert!(
         !run(&[
