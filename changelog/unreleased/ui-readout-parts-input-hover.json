@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"ui","summary":"`input::part(frame):hover` and `textarea::part(frame):hover` match while the pointer is over a text field, as `:hover` does on a browser's field."}
+  ]
+}

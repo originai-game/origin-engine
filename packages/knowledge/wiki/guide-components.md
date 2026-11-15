@@ -301,14 +301,14 @@ These declarations also construct widget part identities and are exported by doc
 | `keyboard` | `candidates` | `:enabled` |
 | `keyboard` | `candidate` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
 | `keyboard` | `key` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
-| `input` | `frame` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
+| `input` | `frame` | `:enabled`, `:disabled`, `:hover`, `:focus-visible`, `:invalid` |
 | `input` | `text` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
 | `input` | `placeholder` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
 | `input` | `reveal` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:invalid` |
 | `input` | `reveal-icon` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
 | `input` | `clear` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:invalid` |
 | `input` | `clear-icon` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
-| `textarea` | `frame` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
+| `textarea` | `frame` | `:enabled`, `:disabled`, `:hover`, `:focus-visible`, `:invalid` |
 | `textarea` | `text` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
 | `textarea` | `placeholder` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
 | `textarea` | `selection` | `:enabled` |

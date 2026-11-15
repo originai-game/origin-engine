@@ -119,7 +119,6 @@ ink are on the host, so a button's content inherits them.
 Parts and states the pack could not reach through tokens and parts. None is
 worked around in CSS.
 
-- `input::part(frame)` has no hover state.
 - An ability slot's cost and charges badges (`AbilitySlot.badge`,
   `AbilityBar.badge`) are as wide as the slot, so on a slot that shows both
   their plates cover its icon (fantasy too; the default style draws them

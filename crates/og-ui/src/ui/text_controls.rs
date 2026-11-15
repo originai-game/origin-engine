@@ -202,7 +202,14 @@ impl Ui {
                 target.selection.clear();
             }
         }
-        self.field_part(i, frame, base, focused, invalid, desc.bare);
+        self.field_part(
+            i,
+            frame,
+            base.flag_if(r.hovered, "hover"),
+            focused,
+            invalid,
+            desc.bare,
+        );
         // What the probe and a screen reader read: a password masked
         // unless revealed (the mask, never the text).
         let said = match mask {
@@ -749,7 +756,8 @@ impl Ui {
         }
     }
 
-    /// A field's frame as a part (`Field.frame[focused][invalid]`): its ground moves
+    /// A field's frame as a part (`Field.frame[focused][invalid]`, with the
+    /// `base`'s own flags such as `hover`): its ground moves
     /// from `control` to `panel` on the `ui` spring as it takes the focus.
     /// A bare field draws no frame and no ring: its component frames it
     /// and shows its focus.
@@ -875,7 +883,14 @@ impl Ui {
         }
         let disabled = self.tree.nodes[i].disabled;
         let ink = self.field_ink(base, focused, invalid, disabled);
-        self.field_part(i, frame, base, focused, invalid, desc.bare);
+        self.field_part(
+            i,
+            frame,
+            base.flag_if(r.hovered, "hover"),
+            focused,
+            invalid,
+            desc.bare,
+        );
         let widget = Widget::TextArea {
             edit,
             text: shown,

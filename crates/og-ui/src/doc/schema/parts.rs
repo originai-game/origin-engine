@@ -70,14 +70,14 @@ parts! {
     KEYBOARD_CANDIDATES: "keyboard", "candidates", ["enabled"];
     KEYBOARD_CANDIDATE: "keyboard", "candidate", ["enabled", "disabled", "hover", "active", "focus-visible"];
     KEYBOARD_KEY: "keyboard", "key", ["enabled", "disabled", "hover", "active", "focus-visible"];
-    INPUT_FRAME: "input", "frame", ["enabled", "disabled", "focus-visible", "invalid"];
+    INPUT_FRAME: "input", "frame", ["enabled", "disabled", "hover", "focus-visible", "invalid"];
     INPUT_TEXT: "input", "text", ["enabled", "disabled", "focus-visible", "invalid"];
     INPUT_PLACEHOLDER: "input", "placeholder", ["enabled", "disabled", "focus-visible", "invalid"];
     INPUT_REVEAL: "input", "reveal", ["enabled", "disabled", "hover", "active", "focus-visible", "invalid"];
     INPUT_REVEAL_ICON: "input", "reveal-icon", ["enabled", "disabled", "focus-visible", "invalid"];
     INPUT_CLEAR: "input", "clear", ["enabled", "disabled", "hover", "active", "focus-visible", "invalid"];
     INPUT_CLEAR_ICON: "input", "clear-icon", ["enabled", "disabled", "focus-visible", "invalid"];
-    TEXTAREA_FRAME: "textarea", "frame", ["enabled", "disabled", "focus-visible", "invalid"];
+    TEXTAREA_FRAME: "textarea", "frame", ["enabled", "disabled", "hover", "focus-visible", "invalid"];
     TEXTAREA_TEXT: "textarea", "text", ["enabled", "disabled", "focus-visible", "invalid"];
     TEXTAREA_PLACEHOLDER: "textarea", "placeholder", ["enabled", "disabled", "focus-visible", "invalid"];
     TEXTAREA_SELECTION: "textarea", "selection", ["enabled"];

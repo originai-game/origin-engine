@@ -1743,6 +1743,7 @@ fn text_field_and_spinner_parts_keep_boxes_states_and_host_input() {
     ui.set_part_css(
         "input::part(frame) { padding: 0 11px; border: 2px solid #123456; background: #00ff00; }
          input::part(frame):focus-visible { background: #0000ff; }
+         input::part(frame):hover { background: #ffff00; }
          input::part(frame):invalid { background: #ff0000; }
          input[type=number]::part(button) { background: #ff00ff; }
          input::part(reveal) { background: #00ffff; padding: 3px; }
@@ -1829,6 +1830,21 @@ fn text_field_and_spinner_parts_keep_boxes_states_and_host_input() {
     assert!(fill(ui, [128, 128, 0]).iter().any(|r| r.y == notes.y));
     let inc = at(ui, "Count/Increment");
     assert!(fill(ui, [255, 0, 255]).iter().any(|r| r.x == inc.x));
+    // A pointer over a field is :hover on its frame, as on a browser's.
+    assert!(fill(ui, [255, 255, 0]).is_empty());
+    for _ in 0..2 {
+        d.step(InputFrame {
+            pointer: og_core::math::Vec2::new(
+                name.x + name.width / 2.0,
+                name.y + name.height / 2.0,
+            ),
+            pointer_inside: true,
+            ..Default::default()
+        });
+    }
+    assert!(fill(&d.ui, [255, 255, 0]).iter().any(|r| r.y == name.y));
+    d.step(InputFrame::default());
+    let ui = &d.ui;
     assert!(fill(ui, [0, 255, 255]).len() == 1);
     // Presses and typing reach the hosts.
     press(&mut d, "Count/Increment", 0.5);
