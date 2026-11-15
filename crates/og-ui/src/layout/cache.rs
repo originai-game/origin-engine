@@ -648,6 +648,7 @@ fn el_layout_eq(a: &Element, b: &Element) -> bool {
         && a.reverse == b.reverse
         && a.wrap_reverse == b.wrap_reverse
         && a.align_logical == b.align_logical
+        && a.cross_logical == b.cross_logical
         && a.align_content == b.align_content
         && a.justify_items == b.justify_items
         && a.align_self == b.align_self

@@ -118,6 +118,23 @@ fn line_align(el: &Element) -> Align {
     }
 }
 
+/// An item's `align-self` (or its container's `align-items`) as laid out
+/// before [`mirror_lines`]: under `wrap-reverse` the lines and all in them
+/// are mirrored across, which is where `flex-start` and `flex-end` belong;
+/// a writing-mode `start` or `end` names the other flex side there, so the
+/// mirror puts it back on the side written (CSS Box Alignment §6.1).
+fn item_cross(el: &Element, item: &Element) -> Cross {
+    let (cross, logical) = match item.align_self {
+        Some(c) => (c, item.cross_logical & 2 != 0),
+        None => (el.cross, el.cross_logical & 1 != 0),
+    };
+    match cross {
+        Cross::Start if el.wrap_reverse && el.wrap && logical => Cross::End,
+        Cross::End if el.wrap_reverse && el.wrap && logical => Cross::Start,
+        c => c,
+    }
+}
+
 /// Node `i`'s children mirrored along its main axis (`row-reverse`,
 /// `column-reverse`) and its lines across it (`wrap-reverse`), inside its
 /// content box: each margin box flips, its own margins kept on their sides.
@@ -534,7 +551,7 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
                         cross_margins(&nodes[c]),
                     );
                     let [ml, mr] = nodes[c].layout.margin_x;
-                    let cross = nodes[c].layout.used.align_self.unwrap_or(el.cross);
+                    let cross = item_cross(&el, &nodes[c].layout.used);
                     let safe = safe_cross || nodes[c].layout.used.safe & 2 != 0;
                     nodes[c].layout.x = x + ml;
                     nodes[c].layout.y = y0
@@ -570,7 +587,7 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
                         span(nodes[c].layout.margin_sets[0]),
                         span(nodes[c].layout.margin_sets[1]),
                     );
-                    let cross = nodes[c].layout.used.align_self.unwrap_or(el.cross);
+                    let cross = item_cross(&el, &nodes[c].layout.used);
                     let safe = safe_cross || nodes[c].layout.used.safe & 2 != 0;
                     nodes[c].layout.y = y + top;
                     nodes[c].layout.x =
@@ -626,7 +643,7 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
                     let room = inner_w.max(if el.scroll_x { ml + w + mr } else { 0.0 }) - ml - mr;
                     let sideways =
                         nodes[c].layout.used.margin[1].auto || nodes[c].layout.used.margin[3].auto;
-                    let cross = nodes[c].layout.used.align_self.unwrap_or(el.cross);
+                    let cross = item_cross(&el, &nodes[c].layout.used);
                     let safe = safe_cross || nodes[c].layout.used.safe & 2 != 0;
                     nodes[c].layout.y = y + top;
                     nodes[c].layout.x = x0
@@ -745,7 +762,7 @@ fn static_position(
             .position(|&c| c == i)
             .and_then(|at| siblings[..at].iter().rfind(|c| p.children.contains(c)))
             .map(|&c| &nodes[c]);
-        let cross = n.layout.used.align_self.unwrap_or(el.cross);
+        let cross = item_cross(&el, &n.layout.used);
         let safe = (el.safe | n.layout.used.safe) & 2 != 0;
         let main = |free: f32| main_offsets(line_align(&el), free, 1, el.safe & 1 != 0).0;
         let row = el.direction == Direction::Row;

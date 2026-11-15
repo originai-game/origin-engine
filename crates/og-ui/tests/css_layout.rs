@@ -1740,6 +1740,57 @@ p {{ margin: 0; }}
     );
 }
 
+/// Under `wrap-reverse` an item's `end` is still the writing mode's end
+/// (the bottom of its line in a row, the right of its column), and
+/// `flex-end` the reversed cross axis's (CSS Box Alignment §6.1); an
+/// unwritten alignment stays at the flex start. Fails when `end` is laid
+/// out as `flex-end` (the short item at its line's top), when `flex-end`
+/// stops following the reversed axis, when `align-self` does not get the
+/// same reading as `align-items`, or when a plain `wrap` container moves.
+#[test]
+fn wrap_reverse_swaps_flex_end_and_keeps_end() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root">
+  <div id="End" class="rev"><div class="tall"></div><div id="E" class="short"></div></div>
+  <div id="Flex" class="rev"><div class="tall"></div><div id="F" class="short"></div></div>
+  <div id="Start" class="rev"><div class="tall"></div><div id="S" class="short"></div></div>
+  <div id="None" class="rev"><div class="tall"></div><div id="N" class="short"></div></div>
+  <div id="Self" class="rev"><div class="tall"></div><div id="SE" class="short"></div><div id="SF" class="short"></div></div>
+  <div id="Plain"><div class="tall"></div><div id="P" class="short"></div></div>
+  <div id="Col"><div class="wide"></div><div id="C" class="thin"></div></div>
+</div>
+<style>
+.rev, #Plain { display: flex; width: 100px; }
+.rev { flex-wrap: wrap-reverse; }
+.tall { width: 20px; height: 30px; }
+.short { width: 20px; height: 10px; }
+#End { align-items: end; }
+#Flex { align-items: flex-end; }
+#Start { align-items: start; }
+#Self { align-items: flex-start; }
+#SE { align-self: end; }
+#SF { align-self: flex-end; }
+#Plain { flex-wrap: wrap; align-items: end; }
+#Col { display: flex; flex-flow: column wrap-reverse; width: 100px; height: 40px; align-items: end; }
+.wide { width: 30px; height: 10px; }
+.thin { width: 10px; height: 10px; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let at = |id: &str, parent: &str| {
+            let (e, p) = (d.get(id), d.get(parent));
+            (e.x - p.x, e.y - p.y)
+        };
+        assert_eq!(at("E", "End").1, 20.0, "end: the line's bottom");
+        assert_eq!(at("F", "Flex").1, 0.0, "flex-end: the reversed axis's end");
+        assert_eq!(at("S", "Start").1, 0.0, "start: the line's top");
+        assert_eq!(at("N", "None").1, 20.0, "unwritten: the flex start");
+        assert_eq!((at("SE", "Self").1, at("SF", "Self").1), (20.0, 0.0));
+        assert_eq!(at("P", "Plain").1, 20.0);
+        // One column at the container's right; `end` is its right side.
+        assert_eq!(at("C", "Col").0, 90.0);
+    });
+}
+
 /// Naming an element a part leaves the layout its document wrote: the
 /// part's values are laid over the element, and what they do not declare
 /// stays. Fails when the part's values clear the element's `wrap-reverse`,

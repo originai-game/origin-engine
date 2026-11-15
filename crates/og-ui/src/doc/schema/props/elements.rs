@@ -181,6 +181,16 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Its cross-axis alignment keeps an overflow at the start (CSS `safe`)."
     ),
     p!(
+        "crossFlex",
+        Ty::Bool,
+        "Its `cross` names the flex line's sides (CSS `flex-start`, `flex-end`), which `wrapReverse` swaps; without it `start` and `end` are the writing mode's and stay."
+    ),
+    p!(
+        "selfFlex",
+        Ty::Bool,
+        "Its `alignSelf` names the flex line's sides, as `crossFlex` does for a container's `cross`."
+    ),
+    p!(
         "flexGrow",
         Ty::Num,
         "Its share of a flex line's free space (CSS `flex-grow`)."

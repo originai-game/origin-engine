@@ -54,6 +54,8 @@ impl Ui {
         }
         if let Some(c) = r.str("cross") {
             el.cross = cross_of(c);
+            let logical = matches!(c, "start" | "end") && !r.flag("crossFlex");
+            el.cross_logical = (el.cross_logical & !1) | u8::from(logical);
         }
         if r.has("wrap") {
             el.wrap = r.flag("wrap");
@@ -227,6 +229,8 @@ impl Ui {
         });
         el.order = r.num("order").unwrap_or(0.0) as i32;
         el.align_self = r.str("alignSelf").map(cross_of);
+        let logical = matches!(r.str("alignSelf"), Some("start" | "end")) && !r.flag("selfFlex");
+        el.cross_logical = (el.cross_logical & !2) | u8::from(logical) << 1;
         el.justify_self = r.str("justifySelf").map(cross_of);
         if r.has("safeAlign") && r.has("alignSelf") {
             el.safe = (el.safe & !2) | u8::from(r.flag("safeAlign")) << 1;
