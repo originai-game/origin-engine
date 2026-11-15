@@ -933,15 +933,19 @@ fn alignment(name: &str, t: &[Tok]) -> Result<Vec<Part>, String> {
     // An item's `start` and `end` are one word whichever sides were meant;
     // the flex line's are told apart here (`wrap-reverse` swaps only them).
     let flex = bool_word(matches!(words, ["flex-start" | "flex-end"]));
+    // `self-start` and `self-end` are the item's own writing mode's sides.
+    let own = bool_word(matches!(words, ["self-start" | "self-end"]));
     match name {
         "justify-content" => out.push(e("safeJustify", vec![bool_word(safe)])),
         "align-items" => {
             out.push(e("safeAlign", vec![bool_word(safe)]));
             out.push(e("crossFlex", vec![flex]));
+            out.push(e("crossSelf", vec![own]));
         }
         "align-self" => {
             out.push(e("safeAlign", vec![bool_word(safe)]));
             out.push(e("selfFlex", vec![flex]));
+            out.push(e("selfSelf", vec![own]));
         }
         _ => {}
     }

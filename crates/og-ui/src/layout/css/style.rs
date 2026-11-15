@@ -321,7 +321,15 @@ impl<'a> View<'a> {
 }
 
 fn items(c: Cross, logical: bool) -> tf::AlignItems {
+    items_of(c, logical, false)
+}
+
+/// `own`: `start` and `end` are the item's own writing mode's sides
+/// (`self-start`, `self-end`).
+fn items_of(c: Cross, logical: bool, own: bool) -> tf::AlignItems {
     match c {
+        Cross::Start if own => tf::AlignItems::SELF_START,
+        Cross::End if own => tf::AlignItems::SELF_END,
         Cross::Start if logical => tf::AlignItems::START,
         Cross::Start => tf::AlignItems::FLEX_START,
         Cross::Center => tf::AlignItems::CENTER,
@@ -569,7 +577,14 @@ impl tf::FlexboxContainerStyle for View<'_> {
 
     fn align_items(&self) -> tf::AlignItems {
         let el = self.el();
-        safe_items(items(el.cross, el.cross_logical & 1 != 0), el.safe & 2 != 0)
+        safe_items(
+            items_of(
+                el.cross,
+                el.cross_logical & 1 != 0,
+                el.cross_logical & 4 != 0,
+            ),
+            el.safe & 2 != 0,
+        )
     }
 
     fn justify_content(&self) -> tf::JustifyContent {
@@ -600,7 +615,7 @@ impl tf::FlexboxItemStyle for View<'_> {
         let el = self.el();
         match el.align_self {
             Some(c) => Some(safe_items(
-                items(c, el.cross_logical & 2 != 0),
+                items_of(c, el.cross_logical & 2 != 0, el.cross_logical & 8 != 0),
                 el.safe & 2 != 0,
             )),
             None if self.grows_across() => Some(tf::AlignItems::STRETCH),
