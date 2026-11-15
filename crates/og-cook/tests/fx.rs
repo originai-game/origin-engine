@@ -306,6 +306,10 @@ fn mesh_lit_distorting_emitters_with_events_and_sub_emitters() {
             ),
             ("fx/five.ogt", five.as_bytes()),
             (
+                "fx/crumble.ogt",
+                b"type particles\nversion 1\n---\nshape mesh \"models/statue.glb\"\n",
+            ),
+            (
                 "fx/warp.ogt",
                 b"type particles\nversion 1\n---\nrender mesh box\ndistortion 0.1\n",
             ),
@@ -315,6 +319,8 @@ fn mesh_lit_distorting_emitters_with_events_and_sub_emitters() {
     let errors = report.errors().join("\n");
     assert!(errors.contains("fx/none.ogt"), "{errors}");
     assert!(errors.contains("models/none.glb"), "{errors}");
+    // A mesh to emit from is named as a mesh to draw is.
+    assert!(errors.contains("models/statue.glb"), "{errors}");
     assert!(errors.contains("at most 4 subEmitter lines"), "{errors}");
     assert!(errors.contains("fx/warp.ogt"), "{errors}");
     assert!(!errors.contains("fx/puff.ogt:"), "{errors}");

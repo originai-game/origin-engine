@@ -10,7 +10,7 @@ Every line the three effect formats take, from the tables their parsers read: an
 | Line | Default | Does |
 |---|---|---|
 | `maxParticles <n>` | `256` | The ring of particles, 1 to 1048576: the newest overwrite the oldest. |
-| `shape point \| sphere <radius> [surface] \| cone <angle°> <radius> \| box <x> <y> <z> \| spline <x> <y> <z> ... [closed]` | `cone 15 0.05` | Where particles are born and which way they start: a box by its half extents, a spline through 2 to 8 Catmull-Rom points, emitted evenly along it and along its tangent. |
+| `shape point \| sphere <radius> [surface] \| cone <angle°> <radius> \| box <x> <y> <z> \| spline <x> <y> <z> ... [closed] \| mesh box \| sphere \| tetrahedron \| "<model id>"` | `cone 15 0.05` | Where particles are born and which way they start: a box by its half extents, a spline through 2 to 8 Catmull-Rom points, emitted evenly along it and along its tangent, a mesh's surface (a model's first mesh, in the emitter's space), area weighted and along its normals (a statue crumbling to embers, a sword's glow). |
 | `spread <degrees>` | `0` | Random deviation from the shape's direction; 180 is every direction. |
 | `rate <per second>` | `40` | Particles born per second. |
 | `burst <time> <count> [<cycles> <interval>]` |  | Particles born at once at a time of each cycle, repeated `cycles` times `interval` apart; any number of lines. |

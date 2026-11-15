@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "particles: shape mesh",
+      "summary": "An emitter's `shape mesh box | sphere | tetrahedron | \"<model id>\"` births its particles on a mesh's surface (a model's first mesh, in the emitter's space), area weighted and moving along its normals: a statue crumbling to embers, a glow over a sword. The renderer had the shape; particles files could not name it. The model is checked and loaded as `render mesh`'s is."
+    }
+  ]
+}

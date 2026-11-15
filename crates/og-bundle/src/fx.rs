@@ -77,9 +77,9 @@ pub const EMITTER_LINES: &[Line] = &[
     ),
     Line::new(
         "shape",
-        "point | sphere <radius> [surface] | cone <angle°> <radius> | box <x> <y> <z> | spline <x> <y> <z> ... [closed]",
+        "point | sphere <radius> [surface] | cone <angle°> <radius> | box <x> <y> <z> | spline <x> <y> <z> ... [closed] | mesh box | sphere | tetrahedron | \"<model id>\"",
         "cone 15 0.05",
-        "Where particles are born and which way they start: a box by its half extents, a spline through 2 to 8 Catmull-Rom points, emitted evenly along it and along its tangent.",
+        "Where particles are born and which way they start: a box by its half extents, a spline through 2 to 8 Catmull-Rom points, emitted evenly along it and along its tangent, a mesh's surface (a model's first mesh, in the emitter's space), area weighted and along its normals (a statue crumbling to embers, a sword's glow).",
         "shape sphere 0.5 surface",
     ),
     Line::new(
@@ -431,6 +431,21 @@ fn one(e: &Entry) -> Result<f32, String> {
     }
 }
 
+/// A `render mesh` or `shape mesh` line's mesh: one of
+/// [`PARTICLE_MESHES`] or a model's asset id, after the word `mesh`.
+fn particle_mesh<'e>(e: &'e Entry, line: usize, what: &str) -> Result<ParticleMesh<'e>, String> {
+    match e.values.get(1) {
+        Some(Value::String(id)) => Ok(ParticleMesh::Asset(id)),
+        Some(Value::Word(w)) if PARTICLE_MESHES.contains(&w.as_str()) => {
+            Ok(ParticleMesh::Builtin(w))
+        }
+        _ => Err(format!(
+            "line {line}: {what} <{}> or a model's \"<asset id>\"",
+            PARTICLE_MESHES.join(" | ")
+        )),
+    }
+}
+
 fn word(e: &Entry, i: usize) -> Result<&str, String> {
     e.values.get(i).and_then(Value::as_word).ok_or_else(|| {
         format!(
@@ -617,9 +632,16 @@ pub fn parse_emitter_linked(
                             closed,
                         }
                     }
+                    "mesh" => {
+                        let what = particle_mesh(e, line, "shape mesh")?;
+                        let handle = mesh(what).map_err(|r| format!("line {line}: mesh: {r}"))?;
+                        EmitterShape::Mesh {
+                            mesh: handle.unwrap_or(MeshHandle::from_bits(0)),
+                        }
+                    }
                     other => {
                         return Err(format!(
-                            "line {line}: shape `{other}` (point, sphere, cone, box, spline)"
+                            "line {line}: shape `{other}` (point, sphere, cone, box, spline, mesh)"
                         ));
                     }
                 };
@@ -834,22 +856,7 @@ pub fn parse_emitter_linked(
                             .map_or(0, |n| n.as_f32() as i32),
                     },
                     "mesh" => {
-                        let what = match e.values.get(1) {
-                            Some(v) if v.as_str().is_some() => {
-                                ParticleMesh::Asset(v.as_str().unwrap_or_default())
-                            }
-                            Some(v)
-                                if v.as_word().is_some_and(|w| PARTICLE_MESHES.contains(&w)) =>
-                            {
-                                ParticleMesh::Builtin(v.as_word().unwrap_or_default())
-                            }
-                            _ => {
-                                return Err(format!(
-                                    "line {line}: render mesh <{}> or a model's \"<asset id>\"",
-                                    PARTICLE_MESHES.join(" | ")
-                                ));
-                            }
-                        };
+                        let what = particle_mesh(e, line, "render mesh")?;
                         let handle = mesh(what).map_err(|r| format!("line {line}: mesh: {r}"))?;
                         ParticleRender::Mesh {
                             mesh: handle.unwrap_or(MeshHandle::from_bits(0)),
