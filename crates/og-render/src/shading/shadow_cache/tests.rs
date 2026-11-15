@@ -396,3 +396,39 @@ fn kept_instance_hashes_are_a_full_passes() {
         "after a missed update"
     );
 }
+
+/// A frame split from what the frame before was split from, every
+/// instance settled, is that split with nothing dirty; a caster that
+/// stopped moving still settles after [`QUIET_FRAMES`]; and any input
+/// that differs splits afresh (a batch turned always dynamic, its
+/// instances, hashes and spheres the same).
+#[test]
+fn a_settled_split_holds_until_an_input_differs() {
+    let mut w = World::new();
+    let first = w.frame();
+    for _ in 0..3 {
+        let again = w.frame();
+        assert_eq!(again.dynamic, first.dynamic);
+        assert!(again.dirty.is_empty() && again.any_static);
+    }
+    w.nudge(0.25);
+    assert_eq!(w.frame().dynamic, vec![false, true]);
+    for _ in 1..QUIET_FRAMES {
+        assert_eq!(w.frame().dynamic, vec![false, true], "still settling");
+    }
+    let settled = w.frame();
+    assert_eq!(settled.dynamic, vec![false, false]);
+    assert_eq!(settled.dirty.len(), 1, "it joins the cache");
+    assert!(w.frame().dirty.is_empty());
+    let batches = [0, 1].map(|first| BatchInfo {
+        first,
+        count: 1,
+        cast: true,
+        triangles: 12,
+        always_dynamic: first == 1,
+    });
+    w.cache.submitted();
+    let split = w.cache.split(2, &batches, &[0, 1], &w.hashes, &w.spheres);
+    assert_eq!(split.dynamic, vec![false, true]);
+    assert_eq!(split.dirty.len(), 1, "it leaves the cache");
+}

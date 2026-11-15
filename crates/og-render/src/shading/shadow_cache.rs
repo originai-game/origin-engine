@@ -148,7 +148,7 @@ impl Plan {
 
 /// The frame's split: per batch whether it is drawn over the cached
 /// layers, and the spheres that invalidate them.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct Split {
     pub dynamic: Vec<bool>,
     /// The static casters' spheres that changed (where they were and where
@@ -163,7 +163,7 @@ pub(crate) struct Split {
 }
 
 /// A batch as the split reads it.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct BatchInfo {
     pub first: u32,
     pub count: u32,
@@ -236,6 +236,25 @@ pub(crate) struct ShadowCache {
     /// A frame was planned and not submitted ([`ShadowCache::submitted`]):
     /// its layers were never drawn, so the next frame forgets them.
     pending: bool,
+    /// The last split, when every instance it drew had stood still
+    /// [`QUIET_FRAMES`] frames.
+    settled: Option<Settled>,
+}
+
+/// A split whose every drawn instance had stood still [`QUIET_FRAMES`]
+/// frames, so that standing still longer changes nothing of it, and what
+/// it was split from: a frame split from the same, bit for bit, is that
+/// split with nothing dirty. A still town of 94,865 instances read its
+/// tracking through the sort's order three times a frame (3 ms); this
+/// compares its inputs in order.
+#[derive(Debug)]
+struct Settled {
+    submitted: usize,
+    batches: Vec<BatchInfo>,
+    submission: Vec<u32>,
+    hashes: Vec<u64>,
+    spheres: Vec<(Vec3, f32)>,
+    split: Split,
 }
 
 /// The hash the cache keys on (FNV-1a over 32-bit words).
@@ -396,6 +415,21 @@ impl ShadowCache {
         if std::mem::replace(&mut self.pending, true) {
             self.layers.clear();
         }
+        if let Some(s) = &self.settled
+            && s.submitted == submitted
+            && s.batches == batches
+            && s.submission == submission
+            && s.hashes == hashes
+            && s.spheres.len() == spheres.len()
+            && s.spheres
+                .iter()
+                .zip(spheres)
+                .all(|(a, b)| same_sphere(Some(*a), Some(*b)))
+        {
+            self.any_static = s.split.any_static;
+            return s.split.clone();
+        }
+        self.settled = None;
         // Instances gone: their cached shadows go with them.
         for t in self.instances.iter().skip(submitted) {
             if let Some(s) = t.cached {
@@ -405,6 +439,7 @@ impl ShadowCache {
         self.instances.truncate(submitted);
         self.instances.resize(submitted, Tracked::default());
         let mut drawn = vec![false; submitted];
+        let mut settled = true;
         for (k, &i) in submission.iter().enumerate() {
             let i = i as usize;
             let t = &mut self.instances[i];
@@ -419,6 +454,7 @@ impl ShadowCache {
             };
             t.hash = hashes[k];
             t.seen = true;
+            settled &= t.quiet == QUIET_FRAMES;
         }
         let mut split = Split {
             dynamic: Vec::with_capacity(batches.len()),
@@ -459,6 +495,19 @@ impl ShadowCache {
         }
         split.dirty = self.dirty.clone();
         self.any_static = split.any_static;
+        if settled {
+            self.settled = Some(Settled {
+                submitted,
+                batches: batches.to_vec(),
+                submission: submission.to_vec(),
+                hashes: hashes.to_vec(),
+                spheres: spheres.to_vec(),
+                split: Split {
+                    dirty: Vec::new(),
+                    ..split.clone()
+                },
+            });
+        }
         split
     }
 
