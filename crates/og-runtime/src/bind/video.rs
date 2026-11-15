@@ -1127,6 +1127,7 @@ fn load_video(eng: &Engine, path: &str) -> Result<VideoInfo, String> {
         format: format.to_string(),
         bytes,
         streamed: stream.is_some(),
+        ai_generated: meta.ai_generated == 1,
         codec: if stream.is_some() { codec } else { "" }.to_string(),
         poster: poster.unwrap_or(texture),
     };

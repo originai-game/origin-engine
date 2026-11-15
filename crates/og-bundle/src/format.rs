@@ -58,7 +58,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r21");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r22");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
@@ -685,7 +685,7 @@ row!(
     /// the AV1 units of `<id>#stream` ([`VideoStreamMeta`]), decoded as it
     /// plays, and its first frame the texture `<id>#poster`. Its sound
     /// (when `audio` is 1) is the sound `<id>#audio` either way.
-    VideoMeta, "og.Video", 2 {
+    VideoMeta, "og.Video", 3 {
         width: u32,
         height: u32,
         frames: u32,
@@ -700,6 +700,8 @@ row!(
         streamed: u32,
         /// A stream's [`video_codec`]; 0 for a clip.
         codec: u32,
+        /// 1 when the footage was made by a generative model (`aiGenerated true`).
+        ai_generated: u32,
     }
 );
 

@@ -11,7 +11,7 @@ mod commands;
 use commands::{
     api, assets, bake_lightmaps, bake_probes, bake_projection, bundle, cache, check, compare, cook,
     dev, doctor, explore, fmt, frame, i18n, migrate, prefab, probe, render, replay, run,
-    serve_relay, session, sfx, sprite, style, test, ui, upgrade, vfx_import, vfx_preview,
+    serve_relay, session, sfx, sprite, style, test, ui, upgrade, vfx_import, vfx_preview, video,
 };
 mod api_lookup;
 mod bundle_cache;
@@ -394,6 +394,7 @@ fn main() -> ExitCode {
         ["prefab", rest @ ..] => prefab::run(rest),
         ["sfx", rest @ ..] => sfx::run(rest),
         ["sprite", rest @ ..] => sprite::run(rest),
+        ["video", rest @ ..] => video::run(rest),
         ["i18n", rest @ ..] => i18n::run(rest),
         ["style", rest @ ..] => style::run(rest),
         ["ui", rest @ ..] => ui::run(rest),

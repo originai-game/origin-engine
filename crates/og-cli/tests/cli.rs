@@ -72,4 +72,5 @@ mod cli {
     mod project;
     mod sprite;
     mod ui;
+    mod video;
 }

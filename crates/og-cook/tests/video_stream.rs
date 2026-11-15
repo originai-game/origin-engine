@@ -61,7 +61,7 @@ fn a_stream_cooks_to_av1_units_with_its_key_frames_poster_and_opus_sound() {
     // 4 s at 60 fps: 240 frames, a key frame every 0.5 s, chunks of 1 s.
     std::fs::write(
         root.join("assets/clips/count.ogt"),
-        "type video\nversion 1\n---\nsource \"count.mp4\"\nstream true\nfps 60\nsize 128 72\nkeyframe 0.5\nchunk 1\n",
+        "type video\nversion 1\n---\nsource \"count.mp4\"\nstream true\nfps 60\nsize 128 72\nkeyframe 0.5\nchunk 1\naiGenerated true\n",
     )
     .unwrap();
     let report = cook_project(&root, &CookOptions::default()).unwrap();
@@ -84,6 +84,7 @@ fn a_stream_cooks_to_av1_units_with_its_key_frames_poster_and_opus_sound() {
         ),
         (1, format::video_codec::AV1, 240, 60, 128, 72)
     );
+    assert_eq!(meta.ai_generated, 1, "aiGenerated true is kept");
     assert!(
         b.output("clips/count.ogt#frames").is_err(),
         "a stream has no texture array"

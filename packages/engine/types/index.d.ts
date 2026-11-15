@@ -30155,6 +30155,10 @@ export interface VideoInfo {
    */
   readonly streamed: boolean;
   /**
+   * Whether the footage was made by a generative model (`aiGenerated true` in its `type video`): a game or store labels AI content from it.
+   */
+  readonly aiGenerated: boolean;
+  /**
    * The codec this host plays a stream in: `av1`, or `hevc` or `h264` where the browser decodes no AV1 and the cook made that rendition; empty for a clip.
    * See `audio §8`.
    */

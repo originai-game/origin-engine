@@ -190,7 +190,27 @@ first, then the default. A cut then shows a frame already decoded.
 | `og.video.capabilities().decoder` is `rav1d-wasm` | 2 |
 | One decoder at a time (WeChat on iOS) | 1: no warming; cut inside one long file with `from` |
 
-## 7. Test every route
+On one decoder (`decks 1`) a cut reloads the deck, so make it cheap: keep
+the segments in one long file (a segment's `from` is where it starts), and
+align each segment's start to a multiple of the clip's `keyframe` seconds
+(the default 1 s). The encoder puts a key frame every `keyframe` seconds, so
+a cut that lands on one decodes a single frame, not a run. A small
+`keyframe` makes cuts snappier at some size cost.
+
+## 7. Make the footage (AI models)
+
+When a generative video model makes the clips, two cook settings keep them
+consistent and one tool continues them:
+
+- `loudness -16` in a `type video` normalises its sound to −16 LUFS, so
+  clips a model made at different levels play the same.
+- `aiGenerated true` marks the footage; VideoInfo.aiGenerated carries it, so
+  a game or store labels AI content.
+- `og video edges <clip>` writes the first and last frame of a clip as PNG.
+  Feed the last frame to an image-to-video model as the seed for the next
+  clip, so the cut joins; the first frame checks it against the clip before.
+
+## 8. Test every route
 
 The world is deterministic, so a test walks `og.story.graph` from the
 start, chooses each choice of each film node in turn with `film:choose:<i>`

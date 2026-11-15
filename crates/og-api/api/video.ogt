@@ -29,6 +29,7 @@ module video {
       unit bytes
     }
     field streamed bool "Whether it is a stream (`stream true`: decoded as it plays) rather than a clip of cooked frames."
+    field aiGenerated bool "Whether the footage was made by a generative model (`aiGenerated true` in its `type video`): a game or store labels AI content from it."
     field codec String "The codec this host plays a stream in: `av1`, or `hevc` or `h264` where the browser decodes no AV1 and the cook made that rendition; empty for a clip." {
       guide "audio §8"
     }

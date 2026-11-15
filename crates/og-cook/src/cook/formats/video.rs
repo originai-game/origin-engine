@@ -20,6 +20,8 @@
 //! size 320 180               # each frame's size (default the source's, at most 1024 wide)
 //! kind color                 # color (default) or pixel (nearest, lossless)
 //! audio true                 # its sound track as <id>#audio (default true)
+//! loudness -16               # normalise the sound to this LUFS (EBU R128); off by default
+//! aiGenerated true           # the footage was made by a generative model (VideoInfo.aiGenerated)
 //! ```
 //!
 //! A stream (`stream true`: long footage, decoded as it plays) cooks to
@@ -59,7 +61,14 @@
 //! crf 32                     # AV1 quality, 0 (best) to 63 (default 32)
 //! crf720 38                  # the 720p rendition's (default crf + 6, at most 63)
 //! renditions hevc h264       # beside the AV1: hevc, h264, both, or none (default hevc)
+//! loudness -16               # normalise the sound to this LUFS (EBU R128); off by default
+//! aiGenerated true           # the footage was made by a generative model (VideoInfo.aiGenerated)
 //! ```
+//!
+//! `loudness` runs ffmpeg's `loudnorm` on the sound so AI-generated clips,
+//! whose levels vary, all play at one target (−16 LUFS for streaming, −14
+//! louder). `aiGenerated` sets VideoInfo.aiGenerated, which a game or store
+//! reads to label the footage.
 //!
 //! The encoder is ffmpeg's `libsvtav1`, else `libaom-av1` (`og doctor`
 //! names the one it finds); the stamp covers which, as they write different
@@ -130,6 +139,14 @@ pub struct VideoDecl {
     /// The renditions beside a stream's AV1 (`renditions`); `None`: HEVC
     /// where this ffmpeg encodes it.
     pub renditions: Option<Vec<Rendition>>,
+    /// Integrated loudness target in LUFS (`loudness`), applied to the
+    /// sound with ffmpeg's `loudnorm` (EBU R128) so every clip plays at
+    /// the same level; `None`: the source's own. −16 to 0, typically −16
+    /// (streaming) or −14.
+    pub loudness: Option<f64>,
+    /// `aiGenerated true`: the footage was made by a generative model.
+    /// VideoInfo.aiGenerated carries it, so a game or store can label it.
+    pub ai_generated: bool,
 }
 
 /// A stream's copy in a codec other than AV1, for browsers whose WebCodecs
@@ -252,6 +269,12 @@ impl VideoPlan {
         if self.decl.stream {
             d.push_str(&format!(" chunk {}", self.chunk_frames()));
         }
+        if let Some(i) = self.decl.loudness {
+            d.push_str(&format!(" loudness {i}"));
+        }
+        if self.decl.ai_generated {
+            d.push_str(" ai");
+        }
         d
     }
 
@@ -306,6 +329,8 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
         crf: 32,
         crf720: None,
         renditions: None,
+        loudness: None,
+        ai_generated: false,
     };
     let mut max_given = false;
     for e in &doc.body.entries {
@@ -435,9 +460,25 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
                     .and_then(|v| v.as_bool())
                     .ok_or_else(|| format!("line {line}: audio is true or false"))?;
             }
+            "loudness" => {
+                let v = e.number(0).map_err(err)?.as_f64();
+                if !(-16.0..=0.0).contains(&v) {
+                    return Err(format!(
+                        "line {line}: loudness is a LUFS target from -16 to 0 (-16 for streaming, -14 louder)"
+                    ));
+                }
+                out.loudness = Some(v);
+            }
+            "aiGenerated" => {
+                out.ai_generated = e
+                    .values
+                    .first()
+                    .and_then(|v| v.as_bool())
+                    .ok_or_else(|| format!("line {line}: aiGenerated is true or false"))?;
+            }
             k => {
                 return Err(format!(
-                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, stream, keyframe, chunk, crf, crf720, renditions)"
+                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, aiGenerated, loudness, stream, keyframe, chunk, crf, crf720, renditions)"
                 ));
             }
         }
@@ -680,6 +721,7 @@ pub fn cook_meta(plan: &VideoPlan, stamp: u64) -> Result<(Vec<u8>, Vec<String>),
         } else {
             0
         },
+        ai_generated: u32::from(plan.decl.ai_generated),
     };
     let mut w = BlobWriter::new(
         format::Video::type_hash(),
@@ -778,22 +820,19 @@ pub fn audio_wav(path: &Path, plan: &VideoPlan) -> Result<Vec<u8>, CookError> {
         CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
     let seconds = f64::from(plan.frames) / f64::from(plan.decl.fps);
+    // loudnorm (when asked) then apad: level every clip the same, then pad
+    // silence past a sound that ends before the picture, so the two loop
+    // together.
+    let filter = plan
+        .decl
+        .loudness
+        .map(|i| format!("loudnorm=I={i}:TP=-1.5:LRA=11,apad"))
+        .unwrap_or_else(|| "apad".into());
     let out = Command::new(ffmpeg_bin())
         .args(["-v", "error", "-nostdin", "-y", "-i"])
         .arg(path)
-        .args([
-            "-t",
-            &seconds.to_string(),
-            "-vn",
-            // Silence past a sound that ends first: the sound lasts as long
-            // as the picture, so the two loop together.
-            "-af",
-            "apad",
-            "-ac",
-            "2",
-            "-ar",
-            "48000",
-        ])
+        .args(["-t", &seconds.to_string(), "-vn", "-af", &filter])
+        .args(["-ac", "2", "-ar", "48000"])
         .args(["-c:a", "pcm_s16le", "-bitexact"])
         .arg(&tmp)
         .output()
@@ -1523,6 +1562,8 @@ mod tests {
             crf: 32,
             crf720: None,
             renditions: None,
+            loudness: None,
+            ai_generated: false,
         };
         let probe = Probe {
             duration: 5.0,
@@ -1550,6 +1591,29 @@ mod tests {
             p.describe()
                 .contains("stream av1 libsvtav1 keyframe 1 crf 32 crf720 38")
         );
+    }
+
+    impl VideoDecl {
+        fn describe_contains(&self, s: &str) -> bool {
+            let probe = Probe {
+                duration: 10.0,
+                width: 1920,
+                height: 1080,
+                has_audio: true,
+            };
+            plan(self, probe, "libsvtav1")
+                .unwrap()
+                .describe()
+                .contains(s)
+        }
+    }
+
+    fn bad_stream(
+        doc: &dyn Fn(&str) -> String,
+        exists: &dyn Fn(&str) -> bool,
+        body: &str,
+    ) -> String {
+        parse("a.ogt", &doc(&format!("stream true\n{body}")), exists).unwrap_err()
     }
 
     #[test]
@@ -1584,6 +1648,30 @@ mod tests {
                 .unwrap_err()
                 .contains("stream true")
         );
+        // loudness and aiGenerated: a target and the mark, for a stream or a clip.
+        let d = parse(
+            "a.ogt",
+            &doc("stream true
+loudness -16
+aiGenerated true"),
+            &exists,
+        )
+        .unwrap();
+        assert_eq!(d.loudness, Some(-16.0));
+        assert!(d.ai_generated);
+        assert!(d.describe_contains("loudness -16"));
+        assert!(d.describe_contains(" ai"));
+        assert!(bad_stream(&doc, &exists, "loudness 2").contains("LUFS target"));
+        assert!(bad_stream(&doc, &exists, "loudness -20").contains("LUFS target"));
+        assert!(bad_stream(&doc, &exists, "aiGenerated yes").contains("true or false"));
+        let clip = parse(
+            "a.ogt",
+            &doc("loudness -14
+aiGenerated true"),
+            &exists,
+        )
+        .unwrap();
+        assert_eq!((clip.loudness, clip.ai_generated), (Some(-14.0), true));
         // Each rendition's crf follows the stream's: their defaults at AV1's 32.
         assert_eq!((Rendition::H264.crf(32), Rendition::Hevc.crf(32)), (23, 26));
         assert_eq!((Rendition::H264.crf(63), Rendition::Hevc.crf(0)), (45, 0));

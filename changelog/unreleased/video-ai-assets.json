@@ -1,0 +1,16 @@
+{
+  "added": [
+    {
+      "member": "type video: loudness",
+      "summary": "`loudness <lufs>` normalises a video's sound to that integrated loudness with ffmpeg's loudnorm (EBU R128), −16 to 0 (typically −16 for streaming, −14 louder), so clips a generative model made at different levels all play at one target; off by default."
+    },
+    {
+      "member": "type video: aiGenerated, VideoInfo.aiGenerated",
+      "summary": "`aiGenerated true` marks footage made by a generative model; VideoInfo.aiGenerated carries it, so a game or store labels AI content."
+    },
+    {
+      "member": "og video edges",
+      "summary": "`og video edges <path> [--out <dir>]` writes the first and last frame of a clip as PNG (`<stem>.first.png`, `<stem>.last.png`): the last frame is the seed an image-to-video model continues from for the next clip, the first checks a cut joins. `path` is a media file or a `type video` .ogt (whose source and maxSeconds it reads)."
+    }
+  ]
+}
