@@ -1642,12 +1642,15 @@ for each applicable case; an inapplicable case needs a reason.
 | Accessibility and localization | 100% and 150% text; pseudo-locale +40%, CJK, RTL; semantic names, roles, states, focus order, and safe areas |
 | Motion | Start, midpoint, completion, interruption, and reduced motion; a short clip as well as stills |
 
-A group's review sheet is a project in `packages/engine/sheets/<group>/`,
-outside the package's shipped files. Its pages use the group's built-in
-components by name, with fixtures from its `src/fixtures.ts`, sample art
-under `assets/` and strings for the review's CJK and right-to-left
-locales in `assets/strings/`; `og ui review` installs those locales' font
-packs into its copy (without them those cells repeat the game locale).
+A group's review sheet is a project in `packages/engine/sheets/<group>/`;
+the engine package ships each one in its `sheets/` (without `references/`
+or `verify.ts`), so `og ui sheet <group>` runs on an installed engine. No
+game's cook bundles a sheet: it is data `og ui sheet` and `og ui review`
+read when asked. Its pages use the group's built-in components by name,
+with fixtures from its `src/fixtures.ts`, sample art under `assets/` and
+strings for the review's CJK and right-to-left locales in
+`assets/strings/`; `og ui review` installs those locales' font packs into
+its copy (without them those cells repeat the game locale).
 The group's behaviour tests (`packages/engine/tests/<group>.test.ts`)
 mount its members the same way.
 

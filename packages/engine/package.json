@@ -55,6 +55,13 @@
     "extensions",
     "!extensions/*/preview",
     "ui-sheet",
+    "sheets",
+    "!sheets/style",
+    "!sheets/*/references",
+    "!sheets/*/verify.ts",
+    "!sheets/*/cooked",
+    "!sheets/*/og-out",
+    "!sheets/*/.og",
     "motion",
     "motion.json",
     "changelog.json"
