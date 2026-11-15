@@ -191,6 +191,7 @@ pub use visibility::lod;
 use visibility::meshlet_gpu;
 pub mod particles;
 use gpu::pipeline_cache;
+pub use og_draw::kurbo;
 use particles::particles_gpu;
 pub use pipeline_cache::set_pipeline_cache_dir;
 pub use pipeline_features::LitFeatures;
@@ -206,8 +207,9 @@ pub use ui::{
     UiMaterialHandle, UiMaterialShader, UiMode, UiOccluder, UiOcclusion, UiPaint, UiParticleShape,
     UiPath, UiRepeat, UiShape, UiSpread, UiStop, UiStroke, UiTextEffects, UiTextOutline,
     UiTextShadow, UiTransfer, UiVectorData, UiVectorDraw, UiVectorHandle, UiVectorPaint,
-    UiVectorStroke, UiVectorVertex, UiVerb, example_ui_material, flatten_cubic, flatten_quad,
-    format_number, oklab, oklab_to_linear, square_to_quad, ui_material_module_source, ui_scrim,
+    UiVectorStroke, UiVectorVertex, example_ui_material, flatten_cubic, format_number, glam_vec2,
+    kurbo_point, oklab, oklab_to_linear, polylines, square_to_quad, ui_material_module_source,
+    ui_scrim,
 };
 
 thread_local! {

@@ -1,18 +1,19 @@
-//! Vector paths at run time (`docs/ui.md` §3.3): [`UiPath`], contours of
-//! lines and quadratic and cubic Béziers drawn as a [`super::UiGeometry::Path`]
+//! Vector paths at run time (`docs/ui.md` §3.3): [`UiPath`], a kurbo
+//! `BezPath` of lines and quadratic and cubic Béziers drawn as a [`super::UiGeometry::Path`]
 //! with nothing cooked, so a path can change every frame (a chart, a morph,
 //! an imported animation's shapes).
 //!
 //! The pass draws a path as every other shape: a signed distance evaluated
 //! per pixel, so its fill, outline strokes, shadows and glows take the same
 //! paints and effects at any scale. The CPU side ([`PathGpu`]) turns its
-//! cubics into quadratics (kurbo's midpoint approximation) and sorts the
+//! cubics into quadratics (kurbo's `CubicBez::to_quads`) and sorts the
 //! curves into horizontal bands (Slug's banding); the fragment gathers the
 //! curves of its band only: the distance to each (Inigo Quilez's closed
 //! form) and the winding number of a ray to +x through it (Slug's root
 //! eligibility, exact at shared endpoints). See `third_party/vector-paths/`.
 
 use glam::Vec2;
+use kurbo::{BezPath, CubicBez, PathEl, Point};
 
 /// Which points a closed path covers.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -24,39 +25,11 @@ pub enum UiFillRule {
     EvenOdd,
 }
 
-/// One step of a [`UiPath`]; its points follow in [`UiPath::points`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum UiVerb {
-    /// Starts a contour at one point.
-    Move,
-    /// A line to one point.
-    Line,
-    /// A quadratic Bézier: its control and its end.
-    Quad,
-    /// A cubic Bézier: its two controls and its end.
-    Cubic,
-    /// Closes the contour back to its start. Fills close every contour.
-    Close,
-}
-
-impl UiVerb {
-    /// How many points it takes.
-    pub fn points(self) -> usize {
-        match self {
-            UiVerb::Move | UiVerb::Line => 1,
-            UiVerb::Quad => 2,
-            UiVerb::Cubic => 3,
-            UiVerb::Close => 0,
-        }
-    }
-}
-
 /// A vector path in a shape's local space (CSS px about its centre, y
-/// down): contours of lines and Béziers, filled by its rule.
+/// down): kurbo's contours of lines and Béziers, filled by its rule.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct UiPath {
-    pub verbs: Vec<UiVerb>,
-    pub points: Vec<Vec2>,
+    pub path: BezPath,
     pub fill_rule: UiFillRule,
 }
 
@@ -67,69 +40,30 @@ pub struct Quad {
     pub line: bool,
 }
 
+/// A point as kurbo's.
+pub fn kurbo_point(v: Vec2) -> Point {
+    Point::new(f64::from(v.x), f64::from(v.y))
+}
+
+/// A kurbo point as glam's.
+pub fn glam_vec2(p: Point) -> Vec2 {
+    Vec2::new(p.x as f32, p.y as f32)
+}
+
 impl UiPath {
-    pub fn new() -> UiPath {
-        UiPath::default()
-    }
-
-    pub fn move_to(&mut self, p: Vec2) -> &mut UiPath {
-        self.verbs.push(UiVerb::Move);
-        self.points.push(p);
-        self
-    }
-
-    pub fn line_to(&mut self, p: Vec2) -> &mut UiPath {
-        self.verbs.push(UiVerb::Line);
-        self.points.push(p);
-        self
-    }
-
-    pub fn quad_to(&mut self, c: Vec2, p: Vec2) -> &mut UiPath {
-        self.verbs.push(UiVerb::Quad);
-        self.points.extend([c, p]);
-        self
-    }
-
-    pub fn cubic_to(&mut self, c1: Vec2, c2: Vec2, p: Vec2) -> &mut UiPath {
-        self.verbs.push(UiVerb::Cubic);
-        self.points.extend([c1, c2, p]);
-        self
-    }
-
-    pub fn close(&mut self) -> &mut UiPath {
-        self.verbs.push(UiVerb::Close);
-        self
-    }
-
-    /// An ellipse centred on `c` with radii `r` (four cubics, clockwise on
-    /// screen).
-    pub fn ellipse(&mut self, c: Vec2, r: Vec2) -> &mut UiPath {
-        // The control distance of a quarter circle (0.5523).
-        let k = 4.0 / 3.0 * (std::f32::consts::SQRT_2 - 1.0);
-        let (x, y) = (Vec2::new(r.x, 0.0), Vec2::new(0.0, r.y));
-        self.move_to(c + x);
-        self.cubic_to(c + x + y * k, c + y + x * k, c + y);
-        self.cubic_to(c + y - x * k, c - x + y * k, c - x);
-        self.cubic_to(c - x - y * k, c - y - x * k, c - y);
-        self.cubic_to(c - y + x * k, c + x - y * k, c + x);
-        self.close()
-    }
-
-    /// Whether its verbs and points agree (each verb has its points, every
-    /// it starts with a move) and every point is finite.
+    /// Whether it starts with a move (kurbo's rule) and every point is
+    /// finite.
     pub fn check(&self) -> Result<(), String> {
-        if self.verbs.first().is_some_and(|v| *v != UiVerb::Move) {
+        if self
+            .path
+            .elements()
+            .first()
+            .is_some_and(|e| !matches!(e, PathEl::MoveTo(_)))
+        {
             return Err("a path starts with a move".into());
         }
-        let at: usize = self.verbs.iter().map(|v| v.points()).sum();
-        if at != self.points.len() {
-            return Err(format!(
-                "a path's verbs take {at} points, it has {}",
-                self.points.len()
-            ));
-        }
-        if let Some(p) = self.points.iter().find(|p| !p.is_finite()) {
-            return Err(format!("a path's point {p} is not finite"));
+        if !self.path.is_finite() {
+            return Err("a path's points are not all finite".into());
         }
         Ok(())
     }
@@ -137,35 +71,46 @@ impl UiPath {
     /// The box of its points (controls included, so it holds the curves):
     /// min and max; `None` when it has none.
     pub fn bounds(&self) -> Option<(Vec2, Vec2)> {
-        let mut it = self.points.iter().filter(|p| p.is_finite());
-        let first = *it.next()?;
-        Some(it.fold((first, first), |(lo, hi), p| (lo.min(*p), hi.max(*p))))
-    }
-
-    /// Every point through `f` (an affine map keeps the curves exact).
-    pub fn map(&self, f: impl Fn(Vec2) -> Vec2) -> UiPath {
-        UiPath {
-            verbs: self.verbs.clone(),
-            points: self.points.iter().map(|p| f(*p)).collect(),
-            fill_rule: self.fill_rule,
+        if self.path.elements().is_empty() {
+            return None;
         }
+        let b = self.path.control_box();
+        Some((
+            glam_vec2(Point::new(b.x0, b.y0)),
+            glam_vec2(Point::new(b.x1, b.y1)),
+        ))
     }
 
     /// The path `t` of the way from this one to `to` (path morphing): the
     /// points interpolated one by one, `None` unless both have the same
-    /// verbs. `t` is not clamped, so an overshooting ease overshoots.
+    /// elements. `t` is not clamped, so an overshooting ease overshoots.
     pub fn lerp(&self, to: &UiPath, t: f32) -> Option<UiPath> {
-        if self.verbs != to.verbs || self.points.len() != to.points.len() {
+        let (a, b) = (self.path.elements(), to.path.elements());
+        if a.len() != b.len() {
             return None;
         }
+        let t = f64::from(t);
+        let l = |p: Point, q: Point| p.lerp(q, t);
+        let elements = a
+            .iter()
+            .zip(b)
+            .map(|(x, y)| {
+                Some(match (*x, *y) {
+                    (PathEl::MoveTo(p), PathEl::MoveTo(q)) => PathEl::MoveTo(l(p, q)),
+                    (PathEl::LineTo(p), PathEl::LineTo(q)) => PathEl::LineTo(l(p, q)),
+                    (PathEl::QuadTo(p1, p2), PathEl::QuadTo(q1, q2)) => {
+                        PathEl::QuadTo(l(p1, q1), l(p2, q2))
+                    }
+                    (PathEl::CurveTo(p1, p2, p3), PathEl::CurveTo(q1, q2, q3)) => {
+                        PathEl::CurveTo(l(p1, q1), l(p2, q2), l(p3, q3))
+                    }
+                    (PathEl::ClosePath, PathEl::ClosePath) => PathEl::ClosePath,
+                    _ => return None,
+                })
+            })
+            .collect::<Option<Vec<_>>>()?;
         Some(UiPath {
-            verbs: self.verbs.clone(),
-            points: self
-                .points
-                .iter()
-                .zip(&to.points)
-                .map(|(a, b)| *a + (*b - *a) * t)
-                .collect(),
+            path: BezPath::from_vec(elements),
             fill_rule: if t < 0.5 {
                 self.fill_rule
             } else {
@@ -174,126 +119,116 @@ impl UiPath {
         })
     }
 
-    /// Each contour as quadratics, closed back to its start; cubics are
-    /// split until each quadratic is within `tolerance` of its piece.
+    /// Each contour as quadratics, closed back to its start; a cubic is
+    /// kurbo's quadratics within `tolerance` of it (`CubicBez::to_quads`,
+    /// the midpoint approximation).
     pub fn quads(&self, tolerance: f32) -> Vec<Quad> {
+        let tolerance = f64::from(tolerance.max(1e-4));
         let mut out = Vec::new();
-        let mut pts = self.points.iter().copied();
-        let (mut start, mut at) = (Vec2::ZERO, Vec2::ZERO);
-        let mut open = false;
-        let close = |out: &mut Vec<Quad>, at: Vec2, start: Vec2| {
-            if at != start {
-                out.push(line(at, start));
+        let (mut start, mut at) = (None::<Point>, Point::ORIGIN);
+        let close = |out: &mut Vec<Quad>, at: Point, start: Option<Point>| {
+            if let Some(s) = start
+                && at != s
+            {
+                out.push(line(glam_vec2(at), glam_vec2(s)));
             }
         };
-        for v in &self.verbs {
-            // Drawing on after a close starts a contour where it closed (SVG).
-            if !open && matches!(v, UiVerb::Line | UiVerb::Quad | UiVerb::Cubic) {
-                start = at;
-                open = true;
-            }
-            match v {
-                UiVerb::Move => {
-                    if open {
-                        close(&mut out, at, start);
-                    }
-                    start = pts.next().unwrap_or(at);
-                    at = start;
-                    open = true;
+        for el in self.path.iter() {
+            match el {
+                PathEl::MoveTo(p) => {
+                    close(&mut out, at, start);
+                    (start, at) = (Some(p), p);
                 }
-                UiVerb::Line => {
-                    let p = pts.next().unwrap_or(at);
+                PathEl::LineTo(p) => {
                     if p != at {
-                        out.push(line(at, p));
+                        out.push(line(glam_vec2(at), glam_vec2(p)));
                     }
                     at = p;
                 }
-                UiVerb::Quad => {
-                    let c = pts.next().unwrap_or(at);
-                    let p = pts.next().unwrap_or(c);
-                    out.push(quad(at, c, p));
+                PathEl::QuadTo(c, p) => {
+                    out.push(quad(glam_vec2(at), glam_vec2(c), glam_vec2(p)));
                     at = p;
                 }
-                UiVerb::Cubic => {
-                    let c1 = pts.next().unwrap_or(at);
-                    let c2 = pts.next().unwrap_or(c1);
-                    let p = pts.next().unwrap_or(c2);
-                    cubic_to_quads(at, c1, c2, p, tolerance, &mut out);
-                    at = p;
-                }
-                UiVerb::Close => {
-                    if open {
-                        close(&mut out, at, start);
+                PathEl::CurveTo(c1, c2, p) => {
+                    for (_, _, q) in CubicBez::new(at, c1, c2, p).to_quads(tolerance) {
+                        out.push(quad(glam_vec2(q.p0), glam_vec2(q.p1), glam_vec2(q.p2)));
                     }
-                    at = start;
-                    open = false;
+                    at = p;
+                }
+                PathEl::ClosePath => {
+                    close(&mut out, at, start);
+                    at = start.unwrap_or(at);
                 }
             }
         }
-        if open {
-            close(&mut out, at, start);
-        }
+        close(&mut out, at, start);
         out.retain(|q| q.p.iter().all(|p| p.is_finite()));
         out
     }
+}
 
-    /// Each contour flattened into a polyline no further than `tolerance`
-    /// from the curves, and whether it is closed: what a line along the
-    /// path (a [`super::UiGeometry::Polyline`] with joins and caps) draws.
-    pub fn flatten(&self, tolerance: f32) -> Vec<(Vec<Vec2>, bool)> {
-        let mut out: Vec<(Vec<Vec2>, bool)> = Vec::new();
-        let mut cur: Vec<Vec2> = Vec::new();
-        let mut pts = self.points.iter().copied();
-        let mut at = Vec2::ZERO;
-        let flush = |cur: &mut Vec<Vec2>, out: &mut Vec<(Vec<Vec2>, bool)>, closed: bool| {
-            if cur.len() > 1 {
-                out.push((std::mem::take(cur), closed));
-            }
-            cur.clear();
-        };
-        for v in &self.verbs {
-            match v {
-                UiVerb::Move => {
-                    flush(&mut cur, &mut out, false);
-                    at = pts.next().unwrap_or(at);
-                    cur.push(at);
-                }
-                UiVerb::Line => {
-                    at = pts.next().unwrap_or(at);
-                    cur.push(at);
-                }
-                UiVerb::Quad => {
-                    let c = pts.next().unwrap_or(at);
-                    let p = pts.next().unwrap_or(c);
-                    cur.extend(super::flatten_quad(at, c, p, tolerance).into_iter().skip(1));
-                    at = p;
-                }
-                UiVerb::Cubic => {
-                    let c1 = pts.next().unwrap_or(at);
-                    let c2 = pts.next().unwrap_or(c1);
-                    let p = pts.next().unwrap_or(c2);
-                    cur.extend(
-                        super::flatten_cubic(at, c1, c2, p, tolerance)
-                            .into_iter()
-                            .skip(1),
-                    );
-                    at = p;
-                }
-                UiVerb::Close => {
-                    if let Some(first) = cur.first().copied() {
-                        if cur.len() > 1 && cur.last() == Some(&first) {
-                            cur.pop();
-                        }
-                        flush(&mut cur, &mut out, true);
-                        at = first;
-                        cur.push(first);
-                    }
-                }
+/// Path elements flattened by kurbo into polylines no further than
+/// `tolerance` from the curves, each with whether it closes: what a line
+/// along the path (a [`super::UiGeometry::Polyline`] with joins and caps)
+/// draws. A point repeated in place is dropped (a joint of no length has
+/// no direction for its miter), as is a closed contour's last point where
+/// it is its first.
+pub fn polylines(path: impl IntoIterator<Item = PathEl>, tolerance: f32) -> Vec<(Vec<Vec2>, bool)> {
+    let mut out: Vec<(Vec<Vec2>, bool)> = Vec::new();
+    let mut cur: Vec<Vec2> = Vec::new();
+    let flush = |cur: &mut Vec<Vec2>, out: &mut Vec<(Vec<Vec2>, bool)>, closed: bool| {
+        if closed
+            && cur.len() > 2
+            && cur
+                .first()
+                .zip(cur.last())
+                .is_some_and(|(a, b)| a.distance_squared(*b) <= 1e-12)
+        {
+            cur.pop();
+        }
+        if cur.len() > 1 {
+            out.push((std::mem::take(cur), closed));
+        }
+        cur.clear();
+    };
+    kurbo::flatten(path, f64::from(tolerance.max(1e-4)), |el| match el {
+        PathEl::MoveTo(p) => {
+            flush(&mut cur, &mut out, false);
+            cur.push(glam_vec2(p));
+        }
+        PathEl::LineTo(p) => {
+            let p = glam_vec2(p);
+            if cur.last().is_none_or(|l| l.distance_squared(p) > 1e-12) {
+                cur.push(p);
             }
         }
-        flush(&mut cur, &mut out, false);
-        out
-    }
+        PathEl::ClosePath => {
+            let first = cur.first().copied();
+            flush(&mut cur, &mut out, true);
+            // Drawing on without a move starts where it closed.
+            cur.extend(first);
+        }
+        PathEl::QuadTo(..) | PathEl::CurveTo(..) => unreachable!("kurbo flattens to lines"),
+    });
+    flush(&mut cur, &mut out, false);
+    out
+}
+
+/// One cubic flattened by kurbo into points (the first included) no
+/// further than `tolerance` from it, for a caller that holds its curves as
+/// points (CSS `shape-outside`).
+pub fn flatten_cubic(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, tolerance: f32) -> Vec<Vec2> {
+    let mut out = vec![p0];
+    let c = [
+        PathEl::MoveTo(kurbo_point(p0)),
+        PathEl::CurveTo(kurbo_point(p1), kurbo_point(p2), kurbo_point(p3)),
+    ];
+    kurbo::flatten(c, f64::from(tolerance.max(1e-4)), |el| {
+        if let PathEl::LineTo(p) = el {
+            out.push(glam_vec2(p));
+        }
+    });
+    out
 }
 
 fn line(a: Vec2, b: Vec2) -> Quad {
@@ -319,33 +254,6 @@ fn quad(a: Vec2, c: Vec2, b: Vec2) -> Quad {
     Quad {
         p: [a, c, b],
         line: false,
-    }
-}
-
-/// A cubic as quadratics within `tolerance` of it: kurbo's midpoint
-/// approximation (`CubicBez::to_quads`), whose error over n equal pieces is
-/// √3/36 · |p3 − 3p2 + 3p1 − p0| / n³.
-fn cubic_to_quads(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, tolerance: f32, out: &mut Vec<Quad>) {
-    let err = ((3.0 * p2 - p3) - (3.0 * p1 - p0)).length_squared();
-    let max = 432.0 * tolerance.max(1e-4).powi(2);
-    let n = ((err / max).powf(1.0 / 6.0).ceil() as usize).clamp(1, 64);
-    let at = |t: f32| {
-        let u = 1.0 - t;
-        p0 * (u * u * u) + p1 * (3.0 * u * u * t) + p2 * (3.0 * u * t * t) + p3 * (t * t * t)
-    };
-    // The derivative, for each piece's end tangents.
-    let d = |t: f32| {
-        let u = 1.0 - t;
-        3.0 * ((p1 - p0) * (u * u) + (p2 - p1) * (2.0 * u * t) + (p3 - p2) * (t * t))
-    };
-    for i in 0..n {
-        let (t0, t1) = (i as f32 / n as f32, (i + 1) as f32 / n as f32);
-        let (a, b) = (at(t0), at(t1));
-        let h = (t1 - t0) / 3.0;
-        // The piece's own controls, then the midpoint quadratic of them.
-        let (c1, c2) = (a + d(t0) * h, b - d(t1) * h);
-        let c = (3.0 * (c1 + c2) - a - b) * 0.25;
-        out.push(quad(a, c, b));
     }
 }
 
@@ -569,6 +477,7 @@ fn crossings(a: Vec2, b: Vec2, c: Vec2) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use kurbo::Shape;
 
     fn square(path: &mut UiPath, at: Vec2, size: f32, clockwise: bool) {
         let c = [
@@ -576,45 +485,23 @@ mod tests {
             at + Vec2::new(size, 0.0),
             at + Vec2::splat(size),
             at + Vec2::new(0.0, size),
-        ];
-        path.move_to(c[0]);
+        ]
+        .map(kurbo_point);
+        let p = &mut path.path;
+        p.move_to(c[0]);
         if clockwise {
-            path.line_to(c[1]).line_to(c[2]).line_to(c[3]);
+            [1, 2, 3].into_iter().for_each(|k| p.line_to(c[k]));
         } else {
-            path.line_to(c[3]).line_to(c[2]).line_to(c[1]);
+            [3, 2, 1].into_iter().for_each(|k| p.line_to(c[k]));
         }
-        path.close();
+        p.close_path();
     }
 
-    #[test]
-    fn a_cubic_becomes_quadratics_within_its_tolerance() {
-        let (p0, p1, p2, p3) = (
-            Vec2::ZERO,
-            Vec2::new(0.0, 100.0),
-            Vec2::new(100.0, 100.0),
-            Vec2::new(100.0, 0.0),
-        );
-        let mut out = Vec::new();
-        cubic_to_quads(p0, p1, p2, p3, 0.05, &mut out);
-        assert!(out.len() > 1 && out.len() < 16, "{}", out.len());
-        let cubic = |t: f32| {
-            let u = 1.0 - t;
-            p0 * (u * u * u) + p1 * (3.0 * u * u * t) + p2 * (3.0 * u * t * t) + p3 * (t * t * t)
-        };
-        let n = out.len();
-        for (i, q) in out.iter().enumerate() {
-            for k in 0..=8 {
-                let s = k as f32 / 8.0;
-                let u = 1.0 - s;
-                let on = q.p[0] * u * u + q.p[1] * 2.0 * u * s + q.p[2] * s * s;
-                // The quadratic's point against the cubic at the same share
-                // of its piece: an upper bound on the distance between them.
-                let d = on.distance(cubic((i as f32 + s) / n as f32));
-                assert!(d < 0.1, "piece {i} at {s}: {d}");
-            }
+    fn circle(c: Vec2, r: f32) -> UiPath {
+        UiPath {
+            path: kurbo::Circle::new(kurbo_point(c), f64::from(r)).to_path(0.01),
+            ..UiPath::default()
         }
-        assert_eq!(out[0].p[0], p0);
-        assert!(out[n - 1].p[2].distance(p3) < 1e-4);
     }
 
     /// The winding number counts each contour with its direction: a
@@ -629,7 +516,7 @@ mod tests {
             (false, UiFillRule::NonZero, true),
             (false, UiFillRule::EvenOdd, true),
         ] {
-            let mut p = UiPath::new();
+            let mut p = UiPath::default();
             square(&mut p, Vec2::ZERO, 100.0, true);
             square(&mut p, Vec2::splat(30.0), 40.0, inner_cw);
             p.fill_rule = rule;
@@ -660,8 +547,7 @@ mod tests {
     /// margin; past it the distance is at least the margin.
     #[test]
     fn a_circle_measures_as_a_circle() {
-        let mut p = UiPath::new();
-        p.ellipse(Vec2::new(10.0, -4.0), Vec2::splat(60.0));
+        let p = circle(Vec2::new(10.0, -4.0), 60.0);
         let mut table = Vec::new();
         let g = write(&p, 3.0, 0.01, &mut table).expect("curves");
         assert!(g.geo[2] > 1.0, "bands: {}", g.geo[2]);
@@ -692,13 +578,15 @@ mod tests {
                 let a = -std::f32::consts::FRAC_PI_2 + k as f32 * 4.0 * std::f32::consts::PI / 5.0;
                 Vec2::from_angle(a) * 64.0
             };
-            let mut p = UiPath::new();
-            p.move_to(v(0));
+            let mut p = UiPath {
+                fill_rule: rule,
+                ..UiPath::default()
+            };
+            p.path.move_to(kurbo_point(v(0)));
             for k in 1..5 {
-                p.line_to(v(k));
+                p.path.line_to(kurbo_point(v(k)));
             }
-            p.close();
-            p.fill_rule = rule;
+            p.path.close_path();
             p
         };
         // The middle of the pentagon's top edge: 64·cos 72° up, on a line
@@ -718,30 +606,32 @@ mod tests {
 
     #[test]
     fn paths_morph_only_between_the_same_verbs() {
-        let mut a = UiPath::new();
-        a.ellipse(Vec2::ZERO, Vec2::splat(10.0));
-        let b = a.map(|p| p * 3.0);
-        let mid = a.lerp(&b, 0.5).expect("same verbs");
-        assert_eq!(mid.points[0], Vec2::new(20.0, 0.0));
-        let mut other = UiPath::new();
+        let a = circle(Vec2::ZERO, 10.0);
+        let b = UiPath {
+            path: kurbo::Affine::scale(3.0) * &a.path,
+            ..a.clone()
+        };
+        let mid = a.lerp(&b, 0.5).expect("same elements");
+        assert_eq!(
+            mid.path.elements()[0],
+            PathEl::MoveTo(Point::new(20.0, 0.0))
+        );
+        let mut other = UiPath::default();
         square(&mut other, Vec2::ZERO, 1.0, true);
         assert!(a.lerp(&other, 0.5).is_none());
         assert!(a.check().is_ok());
         let mut bad = a.clone();
-        bad.points.pop();
+        bad.path.elements_mut()[1] = PathEl::LineTo(Point::new(f64::NAN, 0.0));
         assert!(bad.check().is_err());
     }
 
     #[test]
     fn a_path_flattens_into_its_contours() {
-        let mut p = UiPath::new();
+        let mut p = UiPath::default();
         square(&mut p, Vec2::ZERO, 10.0, true);
-        p.move_to(Vec2::new(20.0, 0.0)).cubic_to(
-            Vec2::new(20.0, 10.0),
-            Vec2::new(30.0, 10.0),
-            Vec2::new(30.0, 0.0),
-        );
-        let lines = p.flatten(0.1);
+        p.path.move_to((20.0, 0.0));
+        p.path.curve_to((20.0, 10.0), (30.0, 10.0), (30.0, 0.0));
+        let lines = polylines(&p.path, 0.1);
         assert_eq!(lines.len(), 2);
         assert_eq!(lines[0].0.len(), 4);
         assert!(lines[0].1);

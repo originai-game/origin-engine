@@ -7,12 +7,13 @@
 use crate::draw::DrawCmd;
 use crate::motion::codec::{MotionRead, MotionWrite, R, W};
 use og_core::glam::Vec2;
+use og_draw::kurbo::PathEl;
 use og_draw::{
     TextureHandle, UiAlign, UiBackgroundSize, UiBlend, UiBuiltin, UiCap, UiCorner, UiEdge,
     UiFillRule, UiFilter, UiFilterComposite, UiFilterInput, UiFilterOp, UiFilterPrimitive, UiFit,
     UiGeometry, UiGradient, UiGradientKind, UiImage, UiJoin, UiLight, UiMask, UiMaterial,
     UiMaterialHandle, UiMode, UiPaint, UiPath, UiRepeat, UiShape, UiSpread, UiStop, UiStroke,
-    UiTextEffects, UiTextOutline, UiTextShadow, UiTransfer, UiVectorHandle, UiVerb,
+    UiTextEffects, UiTextOutline, UiTextShadow, UiTransfer, UiVectorHandle,
 };
 
 fn v2(w: &mut W, v: Vec2) {
@@ -542,25 +543,39 @@ fn geometry(w: &mut W, g: &UiGeometry) {
         UiGeometry::Path(path) => {
             w.u8(5);
             w.u8(u8::from(path.fill_rule == UiFillRule::EvenOdd));
-            w.u32(path.verbs.len() as u32);
-            for v in &path.verbs {
-                w.u8(index_of(&VERBS, v));
+            // Its elements' tags (move, line, quad, cubic, close), then
+            // their points.
+            let els = path.path.elements();
+            w.u32(els.len() as u32);
+            let mut points = Vec::new();
+            for el in els {
+                w.u8(match *el {
+                    PathEl::MoveTo(p) => {
+                        points.push(p);
+                        0
+                    }
+                    PathEl::LineTo(p) => {
+                        points.push(p);
+                        1
+                    }
+                    PathEl::QuadTo(p1, p2) => {
+                        points.extend([p1, p2]);
+                        2
+                    }
+                    PathEl::CurveTo(p1, p2, p3) => {
+                        points.extend([p1, p2, p3]);
+                        3
+                    }
+                    PathEl::ClosePath => 4,
+                });
             }
-            w.u32(path.points.len() as u32);
-            for p in &path.points {
-                v2(w, *p);
+            w.u32(points.len() as u32);
+            for p in points {
+                v2(w, og_draw::glam_vec2(p));
             }
         }
     }
 }
-
-const VERBS: [UiVerb; 5] = [
-    UiVerb::Move,
-    UiVerb::Line,
-    UiVerb::Quad,
-    UiVerb::Cubic,
-    UiVerb::Close,
-];
 
 fn rgeometry(r: &mut R) -> Option<UiGeometry> {
     Some(match r.u8()? {
@@ -622,15 +637,35 @@ fn rgeometry(r: &mut R) -> Option<UiGeometry> {
                 ..UiPath::default()
             };
             let n = r.u32()? as usize;
-            path.verbs.reserve(n.min(4096));
+            let mut tags = Vec::with_capacity(n.min(4096));
             for _ in 0..n {
-                path.verbs.push(*VERBS.get(r.u8()? as usize)?);
+                tags.push(r.u8()?);
             }
             let n = r.u32()? as usize;
-            path.points.reserve(n.min(4096));
+            let mut points = Vec::with_capacity(n.min(4096));
             for _ in 0..n {
-                path.points.push(rv2(r)?);
+                points.push(og_draw::kurbo_point(rv2(r)?));
             }
+            let mut at = points.into_iter();
+            let mut els = Vec::with_capacity(tags.len());
+            for t in tags {
+                els.push(match t {
+                    0 => PathEl::MoveTo(at.next()?),
+                    1 => PathEl::LineTo(at.next()?),
+                    2 => PathEl::QuadTo(at.next()?, at.next()?),
+                    3 => PathEl::CurveTo(at.next()?, at.next()?, at.next()?),
+                    4 => PathEl::ClosePath,
+                    _ => return None,
+                });
+            }
+            if at.next().is_some() {
+                return None;
+            }
+            // A path starts with a move, checked before kurbo takes it.
+            if els.first().is_some_and(|e| !matches!(e, PathEl::MoveTo(_))) {
+                return None;
+            }
+            path.path = og_draw::kurbo::BezPath::from_vec(els);
             path.check().ok()?;
             UiGeometry::Path(std::sync::Arc::new(path))
         }
@@ -1522,22 +1557,22 @@ mod tests {
         }
     }
 
-    /// A run-time path keeps its verbs, points and even-odd rule (a
+    /// A run-time path keeps its elements, points and even-odd rule (a
     /// leaving chart or imported shape draws as it left); a cut-short one
     /// reads as nothing, not as a different path.
     #[test]
     fn a_vector_path_keeps_its_curves_through_the_codec() {
-        let mut path = UiPath::new();
-        path.move_to(Vec2::new(1.0, 2.0))
-            .quad_to(Vec2::new(5.0, -3.0), Vec2::new(9.0, 2.0))
-            .cubic_to(
-                Vec2::new(9.0, 8.0),
-                Vec2::new(1.0, 8.0),
-                Vec2::new(1.0, 4.0),
-            )
-            .close();
-        path.ellipse(Vec2::new(4.0, 4.0), Vec2::new(2.0, 1.0));
-        path.fill_rule = UiFillRule::EvenOdd;
+        let mut path = UiPath {
+            fill_rule: UiFillRule::EvenOdd,
+            ..UiPath::default()
+        };
+        let p = &mut path.path;
+        p.move_to((1.0, 2.0));
+        p.quad_to((5.0, -3.0), (9.0, 2.0));
+        p.curve_to((9.0, 8.0), (1.0, 8.0), (1.0, 4.0));
+        p.close_path();
+        p.move_to((6.0, 4.0));
+        p.curve_to((6.0, 4.5), (5.0, 5.0), (4.0, 5.0));
         let g = UiGeometry::Path(std::sync::Arc::new(path));
         let mut bytes = Vec::new();
         geometry(&mut W(&mut bytes), &g);

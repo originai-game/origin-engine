@@ -125,14 +125,7 @@ fn markers_lines_text_paths_and_foreign_objects_draw_in_the_view_box() {
                 (og_draw::UiPaint::Solid(c), og_draw::UiGeometry::Path(p))
                     if c[2] > 0.9 && c[0] < 0.1 =>
                 {
-                    let lo = p
-                        .points
-                        .iter()
-                        .fold(Vec2::splat(f32::MAX), |m, q| m.min(*q));
-                    let hi = p
-                        .points
-                        .iter()
-                        .fold(Vec2::splat(f32::MIN), |m, q| m.max(*q));
+                    let (lo, hi) = p.bounds().unwrap();
                     let mid = shape.center + (lo + hi) / 2.0;
                     Some(((mid - o) / 2.0, (hi - lo) / 4.0))
                 }
@@ -272,8 +265,7 @@ fn smil_animations_play_on_the_ui_clock() {
                 .filter_map(|it| match &it.cmd {
                     DrawCmd::Shape { shape, .. } => match (&shape.paint, &shape.geometry) {
                         (og_draw::UiPaint::Solid(c), og_draw::UiGeometry::Path(p)) => {
-                            let lo = p.points.iter().fold(f32::MAX, |m, q| m.min(q.x));
-                            let hi = p.points.iter().fold(f32::MIN, |m, q| m.max(q.x));
+                            let (lo, hi) = p.bounds().map(|(a, b)| (a.x, b.x)).unwrap();
                             let x = shape.center.x - s.x;
                             Some(([c[0], c[1], c[2]], x + lo, x + hi))
                         }
@@ -475,8 +467,7 @@ fn an_fe_image_of_an_element_draws_it_mounted() {
                         let og_draw::UiGeometry::Path(p) = &shape.geometry else {
                             panic!("a path: {:?}", shape.geometry);
                         };
-                        let lo = p.points.iter().fold(Vec2::MAX, |m, q| m.min(*q));
-                        let hi = p.points.iter().fold(Vec2::MIN, |m, q| m.max(*q));
+                        let (lo, hi) = p.bounds().unwrap();
                         Some(shape.center + (lo + hi) / 2.0 - Vec2::new(b.x, b.y))
                     }
                     _ => None,

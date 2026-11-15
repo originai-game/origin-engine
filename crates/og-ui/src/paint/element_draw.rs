@@ -941,7 +941,11 @@ fn rive_cmd(d: crate::rive::Drawn, clip: Rect) -> DrawCmd {
             let (lo, hi) = path.bounds().unwrap_or_default();
             let c = (lo + hi) * 0.5;
             DrawCmd::PushClip {
-                geometry: og_draw::UiGeometry::Path(std::sync::Arc::new(path.map(|q| q - c))),
+                geometry: og_draw::UiGeometry::Path(std::sync::Arc::new(og_draw::UiPath {
+                    path: og_draw::kurbo::Affine::translate(-og_draw::kurbo_point(c).to_vec2())
+                        * path.path,
+                    ..path
+                })),
                 center: (c.x, c.y),
                 half: ((hi.x - lo.x) / 2.0, (hi.y - lo.y) / 2.0),
             }
@@ -1027,45 +1031,11 @@ fn outline(kind: &ShapeKind, frame: [f32; 4], tol: f32) -> (Vec<Vec<Vec2>>, bool
             contours,
             ..
         } => {
-            let whole = [points.len() as u32];
-            let counts: &[u32] = if contours.is_empty() {
-                &whole
-            } else {
-                contours
-            };
-            let mut rest: &[[f32; 2]] = points;
-            let mut out = Vec::new();
-            for &n in counts {
-                let (c, more) = rest.split_at((n as usize).min(rest.len()));
-                rest = more;
-                let Some(first) = c.first() else { continue };
-                let mut line = vec![Vec2::from(*first)];
-                if *curves {
-                    for seg in c[1..].as_chunks::<3>().0 {
-                        let [p0, p1, p2, p3] = [
-                            *line.last().unwrap(),
-                            seg[0].into(),
-                            seg[1].into(),
-                            seg[2].into(),
-                        ];
-                        let len = p0.distance(p1) + p1.distance(p2) + p2.distance(p3);
-                        let steps = ((len / tol.max(1e-3)).sqrt().ceil() as usize).clamp(1, 64);
-                        for k in 1..=steps {
-                            let t = k as f32 / steps as f32;
-                            let u = 1.0 - t;
-                            line.push(
-                                p0 * (u * u * u)
-                                    + p1 * (3.0 * u * u * t)
-                                    + p2 * (3.0 * u * t * t)
-                                    + p3 * (t * t * t),
-                            );
-                        }
-                    }
-                } else {
-                    line.extend(c[1..].iter().map(|p| Vec2::from(*p)));
-                }
-                out.push(line);
-            }
+            let path = crate::paint::path_of(points, contours, *curves, false, Vec2::ZERO);
+            let out = og_draw::polylines(&path, tol)
+                .into_iter()
+                .map(|(line, _)| line)
+                .collect();
             (out, *closed || *filled, *fill_rule)
         }
         ShapeKind::Ellipse => {

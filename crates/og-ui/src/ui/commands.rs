@@ -1613,8 +1613,7 @@ fn outline_length(geometry: &og_draw::UiGeometry, half: og_core::glam::Vec2) -> 
         G::Arc { sweep, .. } => sweep.abs().min(std::f32::consts::TAU) * half.x.min(half.y),
         G::Polygon { .. } => 0.0,
         G::Polyline { points, closed, .. } => polyline(points, *closed),
-        G::Path(path) => path
-            .flatten(0.25)
+        G::Path(path) => og_draw::polylines(&path.path, 0.25)
             .iter()
             .map(|(points, closed)| polyline(points, *closed))
             .sum(),

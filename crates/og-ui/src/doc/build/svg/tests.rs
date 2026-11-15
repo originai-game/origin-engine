@@ -288,7 +288,7 @@ fn svg_definitions_draw_and_cost_only_what_changed() {
         (g.from.x - 0.6).abs() < 1e-3 && (g.to.x - 0.8).abs() < 1e-3,
         "{g:?}"
     );
-    let dots = all.iter().find(|s| matches!(&s.geometry, og_draw::UiGeometry::Path(p) if p.verbs.iter().filter(|v| matches!(v, og_draw::UiVerb::Move)).count() == 16));
+    let dots = all.iter().find(|s| matches!(&s.geometry, og_draw::UiGeometry::Path(p) if p.path.elements().iter().filter(|e| matches!(e, og_draw::kurbo::PathEl::MoveTo(_))).count() == 16));
     assert!(dots.is_some(), "16 dot tiles over the 20×20 rect");
     let name = |ui: &Ui| {
         ui.a11y()

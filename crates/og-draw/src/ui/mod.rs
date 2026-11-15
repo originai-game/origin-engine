@@ -16,7 +16,7 @@ pub use mass::{
     UiMassKind, UiMassSpace, UiMassTemplate, UiOccluder, UiOcclusion, UiParticleShape,
     format_number,
 };
-pub use path::{UiFillRule, UiPath, UiVerb};
+pub use path::{UiFillRule, UiPath, flatten_cubic, glam_vec2, kurbo_point, polylines};
 
 use crate::TextureHandle;
 use glam::Vec2;
@@ -107,7 +107,7 @@ pub enum UiGeometry {
     },
     /// Line segments through `points` (local, relative to the centre) of
     /// `width` CSS px; `half` is ignored (the bounds are the points'). A
-    /// Bézier is flattened into one ([`flatten_cubic`], [`flatten_quad`]).
+    /// Bézier is flattened into one ([`polylines`]).
     Polyline {
         points: Vec<Vec2>,
         closed: bool,
@@ -121,7 +121,7 @@ pub enum UiGeometry {
     /// A vector path ([`UiPath`], local, relative to the centre) of lines
     /// and Béziers, nothing flattened: fills cover it by its fill rule,
     /// strokes outline it (round where it turns, as a band around a
-    /// distance; [`UiPath::flatten`] into polylines for joins, caps and
+    /// distance; [`polylines`] for joins, caps and
     /// dashes), shadows and glows take its outline. The paint's box is the
     /// shape's (`half`), so a path may reach past it.
     Path(std::sync::Arc<UiPath>),
@@ -1029,31 +1029,5 @@ impl UiMaterialHandle {
         self.0 as usize
     }
 }
-/// Flattens a cubic Bézier into points (the first included) no further
-/// than `tolerance` from the curve, for a [`UiGeometry::Polyline`].
-pub fn flatten_cubic(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, tolerance: f32) -> Vec<Vec2> {
-    // The control polygon's deviation bounds the subdivisions (Wang's formula).
-    let dd = ((p0 - 2.0 * p1 + p2).length()).max((p1 - 2.0 * p2 + p3).length());
-    let n = ((0.75 * dd / tolerance.max(1e-3)).sqrt().ceil() as usize).clamp(1, 256);
-    (0..=n)
-        .map(|i| {
-            let t = i as f32 / n as f32;
-            let u = 1.0 - t;
-            p0 * (u * u * u) + p1 * (3.0 * u * u * t) + p2 * (3.0 * u * t * t) + p3 * (t * t * t)
-        })
-        .collect()
-}
-
-/// Flattens a quadratic Bézier as [`flatten_cubic`].
-pub fn flatten_quad(p0: Vec2, p1: Vec2, p2: Vec2, tolerance: f32) -> Vec<Vec2> {
-    flatten_cubic(
-        p0,
-        p0 + (p1 - p0) * (2.0 / 3.0),
-        p2 + (p1 - p2) * (2.0 / 3.0),
-        p2,
-        tolerance,
-    )
-}
-
 /// Oklab, og-core's ([`og_core::color::oklab`]).
 pub use og_core::color::{oklab, oklab_to_linear};

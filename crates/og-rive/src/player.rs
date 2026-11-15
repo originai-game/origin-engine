@@ -4,9 +4,10 @@
 
 use super::*;
 use og_css::Srgba;
+use og_draw::kurbo::{BezPath, PathEl, Point, Shape as _};
 use og_draw::{
     UiBlend, UiGeometry, UiGradient, UiGradientKind, UiJoin, UiMode, UiPaint, UiPath, UiShape,
-    UiSpread, UiStop,
+    UiSpread, UiStop, glam_vec2, kurbo_point,
 };
 use og_ui_model::Affine;
 use og_ui_model::codec::{R, W};
@@ -302,14 +303,13 @@ impl Player {
         };
         // The artboard's background: its frame, in content space.
         if let Kind::Artboard { paints } = &a.nodes[0].kind {
-            let mut frame = UiPath::new();
             let o = -a.origin * a.size;
-            frame
-                .move_to(o)
-                .line_to(o + Vec2::new(a.size.x, 0.0))
-                .line_to(o + a.size)
-                .line_to(o + Vec2::new(0.0, a.size.y))
-                .close();
+            let frame = polygon(&[
+                o,
+                o + Vec2::new(a.size.x, 0.0),
+                o + a.size,
+                o + Vec2::new(0.0, a.size.y),
+            ]);
             for &p in paints {
                 for s in paint_path(a, &pose, &frame, p, screen, &Affine::IDENTITY, alpha[0]) {
                     emit(Some(Drawn::Shape(Box::new(s))), None);
@@ -332,18 +332,12 @@ impl Player {
                     // The shape's paths in its own space, so a gradient and
                     // a stroke that the transform does not scale read it.
                     let to_shape = world[d as usize].invert().unwrap_or(Affine::IDENTITY);
-                    let mut path = UiPath::new();
+                    let mut path = BezPath::new();
                     for &p in paths {
                         let m = to_shape.mul(&world[p as usize]);
-                        let one = outline(a, &pose, p);
-                        let one = one.map(|q| {
-                            let (x, y) = m.apply(q.x, q.y);
-                            Vec2::new(x, y)
-                        });
-                        path.verbs.extend(one.verbs);
-                        path.points.extend(one.points);
+                        path.extend(mapped(&outline(a, &pose, p), &m));
                     }
-                    if path.verbs.is_empty() {
+                    if path.elements().is_empty() {
                         continue;
                     }
                     let to_screen = screen.mul(&world[d as usize]);
@@ -646,14 +640,13 @@ fn draw_text(
     let linear_map = [to_screen.a, to_screen.b, to_screen.c, to_screen.d];
     let unit = to_screen.determinant().abs().sqrt().max(1e-6);
     if let Some(c) = laid.clip {
-        let q = quad(c);
-        let mut path = UiPath::new();
-        path.move_to(q[0])
-            .line_to(q[1])
-            .line_to(q[2])
-            .line_to(q[3])
-            .close();
-        emit(Some(Drawn::Clip(path)), None);
+        emit(
+            Some(Drawn::Clip(UiPath {
+                path: polygon(&quad(c)),
+                ..UiPath::default()
+            })),
+            None,
+        );
     }
     for (piece, pen) in &laid.drawn {
         let r = &laid.runs[piece.run];
@@ -781,7 +774,7 @@ fn linear(c: u32, alpha: f32) -> [f32; 4] {
 fn paint_path(
     a: &Artboard,
     pose: &[Values],
-    path: &UiPath,
+    path: &BezPath,
     paint: u32,
     to_screen: &Affine,
     world: &Affine,
@@ -804,7 +797,7 @@ fn paint_path(
         let (x, y) = to_screen.apply(p.x, p.y);
         Vec2::new(x, y)
     };
-    let screen = path.map(map);
+    let screen = mapped(path, to_screen);
     let paint_of = |lo: Vec2, hi: Vec2| -> Option<UiPaint> {
         let sh = &a.nodes[shader as usize];
         let v = &pose[shader as usize];
@@ -860,15 +853,19 @@ fn paint_path(
     };
     match &node.kind {
         Kind::Fill { rule, .. } => {
-            let Some((lo, hi)) = screen.bounds() else {
+            if screen.is_empty() {
                 return Vec::new();
-            };
+            }
+            let b = screen.bounding_box();
+            let (lo, hi) = (glam_vec2(b.origin()), glam_vec2(Point::new(b.x1, b.y1)));
             let Some(p) = paint_of(lo, hi) else {
                 return Vec::new();
             };
             let c = (lo + hi) * 0.5;
-            let mut local = screen.map(|q| q - c);
-            local.fill_rule = *rule;
+            let local = UiPath {
+                path: og_draw::kurbo::Affine::translate(-kurbo_point(c).to_vec2()) * screen,
+                fill_rule: *rule,
+            };
             vec![shape(UiGeometry::Path(Arc::new(local)), lo, hi, p)]
         }
         Kind::Stroke {
@@ -894,7 +891,7 @@ fn paint_path(
                 Join::Bevel => UiJoin::Bevel,
             };
             let mut out = Vec::new();
-            for (line, closed) in screen.flatten(0.25) {
+            for (line, closed) in og_draw::polylines(&screen, 0.25) {
                 let lo = line.iter().fold(Vec2::MAX, |m, p| m.min(*p)) - Vec2::splat(width / 2.0);
                 let hi = line.iter().fold(Vec2::MIN, |m, p| m.max(*p)) + Vec2::splat(width / 2.0);
                 let Some(p) = paint_of(lo, hi) else { continue };
@@ -924,9 +921,9 @@ fn paint_path(
 type PathPoint = (Vec2, Option<(Vec2, Vec2)>, f32);
 
 /// A path node's outline in its own space.
-fn outline(a: &Artboard, pose: &[Values], p: u32) -> UiPath {
+fn outline(a: &Artboard, pose: &[Values], p: u32) -> BezPath {
     let Kind::Path { outline, closed } = &a.nodes[p as usize].kind else {
-        return UiPath::new();
+        return BezPath::new();
     };
     let v = &pose[p as usize];
     let o = Vec2::new(-v.origin.x * v.width, -v.origin.y * v.height);
@@ -1060,11 +1057,11 @@ fn ideal(to_prev: Vec2, to_next: Vec2, radius: f32) -> f32 {
 
 /// rive-runtime's `Path::buildPath` over `verts` (point, cubic controls,
 /// straight radius).
-fn build(verts: &[PathPoint], closed: bool) -> UiPath {
-    let mut path = UiPath::new();
+fn build(verts: &[PathPoint], closed: bool) -> BezPath {
+    let mut path = Pen(BezPath::new());
     let n = verts.len();
     if n < 2 {
-        return path;
+        return path.0;
     }
     let in_of = |i: usize| verts[i].1.map_or(verts[i].0, |c| c.0);
     let out_of = |i: usize| verts[i].1.map_or(verts[i].0, |c| c.1);
@@ -1151,9 +1148,59 @@ fn build(verts: &[PathPoint], closed: bool) -> UiPath {
         } else {
             path.line_to(start);
         }
-        path.close();
+        path.0.close_path();
     }
-    path
+    path.0
+}
+
+/// A `BezPath` drawn with glam's points.
+struct Pen(BezPath);
+
+impl Pen {
+    fn move_to(&mut self, p: Vec2) {
+        self.0.move_to(kurbo_point(p));
+    }
+
+    fn line_to(&mut self, p: Vec2) {
+        self.0.line_to(kurbo_point(p));
+    }
+
+    fn cubic_to(&mut self, c1: Vec2, c2: Vec2, p: Vec2) {
+        self.0
+            .curve_to(kurbo_point(c1), kurbo_point(c2), kurbo_point(p));
+    }
+}
+
+/// A closed polygon through `points`.
+fn polygon(points: &[Vec2]) -> BezPath {
+    let mut p = BezPath::new();
+    for (k, q) in points.iter().enumerate() {
+        if k == 0 {
+            p.move_to(kurbo_point(*q));
+        } else {
+            p.line_to(kurbo_point(*q));
+        }
+    }
+    p.close_path();
+    p
+}
+
+/// `path` with every point through `m`. A projective `m` moves the
+/// controls, as rive-runtime does.
+fn mapped(path: &BezPath, m: &Affine) -> BezPath {
+    let f = |p: Point| {
+        let (x, y) = m.apply(p.x as f32, p.y as f32);
+        kurbo_point(Vec2::new(x, y))
+    };
+    path.iter()
+        .map(|el| match el {
+            PathEl::MoveTo(p) => PathEl::MoveTo(f(p)),
+            PathEl::LineTo(p) => PathEl::LineTo(f(p)),
+            PathEl::QuadTo(p1, p2) => PathEl::QuadTo(f(p1), f(p2)),
+            PathEl::CurveTo(p1, p2, p3) => PathEl::CurveTo(f(p1), f(p2), f(p3)),
+            PathEl::ClosePath => PathEl::ClosePath,
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -1311,8 +1358,9 @@ mod tests {
         let p = build(&v, true);
         // Starts 20 down the left edge (towards the previous vertex) and
         // its first curve ends 20 along the top.
-        assert_eq!(p.points[0], Vec2::new(0.0, 20.0));
-        assert_eq!(p.points[3], Vec2::new(20.0, 0.0));
-        assert_eq!(p.verbs.last(), Some(&og_draw::UiVerb::Close));
+        let els = p.elements();
+        assert_eq!(els[0], PathEl::MoveTo(Point::new(0.0, 20.0)));
+        assert!(matches!(els[1], PathEl::CurveTo(_, _, e) if e == Point::new(20.0, 0.0)));
+        assert_eq!(els.last(), Some(&PathEl::ClosePath));
     }
 }

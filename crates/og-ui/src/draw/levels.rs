@@ -428,15 +428,12 @@ fn layers_and_cuts_emit_their_ranges_and_shapes() {
 /// layer and the levels see.
 #[test]
 fn a_turned_squashed_path_keeps_its_point_in_its_bounds() {
-    let mut path = og_draw::UiPath::new();
-    path.move_to(Vec2::new(-60.0, -21.0))
-        .cubic_to(
-            Vec2::new(-60.0, -60.0),
-            Vec2::new(60.0, -60.0),
-            Vec2::new(60.0, -21.0),
-        )
-        .line_to(Vec2::new(0.0, 51.0))
-        .close();
+    let mut path = og_draw::UiPath::default();
+    path.path.move_to((-60.0, -21.0));
+    path.path
+        .curve_to((-60.0, -60.0), (60.0, -60.0), (60.0, -21.0));
+    path.path.line_to((0.0, 51.0));
+    path.path.close_path();
     let (s, c) = 25f32.to_radians().sin_cos();
     let mut shape = UiShape::rect([90.0, 90.0, 20.0, 20.0], 0.0, [1.0; 4]);
     shape.geometry = UiGeometry::Path(std::sync::Arc::new(path));

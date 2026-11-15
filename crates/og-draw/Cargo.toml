@@ -10,3 +10,7 @@ description = "Origin Engine draw commands: the overlay's sprites, text and UI s
 og-core = { path = "../og-core" }
 glam = { workspace = true }
 bytemuck = { workspace = true }
+# The path model (`UiPath`) and its geometry: SVG path data, arcs,
+# flattening, dashing, cubics to quadratics and stroke expansion. no_std
+# with libm's maths (the cook's resvg turns kurbo's std on where it links).
+kurbo = { version = "0.13.1", default-features = false, features = ["libm"] }

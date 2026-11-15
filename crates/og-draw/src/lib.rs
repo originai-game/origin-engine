@@ -17,6 +17,8 @@ pub mod ui;
 
 pub use color_vision::{ColorFilter, ColorVision, ColorVisionFilter};
 pub use handles::*;
+/// The path model ([`UiPath`]'s `BezPath`) and its geometry.
+pub use kurbo;
 pub use sprites::*;
 pub use ui::{
     UI_GRADIENT_STOPS, UI_MASS_KEYS, UI_MASS_QUADS, UI_MATERIAL_PARAMS, UI_QUAD_LAYER_MAX, UiAlign,
@@ -29,6 +31,6 @@ pub use ui::{
     UiMaterialHandle, UiMode, UiOccluder, UiOcclusion, UiPaint, UiParticleShape, UiPath, UiRepeat,
     UiShape, UiSpread, UiStop, UiStroke, UiTextEffects, UiTextOutline, UiTextShadow, UiTransfer,
     UiVectorData, UiVectorDraw, UiVectorHandle, UiVectorPaint, UiVectorStroke, UiVectorVertex,
-    UiVerb, flatten_cubic, flatten_quad, format_number, oklab, oklab_to_linear, square_to_quad,
-    ui_scrim,
+    flatten_cubic, format_number, glam_vec2, kurbo_point, oklab, oklab_to_linear, polylines,
+    square_to_quad, ui_scrim,
 };

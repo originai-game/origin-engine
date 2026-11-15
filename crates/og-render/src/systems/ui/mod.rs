@@ -104,30 +104,6 @@ mod tests {
     }
 
     #[test]
-    fn a_cubic_flattens_within_its_tolerance_and_keeps_its_ends() {
-        let (p0, p1, p2, p3) = (
-            Vec2::ZERO,
-            Vec2::new(0.0, 100.0),
-            Vec2::new(100.0, 100.0),
-            Vec2::new(100.0, 0.0),
-        );
-        let pts = flatten_cubic(p0, p1, p2, p3, 0.25);
-        assert_eq!(pts.first(), Some(&p0));
-        assert_eq!(pts.last(), Some(&p3));
-        // Midpoints of each chord lie within the tolerance of the curve.
-        let curve = |t: f32| {
-            let u = 1.0 - t;
-            p0 * (u * u * u) + p1 * (3.0 * u * u * t) + p2 * (3.0 * u * t * t) + p3 * (t * t * t)
-        };
-        let n = pts.len() - 1;
-        for i in 0..n {
-            let mid = (pts[i] + pts[i + 1]) * 0.5;
-            let on = curve((i as f32 + 0.5) / n as f32);
-            assert!(mid.distance(on) <= 0.3, "chord {i}: {}", mid.distance(on));
-        }
-    }
-
-    #[test]
     fn a_material_must_define_its_function_and_few_params() {
         assert!(example_ui_material().check().is_ok());
         let mut bad = example_ui_material();

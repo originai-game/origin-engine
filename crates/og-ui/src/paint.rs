@@ -549,36 +549,10 @@ impl ShapeKind {
                 fill_rule,
                 contours,
                 ..
-            } => {
-                let half = Vec2::from(size) * 0.5;
-                let mut path = og_draw::UiPath::new();
-                path.fill_rule = *fill_rule;
-                let mut rest: &[[f32; 2]] = points;
-                let whole = [points.len() as u32];
-                let counts: &[u32] = if contours.is_empty() {
-                    &whole
-                } else {
-                    contours
-                };
-                for &n in counts {
-                    let (c, more) = rest.split_at((n as usize).min(rest.len()));
-                    rest = more;
-                    let c: Vec<Vec2> = c.iter().map(|p| Vec2::from(*p) - half).collect();
-                    let Some(first) = c.first() else { continue };
-                    path.move_to(*first);
-                    if *curves {
-                        for b in c[1..].as_chunks::<3>().0 {
-                            path.cubic_to(b[0], b[1], b[2]);
-                        }
-                    } else {
-                        for p in &c[1..] {
-                            path.line_to(*p);
-                        }
-                    }
-                    path.close();
-                }
-                og_draw::UiGeometry::Path(std::sync::Arc::new(path))
-            }
+            } => og_draw::UiGeometry::Path(std::sync::Arc::new(og_draw::UiPath {
+                path: path_of(points, contours, *curves, true, Vec2::from(size) * 0.5),
+                fill_rule: *fill_rule,
+            })),
             ShapeKind::Path {
                 points,
                 closed,
@@ -589,22 +563,12 @@ impl ShapeKind {
                 join,
                 ..
             } => {
-                let half = Vec2::from(size) * 0.5;
-                let p: Vec<Vec2> = points.iter().map(|p| Vec2::from(*p) - half).collect();
-                let mut line = p.first().map(|p| vec![*p]).unwrap_or_default();
-                if *curves {
-                    for c in p[1.min(p.len())..].as_chunks::<3>().0 {
-                        let from = *line.last().expect("the first point");
-                        // A quarter CSS px from the curve.
-                        line.extend(
-                            og_draw::flatten_cubic(from, c[0], c[1], c[2], 0.25)
-                                .into_iter()
-                                .skip(1),
-                        );
-                    }
-                } else {
-                    line.extend(p.iter().skip(1));
-                }
+                // A quarter CSS px from the curve.
+                let one = path_of(points, &[], *curves, false, Vec2::from(size) * 0.5);
+                let mut line = og_draw::polylines(&one, 0.25)
+                    .into_iter()
+                    .next()
+                    .map_or_else(Vec::new, |(l, _)| l);
                 // A closed line that ends where it starts closes itself:
                 // the repeated point would be a joint of no length, whose
                 // miter has no direction (a spike).
@@ -625,6 +589,47 @@ impl ShapeKind {
             }
         }
     }
+}
+
+/// A `ShapeKind::Path`'s points (`curves`: each three after a contour's
+/// first are a cubic's controls and end) as kurbo's path less `origin`:
+/// its `contours` (one of every point when there are none), each closed
+/// when `closed`.
+pub(crate) fn path_of(
+    points: &[[f32; 2]],
+    contours: &[u32],
+    curves: bool,
+    closed: bool,
+    origin: Vec2,
+) -> og_draw::kurbo::BezPath {
+    let at = |p: &[f32; 2]| og_draw::kurbo_point(Vec2::from(*p) - origin);
+    let mut path = og_draw::kurbo::BezPath::new();
+    let whole = [points.len() as u32];
+    let counts: &[u32] = if contours.is_empty() {
+        &whole
+    } else {
+        contours
+    };
+    let mut rest = points;
+    for &n in counts {
+        let (c, more) = rest.split_at((n as usize).min(rest.len()));
+        rest = more;
+        let Some(first) = c.first() else { continue };
+        path.move_to(at(first));
+        if curves {
+            for b in c[1..].as_chunks::<3>().0 {
+                path.curve_to(at(&b[0]), at(&b[1]), at(&b[2]));
+            }
+        } else {
+            for p in &c[1..] {
+                path.line_to(at(p));
+            }
+        }
+        if closed {
+            path.close_path();
+        }
+    }
+    path
 }
 
 /// An alpha mask over the element's subtree.
@@ -1032,14 +1037,23 @@ mod tests {
         else {
             panic!("a filled path is a vector path");
         };
-        use og_draw::UiVerb::*;
-        assert_eq!(
-            p.verbs,
-            [Move, Line, Line, Line, Close, Move, Line, Line, Line, Close]
-        );
+        use og_draw::kurbo::PathEl::{self, ClosePath as Z, CurveTo, LineTo, MoveTo};
+        let kinds = |p: &og_draw::UiPath| -> Vec<u8> {
+            p.path
+                .iter()
+                .map(|e| match e {
+                    MoveTo(_) => b'M',
+                    LineTo(_) => b'L',
+                    CurveTo(..) => b'C',
+                    PathEl::QuadTo(..) => b'Q',
+                    Z => b'Z',
+                })
+                .collect()
+        };
+        assert_eq!(kinds(&p), b"MLLLZMLLLZ");
         assert_eq!(p.fill_rule, FillRule::NonZero);
         // About the box's centre.
-        assert_eq!(p.points[0], Vec2::new(-50.0, -50.0));
+        assert_eq!(p.path.elements()[0], MoveTo((-50.0, -50.0).into()));
         // With curves, the second contour's three points after its start are one cubic.
         let mut curved = points.clone();
         curved.drain(1..4);
@@ -1050,7 +1064,7 @@ mod tests {
         let og_draw::UiGeometry::Path(p) = k.geometry(0.0, [100.0; 2]) else {
             panic!()
         };
-        assert_eq!(p.verbs, [Move, Close, Move, Cubic, Close]);
+        assert_eq!(kinds(&p), b"MZMCZ");
         // Unfilled: a polyline still.
         assert!(matches!(
             shape(false, false, vec![]).geometry(0.0, [100.0; 2]),

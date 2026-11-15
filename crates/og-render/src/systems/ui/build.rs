@@ -350,12 +350,12 @@ impl UiTables {
                 };
                 for (i, q) in points.iter().enumerate() {
                     if i == 0 {
-                        p.move_to(*q);
+                        p.path.move_to(kurbo_point(*q));
                     } else {
-                        p.line_to(*q);
+                        p.path.line_to(kurbo_point(*q));
                     }
                 }
-                p.close();
+                p.path.close_path();
                 Some(std::borrow::Cow::Owned(p))
             }
             _ => None,
