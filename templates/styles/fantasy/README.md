@@ -86,5 +86,3 @@ where an engine feature is still landing:
 - A heading's `::part(flourish)` is read as a text span and refuses
   `background`, so the gold rule under a heading is not drawn yet
   (parts-as-nodes).
-- The `font-family` fallback list is not consulted per glyph: Newsreader
-  has no arrows, so a `unicode-range` face takes them from Spectral.

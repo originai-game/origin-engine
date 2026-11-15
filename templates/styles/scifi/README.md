@@ -95,8 +95,6 @@ Rajdhani) come from `@styles/shared` under their own licences there.
 
 - `backdrop-filter` on a part is pending parts-as-nodes, so the glass is
   translucent but does not blur what is behind it.
-- The `font-family` fallback list is not consulted per glyph: Barlow has no
-  arrows, so a `unicode-range` face takes them from Chakra Petch.
 - The focus part of a button whose document names its own part also takes
   `button::part(base)`'s rules, so a plate is drawn over the button's
   content on keyboard focus. `controls.css` clears `button::part(focus)` to
