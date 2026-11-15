@@ -13,9 +13,9 @@
 <column id="Calibration">
   <column id="Panel" part="calibration.frame">
     <row id="Steps">
-      <badge id="Brightness" tone="neutral" class:at-off={!((step == "brightness"))} class:at-on={(step == "brightness")}>{t("screen.calibration.brightness")}</badge>
-      <badge id="Offset" tone="neutral" class:at-off={!((step == "offset"))} class:at-on={(step == "offset")}>{t("screen.calibration.offset")}</badge>
-      <badge id="Controller" tone="neutral" class:at-off={!((step == "controller"))} class:at-on={(step == "controller")}>{t("screen.calibration.controller")}</badge>
+      <badge id="Brightness" tone={step == "brightness" ? "accent" : "neutral"}>{t("screen.calibration.brightness")}</badge>
+      <badge id="Offset" tone={step == "offset" ? "accent" : "neutral"}>{t("screen.calibration.offset")}</badge>
+      <badge id="Controller" tone={step == "controller" ? "accent" : "neutral"}>{t("screen.calibration.controller")}</badge>
     </row>
     <column id="Test">{@render test?.()}</column>
     <column id="BrightnessStep" hidden={!((step == "brightness"))}>
@@ -57,12 +57,6 @@
 }
 #Panel { width: stretch; max-width: var(--measure-xl); gap: var(--space-lg); }
 #Steps { width: stretch; gap: var(--space-sm); }
-#Brightness.at-off { opacity: 0.5; }
-#Brightness.at-on { opacity: 1; }
-#Offset.at-off { opacity: 0.5; }
-#Offset.at-on { opacity: 1; }
-#Controller.at-off { opacity: 0.5; }
-#Controller.at-on { opacity: 1; }
 #Test { width: stretch; }
 #BrightnessStep { width: stretch; gap: var(--space-sm); }
 #BrightnessHint { line-clamp: 3; }

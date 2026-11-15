@@ -978,7 +978,7 @@ input.poem::part(placeholder) {
         ui.frame()
             .items
             .iter()
-            .filter_map(|it| match &it.cmd {
+            .filter_map(|it| match it.cmd.unstyled() {
                 DrawCmd::Text {
                     text,
                     x,
@@ -1580,7 +1580,7 @@ fn a_kit_text_part_takes_its_ink_and_step() {
         ui.frame()
             .items
             .iter()
-            .find_map(|it| match &it.cmd {
+            .find_map(|it| match it.cmd.unstyled() {
                 DrawCmd::Text {
                     text, size, color, ..
                 } if text == want => Some((*size, *color)),

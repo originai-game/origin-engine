@@ -15,7 +15,7 @@
 //! tritanopia (og-draw's simulation, full strength).
 
 use og_draw::{
-    ColorFilter, ColorVision, ColorVisionFilter, TextureHandle, UiGeometry, UiGradient,
+    ColorFilter, ColorVision, ColorVisionFilter, TextureHandle, UiBlend, UiGeometry, UiGradient,
     UiGradientKind, UiMode, UiPaint, UiSpread,
 };
 use og_ui::{DrawCmd, DrawItem, Srgba};
@@ -584,6 +584,43 @@ fn gradient(g: &UiGradient, f: [f32; 2], size: (f32, f32)) -> [f32; 4] {
     [rgb[0].max(0.0), rgb[1].max(0.0), rgb[2].max(0.0), m[3]]
 }
 
+/// For each glyph drawn as a mask (og-ui's `background-clip: text`: the
+/// glyphs opaque in a layer, then a `SourceIn` shape keeping its paint on
+/// them), the shapes that paint it, in order; none for a glyph that only
+/// cuts a layer again; `None` for every other draw.
+fn masks(items: &[DrawItem]) -> Vec<Option<Vec<usize>>> {
+    let mut out = vec![None; items.len()];
+    let mut k = 0;
+    while k < items.len() {
+        if !matches!(items[k].cmd, DrawCmd::BeginLayer { .. }) {
+            k += 1;
+            continue;
+        }
+        let glyphs: Vec<usize> = (k + 1..items.len())
+            .take_while(|&j| matches!(items[j].cmd, DrawCmd::Text { .. }))
+            .collect();
+        let after = k + 1 + glyphs.len();
+        let keeps = |j: usize| matches!(&items[j].cmd, DrawCmd::Shape { shape, .. } if shape.blend == UiBlend::SourceIn);
+        // The glyphs cut a layer to themselves again (`DestinationIn`):
+        // a mask only, never shown.
+        let cuts = |j: usize| matches!(&items[j].cmd, DrawCmd::EndLayer { blend, .. } if *blend == UiBlend::DestinationIn);
+        if !glyphs.is_empty() && after < items.len() && cuts(after) {
+            for g in glyphs {
+                out[g] = Some(Vec::new());
+            }
+        } else if !glyphs.is_empty() && after < items.len() && keeps(after) {
+            let paints: Vec<usize> = (after..items.len())
+                .take_while(|&j| matches!(items[j].cmd, DrawCmd::Shape { .. }))
+                .collect();
+            for g in glyphs {
+                out[g] = Some(paints.clone());
+            }
+        }
+        k = after.max(k + 1);
+    }
+    out
+}
+
 /// Each draw's alpha from the layers it is in (their composite opacity)
 /// and the clip shapes it is cut to.
 fn layers(items: &[DrawItem]) -> (Vec<f32>, Vec<Vec<og_ui::Rect>>) {
@@ -626,6 +663,7 @@ fn read(
 ) {
     let items = &ui.frame().items;
     let (opacity, clips) = layers(items);
+    let masks = masks(items);
     let elements = ui.elements();
     let contains = |r: &og_ui::Rect, p: (f32, f32)| {
         p.0 >= r.x && p.0 <= r.x + r.width && p.1 >= r.y && p.1 <= r.y + r.height
@@ -645,7 +683,13 @@ fn read(
         else {
             continue;
         };
-        if text.trim().is_empty() || color[3] * opacity[k] < 0.05 {
+        // A gradient ink (`background-clip: text`) is read where it is
+        // sampled; the text's own colour is then transparent.
+        if masks[k].as_ref().is_some_and(Vec::is_empty) {
+            continue;
+        }
+        let fill = effects.and_then(|e| e.fill.as_ref().map(|g| (g, e.fill_box)));
+        if text.trim().is_empty() || (fill.is_none() && color[3] * opacity[k] < 0.05) {
             continue;
         }
         let shown = it.transform.map_rect(bounds).intersect(clip);
@@ -689,11 +733,31 @@ fn read(
                 }
             }
             let scene = (lum(grounds[0]) - lum(grounds[1])).abs() > 0.01;
+            let ink_color = match (fill, &masks[k]) {
+                // A glyph mask (`background-clip: text` on the element):
+                // its ink is what the layer keeps on it there.
+                (_, Some(paints)) => paints
+                    .iter()
+                    .filter_map(|&j| paint_at(&items[j], p, textures))
+                    .fold([0.0; 4], |below, (c, _)| {
+                        let rgb = over(c, [below[0], below[1], below[2]]);
+                        let a = c[3] + below[3] * (1.0 - c[3]);
+                        [rgb[0], rgb[1], rgb[2], a * opacity[k]]
+                    }),
+                (Some((g, b)), None) => {
+                    let (x, y) = it.transform.invert().map_or(p, |t| t.apply(p.0, p.1));
+                    let f = [(x - b[0]) / b[2].max(1e-3), (y - b[1]) / b[3].max(1e-3)];
+                    let mut c = gradient(g, f, (b[2], b[3]));
+                    c[3] *= opacity[k];
+                    c
+                }
+                (None, None) => ink_color,
+            };
             for g in grounds {
                 let ink = over(ink_color, g);
                 let r = srgb(ink).contrast(srgb(g));
                 // A halo over the ground: what the glyphs' edges sit on.
-                let haloed = effects.map(|e| halo_ratio(e, ink, g));
+                let haloed = effects.map(|e| og_ui::halo_contrast(e, ink, g));
                 if let Some(h) = haloed {
                     halo = Some(halo.map_or(h, |m: f32| m.min(h)));
                 }
@@ -738,47 +802,6 @@ fn read(
         });
     }
 }
-
-/// The ink's worst WCAG 2 ratio on its halo over `g`: the ground
-/// [`HALO_READ`] CSS px out from the glyphs' edge, in the direction its
-/// shadows and outline cover least. Each covers there as the overlay
-/// shader draws it (overlay.wgsl `fs_msdf`): a shadow, the glyphs moved by
-/// its offset with their edge softened over its blur (at least a pixel),
-/// `clamp((offset·n − d) / blur + ½)`, so a blurred halo covers at most
-/// half at the edge and its offset half lies on one side only; an
-/// outline, solid to its width. Taken at one device pixel per CSS px; the
-/// font's distance field bounds a blur and an outline further on small
-/// text.
-fn halo_ratio(e: &og_draw::UiTextEffects, ink: Rgb, g: Rgb) -> f32 {
-    let d = HALO_READ;
-    (0..16)
-        .map(|k| {
-            let a = k as f32 * std::f32::consts::TAU / 16.0;
-            let n = og_core::glam::Vec2::new(a.cos(), a.sin());
-            let h = e.shadows.iter().fold(g, |g, s| {
-                let cover = ((s.offset.dot(n) - d) / s.blur.max(1.0) + 0.5).clamp(0.0, 1.0);
-                over([s.color[0], s.color[1], s.color[2], s.color[3] * cover], g)
-            });
-            let h = e.outline.as_ref().map_or(h, |o| {
-                let cover = if matches!(o.align, og_draw::UiAlign::Inside) {
-                    0.0
-                } else {
-                    let width = if matches!(o.align, og_draw::UiAlign::Center) {
-                        o.width / 2.0
-                    } else {
-                        o.width
-                    };
-                    (width - d + 0.5).clamp(0.0, 1.0)
-                };
-                over([o.color[0], o.color[1], o.color[2], o.color[3] * cover], h)
-            });
-            srgb(ink).contrast(srgb(h))
-        })
-        .fold(f32::INFINITY, f32::min)
-}
-
-/// How far out from the glyphs' edge a halo is read, CSS px.
-const HALO_READ: f32 = 1.0;
 
 /// The clip rectangle a command carries (screen space), if it has one.
 fn clip_of(cmd: &DrawCmd) -> Option<&og_ui::Rect> {
@@ -904,7 +927,8 @@ mod tests {
     /// scene: the worse is kept, and the ground is the scene's); an opaque
     /// fill reads the two colours' own ratio; a hard-stop gradient is read
     /// where the text is, so a caption on its black half reads 21:1 where
-    /// the average of its stops (mid grey) would give 2.9:1.
+    /// the average of its stops (mid grey) would give 2.9:1; a black
+    /// gradient cut to the text on white reads 21:1.
     #[test]
     fn texts_are_read_on_what_is_drawn_under_them() {
         let pairs = read_body(
@@ -912,6 +936,7 @@ mod tests {
   <div id="Plate"><p id="OnPlate">Plate</p></div>
   <div id="Solid"><p id="OnSolid">Solid</p></div>
   <div id="Split"><p id="OnSplit">Split</p></div>
+  <div id="White"><p id="Clipped">Clipped</p></div>
 </div>
 <style>
 #Page { display: flex; flex-direction: column; gap: 8px; }
@@ -920,6 +945,8 @@ p { color: #ffffff; margin: 0; }
 #Solid { background: #2060c0; width: 200px; }
 #OnSolid { color: #f0f0f0; }
 #Split { width: 200px; height: 200px; background: linear-gradient(#000 0%, #000 50%, #fff 50%, #fff 100%); }
+#White { background: #ffffff; width: 200px; }
+#Clipped { color: transparent; background: linear-gradient(#000, #000); background-clip: text; }
 </style>"#,
         );
         let plate = of(&pairs, "Plate");
@@ -936,38 +963,15 @@ p { color: #ffffff; margin: 0; }
         let split = of(&pairs, "Split");
         assert_eq!(split.over, "gradient");
         assert!(split.wcag > 20.0, "{}", split.wcag);
-    }
-
-    /// A halo is read a pixel out from the glyphs' edge, on its weakest
-    /// side, as the overlay shader covers it: a blurred shadow covers at
-    /// most half at the edge and nothing past its blur, and a drop lies on
-    /// one side, so white text with either over a white scene still reads
-    /// 1:1; eight hard copies round the glyphs cover the ring nearly
-    /// whole (at least 0.97 black: 1.05 / 0.08 = 13:1 at worst). Counting
-    /// each shadow at its full colour read the first two 21:1.
-    #[test]
-    fn halos_are_read_where_the_glyphs_edge_sits() {
-        let ring = "1.5px 0 0 #000, -1.5px 0 0 #000, 0 1.5px 0 #000, 0 -1.5px 0 #000, \
-                    1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000";
-        let pairs = read_body(&format!(
-            r#"<div id="Page">
-  <p id="Soft">Soft</p>
-  <p id="Drop">Drop</p>
-  <p id="Ring">Ring</p>
-</div>
-<style>
-#Page {{ display: flex; flex-direction: column; gap: 8px; }}
-p {{ color: #ffffff; margin: 0; }}
-#Soft {{ text-shadow: 0 0 2px #000, 0 1px 2px #000; }}
-#Drop {{ text-shadow: 0 2px 0 #000; }}
-#Ring {{ text-shadow: {ring}; }}
-</style>"#
-        ));
-        for id in ["Soft", "Drop"] {
-            let halo = of(&pairs, id).halo.unwrap();
-            assert!(halo < 1.05, "{id} reads {halo:.2}:1 on its halo");
-        }
-        let halo = of(&pairs, "Ring").halo.unwrap();
-        assert!(halo > 12.0, "the ring reads {halo:.2}:1");
+        // A gradient cut to the glyphs is their ink: black on white, read
+        // once, not as the opaque mask og-ui draws it through.
+        let clipped: Vec<_> = pairs.iter().filter(|p| p.text == "Clipped").collect();
+        assert_eq!(clipped.len(), 1);
+        assert!(
+            clipped[0].wcag > 20.0,
+            "{} on {}",
+            hex(clipped[0].ink),
+            hex(clipped[0].ground)
+        );
     }
 }

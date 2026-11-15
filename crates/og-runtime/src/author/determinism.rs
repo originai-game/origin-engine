@@ -346,7 +346,7 @@ pub fn text_layout_hash() -> u64 {
                 bounds,
                 placements,
                 ..
-            } = &item.cmd
+            } = item.cmd.unstyled()
             {
                 h.write_str(text);
                 for v in [

@@ -59,8 +59,13 @@ fn number_options_wrap_and_step_without_rewriting_formatted_text() {
     // Unfocused it shows its format; the value stays the raw text. (A
     // document's format is a message, which has no fixed decimals.)
     assert_eq!(value(&mut d), "1");
-    assert!(d.ui.frame().items.iter().any(|item| matches!(&item.cmd,
-        DrawCmd::Text { text, .. } if text == "1 kg")));
+    assert!(
+        d.ui.frame()
+            .items
+            .iter()
+            .any(|item| matches!(item.cmd.unstyled(),
+        DrawCmd::Text { text, .. } if text == "1 kg"))
+    );
     for (shift, expected) in [(false, "0"), (true, "0.3")] {
         let button = d.get("Number/Increment");
         let pointer = Vec2::new(

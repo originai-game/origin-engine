@@ -94,7 +94,7 @@ fn texts(ui: &Ui) -> Vec<(String, f32, f32, [f32; 4], f32, f32)> {
     ui.frame()
         .items
         .iter()
-        .filter_map(|i| match &i.cmd {
+        .filter_map(|i| match i.cmd.unstyled() {
             DrawCmd::Text {
                 text,
                 x,
@@ -367,14 +367,20 @@ fn italic_underline_and_strike_keep_their_span() {
     let mut rules: Vec<Rect> = Vec::new();
     for i in &ui.frame().items {
         match &i.cmd {
-            DrawCmd::StyledText { text, effects } => {
+            // A word in only the scene's halo (it is drawn over nothing)
+            // is plain: a slant or an outline marks a styled one.
+            DrawCmd::StyledText { text, effects }
+                if effects.outline.is_some() || effects.transform != [1.0, 0.0, 0.0, 1.0] =>
+            {
                 if let DrawCmd::Text { text, .. } = &**text {
                     styled.push((text.clone(), effects.transform, effects.outline.is_some()));
                 }
             }
-            DrawCmd::Text { text, baseline, .. } => plain.push((text.clone(), *baseline)),
-            DrawCmd::Quad { rect, .. } if rect.height < 3.0 => rules.push(*rect),
-            _ => {}
+            c => match (c.unstyled(), c) {
+                (DrawCmd::Text { text, baseline, .. }, _) => plain.push((text.clone(), *baseline)),
+                (_, DrawCmd::Quad { rect, .. }) if rect.height < 3.0 => rules.push(*rect),
+                _ => {}
+            },
         }
     }
     let slanted = |t: &[f32; 4]| t[2] < 0.0;

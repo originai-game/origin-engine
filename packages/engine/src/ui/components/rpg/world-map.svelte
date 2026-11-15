@@ -55,7 +55,8 @@
 .here { position: absolute; left: 0; bottom: 0; display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-md); margin: 0; }
 .here:dir(rtl) { left: auto; right: 0; }
 .here-mark { width: var(--space-lg); height: var(--space-lg); }
-.legend { position: absolute; left: 50%; bottom: var(--space-sm); translate: -50% 0; display: flex; align-items: center; gap: var(--space-md); padding: var(--space-xxs) var(--space-md); white-space: nowrap; }
+/* Over the map art, which the game draws: the scene plate and its ink. */
+.legend { position: absolute; left: 50%; bottom: var(--space-sm); translate: -50% 0; display: flex; align-items: center; gap: var(--space-md); padding: var(--space-xxs) var(--space-md); white-space: nowrap; background: var(--scene-plate); color: var(--scene-ink); border-radius: var(--radius-control); }
 @container (width < 760px) { .legend { left: auto; right: var(--space-sm); translate: none; } .here { bottom: auto; top: 0; } .legend:dir(rtl) { right: auto; left: var(--space-sm); } }
 [part="RpgWorldMap.row"] { display: flex; align-items: center; gap: var(--space-xs); flex: none; }
 .legend-mark { width: var(--space-lg); height: var(--space-lg); }

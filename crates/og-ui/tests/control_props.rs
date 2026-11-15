@@ -238,7 +238,7 @@ fn root_relative_text_sizes_follow_the_root_not_the_parent() {
             d.ui.frame()
                 .items
                 .iter()
-                .filter_map(|i| match &i.cmd {
+                .filter_map(|i| match i.cmd.unstyled() {
                     DrawCmd::Text { text, size, .. } => Some((text.as_str(), *size)),
                     _ => None,
                 })
@@ -287,7 +287,7 @@ fn type_ramp_tokens_follow_the_text_scale() {
                 d.ui.frame()
                     .items
                     .iter()
-                    .filter_map(|i| match &i.cmd {
+                    .filter_map(|i| match i.cmd.unstyled() {
                         DrawCmd::Text { text, size, .. } => Some((text.clone(), *size)),
                         _ => None,
                     })
@@ -368,7 +368,7 @@ fn fit_min_measures_text_with_a_literal_or_authored_step() {
             d.ui.frame()
                 .items
                 .iter()
-                .filter_map(|i| match &i.cmd {
+                .filter_map(|i| match i.cmd.unstyled() {
                     DrawCmd::Text { text, size, .. } => Some((text.clone(), *size)),
                     _ => None,
                 })
@@ -1522,7 +1522,7 @@ fn a_primary_button_takes_the_style_colour_over_an_inherited_one() {
             d.ui.frame()
                 .items
                 .iter()
-                .find_map(|item| match &item.cmd {
+                .find_map(|item| match item.cmd.unstyled() {
                     DrawCmd::Text { text, color, .. } if text == label => Some(*color),
                     _ => None,
                 })
@@ -2170,7 +2170,7 @@ fn core_controls_choose_step_hold_and_report() {
         d.ui.frame()
             .items
             .iter()
-            .any(|item| matches!(&item.cmd, DrawCmd::Text { text, .. } if text == "3 m")),
+            .any(|item| matches!(item.cmd.unstyled(), DrawCmd::Text { text, .. } if text == "3 m")),
         "data-format presents the value while unfocused"
     );
     // data-wrap goes past max to min.

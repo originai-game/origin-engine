@@ -88,6 +88,9 @@
 .buy { flex: none; min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.3); max-width: 40%; padding: var(--space-xxs) var(--space-md); }
 .buy-face { display: flex; flex-direction: column; width: stretch; align-items: center; gap: 0; }
 .state, .cost { max-width: stretch; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+/* The cost is a badge on the buy plate: on an affordable path the plate is
+   the primary, so the cost takes its ink rather than the badge's. */
+.cost[data-state="affordable"] { color: var(--on-primary); }
 .state { padding: 0 var(--space-xxs); }
 .actions { display: flex; width: stretch; justify-content: flex-end; }
 #Sell { min-height: var(--size-touch); gap: var(--space-xs); max-width: stretch; }

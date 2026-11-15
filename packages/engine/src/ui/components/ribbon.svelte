@@ -20,7 +20,10 @@
 .bottomRight [part="Ribbon.ribbon"] { top: var(--size-xl); rotate: -45deg; }
 .bottomLeft [part="Ribbon.ribbon"] { top: var(--size-xl); inset-inline-start: calc(var(--space-3xl) * -1); rotate: 45deg; }
 .center [part="Ribbon.ribbon"] { top: calc(var(--space-xl) + var(--space-lg)); inset-inline-start: var(--space-lg); width: var(--size-3xl); rotate: -8deg; border-radius: var(--radius-control); animation-name: stamp; }
-[part="Ribbon.text"] { font: var(--text-caption); text-transform: uppercase; color: var(--on-primary); white-space: nowrap; }
+/* Its ink is whichever of white and black reads on its tone, any tone a
+   pack gives it; the tag's outline holds it where the band's sheen lifts
+   the tone toward the ink. */
+[part="Ribbon.text"] { font: var(--text-caption); text-transform: uppercase; color: contrast-color(var(--tone)); text-shadow: var(--tag-halo); white-space: nowrap; }
 @keyframes slap { from { opacity: 0; } to { opacity: 1; } }
 @keyframes stamp { from { scale: 2.4; opacity: 0; } to { scale: 1; opacity: 1; } }
 </style>
