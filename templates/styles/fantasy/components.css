@@ -5,3 +5,35 @@
    tail, a shape, takes the frame's lamp-black foot in one colour and its
    brass rim. */
 [part="SpeechBubble.tail"] { fill: var(--fantasy-bubble-tail-fill); stroke: var(--line-strong); stroke-width: var(--stroke-hairline); }
+
+/* ── AbilityBar and AbilitySlot: a slot is a dark well in a brass rim, as
+   the rpg action bar's skills are, not the painted button plate. The
+   plate's rules reach a button whatever part it names, so these undo its
+   ends, its padding (which squeezed the well into a column down the middle,
+   the badges stacked over the icon) and its label type, which the slot's
+   figures and badges would inherit. The slot sets no shadow, so the
+   component's own glows on it (active, a full ultimate) stay. */
+button::part(AbilitySlot\.cell), button::part(AbilityBar\.cell) {
+  min-height: 0;
+  padding: 0;
+  border-image: none;
+  border: var(--stroke-regular) solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--font-step-md);
+  letter-spacing: 0;
+  text-transform: none;
+  text-shadow: none;
+}
+button::part(AbilitySlot\.cell):hover, button::part(AbilityBar\.cell):hover { border-color: var(--gold); }
+button::part(AbilitySlot\.cell):disabled, button::part(AbilityBar\.cell):disabled { border-color: var(--line); }
+/* The well and the badges keep their role rules, so the component's own
+   states (an unaffordable slot's red wash, a locked one's filter) still
+   win; the slot only sets their tokens: the well warm at its centre, each
+   badge a small plate in a faint brass rim on it. */
+[part="AbilitySlot.cell"], [part="AbilityBar.cell"] {
+  --well-fill: var(--fantasy-skill-fill);
+  --well-shadow: var(--fantasy-skill-shadow);
+  --badge-shadow: var(--fantasy-slot-badge-shadow);
+}

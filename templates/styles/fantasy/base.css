@@ -391,6 +391,8 @@
   --fantasy-tray-shadow: inset 0 0 0 1px var(--color-shadow), 0 6px 16px #000c;
   --fantasy-skill-fill: radial-gradient(circle, #2a2017, var(--well));
   --fantasy-skill-shadow: inset 0 0 0 1px var(--color-shadow), inset 0 0 12px #000a;
+  /* An ability slot's badge (a cost, charges): its own small plate on the well. */
+  --fantasy-slot-badge-shadow: inset 0 0 0 1px var(--line-strong-60), 0 1px 3px var(--color-shadow);
   --fantasy-skill-hover-shadow: inset 0 0 0 1px var(--color-shadow), 0 0 10px var(--accent-40);
   --fantasy-foe-picture-shadow: inset 0 0 0 1px var(--color-shadow), 0 0 12px rgb(from var(--team2) r g b / 0.333);
   --fantasy-enemy-bar-shadow: 0 0 0 1px rgb(from var(--line) r g b / 0.502);
