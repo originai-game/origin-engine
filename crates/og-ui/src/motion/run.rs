@@ -1214,6 +1214,26 @@ impl crate::ui::Style {
                         _ => {}
                     }
                 }
+                // Its `-og-burst` keyframes whose values read variables, as
+                // its own cascade resolved them.
+                if !reduced {
+                    let bursts = &tree.nodes[i].props.keyframe_bursts;
+                    let own = |b: &&crate::element::KeyframeBurst| b.animation == index as u32;
+                    let offsets = bursts.iter().filter(own).map(|b| b.offset);
+                    for place in a.passed_offsets(offsets, run.last_ms, sample.active_ms) {
+                        let Some(b) = bursts.iter().filter(own).nth(place) else {
+                            continue;
+                        };
+                        css_bursts.push(BurstRun {
+                            key: tree.nodes[i].key,
+                            since: now,
+                            count: b.count,
+                            radius: b.radius,
+                            color: b.color,
+                            duration_ms: b.duration_ms,
+                        });
+                    }
+                }
             }
             run.last_ms = sample.active_ms;
         }

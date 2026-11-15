@@ -358,7 +358,7 @@ impl Ui {
         // Its anchor places it, so it keeps its text's width (a centred
         // label in a column would take the column's).
         self.tree.el_mut(i).width = width;
-        let mut p = Self::resolved_props(n, r);
+        let mut p = self.resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
         p.position = crate::element::Position::Absolute;
@@ -451,7 +451,7 @@ impl Ui {
         el.height = Size::px(h);
         self.open(id, el);
         let i = self.tree.parent();
-        let mut p = Self::resolved_props(n, r);
+        let mut p = self.resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
         p.position = crate::element::Position::Absolute;
@@ -566,7 +566,7 @@ impl Ui {
         }
         self.open(id, el);
         let i = self.tree.parent();
-        let mut p = Self::resolved_props(n, r);
+        let mut p = self.resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
         if kind != Kind::Svg {

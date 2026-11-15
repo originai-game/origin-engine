@@ -161,6 +161,12 @@ impl Ui {
             self.build_container(container);
         }
         let props = self.props_of(b, n, key, &r, &mut built);
+        let unresolved: Vec<String> = self.keyframe_bursts(&r).filter_map(Result::err).collect();
+        self.out.warnings_mut().extend(
+            unresolved
+                .into_iter()
+                .map(|e| format!("{}:{} ({path}): {e}", doc.source, n.line)),
+        );
         if kind == Kind::Viewport {
             return self.build_viewport(b, n, id.as_str(), &r, props, path, key, built);
         }

@@ -710,6 +710,70 @@ pub(crate) fn timelines(winners: &[(String, String)]) -> (Vec<NamedTimeline>, Ve
     (out, scope)
 }
 
+/// What `name: text` (no variables left) sets of the channels an element
+/// holds, as numbers; `None` for a property the channels do not hold or a
+/// value that is not numbers.
+pub(crate) fn channel_values(name: &str, text: &str) -> Option<Vec<(crate::element::Prop, f32)>> {
+    channels(name)?;
+    super::css::declarations(&format!("{name}: {text};"), 0)
+        .ok()?
+        .into_iter()
+        .filter(|entry| !super::css::zero_shift(entry))
+        .map(|entry| {
+            let prop = crate::element::Prop::from_name(&entry.key)?;
+            let value = entry
+                .values
+                .first()
+                .and_then(og_core::ogt::Value::as_number)
+                .map(og_core::ogt::Number::as_f32)
+                .filter(|v| v.is_finite())?;
+            Some((prop, value))
+        })
+        .collect()
+}
+
+/// An `-og-burst` value with no variables left, as its parts: a count,
+/// then in any order a radius in px, a colour and a time (ms).
+pub(crate) fn burst(value: &str) -> Result<(u32, f32, Option<crate::style::Srgba>, f32), String> {
+    let mut count = None;
+    let mut radius = 0.0;
+    let mut color = None;
+    let mut duration_ms = 0.0;
+    for w in super::text_css::split_top(value) {
+        let w = if super::calc::has_math(&w) {
+            super::calc::reduce(&w).map_err(|e| format!("-og-burst: `{w}`: {e}"))?
+        } else {
+            w
+        };
+        let w = w.as_str();
+        let ms = w
+            .strip_suffix("ms")
+            .map(|n| (n, 1.0))
+            .or_else(|| w.strip_suffix('s').map(|n| (n, 1000.0)))
+            .and_then(|(n, k)| n.parse::<f32>().ok().map(|v| v * k));
+        if let Ok(n) = w.parse::<u32>()
+            && count.is_none()
+        {
+            count = Some(n);
+        } else if let Some(ms) = ms.filter(|v| *v >= 0.0) {
+            duration_ms = ms;
+        } else if let Some(px) = w.strip_suffix("px").and_then(|n| n.parse::<f32>().ok()) {
+            radius = px;
+        } else {
+            let c = crate::svg::color(w).map_err(|_| {
+                format!("-og-burst: `{w}` is a count, a radius in px, a colour or a time")
+            })?;
+            let b = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+            color = Some(crate::style::Srgba {
+                rgb: [b(c[0]), b(c[1]), b(c[2])],
+                alpha: c[3],
+            });
+        }
+    }
+    let count = count.ok_or("-og-burst takes a count: `-og-burst: 24 48px #ffd166`")?;
+    Ok((count, radius, color, duration_ms))
+}
+
 /// One `@keyframes` body: `from`, `to` and percentage selector lists whose
 /// declarations animate any animatable property (those the element's
 /// channels hold by channel, the rest by computed value);
@@ -744,40 +808,17 @@ pub(crate) fn keyframes(frames: &[(String, String)]) -> Result<Keyframes, String
                 "-og-burst" => {
                     // `-og-burst: <count> [<radius>px] [<colour>] [<time>]`:
                     // rays and sparks from the element when the iteration
-                    // reaches it, flying for the time.
-                    let mut count = None;
-                    let mut radius = 0.0;
-                    let mut color = None;
-                    let mut duration_ms = 0.0;
-                    for w in value.split_whitespace() {
-                        let ms = w
-                            .strip_suffix("ms")
-                            .map(|n| (n, 1.0))
-                            .or_else(|| w.strip_suffix('s').map(|n| (n, 1000.0)))
-                            .and_then(|(n, k)| n.parse::<f32>().ok().map(|v| v * k));
-                        if let Ok(n) = w.parse::<u32>()
-                            && count.is_none()
-                        {
-                            count = Some(n);
-                        } else if let Some(ms) = ms.filter(|v| *v >= 0.0) {
-                            duration_ms = ms;
-                        } else if let Some(px) =
-                            w.strip_suffix("px").and_then(|n| n.parse::<f32>().ok())
-                        {
-                            radius = px;
-                        } else {
-                            let c = crate::svg::color(w).map_err(|_| {
-                                format!("-og-burst: `{w}` is a count, a radius in px, a colour or a time")
-                            })?;
-                            let b = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
-                            color = Some(crate::style::Srgba {
-                                rgb: [b(c[0]), b(c[1]), b(c[2])],
-                                alpha: c[3],
-                            });
+                    // reaches it, flying for the time. With variables it is
+                    // each element's to resolve.
+                    if value.contains("var(") {
+                        Tokens::parse(&value).map_err(|e| format!("-og-burst: {e}"))?;
+                        for &offset in &offsets {
+                            out.bursts.retain(|(o, _)| *o != offset);
+                            out.bursts.push((offset, value.clone()));
                         }
+                        continue;
                     }
-                    let count =
-                        count.ok_or("-og-burst takes a count: `-og-burst: 24 48px #ffd166`")?;
+                    let (count, radius, color, duration_ms) = burst(&value)?;
                     for &offset in &offsets {
                         out.events.push((
                             offset,
@@ -824,25 +865,9 @@ pub(crate) fn keyframes(frames: &[(String, String)]) -> Result<Keyframes, String
         }
         for (name, text) in values {
             // A property the channels hold, with numbers: channel tracks.
-            let scalar: Option<Vec<(Prop, f32)>> = channels(&name)
-                .filter(|_| !text.contains("var("))
-                .and_then(|_| super::css::declarations(&format!("{name}: {text};"), 0).ok())
-                .and_then(|entries| {
-                    entries
-                        .into_iter()
-                        .filter(|entry| !super::css::zero_shift(entry))
-                        .map(|entry| {
-                            let prop = Prop::from_name(&entry.key)?;
-                            let value = entry
-                                .values
-                                .first()
-                                .and_then(og_core::ogt::Value::as_number)
-                                .map(og_core::ogt::Number::as_f32)
-                                .filter(|v| v.is_finite())?;
-                            Some((prop, value))
-                        })
-                        .collect()
-                });
+            let scalar: Option<Vec<(Prop, f32)>> = Some(&text)
+                .filter(|text| !text.contains("var("))
+                .and_then(|text| channel_values(&name, text));
             {
                 if !interpolate::animatable(&name) || name.starts_with("--") {
                     return Err(format!("{name} cannot be animated in @keyframes"));
@@ -905,7 +930,11 @@ pub(crate) fn keyframes(frames: &[(String, String)]) -> Result<Keyframes, String
     for track in &mut out.styles {
         track.keys.sort_by(|a, b| a.offset.total_cmp(&b.offset));
     }
-    if out.tracks.is_empty() && out.styles.is_empty() && out.events.is_empty() {
+    if out.tracks.is_empty()
+        && out.styles.is_empty()
+        && out.events.is_empty()
+        && out.bursts.is_empty()
+    {
         return Err("@keyframes must animate a property or play a -og-sound".into());
     }
     Ok(out)
