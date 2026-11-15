@@ -85,14 +85,17 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     let blur = scene.look.post.motion_blur.is_some();
     let keyed = keys.len() == scene.objects.instances.len();
     if blur && keyed {
-        let previous = fx
-            .previous_by_key
-            .get_or_insert_with(|| fx.previous.iter().copied().collect());
-        scene.objects.previous_transforms = keys
-            .iter()
-            .zip(&scene.objects.instances)
-            .map(|(k, i)| previous.get(k).copied().unwrap_or(i.transform))
-            .collect();
+        scene.objects.previous_transforms = if same_keys(&fx.previous, keys) {
+            positional(&fx.previous)
+        } else {
+            let previous = fx
+                .previous_by_key
+                .get_or_insert_with(|| fx.previous.iter().copied().collect());
+            keys.iter()
+                .zip(&scene.objects.instances)
+                .map(|(k, i)| previous.get(k).copied().unwrap_or(i.transform))
+                .collect()
+        };
     }
     // Kept only while motion blur or TAA is on (a copy of every instance's
     // transform a frame otherwise).
@@ -118,12 +121,15 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
         keyed
     };
     if from_drawn {
-        let last: BTreeMap<(u64, u32), Mat4> = fx.drawn.iter().copied().collect();
-        scene.objects.previous_transforms = keys
-            .iter()
-            .zip(&scene.objects.instances)
-            .map(|(k, i)| last.get(k).copied().unwrap_or(i.transform))
-            .collect();
+        scene.objects.previous_transforms = if same_keys(&fx.drawn, keys) {
+            positional(&fx.drawn)
+        } else {
+            let last: BTreeMap<(u64, u32), Mat4> = fx.drawn.iter().copied().collect();
+            keys.iter()
+                .zip(&scene.objects.instances)
+                .map(|(k, i)| last.get(k).copied().unwrap_or(i.transform))
+                .collect()
+        };
     }
     if !cut.is_empty() {
         for ((k, i), p) in keys
@@ -142,6 +148,18 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
             .zip(&scene.objects.instances)
             .map(|(k, i)| (*k, i.transform)),
     );
+}
+
+/// Whether `before` keyed the same instances in the same order as `keys`,
+/// as every frame of a scene whose drawn set holds does: its transforms
+/// then are the previous ones by position, with no map of every instance
+/// built and searched a frame (94,784 instances: a third of the frame).
+fn same_keys(before: &[((u64, u32), Mat4)], keys: &[(u64, u32)]) -> bool {
+    before.len() == keys.len() && before.iter().zip(keys).all(|(b, k)| b.0 == *k)
+}
+
+fn positional(before: &[((u64, u32), Mat4)]) -> Vec<Mat4> {
+    before.iter().map(|b| b.1).collect()
 }
 
 /// TAA's skinned motion: each joint palette's joints as the frame before

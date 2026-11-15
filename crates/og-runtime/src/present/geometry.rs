@@ -15,9 +15,10 @@ use crate::engine::{Engine, engine, running};
 use crate::host::api::{add_geometry, uv_repeat};
 use crate::host::wire::{self, FromJson};
 use crate::parse;
-use crate::present::extract::{Hierarchy, RenderState};
+use crate::present::extract::{Hierarchy, Parts, RenderState};
 use crate::world::assets::{self, index_of};
 use glam::{DVec2, DVec3, Mat4, Quat, Vec2, Vec3};
+use og_core::IdMap;
 use og_ecs::World;
 use og_render::geometry::{self as geo, Bvh};
 use og_render::{LineLayer, LineMode, Lines, MeshHandle, Points, debug};
@@ -227,6 +228,17 @@ struct Drawn {
     layers: u32,
 }
 
+/// A drawn og.Model as a tick started; its parts ([`Drawn`]) wait for the
+/// first raycast of the tick, as its world matrix does: listing every
+/// part every tick was a tenth of a 94,784-instance town's frame.
+#[derive(Clone, Copy)]
+struct ModelRow {
+    entity: u64,
+    asset: u64,
+    visible: bool,
+    layers: u32,
+}
+
 /// The raycast record of a tick: its drawn meshes as read when it started,
 /// then, from the first raycast of the tick on, the targets composed from
 /// them. Most ticks raycast nothing from a system, and composing every
@@ -236,18 +248,23 @@ struct Drawn {
 #[derive(Clone)]
 enum Record {
     /// The og.Mesh rows (shared with the next tick's while they hold) and
-    /// the og.Model parts.
-    Drawn(Rc<Vec<Drawn>>, Vec<Drawn>),
+    /// the og.Model rows.
+    Drawn(Rc<Vec<Drawn>>, Vec<ModelRow>),
     Targets(Rc<Vec<Target>>),
 }
 
 impl Record {
     /// The targets, composed from `h` (the transforms as the tick started)
-    /// on the first call.
-    fn targets(&mut self, h: &mut Hierarchy) -> Rc<Vec<Target>> {
-        if let Record::Drawn(meshes, models) = self {
+    /// and the models' parts on the first call.
+    fn targets(
+        &mut self,
+        h: &mut Hierarchy,
+        models: &IdMap<u64, Parts>,
+        geometries: &[MeshHandle],
+    ) -> Rc<Vec<Target>> {
+        if let Record::Drawn(meshes, rows) = self {
             let mut targets = compose(h, meshes);
-            targets.extend(compose(h, models));
+            targets.extend(compose(h, &parts(models, geometries, rows)));
             *self = Record::Targets(Rc::new(targets));
         }
         match self {

@@ -13,7 +13,7 @@
 //! remove).
 
 use glam::{Mat4, Vec3};
-use og_render::{Antialias, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage};
+use og_render::{Antialias, Culling, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage};
 use og_tests::scenes;
 
 fn desc(antialias: Antialias) -> RenderDesc {
@@ -88,9 +88,21 @@ fn taau_resolves_the_half_scale_scene_to_the_output() {
 /// the prepass's motion vectors carry its history with it, so after a
 /// dozen frames it is nearer the frame a fresh history draws of the same
 /// pose than without them, where only the clamp holds back its trail.
+/// Under GPU culling too, whose sorted instances' previous transforms are
+/// built apart (a still instance's from its current one).
 #[test]
 #[ignore = "requires GPU"]
 fn a_moving_object_takes_its_history_along_its_motion_vectors() {
+    for culling in [Culling::Auto, Culling::Gpu] {
+        moving_object(culling);
+    }
+}
+
+fn moving_object(culling: Culling) {
+    let desc = |antialias| RenderDesc {
+        culling,
+        ..desc(antialias)
+    };
     let mut scene = scenes::thin_geometry();
     let sphere = scene.objects.instances.len() - 1;
     let at = |f: u32| {
@@ -124,10 +136,10 @@ fn a_moving_object_takes_its_history_along_its_motion_vectors() {
     let still = draw(&mut fresh, &scene, 1);
     let (d_with, d_without) = (diff(&a.unwrap(), &still), diff(&b.unwrap(), &still));
     println!(
-        "mean byte difference from a fresh frame: with motion {d_with:.2}, without {d_without:.2}"
+        "{culling:?}: mean byte difference from a fresh frame: with motion {d_with:.2}, without {d_without:.2}"
     );
     assert!(
         d_with < d_without,
-        "motion vectors {d_with}, camera only {d_without}"
+        "{culling:?}: motion vectors {d_with}, camera only {d_without}"
     );
 }

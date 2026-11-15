@@ -33,20 +33,30 @@ fn checked(w: u32, label: &str) -> usize {
         rs.geo.hierarchy.pending(),
         "{label}: the tick brought the hierarchy to the world before a raycast asked"
     );
-    let GeoState {
-        record, hierarchy, ..
-    } = &mut rs.geo;
-    let list = record.as_mut().expect("a record").1.targets(hierarchy);
+    let RenderState {
+        geo: GeoState {
+            record, hierarchy, ..
+        },
+        models,
+        geometries,
+        ..
+    } = &mut *rs;
+    let list = record
+        .as_mut()
+        .expect("a record")
+        .1
+        .targets(hierarchy, models, geometries);
     let mut fresh = Hierarchy::of(eng.world().unwrap());
     // The rows kept from earlier ticks are those read afresh.
-    let mut models = Vec::new();
+    let mut rows = Vec::new();
     let meshes = drawn(
         eng.world().unwrap(),
         &rs,
         &mut Hierarchy::default(),
         &mut Meshes::default(),
-        &mut models,
+        &mut rows,
     );
+    let models = parts(&rs.models, &rs.geometries, &rows);
     let rows = |t: &[(u64, usize, bool, u32)]| t.to_vec();
     assert_eq!(
         rows(

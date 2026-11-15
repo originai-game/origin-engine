@@ -52,14 +52,14 @@ pub(crate) fn adopt_cooked_bvh(
 /// Every og.Mesh and og.Model part as drawn from the world now, with `h`
 /// read again (its slots brought to the read when the record is first
 /// composed, [`Hierarchy::capture`]): the og.Mesh rows in query order (`kept`'s while their
-/// columns are unchanged), and the og.Model parts in entity order into
-/// `out` (cleared).
+/// columns are unchanged), and the og.Model rows of a loaded model in
+/// entity order into `out` (cleared; their parts: [`parts`]).
 pub(super) fn drawn(
     world: &World,
     rs: &RenderState,
     h: &mut Hierarchy,
     kept: &mut Meshes,
-    out: &mut Vec<Drawn>,
+    out: &mut Vec<ModelRow>,
 ) -> Rc<Vec<Drawn>> {
     use crate::host::codec::{Rec, Slot};
     out.clear();
@@ -97,32 +97,52 @@ pub(super) fn drawn(
         let rows = crate::present::extract::column_rows(world, layout);
         let mut rows: Vec<_> = rows.iter().collect();
         og_core::sort::sort_by_key(&mut rows, |(e, _)| og_ecs::Entity::from_bits(*e).index());
-        // Each part's geometry index through a map (its first position, as
-        // a search gave): a search per part made this read, every tick,
-        // parts × geometries (Daguanyuan, native: a 8.7 ms tick, 1.8 ms after).
-        let mut geometry_of = std::collections::HashMap::with_capacity(rs.geometries.len());
-        for (i, g) in rs.geometries.iter().enumerate() {
-            geometry_of.entry(*g).or_insert(i);
-        }
         for (e, v) in &rows {
-            let Some(parts) = rs.models.get(&(v.num(&asset).unwrap_or(0.0) as u64)) else {
+            let asset = v.num(&asset).unwrap_or(0.0) as u64;
+            if !rs.models.contains_key(&asset) {
                 continue;
-            };
-            let visible = v.flag(&visible).unwrap_or(true);
-            let layers = v.uint(&layers).map_or(1, |x| x as u32);
-            for &(mesh, _, local) in parts.iter() {
-                out.push(Drawn {
-                    entity: *e,
-                    geometry: geometry_of.get(&mesh).copied().unwrap_or(usize::MAX),
-                    mesh,
-                    part: Some(local),
-                    visible,
-                    layers,
-                });
             }
+            out.push(ModelRow {
+                entity: *e,
+                asset,
+                visible: v.flag(&visible).unwrap_or(true),
+                layers: v.uint(&layers).map_or(1, |x| x as u32),
+            });
         }
     }
     meshes
+}
+
+/// The parts of the og.Model `rows`, in their order.
+pub(super) fn parts(
+    models: &IdMap<u64, Parts>,
+    geometries: &[MeshHandle],
+    rows: &[ModelRow],
+) -> Vec<Drawn> {
+    // Each part's geometry index through a map (its first position, as
+    // a search gave): a search per part made this read parts × geometries
+    // (Daguanyuan, native: a 8.7 ms tick, 1.8 ms after).
+    let mut geometry_of = std::collections::HashMap::with_capacity(geometries.len());
+    for (i, g) in geometries.iter().enumerate() {
+        geometry_of.entry(*g).or_insert(i);
+    }
+    let mut out = Vec::new();
+    for r in rows {
+        let Some(parts) = models.get(&r.asset) else {
+            continue;
+        };
+        for &(mesh, _, local) in parts.iter() {
+            out.push(Drawn {
+                entity: r.entity,
+                geometry: geometry_of.get(&mesh).copied().unwrap_or(usize::MAX),
+                mesh,
+                part: Some(local),
+                visible: r.visible,
+                layers: r.layers,
+            });
+        }
+    }
+    out
 }
 
 /// The targets of `drawn`, their world matrices from `h`.
@@ -191,26 +211,25 @@ pub fn og_render_raycast(
         let layers = d.layers;
         let list: Rc<Vec<Target>> = if running(eng.id).is_some() {
             let mut rs = eng.render.borrow_mut();
-            let GeoState {
-                record, hierarchy, ..
-            } = &mut rs.geo;
+            let RenderState {
+                geo: GeoState {
+                    record, hierarchy, ..
+                },
+                models,
+                geometries,
+                ..
+            } = &mut *rs;
             match record {
-                Some((_, r)) => r.targets(hierarchy),
+                Some((_, r)) => r.targets(hierarchy, models, geometries),
                 None => Rc::new(Vec::new()),
             }
         } else {
             let mut rs = eng.render.borrow_mut();
             let mut h = std::mem::take(&mut rs.geo.now);
-            let mut models = Vec::new();
-            let meshes = drawn(
-                eng.world()?,
-                &rs,
-                &mut h,
-                &mut Meshes::default(),
-                &mut models,
-            );
+            let mut rows = Vec::new();
+            let meshes = drawn(eng.world()?, &rs, &mut h, &mut Meshes::default(), &mut rows);
             let mut targets = compose(&mut h, &meshes);
-            targets.extend(compose(&mut h, &models));
+            targets.extend(compose(&mut h, &parts(&rs.models, &rs.geometries, &rows)));
             rs.geo.now = h;
             Rc::new(targets)
         };

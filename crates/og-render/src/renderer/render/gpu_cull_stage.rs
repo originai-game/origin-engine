@@ -68,7 +68,8 @@ impl Renderer {
                 let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
                 origins[..sorted as usize]
                     .iter()
-                    .map(|&i| {
+                    .zip(&transforms[..sorted as usize])
+                    .map(|(&i, now)| {
                         let i = i as usize;
                         let inst = &scene.objects.instances[i];
                         let p = if previous_valid {
@@ -76,13 +77,26 @@ impl Renderer {
                         } else {
                             inst.transform
                         };
-                        let d = Self::dequant(
-                            meshes,
-                            materials,
-                            inst.mesh.index(),
-                            inst.material.index(),
-                        );
-                        let mut t = instances::gpu_transform(&d.map_or(p, |d| p * d));
+                        // One that did not move has the columns its run
+                        // gave it now (the same dequantisation; a third of
+                        // a 94,784-instance frame's upload was this
+                        // product, a still town's every instance).
+                        let mut t = if bytemuck::cast_ref::<Mat4, [u32; 16]>(&p)
+                            == bytemuck::cast_ref::<Mat4, [u32; 16]>(&inst.transform)
+                        {
+                            instances::GpuTransform {
+                                columns: now.columns,
+                                ..Default::default()
+                            }
+                        } else {
+                            let d = Self::dequant(
+                                meshes,
+                                materials,
+                                inst.mesh.index(),
+                                inst.material.index(),
+                            );
+                            instances::gpu_transform(&d.map_or(p, |d| p * d))
+                        };
                         // Previous sway uses the layer's shadow-sign encoding;
                         // current sway is raw in the spare fx word. Ordinary
                         // prepass vertices read only the transform columns.
