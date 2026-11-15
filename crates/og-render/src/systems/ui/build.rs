@@ -25,15 +25,16 @@ pub(crate) struct UiGpu {
     pub extra: [f32; 4],
 }
 
-/// `struct UiGradient` in ui_common.wgsl.
+/// `struct UiGradient` in ui_common.wgsl. Its stops are in the points
+/// table from `stops[0]`: their offsets four to an entry, then one colour
+/// each, so a gradient costs what its stops do.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct GpuGradient {
     head: [f32; 4],
     geom: [f32; 4],
     bx: [f32; 4],
-    offsets: [[f32; 4]; 2],
-    colors: [[f32; 4]; UI_GRADIENT_STOPS],
+    stops: [f32; 4],
 }
 
 /// `struct UiClipShape` in ui_common.wgsl.
@@ -52,6 +53,7 @@ pub(crate) struct GpuClip {
 pub(crate) struct UiTables {
     pub gradients: Vec<GpuGradient>,
     pub clips: Vec<GpuClip>,
+    /// Polylines' points and gradients' stops.
     pub points: Vec<[f32; 4]>,
 }
 
@@ -220,7 +222,7 @@ impl UiTables {
         for i in 1..stops.len() {
             stops[i].offset = stops[i].offset.max(stops[i - 1].offset);
         }
-        let mut out = GpuGradient {
+        let out = GpuGradient {
             head: [
                 match g.kind {
                     UiGradientKind::Linear => 0.0,
@@ -239,17 +241,21 @@ impl UiTables {
             ],
             geom: [g.from.x, g.from.y, g.to.x, g.to.y],
             bx: abs.unwrap_or([0.0; 4]),
-            ..Default::default()
+            stops: [self.points.len() as f32, 0.0, 0.0, 0.0],
         };
-        for (i, s) in stops.iter().enumerate() {
-            out.offsets[i / 4][i % 4] = s.offset;
+        for four in stops.chunks(4) {
+            let mut offsets = [0.0; 4];
+            for (o, s) in offsets.iter_mut().zip(four) {
+                *o = s.offset;
+            }
+            self.points.push(offsets);
+        }
+        // A stop outside the output's gamut keeps its colour (OKLab has no
+        // gamut): the mix is clipped where it is drawn, pixel by pixel.
+        for s in &stops {
             let a = s.color[3].clamp(0.0, 1.0);
-            let lab = oklab([
-                s.color[0].max(0.0),
-                s.color[1].max(0.0),
-                s.color[2].max(0.0),
-            ]);
-            out.colors[i] = [lab[0] * a, lab[1] * a, lab[2] * a, a];
+            let lab = oklab([s.color[0], s.color[1], s.color[2]]);
+            self.points.push([lab[0] * a, lab[1] * a, lab[2] * a, a]);
         }
         self.gradients.push(out);
         self.gradients.len() as u32 - 1
@@ -916,15 +922,20 @@ mod tests {
             ],
             ..Default::default()
         };
+        t.points.push([9.0; 4]);
         let i = t.gradient(&g, None) as usize;
         let r = &t.gradients[i];
         assert_eq!(r.head[1], 3.0);
+        // Its stops follow what the table held: offsets, then colours.
+        assert_eq!(r.stops[0], 1.0);
+        let (offsets, colors) = (t.points[1], &t.points[2..]);
         // The second stop never goes back past the first; the last is at 1.
-        assert_eq!(r.offsets[0][..3], [0.6, 0.6, 1.0]);
+        assert_eq!(offsets[..3], [0.6, 0.6, 1.0]);
         // Red at half alpha: OKLab premultiplied by it.
         let lab = oklab([1.0, 0.0, 0.0]);
-        assert!((r.colors[0][0] - lab[0] * 0.5).abs() < 1e-6);
-        assert_eq!(r.colors[0][3], 0.5);
+        assert!((colors[0][0] - lab[0] * 0.5).abs() < 1e-6);
+        assert_eq!(colors[0][3], 0.5);
+        assert_eq!(colors.len(), 3);
     }
 
     #[test]

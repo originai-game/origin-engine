@@ -48376,7 +48376,7 @@
     "Gradient": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A gradient of up to 8 stops, mixed in OKLab (no grey middle between complementary colours) and dithered so a long shallow one shows no bands.",
+      "description": "A gradient of up to 128 stops, mixed in OKLab (no grey middle between complementary colours) and dithered so a long shallow one shows no bands.",
       "type": "object",
       "properties": {
         "type": {

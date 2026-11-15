@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `Gradient` (desc struct)
 
-A gradient of up to 8 stops, mixed in OKLab (no grey middle between complementary colours) and dithered so a long shallow one shows no bands.
+A gradient of up to 128 stops, mixed in OKLab (no grey middle between complementary colours) and dithered so a long shallow one shows no bands.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -21,7 +21,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct Gradient {
-  doc "A gradient of up to 8 stops, mixed in OKLab (no grey middle between complementary colours) and dithered so a long shallow one shows no bands."
+  doc "A gradient of up to 128 stops, mixed in OKLab (no grey middle between complementary colours) and dithered so a long shallow one shows no bands."
   desc true
   field type GradientType "Its shape."
   field from Vector2 "Its start or centre, a fraction of the box." {
