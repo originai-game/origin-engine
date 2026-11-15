@@ -6,7 +6,7 @@
 <meta name="fixture:default" content="{&quot;showHint&quot;:true}">
 
 <stack id="RootEditor">
-  <panel id="Hint" hidden={!($showHint)}>
+  <panel id="Hint" hidden={!(showHint)}>
     <text id="Text" part="hud-editor.hint">{t("screen.hud-editor.hint")}</text>
   </panel>
   <column id="EditorEditor" part="hud-editor.dock">{@render editorEditor?.()}</column>

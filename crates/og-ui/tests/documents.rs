@@ -1966,3 +1966,38 @@ fn view_timelines_follow_the_subject_through_its_scroller() {
         assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
     });
 }
+
+/// A declared prop bound two ways writes the mount's store of its name,
+/// as `bind:checked={$on}` writes a store: a built-in screen reads and
+/// writes its props bare (`bind:open={open}`, `bind:value={volume}`).
+///
+/// Ways it could fail: the bare name bound as a value read once (the box
+/// flips and the store stays), a write refused because the name is no
+/// store, or the prop's default written over the store.
+#[test]
+fn a_bare_prop_bound_two_ways_writes_the_mount_s_store() {
+    let text = r#"<meta name="component" content="t">
+<meta name="prop:on" content="bool" data-default="false">
+<meta name="prop:volume" content="number" data-default="0">
+<column id="Form">
+  <input type="checkbox" id="Box" bind:checked={on} />
+  <input type="range" id="Volume" min="0" max="10" bind:value={volume} />
+</column>
+<style>#Volume { width: 200px; }</style>"#;
+    let mut d = Doc::new(text, &[("on", json!(false)), ("volume", json!(2))]);
+    d.step(InputFrame::default());
+    assert_eq!(d.read("on"), json!(false));
+    d.click("Box");
+    assert_eq!(d.read("on"), json!(true), "the box writes its prop");
+    // The game's write shows, and the next click writes over it.
+    d.set("on", json!(false));
+    d.click("Box");
+    assert_eq!(d.read("on"), json!(true));
+    // A press on the track's far end moves the knob there.
+    let track = d.get("Volume");
+    d.click_at(og_core::glam::Vec2::new(
+        track.x + track.width - 2.0,
+        track.y + track.height / 2.0,
+    ));
+    assert_eq!(d.read("volume"), json!(10));
+}

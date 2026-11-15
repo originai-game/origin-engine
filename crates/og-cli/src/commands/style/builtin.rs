@@ -3,9 +3,11 @@
 //! `<style>` writes no literal colour, length, duration or `url()` (the
 //! pack rule of [`super::literals`], with no `:root` to hold values), its
 //! markup writes no literal colour (`#hex` or a colour function in an
-//! attribute or a binding; a colour a game passes in a prop is the game's), and
+//! attribute or a binding; a colour a game passes in a prop is the game's),
 //! every part its markup names is listed in its `<meta name="parts">`, which
-//! lists nothing else.
+//! lists nothing else, and a prop it declares is read bare (`{title}`), so
+//! the document serves as an instance and as a mount; `$name` is left to
+//! the engine's stores.
 
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -54,6 +56,12 @@ fn document(file: &str, text: &str, out: &mut Vec<String>) -> Result<(), String>
             ));
         }
     }
+    const PROP: &str = "<meta name=\"prop:";
+    let props: BTreeSet<&str> = text
+        .match_indices(PROP)
+        .filter_map(|(at, _)| text[at + PROP.len()..].split_once('"'))
+        .map(|(name, _)| name)
+        .collect();
     let markup = text
         .split_once("<style>")
         .map_or(text, |(markup, _)| markup);
@@ -61,6 +69,19 @@ fn document(file: &str, text: &str, out: &mut Vec<String>) -> Result<(), String>
         // A meta's fixtures and docs are data, not dressing.
         if line.trim_start().starts_with("<meta ") {
             continue;
+        }
+        for (at, _) in line.match_indices('$') {
+            let rest = &line[at + 1..];
+            let end = rest
+                .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+                .unwrap_or(rest.len());
+            if props.contains(&rest[..end]) {
+                out.push(format!(
+                    "{file}:{}: `${name}` reads the prop `{name}` as a store; write `{name}`",
+                    index + 1,
+                    name = &rest[..end]
+                ));
+            }
         }
         if let Some(colour) = markup_colour(line) {
             out.push(format!(
@@ -128,7 +149,8 @@ mod tests {
     /// Ways it could fail: a literal in a style block missed or reported on
     /// the wrong line, a markup colour missed or a fragment reference taken for
     /// one, an unlisted part or a stale listing missed, a bound
-    /// part reported as stale, or a token value reported.
+    /// part reported as stale, a token value reported, a declared prop read
+    /// as `$name` missed, or an engine store's `$name` reported.
     #[test]
     fn a_document_reports_literals_and_parts_out_of_step_with_its_meta() {
         let mut out = Vec::new();
@@ -155,6 +177,17 @@ mod tests {
         )
         .unwrap();
         assert_eq!(out, [] as [&str; 0]);
+        let mut out = Vec::new();
+        document(
+            "c.svelte",
+            "<meta name=\"component\" content=\"C\">\n<meta name=\"prop:title\" content=\"string\" data-doc=\"Shown as {$title}.\">\n<div><p>{title}</p><p>{$title}</p>{#each $toasts as t (t.id)}<p>{t.text}</p>{/each}</div>\n",
+            &mut out,
+        )
+        .unwrap();
+        assert_eq!(
+            out,
+            ["c.svelte:3: `$title` reads the prop `title` as a store; write `title`"]
+        );
     }
 
     /// The engine's own documents keep the rule.

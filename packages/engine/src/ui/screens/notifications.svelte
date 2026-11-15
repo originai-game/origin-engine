@@ -5,7 +5,7 @@
 <meta name="fixture:default" content="{&quot;items&quot;:[{&quot;id&quot;:&quot;1&quot;,&quot;title&quot;:&quot;Achievement&quot;,&quot;body&quot;:&quot;First blood&quot;,&quot;tone&quot;:&quot;success&quot;}]}">
 
 <column id="Notifications" role="log" aria-live="polite">
-  {#each $items as n (n.id)}
+  {#each items as n (n.id)}
     <article class="note" part="notifications.frame" class:success={n.tone == "success"} class:warn={n.tone == "warn"} class:danger={n.tone == "danger"}>
       <div class="text"><p class="title">{n.title}</p><small class="body" part="notifications.body">{n.body}</small></div>
       <button id="Close" variant="quiet" onclick={dismiss} aria-label={n.title}><og-icon icon="close"/></button>

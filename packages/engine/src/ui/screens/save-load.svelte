@@ -12,14 +12,14 @@
 <column id="Screen" part="save-load.frame" class="bare">
   <row id="Header" part="save-load.band">
     <button id="Back" variant="quiet" onclick={back}>{t("screen.common.back")}</button>
-    <text id="SaveTitle" part="save-load.title" heading="true" hidden={!(($mode == "save"))}>{t("screen.save-load.saveTitle")}</text>
-    <text id="LoadTitle" part="save-load.title" heading="true" hidden={!(($mode != "save"))}>{t("screen.save-load.loadTitle")}</text>
+    <text id="SaveTitle" part="save-load.title" heading="true" hidden={!((mode == "save"))}>{t("screen.save-load.saveTitle")}</text>
+    <text id="LoadTitle" part="save-load.title" heading="true" hidden={!((mode != "save"))}>{t("screen.save-load.loadTitle")}</text>
   </row>
   <grid id="Body">
     <scroll id="Slots">
       <column id="List" focus-group="stop">
-        {#each $slots as s (s.id)}
-          <row id="Slot" part="save-load.row" interactive="true" focusable="true" onclick={select} class:selection-off={!((s.id == $selected))} class:selection-on={(s.id == $selected)}>
+        {#each slots as s (s.id)}
+          <row id="Slot" part="save-load.row" interactive="true" focusable="true" onclick={select} class:selection-off={!((s.id == selected))} class:selection-on={(s.id == selected)}>
             <art id="Thumb" part="save-load.thumb" kind="saveThumb" src={s.thumb}></art>
             <column id="Text">
               <text id="Empty" hidden={!(s.empty)}>{t("screen.save-load.empty")}</text>
@@ -39,9 +39,9 @@
       <column id="Preview">{@render preview?.()}</column>
       <row id="Actions">
         <button id="Delete" variant="danger" onclick={delete} ondetails={delete}>{t("screen.save-load.delete")}</button>
-        <button id="New" hidden={!(($mode == "save"))} onclick={newSlot}>{t("screen.save-load.new")}</button>
-        <button id="Save" variant="primary" hidden={!(($mode == "save"))} onclick={save}>{t("screen.save-load.save")}</button>
-        <button id="Load" variant="primary" hidden={!((($mode != "save") && ($slots.length > 0.0)))} onclick={load}>{t("screen.save-load.load")}</button>
+        <button id="New" hidden={!((mode == "save"))} onclick={newSlot}>{t("screen.save-load.new")}</button>
+        <button id="Save" variant="primary" hidden={!((mode == "save"))} onclick={save}>{t("screen.save-load.save")}</button>
+        <button id="Load" variant="primary" hidden={!(((mode != "save") && (slots.length > 0.0)))} onclick={load}>{t("screen.save-load.load")}</button>
       </row>
     </column>
   </grid>

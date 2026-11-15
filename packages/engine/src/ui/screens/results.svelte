@@ -18,20 +18,20 @@
     <scroll id="Page">
       <row id="Head">
         <column id="Text">
-          <text id="Title" part="results.title" heading="true" class:outcome-lost={!($won)} class:outcome-won={$won}>{$title}</text>
-          <text id="Gained">{t("screen.results.Gained", { gained: $gained })}</text>
+          <text id="Title" part="results.title" heading="true" class:outcome-lost={!(won)} class:outcome-won={won}>{title}</text>
+          <text id="Gained">{t("screen.results.Gained", { gained: gained })}</text>
           <row id="Level">
-            <text id="LevelValue">{t("screen.results.LevelValue", { level: $level })}</text>
-            <progress id="Xp" bind:value={$xp}></progress>
+            <text id="LevelValue">{t("screen.results.LevelValue", { level: level })}</text>
+            <progress id="Xp" bind:value={xp}></progress>
           </row>
         </column>
-        <text id="Grade" part="results.grade" heading="true" hidden={!(($grade != ""))}>{$grade}</text>
+        <text id="Grade" part="results.grade" heading="true" hidden={!((grade != ""))}>{grade}</text>
       </row>
       <column id="Celebration">{@render celebration?.()}</column>
-      <tabs id="Tabs" items="Summary Graphs Scoreboard" keys="screen.results.summary screen.results.graphs screen.results.board" values="summary graphs board" bind:current={$tab} fill="true"></tabs>
-      <column id="Summary" hidden={!(($tab == "summary"))}>
+      <tabs id="Tabs" items="Summary Graphs Scoreboard" keys="screen.results.summary screen.results.graphs screen.results.board" values="summary graphs board" bind:current={tab} fill="true"></tabs>
+      <column id="Summary" hidden={!((tab == "summary"))}>
         <column id="Stats">
-          {#each $stats as s (s.id)}
+          {#each stats as s (s.id)}
             <row id="Stat" part="results.row">
               <text id="Name" part="results.label">{s.name}</text>
               <badge id="Best" tone="accent" hidden={!(s.best)}>{t("screen.results.best")}</badge>
@@ -45,7 +45,7 @@
           {/each}
         </column>
         <row id="Rewards">
-          {#each $rewards as r (r.id)}
+          {#each rewards as r (r.id)}
             <column id="Reward" part="results.cell">
               <art id="Art" kind="itemIcon" src={r.texture}></art>
               <text id="Amount">{t("screen.results.Amount", { r_amount: formatCompact(r.amount), r_name: r.name })}</text>
@@ -53,8 +53,8 @@
           {/each}
         </row>
       </column>
-      <column id="Graph" hidden={!(($tab == "graphs"))}>{@render graph?.()}</column>
-      <column id="Scores" hidden={!(($tab == "board"))}>{@render scores?.()}</column>
+      <column id="Graph" hidden={!((tab == "graphs"))}>{@render graph?.()}</column>
+      <column id="Scores" hidden={!((tab == "board"))}>{@render scores?.()}</column>
     </scroll>
     <row id="Footer">
       <button id="Replay" variant="quiet" onclick={replay}>{t("screen.results.replay")}</button>

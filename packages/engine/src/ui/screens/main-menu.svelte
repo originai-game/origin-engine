@@ -14,8 +14,8 @@
   <column id="MenuMenu" part="main-menu.frame" class="bare">
     <art id="Logo" part="main-menu.logo" kind="logo"></art>
     <spacer id="Node5"></spacer>
-    <button id="Continue" variant="primary" class="large" hidden={!($canContinue)} onclick={continue}>{t("screen.main-menu.continue")}</button>
-    <text id="SaveLine" hidden={!($canContinue)}>{$saveLine}</text>
+    <button id="Continue" variant="primary" class="large" hidden={!(canContinue)} onclick={continue}>{t("screen.main-menu.continue")}</button>
+    <text id="SaveLine" hidden={!(canContinue)}>{saveLine}</text>
     <button id="NewGame" class="large" onclick={newGame}>{t("screen.main-menu.newGame")}</button>
     <button id="Modes" class="large" onclick={modes}>{t("screen.main-menu.modes")}</button>
     <button id="Settings" class="large" onclick={settings}>{t("screen.main-menu.settings")}</button>
@@ -24,11 +24,11 @@
     <column id="Extra">{@render extra?.()}</column>
     <spacer id="Node14"></spacer>
   </column>
-  <panel id="News" interactive="true" focusable="true" hidden={!(($news != ""))} onclick={news}>
+  <panel id="News" interactive="true" focusable="true" hidden={!((news != ""))} onclick={news}>
     <text id="Eyebrow">{t("screen.main-menu.newsEyebrow")}</text>
-    <text id="Line">{$news}</text>
+    <text id="Line">{news}</text>
   </panel>
-  <text id="Version" part="main-menu.version">{$version}</text>
+  <text id="Version" part="main-menu.version">{version}</text>
 </stack>
 
 <style>

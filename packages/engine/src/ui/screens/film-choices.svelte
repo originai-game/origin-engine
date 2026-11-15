@@ -8,12 +8,12 @@
 <meta name="action:choose" content="Choose">
 <meta name="fixture:default" content="{&quot;open&quot;:true,&quot;left&quot;:0.6,&quot;locked&quot;:false,&quot;choices&quot;:[{&quot;id&quot;:&quot;0&quot;,&quot;text&quot;:&quot;Take the knife&quot;,&quot;enabled&quot;:true,&quot;chosen&quot;:false},{&quot;id&quot;:&quot;1&quot;,&quot;text&quot;:&quot;Open the door&quot;,&quot;enabled&quot;:true,&quot;chosen&quot;:true},{&quot;id&quot;:&quot;2&quot;,&quot;text&quot;:&quot;Wait in the dark&quot;,&quot;enabled&quot;:false,&quot;chosen&quot;:false}]}">
 
-<column id="FilmChoices" class="bare" hidden={!($open)}>
+<column id="FilmChoices" class="bare" hidden={!(open)}>
   <column id="Panel" part="film-choices.frame" role="group" aria-label={t("screen.film-choices.label")}>
-    <progress id="Timer" part="film-choices.timer" bind:value={$left}></progress>
+    <progress id="Timer" part="film-choices.timer" bind:value={left}></progress>
     <div id="Choices">
-      {#each $choices as c (c.id)}
-        <button id="Choice" part="film-choices.choice" class="choice" class:chosen={c.chosen} variant={c.chosen ? "primary" : "default"} aria-current={c.chosen} disabled={!(c.enabled) || $locked} onclick={choose}>{c.text}</button>
+      {#each choices as c (c.id)}
+        <button id="Choice" part="film-choices.choice" class="choice" class:chosen={c.chosen} variant={c.chosen ? "primary" : "default"} aria-current={c.chosen} disabled={!(c.enabled) || locked} onclick={choose}>{c.text}</button>
       {/each}
     </div>
   </column>

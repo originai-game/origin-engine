@@ -11,18 +11,18 @@
 
 <column id="Editor">
   <row id="Toolbar" part="creator-tools.frame" class="hud">
-    <button id="Select" variant="ghost" class="compact" class:selection-off={!(($tool == "select"))} class:selection-on={($tool == "select")}>{t("screen.creator-tools.select")}</button>
-    <button id="Move" variant="ghost" class="compact" class:selection-off={!(($tool == "move"))} class:selection-on={($tool == "move")}>{t("screen.creator-tools.move")}</button>
-    <button id="Rotate" variant="ghost" class="compact" class:selection-off={!(($tool == "rotate"))} class:selection-on={($tool == "rotate")}>{t("screen.creator-tools.rotate")}</button>
-    <button id="Scale" variant="ghost" class="compact" class:selection-off={!(($tool == "scale"))} class:selection-on={($tool == "scale")}>{t("screen.creator-tools.scale")}</button>
+    <button id="Select" variant="ghost" class="compact" class:selection-off={!((tool == "select"))} class:selection-on={(tool == "select")}>{t("screen.creator-tools.select")}</button>
+    <button id="Move" variant="ghost" class="compact" class:selection-off={!((tool == "move"))} class:selection-on={(tool == "move")}>{t("screen.creator-tools.move")}</button>
+    <button id="Rotate" variant="ghost" class="compact" class:selection-off={!((tool == "rotate"))} class:selection-on={(tool == "rotate")}>{t("screen.creator-tools.rotate")}</button>
+    <button id="Scale" variant="ghost" class="compact" class:selection-off={!((tool == "scale"))} class:selection-on={(tool == "scale")}>{t("screen.creator-tools.scale")}</button>
     <spacer id="Node6"></spacer>
     <button id="Undo" class="compact" variant="quiet" onclick={undo}>{t("screen.creator-tools.undo")}</button>
     <button id="Redo" class="compact" variant="quiet" onclick={redo}>{t("screen.creator-tools.redo")}</button>
-    <button id="Play" class="compact" variant="primary" onclick={play} class:run-stopped={!($playing)} class:run-playing={$playing}>{t("screen.creator-tools.play")}</button>
-    <button id="Save" class="compact" disabled={!($dirty)} onclick={save}>{t("screen.common.save")}</button>
+    <button id="Play" class="compact" variant="primary" onclick={play} class:run-stopped={!(playing)} class:run-playing={playing}>{t("screen.creator-tools.play")}</button>
+    <button id="Save" class="compact" disabled={!(dirty)} onclick={save}>{t("screen.common.save")}</button>
   </row>
   <grid id="Body">
-    <column id="TreePanel" part="creator-tools.frame" class="hud" class:chosen={$panel == 'hierarchy'}>
+    <column id="TreePanel" part="creator-tools.frame" class="hud" class:chosen={panel == 'hierarchy'}>
       <text id="TreePanelTitle" part="creator-tools.label">{t("screen.creator-tools.hierarchy")}</text>
       <column id="TreePanelHierarchy">{@render treePanelHierarchy?.()}</column>
     </column>
@@ -32,13 +32,13 @@
       <button id="TabsInspector" class="compact" variant="ghost">{t("screen.creator-tools.inspector")}</button>
       <button id="TabsCatalogue" class="compact" variant="ghost">{t("screen.creator-tools.catalogue")}</button>
     </row>
-    <column id="InspectorPanel" part="creator-tools.frame" class="hud" class:chosen={$panel == 'inspector'}>
-      <text id="Selected" part="creator-tools.title">{$selected}</text>
+    <column id="InspectorPanel" part="creator-tools.frame" class="hud" class:chosen={panel == 'inspector'}>
+      <text id="Selected" part="creator-tools.title">{selected}</text>
       <scroll id="Scroll">
         <column id="ScrollInspector">{@render scrollInspector?.()}</column>
       </scroll>
     </column>
-    <column id="CataloguePanel" part="creator-tools.frame" class="hud" class:chosen={$panel == 'catalogue'}>
+    <column id="CataloguePanel" part="creator-tools.frame" class="hud" class:chosen={panel == 'catalogue'}>
       <text id="CataloguePanelTitle" part="creator-tools.label">{t("screen.creator-tools.catalogue")}</text>
       <column id="CataloguePanelCatalogue">{@render cataloguePanelCatalogue?.()}</column>
     </column>

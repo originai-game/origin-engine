@@ -16,23 +16,23 @@
 
 <stack id="Tutorial">
   <column id="Highlight">{@render highlight?.()}</column>
-  {#if $target}
-    <og-spotlight id="Spot" class="card" part="tutorial.frame" open target={$target}>{@render card()}</og-spotlight>
+  {#if target}
+    <og-spotlight id="Spot" class="card" part="tutorial.frame" open target={target}>{@render card()}</og-spotlight>
   {:else}
     <column id="Card" class="card" part="tutorial.frame">{@render card()}</column>
   {/if}
 </stack>
 
 {#snippet card()}
-  <art id="Art" kind="tutorial" src={$texture} hidden={!(($texture != 0.0))}></art>
-  <text id="Title" part="tutorial.title" heading="true">{$title}</text>
-  <text id="Text" part="tutorial.text">{$text}</text>
+  <art id="Art" kind="tutorial" src={texture} hidden={!((texture != 0.0))}></art>
+  <text id="Title" part="tutorial.title" heading="true">{title}</text>
+  <text id="Text" part="tutorial.text">{text}</text>
   <column id="Hint">{@render hint?.()}</column>
   <row id="Foot">
-    <text id="Step" part="tutorial.step">{t("screen.tutorial.Step", { step: $step, steps: $steps })}</text>
+    <text id="Step" part="tutorial.step">{t("screen.tutorial.Step", { step: step, steps: steps })}</text>
     <spacer id="Node9"></spacer>
     <button id="Skip" variant="quiet" onclick={skip}>{t("screen.tutorial.skip")}</button>
-    <button id="Next" variant="primary" hidden={!(!($waits))} onclick={next} onconfirm={next}>{t("screen.tutorial.next")}</button>
+    <button id="Next" variant="primary" hidden={!(!(waits))} onclick={next} onconfirm={next}>{t("screen.tutorial.next")}</button>
   </row>
 {/snippet}
 

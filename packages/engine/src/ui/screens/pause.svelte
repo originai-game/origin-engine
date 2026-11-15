@@ -12,14 +12,14 @@
   <column id="Panel" part="pause.frame">
     <text id="Title" part="pause.title" heading="true">{t("screen.pause.title")}</text>
     <column id="Status">
-      <text id="Objective" part="pause.objective" hidden={!(($objective != ""))}>{$objective}</text>
-      <text id="Played">{t("screen.pause.Played", { played: formatDuration($played) })}</text>
+      <text id="Objective" part="pause.objective" hidden={!((objective != ""))}>{objective}</text>
+      <text id="Played">{t("screen.pause.Played", { played: formatDuration(played) })}</text>
     </column>
     <grid id="Menu" focus-group="wrap">
       <button id="Resume" variant="primary" onclick={resume}>{t("screen.pause.resume")}</button>
       <button id="Settings" onclick={settings}>{t("screen.pause.settings")}</button>
       <button id="Controls" onclick={controls}>{t("screen.pause.controls")}</button>
-      <button id="Save" disabled={!($canSave)} onclick={save}>{t("screen.pause.save")}</button>
+      <button id="Save" disabled={!(canSave)} onclick={save}>{t("screen.pause.save")}</button>
       <button id="Load" onclick={load}>{t("screen.pause.load")}</button>
       <button id="QuitToMenu" variant="quiet" onclick={quitToMenu}>{t("screen.pause.quitToMenu")}</button>
       <button id="Quit" variant="danger" onclick={quit}>{t("screen.pause.quit")}</button>

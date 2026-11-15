@@ -7,9 +7,9 @@
 <meta name="action:choose" content="Open">
 <meta name="fixture:default" content="{&quot;loading&quot;:false,&quot;empty&quot;:&quot;Nothing here yet&quot;,&quot;busy&quot;:&quot;Loading…&quot;,&quot;rows&quot;:[{&quot;id&quot;:&quot;a&quot;,&quot;title&quot;:&quot;Copper ore&quot;,&quot;detail&quot;:&quot;Mined in the north pit&quot;,&quot;value&quot;:&quot;×12&quot;},{&quot;id&quot;:&quot;b&quot;,&quot;title&quot;:&quot;Silk&quot;,&quot;detail&quot;:&quot;Bought in Harrow&quot;,&quot;value&quot;:&quot;×3&quot;}]}">
 
-<section id="DataList" part="data-list.frame" class="bare" aria-busy={$loading}>
+<section id="DataList" part="data-list.frame" class="bare" aria-busy={loading}>
   <list id="Rows">
-    {#each $rows as r (r.id)}
+    {#each rows as r (r.id)}
       <button id="Row" part="data-list.row" class="row" onclick={choose}>
         <div class="face">
           <div class="text"><p class="title">{r.title}</p><small class="detail" part="data-list.label">{r.detail}</small></div>
@@ -17,7 +17,7 @@
         </div>
       </button>
     {:else}
-      <p id="Empty" part="data-list.note" class="note">{$loading ? $busy : $empty}</p>
+      <p id="Empty" part="data-list.note" class="note">{loading ? busy : empty}</p>
     {/each}
   </list>
 </section>

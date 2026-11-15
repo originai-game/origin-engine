@@ -18,23 +18,23 @@
     <button id="Back" variant="quiet" onclick={back}>{t("screen.common.back")}</button>
     <text id="Title" part="leaderboard.title" heading="true">{t("screen.leaderboard.title")}</text>
     <spacer id="Node4"></spacer>
-    <button id="Period" onclick={period}>{$period}</button>
+    <button id="Period" onclick={period}>{period}</button>
   </row>
   <row id="Tabs" focus-group="wrap">
-    <button id="Global" variant="ghost" class:selection-off={!(($tab == "global"))} class:selection-on={($tab == "global")}>{t("screen.leaderboard.global")}</button>
-    <button id="Friends" variant="ghost" class:selection-off={!(($tab == "friends"))} class:selection-on={($tab == "friends")}>{t("screen.leaderboard.friends")}</button>
-    <button id="League" variant="ghost" class:selection-off={!(($tab == "league"))} class:selection-on={($tab == "league")}>{t("screen.leaderboard.league")}</button>
+    <button id="Global" variant="ghost" class:selection-off={!((tab == "global"))} class:selection-on={(tab == "global")}>{t("screen.leaderboard.global")}</button>
+    <button id="Friends" variant="ghost" class:selection-off={!((tab == "friends"))} class:selection-on={(tab == "friends")}>{t("screen.leaderboard.friends")}</button>
+    <button id="League" variant="ghost" class:selection-off={!((tab == "league"))} class:selection-on={(tab == "league")}>{t("screen.leaderboard.league")}</button>
   </row>
-  <row id="LeagueBar" part="leaderboard.league" hidden={!(($tab == "league"))}>
-    <text id="LeagueBarName" heading="true">{$league.name}</text>
-    <text id="Lines">{t("screen.leaderboard.Lines", { league_demote: $league.demote, league_promote: $league.promote })}</text>
+  <row id="LeagueBar" part="leaderboard.league" hidden={!((tab == "league"))}>
+    <text id="LeagueBarName" heading="true">{league.name}</text>
+    <text id="Lines">{t("screen.leaderboard.Lines", { league_demote: league.demote, league_promote: league.promote })}</text>
     <spacer id="Node13"></spacer>
-    <text id="Ends">{t("screen.leaderboard.Ends", { league_ends: formatDuration($league.ends) })}</text>
+    <text id="Ends">{t("screen.leaderboard.Ends", { league_ends: formatDuration(league.ends) })}</text>
   </row>
   <scroll id="Body">
     <column id="List" focus-group="stop">
       <column id="Board">{@render board?.()}</column>
-      {#each $rows as r (r.id)}
+      {#each rows as r (r.id)}
         <row id="Row" part="leaderboard.row" interactive="true" focusable="true" onclick={row} class:mine-other={!(r.you)} class:mine-you={r.you}>
           <text id="RowRank" part="leaderboard.rank">{t("screen.leaderboard.RowRank", { value: formatOrdinal(r.rank) })}</text>
           <art id="Avatar" kind="emblem" src={r.texture}></art>
@@ -45,9 +45,9 @@
     </column>
   </scroll>
   <row id="Me" part="leaderboard.me">
-    <text id="MeRank" part="leaderboard.rank">{t("screen.leaderboard.MeRank", { value: formatOrdinal($me.rank) })}</text>
-    <text id="MeName">{$me.name}</text>
-    <text id="MeScore" part="leaderboard.figure">{t("screen.leaderboard.MeScore", { value: $me.score })}</text>
+    <text id="MeRank" part="leaderboard.rank">{t("screen.leaderboard.MeRank", { value: formatOrdinal(me.rank) })}</text>
+    <text id="MeName">{me.name}</text>
+    <text id="MeScore" part="leaderboard.figure">{t("screen.leaderboard.MeScore", { value: me.score })}</text>
   </row>
 </column>
 
