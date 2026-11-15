@@ -83,7 +83,7 @@ export async function runUi(argv: string[], output: RunOutput = process, control
 
 /** `t:action;action` → each step timed (a bare action at `at`). */
 function timed(commands: string, at = 0): string[] {
-  return commands.split(";").map((s) => s.trim()).filter(Boolean).map((s) => (/^\d+(\.\d+)?:/.test(s) ? s.replace(/^(\d+(?:\.\d+)?)/, (t) => String(Number(t) + at)) : `${at}:${s}`));
+  return commands.split(";").map((s) => s.trim()).filter(Boolean).map((s) => (/^\d+(\.\d+)?:/.test(s) ? s.replace(/^(\d+(?:\.\d+)?)/, (t) => String(Number((Number(t) + at).toFixed(4)))) : `${at}:${s}`));
 }
 
 interface Cell extends UiCell {
@@ -201,7 +201,8 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
       // configure calls (a field they leave out keeps its value).
       if (scale !== 100) og.ui.configure(engine.world, { textScale: scale / 100 });
       og.ui.previewViewport(engine.world, { width: vp.width, height: vp.height, dpr: vp.dpr, safeArea: vp.safeArea, coarsePointer: vp.coarsePointer, highContrast, breakpoint: bp } as never);
-      const script = [...steps, ...shots.map((s) => `${s.at}:screenshot:${s.name}.png`)];
+      // The probe takes a script in time order: a capture before a later step goes before it.
+      const script = [...steps, ...shots.map((s) => `${s.at}:screenshot:${s.name}.png`)].sort((a, b) => parseFloat(a) - parseFloat(b));
       const report = engine.probe.commands(script.join(";")) as { untilTick: number } | null;
       if (!report) fail(`the script is malformed: ${script.join(";")}`);
       for (let n = 0; n < 6000; n++) {
