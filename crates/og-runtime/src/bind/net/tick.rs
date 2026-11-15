@@ -71,7 +71,10 @@ pub(crate) fn gate(engine: u32, world: &mut World) -> bool {
     loop {
         let tick = world.time().tick;
         let gate = with(engine, |n| {
-            n.ls.set_clock(crate::author::probe::now_ms() as u64);
+            n.ls.set_clock(
+                n.frame_clock
+                    .unwrap_or_else(|| crate::author::probe::now_ms() as u64),
+            );
             let g = n.ls.gate(&cfg, tick, &mut || world.snapshot());
             let players = n.ls.players().unwrap_or(0);
             for (peer, seat, ms) in n.ls.take_stalls() {

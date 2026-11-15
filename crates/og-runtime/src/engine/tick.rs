@@ -111,7 +111,9 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         rs.capture_ms = 0.0;
     }
     let t0 = rprobe::now_ms();
+    crate::bind::net::frame_clock(id, Some(t0 as u64));
     let stepped = rprobe::with_probe(&eng, false, |p, w| p.frame(w, due));
+    crate::bind::net::frame_clock(id, None);
     let frame_t0 = t0;
     super::modules::end_of_ticks();
     super::stream::sound_chunks(&eng);

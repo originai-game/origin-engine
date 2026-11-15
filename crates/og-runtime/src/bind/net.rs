@@ -147,6 +147,16 @@ pub(crate) struct Net {
     /// Outside a run: the local player's commands for a tick, given the
     /// tick before (og.net.commands reads them as seat 0's).
     local_commands: (u64, Vec<Vec<u8>>),
+    /// The wall clock (ms) as the engine frame running now began. A host
+    /// delivers room events between frames, so a frame's ticks judge the
+    /// others' silence as of then: a long catch-up frame is this peer's own
+    /// pause, not the room's silence.
+    frame_clock: Option<u64>,
+}
+
+/// An engine frame begins (`Some` with the wall clock) or ends (`None`).
+pub(crate) fn frame_clock(engine: u32, at: Option<u64>) {
+    with(engine, |n| n.frame_clock = at);
 }
 
 /// og.net.shape: the game's input record and its commands.
