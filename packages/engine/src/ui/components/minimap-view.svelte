@@ -48,7 +48,8 @@
 .marker.loot { border-radius: 0; background: var(--xp); }
 [part="MinimapView.player"] { position: absolute; top: calc(var(--side) / 2 - var(--size-xs) / 2); inset-inline-start: calc(var(--side) / 2 - var(--size-xs) / 2); width: var(--size-xs); height: var(--size-xs); fill: var(--primary); stroke: var(--ink); stroke-width: 1.2; transform-origin: 50% 50%; }
 [part="MinimapView.player"].turning { rotate: calc(var(--heading) * 1deg); }
-[part="MinimapView.north"] { position: absolute; top: calc(var(--space-xs) * -1); inset-inline-start: 0; width: stretch; text-align: center; font: var(--text-caption); color: var(--danger); text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
+/* Inside the glass, under the bezel's top: on the map, clear of the bezel. */
+[part="MinimapView.north"] { position: absolute; top: calc(var(--space-xs) + var(--stroke-hairline)); inset-inline-start: 0; width: stretch; text-align: center; font: var(--text-caption); color: var(--danger); text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
 [part="MinimapView.badge"] { font: var(--text-caption); padding: var(--space-xxs) var(--space-sm); white-space: nowrap; }
 @keyframes ping { from { scale: var(--motion-scale-shrink); opacity: 1; } to { scale: 2; opacity: 0; } }
 </style>

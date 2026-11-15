@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "MinimapView",
+      "summary": "The north mark stands on the map inside the bezel instead of over the bezel's top edge."
+    }
+  ]
+}

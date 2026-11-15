@@ -489,3 +489,27 @@ fn packs_dress_text_over_the_scene_through_its_tokens() {
         );
     }
 }
+
+/// The minimap's north mark stands on the map inside the bezel, never on
+/// the bezel's rim. Fails when it is lifted over the bezel's top edge.
+#[test]
+fn the_minimap_north_mark_stands_clear_of_the_bezel() {
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    let doc = docs.iter().find(|d| d.doc.name == "MinimapView").unwrap();
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+    preview(&mut ui, &docs, doc, &messages, 1280.0, 720.0);
+    let at = |id: &str| {
+        ui.probe_elements()
+            .into_iter()
+            .find(|e| e.id == id)
+            .unwrap_or_else(|| panic!("no {id}"))
+    };
+    let (north, glass) = (at("North"), at("Glass"));
+    assert!(
+        north.y >= glass.y,
+        "north {} over the bezel above the glass {}",
+        north.y,
+        glass.y
+    );
+}
