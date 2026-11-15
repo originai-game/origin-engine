@@ -175,6 +175,51 @@ impl Srgba {
         0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
     }
 
+    /// CSS `contrast-color()` of this colour as an opaque ground (its alpha
+    /// is not read): white or black, whichever has the greater WCAG 2 ratio
+    /// on it, white on a tie. The two ratios multiply to 21, so the pick
+    /// reads at least √21 ≈ 4.58:1 on any ground.
+    pub fn contrast_color(self) -> Srgba {
+        let ground = Srgba { alpha: 1.0, ..self };
+        if Srgba::WHITE.contrast(ground) >= Srgba::BLACK.contrast(ground) {
+            Srgba::WHITE
+        } else {
+            Srgba::BLACK
+        }
+    }
+
+    /// The APCA lightness contrast (Lc) of this colour as text on the
+    /// opaque `ground`: positive for dark text on a light ground, negative
+    /// for light on dark, 0 under |Lc 10|; about 106 for black on white and
+    /// −108 for white on black. The base formula 0.0.98G-4g with its
+    /// constants as apca-w3 0.1.9 states them (Somers, Myndex); written
+    /// here from that statement, not copied.
+    pub fn apca(self, ground: Srgba) -> f32 {
+        // sRGB to APCA's screen luminance: a plain 2.4 power, then a soft
+        // clamp of near black.
+        let y = |c: Srgba| {
+            let [r, g, b] = c.rgb.map(|v| libm::powf(f32::from(v) / 255.0, 2.4));
+            let y = 0.212_672_9 * r + 0.715_152_2 * g + 0.072_175 * b;
+            if y > 0.022 {
+                y
+            } else {
+                y + libm::powf(0.022 - y, 1.414)
+            }
+        };
+        let (text, ground) = (y(self), y(ground));
+        if (ground - text).abs() < 0.0005 {
+            return 0.0;
+        }
+        let lc = if ground > text {
+            let s = (libm::powf(ground, 0.56) - libm::powf(text, 0.57)) * 1.14;
+            if s < 0.1 { 0.0 } else { s - 0.027 }
+        } else {
+            let s = (libm::powf(ground, 0.65) - libm::powf(text, 0.62)) * 1.14;
+            if s > -0.1 { 0.0 } else { s + 0.027 }
+        };
+        lc * 100.0
+    }
+
     pub const WHITE: Srgba = Srgba::rgb(255, 255, 255);
     pub const BLACK: Srgba = Srgba::rgb(0, 0, 0);
     pub const TRANSPARENT: Srgba = Srgba {

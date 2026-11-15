@@ -31,6 +31,7 @@ const COLOUR_FUNCTIONS: &[&str] = &[
     "oklch",
     "color",
     "color-mix",
+    "contrast-color",
     "light-dark",
 ];
 /// The property that declares assets anywhere (its files and their gains).
