@@ -474,21 +474,21 @@ pub(crate) struct FoamLevels {
 /// of it.
 ///
 /// Each foam level reads the Jacobian at its own texel (ocean_foam.wgsl
-/// `jacobian`: the sea's waves faded at it, the cascades from their mips),
+/// `jacobian`: the sea's waves faded at it),
 /// much smoother than the drawn crest's at its 2 m: one threshold for all
 /// let the coarse level, everything past some 20 m, lay down a small share
 /// of the coverage (a gale with two or three whitecaps in view). So each
 /// level's is the quantile of the Jacobian as that level resolves it.
 ///
-/// The Jacobian's distribution is sampled over the open sea: og_core's
-/// waves, plus the cascades' displacement derivatives, a Gaussian of the covariance their
-/// spectrum gives. Seeded, so the same sea always has the same levels.
+/// The Jacobian's distribution is sampled over the open sea: og_env's
+/// waves (the cascades' ripples move nothing, so they fold nothing).
+/// Seeded, so the same sea always has the same levels.
 /// A sea that never bunches enough (a round swell: no horizontal
 /// displacement) never foams.
-fn foam_thresholds(water: &Water, built: &crate::ocean_fft::spectrum::Spectrum) -> FoamLevels {
+fn foam_thresholds(water: &Water) -> FoamLevels {
     let coverage = 3.84e-6 * f64::from(water.wind.length()).powf(3.41);
     let level = |resolve: f32, share: f64, floor: f32| {
-        let jac = jacobians(water, built, resolve);
+        let jac = jacobians(water, resolve);
         let at =
             |share: f64| jac[((share.min(1.0) * jac.len() as f64) as usize).min(jac.len() - 1)];
         // Never above 0.9: a sea whose surface hardly bunches lays none.

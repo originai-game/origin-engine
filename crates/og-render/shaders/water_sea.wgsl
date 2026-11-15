@@ -31,11 +31,10 @@ fn sea_wave(i: u32) -> vec4<f32> {
 
 // The sea's displacement (x, height, z) at rest point p (frame xz) as vertices `cell` metres apart draw it: every wave
 // of og_env::ocean, the function the tick floats bodies on (og.physics.waterHeight), each left out only where the
-// vertices are too far apart to hold it and shoaled by the seabed under p; then the FFT's waves, shorter than the
-// shortest of those, read at the mip whose texels are the cells.
+// vertices are too far apart to hold it and shoaled by the seabed under p. The FFT's ripples, shorter than the
+// shortest of those, shade the surface (ocean_normal) and never move it.
 fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
-  let sh = shoaling(p);
-  let d = ocean_swell(p, cell, sh) + ocean_cascades(p, cell, sh);
+  let d = ocean_swell(p, cell, shoaling(p));
   // W3: the hulls' wakes on top, where the waves carry the point.
   return d + vec3<f32>(0.0, water_wake(p + d.xz).x, 0.0);
 }
@@ -43,7 +42,7 @@ fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
 // ocean_displace's waves of og_env::ocean at rest point p (Ocean::displacement).
 fn ocean_swell(p: vec2<f32>, cell: f32, sh: Shoal) -> vec3<f32> {
   var d = vec3<f32>(0.0);
-  for (var i = 0u; i < 32u; i++) {
+  for (var i = 0u; i < 48u; i++) {
     let a = water.swell[2u * i];
     let b = water.swell[2u * i + 1u];
     let k = length(a.xy);
@@ -55,19 +54,6 @@ fn ocean_swell(p: vec2<f32>, cell: f32, sh: Shoal) -> vec3<f32> {
     let keep = sea_keep(water.shore[1].z, cell);
     d += vec3<f32>(sh.inshore.x * sh.lean * cos(sh.phase), sh.amp * sin(sh.phase),
       sh.inshore.y * sh.lean * cos(sh.phase)) * keep;
-  }
-  return d;
-}
-
-// ocean_displace's FFT waves (render only) at rest point p, each cascade faded once its longest waves are under four
-// cells.
-fn ocean_cascades(p: vec2<f32>, cell: f32, sh: Shoal) -> vec3<f32> {
-  var d = vec3<f32>(0.0);
-  for (var c = 0u; c < u32(water.fft.x); c++) {
-    let lod = log2(max(cell * 256.0 / water.cascades[c].w, 1.0));
-    let fade = (1.0 - smoothstep(4.0, 6.0, lod)) * shoal_keep(water.bands[c], sh);
-    if (fade <= 0.0) { continue; }
-    d += textureSampleLevel(heights, ripple_sampler, cascade_uv(c, p), 3u * c, min(lod, 4.0)).xyz * fade;
   }
   return d;
 }
@@ -93,19 +79,28 @@ fn ocean_normal(p: vec2<f32>, at: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> Se
   var s = vec2<f32>(0.0);
   var cov = vec3<f32>(water.fft.z * 0.5, water.fft.z * 0.5, 0.0);
   var j = vec3<f32>(0.0);
+  // The foam's Jacobian: the drawn one with the fold the round waves take as shading (sea.rs foam_lean, in each
+  // wave's second row's w), which moves no vertex.
+  var jf = vec3<f32>(0.0);
   let sh = shoaling(p);
   // og_core's waves as the surface carries them (shoaled by the seabed), those the pixel cannot hold left to the facets'
   // roughness.
-  for (var i = 0u; i < 32u; i++) {
+  for (var i = 0u; i < 48u; i++) {
     let a = water.swell[2u * i];
     let b = water.swell[2u * i + 1u];
     let k = length(a.xy);
     let f = shoal_keep(k, sh);
     let keep = pixel_keep(a.xy, gx, gy) * f;
-    let th = dot(a.xy, p) + a.w;
-    s += a.xy * (a.z * cos(th) * keep);
-    let sn = sin(th) * keep;
-    j -= vec3<f32>(b.x * a.x, b.y * a.y, b.x * a.y) * sn;
+    // (A wave the pixel cannot hold is its slopes' spread alone: its sine and cosine, most of the loop's cost on the
+    // far sea, are not needed.)
+    if (keep > 0.0) {
+      let th = dot(a.xy, p) + a.w;
+      s += a.xy * (a.z * cos(th) * keep);
+      let sn = sin(th) * keep;
+      j -= vec3<f32>(b.x * a.x, b.y * a.y, b.x * a.y) * sn;
+      let lf = b.xy + a.xy * (b.w / max(k, 1e-6));
+      jf -= vec3<f32>(lf.x * a.x, lf.y * a.y, lf.x * a.y) * sn;
+    }
     let ka = k * a.z;
     let d = a.xy / max(k, 1e-6);
     cov += vec3<f32>(d.x * d.x, d.y * d.y, d.x * d.y) * (ka * ka * 0.5 * max(f * f - keep * keep, 0.0));
@@ -116,7 +111,9 @@ fn ocean_normal(p: vec2<f32>, at: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> Se
     let kv = sh.inshore * k;
     let keep = pixel_keep(kv, gx, gy);
     s += kv * (sh.amp * cos(sh.phase) * keep);
-    j -= vec3<f32>(sh.inshore.x * kv.x, sh.inshore.y * kv.y, sh.inshore.x * kv.y) * (sh.lean * sin(sh.phase) * keep);
+    let js = vec3<f32>(sh.inshore.x * kv.x, sh.inshore.y * kv.y, sh.inshore.x * kv.y) * (sh.lean * sin(sh.phase) * keep);
+    j -= js;
+    jf -= js;
     let ka = k * sh.amp;
     let d = sh.inshore;
     cov += vec3<f32>(d.x * d.x, d.y * d.y, d.x * d.y) * (ka * ka * 0.5 * max(1.0 - keep * keep, 0.0));
@@ -125,18 +122,17 @@ fn ocean_normal(p: vec2<f32>, at: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> Se
     let uv = cascade_uv(c, p);
     let k = water.cascades[c].x;
     let w = shoal_keep(water.bands[c], sh);
-    let first = textureSampleGrad(heights, ripple_sampler, uv, 3u * c + 1u, gx * k, gy * k);
-    let second = textureSampleGrad(heights, ripple_sampler, uv, 3u * c + 2u, gx * k, gy * k);
+    let first = textureSampleGrad(heights, ripple_sampler, uv, 2u * c, gx * k, gy * k);
+    let second = textureSampleGrad(heights, ripple_sampler, uv, 2u * c + 1u, gx * k, gy * k);
     s += first.xy * w;
     cov += vec3<f32>(max(second.x - first.x * first.x, 0.0), max(second.y - first.y * first.y, 0.0),
       second.z - first.x * first.y) * w * w;
-    j += vec3<f32>(first.zw, textureSampleGrad(heights, ripple_sampler, uv, 3u * c, gx * k, gy * k).w) * w;
   }
   var o: SeaNormal;
   // W3: the hulls' wakes' own slopes on top, where the point is drawn.
   o.slope = s / vec2<f32>(max(1.0 + j.x, 0.15), max(1.0 + j.y, 0.15)) + water_wake(at).yz;
   o.n = normalize(vec3<f32>(-o.slope.x, 1.0, -o.slope.y));
-  o.jac = (1.0 + j.x) * (1.0 + j.y) - j.z * j.z;
+  o.jac = (1.0 + jf.x) * (1.0 + jf.y) - jf.z * jf.z;
   o.cov = cov;
   return o;
 }
@@ -200,7 +196,7 @@ fn surf_zone(sh: Shoal) -> f32 {
 }
 
 fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
-  let first = 3u * u32(water.fft.x);
+  let first = 2u * u32(water.fft.x);
   let l0 = water.foam_levels[0];
   let l1 = water.foam_levels[1];
   let dc = abs(p - frame.view_pos.xz);
@@ -423,8 +419,8 @@ fn sea_vertex(vi: u32) -> SeaVertex {
 // the height the clipmap's vertices draw there (the rest point found by undoing the whole surface's lean, at the
 // spacing sea_vertex reads its level's vertices at: its cell, growing to twice at its edge); the height of the sea's
 // own function there as the GPU evaluates it (every wave of og_env::ocean, its rest point found as the tick finds it:
-// Ocean::height on the GPU); what the drawn surface differs from that by (the cascades, the waves the vertices'
-// spacing leaves out, and the cascades' lean moving the rest point); and the hulls' wakes' share.
+// Ocean::height on the GPU); what the drawn surface differs from that by (the waves the vertices' spacing leaves
+// out); and the hulls' wakes' share.
 @group(2) @binding(0) var<storage, read> probe_in: array<vec2<f32>>;
 @group(2) @binding(1) var<storage, read_write> probe_out: array<vec4<f32>>;
 
@@ -447,9 +443,7 @@ fn probe_sea(@builtin(global_invocation_id) id: vec3<u32>) {
   for (var i = 0; i < 8; i++) {
     rest = goal - ocean_displace(rest, probe_spacing(rest)).xz;
   }
-  let cell = probe_spacing(rest);
-  let sh = shoaling(rest);
-  let drawn = ocean_swell(rest, cell, sh).y + ocean_cascades(rest, cell, sh).y;
+  let drawn = ocean_swell(rest, probe_spacing(rest), shoaling(rest)).y;
   var own = goal;
   for (var i = 0; i < 8; i++) {
     own = goal - ocean_swell(own, 0.0, shoaling(own)).xz;

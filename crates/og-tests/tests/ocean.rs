@@ -27,11 +27,13 @@ fn difference(a: &RgbaImage, b: &RgbaImage) -> f32 {
 /// the GPU from the frame's uniforms (`Renderer::sea_heights`: every wave
 /// of og_env::ocean, the rest point found as the tick finds it) is
 /// og.physics.waterHeight (`og_env::ocean::Ocean::height`) to 2 cm, and
-/// the surface the clipmap's vertices draw differs from it only by what
-/// the renderer adds or cannot hold (the FFT's shorter waves, the waves a
-/// level's spacing leaves out): under 6% of the sea's height at any point.
-/// A body the tick floats there sits in the drawn water with nothing
-/// calmed or corrected round it. Prints each point's heights.
+/// the surface the clipmap's vertices draw differs from it only by the
+/// waves a level's spacing cannot hold: a centimetre plus a hundredth of the
+/// point's distance from the eye, in a breeze and in a gale (the FFT's
+/// ripples shade the surface and never move it; when they did, they stood
+/// 2 cm RMS off it at 10 m/s and 14 cm at 20). A body the tick floats there
+/// sits in the drawn water with nothing calmed or corrected round it.
+/// Prints each point's heights.
 #[test]
 #[ignore = "requires GPU"]
 fn the_drawn_sea_is_the_sea_bodies_float_on() {
@@ -80,9 +82,10 @@ fn the_drawn_sea_is_the_sea_bodies_float_on() {
                         "{wind} {seconds} s {p}: the GPU's sea at {own} m, og.physics.waterHeight {tick_height} m"
                     ));
                 }
-                if added.abs() >= 0.06 * hs + 0.02 {
+                let out = 0.01 + 0.01 * p.length();
+                if added.abs() >= out {
                     failures.push(format!(
-                        "{wind} {seconds} s {p}: drawn {added} m off the sea's function on a {hs} m sea"
+                        "{wind} {seconds} s {p}: drawn {added} m off the sea's function on a {hs} m sea (at most {out} m)"
                     ));
                 }
             }

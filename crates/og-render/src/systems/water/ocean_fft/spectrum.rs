@@ -16,10 +16,11 @@
 //! and every wave of it is drawn as it is (Gerstner, in the vertex stage),
 //! because the tick floats things on exactly those. The spectrum here draws
 //! only what that sea has none of: the waves shorter than its shortest
-//! ([`SeaParameters::cut`], a 32nd of the peak's length), at the level the
-//! whole sea's height sets. They are the thousands of short waves that carry
-//! the sea's slopes and its look, and about a hundredth of its height, so
-//! nothing floats on them.
+//! ([`SeaParameters::cut`], a metre or a 32nd of a breeze's peak), at the
+//! level the whole sea's height sets. They are the thousands of ripples that
+//! carry the sea's slopes and its look and a centimetre or two of its
+//! height: they shade the surface and never move it, so nothing floats on
+//! them and nothing drawn stands off what floats.
 
 use std::f64::consts::{LN_2, PI};
 
@@ -39,8 +40,9 @@ const SATURATION_FULL: f64 = 3.0;
 /// cascades draw (the ripples raised to it); the rest is roughness.
 const SLOPE_DRAWN: f64 = 0.7;
 /// The most the cascades stand, as a share of the sea's significant height
-/// in RMS: what a floating body is off the drawn surface by, since the tick
-/// floats it on the sea's own waves alone.
+/// in RMS. They shade the surface and never move it, so a ripple raised
+/// past this would read as a wave the surface does not rise with (its
+/// glints sliding over a flat crest at a grazing view).
 const HEIGHT_DRAWN: f64 = 0.02;
 
 /// The coarsest tile holds this many of the longest of its waves (fewer,
@@ -431,9 +433,9 @@ pub fn build(cascades: &[Cascade], params: &SeaParameters) -> Spectrum {
         .sum();
     let cox_munk = f64::from(og_env::ocean::clean_slopes(params.wind_speed as f32));
     let want = SLOPE_DRAWN * cox_munk * params.swell.min(1.0) - params.wave_slope_variance;
-    // Raised, they still float nothing: never over HEIGHT_DRAWN of the
-    // sea's height in RMS, which one coarse cascade alone would pass (its
-    // texels hold only waves metres long, and all the lift went to them).
+    // Raised, they still only shade: never over HEIGHT_DRAWN of the sea's
+    // height in RMS, which one coarse cascade alone would pass (its texels
+    // hold only its longest ripples, and all the lift went to them).
     let height: f64 = built
         .iter()
         .flat_map(|c| c.amplitudes.as_chunks::<4>().0)
@@ -490,9 +492,9 @@ mod tests {
 
     /// The cascades draw only the waves shorter than the sea's own: their
     /// bands start where those end and are disjoint; they stand under 2% of
-    /// the sea's significant height in RMS (what a floating body is off the
-    /// drawn surface by); and with the sea's waves they hold SLOPE_DRAWN of
-    /// Cox and Munk's slopes, for a breeze, a fresh wind and a gale. A calm
+    /// the sea's significant height in RMS (more, and a grazing view would
+    /// show the rise they do not draw); and with the sea's waves they hold
+    /// SLOPE_DRAWN of Cox and Munk's slopes, for a breeze, a fresh wind and a gale. A calm
     /// (no wind) has none.
     #[test]
     fn the_cascades_draw_the_waves_shorter_than_the_seas_own() {

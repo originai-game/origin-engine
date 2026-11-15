@@ -139,15 +139,43 @@ pub(super) fn ocean_gpu(
         seconds,
         glam::DVec2::new(f64::from(origin.x), f64::from(origin.z)),
     );
+    let foam = foam_lean(water);
     for (i, (w, phase)) in sea.waves.iter().zip(phases).enumerate() {
         let k = w.direction * w.k;
         let lean = w.direction * w.lean;
         swell[2 * i] = [k.x, k.y, w.amplitude, phase];
-        swell[2 * i + 1] = [lean.x, lean.y, w.k * w.lean, 0.0];
+        // w: the lean the foam reads beside the drawn one ([`foam_lean`]).
+        let shade = if w.lean == 0.0 {
+            foam * w.amplitude
+        } else {
+            0.0
+        };
+        swell[2 * i + 1] = [lean.x, lean.y, w.k * w.lean, shade];
     }
     // z and w: the foam's threshold and gain, [`foam_thresholds`]'s (set
     // with the FFT sea's).
     ([1.0, 0.0, 0.0, FRESH_GAIN], swell)
+}
+
+/// The lean, per metre of amplitude, the foam reads on the sea's round waves
+/// (those shorter than a 32nd of the peak, which carry height and no lean:
+/// og_env::ocean). Whitecaps break where the crests of the short wind sea
+/// bunch and fold, and a gale's are its metre-to-decametre waves': those
+/// fold freely in Tessendorf's sea (blue-water's horizontal scale,
+/// [`SeaParameters::lambda`]), which a surface bodies float on cannot, so
+/// the fold is shading. It moves no vertex: the foam's Jacobian alone
+/// (water_sea.wgsl `ocean_normal`, ocean_foam.wgsl `jacobian`, [`jacobians`])
+/// takes it.
+///
+/// [`SeaParameters::lambda`]: crate::ocean_fft::spectrum::SeaParameters::lambda
+pub(super) fn foam_lean(water: &Water) -> f32 {
+    crate::ocean_fft::spectrum::SeaParameters::from_ocean(
+        water.wind,
+        water.swell,
+        water.choppiness,
+        None,
+    )
+    .lambda() as f32
 }
 
 /// How much of a wave of wavenumber `k` samples `cell` metres apart hold:
@@ -167,67 +195,10 @@ pub(super) const FRESH_GAIN: f32 = 2.5;
 pub(super) const FOAM_GAIN: f32 = 2.0;
 
 /// The Jacobian of `water`'s drawn surface at seeded points, sorted, its
-/// waves resolved at `resolve` metres (0: all of them, as drawn).
-pub(super) fn jacobians(
-    water: &Water,
-    built: &crate::ocean_fft::spectrum::Spectrum,
-    resolve: f32,
-) -> Vec<f64> {
-    let lam = built.choppiness;
-    // The covariance of the cascades' (∂Dx/∂x, ∂Dz/∂z, ∂Dx/∂z) and its
-    // Cholesky factor.
-    let mut c = [[0f64; 3]; 3];
-    for cs in &built.cascades {
-        let n = cs.resolution as i64;
-        let dk = std::f64::consts::TAU / cs.size;
-        // Read from the fields' mip at ocean_foam.wgsl's lod: a box of 2^lod
-        // texels, whose response to a wave is the product of sincs along
-        // its axes (none past the shader's last lod).
-        let texel = cs.size / n as f64;
-        let lod = (f64::from(resolve) / texel).max(1.0).log2();
-        if lod >= 4.5 {
-            continue;
-        }
-        let width = texel * lod.exp2();
-        let sinc = |x: f64| if x.abs() < 1e-9 { 1.0 } else { x.sin() / x };
-        let signed = |i: i64| if i >= n / 2 { i - n } else { i } as f64 * dk;
-        for (t, a) in cs.amplitudes.chunks(4).enumerate() {
-            let a2 = f64::from(a[0]).powi(2) + f64::from(a[1]).powi(2);
-            let (kx, kz) = (signed(t as i64 % n), signed(t as i64 / n));
-            let k = kx.hypot(kz);
-            if a2 == 0.0 || k < 1e-9 {
-                continue;
-            }
-            let mip = if resolve > 0.0 {
-                sinc(kx * width * 0.5) * sinc(kz * width * 0.5)
-            } else {
-                1.0
-            };
-            let v = [
-                lam * kx * kx / k * mip,
-                lam * kz * kz / k * mip,
-                lam * kx * kz / k * mip,
-            ];
-            for r in 0..3 {
-                for q in 0..3 {
-                    c[r][q] += a2 * v[r] * v[q];
-                }
-            }
-        }
-    }
-    let mut l = [[0f64; 3]; 3];
-    for i in 0..3 {
-        for j in 0..=i {
-            let s = c[i][j] - (0..j).map(|k| l[i][k] * l[j][k]).sum::<f64>();
-            l[i][j] = if i == j {
-                s.max(0.0).sqrt()
-            } else if l[j][j] > 0.0 {
-                s / l[j][j]
-            } else {
-                0.0
-            };
-        }
-    }
+/// waves resolved at `resolve` metres (0: all of them, as drawn), with the
+/// fold the foam reads on the round waves ([`foam_lean`]). The cascades'
+/// ripples fold nothing.
+pub(super) fn jacobians(water: &Water, resolve: f32) -> Vec<f64> {
     let (_, swell) = ocean_gpu(water, 0.0, Vec3::ZERO);
     let mut state = 0u64;
     let mut uniform = move || {
@@ -245,17 +216,11 @@ pub(super) fn jacobians(
                 let (a, b) = (w[0], w[1]);
                 let k = Vec2::new(a[0], a[1]);
                 let s = f64::from((k.dot(p) + a[3]).sin() * sea_keep(k.length(), resolve));
-                j[0] -= f64::from(b[0] * a[0]) * s;
-                j[1] -= f64::from(b[1] * a[1]) * s;
-                j[2] -= f64::from(b[0] * a[1]) * s;
-            }
-            let mut g = [0f64; 3];
-            for v in &mut g {
-                let (u1, u2) = (uniform(), uniform());
-                *v = (-2.0 * u1.ln()).sqrt() * (std::f64::consts::TAU * u2).cos();
-            }
-            for (i, row) in l.iter().enumerate() {
-                j[i] += (0..=i).map(|k| row[k] * g[k]).sum::<f64>();
+                // The drawn lean and the foam's own on the round waves.
+                let l = Vec2::new(b[0], b[1]) + k * (b[3] / k.length().max(1e-6));
+                j[0] -= f64::from(l.x * a[0]) * s;
+                j[1] -= f64::from(l.y * a[1]) * s;
+                j[2] -= f64::from(l.x * a[1]) * s;
             }
             (1.0 + j[0]) * (1.0 + j[1]) - j[2] * j[2]
         })

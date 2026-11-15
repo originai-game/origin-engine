@@ -15,10 +15,11 @@
 // R5: a sea (Water::wind) is a clipmap about the camera (water.rs
 // `clipmap`), out to a horizon ring, displaced over the absolute world's xz
 // by every wave the tick floats bodies on (og_env::ocean, as Gerstner
-// waves) and the FFT's cascades, the waves shorter than the shortest of them
-// (ocean_fft), every one faded where the cells or the pixel cannot hold it;
-// its normal and its facets' slope covariance from the cascades' slopes and
-// their moments (LEAN). Shaded and foamed as web-ocean's sea (MIT,
+// waves), each faded where the cells or the pixel cannot hold it; its
+// normal and its facets' slope covariance from those and the FFT's
+// cascades, the ripples shorter than the shortest of them (ocean_fft),
+// which shade the surface and never move it: their slopes and moments
+// (LEAN). Shaded and foamed as web-ocean's sea (MIT,
 // third_party/ocean/): anisotropic glitter, the grazing tilt of the visible
 // facets, backlit crests' subsurface light, and foam that persists on the
 // tick's time (ocean_fft/foam.rs). A flow map (Water::flow_map) turns the
@@ -54,7 +55,7 @@ struct WaterUniform {
   foam_uv: array<vec4<f32>, 2>,
   // Per wave of og_env::ocean: (k d.x, k d.z, amplitude, phase at the frame's origin), (lean d.x, lean d.z, k lean, 0)
   // (water.rs ocean_gpu).
-  swell: array<vec4<f32>, 64>,
+  swell: array<vec4<f32>, 96>,
   // W1: the seabed (water.rs shore_gpu): [0] its sample (0, 0) in the frame's xz, its cell (m), 1 with one; [1] its
   // columns and rows, the shore trains' wavenumber and amplitude; [2] their angular frequency and phase now, the surf's
   // foam.
@@ -101,9 +102,8 @@ const SEA_SSS: vec4<f32> = vec4<f32>(0.035, 0.12, 0.085, 2.6);
 // The sun's disc as a variance of slopes (its 0.27° radius, halved at reflection, squared): the glitter's least
 // spread, so a calm sea mirrors a disc, not a point.
 const SUN_DISC: f32 = 5.5e-6;
-// A height field (layer 0, the height in r), or a sea's FFT fields: per cascade c, layer 3c (x displacement,
-// height, z displacement, d Dx/dz), 3c + 1 (the height's slopes along x and z, d Dx/dx, d Dz/dz), 3c + 2 (the slopes'
-// squares and product), mipped; after the cascades the persistent foam's two levels (r its cover, g how fresh it is)
+// A height field (layer 0, the height in r), or a sea's FFT fields: per cascade c, layer 2c (the ripples' slopes
+// along x and z), 2c + 1 (the slopes' squares and product), mipped; after the cascades the persistent foam's two levels (r its cover, g how fresh it is)
 // and its micro-structure (r lace, g finer lace, b soft density, a streaks).
 @group(1) @binding(1) var heights: texture_2d_array<f32>;
 @group(1) @binding(2) var scene_color: texture_2d<f32>;

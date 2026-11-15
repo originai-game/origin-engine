@@ -1515,36 +1515,45 @@ tests in `og-tests/tests/terrain.rs`.
 Each off by default on `Water`:
 
 - **Sea** (`wind`, `swell`, `choppiness`; og.Water.wind): one function of
-  the place and the time, `og_env::ocean`'s 32 Gerstner waves of a
+  the place and the time, `og_env::ocean`'s 48 Gerstner waves of a
   Pierson–Moskowitz sea for the wind with JONSWAP's peak enhancement
   (γ 3.3) (peak `0.877 g / U`, significant height `0.21 U² / g × swell`,
-  one wave placed at random in each of 32 bands of length from 1.6 to 1/32
-  of the peak's, 2.6 m at 10 m/s and 10 m at 20 m/s; deep-water
-  dispersion; a random spread about the wind, wider the shorter; fixed
-  phases; each wave's steepness `choppiness / 32`, so the sum never
-  folds). These carry all but a hundredth of the sea's height. The function knows no grid, surface size or
-  camera. The waves lie over the absolute world's xz, their phases at the
-  scene's origin computed in f64 from the tick (`water::seconds`), so the
-  pattern stays put as the origin moves.
+  one wave placed at random in each of 48 bands of length from 1.6 times
+  the peak's down to a metre, or a 32nd of the peak in a wind under
+  6.2 m/s; deep-water dispersion; a random spread about the wind, wider
+  the shorter; fixed phases; the waves' steepnesses summing to
+  `choppiness`, the long waves leaning whole, so the sum never folds).
+  These carry all of the sea's height a clipmap can draw. The function
+  knows no grid, surface size or camera. The waves lie over the absolute
+  world's xz, their phases at the scene's origin computed in f64 from the
+  tick (`water::seconds`), so the pattern stays put as the origin moves.
 - **Drawing it.** A clipmap about the eye (`water::sea::clipmap`) is
-  displaced by the same 32 waves, each left out only where the vertices
+  displaced by the same 48 waves, each left out only where the vertices
   cannot hold it (`sea_keep`: whole at eight cells a wavelength, none
   under four); the fragments take every wave's analytic normal, faded
-  under the pixel's footprint, and foam whitecaps where the crests bunch,
-  after Monahan's whitecap cover for the wind (`3.84e-6 U^3.41`). Over the
-  waves the FFT cascades (`ocean_fft`) add the shorter waves only, from
-  the sea's shortest down (`og_env::ocean::shortest_wavenumber`), raised
-  until the two hold 0.7 of the clean sea's slopes (`0.003 + 0.00512 U`)
-  and never over 2% of the sea's height in RMS; the rest is roughness.
+  under the pixel's footprint (a wave the pixel cannot hold costs no
+  sine), and foam whitecaps where the crests bunch, after Monahan's
+  whitecap cover for the wind (`3.84e-6 U^3.41`). The waves shorter than
+  a 32nd of the peak are round (they carry height, no lean); the foam's
+  Jacobian alone folds them as Tessendorf's sea would
+  (`water::sea::foam_lean`, blue-water's horizontal scale), so a gale's
+  whitecaps break on its metre-to-decametre waves without a vertex
+  moving off the floated sea. The FFT cascades
+  (`ocean_fft`, two layers each: the slopes and the Jacobian, the slopes'
+  moments) add the ripples shorter than the sea's shortest wave
+  (`og_env::ocean::shortest_wavenumber`) to the normal, the slope
+  covariance, the Jacobian and the caustics, raised until the two hold
+  0.7 of the clean sea's slopes (`0.003 + 0.00512 U`) and never over 2% of
+  the sea's height in RMS; the rest is roughness. They never move a
+  vertex.
 - **The drawn sea is the tick's sea.** `og.physics.waterHeight` and
   og.Buoyancy evaluate `og_env::ocean::Ocean::surface` at the tick, never
-  the GPU; the underwater view tests the eye against it too. The drawn
-  height is that function to a centimetre plus two things the tick does
-  not float bodies on: the waves the clipmap's spacing leaves out (none
-  within about 10 m of the eye at 10 m/s or 40 m at 20 m/s, and at any
-  distance under a hundredth of it), and the cascades' short waves
-  (0.004 m RMS at 5 m/s, 0.023 m at 10 m/s, 0.14 m at 20 m/s). A level surface only; a surface
-  over a mesh has none. Tests
+  the GPU; the underwater view, the waterline and the spray test against
+  the same displacement. The drawn height is that function to a
+  centimetre, less only the waves the clipmap's spacing leaves out (under
+  a hundredth of a point's distance from the eye), and the wakes
+  (`dynamicWaves`, drawn only). A level surface only; a surface over a
+  mesh has none. Tests
   `water::tests::the_vertices_draw_the_sea_the_tick_floats_bodies_on`,
   `og-tests` `the_drawn_sea_is_the_sea_bodies_float_on`,
   `og_env::ocean::tests`.

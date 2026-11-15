@@ -4,7 +4,7 @@
 //
 // Ported from Noniv/web-ocean's js/wgsl/sim.js (FOAM_TEX, FOAM_UPDATE) and common.js (pcgHash, gnoise, pnoise, pfbm)
 // (MIT, Copyright (c) 2026 Maksymilian Dendura; third_party/ocean/). Changed here: the Jacobian is the drawn surface's,
-// the sea's Gerstner waves (og_env::ocean, water_sea.wgsl ocean_displace) with the cascades' shorter waves; 256 texels a level, not 1024; the threshold from the wind's
+// the sea's Gerstner waves (og_env::ocean, water_sea.wgsl ocean_displace) with the fold its round waves take as shading (sea.rs foam_lean); 256 texels a level, not 1024; the threshold from the wind's
 // whitecap cover at each level's resolution (water.rs foam_thresholds) rather than a slider.
 //
 // W4: the foam ages (b: the mean age of what a texel holds, s) and leaves a lace (a) that outlives the dense cover the
@@ -119,7 +119,7 @@ struct FoamParams {
   // sea's waves.
   cascades: array<vec4<f32>, 3>,
   bands: vec4<f32>,
-  swell: array<vec4<f32>, 64>,
+  swell: array<vec4<f32>, 96>,
   // The seabed (W1, water.rs shore_gpu at the step's time): the waves shoal over it as the drawn surface's do.
   shore: array<vec4<f32>, 3>,
 };
@@ -146,7 +146,8 @@ fn sea_keep(k: f32, cell: f32) -> f32 {
   return 1.0 - smoothstep(0.785, 1.571, k * cell);
 }
 
-// The drawn surface's Jacobian at frame point p, its waves resolved at `ts` metres.
+// The foam's Jacobian at frame point p, its waves resolved at `ts` metres: the drawn surface's, with the fold its round
+// waves take as shading (sea.rs foam_lean). The cascades' ripples fold nothing.
 fn jacobian(p: vec2<f32>, ts: f32) -> f32 {
   // Shoaled over the seabed as the drawn surface is (water_sea.wgsl ocean_normal): the open sea's crests bunched over the
   // shallows would lay whitecaps where the sea there is low.
@@ -154,14 +155,16 @@ fn jacobian(p: vec2<f32>, ts: f32) -> f32 {
   var jxx = 0.0;
   var jzz = 0.0;
   var jxz = 0.0;
-  for (var i = 0u; i < 32u; i++) {
+  for (var i = 0u; i < 48u; i++) {
     let a = foam.swell[2u * i];
     let b = foam.swell[2u * i + 1u];
     let k = length(a.xy);
     let s = sin(dot(a.xy, p) + a.w) * sea_keep(k, ts) * shoal_keep(k, sh);
-    jxx -= b.x * a.x * s;
-    jzz -= b.y * a.y * s;
-    jxz -= b.x * a.y * s;
+    // The drawn lean and the fold the round waves take as shading (sea.rs foam_lean).
+    let l = b.xy + a.xy * (b.w / max(k, 1e-6));
+    jxx -= l.x * a.x * s;
+    jzz -= l.y * a.y * s;
+    jxz -= l.x * a.y * s;
   }
   if (sh.amp > 0.0) {
     let kv = sh.inshore * foam.shore[1].z;
@@ -169,18 +172,6 @@ fn jacobian(p: vec2<f32>, ts: f32) -> f32 {
     jxx -= sh.inshore.x * kv.x * s;
     jzz -= sh.inshore.y * kv.y * s;
     jxz -= sh.inshore.x * kv.y * s;
-  }
-  for (var c = 0u; c < u32(foam.p1.w); c++) {
-    let t = foam.cascades[c];
-    let w = shoal_keep(foam.bands[c], sh);
-    let lod = log2(max(ts / (t.w / 256.0), 1.0));
-    if (w <= 0.0 || lod >= 4.5) { continue; }
-    let uv = p * t.x + t.yz;
-    let d = textureSampleLevel(fields, lin, uv, 3u * c + 1u, lod);
-    let a = textureSampleLevel(fields, lin, uv, 3u * c, lod);
-    jxx += d.z * w;
-    jzz += d.w * w;
-    jxz += a.w * w;
   }
   return (1.0 + jxx) * (1.0 + jzz) - jxz * jxz;
 }

@@ -18,7 +18,7 @@ struct CausticParams {
   sea: vec4<f32>,
   // As water.wgsl's WaterUniform.
   cascades: array<vec4<f32>, 3>,
-  swell: array<vec4<f32>, 64>,
+  swell: array<vec4<f32>, 96>,
 };
 
 @group(0) @binding(0) var<uniform> cp: CausticParams;
@@ -43,14 +43,14 @@ fn sea_keep(k: f32, cell: f32) -> f32 {
 fn slope_at(p: vec2<f32>) -> vec2<f32> {
   var s = vec2<f32>(0.0);
   let ts = cp.grid.z;
-  for (var i = 0u; i < 32u; i++) {
+  for (var i = 0u; i < 48u; i++) {
     let a = cp.swell[2u * i];
     s += a.xy * (a.z * cos(dot(a.xy, p) + a.w) * sea_keep(length(a.xy), ts));
   }
   for (var c = 0u; c < u32(cp.sea.x); c++) {
     let t = cp.cascades[c];
     let lod = log2(max(ts / (t.w / 256.0), 1.0));
-    s += textureSampleLevel(fields, lin, p * t.x + t.yz, 3u * c + 1u, lod).xy;
+    s += textureSampleLevel(fields, lin, p * t.x + t.yz, 2u * c, lod).xy;
   }
   return s;
 }
