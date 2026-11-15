@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "looks: painterly-3d",
+      "summary": "painterly-3d reads as paint at a glance, not as a softened render: its preset lays strokes (paintStrokes 0.7). Its expressionist variant is bolder (the full radius, paintStrokes 1, heavier pooling, saturated colour with more contrast) and lush paints smaller, lighter strokes (paintRadius 5, paintStrokes 0.5)."
+    }
+  ]
+}

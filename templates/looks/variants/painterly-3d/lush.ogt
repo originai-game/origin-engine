@@ -1,15 +1,16 @@
 type look
 version 1
 ---
-# Light brush strokes over a bright, blooming scene.
+# Smaller, lighter brush strokes over a bright, blooming scene.
 # The lush variant of painterly-3d (`variant "lush"`): only what it changes of
 # the preset, a field it turns off written at its default.
 name "Lush painted worlds"
 Stylise {
-  paintRadius 2
+  paintRadius 5
   paintAnisotropy 0.5
   paintEdgeDarkening 0
   paintBleed 0
+  paintStrokes 0.5
   paintCanvasStrength 0
   posterize 0
   posterizeMode channel
