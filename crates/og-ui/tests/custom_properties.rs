@@ -19,6 +19,10 @@
 //!   surface or the control changes; env(-og-hud-inset-*) not narrowing
 //!   to the HUD band on an ultrawide (or narrowing a 16:9 surface), or not
 //!   following UiDesc.hudMaxAspect → `safe_area_insets_clear_the_hosts_covered_control`
+//! - a var() whose value is `revert-layer` taken as a value (refused, the
+//!   property left unset) instead of rolling the cascade back to the
+//!   layers below, or a set variable not winning over that fallback
+//!   → `a_var_that_resolves_to_revert_layer_rolls_the_cascade_back`
 
 use crate::support::{Doc, test_font_metrics, ui_with_font, with_doc};
 use og_ui::reactive::SourceId;
@@ -80,6 +84,35 @@ fn bound_custom_properties_feed_the_cascade() {
             assert_eq!(heights(d), [6.0, 10.0, 14.0]);
         },
     );
+}
+
+/// A style pack's hook (`background: var(--fill, revert-layer)`) leaves a
+/// control its own value until the pack sets the variable: a `var()` whose
+/// value is a CSS-wide keyword is that keyword (CSS Variables 2 §3).
+#[test]
+fn a_var_that_resolves_to_revert_layer_rolls_the_cascade_back() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Hook"></div>
+  <div id="Set"></div>
+</div></div>
+<style>
+@layer low, high;
+@layer low { #Hook, #Set { width: 40px; height: 40px; } }
+@layer high {
+  #Hook { height: var(--unset-hook, revert-layer); }
+  #Set { --set-hook: 70px; height: var(--set-hook, revert-layer); }
+}
+</style>"#;
+    with_doc(text, &[], |d| {
+        assert_eq!(d.get("Hook").height, 40.0, "the layer below's");
+        assert_eq!(d.get("Set").height, 70.0, "the variable's");
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+    });
 }
 
 #[test]

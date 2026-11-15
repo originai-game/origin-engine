@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"A `var()` whose value is `revert` or `revert-layer` rolls the cascade back as the keyword written would (CSS Variables 2 §3): `background: var(--fill, revert-layer)` keeps the layers below until `--fill` is set, instead of being refused as an invalid colour and leaving the property unset."}
+  ]
+}

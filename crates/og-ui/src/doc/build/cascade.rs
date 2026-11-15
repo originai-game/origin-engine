@@ -369,30 +369,37 @@ pub(crate) fn values_with<'r>(
                 ));
         }
     }
-    let mut winners = BTreeMap::new();
-    for (name, mut list) in candidates {
+    for list in candidates.values_mut() {
         list.sort_by_key(|c| std::cmp::Reverse(c.0));
-        // `revert` rolls back to the user-agent rules, `revert-layer` to
-        // the layers below its own.
+    }
+    // The winner of a property's declarations, highest first, where
+    // `keyword` is a declaration's CSS-wide keyword: `revert` rolls back to
+    // the user-agent rules, `revert-layer` to the layers below its own.
+    fn pick<'a>(
+        list: &[Candidate<'a>],
+        keyword: &dyn Fn(&crate::doc::StyleDeclaration) -> Option<&'static str>,
+    ) -> ((bool, bool, u32, usize, usize), Winner<'a>, usize) {
         let (mut ua_only, mut below) = (false, None);
-        let mut winner = None;
-        for (priority, declaration, line, layer) in &list {
+        for (priority, declaration, line, layer) in list {
             if (ua_only && *layer != 0) || below.is_some_and(|b| *layer >= b) {
                 continue;
             }
-            match crate::doc::stylesheet::wide_keyword(&declaration.source) {
+            match keyword(declaration) {
                 Some("revert") => ua_only = true,
                 Some("revert-layer") if *layer > 0 => below = Some(*layer),
                 Some("revert-layer") => ua_only = true,
-                _ => {
-                    winner = Some((*priority, Winner::Declared(declaration), *line));
-                    break;
-                }
+                _ => return (*priority, Winner::Declared(declaration), *line),
             }
         }
-        let first = list[0];
-        winners.insert(name, winner.unwrap_or((first.0, Winner::Unset, first.2)));
+        (list[0].0, Winner::Unset, list[0].2)
     }
+    let written =
+        |d: &crate::doc::StyleDeclaration| crate::doc::stylesheet::wide_keyword(&d.source);
+    let mut winners: BTreeMap<&str, _> = candidates
+        .iter()
+        .filter(|(name, _)| name.starts_with("--"))
+        .map(|(name, list)| (*name, pick(list, &written)))
+        .collect();
     let unset = variables::Value::parse("unset").expect("a keyword");
     let mut specified: BTreeMap<_, _> = winners
         .iter()
@@ -474,6 +481,31 @@ pub(crate) fn values_with<'r>(
     out.diagnostics.extend(diagnostics);
     out.inherited_reads = inherited_reads;
     out.local_names = specified.keys().cloned().collect();
+    // A property's winner, once its custom properties are known: a `var()`
+    // whose value is `revert` or `revert-layer` rolls the cascade back as
+    // the keyword written would (CSS Cascade 5 §7.3, CSS Variables 2 §3:
+    // `background: var(--fill, revert-layer)` falls back to the layers
+    // below when `--fill` is not set).
+    let substituted = |d: &crate::doc::StyleDeclaration| {
+        written(d).or_else(|| {
+            d.value
+                .has_variables()
+                .then(|| {
+                    d.value
+                        .substitute(&mut |n| computed.get(n).cloned().flatten())
+                        .ok()
+                })
+                .flatten()
+                .and_then(|text| crate::doc::stylesheet::wide_keyword(&text))
+                .filter(|k| k.starts_with("revert"))
+        })
+    };
+    for (name, list) in candidates
+        .iter()
+        .filter(|(name, _)| !name.starts_with("--"))
+    {
+        winners.insert(name, pick(list, &substituted));
+    }
     let mut declarations: Vec<_> = winners
         .into_iter()
         .filter(|(name, _)| !name.starts_with("--"))
