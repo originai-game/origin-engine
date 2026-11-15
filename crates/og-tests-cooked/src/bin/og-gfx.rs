@@ -35,6 +35,12 @@
 //! carries it 3 m back and forth along its view, each once in 120 frames
 //! (what a frame keeps from the last one only while the camera stands
 //! still shows here; the capture is the still camera's).
+//! `OG_GFX_COMPILES=1` compiles on one worker, so each pipeline compiles
+//! alone, and lists every pipeline the first frame made with its
+//! milliseconds, slowest first, then those the background made (the full
+//! variants: pipeline_features.rs) and the renderer's drop time. Empty the
+//! driver's shader cache first for cold times (NVIDIA:
+//! `__GL_SHADER_DISK_CACHE=0`; Mesa: `MESA_SHADER_CACHE_DISABLE=true`).
 
 use og_render::{Antialias, Bloom, Exposure, FrameStats, Light, LightKind, RenderTarget, Renderer};
 use og_tests::scenes::GfxScene;
@@ -46,6 +52,10 @@ use std::time::Instant;
 
 fn main() {
     og_render::set_pipeline_cache_dir(std::env::var_os("OG_GFX_PIPELINE_CACHE").map(Into::into));
+    if compiles() {
+        og_render::set_compile_workers(1);
+        og_render::log_compiles(true);
+    }
     let mut args = std::env::args().skip(1);
     let (mut names, mut out, mut frames, mut capture, mut costs) =
         (Vec::new(), None, 0u32, None, false);
@@ -313,6 +323,7 @@ fn run(
     renderer.finish_stats(&mut stats);
     renderer.wait_idle().map_err(|e| e.to_string())?;
     let setup_ms = t0.elapsed().as_secs_f64() * 1000.0;
+    let first_compiles = og_render::take_compile_times();
     // The reference frame is the last of the scene's own frames.
     let image = renderer.read_offscreen().map_err(|e| e.to_string())?;
     let timing = if frames > 0 {
@@ -395,7 +406,36 @@ fn run(
         gfx::save_png(Path::new(path), &image)?;
         let _ = write!(line, "\n  -> {path}");
     }
+    if compiles() {
+        let t = Instant::now();
+        drop(renderer);
+        let drop_ms = t.elapsed().as_secs_f64() * 1000.0;
+        og_render::settle_pipelines();
+        let _ = write!(line, "\n  drop={drop_ms:.1}ms");
+        compile_list(&mut line, "first frame", first_compiles);
+        compile_list(&mut line, "after it", og_render::take_compile_times());
+    }
     Ok(line)
+}
+
+/// Whether `OG_GFX_COMPILES` asks for each pipeline's compile time.
+fn compiles() -> bool {
+    std::env::var_os("OG_GFX_COMPILES").is_some()
+}
+
+/// `times` as lines of `out` under `title`, slowest first.
+fn compile_list(out: &mut String, title: &str, mut times: Vec<og_render::CompileTime>) {
+    times.sort_by(|a, b| b.ms.total_cmp(&a.ms));
+    let total: f64 = times.iter().map(|t| t.ms).sum();
+    let _ = write!(
+        out,
+        "\n  compiles, {title}: {} made, {total:.1}ms",
+        times.len()
+    );
+    for t in times {
+        let here = if t.worker { "" } else { " (renderer thread)" };
+        let _ = write!(out, "\n  {:>9.1}ms {}{here}", t.ms, t.name);
+    }
 }
 
 /// A named change to a scene for the cost table.

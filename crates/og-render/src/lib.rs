@@ -133,7 +133,9 @@ use systems::crowd::crowd_impostor;
 use systems::destruction::debris;
 use visibility::cull_gpu;
 pub mod debug;
-pub use deferred::settle_pipelines;
+pub use deferred::{
+    CompileTime, log_compiles, set_compile_workers, settle_pipelines, take_compile_times,
+};
 use gpu::deferred;
 pub use mesh::foliage;
 use particles::effect;

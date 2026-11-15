@@ -192,6 +192,7 @@ pub(crate) fn pipeline(
         ..Default::default()
     };
     let fs = fragment_entry(p.fs, mode);
+    crate::deferred::note(|| format!("{} (oit) {}/{fs} {constants:?}", p.label, p.vs));
     let targets = targets();
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some(&format!("{} (oit)", p.label)),

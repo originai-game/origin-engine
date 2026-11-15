@@ -153,6 +153,85 @@ fn timed<T>(make: impl FnOnce() -> T) -> T {
     make()
 }
 
+/// One pipeline's (or other deferred value's) making, timed
+/// ([`log_compiles`]).
+#[derive(Clone, Debug)]
+pub struct CompileTime {
+    /// What it made: the pipeline's label, entry points and constants
+    /// where its builder names them ([`note`]), else the code that asked.
+    pub name: String,
+    pub ms: f64,
+    /// Made on a compile worker (else on the renderer's thread).
+    pub worker: bool,
+}
+
+/// Whether makings are timed ([`log_compiles`]).
+static LOGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static LOG: Mutex<Vec<CompileTime>> = Mutex::new(Vec::new());
+
+std::thread_local! {
+    /// What the making running on this thread makes ([`note`]).
+    static NOTE: std::cell::RefCell<Option<String>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Times every deferred value made from now on, each pipeline compile
+/// among them, for [`take_compile_times`]: a measurement harness's
+/// (og-gfx `OG_GFX_COMPILES`), off by default.
+pub fn log_compiles(on: bool) {
+    LOGGING.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// The makings timed since the last call, in the order they ended.
+pub fn take_compile_times() -> Vec<CompileTime> {
+    std::mem::take(&mut *LOG.lock().unwrap_or_else(|e| e.into_inner()))
+}
+
+/// Names what the making running on this thread makes, when makings are
+/// timed: a pipeline builder's label, entry points and constants.
+pub(crate) fn note(name: impl FnOnce() -> String) {
+    if LOGGING.load(std::sync::atomic::Ordering::Relaxed) {
+        NOTE.with(|n| *n.borrow_mut() = Some(name()));
+    }
+}
+
+/// `make()`, timed when makings are ([`log_compiles`]), named by its
+/// builder's [`note`] or else `asker` (the type of the closure that asked).
+fn logged<T>(asker: &'static str, make: impl FnOnce() -> T) -> T {
+    if !LOGGING.load(std::sync::atomic::Ordering::Relaxed) {
+        return make();
+    }
+    // A builder that ran outside a timed making left its note behind.
+    NOTE.with(|n| n.borrow_mut().take());
+    let t0 = std::time::Instant::now();
+    let v = make();
+    let ms = t0.elapsed().as_secs_f64() * 1000.0;
+    let name = NOTE
+        .with(|n| n.borrow_mut().take())
+        .unwrap_or_else(|| asker.to_string());
+    let worker = std::thread::current()
+        .name()
+        .is_some_and(|n| n.starts_with("og-render compile"));
+    LOG.lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .push(CompileTime { name, ms, worker });
+    v
+}
+
+/// The compile workers to start ([`set_compile_workers`]); 0: one a core.
+#[cfg(not(target_arch = "wasm32"))]
+static WORKERS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// How many compile workers the process starts (0, the default: one a
+/// core). Read once, when the first compile is started: a measurement
+/// harness sets 1 before its first renderer, so each pipeline compiles
+/// alone (og-gfx `OG_GFX_COMPILES`). Nothing on the web.
+pub fn set_compile_workers(workers: usize) {
+    #[cfg(not(target_arch = "wasm32"))]
+    WORKERS.store(workers, std::sync::atomic::Ordering::Relaxed);
+    #[cfg(target_arch = "wasm32")]
+    let _ = workers;
+}
+
 /// A job for the compile workers.
 #[cfg(not(target_arch = "wasm32"))]
 type Job = Box<dyn FnOnce() + Send>;
@@ -230,7 +309,10 @@ fn pool() -> &'static Pool {
             work: std::sync::Condvar::new(),
             idle: std::sync::Condvar::new(),
         }));
-        let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
+        let workers = match WORKERS.load(std::sync::atomic::Ordering::Relaxed) {
+            0 => std::thread::available_parallelism().map_or(4, |n| n.get()),
+            n => n,
+        };
         for i in 0..workers {
             std::thread::Builder::new()
                 .name(format!("og-render compile {i}"))
@@ -373,19 +455,21 @@ pub(crate) struct Deferred<T> {
 }
 
 impl<T> Deferred<T> {
-    pub(crate) fn new(make: impl FnOnce() -> T + 'static) -> Deferred<T> {
+    pub(crate) fn new<F: FnOnce() -> T + 'static>(make: F) -> Deferred<T> {
+        let asker = std::any::type_name::<F>();
         Deferred {
             value: OnceCell::new(),
-            make: Cell::new(Some(Make::Here(Box::new(make)))),
+            make: Cell::new(Some(Make::Here(Box::new(move || logged(asker, make))))),
         }
     }
 
     /// One that [`Start::start`] can make on a worker thread ahead of its
     /// first use (on the web, made on first use).
-    pub(crate) fn anywhere(make: impl FnOnce() -> T + AnywhereOnce + 'static) -> Deferred<T> {
+    pub(crate) fn anywhere<F: FnOnce() -> T + AnywhereOnce + 'static>(make: F) -> Deferred<T> {
+        let asker = std::any::type_name::<F>();
         Deferred {
             value: OnceCell::new(),
-            make: Cell::new(Some(Make::Anywhere(Box::new(make)))),
+            make: Cell::new(Some(Make::Anywhere(Box::new(move || logged(asker, make))))),
         }
     }
 
@@ -509,18 +593,26 @@ impl<T> Sampled<T> {
         }
     }
 
-    pub(crate) fn new(samples: u32, make: impl Fn(u32) -> T + 'static) -> Sampled<T> {
-        Sampled::with(samples, SampledMake::Here(Box::new(make)))
+    pub(crate) fn new<F: Fn(u32) -> T + 'static>(samples: u32, make: F) -> Sampled<T> {
+        let asker = std::any::type_name::<F>();
+        Sampled::with(
+            samples,
+            SampledMake::Here(Box::new(move |n| logged(asker, || make(n)))),
+        )
     }
 
     /// One whose value at a count [`Start::start`] can make on a worker
     /// thread ahead of its first use (on the web, made on first use).
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn anywhere(
+    pub(crate) fn anywhere<F: Fn(u32) -> T + Anywhere + 'static>(
         samples: u32,
-        make: impl Fn(u32) -> T + Anywhere + 'static,
+        make: F,
     ) -> Sampled<T> {
-        Sampled::with(samples, SampledMake::Anywhere(Arc::new(make)))
+        let asker = std::any::type_name::<F>();
+        Sampled::with(
+            samples,
+            SampledMake::Anywhere(Arc::new(move |n| logged(asker, || make(n)))),
+        )
     }
 
     /// One whose value at a count [`Start::start`] can make on a worker

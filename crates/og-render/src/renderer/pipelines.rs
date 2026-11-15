@@ -161,6 +161,7 @@ pub(crate) fn hdr_pipeline_facing(
         constants,
         ..Default::default()
     };
+    crate::deferred::note(|| format!("{} {}/{} {constants:?}", p.label, p.vs, p.fs));
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some(p.label),
         layout: Some(p.layout),
@@ -510,6 +511,11 @@ fn prepass_variant(
             write_mask: wgpu::ColorWrites::ALL,
         })
     };
+    crate::deferred::note(|| {
+        let skin = if skinned { " skinned" } else { "" };
+        let lean = if lean { " lean" } else { "" };
+        format!("prepass{lean}{skin} {constants:?}")
+    });
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some(if lean { "prepass lean" } else { "prepass" }),
         layout: Some(if skinned { layouts.1 } else { layouts.0 }),
