@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Stylise.paintStrokes",
+      "summary": "Brush strokes in the paint, sized by paintRadius: each colour mass the filter flattens is laid in strokes that run along the image's structure where it is coherent and along a slowly turning lay over flat ground and sky, lighter and darker along their length with fine bristle streaks, and the masses meet with ragged edges. 0 is none (the paint as before); 0.5 to 0.7 reads as paint at a glance; 1 is bold. In a profile 2d project the cook paints the same strokes in each texture's texels."
+    }
+  ]
+}

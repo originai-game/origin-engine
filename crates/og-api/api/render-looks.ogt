@@ -235,6 +235,13 @@
       unit ratio
       tunable true
     }
+    field paintStrokes f32 "Brush strokes in the paint, sized by paintRadius: marks along each stroke (the image's structure, or a slowly turning lay over flat regions), their own light and dark, and ragged edges where strokes meet. 0 is none; 1 bold, visible at a glance." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+      guide "looks §10"
+    }
     field paintCanvas Texture "A tileable paper or canvas texture (og.load.texture) laid over the frame by paintCanvasStrength; 0 is none."
     field paintCanvasStrength f32 "How much the canvas texture modulates the frame: 0 none, 1 its full grain." {
       min 0

@@ -221,6 +221,13 @@ impl Renderer {
                     0.0,
                     0.0,
                 ],
+                strokes: [
+                    pt.filter(|p| p.radius > 0.0)
+                        .map_or(0.0, |p| p.strokes.clamp(0.0, 1.0)),
+                    0.0,
+                    0.0,
+                    0.0,
+                ],
                 print: [
                     ht.map_or(0.0, |h| f32::from(h.mode == stylise::HalftoneMode::Cmyk)),
                     ht.map_or(0.0, |h| h.misregistration.clamp(0.0, 8.0)),

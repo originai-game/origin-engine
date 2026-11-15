@@ -351,6 +351,11 @@ pub struct Paint {
     pub anisotropy: f32,
     pub edge_darkening: f32,
     pub bleed: f32,
+    /// Brush strokes drawn into the painted frame, 0 to 1: marks along each
+    /// stroke's direction (the structure where the image has one, a slowly
+    /// turning lay elsewhere) and ragged edges where strokes meet. Drawn
+    /// with the radius, whose size they take.
+    pub strokes: f32,
     /// The paper or canvas texture and how strongly it modulates the frame.
     pub canvas: Option<crate::TextureHandle>,
     pub canvas_strength: f32,
@@ -459,6 +464,7 @@ impl Paint {
         anisotropy: 0.0,
         edge_darkening: 0.0,
         bleed: 0.0,
+        strokes: 0.0,
         canvas: None,
         canvas_strength: 0.0,
         canvas_scale: 1.0,

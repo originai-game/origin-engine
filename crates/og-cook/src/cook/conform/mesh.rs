@@ -406,7 +406,11 @@ impl Conform {
                 w.dilution,
                 w.paper,
                 h.finish()
-            )
+            ) + &if p.strokes > 0.0 {
+                format!(" strokes {}", p.strokes)
+            } else {
+                String::new()
+            }
         });
         format!(
             "conform-texture-v3 density {} maxSize {} filter {:?} mips {:?} maxColors {} rampSteps {} flat {} strict {} {}{paint}",
