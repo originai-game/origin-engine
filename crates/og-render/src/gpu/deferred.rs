@@ -93,8 +93,9 @@ impl<T> Make<T> {
 /// a worker spinning in the compiler), about one GPU test in 275 under the
 /// gate's load. No exit handler can come first: the compiler registers
 /// its own as it goes, after any of ours ([`wait_at_exit`] only covers a
-/// renderer still alive at exit). So a renderer dropped after its first
-/// frame waits for the full variants compiling in the background.
+/// renderer still alive at exit). So a renderer dropped while the full
+/// variants compile in the background waits for them; they start only
+/// from its second frame, so one dropped after its first has none.
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) struct Pending<T> {
     answer: std::sync::mpsc::Receiver<std::thread::Result<T>>,
@@ -291,8 +292,8 @@ pub(crate) enum Priority {
     Frame,
     /// Ahead of a need that may come (a pipeline variant with every
     /// feature, [`crate::pipeline_features::Variants`]): held until the
-    /// frame that asked has been submitted ([`release_background`]), then
-    /// compiled while no frame's work is queued.
+    /// renderer's second frame has been submitted ([`release_background`]),
+    /// then compiled while no frame's work is queued.
     Background,
 }
 
@@ -395,8 +396,8 @@ fn pool() -> &'static Pool {
     })
 }
 
-/// Lets the background compiles asked for so far start (the frame that
-/// asked for them has been submitted: [`Priority::Background`]).
+/// Lets the background compiles asked for so far start (a renderer's
+/// second frame has been submitted: [`Priority::Background`]).
 pub(crate) fn release_background() {
     #[cfg(not(target_arch = "wasm32"))]
     {

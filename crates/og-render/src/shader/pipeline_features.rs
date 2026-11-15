@@ -19,8 +19,9 @@
 //! while the frame does not use that feature (its runtime test would have
 //! skipped the code). So natively a frame's first use of a lit pipeline
 //! makes the variant for the features it uses, and the full variant
-//! compiles in the background ([`Priority::Background`]) once that frame
-//! is submitted; from then on the full one draws. A feature that turns on
+//! compiles in the background ([`Priority::Background`]) once a second
+//! frame is submitted (a renderer that draws one frame never compiles it,
+//! and its drop waits for none); from then on the full one draws. A feature that turns on
 //! before the full variant is ready never stalls a frame: the variant
 //! already made draws, without that feature, until the full one is ready.
 //! Diagnostic views wait for the full variant too: a beauty-only variant

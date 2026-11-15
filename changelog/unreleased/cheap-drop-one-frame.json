@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Renderer",
+      "summary": "A renderer destroyed after drawing a single frame no longer waits for its full lit pipeline variants: they now start compiling in the background after the renderer's second frame instead of its first, so one that draws a single frame (a test, a screenshot tool) never starts them. On the L4 a terrain scene's renderer waited about 3.0 s at destruction. A renderer that draws on still compiles them from its second frame, and still waits for any it is compiling when destroyed, so no compile is left running when the process exits."
+    }
+  ]
+}

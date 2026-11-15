@@ -407,13 +407,18 @@ fn run(
         let _ = write!(line, "\n  -> {path}");
     }
     if compiles() {
+        // The full variants start from a renderer's second frame (one
+        // that drew one frame never starts them): compiled here, before
+        // the drop, to list their times. The drop then waits for none,
+        // as a renderer dropped after one frame waits for none.
+        og_render::settle_pipelines();
+        let after = og_render::take_compile_times();
         let t = Instant::now();
         drop(renderer);
         let drop_ms = t.elapsed().as_secs_f64() * 1000.0;
-        og_render::settle_pipelines();
         let _ = write!(line, "\n  drop={drop_ms:.1}ms");
         compile_list(&mut line, "first frame", first_compiles);
-        compile_list(&mut line, "after it", og_render::take_compile_times());
+        compile_list(&mut line, "after it", after);
     }
     Ok(line)
 }

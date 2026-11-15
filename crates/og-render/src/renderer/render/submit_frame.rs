@@ -145,9 +145,13 @@ impl Renderer {
         {
             cache.save();
         }
-        // The full lit variants this frame asked for compile now
-        // (pipeline_features.rs).
-        crate::deferred::release_background();
+        // The full lit variants asked for so far compile from the second
+        // frame on (pipeline_features.rs): a renderer dropped after one
+        // frame (a test's, a capture tool's) has none running to wait for
+        // (deferred.rs `Pending`), and its drop takes them off the queue.
+        if self.frame_index > 1 {
+            crate::deferred::release_background();
+        }
         stats.compile_wait_us = crate::deferred::take_waited_us().min(u64::from(u32::MAX)) as u32;
     }
 }
