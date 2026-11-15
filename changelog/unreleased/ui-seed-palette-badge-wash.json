@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "A status badge's ink reads 4.5:1 on its own tone wash whatever the seeds: the light scheme's danger, warn, success and info are derived darker (WCAG luminance at most 0.088, was 0.148) and the dark scheme's lighter (at least 0.45, was 0.3), so the default Warning, Success and Info badges read 5.25, 5.32 and 5.26 (were 3.70, 3.92 and 4.21). The faint ink (`--ink-faint`) is a step darker in the light scheme and reads 4.5:1 on a control's fill, and the dark scheme's `--xp` (the epic tier) is #c86ff5 and reads 4.5:1 on a raised surface."
+    }
+  ]
+}

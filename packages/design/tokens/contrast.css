@@ -34,9 +34,12 @@
     fg-muted fill-strong surface,
     fg fill-strong surface-raised,
     fg-subtle fill surface,
+    fg-subtle material-control bg,
     accent-ink fill-strong surface,
     gold surface,
     gold surface-raised,
+    xp bg,
+    xp surface-raised,
     fg hud #808080;
   --non-text:
     focus bg,

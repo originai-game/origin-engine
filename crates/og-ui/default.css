@@ -812,7 +812,7 @@
     --color-bg-subtle: oklch(from var(--seed-neutral) 0.179 min(c, 0.04) h);
     --color-border: oklch(from var(--seed-neutral) 0.341 min(c, 0.04) h);
     --color-border-strong: oklch(from var(--seed-neutral) 0.447 min(c, 0.04) h);
-    --color-danger: color(from color(from var(--seed-danger) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
+    --color-danger: color(from color(from var(--seed-danger) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))));
     --color-fg: oklch(from var(--seed-neutral) 0.971 min(c, 0.025) h);
     --color-fg-inverse: oklch(from var(--seed-neutral) 0.21 min(c, 0.025) h);
     --color-fg-muted: oklch(from var(--seed-neutral) 0.842 min(c, 0.025) h);
@@ -823,7 +823,7 @@
     --color-gold: #ffd60a;
     --color-health: #30d158;
     --color-hud: oklch(from var(--seed-neutral) 0.201 min(c, 0.04) h / 0.8);
-    --color-info: color(from color(from var(--seed-info) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
+    --color-info: color(from color(from var(--seed-info) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))));
     --color-knob: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
     --color-mana: #409cff;
     --color-material-control: rgb(255 255 255 / 0.13);
@@ -845,7 +845,7 @@
     --color-stage-muted: oklch(from var(--seed-neutral) 0.711 min(c, 0.04) h);
     --color-stage-raised: oklch(from var(--seed-neutral) 0.227 min(c, 0.04) h);
     --color-stage-surface: oklch(from var(--seed-neutral) 0.192 min(c, 0.04) h);
-    --color-success: color(from color(from var(--seed-success) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
+    --color-success: color(from color(from var(--seed-success) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))));
     --color-surface: oklch(from var(--seed-neutral) 0.227 min(c, 0.04) h);
     --color-surface-hover: oklch(from var(--seed-neutral) 0.349 min(c, 0.04) h);
     --color-surface-raised: oklch(from var(--seed-neutral) 0.294 min(c, 0.04) h);
@@ -859,9 +859,9 @@
     --color-team8: color(from color(from oklch(from var(--seed-team) calc(l + 0.09) calc(c * 1.04) calc(h + 89.8)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))));
     --color-thumb: oklch(from var(--seed-neutral) 0.501 min(c, 0.04) h);
     --color-track: oklch(from var(--seed-neutral) 0.547 min(c, 0.04) h);
-    --color-warn: color(from color(from var(--seed-warn) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
+    --color-warn: color(from color(from var(--seed-warn) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))));
     --color-well-rim: oklch(from var(--seed-neutral) 0.58 min(c, 0.04) h);
-    --color-xp: #bf5af2;
+    --color-xp: #c86ff5;
     --backdrop: var(--color-bg);
     --well: var(--color-bg-subtle);
     --panel: var(--color-surface);
@@ -959,18 +959,18 @@
     --color-bg-subtle: oklch(from var(--seed-neutral) 0.935 min(c, 0.04) h);
     --color-border: oklch(from var(--seed-neutral) 0.896 min(c, 0.04) h);
     --color-border-strong: oklch(from var(--seed-neutral) 0.822 min(c, 0.04) h);
-    --color-danger: color(from color(from var(--seed-danger) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.148 / y))) calc(y * min(1, calc(0.148 / y))) calc(z * min(1, calc(0.148 / y))));
+    --color-danger: color(from color(from var(--seed-danger) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.088 / y))) calc(y * min(1, calc(0.088 / y))) calc(z * min(1, calc(0.088 / y))));
     --color-fg: oklch(from var(--seed-neutral) 0.21 min(c, 0.025) h);
     --color-fg-inverse: oklch(from var(--seed-neutral) 0.985 min(c, 0.025) h);
     --color-fg-muted: oklch(from var(--seed-neutral) 0.396 min(c, 0.025) h);
-    --color-fg-subtle: oklch(from var(--seed-neutral) 0.502 min(c, 0.025) h);
+    --color-fg-subtle: oklch(from var(--seed-neutral) 0.48 min(c, 0.025) h);
     --color-fill: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.12);
     --color-fill-strong: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.2);
     --color-focus: color(from color(from oklch(from var(--seed-accent) calc(l + 0.12) c h) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.245 / y))) calc(y * min(1, calc(0.245 / y))) calc(z * min(1, calc(0.245 / y))));
     --color-gold: #8a5a00;
     --color-health: #1b7a38;
     --color-hud: oklch(from var(--seed-neutral) 0.986 min(c, 0.04) h / 0.86);
-    --color-info: color(from color(from var(--seed-info) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.148 / y))) calc(y * min(1, calc(0.148 / y))) calc(z * min(1, calc(0.148 / y))));
+    --color-info: color(from color(from var(--seed-info) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.088 / y))) calc(y * min(1, calc(0.088 / y))) calc(z * min(1, calc(0.088 / y))));
     --color-knob: oklch(from var(--seed-neutral) 1 min(c, 0.04) h);
     --color-mana: #0062c4;
     --color-material-control: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.16);
@@ -992,7 +992,7 @@
     --color-stage-muted: oklch(from var(--seed-neutral) 0.711 min(c, 0.04) h);
     --color-stage-raised: oklch(from var(--seed-neutral) 0.227 min(c, 0.04) h);
     --color-stage-surface: oklch(from var(--seed-neutral) 0.192 min(c, 0.04) h);
-    --color-success: color(from color(from var(--seed-success) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.148 / y))) calc(y * min(1, calc(0.148 / y))) calc(z * min(1, calc(0.148 / y))));
+    --color-success: color(from color(from var(--seed-success) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.088 / y))) calc(y * min(1, calc(0.088 / y))) calc(z * min(1, calc(0.088 / y))));
     --color-surface: oklch(from var(--seed-neutral) 1 min(c, 0.04) h);
     --color-surface-hover: oklch(from var(--seed-neutral) 0.923 min(c, 0.04) h);
     --color-surface-raised: oklch(from var(--seed-neutral) 1 min(c, 0.04) h);
@@ -1006,7 +1006,7 @@
     --color-team8: color(from color(from oklch(from var(--seed-team) calc(l + 0.09) calc(c * 1.04) calc(h + 89.8)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.245 / y))) calc(y * min(1, calc(0.245 / y))) calc(z * min(1, calc(0.245 / y))));
     --color-thumb: oklch(from var(--seed-neutral) 1 min(c, 0.04) h);
     --color-track: oklch(from var(--seed-neutral) 0.547 min(c, 0.04) h);
-    --color-warn: color(from color(from var(--seed-warn) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.148 / y))) calc(y * min(1, calc(0.148 / y))) calc(z * min(1, calc(0.148 / y))));
+    --color-warn: color(from color(from var(--seed-warn) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.088 / y))) calc(y * min(1, calc(0.088 / y))) calc(z * min(1, calc(0.088 / y))));
     --color-well-rim: oklch(from var(--seed-neutral) 0.66 min(c, 0.04) h);
     --color-xp: #7d3fc4;
     --backdrop: var(--color-bg);

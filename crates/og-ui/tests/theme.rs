@@ -573,6 +573,19 @@ fn any_seeds_keep_the_contrast_pairs() {
                     }
                     check(p.join(" "), color(&p[0]).contrast(g), 4.5);
                 }
+                // A status badge washes its tone at 16% over its ground and
+                // keeps the tone as its ink (widgets/presentation.rs).
+                for tone in ["danger", "warn", "success", "info"] {
+                    for under in ["bg", "bg-subtle", "surface", "surface-raised"] {
+                        let ink = color(tone);
+                        let wash = ink.fade(0.16).over(color(under));
+                        check(
+                            format!("{tone} on its wash over {under}"),
+                            ink.contrast(wash),
+                            4.5,
+                        );
+                    }
+                }
             }
         }
     }
