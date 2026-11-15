@@ -517,22 +517,27 @@ fn kuwahara(px: vec2<i32>, radius: f32, anisotropy: f32, f: PaintFrame) -> vec3<
 // is in radii (the pixel's, after detail), so the strokes are the brush's
 // size and a face kept as drawn keeps its own.
 const STROKE_TAPS: i32 = 9;
-const STROKE_LENGTH: f32 = 5.0;     // radii a stroke's body runs
+const STROKE_LENGTH: f32 = 5.0;     // radii a stroke's body runs along structure
+const STROKE_SHORT: f32 = 1.75;     // radii it runs where the image has none (a sky, a flat wall)
 const STROKE_BODY: f32 = 0.9;       // radii across a stroke's body
 const STROKE_BRISTLE: f32 = 1.25;   // logical pixels across a bristle's streak
 const STROKE_BRISTLE_LENGTH: f32 = 10.0; // logical pixels a bristle's streak runs
-const STROKE_LAY_CELL: f32 = 96.0;  // logical pixels over which the lay turns
+const STROKE_LAY_CELL: f32 = 192.0; // logical pixels over which the lay turns
 const STROKE_LAY: f32 = 0.3;        // the lay's mean angle from the horizontal (radians)
-const STROKE_TURN: f32 = 2.4;       // how far the lay turns about it (radians, the noise's span)
+const STROKE_TURN: f32 = 1.0;       // how far the lay turns about it (radians, the noise's span)
 const STROKE_EDGE: f32 = 0.9;       // radii a stroke's ragged edge reaches along it
+
+// How far a pixel's stroke follows structure (0 the lay, 1 the image's).
+fn stroke_follow(f: PaintFrame) -> f32 {
+  return smoothstep(0.3, 0.8, f.aniso) * smoothstep(0.03, 0.15, f.edge);
+}
 
 // The stroke's direction at `p` (a unit vector, either sign).
 fn stroke_dir(p: vec2<f32>, f: PaintFrame) -> vec2<f32> {
   let turn = STROKE_LAY + (value_noise2(p / STROKE_LAY_CELL, 61) - 0.5) * STROKE_TURN;
   let lay = vec2<f32>(cos(turn), sin(turn));
   let along = f.dir * select(1.0, -1.0, dot(f.dir, lay) < 0.0);
-  let k = smoothstep(0.3, 0.8, f.aniso) * smoothstep(0.03, 0.15, f.edge);
-  let d = mix(lay, along, k);
+  let d = mix(lay, along, stroke_follow(f));
   return select(lay, d / max(length(d), 1e-6), length(d) > 1e-3);
 }
 
@@ -561,9 +566,13 @@ fn stroke_streak(p: vec2<f32>, d: vec2<f32>, length: f32, cell: f32, layer: i32)
   return (sum / f32(STROKE_TAPS) - 0.5) * 5.0 * sqrt(cells);
 }
 
-// The painted colour `c` at `p` with its stroke's body and bristles.
-fn brush(c: vec3<f32>, p: vec2<f32>, radius: f32, d: vec2<f32>) -> vec3<f32> {
-  let body = stroke_streak(p, d, radius * STROKE_LENGTH, radius * STROKE_BODY, 62);
+// The painted colour `c` at `p` with its stroke's body and bristles. A
+// stroke is long only along structure: over a sky or a flat wall the lay's
+// field turns, and a long smear along it closed into loops (marble, not
+// brushwork); there each stroke is a short, straight dab.
+fn brush(c: vec3<f32>, p: vec2<f32>, radius: f32, d: vec2<f32>, follow: f32) -> vec3<f32> {
+  let length = radius * mix(STROKE_SHORT, STROKE_LENGTH, follow);
+  let body = stroke_streak(p, d, length, radius * STROKE_BODY, 62);
   let bristle = stroke_streak(p, d, STROKE_BRISTLE_LENGTH, STROKE_BRISTLE, 63);
   let load = clamp(body * 0.2 + bristle * 0.08, -0.45, 0.45) * st.strokes.x;
   return max(c * (1.0 + load), vec3<f32>(0.0));
@@ -585,7 +594,7 @@ fn paint(in: VsOut) -> vec3<f32> {
     if (st.strokes.x > 0.0 && radius >= 0.5) {
       let d = stroke_dir(in.pos.xy, f);
       c = kuwahara(px + stroke_edge(in.pos.xy, radius, d), radius, st.paint.y, f);
-      c = brush(c, in.pos.xy, radius, d);
+      c = brush(c, in.pos.xy, radius, d, stroke_follow(f));
     } else {
       c = kuwahara(px, radius, st.paint.y, f);
     }

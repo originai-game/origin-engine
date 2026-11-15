@@ -233,12 +233,13 @@ pub fn pool(c: [f64; 3], darkening: f64, edge: f64) -> [f64; 3] {
 /// its turn in radians, and the ragged edge's reach in radii.
 pub const STROKE_TAPS: i32 = 9;
 pub const STROKE_LENGTH: f64 = 5.0;
+pub const STROKE_SHORT: f64 = 1.75;
 pub const STROKE_BODY: f64 = 0.9;
 pub const STROKE_BRISTLE: f64 = 1.25;
 pub const STROKE_BRISTLE_LENGTH: f64 = 10.0;
-pub const STROKE_LAY_CELL: f64 = 96.0;
+pub const STROKE_LAY_CELL: f64 = 192.0;
 pub const STROKE_LAY: f64 = 0.3;
-pub const STROKE_TURN: f64 = 2.4;
+pub const STROKE_TURN: f64 = 1.0;
 pub const STROKE_EDGE: f64 = 0.9;
 
 /// The shaders' `value_noise2` (noise.wgsl): the library's value noise on
@@ -255,6 +256,12 @@ fn smooth(a: f64, b: f64, x: f64) -> f64 {
     t * t * (3.0 - 2.0 * t)
 }
 
+/// How far a texel's stroke follows structure (stylise.wgsl
+/// `stroke_follow`): 0 the lay, 1 the image's.
+pub fn stroke_follow(aniso: f64, edge: f64) -> f64 {
+    smooth(0.3, 0.8, aniso) * smooth(0.03, 0.15, edge)
+}
+
 /// The stroke's direction at texel centre `p` (stylise.wgsl `stroke_dir`):
 /// the structure's where it is coherent, the slowly turning lay elsewhere.
 pub fn stroke_dir(p: [f64; 2], dir: [f64; 2], aniso: f64, edge: f64) -> [f64; 2] {
@@ -266,7 +273,7 @@ pub fn stroke_dir(p: [f64; 2], dir: [f64; 2], aniso: f64, edge: f64) -> [f64; 2]
     } else {
         1.0
     };
-    let k = smooth(0.3, 0.8, aniso) * smooth(0.03, 0.15, edge);
+    let k = stroke_follow(aniso, edge);
     let d = [0, 1].map(|i| lay[i] + (dir[i] * s - lay[i]) * k);
     let len = (d[0] * d[0] + d[1] * d[1]).sqrt();
     if len > 1e-3 { d.map(|v| v / len) } else { lay }
@@ -296,9 +303,17 @@ fn stroke_streak(p: [f64; 2], d: [f64; 2], length: f64, cell: f64, layer: i32) -
 }
 
 /// The painted colour `c` with its stroke's body and bristles (stylise.wgsl
-/// `brush`).
-pub fn brush(c: [f64; 3], p: [f64; 2], radius: f64, strokes: f64, d: [f64; 2]) -> [f64; 3] {
-    let body = stroke_streak(p, d, radius * STROKE_LENGTH, radius * STROKE_BODY, 62);
+/// `brush`): long along structure, a short dab where there is none.
+pub fn brush(
+    c: [f64; 3],
+    p: [f64; 2],
+    radius: f64,
+    strokes: f64,
+    d: [f64; 2],
+    follow: f64,
+) -> [f64; 3] {
+    let length = radius * (STROKE_SHORT + (STROKE_LENGTH - STROKE_SHORT) * follow);
+    let body = stroke_streak(p, d, length, radius * STROKE_BODY, 62);
     let bristle = stroke_streak(p, d, STROKE_BRISTLE_LENGTH, STROKE_BRISTLE, 63);
     let load = (body * 0.2 + bristle * 0.08).clamp(-0.45, 0.45) * strokes;
     c.map(|v| (v * (1.0 + load)).max(0.0))
@@ -739,7 +754,7 @@ impl Paint {
                         c = k;
                     }
                     if strokes > 0.0 {
-                        c = brush(c, p, self.radius, strokes, d);
+                        c = brush(c, p, self.radius, strokes, d, stroke_follow(aniso, edge));
                     }
                 }
                 if self.bleed > 0.0 {
