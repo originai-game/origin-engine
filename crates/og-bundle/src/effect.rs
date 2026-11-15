@@ -15,8 +15,7 @@ use crate::grammar::{Line, find, keys};
 use og_core::ogt::{Block, Document, Entry, Value};
 use og_render_data::{
     ColorCurve, Curve, EFFECT_PARAMS, EffectChannel, EffectMaterial, EffectTexture, EffectUv,
-    EffectValue, Erosion, Flow, Fresnel, MAX_CURVE_KEYS, ShaderHandle, ShaderParam,
-    TextureHandle,
+    EffectValue, Erosion, Flow, Fresnel, MAX_CURVE_KEYS, ShaderHandle, ShaderParam, TextureHandle,
 };
 
 /// The `.ogt` type of an effect material file.

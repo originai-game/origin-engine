@@ -185,10 +185,17 @@ fn a_cube_and_an_emitter_cook_and_load() {
         collision("collision 0.3 depth").unwrap().against,
         og_render::CollisionTarget::Depth
     );
+    // `die` after what it meets, or alone.
+    let c = collision("collision 0.2 colliders die").unwrap();
+    assert!(c.die && c.against == og_render::CollisionTarget::Colliders && c.bounce == 0.2);
+    assert!(collision("collision die").unwrap().die);
+    assert!(!collision("collision colliders").unwrap().die);
     for bad in [
         "collision 0.3 0.5 walls",
         "collision 0.3 0.5 0.1",
         "collision colliders 0.3",
+        "collision die colliders",
+        "collision die die",
     ] {
         let err = collision(bad).unwrap_err();
         assert!(err.contains("depth | colliders"), "{bad}: {err}");

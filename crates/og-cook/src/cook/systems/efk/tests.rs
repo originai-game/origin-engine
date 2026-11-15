@@ -725,8 +725,15 @@ fn subtractive_and_multiply_sprites_keep_their_blend() {
         node("M", 2, 4),
         node("R", 3, 3)
     )));
-    assert_eq!(line(file(&c, "n0.emitter.ogt"), "blend"), "blend subtractive");
+    assert_eq!(
+        line(file(&c, "n0.emitter.ogt"), "blend"),
+        "blend subtractive"
+    );
     assert_eq!(line(file(&c, "n1.emitter.ogt"), "blend"), "blend multiply");
     let found: Vec<&str> = c.findings.iter().map(|f| f.what.as_str()).collect();
-    assert_eq!(found, ["a subtractive trail: drawn alpha blended"], "{found:?}");
+    assert_eq!(
+        found,
+        ["a subtractive trail: drawn alpha blended"],
+        "{found:?}"
+    );
 }

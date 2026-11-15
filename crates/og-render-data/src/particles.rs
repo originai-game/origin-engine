@@ -402,6 +402,9 @@ pub struct ParticleCollision {
     /// Fraction of the tangential speed lost per hit.
     pub friction: f32,
     pub against: CollisionTarget,
+    /// The particle dies where it first hits (rain, sparks that go out on
+    /// the ground): a death event there, for a sub-emitter's splash.
+    pub die: bool,
 }
 
 impl Default for ParticleCollision {
@@ -410,6 +413,7 @@ impl Default for ParticleCollision {
             bounce: 0.4,
             friction: 0.2,
             against: CollisionTarget::Depth,
+            die: false,
         }
     }
 }

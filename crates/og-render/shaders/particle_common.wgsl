@@ -38,7 +38,7 @@ struct Emitter {
   air: vec4<f32>,          // xyz: what drag closes on, in the simulation space (the emitter's `wind` share of the air)
   height_t: array<vec4<f32>, 2>,  // the height over life (counts3.x keys; 0: the size curve's)
   height_v: array<vec4<f32>, 2>,
-  counts3: vec4<f32>,      // x: height keys, y: second colour keys (0 none), z: a trail's newest sample's age (s)
+  counts3: vec4<f32>,      // x: height keys, y: second colour keys (0 none), z: a trail's newest sample's age (s), w: 1 a particle dies where it hits
   axis: vec4<f32>,         // xyz: an upright or facing particle's axis, in the emitter's space; w: 1 an effect mesh facing the camera
   color2_t: array<vec4<f32>, 2>,  // the second colour over life (counts3.y keys)
   color2_v: array<vec4<f32>, 8>,

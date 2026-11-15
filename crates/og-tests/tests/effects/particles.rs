@@ -1145,14 +1145,21 @@ fn subtractive_and_multiply_particles_change_what_is_behind() {
             ..small()
         };
         let centre = |blend| {
-            let (img, _, _) = run(&desc, &mut scene(blend), 10, |s, f| fx::tick_all(s, f as u64));
+            let (img, _, _) = run(&desc, &mut scene(blend), 10, |s, f| {
+                fx::tick_all(s, f as u64)
+            });
             let (w, h) = (img.width, img.height);
-            (px(&img, 2, 2).map(f32::from), px(&img, w / 2, h / 2).map(f32::from))
+            (
+                px(&img, 2, 2).map(f32::from),
+                px(&img, w / 2, h / 2).map(f32::from),
+            )
         };
         let (bg, sub) = centre(og_render::ParticleBlend::Subtractive);
         let (_, mul) = centre(og_render::ParticleBlend::Multiply);
         let (_, add) = centre(og_render::ParticleBlend::Additive);
-        println!("{path:?}: behind {bg:?}, subtractive {sub:?}, multiply {mul:?}, additive {add:?}");
+        println!(
+            "{path:?}: behind {bg:?}, subtractive {sub:?}, multiply {mul:?}, additive {add:?}"
+        );
         let drop = |c: [f32; 3], i: usize| bg[i] - c[i];
         assert!(
             drop(sub, 0) > drop(sub, 1) + 20.0 && drop(sub, 1) > 5.0,
@@ -1162,6 +1169,67 @@ fn subtractive_and_multiply_particles_change_what_is_behind() {
             drop(mul, 0) > 10.0 && drop(mul, 1) > drop(mul, 0) + 20.0,
             "{path:?}: multiply {mul:?} over {bg:?}"
         );
-        assert!((0..3).all(|i| add[i] > bg[i] + 5.0), "{path:?}: additive {add:?}");
+        assert!(
+            (0..3).all(|i| add[i] > bg[i] + 5.0),
+            "{path:?}: additive {add:?}"
+        );
+    }
+}
+
+/// A particle whose collision says `die` dies where it first hits, on
+/// both paths: the fountain over a collider plane keeps dozens of
+/// particles bouncing back up off it without, and with `die` none rise
+/// off the ground and far fewer are alive; none sinks through it either
+/// way. A hit that only bounces keeps them; a death that waits for the
+/// next tick lets them through the plane.
+#[test]
+#[ignore = "requires GPU"]
+fn a_particle_that_dies_on_collision_is_gone_where_it_hits() {
+    let run_with = |path: ParticleSimulation, die: bool| {
+        let mut scene = collision_scene(true);
+        scene.objects.instances.clear();
+        let e = scene.effects.particles[0].emitter;
+        let mut emitter = scene.emitter(e).expect("emitter").clone();
+        emitter.collision = Some(ParticleCollision {
+            against: og_render::CollisionTarget::Colliders,
+            die,
+            ..Default::default()
+        });
+        scene.set_emitter(e, emitter);
+        scene.world.colliders = vec![og_render::SceneCollider::Plane {
+            normal: Vec3::Y,
+            offset: 0.0,
+        }];
+        let desc = RenderDesc {
+            particles: path,
+            ..small()
+        };
+        let (_, _, r) = run(&desc, &mut scene, 90, |s, f| fx::tick_all(s, f as u64));
+        let live: Vec<_> = r
+            .read_particles(1)
+            .expect("system")
+            .into_iter()
+            .filter(|p| p.alive())
+            .collect();
+        let lowest = live.iter().map(|p| p.pos_age[1]).fold(f32::MAX, f32::min);
+        let bounced = live
+            .iter()
+            .filter(|p| p.vel_life[1] > 0.0 && p.pos_age[1] < 1.0)
+            .count();
+        (live.len(), bounced, lowest)
+    };
+    for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
+        let (kept, kept_bounced, kept_low) = run_with(path, false);
+        let (left, bounced, low) = run_with(path, true);
+        println!(
+            "{path:?}: bouncing {kept} alive, {kept_bounced} rising, lowest {kept_low}; dying {left} alive, {bounced} rising, lowest {low}"
+        );
+        assert!(kept_bounced > 5, "{path:?}: {kept_bounced} bounced");
+        assert_eq!(bounced, 0, "{path:?}: {bounced} rose off the ground");
+        assert!(left * 3 < kept * 2, "{path:?}: {left} alive against {kept}");
+        assert!(
+            kept_low > -0.1 && low > -0.1,
+            "{path:?}: sank to {kept_low} or {low}"
+        );
     }
 }

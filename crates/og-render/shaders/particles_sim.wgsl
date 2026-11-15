@@ -191,6 +191,7 @@ fn integrate(p: Particle) -> Particle {
     speed_scale = curve_at(emitter.speed_t, emitter.speed_v, speed_keys, t);
   }
   pos += vel * (dt * speed_scale);
+  var hit = false;
   if (emitter.collision.w > 0.5) {
     // The scene's colliders, as the CPU path's `collide` meets them: a
     // step from outside to inside reflects the normal part of the
@@ -206,6 +207,7 @@ fn integrate(p: Particle) -> Particle {
           let normal_part = h.n * vn;
           vel = (vel - normal_part) * (1.0 - emitter.collision.z) - normal_part * emitter.collision.y;
           pos = before + vel * dt;
+          hit = true;
           // A corner or a second shape the new step still enters: out to its surface.
           let again = push_out(pos, 0.0, list);
           if (again.hit) { pos = again.p; }
@@ -232,13 +234,15 @@ fn integrate(p: Particle) -> Particle {
             let normal_part = nrm * vn;
             vel = (vel - normal_part) * (1.0 - emitter.collision.z) - normal_part * emitter.collision.y;
             pos = before + vel * dt;
+            hit = true;
           }
         }
       }
     }
   }
   var o = p;
-  o.pos_age = vec4<f32>(pos, p.pos_age.w + dt);
+  // One that dies on a hit is as old as its life (cpu.rs `integrate`).
+  o.pos_age = vec4<f32>(pos, select(p.pos_age.w + dt, p.vel_life.w, hit && emitter.counts3.w > 0.5));
   o.vel_life = vec4<f32>(vel, p.vel_life.w);
   return o;
 }

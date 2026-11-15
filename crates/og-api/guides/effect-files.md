@@ -36,7 +36,7 @@ Every line the three effect formats take, from the tables their parsers read: an
 | `space world \| local` | `world` | Particles left behind in the world, or carried with the emitter. |
 | `align camera \| velocity [<stretch>] \| upright [<x> <y> <z>] \| facing <x> <y> <z>` | `camera` | Billboards face the camera, stretch along their velocity (stretch 0.05 when left out), stand on an axis of the emitter turning to face the eye (0 1 0 when left out: flames), or lie across one whatever the camera (facing 0 1 0: flat on the ground). |
 | `softDistance <metres>` | `0` | Fade where a billboard meets the scene behind it. |
-| `collision [<bounce> [<friction>]] [depth \| colliders]` |  | Bounce (0.4) with friction (0.2) off the drawn depth (what the camera sees), or off the scene's og.Collider shapes on or off screen; sprite mode always meets the colliders. |
+| `collision [<bounce> [<friction>]] [depth \| colliders] [die]` |  | Bounce (0.4) with friction (0.2) off the drawn depth (what the camera sees), or off the scene's og.Collider shapes on or off screen; sprite mode always meets the colliders. With `die` a particle dies where it first hits (rain, sparks going out), a death event for a sub-emitter's splash. |
 | `render billboard \| sprite [<layer>] \| mesh box \| sphere \| tetrahedron \| "<model id>"` | `billboard` | 3D billboards, 2D sprites in a sprite layer, or a small mesh per particle that tumbles with its rotation (a model's first mesh). |
 | `lit true \| false` | `false` | Billboards and meshes shaded by the sun, the sky and local lights. |
 | `roughness <0..1>` | `1` | A lit mesh's surface: 1 matte; smoother reflects over an alpha body (glass shards). |

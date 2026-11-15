@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "particles: collision ... die",
+      "summary": "An emitter's `collision` line takes `die` (`collision 0.3 colliders die`): a particle dies where it first hits, on both simulation paths and in sprite mode, with a death event there that a `subEmitter death` splash or gameplay reads. Rain that stops at the ground, sparks that go out where they land. Without it particles bounce as before."
+    }
+  ]
+}

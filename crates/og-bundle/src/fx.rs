@@ -259,9 +259,9 @@ pub const EMITTER_LINES: &[Line] = &[
     ),
     Line::new(
         "collision",
-        "[<bounce> [<friction>]] [depth | colliders]",
+        "[<bounce> [<friction>]] [depth | colliders] [die]",
         "",
-        "Bounce (0.4) with friction (0.2) off the drawn depth (what the camera sees), or off the scene's og.Collider shapes on or off screen; sprite mode always meets the colliders.",
+        "Bounce (0.4) with friction (0.2) off the drawn depth (what the camera sees), or off the scene's og.Collider shapes on or off screen; sprite mode always meets the colliders. With `die` a particle dies where it first hits (rain, sparks going out), a death event for a sub-emitter's splash.",
         "collision 0.3 0.1 colliders",
     ),
     Line::new(
@@ -795,22 +795,23 @@ pub fn parse_emitter_linked(
             }
             "softDistance" => em.soft_distance = one(e)?.max(0.0),
             "collision" => {
-                // <bounce> <friction> numbers, then what it meets.
+                // <bounce> <friction> numbers, then what it meets, then die.
                 let d = ParticleCollision::default();
                 let mut v = Vec::new();
-                let mut against = d.against;
+                let (mut against, mut die, mut words) = (d.against, false, 0);
                 for (i, value) in e.values.iter().enumerate() {
                     match (value.as_number(), value.as_word()) {
                         (Some(n), _) if i < 2 && v.len() == i => v.push(n.as_f32()),
-                        (_, Some("depth")) if i == e.values.len() - 1 => {
-                            against = CollisionTarget::Depth
+                        (_, Some("depth")) if words == 0 => {
+                            (against, words) = (CollisionTarget::Depth, 1)
                         }
-                        (_, Some("colliders")) if i == e.values.len() - 1 => {
-                            against = CollisionTarget::Colliders
+                        (_, Some("colliders")) if words == 0 => {
+                            (against, words) = (CollisionTarget::Colliders, 1)
                         }
+                        (_, Some("die")) if !die => (die, words) = (true, 2),
                         _ => {
                             return Err(format!(
-                                "line {line}: collision [<bounce> [<friction>]] [depth | colliders]"
+                                "line {line}: collision [<bounce> [<friction>]] [depth | colliders] [die]"
                             ));
                         }
                     }
@@ -819,6 +820,7 @@ pub fn parse_emitter_linked(
                     bounce: v.first().copied().unwrap_or(d.bounce),
                     friction: v.get(1).copied().unwrap_or(d.friction),
                     against,
+                    die,
                 });
             }
             "render" => {

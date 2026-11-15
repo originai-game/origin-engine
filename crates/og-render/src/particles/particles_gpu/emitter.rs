@@ -196,7 +196,12 @@ pub(super) fn emitter_gpu(
         air: [0.0; 4],
         height_t,
         height_v,
-        counts3: [height_n, color2_n, 0.0, 0.0],
+        counts3: [
+            height_n,
+            color2_n,
+            0.0,
+            e.collision.is_some_and(|c| c.die) as u32 as f32,
+        ],
         axis: axis.extend(0.0).to_array(),
         color2_t,
         color2_v,

@@ -589,7 +589,13 @@ fn integrate(
         Some(c) => collide(colliders, c, before, &mut pos, &mut vel, dt),
         None => false,
     };
-    p.pos_age = pos.extend(p.pos_age[3] + dt).to_array();
+    // One that dies on a hit is as old as its life.
+    let age = if hit && e.collision.is_some_and(|c| c.die) {
+        p.vel_life[3]
+    } else {
+        p.pos_age[3] + dt
+    };
+    p.pos_age = pos.extend(age).to_array();
     p.vel_life = vel.extend(p.vel_life[3]).to_array();
     hit
 }

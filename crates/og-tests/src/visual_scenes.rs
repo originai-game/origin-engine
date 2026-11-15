@@ -916,6 +916,7 @@ pub fn visual_particles_scene() -> RenderScene {
             bounce: 0.45,
             friction: 0.25,
             against: CollisionTarget::Colliders,
+            die: false,
         }),
         ..Default::default()
     });
