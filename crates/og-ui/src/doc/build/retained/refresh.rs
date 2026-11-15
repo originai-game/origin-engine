@@ -659,14 +659,17 @@ impl RetainedHost {
             }
         }
         if let Some(parent) = &parent {
-            if let Some(previous) = previous {
-                for name in &previous.inherited_reads {
-                    if let Some(readers) = self.inherited.get_mut(&(parent.clone(), name.clone())) {
-                        readers.remove(identity);
-                    }
+            // Only the reads that changed move: a restyle mostly reads what
+            // it read before.
+            let empty = BTreeSet::new();
+            let before = previous.map_or(&empty, |p| &p.inherited_reads);
+            let now = &values.cascade.inherited_reads;
+            for name in before.difference(now) {
+                if let Some(readers) = self.inherited.get_mut(&(parent.clone(), name.clone())) {
+                    readers.remove(identity);
                 }
             }
-            for name in &values.cascade.inherited_reads {
+            for name in now.difference(before) {
                 self.inherited
                     .entry((parent.clone(), name.clone()))
                     .or_default()

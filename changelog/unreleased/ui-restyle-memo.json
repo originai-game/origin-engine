@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"og.ui","summary":"Toggling a class on many controls no longer stalls a frame. A control's part styles are kept for each state its element returns to, not only the last one, and the parse of computed transitions and declarations is kept by its text. In a dense menu where 40 cards change class every 12 ticks, the slowest ticks (p95) take 7 ms instead of 30 ms on Windows."}
+  ]
+}

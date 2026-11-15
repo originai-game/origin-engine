@@ -20,6 +20,7 @@ pub mod generated;
 pub(crate) mod image_css;
 pub(crate) mod interact_css;
 pub mod media;
+pub(crate) mod memo;
 #[doc(hidden)]
 pub mod motion;
 pub(crate) mod multicol_css;

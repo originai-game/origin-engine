@@ -520,10 +520,16 @@ fn next_function(s: &str) -> Option<(usize, &'static str)> {
         {
             continue;
         }
-        if let Some(f) = FUNCTIONS
+        // The name runs to the first byte that could not continue it; only
+        // a name called there can be a math function.
+        let end = b[i..]
             .iter()
-            .find(|f| b[i..].starts_with(f.as_bytes()) && b.get(i + f.len()) == Some(&b'('))
-        {
+            .position(|&c| !(c.is_ascii_alphanumeric() || matches!(c, b'-' | b'_' | 128..=255)))
+            .map_or(b.len(), |n| i + n);
+        if b.get(end) != Some(&b'(') {
+            continue;
+        }
+        if let Some(f) = FUNCTIONS.iter().find(|f| f.as_bytes() == &b[i..end]) {
             return Some((i, f));
         }
     }

@@ -520,6 +520,37 @@ pub(crate) fn resolve(
     document: &str,
     diagnostics: &mut Vec<String>,
 ) -> (Vec<CssTransition>, Vec<CssAnimation>) {
+    type Resolved = (Vec<CssTransition>, Vec<CssAnimation>, Vec<String>);
+    type ByWinners = super::memo::Memo<Vec<(String, String)>, Resolved>;
+    thread_local! {
+        /// By document, then by the winning longhands ([`super::memo`]).
+        static KEPT: std::cell::RefCell<super::memo::Memo<String, ByWinners>> =
+            Default::default();
+    }
+    if let Some((t, a, d)) =
+        KEPT.with_borrow(|kept| kept.get(document).and_then(|by| by.get(winners)).cloned())
+    {
+        diagnostics.extend(d);
+        return (t, a);
+    }
+    let mut said = Vec::new();
+    let (t, a) = resolve_winners(winners, document, &mut said);
+    KEPT.with_borrow_mut(|kept| {
+        if kept.get(document).is_none() {
+            kept.keep(document.to_owned(), Default::default());
+        }
+        let by = kept.get_mut(document).expect("kept above");
+        by.keep(winners.to_vec(), (t.clone(), a.clone(), said.clone()));
+    });
+    diagnostics.extend(said);
+    (t, a)
+}
+
+fn resolve_winners(
+    winners: &[(String, String)],
+    document: &str,
+    diagnostics: &mut Vec<String>,
+) -> (Vec<CssTransition>, Vec<CssAnimation>) {
     let get = |name: &str, default: &str| -> Vec<String> {
         let value = winners
             .iter()

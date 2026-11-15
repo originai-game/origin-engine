@@ -237,6 +237,18 @@ impl PartStyles {
     }
 }
 
+/// Whether a kept host is `now`'s: the same one, or one with its facts. A
+/// host is made anew whenever its element's attributes or computed values
+/// change, and a part whose host moves between states (a card lifted and
+/// set down) is asked again in each.
+fn same_host(kept: &Option<Arc<PartHost>>, now: Option<&Arc<PartHost>>) -> bool {
+    match (kept, now) {
+        (Some(a), Some(b)) => Arc::ptr_eq(a, b) || a == b,
+        (None, None) => true,
+        _ => false,
+    }
+}
+
 fn same_arc<T>(kept: &Option<Arc<T>>, now: Option<&Arc<T>>) -> bool {
     match (kept, now) {
         (Some(a), Some(b)) => Arc::ptr_eq(a, b),
@@ -602,7 +614,7 @@ impl Ui {
         let slot = (key, part.part);
         let same = |kept: &PartStyle| {
             kept.part == *part
-                && same_arc(&kept.host, host)
+                && same_host(&kept.host, host)
                 && same_arc(&kept.document, document)
                 && kept.ink == ink
                 && (kept.values.style.as_ref().and_then(|c| c.state.as_ref()) == state

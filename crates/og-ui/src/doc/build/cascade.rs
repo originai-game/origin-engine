@@ -703,21 +703,56 @@ pub(crate) fn route(out: &mut Cascade, flow: crate::layout::Flow) {
             continue;
         }
         let declaration = format!("{name}: {value};");
-        match css::declarations(&declaration, line) {
-            Ok(_) => body.push_str(&declaration),
+        let valid = VALID.with_borrow(|v| v.get(declaration.as_str()).is_some());
+        match if valid {
+            Ok(())
+        } else {
+            css::declarations(&declaration, line).map(|_| ())
+        } {
+            Ok(()) => {
+                if !valid {
+                    VALID.with_borrow_mut(|v| v.keep(declaration.clone(), ()));
+                }
+                body.push_str(&declaration);
+            }
             Err(error) => out.diagnostics.push(format!(
                 "line {line}: {name} invalid at computed-value time: {error}"
             )),
         }
     }
-    match css::declarations(&body, 0) {
+    let lowered = LOWERED.with_borrow(|l| l.get(body.as_str()).cloned());
+    let (props, said) = match lowered {
+        Some(lowered) => lowered,
+        None => {
+            let lowered = lower(&body);
+            LOWERED.with_borrow_mut(|l| l.keep(body, lowered.clone()));
+            lowered
+        }
+    };
+    out.props.extend(props);
+    out.diagnostics.extend(said);
+}
+
+/// What [`route`] knows of computed declarations, by their text
+/// ([`crate::css::memo`]): those that parse, and each body's props.
+type Lowered = (Vec<crate::doc::PropSet>, Vec<String>);
+thread_local! {
+    static VALID: std::cell::RefCell<crate::css::memo::Memo<String, ()>> = Default::default();
+    static LOWERED: std::cell::RefCell<crate::css::memo::Memo<String, Lowered>> =
+        Default::default();
+}
+
+/// The reflected props of declarations `body` and what was wrong with them.
+fn lower(body: &str) -> Lowered {
+    let (mut props, mut said) = (Vec::new(), Vec::new());
+    match css::declarations(body, 0) {
         Ok(entries) => {
             for entry in entries {
                 let Some((spec, prop)) = schema::prop(&entry.key) else {
                     continue;
                 };
                 match crate::doc::parse_value(prop.ty, &entry.values) {
-                    Ok(value) => out.props.push(crate::doc::PropSet {
+                    Ok(value) => props.push(crate::doc::PropSet {
                         spec,
                         value,
                         line: entry.line,
@@ -730,13 +765,14 @@ pub(crate) fn route(out: &mut Cascade, flow: crate::layout::Flow) {
                             && entry.values.iter().any(
                                 |v| matches!(v, og_core::ogt::Value::Word(w) if w == "rowReverse"),
                             ) => {}
-                    Err(error) => out.diagnostics.push(format!(
+                    Err(error) => said.push(format!(
                         "{} invalid at computed-value time: {error}",
                         entry.key
                     )),
                 }
             }
         }
-        Err(error) => out.diagnostics.push(error),
+        Err(error) => said.push(error),
     }
+    (props, said)
 }
