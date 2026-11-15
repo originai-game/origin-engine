@@ -669,10 +669,18 @@ fn shade(v: &mut Vec<FVertex>, idx: &mut Vec<u32>, src: &mut Vec<u32>, normals: 
 }
 
 /// The primitive as voxels of `edge` (its own units, the grid aligned to
-/// the origin); `None` when it has no surface.
+/// the origin); `None` when it has no surface. A surface point fills the
+/// cell half an edge inside it (against its triangle's normal), so the
+/// voxels' faces lie within half an edge of the surface on either side:
+/// a ground at y = 0 keeps its top at 0 and feet on it stay on it, where
+/// the cell the point itself lay in put every upward face a whole cell
+/// above it (a cell's edge doubled past the face budget, it rose over
+/// what stood on it). `mirrored`: the vertices were placed by a mirroring
+/// node, which turns their winding, so the inside is on the other side.
 fn voxelise(
     v: &[FVertex],
     idx: &[u32],
+    mirrored: bool,
     surface: &Surface,
     edge: f32,
     palette: &[[u8; 3]],
@@ -687,7 +695,7 @@ fn voxelise(
         return None;
     }
     let cell = |p: Vec3| (p / edge).floor().as_ivec3();
-    let (c0, c1) = (cell(lo), cell(hi));
+    let (c0, c1) = (cell(lo - edge * 0.5), cell(hi + edge * 0.5));
     let dims = (c1 - c0 + 1).max(glam::IVec3::ONE);
     if dims.max_element() > 256 {
         return None;
@@ -706,6 +714,8 @@ fn voxelise(
             .max(pos(b).distance(pos(c)))
             .max(pos(c).distance(pos(a)));
         let n = ((longest / (edge / 3.0)).ceil() as usize).clamp(1, 4096);
+        let inward = (pos(b) - pos(a)).cross(pos(c) - pos(a)).normalize_or_zero()
+            * if mirrored { edge * 0.5 } else { edge * -0.5 };
         for i in 0..=n {
             for j in 0..=n - i {
                 let (wa, wb) = (i as f32 / n as f32, j as f32 / n as f32);
@@ -714,7 +724,7 @@ fn voxelise(
                 let uv = [0, 1].map(|k| a.uv[k] * wa + b.uv[k] * wb + c.uv[k] * wc);
                 let col = [0, 1, 2, 3].map(|k| a.c[k] * wa + b.c[k] * wb + c.c[k] * wc);
                 let s = surface.at(uv, col);
-                let e = &mut sum[at(cell(p).clamp(c0, c1))];
+                let e = &mut sum[at(cell(p + inward).clamp(c0, c1))];
                 for k in 0..4 {
                     e[k] += s[k];
                 }
@@ -950,6 +960,7 @@ pub(in crate::cook) fn primitive(
         let place = placement_of(src, prim);
         let inverse = place.inverse();
         let normal_back = glam::Mat3::from_mat4(place).transpose();
+        let mirrored = glam::Mat3::from_mat4(place).determinant() < 0.0;
         let placed: Vec<FVertex> = v
             .iter()
             .map(|x| FVertex {
@@ -971,7 +982,15 @@ pub(in crate::cook) fn primitive(
         });
         let mut edge = c.voxel;
         for _ in 0..5 {
-            match voxelise(&placed, idx, &surface, edge, &c.palette, c.max_colors) {
+            match voxelise(
+                &placed,
+                idx,
+                mirrored,
+                &surface,
+                edge,
+                &c.palette,
+                c.max_colors,
+            ) {
                 Some((nv, ni, count))
                     if voxel_target.is_none_or(|t| ni.len() / 3 <= t) || edge >= c.voxel * 16.0 =>
                 {
