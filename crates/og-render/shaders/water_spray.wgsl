@@ -79,8 +79,9 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   // looks (about the camera, two thirds of the slots fell behind it or under the frame).
   let fwd = frame.view_forward.xz;
   let ahead = select(vec2<f32>(0.0), fwd / max(length(fwd), 1e-6), dot(fwd, fwd) > 1e-6);
-  // The spume's window is the near 320 m where its sheets are seen (to its fade's end), not its level's 512 m: over
-  // that, nine in ten of its plumes fell past the fade or out of the frame, and a gale's spume all but never showed.
+  // The spume's window is the near 320 m, not its level's 512 m: over that, nine in ten of its plumes fell out of the
+  // frame, and a gale's spume all but never showed. (Its sheets fade by 170 m, below; a window that small packed the
+  // same slots three times as densely into the band before it.)
   let win = select(lv.w * 0.9, 320.0, pop == 1u);
   let cam = frame.view_pos.xz + ahead * (0.33 * win);
   let cam_uv = cam / win;
@@ -120,7 +121,13 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   // and a small lift: the stronger the wind, the flatter its shear lays the spray (at 12 m/s a droplet rises some
   // 0.4 m, in a gale some 0.15; the spume's sheets, heavier and caught broadside, less). (Thrown up at 1 to 7 m/s, a
   // gale's spume stood over its crest in a plume as tall as the crest.)
-  let wd = water.sea_wind.xy;
+  // The spume's sheets leave each along a heading of its own: the gusts' veer, some 25 m patches turning the air up to
+  // 25 degrees either way, and the sheet's own 12. All along the mean wind, a gale's spume lay in rows of parallel,
+  // combed smears across the sea.
+  let veer = select(0.0, 0.45 * (foam_noise(rest / 25.0 + vec2<f32>(5.3, 1.7)) * 2.0 - 1.0)
+    + 0.2 * (hash_unit(hm + 7u) * 2.0 - 1.0), pop == 1u);
+  let wd = vec2<f32>(cos(veer) * water.sea_wind.x - sin(veer) * water.sea_wind.y,
+    sin(veer) * water.sea_wind.x + cos(veer) * water.sea_wind.y);
   let side = vec2<f32>(-wd.y, wd.x);
   let along = wind * mix(0.4, 0.7, hash_unit(hm + 3u));
   let across = wind * 0.06 * (hash_unit(hm + 4u) * 2.0 - 1.0);
@@ -130,10 +137,11 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   // The air it flies in: the wind at a metre and a half over the crest (droplets) or half a metre (the spume's sheets,
   // skimming), gusting along the wind: the gust noise of 40 m patches carried downwind at the wind's speed, the same
   // for a plume's members, so neighbouring plumes stream together.
-  let gusting = 0.8 + 0.4 * foam_noise((rest - wd * wind * water.spray.y) / 40.0);
+  let gusting = 0.8 + 0.4 * foam_noise((rest - water.sea_wind.xy * wind * water.spray.y) / 40.0);
   let air = vec3<f32>(wd.x, 0.0, wd.y) * sea_wind_at(wind, select(1.5, 0.5, pop == 1u)) * gusting;
-  // The response rate (1/s): small droplets follow the air within a fraction of a second, sheets of spume slower.
-  let k = select(2.2, 1.1, pop == 1u);
+  // The response rate (1/s): small droplets follow the air within a fraction of a second, sheets of spume slower, each
+  // sheet at its own (torn off as a thin film or a thick clot), so their lengths differ by some two to one.
+  let k = select(2.2, mix(0.7, 1.6, hash_unit(hm + 8u)), pop == 1u);
   let decay = (1.0 - exp(-k * tau)) / k;
   var p = start + air * tau + (v0 - air) * decay;
   // Vertically it settles at its fall speed (a cloud of fine spray droplets, some 50 µm, 0.4 m/s; the spume's
@@ -160,10 +168,10 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   alpha *= select(0.85, 0.8, pop == 1u) * mix(0.6, 1.0, keep) * edge;
   // At least a pixel and a half across: a smaller one is drawn that size with its coverage kept (no shimmer).
   let dist = length(p - frame.view_pos.xyz);
-  // Spray is seen near: past some 130 m (the spume's sheets, torn off a gale's crests in streams seen far across the
-  // sea, 320 m) it is a haze over the crests, not sprites. (Its droplets stream 15 to 40 m downwind in a life; faded
+  // Spray is seen near: past some 130 m (the spume's sheets 170 m: further, a pixel spans a sheet's width and the
+  // sheets drew a comb across the middle distance) it is a haze over the crests, not sprites. (Its droplets stream 15 to 40 m downwind in a life; faded
   // from 15 to 35 m, then 25 to 60 m, a gale's spray left the view before it read as spindrift.)
-  alpha *= 1.0 - smoothstep(select(50.0, 120.0, pop == 1u), select(130.0, 320.0, pop == 1u), dist);
+  alpha *= 1.0 - smoothstep(select(50.0, 60.0, pop == 1u), select(130.0, 170.0, pop == 1u), dist);
   // (The spume's sheets come in from 12 to 35 m: nearer, a sheet metres wide fogged the lens; the near spray is the
   // droplets'.)
   alpha *= select(1.0, smoothstep(12.0, 35.0, dist), pop == 1u);
