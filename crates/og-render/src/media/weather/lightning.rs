@@ -21,13 +21,11 @@ pub fn lightning_flash(t: f32) -> f32 {
 /// of the bolt's height (3.6 to 6 m for a 900 m bolt, a couple of pixels
 /// at 1.5 km), widening towards the ground.
 pub fn lightning_bolt(at: Vec3, top: f32, strike: u32) -> Vec<(Vec3, f32)> {
-    // A xorshift stream seeded by the strike.
-    let mut state = strike.wrapping_mul(0x9e37_79b9) ^ 0x4c49_4748 | 1;
+    // A stream seeded by the strike.
+    let mut state = u64::from(strike) ^ 0x4c49_4748;
     let mut draw = move |r: f32| {
-        state ^= state << 13;
-        state ^= state >> 17;
-        state ^= state << 5;
-        (state as f32 / u32::MAX as f32 * 2.0 - 1.0) * r
+        let u = og_core::hash::unit24_of64(og_core::hash::splitmix64_next(&mut state));
+        (u * 2.0 - 1.0) * r
     };
     let mut pts = vec![Vec3::new(at.x, top, at.z), at];
     let mut jag = (top - at.y) * 0.18;
@@ -57,13 +55,8 @@ pub fn lightning_bolt(at: Vec3, top: f32, strike: u32) -> Vec<(Vec3, f32)> {
 /// (point, width) pairs (the same strike, the same branches).
 pub fn lightning_branches(at: Vec3, top: f32, strike: u32) -> Vec<Vec<(Vec3, f32)>> {
     let main = lightning_bolt(at, top, strike);
-    let mut state = strike.wrapping_mul(0x85eb_ca6b) ^ 0x4252_4e43 | 1;
-    let mut unit = move || {
-        state ^= state << 13;
-        state ^= state >> 17;
-        state ^= state << 5;
-        state as f32 / u32::MAX as f32
-    };
+    let mut state = u64::from(strike) ^ 0x4252_4e43;
+    let mut unit = move || og_core::hash::unit24_of64(og_core::hash::splitmix64_next(&mut state));
     let height = top - at.y;
     let count = 1 + (unit() > 0.4) as usize;
     (0..count)

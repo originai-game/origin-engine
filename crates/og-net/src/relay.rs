@@ -88,14 +88,7 @@ struct PeerConn {
 fn due(rooms: &mut Rooms, to: &mut PeerConn, lossy: bool) -> Option<Instant> {
     let sh = rooms.shaping;
     let now = Instant::now();
-    let mut draw = || {
-        // xorshift64*
-        let r = &mut rooms.rng;
-        *r ^= *r >> 12;
-        *r ^= *r << 25;
-        *r ^= *r >> 27;
-        r.wrapping_mul(0x2545_f491_4f6c_dd1d)
-    };
+    let mut draw = || og_core::hash::splitmix64_next(&mut rooms.rng);
     if lossy && sh.loss_percent > 0 && draw() % 100 < u64::from(sh.loss_percent) {
         return None;
     }
@@ -217,7 +210,7 @@ impl Relay {
         let (log_tx, log) = mpsc::channel();
         let rooms: Shared = Arc::new(Mutex::new(Rooms {
             shaping,
-            rng: shaping.seed | 1,
+            rng: shaping.seed,
             ..Rooms::default()
         }));
         let (s, r) = (stop.clone(), rooms.clone());

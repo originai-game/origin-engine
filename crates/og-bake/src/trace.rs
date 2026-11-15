@@ -13,37 +13,9 @@ use crate::scene::{Light, Scene};
 use glam::{Vec2, Vec3};
 use std::f32::consts::PI;
 
-/// A small fast generator (PCG32), seeded per texel and per probe so a
-/// bake is the same whatever thread draws which texel.
-#[derive(Clone, Copy, Debug)]
-pub struct Rng {
-    state: u64,
-}
-
-impl Rng {
-    pub fn new(seed: u64) -> Rng {
-        let mut r = Rng {
-            state: seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0xD1B5_4A32_D192_ED03,
-        };
-        r.next_u32();
-        r
-    }
-
-    pub fn next_u32(&mut self) -> u32 {
-        let old = self.state;
-        self.state = old
-            .wrapping_mul(6364136223846793005)
-            .wrapping_add(1442695040888963407);
-        let xorshifted = (((old >> 18) ^ old) >> 27) as u32;
-        let rot = (old >> 59) as u32;
-        xorshifted.rotate_right(rot)
-    }
-
-    /// Uniform in [0, 1).
-    pub fn f32(&mut self) -> f32 {
-        (self.next_u32() >> 8) as f32 * (1.0 / 16_777_216.0)
-    }
-}
+/// The bake's generator, seeded per texel and per probe so a bake is the
+/// same whatever thread draws which texel.
+pub use og_core::Pcg32 as Rng;
 
 /// An orthonormal basis around `n` (Duff et al. 2017).
 pub fn basis(n: Vec3) -> (Vec3, Vec3) {
@@ -252,8 +224,8 @@ impl<'a> Tracer<'a> {
                     }
                     let nl = -cross / (area / 4.0);
                     let q = position
-                        + half_x * (2.0 * rng.f32() - 1.0)
-                        + half_y * (2.0 * rng.f32() - 1.0);
+                        + half_x * (2.0 * rng.next_f32() - 1.0)
+                        + half_y * (2.0 * rng.next_f32() - 1.0);
                     let w = q - origin;
                     let d2 = w.length_squared().max(1e-8);
                     let d = d2.sqrt();
@@ -324,13 +296,13 @@ impl<'a> Tracer<'a> {
             throughput *= s.albedo;
             if bounce >= 2 {
                 let keep = throughput.max_element().clamp(0.05, 1.0);
-                if rng.f32() >= keep {
+                if rng.next_f32() >= keep {
                     break;
                 }
                 throughput /= keep;
             }
             o = s.position + s.face * self.epsilon * 4.0;
-            d = cosine_dir(s.normal, Vec2::new(rng.f32(), rng.f32()));
+            d = cosine_dir(s.normal, Vec2::new(rng.next_f32(), rng.next_f32()));
             if d.dot(s.face) <= 0.0 {
                 d = s.face;
             }

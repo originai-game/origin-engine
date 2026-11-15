@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "Lightning: a strike's bolt and branches are drawn from og-core's seeded stream instead of an inline xorshift, so each strike number has a new shape (still the same shape every time for that number)."
+  ]
+}

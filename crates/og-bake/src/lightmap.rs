@@ -212,7 +212,7 @@ pub fn bake(
                                 .wrapping_add(done as u64),
                         );
                         let mut shift = Rng::new(seed);
-                        let offset = Vec2::new(shift.f32(), shift.f32());
+                        let offset = Vec2::new(shift.next_f32(), shift.next_f32());
                         let origin = t.position + t.face * tracer.epsilon * 4.0;
                         for i in done..done + count {
                             let mut d = cosine_dir(t.normal, r2(i, offset));

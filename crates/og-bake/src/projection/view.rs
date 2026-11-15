@@ -210,7 +210,7 @@ pub fn clay(level: &Level, g: &GBuffer, light: &ClayLight) -> Vec<[u8; 3]> {
     par_for(&mut ao, light.threads, |i, out| {
         let Some(h) = g.hits[i] else { return };
         let mut rng = Rng::new((i as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0x5eed);
-        let offset = Vec2::new(rng.f32(), rng.f32());
+        let offset = Vec2::new(rng.next_f32(), rng.next_f32());
         let origin = h.position + h.face * eps * 8.0;
         let mut open = 0u32;
         for k in 0..light.samples {

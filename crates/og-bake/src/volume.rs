@@ -100,7 +100,7 @@ pub fn bake(
                     let i = c * chunk + k;
                     let p = at(i);
                     let mut rng = Rng::new(seed ^ (i as u64).wrapping_mul(0x9E37_79B9));
-                    let turn = rng.f32() * std::f32::consts::TAU;
+                    let turn = rng.next_f32() * std::f32::consts::TAU;
                     let mut sh = [Vec3::ZERO; 4];
                     let mut back = 0;
                     for j in 0..samples {

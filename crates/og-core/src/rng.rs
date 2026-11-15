@@ -97,6 +97,41 @@ impl Rng {
     }
 }
 
+/// PCG32 (O'Neill 2014, XSH-RR on a 64-bit LCG): a fast stream for tools
+/// that draw many numbers per item (a bake's per-texel paths), seeded per
+/// item so the result does not depend on which thread draws which. Never
+/// simulation state: the tick draws from [`Rng`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Pcg32 {
+    state: u64,
+}
+
+impl Pcg32 {
+    /// The stream for `seed`: the seed spread by the golden ratio, then one
+    /// step so neighbouring seeds part at once.
+    pub fn new(seed: u64) -> Pcg32 {
+        let mut r = Pcg32 {
+            state: seed.wrapping_mul(crate::hash::GOLDEN64) ^ 0xD1B5_4A32_D192_ED03,
+        };
+        r.next_u32();
+        r
+    }
+
+    pub fn next_u32(&mut self) -> u32 {
+        let old = self.state;
+        self.state = old
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        let xorshifted = (((old >> 18) ^ old) >> 27) as u32;
+        xorshifted.rotate_right((old >> 59) as u32)
+    }
+
+    /// Uniform in [0, 1), from the top 24 bits.
+    pub fn next_f32(&mut self) -> f32 {
+        crate::hash::unit24(self.next_u32())
+    }
+}
+
 #[cfg(test)]
 mod rng_contracts {
     //! The platform's rng vectors (produced by the Web scaffold's `rng.ts` under
@@ -105,6 +140,30 @@ mod rng_contracts {
 
     use crate::Rng;
     use crate::reflect::{from_bytes, to_bytes};
+
+    /// O'Neill's pcg32 from `state`, written out (the reference's
+    /// `pcg32_random_r` with the default increment).
+    #[test]
+    fn pcg32_is_the_reference_xsh_rr_stream() {
+        let mut r = crate::rng::Pcg32::new(7);
+        let mut state = 7u64.wrapping_mul(0x9e37_79b9_7f4a_7c15) ^ 0xD1B5_4A32_D192_ED03;
+        let mut reference = || {
+            let old = state;
+            state = old
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            let x = (((old >> 18) ^ old) >> 27) as u32;
+            let rot = (old >> 59) as u32;
+            (x >> rot) | (x << (rot.wrapping_neg() & 31))
+        };
+        reference();
+        for _ in 0..64 {
+            assert_eq!(r.next_u32(), reference());
+        }
+        for _ in 0..1000 {
+            assert!((0.0..1.0).contains(&r.next_f32()));
+        }
+    }
 
     #[test]
     fn matches_the_web_substrate_sequence() {

@@ -229,12 +229,9 @@ pub(super) fn jacobians(
         }
     }
     let (_, swell) = ocean_gpu(water, 0.0, Vec3::ZERO);
-    let mut state = 0x9e37_79b9_7f4a_7c15u64;
+    let mut state = 0u64;
     let mut uniform = move || {
-        state ^= state << 13;
-        state ^= state >> 7;
-        state ^= state << 17;
-        ((state >> 11) as f64 + 0.5) / (1u64 << 53) as f64
+        ((og_core::hash::splitmix64_next(&mut state) >> 11) as f64 + 0.5) / (1u64 << 53) as f64
     };
     const SAMPLES: usize = 32_768;
     let mut jac: Vec<f64> = (0..SAMPLES)

@@ -66,14 +66,14 @@ pub struct Plan {
     pub reachable_cells: usize,
 }
 
-struct Rng(u32);
+/// og-core's seeded generator, drawn in [0, 1).
+struct Rng(og_core::Rng);
 impl Rng {
+    fn new(seed: u32) -> Rng {
+        Rng(og_core::Rng::new(seed))
+    }
     fn next(&mut self) -> f32 {
-        self.0 = self.0.wrapping_add(0x6d2b_79f5);
-        let mut t = self.0;
-        t = (t ^ (t >> 15)).wrapping_mul(t | 1);
-        t ^= t.wrapping_add((t ^ (t >> 7)).wrapping_mul(t | 61));
-        (t ^ (t >> 14)) as f32 / 4_294_967_296.0
+        og_core::hash::unit24(self.0.next_u32())
     }
 }
 
@@ -86,7 +86,7 @@ fn hit_dist(level: &Level, o: Vec3, d: Vec3) -> Option<(f32, Vec3)> {
 /// Eye points on walkable floors with headroom, enclosed, thinned to
 /// `spacing`, in the main areas a player can walk between.
 pub fn player_points(level: &Level, o: &PlanOptions) -> Vec<Vec3> {
-    let mut rng = Rng(o.seed);
+    let mut rng = Rng::new(o.seed);
     let per_area = 4.0 / (o.spacing * o.spacing);
     let mut cand = Vec::new();
     for t in 0..level.triangles() {
@@ -239,7 +239,7 @@ fn main_areas(level: &Level, pts: &[Vec3], o: &PlanOptions) -> Vec<Vec3> {
 }
 
 pub fn ground_candidates(points: &[Vec3], o: &PlanOptions) -> Vec<ViewSpec> {
-    let mut rng = Rng(o.seed.wrapping_add(1));
+    let mut rng = Rng::new(o.seed.wrapping_add(1));
     let mut out = Vec::new();
     for &p in points {
         let offset = rng.next() * std::f32::consts::TAU / o.yaws as f32;
@@ -296,7 +296,7 @@ pub fn aerial_candidates(level: &Level, ring: usize, kind: ViewKind) -> Vec<View
 /// surfaces, `roof_distance` away and 50° down, facing the slope.
 pub fn roof_candidates(level: &Level, o: &PlanOptions) -> Vec<ViewSpec> {
     let roofs = roof_labels(&level.labels);
-    let mut rng = Rng(o.seed.wrapping_add(2));
+    let mut rng = Rng::new(o.seed.wrapping_add(2));
     let spacing = o.roof_distance * 0.55;
     let mut pts: Vec<(Vec3, Vec3)> = Vec::new();
     for t in 0..level.triangles() {
