@@ -1,15 +1,22 @@
 // The shooter components as a game uses them (docs/ui.md §6.1): built in,
 // used by name from the game's own pages with nothing copied or loaded but
 // the pages, using the default style, each member mounted from named stores
-// and driven through the probe's touch, key and pad commands.
+// and driven through the probe's touch, key and pad commands; the HUD is
+// laid out again in the fantasy pack.
 //
 // Ways it could fail: an intent sent without its row key or for a disabled
 // (locked) slot; selection following a row's index instead of its key
 // through a reorder, a removal or a restore; the empty loadout without its
 // outcome or its actions; a hit mark that does not replay on a new id; the
 // killfeed out of the collection's order or crowding a phone; HUD readouts
-// under the phone's safe area or on top of each other.
-import { afterAll, beforeAll, expect, test } from "bun:test";
+// under the phone's safe area or on top of each other, in the default style
+// or under a pack's larger type and rims; a reticle a pack leaves undrawn
+// because one of the pack's :root tokens has the name of its own variable.
+import { afterAll, beforeAll, expect, setDefaultTimeout, test } from "bun:test";
+
+// The tests run on ticks, not the clock; a time limit only guards a hang
+// (the cook of the pack's fonts takes most of it).
+setDefaultTimeout(60_000);
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -51,7 +58,8 @@ beforeAll(() => {
   cpSync(join(ENGINE, "../../templates/styles/shared/InstrumentSans-Regular.ttf"), join(root, "assets/fonts/body.ttf"));
   writeFileSync(join(root, "assets/fonts/body.ttf.ogt"), 'type import\nversion 1\n---\nfont {\n  charset latin\n}\n');
   for (const [name, text] of Object.entries(PAGES)) writeFileSync(join(root, "assets/ui", `${name}.svelte`), text);
-  writeFileSync(join(root, "assets/looks/clean.ogt"), 'type look\nversion 1\n---\nname "default"\nui "default"\n');
+  // A look naming the pack is what makes the cook bundle it (@styles/fantasy).
+  writeFileSync(join(root, "assets/looks/fantasy.ogt"), 'type look\nversion 1\n---\nname "shooter kit fantasy"\nui "fantasy"\n');
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Shooter kit"\nid "shooter-kit"\nentry "main.ts"\n');
   writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
   cookProject(root, root);
@@ -62,17 +70,24 @@ afterAll(() => { if (root) rmSync(root, { recursive: true, force: true }); });
 
 const DOCUMENTS = ["ui/loadoutTest.svelte", "ui/hudTest.svelte"];
 
-/** An engine mounting `page` with these stores; its document events are collected in `events`. */
-function engine(page: string, stores: Record<string, unknown>, events: Event[] = []): Engine {
+/** An engine mounting `page` with these stores, in the default style or in `pack`; its document events are collected in `events`. */
+function engine(page: string, stores: Record<string, unknown>, events: Event[] = [], pack = ""): Engine {
   const Collect = defineSystem("ShooterKitEvents", {}, (_q, _t, world) => {
     for (const e of og.ui.docEvents(world)) events.push(e as unknown as Event);
   });
   const r = createEngine(og.game({
     systems: [Collect],
     start(world) {
-      const font = og.load.font(world, "fonts/body.ttf");
-      if (!font.ok) throw new Error(font.reason);
-      og.ui.configure(world, { font: font.value });
+      // A pack brings its fonts; the default style is given one.
+      if (pack) {
+        const style = og.load.style(world, `@styles/${pack}`);
+        if (!style.ok) throw new Error(style.reason);
+        og.ui.configure(world, { style: style.value });
+      } else {
+        const font = og.load.font(world, "fonts/body.ttf");
+        if (!font.ok) throw new Error(font.reason);
+        og.ui.configure(world, { font: font.value });
+      }
       for (const path of DOCUMENTS) {
         const loaded = og.load.document(world, path);
         if (!loaded.ok) throw new Error(`${path}: ${loaded.reason}`);
@@ -297,12 +312,17 @@ const PHONE = { width: 390, height: 844, dpr: 2, safeArea: { left: 0, top: 47, r
 const DESKTOP = { width: 1920, height: 1080, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" };
 const meet = (a: El, b: El): boolean => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
-for (const [name, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
-  test(`CombatHud on a ${name}: readouts inside the safe area and clear of each other; a phone shows three feed rows`, () => {
-    const e = engine("hudTest", HUD);
+for (const pack of ["", "fantasy"]) for (const [name, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
+  test(`CombatHud on a ${name} in ${pack || "the default style"}: readouts inside the safe area and clear of each other; a phone shows three feed rows`, () => {
+    const e = engine("hudTest", HUD, [], pack);
     try {
       og.ui.previewViewport(e.world, viewport as never);
       e.advance(4);
+      // The reticle's arms and dot have their size under a pack's tokens too.
+      for (const mark of ["Up", "Right", "Dot"]) {
+        const drawn = find(e, new RegExp(`Aim/[^/]+/${mark}$`));
+        expect(`${mark} ${Math.min(drawn?.width ?? 0, drawn?.height ?? 0) > 0}`).toBe(`${mark} true`);
+      }
       const box = (name: string) => find(e, new RegExp(`page/[^/]+/${name}$`))!;
       const readouts = ["Vitals", "Ammo", "Feed"].map(box);
       for (const r of readouts) {

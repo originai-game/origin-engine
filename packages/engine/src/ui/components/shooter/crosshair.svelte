@@ -30,32 +30,34 @@
 
 <style>
 /* Geometry is the reticle's structure: arms of --arm length, --gap from the
-   centre plus the spread's travel; the dressing gives the ink and keyline. */
+   centre plus the spread's travel; the dressing gives the ink and keyline.
+   The line's width is --weight: --line is the palette's rule colour, which a
+   style pack's :root sets on this root too, above the component's layer. */
 #Crosshair {
   --arm: var(--size-xs);
-  --line: var(--stroke-thick);
+  --weight: var(--stroke-thick);
   --gap: calc(var(--space-xs) + var(--spread, 0) * var(--size-md));
   width: var(--size-xxl); height: var(--size-xxl);
   pointer-events: none;
 }
 .arm { position: absolute; background: var(--scene-ink); border-radius: var(--radius-xs); transition: translate var(--motion-ui-duration) var(--motion-ui-easing); }
-.vertical { left: calc(50% - var(--line) / 2); width: var(--line); height: var(--arm); }
-.horizontal { top: calc(50% - var(--line) / 2); width: var(--arm); height: var(--line); }
+.vertical { left: calc(50% - var(--weight) / 2); width: var(--weight); height: var(--arm); }
+.horizontal { top: calc(50% - var(--weight) / 2); width: var(--arm); height: var(--weight); }
 #Up { bottom: calc(50% + var(--gap)); }
 #Down { top: calc(50% + var(--gap)); }
 #Left { right: calc(50% + var(--gap)); }
 #Right { left: calc(50% + var(--gap)); }
 .dotOnly .arm, .circle .arm { display: none; }
-#Ring { display: none; position: absolute; left: calc(50% - var(--gap) - var(--arm) / 2); top: calc(50% - var(--gap) - var(--arm) / 2); width: calc(var(--gap) * 2 + var(--arm)); height: calc(var(--gap) * 2 + var(--arm)); border-radius: var(--radius-pill); border: var(--line) solid var(--scene-ink); }
+#Ring { display: none; position: absolute; left: calc(50% - var(--gap) - var(--arm) / 2); top: calc(50% - var(--gap) - var(--arm) / 2); width: calc(var(--gap) * 2 + var(--arm)); height: calc(var(--gap) * 2 + var(--arm)); border-radius: var(--radius-pill); border: var(--weight) solid var(--scene-ink); }
 .circle #Ring { display: block; }
 #Ring.aimed { border-color: var(--danger); }
-#Dot { position: absolute; left: calc(50% - var(--line)); top: calc(50% - var(--line)); width: calc(var(--line) * 2); height: calc(var(--line) * 2); border-radius: var(--radius-pill); background: var(--scene-ink); }
+#Dot { position: absolute; left: calc(50% - var(--weight)); top: calc(50% - var(--weight)); width: calc(var(--weight) * 2); height: calc(var(--weight) * 2); border-radius: var(--radius-pill); background: var(--scene-ink); }
 /* Hit marks: four short diagonal ticks just outside the arms, shown while
    the game holds `hit`, popped in again by a new `hitAt`. */
 #Hit { position: absolute; left: 0; top: 0; width: stretch; height: stretch; opacity: 0; transition: opacity var(--motion-exit); }
 #Hit.shown { opacity: 1; scale: 1; transition: opacity var(--motion-enter), scale var(--motion-duration-spring) var(--motion-easing-spring); }
 @starting-style { #Hit.shown { opacity: 0; scale: 1.5; } }
-.tick { position: absolute; width: var(--line); height: var(--space-md); background: var(--scene-ink); }
+.tick { position: absolute; width: var(--weight); height: var(--space-md); background: var(--scene-ink); }
 #HitNE { left: calc(50% + var(--space-md)); top: calc(50% - var(--space-md) * 2); rotate: 45deg; }
 #HitSE { left: calc(50% + var(--space-md)); top: calc(50% + var(--space-md)); rotate: -45deg; }
 #HitSW { left: calc(50% - var(--space-md)); top: calc(50% + var(--space-md)); rotate: 45deg; }

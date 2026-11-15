@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Crosshair",
+      "summary": "The crosshair draws under a style pack. Its line width was a variable named --line, which is also the palette's rule colour: a pack's :root sets that on the component's root, above the component's own layer, so in any pack the arms, the dot, the ring and the hit ticks had no size. The variable is now --weight; a game that set --line on a Crosshair to change its line sets --weight."
+    }
+  ]
+}
