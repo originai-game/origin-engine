@@ -74,7 +74,8 @@ counts, an overflowing queue and a tier-ten tower with long names) and
 `states` (every member in every fixture state). `style:default` is a sheet
 command for the default style.
 `og ui review strategy --style scifi` (or `--style cartoon`) renders the same
-pages in that pack (`templates/styles/<pack>/strategy.css`).
+pages in that pack, dressed by its tokens
+(`templates/styles/<pack>/base.css`).
 
 `bun test tests/strategy.test.ts` (from `packages/engine`) mounts every
 member by name from a game page in every fixture at desktop and phone,

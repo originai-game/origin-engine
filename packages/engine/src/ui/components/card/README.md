@@ -74,7 +74,8 @@ builder: collection and deck list; run: run map and reward) from
 `packages/engine/sheets/card/`, dressed by the fantasy pack, with ja and ar
 string tables for the locale cells.
 `og ui review card --style scifi` (or `--style cartoon`) renders the same
-pages in that pack (`templates/styles/<pack>/card.css`).
+pages in that pack, dressed by its tokens
+(`templates/styles/<pack>/base.css`).
 
 `bun test tests/card.test.ts` (from `packages/engine`) mounts every member
 by name from a game page from each of its fixtures at desktop and phone,

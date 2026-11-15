@@ -93,7 +93,8 @@ loading and empty, today's reward already taken, a muted chat, no friends).
 Icons come from the shared ink icon sheet; there is no painted art and no
 locale table yet.
 `og ui review general --style scifi` (or `--style cartoon`) renders the same
-pages in that pack (`templates/styles/<pack>/general.css`).
+pages in that pack, dressed by its tokens
+(`templates/styles/<pack>/base.css`).
 
 `bun test tests/general.test.ts` (from `packages/engine`) mounts every
 member by name from a game page, from every fixture it declares, at desktop

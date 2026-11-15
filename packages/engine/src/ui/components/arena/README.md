@@ -88,7 +88,8 @@ scoreboard and the five-a-side versus with long names) and `states` (every
 member in every fixture state), in the fantasy pack, and `select` and
 `match` in the core default style.
 `og ui review arena --style scifi` (or `--style cartoon`) renders the same
-pages in that pack (`templates/styles/<pack>/arena.css`).
+pages in that pack, dressed by its tokens
+(`templates/styles/<pack>/base.css`).
 
 `bun test tests/arena.test.ts` (from `packages/engine`) mounts every member
 by name from a game page in every fixture at desktop and phone, and under

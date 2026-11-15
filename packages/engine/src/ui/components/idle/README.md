@@ -77,7 +77,8 @@ to confirm and the welcome-back panel, then their long forms) and states
 preview --screen "x=style:fantasy;page:states-purchases"`.
 `src/fixtures.ts` repeats the documents' fixtures for the sheet's stores.
 `og ui review idle --style scifi` (or `--style cartoon`) renders the same
-pages in that pack (`templates/styles/<pack>/idle.css`).
+pages in that pack, dressed by its tokens
+(`templates/styles/<pack>/base.css`).
 
 `bun test tests/idle.test.ts` (from `packages/engine`) mounts every member
 by name from a game page in every fixture at desktop and phone, checks that

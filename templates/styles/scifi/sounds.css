@@ -2,10 +2,5 @@
    up and kept short and quiet: a tick for a press, a chirp to confirm.
    Volumes and pitches are unitless ranges of the -og-sound grammar. */
 :root { -og-sound: press var(--sfx-tap) var(--sfx-tap2) volume(0.22 0.28) pitch(1.12 1.18), select var(--sfx-confirm) volume(0.28), confirm var(--sfx-confirm) volume(0.3), cancel var(--sfx-back) volume(0.24), back var(--sfx-back) volume(0.24), open var(--sfx-open) volume(0.22), close var(--sfx-back) volume(0.2), error var(--sfx-error) volume(0.3), reward var(--sfx-reward) volume(0.32); }
-button::part(base), button::part(RpgBackpack\.tab), button::part(RpgQuestLog\.row), button::part(RpgConversation\.row), button::part(RpgParty\.cell), button::part(RpgWorldMap\.marker) { -og-sound: press var(--sfx-tap) volume(0.22 0.28) pitch(1.12 1.18), hover var(--sfx-tap2) volume(0.1); }
+button::part(base) { -og-sound: press var(--sfx-tap) volume(0.22 0.28) pitch(1.12 1.18), hover var(--sfx-tap2) volume(0.1); }
 button.primary::part(base) { -og-sound: press var(--sfx-confirm) volume(0.3) pitch(1.08 1.12), hover var(--sfx-tap2) volume(0.1); }
-button::part(RpgBackpack\.cell), button::part(RpgCharacter\.cell) { -og-sound: press var(--sfx-tap2) volume(0.2 0.26) pitch(1.1 1.2), hover var(--sfx-tap) volume(0.08); }
-button::part(RpgActionBar\.skill), button::part(RpgActionBar\.item) { -og-sound: press var(--sfx-confirm) volume(0.26) pitch(1.16 1.22), hover var(--sfx-tap) volume(0.08); }
-button::part(RpgCommands\.cell) { -og-sound: press var(--sfx-confirm) volume(0.3) pitch(1.06 1.1), hover var(--sfx-tap2) volume(0.1); }
-button::part(RpgMenuBar\.tab) { -og-sound: press var(--sfx-open) volume(0.22), hover var(--sfx-tap) volume(0.08); }
-button.menu-close::part(base) { -og-sound: press var(--sfx-back) volume(0.24); }
