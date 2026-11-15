@@ -307,12 +307,5 @@ pub(crate) struct V1<'a> {
 /// `#rrggbb` or `#rrggbbaa`.
 pub fn hex(c: Srgba) -> String {
     let [r, g, b] = c.rgb;
-    if c.alpha >= 1.0 {
-        format!("#{r:02x}{g:02x}{b:02x}")
-    } else {
-        format!(
-            "#{r:02x}{g:02x}{b:02x}{:02x}",
-            (c.alpha * 255.0).round() as u8
-        )
-    }
+    og_core::color::hex_string([r, g, b, (c.alpha.clamp(0.0, 1.0) * 255.0).round() as u8])
 }

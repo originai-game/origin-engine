@@ -238,17 +238,6 @@ pub(crate) fn paint_vals(t: &[Tok]) -> Result<Vec<Value>, String> {
     }
 }
 
-/// `#rrggbb`, or `#rrggbbaa` when not opaque.
-pub(crate) fn hex(c: crate::Srgba) -> String {
-    let [r, g, b] = c.rgb;
-    let a = (c.alpha.clamp(0.0, 1.0) * 255.0).round() as u8;
-    if a == 255 {
-        format!("#{r:02x}{g:02x}{b:02x}")
-    } else {
-        format!("#{r:02x}{g:02x}{b:02x}{a:02x}")
-    }
-}
-
 pub(super) fn transition_vals(t: &[Tok]) -> Result<Vec<Value>, String> {
     let t = match t.first() {
         Some(Tok::Ident(a)) if a == "all" => &t[1..],

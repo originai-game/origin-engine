@@ -16,6 +16,7 @@
 
 use crate::element::Affine;
 use crate::layout::Rect;
+use og_core::color::srgb_to_linear;
 use og_core::glam::Vec3;
 use og_draw::{
     TextureHandle, UiFilter, UiFilterComposite, UiFilterInput, UiFilterOp, UiFilterPrimitive,
@@ -111,15 +112,6 @@ fn numbers(v: &str) -> Result<Vec<f32>, String> {
         .filter(|s| !s.is_empty())
         .map(number)
         .collect()
-}
-
-/// sRGB channel 0–1 to linear light.
-fn linear(c: f32) -> f32 {
-    if c <= 0.04045 {
-        c / 12.92
-    } else {
-        ((c + 0.055) / 1.055).powf(2.4)
-    }
 }
 
 /// A `<filter>` and its primitives. `viewport` is what a user-unit
@@ -271,7 +263,12 @@ fn color(
 }
 
 fn flood(c: [f32; 4]) -> [f32; 4] {
-    [linear(c[0]), linear(c[1]), linear(c[2]), c[3]]
+    [
+        srgb_to_linear(c[0]),
+        srgb_to_linear(c[1]),
+        srgb_to_linear(c[2]),
+        c[3],
+    ]
 }
 
 /// One primitive into the graph; its result.
@@ -473,7 +470,11 @@ fn primitive(
                 color: if at.srgb {
                     [c[0], c[1], c[2]]
                 } else {
-                    [linear(c[0]), linear(c[1]), linear(c[2])]
+                    [
+                        srgb_to_linear(c[0]),
+                        srgb_to_linear(c[1]),
+                        srgb_to_linear(c[2]),
+                    ]
                 },
                 light,
                 kernel_unit: kernel_unit(n)?,

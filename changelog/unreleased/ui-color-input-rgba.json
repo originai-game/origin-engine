@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "<input type=\"color\">",
+      "summary": "A value written as #rgba now reads as that colour with its alpha dropped, as CSS reads it. It used to read as black."
+    }
+  ]
+}

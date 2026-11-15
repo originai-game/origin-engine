@@ -1026,24 +1026,14 @@ fn signed(x: f64, f: impl Fn(f64) -> f64) -> f64 {
     x.signum() * f(x.abs())
 }
 
+// CSS Color 4 mirrors the curve for negative values (`signed`), where
+// og-core's extends the linear toe.
 fn srgb_lin(x: f64) -> f64 {
-    signed(x, |a| {
-        if a <= 0.04045 {
-            a / 12.92
-        } else {
-            ((a + 0.055) / 1.055).powf(2.4)
-        }
-    })
+    signed(x, og_core::color::srgb_to_linear_f64)
 }
 
 fn srgb_gam(x: f64) -> f64 {
-    signed(x, |a| {
-        if a > 0.0031308 {
-            1.055 * a.powf(1.0 / 2.4) - 0.055
-        } else {
-            12.92 * a
-        }
-    })
+    signed(x, og_core::color::linear_to_srgb_f64)
 }
 
 const R2020_A: f64 = 1.09929682680944;
@@ -1540,6 +1530,8 @@ mod tests {
         assert!(NAMED.windows(2).all(|w| w[0].0 < w[1].0) && NAMED.len() == 148);
         assert_eq!(lit("rebeccapurple"), [102, 51, 153, 255]);
         assert_eq!(lit("#f808"), [255, 136, 0, 136]);
+        // CSS needs the '#' that og-core's hex reader leaves optional.
+        assert_eq!(parse_color("f80"), None);
         assert_eq!(lit("rgb(255 0 0 / 50%)"), [255, 0, 0, 128]);
         assert_eq!(lit("rgba(0, 128, 255, 0.25)"), [0, 128, 255, 64]);
         assert_eq!(lit("hsl(120deg 100% 25%)"), [0, 128, 0, 255]);

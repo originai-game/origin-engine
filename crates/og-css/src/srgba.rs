@@ -1,6 +1,8 @@
 //! An sRGB colour as a style authors it, and the conversions the UI and
 //! the renderer need.
 
+use og_core::color::{linear_to_srgb8, parse_hex, srgb8_to_linear};
+
 /// An sRGB colour as a style authors it: 8-bit channels, straight alpha.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Srgba {
@@ -11,15 +13,8 @@ pub struct Srgba {
 impl Srgba {
     /// Linear RGBA (straight alpha), what og-render's sprites and text take.
     pub fn linear(self) -> [f32; 4] {
-        let c = |v: u8| {
-            let s = f32::from(v) / 255.0;
-            if s <= 0.04045 {
-                s / 12.92
-            } else {
-                ((s + 0.055) / 1.055).powf(2.4)
-            }
-        };
-        [c(self.rgb[0]), c(self.rgb[1]), c(self.rgb[2]), self.alpha]
+        let [r, g, b] = self.rgb.map(srgb8_to_linear);
+        [r, g, b, self.alpha]
     }
 
     /// The same colour with its alpha multiplied by `k` (at most opaque).
@@ -52,16 +47,8 @@ impl Srgba {
 
     /// A colour from linear RGBA (straight alpha), rounded to 8-bit sRGB.
     pub fn from_linear(c: [f32; 4]) -> Srgba {
-        let e = |v: f32| {
-            let s = if v <= 0.003_130_8 {
-                v * 12.92
-            } else {
-                1.055 * v.powf(1.0 / 2.4) - 0.055
-            };
-            (s.clamp(0.0, 1.0) * 255.0).round() as u8
-        };
         Srgba {
-            rgb: [e(c[0]), e(c[1]), e(c[2])],
+            rgb: [c[0], c[1], c[2]].map(linear_to_srgb8),
             alpha: c[3].clamp(0.0, 1.0),
         }
     }
@@ -71,15 +58,7 @@ impl Srgba {
     pub fn over_linear(self, below: Srgba) -> Srgba {
         let (t, b) = (self.linear(), below.linear());
         let a = self.alpha.clamp(0.0, 1.0);
-        let e = |k: usize| {
-            let v = t[k] * a + b[k] * (1.0 - a);
-            let s = if v <= 0.003_130_8 {
-                v * 12.92
-            } else {
-                1.055 * v.powf(1.0 / 2.4) - 0.055
-            };
-            (s.clamp(0.0, 1.0) * 255.0).round() as u8
-        };
+        let e = |k: usize| linear_to_srgb8(t[k] * a + b[k] * (1.0 - a));
         Srgba::rgb(e(0), e(1), e(2))
     }
 
@@ -205,18 +184,10 @@ impl Srgba {
 
 /// A CSS hex colour: `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`.
 pub fn parse_color(s: &str) -> Option<Srgba> {
-    let h = s.strip_prefix('#')?;
-    let d: Vec<u8> = h
-        .chars()
-        .map(|c| c.to_digit(16).map(|v| v as u8))
-        .collect::<Option<_>>()?;
-    let v: Vec<u8> = match d.len() {
-        3 | 4 => d.iter().map(|x| x * 17).collect(),
-        6 | 8 => d.chunks(2).map(|p| p[0] * 16 + p[1]).collect(),
-        _ => return None,
-    };
+    // CSS needs the `#`, which og-core's reader leaves optional.
+    let [r, g, b, a] = parse_hex(s).filter(|_| s.starts_with('#'))?;
     Some(Srgba {
-        rgb: [v[0], v[1], v[2]],
-        alpha: v.get(3).map_or(1.0, |&a| f32::from(a) / 255.0),
+        rgb: [r, g, b],
+        alpha: f32::from(a) / 255.0,
     })
 }

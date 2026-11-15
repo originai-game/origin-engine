@@ -6,28 +6,17 @@
 use super::*;
 use crate::paint::{ColorRef, ElementDraw, Gradient, Paint, Stop};
 
-/// `#rgb`, `#rrggbb` or `#rrggbbaa` as 0–1 channels.
+/// `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa` as 0–1 channels (the alpha
+/// dropped).
 pub(crate) fn parse_hex(s: &str) -> Option<[f32; 3]> {
-    let h = s.trim().strip_prefix('#')?;
-    let digits: Vec<u8> = h
-        .chars()
-        .map(|c| c.to_digit(16).map(|d| d as u8))
-        .collect::<Option<_>>()?;
-    let [r, g, b] = match digits.len() {
-        3 => [digits[0] * 17, digits[1] * 17, digits[2] * 17],
-        6 | 8 => [
-            digits[0] * 16 + digits[1],
-            digits[2] * 16 + digits[3],
-            digits[4] * 16 + digits[5],
-        ],
-        _ => return None,
-    };
+    let s = s.trim();
+    let [r, g, b, _] = og_core::color::parse_hex(s).filter(|_| s.starts_with('#'))?;
     Some([r, g, b].map(|c| f32::from(c) / 255.0))
 }
 
 pub(crate) fn to_hex(c: [f32; 3]) -> String {
     let [r, g, b] = c.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
-    format!("#{r:02x}{g:02x}{b:02x}")
+    og_core::color::hex_string([r, g, b, 255])
 }
 
 /// Hue in degrees, saturation and value 0–1.
@@ -277,6 +266,8 @@ mod tests {
     fn hex_and_hsv_round_trip() {
         assert_eq!(parse_hex("#f80"), Some([1.0, 136.0 / 255.0, 0.0]));
         assert_eq!(parse_hex("#00ff0080"), Some([0.0, 1.0, 0.0]));
+        assert_eq!(parse_hex("#f808"), Some([1.0, 136.0 / 255.0, 0.0]));
+        assert_eq!(parse_hex("f80"), None);
         assert_eq!(parse_hex("red"), None);
         for hex in ["#3366cc", "#ff0000", "#00ff7f", "#808080", "#000000"] {
             let c = parse_hex(hex).unwrap();
