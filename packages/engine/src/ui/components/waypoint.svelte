@@ -29,7 +29,7 @@
 #Mark.ally { --tone: var(--success); }
 #Mark.loot { --tone: var(--xp); }
 [part="Waypoint.pin"] { width: var(--size-sm); height: var(--size-sm); align-items: center; justify-content: center; }
-.ping [part="Waypoint.pin"] { animation-name: pulse; animation-duration: calc(var(--motion-duration-slow) * 3); animation-timing-function: var(--motion-easing-out); animation-iteration-count: infinite; }
+.ping [part="Waypoint.pin"] { animation-name: pulse; animation-duration: var(--motion-duration-ping); animation-timing-function: var(--motion-easing-out); animation-iteration-count: infinite; }
 #Diamond { width: var(--size-sm); height: var(--size-sm); fill: var(--tone); stroke: var(--scene-shadow); stroke-width: 1.5; }
 #Icon { width: var(--size-sm); height: var(--size-sm); color: var(--tone); }
 /* In the world, over any scene: the kind's tone and the scene's ink, through the role tokens. */

@@ -55,7 +55,7 @@
 #Recoverable { inset-inline-start: 0; width: calc(var(--recoverable) * 100%); background: var(--ink-muted); opacity: var(--opacity-muted); }
 #Ghost { inset-inline-start: 0; width: stretch; background: var(--scene-ink); opacity: var(--opacity-soft); scale: var(--value) 1; transform-origin: 0% 50%; transition: scale var(--motion-duration-bounce) var(--motion-easing-in-out) var(--motion-duration-slow); }
 #Fill { inset-inline-start: 0; width: calc(var(--value) * 100%); background: linear-gradient(180deg, var(--sheen), transparent 50%, var(--shadow-30)), var(--meter); }
-#Heal { inset-inline-start: 0; width: calc((var(--value) + var(--heal)) * 100%); background: var(--success); opacity: var(--opacity-dim); animation-name: pulse; animation-duration: calc(var(--motion-duration-slow) * 2); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
+#Heal { inset-inline-start: 0; width: calc((var(--value) + var(--heal)) * 100%); background: var(--success); opacity: var(--opacity-dim); animation-name: pulse; animation-duration: var(--motion-duration-turn); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
 #Blocks { inset-inline-start: 0; width: stretch; background: repeating-linear-gradient(90deg, transparent 0% calc(var(--block) * 100% - 0.8%), var(--scene-shadow) calc(var(--block) * 100% - 0.8%) calc(var(--block) * 100%)); }
 /* Transforms and gradients are physical: right to left, the ghost shrinks towards
    the right and the blocks count from the right, as the fill does. */

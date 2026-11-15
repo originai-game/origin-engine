@@ -25,7 +25,7 @@
 [part="OrbMeter.orb"] { width: var(--size-xxl); height: var(--size-xxl); align-items: center; justify-content: center; clip-path: circle(50%); border: var(--stroke-thick) solid var(--line-strong); border-radius: var(--radius-capsule); }
 #Glass { width: stretch; height: stretch; background: radial-gradient(circle at 50% 40%, var(--panel-raised), var(--well)); }
 [part="OrbMeter.fill"] { position: absolute; inset-inline-start: 0; bottom: 0; width: stretch; height: calc(var(--value) * 100%); background: linear-gradient(180deg, var(--sheen), transparent 30%, var(--shadow-45)), var(--meter); }
-#Surface { width: stretch; height: var(--stroke-thick); background: var(--sheen); animation: sway calc(var(--motion-duration-slow) * 6) var(--motion-easing-in-out) infinite alternate; }
+#Surface { width: stretch; height: var(--stroke-thick); background: var(--sheen); animation: sway var(--motion-duration-drift) var(--motion-easing-in-out) infinite alternate; }
 #Shine { width: stretch; height: stretch; background: radial-gradient(ellipse 30% 16% at 40% 18%, var(--sheen), transparent), radial-gradient(circle at 50% 50%, transparent 62%, var(--shadow-45)); }
 [part="OrbMeter.value"] { font: var(--text-lg); font-family: var(--font-mono); text-shadow: 0 var(--stroke-hairline) var(--stroke-thick) var(--scene-shadow); }
 [part="OrbMeter.label"] { font: var(--text-sm); color: var(--scene-ink); text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }

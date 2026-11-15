@@ -65,21 +65,27 @@
   --role-cell-hover-shadow: var(--shadow-float);
   --role-cell-pressed-fill: var(--control-strong);
   --role-cell-empty-shadow: var(--shadow-well);
-  /* A cell holding something of a rarity (`data-rarity`). A style names
-     the six rarity colours (`--common` … `--mythic`); without them a rarity
-     borrows a status colour. */
+  /* The six rarity colours (`--common` … `--mythic`): each a status colour
+     here; a style names its own. A cell holding something of a rarity
+     (`data-rarity`) wears its colour as a rim. */
+  --role-common: var(--line-strong);
+  --role-uncommon: var(--success);
+  --role-rare: var(--info);
+  --role-epic: var(--xp);
+  --role-legendary: var(--warn);
+  --role-mythic: var(--danger);
   --role-cell-common-fill: var(--control);
-  --role-cell-common-shadow: inset 0 0 0 var(--stroke-regular) var(--common, var(--line-strong));
+  --role-cell-common-shadow: inset 0 0 0 var(--stroke-regular) var(--common);
   --role-cell-uncommon-fill: var(--control);
-  --role-cell-uncommon-shadow: inset 0 0 0 var(--stroke-regular) var(--uncommon, var(--success));
+  --role-cell-uncommon-shadow: inset 0 0 0 var(--stroke-regular) var(--uncommon);
   --role-cell-rare-fill: var(--control);
-  --role-cell-rare-shadow: inset 0 0 0 var(--stroke-regular) var(--rare, var(--info));
+  --role-cell-rare-shadow: inset 0 0 0 var(--stroke-regular) var(--rare);
   --role-cell-epic-fill: var(--control);
-  --role-cell-epic-shadow: inset 0 0 0 var(--stroke-regular) var(--epic, var(--xp));
+  --role-cell-epic-shadow: inset 0 0 0 var(--stroke-regular) var(--epic);
   --role-cell-legendary-fill: var(--control);
-  --role-cell-legendary-shadow: inset 0 0 0 var(--stroke-regular) var(--legendary, var(--warn));
+  --role-cell-legendary-shadow: inset 0 0 0 var(--stroke-regular) var(--legendary);
   --role-cell-mythic-fill: var(--control);
-  --role-cell-mythic-shadow: inset 0 0 0 var(--stroke-regular) var(--mythic, var(--danger));
+  --role-cell-mythic-shadow: inset 0 0 0 var(--stroke-regular) var(--mythic);
 
   /* Badge, well, figure: a count or state pinned to a thing; a sunken
      ground for a bar or picture; a number read at a glance. */

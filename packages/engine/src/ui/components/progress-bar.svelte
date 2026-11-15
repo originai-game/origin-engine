@@ -35,8 +35,8 @@
 @media (width < 600px) { [part="ProgressBar.track"] { height: calc(var(--space-xs) + var(--space-xxs)); } }
 [part="ProgressBar.buffer"] { position: absolute; inset-inline-start: 0; top: 0; width: calc(var(--buffer) * 100%); height: stretch; border-radius: var(--meter-radius); background: var(--tone); opacity: var(--opacity-faint); }
 [part="ProgressBar.fill"] { position: absolute; inset-inline-start: 0; top: 0; width: calc(var(--value) * 100%); height: stretch; border-radius: var(--meter-radius); background: linear-gradient(180deg, var(--sheen), transparent 55%, var(--shadow-30)), var(--tone); box-shadow: var(--meter-fill-shadow); }
-#Sheen { position: absolute; top: 0; inset-inline-start: 0; width: 24%; height: stretch; background: linear-gradient(90deg, transparent, var(--sheen), transparent); mix-blend-mode: screen; animation-name: sweep; animation-duration: calc(var(--motion-duration-slow) * 5); animation-timing-function: linear; animation-iteration-count: infinite; }
+#Sheen { position: absolute; top: 0; inset-inline-start: 0; width: 24%; height: stretch; background: linear-gradient(90deg, transparent, var(--sheen), transparent); mix-blend-mode: screen; animation-name: sweep; animation-duration: var(--motion-duration-sheen); animation-timing-function: linear; animation-iteration-count: infinite; }
 .done [part="ProgressBar.fill"] { box-shadow: 0 0 var(--space-sm) var(--tone); }
-.indeterminate [part="ProgressBar.fill"] { width: 36%; background: linear-gradient(90deg, transparent, var(--tone), transparent); box-shadow: none; animation-name: sweep; animation-duration: calc(var(--motion-duration-slow) * 3.5); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; }
+.indeterminate [part="ProgressBar.fill"] { width: 36%; background: linear-gradient(90deg, transparent, var(--tone), transparent); box-shadow: none; animation-name: sweep; animation-duration: var(--motion-duration-sweep); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; }
 @keyframes sweep { from { translate: -100% 0; } to { translate: 420% 0; } }
 </style>

@@ -10,7 +10,7 @@
 </div>
 
 <style>
-.hit { color: var(--scene-ink); font: var(--text-xl); animation-name: rise; animation-duration: calc(var(--motion-duration-slow) * 2); animation-timing-function: var(--motion-easing-out); }
+.hit { color: var(--scene-ink); font: var(--text-xl); animation-name: rise; animation-duration: var(--motion-duration-turn); animation-timing-function: var(--motion-easing-out); }
 .hit.tinted { color: var(--tint); }
 @keyframes rise { 0% { scale: 1.4; opacity: 1; } 20% { scale: 1; } 100% { opacity: 0; } }
 </style>
