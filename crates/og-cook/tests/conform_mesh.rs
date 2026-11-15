@@ -631,3 +631,59 @@ fn voxels_under_a_mirrored_node_keep_the_mesh_s_winding() {
         "mirrored {mirrored} against {plain}"
     );
 }
+
+/// A ground voxelised keeps its height: its cubes lie under the surface,
+/// their top faces on it, so what stands on the ground is not buried.
+/// Before, each surface point filled the cell it lay in, and a ground at
+/// y = 0 became a slab from 0 to one edge up (a whole cube over its feet;
+/// with the edge doubled past the face budget, 1.6 m over the props).
+#[test]
+fn a_voxelised_ground_keeps_its_height() {
+    let ground: Mesh = (
+        vec![
+            [-2.0, 0.0, -2.0],
+            [2.0, 0.0, -2.0],
+            [2.0, 0.0, 2.0],
+            [-2.0, 0.0, 2.0],
+        ],
+        vec![[0.0, 1.0, 0.0]; 4],
+        vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+        vec![0, 3, 2, 0, 2, 1],
+    );
+    let root = project(
+        "voxel-ground",
+        &[
+            ("project.ogt", PROJECT.as_bytes().to_vec()),
+            (
+                "assets/looks/main.ogt",
+                look("ArtShape {\n  voxel 0.25\n}\n").into_bytes(),
+            ),
+            (
+                "assets/models/ground.glb",
+                glb(&ground, 1, [0.3, 0.5, 0.2, 1.0], None),
+            ),
+        ],
+    );
+    let report = cook(&root);
+    assert!(
+        notes(&report, "models/ground.glb")
+            .iter()
+            .any(|n| n.contains("voxel")),
+        "{:?}",
+        notes(&report, "models/ground.glb")
+    );
+    let ys: Vec<f32> = triangles(&root, "models/ground.glb")
+        .iter()
+        .flatten()
+        .flatten()
+        .map(|v| v.position[1])
+        .collect();
+    let (lo, hi) = ys
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(a, b), &y| (a.min(y), b.max(y)));
+    assert!(hi.abs() < 1e-4, "the ground's top at {hi}, not 0");
+    assert!(
+        (lo + 0.25).abs() < 1e-4,
+        "one cube deep: its bottom at {lo}"
+    );
+}

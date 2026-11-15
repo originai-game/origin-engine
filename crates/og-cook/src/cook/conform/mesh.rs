@@ -16,8 +16,10 @@
 //!
 //! 1. **Voxelise** at `ArtShape.voxel` (metres, the model's units): the
 //!    surface, placed by the first node that draws it, sampled into one
-//!    grid aligned to the model's origin (so turned parts step), the
-//!    inside filled, and the grid meshed by the `.vox` importer's greedy
+//!    grid aligned to the model's origin (so turned parts step), each
+//!    point in the cell half an edge inside its face (the voxels keep the
+//!    surface's height within half an edge: a ground stays under what
+//!    stands on it), the inside filled, and the grid meshed by the `.vox` importer's greedy
 //!    mesher (`vox::mesh_model`) and brought back under the node; each cell's colour is the surface's
 //!    (base colour factor × texture × vertex colour), mapped to
 //!    `ArtPalette.colors` (Oklab nearest) or cut to `maxColors`. Past the
@@ -355,7 +357,7 @@ impl Conform {
             return String::new();
         }
         format!(
-            "conform-mesh-v3 faces {} {} silhouette {} normals {:?} bevel {} voxel {} bakes {} {} line {:?}",
+            "conform-mesh-v4 faces {} {} silhouette {} normals {:?} bevel {} voxel {} bakes {} {} line {:?}",
             self.prop_faces,
             self.character_faces,
             self.silhouette,

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ArtShape.voxel",
+      "summary": "A voxelised model keeps its surface's height: each surface point fills the cube half an edge inside it, so the cubes' faces lie within half an edge of the surface on either side. Before, a point filled the cube it lay in, and every upward face rose a whole cube: a ground at y = 0 became a slab one cube thick above it, and with the cube edge doubled past the face budget it rose over the props standing on it. Voxelised models re-cook (conform-mesh-v4)."
+    }
+  ]
+}
