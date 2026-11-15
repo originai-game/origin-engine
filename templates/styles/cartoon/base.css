@@ -249,6 +249,8 @@
   --cartoon-slate-hover: linear-gradient(180deg, #5b6ad9 0%, #4b5ad1 60%, #3e4cba 100%) padding-box;
   --cartoon-slate-lip: #1c2470;
   --cartoon-panel-fill: linear-gradient(180deg, #2c358c 0%, #232a73 30%, #1f2568 100%) padding-box;
+  /* The panel gradient's foot: a frame's speech tail hangs from it. */
+  --cartoon-panel-foot: #1f2568;
   --cartoon-sky: linear-gradient(180deg, #2f7df5 0%, #1d4ac4 55%, #1a2f9c 100%);
   --cartoon-rays-image: url(art/rays.svg);
   --cartoon-dots-image: url(art/dots.svg);
@@ -632,6 +634,8 @@
   --cartoon-slate-hover: linear-gradient(180deg, #ffffff 0%, #ffffff 60%, #eef3ff 100%) padding-box;
   --cartoon-slate-lip: #aab6e0;
   --cartoon-panel-fill: linear-gradient(180deg, #ffffff 0%, #fffaf0 30%, #fff3dc 100%) padding-box;
+  /* The panel gradient's foot: a frame's speech tail hangs from it. */
+  --cartoon-panel-foot: #fff3dc;
   --cartoon-sky: linear-gradient(180deg, #5cc4ff 0%, #8fdcff 55%, #c9f0ff 100%);
   --opacity-wash: 0.5;
   /* Dark ink thinned over a light plate loses contrast faster than white

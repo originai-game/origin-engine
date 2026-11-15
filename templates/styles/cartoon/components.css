@@ -70,3 +70,8 @@ button::part(table\.cell):hover { background: var(--button-quiet-hover-fill); }
 
 /* ── Game over: the revive offer is a raised plate in the outline. */
 [part="game-over.offer"] { outline: none; border: var(--cartoon-outline-thin) solid var(--line-strong); box-shadow: var(--cartoon-edge-small); }
+
+/* ── SpeechBubble: the tail is the frame's foot in the frame's outline (a
+   shout's rim reaches it through --frame-rim); the frame's fill is a
+   gradient, which an SVG fill cannot take. */
+[part="SpeechBubble.tail"] { fill: var(--cartoon-panel-foot); stroke: var(--frame-rim); stroke-width: var(--stroke-regular); stroke-linejoin: round; }
