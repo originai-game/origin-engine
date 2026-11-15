@@ -16,6 +16,17 @@
       "derived": "authored"
     },
     {
+      "path": "aura.ogt",
+      "sha256": "657e0452f312812e7d05c5b46d66330ace7ced7883d588ae9cfcc9cbf6f9601e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
+        "file": "Suzuki01/001_magma_effect/aura.efkproj"
+      },
+      "credit": "Effekseer and Suzuki01",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "aura/model-ball2.glb",
       "sha256": "ea3c77dd75ec1c298437a54a984a3cc32097489141e0d0dd1d0bcfb3df70e005",
       "licence": "CC0-1.0",
@@ -50,7 +61,7 @@
     },
     {
       "path": "aura/n1.emitter.ogt",
-      "sha256": "6837ed0a4db9348a95381b4e336cba3912672ee1795c73aaee82f98d59224d8f",
+      "sha256": "5c8330ba13cf66975d206f494321a4b88f54aa6445c09d86f316a44e3c131d00",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -105,7 +116,7 @@
     },
     {
       "path": "aura/n6.emitter.ogt",
-      "sha256": "330b915636bf6129a467bc6ad1ce67e2708abdf4fc8c324dec6dd933e03f9d07",
+      "sha256": "f1786db959e66958e0eaee72fe45841a90e3f4b4a45d0708db41db3ab35ab8e5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -116,7 +127,7 @@
     },
     {
       "path": "aura/n7.emitter.ogt",
-      "sha256": "b16b6179f37942059abc1e4a4f61cd95f5999db1a4036930ced67c99e24a5ce8",
+      "sha256": "70c8619cf9cb287424fc25d833c7330b05a372811479c6fc6b48639201280ec9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -137,17 +148,6 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "aura.ogt",
-      "sha256": "f60ed20440b747b60ab28c6e342c90bb453304ecf914a6b56a41b9a5f787ed82",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
-        "file": "Suzuki01/001_magma_effect/aura.efkproj"
-      },
-      "credit": "Effekseer and Suzuki01",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "extension.json",
       "sha256": "1f75b907ce1ceb39229b5a8cea8e309b9c514563c6f77fc917d2d25ad4b824f1",
       "licence": "CC0-1.0",
@@ -156,6 +156,17 @@
       },
       "credit": "Effekseer and Suzuki01",
       "derived": "authored"
+    },
+    {
+      "path": "snowstorm11.ogt",
+      "sha256": "ca699b13778e9b94c52247bd2bd7cdd79ac6d1e143405ea7f5949363e9e6f69f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
+        "file": "Suzuki01/003_snowstorm_effect/snowstorm11.efkproj"
+      },
+      "credit": "Effekseer and Suzuki01",
+      "derived": "converted by og vfx import"
     },
     {
       "path": "snowstorm11/n0-0-0.emitter.ogt",
@@ -202,19 +213,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "snowstorm11/n0-0.effect.ogt",
-      "sha256": "03e87ac65572b9633e5c868bc296eccb073f80fdad5e2657e71815b716accab5",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and Suzuki01",
+      "derived": "converted by og vfx import",
+      "path": "snowstorm11/n0-0.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
         "file": "Suzuki01/003_snowstorm_effect/snowstorm11.efkproj"
       },
-      "credit": "Effekseer and Suzuki01",
-      "derived": "converted by og vfx import"
+      "sha256": "03e87ac65572b9633e5c868bc296eccb073f80fdad5e2657e71815b716accab5"
     },
     {
       "path": "snowstorm11/n1-0-0.emitter.ogt",
-      "sha256": "25e99662d5619f26e769a9d0dffd9bd340bafa12cc6b4b94668035cbcfa64558",
+      "sha256": "4f8ac4664dba92cfbd918cdc741712374db87dc8a1caa931567982ee6ccaa507",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -235,15 +246,15 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "snowstorm11/n1-0.effect.ogt",
-      "sha256": "de07b22721c376b52f709a1426bd57436d0abd89d0213f3d72e9f8d17f5f45df",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and Suzuki01",
+      "derived": "converted by og vfx import",
+      "path": "snowstorm11/n1-0.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
         "file": "Suzuki01/003_snowstorm_effect/snowstorm11.efkproj"
       },
-      "credit": "Effekseer and Suzuki01",
-      "derived": "converted by og vfx import"
+      "sha256": "de07b22721c376b52f709a1426bd57436d0abd89d0213f3d72e9f8d17f5f45df"
     },
     {
       "path": "snowstorm11/n2.emitter.ogt",
@@ -258,7 +269,7 @@
     },
     {
       "path": "snowstorm11/n3-0.emitter.ogt",
-      "sha256": "c0065850c9100836cbd9fad7e713a42219865e0444a47870c609dd53e7e8b7fa",
+      "sha256": "e3b9278b1ae02864103e45306fdcec64b463a2bb2810710ff9b5bb828fadd52e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -268,19 +279,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "snowstorm11.ogt",
-      "sha256": "1621240938870cdb001c20052633f65dfa9f7a91b8578467e7dda30b34a4c139",
+      "path": "sword.ogt",
+      "sha256": "c5f8a02275d4c5d056067b95ea9fa7bc033e8bc7bb42cd584b8c656c0150ea3c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
-        "file": "Suzuki01/003_snowstorm_effect/snowstorm11.efkproj"
+        "file": "Suzuki01/002_sword_effect/sword.efkproj"
       },
       "credit": "Effekseer and Suzuki01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "sword/n0-0-0-0-0.emitter.ogt",
-      "sha256": "6e5075323d181bdb294dfb9f5787280b4ee78ae3cfccdded64c3f29f6690808a",
+      "sha256": "52a749bbf2a144750a5efd080618bc1bb074cc9f62bb7f28e633e0ba0beacf63",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -302,7 +313,7 @@
     },
     {
       "path": "sword/n0-0-0-2-0.emitter.ogt",
-      "sha256": "67015e02f3881645e8c8c84c6ba376a885c9e99d50afc91db4759b0453f24e68",
+      "sha256": "333004e76eddcb0e9a3e7a720a98f63783c0b45e479a299133c9157682f1951a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -335,7 +346,7 @@
     },
     {
       "path": "sword/n0-1-0.emitter.ogt",
-      "sha256": "dc8b102dd63744cdec9775682aa6d3e02bd2cc7abf7e3d85b56e6f749b95e7a2",
+      "sha256": "9c80efb1a0772b31a13754ffa3b9c394a2e408e18c3452d22bb3afa670b28865",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -346,7 +357,7 @@
     },
     {
       "path": "sword/n0-1-1.emitter.ogt",
-      "sha256": "9c1b4304d6978e8395f293d1441f9ac2d3909d80408619d0ccbede8856dd34d7",
+      "sha256": "5e45292772e75d117182c4b1303d1a545aaf42ead499c939f782f3566420ba9e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -357,7 +368,7 @@
     },
     {
       "path": "sword/n0-1-2.emitter.ogt",
-      "sha256": "bda26c711f8bbdf01c53f18c4fd092a39dda652079148bbd5a767b5ff52a4999",
+      "sha256": "7fa372a3d5aa22d236f5649177ad638323b05c69996c62344cc619b5a97b73c1",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -367,19 +378,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "sword/n0-1-3-0.effect.ogt",
-      "sha256": "3893fbceda312da448258be27333b809e2a49935d81b0a5d63136fb84955d493",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and Suzuki01",
+      "derived": "converted by og vfx import",
+      "path": "sword/n0-1-3-0.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
         "file": "Suzuki01/002_sword_effect/sword.efkproj"
       },
-      "credit": "Effekseer and Suzuki01",
-      "derived": "converted by og vfx import"
+      "sha256": "3893fbceda312da448258be27333b809e2a49935d81b0a5d63136fb84955d493"
     },
     {
       "path": "sword/n1-0-0-0-0-0.emitter.ogt",
-      "sha256": "665dc561e4aa83b6145ec3fd78da82708960fc629ddd186d2bbb8f3c099e8bd0",
+      "sha256": "987ef851018a833dcfae42c031ccba55367b1b590f79eadb6ea2015cb644f2e4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -390,7 +401,7 @@
     },
     {
       "path": "sword/n1-0-0-0-0.emitter.ogt",
-      "sha256": "e3a2135ebecf280533b3bcf04cb4f60bc07cdba12578000958c9f30d78735525",
+      "sha256": "6e81f68388639c818612410a3a482566c6a6d8ac90541d525c57ad1d5dbf5235",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -401,7 +412,7 @@
     },
     {
       "path": "sword/n1-0-0-0-2-0.emitter.ogt",
-      "sha256": "ce1f56e97a92fa01684f96a932bcf4ef73802a8080d4cd23b704fa24d712f0b2",
+      "sha256": "9149afe2f3535c7ef226ac132d2fa19a7d6e44ec8a660579b5f3277f1e735912",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -412,7 +423,7 @@
     },
     {
       "path": "sword/n1-0-0-0-2.emitter.ogt",
-      "sha256": "fc873812d3d861b841029ba319fe319beaa9dd66d286f8f0a95d22b9e14c7839",
+      "sha256": "96af4b538ca032d6cb7c77856c2e1746561491fbb2dcf8eda5bdf400a212f33f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -434,7 +445,7 @@
     },
     {
       "path": "sword/n1-0-1-0.emitter.ogt",
-      "sha256": "9874e0e9e3289ac7101baab75fda4980e8fddf6462398df8decd20a839c6568d",
+      "sha256": "2e5b3a425fbbe45299f904fda01bba5e6642b6b654b594ab293a1ed9dbc8e75a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -445,7 +456,7 @@
     },
     {
       "path": "sword/n1-0-1-1.emitter.ogt",
-      "sha256": "852dee4165effc0484d88d83c2f98ae049c10aebcb50885d28854cff3f10b126",
+      "sha256": "ae38d08a5f02d6002d6bf88b4041430c20f18b575acb3c79c64c5432836fdea7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -456,7 +467,7 @@
     },
     {
       "path": "sword/n1-0-1-2.emitter.ogt",
-      "sha256": "e76047275be6dfba48e7268eda54eb3397d9ba8c554a1486b3e9cfd0f898d441",
+      "sha256": "0fb06ca39eefdc158fa557453d4fc54102148eece64cf0b65bd8084ead723024",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -466,30 +477,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "sword/n1-0-1-3-0.effect.ogt",
-      "sha256": "b400a8b33acfc67e8938eedd013c5bca079472f2b6c50d3ffbca1190fd61cf5b",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and Suzuki01",
+      "derived": "converted by og vfx import",
+      "path": "sword/n1-0-1-3-0.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
         "file": "Suzuki01/002_sword_effect/sword.efkproj"
       },
-      "credit": "Effekseer and Suzuki01",
-      "derived": "converted by og vfx import"
+      "sha256": "b400a8b33acfc67e8938eedd013c5bca079472f2b6c50d3ffbca1190fd61cf5b"
     },
     {
       "path": "sword/n2-0.effect.ogt",
       "sha256": "2f43e5d212b45b1f4e718186858a01bdeddccaa78d85490f56c6b33c965d5a23",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
-        "file": "Suzuki01/002_sword_effect/sword.efkproj"
-      },
-      "credit": "Effekseer and Suzuki01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sword.ogt",
-      "sha256": "b6db7af6f2594242e55dbdd2d0c5a8fac492036453a875ae9ee7e9d5aee57f09",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -641,7 +641,7 @@
       "title": "Snowstorm 11",
       "loop": false,
       "durationSeconds": 8.917,
-      "impact": false,
+      "impact": true,
       "category": "weather",
       "keywords": [
         "effekseer",

@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.2508
+impact 0.6667
 emitter "vfx/effekseer-tktk01/Fire6/n0-0-0.emitter.ogt" {
   at 0
   offset 15 0 0
@@ -241,14 +242,12 @@ mesh ring {
   color 2.5 2.5 2.5 1
   blend additive
 }
-# effekseer: node 0.0.0 "火の玉中心": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.0 "火の玉中心": a random colour per particle: its mean used
+# effekseer: node 0.0.0 "火の玉中心": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.0.0.0.0 "火の尻尾": ring 350 instances: the first 4 drawn
-# effekseer: node 0.0.0.0.1 "火の尻尾": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.0.1 "火の尻尾": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 1.0 "リング": ring 5 instances: the first 4 drawn
 # effekseer: node 1.0 "リング": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 1.0.0 "Node": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 1.1 "中心": ring 50 instances: the first 4 drawn
-# effekseer: node 1.2 "球体": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.2 "球体": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 1.3 "リング": ring 10 instances: the first 4 drawn
 # effekseer: node 1.3 "リング": a ring whose thickness changes over its life: its middle thickness kept

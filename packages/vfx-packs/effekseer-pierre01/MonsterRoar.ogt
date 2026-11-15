@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.4167
+impact 0
 emitter "vfx/effekseer-pierre01/MonsterRoar/n0-0-0.emitter.ogt" {
   at 0
   rotate 73.3008 0 0
@@ -104,5 +105,16 @@ emitter "vfx/effekseer-pierre01/MonsterRoar/n0-1-1.emitter.ogt" {
 emitter "vfx/effekseer-pierre01/MonsterRoar/n0-1-2.emitter.ogt" {
   at 0
 }
+light {
+  at 0
+  life 0.3
+  offset 0 0 0.0018
+  color 0.9991 0.9995 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}
 # effekseer: node 0.0.4 "Wind_Ring": ring 11 instances: the first 4 drawn
-# effekseer: node 0.0.4.0 "Wind_Sprite": a fixed sprite with many instances: drawn facing the camera

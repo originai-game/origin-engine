@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.4
+impact 0.0833
 mesh ring {
   at 0.05
   inner 0
@@ -10,9 +11,10 @@ mesh ring {
   colors 1 1 1 0 1 1 1 0.251 1 1 1 0.251
   life 0.25
   effect "vfx/effekseer-magicalxspiral/Wind_Impact/n0.effect.ogt"
+  face camera
   scale curve 0 1.4 1 1.8
   color 1 1 1 1
-  blend alpha
+  blend subtractive
 }
 mesh ring {
   at 0
@@ -21,6 +23,7 @@ mesh ring {
   colors 0.5234 1 0.5356 0 0.5234 1 0.5356 0.3765 0.5234 1 0.5356 0
   life 0.1667
   effect "vfx/effekseer-magicalxspiral/Wind_Impact/n1.effect.ogt"
+  face camera
   scale curve 0 3.24 1 0
   color 1 1 1 1
   blend additive
@@ -46,12 +49,15 @@ trail {
   color 1 1 1 0
   orbit 0 15
 }
-# effekseer: node 0 "BG1": subtractive blend: drawn alpha blended
-# effekseer: node 0 "BG1": a camera-facing ring: drawn in its own plane
-# effekseer: node 1 "ShockWave1": a camera-facing ring: drawn in its own plane
-# effekseer: node 2 "Line1": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 3 "Line2": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 4 "Lines": a random colour per particle: its mean used
-# effekseer: node 4 "Lines": a sprite scaled unevenly: drawn square at its mean
+light {
+  at 0.0833
+  life 0.3
+  color 0.0478 1 0.0478
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.0833
+  trauma 0.4
+}
 # effekseer: node 6.0.0.0 "Node": nested generation: 32 instances above its generator folded into one emitter
-# effekseer: node 6.0.0.0 "Node": a track of many instances: one trail drawn

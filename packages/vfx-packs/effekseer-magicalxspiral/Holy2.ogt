@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.5833
+impact 0
 mesh ring {
   at 0
   offset 0 0.01 0
@@ -56,4 +57,16 @@ mesh ring {
   scale curve 0 0 0.6719 1.2015 0.8438 1.445 1 1.6
   color 1 1 1 1
   blend additive
+}
+light {
+  at 0
+  life 0.3
+  offset 0 0.01 0
+  color 1 1 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
 }

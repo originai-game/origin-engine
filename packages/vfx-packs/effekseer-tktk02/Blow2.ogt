@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.3833
+impact 0.2
 trail {
   at 0
   offset 0 10 0
@@ -426,15 +427,22 @@ emitter "vfx/effekseer-tktk02/Blow2/n2-2-0-0-1-0.emitter.ogt" {
   offset 1.5 0 0
   rotate 0 0 -90
 }
+light {
+  at 0.2
+  life 0.3
+  color 1 0.2679 0.1314
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.2
+  trauma 0.4
+}
 # effekseer: node 0.0.0.0 "LineColor": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0.0 "LineColor": a track of many instances: one trail drawn
 # effekseer: node 0.0.0.1 "LineGlow": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0.1 "LineGlow": a track of many instances: one trail drawn
 # effekseer: node 0.0.0.2.0.0 "particleMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.2.0.1 "particleColor": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0.2.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 0.0.0.2.0.2 "particleGlow": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0.2.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 0.0.0.3.0.0 "Ring": ring 50 instances: the first 4 drawn
 # effekseer: node 0.0.0.3.0.0 "Ring": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 0.0.0.3.1 "Ring_ｈｅａｄ": ring 30 instances: the first 4 drawn
@@ -445,31 +453,15 @@ emitter "vfx/effekseer-tktk02/Blow2/n2-2-0-0-1-0.emitter.ogt" {
 # effekseer: node 1.0.0.1 "giza_soto": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 1.0.0.2 "ghiza_Pillar": ring 10 instances: the first 4 drawn
 # effekseer: node 1.0.0.2 "ghiza_Pillar": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 1.0.1.0 "Glow1": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.0.1.1 "Glow2": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.0.1.2 "Glow3": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.1.0 "Distortion": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 1.2.0.0.0.0.0.0 "LineColor": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.2.0.0.0.0.0.0 "LineColor": nested generation: 200 instances above its generator folded into one emitter
-# effekseer: node 1.2.0.0.0.0.0.0 "LineColor": a track of many instances: one trail drawn
 # effekseer: node 1.2.0.1 "Ring": ring 40 instances: the first 4 drawn
 # effekseer: node 1.2.0.1 "Ring": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 1.2.0.1.0 "Glow": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.2.0.1.1 "Distortion": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.2.0.1.2 "Glow": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 2.0.0.0.0.0.0 "LineMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 2.0.0.0.0.0.0 "LineMain": nested generation: 100 instances above its generator folded into one emitter
-# effekseer: node 2.0.0.0.0.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 2.0.0.0.0.0.1 "LineColor": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 2.0.0.0.0.0.1 "LineColor": nested generation: 100 instances above its generator folded into one emitter
-# effekseer: node 2.0.0.0.0.0.1 "LineColor": a track of many instances: one trail drawn
 # effekseer: node 2.0.1.0.0.0.0.0 "LineColor": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 2.0.1.0.0.0.0.0 "LineColor": nested generation: 200 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.0.0 "LineColor": a track of many instances: one trail drawn
-# effekseer: node 2.1.0.0 "Glow": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 2.1.0.1 "Distortion": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 2.1.1 "Ring": ring 10 instances: the first 4 drawn
 # effekseer: node 2.1.1 "Ring": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 2.1.1.0 "Distortion": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 2.2.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 2.2.0.0.1.0 "particleGlow": a random colour per particle: its mean used

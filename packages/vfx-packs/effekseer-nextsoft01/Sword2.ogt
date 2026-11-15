@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.1
+impact 0.2667
 trail {
   at 0
   offset 0 1 0
@@ -33,7 +34,3 @@ emitter "vfx/effekseer-nextsoft01/Sword2/n3.emitter.ogt" {
   offset 2 0 0
 }
 # effekseer: node 1.0.0 "Thunder": nested generation: 90 instances above its generator folded into one emitter
-# effekseer: node 2 "爆発": a y-axis billboard: drawn facing the camera
-# effekseer: node 2 "爆発": a random colour per particle: its mean used
-# effekseer: node 2 "爆発": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 3 "パーティクル": a random colour per particle: its mean used

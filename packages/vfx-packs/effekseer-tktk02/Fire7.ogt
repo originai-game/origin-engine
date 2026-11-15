@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.9983
+impact 0.5
 mesh ring {
   at 0
   offset 0 0 2
@@ -147,21 +148,16 @@ emitter "vfx/effekseer-tktk02/Fire7/n1-0-2-1.emitter.ogt" {
 # effekseer: node 0.0.0.0 "Fire": ring 6 instances: the first 4 drawn
 # effekseer: node 0.0.0.0 "Fire": nested generation: 10 instances above its generator folded into one emitter
 # effekseer: node 0.0.0.0.0 "Distortion": nested generation: 10 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0.0 "Distortion": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.0.0.0.0 "Distortion": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.1 "Glow": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.0.1 "Glow": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.2.0 "Fog": nested generation: 10 instances above its generator folded into one emitter
-# effekseer: node 0.0.2.0 "Fog": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.2.0 "Fog": a random colour per particle: its mean used
+# effekseer: node 0.0.2.0 "Fog": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.0.2.0 "Fog": a child of an instanced parent: its motion drawn up the world's y
-# effekseer: node 0.0.2.1 "Distortion": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.2.1 "Distortion": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.0.2.1 "Distortion": a child of an instanced parent: its motion drawn up the world's y
 # effekseer: node 0.0 "FireNull": motion out from a circle: approximated along one direction
 # effekseer: node 1.0.0.0 "Fire": ring 6 instances: the first 4 drawn
-# effekseer: node 1.0.0.0.0 "Distortion": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 1.0.0.0.0 "Distortion": motion out from a circle: approximated along one direction
-# effekseer: node 1.0.2.0 "Fog": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.0.2.0 "Fog": a random colour per particle: its mean used
+# effekseer: node 1.0.2.0 "Fog": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 1.0.2.0 "Fog": a child of an instanced parent: its motion drawn up the world's y
-# effekseer: node 1.0.2.1 "Distortion": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.0.2.1 "Distortion": a fixed sprite turned at random: its mean plane drawn

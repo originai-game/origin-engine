@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.5667
@@ -48,10 +48,6 @@ emitter "vfx/effekseer-tktk02/Fire8/n0-1-2-0-0-2.emitter.ogt" {
   offset 0 -0.25 0
   rotate 180 -36 180
 }
-# effekseer: node 0.0.0.0.0 "Fire": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.0.0.0.0 "Fire": a child of an instanced parent: its motion drawn up the world's y
 # effekseer: node 0.0 "ｉｎｔｅｒｖａｌ": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.1 "Glow": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.0.1 "Glow": motion out from a circle: approximated along one direction
-# effekseer: node 0.1.0.0.0 "Fire": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.0.0.1 "Fire": a fixed sprite with many instances: drawn facing the camera

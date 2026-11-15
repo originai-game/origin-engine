@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.05
+impact 0.1667
 emitter "vfx/effekseer-nextsoft01/MagicThunder/n0.emitter.ogt" {
   at 0.1667
 }
@@ -26,16 +27,14 @@ emitter "vfx/effekseer-nextsoft01/MagicThunder/n4.emitter.ogt" {
 emitter "vfx/effekseer-nextsoft01/MagicThunder/n5.emitter.ogt" {
   at 0.0167
 }
-# effekseer: node 0 "爆発": a y-axis billboard: drawn facing the camera
-# effekseer: node 0 "爆発": a random colour per particle: its mean used
-# effekseer: node 0 "爆発": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1 "雷": a y-axis billboard: drawn facing the camera
-# effekseer: node 1 "雷": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 2 "雷": a y-axis billboard: drawn facing the camera
-# effekseer: node 2 "雷": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 3 "雷": a y-axis billboard: drawn facing the camera
-# effekseer: node 3 "雷": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 4 "爆発": a y-axis billboard: drawn facing the camera
-# effekseer: node 4 "爆発": a random colour per particle: its mean used
-# effekseer: node 4 "爆発": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 5 "パーティクル": a random colour per particle: its mean used
+light {
+  at 0.1667
+  life 0.3
+  color 0.0478 0.5326 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.1667
+  trauma 0.4
+}

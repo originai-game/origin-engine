@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.15
@@ -191,26 +191,7 @@ emitter "vfx/effekseer-tktk02/Claw1/n1-0-3-0-0-0-0-0-0-0.emitter.ogt" {
   until 0.5
 }
 # effekseer: node 0.0.0.0.0 "particleMain": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 0.0.0.0.1 "particleColor": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.0.0.1.0 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 0.0.0.0.1.0 "particleGlow": motion out from a circle: approximated along one direction
-# effekseer: node 0.1 "particle_Distortion": a random colour per particle: its mean used
 # effekseer: node 0.1 "particle_Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 0.3 "Glow_Distortion": motion out from a circle: approximated along one direction
-# effekseer: node 1.0.0.0.0.0 "LineMain": a track of many instances: one trail drawn
-# effekseer: node 1.0.0.0.0.1 "Line_color": a track of many instances: one trail drawn
-# effekseer: node 1.0.0.0.0.2 "Line_Glow": a track of many instances: one trail drawn
-# effekseer: node 1.0.0.0.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
-# effekseer: node 1.0.1.0.0.0 "LineMain": a track of many instances: one trail drawn
-# effekseer: node 1.0.1.0.0.1 "Line_color": a track of many instances: one trail drawn
-# effekseer: node 1.0.1.0.0.2 "Line_Glow": a track of many instances: one trail drawn
-# effekseer: node 1.0.1.0.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 1.0.1.0.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
-# effekseer: node 1.0.2.0.0.0 "LineMain": a track of many instances: one trail drawn
-# effekseer: node 1.0.2.0.0.1 "Line_color": a track of many instances: one trail drawn
-# effekseer: node 1.0.2.0.0.2 "Line_Glow": a track of many instances: one trail drawn
-# effekseer: node 1.0.2.0.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 1.0.2.0.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
-# effekseer: node 1.0.3.0.0.0.0.0.0.0 "Distortion": a random colour per particle: its mean used

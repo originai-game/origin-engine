@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.1667
+impact 0
 mesh "vfx/effekseer-magicalxspiral/Icicle2/model-icicle3.glb" {
   at 0
   offset 0.7 0 0.5

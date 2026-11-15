@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 10
@@ -54,7 +54,7 @@ mesh ring {
   effect "vfx/effekseer-andrewfm01/drill/n4.effect.ogt"
   scale 6
   color 1 1 1 1
-  blend alpha
+  blend subtractive
 }
 mesh ring {
   at 0
@@ -101,11 +101,3 @@ mesh ring {
   blend additive
 }
 # effekseer: node 2.0 "Node": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 2.0 "Node": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 2.0 "Node": a random colour per particle: its mean used
-# effekseer: node 4 "Drill": subtractive blend: drawn alpha blended
-# effekseer: node 6 "Sparks": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 6 "Sparks": a random colour per particle: its mean used
-# effekseer: node 6 "Sparks": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 7 "Bright Sparks": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 7 "Bright Sparks": a sprite scaled unevenly: drawn square at its mean

@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 10
@@ -121,11 +121,7 @@ mesh ring {
 emitter "vfx/effekseer-andrewfm01/blue_laser/n11.emitter.ogt" {
   at 2.3333
 }
-# effekseer: node 2 "Energy": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 2 "Energy": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 2 "Energy": motion out from a circle: approximated along one direction
 # effekseer: node 3 "Attracted Energy": attraction to the target
 # effekseer: node 3.0 "Attacted Energy Trail": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 3.0 "Attacted Energy Trail": nested generation: 15 instances above its generator folded into one emitter
-# effekseer: node 11 "Sparks": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 11 "Sparks": a sprite scaled unevenly: drawn square at its mean

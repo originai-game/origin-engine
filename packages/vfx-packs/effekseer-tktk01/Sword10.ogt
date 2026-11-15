@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.8367
+impact 0.2
 mesh ring {
   at 0
   offset 13 0 0
@@ -38,6 +39,5 @@ mesh ring {
   blend additive
 }
 # effekseer: node 0.0 "斬撃": ring 5 instances: the first 4 drawn
-# effekseer: node 1.0 "衝撃粒": a random colour per particle: its mean used
 # effekseer: node 2 "Node": ring 5 instances: the first 4 drawn
 # effekseer: node 2 "Node": a ring whose thickness changes over its life: its middle thickness kept

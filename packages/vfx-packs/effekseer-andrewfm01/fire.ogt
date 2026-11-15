@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1
+impact 0.1
 emitter "vfx/effekseer-andrewfm01/fire/n0.emitter.ogt" {
   at 0.1333
 }
@@ -27,7 +28,3 @@ emitter "vfx/effekseer-andrewfm01/fire/n4.emitter.ogt" {
 emitter "vfx/effekseer-andrewfm01/fire/n4-0.parent.ogt" {
   at 0.0667
 }
-# effekseer: node 1 "Fire": a y-axis billboard: drawn facing the camera
-# effekseer: node 1 "Fire": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 4 "Debris": a y-axis billboard: drawn facing the camera
-# effekseer: node 4.0 "Debris Trail": a random colour per particle: its mean used

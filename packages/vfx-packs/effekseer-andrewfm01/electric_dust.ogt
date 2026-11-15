@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 3.3998
+impact 0
 emitter "vfx/effekseer-andrewfm01/electric_dust/n0-0.emitter.ogt" {
   at 0
 }
@@ -14,5 +15,4 @@ trail {
   lifetime 0.1333
   color 1 0.3562 0.047 1
 }
-# effekseer: node 0.0 "Node": a random colour per particle: its mean used
 # effekseer: node 0.0.0 "Node": nested generation: 400 instances above its generator folded into one emitter

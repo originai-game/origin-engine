@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 3.0167
+impact 0
 emitter "vfx/effekseer-starter/Blow8/n0-0.parent.ogt" {
   at 0
 }
@@ -73,15 +74,21 @@ mesh ring {
 emitter "vfx/effekseer-starter/Blow8/n0-4-0.parent.ogt" {
   at 0
 }
-# effekseer: node 0.2.0 "粒": a random colour per particle: its mean used
+light {
+  at 0
+  life 0.3
+  color 1 1 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}
 # effekseer: node 0.2.0 "粒": a child of an instanced parent: its motion drawn up the world's y
-# effekseer: node 0.2.0.0 "粒": a random colour per particle: its mean used
 # effekseer: node 0.2.0.0 "粒": a child of an instanced parent: its motion drawn up the world's y
 # effekseer: node 0.3.0 "広がりリング": ring 5 instances: the first 4 drawn
 # effekseer: node 0.3.0 "広がりリング": nested generation: 9 instances above its generator folded into one emitter
 # effekseer: node 0.3.1 "広がりリング": ring 9 instances: the first 4 drawn
 # effekseer: node 0.3.1 "広がりリング": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 0.4.0 "中心からの光": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.4.0 "中心からの光": a random colour per particle: its mean used
-# effekseer: node 0.4.0 "中心からの光": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.4.0 "中心からの光": a child of an instanced parent: its motion drawn up the world's y

@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.3998
+impact 0.1667
 trail {
   at 0
   offset -3.849 -2.2222 0
@@ -134,16 +135,19 @@ emitter "vfx/effekseer-tktk01/Blow14/n0-1-4-0-1.emitter.ogt" {
   offset -5 1.4095 0.513
   rotate 20 0 0
 }
+light {
+  at 0.1667
+  life 0.3
+  offset -5 0.2043 0.0743
+  color 1 0.5363 0.5363
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.1667
+  trauma 0.4
+}
 # effekseer: node 0.0.0.0.0.1.0 "蹴りの軌跡": nested generation: 30 instances above its generator folded into one emitter
 # effekseer: node 0.0.0.0.0.1.1 "蹴りの軌跡カラフル": nested generation: 30 instances above its generator folded into one emitter
 # effekseer: node 0.0.0.0.0.1.2 "蹴りの軌跡glow": nested generation: 30 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0.1.0.0.0 "粒子色付け": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.1.0.0.1 "glow": a random colour per particle: its mean used
-# effekseer: node 0.1.0.0.0 "色付け": a random colour per particle: its mean used
-# effekseer: node 0.1.0.0.1 "glow": a random colour per particle: its mean used
 # effekseer: node 0.1.3 "リング外枠": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 0.1.4.0.0 "ライン": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.4.0.0 "ライン": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.4.0.1 "ラインカラー": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.4.0.1 "ラインカラー": a random colour per particle: its mean used
-# effekseer: node 0.1.4.0.1 "ラインカラー": a sprite scaled unevenly: drawn square at its mean

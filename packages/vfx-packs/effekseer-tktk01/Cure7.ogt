@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.6
+impact 0
 emitter "vfx/effekseer-tktk01/Cure7/n0-0-0-0.emitter.ogt" {
   at 0
   offset 1 0 3

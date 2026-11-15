@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.425
+impact 0
 mesh ring {
   at 0
   inner 0.5
@@ -54,9 +55,5 @@ emitter "vfx/effekseer-tktk01/Fire4/n1-0-0-0.parent.ogt" {
 emitter "vfx/effekseer-tktk01/Fire4/n2-0.emitter.ogt" {
   at 0.5
 }
-# effekseer: node 1.0.0.0 "火メイン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.0.0.0 "火メイン": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.0.0.0 "火メイン": subtractive blend: drawn alpha blended
-# effekseer: node 2.0 "火メイン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 2.0 "火メイン": a random colour per particle: its mean used
-# effekseer: node 2.0 "火メイン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.0.0 "火メイン": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 2.0 "火メイン": a fixed sprite turned at random: its mean plane drawn

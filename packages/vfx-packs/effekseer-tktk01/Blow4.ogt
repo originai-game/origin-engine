@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.8448
+impact 0
 emitter "vfx/effekseer-tktk01/Blow4/n0.emitter.ogt" {
   at 0
 }
@@ -45,10 +46,17 @@ emitter "vfx/effekseer-tktk01/Blow4/n5-0.emitter.ogt" {
   at 0
   rotate 0 0 -90
 }
-# effekseer: node 2.0 "粒": a random colour per particle: its mean used
-# effekseer: node 2.0.0 "粒": a random colour per particle: its mean used
+light {
+  at 0
+  life 0.3
+  offset 0.0524 0 0
+  color 1 1 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}
 # effekseer: node 3 "広がりリング": ring 5 instances: the first 4 drawn
 # effekseer: node 4 "広がりリング": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 5.0 "中心からの光": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 5.0 "中心からの光": a random colour per particle: its mean used
-# effekseer: node 5.0 "中心からの光": a sprite scaled unevenly: drawn square at its mean

@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.65
+impact 0.0833
 mesh ring {
   at 0.05
   inner 0
@@ -10,9 +11,10 @@ mesh ring {
   colors 1 1 1 0 1 1 1 0.251 1 1 1 0.251
   life 0.25
   effect "vfx/effekseer-magicalxspiral/Water_Impact/n0.effect.ogt"
+  face camera
   scale curve 0 1.4 1 1.8
   color 1 1 1 1
-  blend alpha
+  blend subtractive
 }
 mesh ring {
   at 0
@@ -21,6 +23,7 @@ mesh ring {
   colors 0.5234 0.5356 1 0 0.5234 0.5356 1 0.3765 0.5234 0.5356 1 0
   life 0.1667
   effect "vfx/effekseer-magicalxspiral/Water_Impact/n1.effect.ogt"
+  face camera
   scale curve 0 3.24 1 0
   color 1 1 1 1
   blend additive
@@ -39,6 +42,7 @@ mesh ring {
   colors 0.0478 0.2195 1 0 0.2195 0.2195 1 0.251 1 1 1 0.251
   life 0.1667
   effect "vfx/effekseer-magicalxspiral/Water_Impact/n4.effect.ogt"
+  face camera
   scale 2
   color 1 1 1 0.75
   blend additive
@@ -51,6 +55,7 @@ mesh ring {
   colors 0.0478 0.2195 1 0 0.2195 0.2195 1 0.251 1 1 1 0.251
   life 0.1667
   effect "vfx/effekseer-magicalxspiral/Water_Impact/n4.effect.ogt"
+  face camera
   scale 2
   color 1 1 1 0.75
   blend additive
@@ -63,6 +68,7 @@ mesh ring {
   colors 0.0478 0.2195 1 0 0.2195 0.2195 1 0.251 1 1 1 0.251
   life 0.1667
   effect "vfx/effekseer-magicalxspiral/Water_Impact/n4.effect.ogt"
+  face camera
   scale 2
   color 1 1 1 0.75
   blend additive
@@ -75,6 +81,7 @@ mesh ring {
   colors 0.0478 0.2195 1 0 0.2195 0.2195 1 0.251 1 1 1 0.251
   life 0.1667
   effect "vfx/effekseer-magicalxspiral/Water_Impact/n4.effect.ogt"
+  face camera
   scale 2
   color 1 1 1 0.75
   blend additive
@@ -90,13 +97,15 @@ emitter "vfx/effekseer-magicalxspiral/Water_Impact/n7-0-0.emitter.ogt" {
   move 0 6 0
   accelerate 0 -36 0
 }
-# effekseer: node 0 "BG1": subtractive blend: drawn alpha blended
-# effekseer: node 0 "BG1": a camera-facing ring: drawn in its own plane
-# effekseer: node 1 "ShockWave1": a camera-facing ring: drawn in its own plane
-# effekseer: node 2 "Line1": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 3 "Line2": a sprite scaled unevenly: drawn square at its mean
+light {
+  at 0.0833
+  life 0.3
+  color 0.168 0.5362 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.0833
+  trauma 0.4
+}
 # effekseer: node 4 "Water": ring 10 instances: the first 4 drawn
-# effekseer: node 4 "Water": a camera-facing ring: drawn in its own plane
-# effekseer: node 5 "Lines": a random colour per particle: its mean used
-# effekseer: node 5 "Lines": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 7.0.0 "Node": a random colour per particle: its mean used

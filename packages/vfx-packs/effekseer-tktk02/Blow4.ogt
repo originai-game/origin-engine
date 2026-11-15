@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.0001
+impact 0
 emitter "vfx/effekseer-tktk02/Blow4/n0-0-0-0-0.emitter.ogt" {
   at 0
   offset 0.5 0 0
@@ -38,6 +39,18 @@ mesh ring {
 }
 emitter "vfx/effekseer-tktk02/Blow4/n0-3.emitter.ogt" {
   at 0
+}
+light {
+  at 0
+  life 0.3
+  offset 0.0935 0 0
+  color 1 0.9533 0.2842
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
 }
 # effekseer: node 0.2.0.0 "RIng": ring 10 instances: the first 4 drawn
 # effekseer: node 0.2.0.0 "RIng": a ring whose thickness changes over its life: its middle thickness kept

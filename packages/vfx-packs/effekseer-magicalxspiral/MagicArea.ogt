@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.9167
+impact 0
 mesh quad {
   at 0
   rotate 90 0 0
@@ -73,8 +74,4 @@ emitter "vfx/effekseer-magicalxspiral/MagicArea/n7.emitter.ogt" {
   at 0
   offset 0 0.5 0
 }
-# effekseer: node 1.0 "Node": a random colour per particle: its mean used
-# effekseer: node 1.0 "Node": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 6.0 "Node": a random colour per particle: its mean used
 # effekseer: node 6.0 "Node": motion out from a circle: approximated along one direction
-# effekseer: node 7 "Node": a random colour per particle: its mean used

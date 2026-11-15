@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.4
+impact 0.4333
 trail {
   at 0
   offset 0 -6 5
@@ -123,24 +124,25 @@ mesh ring {
   color 1 1 1 1
   blend additive
 }
+light {
+  at 0.4333
+  life 0.3
+  offset 0 0.3203 0
+  color 0.6234 0.6913 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.4333
+  trauma 0.4
+}
 # effekseer: node 0.0.0 "LineMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0 "LineMain": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 0.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 0.0.1 "LineColor": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.1 "LineColor": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 0.0.1 "LineColor": a track of many instances: one trail drawn
 # effekseer: node 0.0.2 "LineGlow": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.2 "LineGlow": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 0.0.2 "LineGlow": a track of many instances: one trail drawn
 # effekseer: node 0.0.3.0.0.0 "particleMain": nested generation: 4 instances above its generator folded into one emitter
 # effekseer: node 0.0.3 "particleNull": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.3.0.0.1 "particleGlow": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 1.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 2.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 2.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 2.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 2.0.0.2 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 2.0.0.2 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 3 "Ring": ring 10 instances: the first 4 drawn

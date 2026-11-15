@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 4.2667
+impact 0
 emitter "vfx/effekseer-effekseer01/Homing_Laser01/n0.emitter.ogt" {
   at 0
 }

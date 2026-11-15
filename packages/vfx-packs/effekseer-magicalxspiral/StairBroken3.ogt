@@ -1,8 +1,20 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.3167
+impact 0
 emitter "vfx/effekseer-magicalxspiral/StairBroken3/n0.emitter.ogt" {
   at 0
+}
+light {
+  at 0
+  life 0.3
+  color 1 0.7519 0.1166
+  intensity curve 0 8 1 0
+  distance 6
+}
+shake {
+  at 0
+  trauma 0.25
 }

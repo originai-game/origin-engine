@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.4167
+impact 0.6667
 mesh quad {
   at 0
   life 1.25

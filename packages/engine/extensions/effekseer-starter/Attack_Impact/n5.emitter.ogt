@@ -11,10 +11,15 @@ duration 0.25
 looping false
 lifetime 0.1167 0.1167
 speed 0 0
-size 0.7071 2.1213
+size 2 6
+heightOverLife 0 0.125 1 0.125
 colorOverLife {
-  key 0 1 0.5295 0.5295 0.3294
-  key 1 1 0.5295 0.5295 0
+  key 0 1 0.3537 0.3537 0.2196
+  key 1 1 0.3537 0.3537 0
+}
+randomColorOverLife {
+  key 0 1 0.7445 0.7445 0.4392
+  key 1 1 0.7445 0.7445 0
 }
 rotation -180 180
 angularVelocity -120 120

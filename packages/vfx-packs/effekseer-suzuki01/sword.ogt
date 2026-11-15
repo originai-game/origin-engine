@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 4.3333
@@ -180,37 +180,17 @@ trail {
   rise 6
 }
 # effekseer: node 0.0.0.0 "Sword": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.0.0.0 "Light": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.0.0.0 "Light": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.2 "Sword2": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.0.2.0 "Light": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.0.2.0 "Light": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.0 "Hit": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.1 "Hit2": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.2 "Splash": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.2 "Splash": a random colour per particle: its mean used
+# effekseer: node 0.1.3.0 "Spark": a track whose points move on their own: drawn along its generator's path
 # effekseer: node 0.1.3.0 "Spark": nested generation: 10 instances above its generator folded into one emitter
-# effekseer: node 0.1.3.0 "Spark": a track of many instances: one trail drawn
 # effekseer: node 0.1.3.0 "Spark": a ribbon or track's sideways motion: only its rise and turn are kept
-# effekseer: node 1.0.0.0.0 "Sword": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.0.0.0.0 "Sword": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0.0.0.0 "Light": nested generation: 20 instances above its generator folded into one emitter
-# effekseer: node 1.0.0.0.0.0 "Light": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.0.0.0.0.0 "Light": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.0.0.0.2 "Sword2": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.0.0.0.2 "Sword2": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0.0.2.0 "Light": nested generation: 20 instances above its generator folded into one emitter
-# effekseer: node 1.0.0.0.2.0 "Light": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.0.0.0.2.0 "Light": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0.1.0 "Ring": ring 20 instances: the first 4 drawn
-# effekseer: node 1.0.1.0 "Hit": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.1.1 "Hit2": nested generation: 20 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.1 "Hit2": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.1.2 "Splash": nested generation: 20 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.2 "Splash": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.1.2 "Splash": a random colour per particle: its mean used
+# effekseer: node 1.0.1.3.0 "Spark": a track whose points move on their own: drawn along its generator's path
 # effekseer: node 1.0.1.3.0 "Spark": nested generation: 200 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.3.0 "Spark": a track of many instances: one trail drawn
 # effekseer: node 1.0.1.3.0 "Spark": a ribbon or track's sideways motion: only its rise and turn are kept
 # effekseer: node 2.0 "ring": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 2.0 "ring": nested generation: 30 instances above its generator folded into one emitter

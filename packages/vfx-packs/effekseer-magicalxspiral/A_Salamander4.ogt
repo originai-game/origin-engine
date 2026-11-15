@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.1667
+impact 0.4167
 mesh ring {
   at 0
   inner 0
@@ -10,9 +11,10 @@ mesh ring {
   colors 1 1 1 0 1 1 1 0.502 1 1 1 0
   life 0.5
   effect "vfx/effekseer-magicalxspiral/A_Salamander4/n0.effect.ogt"
+  face camera
   scale 2
   color 1 1 1 1
-  blend alpha
+  blend subtractive
 }
 trail {
   at 0
@@ -40,6 +42,7 @@ mesh ring {
   colors 1 0 0 0 1 0.2195 0 1 1 1 0.2195 1
   life 0.6667
   effect "vfx/effekseer-magicalxspiral/A_Salamander4/n4.effect.ogt"
+  face camera
   scale curve 0 0 0.25 0.8 1 0.8
   spin 0 0 480
   color 1 1 1 1
@@ -53,6 +56,7 @@ mesh ring {
   colors 1 1 1 0 1 1 1 1 1 1 1 0
   life 0.4167
   effect "vfx/effekseer-magicalxspiral/A_Salamander4/n5-0.effect.ogt"
+  face camera
   scale 1
   spin 0 0 600
   color 1 1 1 1
@@ -66,6 +70,7 @@ mesh ring {
   colors 1 1 1 0 1 1 1 1 1 1 1 0
   life 0.4167
   effect "vfx/effekseer-magicalxspiral/A_Salamander4/n5-0.effect.ogt"
+  face camera
   scale 1
   spin 0 0 600
   color 1 1 1 1
@@ -78,6 +83,7 @@ mesh ring {
   colors 1 0 0 0 1 0 0 1 1 0 0 0
   life 0.4167
   effect "vfx/effekseer-magicalxspiral/A_Salamander4/n6.effect.ogt"
+  face camera
   scale curve 0 7 0.0938 5.7437 0.2031 4.514 0.3125 3.5077 0.4219 2.6924 0.5312 2.0357 0.6562 1.4379 1 0.25
   color 1 1 1 1
   blend additive
@@ -89,6 +95,7 @@ mesh ring {
   colors 1 0 0 0 1 0.2195 0.0478 1 1 0 0 0
   life 0.4167
   effect "vfx/effekseer-magicalxspiral/A_Salamander4/n7.effect.ogt"
+  face camera
   scale curve 0 0.25 0.0938 1.5063 0.2031 2.736 0.3125 3.7423 0.4219 4.5576 0.5312 5.2143 0.6562 5.8121 1 7
   color 1 1 1 1
   blend additive
@@ -100,6 +107,7 @@ mesh ring {
   colors 1 1 1 0 1 1 1 1 1 1 1 0
   life 0.5833
   effect "vfx/effekseer-magicalxspiral/A_Salamander4/n8.effect.ogt"
+  face camera
   scale curve 0 0.45 0.0781 1.3843 0.1562 2.1066 0.2344 2.645 0.3281 3.0881 0.4688 3.4387 0.8281 3.6719 1 4.05
   color 1 1 1 1
   blend additive
@@ -111,6 +119,7 @@ mesh ring {
   colors 1 0.2195 0 0 1 0 0 1 1 0.2195 0 0
   life 0.5833
   effect "vfx/effekseer-magicalxspiral/A_Salamander4/n8-0.effect.ogt"
+  face camera
   scale 0.64
   color 1 1 1 1
   blend additive
@@ -124,18 +133,15 @@ emitter "vfx/effekseer-magicalxspiral/A_Salamander4/n10.emitter.ogt" {
 emitter "vfx/effekseer-magicalxspiral/A_Salamander4/n11.emitter.ogt" {
   at 0.4167
 }
-# effekseer: node 0 "BG": subtractive blend: drawn alpha blended
-# effekseer: node 0 "BG": a camera-facing ring: drawn in its own plane
+light {
+  at 0.4167
+  life 0.3
+  color 1 0.8621 0.8621
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.4167
+  trauma 0.4
+}
 # effekseer: node 1.0.0.0.0 "Track": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 1.0.0.0.0 "Track": a track of many instances: one trail drawn
-# effekseer: node 2.0.0 "Line1": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 2.0.1 "Line2": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 4 "CenterFire": a camera-facing ring: drawn in its own plane
-# effekseer: node 5.0 "HalfRing": a camera-facing ring: drawn in its own plane
-# effekseer: node 6 "Ring": a camera-facing ring: drawn in its own plane
-# effekseer: node 7 "Ring": a camera-facing ring: drawn in its own plane
-# effekseer: node 8 "HalfRing": a camera-facing ring: drawn in its own plane
-# effekseer: node 8.0 "Fire": a camera-facing ring: drawn in its own plane
-# effekseer: node 9.0 "Splash": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 9.0 "Splash": a random colour per particle: its mean used
-# effekseer: node 9.0 "Splash": a sprite scaled unevenly: drawn square at its mean

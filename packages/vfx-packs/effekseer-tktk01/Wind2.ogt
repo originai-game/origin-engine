@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.6733
+impact 0.1667
 emitter "vfx/effekseer-tktk01/Wind2/n0-0.parent.ogt" {
   at 0
   offset 9 0 0
@@ -71,17 +72,20 @@ emitter "vfx/effekseer-tktk01/Wind2/n1-5-1-0.emitter.ogt" {
   offset -7 0 0
   rotate 16 0 -90
 }
-# effekseer: node 1.0.0 "破裂": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.1.0 "破裂": a fixed sprite with many instances: drawn facing the camera
+light {
+  at 0.1667
+  life 0.3
+  offset -8.2724 0 0
+  color 0.4247 1 0.4247
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.1667
+  trauma 0.4
+}
+# effekseer: node 1.0.0 "破裂": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 1.1.0.0 "〆破裂リング": ring 5 instances: the first 4 drawn
 # effekseer: node 1.1.0.0 "〆破裂リング": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 1.1.1 "破裂": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 1.1.1.0 "〆破裂リング": ring 5 instances: the first 4 drawn
 # effekseer: node 1.1.1.0 "〆破裂リング": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 1.3 "衝撃グロー拡大": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.4.0 "衝撃ライン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.4.0 "衝撃ライン": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.5.0.0 "衝撃ライン→": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.5.0.0 "衝撃ライン→": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.5.1.0 "衝撃ライン←": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.5.1.0 "衝撃ライン←": a sprite scaled unevenly: drawn square at its mean

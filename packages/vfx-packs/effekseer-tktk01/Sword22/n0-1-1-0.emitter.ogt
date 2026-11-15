@@ -13,8 +13,12 @@ speed 0 10.5882
 size 2.5 2.5
 sizeOverLife 0 0.4 1 1
 colorOverLife {
-  key 0 0.047 0.047 0.047 0.1961
-  key 1 0.047 0.047 0.047 0
+  key 0 0 0 0 0.1961
+  key 1 0 0 0 0
+}
+randomColorOverLife {
+  key 0 0.2158 0.2158 0.2158 0.1961
+  key 1 0.2158 0.2158 0.2158 0
 }
 rotation -180 180
 texture "vfx/effekseer-tktk01/textures/Particle02.png"

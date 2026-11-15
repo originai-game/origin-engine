@@ -13,9 +13,14 @@ lifetime 0.1667 0.3333
 speed 3.8105 15.242
 size 0.15 0.35
 colorOverLife {
-  key 0 0.0104 0.0478 1 0.502
-  key 0.8667 0.0104 0.0478 1 0.502
-  key 1 0.0104 0.0478 1 0
+  key 0 0 0.0104 1 0.502
+  key 0.8667 0 0.0104 1 0.502
+  key 1 0 0.0104 1 0
+}
+randomColorOverLife {
+  key 0 0.0478 0.1166 1 0.502
+  key 0.8667 0.0478 0.1166 1 0.502
+  key 1 0.0478 0.1166 1 0
 }
 texture "vfx/effekseer-magicalxspiral/textures/star.png"
 blend additive

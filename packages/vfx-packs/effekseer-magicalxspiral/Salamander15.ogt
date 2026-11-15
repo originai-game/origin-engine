@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.7
+impact 0
 mesh ring {
   at 0
   rotate 0 0 105
@@ -12,6 +13,7 @@ mesh ring {
   colors 1 0 0 0 1 0 0 0.502 1 0 0 0
   life 2.5
   effect "vfx/effekseer-magicalxspiral/Salamander15/n0-0.effect.ogt"
+  face camera
   scale 2
   color 1 1 1 1
   blend alpha
@@ -25,6 +27,7 @@ mesh ring {
   colors 1 0 0 0 1 0 0 0.502 1 0 0 0
   life 2.5
   effect "vfx/effekseer-magicalxspiral/Salamander15/n0-0.effect.ogt"
+  face camera
   scale 2
   color 1 1 1 1
   blend alpha
@@ -38,6 +41,7 @@ mesh ring {
   colors 1 0 0 0 1 0 0 0.502 1 0 0 0
   life 2.5
   effect "vfx/effekseer-magicalxspiral/Salamander15/n0-0.effect.ogt"
+  face camera
   scale 2
   color 1 1 1 1
   blend alpha
@@ -51,6 +55,7 @@ mesh ring {
   colors 1 0 0 0 1 0 0 0.502 1 0 0 0
   life 2.5
   effect "vfx/effekseer-magicalxspiral/Salamander15/n0-0.effect.ogt"
+  face camera
   scale 2
   color 1 1 1 1
   blend alpha
@@ -64,6 +69,7 @@ mesh ring {
   colors 1 0 0 0 1 0 0 0.251 1 0 0 0
   life 2.5
   effect "vfx/effekseer-magicalxspiral/Salamander15/n0-1.effect.ogt"
+  face camera
   scale 2
   color 1 1 1 1
   blend additive
@@ -77,6 +83,7 @@ mesh ring {
   colors 1 0 0 0 1 0 0 0.251 1 0 0 0
   life 2.5
   effect "vfx/effekseer-magicalxspiral/Salamander15/n0-1.effect.ogt"
+  face camera
   scale 2
   color 1 1 1 1
   blend additive
@@ -90,6 +97,7 @@ mesh ring {
   colors 1 0 0 0 1 0 0 0.251 1 0 0 0
   life 2.5
   effect "vfx/effekseer-magicalxspiral/Salamander15/n0-1.effect.ogt"
+  face camera
   scale 2
   color 1 1 1 1
   blend additive
@@ -103,6 +111,7 @@ mesh ring {
   colors 1 0 0 0 1 0 0 0.251 1 0 0 0
   life 2.5
   effect "vfx/effekseer-magicalxspiral/Salamander15/n0-1.effect.ogt"
+  face camera
   scale 2
   color 1 1 1 1
   blend additive
@@ -163,8 +172,17 @@ mesh ring {
   color 1 1 1 1
   blend additive
 }
+light {
+  at 0
+  life 0.3
+  color 1 1 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}
 # effekseer: node 0.0 "Node": ring 24 instances: the first 4 drawn
-# effekseer: node 0.0 "Node": a camera-facing ring: drawn in its own plane
 # effekseer: node 0.1 "Node": ring 24 instances: the first 4 drawn
-# effekseer: node 0.1 "Node": a camera-facing ring: drawn in its own plane
 # effekseer: node 1.0 "Ring1": ring 15 instances: the first 4 drawn

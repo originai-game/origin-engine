@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 10.0833
+impact 0
 trail {
   at 0.0833
   life 0.15
@@ -15,6 +16,15 @@ trail {
 emitter "vfx/effekseer-magicalxspiral/Undine11/n0-1-0.parent.ogt" {
   at 0
 }
+light {
+  at 0
+  life 0.3
+  color 0.0478 0.2195 1
+  intensity curve 0 8 1 0
+  distance 2
+}
+shake {
+  at 0
+  trauma 0.15
+}
 # effekseer: node 0.0.0.0.0 "Track": nested generation: 1888 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0.0 "Track": a track of many instances: one trail drawn
-# effekseer: node 0.1.0 "Node": a random colour per particle: its mean used

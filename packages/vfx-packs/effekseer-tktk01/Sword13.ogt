@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.5917
+impact 0.4167
 mesh quad {
   at 0
   offset 4.6985 0.2899 0
@@ -104,18 +105,9 @@ emitter "vfx/effekseer-tktk01/Sword13/n5.emitter.ogt" {
 }
 # effekseer: node 0.0.0 "ナイフ軌跡": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.1 "*衝撃生業用": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.1 "*衝撃生業用": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.1 "*衝撃生業用": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0 "ナイフ軌跡": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.0.1 "*衝撃生業用": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 1.0.1 "*衝撃生業用": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.0.1 "*衝撃生業用": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 2.0.0 "ナイフ軌跡": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 2.0.1 "*衝撃生業用": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 2.0.1 "*衝撃生業用": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 2.0.1 "*衝撃生業用": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 3.0 "衝撃": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 3.1 "衝撃線": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 3.1 "衝撃線": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 3.1 "衝撃線": a child of an instanced parent: its motion drawn up the world's y
 # effekseer: node 4 "衝撃リング": a ring whose thickness changes over its life: its middle thickness kept

@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.0915
+impact 0.0833
 trail {
   at 0
   life 0.1667
@@ -256,22 +257,7 @@ emitter "vfx/effekseer-tktk01/Arrow2/n0-4-2.emitter.ogt" {
   rotate 90 0 0
 }
 # effekseer: node 0.0.0 "矢": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.1.1 "ライン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.1.1 "ライン": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.1.1.0 "glow": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.1.0 "矢": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.1.1 "ライン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.1.1 "ライン": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.1.1.0 "glow": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.2.0 "矢": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.2.1.1 "ライン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.2.1.1 "ライン": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.2.1.1.0 "glow": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.3.0 "矢": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.3.1.1 "ライン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.3.1.1 "ライン": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.3.1.1.0 "glow": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.4.0 "矢": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.4.1.1 "ライン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.4.1.1 "ライン": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.4.1.1.0 "glow": a fixed sprite with many instances: drawn facing the camera

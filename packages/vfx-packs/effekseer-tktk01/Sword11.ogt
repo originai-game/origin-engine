@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.2833
+impact 0.3333
 mesh ring {
   at 0.2833
   rotate 0 0 50
@@ -72,6 +73,6 @@ trail {
   orbit 3.702 2.25
 }
 # effekseer: node 1 "地面リング": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 2.0.0 "煙": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2.0.0 "煙": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 3.0.0.0 "剣振り": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 3.0.0.0 "剣振り": nested generation: 5 instances above its generator folded into one emitter

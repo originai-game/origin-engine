@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.3333
+impact 0
 emitter "vfx/effekseer-effekseer01/Laser01/n0.emitter.ogt" {
   at 0.1667
 }
@@ -19,8 +20,3 @@ emitter "vfx/effekseer-effekseer01/Laser01/n3.emitter.ogt" {
 emitter "vfx/effekseer-effekseer01/Laser01/n4.emitter.ogt" {
   at 0.1667
 }
-# effekseer: node 0 "Laser": a y-axis billboard: drawn facing the camera
-# effekseer: node 0 "Laser": a random colour per particle: its mean used
-# effekseer: node 0 "Laser": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1 "LaserParticle": a random colour per particle: its mean used
-# effekseer: node 3 "LaserCore2": a random colour per particle: its mean used

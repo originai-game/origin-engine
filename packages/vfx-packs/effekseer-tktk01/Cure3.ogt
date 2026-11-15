@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.2518
+impact 0.5167
 emitter "vfx/effekseer-tktk01/Cure3/n0-0-0-0.parent.ogt" {
   at 0
   rotate -70 0 0
@@ -22,8 +23,7 @@ mesh ring {
 emitter "vfx/effekseer-tktk01/Cure3/n2-0.emitter.ogt" {
   at 0.5
 }
-# effekseer: node 0.0.0.0 "粒の子ノード": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.0 "粒の子ノード": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.0.0 "開幕粒": motion out from a circle: approximated along one direction
 # effekseer: node 1 "後半リング": ring 30 instances: the first 4 drawn
 # effekseer: node 1 "後半リング": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 2.0 "ほし": a random colour per particle: its mean used

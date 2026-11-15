@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.45
+impact 0
 mesh ring {
   at 0
   rotate 0 89.9802 0
@@ -47,4 +48,14 @@ emitter "vfx/effekseer-magicalxspiral/Undine2/n3.emitter.ogt" {
   at 0.0167
   offset 0.2 0 0
 }
-# effekseer: node 3 "Particle1": a random colour per particle: its mean used
+light {
+  at 0
+  life 0.3
+  color 1 1 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}

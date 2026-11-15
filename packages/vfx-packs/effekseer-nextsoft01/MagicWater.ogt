@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.09
+impact 0.3667
 emitter "vfx/effekseer-nextsoft01/MagicWater/n0.emitter.ogt" {
   at 0.4667
 }
@@ -30,8 +31,16 @@ emitter "vfx/effekseer-nextsoft01/MagicWater/n7.emitter.ogt" {
 emitter "vfx/effekseer-nextsoft01/MagicWater/n8.emitter.ogt" {
   at 0.4167
 }
-# effekseer: node 4 "Node": a random colour per particle: its mean used
-# effekseer: node 5 "Node": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 5 "Node": a random colour per particle: its mean used
+light {
+  at 0.3667
+  life 0.3
+  color 0.0478 0.5326 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.3667
+  trauma 0.4
+}
 # effekseer: node 9 "水発生": a sound
 # effekseer: node 9.0 "水音": a sound

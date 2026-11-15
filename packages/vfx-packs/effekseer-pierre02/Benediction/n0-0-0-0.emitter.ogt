@@ -13,9 +13,14 @@ lifetime 1.8333 2.5
 speed 0.1169 0.4677
 size 0.135 0.135
 colorOverLife {
-  key 0 1 0.4647 0.0356 0.6235
-  key 0.8462 1 0.4647 0.0356 0.6235
-  key 1 1 0.4647 0.0356 0
+  key 0 1 0.3787 0.0104 0.498
+  key 0.8462 1 0.3787 0.0104 0.498
+  key 1 1 0.3787 0.0104 0
+}
+randomColorOverLife {
+  key 0 1 0.5605 0.0781 0.749
+  key 0.8462 1 0.5605 0.0781 0.749
+  key 1 1 0.5605 0.0781 0
 }
 texture "vfx/effekseer-pierre02/textures/Particle_Hard.png"
 blend additive

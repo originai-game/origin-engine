@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.275
+impact 0.1
 emitter "vfx/effekseer-tktk01/Sword15/n0-0.emitter.ogt" {
   at 0
 }
@@ -43,16 +44,9 @@ mesh ring {
 emitter "vfx/effekseer-tktk01/Sword15/n3.emitter.ogt" {
   at 0.1
 }
-# effekseer: node 0.0 "ナイフ": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.0 "ナイフ": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0 "ナイフ軌跡": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0 "ナイフ軌跡": nested generation: 9 instances above its generator folded into one emitter
 # effekseer: node 0.0.1.0 "*衝撃生業用": nested generation: 9 instances above its generator folded into one emitter
-# effekseer: node 0.0.1.0 "*衝撃生業用": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.1.0 "*衝撃生業用": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.0 "衝撃線": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.0 "衝撃線": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0 "衝撃線": a child of an instanced parent: its motion drawn up the world's y
-# effekseer: node 1.1 "衝撃線": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.1 "衝撃線": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 2 "衝撃リング": a ring whose thickness changes over its life: its middle thickness kept

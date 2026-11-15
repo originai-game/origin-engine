@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 3.0333
+impact 0.3667
 emitter "vfx/effekseer-tktk02/Dark2/n0-0-0-0-0.parent.ogt" {
   at 0.3667
 }
@@ -220,38 +221,35 @@ emitter "vfx/effekseer-tktk02/Dark2/n4-3-0.emitter.ogt" {
 emitter "vfx/effekseer-tktk02/Dark2/n4-4.emitter.ogt" {
   at 0.9
 }
-# effekseer: node 0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.1.0 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.1.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
+light {
+  at 0.3667
+  life 0.3
+  color 0.9759 0.9743 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.3667
+  trauma 0.4
+}
 # effekseer: node 0.1.0 "Distortion2": motion out from a circle: approximated along one direction
 # effekseer: node 0.3.0 "Distortion1": motion out from a circle: approximated along one direction
 # effekseer: node 1.0.0.0.0.0 "LineMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.0.0.0.0.0 "LineMain": nested generation: 200 instances above its generator folded into one emitter
-# effekseer: node 1.0.0.0.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 1.0.0.0.0.1.0.0 "LineGlow": nested generation: 200 instances above its generator folded into one emitter
-# effekseer: node 1.0.0.0.0.1.0.0 "LineGlow": a track of many instances: one trail drawn
 # effekseer: node 1.0.0.0.0.1.1 "LineColor": nested generation: 200 instances above its generator folded into one emitter
-# effekseer: node 1.0.0.0.0.1.1 "LineColor": a track of many instances: one trail drawn
 # effekseer: node 1.1 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 2.0.0.0 "SwordMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 2.0.0.0 "SwordMain": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 2.0.0.0 "SwordMain": a track of many instances: one trail drawn
 # effekseer: node 2.0.0.1.0 "SwordColor": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 2.0.0.1.0 "SwordColor": a track of many instances: one trail drawn
 # effekseer: node 2.0.0.1.1.0 "SwordGlow": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 2.0.0.1.1.0 "SwordGlow": a track of many instances: one trail drawn
 # effekseer: node 2.0.0.2.0 "particleMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 2.0.0.2.0 "particleMain": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 2.0.0.2.1 "particleColor": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 2.0.0.2.1 "particleColor": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 2.0.0.2.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 2.0.0.2.2 "particleGlow": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 2.0.0.2.2 "particleGlow": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 2.0.0.2.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 3.0.0.2 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 3.1.0.2 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 4.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 4.0.0.0.1.0 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 4.0.0.0.1.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
 # effekseer: node 4.1.0 "Distortion2": motion out from a circle: approximated along one direction
 # effekseer: node 4.3.0 "Distortion1": motion out from a circle: approximated along one direction

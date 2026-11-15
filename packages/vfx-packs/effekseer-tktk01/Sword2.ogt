@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.6983
+impact 0
 emitter "vfx/effekseer-tktk01/Sword2/n0-0.emitter.ogt" {
   at 0
   offset 2.5 4.3301 0
@@ -23,6 +24,7 @@ mesh ring {
   colors 1 1 1 0 1 0.3112 0.0037 0.2941 0.9828 0.3112 0.0037 0.3922
   life 0.5167
   effect "vfx/effekseer-tktk01/Sword2/n1-1-0.effect.ogt"
+  face camera
   scale 0.15
   color 7.5 7.5 7.5 1
   blend additive
@@ -37,6 +39,7 @@ mesh ring {
   colors 1 1 1 0 1 0.3112 0.0037 0.2941 0.9828 0.3112 0.0037 0.3922
   life 0.5167
   effect "vfx/effekseer-tktk01/Sword2/n1-1-0.effect.ogt"
+  face camera
   scale 0.15
   color 7.5 7.5 7.5 1
   blend additive
@@ -51,6 +54,7 @@ mesh ring {
   colors 1 1 1 0 1 0.3112 0.0037 0.2941 0.9828 0.3112 0.0037 0.3922
   life 0.5167
   effect "vfx/effekseer-tktk01/Sword2/n1-1-0.effect.ogt"
+  face camera
   scale 0.15
   color 7.5 7.5 7.5 1
   blend additive
@@ -65,6 +69,7 @@ mesh ring {
   colors 1 1 1 0 1 0.3112 0.0037 0.2941 0.9828 0.3112 0.0037 0.3922
   life 0.5167
   effect "vfx/effekseer-tktk01/Sword2/n1-1-0.effect.ogt"
+  face camera
   scale 0.15
   color 7.5 7.5 7.5 1
   blend additive
@@ -73,11 +78,8 @@ emitter "vfx/effekseer-tktk01/Sword2/n1-1-0-0.emitter.ogt" {
   at 0.1
   offset 0.375 0 0
 }
-# effekseer: node 0.0 "剣線": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0 "剣線": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.0.0 "爆発中心": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.0.0 "爆発中心": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 1.1.0 "爆発つぶ": ring 30 instances: the first 4 drawn
-# effekseer: node 1.1.0 "爆発つぶ": a camera-facing ring: drawn in its own plane
 # effekseer: node 1.1.0.0 "Node": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.1.0.0 "Node": nested generation: 30 instances above its generator folded into one emitter
-# effekseer: node 1.1.0.0 "Node": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.1.0.0 "Node": a fixed sprite turned at random: its mean plane drawn

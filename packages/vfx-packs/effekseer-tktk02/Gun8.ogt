@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.1
+impact 1.1667
 emitter "vfx/effekseer-tktk02/Gun8/n0-0-0-0-0.emitter.ogt" {
   at 1.1683
   offset 0 2 0
@@ -125,9 +126,7 @@ mesh ring {
   blend additive
 }
 # effekseer: node 0.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.0.0.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.2 "LineGlow": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.1 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 1.0.0 "RingMain": ring 9 instances: the first 4 drawn

@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.3167
+impact 0.4167
 emitter "vfx/effekseer-nextsoft01/MagicLight/n0.emitter.ogt" {
   at 0.5
   offset -1 1 0
@@ -82,11 +83,15 @@ emitter "vfx/effekseer-nextsoft01/MagicLight/n5.emitter.ogt" {
   at 0
   offset -1.5 1 0
 }
-# effekseer: node 0 "ya1": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0 "ya1": a random colour per particle: its mean used
-# effekseer: node 0 "ya1": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1 "ya2": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1 "ya2": a random colour per particle: its mean used
-# effekseer: node 1 "ya2": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 4 "maru": a random colour per particle: its mean used
-# effekseer: node 5 "maru2": a random colour per particle: its mean used
+light {
+  at 0.4167
+  life 0.3
+  offset -1.27 1 0
+  color 1 1 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.4167
+  trauma 0.4
+}

@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.6498
+impact 0.0833
 emitter "vfx/effekseer-tktk01/Blow11/n0-0-0.emitter.ogt" {
   at 0.0667
   offset 1 0 0
@@ -99,24 +100,20 @@ emitter "vfx/effekseer-tktk01/Blow11/n0-5-0-0.emitter.ogt" {
   at 0.0833
   offset 0 2 0
 }
-# effekseer: node 0.0.0.0 "glow": a random colour per particle: its mean used
-# effekseer: node 0.0.0.1 "glow大": a random colour per particle: its mean used
-# effekseer: node 0.1.0 "レンズフレア": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.0 "レンズフレア": a sprite scaled unevenly: drawn square at its mean
+light {
+  at 0.0833
+  life 0.3
+  offset 0 0.0911 0
+  color 1 1 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.0833
+  trauma 0.4
+}
 # effekseer: node 0.1.0 "レンズフレア": motion out from a circle: approximated along one direction
-# effekseer: node 0.1.0.0 "レンズフレアglow": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.0.0 "レンズフレアglow": a random colour per particle: its mean used
-# effekseer: node 0.1.0.0 "レンズフレアglow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.1.0.0 "レンズフレアglow": motion out from a circle: approximated along one direction
 # effekseer: node 0.3.1 "衝撃リング外枠": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 0.3.2 "衝撃リング白": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 0.3.3 "白色リング": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 0.4.0 "広がるライン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.4.0 "広がるライン": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.4.0.0 "glow": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.4.0.0 "glow": a random colour per particle: its mean used
-# effekseer: node 0.4.0.0 "glow": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.5.0 "広がるライン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.5.0 "広がるライン": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.5.0.0 "glow": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.5.0.0 "glow": a random colour per particle: its mean used

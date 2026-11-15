@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.4417
+impact 0.6167
 emitter "vfx/effekseer-tktk01/Fire5/n0-0-0-0.emitter.ogt" {
   at 0.3333
   offset 0 1.5556 29.1111
@@ -22,6 +23,7 @@ mesh ring {
   colors 1 1 1 0 1 1 1 0 1 1 1 0
   life 0.3333
   effect "vfx/effekseer-tktk01/Fire5/n0-0-0-2.effect.ogt"
+  face camera
   scale 1.7778
   color 2.5 2.5 2.5 1
   blend additive
@@ -35,6 +37,7 @@ mesh ring {
   colors 1 1 1 0 1 1 1 0 1 1 1 0
   life 0.3333
   effect "vfx/effekseer-tktk01/Fire5/n0-0-0-2.effect.ogt"
+  face camera
   scale 1.7778
   color 2.5 2.5 2.5 1
   blend additive
@@ -48,6 +51,7 @@ mesh ring {
   colors 1 1 1 0 1 1 1 0 1 1 1 0
   life 0.3333
   effect "vfx/effekseer-tktk01/Fire5/n0-0-0-2.effect.ogt"
+  face camera
   scale 1.7778
   color 2.5 2.5 2.5 1
   blend additive
@@ -61,6 +65,7 @@ mesh ring {
   colors 1 1 1 0 1 1 1 0 1 1 1 0
   life 0.3333
   effect "vfx/effekseer-tktk01/Fire5/n0-0-0-2.effect.ogt"
+  face camera
   scale 1.7778
   color 2.5 2.5 2.5 1
   blend additive
@@ -77,6 +82,5 @@ emitter "vfx/effekseer-tktk01/Fire5/n0-0-0-3.emitter.ogt" {
 # effekseer: node 0.0.0.2 "着弾リング": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.2 "着弾リング": ring 10 instances: the first 4 drawn
 # effekseer: node 0.0.0.2 "着弾リング": nested generation: 25 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.2 "着弾リング": a camera-facing ring: drawn in its own plane
 # effekseer: node 0.0.0.3 "炎上がる": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.3 "炎上がる": nested generation: 25 instances above its generator folded into one emitter

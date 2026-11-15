@@ -11,6 +11,7 @@ looping false
 lifetime 0.1667 0.5
 speed 30 60
 size 5 15
+align facing 0 0 1
 colorOverLife {
   key 0 1 1 1 0.7843
   key 1 1 1 1 0

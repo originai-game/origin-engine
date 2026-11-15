@@ -13,9 +13,14 @@ lifetime 2 2
 speed 0.007 0.0281
 size 0.54 0.54
 colorOverLife {
-  key 0 1 0.4647 0.0356 0.3765
-  key 0.8333 1 0.4647 0.0356 0.3765
-  key 1 1 0.4647 0.0356 0
+  key 0 1 0.3787 0.0055 0.1255
+  key 0.8333 1 0.3787 0.0055 0.1255
+  key 1 1 0.3787 0.0055 0
+}
+randomColorOverLife {
+  key 0 1 0.5605 0.0963 0.6275
+  key 0.8333 1 0.5605 0.0963 0.6275
+  key 1 1 0.5605 0.0963 0
 }
 texture "vfx/effekseer-pierre02/textures/Star.png"
 blend additive

@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 5.2833
+impact 1.8667
 emitter "vfx/effekseer-pierre01/Flame/n0-0-0-0-0.parent.ogt" {
   at 0
 }
@@ -139,42 +140,26 @@ emitter "vfx/effekseer-pierre01/Flame/n0-1-11.emitter.ogt" {
   at 1.8667
   offset 0 2 0
 }
-# effekseer: node 0.0.0.0.0 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.0.0.0 "FireVariation": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.0.0.1 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.0.0.1 "FireVariation": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.0.0.2 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.0.0.2 "FireVariation": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.0.0.3 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.0.0.3 "FireVariation": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.0.0.0 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.0.0.1 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.0.0.2 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.0.0.3 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.0.0.4 "Light": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0.0 "FireVariation": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 0.0.0.0.1 "FireVariation": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 0.0.0.0.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 0.0.0.0.3 "FireVariation": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 0.1.0.0.0 "FireVariation": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 0.1.0.0.1 "FireVariation": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 0.1.0.0.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 0.1.0.0.3 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.5.0.0 "FireVariation": nested generation: 48 instances above its generator folded into one emitter
-# effekseer: node 0.1.5.0.0 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.5.0.0 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.5.0.0 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.5.0.1 "FireVariation": nested generation: 48 instances above its generator folded into one emitter
-# effekseer: node 0.1.5.0.1 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.5.0.1 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.5.0.1 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.5.0.2 "FireVariation": nested generation: 48 instances above its generator folded into one emitter
-# effekseer: node 0.1.5.0.2 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.5.0.2 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.5.0.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.5.0.3 "FireVariation": nested generation: 48 instances above its generator folded into one emitter
-# effekseer: node 0.1.5.0.3 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.5.0.3 "FireVariation": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.5.0.4 "Light": a random colour per particle: its mean used
-# effekseer: node 0.1.6.0.0 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.6.0.0 "FireVariation": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.6.0.1 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.6.0.1 "FireVariation": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.6.0.2 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.6.0.2 "FireVariation": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.6.0.3 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.6.0.3 "FireVariation": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.6.0.4 "Light": a random colour per particle: its mean used
+# effekseer: node 0.1.5.0.3 "FireVariation": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 0.1.6.0.0 "FireVariation": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 0.1.6.0.1 "FireVariation": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 0.1.6.0.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 0.1.6.0.3 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.7.0 "Particle": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.1.7.0 "Particle": nested generation: 11 instances above its generator folded into one emitter
 # effekseer: node 0.1.7.0.0 "Ray": nested generation: 11 instances above its generator folded into one emitter
-# effekseer: node 0.1.7.0.0 "Ray": a sprite scaled unevenly: drawn square at its mean

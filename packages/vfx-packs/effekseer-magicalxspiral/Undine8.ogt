@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.6667
+impact 0
 mesh ring {
   at 0
   offset 0 -1 0
@@ -175,7 +176,17 @@ emitter "vfx/effekseer-magicalxspiral/Undine8/n2-0.emitter.ogt" {
   at 0
   offset 0 -0.5 0
 }
+light {
+  at 0
+  life 0.3
+  offset 0 -0.592 0
+  color 0.855 0.855 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}
 # effekseer: node 0.0 "Node": ring 12 instances: the first 4 drawn
 # effekseer: node 2.0 "Node": nested generation: 2 instances above its generator folded into one emitter
-# effekseer: node 2.0 "Node": a random colour per particle: its mean used
-# effekseer: node 2.0 "Node": a sprite scaled unevenly: drawn square at its mean

@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 3.7333
+impact 0.5
 emitter "vfx/effekseer-effekseer01/Laser02/n0.emitter.ogt" {
   at 0.4167
   rotate 90 0 0
@@ -69,4 +70,4 @@ emitter "vfx/effekseer-effekseer01/Laser02/n4.emitter.ogt" {
   at 0.5
 }
 # effekseer: node 1.0.0 "Thunder": nested generation: 150 instances above its generator folded into one emitter
-# effekseer: node 4 "Burst": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 4 "Burst": a fixed sprite turned at random: its mean plane drawn

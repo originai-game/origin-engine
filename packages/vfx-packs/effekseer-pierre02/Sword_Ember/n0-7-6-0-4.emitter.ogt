@@ -14,10 +14,15 @@ speed 0 0
 size 9 9
 sizeOverLife 0 0.5 1 1
 colorOverLife {
-  key 0 1 0.2195 0.0478 0
-  key 0.2031 1 0.2195 0.0478 0.0508
-  key 0.4 1 0.2195 0.0478 0.0753
-  key 1 1 0.2195 0.0478 0
+  key 0 1 0.1636 0.0254 0
+  key 0.4 1 0.1636 0.0254 0
+  key 1 1 0.1636 0.0254 0
+}
+randomColorOverLife {
+  key 0 1 0.2845 0.0781 0
+  key 0.2031 1 0.2845 0.0781 0.1016
+  key 0.4 1 0.2845 0.0781 0.1506
+  key 1 1 0.2845 0.0781 0
 }
 texture "vfx/effekseer-pierre02/textures/Particle_Soft.png"
 blend additive

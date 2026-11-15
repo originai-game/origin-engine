@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.5333
+impact 0
 mesh ring {
   at 0.2667
   inner 0.8809
@@ -10,6 +11,7 @@ mesh ring {
   colors 1 0.0478 0.0104 0 1 0.1813 0.0478 0.2928 1 0.0478 0.0104 0
   life 0.5
   effect "vfx/effekseer-tktk02/Fire5/n0-0-0.effect.ogt"
+  face camera
   scale curve 0 3.5 0.5312 3.1741 1 3
   color 10 10 10 1
   blend additive
@@ -184,39 +186,16 @@ emitter "vfx/effekseer-tktk02/Fire5/n6.emitter.ogt" {
   at 0.1667
 }
 # effekseer: node 0.0.0 "Node": ring 10 instances: the first 4 drawn
-# effekseer: node 0.0.0 "Node": a camera-facing ring: drawn in its own plane
 # effekseer: node 0.0.0 "Node": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 1.0.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.1.0 "particleColor": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.2.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.2.0.0.1.0 "particleColor": a random colour per particle: its mean used
 # effekseer: node 1.1.0.0.0.0.0.0.0 "particleMain": nested generation: 50 instances above its generator folded into one emitter
 # effekseer: node 1.1.0.0.0.0.0.0.1 "particleColor": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 1.1.0.0.0.0.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 1.1.0.0.0.0.0.0.1.0 "particleColor": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 1.1.0.0.0.0.0.0.1.0 "particleColor": a random colour per particle: its mean used
 # effekseer: node 1.1.0.0.0.0.0.0.2 "Distortion": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 1.1.0.0.0.2 "Glow1": a random colour per particle: its mean used
-# effekseer: node 1.1.0.0.0.3 "Glow2": a random colour per particle: its mean used
 # effekseer: node 1.2.0 "Rast": a ring's arc over its life
 # effekseer: node 1.2.0 "Rast": ring 200 instances: the first 4 drawn
-# effekseer: node 2.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 2.0.0.1.0 "particleGlow": a random colour per particle: its mean used
-# effekseer: node 3.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 3.0.0.1.0 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 4 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 5 "ｉｎｔｅｒｖａｌ": motion out from a circle: approximated along one direction
-# effekseer: node 5.0.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 5.0.0.0.1.0 "particleColor": a random colour per particle: its mean used
-# effekseer: node 5.0.0.0.2.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 5.0.0.0.2.0.0.1.0 "particleColor": a random colour per particle: its mean used
-# effekseer: node 5.1.0.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 5.1.0.0.0.1.0 "particleColor": a random colour per particle: its mean used
 # effekseer: node 5.1.0.0.0.2.0.0.0 "particleMain": nested generation: 150 instances above its generator folded into one emitter
 # effekseer: node 5.1.0.0.0.2.0.0.1 "particleColor": nested generation: 150 instances above its generator folded into one emitter
-# effekseer: node 5.1.0.0.0.2.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 5.1.0.0.0.2.0.0.1.0 "particleColor": nested generation: 150 instances above its generator folded into one emitter
-# effekseer: node 5.1.0.0.0.2.0.0.1.0 "particleColor": a random colour per particle: its mean used
 # effekseer: node 5.1.0.0.0.2.0.0.2 "Distortion": nested generation: 150 instances above its generator folded into one emitter
-# effekseer: node 5.1.0.0.0.4 "Glow1": a random colour per particle: its mean used
-# effekseer: node 5.1.0.0.0.5 "Glow2": a random colour per particle: its mean used

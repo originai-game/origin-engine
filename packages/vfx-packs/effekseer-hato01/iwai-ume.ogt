@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 20.3
+impact 0
 emitter "vfx/effekseer-hato01/iwai-ume/n0-0.parent.ogt" {
   at 0
   offset 0 -5.1 0
@@ -12,6 +13,4 @@ emitter "vfx/effekseer-hato01/iwai-ume/n0-0-0.parent.ogt" {
   offset 0 -5.1 0
 }
 # effekseer: node 0.0 "Node": spawning on a model's surface
-# effekseer: node 0.0 "Node": a random colour per particle: its mean used
-# effekseer: node 0.0.0 "Node": a random colour per particle: its mean used
 # effekseer: node 0.0.0 "Node": ping-pong UV animation: looped

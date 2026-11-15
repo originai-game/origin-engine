@@ -12,8 +12,9 @@ looping false
 lifetime 0.6 0.6
 speed 6.113 6.113
 speedOverLife 0 0.9512 0.4844 0.9512 0.5156 1.0663 1 1.0663
-size 5.7976 5.7976
-sizeOverLife 0 0.8624 0.25 0.9351 0.5 0.981 0.75 0.9997 1 0.9902
+size 12.835 12.835
+sizeOverLife 0 0.7791 0.5 0.9211 1 1
+heightOverLife 0 0.1948 0.5 0.2132 1 0.2
 colorOverLife {
   key 0 1 1 1 0
   key 0.0833 1 1 1 1

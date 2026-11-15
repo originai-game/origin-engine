@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.7767
+impact 0.6
 emitter "vfx/effekseer-tktk02/Light4/n0-0-0-0-0.emitter.ogt" {
   at 0.6
   rotate 0 0 -144
@@ -269,109 +270,69 @@ mesh ring {
   color 100 100 100 0.6667
   blend additive
 }
-# effekseer: node 0.0.0.0.0 "ReimsMain": a y-axis billboard: drawn facing the camera
+light {
+  at 0.6
+  life 0.3
+  color 0.8625 1 0.541
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.6
+  trauma 0.4
+}
 # effekseer: node 0.0.0.0.0 "ReimsMain": location over an f-curve: straightened
 # effekseer: node 0.0.0.0.0 "ReimsMain": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.0.0.1 "ReimsGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.1 "ReimsGlow": a random colour per particle: its mean used
 # effekseer: node 0.0.0.0.1 "ReimsGlow": location over an f-curve: straightened
-# effekseer: node 0.0.0.0.1 "ReimsGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.1 "ReimsGlow": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.0.2.0.0.0 "particleMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.0.2.0.0.0 "particleMain": nested generation: 7 instances above its generator folded into one emitter
 # effekseer: node 0.0.0.0.2.0.0.1 "particleColor": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.0.2.0.0.1 "particleColor": nested generation: 7 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0.2.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 0.0.0.0.2.0.0.2 "particleGlow": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.0.2.0.0.2 "particleGlow": nested generation: 7 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0.2.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 0.0.0.0.2.1.0.0.0 "particleMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0 "Angle": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.0.2.1.0.0.1 "particleColor": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0.0.2.1.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 0.0.0.0.2.1.0.0.2 "particleGlow": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0.0.2.1.0.0.2 "particleGlow": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.3.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.3.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.3.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.3.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.0.0.3.0.0.2 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.3.0.0.2 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.3.0.0.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.1 "Distortion1": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.2 "Distortion2": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.3 "Node": ring 10 instances: the first 4 drawn
 # effekseer: node 0.0.3 "Node": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 1.0.0.0.0.0 "ReimsMain": a y-axis billboard: drawn facing the camera
 # effekseer: node 1.0.0.0.0.0 "ReimsMain": location over an f-curve: straightened
 # effekseer: node 1.0.0.0.0.0 "ReimsMain": motion out from a circle: approximated along one direction
-# effekseer: node 1.0.0.0.0.1 "ReimsColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.0.0.1 "ReimsColor": a random colour per particle: its mean used
 # effekseer: node 1.0.0.0.0.1 "ReimsColor": location over an f-curve: straightened
-# effekseer: node 1.0.0.0.0.1 "ReimsColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0.0.0.1 "ReimsColor": motion out from a circle: approximated along one direction
-# effekseer: node 1.0.0.0.0.2 "ReimsGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.0.0.2 "ReimsGlow": a random colour per particle: its mean used
 # effekseer: node 1.0.0.0.0.2 "ReimsGlow": location over an f-curve: straightened
-# effekseer: node 1.0.0.0.0.2 "ReimsGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0.0.0.2 "ReimsGlow": motion out from a circle: approximated along one direction
 # effekseer: node 1.0.0.0.0.3.0.0.0 "particleMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.0.0.0.0.3.0.0.0 "particleMain": nested generation: 5 instances above its generator folded into one emitter
 # effekseer: node 1.0.0.0.0.3.0.0.1 "particleColor": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.0.0.0.0.3.0.0.1 "particleColor": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 1.0.0.0.0.3.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 1.0.0.0.0.3.0.0.2 "particleGlow": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.0.0.0.0.3.0.0.2 "particleGlow": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 1.0.0.0.0.3.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 1.0.0.0.0.3.1.0.0.0 "particleMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.0.0.0 "Angle": motion out from a circle: approximated along one direction
 # effekseer: node 1.0.0.0.0.3.1.0.0.1 "particleColor": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 1.0.0.0.0.3.1.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 1.0.0.0.0.3.1.0.0.2 "particleGlow": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 1.0.0.0.0.3.1.0.0.2 "particleGlow": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.0.4.0.0.0 "particleMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.0.0.4.0.0.1 "particleColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.0.0.4.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.0.4.0.0.1 "particleColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.0.0.0.0.4.0.0.2 "particleGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.0.0.4.0.0.2 "particleGlow": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.0.4.0.0.2 "particleGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0.1 "Distortion1": motion out from a circle: approximated along one direction
 # effekseer: node 1.0.0.2 "Distortion2": motion out from a circle: approximated along one direction
-# effekseer: node 1.1.0.0.0.0 "ReimsMain": a y-axis billboard: drawn facing the camera
 # effekseer: node 1.1.0.0.0.0 "ReimsMain": location over an f-curve: straightened
 # effekseer: node 1.1.0.0.0.0 "ReimsMain": motion out from a circle: approximated along one direction
-# effekseer: node 1.1.0.0.0.1 "ReimsColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.1.0.0.0.1 "ReimsColor": a random colour per particle: its mean used
 # effekseer: node 1.1.0.0.0.1 "ReimsColor": location over an f-curve: straightened
-# effekseer: node 1.1.0.0.0.1 "ReimsColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.1.0.0.0.1 "ReimsColor": motion out from a circle: approximated along one direction
-# effekseer: node 1.1.0.0.0.2 "ReimsGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.1.0.0.0.2 "ReimsGlow": a random colour per particle: its mean used
 # effekseer: node 1.1.0.0.0.2 "ReimsGlow": location over an f-curve: straightened
-# effekseer: node 1.1.0.0.0.2 "ReimsGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.1.0.0.0.2 "ReimsGlow": motion out from a circle: approximated along one direction
 # effekseer: node 1.1.0.0.0.3.0.0.0 "particleMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.1.0.0.0.3.0.0.0 "particleMain": nested generation: 5 instances above its generator folded into one emitter
 # effekseer: node 1.1.0.0.0.3.0.0.1 "particleColor": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.1.0.0.0.3.0.0.1 "particleColor": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 1.1.0.0.0.3.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 1.1.0.0.0.3.0.0.2 "particleGlow": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.1.0.0.0.3.0.0.2 "particleGlow": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 1.1.0.0.0.3.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 1.1.0.0.0.3.1.0.0.0 "particleMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.1.0.0 "Angle": motion out from a circle: approximated along one direction
 # effekseer: node 1.1.0.0.0.3.1.0.0.1 "particleColor": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 1.1.0.0.0.3.1.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 1.1.0.0.0.3.1.0.0.2 "particleGlow": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 1.1.0.0.0.3.1.0.0.2 "particleGlow": a random colour per particle: its mean used
-# effekseer: node 1.1.0.0.0.4.0.0.0 "particleMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.1.0.0.0.4.0.0.1 "particleColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.1.0.0.0.4.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 1.1.0.0.0.4.0.0.1 "particleColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.1.0.0.0.4.0.0.2 "particleGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.1.0.0.0.4.0.0.2 "particleGlow": a random colour per particle: its mean used
-# effekseer: node 1.1.0.0.0.4.0.0.2 "particleGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.1.0.1 "Distortion1": motion out from a circle: approximated along one direction
 # effekseer: node 1.1.0.2 "Distortion2": motion out from a circle: approximated along one direction
 # effekseer: node 3.0.0 "Lins": a ring's arc over its life

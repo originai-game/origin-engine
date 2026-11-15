@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.75
@@ -53,9 +53,9 @@ emitter "vfx/effekseer-tktk01/Fire7/n5-0-0.emitter.ogt" {
   rotate 0 0 -72
   until 0.8333
 }
-# effekseer: node 0.0.0.0 "火尻尾": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.0 "火尻尾": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 2.0.0 "火尻尾": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 3.0.0 "火尻尾": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 4.0.0 "火尻尾": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 5.0.0 "火尻尾": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.0 "火尻尾": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 1.0 "火尻尾": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 2.0.0 "火尻尾": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 3.0.0 "火尻尾": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 4.0.0 "火尻尾": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 5.0.0 "火尻尾": a fixed sprite turned at random: its mean plane drawn

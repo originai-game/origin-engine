@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.8583
+impact 0.3333
 mesh "vfx/effekseer-magicalxspiral/meteo1/model-block1.glb" {
   at 0
   offset 0 14.1421 14.1421
@@ -66,6 +67,7 @@ mesh ring {
   colors 1 1 0 0 1 0 0 0.7529 1 0 0.2195 1
   life 0.6667
   effect "vfx/effekseer-magicalxspiral/meteo1/n0-0-4.effect.ogt"
+  face camera
   scale 2
   color 1 1 1 1
   blend additive
@@ -124,6 +126,7 @@ mesh ring {
   colors 1 0 0 0 1 1 0.2195 0.7529 1 0 0 0
   life 0.25
   effect "vfx/effekseer-magicalxspiral/meteo1/n2.effect.ogt"
+  face camera
   scale curve 0 0 1 11.25
   color 1 1 1 1
   blend additive
@@ -146,13 +149,8 @@ mesh ring {
   color 1 1 1 1
   blend additive
 }
+# effekseer: node 0.0.1.0 "Node": a track whose points move on their own: drawn along its generator's path
 # effekseer: node 0.0.1.0 "Node": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 0.0.1.0 "Node": a track of many instances: one trail drawn
-# effekseer: node 0.0.4 "Node": a camera-facing ring: drawn in its own plane
 # effekseer: node 0.0.6 "Node": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.7 "Node": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.0 "Node": model 15 instances: the first 4 drawn
-# effekseer: node 2 "Node": a camera-facing ring: drawn in its own plane
-# effekseer: node 3.0 "Node": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 3.0 "Node": a random colour per particle: its mean used
-# effekseer: node 3.0 "Node": a sprite scaled unevenly: drawn square at its mean

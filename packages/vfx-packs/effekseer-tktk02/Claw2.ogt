@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.3333
@@ -240,6 +240,7 @@ mesh ring {
   colors 0.4441 1 0.0072 0 0.6776 1 0.2258 0.3438 0.4441 1 0.0072 0
   life 0.4167
   effect "vfx/effekseer-tktk02/Claw2/n1-5-0.effect.ogt"
+  face camera
   scale curve 0 2 0.1094 2.6494 0.2188 3.1968 0.3281 3.6518 0.4531 4.0713 0.5781 4.3973 0.7031 4.6445 1 5
   color 2.5 2.5 2.5 1
   blend additive
@@ -252,6 +253,7 @@ mesh ring {
   colors 0.4441 1 0.0072 0 0.6776 1 0.2258 0.3438 0.4441 1 0.0072 0
   life 0.4167
   effect "vfx/effekseer-tktk02/Claw2/n1-5-0.effect.ogt"
+  face camera
   scale curve 0 2 0.1094 2.6494 0.2188 3.1968 0.3281 3.6518 0.4531 4.0713 0.5781 4.3973 0.7031 4.6445 1 5
   color 2.5 2.5 2.5 1
   blend additive
@@ -264,6 +266,7 @@ mesh ring {
   colors 0.4441 1 0.0072 0 0.6776 1 0.2258 0.3438 0.4441 1 0.0072 0
   life 0.4167
   effect "vfx/effekseer-tktk02/Claw2/n1-5-0.effect.ogt"
+  face camera
   scale curve 0 2 0.1094 2.6494 0.2188 3.1968 0.3281 3.6518 0.4531 4.0713 0.5781 4.3973 0.7031 4.6445 1 5
   color 2.5 2.5 2.5 1
   blend additive
@@ -276,6 +279,7 @@ mesh ring {
   colors 0.4441 1 0.0072 0 0.6776 1 0.2258 0.3438 0.4441 1 0.0072 0
   life 0.4167
   effect "vfx/effekseer-tktk02/Claw2/n1-5-0.effect.ogt"
+  face camera
   scale curve 0 2 0.1094 2.6494 0.2188 3.1968 0.3281 3.6518 0.4531 4.0713 0.5781 4.3973 0.7031 4.6445 1 5
   color 2.5 2.5 2.5 1
   blend additive
@@ -293,40 +297,17 @@ mesh ring {
   color 2 2 2 1
   blend additive
 }
-# effekseer: node 0.0.0.0.0.0 "LineMain": a track of many instances: one trail drawn
-# effekseer: node 0.0.0.0.0.1 "Line_color": a track of many instances: one trail drawn
-# effekseer: node 0.0.0.0.0.2 "Line_Glow": a track of many instances: one trail drawn
-# effekseer: node 0.0.0.0.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 0.0.0.0.0.3.1.0.0.0 "Line": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.0.0.3.1.0.0.0 "Line": nested generation: 100 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.1.0.0 "LineMain": a track of many instances: one trail drawn
-# effekseer: node 0.0.0.1.0.1 "Line_color": a track of many instances: one trail drawn
-# effekseer: node 0.0.0.1.0.2 "Line_Glow": a track of many instances: one trail drawn
-# effekseer: node 0.0.0.1.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 0.0.0.1.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 0.0.0.1.0.3.1.0.0.0 "Line": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.1.0.3.1.0.0.0 "Line": nested generation: 100 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.2.0.0 "LineMain": a track of many instances: one trail drawn
-# effekseer: node 0.0.0.2.0.1 "Line_color": a track of many instances: one trail drawn
-# effekseer: node 0.0.0.2.0.2 "Line_Glow": a track of many instances: one trail drawn
-# effekseer: node 0.0.0.2.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 0.0.0.2.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 0.0.0.2.0.3.1.0.0.0 "Line": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.2.0.3.1.0.0.0 "Line": nested generation: 100 instances above its generator folded into one emitter
 # effekseer: node 1.0.0.0.0 "Node": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.0.0.0.0 "Node": nested generation: 100 instances above its generator folded into one emitter
-# effekseer: node 1.1.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.1.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.1.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 1.1.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.1.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.1.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 1.1.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.2 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 1.4 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 1.5.0 "RingZ": ring 10 instances: the first 4 drawn
-# effekseer: node 1.5.0 "RingZ": a camera-facing ring: drawn in its own plane
 # effekseer: node 1.5.0 "RingZ": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 1.5.1 "Ring": a ring's arc over its life
 # effekseer: node 1.5.1 "Ring": ring 2 instances: the first 4 drawn

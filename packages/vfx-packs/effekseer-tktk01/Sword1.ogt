@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.8005
+impact 0.3
 trail {
   at 0
   offset 5 0 2.5

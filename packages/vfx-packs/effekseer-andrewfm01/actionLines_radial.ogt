@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.6733
+impact 0
 mesh ring {
   at 0
   inner 0
@@ -39,6 +40,4 @@ mesh ring {
   color 1 1 1 1
   blend alpha
 }
-# effekseer: node 1 "Lines": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1 "Lines": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1 "Lines": motion out from a circle: approximated along one direction

@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 12
@@ -396,6 +396,7 @@ mesh ring {
   colors 1 1 1 0.0314 1 1 1 0.251 1 1 1 0.3765
   life 0.6
   effect "vfx/effekseer-pierre02/Sword_Storm/n0-6-1-1.effect.ogt"
+  face camera
   scale curve 0 12.8 1 7.04
   spin 0 0 120
   color 1 1 1 0.4252
@@ -411,6 +412,7 @@ mesh ring {
   colors 1 1 1 0.0314 1 1 1 0.251 1 1 1 0.3765
   life 0.6
   effect "vfx/effekseer-pierre02/Sword_Storm/n0-6-1-1.effect.ogt"
+  face camera
   scale curve 0 12.8 1 7.04
   spin 0 0 120
   color 1 1 1 0.4252
@@ -426,6 +428,7 @@ mesh ring {
   colors 1 1 1 0.0314 1 1 1 0.251 1 1 1 0.3765
   life 0.6
   effect "vfx/effekseer-pierre02/Sword_Storm/n0-6-1-1.effect.ogt"
+  face camera
   scale curve 0 12.8 1 7.04
   spin 0 0 120
   color 1 1 1 0.4252
@@ -441,6 +444,7 @@ mesh ring {
   colors 1 1 1 0.0314 1 1 1 0.251 1 1 1 0.3765
   life 0.6
   effect "vfx/effekseer-pierre02/Sword_Storm/n0-6-1-1.effect.ogt"
+  face camera
   scale curve 0 12.8 1 7.04
   spin 0 0 120
   color 1 1 1 0.4252
@@ -493,114 +497,89 @@ emitter "vfx/effekseer-pierre02/Sword_Storm/n0-6-1-2-8.parent.ogt" {
 }
 # effekseer: node 0.1.0.0.0.0.0 "SparkTracker": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.1.0.0.0.0.0 "SparkTracker": nested generation: 24 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.0.0 "SparkTracker": a track of many instances: one trail drawn
 # effekseer: node 0.1.0.1.1 "Wind_RingPolygon": ring 2 instances: the first 4 drawn
 # effekseer: node 0.1.0.1.1 "Wind_RingPolygon": nested generation: 8 instances above its generator folded into one emitter
 # effekseer: node 0.1.0.1.1 "Wind_RingPolygon": a ring whose height changes over its life: its middle height kept
-# effekseer: node 0.1.0.1.2 "Wind_Sprite": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.1.0.1.4 "Light": a child of an instanced parent: its motion drawn up the world's y
 # effekseer: node 0.1.0.2.0.0.0 "WindTracker": nested generation: 8 instances above its generator folded into one emitter
 # effekseer: node 0.2.0.0 "SmokeVariation": nested generation: 13 instances above its generator folded into one emitter
 # effekseer: node 0.2.0.1 "FireVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.2.0.1 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.2.0.1 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0.1 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.2.0.2 "FireVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.2.0.2 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.2.0.2 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.2.0.3.0.0 "SparkTracker": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.2.0.3.0.0 "SparkTracker": nested generation: 78 instances above its generator folded into one emitter
-# effekseer: node 0.2.0.3.0.0 "SparkTracker": a track of many instances: one trail drawn
 # effekseer: node 0.2.0.4 "EmberVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.2.0.4 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.4 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.2.0.5 "EmberVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.2.0.5 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.5 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.3.0.0 "SmokeVariation": nested generation: 13 instances above its generator folded into one emitter
 # effekseer: node 0.3.0.1 "FireVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.3.0.1 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.3.0.1 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.3.0.1 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.3.0.2 "FireVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.3.0.2 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.3.0.2 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.3.0.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.3.0.3.0.0 "SparkTracker": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.3.0.3.0.0 "SparkTracker": nested generation: 78 instances above its generator folded into one emitter
-# effekseer: node 0.3.0.3.0.0 "SparkTracker": a track of many instances: one trail drawn
 # effekseer: node 0.3.0.4 "EmberVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.3.0.4 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.3.0.4 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.3.0.5 "EmberVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.3.0.5 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.3.0.5 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.4.0.0 "SmokeVariation": nested generation: 13 instances above its generator folded into one emitter
 # effekseer: node 0.4.0.1 "FireVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.4.0.1 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.4.0.1 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.4.0.1 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.4.0.2 "FireVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.4.0.2 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.4.0.2 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.4.0.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.4.0.3.0.0 "SparkTracker": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.4.0.3.0.0 "SparkTracker": nested generation: 156 instances above its generator folded into one emitter
-# effekseer: node 0.4.0.3.0.0 "SparkTracker": a track of many instances: one trail drawn
 # effekseer: node 0.4.0.4 "EmberVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.4.0.4 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.4.0.4 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.4.0.5 "EmberVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.4.0.5 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.4.0.5 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.5.0.0 "SmokeVariation": nested generation: 13 instances above its generator folded into one emitter
 # effekseer: node 0.5.0.1 "FireVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.5.0.1 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.5.0.1 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.5.0.1 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.5.0.2 "FireVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.5.0.2 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.5.0.2 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.5.0.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.5.0.3.0.0 "SparkTracker": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.5.0.3.0.0 "SparkTracker": nested generation: 156 instances above its generator folded into one emitter
-# effekseer: node 0.5.0.3.0.0 "SparkTracker": a track of many instances: one trail drawn
 # effekseer: node 0.5.0.4 "EmberVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.5.0.4 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.5.0.4 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.5.0.5 "EmberVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.5.0.5 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.5.0.5 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.6.0.0.0.0.0 "SparkTracker": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.6.0.0.0.0.0 "SparkTracker": nested generation: 24 instances above its generator folded into one emitter
-# effekseer: node 0.6.0.0.0.0.0 "SparkTracker": a track of many instances: one trail drawn
 # effekseer: node 0.6.0.1.1 "Wind_RingPolygon": ring 2 instances: the first 4 drawn
 # effekseer: node 0.6.0.1.1 "Wind_RingPolygon": nested generation: 8 instances above its generator folded into one emitter
 # effekseer: node 0.6.0.1.1 "Wind_RingPolygon": a ring whose height changes over its life: its middle height kept
-# effekseer: node 0.6.0.1.2 "Wind_Sprite": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.6.0.2.0.0.0 "WindTracker": nested generation: 8 instances above its generator folded into one emitter
 # effekseer: node 0.6.1.0.0.0.0 "WindTracker": nested generation: 41 instances above its generator folded into one emitter
 # effekseer: node 0.6.1.1 "Charge": ring unlimited instances: the first 4 drawn
-# effekseer: node 0.6.1.1 "Charge": a camera-facing ring: drawn in its own plane
 # effekseer: node 0.6.1.1 "Charge": a ring whose height changes over its life: its middle height kept
 # effekseer: node 0.6.1.2.1 "Burst1": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 0.6.1.2.1 "Burst1": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.6.1.2.1 "Burst1": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.6.1.2.2 "Burst2": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 0.6.1.2.2 "Burst2": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.6.1.2.2 "Burst2": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.6.1.2.3 "Burst3": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 0.6.1.2.3 "Burst3": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.6.1.2.3 "Burst3": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.6.1.2.3 "Burst3": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.6.1.2.4 "Fire_Variation1": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 0.6.1.2.4 "Fire_Variation1": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.6.1.2.4 "Fire_Variation1": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.6.1.2.4 "Fire_Variation1": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.6.1.2.5 "Fire_Variation1": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 0.6.1.2.5 "Fire_Variation1": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.6.1.2.5 "Fire_Variation1": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.6.1.2.5 "Fire_Variation1": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.6.1.2.6 "Fire_Variation1": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 0.6.1.2.6 "Fire_Variation1": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.6.1.2.6 "Fire_Variation1": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.6.1.2.6 "Fire_Variation1": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.6.1.2.7 "Fire_Variation1": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 0.6.1.2.7 "Fire_Variation1": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.6.1.2.7 "Fire_Variation1": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.6.1.2.7 "Fire_Variation1": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.7.0.0 "Wind": ring 6 instances: the first 4 drawn
 # effekseer: node 0.7.0.0 "Wind": nested generation: 25 instances above its generator folded into one emitter
-# effekseer: node 0.7.0.3 "Ray": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.7.0.4.0 "Smoke": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.7.0.4.0 "Smoke": nested generation: 25 instances above its generator folded into one emitter
 # effekseer: node 0.7.0.4.1 "Wind_Sprite": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.7.0.4.1 "Wind_Sprite": nested generation: 25 instances above its generator folded into one emitter
-# effekseer: node 0.7.0.4.1 "Wind_Sprite": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.7.0.4.2 "Wind": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.7.0.4.2 "Wind": ring 72 instances: the first 4 drawn
 # effekseer: node 0.7.0.4.2 "Wind": nested generation: 25 instances above its generator folded into one emitter
 # effekseer: node 0.7.0.4.3.0.0.0 "WindTracker": nested generation: 25 instances above its generator folded into one emitter
 # effekseer: node 0.7.0.4.4.0.0.0 "WindTracker": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.7.0.4.4.0.0.0 "WindTracker": nested generation: 225 instances above its generator folded into one emitter
-# effekseer: node 0.7.0.4.4.0.0.0 "WindTracker": a track of many instances: one trail drawn
 # effekseer: node 0.7.0.4.5 "Blur": nested generation: 25 instances above its generator folded into one emitter
 # effekseer: more than 64 elements: the last 17 left out

@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.6
+impact 0.1
 mesh ring {
   at 0
   offset -9 0 0
@@ -34,4 +35,3 @@ mesh ring {
   blend additive
 }
 # effekseer: node 0.0 "斬撃": ring 5 instances: the first 4 drawn
-# effekseer: node 1.0.0 "冷気": a fixed sprite with many instances: drawn facing the camera

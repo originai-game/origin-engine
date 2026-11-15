@@ -22,4 +22,4 @@ colorOverLife {
 rotation -360 360
 angularVelocity -180 180
 texture "vfx/effekseer-pierre01/textures/Particle_Soft.png"
-blend alpha
+blend subtractive

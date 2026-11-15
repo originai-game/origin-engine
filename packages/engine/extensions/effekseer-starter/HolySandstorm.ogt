@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 6.7334
+impact 1.25
 emitter "vfx/effekseer-starter/HolySandstorm/n0-0-0-0.emitter.ogt" {
   at 1.25
   offset 1.7412 3 1.0341
@@ -207,7 +208,6 @@ mesh ring {
 # effekseer: node 0.0.0.1 "Wind_Ring": a ring whose height changes over its life: its middle height kept
 # effekseer: node 0.0.0.2 "Wind_Sprite": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.2 "Wind_Sprite": nested generation: 2 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.2 "Wind_Sprite": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.0.0.3 "Particle": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.3 "Particle": nested generation: 2 instances above its generator folded into one emitter
 # effekseer: node 0.0.1.0 "Wind_Ring": a moving ancestor: its descendants are placed where it starts
@@ -216,7 +216,6 @@ mesh ring {
 # effekseer: node 0.0.1.0 "Wind_Ring": a ring whose height changes over its life: its middle height kept
 # effekseer: node 0.0.1.1 "Wind_Sprite": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.1.1 "Wind_Sprite": nested generation: 2 instances above its generator folded into one emitter
-# effekseer: node 0.0.1.1 "Wind_Sprite": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.0.1.2 "Distortion": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.1.2 "Distortion": ring 10 instances: the first 4 drawn
 # effekseer: node 0.0.1.2 "Distortion": nested generation: 2 instances above its generator folded into one emitter

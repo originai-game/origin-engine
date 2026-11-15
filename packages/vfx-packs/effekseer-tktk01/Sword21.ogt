@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 3.3333
+impact 0
 trail {
   at 0
   offset 15.7569 -2.7784 0
@@ -128,16 +129,4 @@ emitter "vfx/effekseer-tktk01/Sword21/n0-3-0-1.emitter.ogt" {
   offset -1.231 0.2171 0
   rotate 0 0 80
 }
-# effekseer: node 0.0.0.2.0.0 "粒子色付け": a random colour per particle: its mean used
-# effekseer: node 0.0.0.2.0.1 "glow": a random colour per particle: its mean used
-# effekseer: node 0.0.0.2.1 "ライン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.0.2.1 "ライン": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.0.2.1.0 "ラインglow": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.0.2.1.0 "ラインglow": a random colour per particle: its mean used
 # effekseer: node 0.1.1 "リング縁": a UV region of a texture whose size is not known (not a PNG)
-# effekseer: node 0.2.0 "ライン": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0 "ライン": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.2.0.0 "色": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0.0 "色": a random colour per particle: its mean used
-# effekseer: node 0.3.0.0 "色": a random colour per particle: its mean used
-# effekseer: node 0.3.0.1 "glow": a random colour per particle: its mean used

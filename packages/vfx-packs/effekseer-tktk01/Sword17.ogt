@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.0683
+impact 0.2333
 trail {
   at 0
   offset 2.3473 2.3182 5
@@ -94,14 +95,10 @@ emitter "vfx/effekseer-tktk01/Sword17/n0-3-0-1.emitter.ogt" {
 }
 # effekseer: node 0.0.0.0 "振り下ろしglow": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.1 "glow": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0.1 "glow": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.0.1 "glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.2 "振り下ろし": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.2.0 "衝撃リングギザギザ": ring 5 instances: the first 4 drawn
 # effekseer: node 0.2.0 "衝撃リングギザギザ": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 0.2.1 "衝撃リング": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 0.2.1 "衝撃リング": a UV region of a texture whose size is not known (not a PNG)
-# effekseer: node 0.3.0.0 "火の粉": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.3.0.0 "火の粉": a random colour per particle: its mean used
-# effekseer: node 0.3.0.1 "火の粉余韻": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.3.0.1 "火の粉余韻": a random colour per particle: its mean used
+# effekseer: node 0.3.0.0 "火の粉": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 0.3.0.1 "火の粉余韻": a fixed sprite turned at random: its mean plane drawn

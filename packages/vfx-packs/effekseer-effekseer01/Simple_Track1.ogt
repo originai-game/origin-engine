@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 3.3333
@@ -40,10 +40,6 @@ trail {
   orbit 3 1.6667
 }
 # effekseer: node 0.0 "Track1": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0 "Track1": a track of many instances: one trail drawn
 # effekseer: node 0.1 "Track1": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.1 "Track1": a track of many instances: one trail drawn
 # effekseer: node 0.2 "Track1": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2 "Track1": a track of many instances: one trail drawn
 # effekseer: node 0.3 "Track1": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.3 "Track1": a track of many instances: one trail drawn

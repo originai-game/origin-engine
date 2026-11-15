@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.9833
+impact 0.1667
 trail {
   at 0
   offset 0 0.75 0
@@ -245,9 +246,20 @@ mesh ring {
   color 1 1 1 1
   blend additive
 }
-# effekseer: node 3.1 "Node": a random colour per particle: its mean used
+light {
+  at 0.1667
+  life 0.3
+  offset 0 0.25 2
+  color 1 0.9982 0.9962
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.1667
+  trauma 0.4
+}
 # effekseer: node 3.2 "Node": model 10 instances: the first 4 drawn
 # effekseer: node 3.3 "Node": model 10 instances: the first 4 drawn
-# effekseer: node 3.4 "Node": a camera-facing ring: drawn in its own plane
-# effekseer: node 3.5 "Node": a camera-facing ring: drawn in its own plane
-# effekseer: node 3.6 "Node": a camera-facing ring: drawn in its own plane
+# effekseer: node 3.4 "Node": a y-axis ring: drawn in its own plane
+# effekseer: node 3.5 "Node": a y-axis ring: drawn in its own plane
+# effekseer: node 3.6 "Node": a y-axis ring: drawn in its own plane

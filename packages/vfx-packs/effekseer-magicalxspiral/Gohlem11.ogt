@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.8583
+impact 0.3333
 mesh "vfx/effekseer-magicalxspiral/Gohlem11/model-block1.glb" {
   at 0
   offset 0 14.1421 14.1421
@@ -30,6 +31,7 @@ mesh ring {
   colors 1 0 0 0 1 1 0.2195 0.7529 1 0 0 0
   life 0.25
   effect "vfx/effekseer-magicalxspiral/Gohlem11/n2.effect.ogt"
+  face camera
   scale curve 0 0 1 11.25
   color 1 1 1 1
   blend additive
@@ -52,8 +54,15 @@ mesh ring {
   color 1 1 1 1
   blend additive
 }
+light {
+  at 0.3333
+  life 0.3
+  color 1 1 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.3333
+  trauma 0.4
+}
 # effekseer: node 1.0 "Node": model 15 instances: the first 4 drawn
-# effekseer: node 2 "Node": a camera-facing ring: drawn in its own plane
-# effekseer: node 3.0 "Node": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 3.0 "Node": a random colour per particle: its mean used
-# effekseer: node 3.0 "Node": a sprite scaled unevenly: drawn square at its mean

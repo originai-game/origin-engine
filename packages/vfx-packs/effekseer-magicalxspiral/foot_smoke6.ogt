@@ -1,9 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.5667
+impact 0.0833
 emitter "vfx/effekseer-magicalxspiral/foot_smoke6/n0.emitter.ogt" {
   at 0.0833
 }
-# effekseer: node 0 "Fire": a random colour per particle: its mean used

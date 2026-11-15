@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.2167
+impact 0.05
 emitter "vfx/effekseer-tktk02/Gun6/n0-0-0-0-0-0.parent.ogt" {
   at 0.05
 }
@@ -81,37 +82,14 @@ trail {
   lifetime 0.1667
   color 1 1 1 1
 }
-# effekseer: node 0.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
 # effekseer: node 0.0.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.0.0.0.1 "LineColoe": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.0.1 "LineColoe": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.0.1 "LineColoe": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.0.1 "LineColoe": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.0.0.0.1.0 "LineColoe": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.0.1.0 "LineColoe": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.0.1.0 "LineColoe": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.0.1.0 "LineColoe": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.1.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
 # effekseer: node 0.0.1.0.0.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.1.0.0.1 "LineColoe": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.1.0.0.1 "LineColoe": a random colour per particle: its mean used
-# effekseer: node 0.0.1.0.0.1 "LineColoe": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.1.0.0.1 "LineColoe": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.1.0.0.1.0 "LineColoe": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.1.0.0.1.0 "LineColoe": a random colour per particle: its mean used
-# effekseer: node 0.0.1.0.0.1.0 "LineColoe": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.1.0.0.1.0 "LineColoe": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.2.0.0.0.0 "LineMain": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.0.2.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.2.0.0.0.1 "LineColor": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.2.0.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.2.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.2.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.2.0.0.0.1.0 "LineColor": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.2.0.0.0.1.0 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.2.0.0.0.1.0 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.2.0.0.0.1.0 "LineColor": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.2.1 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.3 "Ring": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 1.0.0.0.0.2.0 "LineMain": a track of many instances: one trail drawn
-# effekseer: node 1.0.0.0.0.2.1.0 "LineGlow": a track of many instances: one trail drawn

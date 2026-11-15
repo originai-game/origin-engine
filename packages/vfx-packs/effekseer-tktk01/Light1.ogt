@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.6667
+impact 0
 mesh ring {
   at 0
   offset 8.5833 0 9
@@ -222,6 +223,18 @@ mesh quad {
   spin 0 0 -240
   color 1 1 1 1
   blend additive
+}
+light {
+  at 0
+  life 0.3
+  offset 0.3329 0 -21.2352
+  color 1 1 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
 }
 # effekseer: node 0.0.0.0.0 "光の柱右側": ring 3 instances: the first 4 drawn
 # effekseer: node 0.0.0.0.0 "光の柱右側": nested generation: 25 instances above its generator folded into one emitter

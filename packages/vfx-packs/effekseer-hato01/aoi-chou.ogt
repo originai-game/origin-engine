@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 20
@@ -83,9 +83,7 @@ emitter "vfx/effekseer-hato01/aoi-chou/n0-1-0-0-1-0.parent.ogt" {
 # effekseer: node 0.0.0.0.0 "Node": a model that is not an .efkmodel (fbx/hane2.fbx): drawn as a sphere
 # effekseer: node 0.1.0.0.0 "Node": model unlimited instances: the first 4 drawn
 # effekseer: node 0.1.0.0.0 "Node": a model that is not an .efkmodel (fbx/hane2.fbx): drawn as a sphere
-# effekseer: node 0.1.0.0.1 "Node": a random colour per particle: its mean used
 # effekseer: node 0.1.0.0.1 "Node": a child of an instanced parent: its motion drawn up the world's y
 # effekseer: node 0.1.0.0.1.0 "Node": nested generation: 8 instances above its generator folded into one emitter
 # effekseer: node 0.1.0.0.1 "Node": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.1.0.0.1.0 "Node": a random colour per particle: its mean used
 # effekseer: node 0.1.0.0.1.0 "Node": a child of an instanced parent: its motion drawn up the world's y

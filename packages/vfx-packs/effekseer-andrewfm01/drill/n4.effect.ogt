@@ -7,5 +7,5 @@ main "vfx/effekseer-andrewfm01/textures/Shock_wave_ring002.png" rgba {
   offset 1 0
   scroll 37.5 0
 }
-blend alpha
+blend subtractive
 doubleSided true

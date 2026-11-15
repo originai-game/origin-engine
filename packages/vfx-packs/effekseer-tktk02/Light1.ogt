@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.0817
+impact 0.3333
 emitter "vfx/effekseer-tktk02/Light1/n0-0-0-0-0.emitter.ogt" {
   at 0.3333
   offset 0 0.5 0
@@ -112,43 +113,36 @@ mesh ring {
   color 100 100 100 1
   blend additive
 }
-# effekseer: node 0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.0.0.2 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.2 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+light {
+  at 0.3333
+  life 0.3
+  offset 0 0.1327 0
+  color 0.834 1 0.4805
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.3333
+  trauma 0.4
+}
 # effekseer: node 0.0.1 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 1.0.0.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 1.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0.1 "LineColor": motion out from a circle: approximated along one direction
-# effekseer: node 1.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0.1.0 "LineGlow": motion out from a circle: approximated along one direction
 # effekseer: node 1.0.1 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 1.1.0.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 1.1.0.1.0 "LineMain": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.1.0.1.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 1.1.0.1.1.0 "LineMain": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.1.0.1.1.0 "LineMain": motion out from a circle: approximated along one direction
 # effekseer: node 1.1.1.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 1.1.1.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.1.1.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
-# effekseer: node 1.1.1.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.1.1.0.0.0.1.0 "LineGlow": motion out from a circle: approximated along one direction
 # effekseer: node 1.1.1.0.0.1 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 1.1.1.1.0.0.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 1.1.1.1.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.1.1.1.0.0.1 "LineColor": motion out from a circle: approximated along one direction
-# effekseer: node 1.1.1.1.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.1.1.1.0.0.1.0 "LineGlow": motion out from a circle: approximated along one direction
 # effekseer: node 1.1.1.1.0.1 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 1.2.0.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 1.2.0.1.0 "LineMain": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.2.0.1.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 1.2.0.1.1.0 "LineMain": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.2.0.1.1.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 3.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 3.0.0.1.0 "particleColor": a random colour per particle: its mean used
 # effekseer: node 4.0.0 "Lens": a ring's arc over its life
 # effekseer: node 4.0.0 "Lens": ring 100 instances: the first 4 drawn

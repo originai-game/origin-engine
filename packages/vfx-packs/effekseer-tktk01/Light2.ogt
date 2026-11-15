@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.55
+impact 0.05
 mesh ring {
   at 0
   inner 0.9665
@@ -225,6 +226,17 @@ mesh quad {
   scale curve 0 5 1 2
   color 1 0.0478 0.0104 0.502
   blend additive
+}
+light {
+  at 0.05
+  life 0.3
+  color 1 0.0478 0.0104
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.05
+  trauma 0.4
 }
 # effekseer: node 0.0.0 "ギザギザ柱右": a ring whose height changes over its life: its middle height kept
 # effekseer: node 0.0.0 "ギザギザ柱右": a ring whose thickness changes over its life: its middle thickness kept

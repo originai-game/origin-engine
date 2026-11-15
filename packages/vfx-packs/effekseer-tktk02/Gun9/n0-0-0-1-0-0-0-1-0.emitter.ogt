@@ -12,10 +12,15 @@ looping false
 lifetime 0.4167 0.4167
 speed 0.3385 3.0469
 speedOverLife 0 6.118 0.1875 2.268 0.2656 1.1975 0.3594 0.3605 0.4688 0.0011 0.5938 0.359 0.6094 0 1 0
-size 1.0772 1.3166
+size 1.5234 1.862
+heightOverLife 0 0.5 1 0.5
 colorOverLife {
-  key 0 0.047 0.0478 0.0104 0.502
-  key 1 0.047 0.0478 0.0104 0.502
+  key 0 0 0 0 0.502
+  key 1 0 0 0 0.502
+}
+randomColorOverLife {
+  key 0 0.2158 0.2195 0.0478 0.502
+  key 1 0.2158 0.2195 0.0478 0.502
 }
 texture "vfx/effekseer-tktk02/textures/Line01.png"
 blend additive

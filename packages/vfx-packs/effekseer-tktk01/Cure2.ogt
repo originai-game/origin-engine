@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.7792
+impact 0.0167
 mesh ring {
   at 0
   rotate 90 0 0
@@ -118,5 +119,4 @@ emitter "vfx/effekseer-tktk01/Cure2/n6-0.emitter.ogt" {
   rotate 0 0 -90
 }
 # effekseer: node 0 "最初リング": ring 70 instances: the first 4 drawn
-# effekseer: node 1 "中心光": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 3.0 "最終リング": ring 50 instances: the first 4 drawn

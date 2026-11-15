@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.9167
+impact 0.25
 mesh "vfx/effekseer-magicalxspiral/Gohlem7/model-rock1.glb" {
   at 0.25
   life 2.6667
@@ -87,8 +88,17 @@ trail {
 emitter "vfx/effekseer-magicalxspiral/Gohlem7/n4-0.emitter.ogt" {
   at 0.0833
 }
+light {
+  at 0.25
+  life 0.3
+  color 1 1 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.25
+  trauma 0.4
+}
 # effekseer: node 1 "Node": model 10 instances: the first 4 drawn
 # effekseer: node 2 "Node": model 10 instances: the first 4 drawn
 # effekseer: node 3.0.0.0 "Track": nested generation: 16 instances above its generator folded into one emitter
-# effekseer: node 3.0.0.0 "Track": a track of many instances: one trail drawn
-# effekseer: node 4.0 "Node": a random colour per particle: its mean used

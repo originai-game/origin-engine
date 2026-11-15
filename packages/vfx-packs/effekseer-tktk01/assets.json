@@ -6,6 +6,17 @@
   },
   "files": [
     {
+      "path": "Arrow1.ogt",
+      "sha256": "678317e22731fc3fe2751e415c4d9d7ba59d747886a0fe506e483c0c7795276c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Arrow1.efkproj"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "Arrow1/n0-0-0.effect.ogt",
       "sha256": "f682eab2632d7f5f983ccd4a8a0412c5877cf5a59556ba7a17d0bb23ae130941",
       "licence": "CC0-1.0",
@@ -17,15 +28,15 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Arrow1/n0-0-1.effect.ogt",
-      "sha256": "06103ea92f15695d36b30246a9cd00ee01874bf56a8613a67938f1515fcc1f7f",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import",
+      "path": "Arrow1/n0-0-1.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
         "file": "tktk01/Arrow1.efkproj"
       },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
+      "sha256": "06103ea92f15695d36b30246a9cd00ee01874bf56a8613a67938f1515fcc1f7f"
     },
     {
       "path": "Arrow1/n0-0-2-0.emitter.ogt",
@@ -50,15 +61,15 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Arrow1/n0-1-1.effect.ogt",
-      "sha256": "43b01879af90be2001ce15a8bb87c5c61facfb3e628890f537f3c978cee7a9aa",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import",
+      "path": "Arrow1/n0-1-1.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
         "file": "tktk01/Arrow1.efkproj"
       },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
+      "sha256": "43b01879af90be2001ce15a8bb87c5c61facfb3e628890f537f3c978cee7a9aa"
     },
     {
       "path": "Arrow1/n0-1-2-0.emitter.ogt",
@@ -83,15 +94,15 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Arrow1/n0-2-1.effect.ogt",
-      "sha256": "4a5fc0888db54e61de9f40a72fee223851e4e59f3ec55651ed989a4466e8fdc7",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import",
+      "path": "Arrow1/n0-2-1.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
         "file": "tktk01/Arrow1.efkproj"
       },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
+      "sha256": "4a5fc0888db54e61de9f40a72fee223851e4e59f3ec55651ed989a4466e8fdc7"
     },
     {
       "path": "Arrow1/n0-2-2-0.emitter.ogt",
@@ -116,15 +127,15 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Arrow1/n0-3-1.effect.ogt",
-      "sha256": "50461a51f59c76e7fec4fd1a6d77c886f764e652e557e122052427b9303d1d63",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import",
+      "path": "Arrow1/n0-3-1.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
         "file": "tktk01/Arrow1.efkproj"
       },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
+      "sha256": "50461a51f59c76e7fec4fd1a6d77c886f764e652e557e122052427b9303d1d63"
     },
     {
       "path": "Arrow1/n0-3-2-0.emitter.ogt",
@@ -149,15 +160,15 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Arrow1/n0-4-1.effect.ogt",
-      "sha256": "da9141ac38ee6fa6b59585733f7abe6e034b019564a94a054c8b60581bad654e",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import",
+      "path": "Arrow1/n0-4-1.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
         "file": "tktk01/Arrow1.efkproj"
       },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
+      "sha256": "da9141ac38ee6fa6b59585733f7abe6e034b019564a94a054c8b60581bad654e"
     },
     {
       "path": "Arrow1/n0-4-2-0.emitter.ogt",
@@ -182,15 +193,15 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Arrow1/n0-5-1.effect.ogt",
-      "sha256": "5e5b33390a8447cab0867b66e185cc6e2b2274feaa3b656048135d12dacffa8d",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import",
+      "path": "Arrow1/n0-5-1.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
         "file": "tktk01/Arrow1.efkproj"
       },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
+      "sha256": "5e5b33390a8447cab0867b66e185cc6e2b2274feaa3b656048135d12dacffa8d"
     },
     {
       "path": "Arrow1/n0-5-2-0.emitter.ogt",
@@ -215,15 +226,15 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Arrow1/n0-6-1.effect.ogt",
-      "sha256": "9ba4fcc083ad2079dca103f8eabedfad786ae088fff45099c0ada5240c4c8162",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import",
+      "path": "Arrow1/n0-6-1.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
         "file": "tktk01/Arrow1.efkproj"
       },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
+      "sha256": "9ba4fcc083ad2079dca103f8eabedfad786ae088fff45099c0ada5240c4c8162"
     },
     {
       "path": "Arrow1/n0-6-2-0.emitter.ogt",
@@ -237,12 +248,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Arrow1.ogt",
-      "sha256": "f10f80575047420298259a19d588500b1c7c0a50f9603c008c1f0b507c05a5b2",
+      "path": "Arrow2.ogt",
+      "sha256": "d9a019f237803631bb86255fd4097daf861bfcf1060feda270d66631302c8e03",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Arrow1.efkproj"
+        "file": "tktk01/Arrow2.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -293,7 +304,7 @@
     },
     {
       "path": "Arrow2/n0-0-1-1-0.emitter.ogt",
-      "sha256": "2300c8a788a4137840422c764f2c2915392885f3acb591a1cf3e48b179af571e",
+      "sha256": "a7df7a53570dcda7a6dd58016880cee035625ebefc1b99523bb540fee008f0f0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -304,7 +315,7 @@
     },
     {
       "path": "Arrow2/n0-0-1-1.emitter.ogt",
-      "sha256": "91430e2c3daa09ba1fb7b8ecf1006f54d5efc296275d3b7cc3145128277dca9e",
+      "sha256": "e1e79ad0843e099dd2f01083bdaed3b1afd48cdc27db47436276c5aeb7dccbb4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -381,7 +392,7 @@
     },
     {
       "path": "Arrow2/n0-1-1-1-0.emitter.ogt",
-      "sha256": "ff13ab94b4391e99f7516871c485dd8b2b80407a450ae4d8e0aac7966389f348",
+      "sha256": "fd0a64e8242b8dc381394c97c069eda487fdadfb12785616096e954c4902bb67",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -392,7 +403,7 @@
     },
     {
       "path": "Arrow2/n0-1-1-1.emitter.ogt",
-      "sha256": "446ab44b44bbcebb1e6d54fd41125420172706d6e2059d32391ae7295e090a96",
+      "sha256": "5ccd4aaa4357653dd9c4a616496ed83956e262794287909d888708b21501982b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -469,7 +480,7 @@
     },
     {
       "path": "Arrow2/n0-2-1-1-0.emitter.ogt",
-      "sha256": "165c03f8150e796c4df11ee1f8ef556e1ac868996c81c578db5dc3a99fa31f4e",
+      "sha256": "e0d0522b422e17443ea8a5c89d1fa3a528a711696ac210133045d46ce3fb5d41",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -480,7 +491,7 @@
     },
     {
       "path": "Arrow2/n0-2-1-1.emitter.ogt",
-      "sha256": "1539d5edfea0b584da3fd45e3709744d59f89add3aa2c29b4b305486d4532f08",
+      "sha256": "b4ce81f88655559eab9e92bd16143dc6b07a8d9259a93a0fec56432902d0f21b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -557,7 +568,7 @@
     },
     {
       "path": "Arrow2/n0-3-1-1-0.emitter.ogt",
-      "sha256": "102c57cbf137472dc59fe8a8d930aa80b871698cd475b77e379ec8baec79bb68",
+      "sha256": "bb9ac45be1ba3019aeea4c81272a4a85c9b8fb7011647faae5f96aa9a8c17562",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -568,7 +579,7 @@
     },
     {
       "path": "Arrow2/n0-3-1-1.emitter.ogt",
-      "sha256": "99756ed912d516dbb87b721ee5eeed8ecee7a4919241a0b253dc2355a9a1e2a4",
+      "sha256": "eafff9d33b4df7882f33f3e9a0de64bfe3e45a6d449a96767ac14285e22da3ed",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -645,7 +656,7 @@
     },
     {
       "path": "Arrow2/n0-4-1-1-0.emitter.ogt",
-      "sha256": "4e0e6569fb1a98465a6814b681d67ab7ba03d7b45f4fb3b5b7dd4fb41b2b09d5",
+      "sha256": "c4f4cdc35153c596ce6d021994e8decc1766b998911fc9db04f5e832bb1892f9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -656,7 +667,7 @@
     },
     {
       "path": "Arrow2/n0-4-1-1.emitter.ogt",
-      "sha256": "20f2c8faca4fab5df67073089d2c34f5106524b14aa223522e7df1e82aa9dc73",
+      "sha256": "88712971013c3fea6338a2341459f4bed14de4e4ae0a5897c624d67f6d622f60",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -688,12 +699,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Arrow2.ogt",
-      "sha256": "a0a64166b30ab36ed07eabfa3d354fae08f9ff8607d0d7c6a2db240de3b80e21",
+      "path": "Blow1.ogt",
+      "sha256": "07b15aacdf76bde63831ba1f03a5933bf73f13841ec524dee66516278c7bb18b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Arrow2.efkproj"
+        "file": "tktk01/Blow1.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -711,7 +722,7 @@
     },
     {
       "path": "Blow1/n1-0.emitter.ogt",
-      "sha256": "a0cdca1e77566412c93131a07dca64e674bdb4d563dc9ff56a4d23f425fa8f26",
+      "sha256": "023b988f632c667199f3763f7ac24d5f562afd10aafc26ce3371e346caa28ac4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -722,7 +733,7 @@
     },
     {
       "path": "Blow1/n2-0.emitter.ogt",
-      "sha256": "04fe18b0006948f3f2df589f1193b479bc139064698c02b840f4d18be0f31e93",
+      "sha256": "2fba12ece9381020f817c902d86ab2e822cc1aee1e7f52ace3c81f4cd42b66f6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -732,19 +743,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow1.ogt",
-      "sha256": "bab4386876aeea78722f59cbec284881ff9751b8da3ccd1106b6b3792f23792c",
+      "path": "Blow10.ogt",
+      "sha256": "c63c48357eb9b0c49e2ff950930629fdd09c5ae85306d67c0b02e111f3883e7a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow1.efkproj"
+        "file": "tktk01/Blow10.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Blow10/n0-0-0-0.emitter.ogt",
-      "sha256": "dd56b23eb8d31dd53b945a9e17ae7707cd9413d38d56e56a3a6f41a0f853bbec",
+      "sha256": "ec10a7e0c1a128759b9d917a565f6721722e843a069f1ab091066d8d3e64e9fa",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -755,7 +766,7 @@
     },
     {
       "path": "Blow10/n0-0-0.emitter.ogt",
-      "sha256": "085e9d3024108b6fbc16a5efd751fdfc8ed6146b5e20c4dc26a451473b2ab774",
+      "sha256": "8b03d8f6066a69350b9cc954e00b6441e4e4d3f8b67e2e6de82c405a46d153a6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -810,7 +821,7 @@
     },
     {
       "path": "Blow10/n0-5-0-0.emitter.ogt",
-      "sha256": "1779aef4c4f1bf413f6b2ff3fed61a482376292c3ca73e84d2e954425ab101d2",
+      "sha256": "bb4939f0e75f721aff93a5598c52c8639e25a2471ca3ad48bc2377e641901cfc",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -820,19 +831,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow10.ogt",
-      "sha256": "eb114e84b378e0bb906cd94c9edb599725123a5060c44eecf98962ed48c935e6",
+      "path": "Blow11.ogt",
+      "sha256": "4559d24f7ff7f83450b7e6989ceced630d931323f70b1a4d8234cd70f3f889d3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow10.efkproj"
+        "file": "tktk01/Blow11.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Blow11/n0-0-0-0.emitter.ogt",
-      "sha256": "909d92bcd4fb002799bf935b16a8182fc16c55f28a045c3d7c57bc3ab306bbca",
+      "sha256": "a8b31e3e6737d2dd4759d86fd4969a158ccbe287e3929837c89174f3cb5f3c54",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -843,7 +854,7 @@
     },
     {
       "path": "Blow11/n0-0-0-1.emitter.ogt",
-      "sha256": "7c89fc0525ebfa009c7cef1ac12e5f20bd4f6eec2bd1bcef1dcd99747c752bb8",
+      "sha256": "4da1a7fc93a7a7b108c3c310d504d1502aab37bddaf27f5ce7161fc3640ca75e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -876,7 +887,7 @@
     },
     {
       "path": "Blow11/n0-1-0-0.emitter.ogt",
-      "sha256": "09d3815b169c8079af7f8f775954ec4d7bcc3564cda352263f586c1c39034583",
+      "sha256": "13c60db422c2db65319670e0db7125b094a4cc3b444f4580459acb9e12b5fa1b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -898,7 +909,7 @@
     },
     {
       "path": "Blow11/n0-1-0.emitter.ogt",
-      "sha256": "1444e9ed944c20599834bdf14af444fc2a38959c89bfe856096d04bed0950b36",
+      "sha256": "dedb123b6194069b8102ca9aad781522dfbb12201926971e77834200e6fc2c7b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -986,7 +997,7 @@
     },
     {
       "path": "Blow11/n0-4-0-0.emitter.ogt",
-      "sha256": "9a962df201cbc2e99c6068db2afd207f517047a7621633e561c4dfcf3385e413",
+      "sha256": "dbabfb3599cb58896f67b8556b81401f17f4d82815f3ba9c69ae4519a7feda29",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -997,7 +1008,7 @@
     },
     {
       "path": "Blow11/n0-4-0.emitter.ogt",
-      "sha256": "cc9b533533f75a356a038f8b04bd381ac3bb51382dd698a16aad96a1d68e194f",
+      "sha256": "4e93b78da0a24934232e3f49e073e9e930c34ef1d17052b88ee64fb361b320f6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1008,7 +1019,7 @@
     },
     {
       "path": "Blow11/n0-5-0-0.emitter.ogt",
-      "sha256": "436a2ea66b3d6fc0e435e005a746dd74af467e6dd129781302455a8a058cfe82",
+      "sha256": "09c0c784016c3ed74a243c62d795bfcaeba3ebaeb85b5e5ca32c8364ae503013",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1019,7 +1030,7 @@
     },
     {
       "path": "Blow11/n0-5-0.emitter.ogt",
-      "sha256": "230a30ff5145b0e68fb744834889cb3931e01a3da7e1ad8dfe6eebc551221899",
+      "sha256": "742d847a0850c1820ac26067e3631ace5f7d8aca5a7284a1d3ee3fe425013134",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1029,12 +1040,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow11.ogt",
-      "sha256": "a3646fae4d132a53b8d92dcd9e035912955abf1ecd96a522be4c9ee64cd9fb13",
+      "path": "Blow12.ogt",
+      "sha256": "1d3579bae9fe8a51bd70d7a66b54a3f65ec45c693a620d7067b66fc18bd8caa6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow11.efkproj"
+        "file": "tktk01/Blow12.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -1085,7 +1096,7 @@
     },
     {
       "path": "Blow12/n0-0-0-0-1-0-0.emitter.ogt",
-      "sha256": "ca1bcba5e1f709b05eb07f65c6aebd81c02dae98101ea00f8bdbd90c7c3dfc59",
+      "sha256": "a2a88d5dab50176473dacae99ce2e0fcd487d357709327155001919631d5c7f2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1096,7 +1107,7 @@
     },
     {
       "path": "Blow12/n0-0-0-0-1-0-1.emitter.ogt",
-      "sha256": "38a5bfa1bd6eb8a830e120dce829078c6361ffe73b8a38cf5cc915a7b1e311fa",
+      "sha256": "11702d85788fb301dff471c7779d2e1402187bf705a92ad84eb89c2c1dd63393",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1118,7 +1129,7 @@
     },
     {
       "path": "Blow12/n0-1-0-0-0.emitter.ogt",
-      "sha256": "84931cdefa64eea48b9f907824962979386927d8267e2276096cd2291d0e8040",
+      "sha256": "2db038875d4d11f381c0ed39efc3bec5aa803622cadf70b30a4c649517d2914c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1129,7 +1140,7 @@
     },
     {
       "path": "Blow12/n0-1-0-0-1.emitter.ogt",
-      "sha256": "0505885873c54a0044b3eb703dffb67bf24332bb1fd6708ddec9714ac3f10d90",
+      "sha256": "b43abc7de35aa6d6a36fd061666830f64c36d2a30a204f4a2eea4c18e05f8f5a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1184,7 +1195,7 @@
     },
     {
       "path": "Blow12/n0-1-4-0.emitter.ogt",
-      "sha256": "9d66b680e1918738fa4455e8ea70c1933d4ffb96879e3cf311a61771217f6b15",
+      "sha256": "53f0f504f6b59c5b3ad941158d5727b3d1a876b6bf30fc2e6b37f848ae09ab9c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1195,7 +1206,7 @@
     },
     {
       "path": "Blow12/n0-1-4-1.emitter.ogt",
-      "sha256": "246d5a81eb132142c6fad2cfa69e2e307d8624635f165ef7e66e6c6f5b7431b6",
+      "sha256": "54f3a7ec5358cd3c865d321eebae652f5abff3b19b34042e028e8d89e9362641",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1205,19 +1216,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow12.ogt",
-      "sha256": "3864da660ac222f324b615254afd224baa27651cedc132583a4f205ce071e942",
+      "path": "Blow13.ogt",
+      "sha256": "c310645c08fd9c75e4135f6d0c986e1168ee0ffe877ca42fe7481450ad8038c4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow12.efkproj"
+        "file": "tktk01/Blow13.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Blow13/n0-0-0-0.emitter.ogt",
-      "sha256": "f1a1dac26a57bff05596bf776b499ae52d40b1e89fa20a13305148317e5568e0",
+      "sha256": "dab39671e41d21f9886d3fe072d12241381ed97af601143a7c60fb8449c44ced",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1228,7 +1239,7 @@
     },
     {
       "path": "Blow13/n0-0-0-1.emitter.ogt",
-      "sha256": "965dd4723a24feb93439fb70860612cccdb2945ff8730f4a1151087998eca67a",
+      "sha256": "a28cd2d60ad6f205037aa9c453afa23ab9ee70e1b341249085ae42d2314392c6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1371,7 +1382,7 @@
     },
     {
       "path": "Blow13/n0-4-1-0-0-0.emitter.ogt",
-      "sha256": "072453342b852ef341827abe3defdeb88a2786c08152055134fc3ae85e0aa6b9",
+      "sha256": "b17c5528e3330bdf9198ff23925d63e94f81dde2ba0a59ce93349600d6490337",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1382,7 +1393,7 @@
     },
     {
       "path": "Blow13/n0-4-1-0-0-1.emitter.ogt",
-      "sha256": "9ac38df5f67c65c947d2d42dd9d7904b86514457f65a0c480ee66e5f5b7b80c5",
+      "sha256": "44fbc901f9998032bed1d27d143a1c0ac2643f2c1c9f50ac1c59e0b1ac7a98a3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1404,7 +1415,7 @@
     },
     {
       "path": "Blow13/n0-5-0-0.emitter.ogt",
-      "sha256": "ad13ff5b36c4f7caebd3c3c20e8cfcff5301206e5eb7d5b2e9d98701cb4f3a0c",
+      "sha256": "bb073448b88169959c57e716a7265a6f26bca6b1a8d4a4d977dd0cadea3e3dce",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1415,7 +1426,7 @@
     },
     {
       "path": "Blow13/n0-5-0.emitter.ogt",
-      "sha256": "c3542618d09d11c06d13f6970cd1bc47da576d0aebd44568d4d80cfd2a365d0d",
+      "sha256": "409a99106cecdc0abcc21afea1c2904084d7c3db2c263315c5107fb53ddf4567",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1425,12 +1436,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow13.ogt",
-      "sha256": "72a94cbeced2b0b30ff25e721fe206ecd86fc762353d8550eb6a05e17c94a369",
+      "path": "Blow14.ogt",
+      "sha256": "fa6f0bee9baee88a41724ac040fe0eacf3da47afa63d4149fca46c78fdc71135",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow13.efkproj"
+        "file": "tktk01/Blow14.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -1492,7 +1503,7 @@
     },
     {
       "path": "Blow14/n0-0-0-0-1-0-0-0.emitter.ogt",
-      "sha256": "5668efe3ccd2f427ca7caedee67c41c03b944afdddbe4311d4bae16ade601e1c",
+      "sha256": "cad11dde055fed9a2b5ea09ab44c0e6a849e45ddbeffb509aea0106784cf8c0d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1503,7 +1514,7 @@
     },
     {
       "path": "Blow14/n0-0-0-0-1-0-0-1.emitter.ogt",
-      "sha256": "704148e5da8f92e13c1ebfb3b1f31072352c2b1e92c93c8e298736b0a0a1104e",
+      "sha256": "f6c0864d4f8f8b39b8b184ae26e0968e65747688b1941a591234274fdc3eecdd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1525,7 +1536,7 @@
     },
     {
       "path": "Blow14/n0-1-0-0-0.emitter.ogt",
-      "sha256": "67b75ba2ea8493c55ac6d90b88fc559cc438cbcca5dc103352b2a78fa78a860e",
+      "sha256": "679567f4441cba7894be37efdbafb9d53721686ff04f2c15e5af999fe7fe8b1a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1536,7 +1547,7 @@
     },
     {
       "path": "Blow14/n0-1-0-0-1.emitter.ogt",
-      "sha256": "133009e9bae8123eb8c66c2c7b388dbf7dda52af39e1e0ebd910e3d87bb069cd",
+      "sha256": "63f48cb7be16994823ffb00494d051c90bd076318b612cc0a7ff87475041eb34",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1591,7 +1602,7 @@
     },
     {
       "path": "Blow14/n0-1-4-0-0.emitter.ogt",
-      "sha256": "60ecbc7e301006ba2136fa194da802fbf938aca6fc84f976765cfecf38d03376",
+      "sha256": "492f2014fe5ae5bf5e2a557e0f60cfdb7491f6cc07e58af3e8d9f0f2ce8465e0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1602,7 +1613,7 @@
     },
     {
       "path": "Blow14/n0-1-4-0-1.emitter.ogt",
-      "sha256": "badf21f9fb73a8b335165f6f29f1ef928d11489d809b9a8085902b8efd60372e",
+      "sha256": "7096bddde9f56aeba176ea4c765f225c5172937e23db24ccf6c1afd197d0b3b3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1612,19 +1623,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow14.ogt",
-      "sha256": "55c767941f46708988c67359e77adefba9de3c1ee3b4ab2289ee9271cd5a74a3",
+      "path": "Blow15.ogt",
+      "sha256": "8473f6e03919d599c98e4b2364c625e07b0697b3d0e260acd7015590162a1511",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow14.efkproj"
+        "file": "tktk01/Blow15.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Blow15/n0-0-0-0.emitter.ogt",
-      "sha256": "44f0e451edf21a4e2521154beb2daa3100fa652af74ff7647c62c2cb2f471f8c",
+      "sha256": "a718f2ae6c90e737a5cc578db3221eb2fb7afa2dcf9801757b30125cb574c5dd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1635,7 +1646,7 @@
     },
     {
       "path": "Blow15/n0-0-0-1.emitter.ogt",
-      "sha256": "698370d3b62c04bbc35de1ea60d55aec4f5f04b48e2a38db7c8c31e2830d377b",
+      "sha256": "b67da60024d49c85fb08a1e0395c1ff7f86f01569b51148876aa425c89d34c8c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1657,7 +1668,7 @@
     },
     {
       "path": "Blow15/n0-1-0-0.emitter.ogt",
-      "sha256": "a323c01766375d545cb592938c8b909d886bceb01de5fabd9628c39c5658c167",
+      "sha256": "6c1fedbb9f69a082a85199df6eae4252e10f05494947d908a70ab45e3609aa73",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1668,7 +1679,7 @@
     },
     {
       "path": "Blow15/n0-1-0-1.emitter.ogt",
-      "sha256": "b25dd61c529cc0785c6d98a7d1c40eee467390861187f7e186d50e6e79fa3513",
+      "sha256": "f199992a543efd6a2360e5b58320308aedaf4cedf3bcdb9abf99e67ff470332c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1690,7 +1701,7 @@
     },
     {
       "path": "Blow15/n0-2-0-0.emitter.ogt",
-      "sha256": "7f56ff9df45d1848284de398e5043d1d97d5d36197567cac32e52a2175fc257d",
+      "sha256": "868d1d43e2a77806ea1b24e52e1cbb6418966350423a1654bdd37a064b9cf824",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1701,7 +1712,7 @@
     },
     {
       "path": "Blow15/n0-2-0.emitter.ogt",
-      "sha256": "5c15e4d2cb50ae442f6cb682c6a2944d7c761448570fe2046d84788d73326317",
+      "sha256": "e342878ac457881b3912c55b90f979b10c6ef7a731e01c32639f4b7805eeb42f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1920,12 +1931,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow15.ogt",
-      "sha256": "a7df648c36f6d36c9e058f25e50b61f70a964e77fb15c90bdde5cc39e26f6142",
+      "path": "Blow2.ogt",
+      "sha256": "ba77ed4f25f12b0b1f8f57427c5252ae3e650a86b868d1383037dd84060a9401",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow15.efkproj"
+        "file": "tktk01/Blow2.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -1954,7 +1965,7 @@
     },
     {
       "path": "Blow2/n2-0.emitter.ogt",
-      "sha256": "1b5b6d29f68b82cff96b3e8f5a9339855c38379d5abfb3ca85ef915ec4e1e723",
+      "sha256": "0aaf0304a258f2674ded0eac15f426dda3279913db2a0415adf1522417c591e9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1976,7 +1987,7 @@
     },
     {
       "path": "Blow2/n4-0-0.emitter.ogt",
-      "sha256": "b4add2f977b25779403ba10c424f96097814858d2b0376d80de47cb91e0716c5",
+      "sha256": "4229950bae1ead3c1305794d2f93821ea470719e610b537381f8195ff80bfacf",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -1986,12 +1997,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow2.ogt",
-      "sha256": "c87494a69ea70436fbed5f3ae8d3532c015f7439d9aab25f0936427046d40fce",
+      "path": "Blow3.ogt",
+      "sha256": "e9c46ec7f0634cb471a686d31366a12305ae5e5d5ca5dd4c542e7cc801d188b6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow2.efkproj"
+        "file": "tktk01/Blow3.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -2020,7 +2031,7 @@
     },
     {
       "path": "Blow3/n2-0.emitter.ogt",
-      "sha256": "e976de57532de226970f3cf5254f4f078b1f2fa12fc5e51591c21aac70fa7790",
+      "sha256": "60cd95e6e0c0cf2429e04efc7725196517e7e3a9534fc5d57f64690816bdd62f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2030,12 +2041,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow3.ogt",
-      "sha256": "db2fa67726afff8ef97bcf791420f0c5e5fed465647f4b96e3962ff77b0e9b61",
+      "path": "Blow4.ogt",
+      "sha256": "52ecb85d598364cb8d22c66a41c9d1d2dda48440ce583aabcdc6df7824846fa6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow3.efkproj"
+        "file": "tktk01/Blow4.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -2064,7 +2075,7 @@
     },
     {
       "path": "Blow4/n2-0-0.emitter.ogt",
-      "sha256": "37c9a4e110bb954368a9989e4da8f25f7bf4ff6c95b2500d8dca88ade4a4f2b1",
+      "sha256": "bbc33da903329f5a3b5cfa8d67add3490670b602bf46bd3d9bffded5359923fa",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2075,7 +2086,7 @@
     },
     {
       "path": "Blow4/n2-0.emitter.ogt",
-      "sha256": "a198b23a222838142c1cc5408272a908a87bb7319b7009ef82973c37fe147d23",
+      "sha256": "04f1336f700e14a649d6b4f8d9f060f6ef70e60102aafa7ae0c4b04b822ba015",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2108,7 +2119,7 @@
     },
     {
       "path": "Blow4/n5-0.emitter.ogt",
-      "sha256": "9a370b572eb3c8af774a62cf7cf927aef3d3071a00a56b0f2ff47d2f2875f938",
+      "sha256": "8f2e99a069a37c9aac86dfea6df7fdc900b978b946ad1a829603ce4abf20c718",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2118,12 +2129,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow4.ogt",
-      "sha256": "1a3dde381a76f3a14797f44da2047a43b4ea253c012f73a3d0f219ee04ec1539",
+      "path": "Blow5.ogt",
+      "sha256": "954f9e0f3de666f4e45fb334603eb3361a90b8604aa6b84eabf7e3fe65fd553f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow4.efkproj"
+        "file": "tktk01/Blow5.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -2174,7 +2185,7 @@
     },
     {
       "path": "Blow5/n3-0.emitter.ogt",
-      "sha256": "259a3da15ed7c519dd012a67bfd2d4cb39ef93638156adf3fa6a270ff0f492a1",
+      "sha256": "2e4911856e3ce18ccc78689a43f404a071d7771225e6f8bdd9412e9fda374d89",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2196,7 +2207,7 @@
     },
     {
       "path": "Blow5/n4-0.emitter.ogt",
-      "sha256": "b0315c448403c2bb1ab66b7d447ebf00faa765a8dbb7192c3a44ccd06ee7d02f",
+      "sha256": "fca2be74f4879986b13d45e9cbb966e025c0455e81ec71551da9a56c1e1a46bd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2239,19 +2250,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow5.ogt",
-      "sha256": "1b998d27017d67d86555587cf9d6f5f4b66bd3af6ed8ee7f51bd4963b33da66d",
+      "path": "Blow6.ogt",
+      "sha256": "2731056b0e4c0e99dc6ed5fa568f227c1160d05071829d541f6aa103dc865127",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow5.efkproj"
+        "file": "tktk01/Blow6.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Blow6/n0-0-0.emitter.ogt",
-      "sha256": "ccb0471a5a493cd291b2d0a7b1b865db1f88b77724518d5cdb68276e6ebe753f",
+      "sha256": "9e7c29eaed32d5a23ef485f1a2ba81919440236a7116844247b14225177a4741",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2272,19 +2283,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow6.ogt",
-      "sha256": "a3b7537e6961ed6fef8b255a932b5abf6f77bca97b24183a5e32373bacd6642f",
+      "path": "Blow7.ogt",
+      "sha256": "e1945e89cb1de356f7f5f81e33f85f9d01f211a2b2ee1e251a2eb56af53b4a96",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow6.efkproj"
+        "file": "tktk01/Blow7.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Blow7/n0-0-0.emitter.ogt",
-      "sha256": "52b484b27767d80a392463517edb6deac8d56ff43b0526f31d32768c7f3ea49a",
+      "sha256": "460a5f6e91cef7ec135bc0a94fe19eba12fc79e46f2674eeabd7948c601cb373",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2295,7 +2306,7 @@
     },
     {
       "path": "Blow7/n0-0.emitter.ogt",
-      "sha256": "40470405c91e8eb67d1672051fe8969e0790006169ff391cf201ea7d7837f79e",
+      "sha256": "3704dbd8439021896fd91ecb5ed6d51852bd98507bd443070f4a7fabfb44221f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2317,7 +2328,7 @@
     },
     {
       "path": "Blow7/n1-0-1-0.emitter.ogt",
-      "sha256": "c2e6a0125a0576db02369653ed80f74ae499b6ad8233cf7dae8f545a73110ac8",
+      "sha256": "040787ed95e636f7e62838a899e5ade1ed0d2e82a193dd465140da0a13d5a645",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2328,7 +2339,7 @@
     },
     {
       "path": "Blow7/n1-0-1.emitter.ogt",
-      "sha256": "674433e116edbd930a9eb9cb456e72d46f2d7e2ab910bc62a3e9eb5484d9f17b",
+      "sha256": "3e144855538669bed15795e3673888eeb93ad25262ce526655d820ecf8b27b70",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2360,12 +2371,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow7.ogt",
-      "sha256": "74c012a94f41fa0b96775915080528f732b6e6da9302c485ceba67e881c49898",
+      "path": "Blow8.ogt",
+      "sha256": "5ebad6c28cf8e23b9503475fb3015cd3ddcdde7304b57ec58d5707f45b91e932",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow7.efkproj"
+        "file": "tktk01/Blow8.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -2405,7 +2416,7 @@
     },
     {
       "path": "Blow8/n0-2-0-0.emitter.ogt",
-      "sha256": "373c940472c85e5d793eec4a902e2fe57397d122c7755c450fdc847d1e9b4f5b",
+      "sha256": "a02dbccb363e0a766a2829412c9b7eb764cb993ad0519271c7a437640de8208a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2427,7 +2438,7 @@
     },
     {
       "path": "Blow8/n0-2-0.emitter.ogt",
-      "sha256": "d5217f757c7ce9875d9824ba7927ae32d8bb1e1f61e5e97f3d27962587deea52",
+      "sha256": "6aa41953567523fbf233398055c1ea8371d74faa5422ff786ed44e894fc18a30",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2471,7 +2482,7 @@
     },
     {
       "path": "Blow8/n0-4-0.emitter.ogt",
-      "sha256": "da9fdc686ffd2736064ac2b7ed66f03528f45bbee6819dde7077294cf6f91fec",
+      "sha256": "6bddbb19d82ef0f12f86216a710c1b50267afe59f03fec4b7b14b9b3f8f80e44",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2492,12 +2503,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow8.ogt",
-      "sha256": "233734f62ef94e756c26e9474b4e359ca371f98a983bbd58e33df77cfc672f00",
+      "path": "Blow9.ogt",
+      "sha256": "2f1720b10b25894072d43135cde7c8578634f12b732a8ff3dd8970e6b8544565",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow8.efkproj"
+        "file": "tktk01/Blow9.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -2526,7 +2537,7 @@
     },
     {
       "path": "Blow9/n0-1-0-0.emitter.ogt",
-      "sha256": "c48ec57649822ca0681f64e27921c1d4e0f81dfa5ee029047e2fc85d73d6cc5d",
+      "sha256": "0e54c80ea8ac8d0b2381ea8b2f6c5608ead3193c4d2482a0b2770248c88a4f91",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2537,7 +2548,7 @@
     },
     {
       "path": "Blow9/n0-1-0-1.emitter.ogt",
-      "sha256": "69a76872db74fad8324cfce768e0271e582597022195b58e7f9136b76e61c289",
+      "sha256": "19b9e2b9f2428e816656d925093faf86d298f1f1a2454e07bf567e300f371d9b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2559,7 +2570,7 @@
     },
     {
       "path": "Blow9/n1-0.emitter.ogt",
-      "sha256": "b8cac730373e5870fae069a7954a44422a190b62f9a5c4dbef846e48a248adb3",
+      "sha256": "e191966d831cad9435d3d487a6e74bb7486a52635eb9af5642e1b36ac37dafa1",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2570,7 +2581,7 @@
     },
     {
       "path": "Blow9/n1-1.emitter.ogt",
-      "sha256": "db2fd193671f582eee29a9c683d2386dd3a5fd6b991f47bcb8edff6b1e692b07",
+      "sha256": "9226aff8417b8c65f84a0c1f1dde9d204ad7c1366aae4b3f8c5cb97759454ef9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2625,7 +2636,7 @@
     },
     {
       "path": "Blow9/n3-0.emitter.ogt",
-      "sha256": "0177b432527d2a75a7e3ba7f154f4f827a0e480e7d45ccd09a1aa05ec0fa6dfd",
+      "sha256": "9c92d5b06e6625a3a946cacaff89615b26800bff968da2dd634443ffbdf09356",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2635,12 +2646,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Blow9.ogt",
-      "sha256": "4b35a71eca5ffd91f509e9963779bfd5bdee8da948b87c80f761d12c80b0213f",
+      "path": "Cure1.ogt",
+      "sha256": "1817622312f58ad70d4b7dcc24bfa6bc5a300680c1394c53a3faf3991d2445d3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Blow9.efkproj"
+        "file": "tktk01/Cure1.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -2702,7 +2713,7 @@
     },
     {
       "path": "Cure1/n0-1.emitter.ogt",
-      "sha256": "34b96981ef006dfe68cb96c5fa54bc7c7a50396ac19560975d40176ef6a94323",
+      "sha256": "9fc06d06f0c9bf72e8d4ad555717aabdd472b93bf2605e1ad438156b15fcca20",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2735,7 +2746,7 @@
     },
     {
       "path": "Cure1/n0-2.emitter.ogt",
-      "sha256": "847b1261c5e8e78392dbe3cddf0adf2e4b882732b6da5db366347237aba946a0",
+      "sha256": "3ad8705de582722189e2b6d47b3cf6b0d1a04346e4d4e02db29a046938b3c687",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2746,7 +2757,7 @@
     },
     {
       "path": "Cure1/n0-3.emitter.ogt",
-      "sha256": "b4e3e79129e008b83afb222f373ac03a0ac09ce0d4fb99c22cd8cbd366974972",
+      "sha256": "2dc980cd32b69ac37da03440b0c8476f238fc411eb97efb417f76443ab66d1b2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2756,12 +2767,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Cure1.ogt",
-      "sha256": "8cfae1cec74fbe7540718df920e22e62f7dd52d20c1a980a06d6ee5ca2b1d9c4",
+      "path": "Cure2.ogt",
+      "sha256": "b39e67b31dc7db6d2c9833331f6e1bc9c38849fd6671bde1f38b00ccc101ba25",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Cure1.efkproj"
+        "file": "tktk01/Cure2.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -2779,7 +2790,7 @@
     },
     {
       "path": "Cure2/n1.emitter.ogt",
-      "sha256": "db583663ad2965182f3f86275d6a5e9de9db512565a60babd4da7693b866fece",
+      "sha256": "d51764334f1ef9f46d07bbdc4932aafcc77088c2b343f85eeff814b61d9aa9c3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2855,19 +2866,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Cure2.ogt",
-      "sha256": "00e3daa9182ce492d3200f485097177806e09c0a10b975c817ebe41faaacaf74",
+      "path": "Cure3.ogt",
+      "sha256": "a4bdd5e48834caa86919a63b881c1fbf1883e049ea2afe21e706367f3ee012f4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Cure2.efkproj"
+        "file": "tktk01/Cure3.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Cure3/n0-0-0-0.emitter.ogt",
-      "sha256": "1bba399ac6ab2fc320c617b5d95cf28c5cc06a100aa7756c81d9a458ec900916",
+      "sha256": "73d1a0914fa0f76364b0d00bb78c6a3b7f14796aa419b55a4d6d6a876aa329cc",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2900,7 +2911,7 @@
     },
     {
       "path": "Cure3/n2-0.emitter.ogt",
-      "sha256": "a20fcf8a2f9057f014936358a3c00beaf401ad8029d014bc4cdddd9822a762f2",
+      "sha256": "26197783b230ea507499ffa028cf06f034299405760045c551cf2019a3aeca7d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2910,12 +2921,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Cure3.ogt",
-      "sha256": "a6548311cf027101d7911de97a23fd1447d7a8897f633660b4c3347ff44c5c06",
+      "path": "Cure4.ogt",
+      "sha256": "217a57188cea547915fc2ba3ff0b9560c44b4e152521cc351e8abcb77ea94067",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Cure3.efkproj"
+        "file": "tktk01/Cure4.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -2943,19 +2954,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Cure4.ogt",
-      "sha256": "1ffc03ace077a2bd91b8ed04bdeae730852a5d4ed4050defe768108e970abdb5",
+      "path": "Cure5.ogt",
+      "sha256": "cfab361dc5b2be88fb5a12230f74656c484df46b02c733001b7f6b6879e096b4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Cure4.efkproj"
+        "file": "tktk01/Cure5.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Cure5/n0-0.emitter.ogt",
-      "sha256": "cab94b20a51ac894f09a05dded0b635819d8579db76cf9ecc2f2a15fd12a6847",
+      "sha256": "f499855e5c23d32a276730abcc2fa6d60c29f528737668005b5d86da2896317d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2966,7 +2977,7 @@
     },
     {
       "path": "Cure5/n0-1.emitter.ogt",
-      "sha256": "d402bf708c8e212a1095eed743d7e38057ae54981ef43f5ea79705b087fe9f60",
+      "sha256": "03d9fda48f51cf05b2bb102fe4dc392a4a96c1349b9cc994feea05e49d10f894",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2988,7 +2999,7 @@
     },
     {
       "path": "Cure5/n2.emitter.ogt",
-      "sha256": "c809b39962357a46a16d0bf699bdaaabe9bc4cd64dc49a239751d95802fe91ee",
+      "sha256": "1f42c31380428b94620a15fb4fff9f139f0fe09bb5bce1513ec09270d5ca5f27",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -2999,7 +3010,7 @@
     },
     {
       "path": "Cure5/n3-0.emitter.ogt",
-      "sha256": "5070126fb2c663958c95c3fa3f2628db9600e652752ec37d327a97e9785cd4ef",
+      "sha256": "50c8c909d68bc1434eff70981df57069ea926f91218c148d80796a02a2ff79d6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3020,19 +3031,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Cure5.ogt",
-      "sha256": "fd7e573a2a4e07875ba05498d70323a332d7007029df691864f3b9d9d751d05c",
+      "path": "Cure6.ogt",
+      "sha256": "ae948db5f198901b2c46439bcf39db956901c2152cdccd88985cfcceedd2a00f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Cure5.efkproj"
+        "file": "tktk01/Cure6.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Cure6/n0-0-0-0.emitter.ogt",
-      "sha256": "1cba8ee43a30dde17000013b6a8f201a34ec5c91bd6c60d5cfa3fc9f7659a6e2",
+      "sha256": "b5d7341faf1bf08b4aca77b549871ceed73ae89ef5946587b4a02ab531544083",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3065,7 +3076,7 @@
     },
     {
       "path": "Cure6/n2-0.emitter.ogt",
-      "sha256": "2a3559f737774d8b4790f7f5f5f2e3a4ed7de76a1da4ee9aeae89c2c0d82d880",
+      "sha256": "4f2966136f2c04e877517830167fa7365ae363d9149837a21ac583389df91306",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3075,12 +3086,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Cure6.ogt",
-      "sha256": "f9d4fdd1ca52cb6feefb59eeba4bc3925e74a5767a05c73d6d235e40082f81bb",
+      "path": "Cure7.ogt",
+      "sha256": "17d55a93c9bf837513e5637e4eb1960828db90810f93d914bf7296cda01a1ad6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Cure6.efkproj"
+        "file": "tktk01/Cure7.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -3372,19 +3383,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Cure7.ogt",
-      "sha256": "d4f02db227c3359b0faadbc0fbedeb05f81a37f1179246ae6ee31e6b9f4f4c1d",
+      "path": "Dark1.ogt",
+      "sha256": "2a526c015f9d6d21923072bbccdfdab60d555b6142e0dfc8e9d943dd0542d212",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Cure7.efkproj"
+        "file": "tktk01/Dark1.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Dark1/n0-0-0.emitter.ogt",
-      "sha256": "bff78f5eaecad27b0698f1713219e8d1aba92d8b34abcbe1b1d54cc45b1c652a",
+      "sha256": "84b3eb3c9fac3f4d0c3eea3440a231cc766a482f2630980812f7cb164eec50ef",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3406,7 +3417,7 @@
     },
     {
       "path": "Dark1/n3-0.emitter.ogt",
-      "sha256": "f46e30e0ebcee25f9fface9a4358ca53da5f4294d6c794cc331f5a11943c556b",
+      "sha256": "381a7bdf2f643579dfdf6d931039af492129d7971a5f2cdede777515c7d4e064",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3417,7 +3428,7 @@
     },
     {
       "path": "Dark1/n4-0.emitter.ogt",
-      "sha256": "fbcf4ccc1b97a4881e5f93d9de490b89d5f0cf1c6983444384f2f3c25da565d7",
+      "sha256": "df64db3adf5e8cc53fbb18403320c41f08fc3abbf7b224c2f178fcc02afe38d6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3427,19 +3438,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Dark1.ogt",
-      "sha256": "f9cbaeb04361f5a2eca13112e78f3b39231e820e770e26ee27971d1f2deff3a8",
+      "path": "Dark2.ogt",
+      "sha256": "6809cd51596cb572f2c522566a0e77d7d98f00db3036fecd705247ef62071eb0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Dark1.efkproj"
+        "file": "tktk01/Dark2.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Dark2/n0.emitter.ogt",
-      "sha256": "f4c2f2bfc30973e47a3de5031caff8df1efb8dc9da7ab97845ec7792d1e7ee28",
+      "sha256": "07aaebbd598c3b11a588f2ee7532ea43dfbcb77fe06df25f7abb7e9fc28e3d33",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3450,7 +3461,7 @@
     },
     {
       "path": "Dark2/n1.emitter.ogt",
-      "sha256": "0a79a7900d62f3074bcf914beb63662d9057e9b835caf91c09925014278f642d",
+      "sha256": "cbe5d409674909be1b0cd65b582bda1527fd81058dadf8bf284eb2dce85e07a8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3493,19 +3504,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Dark2/n5-0.effect.ogt",
-      "sha256": "d4e9f743ed8ed7050aa351084948ec409cf7f3c5db2a589098ee26567a0541de",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import",
+      "path": "Dark2/n5-0.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
         "file": "tktk01/Dark2.efkproj"
       },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
+      "sha256": "d4e9f743ed8ed7050aa351084948ec409cf7f3c5db2a589098ee26567a0541de"
     },
     {
       "path": "Dark2/n5-1.emitter.ogt",
-      "sha256": "c0dcb646ecb0db49e6ea88fc4d99c16da8a755d02407da8913d164d80a84afec",
+      "sha256": "b0be54e9e5a53d9069eab374b431d22e7cb9141ccd6a5ff6ac2c578db8263336",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3537,19 +3548,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Dark2/n8-0.effect.ogt",
-      "sha256": "566ac37d45561c45afa75f6b52281e102a94303be4e05aae0f718b624595feff",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import",
+      "path": "Dark2/n8-0.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
         "file": "tktk01/Dark2.efkproj"
       },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
+      "sha256": "566ac37d45561c45afa75f6b52281e102a94303be4e05aae0f718b624595feff"
     },
     {
       "path": "Dark2/n8-1.emitter.ogt",
-      "sha256": "b14c3af975e572a45e67a368e3e9167af299f49cb020b5814036e7436175082f",
+      "sha256": "3ca28b3921fc2d7380293a9855db7c40e50a9dda17d6ffdd774748248c1f1da2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3559,19 +3570,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Dark2.ogt",
-      "sha256": "31d1ab35f3feb60b401bc1815b67819718ccd056575e8324d86ae9aeb0af1634",
+      "path": "Dark3.ogt",
+      "sha256": "ac8403d610a1ae0f3e399619f69c293d83e67b4a3ca9715c37ab0887fa5b2e81",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Dark2.efkproj"
+        "file": "tktk01/Dark3.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Dark3/n0-0-0-0.emitter.ogt",
-      "sha256": "645e1ae60ee256662027ddc31808dfd1beedd41b65bf87d70d9dbbaf59d0be51",
+      "sha256": "4fee43125d81d8e7d1181180fc0bfb3b3bb2505828f7a76e880cffed61938086",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3604,7 +3615,7 @@
     },
     {
       "path": "Dark3/n0-0-0-3.emitter.ogt",
-      "sha256": "cb6f40b8cb8831e52a8fb9dc25db24870148dfb8a14296eca50e7709f40cc06b",
+      "sha256": "e1747257eaf4b99c31d3e0882cb856b0a5c6652c241aa6430e6436e84ed7bf47",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3626,7 +3637,7 @@
     },
     {
       "path": "Dark3/n0-1.emitter.ogt",
-      "sha256": "5b40dad76a715f1f5ab669c07a2f149591a9c932b70c37ed311103273726b8f3",
+      "sha256": "935bbca9557e9cabd4565d4e49a016e0ba31bb92797be59b57495d9e09b277ae",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3636,12 +3647,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Dark3.ogt",
-      "sha256": "435b9e688c5bf6dfa9d37a2c132f9057ebd0f0ea81380ee6e2b2f85f77705d8e",
+      "path": "Fire1.ogt",
+      "sha256": "856ceb66730e6d2d9f67d31227f16136c8f7effe660b30c810df364cddfb5b58",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Dark3.efkproj"
+        "file": "tktk01/Fire1.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -3703,7 +3714,7 @@
     },
     {
       "path": "Fire1/n0-1.emitter.ogt",
-      "sha256": "e4e03c3ed11d2bd28d13ba180466da6165ce320cad2604fc8754635375e6ff8e",
+      "sha256": "2ae1bb4c57cde02cae840eebc293d2d97451784c79cb8627b3f917475ef7c6da",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3713,12 +3724,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Fire1.ogt",
-      "sha256": "ce2ffafa8e46e8d0ca9f5ab456db65d67c62cc9e6a85ff20f72074751c3492b4",
+      "path": "Fire2.ogt",
+      "sha256": "36362a31d787d3249e450cda0bf1234078541ee9ecf48a0683a1e2777d1170cd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Fire1.efkproj"
+        "file": "tktk01/Fire2.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -3736,7 +3747,7 @@
     },
     {
       "path": "Fire2/n1-0-0-0.emitter.ogt",
-      "sha256": "90cc2cdb6657df340f4882ba27e371f92c00e455e9277aa7ededd89a4abe5b18",
+      "sha256": "7ac8e9d2b42a654b868fccfc9b25d25932e482439edad3d50d37f44dbb17ba36",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3758,7 +3769,7 @@
     },
     {
       "path": "Fire2/n2-0-0-0.emitter.ogt",
-      "sha256": "55f6804a3801f9522db96a0b230e9112364c6861ac18ffc2f10aab762287773c",
+      "sha256": "eff887becb48cdf006dce5bea6d51b0bba0a98ce7258b3fcb8b6f4ae8d01fc63",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3779,12 +3790,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Fire2.ogt",
-      "sha256": "b55b6e4ee12e66dc7ccaa28fa16423ef9fc9d33df86ad235c127bfc4afb4a12d",
+      "path": "Fire3.ogt",
+      "sha256": "92947af1b9a74cb59c53d8c7db200ff891ec2350b257357610977e20e7c9e983",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Fire2.efkproj"
+        "file": "tktk01/Fire3.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -3856,12 +3867,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Fire3.ogt",
-      "sha256": "878d43ed20eed4e5432bb19a5469a2c4872575379329585b4dfbc6bf0ba23973",
+      "path": "Fire4.ogt",
+      "sha256": "1bdb6a8ca8d2e956c44595cf71d721c5c06e668546e08f14f2983d59774809a0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Fire3.efkproj"
+        "file": "tktk01/Fire4.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -3912,7 +3923,7 @@
     },
     {
       "path": "Fire4/n1-0-0-0.emitter.ogt",
-      "sha256": "a8d9dcab9b553477adf736090ee923c8010813d8c3cac737d7315d9e53d561af",
+      "sha256": "b342920166390f5fb3c7904fd1befa0bef7709c0ddc9c9023aa1d8a51bd6ee83",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3934,7 +3945,7 @@
     },
     {
       "path": "Fire4/n2-0.emitter.ogt",
-      "sha256": "00f17d1cbb8435872887956efa4986a3485d7cc75eda87c196be2c83cf750349",
+      "sha256": "8b8871ba17abde135c1bd459d7f3049e4174359bde1bd55ec88bf645acf2498a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -3944,12 +3955,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Fire4.ogt",
-      "sha256": "caf4b0decb50a20b674d825e79f579645fad8f58aca447ee6ed4ce6350bed2fd",
+      "path": "Fire5.ogt",
+      "sha256": "910a28c788e8e7dacc11e980223ca160986850d656ff2846c5d3fa02fac29a1f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Fire4.efkproj"
+        "file": "tktk01/Fire5.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -3999,12 +4010,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Fire5.ogt",
-      "sha256": "f67cffcaf8e67c2005269bf4b42fb70829a3f96d39c20f699b0ba4d03008afd6",
+      "path": "Fire6.ogt",
+      "sha256": "6c12f7643c084caf32c9ca2e79fcae51582367ba35562ee8396c1e08e94b59c9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Fire5.efkproj"
+        "file": "tktk01/Fire6.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -4033,7 +4044,7 @@
     },
     {
       "path": "Fire6/n0-0-0-0-1.emitter.ogt",
-      "sha256": "16bce67924edda00cffa1e419130dd369c2eed130e69759b0639496650b08509",
+      "sha256": "3f7f233fe55d716f344d8a124e7c055972af337f0daa3fce15e46ad4e28c39b7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4044,7 +4055,7 @@
     },
     {
       "path": "Fire6/n0-0-0.emitter.ogt",
-      "sha256": "7a7c8a375f332845c494c025be2979a9f1635ec1fa2cb35f2c3dbe62316c0013",
+      "sha256": "59ee07235fce8aec6825a1d3663036d486476e560aec6172413a40ac12ed1053",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4055,7 +4066,7 @@
     },
     {
       "path": "Fire6/n1-0-0.emitter.ogt",
-      "sha256": "f47ad90dbeb9d0b64e627965b6ff9fd8eec39d47c50a4a19370788b1da573963",
+      "sha256": "2d7f74421f2f41804a4b3e37e160be2880aea4fd41d250d9e290bdf351ace883",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4088,7 +4099,7 @@
     },
     {
       "path": "Fire6/n1-2.emitter.ogt",
-      "sha256": "ab4dc309051558d2ae1e2ccccc9fc945356af01efc9000ffb5d715408bfd4819",
+      "sha256": "89a9bd6de34dcb7948fc4c9253dcfa377469c65a034952e833ce8cb2ca2f07d4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4109,19 +4120,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Fire6.ogt",
-      "sha256": "1c2eb1e4e31119795c4a4cfe000d2449eaace3b8538bf2d75e2bd1d5ac6353b7",
+      "path": "Fire7.ogt",
+      "sha256": "581d1a085e5d07f5610c1ec2a0f04e526ad6bd1c299d3e353468b5ac70dd4695",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Fire6.efkproj"
+        "file": "tktk01/Fire7.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Fire7/n0-0-0-0.emitter.ogt",
-      "sha256": "753b1959452428eab1a84265e818fbe5ca09062bb1572a77a105373a80e5c1da",
+      "sha256": "357b2b4a091ad95fe0029c3a9b37c4e1b0628b9242208596b48a49649faec4f4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4143,7 +4154,7 @@
     },
     {
       "path": "Fire7/n1-0.emitter.ogt",
-      "sha256": "c3699a916c1fe4ace6276782667e03ed8026251d58f7d469cc4b3ef801c3863f",
+      "sha256": "ee6b81b39c31bfbbd13251a0e908f9ba500daa4c5593650dcd0706ea87b8be6a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4165,7 +4176,7 @@
     },
     {
       "path": "Fire7/n2-0-0.emitter.ogt",
-      "sha256": "670363bd597d4bef46c2a1add2b132e7e6d1da638e2787635cfda2352d782efd",
+      "sha256": "0a10f99e79ee0598162a5ab9d00b3ab88cfed853e0437eac5714ee52a73a9457",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4187,7 +4198,7 @@
     },
     {
       "path": "Fire7/n3-0-0.emitter.ogt",
-      "sha256": "dad377211c53baae1408666cf2f339aa072661d462ecf8faba5fcf5d985b0806",
+      "sha256": "9e1e0215e999b2b247df77a29e277dea3b1771dba924555c0355a50a5b81804f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4209,7 +4220,7 @@
     },
     {
       "path": "Fire7/n4-0-0.emitter.ogt",
-      "sha256": "f3d09e8da4aef2f5d0adf2b549d9acffc7cf024d2f0aafa7dd87665bcf3c5f00",
+      "sha256": "99f84bd8aa3c81ae1fbbd90b89de10ac7fc1aefdb766a111c7b944f1219e19a6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4231,7 +4242,7 @@
     },
     {
       "path": "Fire7/n5-0-0.emitter.ogt",
-      "sha256": "9c7a00e98164115956525139d7a6122ddb25b5f2de504faef83d49c9e5ed5b70",
+      "sha256": "af177a9f2f6767b89cea9eb16e1014c51ee3b6021b828a59594794afe5c3add5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4252,19 +4263,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Fire7.ogt",
-      "sha256": "49cec3ef54bce7aedc65ee56058c5df7d1f92b2519ab7ea701f634422cd2e423",
+      "path": "Fire8.ogt",
+      "sha256": "934e5c1c3f1e6498cf08d5e99907c17c84aaef3f623a2df753cbe857dffaa963",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Fire7.efkproj"
+        "file": "tktk01/Fire8.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Fire8/n0-0-0-0.emitter.ogt",
-      "sha256": "644ba4ce8b6bdb2b9c4a2432b5f3403311e36b3f36a6a801cc06568530607711",
+      "sha256": "03c1fc8dc554a5214980905589fa68ff8661729c5de53c99e38ac6a70990983b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4319,7 +4330,7 @@
     },
     {
       "path": "Fire8/n0-1-0-0-0.emitter.ogt",
-      "sha256": "05f051299769bcfc4161b32b9487dd66e63657d0be0d7fa9f62266559a5be3b9",
+      "sha256": "d49f4ce4eedb0ebd4b99c617678034d1282b015f7ba308a15c2640a437ead6c7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4330,7 +4341,7 @@
     },
     {
       "path": "Fire8/n0-1-0-0-1.emitter.ogt",
-      "sha256": "7a24ee92502a3951907550b9acc49cfcf7f5b1be7295126594de35874b3b3077",
+      "sha256": "7ed6e430add34621dd6a781f2e7bb3ec8491088a3c304dd082dc43b8b0d10bca",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4341,7 +4352,7 @@
     },
     {
       "path": "Fire8/n0-1-1-0.emitter.ogt",
-      "sha256": "d2a8526b957e847cd2993d2645c562724a64cf7f7a502139e6f04522c5379017",
+      "sha256": "8634c97997e1186010eea61c171a3844af215bf82575f1a1b72dc4c42dcc9872",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4352,7 +4363,7 @@
     },
     {
       "path": "Fire8/n0-1-1-1.emitter.ogt",
-      "sha256": "3375bfbc189469977146f4624afb09c0db316e01adee0a3fa628dff328f8b10f",
+      "sha256": "91048ef8c5fce4dc63bd1057aad272f6c81474f4e9fbc7a589ecc8cafedd3db5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4363,7 +4374,7 @@
     },
     {
       "path": "Fire8/n0-1-2-0.emitter.ogt",
-      "sha256": "dd93441efb7aa4be9a707d41b8cee61503038ea8a736e6a162542a809822b144",
+      "sha256": "0d485b3af7948e90c2093e87dbfd8a952c695612224f24ca3b1e847bb9542df3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4374,7 +4385,7 @@
     },
     {
       "path": "Fire8/n0-1-2-1.emitter.ogt",
-      "sha256": "a5b3a58e2f3701b2cfc9931c257f763609c118c2f5e60366400031b699bfb112",
+      "sha256": "c2a0a3a923ab3df361e235046d7d89953b3d052ebf2294bb2f09074598d0048f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4384,12 +4395,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Fire8.ogt",
-      "sha256": "a45fafa3573e10f00e4e72793d1eb1846c9ba7d5c15206d0b333e7500a48a04d",
+      "path": "Light1.ogt",
+      "sha256": "ad45f45f0ffb75e162a9c1fd0b4737be98099dd667df37484d70ddc2b97892b6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Fire8.efkproj"
+        "file": "tktk01/Light1.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -4516,12 +4527,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Light1.ogt",
-      "sha256": "1e14bb7366f2d23ef96c5229ce2e8d867f2e65165974834df203d6807e98fd01",
+      "path": "Light2.ogt",
+      "sha256": "a87f8a0828a83c6db633cb9f655d1ddf06c90a397d95a9a9af176e45dff989ff",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Light1.efkproj"
+        "file": "tktk01/Light2.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -4703,12 +4714,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Light2.ogt",
-      "sha256": "4eb038adee1d5f1cfb4a673166e0a963ceead2bc15f5bf91ff13b1e12cfc1105",
+      "path": "Light3.ogt",
+      "sha256": "efa34856120d1c4fa8599192dfca72d1c2c67939c970ef30507b43aa9072a683",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Light2.efkproj"
+        "file": "tktk01/Light3.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -4780,12 +4791,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Light3.ogt",
-      "sha256": "c787f7757cf36fe88a8af0248c591f28dd333763ec0c237a9c234eb5a26e4adb",
+      "path": "Light4.ogt",
+      "sha256": "9c1739ba6ab37a3d6eb013d0dd13d515c856e6f59b8230c94964ff78520ad8d5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Light3.efkproj"
+        "file": "tktk01/Light4.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -4803,7 +4814,7 @@
     },
     {
       "path": "Light4/n0-0-0-0-0.emitter.ogt",
-      "sha256": "ce47294c0678d59d204577de8ceec06b1c262ae4c027340acaa25e685b6dbc9c",
+      "sha256": "8115449467000075fa8163f5f00d798285f5e381c9cd194685be08e41a128cbb",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4825,7 +4836,7 @@
     },
     {
       "path": "Light4/n0-0-0-0-1.emitter.ogt",
-      "sha256": "c7c49aca56ed5f824cfdb60b9bd8dd3ec12c156981fc3ec51aa8290ecbf7a228",
+      "sha256": "3dc2b13176eb608627ae437bccc58e0bb1d4b88e31fb504ba937d3703cb063bd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4847,7 +4858,7 @@
     },
     {
       "path": "Light4/n0-0-0-0-2.emitter.ogt",
-      "sha256": "2d12a9a0eaec345f2b44b1ec58971ea1067c62e0ea393fa5ad71cb060d74cb7c",
+      "sha256": "766da2e163db35f54708d1e0ae92a16651cb9466f2572d7f7a2e8ceb4b48d8f7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4869,7 +4880,7 @@
     },
     {
       "path": "Light4/n0-0-0-0-3.emitter.ogt",
-      "sha256": "c2a755d2072719e02bfa2dd1b019676f07939ca71bf77554ee0f93128f006c0c",
+      "sha256": "9fd250e7ba5a93833f3debcf9dd98d3f451550a8dc1c6f0fc575be3e276f9286",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4913,7 +4924,7 @@
     },
     {
       "path": "Light4/n0-0-0-0-5.emitter.ogt",
-      "sha256": "4db1894e147e8e54a3aa0da1282ecbe6c5aaa29adbc106780e932a153f95ef25",
+      "sha256": "06a0ebc0b51025ddf05a07b16abefe1eec276b1865385da49ca1095182ceb609",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4935,7 +4946,7 @@
     },
     {
       "path": "Light4/n0-0-0-0-6.emitter.ogt",
-      "sha256": "d227fc85bba9b1d76a51ff1caf5998a5a91a510f075f4961606530c8a1d9f7de",
+      "sha256": "51661fe826c6a3a5588abcde18f43c1037a547b92b9a9dbc044857668448cc28",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -4979,7 +4990,7 @@
     },
     {
       "path": "Light4/n0-1-0-0-0.emitter.ogt",
-      "sha256": "b3cb496365e2e25cd27b575ae49c1d988029b2b25ef02ffa67df8df476902224",
+      "sha256": "c1bce00c07d206c519c4c327f1c293cd961bcd04f3360b1b36bba9b22b4522fd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5001,7 +5012,7 @@
     },
     {
       "path": "Light4/n0-1-0-0-1.emitter.ogt",
-      "sha256": "c474d2186f5ebcf12ae36d2c8c4767b378d94c7cbdfb41cd28a6fd64b8b5333c",
+      "sha256": "d686e58435ce1b21609f9cdc0f6aa630094f4b3daa2a043a580d46e2ff4a00d3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5023,7 +5034,7 @@
     },
     {
       "path": "Light4/n0-1-0-0-2.emitter.ogt",
-      "sha256": "1c0871b0d462f598d7787717f20369397928407cea71ecc87a30814fa89a4b92",
+      "sha256": "f478c9368367f0cd53a0aa8476c21a6e4b764192353f38bb1a4d18aa75ef3153",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5045,7 +5056,7 @@
     },
     {
       "path": "Light4/n0-1-0-0-3.emitter.ogt",
-      "sha256": "f89ede86331a122cab6edcb02ec41885cf3944e2c99e3049a022916babbf4bf5",
+      "sha256": "c3927d80456a0c89c43503b87afdc9ed60d00bb1a96a299029db7dc89cb1c7ef",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5089,7 +5100,7 @@
     },
     {
       "path": "Light4/n0-1-0-0-5.emitter.ogt",
-      "sha256": "1c89a75a7fb36c4ab1a0c38f660526166c093a166e5173debdb3036645167747",
+      "sha256": "873f39c26dafd030325f3bb4755f8dc2cbf208434753ff44895ec955cbce8fc3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5111,7 +5122,7 @@
     },
     {
       "path": "Light4/n0-1-0-0-6.emitter.ogt",
-      "sha256": "868d1c402441c5e98649703305c4e4f95f2680210ebe1870f82132feea16dd27",
+      "sha256": "2747f022209753c52ef8169ebf989e938f0b335abb8cbb4566f8aee0592f4fa7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5155,7 +5166,7 @@
     },
     {
       "path": "Light4/n0-2-0-0-0.emitter.ogt",
-      "sha256": "9b9f4598d5c25115276af5a13e6c3e3a650d23fefbab6b5b56737dcfcb79d337",
+      "sha256": "8f0e220de74cde953670d9e42a07efa0ab6ab0ddcff2200fd7296500778fd11e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5177,7 +5188,7 @@
     },
     {
       "path": "Light4/n0-2-0-0-1.emitter.ogt",
-      "sha256": "a9c8d6cf704e9357129b1aa2d652fb7f6123d4c4d1b3dee38a4e63ccae9cbda8",
+      "sha256": "35087364c2e21e4cd597dbcc2f4d9c949911b6bff4d1921a005f7d7ab1c501cb",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5199,7 +5210,7 @@
     },
     {
       "path": "Light4/n0-2-0-0-2.emitter.ogt",
-      "sha256": "0f78c933880253147bab1ad0c09785bd988968dec637195be99f5d3589a997f3",
+      "sha256": "5bf6d82e750519d0eea0c57943472186a6a794f0c5c9a7945434eb5545198c9c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5221,7 +5232,7 @@
     },
     {
       "path": "Light4/n0-2-0-0-3.emitter.ogt",
-      "sha256": "811ca7a5753f9235766e2bbbb611fb79f7b5cb2caaa2be2bf8fca6fb3b021c1c",
+      "sha256": "7f10a31287872b0153c30b8c1880df7e56c59eae593c89b8a126982e86c548a1",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5265,7 +5276,7 @@
     },
     {
       "path": "Light4/n0-2-0-0-5.emitter.ogt",
-      "sha256": "517877ed8d0be34f9e2994502f09d9709c954b1143ba130430a84d0fd4bf6a27",
+      "sha256": "9bdd50847c5e1c0b15ab6b353a9fc09a9c5e4810287f29a6586bf726a1941f36",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5287,7 +5298,7 @@
     },
     {
       "path": "Light4/n0-2-0-0-6.emitter.ogt",
-      "sha256": "41671efc9c4ff96cf634eb45dc1e37841fac9fcf05fc64efa5097a65f76fd138",
+      "sha256": "831c9700124898d7c0c1149f08cbe78aea055c7298eae84daab75d6d9723a826",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5331,7 +5342,7 @@
     },
     {
       "path": "Light4/n0-3-0-0-0.emitter.ogt",
-      "sha256": "f181812f4352e9d56d3b0625958558e49246de57b6a5c715a070326a23196865",
+      "sha256": "91df1145bca727e7cdbb154b33f5b7c89b2d72077628e5f00832ea6bc0b97a87",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5353,7 +5364,7 @@
     },
     {
       "path": "Light4/n0-3-0-0-1.emitter.ogt",
-      "sha256": "70e73aeac54bd321f75ed5db675d7292d58df082eb4591e63642d6925b7901f8",
+      "sha256": "5d25a47575a2ad146a4e15b7daa14ed87139c0a9264792bd407ee9fe08dbaba3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5375,7 +5386,7 @@
     },
     {
       "path": "Light4/n0-3-0-0-2.emitter.ogt",
-      "sha256": "800391a7df682f573e5f8535d133199bce3b6b87d8133f99b9c7e916defd6bde",
+      "sha256": "26b198c6fb12c816aaee24de7ae083fe0cb12b5bc67b39f4de0769340de77525",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5397,7 +5408,7 @@
     },
     {
       "path": "Light4/n0-3-0-0-3.emitter.ogt",
-      "sha256": "33a4a624b93a9c48f8f0c5d872378a3d1e95137176551afdf0df8bb49c30801c",
+      "sha256": "261d863f8d9e54219a329e3ffd8e3270199ae39ae3cb0a0d4c531c17c4e4aad2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5441,7 +5452,7 @@
     },
     {
       "path": "Light4/n0-3-0-0-5.emitter.ogt",
-      "sha256": "a43c19bb8f1d6d5d407d487e7551f57e4b603d90265c3bb93769521f262af227",
+      "sha256": "6b52ced67ee177323c72d2229e18d041da361746de25bd896e44414a97825766",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5463,7 +5474,7 @@
     },
     {
       "path": "Light4/n0-3-0-0-6.emitter.ogt",
-      "sha256": "a3f657cde98e25cf3d20cd71d8b11c2dd7fb3a0896e54371a07340d65e20e42c",
+      "sha256": "34cfaadd0ef4e0dadda7c9acc3c364ef0a29805da106289c2c3431769239ee0e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5507,7 +5518,7 @@
     },
     {
       "path": "Light4/n0-4-0-0-0.emitter.ogt",
-      "sha256": "d308d4ef2bac59c0ea0cbb637a3e07662912846cf872d8b52bc4dfa5fdf77ccc",
+      "sha256": "ffb28b17b5314d66fbf76401b959667246d91250e542d8526c3a4eb24395ca0a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5529,7 +5540,7 @@
     },
     {
       "path": "Light4/n0-4-0-0-1.emitter.ogt",
-      "sha256": "73434bdcee002061767870fb364d0e500723cf7dba49276535618afc484c4f46",
+      "sha256": "12c14d2d855fb060cffaf3f3e2f13f4252fdefd7cbf00a0aeb11b0df6f9b15aa",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5551,7 +5562,7 @@
     },
     {
       "path": "Light4/n0-4-0-0-2.emitter.ogt",
-      "sha256": "7cc4215ed7467d916c6b2d07f8db14e47e6ede0ac248440a691a9355a0dca5f5",
+      "sha256": "437c781a02a66ccb23f82c9265ee2624bb4d63ec64884d153de34f8b04fc08eb",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5573,7 +5584,7 @@
     },
     {
       "path": "Light4/n0-4-0-0-3.emitter.ogt",
-      "sha256": "5c3b38f0be535567c8bb9d10e456f30305c30e487025ab67d548c7f4ea94773c",
+      "sha256": "86d28afc43f8b0c4bc7b25362c58af226b6c1f7889185ea7540a81a925f79873",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5617,7 +5628,7 @@
     },
     {
       "path": "Light4/n0-4-0-0-5.emitter.ogt",
-      "sha256": "71e96c2fe88bebe5c55145db52700108da20d77dc3a162b8a1526f0fa8dae00f",
+      "sha256": "a01e7fce05ae7d7591dc84001c19119a609e67262fb8aa3cada6652608d54326",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5639,7 +5650,7 @@
     },
     {
       "path": "Light4/n0-4-0-0-6.emitter.ogt",
-      "sha256": "d12b74479d8f6d8eb3a4252a0a30d8ba05bd3f9c060e42e759d5c338ae0f47ee",
+      "sha256": "9730fb3ed4382b17a59ef96e19fea2fb81c44d920960b67a6c01c936c2518114",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5683,7 +5694,7 @@
     },
     {
       "path": "Light4/n0-5-0-0-0.emitter.ogt",
-      "sha256": "4e47e911c640975a50293e9a14e792e5a6d64dce0079c94b10f4db4bbc1c5bae",
+      "sha256": "e02f02ff8b8ad20f5ce3353d91a73cf4b8b711c4828b09e8b9013700719577cf",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5705,7 +5716,7 @@
     },
     {
       "path": "Light4/n0-5-0-0-1.emitter.ogt",
-      "sha256": "c31e77563a94caf53c7404988e54ab55f33cfbe877bb7d09a449f3dfde449ea6",
+      "sha256": "41b22ace8dc3957109d2c51bdc5686a0aa709daff35f41706c4b27e3781fd589",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5727,7 +5738,7 @@
     },
     {
       "path": "Light4/n0-5-0-0-2.emitter.ogt",
-      "sha256": "d45016d824489d354219a860d7678b5d0562eca8064952d5f2fe96a1f8f0c04c",
+      "sha256": "148fb61da3ef35dd048acdcd33f0f0082041333a5db326952e769fbe9fa4ac9f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5749,7 +5760,7 @@
     },
     {
       "path": "Light4/n0-5-0-0-3.emitter.ogt",
-      "sha256": "1f19443a258eb92087101721a848bcdca51e54efa8f2b6a072fc3a82943227cd",
+      "sha256": "74454b871cef0409cbf56747cd52b5ba7fb554c542028c880e2d910656be2d65",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5793,7 +5804,7 @@
     },
     {
       "path": "Light4/n0-5-0-0-5.emitter.ogt",
-      "sha256": "92fc7baf6bb1659ac74e543aa077017f90f3e34dde8c3578c4948a0e82c502c6",
+      "sha256": "aa7a8a7fe36799a50b7a0c2ed95b383d71c17c0d4281696f00aebb96af085e06",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5815,7 +5826,7 @@
     },
     {
       "path": "Light4/n0-5-0-0-6.emitter.ogt",
-      "sha256": "c58b4abda0b15a3b45e101b62a102ad7b864173a8ff39e495f52c682638fe987",
+      "sha256": "d75ab4cd67390ea73c7411d589bac61b3da708f59513395327a1848a695b9023",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5859,7 +5870,7 @@
     },
     {
       "path": "Light4/n0-6-0-0-0.emitter.ogt",
-      "sha256": "92c8fa3add05f3f262b0538cf5100afe9c13839aa55466c99faeb6e7b4b1c284",
+      "sha256": "49e4cdc048fb79f36c59858487b9693f5f9e19c7dacb7ebe9ab081331c03f69a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5881,7 +5892,7 @@
     },
     {
       "path": "Light4/n0-6-0-0-1.emitter.ogt",
-      "sha256": "0384ca8ad732338e11b6c9b1947d4f7ccdff1c80d0e13e0a06c581006b9b04c9",
+      "sha256": "e83328debf00280a8ec4ffc3c2b71e8eb01fbfccddc788a9ce55293ce8d630cc",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5903,7 +5914,7 @@
     },
     {
       "path": "Light4/n0-6-0-0-2.emitter.ogt",
-      "sha256": "794135ee07517ed5f25cebe833e6327524b6653b984f72aa2501307696f89ff1",
+      "sha256": "ed4efdb9d9bfb43739e9f503b6fee767fd934e19c21a17c5de8fc0b9594b963c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5925,7 +5936,7 @@
     },
     {
       "path": "Light4/n0-6-0-0-3.emitter.ogt",
-      "sha256": "fd15c3ff956390d7a1e524bb8ebddaf30705edcd8b44558fadb042b898b7a61a",
+      "sha256": "27dad683412d6053702b2eb00e8df8caec4d40cfd7164b6768b1448076571793",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5969,7 +5980,7 @@
     },
     {
       "path": "Light4/n0-6-0-0-5.emitter.ogt",
-      "sha256": "e251216d557555654f7f99a04a0957d53cc6df036c424d10148c07963c64976c",
+      "sha256": "b8d14a7b42910dd8902ae1cc9c2f1779569c50c26d4617c806758c99997dd64a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -5991,7 +6002,7 @@
     },
     {
       "path": "Light4/n0-6-0-0-6.emitter.ogt",
-      "sha256": "e71f1e01a8ef8c0d1572ee89f26824387f0cc97d478ae32e36046a12d381cbf8",
+      "sha256": "527e170c898622bcaca1e6c32960e3903418866193776767287844b17c36800c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6023,12 +6034,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Light4.ogt",
-      "sha256": "280e60ee29f7fa18f3ad87d109bfb9eb6e1b0234538aefc6ffe240628696e97d",
+      "path": "Magic1.ogt",
+      "sha256": "6b572435869617fca556203d2b55f3550dd6d6c56d3c1fad3aacbb6235545760",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Light4.efkproj"
+        "file": "tktk01/Magic1.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -6101,7 +6112,7 @@
     },
     {
       "path": "Magic1/n1-0.emitter.ogt",
-      "sha256": "3423819ac441a44ca82d988d5160310d9ad6b8e9837108d3f81bfcbc6f8b179f",
+      "sha256": "02e76eb21ab6ddfb119b89568387762c021cae7a91da4511e60ec67c41de983a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6133,12 +6144,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Magic1.ogt",
-      "sha256": "3c5cf9dda3040b05b275ecdec06feb6ea112326f05d886ff80c00bcde9afffc4",
+      "path": "Magic2.ogt",
+      "sha256": "df18837d4bb08724405d03df6a250516e318f9242d47b8c09ffda79544deb2be",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Magic1.efkproj"
+        "file": "tktk01/Magic2.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -6189,7 +6200,7 @@
     },
     {
       "path": "Magic2/n1-0-0.emitter.ogt",
-      "sha256": "74e1d6f5b273cfbd0d87406156b021f7dcc985c1f3349eb6241b46f021d512a1",
+      "sha256": "ed897eb24cd8cca74c862e3287a46f52ca2a8687a542f38872f14ca17504c775",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6200,7 +6211,7 @@
     },
     {
       "path": "Magic2/n1-0.emitter.ogt",
-      "sha256": "59afeea4b1e18670893c386b01be852be681668c053fe5fe059292cd72bdeb97",
+      "sha256": "717b0790a835811303cbd85549680f9d967eda89634e37175dfb960464eb7d30",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6211,7 +6222,7 @@
     },
     {
       "path": "Magic2/n2-0-0.emitter.ogt",
-      "sha256": "15d3910c9249fae988151a8d9f9f4a55da239b86dfabb3d21592f678bd6c6f23",
+      "sha256": "d45a61310558971f97fb45aaf926611f2187a53d7da3fdda366794e117d96986",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6222,7 +6233,7 @@
     },
     {
       "path": "Magic2/n2-0.emitter.ogt",
-      "sha256": "5cd4bdc1ba8a39a79d412d1b4f24bf3522efc44766dedbfd11028d0308d36c23",
+      "sha256": "b3f703b7685a2e2c02cf7d4db9fd8c62e479922739562f194ec1d7861c44da6c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6299,7 +6310,7 @@
     },
     {
       "path": "Magic2/n3-2-0-0.emitter.ogt",
-      "sha256": "bd431a0ca793ee43cf73be30abf98166ca30906a799f973d2a28afbfe56888ad",
+      "sha256": "ab88c2ea2314bb6c3f5b97b73ec1f5e26078d25d81d0d7a1e0be9fd2f3905c7f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6310,7 +6321,7 @@
     },
     {
       "path": "Magic2/n3-2-0-1.emitter.ogt",
-      "sha256": "fd14e66e312ab8628bf572c22774a357499c89d73505a981cdcc199464e74ee8",
+      "sha256": "c03c24acd6f7e7c63e4d10244523f7dc32a9c5c40ed57f818096f8d0362bc7ac",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6354,7 +6365,7 @@
     },
     {
       "path": "Magic2/n3-3-0-0.emitter.ogt",
-      "sha256": "4b484e818c6d833e1537b3c381c2790a8f6e29a6a9d616bb151e49df8dae904b",
+      "sha256": "3483264426ce0c36ebfa9fbeae91a87a4349b11f5c6233ce658a3088db99b8fc",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6365,7 +6376,7 @@
     },
     {
       "path": "Magic2/n3-3-0-1.emitter.ogt",
-      "sha256": "fe9123b09bd4939f9eeb46f6eaf8c00aeae82153016f865645ff5b02107cefc7",
+      "sha256": "c14b99c1652d94501e1ddae63e80ac6eef8e3de0f856669dcf2cc3f0c4ff1eeb",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6408,17 +6419,6 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Magic2.ogt",
-      "sha256": "e884692d6b35815cbc433e9102a0949553d16ff723ce608b1e6e16bfdea241e3",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Magic2.efkproj"
-      },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "README.md",
       "sha256": "3906b946fdde76f1dd20370657957c31a536716e17d153800a7d7ea9a967a3fb",
       "licence": "CC0-1.0",
@@ -6429,8 +6429,8 @@
       "derived": "authored"
     },
     {
-      "path": "Soil1/n0-0-0-0-0-0.effect.ogt",
-      "sha256": "195d6ea8804a6ba8fb959f675a661960c073dc01f015b7fd9c2004b00f7bb0c0",
+      "path": "Soil1.ogt",
+      "sha256": "d62a36186940180bb5820c9a78bb6d1796f9d149c2c44a9d90d75577165ab89f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6440,8 +6440,19 @@
       "derived": "converted by og vfx import"
     },
     {
+      "licence": "CC0-1.0",
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import",
+      "path": "Soil1/n0-0-0-0-0-0.effect.ogt",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Soil1.efkproj"
+      },
+      "sha256": "195d6ea8804a6ba8fb959f675a661960c073dc01f015b7fd9c2004b00f7bb0c0"
+    },
+    {
       "path": "Soil1/n0-0-0-0-1-0.emitter.ogt",
-      "sha256": "5f92ee575e53eaeb3c846bb1db11fb97fcd942dfe1438dabbeacfd422b99dc80",
+      "sha256": "59fabb9456066708412a0e698c40bb9aacdbd3816a0dfe3b526775563bae5b11",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6463,7 +6474,7 @@
     },
     {
       "path": "Soil1/n0-0-0-1.emitter.ogt",
-      "sha256": "bd19ba03c785682d5b0d7f2d571ba15937dfae9bd1312da27b98592692fae5bd",
+      "sha256": "b58ae5364209972b3d6ab398c7b93f3371ed817dd4d705a95074bdd6360b5e22",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6496,7 +6507,7 @@
     },
     {
       "path": "Soil1/n0-0-0-2-2-0.emitter.ogt",
-      "sha256": "dfa57085f6eec5adedf31414f13ac682d39995751e074f0b7e457dd45bafd69a",
+      "sha256": "4cbcc8ddd10df148a2c075c4d97ac4d55f972d03d07bca3a220b47bc85586970",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6507,7 +6518,7 @@
     },
     {
       "path": "Soil1/n0-0-0-2-3-0.emitter.ogt",
-      "sha256": "02f4ae18726bea82539e5beb92d6ea1383665a24be56d10f0de5978f47ce2e1a",
+      "sha256": "168fb30b946f517b9e84d7735163141bc3f8c289de1f1f8a25e955bbff92f954",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6528,12 +6539,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Soil1.ogt",
-      "sha256": "7bd96703851ec2086b6508f0bc3e6d27e1456053aaee99ab0cd504a4a56ac79b",
+      "path": "Sword1.ogt",
+      "sha256": "006940abf85e94fd17b1f17314247fa74035c6760769a294a16acf22d738448e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Soil1.efkproj"
+        "file": "tktk01/Sword1.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -6572,12 +6583,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword1.ogt",
-      "sha256": "4ab0bb152fc2c3adc885a2438e15f670237f8716adcba9f74799ea86ea9d8273",
+      "path": "Sword10.ogt",
+      "sha256": "6b711c46728ca1c3de3c4e8c238f402080fb46a7b0520bf367ce4a61fe344ff5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword1.efkproj"
+        "file": "tktk01/Sword10.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -6595,7 +6606,7 @@
     },
     {
       "path": "Sword10/n1-0.emitter.ogt",
-      "sha256": "80f795f98854b5d45bc6f43ca3a8b0ba55cef6600d04ae884229fc2434ddb5d9",
+      "sha256": "5dbaa593c1f2f44877eeb2847bf9ad1d19b20063d3fba674465d218fb1b1d1fc",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6616,12 +6627,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword10.ogt",
-      "sha256": "3b07fdf3f66f6d80d9ccf4f687fcb8b170f3d02791ade3c994445878610506a6",
+      "path": "Sword11.ogt",
+      "sha256": "335ae650a9dadb0be2c0490b41200355e75e330f22a66d7674ce0761bdb584c7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword10.efkproj"
+        "file": "tktk01/Sword11.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -6672,7 +6683,7 @@
     },
     {
       "path": "Sword11/n2-0-0.emitter.ogt",
-      "sha256": "b5faf41ed7ffd827b40b882cb206fb89b8a1219fe476fc0d1a765dc144e745ff",
+      "sha256": "a8ddc544e7140ce3b77b74e8ceec659cd6425f95048547787dd4a88469215eb6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6693,12 +6704,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword11.ogt",
-      "sha256": "c3fad6fb8e0ea3b5830971b498f80bca8bddf8092b3a5634d1a34bfb8e84d034",
+      "path": "Sword12.ogt",
+      "sha256": "54461e0ef24ca68f57a7d4479d593664a3c49ae956c88d782fa7ad211a2221d5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword11.efkproj"
+        "file": "tktk01/Sword12.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -6782,7 +6793,7 @@
     },
     {
       "path": "Sword12/n2-1-0.emitter.ogt",
-      "sha256": "c85236e457323ff8bcdaa1d7f7c4a1810f8100fa546aec86bc243ef5818c687b",
+      "sha256": "e1574f14360becf8ea86db1a5cec0ed284d215e99c9bf83d3ef395cb70691783",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6815,7 +6826,7 @@
     },
     {
       "path": "Sword12/n3-1-0.emitter.ogt",
-      "sha256": "3e7e96d06eeecfbf6b7bfa9e96f0154dbde53c5b1ccbf764742aecbb6f4ebade",
+      "sha256": "7a24d7b896934c9019d5c5dbd03c12acd7bca6a49a4897308e95dd4857ac8d00",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6836,12 +6847,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword12.ogt",
-      "sha256": "29e1bbf0300c45fc5a7dd901dd300f9785350b4300b1a8a2e615c5d8cd5328e9",
+      "path": "Sword13.ogt",
+      "sha256": "d41d8a3e90f5865819be5eec7872e722d486fc4f88bdf711c71b5df933175aa6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword12.efkproj"
+        "file": "tktk01/Sword13.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -6859,7 +6870,7 @@
     },
     {
       "path": "Sword13/n0-0-1.emitter.ogt",
-      "sha256": "830cb6320b1d81ef62b235a3c0616fa9e76a364adf873e5829493e9ad5eadec9",
+      "sha256": "99a886f6e1f8356581a1f9e60d3caebc8ce19fe96fac28c745325f8fd27dba4c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6892,7 +6903,7 @@
     },
     {
       "path": "Sword13/n1-0-1.emitter.ogt",
-      "sha256": "56e5c25af7afa9245c1d6954acc97be681efd722f2dc234ab61eb4ed0a0541fb",
+      "sha256": "23594d62ffd5d4ba415ef0009da18684f564d22302bec2f7ce5989476f13667e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6925,7 +6936,7 @@
     },
     {
       "path": "Sword13/n2-0-1.emitter.ogt",
-      "sha256": "be88a9da5c4c1d9816d64f8c1e56b953d1ec9fc910e9d0781c3577c440686b50",
+      "sha256": "f1b588de9b58ce830acc2b9541e05a593b6789f07e1272274c4d4d07cd1434c8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6947,7 +6958,7 @@
     },
     {
       "path": "Sword13/n3-0.emitter.ogt",
-      "sha256": "c8057a5189d30da80e377a20090cc804c492abbf720b1d9e123cee2140d074c8",
+      "sha256": "e98240213093b760e970fecccd0302635c91ac226bab1ec71e00f2f7846036b3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -6958,7 +6969,7 @@
     },
     {
       "path": "Sword13/n3-1.emitter.ogt",
-      "sha256": "3f1801e3c017b63e37d0a84baf15429189d7428c96d3373ba03e325636852ce7",
+      "sha256": "1f93cb8b23673e49bc45f5fdead0be7a173eae80115d413fda1e6bfee4254000",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7001,12 +7012,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword13.ogt",
-      "sha256": "c69660a1017541a7086f4b223d7fe4527c06daef3614ef58e5ab283b743a94cc",
+      "path": "Sword14.ogt",
+      "sha256": "25bd9f312d6e1d67b6091e2f9f4c41942d8a93600a26358647bcbadd9a05abc6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword13.efkproj"
+        "file": "tktk01/Sword14.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -7024,7 +7035,7 @@
     },
     {
       "path": "Sword14/n0-0-1.emitter.ogt",
-      "sha256": "81dea965254ef2148be12ec8d87e1eacffde9b22ea8ae48bfb3ad40a3b7a48ed",
+      "sha256": "0f23df4347c9d61e0788a3cc9fa508cc198e778b852644e1a4d0dbb6abe9042f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7035,7 +7046,7 @@
     },
     {
       "path": "Sword14/n0-0-2-0.emitter.ogt",
-      "sha256": "fcbf4ea6fa39b4eca145d9199f75e5621077864627311f7cd5540758fddb625f",
+      "sha256": "729192f827da367fea61b43552b9ca48e55be0881ce5b9296b9b869a2795a4ec",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7046,7 +7057,7 @@
     },
     {
       "path": "Sword14/n0-0-2-1.emitter.ogt",
-      "sha256": "570e19b88d6dce4234a5fa16c8260e3a8ca0fa27c1c50cdf082fcdf861368279",
+      "sha256": "c4cc7f9b08b33adfa381353b5cee2e0f0ac855590c8a56d3d164e34b4aa64b02",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7079,7 +7090,7 @@
     },
     {
       "path": "Sword14/n0-0.emitter.ogt",
-      "sha256": "0d3957819f080fb4cb5a7aad275dec233f3eaab2543464f691a7b0b4a3081c2c",
+      "sha256": "6a4375fbb49279bf7b61ba486532537d86896f9800c3fb4eea0d921a3b3c33c5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7089,12 +7100,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword14.ogt",
-      "sha256": "3471af7052a967e845f7463b8bdd2b8d0debdbc96c46ce75cbf14f434e2a2b2a",
+      "path": "Sword15.ogt",
+      "sha256": "b2233cc2ffb2722b18695aeaf356908e5191961966a78fe19d3a2d107fed9722",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword14.efkproj"
+        "file": "tktk01/Sword15.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -7112,7 +7123,7 @@
     },
     {
       "path": "Sword15/n0-0-1-0.emitter.ogt",
-      "sha256": "b1b049783c1131c8f389c72abff3d28cbdc2a0236eaddca8d97db0f5710fc7de",
+      "sha256": "6a3d03cd7ad486f7040a22c117d094e77c769e56a379e6ab2c40253c29f96e2d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7123,7 +7134,7 @@
     },
     {
       "path": "Sword15/n0-0.emitter.ogt",
-      "sha256": "95496208c4a490bb00f660ea0eceaeb0c09ec8a07f6391365f57d897d28aa6f3",
+      "sha256": "971f251ab19af09051633cc15625d2c72dd2601e508b8d55310a1918f3742231",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7134,7 +7145,7 @@
     },
     {
       "path": "Sword15/n1-0.emitter.ogt",
-      "sha256": "f2a84ad99fd083b1f55de9bc68d608cd42cf3b25cd6d049aa6aadab9e9abf592",
+      "sha256": "9a5ac1c2710c4b539e1c1a0ca0a3731ca711c213fa8f584353f7fef9b3071f87",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7156,7 +7167,7 @@
     },
     {
       "path": "Sword15/n1-1.emitter.ogt",
-      "sha256": "ba00c740c907f12b0341f819ca24b31ccece6b56961dda1f5ae050f58ea9044b",
+      "sha256": "02267f14b464d9d3b6dbffdecb2792581daca3f061c347fbf6858e4b899b6744",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7188,19 +7199,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword15.ogt",
-      "sha256": "591b1d5c49080ba88548d1e8c64a21e6aef202d2166a96f7e83f065765e4dc2a",
+      "path": "Sword16.ogt",
+      "sha256": "a4cc7a2fd097bbef19be09630a5cd7d6c00939680a386e4f073c1e501d0e18d4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword15.efkproj"
+        "file": "tktk01/Sword16.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Sword16/n0-0-0-0-0.emitter.ogt",
-      "sha256": "f69993ee75f6e7ac5405538716a5a1fe7cbd2fe626257cb406708bc89538b130",
+      "sha256": "1c99226a79c381bab7c5234e0a424ff1b033a292de9bf473633818e7012e6255",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7211,7 +7222,7 @@
     },
     {
       "path": "Sword16/n0-0-0-0.emitter.ogt",
-      "sha256": "83e2c940723117550f797fcc4424d39bd9cd95ac802540a77c3aac8c62e2d89f",
+      "sha256": "42003344f0deb7c3ea702c74b66dc33374095a8e035e5d0facc36286d7611a8e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7233,7 +7244,7 @@
     },
     {
       "path": "Sword16/n1-0-0-0-0.emitter.ogt",
-      "sha256": "86cb08ec94004731dfec40f1dffd55fb2051d5e3c99981280f8ca54bc88a4b1c",
+      "sha256": "034f385fa95842b0165bbef076c4146bec3a1089591f49bf8d039b85c12a7759",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7244,7 +7255,7 @@
     },
     {
       "path": "Sword16/n1-0-0-0.emitter.ogt",
-      "sha256": "1b41c68f46ef0eeedae093c43ca1118ef9f55d6e70a96610139b61732718ffee",
+      "sha256": "dd948a79abfa4663fe3a0d89ddc92511bc700cccdde13fe53e111faa4f054b44",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7266,7 +7277,7 @@
     },
     {
       "path": "Sword16/n10-0-0-0-0.emitter.ogt",
-      "sha256": "4068a2e42029b685c459b0cd1ae4fa0280ca63d04960efa3fdc4977219d214d9",
+      "sha256": "629915201eb155522bd5e38518acf76de8aebbdfbf84940e37e601990305569a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7277,7 +7288,7 @@
     },
     {
       "path": "Sword16/n10-0-0-0.emitter.ogt",
-      "sha256": "d9333e4e9658a1e5953353e388dede4d7e084742a968b1c41ace47ca07c5eda8",
+      "sha256": "efcc5566b2514b31fff8315434d0e489c020393c3ca377090487e21d00654fc5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7299,7 +7310,7 @@
     },
     {
       "path": "Sword16/n10-1-0-0-0.emitter.ogt",
-      "sha256": "5d7a5eb12e35dc743de742b43762366e1a739acc7a35ca137013079eec11bbd7",
+      "sha256": "e9098404faba88a1b7bc2e0534f9f740f179c22bc1e13a225b0f6deabc350f8e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7310,7 +7321,7 @@
     },
     {
       "path": "Sword16/n10-1-0-0.emitter.ogt",
-      "sha256": "959b7a7d0d431521fc41fdf430613b722365b2c8d3e9b942446a1dfc22089041",
+      "sha256": "966f5ab1bec6ed213a3c2decefa15ecacbcc06ba9d6e4d1f8c70a56d8bd208ab",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7332,7 +7343,7 @@
     },
     {
       "path": "Sword16/n2-0-0-0-0.emitter.ogt",
-      "sha256": "62f1f4f74c6e8a952813d726f749d628f4b6cdb6e5133f320a369522ce457876",
+      "sha256": "892b03aa033050d106ef134eedba2d4afe3e50b4cc8a019a7ede21de3880dd63",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7343,7 +7354,7 @@
     },
     {
       "path": "Sword16/n2-0-0-0.emitter.ogt",
-      "sha256": "37e0ec473a49665eaf483159429eea32861ec9632fc3a80096cda5f50b3d3de0",
+      "sha256": "785793e1cdb6c12785fd7751db7e85b8333471ff295a57e5016a4852345f30bd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7365,7 +7376,7 @@
     },
     {
       "path": "Sword16/n3-0-0-0-0.emitter.ogt",
-      "sha256": "4083526f324dbb2b6803aa2ab123fbe55f40cbbf96b5ffb7648bc8f4a0e4d85f",
+      "sha256": "41e0a235276add2e44e9f2cb2cd9d046dfa6f5d970e8421db4bae82ac0b45f70",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7376,7 +7387,7 @@
     },
     {
       "path": "Sword16/n3-0-0-0.emitter.ogt",
-      "sha256": "450b9926d00bc53c018ed83413d74811d260a6272703816cd05276ab0c1caa53",
+      "sha256": "3649865d53e851d1c8c426cdc0bd4961291e397c66ad2e1898354a8898b5729b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7398,7 +7409,7 @@
     },
     {
       "path": "Sword16/n3-1-0-0-0.emitter.ogt",
-      "sha256": "9516ee5699a923c46755879e6ca286a1fd0fd48550e15900f8a06aa58da56af3",
+      "sha256": "24f20d460d2a155904d394f5cc246f9ffa0b4d839b9894f1501f4d55ce7c26db",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7409,7 +7420,7 @@
     },
     {
       "path": "Sword16/n3-1-0-0.emitter.ogt",
-      "sha256": "c6dd03994f55f313444d2adb2162cf34cf931a8f8e881b2d54b6a4f26295a718",
+      "sha256": "adeb3656a095f3a91801f133022ceb63c6c4ab08858dc188d231ac14e6b3c1c3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7431,7 +7442,7 @@
     },
     {
       "path": "Sword16/n4-0-0-0-0.emitter.ogt",
-      "sha256": "816b00a13f44c20585eda8fb28a733b7656642e39d712dafcbeec667370da9d6",
+      "sha256": "e41f30bf2f34ceae3bf64a7de5e2ecbebeeffc4da2970169edaf603085d767b0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7442,7 +7453,7 @@
     },
     {
       "path": "Sword16/n4-0-0-0.emitter.ogt",
-      "sha256": "3900afb9e6a82cd5ff9e296fe2874b8ccdac2e5671df34bc3aad42e2328906e5",
+      "sha256": "c81c1c769a4dfbb265df81a8a9a3c335677ac6a1d806a7c5a2489c20c66bfd58",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7464,7 +7475,7 @@
     },
     {
       "path": "Sword16/n4-1-0-0-0.emitter.ogt",
-      "sha256": "586dff3b44e9a6439194dee1003f8b851973e9432cee0e9657629b0ce936fe7a",
+      "sha256": "caf8372a299315a5b1ad484dc9db5ce64d5e64aa526911c4d136207c9cdc48d1",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7475,7 +7486,7 @@
     },
     {
       "path": "Sword16/n4-1-0-0.emitter.ogt",
-      "sha256": "3c41f547ee2dc67afa4565c270476b2f397be7cb7563b9c82bee1197ec2fe2e8",
+      "sha256": "1399782eb0c53bf86a7a203faf67c12c678da2cbe7a5db9359d5cef693011efb",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7497,7 +7508,7 @@
     },
     {
       "path": "Sword16/n5-0-0-0-0.emitter.ogt",
-      "sha256": "632f69181aa02319907a32dff30e1f44b6cc276ef685e603d36796dde6cd3f6e",
+      "sha256": "53b3b40d373db702c716ef2e9c8cc38109523bc1285ff951d12d8535fd398049",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7508,7 +7519,7 @@
     },
     {
       "path": "Sword16/n5-0-0-0.emitter.ogt",
-      "sha256": "1f1c7c0294e9d4eaf2f9cb1d26248ce392db24065acf46869085aed6783ea957",
+      "sha256": "c4b60c9db31c336942d1ae4dc917b071a75b9e9298648a46f7e411bc0c9ab5a7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7530,7 +7541,7 @@
     },
     {
       "path": "Sword16/n5-1-0-0-0.emitter.ogt",
-      "sha256": "0a584ffc1ea22a725789753fcf0db042b4e0dbfaa9f76a7eeca0c213ab4323bf",
+      "sha256": "13e2697e156f9479918039787170e3c03ef44adbedd2388f8111ee39eeedc9ba",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7541,7 +7552,7 @@
     },
     {
       "path": "Sword16/n5-1-0-0.emitter.ogt",
-      "sha256": "2af8d52ebe2cb3bb60d00edbdc00fd8dfc46e56f9505de62155dc411bdef4919",
+      "sha256": "53ad6819a7727249b518d8e0d3c423d3d31f1b6ee2cf87b40c790b3213006711",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7563,7 +7574,7 @@
     },
     {
       "path": "Sword16/n6-0-0-0-0.emitter.ogt",
-      "sha256": "72b0a8cb03d4084ed5fab11700187b40f537e76472c4b932e13b705db06ddc0b",
+      "sha256": "5e8891ac852c67f5b8292ceb7e951be54e6c410cb36131652480a4c2ef4aab76",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7574,7 +7585,7 @@
     },
     {
       "path": "Sword16/n6-0-0-0.emitter.ogt",
-      "sha256": "fe13361cee7df422147ffb139453f45444a9c97471dfb02c8a79b3e54ecb2e73",
+      "sha256": "f8f2f5560582703def1171748ae8ecf6bb9bebf024418aae3323e0d3483ccdf2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7596,7 +7607,7 @@
     },
     {
       "path": "Sword16/n6-1-0-0-0.emitter.ogt",
-      "sha256": "def9769501620cb55665b56a826d20d2ec046bfea2a6c08e0cafa73280fbefce",
+      "sha256": "133978f05dbcfb36ba2bab1ed6ece921beda6267c3744e0a92f42afba7dd9e08",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7607,7 +7618,7 @@
     },
     {
       "path": "Sword16/n6-1-0-0.emitter.ogt",
-      "sha256": "0402c2c0ca263b34febff925fac609cac58449e9d63c04c585f9d9c390ec7e60",
+      "sha256": "a1e9bf5b6e0a46cce0a5880ce8838c4c123b7eca2821e1cc5413d542ca348269",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7629,7 +7640,7 @@
     },
     {
       "path": "Sword16/n7-0-0-0-0.emitter.ogt",
-      "sha256": "685adc8b6832c42642c9a90ed16bc8ccbf560c9f6c3bb86cfb5d34b75467188e",
+      "sha256": "f3d511138efea53fd3870bbdcc891164b0e322ecb82417ec969144542c2e9cb5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7640,7 +7651,7 @@
     },
     {
       "path": "Sword16/n7-0-0-0.emitter.ogt",
-      "sha256": "61a5cda09c0de937a6e5ce3f9b59eb4034ce1e6faa57589457327af4613d131b",
+      "sha256": "fe1054bf2478093602d74f940215f0085921a7b5efc70de9e0e1de2cbf2bed57",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7662,7 +7673,7 @@
     },
     {
       "path": "Sword16/n7-1-0-0-0.emitter.ogt",
-      "sha256": "cf55b7dae0cc191ae6a344fe77c04c082ec1cd13008808ac6c2bd90c00546c86",
+      "sha256": "967a681c8e5aabe8dad211dee39357469da31e7e095bd4255585eb424bf835d6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7673,7 +7684,7 @@
     },
     {
       "path": "Sword16/n7-1-0-0.emitter.ogt",
-      "sha256": "8f52d914be9d254afaf287df17d6c3d2a0e522977ea1a2c4314132a513558aae",
+      "sha256": "36054dbf1204d2b55c4c24526c19643928355eaf993e154471f2976f32199453",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7695,7 +7706,7 @@
     },
     {
       "path": "Sword16/n8-0-0-0-0.emitter.ogt",
-      "sha256": "668fd8797c4d1397ba9d5798e4fc31bd5fc3771a353441d37532186c509ba380",
+      "sha256": "5a1c547d5b94f3e171e86a49a3c47058afd3486674acaded0e43027eac52ce65",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7706,7 +7717,7 @@
     },
     {
       "path": "Sword16/n8-0-0-0.emitter.ogt",
-      "sha256": "c5cd652431198819978a6baac20d84224edeb0b7b7794fb9eff1bc8febad8a13",
+      "sha256": "8e4e24ea4caa92e97f7570d360d9d48e3ee18527663cb80744b3d827ed7fb532",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7728,7 +7739,7 @@
     },
     {
       "path": "Sword16/n8-1-0-0-0.emitter.ogt",
-      "sha256": "4b2d1bd0c971b9153be52ee12dbbb3b625c2d1574310e6d93fdb8bd5ee1e4bc8",
+      "sha256": "5c45266e79e3a4f565368eb44f4a6156013777fe3d206404f9cd04af04274e2f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7739,7 +7750,7 @@
     },
     {
       "path": "Sword16/n8-1-0-0.emitter.ogt",
-      "sha256": "b52ad4ff1f9da363dba4afb0a73869dcf3f50cce575fa329a6f45074dad29101",
+      "sha256": "dce64a688999fc30342e9ceaadf819d8a1ecbb2006175fe8ba39b2d788d5daaf",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7761,7 +7772,7 @@
     },
     {
       "path": "Sword16/n9-0-0-0-0.emitter.ogt",
-      "sha256": "9c4f8721e2e92cd947b079af4d1051e85dba8c5b8c426a23ef97128a4ac4156c",
+      "sha256": "34538fcff9054b5d10b05b9e450e3ffdd527be5f9fd3eb60d6ea71a3e997c279",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7772,7 +7783,7 @@
     },
     {
       "path": "Sword16/n9-0-0-0.emitter.ogt",
-      "sha256": "d02e0a0c74b5d6acf222812032b719b7ba4b2b38360798ab161ae695c44ff9b7",
+      "sha256": "30c647b936d6e023753ae44eaf2681be63b871c9859b8597790fe693855b4508",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7794,7 +7805,7 @@
     },
     {
       "path": "Sword16/n9-1-0-0-0.emitter.ogt",
-      "sha256": "3533058a74d7d320458702b9df39811e1f2d55aa4b14862f65e0f085f194428a",
+      "sha256": "451214120cfc9ece17bfdf45a78e57b1ba137a81f1b67e1373cb8fa5001b7438",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7805,7 +7816,7 @@
     },
     {
       "path": "Sword16/n9-1-0-0.emitter.ogt",
-      "sha256": "4714f17d0c4ecdf372270041fbfd1fd98b7084ffb8a3a1c0c2d94ed2098c763a",
+      "sha256": "f328aabb10e70db0fef69d443723ff90fc280962d7d943e21bf8cb9b528c67d3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7826,12 +7837,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword16.ogt",
-      "sha256": "a95be5a8b51d96b68244c13f17d7e511847beabc382f22da6fa704f702316153",
+      "path": "Sword17.ogt",
+      "sha256": "8013587f7526f7da1d31b6e5d3015934930870a60ec72678c3e356b38b2252db",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword16.efkproj"
+        "file": "tktk01/Sword17.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -7849,7 +7860,7 @@
     },
     {
       "path": "Sword17/n0-0-0-1.emitter.ogt",
-      "sha256": "62e098496855603717d459917d00a1c64ca8a919feb2142e4319971b5077969d",
+      "sha256": "58b9e74903f0b16d1957e02c1fdd1bdc29d6ee8637f7f16b549ae2d8f7746582",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7937,7 +7948,7 @@
     },
     {
       "path": "Sword17/n0-3-0-0.emitter.ogt",
-      "sha256": "839381fcb52805e77176f03aeab763675114b82aea92d024e621e9653b586a51",
+      "sha256": "2e6253e2d39c9605f3b2064989ea1bfd9a00c8941c9e9b59b01ff1b903a83c08",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7948,7 +7959,7 @@
     },
     {
       "path": "Sword17/n0-3-0-1.emitter.ogt",
-      "sha256": "3bcda657228d993d24f0d700ab85194dad46ef25dfe15765ff8ac3c92390e3b0",
+      "sha256": "d3d767c2938912288121b6883921be5a858aec9be26677c58b21abb752741ebf",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -7958,12 +7969,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword17.ogt",
-      "sha256": "291be49211160a8502a589d3316b85fa572c26623a2fba8038643cd777aa605b",
+      "path": "Sword18.ogt",
+      "sha256": "a961ab56c3fada58fb0e506600dda31c5b8a6e313976a1268b686b8945504daf",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword17.efkproj"
+        "file": "tktk01/Sword18.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -7981,7 +7992,7 @@
     },
     {
       "path": "Sword18/n0-0-0-1-0.emitter.ogt",
-      "sha256": "b82fe56eaa5d183e23d4402744f4f957df748093591e51715d3396dbf6bb9af0",
+      "sha256": "15dbb7839599b562851dbda0acacd52b6147b7356190a9cf3a4bd06a6d21eb95",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8014,7 +8025,7 @@
     },
     {
       "path": "Sword18/n0-1-0-1-0.emitter.ogt",
-      "sha256": "5eecc2990f3583a55bf7872be35a5c546d82b8ddd05583c64234c0b5bae12650",
+      "sha256": "40149fb4e5c6c67ea16ff7d253bf696e6df4e7b7e47ebd30eecbd0aef6aa4514",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8036,7 +8047,7 @@
     },
     {
       "path": "Sword18/n1-0-0-0.emitter.ogt",
-      "sha256": "a52e56ef1cdb079c22256e5ef26936bb9493b039c0a09c7db87644caf09dafd1",
+      "sha256": "4b82716155ad0fda988ce94fc75b7093122d2b1190d68886e38e09cfe4e2dcc6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8102,7 +8113,7 @@
     },
     {
       "path": "Sword18/n1-0-1-0.emitter.ogt",
-      "sha256": "6a36fb8ebd53965527a5b2db192fd2cd489bfd8f53e9c52ed183e1559333e24c",
+      "sha256": "75a703f69f91ea190228974c9dad9e12dcd62f76bcd106fb14c3b16f41591926",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8124,7 +8135,7 @@
     },
     {
       "path": "Sword18/n1-0-1.emitter.ogt",
-      "sha256": "772ec120e8d0e295612cbb74646af35b1ebbebd3a0f8f43f4f4b56ee9b72eaa1",
+      "sha256": "83afd1fd60ac7cc439c3fe693e1815ceac0e95df33e4d439e0d12f2739eee9bf",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8156,12 +8167,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword18.ogt",
-      "sha256": "eefc210a01be06ba07f674840aafa1ca96da08afc2dda71df91216c5190137a8",
+      "path": "Sword19.ogt",
+      "sha256": "11dec9020ed99f1a0f79f6dd2c1bde51569e8eada8422d5eecc832dccf72d551",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword18.efkproj"
+        "file": "tktk01/Sword19.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -8190,7 +8201,7 @@
     },
     {
       "path": "Sword19/n0-0-1-1-0-0.emitter.ogt",
-      "sha256": "d02de3575d94d494502e60b3f84e58a7762f67fae204e9a840d326606ad4f220",
+      "sha256": "3bffdddba36e8f99aa6cbbd0ce113d90057d5faad2f665f842952e1b21cf9a09",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8201,7 +8212,7 @@
     },
     {
       "path": "Sword19/n0-0-1-1-0-1.emitter.ogt",
-      "sha256": "ba9e4af1bda3a79550f70f99a7552947aa789a1abf86fbf0ae19461520eacdc5",
+      "sha256": "64a17ed86a31556420c6a97145d83f8dc4afdacbbd194a17c5acdef4bbda8bf5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8245,7 +8256,7 @@
     },
     {
       "path": "Sword19/n0-0-1-4-0-0.emitter.ogt",
-      "sha256": "4a296dbb840d4c3a02a0124177501478619c9e94764944eb9cb119baeb6561e2",
+      "sha256": "e281f2f7278d91cbba40de64a68c69c47f2fcb27a90765cc514e6590f8543d2e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8256,7 +8267,7 @@
     },
     {
       "path": "Sword19/n0-0-1-4-0-1.emitter.ogt",
-      "sha256": "2b383ebe759b896fe9a937a2171fa3812cef299ad75b7d1ef74d2c9d2545ce85",
+      "sha256": "28796c0117e58ec6b6ba84ed6430b833f1a7a0545e3f436d9ded48f188c4a2a2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8322,7 +8333,7 @@
     },
     {
       "path": "Sword19/n0-1-1-1-0-0.emitter.ogt",
-      "sha256": "db27f154382b4ca30d8a132b5104cf33f5db60fce7e3a7fd630792237317068e",
+      "sha256": "0f826370ac763bfe4ab61b9f899718c7cab3cbedb0ec27484f62b182c6c0710c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8333,7 +8344,7 @@
     },
     {
       "path": "Sword19/n0-1-1-1-0-1.emitter.ogt",
-      "sha256": "b5af9188c130df981f23b9eb7450ee4b44030bb3619c143b50fa2d1fae4ec625",
+      "sha256": "daa36a030d43e8541c8e54f548d5b7ac41390a9634349c3a3e259ed23d1dc982",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8377,7 +8388,7 @@
     },
     {
       "path": "Sword19/n0-1-1-4-0-0.emitter.ogt",
-      "sha256": "15184b0e82e94cebfb1a01980de4bfcba9bbea281b7706cb41491a88e0f8b9d2",
+      "sha256": "4a50921f80cb89a7df1766fde1c8bd6d7af6b3591ab203c849c909a93673ed02",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8388,7 +8399,7 @@
     },
     {
       "path": "Sword19/n0-1-1-4-0-1.emitter.ogt",
-      "sha256": "1580d4dda45aa1bdf97ff44d21cd7a5a5dae4355f27125a71e7b2945d5af6662",
+      "sha256": "60a4bc0d4bfff09b4c88a12b39e7667471d2b53d6e4816aaaa5a3bf65dd3dd0e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8454,7 +8465,7 @@
     },
     {
       "path": "Sword19/n0-2-1-1-0-0.emitter.ogt",
-      "sha256": "1b591ee5c41c76c14e95966ee70f7c3943019c91167e78762366251dd07d3e03",
+      "sha256": "b045556d0486c7f8089ffcb5b8c595dafebb5906fa56a3cfbe1200b748cb024c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8465,7 +8476,7 @@
     },
     {
       "path": "Sword19/n0-2-1-1-0-1.emitter.ogt",
-      "sha256": "3457b8a71af1959f62d733bd8a9620eaa4bfb51c77bdbf94c296392ee611e3ea",
+      "sha256": "e77c64bc9bf45a7a23931e5db3bb12b432369198effd16f528771dd160d210e5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8509,7 +8520,7 @@
     },
     {
       "path": "Sword19/n0-2-1-4-0-0.emitter.ogt",
-      "sha256": "e3f15672841a7976dc02e3d57324a4782234ec2deb181dbab1820468a4e6e9e1",
+      "sha256": "256d32dd3d0307fa6f0cec90730c835eea33ce842d771f66923ed1d4c983a955",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8520,7 +8531,7 @@
     },
     {
       "path": "Sword19/n0-2-1-4-0-1.emitter.ogt",
-      "sha256": "edc2a09475465dce5ef24b15e7da4b2801f56f0f8a62ca33c4ed4e4f0723e6df",
+      "sha256": "9396f67fc794004ee5df39a76916c49131d95df845aa23fe6ba54e9bb32d3d97",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8608,7 +8619,7 @@
     },
     {
       "path": "Sword19/n1-1-3-0-0.emitter.ogt",
-      "sha256": "21b2b24621010e065bd8a06e7d1a6c1f79a59cbed8d77afd4a60f01ca2830f3f",
+      "sha256": "ea22c549fb1a3298bbd3e8e6de0e7cec9090874d5a97e52a2da35d82fb7e9991",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8619,7 +8630,7 @@
     },
     {
       "path": "Sword19/n1-1-3-0-1.emitter.ogt",
-      "sha256": "0d15b6fe5399638a175c93dc32bd4b2c229b2409d020b2efa88b19fa23e9f284",
+      "sha256": "e0037a9df33d6077af1c1fbf526ef2e703d5863e8f2af9e2c9e56557745969b6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8663,7 +8674,7 @@
     },
     {
       "path": "Sword19/n1-1-3-1-0.emitter.ogt",
-      "sha256": "3c3b36a0328b29bc39625c40ee228ed2b15c4aad490d8454c74dcf3dc41d6b08",
+      "sha256": "7c1a90b12ce61213c178c34111685fcdc4a78f205cb8dfe977790e270ff80d69",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8674,7 +8685,7 @@
     },
     {
       "path": "Sword19/n1-1-3-1.emitter.ogt",
-      "sha256": "8f19b006ebb767b2f368c39e39989e5cca77ec0ee6c25429211013efe9f474e8",
+      "sha256": "a5f0d7c519aa884468d491907ebacb8571aff03f4b768b9af76157d7a841d3f9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8685,7 +8696,7 @@
     },
     {
       "path": "Sword19/n1-1-4-0-0.emitter.ogt",
-      "sha256": "8648c93ff081beeb9ad68323ae79df295e64f20178aaa5dc336eafab40eb408e",
+      "sha256": "6e87ebb7d09899cded644d7fde81444ffbf7cb5a6ec6f38dc4357d09e6d644fb",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8696,7 +8707,7 @@
     },
     {
       "path": "Sword19/n1-1-4-0-1.emitter.ogt",
-      "sha256": "9612aaf8367969e33549899471093e71d137c6f3e9f415f870d957d05a43d185",
+      "sha256": "25a0d78ee174564c861d8ed0df68b9847659a573ab3785c997b49f43b1b8ed0f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8717,19 +8728,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword19.ogt",
-      "sha256": "8bbdcf153351ec3173c08b04763176caa8db46514c35d434d8c0af6d1e73ca78",
+      "path": "Sword2.ogt",
+      "sha256": "4ac658082edf60d1d9132b6716f14705c9e1c9ce78680a9a4c6fdf5ac62bb311",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword19.efkproj"
+        "file": "tktk01/Sword2.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Sword2/n0-0.emitter.ogt",
-      "sha256": "654deb65607ee67ae337f8b1a7a6115035c49fd7e9d1b4a646311cf0b9b7645c",
+      "sha256": "1f40d44d4d9156b0dd36755c2c3dbbfd62afe1d2d312a731a522e828ce9a7f23",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8740,7 +8751,7 @@
     },
     {
       "path": "Sword2/n1-0-0.emitter.ogt",
-      "sha256": "c4472d1efae54707e29d4299ed748ac4e3e83bc8e2424cd0ae448c40a0fac4a3",
+      "sha256": "adc4cab4879e0b3f4dd13345c148121e5a7af78eca40d64d1da800683a97971b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8751,7 +8762,7 @@
     },
     {
       "path": "Sword2/n1-1-0-0.emitter.ogt",
-      "sha256": "fa6164a25ec16129b99506f793869835a907d343125c716170add4f8ac85369f",
+      "sha256": "c7cda9d3fd0539483389e07d9221626a73e1311630f25cd6a88a599cefafeb7e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8772,19 +8783,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword2.ogt",
-      "sha256": "21fccdc1b021b927350522b6228c1e4584b5cf588ee4cb64be35feecd34d36bf",
+      "path": "Sword20.ogt",
+      "sha256": "01f05137a06745e22c061806abfd1e6b0bc08f9925a2b121c1466431fe7f6ec6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword2.efkproj"
+        "file": "tktk01/Sword20.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Sword20/n0-0-0-0.emitter.ogt",
-      "sha256": "c6af179aa220fdf40d7632f8ea19455d780516e9c1728134e82a2e631762665e",
+      "sha256": "9e8958536c4691c7831a5e0afd319586b0c6a12cc5c74260ccb9f8ff36936e1c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8806,7 +8817,7 @@
     },
     {
       "path": "Sword20/n0-0-0-1-0-0.emitter.ogt",
-      "sha256": "de9c73346bb230a50b2c24de84089c37d06f7b49492d95aef7ef6322c0c4dc40",
+      "sha256": "36fe7cbdf12a6f33aef6a022badc9edfb1b8dfabb4ae913f8a2913200c54fba0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8817,7 +8828,7 @@
     },
     {
       "path": "Sword20/n0-0-0-1-0-1.emitter.ogt",
-      "sha256": "cfa764b32bc5661c6d8d56300389158026e3223fe11ae41cd8542d4e6ce7a0cc",
+      "sha256": "66a4514fec1441b302c70717b8fee9cdcc09101d793fbfe56df2dfe22e555b38",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8839,7 +8850,7 @@
     },
     {
       "path": "Sword20/n0-0-0-2-0-0.emitter.ogt",
-      "sha256": "5a9f92f8e58154f17b640dfe259e95f8a4ef13b0ba9e3038d474d4970729a507",
+      "sha256": "a89adb96cc7838fc9667c8735fefdef887324953434de9ea8ea7c38f56752b42",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8850,7 +8861,7 @@
     },
     {
       "path": "Sword20/n0-0-0-2-0.emitter.ogt",
-      "sha256": "a32e5f8d56ca60bbb8b97ff219614376cf31443d36e5b3548526e568c3cbccab",
+      "sha256": "152ccd580fcd0ed345dc4348a4a572eeaf55c8d8269c32cbb1f30b49ba38ae52",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8861,7 +8872,7 @@
     },
     {
       "path": "Sword20/n0-0-0.emitter.ogt",
-      "sha256": "535ed98073d24b2e103ffd7d654152dde6957c6856cf5b3712abeb2f600137bf",
+      "sha256": "24199f74aaeed30fabfd9deaea44c714e75c707196d4ffbc57c5f819fd30649a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8882,12 +8893,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword20.ogt",
-      "sha256": "f6c2b8a30c847c11c78fea2faba916059312ff48d5182679b9f9ba2d2f7cf179",
+      "path": "Sword21.ogt",
+      "sha256": "6792eea35a010667aeeb84f7ebed3deb7ddced82c33facdd85b0c5b1716bdeb4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword20.efkproj"
+        "file": "tktk01/Sword21.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -8916,7 +8927,7 @@
     },
     {
       "path": "Sword21/n0-0-0-2-0-0.emitter.ogt",
-      "sha256": "29a7d8a709d27813302dc20f9c650ea9e24ea24ae567dae50d4df045a104ece5",
+      "sha256": "49a0ef74656d3636cbab163f4eddc790b2150f0857a467d51421b307a165c8e0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8927,7 +8938,7 @@
     },
     {
       "path": "Sword21/n0-0-0-2-0-1.emitter.ogt",
-      "sha256": "613dc2bf0d43ce480d06d180ea66ef06d4546e457c4ae120f8060eb118bad714",
+      "sha256": "26311b88908f54340ae23e1fc0f4d6ac3740c3eaac4cba13cd4e37a03ef332c5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8949,7 +8960,7 @@
     },
     {
       "path": "Sword21/n0-0-0-2-1-0.emitter.ogt",
-      "sha256": "ddc94ace0f12219bbc481d4b578d4779fea6f6b5ee247d67a6b13581acfe83f9",
+      "sha256": "ef00d7b608c2eed2e2b13008e26205084fb41177b12ffb3b3df2decb590a984e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -8960,7 +8971,7 @@
     },
     {
       "path": "Sword21/n0-0-0-2-1.emitter.ogt",
-      "sha256": "ecf720e294ac9bafa530fc86869982a6fac33e67331bab4d8c98e7b83c13e575",
+      "sha256": "746e02e621aa6d857235a9580aec9a9b47078734eecbc9cb0e2fc33a9f770ce5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9015,7 +9026,7 @@
     },
     {
       "path": "Sword21/n0-2-0-0.emitter.ogt",
-      "sha256": "b12f56203a3e011b531e7236c10c2ec34e30f17f9f11b96801f68d96ee9a8c42",
+      "sha256": "7f144b401609219e747b8ab6dddb40bb08d2c24dfdff89aeb022a6e0340aea74",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9026,7 +9037,7 @@
     },
     {
       "path": "Sword21/n0-2-0.emitter.ogt",
-      "sha256": "3188cc6fb64736cf91f156143ab636fc7325d36c93a08706844fd07204321589",
+      "sha256": "d9f7cbda392e1297ba987d685d7335784d04ace5b7672faef673fdbc47398e48",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9037,7 +9048,7 @@
     },
     {
       "path": "Sword21/n0-3-0-0.emitter.ogt",
-      "sha256": "fe358a459b7fb62b6e3cae6266cdc150c254491a9ba62f7f86be07ea93b25239",
+      "sha256": "0aef28803ed561eb97234e79f0e4d979a3d0087ad82ca8588834b3d097065386",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9048,7 +9059,7 @@
     },
     {
       "path": "Sword21/n0-3-0-1.emitter.ogt",
-      "sha256": "43f584202a8701ce6b4c28b48d53a76daf0512e3be60aa46a9eff662060b61c5",
+      "sha256": "aef770921346100528b5a449a332e0ab851285ed8e9d8b0ac4ec0aa476e5f95d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9069,12 +9080,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword21.ogt",
-      "sha256": "fc410e596e188ee9bcaf71f22f16bb175f752673610557d160ca2994651d2709",
+      "path": "Sword22.ogt",
+      "sha256": "7e2752b6191d1018563cfe19ff73d318dc1fb827d2a732c1ccac3f9dd445e160",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword21.efkproj"
+        "file": "tktk01/Sword22.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -9125,7 +9136,7 @@
     },
     {
       "path": "Sword22/n0-1-0-0-0.emitter.ogt",
-      "sha256": "db8332a946b71b6b8e3c4a6f743e209400b5c080bd76f0f204541bdc1fd4645a",
+      "sha256": "efc6486bf2d8690ac44658465f51fb0140c083996165ad59cd711e742321af9b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9136,7 +9147,7 @@
     },
     {
       "path": "Sword22/n0-1-0-0-1.emitter.ogt",
-      "sha256": "4a207a85c31117366bb064ccd53a327b2d7da37d0f17b775edc79540efbdae93",
+      "sha256": "788bfbaf2451d3c46ea8c4d328cf6e71d640e98542bc841acf0751ed4b3cc53e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9158,7 +9169,7 @@
     },
     {
       "path": "Sword22/n0-1-1-0.emitter.ogt",
-      "sha256": "63f14394b777789a75a7fe4c87da816c38288b9757a25be303ac4e9e78147f08",
+      "sha256": "7a7f043cbc715d307fe5cb2fdd2cc1b06b57f4cf43634105db313fcb76190422",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9169,7 +9180,7 @@
     },
     {
       "path": "Sword22/n0-1-1-1.emitter.ogt",
-      "sha256": "d2a80c6afc93d2d5f071d8b5cde4be2cce6c83abe61846fe8b09eb130a739da8",
+      "sha256": "553f0327c980e38f3259e8699492d64a94ce8500eb8363dcb4072df7245f62db",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9180,7 +9191,7 @@
     },
     {
       "path": "Sword22/n0-1-2-0.emitter.ogt",
-      "sha256": "364d2310c21ec415001fa0121fc12e72c6da345224954bc59cb41f6a7bf91a2e",
+      "sha256": "d619ae2e9a0c747a87a8bcf9c19cf1e3e7e16118be6b207d758487c67a9c7501",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9191,7 +9202,7 @@
     },
     {
       "path": "Sword22/n0-1-2-1.emitter.ogt",
-      "sha256": "b8008dd7cbd0867801e0593421876f1a8df284e358984f2efe9c5b6b9f9e3a60",
+      "sha256": "c87106c7e1426084ed6ce744642a5cb1a9b8be681ff6b880d864fc17907fce5a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9202,7 +9213,7 @@
     },
     {
       "path": "Sword22/n0-1-3-0-0.emitter.ogt",
-      "sha256": "7855f8dd195fec29b5df196e612e900c6a07d845c50d5782460a7ab49185cdc4",
+      "sha256": "84d7ec17b8367816b70184a4249927b478c2f567f03de0c98fd6a3960fe85ab9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9213,7 +9224,7 @@
     },
     {
       "path": "Sword22/n0-1-3-0-1.emitter.ogt",
-      "sha256": "4ea49988c98e05bd7a1540347b0d98e28be09ccb885d4c66822ae17cbad6108d",
+      "sha256": "f9df6d3cd709791db145f44b7919ce19222a36aeb43b0a6747a609ac7c8fd90d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9234,19 +9245,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword22.ogt",
-      "sha256": "eb79db193436ee747ba7ba1af5c7ff1f507fd3264f72ea6427f45f7fd6ccbce1",
+      "path": "Sword3.ogt",
+      "sha256": "78b75c968c605404418da547e318ed08a364c3d37fed2b5ea64c946e10ec4ef4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword22.efkproj"
+        "file": "tktk01/Sword3.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Sword3/n0-0.emitter.ogt",
-      "sha256": "7bc3ac509077725c2b91e7e2829efae8a58c439a8a1a971c3c6e36076eb1ecca",
+      "sha256": "89e28b16d789bf429f49dd598d06a5f55bfa4f139e94c9b6faf6273f1da79bd8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9257,7 +9268,7 @@
     },
     {
       "path": "Sword3/n0-1.emitter.ogt",
-      "sha256": "6a7d5db8d50e50992d7d316bdd963861252f51d76a96d41558840bd059e2ae87",
+      "sha256": "7684cc1047796a1589eb320bc748fd06c5acbc8be66eb07ff83cf7dd3e988216",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9268,7 +9279,7 @@
     },
     {
       "path": "Sword3/n0-2-0.emitter.ogt",
-      "sha256": "a1ae875ae50bf76a34b76150e8dd2da8eabacedf2716aab7bd2f05447559da37",
+      "sha256": "95ad83c9d8f3c63f23d569bf402eb2e83fa45180619bc523c9b26d5045f05e82",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9279,7 +9290,7 @@
     },
     {
       "path": "Sword3/n1-0.emitter.ogt",
-      "sha256": "401cfa9ff3ac8f0766c38603dde6a7b69f171d78b90edbd0ed037a97143028f7",
+      "sha256": "89e63f44db6ec62b61771c608a82b7180ae43b0e134b75c1ecac42cfcd066fd0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9290,7 +9301,7 @@
     },
     {
       "path": "Sword3/n1-1-0-0.emitter.ogt",
-      "sha256": "df421f5913a6036c461dcd9c89bbae215a2da17344e72cfa33b9f5584d54529b",
+      "sha256": "200c121658376611a9ebdd2cd573675d6932b80027f90ed7ae23ae491f065cc8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9301,7 +9312,7 @@
     },
     {
       "path": "Sword3/n1-2.emitter.ogt",
-      "sha256": "6652dbd4ec3756c3ddc58dfa64e235b9e16143c4adec87e8dc0b7a9b5de0133e",
+      "sha256": "8a1df0ffd0d05933d5d672b4e4a04ea1833aa7259861106bc2bea94cdf9ecd36",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9312,7 +9323,7 @@
     },
     {
       "path": "Sword3/n1-3.emitter.ogt",
-      "sha256": "3c610e4f971f3bfc8d347c16af57e1ef51f71aeb41f36c2eeb01f3fc78778b4c",
+      "sha256": "b5606101a119ad6f81a7c2fc20f7ff4b9eb214b49fdb8a4e4c6b34e4d7e944df",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9323,7 +9334,7 @@
     },
     {
       "path": "Sword3/n1-4.emitter.ogt",
-      "sha256": "848b40499216e7fbb7b2d82b991eeec8b8912148ceaed99b4af705164a277ca2",
+      "sha256": "cf0584cbc7f6eab4f605e797f59f1221ad8ba0cd0db9a4acd8aa35138b257a5e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9334,7 +9345,7 @@
     },
     {
       "path": "Sword3/n1-5-0.emitter.ogt",
-      "sha256": "327db8885ef727d499f67d315df8fefb315cde9942db433db8738aa7aca60767",
+      "sha256": "aa65f57734fb0ecf87417e21d5e1dfe3a033d5c0107b8d8a6fe576693a26e7b0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9344,19 +9355,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword3.ogt",
-      "sha256": "16c5f4522cd65950ed407cb87a66e7da2f896082ccdd38682f4263539ad81c74",
+      "path": "Sword4.ogt",
+      "sha256": "f05d791e22fafd67db16d29c778b8906ca4ba083069fe3b68051f8b2e135ea28",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword3.efkproj"
+        "file": "tktk01/Sword4.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Sword4/n0-0.emitter.ogt",
-      "sha256": "dd36ed8fcf1251d92434a65f4e1a90dd1b91b6d3bbda98ca37147cf84ee2d3a5",
+      "sha256": "fbfe43bd8012e19208f2bd0e05e7b9deba1dc51fa8a674177d42e602739ee521",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9367,7 +9378,7 @@
     },
     {
       "path": "Sword4/n1-0.emitter.ogt",
-      "sha256": "656865f59f126e78b63c94ddacb086640f703b972a2ea5be5aabd3d8d1dbc054",
+      "sha256": "61dd22e3197d29ecf8fe1792bf6adc289f9032a10c7d923c099ca18bc9433e28",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9400,7 +9411,7 @@
     },
     {
       "path": "Sword4/n4-0.emitter.ogt",
-      "sha256": "69e0aaa44f8737be1cbdd16213dfe577ee55f3dd0195c985b9d20ecd40094126",
+      "sha256": "fb0d73a55cbfcfd984bd6b2489506c2f7322d68932b67c3d1494ca32adcd8edc",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9433,7 +9444,7 @@
     },
     {
       "path": "Sword4/n7-0.emitter.ogt",
-      "sha256": "f19ff52de227a8c9d071cbc5657f51b287bf99b1ab4390180b2d7b36776bbd1b",
+      "sha256": "cf675d01f1603131daebad8960c4a2c23a7a381247379c637df35882e6bb757c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9465,12 +9476,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword4.ogt",
-      "sha256": "0e20ddb2992b3168721cf9d5b9bfcc748231e38cd2b16ecc2688072f81a867ae",
+      "path": "Sword5.ogt",
+      "sha256": "0f13a29de10b3918bbeaa36c065ed76c57a43fd3e57b49086253db1a8eb1ee2a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword4.efkproj"
+        "file": "tktk01/Sword5.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -9488,7 +9499,7 @@
     },
     {
       "path": "Sword5/n1-0-0.emitter.ogt",
-      "sha256": "df893d3cd195bda3e8dfddcf79bb00a5841aee6499823de3b96deae70b65c898",
+      "sha256": "2a3c25cedc0d7de887060a2c31367bb38debec0cb2579bd8b20b609a256d23d5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9509,19 +9520,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword5.ogt",
-      "sha256": "8a07a84f2ef132ffe21a77d30d9269fd92eabd12530a1d0108b4fa48c7a45aef",
+      "path": "Sword6.ogt",
+      "sha256": "5a4785f83bf39da9e20abbdaf6992ea6b3c8fe24fb85cf0b905737a523da7103",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword5.efkproj"
+        "file": "tktk01/Sword6.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Sword6/n0-0.emitter.ogt",
-      "sha256": "0238e4cb2011cd9ed146b424d65f56f3edeb9ca4057a9e4cf6f706f446c20417",
+      "sha256": "9420988da643d876605e3bf08756370df97c16e4df1695fe848496b0506ef0f0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9543,7 +9554,7 @@
     },
     {
       "path": "Sword6/n0.emitter.ogt",
-      "sha256": "f5a00fd93074be9b55bc507700b74237346520905f4cce840d0591518551fbe6",
+      "sha256": "0699bd33ba06f56d2904ac9ae94e2b86499d23b733e95ddf0e454cb78b22b526",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9565,7 +9576,7 @@
     },
     {
       "path": "Sword6/n2-0.emitter.ogt",
-      "sha256": "1db4069f28a0f1f8d804b24fa05825162ae084adbed3b0eb2f66a1a36e1a2458",
+      "sha256": "c7e904905a72c52fb5f8a2b2ff45e0a41a7f3bf720f36653e41f54761a96fa53",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9575,19 +9586,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword6.ogt",
-      "sha256": "3e2887ae3f7bd9744090fd2c012c6db6c9e7f07707912dd9b9b1392099c51932",
+      "path": "Sword7.ogt",
+      "sha256": "003b1b5afb996c7260ec42bf409e5225dd9aeeba2ea79abc12d2b72a4b0f40b0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword6.efkproj"
+        "file": "tktk01/Sword7.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Sword7/n0.emitter.ogt",
-      "sha256": "826923b4ea008ad50e1089c72bc8d908fe9c3fa02016a19434d198206f863ab3",
+      "sha256": "c9a7ebb8f84db2d3f1edd2d97b84224768890f45931f589ead9e05d542d0fa6d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9598,7 +9609,7 @@
     },
     {
       "path": "Sword7/n1.emitter.ogt",
-      "sha256": "d8b9fb5b599665f64070eabf61b53ef56d1a989bb1558d23b86663d31b4bf219",
+      "sha256": "4a7887b4872eb3e14113f1da4319b499ce3cc6a4dfa8fdc5364f42ee9888af99",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9609,7 +9620,7 @@
     },
     {
       "path": "Sword7/n2.emitter.ogt",
-      "sha256": "98086352e0b5653e6bc62747a215b30817ba5c3223a04adf0994c141de6346d9",
+      "sha256": "50d4db4fbfec3dbeb22ecd65969402390366f27763e4c20cd0e52b8ca924d7f6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9630,12 +9641,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword7.ogt",
-      "sha256": "403315476b5fbd8f10c4cfdbb2f662e7b456365224e5f59b779399cfd2d31461",
+      "path": "Sword8.ogt",
+      "sha256": "c7e6c7a6d26ec02f6bcd55e20adc37f39fe2141dc106f4a5d0a37db41a196d05",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword7.efkproj"
+        "file": "tktk01/Sword8.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -9718,19 +9729,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword8.ogt",
-      "sha256": "68ffade381bee681e8efbc8b1189a8a2ed723cf1a64a441e7ccc3444d7636af0",
+      "path": "Sword9.ogt",
+      "sha256": "f230374a94674c8d7c1f15d1054834ddb75fa2d3d8eeab13ad8e99f2383f0466",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword8.efkproj"
+        "file": "tktk01/Sword9.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Sword9/n0.emitter.ogt",
-      "sha256": "b6369ef698780704f4531e32e4f63f3be0aae282d147541aee24a49da4a59b95",
+      "sha256": "9fd6fd1f6b2afbd4e973b4cf4d5c54140d7cea86607ccfa22dee06ae694715f9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9752,7 +9763,7 @@
     },
     {
       "path": "Sword9/n2.emitter.ogt",
-      "sha256": "8f09df1ce73ce3698a210e6e098fdcaf0351594d16a1d4e7578ccef86d489c83",
+      "sha256": "f410afb254d27d162b81344109317dd2bb7058fa95b45ff692b7f68a11bbb764",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9763,7 +9774,7 @@
     },
     {
       "path": "Sword9/n3-0.emitter.ogt",
-      "sha256": "1ee1851ba30c1938b1770d3a0f8bdb6657214fb0001c00a6304a6bf433ed72ec",
+      "sha256": "0bafe7cdd459a35ed5910f7e629c6d3a8403d9d5a4f3c81c56ced8ab9eba44d8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9774,7 +9785,7 @@
     },
     {
       "path": "Sword9/n4-0.emitter.ogt",
-      "sha256": "228e04bf18194975bb8da09b3f1488c30ab0a2226f989070ecf352b44263b1cd",
+      "sha256": "aec040c2bc20fe8eac41f193e55cafd45841b99887136969647d67808f251acf",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9785,7 +9796,7 @@
     },
     {
       "path": "Sword9/n5-0.emitter.ogt",
-      "sha256": "051f7e33ade9063a015a95657df90b67a053028014f523558e82887c19ad860f",
+      "sha256": "8d75d26f2ffd2d261177bb4539b2b9aa6f5a407f4d0f2d053480f0da3e383726",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9817,19 +9828,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword9.ogt",
-      "sha256": "e563ae5ea845d8a3e0c7595da53e2a3c9a605e7400143d1f49817c1a5360cbf6",
+      "path": "Wind1.ogt",
+      "sha256": "d7504277fcaa032ca89f5719a26b6cc493450774cd26dc8d0bf198553ef04fed",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Sword9.efkproj"
+        "file": "tktk01/Wind1.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Wind1/n0-0.emitter.ogt",
-      "sha256": "52a45bdf0025a4c0de161a5f441afd1fdf46aa419aa66415d0857f8e26145614",
+      "sha256": "b445eb608b9a4cf3831f027bd39b49d73fad5a2d4767e03bf78bee924cd08c85",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9851,7 +9862,7 @@
     },
     {
       "path": "Wind1/n1-0.emitter.ogt",
-      "sha256": "0412e75962383ebd62b582bec783553b9d86ab9a3162673457a40c6ea52945dd",
+      "sha256": "522171c70759b3dd74faf789ed3624a944c6629b29dc90abac200e27a33cad16",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9872,12 +9883,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Wind1.ogt",
-      "sha256": "5aa6daa41186638c4cd7640c67a7a28ff1caae1af1b620bfd7e5600c62cea2a5",
+      "path": "Wind2.ogt",
+      "sha256": "23c98419660a5a0604185817ece552ca74d8b990c1798558e80e57cc9d1c32eb",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Wind1.efkproj"
+        "file": "tktk01/Wind2.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -9906,7 +9917,7 @@
     },
     {
       "path": "Wind2/n1-0-0.emitter.ogt",
-      "sha256": "9a13e5a91e64f87d577de0bf02ac0533ffe0d4b78de2b273713eb9f532666e74",
+      "sha256": "6ad0ecd30c00daf504148db6d9b7a2bde52b11998414dab45128e0d53576e369",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9928,7 +9939,7 @@
     },
     {
       "path": "Wind2/n1-1-0.emitter.ogt",
-      "sha256": "cf2361d3a1677af30d70ef3eac85b2aa02cd158813265093d23776983f04ba3e",
+      "sha256": "51b5efab6165c7d9a61c500226d4e6d83e6d49eb1d40616012a28771c22951af",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9950,7 +9961,7 @@
     },
     {
       "path": "Wind2/n1-1-1.emitter.ogt",
-      "sha256": "46c97d9dc8d0714bdd15a406315f0c95aa5104693b173cd9ab48c4d2c06d625a",
+      "sha256": "04f5c2065b5f619bf43df21a467827e6995357a9a0bfa34443a5285d3fb7bad0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9972,7 +9983,7 @@
     },
     {
       "path": "Wind2/n1-3.emitter.ogt",
-      "sha256": "e88e4b9f64837f7afb1000a19d9b42856546382dc87df2876943bfc980f8605c",
+      "sha256": "a8d0c329a9d64e9d85466dcda5cce5d3047012f232e7d9d5706129dee802820a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9983,7 +9994,7 @@
     },
     {
       "path": "Wind2/n1-4-0.emitter.ogt",
-      "sha256": "4ec9d4d142904a362eab40a2006b006720fabdf63ab6bcc014f09ee47bf8f453",
+      "sha256": "ba79825a841838d7476e85950ebdd3e292666443b665b5dad9d5052eeb4cdb83",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -9994,7 +10005,7 @@
     },
     {
       "path": "Wind2/n1-5-0-0.emitter.ogt",
-      "sha256": "bb40370685afdcffbd531f8b5e1de9477806727676454b98ec3475da82e0033b",
+      "sha256": "24f48a675885c858581989ef06cd02bc0d2af2bc00908da29a39311fc6d90798",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10005,18 +10016,7 @@
     },
     {
       "path": "Wind2/n1-5-1-0.emitter.ogt",
-      "sha256": "c9528035f71f05bfc064816d94d9f8f80cea7d37b9cc044cffb025efec11f0ac",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/Wind2.efkproj"
-      },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Wind2.ogt",
-      "sha256": "24652854ff1afc8a5427b0a7987d820788aa1ff9d3e7a237c77bf3e805182663",
+      "sha256": "371415563f034bb574fcde29adf2652f230b6be1402fb3bdf4961926255b9d5d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10036,8 +10036,19 @@
       "derived": "authored"
     },
     {
+      "path": "hozyo1.ogt",
+      "sha256": "0a00b95217da0a8f991ffb019d2082d3e56856d175a157983fbc6bc2879f31a0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/hozyo1.efkproj"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "hozyo1/n0-0-0-0.emitter.ogt",
-      "sha256": "f45021ca010d81d197a639daa10da3cc72976a62cbdcf409ed93e7c430fcfe3a",
+      "sha256": "88e59a5d1b8391cd3d217adc73f2bc1284d6443bc1a520dc3dc6fd447d3b38c7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10081,7 +10092,7 @@
     },
     {
       "path": "hozyo1/n0-1-0-0.emitter.ogt",
-      "sha256": "d08336730e9c967e5665490c170b3c4e325a8f1c11b85917d7b3e0f1ed64acce",
+      "sha256": "f37f4d43d52e9aadd0c28c07a0b93589e7d6f90cba9070236d602b742ed78dbd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10147,7 +10158,7 @@
     },
     {
       "path": "hozyo1/n3-0.emitter.ogt",
-      "sha256": "4115e77d18a435cb435241ae3590ce78a7cc5a9a7111c2748fb89a4cbf956ae0",
+      "sha256": "8d694b7618a4993f43e69456bbff15dde2a1ba5766d6481f43ce3e31092a48ca",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10157,12 +10168,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "hozyo1.ogt",
-      "sha256": "516a3aae8fec511ebb1a674677f8ab13f6c91a606468e1de5faee8b4fe60abde",
+      "path": "hozyo2.ogt",
+      "sha256": "8a7366bc48b3454952965b6edbe952f7273142020b599a01f00b7fb293bd1b72",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/hozyo1.efkproj"
+        "file": "tktk01/hozyo2.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -10366,12 +10377,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "hozyo2.ogt",
-      "sha256": "d90da95b9273b5aa4f56969a7f56ac330484ed95751f8f218e9358bbaf61536c",
+      "path": "hozyo3.ogt",
+      "sha256": "3b84fb2248017aed009938915f8ad72f8935c0fa8d0893b56aab7128f5605817",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/hozyo2.efkproj"
+        "file": "tktk01/hozyo3.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -10389,7 +10400,7 @@
     },
     {
       "path": "hozyo3/n0-0-1.emitter.ogt",
-      "sha256": "644add5b44865743b7ca727febc1c9118bed816ec6362923f54082f8cb4ba431",
+      "sha256": "afd5306033e06e58a3556710a0609b035415821d3dab14301b0bddfb094ea72a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10400,7 +10411,7 @@
     },
     {
       "path": "hozyo3/n0-0.emitter.ogt",
-      "sha256": "556e9c1a85bc172e2c2574a4962c1ff7f1856115ebb1208bd2799ea910a3db8e",
+      "sha256": "ddb53258f64c18c0af6840e9e795cf2c1878fec36fe4e4d60d9af4371643190e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10509,12 +10520,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "hozyo3.ogt",
-      "sha256": "abfe60249393a27cb94c5ebd7f8c43cc936a8cd076e1563f4cc6779585a4bf64",
+      "path": "hozyo4.ogt",
+      "sha256": "09691d0e62283058d2195333008ce1b987cb9a6e1c5557195abc959eeb5cef91",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/hozyo3.efkproj"
+        "file": "tktk01/hozyo4.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
@@ -10531,15 +10542,15 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "hozyo4/n0-0-1.effect.ogt",
-      "sha256": "ae0d1d652068cadf1eed95ae4d0f61a374f19ae3cbc714b510469d0a7ba7b69e",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import",
+      "path": "hozyo4/n0-0-1.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
         "file": "tktk01/hozyo4.efkproj"
       },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
+      "sha256": "ae0d1d652068cadf1eed95ae4d0f61a374f19ae3cbc714b510469d0a7ba7b69e"
     },
     {
       "path": "hozyo4/n0-0-2-0.emitter.ogt",
@@ -10575,15 +10586,15 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "hozyo4/n1-0-1.effect.ogt",
-      "sha256": "6aa30ec8a0a1d8eb933e42cad48be49aead7a07476fcaf71e68cb691e34de443",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import",
+      "path": "hozyo4/n1-0-1.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
         "file": "tktk01/hozyo4.efkproj"
       },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
+      "sha256": "6aa30ec8a0a1d8eb933e42cad48be49aead7a07476fcaf71e68cb691e34de443"
     },
     {
       "path": "hozyo4/n1-0-2-0.emitter.ogt",
@@ -10620,7 +10631,7 @@
     },
     {
       "path": "hozyo4/n3-0.emitter.ogt",
-      "sha256": "8270ed91360a850cad390d77a2581c4606d3f6fbb1f09e7b36b591b7820496ac",
+      "sha256": "cc9fcd464ab879adf6e07a034ceb77691538617a9c7580515258bae8a6658d93",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10631,7 +10642,7 @@
     },
     {
       "path": "hozyo4/n3.emitter.ogt",
-      "sha256": "a0c4b3d97292a53f52e8ad9dc93750e8e70f2557c7a5bc083bfc9acbaf7d285f",
+      "sha256": "ec0114b6676f0f6b80cbc4cfbb42e38f74dc649eeee31b6ebfce4158611fa5bd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10652,19 +10663,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "hozyo4.ogt",
-      "sha256": "0db02e91fa0b50157c48bc95a55891c8d595f1549eb63e29ffd82bea31fc6ec5",
+      "path": "hozyo5.ogt",
+      "sha256": "693efad988e01b91109cd3da5c57a872ee518a1a4c567ea31cfbcaf1b9820dc7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/hozyo4.efkproj"
+        "file": "tktk01/hozyo5.efkproj"
       },
       "credit": "Effekseer and tktk01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "hozyo5/n0-0-0.emitter.ogt",
-      "sha256": "1c058bdabf2c324a0ba283d72c4d075af8cee403005b61dce2beb4b58151bebb",
+      "sha256": "b478fabc8b457b3b7daf216d90524383be06043b302fd4d77fec8b6566ac7613",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10674,19 +10685,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "hozyo5/n0-0-1.effect.ogt",
-      "sha256": "2936fc3172bcaad4c1df7264ade9f4e54885b375422ebce5fd1166a9c725b4f8",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import",
+      "path": "hozyo5/n0-0-1.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
         "file": "tktk01/hozyo5.efkproj"
       },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
+      "sha256": "2936fc3172bcaad4c1df7264ade9f4e54885b375422ebce5fd1166a9c725b4f8"
     },
     {
       "path": "hozyo5/n0-0-2-0.emitter.ogt",
-      "sha256": "b603bf45b6397ab1b8c4cddc9c16ca71c7818f2dade5b301ce03e6fc83f1e09e",
+      "sha256": "327a03f0c8cc91b003efd985ce426c4ae663de0adaaa0fe43fc16e818ce36dcc",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10708,7 +10719,7 @@
     },
     {
       "path": "hozyo5/n1-0-0.emitter.ogt",
-      "sha256": "63db87075951a5a0eddbfd54f42da12e94f461cc8c479e4639b82ec850aaaa1a",
+      "sha256": "addab9f940bef315872376bef57d1af43c3b79331a01837f3eec41af3b4dff3d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10718,15 +10729,15 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "hozyo5/n1-0-1.effect.ogt",
-      "sha256": "cfacdc0e50f36deda8ab5b799a6a91727b313d5462c1c933f0a9393db381e17d",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and tktk01",
+      "derived": "converted by og vfx import",
+      "path": "hozyo5/n1-0-1.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
         "file": "tktk01/hozyo5.efkproj"
       },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
+      "sha256": "cfacdc0e50f36deda8ab5b799a6a91727b313d5462c1c933f0a9393db381e17d"
     },
     {
       "path": "hozyo5/n1-0.emitter.ogt",
@@ -10752,7 +10763,7 @@
     },
     {
       "path": "hozyo5/n3-0.emitter.ogt",
-      "sha256": "46b980be4029cb1f5a9145a363927d8d573b45555ec534d9cf6db7311f19a0c6",
+      "sha256": "7a260d27056e47e1ddb5cbe5e2e662187e3236b3c1ef33ca01b87ba117e3ac5c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10763,7 +10774,7 @@
     },
     {
       "path": "hozyo5/n3.emitter.ogt",
-      "sha256": "93a438429842e80dd284f5d086adb1eba5461e2a3c843564ed629cd5e71413ec",
+      "sha256": "fb080d95b89faeb9709fa5acf1f3eba5809d607ff85491cd9bb8665d83499e88",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10774,7 +10785,7 @@
     },
     {
       "path": "hozyo5/n4-0.emitter.ogt",
-      "sha256": "77adc9526211bbf766362354e068c9db69b148bc6bce608229a7f4c07f642811",
+      "sha256": "22e7183d7e321bb589a04dd1bb661053f941521e4144ddd4fbfd6f5ea8bf55b4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10785,7 +10796,7 @@
     },
     {
       "path": "hozyo5/n4-1.emitter.ogt",
-      "sha256": "f3125ae0e1eb6cb148e23afc50cad4f8efe9bcbf553cc4348dbc83931e82215a",
+      "sha256": "752990577937ba52a5a33435dd8e3d705aa38d9de38d8cc10a5da505c44ae809",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -10796,18 +10807,7 @@
     },
     {
       "path": "hozyo5/n4-2.emitter.ogt",
-      "sha256": "6e8f0afd3336bde942f79ec60509fde2e430fb5dcf2467491e1960788955f48a",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
-        "file": "tktk01/hozyo5.efkproj"
-      },
-      "credit": "Effekseer and tktk01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "hozyo5.ogt",
-      "sha256": "c4f2fe9f90233818e306a77f6b397d15a038a09c081ba13ac82ccca8f28f97eb",
+      "sha256": "a7e318c927f9e85f7778a0f0c1480e285430e3ee45ec3b5cae162548bbe14671",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
@@ -11286,7 +11286,7 @@
       "title": "Arrow 1",
       "loop": false,
       "durationSeconds": 0.454,
-      "impact": false,
+      "impact": true,
       "category": "magic-projectile",
       "keywords": [
         "effekseer",
@@ -11300,7 +11300,7 @@
       "title": "Arrow 2",
       "loop": false,
       "durationSeconds": 2.092,
-      "impact": false,
+      "impact": true,
       "category": "magic-projectile",
       "keywords": [
         "effekseer",
@@ -11314,7 +11314,7 @@
       "title": "Blow 1",
       "loop": false,
       "durationSeconds": 0.775,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11328,7 +11328,7 @@
       "title": "Blow 10",
       "loop": false,
       "durationSeconds": 0.867,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11342,7 +11342,7 @@
       "title": "Blow 11",
       "loop": false,
       "durationSeconds": 0.65,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11356,7 +11356,7 @@
       "title": "Blow 12",
       "loop": false,
       "durationSeconds": 1.816,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11370,7 +11370,7 @@
       "title": "Blow 13",
       "loop": false,
       "durationSeconds": 0.832,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11384,7 +11384,7 @@
       "title": "Blow 14",
       "loop": false,
       "durationSeconds": 1.4,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11398,7 +11398,7 @@
       "title": "Blow 15",
       "loop": false,
       "durationSeconds": 0.908,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11412,7 +11412,7 @@
       "title": "Blow 2",
       "loop": false,
       "durationSeconds": 0.533,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11426,7 +11426,7 @@
       "title": "Blow 3",
       "loop": false,
       "durationSeconds": 0.583,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11440,7 +11440,7 @@
       "title": "Blow 4",
       "loop": false,
       "durationSeconds": 0.845,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11454,7 +11454,7 @@
       "title": "Blow 5",
       "loop": false,
       "durationSeconds": 1.775,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11468,7 +11468,7 @@
       "title": "Blow 6",
       "loop": false,
       "durationSeconds": 2.367,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11482,7 +11482,7 @@
       "title": "Blow 7",
       "loop": false,
       "durationSeconds": 1.678,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11496,7 +11496,7 @@
       "title": "Blow 8",
       "loop": false,
       "durationSeconds": 3.017,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11510,7 +11510,7 @@
       "title": "Blow 9",
       "loop": false,
       "durationSeconds": 1.667,
-      "impact": false,
+      "impact": true,
       "category": "hit-spark",
       "keywords": [
         "effekseer",
@@ -11524,7 +11524,7 @@
       "title": "Cure 1",
       "loop": false,
       "durationSeconds": 1.275,
-      "impact": false,
+      "impact": true,
       "category": "heal",
       "keywords": [
         "effekseer",
@@ -11540,7 +11540,7 @@
       "title": "Cure 2",
       "loop": false,
       "durationSeconds": 1.779,
-      "impact": false,
+      "impact": true,
       "category": "heal",
       "keywords": [
         "effekseer",
@@ -11556,7 +11556,7 @@
       "title": "Cure 3",
       "loop": false,
       "durationSeconds": 1.252,
-      "impact": false,
+      "impact": true,
       "category": "heal",
       "keywords": [
         "effekseer",
@@ -11572,7 +11572,7 @@
       "title": "Cure 4",
       "loop": false,
       "durationSeconds": 0.967,
-      "impact": false,
+      "impact": true,
       "category": "heal",
       "keywords": [
         "effekseer",
@@ -11588,7 +11588,7 @@
       "title": "Cure 5",
       "loop": false,
       "durationSeconds": 1.433,
-      "impact": false,
+      "impact": true,
       "category": "heal",
       "keywords": [
         "effekseer",
@@ -11604,7 +11604,7 @@
       "title": "Cure 6",
       "loop": false,
       "durationSeconds": 1.251,
-      "impact": false,
+      "impact": true,
       "category": "heal",
       "keywords": [
         "effekseer",
@@ -11620,7 +11620,7 @@
       "title": "Cure 7",
       "loop": false,
       "durationSeconds": 2.6,
-      "impact": false,
+      "impact": true,
       "category": "heal",
       "keywords": [
         "effekseer",
@@ -11636,7 +11636,7 @@
       "title": "Dark 1",
       "loop": false,
       "durationSeconds": 1.617,
-      "impact": false,
+      "impact": true,
       "category": "magic-impact",
       "keywords": [
         "dark",
@@ -11652,7 +11652,7 @@
       "title": "Dark 2",
       "loop": false,
       "durationSeconds": 1.7,
-      "impact": false,
+      "impact": true,
       "category": "magic-impact",
       "keywords": [
         "dark",
@@ -11668,7 +11668,7 @@
       "title": "Dark 3",
       "loop": false,
       "durationSeconds": 3.333,
-      "impact": false,
+      "impact": true,
       "category": "magic-impact",
       "keywords": [
         "dark",
@@ -11699,7 +11699,7 @@
       "title": "Fire 2",
       "loop": false,
       "durationSeconds": 3.013,
-      "impact": false,
+      "impact": true,
       "category": "fire",
       "keywords": [
         "effekseer",
@@ -11729,7 +11729,7 @@
       "title": "Fire 4",
       "loop": false,
       "durationSeconds": 2.425,
-      "impact": false,
+      "impact": true,
       "category": "fire",
       "keywords": [
         "effekseer",
@@ -11744,7 +11744,7 @@
       "title": "Fire 5",
       "loop": false,
       "durationSeconds": 1.442,
-      "impact": false,
+      "impact": true,
       "category": "fire",
       "keywords": [
         "effekseer",
@@ -11759,7 +11759,7 @@
       "title": "Fire 6",
       "loop": false,
       "durationSeconds": 1.251,
-      "impact": false,
+      "impact": true,
       "category": "fire",
       "keywords": [
         "effekseer",
@@ -11789,7 +11789,7 @@
       "title": "Fire 8",
       "loop": false,
       "durationSeconds": 1.925,
-      "impact": false,
+      "impact": true,
       "category": "fire",
       "keywords": [
         "effekseer",
@@ -11804,7 +11804,7 @@
       "title": "Light 1",
       "loop": false,
       "durationSeconds": 2.667,
-      "impact": false,
+      "impact": true,
       "category": "magic-impact",
       "keywords": [
         "effekseer",
@@ -11820,7 +11820,7 @@
       "title": "Light 2",
       "loop": false,
       "durationSeconds": 0.55,
-      "impact": false,
+      "impact": true,
       "category": "magic-impact",
       "keywords": [
         "effekseer",
@@ -11836,7 +11836,7 @@
       "title": "Light 3",
       "loop": false,
       "durationSeconds": 1,
-      "impact": false,
+      "impact": true,
       "category": "magic-impact",
       "keywords": [
         "effekseer",
@@ -11852,7 +11852,7 @@
       "title": "Light 4",
       "loop": false,
       "durationSeconds": 2.092,
-      "impact": false,
+      "impact": true,
       "category": "magic-impact",
       "keywords": [
         "effekseer",
@@ -11868,7 +11868,7 @@
       "title": "Magic 1",
       "loop": false,
       "durationSeconds": 1,
-      "impact": false,
+      "impact": true,
       "category": "magic-impact",
       "keywords": [
         "effekseer",
@@ -11882,7 +11882,7 @@
       "title": "Magic 2",
       "loop": false,
       "durationSeconds": 2.471,
-      "impact": false,
+      "impact": true,
       "category": "magic-impact",
       "keywords": [
         "effekseer",
@@ -11912,7 +11912,7 @@
       "title": "Sword 1",
       "loop": false,
       "durationSeconds": 0.8,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -11926,7 +11926,7 @@
       "title": "Sword 10",
       "loop": false,
       "durationSeconds": 0.837,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -11940,7 +11940,7 @@
       "title": "Sword 11",
       "loop": false,
       "durationSeconds": 1.283,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -11954,7 +11954,7 @@
       "title": "Sword 12",
       "loop": false,
       "durationSeconds": 0.797,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -11968,7 +11968,7 @@
       "title": "Sword 13",
       "loop": false,
       "durationSeconds": 2.592,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -11982,7 +11982,7 @@
       "title": "Sword 14",
       "loop": false,
       "durationSeconds": 2.302,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -11996,7 +11996,7 @@
       "title": "Sword 15",
       "loop": false,
       "durationSeconds": 2.275,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12024,7 +12024,7 @@
       "title": "Sword 17",
       "loop": false,
       "durationSeconds": 1.068,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12038,7 +12038,7 @@
       "title": "Sword 18",
       "loop": false,
       "durationSeconds": 2.933,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12052,7 +12052,7 @@
       "title": "Sword 19",
       "loop": false,
       "durationSeconds": 2.49,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12066,7 +12066,7 @@
       "title": "Sword 2",
       "loop": false,
       "durationSeconds": 0.698,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12080,7 +12080,7 @@
       "title": "Sword 20",
       "loop": false,
       "durationSeconds": 2.867,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12094,7 +12094,7 @@
       "title": "Sword 21",
       "loop": false,
       "durationSeconds": 3.333,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12108,7 +12108,7 @@
       "title": "Sword 22",
       "loop": false,
       "durationSeconds": 1.983,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12122,7 +12122,7 @@
       "title": "Sword 3",
       "loop": false,
       "durationSeconds": 1.032,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12136,7 +12136,7 @@
       "title": "Sword 4",
       "loop": false,
       "durationSeconds": 1.333,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12150,7 +12150,7 @@
       "title": "Sword 5",
       "loop": false,
       "durationSeconds": 0.6,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12164,7 +12164,7 @@
       "title": "Sword 6",
       "loop": false,
       "durationSeconds": 0.682,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12178,7 +12178,7 @@
       "title": "Sword 7",
       "loop": false,
       "durationSeconds": 0.583,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12192,7 +12192,7 @@
       "title": "Sword 8",
       "loop": false,
       "durationSeconds": 1.417,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12206,7 +12206,7 @@
       "title": "Sword 9",
       "loop": false,
       "durationSeconds": 0.867,
-      "impact": false,
+      "impact": true,
       "category": "slash",
       "keywords": [
         "effekseer",
@@ -12220,7 +12220,7 @@
       "title": "Wind 1",
       "loop": false,
       "durationSeconds": 2.967,
-      "impact": false,
+      "impact": true,
       "category": "magic-impact",
       "keywords": [
         "effekseer",
@@ -12236,7 +12236,7 @@
       "title": "Wind 2",
       "loop": false,
       "durationSeconds": 0.673,
-      "impact": false,
+      "impact": true,
       "category": "magic-impact",
       "keywords": [
         "effekseer",
@@ -12252,7 +12252,7 @@
       "title": "Hozyo 1",
       "loop": false,
       "durationSeconds": 1.291,
-      "impact": false,
+      "impact": true,
       "category": "buff",
       "keywords": [
         "buff",
@@ -12266,7 +12266,7 @@
       "title": "Hozyo 2",
       "loop": false,
       "durationSeconds": 1.217,
-      "impact": false,
+      "impact": true,
       "category": "buff",
       "keywords": [
         "buff",
@@ -12280,7 +12280,7 @@
       "title": "Hozyo 3",
       "loop": false,
       "durationSeconds": 0.8,
-      "impact": false,
+      "impact": true,
       "category": "buff",
       "keywords": [
         "buff",

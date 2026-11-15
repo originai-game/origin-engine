@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 3.2
+impact 1.1833
 emitter "vfx/effekseer-tktk02/Gun7/n0-0-0-0-0-0-0-0.parent.ogt" {
   at 0.05
 }
@@ -334,6 +335,7 @@ mesh ring {
   colors 1 0.2195 0.0619 0 1 0.6354 0.4396 1 1 0.2195 0.0619 0
   life 0.5
   effect "vfx/effekseer-tktk02/Gun7/n0-3-6-0-0.effect.ogt"
+  face camera
   scale curve 0 2.1333 0.0781 3.5394 0.1719 4.863 0.2656 5.8396 0.375 6.6109 0.4688 7.0167 0.5781 7.2664 1 7.4667
   color 1 1 1 1
   blend additive
@@ -345,6 +347,7 @@ mesh ring {
   colors 1 0.2195 0.0619 0 1 0.6354 0.4396 1 1 0.2195 0.0619 0
   life 0.5
   effect "vfx/effekseer-tktk02/Gun7/n0-3-6-0-0.effect.ogt"
+  face camera
   scale curve 0 2.1333 0.0781 3.5394 0.1719 4.863 0.2656 5.8396 0.375 6.6109 0.4688 7.0167 0.5781 7.2664 1 7.4667
   color 1 1 1 1
   blend additive
@@ -356,6 +359,7 @@ mesh ring {
   colors 1 0.2195 0.0619 0 1 0.6354 0.4396 1 1 0.2195 0.0619 0
   life 0.5
   effect "vfx/effekseer-tktk02/Gun7/n0-3-6-0-0.effect.ogt"
+  face camera
   scale curve 0 2.1333 0.0781 3.5394 0.1719 4.863 0.2656 5.8396 0.375 6.6109 0.4688 7.0167 0.5781 7.2664 1 7.4667
   color 1 1 1 1
   blend additive
@@ -367,6 +371,7 @@ mesh ring {
   colors 1 0.2195 0.0619 0 1 0.6354 0.4396 1 1 0.2195 0.0619 0
   life 0.5
   effect "vfx/effekseer-tktk02/Gun7/n0-3-6-0-0.effect.ogt"
+  face camera
   scale curve 0 2.1333 0.0781 3.5394 0.1719 4.863 0.2656 5.8396 0.375 6.6109 0.4688 7.0167 0.5781 7.2664 1 7.4667
   color 1 1 1 1
   blend additive
@@ -446,35 +451,20 @@ trail {
 }
 # effekseer: node 0.0.0.0.0.0.0.0 "LineMain": nested generation: 32 instances above its generator folded into one emitter
 # effekseer: node 0.0.0.0.0 "LineNull": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
 # effekseer: node 0.0.0.0.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.0.0.0.0.1 "LineGlow": nested generation: 32 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0.0.0.0.1 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.0.0.0.1 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.0.0.0.1 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.0.0.0.1 "LineGlow": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.0.1.0.0.0 "LineMain": nested generation: 32 instances above its generator folded into one emitter
 # effekseer: node 0.0.0.0.1 "LineNull": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0.0.1.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
 # effekseer: node 0.0.0.0.1.0.0.0 "LineMain": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.0.1.0.0.1 "LineColoe": nested generation: 32 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0.1.0.0.1 "LineColoe": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.1.0.0.1 "LineColoe": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.1.0.0.1 "LineColoe": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.1.0.0.1 "LineColoe": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.0.1.0.0.1.0 "LineColoe": nested generation: 32 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0.1.0.0.1.0 "LineColoe": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.1.0.0.1.0 "LineColoe": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.1.0.0.1.0 "LineColoe": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.1.0.0.1.0 "LineColoe": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.0.2.0.0.0.0 "LineMain": nested generation: 32 instances above its generator folded into one emitter
 # effekseer: node 0.0.0.0.2.0 "ｉｎｔｅｒｖａｌ": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0.0.2.0.0.0.0 "LineMain": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.0.0.0.2.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.0.2.0.0.0.1.0 "LineColor": nested generation: 32 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0.2.0.0.0.1.0 "LineColor": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.0.0.2.0.0.0.1.0 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.2.0.0.0.1.0 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.2.0.0.0.1.0 "LineColor": motion out from a circle: approximated along one direction
 # effekseer: node 0.0 "ｉｎｔｅｒｖａｌ": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.0.2.1 "Distortion": motion out from a circle: approximated along one direction
@@ -485,47 +475,32 @@ trail {
 # effekseer: node 0.0.0.0.5.0.0.0 "LineMain": nested generation: 32 instances above its generator folded into one emitter
 # effekseer: node 0.0.0.0.5 "LineNull": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.0.5.0.0.1 "LineColoe": nested generation: 32 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0.5.0.0.1 "LineColoe": a random colour per particle: its mean used
 # effekseer: node 0.1.0.0.0.0.0 "shotCore": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.1.0.0.0.0.1 "shotMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.1.0.0.0.0.2.0 "LineMain": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.1.0.0.0.0.2.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 0.1.0.0.0.0.2.1.0 "LineGlow": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.1.0.0.0.0.2.1.0 "LineGlow": a track of many instances: one trail drawn
 # effekseer: node 0.1.0.0.0.1 "Wind": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.1.0.0.0.1 "Wind": ring unlimited instances: the first 4 drawn
 # effekseer: node 0.1.0.0.0.1 "Wind": a ring whose height changes over its life: its middle height kept
 # effekseer: node 0.2.0.0.0.0.0 "shotCore": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.2.0.0.0.0.1 "shotMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.2.0.0.0.0.2.0 "LineMain": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.0.0.0.0.2.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 0.2.0.0.0.0.2.1.0 "LineGlow": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.0.0.0.0.2.1.0 "LineGlow": a track of many instances: one trail drawn
 # effekseer: node 0.2.0.0.0.1 "Wind": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.2.0.0.0.1 "Wind": ring unlimited instances: the first 4 drawn
 # effekseer: node 0.2.0.0.0.1 "Wind": a ring whose height changes over its life: its middle height kept
 # effekseer: node 0.3.0.0.0.0 "LineMain": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.3.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
 # effekseer: node 0.3.0.0.0.1 "LineColor": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.3.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.3.0.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.3.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.3.0.0.0.1.0 "LineColor": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.3.0.0.0.1.0 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.3.0.0.0.1.0 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.3.0.0.0.1.0 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.3.1 "Distortion": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.3.1 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 0.3.2 "Glow": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.3.3.0.0.0.0 "LineMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.3.3.0.0.0.0 "LineMain": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 0.3.3.0.0.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 0.3.3.0.0.0.1.0 "LineColor": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.3.3.0.0.0.1.0 "LineColor": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 0.3.3.0.0.0.1.0 "LineColor": a track of many instances: one trail drawn
 # effekseer: node 0.3.3.0.0.0.1.1.0 "LineColor": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.3.3.0.0.0.1.1.0 "LineColor": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 0.3.3.0.0.0.1.1.0 "LineColor": a track of many instances: one trail drawn
 # effekseer: node 0.3.4 "Distortion": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.3.4 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 0.3.5.0.0 "ｌｅｎｓ": a ring's arc over its life
@@ -533,20 +508,13 @@ trail {
 # effekseer: node 0.3.5.0.0 "ｌｅｎｓ": ring 100 instances: the first 4 drawn
 # effekseer: node 0.3.6.0.0 "RIng": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.3.6.0.0 "RIng": ring 5 instances: the first 4 drawn
-# effekseer: node 0.3.6.0.0 "RIng": a camera-facing ring: drawn in its own plane
 # effekseer: node 0.3.6.0.0 "RIng": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 0.3.7.0.0 "WindRing": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.3.7.0.0 "WindRing": ring 30 instances: the first 4 drawn
 # effekseer: node 0.3.7.0.0 "WindRing": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 0.3.8.0.0.0.0 "LineMain": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.3.8.0.0.0.0 "LineMain": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 0.3.8.0.0.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 0.3.8.0.0.0.1.0 "LineColor": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.3.8.0.0.0.1.0 "LineColor": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 0.3.8.0.0.0.1.0 "LineColor": a track of many instances: one trail drawn
 # effekseer: node 0.3.8.0.0.0.1.1.0 "LineColor": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.3.8.0.0.0.1.1.0 "LineColor": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 0.3.8.0.0.0.1.1.0 "LineColor": a track of many instances: one trail drawn
-# effekseer: node 1.0.0 "LineMain": a track of many instances: one trail drawn
-# effekseer: node 1.0.1.0 "LineMain": a track of many instances: one trail drawn
-# effekseer: node 1.0.1.1.0 "LineMain": a track of many instances: one trail drawn

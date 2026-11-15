@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.8333
+impact 0.1
 emitter "vfx/effekseer-pierre01/SonicBoom/n0-0-0-0.emitter.ogt" {
   at 0.1
 }
@@ -192,6 +193,5 @@ mesh ring {
 }
 # effekseer: node 0.0.0.1 "Wind_RingPolygon": ring 15 instances: the first 4 drawn
 # effekseer: node 0.0.0.1 "Wind_RingPolygon": a ring whose height changes over its life: its middle height kept
-# effekseer: node 0.0.0.2 "Wind_Sprite": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.0.3.2 "Shockwave": a ring whose height changes over its life: its middle height kept
 # effekseer: node 0.0.3.2 "Shockwave": a ring whose thickness changes over its life: its middle thickness kept

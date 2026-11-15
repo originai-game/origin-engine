@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.15
+impact 0.4167
 trail {
   at 0
   offset 0 14.1421 14.1421
@@ -96,6 +97,7 @@ mesh ring {
   colors 0 0 1 0 1 1 1 0.7529 0 0 1 0
   life 0.25
   effect "vfx/effekseer-magicalxspiral/Lance4/n1.effect.ogt"
+  face camera
   scale curve 0 0 1 11.25
   color 1 1 1 1
   blend additive
@@ -112,9 +114,10 @@ mesh ring {
   colors 1 1 1 0 1 1 1 0.251 1 1 1 0.251
   life 0.25
   effect "vfx/effekseer-magicalxspiral/Lance4/n3-0.effect.ogt"
+  face camera
   scale curve 0 1.4 1 1.8
   color 1 1 1 1
-  blend alpha
+  blend subtractive
 }
 mesh ring {
   at 0.5
@@ -123,6 +126,7 @@ mesh ring {
   colors 0.5234 0.5356 0.5356 0 0.5234 0.5356 0.5356 0.3765 0.5234 0.5356 0.5356 0
   life 0.1667
   effect "vfx/effekseer-magicalxspiral/Lance4/n3-1.effect.ogt"
+  face camera
   scale curve 0 3.24 1 0
   color 1 1 1 1
   blend additive
@@ -142,20 +146,7 @@ emitter "vfx/effekseer-magicalxspiral/Lance4/n3-5.emitter.ogt" {
 emitter "vfx/effekseer-magicalxspiral/Lance4/n3-6-0-0.emitter.ogt" {
   at 0.5
 }
+# effekseer: node 0.0.0.0 "Node": a track whose points move on their own: drawn along its generator's path
 # effekseer: node 0.0.0.0 "Node": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0 "Node": a track of many instances: one trail drawn
 # effekseer: node 0.0.4 "Node": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.5 "Node": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.6 "Node": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.6 "Node": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1 "Node": a camera-facing ring: drawn in its own plane
-# effekseer: node 2.0 "Node": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 2.0 "Node": a random colour per particle: its mean used
-# effekseer: node 2.0 "Node": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 3.0 "BG1": subtractive blend: drawn alpha blended
-# effekseer: node 3.0 "BG1": a camera-facing ring: drawn in its own plane
-# effekseer: node 3.1 "ShockWave1": a camera-facing ring: drawn in its own plane
-# effekseer: node 3.2 "Line1": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 3.3 "Line2": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 3.4 "Lines": a random colour per particle: its mean used
-# effekseer: node 3.4 "Lines": a sprite scaled unevenly: drawn square at its mean

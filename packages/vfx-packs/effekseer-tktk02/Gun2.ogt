@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.9683
+impact 0.3333
 emitter "vfx/effekseer-tktk02/Gun2/n0-0-0-0-0-0-0.parent.ogt" {
   at 0.3333
 }
@@ -111,27 +112,15 @@ emitter "vfx/effekseer-tktk02/Gun2/n3-1.emitter.ogt" {
   at 0.8
 }
 # effekseer: node 0.0.0.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.0.0.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.0.0.0.0.1.0 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.0.0.1.0 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.0.0.1.0 "LineColor": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.1.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.0.1.0.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.0.1.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.1.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.0.1.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 0.0.0.1.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.1.0.0.0.1.0 "LineGlow": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.2.0 "RingMain": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 0.0.0.2.1 "Ring1": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 0.0.0.3.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.0.3.0.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.0.3.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.3.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.0.3.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 0.0.0.3.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.3.0.0.0.1.0 "LineGlow": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.1 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.2 "Node": a ring whose thickness changes over its life: its middle thickness kept
@@ -140,16 +129,9 @@ emitter "vfx/effekseer-tktk02/Gun2/n3-1.emitter.ogt" {
 # effekseer: node 3.0.0.0.0.0.0.0 "LineMain": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 3.0.0.0.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
 # effekseer: node 3.0.0.0.0.0.0.1 "LineColor": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 3.0.0.0.0.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 3.0.0.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 3.0.0.0.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
 # effekseer: node 3.0.0.0.0.0.0.1.0 "LineGlow": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 3.0.0.0.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 3.0.0.0.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 3.0.0.0.0.0.0.1.0 "LineGlow": motion out from a circle: approximated along one direction
 # effekseer: node 3.0.0.0.1 "Distortion": motion out from a circle: approximated along one direction
-# effekseer: node 3.0.0.1.0.0.0.0 "Ice": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 3.0.0.1.0.0.0.0 "Ice": a random colour per particle: its mean used
 # effekseer: node 3.0.0.1.0.0.0.1 "Line": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 3.0.0.1.0.0.0.1 "Line": nested generation: 120 instances above its generator folded into one emitter
-# effekseer: node 3.0.0.1.0.0.0.1 "Line": a track of many instances: one trail drawn

@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.3833
+impact 0
 mesh ring {
   at 0
   rotate -11.25 0 -180
@@ -58,5 +59,16 @@ mesh ring {
   spin 0 0 -780
   color 1 1 1 1
   blend additive
+}
+light {
+  at 0
+  life 0.3
+  color 1 1 1
+  intensity curve 0 8 1 0
+  distance 8
+}
+shake {
+  at 0
+  trauma 0.3
 }
 # effekseer: node 0.0 "Node": ring 6 instances: the first 4 drawn

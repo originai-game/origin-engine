@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 3.0667
+impact 0
 emitter "vfx/effekseer-tktk02/Gun9/n0-0-0-0-0-0-0.parent.ogt" {
   at 0
 }
@@ -191,22 +192,14 @@ emitter "vfx/effekseer-tktk02/Gun9/n1-0-4.emitter.ogt" {
 # effekseer: node 0.0.0.0.0.0.0 "LineMain": nested generation: 7 instances above its generator folded into one emitter
 # effekseer: node 0.0.0.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.0.0.0.1 "LineColor": nested generation: 7 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.0.0.0.1.0 "LineColor": nested generation: 7 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0.0.0.1.0 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.0.0.1.0 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.0.0.1.0 "LineColor": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.1.0.0.0.0 "LineMain": nested generation: 7 instances above its generator folded into one emitter
 # effekseer: node 0.0.0.1.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.1.0.0.0.1 "LineColor": nested generation: 7 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.1.0.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.0.1.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.1.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.1.0.0.0.1.0 "LineGlow": nested generation: 7 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.1.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 0.0.0.1.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.1.0.0.0.1.0 "LineGlow": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.2.0 "RingMain": ring 7 instances: the first 4 drawn
 # effekseer: node 0.0.0.2.0 "RingMain": a ring whose thickness changes over its life: its middle thickness kept
@@ -217,18 +210,10 @@ emitter "vfx/effekseer-tktk02/Gun9/n1-0-4.emitter.ogt" {
 # effekseer: node 0.0.0.4 "Glow1": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.5 "GlowRGB": motion out from a circle: approximated along one direction
 # effekseer: node 1.0.0.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 1.0.0.0.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
-# effekseer: node 1.0.0.0.0.0.1.0 "LineColor": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.0.0.1.0 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0.0.0.0.1.0 "LineColor": motion out from a circle: approximated along one direction
 # effekseer: node 1.0.0.1.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
-# effekseer: node 1.0.0.1.0.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 1.0.0.1.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0.1.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
-# effekseer: node 1.0.0.1.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 1.0.0.1.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0.1.0.0.0.1.0 "LineGlow": motion out from a circle: approximated along one direction
 # effekseer: node 1.0.0.2.0 "RingMain": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 1.0.0.2.1 "Ring1": a ring whose thickness changes over its life: its middle thickness kept

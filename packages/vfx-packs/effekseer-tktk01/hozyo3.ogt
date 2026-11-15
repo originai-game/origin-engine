@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.8
+impact 0.1333
 emitter "vfx/effekseer-tktk01/hozyo3/n0-0.emitter.ogt" {
   at 0
 }
@@ -124,14 +125,11 @@ mesh ring {
   color 1 1 1 1
   blend additive
 }
-# effekseer: node 0.0 "ナイフ": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.0 "ナイフ": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0 "ナイフ軌跡": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0 "ナイフ軌跡": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.0.1 "*衝撃生業用": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.1 "*衝撃生業用": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 0.0.1 "*衝撃生業用": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.1 "*衝撃生業用": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1 "ヘックスメイン右": a ring's arc over its life
 # effekseer: node 1 "ヘックスメイン右": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 2 "ヘックス外右": a ring's arc over its life

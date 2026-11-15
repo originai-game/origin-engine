@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.7967
+impact 0.1
 mesh quad {
   at 0
   offset 5 5 0
@@ -103,8 +104,4 @@ emitter "vfx/effekseer-tktk01/Sword12/n3-2.emitter.ogt" {
 # effekseer: node 1.0 "粒ﾉｰﾄﾞ": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.1 "粒ﾉｰﾄﾞ余韻": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 2.0 "リング": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 2.1.0 "衝撃線": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 2.1.0 "衝撃線": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 3.0 "リング": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 3.1.0 "衝撃線": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 3.1.0 "衝撃線": a sprite scaled unevenly: drawn square at its mean

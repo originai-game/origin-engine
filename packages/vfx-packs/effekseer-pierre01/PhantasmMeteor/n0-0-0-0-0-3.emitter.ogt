@@ -22,5 +22,5 @@ colorOverLife {
 rotation -360 360
 angularVelocity -180 180
 texture "vfx/effekseer-pierre01/textures/Smoke.png"
-blend alpha
+blend subtractive
 effect "vfx/effekseer-pierre01/PhantasmMeteor/n0-0-0-0-0-3.effect.ogt"

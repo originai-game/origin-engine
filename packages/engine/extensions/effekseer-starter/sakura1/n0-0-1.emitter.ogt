@@ -13,10 +13,16 @@ lifetime 5.4667 5.4667
 speed 0.4437 0.9204
 size 0.64 0.64
 colorOverLife {
-  key 0 1 0.5449 0.5449 0
-  key 0.1119 1 0.5449 0.5449 1
-  key 0.8985 1 0.5449 0.5449 1
-  key 1 1 0.5449 0.5449 0
+  key 0 1 0.4259 0.4259 0
+  key 0.1119 1 0.4259 0.4259 1
+  key 0.8985 1 0.4259 0.4259 1
+  key 1 1 0.4259 0.4259 0
+}
+randomColorOverLife {
+  key 0 1 0.68 0.68 0
+  key 0.1119 1 0.68 0.68 1
+  key 0.8985 1 0.68 0.68 1
+  key 1 1 0.68 0.68 0
 }
 texture "vfx/effekseer-starter/textures/particle2.png"
 blend additive

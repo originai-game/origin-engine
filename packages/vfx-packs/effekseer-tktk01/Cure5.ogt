@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.4333
+impact 0
 emitter "vfx/effekseer-tktk01/Cure5/n0-0.emitter.ogt" {
   at 0
 }
@@ -80,9 +81,7 @@ emitter "vfx/effekseer-tktk01/Cure5/n2.emitter.ogt" {
 emitter "vfx/effekseer-tktk01/Cure5/n3-0.parent.ogt" {
   at 0
 }
-# effekseer: node 0.0 "回復中心もや": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1 "回復中心もや": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0 "回復中心もや": a fixed sprite turned at random: its mean plane drawn
+# effekseer: node 0.1 "回復中心もや": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 1.0.0 "周囲の回る線": ring 10 instances: the first 4 drawn
 # effekseer: node 1.0.0 "周囲の回る線": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 2 "星型": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 3.0 "星型": a fixed sprite with many instances: drawn facing the camera

@@ -7,5 +7,5 @@ main "vfx/effekseer-starter/textures/ShockWave5.png" rgba {
   scroll 0 0.9375
 }
 alpha curve 0 1 0.7333 1 1 0
-blend alpha
+blend subtractive
 doubleSided true

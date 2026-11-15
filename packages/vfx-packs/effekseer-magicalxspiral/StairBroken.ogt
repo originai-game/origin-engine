@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.6333
+impact 0.1667
 emitter "vfx/effekseer-magicalxspiral/StairBroken/n0-0.emitter.ogt" {
   at 0.1667
   rotate 0 -89.9802 0
@@ -119,9 +120,19 @@ mesh ring {
   color 1 1 1 1
   blend additive
 }
-# effekseer: node 0.1 "Node": a random colour per particle: its mean used
+light {
+  at 0.1667
+  life 0.3
+  color 1 0.9981 0.9962
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.1667
+  trauma 0.4
+}
 # effekseer: node 0.2 "Node": model 10 instances: the first 4 drawn
 # effekseer: node 0.3 "Node": model 10 instances: the first 4 drawn
-# effekseer: node 0.4 "Node": a camera-facing ring: drawn in its own plane
-# effekseer: node 0.5 "Node": a camera-facing ring: drawn in its own plane
-# effekseer: node 0.6 "Node": a camera-facing ring: drawn in its own plane
+# effekseer: node 0.4 "Node": a y-axis ring: drawn in its own plane
+# effekseer: node 0.5 "Node": a y-axis ring: drawn in its own plane
+# effekseer: node 0.6 "Node": a y-axis ring: drawn in its own plane

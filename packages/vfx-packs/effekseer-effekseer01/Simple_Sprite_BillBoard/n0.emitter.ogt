@@ -14,10 +14,17 @@ size 4 4
 sizeOverLife 0 0.25 1 1
 colorOverLife {
   key 0 1 1 1 1
-  key 0.25 1 0.7454 0.7454 0.75
-  key 0.5 1 0.531 0.531 0.5
-  key 0.75 1 0.3556 0.3556 0.25
-  key 1 1 0.2176 0.2176 0
+  key 0.1094 1 0.775 0.775 0.8906
+  key 0.2344 1 0.5557 0.5557 0.7656
+  key 0.3594 1 0.3754 0.3754 0.6406
+  key 0.4844 1 0.2329 0.2329 0.5156
+  key 0.6094 1 0.1264 0.1264 0.3906
+  key 0.7344 1 0.0541 0.0541 0.2656
+  key 1 1 0 0 0
+}
+randomColorOverLife {
+  key 0 1 1 1 1
+  key 1 1 1 1 0
 }
 gravity 0 -3.6 0
 texture "vfx/effekseer-effekseer01/textures/Particle01.png"

@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.15
+impact 0
 emitter "vfx/effekseer-starter/Thunder1/n0.emitter.ogt" {
   at 0
 }
@@ -60,5 +61,3 @@ mesh ring {
   color 1 1 1 1
   blend additive
 }
-# effekseer: node 0 "Particle": a y-axis billboard: drawn facing the camera
-# effekseer: node 0 "Particle": a random colour per particle: its mean used

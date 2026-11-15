@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.4708
+impact 0.8
 mesh quad {
   at 0
   life 1.4167
@@ -193,34 +194,34 @@ trail {
   lifetime 0.0833
   color 1 0.0104 0.0478 0.3922
 }
+light {
+  at 0.8
+  life 0.3
+  offset 0 0 0.5359
+  color 1 0.5497 0.5667
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.8
+  trauma 0.4
+}
 # effekseer: node 0.0.0.0 "長針": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.1.0 "短針": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.0 "針": a y-axis billboard: drawn facing the camera
 # effekseer: node 1.0 "針": location over an f-curve: straightened
-# effekseer: node 1.0 "針": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0 "針": motion out from a circle: approximated along one direction
-# effekseer: node 1.0.0 "glow": a y-axis billboard: drawn facing the camera
 # effekseer: node 1.0.0 "glow": location over an f-curve: straightened
-# effekseer: node 1.0.0 "glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0 "glow": motion out from a circle: approximated along one direction
-# effekseer: node 2.0 "〆針": a y-axis billboard: drawn facing the camera
-# effekseer: node 2.0 "〆針": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 2.0.0 "glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 2.0.0 "glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 3.0.0 "リング": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 3.0.1 "リング柱": a ring whose height changes over its life: its middle height kept
 # effekseer: node 3.1.0 "リング": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 3.1.1 "リング柱": a ring whose height changes over its life: its middle height kept
 # effekseer: node 3.1.1 "リング柱": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 3.1.2 "リング外枠": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 3.2.0.0 "gliow": a random colour per particle: its mean used
-# effekseer: node 3.2.0.1 "gliow大": a random colour per particle: its mean used
 # effekseer: node 3.2.0.2 "軌跡": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 3.2.0.2 "軌跡": nested generation: 500 instances above its generator folded into one emitter
 # effekseer: node 3.2.0.3 "軌跡glow": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 3.2.0.3 "軌跡glow": nested generation: 500 instances above its generator folded into one emitter
-# effekseer: node 3.3.0.0 "gliow": a random colour per particle: its mean used
-# effekseer: node 3.3.0.1 "gliow大": a random colour per particle: its mean used
 # effekseer: node 3.3.0.2 "軌跡": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 3.3.0.2 "軌跡": nested generation: 250 instances above its generator folded into one emitter
 # effekseer: node 3.3.0.3 "軌跡glow": a moving ancestor: its descendants are placed where it starts

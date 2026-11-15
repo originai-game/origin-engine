@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.8167
+impact 0
 mesh ring {
   at 0
   offset 0 0.5 0
@@ -11,9 +12,10 @@ mesh ring {
   colors 1 1 1 0 1 1 1 1 1 1 1 1
   life 0.5
   effect "vfx/effekseer-magicalxspiral/Thunder2/n0.effect.ogt"
+  face camera
   scale 1
   color 1 1 1 1
-  blend alpha
+  blend subtractive
 }
 emitter "vfx/effekseer-magicalxspiral/Thunder2/n1.emitter.ogt" {
   at 0
@@ -126,6 +128,7 @@ mesh ring {
   colors 1 1 1 0 1 0.5356 0.7519 0.6275 1 1 1 0
   life 0.1667
   effect "vfx/effekseer-magicalxspiral/Thunder2/n9.effect.ogt"
+  face camera
   scale curve 0 4 1 0
   color 1 1 1 1
   blend additive
@@ -186,14 +189,16 @@ mesh ring {
   color 1 1 1 1
   blend additive
 }
-# effekseer: node 0 "BG": subtractive blend: drawn alpha blended
-# effekseer: node 0 "BG": a camera-facing ring: drawn in its own plane
-# effekseer: node 2.0 "Node": a random colour per particle: its mean used
-# effekseer: node 2.0 "Node": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 2.1 "Node": a random colour per particle: its mean used
-# effekseer: node 2.1 "Node": a sprite scaled unevenly: drawn square at its mean
+light {
+  at 0
+  life 0.3
+  offset 0 0.2935 0
+  color 1 0.846 0.8435
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}
 # effekseer: node 2.1 "Node": ping-pong UV animation: looped
-# effekseer: node 2.2 "Node": a random colour per particle: its mean used
-# effekseer: node 2.2 "Node": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 9 "Impact1": a camera-facing ring: drawn in its own plane
-# effekseer: node 11 "SupportThunder": a sprite scaled unevenly: drawn square at its mean

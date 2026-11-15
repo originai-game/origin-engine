@@ -14,10 +14,16 @@ speed 0.0198 0.0793
 size 1.8 1.8
 sizeOverLife 0 1 1 0.3333
 colorOverLife {
-  key 0 1 0.548 0.3761 0
-  key 0.0256 1 0.548 0.3761 1
-  key 0.9702 1 0.548 0.3761 1
-  key 1 1 0.548 0.3761 0
+  key 0 1 0.4259 0.2549 0
+  key 0.0256 1 0.4259 0.2549 1
+  key 0.9702 1 0.4259 0.2549 1
+  key 1 1 0.4259 0.2549 0
+}
+randomColorOverLife {
+  key 0 1 0.687 0.5234 0
+  key 0.0256 1 0.687 0.5234 1
+  key 0.9702 1 0.687 0.5234 1
+  key 1 1 0.687 0.5234 0
 }
 texture "vfx/effekseer-hato01/textures/particle2.png"
 blend additive

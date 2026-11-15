@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.1833
+impact 0.0333
 mesh ring {
   at 0.0333
   offset 0.2 1.5 0

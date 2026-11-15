@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 10
@@ -52,11 +52,8 @@ emitter "vfx/effekseer-effekseer01/Laser03/n2-0-0.emitter.ogt" {
   until 1.6667
 }
 # effekseer: node 0.0 "Track": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0 "Track": a track of many instances: one trail drawn
 # effekseer: node 0.0.0 "Particle": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.0 "Track": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 1.0 "Track": a track of many instances: one trail drawn
 # effekseer: node 1.0.0 "Particle": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 2.0 "Track": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 2.0 "Track": a track of many instances: one trail drawn
 # effekseer: node 2.0.0 "Particle": a moving ancestor: its descendants are placed where it starts

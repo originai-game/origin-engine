@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.3708
+impact 0.5
 emitter "vfx/effekseer-tktk02/Fire6/n1-0-0-0-0.emitter.ogt" {
   at 0.5
   offset 0 0.3 0
@@ -131,29 +132,13 @@ mesh ring {
 emitter "vfx/effekseer-tktk02/Fire6/n4.emitter.ogt" {
   at 0.6667
 }
-# effekseer: node 1.0.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.1.0 "particleColor": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.2.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.2.0.0.1.0 "particleColor": a random colour per particle: its mean used
-# effekseer: node 2.0.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 2.0.0.0.1.0 "particleColor": a random colour per particle: its mean used
 # effekseer: node 2.0.0.0.2.0.0.0 "particleMain": nested generation: 50 instances above its generator folded into one emitter
 # effekseer: node 2.0.0.0.2.0.0.1 "particleColor": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 2.0.0.0.2.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 2.0.0.0.2.0.0.1.0 "particleColor": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 2.0.0.0.2.0.0.1.0 "particleColor": a random colour per particle: its mean used
 # effekseer: node 2.0.0.0.2.0.0.2 "Distortion": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 2.0.0.0.4 "Glow1": a random colour per particle: its mean used
-# effekseer: node 2.0.0.0.5 "Glow2": a random colour per particle: its mean used
-# effekseer: node 2.1.0.0.1 "particleColor": a random colour per particle: its mean used
-# effekseer: node 2.1.0.0.1.0 "particleColor": a random colour per particle: its mean used
 # effekseer: node 2.1.0.0.2.0.0.0 "particleMain": nested generation: 100 instances above its generator folded into one emitter
 # effekseer: node 2.1.0.0.2.0.0.1 "particleColor": nested generation: 100 instances above its generator folded into one emitter
-# effekseer: node 2.1.0.0.2.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 2.1.0.0.2.0.0.1.0 "particleColor": nested generation: 100 instances above its generator folded into one emitter
-# effekseer: node 2.1.0.0.2.0.0.1.0 "particleColor": a random colour per particle: its mean used
 # effekseer: node 2.1.0.0.2.0.0.2 "Distortion": nested generation: 100 instances above its generator folded into one emitter
-# effekseer: node 2.1.0.0.4 "Glow1": a random colour per particle: its mean used
-# effekseer: node 2.1.0.0.5 "Glow2": a random colour per particle: its mean used
 # effekseer: node 3.0 "Rast": a ring's arc over its life
 # effekseer: node 3.0 "Rast": ring 100 instances: the first 4 drawn

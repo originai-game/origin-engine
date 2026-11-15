@@ -10,8 +10,10 @@ duration 0.6
 looping false
 lifetime 0.75 0.75
 speed 0 0
-size 1.0354 1.0354
-sizeOverLife 0 0.6286 0.3594 0.8491 0.5625 0.9444 0.7812 0.9949 1 0.9938
+size 0.6508 0.6508
+sizeOverLife 0 1 0.0781 0.9787 0.1562 0.9516 0.2344 0.9195 0.3281 0.8755 0.4688 0.8009 0.8281 0.5925 1 0.5
+heightOverLife 0 1 0.0781 1.1708 0.1562 1.3875 0.2344 1.6442 0.3281 1.9963 0.4688 2.5926 0.8281 4.2603 1 5
+align facing 0 0 1
 colorOverLife {
   key 0 0.0143 0.3345 0.3587 0
   key 0.0667 0.0162 0.3634 0.3865 0.1801
@@ -20,4 +22,4 @@ colorOverLife {
 }
 rotation -180 180
 texture "vfx/effekseer-tktk01/textures/smoke_tex.png"
-blend alpha
+blend subtractive

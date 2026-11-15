@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.7
+impact 0.6667
 emitter "vfx/effekseer-tktk01/Dark2/n0.emitter.ogt" {
   at 0
 }
@@ -173,8 +174,17 @@ emitter "vfx/effekseer-tktk01/Dark2/n8-1.emitter.ogt" {
   offset 0 0 2
   rotate -90 0 0
 }
-# effekseer: node 0 "魔法陣": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1 "魔法陣衝撃用グロー": a fixed sprite with many instances: drawn facing the camera
+light {
+  at 0.6667
+  life 0.3
+  color 1 1 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.6667
+  trauma 0.4
+}
 # effekseer: node 2 "広がる魔法陣": a mesh's colour over its life: its brightest kept, alpha over life kept
 # effekseer: node 3 "押さえつけリング": ring 5 instances: the first 4 drawn
 # effekseer: node 3 "押さえつけリング": a ring whose height changes over its life: its middle height kept
@@ -182,8 +192,6 @@ emitter "vfx/effekseer-tktk01/Dark2/n8-1.emitter.ogt" {
 # effekseer: node 4 "押さえつけリング中心": a ring whose height changes over its life: its middle height kept
 # effekseer: node 5.0 "ライン下降軌跡": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 5.0 "ライン下降軌跡": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 5.0 "ライン下降軌跡": a track of many instances: one trail drawn
-# effekseer: node 5.1 "ライン着弾衝撃": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 6 "魔法陣衝撃用グロー": ring 5 instances: the first 4 drawn
 # effekseer: node 6 "魔法陣衝撃用グロー": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 7 "魔法陣衝撃立体リング": ring 5 instances: the first 4 drawn
@@ -191,5 +199,3 @@ emitter "vfx/effekseer-tktk01/Dark2/n8-1.emitter.ogt" {
 # effekseer: node 7 "魔法陣衝撃立体リング": a UV region of a texture whose size is not known (not a PNG)
 # effekseer: node 8.0 "ライン下降軌跡": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 8.0 "ライン下降軌跡": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 8.0 "ライン下降軌跡": a track of many instances: one trail drawn
-# effekseer: node 8.1 "ライン着弾衝撃": a fixed sprite with many instances: drawn facing the camera

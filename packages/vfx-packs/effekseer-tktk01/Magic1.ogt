@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1
+impact 0.5
 mesh ring {
   at 0
   offset 10.0046 0.0046 0.0046
@@ -211,6 +212,7 @@ mesh ring {
   colors 0.0033 0.7445 0.7445 0 0.3587 0.9406 0.9406 0.7843 1 1 1 1
   life 0.4667
   effect "vfx/effekseer-tktk01/Magic1/n2.effect.ogt"
+  face camera
   scale curve 0 1 1 2
   color 15 15 15 1
   blend additive
@@ -227,11 +229,22 @@ mesh ring {
   color 1 1 1 1
   blend additive
 }
+light {
+  at 0.5
+  life 0.3
+  offset -8.3376 0 0
+  color 0.4618 0.9424 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.5
+  trauma 0.4
+}
 # effekseer: node 0.0.0 "リングの残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0 "リングの残像": ring 29 instances: the first 4 drawn
 # effekseer: node 0.1.0 "リングの残像": ring 29 instances: the first 4 drawn
 # effekseer: node 0.2.0 "リングの残像": ring 29 instances: the first 4 drawn
-# effekseer: node 1.0 "破裂衝撃": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.0 "破裂衝撃": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 2 "破裂衝撃玉": ring 15 instances: the first 4 drawn
-# effekseer: node 2 "破裂衝撃玉": a camera-facing ring: drawn in its own plane
 # effekseer: node 3 "Node": a ring whose thickness changes over its life: its middle thickness kept

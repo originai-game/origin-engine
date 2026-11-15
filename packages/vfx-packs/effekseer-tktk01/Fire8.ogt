@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.9248
+impact 0.4833
 emitter "vfx/effekseer-tktk01/Fire8/n0-0-0-0.emitter.ogt" {
   at 0
   offset 1.3681 0 8.7588
@@ -87,14 +88,7 @@ emitter "vfx/effekseer-tktk01/Fire8/n0-1-2-1.emitter.ogt" {
   offset -4 0 0
   rotate 90 0 0
 }
-# effekseer: node 0.0.0.0 "炎メイン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.0.0 "炎メイン": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0 "炎メイン": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.0.1.0 "軌跡": nested generation: 50 instances above its generator folded into one emitter
 # effekseer: node 0.0.1.1 "軌跡glow": nested generation: 50 instances above its generator folded into one emitter
 # effekseer: node 0.0.1.2 "軌跡glow大": nested generation: 50 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0 "glow": a random colour per particle: its mean used
-# effekseer: node 0.1.0.0.1 "glow大": a random colour per particle: its mean used
-# effekseer: node 0.1.1.0 "炎": a random colour per particle: its mean used
-# effekseer: node 0.1.1.1 "炎高速": a random colour per particle: its mean used
-# effekseer: node 0.1.2.0 "炎": a random colour per particle: its mean used
-# effekseer: node 0.1.2.1 "炎高速": a random colour per particle: its mean used

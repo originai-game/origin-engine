@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.8167
+impact 0
 mesh ring {
   at 0
   offset 0 0.5 0
@@ -11,9 +12,10 @@ mesh ring {
   colors 1 1 1 0 1 1 1 0.251 1 1 1 0.251
   life 0.5
   effect "vfx/effekseer-magicalxspiral/Sylph15/n0.effect.ogt"
+  face camera
   scale 1
   color 1 1 1 1
-  blend alpha
+  blend subtractive
 }
 emitter "vfx/effekseer-magicalxspiral/Sylph15/n1.emitter.ogt" {
   at 0
@@ -126,6 +128,7 @@ mesh ring {
   colors 1 1 1 0 1 0.7519 0.0478 0.6275 1 1 1 0
   life 0.1667
   effect "vfx/effekseer-magicalxspiral/Sylph15/n9.effect.ogt"
+  face camera
   scale curve 0 4 1 0
   color 1 1 1 1
   blend additive
@@ -152,13 +155,16 @@ emitter "vfx/effekseer-magicalxspiral/Sylph15/n12.emitter.ogt" {
   at 0.0833
   offset 0 0.5 0
 }
-# effekseer: node 0 "BG": subtractive blend: drawn alpha blended
-# effekseer: node 0 "BG": a camera-facing ring: drawn in its own plane
-# effekseer: node 2.0 "Node": a random colour per particle: its mean used
-# effekseer: node 2.0 "Node": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 2.1 "Node": a random colour per particle: its mean used
-# effekseer: node 2.1 "Node": a sprite scaled unevenly: drawn square at its mean
+light {
+  at 0
+  life 0.3
+  offset 0 0.3137 0
+  color 1 0.893 0.8638
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}
 # effekseer: node 2.1 "Node": ping-pong UV animation: looped
-# effekseer: node 2.2 "Node": a random colour per particle: its mean used
-# effekseer: node 2.2 "Node": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 9 "Impact1": a camera-facing ring: drawn in its own plane

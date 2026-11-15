@@ -10,11 +10,18 @@ duration 0.25
 looping false
 lifetime 0.1667 0.1667
 speed 30 30
-size 2.8284 2.8284
+size 2 2
+heightOverLife 0 2 1 2
+align facing 0 0 1
 colorOverLife {
-  key 0 1 0.2176 0.0104 0.502
-  key 0.6 1 0.2176 0.0104 0.502
-  key 1 1 0.2176 0.0104 0
+  key 0 1 0 0 0.502
+  key 0.6 1 0 0 0.502
+  key 1 1 0 0 0
+}
+randomColorOverLife {
+  key 0 1 1 0.0478 0.502
+  key 0.6 1 1 0.0478 0.502
+  key 1 1 1 0.0478 0
 }
 texture "vfx/effekseer-magicalxspiral/textures/Line6.png"
 blend additive

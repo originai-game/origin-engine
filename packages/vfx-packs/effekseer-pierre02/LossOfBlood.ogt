@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.85
+impact 0
 mesh ring {
   at 0.2167
   rotate 100.3141 17.2294 -141.5667
@@ -89,33 +90,40 @@ emitter "vfx/effekseer-pierre02/LossOfBlood/n0-1-2-0-0.parent.ogt" {
 emitter "vfx/effekseer-pierre02/LossOfBlood/n0-1-2-0-1.parent.ogt" {
   at 0
 }
+light {
+  at 0
+  life 0.3
+  color 1 0.0252 0.0474
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}
 # effekseer: node 0.0 "Wind": ring 3 instances: the first 4 drawn
 # effekseer: node 0.0 "Wind": nested generation: 36 instances above its generator folded into one emitter
 # effekseer: node 0.1.0.0 "FireVariation": nested generation: 72 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.0.0 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.0.1 "FireVariation": nested generation: 72 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.1 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.0.1 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.0.2 "FireVariation": nested generation: 72 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.2 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.0.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.0.3 "FireVariation": nested generation: 72 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.3 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.0.3 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.1.0.0 "FireVariation": nested generation: 36 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.1.0.0 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.1.0.0 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.1.0.1 "FireVariation": nested generation: 36 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.1 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.1.0.1 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.1.0.1 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.1.0.2 "FireVariation": nested generation: 36 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.2 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.1.0.2 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.1.0.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.1.0.3 "FireVariation": nested generation: 36 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.3 "FireVariation": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.1.1.0.3 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.1.0.3 "FireVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.1.0.4 "EmberVariation": nested generation: 36 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.4 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.1.0.4 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.1.0.5 "EmberVariation": nested generation: 36 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.5 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.1.0.5 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.2.0.0 "EmberVariation": nested generation: 36 instances above its generator folded into one emitter
-# effekseer: node 0.1.2.0.0 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.2.0.0 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
 # effekseer: node 0.1.2.0.1 "EmberVariation": nested generation: 36 instances above its generator folded into one emitter
-# effekseer: node 0.1.2.0.1 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.2.0.1 "EmberVariation": a fixed sprite turned at random: its mean plane drawn

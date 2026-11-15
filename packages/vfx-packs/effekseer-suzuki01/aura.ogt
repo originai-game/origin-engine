@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 10
@@ -140,8 +140,4 @@ emitter "vfx/effekseer-suzuki01/aura/n8.emitter.ogt" {
   at 0
 }
 # effekseer: node 0 "FlareMini": ring unlimited instances: the first 4 drawn
-# effekseer: node 1 "Glow": a random colour per particle: its mean used
 # effekseer: node 2 "Flare": ring unlimited instances: the first 4 drawn
-# effekseer: node 6 "Needle": a y-axis billboard: drawn facing the camera
-# effekseer: node 6 "Needle": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 7 "Needle2": a y-axis billboard: drawn facing the camera

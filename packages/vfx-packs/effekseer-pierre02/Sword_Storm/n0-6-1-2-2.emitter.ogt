@@ -13,6 +13,7 @@ lifetime 0.0667 0.0667
 speed 120 120
 size 112 112
 sizeOverLife 0 0.7825 1 1
+align facing 0 0 1
 colorOverLife {
   key 0 1 1 1 0
   key 0.125 1 1 1 0.1098

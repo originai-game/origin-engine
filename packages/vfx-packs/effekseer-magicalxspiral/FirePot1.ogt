@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1
+impact 0
 mesh quad {
   at 0
   offset 0 1.9667 0

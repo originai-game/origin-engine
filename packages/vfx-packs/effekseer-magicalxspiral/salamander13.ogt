@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.6833
+impact 0
 mesh quad {
   at 0
   offset 0 2.6167 0
@@ -123,6 +124,7 @@ mesh ring {
   colors 1 1 1 0 1 0.5356 0.2195 0.502 1 1 1 0
   life 0.1667
   effect "vfx/effekseer-magicalxspiral/salamander13/n6.effect.ogt"
+  face camera
   scale curve 0 8 1 0
   spin 0 0 -600
   color 1 1 1 1
@@ -135,16 +137,25 @@ mesh ring {
   colors 1 1 1 0 1 0.5356 0.2195 0.502 1 1 1 0
   life 0.1667
   effect "vfx/effekseer-magicalxspiral/salamander13/n7.effect.ogt"
+  face camera
   scale curve 0 0 1 8
   spin 0 0 -600
   color 1 1 1 1
   blend additive
 }
+light {
+  at 0
+  life 0.3
+  offset 0 0.7114 0
+  color 1 0.9667 0.9651
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}
 # effekseer: node 0.0 "Node": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.1 "Node": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 3 "Node": a random colour per particle: its mean used
-# effekseer: node 4 "Node": a random colour per particle: its mean used
 # effekseer: node 5.0 "Node": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 5.0 "Node": ring 5 instances: the first 4 drawn
-# effekseer: node 6 "Node": a camera-facing ring: drawn in its own plane
-# effekseer: node 7 "Node": a camera-facing ring: drawn in its own plane

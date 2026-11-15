@@ -6,6 +6,17 @@
   },
   "files": [
     {
+      "path": "Homing_Laser01.ogt",
+      "sha256": "91f5d539d175ddc817bfc0b0bfaf5ef021f3ac266d5842c81ea8621bd7e17273",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Homing_Laser01.efkproj"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "Homing_Laser01/n0.emitter.ogt",
       "sha256": "391974406fe06132002f6bbb0b77bcf992aa5b86cde1f5337f6e3c26cdb9b435",
       "licence": "CC0-1.0",
@@ -39,19 +50,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Homing_Laser01.ogt",
-      "sha256": "31195a8d9cef94e763cca2b98bbcc5c933415bf22eaf3c202f551c22f2863ca3",
+      "path": "Laser01.ogt",
+      "sha256": "9b0193ffb242a6206215652395af8d2aac99656ae3f8b0473ab8cdba2d5acf04",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Homing_Laser01.efkproj"
+        "file": "Effekseer01/Laser01.efkproj"
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Laser01/n0.emitter.ogt",
-      "sha256": "7cbe17959db73c468b93a7681c9835d3b2124fdaba32b6f127bc1995e6d491f1",
+      "sha256": "e6a677ca2d0ce4b3d788cfcd2ff7979d218c4b614dc818772b7b2b5d805e0200",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
@@ -62,7 +73,7 @@
     },
     {
       "path": "Laser01/n1.emitter.ogt",
-      "sha256": "e1fcb9c2f4b9e130295dd5e3c4f0416ccea734cfc9d59838a022816f60af801a",
+      "sha256": "7e2372e322469992a0c901184cf615461afbc54af9c20ff700959d3ae658365a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
@@ -84,7 +95,7 @@
     },
     {
       "path": "Laser01/n3.emitter.ogt",
-      "sha256": "3bb3621ba6f20447af456d6be48a6e3a67f7607fe22cd17ed73140dc6745a4c8",
+      "sha256": "00e27d15d646363470802a5591e14ecfe1137d572e4c74dddf01adedf5f02554",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
@@ -105,12 +116,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Laser01.ogt",
-      "sha256": "826a3bb8f8a1c45f807a27366204c3ea48726915cd77a4a942c9617512169ba2",
+      "path": "Laser02.ogt",
+      "sha256": "765b5324d7b5f62065be2445a8af089cb4371fe69d3c4dd3d00360c8a1c1b1bf",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Laser01.efkproj"
+        "file": "Effekseer01/Laser02.efkproj"
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "converted by og vfx import"
@@ -205,7 +216,7 @@
     },
     {
       "path": "Laser02/n4.emitter.ogt",
-      "sha256": "bf5c3058e631520aef5790b129e7adfaf6648c4d0a362a84529ba0f77b8ad126",
+      "sha256": "e80866d09d66deb01530a82aefb9342e1c50ac9ad359740c5e7a31e291b80e56",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
@@ -215,12 +226,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Laser02.ogt",
-      "sha256": "e35412df43c8d584cabbe197c5e9bda29188aac304a3ddc657905b106f4fd25f",
+      "path": "Laser03.ogt",
+      "sha256": "f857d60f507b1882803d81520823aef964d74e5c693b5e1c4374cdd6124bd7dd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Laser02.efkproj"
+        "file": "Effekseer01/Laser03.efkproj"
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "converted by og vfx import"
@@ -237,15 +248,15 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Laser03/n0-0.effect.ogt",
-      "sha256": "e5ef87413bbe0f94d8ad0399053869536225f2ec63c11ae5889dd0c1c463363b",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and Effekseer01",
+      "derived": "converted by og vfx import",
+      "path": "Laser03/n0-0.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
         "file": "Effekseer01/Laser03.efkproj"
       },
-      "credit": "Effekseer and Effekseer01",
-      "derived": "converted by og vfx import"
+      "sha256": "e5ef87413bbe0f94d8ad0399053869536225f2ec63c11ae5889dd0c1c463363b"
     },
     {
       "path": "Laser03/n1-0-0.emitter.ogt",
@@ -259,15 +270,15 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Laser03/n1-0.effect.ogt",
-      "sha256": "0c270b48964d4bb52123af946289b8f793168d92d32d494b9ae127ae2da474c8",
       "licence": "CC0-1.0",
+      "credit": "Effekseer and Effekseer01",
+      "derived": "converted by og vfx import",
+      "path": "Laser03/n1-0.effect.ogt",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
         "file": "Effekseer01/Laser03.efkproj"
       },
-      "credit": "Effekseer and Effekseer01",
-      "derived": "converted by og vfx import"
+      "sha256": "0c270b48964d4bb52123af946289b8f793168d92d32d494b9ae127ae2da474c8"
     },
     {
       "path": "Laser03/n2-0-0.emitter.ogt",
@@ -281,26 +292,15 @@
       "derived": "converted by og vfx import"
     },
     {
+      "licence": "CC0-1.0",
+      "credit": "Effekseer and Effekseer01",
+      "derived": "converted by og vfx import",
       "path": "Laser03/n2-0.effect.ogt",
-      "sha256": "cc3257926ff0e0e460322b9812a6d73ab963e089afa5dc2eec3d99e191275da8",
-      "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
         "file": "Effekseer01/Laser03.efkproj"
       },
-      "credit": "Effekseer and Effekseer01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Laser03.ogt",
-      "sha256": "0b27235cec4990fa4a66d00954e9f127c4849e1c581eccda7b3ac27e7f688632",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Laser03.efkproj"
-      },
-      "credit": "Effekseer and Effekseer01",
-      "derived": "converted by og vfx import"
+      "sha256": "cc3257926ff0e0e460322b9812a6d73ab963e089afa5dc2eec3d99e191275da8"
     },
     {
       "path": "README.md",
@@ -311,6 +311,17 @@
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "authored"
+    },
+    {
+      "path": "Simple_Distortion.ogt",
+      "sha256": "0a104019ab43df9cc0ecd37f39587bb63a6a6d30d7c923c130f7804c21db8814",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Simple_Distortion.efkproj"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "converted by og vfx import"
     },
     {
       "path": "Simple_Distortion/n0.effect.ogt",
@@ -368,19 +379,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Simple_Distortion.ogt",
-      "sha256": "c68860c058a80c7eebc10b0b7980354e7f817012ab4a5003fcc98425223e5ace",
+      "path": "Simple_GeneratingPosition1.ogt",
+      "sha256": "c682001da503ec058e7c58571e9bba8159c8df3403340671aa7ada1798341f79",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Simple_Distortion.efkproj"
+        "file": "Effekseer01/Simple_GeneratingPosition1.efkproj"
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Simple_GeneratingPosition1/n0.emitter.ogt",
-      "sha256": "9c4cbcf32ebce6675bfa0bcd66b72abea2508ef59e357a7306e5939d830968f9",
+      "sha256": "98cf4a9e77d258b9529e400b0ac711678f8b432d377bb395cb6e99477674a937",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
@@ -390,12 +401,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Simple_GeneratingPosition1.ogt",
-      "sha256": "5460a8ec5aa84d1cd08b762c28339e7772f6b585d46a4a6036d0d8387db3119a",
+      "path": "Simple_Model_UV.ogt",
+      "sha256": "41ee5026e821fb19584a08a2f06530d1e1b48a3697e9cfbdae2b1aabd459b386",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Simple_GeneratingPosition1.efkproj"
+        "file": "Effekseer01/Simple_Model_UV.efkproj"
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "converted by og vfx import"
@@ -423,12 +434,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Simple_Model_UV.ogt",
-      "sha256": "6f7d3f8af92419deb80837ef4824f1657b5929d48ea32f92c59b91fa29db5d2e",
+      "path": "Simple_Ribbon_Parent.ogt",
+      "sha256": "03606791b84264c290ab286e41c226c3aaeadc4e9f875c0d731ef77c57db03fd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Simple_Model_UV.efkproj"
+        "file": "Effekseer01/Simple_Ribbon_Parent.efkproj"
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "converted by og vfx import"
@@ -456,12 +467,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Simple_Ribbon_Parent.ogt",
-      "sha256": "9541cacf15bf71c30b6cea128594be0703f2543dc361aa8428d1711e8850958f",
+      "path": "Simple_Ribbon_Sword.ogt",
+      "sha256": "17b2ccf01b24c4f43489a1021c288991cb41237060aded2f0d29a6ed4c21e137",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Simple_Ribbon_Parent.efkproj"
+        "file": "Effekseer01/Simple_Ribbon_Sword.efkproj"
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "converted by og vfx import"
@@ -478,12 +489,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Simple_Ribbon_Sword.ogt",
-      "sha256": "0e121dc31e95257d6f26417749ee6bd2ec19e653f32ae011ca74e0900f51a2f4",
+      "path": "Simple_Ring_Shape1.ogt",
+      "sha256": "c388f8a9d24d96a853bb605dd2f2810ad140ca23744ec7db5539a7ce57b2322d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Simple_Ribbon_Sword.efkproj"
+        "file": "Effekseer01/Simple_Ring_Shape1.efkproj"
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "converted by og vfx import"
@@ -577,12 +588,12 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Simple_Ring_Shape1.ogt",
-      "sha256": "c55071531600c2529e82fdb3e41c3c5af3042688e01fddc0b61afc16dcee5fbf",
+      "path": "Simple_Ring_Shape2.ogt",
+      "sha256": "ca4685874bdc78ad89116edf13a9832b7660ee496b351d3c89c3ef53cf53b465",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Simple_Ring_Shape1.efkproj"
+        "file": "Effekseer01/Simple_Ring_Shape2.efkproj"
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "converted by og vfx import"
@@ -643,52 +654,30 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Simple_Ring_Shape2.ogt",
-      "sha256": "e86f4026d1754fd413509b07029acaa1dce9bdf440e2c5976a878879864b069f",
+      "path": "Simple_Sprite_BillBoard.ogt",
+      "sha256": "fda58e27bcfa0878faa47fe6a9fbae6770b3503aa06b9030c2e270baf2675bf8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Simple_Ring_Shape2.efkproj"
+        "file": "Effekseer01/Simple_Sprite_BillBoard.efkproj"
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Simple_Sprite_BillBoard/n0.emitter.ogt",
-      "sha256": "06d8f25fa8396bd9c35433bd12c1f41cf293650e67695c7e818fe14575664386",
+      "sha256": "0fd3a493d61ddd726c07a6ba3ee090caab2b21f4a1aa54ca24236cb9c0b83fec",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
         "file": "Effekseer01/Simple_Sprite_BillBoard.efkproj"
-      },
-      "credit": "Effekseer and Effekseer01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Simple_Sprite_BillBoard.ogt",
-      "sha256": "48a2fe35d0b8dbdc6cb61ca1f316af94c20701ceb14c7340ea44a0eb4013c8ee",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Simple_Sprite_BillBoard.efkproj"
-      },
-      "credit": "Effekseer and Effekseer01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Simple_Sprite_Fixed/n0.emitter.ogt",
-      "sha256": "25c04c250f967ce37803989b39e8defd0c21bb6effed178d22ee4f6c7ee75519",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Simple_Sprite_Fixed.efkproj"
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Simple_Sprite_Fixed.ogt",
-      "sha256": "d5ffa790c53089fe460fadc127dbde2bd5f9c40164435b763048610cbc66e2d0",
+      "sha256": "87aa4e21af2ec85cc5e128de4334d1f3f2729c1e32e95cb3de1c6c0b0a3d53b6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
@@ -698,19 +687,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Simple_Sprite_FixedYAxis/n0.emitter.ogt",
-      "sha256": "11054ef0657a2f94b9833d63e1991de8dc2d01170228863bb7a6ba0b187b4ddb",
+      "path": "Simple_Sprite_Fixed/n0.emitter.ogt",
+      "sha256": "5e4e41c1a9a2a021e8b52ed43bb383779407c9e4faeb460bfedd3c19cd0d3b30",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Simple_Sprite_FixedYAxis.efkproj"
+        "file": "Effekseer01/Simple_Sprite_Fixed.efkproj"
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Simple_Sprite_FixedYAxis.ogt",
-      "sha256": "d0ee31d54d0018c4e210b82fc8ae6f71c2fe46eae96fd0a20a907df8bd6f33dd",
+      "sha256": "c46eb1d6f976a41da7cd8a43ede430cca33ba47c7a7903b0eaa8f8022c5e1ae3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
@@ -720,52 +709,19 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Simple_Track1/n0-0.effect.ogt",
-      "sha256": "10714b3edd10b515214b68f56560951ec3e1e930d00c2ea8b334077999108659",
+      "path": "Simple_Sprite_FixedYAxis/n0.emitter.ogt",
+      "sha256": "60fa7e06a921da633240f55fc939318c20049a191b00f876d4c7509bb543c822",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Simple_Track1.efkproj"
-      },
-      "credit": "Effekseer and Effekseer01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Simple_Track1/n0-1.effect.ogt",
-      "sha256": "29774a04b85cbfa39f7851c72ea55bda4ce375acfd44bba50ae37e7689ab02d2",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Simple_Track1.efkproj"
-      },
-      "credit": "Effekseer and Effekseer01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Simple_Track1/n0-2.effect.ogt",
-      "sha256": "a0b3a5e70d8f1681c80b733bf5e469f79b640d3046eac063396ba54131f3bbc3",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Simple_Track1.efkproj"
-      },
-      "credit": "Effekseer and Effekseer01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Simple_Track1/n0-3.effect.ogt",
-      "sha256": "e4ed4681170159e9258bb8f4bb736496e7e4f5180c63197d3c887a643f3bef5e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
-        "file": "Effekseer01/Simple_Track1.efkproj"
+        "file": "Effekseer01/Simple_Sprite_FixedYAxis.efkproj"
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "Simple_Track1.ogt",
-      "sha256": "fa78a4419d8eb7401725f6eba446b2cb1e5b947a185c3ca60807713a20d7fd7b",
+      "sha256": "a72f3cb1b174579b7fd5aff5f9f284c135b7799534159e4f03e3207c6705d7e2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
@@ -773,6 +729,50 @@
       },
       "credit": "Effekseer and Effekseer01",
       "derived": "converted by og vfx import"
+    },
+    {
+      "licence": "CC0-1.0",
+      "credit": "Effekseer and Effekseer01",
+      "derived": "converted by og vfx import",
+      "path": "Simple_Track1/n0-0.effect.ogt",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Simple_Track1.efkproj"
+      },
+      "sha256": "10714b3edd10b515214b68f56560951ec3e1e930d00c2ea8b334077999108659"
+    },
+    {
+      "licence": "CC0-1.0",
+      "credit": "Effekseer and Effekseer01",
+      "derived": "converted by og vfx import",
+      "path": "Simple_Track1/n0-1.effect.ogt",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Simple_Track1.efkproj"
+      },
+      "sha256": "29774a04b85cbfa39f7851c72ea55bda4ce375acfd44bba50ae37e7689ab02d2"
+    },
+    {
+      "licence": "CC0-1.0",
+      "credit": "Effekseer and Effekseer01",
+      "derived": "converted by og vfx import",
+      "path": "Simple_Track1/n0-2.effect.ogt",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Simple_Track1.efkproj"
+      },
+      "sha256": "a0b3a5e70d8f1681c80b733bf5e469f79b640d3046eac063396ba54131f3bbc3"
+    },
+    {
+      "licence": "CC0-1.0",
+      "credit": "Effekseer and Effekseer01",
+      "derived": "converted by og vfx import",
+      "path": "Simple_Track1/n0-3.effect.ogt",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Simple_Track1.efkproj"
+      },
+      "sha256": "e4ed4681170159e9258bb8f4bb736496e7e4f5180c63197d3c887a643f3bef5e"
     },
     {
       "path": "extension.json",
@@ -946,7 +946,7 @@
       "title": "Homing Laser 01",
       "loop": false,
       "durationSeconds": 4.267,
-      "impact": false,
+      "impact": true,
       "category": "beam",
       "keywords": [
         "beam",
@@ -960,7 +960,7 @@
       "title": "Laser 01",
       "loop": false,
       "durationSeconds": 1.333,
-      "impact": false,
+      "impact": true,
       "category": "beam",
       "keywords": [
         "beam",
@@ -974,7 +974,7 @@
       "title": "Laser 02",
       "loop": false,
       "durationSeconds": 3.733,
-      "impact": false,
+      "impact": true,
       "category": "beam",
       "keywords": [
         "beam",
@@ -1002,7 +1002,7 @@
       "title": "Simple Distortion",
       "loop": false,
       "durationSeconds": 2.917,
-      "impact": false,
+      "impact": true,
       "category": "basic",
       "keywords": [
         "basic",
@@ -1016,7 +1016,7 @@
       "title": "Simple Generating Position 1",
       "loop": false,
       "durationSeconds": 0.168,
-      "impact": false,
+      "impact": true,
       "category": "basic",
       "keywords": [
         "basic",
@@ -1030,7 +1030,7 @@
       "title": "Simple Model UV",
       "loop": false,
       "durationSeconds": 3.5,
-      "impact": false,
+      "impact": true,
       "category": "basic",
       "keywords": [
         "basic",
@@ -1044,7 +1044,7 @@
       "title": "Simple Ribbon Parent",
       "loop": false,
       "durationSeconds": 1.817,
-      "impact": false,
+      "impact": true,
       "category": "basic",
       "keywords": [
         "basic",
@@ -1072,7 +1072,7 @@
       "title": "Simple Ring Shape 1",
       "loop": false,
       "durationSeconds": 9.5,
-      "impact": false,
+      "impact": true,
       "category": "basic",
       "keywords": [
         "basic",
@@ -1086,7 +1086,7 @@
       "title": "Simple Ring Shape 2",
       "loop": false,
       "durationSeconds": 7,
-      "impact": false,
+      "impact": true,
       "category": "basic",
       "keywords": [
         "basic",
@@ -1100,7 +1100,7 @@
       "title": "Simple Sprite Bill Board",
       "loop": false,
       "durationSeconds": 0.665,
-      "impact": false,
+      "impact": true,
       "category": "basic",
       "keywords": [
         "basic",
@@ -1114,7 +1114,7 @@
       "title": "Simple Sprite Fixed",
       "loop": false,
       "durationSeconds": 1.633,
-      "impact": false,
+      "impact": true,
       "category": "basic",
       "keywords": [
         "basic",
@@ -1128,7 +1128,7 @@
       "title": "Simple Sprite Fixed YAxis",
       "loop": false,
       "durationSeconds": 2.817,
-      "impact": false,
+      "impact": true,
       "category": "basic",
       "keywords": [
         "basic",

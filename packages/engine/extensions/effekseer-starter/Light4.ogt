@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.0917
+impact 0.2833
 emitter "vfx/effekseer-starter/Light4/n0-0-0-0-0.emitter.ogt" {
   at 0
   offset 0 5.55 0
@@ -347,102 +348,32 @@ emitter "vfx/effekseer-starter/Light4/n0-6-0-0-3.emitter.ogt" {
   offset 0 9.95 0
   rotate 0 0 180
 }
-# effekseer: node 0.0.0.0.0 "上半分": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.1 "下半分": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.1 "下半分": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.0.0.2 "上半分glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.3 "下半分glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.3 "下半分glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.4.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.0.0.0.4.0.0 "Node": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0.5 "消滅柱": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.5 "消滅柱": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.0.0.6 "柱glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.6 "柱glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.0.0.7.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.0.0.0.7.0.0 "粒子glow": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0 "上半分": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.0.0.1 "下半分": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.0.0.1 "下半分": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.0.0.2 "上半分glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.0.0.3 "下半分glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.0.0.3 "下半分glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.1.0.0.4.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.1.0.0.4.0.0 "Node": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.5 "消滅柱": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.0.0.5 "消滅柱": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.0.0.6 "柱glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.0.0.6 "柱glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.1.0.0.7.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.1.0.0.7.0.0 "粒子glow": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 0.2.0.0.0 "上半分": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0.0.1 "下半分": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0.0.1 "下半分": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.2.0.0.2 "上半分glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0.0.3 "下半分glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0.0.3 "下半分glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.2.0.0.4.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.2.0.0.4.0.0 "Node": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 0.2.0.0.5 "消滅柱": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0.0.5 "消滅柱": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.2.0.0.6 "柱glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0.0.6 "柱glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.2.0.0.7.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.2.0.0.7.0.0 "粒子glow": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 0.3.0.0.0 "上半分": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.3.0.0.1 "下半分": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.3.0.0.1 "下半分": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.3.0.0.2 "上半分glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.3.0.0.3 "下半分glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.3.0.0.3 "下半分glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.3.0.0.4.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.3.0.0.4.0.0 "Node": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 0.3.0.0.5 "消滅柱": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.3.0.0.5 "消滅柱": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.3.0.0.6 "柱glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.3.0.0.6 "柱glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.3.0.0.7.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.3.0.0.7.0.0 "粒子glow": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 0.4.0.0.0 "上半分": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.4.0.0.1 "下半分": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.4.0.0.1 "下半分": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.4.0.0.2 "上半分glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.4.0.0.3 "下半分glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.4.0.0.3 "下半分glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.4.0.0.4.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.4.0.0.4.0.0 "Node": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 0.4.0.0.5 "消滅柱": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.4.0.0.5 "消滅柱": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.4.0.0.6 "柱glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.4.0.0.6 "柱glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.4.0.0.7.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.4.0.0.7.0.0 "粒子glow": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 0.5.0.0.0 "上半分": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.5.0.0.1 "下半分": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.5.0.0.1 "下半分": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.5.0.0.2 "上半分glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.5.0.0.3 "下半分glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.5.0.0.3 "下半分glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.5.0.0.4.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.5.0.0.4.0.0 "Node": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 0.5.0.0.5 "消滅柱": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.5.0.0.5 "消滅柱": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.5.0.0.6 "柱glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.5.0.0.6 "柱glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.5.0.0.7.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.5.0.0.7.0.0 "粒子glow": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 0.6.0.0.0 "上半分": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.6.0.0.1 "下半分": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.6.0.0.1 "下半分": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.6.0.0.2 "上半分glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.6.0.0.3 "下半分glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.6.0.0.3 "下半分glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.6.0.0.4.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.6.0.0.4.0.0 "Node": nested generation: 6 instances above its generator folded into one emitter
-# effekseer: node 0.6.0.0.5 "消滅柱": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.6.0.0.5 "消滅柱": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.6.0.0.6 "柱glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.6.0.0.6 "柱glow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.6.0.0.7.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: node 0.6.0.0.7.0.0 "粒子glow": nested generation: 6 instances above its generator folded into one emitter
 # effekseer: more than 64 elements: the last 6 left out

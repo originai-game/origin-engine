@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.9833
+impact 0.1667
 trail {
   at 0
   offset 0 0.75 0
@@ -63,4 +64,15 @@ emitter "vfx/effekseer-magicalxspiral/A_Sylph1/n3-1.emitter.ogt" {
   offset 0 0.75 1.75
   rotate 0 -89.9802 0
 }
-# effekseer: node 3.1 "Node": a random colour per particle: its mean used
+light {
+  at 0.1667
+  life 0.3
+  offset 0 0.75 1.75
+  color 0.0441 1 0.9025
+  intensity curve 0 8 1 0
+  distance 3
+}
+shake {
+  at 0.1667
+  trauma 0.175
+}

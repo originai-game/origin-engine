@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.3667
@@ -13,4 +13,3 @@ trail {
   orbit 0 15
 }
 # effekseer: node 0.0.0.0 "Node": nested generation: 32 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0 "Node": a track of many instances: one trail drawn

@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.1667
+impact 0
 mesh ring {
   at 0
   rotate -90 0 1
@@ -83,6 +84,17 @@ mesh ring {
   scale 0.5
   color 1 1 1 1
   blend additive
+}
+light {
+  at 0
+  life 0.3
+  color 1 1 1
+  intensity curve 0 8 1 0
+  distance 10.4
+}
+shake {
+  at 0
+  trauma 0.36
 }
 # effekseer: node 1.0 "Node": ring 3 instances: the first 4 drawn
 # effekseer: node 1.0 "Node": nested generation: 2 instances above its generator folded into one emitter

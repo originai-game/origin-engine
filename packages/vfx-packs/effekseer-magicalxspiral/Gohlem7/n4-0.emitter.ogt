@@ -12,9 +12,14 @@ lifetime 0.25 0.25
 speed 10.3923 10.3923
 size 0.5 0.75
 colorOverLife {
-  key 0 0.6354 1 0.0478 0.502
-  key 0.8667 0.6354 1 0.0478 0.502
-  key 1 0.6354 1 0.0478 0
+  key 0 0.5356 1 0 0.502
+  key 0.8667 0.5356 1 0 0.502
+  key 1 0.5356 1 0 0
+}
+randomColorOverLife {
+  key 0 0.7445 1 0.2195 0.502
+  key 0.8667 0.7445 1 0.2195 0.502
+  key 1 0.7445 1 0.2195 0
 }
 texture "vfx/effekseer-magicalxspiral/textures/particle2.png"
 blend additive

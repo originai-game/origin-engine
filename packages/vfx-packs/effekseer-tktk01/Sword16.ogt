@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.8333
@@ -470,134 +470,77 @@ emitter "vfx/effekseer-tktk01/Sword16/n10-1-0-0-0.emitter.ogt" {
 }
 # effekseer: node 0.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 0.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 1.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 1.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 1.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 2.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 2.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 2.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 2.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 2.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 2.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 2.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 3.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 3.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 3.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 3.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 3.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 3.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 3.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 3.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 3.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 3.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 3.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 3.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 3.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 3.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 4.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 4.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 4.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 4.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 4.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 4.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 4.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 4.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 4.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 4.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 4.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 4.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 4.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 4.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 5.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 5.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 5.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 5.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 5.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 5.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 5.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 5.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 5.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 5.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 5.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 5.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 5.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 5.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 6.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 6.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 6.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 6.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 6.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 6.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 6.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 6.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 6.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 6.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 6.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 6.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 6.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 6.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 7.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 7.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 7.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 7.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 7.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 7.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 7.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 7.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 7.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 7.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 7.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 7.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 7.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 7.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 8.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 8.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 8.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 8.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 8.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 8.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 8.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 8.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 8.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 8.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 8.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 8.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 8.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 8.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 9.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 9.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 9.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 9.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 9.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 9.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 9.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 9.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 9.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 9.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 9.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 9.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 9.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 9.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 10.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 10.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 10.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 10.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 10.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 10.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 10.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 10.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 10.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 10.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 10.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 10.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
-# effekseer: node 10.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 10.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean

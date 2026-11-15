@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.775
+impact 0
 mesh ring {
   at 0
   inner 0.2587
@@ -24,8 +25,17 @@ emitter "vfx/effekseer-tktk01/Blow1/n2-0.emitter.ogt" {
   offset 1.5 0 0
   rotate 0 0 -90
 }
+light {
+  at 0
+  life 0.3
+  offset 0.5044 0 0
+  color 1 0.6698 0.6698
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}
 # effekseer: node 0.0 "Ring": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 1.0 "衝撃メイン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1.0 "衝撃メイン": a random colour per particle: its mean used
-# effekseer: node 2.0 "衝撃大丸メイン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 2.0 "衝撃大丸メイン": a random colour per particle: its mean used
+# effekseer: node 1.0 "衝撃メイン": a fixed sprite turned at random: its mean plane drawn

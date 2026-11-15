@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.5833
+impact 0.0833
 emitter "vfx/effekseer-tktk01/Sword7/n0.emitter.ogt" {
   at 0
   offset 15 0 0
@@ -26,11 +27,5 @@ mesh ring {
   color 50 50 50 1
   blend additive
 }
-# effekseer: node 0 "斬撃": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0 "斬撃": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1 "クロス１": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 1 "クロス１": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 2 "クロス１": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 2 "クロス１": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 3.0 "〆リング": ring 50 instances: the first 4 drawn
 # effekseer: node 3.0 "〆リング": a ring whose thickness changes over its life: its middle thickness kept

@@ -12,12 +12,19 @@ looping false
 lifetime 0.5 0.5
 speed 9.35 9.35
 speedOverLife 0 2.1308 0.25 1.3814 0.5 0.8473 0.75 0.5423 1 0.4657
-size 5.2052 5.2052
-sizeOverLife 0 1 0.4219 0.8873 1 0.8165
+size 6.375 6.375
+sizeOverLife 0 1 0.2031 0.8772 0.4219 0.7873 0.6562 0.7253 1 0.6667
+heightOverLife 0 0.6667 0.2031 0.6667 0.4219 0.6667 0.6562 0.6667 1 0.6667
+align facing 0 0 1
 colorOverLife {
-  key 0 0.162 0.162 0.162 0
-  key 0.0333 0.162 0.162 0.162 0.502
-  key 1 0.162 0.162 0.162 0.502
+  key 0 0.0478 0.0478 0.0478 0
+  key 0.0333 0.0478 0.0478 0.0478 0.502
+  key 1 0.0478 0.0478 0.0478 0.502
+}
+randomColorOverLife {
+  key 0 0.3537 0.3537 0.3537 0
+  key 0.0333 0.3537 0.3537 0.3537 0.502
+  key 1 0.3537 0.3537 0.3537 0.502
 }
 texture "vfx/effekseer-tktk01/textures/actionlines.png"
 blend additive

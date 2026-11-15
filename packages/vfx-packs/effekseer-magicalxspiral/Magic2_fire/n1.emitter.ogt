@@ -13,9 +13,14 @@ lifetime 0.0833 0.25
 speed 6.4952 25.9808
 size 0.45 0.95
 colorOverLife {
-  key 0 1 0.0478 0.0104 1
-  key 0.6 1 0.0478 0.0104 1
-  key 1 1 0.0478 0.0104 0
+  key 0 1 0.0104 0 1
+  key 0.6 1 0.0104 0 1
+  key 1 1 0.0104 0 0
+}
+randomColorOverLife {
+  key 0 1 0.1166 0.0478 1
+  key 0.6 1 0.1166 0.0478 1
+  key 1 1 0.1166 0.0478 0
 }
 rotation -180 180
 texture "vfx/effekseer-magicalxspiral/textures/particle2.png"

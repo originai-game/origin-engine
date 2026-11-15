@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.8833
+impact 0
 mesh ring {
   at 0
   rotate -90 0 0
@@ -97,6 +98,7 @@ mesh ring {
   colors 1 0.2195 0.2195 0 1 0.2195 0.2195 0.502 1 0.2195 0.2195 0
   life 0.1667
   effect "vfx/effekseer-magicalxspiral/Salamander12/n2.effect.ogt"
+  face camera
   scale curve 0 10 1 0
   spin 0 0 300
   color 1 1 1 1
@@ -176,14 +178,20 @@ mesh ring {
 emitter "vfx/effekseer-magicalxspiral/Salamander12/n7.emitter.ogt" {
   at 0
 }
+light {
+  at 0
+  life 0.3
+  color 1 0.9072 0.9064
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}
 # effekseer: node 0.0.0 "Node": ring 3 instances: the first 4 drawn
 # effekseer: node 0.0.0 "Node": nested generation: 4 instances above its generator folded into one emitter
 # effekseer: node 0.0.0 "Node": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 0.0.1 "Node": ring 3 instances: the first 4 drawn
 # effekseer: node 0.0.1 "Node": nested generation: 4 instances above its generator folded into one emitter
 # effekseer: node 0.0.1 "Node": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 2 "Node": a camera-facing ring: drawn in its own plane
-# effekseer: node 4.0 "Node": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 4.0 "Node": a random colour per particle: its mean used
-# effekseer: node 4.0 "Node": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 7 "Node": a random colour per particle: its mean used

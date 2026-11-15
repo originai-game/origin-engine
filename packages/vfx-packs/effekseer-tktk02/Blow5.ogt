@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.3317
+impact 0
 emitter "vfx/effekseer-tktk02/Blow5/n0-0-0-0-0-0-0.emitter.ogt" {
   at 0
   offset 0 0.5 0
@@ -244,63 +245,29 @@ mesh ring {
   color 20 20 20 1
   blend additive
 }
-# effekseer: node 0.0.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.0.0.0.0.2 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.0.0.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.0.1.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.1.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.1.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.0.1.0.2 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.1.0.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+light {
+  at 0
+  life 0.3
+  offset 0 0.2809 0
+  color 0.3176 0.509 1
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}
 # effekseer: node 0.0.0.2 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 0.0.0.4.0 "Naka": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 0.0.0.4.1 "Soto": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 0.1.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.0.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.0.0.0.0.2 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.0.0.0.0.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.0.1.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.0.1.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.0.1.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.1.0.1.0.2 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.1.0.1.0.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.1.0.2 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 0.1.0.4.0 "Naka": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 0.1.0.4.1 "Soto": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 0.2.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.2.0.0.0.0.2 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0.0.0.0.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.2.0.1.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0.1.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0.1.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.2.0.1.0.2 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0.1.0.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.2.0.2 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 0.2.0.4.0 "Naka": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 0.2.0.4.1 "Soto": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 0.3.0.0.0.0 "LineMain": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.3.0.0.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 0.3.0.0.0.1 "LineColor": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.3.0.0.0.1 "LineColor": a track of many instances: one trail drawn
 # effekseer: node 0.3.0.0.0.2 "LineGlow": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.3.0.0.0.2 "LineGlow": a track of many instances: one trail drawn
-# effekseer: node 0.3.0.0.0.3.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.3.0.0.0.3.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.3.0.0.0.3.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.3.0.0.0.3.0.0.2 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.3.0.0.0.3.0.0.2 "LineMain": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.3.1.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.3.1.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.3.1.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.3.1.0.0.2 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.3.1.0.0.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.3.1.1 "Distortion": a random colour per particle: its mean used
-# effekseer: node 0.3.1.2.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.3.1.2.0.0.2 "LineGlow": a random colour per particle: its mean used
 # effekseer: node 0.3.1.5.0.0.0 "Ring": ring 20 instances: the first 4 drawn
 # effekseer: node 0.3.1.5.0.0.0 "Ring": a ring whose thickness changes over its life: its middle thickness kept

@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 0.9079
+impact 0.05
 emitter "vfx/effekseer-tktk01/Blow15/n0-0-0.emitter.ogt" {
   at 0.0167
   offset 0 0 1
@@ -274,14 +275,18 @@ mesh ring {
   color 100 100 100 1
   blend additive
 }
-# effekseer: node 0.0.0.0 "glow": a random colour per particle: its mean used
-# effekseer: node 0.0.0.1 "glow": a random colour per particle: its mean used
-# effekseer: node 0.1.0.0 "glow": a random colour per particle: its mean used
-# effekseer: node 0.1.0.1 "glow": a random colour per particle: its mean used
-# effekseer: node 0.2.0 "上に上がるライン": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0 "上に上がるライン": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.2.0.0 "glow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.2.0.0 "glow": a random colour per particle: its mean used
+light {
+  at 0.05
+  life 0.3
+  offset 0 0 1.2659
+  color 1 0.4374 0.4374
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0.05
+  trauma 0.4
+}
 # effekseer: node 1.1 "外枠": a ring whose thickness changes over its life: its middle thickness kept
 # effekseer: node 1.1 "外枠": a UV region of a texture whose size is not known (not a PNG)
 # effekseer: node 2.0.1 "外枠": a ring whose thickness changes over its life: its middle thickness kept

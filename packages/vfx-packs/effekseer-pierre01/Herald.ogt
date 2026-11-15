@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 2.0833
+impact 0.0833
 emitter "vfx/effekseer-pierre01/Herald/n0-0-0.emitter.ogt" {
   at 0
   offset 0 4 0
@@ -729,12 +730,4 @@ mesh ring {
   color 1 1 1 1
   blend alpha
 }
-# effekseer: node 0.0.2 "Ray": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.3 "DarkEye": subtractive blend: drawn alpha blended
-# effekseer: node 0.0.9 "CosmosSmokeVariation": a random colour per particle: its mean used
-# effekseer: node 0.0.10 "CosmosSmokeVariation": a random colour per particle: its mean used
-# effekseer: node 0.0.11 "CosmosSmokeVariation": a random colour per particle: its mean used
-# effekseer: node 0.0.12 "CosmosSmokeVariation": a random colour per particle: its mean used
-# effekseer: node 0.0.13 "DarkEye": subtractive blend: drawn alpha blended
-# effekseer: node 0.1.6 "DarkEye": subtractive blend: drawn alpha blended
 # effekseer: more than 64 elements: the last 8 left out

@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.63
+impact 0.5833
 emitter "vfx/effekseer-nextsoft01/HealPotion2/n0.emitter.ogt" {
   at 0
   offset 0 3 0
@@ -28,6 +29,4 @@ mesh quad {
 emitter "vfx/effekseer-nextsoft01/HealPotion2/n3.emitter.ogt" {
   at 0.6667
 }
-# effekseer: node 1 "もわ": a random colour per particle: its mean used
-# effekseer: node 1 "もわ": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 2 "衝撃波": a sprite scaled unevenly: drawn square at its mean

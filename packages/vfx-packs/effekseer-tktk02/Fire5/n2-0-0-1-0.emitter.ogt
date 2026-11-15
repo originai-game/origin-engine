@@ -13,9 +13,14 @@ speed 0.9 3.9
 speedOverLife 0 3.6952 0.25 1.7411 0.375 1.0269 0.5 0.5001 0.625 0.1608 0.75 0.0091 0.875 0.0448 1 0.2582
 size 1.125 1.375
 colorOverLife {
-  key 0 1 0.3587 0.1166 0
-  key 0.4 1 0.2444 0.0714 0.251
-  key 1 1 0.1166 0.0254 0
+  key 0 1 0.2195 0.0478 0
+  key 0.4 1 0.1344 0.0292 0.251
+  key 1 1 0.0478 0.0104 0
+}
+randomColorOverLife {
+  key 0 1 0.5356 0.2195 0
+  key 0.4 1 0.391 0.1344 0.251
+  key 1 1 0.2195 0.0478 0
 }
 texture "vfx/effekseer-tktk02/textures/Particle02.png"
 blend additive

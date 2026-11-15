@@ -14,6 +14,7 @@ speed 4.776 13.6218
 speedOverLife 0 1.3336 1 0.7164
 size 8.7685 14.6142
 sizeOverLife 0 0.5774 0.3281 0.6843 1 1
+align facing 0 0.6931 0.7208
 colorOverLife {
   key 0 1 0.8751 0.7519 0
   key 0.1875 1 0.8751 0.7519 0.0544

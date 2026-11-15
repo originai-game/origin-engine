@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.7748
+impact 0
 emitter "vfx/effekseer-tktk01/Blow5/n0.emitter.ogt" {
   at 0
 }
@@ -75,18 +76,23 @@ mesh ring {
   color 1 1 1 1
   blend additive
 }
+light {
+  at 0
+  life 0.3
+  color 1 0.8613 0.6526
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}
 # effekseer: node 1 "グロー画像": a mesh's colour over its life: its brightest kept, alpha over life kept
 # effekseer: node 2.0 "広がりリングギザギザ": ring 2 instances: the first 4 drawn
 # effekseer: node 2.0 "広がりリングギザギザ": nested generation: 10 instances above its generator folded into one emitter
 # effekseer: node 2.1 "広がりリング外": ring 10 instances: the first 4 drawn
 # effekseer: node 2.1 "広がりリング外": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 3.0 "中心からの光": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 3.0 "中心からの光": a random colour per particle: its mean used
-# effekseer: node 3.0 "中心からの光": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 3.0 "中心からの光": a child of an instanced parent: its motion drawn up the world's y
-# effekseer: node 4.0 "中心からの光余韻": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 4.0 "中心からの光余韻": a random colour per particle: its mean used
-# effekseer: node 4.0 "中心からの光余韻": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 4.0 "中心からの光余韻": a child of an instanced parent: its motion drawn up the world's y
 # effekseer: node 5 "余韻ギザリング": ring 5 instances: the first 4 drawn
 # effekseer: node 6 "広がりリング外": a ring whose thickness changes over its life: its middle thickness kept

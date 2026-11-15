@@ -1,8 +1,9 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 1.6783
+impact 0
 emitter "vfx/effekseer-tktk01/Blow7/n0-0.emitter.ogt" {
   at 0
 }
@@ -42,14 +43,21 @@ trail {
   lifetime 0.2
   color 1 0.0104 0.0478 0.3922
 }
-# effekseer: node 0.0 "ライン": a fixed sprite with many instances: drawn facing the camera
-# effekseer: node 0.0 "ライン": a sprite scaled unevenly: drawn square at its mean
+light {
+  at 0
+  life 0.3
+  offset 0.1125 0 0
+  color 1 0.0627 0.0854
+  intensity curve 0 8 1 0
+  distance 12
+}
+shake {
+  at 0
+  trauma 0.4
+}
 # effekseer: node 0.0 "ライン": motion out from a circle: approximated along one direction
-# effekseer: node 0.0.0 "glow": a fixed sprite with many instances: drawn facing the camera
 # effekseer: node 0.0.0 "glow": motion out from a circle: approximated along one direction
 # effekseer: node 1.0.0 "軌跡": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.0.0 "軌跡": nested generation: 1000 instances above its generator folded into one emitter
-# effekseer: node 1.0.1 "glow": a random colour per particle: its mean used
-# effekseer: node 1.0.1.0 "glow": a random colour per particle: its mean used
 # effekseer: node 1.0.2 "軌跡": a moving ancestor: its descendants are placed where it starts
 # effekseer: node 1.0.2 "軌跡": nested generation: 1000 instances above its generator folded into one emitter

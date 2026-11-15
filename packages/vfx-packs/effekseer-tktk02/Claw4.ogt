@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # Converted from Effekseer by og vfx import.
 duration 3.5333
@@ -409,204 +409,81 @@ emitter "vfx/effekseer-tktk02/Claw4/n1-0-1-0-0-0-0-0-3-0-0-0-2.emitter.ogt" {
   rotate -34.3235 77.6576 127.7219
   until 1.5667
 }
-# effekseer: node 0.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.0.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 0.0.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.1.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.1.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.1.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.1.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.1.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.1.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 0.0.1.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.2.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.2.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.2.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 0.0.2.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.2.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 0.0.2.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 0.0.2.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 0.0.4 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 0.1.0.0.0.0.0.0 "LineMain": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.0.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 0.1.0.0.0.0.0.1.0 "Line_color": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.0.0.1.0 "Line_color": a track of many instances: one trail drawn
 # effekseer: node 0.1.0.0.0.0.0.2.0 "Line_Glow": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.0.0.2.0 "Line_Glow": a track of many instances: one trail drawn
 # effekseer: node 0.1.0.0.0.0.0.3.0.0.0.0 "particleMain": nested generation: 8 instances above its generator folded into one emitter
 # effekseer: node 0.1.0.0.0.0.0.3.0.0.0.1 "particleColor": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.0.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 0.1.0.0.0.0.0.3.0.0.0.2 "particleGlow": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.0.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 0.1.0.0.0.1.0.0 "LineMain": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.1.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 0.1.0.0.0.1.0.1.0 "Line_color": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.1.0.1.0 "Line_color": a track of many instances: one trail drawn
 # effekseer: node 0.1.0.0.0.1.0.2.0 "Line_Glow": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.1.0.2.0 "Line_Glow": a track of many instances: one trail drawn
 # effekseer: node 0.1.0.0.0.1.0.3.0.0.0.0 "particleMain": nested generation: 8 instances above its generator folded into one emitter
 # effekseer: node 0.1.0.0.0.1.0.3.0.0.0.1 "particleColor": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.1.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 0.1.0.0.0.1.0.3.0.0.0.2 "particleGlow": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.1.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 0.1.0.0.0.2.0.0 "LineMain": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.2.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 0.1.0.0.0.2.0.1.0 "Line_color": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.2.0.1.0 "Line_color": a track of many instances: one trail drawn
 # effekseer: node 0.1.0.0.0.2.0.2.0 "Line_Glow": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.2.0.2.0 "Line_Glow": a track of many instances: one trail drawn
 # effekseer: node 0.1.0.0.0.2.0.3.0.0.0.0 "particleMain": nested generation: 8 instances above its generator folded into one emitter
 # effekseer: node 0.1.0.0.0.2.0.3.0.0.0.1 "particleColor": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.2.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 0.1.0.0.0.2.0.3.0.0.0.2 "particleGlow": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0.2.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 0.1.1.0.0.0.0.0 "LineMain": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.0.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 0.1.1.0.0.0.0.1.0 "Line_color": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.0.0.1.0 "Line_color": a track of many instances: one trail drawn
 # effekseer: node 0.1.1.0.0.0.0.2.0 "Line_Glow": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.0.0.2.0 "Line_Glow": a track of many instances: one trail drawn
 # effekseer: node 0.1.1.0.0.0.0.3.0.0.0.0 "particleMain": nested generation: 8 instances above its generator folded into one emitter
 # effekseer: node 0.1.1.0.0.0.0.3.0.0.0.1 "particleColor": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.0.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 0.1.1.0.0.0.0.3.0.0.0.2 "particleGlow": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.0.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 0.1.1.0.0.1.0.0 "LineMain": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.1.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 0.1.1.0.0.1.0.1.0 "Line_color": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.1.0.1.0 "Line_color": a track of many instances: one trail drawn
 # effekseer: node 0.1.1.0.0.1.0.2.0 "Line_Glow": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.1.0.2.0 "Line_Glow": a track of many instances: one trail drawn
 # effekseer: node 0.1.1.0.0.1.0.3.0.0.0.0 "particleMain": nested generation: 8 instances above its generator folded into one emitter
 # effekseer: node 0.1.1.0.0.1.0.3.0.0.0.1 "particleColor": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.1.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 0.1.1.0.0.1.0.3.0.0.0.2 "particleGlow": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.1.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 0.1.1.0.0.2.0.0 "LineMain": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.2.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 0.1.1.0.0.2.0.1.0 "Line_color": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.2.0.1.0 "Line_color": a track of many instances: one trail drawn
 # effekseer: node 0.1.1.0.0.2.0.2.0 "Line_Glow": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.2.0.2.0 "Line_Glow": a track of many instances: one trail drawn
 # effekseer: node 0.1.1.0.0.2.0.3.0.0.0.0 "particleMain": nested generation: 8 instances above its generator folded into one emitter
 # effekseer: node 0.1.1.0.0.2.0.3.0.0.0.1 "particleColor": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.2.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 0.1.1.0.0.2.0.3.0.0.0.2 "particleGlow": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.1.0.0.2.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.0.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.0.0.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.0.0.0.0.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.0.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.0.0.0.1.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.0.1.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.0.1.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.1.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.0.0.0.1.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.0.1.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.1.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.0.0.0.2.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.0.2.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.0.2.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.2.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.0.0.0.2.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 1.0.0.0.2.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 1.0.0.0.2.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 1.0.0.0.4 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 1.0.1.0.0.0.0.0.0 "LineMain": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.0.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 1.0.1.0.0.0.0.0.1.0 "Line_color": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.0.0.1.0 "Line_color": a track of many instances: one trail drawn
 # effekseer: node 1.0.1.0.0.0.0.0.2.0 "Line_Glow": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.0.0.2.0 "Line_Glow": a track of many instances: one trail drawn
 # effekseer: node 1.0.1.0.0.0.0.0.3.0.0.0.0 "particleMain": nested generation: 3 instances above its generator folded into one emitter
 # effekseer: node 1.0.1.0.0.0.0.0.3.0.0.0.1 "particleColor": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.0.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 1.0.1.0.0.0.0.0.3.0.0.0.2 "particleGlow": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.0.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 1.0.1.0.0.0.1.0.0 "LineMain": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.1.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 1.0.1.0.0.0.1.0.1.0 "Line_color": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.1.0.1.0 "Line_color": a track of many instances: one trail drawn
 # effekseer: node 1.0.1.0.0.0.1.0.2.0 "Line_Glow": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.1.0.2.0 "Line_Glow": a track of many instances: one trail drawn
 # effekseer: node 1.0.1.0.0.0.1.0.3.0.0.0.0 "particleMain": nested generation: 3 instances above its generator folded into one emitter
 # effekseer: node 1.0.1.0.0.0.1.0.3.0.0.0.1 "particleColor": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.1.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 1.0.1.0.0.0.1.0.3.0.0.0.2 "particleGlow": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.1.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 1.0.1.0.0.0.2.0.0 "LineMain": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.2.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 1.0.1.0.0.0.2.0.1.0 "Line_color": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.2.0.1.0 "Line_color": a track of many instances: one trail drawn
 # effekseer: node 1.0.1.0.0.0.2.0.2.0 "Line_Glow": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.2.0.2.0 "Line_Glow": a track of many instances: one trail drawn
 # effekseer: node 1.0.1.0.0.0.2.0.3.0.0.0.0 "particleMain": nested generation: 3 instances above its generator folded into one emitter
 # effekseer: node 1.0.1.0.0.0.2.0.3.0.0.0.1 "particleColor": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.2.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 1.0.1.0.0.0.2.0.3.0.0.0.2 "particleGlow": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 1.0.1.0.0.0.2.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
-# effekseer: node 2.0.0.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 2.0.0.0.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 2.0.0.0.0.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 2.0.0.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 2.0.0.0.0.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 2.0.0.0.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 2.0.0.0.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 2.0.0.0.1.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 2.0.0.0.1.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 2.0.0.0.1.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 2.0.0.0.1.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 2.0.0.0.1.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 2.0.0.0.1.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 2.0.0.0.1.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 2.0.0.0.2.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
-# effekseer: node 2.0.0.0.2.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
-# effekseer: node 2.0.0.0.2.0.0.1 "LineColor": a random colour per particle: its mean used
-# effekseer: node 2.0.0.0.2.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 2.0.0.0.2.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
-# effekseer: node 2.0.0.0.2.0.0.1.0 "LineGlow": a random colour per particle: its mean used
-# effekseer: node 2.0.0.0.2.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
 # effekseer: node 2.0.0.0.3 "Glow": motion out from a circle: approximated along one direction
 # effekseer: node 2.0.0.0.4 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: node 2.0.1.0.0.0.0.0.0 "LineMain": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.0.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 2.0.1.0.0.0.0.0.1.0 "Line_color": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.0.0.1.0 "Line_color": a track of many instances: one trail drawn
 # effekseer: node 2.0.1.0.0.0.0.0.2.0 "Line_Glow": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.0.0.2.0 "Line_Glow": a track of many instances: one trail drawn
 # effekseer: node 2.0.1.0.0.0.0.0.3.0.0.0.0 "particleMain": nested generation: 5 instances above its generator folded into one emitter
 # effekseer: node 2.0.1.0.0.0.0.0.3.0.0.0.1 "particleColor": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.0.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 2.0.1.0.0.0.0.0.3.0.0.0.2 "particleGlow": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.0.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 2.0.1.0.0.0.1.0.0 "LineMain": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.1.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 2.0.1.0.0.0.1.0.1.0 "Line_color": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.1.0.1.0 "Line_color": a track of many instances: one trail drawn
 # effekseer: node 2.0.1.0.0.0.1.0.2.0 "Line_Glow": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.1.0.2.0 "Line_Glow": a track of many instances: one trail drawn
 # effekseer: node 2.0.1.0.0.0.1.0.3.0.0.0.0 "particleMain": nested generation: 5 instances above its generator folded into one emitter
 # effekseer: node 2.0.1.0.0.0.1.0.3.0.0.0.1 "particleColor": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.1.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 2.0.1.0.0.0.1.0.3.0.0.0.2 "particleGlow": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.1.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 2.0.1.0.0.0.2.0.0 "LineMain": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.2.0.0 "LineMain": a track of many instances: one trail drawn
 # effekseer: node 2.0.1.0.0.0.2.0.1.0 "Line_color": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.2.0.1.0 "Line_color": a track of many instances: one trail drawn
 # effekseer: node 2.0.1.0.0.0.2.0.2.0 "Line_Glow": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.2.0.2.0 "Line_Glow": a track of many instances: one trail drawn
 # effekseer: node 2.0.1.0.0.0.2.0.3.0.0.0.0 "particleMain": nested generation: 5 instances above its generator folded into one emitter
 # effekseer: node 2.0.1.0.0.0.2.0.3.0.0.0.1 "particleColor": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.2.0.3.0.0.0.1 "particleColor": a random colour per particle: its mean used
 # effekseer: node 2.0.1.0.0.0.2.0.3.0.0.0.2 "particleGlow": nested generation: 5 instances above its generator folded into one emitter
-# effekseer: node 2.0.1.0.0.0.2.0.3.0.0.0.2 "particleGlow": a random colour per particle: its mean used
 # effekseer: node 2.1 "Distortion": motion out from a circle: approximated along one direction
 # effekseer: more than 64 elements: the last 43 left out
