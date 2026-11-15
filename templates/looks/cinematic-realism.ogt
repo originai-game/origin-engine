@@ -5,6 +5,12 @@ version 1
 name "Cinematic realism"
 mood "cold"
 ui "default"
+# The UI's seed colours (UiSeeds), so the default style matches the
+# scene: a graded steel blue over cold greys.
+uiSeeds {
+  primary "#5b7a99"
+  neutral "#56606b"
+}
 RenderSettings {
   toneMapping agx
   bloom true

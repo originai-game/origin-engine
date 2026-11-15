@@ -5,6 +5,12 @@ version 1
 name "Anime cel-shaded 3D"
 mood "bright"
 ui "default"
+# The UI's seed colours (UiSeeds), so the default style matches the
+# scene: the cool indigo of its shadow tint.
+uiSeeds {
+  primary "#4f5bd5"
+  neutral "#2a3060"
+}
 MaterialStyle {
   toon true
   shadowTint "#2a3060"

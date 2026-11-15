@@ -11,6 +11,12 @@ version 1
 name "Minimal geometric color"
 mood "soft"
 ui "default"
+# The UI's seed colours (UiSeeds), so the default style matches the
+# scene: one clean coral over plain grey.
+uiSeeds {
+  primary "#ff6b4a"
+  neutral "#7a7a80"
+}
 MaterialStyle {
   toon true
   toonSoftness 0

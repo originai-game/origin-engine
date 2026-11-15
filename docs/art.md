@@ -179,7 +179,9 @@ UI pack their `ui` line names: cinematic-realism, anime-cel-3d,
 inked-comic-3d, faceted-low-poly, low-resolution-3d, pixel and
 minimal-geometric (default); painterly-3d and pixel-3d-hybrid (fantasy);
 neon-vector (scifi); toy-3d and cartoon-2d (cartoon). The validator keeps a
-look for every creation view.
+look for every creation view. The default-style looks also set `uiSeeds`, the
+UI's seed colours taken from their scenes, so the default style matches
+each one.
 
 The preset scenes (`templates/looks/preview/`: a 3D meadow of round and
 faceted forms, and a 2D strip of the look's authored art) are the one

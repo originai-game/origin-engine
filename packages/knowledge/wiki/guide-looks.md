@@ -39,6 +39,12 @@ PostEffects {
   before the game's own fields; it never changes the art contract's
   sizes, lines or shapes. Try the mood before hand-grading.
 - `ui` names the UI style the screens wear (screens §3).
+- `uiSeeds { primary "#rrggbb" accent "#rrggbb" neutral "#rrggbb" }`
+  gives the UI the seed colours its palette is derived from, so the
+  screens match the scene (danger, warn, success, info and team too);
+  the presets whose `ui` is the default style set them. Applying the look
+  replaces the last seeds. A game's own `og.ui.configure` seeds, given
+  after, win.
 - `extends` may name another look of the game (`"looks/base.ogt"`) for a
   level or a scene's variant; chains are a few deep and cycles are
   refused. Editing a base re-cooks every look on it.

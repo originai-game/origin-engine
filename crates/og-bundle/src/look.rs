@@ -119,6 +119,12 @@ pub const MAX_EXTENDS: usize = 8;
 /// The top-level keys of a look file.
 const TOP: [&str; 6] = ["name", "extends", "mood", "variant", "ui", "antialias"];
 
+/// The seed colours a look gives the UI (`uiSeeds { primary "#rrggbb" }`):
+/// og-ui's `Seeds` (IDL `UiSeeds`), each an sRGB hex colour.
+pub const UI_SEEDS: [&str; 8] = [
+    "primary", "accent", "neutral", "danger", "warn", "success", "info", "team",
+];
+
 /// One resource block: its IDL name and its fields in file order, each with
 /// its values as written (numbers, `true`/`false`, a variant word, or a
 /// string: an asset id or an sRGB hex colour).
@@ -151,6 +157,10 @@ pub struct LookFile {
     /// laid in.
     pub variant: Option<String>,
     pub ui: Option<String>,
+    /// The UI's seed colours ([`UI_SEEDS`] names, sRGB hex), so the UI's
+    /// palette matches the scene: applying the look gives them to the UI
+    /// with its style.
+    pub ui_seeds: Vec<(String, String)>,
     pub antialias: Option<String>,
     pub blocks: Vec<LookBlock>,
 }
@@ -177,6 +187,46 @@ impl LookFile {
         let mut look = LookFile::default();
         let mut seen_top: Vec<&str> = Vec::new();
         for e in &doc.body.entries {
+            if e.key == "uiSeeds" {
+                let block = e
+                    .block
+                    .as_ref()
+                    .filter(|_| e.values.is_empty())
+                    .ok_or_else(|| {
+                        format!(
+                            "line {}: 'uiSeeds' takes a block: uiSeeds {{ primary \"#rrggbb\" }}",
+                            e.line
+                        )
+                    })?;
+                if !look.ui_seeds.is_empty() {
+                    return Err(format!("line {}: a second 'uiSeeds' block", e.line));
+                }
+                for f in &block.entries {
+                    if !UI_SEEDS.contains(&f.key.as_str()) {
+                        return Err(format!(
+                            "line {}: '{}' is not a UI seed: {}",
+                            f.line,
+                            f.key,
+                            UI_SEEDS.join(", ")
+                        ));
+                    }
+                    let hex = one_string(f)?;
+                    let six = hex
+                        .strip_prefix('#')
+                        .is_some_and(|h| h.len() == 6 && h.chars().all(|c| c.is_ascii_hexdigit()));
+                    if !six {
+                        return Err(format!(
+                            "line {}: uiSeeds.{} is an sRGB \"#rrggbb\"",
+                            f.line, f.key
+                        ));
+                    }
+                    if look.ui_seeds.iter().any(|(n, _)| n == &f.key) {
+                        return Err(format!("line {}: uiSeeds.{} is set twice", f.line, f.key));
+                    }
+                    look.ui_seeds.push((f.key.clone(), hex));
+                }
+                continue;
+            }
             if let Some(block) = &e.block {
                 if !LOOK_RESOURCES.contains(&e.key.as_str()) {
                     return Err(format!(
@@ -348,6 +398,13 @@ impl LookFile {
             doc.body
                 .push(Entry::new("ui").with(Value::String(s.clone())));
         }
+        if !self.ui_seeds.is_empty() {
+            let mut inner = Block::new();
+            for (name, hex) in &self.ui_seeds {
+                inner.push(Entry::new(name.clone()).with(Value::String(hex.clone())));
+            }
+            doc.body.push(Entry::new("uiSeeds").with_block(inner));
+        }
         if let Some(a) = &self.antialias {
             doc.body
                 .push(Entry::new("antialias").with(Value::Word(a.clone())));
@@ -368,7 +425,7 @@ impl LookFile {
 
     /// This look laid over `base` (the look it extends): the name is this
     /// look's own (a look is not called after its base), its ui style and
-    /// antialias win where given, a resource either names takes both
+    /// antialias win where given, its UI seeds win seed by seed, a resource either names takes both
     /// blocks' fields with this look's winning field by field, the mood
     /// and variant this look's where it names one, and `extends`
     /// becomes `base_id` followed by `base`'s own chain.
@@ -387,6 +444,13 @@ impl LookFile {
                 None => blocks.push(b.clone()),
             }
         }
+        let mut ui_seeds = base.ui_seeds.clone();
+        for (name, hex) in &self.ui_seeds {
+            match ui_seeds.iter_mut().find(|(n, _)| n == name) {
+                Some(slot) => slot.1 = hex.clone(),
+                None => ui_seeds.push((name.clone(), hex.clone())),
+            }
+        }
         let mut extends = vec![base_id.to_string()];
         extends.extend(base.extends.iter().cloned());
         LookFile {
@@ -395,6 +459,7 @@ impl LookFile {
             mood: self.mood.clone().or_else(|| base.mood.clone()),
             variant: self.variant.clone().or_else(|| base.variant.clone()),
             ui: self.ui.clone().or_else(|| base.ui.clone()),
+            ui_seeds,
             antialias: self.antialias.clone().or_else(|| base.antialias.clone()),
             blocks,
         }
@@ -545,6 +610,29 @@ mod tests {
             Some("8bit")
         );
         assert_eq!(LookFile::parse(&v.to_text()).unwrap(), v);
+        // The UI's seeds win seed by seed and write back.
+        let seeded = |body: &str| {
+            LookFile::parse(&format!(
+                "type look\nversion 1\n---\nuiSeeds {{\n{body}}}\n"
+            ))
+            .unwrap()
+        };
+        let near = seeded("  accent \"#ffd23f\"\n");
+        let laid = near.over(
+            &seeded("  primary \"#d7263d\"\n  accent \"#111111\"\n"),
+            "b",
+        );
+        assert_eq!(
+            laid.ui_seeds,
+            [
+                ("primary".into(), "#d7263d".into()),
+                ("accent".into(), "#ffd23f".into())
+            ]
+        );
+        assert_eq!(
+            LookFile::parse(&laid.to_text()).unwrap().ui_seeds,
+            laid.ui_seeds
+        );
         let text = moody("high-contrast").to_text();
         assert_eq!(
             LookFile::parse(&text).unwrap().mood.as_deref(),
@@ -570,6 +658,8 @@ mod tests {
         assert!(bad("palette \"p.hex\"\n").contains("not a look entry"));
         assert!(bad("Stylise {\n  posterize 4\n  posterize 5\n}\n").contains("set twice"));
         assert!(bad("variant \"8 Bit\"\n").contains("lowercase-hyphen"));
+        assert!(bad("uiSeeds {\n  brand \"#ffffff\"\n}\n").contains("not a UI seed"));
+        assert!(bad("uiSeeds {\n  primary \"red\"\n}\n").contains("sRGB"));
         assert!(
             bad("mood \"gloomy\"\n")
                 .contains("one of bright, dark, warm, cold, soft, high-contrast")

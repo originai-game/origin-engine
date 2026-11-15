@@ -5,6 +5,12 @@ version 1
 name "Low-resolution retro 3D"
 mood "dark"
 ui "default"
+# The UI's seed colours (UiSeeds), so the default style matches the
+# scene: amber over the fog's slate.
+uiSeeds {
+  primary "#c08a3e"
+  neutral "#262a33"
+}
 antialias off
 Stylise {
   pixelHeight 240

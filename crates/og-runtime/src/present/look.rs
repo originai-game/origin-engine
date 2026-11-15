@@ -249,7 +249,7 @@ pub(crate) fn resolve(eng: &Engine) {
 /// system, an art resource the system did not declare among its writes is
 /// left as it is rather than refused.
 pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
-    let (values, style) = {
+    let (values, style, seeds) = {
         let rs = eng.render.borrow();
         let look = rs
             .fx
@@ -263,7 +263,7 @@ pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
                 look.id
             ));
         }
-        (look.values.clone(), look.style)
+        (look.values.clone(), look.style, look.file.ui_seeds.clone())
     };
     for (resource, fields) in &values {
         let schema = format!("og.{resource}");
@@ -308,8 +308,21 @@ pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
         }
     }
     if let Some(style) = style {
-        // Every other field keeps the last UiDesc's value (og.ui.configure merges).
-        let desc = json!({ "style": handle_value(style) });
+        // Every other field keeps the last UiDesc's value (og.ui.configure
+        // merges); the look's seeds replace the last ones, none without.
+        let seeds: Map<String, Value> = seeds
+            .iter()
+            .filter_map(|(name, hex)| {
+                let [r, g, b] = og_bundle::look::hex_to_linear(hex)?;
+                Some((name.clone(), json!({ "r": r, "g": g, "b": b, "a": 1.0 })))
+            })
+            .collect();
+        let seeds = if seeds.is_empty() {
+            Value::Null
+        } else {
+            Value::Object(seeds)
+        };
+        let desc = json!({ "style": handle_value(style), "seeds": seeds });
         if let Err(reason) = crate::bind::modules::og_ui_configure(eng.id, Some(desc.to_string())) {
             return Err(format!("the ui style: {reason}"));
         }

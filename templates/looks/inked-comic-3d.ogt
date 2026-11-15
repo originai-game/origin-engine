@@ -5,6 +5,13 @@ version 1
 name "Inked comic-book 3D"
 mood "high-contrast"
 ui "default"
+# The UI's seed colours (UiSeeds), so the default style matches the
+# scene: print red and yellow over its ink.
+uiSeeds {
+  primary "#d7263d"
+  accent "#ffd23f"
+  neutral "#0a0810"
+}
 MaterialStyle {
   toon true
   outlineWidth 3

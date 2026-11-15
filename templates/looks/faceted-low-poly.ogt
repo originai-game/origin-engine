@@ -5,6 +5,12 @@ version 1
 name "Faceted low-poly"
 mood "soft"
 ui "default"
+# The UI's seed colours (UiSeeds), so the default style matches the
+# scene: a soft teal over warm stone.
+uiSeeds {
+  primary "#2f9c8a"
+  neutral "#8a8577"
+}
 MaterialStyle {
   flatShading true
 }

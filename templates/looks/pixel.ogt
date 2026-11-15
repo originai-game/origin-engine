@@ -7,6 +7,13 @@ version 1
 name "Pixel art"
 mood "bright"
 ui "default"
+# The UI's seed colours (UiSeeds), so the default style matches the
+# scene: a sixteen-colour blue and gold over navy.
+uiSeeds {
+  primary "#3b5dc9"
+  accent "#ffcd75"
+  neutral "#333c57"
+}
 antialias off
 Stylise {
   pixelHeight 224
