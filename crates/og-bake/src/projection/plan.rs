@@ -66,14 +66,20 @@ pub struct Plan {
     pub reachable_cells: usize,
 }
 
-/// og-core's seeded generator, drawn in [0, 1).
-struct Rng(og_core::Rng);
+/// The planner's own mulberry32 stream, drawn in [0, 1). Not og_core::Rng:
+/// that is another stream, and the views a plan picks (and the bakes made
+/// from them) follow this one.
+struct Rng(u32);
 impl Rng {
     fn new(seed: u32) -> Rng {
-        Rng(og_core::Rng::new(seed))
+        Rng(seed)
     }
     fn next(&mut self) -> f32 {
-        og_core::hash::unit24(self.0.next_u32())
+        self.0 = self.0.wrapping_add(0x6d2b_79f5);
+        let mut t = self.0;
+        t = (t ^ (t >> 15)).wrapping_mul(t | 1);
+        t ^= t.wrapping_add((t ^ (t >> 7)).wrapping_mul(t | 61));
+        (t ^ (t >> 14)) as f32 / 4_294_967_296.0
     }
 }
 
