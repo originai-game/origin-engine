@@ -122,6 +122,18 @@ struct Shown {
     qtes: Vec<QteView>,
     previous: u64,
     mix: f32,
+    /// The first frames of the segments the node in place may cut to,
+    /// for the streaming queue ([`prefetch`]).
+    ahead: Vec<Ahead>,
+}
+
+/// A segment's first frame a cut may need: its video (handle), the time
+/// it starts at and the seconds until the cut.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct Ahead {
+    pub video: u64,
+    pub from: f32,
+    pub seconds: f64,
 }
 
 /// og.film on one engine.
@@ -1176,7 +1188,44 @@ fn tick(
         qtes,
         previous: previous_texture,
         mix,
+        ahead: match node {
+            Some(n) if !film.ended => ahead(&prep, n, time),
+            _ => Vec::new(),
+        },
     }))
+}
+
+/// Every segment the node in place may cut to (each choice's and its own
+/// steps' film nodes), by its first frame, needed at the cut. The decks
+/// warm only as many as they have room for, from the window's open; this
+/// asks the streaming queue for every target's first chunk as soon as the
+/// segment plays, so a choice no deck warmed still starts from a chunk
+/// that is here. Presentation: it only orders fetches.
+fn ahead(prep: &Prepared, node: &Node, time: f32) -> Vec<Ahead> {
+    let seconds = f64::from((node.cut - time).max(0.0));
+    let mut seen = BTreeSet::new();
+    node.choices
+        .iter()
+        .flatten()
+        .chain(&node.next)
+        .filter(|id| seen.insert(**id))
+        .filter_map(|id| prep.nodes.get(id)?.first)
+        .map(|(video, from)| Ahead {
+            video,
+            from,
+            seconds,
+        })
+        .collect()
+}
+
+/// The first frames the films on `eng` may cut to (crate::bind::video's
+/// `wanted_chunks` asks for their chunks).
+pub(crate) fn prefetch(eng: &Engine) -> Vec<Ahead> {
+    lock(&eng.modules.film)
+        .views
+        .values()
+        .flat_map(|s| s.ahead.iter().copied())
+        .collect()
 }
 
 /// The deck dissolving out under the current one, if any.

@@ -41,6 +41,8 @@ mod drop_shadows;
 mod extract_cost;
 #[path = "../film.rs"]
 mod film;
+#[path = "../film_prefetch.rs"]
+mod film_prefetch;
 #[path = "../font_packs.rs"]
 mod font_packs;
 #[path = "../garment.rs"]

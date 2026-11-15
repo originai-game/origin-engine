@@ -21,6 +21,19 @@ pub(crate) const RECORDS: [&str; 6] = [
     "og.FilmEnded",
 ];
 
+/// A segment's first frame a cut may need (none here).
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct Ahead {
+    pub video: u64,
+    pub from: f32,
+    pub seconds: f64,
+}
+
+/// No film prefetches here.
+pub(crate) fn prefetch(_eng: &crate::engine::Engine) -> Vec<Ahead> {
+    Vec::new()
+}
+
 /// og.film on one engine: nothing here.
 #[derive(Default)]
 pub(crate) struct ModuleState;

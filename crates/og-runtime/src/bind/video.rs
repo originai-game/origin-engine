@@ -453,11 +453,23 @@ pub(crate) fn wanted_chunks(eng: &Engine) -> Vec<crate::world::stream::VideoChun
         return Vec::new();
     };
     let wants = wants(world, &layout);
+    // og.film's cut targets: each one's first chunk, needed at the cut.
+    let mut ahead: BTreeMap<usize, Vec<(f32, f64)>> = BTreeMap::new();
+    for a in crate::bind::film::prefetch(eng) {
+        if let Some(i) = assets::index_of(a.video as f64) {
+            ahead.entry(i).or_default().push((a.from, a.seconds));
+        }
+    }
     let mut out = Vec::new();
     for (i, video) in rs.videos.iter_mut().enumerate() {
         let Some(source) = video.stream.as_mut() else {
             continue;
         };
+        // A cut target no deck plays yet: its index first (a player reads
+        // its own in `extract`).
+        if ahead.contains_key(&i) {
+            source.poll();
+        }
         let Some(units) = source.units.clone() else {
             continue;
         };
@@ -469,6 +481,12 @@ pub(crate) fn wanted_chunks(eng: &Engine) -> Vec<crate::world::stream::VideoChun
                 let s = need.entry(n).or_insert(seconds);
                 *s = s.min(seconds);
             }
+        }
+        for &(from, seconds) in ahead.get(&i).into_iter().flatten() {
+            let frame = (f64::from(from.max(0.0)) * f64::from(source.fps)).floor() as u32;
+            let n = units.chunk_of(frame.min(units.len().saturating_sub(1)));
+            let s = need.entry(n).or_insert(seconds);
+            *s = s.min(seconds);
         }
         for n in 0..units.chunks() {
             if !need.contains_key(&n) && source.has(n) {

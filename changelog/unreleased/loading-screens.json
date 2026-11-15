@@ -20,6 +20,10 @@
     {
       "member": "og.load.progress",
       "summary": "How much of a pending bundle (og.load.bundle) the host has received: bytes received, total when known, and the fraction."
+    },
+    {
+      "member": "og.film",
+      "summary": "While a segment plays, the first chunk of every segment a choice may cut to (and of the next segment) is read ahead, on one deck as on two, so a cut to any option starts without waiting for its video."
     }
   ]
 }
