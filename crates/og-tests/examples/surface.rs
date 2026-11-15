@@ -12,7 +12,7 @@ use winit::{
     window::{Window, WindowId},
 };
 
-const USAGE: &str = "surface [scene=bloom] [best|wide|srgb=best] [paper-white=203] [peak=0] [frames=0] [sdr-preview.png]\nScene `display`: bloom's emissive spheres (highlights past SDR white) under CSS swatches, each the colour mapped to sRGB (left) beside the same colour in the output's gamut (right).\nFrames 0 keeps the window open until closed. OG_GFX_BACKEND selects metal/vulkan.\nObserve HDR on the actual display; PNGs clip highlights to SDR paper white.";
+const USAGE: &str = "surface [scene=bloom] [best|wide|srgb=best] [paper-white=203] [peak=0] [frames=0] [sdr-preview.png]\nScene `display`: bloom's emissive spheres (highlights past SDR white) under CSS swatches, each the colour mapped to sRGB (left) beside the same colour in the output's gamut (right), and an oklch(0.7 0.3) hue sweep mapped into the output's gamut.\nFrames 0 keeps the window open until closed. OG_GFX_BACKEND selects metal/vulkan.\nObserve HDR on the actual display; PNGs clip highlights to SDR paper white.";
 
 struct App {
     name: String,
@@ -298,6 +298,27 @@ fn swatches(g: &mut GfxScene, wide: bool) -> Result<(), String> {
             c.linear(&output),
         ));
     }
+    // A hue sweep at oklch(0.7 0.3 h), its stops left outside every gamut:
+    // the shader maps each pixel into the output's (sRGB, or Display P3).
+    let stops = (0..=12)
+        .map(|k| {
+            let h = (k as f32 * 30.0).to_radians();
+            let c = og_core::color::oklab_to_linear([0.7, 0.3 * h.cos(), 0.3 * h.sin()]);
+            og_render::UiStop {
+                offset: k as f32 / 12.0,
+                color: [c[0], c[1], c[2], 1.0],
+            }
+        })
+        .collect();
+    let mut band =
+        og_render::UiShape::rect([w * 0.08, h * 0.06, w * 0.84, h * 0.08], 4.0, [1.0; 4]);
+    band.paint = og_render::UiPaint::Gradient(og_render::UiGradient {
+        from: [0.0, 0.5].into(),
+        to: [1.0, 0.5].into(),
+        stops,
+        ..Default::default()
+    });
+    o.ui.shapes.push(band);
     g.scene.ui.overlay = Some(o);
     Ok(())
 }

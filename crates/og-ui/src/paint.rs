@@ -130,11 +130,14 @@ impl Gradient {
     pub fn resolve(&self, theme: &Theme) -> og_draw::UiGradient {
         let stops = match self.interpolation {
             Some((space, hue)) if space != ColorSpaceTag::Oklab => {
-                let srgb = |c: &ColorRef| c.srgb(theme).unwrap_or(Srgba::rgb(255, 0, 255));
+                // Linear, so a P3 theme's wide stops keep their range.
                 let stops: Vec<_> = self
                     .stops
                     .iter()
-                    .map(|s| (s.offset, srgb(&s.color)))
+                    .map(|s| {
+                        let c = color::AlphaColor::<color::LinearSrgb>::new(s.color.resolve(theme));
+                        (s.offset, c.into())
+                    })
                     .collect();
                 stops_in(&stops, space, hue)
             }
@@ -163,7 +166,7 @@ impl Gradient {
 /// of a just-noticeable difference (deltaEOK 0.0025) so a hue sweep shows
 /// no bands, loosened only past og-draw's stop budget.
 fn stops_in(
-    stops: &[(f32, Srgba)],
+    stops: &[(f32, color::DynamicColor)],
     space: ColorSpaceTag,
     hue: HueDirection,
 ) -> Vec<og_draw::UiStop> {
@@ -173,8 +176,8 @@ fn stops_in(
         for pair in stops.windows(2) {
             let [(o0, c0), (o1, c1)] = [pair[0], pair[1]];
             let (a, b) = (
-                crate::css_color::interpolating(c0.into(), space),
-                crate::css_color::interpolating(c1.into(), space),
+                crate::css_color::interpolating(c0, space),
+                crate::css_color::interpolating(c1, space),
             );
             let ramp = color::gradient::<color::Oklab>(a, b, space, hue, tolerance);
             // A span's first stop is the last one's end.

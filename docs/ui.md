@@ -488,7 +488,10 @@ rules and limits:
   [<hue> hue]` names: `color`'s piecewise OKLab approximation of that mix,
   within an eighth of a just-noticeable difference, so a hue sweep shows
   no bands. og-render keeps a gradient's stops in its frame's points table
-  and finds a pixel's two by binary search. A gradient layer is a
+  and finds a pixel's two by binary search. A mix that leaves the
+  output's gamut (sRGB, or Display P3 on a wide surface) is gamut mapped
+  per pixel by CSS Color 4 §13.2's OKLCh chroma reduction (color.wgsl's
+  `gamut_map`), keeping its lightness and hue. A gradient layer is a
   tile of its concrete size (`UiPaint::GradientImage`); each layer is one
   image fill whose size, placement and repeat og-render resolves per pixel
   from the texture's own size (`UiFit::Background`), so a host never tells

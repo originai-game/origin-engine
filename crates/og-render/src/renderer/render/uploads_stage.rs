@@ -21,7 +21,7 @@ pub(super) struct UploadFrameInputs<'a> {
 }
 
 pub(super) struct UploadFrameOutputs {
-    pub ui_uniform: Option<[f32; 8]>,
+    pub ui_uniform: Option<[f32; 12]>,
 }
 
 impl Renderer {
@@ -94,6 +94,7 @@ impl Renderer {
                     && self.output_format != HDR_FORMAT
                     && !self.has_linear_view(target),
                 self.output_format,
+                self.info.wide_gamut,
             );
             ui_uniform = Some(u);
         }

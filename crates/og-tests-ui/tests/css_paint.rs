@@ -525,6 +525,76 @@ div { margin: 0; }
 
 #[test]
 #[ignore = "requires GPU"]
+fn a_gradient_leaving_the_gamut_keeps_its_lightness_and_hue() {
+    use og_render::*;
+    let mut scene = RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    // Red to lime in OKLCh passes orange and yellow at a chroma sRGB cannot
+    // show: CSS Color 4 §13.2 lowers the chroma at the pixel's lightness and
+    // hue, where a per-channel clip turns both (a crease along the ramp).
+    let text = r##"<meta name="component" content="wide"/>
+<div id="wide"></div>
+<style>
+#wide { margin: 0; width: 256px; height: 16px; background: linear-gradient(to right in oklch, red, lime); }
+</style>"##;
+    ui.define_document(UiDocument::parse("ui/wide.svelte", text).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "wide"),
+        "wide",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    ui.begin(InputFrame::default(), Viewport::new(256.0, 16.0));
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
+    ui.end();
+    let mut overlay = Overlay::new(256.0, 16.0, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.ui.overlay = Some(overlay);
+    scene.look.post.tonemap = Tonemap::None;
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: 256,
+        height: 16,
+        ..Default::default()
+    })
+    .expect("a headless adapter");
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let pixels = renderer.read_offscreen().unwrap().pixels;
+    // CSS's red and lime in OKLCh (lightness, chroma, hue in degrees).
+    let (red, lime) = (
+        [0.6279554, 0.2576833, 29.2338],
+        [0.8664396, 0.2948272, 142.4953],
+    );
+    for x in (8..248).step_by(16) {
+        // Averaged over a 4 x 4 block: the dither's grain cancels.
+        let mut sum = [0.0f32; 3];
+        for dy in 0..4 {
+            for dx in 0..4 {
+                let at = ((6 + dy) * 256 + x + dx) * 4;
+                for k in 0..3 {
+                    sum[k] += f32::from(pixels[at + k]) / (16.0 * 255.0);
+                }
+            }
+        }
+        let lab = og_core::color::oklab(sum.map(og_core::color::srgb_to_linear));
+        let t = (x as f32 + 2.0) / 256.0;
+        let [l, _, h] = [0, 1, 2].map(|k| red[k] + (lime[k] - red[k]) * t);
+        // The drawn colour against the mix's lightness and hue at the drawn
+        // chroma: within a just-noticeable difference (deltaEOK 0.02).
+        let chroma = lab[1].hypot(lab[2]);
+        let (sin, cos) = h.to_radians().sin_cos();
+        let d = [lab[0] - l, lab[1] - chroma * cos, lab[2] - chroma * sin];
+        let d = d.iter().map(|v| v * v).sum::<f32>().sqrt();
+        assert!(
+            d < 0.02,
+            "x {x}: expected lightness {l} hue {h}, got {lab:?} (deltaEOK {d})"
+        );
+    }
+}
+
+#[test]
+#[ignore = "requires GPU"]
 fn masks_hide_invisible_boxes_and_fade_image_content() {
     use og_render::*;
     struct Env(TextureHandle);
