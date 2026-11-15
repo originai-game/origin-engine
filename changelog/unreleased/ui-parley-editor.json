@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Word moves and double presses in text (text fields, areas, user-select text)",
+      "summary": "Words come from ICU's segmenter with its dictionaries: Ctrl or Alt with the arrows (Option on a Mac), word deletes and a double press stop at the words of Thai, Lao, Khmer, Myanmar, Chinese and Japanese, which are written without spaces, where they stepped a cluster or a character at a time."
+    }
+  ]
+}

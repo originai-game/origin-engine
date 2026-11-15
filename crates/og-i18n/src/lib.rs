@@ -340,9 +340,10 @@ mod i18n_contracts {
         assert_eq!(forced.direction, Direction::Ltr);
     }
 
-    /// UAX #29 words as word moves take them: punctuation runs merged, Han
-    /// and Hiragana a word per character, Thai per grapheme cluster, marks
-    /// with their base; grapheme clusters keep a base and its marks.
+    /// UAX #29 words with ICU's dictionaries: punctuation runs merged,
+    /// Chinese, Japanese and Thai cut into dictionary words (not a word per
+    /// character or per cluster), marks with their base; grapheme clusters
+    /// keep a base and its marks.
     #[test]
     fn words_and_graphemes_follow_uax_29() {
         use crate::{WordKind, graphemes, word_segments};
@@ -357,10 +358,11 @@ mod i18n_contracts {
             cut("can't stop_now 3.14...?!"),
             ["can't", " ", "stop_now", " ", "3.14", "...?!"]
         );
-        assert_eq!(cut("東京へ行く。"), ["東", "京", "へ", "行", "く", "。"]);
-        assert_eq!(cut("Score 原点42"), ["Score", " ", "原", "点", "42"]);
+        assert_eq!(cut("東京へ行く。"), ["東京", "へ", "行く", "。"]);
+        assert_eq!(cut("我们喜欢学习中文"), ["我们", "喜欢", "学习", "中文"]);
+        assert_eq!(cut("Score 原点42"), ["Score", " ", "原点", "42"]);
         assert_eq!(cut("안녕하세요 세계"), ["안녕하세요", " ", "세계"]);
-        assert_eq!(cut("ไทยง่าย"), ["ไ", "ท", "ย", "ง\u{e48}", "า", "ย"]);
+        assert_eq!(cut("ภาษาไทยง่าย"), ["ภาษา", "ไทย", "ง่าย"]);
         assert_eq!(cut("e\u{301}cole x"), ["e\u{301}cole", " ", "x"]);
         let chars: Vec<char> = "a\nb".chars().collect();
         let kinds: Vec<WordKind> = word_segments(&chars).iter().map(|s| s.kind).collect();

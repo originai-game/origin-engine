@@ -10,9 +10,11 @@ description = "Origin Engine localization: string tables (`type strings` .ogt), 
 # Pure Rust over og-core; builds for wasm32-unknown-unknown.
 [dependencies]
 og-core = { path = "../og-core" }
-# UAX #29: word boundaries (word moves, double-click selection) and grapheme
-# clusters (a base and its marks drawn by one font).
-unicode-segmentation = "1.13.3"
+# UAX #29 word boundaries (double-click selection, undo grouping), with
+# ICU's dictionaries for Chinese, Japanese, Thai, Lao, Khmer and Myanmar, and
+# grapheme clusters (a base and its marks drawn by one font). The version
+# Parley breaks lines and words with; compiled data, no LSTM model.
+icu_segmenter = { version = "2.4", default-features = false, features = ["compiled_data"] }
 # Unicode full case mappings, including locale-sensitive Greek, Turkic
 # and Lithuanian context rules; the same compiled data on both hosts.
 icu_casemap = "2.3"

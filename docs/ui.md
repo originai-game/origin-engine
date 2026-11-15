@@ -930,9 +930,9 @@ number uses a text input with the decimal keyboard.
 `user-select` (default `none`; a control's subtree stays `none` unless it
 sets it) makes plain text elements and vertical rich text selectable;
 horizontal rich text and text controls keep their own selection. A drag
-selects, a double press a word (UAX #29), a triple press a line, Shift
-extends; on a coarse pointer a 500 ms long press selects a word and an
-immediate drag scrolls. A drag crosses elements in tree order. Ctrl+C
+selects, a double press a word (UAX #29 with ICU's dictionaries), a
+triple press a line, Shift extends; on a coarse pointer a 500 ms long
+press selects a word and an immediate drag scrolls. A drag crosses elements in tree order. Ctrl+C
 (Cmd+C under mac keys) copies unless a text control has focus, joining
 elements with line breaks and restoring what wraps dropped. The fill is
 `TextEdit.selection`; the pointer is an I-beam. The selection is saved UI

@@ -1,10 +1,11 @@
 //! Character classes for layout: right-to-left characters, the scripts
 //! whose glyphs depend on their neighbours (shaped), a paragraph's
-//! direction by its first strong character, and segmentation by UAX #29:
-//! words ([`word_segments`]) and grapheme clusters ([`graphemes`]).
+//! direction by its first strong character, and segmentation by ICU4X's
+//! `icu_segmenter` (UAX #29 with dictionaries): words ([`word_segments`])
+//! and grapheme clusters ([`graphemes`]).
 
 use crate::locale::Direction;
-use unicode_segmentation::UnicodeSegmentation;
+use icu_segmenter::{GraphemeClusterSegmenter, WordSegmenter, options::WordBreakInvariantOptions};
 
 /// Full Unicode uppercase for display text in a BCP-47 locale. Contextual
 /// mappings (including Greek accents and Lithuanian dots) come from ICU;
@@ -95,21 +96,24 @@ pub struct WordSegment {
     pub kind: WordKind,
 }
 
-/// A text cut at its word boundaries (UAX #29, `unicode-segmentation`),
-/// for word moves, double-click selection and undo grouping. Latin, Greek,
-/// Cyrillic, Hebrew, Arabic and Devanagari words are their letters, digits
-/// and marks (an apostrophe or a point between letters or digits stays
-/// inside); Han and Hiragana are a word per character (no dictionary), a
-/// Katakana run one word (WB13), Hangul words run to the spaces; Thai, Lao,
-/// Khmer and Myanmar, which need a dictionary UAX #29 leaves to the
-/// implementation, are a word per grapheme cluster. Spaces run together,
-/// and so does a run of punctuation (one segment where UAX #29 has one per
-/// character).
+/// A text cut at its word boundaries (UAX #29 with ICU4X's dictionaries,
+/// `icu_segmenter`, as Parley breaks the text it lays out), for double-click
+/// selection of static text and undo grouping. Latin, Greek, Cyrillic,
+/// Hebrew, Arabic and Devanagari words are their letters, digits and marks
+/// (an apostrophe or a point between letters or digits stays inside); a
+/// Katakana run is one word (WB13), Hangul words run to the spaces; Chinese,
+/// Japanese, Thai, Lao, Khmer and Myanmar, written without spaces, are cut
+/// into the words of ICU's dictionaries. Spaces run together, and so does
+/// a run of punctuation (one segment where UAX #29 has one per character).
 pub fn word_segments(chars: &[char]) -> Vec<WordSegment> {
     let text: String = chars.iter().collect();
+    let breaks: Vec<usize> = WordSegmenter::new_dictionary(WordBreakInvariantOptions::default())
+        .segment_str(&text)
+        .collect();
     let mut out: Vec<WordSegment> = Vec::new();
     let mut at = 0;
-    for piece in text.split_word_bounds() {
+    for w in breaks.windows(2) {
+        let piece = &text[w[0]..w[1]];
         let n = piece.chars().count();
         let kind = if piece.contains(['\n', '\r', '\u{2028}', '\u{2029}']) {
             WordKind::Break
@@ -135,25 +139,25 @@ pub fn word_segments(chars: &[char]) -> Vec<WordSegment> {
     out
 }
 
-/// Whether a word of `c`'s script is one character (Han and Hiragana, as
-/// [`word_segments`] cuts them): typing on after one starts a new word.
+/// Whether `c` is Han or Hiragana, which an input method commits a phrase
+/// at a time: typing on next to one starts a new step of an undo history.
 pub fn word_per_character(c: char) -> bool {
     matches!(c as u32,
         0x3005..=0x3007 | 0x3021..=0x3029 | 0x3038..=0x303b | 0x3040..=0x309f
         | 0x3400..=0x4dbf | 0x4e00..=0x9fff | 0xf900..=0xfaff | 0x20000..=0x3ffff)
 }
 
-/// A text's grapheme clusters (UAX #29, extended): character ranges
-/// `[start, end)`, a base with its combining marks, an emoji with its
-/// modifiers and joiners, a Hangul syllable of jamo, an Indic consonant
-/// with its vowel signs.
+/// A text's grapheme clusters (UAX #29, extended, `icu_segmenter`):
+/// character ranges `[start, end)`, a base with its combining marks, an
+/// emoji with its modifiers and joiners, a Hangul syllable of jamo, an
+/// Indic consonant with its vowel signs.
 pub fn graphemes(text: &str) -> Vec<(usize, usize)> {
     let mut out = Vec::new();
-    let mut at = 0;
-    for g in text.graphemes(true) {
-        let n = g.chars().count();
+    let (mut at, mut from) = (0, 0);
+    for b in GraphemeClusterSegmenter::new().segment_str(text).skip(1) {
+        let n = text[from..b].chars().count();
         out.push((at, at + n));
-        at += n;
+        (at, from) = (at + n, b);
     }
     out
 }

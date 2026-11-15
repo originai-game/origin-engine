@@ -3068,8 +3068,8 @@ dependencies = [
  "icu_casemap",
  "icu_locale_core",
  "icu_plurals",
+ "icu_segmenter",
  "og-core",
- "unicode-segmentation",
 ]
 
 [[package]]
