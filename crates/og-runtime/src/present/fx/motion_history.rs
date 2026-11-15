@@ -85,17 +85,18 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     let blur = scene.look.post.motion_blur.is_some();
     let keyed = keys.len() == scene.objects.instances.len();
     if blur && keyed {
-        scene.objects.previous_transforms = if same_keys(&fx.previous, keys) {
-            positional(&fx.previous)
+        if same_keys(&fx.previous, keys) {
+            positional(&fx.previous, &mut scene.objects.previous_transforms);
         } else {
             let previous = fx
                 .previous_by_key
                 .get_or_insert_with(|| fx.previous.iter().copied().collect());
-            keys.iter()
+            scene.objects.previous_transforms = keys
+                .iter()
                 .zip(&scene.objects.instances)
                 .map(|(k, i)| previous.get(k).copied().unwrap_or(i.transform))
-                .collect()
-        };
+                .collect();
+        }
     }
     // Kept only while motion blur or TAA is on (a copy of every instance's
     // transform a frame otherwise).
@@ -121,15 +122,16 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
         keyed
     };
     if from_drawn {
-        scene.objects.previous_transforms = if same_keys(&fx.drawn, keys) {
-            positional(&fx.drawn)
+        if same_keys(&fx.drawn, keys) {
+            positional(&fx.drawn, &mut scene.objects.previous_transforms);
         } else {
             let last: BTreeMap<(u64, u32), Mat4> = fx.drawn.iter().copied().collect();
-            keys.iter()
+            scene.objects.previous_transforms = keys
+                .iter()
                 .zip(&scene.objects.instances)
                 .map(|(k, i)| last.get(k).copied().unwrap_or(i.transform))
-                .collect()
-        };
+                .collect();
+        }
     }
     if !cut.is_empty() {
         for ((k, i), p) in keys
@@ -158,8 +160,11 @@ fn same_keys(before: &[((u64, u32), Mat4)], keys: &[(u64, u32)]) -> bool {
     before.len() == keys.len() && before.iter().zip(keys).all(|(b, k)| b.0 == *k)
 }
 
-fn positional(before: &[((u64, u32), Mat4)]) -> Vec<Mat4> {
-    before.iter().map(|b| b.1).collect()
+/// `before`'s transforms into `out`, in place (it keeps its capacity: a
+/// new list a frame was a page fault every few instances).
+fn positional(before: &[((u64, u32), Mat4)], out: &mut Vec<Mat4>) {
+    out.clear();
+    out.extend(before.iter().map(|b| b.1));
 }
 
 /// TAA's skinned motion: each joint palette's joints as the frame before
