@@ -86,7 +86,7 @@ impl Ui {
             return None;
         }
         self.docs.state_mut().memory.seen_now.insert(key);
-        self.note_selection(key, &r);
+        self.note_selection(key, r);
         self.docs
             .containers
             .scroll_read
@@ -94,15 +94,15 @@ impl Ui {
         if let Some(container) = r.container {
             self.build_container(container);
         }
-        let props = self.props_of(b, n, key, &r, &mut built);
+        let props = self.props_of(b, n, key, r, &mut built);
         if kind == Kind::Viewport {
-            return self.build_viewport(b, n, id.as_str(), &r, props, path, key, built);
+            return self.build_viewport(b, n, id.as_str(), r, props, path, key, built);
         }
         if kind == Kind::Anchor {
-            return self.build_anchor(b, n, &r, props, path, key, built, build_inner);
+            return self.build_anchor(b, n, r, props, path, key, built, build_inner);
         }
         if kind == Kind::Ground || (kind == Kind::Panel && r.flag("world")) {
-            return self.build_world_panel(b, n, &r, props, path, key, built, build_inner);
+            return self.build_world_panel(b, n, r, props, path, key, built, build_inner);
         }
         if kind.svg() {
             return self.build_svg(
@@ -110,7 +110,7 @@ impl Ui {
                 n,
                 kind,
                 id.as_str(),
-                &r,
+                r,
                 props,
                 path,
                 key,
@@ -119,7 +119,7 @@ impl Ui {
             );
         }
         if r.has("popover") {
-            return self.build_popover(b, n, id.as_str(), &r, path, key, built, build_inner);
+            return self.build_popover(b, n, id.as_str(), r, path, key, built, build_inner);
         }
         let t = *self.env.theme();
         let raw_of = |r: &Resolved, b: &Build<'_>| -> String {
@@ -157,7 +157,7 @@ impl Ui {
                 &id,
                 path,
                 key,
-                &r,
+                r,
                 props,
                 built,
                 build_inner,
@@ -172,7 +172,7 @@ impl Ui {
         *self.front.accent_mut() = styled.text.as_deref().and_then(|t| t.accent);
         match kind {
             Kind::Label => {
-                resp = self.doc_label(b, n, &doc, &id, &path, key, &r, &styled, t, &raw_of)?;
+                resp = self.doc_label(b, n, &doc, &id, &path, key, &r, styled, t, &raw_of)?;
             }
             Kind::Button => {
                 let text = text_of(&r, b);
@@ -198,7 +198,7 @@ impl Ui {
                 };
             }
             Kind::Select => {
-                resp = self.doc_select(b, n, &id, &path, &r, &styled);
+                resp = self.doc_select(b, n, &id, &path, &r, styled);
             }
             Kind::Progress => {
                 self.doc_progress(&id, &r);
@@ -210,7 +210,7 @@ impl Ui {
                 resp = self.doc_slider(b, n, &id, &r, &text_of);
             }
             Kind::Toggle => {
-                resp = self.doc_toggle(b, n, &id, &r, &styled, &text_of);
+                resp = self.doc_toggle(b, n, &id, &r, styled, &text_of);
             }
             Kind::Color => {
                 resp = self.color_input(b, n, id.as_str(), &r);
@@ -231,7 +231,7 @@ impl Ui {
                 resp = self.doc_tabs(b, n, &id, &r, &text_of);
             }
             Kind::Field => {
-                resp = self.doc_field(b, n, i, &doc, &id, &path, key, &r, &styled);
+                resp = self.doc_field(b, n, i, &doc, &id, &path, key, &r, styled);
             }
             Kind::Badge => {
                 self.doc_badge(b, &id, &r, &text_of);
@@ -245,7 +245,7 @@ impl Ui {
             }
             Kind::Divider => self.divider(id.as_str(), r.flag("vertical")),
             Kind::Joystick | Kind::Dpad => {
-                resp = self.build_touch_control(kind, id.as_str(), &r, &styled);
+                resp = self.build_touch_control(kind, id.as_str(), &r, styled);
             }
             // Every kind is named here, so a new one cannot go unbuilt:
             // these have a builder of their own or hold content, above.
@@ -285,23 +285,23 @@ impl Ui {
                 && styled.generated.is_none()
                 && !styled.has("count")
             {
-                fields.text = self.revealed(key, raw_of(&styled, b));
+                fields.text = self.revealed(key, raw_of(styled, b));
             }
-            self.apply_document_fields(&doc, n, &styled, &fields);
+            self.apply_document_fields(&doc, n, styled, &fields);
             self.docs.note_render_fields(key, fields);
             if styled.has("dataOgTouch") {
-                self.tree.note_touch_button(last, &styled, &mut self.docs);
+                self.tree.note_touch_button(last, styled, &mut self.docs);
             }
             if styled.has("emitter")
                 || styled.has("meta")
                 || self.world.declared.kept_effects.contains_key(&key)
             {
-                self.world_effects(b, n, &styled, last, &path);
+                self.world_effects(b, n, styled, last, &path);
             }
         }
-        self.popover_invoker(b, &styled, key, resp);
+        self.popover_invoker(b, styled, key, resp);
         self.docs.note_built(built);
-        self.hold(key, n, &styled, last);
+        self.hold(key, n, styled, last);
         self.fire(b, n, key, &path, resp);
         Some(path)
     }
