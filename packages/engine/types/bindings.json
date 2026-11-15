@@ -12292,6 +12292,11 @@
           "default": 0
         },
         {
+          "name": "facetAngle",
+          "column": "f32",
+          "default": 0
+        },
+        {
           "name": "voxel",
           "column": "f32",
           "default": 0

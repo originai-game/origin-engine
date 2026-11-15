@@ -31641,6 +31641,13 @@ export interface ArtShape {
    */
   bevel: number;
   /**
+   * With normals flat: neighbouring faces within this angle of their facet's normal shade as one facet, one normal and one baked colour, so a gently curved ground is a few broad planes, not a pattern of triangles. 0 is every triangle its own facet.
+   *
+   * @range 0..90
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
+   */
+  facetAngle: number;
+  /**
    * Models built of cubes of this edge (voxel worlds); 0 is no voxel grid.
    *
    * @range 0..
@@ -38435,7 +38442,7 @@ export declare namespace og {
   /**
    * The style's shape language for 3D models: triangle budgets, how faces are shaded, bevelled edges, a voxel grid and the smallest feature a silhouette keeps. Every field is no constraint at its zero value (normalAngle matters only with normals angle).
    */
-  const ArtShape: ResourceType<{ readonly propFaces: FieldSpec<"u32">; readonly characterFaces: FieldSpec<"u32">; readonly normals: FieldSpec<"ArtNormals">; readonly normalAngle: FieldSpec<"f32">; readonly bevel: FieldSpec<"f32">; readonly voxel: FieldSpec<"f32">; readonly silhouette: FieldSpec<"f32"> }, ArtShape>;
+  const ArtShape: ResourceType<{ readonly propFaces: FieldSpec<"u32">; readonly characterFaces: FieldSpec<"u32">; readonly normals: FieldSpec<"ArtNormals">; readonly normalAngle: FieldSpec<"f32">; readonly bevel: FieldSpec<"f32">; readonly facetAngle: FieldSpec<"f32">; readonly voxel: FieldSpec<"f32">; readonly silhouette: FieldSpec<"f32"> }, ArtShape>;
   /**
    * The style's line: the outline round its sprites and meshes, its colour, where it lies against the shape and how it thins with distance. The frame's own lines are MaterialStyle.outlineWidth and Stylise.ink; this is the line the assets carry. Every field is no constraint at its zero value (color matters only with a width).
    */

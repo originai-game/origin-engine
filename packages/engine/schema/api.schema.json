@@ -55928,6 +55928,14 @@
           "minimum": 0,
           "x-og-unit": "m"
         },
+        "facetAngle": {
+          "type": "number",
+          "description": "With normals flat: neighbouring faces within this angle of their facet's normal shade as one facet, one normal and one baked colour, so a gently curved ground is a few broad planes, not a pattern of triangles. 0 is every triangle its own facet.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 90,
+          "x-og-unit": "deg"
+        },
         "voxel": {
           "type": "number",
           "description": "Models built of cubes of this edge (voxel worlds); 0 is no voxel grid.",

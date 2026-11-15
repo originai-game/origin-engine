@@ -172,6 +172,11 @@ module art {
       min 0
       unit m
     }
+    field facetAngle f32 "With normals flat: neighbouring faces within this angle of their facet's normal shade as one facet, one normal and one baked colour, so a gently curved ground is a few broad planes, not a pattern of triangles. 0 is every triangle its own facet." {
+      min 0
+      max 90
+      unit deg
+    }
     field voxel f32 "Models built of cubes of this edge (voxel worlds); 0 is no voxel grid." {
       min 0
       unit m

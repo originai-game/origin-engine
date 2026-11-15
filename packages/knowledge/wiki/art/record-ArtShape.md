@@ -17,6 +17,7 @@ Token `og.ArtShape`, registered under the schema name `og.ArtShape`; its value t
 | `normals` | `ArtNormals` | `"any"` | — | — | — | How models are shaded across their faces: any (no constraint), smooth, flat, or angle (split past normalAngle). |
 | `normalAngle` | `number` | `30` | 0 … 180 | `deg` | — | With normals angle: the angle between two faces past which their edge is shaded hard. |
 | `bevel` | `number` | `0` | ≥ 0 | `m` | — | Hard edges rounded by a chamfer of this radius (clay, toys, diorama pieces); 0 is none. |
+| `facetAngle` | `number` | `0` | 0 … 90 | `deg` | — | With normals flat: neighbouring faces within this angle of their facet's normal shade as one facet, one normal and one baked colour, so a gently curved ground is a few broad planes, not a pattern of triangles. 0 is every triangle its own facet. |
 | `voxel` | `number` | `0` | ≥ 0 | `m` | — | Models built of cubes of this edge (voxel worlds); 0 is no voxel grid. |
 | `silhouette` | `number` | `0` | ≥ 0 | `m` | — | The thinnest feature a model's silhouette keeps at the style's scale: thinner detail does not read and is left out; 0 is no constraint. |
 
@@ -39,6 +40,11 @@ resource ArtShape {
   field bevel f32 "Hard edges rounded by a chamfer of this radius (clay, toys, diorama pieces); 0 is none." {
     min 0
     unit m
+  }
+  field facetAngle f32 "With normals flat: neighbouring faces within this angle of their facet's normal shade as one facet, one normal and one baked colour, so a gently curved ground is a few broad planes, not a pattern of triangles. 0 is every triangle its own facet." {
+    min 0
+    max 90
+    unit deg
   }
   field voxel f32 "Models built of cubes of this edge (voxel worlds); 0 is no voxel grid." {
     min 0

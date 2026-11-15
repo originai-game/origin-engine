@@ -15,6 +15,9 @@ pub struct Changes {
     pub colors: bool,
     /// Voxelised: the edge used and the voxels.
     pub voxel: Option<(f32, usize)>,
+    /// Voxelised past its share of the face budget: the triangles drawn
+    /// and that share (the cubes keep the look's edge).
+    pub voxel_over: Option<(usize, usize)>,
     /// Bevelled: hard edges and triangles added.
     pub bevel: Option<(usize, usize)>,
     /// Distinct vertex colours after baking.
@@ -42,6 +45,61 @@ fn unweld(v: &mut Vec<FVertex>, idx: &mut Vec<u32>, src: &mut Vec<u32>) {
     *v = idx.iter().map(|&i| v[i as usize]).collect();
     *src = idx.iter().map(|&i| src[i as usize]).collect();
     *idx = (0..v.len() as u32).collect();
+}
+
+/// The facet of each triangle of an unwelded mesh (`ArtShape.facetAngle`)
+/// and each facet's area-weighted normal (unnormalised). Faces grow into a
+/// facet across shared edges, in index order, while each is within `deg`
+/// of the facet's normal so far: measured against the facet and not the
+/// neighbour, so a long gentle curve breaks into planes instead of
+/// chaining into one.
+fn facets(v: &[FVertex], idx: &[u32], deg: f32) -> (Vec<usize>, Vec<Vec3>) {
+    let tris = idx.len() / 3;
+    let face: Vec<Vec3> = (0..tris)
+        .map(|f| cross(v, &idx[f * 3..f * 3 + 3]))
+        .collect();
+    let edge = |a: u32, b: u32| {
+        let (ka, kb) = (pkey(v[a as usize].p), pkey(v[b as usize].p));
+        if ka <= kb { (ka, kb) } else { (kb, ka) }
+    };
+    let mut by_edge: BTreeMap<([u32; 3], [u32; 3]), Vec<usize>> = BTreeMap::new();
+    for f in 0..tris {
+        let t = &idx[f * 3..f * 3 + 3];
+        for k in 0..3 {
+            by_edge
+                .entry(edge(t[k], t[(k + 1) % 3]))
+                .or_default()
+                .push(f);
+        }
+    }
+    let cos = deg.to_radians().cos();
+    let mut of = vec![usize::MAX; tris];
+    let mut normals = Vec::new();
+    for seed in 0..tris {
+        if of[seed] != usize::MAX {
+            continue;
+        }
+        let id = normals.len();
+        let mut sum = face[seed];
+        of[seed] = id;
+        let mut queue = std::collections::VecDeque::from([seed]);
+        while let Some(f) = queue.pop_front() {
+            let t = &idx[f * 3..f * 3 + 3];
+            for k in 0..3 {
+                for &g in &by_edge[&edge(t[k], t[(k + 1) % 3])] {
+                    if of[g] == usize::MAX
+                        && face[g].normalize_or_zero().dot(sum.normalize_or_zero()) >= cos
+                    {
+                        of[g] = id;
+                        sum += face[g];
+                        queue.push_back(g);
+                    }
+                }
+            }
+        }
+        normals.push(sum);
+    }
+    (of, normals)
 }
 
 /// Only the vertices `idx` uses, in first-use order.
@@ -980,6 +1038,12 @@ pub(in crate::cook) fn primitive(
                     .max(1)
             }
         });
+        // The cubes keep the look's edge whatever the budget: the greedy
+        // mesher already merges every coplanar face of one colour, and a
+        // doubled edge turned a rolling meadow into steps 1.6 m high (walls,
+        // not ground). Past the budget the model is drawn as voxelised and
+        // the cook warns, as decimation does when the budget would cost the
+        // shape. Only the 256-cell grid makes the edge coarser.
         let mut edge = c.voxel;
         for _ in 0..5 {
             match voxelise(
@@ -991,9 +1055,10 @@ pub(in crate::cook) fn primitive(
                 &c.palette,
                 c.max_colors,
             ) {
-                Some((nv, ni, count))
-                    if voxel_target.is_none_or(|t| ni.len() / 3 <= t) || edge >= c.voxel * 16.0 =>
-                {
+                Some((nv, ni, count)) => {
+                    ch.voxel_over = voxel_target
+                        .filter(|&t| ni.len() / 3 > t)
+                        .map(|t| (ni.len() / 3, t));
                     ch.distinct = nv
                         .iter()
                         .map(|x| x.c.map(f32::to_bits))
@@ -1024,8 +1089,8 @@ pub(in crate::cook) fn primitive(
                     ch.colors = true;
                     break;
                 }
-                // Past the budget or the 256-cell grid: coarser.
-                _ => edge *= 2.0,
+                // Past the 256-cell grid: coarser.
+                None => edge *= 2.0,
             }
         }
         if ch.voxel.is_some() {
@@ -1080,14 +1145,31 @@ pub(in crate::cook) fn primitive(
             unweld(v, idx, sources);
         }
         let mut colors: Vec<[f32; 4]> = if flat {
-            v.as_chunks::<3>()
+            let mut face: Vec<[f32; 4]> = v
+                .as_chunks::<3>()
                 .0
                 .iter()
-                .flat_map(|t| {
-                    let m = surface.over([&t[0], &t[1], &t[2]]);
-                    [m; 3]
-                })
-                .collect()
+                .map(|t| surface.over([&t[0], &t[1], &t[2]]))
+                .collect();
+            if c.facet_angle > 0.0 {
+                // A facet is one colour: its faces' mean, by area.
+                let (of, normals) = facets(v, idx, c.facet_angle);
+                let mut sum = vec![[0f32; 5]; normals.len()];
+                for (f, m) in face.iter().enumerate() {
+                    let a = cross(v, &idx[f * 3..f * 3 + 3]).length();
+                    for k in 0..4 {
+                        sum[of[f]][k] += m[k] * a;
+                    }
+                    sum[of[f]][4] += a;
+                }
+                for (f, m) in face.iter_mut().enumerate() {
+                    let s = sum[of[f]];
+                    if s[4] > 0.0 {
+                        *m = [0, 1, 2, 3].map(|k| s[k] / s[4]);
+                    }
+                }
+            }
+            face.into_iter().flat_map(|m| [m; 3]).collect()
         } else {
             v.iter().map(|x| surface.at(x.uv, x.c)).collect()
         };
@@ -1099,6 +1181,13 @@ pub(in crate::cook) fn primitive(
     }
     if c.normals != Normals::Any {
         shade(v, idx, sources, c.normals);
+        if c.normals == Normals::Flat && c.facet_angle > 0.0 {
+            // Every face of a facet takes the facet's normal.
+            let (of, normals) = facets(v, idx, c.facet_angle);
+            for (i, x) in v.iter_mut().enumerate() {
+                x.n = normals[of[i / 3]].normalize_or(Vec3::Y).to_array();
+            }
+        }
         ch.normals = true;
     } else if reshade && !ch.normals {
         // Simplified welded by position: the corners' normals are their
@@ -1156,6 +1245,18 @@ pub(in crate::cook) fn notes(c: &Conform, src: &GltfSource, changes: &[Changes])
                 plan.error.1, plan.error.0
             ));
         }
+    }
+    let over: Vec<(usize, usize)> = changes.iter().filter_map(|x| x.voxel_over).collect();
+    if !over.is_empty() {
+        let (drawn, share) = over.iter().fold((0, 0), |(a, b), &(d, s)| (a + d, b + s));
+        let edge = changes
+            .iter()
+            .filter_map(|x| x.voxel)
+            .map(|x| x.0)
+            .fold(c.voxel, f32::max);
+        warning = Some(format!(
+            "conform: warning: over budget: ArtShape.{name} {budget}: its voxels of {edge} m draw {drawn} triangles where its share is {share}; the cubes keep their edge (a larger ArtShape.voxel, fewer colours or a smaller model meets it)"
+        ));
     }
     if c.normals != Normals::Any {
         what.push(format!("normals {:?}", c.normals).to_lowercase());

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ArtShape.voxel",
+      "summary": "A voxelised model past its face budget keeps its cube edge and the cook warns, where before the edge doubled until the budget was met: a rolling ground at 0.1 m became steps 1.6 m high, walls over the scene. The greedy mesher already merges every coplanar face of one colour. Only a model wider than 256 cubes is still voxelised coarser. Voxelised models re-cook (conform-mesh-v5)."
+    }
+  ]
+}

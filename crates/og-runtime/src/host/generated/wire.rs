@@ -37684,6 +37684,7 @@ pub mod record {
         pub normals: ArtNormals,
         pub normal_angle: f32,
         pub bevel: f32,
+        pub facet_angle: f32,
         pub voxel: f32,
         pub silhouette: f32,
     }
@@ -37696,6 +37697,7 @@ pub mod record {
                 normals: Default::default(),
                 normal_angle: 30.0_f32,
                 bevel: Default::default(),
+                facet_angle: Default::default(),
                 voxel: Default::default(),
                 silhouette: Default::default(),
             }
@@ -37714,6 +37716,7 @@ pub mod record {
                 normals: field(o, "normals", d.normals)?,
                 normal_angle: field(o, "normalAngle", d.normal_angle)?,
                 bevel: field(o, "bevel", d.bevel)?,
+                facet_angle: field(o, "facetAngle", d.facet_angle)?,
                 voxel: field(o, "voxel", d.voxel)?,
                 silhouette: field(o, "silhouette", d.silhouette)?,
             })

@@ -687,3 +687,59 @@ fn a_voxelised_ground_keeps_its_height() {
         "one cube deep: its bottom at {lo}"
     );
 }
+
+/// A voxelised model past its face budget keeps the look's cube edge and
+/// warns: before, the edge doubled until the budget was met (a rolling
+/// ground at 0.1 m became steps 1.6 m high, walls over the scene).
+#[test]
+fn a_voxelised_model_past_its_budget_keeps_its_edge() {
+    let root = project(
+        "voxel-over",
+        &[
+            ("project.ogt", PROJECT.as_bytes().to_vec()),
+            (
+                "assets/looks/main.ogt",
+                look("ArtShape {\n  propFaces 60\n  voxel 0.1\n}\n").into_bytes(),
+            ),
+            (
+                "assets/models/ball.glb",
+                glb(
+                    &sphere(1.0, [0.0, 1.0, 0.0], 16, 8),
+                    1,
+                    [0.3, 0.5, 0.2, 1.0],
+                    None,
+                ),
+            ),
+        ],
+    );
+    let report = cook(&root);
+    let n = notes(&report, "models/ball.glb");
+    assert!(
+        n.iter()
+            .any(|x| x.contains("voxelised at 0.1 m") && !x.contains("coarsened")),
+        "{n:?}"
+    );
+    assert!(
+        report.warnings.iter().any(|w| w.contains("over budget")),
+        "{:?}",
+        report.warnings
+    );
+    // The cubes are 0.1 m: every vertex on the 0.1 m grid, and the sphere's
+    // curve stepped finely (far more triangles than 60).
+    let tris = triangles(&root, "models/ball.glb");
+    let all: Vec<[f32; 3]> = tris
+        .iter()
+        .flatten()
+        .flatten()
+        .map(|v| v.position)
+        .collect();
+    assert!(all.len() / 3 > 60, "{}", all.len() / 3);
+    for p in &all {
+        for a in p {
+            assert!(
+                ((a * 10.0) - (a * 10.0).round()).abs() < 1e-3,
+                "{p:?} off the 0.1 m grid"
+            );
+        }
+    }
+}

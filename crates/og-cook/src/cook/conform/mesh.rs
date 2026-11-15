@@ -23,7 +23,8 @@
 //!    mesher (`vox::mesh_model`) and brought back under the node; each cell's colour is the surface's
 //!    (base colour factor × texture × vertex colour), mapped to
 //!    `ArtPalette.colors` (Oklab nearest) or cut to `maxColors`. Past the
-//!    face budget the edge doubles (at most four times). Skinned or morphed
+//!    face budget the cubes keep their edge and the cook warns; only past
+//!    the 256-cell grid does the edge double (at most four times). Skinned or morphed
 //!    primitives are not voxelised (a voxel has no source vertex to skin).
 //! 2. **Decimate** to the budget (`propFaces`, or `characterFaces` for a
 //!    model with a skin or that says `conform character`; none for an
@@ -50,7 +51,10 @@
 //!    texture times the factor sampled over each face (flat) or at each
 //!    vertex, mapped to the palette or cut to `maxColors`; the model's
 //!    materials then draw white with no base colour texture.
-//! 5. **Normals**: flat (one per face), smooth (area-weighted over the
+//! 5. **Normals**: flat (one per face, or with `facetAngle` one per facet:
+//!    neighbouring faces grown into a facet while each is within the angle
+//!    of the facet's area-weighted normal, which every face of it takes,
+//!    as the bake gives every face of it the facet's mean colour), smooth (area-weighted over the
 //!    corners that share a position and a uv, so uv seams stay), or angle
 //!    (over the faces at a position within `normalAngle`).
 //!
@@ -145,6 +149,9 @@ pub struct Conform {
     /// the model's bounding radius, [`SHAPE_ERROR`]).
     pub silhouette: f32,
     pub normals: Normals,
+    /// `ArtShape.facetAngle`: with flat normals, the degrees within which
+    /// neighbouring faces share one facet (0: every triangle its own).
+    pub facet_angle: f32,
     pub bevel: f32,
     pub voxel: f32,
     pub density: f32,
@@ -264,6 +271,7 @@ impl Conform {
             character_faces: num(shape, "characterFaces") as u32,
             silhouette: num(shape, "silhouette") as f32,
             normals,
+            facet_angle: num(shape, "facetAngle") as f32,
             bevel: num(shape, "bevel") as f32,
             voxel: num(shape, "voxel") as f32,
             density: num(texels, "density") as f32,
@@ -357,11 +365,12 @@ impl Conform {
             return String::new();
         }
         format!(
-            "conform-mesh-v4 faces {} {} silhouette {} normals {:?} bevel {} voxel {} bakes {} {} line {:?}",
+            "conform-mesh-v5 faces {} {} silhouette {} normals {:?} facets {} bevel {} voxel {} bakes {} {} line {:?}",
             self.prop_faces,
             self.character_faces,
             self.silhouette,
             self.normals,
+            self.facet_angle,
             self.bevel,
             self.voxel,
             self.bakes(),
