@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"The hero button tells the engine its variant: primary for its default and premium tones, secondary and danger for theirs. A style pack can now tell a secondary hero button from the default one in `button.secondary::part(HeroButton\\.base)` and `button.primary::part(HeroButton\\.base)`; before, every hero button was a variant-less (secondary) button, so the default tone matched `.secondary` too."}
+  ]
+}

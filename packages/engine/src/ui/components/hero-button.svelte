@@ -7,7 +7,7 @@
 <meta name="action:press" content="Press">
 <meta name="fixture:default" content='{"label":"End turn","tone":"","disabled":false,"key":"E"}'>
 
-<button id="HeroButton" part="HeroButton.base" class:premium={tone == 'premium'} class:secondary={tone == 'secondary'} class:danger={tone == 'danger'} disabled={disabled} onclick={press}>
+<button id="HeroButton" part="HeroButton.base" variant={tone == 'secondary' || tone == 'danger' ? tone : 'primary'} class:premium={tone == 'premium'} class:secondary={tone == 'secondary'} class:danger={tone == 'danger'} disabled={disabled} onclick={press}>
   <span id="Label" part="HeroButton.label">{label}</span>
   <kbd id="Key" part="HeroButton.key" hidden={!key}>{key}</kbd>
 </button>
