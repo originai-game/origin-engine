@@ -15,7 +15,7 @@ pub(super) use width::*;
 
 /// A text's preferred extent along its line: its widest line.
 pub(crate) fn text_preferred(t: UsedText<'_>, fonts: &dyn Metrics) -> f32 {
-    width::text_widest(t, t.metrics(fonts))
+    super::text::text_widest(t, t.metrics(fonts))
 }
 
 /// Raises `items` (by index into `w`) towards a common level so their sum
