@@ -3,16 +3,12 @@
    around everything, chunky plates with a raised bottom edge that sinks
    when pressed, bold rounded type and springy motion.
 
-   Files apply in name order: controls (every core control and its states,
-   in a cascade layer of its own so any file's part rule outranks it),
-   components (the ungrouped components), motion, one file for each
-   built-in component group's parts, sounds. This file holds every value
-   the pack draws with,
-   as :root tokens: the engine's own (palette roles, radii, control and role
-   tokens: frames, bands, titles, rows and cells wear the default role
-   rules with these values), then the pack's (--cartoon-*; README.md lists
-   them). The other files only select parts and states and name these
-   tokens, so a variant restyles the pack by setting tokens alone. */
+   The pack is a theme: this file holds every value it draws with, as :root
+   tokens for the dark and light schemes, and the default style's control
+   and role rules (frames, plates, bands, titles, rows, cells, badges, wells,
+   figures, labels, tags) wear them. It selects no component part; motion.css
+   and sounds.css set only transitions and sounds. Every rim is the one dark
+   outline, --line-strong. */
 
 /* A face is matched by its exact weight, so each family names every weight
    a control asks for: Lilita One has one cut; Fredoka reads at Medium and
@@ -52,6 +48,218 @@
 @font-face { font-family: "Cartoon Label"; src: url(/@styles/cjk/ZCOOLKuaiLe-Regular.ttf); font-weight: 700; unicode-range: U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF; }
 
 :root {
+  /* ── The core controls, as tokens the default style's control rules read.
+     A control is a plate inside the dark outline standing on a lip that
+     goes when it is pressed; hover brightens, focus is a ring outside. */
+  --button-min-height: var(--size-touch);
+  --button-font-size: var(--font-step-xl);
+  --button-tracking: var(--font-tracking-xs);
+  --button-transform: uppercase;
+  --button-rim: var(--line-strong);
+  --button-hover-rim: var(--line-strong);
+  --button-pressed-rim: var(--line-strong);
+  --button-disabled-rim: var(--line-strong);
+  --button-primary-rim: var(--line-strong);
+  --button-primary-hover-rim: var(--line-strong);
+  --button-selected-rim: var(--line-strong);
+  --button-pressed-fill: var(--button-fill);
+  --button-primary-pressed-fill: var(--button-primary-fill);
+  --button-primary-ink: var(--on-primary);
+  --button-ghost-rim: var(--line-strong);
+  --button-ghost-pressed-fill: var(--button-ghost-hover-fill);
+  --button-quiet-pressed-fill: var(--button-quiet-hover-fill);
+  --checkbox-row-hover-fill: var(--ink-8);
+  --checkbox-box-fill: var(--checkbox-fill);
+  --checkbox-box-rim: var(--line-strong);
+  --checkbox-box-shadow: var(--checkbox-shadow);
+  --checkbox-box-hover-fill: var(--control);
+  --checkbox-box-hover-rim: var(--line-strong);
+  --checkbox-checked-rim: var(--line-strong);
+  --checkbox-disabled-fill: var(--field-disabled-fill);
+  --checkbox-disabled-rim: var(--line-strong);
+  --radio-ring-fill: var(--checkbox-fill);
+  --radio-ring-rim: var(--line-strong);
+  --radio-ring-shadow: var(--checkbox-shadow);
+  --radio-checked-fill: var(--checkbox-checked-fill);
+  --radio-checked-rim: var(--line-strong);
+  --radio-checked-shadow: var(--checkbox-checked-shadow);
+  --radio-dot-fill: var(--line-strong);
+  --radio-card-rim: var(--line-strong);
+  --radio-card-rim-width: var(--cartoon-outline-width);
+  --radio-card-hover-fill: var(--cartoon-slate-hover);
+  --radio-card-hover-rim: var(--line-strong);
+  --radio-card-checked-rim: var(--line-strong);
+  --radio-card-checked-ink: var(--on-selection);
+  --radio-chosen-fill: var(--cartoon-green);
+  --radio-chosen-rim: var(--line-strong);
+  --switch-track-fill: var(--switch-fill);
+  --switch-track-rim: var(--line-strong);
+  --switch-track-shadow: var(--checkbox-shadow);
+  --switch-checked-rim: var(--line-strong);
+  --switch-knob-rim: var(--line-strong);
+  --tabs-track-border: var(--cartoon-outline-thin) solid var(--line-strong);
+  --tabs-track-shadow: var(--cartoon-sunk);
+  --tabs-tab-fill: none;
+  --tabs-tab-hover-fill: var(--tabs-hover-fill);
+  --tabs-tab-hover-ink: var(--ink);
+  --tabs-tab-pressed-fill: var(--ink-25);
+  --tabs-tab-selected-fill: var(--tabs-selected-fill);
+  --tabs-tab-selected-ink: var(--tabs-selected-ink);
+  --tabs-tab-selected-shadow: var(--tabs-selected-shadow);
+  --tabs-tab-ink: var(--ink-muted);
+  --tabs-tab-disabled-ink: var(--ink-disabled);
+  --tabs-font: var(--button-font);
+  --tabs-tracking: var(--font-tracking-xs);
+  --tabs-transform: uppercase;
+  --tabs-indicator-height: var(--cartoon-outline-width);
+  --tabs-indicator-radius: var(--radius-capsule);
+  --slider-track-fill: var(--well);
+  --slider-track-rim: var(--line-strong);
+  --slider-track-shadow: var(--cartoon-sunk);
+  --slider-fill-shadow: var(--meter-fill-shadow);
+  --slider-tick-fill: var(--line-strong);
+  --slider-knob-rim: var(--line-strong);
+  --slider-knob-rim-width: var(--cartoon-outline-width);
+  --slider-knob-disabled-fill: var(--button-disabled-fill);
+  --slider-core-fill: none;
+  --slider-bubble-fill: var(--primary);
+  --slider-bubble-rim: var(--line-strong);
+  --slider-bubble-radius: var(--radius-sm);
+  --slider-bubble-shadow: var(--cartoon-edge-small);
+  --field-rim: var(--line-strong);
+  --field-hover-fill: var(--panel-hover);
+  --field-hover-rim: var(--line-strong);
+  --field-focus-rim: var(--line-strong);
+  --field-invalid-rim: var(--danger);
+  --field-ink: var(--ink);
+  --field-font: var(--font-body);
+  --field-placeholder-ink: var(--ink-faint);
+  --field-selection-fill: var(--selection-30);
+  --field-caret-fill: var(--selection);
+  --dropdown-list-fill: var(--panel-raised);
+  --dropdown-list-rim: var(--line-strong);
+  --dropdown-list-rim-width: var(--cartoon-outline-width);
+  --dropdown-list-radius: var(--radius-md);
+  --dropdown-option-hover-fill: var(--ink-14);
+  --dropdown-option-pressed-fill: var(--ink-25);
+  --dropdown-option-selected-fill: var(--button-selected-fill);
+  --dropdown-option-selected-ink: var(--button-selected-ink);
+  --stepper-button-fill: var(--cartoon-key-fill);
+  --stepper-button-rim: var(--line-strong);
+  --stepper-button-ink: var(--cartoon-key-ink);
+  --stepper-button-hover-fill: var(--button-primary-fill);
+  --stepper-button-pressed-fill: var(--button-primary-fill);
+  --stepper-button-disabled-fill: var(--button-disabled-fill);
+  --details-summary-fill: var(--cartoon-slate);
+  --details-summary-border: var(--cartoon-outline-thin) solid var(--line-strong);
+  --details-summary-shadow: var(--cartoon-edge-small);
+  --details-summary-hover-fill: var(--cartoon-slate-hover);
+  --details-summary-open-fill: var(--cartoon-slate-hover);
+  --details-summary-ink: var(--ink);
+  --details-summary-open-ink: var(--ink);
+  --details-summary-font: var(--button-font);
+  --details-content-ink: var(--ink);
+  --panel-rim: var(--line-strong);
+  --dialog-backdrop: var(--scrim);
+  --tooltip-rim: var(--line-strong);
+  --tooltip-radius: var(--radius-md);
+  --tooltip-glass: none;
+  --hud-fill: var(--hud);
+  --hud-rim: var(--line-strong);
+  --hud-shadow: var(--cartoon-edge-small);
+  --hud-glass: none;
+  --popover-arrow-fill: var(--panel-raised);
+  --spotlight-edge: var(--accent);
+  --slot-rim: var(--line-strong);
+  --slot-rim-width: var(--cartoon-outline-width);
+  --slot-pressed-fill: var(--cell-pressed-fill);
+  --slot-selected-rim: var(--line-strong);
+  --slot-selected-shadow: var(--cell-selected-shadow);
+  --badge-rim: var(--line-strong);
+  --badge-rim-width: var(--cartoon-outline-thin);
+  --badge-font: var(--label-font);
+  --badge-info-fill: var(--cartoon-blue);
+  --badge-info-ink: var(--on-primary);
+  --badge-success-fill: var(--cartoon-green);
+  --badge-success-ink: var(--on-primary);
+  --badge-warn-fill: var(--cartoon-orange);
+  --badge-warn-ink: var(--on-primary);
+  --badge-danger-fill: var(--cartoon-red);
+  --badge-danger-ink: var(--badge-ink);
+  --badge-primary-fill: var(--cartoon-yellow);
+  --badge-primary-ink: var(--on-primary);
+  --meter-track-fill: var(--well);
+  --meter-track-rim: var(--line-strong);
+  --meter-track-shadow: var(--cartoon-sunk);
+  --progress-fill: var(--meter-fill);
+  --keyboard-panel-fill: var(--panel);
+  --keyboard-key-rim: var(--line-strong);
+  --keyboard-key-ink: var(--cartoon-key-ink);
+  --keyboard-key-shadow: var(--cartoon-key-shadow);
+  --keyboard-key-font: var(--button-font);
+  --keyboard-key-hover-fill: var(--button-primary-fill);
+  --keyboard-key-pressed-fill: var(--button-primary-fill);
+  --touch-plate-rim: var(--line-strong);
+  --touch-knob-fill: var(--slider-knob-fill);
+  --touch-active-fill: var(--accent);
+  --scrollbar-fill: var(--ink-25);
+  --scrollbar-radius: var(--radius-capsule);
+  --icon-secondary-ink: var(--accent);
+  /* The control hooks' rim widths and the shadows the default never drew. */
+  --button-rim-width: var(--button-border-width);
+  --button-base-shadow: var(--button-shadow);
+  --button-base-pressed-shadow: var(--button-pressed-shadow);
+  --field-rim-width: var(--field-border-width);
+  --field-frame-shadow: var(--field-shadow);
+  --checkbox-checked-rim-width: var(--field-border-width);
+  --radio-checked-rim-width: var(--field-border-width);
+  --radio-option-hover-fill: var(--ink-8);
+  --slider-track-rim-width: var(--cartoon-outline-thin);
+  --meter-track-rim-width: var(--cartoon-outline-thin);
+  --tooltip-rim-width: var(--cartoon-outline-thin);
+  --hud-rim-width: var(--cartoon-outline-thin);
+  --badge-neutral-fill: var(--cartoon-slate);
+  --badge-neutral-ink: var(--ink);
+
+  /* ── Role parts beyond the shared role tokens: a band is a plate of its
+     own in the outline, a chosen tile wears a sky ring outside its
+     outline, labels are heavy, badges and wells sit in the thin outline. */
+  --band-rim: var(--band-rule);
+  --title-leading: var(--cartoon-leading-display);
+  --label-weight: var(--cartoon-weight-label);
+  --badge-role-rim: var(--cartoon-outline-thin) solid var(--line-strong);
+  --well-border: var(--cartoon-outline-thin) solid var(--line-strong);
+
+  /* ── Names and pictures: a name in the display face over a small drop,
+     a picture in a cell's well in the outline. */
+  --name-font: var(--font-display);
+  --name-tracking: var(--font-tracking-xs);
+  --name-transform: uppercase;
+  --name-ink: var(--ink);
+  --name-shadow: var(--cartoon-text-drop-small);
+  --name-selected-ink: var(--ink-selected);
+  --picture-fill: var(--cell-fill);
+  --picture-rim: var(--line-strong);
+  --picture-radius: var(--radius-sm);
+  --picture-shadow: var(--cartoon-edge-small);
+
+  /* ── One component's own look, as the tokens it reads. */
+  --bubble-tail-fill: var(--cartoon-panel-foot);
+  --bubble-tail-rim: var(--frame-rim);
+  --reticle-keyline: var(--cartoon-scene-ring);
+  --reticle-ring: var(--cartoon-scene-ring), var(--cartoon-scene-ring-inset);
+  --damage-arc-stroke: var(--tone-damage);
+  --minimap-bezel: var(--cartoon-minimap-bezel);
+  --star-fill: var(--cartoon-star);
+  --star-rim: var(--line-strong);
+  --celebration-ink: var(--cartoon-star);
+  --celebration-shadow: var(--cartoon-text-outline);
+  --celebration-ray-fill: var(--cartoon-ray);
+  --celebration-ray-opacity: var(--cartoon-burst-opacity);
+  --compass-window-fill: var(--hud);
+  --compass-window-rim: var(--line-strong);
+  --compass-window-shadow: var(--cartoon-edge-small);
+
   /* ── The core roles, at night: a deep sky ground, indigo panels, white
      ink. --line-strong is the dark outline around every control, frame and
      tile; --primary the yellow plate of the main action; --selection the
@@ -121,18 +329,13 @@
   --ink-8: rgb(from var(--ink) r g b / 0.08);
   --ink-14: rgb(from var(--ink) r g b / 0.14);
   --ink-25: rgb(from var(--ink) r g b / 0.25);
-  --accent-25: rgb(from var(--accent) r g b / 0.25);
   --accent-50: rgb(from var(--accent) r g b / 0.5);
   --selection-30: rgb(from var(--selection) r g b / 0.3);
   --danger-25: rgb(from var(--danger) r g b / 0.25);
   --shadow-18: rgb(from var(--color-shadow) r g b / 0.18);
   --shadow-30: rgb(from var(--color-shadow) r g b / 0.3);
   --shadow-45: rgb(from var(--color-shadow) r g b / 0.45);
-  --shadow-70: rgb(from var(--color-shadow) r g b / 0.7);
   --well-60: rgb(from var(--well) r g b / 0.6);
-  --well-85: rgb(from var(--well) r g b / 0.85);
-  --divider: rgb(from var(--ink) r g b / 0.16);
-  --divider-strong: rgb(from var(--ink) r g b / 0.32);
   --gloss: #ffffff59;
   --gloss-soft: #ffffff26;
 
@@ -147,10 +350,7 @@
   --figure-font: "Cartoon Display", "Cartoon Fallback", ui-rounded, sans-serif;
   --title-font: var(--font-display);
   --cartoon-weight-label: 600;
-  --cartoon-stroke-title: 4px;
-  --cartoon-stroke-text: 3px;
   --cartoon-leading-display: 1.1;
-  --cartoon-leading-text: 1.35;
 
   /* ── Radii and strokes: everything round, every edge thick. */
   --radius-control: 10px;
@@ -206,13 +406,10 @@
   --cartoon-violet-hover: linear-gradient(180deg, #927bff 0%, #7d63fb 55%, #6a4df0 100%) padding-box;
   --cartoon-violet-lip: #3a22a3;
   --cartoon-blue: linear-gradient(180deg, #6fdcff 0%, #36c5ff 55%, #1ea6f5 100%) padding-box;
-  --cartoon-blue-lip: #1273c4;
   --cartoon-royal: linear-gradient(180deg, #2f6df2 0%, #2b64e8 50%, #2052cf 100%) padding-box;
   --cartoon-royal-lip: #173a9e;
   /* The royal plate is the same deep blue in both schemes, so its ink is
      its own and does not follow the selection's. */
-  --cartoon-on-royal: #ffffff;
-  --cartoon-on-royal-muted: #cfd8ff;
   /* A filled star or mark sits in the dark outline, so it stays bright in
      both schemes; --gold is the ink and darkens on light grounds. */
   --cartoon-star: #ffd23f;
@@ -223,30 +420,24 @@
   --cartoon-band: var(--cartoon-royal);
   --cartoon-band-lip: var(--cartoon-royal-lip);
   --cartoon-green: linear-gradient(180deg, #9cf27a 0%, #62e24f 55%, #3fcc3a 100%) padding-box;
-  --cartoon-green-lip: #1f8f2a;
   --cartoon-red: linear-gradient(180deg, #dd2f48 0%, #d22a43 55%, #bd1f37 100%) padding-box;
   --cartoon-red-hover: linear-gradient(180deg, #e63a53 0%, #dd2f48 55%, #c8233c 100%) padding-box;
   --cartoon-red-lip: #8f1228;
   --cartoon-purple: linear-gradient(180deg, #dca1ff 0%, #c873ff 55%, #a94df0 100%) padding-box;
-  --cartoon-purple-lip: #6e25b8;
   --cartoon-orange: linear-gradient(180deg, #ffd25c 0%, #ffb11f 55%, #ff9000 100%) padding-box;
-  --cartoon-orange-lip: #c26100;
   --cartoon-pink: linear-gradient(180deg, #ff93aa 0%, #ff5c7c 55%, #f0365c 100%) padding-box;
-  --cartoon-pink-lip: #a81438;
   --cartoon-silver: linear-gradient(180deg, #eef2ff 0%, #c3cdea 55%, #a4b0d6 100%) padding-box;
-  --cartoon-silver-lip: #6a769e;
   --cartoon-grey: linear-gradient(180deg, #8d97c4 0%, #747eae 100%) padding-box;
   --cartoon-grey-lip: #4d5685;
   --cartoon-slate: linear-gradient(180deg, #4856c4 0%, #3a47b3 60%, #303c9f 100%) padding-box;
   --cartoon-slate-hover: linear-gradient(180deg, #5b6ad9 0%, #4b5ad1 60%, #3e4cba 100%) padding-box;
-  --cartoon-slate-lip: #1c2470;
   --cartoon-panel-fill: linear-gradient(180deg, #2c358c 0%, #232a73 30%, #1f2568 100%) padding-box;
   /* The panel gradient's foot: a frame's speech tail hangs from it. */
   --cartoon-panel-foot: #1f2568;
   --cartoon-sky: linear-gradient(180deg, #2f7df5 0%, #1d4ac4 55%, #1a2f9c 100%);
   --cartoon-rays-image: url(art/rays.svg);
   --cartoon-dots-image: url(art/dots.svg);
-  --cartoon-ground:
+  --ground-fill:
     var(--cartoon-rays-image) center top / cover no-repeat,
     var(--cartoon-dots-image) left top / 48px 48px repeat,
     var(--cartoon-sky);
@@ -259,43 +450,15 @@
   --cartoon-drop-large: 0 14px 28px 0 var(--shadow-45);
   --cartoon-ring: 0 0 0 var(--cartoon-outline-thin) var(--line-strong);
   --cartoon-ring-stand: var(--cartoon-ring), 0 var(--cartoon-press) 0 var(--cartoon-outline-thin) var(--line-strong);
-  --cartoon-ring-thick: 0 0 0 var(--cartoon-outline-width) var(--line-strong);
   --cartoon-inner-gloss: inset 0 2px 0 0 var(--gloss);
   --cartoon-inner-shade: inset 0 calc(0px - var(--cartoon-lip-small)) 0 0 var(--shadow-18);
   --cartoon-sunk: inset 0 3px 0 0 var(--shadow-30);
   --cartoon-text-drop: 0 2px 0 var(--line-strong);
   --cartoon-text-drop-small: 0 1px 0 var(--line-strong);
   --cartoon-text-outline: 1px 0 0 var(--line-strong), -1px 0 0 var(--line-strong), 0 -1px 0 var(--line-strong), 0 2px 0 var(--line-strong);
-  --cartoon-plate-shadow: var(--cartoon-inner-shade), var(--cartoon-edge-small);
-  --cartoon-ring-accent: 0 0 0 var(--cartoon-outline-width) var(--accent);
-  --cartoon-featured-shadow: var(--cartoon-inner-shade), var(--cartoon-inner-gloss), var(--cartoon-edge), var(--cartoon-drop);
-  --cartoon-node-shadow: inset 0 calc(0px - var(--cartoon-lip-small)) 0 0 var(--cartoon-royal-lip), var(--cartoon-inner-gloss), var(--cartoon-edge);
   --cartoon-scene-ring: 0 0 0 var(--cartoon-outline-thin) var(--scene-shadow);
   --cartoon-scene-ring-inset: inset 0 0 0 var(--cartoon-outline-thin) var(--scene-shadow);
-  --cartoon-reload-fill: var(--primary);
-  --cartoon-selected-plate-shadow: inset 0 calc(0px - var(--cartoon-lip-small)) 0 0 var(--cartoon-selected-lip), var(--cartoon-inner-gloss), var(--cartoon-edge-small);
-  --cartoon-close-shadow: inset 0 calc(0px - var(--cartoon-lip-small)) 0 0 var(--button-danger-lip), var(--cartoon-inner-gloss), var(--cartoon-edge-small);
-  --cartoon-card-ring: inset 0 0 0 var(--cartoon-outline-width);
-  --cartoon-glow: 0 0 0 var(--cartoon-outline-width) var(--accent), 0 0 16px 2px var(--accent-50);
-  --cartoon-fade-end: linear-gradient(90deg, rgb(from var(--panel) r g b / 0), var(--panel));
-  --cartoon-fade-start: linear-gradient(270deg, rgb(from var(--panel) r g b / 0), var(--panel));
-  --cartoon-fade-foot: linear-gradient(180deg, #000 0, #000 calc(100% - 36px), #0000 100%);
-  --cartoon-fold: linear-gradient(180deg, rgb(from var(--backdrop) r g b / 0) 0%, rgb(from var(--backdrop) r g b / 0.85) 32%, var(--backdrop) 55%);
-  --cartoon-scenery-fade: linear-gradient(90deg, #0000, #000 60%);
-  --cartoon-split: linear-gradient(180deg, rgb(from var(--ink) r g b / 0), var(--divider-strong), rgb(from var(--ink) r g b / 0));
-  --cartoon-rule:
-    var(--mark-diamond) center / 14px 14px no-repeat,
-    linear-gradient(90deg, rgb(from var(--ink) r g b / 0), var(--divider-strong) 50%, rgb(from var(--ink) r g b / 0)) center / 100% 2px no-repeat;
-  --cartoon-rule-height: 14px;
-  --cartoon-readout-pad: var(--space-xxs) var(--space-sm);
-  --cartoon-band-mark: 34px;
-  --cartoon-needle: 24px;
-  --cartoon-ring-large: 4px;
-  --cartoon-minimap-pad: 6px;
   --cartoon-minimap-bezel: var(--cartoon-white);
-  --cartoon-minimap-mask: radial-gradient(circle, #000 69%, #0000 70.5%);
-  --cartoon-compass-strip: var(--hud);
-  --cartoon-here-ground: linear-gradient(90deg, var(--primary), rgb(from var(--primary) r g b / 0));
 
   /* ── Inks. */
   /* The default button reads with --ink, as content written for a control
@@ -310,7 +473,6 @@
   --ink-disabled: #8b96d6;
   --ink-label: #b9c5ff;
   --ink-bright: #ffffff;
-  --cartoon-outlined-ink: #ffffff;
   --ink-done: #a3afef;
   --ink-selected: var(--on-selection);
   --ink-down: #8b96d6;
@@ -337,9 +499,6 @@
   --mark-pin: url(art/pin.svg);
   --mark-travel: url(art/travel.svg);
   --mark-close: url(art/close.svg);
-  --cartoon-star-image: url(art/star.svg);
-  --cartoon-burst-image: url(art/burst.svg);
-  --cartoon-hero-glow: var(--legendary);
   --band-end-start-image: url(art/star.svg);
   --band-end-finish-image: url(art/star.svg);
   --sfx-tap: url(/@styles/shared/sfx-tap.ogt);
@@ -527,18 +686,10 @@
   --checkbox-pop-bounce: 0.7;
   --radio-pop-bounce: 0.65;
   --opacity-wash: 0.4;
-  --cartoon-quiet: 0.8;
   --cartoon-burst-opacity: 0.85;
-  --cartoon-leading-tight: 1.12;
   --cartoon-spring: -og-spring(320ms, 0.5);
   --cartoon-spring-soft: -og-spring(420ms, 0.35);
-  --cartoon-motion-wobble: 1.6s;
-  --cartoon-motion-shine: 2.4s;
-  --cartoon-wobble-from: -2deg;
-  --cartoon-wobble-to: 2deg;
   --cartoon-swell: 1.06;
-  --cartoon-throb: 1.12;
-  --cartoon-bob: -4px;
 
   font-family: "Cartoon Text", "Cartoon Fallback", ui-rounded, sans-serif;
   font-weight: 500;
@@ -632,17 +783,13 @@
   --badge-ink: #ffffff;
   --cartoon-slate: linear-gradient(180deg, #ffffff 0%, #eef3ff 60%, #dfe7ff 100%) padding-box;
   --cartoon-slate-hover: linear-gradient(180deg, #ffffff 0%, #ffffff 60%, #eef3ff 100%) padding-box;
-  --cartoon-slate-lip: #aab6e0;
   --cartoon-panel-fill: linear-gradient(180deg, #ffffff 0%, #fffaf0 30%, #fff3dc 100%) padding-box;
   /* The panel gradient's foot: a frame's speech tail hangs from it. */
   --cartoon-panel-foot: #fff3dc;
   --cartoon-sky: linear-gradient(180deg, #5cc4ff 0%, #8fdcff 55%, #c9f0ff 100%);
-  --cartoon-hero-glow: #ffb11f;
   --cartoon-burst-opacity: 1;
   --opacity-wash: 0.5;
   /* Dark ink thinned over a light plate loses contrast faster than white
      over a dark one, so quiet text keeps more of its ink here. */
-  --cartoon-quiet: 0.92;
   /* Yellow does not stand off a track on the cream plate. */
-  --cartoon-reload-fill: var(--scene-ink);
 }
