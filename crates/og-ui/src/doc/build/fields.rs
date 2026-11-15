@@ -100,7 +100,13 @@ fn corners(r: &Resolved, radius: f32) -> Option<crate::decor::Corners> {
             c.shape[k] = v;
         }
     }
-    Some(c)
+    // Written but the same as the one radius (a role's `corner-shape:
+    // round` beside its `border-radius`): nothing differs.
+    let plain = crate::decor::Corners {
+        radii: [[(radius, 0.0); 2]; 4],
+        shape: [1.0; 4],
+    };
+    (c != plain).then_some(c)
 }
 
 impl Ui {

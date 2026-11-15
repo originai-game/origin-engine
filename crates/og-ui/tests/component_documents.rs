@@ -365,3 +365,26 @@ fn an_ultimates_cost_and_percent_never_overlap() {
         assert!(apart, "{scale}: cost {cost:?} overlaps percent {percent:?}");
     }
 }
+
+/// The default style marks a table's current row: the arena scoreboard
+/// fills the local player's row (`aria-current`) with the row role's
+/// selected fill. A role's `corner-shape: round` beside its radius is the
+/// plain corner, not a CSS-corner box that left the row's fill undrawn.
+#[test]
+fn the_scoreboard_marks_the_local_players_row() {
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    let doc = docs
+        .iter()
+        .find(|d| d.path.ends_with("arena/scoreboard.svelte"))
+        .expect("the arena scoreboard");
+    let mut ui = ui_with_font(test_font_metrics());
+    preview(&mut ui, &docs, doc, &messages, 1280.0, 720.0);
+    let rows = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|i| i.cmd.filled())
+        .filter(|(r, _)| r.width > 1000.0 && (10.0..60.0).contains(&r.height))
+        .count();
+    assert_eq!(rows, 1, "one marked row");
+}
