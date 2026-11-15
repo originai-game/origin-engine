@@ -194,16 +194,10 @@ struct SystemState {
     max: u32,
     gpu: Option<GpuSystem>,
     cpu: CpuParticles,
-    /// The CPU path's vertex buffer.
-    upload: Option<wgpu::Buffer>,
-    /// The CPU path's trail ring (`CpuParticles::trail`), a vertex buffer.
-    trail_upload: Option<wgpu::Buffer>,
     seen: u64,
     /// The render origin's moves since the system last simulated
     /// ([`ParticleRenderer::shift`]): added to its world-space particles.
     shift: Vec3,
-    /// Its sub-emitters' vertex buffers, by sub-emitter.
-    children: Vec<Option<wgpu::Buffer>>,
     /// Where a world-space system's emitter stood in its particles' longest
     /// life ([`swept_bound`]).
     path: std::collections::VecDeque<(f64, Vec3)>,
@@ -229,6 +223,9 @@ pub(crate) struct FrameSystem {
     child: Option<usize>,
     /// The slots drawn, as instance ranges in slot order ([`drawn`]).
     slots: [std::ops::Range<u32>; 2],
+    /// A CPU-path system's drawn slots in the frame's vertex buffer
+    /// ([`ParticleRenderer::cpu_vertices`]). None: its compute buffer.
+    packed: Option<Packed>,
     /// A box its particles stay inside ([`swept_bound`]): a view it does
     /// not touch skips it. None: drawn in every view.
     bound: Option<(Vec3, Vec3)>,
@@ -237,6 +234,15 @@ pub(crate) struct FrameSystem {
     /// Its effect material (`effect.rs`) and how its pipeline differs.
     effect: Option<crate::EffectMaterialHandle>,
     look: Look,
+}
+
+/// Where each of a CPU-path system's [`FrameSystem::slots`] ranges starts
+/// in the frame's vertex buffer (bytes): its particles', and with a trail
+/// their trails'. A range drawn from there is instances `0..len`.
+#[derive(Clone, Copy, Debug, Default)]
+struct Packed {
+    particles: [u64; 2],
+    trails: [u64; 2],
 }
 
 /// The instance ranges a system of `max` slots draws: every slot, or with
@@ -369,6 +375,13 @@ pub(crate) struct ParticleRenderer {
     /// The frame's emitter entries at [`EMITTER_STRIDE`], kept between
     /// frames (their padding is never read).
     emitter_bytes: Vec<u8>,
+    /// The frame's emitter entries, kept between frames.
+    entries: Vec<EmitterGpu>,
+    /// Every CPU-path system's drawn slots and trails this frame, one
+    /// after another ([`Packed`]): one write a frame, not one a system.
+    cpu_vertices: wgpu::Buffer,
+    /// What `prepare` writes to `cpu_vertices`, kept between frames.
+    cpu_bytes: Vec<u8>,
     pub view_buffer: wgpu::Buffer,
     /// The scene's colliders as `scene_colliders.rs` packs them, with a
     /// list per system that meets them (`emitter.info.z`).
@@ -531,6 +544,15 @@ fn pack_fields(forces: &og_env::force::Forces) -> Vec<[f32; 4]> {
     }
     out[0][0] = ((out.len() - 1) / FIELD_ROWS) as f32;
     out
+}
+
+fn cpu_vertex_buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("particles (cpu)"),
+        size,
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
 }
 
 fn collider_buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {

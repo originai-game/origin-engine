@@ -23,7 +23,9 @@ impl ParticleRenderer {
         let tick_rate = scene.frame.tick_rate.max(1e-3);
         let dt = 1.0 / tick_rate;
         let mut out = ParticleFrame::default();
-        let mut entries: Vec<EmitterGpu> = Vec::new();
+        let mut entries = std::mem::take(&mut self.entries);
+        entries.clear();
+        self.cpu_bytes.clear();
         // Compute systems meeting the scene's colliders: their entries and
         // the box their particles can reach.
         let mut colliding: Vec<(std::ops::Range<u32>, (Vec3, Vec3))> = Vec::new();
@@ -109,11 +111,8 @@ impl ParticleRenderer {
                 max: e.max_particles,
                 gpu: None,
                 cpu: CpuParticles::default(),
-                upload: None,
-                trail_upload: None,
                 seen: 0,
                 shift: Vec3::ZERO,
-                children: Vec::new(),
                 path: Default::default(),
             });
             if state.emitter != sys.emitter.index() || state.max != e.max_particles {
@@ -122,11 +121,8 @@ impl ParticleRenderer {
                     max: e.max_particles,
                     gpu: None,
                     cpu: CpuParticles::default(),
-                    upload: None,
-                    trail_upload: None,
                     seen: 0,
                     shift: Vec3::ZERO,
-                    children: Vec::new(),
                     path: Default::default(),
                 };
             }
@@ -510,6 +506,7 @@ impl ParticleRenderer {
                     layers,
                     child: None,
                     slots: drawn(e.max_particles, Some(live)),
+                    packed: None,
                     bound: Some(bound),
                     kind,
                     mesh,
@@ -565,24 +562,13 @@ impl ParticleRenderer {
                         crate::particles::live_spawns(e, sys, tick_rate, &state.cpu.clock)
                     }),
                 );
-                upload(
-                    device,
-                    queue,
-                    &mut state.upload,
-                    &state.cpu.slots,
-                    1,
-                    &slots,
-                );
-                if !state.cpu.trail.is_empty() {
-                    upload(
-                        device,
-                        queue,
-                        &mut state.trail_upload,
-                        &state.cpu.trail,
-                        TRAIL_POINTS,
-                        &slots,
-                    );
-                }
+                let packed = Packed {
+                    particles: pack(&mut self.cpu_bytes, &state.cpu.slots, 1, &slots),
+                    trails: match state.cpu.trail.is_empty() {
+                        true => [0; 2],
+                        false => pack(&mut self.cpu_bytes, &state.cpu.trail, TRAIL_POINTS, &slots),
+                    },
+                };
                 let mut draw =
                     emitter_gpu(e, sys.transform, None, dt, seed, 0, textured, false, soft);
                 newest_sample(&mut draw, interval, state.cpu.time);
@@ -600,6 +586,7 @@ impl ParticleRenderer {
                     layers,
                     child: None,
                     slots,
+                    packed: Some(packed),
                     bound: stepped.then(|| {
                         swept_bound(e, sys, tick_rate, &state.cpu.clock, &mut state.path, pull)
                     }),
@@ -614,9 +601,6 @@ impl ParticleRenderer {
             }
             // Its sub-emitters' particles, each drawn as its own emitter
             // draws (in the world).
-            state
-                .children
-                .resize_with(state.cpu.children.len(), || None);
             for (k, (c, ce)) in state.cpu.children.iter().zip(&subs).enumerate() {
                 let Some(ce) = ce else { continue };
                 if c.slots.is_empty() {
@@ -625,7 +609,10 @@ impl ParticleRenderer {
                 let (alive, live) = child_live(c);
                 out.cpu_alive += alive;
                 let slots = drawn(c.slots.len() as u32, Some(live));
-                upload(device, queue, &mut state.children[k], &c.slots, 1, &slots);
+                let packed = Packed {
+                    particles: pack(&mut self.cpu_bytes, &c.slots, 1, &slots),
+                    trails: [0; 2],
+                };
                 let kind = draw_kind(ce);
                 out.distortion |= kind == DrawKind::Distort;
                 let (effect, material) =
@@ -672,6 +659,7 @@ impl ParticleRenderer {
                     layers,
                     child: Some(k),
                     slots,
+                    packed: Some(packed),
                     bound: None,
                     kind,
                     mesh: match ce.render {
@@ -687,16 +675,7 @@ impl ParticleRenderer {
                 g.counts[3] = sys.hue;
             }
         }
-        self.effect_meshes(
-            device,
-            queue,
-            scene,
-            dt,
-            eye,
-            forward,
-            &mut entries,
-            &mut out,
-        )?;
+        self.effect_meshes(scene, dt, eye, forward, &mut entries, &mut out)?;
         let frame = self.frame;
         self.systems.retain(|_, s| s.seen == frame);
         // The unsupported diagnostic is opaque, not emitted light. Adding
@@ -762,6 +741,14 @@ impl ParticleRenderer {
             }
             queue.write_buffer(&self.emitter_buffer, 0, bytes);
         }
+        if !self.cpu_bytes.is_empty() {
+            let size = self.cpu_bytes.len() as u64;
+            if size > self.cpu_vertices.size() {
+                self.cpu_vertices = cpu_vertex_buffer(device, size.next_power_of_two());
+            }
+            queue.write_buffer(&self.cpu_vertices, 0, &self.cpu_bytes);
+        }
+        self.entries = entries;
         Ok(out)
     }
 
@@ -880,40 +867,22 @@ impl ParticleRenderer {
     }
 }
 
-/// Writes the slots a system draws (`ranges`, [`drawn`]) into its vertex
-/// buffer, made to hold every slot: the others are never drawn, so they
-/// are not sent.
-/// Writes the rows of `ranges`' slots (`per` items a slot) to `buffer`,
-/// remade at the size of all of them.
-fn upload<T: bytemuck::Pod>(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    buffer: &mut Option<wgpu::Buffer>,
+/// Appends the rows of `ranges`' slots (`per` items a slot) to the
+/// frame's CPU vertices; where each range starts (bytes). Only the slots
+/// a system draws are sent ([`drawn`]).
+fn pack<T: bytemuck::Pod>(
+    bytes: &mut Vec<u8>,
     items: &[T],
     per: usize,
     ranges: &[std::ops::Range<u32>; 2],
-) {
-    let bytes: &[u8] = bytemuck::cast_slice(items);
-    if bytes.is_empty() {
-        return;
-    }
-    if buffer
-        .as_ref()
-        .is_none_or(|b| b.size() != bytes.len() as u64)
-    {
-        *buffer = Some(device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("particles (cpu)"),
-            size: bytes.len() as u64,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        }));
-    }
-    let buffer = buffer.as_ref().expect("made");
-    for r in ranges.iter().filter(|r| !r.is_empty()) {
-        let at = r.start as usize * per * std::mem::size_of::<T>();
-        let to = r.end as usize * per * std::mem::size_of::<T>();
-        queue.write_buffer(buffer, at as u64, &bytes[at..to]);
-    }
+) -> [u64; 2] {
+    let all: &[u8] = bytemuck::cast_slice(items);
+    let row = per * std::mem::size_of::<T>();
+    ranges.clone().map(|r| {
+        let at = bytes.len() as u64;
+        bytes.extend_from_slice(&all[r.start as usize * row..r.end as usize * row]);
+        at
+    })
 }
 
 /// A sub-emitter's living particles and the births they are among (for
@@ -1094,6 +1063,7 @@ fn push_trail(
         layers: last.layers,
         child: None,
         slots: last.slots.clone(),
+        packed: last.packed,
         bound: last.bound,
         kind: DrawKind::Trail,
         mesh: None,
@@ -1112,11 +1082,8 @@ impl ParticleRenderer {
     /// The scene's effect meshes as one-particle mesh systems: their
     /// particle uploaded with the mesh's life and random value, their
     /// entry placing the mesh whole (`emitter.look.z` 2).
-    #[allow(clippy::too_many_arguments)]
     fn effect_meshes(
         &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
         scene: &RenderScene,
         dt: f32,
         eye: Vec3,
@@ -1151,22 +1118,20 @@ impl ParticleRenderer {
                 max: 1,
                 gpu: None,
                 cpu: CpuParticles::default(),
-                upload: None,
-                trail_upload: None,
                 seen: 0,
                 shift: Vec3::ZERO,
-                children: Vec::new(),
                 path: Default::default(),
             });
             state.seen = self.frame;
-            upload(
-                device,
-                queue,
-                &mut state.upload,
-                std::slice::from_ref(&particle),
-                1,
-                &drawn(1, None),
-            );
+            let packed = Packed {
+                particles: pack(
+                    &mut self.cpu_bytes,
+                    std::slice::from_ref(&particle),
+                    1,
+                    &drawn(1, None),
+                ),
+                trails: [0; 2],
+            };
             let soft = if scene.frame.quality.soft_particles {
                 material.soft_depth.max(0.0)
             } else {
@@ -1201,6 +1166,7 @@ impl ParticleRenderer {
                 layers: m.layers,
                 child: None,
                 slots: drawn(1, None),
+                packed: Some(packed),
                 bound: None,
                 kind: DrawKind::Mesh,
                 mesh: Some(m.mesh),

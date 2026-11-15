@@ -252,12 +252,19 @@ impl EffectMaterial {
         for (v, name) in self.offset.iter().zip(["offset u", "offset v"]) {
             v.check(name)?;
         }
-        for (i, c) in self.custom.iter().flatten().enumerate() {
-            c.check(&format!(
-                "custom {}.{}",
-                i / 4 + 1,
-                ["x", "y", "z", "w"][i % 4]
-            ))?;
+        // Named without formatting: the renderer validates every frame.
+        let names = [
+            "custom 1.x",
+            "custom 1.y",
+            "custom 1.z",
+            "custom 1.w",
+            "custom 2.x",
+            "custom 2.y",
+            "custom 2.z",
+            "custom 2.w",
+        ];
+        for (c, name) in self.custom.iter().flatten().zip(names) {
+            c.check(name)?;
         }
         if let Some(e) = &self.erosion {
             e.amount.check("erosion")?;

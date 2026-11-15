@@ -177,6 +177,9 @@ impl ParticleRenderer {
             effects,
             emitter_buffer,
             emitter_bytes: Vec::new(),
+            entries: Vec::new(),
+            cpu_vertices: cpu_vertex_buffer(device, PARTICLE_STRIDE * 256),
+            cpu_bytes: Vec::new(),
             view_buffer,
             colliders: collider_buffer(device, 256),
             fields: collider_buffer(device, 256),
@@ -240,10 +243,13 @@ impl ParticleRenderer {
             ],
         });
         for fs in frame.systems.iter().filter(|s| s.gpu) {
-            let Some(g) = self.systems.get(&fs.id).and_then(|s| s.gpu.as_ref()) else {
+            let Some((g, max)) = self
+                .systems
+                .get(&fs.id)
+                .and_then(|s| Some((s.gpu.as_ref()?, s.max)))
+            else {
                 continue;
             };
-            let max = self.systems[&fs.id].max;
             pass.set_bind_group(1, &g.group, &[]);
             let groups = max.div_ceil(64);
             if let Some(k) = fs.shift {
@@ -453,14 +459,22 @@ impl ParticleRenderer {
                     .zip(s.bound)
                     .is_some_and(|(f, (lo, hi))| !f.intersects_box(lo, hi))
         }) {
-            let Some(state) = self.systems.get(&s.id) else {
-                continue;
+            // A CPU-path system's ranges each start where they were packed;
+            // a compute system's are its ring's slots.
+            let (buffer, trails) = match s.packed {
+                Some(_) => (&self.cpu_vertices, &self.cpu_vertices),
+                None => {
+                    let Some(g) = self.systems.get(&s.id).and_then(|st| st.gpu.as_ref()) else {
+                        continue;
+                    };
+                    (&g.buffer, &g.trail)
+                }
             };
-            let buffer = match s.child {
-                Some(k) => state.children[k].as_ref().expect("uploaded"),
-                None if s.gpu => &state.gpu.as_ref().expect("gpu system").buffer,
-                None => state.upload.as_ref().expect("uploaded"),
-            };
+            let ranges = s.slots.iter().enumerate().filter(|(_, r)| !r.is_empty());
+            let ranges = ranges.map(|(i, r)| match s.packed {
+                Some(p) => (p.particles[i], p.trails[i], 0..r.end - r.start),
+                None => (0, 0, r.clone()),
+            });
             let Some(pipeline) = (match part {
                 ParticlePart::Oit(p) => Some(p),
                 _ => self.draw.get(&(s.blend, samples, s.kind, s.look)),
@@ -473,15 +487,10 @@ impl ParticleRenderer {
             pass.set_bind_group(2, group, &[(draw_entry as u64 * EMITTER_STRIDE) as u32]);
             let (effect, offset) = self.effects.bind(s.effect);
             pass.set_bind_group(3, effect, &[offset]);
-            pass.set_vertex_buffer(0, buffer.slice(..));
-            let slots = s.slots.iter().filter(|r| !r.is_empty()).cloned();
             if s.kind == DrawKind::Trail {
-                let ring = match &state.gpu {
-                    Some(g) if s.gpu => &g.trail,
-                    _ => state.trail_upload.as_ref().expect("uploaded"),
-                };
-                pass.set_vertex_buffer(1, ring.slice(..));
-                for r in slots {
+                for (at, trail_at, r) in ranges {
+                    pass.set_vertex_buffer(0, buffer.slice(at..));
+                    pass.set_vertex_buffer(1, trails.slice(trail_at..));
                     pass.draw(0..TRAIL_POINTS as u32 * 6, r);
                     draws += 1;
                 }
@@ -491,14 +500,16 @@ impl ParticleRenderer {
                 Some(Some((vertices, indices, count))) => {
                     pass.set_vertex_buffer(1, vertices.slice(..));
                     pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
-                    for r in slots {
+                    for (at, _, r) in ranges {
+                        pass.set_vertex_buffer(0, buffer.slice(at..));
                         pass.draw_indexed(0..count, 0, r);
                         draws += 1;
                     }
                 }
                 Some(None) => continue,
                 None => {
-                    for r in slots {
+                    for (at, _, r) in ranges {
+                        pass.set_vertex_buffer(0, buffer.slice(at..));
                         pass.draw(0..6, r);
                         draws += 1;
                     }
