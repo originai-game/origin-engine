@@ -49,7 +49,8 @@ tokens alone.
   `-orbit`), the spring and scale steps, `--opacity-wash`, and the control
   tokens the engine reads (`--button-pressed-shadow`,
   `--button-selected-fill`, `-ink`, `-lip` and `-shadow`, `--field-*`,
-  `--slot-shadow`, `--dropdown-list-shadow`). `--line-strong` is the outline
+  `--slot-shadow`, `--dropdown-list-shadow`, `--slider-bubble-ink`,
+  `--checkbox-mark-ink`). `--line-strong` is the outline
   around everything and `--selection` the blue of whatever is chosen, so
   changing one restyles all of them.
 - Control-named tokens the engine does not read: `--button-fill`,
@@ -104,63 +105,29 @@ ink are on the host, so a button's content inherits them.
   Fonts (`ofl/fredoka`, version 2.001) at weights 500 and 600, width 100,
   subset to Latin-1, Latin Extended-A and general punctuation, unhinted.
   Fredoka declares no reserved font name.
-- Arrows come from Instrument Sans (`@styles/shared`) and Chinese from ZCOOL
-  KuaiLe (`@styles/cjk`), each under its own licence there.
+- Arrows and any other glyph the two faces lack come from Instrument Sans
+  (`@styles/shared`, the `Cartoon Fallback` family after them in every
+  font list) and Chinese from ZCOOL KuaiLe (`@styles/cjk`), each under its
+  own licence there.
+- No face here carries Arabic, so the `ar` locale warns of missing glyphs
+  under this pack; a game that ships Arabic adds a face for it.
 - The SVGs in `art/` were drawn for this pack; nothing in it is generated.
 - Sounds are the shared set (`@styles/shared/sfx-*`).
 
 ## Pending engine gaps
 
 Parts and states the pack could not reach through tokens and parts. None is
-worked around in CSS; the scifi pack's README lists the same ones where it
-met them.
+worked around in CSS.
 
-- In a sheet that sets `og.ui.configure(world, { scheme: "light" })` with a
-  pack loaded, the pack's `:root[data-scheme=light]` block is not applied
-  (fantasy and scifi show the same): the frames stay dark while a few inks
-  turn dark with the engine's own theme. The light values here were judged
-  with that block promoted to the default in a scratch copy.
-- An `og-icon` multiplies its picture by `color`, glyph or full-colour art
-  alike. Under the light scheme's dark ink a full-colour item picture (the
-  rpg sheet's backpack and equipment cells) is drawn as a dark silhouette.
-- A button's plate is reached only through `button::part(…)`, and in that
-  selector `.secondary` is also every button without a `variant`. A hero
-  button's `secondary` tone cannot be told from its default, so both wear
-  the yellow plate.
-- The radial menu's item button names no part and clears its plate in the
-  component's own layer, which the pack's plate rule outranks, so the core
-  plate is drawn on each wedge.
-- A `kbd` prompt inside a button (action hints, the hero button's key, the
-  sheets' Back, Equip, Lock in and Preview) is drawn as an empty cap.
-- A node graph's node covers part of a neighbouring label (the card run
-  map; under fantasy too).
-- The slider bubble's text is always `--ink-inverse` and the checkbox glyph
-  always `--on-primary`: neither part takes an ink, so their plates are
-  chosen to suit those roles.
-- A modal `dialog` (the confirm screen) is drawn as a
-  flat surface: `dialog::part(panel)` reaches a dialog opened in place but
-  not one in the top layer, so it has no outline or lip (fantasy too).
-- A core `badge`'s label is drawn in the engine's own face: `font-family`
-  on `badge::part(base)` does not reach it, while its plate and ink do.
-- A celebration's word and value sit in a row in the component's own
-  stage, which names no part, so the level reads as a suffix of the word.
-- `select::part(option)` has no checked state, so the chosen option in an
-  open list looks like the others; `input::part(frame)` has no hover.
+- `input::part(frame)` has no hover state.
+- An ability slot's cost and charges badges (`AbilitySlot.badge`,
+  `AbilityBar.badge`) are as wide as the slot, so on a slot that shows both
+  their plates cover its icon (fantasy too; the default style draws them
+  without a plate).
 - The default style dresses every `[part$=".cell"]` as a tile, readouts
   included (a lap count, a score, a wave number, a table's cell): each
   file restyles those cells by name.
-- The `font-family` fallback list is not consulted per glyph: neither face
-  has arrows, so a `unicode-range` face takes them from Instrument Sans,
-  once for each weight a family declares.
 - The review's contrast measure reads text over a gradient or a layered
   ground wrongly (a white title on the blue band measures 1.5 to 2.4 there
   and 11.9 with `og frame measure` on the same rect); flagged text was
   checked against the pixels.
-- There is no review sheet for the ungrouped components or the built-in
-  screens; they were judged in a scratch project from their first fixture.
-  The world-anchored components (action hints, damage numbers, interaction
-  prompt, loot label, nameplate, overhead bars, path line, placement ghost,
-  selection ring, speech bubble, telegraph) had no world point on screen
-  there and have not been seen in a frame under this pack.
-- Lilita One and Fredoka carry no Arabic, so the `ar` locale warns of
-  missing glyphs under this pack; no Arabic face is shipped with it.

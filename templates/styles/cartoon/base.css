@@ -30,20 +30,12 @@
 @font-face { font-family: "Cartoon Label"; src: url(Fredoka-SemiBold.ttf); font-weight: 500; }
 @font-face { font-family: "Cartoon Label"; src: url(Fredoka-SemiBold.ttf); font-weight: 600; }
 @font-face { font-family: "Cartoon Label"; src: url(Fredoka-SemiBold.ttf); font-weight: 700; }
-/* Neither face draws arrows: Instrument Sans supplies them, at every weight
-   a family declares (a range face is matched by weight like any other). */
-@font-face { font-family: "Cartoon Display"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 400; unicode-range: U+2190-21FF; }
-@font-face { font-family: "Cartoon Display"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 500; unicode-range: U+2190-21FF; }
-@font-face { font-family: "Cartoon Display"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 600; unicode-range: U+2190-21FF; }
-@font-face { font-family: "Cartoon Display"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 700; unicode-range: U+2190-21FF; }
-@font-face { font-family: "Cartoon Text"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 400; unicode-range: U+2190-21FF; }
-@font-face { font-family: "Cartoon Text"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 500; unicode-range: U+2190-21FF; }
-@font-face { font-family: "Cartoon Text"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 600; unicode-range: U+2190-21FF; }
-@font-face { font-family: "Cartoon Text"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 700; unicode-range: U+2190-21FF; }
-@font-face { font-family: "Cartoon Label"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 400; unicode-range: U+2190-21FF; }
-@font-face { font-family: "Cartoon Label"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 500; unicode-range: U+2190-21FF; }
-@font-face { font-family: "Cartoon Label"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 600; unicode-range: U+2190-21FF; }
-@font-face { font-family: "Cartoon Label"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 700; unicode-range: U+2190-21FF; }
+/* Neither face draws arrows: Instrument Sans, named after them in every
+   family list, supplies the glyphs they lack, at each weight a part asks for. */
+@font-face { font-family: "Cartoon Fallback"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 400; }
+@font-face { font-family: "Cartoon Fallback"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 500; }
+@font-face { font-family: "Cartoon Fallback"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 600; }
+@font-face { font-family: "Cartoon Fallback"; src: url(/@styles/shared/InstrumentSans-Regular.ttf); font-weight: 700; }
 /* Chinese in the same rounded voice: ZCOOL KuaiLe, its glyphs drawn from
    the outlines when a game first shows them. */
 @font-face { font-family: "Cartoon Display"; src: url(/@styles/cjk/ZCOOLKuaiLe-Regular.ttf); font-weight: 400; unicode-range: U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF; }
@@ -145,14 +137,14 @@
   --gloss-soft: #ffffff26;
 
   /* ── Type: Lilita One for display, buttons and figures; Fredoka to read. */
-  --font-display: "Cartoon Display", ui-rounded, sans-serif;
-  --font-body: "Cartoon Text", ui-rounded, sans-serif;
-  --font-sans: "Cartoon Text", ui-rounded, sans-serif;
-  --font-rounded: "Cartoon Text", ui-rounded, sans-serif;
-  --font-mono: "Cartoon Text", ui-rounded, sans-serif;
-  --label-font: "Cartoon Label", "Cartoon Text", ui-rounded, sans-serif;
-  --button-font: "Cartoon Display", ui-rounded, sans-serif;
-  --figure-font: "Cartoon Display", ui-rounded, sans-serif;
+  --font-display: "Cartoon Display", "Cartoon Fallback", ui-rounded, sans-serif;
+  --font-body: "Cartoon Text", "Cartoon Fallback", ui-rounded, sans-serif;
+  --font-sans: "Cartoon Text", "Cartoon Fallback", ui-rounded, sans-serif;
+  --font-rounded: "Cartoon Text", "Cartoon Fallback", ui-rounded, sans-serif;
+  --font-mono: "Cartoon Text", "Cartoon Fallback", ui-rounded, sans-serif;
+  --label-font: "Cartoon Label", "Cartoon Text", "Cartoon Fallback", ui-rounded, sans-serif;
+  --button-font: "Cartoon Display", "Cartoon Fallback", ui-rounded, sans-serif;
+  --figure-font: "Cartoon Display", "Cartoon Fallback", ui-rounded, sans-serif;
   --title-font: var(--font-display);
   --cartoon-weight-label: 600;
   --cartoon-stroke-title: 4px;
@@ -395,6 +387,7 @@
   --checkbox-checked-fill: var(--cartoon-green);
   --checkbox-shadow: var(--cartoon-sunk);
   --checkbox-checked-shadow: var(--cartoon-inner-gloss), var(--cartoon-edge-small);
+  --checkbox-mark-ink: var(--on-primary);
   --radio-card-fill: var(--cartoon-slate);
   --radio-card-checked-fill: var(--cartoon-selected);
   --radio-card-shadow: var(--cartoon-inner-shade), var(--cartoon-edge);
@@ -408,6 +401,7 @@
   --slider-knob-shadow: inset 0 calc(0px - var(--cartoon-lip-small)) 0 0 var(--cartoon-white-lip), var(--cartoon-edge), var(--cartoon-drop);
   --slider-knob-hover-shadow: inset 0 calc(0px - var(--cartoon-lip-small)) 0 0 var(--cartoon-white-lip), var(--cartoon-edge), 0 0 0 var(--cartoon-outline-width) var(--accent-50);
   --slider-knob-pressed-fill: var(--cartoon-yellow);
+  --slider-bubble-ink: var(--on-primary);
   --tabs-track-fill: var(--well-60);
   --tabs-hover-fill: var(--ink-14);
   --tabs-selected-fill: var(--cartoon-selected);
@@ -542,7 +536,7 @@
   --cartoon-throb: 1.12;
   --cartoon-bob: -4px;
 
-  font-family: "Cartoon Text", ui-rounded, sans-serif;
+  font-family: "Cartoon Text", "Cartoon Fallback", ui-rounded, sans-serif;
   font-weight: 500;
   /* A number, so every line box follows its own font size, which follows
      the player's text scale. */

@@ -108,7 +108,7 @@ input[type=range]::part(knob):hover { box-shadow: var(--slider-knob-hover-shadow
 input[type=range]::part(knob):active { background: var(--slider-knob-pressed-fill); box-shadow: var(--cartoon-edge-small); }
 input[type=range]::part(knob):disabled { background: var(--button-disabled-fill); box-shadow: var(--cartoon-edge-small); }
 input[type=range]::part(core) { background: none; }
-input[type=range]::part(bubble) { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-sm); background: var(--primary); color: var(--on-primary); font-family: var(--figure-font); box-shadow: var(--cartoon-edge-small); }
+input[type=range]::part(bubble) { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-sm); background: var(--primary); font-family: var(--figure-font); box-shadow: var(--cartoon-edge-small); }
 input[type=range]::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
 
 /* ── Fields, select and stepper: sunk wells; focus lights the rim. */
@@ -133,6 +133,7 @@ select::part(list) { border: var(--cartoon-outline-width) solid var(--line-stron
 select::part(option) { border: none; box-shadow: none; background: none; color: var(--ink); border-radius: var(--radius-xs); }
 select::part(option):hover { background: var(--ink-14); }
 select::part(option):active { background: var(--ink-25); }
+select::part(option):checked, select::part(option):checked:hover { background: var(--button-selected-fill); color: var(--button-selected-ink); }
 select::part(option):disabled { color: var(--ink-disabled); }
 select::part(group) { color: var(--ink-label); font-family: var(--label-font); font-weight: var(--cartoon-weight-label); letter-spacing: var(--label-tracking); text-transform: uppercase; }
 stepper::part(value) { border: none; background: none; box-shadow: none; color: var(--ink); font-family: var(--figure-font); }

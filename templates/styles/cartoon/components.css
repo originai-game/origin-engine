@@ -4,9 +4,7 @@
    rows, cells and badges are role parts and need no rule here. */
 
 /* ── HeroButton: the yellow main action as a plate (premium orange, danger
-   red). In a ::part() selector every default button also matches
-   .secondary, so the component's secondary tone cannot be told from its
-   default and wears the same plate (README.md, Gaps). */
+   red, secondary the default button's violet or white). */
 button::part(HeroButton\.base) {
   min-height: var(--size-touch);
   padding: var(--button-pad);
@@ -19,8 +17,11 @@ button::part(HeroButton\.base):hover { background: var(--button-primary-hover-fi
 button::part(HeroButton\.base):active { box-shadow: var(--button-pressed-shadow); padding: var(--button-pressed-pad); }
 button.premium::part(HeroButton\.base) { background: var(--cartoon-orange); }
 button.danger::part(HeroButton\.base) { background: var(--button-danger-fill); box-shadow: var(--button-danger-shadow); }
+button.secondary::part(HeroButton\.base) { background: var(--button-fill); box-shadow: var(--button-shadow); }
+button.secondary::part(HeroButton\.base):hover { background: var(--button-hover-fill); }
 [part="HeroButton.label"] { font-family: var(--button-font); font-size: var(--font-step-xl); letter-spacing: var(--font-tracking-xs); text-transform: uppercase; color: var(--on-primary); }
 .danger [part="HeroButton.label"] { color: var(--button-danger-ink); text-shadow: var(--button-danger-text-shadow); }
+.secondary [part="HeroButton.label"] { color: var(--button-ink); text-shadow: var(--button-text-shadow); }
 
 /* ── HoldButton: a sunk plate in the outline that its hold fills; the
    component's inks say what it does (red to destroy), and its primary is
@@ -38,8 +39,9 @@ button.primary::part(HoldButton\.base) { background: var(--button-primary-fill);
 [part="HoldButton.hint"] { font-family: var(--label-font); color: var(--ink-muted); }
 
 /* ── RadialMenu: the wedges are control plates on the disc and the chosen
-   one is yellow. A wedge's button names no part, so it still wears the
-   core plate (README.md, Gaps). */
+   one is yellow; a wedge's button (RadialMenu.item) is the wedge, so it
+   draws no plate of its own in any state. */
+button::part(RadialMenu\.item), button::part(RadialMenu\.item):hover, button::part(RadialMenu\.item):active { border: none; background: none; box-shadow: none; }
 [part="RadialMenu.slice"] .wedge { stroke: var(--control); }
 [part="RadialMenu.slice"].chosen .wedge { stroke: var(--primary); }
 [part="RadialMenu.label"] { font-family: var(--label-font); }
@@ -61,6 +63,7 @@ button::part(table\.cell):hover { background: var(--button-quiet-hover-fill); }
    bright yellow in the dark outline, on white rays. */
 [part="Celebration.rays"] polygon { fill: var(--cartoon-ray); fill-opacity: var(--cartoon-burst-opacity); }
 [part="Celebration.halo"] { border-color: var(--cartoon-star); }
+[part="Celebration.stage"] { flex-direction: column; }
 [part="Celebration.title"], [part="Celebration.value"] { font-family: var(--font-display); color: var(--cartoon-star); text-shadow: var(--cartoon-text-outline); }
 
 /* ── Card: its face is a button plate; the title keeps the display face
@@ -75,3 +78,7 @@ button::part(table\.cell):hover { background: var(--button-quiet-hover-fill); }
    shout's rim reaches it through --frame-rim); the frame's fill is a
    gradient, which an SVG fill cannot take. */
 [part="SpeechBubble.tail"] { fill: var(--cartoon-panel-foot); stroke: var(--frame-rim); stroke-width: var(--stroke-regular); stroke-linejoin: round; }
+
+/* ── AbilityBar and AbilitySlot: a cost is inked in mana blue (red when it
+   cannot be paid), so its badge is a sunk well rather than the red count. */
+:is([part="AbilityBar.badge"], [part="AbilitySlot.badge"]).cost { background: var(--well); }
