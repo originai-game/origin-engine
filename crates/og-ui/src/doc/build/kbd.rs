@@ -74,6 +74,15 @@ impl Ui {
             None => {
                 self.badge(id, &cap, crate::widgets::Tone::Neutral);
                 let at = self.tree.last_closed();
+                // Its text is the element's, in the font-family the element
+                // computes, as a browser draws a <kbd>'s text: a pack that
+                // brings its faces with @font-face gives the role none.
+                let font = r.label_desc(&self.env.theme, &self.env.fonts, false).font;
+                let build = self.tree.build();
+                if let crate::layout::Content::Text(text) = self.tree.nodes[at].content.write(build)
+                {
+                    text.font = font;
+                }
                 if !label.is_empty() {
                     self.tree.semantics_mut(at).name = Some(label);
                 }

@@ -1212,6 +1212,7 @@ impl Ui {
             n.kind,
             NodeKind::Element(
                 Kind::Label
+                    | Kind::Kbd
                     | Kind::Button
                     | Kind::Field
                     | Kind::Toggle

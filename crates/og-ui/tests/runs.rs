@@ -738,3 +738,32 @@ p { width: max-content; }
         );
     });
 }
+
+#[test]
+fn a_keycap_draws_in_the_family_it_inherits() {
+    // A pack that brings its faces through @font-face leaves the body role
+    // without one: a <kbd> draws its text in the family it inherits, as a
+    // browser's does, or it draws nothing.
+    let mut handles = Handles::default();
+    let f = faces(&mut handles);
+    let source = r#"<meta name="component" content="t"><div><button>Back <kbd>Esc</kbd></button></div><style>div { font-family: Brand; }</style>"#;
+    crate::support::with_doc(source, &[], |d| {
+        d.ui.set_fonts(Fonts {
+            families: vec![FamilyFace {
+                family: "Brand".into(),
+                weight: (400, 400),
+                font: f.latin.clone(),
+                ..FamilyFace::default()
+            }],
+            ..Fonts::default()
+        });
+        d.step(InputFrame::default());
+        let drawn = commands(d.ui.frame());
+        assert!(
+            drawn
+                .iter()
+                .any(|c| c.0 == "Esc" && Some(c.1) == f.latin.handle),
+            "{drawn:?}"
+        );
+    });
+}

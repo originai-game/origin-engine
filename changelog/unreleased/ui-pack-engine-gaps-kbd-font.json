@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"A `<kbd>` keycap draws its text in the font-family its element computes, as a browser draws a `<kbd>`. Under a style pack that brings its faces through `@font-face`, keycaps inside buttons (action hints, the hero button's key, a loadout's Back and Equip) drew as empty blocks."}
+  ]
+}
