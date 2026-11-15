@@ -205,6 +205,88 @@ fn particle_gloss(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, c: vec4<f32>, rou
 // 0.6 of the half-size), where a soft texture is still dense: a ball as
 // wide as the quad tilts only at the edges, which a puff's alpha has
 // already faded, and both sides then read alike.
+// A particle's trail (CpuParticles::trail): its samples, one instance per
+// particle beside it.
+struct TrailIn {
+  @location(3) s0: vec4<f32>,
+  @location(4) s1: vec4<f32>,
+  @location(5) s2: vec4<f32>,
+  @location(6) s3: vec4<f32>,
+  @location(7) s4: vec4<f32>,
+  @location(8) s5: vec4<f32>,
+  @location(9) s6: vec4<f32>,
+  @location(10) s7: vec4<f32>,
+};
+
+const TRAIL_POINTS: u32 = 8u;
+
+// Point `k` of a particle's trail: 0 where it is (`head`), then its
+// samples newest first (emitter.trail.w the newest's ring index); xyz its
+// place in the simulation space, w its age in seconds.
+fn trail_point(ring: ptr<function, array<vec4<f32>, 8>>, head: vec3<f32>, k: u32) -> vec4<f32> {
+  if (k == 0u) { return vec4<f32>(head, 0.0); }
+  let newest = u32(emitter.trail.w + 0.5);
+  let i = (newest + TRAIL_POINTS - (k - 1u) % TRAIL_POINTS) % TRAIL_POINTS;
+  return vec4<f32>((*ring)[i].xyz, emitter.counts3.z + f32(k - 1u) * emitter.trail.z);
+}
+
+// A particle's trail: a camera-facing strip through where it is and its
+// samples (TRAIL_POINTS segments of a quad each), cut where it is
+// emitter.trail.x seconds old, its width (a share emitter.trail.y of the
+// particle's) and alpha falling to nothing there. u runs along it from
+// the particle, v across; `local` across, for the untextured round fall
+// off.
+@vertex
+fn vs_trail(@builtin(vertex_index) vi: u32, p: ParticleIn, h: TrailIn) -> ParticleOut {
+  var o: ParticleOut;
+  o.clip = vec4<f32>(2.0, 2.0, 2.0, 1.0);
+  if (p.pos_age.w >= p.vel_life.w) { return o; }
+  var ring = array<vec4<f32>, 8>(h.s0, h.s1, h.s2, h.s3, h.s4, h.s5, h.s6, h.s7);
+  let life = emitter.trail.x;
+  let c = quad_corner(vi);
+  let seg = vi / 6u;
+  let head = p.pos_age.xyz;
+  let a = trail_point(&ring, head, seg);
+  var b = trail_point(&ring, head, seg + 1u);
+  if (a.w >= life) { return o; }
+  if (b.w > life) {
+    b = vec4<f32>(mix(a.xyz, b.xyz, (life - a.w) / max(b.w - a.w, 1e-6)), life);
+  }
+  // c.y: the segment's end nearer the particle (0) or its far one.
+  let k = seg + u32(c.y > 0.5);
+  let at = select(a, b, c.y > 0.5);
+  // Its direction there: between the points either side.
+  var tangent = trail_point(&ring, head, max(k, 1u) - 1u).xyz
+    - trail_point(&ring, head, min(k + 1u, TRAIL_POINTS)).xyz;
+  // Where a sample lies on the particle (taken this tick), the way it
+  // moves; else the camera's right below.
+  if (dot(tangent, tangent) < 1e-12) { tangent = p.vel_life.xyz; }
+  var pos = at.xyz;
+  if (emitter.ranges2.z > 0.5) {
+    pos = (emitter.transform * vec4<f32>(pos, 1.0)).xyz;
+    tangent = (emitter.transform * vec4<f32>(tangent, 0.0)).xyz;
+  }
+  let t = clamp(p.pos_age.w / max(p.vel_life.w, 1e-6), 0.0, 1.0);
+  let fade = 1.0 - clamp(at.w / life, 0.0, 1.0);
+  let width = particle_size(p.misc.x, t).x * emitter.trail.y * fade;
+  let side = cross(tangent, toward_eye(pos));
+  let across = select(view.cam_right.xyz, normalize(side), dot(side, side) > 1e-12);
+  let world = pos + across * ((c.x - 0.5) * width);
+  o.clip = frame.view_proj * vec4<f32>(world, 1.0);
+  o.uv = vec2<f32>(at.w / life, c.x);
+  o.local = vec2<f32>(c.x - 0.5, 0.0);
+  o.facing = o.local;
+  o.shape_uv = o.uv;
+  o.oit_key = oit_key4(p.pos_age, vec3<f32>(f32(vi / 3u), p.misc.x, 1.0));
+  particle_effect(&o, t, p.misc.w);
+  o.color = color_curve(t, p.misc.w) * emitter.color;
+  o.color.a *= fade;
+  o.depth = dot(world - view.cam_pos.xyz, view.cam_forward.xyz);
+  o.world = world;
+  o.normal = toward_eye(world);
+  return o;
+}
+
 // How its quads face: 0 the camera, 1 along the velocity, 2 upright on
 // the emitter's axis, 3 across it.
 fn particle_align() -> u32 {

@@ -968,3 +968,130 @@ fn a_second_colour_curve_gives_each_particle_its_own_colour_between() {
         }
     }
 }
+
+/// One particle flying +x at 2 m/s from x = -1 for half a second, 0.2 m
+/// across, with a trail of 0.5 s (`trail`), before a camera 4 m away.
+fn trailing_scene(trail: Option<og_render::ParticleTrail>) -> RenderScene {
+    let mut scene = RenderScene::new();
+    let e = scene.add_emitter(ParticleEmitter {
+        max_particles: 4,
+        rate: 0.0,
+        bursts: vec![og_render::Burst::once(0.0, 1)],
+        looping: false,
+        duration: 10.0,
+        lifetime: [10.0, 10.0],
+        speed: [2.0, 2.0],
+        shape: og_render::EmitterShape::Cone {
+            angle_degrees: 0.0,
+            radius: 0.0,
+        },
+        size: [0.2, 0.2],
+        color_over_life: og_render::ColorCurve::constant([1.0; 4]),
+        color: [4.0, 4.0, 4.0, 1.0],
+        gravity: Vec3::ZERO,
+        blend: og_render::ParticleBlend::Additive,
+        trail,
+        ..Default::default()
+    });
+    // The cone's +y turned onto +x.
+    scene.effects.particles.push(ParticleSystem::new(
+        1,
+        e,
+        Mat4::from_translation(Vec3::new(-1.0, 1.0, 0.0))
+            * Mat4::from_rotation_z(-std::f32::consts::FRAC_PI_2),
+        3,
+        0,
+    ));
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 1.0, 4.0),
+        target: Vec3::new(0.0, 1.0, 0.0),
+        ..Default::default()
+    };
+    scene
+}
+
+/// A particle's trail follows where it went, ends at it, narrows to its
+/// tail and fades, on both paths: after half a second the particle alone
+/// is a dot at x = 0; its trail alone (`head` off) reaches back towards
+/// its start without passing the dot's right edge, is thicker at the
+/// particle than halfway back, and draws nothing of the dot's own round
+/// shape ahead of it; with the head both show. The two paths draw it
+/// within a few percent of each other. A trail drawn from the wrong end
+/// of its ring starts at the tail; one with no cut or no taper is as thick
+/// at its tail as at its head.
+#[test]
+#[ignore = "requires GPU"]
+fn a_particles_trail_follows_its_path_and_narrows_to_its_tail() {
+    let only = og_render::ParticleTrail {
+        lifetime: 0.5,
+        width: 1.0,
+        head: false,
+    };
+    let mut lit_counts = Vec::new();
+    for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
+        let desc = RenderDesc {
+            particles: path,
+            ..small()
+        };
+        let draw = |trail| {
+            run(&desc, &mut trailing_scene(trail), 31, |s, f| {
+                fx::tick_all(s, f as u64)
+            })
+            .0
+        };
+        let (dot, streak, both) = (
+            draw(None),
+            draw(Some(only)),
+            draw(Some(og_render::ParticleTrail { head: true, ..only })),
+        );
+        save(&format!("trail-{path:?}"), &streak);
+        let lit = |img: &RgbaImage| {
+            let mut cols = vec![0u32; img.width as usize];
+            for y in 0..img.height {
+                for x in 0..img.width {
+                    if luma(px(img, x, y)) > 40.0 {
+                        cols[x as usize] += 1;
+                    }
+                }
+            }
+            cols
+        };
+        let span = |c: &[u32]| {
+            let x0 = c.iter().position(|&n| n > 0);
+            let x1 = c.iter().rposition(|&n| n > 0);
+            x0.zip(x1)
+                .unwrap_or_else(|| panic!("{path:?}: nothing drawn"))
+        };
+        let (d, s, b) = (lit(&dot), lit(&streak), lit(&both));
+        let ((d0, d1), (s0, s1), (b0, b1)) = (span(&d), span(&s), span(&b));
+        let per_metre = (d1 - d0) as f32 / 0.2;
+        let at = |metres_back: f32| s[(s1 as f32 - metres_back * per_metre).max(0.0) as usize];
+        println!(
+            "{path:?}: dot {d0}..{d1}, trail {s0}..{s1} ({:.2} m), both {b0}..{b1}; thickness 0.1 m back {}, 0.4 m back {}",
+            (s1 - s0) as f32 / per_metre,
+            at(0.1),
+            at(0.4)
+        );
+        assert!(s1 <= d1 + 2, "{path:?}: the trail passes the particle");
+        assert!(
+            (s1 - s0) as f32 > 0.6 * per_metre,
+            "{path:?}: the trail is {} px long",
+            s1 - s0
+        );
+        assert!(
+            at(0.1) > at(0.4) + 1,
+            "{path:?}: no narrower towards its tail"
+        );
+        assert!(
+            b0 <= s0 + 1 && b1 >= d1 - 1,
+            "{path:?}: with its head {b0}..{b1}"
+        );
+        lit_counts.push(s.iter().sum::<u32>() as f32);
+    }
+    let (g, c) = (lit_counts[0], lit_counts[1]);
+    assert!(
+        (g - c).abs() < 0.05 * g.max(c),
+        "compute {g} against CPU {c} pixels"
+    );
+}

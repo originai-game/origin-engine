@@ -48,7 +48,11 @@ impl ParticleRenderer {
         });
         let sim_system_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("particle sim system"),
-            entries: &[storage_entry(0, false), storage_entry(1, true)],
+            entries: &[
+                storage_entry(0, false),
+                storage_entry(1, true),
+                storage_entry(2, false),
+            ],
         });
         let sim = {
             let (device, sim_layout, system_layout) = (
@@ -341,6 +345,7 @@ impl ParticleRenderer {
                 ParticleBlend::Alpha => wgpu::BlendState::ALPHA_BLENDING,
             };
             let mesh = s.kind == DrawKind::Mesh;
+            let trail = s.kind == DrawKind::Trail;
             // An effect mesh is blended like a billboard: no depth written.
             let solid = mesh && !s.look.effect_mesh;
             let module = match s.look.hook {
@@ -349,6 +354,8 @@ impl ParticleRenderer {
             };
             let buffers = if mesh {
                 vec![Some(PARTICLE_LAYOUT), Some(MESH_LAYOUT)]
+            } else if trail {
+                vec![Some(PARTICLE_LAYOUT), Some(TRAIL_LAYOUT)]
             } else {
                 vec![Some(PARTICLE_LAYOUT)]
             };
@@ -359,9 +366,13 @@ impl ParticleRenderer {
                     label: "particles",
                     layout: &self.draw_pl,
                     module,
-                    vs: if mesh { "vs_mesh" } else { "vs" },
+                    vs: match s.kind {
+                        DrawKind::Mesh => "vs_mesh",
+                        DrawKind::Trail => "vs_trail",
+                        _ => "vs",
+                    },
                     fs: match s.kind {
-                        DrawKind::Billboard => "fs",
+                        DrawKind::Billboard | DrawKind::Trail => "fs",
                         DrawKind::Mesh => "fs_mesh",
                         DrawKind::Distort => "fs_distort",
                         DrawKind::Sprite => unreachable!("filtered above"),
@@ -432,6 +443,18 @@ impl ParticleRenderer {
             pass.set_bind_group(3, effect, &[offset]);
             pass.set_vertex_buffer(0, buffer.slice(..));
             let slots = s.slots.iter().filter(|r| !r.is_empty()).cloned();
+            if s.kind == DrawKind::Trail {
+                let ring = match &state.gpu {
+                    Some(g) if s.gpu => &g.trail,
+                    _ => state.trail_upload.as_ref().expect("uploaded"),
+                };
+                pass.set_vertex_buffer(1, ring.slice(..));
+                for r in slots {
+                    pass.draw(0..TRAIL_POINTS as u32 * 6, r);
+                    draws += 1;
+                }
+                continue;
+            }
             match s.mesh.map(&mesh) {
                 Some(Some((vertices, indices, count))) => {
                     pass.set_vertex_buffer(1, vertices.slice(..));

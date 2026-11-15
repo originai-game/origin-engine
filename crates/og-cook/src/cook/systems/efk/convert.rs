@@ -1545,6 +1545,21 @@ fn emitter_file(
 fn trail(cx: &mut Ctx<'_>, chain: &[&Node]) {
     let node = chain[chain.len() - 1];
     let p = place(cx, chain);
+    // A track's instances are the points of its one path, laid where its
+    // generator goes; one whose points then move on their own bends it.
+    if matches!(node.draw, Draw::Track { .. }) && !single(node) {
+        let life = node.life.c().max(1.0);
+        if node
+            .location
+            .iter()
+            .any(|l| !l.is_fixed() && l.rate(life).c().abs() > 1e-4)
+        {
+            cx.find(
+                node,
+                "a track whose points move on their own: drawn along its generator's path",
+            );
+        }
+    }
     if p.nested > 1.0 {
         nested_finding(cx, node, p.nested);
     }
@@ -1560,9 +1575,6 @@ fn trail(cx: &mut Ctx<'_>, chain: &[&Node]) {
         Draw::Track { width } => [width[0] * peak, width[2] * peak],
         _ => [peak, 0.0],
     };
-    if matches!(node.draw, Draw::Track { .. }) && !single(node) {
-        cx.find(node, "a track of many instances: one trail drawn");
-    }
     let effect = effect_file(
         cx,
         node,

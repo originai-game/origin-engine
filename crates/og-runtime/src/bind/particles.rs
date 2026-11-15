@@ -442,6 +442,8 @@ fn load(bytes: &[u8]) -> og_core::Result<BTreeMap<u64, HostedSystem>> {
                     clock,
                     origin,
                     children,
+                    // Drawing only: remade from where the particles are.
+                    ..Default::default()
                 },
                 world,
             },

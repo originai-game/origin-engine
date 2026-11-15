@@ -110,6 +110,7 @@ impl ParticleRenderer {
                 gpu: None,
                 cpu: CpuParticles::default(),
                 upload: None,
+                trail_upload: None,
                 seen: 0,
                 shift: Vec3::ZERO,
                 children: Vec::new(),
@@ -122,6 +123,7 @@ impl ParticleRenderer {
                     gpu: None,
                     cpu: CpuParticles::default(),
                     upload: None,
+                    trail_upload: None,
                     seen: 0,
                     shift: Vec3::ZERO,
                     children: Vec::new(),
@@ -156,6 +158,11 @@ impl ParticleRenderer {
                         *c += d;
                     }
                 }
+                for p in &mut state.cpu.trail {
+                    for (c, d) in p.iter_mut().zip(moved.to_array()) {
+                        *c += d;
+                    }
+                }
             }
             // Sub-emitters' particles are in the world whatever the parent's space.
             if pending != Vec3::ZERO {
@@ -168,6 +175,8 @@ impl ParticleRenderer {
                 }
             }
             let seed = hash_seed(sys.seed);
+            // A trail's seconds between samples.
+            let interval = e.trail.map(|t| t.interval(tick_rate));
             let subs: Vec<Option<&ParticleEmitter>> = e
                 .sub_emitters
                 .iter()
@@ -345,6 +354,7 @@ impl ParticleRenderer {
                 let mut entry: EmitterGpu = bytemuck::Zeroable::zeroed();
                 entry.transform = Mat4::from_translation(moved).to_cols_array_2d();
                 entry.info = [e.max_particles, 0, 0, 0];
+                entry.trail[0] = e.trail.map_or(0.0, |t| t.lifetime);
                 entries.push(entry);
                 entries.len() as u32 - 1
             });
@@ -369,6 +379,17 @@ impl ParticleRenderer {
                             usage: wgpu::BufferUsages::STORAGE,
                         },
                     );
+                    let rows = if e.trail.is_some() {
+                        e.max_particles as u64 * TRAIL_POINTS as u64
+                    } else {
+                        1
+                    };
+                    let trail = device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some("particle trails"),
+                        size: 16 * rows,
+                        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::VERTEX,
+                        mapped_at_creation: false,
+                    });
                     let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                         label: Some("particle sim system"),
                         layout: &self.sim_system_layout,
@@ -381,10 +402,16 @@ impl ParticleRenderer {
                                 binding: 1,
                                 resource: points.as_entire_binding(),
                             },
+                            wgpu::BindGroupEntry {
+                                binding: 2,
+                                resource: trail.as_entire_binding(),
+                            },
                         ],
                     });
                     GpuSystem {
                         buffer,
+                        trail,
+                        time: 0.0,
                         group,
                         last_tick: None,
                         prev_transform: None,
@@ -423,9 +450,15 @@ impl ParticleRenderer {
                         crate::particles::carrying_air(e, sys.air, local.then_some(s.transform))
                             .extend(0.0)
                             .to_array();
+                    if let Some(iv) = interval {
+                        step.trail[2] = iv;
+                        step.trail[3] = crate::particles::trail_sample(s.time, s.dt, iv)
+                            .map_or(-1.0, |i| i as f32);
+                        g.time = s.time;
+                    }
                     entries.push(step);
                 }
-                entries.push(emitter_gpu(
+                let mut draw = emitter_gpu(
                     e,
                     sys.transform,
                     None,
@@ -435,7 +468,9 @@ impl ParticleRenderer {
                     textured,
                     collide,
                     soft,
-                ));
+                );
+                newest_sample(&mut draw, interval, g.time);
+                entries.push(draw);
                 for g in &mut entries[first_entry as usize..] {
                     g.noise_origin = noise_origin;
                     g.field_origin = field_origin;
@@ -467,6 +502,7 @@ impl ParticleRenderer {
                     effect,
                     look,
                 });
+                push_trail(&mut out, e, scene, sys.emitter.index())?;
                 if let Some((layer, array)) = sprite {
                     out.sprite_systems.push(SpriteSystem {
                         id: sys.id,
@@ -506,18 +542,28 @@ impl ParticleRenderer {
                         crate::particles::live_spawns(e, sys, tick_rate, &state.cpu.clock)
                     }),
                 );
-                upload(device, queue, &mut state.upload, &state.cpu.slots, &slots);
-                entries.push(emitter_gpu(
-                    e,
-                    sys.transform,
-                    None,
-                    dt,
-                    seed,
-                    0,
-                    textured,
-                    false,
-                    soft,
-                ));
+                upload(
+                    device,
+                    queue,
+                    &mut state.upload,
+                    &state.cpu.slots,
+                    1,
+                    &slots,
+                );
+                if !state.cpu.trail.is_empty() {
+                    upload(
+                        device,
+                        queue,
+                        &mut state.trail_upload,
+                        &state.cpu.trail,
+                        TRAIL_POINTS,
+                        &slots,
+                    );
+                }
+                let mut draw =
+                    emitter_gpu(e, sys.transform, None, dt, seed, 0, textured, false, soft);
+                newest_sample(&mut draw, interval, state.cpu.time);
+                entries.push(draw);
                 out.systems.push(FrameSystem {
                     id: sys.id,
                     first_entry,
@@ -538,6 +584,9 @@ impl ParticleRenderer {
                     effect,
                     look,
                 });
+                if !state.cpu.trail.is_empty() {
+                    push_trail(&mut out, e, scene, sys.emitter.index())?;
+                }
             }
             // Its sub-emitters' particles, each drawn as its own emitter
             // draws (in the world).
@@ -552,7 +601,7 @@ impl ParticleRenderer {
                 let (alive, live) = child_live(c);
                 out.cpu_alive += alive;
                 let slots = drawn(c.slots.len() as u32, Some(live));
-                upload(device, queue, &mut state.children[k], &c.slots, &slots);
+                upload(device, queue, &mut state.children[k], &c.slots, 1, &slots);
                 let kind = draw_kind(ce);
                 out.distortion |= kind == DrawKind::Distort;
                 let (effect, material) =
@@ -799,14 +848,17 @@ impl ParticleRenderer {
 /// Writes the slots a system draws (`ranges`, [`drawn`]) into its vertex
 /// buffer, made to hold every slot: the others are never drawn, so they
 /// are not sent.
-fn upload(
+/// Writes the rows of `ranges`' slots (`per` items a slot) to `buffer`,
+/// remade at the size of all of them.
+fn upload<T: bytemuck::Pod>(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     buffer: &mut Option<wgpu::Buffer>,
-    slots: &[ParticleState],
+    items: &[T],
+    per: usize,
     ranges: &[std::ops::Range<u32>; 2],
 ) {
-    let bytes: &[u8] = bytemuck::cast_slice(slots);
+    let bytes: &[u8] = bytemuck::cast_slice(items);
     if bytes.is_empty() {
         return;
     }
@@ -823,8 +875,8 @@ fn upload(
     }
     let buffer = buffer.as_ref().expect("made");
     for r in ranges.iter().filter(|r| !r.is_empty()) {
-        let at = r.start as usize * std::mem::size_of::<ParticleState>();
-        let to = r.end as usize * std::mem::size_of::<ParticleState>();
+        let at = r.start as usize * per * std::mem::size_of::<T>();
+        let to = r.end as usize * per * std::mem::size_of::<T>();
         queue.write_buffer(buffer, at as u64, &bytes[at..to]);
     }
 }
@@ -952,9 +1004,68 @@ fn effect_of<'s>(
         RenderError::InvalidHandle(format!("emitter {emitter}: effect material {}", h.index()))
     })?;
     Ok(match kind {
-        DrawKind::Billboard | DrawKind::Mesh => (Some(h), Some(m)),
+        DrawKind::Billboard | DrawKind::Mesh | DrawKind::Trail => (Some(h), Some(m)),
         DrawKind::Distort | DrawKind::Sprite => (None, None),
     })
+}
+
+/// A draw entry's trail: its seconds between samples and its newest
+/// sample at the system's `time`.
+fn newest_sample(entry: &mut EmitterGpu, interval: Option<f32>, time: f32) {
+    if let Some(iv) = interval {
+        let (i, age) = crate::particles::trail_newest(time, iv);
+        entry.trail[2] = iv;
+        entry.trail[3] = i as f32;
+        entry.counts3[2] = age;
+    }
+}
+
+/// With a trail, the system `out` just took draws its particles' trails
+/// too, from its draw entry, or (`head` off) them instead of its particles.
+fn push_trail(
+    out: &mut ParticleFrame,
+    e: &ParticleEmitter,
+    scene: &RenderScene,
+    emitter: usize,
+) -> Result<(), RenderError> {
+    let Some(t) = e.trail else {
+        return Ok(());
+    };
+    let (effect, material) = effect_of(scene, e, DrawKind::Trail, emitter)?;
+    let look = look_of(
+        DrawKind::Trail,
+        material,
+        material.and_then(|m| m.shader).map(|h| h.index()),
+    );
+    let last = out.systems.last_mut().expect("the system's");
+    if !t.head {
+        // Still simulated as it was; drawn as its trails.
+        last.kind = DrawKind::Trail;
+        last.mesh = None;
+        (last.effect, last.look) = (effect, look);
+        return Ok(());
+    }
+    let trail = FrameSystem {
+        id: last.id,
+        first_entry: last.first_entry + last.ticks,
+        ticks: 0,
+        reset: false,
+        shift: None,
+        gpu: last.gpu,
+        blend: last.blend,
+        texture: last.texture,
+        depth: last.depth,
+        layers: last.layers,
+        child: None,
+        slots: last.slots.clone(),
+        bound: last.bound,
+        kind: DrawKind::Trail,
+        mesh: None,
+        effect,
+        look,
+    };
+    out.systems.push(trail);
+    Ok(())
 }
 
 /// The key of an effect mesh's state among the systems': its id with the
@@ -1005,6 +1116,7 @@ impl ParticleRenderer {
                 gpu: None,
                 cpu: CpuParticles::default(),
                 upload: None,
+                trail_upload: None,
                 seen: 0,
                 shift: Vec3::ZERO,
                 children: Vec::new(),
@@ -1016,6 +1128,7 @@ impl ParticleRenderer {
                 queue,
                 &mut state.upload,
                 std::slice::from_ref(&particle),
+                1,
                 &drawn(1, None),
             );
             let soft = if scene.frame.quality.soft_particles {

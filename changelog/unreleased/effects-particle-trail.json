@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "particles: trail",
+      "summary": "An emitter's `trail <seconds> [<width>] [only]` draws a trail behind each particle: the path it took over the last <seconds>, remembered at eight points, a camera-facing strip in the particle's colour (and effect material) narrowing and fading to its tail, its width a share of the particle's; `only` draws the trails without the particles (a spark's streak, a comet). Billboards and mesh particles on both simulation paths; not sprite mode or sub-emitters' particles."
+    }
+  ]
+}

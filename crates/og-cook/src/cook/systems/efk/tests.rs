@@ -664,3 +664,46 @@ fn a_sprites_billboard_mode_is_its_emitters_align() {
         c.findings
     );
 }
+
+/// A track's instances are the points of its one path: a track of twelve
+/// is one trail element, not an emitter of particles that each trail a
+/// path of their own (which, standing where they are laid, draw nothing).
+/// Points that then move on their own are a finding.
+#[test]
+fn a_track_is_one_trail_through_its_instances() {
+    let track = |name: &str, moving: bool| {
+        let location = if moving {
+            "<LocationValues><Type>1</Type><PVA><Velocity><X><Max>0.2</Max><Min>0.2</Min></X></Velocity></PVA></LocationValues>"
+        } else {
+            ""
+        };
+        format!(
+            "<Node><CommonValues><MaxGeneration><Value>12</Value></MaxGeneration><Life><Max>30</Max><Min>30</Min></Life></CommonValues>{location}\
+             <DrawingValues><Type>6</Type><Track><TrackSizeFor_Fixed>0.5</TrackSizeFor_Fixed></Track></DrawingValues>\
+             <Name>{name}</Name><Children /></Node>"
+        )
+    };
+    let c = run(&project(&track("Still", false)));
+    let v = og_bundle::vfx::parse_vfx(&c.vfx).unwrap();
+    let trails = v
+        .elements
+        .iter()
+        .filter(|e| matches!(e.kind, og_bundle::vfx::VfxKind::Trail { .. }))
+        .count();
+    assert_eq!(trails, 1, "{}", c.vfx);
+    assert!(!c.vfx.contains("emitter \""), "{}", c.vfx);
+    assert!(
+        !c.findings.iter().any(|f| f.what.contains("track")),
+        "{:?}",
+        c.findings
+    );
+    let moving = run(&project(&track("Moving", true)));
+    assert!(
+        moving
+            .findings
+            .iter()
+            .any(|f| f.what.contains("points move on their own")),
+        "{:?}",
+        moving.findings
+    );
+}

@@ -17,18 +17,22 @@
 @group(0) @binding(4) var<storage, read> colliders: array<vec4<f32>>;
 @group(1) @binding(0) var<storage, read_write> particles: array<Particle>;
 @group(1) @binding(1) var<storage, read> mesh_points: array<vec4<f32>>;
+// With a trail (emitter.trail.x > 0): each slot's path, TRAIL_POINTS
+// samples from slot * TRAIL_POINTS (CpuParticles::trail); else one unused
+// element.
+@group(1) @binding(2) var<storage, read_write> trail: array<vec4<f32>>;
 
-const TAU: f32 = 6.28318530718;
+const TRAIL_POINTS: u32 = 8u;
 
 fn rand(seed: u32, n: u32, stream: u32) -> f32 {
   return hash_unit(seed ^ pcg(n + stream * 0x9e3779b9u));
 }
 
 fn cone_dir(axis: vec3<f32>, angle: f32, r0: f32, r1: f32) -> vec3<f32> {
-  let cos_max = cos(min(angle, 3.14159265359));
+  let cos_max = cos(min(angle, PI));
   let cos_t = 1.0 - r0 * (1.0 - cos_max);
   let sin_t = sqrt(max(1.0 - cos_t * cos_t, 0.0));
-  let phi = r1 * TAU;
+  let phi = r1 * 2.0 * PI;
   var helper = vec3<f32>(0.0, 1.0, 0.0);
   if (abs(axis.y) >= 0.999) { helper = vec3<f32>(1.0, 0.0, 0.0); }
   let t = normalize(cross(helper, axis));
@@ -47,14 +51,14 @@ fn shape_sample(r: vec4<f32>) -> Sample {
   s.dir = vec3<f32>(0.0, 1.0, 0.0);
   let kind = u32(emitter.shape.x);
   if (kind == 1u) {
-    let d = cone_dir(vec3<f32>(0.0, 1.0, 0.0), 3.14159265359, r.x, r.y);
+    let d = cone_dir(vec3<f32>(0.0, 1.0, 0.0), PI, r.x, r.y);
     var k = 1.0;
     if (emitter.shape.z < 0.5) { k = pow(r.z, 1.0 / 3.0); }
     s.pos = d * emitter.shape.y * k;
     s.dir = d;
   } else if (kind == 2u) {
     s.dir = cone_dir(vec3<f32>(0.0, 1.0, 0.0), emitter.shape.y, r.x, r.y);
-    let a = r.z * TAU;
+    let a = r.z * 2.0 * PI;
     let rr = sqrt(r.w) * emitter.shape.z;
     s.pos = vec3<f32>(cos(a) * rr, 0.0, sin(a) * rr);
   } else if (kind == 3u) {
@@ -246,14 +250,27 @@ fn simulate(@builtin(global_invocation_id) id: vec3<u32>) {
   if (slot >= max_particles) { return; }
   let count = emitter.spawn.y;
   let off = (slot + max_particles - emitter.spawn.z) % max_particles;
+  let trails = emitter.trail.x > 0.0;
   if (off < count) {
     let k = off + ((count - 1u - off) / max_particles) * max_particles;
-    particles[slot] = spawn(emitter.spawn.x + k, k);
+    let p = spawn(emitter.spawn.x + k, k);
+    particles[slot] = p;
+    // Its path starts where it is born.
+    if (trails && p.pos_age.w < p.vel_life.w) {
+      for (var i = 0u; i < TRAIL_POINTS; i++) {
+        trail[slot * TRAIL_POINTS + i] = vec4<f32>(p.pos_age.xyz, 0.0);
+      }
+    }
     return;
   }
   let p = particles[slot];
   if (p.pos_age.w < p.vel_life.w) {
-    particles[slot] = integrate(p);
+    let q = integrate(p);
+    particles[slot] = q;
+    // The tick's sample (trail.w its ring index; -1: none).
+    if (trails && emitter.trail.w >= 0.0 && q.pos_age.w < q.vel_life.w) {
+      trail[slot * TRAIL_POINTS + u32(emitter.trail.w)] = vec4<f32>(q.pos_age.xyz, 0.0);
+    }
   }
 }
 
@@ -276,4 +293,10 @@ fn shift(@builtin(global_invocation_id) id: vec3<u32>) {
   var p = particles[id.x];
   p.pos_age = vec4<f32>(p.pos_age.xyz + emitter.transform[3].xyz, p.pos_age.w);
   particles[id.x] = p;
+  if (emitter.trail.x > 0.0) {
+    for (var i = 0u; i < TRAIL_POINTS; i++) {
+      let at = id.x * TRAIL_POINTS + i;
+      trail[at] = vec4<f32>(trail[at].xyz + emitter.transform[3].xyz, 0.0);
+    }
+  }
 }

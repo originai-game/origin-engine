@@ -628,6 +628,31 @@ pub struct CpuParticles {
     pub origin: Vec3,
     /// Per [`ParticleEmitter::sub_emitters`] entry, the particles it fired.
     pub children: Vec<ChildParticles>,
+    /// With [`ParticleEmitter::trail`], each slot's path: its
+    /// [`TRAIL_POINTS`] samples in a ring (slot `i`'s at `i * TRAIL_POINTS`;
+    /// xyz in the simulation space), the newest at [`trail_newest`].
+    pub trail: Vec<[f32; 4]>,
+    /// The system's time at its last step (seconds since it started).
+    pub time: f32,
+}
+
+/// The ring index a trail's sample goes to in a tick that ends at `time`
+/// after `dt` seconds of particle time, when the tick crosses a sample
+/// (each `interval` seconds; [`ParticleTrail::interval`]).
+pub fn trail_sample(time: f32, dt: f32, interval: f32) -> Option<usize> {
+    let n = (time / interval).floor();
+    (n > ((time - dt) / interval).floor())
+        .then(|| (n as i64).rem_euclid(TRAIL_POINTS as i64) as usize)
+}
+
+/// A trail's newest sample at `time`: its ring index and its age in
+/// seconds (the age of the sample before it is `interval` more).
+pub fn trail_newest(time: f32, interval: f32) -> (usize, f32) {
+    let n = (time / interval).floor();
+    (
+        (n as i64).rem_euclid(TRAIL_POINTS as i64) as usize,
+        (time - n * interval).max(0.0),
+    )
 }
 
 /// The index of the particle in `slot` while `step` integrates it: the
@@ -709,6 +734,22 @@ impl CpuParticles {
             self.slots = vec![ParticleState::default(); max as usize];
             self.last_tick = None;
         }
+        let ring = if e.trail.is_some() {
+            max as usize * TRAIL_POINTS
+        } else {
+            0
+        };
+        if self.trail.len() != ring {
+            // A ring new to these particles (a trail added, a restored
+            // snapshot, which keeps none): each path starts where it is.
+            self.trail = self
+                .slots
+                .iter()
+                .flat_map(|p| [[p.pos_age[0], p.pos_age[1], p.pos_age[2], 0.0]; TRAIL_POINTS])
+                .take(ring)
+                .collect();
+        }
+        let interval = e.trail.map(|t| t.interval(tick_rate));
         let firing: Vec<(usize, &SubEmitter, &ParticleEmitter)> = e
             .sub_emitters
             .iter()
@@ -781,13 +822,20 @@ impl CpuParticles {
                 });
             };
             living.clear();
+            let sample = interval.and_then(|iv| trail_sample(step.time, dt, iv));
             for (slot, p) in self.slots.iter_mut().enumerate() {
                 let before = p.pos_age[3];
+                let path = (!self.trail.is_empty())
+                    .then(|| &mut self.trail[slot * TRAIL_POINTS..(slot + 1) * TRAIL_POINTS]);
                 match slot_spawn(slot as u32, max, step.first, step.count) {
                     Some((n, k)) => {
                         *p = spawn(e, seed, n, k, step, dt, points);
                         if !p.alive() {
                             continue;
+                        }
+                        // Its path starts where it is born.
+                        if let Some(path) = path {
+                            path.fill([p.pos_age[0], p.pos_age[1], p.pos_age[2], 0.0]);
                         }
                         if births {
                             report(ParticleEventKind::Birth, n, p);
@@ -808,6 +856,11 @@ impl CpuParticles {
                             self.origin,
                             air,
                         );
+                        if let (Some(path), Some(i)) = (path, sample)
+                            && p.alive()
+                        {
+                            path[i] = [p.pos_age[0], p.pos_age[1], p.pos_age[2], 0.0];
+                        }
                         if hit && hits {
                             report(
                                 ParticleEventKind::Collision,
@@ -885,6 +938,7 @@ impl CpuParticles {
             if let Some(out) = events.as_deref_mut() {
                 out.extend_from_slice(&fired);
             }
+            self.time = step.time;
         }
         self.last_tick = Some(sys.tick);
         self.prev_transform = Some(sys.transform);

@@ -356,6 +356,13 @@ pub const EMITTER_LINES: &[Line] = &[
         "rateOverTime 0 1 0.8 1 1 0",
     ),
     Line::new(
+        "trail",
+        "<seconds> [<width>] [only]",
+        "",
+        "A trail behind each particle: the path it took over the last <seconds>, a strip in its colour narrowing and fading to its tail, <width> a share of the particle's width (1 when left out); `only` draws the trails without the particles (a spark's streak). Billboards and mesh particles, not sprite mode.",
+        "trail 0.25 0.5 only",
+    ),
+    Line::new(
         "inheritVelocity",
         "<fraction>",
         "0",
@@ -992,6 +999,25 @@ pub fn parse_emitter_linked(
             "speedOverLife" => em.speed_over_life = Some(curve(e)?),
             "spinOverLife" => em.spin_over_life = Some(curve(e)?),
             "rateOverTime" => em.rate_over_time = Some(curve(e)?),
+            "trail" => {
+                let num = |i: usize| {
+                    e.values
+                        .get(i)
+                        .and_then(Value::as_number)
+                        .map(|n| n.as_f32())
+                };
+                let only = e.values.iter().any(|v| v.as_word() == Some("only"));
+                em.trail = match (num(0), num(1)) {
+                    (Some(lifetime), width) if lifetime > 0.0 => {
+                        Some(og_render_data::ParticleTrail {
+                            lifetime,
+                            width: width.unwrap_or(1.0).max(0.0),
+                            head: !only,
+                        })
+                    }
+                    _ => return Err(format!("line {line}: trail <seconds> [<width>] [only]")),
+                };
+            }
             "inheritVelocity" => em.inherit_velocity = one(e)?,
             "attractor" => {
                 let a = match nums(e)?[..] {

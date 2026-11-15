@@ -52,6 +52,7 @@ Every line the three effect formats take, from the tables their parsers read: an
 | `speedOverLife <t> <value> ...` |  | A curve that scales the velocity over the life (a burst that slows). |
 | `spinOverLife <t> <value> ...` |  | A curve that scales the angular velocity over the life. |
 | `rateOverTime <t> <value> ...` |  | A curve that scales `rate` over each cycle (t a fraction of `duration`). |
+| `trail <seconds> [<width>] [only]` |  | A trail behind each particle: the path it took over the last <seconds>, a strip in its colour narrowing and fading to its tail, <width> a share of the particle's width (1 when left out); `only` draws the trails without the particles (a spark's streak). Billboards and mesh particles, not sprite mode. |
 | `inheritVelocity <fraction>` | `0` | The share of the emitter's own velocity, in world space, particles start with. |
 | `attractor <x> <y> <z> <strength> [<radius>]` |  | A point in the emitter's space that pulls, or pushes when negative; up to 4. |
 | `field curl <strength> [<frequency> <scroll>] \| "<texture>" <strength> <size>` |  | Divergence-free curl noise (frequency 0.5, scroll 0.2), or a vector grid `og cook` bakes from an image N² pixels wide and N high (N to 16): pixel x + z·N holds cell (x, y, z), y from the bottom, rgb 0..1 as -1..1. |

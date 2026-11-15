@@ -198,5 +198,9 @@ pub(super) fn emitter_gpu(
         axis: axis.extend(0.0).to_array(),
         color2_t,
         color2_v,
+        // The interval and sample are the frame's (`prepare`).
+        trail: e
+            .trail
+            .map_or([0.0, 0.0, 0.0, -1.0], |t| [t.lifetime, t.width, 0.0, -1.0]),
     }
 }

@@ -333,6 +333,34 @@ pub enum SimulationSpace {
     Local,
 }
 
+/// The points of its path a particle with a trail remembers, besides
+/// where it is ([`ParticleTrail`]).
+pub const TRAIL_POINTS: usize = 8;
+
+/// A trail behind each particle ([`ParticleEmitter::trail`]): the path it
+/// took over `lifetime`, remembered at [`TRAIL_POINTS`] points (a sample
+/// every `lifetime / (TRAIL_POINTS - 1)` seconds of particle time, at
+/// least a tick), drawn as a camera-facing strip from the particle to its
+/// tail in the particle's colour, its width and alpha falling to nothing
+/// at the tail.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ParticleTrail {
+    /// Seconds of its path behind each particle.
+    pub lifetime: f32,
+    /// Its width at the particle, a share of the particle's width.
+    pub width: f32,
+    /// Whether the particle draws too; `false` draws its trail alone (a
+    /// streak of light).
+    pub head: bool,
+}
+
+impl ParticleTrail {
+    /// Seconds of particle time between its samples at `tick_rate`.
+    pub fn interval(&self, tick_rate: f32) -> f32 {
+        (self.lifetime / (TRAIL_POINTS - 1) as f32).max(1.0 / tick_rate.max(1e-3))
+    }
+}
+
 /// Which way a particle quad faces.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ParticleAlign {
@@ -598,6 +626,12 @@ pub struct ParticleEmitter {
     /// The emission rate over each cycle (t 0 to 1 of `duration`), against
     /// `rate`: a stream that swells and dies. `None` is 1.
     pub rate_over_time: Option<Curve>,
+    /// A trail behind each particle: the path it took over the trail's
+    /// lifetime, a camera-facing strip narrowing and fading to its tail
+    /// (sparks' streaks, comets, a firework's tails). Billboards,
+    /// velocity-stretched and mesh particles, on both paths; not sprite
+    /// mode or a sub-emitter's particles. `None`: no trail.
+    pub trail: Option<ParticleTrail>,
     /// Points that pull or push the particles (at most [`MAX_ATTRACTORS`]).
     pub attractors: Vec<Attractor>,
     /// A field the particles move through.
@@ -666,6 +700,7 @@ impl Default for ParticleEmitter {
             field: None,
             inherit_velocity: 0.0,
             emission: 1.0,
+            trail: None,
         }
     }
 }
@@ -746,6 +781,16 @@ impl ParticleEmitter {
         }
         if self.array.is_some() && !matches!(self.render, ParticleRender::Sprite { .. }) {
             return Err("a texture array is drawn by a sprite-mode emitter (render sprite)".into());
+        }
+        if let Some(t) = &self.trail {
+            if !(t.lifetime.is_finite() && t.lifetime > 0.0 && t.width.is_finite()) {
+                return Err(format!("trail lifetime {} width {}", t.lifetime, t.width));
+            }
+            if matches!(self.render, ParticleRender::Sprite { .. }) {
+                return Err(
+                    "a trail is drawn behind billboard or mesh particles, not sprite mode".into(),
+                );
+            }
         }
         if !(self.distortion.is_finite() && self.distortion >= 0.0) {
             return Err(format!("distortion {}", self.distortion));

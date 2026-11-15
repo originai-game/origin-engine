@@ -4,8 +4,8 @@
 use crate::deferred::Deferred;
 use crate::particles::{
     CpuParticles, EmitterShape, MAX_CURVE_KEYS, ParticleAlign, ParticleBlend, ParticleEmitter,
-    ParticleRender, ParticleState, ParticleSystem, SheetMode, SimulationSpace, TickStep,
-    appearance, array_frames, hash_seed, plan_ticks, sheet_frames,
+    ParticleRender, ParticleState, ParticleSystem, SheetMode, SimulationSpace, TRAIL_POINTS,
+    TickStep, appearance, array_frames, hash_seed, plan_ticks, sheet_frames,
 };
 use crate::scene::{RenderScene, Sprite};
 use crate::sprites::ExtraSprite;
@@ -96,6 +96,10 @@ struct EmitterGpu {
     /// `counts3.y` keys, 0: none).
     color2_t: [[f32; 4]; 2],
     color2_v: [[f32; 4]; 8],
+    /// x: a trail's lifetime (0: none), y: its width share, z: seconds
+    /// between samples, w: a tick's sample index (-1: none) or, on a draw
+    /// entry, the newest's.
+    trail: [f32; 4],
 }
 
 /// How a system's particles are drawn.
@@ -103,6 +107,9 @@ struct EmitterGpu {
 pub(crate) enum DrawKind {
     Billboard,
     Mesh,
+    /// Its particles' trails (`vs_trail`, their ring the second vertex
+    /// buffer).
+    Trail,
     /// The scene behind, shifted (`fs_distort`).
     Distort,
     /// Sprite mode simulated in compute: the 2D batch draws it
@@ -117,6 +124,17 @@ fn draw_kind(e: &ParticleEmitter) -> DrawKind {
         _ => DrawKind::Billboard,
     }
 }
+
+/// A particle's trail beside it (`TrailIn` in particles.wgsl): its
+/// [`TRAIL_POINTS`] samples, one instance per particle.
+const TRAIL_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+    array_stride: (TRAIL_POINTS * 16) as u64,
+    step_mode: wgpu::VertexStepMode::Instance,
+    attributes: &wgpu::vertex_attr_array![
+        3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4,
+        7 => Float32x4, 8 => Float32x4, 9 => Float32x4, 10 => Float32x4
+    ],
+};
 
 /// A mesh's vertices beside the particles (`MeshIn` in particles.wgsl):
 /// [`crate::Vertex`]'s position, normal and colour.
@@ -156,6 +174,11 @@ struct PointsTable {
 
 struct GpuSystem {
     buffer: wgpu::Buffer,
+    /// Its particles' paths with a trail (`CpuParticles::trail`'s layout;
+    /// one unused element without).
+    trail: wgpu::Buffer,
+    /// The system's time at its last tick, for its trail's newest sample.
+    time: f32,
     /// Its sim bind group (`particles_sim.wgsl`'s group 1): its particles
     /// and its emitter's surface points, made with them.
     group: wgpu::BindGroup,
@@ -171,6 +194,8 @@ struct SystemState {
     cpu: CpuParticles,
     /// The CPU path's vertex buffer.
     upload: Option<wgpu::Buffer>,
+    /// The CPU path's trail ring (`CpuParticles::trail`), a vertex buffer.
+    trail_upload: Option<wgpu::Buffer>,
     seen: u64,
     /// The render origin's moves since the system last simulated
     /// ([`ParticleRenderer::shift`]): added to its world-space particles.
