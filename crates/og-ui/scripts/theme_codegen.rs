@@ -505,8 +505,8 @@ const HEAD: &str = r##"//! The engine's default style: the colour roles of a gam
 //! **Generated** from `packages/design/tokens/*.css` by
 //! `crates/og-ui/scripts/gen-theme.sh`; never edit it by hand (`tests/theme.rs`
 //! fails on drift). The default style is origin-agent's look and the one a
-//! game draws in until it picks another (`crate::style_file`, `type style`,
-//! usually the one its look names); a game may ship it as it is.
+//! game draws in until it picks another (a CSS style pack, usually the one
+//! its look's `ui` line names, or its own CSS); a game may ship it as it is.
 //!
 //! Lengths are og-ui units (CSS pixels at a unit scale of 1), durations
 //! milliseconds, colours sRGB as authored (straight alpha); the translucent

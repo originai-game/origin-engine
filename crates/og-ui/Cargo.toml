@@ -4,7 +4,7 @@ version = "0.7.7"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine UI: an immediate-mode toolkit with Clay-style layout, styled by each game's own UI style, drawn as og-draw's commands through og-render's sprite and text batches, addressable by the probe."
+description = "Origin Engine UI: screen and component documents laid out, styled by one CSS cascade (the default style, a style pack, the game's CSS), drawn as og-draw's commands through og-render's UI pass, addressable by the probe."
 autotests = false
 
 [features]

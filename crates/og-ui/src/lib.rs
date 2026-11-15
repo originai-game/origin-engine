@@ -1,8 +1,14 @@
-//! Origin Engine UI (`docs/design.md` §2.7): an immediate-mode toolkit whose
-//! tree is declared every tick, laid out Clay-style in one pass, styled by
-//! the game's own UI style (the default style, the design language the
-//! engine shares with origin-agent, until it picks one), drawn through og-render's UI pass
-//! (analytic shapes and MSDF text over the finished frame, `paint`), and addressable by the probe through stable string ids.
+//! Origin Engine UI (`docs/design.md` §2.7; the contract is `docs/ui.md`):
+//! the tree that screen and component documents build and the engine's own
+//! widgets add to, laid out once a frame, styled by one CSS cascade (the
+//! default style, the design language the engine shares with origin-agent;
+//! a style pack; the game's own CSS), moved by the tick, drawn through
+//! og-render's UI pass (analytic shapes and MSDF text over the finished
+//! frame, `paint`), and addressable by the probe through stable string ids.
+//!
+//! A game builds no tree in code: it mounts documents. The immediate calls
+//! below are the engine's own front end, which the documents' controls, the
+//! inspector and the tests use:
 //!
 //! ```ignore
 //! ui.begin(InputFrame::from_world(&world).unwrap_or_default(), viewport);

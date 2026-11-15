@@ -2,7 +2,7 @@
 
 # The `ui` module
 
-The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the engine's default style until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
+The engine's UI: screen and component documents, mounted through og.ui.scope or pushed on the layer stack (og.ui.push), which the engine lays out, styles with one CSS cascade (its default style, a style pack, the game's own CSS), draws over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from. These calls configure it and read it back.
 
 The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.
 
@@ -14,7 +14,7 @@ Lengths are CSS pixels of the play surface (origin top left, y down), the unit o
 
 ```ogt
 module ui {
-  doc "The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the engine's default style until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it."
+  doc "The engine's UI: screen and component documents, mounted through og.ui.scope or pushed on the layer stack (og.ui.push), which the engine lays out, styles with one CSS cascade (its default style, a style pack, the game's own CSS), draws over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from. These calls configure it and read it back."
   doc "The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick."
   doc "Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi(\"Slot\", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it."
   # declarations follow, each on its own page
