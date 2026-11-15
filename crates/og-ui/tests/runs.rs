@@ -789,6 +789,37 @@ fn a_styles_body_family_backs_the_role_a_widget_sets_its_text_in() {
 }
 
 #[test]
+fn a_badges_label_takes_its_parts_font_family() {
+    // `font-family` on badge::part(base) reaches the badge's label, as it
+    // does the part's ink and size, and as a browser's part text takes it.
+    let mut handles = Handles::default();
+    let f = faces(&mut handles);
+    let source = r#"<meta name="component" content="t"><div><badge>best</badge></div>"#;
+    crate::support::with_doc(source, &[], |d| {
+        d.ui.set_part_css("badge::part(base) { font-family: \"Brand\"; }")
+            .unwrap();
+        d.ui.set_fonts(Fonts {
+            body: f.cjk.clone(),
+            families: vec![FamilyFace {
+                family: "Brand".into(),
+                weight: (400, 400),
+                font: f.latin.clone(),
+                ..FamilyFace::default()
+            }],
+            ..Fonts::default()
+        });
+        d.step(InputFrame::default());
+        let drawn = commands(d.ui.frame());
+        assert!(
+            drawn
+                .iter()
+                .any(|c| c.0 == "best" && Some(c.1) == f.latin.handle),
+            "{drawn:?}"
+        );
+    });
+}
+
+#[test]
 fn a_keycap_draws_in_the_family_it_inherits() {
     // A pack that brings its faces through @font-face leaves the body role
     // without one: a <kbd> draws its text in the family it inherits, as a

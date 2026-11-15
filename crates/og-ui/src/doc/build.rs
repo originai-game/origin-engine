@@ -621,11 +621,19 @@ impl Ui {
             return;
         };
         let r = self.part_values(&part, Some(self.tree.nodes[i].key));
-        let step = match &*self.tree.nodes[i].content {
-            crate::layout::Content::Text(text) => r
-                .kept_part_text(&self.env.theme, text.step, &self.style, &self.env)
-                .step(text.step),
-            _ => self.env.theme.type_ramp.body,
+        // A part's text takes its size, ink and family as a part box's
+        // does (doc/build/parts.rs).
+        let (step, font) = match &*self.tree.nodes[i].content {
+            crate::layout::Content::Text(text) => {
+                let style = r.kept_part_text(&self.env.theme, text.step, &self.style, &self.env);
+                let role = style.font_role.unwrap_or(text.font);
+                let font = style
+                    .family
+                    .as_deref()
+                    .map_or(role, |names| self.env.fonts.family_list(names, role));
+                (style.step(text.step), Some(font))
+            }
+            _ => (self.env.theme.type_ramp.body, None),
         };
         let ink = r.color("color");
         let em = step.size;
@@ -656,6 +664,9 @@ impl Ui {
                 text.color = color;
             }
             text.step = step;
+            if let Some(font) = font {
+                text.font = font;
+            }
         }
     }
 
