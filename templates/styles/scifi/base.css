@@ -63,7 +63,7 @@
   --scene-shadow: #000000a0;
   --success: #45e3a0;
   --warn: #ffe04a;
-  --danger: #ff5a5f;
+  --danger: #ff6b6f;
   --info: #6cc7ff;
   --health: #c8324a;
   --mana: #3f8cff;
@@ -326,7 +326,7 @@
   --button-primary-pressed-fill: linear-gradient(180deg, var(--primary-active), var(--primary));
   --button-primary-shadow: inset 0 1px 0 #ffffff80, 0 0 16px var(--scifi-glow-55);
   --button-danger-rim: var(--danger);
-  --button-danger-ink: #ffd9da;
+  --button-danger-ink: #fff0f0;
   --button-danger-fill: linear-gradient(180deg, rgb(from var(--danger) r g b / 0.24), rgb(from var(--danger) r g b / 0.1)), linear-gradient(180deg, var(--scifi-key-hi), var(--scifi-key-lo));
   --button-danger-hover-fill: linear-gradient(180deg, rgb(from var(--danger) r g b / 0.45), rgb(from var(--danger) r g b / 0.2)), linear-gradient(180deg, var(--scifi-key-hi), var(--scifi-key-lo));
   --button-danger-shadow: inset 0 1px 0 rgb(from var(--danger) r g b / 0.45), 0 0 12px rgb(from var(--danger) r g b / 0.3);
@@ -432,7 +432,7 @@
   --tabs-tab-fill: none;
   --tabs-tab-hover-fill: var(--scifi-tab-hover-wash);
   --tabs-tab-hover-ink: var(--ink);
-  --tabs-tab-pressed-fill: var(--primary-25);
+  --tabs-tab-pressed-fill: var(--primary-16);
   --tabs-tab-selected-fill: var(--scifi-tab-selected-wash);
   --tabs-tab-ink: var(--ink-muted);
   --tabs-tab-selected-ink: var(--accent);
@@ -611,8 +611,8 @@
   /* A banner called over the scene: the band's light on a plate of its own. */
   --title-shadow: 0 0 12px var(--scifi-glow-55), 0 1px 2px var(--scifi-shade);
   --figure-shadow: 0 1px 2px var(--scifi-shade), 0 0 6px var(--scifi-glow-20);
-  /* World tags over the scene: on a strip of the scene's plate. */
-  --tag-halo: none;
+  /* World tags over the scene: on a strip of the scene's plate, outlined
+     by the default's halo, as the status grid's figures are. */
   --tag-fill: var(--scene-plate);
   --tag-pad: 0 var(--space-xs);
   --tag-radius: 0;
@@ -662,6 +662,9 @@
    and ink, a darker amber. It restates the palette roles, the inks and the
    materials; every composite above follows them. */
 :root[data-scheme=light] {
+  /* Text over the scene stands on a pale strip in the dark ink. */
+  --scene-ink: #0a1c27;
+  --scene-plate: #f3f8fbf2;
   --backdrop: #dfe8ee;
   --well: #d3dfe7;
   --panel: #f1f6f9;
@@ -676,14 +679,14 @@
   --control: #dde9f0;
   --control-strong: #c9dbe5;
   --primary: #006f93;
-  --primary-hover: #0087b3;
+  --primary-hover: #0079a1;
   --primary-active: #005a78;
   --on-primary: #ffffff;
   --primary-soft: #006f9326;
   --highlight: #005f80;
   --selection: #ffe2ad;
   --on-selection: #2a1a00;
-  --accent: #a35400;
+  --accent: #8a4700;
   --focus: #a35400;
   --knob: #ffffff;
   --hud: #f3f8fbe0;
@@ -745,7 +748,7 @@
   --button-primary-hover-ink: #ffffff;
   --button-primary-pressed-ink: #e3f6fd;
   --button-primary-disabled-ink: #7c8f9b;
-  --button-primary-hover-fill: linear-gradient(180deg, #19a3cf, var(--primary-hover) 60%, var(--primary));
+  --button-primary-hover-fill: linear-gradient(180deg, #0a7fa6, var(--primary-hover) 60%, var(--primary));
   --button-danger-ink: #8a121d;
   --ink-disabled: #7c8f9b;
   --ink-label: #0b5f7d;

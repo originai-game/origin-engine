@@ -285,8 +285,11 @@
   --button-danger-fill: none;
   --button-danger-hover-fill: none;
   --button-danger-pressed-fill: none;
-  --button-danger-ink: var(--danger);
+  --button-danger-ink: #f09a8c;
   --button-image-slice: 28 24 fill;
+  /* The focus ring follows the painted hex plate: pointed ends. */
+  --button-focus-corner-shape: bevel;
+  --button-focus-radius: calc(var(--button-min-height) / 2);
   --button-image-width: 50% var(--button-image-end);
   --button-primary-image-disabled: var(--button-image-disabled);
   --button-primary-ink: var(--on-primary);
@@ -467,9 +470,10 @@
   --band-shadow: 0 1px 0 #00000080;
   --title-shadow: 0 2px 3px #000000c0;
   --figure-shadow: 0 1px 2px var(--color-shadow), 0 0 4px var(--color-shadow);
-  /* Text over the scene (names, damage numbers, keycaps): a full inked
-     outline, so a red name holds over a red ground. */
-  --tag-halo: 0 0 1px var(--color-shadow), 0 0 2px var(--color-shadow), 0 1px 2px var(--color-shadow), 0 0 5px var(--color-shadow);
+  /* Text over the scene (names, damage numbers, status times): eight
+     unblurred copies in the inverse ink, an outline with no drop, so a red
+     name holds over a red ground and either scheme's ink over any scene. */
+  --tag-halo: 1.5px 0 0 var(--ink-inverse), -1.5px 0 0 var(--ink-inverse), 0 1.5px 0 var(--ink-inverse), 0 -1.5px 0 var(--ink-inverse), 1px 1px 0 var(--ink-inverse), -1px 1px 0 var(--ink-inverse), 1px -1px 0 var(--ink-inverse), -1px -1px 0 var(--ink-inverse);
   --cell-fill: radial-gradient(circle at 50% 45%, #3a332a 0%, #1d1812 72%, #120e0a 100%);
   --cell-shadow: inset 0 0 0 1px var(--shadow-60), inset 0 0 14px var(--shadow-63), 0 0 6px #00000080;
   --cell-common-fill: radial-gradient(circle at 50% 45%, #4a453d 0%, #25211b 70%, #15120e 100%);
@@ -517,12 +521,101 @@
   --control-strong: #d8c49b;
   --selection: #e9d29a;
   --on-selection: #2a1d12;
-  --highlight: #8a5a12;
-  --accent: #8a5a12;
+  --highlight: #6e4510;
+  --accent: #6e4510;
   --focus: #8a5a12;
   --gold: #8a5a12;
-  --success: #2f6f37;
-  --danger: #9c2a1c;
-  --warn: #8a5800;
-  --info: #24589c;
+  --success: #245a2c;
+  --danger: #85231a;
+  --warn: #6b4300;
+  --info: #1d4a85;
+  /* The hex plates turn from painted iron to brass-rimmed vellum, drawn
+     as bevelled boxes (pointed ends), so their ink is the parchment's.
+     The crimson plate keeps its art. */
+  --button-image: none;
+  --button-image-hover: none;
+  --button-image-pressed: none;
+  --button-image-disabled: none;
+  --button-corner-shape: bevel;
+  --button-radius: calc(var(--button-min-height) / 2);
+  --button-rim: var(--line-strong);
+  --button-rim-width: var(--stroke-regular);
+  --button-fill: linear-gradient(180deg, #f8eed6, #e3cfa4);
+  --button-hover-fill: linear-gradient(180deg, #fcf5e4, #ead9b2);
+  --button-pressed-fill: linear-gradient(180deg, #d8c49b, #e8d8b4);
+  --button-disabled-fill: #e6dcc8;
+  --button-hover-ink: #4a2c08;
+  --button-disabled-ink: var(--ink-disabled);
+  --button-danger-ink: var(--danger);
+  --button-text-shadow: none;
+  /* A band stays crimson, but pale, under the dark title. */
+  --band-fill: linear-gradient(90deg, #e2b7a800 0%, #e2b7a8 14%, #d9a796 50%, #e2b7a8 86%, #e2b7a800 100%);
+  --band-lead-fill: linear-gradient(90deg, #d9a796 0%, #e2b7a8 60%, #e2b7a800 100%);
+  --band-small-fill: linear-gradient(90deg, #e2b7a800, #e2b7a8 18%, #e2b7a8 82%, #e2b7a800);
+  --band-shadow: none;
+  /* Over the scene the ink is dark, outlined in parchment (--tag-halo). */
+  --scene-ink: #2a1d12;
+  --scene-plate: #f1e6ccf7;
+  /* Inks for parchment grounds. */
+  --title-ink: #3a2410;
+  --ink-label: #5a3f18;
+  --figure-ink: #2a1d12;
+  --ink-selected: #2a1d12;
+  --ink-done: #5f4d36;
+  --ink-disabled: #786650;
+  --ink-bright: #1c1611;
+  --ink-down: #5f5a52;
+  --badge-ink: #2a1d12;
+  --tabs-tab-selected-ink: #6e4510;
+  /* Grounds: the dark scheme's walnut and lamp-black turned to parchment,
+     vellum and pale oak; the filigree and the brass stay. */
+  --fantasy-soot-disabled: #dccfb3;
+  --fantasy-iron-pressed: #cdbd9c;
+  --fantasy-iron-disabled: #ddd1b8;
+  --fantasy-tooltip: #f7eed9f5;
+  --fantasy-touch-plate: #f1e6ccb0;
+  --fantasy-iron-fill: linear-gradient(180deg, #efe4cb, #d8c7a2);
+  --fantasy-crimson-lo: #e2b7a8;
+  --scrim: #2a1d1266;
+  --hud: #f3e9d2ea;
+  --frame-fill:
+    var(--fantasy-filigree-tl) left top / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
+    var(--fantasy-filigree-tr) right top / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
+    var(--fantasy-filigree-bl) left bottom / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
+    var(--fantasy-filigree-br) right bottom / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
+    radial-gradient(ellipse at 50% 0%, #fbf4e3 0%, #f1e6cc 60%, #e6d6b2 100%);
+  --frame-shadow: inset 0 0 0 2px var(--panel), inset 0 0 0 3px var(--line-strong), inset 0 0 0 5px var(--panel), inset 0 0 0 6px var(--line), 0 0 0 1px var(--line-strong), 0 10px 24px #2a1d1240;
+  --plate-fill:
+    var(--fantasy-filigree-tl) left top / var(--fantasy-corner-hud) var(--fantasy-corner-hud) no-repeat,
+    var(--fantasy-filigree-tr) right top / var(--fantasy-corner-hud) var(--fantasy-corner-hud) no-repeat,
+    var(--fantasy-filigree-bl) left bottom / var(--fantasy-corner-hud) var(--fantasy-corner-hud) no-repeat,
+    var(--fantasy-filigree-br) right bottom / var(--fantasy-corner-hud) var(--fantasy-corner-hud) no-repeat,
+    linear-gradient(180deg, #f7eed9f2, #ece0c4ee);
+  --plate-shadow: inset 0 0 0 1px var(--line-strong), 0 6px 16px #2a1d1240;
+  --panel-fill: radial-gradient(ellipse at 50% 0%, #fbf4e3, #f1e6cc 55%, #e8dcc0);
+  --panel-shadow: inset 0 0 0 3px var(--panel), inset 0 0 0 4px var(--line-strong-40), 0 8px 24px #2a1d1240;
+  --field-fill: linear-gradient(180deg, #f7eed9, #ece0c4);
+  --field-shadow: inset 0 1px 3px #2a1d1233;
+  --field-focus-shadow: inset 0 1px 3px #2a1d1233, 0 0 8px var(--accent-33);
+  --slot-fill: radial-gradient(circle, #f7eed9, #e0d0ad);
+  --keyboard-key-fill: linear-gradient(180deg, #f7eed9, #e4d4b0);
+  --radio-card-checked-fill: linear-gradient(180deg, var(--selection), #e0c47e);
+  --checkbox-checked-fill: linear-gradient(180deg, #a87a2a, #8a5a12);
+  --cell-fill: radial-gradient(circle at 50% 45%, #fbf4e3 0%, #ece0c4 72%, #ddcca6 100%);
+  --cell-common-fill: radial-gradient(circle at 50% 45%, #fbf7ee 0%, #e9e2d4 70%, #d8cfbd 100%);
+  --cell-uncommon-fill: radial-gradient(circle at 50% 45%, #eef6e3 0%, #d9e8c8 70%, #c3d6ad 100%);
+  --cell-rare-fill: radial-gradient(circle at 50% 45%, #eaf1fb 0%, #d2e0f4 70%, #b9cceb 100%);
+  --cell-epic-fill: radial-gradient(circle at 50% 45%, #f3eafb 0%, #e2d2f2 70%, #cfb9e8 100%);
+  --cell-legendary-fill: radial-gradient(circle at 50% 45%, #fbf0e2 0%, #f2dcbf 70%, #e7c69b 100%);
+  --cell-mythic-fill: radial-gradient(circle at 50% 45%, #fbe9e6 0%, #f1d0ca 70%, #e5b5ac 100%);
+  --cell-shadow: inset 0 0 0 1px var(--line-strong-40), 0 0 4px #2a1d1233;
+  --cell-empty-shadow: inset 0 0 10px #2a1d1233;
+  --cell-pressed-fill: radial-gradient(circle at 50% 50%, #e6d6b2 0%, var(--well) 100%);
+  --row-selected-fill: linear-gradient(90deg, #e9d29a 0%, #efdfb4 55%, #f1e6cc 100%);
+  --badge-fill: radial-gradient(circle at 50% 35%, #fbf4e3, var(--well) 70%);
+  --title-shadow: none;
+  --figure-shadow: none;
+  --ground-fill:
+    radial-gradient(ellipse at 50% 40%, #e8dcc000 40%, #c9b48c80 100%),
+    #e8dcc0;
 }

@@ -102,7 +102,7 @@
   --tabs-tab-fill: none;
   --tabs-tab-hover-fill: var(--tabs-hover-fill);
   --tabs-tab-hover-ink: var(--ink);
-  --tabs-tab-pressed-fill: var(--ink-25);
+  --tabs-tab-pressed-fill: rgb(0 0 0 / 0.2);
   --tabs-tab-selected-fill: var(--tabs-selected-fill);
   --tabs-tab-selected-ink: var(--tabs-selected-ink);
   --tabs-tab-selected-shadow: var(--tabs-selected-shadow);
@@ -402,8 +402,8 @@
   --cartoon-white: linear-gradient(180deg, #ffffff 0%, #f1f5ff 60%, #dfe7ff 100%) padding-box;
   --cartoon-white-hover: linear-gradient(180deg, #ffffff 0%, #ffffff 60%, #eef3ff 100%) padding-box;
   --cartoon-white-lip: #aab6e0;
-  --cartoon-violet: linear-gradient(180deg, #7d63fb 0%, #6a4df0 55%, #5a3ddb 100%) padding-box;
-  --cartoon-violet-hover: linear-gradient(180deg, #927bff 0%, #7d63fb 55%, #6a4df0 100%) padding-box;
+  --cartoon-violet: linear-gradient(180deg, #6f55f2 0%, #6a4df0 55%, #5a3ddb 100%) padding-box;
+  --cartoon-violet-hover: linear-gradient(180deg, #7458f5 0%, #6a4df0 55%, #5a3ddb 100%) padding-box;
   --cartoon-violet-lip: #3a22a3;
   --cartoon-blue: linear-gradient(180deg, #6fdcff 0%, #36c5ff 55%, #1ea6f5 100%) padding-box;
   --cartoon-royal: linear-gradient(180deg, #2f6df2 0%, #2b64e8 50%, #2052cf 100%) padding-box;
@@ -420,8 +420,8 @@
   --cartoon-band: var(--cartoon-royal);
   --cartoon-band-lip: var(--cartoon-royal-lip);
   --cartoon-green: linear-gradient(180deg, #9cf27a 0%, #62e24f 55%, #3fcc3a 100%) padding-box;
-  --cartoon-red: linear-gradient(180deg, #dd2f48 0%, #d22a43 55%, #bd1f37 100%) padding-box;
-  --cartoon-red-hover: linear-gradient(180deg, #e63a53 0%, #dd2f48 55%, #c8233c 100%) padding-box;
+  --cartoon-red: linear-gradient(180deg, #d22a43 0%, #c92640 55%, #b81d36 100%) padding-box;
+  --cartoon-red-hover: linear-gradient(180deg, #d92d46 0%, #d22a43 55%, #c02039 100%) padding-box;
   --cartoon-red-lip: #8f1228;
   --cartoon-purple: linear-gradient(180deg, #dca1ff 0%, #c873ff 55%, #a94df0 100%) padding-box;
   --cartoon-orange: linear-gradient(180deg, #ffd25c 0%, #ffb11f 55%, #ff9000 100%) padding-box;
@@ -522,8 +522,9 @@
   --button-danger-lip: var(--cartoon-red-lip);
   --button-disabled-fill: var(--cartoon-grey);
   --button-disabled-lip: var(--cartoon-grey-lip);
-  --button-ghost-hover-fill: var(--ink-14);
-  --button-quiet-hover-fill: var(--ink-14);
+  /* A darkening wash: white text holds on any blue under it. */
+  --button-ghost-hover-fill: rgb(0 0 0 / 0.2);
+  --button-quiet-hover-fill: rgb(0 0 0 / 0.2);
   --button-selected-fill: var(--cartoon-selected);
   --button-selected-ink: var(--on-selection);
   --button-selected-lip: var(--cartoon-selected-lip);
@@ -650,7 +651,9 @@
   --figure-shadow: var(--cartoon-text-drop-small);
   /* World tags over the scene: ringed in the scene's shadow (white under
      the light scheme), with the small drop. */
-  --tag-halo: 0 0 2px var(--scene-shadow), 0 0 2px var(--scene-shadow), var(--cartoon-text-drop-small);
+  /* Text over the scene: eight unblurred copies in the inverse ink, an
+     outline that holds over any ground in either scheme. */
+  --tag-halo: 1.5px 0 0 var(--ink-inverse), -1.5px 0 0 var(--ink-inverse), 0 1.5px 0 var(--ink-inverse), 0 -1.5px 0 var(--ink-inverse), 1px 1px 0 var(--ink-inverse), -1px 1px 0 var(--ink-inverse), 1px -1px 0 var(--ink-inverse), -1px -1px 0 var(--ink-inverse);
   --label-tracking: 0.03em;
   --label-transform: uppercase;
 
@@ -702,6 +705,8 @@
 /* The light scheme: a day sky, cream panels and indigo ink; the same
    outline, yellow and candy plates. */
 :root[data-scheme=light] {
+  --button-ghost-hover-fill: var(--ink-14);
+  --button-quiet-hover-fill: var(--ink-14);
   --backdrop: #7fd3ff;
   --well: #e3eafb;
   --panel: #fffaf0;
@@ -716,10 +721,10 @@
   --control: #ffffff;
   --control-strong: #e6eeff;
   --on-primary: #211d52;
-  --highlight: #9a5600;
+  --highlight: #7f4600;
   --selection: #4ccaff;
   --on-selection: #211d52;
-  --accent: #9a5600;
+  --accent: #7f4600;
   --focus: #d6006f;
   --hud: #fffaf0eb;
   /* A layer's dim is a day veil, as the ink on it is dark. */
@@ -747,7 +752,7 @@
   --mythic: #d11f4a;
   --team1: #0e6bcf;
   --team2: #cc1f3a;
-  --neutral: #9a5600;
+  --neutral: #7f4600;
   --gloss: #ffffffa6;
   --gloss-soft: #ffffffd9;
   --button-ink: #211d52;
@@ -766,7 +771,6 @@
   --ink-down: #8d8ab3;
   --figure-ink: #211d52;
   --figure-shadow: none;
-  --tag-halo: 0 0 2px var(--scene-shadow), 0 0 2px var(--scene-shadow);
   --trend-up: #15802a;
   --trend-down: #cc1f3a;
   --tone-damage: #cc1f3a;
