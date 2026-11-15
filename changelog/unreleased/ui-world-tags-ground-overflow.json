@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "<ground> and PathLine",
+      "summary": "Moves frames: a ground draws what overflows its box, as any CSS box's overflow shows. It was laid out clipped to its box and drawn only over its box's quad, so PathLine's badge past the path's end was cut to the room left in the box (\"12 m · 2 AP\" read \"12\"). A world panel drawn into its render target is still cut to the target."
+    }
+  ]
+}

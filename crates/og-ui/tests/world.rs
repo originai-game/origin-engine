@@ -446,3 +446,67 @@ fn a_document_ground_follows_the_camera_and_builds_nothing() {
     );
     assert!(ui.frame().grounds.is_empty());
 }
+
+/// A `<ground>` is a layer holding all it draws: a child past its box (a
+/// path's badge at its end) keeps its own width, and the decal's screen
+/// bounds reach it, as a CSS box's overflow shows.
+///
+/// Ways it could fail: the ground laid out clipped to its box (the badge
+/// cut to the room its inset leaves), or the decal drawn only over its
+/// box's quad (the badge cut where the box ends on the screen).
+#[test]
+fn a_ground_draws_what_overflows_its_box() {
+    let mut ui = ui();
+    let doc = r#"<meta name="component" content="sel">
+<div id="Root">
+<ground id="Path" at="0 0 0" size="3 3"><span id="Badge">Out of reach · 6 AP</span></ground>
+</div>
+<style>
+#Path { width: 200px; height: 200px; }
+#Badge { position: absolute; left: 150px; top: 20px; white-space: nowrap; }
+</style>"#;
+    ui.define_document(UiDocument::parse("sel.svelte", doc).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "sel"),
+        "sel",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let above = WorldView::look_at(
+        Vec3::new(0.0, 5.0, 6.0),
+        Vec3::ZERO,
+        Vec3::Y,
+        50.0,
+        W / H,
+        0.1,
+        100.0,
+    );
+    for _ in 0..3 {
+        ui.begin(InputFrame::default(), vp());
+        ui.set_world_view(Some(above));
+        ui.end();
+    }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let path = ui
+        .probe_elements()
+        .into_iter()
+        .find(|e| e.path.ends_with("/Badge"))
+        .expect("the badge");
+    // Its text is well over the 50px its inset leaves inside the box.
+    assert!(path.width > 100.0, "the badge is cut: {}", path.width);
+    let g = ui.frame().grounds.first().copied().expect("a ground seen");
+    let box_right = g
+        .corners
+        .unwrap()
+        .iter()
+        .map(|c| c.x)
+        .fold(f32::MIN, f32::max);
+    // The badge reaches about twice the box's half width past its centre.
+    assert!(
+        g.bounds.right() > box_right + 100.0,
+        "the decal stops at its box: {:?} vs {box_right}",
+        g.bounds
+    );
+}

@@ -837,7 +837,8 @@ None of these has a web standard; each is named for what it does.
   The camera moving changes only its affine map (`UiDrape`) and screen
   bounds (`UiFrame.grounds`), never the world. Its layer is sized from its
   seen size, a power of two up to 2048 px (the cap over the whole screen
-  when a corner is behind the camera). It is inert.
+  when a corner is behind the camera). What overflows its box (a path's
+  badge past its end) is drawn too, on its plane. It is inert.
 
 An anchor or world panel lives in a world layer of its own keyed by its
 element's path, so its nodes keep the keys and paths they would have in

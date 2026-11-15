@@ -654,9 +654,13 @@ impl WorldUi {
         }
     }
 
-    /// The area and clip a world layer is laid out in (`end`'s layout).
+    /// The area and clip a world layer is laid out in (`end`'s layout). A
+    /// panel drawn into its target is cut to the target; a projected one
+    /// (a ground) is a layer holding all it draws, so like any box its
+    /// overflow shows (a path's badge past its end).
     pub(crate) fn area(&self, node: usize, screen: Rect) -> (Rect, Rect) {
         match self.declared.panels.iter().find(|p| p.node == node) {
+            Some(p) if p.desc.projected => (p.rect, Rect::new(-1e9, -1e9, 2e9, 2e9)),
             Some(p) => (p.rect, p.rect),
             None => (screen, screen),
         }

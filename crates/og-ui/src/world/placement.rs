@@ -38,6 +38,25 @@ fn clamp_to_edge(area: Rect, half: Vec2, dir: Vec2) -> Vec2 {
     Vec2::new(cx + dir.x * t, cy + dir.y * t)
 }
 
+/// The top left and bottom right, in layout px, of what node `i` draws:
+/// its box and every shown box under it, out-of-flow ones included.
+fn drawn_box(nodes: &[crate::layout::Node], i: usize) -> (Vec2, Vec2) {
+    let r = nodes[i].placed.rect;
+    let (mut lo, mut hi) = (Vec2::new(r.x, r.y), Vec2::new(r.right(), r.bottom()));
+    let kids =
+        |n: &crate::layout::Node| n.children.iter().chain(&n.out).copied().collect::<Vec<_>>();
+    let mut stack = kids(&nodes[i]);
+    while let Some(j) = stack.pop() {
+        let b = nodes[j].placed.rect;
+        if !b.is_empty() {
+            lo = lo.min(Vec2::new(b.x, b.y));
+            hi = hi.max(Vec2::new(b.right(), b.bottom()));
+        }
+        stack.extend(kids(&nodes[j]));
+    }
+    (lo, hi)
+}
+
 /// The first spot clear of `placed` for `b` (moved by `shift` mode), or
 /// `None`: overlapping; `reach` bounds the move, and a moved box stays
 /// inside `inside` (a contained tag's safe area: a crowd stacked off the
@@ -552,9 +571,20 @@ impl crate::ui::Layout {
                     // plane: terrain under a 2 m ring rises and falls 0.5 m.
                     let reach = 0.25 * size.x.min(size.y);
                     let screen = Rect::new(0.0, 0.0, vp.width * unit, vp.height * unit);
-                    // What its box (the rect, `reach` either side) covers on
-                    // the screen; all of it while a corner is behind the eye.
-                    let boxed: Vec<Option<Vec2>> = quad
+                    // What it draws (its box and what overflows it, such as
+                    // a badge past a path's end), on its plane.
+                    let (lo, hi) = drawn_box(&tree.nodes, p.node);
+                    let on_plane = |x: f32, y: f32| {
+                        (
+                            (x - r.x) / r.width.max(1e-6) * size.x - hx,
+                            hy - (y - r.y) / r.height.max(1e-6) * size.y,
+                        )
+                    };
+                    let drawn = [(lo.x, lo.y), (hi.x, lo.y), (hi.x, hi.y), (lo.x, hi.y)]
+                        .map(|(x, y)| on_plane(x, y));
+                    // What that covers on the screen, `reach` either side
+                    // of the plane; all of it while a corner is behind the eye.
+                    let boxed: Vec<Option<Vec2>> = drawn
                         .iter()
                         .flat_map(|&(x, y)| [world(x, y, -reach), world(x, y, reach)])
                         .map(seen)
