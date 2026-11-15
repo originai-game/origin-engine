@@ -193,8 +193,17 @@ impl Ui {
                                 None
                             }
                         },
-                        InlineAtom::Icon(name) => match self.env.icons.find(name) {
-                            Some(k) => Some(crate::rich::Atom::Icon(k)),
+                        InlineAtom::Icon(name) => match self.env.icons.find_drawn(name) {
+                            // A full-colour picture of the atlas draws as an
+                            // inline picture does, in its own colours.
+                            Some((crate::ui::IconCell::Image(texture, uv), true)) => {
+                                Some(crate::rich::Atom::Image(crate::ui::InlineImage {
+                                    texture,
+                                    uv,
+                                    aspect: 1.0,
+                                }))
+                            }
+                            Some((k, _)) => Some(crate::rich::Atom::Icon(k)),
                             None => {
                                 self.out.warnings.push(format!(
                                     "text: <og-icon name=\"{name}\"> is not in the icon atlas"

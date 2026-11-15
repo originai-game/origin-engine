@@ -25596,6 +25596,12 @@ export interface IconAtlasDesc {
    * @default []
    */
   readonly names?: readonly string[];
+  /**
+   * The cells are full-colour pictures, such as item art: drawn in their own colours, as an `<img>` is, whatever the icon's `color`. false: they are masks drawn in the icon's `color`, as a CSS `mask-image` over `currentColor` is. An icon set (font) is always masks.
+   *
+   * @default false
+   */
+  readonly pictures?: boolean;
 }
 
 /**

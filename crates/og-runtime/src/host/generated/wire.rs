@@ -17036,6 +17036,7 @@ pub struct IconAtlasDesc {
     pub columns: u32,
     pub rows: u32,
     pub names: Vec<String>,
+    pub pictures: bool,
 }
 
 impl Default for IconAtlasDesc {
@@ -17046,6 +17047,7 @@ impl Default for IconAtlasDesc {
             columns: 1,
             rows: 1,
             names: Default::default(),
+            pictures: Default::default(),
         }
     }
 }
@@ -17062,6 +17064,7 @@ impl FromJson for IconAtlasDesc {
             columns: field(o, "columns", d.columns)?,
             rows: field(o, "rows", d.rows)?,
             names: field(o, "names", d.names)?,
+            pictures: field(o, "pictures", d.pictures)?,
         })
     }
 }
@@ -17074,6 +17077,7 @@ impl ToJson for IconAtlasDesc {
         o.insert("columns".into(), self.columns.to_json());
         o.insert("rows".into(), self.rows.to_json());
         o.insert("names".into(), self.names.to_json());
+        o.insert("pictures".into(), self.pictures.to_json());
         Value::Object(o)
     }
 }

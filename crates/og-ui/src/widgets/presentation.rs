@@ -363,20 +363,20 @@ impl Ui {
         frame: Frame,
         color: Srgba,
     ) -> Option<Shape> {
-        Some(match self.env.icons.find(name)? {
-            IconCell::Glyph(font, ch) => Shape::Glyph {
+        Some(match self.env.icons.find_drawn(name)? {
+            (IconCell::Glyph(font, ch), _) => Shape::Glyph {
                 part,
                 frame,
                 font,
                 ch,
                 color,
             },
-            IconCell::Image(texture, uv) => Shape::Image {
+            (IconCell::Image(texture, uv), picture) => Shape::Image {
                 part,
                 frame,
                 texture,
                 uv,
-                color,
+                color: (!picture).then_some(color),
             },
         })
     }

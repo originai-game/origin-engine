@@ -44,7 +44,9 @@ pub enum Shape {
         frame: Frame,
         texture: TextureHandle,
         uv: [f32; 4],
-        color: Srgba,
+        /// A mask's ink, or `None` for a full-colour picture, which draws in
+        /// its own colours whatever its part's `color` (an `<img>`).
+        color: Option<Srgba>,
     },
     /// One line of text centred in the frame, drawn only inside `clip`
     /// (`Frame::FULL`: the whole element; a meter's label is two of these,

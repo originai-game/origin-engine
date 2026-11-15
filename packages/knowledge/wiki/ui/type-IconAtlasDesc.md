@@ -17,6 +17,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `columns` | `number` | `1` | ≥ 1 | — | — | Cells across. |
 | `rows` | `number` | `1` | ≥ 1 | — | — | Cells down. |
 | `names` | `readonly string[]` | `[]` | — | — | — | Each cell's name, in reading order: a document's `<og-icon>` draws a cell by its name. |
+| `pictures` | `boolean` | `false` | — | — | — | The cells are full-colour pictures, such as item art: drawn in their own colours, as an `<img>` is, whatever the icon's `color`. false: they are masks drawn in the icon's `color`, as a CSS `mask-image` over `currentColor` is. An icon set (font) is always masks. |
 
 ```ogt
 struct IconAtlasDesc {
@@ -33,6 +34,7 @@ struct IconAtlasDesc {
     min 1
   }
   field names List.String "Each cell's name, in reading order: a document's `<og-icon>` draws a cell by its name."
+  field pictures bool "The cells are full-colour pictures, such as item art: drawn in their own colours, as an `<img>` is, whatever the icon's `color`. false: they are masks drawn in the icon's `color`, as a CSS `mask-image` over `currentColor` is. An icon set (font) is always masks."
 }
 ```
 

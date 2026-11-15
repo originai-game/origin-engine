@@ -34,7 +34,7 @@ function setStyle(world: World, name: string): void {
   const ink = must(og.load.texture(world, "icons/ink-icons.png"), "ink icons");
   og.ui.configure(world, {
     style,
-    icons: { texture: items, columns: 8, rows: 6, names: [...ITEM_NAMES.map((n) => `item-${n}`), ...SKILL_NAMES.map((n) => `skill-${n}`), ...CMD_NAMES.map((n) => `cmd-${n}`)] },
+    icons: { texture: items, columns: 8, rows: 6, pictures: true, names: [...ITEM_NAMES.map((n) => `item-${n}`), ...SKILL_NAMES.map((n) => `skill-${n}`), ...CMD_NAMES.map((n) => `cmd-${n}`)] },
     fallbackIcons: { texture: ink, columns: 8, rows: 4, names: INK_NAMES },
   });
 }

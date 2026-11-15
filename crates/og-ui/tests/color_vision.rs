@@ -168,4 +168,41 @@ og-icon::part(secondary) { color: #2980b9; }
         ],
         "each atlas layer keeps its own ink"
     );
+    // A picture atlas draws in its own colours whatever its part's color, as
+    // an <img> does; the mask set under it still takes its ink.
+    ui.set_icons(IconAtlas {
+        texture: Some(texture),
+        columns: 2,
+        rows: 1,
+        names: vec!["base".into()],
+        pictures: true,
+        fallback: Some(Box::new(IconAtlas {
+            texture: Some(texture),
+            columns: 2,
+            rows: 1,
+            names: vec!["".into(), "accent".into()],
+            ..Default::default()
+        })),
+        ..Default::default()
+    });
+    ui.begin(InputFrame::default(), Viewport::new(160.0, 100.0));
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
+    ui.end();
+    let images: Vec<_> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|item| match &item.cmd {
+            DrawCmd::Image { color, uv, .. } => Some((*color, *uv)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        images,
+        vec![
+            (Srgba::WHITE.linear(), [0.0, 0.0, 0.5, 1.0]),
+            (Srgba::rgb(41, 128, 185).linear(), [0.5, 0.0, 1.0, 1.0]),
+        ],
+        "a picture keeps its colours, a mask takes its ink"
+    );
 }

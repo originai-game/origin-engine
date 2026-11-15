@@ -822,9 +822,10 @@ impl Ui {
                         rect: values.part_rect(frame.resolve(&n.placed.rect), n.placed.rect),
                         texture: Some(*texture),
                         uv: *uv,
-                        color: values
-                            .color("color")
-                            .unwrap_or(*color)
+                        // A mask takes its part's ink; a picture keeps its
+                        // own colours, as an `<img>` does.
+                        color: color
+                            .map_or(Srgba::WHITE, |ink| values.color("color").unwrap_or(ink))
                             .fade(alpha * values.num("opacity").unwrap_or(1.0))
                             .linear(),
                         clip,

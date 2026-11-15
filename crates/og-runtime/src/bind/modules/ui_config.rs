@@ -225,6 +225,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
                     columns: icons.columns.max(1),
                     rows: icons.rows.max(1),
                     names: icons.names.clone(),
+                    pictures: icons.pictures,
                     ..IconAtlas::default()
                 },
             }))

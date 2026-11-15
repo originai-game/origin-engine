@@ -1038,6 +1038,10 @@ pub struct IconAtlas {
     pub names: Vec<String>,
     /// An icon set: its MTSDF font (`texture` is then unused).
     pub font: Option<crate::text::UiFont>,
+    /// The texture's cells are full-colour pictures, drawn in their own
+    /// colours as an `<img>` is; false, masks drawn in the icon's ink, as a
+    /// CSS `mask-image` over `currentColor` is. An icon set is masks.
+    pub pictures: bool,
     /// The atlas that draws the names this one lacks (`UiDesc.fallbackIcons`):
     /// a game's whole set under a style pack's few painted icons.
     pub fallback: Option<Box<IconAtlas>>,
@@ -1092,11 +1096,19 @@ impl IconAtlas {
     /// The icon named `name`: from this atlas where it draws one, else
     /// from its fallback's.
     pub fn find(&self, name: &str) -> Option<IconCell> {
+        self.find_drawn(name).map(|(cell, _)| cell)
+    }
+
+    /// The icon named `name`, and whether it is a full-colour picture
+    /// (its atlas's `pictures`), drawn in its own colours.
+    pub fn find_drawn(&self, name: &str) -> Option<(IconCell, bool)> {
         let own = self.index_of(name).and_then(|k| match self.glyph(k) {
-            Some((font, ch)) => Some(IconCell::Glyph(font, ch)),
-            None => self.texture.map(|t| IconCell::Image(t, self.uv(k))),
+            Some((font, ch)) => Some((IconCell::Glyph(font, ch), false)),
+            None => self
+                .texture
+                .map(|t| (IconCell::Image(t, self.uv(k)), self.pictures)),
         });
-        own.or_else(|| self.fallback.as_deref()?.find(name))
+        own.or_else(|| self.fallback.as_deref()?.find_drawn(name))
     }
 
     /// This atlas and the fallbacks under it, top first.

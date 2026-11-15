@@ -45956,6 +45956,11 @@
           },
           "description": "Each cell's name, in reading order: a document's `<og-icon>` draws a cell by its name.",
           "default": []
+        },
+        "pictures": {
+          "type": "boolean",
+          "description": "The cells are full-colour pictures, such as item art: drawn in their own colours, as an `<img>` is, whatever the icon's `color`. false: they are masks drawn in the icon's `color`, as a CSS `mask-image` over `currentColor` is. An icon set (font) is always masks.",
+          "default": false
         }
       },
       "additionalProperties": false
