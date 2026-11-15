@@ -129,6 +129,9 @@ export default og.game({
     const camera = world.resource(og.Camera);
     if (camera.ok) camera.value.background = { r: 0.04, g: 0.03, b: 0.02 };
     setStyle(world, "fantasy");
+    // The screens' strings in the review's right-to-left locale, as a game
+    // ships them (English comes with the engine).
+    must(og.i18n.load(world, "strings/ar.ogt"), "ar");
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },
   commands: {
