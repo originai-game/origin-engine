@@ -46,22 +46,9 @@ pub fn lerp(a: f32, b: f32, u: f32) -> f32 {
     a + (b - a) * u
 }
 
-/// Spherical interpolation on the shorter arc, with og-core's deterministic
-/// trigonometry (a normalised lerp when the two are nearly equal).
-pub fn slerp(a: Quat, b: Quat, u: f32) -> Quat {
-    let mut b = b;
-    let mut d = a.dot(b);
-    if d < 0.0 {
-        b = -b;
-        d = -d;
-    }
-    if d > 0.9995 {
-        return (a + (b - a) * u).normalize();
-    }
-    let theta = math::atan2((1.0 - d * d).max(0.0).sqrt(), d);
-    let s = math::sin(theta);
-    let (s0, s1) = (math::sin((1.0 - u) * theta) / s, math::sin(u * theta) / s);
-    (a * s0 + b * s1).normalize()
+/// og-core's one deterministic slerp ([`math::quat_slerp`]), kept unit.
+fn slerp(a: Quat, b: Quat, u: f32) -> Quat {
+    math::quat_slerp(a, b, u).normalize()
 }
 
 /// What a camera track asks for at a time (in its mode's terms: world
@@ -460,17 +447,6 @@ mod tests {
         assert!((x(2.0) - 2.5).abs() < 1e-6);
         assert_eq!(x(9.0), 10.0);
         assert!(transform_at(&tr, 2.0).scale.is_none());
-    }
-
-    #[test]
-    fn slerp_takes_the_short_way_and_lands_exactly() {
-        let a = Quat::IDENTITY;
-        let b = crate::model::euler_degrees(Vec3::new(0.0, 90.0, 0.0));
-        let m = slerp(a, b, 0.5);
-        let want = crate::model::euler_degrees(Vec3::new(0.0, 45.0, 0.0));
-        assert!(m.dot(want).abs() > 1.0 - 1e-6, "{m:?}");
-        assert!(slerp(a, -b, 0.5).dot(want).abs() > 1.0 - 1e-6);
-        assert!(slerp(a, b, 1.0).dot(b).abs() > 1.0 - 1e-6);
     }
 
     #[test]

@@ -1,0 +1,6 @@
+{
+  "simulation": "changed",
+  "fixed": [
+    "A timeline's transform and quaternion field tracks turn with og-core's one deterministic slerp (og_core::math::quat_slerp, what og.motion, the virtual cameras and render interpolation use). The timeline had its own, which fell back to a normalised lerp below a 1.8° turn and took the angle from atan2: a rotation played by a timeline can differ in its last bits, so a replay recorded before this may step differently."
+  ]
+}
