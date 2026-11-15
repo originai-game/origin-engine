@@ -1,7 +1,7 @@
 <meta name="component" content="StatusGrid">
 <meta name="strings" content="./status-grid.en.ogt">
 <meta name="parts" content="StatusGrid.cell StatusGrid.badge StatusGrid.figure">
-<meta name="prop:buffs" content="list" data-doc="The buffs, in the game's order: each { id, icon, name, stacks, remaining, duration, expiring }, remaining and duration in seconds (duration 0 lasts until removed), expiring in its last five seconds.">
+<meta name="prop:buffs" content="list" data-doc="The buffs, in the game's order: each { id, icon, name, stacks, remaining, duration, expiring }, remaining and duration in seconds (duration 0 lasts until removed; remaining past duration, an extended effect, sweeps nothing), expiring in its last five seconds.">
 <meta name="prop:debuffs" content="list" data-doc="The debuffs, in their own row and bordered by type: each as a buff with type magic, curse, poison, disease or bleed.">
 <meta name="prop:more" content="number" data-doc="Effects past the shown ones, folded into a +n tile (0: none).">
 <meta name="action:pick" content="Cancel">
@@ -13,7 +13,7 @@
       <li class="tile" class:expiring={e.expiring} aria-label={e.name}>
         <div class="face" part="StatusGrid.cell">
           <og-icon class="icon" icon={e.icon}></og-icon>
-          <svg class="sweep" viewBox="0 0 32 32" hidden={!(e.duration > 0)}><circle cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>
+          <svg class="sweep" viewBox="0 0 32 32" hidden={!(e.duration > 0)}><circle cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(e.remaining >= e.duration ? 0 : 1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>
           <span class="stacks" part="StatusGrid.badge" hidden={!(e.stacks > 1)}>{formatNumber(e.stacks)}</span>
         </div>
         <span class="time" part="StatusGrid.figure" hidden={!(e.remaining > 0)}>{e.remaining < 10 ? formatNumber(e.remaining) : formatCountdown(e.remaining)}</span>
@@ -26,7 +26,7 @@
       <li class="tile debuff" class:expiring={e.expiring} class:magic={e.type == 'magic'} class:curse={e.type == 'curse'} class:poison={e.type == 'poison'} class:disease={e.type == 'disease'} class:bleed={e.type == 'bleed'} aria-label={e.name}>
         <div class="face" part="StatusGrid.cell">
           <og-icon class="icon" icon={e.icon}></og-icon>
-          <svg class="sweep" viewBox="0 0 32 32" hidden={!(e.duration > 0)}><circle cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>
+          <svg class="sweep" viewBox="0 0 32 32" hidden={!(e.duration > 0)}><circle cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(e.remaining >= e.duration ? 0 : 1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>
           <div class="notch"></div>
           <span class="stacks" part="StatusGrid.badge" hidden={!(e.stacks > 1)}>{formatNumber(e.stacks)}</span>
         </div>

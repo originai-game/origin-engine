@@ -388,3 +388,23 @@ fn the_scoreboard_marks_the_local_players_row() {
         .count();
     assert_eq!(rows, 1, "one marked row");
 }
+
+/// A status effect refreshed past its duration (more seconds left than it
+/// first had) sweeps nothing. Fails when the sweep's elapsed share is read
+/// unclamped, a negative dash the frame refuses.
+#[test]
+fn status_grid_takes_an_effect_extended_past_its_duration() {
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    let grid = docs.iter().find(|d| d.doc.name == "StatusGrid").unwrap();
+    let mut props = grid.props.clone();
+    props["debuffs"][0]["remaining"] = serde_json::json!(3599);
+    let extended = EngineDocument {
+        path: grid.path.clone(),
+        doc: grid.doc.clone(),
+        props,
+    };
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+    let warnings = preview(&mut ui, &docs, &extended, &messages, 1280.0, 720.0);
+    assert!(warnings.is_empty(), "{warnings:?}");
+}
