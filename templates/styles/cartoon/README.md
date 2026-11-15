@@ -127,7 +127,3 @@ worked around in CSS.
 - The default style dresses every `[part$=".cell"]` as a tile, readouts
   included (a lap count, a score, a wave number, a table's cell): each
   file restyles those cells by name.
-- The review's contrast measure reads text over a gradient or a layered
-  ground wrongly (a white title on the blue band measures 1.5 to 2.4 there
-  and 11.9 with `og frame measure` on the same rect); flagged text was
-  checked against the pixels.

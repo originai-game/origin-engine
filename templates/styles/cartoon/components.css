@@ -82,3 +82,11 @@ button::part(table\.cell):hover { background: var(--button-quiet-hover-fill); }
 /* ── AbilityBar and AbilitySlot: a cost is inked in mana blue (red when it
    cannot be paid), so its badge is a sunk well rather than the red count. */
 :is([part="AbilityBar.badge"], [part="AbilitySlot.badge"]).cost { background: var(--well); }
+
+/* ── StatusGrid: a timer or stack count under an effect reads on any scene
+   from a chip of the scene plate in the outline. */
+[part="StatusGrid.figure"] { padding: 0 var(--space-xxs); border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-pill); background: var(--scene-plate); color: var(--scene-ink); text-shadow: none; }
+
+/* ── Compass: the window is a HUD strip in the outline, so the bearings
+   read over a bright sky as well as a dark ground. */
+[part="Compass.window"] { border: var(--cartoon-outline-thin) solid var(--line-strong); background: var(--hud); box-shadow: var(--cartoon-edge-small); }
