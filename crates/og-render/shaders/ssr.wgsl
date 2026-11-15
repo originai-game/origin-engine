@@ -210,8 +210,10 @@ fn ssr_lobe_sample(px: vec2<i32>) -> vec2<f32> {
   return fract(shift + r2);
 }
 
-// GGX: the distribution, Smith's masking of one direction, and the
-// height-correlated visibility (Heitz 2014), for alpha = roughness².
+// GGX's distribution and Smith's masking of one direction, for
+// alpha = roughness² (its visibility is ggx.wgsl's `v_ggx`). The
+// distribution is ggx.wgsl's `d_ggx` without its 1e-7 floor, which would
+// flatten the lobe a near-mirror's rays are drawn from (alpha down to 1e-3).
 fn ssr_d(n_dot_h: f32, a2: f32) -> f32 {
   let k = n_dot_h * n_dot_h * (a2 - 1.0) + 1.0;
   return a2 / (PI * k * k);
@@ -219,12 +221,6 @@ fn ssr_d(n_dot_h: f32, a2: f32) -> f32 {
 
 fn ssr_g1(n_dot_v: f32, a2: f32) -> f32 {
   return 2.0 * n_dot_v / (n_dot_v + sqrt(a2 + (1.0 - a2) * n_dot_v * n_dot_v));
-}
-
-fn ssr_vis(n_dot_v: f32, n_dot_l: f32, a2: f32) -> f32 {
-  let gv = n_dot_l * sqrt(n_dot_v * n_dot_v * (1.0 - a2) + a2);
-  let gl = n_dot_v * sqrt(n_dot_l * n_dot_l * (1.0 - a2) + a2);
-  return 0.5 / max(gv + gl, 1e-6);
 }
 
 fn ssr_alpha(roughness: f32) -> f32 {
@@ -582,7 +578,7 @@ fn resolve(@builtin(global_invocation_id) gid: vec3<u32>) {
     let n_dot_l = dot(n, l);
     if (n_dot_l <= 0.0) { continue; }
     let h = normalize(v + l);
-    let brdf = ssr_d(max(dot(n, h), 0.0), a2) * ssr_vis(n_dot_v, n_dot_l, a2) * n_dot_l;
+    let brdf = ssr_d(max(dot(n, h), 0.0), a2) * v_ggx(n_dot_v, n_dot_l, alpha) * n_dot_l;
     let w = brdf / hit.w * bilateral;
     let r = textureLoad(ray_radiance, rt, 0);
     // Weighted by 1 / (1 + luma) (Karis 2014) so a lone bright hit cannot

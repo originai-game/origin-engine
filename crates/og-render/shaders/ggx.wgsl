@@ -1,7 +1,16 @@
-// The GGX specular visibility, one function for direct light (lighting.wgsl
-// `brdf`, physical.wgsl `physical_brdf`) and for the split-sum table the
-// image-based light reads (ibl.wgsl `fs_brdf_lut`), so the two agree.
-// Prepended to lighting.wgsl and to ibl.wgsl.
+// The GGX specular lobe, one copy for direct light (lighting.wgsl `brdf`,
+// physical.wgsl `physical_brdf`), for the image-based light's prefilter
+// and split-sum table (ibl.wgsl) and for screen-space reflections
+// (ssr.wgsl), so they agree. Both functions take alpha = roughness
+// squared. Prepended to lighting.wgsl, ibl.wgsl and ssr.wgsl.
+
+// The GGX (Trowbridge-Reitz) distribution of microfacet normals at
+// `n_dot_h`, for alpha = roughness squared.
+fn d_ggx(n_dot_h: f32, alpha: f32) -> f32 {
+  let a2 = alpha * alpha;
+  let d = n_dot_h * n_dot_h * (a2 - 1.0) + 1.0;
+  return a2 / (PI * d * d + 1e-7);
+}
 
 // Height-correlated Smith visibility, V = G / (4 n.l n.v), for
 // alpha = roughness squared (Heitz 2014, "Understanding the

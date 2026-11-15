@@ -124,13 +124,6 @@ fn importance_sample_ggx(xi: vec2<f32>, n: vec3<f32>, roughness: f32) -> vec3<f3
   return normalize(orthonormal_basis(n) * h);
 }
 
-fn d_ggx(n_dot_h: f32, roughness: f32) -> f32 {
-  let a = roughness * roughness;
-  let a2 = a * a;
-  let d = n_dot_h * n_dot_h * (a2 - 1.0) + 1.0;
-  return a2 / (PI * d * d + 1e-7);
-}
-
 @fragment
 fn fs_prefilter(in: VsOut) -> @location(0) vec4<f32> {
   let n = face_dir(params.face, in.uv);
@@ -146,7 +139,7 @@ fn fs_prefilter(in: VsOut) -> @location(0) vec4<f32> {
     if (n_dot_l > 0.0) {
       // Filtered importance sampling: pick the source mip from the sample's solid angle.
       let n_dot_h = max(dot(n, h), 0.0);
-      let d = d_ggx(n_dot_h, params.roughness);
+      let d = d_ggx(n_dot_h, params.roughness * params.roughness);
       let pdf = d * n_dot_h / (4.0 * max(dot(h, v), 1e-4)) + 1e-4;
       let sa_texel = 4.0 * PI / (6.0 * params.source_size * params.source_size);
       let sa_sample = 1.0 / (f32(count) * pdf + 1e-4);

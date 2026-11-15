@@ -49,9 +49,9 @@ use crate::ibl::SHEEN_WGSL;
 /// instance buffers ([`instances::GpuTransform`]); `mul_point`: how the
 /// points it moves are projected.
 pub const INSTANCE_WGSL: &str = wgsl!("instance.wgsl");
-/// The GGX specular visibility, one function for direct light
-/// ([`LIGHTING_WGSL`]) and for the BRDF table of the image-based light
-/// (og-render's `ibl::ibl_source`).
+/// The GGX specular lobe (its distribution and visibility), one copy for
+/// direct light ([`LIGHTING_WGSL`]), the image-based light's prefilter and
+/// BRDF table (og-render's `ibl::ibl_source`) and screen-space reflections.
 pub const GGX_WGSL: &str = wgsl!("ggx.wgsl");
 /// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water),
 /// then the water's caustics on what they light (caustics.wgsl).

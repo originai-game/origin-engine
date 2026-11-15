@@ -1,13 +1,7 @@
 // Lighting shared by the lit passes (pbr.wgsl, terrain.wgsl, water.wgsl):
-// the GGX BRDF (its visibility is ggx.wgsl's), the directional light's
+// the GGX BRDF (its lobe is ggx.wgsl's), the directional light's
 // cascaded shadows and the local lights' shadows, read with explicit
 // compares. Prepended after frame.wgsl.
-
-fn d_ggx(n_dot_h: f32, a: f32) -> f32 {
-  let a2 = a * a;
-  let d = n_dot_h * n_dot_h * (a2 - 1.0) + 1.0;
-  return a2 / (PI * d * d + 1e-7);
-}
 
 fn f_schlick(cos_theta: f32, f0: vec3<f32>) -> vec3<f32> {
   return f0 + (1.0 - f0) * pow(saturate(1.0 - cos_theta), 5.0);
