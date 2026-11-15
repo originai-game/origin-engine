@@ -110,7 +110,7 @@ button[aria-selected=true]::part(RpgBackpack\.cell):hover, button[aria-selected=
 [part="RpgBackpack.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); letter-spacing: var(--label-tracking); }
 
 /* ── Item card. */
-[part="RpgItemCard.frame"] .hero-glow { background: var(--legendary); opacity: var(--cartoon-burst-opacity); mask-image: var(--cartoon-burst-image); mask-size: 100% 100%; }
+[part="RpgItemCard.frame"] .hero-glow { background: var(--cartoon-hero-glow); opacity: var(--cartoon-burst-opacity); mask-image: var(--cartoon-burst-image); mask-size: 100% 100%; }
 [part="RpgItemCard.frame"][data-rarity=mythic] .hero-glow { background: var(--mythic); }
 [part="RpgItemCard.frame"][data-rarity=epic] .hero-glow { background: var(--epic); }
 [part="RpgItemCard.frame"][data-rarity=rare] .hero-glow { background: var(--rare); }
@@ -142,7 +142,6 @@ button[aria-selected=true]::part(RpgBackpack\.cell):hover, button[aria-selected=
 [part="RpgCharacter.frame"] .portrait { border: var(--cartoon-outline-width) solid var(--line-strong); box-shadow: var(--cartoon-edge-small); }
 [part="RpgCharacter.name"] { font-family: var(--font-display); font-size: var(--font-step-4xl); letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--ink); }
 [part="RpgCharacter.frame"] .char-line { font-size: var(--font-step-lg); color: var(--ink-muted); }
-[part="RpgCharacter.frame"] .figure { opacity: 0.9; }
 [part="RpgCharacter.frame"] .doll { background: var(--well); border-top: var(--cartoon-outline-thin) solid var(--divider); border-bottom: var(--cartoon-outline-thin) solid var(--divider); }
 [part="RpgCharacter.frame"] .attributes { border-top: var(--cartoon-outline-thin) solid var(--divider); }
 [part="RpgCharacter.row"] { border-bottom: var(--cartoon-outline-thin) solid var(--divider); }
