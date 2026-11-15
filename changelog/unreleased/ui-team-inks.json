@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"UI roles","summary":"A role part on a team (`data-team=\"a\"` or `\"b\"`: a frame, plate, band, title, row, cell, badge, well, figure, label or heading) wears `--team1` or `--team2` as its ink and rim, so a pack colours every team part by setting the two tokens. The arena kit's team headings now take their team's colour in the default style too."}
+  ]
+}

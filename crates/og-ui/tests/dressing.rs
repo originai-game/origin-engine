@@ -1310,6 +1310,53 @@ fn a_document_part_takes_its_dressing_classes_and_states() {
 /// `focus` part alone and draws no plate. Wrong: the cell took the
 /// button's plate over its role, or the ring repainted the base's fill
 /// over the focused cell.
+/// A role part on a team (`data-team=a|b`) wears `--team1` or `--team2`
+/// as its ink and rim, whatever its role; off a team it keeps the role's
+/// ink. Wrong: the team colour on one role only, or on a part with no role.
+#[test]
+fn a_role_part_on_a_team_wears_the_teams_colour() {
+    let mut ui = ui_with_font(test_font());
+    ui.set_part_css(&format!(
+        "{DEFAULT_CSS}\n:root {{ --team1: #ff0000; --team2: #0000ff; --ink-label: #00ff00; }}"
+    ))
+    .unwrap();
+    let mut d = mounted(
+        ui,
+        r#"<meta name="parts" content="t.heading t.figure t.name">
+<column id="Root">
+  <h2 part="t.heading" data-team="a">Wolves</h2>
+  <span part="t.figure" data-team="b">12</span>
+  <h2 part="t.heading">Neutral</h2>
+  <span part="t.name" data-team="a">Plain</span>
+</column>"#,
+        &[],
+        Viewport::new(400.0, 300.0),
+    );
+    d.step(InputFrame::default());
+    let ink = |want: &str| {
+        d.ui.frame().items.iter().find_map(|i| {
+            let text = match &i.cmd {
+                DrawCmd::StyledText { text, .. } => text.as_ref(),
+                other => other,
+            };
+            match text {
+                DrawCmd::Text { text, color, .. } if text == want => Some(*color),
+                _ => None,
+            }
+        })
+    };
+    let colour = |hex: &str| og_ui::style_file::parse_color(hex).unwrap();
+    for (text, hex, wears) in [
+        ("Wolves", "#ff0000", true),
+        ("12", "#0000ff", true),
+        ("Neutral", "#00ff00", true),
+        ("Plain", "#ff0000", false),
+    ] {
+        let got = ink(text).unwrap_or_else(|| panic!("{text} drawn"));
+        assert_eq!(near(got, colour(hex)), wears, "{text}: {got:?}");
+    }
+}
+
 #[test]
 fn a_part_named_for_a_role_wears_the_role_not_its_controls_dress() {
     let mut d = mounted(

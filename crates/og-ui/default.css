@@ -1800,6 +1800,16 @@
     text-transform: var(--label-transform);
     color: var(--ink-label);
   }
+  /* A role part on a team (`data-team=a|b`) wears the team's colour as its
+     ink and rim. */
+  :where(:is([part$=".frame"], [part$=".plate"], [part$=".band"], [part$=".title"], [part$=".row"], [part$=".cell"],
+              [part$=".badge"], [part$=".well"], [part$=".figure"], [part$=".label"], [part$=".heading"])[data-team=a]) {
+    color: var(--team1); border-color: var(--team1);
+  }
+  :where(:is([part$=".frame"], [part$=".plate"], [part$=".band"], [part$=".title"], [part$=".row"], [part$=".cell"],
+              [part$=".badge"], [part$=".well"], [part$=".figure"], [part$=".label"], [part$=".heading"])[data-team=b]) {
+    color: var(--team2); border-color: var(--team2);
+  }
   :where([data-trend=up]) { color: var(--trend-up); }
   :where([data-trend=down]) { color: var(--trend-down); }
   :where([data-tone=damage]) { color: var(--tone-damage); }

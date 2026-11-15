@@ -1254,6 +1254,7 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 | text over a warn fill (Nameplate's spell) | `--ink-on-warn` | |
 | `label`, `heading` | `--label-font/tracking/transform`, `--ink-label` | |
 | any part | `--trend-up/down`, `--tone-damage/heal/crit` | `data-trend`, `data-tone` |
+| any role part | `--team1`, `--team2` | `data-team=a` and `data-team=b`: the team's colour as its ink and rim |
 
 `--mark-*` are the small signs a pack supplies as images and `--sfx-*`
 its press sounds; both are `none` in the default style.
