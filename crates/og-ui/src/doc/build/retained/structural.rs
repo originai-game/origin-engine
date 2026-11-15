@@ -520,6 +520,10 @@ impl RetainedHost {
                     !listeners.is_empty()
                 });
                 let element = self.elements.remove(&id).expect("mounted element");
+                for image in element.images {
+                    self.images.remove(&image);
+                    self.remove_child(ui, Child::Element(image));
+                }
                 for child in element.children {
                     self.remove_child(ui, child);
                 }

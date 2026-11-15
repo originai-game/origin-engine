@@ -1,29 +1,30 @@
+use super::super::nodes::Inner;
 use super::*;
 use crate::doc::schema::Kind;
 
 impl Ui {
     /// The elements the `feImage`s of the open element's filters name
     /// (`uses`, numbered as [`crate::paint::filter_uses`] numbers them),
-    /// each built as `<use>` would draw it (Filter Effects 1 §15.17): in
+    /// each drawn as `<use>` would draw it (Filter Effects 1 §15.17): in
     /// the filtered element's user space, moved by its `feImage`'s `x` and
-    /// `y`, inheriting from the filtered element. Each is a child of the
-    /// open element under an anonymous box whose draw is its element image
-    /// (`ElementDraw::element_image`), so it draws everything the element
-    /// draws (gradients, patterns, text, images, groups, `<use>`) into a
-    /// layer only the filter reads, takes no input and is in no tree a
-    /// reader walks. `of` is the filtered element's node, `computed` its
-    /// computed values.
+    /// `y`, inheriting from the filtered element. Each is an anonymous box
+    /// under the open element whose draw is its element image
+    /// (`ElementDraw::element_image`), inside which `build_inner` builds
+    /// the element ([`Inner::Image`]): mounted there again, so it follows
+    /// its bindings, blocks and components as the element itself does, and
+    /// draws everything it draws (gradients, patterns, text, images,
+    /// groups, `<use>`) into a layer only the filter reads. It takes no
+    /// input. `of` is the filtered element's node, `computed` its computed
+    /// values.
     pub(crate) fn build_element_images(
         &mut self,
-        b: &Build<'_>,
+        b: &mut Build<'_>,
         of: &DocNode,
         computed: &crate::doc::variables::Computed,
         uses: &[&crate::paint::FilterUse],
         space: ImageSpace,
+        build_inner: &mut impl FnMut(&mut Ui, &mut Build<'_>, Inner<'_>),
     ) {
-        if self.docs.state().element_images >= 4 {
-            return;
-        }
         let doc = b.doc.clone();
         let Some(of) = doc.nodes.iter().position(|d| std::ptr::eq(d, of)) else {
             return;
@@ -133,19 +134,18 @@ impl Ui {
                     element_image: Some(at),
                     ..ElementDraw::default()
                 });
-                let mut ib = Build {
-                    doc: doc.clone(),
-                    mount: b.mount.clone(),
-                    env: b.env,
-                    row_key: b.row_key.clone(),
+                let mut image = ElementImage {
+                    target,
                     inherited: std::sync::Arc::new(inherited),
-                    events: Vec::new(),
-                    writes: Vec::new(),
-                    cached: None,
+                    error: None,
                 };
-                self.docs.state_mut().element_images += 1;
-                self.build_static(&mut ib, target);
-                self.docs.state_mut().element_images -= 1;
+                build_inner(self, b, Inner::Image(&mut image));
+                if let Some(error) = image.error {
+                    self.out.warnings_mut().push(format!(
+                        "{}:{}: <feImage href=\"#{id}\"> cannot draw the element here: {error}",
+                        doc.source, doc.nodes[of].line
+                    ));
+                }
                 self.close();
             }
         }
@@ -406,7 +406,7 @@ impl Ui {
         key: u64,
         built: Built,
         vb: [f32; 4],
-        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
+        mut build_inner: impl FnMut(&mut Ui, &mut Build<'_>, Inner<'_>),
     ) -> Option<String> {
         let computed = r.cascade.computed.clone();
         let t = computed
@@ -478,7 +478,7 @@ impl Ui {
         }
         self.docs.note_built(built);
         let inherited = std::mem::replace(&mut b.inherited, computed);
-        build_children(self, b, None);
+        build_inner(self, b, Inner::Children(None));
         b.inherited = inherited;
         let resp = self.close();
         self.fire(b, n, key, &path, resp);
@@ -499,7 +499,7 @@ impl Ui {
         path: String,
         key: u64,
         built: Built,
-        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
+        mut build_inner: impl FnMut(&mut Ui, &mut Build<'_>, Inner<'_>),
     ) -> Option<String> {
         if kind == Kind::SvgDef {
             return None;
@@ -538,18 +538,7 @@ impl Ui {
             return Some(path);
         }
         if kind == Kind::SvgForeign {
-            return self.build_svg_foreign(
-                b,
-                n,
-                id,
-                r,
-                props,
-                path,
-                key,
-                built,
-                vb,
-                build_children,
-            );
+            return self.build_svg_foreign(b, n, id, r, props, path, key, built, vb, build_inner);
         }
         let mut el = Element {
             direction: Direction::Column,
@@ -746,12 +735,19 @@ impl Ui {
         }
         if let Some(f) = &filter {
             let bbox = f.svg.map_or([0.0; 4], |(_, bbox)| bbox);
-            self.build_element_images(b, n, &computed, &[&**f], ImageSpace::Svg(t, bbox));
+            self.build_element_images(
+                b,
+                n,
+                &computed,
+                &[&**f],
+                ImageSpace::Svg(t, bbox),
+                &mut build_inner,
+            );
         }
         self.docs.note_built(built);
         if kind != Kind::SvgShape {
             let inherited = std::mem::replace(&mut b.inherited, computed);
-            build_children(self, b, None);
+            build_inner(self, b, Inner::Children(None));
             b.inherited = inherited;
         }
         let resp = self.close();

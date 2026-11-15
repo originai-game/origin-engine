@@ -12,18 +12,25 @@ impl RetainedHost {
             .map(|identity| &self.elements[identity].record)
     }
 
+    /// Element `identity` and what is built in it: its element images,
+    /// then its children.
+    fn collect_element<'a>(&'a self, identity: &'a MountedNode, out: &mut Vec<&'a MountedNode>) {
+        let element = &self.elements[identity];
+        if element.slot.is_none() {
+            return;
+        }
+        out.push(identity);
+        for image in &element.images {
+            self.collect_element(image, out);
+        }
+        for child in &element.children {
+            self.collect_rendered(child, out);
+        }
+    }
+
     pub(crate) fn collect_rendered<'a>(&'a self, child: &'a Child, out: &mut Vec<&'a MountedNode>) {
         match child {
-            Child::Element(identity) => {
-                let element = &self.elements[identity];
-                if element.slot.is_none() {
-                    return;
-                }
-                out.push(identity);
-                for child in &element.children {
-                    self.collect_rendered(child, out);
-                }
-            }
+            Child::Element(identity) => self.collect_element(identity, out),
             Child::Branch(identity) => {
                 for child in &self.branches[identity].children {
                     self.collect_rendered(child, out);

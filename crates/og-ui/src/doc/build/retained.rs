@@ -205,6 +205,7 @@ impl RetainedHost {
         self.scrollers.retain(|node, _| &node.mount != mount);
         self.each.retain(|node, _| &node.mount != mount);
         self.branches.retain(|node, _| &node.mount != mount);
+        self.images.retain(|node, _| &node.mount != mount);
         self.collections.retain(|_, readers| {
             readers.retain(|node| &node.mount != mount);
             !readers.is_empty()
@@ -233,6 +234,10 @@ impl RetainedHost {
         let Some(element) = self.elements.get(node) else {
             return;
         };
+        // An element image's elements are drawn, not made: no action runs.
+        if element.image > 0 {
+            return;
+        }
         for (name, params) in &element.document.nodes[element.index].uses {
             let value = match (&changed, params) {
                 (Some((e, v)), Some(p)) if *e == p => v.clone(),

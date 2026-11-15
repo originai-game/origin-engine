@@ -363,3 +363,14 @@ pub enum ImageSpace {
     Svg(Affine, [f32; 4]),
     Css,
 }
+
+/// One element image for the host of the build to build inside the box
+/// open for it ([`super::nodes::Inner::Image`]): document node `target`,
+/// its root inheriting `inherited` (the filtered element's computed
+/// values under the image's transform and view box). The host answers in
+/// `error` why it built nothing.
+pub struct ElementImage {
+    pub target: usize,
+    pub inherited: Arc<crate::doc::variables::Computed>,
+    pub error: Option<String>,
+}

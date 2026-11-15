@@ -59,6 +59,12 @@ pub struct ElementInstance {
     pub style_dirty: bool,
     pub theme_epoch: u64,
     pub children: Vec<Child>,
+    /// The roots of the element images its filters draw ([`ImageMount`]),
+    /// as its last build asked for them.
+    pub images: Vec<MountedNode>,
+    /// How many element images it is inside (0: none): an image is drawn
+    /// 4 deep, and nothing in one sends an event or writes a store.
+    pub image: u32,
     pub bindings: Vec<BindingId>,
     /// Its render node and the parent it was written under, while it has one.
     pub slot: Option<usize>,
@@ -81,6 +87,22 @@ pub struct ElementInstance {
     pub run_in: Option<Arc<crate::doc::generated::Run>>,
     pub run_events: Arc<Vec<crate::doc::generated::Event>>,
     pub run_reads: bool,
+}
+
+/// An element image: the element an `<feImage href="#id">` names, mounted
+/// again for the element whose filter draws it
+/// ([`Ui::build_element_images`]). Its root is compiled in that element's
+/// context and built inside the image's box, but stands in the topology
+/// under no parent: it is no child or sibling of anything selectors match,
+/// and what it inherits is what the filtered element's build gives it.
+/// It is a picture: nothing in it answers input or sends an event.
+#[derive(Clone)]
+pub struct ImageMount {
+    /// The element whose filter draws it.
+    pub of: MountedNode,
+    /// What its root inherits: the filtered element's computed values
+    /// under the image's transform and view box.
+    pub inherited: Arc<super::super::variables::Computed>,
 }
 
 #[derive(Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -106,6 +128,10 @@ pub struct RetainedHost {
     pub restoring: bool,
     pub each: BTreeMap<MountedNode, EachInstance>,
     pub branches: BTreeMap<MountedNode, BranchInstance>,
+    /// The element images mounted, by their roots.
+    pub images: BTreeMap<MountedNode, ImageMount>,
+    /// While an element image's root is compiled: how deep it is.
+    pub imaging: u32,
     /// `use:` lifecycle events (made, params changed, gone) for the next
     /// build's answer.
     pub uses: Vec<DocEvent>,

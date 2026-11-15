@@ -195,7 +195,9 @@ impl RetainedHost {
                 }
                 self.topology
                     .set_materialization(id, Materialization::Deferred)?;
-                self.elements[id].children.clone()
+                let element = &self.elements[id];
+                let images = element.images.iter().cloned().map(Child::Element);
+                images.chain(element.children.iter().cloned()).collect()
             }
             Child::Branch(id) => self.branches[id].children.clone(),
             Child::Each(id) => {

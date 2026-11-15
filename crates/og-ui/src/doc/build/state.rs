@@ -51,9 +51,6 @@ pub struct DocState {
     /// the web keeps a hidden element's DOM, and showing it again is a field
     /// change. One never built is not built while hidden.
     pub keeps_hidden: bool,
-    /// How deep the element images being built are nested (an `feImage`
-    /// of an element whose filters draw element images): past 4, no more.
-    pub element_images: u32,
     /// View-transition covers still opening after their layer left: the
     /// covers, their colour and image and the tick it left.
     pub revealing: Vec<Revealing>,

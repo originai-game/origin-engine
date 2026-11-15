@@ -5,6 +5,7 @@
 //! from the camera and the entity's pose; its subtree is built again only
 //! when a binding it reads changes ([`Ui::keep_world_anchors`] places the
 //! ones not built this tick).
+use super::nodes::Inner;
 use super::*;
 use crate::doc::schema::Kind;
 use crate::world::{
@@ -544,7 +545,7 @@ impl Ui {
         path: String,
         key: u64,
         built: Built,
-        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
+        mut build_inner: impl FnMut(&mut Ui, &mut Build<'_>, Inner<'_>),
     ) -> Option<String> {
         let el = Self::box_of(
             r,
@@ -576,7 +577,7 @@ impl Ui {
         }
         self.tree.keep_world_panel(i, key, &mut self.world);
         self.docs.note_built(built);
-        build_children(self, b, None);
+        build_inner(self, b, Inner::Children(None));
         let resp = self.close();
         self.fire(b, n, key, &path, resp);
         Some(path)
@@ -819,7 +820,7 @@ impl Ui {
         path: String,
         key: u64,
         built: Built,
-        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
+        mut build_inner: impl FnMut(&mut Ui, &mut Build<'_>, Inner<'_>),
     ) -> Option<String> {
         if let Some(name) = r.str("mass").filter(|m| !m.is_empty()) {
             let name = name.to_owned();
@@ -858,7 +859,7 @@ impl Ui {
             .kept
             .insert(self.tree.nodes()[i].key, (desc, key));
         self.docs.note_built(built);
-        build_children(self, b, None);
+        build_inner(self, b, Inner::Children(None));
         let resp = self.close();
         self.fire(b, n, key, &path, resp);
         Some(path)

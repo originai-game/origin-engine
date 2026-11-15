@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI: feImage href=\"#id\" draws the element mounted",
+      "summary": "The element an <feImage href=\"#id\"> draws is mounted again where the filter is, in every document: its bound attributes follow their stores, and the {#if} and {#each} blocks and the components inside it are built. It reads what the filtered element can read (its stores, its {#each} row, its component's props); an element that reads a row the filtered element is not in draws nothing and warns. The image is a picture: nothing in it takes input, sends an event, writes a store or runs a use: action, and it is not a child of the filtered element for selectors."
+    }
+  ]
+}

@@ -325,3 +325,257 @@ fn smil_animations_play_on_the_ui_clock() {
         "{still:?}"
     );
 }
+
+const STAMP: &str = r##"
+<meta name="component" content="stamp">
+<div id="Root">
+  <div id="Box" class:plain={$plain}></div>
+  <svg id="Defs" width="1" height="1">
+    <defs>
+      <g id="Star">
+        <rect id="Body" width="10" height="10" fill={$color}/>
+        {#if $on}<circle id="Dot" cx="5" cy="5" r="2" fill="#0000ff"/>{/if}
+      </g>
+      {#each $rows as row (row.id)}<rect id="Cell" width="4" height="4" fill={row.fill}/>{/each}
+      <filter id="Stamp" x="0" y="0" width="1" height="1">
+        <feImage href="#Star" x="4" y="6" result="star"/>
+        <feComposite in="star" in2="SourceGraphic" operator="over"/>
+      </filter>
+      <filter id="Row" x="0" y="0" width="1" height="1"><feImage href="#Cell"/></filter>
+    </defs>
+  </svg>
+  <div id="Lost" class:on={$lost}></div>
+</div>
+<style>
+#Box { width: 40px; height: 40px; background: #202020; filter: url(#Stamp); }
+#Box.plain { filter: none; }
+#Box:empty { width: 60px; }
+#Lost { width: 8px; height: 8px; }
+#Lost.on { filter: url(#Row); }
+</style>"##;
+
+/// [`STAMP`] mounted over its stores, and what its mount holds: its
+/// elements, its bindings and its element images.
+fn stamp(plain: bool, lost: bool) -> Ui {
+    use crate::reactive::session::Command;
+    use serde_json::json;
+    let mut ui = Ui::new(UiDesc::default());
+    ui.define_document(UiDocument::parse("stamp.svelte", STAMP).unwrap());
+    let mut inputs = BTreeMap::new();
+    for (name, initial) in [
+        ("color", json!("#ff0000")),
+        ("on", json!(false)),
+        ("plain", json!(plain)),
+        ("lost", json!(lost)),
+    ] {
+        let source = SourceId::new("test", name);
+        ui.docs
+            .state_mut()
+            .memory
+            .reactive
+            .execute(Command::Signal {
+                source: source.clone(),
+                initial,
+                readable: false,
+            })
+            .unwrap();
+        inputs.insert(name.to_string(), source);
+    }
+    let rows = SourceId::new("test", "rows");
+    ui.docs
+        .state_mut()
+        .memory
+        .reactive
+        .execute(Command::Collection {
+            source: rows.clone(),
+            key: "id".into(),
+            items: vec![
+                json!({ "id": "a", "fill": "#00ff00" })
+                    .as_object()
+                    .unwrap()
+                    .clone(),
+            ],
+        })
+        .unwrap();
+    inputs.insert("rows".to_string(), rows);
+    ui.mount_document(
+        SourceId::new("test", "stamp"),
+        "stamp",
+        inputs,
+        BTreeMap::new(),
+        &crate::bind::NoEnv,
+    )
+    .unwrap();
+    ui
+}
+
+fn stamp_set(ui: &mut Ui, name: &str, value: serde_json::Value) {
+    ui.docs
+        .state_mut()
+        .memory
+        .reactive
+        .execute(crate::reactive::session::Command::Set {
+            source: SourceId::new("test", name),
+            value,
+            force: false,
+        })
+        .unwrap();
+}
+
+fn stamp_tick(ui: &mut Ui) -> crate::element::LayoutStats {
+    ui.begin(InputFrame::default(), Viewport::new(400.0, 400.0));
+    ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+    ui.end().stats
+}
+
+fn stamp_held(ui: &Ui) -> (usize, usize, usize) {
+    let host = &ui.docs.state().memory.retained;
+    (host.elements.len(), host.inputs.len(), host.images.len())
+}
+
+/// An `<feImage href="#id">` draws the element mounted: its bound fill
+/// follows its store, its `{#if}` block comes and goes, and the image is
+/// unmounted with the filter.
+///
+/// Ways it could fail: the image built from what is written (a bound fill
+/// reads nothing, a block is never built); the image counted among the
+/// filtered element's children (`:empty` stops matching); the image's
+/// bindings and elements left behind when the filter goes; the image built
+/// again every frame.
+#[test]
+fn an_fe_image_of_an_element_draws_it_mounted() {
+    use serde_json::json;
+    let mut ui = stamp(false, false);
+    let (set, tick, held) = (stamp_set, stamp_tick, stamp_held);
+    // What the mount holds before any image is mounted.
+    let bare = held(&ui);
+    let mut stats = Default::default();
+    for _ in 0..4 {
+        stats = tick(&mut ui);
+    }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    assert_eq!(
+        (stats.bindings, stats.reconciled),
+        (0, 0),
+        "idle: {stats:?}"
+    );
+    // Solid shapes by colour: their paths' centres from the box's top left.
+    let solid = |ui: &Ui, rgb: [f32; 3]| -> Vec<Vec2> {
+        let b = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.path == "test:stamp/Box")
+            .unwrap();
+        ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                DrawCmd::Shape { shape, .. } => match &shape.paint {
+                    og_draw::UiPaint::Solid(c) if (0..3).all(|k| (c[k] - rgb[k]).abs() < 0.05) => {
+                        let og_draw::UiGeometry::Path(p) = &shape.geometry else {
+                            panic!("a path: {:?}", shape.geometry);
+                        };
+                        let lo = p.points.iter().fold(Vec2::MAX, |m, q| m.min(*q));
+                        let hi = p.points.iter().fold(Vec2::MIN, |m, q| m.max(*q));
+                        Some(shape.center + (lo + hi) / 2.0 - Vec2::new(b.x, b.y))
+                    }
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect()
+    };
+    let paths = |ui: &Ui| -> Vec<String> {
+        ui.probe_elements()
+            .into_iter()
+            .map(|e| e.path)
+            .filter(|p| p.contains("~image"))
+            .collect()
+    };
+    // The body, red, 10 px square at (4, 6) of the box: centre (9, 11).
+    let red = solid(&ui, [1.0, 0.0, 0.0]);
+    assert_eq!(red.len(), 1, "{red:?} {:?}", paths(&ui));
+    assert!((red[0] - Vec2::new(9.0, 11.0)).length() < 0.6, "{red:?}");
+    assert!(solid(&ui, [0.0, 0.0, 1.0]).is_empty(), "the dot is off");
+    // The image is no child of the box: `:empty` still sizes it.
+    let width = |ui: &Ui| {
+        ui.probe_elements()
+            .into_iter()
+            .find(|e| e.path == "test:stamp/Box")
+            .unwrap()
+            .width
+    };
+    assert_eq!(width(&ui), 60.0);
+    assert_eq!(held(&ui).2, 1);
+    // Its fill follows the store, its block is built.
+    set(&mut ui, "color", json!("#00ff00"));
+    set(&mut ui, "on", json!(true));
+    tick(&mut ui);
+    assert!(solid(&ui, [1.0, 0.0, 0.0]).is_empty());
+    assert_eq!(solid(&ui, [0.0, 1.0, 0.0]).len(), 1);
+    let blue = solid(&ui, [0.0, 0.0, 1.0]);
+    assert_eq!(blue.len(), 1, "{:?}", paths(&ui));
+    assert!((blue[0] - Vec2::new(9.0, 11.0)).length() < 0.6, "{blue:?}");
+    assert_eq!(width(&ui), 60.0);
+    set(&mut ui, "on", json!(false));
+    tick(&mut ui);
+    assert!(solid(&ui, [0.0, 0.0, 1.0]).is_empty());
+    for _ in 0..3 {
+        stats = tick(&mut ui);
+    }
+    assert_eq!(
+        (stats.bindings, stats.reconciled),
+        (0, 0),
+        "idle: {stats:?}"
+    );
+    // Without the filter the image is unmounted, with all it held.
+    set(&mut ui, "plain", json!(true));
+    tick(&mut ui);
+    assert!(solid(&ui, [0.0, 1.0, 0.0]).is_empty());
+    assert!(paths(&ui).is_empty(), "{:?}", paths(&ui));
+    assert_eq!(held(&ui), bare);
+    // And mounted again with it.
+    set(&mut ui, "plain", json!(false));
+    tick(&mut ui);
+    assert_eq!(solid(&ui, [0.0, 1.0, 0.0]).len(), 1);
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+}
+
+/// An element that cannot be mounted where the filter is (it reads the row
+/// of an `{#each}` the filtered element is not in) draws nothing, says so,
+/// and leaves nothing behind: its half-made bindings would otherwise be
+/// refreshed with no element to take them.
+#[test]
+fn an_fe_image_of_an_element_out_of_its_row_is_refused_whole() {
+    use crate::reactive::session::Command;
+    use serde_json::json;
+    let mut ui = stamp(true, true);
+    let bare = stamp_held(&ui);
+    stamp_tick(&mut ui);
+    let warnings = ui.frame().warnings.clone();
+    assert!(
+        warnings.len() == 1
+            && warnings[0].contains("<feImage href=\"#Cell\"> cannot draw the element here"),
+        "{warnings:?}"
+    );
+    assert_eq!(stamp_held(&ui), bare);
+    // The stores it would have read change: nothing is left to refresh.
+    ui.docs
+        .state_mut()
+        .memory
+        .reactive
+        .execute(Command::Insert {
+            source: SourceId::new("test", "rows"),
+            row: json!({ "id": "b", "fill": "#0000ff" })
+                .as_object()
+                .unwrap()
+                .clone(),
+            before: None,
+        })
+        .unwrap();
+    stamp_set(&mut ui, "color", json!("#00ff00"));
+    for _ in 0..2 {
+        stamp_tick(&mut ui);
+    }
+    assert_eq!(stamp_held(&ui).2, 0);
+}

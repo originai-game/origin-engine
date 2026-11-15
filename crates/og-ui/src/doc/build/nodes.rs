@@ -28,96 +28,26 @@ fn css_text<'a>(r: &Resolved, language: &str, raw: &'a str) -> std::borrow::Cow<
     }
 }
 
-impl Ui {
-    /// Builds element `i` and the elements written in it with no stores to
-    /// read: what an element image draws (`<feImage href="#id">`,
-    /// [`Ui::build_element_images`]). Its bindings read nothing, and the
-    /// blocks and components in it are not built. Answers its path (none
-    /// when it is not shown).
-    pub(crate) fn build_static(&mut self, b: &mut Build<'_>, i: usize) -> Option<String> {
-        let doc = b.doc.clone();
-        let n = &doc.nodes[i];
-        let NodeKind::Element(kind) = n.kind else {
-            return None;
-        };
-        let id = if n.id.is_empty() {
-            // Anonymous: its kind and its place among same-kind siblings.
-            let k = doc.nodes[n.parent]
-                .children
-                .iter()
-                .take_while(|&&c| c != i)
-                .filter(|&&c| doc.nodes[c].id.is_empty() && doc.nodes[c].kind == n.kind)
-                .count();
-            format!("{kind}#{k}")
-        } else {
-            n.id.clone()
-        };
-        let parent_path = self.tree.path_of(self.tree.parent());
-        let path = if parent_path == "root" {
-            id.clone()
-        } else {
-            format!("{parent_path}/{id}")
-        };
-        let key = crate::id::key_of_path(&path);
-        let mut built = Built {
-            path: path.clone(),
-            doc: doc.name.clone(),
-            node: i,
-            line: n.line,
-            mount: b.mount.clone(),
-            ..Built::default()
-        };
-        let opened = self.enter_structure(b, i);
-        let children = self.child_level(b, n);
-        let mut r = self.resolve(b, n, &path, &mut built, &b.inherited, &mut |s| {
-            self.docs.structure_matches(&doc, s)
-        });
-        r.ordinal = self.docs.ordinal_of(n, &r, |filter, item_values| {
-            self.docs.structure_ordinal(filter, item_values)
-        });
-        let bursts = self.burst_errors(&r);
-        self.out.warnings_mut().extend(
-            r.cascade
-                .diagnostics
-                .iter()
-                .chain(&bursts)
-                .map(|error| format!("{}:{} ({path}): {error}", doc.source, n.line)),
-        );
-        let structural = children.is_some();
-        self.docs.state.levels.extend(children);
-        self.docs.run_enter(&r);
-        let built = self.build_resolved_node(
-            b,
-            i,
-            ResolvedNode {
-                id,
-                path,
-                key,
-                values: r,
-                probe: built,
-            },
-            |ui, b, _| {
-                for &child in &n.children {
-                    ui.build_static(b, child);
-                }
-            },
-        );
-        self.docs.run_exit();
-        if structural {
-            self.docs.state.levels.pop();
-        }
-        if opened {
-            self.docs.state.levels.pop();
-        }
-        built
-    }
+/// What an element's build asks its host to build inside it, under the
+/// box it has open.
+pub(crate) enum Inner<'a> {
+    /// Its children; a virtual container's with the props its rows take.
+    Children(Option<Box<Props>>),
+    /// An element image of its filters (`<feImage href="#id">`,
+    /// [`Ui::build_element_images`]).
+    Image(&'a mut super::svg::ElementImage),
+}
 
+impl Ui {
+    /// Builds element `i` from its resolved values. `build_inner` builds
+    /// what stands inside it: its children once, where it shows them, and
+    /// before them each element image its filters draw.
     pub(crate) fn build_resolved_node(
         &mut self,
         b: &mut Build<'_>,
         i: usize,
         resolved: ResolvedNode,
-        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
+        build_inner: impl FnMut(&mut Ui, &mut Build<'_>, Inner<'_>),
     ) -> Option<String> {
         let doc = b.doc.clone();
         let n = &doc.nodes[i];
@@ -167,10 +97,10 @@ impl Ui {
             return self.build_viewport(b, n, id.as_str(), &r, props, path, key, built);
         }
         if kind == Kind::Anchor {
-            return self.build_anchor(b, n, &r, props, path, key, built, build_children);
+            return self.build_anchor(b, n, &r, props, path, key, built, build_inner);
         }
         if kind == Kind::Ground || (kind == Kind::Panel && r.flag("world")) {
-            return self.build_world_panel(b, n, &r, props, path, key, built, build_children);
+            return self.build_world_panel(b, n, &r, props, path, key, built, build_inner);
         }
         if kind.svg() {
             return self.build_svg(
@@ -183,11 +113,11 @@ impl Ui {
                 path,
                 key,
                 built,
-                build_children,
+                build_inner,
             );
         }
         if r.has("popover") {
-            return self.build_popover(b, n, id.as_str(), &r, path, key, built, build_children);
+            return self.build_popover(b, n, id.as_str(), &r, path, key, built, build_inner);
         }
         let t = *self.env.theme();
         let raw_of = |r: &Resolved, b: &Build<'_>| -> String {
@@ -228,7 +158,7 @@ impl Ui {
                 &r,
                 props,
                 built,
-                build_children,
+                build_inner,
             );
         }
         // Keep the widget's intrinsic box separate from CSS-owned fields.
@@ -588,7 +518,7 @@ impl Ui {
         r: &Resolved,
         props: Props,
         built: Built,
-        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
+        mut build_inner: impl FnMut(&mut Ui, &mut Build<'_>, Inner<'_>),
     ) -> Option<String> {
         let mut resp = crate::ui::Response::default();
         // A dialog's or a disclosure's `open`: the bound store's, else the
@@ -666,7 +596,7 @@ impl Ui {
             }
             Kind::List | Kind::Cells => {
                 let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
-                build_children(self, b, Some(props.clone()));
+                build_inner(self, b, Inner::Children(Some(Box::new(props.clone()))));
                 b.inherited = inherited;
                 let at = self.tree.last_closed();
                 if at != NONE && at < self.tree.nodes().len() && self.tree.nodes()[at].key == key {
@@ -824,20 +754,19 @@ impl Ui {
             });
             if images && let Some(c) = css.cloned() {
                 let uses = crate::paint::filter_uses(&c.effects, c.layer.as_ref(), &c.filters);
-                {
-                    self.build_element_images(
-                        b,
-                        n,
-                        &r.cascade.computed,
-                        &uses,
-                        super::svg::ImageSpace::Css,
-                    );
-                }
+                self.build_element_images(
+                    b,
+                    n,
+                    &r.cascade.computed,
+                    &uses,
+                    super::svg::ImageSpace::Css,
+                    &mut build_inner,
+                );
             }
             let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
-            self.generated_box(b, n, r, &path, true);
-            build_children(self, b, None);
-            self.generated_box(b, n, r, &path, false);
+            self.generated_box(b, n, r, &path, true, &mut build_inner);
+            build_inner(self, b, Inner::Children(None));
+            self.generated_box(b, n, r, &path, false, &mut build_inner);
             b.inherited = inherited;
         }
         match shell {

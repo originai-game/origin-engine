@@ -2,13 +2,15 @@
 //! `::marker` content, `::first-letter` runs, and the document-order
 //! counter and quote run ([`crate::doc::generated::Run`]) every element
 //! moves as it is built.
+use super::nodes::Inner;
 use super::*;
 use crate::doc::generated::{self as gc, Content, PseudoBox, Quotes};
 
 impl Ui {
     /// A box's `::before` or `::after`: its generated text, styled by the
     /// pseudo-element's text properties, in the pseudo-element's own box
-    /// when it has one ([`crate::doc::DocNode::pseudo`]).
+    /// when it has one ([`crate::doc::DocNode::pseudo`]). `build_inner`
+    /// builds the element images that box's filters draw.
     pub(crate) fn generated_box(
         &mut self,
         b: &mut Build<'_>,
@@ -16,6 +18,7 @@ impl Ui {
         r: &Resolved,
         path: &str,
         before: bool,
+        build_inner: &mut dyn FnMut(&mut Ui, &mut Build<'_>, Inner<'_>),
     ) {
         let Some(g) = r.generated.clone() else {
             return;
@@ -45,7 +48,10 @@ impl Ui {
         };
         match self.style.pseudo_node(b, r, path, &name[2..]) {
             Some((at, node)) => {
-                self.build_resolved_node(b, at, node, |ui, _, _| run(ui));
+                self.build_resolved_node(b, at, node, |ui, b, inner| match inner {
+                    Inner::Children(_) => run(ui),
+                    image => build_inner(ui, b, image),
+                });
             }
             None => run(self),
         }

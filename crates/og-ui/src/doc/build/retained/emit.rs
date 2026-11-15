@@ -1,5 +1,8 @@
+use super::nodes::Inner;
+use super::svg::ElementImage;
 use super::*;
 use crate::doc::schema::Kind;
+use crate::reactive::bindings::BindingId;
 
 /// An element that changes without a binding, so is built every frame: a
 /// player, whose picture and time are its media's, and a viewport whose
@@ -141,18 +144,29 @@ impl RetainedHost {
         let mut b = e.build(env, resolved.values.cascade.computed.clone());
         let mut result = Ok(());
         let mut children_built = false;
+        let mut images = Vec::new();
         ui.docs.run_enter(&resolved.values);
         *ui.tree.scope_mut() = e.scope.clone();
-        ui.build_resolved_node(&mut b, e.index, resolved.clone(), |ui, b, virtual_props| {
-            *ui.tree.scope_mut() = None;
-            children_built = true;
-            result = if let Some(props) = virtual_props {
-                self.emit_virtual(ui, &e, b, props, env, events, writes)
-            } else {
-                e.children
-                    .iter()
-                    .try_for_each(|child| self.emit(ui, child, env, events, writes))
+        ui.build_resolved_node(&mut b, e.index, resolved.clone(), |ui, b, inner| {
+            let built = match inner {
+                Inner::Children(virtual_props) => {
+                    *ui.tree.scope_mut() = None;
+                    children_built = true;
+                    if let Some(props) = virtual_props {
+                        self.emit_virtual(ui, &e, b, *props, env, events, writes)
+                    } else {
+                        e.children
+                            .iter()
+                            .try_for_each(|child| self.emit(ui, child, env, events, writes))
+                    }
+                }
+                Inner::Image(image) => {
+                    self.emit_image(ui, identity, image, &mut images, env, events, writes)
+                }
             };
+            if result.is_ok() {
+                result = built;
+            }
         });
         *ui.tree.scope_mut() = None;
         ui.docs.run_exit();
@@ -168,12 +182,16 @@ impl RetainedHost {
         *ui.tree.in_place_mut() = None;
         let owned = ui.tree.owning_mut().pop().expect("pushed");
         let record = ui.docs.state_mut().capture.pop().expect("pushed");
-        events.extend(b.events);
-        writes.extend(
-            b.writes
-                .into_iter()
-                .map(|(path, value)| (e.context.clone(), path, value)),
-        );
+        // An element image is a picture: what its elements would send or
+        // write, the elements it draws already do.
+        if e.image == 0 {
+            events.extend(b.events);
+            writes.extend(
+                b.writes
+                    .into_iter()
+                    .map(|(path, value)| (e.context.clone(), path, value)),
+            );
+        }
         let slot = owned.slots.iter().copied().find(|&i| {
             ui.tree.nodes()[i].key == identity.key
                 && (ui.tree.nodes()[i].parent == parent_slot || ui.tree.nodes()[i].parent == NONE)
@@ -239,6 +257,20 @@ impl RetainedHost {
         element.run_in = run_in;
         element.run_events = run_events;
         element.run_reads = reads_run;
+        if slot.is_none() {
+            // Not shown: its element images stay mounted, as its children do.
+            for image in &e.images {
+                self.release(ui, &Child::Element(image.clone()));
+            }
+        } else {
+            // Built: an image it no longer asks for (its filter or the
+            // `feImage`'s `href` went, or it shows no content) is unmounted.
+            for image in e.images.iter().filter(|image| !images.contains(image)) {
+                self.images.remove(image);
+                self.remove_child(ui, Child::Element(image.clone()));
+            }
+            self.elements.get_mut(identity).unwrap().images = images;
+        }
         if slot.is_none() || !children_built {
             // Not shown (`visible` false), or showing no content (a closed
             // dialog or disclosure): its descendants' nodes go too, and are
@@ -248,6 +280,130 @@ impl RetainedHost {
             }
         }
         result
+    }
+
+    /// Builds element image `image` of element `of`, inside the box `of`'s
+    /// build has open for it: mounts the element it draws on first use
+    /// (compiled in `of`'s context, so it reads what `of` reads: its
+    /// stores, its row, its component's props), then emits it as any
+    /// mounted element. `asked` takes its root. An element that cannot be
+    /// compiled there (it reads a row `of` is not in) draws nothing and
+    /// says why in `image.error`.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn emit_image(
+        &mut self,
+        ui: &mut Ui,
+        of: &MountedNode,
+        image: &mut ElementImage,
+        asked: &mut Vec<MountedNode>,
+        env: &dyn Env,
+        events: &mut Vec<DocEvent>,
+        writes: &mut Vec<(BindingContext, String, Value)>,
+    ) -> Result<(), String> {
+        let filtered = &self.elements[of];
+        // An image of an element whose filters draw images: 4 deep.
+        if filtered.image >= 4 {
+            return Ok(());
+        }
+        let (document, context, depth) = (
+            filtered.document.clone(),
+            filtered.context.clone(),
+            filtered.image + 1,
+        );
+        // Its root's path is its render node's: under the image's box.
+        let path = format!(
+            "{}/{}",
+            ui.tree.path_of(ui.tree.parent()),
+            document.nodes[image.target].id
+        );
+        let root = MountedNode {
+            mount: of.mount.clone(),
+            key: crate::id::key_of_path(&path),
+        };
+        match self.images.get_mut(&root) {
+            Some(mounted) => {
+                if mounted.inherited != image.inherited {
+                    mounted.inherited = image.inherited.clone();
+                    self.elements.get_mut(&root).unwrap().style_dirty = true;
+                }
+            }
+            None => {
+                let mark = self.inputs.keys().next_back().copied();
+                self.imaging = depth;
+                let compiled = self.compile(ui, (document, image.target), context, None, path, env);
+                self.imaging = 0;
+                if let Err(error) = compiled {
+                    self.discard(ui, &root, mark);
+                    image.error = Some(error);
+                    return Ok(());
+                }
+                self.images.insert(
+                    root.clone(),
+                    ImageMount {
+                        of: of.clone(),
+                        inherited: image.inherited.clone(),
+                    },
+                );
+            }
+        }
+        asked.push(root.clone());
+        self.emit_element(ui, &root, false, env, events, writes)
+    }
+
+    /// Takes back what a failed compile of the element `root` left: the
+    /// bindings made after `mark`, and the elements and blocks under it.
+    fn discard(&mut self, ui: &mut Ui, root: &MountedNode, mark: Option<BindingId>) {
+        let made: Vec<BindingId> = match mark {
+            Some(mark) => self
+                .inputs
+                .range((std::ops::Bound::Excluded(mark), std::ops::Bound::Unbounded))
+                .map(|(id, _)| *id)
+                .collect(),
+            None => self.inputs.keys().copied().collect(),
+        };
+        for id in made {
+            self.bindings
+                .remove(&mut ui.docs.state_mut().memory.reactive, id);
+            self.inputs.remove(&id);
+            self.pending_bindings.remove(&id);
+        }
+        if self.topology.node(root).is_none() {
+            return;
+        }
+        let mut under = BTreeSet::new();
+        let mut pending = vec![root.clone()];
+        while let Some(node) = pending.pop() {
+            pending.extend(self.topology.children(Some(&node), 0..usize::MAX).cloned());
+            under.insert(node);
+        }
+        self.topology.remove(root).expect("compiled root");
+        self.branches
+            .retain(|_, branch| !under.contains(&branch.parent));
+        let each = &mut self.each;
+        each.retain(|_, each| !under.contains(&each.parent));
+        self.collections.retain(|_, readers| {
+            readers.retain(|reader| each.contains_key(reader));
+            !readers.is_empty()
+        });
+        self.on_action.retain(|_, listeners| {
+            listeners.retain(|node| !under.contains(node));
+            !listeners.is_empty()
+        });
+        for node in under {
+            self.elements.remove(&node);
+            self.by_key.remove(&node.key);
+            self.dirty.remove(&node);
+            self.emit.remove(&node);
+            self.volatile.remove(&node);
+        }
+    }
+
+    /// The element whose node `identity`'s stands under: its parent, or
+    /// for an element image's root the element whose filter draws it.
+    pub(crate) fn render_parent(&self, identity: &MountedNode) -> Option<&MountedNode> {
+        self.topology
+            .parent(identity)
+            .or_else(|| self.images.get(identity).map(|image| &image.of))
     }
 
     /// Writes again, into the slots they hold, the elements whose parents
@@ -290,7 +446,7 @@ impl RetainedHost {
             if !self.unbuilt_hidden.contains(&identity) || !shown || !visible(self, &identity) {
                 continue;
             }
-            let mut at = self.topology.parent(&identity).cloned();
+            let mut at = self.render_parent(&identity).cloned();
             while let Some(parent) = at {
                 if holds(self, &parent) {
                     self.emit.insert(parent);
@@ -299,7 +455,7 @@ impl RetainedHost {
                 if !visible(self, &parent) {
                     break;
                 }
-                at = self.topology.parent(&parent).cloned();
+                at = self.render_parent(&parent).cloned();
             }
         }
         let mut pending: Vec<(usize, MountedNode)> = self
@@ -307,10 +463,10 @@ impl RetainedHost {
             .iter()
             .map(|identity| {
                 let mut depth = 0;
-                let mut at = self.topology.parent(identity);
+                let mut at = self.render_parent(identity);
                 while let Some(parent) = at {
                     depth += 1;
-                    at = self.topology.parent(parent);
+                    at = self.render_parent(parent);
                 }
                 (depth, identity.clone())
             })
@@ -396,6 +552,9 @@ impl RetainedHost {
                     return;
                 }
                 self.release_element(ui, identity);
+                for image in self.elements[identity].images.clone() {
+                    self.release(ui, &Child::Element(image));
+                }
                 for child in self.elements[identity].children.clone() {
                     self.release(ui, &child);
                 }

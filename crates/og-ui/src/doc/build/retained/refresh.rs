@@ -558,16 +558,23 @@ impl RetainedHost {
         }
         let structurally_stale = ui.docs.library.structure.ancestors
             && self.topology.style_is_stale(identity) == Some(true);
-        let inherited = parent.as_ref().map_or_else(Arc::default, |p| {
-            self.elements[p]
+        let inherited = match &parent {
+            Some(p) => self.elements[p]
                 .resolved
                 .as_ref()
                 .unwrap()
                 .values
                 .cascade
                 .computed
-                .clone()
-        });
+                .clone(),
+            // An element image's root inherits what the filtered element's
+            // build gave it.
+            None => self
+                .images
+                .get(identity)
+                .map(|image| image.inherited.clone())
+                .unwrap_or_default(),
+        };
         let e = self.elements.get_mut(identity).unwrap();
         // An instance's root inherits the instance's style props as if a
         // box around it set them: its own rules and `style:` win. Null (or

@@ -15,6 +15,7 @@
 //! anchor.
 
 pub(crate) use super::host::Mode;
+use super::nodes::Inner;
 use super::*;
 
 /// A popover's key in its mount: ids are unique in a document.
@@ -140,7 +141,7 @@ impl Ui {
         path: String,
         key: u64,
         built: Built,
-        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
+        mut build_inner: impl FnMut(&mut Ui, &mut Build<'_>, Inner<'_>),
     ) -> Option<String> {
         if let Some(owned) = self.tree.owning_mut().last_mut() {
             owned.moved = true;
@@ -224,7 +225,7 @@ impl Ui {
             let out = self.floating(&local, open, anchor, content, |ui| {
                 layer_at = ui.tree.parent();
                 layer = ui.tree.nodes()[layer_at].key;
-                build_children(ui, b, None);
+                build_inner(ui, b, Inner::Children(None));
             });
             if out.dismissed {
                 self.set_popover_open(pk, false);
@@ -244,7 +245,7 @@ impl Ui {
             );
             layer = self.tree.nodes()[i].key;
             layer_at = i;
-            build_children(self, b, None);
+            build_inner(self, b, Inner::Children(None));
             self.close();
         }
         if layer_at != NONE {

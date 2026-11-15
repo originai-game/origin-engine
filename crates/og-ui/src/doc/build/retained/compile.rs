@@ -120,6 +120,8 @@ impl RetainedHost {
             style_dirty: true,
             theme_epoch: self.theme_epoch,
             children: Vec::new(),
+            images: Vec::new(),
+            image: parent.map_or(self.imaging, |parent| self.elements[parent].image),
             bindings: Vec::new(),
             slot: None,
             parent_slot: NONE,
