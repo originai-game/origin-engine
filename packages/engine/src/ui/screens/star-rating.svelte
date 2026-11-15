@@ -12,7 +12,9 @@
 
 <style>
 #Stars { display: flex; gap: var(--space-xs); }
-.star { width: var(--size-md); height: var(--size-md); color: var(--well); }
+/* An unlit star is the faintest ink that still reads, as StarBar's unlit
+   mark is: --well is a ground and vanishes on the dark ones. */
+.star { width: var(--size-md); height: var(--size-md); color: var(--ink-faint); }
 .star.lit { color: var(--accent); animation: land var(--motion-named-ui-duration) ease-out both; animation-delay: calc(var(--i) * var(--motion-duration-instant)); }
 @keyframes land { from { scale: 0.4; opacity: 0; } 70% { scale: 1.2; opacity: 1; } to { scale: 1; } }
 </style>
