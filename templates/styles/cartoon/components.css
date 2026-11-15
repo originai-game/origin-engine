@@ -51,8 +51,8 @@ button::part(RadialMenu\.item), button::part(RadialMenu\.item):hover, button::pa
 [part="TooltipCard.badge"] { background: var(--well); box-shadow: none; }
 
 /* ── Table: a cell is a quiet button in a grid, not a tile. */
-button::part(table\.cell) { border: none; background: none; box-shadow: none; font-family: var(--font-body); color: var(--ink); }
-button::part(table\.cell):hover { background: var(--button-quiet-hover-fill); }
+button::part(table\.entry) { border: none; background: none; box-shadow: none; font-family: var(--font-body); color: var(--ink); }
+button::part(table\.entry):hover { background: var(--button-quiet-hover-fill); }
 
 /* ── StarBar: an earned star and the fill are bright yellow in the dark
    outline in both schemes. */

@@ -124,6 +124,3 @@ worked around in CSS.
   `AbilityBar.badge`) are as wide as the slot, so on a slot that shows both
   their plates cover its icon (fantasy too; the default style draws them
   without a plate).
-- The default style dresses every `[part$=".cell"]` as a tile, readouts
-  included (a lap count, a score, a wave number, a table's cell): each
-  file restyles those cells by name.

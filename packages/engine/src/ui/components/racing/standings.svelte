@@ -1,6 +1,6 @@
 <meta name="component" content="RacingStandings">
 <meta name="strings" content="./racing.en.ogt">
-<meta name="parts" content="RacingStandings.frame RacingStandings.band RacingStandings.title RacingStandings.row RacingStandings.cell RacingStandings.name RacingStandings.gap RacingStandings.badge">
+<meta name="parts" content="RacingStandings.frame RacingStandings.band RacingStandings.title RacingStandings.row RacingStandings.place RacingStandings.name RacingStandings.gap RacingStandings.badge">
 <meta name="prop:title" content="string" data-doc="The board's heading; empty takes the kit's (Standings).">
 <meta name="prop:rows" content="list" data-doc="The running order as the game ranks it, keyed rows of { id, position, name, gap, player, state }: position the place shown; gap the interval as the game words it (+1.204, +1 lap; empty for the leader); player marks the local player's row (You); state racing, pitting, retired or finished, each with a word as well as its dress.">
 <meta name="fixture:default" content='{"title":"","rows":[{"id":"marlow","position":1,"name":"Marlow","gap":"","player":false,"state":"racing"},{"id":"okafor","position":2,"name":"Okafor","gap":"+0.884","player":false,"state":"racing"},{"id":"you","position":3,"name":"Rhea Vance","gap":"+1.512","player":true,"state":"racing"},{"id":"lindqvist","position":4,"name":"Lindqvist","gap":"+3.020","player":false,"state":"pitting"},{"id":"sato","position":5,"name":"Sato","gap":"+1 lap","player":false,"state":"racing"},{"id":"brandt","position":6,"name":"Brandt","gap":"","player":false,"state":"retired"}]}'>
@@ -22,7 +22,7 @@
       <div class="rows" role="list" aria-label={title != '' ? title : t("racing.standings.name")}>
         {#each rows as r (r.id)}
           <div part="RacingStandings.row" role="listitem" aria-current={r.player} aria-label={r.name} data-player={r.player} data-state={r.state}>
-            <span part="RacingStandings.cell" class="place">{formatNumber(r.position)}</span>
+            <span part="RacingStandings.place" class="place">{formatNumber(r.position)}</span>
             <span part="RacingStandings.name" class="name">{r.name}</span>
             <span class="you" hidden={!r.player}>{t("racing.standings.you")}</span>
             <span part="RacingStandings.badge" class="state" data-state={r.state} hidden={r.state == 'racing'} aria-label={r.state == 'pitting' ? t("racing.standings.pittingName") : (r.state == 'retired' ? t("racing.standings.retiredName") : t("racing.standings.finishedName"))}>{r.state == 'pitting' ? t("racing.standings.pitting") : (r.state == 'retired' ? t("racing.standings.retired") : t("racing.standings.finished"))}</span>

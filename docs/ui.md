@@ -1157,6 +1157,10 @@ dresses every part of a role once, from that role's tokens
 (`packages/design/tokens/role.css`). A pack restyles all of them by
 setting the tokens; it writes a rule only for what one component alone
 wears. The role rules sit in `:where()`, so any pack or document rule wins.
+A `cell` is a tile the player picks or reads as one (an item, a card, an
+ability, an equipment slot); a readout is not a cell, and is named for what
+it shows (`RacingLapHud.readout`, `RacingStandings.place`,
+`ArenaScoreboard.stat`), which no role rule dresses.
 
 | Role (`part$=".<role>"`) | Tokens | States the default dresses |
 |---|---|---|

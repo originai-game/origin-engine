@@ -95,10 +95,10 @@ button.cancel::part(base) { padding: 0; border-radius: var(--radius-sm); }
 [part="StrategyQueue.row"] .cancel { color: var(--ink-label); }
 
 /* ── Waves: the count and the timer as sunk readouts. */
-[part="StrategyWave.cell"] { padding: var(--cartoon-readout-pad); border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--well-radius); background: var(--well-fill); box-shadow: var(--well-shadow); }
-[part="StrategyWave.cell"] .now { font-family: var(--font-display); font-size: var(--font-step-4xl); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
-[part="StrategyWave.cell"] .of { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--ink-muted); }
-[part="StrategyWave.frame"][data-final=true] [part="StrategyWave.cell"] .now { color: var(--gold); }
+[part="StrategyWave.readout"] { padding: var(--cartoon-readout-pad); border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--well-radius); background: var(--well-fill); box-shadow: var(--well-shadow); }
+[part="StrategyWave.readout"] .now { font-family: var(--font-display); font-size: var(--font-step-4xl); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
+[part="StrategyWave.readout"] .of { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--ink-muted); }
+[part="StrategyWave.frame"][data-final=true] [part="StrategyWave.readout"] .now { color: var(--gold); }
 [part="StrategyWave.badge"].phase[data-phase=active] { color: var(--danger); }
 [part="StrategyWave.badge"].phase[data-phase=done] { color: var(--success); }
 [part="StrategyWave.badge"].final, [part="StrategyWave.badge"].boss { background: var(--primary); color: var(--on-primary); }
@@ -136,6 +136,6 @@ button.cancel::part(base) { padding: 0; border-radius: var(--radius-sm); }
 [part="StrategyTower.frame"] .refund { font-family: var(--label-font); font-size: var(--font-step-xs); letter-spacing: var(--label-tracking); color: var(--gold); }
 
 @media (width < 600px) {
-  [part="StrategyWave.cell"] .now { font-size: var(--font-step-3xl); }
+  [part="StrategyWave.readout"] .now { font-size: var(--font-step-3xl); }
   :is([part="StrategySelection.frame"], [part="StrategyTower.frame"]) { padding: var(--space-sm); }
 }

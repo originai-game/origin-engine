@@ -121,8 +121,8 @@ button[aria-checked=true]::part(IdlePurchases\.amount) { border-color: var(--gol
 [part="IdlePrestige.frame"] .currency { font-family: var(--label-font); font-size: var(--font-step-md); letter-spacing: var(--font-tracking-lg); color: var(--title-ink); }
 [part="IdlePrestige.row"] { border-bottom: var(--stroke-hairline) solid var(--line-strong-15); }
 [part="IdlePrestige.name"] { font-size: var(--font-step-md); color: var(--ink-label); }
-[part="IdlePrestige.cell"] { font-family: var(--font-mono); font-size: var(--font-step-md); color: var(--figure-ink); }
-[part="IdlePrestige.cell"][data-tag=after] { color: var(--trend-up); }
+[part="IdlePrestige.readout"] { font-family: var(--font-mono); font-size: var(--font-step-md); color: var(--figure-ink); }
+[part="IdlePrestige.readout"][data-tag=after] { color: var(--trend-up); }
 [part="IdlePrestige.requirement"] { border: var(--stroke-hairline) solid var(--line-strong-33); border-radius: var(--radius-xs); background: var(--hud); }
 [part="IdlePrestige.requirement"] .req-text { font-size: var(--font-step-md); }
 [part="IdlePrestige.badge"][data-met=true] { color: var(--success); border-color: var(--success); }

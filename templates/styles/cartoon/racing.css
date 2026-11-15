@@ -51,10 +51,10 @@
 [part="RacingTelemetry.badge"] { background: var(--primary); color: var(--on-primary); }
 
 /* ── Lap and position: each a sunk readout. */
-[part="RacingLapHud.cell"] { padding: var(--cartoon-readout-pad); border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--well-radius); background: var(--well-fill); box-shadow: var(--well-shadow); }
-[part="RacingLapHud.cell"] .now { font-family: var(--font-display); font-size: var(--font-step-4xl); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
-[part="RacingLapHud.cell"] .of { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--ink-muted); }
-[part="RacingLapHud.cell"][data-final=true] .now { color: var(--gold); }
+[part="RacingLapHud.readout"] { padding: var(--cartoon-readout-pad); border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--well-radius); background: var(--well-fill); box-shadow: var(--well-shadow); }
+[part="RacingLapHud.readout"] .now { font-family: var(--font-display); font-size: var(--font-step-4xl); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
+[part="RacingLapHud.readout"] .of { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--ink-muted); }
+[part="RacingLapHud.readout"][data-final=true] .now { color: var(--gold); }
 [part="RacingLapHud.frame"] .time { font-family: var(--figure-font); font-size: var(--font-step-lg); color: var(--figure-ink); }
 [part="RacingLapHud.row"].current .time { font-size: var(--font-step-2xl); color: var(--ink-bright); }
 [part="RacingLapHud.delta"][data-state=ahead] .time, [part="RacingLapHud.delta"][data-state=ahead] .sense { color: var(--success); }
@@ -69,10 +69,10 @@
 [part="RacingStandings.row"] { border-bottom: var(--cartoon-outline-thin) solid var(--divider); }
 [part="RacingStandings.row"][data-player=true] { border-bottom: none; background: var(--row-selected-fill); box-shadow: var(--row-selected-edge); }
 [part="RacingStandings.row"][data-state=retired] { color: var(--ink-done); }
-[part="RacingStandings.cell"] { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--title-ink); }
+[part="RacingStandings.place"] { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--title-ink); }
 [part="RacingStandings.name"] { font-family: var(--font-body); font-size: var(--font-step-lg); }
 [part="RacingStandings.row"][data-player=true] [part="RacingStandings.name"] { color: var(--ink-selected); }
-[part="RacingStandings.row"][data-state=retired] :is([part="RacingStandings.name"], [part="RacingStandings.cell"]) { color: var(--ink-done); }
+[part="RacingStandings.row"][data-state=retired] :is([part="RacingStandings.name"], [part="RacingStandings.place"]) { color: var(--ink-done); }
 [part="RacingStandings.gap"] { font-family: var(--figure-font); font-size: var(--font-step-sm); color: var(--ink-muted); }
 [part="RacingStandings.badge"][data-state=pitting] { color: var(--warn); }
 [part="RacingStandings.badge"][data-state=retired] { color: var(--ink-muted); }
@@ -111,10 +111,10 @@ button[data-locked=true]::part(RacingGarage\.tile) { background: var(--cell-empt
 [part="RacingResults.heading"] { border-bottom: var(--cartoon-outline-thin) solid var(--divider); }
 [part="RacingResults.row"] { border-bottom: var(--cartoon-outline-thin) solid var(--divider); }
 [part="RacingResults.row"][data-player=true] { border-bottom: none; background: var(--row-selected-fill); box-shadow: var(--row-selected-edge); }
-[part="RacingResults.cell"] { font-family: var(--font-display); font-size: var(--font-step-2xl); color: var(--title-ink); }
+[part="RacingResults.place"] { font-family: var(--font-display); font-size: var(--font-step-2xl); color: var(--title-ink); }
 [part="RacingResults.name"] { font-family: var(--font-body); font-size: var(--font-step-lg); }
 [part="RacingResults.row"][data-player=true] [part="RacingResults.name"] { color: var(--ink-selected); }
-[part="RacingResults.row"]:is([data-state=dnf], [data-state=dsq]) :is([part="RacingResults.name"], [part="RacingResults.cell"]) { color: var(--ink-done); }
+[part="RacingResults.row"]:is([data-state=dnf], [data-state=dsq]) :is([part="RacingResults.name"], [part="RacingResults.place"]) { color: var(--ink-done); }
 [part="RacingResults.frame"] :is(.time, .points) { font-family: var(--figure-font); font-size: var(--font-step-md); color: var(--figure-ink); }
 [part="RacingResults.badge"].fastest { color: var(--xp); }
 [part="RacingResults.badge"].out { color: var(--ink-muted); }
@@ -123,7 +123,7 @@ button[data-locked=true]::part(RacingGarage\.tile) { background: var(--cell-empt
 
 @media (width < 600px) {
   [part="RacingTelemetry.speed"] { font-size: var(--font-step-3xl); }
-  [part="RacingLapHud.cell"] .now { font-size: var(--font-step-3xl); }
+  [part="RacingLapHud.readout"] .now { font-size: var(--font-step-3xl); }
   [part="RacingBanner.plate"][data-kind=countdown] [part="RacingBanner.title"], [part="RacingBanner.plate"][data-kind=go] [part="RacingBanner.title"] { font-size: var(--font-step-5xl); }
   :is([part="RacingGarage.frame"], [part="RacingResults.frame"]) { padding: var(--space-sm); }
 }

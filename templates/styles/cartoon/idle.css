@@ -120,8 +120,8 @@ button[aria-checked=true]::part(IdlePurchases\.amount), button[aria-checked=true
 [part="IdlePrestige.frame"] .currency { font-family: var(--label-font); font-size: var(--font-step-md); letter-spacing: var(--label-tracking); color: var(--title-ink); }
 [part="IdlePrestige.row"] { border-bottom: var(--cartoon-outline-thin) solid var(--divider); }
 [part="IdlePrestige.name"] { font-size: var(--font-step-md); color: var(--ink-label); }
-[part="IdlePrestige.cell"] { padding: 0 var(--space-xs); border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-pill); background: var(--well-fill); box-shadow: none; font-family: var(--figure-font); font-size: var(--font-step-md); color: var(--figure-ink); }
-[part="IdlePrestige.cell"][data-tag=after] { color: var(--trend-up); }
+[part="IdlePrestige.readout"] { padding: 0 var(--space-xs); border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-pill); background: var(--well-fill); box-shadow: none; font-family: var(--figure-font); font-size: var(--font-step-md); color: var(--figure-ink); }
+[part="IdlePrestige.readout"][data-tag=after] { color: var(--trend-up); }
 [part="IdlePrestige.requirement"] { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-sm); background: var(--well-fill); box-shadow: var(--well-shadow); }
 [part="IdlePrestige.requirement"] .req-text { font-size: var(--font-step-md); }
 [part="IdlePrestige.badge"][data-met=true] { color: var(--success); }

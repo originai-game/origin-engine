@@ -105,7 +105,7 @@ focus-visible and disabled states (docs/ui.md §3.2).
 | `splash` (`splash.svelte`) | `frame`, `mark` |
 | `star-rating` (`star-rating.svelte`) | `frame` |
 | `subtitles` (`subtitles.svelte`) | `frame`, `line`, `speaker` |
-| `table` (`table.svelte`) | `frame`, `band`, `heading`, `cell` (a button) |
+| `table` (`table.svelte`) | `frame`, `band`, `heading`, `entry` (a button) |
 | `title` (`title.svelte`) | `frame`, `logo`, `prompt` |
 | `tree` (`tree.svelte`) | `row` (`[aria-expanded]` `[aria-selected]`) |
 | `tutorial` (`tutorial.svelte`) | `frame`, `title`, `text`, `step` |

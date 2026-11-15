@@ -92,9 +92,9 @@ button[data-active=true]::part(StrategySelection\.command) { border-color: var(-
 [part="StrategyQueue.row"] .cancel { color: var(--ink-label); }
 
 /* ── Waves. */
-[part="StrategyWave.cell"] .now { font-family: var(--font-display); font-size: var(--font-step-4xl); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
-[part="StrategyWave.cell"] .of { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--ink-muted); }
-[part="StrategyWave.frame"][data-final=true] [part="StrategyWave.cell"] .now { color: var(--gold); }
+[part="StrategyWave.readout"] .now { font-family: var(--font-display); font-size: var(--font-step-4xl); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
+[part="StrategyWave.readout"] .of { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--ink-muted); }
+[part="StrategyWave.frame"][data-final=true] [part="StrategyWave.readout"] .now { color: var(--gold); }
 [part="StrategyWave.badge"].phase[data-phase=active] { color: var(--danger); border-color: var(--danger); }
 [part="StrategyWave.badge"].phase[data-phase=done] { color: var(--success); border-color: var(--success); }
 [part="StrategyWave.badge"].final, [part="StrategyWave.badge"].boss { color: var(--gold); border-color: var(--accent-60); }
@@ -133,6 +133,6 @@ button[data-active=true]::part(StrategySelection\.command) { border-color: var(-
 [part="StrategyTower.frame"] .refund { font-family: var(--label-font); font-size: var(--font-step-xs); letter-spacing: var(--font-tracking-lg); color: var(--gold); }
 
 @media (width < 600px) {
-  [part="StrategyWave.cell"] .now { font-size: var(--font-step-3xl); }
+  [part="StrategyWave.readout"] .now { font-size: var(--font-step-3xl); }
   :is([part="StrategySelection.frame"], [part="StrategyTower.frame"]) { padding: var(--space-sm); }
 }

@@ -122,9 +122,9 @@ button[data-locked=true]::part(ArenaRoster\.cell), button[data-taken=true]::part
 [part="ArenaScoreboard.row"][data-disconnected=true] { color: var(--ink-done); }
 [part="ArenaScoreboard.name"] { font-family: var(--font-body); font-size: var(--font-step-lg); }
 [part="ArenaScoreboard.row"][data-local=true] [part="ArenaScoreboard.name"] { color: var(--ink-selected); }
-[part="ArenaScoreboard.row"][data-disconnected=true] :is([part="ArenaScoreboard.name"], [part="ArenaScoreboard.cell"]) { color: var(--ink-done); }
+[part="ArenaScoreboard.row"][data-disconnected=true] :is([part="ArenaScoreboard.name"], [part="ArenaScoreboard.stat"]) { color: var(--ink-done); }
 /* A score is a figure in its column, not a tile. */
-[part="ArenaScoreboard.cell"] { border: none; border-radius: 0; background: none; box-shadow: none; font-family: var(--figure-font); font-size: var(--font-step-md); color: var(--figure-ink); }
+[part="ArenaScoreboard.stat"] { font-family: var(--figure-font); font-size: var(--font-step-md); color: var(--figure-ink); }
 [part="ArenaScoreboard.badge"][data-tag=disconnected] { color: var(--ink-muted); }
 [part="ArenaScoreboard.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
 
@@ -150,10 +150,10 @@ button[data-locked=true]::part(ArenaRoster\.cell), button[data-taken=true]::part
 [part="ArenaLobby.row"][data-open=true] [part="ArenaLobby.name"] { font-family: var(--label-font); color: var(--ink-faint); }
 [part="ArenaLobby.badge"][data-tag=host] { color: var(--gold); }
 /* Ready or not is a word beside the name, not a tile. */
-[part="ArenaLobby.cell"] { border: none; background: none; box-shadow: none; font-family: var(--label-font); font-size: var(--font-step-xs); letter-spacing: var(--label-tracking); text-transform: uppercase; }
-[part="ArenaLobby.cell"][data-ready=true] { color: var(--success); }
-[part="ArenaLobby.cell"][data-ready=false] { color: var(--ink-muted); }
-[part="ArenaLobby.row"][data-local=true] [part="ArenaLobby.cell"] { color: var(--ink-selected); }
+[part="ArenaLobby.state"] { font-family: var(--label-font); font-size: var(--font-step-xs); letter-spacing: var(--label-tracking); text-transform: uppercase; }
+[part="ArenaLobby.state"][data-ready=true] { color: var(--success); }
+[part="ArenaLobby.state"][data-ready=false] { color: var(--ink-muted); }
+[part="ArenaLobby.row"][data-local=true] [part="ArenaLobby.state"] { color: var(--ink-selected); }
 [part="ArenaLobby.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
 
 /* A frame cannot answer its own container query, so its padding and the

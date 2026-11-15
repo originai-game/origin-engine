@@ -1,6 +1,6 @@
 <meta name="component" content="RhythmSongSelect">
 <meta name="strings" content="./rhythm.en.ogt">
-<meta name="parts" content="RhythmSongSelect.frame RhythmSongSelect.band RhythmSongSelect.title RhythmSongSelect.row RhythmSongSelect.name RhythmSongSelect.badge RhythmSongSelect.jacket RhythmSongSelect.detail RhythmSongSelect.cell">
+<meta name="parts" content="RhythmSongSelect.frame RhythmSongSelect.band RhythmSongSelect.title RhythmSongSelect.row RhythmSongSelect.name RhythmSongSelect.badge RhythmSongSelect.jacket RhythmSongSelect.detail RhythmSongSelect.fact">
 <meta name="prop:title" content="string" data-doc="The page's heading (a pack or folder name); empty takes the kit's (Songs).">
 <meta name="prop:songs" content="list" data-doc="The songs in the game's order, keyed rows of { id, title, artist, bpm, length, jacket, locked, fresh, cleared }: bpm and length as the game words them (128, 90–180; 2:14); jacket the cover art texture (og.load.texture, 0 none); locked the song cannot be played yet (its row is disabled); fresh newly added (New); cleared the player has cleared it (Cleared).">
 <meta name="prop:selected" content="string" data-doc="The song in focus as the game holds it (its row selected, its details shown); empty is none.">
@@ -61,8 +61,8 @@
                   <span class="detail-name">{s.title}</span>
                   <span class="detail-artist">{s.artist}</span>
                   <div class="facts">
-                    <div part="RhythmSongSelect.cell" class="fact"><span class="label">{t("rhythm.songs.bpmLabel")}</span><span class="value">{s.bpm}</span></div>
-                    <div part="RhythmSongSelect.cell" class="fact"><span class="label">{t("rhythm.songs.lengthLabel")}</span><span class="value">{s.length}</span></div>
+                    <div part="RhythmSongSelect.fact" class="fact"><span class="label">{t("rhythm.songs.bpmLabel")}</span><span class="value">{s.bpm}</span></div>
+                    <div part="RhythmSongSelect.fact" class="fact"><span class="label">{t("rhythm.songs.lengthLabel")}</span><span class="value">{s.length}</span></div>
                   </div>
                   <button id="Preview" variant="ghost" aria-pressed={s.id == previewing} disabled={s.locked} onclick={preview}><kbd class="key" data-action="details"></kbd><span>{s.id == previewing ? t("rhythm.songs.previewing") : t("rhythm.songs.preview")}</span></button>
                 </div>
@@ -100,7 +100,7 @@ img.thumb, img.cover { object-fit: cover; }
 .detail-name { max-width: stretch; text-align: start; }
 .detail-artist { max-width: stretch; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .facts { display: flex; gap: var(--space-md); padding-block: var(--space-xs); }
-[part="RhythmSongSelect.cell"] { display: flex; flex-direction: column; align-items: flex-start; }
+[part="RhythmSongSelect.fact"] { display: flex; flex-direction: column; align-items: flex-start; }
 .value { white-space: nowrap; font-variant-numeric: tabular-nums; }
 #Preview, #Retry { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
 .state { display: flex; flex-direction: column; flex: 1; align-items: center; justify-content: center; gap: var(--space-md); }

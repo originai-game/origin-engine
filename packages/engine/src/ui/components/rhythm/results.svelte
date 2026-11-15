@@ -1,6 +1,6 @@
 <meta name="component" content="RhythmResults">
 <meta name="strings" content="./rhythm.en.ogt">
-<meta name="parts" content="RhythmResults.frame RhythmResults.band RhythmResults.title RhythmResults.grade RhythmResults.badge RhythmResults.cell RhythmResults.figure RhythmResults.row RhythmResults.name">
+<meta name="parts" content="RhythmResults.frame RhythmResults.band RhythmResults.title RhythmResults.grade RhythmResults.badge RhythmResults.readout RhythmResults.figure RhythmResults.row RhythmResults.name">
 <meta name="prop:song" content="string" data-doc="The song's title as the heading; empty takes the kit's (Results).">
 <meta name="prop:grade" content="string" data-doc="The grade the game awarded (S, AA, C); empty hides it.">
 <meta name="prop:cleared" content="bool" data-doc="The game's verdict: Cleared, or Failed (data-cleared).">
@@ -40,7 +40,7 @@
           <span part="RhythmResults.badge" data-tag={mark} hidden={mark == ''}>{mark == 'allPerfect' ? t("rhythm.results.allPerfect") : t("rhythm.results.fullCombo")}</span>
         </div>
       </div>
-      <div part="RhythmResults.cell" class="score-cell" role="group" aria-label={t("rhythm.results.score")}>
+      <div part="RhythmResults.readout" class="score-cell" role="group" aria-label={t("rhythm.results.score")}>
         <span class="caption">{t("rhythm.results.score")}</span>
         <span part="RhythmResults.figure" class="score">{formatNumber(score)}</span>
         <div class="best">
@@ -51,8 +51,8 @@
       </div>
       <div class="lower">
       <div class="stats">
-        <div part="RhythmResults.cell" class="stat" role="group" aria-label={t("rhythm.results.maxCombo")}><span class="caption">{t("rhythm.results.maxCombo")}</span><span part="RhythmResults.figure" class="value">{formatNumber(maxCombo)}</span></div>
-        <div part="RhythmResults.cell" class="stat" role="group" aria-label={t("rhythm.results.accuracy")} hidden={accuracy == ''}><span class="caption">{t("rhythm.results.accuracy")}</span><span part="RhythmResults.figure" class="value">{accuracy}</span></div>
+        <div part="RhythmResults.readout" class="stat" role="group" aria-label={t("rhythm.results.maxCombo")}><span class="caption">{t("rhythm.results.maxCombo")}</span><span part="RhythmResults.figure" class="value">{formatNumber(maxCombo)}</span></div>
+        <div part="RhythmResults.readout" class="stat" role="group" aria-label={t("rhythm.results.accuracy")} hidden={accuracy == ''}><span class="caption">{t("rhythm.results.accuracy")}</span><span part="RhythmResults.figure" class="value">{accuracy}</span></div>
       </div>
       {#if counts.length}
         <div class="counts" role="list" aria-label={t("rhythm.results.counts")}>

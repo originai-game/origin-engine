@@ -1,6 +1,6 @@
 <meta name="component" content="ArenaScoreboard">
 <meta name="strings" content="./arena.en.ogt">
-<meta name="parts" content="ArenaScoreboard.frame ArenaScoreboard.band ArenaScoreboard.title ArenaScoreboard.team ArenaScoreboard.heading ArenaScoreboard.score ArenaScoreboard.row ArenaScoreboard.cell ArenaScoreboard.name ArenaScoreboard.badge">
+<meta name="parts" content="ArenaScoreboard.frame ArenaScoreboard.band ArenaScoreboard.title ArenaScoreboard.team ArenaScoreboard.heading ArenaScoreboard.score ArenaScoreboard.row ArenaScoreboard.stat ArenaScoreboard.name ArenaScoreboard.badge">
 <meta name="prop:title" content="string" data-doc="The board's heading; empty takes the kit's (Scoreboard).">
 <meta name="prop:columns" content="string" data-doc="What each row shows: kda (kills, deaths, assists and score) or score (score only).">
 <meta name="prop:nameA" content="string" data-doc="The first team's name; empty takes the kit's (Blue team).">
@@ -42,10 +42,10 @@
               {#if r.team == 'a'}
                 <tr part="ArenaScoreboard.row" aria-current={r.local} data-local={r.local} data-disconnected={r.disconnected}>
                   <th class="who-cell" scope="row"><div class="who"><span part="ArenaScoreboard.name" class="name">{r.name}</span><span part="ArenaScoreboard.badge" class="you" data-tag="you" hidden={!r.local}>{t("arena.you")}</span><span part="ArenaScoreboard.badge" class="off" data-tag="disconnected" hidden={!r.disconnected}>{t("arena.score.disconnected")}</span></div></th>
-                  <td part="ArenaScoreboard.cell" class="num" hidden={columns != 'kda'}>{formatNumber(r.kills)}</td>
-                  <td part="ArenaScoreboard.cell" class="num" hidden={columns != 'kda'}>{formatNumber(r.deaths)}</td>
-                  <td part="ArenaScoreboard.cell" class="num" hidden={columns != 'kda'}>{formatNumber(r.assists)}</td>
-                  <td part="ArenaScoreboard.cell" class="total">{formatNumber(r.score)}</td>
+                  <td part="ArenaScoreboard.stat" class="num" hidden={columns != 'kda'}>{formatNumber(r.kills)}</td>
+                  <td part="ArenaScoreboard.stat" class="num" hidden={columns != 'kda'}>{formatNumber(r.deaths)}</td>
+                  <td part="ArenaScoreboard.stat" class="num" hidden={columns != 'kda'}>{formatNumber(r.assists)}</td>
+                  <td part="ArenaScoreboard.stat" class="total">{formatNumber(r.score)}</td>
                 </tr>
               {/if}
             {/each}
@@ -66,10 +66,10 @@
               {#if r.team == 'b'}
                 <tr part="ArenaScoreboard.row" aria-current={r.local} data-local={r.local} data-disconnected={r.disconnected}>
                   <th class="who-cell" scope="row"><div class="who"><span part="ArenaScoreboard.name" class="name">{r.name}</span><span part="ArenaScoreboard.badge" class="you" data-tag="you" hidden={!r.local}>{t("arena.you")}</span><span part="ArenaScoreboard.badge" class="off" data-tag="disconnected" hidden={!r.disconnected}>{t("arena.score.disconnected")}</span></div></th>
-                  <td part="ArenaScoreboard.cell" class="num" hidden={columns != 'kda'}>{formatNumber(r.kills)}</td>
-                  <td part="ArenaScoreboard.cell" class="num" hidden={columns != 'kda'}>{formatNumber(r.deaths)}</td>
-                  <td part="ArenaScoreboard.cell" class="num" hidden={columns != 'kda'}>{formatNumber(r.assists)}</td>
-                  <td part="ArenaScoreboard.cell" class="total">{formatNumber(r.score)}</td>
+                  <td part="ArenaScoreboard.stat" class="num" hidden={columns != 'kda'}>{formatNumber(r.kills)}</td>
+                  <td part="ArenaScoreboard.stat" class="num" hidden={columns != 'kda'}>{formatNumber(r.deaths)}</td>
+                  <td part="ArenaScoreboard.stat" class="num" hidden={columns != 'kda'}>{formatNumber(r.assists)}</td>
+                  <td part="ArenaScoreboard.stat" class="total">{formatNumber(r.score)}</td>
                 </tr>
               {/if}
             {/each}

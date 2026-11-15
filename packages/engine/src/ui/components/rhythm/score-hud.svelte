@@ -1,6 +1,6 @@
 <meta name="component" content="RhythmScoreHud">
 <meta name="strings" content="./rhythm.en.ogt">
-<meta name="parts" content="RhythmScoreHud.frame RhythmScoreHud.cell RhythmScoreHud.title RhythmScoreHud.figure RhythmScoreHud.row RhythmScoreHud.badge">
+<meta name="parts" content="RhythmScoreHud.frame RhythmScoreHud.readout RhythmScoreHud.title RhythmScoreHud.figure RhythmScoreHud.row RhythmScoreHud.badge">
 <meta name="prop:score" content="number" data-doc="The score as the game counts it, shown with grouping.">
 <meta name="prop:accuracy" content="string" data-doc="The accuracy as the game words it (98.73%); empty hides it.">
 <meta name="prop:life" content="number" data-default="-1" data-doc="The life gauge, 0 to 1; negative hides it (a mode without one).">
@@ -20,11 +20,11 @@
 -->
 <section id="RhythmScoreHud" part="RhythmScoreHud.frame" class="hud" aria-label={t("rhythm.hud.name")} data-danger={danger} data-failed={failed}>
   <div class="cells">
-    <div part="RhythmScoreHud.cell" class="score" role="group" aria-label={t("rhythm.hud.score")}>
+    <div part="RhythmScoreHud.readout" class="score" role="group" aria-label={t("rhythm.hud.score")}>
       <span part="RhythmScoreHud.title" class="caption">{t("rhythm.hud.score")}</span>
       <span part="RhythmScoreHud.figure" class="figure">{formatNumber(score)}</span>
     </div>
-    <div part="RhythmScoreHud.cell" class="accuracy" role="group" aria-label={t("rhythm.hud.accuracy")} hidden={accuracy == ''}>
+    <div part="RhythmScoreHud.readout" class="accuracy" role="group" aria-label={t("rhythm.hud.accuracy")} hidden={accuracy == ''}>
       <span part="RhythmScoreHud.title" class="caption">{t("rhythm.hud.accuracy")}</span>
       <span part="RhythmScoreHud.figure" class="figure">{accuracy}</span>
     </div>
@@ -41,9 +41,9 @@
 [part="RhythmScoreHud.frame"][hidden], [part="RhythmScoreHud.frame"] [hidden] { display: none; }
 [part="RhythmScoreHud.frame"] { display: flex; flex-direction: column; min-width: calc(var(--size-xxl) * 3.2); max-width: stretch; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
 .cells { display: flex; flex-wrap: wrap; width: stretch; gap: var(--space-xxs) var(--space-lg); align-items: flex-end; }
-[part="RhythmScoreHud.cell"] { display: flex; flex-direction: column; align-items: flex-start; }
-[part="RhythmScoreHud.cell"].score { flex: 1; }
-[part="RhythmScoreHud.cell"].accuracy { flex: none; align-items: flex-end; }
+[part="RhythmScoreHud.readout"] { display: flex; flex-direction: column; align-items: flex-start; }
+[part="RhythmScoreHud.readout"].score { flex: 1; }
+[part="RhythmScoreHud.readout"].accuracy { flex: none; align-items: flex-end; }
 /* A figure is never cut: the frame grows with it (a score is read whole). */
 [part="RhythmScoreHud.figure"] { white-space: nowrap; font-variant-numeric: tabular-nums; }
 [part="RhythmScoreHud.row"] { display: flex; width: stretch; align-items: flex-end; gap: var(--space-xs); }

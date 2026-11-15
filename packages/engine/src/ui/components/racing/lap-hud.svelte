@@ -1,6 +1,6 @@
 <meta name="component" content="RacingLapHud">
 <meta name="strings" content="./racing.en.ogt">
-<meta name="parts" content="RacingLapHud.frame RacingLapHud.cell RacingLapHud.title RacingLapHud.row RacingLapHud.delta RacingLapHud.badge">
+<meta name="parts" content="RacingLapHud.frame RacingLapHud.readout RacingLapHud.title RacingLapHud.row RacingLapHud.delta RacingLapHud.badge">
 <meta name="prop:lap" content="number" data-doc="The lap the player is on, from 1; 0 before the start shows a dash.">
 <meta name="prop:laps" content="number" data-doc="Laps in the race; 0 hides the lap count (an open session).">
 <meta name="prop:position" content="number" data-doc="The player's place, from 1; 0 shows a dash.">
@@ -28,12 +28,12 @@
 -->
 <section id="RacingLapHud" part="RacingLapHud.frame" class="hud" aria-label={t("racing.lap.name")} data-final={finalLap}>
   <div class="cells">
-    <div part="RacingLapHud.cell" class="lap" hidden={!(laps > 0) && !(lap > 0)} role="group" aria-label={laps > 0 && lap > 0 ? t("racing.lap.lapValue", { lap: lap, laps: laps }) : t("racing.lap.lap")} data-final={finalLap}>
+    <div part="RacingLapHud.readout" class="lap" hidden={!(laps > 0) && !(lap > 0)} role="group" aria-label={laps > 0 && lap > 0 ? t("racing.lap.lapValue", { lap: lap, laps: laps }) : t("racing.lap.lap")} data-final={finalLap}>
       <span part="RacingLapHud.title" class="caption">{t("racing.lap.lap")}</span>
       <div class="figure"><span class="now">{lap > 0 ? formatNumber(lap) : t("racing.lap.pending")}</span><span class="of" hidden={!(laps > 0)}>{t("racing.lap.of", { total: laps })}</span></div>
       <span part="RacingLapHud.badge" class="final" hidden={!finalLap}>{t("racing.lap.finalLap")}</span>
     </div>
-    <div part="RacingLapHud.cell" class="place" hidden={!(racers > 0)} role="group" aria-label={position > 0 ? t("racing.lap.positionValue", { position: position, racers: racers }) : t("racing.lap.position")}>
+    <div part="RacingLapHud.readout" class="place" hidden={!(racers > 0)} role="group" aria-label={position > 0 ? t("racing.lap.positionValue", { position: position, racers: racers }) : t("racing.lap.position")}>
       <span part="RacingLapHud.title" class="caption">{t("racing.lap.position")}</span>
       <div class="figure"><span class="now">{position > 0 ? formatNumber(position) : t("racing.lap.pending")}</span><span class="of">{t("racing.lap.of", { total: racers })}</span></div>
     </div>
@@ -51,7 +51,7 @@
 [part="RacingLapHud.frame"][hidden], [part="RacingLapHud.frame"] [hidden] { display: none; }
 [part="RacingLapHud.frame"] { display: flex; flex-direction: column; width: fit-content; max-width: stretch; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
 .cells { display: flex; gap: var(--space-md); align-items: flex-end; }
-[part="RacingLapHud.cell"] { display: flex; flex-direction: column; gap: 0; align-items: flex-start; min-width: 0; }
+[part="RacingLapHud.readout"] { display: flex; flex-direction: column; gap: 0; align-items: flex-start; min-width: 0; }
 .caption { white-space: nowrap; }
 .figure { display: flex; align-items: baseline; gap: var(--space-xxs); white-space: nowrap; }
 .now, .of, .time { font-variant-numeric: tabular-nums; white-space: nowrap; }

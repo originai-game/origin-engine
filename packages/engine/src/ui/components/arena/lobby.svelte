@@ -1,6 +1,6 @@
 <meta name="component" content="ArenaLobby">
 <meta name="strings" content="./arena.en.ogt">
-<meta name="parts" content="ArenaLobby.frame ArenaLobby.band ArenaLobby.title ArenaLobby.row ArenaLobby.portrait ArenaLobby.name ArenaLobby.badge ArenaLobby.cell">
+<meta name="parts" content="ArenaLobby.frame ArenaLobby.band ArenaLobby.title ArenaLobby.row ArenaLobby.portrait ArenaLobby.name ArenaLobby.badge ArenaLobby.state">
 <meta name="prop:title" content="string" data-doc="The lobby's heading (the match's name); empty takes the kit's (Lobby).">
 <meta name="prop:detail" content="string" data-doc="A line beside the heading as the game words it (Ranked · 2 v 2, Waiting for the host); empty hides it.">
 <meta name="prop:slots" content="list" data-doc="The lobby's seats in the game's order, keyed rows of { id, name, portrait, icon, open, host, ready, local }: open the seat is free (an Invite button reporting invite with the seat's key, when canInvite); portrait a texture (0 shows the icon); host marks the host (Host); ready Ready or Not ready in words; local the local player (You).">
@@ -40,7 +40,7 @@
                 <span part="ArenaLobby.badge" class="tag" data-tag="you" hidden={!s.local}>{t("arena.you")}</span>
               </div>
             </div>
-            <div part="ArenaLobby.cell" class="state" data-ready={s.ready} hidden={s.open}><og-icon class="check" icon={s.ready ? 'check' : 'clock'}></og-icon><span>{s.ready ? t("arena.lobby.ready") : t("arena.lobby.notReady")}</span></div>
+            <div part="ArenaLobby.state" class="state" data-ready={s.ready} hidden={s.open}><og-icon class="check" icon={s.ready ? 'check' : 'clock'}></og-icon><span>{s.ready ? t("arena.lobby.ready") : t("arena.lobby.notReady")}</span></div>
             <button id="Invite" variant="ghost" hidden={!(s.open && canInvite)} onclick={invite}><og-icon class="check" icon="plus"></og-icon><span>{t("arena.lobby.invite")}</span></button>
           </div>
         {/each}
@@ -75,7 +75,7 @@
 .name { width: stretch; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .tags { display: flex; gap: var(--space-xxs); }
 .tag { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
-[part="ArenaLobby.cell"] { display: flex; flex: none; align-items: center; gap: var(--space-xxs); white-space: nowrap; }
+[part="ArenaLobby.state"] { display: flex; flex: none; align-items: center; gap: var(--space-xxs); white-space: nowrap; }
 .check { width: var(--size-xs); height: var(--size-xs); }
 #Invite { flex: none; min-height: var(--size-md); gap: var(--space-xxs); }
 .empty-text { margin: 0; padding: var(--space-lg); text-align: center; }

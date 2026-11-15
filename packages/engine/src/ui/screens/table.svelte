@@ -1,5 +1,5 @@
 <meta name="component" content="table">
-<meta name="parts" content="table.frame table.band table.heading table.cell">
+<meta name="parts" content="table.frame table.band table.heading table.entry">
 <meta name="prop:columns" content="list" data-doc="The headings, a keyed collection of { id, label }.">
 <meta name="prop:cells" content="list" data-doc="The body's cells row by row, a keyed collection of { id, row, text }: three to a row (eject it to change the columns). A press sends choose with the cell's id; its row field names the row.">
 <meta name="prop:label" content="string" data-doc="The table's accessible name.">
@@ -12,7 +12,7 @@
   </div>
   <scroll id="Body">
     <div id="Cells">
-      {#each cells as c (c.id)}<button id="Cell" part="table.cell" class="cell" variant="quiet" role="cell" onclick={choose}>{c.text}</button>{/each}
+      {#each cells as c (c.id)}<button id="Cell" part="table.entry" class="cell" variant="quiet" role="cell" onclick={choose}>{c.text}</button>{/each}
     </div>
   </scroll>
 </section>

@@ -15,7 +15,7 @@
 }
 
 /* Captions in condensed capitals. */
-:is([part="RhythmScoreHud.title"], [part="RhythmSongSelect.cell"] .label, [part="RhythmResults.frame"] .caption, [part="RhythmJudgement.combo"] .combo-word) {
+:is([part="RhythmScoreHud.title"], [part="RhythmSongSelect.fact"] .label, [part="RhythmResults.frame"] .caption, [part="RhythmJudgement.combo"] .combo-word) {
   font-family: var(--label-font);
   font-size: var(--font-step-xs);
   letter-spacing: var(--font-tracking-lg);
@@ -55,7 +55,7 @@ button[data-locked=true]::part(RhythmSongSelect\.row) { background: var(--scifi-
 [part="RhythmSongSelect.detail"] { border: var(--stroke-hairline) solid var(--line-strong-40); border-radius: var(--radius-sm); background: var(--scifi-stage-ground); box-shadow: var(--scifi-member-shadow); }
 [part="RhythmSongSelect.detail"] .detail-name { font-family: var(--font-display); font-size: var(--font-step-3xl); letter-spacing: var(--font-tracking-sm); text-transform: uppercase; color: var(--title-ink); }
 [part="RhythmSongSelect.detail"] .detail-artist { font-family: var(--label-font); font-size: var(--font-step-sm); letter-spacing: var(--font-tracking-lg); color: var(--ink-label); }
-[part="RhythmSongSelect.cell"] .value { font-family: var(--font-display); font-size: var(--font-step-2xl); color: var(--figure-ink); }
+[part="RhythmSongSelect.fact"] .value { font-family: var(--font-display); font-size: var(--font-step-2xl); color: var(--figure-ink); }
 [part="RhythmSongSelect.frame"] .state-text { font-family: var(--label-font); color: var(--ink-faint); }
 [part="RhythmSongSelect.frame"] [data-status=error] .state-text { color: var(--danger); }
 
@@ -73,7 +73,7 @@ button[aria-selected=true]::part(RhythmDifficulty\.row) { background: var(--row-
 button[data-locked=true]::part(RhythmDifficulty\.row) { background: var(--scifi-member-down-fill); border-color: var(--ink-down); }
 [part="RhythmDifficulty.name"] { font-family: var(--font-display); font-size: var(--font-step-lg); letter-spacing: var(--font-tracking-sm); text-transform: uppercase; color: var(--title-ink); }
 [part="RhythmDifficulty.row"][data-locked=true] [part="RhythmDifficulty.name"] { color: var(--ink-down); }
-[part="RhythmDifficulty.cell"] { font-family: var(--font-display); font-size: var(--font-step-2xl); color: var(--figure-ink); }
+[part="RhythmDifficulty.rating"] { font-family: var(--font-display); font-size: var(--font-step-2xl); color: var(--figure-ink); }
 [part="RhythmDifficulty.badge"][data-tag=grade] { font-family: var(--font-display); font-size: var(--font-step-md); color: var(--gold); border-color: var(--accent-60); }
 [part="RhythmDifficulty.frame"] .score { font-family: var(--font-mono); font-size: var(--font-step-sm); color: var(--ink-muted); }
 [part="RhythmDifficulty.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
@@ -100,7 +100,7 @@ button[data-locked=true]::part(RhythmDifficulty\.row) { background: var(--scifi-
 
 /* ── Score HUD. */
 [part="RhythmScoreHud.figure"] { font-family: var(--font-display); font-size: var(--font-step-4xl); line-height: 1; color: var(--ink-bright); text-shadow: var(--figure-shadow); }
-[part="RhythmScoreHud.cell"].accuracy [part="RhythmScoreHud.figure"] { font-size: var(--font-step-2xl); color: var(--figure-ink); }
+[part="RhythmScoreHud.readout"].accuracy [part="RhythmScoreHud.figure"] { font-size: var(--font-step-2xl); color: var(--figure-ink); }
 [part="RhythmScoreHud.badge"][data-tag=danger] { color: var(--danger); border-color: var(--danger); }
 [part="RhythmScoreHud.badge"][data-tag=failed] { background: var(--primary-active); color: var(--title-ink); border-color: var(--danger); }
 [part="RhythmScoreHud.frame"][data-failed=true] { border-color: var(--danger); }

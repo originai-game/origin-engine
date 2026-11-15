@@ -123,8 +123,8 @@ button[data-locked=true]::part(ArenaRoster\.cell), button[data-taken=true]::part
 [part="ArenaScoreboard.row"][data-disconnected=true] { color: var(--ink-done); }
 [part="ArenaScoreboard.name"] { font-family: var(--font-body); font-size: var(--font-step-lg); }
 [part="ArenaScoreboard.row"][data-local=true] [part="ArenaScoreboard.name"] { color: var(--ink-selected); }
-[part="ArenaScoreboard.row"][data-disconnected=true] :is([part="ArenaScoreboard.name"], [part="ArenaScoreboard.cell"]) { color: var(--ink-done); }
-[part="ArenaScoreboard.cell"] { font-family: var(--font-mono); font-size: var(--font-step-md); color: var(--figure-ink); }
+[part="ArenaScoreboard.row"][data-disconnected=true] :is([part="ArenaScoreboard.name"], [part="ArenaScoreboard.stat"]) { color: var(--ink-done); }
+[part="ArenaScoreboard.stat"] { font-family: var(--font-mono); font-size: var(--font-step-md); color: var(--figure-ink); }
 [part="ArenaScoreboard.badge"][data-tag=disconnected] { color: var(--ink-down); border-color: var(--ink-down); }
 [part="ArenaScoreboard.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
 
@@ -148,9 +148,9 @@ button[data-locked=true]::part(ArenaRoster\.cell), button[data-taken=true]::part
 [part="ArenaLobby.row"][data-local=true] [part="ArenaLobby.name"] { color: var(--ink-selected); }
 [part="ArenaLobby.row"][data-open=true] [part="ArenaLobby.name"] { font-family: var(--label-font); color: var(--ink-faint); }
 [part="ArenaLobby.badge"][data-tag=host] { color: var(--gold); border-color: var(--gold); }
-[part="ArenaLobby.cell"] { font-family: var(--label-font); font-size: var(--font-step-xs); letter-spacing: var(--font-tracking-lg); text-transform: uppercase; }
-[part="ArenaLobby.cell"][data-ready=true] { color: var(--success); }
-[part="ArenaLobby.cell"][data-ready=false] { color: var(--ink-faint); }
+[part="ArenaLobby.state"] { font-family: var(--label-font); font-size: var(--font-step-xs); letter-spacing: var(--font-tracking-lg); text-transform: uppercase; }
+[part="ArenaLobby.state"][data-ready=true] { color: var(--success); }
+[part="ArenaLobby.state"][data-ready=false] { color: var(--ink-faint); }
 [part="ArenaLobby.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
 
 /* A frame cannot answer its own container query, so its padding and the
