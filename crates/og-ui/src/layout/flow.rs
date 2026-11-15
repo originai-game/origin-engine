@@ -314,57 +314,6 @@ impl Flow {
     }
 }
 
-/// Node `i`'s children, placed left to right, flipped across its content
-/// box (a scroller's: its scrolled content): each margin box flips, its own
-/// margins kept on their sides, as `row-reverse` flips a line. An
-/// out-of-flow child placed by a horizontal inset keeps its place. `sx`
-/// is its horizontal scroll offset.
-pub(super) fn flip_children(nodes: &mut [super::Node], i: usize, sx: f32) {
-    let n = &nodes[i];
-    let inner = (n.layout.w - n.layout.used.padding.horizontal()).max(0.0);
-    let width = if n.layout.used.scroll_x {
-        inner.max(n.layout.content_w)
-    } else {
-        inner
-    };
-    let x0 = n.layout.x + n.layout.used.padding.left - sx;
-    let basis = n.layout.w;
-    let free = |c: &super::Node| {
-        !c.props.out_of_flow()
-            || (c.layout.insets.start.is_none()
-                && c.layout.insets.end.is_none()
-                && !c.layout.insets.center_x
-                && c.layout.insets.across.is_none()
-                && c.props.anchor.is_none())
-    };
-    let kids: Vec<usize> = n
-        .children
-        .iter()
-        .chain(&n.out)
-        .chain(&n.floats)
-        .copied()
-        .collect();
-    for c in kids {
-        let k = &nodes[c];
-        if !free(k) {
-            continue;
-        }
-        let [ml, mr] = if k.props.out_of_flow() {
-            [
-                k.layout.used.margin[3].of(basis),
-                k.layout.used.margin[1].of(basis),
-            ]
-        } else {
-            k.layout.margin_x
-        };
-        nodes[c].layout.x = 2.0 * x0 + width - k.layout.x - k.layout.w - mr + ml;
-    }
-    let pl = nodes[i].layout.used.padding.left;
-    for r in &mut nodes[i].layout.col_rules {
-        r[0] = 2.0 * pl + width - r[0];
-    }
-}
-
 /// A document element's box under the surface's right-to-left mirror:
 /// laid out before it, its physical left and right sides swap, so the
 /// mirror puts them back.

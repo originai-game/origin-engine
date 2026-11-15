@@ -141,7 +141,7 @@ fn media_queries_follow_dimensions_preferences_and_nested_intersections() {
 <meta name="component" content="media">
 <column><panel id="Range"/><panel id="Ratio"/><panel id="Nested"/><panel id="Motion"/></column>
 <style>
-panel { width: 10px; height: 10px; }
+panel { width: 10px; height: 10px; padding: 0px; }
 @MEDIA
 (300px <= width < 600px) and (min-height: 200px) { #Range { width: 31px; } }
 @media (aspect-ratio >= 3/2), (orientation: portrait) { #Ratio { width: 47px; } }

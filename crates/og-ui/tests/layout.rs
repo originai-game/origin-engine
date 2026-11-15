@@ -52,7 +52,7 @@ const TREE: &str = r#"<meta name="component" content="layout">
     {#each $tiles as tile (tile.id)}<img id="Tile" />{/each}
     <img id="Fill" />
   </row>
-  <!-- 98 + 35 + 40 = 173 in 150: the wrapping label gives up 23 and wraps. -->
+  <!-- 98 + 35 + 40 = 173 in 150: the labels give up 23 by their bases. -->
   <row id="Shrink">
     <text id="Long">aaaa bbbb cccc</text>
     <text id="Short">dd ee</text>
@@ -212,9 +212,10 @@ fn nested_rows_and_columns_lay_out_as_the_golden() {
     assert_eq!(rect(&ui, "Wrap"), [10.0, 60.0, 200.0, 60.0]);
     assert_eq!(rect(&ui, "Wrap/Tile#3"), [15.0, 95.0, 50.0, 20.0]);
     assert_eq!(rect(&ui, "Fill"), [15.0 + 170.0 + 10.0, 95.0, 10.0, 20.0]);
-    // The long label shrinks to 75 and wraps to two lines.
-    assert_eq!(rect(&ui, "Long"), [10.0, 120.0, 75.0, 40.0]);
-    assert_eq!(rect(&ui, "Short")[2], 35.0);
+    // Both labels give up the 23 px by their shrink factor times their
+    // basis (CSS Flexbox 1 §9.7), 98:35, and wrap to two lines.
+    assert_eq!(rect(&ui, "Long"), [10.0, 120.0, 81.0, 40.0]);
+    assert_eq!(rect(&ui, "Short")[2], 29.0);
     // Centred in 100×60; quarter of 200; the rest grows in both axes.
     assert_eq!(rect(&ui, "Mid"), [10.0 + 43.0, 160.0 + 20.0, 14.0, 20.0]);
     assert_eq!(rect(&ui, "Quarter"), [110.0, 160.0, 50.0, 10.0]);

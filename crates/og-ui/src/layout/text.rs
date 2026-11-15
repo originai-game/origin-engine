@@ -114,7 +114,22 @@ pub(super) fn fits(t: UsedText<'_>, fonts: &dyn Metrics, width: f32) -> bool {
         && (t.max_lines == 0 || text_lines(t, m, Some(width)).len() <= t.max_lines as usize)
 }
 
+/// A text's lines at `width`: broken there when it wraps, chosen again by
+/// its `text-wrap-style`, and cut with its ellipsis.
+pub(super) fn text_lines_at(t: UsedText<'_>, fonts: &dyn Metrics, width: f32) -> Vec<Line> {
+    let m = t.metrics(fonts);
+    let at = |w: f32| text_lines(t, m, Some(w));
+    let mut lines = text_lines(t, m, t.wrap.then_some(width));
+    if t.wrap && lines.len() > 1 && t.wrap_style != WrapStyle::Auto {
+        lines = rewrap(lines, t.wrap_style, width, at);
+    }
+    if t.ellipsis {
+        truncate_lines(&mut lines, t, m, width);
+    }
+    lines
+}
+
 /// A text's preferred extent along its line: its widest line.
 pub(crate) fn text_preferred(t: UsedText<'_>, fonts: &dyn Metrics) -> f32 {
-    super::text::text_widest(t, t.metrics(fonts))
+    text_widest(t, t.metrics(fonts))
 }
