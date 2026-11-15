@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "Nameplate",
+      "summary": "The default style's tag halo (--tag-halo, on a nameplate's name, a waypoint's label and a status grid's time left) is an outline: eight unblurred copies of the glyphs 1\u20131.5 px round them in the ink's inverse, with no drop. The blurred halo with a 1 px drop covered at most half at the glyphs' edge, read 1.09:1 over a white sky and drew an embossed second copy under each label; the outline reads 12.3:1 there (16.7:1 for the light scheme's dark ink over a black scene). Packs that set --tag-halo keep theirs."
+    },
+    {
+      "member": "StatusGrid",
+      "summary": "The +n tile's count reads over the scene: it takes the figure ink and the tag halo, like an effect's time left. In muted ink, bare on the cell's translucent fill, it read 1.5:1 over a bright sky."
+    }
+  ]
+}
