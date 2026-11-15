@@ -389,8 +389,11 @@ fn an_ability_slot_grows_with_the_text_and_keeps_its_readouts_apart() {
 
 /// The default style marks a table's current row: the arena scoreboard
 /// fills the local player's row (`aria-current`) with the row role's
-/// selected fill. A role's `corner-shape: round` beside its radius is the
-/// plain corner, not a CSS-corner box that left the row's fill undrawn.
+/// selected fill, whatever corner shape a style gives rows. Ways it could
+/// fail: a role's `corner-shape: round` beside its radius taken for a
+/// CSS-corner box, or a table's rows (which the table draws, not its row
+/// groups) left out of the tree's orders, so a shaped row's fill, drawn
+/// with its corners, is never drawn.
 #[test]
 fn the_scoreboard_marks_the_local_players_row() {
     let (docs, messages) = engine_documents(&["src/ui/components"]);
@@ -398,16 +401,23 @@ fn the_scoreboard_marks_the_local_players_row() {
         .iter()
         .find(|d| d.path.ends_with("arena/scoreboard.svelte"))
         .expect("the arena scoreboard");
-    let mut ui = ui_with_font(test_font_metrics());
-    preview(&mut ui, &docs, doc, &messages, 1280.0, 720.0);
-    let rows = ui
-        .frame()
-        .items
-        .iter()
-        .filter_map(|i| i.cmd.filled())
-        .filter(|(r, _)| r.width > 1000.0 && (10.0..60.0).contains(&r.height))
-        .count();
-    assert_eq!(rows, 1, "one marked row");
+    for shape in ["round", "bevel", "scoop", "notch", "squircle", "square"] {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_part_css(&format!(
+            "{}\n:root {{ --row-corner-shape: {shape}; --row-radius: 6px; }}",
+            og_ui::DEFAULT_CSS
+        ))
+        .unwrap();
+        preview(&mut ui, &docs, doc, &messages, 1280.0, 720.0);
+        let rows = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| i.cmd.filled())
+            .filter(|(r, c)| r.width > 1000.0 && (10.0..60.0).contains(&r.height) && c[3] > 0.0)
+            .count();
+        assert_eq!(rows, 1, "{shape}: one marked row");
+    }
 }
 
 /// A status effect refreshed past its duration (more seconds left than it

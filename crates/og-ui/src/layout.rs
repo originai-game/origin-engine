@@ -942,7 +942,9 @@ pub(crate) fn preorder(nodes: &[Node], root: usize) -> Vec<usize> {
     while let Some(i) = stack.pop() {
         order.push(i);
         let n = &nodes[i];
-        if n.out.is_empty() && n.floats.is_empty() {
+        // A table draws its rows and groups beside the cells it lays out:
+        // they are among its drawn children, not its flow.
+        if n.out.is_empty() && n.floats.is_empty() && n.layout.table.is_none() {
             stack.extend(n.children.iter().rev());
         } else {
             stack.extend(all_children(n).into_iter().rev());
