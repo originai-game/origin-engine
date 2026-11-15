@@ -273,6 +273,9 @@ fn screens() -> Vec<(String, String)> {
 fn perf_every_library_and_kit_screen() {
     release_only();
     let mut rows = Vec::new();
+    // The built-in components, for a screen that mounts one (a film's
+    // flowchart its NodeGraph).
+    let (components, _) = engine_documents(&["src/ui/components"]);
     for (id, text) in screens() {
         let doc = UiDocument::parse(&id, &text).unwrap_or_else(|e| panic!("{}", e.join("\n")));
         // A component is measured where a screen mounts it; only a screen
@@ -288,6 +291,9 @@ fn perf_every_library_and_kit_screen() {
             .map(|(_, v)| v.clone())
             .unwrap_or_default();
         let mut ui = ui_with_font(test_font_metrics());
+        for component in &components {
+            ui.define_document(component.doc.clone());
+        }
         ui.define_document(doc);
         ui.push_screen(&name, vm).unwrap();
         let m = measure(&mut ui, |_, _| {});

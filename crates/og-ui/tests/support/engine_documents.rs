@@ -128,7 +128,7 @@ pub fn view(width: f32, height: f32) -> WorldView {
 /// `doc` mounted as `test:preview` with its `props` as its stores, in a UI
 /// that knows every document of `all`, four frames (its transitions
 /// settled), at `width` × `height`. Answers the warnings of those frames,
-/// each once (an element warns in the frame it resolves). A document that
+/// each once (an element's hold in every frame). A document that
 /// does not mount or build from its props fails the test, named by its
 /// path.
 pub fn preview(
