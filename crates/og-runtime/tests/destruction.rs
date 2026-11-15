@@ -13,8 +13,9 @@
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_destruction_damage, og_destruction_info, og_engine_create,
     og_engine_frame, og_engine_probe_dump, og_engine_write_resource, og_game_game,
-    og_host_begin_bundle, og_load_emitter, og_load_gltf, og_world_get, og_world_has,
-    og_world_insert, og_world_instantiate, og_world_restore, og_world_snapshot, set_hooks,
+    og_host_begin_bundle, og_load_emitter, og_load_gltf, og_load_vfx, og_system_define_system,
+    og_world_alive, og_world_events, og_world_get, og_world_has, og_world_insert,
+    og_world_instantiate, og_world_restore, og_world_snapshot, set_hooks,
 };
 use serde_json::{Value, json};
 use std::path::PathBuf;
@@ -127,6 +128,14 @@ fn project() -> &'static std::path::Path {
         std::fs::write(root.join("assets/props/pane.ogt"), PANE).unwrap();
         std::fs::create_dir_all(root.join("assets/fx")).unwrap();
         std::fs::write(root.join("assets/fx/chips.ogt"), CHIPS).unwrap();
+        // Composed effects for breakVfx and hitVfx: 0.25 s, one event each.
+        for (name, event) in [("crumble", "dust"), ("crack", "crack")] {
+            std::fs::write(
+                root.join(format!("assets/fx/{name}.ogt")),
+                format!("type vfx\nversion 1\n---\nduration 0.25\nevent 0 \"{event}\"\nlight {{\n  life 0.25\n}}\n"),
+            )
+            .unwrap();
+        }
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
@@ -693,4 +702,89 @@ fn a_struck_pillar_falls_to_its_stump() {
         high.is_empty(),
         "chunks still standing over the blow: {high:?}"
     );
+}
+
+/// (name, entity) of every og.VfxEvent.
+type Heard = Rc<std::cell::RefCell<Vec<(String, f64)>>>;
+
+struct Listen(Heard);
+
+impl Hooks for Listen {
+    fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
+        if call.kind == 0 && call.id == 1 {
+            let evs: Value = serde_json::from_str(&og_runtime::host_impl::json(og_world_events(
+                call.engine,
+                "og.VfxEvent".into(),
+            )))
+            .unwrap();
+            for e in evs.as_array().into_iter().flatten() {
+                let name = e["name"].as_str().unwrap_or_default().to_string();
+                self.0
+                    .borrow_mut()
+                    .push((name, e["entity"].as_f64().unwrap()));
+            }
+        }
+        Ok(String::new())
+    }
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        Disk.read_asset(path)
+    }
+}
+
+/// An og.Destructible's breakVfx plays where its islands break loose and
+/// its hitVfx where it is damaged, each an og.Vfx og.vfx ends: blown at
+/// its foot, the wall sends its hit effect's event once and its break
+/// effect's for the islands, and once they have played their 0.25 s every
+/// effect entity is gone.
+#[test]
+fn a_destructibles_break_and_hit_effects_play_and_end() {
+    let root = project();
+    let heard = Heard::default();
+    set_hooks(Rc::new(Listen(heard.clone())));
+    og_host_begin_bundle();
+    let watch = og_system_define_system(
+        "Listen".into(),
+        json!({ "reads": [{ "kind": "event", "name": "og.VfxEvent" }], "writes": [] }).to_string(),
+        1,
+    );
+    let game = og_game_game(Some(json!({ "seed": 1, "systems": [watch] }).to_string()));
+    let options = json!({ "root": root.to_str().unwrap() }).to_string();
+    let w = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let load = |path: &str| value(og_runtime::host_impl::answer(og_load_vfx(w, path.into())));
+    let (crumble, crack) = (load("fx/crumble.ogt"), load("fx/crack.ogt"));
+    let asset = value(og_runtime::host_impl::answer(og_load_gltf(
+        w,
+        "props/wall.ogt".into(),
+        None,
+    )))
+    .as_f64()
+    .unwrap();
+    let wall = value(og_runtime::host_impl::answer(og_world_instantiate(
+        w, asset, None,
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
+        w,
+        wall,
+        "og.Destructible".into(),
+        Some(
+            json!({ "toughness": 400, "strength": 4000, "friction": 0, "breakVfx": crumble, "hitVfx": crack })
+                .to_string(),
+        ),
+    )));
+    frames(w, 5);
+    shoot_foot(w, wall);
+    frames(w, 6);
+    let count = |n: &str| heard.borrow().iter().filter(|h| h.0 == n).count();
+    assert_eq!(count("crack"), 1, "one hit: {:?}", heard.borrow());
+    assert!(
+        count("dust") >= 1,
+        "islands broke loose: {:?}",
+        heard.borrow()
+    );
+    frames(w, 30);
+    for (name, e) in heard.borrow().iter() {
+        assert!(!og_world_alive(w, *e), "the {name} effect ended and went");
+    }
 }

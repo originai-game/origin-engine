@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "og.Destructible.breakVfx, og.Destructible.hitVfx",
+      "summary": "Composed effects (og.load.vfx) og.destruction plays as an og.Vfx where each island breaks loose and at each hit that damages the prop, beside breakFx and hitFx: dust, grit, a sound and a shake in one file, each ended by og.vfx. 0, the default, plays none."
+    },
+    {
+      "member": "og.load.vfx",
+      "summary": "Called outside a system, it registers og.Vfx and og.VfxEvent (as naming them would), so what plays the effect for the game, such as og.destruction's breakVfx, may write og.Vfx."
+    }
+  ]
+}

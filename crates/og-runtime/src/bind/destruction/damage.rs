@@ -92,9 +92,12 @@ pub(super) fn gather_hits(
                     },
                     CAUSE_IMPACT,
                 ));
-                if s.hit_fx != 0 {
-                    bursts.push((s.hit_fx, point));
-                }
+                bursts.extend(
+                    [s.hit_fx, s.hit_vfx]
+                        .into_iter()
+                        .filter(|&h| h != 0)
+                        .map(|h| (h, point)),
+                );
             }
         }
     }
@@ -127,9 +130,12 @@ pub(super) fn gather_hits(
                         },
                         CAUSE_DAMAGE,
                     ));
-                    if s.hit_fx != 0 {
-                        bursts.push((s.hit_fx, point));
-                    }
+                    bursts.extend(
+                        [s.hit_fx, s.hit_vfx]
+                            .into_iter()
+                            .filter(|&h| h != 0)
+                            .map(|h| (h, point)),
+                    );
                 }
             }
             Op::Explode {

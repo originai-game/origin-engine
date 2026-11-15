@@ -55928,6 +55928,16 @@
           "description": "A one-shot emitter burst at each hit that damages it: the material's own, grit and a puff off stone, splinters off wood, glints off glass; sparks only off metal, and a few. 0 none.",
           "default": 0
         },
+        "breakVfx": {
+          "$ref": "#/$defs/VfxAsset",
+          "description": "A composed effect (og.load.vfx) played where each island breaks loose, beside breakFx: dust, grit, a sound and a shake in one file, each played to its end. 0 none.\nSee `effects §1`.",
+          "default": 0
+        },
+        "hitVfx": {
+          "$ref": "#/$defs/VfxAsset",
+          "description": "A composed effect (og.load.vfx) played at each hit that damages it, beside hitFx. 0 none.",
+          "default": 0
+        },
         "debris": {
           "$ref": "#/$defs/ParticleEmitter",
           "description": "GPU-only debris: a shattering chunk's pieces under og.Destruction.debrisVolume never become bodies but fly on the GPU for debrisLifetime, never touching the simulation (none drawn without visualDebris); this mesh-particle emitter bursts finer grains where they land. 0: every piece is a body.\nSee `physics §9`.",

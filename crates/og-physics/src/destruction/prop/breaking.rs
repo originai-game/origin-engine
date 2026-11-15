@@ -32,6 +32,9 @@ pub struct Settings {
     pub anchored: bool,
     pub break_fx: u64,
     pub hit_fx: u64,
+    /// Composed effects (og.Vfx assets) played beside them.
+    pub break_vfx: u64,
+    pub hit_vfx: u64,
     pub debris: u64,
 }
 

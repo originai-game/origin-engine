@@ -199,11 +199,17 @@ pub(crate) fn enable(world: &mut World, mount: Mount<'_>) -> og_core::Result<()>
     *lock(&m.state) = State::default();
     let sh = m.state.clone();
     let s = |v: &[&str]| v.iter().map(|n| n.to_string()).collect::<Vec<_>>();
+    // og.Vfx, for breakVfx and hitVfx, when the game already plays
+    // composed effects (else og.vfx grants it when it does).
+    let vfx: Vec<String> = s(&[crate::bind::vfx::COMPONENT])
+        .into_iter()
+        .filter(|n| world.id_by_name(n).is_ok())
+        .collect();
     world.add_system(
         SystemDesc {
             name: SYSTEM.into(),
             reads: s(&READS),
-            writes: [s(&RECORDS), s(&WRITES)].concat(),
+            writes: [s(&RECORDS), s(&WRITES), vfx].concat(),
             queries: vec![QueryDesc {
                 write: vec![DESTRUCTIBLE.to_string()],
                 ..QueryDesc::default()
@@ -255,6 +261,8 @@ fn settings_of(v: &record::Destructible) -> Settings {
         anchored: v.anchored,
         break_fx: v.break_fx,
         hit_fx: v.hit_fx,
+        break_vfx: v.break_vfx,
+        hit_vfx: v.hit_vfx,
         debris: v.debris,
     }
 }

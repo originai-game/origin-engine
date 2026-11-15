@@ -237,9 +237,15 @@ fn loaded(engine: u32, asset: f64) -> Result<Arc<Loaded>, String> {
 }
 
 pub fn og_load_vfx(world: u32, path: String) -> Result<serde_json::Value, String> {
-    crate::engine::engine(world)
-        .and_then(|eng| load(&eng, &path))
-        .map(|i| json!(handle(i)))
+    crate::engine::engine(world).and_then(|eng| {
+        let i = load(&eng, &path)?;
+        // Outside a system, og.Vfx registers (og.vfx with it), so what
+        // plays it for the game (og.destruction's breakVfx) may write it.
+        if let Ok(w) = eng.world() {
+            crate::engine::lazy::ensure(&eng, w, COMPONENT)?;
+        }
+        Ok(json!(handle(i)))
+    })
 }
 
 pub fn og_vfx_info(world: u32, asset: f64) -> Result<crate::host::wire::VfxInfo, String> {
@@ -417,7 +423,24 @@ pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_c
             ..Default::default()
         },
         move |ctx| system(ctx, &registry, feel.as_deref(), &r),
-    )
+    )?;
+    // og.destruction plays an og.Destructible's breakVfx and hitVfx.
+    if world.systems().contains(&crate::bind::destruction::SYSTEM) {
+        world.grant(crate::bind::destruction::SYSTEM, &[COMPONENT])?;
+    }
+    Ok(())
+}
+
+/// og.Vfx's IDL layout, whose defaults fill a partial value.
+pub(crate) fn layout_decl() -> Option<&'static Layout> {
+    static L: std::sync::OnceLock<Option<Layout>> = std::sync::OnceLock::new();
+    L.get_or_init(|| {
+        og_api::host::RECORDS
+            .iter()
+            .find(|d| d.schema == COMPONENT)
+            .and_then(|d| Layout::from_decl(d).ok())
+    })
+    .as_ref()
 }
 
 fn system(

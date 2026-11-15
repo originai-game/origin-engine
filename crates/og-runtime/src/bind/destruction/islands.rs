@@ -206,9 +206,12 @@ pub(super) fn free_islands(
                 "volume": volume, "mass": mass, "cause": cause,
             })),
         )?);
-        if s.break_fx != 0 {
-            out.bursts.push((s.break_fx, point));
-        }
+        out.bursts.extend(
+            [s.break_fx, s.break_vfx]
+                .into_iter()
+                .filter(|&h| h != 0)
+                .map(|h| (h, point)),
+        );
     }
     Ok(())
 }
@@ -289,9 +292,12 @@ pub(super) fn shatter_chunks(
                 "mass": volume * s.mat.density, "cause": CAUSE_SHATTER,
             })),
         )?);
-        if s.break_fx != 0 {
-            out.bursts.push((s.break_fx, cp.0));
-        }
+        out.bursts.extend(
+            [s.break_fx, s.break_vfx]
+                .into_iter()
+                .filter(|&h| h != 0)
+                .map(|h| (h, cp.0)),
+        );
         if fine > 0 {
             out.bursts.push((s.debris, cp.0));
         }

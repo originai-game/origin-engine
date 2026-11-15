@@ -292,12 +292,28 @@ pub(super) fn publish(
         ctx.send_bytes(l.fractured.0, &ev)?;
     }
     let fx_life = t.ticks_of(t.res.fx_lifetime).max(1);
+    // og.Vfx once the game uses composed effects (og.vfx grants it).
+    let vfx = ctx
+        .id_by_name(crate::bind::vfx::COMPONENT)
+        .ok()
+        .zip(crate::bind::vfx::layout_decl());
     for (i, (emitter, at)) in bursts.into_iter().take(MAX_BURSTS).enumerate() {
         let tr = l
             .transform
             .1
             .enc(None, Some(&json!({ "position": jv(at) })))?;
         let seed = (tick as u32).wrapping_mul(2_654_435_761) ^ i as u32;
+        // A composed effect: an og.Vfx, which og.vfx despawns at its end.
+        if crate::bind::vfx::index(emitter).is_some() {
+            let Some((id, layout)) = &vfx else {
+                continue;
+            };
+            let v =
+                json!({ "asset": emitter as f64, "seed": seed.max(1), "startTick": tick as u32 });
+            let b = layout.encode(None, Some(&v)).map_err(invalid)?;
+            ctx.spawn_bytes(vec![(l.transform.0, tr), (*id, b)])?;
+            continue;
+        }
         let ps = l.particles.1.enc(
             None,
             Some(&json!({ "emitter": emitter as f64, "seed": seed, "startTick": tick as u32 })),

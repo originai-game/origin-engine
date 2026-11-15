@@ -33,4 +33,4 @@ fn explode {
 }
 ```
 
-<sub>Module `destruction` line 273</sub>
+<sub>Module `destruction` line 277</sub>

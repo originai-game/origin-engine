@@ -32129,6 +32129,15 @@ export interface Destructible {
    */
   hitFx: ParticleEmitter;
   /**
+   * A composed effect (og.load.vfx) played where each island breaks loose, beside breakFx: dust, grit, a sound and a shake in one file, each played to its end. 0 none.
+   * See `effects §1`.
+   */
+  breakVfx: VfxAsset;
+  /**
+   * A composed effect (og.load.vfx) played at each hit that damages it, beside hitFx. 0 none.
+   */
+  hitVfx: VfxAsset;
+  /**
    * GPU-only debris: a shattering chunk's pieces under og.Destruction.debrisVolume never become bodies but fly on the GPU for debrisLifetime, never touching the simulation (none drawn without visualDebris); this mesh-particle emitter bursts finer grains where they land. 0: every piece is a body.
    * See `physics §9`.
    */
@@ -37780,7 +37789,7 @@ export declare namespace og {
    * Chunks' colliders and mass follow og.Transform.scale's mean.
    * See `physics §9`.
    */
-  const Destructible: ComponentType<{ readonly toughness: FieldSpec<"f32">; readonly strength: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly tension: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly impactThreshold: FieldSpec<"f32">; readonly impactRadius: FieldSpec<"f32">; readonly anchored: FieldSpec<"bool">; readonly breakFx: FieldSpec<"ParticleEmitter">; readonly hitFx: FieldSpec<"ParticleEmitter">; readonly debris: FieldSpec<"ParticleEmitter">; readonly fractured: FieldSpec<"bool">; readonly broken: FieldSpec<"u32">; readonly loose: FieldSpec<"u32"> }, Destructible>;
+  const Destructible: ComponentType<{ readonly toughness: FieldSpec<"f32">; readonly strength: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly tension: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly impactThreshold: FieldSpec<"f32">; readonly impactRadius: FieldSpec<"f32">; readonly anchored: FieldSpec<"bool">; readonly breakFx: FieldSpec<"ParticleEmitter">; readonly hitFx: FieldSpec<"ParticleEmitter">; readonly breakVfx: FieldSpec<"VfxAsset">; readonly hitVfx: FieldSpec<"VfxAsset">; readonly debris: FieldSpec<"ParticleEmitter">; readonly fractured: FieldSpec<"bool">; readonly broken: FieldSpec<"u32">; readonly loose: FieldSpec<"u32"> }, Destructible>;
   /**
    * One chunk of an og.Destructible, written by og.destruction when the prop fractures. A loose chunk is a dynamic body (with og.RigidBody and og.Velocity, or a child collider of its island's body); an anchored one a static collider. Drawn with its part of the destructible's model. Despawn it to clear it away.
    */

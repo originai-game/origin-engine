@@ -28,6 +28,8 @@ Token `og.Destructible`, registered under the schema name `og.Destructible`; its
 | `anchored` | `boolean` | `true` | — | — | — | Whether its anchors (the chunks on its floor) hold it to the world; false, every island falls. |
 | `breakFx` | `ParticleEmitter` | `0` | — | — | — | A one-shot emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: the material's own, a lit dust puff for stone and brick, splinters and a little dust for wood, shards and glints for glass. 0 none. |
 | `hitFx` | `ParticleEmitter` | `0` | — | — | — | A one-shot emitter burst at each hit that damages it: the material's own, grit and a puff off stone, splinters off wood, glints off glass; sparks only off metal, and a few. 0 none. |
+| `breakVfx` | `VfxAsset` | `0` | — | — | — | A composed effect (og.load.vfx) played where each island breaks loose, beside breakFx: dust, grit, a sound and a shake in one file, each played to its end. 0 none. See `effects §1`. |
+| `hitVfx` | `VfxAsset` | `0` | — | — | — | A composed effect (og.load.vfx) played at each hit that damages it, beside hitFx. 0 none. |
 | `debris` | `ParticleEmitter` | `0` | — | — | — | GPU-only debris: a shattering chunk's pieces under og.Destruction.debrisVolume never become bodies but fly on the GPU for debrisLifetime, never touching the simulation (none drawn without visualDebris); this mesh-particle emitter bursts finer grains where they land. 0: every piece is a body. See `physics §9`. |
 | `fractured` | `boolean` | `false` | — | — | read only | Written: true from its first break (the model hidden, its chunks drawn). |
 | `broken` | `number` | `0` | — | — | read only | Written: its bonds broken so far. |
@@ -90,6 +92,10 @@ component Destructible {
   }
   field breakFx ParticleEmitter "A one-shot emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: the material's own, a lit dust puff for stone and brick, splinters and a little dust for wood, shards and glints for glass. 0 none."
   field hitFx ParticleEmitter "A one-shot emitter burst at each hit that damages it: the material's own, grit and a puff off stone, splinters off wood, glints off glass; sparks only off metal, and a few. 0 none."
+  field breakVfx VfxAsset "A composed effect (og.load.vfx) played where each island breaks loose, beside breakFx: dust, grit, a sound and a shake in one file, each played to its end. 0 none." {
+    guide "effects §1"
+  }
+  field hitVfx VfxAsset "A composed effect (og.load.vfx) played at each hit that damages it, beside hitFx. 0 none."
   field debris ParticleEmitter "GPU-only debris: a shattering chunk's pieces under og.Destruction.debrisVolume never become bodies but fly on the GPU for debrisLifetime, never touching the simulation (none drawn without visualDebris); this mesh-particle emitter bursts finer grains where they land. 0: every piece is a body." {
     guide "physics §9"
   }

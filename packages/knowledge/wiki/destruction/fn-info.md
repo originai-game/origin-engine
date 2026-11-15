@@ -30,4 +30,4 @@ fn info {
 }
 ```
 
-<sub>Module `destruction` line 288</sub>
+<sub>Module `destruction` line 292</sub>
