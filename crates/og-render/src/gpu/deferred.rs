@@ -354,6 +354,17 @@ fn pool() -> &'static Pool {
                             }
                         };
                         job();
+                        // Once more after the first compile: the exit
+                        // handlers run last-registered first, and what the
+                        // driver's shader compiler registers as it loads
+                        // in that compile would otherwise tear it down
+                        // while a worker is still inside it (NVIDIA Linux:
+                        // SIGSEGV or a spinning worker at exit).
+                        static AFTER_FIRST: std::sync::Once = std::sync::Once::new();
+                        // SAFETY: as at the first registration below.
+                        AFTER_FIRST.call_once(|| unsafe {
+                            atexit(wait_at_exit);
+                        });
                         let mut q = pool.queues.lock().unwrap_or_else(|e| e.into_inner());
                         q.running -= 1;
                         // (`settle` waits for idle, the exit for no job
