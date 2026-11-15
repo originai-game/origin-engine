@@ -125,6 +125,7 @@ pub(super) fn substitute(expr: &mut Expr, scope: &BTreeMap<String, Expr>) -> Res
         Expr::Not(a)
         | Expr::Neg(a)
         | Expr::Format(_, a)
+        | Expr::Numbers(a)
         | Expr::HasToken(a, _)
         | Expr::AttrTest(a, _) => substitute(a, scope)?,
         Expr::Lang(a, _) | Expr::Dir(a, _) => {
@@ -132,7 +133,7 @@ pub(super) fn substitute(expr: &mut Expr, scope: &BTreeMap<String, Expr>) -> Res
                 substitute(a, scope)?;
             }
         }
-        Expr::Bin(_, a, b) => {
+        Expr::Bin(_, a, b) | Expr::Index(a, b) => {
             substitute(a, scope)?;
             substitute(b, scope)?;
         }

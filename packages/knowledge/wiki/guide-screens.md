@@ -235,8 +235,10 @@ measurements are `og style check-project`.
   keyed each, or CSS. `style:width={$w + 'px'}` and `style="…"` win over
   rules. `bind:this={panel}` names an element; `use:tooltip={params}` sends
   `use` events (create, update, destroy) to the game.
-- Expressions allow property access, comparisons, arithmetic, ternaries,
-  pure number formatters, and `t(key, { named: expression })`. Assignments,
+- Expressions allow property access, an index (`items[i]`), comparisons,
+  arithmetic, ternaries, pure number formatters, `numbers(text)` (a number
+  list as SVG writes one: `numbers(view)[2]` is a viewBox's width), and
+  `t(key, { named: expression })`. Assignments,
   arbitrary calls, `$state`, `$effect`, and raw HTML are errors.
 - Style reactive state with `class:active={$step == 'brightness'}` and
   `.active` rules. Selectors are standard CSS (Selectors 4: combinators,

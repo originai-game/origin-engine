@@ -601,6 +601,7 @@ impl Profile {
                 Expr::Not(a)
                 | Expr::Neg(a)
                 | Expr::Format(_, a)
+                | Expr::Numbers(a)
                 | Expr::HasToken(a, _)
                 | Expr::AttrTest(a, _) => states(a, out),
                 Expr::Lang(a, _) | Expr::Dir(a, _) => {
@@ -608,7 +609,7 @@ impl Profile {
                         states(a, out);
                     }
                 }
-                Expr::Bin(_, a, b) => {
+                Expr::Bin(_, a, b) | Expr::Index(a, b) => {
                     states(a, out);
                     states(b, out);
                 }

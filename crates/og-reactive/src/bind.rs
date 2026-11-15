@@ -7,9 +7,10 @@
 //!   `items.3.name`, `items.length`).
 //! - A **binding** is an [`Expr`]: paths, numbers, strings, `true`,
 //!   `false`, `null`, `!`, unary `-`, `* / %`, `+ -` (`+` also joins
-//!   strings), `< <= > >=`, `== !=`, `&&`, `||`, `a ? b : c` and
-//!   parentheses (`hero.health / hero.maxHealth`, `!item.owned && price >
-//!   wallet.gold`).
+//!   strings), `< <= > >=`, `== !=`, `&&`, `||`, `a ? b : c`, an index
+//!   `a[i]` and parentheses (`hero.health / hero.maxHealth`, `!item.owned
+//!   && price > wallet.gold`, `items[selected]`); `numbers(text)` reads a
+//!   number list as SVG writes one (`numbers(view)[2]`, a viewBox's width).
 //! - A **template** is a text with arguments: an og-i18n message (`{name}`,
 //!   `{n, number}`, `{n, plural, one {# coin} other {# coins}}`, `{k,
 //!   select, …}`) whose argument names are paths, plus the engine's formats
@@ -411,6 +412,12 @@ pub enum Expr {
     Neg(Box<Expr>),
     Bin(Op, Box<Expr>, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
+    /// `a[i]`: a list's item, an object's member or a string's character.
+    Index(Box<Expr>, Box<Expr>),
+    /// `numbers(text)`: the numbers of a list written as SVG writes one
+    /// (`viewBox="0 0 360 240"`, `"0,0, 360,240"`), split at whitespace
+    /// and commas; a word that is not a number is null.
+    Numbers(Box<Expr>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -442,9 +449,9 @@ fn lex(src: &str) -> Result<Vec<Tok>, String> {
     let c: Vec<char> = src.chars().collect();
     let mut i = 0;
     let mut out = Vec::new();
-    const SYMS: [&str; 21] = [
+    const SYMS: [&str; 23] = [
         "&&", "||", "==", "!=", "<=", ">=", "<", ">", "!", "+", "-", "*", "/", "%", "(", ")", "?",
-        ":", ",", "{", "}",
+        ":", ",", "{", "}", "[", "]",
     ];
     while i < c.len() {
         let ch = c[i];
@@ -499,7 +506,7 @@ fn lex(src: &str) -> Result<Vec<Tok>, String> {
             let rest: String = c[i..c.len().min(i + 2)].iter().collect();
             let Some(sym) = SYMS.iter().find(|s| rest.starts_with(**s)) else {
                 return Err(format!(
-                    "'{ch}' is not part of a binding (paths, numbers, strings, ! && || == != < <= > >= + - * / % ?: and parentheses)"
+                    "'{ch}' is not part of a binding (paths, numbers, strings, ! && || == != < <= > >= + - * / % ?:, [index] and parentheses)"
                 ));
             };
             i += sym.chars().count();
@@ -569,6 +576,17 @@ impl P {
         if self.eat("-") {
             return Ok(Expr::Neg(Box::new(self.unary()?)));
         }
+        let mut e = self.primary()?;
+        while self.eat("[") {
+            let i = self.expr()?;
+            if !self.eat("]") {
+                return Err("an '[' index is not closed with ']'".into());
+            }
+            e = Expr::Index(Box::new(e), Box::new(i));
+        }
+        Ok(e)
+    }
+    fn primary(&mut self) -> Result<Expr, String> {
         if self.eat("(") {
             let e = self.expr()?;
             if !self.eat(")") {
@@ -602,6 +620,13 @@ impl P {
                     ));
                 }
                 Ok(Expr::Format(format, Box::new(value)))
+            }
+            Some(Tok::Ident(w)) if w == "numbers" && self.eat("(") => {
+                let value = self.expr()?;
+                if !self.eat(")") {
+                    return Err("close numbers(text) with ')'; it takes one value".into());
+                }
+                Ok(Expr::Numbers(Box::new(value)))
             }
             Some(Tok::Ident(w)) if w == "t" && self.eat("(") => {
                 let key = self.expr()?;
@@ -686,6 +711,7 @@ impl Expr {
             Expr::Not(a)
             | Expr::Neg(a)
             | Expr::Format(_, a)
+            | Expr::Numbers(a)
             | Expr::HasToken(a, _)
             | Expr::AttrTest(a, _) => a.paths(out),
             Expr::Lang(a, _) | Expr::Dir(a, _) => {
@@ -693,7 +719,7 @@ impl Expr {
                     a.paths(out);
                 }
             }
-            Expr::Bin(_, a, b) => {
+            Expr::Bin(_, a, b) | Expr::Index(a, b) => {
                 a.paths(out);
                 b.paths(out);
             }
@@ -764,6 +790,27 @@ impl Expr {
                 scope.env.language(),
             )),
             Expr::Not(a) => Value::Bool(!truthy(&a.eval(scope))),
+            Expr::Index(a, i) => {
+                let (a, i) = (a.eval(scope), i.eval(scope));
+                let at = || number(&i).filter(|n| *n >= 0.0 && n.fract() == 0.0);
+                match a {
+                    Value::Array(list) => at()
+                        .and_then(|n| list.get(n as usize).cloned())
+                        .unwrap_or(Value::Null),
+                    Value::Object(o) => o.get(&text(&i)).cloned().unwrap_or(Value::Null),
+                    Value::String(s) => at()
+                        .and_then(|n| s.chars().nth(n as usize))
+                        .map_or(Value::Null, |c| Value::String(c.to_string())),
+                    _ => Value::Null,
+                }
+            }
+            Expr::Numbers(a) => Value::Array(
+                text(&a.eval(scope))
+                    .split(|c: char| c.is_whitespace() || c == ',')
+                    .filter(|w| !w.is_empty())
+                    .map(|w| w.parse::<f64>().ok().map_or(Value::Null, num))
+                    .collect(),
+            ),
             Expr::Neg(a) => num(-number(&a.eval(scope)).unwrap_or(f64::NAN)),
             Expr::If(c, a, b) => {
                 if truthy(&c.eval(scope)) {
@@ -1538,6 +1585,31 @@ mod tests {
         );
         assert!(Expr::parse("price >").is_err());
         assert!(Expr::parse("price $$ 2").is_err());
+    }
+
+    /// An index reads a list's item, an object's member or a string's
+    /// character, and `numbers` reads a list as SVG writes one. Ways it
+    /// could fail: `-a[i]` read as `(-a)[i]`, a comma kept as part of a
+    /// number, or an index past the end taken as the last item.
+    #[test]
+    fn indexes_and_number_lists() {
+        struct Host;
+        impl Env for Host {}
+        let vm = json!({ "view": "-10, 0 360\t240", "xs": [3, 4], "row": { "k": "v" }, "i": 1 });
+        let scope = Scope {
+            vm: &vm,
+            locals: Vec::new(),
+            env: &Host,
+        };
+        let eval = |src: &str| Expr::parse(src).unwrap().eval(&scope);
+        assert_eq!(eval("numbers(view)"), json!([-10.0, 0.0, 360.0, 240.0]));
+        assert_eq!(eval("numbers(view)[2] / numbers(view)[3]"), json!(1.5));
+        assert_eq!(eval("-xs[i]"), json!(-4.0));
+        assert_eq!(eval("xs[i + 1]"), Value::Null);
+        assert_eq!(eval("row['k']"), json!("v"));
+        assert_eq!(eval("'abc'[2]"), json!("c"));
+        assert_eq!(eval("numbers('1 x')[1]"), Value::Null);
+        assert!(Expr::parse("xs[1").is_err());
     }
 
     #[test]
