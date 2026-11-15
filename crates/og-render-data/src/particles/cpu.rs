@@ -1,4 +1,5 @@
 use super::*;
+use og_env::force::Forces;
 
 // ---------------------------------------------------------------------------
 // Particle state and the CPU simulation.
@@ -558,10 +559,14 @@ fn integrate(
     colliders: &[SceneCollider],
     origin: Vec3,
     air: Vec3,
+    fields: &Forces,
 ) -> bool {
     let mut pos = Vec3::from_slice(&p.pos_age[..3]);
     let mut vel = Vec3::from_slice(&p.vel_life[..3]);
     vel += e.gravity * dt;
+    if e.force_fields != 0.0 && e.space == SimulationSpace::World && !fields.is_empty() {
+        vel += fields.at(pos) * (e.force_fields * dt);
+    }
     if e.noise.strength != 0.0 {
         let (whole, rest) = noise_origin(origin, e.noise.frequency);
         let q = pos * e.noise.frequency + rest + Vec3::splat(time * e.noise.scroll);
@@ -722,7 +727,8 @@ impl CpuParticles {
     /// the emitters of `e.sub_emitters`, in order (`None`: not fired).
     /// `events`: where to report every birth, death and collision of the
     /// system's own particles (not its sub-emitters'), in slot order per
-    /// tick.
+    /// tick. `fields`: the og.ForceFields, placed in the particles' world
+    /// space (relative to [`Self::origin`]).
     #[allow(clippy::too_many_arguments)]
     pub fn advance(
         &mut self,
@@ -734,6 +740,7 @@ impl CpuParticles {
         subs: &[Option<&ParticleEmitter>],
         mut events: Option<&mut Vec<ParticleEvent>>,
         history: Option<&ParticleHistory>,
+        fields: &Forces,
     ) -> u32 {
         let max = e.max_particles;
         if self.slots.len() != max as usize {
@@ -861,6 +868,7 @@ impl CpuParticles {
                             colliders,
                             self.origin,
                             air,
+                            fields,
                         );
                         if let (Some(path), Some(i)) = (path, sample)
                             && p.alive()
@@ -905,6 +913,7 @@ impl CpuParticles {
                         colliders,
                         self.origin,
                         carrying_air(ce, sys.air, None),
+                        fields,
                     );
                 }
                 if sub.trigger == SubTrigger::Life {

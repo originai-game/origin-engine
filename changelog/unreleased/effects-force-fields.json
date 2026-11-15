@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "particles: forceFields",
+      "summary": "An emitter's `forceFields <0..1>` makes its world-space particles take that share of the og.ForceField acceleration where each one is (1: as a body does), on the GPU and CPU paths alike: smoke lifted by an updraft, sparks swirled by a vortex, embers drawn to a radial pull. Only bodies, ropes, cloths, fluids and characters felt the fields before. Default 0, so existing particles do not move."
+    }
+  ]
+}

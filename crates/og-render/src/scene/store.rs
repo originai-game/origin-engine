@@ -228,6 +228,7 @@ impl RenderScene {
                 grass: Vec::new(),
                 fluids_3d: Vec::new(),
                 colliders: Vec::new(),
+                force_fields: Default::default(),
             },
             atmosphere: SceneAtmosphere {
                 fog: None,

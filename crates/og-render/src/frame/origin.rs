@@ -124,6 +124,9 @@ impl RenderScene {
                 }
             }
         }
+        for f in &mut self.world.force_fields.fields {
+            f.at.position += d;
+        }
         for p in &mut self.objects.debris {
             p.position += d;
         }

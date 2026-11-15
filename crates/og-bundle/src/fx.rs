@@ -209,6 +209,13 @@ pub const EMITTER_LINES: &[Line] = &[
         "wind 1",
     ),
     Line::new(
+        "forceFields",
+        "<0..1>",
+        "0",
+        "The share of the og.ForceField acceleration where each particle is that it takes (1: as a body does): an updraft lifting smoke, a vortex swirling sparks. World-space particles only.",
+        "forceFields 1",
+    ),
+    Line::new(
         "noise",
         "<strength> [<frequency> <scroll>]",
         "0 0.5 0.3",
@@ -725,6 +732,7 @@ pub fn parse_emitter_linked(
             }
             "drag" => em.drag = one(e)?.max(0.0),
             "wind" => em.wind = one(e)?.clamp(0.0, 1.0),
+            "forceFields" => em.force_fields = one(e)?.clamp(0.0, 1.0),
             "noise" => {
                 let v = nums(e)?;
                 em.noise.strength = *v.first().ok_or_else(|| {

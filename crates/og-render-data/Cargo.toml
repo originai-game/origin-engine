@@ -27,6 +27,8 @@ reach = ["dep:naga"]
 og-core = { path = "../og-core" }
 # The resource handles, the overlay's glyphs and the UI's shapes and paints.
 og-draw = { path = "../og-draw" }
+# og.ForceField's acceleration, the function physics takes too.
+og-env = { path = "../og-env" }
 glam = { workspace = true }
 bytemuck = { workspace = true }
 gltf = { workspace = true, optional = true }

@@ -29,7 +29,17 @@ fn live(e: &ParticleEmitter, sys: &mut ParticleSystem, ticks: u64) -> Vec<Partic
     let points = shape_points(&e.shape, None);
     for t in 0..ticks {
         sys.tick = t;
-        cpu.advance(e, sys, 60.0, &points, &[], &[], None, None);
+        cpu.advance(
+            e,
+            sys,
+            60.0,
+            &points,
+            &[],
+            &[],
+            None,
+            None,
+            &Default::default(),
+        );
     }
     cpu.slots.into_iter().filter(|p| p.alive()).collect()
 }
@@ -87,7 +97,17 @@ fn emission_thins_an_emitter_and_keeps_what_is_in_the_air() {
     let points = shape_points(&full.shape, None);
     let mut step = |e: &ParticleEmitter, cpu: &mut CpuParticles, t: u64| {
         sys.tick = t;
-        cpu.advance(e, &sys, 60.0, &points, &[], &[], None, None);
+        cpu.advance(
+            e,
+            &sys,
+            60.0,
+            &points,
+            &[],
+            &[],
+            None,
+            None,
+            &Default::default(),
+        );
     };
     for t in 0..30 {
         step(&full, &mut cpu, t);
@@ -206,6 +226,7 @@ fn attractors_speed_splines_and_inherited_velocity_move_particles() {
             &[],
             None,
             None,
+            &Default::default(),
         );
     }
     let vx: Vec<f32> = cpu
@@ -262,7 +283,17 @@ fn run(sys: &mut ParticleSystem, cpu: &mut CpuParticles, ticks: std::ops::RangeI
     let e = fountain();
     for t in ticks {
         sys.tick = t;
-        cpu.advance(&e, sys, 60.0, &[], &[], &[], None, None);
+        cpu.advance(
+            &e,
+            sys,
+            60.0,
+            &[],
+            &[],
+            &[],
+            None,
+            None,
+            &Default::default(),
+        );
     }
 }
 
@@ -407,6 +438,7 @@ fn a_death_sub_emitter_fires_where_each_particle_dies() {
                 &[Some(&child)],
                 Some(&mut events),
                 None,
+                &Default::default(),
             );
         }
         (cpu, events)
@@ -487,7 +519,17 @@ fn a_life_sub_emitter_runs_its_emission_from_every_living_parent() {
         for t in 0..ticks {
             sys.tick = t;
             // The parents' motion: set by hand, ±x by their slot.
-            cpu.advance(&e, &sys, 60.0, &[], &[], &[Some(&child)], None, None);
+            cpu.advance(
+                &e,
+                &sys,
+                60.0,
+                &[],
+                &[],
+                &[Some(&child)],
+                None,
+                None,
+                &Default::default(),
+            );
             for (i, p) in cpu.slots.iter_mut().enumerate() {
                 if t == 0 && p.alive() {
                     p.vel_life[0] = if i == 0 { 1.0 } else { -1.0 };
@@ -598,7 +640,17 @@ fn every_live_particle_is_in_its_systems_live_spawn_range() {
             sys.tick = t;
             // Frozen only after it has particles in the air.
             sys.time_scale = if t < 30 { 1.0 } else { scale };
-            cpu.advance(&e, &sys, 60.0, &points, &[], &[], None, None);
+            cpu.advance(
+                &e,
+                &sys,
+                60.0,
+                &points,
+                &[],
+                &[],
+                None,
+                None,
+                &Default::default(),
+            );
             let live = live_spawns(&e, &sys, 60.0, &cpu.clock);
             let slots: std::collections::BTreeSet<u64> = live
                 .clone()
@@ -679,8 +731,18 @@ fn every_live_particle_is_inside_its_systems_cull_bound() {
                 220..250 => 0.0,
                 _ => 1.0,
             };
-            cpu.advance(&e, &sys, 60.0, &points, &[], &[], None, None);
-            let (lo, hi) = swept_bound(&e, &sys, 60.0, &cpu.clock, &mut path);
+            cpu.advance(
+                &e,
+                &sys,
+                60.0,
+                &points,
+                &[],
+                &[],
+                None,
+                None,
+                &Default::default(),
+            );
+            let (lo, hi) = swept_bound(&e, &sys, 60.0, &cpu.clock, &mut path, 0.0);
             for p in cpu.slots.iter().filter(|p| p.alive()) {
                 let mut q = Vec3::from_slice(&p.pos_age[..3]);
                 if space == SimulationSpace::Local {

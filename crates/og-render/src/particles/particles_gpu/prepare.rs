@@ -177,6 +177,12 @@ impl ParticleRenderer {
             let seed = hash_seed(sys.seed);
             // A trail's seconds between samples.
             let interval = e.trail.map(|t| t.interval(tick_rate));
+            // The most the force fields accelerate its particles (m/s²).
+            let pull = if e.force_fields != 0.0 && e.space == SimulationSpace::World {
+                e.force_fields.abs() * fields_peak(&scene.world.force_fields)
+            } else {
+                0.0
+            };
             let subs: Vec<Option<&ParticleEmitter>> = e
                 .sub_emitters
                 .iter()
@@ -275,9 +281,17 @@ impl ParticleRenderer {
                 match hosted {
                     Some(h) => take_hosted(&mut state.cpu, h, e.space, scene.frame.origin),
                     None => {
-                        out.ticks += state
-                            .cpu
-                            .advance(e, sys, tick_rate, points, colliders, &subs, None, history)
+                        out.ticks += state.cpu.advance(
+                            e,
+                            sys,
+                            tick_rate,
+                            points,
+                            colliders,
+                            &subs,
+                            None,
+                            history,
+                            &scene.world.force_fields,
+                        )
                     }
                 }
                 out.cpu_alive += state.cpu.alive() as u32;
@@ -430,7 +444,7 @@ impl ParticleRenderer {
                 g.last_tick = Some(sys.tick);
                 g.prev_transform = Some(sys.transform);
                 let live = crate::particles::live_spawns(e, sys, tick_rate, &g.clock);
-                let bound = swept_bound(e, sys, tick_rate, &g.clock, &mut state.path);
+                let bound = swept_bound(e, sys, tick_rate, &g.clock, &mut state.path, pull);
                 let n_points = (points.len() / 2) as u32;
                 let local = e.space == SimulationSpace::Local;
                 for s in &steps {
@@ -529,9 +543,17 @@ impl ParticleRenderer {
                 match hosted {
                     Some(h) => take_hosted(&mut state.cpu, h, e.space, scene.frame.origin),
                     None => {
-                        out.ticks += state
-                            .cpu
-                            .advance(e, sys, tick_rate, points, colliders, &subs, None, history)
+                        out.ticks += state.cpu.advance(
+                            e,
+                            sys,
+                            tick_rate,
+                            points,
+                            colliders,
+                            &subs,
+                            None,
+                            history,
+                            &scene.world.force_fields,
+                        )
                     }
                 }
                 out.cpu_alive += state.cpu.alive() as u32;
@@ -578,8 +600,9 @@ impl ParticleRenderer {
                     layers,
                     child: None,
                     slots,
-                    bound: stepped
-                        .then(|| swept_bound(e, sys, tick_rate, &state.cpu.clock, &mut state.path)),
+                    bound: stepped.then(|| {
+                        swept_bound(e, sys, tick_rate, &state.cpu.clock, &mut state.path, pull)
+                    }),
                     kind,
                     mesh,
                     effect,
@@ -692,6 +715,17 @@ impl ParticleRenderer {
                 .then(a.id.cmp(&b.id))
                 .then(a.child.cmp(&b.child))
         });
+        // The force fields, for compute systems that take them.
+        if out.any_gpu && !scene.world.force_fields.is_empty() {
+            let words = pack_fields(&scene.world.force_fields);
+            let bytes: &[u8] = bytemuck::cast_slice(&words);
+            if bytes.len() as u64 > self.fields.size() {
+                self.fields = collider_buffer(device, (bytes.len() as u64).next_power_of_two());
+            }
+            queue.write_buffer(&self.fields, 0, bytes);
+        } else if out.any_gpu {
+            queue.write_buffer(&self.fields, 0, bytemuck::cast_slice(&[[0.0f32; 4]]));
+        }
         // The scene's colliders near each colliding system, one list each
         // (`emitter.info.z`), in the buffer the simulation reads.
         if !colliding.is_empty() {

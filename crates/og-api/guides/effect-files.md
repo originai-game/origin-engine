@@ -29,6 +29,7 @@ Every line the three effect formats take, from the tables their parsers read: an
 | `gravity <x> <y> <z>` | `0 -2 0` | Metres per second squared. |
 | `drag <per second>` | `0` | How fast motion relative to the air dies. |
 | `wind <0..1>` | `0` | The share of the air's motion (og.Wind and every og.WindMotor where the system is) that `drag` closes on: smoke and dust drift downwind; 0 slows to rest. |
+| `forceFields <0..1>` | `0` | The share of the og.ForceField acceleration where each particle is that it takes (1: as a body does): an updraft lifting smoke, a vortex swirling sparks. World-space particles only. |
 | `noise <strength> [<frequency> <scroll>]` | `0 0.5 0.3` | Turbulence: value noise pushing the particles. |
 | `texture "<id>"` |  | A texture asset; left out, a soft dot. |
 | `sheet <columns> <rows> [<frames> [off \| life <cycles> \| fps <n> \| random]]` | `1 1` | The texture as a sprite sheet: a frame by age, at a rate, or one at random. |

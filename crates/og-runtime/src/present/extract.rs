@@ -107,6 +107,8 @@ pub(crate) struct DrawLayouts {
     pub grass_type: Option<Layout>,
     /// og.Collider: what CPU-simulated particles bounce off.
     pub collider: Option<Layout>,
+    /// og.ForceField: what particles with `forceFields` are accelerated by.
+    pub force_field: Option<Layout>,
     /// og.Lines and og.Points (`crate::present::geometry`).
     pub lines: Option<Layout>,
     pub points: Option<Layout>,

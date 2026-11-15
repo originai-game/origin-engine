@@ -139,6 +139,10 @@ pub struct SceneWorld {
     /// visual bodies ([`crate::VisualBody`]) meet on the GPU. Empty by
     /// default.
     pub colliders: Vec<crate::SceneCollider>,
+    /// The world's og.ForceFields: what particles whose emitter takes a
+    /// share of them ([`crate::ParticleEmitter::force_fields`]) are
+    /// accelerated by, as bodies are. Empty by default.
+    pub force_fields: og_env::force::Forces,
 }
 
 /// The effects drawn among the scene: particles and their history, trails,

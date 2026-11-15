@@ -1,4 +1,5 @@
-//! The colliders particles, visual bodies and debris meet.
+//! The colliders particles, visual bodies and debris meet, and the force
+//! fields particles are accelerated by.
 
 use super::*;
 
@@ -63,4 +64,25 @@ pub(super) fn colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) 
         };
         rs.scene.world.colliders.push(collider);
     }
+}
+
+/// The force fields particles with a `forceFields` share are accelerated by
+/// (`RenderScene::world.force_fields`): every enabled og.ForceField where
+/// the frame places it, while such a system is drawn.
+pub(super) fn force_fields(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
+    let pulled = rs.scene.effects.particles.iter().any(|s| {
+        rs.scene
+            .emitter(s.emitter)
+            .is_some_and(|e| e.force_fields > 0.0)
+    });
+    rs.scene.world.force_fields = if pulled {
+        crate::bind::forces::frame_forces(
+            world,
+            rs.draw.force_field.as_ref(),
+            rs.draw.volume.as_ref(),
+            h,
+        )
+    } else {
+        Default::default()
+    };
 }

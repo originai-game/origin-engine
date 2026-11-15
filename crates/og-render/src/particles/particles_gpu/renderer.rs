@@ -51,6 +51,7 @@ impl ParticleRenderer {
                 depth_entry(2, wgpu::ShaderStages::COMPUTE),
                 depth_entry(3, wgpu::ShaderStages::COMPUTE),
                 storage_entry(4, true),
+                storage_entry(5, true),
             ],
         });
         let sim_system_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -178,6 +179,7 @@ impl ParticleRenderer {
             emitter_bytes: Vec::new(),
             view_buffer,
             colliders: collider_buffer(device, 256),
+            fields: collider_buffer(device, 256),
             systems: HashMap::new(),
             scene_id: 0,
             points: HashMap::new(),
@@ -230,6 +232,10 @@ impl ParticleRenderer {
                 wgpu::BindGroupEntry {
                     binding: 4,
                     resource: self.colliders.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: self.fields.as_entire_binding(),
                 },
             ],
         });

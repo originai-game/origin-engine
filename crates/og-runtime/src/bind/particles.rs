@@ -129,6 +129,7 @@ pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_c
     lock(&state).systems.clear();
     let sh = state.clone();
     let air = mount.modules.air.clone();
+    let fields = mount.modules.forces.clone();
     world.add_system(
         SystemDesc {
             name: SYSTEM.into(),
@@ -137,7 +138,7 @@ pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_c
             queries,
             ..Default::default()
         },
-        move |ctx| system(ctx, &sh, &air, &r),
+        move |ctx| system(ctx, &sh, &air, &fields, &r),
     )?;
     world.add_state_block(SYSTEM, Box::new(Block(state)))
 }
@@ -218,6 +219,7 @@ fn system(
     ctx: &mut SystemContext<'_>,
     state: &Mutex<Hosted>,
     air: &crate::bind::wind::ModuleState,
+    fields: &crate::bind::forces::ModuleState,
     r: &Records,
 ) -> og_core::Result<()> {
     let time = ctx.time();
@@ -249,6 +251,8 @@ fn system(
     let mut live = Vec::new();
     let mut solid: Option<Vec<SceneCollider>> = None;
     let mut events = Vec::new();
+    // The tick's force fields (`forces::before_tick`), read once.
+    let mut forces = None;
     for e in rows {
         let v: record::ParticleSystem = r
             .systems
@@ -300,6 +304,11 @@ fn system(
         hosted.world = em.space == SimulationSpace::World;
         let cpu = &mut hosted.cpu;
         let mut fired = Vec::new();
+        let pull = if em.force_fields > 0.0 && em.space == SimulationSpace::World {
+            &*forces.get_or_insert_with(|| fields.get())
+        } else {
+            &og_env::force::Forces::default()
+        };
         cpu.advance(
             em,
             &sys,
@@ -309,6 +318,7 @@ fn system(
             &subs,
             Some(&mut fired),
             None,
+            pull,
         );
         events.extend(
             fired

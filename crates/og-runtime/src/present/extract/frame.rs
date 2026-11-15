@@ -343,6 +343,7 @@ fn effects(
     // Scattered copies are instances too, keyed by their terrain cell.
     keys.extend(super::terrain::extract(world, rs, h));
     colliders(world, rs, h);
+    force_fields(world, rs, h);
     let vp = super::fx::viewport(rs);
     // The camera's shake, punch, kick and zones (on the frame only), then
     // og.Sprite rows, floating texts and tile layers.

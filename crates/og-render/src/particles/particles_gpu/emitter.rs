@@ -203,6 +203,16 @@ pub(super) fn emitter_gpu(
             e.collision.is_some_and(|c| c.die) as u32 as f32,
         ],
         axis: axis.extend(0.0).to_array(),
+        push: [
+            if e.space == SimulationSpace::World {
+                e.force_fields
+            } else {
+                0.0
+            },
+            0.0,
+            0.0,
+            0.0,
+        ],
         color2_t,
         color2_v,
         // The interval and sample are the frame's (`prepare`).

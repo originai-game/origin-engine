@@ -567,6 +567,12 @@ pub struct ParticleEmitter {
     /// is ([`ParticleSystem::air`] in og-render: og.Wind and the
     /// og.WindMotors), so smoke leans and leaves are carried.
     pub wind: f32,
+    /// How much of the og.ForceField acceleration where a particle is it
+    /// takes, 0 (none, the default) to 1 (as a body does): an updraft
+    /// lifting smoke, a vortex swirling sparks
+    /// ([`crate::RenderScene`]'s `world.force_fields`). World-space
+    /// particles only.
+    pub force_fields: f32,
     pub noise: ParticleNoise,
     /// `None`: a soft round dot.
     pub texture: Option<TextureHandle>,
@@ -687,6 +693,7 @@ impl Default for ParticleEmitter {
             gravity: Vec3::new(0.0, -2.0, 0.0),
             drag: 0.0,
             wind: 0.0,
+            force_fields: 0.0,
             noise: ParticleNoise::default(),
             texture: None,
             array: None,

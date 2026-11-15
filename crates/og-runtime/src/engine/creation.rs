@@ -50,6 +50,7 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             #[cfg(not(feature = "profile2d"))]
             grass_type: get("og.GrassType"),
             collider: get("og.Collider"),
+            force_field: get("og.ForceField"),
             lines: get("og.Lines"),
             points: get("og.Points"),
             probe: get("og.ReflectionProbe"),

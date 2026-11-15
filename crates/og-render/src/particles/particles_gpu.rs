@@ -96,6 +96,8 @@ struct EmitterGpu {
     /// `counts3.y` keys, 0: none).
     color2_t: [[f32; 4]; 2],
     color2_v: [[f32; 4]; 8],
+    /// x: the share of the og.ForceFields its particles take (0: none).
+    push: [f32; 4],
     /// x: a trail's lifetime (0: none), y: its width share, z: seconds
     /// between samples, w: a tick's sample index (-1: none) or, on a draw
     /// entry, the newest's.
@@ -371,6 +373,8 @@ pub(crate) struct ParticleRenderer {
     /// The scene's colliders as `scene_colliders.rs` packs them, with a
     /// list per system that meets them (`emitter.info.z`).
     colliders: wgpu::Buffer,
+    /// The og.ForceFields as `pack_fields` lays them out.
+    fields: wgpu::Buffer,
     systems: HashMap<u64, SystemState>,
     scene_id: u64,
     /// Sampled mesh surfaces per emitter index.
@@ -490,6 +494,45 @@ pub(crate) fn sim_source() -> String {
     )
 }
 
+/// The strongest acceleration `forces` give anywhere (m/s²), for a bound.
+fn fields_peak(forces: &og_env::force::Forces) -> f32 {
+    forces
+        .fields
+        .iter()
+        .map(|f| f.strength.abs())
+        .filter(|s| s.is_finite())
+        .sum()
+}
+
+/// The vec4s of one field in the force-field buffer (`force_field_at`).
+const FIELD_ROWS: usize = 6;
+
+/// The force fields as `force_field_at` reads them: their count, then
+/// [`FIELD_ROWS`] vec4s each (a field whose strength is not finite, which
+/// accelerates nothing, left out).
+fn pack_fields(forces: &og_env::force::Forces) -> Vec<[f32; 4]> {
+    use og_env::force::FieldKind;
+    let mut out = vec![[0.0; 4]];
+    for f in forces.fields.iter().filter(|f| f.strength.is_finite()) {
+        let kind = match f.kind {
+            FieldKind::Directional => 0.0,
+            FieldKind::Radial => 1.0,
+            FieldKind::Vortex => 2.0,
+        };
+        let v = f.volume;
+        out.extend([
+            f.at.position.extend(kind).to_array(),
+            f.at.quaternion.normalize().to_array(),
+            f.at.scale.extend(f.strength).to_array(),
+            f.direction.extend(v.is_some() as u32 as f32).to_array(),
+            v.map_or([0.0; 4], |v| v.size.extend(v.radius).to_array()),
+            [v.map_or(0.0, |v| v.fade), 0.0, 0.0, 0.0],
+        ]);
+    }
+    out[0][0] = ((out.len() - 1) / FIELD_ROWS) as f32;
+    out
+}
+
 fn collider_buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
     device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("particle colliders"),
@@ -562,11 +605,14 @@ pub(crate) fn swept_bound(
     tick_rate: f32,
     clock: &crate::particles::ParticleClock,
     path: &mut std::collections::VecDeque<(f64, Vec3)>,
+    pull: f32,
 ) -> (Vec3, Vec3) {
     let (lo, hi) = reach(e, sys.transform, tick_rate);
     let at = sys.transform.w_axis.truncate();
     let life = f64::from(e.max_lifetime()) + 2.0 / f64::from(tick_rate.max(1e-3));
-    let air = crate::particles::carrying_air(e, sys.air, None).length() * life as f32;
+    let air = (crate::particles::carrying_air(e, sys.air, None).length() * life as f32
+        + 0.5 * pull * (life * life) as f32)
+        .min(500.0);
     let (mut lo, mut hi) = (lo - Vec3::splat(air), hi + Vec3::splat(air));
     if e.space == SimulationSpace::World {
         let now = clock.at(sys.tick + 1, 1.0 / f64::from(tick_rate.max(1e-3)));

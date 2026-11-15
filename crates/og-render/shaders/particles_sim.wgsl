@@ -15,6 +15,8 @@
 @group(0) @binding(2) var scene_depth: texture_2d<f32>;
 @group(0) @binding(3) var scene_gbuffer: texture_2d<f32>;
 @group(0) @binding(4) var<storage, read> colliders: array<vec4<f32>>;
+// The og.ForceFields: their count, then six vec4s each (pack_fields).
+@group(0) @binding(5) var<storage, read> force_fields: array<vec4<f32>>;
 @group(1) @binding(0) var<storage, read_write> particles: array<Particle>;
 @group(1) @binding(1) var<storage, read> mesh_points: array<vec4<f32>>;
 // With a trail (emitter.trail.x > 0): each slot's path, TRAIL_POINTS
@@ -168,11 +170,67 @@ fn forces(pos: vec3<f32>) -> vec3<f32> {
   return a;
 }
 
+// `v` turned by the unit quaternion `q`.
+fn quat_turn(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
+  return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
+}
+
+fn unit_or_zero(v: vec3<f32>) -> vec3<f32> {
+  let l = length(v);
+  return select(vec3<f32>(0.0), v / l, l > 0.0);
+}
+
+// The og.ForceFields' acceleration at `p` (og-env's `Forces::at`): each
+// field its kind's way, times its region's weight there.
+fn force_field_at(p: vec3<f32>) -> vec3<f32> {
+  var a = vec3<f32>(0.0);
+  let n = u32(force_fields[0].x);
+  for (var i = 0u; i < n; i++) {
+    let b = 1u + i * 6u;
+    let at = force_fields[b].xyz;
+    let kind = u32(force_fields[b].w + 0.5);
+    let q = force_fields[b + 1u];
+    let scale = abs(force_fields[b + 2u].xyz);
+    let strength = force_fields[b + 2u].w;
+    let dir = force_fields[b + 3u].xyz;
+    var weight = 1.0;
+    if (force_fields[b + 3u].w > 0.5) {
+      let size = force_fields[b + 4u].xyz;
+      let radius = force_fields[b + 4u].w;
+      let fade = force_fields[b + 5u].x;
+      var outside: f32;
+      if (radius > 0.0) {
+        outside = max(length(p - at) - radius * max(scale.x, max(scale.y, scale.z)), 0.0);
+      } else {
+        let local = quat_turn(vec4<f32>(-q.xyz, q.w), p - at);
+        outside = length(max(abs(local) - abs(size) * scale * 0.5, vec3<f32>(0.0)));
+      }
+      if (outside > 0.0) {
+        weight = select(0.0, max(1.0 - outside / fade, 0.0), fade > 0.0);
+      }
+    }
+    if (weight <= 0.0) { continue; }
+    let off = p - at;
+    var d = dir;
+    if (kind == 1u) {
+      d = unit_or_zero(off);
+    } else if (kind == 2u) {
+      d = cross(dir, unit_or_zero(off - dir * dot(dir, off)));
+    }
+    a += d * (strength * weight);
+  }
+  return a;
+}
+
 fn integrate(p: Particle) -> Particle {
   let dt = emitter.ranges2.w;
   var pos = p.pos_age.xyz;
   var vel = p.vel_life.xyz;
   vel += emitter.forces.xyz * dt;
+  // The world's force fields (world-space particles; cpu.rs `integrate`).
+  if (emitter.push.x != 0.0) {
+    vel += force_field_at(pos) * (emitter.push.x * dt);
+  }
   if (emitter.noise.x != 0.0) {
     let seed = emitter.info.y;
     // `pos` is from the render origin: the lattice's cells there are added.

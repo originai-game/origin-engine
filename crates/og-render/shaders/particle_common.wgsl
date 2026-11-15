@@ -42,6 +42,7 @@ struct Emitter {
   axis: vec4<f32>,         // xyz: an upright or facing particle's axis, in the emitter's space; w: 1 an effect mesh facing the camera
   color2_t: array<vec4<f32>, 2>,  // the second colour over life (counts3.y keys)
   color2_v: array<vec4<f32>, 8>,
+  push: vec4<f32>,         // x: the share of the og.ForceFields its particles take (0 none)
   trail: vec4<f32>,        // x: a trail's lifetime (0 none), y: its width (a share of the particle's), z: seconds between samples, w: a tick's sample index (-1 none) or, drawing, the newest's
 };
 

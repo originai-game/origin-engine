@@ -1233,3 +1233,83 @@ fn a_particle_that_dies_on_collision_is_gone_where_it_hits() {
         );
     }
 }
+
+/// Particles take their `forceFields` share of the og.ForceField
+/// acceleration where they are, on both paths and alike: a sideways field
+/// over the whole world carries the fountain along +x by twice as much at
+/// share 1 as at 0.5, not at all at 0, and a field whose region is far
+/// away pushes nothing. A path that drops the fields, ignores the share or
+/// ignores the region fails one of these.
+#[test]
+#[ignore = "requires GPU"]
+fn particles_take_their_share_of_the_force_fields_where_they_are() {
+    use og_env::force::{Field, FieldKind, Forces};
+    use og_env::volume::{Placement, Volume};
+    let field = |position: Vec3, volume: Option<Volume>| Field {
+        at: Placement {
+            position,
+            quaternion: glam::Quat::IDENTITY,
+            scale: Vec3::ONE,
+        },
+        volume,
+        kind: FieldKind::Directional,
+        direction: Vec3::X,
+        strength: 8.0,
+    };
+    let run_with = |path: ParticleSimulation, share: f32, far: bool| {
+        let mut scene = collision_scene(false);
+        let e = scene.effects.particles[0].emitter;
+        let mut emitter = scene.emitter(e).expect("emitter").clone();
+        emitter.force_fields = share;
+        scene.set_emitter(e, emitter);
+        scene.world.force_fields = Forces {
+            fields: vec![if far {
+                field(
+                    Vec3::new(60.0, 0.0, 0.0),
+                    Some(Volume {
+                        size: Vec3::splat(4.0),
+                        radius: 0.0,
+                        fade: 0.0,
+                    }),
+                )
+            } else {
+                field(Vec3::ZERO, None)
+            }],
+        };
+        let desc = RenderDesc {
+            particles: path,
+            ..small()
+        };
+        let (_, _, r) = run(&desc, &mut scene, 90, |s, f| fx::tick_all(s, f as u64));
+        let live: Vec<_> = r
+            .read_particles(1)
+            .expect("system")
+            .into_iter()
+            .filter(|p| p.alive())
+            .collect();
+        assert!(live.len() > 50, "{path:?}: {} alive", live.len());
+        live.iter().map(|p| p.vel_life[0]).sum::<f32>() / live.len() as f32
+    };
+    let mut full = Vec::new();
+    for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
+        let none = run_with(path, 0.0, false);
+        let half = run_with(path, 0.5, false);
+        let one = run_with(path, 1.0, false);
+        let far = run_with(path, 1.0, true);
+        println!("{path:?}: mean vx at share 0 {none}, 0.5 {half}, 1 {one}; far field {far}");
+        assert!(
+            none.abs() < 0.3 && far.abs() < 0.3,
+            "{path:?}: {none} {far}"
+        );
+        assert!(one > 3.0, "{path:?}: share 1 gives {one}");
+        assert!(
+            (one / half - 2.0).abs() < 0.3,
+            "{path:?}: share 1 {one} against 0.5 {half}"
+        );
+        full.push(one);
+    }
+    assert!(
+        (full[0] - full[1]).abs() < 0.1 * full[1],
+        "the paths disagree: {full:?}"
+    );
+}

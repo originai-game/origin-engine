@@ -436,6 +436,8 @@ things most.
   their points: a field much smaller than one moves all of it or none.
 - A character controller takes the vertical part only (it is lifted and
   falls slower); push it sideways through its `move`.
+- Particles take a field only where their emitter says `forceFields`
+  (`effect-files`), each particle where it is.
 
 <a id="guide-physics-9"></a>
 ### `physics §9` Destruction
