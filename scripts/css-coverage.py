@@ -54,9 +54,9 @@ proof("object-fit object-position image-rendering", "css_interact", "images_take
 proof("individual-transforms", "css_interact", "translate_percentages_move_by_the_elements_own_box",
       "Percentage translate changes computed box and hit testing; this proof covers translate, not individual rotate/scale.")
 proof("conic-gradients", "css_paint", "repeating_gradients_repeat_the_stop_interval",
-      "Metal pixel assertions for both halves of all four repeating conic quarters.")
+      "GPU pixel assertions for both halves of all four repeating conic quarters.")
 proof("masks visibility", "css_paint", "masks_hide_invisible_boxes_and_fade_image_content",
-      "Metal pixels prove hidden masked boxes do not paint, visible descendants retain the mask, and gradient masks fade both div and translucent image content.")
+      "GPU pixels prove hidden masked boxes do not paint, visible descendants retain the mask, and gradient masks fade both div and translucent image content.")
 proof("border-image", "css_paint", "flex_ratios_absolute_fades_and_state_border_images_render",
       "A real button hover changes rendered border pixels from a shorthand source to a longhand gradient source; this does not prove all border-image modes.")
 proof("focus-within", "css_interact", "focus_within_follows_real_focus_between_retained_ancestors",
@@ -84,9 +84,9 @@ proof("scrollbar-color", "box_decor", "a_wheel_stops_at_snap_stop_always_and_scr
 proof("overflow overflow-shorthand", "box_decor", "overflow_scrolls_and_clips",
       "Wheel input changes only the auto axis; computed viewport/content extents and offsets are asserted.")
 proof("isolation mix-blend-mode clip-path clip-path-boxes rect-xywh shape-function", "css_effects", "css_effects_match_their_reference_frames",
-      "Metal references at 1280/390 compare isolated/grouped blends and rect, xywh, shape, content-box and SVG-reference clipping tiles.")
+      "References at 1280/390 compare isolated/grouped blends and rect, xywh, shape, content-box and SVG-reference clipping tiles.")
 proof("filter svg-filters", "css_filters", "css_filters_match_their_reference_frames",
-      "Metal references at 1280/390 compare SVG filter graphs, primitive tiles and CSS function/url composition; this does not prove native glass backdrop chains.")
+      "References at 1280/390 compare SVG filter graphs, primitive tiles and CSS function/url composition; this does not prove native glass backdrop chains.")
 proof("font-size rem font-shorthand", "control_props", "root_relative_text_sizes_follow_the_root_not_the_parent",
       "Both builders emit 1.75rem at 24.5/36.75 px under 100/150 percent text scale, distinct from 1.75em under a 10px parent; shorthand is checked too.")
 proof("text-shadow", "control_props", "scene_text_shadows_follow_the_font_size",
@@ -115,7 +115,7 @@ proof("text-align", "control_props", "a_button_label_takes_text_align",
 proof("font-family", "runs", "ordered_named_families_preserve_primary_glyphs_and_inherit",
       "Both builders assert exact glyph/font handles for inherited lists, rich spans, reversed named/generic order, names after generics and quoted generic names. Generics map to engine font roles, not installed system fonts.")
 proof("gradients", "css_paint", "repeating_gradients_repeat_the_stop_interval",
-      "Metal pixels prove repeating radial intervals with positive/negative starts, all eight conic half-quadrants and collapsed linear stops. Subpixel periods and unbounded stop counts are not covered.")
+      "GPU pixels prove repeating radial intervals with positive/negative starts, all eight conic half-quadrants and collapsed linear stops. Subpixel periods and unbounded stop counts are not covered.")
 proof("margin", "html_text", "block_margins_follow_the_ua_stylesheet_and_collapse",
       "Both builders assert positive/negative sibling and parent-child margin collapse, padding/fixed-height boundaries, noncollapsing flex margins, UA em margins and keyed insertion.")
 proof("text-wrap-balance text-wrap-pretty text-overflow", "html_text", "text_wrap_styles_and_overflow_strings_lay_out_as_css_does",
@@ -129,9 +129,9 @@ proof("animations-css cubic-bezier-easing", "documents", "scoped_css_motion_uses
 proof("color", "dressing", "host_font_and_color_reach_button_ink_and_divider_output",
       "Emitted button text and divider fill match authored hex colors; an explicit button part color overrides inherited host ink. This does not cover every color syntax or space.")
 proof("image-set", "css_paint", "image_sets_render_density_correct_backgrounds_masks_and_borders",
-      "Metal pixels at DPR 1/2/1 prove density-correct background/mask tiles, MIME filtering before duplicate removal (including quoted parameters and malformed-type rejection), zero-resolution transparency, percentage border slices with auto widths and gradient selection. Resolution math covers calc/min/max/clamp with mixed x/dppx/dpi/dpcm units; retained output also tests fractional DPR.")
+      "GPU pixels at DPR 1/2/1 prove density-correct background/mask tiles, MIME filtering before duplicate removal (including quoted parameters and malformed-type rejection), zero-resolution transparency, percentage border slices with auto widths and gradient selection. Resolution math covers calc/min/max/clamp with mixed x/dppx/dpi/dpcm units; retained output also tests fractional DPR.")
 proof("background-image", "css_paint", "image_urls_resolve_files_not_atlas_names_or_handles",
-      "Retained drawing selects the registered relative file and numeric filename, rejects a missing path despite an atlas basename collision, and reports the missing asset. css_paint_matches_its_reference_frames covers background tiling and gradients on Metal. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks proves cooked SVG pixels, imported masks and inline cursor URL provenance.")
+      "Retained drawing selects the registered relative file and numeric filename, rejects a missing path despite an atlas basename collision, and reports the missing asset. css_paint_matches_its_reference_frames covers background tiling and gradients on the GPU. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks proves cooked SVG pixels, imported masks and inline cursor URL provenance.")
 proof("cursor", "css_interact", "plain_boxes_choose_cursors_in_clipped_transformed_paint_order",
       "Both builders assert cursor inheritance over noninteractive boxes, passive overlays above buttons, pointer-events:none, hidden and overflow-clipped children, 90-degree transforms and image hotspots. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks checks cooked SVG cursor pixels on a plain div. css_interact::cursors_apply_only_inside_clip_paths proves, in both builders, cursors only inside circle(), polygon() over content-box, evenodd path(), shape(), objectBoundingBox url(#id) and an ancestor's inset() clip. Clip-path press hit testing and every cursor keyword are not covered.")
 proof("field-sizing", "control_props", "fields_size_to_displayed_content_and_respect_constraints",
@@ -179,7 +179,7 @@ part_proof("animations-css opacity",
     "dressing", "retained_part_nodes_animate_without_rebuilding_the_host",
     "A retained button part emits alpha 0.2/0.5/0.8 at ticks 0/6/12 for a 200ms linear animation, then paints nothing while idle. Other animation modes are not covered.")
 part_proof("image-set", "css_paint", "image_sets_render_density_correct_backgrounds_masks_and_borders",
-    "Metal pixels prove button::part(base) reselects its background at DPR 1/2/1 while preserving an 8 CSS px tile. Other part image properties are not separately proved.")
+    "GPU pixels prove button::part(base) reselects its background at DPR 1/2/1 while preserving an 8 CSS px tile. Other part image properties are not separately proved.")
 
 
 def proof_source(module, test, kind):
@@ -229,7 +229,7 @@ def main():
              "For offline use, pass `--archive <web-features-3.45.0.tgz>`; its SHA-256 is pinned in the script. "
              "Proof entries are manually reviewed assertions, not name matches. Tests below live in "
              "`crates/og-ui/tests/` (what the UI builds) or `crates/og-tests-ui/tests/` (the frames drawn of it), "
-             "each one integration test binary; GPU proofs require Metal.",
+             "each one integration test binary; GPU proofs need a GPU and are judged against the frames recorded on the GPU host (the L4, Vulkan; docs/ci.md §Reference frames).",
              "",
              "| WebDX feature | Baseline | Document elements | Widget ::part | Proof scope or missing reason |",
              "| --- | --- | --- | --- | --- |"]

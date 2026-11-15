@@ -1,5 +1,5 @@
 //! A pad's virtual cursor (docs/ui.md §2.1) and the player's HUD layout
-//! (§8.4), driven tick by tick.
+//! (og-ui's README, §Gestures and the cursor), driven tick by tick.
 //!
 //! Ways these could fail, each covered below:
 //! - the stick moves the focus as well as the cursor, or A both presses
