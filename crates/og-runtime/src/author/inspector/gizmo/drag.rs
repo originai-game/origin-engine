@@ -186,9 +186,4 @@ pub(super) fn step(v: f32, step: Option<f32>) -> f32 {
     }
 }
 
-/// An angle into -π..π.
-pub(super) fn wrap(a: f32) -> f32 {
-    let tau = std::f32::consts::TAU;
-    let a = a.rem_euclid(tau);
-    if a > std::f32::consts::PI { a - tau } else { a }
-}
+pub(super) use og_core::math::wrap_angle as wrap;

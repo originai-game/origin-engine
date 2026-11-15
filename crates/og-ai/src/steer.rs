@@ -83,15 +83,8 @@ pub fn wander(
     dt: f32,
     speed: f32,
 ) -> (Vec2, f32) {
-    let mut a = angle + noise.clamp(-1.0, 1.0) * circle.jitter * dt;
-    // Keep the angle in (-π, π] without a float remainder.
-    let tau = std::f32::consts::TAU;
-    while a > std::f32::consts::PI {
-        a -= tau;
-    }
-    while a <= -std::f32::consts::PI {
-        a += tau;
-    }
+    // Kept in (-π, π].
+    let a = og_core::math::wrap_angle(angle + noise.clamp(-1.0, 1.0) * circle.jitter * dt);
     let h = if heading.length_squared() > 1e-8 {
         heading.normalize()
     } else {

@@ -466,6 +466,23 @@ pub fn quat_slerp(a: Quat, b: Quat, t: f32) -> Quat {
     (a * s1 + end * s2) * (1.0 / sin(theta))
 }
 
+/// `a` radians brought into (-π, π] by whole turns, the engine's one angle
+/// wrap: computed in `f64` with an exact 2π (so a large angle loses no
+/// more than its own rounding) and rounded once, the same bits on every
+/// host. The signed shortest turn from `from` to `to` is
+/// `wrap_angle(to - from)`.
+pub fn wrap_angle(a: f32) -> f32 {
+    wrap_angle_f64(f64::from(a)) as f32
+}
+
+/// [`wrap_angle`] in `f64`.
+pub fn wrap_angle_f64(a: f64) -> f64 {
+    if !a.is_finite() {
+        return f64::NAN;
+    }
+    a - ((a - PI) / (2.0 * PI)).ceil() * (2.0 * PI)
+}
+
 /// A vector the segment helpers work on: glam's `Vec2`, `Vec3`, `DVec2`
 /// and `DVec3`.
 pub trait SegmentVector: Copy {
@@ -560,6 +577,23 @@ mod math_contracts {
         Quat, Vec3, acos, atan, atan2, cos, exp, ln, pow, quat_from_axis_angle, quat_slerp, sin,
         sin_cos,
     };
+
+    #[test]
+    fn an_angle_wraps_into_minus_pi_to_pi() {
+        use crate::math::{wrap_angle, wrap_angle_f64};
+        use std::f64::consts::PI;
+        // π stays, -π becomes π: the interval is (-π, π].
+        assert_eq!(wrap_angle_f64(PI), PI);
+        assert_eq!(wrap_angle_f64(-PI), PI);
+        assert_eq!(wrap_angle_f64(3.0 * PI), PI);
+        assert!((wrap_angle_f64(-PI + 1e-9) - (-PI + 1e-9)).abs() < 1e-15);
+        assert!((wrap_angle_f64(7.5) - (7.5 - 2.0 * PI)).abs() < 1e-15);
+        assert!((wrap_angle_f64(-7.5) - (-7.5 + 2.0 * PI)).abs() < 1e-15);
+        assert_eq!(wrap_angle(0.25), 0.25);
+        assert_eq!(wrap_angle(-0.25), -0.25);
+        assert!((wrap_angle(1000.0) - (1000.0 - 159.0 * 2.0 * PI) as f32).abs() < 1e-5);
+        assert!(wrap_angle(f32::INFINITY).is_nan());
+    }
 
     #[test]
     fn the_nearest_point_of_a_segment_stays_on_it() {

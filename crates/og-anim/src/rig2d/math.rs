@@ -58,11 +58,7 @@ pub fn atan2(y: f64, x: f64) -> f64 {
     if y < 0.0 { -r } else { r }
 }
 
-/// An angle wrapped into -pi..pi.
-pub(super) fn wrap(a: f64) -> f64 {
-    let k = ((a + PI) / (2.0 * PI)).floor();
-    a - k * 2.0 * PI
-}
+pub(super) use og_core::math::wrap_angle_f64 as wrap;
 
 /// A 2D affine transform: `(x, y)` maps to `(a x + c y + tx, b x + d y + ty)`.
 #[derive(Clone, Copy, Debug, PartialEq)]

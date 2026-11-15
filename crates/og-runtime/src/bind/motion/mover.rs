@@ -2,11 +2,7 @@
 
 use super::*;
 
-/// The signed angle from `a` to `b`, in -π..π.
-pub(super) fn wrap(d: f32) -> f32 {
-    let (s, c) = sin_cos(d);
-    atan2(s, c)
-}
+pub(super) use og_core::math::wrap_angle as wrap;
 
 /// `from` turned towards `to` by at most `step`.
 pub(super) fn turn(from: f32, to: f32, step: f32) -> f32 {

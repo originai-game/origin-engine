@@ -1,0 +1,6 @@
+{
+  "simulation": "changed",
+  "fixed": [
+    "Angles wrap into (-π, π] the same way everywhere (og_core::math::wrap_angle): og.motion's turn towards a heading, an agent's wander angle and a nav agent's yaw step. og.motion wrapped through atan2(sin, cos), which rounded differently, so a turning agent's heading can differ in its last bits and a replay recorded before this may step differently."
+  ]
+}

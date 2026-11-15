@@ -652,15 +652,8 @@ pub(super) fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) 
                 // deterministic math (glam's slerp uses the host's sinf and
                 // drifted an ulp between Windows and Linux): the current
                 // heading, turned towards `yaw` by at most `max`.
-                use std::f32::consts::{PI, TAU};
                 let heading = 2.0 * og_core::math::atan2(have.xyz().dot(axis), have.w);
-                let mut delta = yaw - heading;
-                while delta > PI {
-                    delta -= TAU;
-                }
-                while delta < -PI {
-                    delta += TAU;
-                }
+                let delta = og_core::math::wrap_angle(yaw - heading);
                 og_core::math::quat_from_axis_angle(axis, heading + delta.clamp(-max, max))
             };
             changed_rot = q != t.quaternion;
