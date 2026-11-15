@@ -9731,6 +9731,11 @@
           "default": true
         },
         {
+          "name": "particleEmission",
+          "column": "f32",
+          "default": 1
+        },
+        {
           "name": "screenSpaceReflections",
           "column": "bool",
           "default": true

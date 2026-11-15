@@ -642,7 +642,7 @@ module render {
   enum GraphicsQuality {
     doc "A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). A settings page offers the three."
     variant medium "The full frame: every quality field at its default."
-    variant low "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no SSR, ambient occlusion or GI, FXAA for MSAA; for a game that turns one back on, half-resolution AO and half the reflection and fog steps."
+    variant low "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles at half emission, no SSR, ambient occlusion or GI, FXAA for MSAA; for a game that turns one back on, half-resolution AO and half the reflection and fog steps."
     variant high "The full frame refined: FSR 3.1 as the temporal upscaler, shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps)."
     guide "render §1"
   }
@@ -779,6 +779,11 @@ module render {
     }
     field softParticles bool "Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them." {
       default true
+    }
+    field particleEmission f32 "Every particle system's emission times this (0 to 1); an emitter left with fewer than 8 particles alive at once keeps more, so a flash or a ring stays whole. The low preset draws 0.5. Drawing only: particle events and collisions are the full emitter's." {
+      default 1
+      min 0
+      max 1
     }
     field screenSpaceReflections bool "PostEffects.ssr draws; false leaves smooth surfaces the reflection probes' and the environment's reflection. PostEffects keeps its settings either way." {
       default true

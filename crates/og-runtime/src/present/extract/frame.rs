@@ -270,6 +270,7 @@ fn settings(world: &World, rs: &mut RenderState, b: &Begun, exposure: f32) {
             shadow_map_scale: s.shadow_map_scale,
             volumetric_fog: s.volumetric_fog,
             soft_particles: s.soft_particles,
+            particle_emission: s.particle_emission.clamp(0.0, 1.0),
             ssr: s.screen_space_reflections,
             ambient_occlusion: s.ambient_occlusion,
             // On the lazy og.GlobalIllumination's `allowed` (crate::present::fx).

@@ -400,6 +400,7 @@ The quality rows:
 | shadowMapScale | 0.5 | 1 | 2 |
 | volumetricFog | false | true | true |
 | softParticles | false | true | true |
+| particleEmission | 0.5 | 1 | 1 |
 | screenSpaceReflections | false | true | true |
 | ambientOcclusion | false | true | true |
 | aoResolution | half | postEffects | full |

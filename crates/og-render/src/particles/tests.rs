@@ -713,3 +713,47 @@ fn every_live_particle_is_inside_its_systems_cull_bound() {
         );
     }
 }
+
+/// How far a frame's quality thins an emitter: by the scale where it has
+/// many particles alive at once, from its rate and from its bursts alike
+/// (a repeating burst counted as often as its repeats overlap), and no
+/// further than leaves it 8 alive, so a handful is kept whole.
+#[test]
+fn quality_thins_an_emitter_by_its_particles_alive() {
+    let e = |rate: f32, life: f32, bursts: Vec<Burst>| ParticleEmitter {
+        rate,
+        lifetime: [life * 0.5, life],
+        bursts,
+        max_particles: 4096,
+        ..Default::default()
+    };
+    // 100 a second for 2 s: 200 alive.
+    assert_eq!(e(100.0, 2.0, vec![]).thinned(0.5), 0.5);
+    // Unthinned whatever it holds.
+    assert_eq!(e(100.0, 2.0, vec![]).thinned(1.0), 1.0);
+    // A flash of one, and a burst of 6: kept whole.
+    assert_eq!(e(0.0, 1.0, vec![Burst::once(0.0, 1)]).thinned(0.5), 1.0);
+    assert_eq!(e(0.0, 1.0, vec![Burst::once(0.0, 6)]).thinned(0.0), 1.0);
+    // A burst of 300 thins like a rate does.
+    assert_eq!(e(0.0, 1.0, vec![Burst::once(0.0, 300)]).thinned(0.5), 0.5);
+    // 12 alive: kept to 8 of them, not 6.
+    assert!((e(6.0, 2.0, vec![]).thinned(0.5) - 8.0 / 12.0).abs() < 1e-6);
+    // Bursts of 5 every 0.25 s for 2 s lives: 8 repeats overlap (40
+    // alive), so thinned to the scale; once, it is kept whole.
+    let repeating = Burst {
+        cycles: 20,
+        interval: 0.25,
+        ..Burst::once(0.0, 5)
+    };
+    assert_eq!(e(0.0, 2.0, vec![repeating]).thinned(0.25), 0.25);
+    // Only as many overlap as it repeats: 3 cycles of 5 is 15 alive.
+    let three = Burst {
+        cycles: 3,
+        ..repeating
+    };
+    assert!((e(0.0, 2.0, vec![three]).thinned(0.25) - 8.0 / 15.0).abs() < 1e-6);
+    // Its ring caps what is alive: 1000 a second in a ring of 10.
+    let mut small = e(1000.0, 2.0, vec![]);
+    small.max_particles = 10;
+    assert!((small.thinned(0.5) - 0.8).abs() < 1e-6);
+}

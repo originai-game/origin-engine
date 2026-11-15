@@ -230,6 +230,10 @@ pub enum VectorField {
     },
 }
 
+/// The particles an emitter keeps alive at once on average however far a
+/// frame's quality thins it ([`ParticleEmitter::thinned`]).
+pub const THIN_KEEP: f32 = 8.0;
+
 /// Particles emitted at once: `count` at `time` seconds into each emission
 /// cycle, repeated `cycles` times `interval` apart.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -648,6 +652,41 @@ impl ParticleEmitter {
     /// The longest a particle lives, in seconds.
     pub fn max_lifetime(&self) -> f32 {
         self.lifetime[0].max(self.lifetime[1]).max(0.0)
+    }
+
+    /// The share of its particles this emitter keeps where a frame's
+    /// quality thins every emitter to `scale` (og-render's
+    /// `RenderQuality::particle_emission`, 0..1): `scale`, or more for an
+    /// emitter that would then have fewer than [`THIN_KEEP`] alive at once,
+    /// so a flash, a ring or a handful of embers keeps them all. Its alive
+    /// count is its rate and each burst's count over one longest lifetime
+    /// (a repeating burst counted as often as its repeats overlap), within
+    /// `max_particles`.
+    pub fn thinned(&self, scale: f32) -> f32 {
+        let scale = scale.clamp(0.0, 1.0);
+        if scale >= 1.0 {
+            return 1.0;
+        }
+        let life = self.max_lifetime();
+        let bursts: f32 = self
+            .bursts
+            .iter()
+            .map(|b| {
+                let overlap = if b.interval > 0.0 {
+                    (life / b.interval)
+                        .ceil()
+                        .clamp(1.0, b.cycles.max(1) as f32)
+                } else {
+                    1.0
+                };
+                b.count as f32 * overlap
+            })
+            .sum();
+        let alive = (self.rate * life + bursts).min(self.max_particles as f32);
+        if alive <= THIN_KEEP {
+            return 1.0;
+        }
+        scale.max(THIN_KEEP / alive)
     }
 
     /// Refuses an emitter the renderer cannot draw, naming why (the

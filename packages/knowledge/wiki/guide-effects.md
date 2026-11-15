@@ -191,6 +191,11 @@ is measured:
   few large parts instead (a `glow`, a `mesh`). Fewer particles helps
   only an effect of many small ones: og.Vfx.emission thins one instance
   (a distant fire at 0.5) without another file.
+- The low graphics preset thins every emitter to half its particles
+  (RenderSettings.particleEmission 0.5); an emitter that would keep fewer
+  than 8 alive keeps more, so flashes and rings stay whole. Judge an
+  effect at low as well as medium: one made of a few large sprites costs
+  the same at both.
 - An emitter with `subEmitter` lines runs on the CPU; one with `events`
   is stepped in the tick. Keep both to the effects that need them.
 - The frame as a whole is `testing §6`.

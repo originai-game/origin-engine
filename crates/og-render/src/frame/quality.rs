@@ -51,6 +51,12 @@ pub struct RenderQuality {
     /// Particles with a `soft_distance` fade against the scene behind them;
     /// false draws them hard-edged (and asks no depth prepass for them).
     pub soft_particles: bool,
+    /// Every particle system's emission times this (0..1), each emitter
+    /// kept above it where it would otherwise have only a few particles
+    /// alive ([`crate::ParticleEmitter::thinned`]): fewer particles drawn,
+    /// and fewer pixels blended where an effect has many. Drawing only:
+    /// the tick's particle events and collisions are the full emitter's.
+    pub particle_emission: f32,
     /// `PostEffects::ssr` draws; false leaves smooth surfaces the
     /// reflection probes' and the environment's reflection.
     pub ssr: bool,
@@ -98,6 +104,7 @@ impl Default for RenderQuality {
             shadow_map_scale: 1.0,
             volumetric_fog: true,
             soft_particles: true,
+            particle_emission: 1.0,
             ssr: true,
             ambient_occlusion: true,
             global_illumination: true,
@@ -115,7 +122,8 @@ impl Default for RenderQuality {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum QualityPreset {
     /// The cheapest frame: no rect-light shadows, two shadowed lights,
-    /// two cascades, half-size shadow maps, plain fog, hard particles, no screen-space
+    /// two cascades, half-size shadow maps, plain fog, hard particles at
+    /// half their emission, no screen-space
     /// reflections, ambient occlusion or global illumination, one sample per pixel; and, for a
     /// game that turns one of those back on, ambient occlusion at half
     /// resolution and half the reflection and fog steps.
@@ -142,6 +150,7 @@ impl RenderQuality {
                 shadow_map_scale: 0.5,
                 volumetric_fog: false,
                 soft_particles: false,
+                particle_emission: 0.5,
                 ssr: false,
                 ambient_occlusion: false,
                 global_illumination: false,
@@ -183,6 +192,7 @@ impl RenderQuality {
             shadow_map_scale: self.shadow_map_scale.min(row.shadow_map_scale),
             volumetric_fog: self.volumetric_fog && row.volumetric_fog,
             soft_particles: self.soft_particles && row.soft_particles,
+            particle_emission: self.particle_emission.min(row.particle_emission),
             ssr: self.ssr && row.ssr,
             ambient_occlusion: self.ambient_occlusion && row.ambient_occlusion,
             global_illumination: self.global_illumination && row.global_illumination,

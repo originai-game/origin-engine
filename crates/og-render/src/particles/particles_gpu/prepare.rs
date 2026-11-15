@@ -40,10 +40,12 @@ impl ParticleRenderer {
             e.validate().map_err(|m| {
                 RenderError::InvalidData(format!("emitter {}: {m}", sys.emitter.index()))
             })?;
-            // The system's tint on its emitter's colour and its share on
-            // its emission, for both paths.
+            // The system's tint on its emitter's colour, and its share and
+            // the frame quality's thinning on its emission, for both paths.
             let own;
-            let e = if sys.tint == Vec3::ONE && sys.emission == 1.0 {
+            let emission =
+                sys.emission.clamp(0.0, 1.0) * e.thinned(scene.frame.quality.particle_emission);
+            let e = if sys.tint == Vec3::ONE && emission == 1.0 {
                 e
             } else {
                 let t = sys.tint;
@@ -54,7 +56,7 @@ impl ParticleRenderer {
                         e.color[2] * t.z,
                         e.color[3],
                     ],
-                    emission: e.emission * sys.emission.clamp(0.0, 1.0),
+                    emission: e.emission * emission,
                     ..e.clone()
                 };
                 &own

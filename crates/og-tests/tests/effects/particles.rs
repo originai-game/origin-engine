@@ -614,3 +614,80 @@ fn an_effect_material_given_another_texture_draws_it() {
         "the material drew its old texture after the swap: {swapped:?}"
     );
 }
+
+/// The frame quality's particle emission thins a system with many
+/// particles alive and spares one with a few, on both simulation paths:
+/// at 0.5 a busy fountain lights about half the pixels it lights at 1,
+/// and a burst of six draws, pixel for pixel, what it draws at 1.
+#[test]
+#[ignore = "requires GPU"]
+fn quality_thins_busy_systems_and_spares_a_handful() {
+    // None: the stage without particles.
+    let scene = |busy: Option<bool>, emission: f32| {
+        let mut scene = RenderScene::new();
+        let e = scene.add_emitter(ParticleEmitter {
+            max_particles: 2048,
+            rate: if busy == Some(true) { 400.0 } else { 0.0 },
+            bursts: match busy {
+                Some(false) => vec![og_render::Burst::once(0.0, 6)],
+                _ => vec![],
+            },
+            lifetime: [2.0, 2.0],
+            speed: [0.5, 2.0],
+            spread_degrees: 180.0,
+            size: if busy == Some(false) {
+                [0.3, 0.4]
+            } else {
+                [0.05, 0.08]
+            },
+            gravity: Vec3::ZERO,
+            drag: 1.5,
+            color: [2.0, 1.0, 0.3, 1.0],
+            ..Default::default()
+        });
+        scene
+            .effects
+            .particles
+            .push(ParticleSystem::new(1, e, Mat4::IDENTITY, 7, 0));
+        scene.frame.camera = Camera {
+            position: Vec3::new(0.0, 0.0, 4.0),
+            target: Vec3::ZERO,
+            ..Default::default()
+        };
+        scene.frame.quality.particle_emission = emission;
+        scene
+    };
+    for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
+        let desc = RenderDesc {
+            particles: path,
+            ..small()
+        };
+        let draw = |busy: Option<bool>, emission: f32| {
+            run(&desc, &mut scene(busy, emission), 30, |s, f| {
+                fx::tick_all(s, f as u64)
+            })
+            .0
+        };
+        let empty = draw(None, 1.0);
+        // The pixels the particles brighten.
+        let lit = |img: &RgbaImage| {
+            img.pixels
+                .chunks(4)
+                .zip(empty.pixels.chunks(4))
+                .filter(|(p, e)| p[0] as i32 > e[0] as i32 + 20)
+                .count()
+        };
+        let (full, half) = (lit(&draw(Some(true), 1.0)), lit(&draw(Some(true), 0.5)));
+        let share = half as f32 / full.max(1) as f32;
+        assert!(
+            full > 200 && (0.3..0.75).contains(&share),
+            "{path:?}: the fountain lit {half} pixels at 0.5 against {full} at 1"
+        );
+        let (whole, kept) = (draw(Some(false), 1.0), draw(Some(false), 0.5));
+        assert!(lit(&whole) > 50, "{path:?}: the burst drew nothing");
+        assert!(
+            whole.pixels == kept.pixels,
+            "{path:?}: the burst of six lost particles at 0.5"
+        );
+    }
+}
