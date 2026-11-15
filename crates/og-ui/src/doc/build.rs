@@ -470,8 +470,9 @@ pub fn inline_link(k: usize) -> String {
 }
 
 /// One element's build: its document, what it inherits, and the inputs
-/// its mount compiled for it (`cached`). A static build (an element
-/// image's, [`Ui::build_static`]) has none: its bindings read nothing.
+/// its mount compiled for it (`cached`). Every build has them, an element
+/// image's included ([`instances::ImageMount`]): nothing builds with
+/// `cached: None` now, and one that did would read and write nothing.
 pub struct Build<'a> {
     pub doc: Arc<UiDocument>,
     pub mount: String,
@@ -484,7 +485,7 @@ pub struct Build<'a> {
 }
 
 impl Build<'_> {
-    /// The scope a static build evaluates in: no values.
+    /// The scope a build without compiled inputs evaluates in: no values.
     fn scope(&self) -> Scope<'_> {
         Scope {
             vm: &Value::Null,
@@ -501,7 +502,7 @@ impl Build<'_> {
     }
 
     /// The path a write to `path` goes to: its mount's binding of it. A
-    /// static build writes nothing.
+    /// build without compiled inputs writes nothing.
     pub fn write_path(&self, path: &str) -> Option<String> {
         self.cached.map(|_| path.to_owned())
     }
