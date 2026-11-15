@@ -96,8 +96,9 @@ pub struct Stop {
 
 /// A gradient over the element's box: `from` and `to` are fractions of it
 /// (0,0 top left); radial and diamond take `to` as the radii, conic
-/// `to[0]` as the start angle (radians clockwise from +x). Up to 8 stops,
-/// mixed in OKLab (or `interpolation`'s space), dithered.
+/// `to[0]` as the start angle (radians clockwise from +x). Up to
+/// [`og_draw::UI_GRADIENT_STOPS`] stops, mixed in OKLab (or
+/// `interpolation`'s space), dithered.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Gradient {
     pub kind: GradientKind,
@@ -158,14 +159,15 @@ impl Gradient {
 }
 
 /// Stops mixed in `space`, restated as the piecewise OKLab ramp og-render
-/// mixes: `color`'s gradient approximation of each span, its tolerance
-/// (deltaEOK, from 0.01) loosened until the stops fit og-draw's budget.
+/// mixes: `color`'s gradient approximation of each span, within an eighth
+/// of a just-noticeable difference (deltaEOK 0.0025) so a hue sweep shows
+/// no bands, loosened only past og-draw's stop budget.
 fn stops_in(
     stops: &[(f32, Srgba)],
     space: ColorSpaceTag,
     hue: HueDirection,
 ) -> Vec<og_draw::UiStop> {
-    let mut tolerance = 0.01;
+    let mut tolerance = 0.0025;
     loop {
         let mut out: Vec<og_draw::UiStop> = Vec::new();
         for pair in stops.windows(2) {

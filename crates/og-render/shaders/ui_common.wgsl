@@ -37,13 +37,14 @@ struct UiGradient {
   // An absolute box (x, y, width, height in CSS px) when its width is above
   // 0 (text); otherwise the shape's.
   box: vec4<f32>,
-  offsets: array<vec4<f32>, 2>,
-  // OKLab premultiplied by alpha, and alpha.
-  colors: array<vec4<f32>, 8>,
+  // x: where its stops start in `points`: their offsets, four to an
+  // entry, then each one's OKLab premultiplied by alpha, and alpha.
+  stops: vec4<f32>,
 };
 @group(0) @binding(2) var<storage, read> gradients: array<UiGradient>;
 
-// Polyline points: xy local, z the length along the line up to the point.
+// Polyline points (xy local, z the length along the line up to the point)
+// and gradient stops.
 @group(0) @binding(3) var<storage, read> points: array<vec4<f32>>;
 
 // The frame's view depth (the prepass's `lindepth`: r is the depth along
@@ -883,7 +884,11 @@ fn rounded_box_shadow(p: vec2<f32>, half: vec2<f32>, corner: f32, sigma: f32) ->
 // ── gradients ────────────────────────────────────────────────────────────
 
 fn stop_offset(g: UiGradient, i: u32) -> f32 {
-  return g.offsets[i / 4u][i % 4u];
+  return points[u32(g.stops.x) + i / 4u][i % 4u];
+}
+
+fn stop_color(g: UiGradient, i: u32) -> vec4<f32> {
+  return points[u32(g.stops.x) + (u32(g.head.y) + 3u) / 4u + i];
 }
 
 // Gradient `gi` at `f` (fractions of a box of `size` CSS px), straight
@@ -925,17 +930,24 @@ fn gradient_color(gi: u32, f: vec2<f32>, size: vec2<f32>, pixel: vec2<f32>) -> v
       t = first + fract((t - first) / period) * period;
     }
   }
-  var c = g.colors[0];
+  var c = stop_color(g, 0u);
   if (count > 1u && t > stop_offset(g, 0u)) {
-    c = g.colors[count - 1u];
-    for (var i = 1u; i < count; i++) {
-      let o1 = stop_offset(g, i);
-      if (t <= o1) {
-        let o0 = stop_offset(g, i - 1u);
-        let k = clamp((t - o0) / max(o1 - o0, 1e-6), 0.0, 1.0);
-        c = mix(g.colors[i - 1u], g.colors[i], k);
-        break;
+    c = stop_color(g, count - 1u);
+    if (t <= stop_offset(g, count - 1u)) {
+      // The first stop at or past t: offsets never go back.
+      var lo = 0u;
+      var hi = count - 1u;
+      while (hi - lo > 1u) {
+        let mid = (lo + hi) / 2u;
+        if (t <= stop_offset(g, mid)) {
+          hi = mid;
+        } else {
+          lo = mid;
+        }
       }
+      let o0 = stop_offset(g, lo);
+      let k = clamp((t - o0) / max(stop_offset(g, hi) - o0, 1e-6), 0.0, 1.0);
+      c = mix(stop_color(g, lo), stop_color(g, hi), k);
     }
   }
   var rgb = oklab_decode(c.xyz / max(c.w, 1e-6));
@@ -944,7 +956,7 @@ fn gradient_color(gi: u32, f: vec2<f32>, size: vec2<f32>, pixel: vec2<f32>) -> v
     // stops in premultiplied sRGBA, with half weight at the two endpoints.
     var average = vec4<f32>(0.0);
     for (var i = 0u; i < count; i++) {
-      let stop = g.colors[i];
+      let stop = stop_color(g, i);
       let color = encode(max(oklab_decode(stop.xyz / max(stop.w, 1e-6)), vec3<f32>(0.0)));
       let weight = select(1.0, 0.5, i == 0u || i == count - 1u) / f32(count - 1u);
       average += vec4<f32>(color * stop.w, stop.w) * weight;

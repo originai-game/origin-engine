@@ -158,7 +158,7 @@ module ui {
 | [`GradientType`](ui/type-GradientType.md) | enum |  | How a gradient (Gradient.type) runs over the element's box (fractions: 0,0 top left, 1,1 bottom right). |
 | [`GradientSpread`](ui/type-GradientSpread.md) | enum |  | What a gradient does past its ends. |
 | [`GradientStop`](ui/type-GradientStop.md) | desc struct |  | A gradient's colour at an offset. |
-| [`Gradient`](ui/type-Gradient.md) | desc struct |  | A gradient of up to 8 stops, mixed in OKLab (no grey middle between complementary colours) and dithered so a long shallow one shows no bands. |
+| [`Gradient`](ui/type-Gradient.md) | desc struct |  | A gradient of up to 128 stops, mixed in OKLab (no grey middle between complementary colours) and dithered so a long shallow one shows no bands. |
 | [`WorldOcclusion`](ui/type-WorldOcclusion.md) | enum |  | What the scene in front of an anchored element does to it: a depth test of its point against the frame's depth, on the GPU. |
 | [`MassKind`](ui/type-MassKind.md) | enum |  | What a mass element template draws. |
 | [`MassSpace`](ui/type-MassSpace.md) | enum |  | Where a mass element's position is. |

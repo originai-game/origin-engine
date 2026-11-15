@@ -639,6 +639,7 @@ mod tests {
             let r = g(s).resolve(10.0, 10.0).resolve(&theme);
             assert!((2..=og_draw::UI_GRADIENT_STOPS).contains(&r.stops.len()));
             let k = r.stops.iter().rposition(|s| s.offset <= t).unwrap();
+            let k = k.min(r.stops.len() - 2);
             let (a, b) = (r.stops[k], r.stops[k + 1]);
             let u = (t - a.offset) / (b.offset - a.offset);
             let [x, y] = [a, b].map(|s| og_core::color::oklab([0, 1, 2].map(|i| s.color[i])));
@@ -654,6 +655,27 @@ mod tests {
             mid[0] < 0.03 && mid[1] > 0.95 && mid[2] < 0.03,
             "the long way passes green: {mid:?}"
         );
+        // A whole turn of the hue circle stays within a quarter of a
+        // just-noticeable difference (deltaEOK 0.005) of the hue mix it
+        // restates, all along it, so it shows no bands.
+        let red = color::DynamicColor::from(crate::Srgba::rgb(255, 0, 0));
+        let exact = red.interpolate(red, color::ColorSpaceTag::Hsl, color::HueDirection::Longer);
+        let worst = (0..=100)
+            .map(|i| {
+                let t = i as f32 / 100.0;
+                let (_, drawn) = at("linear-gradient(to right in hsl longer hue, red, red)", t);
+                let drawn = og_core::color::oklab(drawn);
+                let want = exact
+                    .eval(t)
+                    .convert(color::ColorSpaceTag::Oklab)
+                    .components;
+                (0..3)
+                    .map(|k| (drawn[k] - want[k]) * (drawn[k] - want[k]))
+                    .sum::<f32>()
+                    .sqrt()
+            })
+            .fold(0.0, f32::max);
+        assert!(worst < 0.005, "deltaEOK {worst} off the hue mix");
         assert_eq!(at("linear-gradient(to right, red, blue)", 0.5).0, 2);
         assert!(
             background("linear-gradient(in lab longer hue, red, blue)")

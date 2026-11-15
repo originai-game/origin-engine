@@ -224,7 +224,7 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    /// Two to eight stops, then an optional spread word.
+    /// Two to `UI_GRADIENT_STOPS` stops, then an optional spread word.
     fn stops(&mut self) -> Result<(Vec<Stop>, Spread), String> {
         let mut raw: Vec<(ColorRef, Option<f32>)> = Vec::new();
         while self.is_color() {

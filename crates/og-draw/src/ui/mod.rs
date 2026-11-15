@@ -162,8 +162,10 @@ pub struct UiStop {
     pub color: [f32; 4],
 }
 
-/// The most stops a gradient keeps (more are dropped).
-pub const UI_GRADIENT_STOPS: usize = 8;
+/// The most stops a gradient keeps (more are dropped): enough for a CSS
+/// gradient mixed in another space, restated as OKLab stops, to show no
+/// bands. og-render finds a pixel's two by binary search.
+pub const UI_GRADIENT_STOPS: usize = 128;
 
 /// A gradient, interpolated in OKLab with premultiplied alpha. `from` and
 /// `to` are fractions of the shape's box (0,0 top left, 1,1 bottom right);

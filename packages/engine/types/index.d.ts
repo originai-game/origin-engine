@@ -26747,7 +26747,7 @@ export interface GradientStop {
 }
 
 /**
- * A gradient of up to 8 stops, mixed in OKLab (no grey middle between complementary colours) and dithered so a long shallow one shows no bands.
+ * A gradient of up to 128 stops, mixed in OKLab (no grey middle between complementary colours) and dithered so a long shallow one shows no bands.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */

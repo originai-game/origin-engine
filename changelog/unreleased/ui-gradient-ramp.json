@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "Gradients: 128 stops",
+      "summary": "A gradient takes up to 128 stops instead of 8: CSS linear-, radial- and conic-gradient() (and their repeating forms), a style's paint entries, SVG gradients and the draw API's ui.Gradient."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "CSS gradients: in <colour space>",
+      "summary": "Moves frames: a gradient mixed in another space (`linear-gradient(to right in hsl longer hue, red, red)`, `in oklch`, `in lch`) follows that mix to within an eighth of a just-noticeable difference, so a long hue sweep or a P3/oklch ramp no longer shows bands where its 8 stops were joined."
+    }
+  ]
+}
