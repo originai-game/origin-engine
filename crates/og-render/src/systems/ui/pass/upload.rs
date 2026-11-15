@@ -281,7 +281,8 @@ impl UiRenderer {
                 plan.origin[0],
                 plan.origin[1],
                 uniform[6],
-                0.0,
+                // A layer reaches the output: dithered for the output's codes.
+                uniform[7],
             ];
             queue.write_buffer(&self.uniforms[n + 1], 0, bytemuck::cast_slice(&u));
             let builtin = match layer.material {
