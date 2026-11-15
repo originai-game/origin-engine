@@ -275,8 +275,9 @@ pub(crate) struct EffectRenderer {
     buffer: wgpu::Buffer,
     sampler: wgpu::Sampler,
     white: wgpu::TextureView,
-    /// By material index + 1 (0: none).
-    groups: Vec<wgpu::BindGroup>,
+    /// By material index + 1 (0: none), each with the texture views it was
+    /// made with: a material whose views are the same keeps its group.
+    groups: Vec<([Option<wgpu::TextureView>; 4], wgpu::BindGroup)>,
 }
 
 impl EffectRenderer {
@@ -341,7 +342,7 @@ impl EffectRenderer {
             groups: Vec::new(),
         };
         let none = r.group(device, [None; 4]);
-        r.groups.push(none);
+        r.groups.push((Default::default(), none));
         r
     }
 
@@ -396,7 +397,8 @@ impl EffectRenderer {
         })
     }
 
-    /// Writes the scene's materials and makes their groups, checking
+    /// Writes the scene's materials and makes the groups of those whose
+    /// texture views changed (all of them when the buffer grows), checking
     /// every texture and hook they name. `view` is a texture's view (`None`:
     /// not a texture of the scene).
     pub(crate) fn prepare<'v>(
@@ -407,15 +409,17 @@ impl EffectRenderer {
         shaders: &[crate::MaterialShader],
         view: impl Fn(TextureHandle) -> Option<&'v wgpu::TextureView>,
     ) -> Result<(), crate::RenderError> {
-        self.groups.truncate(1);
+        self.groups.truncate(materials.len() + 1);
         if materials.is_empty() {
             return Ok(());
         }
         let size = EFFECT_STRIDE * (materials.len() as u64 + 1);
         if size > self.buffer.size() {
+            // Every group binds the buffer: none is kept.
             self.buffer = Self::buffer(device, size.next_power_of_two());
             let none = self.group(device, [None; 4]);
-            self.groups[0] = none;
+            self.groups.clear();
+            self.groups.push((Default::default(), none));
         }
         let mut bytes = vec![0u8; size as usize];
         for (i, m) in materials.iter().enumerate() {
@@ -456,8 +460,18 @@ impl EffectRenderer {
                     })?);
                 }
             }
-            let group = self.group(device, views);
-            self.groups.push(group);
+            let kept = self
+                .groups
+                .get(i + 1)
+                .is_some_and(|(made, _)| made.iter().zip(views).all(|(a, b)| a.as_ref() == b));
+            if !kept {
+                let group = self.group(device, views);
+                let entry = (views.map(|v| v.cloned()), group);
+                match self.groups.get_mut(i + 1) {
+                    Some(g) => *g = entry,
+                    None => self.groups.push(entry),
+                }
+            }
         }
         queue.write_buffer(&self.buffer, 0, &bytes);
         Ok(())
@@ -467,8 +481,8 @@ impl EffectRenderer {
     pub(crate) fn bind(&self, material: Option<EffectMaterialHandle>) -> (&wgpu::BindGroup, u32) {
         let i = material.map_or(0, |m| m.index() + 1);
         match self.groups.get(i) {
-            Some(g) => (g, (i as u64 * EFFECT_STRIDE) as u32),
-            None => (&self.groups[0], 0),
+            Some((_, g)) => (g, (i as u64 * EFFECT_STRIDE) as u32),
+            None => (&self.groups[0].1, 0),
         }
     }
 }

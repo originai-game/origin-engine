@@ -546,3 +546,71 @@ fn a_system_out_of_view_is_not_drawn_and_one_blown_into_it_is() {
         differ(&blown.pixels, &plain.pixels)
     );
 }
+
+/// A system's effect material given another texture draws the new one:
+/// the renderer keeps a material's bind group only while its textures are
+/// the same. Halfway through the run the material's red texture becomes a
+/// blue one; the last frame is blue where the particles are, and with no
+/// swap it stays red.
+#[test]
+#[ignore = "requires GPU"]
+fn an_effect_material_given_another_texture_draws_it() {
+    let solid = |scene: &mut RenderScene, c: [u8; 4]| {
+        scene.add_texture(og_render::TextureData {
+            width: 4,
+            height: 4,
+            rgba: c.repeat(16),
+            ..Default::default()
+        })
+    };
+    let material = |t| og_render::EffectMaterial {
+        main: og_render::EffectTexture {
+            texture: Some(t),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let colour = |swap: bool| {
+        let mut scene = RenderScene::new();
+        let red = solid(&mut scene, [255, 0, 0, 255]);
+        let blue = solid(&mut scene, [0, 0, 255, 255]);
+        let m = scene.add_effect_material(material(red));
+        let e = scene.add_emitter(ParticleEmitter {
+            max_particles: 64,
+            rate: 60.0,
+            lifetime: [3.0, 3.0],
+            speed: [0.0, 0.0],
+            size: [1.0, 1.0],
+            gravity: Vec3::ZERO,
+            // Stacked, they keep the texture's colour.
+            blend: og_render::ParticleBlend::Alpha,
+            effect: Some(m),
+            ..Default::default()
+        });
+        scene
+            .effects
+            .particles
+            .push(ParticleSystem::new(1, e, Mat4::IDENTITY, 3, 0));
+        scene.frame.camera = Camera {
+            position: Vec3::new(0.0, 0.0, 4.0),
+            target: Vec3::ZERO,
+            ..Default::default()
+        };
+        let (img, _, _) = run(&small(), &mut scene, 40, |s, f| {
+            if swap && f == 20 {
+                assert!(s.set_effect_material(m, material(blue)));
+            }
+            fx::tick_all(s, f as u64);
+        });
+        px(&img, img.width / 2, img.height / 2)
+    };
+    let (kept, swapped) = (colour(false), colour(true));
+    assert!(
+        kept[0] > 100 && kept[2] < 40,
+        "the red texture does not draw: {kept:?}"
+    );
+    assert!(
+        swapped[2] > 100 && swapped[0] < 40,
+        "the material drew its old texture after the swap: {swapped:?}"
+    );
+}

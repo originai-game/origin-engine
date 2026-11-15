@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: effect materials",
+      "summary": "The renderer keeps each effect material's bind group from frame to frame and makes it again only when one of its textures changes (or the material buffer grows), instead of making one for every material of the scene each frame, playing or not. Loading twenty starter effects registers 119 materials, whose groups cost 2.78 ms of CPU every frame before and 0.22 ms after (release, on a CPU Vulkan). A material given another texture draws the new one; frames do not change."
+    }
+  ]
+}
