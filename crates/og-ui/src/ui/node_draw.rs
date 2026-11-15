@@ -547,20 +547,20 @@ impl Ui {
                             }
                         }
                         // Explicit CSS dimensions opt smaller headings in.
-                        if n.heading
-                            && k == 0
-                            && let Some(o) = t.art.flourish.filter(|_| t.art.atlas.is_some())
-                        {
+                        if n.heading && k == 0 {
+                            // The style's ornament, else the part's own CSS box
+                            // (a pack's flourish), each beside the line as
+                            // ::before and ::after boxes are.
+                            let ornament = t.art.flourish.filter(|_| t.art.atlas.is_some());
                             let cy = ly + lh / 2.0;
-                            let gap = o.offset + t.space.sm;
                             let h = CAP_HEIGHT * size;
-                            let w = o.w / o.h.max(1e-3) * h;
-                            let left = Rect::new(x - gap - w, cy - h / 2.0, w, h);
-                            let right = Rect::new(x + line.width * sk + gap, cy - h / 2.0, w, h);
+                            let (w, offset) =
+                                ornament.map_or((h, 0.0), |o| (o.w / o.h.max(1e-3) * h, o.offset));
+                            let gap = offset + t.space.sm;
                             // Both sides of a centred heading; the side away from the edge otherwise.
-                            for (side, rect, flip, visible) in [
-                                ("left", left, false, tc.align != TextAlign::Start),
-                                ("right", right, true, tc.align != TextAlign::End),
+                            for (side, start, visible) in [
+                                ("left", true, tc.align != TextAlign::Start),
+                                ("right", false, tc.align != TextAlign::End),
                             ] {
                                 let part = crate::dress::PartRef::of("Heading", "flourish", None)
                                     .attr("side", side);
@@ -572,12 +572,40 @@ impl Ui {
                                 {
                                     continue;
                                 }
+                                // Its CSS size and offset, the edge next to the
+                                // text kept at the gap.
+                                let sized =
+                                    values.part_rect(Rect::new(0.0, 0.0, w, h), n.placed.rect);
+                                let shift_x = sized.x - (w - sized.width) / 2.0;
+                                let shift_y = sized.y - (h - sized.height) / 2.0;
+                                let rect = Rect::new(
+                                    if start {
+                                        x - gap - sized.width
+                                    } else {
+                                        x + line.width * sk + gap
+                                    } + shift_x,
+                                    cy - sized.height / 2.0 + shift_y,
+                                    sized.width,
+                                    sized.height,
+                                );
+                                let Some(o) = ornament else {
+                                    self.part_commands(
+                                        Some(n.key),
+                                        &part,
+                                        rect,
+                                        None,
+                                        alpha,
+                                        clip,
+                                        cmds,
+                                    );
+                                    continue;
+                                };
                                 let tint =
                                     values.color("color").map(Srgba::linear).or(ornament_tint);
                                 self.paint.ornament(
                                     o,
-                                    values.part_rect(rect, n.placed.rect),
-                                    flip,
+                                    rect,
+                                    !start,
                                     false,
                                     tint,
                                     alpha * values.num("opacity").unwrap_or(1.0),

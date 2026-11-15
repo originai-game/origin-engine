@@ -502,3 +502,66 @@ fn a_packs_light_block_applies_under_the_light_scheme() {
         }
     }
 }
+
+#[test]
+fn a_headings_flourish_part_draws_its_css_box_beside_the_line() {
+    use og_ui::{DrawCmd, UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    let pack = StylePack::parse(
+        "styles/test",
+        vec![(
+            "styles/test/main.css".into(),
+            "h1::part(flourish) { background: #ff0000; width: 40px; height: 4px; }".into(),
+        )],
+    )
+    .unwrap();
+    let doc = UiDocument::parse(
+        "ui/game.svelte",
+        r#"<meta name="screen" content="test"><div><h1>Title</h1><p>body</p></div>"#,
+    )
+    .unwrap();
+    let mut ui = crate::support::ui_with_font(crate::support::test_font());
+    ui.define_document(doc);
+    ui.set_style_pack(&pack).unwrap();
+    ui.mount_document(
+        SourceId::new("test", "test"),
+        "test",
+        Default::default(),
+        Default::default(),
+        &NoEnv,
+    )
+    .unwrap();
+    ui.begin(Default::default(), Viewport::new(600.0, 400.0));
+    ui.build_retained_documents(&NoEnv).unwrap();
+    ui.end();
+    let items = &ui.frame().items;
+    let title = items
+        .iter()
+        .find_map(|item| match &item.cmd {
+            DrawCmd::Text { text, bounds, .. } if text == "Title" => Some(*bounds),
+            _ => None,
+        })
+        .unwrap();
+    // A start-aligned heading takes the flourish after its line only.
+    let boxes: Vec<_> = items
+        .iter()
+        .filter_map(|item| match &item.cmd {
+            DrawCmd::Shape { shape, .. }
+                if shape.paint == og_draw::UiPaint::Solid([1.0, 0.0, 0.0, 1.0]) =>
+            {
+                Some((shape.center, shape.half))
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(boxes.len(), 1, "{boxes:?}");
+    let (center, half) = boxes[0];
+    assert_eq!((half.x, half.y), (20.0, 2.0));
+    assert!(
+        center.x - half.x > title.x + title.width,
+        "after the line: {center:?} {title:?}"
+    );
+    assert!(
+        (center.y - (title.y + title.height / 2.0)).abs() < 1.0,
+        "centred on the line"
+    );
+}
