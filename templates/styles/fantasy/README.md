@@ -8,11 +8,19 @@ Load it with `og.load.style(world, "@styles/fantasy")`.
 
 The pack's CSS applies in the `og-pack` layer, above the built-in components'
 structure (`og-components`) and below a game's own styles (`og-game`, unlayered).
+Inside it, `controls.css` keeps the core controls in a layer of its own
+(`fantasy-controls`), under the pack's other files. A button that a component
+names as a part still matches `button::part(base)`, so without the layer a
+group file's rule for it would lose to the core button's whenever the group's
+name sorts before `controls` (arena, card) or a state rule has the higher
+specificity. With it, a rule that names a component part wins. Only the
+button's focus ring stands outside the layer: the focus part wears the
+button's base rules, and it must stay a ring whatever plate the button has.
 
 | File | What it holds |
 | --- | --- |
 | `base.css` | Fonts (`@font-face` from `@styles/shared`) and every value the pack draws with, as `:root` tokens for the dark and light schemes: colours, gradients, shadows, lengths, durations, easings, font families, art and sound `url()`s |
-| `controls.css` | Every core control's parts and states through `host::part(name):state`: painted button plates by `border-image`, tabs, toggles, sliders, inputs, slots, tooltips and the rest |
+| `controls.css` | Every core control's parts and states through `host::part(name):state`, in the `fantasy-controls` layer: painted button plates by `border-image`, tabs, toggles, sliders, inputs, slots, tooltips and the rest; and, outside the layer, the button's focus ring |
 | `rpg.css` | The rpg components (`packages/engine/src/ui/components/rpg`) through their named parts (`[part="RpgBackpack.frame"]`, `button::part(RpgBackpack\.cell)`) and `data-*` states: frames, bands, rarity rims, vitals bars, action bar, commands, map, compass; and the rpg sheet's `.rpg-ground`, `.rpg-fold` and `.rpg-minimap` wrappers |
 | `shooter.css` | The shooter components (`packages/engine/src/ui/components/shooter`) through their parts and class qualifiers (`[part="Crosshair.hit"].kill`, `button::part(Loadout\.item)`): the reticle's marks and hit confirmations, each with a dark keyline; opaque lamp-black plates in a brass rim for the ammunition and the killfeed rows, the names in their side's ink, the player's rows with a gold edge; the fire mode on a crimson tag; the loadout's categories under crimson bands and its slots as soot plates with every state |
 | `motion.css` | Transitions over a slow warm curve, `-og-spring()` on tab indicators, the acting portrait and fresh badges; a `prefers-reduced-motion` branch keeps the state changes and drops the movement |

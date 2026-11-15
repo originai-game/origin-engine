@@ -86,7 +86,7 @@
 [part="RacingBanner.frame"] .detail { font-family: var(--label-font); font-size: var(--font-step-md); letter-spacing: var(--font-tracking-lg); color: var(--ink-label); }
 
 /* ── Garage. */
-button::part(RacingGarage\.tile) { border-image: none; border: var(--stroke-regular) solid var(--line-strong-40); border-radius: var(--radius-sm); background: var(--fantasy-member-fill); box-shadow: var(--fantasy-member-shadow); }
+button::part(RacingGarage\.tile) { border-image: none; padding: var(--space-xs) var(--space-sm); border: var(--stroke-regular) solid var(--line-strong-40); border-radius: var(--radius-sm); background: var(--fantasy-member-fill); box-shadow: var(--fantasy-member-shadow); }
 button::part(RacingGarage\.tile):hover { border-color: var(--line-strong); }
 button[aria-selected=true]::part(RacingGarage\.tile) { border-color: var(--gold); box-shadow: var(--fantasy-member-selected-shadow); }
 button[data-locked=true]::part(RacingGarage\.tile) { background: var(--fantasy-member-down-fill); border-color: var(--ink-down); }

@@ -1,7 +1,15 @@
 /* fantasy: every core control and its states. Painted with gradients,
    brass rims and inner shadows; hover lifts toward gold, pressed sinks
    into the well, both inside the pack's palette. Every value is a token
-   set in base.css. */
+   set in base.css.
+
+   The controls sit in a layer of their own, under the pack's other files.
+   A button that a component names as a part (`button::part(ArenaRoster\.cell)`)
+   still matches `button::part(base)`, so without the layer its dress would
+   depend on this file's place in the lexical order and on the state rules'
+   higher specificity. With it a rule that names a component part wins,
+   whatever its file or specificity. The layer's rules are not indented. */
+@layer fantasy-controls {
 
 /* ── Buttons: painted plates with pointed ends, a gold rim, a dark inner
    keyline and a lit top edge (--button-image*). The ends keep their shape
@@ -10,9 +18,11 @@
    The resting primary rule takes :enabled so it outranks the default's
    :hover/:active rules, which have equal specificity. The resting ink is
    on the host, so the label and the button's content inherit it; each
-   state's ink is on the part. Labels use the approved Newsreader face. */
+   state's ink is on the part. A variant is the host's attribute and a
+   class only on its part, so the primary's ink names both. Labels use the
+   approved Newsreader face. */
 button { color: var(--button-ink); }
-button.primary { color: var(--on-primary); }
+button.primary, button[variant=primary] { color: var(--on-primary); }
 button::part(base) {
   min-height: var(--size-touch);
   padding: 0 var(--space-xl);
@@ -34,9 +44,7 @@ button.primary::part(base):enabled { border-image-source: var(--button-primary-i
 button.primary::part(base):hover { border-image-source: var(--button-primary-image-hover); color: var(--button-primary-hover-ink); }
 button.primary::part(base):active { border-image-source: var(--button-primary-image-pressed); color: var(--button-primary-pressed-ink); }
 button.primary::part(base):disabled { border-image-source: var(--button-image-disabled); color: var(--button-primary-disabled-ink); }
-button.secondary::part(base) { border-image-source: var(--button-image); }
 button[variant=quiet]::part(base) { border-image: none; background: none; border: none; box-shadow: none; padding: 0 var(--space-xs); }
-button::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--fantasy-focus-offset-plate); border-radius: var(--radius-button); }
 /* ── Checkbox, switch and radio. */
 input[type=checkbox]::part(row), input[type=radio]::part(option) { border: none; box-shadow: none; background: none; }
 input[type=checkbox]::part(row):hover, input[type=radio]::part(option):hover { background: var(--accent-8); }
@@ -177,3 +185,11 @@ input::part(reveal-icon), input::part(clear-icon) { color: var(--ink-muted); }
 og-icon::part(secondary) { color: var(--gold); }
 og-icon::part(image), art::part(icon), artslot::part(icon) { color: var(--ink); }
 joystick::part(direction) { background: var(--gold); }
+}
+
+/* ── A button's focus ring. The focus part wears the button's base rules,
+   so left alone it draws the whole plate again, over the button's content.
+   It is a ring only; these rules stand outside the layer, so no rule of
+   the plate, in any state or variant, reaches it. */
+button::part(focus) { border: none; border-image: none; background: none; box-shadow: none; }
+button::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--fantasy-focus-offset-plate); border-radius: var(--radius-button); }

@@ -51,7 +51,7 @@
 :is([part="ArenaDraft.heading"], [part="ArenaVersus.heading"], [part="ArenaScoreboard.heading"], [part="ArenaRoundHud.score"], [part="ArenaScoreboard.score"])[data-team=b] { color: var(--team2); }
 
 /* ── Roster. */
-button::part(ArenaRoster\.cell) { border-image: none; border: var(--stroke-regular) solid var(--line-strong-40); border-radius: var(--radius-sm); background: var(--fantasy-member-fill); box-shadow: var(--fantasy-member-shadow); }
+button::part(ArenaRoster\.cell) { border-image: none; padding: var(--space-xs); border: var(--stroke-regular) solid var(--line-strong-40); border-radius: var(--radius-sm); background: var(--fantasy-member-fill); box-shadow: var(--fantasy-member-shadow); }
 button::part(ArenaRoster\.cell):hover { border-color: var(--line-strong); }
 button[aria-selected=true]::part(ArenaRoster\.cell) { border-color: var(--gold); box-shadow: var(--fantasy-member-selected-shadow); }
 button[data-locked=true]::part(ArenaRoster\.cell), button[data-taken=true]::part(ArenaRoster\.cell) { background: var(--fantasy-member-down-fill); border-color: var(--ink-down); }

@@ -1,0 +1,16 @@
+{
+  "fixed": [
+    {
+      "member": "fantasy style pack",
+      "summary": "A button that a component names as a part wears the component's dress and no longer the core button's plate. controls.css keeps the core controls in a layer of their own (fantasy-controls) under the pack's other files, so a rule that names a component part wins whatever its file's place in the lexical order or the specificity of the core button's state rules. Before, the arena roster's cells and the card collection's cells (their files sort before controls.css) showed the plate's brass ends behind them and cut their names short, and button.secondary::part(base) repainted the rim of every named button (the racing garage's tiles, the loadout's slots) as the plate's border image in every state; that rule is removed. The roster's cells and the garage's tiles also keep the component's padding, not the core button's 24 px a side."
+    },
+    {
+      "member": "fantasy style pack",
+      "summary": "A focused button draws a focus ring only. The focus part wears the button's base rules, so a focused button that a component names as a part drew the core plate over its content; the ring's rules now stand outside the controls' layer and clear the plate."
+    },
+    {
+      "member": "fantasy style pack",
+      "summary": "A primary button written as variant=\"primary\" wears the primary's ink (--on-primary) at rest. The rule named only the class, which a variant does not set on the host, so its label took the default button's gold, under 4.5:1 on the crimson plate."
+    }
+  ]
+}

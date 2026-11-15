@@ -2,9 +2,11 @@
    (docs/ui.md §4). Lamp-black leather and dark walnut grounds, aged brass
    rims, parchment ink, a crimson primary and gold for focus and selection.
 
-   Files apply in lexical order: base (fonts, tokens), controls (every core
-   control and its states), motion, one file for each built-in component
-   group's parts, sounds. This file holds every value the pack draws with,
+   Files apply in lexical order. controls.css (every core control and its
+   states) keeps its rules in a layer under the other files, so a component
+   group's file dresses its parts wherever its name sorts; motion, one file
+   for each built-in component group's parts, and sounds are unlayered. This
+   file holds every value the pack draws with,
    as :root tokens: the engine's own (palette roles, radii, control and role
    tokens: frames, bands, titles, cells and the rest wear the default role
    rules with these values), then the pack's (--fantasy-*, for the art and

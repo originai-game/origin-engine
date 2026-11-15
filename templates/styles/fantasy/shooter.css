@@ -77,13 +77,8 @@ button::part(Loadout\.item) {
   text-transform: none;
   text-shadow: none;
 }
-/* controls.css gives every default button the painted plate again at a
-   higher specificity (button.secondary::part(base)), and the focus part
-   wears a button's base rules: both are answered here, or the slot's rim
-   and a focused slot are the plate. */
-button.secondary::part(Loadout\.item) { border-image-source: none; }
-button[part="Loadout.item"]::part(focus) { border-image: none; border: none; background: none; box-shadow: none; }
-button[part="Loadout.item"]::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); border-radius: var(--radius-sm); }
+/* A focused slot's ring follows the slot's corners, not the plate's ends. */
+button[part="Loadout.item"]::part(focus):focus-visible { outline-offset: var(--state-focus-ring-offset); border-radius: var(--radius-sm); }
 button::part(Loadout\.item):hover { border: var(--stroke-regular) solid var(--line-strong); }
 button::part(Loadout\.item):active { background: var(--cell-pressed-fill); }
 button.equipped::part(Loadout\.item) { border: var(--stroke-regular) solid var(--line-strong); }
