@@ -441,11 +441,7 @@ impl Ui {
                 start: now,
                 at_ms: at,
                 last_ms: at - 1e-3,
-                speed: if p.desc.speed > 0.0 {
-                    p.desc.speed
-                } else {
-                    1.0
-                },
+                speed: p.desc.speed.max(0.0),
                 reverse: p.desc.reverse,
                 repeat: match p.desc.repeat {
                     Repeat::Once => 0,

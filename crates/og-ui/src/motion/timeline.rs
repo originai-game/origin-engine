@@ -220,13 +220,13 @@ pub enum Repeat {
     PingPong,
 }
 
-/// How a play runs. The zero value plays once forward at speed 1 from the
+/// How a play runs. The default plays once forward at speed 1 from the
 /// start and lets go of its values when it ends.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PlayDesc {
     pub reverse: bool,
     pub repeat: Repeat,
-    /// 0: 1.
+    /// Its rate: 1 as authored; 0 (or less) holds its time while it plays.
     pub speed: f32,
     /// Start this far in, ms.
     pub from_ms: f32,
@@ -236,6 +236,20 @@ pub struct PlayDesc {
     pub hold: bool,
     /// Decorative: under reduced motion it does not play at all.
     pub decorative: bool,
+}
+
+impl Default for PlayDesc {
+    fn default() -> Self {
+        PlayDesc {
+            reverse: false,
+            repeat: Repeat::Once,
+            speed: 1.0,
+            from_ms: 0.0,
+            from_label: String::new(),
+            hold: false,
+            decorative: false,
+        }
+    }
 }
 
 /// What happened in the UI's motion this frame, for the game and the host
