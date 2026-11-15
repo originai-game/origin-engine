@@ -3,9 +3,9 @@
 <!-- The normal page, in play: vitals and buffs top left, the round timer and
      compass top centre, the minimap top right, the ability bar and orbs
      along the bottom with the action hints, over a bright sky and a dark
-     floor (docs/ui.md §6.3: bright and dark HUD backgrounds). A phone has
-     no room for every corner at once, so there they stack in a column that
-     scrolls, each seen whole. -->
+     floor (docs/ui.md §6.3: bright and dark HUD backgrounds). A phone,
+     upright or on its side, has no room for every corner at once, so there
+     they stack in a column that scrolls, each seen whole. -->
 <div id="Page">
   <div id="Sky"></div>
   <div id="Floor"></div>
@@ -20,6 +20,7 @@
     <div id="Compass"><Compass heading={$compass_default.heading} pois={$compass_default_pois} units={$compass_default.units} /></div>
   </div>
   <div id="TopRight"><MinimapView texture={$minimapView_default.texture} centerX={$minimapView_default.centerX} centerY={$minimapView_default.centerY} zoom={$minimapView_default.zoom} heading={$minimapView_default.heading} rotate={$minimapView_default.rotate} square={$minimapView_default.square} markers={$minimapView_default_markers} zone={$minimapView_default.zone} /></div>
+  <div id="Lower">
   <div id="Bottom">
     <OrbMeter value={$orbMeter_default.value} max={$orbMeter_default.max} kind={$orbMeter_default.kind} showValue={$orbMeter_default.showValue} label={$orbMeter_default.label} name={$orbMeter_default.name} />
     <div id="Abilities">
@@ -29,6 +30,7 @@
     <OrbMeter value={$orbMeter_mana.value} max={$orbMeter_mana.max} kind={$orbMeter_mana.kind} showValue={$orbMeter_mana.showValue} label={$orbMeter_mana.label} name={$orbMeter_mana.name} />
   </div>
   <div id="Hints"><ActionHints hints={$actionHints_default_hints} label={$actionHints_default.label} /></div>
+  </div>
 </div>
 
 <style>
@@ -40,12 +42,17 @@
 #TopMid { position: absolute; left: 30%; right: 30%; top: env(-og-hud-inset-top, var(--space-lg)); display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); }
 #Compass { display: flex; width: stretch; }
 #TopRight { position: absolute; right: env(-og-hud-inset-right, var(--space-lg)); top: env(-og-hud-inset-top, var(--space-lg)); }
-#Bottom { position: absolute; left: 0; right: 0; bottom: env(-og-hud-inset-bottom, var(--space-lg)); display: flex; align-items: flex-end; justify-content: center; gap: var(--space-lg); }
+/* The hints sit right above the bottom cluster, so they clear the
+   ability bar however tall the text scale makes it. */
+#Lower { position: absolute; left: 0; right: 0; bottom: env(-og-hud-inset-bottom, var(--space-lg)); display: flex; flex-direction: column-reverse; align-items: flex-end; gap: var(--space-sm); }
+#Bottom { display: flex; width: stretch; align-items: flex-end; justify-content: center; gap: var(--space-lg); }
 #Abilities { display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); }
-#Hints { position: absolute; right: env(-og-hud-inset-right, var(--space-lg)); bottom: calc(env(-og-hud-inset-bottom, var(--space-lg)) + var(--size-xxl) * 2); }
-@media (width < 600px) {
+#Hints { margin-inline-end: env(-og-hud-inset-right, var(--space-lg)); }
+@media (width < 600px), (height < 500px) {
   #Page { display: flex; flex-direction: column; align-items: center; gap: var(--space-lg); padding: env(safe-area-inset-top) var(--space-xs) env(safe-area-inset-bottom); overflow-y: auto; }
-  #TopLeft, #TopMid, #TopRight, #Bottom, #Hints { position: relative; left: auto; right: auto; top: auto; bottom: auto; }
+  #TopLeft, #TopMid, #TopRight, #Lower { position: relative; left: auto; right: auto; top: auto; bottom: auto; }
+  #Lower { width: stretch; flex-direction: column; align-items: stretch; gap: var(--space-lg); }
+  #Hints { margin-inline-end: 0; }
   #TopLeft, #TopMid, #Hints { width: stretch; }
   #Bottom { width: stretch; gap: var(--space-xs); }
 }
