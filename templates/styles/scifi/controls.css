@@ -15,10 +15,12 @@
    alone, .danger the plate in red; a button that is on (aria-pressed) is
    amber. The resting ink is on the host, so the button's content inherits
    it, and on the part, which is where the label reads it; each state's ink
-   is on the part. Variants follow the default's hover and active rules,
-   which have equal specificity; the disabled rules come last. */
+   is on the part. A variant is the host's attribute and a class only on its
+   part, so the primary's ink on the host names both. Variants follow the
+   default's hover and active rules, which have equal specificity; the
+   disabled rules come last. */
 button { color: var(--button-ink); }
-button.primary { color: var(--on-primary); }
+button.primary, button[variant=primary] { color: var(--on-primary); }
 button.danger { color: var(--danger); }
 button[aria-pressed=true] { color: var(--button-selected-ink); }
 button:disabled { color: var(--button-disabled-ink); }

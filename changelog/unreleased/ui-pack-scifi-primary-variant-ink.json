@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "scifi style pack",
+      "summary": "The content of a primary button written as variant=\"primary\" wears the primary's ink (--on-primary). The rule named only the class, which a variant does not set on the host, so an icon inside the button took the default button's cyan on the lit cyan plate."
+    }
+  ]
+}
