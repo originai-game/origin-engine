@@ -46,7 +46,7 @@ fn vs_object(v: VertexIn, i: InstanceIn) -> ObjectOut {
 @vertex
 fn vs_object_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> ObjectOut {
   let instance = instance_matrix(i.m0, i.m1, i.m2, i.m3);
-  let model = instance * skin_matrix(s, i.palette);
+  let model = instance * skin_matrix(s.joints, s.weights, i.palette);
   return object_vertex(model, axis_scale(instance), morph_vertex(v, vi, i));
 }
 

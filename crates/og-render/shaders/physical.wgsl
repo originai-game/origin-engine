@@ -56,7 +56,7 @@ fn vs_physical(v: VertexIn, i: InstanceIn, k: InstanceFxIn) -> PhysicalOut {
 
 @vertex
 fn vs_physical_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> PhysicalOut {
-  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette);
+  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette);
   var p = physical_vertex(model, morph_vertex(v, vi, i));
   p.look = i.look;
   return p;

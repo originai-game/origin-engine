@@ -23,6 +23,23 @@ fn palette_joint(palette: vec4<f32>, j: u32) -> mat4x4<f32> {
   return joint_palette[base + k];
 }
 
+// The weighted joint matrices of one vertex (identity without weights).
+fn skin_matrix(joints: vec4<u32>, weights: vec4<f32>, palette: vec4<f32>) -> mat4x4<f32> {
+  let total = weights.x + weights.y + weights.z + weights.w;
+  if (total < 1e-6) {
+    return mat4x4<f32>(vec4<f32>(1.0, 0.0, 0.0, 0.0), vec4<f32>(0.0, 1.0, 0.0, 0.0), vec4<f32>(0.0, 0.0, 1.0, 0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0));
+  }
+  let w = weights / total;
+  // A joint without weight adds nothing (x + 0·m is x, exactly): its two
+  // baked frames are not read. A rigid part (a crowd member's, a prop's)
+  // reads one joint, not four.
+  var m = palette_joint(palette, joints.x) * w.x;
+  if (w.y != 0.0) { m += palette_joint(palette, joints.y) * w.y; }
+  if (w.z != 0.0) { m += palette_joint(palette, joints.z) * w.z; }
+  if (w.w != 0.0) { m += palette_joint(palette, joints.w) * w.w; }
+  return m;
+}
+
 fn morph_delta(i: u32) -> vec4<f32> {
   return morph_deltas[i];
 }

@@ -88,7 +88,7 @@ fn gi_ray(origin: vec3<f32>, dir: vec3<f32>, jitter: f32, probes: bool, max_dist
       if (behind > thickness + (t - t_prev) || is_sky(scene)) { break; }
       let hit_px = vec2<i32>(s * fxp.screen.xy);
       // Only the side of a surface that faces the ray sends it light.
-      let hit_n = normalize((fxp.view * vec4<f32>(world_normal(hit_px), 0.0)).xyz);
+      let hit_n = normalize((fxp.view * vec4<f32>(gbuffer_normal(hit_px), 0.0)).xyz);
       if (dot(hit_n, dir) > 0.1) { break; }
       let fade = 1.0 - smoothstep(0.6, 1.0, t / max_distance);
       // Without last frame's light, or where its hit lay off screen, the
@@ -127,7 +127,7 @@ fn fs_ssgi(in: VsOut) -> @location(0) vec4<f32> {
   if (is_sky(d)) { return vec4<f32>(1.0, 0.0, 0.0, 0.0); }
   let uv = ao_uv(px, in.uv);
   let p = view_pos(uv, d);
-  let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
+  let n = normalize((fxp.view * vec4<f32>(gbuffer_normal(px), 0.0)).xyz);
   let rays = max(u32(fxp.gi1.x), 1u);
   // The per-pixel noise, moved every frame under TAA (gi1.y), which then
   // averages the frames' different rays.
@@ -199,7 +199,7 @@ fn fs_gi_blur(in: VsOut) -> @location(0) vec4<f32> {
   let k = ao_divisor();
   let d0 = depth_at(px * k);
   if (ao_blur_sky(d0)) { return vec4<f32>(1.0, 0.0, 0.0, 0.0); }
-  let n0 = world_normal(px * k);
+  let n0 = gbuffer_normal(px * k);
   let size = vec2<i32>(textureDimensions(tex_b));
   let scale = max(d0 * 0.04, 1e-3);
   var sum = vec4<f32>(0.0);
@@ -207,7 +207,7 @@ fn fs_gi_blur(in: VsOut) -> @location(0) vec4<f32> {
   for (var y = -2; y <= 1; y++) {
     for (var x = -2; x <= 1; x++) {
       let q = clamp(px + vec2<i32>(x, y), vec2<i32>(0), size - 1);
-      let facing = max(dot(world_normal(q * k), n0), 0.0);
+      let facing = max(dot(gbuffer_normal(q * k), n0), 0.0);
       let w = exp(-abs(depth_at(q * k) - d0) / scale) * facing * facing * facing * facing + 1e-6;
       sum += textureLoad(tex_b, q, 0) * w;
       weight += w;

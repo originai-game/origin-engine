@@ -46,8 +46,8 @@ const HAIR_WGSL: &str = wgsl!("hair.wgsl");
 const EYE_WGSL: &str = wgsl!("eye.wgsl");
 use crate::ibl::SHEEN_WGSL;
 /// `instance_matrix`: an instance's transform from its columns in the
-/// instance buffers ([`instances::GpuTransform`]); `mul_point`: how the
-/// points it moves are projected.
+/// instance buffers ([`instances::GpuTransform`]); `world_normal`: how it
+/// carries a normal; `mul_point`: how the points it moves are projected.
 pub const INSTANCE_WGSL: &str = wgsl!("instance.wgsl");
 /// The GGX specular lobe (its distribution and visibility), one copy for
 /// direct light ([`LIGHTING_WGSL`]), the image-based light's prefilter and

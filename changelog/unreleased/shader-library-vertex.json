@@ -1,0 +1,11 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "shaders: material shaders",
+      "change": "Every material shader now has `world_normal(model, n)` (a normal through a transform's inverse transpose) and `skin_matrix(joints, weights, palette)` (a vertex's blended joint matrix) in scope from the engine's one copy, and `custom_skin` is gone (it was `skin_matrix` under another name); a shader that declares `world_normal` or `skin_matrix`, or calls `custom_skin`, no longer compiles.",
+      "fix": "Delete your own copy and call the library's, and call `skin_matrix` where you called `custom_skin` (the same arguments), or rename yours.",
+      "find": ["world_normal", "skin_matrix", "custom_skin"]
+    }
+  ]
+}

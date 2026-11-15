@@ -45,15 +45,6 @@ struct VsOut {
   @location(4) color: vec4<f32>,
 };
 
-// As pbr.wgsl's world_normal: the inverse transpose of the upper 3x3.
-fn shadow_normal(model: mat4x4<f32>, n: vec3<f32>) -> vec3<f32> {
-  let a = model[0].xyz;
-  let b = model[1].xyz;
-  let c = model[2].xyz;
-  let cofactor = mat3x3<f32>(cross(b, c), cross(c, a), cross(a, b));
-  return normalize(cofactor * n) * select(1.0, -1.0, dot(a, cross(b, c)) < 0.0);
-}
-
 fn shadow_vertex(model: mat4x4<f32>, v: VertexIn) -> VsOut {
   let world = model * vec4<f32>(v.position, 1.0);
   var o: VsOut;
@@ -119,7 +110,7 @@ fn shadow_hook(o: VsOut) -> Hook {
 // A caster with a material shader: moved by its vertex_offset, as lit.
 fn shadow_vertex_hooked(model: mat4x4<f32>, v: VertexIn) -> VsOut {
   var o = shadow_vertex(model, v);
-  o.normal = shadow_normal(model, v.normal);
+  o.normal = world_normal(model, v.normal);
   o.world = o.world + vertex_offset(shadow_hook(o), shader_params());
   o.clip = shadow_clip(vec4<f32>(o.world, 1.0));
   return o;
@@ -130,31 +121,12 @@ fn vs_hooked(v: VertexIn, i: InstanceIn) -> VsOut {
   return shadow_vertex_hooked(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
 }
 
-fn skin_matrix(s: SkinIn, palette: vec4<f32>) -> mat4x4<f32> {
-  let total = s.weights.x + s.weights.y + s.weights.z + s.weights.w;
-  if (total < 1e-6) {
-    return mat4x4<f32>(vec4<f32>(1.0, 0.0, 0.0, 0.0), vec4<f32>(0.0, 1.0, 0.0, 0.0), vec4<f32>(0.0, 0.0, 1.0, 0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0));
-  }
-  let w = s.weights / total;
-  // A joint without weight adds nothing (x + 0·m is x, exactly): its two
-  // baked frames are not read. A rigid part (a crowd member's, a prop's)
-  // reads one joint, not four.
-  var m = palette_joint(palette, s.joints.x) * w.x;
-  if (w.y != 0.0) { m += palette_joint(palette, s.joints.y) * w.y; }
-  if (w.z != 0.0) { m += palette_joint(palette, s.joints.z) * w.z; }
-  if (w.w != 0.0) { m += palette_joint(palette, s.joints.w) * w.w; }
-  return m;
-}
-
-
-
-
 @vertex
 fn vs_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> VsOut {
   let m = morphed(v.position, v.normal, vi, i.palette, i.morph0.x, i.morph0.y);
   var mv = v;
   mv.position = m.position;
-  return shadow_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette), mv);
+  return shadow_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette), mv);
 }
 
 @vertex
@@ -163,7 +135,7 @@ fn vs_skinned_hooked(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInst
   var mv = v;
   mv.position = m.position;
   mv.normal = m.normal;
-  return shadow_vertex_hooked(instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette), mv);
+  return shadow_vertex_hooked(instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette), mv);
 }
 
 // `dx`, `dy`: the world position's derivatives, taken first (before any

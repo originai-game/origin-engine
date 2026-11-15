@@ -89,11 +89,7 @@ fn noise3(p: vec3<f32>) -> f32 {
 fn standard_vertex(v: VertexInput, model: mat4x4<f32>) -> VertexOutput {
   var o: VertexOutput;
   o.world = (model * vec4<f32>(v.position, 1.0)).xyz;
-  let a = model[0].xyz;
-  let b = model[1].xyz;
-  let c = model[2].xyz;
-  let cofactor = mat3x3<f32>(cross(b, c), cross(c, a), cross(a, b));
-  o.normal = normalize(cofactor * v.normal) * select(1.0, -1.0, dot(a, cross(b, c)) < 0.0);
+  o.normal = world_normal(model, v.normal);
   o.uv = v.uv;
   o.color = v.color;
   o.data = vec4<f32>(0.0);
@@ -110,19 +106,6 @@ fn standard_surface(f: FragmentInput) -> SurfaceOutput {
   s.roughness = material.mr.y;
   s.emissive = material.emissive.rgb * tex4(f.uv).rgb;
   return s;
-}
-
-// The weighted joint matrices of a skinned vertex (as pbr.wgsl's).
-fn custom_skin(joints: vec4<u32>, weights: vec4<f32>, palette: vec4<f32>) -> mat4x4<f32> {
-  let total = weights.x + weights.y + weights.z + weights.w;
-  if (total < 1e-6) {
-    return mat4x4<f32>(vec4<f32>(1.0, 0.0, 0.0, 0.0), vec4<f32>(0.0, 1.0, 0.0, 0.0), vec4<f32>(0.0, 0.0, 1.0, 0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0));
-  }
-  let w = weights / total;
-  return palette_joint(palette, joints.x) * w.x
-    + palette_joint(palette, joints.y) * w.y
-    + palette_joint(palette, joints.z) * w.z
-    + palette_joint(palette, joints.w) * w.w;
 }
 
 // A skinned vertex's morph targets (skin_storage.wgsl's `morphed`).
@@ -206,7 +189,7 @@ fn custom_plain(v: CustomVertexIn, i: CustomInstanceIn) -> CustomOut {
 }
 
 fn custom_skinned(vi: u32, v: CustomVertexIn, i: CustomSkinnedIn, s: CustomSkinIn) -> CustomOut {
-  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * custom_skin(s.joints, s.weights, i.palette);
+  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette);
   return custom_place(custom_morph(custom_input(v), vi, i.palette, i.morph0), model);
 }
 

@@ -7,6 +7,20 @@ fn instance_matrix(c0: vec3<f32>, c1: vec3<f32>, c2: vec3<f32>, c3: vec3<f32>) -
   return mat4x4<f32>(vec4<f32>(c0, 0.0), vec4<f32>(c1, 0.0), vec4<f32>(c2, 0.0), vec4<f32>(c3, 1.0));
 }
 
+// A normal's world direction: through the inverse transpose of the model's
+// upper 3x3 (its cofactor matrix, flipped for a mirroring transform), so a
+// non-uniform scale bends normals the right way. Every vertex stage takes
+// its normal from here (the lit, shadow, visibility-buffer and custom
+// ones), so they agree to the bit.
+fn world_normal(model: mat4x4<f32>, n: vec3<f32>) -> vec3<f32> {
+  let a = model[0].xyz;
+  let b = model[1].xyz;
+  let c = model[2].xyz;
+  let cofactor = mat3x3<f32>(cross(b, c), cross(c, a), cross(a, b));
+  let mirrored = dot(a, cross(b, c)) < 0.0;
+  return normalize(cofactor * n) * select(1.0, -1.0, mirrored);
+}
+
 // `m * p` summed in column order, each product fused: the arithmetic the
 // shader compiler gives `m * p` when p's w is a value it cannot know. A
 // point an instance matrix moves has the w 1 the compiler can see, and

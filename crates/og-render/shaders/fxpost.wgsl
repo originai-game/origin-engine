@@ -39,7 +39,8 @@ fn is_sky(d: f32) -> bool {
   return d >= fxp.cam.x * 0.999;
 }
 
-fn world_normal(px: vec2<i32>) -> vec3<f32> {
+// The prepass's world normal under pixel `px`.
+fn gbuffer_normal(px: vec2<i32>) -> vec3<f32> {
   let size = vec2<i32>(textureDimensions(tex_gbuffer));
   return oct_decode(textureLoad(tex_gbuffer, prepass_px(px, size), 0).xy);
 }
@@ -137,7 +138,7 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
   let d = depth_at(px);
   if (is_sky(d)) { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }
   let p = view_pos(uv, d);
-  let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
+  let n = normalize((fxp.view * vec4<f32>(gbuffer_normal(px), 0.0)).xyz);
   let v = select(normalize(-p), vec3<f32>(0.0, 0.0, 1.0), fxp.cam.y > 0.5);
   let radius = select(fxp.ao.x, min(fxp.ao.x, fxp.ao2.x * length(p)), fxp.ao2.x > 0.0);
   let radius_px = radius * pixels_per_unit(d);
@@ -270,7 +271,7 @@ fn ssao_term(in: VsOut) -> f32 {
   let d = depth_at(px);
   if (fxp.ao2.y > 0.5) { return ao_screen(in, d); }
   let p = view_pos(ao_uv(px, in.uv), d);
-  let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
+  let n = normalize((fxp.view * vec4<f32>(gbuffer_normal(px), 0.0)).xyz);
   let radius = select(fxp.ao.x, min(fxp.ao.x, fxp.ao2.x * length(p)), fxp.ao2.x > 0.0);
   let a = ign(in.pos.xy) * 2.0 * PI;
   var helper = vec3<f32>(cos(a), sin(a), 0.0);
@@ -422,7 +423,7 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
   if (width <= 0.0) { return c; }
   let d0 = depth_at(px);
   if (is_sky(d0)) { return c; }
-  let n0 = world_normal(px);
+  let n0 = gbuffer_normal(px);
   let place = u32(fxp.outline.w + 0.5);
   // The silhouette's share inside: all of it, none (outside) or half.
   let inside = select(select(width, 0.5 * width, place == 2u), 0.0, place == 1u);
@@ -442,7 +443,7 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
       if (abs(d - d0) < d0 * fxp.outline.y * 4.0
           && !clump && !line_clump((outline_texel(q).x << 8u) | outline_texel(q).y)
           && (!own || outline_texel(q).w != id.w)
-          && 1.0 - dot(world_normal(q), n0) > fxp.outline.z) {
+          && 1.0 - dot(gbuffer_normal(q), n0) > fxp.outline.z) {
         edges += 1.0;
         continue;
       }
@@ -454,7 +455,7 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
       let back = px - si;
       let planar = !is_sky(ds)
           && outline_texel(qs).w == id.w && outline_texel(back).w == id.w
-          && dot(world_normal(qs), n0) > 0.999 && dot(world_normal(back), n0) > 0.999;
+          && dot(gbuffer_normal(qs), n0) > 0.999 && dot(gbuffer_normal(back), n0) > 0.999;
       let ahead = select(d0, surface_ahead(d0, depth_at(back)), planar);
       if (ds > ahead * (1.0 + fxp.outline.y)) {
         edges += 1.0;

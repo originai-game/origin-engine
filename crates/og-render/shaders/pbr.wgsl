@@ -197,18 +197,6 @@ fn object_id(m0: vec3<f32>, m1: vec3<f32>, m2: vec3<f32>, m3: vec3<f32>) -> u32 
   return 1u + h % 255u;
 }
 
-// A normal's world direction: through the inverse transpose of the model's
-// upper 3x3 (its cofactor matrix, flipped for a mirroring transform), so a
-// non-uniform scale bends normals the right way.
-fn world_normal(model: mat4x4<f32>, n: vec3<f32>) -> vec3<f32> {
-  let a = model[0].xyz;
-  let b = model[1].xyz;
-  let c = model[2].xyz;
-  let cofactor = mat3x3<f32>(cross(b, c), cross(c, a), cross(a, b));
-  let mirrored = dot(a, cross(b, c)) < 0.0;
-  return normalize(cofactor * n) * select(1.0, -1.0, mirrored);
-}
-
 // Where a lit vertex lands: its clip position, world position (moved by
 // a material shader's vertex offset) and world normal. Every lit vertex
 // stage, the lean ones (pbr_lean.wgsl) included, computes them here, so
@@ -260,23 +248,6 @@ fn lit_vertex(model: mat4x4<f32>, v: VertexIn) -> VertexOut {
   return o;
 }
 
-// The weighted joint matrices of one vertex (identity without weights).
-fn skin_matrix(s: SkinIn, palette: vec4<f32>) -> mat4x4<f32> {
-  let total = s.weights.x + s.weights.y + s.weights.z + s.weights.w;
-  if (total < 1e-6) {
-    return mat4x4<f32>(vec4<f32>(1.0, 0.0, 0.0, 0.0), vec4<f32>(0.0, 1.0, 0.0, 0.0), vec4<f32>(0.0, 0.0, 1.0, 0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0));
-  }
-  let w = s.weights / total;
-  // A joint without weight adds nothing (x + 0·m is x, exactly): its two
-  // baked frames are not read. A rigid part (a crowd member's, a prop's)
-  // reads one joint, not four.
-  var m = palette_joint(palette, s.joints.x) * w.x;
-  if (w.y != 0.0) { m += palette_joint(palette, s.joints.y) * w.y; }
-  if (w.z != 0.0) { m += palette_joint(palette, s.joints.z) * w.z; }
-  if (w.w != 0.0) { m += palette_joint(palette, s.joints.w) * w.w; }
-  return m;
-}
-
 @vertex
 fn vs(v: VertexIn, i: InstanceIn, k: InstanceFxIn) -> VertexOut {
   var o = lit_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
@@ -297,7 +268,7 @@ fn morph_vertex(v: VertexIn, vi: u32, i: SkinnedInstanceIn) -> VertexIn {
 
 @vertex
 fn vs_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> VertexOut {
-  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette);
+  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette);
   var o = lit_vertex(model, morph_vertex(v, vi, i));
   o.look = i.look;
   return o;
@@ -361,7 +332,7 @@ fn vs_prepass_surface(v: VertexIn, i: InstanceIn, prev: PrevIn, k: InstanceFxIn,
 
 @vertex
 fn vs_prepass_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> PrepassOut {
-  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette);
+  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette);
   // The previous frame's pose (skin.rs `append_previous`): the same
   // joints in the palette's second section, already in the world. A
   // vertex without weights (morph targets alone) moves with the camera.
@@ -377,11 +348,11 @@ fn vs_prepass_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedIns
     // section (morph1), so it needs no previous palette.
     if (i.morph1.x > 0.5) {
       let then = vec4<f32>(i.morph1.y, i.palette.y, 0.0, -1.0 - i.morph1.z);
-      prev = joint_palette[u32(i.morph1.x) - 1u] * skin_matrix(s, then);
+      prev = joint_palette[u32(i.morph1.x) - 1u] * skin_matrix(s.joints, s.weights, then);
     }
   } else if (section > 0.5) {
     if (dot(s.weights, vec4<f32>(1.0)) >= 1e-6) {
-      prev = skin_matrix(s, vec4<f32>(i.palette.x + section, i.palette.yzw));
+      prev = skin_matrix(s.joints, s.weights, vec4<f32>(i.palette.x + section, i.palette.yzw));
     }
     if (i.morph0.x > 0.5 || i.morph0.y > 0.5) {
       let weights = select(0.0, i.morph0.x + section, i.morph0.x > 0.5);

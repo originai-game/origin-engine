@@ -230,15 +230,6 @@ fn raster_id(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_ind
   if (t.ok) { cover(t, ((k << 6u) | li) + 1u); }
 }
 
-// pbr.wgsl `world_normal`.
-fn raster_normal(model: mat4x4<f32>, n: vec3<f32>) -> vec3<f32> {
-  let a = model[0].xyz;
-  let b = model[1].xyz;
-  let c = model[2].xyz;
-  let cofactor = mat3x3<f32>(cross(b, c), cross(c, a), cross(a, b));
-  return normalize(cofactor * n) * select(1.0, -1.0, dot(a, cross(b, c)) < 0.0);
-}
-
 // pbr.wgsl `object_id`.
 fn raster_object(model: mat4x4<f32>) -> u32 {
   var h = 2166136261u;
@@ -376,7 +367,7 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
     return;
   }
   let world = (model * vec4<f32>(position, 1.0)).xyz;
-  let n = raster_normal(model, normal);
+  let n = world_normal(model, normal);
   let tw = (model * vec4<f32>(tangent.xyz, 0.0)).xyz;
   let t = select(vec3<f32>(0.0, 0.0, 1.0), normalize(tw), dot(tw, tw) > 1e-20);
   var look = instances[e.x * 4u + 3u];
@@ -416,7 +407,7 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
     let k = raster.stylise.z;
     // The dome in the world (0: none).
     var dome_world = 0u;
-    if (c.w != 0u) { dome_world = pack2x16snorm(oct_encode(raster_normal(model, dome))); }
+    if (c.w != 0u) { dome_world = pack2x16snorm(oct_encode(world_normal(model, dome))); }
     let more = array<vec4<u32>, 4>(
       bitcast<vec4<u32>>(vec4<f32>(dpos_x, affine.x)),
       bitcast<vec4<u32>>(vec4<f32>(dpos_y, affine.y)),
