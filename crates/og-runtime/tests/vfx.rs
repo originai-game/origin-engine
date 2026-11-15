@@ -5,8 +5,9 @@
 use og_render::RenderScene;
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_game_game,
-    og_host_begin_bundle, og_load_effect, og_load_vfx, og_system_define_system, og_vfx_info,
-    og_vfx_spawn, og_world_alive, og_world_despawn, og_world_events, og_world_get_tick,
+    og_host_begin_bundle, og_load_effect, og_load_timeline, og_load_vfx, og_system_define_system,
+    og_timeline_play, og_timeline_seek, og_timeline_stop, og_vfx_info, og_vfx_spawn,
+    og_world_alive, og_world_children, og_world_despawn, og_world_events, og_world_get_tick,
     og_world_insert, og_world_restore, og_world_snapshot, og_world_spawn, set_hooks,
     set_render_backend,
 };
@@ -75,6 +76,12 @@ fn project() -> &'static Path {
             "type vfx\nversion 2\n---\nduration 0.4\nparam crit 0\n\
              mesh ring {\n  life 0.4\n  effect \"fx/shock.ogt\"\n  when crit\n}\n\
              light {\n  life 0.4\n}\n",
+        );
+        // fx/hit.ogt from 1 s, on the entity named "target", 1 m up.
+        write(
+            "timelines/fx.ogt",
+            "type timeline\nversion 1\n---\nname \"F\"\nduration 3\n\
+             track vfx {\n  key 1 {\n    effect \"fx/hit.ogt\"\n    at \"target\"\n    position 0 1 0\n  }\n}\n",
         );
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
@@ -561,4 +568,135 @@ fn a_beam_follows_its_target_and_ribbons_draw_their_effect_material() {
     ticks(engine, 2);
     let (beams, _) = seen.borrow().last().cloned().expect("a frame");
     assert!(beams.is_empty(), "a gone target draws no beam: {beams:?}");
+}
+
+/// Per frame: where the scene's lights are.
+type Lit = Rc<RefCell<Vec<Vec<[f32; 3]>>>>;
+
+struct LightRecorder(Lit);
+
+impl RenderBackend for LightRecorder {
+    fn tier(&self) -> String {
+        "none".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (320, 180)
+    }
+    fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+        self.0.borrow_mut().push(
+            scene
+                .lighting
+                .lights
+                .iter()
+                .map(|l| l.position.to_array())
+                .collect(),
+        );
+        Ok(())
+    }
+    fn frame_stats(&self) -> og_render::FrameStats {
+        Default::default()
+    }
+    fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
+        None
+    }
+}
+
+/// A timeline's vfx key plays fx/hit.ogt (its light from 0.1 s to 0.3 s,
+/// its events `impact` at 0.1 s and `linger` at 0.3 s) from 1 s on the
+/// entity it names. Played through, both events are sent once, the light
+/// at the target's place plus the key's offset. A seek into the effect
+/// joins it there: lit at once, only the event still ahead sent, also when
+/// it was playing. A seek past it and a stop leave nothing lit.
+#[test]
+fn a_timelines_vfx_key_plays_its_effect_and_a_seek_joins_it_midway() {
+    let seen = Seen::default();
+    set_hooks(Rc::new(Game(seen.clone())));
+    og_host_begin_bundle();
+    let watch = og_system_define_system(
+        "Watch".into(),
+        json!({ "reads": [{ "kind": "event", "name": "og.VfxEvent" }], "writes": [] }).to_string(),
+        WATCH,
+    );
+    let game = og_game_game(Some(json!({ "seed": 5, "systems": [watch] }).to_string()));
+    let options = json!({ "root": project().to_str().unwrap() }).to_string();
+    let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let lit = Lit::default();
+    set_render_backend(engine, Some(Box::new(LightRecorder(lit.clone())))).unwrap();
+    ticks(engine, 1);
+    macro_rules! answer {
+        ($call:expr) => {
+            value(og_runtime::host_impl::answer($call))
+        };
+    }
+    let asset = answer!(og_load_timeline(engine, "timelines/fx.ogt".into()));
+    let target = answer!(og_world_spawn(
+        engine,
+        Some(json!({ "name": "target", "position": { "x": 4, "y": 0, "z": 0 } }).to_string()),
+    ))
+    .as_f64()
+    .unwrap();
+    let timeline = answer!(og_world_spawn(engine, Some("{}".into())))
+        .as_f64()
+        .unwrap();
+    answer!(og_world_insert(
+        engine,
+        timeline,
+        "og.Timeline".into(),
+        Some(json!({ "asset": asset }).to_string()),
+    ));
+    let names = |from: usize| -> Vec<String> {
+        seen.borrow()[from..].iter().map(|s| s.1.clone()).collect()
+    };
+    let lit_now = || lit.borrow().last().cloned().unwrap_or_default();
+
+    answer!(og_timeline_play(engine, timeline));
+    ticks(engine, 50);
+    assert!(names(0).is_empty() && lit_now().is_empty(), "before 1 s");
+    let mut lights = Vec::new();
+    // The target's children while it plays: one og.Vfx throughout.
+    let mut played = Vec::new();
+    for _ in 0..50 {
+        ticks(engine, 1);
+        lights.extend(lit_now());
+        for c in og_world_children(engine, target).as_array().unwrap() {
+            if !played.contains(c) {
+                played.push(c.clone());
+            }
+        }
+    }
+    assert_eq!(played.len(), 1, "one effect entity, kept: {played:?}");
+    assert_eq!(names(0), ["impact", "linger"], "each once, played through");
+    assert!(!lights.is_empty(), "its light shows");
+    for p in &lights {
+        assert!(
+            (p[0] - 4.0).abs() < 1e-4 && (p[1] - 1.0).abs() < 1e-4,
+            "at the target plus the key's offset: {p:?}"
+        );
+    }
+
+    // Into the effect, 0.2 s in: lit at once, only `linger` still to come.
+    let before = seen.borrow().len();
+    answer!(og_timeline_seek(engine, timeline, 1.2));
+    ticks(engine, 1);
+    assert_eq!(lit_now().len(), 1, "joined at 0.2 s: its light shows");
+    ticks(engine, 20);
+    assert_eq!(names(before), ["linger"], "the impact passed is not sent");
+
+    // Past it, then a stop inside it: nothing lit.
+    answer!(og_timeline_seek(engine, timeline, 2.0));
+    ticks(engine, 2);
+    assert!(lit_now().is_empty(), "seeked past its end");
+    // Back from 1.15 s, past its impact, to 1.02 s: the effect playing is
+    // joined again there, so its impact is ahead and sent once more.
+    answer!(og_timeline_seek(engine, timeline, 1.15));
+    ticks(engine, 1);
+    assert_eq!(lit_now().len(), 1);
+    let before = seen.borrow().len();
+    answer!(og_timeline_seek(engine, timeline, 1.02));
+    ticks(engine, 10);
+    assert_eq!(names(before), ["impact"], "re-joined before its impact");
+    assert_eq!(lit_now().len(), 1, "one effect, not two");
+    answer!(og_timeline_stop(engine, timeline));
+    ticks(engine, 2);
+    assert!(lit_now().is_empty(), "a stop takes its effect");
 }

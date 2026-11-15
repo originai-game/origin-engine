@@ -120,6 +120,8 @@ pub(crate) struct Loaded {
     pub clips: IdMap<usize, (u64, BTreeMap<String, u64>)>,
     /// The timelines its `timeline` tracks nest, by the id they name.
     pub nested: BTreeMap<String, Arc<Mutex<Loaded>>>,
+    /// The effects its `vfx` tracks play: (handle, seconds, looping).
+    pub effects: BTreeMap<String, (f64, f32, bool)>,
 }
 
 #[derive(Default)]
@@ -386,7 +388,17 @@ fn decode(eng: &Engine, id: &str, chain: &mut Vec<String>) -> Result<Loaded, Str
     let mut sounds = BTreeMap::new();
     let mut clips = IdMap::new();
     let mut nested = BTreeMap::new();
+    let mut effects = BTreeMap::new();
     for tr in &timeline.tracks {
+        if let Track::Vfx(keys) = tr {
+            for k in keys {
+                if !effects.contains_key(&k.effect) {
+                    let e = crate::bind::vfx::load_timed(eng, &k.effect)
+                        .map_err(|e| format!("{id}: vfx {}: {e}", k.effect))?;
+                    effects.insert(k.effect.clone(), e);
+                }
+            }
+        }
         if let Track::Timeline(keys) = tr {
             for k in keys {
                 if nested.contains_key(&k.play) {
@@ -430,6 +442,7 @@ fn decode(eng: &Engine, id: &str, chain: &mut Vec<String>) -> Result<Loaded, Str
         sounds,
         clips,
         nested,
+        effects,
     })
 }
 
@@ -459,6 +472,10 @@ fn needs(eng: &Engine, lt: &Loaded, out: &mut std::collections::BTreeSet<String>
             },
             Track::Shot(_) => {
                 out.insert(feel::vcam::BRAIN.to_string());
+            }
+            Track::Vfx(_) => {
+                out.insert(crate::bind::vfx::COMPONENT.to_string());
+                out.insert("og.Parent".into());
             }
             Track::Camera(c)
                 if c.keys.iter().any(|k| {
@@ -506,10 +523,13 @@ fn grant_loaded(eng: &Engine, lt: &Loaded, mut world: Option<&mut World>) -> Res
     needs(eng, lt, &mut want, 0);
     // A shot track registers the virtual cameras' lazy records, as naming
     // og.VirtualCamera would.
-    if want.contains(feel::vcam::BRAIN)
-        && let Some(w) = world.as_deref_mut()
-    {
-        crate::engine::lazy::ensure(eng, w, feel::vcam::BRAIN)?;
+    // A vfx track registers og.Vfx (and schedules og.vfx), likewise.
+    for lazy in [feel::vcam::BRAIN, crate::bind::vfx::COMPONENT] {
+        if want.contains(lazy)
+            && let Some(w) = world.as_deref_mut()
+        {
+            crate::engine::lazy::ensure(eng, w, lazy)?;
+        }
     }
     // A lazy record no game has used yet is not registered: its tracks
     // write nothing until it is and the timeline loads again.

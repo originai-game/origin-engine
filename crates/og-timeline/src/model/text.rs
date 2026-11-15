@@ -183,6 +183,7 @@ fn track_end(t: &Track) -> f32 {
         Track::Marker(c) => max(&mut c.iter().map(|k| k.time)),
         Track::Fields(f) => max(&mut f.keys.iter().map(|k| k.time)),
         Track::Timeline(c) => max(&mut c.iter().map(|k| k.time)),
+        Track::Vfx(c) => max(&mut c.iter().map(|k| k.time)),
         Track::Shot(c) => max(&mut c.iter().map(|k| k.time)),
     }
 }
@@ -319,6 +320,25 @@ fn write_track(tr: &Track) -> Entry {
                     kb.push(Entry::new("blend").with(num(k.blend)));
                 }
                 ease_entry(&mut kb, k.ease);
+                b.push(key_entry(k.time, kb));
+            }
+        }
+        Track::Vfx(ks) => {
+            for k in ks {
+                let mut kb = Block::new();
+                kb.push(Entry::new("effect").with(Value::String(k.effect.clone())));
+                if !k.at.is_empty() {
+                    kb.push(Entry::new("at").with(Value::String(k.at.clone())));
+                }
+                if k.position != Vec3::ZERO {
+                    kb.push(v3(Entry::new("position"), k.position));
+                }
+                if k.scale != 1.0 {
+                    kb.push(Entry::new("scale").with(num(k.scale)));
+                }
+                if k.seed != 0 {
+                    kb.push(Entry::new("seed").with(Value::Number(Number::from(k.seed))));
+                }
                 b.push(key_entry(k.time, kb));
             }
         }
@@ -586,6 +606,14 @@ track marker {
                 "names its sound",
             ),
             (
+                "track vfx {\n  key 1 {\n    at \"hero\"\n  }\n}\n",
+                "names its effect",
+            ),
+            (
+                "track vfx {\n  key 1 {\n    effect \"fx/a.ogt\"\n    seed -1\n  }\n}\n",
+                "seed is one whole number",
+            ),
+            (
                 "path \"p\" {\n  kind bezier\n  point 0 0 0\n  point 1 0 0\n}\n",
                 "path 'p': an open bezier",
             ),
@@ -677,6 +705,18 @@ track timeline {
     loop true
   }
 }
+track vfx {
+  key 2.5 {
+    effect "fx/hit.ogt"
+  }
+  key 0.5 {
+    effect "fx/burst.ogt"
+    at "hero"
+    position 0 1.5 0
+    scale 2
+    seed 4000000001
+  }
+}
 "#;
         let mut no = |_: &str| -> Result<String, String> { Err("none".into()) };
         let t = Timeline::parse(text, &mut no).unwrap();
@@ -690,11 +730,26 @@ track timeline {
                 "post",
                 "blendshape",
                 "material",
-                "timeline"
+                "timeline",
+                "vfx"
             ]
         );
         let again = Timeline::parse(&t.to_text(), &mut no).unwrap();
         assert_eq!(again, t);
+        let Track::Vfx(fx) = &t.tracks[8] else {
+            panic!()
+        };
+        assert_eq!(
+            fx.iter()
+                .map(|k| (k.time, k.effect.as_str(), k.at.as_str(), k.scale, k.seed))
+                .collect::<Vec<_>>(),
+            [
+                (0.5, "fx/burst.ogt", "hero", 2.0, 4_000_000_001),
+                (2.5, "fx/hit.ogt", "", 1.0, 0)
+            ],
+            "sorted by time; a seed past f32's integers kept exactly"
+        );
+        assert_eq!(fx[0].position, Vec3::new(0.0, 1.5, 0.0));
         let Track::Camera(c) = &t.tracks[0] else {
             panic!()
         };

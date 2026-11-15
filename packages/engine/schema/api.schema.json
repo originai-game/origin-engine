@@ -54211,7 +54211,7 @@
       "properties": {
         "kind": {
           "type": "string",
-          "description": "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline or shot."
+          "description": "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot or vfx."
         },
         "target": {
           "type": "string",

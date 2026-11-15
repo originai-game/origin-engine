@@ -52,6 +52,7 @@ pub(super) fn track(e: &Entry, read: &mut Read<'_>) -> Result<Track, String> {
         "marker" => Track::Marker(markers(block)?),
         "timeline" => Track::Timeline(nested(block)?),
         "shot" => Track::Shot(shots(block)?),
+        "vfx" => Track::Vfx(effects(block)?),
         k => match FieldsKind::from_name(k) {
             Some(kind) => Track::Fields(fields(block, kind, target)?),
             None => {
@@ -269,6 +270,53 @@ fn volume(f: &Entry) -> Result<f32, String> {
         return Err(at(f, "volume is a linear gain, ≥ 0"));
     }
     Ok(v)
+}
+
+fn effects(block: &Block) -> Result<Vec<VfxKey>, String> {
+    let mut ks = Vec::new();
+    for e in only_keys(block, "vfx")? {
+        let mut k = VfxKey {
+            time: key_time(e)?,
+            effect: String::new(),
+            at: String::new(),
+            position: Vec3::ZERO,
+            scale: 1.0,
+            seed: 0,
+        };
+        for f in key_block(e)? {
+            no_block(f)?;
+            match f.key.as_str() {
+                "effect" => k.effect = string(f)?,
+                "at" => k.at = string(f)?,
+                "position" => k.position = vec3(f)?,
+                "scale" => {
+                    k.scale = one_number(f)?;
+                    if k.scale <= 0.0 {
+                        return Err(at(f, "scale is a size multiplier, more than 0"));
+                    }
+                }
+                "seed" => {
+                    k.seed = match f.values.as_slice() {
+                        [Value::Number(n)] => n.as_u64().ok().and_then(|v| u32::try_from(v).ok()),
+                        _ => None,
+                    }
+                    .ok_or_else(|| at(f, "seed is one whole number, 0 to 4294967295"))?;
+                }
+                _ => {
+                    return Err(unknown(
+                        f,
+                        "vfx key entry",
+                        "effect, at, position, scale or seed",
+                    ));
+                }
+            }
+        }
+        if k.effect.is_empty() {
+            return Err(at(e, "a vfx key names its effect: `effect \"fx/hit.ogt\"`"));
+        }
+        ks.push(k);
+    }
+    Ok(sorted(ks, |k| k.time))
 }
 
 fn sounds(block: &Block) -> Result<Vec<SoundKey>, String> {

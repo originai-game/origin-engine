@@ -3,7 +3,8 @@
 use super::*;
 
 /// One-shot voices that ended go; while paused every voice goes (a
-/// resume starts the music again at its offset).
+/// resume starts the music again at its offset). A `vfx` key's effect
+/// stays while it lives, paused or not: og.vfx despawns it at its end.
 pub(super) fn drop_ended_voices(
     ctx: &mut SystemContext<'_>,
     r: &Rec,
@@ -11,8 +12,13 @@ pub(super) fn drop_ended_voices(
     playing: bool,
 ) -> og_core::Result<()> {
     let mut keep = Vec::new();
+    let vfx = ctx.id_by_name(crate::bind::vfx::COMPONENT).ok();
     for (tr, k, v) in std::mem::take(&mut run.voices) {
         let e = Entity::from_bits(v);
+        if vfx.is_some_and(|id| ctx.is_alive(e) && ctx.get_bytes(e, id).is_ok()) {
+            keep.push((tr, k, v));
+            continue;
+        }
         let alive = ctx.is_alive(e)
             && ctx.get_bytes(e, r.source.0).is_ok_and(|b| {
                 r.source
@@ -94,6 +100,9 @@ pub(super) fn evaluate(
         match tr {
             Track::Camera(c) => camera(ctx, engine_id, r, lt, run, c, t)?,
             Track::Shot(keys) => shot(ctx, engine_id, r, lt, run, keys, t)?,
+            Track::Vfx(keys) if playing => {
+                effects(ctx, engine_id, r, lt, run, (ti32, keys), t, spans, dt)?;
+            }
             Track::Fields(f) if f.kind != og_timeline::FieldsKind::Material => {
                 fields(ctx, engine_id, &lt.id, f, t)?;
             }
@@ -369,6 +378,111 @@ pub(super) fn evaluate(
             }
             _ => {}
         }
+    }
+    Ok(())
+}
+
+/// A `vfx` track at time `t`: each key's effect is an og.Vfx the run owns
+/// (with its voices) while `t` is inside it. Playback past a key starts
+/// it; a start or a seek into one joins it at `t`, its startTick that many
+/// ticks back and the ticks before marked run (so its events, shakes and
+/// sounds already passed are not sent). It plays at the world's tick from
+/// there, whatever the timeline's speed.
+#[allow(clippy::too_many_arguments)]
+fn effects(
+    ctx: &mut SystemContext<'_>,
+    engine_id: u32,
+    r: &Rec,
+    lt: &Loaded,
+    run: &mut Run,
+    (track, keys): (u32, &[og_timeline::VfxKey]),
+    t: f32,
+    spans: &[(f64, f64)],
+    dt: f32,
+) -> og_core::Result<()> {
+    let (Some(vfx), Some(parent)) = (&r.vfx, &r.parent) else {
+        return Ok(());
+    };
+    let (Ok(vfx_id), Ok(parent_id)) = (ctx.id_by_name(&vfx.schema), ctx.id_by_name(&parent.schema))
+    else {
+        return Ok(());
+    };
+    let tick = ctx.time().tick;
+    let rate = if dt > 0.0 { 1.0 / dt } else { 60.0 };
+    // No span while playing: this tick seeked.
+    let seeked = spans.is_empty();
+    for (ki, k) in keys.iter().enumerate() {
+        let Some(&(asset, seconds, looping)) = lt.effects.get(&k.effect) else {
+            continue;
+        };
+        let behind = ((t - k.time) * rate).round();
+        // Inside it, short of its last tick (where og.vfx ends it).
+        let within = t >= k.time && (looping || behind + 1.0 < seconds * rate);
+        if let Some(i) = run
+            .voices
+            .iter()
+            .position(|v| v.0 == track && v.1 == ki as u32)
+        {
+            if within && !seeked {
+                continue;
+            }
+            let (_, _, v) = run.voices.remove(i);
+            let e = Entity::from_bits(v);
+            if ctx.is_alive(e) {
+                ctx.despawn(e)?;
+            }
+        }
+        let fire = spans.iter().any(|(a, b)| crossed(k.time, *a, *b));
+        let joined = seeked || spans.iter().all(|(a, _)| *a > f64::from(k.time));
+        if !(within && (fire || joined)) {
+            continue;
+        }
+        let at = if k.at.is_empty() {
+            None
+        } else {
+            match ctx.find(&k.at) {
+                Some(e) => Some(e),
+                None => {
+                    note(
+                        engine_id,
+                        format!(
+                            "timeline {}: no entity '{}' for its vfx key at {} s",
+                            lt.id, k.at, k.time
+                        ),
+                    );
+                    continue;
+                }
+            }
+        };
+        let behind = behind.max(0.0) as u64;
+        let seed = match k.seed {
+            0 => (og_core::hash::splitmix64(u64::from(track) << 32 | ki as u64) as u32).max(1),
+            s => s,
+        };
+        let mut v = json!({
+            "asset": asset, "seed": seed, "startTick": tick.saturating_sub(behind), "scale": k.scale,
+        });
+        if !fire && behind > 0 {
+            v["ran"] = json!(tick - 1);
+        }
+        let mut parts = vec![
+            (vfx_id, vfx.encode(None, Some(&v)).map_err(invalid)?),
+            (
+                r.transform.0,
+                r.transform
+                    .1
+                    .encode(None, Some(&json!({ "position": jv3(k.position) })))
+                    .map_err(invalid)?,
+            ),
+        ];
+        if let Some(p) = at {
+            let b = parent
+                .encode(None, Some(&json!({ "entity": p.to_bits() })))
+                .map_err(invalid)?;
+            parts.push((parent_id, b));
+        }
+        let e = ctx.spawn_bytes(parts)?;
+        run.voices.push((track, ki as u32, e.to_bits()));
     }
     Ok(())
 }

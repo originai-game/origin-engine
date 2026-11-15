@@ -123,6 +123,7 @@ pub(crate) fn cook_timeline(
             Track::Caption(c) => captions += c.keys.len(),
             Track::Fields(f) => check_fields(f).map_err(CookError)?,
             Track::Timeline(keys) => keys.iter().for_each(|k| need(&k.play, "timeline")),
+            Track::Vfx(keys) => keys.iter().for_each(|k| need(&k.effect, "vfx")),
             _ => {}
         }
     }

@@ -10,14 +10,14 @@ One track of a loaded timeline.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `kind` | `string` | `""` | — | — | — | camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline or shot. |
+| `kind` | `string` | `""` | — | — | — | camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot or vfx. |
 | `target` | `string` | `""` | — | — | — | The entity a transform, animation, property, light, visibility, blendshape or material track drives, the path a rail rides, the entity a camera follows; empty otherwise. |
 | `keys` | `number` | `0` | — | — | — | Its keys. |
 
 ```ogt
 struct TimelineTrackInfo {
   doc "One track of a loaded timeline."
-  field kind String "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline or shot."
+  field kind String "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot or vfx."
   field target String "The entity a transform, animation, property, light, visibility, blendshape or material track drives, the path a rail rides, the entity a camera follows; empty otherwise."
   field keys u32 "Its keys."
 }

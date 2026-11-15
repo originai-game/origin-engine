@@ -428,6 +428,7 @@ loads it. An og.Timeline component plays it on its entity.
 | `material "<entity>"` | its og.Mesh's material, or its og.Model's material `index N`: StandardMaterialDesc fields by name, other names the material shader's parameters |
 | `timeline` | `play "<timeline>"`, speed, loop: from its key until the next, another timeline plays nested at (time − key) × speed, its markers sent as `<file>/<marker>`, at most four deep |
 | `shot` | `camera "<entity>"` (a virtual camera's name) or `none`; `blend` seconds and `ease`: from its key until the next, that og.VirtualCamera is og.CameraBrain.solo, blended over the key's blend by its ease or by the camera's own; `none` and the timeline's end hand back the solo it found |
+| `vfx` | `effect "<vfx>"` (a composed effect, `type vfx`), `at "<entity>"` (played as its child; none: in the world), `position` (offset), `scale`, `seed`: from its key the effect plays its length (a looping one until the timeline stops) at the world's tick; a seek into it joins it there without the events, shakes and sounds already passed; a seek out of it, a stop and the end take it |
 
 - The cook checks every field against the engine's records (a field the
   record lacks, one a timeline cannot drive, a value of the wrong shape),

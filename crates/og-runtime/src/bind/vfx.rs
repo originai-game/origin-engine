@@ -218,6 +218,17 @@ pub(crate) fn load(eng: &crate::engine::Engine, path: &str) -> Result<usize, Str
     Ok(r.len() - 1)
 }
 
+/// Composed effect `path` loaded, as a timeline's `vfx` key plays it: its
+/// handle, length in seconds and whether it loops.
+pub(crate) fn load_timed(
+    eng: &crate::engine::Engine,
+    path: &str,
+) -> Result<(f64, f32, bool), String> {
+    let i = load(eng, path)?;
+    let l = lock(&eng.modules.vfx.0)[i].clone();
+    Ok((handle(i), l.vfx.duration, l.vfx.looping))
+}
+
 fn loaded(engine: u32, asset: f64) -> Result<Arc<Loaded>, String> {
     let registry = crate::engine::engine(engine).map(|e| e.modules.vfx.0.clone());
     index(asset as u64)

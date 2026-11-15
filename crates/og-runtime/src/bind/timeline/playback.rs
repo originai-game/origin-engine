@@ -333,6 +333,9 @@ pub(super) struct Rec {
     /// og.CameraBrain's layout, for a shot track (registered lazily: its
     /// id is looked up when the track plays).
     pub(super) brain: Option<Layout>,
+    /// og.Vfx's and og.Parent's, for a vfx track, likewise.
+    pub(super) vfx: Option<Layout>,
+    pub(super) parent: Option<Layout>,
 }
 
 /// Registers the timeline events (their layouts into `layouts`).
@@ -383,6 +386,8 @@ pub(crate) fn install(
         source: get("og.AudioSource")?,
         post: get("og.PostEffects").ok(),
         brain: layouts.get(crate::present::feel::vcam::BRAIN).cloned(),
+        vfx: layouts.get(crate::bind::vfx::COMPONENT).cloned(),
+        parent: layouts.get("og.Parent").cloned(),
     };
     let names =
         |ids: &[&(SchemaId, Layout)]| ids.iter().map(|x| x.1.schema.clone()).collect::<Vec<_>>();
