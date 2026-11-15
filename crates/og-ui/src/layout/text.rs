@@ -113,3 +113,8 @@ pub(super) fn fits(t: UsedText<'_>, fonts: &dyn Metrics, width: f32) -> bool {
     text_longest(t, m) <= width
         && (t.max_lines == 0 || text_lines(t, m, Some(width)).len() <= t.max_lines as usize)
 }
+
+/// A text's preferred extent along its line: its widest line.
+pub(crate) fn text_preferred(t: UsedText<'_>, fonts: &dyn Metrics) -> f32 {
+    super::text::text_widest(t, t.metrics(fonts))
+}

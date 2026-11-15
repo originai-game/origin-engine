@@ -34,7 +34,8 @@ pub(crate) use cache::{
     draw_eq, input_changes, layout, painted_eq,
 };
 use flex::*;
-pub(crate) use flex::{on_screen, text_preferred};
+pub(crate) use flex::on_screen;
+pub(crate) use text::text_preferred;
 pub use flow::{Bidi, Flow};
 pub(crate) use grid::{GridLayout, Table, derive_table, shown_children};
 use grid::{grid_columns, grid_intrinsic, grid_rows, place_grid};
