@@ -1922,3 +1922,34 @@ fn undressed_text_frames_keep_the_hosts_box_and_inset() {
         assert_eq!(x - host.x, pad, "{path}");
     }
 }
+
+/// A pack's `background: <gradient>` on a panel or dialog part replaces the
+/// widget's own ground, as the shorthand resets the colour to transparent:
+/// a glass pack's scene shows through it.
+#[test]
+fn a_gradient_part_background_drops_the_widgets_ground() {
+    for doc in [
+        "<panel><p>Hi</p></panel>",
+        "<dialog open><p>Hi</p></dialog>",
+    ] {
+        let ui = dressed(
+            "panel::part(frame), dialog::part(panel) { background: linear-gradient(rgb(255 0 0 / 0.25), rgb(0 0 255 / 0.25)); box-shadow: none; }",
+        );
+        let text = format!(r#"<meta name="component" content="t">{doc}"#);
+        let mut d = Doc::with_ui(ui, &text);
+        d.step(InputFrame::default());
+        d.step(InputFrame::default());
+        let (mut solid, mut gradient) = (0, 0);
+        for item in &d.ui.frame().items {
+            if let DrawCmd::Shape { shape, .. } = &item.cmd {
+                let fill = matches!(shape.mode, og_draw::UiMode::Fill);
+                match shape.paint {
+                    og_draw::UiPaint::Solid(c) if c[3] > 0.0 && fill => solid += 1,
+                    og_draw::UiPaint::GradientImage(_) => gradient += 1,
+                    _ => {}
+                }
+            }
+        }
+        assert_eq!((solid, gradient), (0, 1), "{doc}");
+    }
+}

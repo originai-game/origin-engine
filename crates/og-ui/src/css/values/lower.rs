@@ -388,7 +388,10 @@ fn lower_background_image(name: &str, value: &str) -> Result<Vec<Part>, String> 
     )];
     if let Some(c) = colour {
         out.push(e("background", paint_vals(&[c])?));
-    } else if name == "background" && value.trim() == "none" {
+    } else if name == "background" {
+        // The shorthand sets every longhand it leaves out to its initial
+        // value (CSS Backgrounds 3 §3.10): its colour is transparent, not
+        // the fill a widget or an earlier rule gave it.
         out.push(e(
             "background",
             paint_vals(&[Tok::Ident("transparent".into())])?,
