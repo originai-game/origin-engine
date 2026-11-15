@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "main-menu and loading screens",
+      "summary": "The eyebrow over the main menu's News card and over the loading screen's tip takes --highlight, the emphasised ink, instead of --primary, the primary action's fill, which a pack may make too deep to read as text (fantasy's crimson read 2.1:1 on its panel)."
+    }
+  ]
+}

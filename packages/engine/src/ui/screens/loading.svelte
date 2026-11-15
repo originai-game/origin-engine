@@ -38,7 +38,9 @@
 #Foot { padding: var(--space-xl); }
 }
 #Tip { width: stretch; max-width: var(--measure-xxl); gap: var(--space-sm); }
-#Eyebrow { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--primary); }
+/* Emphasised ink (--highlight), not --primary: that is a fill for the
+   directed action, which a pack may make a deep colour no text reads in. */
+#Eyebrow { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--highlight); }
 #Text { font: var(--text-reading); letter-spacing: var(--type-reading-tracking); line-clamp: 4; }
 #Lore { width: stretch; }
 #Place { font-size: var(--type-xl2-size); }

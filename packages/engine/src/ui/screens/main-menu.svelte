@@ -69,7 +69,9 @@
 #News:hover { translate: 0 var(--state-lift); }
 #News:active { translate: 0 0; }
 #News:focus-visible { translate: 0 var(--state-lift); }
-#Eyebrow { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--primary); }
+/* Emphasised ink (--highlight), not --primary: that is a fill for the
+   directed action, which a pack may make a deep colour no text reads in. */
+#Eyebrow { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--highlight); }
 #Line { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); line-clamp: 2; }
 #Version { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); position: absolute; inset-inline-start: var(--space-lg); bottom: var(--space-md); }
 </style>
