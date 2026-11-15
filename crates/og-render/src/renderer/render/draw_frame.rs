@@ -69,6 +69,9 @@ impl Renderer {
             mut sphere_box,
             serial: sorted_serial,
             changed: sorted_changed,
+            still: sorted_still,
+            objects_moved,
+            content: sorted_content,
             ..
         } = sorted_instances;
         // The debris layer's instances are culled by everywhere their
@@ -213,6 +216,7 @@ impl Renderer {
             volumetric_fog: &volumetric_fog,
             particle_frame: &particle_frame,
             scene_water,
+            objects_moved,
         });
         plans.ssr = SsrPass::bind(self, &mut frames.ssr, effects.ssr);
         // What the frame will draw with beyond its batches starts compiling
@@ -614,6 +618,7 @@ impl Renderer {
             skinned_data: &skinned_data,
             skinned: &skinned,
             blended_list: &mut camera_lists.blended_list,
+            content: sorted_content,
         });
         stages.end("instance records");
         // The CPU-culled lists of the passes after the camera, moved where
@@ -1331,6 +1336,7 @@ impl Renderer {
             gi_copy,
             t: frame_uniforms.time,
             stats: &mut stats,
+            sorted: (sorted_serial, sorted_still),
         });
         // Its tables' memory for the next frame's crowds.
         self.world.crowd_tables = crowd_frame;

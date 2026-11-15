@@ -135,6 +135,7 @@ impl GpuCulling {
             skinned_n: 0,
             skinned_base: 0,
             upload: Default::default(),
+            uploaded_content: None,
             previous: buffer(
                 device,
                 "culled previous instances",

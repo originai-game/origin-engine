@@ -17,6 +17,9 @@ pub(super) struct DecideEffectsInputs<'a> {
     pub volumetric_fog: &'a Option<crate::volumetric::Medium>,
     pub particle_frame: &'a particles_gpu::ParticleFrame,
     pub scene_water: &'a [Water],
+    /// An instance's previous transform is not its own
+    /// ([`instances::Sorted::objects_moved`]).
+    pub objects_moved: bool,
 }
 
 pub(super) struct FrameEffects {
@@ -65,6 +68,7 @@ impl Renderer {
             volumetric_fog,
             particle_frame,
             scene_water,
+            objects_moved,
         }: DecideEffectsInputs<'_>,
     ) -> FrameEffects {
         let post_fx = &scene.look.post;
@@ -177,8 +181,8 @@ impl Renderer {
             .is_some_and(|o| o.ui.needs_depth());
         // Walked once, every instance: a still town's 94,784 compared twice
         // a frame was a tenth of its render call.
-        let instances_moved = (taa_on || motion_blur.is_some())
-            && (objects_moved(scene) || crate::debris::moving(scene));
+        let instances_moved =
+            (taa_on || motion_blur.is_some()) && (objects_moved || crate::debris::moving(scene));
         let prepass = !custom_posts.is_empty()
             || ao_target
             || contact

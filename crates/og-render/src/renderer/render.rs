@@ -236,19 +236,6 @@ fn canvas_stats(t: &TextureData) -> [f32; 2] {
     [mean as f32, (sum2 / n - mean * mean).max(0.0).sqrt() as f32]
 }
 
-/// Whether an instance was drawn elsewhere in the previous frame
-/// ([`RenderScene::previous_transforms`]): TAA then needs the prepass's
-/// motion vectors.
-fn objects_moved(scene: &RenderScene) -> bool {
-    scene.objects.previous_transforms.len() == scene.objects.instances.len()
-        && scene
-            .objects
-            .previous_transforms
-            .iter()
-            .zip(&scene.objects.instances)
-            .any(|(p, i)| *p != i.transform)
-}
-
 impl Renderer {
     /// Whether `sorted` instances are culled on the GPU as far as the
     /// renderer's culling choice goes (the frame may still fall back: its

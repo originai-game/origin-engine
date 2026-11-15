@@ -86,6 +86,7 @@ impl InstanceRecords {
             skinned_buffer,
             palette: skin::GpuPalette::new(),
             previous_sway: Vec::new(),
+            sway_serial: None,
             debris: Default::default(),
         }
     }

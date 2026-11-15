@@ -414,6 +414,9 @@ pub(crate) struct GpuCulling {
     pub skinned_base: u32,
     /// What the input region of `instances` holds, written by changes only.
     upload: crate::upload::DirtyUpload,
+    /// The [`crate::instances::Sorted::content`] the input region holds,
+    /// when it holds the sorted transforms alone (no skinned boxes).
+    uploaded_content: Option<u64>,
     /// The previous transforms, laid out as `instances` (region 0 at the
     /// sorted slots, the camera pass's visible ones in its region): TAA's
     /// object motion for GPU-culled batches (the prepass and the meshlet

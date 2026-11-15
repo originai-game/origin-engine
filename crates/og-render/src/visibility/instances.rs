@@ -208,6 +208,14 @@ pub(crate) struct SortedInstances {
     /// sort only the instances that differ.
     seen: Vec<Instance>,
     slots: Vec<u32>,
+    /// What else the keys were read from: each material's batch material
+    /// ([`drawn`]), the instances' layer masks, and the mesh and material
+    /// counts the handles were checked against. While these and an
+    /// instance hold, so does its key.
+    keyed: (Vec<u32>, Vec<u32>, usize, usize),
+    /// Moves on whenever a sorted instance's GPU transform may have
+    /// changed ([`Sorted::content`]).
+    content: u64,
     /// Counts the updates ([`Sorted::serial`]).
     serial: u64,
     /// The materials whose shader parameters moved this frame, ascending
@@ -246,6 +254,15 @@ pub(crate) struct Sorted {
     /// transform, own material or sway changed since the update before;
     /// `None` when they were sorted afresh (any of them may have).
     pub changed: Option<Vec<u32>>,
+    /// Every submitted instance is the update before's, bit for bit.
+    pub still: bool,
+    /// An instance's previous transform ([`crate::SceneObjects::previous_transforms`],
+    /// when there is one per instance) is not its transform: read in the
+    /// same pass as the comparison, for the frame's motion.
+    pub objects_moved: bool,
+    /// The sorted GPU transforms are those of every update with the same
+    /// number here, bit for bit (a buffer they were written to holds them).
+    pub content: u64,
 }
 
 /// What the sort needs of a mesh: its local bounds as (centre, half
@@ -367,14 +384,56 @@ impl SortedInstances {
         skip: impl Fn(usize) -> bool,
     ) -> Result<Sorted, RenderError> {
         let instances = &scene.objects.instances;
+        let n = instances.len();
         self.serial = self.serial.wrapping_add(1);
+        let mut same = self.scene == scene.id() && self.keys.len() == n;
+        self.scene = scene.id();
+        // What the keys are read from besides the instances.
+        let table: Vec<u32> = (0..materials)
+            .map(|m| drawn(scene, &self.params_moved, m) as u32)
+            .collect();
+        let layers = &scene.objects.instance_layers;
+        let keyed = same
+            && self.seen.len() == n
+            && self.slots.len() == n
+            && self.keyed.0 == table
+            && self.keyed.1 == *layers
+            && (self.keyed.2, self.keyed.3) == (meshes, materials);
+        // One pass in submission order: the instances that differ from
+        // the update before's (only their keys and what derives from them
+        // are read again), and whether one moved since its previous
+        // transform. A still town of 94,865 instances walked them four
+        // times a frame for these (the keys, the refresh, the motion
+        // test, the sway kept for the next frame).
+        let previous = &scene.objects.previous_transforms;
+        let previous = (previous.len() == n).then_some(previous.as_slice());
+        let mut objects_moved = false;
+        let mut differ: Vec<u32> = Vec::new();
+        if keyed {
+            for (i, (a, b)) in self.seen.iter().zip(instances).enumerate() {
+                if !same_instance(a, b) {
+                    differ.push(i as u32);
+                }
+                if !objects_moved && let Some(p) = previous {
+                    objects_moved = p[i] != b.transform;
+                }
+            }
+        } else if let Some(p) = previous {
+            objects_moved = p.iter().zip(instances).any(|(p, i)| *p != i.transform);
+        }
+        let all: Vec<u32>;
+        let check: &[u32] = if keyed {
+            &differ
+        } else {
+            all = (0..n as u32).collect();
+            &all
+        };
         // The submission's keys against the last frame's (and kept for the
         // next), each checked against the scene's resources on the way.
-        let mut same = self.scene == scene.id() && self.keys.len() == instances.len();
-        self.scene = scene.id();
-        self.keys
-            .resize(instances.len(), (u32::MAX, u32::MAX, true, 1));
-        for (i, (key, inst)) in self.keys.iter_mut().zip(instances).enumerate() {
+        self.keys.resize(n, (u32::MAX, u32::MAX, true, 1));
+        for &i in check {
+            let i = i as usize;
+            let (key, inst) = (&mut self.keys[i], &instances[i]);
             let k = (inst.mesh.index(), inst.material.index());
             if k.0 >= meshes || k.1 >= materials {
                 // Never kept: the next frame compares afresh.
@@ -389,9 +448,9 @@ impl SortedInstances {
             // (RenderScene::alias_material): its instances join that run.
             let k = (
                 k.0 as u32,
-                drawn(scene, &self.params_moved, k.1) as u32,
+                table[k.1],
                 inst.cast_shadows,
-                crate::views::layer_of(&scene.objects.instance_layers, i),
+                crate::views::layer_of(layers, i),
             );
             if *key != k {
                 *key = k;
@@ -416,12 +475,20 @@ impl SortedInstances {
         same = same && skipped == self.skipped && !self.probes_moved;
         self.skipped = skipped;
         self.probes_moved = false;
-        same = same && self.seen.len() == instances.len() && self.slots.len() == instances.len();
+        same = same && self.seen.len() == n && self.slots.len() == n;
+        let still = same && keyed && differ.is_empty();
         // An instance that moved into another probe's box sorts again.
-        let rebuilt = !same || self.refresh(scene, &mesh).is_none();
+        let rebuilt = !same
+            || self
+                .refresh(scene, &mesh, keyed.then_some(&differ))
+                .is_none();
         if rebuilt {
             self.rebuild(scene, &mesh, &dequant, &array);
         }
+        if rebuilt || !self.changed.is_empty() {
+            self.content = self.content.wrapping_add(1);
+        }
+        self.keyed = (table, layers.clone(), meshes, materials);
         Ok(Sorted {
             runs: self.runs.clone(),
             transforms: std::mem::take(&mut self.transforms),
@@ -430,6 +497,9 @@ impl SortedInstances {
             sphere_box: self.sphere_box,
             serial: self.serial,
             changed: (!rebuilt).then(|| std::mem::take(&mut self.changed)),
+            still,
+            objects_moved,
+            content: self.content,
         })
     }
 
@@ -554,10 +624,13 @@ impl SortedInstances {
     /// how many instances that was, `None` when one moved into another
     /// reflection probe's box or started or stopped mirroring its mesh
     /// (the sort is then redone).
+    /// `differ`: the submitted instances that differ from those last
+    /// read, when known; otherwise every one is compared.
     fn refresh(
         &mut self,
         scene: &RenderScene,
         mesh_info: &impl Fn(usize) -> MeshInfo,
+        differ: Option<&[u32]>,
     ) -> Option<usize> {
         let instances = &scene.objects.instances;
         let mut changed = 0;
@@ -568,10 +641,18 @@ impl SortedInstances {
         // walk through the sort's order was 13 ms of a 94,784-instance
         // town's frame).
         let mut moved_runs: Vec<usize> = Vec::new();
-        for (i, inst) in instances.iter().enumerate() {
-            if same_instance(&self.seen[i], inst) {
-                continue;
+        let all: Vec<u32>;
+        let candidates = match differ {
+            Some(d) => d,
+            None => {
+                all = (0..instances.len() as u32)
+                    .filter(|&i| !same_instance(&self.seen[i as usize], &instances[i as usize]))
+                    .collect();
+                &all
             }
+        };
+        for &i in candidates {
+            let (i, inst) = (i as usize, &instances[i as usize]);
             self.seen[i] = *inst;
             let k = self.slots[i];
             if k == u32::MAX {
@@ -957,11 +1038,14 @@ mod tests {
         );
         kept.restore(first.transforms, first.spheres);
         // Unchanged: nothing computed.
-        assert_eq!(kept.refresh(&scene, &info), Some(0));
+        assert_eq!(kept.refresh(&scene, &info, None), Some(0));
         let still = kept
             .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
         assert_same(&still, &fresh(&scene));
+        // The same submission: still, its transforms the same content.
+        assert!(still.still && !first.still);
+        assert_eq!(still.content, first.content);
         let mut culled = still.transforms;
         culled.push(GpuTransform {
             columns: [[9.0; 3]; 4],
@@ -973,8 +1057,8 @@ mod tests {
         scene.objects.instances[3].transform.w_axis.x += 2.0;
         scene.objects.instances[10].transform = Mat4::from_translation(Vec3::new(-3.0, 1.0, 0.0));
         scene.objects.instances[7].transform.w_axis.y = -0.0;
-        assert_eq!(kept.refresh(&scene, &info), Some(3));
-        kept.refresh(&scene, &info);
+        assert_eq!(kept.refresh(&scene, &info, None), Some(3));
+        kept.refresh(&scene, &info, None);
         let moved = kept
             .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
@@ -988,6 +1072,8 @@ mod tests {
             .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
         assert_same(&looked, &fresh(&scene));
+        assert!(!looked.still);
+        assert_ne!(looked.content, moved.content, "a look rides in the GPU transform");
         assert_eq!(looked.changed.as_ref().map(Vec::len), Some(2));
         kept.restore(looked.transforms, looked.spheres);
         // Another order: sorted again.

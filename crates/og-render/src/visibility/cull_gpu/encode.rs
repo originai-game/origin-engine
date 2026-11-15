@@ -105,6 +105,7 @@ impl GpuCulling {
         frame: u64,
         stats_given: GpuCounts,
         copy_counts: bool,
+        content: u64,
     ) -> (wgpu::CommandBuffer, u32) {
         // The skinned instances' boxes after the sorted instances, their
         // batches after the instances' (each `first` moved past them).
@@ -270,16 +271,26 @@ impl GpuCulling {
         // compute writes its outputs after them, never over them).
         if instances_replaced {
             self.upload.invalidate();
+            self.uploaded_content = None;
         }
-        // The compute reads every one.
+        // The compute reads every one. Sorted transforms the region already
+        // holds, bit for bit (the same content, no skinned boxes after
+        // them), write nothing: comparing their blocks was a still town's
+        // largest upload cost.
+        let held = ns == 0 && self.uploaded_content == Some(content);
         let bytes: &[u8] = bytemuck::cast_slice(transforms);
         self.uploaded = previous_uploaded
-            + self.upload.write(
-                queue,
-                &self.instances,
-                bytes,
-                std::slice::from_ref(&(0..bytes.len())),
-            );
+            + if held {
+                0
+            } else {
+                self.upload.write(
+                    queue,
+                    &self.instances,
+                    bytes,
+                    std::slice::from_ref(&(0..bytes.len())),
+                )
+            };
+        self.uploaded_content = (ns == 0).then_some(content);
         let table: Vec<BatchGpu> = batches
             .iter()
             .enumerate()

@@ -271,6 +271,9 @@ pub(crate) struct InstanceRecords {
     /// Each instance's sway at the last drawn frame, by instance index
     /// ([`Instance::sway`]): a swaying vertex's motion vector starts there.
     pub(crate) previous_sway: Vec<f32>,
+    /// The sorted instances' update `previous_sway` was written at
+    /// ([`instances::Sorted::serial`]); `None` after a restore.
+    pub(crate) sway_serial: Option<u64>,
     /// The debris layer's bodies (`debris.rs`).
     pub(crate) debris: debris::DebrisLayer,
 }

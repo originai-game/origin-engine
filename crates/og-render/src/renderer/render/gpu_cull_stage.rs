@@ -19,6 +19,7 @@ pub(super) struct GpuCullInputs<'a> {
     pub skinned: Option<cull_gpu::SkinnedCull<'a>>,
     pub cam: &'a frame::CameraFrame,
     pub copy_counts: bool,
+    pub content: u64,
 }
 
 impl Renderer {
@@ -43,6 +44,7 @@ impl Renderer {
             skinned,
             cam,
             copy_counts,
+            content,
         }: GpuCullInputs<'_>,
     ) -> (Vec<wgpu::CommandBuffer>, (Option<cull_gpu::GpuCounts>, u32)) {
         let previous_sway = if self.instances.previous_sway.len() == scene.objects.instances.len() {
@@ -122,6 +124,7 @@ impl Renderer {
             self.frame_index,
             lagged.unwrap_or_default(),
             copy_counts,
+            content,
         );
         let mut commands = vec![commands];
         // The clustered batches' culling, after GPU culling's (it

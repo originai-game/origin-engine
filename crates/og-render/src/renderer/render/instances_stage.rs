@@ -28,6 +28,8 @@ pub(super) struct UploadInstancesInputs<'a> {
     pub skinned_data: &'a [crate::skin::SkinnedInstanceGpu],
     pub skinned: &'a SkinnedFrame,
     pub blended_list: &'a mut DrawList,
+    /// The sorted transforms' [`instances::Sorted::content`].
+    pub content: u64,
 }
 
 pub(super) struct UploadInstancesOutputs {
@@ -64,6 +66,7 @@ impl Renderer {
             skinned_data,
             skinned,
             blended_list,
+            content,
         }: UploadInstancesInputs<'_>,
     ) -> UploadInstancesOutputs {
         // Upload instances, previous transforms, skinned data, strips and
@@ -90,6 +93,7 @@ impl Renderer {
                 }),
                 cam,
                 copy_counts,
+                content,
             });
             // The CPU-culled lists sit after the sorted instances, in this buffer.
             ListsMoved { gpu_cull, sorted }.apply(std::iter::once(blended_list));

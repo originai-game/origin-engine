@@ -26,6 +26,9 @@ pub(super) struct SubmitFrameInputs<'a> {
     pub gi_copy: bool,
     pub t: [f32; 4],
     pub stats: &'a mut FrameStats,
+    /// The sorted instances' update ([`instances::Sorted::serial`]) and
+    /// whether every instance was the one before's ([`instances::Sorted::still`]).
+    pub sorted: (u64, bool),
 }
 
 impl Renderer {
@@ -49,6 +52,7 @@ impl Renderer {
             gi_copy,
             t,
             stats,
+            sorted: (serial, still),
         }: SubmitFrameInputs<'_>,
     ) {
         let gpu_queries = encoder.used();
@@ -132,10 +136,18 @@ impl Renderer {
             strength: 0.0,
             ..Wind::default()
         });
-        self.instances.previous_sway.clear();
-        self.instances
-            .previous_sway
-            .extend(scene.objects.instances.iter().map(|i| i.sway));
+        // Every instance the one before's, whose sway this holds: kept
+        // (a copy of every instance's a frame otherwise).
+        let kept = still
+            && self.instances.sway_serial == Some(serial.wrapping_sub(1))
+            && self.instances.previous_sway.len() == scene.objects.instances.len();
+        if !kept {
+            self.instances.previous_sway.clear();
+            self.instances
+                .previous_sway
+                .extend(scene.objects.instances.iter().map(|i| i.sway));
+        }
+        self.instances.sway_serial = Some(serial);
         self.history.previous_wind = Some((wind, scene.frame.tick, scene.frame.tick_rate));
         self.frame_index += 1;
         // The first frame made the scene's pipelines: keep them now, not

@@ -224,6 +224,7 @@ impl Renderer {
         self.history.previous_time = s.previous_time;
         self.history.previous_wind = s.previous_wind;
         self.instances.previous_sway.clone_from(&s.previous_sway);
+        self.instances.sway_serial = None;
         self.history.drawn_origin = s.drawn_origin;
         self.stylise_chain = s.stylise_chain;
         self.world.terrain.restore(&s.terrain);
