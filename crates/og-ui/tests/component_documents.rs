@@ -263,3 +263,53 @@ fn touch_controls_feed_their_actions_under_a_finger_only() {
         .count();
     assert_eq!((rows.len(), above), (6, 2), "{rows:?}");
 }
+
+/// The main menu on a screen too short for it (a short landscape phone,
+/// a portrait one with the logo shown) keeps its first button where it
+/// was and scrolls the rest into reach.
+///
+/// Ways it could fail: a column that only centres (`justify-content:
+/// center`, no scroll), whose last buttons stay cut off at the bottom
+/// edge whatever the player does.
+#[test]
+fn main_menu_scrolls_when_it_is_taller_than_the_screen() {
+    let (docs, messages) = engine_documents(&["src/ui/components", "src/ui/screens"]);
+    let doc = docs
+        .iter()
+        .find(|d| d.path == "src/ui/screens/main-menu.svelte")
+        .expect("main-menu.svelte");
+    for (w, h) in [(844.0, 240.0), (360.0, 480.0)] {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+        preview(&mut ui, &docs, doc, &messages, w, h);
+        let quit = |ui: &Ui| {
+            let e = ui
+                .elements()
+                .iter()
+                .find(|e| e.path.ends_with("/Quit"))
+                .expect("Quit");
+            (e.y, e.height, e.clipped)
+        };
+        assert!(
+            quit(&ui).2,
+            "{w}×{h}: the menu fits, so this checks nothing: {:?}",
+            quit(&ui)
+        );
+        for _ in 0..30 {
+            let wheel = InputFrame {
+                pointer: og_core::glam::Vec2::new(w / 4.0, h / 2.0),
+                pointer_inside: true,
+                wheel: og_core::glam::Vec2::new(0.0, 120.0),
+                ..InputFrame::default()
+            };
+            ui.begin(wheel, Viewport::new(w, h));
+            ui.build_retained_documents(&messages).unwrap();
+            ui.end();
+        }
+        let (y, height, clipped) = quit(&ui);
+        assert!(
+            !clipped && y + height <= h,
+            "{w}×{h}: Quit out of reach after scrolling: y {y}, height {height}"
+        );
+    }
+}

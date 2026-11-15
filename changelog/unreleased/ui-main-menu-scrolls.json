@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "main-menu screen",
+      "summary": "The menu's column is centred while it fits and scrolls when it is taller than the screen (justify-content: safe center; overflow-y: auto); on a short screen its last buttons were cut off at the bottom edge with no way to reach them."
+    }
+  ]
+}

@@ -39,7 +39,10 @@
 #RootMenu { width: stretch; height: stretch; }
 #Art { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #Background { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
-#MenuMenu { width: fit-content; min-width: var(--measure-lg); height: stretch; padding: var(--space-3xl); gap: var(--space-md); justify-content: center; }
+/* Centred while it fits; taller than the screen (a short landscape phone,
+   a large text scale, a game's extra rows) it starts at the top and
+   scrolls, so no logo or button is cut off out of reach. */
+#MenuMenu { width: fit-content; min-width: var(--measure-lg); height: stretch; padding: var(--space-3xl); gap: var(--space-md); justify-content: safe center; overflow-y: auto; }
 @media (width < 600px), (height < 600px) {
 #MenuMenu { padding: var(--space-xl); width: stretch; min-width: 0; }
 }
