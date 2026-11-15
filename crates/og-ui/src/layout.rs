@@ -1,46 +1,30 @@
-//! Clay-style layout: one layout per frame in five walks over the tree.
-//!
-//! 1. **Widths, bottom-up**: every element's preferred (fit) and minimum
-//!    width from its content: text unwrapped and its longest word, children
-//!    summed along a row and maxed across a column, plus padding and gaps.
-//! 2. **Widths, top-down**: a row gives each child its preferred width, then
-//!    grows `Grow` children into the free space (the smallest first, until
-//!    they level or reach their max) or shrinks `Fit`/`Grow` children down to
-//!    their minimum (the widest first) when it overflows; a wrapping row
-//!    breaks its children into lines first and grows within each line. A
-//!    column gives `Grow` (or `Cross::Stretch`) children its inner width and
-//!    caps the others at it. Text now wraps at its final width.
-//! 3. **Heights, bottom-up**, from the wrapped text and the line breaks.
-//! 4. **Heights, top-down**: the same grow/shrink along a column; a scroll
-//!    container never shrinks its children (they overflow and scroll).
-//! 5. **Positions**: main-axis `Align`, cross-axis `Cross`, scroll offsets,
-//!    clip rectangles; rectangles snap to device pixels (`Viewport::dpr`).
+//! Layout: the CSS box tree laid out as browsers lay it out. Taffy runs
+//! CSS Flexbox, Grid and block flow with floats over the node array
+//! (`css`); og-ui supplies what Taffy leaves to a box's content or to the
+//! engine: text and its line boxes, line boxes beside floats and shape
+//! contours (`float`), tables' boxes (`table`), multi-column, writing
+//! modes, stacks, out-of-flow and anchored boxes (`anchor`), and the cache
+//! that says which boxes lay out again (`cache`). Rectangles snap to
+//! device pixels (`Viewport::dpr`).
 
 pub mod anchor;
 mod cache;
-mod flex;
+mod css;
 pub(crate) mod float;
 pub mod flow;
-mod grid;
-mod table;
 pub(crate) mod multicol;
 mod node;
+mod table;
 mod text;
 #[doc(hidden)]
 pub mod virtualize;
-mod writing;
 
 pub(crate) use cache::{
     DrawSig, Invalidation, LayoutCache, Measure, Metrics, MotionCache, PaintCache, TextCache,
-    draw_eq, input_changes, layout, painted_eq,
+    draw_eq, input_changes, painted_eq,
 };
-use flex::*;
-pub(crate) use flex::on_screen;
-pub(crate) use text::text_preferred;
+pub(crate) use css::{layout, on_screen};
 pub use flow::{Bidi, Flow};
-pub(crate) use grid::GridLayout;
-pub(crate) use table::{Table, derive_table, shown_children};
-use grid::{grid_columns, grid_intrinsic, grid_rows, place_grid};
 pub use multicol::Multicol;
 use node::truncate_lines;
 pub use node::{Changed, Content, NONE, Shape};
@@ -49,10 +33,12 @@ pub(crate) use node::{
     UsedText, Widget, WrapStyle, ellipsis_of, snap_pixel_text, step_tracking, text_features,
 };
 pub use node::{Family, FontRole};
+pub(crate) use table::{Table, derive_table, shown_children};
+pub(crate) use text::text_preferred;
 use text::*;
 
 use crate::FontMetrics;
-use crate::element::{Edges, GridFlow, LayoutMode, Patch, Query, Track};
+use crate::element::{LayoutMode, Patch, Query};
 use crate::motion::Fx;
 use crate::style::{Srgba, TypeStep};
 use crate::text::{Line, break_lines, is_cjk, longest_word, widest_line};
@@ -242,16 +228,6 @@ impl Size {
 
     pub const fn percent(f: f32) -> Size {
         Size::Percent(f)
-    }
-
-    fn bounds(&self) -> (f32, f32) {
-        match *self {
-            Size::Fit { min, max } | Size::Grow { min, max } => (min, max.max(min)),
-            Size::Fixed(v) => (v, v),
-            Size::Percent(_) | Size::Calc(_) | Size::MinContent | Size::MaxContent => {
-                (0.0, f32::INFINITY)
-            }
-        }
     }
 
     /// Its CSS px when it names one: a length, a percentage or calc() of

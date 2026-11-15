@@ -234,51 +234,39 @@ fn limit(n: &Node) -> Option<f32> {
     }
 }
 
-/// Node `i`'s content height laid out in columns, from its children's
-/// heights `h` and its flow's spacing (lead, between each pair of
-/// children, trail).
-pub(crate) fn height(
-    nodes: &[Node],
-    i: usize,
-    h: &dyn Fn(&Node) -> f32,
-    (lead, between, trail): (f32, &[f32], f32),
-) -> f32 {
-    let n = &nodes[i];
-    let Some(m) = n.layout.used.multicol else {
+/// Node `i`'s content height in columns, its children laid out in one
+/// column at `tops` (from its content box's top, in `children` order)
+/// with their border-box heights `hs`: as [`place`] will lay them out.
+pub(crate) fn balanced_height(nodes: &[Node], i: usize, tops: &[f32], hs: &[f32]) -> f32 {
+    let Some(m) = nodes[i].layout.used.multicol else {
         return 0.0;
     };
-    let kids = &n.children;
-    let gap = |k: usize| between.get(k).copied().unwrap_or(0.0);
-    let mut total = lead + trail;
+    let cols = nodes[i].layout.cols.0.max(1);
+    let kids = &nodes[i].children;
+    let mut saved = 0.0f32;
+    let mut bottom = 0.0f32;
     for run in runs(nodes, kids) {
-        let first = match &run {
-            Ok(r) => r.start,
-            Err(c) => *c,
-        };
-        if first > 0 {
-            total += gap(first - 1);
-        }
-        total += match run {
-            Err(c) => h(&nodes[kids[c]]),
+        match run {
+            Err(c) => bottom = bottom.max(tops[c] + hs[c] - saved),
             Ok(r) => {
-                let mut y = 0.0;
-                let tops: Vec<f32> = r
-                    .clone()
-                    .map(|k| {
-                        if k > r.start {
-                            y += gap(k - 1);
-                        }
-                        let top = y;
-                        y += h(&nodes[kids[k]]);
-                        top
-                    })
-                    .collect();
-                let p = pieces(nodes, &kids[r], &tops, h);
-                balance(&p, n.layout.cols.0.max(1), limit(n), m.fill_auto).1
+                let top = tops[r.start];
+                let rel: Vec<f32> = r.clone().map(|k| tops[k] - top).collect();
+                let at = |n: &Node| {
+                    let k = kids
+                        .iter()
+                        .position(|&c| std::ptr::eq(&nodes[c], n))
+                        .unwrap_or(0);
+                    hs[k]
+                };
+                let p = pieces(nodes, &kids[r.clone()], &rel, &at);
+                let (_, tallest) = balance(&p, cols, limit(&nodes[i]), m.fill_auto);
+                bottom = bottom.max(top - saved + tallest);
+                let flow = p.last().map_or(0.0, |q| q.bottom);
+                saved += flow - tallest;
             }
-        };
+        }
     }
-    total
+    bottom
 }
 
 /// Moves node `i`'s children, laid out in one column of the column width

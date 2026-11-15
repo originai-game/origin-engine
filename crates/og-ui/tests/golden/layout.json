@@ -284,14 +284,14 @@
       "states": [],
       "text": "aaaa bbbb cccc",
       "value": "",
-      "width": 75.0,
+      "width": 81.0,
       "x": 10.0,
       "y": 120.0
     },
     {
       "clipped": false,
       "disabled": false,
-      "height": 20.0,
+      "height": 40.0,
       "id": "Short",
       "kind": "label",
       "name": "dd ee",
@@ -302,8 +302,8 @@
       "states": [],
       "text": "dd ee",
       "value": "",
-      "width": 35.0,
-      "x": 85.0,
+      "width": 29.0,
+      "x": 91.0,
       "y": 120.0
     },
     {

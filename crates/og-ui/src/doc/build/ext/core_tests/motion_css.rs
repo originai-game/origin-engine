@@ -16,7 +16,7 @@ fn ui(style: &str, reduced: bool) -> Ui {
     let text = format!(
         r#"<meta name="screen" content="m" data-layer="hud">
 <panel id="Card" class:on={{$on}} class:paused={{$paused}}/>
-<style>{style}</style>"#
+<style>#Card {{ padding: 0px; }} {style}</style>"#
     );
     ui.define_document(UiDocument::parse("m.svelte", &text).unwrap());
     ui.push_screen("m", json!({"on": false, "paused": false}))

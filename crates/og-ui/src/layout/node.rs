@@ -716,8 +716,6 @@ pub struct LayoutBox {
     /// Its content's least width and height, padding included, before its
     /// own size applies (a flex item's automatic minimum, CSS Flexbox §4.5).
     pub min_content: [f32; 2],
-    /// A grid's resolved tracks and its children's cells.
-    pub grid: Option<GridLayout>,
     /// Its view-box fit ([`crate::element::ViewPlace`]), written by layout
     /// where it places it: the scale, the anchor across its box (a
     /// fraction) and down it (CSS px), and its anchor's offset across from
@@ -811,6 +809,14 @@ pub struct LayoutBox {
     pub inline_rows: Vec<Option<f32>>,
     /// Its border box's top below its line's top, in such a line.
     pub inline_y: f32,
+    /// What Taffy keeps of it ([`crate::layout::css`]): the sizes it
+    /// measured it at, its box in its layout parent's, the input it was
+    /// last laid out at, and a grid's tracks, track edges and items' areas.
+    pub css_cache: taffy::Cache,
+    pub css: taffy::Layout,
+    pub css_input: Option<taffy::LayoutInput>,
+    pub grid_tracks: [Vec<[f32; 2]>; 2],
+    pub grid_items: Vec<[u16; 4]>,
 }
 
 impl Default for LayoutBox {
@@ -828,7 +834,6 @@ impl Default for LayoutBox {
             table: None,
             line_box: None,
             min_content: [0.0; 2],
-            grid: None,
             fit: [1.0, 0.0, 0.0, 0.0],
             pref_w: 0.0,
             min_w: 0.0,
@@ -869,6 +874,11 @@ impl Default for LayoutBox {
             beside: false,
             inline_rows: Vec::new(),
             inline_y: 0.0,
+            css_cache: taffy::Cache::new(),
+            css: taffy::Layout::new(),
+            css_input: None,
+            grid_tracks: [Vec::new(), Vec::new()],
+            grid_items: Vec::new(),
         }
     }
 }
@@ -1338,9 +1348,21 @@ impl Node {
         self.layout.laid_clip = previous.layout.laid_clip;
         self.layout.float_at = previous.layout.float_at;
         self.layout.inline_y = previous.layout.inline_y;
+        self.layout.css = previous.layout.css;
+        // What its parent last gave it, which a changed box under a clean
+        // parent lays out at again.
+        self.layout.css_input = previous.layout.css_input;
         if !clean {
             return;
         }
+        // Clean, it keeps what Taffy measured it at and its grid.
+        self.layout.css_cache.clone_from(&previous.layout.css_cache);
+        self.layout
+            .grid_tracks
+            .clone_from(&previous.layout.grid_tracks);
+        self.layout
+            .grid_items
+            .clone_from(&previous.layout.grid_items);
         self.layout.pref_w = previous.layout.pref_w;
         self.layout.min_w = previous.layout.min_w;
         self.layout.pref_h = previous.layout.pref_h;
@@ -1361,7 +1383,6 @@ impl Node {
             .rich_lines
             .clone_from(&previous.layout.rich_lines);
         self.layout.rows.clone_from(&previous.layout.rows);
-        self.layout.grid.clone_from(&previous.layout.grid);
         self.layout.fit_step = previous.layout.fit_step;
         self.layout.margin_sets = previous.layout.margin_sets;
         self.layout.collapse_in = previous.layout.collapse_in;
@@ -1543,7 +1564,8 @@ mod tests {
             rect(&ui, "Column/Wide/A"),
             rect(&ui, "Column/Wide/B"),
         );
-        assert_eq!(wide[2], 616.0, "four times its inner height, padded");
+        // CSS Sizing 4: under border-box sizing the ratio is the border box's.
+        assert_eq!(wide[2], 640.0, "four times its height");
         assert_eq!(
             b[0] - a[0],
             a[2] + 4.0,

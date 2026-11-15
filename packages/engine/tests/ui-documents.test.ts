@@ -32,7 +32,7 @@ test("cooked documents render typed spans and preserve game translations on both
 .chosen { --size: 80px; width: var(--saved) !important; }
 #Inherited { width: 100px; height: 12px; }
 #Branch { --size: 44px; }
-#Nested, #Sibling { width: var(--size); height: 12px; }
+#Nested, #Sibling { width: var(--size); height: 12px; padding: 0px; }
 @media (width >= 0px) {
   @media (height >= 0px) { #Sibling { width: 53px; } }
   @media (height < 0px) { #Sibling { width: 99px; } }
