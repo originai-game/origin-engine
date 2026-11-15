@@ -1192,6 +1192,40 @@ fn halftone_region(p: vec2<f32>, t: f32) -> f32 {
 // The widest ink line's reach in pixels to each side: an Ink::width of 32,
 // four times the widest Stylise.inkWidth declares.
 const INK_REACH: i32 = 16;
+// How far, in logical pixels, a luminance edge must run on along itself to
+// be inked: a speck or a mottle in a texture smaller than this is texture.
+const INK_RUN: f32 = 6.0;
+// How alike the gradient's direction must be where the edge runs on (the
+// cosine between them, either sign: a thin line's two sides step opposite
+// ways along it).
+const INK_RUN_ALIGN: f32 = 0.7;
+
+// The luminance edge that ink draws at `px`: the gradient's magnitude where
+// the edge runs on along itself, to at least one side, with about the same
+// direction half way and INK_RUN pixels on, the smallest of the three; 0
+// where it does not. A long edge, a crease's step or a thin line keeps its strength to
+// its very end; a dark speck in a texture, whose edge curls round it within
+// a few pixels, draws no ink (the outline and depth ink keep silhouettes).
+fn ink_edge(px: vec2<i32>) -> f32 {
+  let g = gradient(px);
+  let m = length(g);
+  if (m <= 1e-4) { return 0.0; }
+  let n = g / m;
+  let t = vec2<f32>(-n.y, n.x);
+  var run = 0.0;
+  for (var side = -1.0; side <= 1.0; side += 2.0) {
+    // Half way and the whole run: a stray gradient of the texture lines up
+    // with the edge at one point by chance, rarely at both.
+    var held = m;
+    for (var k = 1; k <= 2; k++) {
+      let o = gradient(px + vec2<i32>(round(t * side * INK_RUN * f32(k) * 0.5)));
+      let mo = length(o);
+      held = select(0.0, min(held, mo), mo > 1e-4 && abs(dot(o / max(mo, 1e-4), n)) >= INK_RUN_ALIGN);
+    }
+    run = max(run, held);
+  }
+  return run;
+}
 
 fn lines(in: VsOut) -> vec3<f32> {
   let px = vec2<i32>(in.pos.xy);
@@ -1303,7 +1337,7 @@ fn lines(in: VsOut) -> vec3<f32> {
     var edge = 0.0;
     for (var y = -w; y <= w; y++) {
       for (var x = -w; x <= w; x++) {
-        edge = max(edge, length(gradient(px + vec2<i32>(x, y))));
+        edge = max(edge, ink_edge(px + vec2<i32>(x, y)));
       }
     }
     var k = smoothstep(st.ink.y, st.ink.y + 0.1, edge * 0.25);

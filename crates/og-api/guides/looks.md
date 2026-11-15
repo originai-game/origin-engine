@@ -196,6 +196,10 @@ and the dither cells.
 - Ink without inkDepth draws on luminance edges over every surface,
   sprite and texture alike, and needs no prepass. Add inkDepth for
   contours round flat colours that luminance alone misses.
+- A luminance edge is inked only where it runs on along itself for six
+  pixels on at least one side. A dark speck or mottle in a texture curls
+  round within a few pixels and draws no ink; a long edge, a crease's
+  step or a thin line keeps its line to its end.
 - With a prepass (an outline, inkDepth, hatchingDepth or a surface
   space), scattered copies, impostors, grass and terrain are masses: ink
   keeps to their silhouettes and their hatching is laid on the screen,
