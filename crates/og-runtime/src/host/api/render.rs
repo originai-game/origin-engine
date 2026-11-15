@@ -337,6 +337,7 @@ pub fn og_render_capabilities(world: u32) -> Value {
                 "antialias": b.antialias(),
                 "hdrSupported": info.as_ref().is_some_and(|i| i.hdr_supported),
                 "hdr": info.as_ref().is_some_and(|i| i.hdr),
+                "wideGamut": info.as_ref().is_some_and(|i| i.wide_gamut),
                 "maxLights": og_render::MAX_LIGHTS,
                 "maxShadowedLights": info.as_ref().map_or(0, |i| i.shadowed_lights),
                 "maxMsaaSamples": info.as_ref().map_or(0, |i| i.msaa_samples),
@@ -375,7 +376,7 @@ pub fn og_render_capabilities(world: u32) -> Value {
             c
         })
     });
-    caps.unwrap_or_else(|| json!({ "backend": "none", "tier": "full", "caps": render_caps(og_render::Caps::NONE), "compute": false, "antialias": "off", "hdrSupported": false, "hdr": false, "maxLights": 0, "maxShadowedLights": 0, "maxMsaaSamples": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "planarReflections": 0, "without": [], "visualSimulation": false, "upscalers": [], "transparency": "weighted", "gpuCrowds": false, "world3d": og_render::WORLD_3D, "exrDecode": crate::world::uncooked::EXR_DECODE, "visibilityBuffer": false, "visibilityBufferRefused": null }))
+    caps.unwrap_or_else(|| json!({ "backend": "none", "tier": "full", "caps": render_caps(og_render::Caps::NONE), "compute": false, "antialias": "off", "hdrSupported": false, "hdr": false, "wideGamut": false, "maxLights": 0, "maxShadowedLights": 0, "maxMsaaSamples": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "planarReflections": 0, "without": [], "visualSimulation": false, "upscalers": [], "transparency": "weighted", "gpuCrowds": false, "world3d": og_render::WORLD_3D, "exrDecode": crate::world::uncooked::EXR_DECODE, "visibilityBuffer": false, "visibilityBufferRefused": null }))
 }
 
 /// The IDL's `RenderCaps`: each of `Caps`'s names, and whether `caps` has it.

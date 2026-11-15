@@ -6025,6 +6025,15 @@ export type Antialias = "tier" | "off" | "msaa4" | "taa" | "fxaa" | "smaa" | "sm
 export type PointShadows = "auto" | "cube" | "paraboloid";
 
 /**
+ * What the play surface presents, as og-render's DisplayOutput (RenderOptions.output). Offscreen and headless renderers, and so every capture and reference frame, are sRGB at standard range whatever it says.
+ * See `render §5`.
+ * - `"best"`: The widest the surface and display offer: extended range (HDR) with the Display P3 gamut, else Display P3 at standard range, else sRGB. A display that reports no headroom (an SDR monitor on a Mac) takes Display P3 at standard range.
+ * - `"wide"`: Display P3 at standard range where the surface offers it, never extended range.
+ * - `"srgb"`: sRGB at standard range on every surface, the output before wide gamut and HDR.
+ */
+export type DisplayOutput = "best" | "wide" | "srgb";
+
+/**
  * How TAA resamples its history each frame, as og-render's TaaHistory.
  * - `"bilinear"`: One bilinear tap: cheap, slightly soft while the camera moves.
  * - `"catmullRom"`: A Catmull-Rom filter over 4x4 texels (9 taps): the history stays sharp under camera motion.
@@ -6119,12 +6128,12 @@ export interface RenderOptions {
   readonly taaSharpen?: number;
   // ── Display ──
   /**
-   * Request extended-range HDR surface output; false keeps SDR and its tone operator. Unsupported surfaces and headless renderers stay SDR; capabilities.hdrSupported reports the extended-sRGB path, capabilities.hdr the resolved mode. HDR maps with LPM, composes the UI linearly, transfers last.
-   * See `render §12`.
+   * What the surface presents: left out (best), extended range and Display P3 where the surface and display offer them, else sRGB. capabilities.hdr and capabilities.wideGamut report the result; the tone curve and the UI's colours follow it.
+   * See `render §5`.
    *
-   * @default false
+   * @default "best"
    */
-  readonly hdr?: boolean;
+  readonly output?: DisplayOutput;
   /**
    * HDR reference white; 0 means 203 nits. Clamped to 80..1000. On Apple EDR and web, absolute display nits are unavailable: white follows OS SDR white and peakNits/paperWhiteNits sets relative headroom. On DXGI/Vulkan scRGB this sets absolute paper white. Read once at renderer creation.
    *
@@ -6132,7 +6141,7 @@ export interface RenderOptions {
    */
   readonly paperWhiteNits?: number;
   /**
-   * HDR target peak; 0 means 1000 nits. Clamped to 80..10000 and at least paperWhiteNits. A display can limit actual output below this target. Read once at renderer creation.
+   * HDR target peak; 0 means 1000 nits. Clamped to 80..10000 and at least paperWhiteNits; the tone curves end at peakNits / paperWhiteNits over SDR white, no further than the headroom the display reports (Apple EDR, Windows). Read once at renderer creation.
    *
    * @default 0
    */
@@ -10723,13 +10732,17 @@ export interface RenderCapabilities {
   /** The antialiasing the device resolved RenderOptions.antialias to. */
   readonly antialias: Antialias;
   /**
-   * Whether this surface can be configured for float extended-sRGB HDR output. This is surface-path support, not a measurement of the monitor or current OS HDR headroom. False without a surface.
+   * Whether this surface can be configured for extended-range (HDR) output. This is surface-path support, not a measurement of the monitor or current OS HDR headroom. False without a surface.
    */
   readonly hdrSupported: boolean;
   /**
-   * Whether HDR output was requested and the surface configured for it: then the LPM HDR display mapper replaces PostEffects.tonemap (including none); SDR fallback keeps the chosen operator. False without a surface. Paint, ink and quantization stay SDR; captures are clipped SDR previews.
+   * Whether the surface presents extended range (RenderOptions.output): the tone curve ends at the headroom instead of SDR white and `(dynamic-range: high)` matches. False without a surface. Paint, ink and quantization stay SDR; captures are clipped SDR previews.
    */
   readonly hdr: boolean;
+  /**
+   * Whether the surface presents the Display P3 gamut, at standard or extended range (RenderOptions.output): CSS colours outside sRGB (`color(display-p3 …)`, a wide `oklch()`) keep their gamut and the UI's `(color-gamut: p3)` matches. False without a surface.
+   */
+  readonly wideGamut: boolean;
   // ── Lights and shadows ──
   /** How many point and spot lights one frame draws (MAX_LIGHTS on every tier). */
   readonly maxLights: number;

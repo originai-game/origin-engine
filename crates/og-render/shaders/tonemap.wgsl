@@ -1,6 +1,7 @@
 // The tone curves, one copy for the post pass (post.wgsl) and a view's
 // resolve (views_color.wgsl): exposed linear radiance in, display-referred
-// linear sRGB in 0..1 out.
+// linear sRGB in 0..1 out (SDR), or 0..headroom on an HDR output
+// (`tone_curve_hdr`).
 
 // ACES, Narkowicz's fit.
 fn aces(x: vec3<f32>) -> vec3<f32> {
@@ -69,4 +70,31 @@ fn tone_curve(c: vec3<f32>, curve: f32) -> vec3<f32> {
   if (curve > 1.5) { return agx(c); }
   if (curve > 0.5) { return clamp(c, vec3<f32>(0.0), vec3<f32>(1.0)); }
   return aces(c);
+}
+
+// Khronos PBR Neutral with its shoulder rolling off towards `top` instead
+// of 1: below 0.76 it passes through as in SDR, so the HDR image matches
+// the SDR one until the highlights, which keep rising to the headroom.
+fn neutral_hdr(color: vec3<f32>, top: f32) -> vec3<f32> {
+  let start = 0.76;
+  let x = min(color.r, min(color.g, color.b));
+  let offset = select(0.04, x - 6.25 * x * x, x < 0.08);
+  var c = color - offset;
+  let peak = max(c.r, max(c.g, c.b));
+  if (peak < start) { return clamp(c, vec3<f32>(0.0), vec3<f32>(top)); }
+  let d = top - start;
+  let new_peak = top - d * d / (peak + d - start);
+  c *= new_peak / peak;
+  let g = 1.0 - 1.0 / (0.15 * (peak - new_peak) + 1.0);
+  return clamp(mix(c, vec3<f32>(new_peak), g), vec3<f32>(0.0), vec3<f32>(top));
+}
+
+// `tone_curve` for an extended-range output (post/display.rs `curve`):
+// hdr.x the headroom over SDR white the curves end at; ACES and AgX scaled
+// by hdr.y and hdr.z so middle grey lands where SDR puts it.
+fn tone_curve_hdr(c: vec3<f32>, curve: f32, hdr: vec4<f32>) -> vec3<f32> {
+  if (curve > 2.5) { return neutral_hdr(c, hdr.x); }
+  if (curve > 1.5) { return agx(c * hdr.z) * hdr.x; }
+  if (curve > 0.5) { return clamp(c, vec3<f32>(0.0), vec3<f32>(hdr.x)); }
+  return aces(c * hdr.y) * hdr.x;
 }

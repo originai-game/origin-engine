@@ -3639,6 +3639,45 @@ impl ToJson for PointShadows {
     }
 }
 
+/// `DisplayOutput`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum DisplayOutput {
+    #[default]
+    Best,
+    Wide,
+    Srgb,
+}
+
+impl DisplayOutput {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["best", "wide", "srgb"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Best, Self::Wide, Self::Srgb];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("DisplayOutput", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for DisplayOutput {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "DisplayOutput", Self::NAMES)?)
+    }
+}
+
+impl ToJson for DisplayOutput {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `TaaHistory`: packages/knowledge/wiki/render.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum TaaHistory {
@@ -3854,7 +3893,7 @@ pub struct RenderOptions {
     pub antialias: Antialias,
     pub taa_history: TaaHistory,
     pub taa_sharpen: f32,
-    pub hdr: bool,
+    pub output: DisplayOutput,
     pub paper_white_nits: f32,
     pub peak_nits: f32,
     pub shadow_map_size: u32,
@@ -3872,7 +3911,7 @@ impl Default for RenderOptions {
             antialias: Default::default(),
             taa_history: Default::default(),
             taa_sharpen: Default::default(),
-            hdr: Default::default(),
+            output: Default::default(),
             paper_white_nits: Default::default(),
             peak_nits: Default::default(),
             shadow_map_size: 2048,
@@ -3896,7 +3935,7 @@ impl FromJson for RenderOptions {
             antialias: field(o, "antialias", d.antialias)?,
             taa_history: field(o, "taaHistory", d.taa_history)?,
             taa_sharpen: field(o, "taaSharpen", d.taa_sharpen)?,
-            hdr: field(o, "hdr", d.hdr)?,
+            output: field(o, "output", d.output)?,
             paper_white_nits: field(o, "paperWhiteNits", d.paper_white_nits)?,
             peak_nits: field(o, "peakNits", d.peak_nits)?,
             shadow_map_size: field(o, "shadowMapSize", d.shadow_map_size)?,
@@ -3916,7 +3955,7 @@ impl ToJson for RenderOptions {
         o.insert("antialias".into(), self.antialias.to_json());
         o.insert("taaHistory".into(), self.taa_history.to_json());
         o.insert("taaSharpen".into(), self.taa_sharpen.to_json());
-        o.insert("hdr".into(), self.hdr.to_json());
+        o.insert("output".into(), self.output.to_json());
         o.insert("paperWhiteNits".into(), self.paper_white_nits.to_json());
         o.insert("peakNits".into(), self.peak_nits.to_json());
         o.insert("shadowMapSize".into(), self.shadow_map_size.to_json());
@@ -5853,6 +5892,7 @@ pub struct RenderCapabilities {
     pub antialias: Antialias,
     pub hdr_supported: bool,
     pub hdr: bool,
+    pub wide_gamut: bool,
     pub max_lights: u32,
     pub max_shadowed_lights: u32,
     pub max_msaa_samples: u32,
@@ -5892,6 +5932,7 @@ impl Default for RenderCapabilities {
             antialias: Default::default(),
             hdr_supported: Default::default(),
             hdr: Default::default(),
+            wide_gamut: Default::default(),
             max_lights: Default::default(),
             max_shadowed_lights: Default::default(),
             max_msaa_samples: Default::default(),
@@ -5937,6 +5978,7 @@ impl FromJson for RenderCapabilities {
             antialias: field(o, "antialias", d.antialias)?,
             hdr_supported: field(o, "hdrSupported", d.hdr_supported)?,
             hdr: field(o, "hdr", d.hdr)?,
+            wide_gamut: field(o, "wideGamut", d.wide_gamut)?,
             max_lights: field(o, "maxLights", d.max_lights)?,
             max_shadowed_lights: field(o, "maxShadowedLights", d.max_shadowed_lights)?,
             max_msaa_samples: field(o, "maxMsaaSamples", d.max_msaa_samples)?,
@@ -5978,6 +6020,7 @@ impl ToJson for RenderCapabilities {
         o.insert("antialias".into(), self.antialias.to_json());
         o.insert("hdrSupported".into(), self.hdr_supported.to_json());
         o.insert("hdr".into(), self.hdr.to_json());
+        o.insert("wideGamut".into(), self.wide_gamut.to_json());
         o.insert("maxLights".into(), self.max_lights.to_json());
         o.insert("maxShadowedLights".into(), self.max_shadowed_lights.to_json());
         o.insert("maxMsaaSamples".into(), self.max_msaa_samples.to_json());

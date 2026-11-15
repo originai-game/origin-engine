@@ -159,8 +159,8 @@ pub use oit::{
     DEFAULT_TRANSPARENCY_LAYERS, MAX_TRANSPARENCY_LAYERS, Transparency, TransparencyCounts,
     weighted_order_bound, weighted_order_codes,
 };
+use post::display;
 use post::glass;
-use post::hdr;
 pub use probe_content::{ProbeContent, ProbeRoom};
 pub use probe_grid::{MAX_GRID_CAPTURES, RealtimeLightVolume};
 pub use probes::{
@@ -600,7 +600,7 @@ pub struct Renderer {
     out_width: u32,
     out_height: u32,
     output_format: wgpu::TextureFormat,
-    hdr: Option<hdr::Output>,
+    display: Option<display::Output>,
     /// The offscreen target's sRGB view format ([`linear_view_format`]).
     offscreen_linear: Option<wgpu::TextureFormat>,
     surface: Option<(wgpu::Surface<'static>, wgpu::SurfaceConfiguration)>,

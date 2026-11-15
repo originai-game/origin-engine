@@ -90,7 +90,7 @@ impl Pass for ViewportViewsPass {
                 cx.encoder,
                 p,
                 plan.scene.look.post.tonemap,
-                r.hdr.as_ref().map_or([0.0; 4], |h| h.curve),
+                r.display.as_ref().map_or([0.0; 4], |d| d.curve),
                 dest,
                 plan.viewport_format,
                 false,
@@ -348,7 +348,7 @@ impl Pass for HdrOutputPass {
         name: "hdr-output",
         needs: Caps::NONE,
     };
-    type State = Option<hdr::Output>;
+    type State = Option<display::Output>;
     type Frame = ();
     type PlanIn<'a> = ();
     type UploadIn<'a> = ();
@@ -358,11 +358,11 @@ impl Pass for HdrOutputPass {
     type Plan<'f> = (&'f wgpu::TextureView, &'f wgpu::TextureView);
 
     fn state(r: &Renderer) -> &Self::State {
-        &r.hdr
+        &r.display
     }
 
     fn bind<'f>(r: &'f Renderer, _: &'f mut (), views: Self::BindIn<'f>) -> Option<Self::Plan<'f>> {
-        r.hdr.as_ref().map(|_| views)
+        r.display.as_ref().map(|_| views)
     }
 
     fn encode<'f>(
@@ -371,8 +371,8 @@ impl Pass for HdrOutputPass {
         _: FramePass,
         cx: &mut EncodeCx<'_, 'f>,
     ) {
-        let hdr = st.as_ref().expect("planned with it");
-        hdr.encode(&cx.ctx.r.device, cx.encoder, output, destination);
+        let display = st.as_ref().expect("planned with it");
+        display.encode(&cx.ctx.r.device, cx.encoder, output, destination);
         cx.stats.draw_calls += 1;
     }
 }

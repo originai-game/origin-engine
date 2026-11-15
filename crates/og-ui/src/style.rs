@@ -295,6 +295,9 @@ pub struct Theme {
     /// The og-ui unit a game pins (IDL `UiDesc.unitScale`), 1 to 2; 0 (the
     /// default) is auto: [`Theme::auto_unit`] of the play surface.
     pub unit_pin: f32,
+    /// The gamut the output presents (the viewport's, [`crate::Viewport::wide_gamut`]):
+    /// CSS colours outside sRGB draw in Display P3 where it is P3.
+    pub gamut: og_css::color::Gamut,
     /// The og-ui unit in effect, in CSS px (docs/ui.md §6.1): the UI lays
     /// out in units (a viewport of the surface's size over it) and draws
     /// at it, so every length (the style's, a component's, a game's own
@@ -378,6 +381,7 @@ impl Theme {
             text_scale: 1.0,
             ramp_scale: 1.0,
             unit_pin: 0.0,
+            gamut: og_css::color::Gamut::Srgb,
             unit: 1.0,
             art,
             motion: crate::motion::MotionTokens::default(),

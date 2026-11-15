@@ -17,8 +17,9 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `caps` | `RenderCaps` | `{ compute: false, mrt: false, asyncPipelines: false, timestamps: false, indirect: false, indirectFirstInstance: false, fragmentStorage: false, vertexStorage: false }` | — | — | — | What the device can do under tier. |
 | `compute` | `boolean` | `false` | — | — | — | Whether compute passes run (GPU culling, GPU particles). |
 | `antialias` | `Antialias` | `"tier"` | — | — | — | The antialiasing the device resolved RenderOptions.antialias to. |
-| `hdrSupported` | `boolean` | `false` | — | — | — | Whether this surface can be configured for float extended-sRGB HDR output. This is surface-path support, not a measurement of the monitor or current OS HDR headroom. False without a surface. |
-| `hdr` | `boolean` | `false` | — | — | — | Whether HDR output was requested and the surface configured for it: then the LPM HDR display mapper replaces PostEffects.tonemap (including none); SDR fallback keeps the chosen operator. False without a surface. Paint, ink and quantization stay SDR; captures are clipped SDR previews. |
+| `hdrSupported` | `boolean` | `false` | — | — | — | Whether this surface can be configured for extended-range (HDR) output. This is surface-path support, not a measurement of the monitor or current OS HDR headroom. False without a surface. |
+| `hdr` | `boolean` | `false` | — | — | — | Whether the surface presents extended range (RenderOptions.output): the tone curve ends at the headroom instead of SDR white and `(dynamic-range: high)` matches. False without a surface. Paint, ink and quantization stay SDR; captures are clipped SDR previews. |
+| `wideGamut` | `boolean` | `false` | — | — | — | Whether the surface presents the Display P3 gamut, at standard or extended range (RenderOptions.output): CSS colours outside sRGB (`color(display-p3 …)`, a wide `oklch()`) keep their gamut and the UI's `(color-gamut: p3)` matches. False without a surface. |
 
 #### Lights and shadows
 
@@ -141,8 +142,9 @@ struct RenderCapabilities {
   field caps RenderCaps "What the device can do under tier."
   field compute bool "Whether compute passes run (GPU culling, GPU particles)."
   field antialias Antialias "The antialiasing the device resolved RenderOptions.antialias to."
-  field hdrSupported bool "Whether this surface can be configured for float extended-sRGB HDR output. This is surface-path support, not a measurement of the monitor or current OS HDR headroom. False without a surface."
-  field hdr bool "Whether HDR output was requested and the surface configured for it: then the LPM HDR display mapper replaces PostEffects.tonemap (including none); SDR fallback keeps the chosen operator. False without a surface. Paint, ink and quantization stay SDR; captures are clipped SDR previews."
+  field hdrSupported bool "Whether this surface can be configured for extended-range (HDR) output. This is surface-path support, not a measurement of the monitor or current OS HDR headroom. False without a surface."
+  field hdr bool "Whether the surface presents extended range (RenderOptions.output): the tone curve ends at the headroom instead of SDR white and `(dynamic-range: high)` matches. False without a surface. Paint, ink and quantization stay SDR; captures are clipped SDR previews."
+  field wideGamut bool "Whether the surface presents the Display P3 gamut, at standard or extended range (RenderOptions.output): CSS colours outside sRGB (`color(display-p3 …)`, a wide `oklch()`) keep their gamut and the UI's `(color-gamut: p3)` matches. False without a surface."
   group "Lights and shadows"
   field maxLights u32 "How many point and spot lights one frame draws (MAX_LIGHTS on every tier)."
   field maxShadowedLights u32 "How many point and spot lights cast shadows in one frame (8); past it, the shadowed lights brightest at the camera keep theirs."
@@ -204,4 +206,4 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>Module `render` line 2878</sub>
+<sub>Module `render` line 2886</sub>

@@ -17,7 +17,7 @@ struct Post {
   flash: vec4<f32>,     // rgb: flash colour, w: amount (0 off)
   extra: vec4<f32>,     // x: 1 with god rays, y: 1 when the lit image's alpha is the tone-mapped fraction (untonemapped sprites), z: 1 with sharpening, w: its strength
   unreal: vec4<f32>,    // x: 1 for three.js UnrealBloomPass bloom, y: its radius, z: the first bloom level's width, w: the contrast its high pass sees
-  hdr: vec4<f32>,       // peak / paper white (0 SDR), LPM scale/bias, paper white nits
+  hdr: vec4<f32>,       // the HDR curves (post/display.rs `curve`): x headroom (0 SDR), y ACES and z AgX input scales
   flare: vec4<f32>,     // the lens flare (lens_flare.wgsl): x intensity (0 off), y 1 with the starburst, z its turn with the camera
 };
 @group(0) @binding(0) var source: texture_2d<f32>;
@@ -107,7 +107,7 @@ fn curve(uv: vec2<f32>) -> vec3<f32> {
   if (post.extra.x > 0.5) {
     c += textureSampleLevel(god_rays, linear_sampler, uv, 0.0).rgb * exposure();
   }
-  if (post.hdr.x > 0.0) { return hdr_lpm(c, post.hdr); }
+  if (post.hdr.x > 0.0) { return tone_curve_hdr(c, post.mode.x, post.hdr); }
   return tone_curve(c, post.mode.x);
 }
 

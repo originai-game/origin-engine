@@ -24,9 +24,9 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `hdr` | `boolean` | `false` | — | — | — | Request extended-range HDR surface output; false keeps SDR and its tone operator. Unsupported surfaces and headless renderers stay SDR; capabilities.hdrSupported reports the extended-sRGB path, capabilities.hdr the resolved mode. HDR maps with LPM, composes the UI linearly, transfers last. See `render §12`. |
+| `output` | `DisplayOutput` | `"best"` | — | — | — | What the surface presents: left out (best), extended range and Display P3 where the surface and display offer them, else sRGB. capabilities.hdr and capabilities.wideGamut report the result; the tone curve and the UI's colours follow it. See `render §5`. |
 | `paperWhiteNits` | `number` | `0` | — | — | — | HDR reference white; 0 means 203 nits. Clamped to 80..1000. On Apple EDR and web, absolute display nits are unavailable: white follows OS SDR white and peakNits/paperWhiteNits sets relative headroom. On DXGI/Vulkan scRGB this sets absolute paper white. Read once at renderer creation. |
-| `peakNits` | `number` | `0` | — | — | — | HDR target peak; 0 means 1000 nits. Clamped to 80..10000 and at least paperWhiteNits. A display can limit actual output below this target. Read once at renderer creation. |
+| `peakNits` | `number` | `0` | — | — | — | HDR target peak; 0 means 1000 nits. Clamped to 80..10000 and at least paperWhiteNits; the tone curves end at peakNits / paperWhiteNits over SDR white, no further than the headroom the display reports (Apple EDR, Windows). Read once at renderer creation. |
 
 #### Shadows and reflections
 
@@ -64,11 +64,11 @@ struct RenderOptions {
     unit ratio
   }
   group "Display"
-  field hdr bool "Request extended-range HDR surface output; false keeps SDR and its tone operator. Unsupported surfaces and headless renderers stay SDR; capabilities.hdrSupported reports the extended-sRGB path, capabilities.hdr the resolved mode. HDR maps with LPM, composes the UI linearly, transfers last." {
-    guide "render §12"
+  field output DisplayOutput "What the surface presents: left out (best), extended range and Display P3 where the surface and display offer them, else sRGB. capabilities.hdr and capabilities.wideGamut report the result; the tone curve and the UI's colours follow it." {
+    guide "render §5"
   }
   field paperWhiteNits f32 "HDR reference white; 0 means 203 nits. Clamped to 80..1000. On Apple EDR and web, absolute display nits are unavailable: white follows OS SDR white and peakNits/paperWhiteNits sets relative headroom. On DXGI/Vulkan scRGB this sets absolute paper white. Read once at renderer creation."
-  field peakNits f32 "HDR target peak; 0 means 1000 nits. Clamped to 80..10000 and at least paperWhiteNits. A display can limit actual output below this target. Read once at renderer creation."
+  field peakNits f32 "HDR target peak; 0 means 1000 nits. Clamped to 80..10000 and at least paperWhiteNits; the tone curves end at peakNits / paperWhiteNits over SDR white, no further than the headroom the display reports (Apple EDR, Windows). Read once at renderer creation."
   group "Shadows and reflections"
   field shadowMapSize u32 "The side of each of the directional light's cascade maps (RenderSettings.shadowCascades of them), in texels." {
     default 2048
@@ -98,4 +98,4 @@ struct RenderOptions {
 }
 ```
 
-<sub>Module `render` line 137</sub>
+<sub>Module `render` line 145</sub>

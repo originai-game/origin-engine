@@ -61,7 +61,7 @@ impl Renderer {
         // Keep that paper-white-linear frame for capture, not the encoded surface.
         if let Some((frame, ..)) = surface_frame
             .as_ref()
-            .filter(|_| self.keep_frame && self.hdr.is_none())
+            .filter(|_| self.keep_frame && self.display.is_none())
         {
             self.keep_presented(&mut encoder, &frame.texture);
         }

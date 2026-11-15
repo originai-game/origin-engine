@@ -26,4 +26,4 @@ enum Transparency {
 }
 ```
 
-<sub>Module `render` line 121</sub>
+<sub>Module `render` line 129</sub>

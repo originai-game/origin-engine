@@ -50,6 +50,13 @@ pub struct Viewport {
     /// ([`Viewport::env_insets`]), and anchored groups keep out of it: a
     /// group it would overlap moves along the edge it sits on, past it.
     pub covered: Rect,
+    /// The surface presents the Display P3 gamut: CSS colours outside sRGB
+    /// keep their gamut and `(color-gamut: p3)` matches. The host sets it
+    /// from the renderer it attached (`RenderInfo::wide_gamut`).
+    pub wide_gamut: bool,
+    /// The surface presents extended range: `(dynamic-range: high)`
+    /// matches (`RenderInfo::hdr`).
+    pub high_range: bool,
 }
 
 impl Default for Viewport {
@@ -67,6 +74,8 @@ impl Default for Viewport {
             reduced_transparency: false,
             mac_keys: false,
             covered: Rect::default(),
+            wide_gamut: false,
+            high_range: false,
         }
     }
 }

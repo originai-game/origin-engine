@@ -180,14 +180,17 @@ impl Renderer {
             .await
             .map_err(|e| RenderError::NoAdapter(format!("{:?}: {e}", desc.backend)))?;
         let caps = surface.get_capabilities(&adapter);
-        let hdr_space = desc
-            .hdr
-            .then(|| hdr::surface_space(&caps))
-            .flatten()
-            .filter(|_| {
-                desc.output_format
-                    .is_none_or(|f| f == wgpu::TextureFormat::Rgba16Float)
-            });
+        // The widest output the surface and display offer (a caller's own
+        // format keeps sRGB): the frame composes in float and the display
+        // pass writes it in that space (post/display.rs).
+        let wide = desc
+            .output_format
+            .is_none()
+            .then(|| {
+                let headroom = display::display_headroom(&surface.display_hdr_info(&adapter));
+                display::choose(&caps, desc.output, headroom)
+            })
+            .flatten();
         // An sRGB surface where one is offered (native windows): the
         // hardware encodes and blends in linear light, as offscreen. A
         // WebGPU canvas offers none; its sRGB view (below) does the same.
@@ -198,10 +201,7 @@ impl Renderer {
                     wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Rgba8Unorm
                 )
         };
-        let format = match hdr_space
-            .map(|_| wgpu::TextureFormat::Rgba16Float)
-            .or(desc.output_format)
-        {
+        let format = match wide.map(|(f, _)| f).or(desc.output_format) {
             Some(f) => f,
             None => caps
                 .formats
@@ -233,17 +233,24 @@ impl Renderer {
                 wgpu::TextureUsages::RENDER_ATTACHMENT
             },
             format,
-            color_space: hdr_space.unwrap_or(wgpu::SurfaceColorSpace::Srgb),
+            color_space: wide.map_or(wgpu::SurfaceColorSpace::Srgb, |(_, s)| s),
             width: desc.width.max(1),
             height: desc.height.max(1),
             present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: wgpu::CompositeAlphaMode::Opaque,
+            // The display pass writes the surface; nothing blends on it.
             view_formats: linear_view_format(&adapter, format, true)
+                .filter(|_| wide.is_none())
                 .into_iter()
                 .collect(),
             desired_maximum_frame_latency: 2,
         };
-        Self::from_adapter(adapter, Some((surface, config)), format, desc, None).await
+        let composed = if wide.is_some() {
+            wgpu::TextureFormat::Rgba16Float
+        } else {
+            format
+        };
+        Self::from_adapter(adapter, Some((surface, config)), composed, desc, None).await
     }
 
     async fn from_adapter(
@@ -472,11 +479,23 @@ impl Renderer {
         let decal_buffers = crate::decals::DecalBuffers::new(&device);
         let sprite_fx_buffer = uniform_buffer("sprite fx", 32);
 
-        let hdr = surface
+        let display = surface
             .as_ref()
-            .filter(|(_, c)| c.color_space.is_hdr())
-            .map(|(_, c)| {
-                hdr::Output::new(&device, &queue, desc, c.color_space, adapter_info.backend)
+            .filter(|(_, c)| c.color_space != wgpu::SurfaceColorSpace::Srgb)
+            .map(|(s, c)| {
+                let headroom = display::headroom(
+                    desc,
+                    c.color_space,
+                    display::display_headroom(&s.display_hdr_info(&adapter)),
+                );
+                display::Output::new(
+                    &device,
+                    &queue,
+                    desc,
+                    (c.format, c.color_space),
+                    headroom,
+                    adapter_info.backend,
+                )
             });
         let post = post::PostPasses::new(
             &device,
@@ -487,7 +506,7 @@ impl Renderer {
                 taa_history: desc.taa_history,
                 taa_sharpen: desc.taa_sharpen.clamp(0.0, 1.0),
             },
-            hdr.as_ref().map_or([0.0; 4], |h| h.curve),
+            display.as_ref().map_or([0.0; 4], |d| d.curve),
         );
         let mips = mips::MipGenerator::new(&device);
         let default_white = solid_texture(&device, &queue, [255; 4]);
@@ -588,7 +607,7 @@ impl Renderer {
             output_format,
             offscreen_linear,
             surface,
-            hdr,
+            display,
             keep_frame: false,
             capture_spare: Default::default(),
             #[cfg(not(target_arch = "wasm32"))]

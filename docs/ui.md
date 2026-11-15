@@ -455,9 +455,12 @@ Linebender's `color` crate parses absolute colours and owns every space,
 conversion and CSS Color 4 §12 interpolation; og-css adds `var()` roles,
 `currentColor`, `light-dark()`, `color-mix()`'s percentages, relative
 colours and gamut mapping (out-of-gamut colours by OKLCh chroma
-reduction). A colour that
-reads no role, `currentColor` or `light-dark()` reduces to sRGB at cook;
-others resolve against the active style when drawn. One parse
+reduction) into the output's gamut: sRGB, or Display P3 where the
+renderer's surface presents it (`Theme::gamut`, from the viewport), so
+`color(display-p3 …)` and a wide `oklch()` keep their range there. A
+colour that reads no role, `currentColor` or `light-dark()` and lies in
+sRGB reduces to sRGB at cook; a wider one, and the others, resolve
+against the active style when drawn. One parse
 (`style_file::parse_color`) reads every hex literal.
 
 Transforms follow Transforms 1 and 2 (individual properties first).
@@ -1318,9 +1321,12 @@ nested rules intersect). Features: `width`, `height`, `aspect-ratio`,
 in high contrast; `less` and `custom` never match),
 `prefers-reduced-transparency` (the theme's flag), `pointer`, `hover` and
 their `any-` forms (the host's coarse pointer), `(-og-input: pad)` (a pad
-is the device in use) and `-og-color-vision` (below). The display features
-answer fixed values: `color-gamut: srgb`, `dynamic-range: standard`,
-`display-mode: fullscreen`, `update: fast`, `scripting: enabled`,
+is the device in use) and `-og-color-vision` (below). `color-gamut` and
+`dynamic-range` follow the renderer's surface (`Viewport::wide_gamut`,
+`high_range`, from `RenderInfo::wide_gamut` and `hdr`): `p3` and `high`
+match where it presents Display P3 and extended range, `srgb` and
+`standard` always, `rec2020` never. The other display features answer
+fixed values: `display-mode: fullscreen`, `update: fast`, `scripting: enabled`,
 `forced-colors: none`, `inverted-colors: none`, `prefers-reduced-data:
 no-preference`, `color: 8`, and 0 for `monochrome`, `color-index` and
 `grid`. There is no named-breakpoint reader. Each element re-resolves only

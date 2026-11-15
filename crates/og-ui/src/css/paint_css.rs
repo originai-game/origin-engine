@@ -509,6 +509,7 @@ pub fn material(text: &str) -> Result<Option<crate::dress::DressMaterial>, Strin
         layer.params[k] = match a.as_slice() {
             [c] if is_color(c) => match color(c)? {
                 ColorRef::Literal(s) => s.linear(),
+                ColorRef::Css(c) if c.literal().is_some() => c.literal().expect("fixed").linear(),
                 ColorRef::Token { .. } | ColorRef::Css(_) => {
                     return Err("a material's colour is a literal".into());
                 }

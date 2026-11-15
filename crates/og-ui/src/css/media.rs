@@ -22,6 +22,16 @@ pub struct Context {
     pub resolution: f32,
     /// The configured input mode is gamepad (`-og-input: pad`).
     pub pad: bool,
+    /// What the surface presents: the Display P3 gamut (`color-gamut: p3`)
+    /// and extended range (`dynamic-range: high`).
+    pub display: Display,
+}
+
+/// The surface's gamut and range, as the renderer configured it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Display {
+    pub wide_gamut: bool,
+    pub high_range: bool,
 }
 
 impl Default for Context {
@@ -37,12 +47,13 @@ impl Default for Context {
             reduced_transparency: false,
             resolution: 1.0,
             pad: false,
+            display: Display::default(),
         }
     }
 }
 
 /// How many independent inputs a media query reads ([`Reads::axes`]).
-pub const AXES: usize = 10;
+pub const AXES: usize = 11;
 
 impl Context {
     /// Which inputs differ from `old`, in [`Reads::axes`] order.
@@ -58,6 +69,7 @@ impl Context {
             old.reduced_transparency != self.reduced_transparency,
             old.resolution != self.resolution,
             old.pad != self.pad,
+            old.display != self.display,
         ]
     }
 }
@@ -74,6 +86,7 @@ pub struct Reads {
     pub transparency: bool,
     pub resolution: bool,
     pub pad: bool,
+    pub display: bool,
 }
 
 impl Reads {
@@ -98,6 +111,7 @@ impl Reads {
             self.transparency,
             self.resolution,
             self.pad,
+            self.display,
         ]
     }
 
@@ -113,6 +127,7 @@ impl Reads {
             &mut self.transparency,
             &mut self.resolution,
             &mut self.pad,
+            &mut self.display,
         ]
         .into_iter()
         .nth(axis)
@@ -185,9 +200,14 @@ pub enum Feature {
     ReducedTransparency(bool),
     /// `resolution` in dppx.
     Resolution(Comparison, f64),
+    /// `(color-gamut: p3)`: the surface presents Display P3.
+    WideGamut,
+    /// `(dynamic-range: high)` and `video-dynamic-range`: the surface
+    /// presents extended range.
+    HighRange,
     /// A feature whose value is fixed for every play surface (the surface
-    /// is an sRGB, standard-range, fast-updating, scripted, full-surface
-    /// display with no forced colours), already evaluated at parse.
+    /// is a fast-updating, scripted, full-surface display with no forced
+    /// colours, at least sRGB and standard range), already evaluated at parse.
     Fixed(bool),
     /// A container `style(--name)` (`None`: the property has a value) or
     /// `style(--name: value)` query, against the query container's
@@ -358,6 +378,14 @@ impl Context {
                 Feature::Resolution(cmp, value) => {
                     reads.resolution = true;
                     cmp.test(context.resolution.into(), value)
+                }
+                Feature::WideGamut => {
+                    reads.display = true;
+                    context.display.wide_gamut
+                }
+                Feature::HighRange => {
+                    reads.display = true;
+                    context.display.high_range
                 }
                 Feature::Fixed(value) => value,
                 // Container-only features never parse in a media query.
@@ -877,9 +905,13 @@ fn keyword_feature(name: &str, input: &mut Parser<'_>) -> Result<Option<Feature>
             _ => Feature::Fixed(false),
         },
         "prefers-reduced-transparency" => Feature::ReducedTransparency(word == "reduce"),
-        // The play surface: an sRGB standard-range swapchain that fills
-        // the display area with no browser chrome, updates every frame and
-        // runs scripts; no forced or inverted colours or data saving.
+        // Every surface covers sRGB and standard range; P3 and high range
+        // are what the renderer configured. Rec. 2020 is never presented.
+        "color-gamut" if word == "p3" => Feature::WideGamut,
+        "dynamic-range" | "video-dynamic-range" if word == "high" => Feature::HighRange,
+        // The play surface fills the display area with no browser chrome,
+        // updates every frame and runs scripts; no forced or inverted
+        // colours or data saving.
         _ => Feature::Fixed(matches!(
             (name, word),
             ("forced-colors", "none")
@@ -1041,8 +1073,10 @@ mod tests {
             ("(forced-colors: none)", true, None),
             ("(forced-colors)", false, None),
             ("(color-gamut: srgb)", true, None),
-            ("(color-gamut: p3)", false, None),
-            ("(dynamic-range: high)", false, None),
+            ("(color-gamut: p3)", false, Some(10)),
+            ("(color-gamut: rec2020)", false, None),
+            ("(dynamic-range: high)", false, Some(10)),
+            ("(video-dynamic-range: standard)", true, None),
             ("(display-mode: fullscreen)", true, None),
             ("(update: fast)", true, None),
             ("(scripting: enabled)", true, None),
@@ -1066,9 +1100,44 @@ mod tests {
         assert_eq!(
             light.changes(&context),
             [
-                false, false, false, false, false, true, false, false, false, false
+                false, false, false, false, false, true, false, false, false, false, false
             ]
         );
+        let p3 = Context {
+            display: Display {
+                wide_gamut: true,
+                high_range: false,
+            },
+            ..context
+        };
+        let hdr = Context {
+            display: Display {
+                wide_gamut: true,
+                high_range: true,
+            },
+            ..context
+        };
+        for (source, on_p3, on_hdr) in [
+            ("(color-gamut: srgb)", true, true),
+            ("(color-gamut: p3)", true, true),
+            ("(color-gamut: rec2020)", false, false),
+            ("(dynamic-range: high)", false, true),
+            ("(dynamic-range: standard)", true, true),
+            ("not (dynamic-range: high)", true, false),
+        ] {
+            let q = Query::parse(source).unwrap();
+            assert_eq!(
+                q.matches(p3, &mut Reads::default()),
+                on_p3,
+                "{source} on P3"
+            );
+            assert_eq!(
+                q.matches(hdr, &mut Reads::default()),
+                on_hdr,
+                "{source} on HDR"
+            );
+        }
+        assert!(hdr.changes(&p3)[10]);
         assert!(Query::parse_container("(prefers-color-scheme: dark)").is_err());
     }
 

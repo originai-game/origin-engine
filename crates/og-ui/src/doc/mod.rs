@@ -804,9 +804,10 @@ fn parse_paint(vals: &[Value]) -> Result<Paint, String> {
         }
         [Value::String(s)] if s.contains('(') || crate::css_color::is_named(s) => {
             let c = crate::css_color::parse_str(s)?;
+            // A wide literal stays an expression: it draws in the output's gamut.
             Ok(match c.literal() {
-                Some(l) => Paint::Color(l),
-                None => Paint::Css(std::sync::Arc::new(c)),
+                Some(l) if !c.wide() => Paint::Color(l),
+                _ => Paint::Css(std::sync::Arc::new(c)),
             })
         }
         [Value::Word(role)] | [Value::String(role)]

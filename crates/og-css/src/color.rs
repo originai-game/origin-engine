@@ -69,6 +69,28 @@ pub trait ColorTokens {
     fn ink(&self) -> Srgba;
     /// The style's colour scheme is dark.
     fn dark(&self) -> bool;
+    /// The gamut the output presents: [`Color::linear`] maps into it.
+    fn gamut(&self) -> Gamut {
+        Gamut::Srgb
+    }
+}
+
+/// The gamut a colour is drawn in: what the display output presents.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Gamut {
+    #[default]
+    Srgb,
+    /// Display P3: colours outside sRGB keep their gamut up to P3's.
+    P3,
+}
+
+impl Gamut {
+    fn space(self) -> Space {
+        match self {
+            Gamut::Srgb => Space::Srgb,
+            Gamut::P3 => Space::DisplayP3,
+        }
+    }
 }
 
 /// What a colour is resolved against.
@@ -80,6 +102,8 @@ pub struct Context<'a> {
     pub current: Srgba,
     /// The used colour scheme is dark (`light-dark()` takes its second).
     pub dark: bool,
+    /// The output's gamut ([`Color::linear`]).
+    pub gamut: Gamut,
 }
 
 impl std::fmt::Debug for Context<'_> {
@@ -87,6 +111,7 @@ impl std::fmt::Debug for Context<'_> {
         f.debug_struct("Context")
             .field("current", &self.current)
             .field("dark", &self.dark)
+            .field("gamut", &self.gamut)
             .finish_non_exhaustive()
     }
 }
@@ -98,6 +123,7 @@ impl<'a> Context<'a> {
             tokens,
             current: tokens.ink(),
             dark: tokens.dark(),
+            gamut: tokens.gamut(),
         }
     }
 }
@@ -163,6 +189,27 @@ impl Color {
     /// The sRGB colour it is in `cx`, gamut mapped.
     pub fn resolve(&self, cx: &Context) -> Srgba {
         to_srgba(self.eval(cx))
+    }
+
+    /// Linear RGBA (straight alpha) in `cx`'s gamut, what og-render draws:
+    /// [`Self::resolve`]'s colour where it is inside sRGB or the gamut is
+    /// sRGB; otherwise gamut mapped into Display P3 and given as extended
+    /// linear sRGB (a channel may be negative).
+    pub fn linear(&self, cx: &Context) -> [f32; 4] {
+        let c = self.eval(cx);
+        if cx.gamut == Gamut::Srgb || in_srgb(c) {
+            return to_srgba(c).linear();
+        }
+        let p3 = gamut_map(c, Gamut::P3);
+        let [r, g, b] = Space::DisplayP3.convert(Space::LinearSrgb, p3);
+        [r, g, b, c.components[3].clamp(0.0, 1.0)]
+    }
+
+    /// Whether it depends on nothing and lies outside sRGB (`color(display-p3
+    /// 1 0 0)`, a wide `oklch()`): [`Self::literal`] loses its gamut, so a
+    /// caller keeps it as an expression for [`Self::linear`].
+    pub fn wide(&self) -> bool {
+        self.fixed() && !in_srgb(self.eval(&Context::of(&NoTokens)))
     }
 
     fn eval(&self, cx: &Context) -> DynamicColor {
@@ -261,7 +308,7 @@ impl Expr {
 
 fn to_srgba(c: DynamicColor) -> Srgba {
     Srgba {
-        rgb: gamut_map(c).map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8),
+        rgb: gamut_map(c, Gamut::Srgb).map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8),
         // A missing alpha is zero (CSS Color 4 §4.4), as `color` keeps it.
         alpha: c.components[3].clamp(0.0, 1.0),
     }
@@ -655,11 +702,21 @@ pub fn interpolating(c: DynamicColor, space: Space) -> DynamicColor {
 
 // ---- gamut mapping
 
-/// CSS Color 4 §13.2: `c` in sRGB, brought into gamut by reducing its
-/// OKLCh chroma until clipping changes it by under one JND (deltaEOK).
-fn gamut_map(c: DynamicColor) -> [f32; 3] {
-    let inside = |v: [f32; 3]| v.iter().all(|v| (-1e-5..=1.0 + 1e-5).contains(v));
+fn inside(v: [f32; 3]) -> bool {
+    v.iter().all(|v| (-1e-5..=1.0 + 1e-5).contains(v))
+}
+
+fn in_srgb(c: DynamicColor) -> bool {
     let [r, g, b, _] = c.convert(Space::Srgb).components;
+    inside([r, g, b])
+}
+
+/// CSS Color 4 §13.2: `c` in `gamut`'s space (encoded sRGB or Display P3),
+/// brought into gamut by reducing its OKLCh chroma until clipping changes
+/// it by under one JND (deltaEOK).
+fn gamut_map(c: DynamicColor, gamut: Gamut) -> [f32; 3] {
+    let dest = gamut.space();
+    let [r, g, b, _] = c.convert(dest).components;
     if inside([r, g, b]) {
         return [r, g, b];
     }
@@ -670,15 +727,15 @@ fn gamut_map(c: DynamicColor) -> [f32; 3] {
     if l <= 0.0 {
         return [0.0; 3];
     }
-    let to_rgb = |c: f32| Space::Oklch.convert(Space::Srgb, [l, c, h]);
+    let to_rgb = |c: f32| Space::Oklch.convert(dest, [l, c, h]);
     let delta = |a: [f32; 3], b: [f32; 3]| {
-        let lab = |v| OpaqueColor::<color::Oklab>::new(Space::Srgb.convert(Space::Oklab, v));
+        let lab = |v| OpaqueColor::<color::Oklab>::new(dest.convert(Space::Oklab, v));
         lab(a).difference(lab(b))
     };
     const JND: f32 = 0.02;
     let (mut lo, mut hi, mut lo_in) = (0.0, c0, true);
     let current = to_rgb(c0);
-    let mut clipped = Space::Srgb.clip(current);
+    let mut clipped = dest.clip(current);
     if delta(clipped, current) < JND {
         return clipped;
     }
@@ -689,7 +746,7 @@ fn gamut_map(c: DynamicColor) -> [f32; 3] {
             lo = c;
             continue;
         }
-        clipped = Space::Srgb.clip(cur);
+        clipped = dest.clip(cur);
         let e = delta(clipped, cur);
         if e < JND {
             if JND - e < 1e-4 {
@@ -777,5 +834,54 @@ mod tests {
         assert!(parse_str("color-mix(in srgb, red 0%, blue 0%)").is_err());
         assert!(parse_str("rgb(1, 2 3)").is_err());
         assert!(parse_str("notacolour").is_err());
+    }
+
+    /// Against P3 a colour outside sRGB keeps its gamut (Display P3 red is
+    /// linear sRGB 1.2249, -0.0421, -0.0196 by CSS Color 4's matrices) and one
+    /// outside P3 too is mapped onto P3's edge; sRGB colours draw as they
+    /// do against sRGB, to the bit.
+    #[test]
+    fn a_p3_output_keeps_wide_colours_and_draws_srgb_ones_unchanged() {
+        let cx = |gamut| Context {
+            gamut,
+            ..Context::of(&NoTokens)
+        };
+        let p3_red = parse_str("color(display-p3 1 0 0)").unwrap();
+        assert!(p3_red.wide());
+        // sRGB still gamut maps it, keeping lightness: a slightly lighter red.
+        let srgb = p3_red.literal().unwrap().rgb;
+        assert!(srgb[0] == 255 && srgb[1] < 16 && srgb[2] < 16, "{srgb:?}");
+        let got = p3_red.linear(&cx(Gamut::P3));
+        for (g, want) in got.iter().zip([1.2249, -0.0421, -0.0196, 1.0]) {
+            assert!((g - want).abs() < 2e-3, "{got:?}");
+        }
+        assert_eq!(
+            p3_red.linear(&cx(Gamut::Srgb)),
+            p3_red.literal().unwrap().linear()
+        );
+        let beyond = parse_str("oklch(0.7 0.5 150 / 0.5)").unwrap();
+        let [r, g, b, a] = beyond.linear(&cx(Gamut::P3));
+        let p3 = Space::LinearSrgb.convert(Space::DisplayP3, [r, g, b]);
+        assert!(
+            p3.iter().all(|v| (-1e-3..=1.0 + 1e-3).contains(v)),
+            "{p3:?}"
+        );
+        assert!(
+            r < -1e-3 || g > 1.0 + 1e-3 || b < -1e-3,
+            "outside sRGB: {r} {g} {b}"
+        );
+        assert_eq!(a, 0.5);
+        for srgb in [
+            "rgb(10 200 30)",
+            "color-mix(in srgb, red, blue)",
+            "oklch(0.6 0.1 40)",
+        ] {
+            let c = parse_str(srgb).unwrap();
+            assert!(!c.wide(), "{srgb}");
+            assert_eq!(
+                c.linear(&cx(Gamut::P3)),
+                c.resolve(&cx(Gamut::Srgb)).linear()
+            );
+        }
     }
 }
