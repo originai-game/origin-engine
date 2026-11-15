@@ -28,7 +28,7 @@
       <svg id="Ultimate" part="AbilitySlot.ultimate" viewBox="0 0 64 64" hidden={ultimate < 0}><circle cx="32" cy="32" r="29" fill="none" stroke-width="4"></circle><circle id="UltimateFill" cx="32" cy="32" r="29" fill="none" stroke-width="4" pathLength="1" stroke-dasharray={ultimate + " 1"} transform="rotate(-90 32 32)"></circle></svg>
       <svg id="Sweep" viewBox="0 0 56 56" hidden={!(cooldown > 0)}><circle cx="28" cy="28" r="20" fill="none" stroke-width="40" pathLength="1" stroke-dasharray={(cooldown / cooldownMax) + " 1"} transform="rotate(-90 28 28) scale(-1 1) translate(-56 0)"></circle></svg>
       <span id="Time" part="AbilitySlot.figure" hidden={!(cooldown > 0)}>{cooldown < 10 ? formatNumber(cooldown) : formatCountdown(cooldown)}</span>
-      <span id="Percent" part="AbilitySlot.percent" hidden={!(ultimate >= 0 && ultimate < 1)}>{formatPercent(ultimate)}</span>
+      <div id="Charge"><span id="Percent" part="AbilitySlot.percent" hidden={!(ultimate >= 0 && ultimate < 1)}>{formatPercent(ultimate)}</span></div>
       <svg id="Slash" viewBox="0 0 56 56" hidden={!disabled}><path d="M8 48L48 8" stroke-width="5" stroke-linecap="round"></path></svg>
       <og-icon id="Lock" icon="lock" hidden={!locked}></og-icon>
       <div id="Costs"><span id="Cost" part="AbilitySlot.badge" class="cost" class:short={unaffordable} hidden={!cost || cooldown > 0 || locked}>{cost}</span></div>
@@ -60,7 +60,11 @@
 #UltimateFill { stroke: var(--gold); }
 #Sweep { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; stroke: var(--scrim); }
 #Time { position: absolute; top: calc(12 * var(--text-px)); inset-inline-start: 0; width: stretch; text-align: center; font-size: var(--font-step-xl); }
-#Percent { position: absolute; bottom: var(--space-xxs); inset-inline-start: 0; width: stretch; text-align: center; font: var(--text-caption); color: var(--gold); }
+/* The percent sits on a small ground of its own (a pack sets it with
+   --ability-slot-percent-ground), so the ring's arc never runs through its
+   digits, whatever size and shape a pack gives the ring. */
+#Charge { position: absolute; bottom: var(--space-xxs); inset-inline-start: 0; inset-inline-end: 0; display: flex; justify-content: center; }
+#Percent { padding: 0 var(--space-xs); border-radius: var(--radius-capsule); background: var(--ability-slot-percent-ground, var(--scrim)); font-size: var(--font-step-sm); color: var(--gold); }
 #Slash { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; stroke: var(--danger); }
 #Lock { position: absolute; top: calc(12 * var(--text-px)); inset-inline-start: calc(12 * var(--text-px)); width: calc(24 * var(--text-px)); height: calc(24 * var(--text-px)); color: var(--ink); }
 /* The cost sits in a row of its own: at the bottom's leading corner on a
