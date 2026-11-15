@@ -170,14 +170,14 @@ summary as warnings and never refuses a build.
   for `content` styles, `look.authored`, the art each brief kind must be;
   `artBrief` writes it into every request of the kind, and
   `authoredArt(look)` lists it.
-- `look.frozen` (true or absent) marks a style whose look is being rebuilt
-  (AGENTS.md, "Frozen is not obsolete"). Its preset still cooks, `extends`
-  still builds on it and its brief still reads, so a game made on it is
-  unchanged; create offers a new game only the rest (`creationLooks`), and
-  the validator keeps an unfrozen style for every creation view. Eight are
-  offered now: cinematic-realism, anime-cel-3d, inked-comic-3d,
-  painterly-3d, faceted-low-poly, low-resolution-3d, 16bit-pixel and
-  minimal-geometric.
+- `variants` (§2.11): the preset drawn other ways, each with its own text.
+
+Twelve looks, every one offered to a new game (`creationLooks`), with the
+UI pack their `ui` line names: cinematic-realism, anime-cel-3d,
+inked-comic-3d, faceted-low-poly, low-resolution-3d, pixel and
+minimal-geometric (default); painterly-3d and pixel-3d-hybrid (fantasy);
+neon-vector (scifi); toy-3d and cartoon-2d (cartoon). The validator keeps a
+look for every creation view.
 
 A style's sample scene belongs to the game's art review; the engine ships
 no sample-game gallery.
@@ -311,6 +311,38 @@ A layer sets only the frame's grading, light and palette (`PostEffects`,
 change with the mood. The art brief's prompt gains a `Mood` line (§2.2).
 `og new --mood <word>` writes the line into the game's look; without one
 the game keeps its preset's.
+
+### 2.11 Variants: one look drawn another way
+
+A look takes `variant "<name>"`, one of the variants of the preset its
+`extends` chain reaches: `templates/looks/variants/<slug>/<name>.ogt`, a
+layer of the look's resources compiled into the cook (og-cook's
+`VARIANT_LAYERS`). The cook lays it over the preset field by field (a field
+it turns off is written at its default), then the mood's layer (§2.10),
+then the game's own looks, so the game's fields still win. Its `name` and
+`mood` replace the preset's; the nearest look's variant wins for the whole
+chain. A variant the preset lacks, a chain without a preset, and a preset
+naming a variant are refused. A mood reads the variant's own layer
+(`moods/<mood>/<slug>.<variant>.ogt`) before the look's.
+
+Each variant is an entry of its look's `variants` in the catalogue, with its
+own title, descriptor, mood, three checks, `intended` traits, premise,
+palette, asset specs, art bible and, where its art is authored, `authored`.
+`readLook` and `presetLook(slug, { variant })` read the chain as the cook
+does, and the brief and the critic read the variant's text in place of the
+look's; the look's preview is not passed for a variant, whose palette and
+grid differ. The validator holds the files and entries equal.
+
+| Look | Variants |
+|---|---|
+| pixel | 8bit, monochrome, detailed, luminous, coarse, topdown |
+| cinematic-realism | muted |
+| inked-comic-3d | bold-comic, heavy-ink |
+| painterly-3d | lush, luminous-layers, expressionist |
+| low-resolution-3d | monochrome-dither |
+| minimal-geometric | layered-silhouette |
+| toy-3d | voxel, clay, diorama, paper |
+| cartoon-2d | watercolor, storybook, rubber-hose |
 
 ## 4. The platform: the style is chosen when a game is created
 

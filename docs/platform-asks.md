@@ -267,9 +267,9 @@ a platform vocabulary:
 
 - `CREATION_CHOICES` owns the enums, and `creationSchema(creationLooks())`
   returns the form's JSON Schema 2020-12. `creationLooks()` lists the
-  eight looks a new game is offered and leaves out the catalogue's styles
-  frozen while their looks are rebuilt (`look.frozen`); a game made on a
-  frozen look keeps building.
+  twelve looks a new game is offered, every look of the catalogue; the
+  `ui` enum is default, cartoon, fantasy and scifi, and each look suggests
+  its own pack.
 - `resolveCreationChoices(premise, partialChoices)` returns suggestions with
   explicit choices preserved; display and confirm the required ones.
 - Send the confirmed object as `create({ dir, premise, choices })` or the
@@ -281,8 +281,8 @@ a platform vocabulary:
 
 ```ts
 {
-  genre: "action-platformer", view: "side-2d", look: "16bit-pixel",
-  mood: "warm", ui: "pixel", platform: "phone-landscape", input: "touch",
+  genre: "action-platformer", view: "side-2d", look: "pixel",
+  mood: "warm", ui: "default", platform: "phone-landscape", input: "touch",
   players: "single", lang: ["zh", "en"], music: "chiptune"
 }
 ```

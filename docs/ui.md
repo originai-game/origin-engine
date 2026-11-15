@@ -1560,9 +1560,10 @@ A pack becomes a creation choice only once it is accepted (§6.3); the
 integration owner then updates the schema and bilingual labels together.
 There are no `auto`, `custom`, or `generated` pseudo-packs.
 
-The 37 look presets in `templates/looks/` and the generated look catalogue
-own look-to-UI recommendations; until a pack is accepted every preset uses
-core default UI. A recommendation is a seed, not proof of fit; an explicit
+The 12 look presets in `templates/looks/` and the generated look catalogue
+own look-to-UI recommendations: toy-3d and cartoon-2d name cartoon,
+painterly-3d and pixel-3d-hybrid fantasy, neon-vector scifi, the rest core
+default. A recommendation is a seed, not proof of fit; an explicit
 creation UI choice wins. Game-authored styles use explicit asset paths in
 the actual look; the creation block records the initial constraint, not
 the current path.
