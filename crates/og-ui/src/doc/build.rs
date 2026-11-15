@@ -747,23 +747,28 @@ impl Ui {
                 sets.extend(props.iter());
             }
         }
+        // Every document's root is a `:root`, so a pack's `:root` rules
+        // match it again: it carries what the theme writes over the style
+        // on the root (a game's seeds among them, as the root's `style`
+        // attribute) to win over them there as it does at the root.
+        let mut inline = Vec::new();
+        if std::ptr::eq(n, &b.doc.nodes[b.doc.root]) {
+            inline.extend_from_slice(&self.style.root_tokens);
+            inline.extend_from_slice(&self.style.root_type_tokens[self.breakpoint() as usize]);
+        }
         // Bound custom properties: a value a rule reads with var(); null
         // (or a list) leaves the property unset, so var()'s fallback holds.
         // Their expressions are the element's attributes too, so a change
         // re-resolves the element as an attribute selector's does.
-        let inline: Vec<(String, String)> = n
-            .custom
-            .iter()
-            .filter_map(|(name, e)| {
-                let text = match b.eval(e) {
-                    Value::String(s) => s,
-                    Value::Number(x) => x.to_string(),
-                    Value::Bool(x) => x.to_string(),
-                    _ => return None,
-                };
-                Some((name.clone(), text))
-            })
-            .collect();
+        inline.extend(n.custom.iter().filter_map(|(name, e)| {
+            let text = match b.eval(e) {
+                Value::String(s) => s,
+                Value::Number(x) => x.to_string(),
+                Value::Bool(x) => x.to_string(),
+                _ => return None,
+            };
+            Some((name.clone(), text))
+        }));
         let body = self.theme().type_ramp.body;
         let face = &self.fonts().body.metrics;
         let ratio = |s: &str| face.measure(s, 100.0) / 100.0;

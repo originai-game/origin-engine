@@ -565,3 +565,77 @@ fn a_headings_flourish_part_draws_its_css_box_beside_the_line() {
         "centred on the line"
     );
 }
+
+/// A pack's own seeds (`:root { --seed-primary: … }`) are what the default
+/// style's derived colours resolve against, in both schemes: the primary
+/// fill a document paints follows the pack's seed, not the default's, and a
+/// game's seeds (UiDesc.seeds) win over the pack's.
+#[test]
+fn pack_seeds_reach_the_derived_palette() {
+    use og_ui::{Scheme, Srgba, Theme, UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    let pack = StylePack::parse(
+        "styles/test",
+        vec![(
+            "styles/test/main.css".into(),
+            ":root { --seed-primary: #22c7f5; }".into(),
+        )],
+    )
+    .unwrap();
+    let red = Srgba::rgb(0xc8, 0x10, 0x2e).linear();
+    for (scheme, game) in [
+        (Scheme::Dark, false),
+        (Scheme::Light, false),
+        (Scheme::Dark, true),
+        (Scheme::Light, true),
+    ] {
+        let mut theme = Theme::new(scheme);
+        if game {
+            theme.seeds.0[0] = Some([red[0], red[1], red[2]]);
+        }
+        let mut ui = Ui::new(UiDesc {
+            theme,
+            ..Default::default()
+        });
+        ui.define_document(
+            UiDocument::parse(
+                "ui/game.svelte",
+                r#"<meta name="screen" content="test"><div id="Box"></div><style>#Box { width: 23px; height: 23px; background: var(--primary); }</style>"#,
+            )
+            .unwrap(),
+        );
+        ui.set_style_pack(&pack).unwrap();
+        ui.mount_document(
+            SourceId::new("test", "test"),
+            "test",
+            Default::default(),
+            Default::default(),
+            &NoEnv,
+        )
+        .unwrap();
+        ui.begin(Default::default(), Viewport::new(300.0, 300.0));
+        ui.build_retained_documents(&NoEnv).unwrap();
+        ui.end();
+        let fill = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| i.cmd.filled())
+            .find(|(r, _)| r.width == 23.0)
+            .expect("the box's fill")
+            .1;
+        // The pack's cyan (blue and green well over red) or the game's red,
+        // whatever tone the scheme moves it to.
+        let [r, g, b, _] = fill;
+        if game {
+            assert!(
+                r > g * 2.0 && r > b * 2.0,
+                "{scheme:?}: {fill:?} is not the game's red"
+            );
+        } else {
+            assert!(
+                b > r * 2.0 && g > r * 2.0,
+                "{scheme:?}: {fill:?} is not the pack's cyan"
+            );
+        }
+    }
+}

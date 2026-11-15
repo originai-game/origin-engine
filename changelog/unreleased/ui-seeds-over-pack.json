@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UiDesc.seeds",
+      "summary": "A game's seeds win over a style pack's own (`:root { --seed-primary: … }`) everywhere the palette is drawn, as they are documented to: every document's root is a `:root` the pack's rules match again, and it now carries the root's theme tokens there too. A document drew with the pack's seeds, so og.ui.configure's `seeds` did not retint a pack that sets its own."
+    }
+  ]
+}
