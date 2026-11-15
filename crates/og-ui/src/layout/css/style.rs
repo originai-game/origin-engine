@@ -545,10 +545,11 @@ impl tf::FlexboxContainerStyle for View<'_> {
             return tf::FlexWrap::NoWrap;
         }
         let el = self.el();
-        match (el.wrap, el.wrap_reverse) {
-            (false, _) => tf::FlexWrap::NoWrap,
-            (true, false) => tf::FlexWrap::Wrap,
-            (true, true) => tf::FlexWrap::WrapReverse,
+        match (el.wrap, el.wrap_reverse, el.wrap_balance) {
+            (false, ..) => tf::FlexWrap::NoWrap,
+            (true, false, true) => tf::FlexWrap::Balance,
+            (true, false, false) => tf::FlexWrap::Wrap,
+            (true, true, _) => tf::FlexWrap::WrapReverse,
         }
     }
 

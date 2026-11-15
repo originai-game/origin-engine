@@ -581,6 +581,9 @@ pub struct Element {
     pub reverse: bool,
     /// CSS `wrap-reverse`: its lines stack from the cross axis's end.
     pub wrap_reverse: bool,
+    /// CSS `flex-wrap: balance`: its lines are as even as its breaks
+    /// allow, the longest as short as it can be.
+    pub wrap_balance: bool,
     /// Its `align` was written `start`, `end`, `left` or `right` (the writing
     /// mode's sides), not `flex-start`/`flex-end`: a reversed line keeps it
     /// on that side.

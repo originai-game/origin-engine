@@ -63,6 +63,9 @@ impl Ui {
         if r.has("wrapReverse") {
             el.wrap_reverse = r.flag("wrapReverse");
         }
+        if r.has("wrapBalance") {
+            el.wrap_balance = r.flag("wrapBalance");
+        }
         if let Some(a) = r.str("alignContent") {
             el.align_content = Some(align_of(a));
         }

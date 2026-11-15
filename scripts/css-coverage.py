@@ -37,6 +37,8 @@ proof("aspect-ratio box-sizing width-height min-max-width-height fit-content-fun
       "Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths.")
 proof("flexbox flexbox-gap", "css_layout", "flex_lays_out_as_css_flexbox_does",
       "Computed grow/shrink shares, reverse/order, safe alignment, wrapping, row and column gaps.")
+proof("flexbox-flex-wrap-balance", "css_layout", "balanced_flex_lines_are_even",
+      "Computed line breaks of four equal items under wrap and balance, and balance through flex-flow.")
 proof("grid subgrid", "css_layout", "grid_lays_out_as_css_grid_does",
       "Computed named/negative/spanning tracks, auto-fit/fill, fr minimums, areas, alignment and inherited subgrid tracks.")
 proof("display-contents display-flow-root two-value-display display-table", "css_layout", "display_lays_out_as_css_display_does",
