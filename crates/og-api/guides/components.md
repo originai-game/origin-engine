@@ -286,7 +286,7 @@ These declarations also construct widget part identities and are exported by doc
 | `input[type=range]` | `knob` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
 | `select` | `trigger` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:open`, `:invalid` |
 | `select` | `list` | `:enabled` |
-| `select` | `option` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `select` | `option` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:checked` |
 | `select` | `group` | `:enabled` |
 | `details` | `root` | `:enabled` |
 | `details` | `summary` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:open` |

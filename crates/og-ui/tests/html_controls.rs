@@ -343,6 +343,7 @@ fn each_control_is_dressed_by_its_named_parts() {
     rig.ui.set_part_css("details::part(summary) { background: #ff00ff; } select[aria-expanded=true]::part(trigger) { background: #00ffff; } select[id=Pick]::part(list) { background: #ff8800; }").unwrap();
     rig.set("more", json!(true));
     rig.set("note", json!(true));
+    rig.set("choice", json!("b"));
     rig.click("Pick/Trigger");
     for color in [
         Srgba::rgb(255, 0, 255),
@@ -399,6 +400,13 @@ fn each_control_is_dressed_by_its_named_parts() {
     ] {
         assert!(parts.contains(want), "{want} in {parts:?}");
     }
+    // The chosen option is :checked, as HTML's selected <option> is.
+    assert!(
+        parts.iter().any(|p| p.starts_with("select")
+            && p.contains("::part(option)")
+            && p.contains(":checked")),
+        "{parts:?}"
+    );
 }
 
 #[test]

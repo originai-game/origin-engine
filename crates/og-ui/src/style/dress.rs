@@ -328,6 +328,12 @@ impl PartRef {
                 "on" | "selected" if checkable || (tag == "tabs" && self.part == "tab") => {
                     states.insert(S::Checked);
                 }
+                // A chosen option is also `:checked`, as HTML's selected
+                // <option> is.
+                "selected" if tag == "select" && self.part == "option" => {
+                    states.insert(S::Checked);
+                    attributes.insert("aria-selected".into(), "true".into());
+                }
                 "on" => {
                     attributes.insert("aria-pressed".into(), "true".into());
                 }

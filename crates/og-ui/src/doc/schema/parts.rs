@@ -57,7 +57,7 @@ parts! {
     RANGE_KNOB: "input[type=range]", "knob", ["enabled", "disabled", "hover", "active", "focus-visible"];
     SELECT_TRIGGER: "select", "trigger", ["enabled", "disabled", "hover", "active", "focus-visible", "open", "invalid"];
     SELECT_LIST: "select", "list", ["enabled"];
-    SELECT_OPTION: "select", "option", ["enabled", "disabled", "hover", "active", "focus-visible"];
+    SELECT_OPTION: "select", "option", ["enabled", "disabled", "hover", "active", "focus-visible", "checked"];
     SELECT_GROUP: "select", "group", ["enabled"];
     DETAILS_ROOT: "details", "root", ["enabled"];
     DETAILS_SUMMARY: "details", "summary", ["enabled", "disabled", "hover", "active", "focus-visible", "open"];
