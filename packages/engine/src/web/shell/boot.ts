@@ -127,7 +127,11 @@ export async function bootWorker(options: ShellOptions): Promise<Booted> {
       arm();
       const m = e.data as { type: string; value?: number; stage?: string; fraction?: number; message?: string } & Partial<Ready>;
       if (m.type === "progress") options.onProgress?.(m.value ?? 0, m.stage ?? "", m.fraction);
-      else if (m.type === "ready") {
+      // og.loading's stages from GameDesc.start and the boot scene, before ready.
+      else if (m.type === "og-stage") {
+        const s = m as unknown as { id?: string; fraction?: number; label?: string };
+        options.onStage?.(s.id ?? "", s.fraction ?? 0, s.label ?? "");
+      } else if (m.type === "ready") {
         settle();
         resolve({
           lanes: m.lanes ?? { on: false, threads: 1, why: "the Worker did not report lanes" },
@@ -171,7 +175,7 @@ export async function bootWorker(options: ShellOptions): Promise<Booted> {
       ...(options.prime ? { prime: true } : {}),
       ...(options.trace ? { trace: true } : {}),
       ...(options.telemetry ? { telemetry: true } : {}),
-      ...(options.onStage ? { stages: true } : {}),
+      ...(options.cover ? { stages: true } : {}),
       ...(options.pipelines ? { pipelines: options.pipelines } : {}),
       viewport: { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false, ...pagePreferences() },
     },

@@ -78,11 +78,13 @@ export interface ShellConfig {
   /** Fork s61: the progress caption per boot stage (`fetch`, `transcode`, `prime`, `present`); absent: "Loading". */
   readonly stageLabels?: Readonly<Record<string, string>>;
   /**
-   * Fork s61: "page": the page draws the loading screen itself (the engine's boot splash stays hidden) from
-   * the window events og:progress {value, stage, fraction}, og:stage {id, fraction} (the game's own stages),
-   * og:first-frame and og:failed {message}; absent or "engine": the splash.
+   * Who draws the loading screen (project.ogt `publish { loading }`, docs/web-export.md §Loading events):
+   * absent or "engine", the splash until the first frame; "game", the splash while the engine boots, then
+   * the game's own frames, the clock running, until og.loading.done (then the gate, with `gate tap`);
+   * "page" (fork s61), no splash and the canvas hidden, the clock running, until og.loading.done (then
+   * the gate, with `gate tap`), the page drawing its loader from the window events.
    */
-  readonly bootScreen?: "engine" | "page";
+  readonly bootScreen?: "engine" | "game" | "page";
   /** project.ogt `publish { pipelines }` (src/web/pipelines.ts): "sync"; "async", the frame pipelines with createRenderPipelineAsync; "prewarm", only the warm-up behind the gate's; absent: auto, picked at the adapter. */
   readonly pipelines?: "sync" | "async" | "prewarm";
   /** Bytes the boot fetches; `lanes` is the lanes variant's module, 0 when the build ships none. */
@@ -154,6 +156,11 @@ export function probeParams(member: string, args: unknown[]): Record<string, unk
   }
 }
 
+/** The window events a page hosting the game hears while it loads, also posted to a framing page. */
+export const LOADING_EVENTS: ReadonlySet<string> = new Set(["og:progress", "og:stage", "og:first-frame", "og:loaded", "og:ready", "og:failed"]);
+/** `source` of the messages a framing page receives (docs/web-export.md §Loading events). */
+export const LOADING_SOURCE = "origin-engine";
+
 const zh = /^zh\b/i.test(globalThis.navigator?.language ?? "");
 const T = zh
   ? { loading: "正在加载", play: "点击开始", tapToPlay: "点击开始", startFailed: "游戏无法启动", noWebGpu: "此浏览器不支持 WebGPU", noWebGpuDetail: "本游戏需要 WebGPU，而此浏览器没有。请用最新版的 Chrome 或 Edge（Windows、macOS、ChromeOS，或 Android 12 及以上）、Safari 26 及以上（macOS、iOS、iPadOS），或 Windows 与 macOS 上的 Firefox 打开。", noWebGpuAdapterTitle: "没有可供 WebGPU 使用的显卡", noWebGpuAdapter: "此浏览器支持 WebGPU，但没有可用的显卡：请在浏览器设置中开启硬件加速，或更新显卡驱动后重新打开。", stopped: "游戏已停止", reload: "重新加载", copy: "复制报告", copied: "已复制", log: "日志", dump: "世界快照", install: "添加到主屏幕", installOffer: "安装{name}，离线也能玩", installIos: "点按分享，再选“添加到主屏幕”", dismiss: "不用了", back: "返回", madeWith: "Made with Origin Engine" }
@@ -182,7 +189,7 @@ export function readConfig(doc: Document = document): ShellConfig {
     madeWith: c.madeWith !== false,
     serviceWorker: c.serviceWorker === true,
     ...(c.stageLabels && typeof c.stageLabels === "object" ? { stageLabels: c.stageLabels } : {}),
-    ...(c.bootScreen === "page" ? { bootScreen: "page" as const } : {}),
+    ...(c.bootScreen === "page" || c.bootScreen === "game" ? { bootScreen: c.bootScreen } : {}),
     ...(c.pipelines === "sync" || c.pipelines === "async" || c.pipelines === "prewarm" ? { pipelines: c.pipelines } : {}),
     expect: { wasm: c.expect?.wasm ?? 0, cooked: c.expect?.cooked ?? 0, lanes: c.expect?.lanes ?? 0 },
     files: c.files && typeof c.files === "object" ? c.files : {},
@@ -364,7 +371,27 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   const label = $("og-boot-label");
   // Fork s61: the page's own loading screen (bootScreen "page") hears the boot through window events.
   const pageBoot = config.bootScreen === "page";
-  const emit = (type: string, detail?: unknown) => dispatchEvent(new CustomEvent(type, { detail }));
+  // The game draws its loading screen once the engine has booted (bootScreen "game").
+  const gameBoot = config.bootScreen === "game";
+  // Every page hears the loading as window events, and a page that frames this one (any site, with or
+  // without a Player) as messages: docs/web-export.md §Loading events.
+  const framing = (() => {
+    try {
+      return window.parent && window.parent !== window ? window.parent : null;
+    } catch {
+      return null;
+    }
+  })();
+  const emit = (type: string, detail?: unknown) => {
+    dispatchEvent(new CustomEvent(type, { detail }));
+    if (framing && LOADING_EVENTS.has(type)) {
+      try {
+        framing.postMessage({ source: LOADING_SOURCE, type, detail: detail ?? null }, "*");
+      } catch {
+        /* a detail the structured clone refuses: the window event still went */
+      }
+    }
+  };
   if (pageBoot && boot) boot.hidden = true;
   const badge = $("og-made-with");
   if (badge) badge.hidden = !config.madeWith;
@@ -451,6 +478,9 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
 
   // ── the error card (§6) ──────────────────────────────────────────────
   let shellRef: Shell | null = null;
+  // og.loading.done (bootScreen "game": what the gate waits for after the game's loading screen).
+  let loadedNow: () => void = () => {};
+  const loaded = new Promise<void>((r) => (loadedNow = r));
   // Fork s61: settled by the first frame or a failure, whichever comes first: what the gate waits for.
   let drawnOrFailed: () => void = () => {};
   const drawn = new Promise<void>((r) => (drawnOrFailed = r));
@@ -677,7 +707,17 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
       ...(config.pipelines ? { pipelines: config.pipelines } : {}),
       ...(config.expect.wasm + config.expect.cooked > 0 ? { expect: config.expect } : {}),
       onProgress: (v, stage, fraction) => setProgress(v, stage, fraction),
-      ...(pageBoot ? { onStage: (id: string, fraction: number) => emit("og:stage", { id, fraction }) } : {}),
+      onStage: (id, fraction, text) => {
+        if (id === "done") {
+          emit("og:loaded");
+          loadedNow();
+          return;
+        }
+        emit("og:stage", { id, fraction, label: text });
+        // The splash, while it shows, names the game's stage.
+        if (text && !pageBoot && label && phase === "loading") label.textContent = `${text} ${Math.round(fraction * 100)}%`;
+      },
+      ...(pageBoot ? { cover: true } : {}),
       onLog: (lines) => log.push(lines),
       onCrash: (message, error) => void fail(readied ? T.stopped : T.startFailed, message, readied, true, error),
       telemetry,
@@ -700,6 +740,7 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   // The device the engine renders with, as the Worker read it (never an adapter of the page's own).
   if (context) context = { ...context, gpu: shell.ready.gpu ? gpuOf(shell.ready.gpu) : null };
   performance.mark?.("og:ready");
+  emit("og:ready", { lanes: shell.ready.lanes.on, tier: shell.ready.tier });
   const lanes = shell.ready.lanes;
   log.push([lanes.on ? `lanes: on, ${lanes.threads} Workers` : `lanes: off (${lanes.why})`]);
   const resize = () => {
@@ -864,29 +905,8 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   // false). A Player's hello later carries them.
   if (!byPlayer && (provided.rooms || roomLink)) shell.setRooms(provided.rooms ?? null, roomLink);
 
-  // ── ready: reveal, then the gate ─────────────────────────────────────
-  // Fork s61: the gate shows once the first frame is drawn (behind it: the first tick, the
-  // textures' uploads, the pipelines), not when the bytes are in: Play then leads to a picture.
-  // With no gate (og-config gate "none") the game starts at once instead: it runs its own loading
-  // screen behind which the first frames draw (one bar from the page's first paint to the game's click).
-  if (!harness && config.gate !== "none" && shell.ready.tier !== "none") await drawn;
-  setProgress(1);
-  boot?.setAttribute("data-done", "");
-  setTimeout(() => boot && phase !== "failed" && (boot.hidden = true), 300);
-  if (!firstFrameAt) {
-    // The Worker drew the first frame behind the gate; a page without a renderer is ready now.
-    setTimeout(() => {
-      if (!firstFrameAt) ready();
-    }, 2000);
-  }
-  if (harness) {
-    phase = "playing";
-  } else if (byPlayer) {
-    phase = "gate";
-    if (player.started) start();
-  } else if (config.gate === "none") {
-    start();
-  } else {
+  /** The play gate: its button, and the tap, click, Enter or Space that passes it. */
+  function openGate(): void {
     phase = "gate";
     const gate = $("og-gate");
     const button = gate?.querySelector("button");
@@ -914,6 +934,46 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
       gate.addEventListener("pointerup", go);
       addEventListener("keydown", key, true);
     } else start();
+  }
+
+  // ── ready: reveal, then the gate ─────────────────────────────────────
+  // Fork s61: the gate shows once the first frame is drawn (behind it: the first tick, the
+  // textures' uploads, the pipelines), not when the bytes are in: Play then leads to a picture.
+  // With no gate (og-config gate "none") the game starts at once instead: it runs its own loading
+  // screen behind which the first frames draw (one bar from the page's first paint to the game's click).
+  // A `page` screen covers the canvas, so no frame draws before og.loading.done: the clock starts
+  // at once and the gate (if any) follows the game's done, as with `game`.
+  if (!harness && config.gate !== "none" && shell.ready.tier !== "none" && !pageBoot) await drawn;
+  setProgress(1);
+  boot?.setAttribute("data-done", "");
+  setTimeout(() => boot && phase !== "failed" && (boot.hidden = true), 300);
+  if (!firstFrameAt) {
+    // The Worker drew the first frame behind the gate; a page without a renderer is ready now.
+    setTimeout(() => {
+      if (!firstFrameAt) ready();
+    }, 2000);
+  }
+  if (harness) {
+    phase = "playing";
+  } else if (byPlayer) {
+    phase = "gate";
+    if (player.started) start();
+  } else if (gameBoot || pageBoot) {
+    // The game's first frames are its loading screen (or prepare behind the page's): the clock runs
+    // from now, and with `gate tap` the gate shows once the game says its loading is done (the tap
+    // unlocks audio and asks for fullscreen).
+    start();
+    if (config.gate !== "none") {
+      void loaded.then(() => {
+        if (phase !== "playing") return;
+        shell.play(false);
+        openGate();
+      });
+    }
+  } else if (config.gate === "none") {
+    start();
+  } else {
+    openGate();
   }
 
   // The og-probe wire's hello tells the host the page can be driven: said once the gate takes a tap

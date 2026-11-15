@@ -30,6 +30,10 @@ macro_rules! __og_host_bindings_assets {
             fn og_load_prefab(&self, world: u32, path: String) -> String {
                 $crate::host_impl::answer($crate::og_load_prefab(world, path))
             }
+            fn og_load_progress(&self, world: u32, asset: f64) -> String {
+                $crate::host_impl::answer($crate::og_load_progress(world, asset))
+            }
+
             fn og_load_status(&self, world: u32, asset: f64) -> String {
                 $crate::og_load_status(world, asset)
             }
@@ -205,6 +209,39 @@ macro_rules! __og_host_bindings_assets {
             }
             fn og_stream_set_budget(&self, world: u32, bytes: f64) -> String {
                 $crate::host_impl::answer($crate::og_stream_set_budget(world, bytes))
+            }
+        }
+
+        impl $crate::host_impl::api::SceneApi for $host {
+            fn og_scene_preload(&self, world: u32, scene: String) -> String {
+                $crate::host_impl::answer($crate::og_scene_preload(world, scene))
+            }
+            fn og_scene_progress(&self, world: u32, scene: String) -> String {
+                $crate::host_impl::answer($crate::og_scene_progress(world, scene))
+            }
+            fn og_scene_release(&self, world: u32, scene: String) -> String {
+                $crate::host_impl::answer($crate::og_scene_release(world, scene))
+            }
+            fn og_scene_change(&self, world: u32, scene: String) -> String {
+                $crate::host_impl::answer($crate::og_scene_change(world, scene))
+            }
+            fn og_scene_current(&self, world: u32) -> String {
+                $crate::host_impl::json($crate::og_scene_current(world))
+            }
+        }
+
+        impl $crate::host_impl::api::LoadingApi for $host {
+            fn og_loading_stage(&self, world: u32, desc: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_loading_stage(world, desc))
+            }
+            fn og_loading_done(&self, world: u32) -> String {
+                $crate::host_impl::answer($crate::og_loading_done(world))
+            }
+            fn og_loading_idle(&self, world: u32) -> bool {
+                $crate::og_loading_idle(world)
+            }
+            fn og_loading_status(&self, world: u32) -> String {
+                $crate::host_impl::json($crate::og_loading_status(world))
             }
         }
 

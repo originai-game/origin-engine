@@ -494,6 +494,8 @@ export interface HostAbi<A, V> {
   og_load_bundle(world: number, path: string): string;
   /** `og.load.bundleInfo` */
   og_load_bundle_info(world: number, asset: number): string;
+  /** `og.load.progress` */
+  og_load_progress(world: number, asset: number): string;
   /** `og.load.defaultBundle` */
   og_load_default_bundle(world: number): string;
   /** `og.load.gltf` */
@@ -1334,6 +1336,24 @@ export interface HostAbi<A, V> {
   og_film_chart(world: number, dialogue: string): string;
   /** `og.film.stop` */
   og_film_stop(world: number, film: number): string;
+  /** `og.scene.preload` */
+  og_scene_preload(world: number, scene: string): string;
+  /** `og.scene.progress` */
+  og_scene_progress(world: number, scene: string): string;
+  /** `og.scene.release` */
+  og_scene_release(world: number, scene: string): string;
+  /** `og.scene.change` */
+  og_scene_change(world: number, scene: string): string;
+  /** `og.scene.current` */
+  og_scene_current(world: number): string;
+  /** `og.loading.stage` */
+  og_loading_stage(world: number, desc: string | undefined): string;
+  /** `og.loading.done` */
+  og_loading_done(world: number): string;
+  /** `og.loading.idle` */
+  og_loading_idle(world: number): boolean;
+  /** `og.loading.status` */
+  og_loading_status(world: number): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -1550,6 +1570,7 @@ export const SYMBOLS: readonly string[] = [
   "og_render_baked_lighting",
   "og_load_bundle",
   "og_load_bundle_info",
+  "og_load_progress",
   "og_load_default_bundle",
   "og_load_gltf",
   "og_load_scene",
@@ -1970,6 +1991,15 @@ export const SYMBOLS: readonly string[] = [
   "og_film_skip",
   "og_film_chart",
   "og_film_stop",
+  "og_scene_preload",
+  "og_scene_progress",
+  "og_scene_release",
+  "og_scene_change",
+  "og_scene_current",
+  "og_loading_stage",
+  "og_loading_done",
+  "og_loading_idle",
+  "og_loading_status",
   "og_host_set_dispatcher",
   "og_host_shared",
   "og_engine_create",

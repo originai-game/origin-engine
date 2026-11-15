@@ -77,7 +77,7 @@ pub(super) fn spawn_transform(desc: &Value) -> Value {
     Value::Object(value)
 }
 
-pub(super) fn spawn(eng: &Engine, call: &str, desc: &Value) -> Result<Entity, String> {
+pub(crate) fn spawn(eng: &Engine, call: &str, desc: &Value) -> Result<Entity, String> {
     let d = spawn_desc(call, desc)?;
     let name = d.name;
     if !name.is_empty() {
@@ -203,7 +203,7 @@ pub fn og_world_spawn(world: u32, desc: Option<String>) -> Result<serde_json::Va
 }
 
 /// `e` and every entity whose og.Parent chain reaches it, children first.
-pub(super) fn with_descendants(world: &World, root: Entity) -> Result<Vec<Entity>, String> {
+pub(crate) fn with_descendants(world: &World, root: Entity) -> Result<Vec<Entity>, String> {
     let mut parents: Vec<(Entity, Entity)> = Vec::new();
     if let Ok(id) = world.id_by_name("og.Parent") {
         let field = world.field_by_id(id, "entity").map_err(err)?;

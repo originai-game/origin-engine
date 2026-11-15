@@ -24,7 +24,7 @@ export interface Start {
   ring?: SharedArrayBuffer;
   rpc?: RpcRings;
   autoplay?: boolean;
-  /** Fork s61: the page draws its own loading screen and hears the game's stages (worker globals ogBootStage, ogBootIdle). */
+  /** The page draws the loading screen (project.ogt `loading page`, fork s61): the canvas covered until og.loading.done. */
   stages?: boolean;
   /**
    * Fork s60: project.ogt `publish { pipelines }`, absent for `auto` (pipelines.ts `choose`): `sync`; `async`, the frame pipelines with createRenderPipelineAsync;

@@ -225,6 +225,7 @@ pub use present::geometry::{
     og_render_torus_geometry, og_render_tube_geometry, og_render_update_geometry,
 };
 pub use present::light2d_at::og_render_light2d_at;
+pub use present::loading::{og_loading_done, og_loading_idle, og_loading_stage, og_loading_status};
 pub use present::ui_draw::{og_load_ui_material, og_load_vector};
 pub use present::views::{
     og_load_post, og_render_post_errors, og_render_render_target, og_render_set_post_param,
@@ -235,6 +236,9 @@ pub use world::save::{
     og_save_edit_rename_field, og_save_edit_rename_type, og_save_edit_set_records,
     og_save_edit_spawn, og_save_edit_text, og_save_edit_types, og_world_open_save,
     og_world_restore, og_world_snapshot, save_snapshot_bytes,
+};
+pub use world::scenes::{
+    og_scene_change, og_scene_current, og_scene_preload, og_scene_progress, og_scene_release,
 };
 pub use world::stream::{
     og_stream_budget, og_stream_release, og_stream_request, og_stream_set_budget, og_stream_status,

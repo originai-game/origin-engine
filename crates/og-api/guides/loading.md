@@ -479,3 +479,74 @@ default, is in `effect-files §3`.
   it ran in a tick catches up on the next tick.
 - An `event` line fires on startTick plus its time rounded to ticks.
 - Element times run on the tick, never on the wall clock.
+
+## 12. Preloading the next scene
+
+A scene whose assets are in streaming groups (world §4) changes in
+three steps: preload while the current scene plays, wait on a loading
+screen for what is still on its way, then change.
+
+```ts
+// A command or a system, a level before the door:
+og.scene.preload(world, "level2");
+// The loading screen's bar (a UI store, or a system that only draws):
+const p = og.scene.progress(world, "level2");
+if (p.ok) bar.set(p.value.fraction);
+// At the door:
+og.scene.change(world, "level2");
+```
+
+- og.scene.preload requests every group the scene declares and keeps
+  them requested until og.scene.release. Request groups a few seconds
+  before they are needed: a pack of a few megabytes arrives in that on
+  a normal connection.
+- og.scene.change puts the scene in place as the next tick starts,
+  whatever has arrived: the current scene's root and everything under
+  it go (the boot scene's own entities for the first change), the new
+  scene spawns under a new root, and og.SceneChanged arrives in that
+  tick. Entities the game spawned outside a scene (the player, a
+  vehicle) stay; give them names the new scene does not use.
+- What has not arrived draws its stand-ins (world §4). Cover them:
+  keep a loading screen up until og.scene.progress answers `ready`,
+  or change at a door the player walks to after `ready`.
+- og.SceneState (registered at the first change) is world state, so a
+  save, a restore and a replay change at the same tick. Progress is
+  not: show it, never branch a tick on it in a networked game.
+- og.stream.status and og.stream.budget give each group's `received`
+  and `progress`; og.load.progress gives a bundle's.
+
+## 13. Loading screens
+
+project.ogt picks who draws the loading screen:
+
+```text
+publish {
+  loading game          # engine (the default) | game | page
+  loading_labels {
+    fetch "下载中"
+    transcode "准备纹理"
+    prime "准备场景"
+    present "准备画面"
+  }
+}
+```
+
+| `loading` | Before the first frame | After it |
+|---|---|---|
+| `engine` | the engine's splash, its bar and labels | the play gate, then the game |
+| `game` | the splash, while the engine boots | the game's own frames, the clock running, until og.loading.done; then the gate (with `gate tap`) |
+| `page` | nothing: the hosting page draws its loader | the canvas hidden, the clock running, until og.loading.done; then the gate (with `gate tap`) |
+
+- Report stages with og.loading.stage (`{ id, fraction, label }`) and
+  end with og.loading.done once og.loading.idle is true. Until then a
+  `page` screen keeps the canvas hidden while the frames prepare their
+  pipelines and textures.
+- With `game`, the first screen the game shows is its loading screen:
+  draw it from a document or a few sprites in the boot bundle, and keep
+  the rest in streaming groups (§12).
+- `loading_labels` names the engine splash's caption for each boot
+  stage; without it the splash says "Loading" in the browser's
+  language.
+- Any web page that frames or hosts the game hears the same loading:
+  window events on the game's page and messages to a framing page
+  (docs/web-export.md §Loading events).

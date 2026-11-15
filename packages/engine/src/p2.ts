@@ -1,4 +1,4 @@
-// The phase 2 and depth modules' namespaces (IDL `terrain`, `stream`, `path`, `timeline`, `motion`, `destruction`, `vfx`, `video`, `film`): thin calls into the host's binding symbols,
+// The phase 2 and depth modules' namespaces (IDL `terrain`, `stream`, `scene`, `loading`, `path`, `timeline`, `motion`, `destruction`, `vfx`, `video`, `film`): thin calls into the host's binding symbols,
 // typed by the generated declarations through index.ts.
 
 import type { HostAbi } from "./generated/abi.ts";
@@ -34,6 +34,23 @@ export const stream = Object.freeze({
   release: (world: W, group: string) => parse(abi().og_stream_release(world.id, group)),
   budget: (world: W) => parse(abi().og_stream_budget(world.id)),
   setBudget: (world: W, bytes: number) => parse(abi().og_stream_set_budget(world.id, bytes)),
+});
+
+/** og.scene: preloading a scene's streaming groups and changing scene (IDL `scene`). */
+export const scene = Object.freeze({
+  preload: (world: W, name: string) => parse(abi().og_scene_preload(world.id, name)),
+  progress: (world: W, name: string) => parse(abi().og_scene_progress(world.id, name)),
+  release: (world: W, name: string) => parse(abi().og_scene_release(world.id, name)),
+  change: (world: W, name: string) => parse(abi().og_scene_change(world.id, name)),
+  current: (world: W) => parse(abi().og_scene_current(world.id)),
+});
+
+/** og.loading: the loading screen's stages and done (IDL `loading`). */
+export const loading = Object.freeze({
+  stage: (world: W, desc?: unknown) => parse(abi().og_loading_stage(world.id, json(desc))),
+  done: (world: W) => parse(abi().og_loading_done(world.id)),
+  idle: (world: W) => abi().og_loading_idle(world.id),
+  status: (world: W) => parse(abi().og_loading_status(world.id)),
 });
 
 /** og.sight: fog of war, what each team sees and has seen (IDL `sight`). */

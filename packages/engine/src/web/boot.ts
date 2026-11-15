@@ -20,8 +20,11 @@ export function cookedDir(root: string): string {
 export class Received {
   loaded = 0;
   total: number;
-  constructor(total = 0) {
+  /** One file's: its total is the response's length when the response names it (not when it is encoded). */
+  readonly fromResponse: boolean;
+  constructor(total = 0, fromResponse = false) {
     this.total = total;
+    this.fromResponse = fromResponse;
   }
   /** Fraction in [0, 1]; grows the total when more arrived than expected. */
   get value(): number {
@@ -135,6 +138,10 @@ async function bytesOnce(url: string, received?: Received, onChunk?: () => void)
   // `#array#layer<n>`): sent as is, the browser takes the rest as a fragment.
   const r = await fetch(url.replaceAll("#", "%23"), typeof AbortSignal?.timeout === "function" ? { signal: AbortSignal.timeout(FETCH_DEADLINE_MS) } : {});
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  if (received?.fromResponse && !r.headers.get("content-encoding")) {
+    const length = Number(r.headers.get("content-length"));
+    if (length > 0) received.total = length;
+  }
   if (!received || !r.body) {
     const bytes = new Uint8Array(await r.arrayBuffer());
     if (received) received.loaded += bytes.length;
@@ -475,7 +482,9 @@ export function installFetcher(glue: WebExtras, manifest: string, basis: { js: s
     transcode(id, ktx2, target).catch((e: unknown) => glue.og_web_fail_texture?.(id, e instanceof Error ? e.message : String(e)));
   });
   glue.og_web_set_fetcher((path: string) => {
-    bytesOf(path)
+    // Its bytes as they arrive, for og.stream.status's and og.load.progress's `received`.
+    const got = glue.og_web_file_progress ? new Received(0, true) : undefined;
+    bytesOf(path, got, got ? () => glue.og_web_file_progress!(path, got.loaded, got.total) : undefined)
       .then((bytes) => put(path, bytes))
       .catch((e: unknown) => {
         tellLoadFailure(path, e);

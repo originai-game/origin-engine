@@ -235,6 +235,43 @@ pub fn og_load_sound_info(world: u32, sound: f64) -> Result<crate::host::wire::S
     })()
 }
 
+/// `og.load.progress`: a pending bundle's manifest as the host receives
+/// it; any other handle by its status.
+pub fn og_load_progress(world: u32, asset: f64) -> Result<wire::LoadProgress, String> {
+    let eng = engine(world)?;
+    let a = eng.assets.borrow();
+    let i = index_of(asset)
+        .filter(|&i| i < a.entries.len())
+        .ok_or_else(|| format!("asset {asset} is not alive"))?;
+    let e = &a.entries[i];
+    let status = match e.status {
+        Status::Ready => wire::LoadStatus::Ready,
+        Status::Pending => wire::LoadStatus::Pending,
+        Status::Failed(_) => wire::LoadStatus::Failed,
+    };
+    let (received, bytes) = match (&e.status, &e.payload) {
+        (Status::Pending, Payload::None) => {
+            let manifest = format!("{}/{}", assets::join(&a.root, &e.path), assets::MANIFEST);
+            crate::engine::hooks()
+                .and_then(|h| h.read_progress(&manifest))
+                .unwrap_or((0.0, 0.0))
+        }
+        _ => (0.0, 0.0),
+    };
+    let fraction = match status {
+        wire::LoadStatus::Ready => 1.0,
+        wire::LoadStatus::Failed => 0.0,
+        wire::LoadStatus::Pending if bytes > 0.0 => (received / bytes).clamp(0.0, 1.0) as f32,
+        wire::LoadStatus::Pending => 0.0,
+    };
+    Ok(wire::LoadProgress {
+        status,
+        received,
+        bytes,
+        fraction,
+    })
+}
+
 pub fn og_load_status(world: u32, asset: f64) -> String {
     let status = engine(world).ok().and_then(|eng| {
         let a = eng.assets.borrow();

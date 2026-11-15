@@ -144,6 +144,27 @@ pub trait Hooks {
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
         Fetch::Failed(format!("{path}: this host reads no files"))
     }
+    /// How much of `path` has arrived while the host fetches it: the bytes
+    /// received and the total once the response names it (0 before).
+    /// `None` when it is not being fetched: a native read completes at once.
+    /// Presentation only (a loading screen's bar), never a tick's input.
+    fn read_progress(&self, path: &str) -> Option<(f64, f64)> {
+        let _ = path;
+        None
+    }
+    /// The game's loading screen (og.loading): a stage it reported, or
+    /// `done` (`stage` is `"done"`). A web host tells its page; a native
+    /// host has no page to tell.
+    fn loading(&self, engine: u32, stage: &str, fraction: f64, label: &str) {
+        let _ = (engine, stage, fraction, label);
+    }
+    /// Whether the renderer has nothing waiting that would make a frame draw
+    /// less than the scene (og.loading.idle): pipelines compiling, textures
+    /// to upload, font faces to fetch. A host that makes them at once is idle.
+    fn loading_idle(&self, engine: u32) -> bool {
+        let _ = engine;
+        true
+    }
     /// The native file behind a read, captured before a background audio
     /// mixer uses it. A resident host may read an immutable input generation.
     fn asset_file(&self, path: &str) -> String {
@@ -440,6 +461,9 @@ pub(crate) struct ProjectGame {
     pub look: Option<String>,
     /// `saveVersion 3`: the game's save version (GameDesc.saveVersion).
     pub save_version: Option<u32>,
+    /// `publish { loading game }`: who draws the loading screen
+    /// (og.loading.status answers it on every host).
+    pub loading: Option<String>,
 }
 
 /// Reads `tick`, `seed`, `scenes`, `scene`, `look` and `saveVersion` from project.ogt's
@@ -513,6 +537,15 @@ pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
         u64::from(u32::MAX),
         "the game's save version, a whole number from 1",
     )?;
+    // og checks the publish block (crates/og-cli/src/publish.rs); the
+    // runtime reads only who draws the loading screen.
+    let loading = b
+        .get("publish")
+        .and_then(|e| e.block.as_ref())
+        .and_then(|p| p.get("loading"))
+        .and_then(|e| e.values.first())
+        .and_then(|v| v.as_word().or_else(|| v.as_str()))
+        .map(str::to_string);
     Ok(ProjectGame {
         tick,
         seed,
@@ -520,6 +553,7 @@ pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
         scene,
         look,
         save_version,
+        loading,
     })
 }
 

@@ -58,7 +58,7 @@ dates, no absolute paths, files in sorted order
   "crossOriginIsolation": "preferred",
   "display": { "fit": "fill", "aspect": null, "aspectMin": null, "aspectMax": null,
                "orientation": "any", "dprCap": 2,
-               "fullscreen": "off", "gate": "tap", "madeWith": true },
+               "fullscreen": "off", "gate": "tap", "madeWith": true, "loading": "engine" },
   "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "source": "brand" },
             { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "source": "brand" }],
   "pwa": { "manifest": "manifest.webmanifest", "serviceWorker": "sw.js" },
@@ -337,7 +337,8 @@ Worker's console and in the boot telemetry sample.
 ## The shell
 
 - **Boot**: the brand symbol on ink `#14161b` plays `genesis` once, then
-  `progress` with the bytes received. Motion never delays the game:
+  `progress` with the bytes received, captioned by the game's stage label
+  while one is reported (§Loading events). Motion never delays the game:
   progress shows after genesis or 1.2 s, and `prefers-reduced-motion`
   skips genesis.
 - **Play gate**: the first screen is drawn behind it, with the platform's
@@ -387,6 +388,51 @@ Worker's console and in the boot telemetry sample.
 - **URL parameters**: `replay-seed=<u32>`, `autoplay=0` (a harness drives
   the clock through the probe: no gate, no first tick, no service worker),
   `trace` (§The og-probe wire).
+
+### Loading events
+
+Every exported page tells whoever hosts it how loading goes, with no
+platform and no script of the host's on the game's page: a page that is
+the game's own top level listens on its `window`, and a page that frames
+the game (any site, any origin) hears the same as messages.
+
+| Event | `detail` | When |
+|---|---|---|
+| `og:progress` | `{ value, stage, fraction }` | the boot's bar: `value` 0 to 1 over every stage, `fraction` within `stage` (`wasm`, `bundle`, `fetch`, `transcode`, `ready`, `prime`, `present`) |
+| `og:stage` | `{ id, fraction, label }` | the game's own stage (og.loading.stage), from GameDesc.start on |
+| `og:ready` | `{ lanes, tier }` | the engine is running (before its first frame) |
+| `og:first-frame` | none | the first frame is drawn |
+| `og:loaded` | none | the game called og.loading.done |
+| `og:failed` | `{ message }` | the engine could not start or stopped |
+
+- A framed page posts each to `window.parent` as
+  `{ source: "origin-engine", type, detail }` with target origin `*`:
+  the details carry no secret, and the host checks `event.source` is the
+  game's iframe and `data.source` is `origin-engine`.
+- project.ogt `publish { loading engine | game | page }` picks who draws
+  the loading screen (`og api show loading`): `engine` the splash;
+  `game` the splash until the first frame, then the game's own frames,
+  the clock running, until og.loading.done (then the gate, with
+  `gate tap`); `page` no splash and the canvas hidden, the clock
+  running and its frames preparing, until og.loading.done (then the
+  gate, with `gate tap`), the host drawing its loader from the events
+  above. `publish { loading_labels { fetch "…" … } }` names the
+  splash's caption per stage. og build writes them into the page's
+  configuration as `bootScreen` and `stageLabels`, and og-build.json's
+  `display.loading` says which.
+- Byte progress after the boot (a streaming group's pack, another
+  bundle's manifest) reaches the game, not the page: og.stream.status's
+  `received` and `progress`, og.scene.progress and og.load.progress
+  (`loading §12`).
+
+```js
+// A site framing the game draws its own bar.
+addEventListener("message", (e) => {
+  if (e.source !== frame.contentWindow || e.data?.source !== "origin-engine") return;
+  if (e.data.type === "og:progress") bar.value = e.data.detail.value;
+  if (e.data.type === "og:loaded" || e.data.type === "og:first-frame") bar.hidden = true;
+});
+```
 
 ## The Player and Stage contract
 

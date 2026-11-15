@@ -38,7 +38,7 @@ async function loadOwnSourceMap(): Promise<void> {
 export async function start(game: GameToken, data: Start, run: Run, gate: Gate, loop: FrameLoop): Promise<void> {
   try {
     if (data.telemetry) run.frameCounter = new FrameCounter();
-    if (data.stages) gate.pageStages();
+    gate.pageStages(data.stages === true);
     const received = new Received((data.expect?.wasm ?? 0) + (data.expect?.cooked ?? 0));
     // Fork s61: the bar runs on past the download (BOOT_SPANS): the bytes, then the transcode by
     // texture, the first tick, and the first frame's pipelines (present below).
@@ -109,6 +109,11 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     }
     // Fork s70: frames prepare without drawing while the page's loading screen covers the canvas.
     if (gate.covered) glue.og_web_covered?.(true);
+    // og.loading's stages and done reach the page; its idle asks the renderer here.
+    glue.og_web_set_loading?.(
+      (_engine, stage, fraction, label) => gate.report(stage, fraction, label),
+      () => gate.idle(),
+    );
     run.boot.phase("wasm");
     // Terrain tiles are inflated by the browser off the engine's thread where it can.
     installInflater(glue);

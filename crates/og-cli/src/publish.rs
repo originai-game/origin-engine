@@ -21,6 +21,10 @@
 //!   color_textures etc1s    # etc1s | uastc: over `cook { color_textures }` for this export's cook
 //!   telemetry on            # on | off: field telemetry (crash details, frame times, load stages)
 //!   pipelines auto          # auto | sync | async | prewarm: which web pipelines use createRenderPipelineAsync (auto: async on a mobile GPU)
+//!   loading engine          # engine | game | page: who draws the loading screen (og.loading)
+//!   loading_labels {        # the splash's caption per boot stage
+//!     fetch "下载中"          # fetch | transcode | prime | present
+//!   }
 //! }
 //! ```
 //!
@@ -91,6 +95,32 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
             "telemetry" => json!(word(e, &file, &["on", "off"])?),
             "pipelines" => json!(word(e, &file, &["auto", "sync", "async", "prewarm"])?),
             "made_with" => json!(word(e, &file, &["true", "false"])? == "true"),
+            "loading" => json!(word(e, &file, &["engine", "game", "page"])?),
+            "loading_labels" => {
+                let block = e.block.as_ref().ok_or_else(|| {
+                    format!(
+                        "{file}:{}: publish.loading_labels is a block of `<stage> \"<caption>\"` lines (fetch, transcode, prime, present)",
+                        e.line
+                    )
+                })?;
+                let mut labels = serde_json::Map::new();
+                for l in &block.entries {
+                    if !["fetch", "transcode", "prime", "present"].contains(&l.key.as_str()) {
+                        return Err(format!(
+                            "{file}:{}: publish.loading_labels has no stage `{}`; the stages are fetch, transcode, prime and present",
+                            l.line, l.key
+                        ));
+                    }
+                    let caption = l.string(0).map_err(|_| {
+                        format!(
+                            "{file}:{}: publish.loading_labels.{} takes the caption as a quoted string",
+                            l.line, l.key
+                        )
+                    })?;
+                    labels.insert(l.key.clone(), json!(caption));
+                }
+                Value::Object(labels)
+            }
             "dpr_cap" => {
                 let n = e
                     .f32(0)
@@ -121,7 +151,7 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
             "short_name" => json!(text(e, &file)?),
             other => {
                 return Err(format!(
-                    "{file}:{}: publish has no `{other}`; it takes probe, out, isolation, fit, aspect, aspect_min, aspect_max, orientation, dpr_cap, fullscreen, gate, made_with, icon, short_name, color_textures, telemetry and pipelines",
+                    "{file}:{}: publish has no `{other}`; it takes probe, out, isolation, fit, aspect, aspect_min, aspect_max, orientation, dpr_cap, fullscreen, gate, made_with, icon, short_name, color_textures, telemetry, pipelines, loading and loading_labels",
                     e.line
                 ));
             }
@@ -132,6 +162,7 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
             "aspect_max" => "aspectMax",
             "made_with" => "madeWith",
             "short_name" => "shortName",
+            "loading_labels" => "loadingLabels",
             k => k,
         };
         publish.insert(key.to_string(), v);
@@ -341,5 +372,26 @@ mod tests {
         assert!(boxed.contains("bound `fit fill`"), "{boxed}");
         let bad = settings_of("badmax", "  aspect_max \"wide\"\n").unwrap_err();
         assert!(bad.contains("publish.aspect_max is \"wide\""), "{bad}");
+    }
+
+    /// Who draws the loading screen and the splash's captions reach the
+    /// web build; a stage the boot does not have is refused by name.
+    #[test]
+    fn the_loading_screen_and_its_labels_reach_the_web_build() {
+        let s = settings_of(
+            "loading",
+            "  loading page\n  loading_labels {\n    fetch \"Downloading\"\n    present \"Almost\"\n  }\n",
+        )
+        .unwrap();
+        assert_eq!(s["publish"]["loading"], "page");
+        assert_eq!(
+            s["publish"]["loadingLabels"],
+            serde_json::json!({ "fetch": "Downloading", "present": "Almost" })
+        );
+        let bad = settings_of("badloading", "  loading splash\n").unwrap_err();
+        assert!(bad.contains("engine, game, page"), "{bad}");
+        let stage =
+            settings_of("badstage", "  loading_labels {\n    unpack \"…\"\n  }\n").unwrap_err();
+        assert!(stage.contains("no stage `unpack`"), "{stage}");
     }
 }

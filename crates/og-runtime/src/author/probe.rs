@@ -516,6 +516,9 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
             crate::bind::forces::before_tick(&eng, world);
             // What each team sees this tick (og.sight), from where things stand.
             crate::bind::sight::before_tick(&eng, world);
+            // A scene change asked for puts its scene in place, before
+            // the cells it places are seen.
+            crate::world::scenes::before_tick(&eng, world);
             // World cells load and unload as the tick starts (G3-3).
             crate::world::stream::cells::before_tick(&eng, world);
             crate::present::geometry::before_tick(&eng, world);

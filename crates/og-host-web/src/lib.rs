@@ -67,6 +67,13 @@ thread_local! {
     static FORMATS: RefCell<IdMap<u32, og_render::TextureFormats>> = const { RefCell::new(IdMap::new()) };
     /// The device each engine's attached renderer runs on, as `og_web_gpu` answers it.
     static GPUS: RefCell<IdMap<u32, String>> = const { RefCell::new(IdMap::new()) };
+    /// Bytes received and expected of each file the Worker is fetching
+    /// (`og_web_file_progress`), for og.stream's and og.load's progress;
+    /// dropped when the file lands.
+    static PROGRESS: RefCell<BTreeMap<String, (f64, f64)>> = const { RefCell::new(BTreeMap::new()) };
+    /// The Worker's loading screen (`og_web_set_loading`): its
+    /// `report(engine, stage, fraction, label)` and `idle(engine)`.
+    static LOADING: RefCell<Option<(js_sys::Function, js_sys::Function)>> = const { RefCell::new(None) };
     /// Paths handed to the fetcher and not answered yet, so each is asked for once at a time.
     static REQUESTED: RefCell<std::collections::BTreeSet<String>> = const { RefCell::new(std::collections::BTreeSet::new()) };
     /// Packs let go of while they were fetched, with their group's texture

@@ -561,6 +561,8 @@ pub trait LoadApi: Wire {
     fn og_load_bundle(&self, world: u32, path: String) -> String;
     /// `og.load.bundleInfo`
     fn og_load_bundle_info(&self, world: u32, asset: f64) -> String;
+    /// `og.load.progress`
+    fn og_load_progress(&self, world: u32, asset: f64) -> String;
     /// `og.load.defaultBundle`
     fn og_load_default_bundle(&self, world: u32) -> String;
     /// `og.load.gltf`
@@ -1511,10 +1513,36 @@ pub trait FilmApi: Wire {
     fn og_film_stop(&self, world: u32, film: f64) -> String;
 }
 
-/// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi {}
+/// `scene`: packages/knowledge/wiki/scene.md.
+pub trait SceneApi: Wire {
+    /// `og.scene.preload`
+    fn og_scene_preload(&self, world: u32, scene: String) -> String;
+    /// `og.scene.progress`
+    fn og_scene_progress(&self, world: u32, scene: String) -> String;
+    /// `og.scene.release`
+    fn og_scene_release(&self, world: u32, scene: String) -> String;
+    /// `og.scene.change`
+    fn og_scene_change(&self, world: u32, scene: String) -> String;
+    /// `og.scene.current`
+    fn og_scene_current(&self, world: u32) -> String;
+}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi> Host for T {}
+/// `loading`: packages/knowledge/wiki/loading.md.
+pub trait LoadingApi: Wire {
+    /// `og.loading.stage`
+    fn og_loading_stage(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.loading.done`
+    fn og_loading_done(&self, world: u32) -> String;
+    /// `og.loading.idle`
+    fn og_loading_idle(&self, world: u32) -> bool;
+    /// `og.loading.status`
+    fn og_loading_status(&self, world: u32) -> String;
+}
+
+/// Every trait: a host is a type that implements all of them.
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi + SceneApi + LoadingApi {}
+
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi + SceneApi + LoadingApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -1730,6 +1758,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_render_baked_lighting",
     "og_load_bundle",
     "og_load_bundle_info",
+    "og_load_progress",
     "og_load_default_bundle",
     "og_load_gltf",
     "og_load_scene",
@@ -2150,6 +2179,15 @@ pub const SYMBOLS: &[&str] = &[
     "og_film_skip",
     "og_film_chart",
     "og_film_stop",
+    "og_scene_preload",
+    "og_scene_progress",
+    "og_scene_release",
+    "og_scene_change",
+    "og_scene_current",
+    "og_loading_stage",
+    "og_loading_done",
+    "og_loading_idle",
+    "og_loading_status",
 ];
 
 pub use og_records::{COLUMNS, ColumnDecl, FieldDecl, RECORDS, RecordDecl};

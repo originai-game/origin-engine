@@ -88,6 +88,7 @@ pub(crate) fn drop_textures(ids: &[String]) {
 /// its group let go of it meanwhile.
 fn land(path: String, file: Result<Vec<u8>, String>) {
     REQUESTED.with(|r| r.borrow_mut().remove(&path));
+    crate::PROGRESS.with(|p| p.borrow_mut().remove(&path));
     if let Some(textures) = ORPHANED.with(|o| o.borrow_mut().remove(&path)) {
         drop_textures(&textures);
         return;
@@ -100,6 +101,25 @@ fn land(path: String, file: Result<Vec<u8>, String>) {
 #[wasm_bindgen]
 pub fn og_web_put_file(path: String, bytes: Vec<u8>) {
     land(path, Ok(bytes));
+}
+
+/// How much of a file the Worker is fetching has arrived: `received`
+/// bytes of `total` (0 until the response names its length). Only what
+/// the engine asked for counts; a progress for a file that landed or was
+/// never asked for is dropped.
+#[wasm_bindgen]
+pub fn og_web_file_progress(path: String, received: f64, total: f64) {
+    if REQUESTED.with(|r| r.borrow().contains(&path)) {
+        crate::PROGRESS.with(|p| p.borrow_mut().insert(path, (received, total)));
+    }
+}
+
+/// The Worker's loading screen: `report(engine, stage, fraction, label)`
+/// for og.loading.stage and og.loading.done (stage `done`), and
+/// `idle(engine)`, true while the renderer has nothing waiting.
+#[wasm_bindgen]
+pub fn og_web_set_loading(report: js_sys::Function, idle: js_sys::Function) {
+    crate::LOADING.with(|l| *l.borrow_mut() = Some((report, idle)));
 }
 
 /// A cooked file that could not be fetched, with the reason.

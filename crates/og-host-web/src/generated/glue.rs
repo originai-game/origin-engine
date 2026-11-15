@@ -1224,6 +1224,11 @@ pub fn og_load_bundle_info(world: u32, asset: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_progress(world: u32, asset: f64) -> String {
+    <Host as LoadApi>::og_load_progress(&Host, world, asset)
+}
+
+#[wasm_bindgen]
 pub fn og_load_default_bundle(world: u32) -> String {
     <Host as LoadApi>::og_load_default_bundle(&Host, world)
 }
@@ -3362,4 +3367,49 @@ pub fn og_film_chart(world: u32, dialogue: String) -> String {
 #[wasm_bindgen]
 pub fn og_film_stop(world: u32, film: f64) -> String {
     <Host as FilmApi>::og_film_stop(&Host, world, film)
+}
+
+#[wasm_bindgen]
+pub fn og_scene_preload(world: u32, scene: String) -> String {
+    <Host as SceneApi>::og_scene_preload(&Host, world, scene)
+}
+
+#[wasm_bindgen]
+pub fn og_scene_progress(world: u32, scene: String) -> String {
+    <Host as SceneApi>::og_scene_progress(&Host, world, scene)
+}
+
+#[wasm_bindgen]
+pub fn og_scene_release(world: u32, scene: String) -> String {
+    <Host as SceneApi>::og_scene_release(&Host, world, scene)
+}
+
+#[wasm_bindgen]
+pub fn og_scene_change(world: u32, scene: String) -> String {
+    <Host as SceneApi>::og_scene_change(&Host, world, scene)
+}
+
+#[wasm_bindgen]
+pub fn og_scene_current(world: u32) -> String {
+    <Host as SceneApi>::og_scene_current(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_loading_stage(world: u32, desc: Option<String>) -> String {
+    <Host as LoadingApi>::og_loading_stage(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_loading_done(world: u32) -> String {
+    <Host as LoadingApi>::og_loading_done(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_loading_idle(world: u32) -> bool {
+    <Host as LoadingApi>::og_loading_idle(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_loading_status(world: u32) -> String {
+    <Host as LoadingApi>::og_loading_status(&Host, world)
 }

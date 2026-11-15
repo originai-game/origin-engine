@@ -134,6 +134,16 @@ export interface PublishSettings {
    * small game 2.5-5x later (the tables in §Pipelines).
    */
   readonly pipelines: "auto" | "sync" | "async" | "prewarm";
+  /**
+   * Who draws the loading screen (og.loading, docs/web-export.md §Loading
+   * events): `engine` (the default) the splash until the first frame;
+   * `game` the splash while the engine boots, then the game's own frames
+   * until og.loading.done; `page` the hosting page, the canvas hidden
+   * until og.loading.done.
+   */
+  readonly loading: "engine" | "game" | "page";
+  /** The splash's caption per boot stage (`fetch`, `transcode`, `prime`, `present`); null: "Loading". */
+  readonly loadingLabels: Readonly<Record<string, string>> | null;
 }
 
 export interface ProjectSettings {
@@ -161,6 +171,8 @@ export const DEFAULT_PUBLISH: PublishSettings = {
   shortName: null,
   telemetry: "on",
   pipelines: "auto",
+  loading: "engine",
+  loadingLabels: null,
 };
 
 /** The settings of a project read without og (tests): name, id, engine and profile; publish defaults. */
@@ -979,6 +991,8 @@ export async function webBuild(project: string, entry: string, out: string, publ
     gate: p.gate,
     madeWith: p.madeWith,
     ...(p.pipelines !== "auto" ? { pipelines: p.pipelines } : {}),
+    ...(p.loading !== "engine" ? { bootScreen: p.loading } : {}),
+    ...(p.loadingLabels ? { stageLabels: p.loadingLabels } : {}),
     serviceWorker: publish,
     expect: { wasm: wasmBytes, cooked: cookedBytes, lanes: lanes ? statSync(join(out, served("origin-engine-lanes_bg.wasm"))).size : 0 },
     files: names,

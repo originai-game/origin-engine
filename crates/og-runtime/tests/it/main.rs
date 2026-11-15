@@ -120,6 +120,8 @@ mod restored_event;
 mod review_views;
 #[path = "../scatter_model_space.rs"]
 mod scatter_model_space;
+#[path = "../scene_change.rs"]
+mod scene_change;
 #[path = "../scene_string.rs"]
 mod scene_string;
 #[path = "../seabed.rs"]

@@ -114,8 +114,10 @@ export interface ShellOptions {
   readonly project?: string;
   /** Boot progress, 0 to 1, with the stage (`wasm`, `bundle`, `fetch`, `transcode`, `ready`). */
   readonly onProgress?: (value: number, stage: string, fraction?: number) => void;
-  /** Fork s61: a loading stage the game reported itself (worker global `ogBootStage`), for a page that draws its own loading screen. */
-  readonly onStage?: (id: string, fraction: number) => void;
+  /** A loading stage the game reported (og.loading.stage; `done` for og.loading.done), from the boot on. */
+  readonly onStage?: (id: string, fraction: number, label: string) => void;
+  /** The page draws the loading screen (project.ogt `loading page`): the canvas stays hidden, its frames preparing, until og.loading.done. */
+  readonly cover?: boolean;
   /** The highest device pixel ratio the canvas is drawn at (default 2). */
   readonly dprCap?: number;
   /** Bytes the boot fetches (the wasm, the cooked bundle), so progress is the bytes received. */
@@ -241,8 +243,8 @@ export class Shell {
       }
       // Fork s61: the game's own loading stages (its loading screen's, after the engine's).
       if (m.type === "og-stage") {
-        const p = m as unknown as { id?: string; fraction?: number };
-        this.#onStage?.(p.id ?? "", p.fraction ?? 0);
+        const p = m as unknown as { id?: string; fraction?: number; label?: string };
+        this.#onStage?.(p.id ?? "", p.fraction ?? 0, p.label ?? "");
         return;
       }
       // Fork s60: the pipelines' counts when the warm-up ends, over the first frame's.

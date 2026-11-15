@@ -481,6 +481,16 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::bind::sight::RECORDS[2],
         enable: |_, _| Ok(()),
     },
+    // og.scene: written and sent by the runtime's before-tick hook
+    // (world::scenes) once a game first changes scene; no module to grant.
+    Lazy {
+        name: crate::world::scenes::RECORDS[0],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: crate::world::scenes::RECORDS[1],
+        enable: |_, _| Ok(()),
+    },
 ];
 
 /// Lazy records registered together: naming one registers the rest.
@@ -495,6 +505,7 @@ const TOGETHER: &[&[&str]] = &[
     &crate::bind::destruction2d::RECORDS,
     &crate::bind::vfx::RECORDS,
     &crate::bind::film::RECORDS,
+    &crate::world::scenes::RECORDS,
     &[
         crate::world::stream::cells::CELL,
         crate::world::stream::cells::MEMBER,

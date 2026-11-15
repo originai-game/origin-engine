@@ -1,0 +1,60 @@
+module loading {
+  doc "The loading screen: who draws it (project.ogt `publish { loading engine | game | page }`), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader."
+  guide "loading §13"
+  core stage done idle
+
+  enum LoadingScreen {
+    doc "Who draws the loading screen (project.ogt `publish.loading`)."
+    variant engine "The engine's splash: the brand mark with the boot's progress and the stage labels, until the first frame."
+    variant game "The game: the splash covers only the engine's own boot, then the game's first frames are its loading screen, the clock running, until og.loading.done."
+    variant page "The page hosting the game: no splash, the canvas hidden with the clock running until og.loading.done, and the page draws its loader from the window events."
+  }
+
+  struct LoadingStageDesc {
+    doc "A stage of the game's own loading (og.loading.stage)."
+    desc true
+    field id String "The stage's id, such as `assets` or `level`; `done` is og.loading.done."
+    field fraction f32 "How far the stage is, 0 to 1." {
+      min 0
+      max 1
+    }
+    field label String "Text for a loader to show, in the player's language (empty: the page's own words)."
+  }
+
+  struct LoadingStatus {
+    doc "Where loading is."
+    field screen LoadingScreen "Who draws the loading screen on this host (natively: project.ogt's choice, as the web page would)."
+    field stage String "The last stage the game reported (empty: none)."
+    field fraction f32 "Its fraction."
+    field label String "Its label."
+    field done bool "Whether the game called og.loading.done."
+    field idle bool "As og.loading.idle answers."
+  }
+
+  fn stage {
+    doc "Report a stage of the game's loading: the web page sends it to the page as `og:stage` (and to the framing page), and the engine's splash shows its label and fraction. Presentation only: nothing a tick reads changes. Systems may call it."
+    guide "loading §13"
+    param world World "The world."
+    param desc LoadingStageDesc "The stage, its fraction and its label."
+    returns Result.Void "Refused for a fraction outside 0 to 1."
+  }
+
+  fn done {
+    doc "The game's loading is done: a `page` screen uncovers the canvas, the page hears `og:loaded`, and with `game` the play gate (if any) shows. Call it once og.loading.idle is true, so the first frame shown draws the whole scene. Calling it again does nothing."
+    guide "loading §13"
+    param world World "The world."
+    returns Result.Void
+  }
+
+  fn idle {
+    doc "Whether the renderer has nothing left that would make a frame draw less than the scene: no pipelines compiling, no textures waiting to upload, no font faces fetched for the locale. True on a host that makes them at once (natively, and without a renderer)."
+    param world World "The world."
+    returns bool
+  }
+
+  fn status {
+    doc "The screen, the last stage reported and whether loading is done."
+    param world World "The world."
+    returns LoadingStatus
+  }
+}

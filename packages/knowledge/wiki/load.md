@@ -12,7 +12,7 @@ See `loading §1`.
 
 - **TypeScript**: functions are the namespace `og.load`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.document`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 67 more are advanced (`og api show load --all`).
+- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.document`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 69 more are advanced (`og api show load --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -50,6 +50,8 @@ module load {
 | [`og.Model`](load/record-Model.md) | component |  | Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. |
 | [`og.load.bundle`](load/fn-bundle.md) | function | `(world: World, path: string): Result<Asset>` | Open another cooked bundle (the game's own `cooked` is open before the first tick). |
 | [`og.load.bundleInfo`](load/fn-bundleInfo.md) | function | `(world: World, asset: Asset): Result<BundleInfo>` | What an open bundle holds. |
+| [`LoadProgress`](load/type-LoadProgress.md) | struct |  | How far a load has arrived (og.load.progress). |
+| [`og.load.progress`](load/fn-progress.md) | function | `(world: World, asset: Asset): Result<LoadProgress>` | How far a load has arrived: a bundle og.load.bundle opened, or any handle (a cooked load answers ready at once). |
 | [`og.load.defaultBundle`](load/fn-defaultBundle.md) | function | `(world: World): Result<Asset>` | The game's own bundle, opened before the first tick from `cooked/`. |
 | [`og.load.gltf`](load/fn-gltf.md) | function | `(world: World, path: string, desc?: GltfDesc): Result<Asset>` | Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once. |
 | [`og.load.scene`](load/fn-scene.md) | function | `(world: World, path: string): Result<Asset>` | Load a cooked scene (.ogt). |

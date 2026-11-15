@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 43 modules, generated from `crates/og-api/api.ogt`. Each module has an overview page and every function, component and type a page of its own under `<module>/`; every signature is quoted from the IDL. `og api find <words>` ranks every entry; `og api show <name>` prints one.
+`@origingame/engine`, API version 1: 45 modules, generated from `crates/og-api/api.ogt`. Each module has an overview page and every function, component and type a page of its own under `<module>/`; every signature is quoted from the IDL. `og api find <words>` ranks every entry; `og api show <name>` prints one.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -55,6 +55,8 @@ Every failure is a returned Result; desc objects may omit any field; nothing rea
 | [`vfx`](vfx.md) | `og.vfx.*` | kept | Composed effects: one effect (a fireball's impact, a heal, a level-up) as a timeline of elements in an `.ogt` of `type vfx`: emitters, meshes, trails, beams, lights, decals, glows, flipbooks, shakes and sounds. |
 | [`sight`](sight.md) | `og.sight.*` | kept | Fog of war: which ground each team sees now and has seen before. An og.SightMap lays a grid over the og.Volume on its entity; every og.Sight is a team's eyes, and og.SightBlocker regions stop them. The map is world state, cast again as each tick starts: saved, restored and hashed with the world, the same on every host. The game asks it about a point (og.sight.visible, og.sight.explored), and the renderer draws the same cells over the frame. |
 | [`film`](film.md) | `og.film.*` | kept | Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-film: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `film.open` marker, lock at `film.lock` and are taken at its cut (`film.cut`, else its end), the default (`#default`) when none was chosen. |
+| [`scene`](scene.md) | `og.scene.*` | kept | Scene changes with their assets fetched first: og.scene.preload asks for every streaming group a scene declares, og.scene.progress says how much of them has arrived, and og.scene.change replaces the current scene with it as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or an asset id (`scenes/level2.ogt`). |
+| [`loading`](loading.md) | `og.loading.*` | kept | The loading screen: who draws it (project.ogt `publish { loading engine \| game \| page }`), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader. |
 
 ## Guides
 

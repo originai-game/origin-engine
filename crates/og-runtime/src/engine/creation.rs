@@ -106,6 +106,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         max_catch_up_ticks: a.game.max_catch_up_ticks.max(1),
         accumulator_ms: 0.0,
         facts: a.game.facts,
+        scenes: a.game.scenes.clone(),
         boot_scene: None,
         scene_source: None,
         scene_instances: Vec::new(),

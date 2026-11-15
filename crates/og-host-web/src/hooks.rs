@@ -79,6 +79,33 @@ impl Hooks for WebHooks {
         }
     }
 
+    fn read_progress(&self, path: &str) -> Option<(f64, f64)> {
+        crate::PROGRESS.with(|p| p.borrow().get(path).copied())
+    }
+
+    fn loading(&self, engine: u32, stage: &str, fraction: f64, label: &str) {
+        crate::LOADING.with(|l| {
+            if let Some((report, _)) = &*l.borrow() {
+                let args = js_sys::Array::of4(
+                    &JsValue::from(engine),
+                    &JsValue::from_str(stage),
+                    &JsValue::from_f64(fraction),
+                    &JsValue::from_str(label),
+                );
+                let _ = report.apply(&JsValue::NULL, &args);
+            }
+        });
+    }
+
+    fn loading_idle(&self, engine: u32) -> bool {
+        crate::LOADING.with(|l| match &*l.borrow() {
+            Some((_, idle)) => idle
+                .call1(&JsValue::NULL, &JsValue::from(engine))
+                .map_or(true, |v| v.as_bool().unwrap_or(true)),
+            None => true,
+        })
+    }
+
     fn texture(
         &self,
         texture: &og_bundle::runtime::CookedTexture,

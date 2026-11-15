@@ -100,24 +100,35 @@ export class Gate {
     return pipelines.takeSkipped() > 0 || pipelines.compiling() > 0 || this.#texturesWaiting();
   }
 
-  // Fork s61: a game that draws its loading screen with the page (og-config bootScreen "page") reports its
-  // own stages there (`ogBootStage(id, fraction)`: og:stage on the page), and asks whether the frames still
-  // wait for pipelines compiling (s60) or textures to upload (s63) before it calls its loading done (`ogBootIdle()`).
-  pageStages(): void {
+  // og.loading (fork s61): the game's stages reach the page as `og-stage`, and its done (stage
+  // `done`) uncovers a canvas the page's loading screen covers (`cover`: project.ogt `loading page`).
+  // The worker globals ogBootStage(id, fraction) and ogBootIdle() are the same calls under their
+  // first names.
+  pageStages(cover: boolean): void {
     const g = globalThis as { ogBootStage?: (id: string, fraction?: number) => void; ogBootIdle?: () => boolean };
     // Fork s70: the page's loading screen hides the canvas until the game calls its loading done, so the
     // frames until then prepare without drawing (and make the pipelines a pass would make, warm above).
-    this.covered = true;
-    this.#run.glue?.og_web_covered?.(true);
-    g.ogBootStage = (id, fraction = 0) => {
-      if (id === "done" && this.covered) {
-        this.covered = false;
-        this.#run.glue?.og_web_covered?.(false);
-        console.info(`renderer: the page uncovered the canvas at ${Math.round(performance.now())} ms (${this.#coveredWarm} pipelines warmed meanwhile)`);
-      }
-      self.postMessage({ type: "og-stage", id, fraction });
-    };
-    g.ogBootIdle = () => pipelines.compiling() === 0 && !this.#texturesWaiting();
+    if (cover) {
+      this.covered = true;
+      this.#run.glue?.og_web_covered?.(true);
+    }
+    g.ogBootStage = (id, fraction = 0) => this.report(id, fraction, "");
+    g.ogBootIdle = () => this.idle();
+  }
+
+  /** A loading stage the game reported (og.loading.stage), or its done: told to the page. */
+  report(id: string, fraction: number, label: string): void {
+    if (id === "done" && this.covered) {
+      this.covered = false;
+      this.#run.glue?.og_web_covered?.(false);
+      console.info(`renderer: the page uncovered the canvas at ${Math.round(performance.now())} ms (${this.#coveredWarm} pipelines warmed meanwhile)`);
+    }
+    self.postMessage({ type: "og-stage", id, fraction, label });
+  }
+
+  /** og.loading.idle: no pipelines compiling and no textures or font faces waiting. */
+  idle(): boolean {
+    return pipelines.compiling() === 0 && !this.#texturesWaiting();
   }
 
   /** One rendered frame without a tick: the first frame behind the play gate. */

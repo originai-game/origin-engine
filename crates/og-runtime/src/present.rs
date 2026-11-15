@@ -17,6 +17,7 @@ pub(crate) mod glyphs;
 pub(crate) mod hlod;
 pub(crate) mod interpolate;
 pub(crate) mod light2d_at;
+pub(crate) mod loading;
 pub(crate) mod look;
 pub(crate) mod presentation;
 pub(crate) mod probes;

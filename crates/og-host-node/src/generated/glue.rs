@@ -1467,6 +1467,12 @@ pub fn og_load_bundle_info(env: Env, world: u32, asset: f64) -> String {
     <Host as LoadApi>::og_load_bundle_info(&Host, world, asset)
 }
 
+#[napi(js_name = "og_load_progress")]
+pub fn og_load_progress(env: Env, world: u32, asset: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_progress(&Host, world, asset)
+}
+
 #[napi(js_name = "og_load_default_bundle")]
 pub fn og_load_default_bundle(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -4026,4 +4032,58 @@ pub fn og_film_chart(env: Env, world: u32, dialogue: String) -> String {
 pub fn og_film_stop(env: Env, world: u32, film: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as FilmApi>::og_film_stop(&Host, world, film)
+}
+
+#[napi(js_name = "og_scene_preload")]
+pub fn og_scene_preload(env: Env, world: u32, scene: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SceneApi>::og_scene_preload(&Host, world, scene)
+}
+
+#[napi(js_name = "og_scene_progress")]
+pub fn og_scene_progress(env: Env, world: u32, scene: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SceneApi>::og_scene_progress(&Host, world, scene)
+}
+
+#[napi(js_name = "og_scene_release")]
+pub fn og_scene_release(env: Env, world: u32, scene: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SceneApi>::og_scene_release(&Host, world, scene)
+}
+
+#[napi(js_name = "og_scene_change")]
+pub fn og_scene_change(env: Env, world: u32, scene: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SceneApi>::og_scene_change(&Host, world, scene)
+}
+
+#[napi(js_name = "og_scene_current")]
+pub fn og_scene_current(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SceneApi>::og_scene_current(&Host, world)
+}
+
+#[napi(js_name = "og_loading_stage")]
+pub fn og_loading_stage(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadingApi>::og_loading_stage(&Host, world, desc)
+}
+
+#[napi(js_name = "og_loading_done")]
+pub fn og_loading_done(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadingApi>::og_loading_done(&Host, world)
+}
+
+#[napi(js_name = "og_loading_idle")]
+pub fn og_loading_idle(env: Env, world: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadingApi>::og_loading_idle(&Host, world)
+}
+
+#[napi(js_name = "og_loading_status")]
+pub fn og_loading_status(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadingApi>::og_loading_status(&Host, world)
 }

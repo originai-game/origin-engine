@@ -124,6 +124,9 @@ pub(crate) struct State {
     pub max_catch_up_ticks: u32,
     pub accumulator_ms: f64,
     pub facts: Option<u32>,
+    /// GameDesc.scenes (else project.ogt's): scene names to asset paths, for
+    /// og.scene's names.
+    pub scenes: BTreeMap<String, String>,
     /// The scene GameDesc.scene names, while its bundle is still loading.
     pub boot_scene: Option<String>,
     /// The asset id of the scene GameDesc.scene spawned (`save_scene`

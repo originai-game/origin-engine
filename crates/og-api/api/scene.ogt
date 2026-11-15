@@ -1,0 +1,88 @@
+module scene {
+  doc "Scene changes with their assets fetched first: og.scene.preload asks for every streaming group a scene declares, og.scene.progress says how much of them has arrived, and og.scene.change replaces the current scene with it as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or an asset id (`scenes/level2.ogt`)."
+  doc "What is resident is presentation: until a group arrives its models draw proxies and its sounds silence, so a change happens at the same tick on every host and in a replay. A loading screen (og.loading) covers it until og.scene.progress says ready."
+  guide "loading §12"
+  core preload progress change
+
+  resource SceneState {
+    doc "The scene og.scene.change put in place and the one it waits to put in place: world state, saved, restored and hashed. Registered at the first og.scene.change; a world that never changes scene keeps its type table, saves and hash."
+    field current str.256 "The asset id of the scene in place (empty: the boot scene, GameDesc.scene, which spawned at the top level)." {
+      readonly true
+    }
+    field pending str.256 "The asset id of the scene og.scene.change asked for, put in place as the next tick starts (empty: none waits)." {
+      readonly true
+    }
+    field root Entity "The root the current scene's entities are under (0: the boot scene's, at the top level)." {
+      readonly true
+    }
+    field changes u32 "How many changes have been put in place." {
+      readonly true
+    }
+  }
+
+  event SceneChanged {
+    doc "A scene change was put in place: sent as the tick starts, before any system runs, with the previous scene's entities despawned and the new one's spawned."
+    field scene Asset "The scene now in place."
+    field previous Asset "The scene it replaced (0: the boot scene)."
+    field root Entity "The root the new scene's entities are under."
+    field entities u32 "How many entities it spawned."
+  }
+
+  struct ScenePreload {
+    doc "How far a scene's streaming groups have arrived (og.scene.progress). Presentation, for a loading screen: never decide a tick's outcome on it in a networked game."
+    field scene String "The scene's asset id."
+    field ready bool "Every group it declares is resident (true for a scene without groups)."
+    field fraction f32 "The bytes received over the bytes of its groups' packs, 0 to 1 (1 without groups)." {
+      min 0
+      max 1
+    }
+    field received f64 "Bytes of its packs received so far." {
+      unit bytes
+    }
+    field bytes f64 "Bytes of its packs in all." {
+      unit bytes
+    }
+    field groups List.String "The streaming groups it declares, by name."
+    field waiting List.String "Those not resident yet."
+    field failed String "Why a group failed (its og.stream.status reason, naming the group); empty otherwise."
+  }
+
+  fn preload {
+    doc "Load a scene and ask for every streaming group it declares (og.stream.request) until og.scene.release, so its packs are fetched while the current scene plays. Calling it again does nothing more. Systems may call it."
+    guide "loading §12"
+    aliases "preload level, load the next scene in the background, async scene load, Unity LoadSceneAsync, Godot ResourceLoader.load_threaded_request"
+    param world World "The world."
+    param scene String "A GameDesc.scenes name or the scene's asset id."
+    returns Result.Asset "The scene's handle, or why not: no such scene (the reason lists GameDesc.scenes), or not cooked."
+  }
+
+  fn progress {
+    doc "How far the scene's streaming groups have arrived: answered at once from what the host has received, for a loading screen's bar. Natively a group is read at the tick boundary it is admitted, so it goes from 0 to 1."
+    guide "loading §12"
+    param world World "The world."
+    param scene String "A GameDesc.scenes name or the scene's asset id."
+    returns Result.ScenePreload "Refused for a scene that is not a GameDesc.scenes name or a cooked scene."
+  }
+
+  fn release {
+    doc "Stop asking for the streaming groups og.scene.preload asked for (each unloads unless its trigger or og.stream.request still wants it). The current scene's groups are kept while it is in place."
+    param world World "The world."
+    param scene String "A GameDesc.scenes name or the scene's asset id."
+    returns Result.Void "Refused for an unknown scene."
+  }
+
+  fn change {
+    doc "Replace the current scene with this one as the next tick starts: the current scene's root and every entity under it are despawned (the boot scene's own entities, with their descendants, for the first change), then the new scene spawns under a new root and og.SceneChanged is sent. Entities the game spawned outside a scene stay. It preloads the scene, and the previous scene's preload is released. Systems may call it."
+    guide "loading §12"
+    aliases "change scene, switch level, load level, Unity SceneManager.LoadScene, Godot change_scene_to_file"
+    param world World "The world."
+    param scene String "A GameDesc.scenes name or the scene's asset id."
+    returns Result.Asset "The scene's handle, or why not: an unknown scene. A scene whose entity names clash with entities that stay is not put in place: the current one stays, with a warning in the engine log."
+  }
+
+  fn current {
+    doc "The asset id of the scene in place: the last og.scene.change's, else GameDesc.scene's; null when the world started without a scene."
+    param world World "The world."
+    returns Option.String
+  }
+}

@@ -9,5 +9,6 @@ pub(crate) mod prefab;
 pub(crate) mod region;
 pub(crate) mod save;
 pub(crate) mod save_migrations;
+pub(crate) mod scenes;
 pub(crate) mod stream;
 pub(crate) mod uncooked;

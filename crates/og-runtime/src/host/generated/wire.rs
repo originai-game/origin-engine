@@ -8464,6 +8464,52 @@ impl ToJson for TextureArrayInfo {
     }
 }
 
+/// `LoadProgress`: packages/knowledge/wiki/load.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LoadProgress {
+    pub status: LoadStatus,
+    pub received: f64,
+    pub bytes: f64,
+    pub fraction: f32,
+}
+
+impl Default for LoadProgress {
+    fn default() -> Self {
+        Self {
+            status: Default::default(),
+            received: Default::default(),
+            bytes: Default::default(),
+            fraction: Default::default(),
+        }
+    }
+}
+
+impl FromJson for LoadProgress {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            status: field(o, "status", d.status)?,
+            received: field(o, "received", d.received)?,
+            bytes: field(o, "bytes", d.bytes)?,
+            fraction: field(o, "fraction", d.fraction)?,
+        })
+    }
+}
+
+impl ToJson for LoadProgress {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("status".into(), self.status.to_json());
+        o.insert("received".into(), self.received.to_json());
+        o.insert("bytes".into(), self.bytes.to_json());
+        o.insert("fraction".into(), self.fraction.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `EnvironmentSun`: packages/knowledge/wiki/load.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EnvironmentSun {
@@ -23847,6 +23893,8 @@ pub struct StreamStatus {
     pub trigger: String,
     pub memory: f64,
     pub bytes: f64,
+    pub received: f64,
+    pub progress: f32,
     pub assets: Vec<String>,
     pub reason: String,
     pub since: f64,
@@ -23866,6 +23914,8 @@ impl Default for StreamStatus {
             trigger: Default::default(),
             memory: Default::default(),
             bytes: Default::default(),
+            received: Default::default(),
+            progress: Default::default(),
             assets: Default::default(),
             reason: Default::default(),
             since: Default::default(),
@@ -23891,6 +23941,8 @@ impl FromJson for StreamStatus {
             trigger: field(o, "trigger", d.trigger)?,
             memory: field(o, "memory", d.memory)?,
             bytes: field(o, "bytes", d.bytes)?,
+            received: field(o, "received", d.received)?,
+            progress: field(o, "progress", d.progress)?,
             assets: field(o, "assets", d.assets)?,
             reason: field(o, "reason", d.reason)?,
             since: field(o, "since", d.since)?,
@@ -23912,6 +23964,8 @@ impl ToJson for StreamStatus {
         o.insert("trigger".into(), self.trigger.to_json());
         o.insert("memory".into(), self.memory.to_json());
         o.insert("bytes".into(), self.bytes.to_json());
+        o.insert("received".into(), self.received.to_json());
+        o.insert("progress".into(), self.progress.to_json());
         o.insert("assets".into(), self.assets.to_json());
         o.insert("reason".into(), self.reason.to_json());
         o.insert("since".into(), self.since.to_json());
@@ -27318,6 +27372,203 @@ impl ToJson for FilmChart {
         o.insert("links".into(), self.links.to_json());
         o.insert("width".into(), self.width.to_json());
         o.insert("height".into(), self.height.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `ScenePreload`: packages/knowledge/wiki/scene.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScenePreload {
+    pub scene: String,
+    pub ready: bool,
+    pub fraction: f32,
+    pub received: f64,
+    pub bytes: f64,
+    pub groups: Vec<String>,
+    pub waiting: Vec<String>,
+    pub failed: String,
+}
+
+impl Default for ScenePreload {
+    fn default() -> Self {
+        Self {
+            scene: Default::default(),
+            ready: Default::default(),
+            fraction: Default::default(),
+            received: Default::default(),
+            bytes: Default::default(),
+            groups: Default::default(),
+            waiting: Default::default(),
+            failed: Default::default(),
+        }
+    }
+}
+
+impl FromJson for ScenePreload {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            scene: field(o, "scene", d.scene)?,
+            ready: field(o, "ready", d.ready)?,
+            fraction: field(o, "fraction", d.fraction)?,
+            received: field(o, "received", d.received)?,
+            bytes: field(o, "bytes", d.bytes)?,
+            groups: field(o, "groups", d.groups)?,
+            waiting: field(o, "waiting", d.waiting)?,
+            failed: field(o, "failed", d.failed)?,
+        })
+    }
+}
+
+impl ToJson for ScenePreload {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("scene".into(), self.scene.to_json());
+        o.insert("ready".into(), self.ready.to_json());
+        o.insert("fraction".into(), self.fraction.to_json());
+        o.insert("received".into(), self.received.to_json());
+        o.insert("bytes".into(), self.bytes.to_json());
+        o.insert("groups".into(), self.groups.to_json());
+        o.insert("waiting".into(), self.waiting.to_json());
+        o.insert("failed".into(), self.failed.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `LoadingScreen`: packages/knowledge/wiki/loading.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum LoadingScreen {
+    #[default]
+    Engine,
+    Game,
+    Page,
+}
+
+impl LoadingScreen {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["engine", "game", "page"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Engine, Self::Game, Self::Page];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("LoadingScreen", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for LoadingScreen {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "LoadingScreen", Self::NAMES)?)
+    }
+}
+
+impl ToJson for LoadingScreen {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `LoadingStageDesc`: packages/knowledge/wiki/loading.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LoadingStageDesc {
+    pub id: String,
+    pub fraction: f32,
+    pub label: String,
+}
+
+impl Default for LoadingStageDesc {
+    fn default() -> Self {
+        Self {
+            id: Default::default(),
+            fraction: Default::default(),
+            label: Default::default(),
+        }
+    }
+}
+
+impl FromJson for LoadingStageDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            id: field(o, "id", d.id)?,
+            fraction: field(o, "fraction", d.fraction)?,
+            label: field(o, "label", d.label)?,
+        })
+    }
+}
+
+impl ToJson for LoadingStageDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("id".into(), self.id.to_json());
+        o.insert("fraction".into(), self.fraction.to_json());
+        o.insert("label".into(), self.label.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `LoadingStatus`: packages/knowledge/wiki/loading.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LoadingStatus {
+    pub screen: LoadingScreen,
+    pub stage: String,
+    pub fraction: f32,
+    pub label: String,
+    pub done: bool,
+    pub idle: bool,
+}
+
+impl Default for LoadingStatus {
+    fn default() -> Self {
+        Self {
+            screen: Default::default(),
+            stage: Default::default(),
+            fraction: Default::default(),
+            label: Default::default(),
+            done: Default::default(),
+            idle: Default::default(),
+        }
+    }
+}
+
+impl FromJson for LoadingStatus {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            screen: field(o, "screen", d.screen)?,
+            stage: field(o, "stage", d.stage)?,
+            fraction: field(o, "fraction", d.fraction)?,
+            label: field(o, "label", d.label)?,
+            done: field(o, "done", d.done)?,
+            idle: field(o, "idle", d.idle)?,
+        })
+    }
+}
+
+impl ToJson for LoadingStatus {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("screen".into(), self.screen.to_json());
+        o.insert("stage".into(), self.stage.to_json());
+        o.insert("fraction".into(), self.fraction.to_json());
+        o.insert("label".into(), self.label.to_json());
+        o.insert("done".into(), self.done.to_json());
+        o.insert("idle".into(), self.idle.to_json());
         Value::Object(o)
     }
 }
@@ -38361,6 +38612,76 @@ pub mod record {
                 film: field(o, "film", d.film)?,
                 node: field(o, "node", d.node)?,
                 ending: field(o, "ending", d.ending)?,
+            })
+        }
+    }
+
+    /// `SceneState`: packages/knowledge/wiki/scene.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SceneState {
+        pub current: Value,
+        pub pending: Value,
+        pub root: u64,
+        pub changes: u32,
+    }
+
+    impl Default for SceneState {
+        fn default() -> Self {
+            Self {
+                current: Default::default(),
+                pending: Default::default(),
+                root: Default::default(),
+                changes: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SceneState {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                current: field(o, "current", d.current)?,
+                pending: field(o, "pending", d.pending)?,
+                root: field(o, "root", d.root)?,
+                changes: field(o, "changes", d.changes)?,
+            })
+        }
+    }
+
+    /// `SceneChanged`: packages/knowledge/wiki/scene.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SceneChanged {
+        pub scene: u64,
+        pub previous: u64,
+        pub root: u64,
+        pub entities: u32,
+    }
+
+    impl Default for SceneChanged {
+        fn default() -> Self {
+            Self {
+                scene: Default::default(),
+                previous: Default::default(),
+                root: Default::default(),
+                entities: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SceneChanged {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                scene: field(o, "scene", d.scene)?,
+                previous: field(o, "previous", d.previous)?,
+                root: field(o, "root", d.root)?,
+                entities: field(o, "entities", d.entities)?,
             })
         }
     }

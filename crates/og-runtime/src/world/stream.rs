@@ -512,6 +512,21 @@ fn trigger_json(t: &StreamTrigger) -> Value {
     }
 }
 
+/// The bytes of a group's pack received: all of it once it landed (or
+/// the group is resident), what the host says while it fetches it, 0
+/// before it is admitted.
+pub(crate) fn received(g: &Group) -> f64 {
+    let all = g.desc.bytes as f64;
+    match g.state {
+        State::Resident => all,
+        State::Loading if !g.files.is_empty() => all,
+        State::Loading => hooks()
+            .and_then(|h| h.read_progress(&format!("{}/{}", g.dir, g.desc.file)))
+            .map_or(0.0, |(r, _)| r.min(all)),
+        _ => 0.0,
+    }
+}
+
 /// A group's status, with the bytes it keeps for the frame.
 fn group_status(s: &Streams, g: &Group) -> StreamStatus {
     StreamStatus {
@@ -527,6 +542,12 @@ fn group_status(s: &Streams, g: &Group) -> StreamStatus {
             .to_string(),
         memory: g.desc.memory as f64,
         bytes: g.desc.bytes as f64,
+        received: received(g),
+        progress: if g.state == State::Resident || g.desc.bytes == 0 {
+            if g.state == State::Resident { 1.0 } else { 0.0 }
+        } else {
+            (received(g) / g.desc.bytes as f64).clamp(0.0, 1.0) as f32
+        },
         assets: g.desc.assets.clone(),
         reason: g.reason.clone(),
         since: g.since as f64,
@@ -617,6 +638,18 @@ fn with_group<T>(
         }
     })?;
     Ok(f(&eng, s, i))
+}
+
+/// The status of every group scene `scene` (an asset id) declares, by name.
+pub(crate) fn scene_groups(eng: &Engine, scene: &str) -> Vec<StreamStatus> {
+    open(eng);
+    let a = eng.assets.borrow();
+    let s = &a.stream;
+    s.groups
+        .iter()
+        .filter(|g| og_bundle::runtime::asset_id(&g.desc.scene) == scene)
+        .map(|g| group_status(s, g))
+        .collect()
 }
 
 /// `og.stream.status`.

@@ -13333,6 +13333,31 @@ export interface Model {
 
 
 
+/** How far a load has arrived (og.load.progress). */
+export interface LoadProgress {
+  /** Where it is. */
+  readonly status: LoadStatus;
+  /**
+   * Bytes received so far of what it fetches (a bundle: its manifest).
+   *
+   * @unit bytes (bytes)
+   */
+  readonly received: number;
+  /**
+   * Bytes it fetches in all, once the host knows (0 before the first response).
+   *
+   * @unit bytes (bytes)
+   */
+  readonly bytes: number;
+  /**
+   * received over bytes, 0 to 1; 1 once ready, 0 when failed or not known yet.
+   *
+   * @range 0..1
+   */
+  readonly fraction: number;
+}
+
+
 
 
 
@@ -30101,6 +30126,19 @@ export interface StreamStatus {
    * @unit bytes (bytes)
    */
   readonly bytes: number;
+  /**
+   * Bytes of its pack received: as they arrive while loading (on the web, from the fetch's body), its size once resident, 0 otherwise.
+   * See `loading §12`.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly received: number;
+  /**
+   * received over bytes, 0 to 1: 1 once resident. For a loading screen's bar; never decide a tick on it in a networked game.
+   *
+   * @range 0..1
+   */
+  readonly progress: number;
   /** Its asset ids. */
   readonly assets: readonly string[];
   /** Why it is queued or failed; empty otherwise. */
@@ -33653,6 +33691,161 @@ export interface FilmEnded {
 
 
 
+// ── scene ───────────────────────────────────────────────────────
+// Scene changes with their assets fetched first: og.scene.preload asks for every streaming group a scene declares, og.scene.progress says how much of them has arrived, and og.scene.change replaces the current scene with it as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or an asset id (`scenes/level2.ogt`).
+// What is resident is presentation: until a group arrives its models draw proxies and its sounds silence, so a change happens at the same tick on every host and in a replay. A loading screen (og.loading) covers it until og.scene.progress says ready.
+// See `loading §12`.
+
+/**
+ * The scene og.scene.change put in place and the one it waits to put in place: world state, saved, restored and hashed. Registered at the first og.scene.change; a world that never changes scene keeps its type table, saves and hash.
+ *
+ * The `SceneState` resource (token `og.SceneState`).
+ */
+export interface SceneState {
+  /**
+   * The asset id of the scene in place (empty: the boot scene, GameDesc.scene, which spawned at the top level).
+   *
+   * @capacity 256 bytes of UTF-8 (str(256)); longer text is refused, never truncated
+   * @readonly written by the engine
+   */
+  readonly current: string;
+  /**
+   * The asset id of the scene og.scene.change asked for, put in place as the next tick starts (empty: none waits).
+   *
+   * @capacity 256 bytes of UTF-8 (str(256)); longer text is refused, never truncated
+   * @readonly written by the engine
+   */
+  readonly pending: string;
+  /**
+   * The root the current scene's entities are under (0: the boot scene's, at the top level).
+   *
+   * @readonly written by the engine
+   */
+  readonly root: Entity;
+  /**
+   * How many changes have been put in place.
+   *
+   * @readonly written by the engine
+   */
+  readonly changes: number;
+}
+
+/**
+ * A scene change was put in place: sent as the tick starts, before any system runs, with the previous scene's entities despawned and the new one's spawned.
+ *
+ * The payload of the `SceneChanged` event (token `og.SceneChanged`).
+ */
+export interface SceneChanged {
+  /** The scene now in place. */
+  readonly scene: Asset;
+  /** The scene it replaced (0: the boot scene). */
+  readonly previous: Asset;
+  /** The root the new scene's entities are under. */
+  readonly root: Entity;
+  /** How many entities it spawned. */
+  readonly entities: number;
+}
+
+/**
+ * How far a scene's streaming groups have arrived (og.scene.progress). Presentation, for a loading screen: never decide a tick's outcome on it in a networked game.
+ */
+export interface ScenePreload {
+  /** The scene's asset id. */
+  readonly scene: string;
+  /** Every group it declares is resident (true for a scene without groups). */
+  readonly ready: boolean;
+  /**
+   * The bytes received over the bytes of its groups' packs, 0 to 1 (1 without groups).
+   *
+   * @range 0..1
+   */
+  readonly fraction: number;
+  /**
+   * Bytes of its packs received so far.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly received: number;
+  /**
+   * Bytes of its packs in all.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly bytes: number;
+  /** The streaming groups it declares, by name. */
+  readonly groups: readonly string[];
+  /** Those not resident yet. */
+  readonly waiting: readonly string[];
+  /** Why a group failed (its og.stream.status reason, naming the group); empty otherwise. */
+  readonly failed: string;
+}
+
+
+
+
+
+
+// ── loading ─────────────────────────────────────────────────────
+// The loading screen: who draws it (project.ogt `publish { loading engine | game | page }`), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader.
+// See `loading §13`.
+
+/**
+ * Who draws the loading screen (project.ogt `publish.loading`).
+ * - `"engine"`: The engine's splash: the brand mark with the boot's progress and the stage labels, until the first frame.
+ * - `"game"`: The game: the splash covers only the engine's own boot, then the game's first frames are its loading screen, the clock running, until og.loading.done.
+ * - `"page"`: The page hosting the game: no splash, the canvas hidden with the clock running until og.loading.done, and the page draws its loader from the window events.
+ */
+export type LoadingScreen = "engine" | "game" | "page";
+
+/**
+ * A stage of the game's own loading (og.loading.stage).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LoadingStageDesc {
+  /**
+   * The stage's id, such as `assets` or `level`; `done` is og.loading.done.
+   *
+   * @default ""
+   */
+  readonly id?: string;
+  /**
+   * How far the stage is, 0 to 1.
+   *
+   * @default 0
+   * @range 0..1
+   */
+  readonly fraction?: number;
+  /**
+   * Text for a loader to show, in the player's language (empty: the page's own words).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/** Where loading is. */
+export interface LoadingStatus {
+  /**
+   * Who draws the loading screen on this host (natively: project.ogt's choice, as the web page would).
+   */
+  readonly screen: LoadingScreen;
+  /** The last stage the game reported (empty: none). */
+  readonly stage: string;
+  /** Its fraction. */
+  readonly fraction: number;
+  /** Its label. */
+  readonly label: string;
+  /** Whether the game called og.loading.done. */
+  readonly done: boolean;
+  /** As og.loading.idle answers. */
+  readonly idle: boolean;
+}
+
+
+
+
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -34909,6 +35102,15 @@ export declare namespace og {
      * @returns Refused for a pending, failed or non-bundle asset.
      */
     function bundleInfo(world: World, asset: Asset): Result<BundleInfo>;
+    /**
+     * How far a load has arrived: a bundle og.load.bundle opened, or any handle (a cooked load answers ready at once). Answered from what the host has received, for a loading screen; natively a read completes at once.
+     * See `loading §12`.
+     *
+     * @param world The world that owns the asset.
+     * @param asset The handle.
+     * @returns Refused for a handle that is not alive.
+     */
+    function progress(world: World, asset: Asset): Result<LoadProgress>;
     /**
      * The game's own bundle, opened before the first tick from `cooked/`.
      *
@@ -38658,5 +38860,95 @@ export declare namespace og {
      * @returns Refused for an entity that is no film.
      */
     function stop(world: World, film: Entity): Result<void>;
+  }
+  /**
+   * The scene og.scene.change put in place and the one it waits to put in place: world state, saved, restored and hashed. Registered at the first og.scene.change; a world that never changes scene keeps its type table, saves and hash.
+   */
+  const SceneState: ResourceType<{ readonly current: FieldSpec<"str">; readonly pending: FieldSpec<"str">; readonly root: FieldSpec<"Entity">; readonly changes: FieldSpec<"u32"> }, SceneState>;
+  /**
+   * A scene change was put in place: sent as the tick starts, before any system runs, with the previous scene's entities despawned and the new one's spawned.
+   */
+  const SceneChanged: EventType<SceneChanged>;
+  /**
+   * Scene changes with their assets fetched first: og.scene.preload asks for every streaming group a scene declares, og.scene.progress says how much of them has arrived, and og.scene.change replaces the current scene with it as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or an asset id (`scenes/level2.ogt`).
+   * What is resident is presentation: until a group arrives its models draw proxies and its sounds silence, so a change happens at the same tick on every host and in a replay. A loading screen (og.loading) covers it until og.scene.progress says ready.
+   * See `loading §12`.
+   */
+  namespace scene {
+    /**
+     * Load a scene and ask for every streaming group it declares (og.stream.request) until og.scene.release, so its packs are fetched while the current scene plays. Calling it again does nothing more. Systems may call it.
+     * See `loading §12`.
+     *
+     * @param world The world.
+     * @param scene A GameDesc.scenes name or the scene's asset id.
+     * @returns The scene's handle, or why not: no such scene (the reason lists GameDesc.scenes), or not cooked.
+     */
+    function preload(world: World, scene: string): Result<Asset>;
+    /**
+     * How far the scene's streaming groups have arrived: answered at once from what the host has received, for a loading screen's bar. Natively a group is read at the tick boundary it is admitted, so it goes from 0 to 1.
+     * See `loading §12`.
+     *
+     * @param world The world.
+     * @param scene A GameDesc.scenes name or the scene's asset id.
+     * @returns Refused for a scene that is not a GameDesc.scenes name or a cooked scene.
+     */
+    function progress(world: World, scene: string): Result<ScenePreload>;
+    /**
+     * Stop asking for the streaming groups og.scene.preload asked for (each unloads unless its trigger or og.stream.request still wants it). The current scene's groups are kept while it is in place.
+     *
+     * @param world The world.
+     * @param scene A GameDesc.scenes name or the scene's asset id.
+     * @returns Refused for an unknown scene.
+     */
+    function release(world: World, scene: string): Result<void>;
+    /**
+     * Replace the current scene with this one as the next tick starts: the current scene's root and every entity under it are despawned (the boot scene's own entities, with their descendants, for the first change), then the new scene spawns under a new root and og.SceneChanged is sent. Entities the game spawned outside a scene stay. It preloads the scene, and the previous scene's preload is released. Systems may call it.
+     * See `loading §12`.
+     *
+     * @param world The world.
+     * @param scene A GameDesc.scenes name or the scene's asset id.
+     * @returns The scene's handle, or why not: an unknown scene. A scene whose entity names clash with entities that stay is not put in place: the current one stays, with a warning in the engine log.
+     */
+    function change(world: World, scene: string): Result<Asset>;
+    /**
+     * The asset id of the scene in place: the last og.scene.change's, else GameDesc.scene's; null when the world started without a scene.
+     *
+     * @param world The world.
+     */
+    function current(world: World): string | null;
+  }
+  /**
+   * The loading screen: who draws it (project.ogt `publish { loading engine | game | page }`), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader.
+   * See `loading §13`.
+   */
+  namespace loading {
+    /**
+     * Report a stage of the game's loading: the web page sends it to the page as `og:stage` (and to the framing page), and the engine's splash shows its label and fraction. Presentation only: nothing a tick reads changes. Systems may call it.
+     * See `loading §13`.
+     *
+     * @param world The world.
+     * @param desc The stage, its fraction and its label.
+     * @returns Refused for a fraction outside 0 to 1.
+     */
+    function stage(world: World, desc?: LoadingStageDesc): Result<void>;
+    /**
+     * The game's loading is done: a `page` screen uncovers the canvas, the page hears `og:loaded`, and with `game` the play gate (if any) shows. Call it once og.loading.idle is true, so the first frame shown draws the whole scene. Calling it again does nothing.
+     * See `loading §13`.
+     *
+     * @param world The world.
+     */
+    function done(world: World): Result<void>;
+    /**
+     * Whether the renderer has nothing left that would make a frame draw less than the scene: no pipelines compiling, no textures waiting to upload, no font faces fetched for the locale. True on a host that makes them at once (natively, and without a renderer).
+     *
+     * @param world The world.
+     */
+    function idle(world: World): boolean;
+    /**
+     * The screen, the last stage reported and whether loading is done.
+     *
+     * @param world The world.
+     */
+    function status(world: World): LoadingStatus;
   }
 }
