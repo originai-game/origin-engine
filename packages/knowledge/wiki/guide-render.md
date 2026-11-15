@@ -382,8 +382,8 @@ depth-normal prepass: the first one pays for it.
   shaded by ripples and shadows (spec × sunColor over the light's
   intensity in three.js).
 - Sea: at 10 m/s waves are about 80 m long with a significant height of
-  2.1 m. Buoyancy rides the drawn long waves; the shorter ones are the
-  GPU's alone and never read back. Detail waves fade where a pixel cannot
+  2.1 m. Buoyancy rides every wave the surface rises with, down to a
+  metre; the ripples under that only shade it. Detail waves fade where a pixel cannot
   hold them; whitecaps foam where crests fold. A seabed is re-read when
   the water, the terrain's placement or its edits change. Ageing foam: a
   whitecap's dense foam bursts within seconds and leaves lace for some ten

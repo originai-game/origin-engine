@@ -8,8 +8,9 @@
 //
 // Packed per texel, as web-ocean: A = (Dx + i Dz, h + i ∂Dx/∂z), B = (∂h/∂x + i ∂h/∂z, ∂Dx/∂x + i ∂Dz/∂z), each a real
 // field's Hermitian spectrum plus i times another's, so one inverse transform yields both. Written per cascade c into
-// the fields array: layer 3c (Dx, h, Dz, ∂Dx/∂z), 3c + 1 (∂h/∂x, ∂h/∂z, ∂Dx/∂x, ∂Dz/∂z), 3c + 2 the slopes' moments
-// ((∂h/∂x)², (∂h/∂z)², ∂h/∂x ∂h/∂z, foam) that the mips average (LEAN mapping).
+// the fields array: layer 2c (∂h/∂x, ∂h/∂z), 2c + 1 the slopes' moments that the mips average (LEAN mapping:
+// (∂h/∂x)², (∂h/∂z)², ∂h/∂x ∂h/∂z). The ripples shade the surface and never move it, so neither their heights nor
+// their horizontal displacements and its Jacobian are kept: they fold nothing and lay no foam.
 
 struct FftParams {
   // x: N, y: log2 N, z: the cascade count.
@@ -86,17 +87,10 @@ fn evolve(x: u32, z: u32, c: u32) -> array<vec4<f32>, 2> {
   let s_ = sin(turn);
   let h = vec2<f32>(a.x * c_ + a.y * s_, a.y * c_ - a.x * s_);
   let ih = mul_i(h);
-  let lam = fft.time.y;
-  let ik = 1.0 / k;
-  let dx = ih * (lam * kx * ik);
-  let dz = ih * (lam * kz * ik);
-  let jxz = h * (-lam * kx * kz * ik);
-  let sx = ih * kx;
-  let sz = ih * kz;
-  let jxx = h * (-lam * kx * kx * ik);
-  let jzz = h * (-lam * kz * kz * ik);
-  out[0] = vec4<f32>(dx + mul_i(dz), h + mul_i(jxz));
-  out[1] = vec4<f32>(sx + mul_i(sz), jxx + mul_i(jzz));
+  // The ripples shade the surface and never move it: their slopes alone (B's first signal); A and B's second
+  // (displacement and its Jacobian) stay zero.
+  out[0] = vec4<f32>(0.0);
+  out[1] = vec4<f32>(ih * kx + mul_i(ih * kz), vec2<f32>(0.0));
   return out;
 }
 
@@ -124,9 +118,8 @@ fn rows(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_index) t
 
 fn emit(x: u32, z: u32, c: u32, a: vec4<f32>, b: vec4<f32>) {
   let p = vec2<u32>(x, z);
-  textureStore(fields, p, 3u * c, vec4<f32>(a.x, a.z, a.y, a.w));
-  textureStore(fields, p, 3u * c + 1u, b);
-  textureStore(fields, p, 3u * c + 2u, vec4<f32>(b.x * b.x, b.y * b.y, b.x * b.y, 0.0));
+  textureStore(fields, p, 2u * c, vec4<f32>(b.xy, 0.0, 0.0));
+  textureStore(fields, p, 2u * c + 1u, vec4<f32>(b.x * b.x, b.y * b.y, b.x * b.y, 0.0));
 }
 
 // Columns: workgroup (x, 0, c) transforms column x of cascade c along z and writes the fields.

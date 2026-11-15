@@ -1,16 +1,18 @@
-//! The sea's short waves (R5): those shorter than the shortest of
-//! `og_env::ocean`'s (a 32nd of the peak's length), drawn from
+//! The sea's ripples (R5): the waves shorter than the shortest of
+//! `og_env::ocean`'s (a metre, or a 32nd of a breeze's peak), drawn from
 //! Tessendorf's FFT of a seeded JONSWAP spectrum in up to three 256²
-//! cascades on disjoint bands. The sea itself is og_core's function, drawn
-//! as it is; these stand under 2% of its height over it (2 cm RMS at
-//! 10 m/s, 14 cm at 20 m/s) and carry the slopes its waves do not.
+//! cascades on disjoint bands. The sea itself is og_env's function, drawn
+//! as it is; these carry the slopes its waves do not and only shade it:
+//! they never move its vertices, so the drawn surface is the one the tick
+//! floats bodies on.
 //!
 //! - [`spectrum`]: the spectrum, built on the CPU once per sea (ported from
 //!   blue-water's `spectrum.rs`), from the sea's shortest wave down.
 //! - `shaders/ocean_fft.wgsl`: each frame, the spectrum evolved to the
 //!   scene's tick time and inverse-transformed in workgroup memory (rows,
 //!   then columns, after web-ocean's `sim.js`) into one rgba16float array,
-//!   three layers per cascade; `shaders/ocean_fft_mips.wgsl` its mips.
+//!   two layers per cascade (the slopes and the Jacobian, the slopes'
+//!   moments); `shaders/ocean_fft_mips.wgsl` its mips.
 //!
 //! - [`foam`]: the persistent foam (`shaders/ocean_foam.wgsl`), stepped
 //!   on the tick's time into the fields array's layers after the cascades.
@@ -28,7 +30,7 @@ use spectrum::Spectrum;
 /// Texels across a cascade.
 pub const N: u32 = 256;
 /// Layers per cascade in the fields array.
-pub const LAYERS: u32 = 3;
+pub const LAYERS: u32 = 2;
 /// Mip levels of the fields (256 down to 16).
 pub const MIPS: u32 = 5;
 /// Layers after the cascades': the foam's two levels, then its

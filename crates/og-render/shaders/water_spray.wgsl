@@ -88,7 +88,7 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   // foam level's freshest foam was laid. (The level's freshness alone, decaying within a second, rarely held a slot.)
   // A gale's crests break over a few percent of the sea, so each life tries up to six points for one (the spume, its
   // sheets fewer and seen further, ten).
-  let first = 3u * u32(water.fft.x);
+  let first = 2u * u32(water.fft.x);
   let ts = lv.w / 256.0;
   var rest = vec2<f32>(0.0);
   var edge = 0.0;
@@ -207,8 +207,10 @@ fn fs_spray(in: SprayOut) -> @location(0) vec4<f32> {
   let r2 = dot(in.corner, in.corner);
   var a: f32;
   if (in.sheet == 1u) {
-    let u = 0.5 * (in.corner.x + 1.0);
-    let across = in.corner.y * in.corner.y;
+    // (Clamped: the interpolated corner can pass 1 at the quad's edge, and pow(1 - u, 1.5) of a negative is NaN, which
+    // the bloom's mips then spread into a black block over the frame.)
+    let u = clamp(0.5 * (in.corner.x + 1.0), 0.0, 1.0);
+    let across = min(in.corner.y * in.corner.y, 1.0);
     let strands = 0.4 + 0.6 * foam_noise(vec2<f32>(u * 6.0 - water.spray.y * 2.0, in.corner.y * 10.0));
     a = in.alpha * exp(-3.0 * across) * (1.0 - across) * smoothstep(0.0, 0.12, u) * pow(1.0 - u, 1.5) * strands;
   } else {

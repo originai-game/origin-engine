@@ -2,28 +2,28 @@
 //! time, a sum of [`OCEAN_WAVES`] Gerstner (trochoidal) waves. The
 //! simulation asks it the surface's height and motion at a point
 //! (`og.physics.waterHeight`, og.Buoyancy) and the renderer draws the same
-//! function at the same tick, so what floats matches what is drawn. The
+//! function at the same tick, so what floats is what is drawn. The
 //! function knows no grid, no surface size and no camera: every wave is
 //! whole everywhere. What a renderer cannot resolve somewhere it leaves out
-//! by its own rule, and what it adds (the waves shorter than the shortest
-//! here) stands under 2% of the sea's height: 2 cm RMS in a fresh wind,
-//! 14 cm in a gale.
+//! by its own rule; what it adds, the ripples shorter than the shortest
+//! wave here, only shades the surface and never moves it.
 //!
 //! The waves sample a Pierson–Moskowitz sea for the wind's speed `U`, its
 //! peak enhanced as JONSWAP's (γ 3.3): its peak angular frequency `0.877 g / U` (at 10 m/s, waves
 //! about 80 m long), its significant height `0.21 U² / g` (2.1 m at
 //! 10 m/s) times `swell`, wavelengths from 1.6 times the peak's down to
-//! 1/32 of it ([`shortest_wavenumber`]), one in each of [`OCEAN_WAVES`]
-//! bands even in the logarithm of the length and placed at random within it
-//! (so no two waves keep a fixed ratio and the sum never settles into a
-//! lattice), each the deep-water dispersion `ω = √(g k)`, travelling at a
-//! random angle to the wind (a triangular spread, wider the shorter the
-//! wave), with fixed phases. These carry all but a hundredth of the sea's
-//! height. The shorter waves, which carry most of its slope and little
-//! height, are too many for a sum: they are the renderer's, drawn from the
-//! same spectrum past the shortest wave here and floating nothing.
-//! `choppiness` leans each wave's crest by Gerstner's steepness, shared so
-//! the sum never folds over.
+//! 1/32 of it or 1 m, whichever is shorter ([`shortest_wavenumber`]), one in
+//! each of [`OCEAN_WAVES`] bands even in the logarithm of the length and
+//! placed at random within it (so no two waves keep a fixed ratio and the
+//! sum never settles into a lattice), each the deep-water dispersion
+//! `ω = √(g k)`, travelling at a random angle to the wind (a triangular
+//! spread, wider the shorter the wave), with fixed phases. These carry all
+//! of the sea's height a surface drawn in vertices can show: the ripples
+//! shorter than a metre stand millimetres to a couple of centimetres. Those
+//! carry most of its slope and are too many for a sum: they are the
+//! renderer's shading, drawn from the same spectrum past the shortest wave
+//! here. `choppiness` leans each wave's crest by Gerstner's steepness,
+//! shared by the waves' heights so the sum never folds over.
 //!
 //! The waves are the world's: they lie over the absolute world's xz (the
 //! renderer adds its origin, the simulation og.WorldOrigin's zero), so a
@@ -37,8 +37,10 @@
 pub use crate::shore::{Shore, ShorePoint, ShoreTrains};
 use og_core::math::{self, DVec2, Vec2, Vec3};
 
-/// How many waves a sea sums.
-pub const OCEAN_WAVES: usize = 32;
+/// How many waves a sea sums: eight to twelve to each factor of e in
+/// length over its span (from 1.6 times the peak's length down to a 32nd
+/// of it in a breeze, to a metre, a 330th of it, at 20 m/s).
+pub const OCEAN_WAVES: usize = 48;
 
 /// Standard gravity, m/s².
 pub const GRAVITY: f32 = 9.81;
@@ -46,11 +48,17 @@ pub const GRAVITY: f32 = 9.81;
 /// Below this wind (m/s) there is no sea.
 const CALM: f32 = 0.1;
 
-/// The peak's length over the shortest wave's. The waves shorter than this
-/// hold about a hundredth of the sea's height (1.1% of its significant
-/// height in RMS at 10 m/s, 1.6% at 20) and are left to the renderer; a
-/// longer cut gives its picture more to draw and bodies less to ride.
+/// The peak's length over the shortest wave's, at most. The waves shorter
+/// than a 32nd of the peak hold about a hundredth of the sea's height
+/// (1.1% of its significant height in RMS at 10 m/s, 1.6% at 20).
 const SHORTEST: f32 = 32.0;
+
+/// The shortest wave's length (m), at most: in a wind whose 32nd of the
+/// peak is longer (over 6.2 m/s) the waves reach down to here, so every
+/// wave a surface's vertices can draw is one the tick floats bodies on
+/// (a clipmap's finest cells, an eighth of a metre, draw a metre-long wave
+/// whole). Shorter waves stand a centimetre or so even in a gale.
+const SHORTEST_LENGTH: f32 = 1.0;
 
 /// One Gerstner wave of a sea.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -103,14 +111,15 @@ impl Ocean {
         let omega_p = 0.877 * GRAVITY / speed;
         let k_p = omega_p * omega_p / GRAVITY;
         let length_p = std::f32::consts::TAU / k_p;
+        let span = 1.6 * length_p * shortest_wavenumber(speed) / std::f32::consts::TAU;
         let mut waves = [OceanWave::default(); OCEAN_WAVES];
         let mut weight = [0.0f32; OCEAN_WAVES];
         let mut total = 0.0;
         for (i, w) in waves.iter_mut().enumerate() {
-            // Band i of N, even in the logarithm of the length from 1.6 to
-            // 1/SHORTEST of the peak's, the wave anywhere in its band but its edges.
+            // Band i of N, even in the logarithm of the length from 1.6 times
+            // the peak's to the shortest, the wave anywhere in its band but its edges.
             let at = (i as f32 + 0.5 + 0.4 * fixed(i as u32, 3)) / OCEAN_WAVES as f32;
-            let length = length_p * 1.6 * math::pow(1.0 / (1.6 * SHORTEST), at);
+            let length = length_p * 1.6 * math::pow(1.0 / span, at);
             let k = std::f32::consts::TAU / length;
             let omega = (GRAVITY * k).sqrt();
             // Pierson–Moskowitz, S(ω) ∝ ω⁻⁵ exp(-1.25 (ω_p/ω)⁴), with
@@ -147,12 +156,36 @@ impl Ocean {
         for (w, s) in waves.iter_mut().zip(weight) {
             w.amplitude = sigma * (2.0 * s / total).sqrt();
         }
+        // The crests lean on the waves down to a 32nd of the peak's length,
+        // their steepnesses Q k a summing to choppiness so the sum's Jacobian
+        // stays above zero: each leans its amplitude times min(1, λ / k) (Q at
+        // most 1, its own amplitude across), λ the wavenumber at which the
+        // sum comes to choppiness, so the long waves that make the crests
+        // lean whole. The shorter waves a gale's span adds (to a metre) are
+        // round: they carry height a body rides, not lean; leaning, they
+        // bunched the surface metre by metre and its whitecaps broke up into
+        // a speckle. The waves are in order of wavenumber, so λ lies between
+        // two of them.
+        let leaning = SHORTEST * k_p * 1.0001;
+        let mut whole = 0.0; // Σ k a of the waves at Q 1.
+        let mut rest: f32 = waves
+            .iter()
+            .filter(|w| w.k <= leaning)
+            .map(|w| w.amplitude)
+            .sum();
+        let mut lambda = f32::INFINITY;
+        for w in waves.iter().filter(|w| w.k <= leaning) {
+            let l = (choppiness - whole) / rest;
+            if l <= w.k {
+                lambda = l;
+                break;
+            }
+            whole += w.k * w.amplitude;
+            rest -= w.amplitude;
+        }
         for w in &mut waves {
-            // Each wave's steepness Q k a is choppiness / N, at most its own
-            // amplitude across: the sum's Jacobian stays above zero.
-            let q = (choppiness / (w.k * w.amplitude * OCEAN_WAVES as f32)).min(1.0);
-            w.lean = if w.amplitude > 0.0 {
-                q * w.amplitude
+            w.lean = if w.k <= leaning {
+                w.amplitude * (lambda / w.k).min(1.0)
             } else {
                 0.0
             };
@@ -388,12 +421,12 @@ pub fn tanh(x: f32) -> f32 {
 }
 
 /// The wavenumber (rad/m) past which a sea at wind `speed` (m/s) has no
-/// waves: the short end of its last band, 1/32 of the peak's length (2.6 m
-/// at 10 m/s, 10 m at 20). What a renderer adds on top starts here, so no
-/// wave is drawn twice.
+/// waves: the short end of its last band, 1/32 of the peak's length or a
+/// metre, whichever is shorter (0.65 m at 5 m/s, 1 m from 6.2 m/s). What a
+/// renderer adds on top starts here, so no wave is drawn twice.
 pub fn shortest_wavenumber(speed: f32) -> f32 {
     let omega_p = 0.877 * GRAVITY / speed.max(CALM);
-    SHORTEST * omega_p * omega_p / GRAVITY
+    (SHORTEST * omega_p * omega_p / GRAVITY).max(std::f32::consts::TAU / SHORTEST_LENGTH)
 }
 
 /// The mean square slope of a sea at wind `speed` (m/s) Cox and Munk (1954)
@@ -422,10 +455,19 @@ mod tests {
             .map(|w| (w.k * w.amplitude) * (w.k * w.amplitude) * 0.5)
             .sum();
         assert!(mss > 0.002 && mss < 0.3 * clean_slopes(10.0), "{mss}");
-        // No wave is shorter than a 32nd of the peak's 83 m.
-        let shortest = sea.waves[OCEAN_WAVES - 1].k;
-        assert!(shortest <= shortest_wavenumber(10.0), "{shortest}");
-        assert!((2.6..3.0).contains(&(std::f32::consts::TAU / shortest)));
+        // The waves reach down to a metre (the 32nd of a breeze's peak),
+        // whatever the wind: a clipmap's finest cells draw every wave longer
+        // than that, so no drawn height is one the tick does not float on.
+        for (wind, shortest_m) in [(4.0, 0.42), (10.0, 1.0), (20.0, 1.0)] {
+            let s = Ocean::new(Vec2::new(0.0, wind), 1.0, 0.5).expect("a sea");
+            let k = s.waves[OCEAN_WAVES - 1].k;
+            assert!(k <= shortest_wavenumber(wind), "{wind} m/s: {k}");
+            let length = std::f32::consts::TAU / k;
+            assert!(
+                (shortest_m..shortest_m * 1.12).contains(&length),
+                "{wind} m/s: the shortest wave {length} m"
+            );
+        }
         let half = Ocean::new(Vec2::new(0.0, 10.0), 0.5, 0.5).expect("a sea");
         let ratio = half.significant_height() / hs;
         assert!((0.45..0.55).contains(&ratio), "{ratio}");

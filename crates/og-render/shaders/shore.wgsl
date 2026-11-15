@@ -71,7 +71,7 @@ fn shoaling(p: vec2<f32>) -> Shoal {
   o.depth = max(sp.depth, 0.0);
   o.inside = sp.inside;
   var v = 0.0;
-  for (var i = 0u; i < 32u; i++) {
+  for (var i = 0u; i < 48u; i++) {
     let a = sea_wave(2u * i);
     let f = shoal_keep(length(a.xy), o);
     v += (a.z * f) * (a.z * f) * 0.5;
@@ -84,7 +84,7 @@ fn shoaling(p: vec2<f32>) -> Shoal {
   let limit = 0.78 * o.depth;
   if (hs > limit) { o.cap = 1.0 + (limit / hs - 1.0) * sp.inside; }
   var steep = 0.0;
-  for (var i = 0u; i < 32u; i++) {
+  for (var i = 0u; i < 48u; i++) {
     let a = sea_wave(2u * i);
     steep += sea_wave(2u * i + 1u).z * shoal_keep(length(a.xy), o);
   }

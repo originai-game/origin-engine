@@ -41,7 +41,7 @@ impl WaterRenderer {
                 bands,
                 tiles,
                 tail: built.tail_slope_variance as f32,
-                foam: foam_thresholds(water, &built),
+                foam: foam_thresholds(water),
             };
             self.fft = Some((fft, info));
         }
@@ -114,8 +114,9 @@ impl WaterRenderer {
 
     /// The drawn sea's height at `points` (frame xz) as the last frame drew
     /// its first sea (`probe_sea` in water_sea.wgsl): submitted, into a buffer to
-    /// map, per point (the height, the tick's waves' share, the cascades'
-    /// share, 0). None without a sea that frame.
+    /// map, per point (the drawn height, the sea's function there, what the
+    /// vertices leave out of it, the wakes' share). None without a sea that
+    /// frame.
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub(crate) fn probe_sea(
         &self,
