@@ -136,6 +136,11 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Its lines stack from the far side (CSS `wrap-reverse`)."
     ),
     p!(
+        "wrapBalance",
+        Ty::Bool,
+        "Its lines are as even as its breaks allow (CSS `flex-wrap: balance`)."
+    ),
+    p!(
         "rowGap",
         Ty::Num,
         "Space between its rows (a column's children, a row's lines), CSS px, over `gap`."

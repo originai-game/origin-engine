@@ -34,6 +34,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `align-items:` | `start \| center \| end \| stretch \| baseline \| last-baseline` | Where children sit across it. |
 | `flex-wrap:` | `wrap \| nowrap` | A row (or a column) breaks its children into lines. |
 | `wrap-reverse` | `bool` | Its lines stack from the far side (CSS `wrap-reverse`). |
+| `wrap-balance` | `bool` | Its lines are as even as its breaks allow (CSS `flex-wrap: balance`). |
 | `row-gap:` | `<n>px` | Space between its rows (a column's children, a row's lines), CSS px, over `gap`. |
 | `column-gap:` | `<n>px` | Space between its columns (a row's children, a column's lines), CSS px, over `gap`. |
 | `align-content:` | `start \| center \| end \| space-between \| space-around \| space-evenly \| stretch` | Where a wrapping container's lines sit across it, and how a grid's tracks sit down it (CSS `align-content`). |

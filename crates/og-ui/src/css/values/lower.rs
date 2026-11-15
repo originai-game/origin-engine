@@ -680,19 +680,23 @@ fn lower_object_view_box(t: Vec<Tok>) -> Result<Vec<Part>, String> {
 
 /// Lowers `"flex-wrap"`.
 fn lower_flex_wrap(name: &str, t: Vec<Tok>) -> Result<Vec<Part>, String> {
-    let (wrap, reverse) = match want_ident(&one(&t, name)?, "nowrap, wrap or wrap-reverse")? {
-        "nowrap" => (false, false),
-        "wrap" => (true, false),
-        "wrap-reverse" => (true, true),
-        w => {
-            return Err(format!(
-                "'{w}' is not a flex-wrap: nowrap, wrap, wrap-reverse"
-            ));
-        }
-    };
+    let (wrap, reverse, balance) =
+        match want_ident(&one(&t, name)?, "nowrap, wrap, wrap-reverse or balance")? {
+            "nowrap" => (false, false, false),
+            "wrap" => (true, false, false),
+            "wrap-reverse" => (true, true, false),
+            // CSS Flexbox 2 §5.2: lines as even as the breaks allow.
+            "balance" => (true, false, true),
+            w => {
+                return Err(format!(
+                    "'{w}' is not a flex-wrap: nowrap, wrap, wrap-reverse, balance"
+                ));
+            }
+        };
     Ok(vec![
         e("wrap", vec![bool_word(wrap)]),
         e("wrapReverse", vec![bool_word(reverse)]),
+        e("wrapBalance", vec![bool_word(balance)]),
     ])
 }
 
@@ -706,7 +710,9 @@ fn lower_flex_flow(t: Vec<Tok>) -> Result<Vec<Part>, String> {
             "row" | "row-reverse" | "column" | "column-reverse" => {
                 out.extend(lower_decl("flex-direction", w, false)?)
             }
-            "nowrap" | "wrap" | "wrap-reverse" => out.extend(lower_decl("flex-wrap", w, false)?),
+            "nowrap" | "wrap" | "wrap-reverse" | "balance" => {
+                out.extend(lower_decl("flex-wrap", w, false)?)
+            }
             w => return Err(format!("'{w}' is not a flex-flow: a direction and a wrap")),
         }
     }

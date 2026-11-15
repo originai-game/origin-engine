@@ -380,6 +380,32 @@ fn a_block_aligns_its_content_and_a_flow_root_keeps_its_baseline() {
     });
 }
 
+/// `flex-wrap: balance` (CSS Flexbox 2 §5.2) breaks lines as evenly as it
+/// can: four 50px items in 160px make two lines of two, where `wrap`
+/// fills the first line with three; `flex-flow` takes it too.
+#[test]
+fn balanced_flex_lines_are_even() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="W"><div id="W1" class="i"></div><div id="W2" class="i"></div><div id="W3" class="i"></div><div id="W4" class="i"></div></div>
+  <div id="B"><div id="B1" class="i"></div><div id="B2" class="i"></div><div id="B3" class="i"></div><div id="B4" class="i"></div></div>
+  <div id="F"><div id="F1" class="i"></div><div id="F2" class="i"></div><div id="F3" class="i"></div><div id="F4" class="i"></div></div>
+</div></div>
+<style>
+#W, #B, #F { display: flex; width: 160px; }
+#W { flex-wrap: wrap; }
+#B { flex-wrap: balance; }
+#F { flex-flow: row balance; }
+.i { width: 50px; height: 10px; flex-shrink: 0; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let at = |id: &str, of: &str| (d.get(id).x - d.get(of).x, d.get(id).y - d.get(of).y);
+        assert_eq!((at("W3", "W"), at("W4", "W")), ((100.0, 0.0), (0.0, 10.0)));
+        assert_eq!((at("B3", "B"), at("B4", "B")), ((0.0, 10.0), (50.0, 10.0)));
+        assert_eq!(at("F3", "F"), (0.0, 10.0));
+    });
+}
+
 #[test]
 fn flex_lays_out_as_css_flexbox_does() {
     let text = r#"<meta name="component" content="t">
