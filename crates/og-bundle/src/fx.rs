@@ -160,6 +160,13 @@ pub const EMITTER_LINES: &[Line] = &[
         "colorOverLife {\n  key 0 4 2 0.6 1\n  key 1 1 0.2 0 0\n}",
     ),
     Line::new(
+        "randomColorOverLife",
+        "{ key <t> <r> <g> <b> <a> ... }",
+        "",
+        "A second colour over the life: each particle's colour lies between colorOverLife and this at a share of its own (embers from orange to deep red). Left out, every particle takes colorOverLife.",
+        "randomColorOverLife {\n  key 0 4 0.6 0.2 1\n  key 1 0.8 0.05 0 0\n}",
+    ),
+    Line::new(
         "color",
         "<r> <g> <b> [<a>]",
         "1 1 1 1",
@@ -651,9 +658,9 @@ pub fn parse_emitter_linked(
                 let keys: Vec<(f32, f32)> = v.chunks(2).map(|c| (c[0], c[1])).collect();
                 em.size_over_life = Curve::new(&keys);
             }
-            "colorOverLife" => {
+            key @ ("colorOverLife" | "randomColorOverLife") => {
                 let block = e.block.as_ref().ok_or_else(|| {
-                    format!("line {line}: colorOverLife {{ key <t> <r> <g> <b> <a> ... }}")
+                    format!("line {line}: {key} {{ key <t> <r> <g> <b> <a> ... }}")
                 })?;
                 let mut keys = Vec::new();
                 for k in &block.entries {
@@ -664,11 +671,13 @@ pub fn parse_emitter_linked(
                     keys.push((t, [r, g, b, a]));
                 }
                 if keys.is_empty() || keys.len() > MAX_CURVE_KEYS {
-                    return Err(format!(
-                        "line {line}: colorOverLife has 1 to {MAX_CURVE_KEYS} keys"
-                    ));
+                    return Err(format!("line {line}: {key} has 1 to {MAX_CURVE_KEYS} keys"));
                 }
-                em.color_over_life = ColorCurve::new(&keys);
+                if key == "colorOverLife" {
+                    em.color_over_life = ColorCurve::new(&keys);
+                } else {
+                    em.random_color_over_life = Some(ColorCurve::new(&keys));
+                }
             }
             "color" => {
                 em.color = match nums(e)?[..] {

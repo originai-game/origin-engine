@@ -540,6 +540,20 @@ impl Color {
         }
     }
 
+    /// Its colour at `frame` with each random channel `u` of the way from
+    /// its least to its most (0.5: about [`Self::at`]).
+    pub fn at_share(&self, frame: f32, life: f32, u: f32) -> Rgba {
+        let v = |r: Rng| r.min + (r.max - r.min) * u;
+        match self {
+            Color::Random(r) => r.map(v),
+            Color::Easing { s, e, ease } => {
+                let t = ease.eval(frame / life.max(1e-3));
+                std::array::from_fn(|i| v(s[i]) + (v(e[i]) - v(s[i])) * t)
+            }
+            _ => self.at(frame, life),
+        }
+    }
+
     /// Its centre colour at `frame` of a life of `life` frames.
     pub fn at(&self, frame: f32, life: f32) -> Rgba {
         match self {

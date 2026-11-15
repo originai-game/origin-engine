@@ -49,12 +49,12 @@ fn an_effekseer_project_cooks_as_a_vfx_with_what_it_needs() {
         vfx.references().emitters,
         ["fx/sprite.efkproj#n0.emitter.ogt"]
     );
-    // The sprite's random colour is a warning of the cook, named by file and node.
+    // A ring's changing thickness is a warning of the cook, named by file and node.
     assert!(
         report
             .warnings
             .iter()
-            .any(|w| w.starts_with("assets/fx/sprite.efkproj: warning: Effekseer import: node 0")),
+            .any(|w| w.starts_with("assets/fx/ring.efkproj: warning: Effekseer import: node 3")),
         "{:?}",
         report.warnings
     );

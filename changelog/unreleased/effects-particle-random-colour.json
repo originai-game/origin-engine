@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "particles: randomColorOverLife",
+      "summary": "An emitter's `randomColorOverLife { key ... }` is a second colour curve: each particle's colour lies between it and `colorOverLife` at a share of its own (Unity's random between two gradients), on both simulation paths and in sprite mode: embers from orange to deep red, confetti. Left out, every particle takes `colorOverLife` as before. `og vfx import` writes it for Effekseer's random colours, from each channel's least to its most, which it drew at their mean (728 of the packs' conversion notes)."
+    }
+  ]
+}

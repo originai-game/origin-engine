@@ -508,6 +508,11 @@ pub struct ParticleEmitter {
     /// narrow, a shockwave flat and wide. None: the height is the width.
     pub height_over_life: Option<Curve>,
     pub color_over_life: ColorCurve,
+    /// A second colour over the life: each particle's colour is between
+    /// [`Self::color_over_life`] and this, at a share of its own (Unity's
+    /// random between two gradients): embers from orange to red, a
+    /// crowd of confetti. None: every particle takes the first.
+    pub random_color_over_life: Option<ColorCurve>,
     /// Linear tint multiplied with the colour curve and the texture; above 1
     /// is emissive (blooms).
     pub color: [f32; 4],
@@ -629,6 +634,7 @@ impl Default for ParticleEmitter {
             size_over_life: Curve::default(),
             height_over_life: None,
             color_over_life: ColorCurve::default(),
+            random_color_over_life: None,
             color: [1.0; 4],
             rotation_degrees: [0.0, 0.0],
             angular_velocity_degrees: [0.0, 0.0],
@@ -725,6 +731,14 @@ impl ParticleEmitter {
             return Err(format!(
                 "color_over_life has {} keys (1 to {MAX_CURVE_KEYS})",
                 self.color_over_life.keys.len()
+            ));
+        }
+        if let Some(c) = &self.random_color_over_life
+            && (c.keys.is_empty() || c.keys.len() > MAX_CURVE_KEYS)
+        {
+            return Err(format!(
+                "random_color_over_life has {} keys (1 to {MAX_CURVE_KEYS})",
+                c.keys.len()
             ));
         }
         if !(self.rate.is_finite() && self.rate >= 0.0) {

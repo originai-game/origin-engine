@@ -45,7 +45,7 @@ fn expand(@builtin(global_invocation_id) id: vec3<u32>) {
   let alive = age < p.vel_life.w;
   let t = clamp(age / max(p.vel_life.w, 1e-6), 0.0, 1.0);
   var size = particle_size(p.misc.x, t);
-  var color = color_curve(t) * emitter.color;
+  var color = color_curve(t, p.misc.w) * emitter.color;
   if (!alive) {
     size = vec2<f32>(0.0);
     color = vec4<f32>(0.0);

@@ -26,7 +26,7 @@ const SPRITES_WGSL: &str = wgsl!("particle_sprites.wgsl");
 
 /// Bytes between emitter uniform entries (a multiple of the 256-byte
 /// dynamic offset alignment).
-const EMITTER_STRIDE: u64 = 1024;
+const EMITTER_STRIDE: u64 = 1280;
 const _: () = assert!(std::mem::size_of::<EmitterGpu>() as u64 <= EMITTER_STRIDE);
 const PARTICLE_STRIDE: u64 = std::mem::size_of::<ParticleState>() as u64;
 
@@ -92,6 +92,10 @@ struct EmitterGpu {
     /// xyz: an upright or facing particle's axis, in the emitter's space;
     /// w: 1 an effect mesh facing the camera.
     axis: [f32; 4],
+    /// The second colour over life (`random_color_over_life`;
+    /// `counts3.y` keys, 0: none).
+    color2_t: [[f32; 4]; 2],
+    color2_v: [[f32; 4]; 8],
 }
 
 /// How a system's particles are drawn.

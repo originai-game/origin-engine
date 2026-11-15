@@ -912,7 +912,12 @@ pub fn appearance(
             .as_ref()
             .map_or(width, |h| p.misc[0] * h.eval(t)),
     ];
-    let c = e.color_over_life.eval(t);
+    let mut c = e.color_over_life.eval(t);
+    if let Some(other) = &e.random_color_over_life {
+        let o = other.eval(t);
+        let u = color_share(p.misc[3]);
+        c = std::array::from_fn(|i| c[i] + (o[i] - c[i]) * u);
+    }
     let color = [
         c[0] * e.color[0],
         c[1] * e.color[1],
@@ -927,6 +932,14 @@ pub fn appearance(
         SheetMode::Random => ((p.misc[3] * frames as f32) as u32).min(frames - 1),
     };
     (size, color, rotation, frame)
+}
+
+/// Where a particle's colour sits between its emitter's two colour curves,
+/// 0 to 1, from its random value `r` (`color_share` in
+/// particle_common.wgsl): another draw of it than its frame's and its
+/// tumble's.
+fn color_share(r: f32) -> f32 {
+    (r * 61.0).fract()
 }
 
 /// A particle's rotation at life `t`: its start plus its angular velocity

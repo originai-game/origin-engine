@@ -896,3 +896,75 @@ fn a_camera_facing_effect_mesh_turns_to_the_eye_with_its_scale() {
         }
     }
 }
+
+/// Each particle of an emitter with a second colour curve takes its own
+/// share between the two, on both paths: 400 still particles red by the
+/// first curve and blue by the second draw some nearly red, some nearly
+/// blue and some between. One curve dropped draws them all red; one
+/// share for every particle (the mean) draws them all purple.
+#[test]
+#[ignore = "requires GPU"]
+fn a_second_colour_curve_gives_each_particle_its_own_colour_between() {
+    let scene = || {
+        let mut scene = RenderScene::new();
+        let e = scene.add_emitter(ParticleEmitter {
+            max_particles: 400,
+            rate: 0.0,
+            bursts: vec![og_render::Burst::once(0.0, 400)],
+            looping: false,
+            duration: 10.0,
+            lifetime: [10.0, 10.0],
+            speed: [0.0, 0.0],
+            size: [0.07, 0.07],
+            shape: og_render::EmitterShape::Box {
+                half_extents: Vec3::new(1.6, 0.9, 0.0),
+            },
+            color_over_life: og_render::ColorCurve::constant([1.0, 0.0, 0.0, 1.0]),
+            random_color_over_life: Some(og_render::ColorCurve::constant([0.0, 0.0, 1.0, 1.0])),
+            gravity: Vec3::ZERO,
+            blend: og_render::ParticleBlend::Alpha,
+            ..Default::default()
+        });
+        scene.effects.particles.push(ParticleSystem::new(
+            1,
+            e,
+            Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0)),
+            5,
+            0,
+        ));
+        scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+        scene.frame.camera = Camera {
+            position: Vec3::new(0.0, 1.0, 4.0),
+            target: Vec3::new(0.0, 1.0, 0.0),
+            ..Default::default()
+        };
+        scene
+    };
+    for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
+        let desc = RenderDesc {
+            particles: path,
+            ..small()
+        };
+        let (img, _, _) = run(&desc, &mut scene(), 10, |s, f| fx::tick_all(s, f as u64));
+        let (mut red, mut blue, mut between) = (0, 0, 0);
+        for p in img.pixels.chunks(4) {
+            let (r, b) = (p[0] as f32, p[2] as f32);
+            if r.max(b) < 80.0 {
+                continue;
+            }
+            if r > 1.6 * b {
+                red += 1;
+            } else if b > 1.6 * r {
+                blue += 1;
+            } else {
+                between += 1;
+            }
+        }
+        let lit = (red + blue + between) as f32;
+        println!("{path:?}: {red} red, {blue} blue, {between} between of {lit}");
+        assert!(lit > 500.0, "{path:?}: {lit} lit");
+        for (what, n) in [("red", red), ("blue", blue), ("between", between)] {
+            assert!(n as f32 > 0.15 * lit, "{path:?}: {n} {what} of {lit}");
+        }
+    }
+}

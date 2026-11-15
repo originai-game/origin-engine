@@ -72,15 +72,41 @@ fn a_billboard_sprite_node_is_an_emitter_of_its_counts_life_size_and_blend() {
     assert_eq!(line(e, "sizeOverLife"), "sizeOverLife 0 0.25 1 1");
     // Easing to an end of ±5 per axis: every direction.
     assert_eq!(line(e, "spread"), "spread 180");
-    // Colour easing from opaque white to transparent.
-    let keys: Vec<&str> = e.lines().filter(|l| l.trim().starts_with("key ")).collect();
-    assert_eq!(keys.first().unwrap().trim(), "key 0 1 1 1 1");
-    assert!(keys.last().unwrap().trim().ends_with(" 0"), "{keys:?}");
-    // The random end colour is said, not dropped.
+    // Colour easing from opaque white to transparent, its end random per
+    // particle: two curves from the same start to the end's least and
+    // most, not one at their mean.
+    let block = |key: &str| -> Vec<Vec<f32>> {
+        e.split(&format!("{key} {{\n"))
+            .nth(1)
+            .unwrap_or_else(|| panic!("no {key} in\n{e}"))
+            .lines()
+            .take_while(|l| l.trim() != "}")
+            .map(|l| {
+                l.trim()[4..]
+                    .split(' ')
+                    .map(|v| v.parse().unwrap())
+                    .collect()
+            })
+            .collect()
+    };
+    let (least, most) = (block("colorOverLife"), block("randomColorOverLife"));
+    for keys in [&least, &most] {
+        assert_eq!(keys[0], [0.0, 1.0, 1.0, 1.0, 1.0], "{e}");
+        assert_eq!(*keys.last().unwrap().last().unwrap(), 0.0, "{e}");
+    }
+    let mid = |k: &[Vec<f32>]| {
+        k.iter()
+            .min_by(|a, b| (a[0] - 0.5).abs().total_cmp(&(b[0] - 0.5).abs()))
+            .unwrap()
+            .clone()
+    };
+    let (a, b) = (mid(&least), mid(&most));
     assert!(
-        c.findings
-            .iter()
-            .any(|f| f.what.starts_with("a random colour per particle")),
+        (1..4).any(|i| (a[i] - b[i]).abs() > 0.1),
+        "{a:?} {b:?}\n{e}"
+    );
+    assert!(
+        !c.findings.iter().any(|f| f.what.contains("random colour")),
         "{:?}",
         c.findings
     );
@@ -208,11 +234,15 @@ fn an_efkefc_reads_as_its_project() {
 
 #[test]
 fn findings_ride_in_the_text_and_parse_as_comments() {
-    let c = run(SPRITE);
+    // A y-axis ring, which is drawn in its own plane.
+    let c = run(&project(
+        "<Node><DrawingValues><Type>4</Type><Ring><Billboard>1</Billboard></Ring></DrawingValues>\
+         <Name>R</Name><Children /></Node>",
+    ));
     let text = vfx_text(&c);
     assert!(
         text.lines()
-            .any(|l| l.starts_with("# effekseer: node 0 \"Node\": a random colour")),
+            .any(|l| l.starts_with("# effekseer: node 0 \"R\": a y-axis ring")),
         "{text}"
     );
     og_bundle::vfx::parse_vfx(&text).unwrap();

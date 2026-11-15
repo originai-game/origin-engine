@@ -63,18 +63,23 @@ pub(super) fn emitter_gpu(
         size_t[i / 4][i % 4] = *t;
         size_v[i / 4][i % 4] = *v;
     }
-    let mut color_t = [[0.0; 4]; 2];
-    let mut color_v = [[0.0; 4]; 8];
-    for (i, (t, c)) in e
-        .color_over_life
-        .keys
-        .iter()
-        .take(MAX_CURVE_KEYS)
-        .enumerate()
-    {
-        color_t[i / 4][i % 4] = *t;
-        color_v[i] = *c;
-    }
+    let color_gpu = |c: &crate::particles::ColorCurve| {
+        let (mut ts, mut vs) = ([[0.0; 4]; 2], [[0.0; 4]; 8]);
+        for (i, (t, c)) in c.keys.iter().take(MAX_CURVE_KEYS).enumerate() {
+            ts[i / 4][i % 4] = *t;
+            vs[i] = *c;
+        }
+        (ts, vs)
+    };
+    let (color_t, color_v) = color_gpu(&e.color_over_life);
+    let (color2_t, color2_v) = e
+        .random_color_over_life
+        .as_ref()
+        .map_or(([[0.0; 4]; 2], [[0.0; 4]; 8]), color_gpu);
+    let color2_n = e
+        .random_color_over_life
+        .as_ref()
+        .map_or(0, |c| c.keys.len().min(MAX_CURVE_KEYS)) as f32;
     let (mode, param) = match e.sheet.mode {
         SheetMode::Off => (0.0, 0.0),
         SheetMode::OverLife { cycles } => (1.0, cycles),
@@ -189,7 +194,9 @@ pub(super) fn emitter_gpu(
         air: [0.0; 4],
         height_t,
         height_v,
-        counts3: [height_n, 0.0, 0.0, 0.0],
+        counts3: [height_n, color2_n, 0.0, 0.0],
         axis: axis.extend(0.0).to_array(),
+        color2_t,
+        color2_v,
     }
 }

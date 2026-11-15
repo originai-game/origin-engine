@@ -38,8 +38,10 @@ struct Emitter {
   air: vec4<f32>,          // xyz: what drag closes on, in the simulation space (the emitter's `wind` share of the air)
   height_t: array<vec4<f32>, 2>,  // the height over life (counts3.x keys; 0: the size curve's)
   height_v: array<vec4<f32>, 2>,
-  counts3: vec4<f32>,      // x: height keys
+  counts3: vec4<f32>,      // x: height keys, y: second colour keys (0 none)
   axis: vec4<f32>,         // xyz: an upright or facing particle's axis, in the emitter's space; w: 1 an effect mesh facing the camera
+  color2_t: array<vec4<f32>, 2>,  // the second colour over life (counts3.y keys)
+  color2_v: array<vec4<f32>, 8>,
 };
 
 // A curve over life (keys `ts`, `vs`, `n` of them) at `t`.
@@ -145,20 +147,35 @@ fn particle_size(s: f32, t: f32) -> vec2<f32> {
   return vec2<f32>(w, s * curve_at(emitter.height_t, emitter.height_v, n, t));
 }
 
-fn color_curve(t: f32) -> vec4<f32> {
-  let n = u32(emitter.counts.y);
-  var v = emitter.color_v[0];
+// A colour curve over life (keys `ts`, `vs`, `n` of them) at `t`.
+fn color_at(ts: array<vec4<f32>, 2>, vs: array<vec4<f32>, 8>, n: u32, t: f32) -> vec4<f32> {
+  var v = vs[0];
   for (var i = 1u; i < n; i++) {
-    let t0 = key4(emitter.color_t, i - 1u);
-    let t1 = key4(emitter.color_t, i);
+    let t0 = key4(ts, i - 1u);
+    let t1 = key4(ts, i);
     if (t >= t1) {
-      v = emitter.color_v[i];
+      v = vs[i];
     } else if (t > t0) {
-      v = mix(emitter.color_v[i - 1u], emitter.color_v[i], (t - t0) / max(t1 - t0, 1e-6));
+      v = mix(vs[i - 1u], vs[i], (t - t0) / max(t1 - t0, 1e-6));
       break;
     } else {
       break;
     }
   }
   return v;
+}
+
+// Where a particle's colour sits between the two curves, from its random
+// value (`color_share` in og-render-data's cpu.rs).
+fn color_share(r: f32) -> f32 {
+  return fract(r * 61.0);
+}
+
+// A particle's colour at life `t` with random value `r`: the colour curve,
+// or a share of the way to the second one.
+fn color_curve(t: f32, r: f32) -> vec4<f32> {
+  let v = color_at(emitter.color_t, emitter.color_v, u32(emitter.counts.y), t);
+  let n2 = u32(emitter.counts3.y);
+  if (n2 == 0u) { return v; }
+  return mix(v, color_at(emitter.color2_t, emitter.color2_v, n2, t), color_share(r));
 }

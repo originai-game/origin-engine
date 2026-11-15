@@ -24,6 +24,7 @@ Every line the three effect formats take, from the tables their parsers read: an
 | `sizeOverLife <t> <value> ...` |  | A curve that scales the size over the life (1 when left out): the width and, without `heightOverLife`, the height. |
 | `heightOverLife <t> <value> ...` |  | A curve that scales the height alone over the life (along the sprite's up, or the velocity when stretched; a mesh's y): a tall flame, a flat shockwave. Left out, the height is the width. |
 | `colorOverLife { key <t> <r> <g> <b> <a> ... }` |  | Linear colour keys over the life, at most 8; left out, white fading over the last quarter. |
+| `randomColorOverLife { key <t> <r> <g> <b> <a> ... }` |  | A second colour over the life: each particle's colour lies between colorOverLife and this at a share of its own (embers from orange to deep red). Left out, every particle takes colorOverLife. |
 | `color <r> <g> <b> [<a>]` | `1 1 1 1` | A linear tint over the colour keys; above 1 blooms. |
 | `rotation <min> [<max>]` | `0` | The start rotation in degrees. |
 | `angularVelocity <min> [<max>]` | `0` | Degrees per second. |

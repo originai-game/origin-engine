@@ -139,7 +139,7 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
   o.local = c;
   o.shape_uv = vec2<f32>(c.x + 0.5, 0.5 - c.y);
   particle_effect(&o, t, p.misc.w);
-  o.color = color_curve(t) * emitter.color;
+  o.color = color_curve(t, p.misc.w) * emitter.color;
   o.depth = dot(world - view.cam_pos.xyz, view.cam_forward.xyz);
   o.world = world;
   o.normal = -view.cam_forward.xyz;
@@ -317,7 +317,7 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
   o.local = vec2<f32>(0.0);
   o.shape_uv = m.uv;
   particle_effect(&o, t, p.misc.w);
-  o.color = color_curve(t) * emitter.color * m.color;
+  o.color = color_curve(t, p.misc.w) * emitter.color * m.color;
   o.depth = dot(world - view.cam_pos.xyz, view.cam_forward.xyz);
   o.world = world;
   o.normal = normalize(nrm);

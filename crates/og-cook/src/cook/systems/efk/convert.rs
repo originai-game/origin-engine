@@ -434,13 +434,15 @@ fn element_head(out: &mut String, at: f32, place: &Place) {
 }
 
 /// The node's colour over its life (linear rgb, alpha with its fades), as keys.
-fn color_keys(node: &Node, life: f32) -> Vec<(f32, [f32; 4])> {
+/// Its colour over its life: its centre, or with `share` each random
+/// channel that share of the way from its least to its most.
+fn color_keys(node: &Node, life: f32, share: Option<f32>) -> Vec<(f32, [f32; 4])> {
     let l = life.max(1.0);
     let fin = node.render.fade_in;
     let fout = node.render.fade_out.filter(|_| !node.render.fade_out_after);
     let f = |t: f32| {
         let fr = t * l;
-        let c = node.color.at(fr, l);
+        let c = share.map_or_else(|| node.color.at(fr, l), |u| node.color.at_share(fr, l, u));
         let mut a = c[3];
         if let Some((frames, ease)) = fin
             && frames > 0.0
@@ -752,7 +754,7 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
     let node = chain[chain.len() - 1];
     let life = node.life.c().max(1.0);
     let (peak, mut scale, square) = scale_keys(node, life);
-    let mut colors = color_keys(node, life);
+    let mut colors = color_keys(node, life, None);
     let blend = blend(cx, node);
     let texture = cx.texture(node);
     let mut base = peak * p.scale * p.own;
@@ -1311,9 +1313,6 @@ fn emitter_file(
             "a fixed sprite turned at random: its mean plane drawn",
         );
     }
-    if drawn && node.color.random_spread() > 0.1 {
-        cx.find(node, "a random colour per particle: its mean used");
-    }
     let mo = motion(cx, chain, p.generator, lc);
     let (dir, speed, mut spread) = direction(&mo.vel);
     let (mut peak, mut size_keys, square) = scale_keys(node, lc);
@@ -1472,11 +1471,23 @@ fn emitter_file(
             4 => e.push_str("align velocity 0\n"),
             _ => {}
         }
-        e.push_str("colorOverLife {\n");
-        for (t, c) in &color_keys(node, lc) {
-            let _ = writeln!(e, "  key {} {}", n(*t), ns(c));
+        // A random colour: each particle between its least and its most.
+        let random = node.color.random_spread() > 0.1;
+        let lines = if random {
+            vec![
+                ("colorOverLife", Some(0.0)),
+                ("randomColorOverLife", Some(1.0)),
+            ]
+        } else {
+            vec![("colorOverLife", None)]
+        };
+        for (key, share) in lines {
+            let _ = writeln!(e, "{key} {{");
+            for (t, c) in &color_keys(node, lc, share) {
+                let _ = writeln!(e, "  key {} {}", n(*t), ns(c));
+            }
+            e.push_str("}\n");
         }
-        e.push_str("}\n");
         if roll.max.abs() > 1e-3 || roll.min.abs() > 1e-3 {
             let _ = writeln!(e, "rotation {}", ns(&[roll.min, roll.max]));
         }
@@ -1540,7 +1551,7 @@ fn trail(cx: &mut Ctx<'_>, chain: &[&Node]) {
     let g = chain[p.generator];
     let sch = schedule(g);
     let life = node.life.c().max(1.0);
-    let colors = color_keys(node, life);
+    let colors = color_keys(node, life, None);
     let blend = blend(cx, node);
     let texture = cx.texture(node);
     let (peak, _, _) = scale_keys(node, life);
