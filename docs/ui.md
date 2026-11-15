@@ -896,6 +896,19 @@ digits, a sign, a point and an exponent. `maxlength` stops typing;
 `readonly` drops every edit and keeps selection, copy and the focus stop.
 `<textarea rows>` shows that many lines (0 is 4).
 
+Editing is Parley's (`parley::editing`): the text is laid out as it is
+drawn (a face without a usable file through a layout-only face of its own
+advances and kerning), and Parley's cursor and selection place the caret
+from a press, move it by grapheme cluster on screen (across a bidi edge to
+its other place, kept as the cursor's affinity), by word (UAX #29 with
+ICU's dictionaries: Thai, Lao, Khmer, Myanmar, Chinese and Japanese by
+their words) and by line, break an area's lines (UAX #14), and give
+Backspace (a character, a whole emoji or line break) and Delete (a
+cluster) what they remove. og-ui keeps the gestures (drag with edge
+scroll, double and triple press), scrolling, typed text and composition,
+the platform's keys, undo grouping, the input types and the accessible
+value.
+
 A password draws one bullet per character (`*` where the face lacks
 U+2022); the probe and accessibility tree read the mask; copy, cut and the
 kill buffer never take it, the host gets no selection, and word moves treat

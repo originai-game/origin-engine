@@ -1,13 +1,23 @@
-//! Text editing, shared by the one-line field and the multi-line area: the
-//! caret and the selection (Shift with the arrows, Home and End; by words
-//! with the arrows, Backspace and Delete; Ctrl with Home and End to the
-//! text's ends; a press places the caret, a drag selects and scrolls the
-//! text past its edge, a double click selects a word and a triple click the
-//! line; the shortcut key with A, C and X), typed text (og-input's
-//! `og.TextInput` stream, or the keys before one exists) replacing the
-//! selection, an input method's composition shown underlined at the caret
-//! until it commits, undo and redo (the shortcut key with Z, Shift+Z and Y;
-//! a bounded history per control, typing grouped by words), and the
+//! Text editing, shared by the one-line field and the multi-line area.
+//!
+//! Parley owns the text's geometry and the caret's moves: the edited text
+//! is laid out by Parley ([`Editable`], og-text's `paragraph::editable`, in
+//! the fonts it is drawn with), and its `Cursor` and `Selection` place the
+//! caret from a press, step it by grapheme cluster on screen (across a bidi
+//! run's edge, where one place in the text has two on screen: the cursor's
+//! affinity, `State::caret_upstream`), by word (UAX #29 with ICU's
+//! dictionaries, so Thai and Chinese step by their words) and by line,
+//! find a line's ends, give Backspace and Delete what they remove, and
+//! measure the selection and the caret for drawing.
+//!
+//! og-ui keeps what is the control's own: the pointer's gestures (a press
+//! places the caret, a drag selects and scrolls the text past its edge, a
+//! double click selects a word and a triple click the line), the scroll,
+//! typed text (og-input's `og.TextInput` stream, or the keys before one
+//! exists) replacing the selection, an input method's composition shown
+//! underlined at the caret until it commits, the shortcut keys, undo and
+//! redo (the shortcut key with Z, Shift+Z and Y; a bounded history per
+//! control, typing grouped by words), what an input type accepts, and the
 //! caret's blink by the tick.
 //!
 //! The keys follow the platform ([`crate::Viewport::mac_keys`]: the web
@@ -22,25 +32,16 @@
 //! Control is the shortcut key and moves by words (Alt too), and Command
 //! only takes the shortcuts.
 //!
-//! The caret stands between grapheme clusters ([`clusters`]): an arrow,
-//! Backspace and Delete step over a base and its marks, an emoji with its
-//! modifiers and joiners, at once, and a press lands beside one. ← and →
-//! move visually, a cluster at a time on screen ([`visual_step`]): on in
-//! the text in a right-to-left run, and across a bidi run's edge to the
-//! stop beside the caret, where one logical place has two on screen (the
-//! caret keeps the one it moved to, `State::caret_upstream`). Word moves go
-//! as the run under the caret points (UAX #29's words).
-//!
-//! Positions come from the same visual layout the text is drawn with
-//! (`FontMetrics::visual`: kerning, bidi runs, shaped clusters), so a press
-//! lands on the character drawn under it and a selection covers exactly
-//! the glyphs it shows, in either direction.
+//! The glyph boxes below ([`boxes`], [`nearest`], [`word_at`]) place read-
+//! only text's selection (`user-select`, vertical lines too) and its marks.
 
 use crate::input::UiKey;
 use crate::layout::{FontRole, Rect};
 use crate::text::FontMetrics;
 use og_core::glam::Vec2;
 use og_i18n::Direction;
+use og_text::text::paragraph::Brush;
+use parley::{Affinity, Cursor, Layout, Selection};
 
 /// A glyph's box on its line, CSS px from the line's start.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -92,74 +93,6 @@ pub(crate) fn caret_x(boxes: &[GlyphBox], k: usize) -> f32 {
     }
 }
 
-/// The caret's slot on a line: the place between glyph boxes `slot - 1`
-/// and `slot` in visual order (0 before the first, `boxes.len()` after the
-/// last) where the caret before logical character `k` stands, as
-/// [`caret_x`] places it; with `upstream` at the trailing edge of the glyph
-/// before `k` (after it in a left-to-right run, before it in a
-/// right-to-left one) instead: the other of the two places a caret at a
-/// bidi run's edge has, the same one anywhere else.
-pub(crate) fn caret_slot(boxes: &[GlyphBox], k: usize, upstream: bool) -> usize {
-    let before = boxes
-        .iter()
-        .enumerate()
-        .filter(|(_, b)| b.index < k)
-        .max_by_key(|(_, b)| b.index);
-    if upstream && let Some((i, b)) = before {
-        return if b.rtl { i } else { i + 1 };
-    }
-    if let Some(i) = boxes.iter().position(|b| b.index == k) {
-        return if boxes[i].rtl { i + 1 } else { i };
-    }
-    match before {
-        Some((i, b)) if b.rtl => i,
-        Some((i, _)) => i + 1,
-        None => 0,
-    }
-}
-
-/// Where [`caret_slot`] puts the caret on a line (CSS px from its start).
-pub(crate) fn caret_x_at(boxes: &[GlyphBox], k: usize, upstream: bool) -> f32 {
-    let s = caret_slot(boxes, k, upstream);
-    match boxes.get(s) {
-        Some(b) => b.x0,
-        None => boxes.last().map_or(0.0, |b| b.x1),
-    }
-}
-
-/// The caret stop next to the caret before `k` (its place `upstream`) on a
-/// line, rightwards or leftwards on screen: of every grapheme cluster
-/// boundary's places ([`caret_slot`], both at a bidi edge) the nearest
-/// beyond it in visual order, of two at one slot the one nearer `k` in the
-/// text (then the leading edge). `None` at the line's edge.
-pub(crate) fn visual_step(
-    boxes: &[GlyphBox],
-    line: &[char],
-    k: usize,
-    upstream: bool,
-    right: bool,
-) -> Option<(usize, bool)> {
-    let from = caret_slot(boxes, k, upstream) as isize;
-    let mut best: Option<(usize, bool, isize)> = None;
-    for c in clusters(line) {
-        for up in [false, true] {
-            let at = caret_slot(boxes, c, up) as isize;
-            let d = if right { at - from } else { from - at };
-            if d <= 0 {
-                continue;
-            }
-            let better = match best {
-                None => true,
-                Some((bc, _, bd)) => d < bd || (d == bd && c.abs_diff(k) < bc.abs_diff(k)),
-            };
-            if better {
-                best = Some((c, up, d));
-            }
-        }
-    }
-    best.map(|(c, up, _)| (c, up))
-}
-
 /// The grapheme cluster boundary of a line (0 to its length) whose caret
 /// is nearest `x`: a press never lands between a base and its marks.
 pub(crate) fn nearest(boxes: &[GlyphBox], line: &[char], x: f32) -> usize {
@@ -194,80 +127,205 @@ pub(crate) fn next_cluster(chars: &[char], k: usize) -> usize {
         .min(chars.len())
 }
 
-/// The cluster boundary before `k` (0 at least).
-pub(crate) fn prev_cluster(chars: &[char], k: usize) -> usize {
-    clusters(chars)
-        .into_iter()
-        .rev()
-        .find(|&b| b < k)
-        .unwrap_or(0)
+/// An edited text laid out by Parley for its cursor and selection
+/// (og-text's `paragraph::editable`): positions in characters of `text`,
+/// as og-ui's state keeps them, a caret's place at a bidi edge or a soft
+/// line break as `upstream` (Parley's [`Affinity::Upstream`]).
+pub(crate) struct Editable {
+    /// Each character's byte offset in the text, and the text's length.
+    bytes: Vec<usize>,
+    pub layout: Layout<Brush>,
+    /// The paragraph's direction (its bidi base).
+    pub base: Direction,
 }
 
-/// A multi-line text's lines at `width`: character ranges `[start, end)`
-/// (a `\n` ends a line and belongs to none), broken greedily after the
-/// spaces between words, a word wider than the line between characters.
-pub(crate) fn wrap(
-    chars: &[char],
-    m: &FontMetrics,
-    size: f32,
-    tracking: f32,
-    width: f32,
-) -> Vec<(usize, usize)> {
-    let mut lines = Vec::new();
-    let w = |a: usize, b: usize| {
-        let s: String = chars[a..b].iter().collect();
-        m.measure_tracked(s.trim_end_matches(' '), size, tracking)
-    };
-    // Where a word wider than the line may break: between clusters.
-    let stops = clusters(chars);
-    let after = |k: usize| {
-        stops
-            .iter()
-            .copied()
-            .find(|&b| b > k)
-            .unwrap_or(chars.len())
-    };
-    let mut p = 0;
-    loop {
-        let end = chars[p..]
-            .iter()
-            .position(|&c| c == '\n')
-            .map_or(chars.len(), |i| p + i);
-        // Words with their trailing spaces.
-        let mut words = Vec::new();
-        let mut i = p;
-        while i < end {
-            let mut j = i;
-            while j < end && chars[j] != ' ' {
-                j += 1;
-            }
-            while j < end && chars[j] == ' ' {
-                j += 1;
-            }
-            words.push((i, j));
-            i = j;
+impl Editable {
+    /// `text` in `m` at `size` CSS px (`tracking` em), its bidi base its
+    /// first strong character's (else `ui`'s), broken at `width` (none: one
+    /// line per paragraph) into lines `line_height` tall, aligned to `ui`'s
+    /// start.
+    pub fn new(
+        m: &FontMetrics,
+        text: &str,
+        ui: Direction,
+        size: f32,
+        tracking: f32,
+        width: Option<f32>,
+        line_height: f32,
+    ) -> Editable {
+        let base = crate::text::line_direction(text, ui);
+        let layout = og_text::text::paragraph::editable(
+            m,
+            text,
+            size,
+            tracking,
+            base,
+            ui,
+            width,
+            line_height,
+        );
+        let mut bytes: Vec<usize> = text.char_indices().map(|(b, _)| b).collect();
+        bytes.push(text.len());
+        Editable {
+            bytes,
+            layout,
+            base,
         }
-        let mut start = p;
-        for (a, b) in words {
-            if a > start && w(start, b) > width {
-                lines.push((start, a));
-                start = a;
-            }
-            // A word wider than the line: between grapheme clusters.
-            while w(start, b) > width && after(start) < b {
-                let mut k = after(start);
-                while k < b && w(start, after(k).min(b)) <= width {
-                    k = after(k).min(b);
-                }
-                lines.push((start, k));
-                start = k;
-            }
+    }
+
+    /// Its length in characters.
+    pub fn len(&self) -> usize {
+        self.bytes.len() - 1
+    }
+
+    fn byte(&self, k: usize) -> usize {
+        self.bytes[k.min(self.len())]
+    }
+
+    fn char_of(&self, byte: usize) -> usize {
+        self.bytes.partition_point(|&b| b < byte)
+    }
+
+    /// The cursor before character `k`.
+    pub fn cursor(&self, k: usize, upstream: bool) -> Cursor {
+        let affinity = if upstream {
+            Affinity::Upstream
+        } else {
+            Affinity::Downstream
+        };
+        Cursor::from_byte_index(&self.layout, self.byte(k), affinity)
+    }
+
+    /// A cursor's character and place.
+    pub fn place(&self, c: Cursor) -> (usize, bool) {
+        (self.char_of(c.index()), c.affinity() == Affinity::Upstream)
+    }
+
+    /// The selection from `anchor` to the caret.
+    pub fn selection(&self, anchor: usize, caret: usize, upstream: bool) -> Selection {
+        Selection::new(self.cursor(anchor, false), self.cursor(caret, upstream))
+    }
+
+    /// Where a press at `(x, y)` (from the layout's top left) puts the caret.
+    pub fn hit(&self, x: f32, y: f32) -> (usize, bool) {
+        self.place(Cursor::from_point(&self.layout, x, y))
+    }
+
+    /// A selection's ends in characters, first first.
+    pub fn range(&self, s: &Selection) -> (usize, usize) {
+        let r = s.text_range();
+        (self.char_of(r.start), self.char_of(r.end))
+    }
+
+    /// The word at `(x, y)` (a double click's): Parley's word, its spaces
+    /// or its punctuation.
+    pub fn word_at_point(&self, x: f32, y: f32) -> (usize, usize) {
+        self.range(&Selection::word_from_point(&self.layout, x, y))
+    }
+
+    /// The paragraph at `(x, y)` (a triple click's), without its line break.
+    pub fn paragraph_at_point(&self, x: f32, y: f32) -> (usize, usize) {
+        self.range(&Selection::hard_line_from_point(&self.layout, x, y))
+    }
+
+    /// The start and end of the line the caret is on.
+    pub fn line_ends(&self, caret: usize, upstream: bool) -> ((usize, bool), (usize, bool)) {
+        let s: Selection = self.cursor(caret, upstream).into();
+        (
+            self.place(s.line_start(&self.layout, false).focus()),
+            self.place(s.line_end(&self.layout, false).focus()),
+        )
+    }
+
+    /// The grapheme cluster after character `k` (its end; `k` at the text's end).
+    pub fn next_cluster(&self, k: usize) -> usize {
+        match self.cursor(k, false).logical_clusters(&self.layout)[1] {
+            Some(c) => self.char_of(c.text_range().end),
+            None => k,
         }
-        lines.push((start, end));
-        if end >= chars.len() {
-            return lines;
+    }
+
+    /// The grapheme cluster before character `k` (its start; 0 at the start).
+    pub fn prev_cluster(&self, k: usize) -> usize {
+        match self.cursor(k, false).logical_clusters(&self.layout)[0] {
+            Some(c) => self.char_of(c.text_range().start),
+            None => 0,
         }
-        p = end + 1;
+    }
+
+    /// Where Backspace at `k` deletes from: the character before it, or
+    /// the whole cluster before it when that is a line break or an emoji
+    /// (Parley's `backdelete`), so a letter's accent or an Indic vowel sign
+    /// goes alone.
+    pub fn backspace_from(&self, k: usize) -> usize {
+        match self.cursor(k, false).logical_clusters(&self.layout)[0] {
+            Some(c) if c.is_hard_line_break() || c.is_emoji() => self.char_of(c.text_range().start),
+            Some(_) => k - 1,
+            None => k,
+        }
+    }
+
+    /// The start of the word before `k` (over the spaces before it).
+    pub fn word_before(&self, k: usize) -> usize {
+        self.place(self.cursor(k, false).previous_logical_word(&self.layout))
+            .0
+    }
+
+    /// The start of the word after the one `k` is in (over its spaces).
+    pub fn word_after(&self, k: usize) -> usize {
+        self.place(self.cursor(k, false).next_logical_word(&self.layout))
+            .0
+    }
+
+    /// The caret before `k`: its x and the index of its line.
+    pub fn caret(&self, k: usize, upstream: bool) -> (f32, usize) {
+        let g = self.cursor(k, upstream).geometry(&self.layout, 0.0);
+        (g.x0 as f32, self.line_at_y(((g.y0 + g.y1) / 2.0) as f32))
+    }
+
+    /// The index of the line at `y`.
+    fn line_at_y(&self, y: f32) -> usize {
+        self.layout
+            .lines()
+            .position(|l| y < l.metrics().block_max_coord)
+            .unwrap_or(self.layout.len().saturating_sub(1))
+    }
+
+    /// The stretches characters `[a, b)` cover on screen: x from, x to and
+    /// the line's index.
+    pub fn spans(&self, a: usize, b: usize) -> Vec<(f32, f32, usize)> {
+        if a >= b {
+            return Vec::new();
+        }
+        Selection::new(self.cursor(a, false), self.cursor(b, false))
+            .geometry(&self.layout)
+            .into_iter()
+            .map(|(r, line)| (r.x0 as f32, r.x1 as f32, line))
+            .collect()
+    }
+
+    /// Its lines: their characters and where they start across.
+    pub fn lines(&self) -> Vec<((usize, usize), f32)> {
+        self.layout
+            .lines()
+            .map(|l| {
+                let r = l.text_range();
+                (
+                    (self.char_of(r.start), self.char_of(r.end)),
+                    l.metrics().offset,
+                )
+            })
+            .collect()
+    }
+
+    /// Its widest line, with its spaces.
+    pub fn width(&self) -> f32 {
+        self.layout.full_width()
+    }
+
+    /// Its lines' height.
+    pub fn height(&self) -> f32 {
+        self.layout.height()
     }
 }
 
@@ -314,50 +372,6 @@ fn segment_at(segs: &[og_i18n::WordSegment], i: usize) -> Option<usize> {
     segs.iter().position(|s| s.start <= i && i < s.end)
 }
 
-/// Spaces and line breaks: what a word move passes over.
-fn blank(s: &og_i18n::WordSegment) -> bool {
-    matches!(s.kind, og_i18n::WordKind::Space | og_i18n::WordKind::Break)
-}
-
-/// Where a word move left puts the caret from `k`: back over spaces, then
-/// to the start of the word (or the run of punctuation) before it. Words
-/// are UAX #29's ([`og_i18n::word_segments`]): a Han character or a Thai
-/// cluster is one.
-pub(crate) fn word_left(chars: &[char], k: usize) -> usize {
-    let k = k.min(chars.len());
-    if k == 0 {
-        return 0;
-    }
-    let segs = og_i18n::word_segments(chars);
-    let Some(mut i) = segment_at(&segs, k - 1) else {
-        return 0;
-    };
-    while blank(&segs[i]) {
-        if i == 0 {
-            return 0;
-        }
-        i -= 1;
-    }
-    segs[i].start
-}
-
-/// Where a word move right puts the caret from `k`: on over spaces, then to
-/// the end of the word (or the run of punctuation) after it.
-pub(crate) fn word_right(chars: &[char], k: usize) -> usize {
-    let n = chars.len();
-    let segs = og_i18n::word_segments(chars);
-    let Some(mut i) = segment_at(&segs, k.min(n)) else {
-        return n;
-    };
-    while blank(&segs[i]) {
-        i += 1;
-        if i == segs.len() {
-            return n;
-        }
-    }
-    segs[i].end
-}
-
 /// The word a double click at boundary `k` selects: the segment (a word,
 /// spaces or punctuation) holding the character after `k`, or the one
 /// before it at a word's end or the text's.
@@ -384,10 +398,10 @@ pub(crate) fn word_at(chars: &[char], k: usize) -> (usize, usize) {
 }
 
 /// Whether typing `inserted` at `at` of `after` (the text with it) starts
-/// a new word for the undo history: after spaces, or next to a word of one
-/// character (Han and Hiragana, where UAX #29 puts a boundary between every
-/// two; an input method commits them a phrase at a time). Thai and other
-/// scripts without spaces group to the next space, as Latin does.
+/// a new word for the undo history: after spaces, or next to Han or
+/// Hiragana (an input method commits them a phrase at a time, and each
+/// commit is a step). Thai and other scripts without spaces group to the
+/// next space, as Latin does.
 fn starts_word(last: &str, after: &[char], at: usize) -> bool {
     let first = after.get(at).copied();
     if last.ends_with(char::is_whitespace) {
@@ -621,7 +635,8 @@ impl crate::ui::Interaction {
     /// Edits `value` as the focused text control `key`: pointer, typed and
     /// composed text, editing keys, undo and redo. The caret, selection
     /// anchor, composition, click count and history live in the UI state
-    /// (and its saved bytes).
+    /// (and its saved bytes); Parley's cursor and selection
+    /// ([`Editable`]) move the caret over the text as it is laid out.
     pub(crate) fn edit(
         &mut self,
         key: u64,
@@ -670,63 +685,30 @@ impl crate::ui::Interaction {
         // A drag past the edge scrolled the text this tick: it owns the scroll.
         let mut autoscrolled = false;
         let secret = d.input_type == crate::InputType::Password;
+        let accepts = |c: char| (d.multiline || c != '\n') && d.input_type.accepts(c);
+        let room = |chars: &[char]| d.max_chars == 0 || chars.len() < d.max_chars as usize;
         {
             let m = &env
                 .fonts
                 .for_text(d.role, if secret { "\u{2022}" } else { value.as_str() })
                 .metrics;
             let mask = d.masked.then(|| mask_char(m));
-            // A secret text moves and selects by words as one word.
-            let word_left = |chars: &[char], k: usize| if secret { 0 } else { word_left(chars, k) };
-            let word_right = |chars: &[char], k: usize| {
-                if secret {
-                    chars.len()
-                } else {
-                    word_right(chars, k)
-                }
+            let width = d.inner.filter(|_| d.multiline).map(|r| r.width.max(1.0));
+            // The text as it is drawn, laid out by Parley.
+            let lay = |chars: &[char]| {
+                Editable::new(
+                    m,
+                    &shown(chars, mask),
+                    dir,
+                    d.size,
+                    d.tracking,
+                    width,
+                    d.line_height,
+                )
             };
-            let word_at = |chars: &[char], k: usize| {
-                if secret {
-                    (0, chars.len())
-                } else {
-                    word_at(chars, k)
-                }
-            };
+            let mut ed = lay(&chars);
+            let mut laid = chars.clone();
             let mut scroll = self.state.edit_scroll;
-            let (size, tracking) = (d.size, d.tracking);
-            // The text's lines now: (start, end, boxes, y from the text's top).
-            let layout = |chars: &[char]| -> Vec<(usize, usize, Vec<GlyphBox>)> {
-                let ranges = if d.multiline {
-                    let width = d.inner.map_or(f32::MAX, |r| r.width.max(1.0));
-                    wrap(chars, m, size, tracking, width)
-                } else {
-                    vec![(0, chars.len())]
-                };
-                ranges
-                    .into_iter()
-                    .map(|(a, b)| {
-                        let s = shown(&chars[a..b], mask);
-                        (a, b, boxes(m, &s, dir, size, tracking))
-                    })
-                    .collect()
-            };
-            // The line holding the caret, and the caret's x on it.
-            let locate = |lines: &[(usize, usize, Vec<GlyphBox>)], k: usize| -> (usize, f32) {
-                let li = lines
-                    .iter()
-                    .rposition(|l| l.0 <= k && k <= l.1)
-                    .unwrap_or(0);
-                let (a, _, bx) = &lines[li];
-                (li, caret_x(bx, k - a))
-            };
-            let line_x0 = |l: &(usize, usize, Vec<GlyphBox>), inner: &Rect| {
-                let w = l.2.last().map_or(0.0, |b| b.x1);
-                if dir == Direction::Rtl && d.multiline {
-                    inner.right() - w
-                } else {
-                    inner.x
-                }
-            };
             // A press places the caret, a drag (the press held) selects; a
             // second press in a row selects a word, a third the line, and a
             // drag from them extends by words or lines.
@@ -736,7 +718,6 @@ impl crate::ui::Interaction {
                 && let Some(inner) = d.inner
             {
                 let mut p = self.input.pointer;
-                let lines = layout(&chars);
                 // A drag past the text's edge scrolls it, faster the further
                 // out, and selects up to the edge.
                 if dragging {
@@ -752,8 +733,7 @@ impl crate::ui::Interaction {
                             0.0
                         };
                         if over != 0.0 {
-                            let content = lines.len() as f32 * d.line_height;
-                            let most = (content - inner.height).max(0.0);
+                            let most = (ed.height() - inner.height).max(0.0);
                             scroll = (scroll + speed(over)).clamp(0.0, most);
                             p.y = p.y.clamp(inner.y, (inner.bottom() - 0.01).max(inner.y));
                             autoscrolled = true;
@@ -767,9 +747,8 @@ impl crate::ui::Interaction {
                             0.0
                         };
                         if over != 0.0 {
-                            let width = lines[0].2.last().map_or(0.0, |b| b.x1);
                             let room = (inner.width - 1.0).max(1.0);
-                            let most = (width - room).max(0.0);
+                            let most = (ed.width() - room).max(0.0);
                             scroll = (scroll + speed(over)).clamp(0.0, most);
                             p.x = p.x.clamp(inner.x, inner.right());
                             autoscrolled = true;
@@ -777,23 +756,23 @@ impl crate::ui::Interaction {
                     }
                     self.state.edit_scroll = scroll;
                 }
-                let (y0, x0) = if d.multiline {
-                    (inner.y - scroll, 0.0)
+                // The point in the layout: an area's lines scroll down, a
+                // field's line across (and is pressed at its middle).
+                let (x, y) = if d.multiline {
+                    (p.x - inner.x, p.y - inner.y + scroll)
                 } else {
-                    (inner.y, -scroll)
+                    (p.x - inner.x + scroll, d.line_height / 2.0)
                 };
-                let li = (((p.y - y0) / d.line_height).floor().max(0.0) as usize)
-                    .min(lines.len().saturating_sub(1));
-                let l = &lines[li];
-                let x = p.x - line_x0(l, &inner) - x0;
-                let k = l.0 + nearest(&l.2, &chars[l.0..l.1], x);
-                let unit = |count: u8, k: usize| match count {
-                    2 => word_at(&chars, k),
-                    3 if d.multiline => line_at(&chars, k),
-                    3 => (0, chars.len()),
+                let n = chars.len();
+                let (k, k_up) = ed.hit(x, y);
+                let unit = |count: u8| match count {
+                    2 if secret => (0, n),
+                    2 => ed.word_at_point(x, y),
+                    3 if d.multiline => ed.paragraph_at_point(x, y),
+                    3 => (0, n),
                     _ => (k, k),
                 };
-                upstream = false;
+                upstream = k_up;
                 killing = false;
                 if pressed_here {
                     let near = (p - click.at).length() <= CLICK_SLOP;
@@ -810,10 +789,11 @@ impl crate::ui::Interaction {
                         click.count = 1;
                         caret = k;
                     } else {
-                        let (a, b) = unit(click.count, k);
+                        let (a, b) = unit(click.count);
                         click.origin = (a, b);
                         anchor = a;
                         caret = b;
+                        upstream &= a == b;
                     }
                 } else {
                     if (self.input.pointer - click.at).length() > CLICK_SLOP {
@@ -821,7 +801,7 @@ impl crate::ui::Interaction {
                     }
                     if click.count >= 2 {
                         let (o0, o1) = click.origin;
-                        let (a, b) = unit(click.count, k);
+                        let (a, b) = unit(click.count);
                         if a < o0 {
                             anchor = o1;
                             caret = a;
@@ -829,6 +809,7 @@ impl crate::ui::Interaction {
                             anchor = o0;
                             caret = b.max(o1);
                         }
+                        upstream = false;
                     } else {
                         caret = k;
                     }
@@ -855,7 +836,7 @@ impl crate::ui::Interaction {
             {
                 chars = value
                     .chars()
-                    .filter(|&c| (d.multiline || c != '\n') && d.input_type.accepts(c))
+                    .filter(|&c| accepts(c))
                     .take(if d.max_chars == 0 {
                         usize::MAX
                     } else {
@@ -867,24 +848,21 @@ impl crate::ui::Interaction {
                 composition.clear();
                 note(&mut kind, EditKind::Other);
             }
-            let typed: Vec<char> = self
-                .input
-                .text
-                .chars()
-                .filter(|&c| (d.multiline || c != '\n') && d.input_type.accepts(c))
-                .collect();
+            let typed: Vec<char> = self.input.text.chars().filter(|&c| accepts(c)).collect();
             if !typed.is_empty() {
                 let (a, b) = (caret.min(anchor), caret.max(anchor));
                 chars.drain(a..b);
                 caret = a;
-                for c in typed {
-                    if d.max_chars == 0 || chars.len() < d.max_chars as usize {
+                for &c in &typed {
+                    if room(&chars) {
                         chars.insert(caret, c);
                         caret += 1;
                     }
                 }
                 anchor = caret;
-                upstream = false;
+                // The caret keeps to what was typed (Parley's insertion),
+                // after a line break to the line it starts.
+                upstream = typed.last() != Some(&'\n');
                 killing = false;
                 note(&mut kind, EditKind::Typing);
             }
@@ -906,64 +884,17 @@ impl crate::ui::Interaction {
             // before the caret, each into the kill buffer Y yanks, T
             // transposes the characters at the caret).
             let emacs = mac && ctrl && !meta;
-            // The line holding the caret: its start and end.
-            let line_of = |chars: &[char], caret: usize| {
-                let lines = layout(chars);
-                let (li, _) = locate(&lines, caret);
-                (lines[li].0, lines[li].1)
-            };
-            // Whether the caret at `k` stands in a right-to-left run (the
-            // glyph after it, or before it at a line's end; the paragraph's
-            // direction in an empty text): there ← moves on in the text and
-            // → back, by clusters and by words alike, as the arrow points.
-            let rtl_at = |chars: &[char], k: usize| {
-                let lines = layout(chars);
-                let (li, _) = locate(&lines, k);
-                let (a, b, bx) = &lines[li];
-                let at = |i: usize| {
-                    bx.iter()
-                        .filter(|g| g.index <= i)
-                        .max_by_key(|g| g.index)
-                        .map(|g| g.rtl)
-                };
-                let line = shown(&chars[*a..*b], mask);
-                let run = if k < *b {
-                    at(k - a)
-                } else if k > *a {
-                    at(k - a - 1)
-                } else {
-                    None
-                };
-                run.unwrap_or(og_i18n::paragraph_direction(&line, dir) == Direction::Rtl)
-            };
-            // The caret stop beside the caret on screen (← and →): within
-            // its line, else the next line's start or the previous line's
-            // end as the line runs (none in a field).
-            let visual = |chars: &[char], k: usize, up: bool, right: bool| {
-                let lines = layout(chars);
-                let li = lines
-                    .iter()
-                    .rposition(|l| l.0 <= k && k <= l.1)
-                    .unwrap_or(0);
-                let (a, b, bx) = &lines[li];
-                if let Some((c, up)) = visual_step(bx, &chars[*a..*b], k - a, up, right) {
-                    return (a + c, up);
-                }
-                let line = shown(&chars[*a..*b], mask);
-                let rtl = og_i18n::paragraph_direction(&line, dir) == Direction::Rtl;
-                if right != rtl {
-                    lines.get(li + 1).map_or((k, up), |l| (l.0, false))
-                } else {
-                    li.checked_sub(1).map_or((k, up), |p| (lines[p].1, false))
-                }
-            };
             for k in self.input.keys.iter().copied() {
+                if chars != laid {
+                    ed = lay(&chars);
+                    laid.clone_from(&chars);
+                }
+                let layout = &ed.layout;
                 let (a, b) = (caret.min(anchor), caret.max(anchor));
                 let selected = a != b;
-                let mut moved = None;
-                // A visual move's place at a bidi edge; any other change of
-                // the caret or the text puts it at the leading edge.
-                let mut moved_up = None;
+                let sel = ed.selection(anchor, caret, upstream);
+                // Where a move puts the caret, and its place on screen.
+                let mut moved: Option<(usize, bool)> = None;
                 let at_key = (caret, chars.clone());
                 // A kill right after a kill adds to the buffer.
                 let chained = killing;
@@ -976,6 +907,7 @@ impl crate::ui::Interaction {
                     UiKey::KeyP if emacs && d.multiline => UiKey::Up,
                     k => k,
                 };
+                let (start, end) = ed.line_ends(caret, upstream);
                 match k {
                     UiKey::Backspace | UiKey::Delete if selected => {
                         chars.drain(a..b);
@@ -984,17 +916,14 @@ impl crate::ui::Interaction {
                         note(&mut kind, EditKind::Other);
                     }
                     UiKey::Backspace if caret > 0 => {
-                        let from = if line {
-                            let start = line_of(&chars, caret).0;
-                            if start < caret {
-                                start
-                            } else {
-                                prev_cluster(&chars, caret)
-                            }
+                        let from = if line && start.0 < caret {
+                            start.0
+                        } else if word && secret {
+                            0
                         } else if word {
-                            word_left(&chars, caret)
+                            ed.word_before(caret)
                         } else {
-                            prev_cluster(&chars, caret)
+                            ed.backspace_from(caret)
                         };
                         chars.drain(from..caret);
                         caret = from;
@@ -1002,66 +931,59 @@ impl crate::ui::Interaction {
                         note(&mut kind, EditKind::Back);
                     }
                     UiKey::Delete if caret < chars.len() => {
-                        let to = if line {
-                            let end = line_of(&chars, caret).1;
-                            if end > caret {
-                                end
-                            } else {
-                                next_cluster(&chars, caret)
-                            }
+                        let to = if line && end.0 > caret {
+                            end.0
+                        } else if word && secret {
+                            chars.len()
                         } else if word {
-                            word_right(&chars, caret)
+                            ed.word_after(caret)
                         } else {
-                            next_cluster(&chars, caret)
+                            ed.next_cluster(caret)
                         };
                         chars.drain(caret..to);
                         anchor = caret;
                         note(&mut kind, EditKind::Forward);
                     }
-                    // ← and → as they point: on in the text in a
-                    // right-to-left run. Command under mac keys: the line's
-                    // ends; the word key: by words; a selection collapses
-                    // to its side; else a grapheme cluster.
+                    // ← and → on screen. Command under mac keys: the line's
+                    // ends as the paragraph runs; the word key: by words (a
+                    // secret text's ends); else a cluster, a selection
+                    // collapsing to its side.
                     UiKey::Left | UiKey::Right => {
-                        let on = (k == UiKey::Right) != rtl_at(&chars, caret);
+                        let right = k == UiKey::Right;
+                        let on = right != (ed.base == Direction::Rtl);
                         moved = Some(if line {
-                            let (start, end) = line_of(&chars, caret);
                             if on { end } else { start }
-                        } else if word {
-                            if on {
-                                word_right(&chars, caret)
-                            } else {
-                                word_left(&chars, caret)
-                            }
-                        } else if selected && !shift {
-                            if on { b } else { a }
+                        } else if word && secret {
+                            (if on { chars.len() } else { 0 }, false)
                         } else {
-                            // A cluster on screen: across a bidi run's edge
-                            // too, where the caret has two places.
-                            let (to, up) = visual(&chars, caret, upstream, k == UiKey::Right);
-                            moved_up = Some(up);
-                            to
+                            let s = match (right, word) {
+                                (true, true) => sel.next_visual_word(layout, shift),
+                                (false, true) => sel.previous_visual_word(layout, shift),
+                                (true, false) => sel.next_visual(layout, shift),
+                                (false, false) => sel.previous_visual(layout, shift),
+                            };
+                            ed.place(s.focus())
                         });
                     }
                     // Control+F and B under mac keys: a cluster on and back
                     // in the text (whichever way it runs).
                     UiKey::KeyF if emacs => {
                         moved = Some(if selected && !shift {
-                            b
+                            (b, false)
                         } else {
-                            next_cluster(&chars, caret)
+                            (ed.next_cluster(caret), false)
                         })
                     }
                     UiKey::KeyB if emacs => {
                         moved = Some(if selected && !shift {
-                            a
+                            (a, false)
                         } else {
-                            prev_cluster(&chars, caret)
+                            (ed.prev_cluster(caret), false)
                         })
                     }
                     // Control+N and P in a field: the text's ends.
-                    UiKey::KeyN if emacs => moved = Some(chars.len()),
-                    UiKey::KeyP if emacs => moved = Some(0),
+                    UiKey::KeyN if emacs => moved = Some((chars.len(), false)),
+                    UiKey::KeyP if emacs => moved = Some((0, false)),
                     // Control+K, U and W under mac keys: kill to the
                     // paragraph's end (its line break when the caret is at
                     // it), to its start, the word before the caret; a
@@ -1077,7 +999,8 @@ impl crate::ui::Interaction {
                                 UiKey::KeyK if end > caret => (caret, end),
                                 UiKey::KeyK => (caret, (caret + 1).min(chars.len())),
                                 UiKey::KeyU => (start, caret),
-                                _ => (word_left(&chars, caret), caret),
+                                _ if secret => (0, caret),
+                                _ => (ed.word_before(caret), caret),
                             }
                         };
                         killing = true;
@@ -1107,11 +1030,8 @@ impl crate::ui::Interaction {
                     UiKey::KeyY if emacs && !kill.is_empty() => {
                         chars.drain(a..b);
                         caret = a;
-                        for c in kill
-                            .chars()
-                            .filter(|&c| (d.multiline || c != '\n') && d.input_type.accepts(c))
-                        {
-                            if d.max_chars == 0 || chars.len() < d.max_chars as usize {
+                        for c in kill.chars().filter(|&c| accepts(c)) {
+                            if room(&chars) {
                                 chars.insert(caret, c);
                                 caret += 1;
                             }
@@ -1125,11 +1045,11 @@ impl crate::ui::Interaction {
                     UiKey::KeyT if emacs && !selected => {
                         let (start, end) = line_at(&chars, caret);
                         let mid = if caret == end && caret > start {
-                            prev_cluster(&chars, caret)
+                            ed.prev_cluster(caret)
                         } else {
                             caret
                         };
-                        let (l, r) = (prev_cluster(&chars, mid), next_cluster(&chars, mid));
+                        let (l, r) = (ed.prev_cluster(mid), ed.next_cluster(mid));
                         if start <= l && l < mid && mid < r && r <= end {
                             let left: Vec<char> = chars[l..mid].to_vec();
                             let right: Vec<char> = chars[mid..r].to_vec();
@@ -1140,37 +1060,28 @@ impl crate::ui::Interaction {
                         }
                     }
                     // Ctrl (or Command) with Home and End: the text's ends.
-                    UiKey::Home if ctrl || meta => moved = Some(0),
-                    UiKey::End if ctrl || meta => moved = Some(chars.len()),
-                    UiKey::Home => moved = Some(line_of(&chars, caret).0),
-                    UiKey::End => moved = Some(line_of(&chars, caret).1),
+                    UiKey::Home if ctrl || meta => moved = Some((0, false)),
+                    UiKey::End if ctrl || meta => moved = Some((chars.len(), true)),
+                    UiKey::Home => moved = Some(start),
+                    UiKey::End => moved = Some(end),
                     // Command+↑/↓ in an area under mac keys: the text's ends.
-                    UiKey::Up if line && d.multiline => moved = Some(0),
-                    UiKey::Down if line && d.multiline => moved = Some(chars.len()),
+                    UiKey::Up if line && d.multiline => moved = Some((0, false)),
+                    UiKey::Down if line && d.multiline => moved = Some((chars.len(), true)),
                     UiKey::Up | UiKey::Down if d.multiline => {
-                        let lines = layout(&chars);
-                        let (li, x) = locate(&lines, caret);
-                        let to = if k == UiKey::Up {
-                            li.checked_sub(1)
+                        let s = if k == UiKey::Up {
+                            sel.previous_line(layout, shift)
                         } else {
-                            (li + 1 < lines.len()).then_some(li + 1)
+                            sel.next_line(layout, shift)
                         };
-                        moved = Some(match to {
-                            Some(t) => {
-                                let l = &lines[t];
-                                l.0 + nearest(&l.2, &chars[l.0..l.1], x)
-                            }
-                            None if k == UiKey::Up => 0,
-                            None => chars.len(),
-                        });
+                        moved = Some(ed.place(s.focus()));
                     }
                     UiKey::KeyA if shortcut => {
                         anchor = 0;
                         caret = chars.len();
                     }
                     // Control+A and E under mac keys: the line's ends (emacs).
-                    UiKey::KeyA if emacs => moved = Some(line_of(&chars, caret).0),
-                    UiKey::KeyE if emacs => moved = Some(line_of(&chars, caret).1),
+                    UiKey::KeyA if emacs => moved = Some(start),
+                    UiKey::KeyE if emacs => moved = Some(end),
                     // A secret text is never copied or cut.
                     UiKey::KeyC | UiKey::KeyX if shortcut && selected && !secret => {
                         clipboard = Some(chars[a..b].iter().collect::<String>());
@@ -1208,7 +1119,7 @@ impl crate::ui::Interaction {
                     UiKey::Enter | UiKey::NumpadEnter if d.multiline => {
                         chars.drain(a..b);
                         caret = a;
-                        if d.max_chars == 0 || chars.len() < d.max_chars as usize {
+                        if room(&chars) {
                             chars.insert(caret, '\n');
                             caret += 1;
                         }
@@ -1222,14 +1133,12 @@ impl crate::ui::Interaction {
                     UiKey::Escape => out.left = true,
                     _ => {}
                 }
-                if let Some(to) = moved {
+                if let Some((to, up)) = moved {
                     caret = to;
+                    upstream = up;
                     if !shift {
                         anchor = to;
                     }
-                }
-                if let Some(up) = moved_up {
-                    upstream = up;
                 } else if (caret, &chars) != (at_key.0, &at_key.1) {
                     upstream = false;
                 }
@@ -1239,12 +1148,14 @@ impl crate::ui::Interaction {
             if let Some(inner) = d.inner
                 && !(autoscrolled && self.input.keys.is_empty() && self.input.text.is_empty())
             {
-                let mut shown = chars.clone();
                 let comp: Vec<char> = composition.chars().collect();
-                let at = caret.min(shown.len());
-                shown.splice(at..at, comp.iter().copied());
-                let lines = layout(&shown);
-                let (li, x) = locate(&lines, at + comp.len());
+                let at = caret.min(chars.len());
+                let mut with = chars.clone();
+                with.splice(at..at, comp.iter().copied());
+                if with != laid {
+                    ed = lay(&with);
+                }
+                let (x, li) = ed.caret(at + comp.len(), upstream || !comp.is_empty());
                 let mut s = self.state.edit_scroll;
                 if d.multiline {
                     let top = li as f32 * d.line_height;
@@ -1255,10 +1166,8 @@ impl crate::ui::Interaction {
                     if bottom > s + inner.height {
                         s = bottom - inner.height;
                     }
-                    let content = lines.len() as f32 * d.line_height;
-                    s = s.min((content - inner.height).max(0.0)).max(0.0);
+                    s = s.min((ed.height() - inner.height).max(0.0)).max(0.0);
                 } else {
-                    let width = lines[0].2.last().map_or(0.0, |b| b.x1);
                     let room = (inner.width - 1.0).max(1.0);
                     if x - s > room {
                         s = x - room;
@@ -1266,7 +1175,7 @@ impl crate::ui::Interaction {
                     if x < s {
                         s = x;
                     }
-                    s = s.min((width - room).max(0.0)).max(0.0);
+                    s = s.min((ed.width() - room).max(0.0)).max(0.0);
                 }
                 self.state.edit_scroll = s;
             }
@@ -1336,7 +1245,6 @@ impl crate::ui::Interaction {
         }
         out
     }
-
     /// Whether the caret shows this tick: always under reduced motion, else
     /// the 530 ms half period, shown after an edit or
     /// move and then hidden as long, by the tick.

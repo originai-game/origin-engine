@@ -478,7 +478,8 @@ pub struct EditView {
     pub scroll: f32,
     /// The caret shows this tick (its blink).
     pub caret_on: bool,
-    /// The caret is drawn after the glyph before it (`caret_x_at`).
+    /// The caret's affinity is upstream: drawn after the glyph before it
+    /// (at a bidi edge or a soft line break).
     pub upstream: bool,
     /// The control shows its placeholder (its value is empty).
     pub placeholder: bool,

@@ -1069,8 +1069,18 @@ impl Ui {
     pub(crate) fn edit_marks(&self, i: usize, mk: &EditMarks<'_>, cmds: &mut Vec<DrawCmd>) {
         let p = &self.paint_theme().palette;
         let dpr = self.env.viewport.dpr();
-        let boxes = crate::edit::boxes(mk.m, mk.text, self.env.direction, mk.size, mk.tracking);
-        let n = mk.text.chars().count();
+        // The text as Parley lays it out for editing: where its selection,
+        // composition and caret stand.
+        let ed = crate::edit::Editable::new(
+            mk.m,
+            mk.text,
+            self.env.direction,
+            mk.size,
+            mk.tracking,
+            mk.width,
+            mk.line_h,
+        );
+        let n = ed.len();
         let key = self.tree.nodes[self.text_owner(i)].key;
         let mark = |name, rect: Rect, color: Srgba, cmds: &mut Vec<DrawCmd>| {
             let part = crate::dress::PartRef::of("TextEdit", name, None);
@@ -1088,30 +1098,22 @@ impl Ui {
                 cmds,
             );
         };
-        let span =
-            |name, range: (usize, usize), cmds: &mut Vec<DrawCmd>, y: f32, h: f32, color: Srgba| {
-                let (a, b) = (range.0.max(mk.first), range.1.min(mk.first + n));
-                if a >= b {
-                    return;
-                }
-                let mut runs: Vec<(f32, f32)> = Vec::new();
-                for g in &boxes {
-                    let k = g.index + mk.first;
-                    if k < a || k >= b {
-                        continue;
-                    }
-                    match runs.last_mut() {
-                        Some(r) if (r.1 - g.x0).abs() < 0.01 => r.1 = g.x1,
-                        _ => runs.push((g.x0, g.x1)),
-                    }
-                }
-                for (x0, x1) in runs {
-                    mark(name, Rect::new(mk.x + x0, y, x1 - x0, h), color, cmds);
-                }
-            };
         let e = mk.edit;
         let ch = mk.size + self.paint_theme().space.xxs * 2.0;
-        let cy = mk.top + (mk.line_h - ch) / 2.0;
+        // The mark's box on line `li`: centred in its line box.
+        let cy = |li: usize| mk.top + li as f32 * mk.line_h + (mk.line_h - ch) / 2.0;
+        let span = |name, (a, b): (usize, usize), cmds: &mut Vec<DrawCmd>, dy: f32, h, color| {
+            for (x0, x1, li) in ed.spans(a.min(n), b.min(n)) {
+                if x1 > x0 {
+                    mark(
+                        name,
+                        Rect::new(mk.x + x0, cy(li) + dy, x1 - x0, h),
+                        color,
+                        cmds,
+                    );
+                }
+            }
+        };
         if mk.under {
             let selection = self
                 .docs
@@ -1120,18 +1122,23 @@ impl Ui {
                 .get(&key)
                 .and_then(|s| s.background)
                 .unwrap_or(p.control_strong);
-            span("selection", e.selection, cmds, cy, ch, selection);
+            span("selection", e.selection, cmds, 0.0, ch, selection);
             return;
         }
         if let Some(c) = e.composition {
             let th = (mk.size * 0.07).max(1.0 / dpr);
-            span("composition", c, cmds, cy + ch - th, th, p.ink);
+            span("composition", c, cmds, ch - th, th, p.ink);
         }
-        if e.caret_on && mk.caret_here && e.caret >= mk.first && e.caret <= mk.first + n {
-            let cx = mk.x + crate::edit::caret_x_at(&boxes, e.caret - mk.first, e.upstream);
+        if e.caret_on && e.caret <= n {
+            let (cx, li) = ed.caret(e.caret, e.upstream);
             let caret_w = 1.0f32.max(1.0 / dpr);
             let caret = self.tree.nearest(i, |n| n.caret).unwrap_or(p.primary);
-            mark("caret", Rect::new(cx, cy, caret_w, ch), caret, cmds);
+            mark(
+                "caret",
+                Rect::new(mk.x + cx, cy(li), caret_w, ch),
+                caret,
+                cmds,
+            );
         }
     }
 
@@ -1185,45 +1192,65 @@ impl Ui {
         let dpr = self.env.viewport.dpr();
         let snap = |v: f32| crate::layout::snap(v, dpr);
         let chars: Vec<char> = shown.chars().collect();
-        let lines = crate::edit::wrap(&chars, m, size, tracking, inner.width.max(1.0));
-        let caret_line = lines
-            .iter()
-            .rposition(|l| l.0 <= edit.caret && edit.caret <= l.1)
-            .unwrap_or(0);
-        let rtl = self.env.direction == og_i18n::Direction::Rtl;
+        // Its lines as Parley breaks them, the editor's own layout.
+        let width = inner.width.max(1.0);
+        let ed = crate::edit::Editable::new(
+            m,
+            shown,
+            self.env.direction,
+            size,
+            tracking,
+            Some(width),
+            lh,
+        );
         let alpha = n.placed.alpha;
-        for (li, &(a, b)) in lines.iter().enumerate() {
-            let top = inner.y + li as f32 * lh - edit.scroll * sk;
+        let top = inner.y - edit.scroll * sk;
+        let marks = |under: bool, cmds: &mut Vec<DrawCmd>| {
+            if edit.focused && (!text.is_empty() || !under) {
+                self.edit_marks(
+                    i,
+                    &EditMarks {
+                        m,
+                        text: if text.is_empty() { "" } else { shown },
+                        x: inner.x,
+                        top,
+                        line_h: lh,
+                        size,
+                        tracking,
+                        width: Some(width),
+                        edit,
+                        clip,
+                        alpha,
+                        under,
+                    },
+                    cmds,
+                );
+            }
+        };
+        marks(true, cmds);
+        for (li, ((a, b), _)) in ed.lines().into_iter().enumerate() {
+            let top = top + li as f32 * lh;
             if top + lh < inner.y - lh || top > inner.bottom() + lh {
                 continue;
             }
-            let line: String = chars[a..b].iter().collect();
-            let w = m.measure_tracked(&line, size, tracking);
-            let x = if rtl { inner.right() - w } else { inner.x };
-            let marks = |under: bool, cmds: &mut Vec<DrawCmd>| {
-                if edit.focused && !text.is_empty() || (edit.focused && !under) {
-                    self.edit_marks(
-                        i,
-                        &EditMarks {
-                            m,
-                            text: if text.is_empty() { "" } else { &line },
-                            x,
-                            top,
-                            line_h: lh,
-                            size,
-                            tracking,
-                            first: a,
-                            edit,
-                            clip,
-                            alpha,
-                            under,
-                            caret_here: li == caret_line,
-                        },
-                        cmds,
-                    );
-                }
+            // Its glyphs without the spaces and line break it ends with,
+            // drawn from where Parley put the first of them.
+            let end = a + chars[a..b]
+                .iter()
+                .rposition(|c| !c.is_whitespace())
+                .map_or(0, |k| k + 1);
+            let Some(x0) = ed
+                .spans(a, end)
+                .into_iter()
+                .filter(|s| s.2 == li)
+                .map(|s| s.0)
+                .reduce(f32::min)
+            else {
+                continue;
             };
-            marks(true, cmds);
+            let line: String = chars[a..end].iter().collect();
+            let w = m.measure_tracked(&line, size, tracking);
+            let x = inner.x + x0;
             let baseline = m.baseline(&line, top, lh, size);
             let pieces = crate::text::pieces(font, &line, self.env.direction, tracking);
             let one = pieces.len() == 1;
@@ -1247,8 +1274,8 @@ impl Ui {
                     placements: pc.placements,
                 });
             }
-            marks(false, cmds);
         }
+        marks(false, cmds);
     }
 }
 

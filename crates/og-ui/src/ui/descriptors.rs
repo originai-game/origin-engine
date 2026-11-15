@@ -1239,26 +1239,26 @@ pub struct UiFrame {
     pub grounds: Vec<crate::GroundQuad>,
 }
 
-/// What [`Ui::edit_marks`] draws one line's marks from.
+/// What [`Ui::edit_marks`] draws a text control's marks from.
 pub(crate) struct EditMarks<'a> {
     pub m: &'a crate::text::FontMetrics,
-    /// The line's text as shown.
+    /// The control's text as shown.
     pub text: &'a str,
-    /// Where its first glyph's pen starts, and the line box's top and height.
+    /// Where its lines start across (a field's line its pen's start, an
+    /// area's the left of its box), its first line box's top, and each
+    /// line box's height.
     pub x: f32,
     pub top: f32,
     pub line_h: f32,
     pub size: f32,
     pub tracking: f32,
-    /// The index of the line's first character in the whole text.
-    pub first: usize,
+    /// The width an area's lines break at (none: a field's one line).
+    pub width: Option<f32>,
     pub edit: &'a crate::layout::EditView,
     pub clip: Rect,
     pub alpha: f32,
     /// The selection (under the text), or the composition and caret (over it).
     pub under: bool,
-    /// The caret is on this line (a caret at a soft break shows once).
-    pub caret_here: bool,
 }
 
 /// The focused text control as a host sees it ([`UiFrame::text_input`]):

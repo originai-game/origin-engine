@@ -13,7 +13,7 @@ default = ["shaping"]
 # conjuncts, marks placed by the font's GPOS. Without it a shaped script is
 # drawn unshaped (its characters in visual order); bidi, kerning and run-time
 # glyphs stay. og-runtime and og-host-web pass it on (`shaping`).
-shaping = ["og-text/shaping", "dep:parley"]
+shaping = ["og-text/shaping"]
 
 [dependencies]
 og-core = { path = "../og-core" }
@@ -43,7 +43,8 @@ og-ui-model = { path = "../og-ui-model" }
 og-text = { path = "../og-text", default-features = false }
 # Match Parley 0.12's font stack; libm, never host floating-point math.
 skrifa = { version = "=0.44.0", default-features = false, features = ["libm"] }
-parley = { version = "=0.12.0", optional = true, default-features = false, features = ["libm", "complex-scripts"] }
+# Parley's cursor and selection edit text (src/text/edit.rs).
+parley = { version = "=0.12.0", default-features = false, features = ["libm", "complex-scripts"] }
 parley_engine = { version = "=0.12.0", default-features = false, features = ["libm", "complex-scripts"] }
 # Viewmodels and bindings (src/bind.rs) are JSON, as the host passes them.
 serde = { version = "1", features = ["derive"] }

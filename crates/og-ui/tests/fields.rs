@@ -14,10 +14,11 @@
 //!   after an undo, a new edit keeps the redo, a text the game set is undone
 //!   into, the history grows without bound or is not saved →
 //!   `undo_and_redo_step_through_the_history`
-//! - words by character classes again (a CJK run one word, an apostrophe
-//!   ending a word, a Thai run one word), a double click on a Han character
-//!   taking its neighbours, IME commits of Han text undone all at once →
-//!   `words_are_uax_29_words`
+//! - word moves by character again instead of the dictionary's words
+//!   (Thai and Chinese, written without spaces, a stop per cluster or none
+//!   in the run), ← stepping back in the text in a right-to-left paragraph,
+//!   or an arrow skipping a run at a bidi edge instead of stepping through
+//!   it from the side it enters → `words_and_arrows_follow_the_layout`
 //! - Command taken for Control (or the other way round) under mac keys:
 //!   Cmd+←/→ moving by words or characters, Option+← by characters, Ctrl+A
 //!   selecting all, Cmd+Backspace one character, Ctrl+Z undoing; or Command
@@ -41,9 +42,6 @@
 //!   move between not ending the chain), a line break yanked into a field,
 //!   the buffer lost by a save and restore, Control+T not transposing →
 //!   `mac_keys_keep_an_emacs_kill_buffer`
-//! - ← and → stopping at a bidi run's edge, stepping back and forth across
-//!   it, or forgetting which of its two places the caret took →
-//!   `arrows_move_visually_across_a_bidi_edge`
 //! - a field held as wide as its placeholder (a chat input pushing Send off
 //!   a phone at large text), or its placeholder cut with no ellipsis →
 //!   `a_field_shrinks_in_its_row_and_cuts_its_placeholder_with_an_ellipsis`
@@ -346,4 +344,77 @@ fn mac_keys_keep_an_emacs_kill_buffer() {
     ctrl(&mut rig, UiKey::KeyE);
     ctrl(&mut rig, UiKey::KeyT);
     assert_eq!(rig.caret_marked(), "badc|");
+}
+
+/// Word moves stop at dictionary words in Thai and Chinese, and the arrows
+/// move on screen: on in the text in a right-to-left paragraph, and into a
+/// right-to-left run from the side the caret enters it. A fixed-advance
+/// face has every character, so each script is laid out.
+#[test]
+fn words_and_arrows_follow_the_layout() {
+    let rig = |value: &str| {
+        let mut d = Doc::with_font(
+            FORM,
+            &[("value", json!(value)), ("area", json!(""))],
+            UiFont::unrendered(0.5),
+        );
+        d.viewport = Viewport::new(800.0, 600.0);
+        let mut rig = Rig { d };
+        rig.idle(1);
+        rig.focus_field();
+        rig
+    };
+    // The caret after `n` presses of `key` from the line's start, in one
+    // tick (the marker typed to find it would reset its place on screen).
+    let after = |rig: &mut Rig, key: UiKey, n: usize, ctrl: bool| {
+        let mut keys = vec![UiKey::Home];
+        keys.extend(std::iter::repeat_n(key, n));
+        rig.keys(&keys, false, ctrl, false);
+        rig.caret_marked()
+    };
+    let mut thai = rig("ภาษาไทยง่ายมาก");
+    let stops: Vec<String> = (1..=3)
+        .map(|n| after(&mut thai, UiKey::Right, n, true))
+        .collect();
+    assert_eq!(
+        stops,
+        ["ภาษา|ไทยง่ายมาก", "ภาษาไทย|ง่ายมาก", "ภาษาไทยง่าย|มาก"]
+    );
+    let mut chinese = rig("我们喜欢学习中文");
+    let stops: Vec<String> = (1..=3)
+        .map(|n| after(&mut chinese, UiKey::Right, n, true))
+        .collect();
+    assert_eq!(
+        stops,
+        [
+            "我们|喜欢学习中文",
+            "我们喜欢|学习中文",
+            "我们喜欢学习|中文"
+        ]
+    );
+    // A right-to-left paragraph starts at the right: ← goes on in the text,
+    // by words and by clusters.
+    let mut arabic = rig("مرحبا بالعالم");
+    assert_eq!(after(&mut arabic, UiKey::Left, 1, true), "مرحبا| بالعالم");
+    assert_eq!(after(&mut arabic, UiKey::Left, 2, false), "مر|حبا بالعالم");
+    assert_eq!(after(&mut arabic, UiKey::Right, 1, false), "|مرحبا بالعالم");
+    // → into a right-to-left run from its left: through its last letter
+    // first, then out of its right edge, its first letter's place.
+    let mut mixed = rig("ab مرحبا cd");
+    let stops: Vec<String> = (3..=10)
+        .map(|n| after(&mut mixed, UiKey::Right, n, false))
+        .collect();
+    assert_eq!(
+        stops,
+        [
+            "ab |مرحبا cd",
+            "ab مرحب|ا cd",
+            "ab مرح|با cd",
+            "ab مر|حبا cd",
+            "ab م|رحبا cd",
+            "ab |مرحبا cd",
+            "ab مرحبا |cd",
+            "ab مرحبا c|d",
+        ]
+    );
 }

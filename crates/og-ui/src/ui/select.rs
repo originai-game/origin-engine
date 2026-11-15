@@ -375,9 +375,11 @@ impl Ui {
             .fonts
             .for_styled(tc.font, tc.step.weight, false, &tc.text)
             .0;
+        // The selection on this line, in its own characters.
+        let on = |k: u32| k.saturating_sub(first).min(count) as usize;
         let edit = crate::layout::EditView {
             focused: true,
-            selection: (a as usize, b as usize),
+            selection: (on(a), on(b)),
             ..Default::default()
         };
         self.edit_marks(
@@ -390,12 +392,11 @@ impl Ui {
                 line_h: lh,
                 size: tc.step.size * n.placed.scale,
                 tracking: tc.tracking(),
-                first: first as usize,
+                width: None,
                 edit: &edit,
                 clip,
                 alpha: n.placed.alpha,
                 under: true,
-                caret_here: false,
             },
             cmds,
         );
