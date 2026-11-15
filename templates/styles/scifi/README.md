@@ -107,9 +107,6 @@ Rajdhani) come from `@styles/shared` under their own licences there.
 
 ## Pending engine gaps
 
-- A core `panel` and `dialog` draw an opaque surface under their frame
-  part, so their frost and blur do not show: the scene stays hidden even
-  with the fill at 0.25. Role frames, HUD plates and the compass blur.
 - The focus part of a button whose document names its own part also takes
   `button::part(base)`'s rules, so a plate is drawn over the button's
   content on keyboard focus. `controls.css` clears `button::part(focus)` to
