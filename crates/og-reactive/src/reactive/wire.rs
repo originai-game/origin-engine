@@ -1,6 +1,7 @@
 //! Binary values for UI patch batches. The tags are shared with
 //! packages/engine/src/ui/reactive-wire.ts; no JSON text crosses this path.
 
+use og_core::bytes::{ByteReader, ByteWriter};
 use serde_json::{Map, Value};
 
 const LIMIT: usize = 16 * 1024 * 1024;
@@ -11,46 +12,43 @@ pub fn encode(value: &Value) -> Result<Vec<u8>, String> {
         if depth > DEPTH {
             return Err("UI patch nesting exceeds 64".into());
         }
+        // A length past u32 is refused here, before og-core's writer would
+        // panic on it.
+        let fits = |n: usize, why: &str| u32::try_from(n).map(|_| ()).map_err(|_| why.to_string());
         let text = |s: &str, out: &mut Vec<u8>| -> Result<(), String> {
-            let n = u32::try_from(s.len()).map_err(|_| "UI patch string is too long")?;
-            out.extend_from_slice(&n.to_le_bytes());
-            out.extend_from_slice(s.as_bytes());
+            fits(s.len(), "UI patch string is too long")?;
+            ByteWriter::new(out).str(s);
             Ok(())
         };
+        let mut w = ByteWriter::new(out);
         match value {
-            Value::Null => out.push(0),
-            Value::Bool(false) => out.push(1),
-            Value::Bool(true) => out.push(2),
+            Value::Null => w.u8(0),
+            Value::Bool(false) => w.u8(1),
+            Value::Bool(true) => w.u8(2),
             Value::Number(n) => {
-                out.push(3);
+                w.u8(3);
                 let n = n
                     .as_f64()
                     .filter(|n| n.is_finite())
                     .ok_or("UI patch number must be finite")?;
-                out.extend_from_slice(&n.to_le_bytes());
+                w.f64(n);
             }
             Value::String(s) => {
-                out.push(4);
+                w.u8(4);
                 text(s, out)?;
             }
             Value::Array(a) => {
-                out.push(5);
-                out.extend_from_slice(
-                    &u32::try_from(a.len())
-                        .map_err(|_| "UI patch array is too long")?
-                        .to_le_bytes(),
-                );
+                w.u8(5);
+                fits(a.len(), "UI patch array is too long")?;
+                w.length(a.len());
                 for value in a {
                     write(value, out, depth + 1)?;
                 }
             }
             Value::Object(o) => {
-                out.push(6);
-                out.extend_from_slice(
-                    &u32::try_from(o.len())
-                        .map_err(|_| "UI patch object is too large")?
-                        .to_le_bytes(),
-                );
+                w.u8(6);
+                fits(o.len(), "UI patch object is too large")?;
+                w.length(o.len());
                 for (key, value) in o {
                     text(key, out)?;
                     write(value, out, depth + 1)?;
@@ -68,43 +66,28 @@ pub fn encode(value: &Value) -> Result<Vec<u8>, String> {
 }
 
 pub fn decode(bytes: &[u8]) -> Result<Value, String> {
-    struct Reader<'a> {
-        bytes: &'a [u8],
-        at: usize,
+    struct Reader<'a>(ByteReader<'a>);
+    fn why(e: og_core::Error) -> String {
+        e.reason().to_string()
     }
     impl Reader<'_> {
-        fn take(&mut self, count: usize) -> Result<&[u8], String> {
-            let end = self
-                .at
-                .checked_add(count)
-                .ok_or("UI patch length overflow")?;
-            let value = self.bytes.get(self.at..end).ok_or("truncated UI patch")?;
-            self.at = end;
-            Ok(value)
-        }
+        /// Every value is at least its tag's byte.
         fn count(&mut self) -> Result<usize, String> {
-            let n = u32::from_le_bytes(self.take(4)?.try_into().expect("four bytes")) as usize;
-            if n > self.bytes.len() - self.at {
-                return Err("truncated UI patch sequence".into());
-            }
-            Ok(n)
+            self.0.count(1).map_err(why)
         }
         fn text(&mut self) -> Result<String, String> {
-            let n = self.count()?;
-            std::str::from_utf8(self.take(n)?)
-                .map(str::to_owned)
-                .map_err(|_| "UI patch string is not UTF-8".into())
+            self.0.string().map_err(why)
         }
         fn value(&mut self, depth: usize) -> Result<Value, String> {
             if depth > DEPTH {
                 return Err("UI patch nesting exceeds 64".into());
             }
-            Ok(match self.take(1)?[0] {
+            Ok(match self.0.u8().map_err(why)? {
                 0 => Value::Null,
                 1 => Value::Bool(false),
                 2 => Value::Bool(true),
                 3 => {
-                    let n = f64::from_le_bytes(self.take(8)?.try_into().expect("eight bytes"));
+                    let n = self.0.f64().map_err(why)?;
                     // A script has one number type; an integral one reads as
                     // an integer, as its JSON does, so integer fields
                     // (`TextSpan.position`, counts, indices) take it.
@@ -149,11 +132,9 @@ pub fn decode(bytes: &[u8]) -> Result<Value, String> {
     if bytes.len() > LIMIT {
         return Err("UI patch exceeds 16 MiB".into());
     }
-    let mut reader = Reader { bytes, at: 0 };
+    let mut reader = Reader(ByteReader::new(bytes, "UI patch"));
     let value = reader.value(0)?;
-    if reader.at != bytes.len() {
-        return Err("trailing UI patch bytes".into());
-    }
+    reader.0.finish().map_err(why)?;
     Ok(value)
 }
 

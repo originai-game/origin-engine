@@ -25,12 +25,7 @@ pub fn decode(bytes: &[u8]) -> Result<Artboard, String> {
     if bytes.get(..4) != Some(MAGIC.as_slice()) {
         return Err("not a Rive artboard (no OGRV magic)".into());
     }
-    let mut r = R {
-        bytes,
-        at: 4,
-        legacy_glyphs: false,
-        affine_only: false,
-    };
+    let mut r = R::new(&bytes[4..]);
     let v = r.u32().ok_or("the artboard is cut short")?;
     if v != VERSION {
         return Err(format!(
@@ -50,10 +45,7 @@ fn list(w: &mut W, v: &[u32]) {
 }
 
 fn rlist(r: &mut R) -> Option<Vec<u32>> {
-    let n = r.u32()? as usize;
-    if n > r.bytes.len() {
-        return None;
-    }
+    let n = r.count(1)?;
     (0..n).map(|_| r.u32()).collect()
 }
 
@@ -403,10 +395,7 @@ fn rkind(r: &mut R) -> Option<Kind> {
         9 => Kind::Stop,
         10 => {
             let artboard = r.u32()?;
-            let n = r.u32()? as usize;
-            if n > r.bytes.len() {
-                return None;
-            }
+            let n = r.count(1)?;
             let animations = (0..n)
                 .map(|_| {
                     Some(NestedAnimation {
@@ -487,10 +476,7 @@ fn rartboard(r: &mut R, depth: u32) -> Option<Artboard> {
     a.align = Vec2::new(r.f32()?, r.f32()?);
     a.role = r.str()?;
     a.label = r.str()?;
-    let n = r.u32()? as usize;
-    if n > r.bytes.len() {
-        return None;
-    }
+    let n = r.count(1)?;
     for _ in 0..n {
         a.nodes.push(Node {
             name: r.str()?,
@@ -500,10 +486,7 @@ fn rartboard(r: &mut R, depth: u32) -> Option<Artboard> {
         });
     }
     a.draws = rlist(r)?;
-    let n = r.u32()? as usize;
-    if n > r.bytes.len() {
-        return None;
-    }
+    let n = r.count(1)?;
     for _ in 0..n {
         let name = r.str()?;
         let fps = r.u32()?;
@@ -516,18 +499,12 @@ fn rartboard(r: &mut R, depth: u32) -> Option<Artboard> {
             _ => return None,
         };
         let (ws, we) = (r.u32()?, r.u32()?);
-        let tn = r.u32()? as usize;
-        if tn > r.bytes.len() {
-            return None;
-        }
+        let tn = r.count(1)?;
         let mut tracks = Vec::with_capacity(tn);
         for _ in 0..tn {
             let node = r.u32()?;
             let prop = *Prop::ALL.get(usize::from(r.u8()?))?;
-            let kn = r.u32()? as usize;
-            if kn > r.bytes.len() {
-                return None;
-            }
+            let kn = r.count(1)?;
             let mut keys = Vec::with_capacity(kn);
             for _ in 0..kn {
                 let seconds = r.f32()?;
@@ -565,10 +542,7 @@ fn rartboard(r: &mut R, depth: u32) -> Option<Artboard> {
             tracks,
         });
     }
-    let n = r.u32()? as usize;
-    if n > r.bytes.len() {
-        return None;
-    }
+    let n = r.count(1)?;
     for _ in 0..n {
         let name = r.str()?;
         let play = r.u32()?;
@@ -576,17 +550,11 @@ fn rartboard(r: &mut R, depth: u32) -> Option<Artboard> {
     }
     let play = r.u32()?;
     a.play = (play != u32::MAX).then_some(play);
-    let n = r.u32()? as usize;
-    if n > r.bytes.len() {
-        return None;
-    }
+    let n = r.count(1)?;
     for _ in 0..n {
         a.nested.push(rartboard(r, depth + 1)?);
     }
-    let n = r.u32()? as usize;
-    if n > r.bytes.len() {
-        return None;
-    }
+    let n = r.count(1)?;
     for _ in 0..n {
         a.images.push(Image {
             id: r.str()?,
@@ -594,10 +562,7 @@ fn rartboard(r: &mut R, depth: u32) -> Option<Artboard> {
             texture: None,
         });
     }
-    let n = r.u32()? as usize;
-    if n > r.bytes.len() {
-        return None;
-    }
+    let n = r.count(1)?;
     for _ in 0..n {
         a.fonts.push(Font {
             id: r.str()?,
@@ -606,10 +571,7 @@ fn rartboard(r: &mut R, depth: u32) -> Option<Artboard> {
             font: None,
         });
     }
-    let n = r.u32()? as usize;
-    if n > r.bytes.len() {
-        return None;
-    }
+    let n = r.count(1)?;
     for _ in 0..n {
         a.strings.push(r.str()?);
     }

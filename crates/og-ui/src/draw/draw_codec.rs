@@ -1463,16 +1463,11 @@ mod tests {
         for c in &cmds {
             W(&mut bytes).cmd(c);
         }
-        let mut r = R {
-            bytes: &bytes,
-            at: 0,
-            legacy_glyphs: false,
-            affine_only: false,
-        };
+        let mut r = R::new(&bytes);
         for c in &cmds {
             assert_eq!(r.cmd().as_ref(), Some(c));
         }
-        assert_eq!(r.at, bytes.len());
+        assert!(r.b.is_done());
         // The plain glass is tag 0 and its six fields, as before.
         let mut plain = Vec::new();
         W(&mut plain).cmd(&cmds[1]);
@@ -1499,14 +1494,9 @@ mod tests {
             });
             let mut bytes = Vec::new();
             paint(&mut W(&mut bytes), &image);
-            let mut reader = R {
-                bytes: &bytes,
-                at: 0,
-                legacy_glyphs: false,
-                affine_only: false,
-            };
+            let mut reader = R::new(&bytes);
             assert_eq!(rpaint(&mut reader), Some(image));
-            assert_eq!(reader.at, bytes.len());
+            assert!(reader.b.is_done());
         }
     }
 
@@ -1527,12 +1517,7 @@ mod tests {
             };
             let mut bytes = Vec::new();
             geometry(&mut W(&mut bytes), &g);
-            let back = rgeometry(&mut R {
-                bytes: &bytes,
-                at: 0,
-                legacy_glyphs: false,
-                affine_only: false,
-            });
+            let back = rgeometry(&mut R::new(&bytes));
             assert_eq!(back, Some(g));
         }
     }
@@ -1556,14 +1541,7 @@ mod tests {
         let g = UiGeometry::Path(std::sync::Arc::new(path));
         let mut bytes = Vec::new();
         geometry(&mut W(&mut bytes), &g);
-        let read = |b: &[u8]| {
-            rgeometry(&mut R {
-                bytes: b,
-                at: 0,
-                legacy_glyphs: false,
-                affine_only: false,
-            })
-        };
+        let read = |b: &[u8]| rgeometry(&mut R::new(b));
         assert_eq!(read(&bytes), Some(g));
         assert_eq!(read(&bytes[..bytes.len() - 4]), None);
     }

@@ -155,14 +155,9 @@ impl Player {
     /// Puts back what [`Player::save`] wrote, onto a player of the same
     /// artboard; refused (and left as it was) when the bytes do not fit it.
     pub fn restore(&mut self, bytes: &[u8]) -> Result<(), String> {
-        let mut r = R {
-            bytes,
-            at: 0,
-            legacy_glyphs: false,
-            affine_only: false,
-        };
+        let mut r = R::new(bytes);
         let mut next = self.clone();
-        if next.read(&mut r).is_none() || r.at != bytes.len() {
+        if next.read(&mut r).is_none() || !r.b.is_done() {
             return Err(format!(
                 "the saved state of Rive artboard '{}' does not fit it",
                 self.artboard.name

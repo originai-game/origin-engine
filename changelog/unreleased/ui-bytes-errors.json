@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.ui world state restore, UI patch batches",
+      "summary": "Refused bytes now say what is wrong and at which byte, such as a truncated read, a count larger than the data, or trailing bytes. The world state used to report only \"unreadable bytes\". The bytes written are unchanged."
+    }
+  ]
+}

@@ -10,7 +10,8 @@
 
 use crate::layout::Rect;
 use crate::style::Srgba;
-use crate::world::{Reader, WorldCmd};
+use crate::world::{WorldCmd, instances};
+use og_core::bytes::{ByteReader, ByteWriter};
 use og_core::glam::Vec2;
 use og_draw::{
     UiMassBatch, UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate,
@@ -143,13 +144,12 @@ pub struct EmitterState {
 }
 
 impl EmitterState {
-    pub fn save(&self, out: &mut Vec<u8>) {
-        out.extend_from_slice(&(self.instances.len() as u64).to_le_bytes());
-        out.extend_from_slice(bytemuck::cast_slice(&self.instances));
-        out.extend_from_slice(&self.carry.to_le_bytes());
-        out.extend_from_slice(&self.spawned.to_le_bytes());
+    pub fn save(&self, w: &mut ByteWriter) {
+        w.u64(self.instances.len() as u64);
+        w.bytes(bytemuck::cast_slice(&self.instances));
+        w.f32(self.carry);
+        w.u32(self.spawned);
         let t = self.template.as_deref();
-        let f = |v: f32| v.to_le_bytes();
         // The template's values a restore draws it again with.
         let (shape, size, life, gravity, drag, end, fade) = match t {
             Some(t) => (
@@ -171,40 +171,33 @@ impl EmitterState {
             ),
             None => (255, Vec2::ZERO, 0, 0.0, false, 1.0, false),
         };
-        out.push(shape);
-        out.extend_from_slice(&f(size.x));
-        out.extend_from_slice(&f(size.y));
-        out.extend_from_slice(&life.to_le_bytes());
-        out.extend_from_slice(&f(gravity));
-        out.push(u8::from(drag));
-        out.extend_from_slice(&f(end));
-        out.push(u8::from(fade));
+        w.u8(shape);
+        w.vec2(size);
+        w.u32(life);
+        w.f32(gravity);
+        w.bool(drag);
+        w.f32(end);
+        w.bool(fade);
     }
 
-    pub fn load(r: &mut Reader) -> Option<EmitterState> {
-        let n = r.u64()? as usize;
-        let size = std::mem::size_of::<UiMassInstance>();
-        let raw = r.take(n.checked_mul(size)?)?;
-        let instances = raw
-            .chunks_exact(size)
-            .map(bytemuck::pod_read_unaligned)
-            .collect();
+    pub fn load(r: &mut ByteReader) -> og_core::Result<EmitterState> {
+        let instances = instances(r)?;
         let carry = r.f32()?;
         let spawned = r.u32()?;
-        let shape = r.take(1)?[0];
+        let shape = r.u8()?;
         let (w, h) = (r.f32()?, r.f32()?);
         let life = r.u32()?;
         let gravity = r.f32()?;
-        let drag = r.take(1)?[0] != 0;
+        let drag = r.bool()?;
         let end = r.f32()?;
-        let fade = r.take(1)?[0] != 0;
+        let fade = r.bool()?;
         let shape = match shape {
             255 => None,
             1 => Some(UiParticleShape::Circle),
             2 => Some(UiParticleShape::Diamond),
             _ => Some(UiParticleShape::Square),
         };
-        Some(EmitterState {
+        Ok(EmitterState {
             template: shape.map(|s| template(s, Vec2::new(w, h), life, gravity, drag, end, fade)),
             instances,
             carry,

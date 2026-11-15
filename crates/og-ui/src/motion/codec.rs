@@ -814,10 +814,8 @@ mod tests {
         };
         let read = |bytes: &[u8], legacy_glyphs| {
             R {
-                bytes,
-                at: 0,
                 legacy_glyphs,
-                affine_only: false,
+                ..R::new(bytes)
             }
             .cmd()
         };

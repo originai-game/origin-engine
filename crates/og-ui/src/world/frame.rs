@@ -1,4 +1,5 @@
 use super::*;
+use og_core::bytes::{ByteReader, ByteWriter};
 
 impl Ui {
     // ── inputs from the host ─────────────────────────────────────────────
@@ -553,25 +554,25 @@ impl Ui {
     pub fn save_world_state(&self) -> Vec<u8> {
         let s = &self.world.state;
         let mut out = Vec::new();
-        out.extend_from_slice(b"OGUW");
-        out.extend_from_slice(&1u32.to_le_bytes());
-        let put = |out: &mut Vec<u8>, v: u64| out.extend_from_slice(&v.to_le_bytes());
-        put(&mut out, s.pools.len() as u64);
+        let mut w = ByteWriter::new(&mut out);
+        w.bytes(b"OGUW");
+        w.u32(1);
+        w.u64(s.pools.len() as u64);
         for (k, pool) in &s.pools {
-            put(&mut out, u64::from(*k));
-            put(&mut out, pool.len() as u64);
-            out.extend_from_slice(bytemuck::cast_slice(pool));
+            w.u64(u64::from(*k));
+            w.u64(pool.len() as u64);
+            w.bytes(bytemuck::cast_slice(pool));
         }
-        put(&mut out, s.particles.len() as u64);
+        w.u64(s.particles.len() as u64);
         for (k, e) in &s.particles {
-            put(&mut out, *k);
-            e.save(&mut out);
+            w.u64(*k);
+            e.save(&mut w);
         }
-        put(&mut out, s.smooth.len() as u64);
+        w.u64(s.smooth.len() as u64);
         for (k, v) in &s.smooth {
-            put(&mut out, *k);
+            w.u64(*k);
             for f in [v.alpha, v.dx, v.dy] {
-                out.extend_from_slice(&f.to_le_bytes());
+                w.f32(f);
             }
         }
         out
@@ -601,36 +602,24 @@ impl Ui {
 
     /// Restores [`Ui::save_world_state`]'s bytes (empty: the empty state).
     pub fn restore_world_state(&mut self, bytes: &[u8]) -> og_core::Result<()> {
-        self.world.state = decode_world(bytes).ok_or_else(|| {
-            og_core::Error::new(
-                og_core::ErrorKind::Parse,
-                "og.ui world state: unreadable bytes",
-            )
-        })?;
+        self.world.state = decode_world(bytes)?;
         Ok(())
     }
 }
 
 /// Reads a world state's bytes.
-fn decode_world(bytes: &[u8]) -> Option<WorldState> {
+fn decode_world(bytes: &[u8]) -> og_core::Result<WorldState> {
     let mut s = WorldState::default();
     if bytes.is_empty() {
-        return Some(s);
+        return Ok(s);
     }
-    let mut r = Reader { b: bytes, at: 0 };
+    let mut r = ByteReader::new(bytes, "og.ui world state");
     if r.take(4)? != b"OGUW" || r.u32()? != 1 {
-        return None;
+        return Err(r.error("not version 1 world state bytes"));
     }
     for _ in 0..r.u64()? {
         let k = r.u64()? as u32;
-        let n = r.u64()? as usize;
-        let size = std::mem::size_of::<UiMassInstance>();
-        let raw = r.take(n.checked_mul(size)?)?;
-        let pool: Vec<UiMassInstance> = raw
-            .chunks_exact(size)
-            .map(bytemuck::pod_read_unaligned)
-            .collect();
-        s.pools.insert(k, pool);
+        s.pools.insert(k, instances(&mut r)?);
     }
     for _ in 0..r.u64()? {
         let k = r.u64()?;
@@ -648,28 +637,20 @@ fn decode_world(bytes: &[u8]) -> Option<WorldState> {
             },
         );
     }
-    (r.at == bytes.len()).then_some(s)
+    r.finish()?;
+    Ok(s)
 }
 
-/// Little-endian reads over a byte slice.
-pub struct Reader<'a> {
-    pub b: &'a [u8],
-    pub at: usize,
-}
-
-impl Reader<'_> {
-    pub fn take(&mut self, n: usize) -> Option<&[u8]> {
-        let s = self.b.get(self.at..self.at.checked_add(n)?)?;
-        self.at += n;
-        Some(s)
-    }
-    pub fn u32(&mut self) -> Option<u32> {
-        Some(u32::from_le_bytes(self.take(4)?.try_into().ok()?))
-    }
-    pub fn u64(&mut self) -> Option<u64> {
-        Some(u64::from_le_bytes(self.take(8)?.try_into().ok()?))
-    }
-    pub fn f32(&mut self) -> Option<f32> {
-        Some(f32::from_le_bytes(self.take(4)?.try_into().ok()?))
-    }
+/// Mass instances after their u64 count.
+pub(crate) fn instances(r: &mut ByteReader) -> og_core::Result<Vec<UiMassInstance>> {
+    let n = r.u64()?;
+    let size = std::mem::size_of::<UiMassInstance>();
+    let len = usize::try_from(n)
+        .ok()
+        .and_then(|n| n.checked_mul(size))
+        .ok_or_else(|| r.error(format!("{n} instances overflow")))?;
+    Ok(r.take(len)?
+        .chunks_exact(size)
+        .map(bytemuck::pod_read_unaligned)
+        .collect())
 }

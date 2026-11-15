@@ -7,6 +7,8 @@ rust-version.workspace = true
 description = "Origin Engine UI bindings: the expression language of a document's attributes and text, and the reactive session of sources, computations and bindings, below og-ui."
 
 [dependencies]
+# The little-endian bytes of a patch batch.
+og-core = { path = "../og-core" }
 # Translations, plural messages and the pseudo-locale.
 og-i18n = { path = "../og-i18n" }
 # The texture handles an image binding names.

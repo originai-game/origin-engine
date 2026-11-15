@@ -198,12 +198,7 @@ impl Running {
                 .map(|k| u8::from_str_radix(hex.get(k..k + 2)?, 16).ok())
                 .collect::<Option<_>>()?;
             use crate::motion::codec::MotionRead;
-            let mut r = crate::motion::codec::R {
-                bytes: &bytes,
-                at: 0,
-                legacy_glyphs: false,
-                affine_only: false,
-            };
+            let mut r = crate::motion::codec::R::new(&bytes);
             let mut cmds = Vec::new();
             for _ in 0..r.u32()? {
                 let cmd = r.cmd()?;

@@ -1,31 +1,35 @@
-//! Bytes of og-ui's saved state: little endian, counted lists. The
-//! primitives; og-ui and og-rive write their own types with them.
+//! Bytes of og-ui's saved state: og-core's little-endian bytes
+//! ([`og_core::bytes`]) and the UI's types over them. og-ui and og-rive
+//! write their own types with these.
 
 use crate::{Affine, Rect};
+use og_core::bytes::{ByteReader, ByteWriter};
 use og_core::glam::Vec2;
 use og_css::Srgba;
 
 pub struct W<'a>(pub &'a mut Vec<u8>);
 
 impl W<'_> {
+    fn w(&mut self) -> ByteWriter<'_> {
+        ByteWriter::new(self.0)
+    }
     pub fn u8(&mut self, v: u8) {
-        self.0.push(v);
+        self.w().u8(v);
     }
     pub fn u32(&mut self, v: u32) {
-        self.0.extend_from_slice(&v.to_le_bytes());
+        self.w().u32(v);
     }
     pub fn i32(&mut self, v: i32) {
-        self.0.extend_from_slice(&v.to_le_bytes());
+        self.w().i32(v);
     }
     pub fn u64(&mut self, v: u64) {
-        self.0.extend_from_slice(&v.to_le_bytes());
+        self.w().u64(v);
     }
     pub fn f32(&mut self, v: f32) {
-        self.0.extend_from_slice(&v.to_le_bytes());
+        self.w().f32(v);
     }
     pub fn str(&mut self, s: &str) {
-        self.u32(s.len() as u32);
-        self.0.extend_from_slice(s.as_bytes());
+        self.w().str(s);
     }
     pub fn rect(&mut self, r: &Rect) {
         for v in [r.x, r.y, r.width, r.height] {
@@ -61,40 +65,45 @@ impl W<'_> {
 }
 
 pub struct R<'a> {
-    pub bytes: &'a [u8],
-    pub at: usize,
+    /// The bytes, read in order.
+    pub b: ByteReader<'a>,
     /// A UI state before version 19: a placement has no glyph id, and a
     /// shaped form is its text's character U+F0000 + glyph id.
     pub legacy_glyphs: bool,
     /// A UI state before version 22: a map has no projective row.
     pub affine_only: bool,
 }
-impl R<'_> {
-    fn take<const N: usize>(&mut self) -> Option<[u8; N]> {
-        let s = self.bytes.get(self.at..self.at + N)?;
-        self.at += N;
-        s.try_into().ok()
+impl<'a> R<'a> {
+    /// A reader of `bytes` as this version writes them.
+    pub fn new(bytes: &'a [u8]) -> R<'a> {
+        R {
+            b: ByteReader::new(bytes, "og-ui bytes"),
+            legacy_glyphs: false,
+            affine_only: false,
+        }
     }
     pub fn u8(&mut self) -> Option<u8> {
-        Some(self.take::<1>()?[0])
+        self.b.u8().ok()
     }
     pub fn u32(&mut self) -> Option<u32> {
-        Some(u32::from_le_bytes(self.take()?))
+        self.b.u32().ok()
     }
     pub fn i32(&mut self) -> Option<i32> {
-        Some(i32::from_le_bytes(self.take()?))
+        self.b.i32().ok()
     }
     pub fn u64(&mut self) -> Option<u64> {
-        Some(u64::from_le_bytes(self.take()?))
+        self.b.u64().ok()
     }
     pub fn f32(&mut self) -> Option<f32> {
-        Some(f32::from_le_bytes(self.take()?))
+        self.b.f32().ok()
     }
     pub fn str(&mut self) -> Option<String> {
-        let n = self.u32()? as usize;
-        let s = self.bytes.get(self.at..self.at + n)?;
-        self.at += n;
-        String::from_utf8(s.to_vec()).ok()
+        self.b.string().ok()
+    }
+    /// A count of items at least `min_item` bytes each, `None` when the
+    /// bytes left could not hold them.
+    pub fn count(&mut self, min_item: usize) -> Option<usize> {
+        self.b.count(min_item).ok()
     }
     pub fn rect(&mut self) -> Option<Rect> {
         Some(Rect::new(

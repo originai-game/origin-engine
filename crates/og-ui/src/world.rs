@@ -37,7 +37,7 @@ mod frame;
 mod placement;
 pub mod viewport;
 
-pub(crate) use frame::Reader;
+pub(crate) use frame::instances;
 use placement::lod_of;
 pub(crate) use placement::mapped;
 
