@@ -28,21 +28,24 @@ impl Ui {
                 .attr("data-outline", if outline { "true" } else { "false" })
                 .flag_if(!outline, "focused");
             let values = self.part_values(&part, Some(n.key));
-            let Ok(draw) = self.part_draw_values(&values, [rect.width, rect.height], None, None)
+            let Ok(mut draw) =
+                self.part_draw_values(&values, [rect.width, rect.height], None, None)
             else {
                 return Vec::new();
             };
+            // An outline follows the box's corners, their shape too (CSS
+            // UI 4 §5.1, Borders 4 §5): the control's, unless the focus
+            // part declares its own.
+            let shaped = self.tree.nodes.get(n.content_slot).unwrap_or(n);
+            if let Some(lines) = draw.borders.as_mut()
+                && lines.corners.is_none()
+                && !values.has("radius")
+            {
+                lines.corners = shaped.decor.as_ref().and_then(|d| d.corners);
+            }
             let mut at = Placed {
                 rect: values.part_rect(rect, rect),
-                radius: values.num("radius").unwrap_or_else(|| {
-                    self.tree
-                        .nodes
-                        .get(n.content_slot)
-                        .unwrap_or(n)
-                        .style
-                        .sampled
-                        .radius
-                }),
+                radius: values.num("radius").unwrap_or(shaped.style.sampled.radius),
                 clip: self.paint_clip(n),
                 alpha: n.placed.alpha,
             };

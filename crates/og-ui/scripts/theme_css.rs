@@ -1072,4 +1072,6 @@ const FALLBACKS: &str = r#"
   input::part(focus):focus-visible, textarea::part(focus):focus-visible { outline-offset: var(--state-focus-ring-offset-field); }
   input[type=range]::part(focus):focus-visible, input[type=checkbox]::part(focus):focus-visible,
   input[type=radio]::part(focus):focus-visible { outline-offset: var(--state-focus-ring-offset); }
+  /* Unset, a ring follows its control's corners and their shape. */
+  button::part(focus) { border-radius: var(--button-focus-radius, revert-layer); corner-shape: var(--button-focus-corner-shape, revert-layer); }
 "#;

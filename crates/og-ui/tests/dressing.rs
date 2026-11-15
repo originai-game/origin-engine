@@ -1365,6 +1365,71 @@ fn a_part_named_for_a_role_wears_the_role_not_its_controls_dress() {
     assert!(!has(&cell, "#ff0000"), "the ring drew the base: {cell:?}");
 }
 
+/// The outside strokes (focus rings) drawn: whether each has CSS corners
+/// and its first corner radius.
+fn ring_strokes(ui: &Ui) -> Vec<(bool, f32)> {
+    ui.frame()
+        .items
+        .iter()
+        .filter_map(|item| match &item.cmd {
+            DrawCmd::Shape { shape, .. } => match (&shape.geometry, &shape.mode) {
+                (og_draw::UiGeometry::Rect { radii, corner }, og_draw::UiMode::Stroke(stroke))
+                    if stroke.align == og_draw::UiAlign::Outside =>
+                {
+                    Some((matches!(corner, og_draw::UiCorner::Css(_)), radii[0]))
+                }
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect()
+}
+
+/// A focus ring is an outline, so it follows its control's corners and
+/// their shape (CSS UI 4 §5.1): a pack's bevelled button rings bevelled.
+/// `--button-focus-radius` and `--button-focus-corner-shape` give the ring
+/// its own. Wrong: a round ring around a bevelled button.
+#[test]
+fn a_focus_ring_follows_its_buttons_corner_shape() {
+    let ring = |pack: &str| {
+        let mut ui = ui_with_font(test_font());
+        ui.set_part_css(&format!(
+            "{DEFAULT_CSS}\n:root {{ --button-radius: 10px; {pack} }}"
+        ))
+        .unwrap();
+        let mut d = mounted(
+            ui,
+            r#"<column id="Root"><button id="B">Go</button></column>"#,
+            &[],
+            Viewport::new(400.0, 300.0),
+        );
+        d.step(InputFrame {
+            keys: vec![UiKey::Tab],
+            ..Default::default()
+        });
+        for _ in 0..10 {
+            d.step(InputFrame::default());
+        }
+        assert!(d.ui.focus_path(0).ends_with("/B"), "{}", d.ui.focus_path(0));
+        ring_strokes(&d.ui)
+    };
+    assert_eq!(
+        ring(""),
+        vec![(false, 10.0 + 2.0)],
+        "a round button rings round"
+    );
+    let bevelled = ring("--button-corner-shape: bevel;");
+    assert!(
+        matches!(bevelled.as_slice(), [(true, r)] if *r > 10.0),
+        "a bevelled button rings bevelled: {bevelled:?}"
+    );
+    let own = ring("--button-corner-shape: bevel; --button-focus-radius: 3px;");
+    assert!(
+        matches!(own.as_slice(), [(false, r)] if *r < 10.0),
+        "the ring's own radius: {own:?}"
+    );
+}
+
 /// A style pack restyles the core controls by setting their tokens alone
 /// (docs/ui.md §3.1, Control hooks): a fill, an ink, a rim with its width
 /// and a padding reach the button, checkbox and field, and a variant keeps

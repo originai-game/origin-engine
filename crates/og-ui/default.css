@@ -1620,6 +1620,8 @@
   input::part(focus):focus-visible, textarea::part(focus):focus-visible { outline-offset: var(--state-focus-ring-offset-field); }
   input[type=range]::part(focus):focus-visible, input[type=checkbox]::part(focus):focus-visible,
   input[type=radio]::part(focus):focus-visible { outline-offset: var(--state-focus-ring-offset); }
+  /* Unset, a ring follows its control's corners and their shape. */
+  button::part(focus) { border-radius: var(--button-focus-radius, revert-layer); corner-shape: var(--button-focus-corner-shape, revert-layer); }
   button[data-outline=true]::part(focus) { outline: var(--state-outline-width) solid var(--line-strong); outline-offset: 0; }
   button[data-player="1"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--info); outline-offset: var(--state-player-ring-offset-1); }
   button[data-player="2"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--success); outline-offset: var(--state-player-ring-offset-2); }
