@@ -1598,6 +1598,37 @@ fn a_document_buttons_variant_inks_its_label() {
     }
 }
 
+/// A widget inside a document's button keeps its own ink when the library
+/// carries computed values (any document declaring `list-style-type`):
+/// the frame's `color`, which the button only inherits, stays under the
+/// keycap's ink as without carrying. Wrong: the frame's ink on the keycap.
+#[test]
+fn a_carried_colour_stays_under_a_widgets_own_ink() {
+    let keycap = |carry: bool| {
+        let style = if carry {
+            "#Z { list-style-type: none; }"
+        } else {
+            ""
+        };
+        let d = mounted(
+            ui_with_font(test_font()),
+            &format!(
+                r#"<meta name="parts" content="t.frame">
+<column id="Root" part="t.frame"><button variant="primary"><kbd>X</kbd><span>Go</span></button><div id="Z"></div></column>
+<style>{style}</style>"#
+            ),
+            &[],
+            Viewport::new(400.0, 300.0),
+        );
+        d.ui.frame().items.iter().find_map(|i| match &i.cmd {
+            DrawCmd::Text { text, color, .. } if text == "X" => Some(*color),
+            _ => None,
+        })
+    };
+    let alone = keycap(false).expect("the keycap drawn");
+    assert_eq!(keycap(true), Some(alone));
+}
+
 /// A kit's text element that names its part takes the part's `-og-ink` and
 /// `-og-step` (docs/ui.md §3.2), qualified by its classes, as a field's
 /// `text` part does: a pack inks a killfeed's names by team. Wrong: the

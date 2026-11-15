@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "kbd",
+      "summary": "Once any document declares a property that carries computed values to its children (`list-style-type`, a wide keyword such as `inherit`, a bound declaration), a widget inside a document element (a `<kbd>` keycap in a primary `<button>`) no longer takes the colour the element only inherits (a frame's `--ink`) over its own ink. A widget's ink is over what its host inherits, as it is without carrying; what the host declares still reaches its parts."
+    }
+  ]
+}

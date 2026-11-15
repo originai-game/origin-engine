@@ -887,7 +887,25 @@ impl Ui {
                     .filter(|name| !host.own.contains(*name))
                     .collect();
                 let styled = inherited.clone();
-                inherited = inherited.under(&host.computed);
+                // In carry mode the host's properties hold what it only
+                // inherits as well (a frame's `color`): those stay under
+                // the widget's own, as a shadow tree's styles are over
+                // what its host inherits.
+                let only_own;
+                let host_computed = if host
+                    .computed
+                    .properties
+                    .keys()
+                    .all(|n| host.own.contains(n))
+                {
+                    &host.computed
+                } else {
+                    let mut own = (*host.computed).clone();
+                    own.properties.retain(|name, _| host.own.contains(name));
+                    only_own = own;
+                    &only_own
+                };
+                inherited = inherited.under(host_computed);
                 for name in declared {
                     // Text properties carry under their text key too.
                     for name in [name.clone(), super::super::text_css::key(name)] {
