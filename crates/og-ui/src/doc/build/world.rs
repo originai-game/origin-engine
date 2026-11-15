@@ -567,7 +567,7 @@ impl Ui {
         };
         self.open_world_panel_keyed(path.as_str().into(), Some(key), desc);
         let i = self.tree.parent();
-        let mut p = Self::resolved_props(n, r);
+        let mut p = self.resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
         *self.tree.props_mut(i) = p;
@@ -658,12 +658,65 @@ impl Ui {
             lifetime = ((a.duration_ms * self.env.ticks_per_second() as f32 / 1000.0).round()
                 as u32)
                 .max(1);
+            // Each channel's keys: the numbers written, and the values that
+            // read variables as the anchor's cascade resolves them.
+            let mut tracks: Vec<(crate::element::Prop, Vec<(f32, f32)>)> = frames
+                .tracks
+                .iter()
+                .map(|tr| {
+                    (
+                        tr.prop,
+                        tr.keys.iter().map(|k| (k.offset, k.value)).collect(),
+                    )
+                })
+                .collect();
+            let computed = &r.cascade.computed;
+            for style in &frames.styles {
+                for key in style.keys.iter().filter(|k| k.value.contains("var(")) {
+                    let resolved = crate::doc::variables::Value::parse(&key.value)
+                        .and_then(|v| {
+                            v.substitute(&mut |name| match computed.get(name) {
+                                Some(value) => value.clone(),
+                                None => None,
+                            })
+                        })
+                        .and_then(|v| {
+                            if crate::doc::calc::has_math(&v) {
+                                crate::doc::calc::reduce(&v)
+                            } else {
+                                Ok(v)
+                            }
+                        });
+                    let values = resolved
+                        .ok()
+                        .and_then(|v| crate::doc::motion::channel_values(&style.property, &v));
+                    let Some(values) = values else {
+                        self.out.warnings_mut().push(format!(
+                            "{}:{} ({path}): @keyframes {}: `{}: {}` does not resolve to numbers here",
+                            b.doc.source, n.line, a.name, style.property, key.value
+                        ));
+                        continue;
+                    };
+                    for (prop, value) in values {
+                        let at = match tracks.iter().position(|(p, _)| *p == prop) {
+                            Some(at) => at,
+                            None => {
+                                tracks.push((prop, Vec::new()));
+                                tracks.len() - 1
+                            }
+                        };
+                        let keys = &mut tracks[at].1;
+                        keys.retain(|k| k.0 != key.offset);
+                        keys.push((key.offset, value));
+                        keys.sort_by(|a, b| a.0.total_cmp(&b.0));
+                    }
+                }
+            }
             let track = |prop: crate::element::Prop, t: f32, rest: f32| {
-                let Some(tr) = frames.tracks.iter().find(|tr| tr.prop == prop) else {
+                let Some((_, keys)) = tracks.iter().find(|(p, _)| *p == prop) else {
                     return rest;
                 };
-                let mut pts: Vec<(f32, f32)> =
-                    tr.keys.iter().map(|k| (k.offset, k.value)).collect();
+                let mut pts: Vec<(f32, f32)> = keys.clone();
                 if pts.first().is_none_or(|p| p.0 > 0.0) {
                     pts.insert(0, (0.0, rest));
                 }
@@ -682,17 +735,16 @@ impl Ui {
                 };
                 a.1 + (b.1 - a.1) * f
             };
-            let mut at: Vec<f32> = frames
-                .tracks
+            let mut at: Vec<f32> = tracks
                 .iter()
-                .flat_map(|tr| tr.keys.iter().map(|k| k.offset))
+                .flat_map(|(_, keys)| keys.iter().map(|k| k.0))
                 .chain([0.0, 1.0])
                 .collect();
             at.sort_by(f32::total_cmp);
             at.dedup();
             use crate::element::Prop;
             for t in at {
-                let scale = if frames.tracks.iter().any(|tr| tr.prop == Prop::Scale) {
+                let scale = if tracks.iter().any(|(p, _)| *p == Prop::Scale) {
                     track(Prop::Scale, t, 1.0)
                 } else {
                     track(Prop::ScaleX, t, 1.0)
@@ -794,7 +846,7 @@ impl Ui {
         };
         self.open_world_anchor_keyed(path.as_str().into(), Some(key), desc.clone());
         let i = self.tree.parent();
-        let mut p = Self::resolved_props(n, r);
+        let mut p = self.resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
         *self.tree.props_mut(i) = p;
@@ -1025,10 +1077,13 @@ mod tests {
     /// A keyed each of `<anchor mass>`: a row with an animation spawns one
     /// mass element when it appears and never again; a row without one
     /// stands as a bar pushed every tick with nothing built, and leaves
-    /// with its row. The keyframes are the template's timeline.
+    /// with its row. The keyframes are the template's timeline, a value
+    /// that reads variables resolved through the anchor's cascade.
     ///
     /// Ways it could fail: a spawn on every build (numbers repeat), a bar
-    /// that needs its element rebuilt each tick, or one left after its row.
+    /// that needs its element rebuilt each tick, one left after its row, or
+    /// a keyframe with `var()` dropped from the timeline (the number does
+    /// not rise).
     #[test]
     fn mass_anchors_spawn_once_and_bars_follow_their_rows() {
         let doc = r#"<meta name="component" content="hits">
@@ -1037,8 +1092,8 @@ mod tests {
   {#each $units as u (u.id)}<anchor id="Bar" entity={u.entity} mass="hp" value={u.hp} max="100"></anchor>{/each}
 </div>
 <style>
-#Hit { animation: rise 1s linear; }
-@keyframes rise { from { translate: 0 0; } to { translate: 0 -40px; opacity: 0; } }
+#Hit { --lift: 20px; animation: rise 1s linear; }
+@keyframes rise { from { translate: 0 0; } to { translate: 0 calc(var(--lift) * -2); opacity: 0; } }
 </style>"#;
         let mut ui = Ui::new(UiDesc::default());
         ui.define_document(UiDocument::parse("hits.svelte", doc).unwrap());
@@ -1254,6 +1309,83 @@ mod tests {
 
         let rejected = doc.replace("width: 40px;", "width: 40px; -og-emitter: sparks;");
         assert!(UiDocument::parse("fx.svelte", &rejected).is_err());
+    }
+
+    /// An `-og-burst` keyframe whose value reads variables is each
+    /// element's own: it is resolved through that element's cascade and
+    /// fires with its values when its animation reaches the keyframe.
+    ///
+    /// Ways it could fail: the value read as words before the cascade (the
+    /// keyframes refused), one element's values fired on every element,
+    /// `calc()` or a colour function split at its spaces, a burst fired
+    /// every tick or never, or a value that is no burst firing anyway
+    /// (it is reported instead).
+    #[test]
+    fn a_burst_keyframe_reads_each_element_s_variables() {
+        let doc = r#"<meta name="component" content="fx">
+<div id="Root"><div id="A" class="gem"></div><div id="B" class="gem big"></div><div id="C" class="gem bad"></div></div>
+<style>
+.gem { width: 40px; height: 40px; animation: pop 1s linear; --rays: 12; --reach: 20px; --tone: rgb(255 0 0); --time: 300ms; }
+.big { --rays: 30; --reach: 64px; --tone: #00ff00; --time: 1s; }
+.bad { --rays: many; }
+@keyframes pop { 50% { -og-burst: var(--rays) calc(var(--reach) * 2) var(--tone) var(--time); } }
+</style>"#;
+        let mut ui = Ui::new(UiDesc::default());
+        let parsed = UiDocument::parse("fx.svelte", doc).unwrap();
+        let pop = &parsed
+            .sheet
+            .keyframes
+            .iter()
+            .find(|(k, _)| k == "pop")
+            .unwrap()
+            .1;
+        assert!(pop.events.is_empty());
+        assert!(matches!(pop.bursts.as_slice(), [(o, _)] if *o == 0.5));
+        ui.define_document(parsed);
+        ui.mount_document(
+            SourceId::new("test", "fx"),
+            "fx",
+            BTreeMap::new(),
+            BTreeMap::new(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let mut warnings = Vec::new();
+        let mut fired = Vec::new();
+        // One and a half seconds: the keyframe is passed once.
+        for _ in 0..ui.env.ticks_per_second() * 3 / 2 {
+            ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end();
+            warnings.extend(ui.frame().warnings.iter().cloned());
+            for b in &ui.interaction.state.motion.bursts {
+                let burst = (
+                    b.key,
+                    b.count,
+                    b.radius,
+                    b.color.map(|c| c.rgb),
+                    b.duration_ms,
+                );
+                if !fired.contains(&burst) {
+                    fired.push(burst);
+                }
+            }
+        }
+        let key = |id: &str| crate::id::key_of_path(&format!("test:fx/{id}"));
+        fired.sort_by_key(|b| b.1);
+        assert_eq!(
+            fired,
+            [
+                (key("A"), 12, 40.0, Some([255, 0, 0]), 300.0),
+                (key("B"), 30, 128.0, Some([0, 255, 0]), 1000.0),
+            ]
+        );
+        assert!(
+            warnings
+                .iter()
+                .any(|w| w.contains("-og-burst") && w.contains("many")),
+            "{warnings:?}"
+        );
     }
 
     /// og-emitter and og-overlay stay registered on the ticks their

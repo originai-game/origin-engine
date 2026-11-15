@@ -1072,7 +1072,7 @@ impl Ui {
         let i = base.index;
         let surface_rtl = self.env.direction == og_i18n::Direction::Rtl;
         let flow = r.own_flow();
-        let mut props = Self::resolved_props(n, r);
+        let mut props = self.resolved_props(n, r);
         if surface_rtl {
             crate::layout::flow::mirror_props(&mut props);
         }

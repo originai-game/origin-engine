@@ -211,7 +211,7 @@ impl Ui {
                     .write_back(b, n, "cameraOrbit", serde_json::json!(text));
             }
         }
-        let mut p = Self::resolved_props(n, r);
+        let mut p = self.resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
         *self.tree.props_mut(i) = p;

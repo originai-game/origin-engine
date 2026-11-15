@@ -64,7 +64,7 @@
 @keyframes cheer { from { -og-sound: success; } }
 @keyframes reward { from { -og-sound: success; } }
 @keyframes ring { from { scale: 0.4; opacity: 1; } to { scale: 2.8; opacity: 0; } }
-@keyframes shell { 0% { opacity: 1; scale: 1; } 20% { opacity: 0; scale: 4; } 100% { opacity: 0; } }
+@keyframes shell { 0% { opacity: 1; scale: 1; -og-burst: 21 var(--size-4xl) var(--gold) var(--motion-duration-breathe); } 20% { opacity: 0; scale: 4; } 100% { opacity: 0; } }
 @keyframes stage { 0% { opacity: 1; } 83% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes rays { from { rotate: 0deg; scale: 0.6; opacity: 0; } 17% { scale: 1; opacity: 0.9; } to { rotate: 90deg; scale: 1; opacity: 0.9; } }
 @keyframes halo { from { scale: 0.3; opacity: 1; } to { scale: 2.2; opacity: 0; } }

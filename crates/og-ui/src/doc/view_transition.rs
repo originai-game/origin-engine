@@ -193,6 +193,7 @@ pub fn builtin_keyframes(name: &str) -> Option<crate::motion::css::Keyframes> {
         }],
         styles: Vec::new(),
         events: Vec::new(),
+        bursts: Vec::new(),
     })
 }
 

@@ -147,6 +147,10 @@ pub struct Keyframes {
     pub styles: Vec<StyleTrack>,
     /// Events at offsets (`-og-sound`), in each iteration.
     pub events: Vec<(f32, EventKind)>,
+    /// `-og-burst` values that read variables, at their offsets: text each
+    /// element resolves through its own cascade
+    /// ([`crate::element::Props::keyframe_bursts`]).
+    pub bursts: Vec<(f32, String)>,
 }
 
 /// A running CSS animation of an element. Its time is the ticks it has run
@@ -384,17 +388,32 @@ impl CssAnimation {
         from: f32,
         to: f32,
     ) -> Vec<&'a EventKind> {
+        let offsets = keyframes.events.iter().map(|(offset, _)| *offset);
+        self.passed_offsets(offsets, from, to)
+            .into_iter()
+            .map(|k| &keyframes.events[k].1)
+            .collect()
+    }
+
+    /// Which of `offsets` (each 0–1 of an iteration, by place) were passed
+    /// in (`from`, `to`] of active time, once for each passing.
+    pub(crate) fn passed_offsets(
+        &self,
+        offsets: impl Iterator<Item = f32> + Clone,
+        from: f32,
+        to: f32,
+    ) -> Vec<usize> {
         let d = self.duration_ms;
         let total = self.active_total();
         let mut out = Vec::new();
-        if keyframes.events.is_empty() || to <= from || d <= 0.0 {
+        if to <= from || d <= 0.0 {
             return out;
         }
         let first = (from.max(0.0) / d).floor() as u64;
         let last = (to.min(total) / d).floor() as u64;
         // A long jump (a restore far ahead) fires at most a few iterations.
         for k in first.max(last.saturating_sub(8))..=last {
-            for (offset, kind) in &keyframes.events {
+            for (place, offset) in offsets.clone().enumerate() {
                 let local = offset * d;
                 let at = k as f32 * d
                     + if self.direction.reversed(k) {
@@ -403,7 +422,7 @@ impl CssAnimation {
                         local
                     };
                 if at > from && at <= to && at <= total {
-                    out.push(kind);
+                    out.push(place);
                 }
             }
         }
@@ -465,6 +484,7 @@ mod tests {
             }],
             styles: Vec::new(),
             events: Vec::new(),
+            bursts: Vec::new(),
         }
     }
 

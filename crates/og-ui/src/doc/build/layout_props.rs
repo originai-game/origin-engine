@@ -364,12 +364,46 @@ impl Ui {
     }
 
     /// Document event ownership is separate from a box's computed style.
-    pub fn resolved_props(n: &DocNode, r: &Resolved) -> Props {
+    pub fn resolved_props(&self, n: &DocNode, r: &Resolved) -> Props {
         let mut p = Self::box_props(&n.kind, r);
         p.enter = n.enter.clone();
         p.exit = n.exit.clone();
         props(n, r, &mut p);
+        p.keyframe_bursts = self.keyframe_bursts(r).filter_map(Result::ok).collect();
         p
+    }
+
+    /// The `-og-burst` keyframes of `r`'s animations whose values read
+    /// variables, each resolved through `r`'s cascade as any declaration
+    /// is, or why it is not a burst.
+    pub(super) fn keyframe_bursts(
+        &self,
+        r: &Resolved,
+    ) -> impl Iterator<Item = Result<crate::element::KeyframeBurst, String>> {
+        let computed = &r.cascade.computed;
+        let library = &self.docs.library.keyframes;
+        r.animations.iter().enumerate().flat_map(move |(index, a)| {
+            let bursts = library.get(&a.name).map_or(&[][..], |k| &k.bursts[..]);
+            bursts.iter().map(move |(offset, text)| {
+                let value = crate::doc::variables::Value::parse(text)
+                    .and_then(|v| {
+                        v.substitute(&mut |name| match computed.get(name) {
+                            Some(value) => value.clone(),
+                            None => None,
+                        })
+                    })
+                    .map_err(|e| format!("-og-burst: {text}: {e}"))?;
+                let (count, radius, color, duration_ms) = crate::doc::motion::burst(&value)?;
+                Ok(crate::element::KeyframeBurst {
+                    animation: index as u32,
+                    offset: *offset,
+                    count,
+                    radius,
+                    color,
+                    duration_ms,
+                })
+            })
+        })
     }
 
     /// Shared layout and presentation for document boxes and widget parts.
@@ -611,7 +645,7 @@ impl Ui {
         r: &Resolved,
         built: &mut Built,
     ) -> Props {
-        let mut p = Self::resolved_props(n, r);
+        let mut p = self.resolved_props(n, r);
         for g in &n.groups {
             let mut group = StateGroup {
                 name: g.name.clone(),

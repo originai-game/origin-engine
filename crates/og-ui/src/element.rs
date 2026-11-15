@@ -222,6 +222,21 @@ pub struct ViewPlace {
     pub anchor_y: f32,
 }
 
+/// One `-og-burst` keyframe of an element's animation, its variables
+/// resolved: rays and sparks thrown when the iteration reaches `offset`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct KeyframeBurst {
+    /// The animation's place in [`Props::animations`].
+    pub animation: u32,
+    /// 0–1 of an iteration.
+    pub offset: f32,
+    pub count: u32,
+    pub radius: f32,
+    pub color: Option<crate::style::Srgba>,
+    /// How long they fly, ms (0: the style's slow plus base duration).
+    pub duration_ms: f32,
+}
+
 /// Everything an element carries beyond its box. The zero value is an
 /// element in the flow, unmoved and opaque, with no motion.
 #[derive(Clone, Debug, PartialEq)]
@@ -318,6 +333,9 @@ pub struct Props {
     pub transitions: Vec<crate::motion::css::CssTransition>,
     /// CSS `animation` entries, in list order (later ones win per channel).
     pub animations: Vec<crate::motion::css::CssAnimation>,
+    /// The `-og-burst` keyframes of `animations` whose values read
+    /// variables, resolved through this element's cascade.
+    pub keyframe_bursts: Vec<KeyframeBurst>,
     /// Moves from its last laid-out rectangle to its new one (FLIP).
     pub layout_motion: Option<Transition>,
     pub enter: Option<PresenceSpec>,
@@ -388,6 +406,7 @@ impl Default for Props {
             motion: None,
             transitions: Vec::new(),
             animations: Vec::new(),
+            keyframe_bursts: Vec::new(),
             layout_motion: None,
             enter: None,
             starting: Vec::new(),
