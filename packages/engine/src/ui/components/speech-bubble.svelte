@@ -26,6 +26,10 @@
 .shout [part="SpeechBubble.frame"] { --frame-rim: var(--warn); --frame-rim-width: var(--stroke-regular); }
 [part="SpeechBubble.label"] { font: var(--text-caption); font-family: var(--label-font); }
 [part="SpeechBubble.line"] { margin: 0; font: var(--text-sm); }
-[part="SpeechBubble.tail"] { width: var(--size-xs); height: calc(var(--size-xs) * 0.625); fill: var(--frame-fill); margin-top: calc(var(--stroke-hairline) * -1); }
+/* The tail is a shape, so it takes a colour: the panel the default frame is
+   filled with. --frame-fill is a background (a pack's may be layers of
+   images and gradients), so a pack whose frame is not one colour dresses
+   the tail itself. */
+[part="SpeechBubble.tail"] { width: var(--size-xs); height: calc(var(--size-xs) * 0.625); fill: var(--panel); margin-top: calc(var(--stroke-hairline) * -1); }
 @keyframes pop { from { scale: 0.6; opacity: 0; } to { scale: 1; opacity: 1; } }
 </style>

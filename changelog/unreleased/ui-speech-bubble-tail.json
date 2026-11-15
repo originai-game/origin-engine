@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "SpeechBubble",
+      "summary": "The tail takes --panel, the colour the default frame is filled with, instead of --frame-fill: a frame fill is a background, and a style pack's may be layers of images and gradients that no shape can take, so the tail drew nothing under such a pack. A pack whose frame is not one colour dresses the SpeechBubble.tail part."
+    }
+  ]
+}
