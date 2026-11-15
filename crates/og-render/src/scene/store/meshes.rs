@@ -50,6 +50,7 @@ impl RenderScene {
         if reused {
             self.meshes[i] = mesh;
             self.mesh_revisions[i] += 1;
+            self.drawable_serial += 1;
             self.mesh_encodings[i] = VertexEncoding::Full;
             self.mesh_clusters[i] = None;
             self.mesh_foliage[i] = None;
@@ -84,6 +85,7 @@ impl RenderScene {
         let reuse = self.skins[i].is_none() && self.morphs[i].is_none();
         self.meshes[i] = MeshData::default();
         self.mesh_revisions[i] += 1;
+        self.drawable_serial += 1;
         self.mesh_clusters[i] = None;
         self.mesh_foliage[i] = None;
         self.mesh_surfaces[i] = None;
@@ -110,6 +112,7 @@ impl RenderScene {
         }
         self.meshes[i] = mesh;
         self.mesh_revisions[i] += 1;
+        self.drawable_serial += 1;
         // Its clusters described the old indices, its foliage the old vertices.
         self.mesh_clusters[i] = None;
         self.mesh_foliage[i] = None;
@@ -219,6 +222,7 @@ impl RenderScene {
             }
         }
         self.mesh_clusters[i] = clusters.map(std::sync::Arc::new);
+        self.drawable_serial += 1;
         true
     }
 
@@ -297,6 +301,14 @@ impl RenderScene {
                     && m.wireframe != 1
                     && self.material_shaders.get(i).is_none_or(Option::is_none)
             }
+    }
+
+    /// Changes whenever an answer of [`RenderScene::meshlet_drawable`]
+    /// can: a mesh's slot or clusters, or a material other than its
+    /// shader's parameters (a wind copy's are written every tick).
+    /// Extraction keeps what it built while this holds.
+    pub fn meshlet_serial(&self) -> u64 {
+        self.drawable_serial
     }
 
     pub(crate) fn mesh_revisions(&self) -> &[u64] {

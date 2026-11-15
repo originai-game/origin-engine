@@ -118,6 +118,7 @@ impl RenderScene {
             gltf_materials: Vec::new(),
             material_revisions: Vec::new(),
             material_serial: 0,
+            drawable_serial: 0,
             material_aliases: Vec::new(),
             material_copies: Vec::new(),
             fonts: Vec::new(),
@@ -522,6 +523,7 @@ impl RenderScene {
         self.material_shaders[i] = shader.map(|s| (s, self.shaders[s.index()].defaults()));
         self.material_revisions[i] += 1;
         self.material_serial += 1;
+        self.drawable_serial += 1;
         self.restamp_aliases(i);
         true
     }

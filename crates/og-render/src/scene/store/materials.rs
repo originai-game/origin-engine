@@ -19,6 +19,7 @@ impl RenderScene {
     ) -> MaterialHandle {
         let (i, generation, reused) = self.material_slots.take(self.materials.len(), true);
         self.material_serial += 1;
+        self.drawable_serial += 1;
         if reused {
             self.materials[i] = material;
             self.gltf_materials[i] = gltf;
@@ -48,6 +49,7 @@ impl RenderScene {
         }
         self.material_revisions[i] += 1;
         self.material_serial += 1;
+        self.drawable_serial += 1;
         self.material_slots.remove(i, true);
         // Its aliases end for good: a later material in the slot is another.
         if let Some(a) = self.material_aliases.get_mut(i) {
@@ -85,6 +87,7 @@ impl RenderScene {
         self.gltf_materials[i] = Some(material);
         self.material_revisions[i] += 1;
         self.material_serial += 1;
+        self.drawable_serial += 1;
         self.restamp_aliases(i);
         true
     }
@@ -104,6 +107,7 @@ impl RenderScene {
         self.gltf_materials[i] = None;
         self.material_revisions[i] += 1;
         self.material_serial += 1;
+        self.drawable_serial += 1;
         self.restamp_aliases(i);
         true
     }

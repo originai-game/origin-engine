@@ -77,6 +77,12 @@ pub struct RenderScene {
     /// parameters: while it holds, the renderer skips its per-frame pass
     /// over the materials (engine s96).
     material_serial: u64,
+    /// Counts every change [`RenderScene::meshlet_drawable`] can see: a
+    /// mesh's slot or clusters (added in a reused slot, replaced, removed,
+    /// clustered), and a material added, replaced or removed, given or
+    /// losing its shader, or losing a texture it sampled; not a shader's
+    /// parameters ([`RenderScene::meshlet_serial`]).
+    drawable_serial: u64,
     /// Per material: the one it draws in the batches of
     /// ([`RenderScene::alias_material`]), with both revisions when the two
     /// last drew the same; it holds only while both are unchanged since.

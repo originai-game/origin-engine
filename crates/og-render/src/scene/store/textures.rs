@@ -209,6 +209,7 @@ impl RenderScene {
             if m.forget_texture_array(slot) {
                 *revision += 1;
                 self.material_serial += 1;
+                self.drawable_serial += 1;
             }
         }
         true
@@ -373,6 +374,7 @@ impl RenderScene {
             if m.forget_texture(slot) {
                 *revision += 1;
                 self.material_serial += 1;
+                self.drawable_serial += 1;
             }
         }
         for m in self.gltf_materials.iter_mut().flatten() {
