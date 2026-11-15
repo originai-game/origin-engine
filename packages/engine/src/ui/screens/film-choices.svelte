@@ -10,18 +10,18 @@
 <meta name="action:pick" content="Choose on the picture">
 <meta name="fixture:default" content="{&quot;open&quot;:true,&quot;left&quot;:0.6,&quot;locked&quot;:false,&quot;hotspots&quot;:[{&quot;id&quot;:&quot;0&quot;,&quot;x&quot;:0.58,&quot;y&quot;:0.3,&quot;width&quot;:0.14,&quot;height&quot;:0.22,&quot;label&quot;:&quot;Take the knife&quot;}],&quot;choices&quot;:[{&quot;id&quot;:&quot;0&quot;,&quot;text&quot;:&quot;Take the knife&quot;,&quot;enabled&quot;:true,&quot;chosen&quot;:false,&quot;progress&quot;:-1},{&quot;id&quot;:&quot;1&quot;,&quot;text&quot;:&quot;Open the door&quot;,&quot;enabled&quot;:true,&quot;chosen&quot;:true,&quot;progress&quot;:-1},{&quot;id&quot;:&quot;2&quot;,&quot;text&quot;:&quot;Hold to dodge&quot;,&quot;enabled&quot;:true,&quot;chosen&quot;:false,&quot;progress&quot;:0.45},{&quot;id&quot;:&quot;3&quot;,&quot;text&quot;:&quot;Wait in the dark&quot;,&quot;enabled&quot;:false,&quot;chosen&quot;:false,&quot;progress&quot;:-1}]}">
 
-<stack id="FilmChoices" class="bare" hidden={!($open)}>
+<stack id="FilmChoices" class="bare" hidden={!(open)}>
   <div id="Hotspots">
-    {#each $hotspots as h (h.id)}
-      <button id="Hotspot" part="film-choices.hotspot" class="hotspot" variant="quiet" aria-label={h.label} disabled={$locked} style:--x={h.x} style:--y={h.y} style:--w={h.width} style:--h={h.height} onclick={pick}></button>
+    {#each hotspots as h (h.id)}
+      <button id="Hotspot" part="film-choices.hotspot" class="hotspot" variant="quiet" aria-label={h.label} disabled={locked} style:--x={h.x} style:--y={h.y} style:--w={h.width} style:--h={h.height} onclick={pick}></button>
     {/each}
   </div>
   <column id="Dock">
     <column id="Panel" part="film-choices.frame" role="group" aria-label={t("screen.film-choices.label")}>
-      <progress id="Timer" part="film-choices.timer" bind:value={$left}></progress>
+      <progress id="Timer" part="film-choices.timer" bind:value={left}></progress>
       <div id="Choices">
-        {#each $choices as c (c.id)}
-          <button id="Choice" part="film-choices.choice" class="choice" class:chosen={c.chosen} variant={c.chosen ? "primary" : "default"} aria-current={c.chosen} disabled={!(c.enabled) || $locked} onclick={choose}>
+        {#each choices as c (c.id)}
+          <button id="Choice" part="film-choices.choice" class="choice" class:chosen={c.chosen} variant={c.chosen ? "primary" : "default"} aria-current={c.chosen} disabled={!(c.enabled) || locked} onclick={choose}>
             <column id="Body" class="body">
               <text id="Text">{c.text}</text>
               <progress id="Qte" part="film-choices.qte" class="qte" value={c.progress} hidden={c.progress < 0} aria-label={t("screen.film-choices.qte")}></progress>

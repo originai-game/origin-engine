@@ -8,14 +8,14 @@
 <meta name="fixture:default" content="{&quot;title&quot;:&quot;Ember Blade&quot;,&quot;body&quot;:&quot;Burns on hit. Two-handed.&quot;,&quot;image&quot;:&quot;&quot;,&quot;badge&quot;:&quot;New&quot;}">
 
 <article id="Card" part="card.frame" class="bare">
-  <button id="Hit" class="hit" onclick={open} aria-label={$title}>
+  <button id="Hit" class="hit" onclick={open} aria-label={title}>
     <div id="Face">
-    <img id="Image" part="card.image" src={$image} alt="" hidden={$image == ""}>
+    <img id="Image" part="card.image" src={image} alt="" hidden={image == ""}>
     <div id="Head">
-      <h3 id="Title" part="card.title">{$title}</h3>
-      <badge id="Badge" hidden={$badge == ""}>{$badge}</badge>
+      <h3 id="Title" part="card.title">{title}</h3>
+      <badge id="Badge" hidden={badge == ""}>{badge}</badge>
     </div>
-    <p id="Body" part="card.body" hidden={$body == ""}>{$body}</p>
+    <p id="Body" part="card.body" hidden={body == ""}>{body}</p>
     </div>
   </button>
   <footer id="Actions">{@render actions?.()}</footer>

@@ -13,22 +13,22 @@
 
 <column id="GameOver">
   <column id="Panel" part="game-over.frame" class="bare">
-    <text id="Title" part="game-over.title" heading="true">{$title}</text>
+    <text id="Title" part="game-over.title" heading="true">{title}</text>
     <row id="Score">
-      <text id="Value" part="game-over.figure">{t("screen.game-over.Value", { value: $score })}</text>
-      <text id="Best" part="game-over.label">{t("screen.game-over.Best", { best: $best })}</text>
+      <text id="Value" part="game-over.figure">{t("screen.game-over.Value", { value: score })}</text>
+      <text id="Best" part="game-over.label">{t("screen.game-over.Best", { best: best })}</text>
     </row>
     <column id="Stats">{@render stats?.()}</column>
-    <column id="Offer" part="game-over.offer" hidden={!($offer)}>
+    <column id="Offer" part="game-over.offer" hidden={!(offer)}>
       <text id="Line">{t("screen.game-over.revive")}</text>
-      <text id="Left">{t("screen.game-over.Left", { value: formatCountdown($left) })}</text>
+      <text id="Left">{t("screen.game-over.Left", { value: formatCountdown(left) })}</text>
       <column id="OfferArt">{@render offerArt?.()}</column>
-      <button id="Revive" variant="primary" onclick={revive}>{t("screen.game-over.Revive", { price: $price })}</button>
+      <button id="Revive" variant="primary" onclick={revive}>{t("screen.game-over.Revive", { price: price })}</button>
       <button id="Decline" variant="quiet" onclick={decline}>{t("screen.game-over.decline")}</button>
     </column>
-    <column id="Actions" hidden={!(!($offer))}>
+    <column id="Actions" hidden={!(!(offer))}>
       <button id="Retry" variant="primary" onclick={retry}>{t("screen.game-over.retry")}</button>
-      <button id="Checkpoint" hidden={!($checkpoint)} onclick={checkpoint}>{t("screen.game-over.checkpoint")}</button>
+      <button id="Checkpoint" hidden={!(checkpoint)} onclick={checkpoint}>{t("screen.game-over.checkpoint")}</button>
       <button id="Quit" variant="quiet" onclick={quit}>{t("screen.game-over.quit")}</button>
     </column>
   </column>

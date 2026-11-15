@@ -11,20 +11,20 @@
 <meta name="fixture:default" content="{&quot;place&quot;:&quot;The Sunken Archive&quot;,&quot;progress&quot;:0.62,&quot;ready&quot;:false,&quot;tip&quot;:&quot;Dodging through an attack at the last moment slows time for a breath.&quot;,&quot;waits&quot;:true}">
 
 <stack id="Loading" interactive="true" onclick={nextTip}>
-  <art id="Art" kind="tutorial" src={$keyArt}></art>
+  <art id="Art" kind="tutorial" src={keyArt}></art>
   <column id="Scrim" part="loading.scrim"></column>
   <column id="Foot">
     <spacer id="Node4"></spacer>
     <column id="Tip" part="loading.frame">
       <text id="Eyebrow">{t("screen.loading.tip")}</text>
-      <text id="Text">{$tip}</text>
+      <text id="Text">{tip}</text>
       <column id="Lore">{@render lore?.()}</column>
     </column>
-    <text id="Place" part="loading.title" heading="true">{$place}</text>
+    <text id="Place" part="loading.title" heading="true">{place}</text>
     <row id="Progress">
-      <progress id="Bar" bind:value={$progress}></progress>
-      <text id="Percent" hidden={!(!($ready))}>{t("screen.loading.Percent", { progress: formatPercent($progress) })}</text>
-      <button id="Continue" variant="primary" hidden={!(($ready && $waits))} autofocus="true" onclick={continue} onconfirm={continue}>{t("screen.loading.continue")}</button>
+      <progress id="Bar" bind:value={progress}></progress>
+      <text id="Percent" hidden={!(!(ready))}>{t("screen.loading.Percent", { progress: formatPercent(progress) })}</text>
+      <button id="Continue" variant="primary" hidden={!((ready && waits))} autofocus="true" onclick={continue} onconfirm={continue}>{t("screen.loading.continue")}</button>
     </row>
   </column>
 </stack>

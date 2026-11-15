@@ -10,12 +10,12 @@
 <meta name="action:cancel" content="Cancel">
 <meta name="fixture:default" content="{&quot;open&quot;:true,&quot;title&quot;:&quot;Quit to the menu?&quot;,&quot;body&quot;:&quot;Progress since the last save is lost.&quot;,&quot;confirm&quot;:&quot;Quit&quot;,&quot;cancel&quot;:&quot;Keep playing&quot;,&quot;danger&quot;:true}">
 
-<dialog id="Confirm" modal closedby="closerequest" bind:open={$open} aria-label={$title}>
-  <h2 id="Title" part="confirm.title">{$title}</h2>
-  <p id="Body" part="confirm.body" hidden={$body == ""}>{$body}</p>
+<dialog id="Confirm" modal closedby="closerequest" bind:open={open} aria-label={title}>
+  <h2 id="Title" part="confirm.title">{title}</h2>
+  <p id="Body" part="confirm.body" hidden={body == ""}>{body}</p>
   <footer id="Buttons" part="confirm.actions">
-    <button id="Cancel" variant="quiet" autofocus onclick={cancel}>{$cancel}</button>
-    <button id="Ok" variant={$danger ? "danger" : "primary"} onclick={confirm}>{$confirm}</button>
+    <button id="Cancel" variant="quiet" autofocus onclick={cancel}>{cancel}</button>
+    <button id="Ok" variant={danger ? "danger" : "primary"} onclick={confirm}>{confirm}</button>
   </footer>
 </dialog>
 

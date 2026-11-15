@@ -14,9 +14,9 @@
     <art id="Logo" part="title.logo" kind="logo"></art>
     <spacer id="Node6"></spacer>
     <text id="Prompt" part="title.prompt">{t("screen.title.press")}</text>
-    <text id="Legal">{$legal}</text>
+    <text id="Legal">{legal}</text>
   </column>
-  <text id="Version">{$version}</text>
+  <text id="Version">{version}</text>
 </stack>
 
 <style>

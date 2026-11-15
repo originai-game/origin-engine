@@ -4,7 +4,7 @@
 <meta name="fixture:default" content="{&quot;rows&quot;:[{&quot;id&quot;:&quot;atk&quot;,&quot;key&quot;:&quot;Attack&quot;,&quot;value&quot;:&quot;42&quot;,&quot;delta&quot;:&quot;+6&quot;},{&quot;id&quot;:&quot;def&quot;,&quot;key&quot;:&quot;Defence&quot;,&quot;value&quot;:&quot;18&quot;,&quot;delta&quot;:&quot;-2&quot;},{&quot;id&quot;:&quot;wt&quot;,&quot;key&quot;:&quot;Weight&quot;,&quot;value&quot;:&quot;3.5 kg&quot;,&quot;delta&quot;:&quot;&quot;}]}">
 
 <ul id="KeyValues" part="key-values.frame" class="bare">
-  {#each $rows as r (r.id)}
+  {#each rows as r (r.id)}
     <li class="row" part="key-values.row">
       <p class="key" part="key-values.label">{r.key}</p>
       <p class="value" part="key-values.figure">{r.value}</p>

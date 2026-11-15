@@ -14,8 +14,8 @@
   </row>
   <scroll id="Scroll">
     <grid id="Modes" focus-group="wrap">
-      {#each $modes as mode (mode.id)}
-        <column id="Mode" part="mode-select.cell" interactive="true" focusable="true" onclick={select} class:selection-off={!((mode.id == $selected))} class:selection-on={(mode.id == $selected)} class:lock-open={!(mode.locked)} class:lock-locked={mode.locked}>
+      {#each modes as mode (mode.id)}
+        <column id="Mode" part="mode-select.cell" interactive="true" focusable="true" onclick={select} class:selection-off={!((mode.id == selected))} class:selection-on={(mode.id == selected)} class:lock-open={!(mode.locked)} class:lock-locked={mode.locked}>
           <art id="Art" kind="levelThumb" src={mode.texture}></art>
           <row id="Head">
             <text id="Name" part="mode-select.name" heading="true">{mode.name}</text>
@@ -30,7 +30,7 @@
   </scroll>
   <column id="Detail">{@render detail?.()}</column>
   <row id="Footer">
-    <button id="Play" variant="primary" disabled={($modes.length == 0.0)} onclick={play} onconfirm={play}>{t("screen.mode-select.play")}</button>
+    <button id="Play" variant="primary" disabled={(modes.length == 0.0)} onclick={play} onconfirm={play}>{t("screen.mode-select.play")}</button>
   </row>
 </column>
 

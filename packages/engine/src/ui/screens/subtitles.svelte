@@ -4,7 +4,7 @@
 <meta name="fixture:default" content="{&quot;lines&quot;:[{&quot;id&quot;:&quot;1&quot;,&quot;speaker&quot;:&quot;Keeper&quot;,&quot;text&quot;:&quot;The lamps went dark three nights ago.&quot;}]}">
 
 <column id="Subtitles" part="subtitles.frame" class="bare" role="log" aria-live="polite">
-  {#each $lines as l (l.id)}
+  {#each lines as l (l.id)}
     <div class="line" part="subtitles.line"><p class="speaker" part="subtitles.speaker">{l.speaker}</p><p class="said">{l.text}</p></div>
   {/each}
   {#each $captions as c (c.id)}

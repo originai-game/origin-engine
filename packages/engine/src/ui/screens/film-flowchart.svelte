@@ -21,11 +21,11 @@
     <text id="Title" part="film-flowchart.title" heading="true">{t("screen.film-flowchart.title")}</text>
   </row>
   <scroll id="Body">
-    <NodeGraph id="Graph" nodes={$nodes} links={$links} view={$view} zoom={$zoom} panX={$panX} panY={$panY} selected={$selected} name={t("screen.film-flowchart.title")} />
+    <NodeGraph id="Graph" nodes={nodes} links={links} view={view} zoom={zoom} panX={panX} panY={panY} selected={selected} name={t("screen.film-flowchart.title")} />
   </scroll>
-  <row id="Detail" part="film-flowchart.detail" hidden={$detail == ""}>
-    <text id="What">{$detail}</text>
-    <button id="Play" variant="primary" disabled={!($canPlay)} onclick={play}>{t("screen.film-flowchart.play")}</button>
+  <row id="Detail" part="film-flowchart.detail" hidden={detail == ""}>
+    <text id="What">{detail}</text>
+    <button id="Play" variant="primary" disabled={!(canPlay)} onclick={play}>{t("screen.film-flowchart.play")}</button>
   </row>
 </column>
 

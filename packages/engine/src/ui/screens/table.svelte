@@ -6,13 +6,13 @@
 <meta name="action:choose" content="Open row">
 <meta name="fixture:default" content="{&quot;label&quot;:&quot;Standings&quot;,&quot;columns&quot;:[{&quot;id&quot;:&quot;n&quot;,&quot;label&quot;:&quot;Team&quot;},{&quot;id&quot;:&quot;w&quot;,&quot;label&quot;:&quot;Won&quot;},{&quot;id&quot;:&quot;p&quot;,&quot;label&quot;:&quot;Points&quot;}],&quot;cells&quot;:[{&quot;id&quot;:&quot;r.n&quot;,&quot;row&quot;:&quot;r&quot;,&quot;text&quot;:&quot;Ravens&quot;},{&quot;id&quot;:&quot;r.w&quot;,&quot;row&quot;:&quot;r&quot;,&quot;text&quot;:&quot;9&quot;},{&quot;id&quot;:&quot;r.p&quot;,&quot;row&quot;:&quot;r&quot;,&quot;text&quot;:&quot;27&quot;},{&quot;id&quot;:&quot;g.n&quot;,&quot;row&quot;:&quot;g&quot;,&quot;text&quot;:&quot;Gulls&quot;},{&quot;id&quot;:&quot;g.w&quot;,&quot;row&quot;:&quot;g&quot;,&quot;text&quot;:&quot;7&quot;},{&quot;id&quot;:&quot;g.p&quot;,&quot;row&quot;:&quot;g&quot;,&quot;text&quot;:&quot;21&quot;}]}">
 
-<section id="Table" part="table.frame" class="bare" role="table" aria-label={$label}>
+<section id="Table" part="table.frame" class="bare" role="table" aria-label={label}>
   <div id="Head" part="table.band" role="row">
-    {#each $columns as c (c.id)}<p class="heading" part="table.heading" role="columnheader">{c.label}</p>{/each}
+    {#each columns as c (c.id)}<p class="heading" part="table.heading" role="columnheader">{c.label}</p>{/each}
   </div>
   <scroll id="Body">
     <div id="Cells">
-      {#each $cells as c (c.id)}<button id="Cell" part="table.cell" class="cell" variant="quiet" role="cell" onclick={choose}>{c.text}</button>{/each}
+      {#each cells as c (c.id)}<button id="Cell" part="table.cell" class="cell" variant="quiet" role="cell" onclick={choose}>{c.text}</button>{/each}
     </div>
   </scroll>
 </section>

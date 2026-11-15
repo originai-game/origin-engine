@@ -17,19 +17,19 @@
     <button id="Back" variant="quiet" onclick={back}>{t("screen.common.back")}</button>
     <column id="Heading">
       <text id="Title" part="settings.title" heading="true">{t("screen.settings.title")}</text>
-      <text id="Note" hidden={!(($note != ""))}>{$note}</text>
+      <text id="Note" hidden={!((note != ""))}>{note}</text>
     </column>
   </row>
   <column id="Tree">
-    {#if $page}
+    {#if page}
       <nav id="Pages" role="tablist">
-        {#each $pages as p (p.id)}
-          <label class="tab"><input type="radio" id="Tab" value={p.id} bind:group={$page}>{p.name}</label>
+        {#each pages as p (p.id)}
+          <label class="tab"><input type="radio" id="Tab" value={p.id} bind:group={page}>{p.name}</label>
         {/each}
       </nav>
       <ul id="Entries">
-        {#each $entries as e (e.id)}
-          {#if e.page == $page}
+        {#each entries as e (e.id)}
+          {#if e.page == page}
             <li class="entry" part="settings.row" title={e.description}>
               {#if e.kind == "toggle"}
                 <label class="row">{e.name}<input type="checkbox" switch id="Toggle" bind:checked={e.value}></label>
@@ -52,8 +52,8 @@
       </ul>
       <footer id="Foot">
         <button id="Defaults" variant="quiet" onclick={defaults}>{t("screen.settings.defaults")}</button>
-        <button id="Revert" disabled={!$pending} onclick={revert}>{t("screen.settings.revert")}</button>
-        <button id="Apply" variant="primary" disabled={!$pending} onclick={apply}>{t("screen.settings.apply")}</button>
+        <button id="Revert" disabled={!pending} onclick={revert}>{t("screen.settings.revert")}</button>
+        <button id="Apply" variant="primary" disabled={!pending} onclick={apply}>{t("screen.settings.apply")}</button>
       </footer>
     {/if}
     {@render tree?.()}

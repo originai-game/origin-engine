@@ -8,15 +8,15 @@
 <meta name="action:pick" content="Choose day">
 <meta name="fixture:default" content="{&quot;month&quot;:&quot;March 2027&quot;,&quot;weekdays&quot;:[{&quot;id&quot;:&quot;1&quot;,&quot;label&quot;:&quot;M&quot;},{&quot;id&quot;:&quot;2&quot;,&quot;label&quot;:&quot;T&quot;},{&quot;id&quot;:&quot;3&quot;,&quot;label&quot;:&quot;W&quot;},{&quot;id&quot;:&quot;4&quot;,&quot;label&quot;:&quot;T&quot;},{&quot;id&quot;:&quot;5&quot;,&quot;label&quot;:&quot;F&quot;},{&quot;id&quot;:&quot;6&quot;,&quot;label&quot;:&quot;S&quot;},{&quot;id&quot;:&quot;7&quot;,&quot;label&quot;:&quot;S&quot;}],&quot;days&quot;:[{&quot;id&quot;:&quot;d1&quot;,&quot;label&quot;:&quot;1&quot;,&quot;today&quot;:false,&quot;outside&quot;:false,&quot;marked&quot;:false},{&quot;id&quot;:&quot;d2&quot;,&quot;label&quot;:&quot;2&quot;,&quot;today&quot;:true,&quot;outside&quot;:false,&quot;marked&quot;:true}]}">
 
-<section id="Calendar" part="calendar.frame" class="bare" aria-label={$month}>
+<section id="Calendar" part="calendar.frame" class="bare" aria-label={month}>
   <header id="Head" part="calendar.band">
-    <button id="Prev" variant="quiet" onclick={previous} aria-label={$month}><og-icon icon="chevronLeft"/></button>
-    <h3 id="Month" part="calendar.title">{$month}</h3>
-    <button id="Next" variant="quiet" onclick={next} aria-label={$month}><og-icon icon="chevronRight"/></button>
+    <button id="Prev" variant="quiet" onclick={previous} aria-label={month}><og-icon icon="chevronLeft"/></button>
+    <h3 id="Month" part="calendar.title">{month}</h3>
+    <button id="Next" variant="quiet" onclick={next} aria-label={month}><og-icon icon="chevronRight"/></button>
   </header>
   <grid id="Days" role="grid">
-    {#each $weekdays as w (w.id)}<small class="weekday" part="calendar.heading">{w.label}</small>{/each}
-    {#each $days as d (d.id)}
+    {#each weekdays as w (w.id)}<small class="weekday" part="calendar.heading">{w.label}</small>{/each}
+    {#each days as d (d.id)}
       <button id="Day" part="calendar.cell" class="day" class:outside={d.outside} class:marked={d.marked} variant={d.today ? "primary" : "quiet"} aria-current={d.today} onclick={pick}>{d.label}</button>
     {/each}
   </grid>

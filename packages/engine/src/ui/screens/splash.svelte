@@ -10,17 +10,17 @@
 
 <column id="Splash" part="splash.frame" class="bare" interactive="true" onclick={skip} onconfirm={skip}>
   <spacer id="Node1"></spacer>
-  {#each $marks as m (m.id)}
-    <column id="Mark" part="splash.mark" hidden={!((m.id == $mark))}>
+  {#each marks as m (m.id)}
+    <column id="Mark" part="splash.mark" hidden={!((m.id == mark))}>
       <art id="Art" kind="logo" src={m.texture}></art>
       <text id="Name">{m.name}</text>
     </column>
   {/each}
   <column id="Custom">{@render custom?.()}</column>
   <spacer id="Node7"></spacer>
-  <column id="Boot" hidden={!(($progress >= 0.0))}>
-    <progress id="Bar" bind:value={$progress}></progress>
-    <text id="Status">{$status}</text>
+  <column id="Boot" hidden={!((progress >= 0.0))}>
+    <progress id="Bar" bind:value={progress}></progress>
+    <text id="Status">{status}</text>
   </column>
 </column>
 

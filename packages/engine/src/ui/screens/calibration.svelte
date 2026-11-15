@@ -13,38 +13,38 @@
 <column id="Calibration">
   <column id="Panel" part="calibration.frame">
     <row id="Steps">
-      <badge id="Brightness" tone="neutral" class:at-off={!(($step == "brightness"))} class:at-on={($step == "brightness")}>{t("screen.calibration.brightness")}</badge>
-      <badge id="Offset" tone="neutral" class:at-off={!(($step == "offset"))} class:at-on={($step == "offset")}>{t("screen.calibration.offset")}</badge>
-      <badge id="Controller" tone="neutral" class:at-off={!(($step == "controller"))} class:at-on={($step == "controller")}>{t("screen.calibration.controller")}</badge>
+      <badge id="Brightness" tone="neutral" class:at-off={!((step == "brightness"))} class:at-on={(step == "brightness")}>{t("screen.calibration.brightness")}</badge>
+      <badge id="Offset" tone="neutral" class:at-off={!((step == "offset"))} class:at-on={(step == "offset")}>{t("screen.calibration.offset")}</badge>
+      <badge id="Controller" tone="neutral" class:at-off={!((step == "controller"))} class:at-on={(step == "controller")}>{t("screen.calibration.controller")}</badge>
     </row>
     <column id="Test">{@render test?.()}</column>
-    <column id="BrightnessStep" hidden={!(($step == "brightness"))}>
+    <column id="BrightnessStep" hidden={!((step == "brightness"))}>
       <text id="BrightnessHint">{t("screen.calibration.brightnessHint")}</text>
-      <input type="range" id="BrightnessValue" bind:value={$brightness} step="0.01">
+      <input type="range" id="BrightnessValue" bind:value={brightness} step="0.01">
     </column>
-    <column id="OffsetStep" hidden={!(($step == "offset"))}>
+    <column id="OffsetStep" hidden={!((step == "offset"))}>
       <text id="OffsetHint">{t("screen.calibration.offsetHint")}</text>
       <row id="Measure">
         <button id="Start" onclick={measure}>{t("screen.calibration.start")}</button>
         <button id="Tap" variant="primary" onclick={tap}>{t("screen.calibration.tap")}</button>
-        <text id="Taps">{t("screen.calibration.Taps", { taps: $taps })}</text>
+        <text id="Taps">{t("screen.calibration.Taps", { taps: taps })}</text>
       </row>
       <row id="Manual">
-        <input type="range" id="ManualValue" min="-200" max="200" step="1" show-value="false" bind:value={$offset}>
-        <text id="Ms">{t("screen.calibration.Ms", { offset: $offset })}</text>
+        <input type="range" id="ManualValue" min="-200" max="200" step="1" show-value="false" bind:value={offset}>
+        <text id="Ms">{t("screen.calibration.Ms", { offset: offset })}</text>
       </row>
     </column>
-    <column id="ControllerStep" hidden={!(($step == "controller"))}>
+    <column id="ControllerStep" hidden={!((step == "controller"))}>
       <text id="ControllerHint">{t("screen.calibration.controllerHint")}</text>
       <row id="DeadZone">
         <text id="Label" part="calibration.label">{t("screen.calibration.deadZone")}</text>
-        <input type="range" id="DeadZoneValue" min="0" max="0.5" step="0.01" bind:value={$deadZone}>
+        <input type="range" id="DeadZoneValue" min="0" max="0.5" step="0.01" bind:value={deadZone}>
       </row>
     </column>
     <row id="Foot">
       <button id="Back" variant="quiet" onclick={back}>{t("screen.common.back")}</button>
-      <button id="Next" variant="primary" hidden={!(($step != "controller"))} onclick={next}>{t("screen.calibration.next")}</button>
-      <button id="Done" variant="primary" hidden={!(($step == "controller"))} onclick={done}>{t("screen.calibration.done")}</button>
+      <button id="Next" variant="primary" hidden={!((step != "controller"))} onclick={next}>{t("screen.calibration.next")}</button>
+      <button id="Done" variant="primary" hidden={!((step == "controller"))} onclick={done}>{t("screen.calibration.done")}</button>
     </row>
   </column>
 </column>

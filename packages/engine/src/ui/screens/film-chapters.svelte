@@ -14,8 +14,8 @@
   </row>
   <scroll id="Body">
     <div id="Chapters" focus-group="wrap">
-      {#each $chapters as c (c.id)}
-        <column id="Card" part="film-chapters.card" class="card" class:locked={c.locked} class:selected={c.id == $selected} interactive="true" focusable="true" onclick={select} aria-disabled={c.locked}>
+      {#each chapters as c (c.id)}
+        <column id="Card" part="film-chapters.card" class="card" class:locked={c.locked} class:selected={c.id == selected} interactive="true" focusable="true" onclick={select} aria-disabled={c.locked}>
           <art id="Thumb" part="film-chapters.thumb" class="thumb" kind="saveThumb" src={c.thumb}></art>
           <row id="Caption" class="caption">
             <og-icon id="Lock" class="lock" icon="lock" hidden={!(c.locked)}></og-icon>

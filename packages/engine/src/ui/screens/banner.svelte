@@ -5,8 +5,8 @@
 <meta name="fixture:default" content="{&quot;title&quot;:&quot;Level up!&quot;,&quot;subtitle&quot;:&quot;Level 12&quot;}">
 
 <section id="Banner" part="banner.frame" role="status">
-  <h2 id="Title" part="banner.title">{$title}</h2>
-  <p id="Subtitle" part="banner.subtitle" hidden={$subtitle == ""}>{$subtitle}</p>
+  <h2 id="Title" part="banner.title">{title}</h2>
+  <p id="Subtitle" part="banner.subtitle" hidden={subtitle == ""}>{subtitle}</p>
 </section>
 
 <style>

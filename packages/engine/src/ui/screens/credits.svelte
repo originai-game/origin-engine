@@ -10,7 +10,7 @@
 <stack id="Credits" part="credits.frame" class="bare" interactive="true" onclick={faster} onconfirm={faster}>
   <column id="Roll">
     <art id="Logo" kind="logo"></art>
-    {#each $sections as s (s.id)}
+    {#each sections as s (s.id)}
       <column id="Section">
         <text id="Title" part="credits.heading">{s.title}</text>
         {#each s.names as n (n.id)}

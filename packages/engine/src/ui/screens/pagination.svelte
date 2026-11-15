@@ -9,17 +9,17 @@
 <meta name="action:page" content="Go to page">
 <meta name="fixture:default" content="{&quot;label&quot;:&quot;Pages&quot;,&quot;atStart&quot;:false,&quot;atEnd&quot;:false,&quot;pages&quot;:[{&quot;id&quot;:&quot;1&quot;,&quot;label&quot;:&quot;1&quot;,&quot;current&quot;:false},{&quot;id&quot;:&quot;2&quot;,&quot;label&quot;:&quot;2&quot;,&quot;current&quot;:true},{&quot;id&quot;:&quot;3&quot;,&quot;label&quot;:&quot;3&quot;,&quot;current&quot;:false},{&quot;id&quot;:&quot;gap&quot;,&quot;label&quot;:&quot;…&quot;,&quot;gap&quot;:true},{&quot;id&quot;:&quot;9&quot;,&quot;label&quot;:&quot;9&quot;,&quot;current&quot;:false}]}">
 
-<nav id="Pagination" part="pagination.frame" class="bare" aria-label={$label}>
-  <button id="Prev" variant="quiet" disabled={$atStart} onclick={previous} aria-label={$label}><og-icon icon="chevronLeft"/></button>
+<nav id="Pagination" part="pagination.frame" class="bare" aria-label={label}>
+  <button id="Prev" variant="quiet" disabled={atStart} onclick={previous} aria-label={label}><og-icon icon="chevronLeft"/></button>
   <ol id="Pages">
-    {#each $pages as p (p.id)}
+    {#each pages as p (p.id)}
       <li class="page">
         {#if p.gap}<span class="gap" part="pagination.gap">{p.label}</span>{/if}
         {#if !p.gap}<button id="Page" variant={p.current ? "primary" : "quiet"} aria-current={p.current} onclick={page}>{p.label}</button>{/if}
       </li>
     {/each}
   </ol>
-  <button id="Next" variant="quiet" disabled={$atEnd} onclick={next} aria-label={$label}><og-icon icon="chevronRight"/></button>
+  <button id="Next" variant="quiet" disabled={atEnd} onclick={next} aria-label={label}><og-icon icon="chevronRight"/></button>
 </nav>
 
 <style>
