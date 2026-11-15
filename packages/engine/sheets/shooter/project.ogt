@@ -4,7 +4,10 @@ version 1
 # The shooter components' review sheet: `og ui sheet shooter` renders each page at
 # desktop and phone, 100 % and 150 % (docs/ui.md §6.2). The pages use the
 # built-in components by name, as a game does; each screen names its style
-# and page.
+# and page. combat is the normal page (the combat HUD over a bright sky and
+# a dark ground), loadout the stress page (long names, locked and equipped
+# slots, a dense killfeed). The -default screens review the same pages in
+# the core default style.
 name "Shooter kit sheet"
 id "shooter-sheet"
 engine "0.7.7"
@@ -13,6 +16,8 @@ profile "2d"
 tick 60
 seed 1
 ui {
-  screen "combat-clean" "style:clean;page:combat"
-  screen "loadout-clean" "style:clean;page:loadout"
+  screen "combat-fantasy" "style:fantasy;page:combat"
+  screen "loadout-fantasy" "style:fantasy;page:loadout"
+  screen "combat-default" "style:default;page:combat"
+  screen "loadout-default" "style:default;page:loadout"
 }

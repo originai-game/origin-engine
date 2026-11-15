@@ -84,8 +84,10 @@ use the components by name, as a game does.
   the HUD's corners mirror (the feed and ammunition on the left, the vitals
   on the right); the crosshair and the damage arcs keep their screen
   directions. The slot list's scrollbar stays on the right, with its room.
-- The primary pack is `clean`. The contrast pack, `scifi`, is pending
-  because scifi is unbuilt.
+- Styles: the sheet's screens wear the `fantasy` pack and the default
+  style (`combat-default`, `loadout-default`). A pack joins with a look
+  naming it under `assets/looks/` (which makes the cook bundle it) and its
+  name in the sheet's `STYLES`.
 
 ## Tests
 
