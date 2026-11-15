@@ -40,6 +40,8 @@ What every kind takes: its box, layout, paint, motion and input.
 | `justify-items:` | `start \| center \| end \| stretch \| baseline \| last-baseline` | Where a grid's items sit across their areas (CSS `justify-items`). |
 | `safe-justify` | `bool` | Its main-axis alignment keeps an overflow at the start (CSS `safe`). |
 | `safe-align` | `bool` | Its cross-axis alignment keeps an overflow at the start (CSS `safe`). |
+| `cross-flex` | `bool` | Its `cross` names the flex line's sides (CSS `flex-start`, `flex-end`), which `wrapReverse` swaps; without it `start` and `end` are the writing mode's and stay. |
+| `self-flex` | `bool` | Its `alignSelf` names the flex line's sides, as `crossFlex` does for a container's `cross`. |
 | `flex-grow:` | `<number>` | Its share of a flex line's free space (CSS `flex-grow`). |
 | `flex-shrink:` | `<number>` | How much it gives up when a flex line overflows (CSS `flex-shrink`). |
 | `flex-basis:` | `auto \| fit-content \| fit-content(<n>px) \| min-content \| max-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) \| round(…) …` | Its size in a flex line before the free space is shared (CSS `flex-basis`). |
