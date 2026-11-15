@@ -882,19 +882,6 @@ fn rounded_box_shadow(p: vec2<f32>, half: vec2<f32>, corner: f32, sigma: f32) ->
 
 // ── gradients ────────────────────────────────────────────────────────────
 
-fn oklab_to_linear(lab: vec3<f32>) -> vec3<f32> {
-  let l_ = lab.x + 0.3963377774 * lab.y + 0.2158037573 * lab.z;
-  let m_ = lab.x - 0.1055613458 * lab.y - 0.0638541728 * lab.z;
-  let s_ = lab.x - 0.0894841775 * lab.y - 1.2914855480 * lab.z;
-  let l = l_ * l_ * l_;
-  let m = m_ * m_ * m_;
-  let s = s_ * s_ * s_;
-  return vec3<f32>(
-    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s);
-}
-
 fn stop_offset(g: UiGradient, i: u32) -> f32 {
   return g.offsets[i / 4u][i % 4u];
 }
@@ -951,14 +938,14 @@ fn gradient_color(gi: u32, f: vec2<f32>, size: vec2<f32>, pixel: vec2<f32>) -> v
       }
     }
   }
-  var rgb = oklab_to_linear(c.xyz / max(c.w, 1e-6));
+  var rgb = oklab_decode(c.xyz / max(c.w, 1e-6));
   if (collapsed && count > 1u) {
     // CSS Images 3 §3.3: coincident stops are averaged as equally spaced
     // stops in premultiplied sRGBA, with half weight at the two endpoints.
     var average = vec4<f32>(0.0);
     for (var i = 0u; i < count; i++) {
       let stop = g.colors[i];
-      let color = encode(max(oklab_to_linear(stop.xyz / max(stop.w, 1e-6)), vec3<f32>(0.0)));
+      let color = encode(max(oklab_decode(stop.xyz / max(stop.w, 1e-6)), vec3<f32>(0.0)));
       let weight = select(1.0, 0.5, i == 0u || i == count - 1u) / f32(count - 1u);
       average += vec4<f32>(color * stop.w, stop.w) * weight;
     }
