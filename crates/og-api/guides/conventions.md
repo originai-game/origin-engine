@@ -90,6 +90,11 @@ bottom centre of a sprite and the top centre of a screen element.
 
 - A `Color` is linear RGB. A hex number or a CSS colour is sRGB:
   `color.fromHex(0xff8800)` converts it. Components above 1 are HDR.
+- A UI `Paint`'s `color` is a `Color` like any other, linear:
+  `{ color: color.fromHex(0xff8800) }`. Colours the UI takes as text or
+  as bare numbers are sRGB, as CSS's: a document's and a style's, the
+  theme's `#rrggbb` palette, and the animated channels (`backgroundR`,
+  `inkG`). The UI draws 8-bit sRGB, so a paint's components clamp to 1.
 - A handle (a texture, a sound, a material) held by a component is 0 for
   none; in a desc the field is `null` or left out.
 

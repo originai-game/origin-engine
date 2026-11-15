@@ -45012,7 +45012,7 @@
     "Paint": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an opacity. Neither is white.",
+      "description": "A colour: a theme token, a role of the style, or a Color (linear RGB, as every Color of the API), with an opacity. None of them is white.",
       "type": "object",
       "properties": {
         "token": {
@@ -45048,7 +45048,7 @@
               "type": "null"
             }
           ],
-          "description": "An sRGB colour as authored, when no token or role is given.",
+          "description": "A linear RGB colour, when no token or role is given: `color.fromHex(0xff8800)` for a hex or CSS colour. The UI draws 8-bit sRGB, so each component is clamped to 0 to 1 (no HDR).",
           "default": null
         },
         "opacity": {
@@ -45238,7 +45238,7 @@
               "type": "null"
             }
           ],
-          "description": "An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's.",
+          "description": "A linear RGB colour (`color.fromHex(0xff8800)` for a hex or CSS colour) as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's.",
           "default": null
         },
         "reducedMotion": {
@@ -46437,7 +46437,7 @@
     "UiProp": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians.",
+      "description": "An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. Its colour channels are sRGB components 0 to 1, as CSS animates them (not a linear Color's); rotation and skew are radians.",
       "type": "string",
       "enum": [
         "x",
@@ -47086,7 +47086,7 @@
               "type": "null"
             }
           ],
-          "description": "Their colour; null is the style's highlight."
+          "description": "Their colour, linear RGB as every Color (clamped to 0 to 1); null is the style's highlight."
         }
       },
       "required": [
@@ -47210,7 +47210,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Their colour; null is the style's highlight."
+              "description": "Their colour, linear RGB as every Color (clamped to 0 to 1); null is the style's highlight."
             }
           },
           "required": [

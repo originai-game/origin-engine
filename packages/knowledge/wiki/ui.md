@@ -32,7 +32,7 @@ module ui {
 | [`ThemeColor`](ui/type-ThemeColor.md) | enum |  | A colour role of the UI style in effect (the game's style, or the default style before it picks one). |
 | [`TypeStepName`](ui/type-TypeStepName.md) | enum |  | A step of the style's type ramp. |
 | [`Insets`](ui/type-Insets.md) | struct |  | Padding or margins on four sides. |
-| [`Paint`](ui/type-Paint.md) | desc struct |  | A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an opacity. |
+| [`Paint`](ui/type-Paint.md) | desc struct |  | A colour: a theme token, a role of the style, or a Color (linear RGB, as every Color of the API), with an opacity. |
 | [`Viewport`](ui/type-Viewport.md) | struct |  | The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit. |
 | [`UiDesc`](ui/type-UiDesc.md) | desc struct |  | How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. |
 | [`UiSounds`](ui/type-UiSounds.md) | desc struct |  | Sounds the UI plays through og-audio (the ui bus) on its events; null is silent. |

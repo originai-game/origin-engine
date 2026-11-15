@@ -1,5 +1,5 @@
   enum UiProp {
-    doc "An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians."
+    doc "An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. Its colour channels are sRGB components 0 to 1, as CSS animates them (not a linear Color's); rotation and skew are radians."
     variant x "Its horizontal offset, CSS px (the transform's x)."
     variant y "Its vertical offset, CSS px."
     variant scaleX "Its horizontal scale (1: unscaled)."
@@ -194,7 +194,7 @@
     field radius f32 "How far they reach (0: the style's)." {
       unit cssPx
     }
-    field color Option.Color "Their colour; null is the style's highlight."
+    field color Option.Color "Their colour, linear RGB as every Color (clamped to 0 to 1); null is the style's highlight."
   }
 
   struct StateEvent {

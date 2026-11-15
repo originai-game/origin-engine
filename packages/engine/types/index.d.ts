@@ -24982,7 +24982,7 @@ export interface Insets {
 }
 
 /**
- * A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an opacity. Neither is white.
+ * A colour: a theme token, a role of the style, or a Color (linear RGB, as every Color of the API), with an opacity. None of them is white.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -25000,7 +25000,7 @@ export interface Paint {
    */
   readonly role?: string | null;
   /**
-   * An sRGB colour as authored, when no token or role is given.
+   * A linear RGB colour, when no token or role is given: `color.fromHex(0xff8800)` for a hex or CSS colour. The UI draws 8-bit sRGB, so each component is clamped to 0 to 1 (no HDR).
    *
    * @default null
    */
@@ -25152,7 +25152,7 @@ export interface UiDesc {
    */
   readonly contrast?: Contrast;
   /**
-   * An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's.
+   * A linear RGB colour (`color.fromHex(0xff8800)` for a hex or CSS colour) as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's.
    *
    * @default null
    */
@@ -25946,7 +25946,7 @@ export interface A11yTree {
 
 
 /**
- * An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians.
+ * An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. Its colour channels are sRGB components 0 to 1, as CSS animates them (not a linear Color's); rotation and skew are radians.
  * - `"x"`: Its horizontal offset, CSS px (the transform's x).
  * - `"y"`: Its vertical offset, CSS px.
  * - `"scaleX"`: Its horizontal scale (1: unscaled).
@@ -26198,7 +26198,9 @@ export interface BurstEvent {
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly radius: number;
-  /** Their colour; null is the style's highlight. */
+  /**
+   * Their colour, linear RGB as every Color (clamped to 0 to 1); null is the style's highlight.
+   */
   readonly color: Color | null;
 }
 

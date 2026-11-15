@@ -12,7 +12,7 @@ Rays and sparks from the target.
 |---|---|---|---|---|---|---|
 | `count` | `number` | `0` | — | — | — | How many (0: 12). |
 | `radius` | `number` | `0` | — | `cssPx` | — | How far they reach (0: the style's). |
-| `color` | `Color \| null` | `null` | — | — | — | Their colour; null is the style's highlight. |
+| `color` | `Color \| null` | `null` | — | — | — | Their colour, linear RGB as every Color (clamped to 0 to 1); null is the style's highlight. |
 
 ```ogt
 struct BurstEvent {
@@ -21,7 +21,7 @@ struct BurstEvent {
   field radius f32 "How far they reach (0: the style's)." {
     unit cssPx
   }
-  field color Option.Color "Their colour; null is the style's highlight."
+  field color Option.Color "Their colour, linear RGB as every Color (clamped to 0 to 1); null is the style's highlight."
 }
 ```
 

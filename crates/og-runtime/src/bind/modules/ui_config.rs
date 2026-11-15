@@ -103,10 +103,8 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
         if let Some(c) = &u.primary_color {
             // A channel left out is 1.
             let raw = &d["primaryColor"];
-            let ch = |k: &str, x: f32| {
-                let x = if raw[k].is_null() { 1.0 } else { x };
-                (x.clamp(0.0, 1.0) * 255.0).round() as u8
-            };
+            let ch =
+                |k: &str, x: f32| super::ui_desc::srgb8(if raw[k].is_null() { 1.0 } else { x });
             theme = theme.with_primary(Srgba::rgb(ch("r", c.r), ch("g", c.g), ch("b", c.b)));
         }
         theme.reduced_motion = u.reduced_motion;

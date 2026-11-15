@@ -774,6 +774,33 @@ mod tests {
         );
     }
 
+    /// A Paint's colour is a linear `Color` (the `conventions` guide §6):
+    /// every 8-bit sRGB channel, converted to linear as `color.fromHex` does
+    /// and sent as an f32, is the channel og-ui draws. Read as authored
+    /// sRGB (what it was before) every mid-tone would draw darker; its
+    /// opacity fades it, and components past 0 to 1 clamp.
+    #[test]
+    fn a_paints_linear_colour_draws_the_srgb_it_was_converted_from() {
+        let theme = Theme::new(Scheme::Dark);
+        let drawn = |paint_json: Value| {
+            let p: wire::Paint =
+                wire::arg(Some(&paint_json.to_string()), "paint").expect("a paint");
+            paint(&theme, &p).expect("a colour")
+        };
+        for byte in 0..=255u8 {
+            let s = f64::from(byte) / 255.0;
+            let linear = if s <= 0.04045 {
+                s / 12.92
+            } else {
+                ((s + 0.055) / 1.055).powf(2.4)
+            };
+            let c = drawn(json!({ "color": { "r": linear, "g": 0, "b": 1 }, "opacity": 0.5 }));
+            assert_eq!((c.rgb, c.alpha), ([byte, 0, 255], 0.5), "sRGB {byte}");
+        }
+        let c = drawn(json!({ "color": { "r": 4, "g": -1, "b": 0.5 } }));
+        assert_eq!((c.rgb, c.alpha), ([255, 0, 188], 1.0));
+    }
+
     /// A native host sets no viewport: on macOS its text controls take the
     /// Mac's keys (Command for the shortcuts, Option for words), elsewhere
     /// Control; one the host set (the web shell's) is kept as it is.

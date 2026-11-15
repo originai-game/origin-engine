@@ -1,6 +1,19 @@
 {
   "breaking": [
     {
+      "member": "Paint.color, UiDesc.primaryColor, BurstEvent.color",
+      "change": "Each is a linear RGB Color, as every other Color of the API; it was read as sRGB components as authored. The same numbers now draw lighter: { r: 0.5, g: 0.5, b: 0.5 } was sRGB 128 and is sRGB 188. The UI still draws 8-bit sRGB, so components clamp to 0 to 1 (no HDR). Colours the UI takes as text or bare numbers stay sRGB, as CSS's: a document's and a style's, UiTheme.palette's #rrggbb strings and UiProp's animated channels (backgroundR, inkG).",
+      "fix": "Write a hex or CSS colour through color.fromHex: { color: color.fromHex(0xff8800) }, primaryColor: color.fromHex(0x4f8cff). Components written as sRGB convert one by one: c / 12.92 at or under 0.04045, else ((c + 0.055) / 1.055) ^ 2.4. 0 and 1 are the same in both, so black, white and the pure primaries need no edit. A Paint is the colour of og.ui.spawnMass's instances, a mass template's barBack, barGhost and outline, and a GradientStop.",
+      "find": [
+        "primaryColor",
+        "spawnMass",
+        "barBack",
+        "barGhost",
+        "outline",
+        "GradientStop"
+      ]
+    },
+    {
       "member": "Paint.opacity, MassKey.opacity",
       "change": "Renamed from alpha: how opaque a thing is is named opacity in every module. Same value, 0 to 1, default 1. An alpha left in place is no longer read, so the paint or the key is opaque.",
       "fix": "Rename alpha to opacity in each Paint ({ token: \"ink\", opacity: 0.5 }) and in each key of a mass template's keys.",
@@ -64,7 +77,7 @@
   "added": [
     {
       "member": "the conventions guide",
-      "summary": "The conventions guide gains the UI's lines: opacity names how opaque a thing is in every module, and the UI's pointer, gestures and actions use down, justPressed, justReleased and held as og.input does."
+      "summary": "The UI modules keep the rules of the conventions guide, which gains their lines: a UI Paint's color is a linear Color like any other while colours the UI takes as text or bare numbers are sRGB; opacity names how opaque a thing is in every module; the UI's pointer, gestures and actions use down, justPressed, justReleased and held as og.input does."
     },
     {
       "member": "the API's naming rules",

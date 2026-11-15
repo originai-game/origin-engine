@@ -66,17 +66,28 @@ pub const TYPE_STEPS: &[&str] = &[
     "hero",
 ];
 
-/// A Paint: a token, else an sRGB colour as authored (0–1), else white.
+/// A linear component as the 8-bit sRGB channel og-ui draws, clamped to 0
+/// to 1: the API's `Color` is linear RGB (the `conventions` guide §6) and
+/// og-ui's [`Srgba`] is a colour as a style authors it. `color.fromHex` of
+/// an 8-bit channel comes back as that channel.
+pub(super) fn srgb8(linear: f32) -> u8 {
+    let c = linear.clamp(0.0, 1.0);
+    let s = if c <= 0.003_130_8 {
+        c * 12.92
+    } else {
+        1.055 * og_core::math::pow(c, 1.0 / 2.4) - 0.055
+    };
+    (s * 255.0).round() as u8
+}
+
+/// A Paint: a token, else a linear RGB `Color`, else white.
 pub(super) fn paint(theme: &Theme, p: &wire::Paint) -> Option<Srgba> {
     let opacity = p.opacity.clamp(0.0, 1.0);
     let name = p.token.map(|t| t.as_str()).or(p.role.as_deref());
     let base = match name {
         Some(t) => token(theme, t)?,
         None => match &p.color {
-            Some(c) => {
-                let ch = |x: f32| (x.clamp(0.0, 1.0) * 255.0).round() as u8;
-                Srgba::rgb(ch(c.r), ch(c.g), ch(c.b))
-            }
+            Some(c) => Srgba::rgb(srgb8(c.r), srgb8(c.g), srgb8(c.b)),
             None => Srgba::WHITE,
         },
     };
