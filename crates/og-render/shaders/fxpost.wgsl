@@ -726,10 +726,18 @@ fn band_color(a: vec3<f32>, b: vec3<f32>, t: f32) -> vec3<f32> {
   return max(oklab_decode(vec3<f32>(mix(la.x, lb.x, t), chroma * cos(h), chroma * sin(h))), vec3<f32>(0.0));
 }
 
-// The signed circle of confusion in half-resolution pixels (near < 0).
-fn coc(d: f32) -> f32 {
-  let off = d - fxp.dof.x;
-  let blur = clamp((abs(off) - fxp.dof.y) / max(fxp.dof.y * fxp.dof.w, 1e-3), 0.0, 1.0) * fxp.dof.z * 0.5;
+// The signed circle of confusion in half-resolution pixels (near < 0): by
+// the distance `d` from the focus range, or with a tilt-shift band
+// (dof2.y) by the image row `y` (0 at the top) from the strip across the
+// middle, the rows above it far and those below near.
+fn coc(d: f32, y: f32) -> f32 {
+  var off = d - fxp.dof.x;
+  var band = fxp.dof.y;
+  if (fxp.dof2.y > 0.0) {
+    off = 0.5 - y;
+    band = fxp.dof2.y;
+  }
+  let blur = clamp((abs(off) - band) / max(band * fxp.dof.w, 1e-3), 0.0, 1.0) * fxp.dof.z * 0.5;
   return select(blur, -blur, off < 0.0);
 }
 
@@ -744,7 +752,7 @@ fn fs_dof_coc(in: VsOut) -> @location(0) vec4<f32> {
     c += textureLoad(tex_a, clamp(q, vec2<i32>(0), vec2<i32>(textureDimensions(tex_a)) - 1), 0).rgb;
     nearest = min(nearest, depth_at(q));
   }
-  return vec4<f32>(c * 0.25, coc(nearest));
+  return vec4<f32>(c * 0.25, coc(nearest, in.uv.y));
 }
 
 // The gather: a golden-angle disc of taps; a tap counts when its own

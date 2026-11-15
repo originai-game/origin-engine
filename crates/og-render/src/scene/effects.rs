@@ -132,6 +132,10 @@ pub struct DepthOfField {
     /// How quickly blur grows outside the band: full blur `focus_range *
     /// (1 + falloff)` away from the focus distance.
     pub falloff: f32,
+    /// Tilt-shift: above 0 the sharp band is a strip across the image's
+    /// middle, this fraction of its height either side of the centre line,
+    /// instead of a range of depths; 0 focuses by depth.
+    pub tilt_shift: f32,
     pub quality: DofQuality,
 }
 
@@ -142,6 +146,7 @@ impl Default for DepthOfField {
             focus_range: 2.0,
             max_blur: 0.012,
             falloff: 4.0,
+            tilt_shift: 0.0,
             quality: DofQuality::Low,
         }
     }

@@ -79,6 +79,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
                 focus_range: p.dof_focus_range,
                 max_blur: p.dof_max_blur,
                 falloff: p.dof_falloff,
+                tilt_shift: p.dof_tilt_shift,
                 quality: match p.dof_quality {
                     wire::DofQuality::High => DofQuality::High,
                     wire::DofQuality::Low => DofQuality::Low,

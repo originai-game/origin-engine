@@ -156,7 +156,7 @@ impl Renderer {
                     Some(DofQuality::High) => 48.0,
                     _ => 16.0,
                 },
-                0.0,
+                dof.map_or(0.0, |d| d.tilt_shift.clamp(0.0, 0.5)),
                 0.0,
                 0.0,
             ],

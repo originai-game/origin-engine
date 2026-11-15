@@ -472,3 +472,13 @@ RenderCapabilities.stylise names these groups:
 - world3d is false in the 2D profile's publish and lanes modules. Their
   publish build refuses a 2D project whose scenes hold og.Terrain,
   og.TerrainScatter, og.Water, og.WaterSurface or og.Fluid3D (§4).
+
+## 19. A miniature: tilt-shift
+
+A look that makes the world read small (toy-3d, pixel-3d-hybrid) blurs
+by the image's rows, not by depth: PostEffects.dofTiltShift keeps a strip
+across the middle sharp and blurs above it as far and below it as near,
+whatever the camera's distance, so the look holds for any game's camera.
+0.07 to 0.15 of the image height suits a third-person or isometric view;
+keep the player in the strip. A fixed dofFocusDistance belongs to a game
+that knows its camera, not to a look.

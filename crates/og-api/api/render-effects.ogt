@@ -258,6 +258,12 @@
       default 4
       min 0
     }
+    field dofTiltShift f32 "Tilt-shift: above 0 the sharp band is a strip across the image's middle, this fraction of its height either side of the centre line, at any camera distance; blur grows above it as far and below it as near, full at dofTiltShift times (1 + dofFalloff) past it. 0 focuses by depth." {
+      min 0
+      max 0.5
+      tunable true
+      guide "looks §19"
+    }
     field dofQuality DofQuality "Taps per pixel."
     group "Motion blur"
     field motionBlur bool "Per-object and camera motion blur along the screen-space velocity."

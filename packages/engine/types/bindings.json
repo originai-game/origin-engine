@@ -10024,6 +10024,12 @@
           "default": 4
         },
         {
+          "name": "dofTiltShift",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "dofQuality",
           "column": "DofQuality",
           "default": "low"

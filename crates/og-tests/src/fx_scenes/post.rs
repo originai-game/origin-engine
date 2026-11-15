@@ -556,6 +556,7 @@ pub fn dof_scene(quality: DofQuality) -> Result<RenderScene, String> {
         focus_range: 1.2,
         max_blur: 0.014,
         falloff: 3.0,
+        tilt_shift: 0.0,
         quality,
     });
     scene.frame.camera = Camera {

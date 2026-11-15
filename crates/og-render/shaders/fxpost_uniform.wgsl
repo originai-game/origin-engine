@@ -12,7 +12,7 @@ struct FxPost {
   outline_color: vec4<f32>,   // the scene's outline (linear rgb, coverage)
   outline: vec4<f32>,         // x: scene width (0: none), y: depth threshold, z: normal threshold
   dof: vec4<f32>,             // x: focus distance, y: focus range, z: max blur (full-res px), w: falloff
-  dof2: vec4<f32>,            // x: taps
+  dof2: vec4<f32>,            // x: taps, y: tilt-shift band (0 by depth)
   mb: vec4<f32>,              // x: shutter, y: samples, z: max px
   god: vec4<f32>,             // xy: sun uv, z: decay, w: density
   god2: vec4<f32>,            // x: samples, y: 1 when the sun is in front, z: intensity, w: sky threshold

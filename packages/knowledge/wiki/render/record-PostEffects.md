@@ -45,6 +45,7 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 | `dofFocusRange` | `number` | `2` | ≥ 0 | `m` | tunable | The half-width of the sharp band around it. |
 | `dofMaxBlur` | `number` | `0.012` | 0 … 0.1 | — | — | The largest blur radius, as a fraction of the image height (0.012 is about 9 px at 720p). |
 | `dofFalloff` | `number` | `4` | ≥ 0 | — | — | How quickly blur grows outside the band: full blur focusRange times (1 + falloff) away. |
+| `dofTiltShift` | `number` | `0` | 0 … 0.5 | — | tunable | Tilt-shift: above 0 the sharp band is a strip across the image's middle, this fraction of its height either side of the centre line, at any camera distance; blur grows above it as far and below it as near, full at dofTiltShift times (1 + dofFalloff) past it. 0 focuses by depth. See `looks §19`. |
 | `dofQuality` | `DofQuality` | `"low"` | — | — | — | Taps per pixel. |
 
 #### Motion blur
@@ -247,6 +248,12 @@ resource PostEffects {
   field dofFalloff f32 "How quickly blur grows outside the band: full blur focusRange times (1 + falloff) away." {
     default 4
     min 0
+  }
+  field dofTiltShift f32 "Tilt-shift: above 0 the sharp band is a strip across the image's middle, this fraction of its height either side of the centre line, at any camera distance; blur grows above it as far and below it as near, full at dofTiltShift times (1 + dofFalloff) past it. 0 focuses by depth." {
+    min 0
+    max 0.5
+    tunable true
+    guide "looks §19"
   }
   field dofQuality DofQuality "Taps per pixel."
   group "Motion blur"
