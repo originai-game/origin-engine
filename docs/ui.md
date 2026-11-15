@@ -1179,6 +1179,31 @@ number.
 | `--keyboard-*` | Key height, its floor and the candidate row |
 | `--joystick-size`, `--dpad-size`, `--action-size` | The touch controls' default sizes |
 
+**Control hooks.** Everything a pack restyles a core control with is a
+token its rule reads, so a pack is `:root` values and no rules. A hook the
+default declares (`packages/design/tokens/state.css`) is the value it
+draws with. One it does not declare falls back to the hook it refines
+(`--button-hover-rim` to `--button-rim`, `--button-primary-image-hover` to
+`--button-primary-image`) and last to the control's own value through
+`revert-layer`, which a `var()` fallback rolls back as the keyword written
+would (CSS Variables 2 §3). A rim the default does not draw takes a
+`-rim-width` beside its colour. A state hook is the base name with
+`-hover`, `-pressed`, `-disabled`, `-checked` or `-selected`, and a variant's
+inserts the variant (`--button-primary-hover-fill`).
+
+| Control | Hooks |
+|---|---|
+| Button (`button::part(base)`) | `--button-ink/fill/rim/rim-width/base-shadow/image/image-slice/image-width/corner-shape/font/font-size/tracking/transform/text-shadow/pad/pad-inline/pressed-pad/min-height`; per state `-hover-`, `-pressed-`, `-disabled-` fill, ink, rim and image, `--button-hover-shadow`, `--button-base-pressed-shadow`, `--button-disabled-shadow`; per variant `--button-primary-*` (fill, ink, rim, shadow, image and their states), `--button-danger-fill/hover-fill/pressed-fill/disabled-fill/rim/shadow/ink/text-shadow`, `--button-ghost-ink/rim/hover-fill/pressed-fill`, `--button-quiet-hover-fill/pressed-fill`, `--button-selected-fill/ink/rim/shadow` (`aria-pressed`). A quiet button is text: it wears no rim, shadow or image. `--button-shadow` and `--button-pressed-shadow` stay the stepper's, details' and keys' |
+| Checkbox, radio, switch | `--checkbox-box-fill/rim/shadow/hover-fill/hover-rim`, `--checkbox-checked-fill/rim/rim-width/shadow/disabled-fill`, `--checkbox-disabled-fill/rim` (a radio ring's too), `--checkbox-row-hover-fill`, `--checkbox-corner-shape`; `--radio-ring-fill/rim/shadow/hover-rim`, `--radio-checked-fill/rim/rim-width/shadow`, `--radio-dot-fill`, `--radio-option-hover-fill`, `--radio-corner-shape`, `--radio-card-fill/rim/rim-width/hover-fill/hover-rim/checked-fill/checked-rim/checked-shadow/checked-ink/corner-shape`, `--radio-chosen-fill/rim`; `--switch-track-fill/rim/shadow`, `--switch-checked-fill/rim/shadow`, `--switch-knob-fill/rim`, `--switch-corner-shape` |
+| Tabs | `--tabs-track-fill/border/rule/shadow`, `--tabs-tab-fill/hover-fill/pressed-fill/selected-fill/selected-shadow/ink/hover-ink/selected-ink/disabled-ink`, `--tabs-font/font-size/tracking/transform`, `--tabs-indicator-fill/height/glow/radius` |
+| Slider | `--slider-track-fill/rim/rim-width/shadow`, `--slider-fill/fill-shadow/tick-fill`, `--slider-knob-fill/rim/rim-width/shadow/hover-shadow/pressed-fill/disabled-fill/corner-shape`, `--slider-core-fill`, `--slider-bubble-fill/rim/shadow/radius` |
+| Field, select, stepper | `--field-fill/rim/rim-width/frame-shadow/hover-fill/hover-rim/focus-rim/focus-shadow/disabled-fill/disabled-rim/invalid-rim/ink/font/placeholder-ink/selection-fill/caret-fill/corner-shape`; `--dropdown-list-fill/rim/rim-width/radius`, `--dropdown-option-hover-fill/pressed-fill/selected-fill/selected-ink` (a group's label wears `--label-*`); `--stepper-button-fill/hover-fill/pressed-fill/disabled-fill/rim/hover-rim/ink`, which a number field's spin buttons take too |
+| Details | `--details-summary-fill/hover-fill/open-fill/ink/open-ink/border/rule/shadow/font` (by default `--label-font`), `--details-content-ink` |
+| Surfaces | `--panel-fill/rim/shadow/glass/corner-shape` (a panel and a dialog's panel; `panel.glass` blurs by default), `--dialog-backdrop`, `--tooltip-fill/rim/rim-width/radius/shadow/glass/corner-shape`, `--hud-fill/rim/rim-width/shadow/glass/corner-shape`; a `-glass` is the `backdrop-filter`, `none` a solid surface; `--popover-arrow-fill`, `--spotlight-edge` |
+| Slot, badge, bars | `--slot-fill/rim/rim-width/hover-rim/hover-shadow/pressed-fill/selected-rim/selected-shadow/corner-shape`; `--badge-<tone>-fill/ink` (neutral, primary, info, success, warn, danger), `--badge-rim/rim-width` (by default the badge's ink, its tone's), `--badge-font/tracking/transform`; `--meter-track-fill/rim/rim-width/shadow`, `--meter-fill/suboptimum-fill/poor-fill/health-fill/mana-fill`, `--progress-fill` |
+| Keyboard, touch | `--keyboard-panel-fill`, `--keyboard-key-fill/rim/hover-fill/hover-rim/pressed-fill/pressed-rim/shadow/ink/font` (its candidates too); `--touch-plate-fill/rim`, `--touch-knob-fill`, `--touch-active-fill` |
+| Text | `--heading-flourish` (h1–h3), `--scrollbar-fill/radius`, `--icon-secondary-ink` |
+
 Icon path coordinates and behaviour constants (key repeat, dead zones,
 caret blink, typewriter speed) are not tokens.
 
@@ -1188,6 +1213,10 @@ dresses every part of a role once, from that role's tokens
 (`packages/design/tokens/role.css`). A pack restyles all of them by
 setting the tokens; it writes a rule only for what one component alone
 wears. The role rules sit in `:where()`, so any pack or document rule wins.
+A control named for a role (`<button part="Bag.cell">`) wears the role
+alone, as `appearance: none` gives a browser's button its page's look: its
+own part's rules (`button::part(base)`) do not reach it. A control named
+for no role (`Shop.buy`) keeps its own dress under the named part's rules.
 A `cell` is a tile the player picks or reads as one (an item, a card, an
 ability, an equipment slot); a readout is not a cell, and is named for what
 it shows (`RacingLapHud.readout`, `RacingStandings.place`,
@@ -1195,7 +1224,7 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 
 | Role (`part$=".<role>"`) | Tokens | States the default dresses |
 |---|---|---|
-| `frame` | `--frame-fill/rim/rim-width/radius/shadow/pad/corner-image/corner-size` | `class="hud"` wears the plate (`--plate-fill/rim/rim-width/radius/shadow/pad`); `class="bare"` wears nothing (a frame that only lays its children out) |
+| `frame` | `--frame-fill/rim/rim-width/radius/shadow/pad/corner-image/corner-size/glass` | `class="hud"` wears the plate (`--plate-fill/rim/rim-width/radius/shadow/pad/glass`); `class="bare"` wears nothing (a frame that only lays its children out); a `-glass` is its `backdrop-filter`, which a bare frame and a frame inside another do not take |
 | `band`, `title` | `--band-fill/height/pad/rule/rule-width/rule-image/shadow/end-start-image/end-finish-image`, `--title-ink/font/size/weight/tracking/transform/shadow` | `class="lead"` and `class="small"` bands (`--band-lead-fill`, `--band-small-*`, `--title-lead-size`, `--title-small-size`), which set `--title-size` for the title inside them; one step down on a phone on its side |
 | `row` | `--row-fill/hover-fill/pressed-fill/selected-fill/selected-edge/radius` | hover, pressed, selected (`aria-selected`, `aria-current`, `data-selected`), disabled, `data-done` |
 | `cell` | `--cell-fill/rim/rim-width/selected-rim/radius/shadow/hover-shadow/pressed-fill/empty-shadow`, `--cell-<rarity>-fill/shadow` | hover, pressed, selected, `data-rarity`, `data-empty`, disabled or `data-locked` |

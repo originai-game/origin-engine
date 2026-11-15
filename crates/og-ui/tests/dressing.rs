@@ -1278,6 +1278,69 @@ fn a_part_named_for_a_role_wears_the_role_not_its_controls_dress() {
     assert!(!has(&cell, "#ff0000"), "the ring drew the base: {cell:?}");
 }
 
+/// A style pack restyles the core controls by setting their tokens alone
+/// (docs/ui.md §3.1, Control hooks): a fill, an ink, a rim with its width
+/// and a padding reach the button, checkbox and field, and a variant keeps
+/// its own hook. Wrong: a hook no rule reads, a primary button wearing the
+/// secondary's fill, or a rim drawn with no width set.
+#[test]
+fn a_pack_restyles_core_controls_through_their_tokens_alone() {
+    let doc = r#"<column id="Root">
+  <button id="B">Go</button>
+  <button id="P" variant="primary">Go</button>
+  <input id="C" type="checkbox" checked />
+  <input id="T" bind:value={$t} />
+  <badge id="G">New</badge>
+</column>
+<style>#Root { align-items: flex-start; gap: 4px; }</style>"#;
+    let pack = ":root {
+        --button-fill: #00ff00; --button-primary-fill: #ff8800; --button-pad-inline: 30px;
+        --checkbox-checked-fill: #ff00ff; --field-fill: #445566; --badge-neutral-ink: #ff0000;
+    }";
+    let mount = |css: &str| {
+        let mut ui = ui_with_font(test_font());
+        ui.set_part_css(&format!("{DEFAULT_CSS}\n{css}")).unwrap();
+        let mut d = mounted(ui, doc, &[("t", json!("hi"))], Viewport::new(400.0, 300.0));
+        d.step(InputFrame::default());
+        d
+    };
+    let (plain, packed) = (mount(""), mount(pack));
+    let colour = |hex: &str| og_ui::style_file::parse_color(hex).unwrap();
+    let has = |d: &Doc, id: &str, hex: &str| {
+        let e = at(&d.ui, id);
+        fills_in(&d.ui, Rect::new(e.x, e.y, e.width, e.height))
+            .iter()
+            .any(|f| near(*f, colour(hex)))
+    };
+    let ink = |d: &Doc, want: &str| {
+        d.ui.frame().items.iter().find_map(|i| {
+            let text = match &i.cmd {
+                DrawCmd::StyledText { text, .. } => text.as_ref(),
+                other => other,
+            };
+            match text {
+                DrawCmd::Text { text, color, .. } if text == want => Some(*color),
+                _ => None,
+            }
+        })
+    };
+    assert!(has(&packed, "B", "#00ff00"));
+    assert!(has(&packed, "P", "#ff8800") && !has(&packed, "P", "#00ff00"));
+    assert!(has(&packed, "C/Box", "#ff00ff"));
+    assert!(has(&packed, "T", "#445566"));
+    assert!(
+        ink(&packed, "New").is_some_and(|c| near(c, colour("#ff0000"))),
+        "the badge's ink"
+    );
+    assert!(!has(&plain, "B", "#00ff00"));
+    assert!(ink(&plain, "New").is_some_and(|c| !near(c, colour("#ff0000"))));
+    assert_eq!(
+        at(&packed.ui, "B").width - at(&plain.ui, "B").width,
+        2.0 * (30.0 - 16.0),
+        "the inline padding on both sides"
+    );
+}
+
 /// A kit's text element that names its part takes the part's `-og-ink` and
 /// `-og-step` (docs/ui.md §3.2), qualified by its classes, as a field's
 /// `text` part does: a pack inks a killfeed's names by team. Wrong: the

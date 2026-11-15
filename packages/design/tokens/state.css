@@ -89,4 +89,68 @@
   --controls-joystick-size: 128px;
   --controls-dpad-size: 132px;
   --controls-action-size: 64px;
+  /* What a style pack sets to restyle the core controls (docs/ui.md §3.1,
+     Control hooks): each is the value the default style dresses with. A
+     hook with no value here falls back in its rule to the control's own
+     (`revert-layer`, or the hook it refines: `--button-hover-rim` to
+     `--button-rim`), so the default style is unchanged until a pack sets
+     it. */
+  --controls-button-ink: var(--ink);
+  --controls-button-primary-ink: var(--on-primary);
+  --controls-button-danger-ink: var(--danger);
+  --controls-button-ghost-ink: var(--button-ink);
+  --controls-button-disabled-ink: var(--ink-faint);
+  --controls-button-fill: var(--control);
+  --controls-button-hover-fill: var(--control-strong);
+  --controls-button-pressed-fill: var(--control-strong);
+  --controls-button-disabled-fill: var(--control);
+  --controls-button-primary-fill: var(--primary);
+  --controls-button-primary-hover-fill: var(--primary-hover);
+  --controls-button-primary-pressed-fill: var(--primary-active);
+  --controls-button-primary-disabled-fill: var(--button-disabled-fill);
+  --controls-button-danger-fill: color-mix(in srgb, var(--danger) 10%, var(--color-surface));
+  --controls-button-danger-hover-fill: color-mix(in srgb, var(--danger) 15%, var(--color-surface));
+  --controls-button-danger-pressed-fill: var(--button-danger-hover-fill);
+  --controls-button-danger-disabled-fill: var(--button-disabled-fill);
+  --controls-button-quiet-hover-fill: var(--control);
+  --controls-button-quiet-pressed-fill: var(--control);
+  --controls-button-ghost-rim: var(--line-strong);
+  --controls-button-ghost-hover-fill: var(--control);
+  --controls-button-ghost-pressed-fill: var(--control);
+  --controls-button-corner-shape: round;
+  --controls-field-invalid-rim: var(--danger);
+  --controls-field-corner-shape: round;
+  --controls-checkbox-box-rim: var(--well-rim);
+  --controls-checkbox-box-shadow: var(--field-shadow);
+  --controls-checkbox-corner-shape: round;
+  --controls-radio-ring-rim: var(--well-rim);
+  --controls-radio-ring-shadow: var(--field-shadow);
+  --controls-radio-corner-shape: round;
+  --controls-radio-card-checked-fill: var(--selection);
+  --controls-radio-card-corner-shape: round;
+  --controls-radio-chosen-rim: var(--primary);
+  --controls-switch-track-rim: var(--line);
+  --controls-switch-knob-rim: var(--line);
+  --controls-switch-corner-shape: round;
+  --controls-tabs-tab-selected-fill: var(--selection);
+  --controls-tabs-tab-selected-shadow: var(--shadow-tab-selected);
+  --controls-slider-track-fill: var(--color-track);
+  --controls-slider-fill-shadow: var(--meter-fill-shadow);
+  --controls-slider-knob-rim: var(--line);
+  --controls-slider-knob-corner-shape: round;
+  --controls-slider-bubble-rim: var(--line);
+  --controls-slider-bubble-shadow: var(--dropdown-list-shadow);
+  --controls-slider-bubble-radius: var(--panel-radius);
+  --controls-dropdown-list-rim: var(--line);
+  --controls-dropdown-list-rim-width: var(--panel-border-width);
+  --controls-dropdown-list-radius: var(--panel-radius);
+  --controls-panel-rim: var(--line);
+  --controls-panel-corner-shape: round;
+  --controls-tooltip-radius: var(--panel-radius);
+  --controls-tooltip-corner-shape: round;
+  --controls-hud-corner-shape: round;
+  --controls-slot-selected-rim: var(--color-slot-selected-edge);
+  --controls-slot-selected-shadow: var(--shadow-slot-selected);
+  --controls-slot-corner-shape: round;
+  --controls-keyboard-key-rim: var(--line);
 }

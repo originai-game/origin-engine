@@ -412,15 +412,14 @@ pub fn generate(t: &Value) -> Result<String, String> {
     {
         let (unit, n) = match value {
             Value::Number(n) => ("", n.as_f64().unwrap_or_default() as f32),
-            Value::String(s) if s.starts_with("var(") => continue,
-            Value::String(_) => match ["px", "ms"]
-                .into_iter()
-                .find(|u| value.as_str().is_some_and(|s| s.ends_with(u)))
-            {
+            Value::String(s) => match ["px", "ms"].into_iter().find(|u| {
+                s.strip_suffix(u)
+                    .is_some_and(|n| n.trim().parse::<f32>().is_ok())
+            }) {
                 Some(u) => (u, unit(t, &["controls", key], u)?),
-                None => {
-                    return Err(format!("tokens: controls.{key} is not px, ms or a number"));
-                }
+                // A value that is not one length or duration (a token, a
+                // keyword such as `round`) is the stylesheet's alone.
+                None => continue,
             },
             _ => return Err(format!("tokens: controls.{key} is not a value")),
         };

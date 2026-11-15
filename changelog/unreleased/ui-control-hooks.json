@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"UI control hooks","summary":"Every value a style pack restyles a core control with is now a token the default style's rules read, so a pack restyles buttons, checkboxes, radios, switches, tabs, sliders, fields, selects, steppers, details, panels, dialogs, tooltips, HUD frames, slots, badges, meters, the keyboard and the touch controls by setting `:root` values alone: fills, inks, rims and their widths, shadows, border images, corner shapes, type, padding and glass, each per state and variant (`--button-fill`, `--button-primary-hover-image`, `--checkbox-checked-fill`, `--tabs-tab-selected-ink`, `--tooltip-glass`, `--badge-success-fill`, the full list in docs/ui.md §3.1). Role frames take `--frame-glass` and plates `--plate-glass` as their backdrop filter, except a bare frame and one inside another. Each defaults to what the control drew before, so the default style is unchanged."}
+  ]
+}

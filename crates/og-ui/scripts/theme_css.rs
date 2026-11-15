@@ -13,42 +13,57 @@ const PART_RULES: &[(&str, &str, &str)] = &[
     (
         "Card::frame",
         "panel::part(frame)",
-        "box-shadow: none; border-radius: var(--radius-card);",
+        "box-shadow: var(--panel-shadow, none); border-radius: var(--radius-card);",
     ),
     (
         "Button::base",
         "button::part(base)",
-        "border: none; box-shadow: none;",
+        "border-width: var(--button-rim-width, 0px); border-style: solid; border-color: var(--button-rim, var(--line)); \
+         box-shadow: var(--button-base-shadow, none); corner-shape: var(--button-corner-shape); \
+         border-image-source: var(--button-image, none); \
+         border-image-slice: var(--button-image-slice, 100%); \
+         border-image-width: var(--button-image-width, 1); \
+         font-family: var(--button-font, revert-layer); \
+         font-size: var(--button-font-size, revert-layer); \
+         letter-spacing: var(--button-tracking, revert-layer); \
+         text-transform: var(--button-transform, revert-layer); \
+         text-shadow: var(--button-text-shadow, revert-layer); \
+         min-height: var(--button-min-height, revert-layer);",
     ),
     (
         "Button::base.ghost",
         "button.ghost::part(base)",
-        "border: var(--button-border-width) solid var(--line-strong);",
+        "border-width: var(--button-border-width); border-style: solid; border-color: var(--button-ghost-rim); border-image-source: none;",
     ),
     (
         "Field::frame",
         "input::part(frame), textarea::part(frame)",
-        "border: none; box-shadow: none;",
+        "border-width: var(--field-rim-width, 0px); border-style: solid; border-color: var(--field-rim, var(--line)); \
+         box-shadow: var(--field-frame-shadow, none);",
     ),
     (
         "Field::frame.invalid",
         "input::part(frame):invalid, textarea::part(frame):invalid",
-        "border: var(--stroke-hairline) solid var(--danger);",
+        "border-width: var(--stroke-hairline); border-style: solid; border-color: var(--field-invalid-rim);",
     ),
     (
         "Slot::frame",
         "slot::part(frame)",
-        "border: none; box-shadow: none;",
+        "background: var(--slot-fill, revert-layer); \
+         border-width: var(--slot-rim-width, 0px); border-style: solid; border-color: var(--slot-rim, var(--line)); \
+         box-shadow: none; corner-shape: var(--slot-corner-shape);",
     ),
     (
         "Slot::frame:selected",
         "slot[aria-selected=true]::part(frame)",
-        "border: var(--stroke-hairline) solid var(--color-slot-selected-edge); box-shadow: var(--shadow-slot-selected);",
+        "border-width: var(--stroke-hairline); border-style: solid; border-color: var(--slot-selected-rim); box-shadow: var(--slot-selected-shadow);",
     ),
     (
         "Meter::track",
         "meter::part(track), progress::part(track)",
-        "box-shadow: none;",
+        "background: var(--meter-track-fill, revert-layer); \
+         border-width: var(--meter-track-rim-width, 0px); border-style: solid; border-color: var(--meter-track-rim, transparent); \
+         box-shadow: var(--meter-track-shadow, none);",
     ),
     (
         "Meter::fill",
@@ -58,12 +73,13 @@ const PART_RULES: &[(&str, &str, &str)] = &[
     (
         "Slider::track",
         "input[type=range]::part(track)",
-        "background: var(--color-track); box-shadow: none;",
+        "background: var(--slider-track-fill); box-shadow: var(--slider-track-shadow, none); \
+         border-width: var(--slider-track-rim-width, 0px); border-style: solid; border-color: var(--slider-track-rim, transparent);",
     ),
     (
         "Toggle::track",
         "input[type=checkbox][switch]::part(track)",
-        "box-shadow: none;",
+        "box-shadow: var(--switch-track-shadow, none);",
     ),
     (
         "Toggle::row",
@@ -83,7 +99,7 @@ const PART_RULES: &[(&str, &str, &str)] = &[
     (
         "Dropdown::trigger.open",
         "select[aria-expanded=true]::part(trigger)",
-        "border: var(--stroke-regular) solid var(--focus); padding-inline: calc(var(--space-md) - var(--stroke-regular));",
+        "border-width: var(--stroke-regular); border-style: solid; border-color: var(--field-focus-rim, var(--focus)); padding-inline: calc(var(--space-md) - var(--stroke-regular));",
     ),
     (
         "Dropdown::option",
@@ -93,22 +109,19 @@ const PART_RULES: &[(&str, &str, &str)] = &[
     (
         "Radio::card",
         "input[type=radio]::part(card)",
-        "border: none;",
-    ),
-    (
-        "Radio::card:selected",
-        "input[type=radio]::part(card):checked",
-        "background: var(--selection);",
+        "border-width: var(--radio-card-rim-width, 0px); border-style: solid; border-color: var(--radio-card-rim, var(--line)); \
+         background: var(--radio-card-fill, revert-layer); corner-shape: var(--radio-card-corner-shape);",
     ),
     (
         "Radio::chosen",
         "input[type=radio]::part(chosen)",
-        "border: var(--stroke-regular) solid var(--primary);",
+        "border-width: var(--stroke-regular); border-style: solid; border-color: var(--radio-chosen-rim); background: var(--radio-chosen-fill, revert-layer);",
     ),
     (
         "Tabs::tab:selected",
         "tabs::part(tab):checked",
-        "background: var(--selection); box-shadow: var(--shadow-tab-selected);",
+        "background: var(--tabs-tab-selected-fill); box-shadow: var(--tabs-tab-selected-shadow); \
+         color: var(--tabs-tab-selected-ink, revert-layer);",
     ),
 ];
 
@@ -138,6 +151,11 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
   }
   /* A frame that only lays its children out wears nothing. */
   :where([part$=".frame"]:where(.bare)) { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  /* Frost: a frame blurs the scene behind it (`--frame-glass`, a plate
+     `--plate-glass`); a bare frame and one inside another do not. */
+  :where([part$=".frame"]) { backdrop-filter: var(--frame-glass, none); }
+  :where([part$=".frame"]:where(.hud)) { backdrop-filter: var(--plate-glass, none); }
+  :where([part$=".frame"]:where(.bare), [part$=".frame"] [part$=".frame"]) { backdrop-filter: none; }
   :where([part$=".band"]) {
     min-height: var(--band-height);
     padding: var(--band-pad);
@@ -224,9 +242,10 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
 
 // The material owns tint/edge/shadows as one shader operation. Repeating
 // these as a background or border would composite them twice.
-const GLASS_LIFT: &str = "background: none; border: none; box-shadow: none; backdrop-filter: blur(var(--glass-blur-thick)) saturate(var(--glass-saturation)); -og-material: glass thick lift;";
-const GLASS_FLOAT: &str = "background: none; border: none; box-shadow: none; backdrop-filter: blur(var(--glass-blur-thick)) saturate(var(--glass-saturation)); -og-material: glass thick float;";
-const GLASS_REGULAR: &str = "background: none; border: none; box-shadow: none; backdrop-filter: blur(var(--glass-blur-regular)) saturate(var(--glass-saturation)); -og-material: glass regular float;";
+// A pack's `--*-fill` and `--*-glass` (`none`: a solid surface) replace them.
+const GLASS_LIFT: &str = "background: var(--panel-fill, none); border: none; box-shadow: var(--panel-shadow, none); backdrop-filter: var(--panel-glass, blur(var(--glass-blur-thick)) saturate(var(--glass-saturation))); -og-material: glass thick lift;";
+const GLASS_FLOAT: &str = "background: var(--tooltip-fill, none); border-width: var(--tooltip-rim-width, 0px); border-style: solid; border-color: var(--tooltip-rim, var(--line)); border-radius: var(--tooltip-radius); corner-shape: var(--tooltip-corner-shape); box-shadow: var(--tooltip-shadow, none); backdrop-filter: var(--tooltip-glass, blur(var(--glass-blur-thick)) saturate(var(--glass-saturation))); -og-material: glass thick float;";
+const GLASS_REGULAR: &str = "background: var(--hud-fill, none); border-width: var(--hud-rim-width, 0px); border-style: solid; border-color: var(--hud-rim, var(--line-70)); box-shadow: var(--hud-shadow, none); backdrop-filter: var(--hud-glass, blur(var(--glass-blur-regular)) saturate(var(--glass-saturation))); -og-material: glass regular float;";
 
 const HEAD: &str = "/* Generated from packages/design/tokens/*.css by crates/og-ui/scripts/gen-theme.sh.\n\
  * Do not edit: tests/theme.rs checks drift.\n\
@@ -574,44 +593,138 @@ fn type_role(field: &str) -> (&'static str, u16, f32) {
 
 // Default borders and effects, overridden by the more specific part rules.
 const FALLBACKS: &str = r#"
-  button { color: var(--ink); }
-  button.primary { color: var(--on-primary); }
-  button.danger { color: var(--danger); }
+  /* Control hooks (docs/ui.md §3.1): every value a style pack restyles a
+     core control with is a token. One the default style declares (state.css)
+     is the value it dresses with; one it does not falls back to the hook it
+     refines (`--button-hover-rim` to `--button-rim`) and last to the
+     control's own value (`revert-layer`), so the default style is unchanged
+     until a pack sets it. A rim a control does not draw today takes a
+     `-rim-width` beside its colour, as the role tokens do. */
+  button { color: var(--button-ink); }
+  button.primary { color: var(--button-primary-ink); }
+  button.danger { color: var(--button-danger-ink); }
+  button.ghost { color: var(--button-ghost-ink); }
   button[aria-pressed=true] { color: var(--button-selected-ink); }
-  button:disabled { color: var(--ink-faint); }
-  button::part(base) { background: var(--control); }
-  button::part(base):hover, button::part(base):active { background: var(--control-strong); }
+  button:disabled { color: var(--button-disabled-ink); }
+  button.primary:disabled { color: var(--button-primary-disabled-ink, var(--button-disabled-ink)); }
+  /* A button's padding: its inline padding by size, or the whole shorthand,
+     and the face's when held (a label that sinks with it). */
+  button::part(base) { padding: var(--button-pad, 0 var(--button-pad-inline, var(--space-lg))); }
+  button.small::part(base) { padding: var(--button-pad, 0 var(--button-pad-inline, var(--space-md))); }
+  button::part(base):active {
+    padding: var(--button-pressed-pad, var(--button-pad, 0 var(--button-pad-inline, var(--space-lg))));
+  }
+  button.small::part(base):active {
+    padding: var(--button-pressed-pad, var(--button-pad, 0 var(--button-pad-inline, var(--space-md))));
+  }
+  button::part(base) { background: var(--button-fill); }
+  button::part(base):hover {
+    background: var(--button-hover-fill);
+    color: var(--button-hover-ink, revert-layer);
+    border-color: var(--button-hover-rim, var(--button-rim, var(--line)));
+    box-shadow: var(--button-hover-shadow, var(--button-base-shadow, none));
+    border-image-source: var(--button-image-hover, var(--button-image, none));
+  }
+  button::part(base):active {
+    background: var(--button-pressed-fill);
+    color: var(--button-pressed-ink, revert-layer);
+    border-color: var(--button-pressed-rim, var(--button-hover-rim, var(--button-rim, var(--line))));
+    box-shadow: var(--button-base-pressed-shadow, var(--button-base-shadow, none));
+    border-image-source: var(--button-image-pressed, var(--button-image, none));
+  }
   /* Spin cells sit inside the field's border, the last one at its end. */
   input[type=number]::part(button) {
-    background: var(--control); margin-block: var(--field-border-width);
+    background: var(--stepper-button-fill, var(--control)); margin-block: var(--field-border-width);
   }
   input[type=number].inc::part(button) { margin-inline-end: var(--field-border-width); }
-  input[type=number]::part(button):hover, input[type=number]::part(button):active {
-    background: var(--control-strong);
+  input[type=number]::part(button):hover {
+    background: var(--stepper-button-hover-fill, var(--stepper-button-fill, var(--control-strong)));
   }
-  button.primary::part(base) { background: var(--primary); }
-  button.primary::part(base):hover { background: var(--primary-hover); }
-  button.primary::part(base):active { background: var(--primary-active); }
+  input[type=number]::part(button):active {
+    background: var(--stepper-button-pressed-fill, var(--stepper-button-fill, var(--control-strong)));
+  }
+  input[type=number]::part(button):disabled {
+    background: var(--stepper-button-disabled-fill, var(--stepper-button-fill, var(--control)));
+  }
+  stepper::part(button) { background: var(--stepper-button-fill, revert-layer); }
+  stepper::part(button):hover { background: var(--stepper-button-hover-fill, var(--stepper-button-fill, revert-layer)); }
+  stepper::part(button):active { background: var(--stepper-button-pressed-fill, var(--stepper-button-fill, revert-layer)); }
+  stepper::part(button):disabled { background: var(--stepper-button-disabled-fill, var(--stepper-button-fill, revert-layer)); }
+  stepper::part(button), input[type=number]::part(button) {
+    color: var(--stepper-button-ink, revert-layer);
+    border-color: var(--stepper-button-rim, var(--line));
+  }
+  stepper::part(button):hover, input[type=number]::part(button):hover {
+    border-color: var(--stepper-button-hover-rim, var(--stepper-button-rim, var(--line)));
+  }
+  button.primary::part(base) {
+    background: var(--button-primary-fill);
+    border-color: var(--button-primary-rim, var(--button-rim, var(--line)));
+    box-shadow: var(--button-primary-shadow, var(--button-base-shadow, none));
+    border-image-source: var(--button-primary-image, var(--button-image, none));
+  }
+  button.primary::part(base):hover {
+    background: var(--button-primary-hover-fill);
+    color: var(--button-primary-hover-ink, revert-layer);
+    border-color: var(--button-primary-hover-rim, var(--button-primary-rim, var(--button-hover-rim, var(--button-rim, var(--line)))));
+    box-shadow: var(--button-primary-shadow, var(--button-hover-shadow, var(--button-base-shadow, none)));
+    border-image-source: var(--button-primary-image-hover, var(--button-primary-image, var(--button-image-hover, var(--button-image, none))));
+  }
+  button.primary::part(base):active {
+    background: var(--button-primary-pressed-fill);
+    color: var(--button-primary-pressed-ink, revert-layer);
+    border-color: var(--button-primary-hover-rim, var(--button-primary-rim, var(--button-pressed-rim, var(--button-rim, var(--line)))));
+    border-image-source: var(--button-primary-image-pressed, var(--button-primary-image, var(--button-image-pressed, var(--button-image, none))));
+  }
   button.quiet::part(base), button.ghost::part(base) { background: transparent; }
-  button.ghost::part(base) { padding-inline: calc(var(--space-lg) - var(--button-border-width)); }
-  button.ghost.small::part(base) { padding-inline: calc(var(--space-md) - var(--button-border-width)); }
-  button.ghost.square::part(base) { padding-inline: 0; }
-  button.quiet::part(base):hover, button.quiet::part(base):active,
-  button.ghost::part(base):hover, button.ghost::part(base):active { background: var(--control); }
+  button.ghost::part(base) {
+    padding-inline: calc(var(--button-pad-inline, var(--space-lg)) - var(--button-border-width));
+  }
+  button.ghost.small::part(base), button.ghost.small::part(base):active {
+    padding-inline: calc(var(--button-pad-inline, var(--space-md)) - var(--button-border-width));
+  }
+  button.square::part(base), button.square::part(base):active,
+  button.ghost.square::part(base), button.ghost.square::part(base):active { padding-inline: 0; }
+  button.quiet::part(base):hover { background: var(--button-quiet-hover-fill); }
+  button.quiet::part(base):active { background: var(--button-quiet-pressed-fill); }
+  button.ghost::part(base):hover { background: var(--button-ghost-hover-fill); }
+  button.ghost::part(base):active { background: var(--button-ghost-pressed-fill); }
   button.danger::part(base) {
-    background: color-mix(in srgb, var(--danger) 10%, var(--color-surface));
+    background: var(--button-danger-fill);
+    border-color: var(--button-danger-rim, var(--button-rim, var(--line)));
+    box-shadow: var(--button-danger-shadow, var(--button-base-shadow, none));
+    text-shadow: var(--button-danger-text-shadow, var(--button-text-shadow, revert-layer));
   }
-  button.danger::part(base):hover, button.danger::part(base):active {
-    background: color-mix(in srgb, var(--danger) 15%, var(--color-surface));
-  }
+  button.danger::part(base):hover { background: var(--button-danger-hover-fill); }
+  button.danger::part(base):active { background: var(--button-danger-pressed-fill); }
+  button.danger::part(base):hover, button.danger::part(base):active { color: var(--button-danger-ink); }
   /* A button that is on (`aria-pressed`: a toggle, a chip) wears the
      selection, whatever its variant, at rest, hovered and held. */
   button[aria-pressed=true]::part(base), button[aria-pressed=true]::part(base):hover,
-  button[aria-pressed=true]::part(base):active { background: var(--button-selected-fill); }
-  button::part(base):disabled,
-  button.primary::part(base):disabled, button.quiet::part(base):disabled,
-  button.ghost::part(base):disabled, button.danger::part(base):disabled {
-    background: var(--control);
+  button[aria-pressed=true]::part(base):active {
+    background: var(--button-selected-fill);
+    color: var(--button-selected-ink);
+    border-color: var(--button-selected-rim, var(--button-rim, var(--line)));
+    box-shadow: var(--button-selected-shadow, var(--button-base-shadow, none));
+  }
+  button::part(base):disabled, button.quiet::part(base):disabled, button.ghost::part(base):disabled {
+    background: var(--button-disabled-fill);
+  }
+  button.primary::part(base):disabled { background: var(--button-primary-disabled-fill); }
+  button.danger::part(base):disabled { background: var(--button-danger-disabled-fill); }
+  button::part(base):disabled, button.primary::part(base):disabled, button.danger::part(base):disabled {
+    border-color: var(--button-disabled-rim, var(--button-rim, var(--line)));
+    box-shadow: var(--button-disabled-shadow, var(--button-base-shadow, none));
+    border-image-source: var(--button-image-disabled, var(--button-image, none));
+  }
+  button.primary::part(base):disabled {
+    color: var(--button-primary-disabled-ink, revert-layer);
+    border-image-source: var(--button-primary-image-disabled, var(--button-image-disabled, var(--button-image, none)));
+  }
+  /* A quiet button is text: no plate, rim, shadow or border image. */
+  button.quiet::part(base), button.quiet::part(base):hover, button.quiet::part(base):active,
+  button.quiet::part(base):disabled {
+    border-width: 0; box-shadow: none; border-image-source: none;
   }
   /* Hover/press values are supplied by the widget, blended by the cascade. */
   button::part(base), input[type=checkbox]::part(row), input[type=radio]::part(option),
@@ -628,33 +741,68 @@ const FALLBACKS: &str = r#"
       opacity var(--motion-ui-duration) var(--motion-ui-easing);
   }
   /* Panel / Dialog / Card / Tooltip */
-  panel::part(frame), tooltip::part(frame), dialog::part(panel),
-  select::part(list), input[type=range]::part(bubble) {
+  panel::part(frame), tooltip::part(frame), dialog::part(panel) {
     box-sizing: border-box;
-    border: var(--panel-border-width) solid var(--line);
+    border-width: var(--panel-border-width); border-style: solid; border-color: var(--panel-rim);
     border-radius: var(--panel-radius);
   }
-  select::part(list), input[type=range]::part(bubble) {
+  panel::part(frame), dialog::part(panel) {
+    background: var(--panel-fill, revert-layer);
+    corner-shape: var(--panel-corner-shape);
+    backdrop-filter: var(--panel-glass, none);
+  }
+  dialog::part(panel) { box-shadow: var(--panel-shadow, revert-layer); }
+  dialog::part(backdrop) { background: var(--dialog-backdrop, revert-layer); }
+  select::part(list) {
+    box-sizing: border-box;
+    border-width: var(--dropdown-list-rim-width); border-style: solid; border-color: var(--dropdown-list-rim);
+    border-radius: var(--dropdown-list-radius);
+    background: var(--dropdown-list-fill, revert-layer);
     box-shadow: var(--dropdown-list-shadow);
+  }
+  select::part(option):hover { background: var(--dropdown-option-hover-fill, revert-layer); }
+  select::part(option):active { background: var(--dropdown-option-pressed-fill, var(--dropdown-option-hover-fill, revert-layer)); }
+  select::part(option):checked {
+    background: var(--dropdown-option-selected-fill, revert-layer);
+    color: var(--dropdown-option-selected-ink, revert-layer);
+  }
+  /* A group's label and a disclosure's summary read as labels. */
+  select::part(group), details::part(summary) {
+    font-family: var(--label-font); letter-spacing: var(--label-tracking); text-transform: var(--label-transform);
+  }
+  input[type=range]::part(bubble) {
+    box-sizing: border-box;
+    border-width: var(--panel-border-width); border-style: solid; border-color: var(--slider-bubble-rim);
+    border-radius: var(--slider-bubble-radius);
+    background: var(--slider-bubble-fill, revert-layer);
+    box-shadow: var(--slider-bubble-shadow);
   }
   /* The value bubble's text and the checkbox's tick take these parts' ink. */
   input[type=range]::part(bubble) { color: var(--slider-bubble-ink); }
   input[type=checkbox]::part(mark) { color: var(--checkbox-mark-ink); }
   /* Hud */
   hud::part(frame) {
-    border: var(--stroke-hairline) solid var(--line-70);
+    border-width: var(--stroke-hairline); border-style: solid; border-color: var(--line-70);
     border-radius: var(--hud-radius);
+    corner-shape: var(--hud-corner-shape);
   }
   joystick::part(base):disabled, dpad::part(base):disabled {
     opacity: var(--state-touch-disabled-opacity);
   }
+  joystick::part(base), dpad::part(base) {
+    background: var(--touch-plate-fill, revert-layer);
+    border-color: var(--touch-plate-rim, revert-layer);
+  }
+  joystick::part(rim) { background: var(--touch-plate-rim, revert-layer); }
+  joystick::part(knob) { background: var(--touch-knob-fill, revert-layer); }
+  joystick::part(direction), dpad::part(indicator) { background: var(--touch-active-fill, revert-layer); }
   /* Button: untouched token defaults also serve secondary controls. */
   button::part(base), input[type=checkbox]::part(row),
   input[type=radio]::part(option), select::part(option),
   stepper::part(button), input[type=number]::part(button), details::part(summary),
   keyboard::part(key), keyboard::part(candidate) {
     box-sizing: border-box;
-    border: var(--button-border-width) solid var(--line);
+    border-width: var(--button-border-width); border-style: solid; border-color: var(--line);
     border-radius: var(--button-radius);
     box-shadow: var(--button-shadow);
   }
@@ -668,45 +816,229 @@ const FALLBACKS: &str = r#"
   keyboard::part(key):disabled, keyboard::part(candidate):disabled {
     border: none; box-shadow: none;
   }
+  input[type=checkbox]::part(row):hover { background: var(--checkbox-row-hover-fill, revert-layer); }
+  input[type=radio]::part(option):hover {
+    background: var(--radio-option-hover-fill, var(--checkbox-row-hover-fill, revert-layer));
+  }
+  /* Details: its summary a plate, its content's ink. */
+  details::part(summary) {
+    background: var(--details-summary-fill, revert-layer);
+    color: var(--details-summary-ink, revert-layer);
+    font-family: var(--details-summary-font, var(--label-font));
+    border-width: var(--details-summary-border, var(--button-border-width); border-style: solid; border-color: var(--line));
+    border-bottom: var(--details-summary-rule, var(--details-summary-border, var(--button-border-width) solid var(--line)));
+    box-shadow: var(--details-summary-shadow, var(--button-shadow));
+  }
+  details::part(summary):hover {
+    background: var(--details-summary-hover-fill, var(--details-summary-fill, revert-layer));
+  }
+  details[aria-expanded=true]::part(summary) {
+    background: var(--details-summary-open-fill, var(--details-summary-fill, revert-layer));
+    color: var(--details-summary-open-ink, var(--details-summary-ink, revert-layer));
+  }
+  details::part(content) { color: var(--details-content-ink, revert-layer); }
+  /* Keyboard: its panel, keys and candidates. */
+  keyboard::part(panel) { background: var(--keyboard-panel-fill, revert-layer); }
+  keyboard::part(key), keyboard::part(candidate) {
+    background: var(--keyboard-key-fill, revert-layer);
+    border-color: var(--keyboard-key-rim);
+    box-shadow: var(--keyboard-key-shadow, var(--button-shadow));
+    color: var(--keyboard-key-ink, revert-layer);
+    font-family: var(--keyboard-key-font, revert-layer);
+  }
+  keyboard::part(key):hover, keyboard::part(candidate):hover {
+    background: var(--keyboard-key-hover-fill, var(--keyboard-key-fill, revert-layer));
+    border-color: var(--keyboard-key-hover-rim, var(--keyboard-key-rim));
+  }
+  keyboard::part(key):active, keyboard::part(candidate):active {
+    background: var(--keyboard-key-pressed-fill, var(--keyboard-key-fill, revert-layer));
+    border-color: var(--keyboard-key-pressed-rim, var(--keyboard-key-rim));
+  }
   /* Field: text boxes, checkbox marks and radio wells. */
   input::part(frame), textarea::part(frame), select::part(trigger),
   stepper::part(frame), stepper::part(value), input[type=checkbox]::part(box),
   input[type=radio]::part(ring) {
     box-sizing: border-box;
-    border: var(--field-border-width) solid var(--line);
+    border-width: var(--field-border-width); border-style: solid; border-color: var(--line);
     border-radius: var(--field-radius);
     box-shadow: var(--field-shadow);
   }
+  input::part(frame), textarea::part(frame), select::part(trigger), stepper::part(frame) {
+    background: var(--field-fill, revert-layer);
+    color: var(--field-ink, revert-layer);
+    font-family: var(--field-font, revert-layer);
+    corner-shape: var(--field-corner-shape);
+  }
+  select::part(trigger), stepper::part(frame), stepper::part(value) {
+    border-width: var(--field-rim-width, var(--field-border-width)); border-style: solid; border-color: var(--field-rim, var(--line));
+  }
+  input::part(frame):hover, textarea::part(frame):hover, select::part(trigger):hover, stepper::part(frame):hover {
+    background: var(--field-hover-fill, var(--field-fill, revert-layer));
+    border-color: var(--field-hover-rim, var(--field-rim, var(--line)));
+  }
+  input::part(frame):focus-visible, textarea::part(frame):focus-visible, select::part(trigger):focus-visible {
+    border-color: var(--field-focus-rim, var(--field-rim, var(--line)));
+  }
+  select::part(trigger):focus-visible { box-shadow: var(--field-focus-shadow, var(--field-shadow)); }
+  input::part(frame):focus-visible, textarea::part(frame):focus-visible {
+    box-shadow: var(--field-focus-shadow, var(--field-frame-shadow, none));
+  }
+  input::part(frame):disabled, textarea::part(frame):disabled, select::part(trigger):disabled, stepper::part(frame):disabled {
+    background: var(--field-disabled-fill, var(--field-fill, revert-layer));
+    border-color: var(--field-disabled-rim, var(--field-rim, var(--line)));
+  }
+  input::part(text), textarea::part(text) { color: var(--field-ink, revert-layer); font-family: var(--field-font, revert-layer); }
+  input::part(placeholder), textarea::part(placeholder) { color: var(--field-placeholder-ink, revert-layer); }
+  input::part(selection), textarea::part(selection) { background: var(--field-selection-fill, revert-layer); }
+  input::part(caret), textarea::part(caret) { background: var(--field-caret-fill, revert-layer); }
   select::part(trigger) { padding-inline: calc(var(--space-md) - var(--field-border-width)); }
-  input[type=checkbox]::part(box), input[type=radio]::part(ring) {
-    border: var(--stroke-hairline) solid var(--well-rim);
+  input[type=checkbox]::part(box) {
+    border-width: var(--stroke-hairline); border-style: solid; border-color: var(--checkbox-box-rim);
+    background: var(--checkbox-box-fill, revert-layer);
+    box-shadow: var(--checkbox-box-shadow);
+    corner-shape: var(--checkbox-corner-shape);
+  }
+  input[type=radio]::part(ring) {
+    border-width: var(--stroke-hairline); border-style: solid; border-color: var(--radio-ring-rim);
+    background: var(--radio-ring-fill, revert-layer);
+    box-shadow: var(--radio-ring-shadow);
+    corner-shape: var(--radio-corner-shape);
+  }
+  input[type=checkbox]::part(box):hover {
+    border-color: var(--checkbox-box-hover-rim, var(--checkbox-box-rim));
+    background: var(--checkbox-box-hover-fill, var(--checkbox-box-fill, revert-layer));
+  }
+  input[type=radio]::part(ring):hover {
+    border-color: var(--radio-ring-hover-rim, var(--checkbox-box-hover-rim, var(--radio-ring-rim)));
   }
   input[type=checkbox]::part(box):checked,
-  input[type=checkbox][aria-checked=mixed]::part(box),
+  input[type=checkbox][aria-checked=mixed]::part(box) {
+    border-width: var(--checkbox-checked-rim-width, 0px); border-style: solid; border-color: var(--checkbox-checked-rim, transparent);
+    background: var(--checkbox-checked-fill, revert-layer);
+    box-shadow: var(--checkbox-checked-shadow, none);
+  }
   input[type=radio]::part(ring):checked {
-    border: none; box-shadow: none;
+    border-width: var(--radio-checked-rim-width, 0px); border-style: solid; border-color: var(--radio-checked-rim, transparent);
+    background: var(--radio-checked-fill, revert-layer);
+    box-shadow: var(--radio-checked-shadow, none);
+  }
+  input[type=radio]::part(dot) { background: var(--radio-dot-fill, revert-layer); corner-shape: var(--radio-corner-shape); }
+  input[type=checkbox]::part(box):disabled, input[type=radio]::part(ring):disabled {
+    background: var(--checkbox-disabled-fill, revert-layer);
+    border-color: var(--checkbox-disabled-rim, var(--checkbox-box-rim));
+  }
+  input[type=checkbox]::part(box):checked:disabled, input[type=checkbox][aria-checked=mixed]::part(box):disabled,
+  input[type=radio]::part(ring):checked:disabled {
+    background: var(--checkbox-checked-disabled-fill, var(--checkbox-checked-fill, revert-layer));
+    border-color: var(--checkbox-disabled-rim, var(--checkbox-checked-rim, transparent));
+    box-shadow: none;
   }
   input[type=checkbox][aria-invalid=true]::part(box),
   select[aria-invalid=true]::part(trigger),
   stepper[aria-invalid=true]::part(frame), stepper[aria-invalid=true]::part(value) {
-    border: var(--field-border-width) solid var(--danger);
+    border-width: var(--field-border-width); border-style: solid; border-color: var(--field-invalid-rim);
   }
   /* Slot / Avatar / Badge / Tab / Bar */
   slot::part(frame) {
-    border: var(--stroke-hairline) solid var(--line);
+    border-width: var(--stroke-hairline); border-style: solid; border-color: var(--line);
     border-radius: var(--slot-radius);
     box-shadow: var(--slot-shadow);
   }
-  input[type=range]::part(knob), input[type=checkbox][switch]::part(track),
+  slot::part(frame):hover {
+    border-color: var(--slot-hover-rim, var(--slot-rim, var(--line)));
+    box-shadow: var(--slot-hover-shadow, none);
+  }
+  slot::part(frame):active { background: var(--slot-pressed-fill, var(--slot-fill, revert-layer)); }
+  input[type=range]::part(knob) {
+    border-width: var(--slider-knob-rim-width, var(--stroke-hairline)); border-style: solid; border-color: var(--slider-knob-rim);
+    border-radius: var(--chip-radius);
+    background: var(--slider-knob-fill, revert-layer);
+    box-shadow: var(--slider-knob-shadow, revert-layer);
+  }
+  input[type=range]::part(knob):hover { box-shadow: var(--slider-knob-hover-shadow, var(--slider-knob-shadow, revert-layer)); }
+  input[type=range]::part(knob):active { background: var(--slider-knob-pressed-fill, var(--slider-knob-fill, revert-layer)); }
+  input[type=range]::part(knob):disabled { background: var(--slider-knob-disabled-fill, var(--slider-knob-fill, revert-layer)); }
+  input[type=range]::part(core) { background: var(--slider-core-fill, revert-layer); }
+  input[type=range]::part(knob), input[type=range]::part(core) { corner-shape: var(--slider-knob-corner-shape); }
+  input[type=checkbox][switch]::part(track) {
+    border-width: var(--stroke-hairline); border-style: solid; border-color: var(--switch-track-rim); border-radius: var(--chip-radius);
+    background: var(--switch-track-fill, revert-layer);
+  }
   input[type=checkbox][switch]::part(knob) {
-    border: var(--stroke-hairline) solid var(--line); border-radius: var(--chip-radius);
+    border-width: var(--stroke-hairline); border-style: solid; border-color: var(--switch-knob-rim); border-radius: var(--chip-radius);
+    background: var(--switch-knob-fill, revert-layer);
+  }
+  input[type=checkbox][switch]::part(track):checked {
+    border-color: var(--switch-checked-rim, var(--switch-track-rim));
+    background: var(--switch-checked-fill, revert-layer);
+    box-shadow: var(--switch-checked-shadow, var(--switch-track-shadow, none));
+  }
+  input[type=checkbox][switch]::part(track), input[type=checkbox][switch]::part(knob) {
+    corner-shape: var(--switch-corner-shape);
   }
   badge::part(base), tabs::part(tab), tabs::part(track), tabs::part(indicator) {
     border: none; border-radius: var(--tabs-radius);
   }
+  /* A badge: a neutral one's fill and ink, each tone's, and a rim in the
+     badge's ink (its tone's) a pack gives a width. */
+  badge::part(base) {
+    border-width: var(--badge-rim-width, 0px); border-style: solid; border-color: var(--badge-rim, currentColor);
+    font-family: var(--badge-font, revert-layer);
+    letter-spacing: var(--badge-tracking, revert-layer);
+    text-transform: var(--badge-transform, revert-layer);
+  }
+  badge[tone=neutral]::part(base) {
+    background: var(--badge-neutral-fill, revert-layer);
+    color: var(--badge-neutral-ink, revert-layer);
+  }
+  badge[tone=primary]::part(base) {
+    background: var(--badge-primary-fill, revert-layer);
+    color: var(--badge-primary-ink, revert-layer);
+  }
+  badge[tone=info]::part(base) { background: var(--badge-info-fill, revert-layer); color: var(--badge-info-ink, revert-layer); }
+  badge[tone=success]::part(base) { background: var(--badge-success-fill, revert-layer); color: var(--badge-success-ink, revert-layer); }
+  badge[tone=warn]::part(base) { background: var(--badge-warn-fill, revert-layer); color: var(--badge-warn-ink, revert-layer); }
+  badge[tone=danger]::part(base) { background: var(--badge-danger-fill, revert-layer); color: var(--badge-danger-ink, revert-layer); }
+  /* Tabs: the track a well, each tab's fill, ink and type, the indicator. */
+  tabs::part(track) {
+    background: var(--tabs-track-fill, revert-layer);
+    border: var(--tabs-track-border, none);
+    border-bottom: var(--tabs-track-rule, var(--tabs-track-border, none));
+    box-shadow: var(--tabs-track-shadow, revert-layer);
+  }
+  tabs::part(tab) {
+    background: var(--tabs-tab-fill, revert-layer);
+    color: var(--tabs-tab-ink, revert-layer);
+    font-family: var(--tabs-font, revert-layer);
+    font-size: var(--tabs-font-size, revert-layer);
+    letter-spacing: var(--tabs-tracking, revert-layer);
+    text-transform: var(--tabs-transform, revert-layer);
+  }
+  tabs::part(tab):hover {
+    background: var(--tabs-tab-hover-fill, var(--tabs-tab-fill, revert-layer));
+    color: var(--tabs-tab-hover-ink, var(--tabs-tab-ink, revert-layer));
+  }
+  tabs::part(tab):active { background: var(--tabs-tab-pressed-fill, var(--tabs-tab-hover-fill, var(--tabs-tab-fill, revert-layer))); }
+  tabs::part(tab):disabled { color: var(--tabs-tab-disabled-ink, revert-layer); }
+  tabs::part(indicator) {
+    background: var(--tabs-indicator-fill, revert-layer);
+    height: var(--tabs-indicator-height, revert-layer);
+    box-shadow: var(--tabs-indicator-glow, revert-layer);
+    border-radius: var(--tabs-indicator-radius, var(--tabs-radius));
+  }
   input[type=radio]::part(card) {
-    border: var(--stroke-hairline) solid var(--line); border-radius: var(--radio-card-radius);
+    border-width: var(--stroke-hairline); border-style: solid; border-color: var(--line); border-radius: var(--radio-card-radius);
     box-shadow: var(--radio-card-shadow);
+  }
+  input[type=radio]::part(card):hover {
+    border-color: var(--radio-card-hover-rim, var(--radio-card-rim, var(--line)));
+    background: var(--radio-card-hover-fill, var(--radio-card-fill, revert-layer));
+  }
+  input[type=radio]::part(card):checked {
+    background: var(--radio-card-checked-fill);
+    border-color: var(--radio-card-checked-rim, var(--radio-card-rim, var(--line)));
+    box-shadow: var(--radio-card-checked-shadow, var(--radio-card-shadow));
+    color: var(--radio-card-checked-ink, revert-layer);
   }
   input[type=radio]::part(card):active, input[type=radio]::part(card):disabled { box-shadow: none; }
   input[type=radio]::part(ring), input[type=radio]::part(dot),
@@ -720,6 +1052,23 @@ const FALLBACKS: &str = r#"
     box-shadow: var(--meter-shadow);
   }
   meter::part(fill), progress::part(fill), input[type=range]::part(fill) { box-shadow: var(--meter-fill-shadow); }
+  input[type=range]::part(fill) { background: var(--slider-fill, revert-layer); box-shadow: var(--slider-fill-shadow); }
+  input[type=range]::part(tick) { background: var(--slider-tick-fill, revert-layer); }
+  meter::part(fill) { background: var(--meter-fill, revert-layer); }
+  meter[region=suboptimum]::part(fill) { background: var(--meter-suboptimum-fill, revert-layer); }
+  meter[region=poor]::part(fill) { background: var(--meter-poor-fill, revert-layer); }
+  meter.health::part(fill) { background: var(--meter-health-fill, var(--meter-fill, revert-layer)); }
+  meter.mana::part(fill) { background: var(--meter-mana-fill, var(--meter-fill, revert-layer)); }
+  progress::part(fill) { background: var(--progress-fill, var(--meter-fill, revert-layer)); }
+  /* Text and the surface's extras. */
+  h1::part(flourish), h2::part(flourish), h3::part(flourish) { background: var(--heading-flourish, revert-layer); }
+  scroll::part(bar) {
+    background: var(--scrollbar-fill, revert-layer);
+    border-radius: var(--scrollbar-radius, revert-layer);
+  }
+  og-icon::part(secondary) { color: var(--icon-secondary-ink, revert-layer); }
+  popover::part(arrow) { background: var(--popover-arrow-fill, revert-layer); }
+  og-spotlight::part(edge) { background: var(--spotlight-edge, revert-layer); }
   /* node_draw focus rings: outside the part, gap only for navigation. */
   button::part(focus):focus-visible, input::part(focus):focus-visible,
   textarea::part(focus):focus-visible, select::part(focus):focus-visible,
