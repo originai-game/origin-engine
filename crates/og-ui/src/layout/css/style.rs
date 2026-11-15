@@ -212,6 +212,15 @@ impl<'a> View<'a> {
         self.frame[k] as usize
     }
 
+    /// Its parent lays its flow out right to left (`direction: rtl`).
+    pub fn parent_flips(&self) -> bool {
+        let up = self.n().up;
+        up != NONE
+            && up < self.nodes.len()
+            && self.nodes[up].layout.used.flip
+            && !turns(frame_of(self.nodes, up))
+    }
+
     /// The node laying it out, and how.
     fn parent(&self) -> Option<(&'a Node, Kind)> {
         let up = self.n().up;
@@ -371,6 +380,18 @@ impl tf::CoreStyle for View<'_> {
 
     fn box_sizing(&self) -> tf::BoxSizing {
         tf::BoxSizing::BorderBox
+    }
+
+    /// CSS `direction`: a box whose inline direction runs against its
+    /// layout space's lays its flex lines, grid columns and block flow out
+    /// from the right (a vertical one's flip is its block axis, which its
+    /// frame turns).
+    fn direction(&self) -> tf::Direction {
+        if self.el().flip && !turns(self.frame) {
+            tf::Direction::Rtl
+        } else {
+            tf::Direction::Ltr
+        }
     }
 
     fn overflow(&self) -> tf::Point<tf::Overflow> {
@@ -604,16 +625,27 @@ impl tf::BlockItemStyle for View<'_> {
         self.el().table == TablePart::Table
     }
 
+    /// Its float side, physical: the lowering gives it before its
+    /// parent's right-to-left mirror, which Taffy's `direction` replaces.
     fn float(&self) -> tf::Float {
-        match self.el().float {
-            FloatSide::None => tf::Float::None,
-            FloatSide::Left => tf::Float::Left,
-            FloatSide::Right => tf::Float::Right,
+        let swap = self.parent_flips();
+        match (self.el().float, swap) {
+            (FloatSide::None, _) => tf::Float::None,
+            (FloatSide::Left, false) | (FloatSide::Right, true) => tf::Float::Left,
+            (FloatSide::Right, false) | (FloatSide::Left, true) => tf::Float::Right,
         }
     }
 
     fn clear(&self) -> tf::Clear {
-        match self.el().clear & (float::LEFT | float::RIGHT) {
+        let c = self.el().clear & (float::LEFT | float::RIGHT);
+        // One side swaps; none and both stay.
+        let both = float::LEFT | float::RIGHT;
+        let c = if self.parent_flips() && c != 0 && c != both {
+            c ^ both
+        } else {
+            c
+        };
+        match c {
             0 => tf::Clear::None,
             c if c == float::LEFT => tf::Clear::Left,
             c if c == float::RIGHT => tf::Clear::Right,
