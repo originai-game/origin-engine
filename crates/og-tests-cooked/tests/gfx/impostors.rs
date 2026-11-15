@@ -101,7 +101,10 @@ fn a_cards_trunk_is_in_its_own_crowns_shadow() {
 /// trunk before the crown: crown pieces loose beside the trunk, 192 px
 /// from 45 degrees, and the trunk blotched), or a frame drawing what lies
 /// behind the one surface it holds (specks of crown beside the trunk, 49
-/// px).
+/// px), or the card's own shadow read straight along each of the four
+/// frames about the sun (each put the crown's shadow edge elsewhere on the
+/// thin trunk, combing it into streaks up close: 162 and 86 px in small
+/// pieces from 30 and 45 degrees, the mesh 9 and 12).
 #[test]
 #[ignore = "requires GPU"]
 fn a_card_seen_from_below_is_whole() {
@@ -150,6 +153,24 @@ fn a_card_seen_from_below_is_whole() {
                         && card.1 > 0.9 * mesh.1
                         && card.2 > 0.9 * mesh.2,
                     "from {name} degrees below the card {card:?} against the mesh {mesh:?}"
+                );
+            }
+        }
+        if below {
+            // Up close, the card's own shadow on its trunk: one edge, as the
+            // mesh's, not combed into small lit and shaded pieces.
+            for (name, distance, angle) in [("near30", 3.6f32, 30f32), ("near45", 4.0, 45.0)] {
+                let a = angle.to_radians();
+                let target = CARD_AT + Vec3::new(0.0, mid.y * 0.8, 0.0);
+                scene.frame.camera.position = target + Vec3::new(0.0, -a.sin(), a.cos()) * distance;
+                scene.frame.camera.target = target;
+                r.render(&scene, &RenderTarget::Offscreen).expect("render");
+                let img = r.read_offscreen().expect("capture");
+                let streaks = streak_pixels(&img);
+                println!("{name}: trunk streak pixels {streaks}");
+                assert!(
+                    streaks <= 60,
+                    "up close from {name} degrees below, the card's trunk has {streaks} pixels in small lit or shaded pieces"
                 );
             }
         }
@@ -299,6 +320,61 @@ fn loose_pixels(img: &og_render::RgbaImage, x0: u32, x1: u32) -> usize {
         largest = largest.max(size);
     }
     total - largest
+}
+
+/// The trunk's pixels (brown) in pieces under 40 px of either side of its
+/// shading (lit or shaded: luma above or below the middle of its 10th and
+/// 90th percentiles), 8-connected: a shadow edge combed into streaks.
+fn streak_pixels(img: &og_render::RgbaImage) -> usize {
+    let (w, h) = (img.width as usize, img.height as usize);
+    let px = |k: usize| &img.pixels[k * 4..k * 4 + 3];
+    let trunk: Vec<bool> = (0..w * h)
+        .map(|k| {
+            let p = px(k);
+            p[0] > p[1] + 8 && p[0] > p[2] + 8
+        })
+        .collect();
+    let luma = |k: usize| {
+        let p = px(k);
+        0.2126 * f32::from(p[0]) + 0.7152 * f32::from(p[1]) + 0.0722 * f32::from(p[2])
+    };
+    let mut l: Vec<f32> = (0..w * h).filter(|&k| trunk[k]).map(luma).collect();
+    if l.is_empty() {
+        return 0;
+    }
+    l.sort_by(f32::total_cmp);
+    let mid = 0.5 * (l[l.len() / 10] + l[l.len() * 9 / 10]);
+    let side: Vec<bool> = (0..w * h).map(|k| luma(k) > mid).collect();
+    let mut seen = vec![false; w * h];
+    let mut streaks = 0;
+    for start in 0..w * h {
+        if seen[start] || !trunk[start] {
+            continue;
+        }
+        seen[start] = true;
+        let (mut stack, mut piece) = (vec![start], 0);
+        while let Some(k) = stack.pop() {
+            piece += 1;
+            let (x, y) = ((k % w) as i64, (k / w) as i64);
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                    let (nx, ny) = (x + dx, y + dy);
+                    if nx < 0 || ny < 0 || nx >= w as i64 || ny >= h as i64 {
+                        continue;
+                    }
+                    let n = ny as usize * w + nx as usize;
+                    if !seen[n] && trunk[n] && side[n] == side[start] {
+                        seen[n] = true;
+                        stack.push(n);
+                    }
+                }
+            }
+        }
+        if piece < 40 {
+            streaks += piece;
+        }
+    }
+    streaks
 }
 
 fn tree_pixels(img: &og_render::RgbaImage, x0: u32, x1: u32) -> (f32, f32, f32) {

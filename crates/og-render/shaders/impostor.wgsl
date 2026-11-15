@@ -168,20 +168,29 @@ fn imp_self_shadow(x: vec3<f32>, l: vec3<f32>) -> f32 {
     let o = vec2<u32>(k & 1u, k >> 1u);
     let wk = select(1.0 - w.x, w.x, o.x == 1u) * select(1.0 - w.y, w.y, o.y == 1u);
     if (wk <= 0.0) { continue; }
-    lit += wk * imp_frame_shadow(x, (i.x + o.x) + (i.y + o.y) * g);
+    lit += wk * imp_frame_shadow(x, l, (i.x + o.x) + (i.y + o.y) * g);
   }
   return lit;
 }
 
 // How lit `x` is by frame `f` of the depth atlas seen as a map from its
-// direction: 0 where a covered texel stands ahead of it.
-fn imp_frame_shadow(x: vec3<f32>, f: u32) -> f32 {
+// direction: 0 where a covered texel stands ahead of it. The frame looks
+// along its own direction, up to half a frame's step off the light `l`:
+// what stands ahead of `x` there is looked up where the light's ray from
+// `x` reaches that depth (one parallax step along `l`). Read straight
+// along the frame's direction, each of the four frames put the crown's
+// shadow edge somewhere else on a thin trunk, and their blend combed it
+// into parallel streaks (a near card seen from below, and from above).
+fn imp_frame_shadow(x: vec3<f32>, l: vec3<f32>, f: u32) -> f32 {
+  let d = imp_frame_dir(f);
   let uv = imp_frame_uv(x, f);
   if (any(abs(uv) > vec2<f32>(1.0))) { return 1.0; }
-  let a = imp_atlas(f, uv);
-  let covered = textureSampleLevel(base_color_tex, material_sampler, a, imp_level + 1.0).a;
+  let depth0 = textureSampleLevel(normal_tex, material_sampler, imp_atlas(f, uv), imp_level + 1.0).a * 2.0 - 1.0;
+  let at = uv + imp_frame_uv(l, f) * (max(depth0 - dot(x, d), 0.0) / max(dot(l, d), 0.2));
+  let a = imp_atlas(f, at);
+  let covered = textureSampleLevel(base_color_tex, material_sampler, a, imp_level + 1.0).a * imp_inside(at);
   let depth = textureSampleLevel(normal_tex, material_sampler, a, imp_level + 1.0).a * 2.0 - 1.0;
-  let ahead = depth - dot(x, imp_frame_dir(f));
+  let ahead = depth - dot(x, d);
   return 1.0 - smoothstep(0.08, 0.25, ahead) * smoothstep(0.3, 0.7, covered);
 }
 

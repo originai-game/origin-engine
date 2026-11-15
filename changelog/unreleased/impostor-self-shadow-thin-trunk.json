@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "rendering: impostors",
+      "summary": "A near impostor's own shadow on a thin trunk (its crown's) draws as one edge instead of combed parallel streaks: each of the four atlas frames about the sun read the shadow straight along its own direction, up to half a frame's step off the sun, and put the edge somewhere else; each now reads it along the sun's ray."
+    }
+  ]
+}
