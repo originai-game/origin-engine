@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "GlobalIllumination",
+      "summary": "Screen-space GI (method `screen` and `both`) gathers each ray's whole line of surfaces, each direction lit once by the nearest surface that fills it, instead of one hit a ray: in a closed room it now gathers about 0.78 of a path-traced bounce where it gathered 0.65, so shade under GI is brighter and takes more of its surroundings' colour, and a floor or wall leaving the frame goes on lighting what stands beside it. `rays` now defaults to 2 and `steps` to 16; a game that set them keeps its values, and more of either only smooths a frame without TAA."
+    }
+  ]
+}

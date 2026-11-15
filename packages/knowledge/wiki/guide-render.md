@@ -135,8 +135,11 @@ feeds back into the simulation.
 - Screen GI: rays over each pixel's hemisphere take the light the previous
   frame showed where they hit, so a few frames give many bounces (a red
   wall tints the floor, a sunlit patch lights the ceiling), but nothing
-  off screen. Under TAA the rays change each frame and average; without
-  it a still frame keeps one blurred pattern.
+  off screen beyond a floor or wall running a little on past the frame's
+  edge. Each ray gathers every surface along it, so the default two give
+  the whole bounce; more rays and steps only smooth it. Under TAA the
+  rays change each frame and average; without it a still frame keeps one
+  blurred pattern.
 - Probe GI: cascades traced in software around the camera light every lit
   surface (meshes, terrain, grass, scattered copies); light from behind
   walls bounces and the sky is occluded under roofs and between

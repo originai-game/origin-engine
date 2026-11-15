@@ -21,8 +21,8 @@ Token `og.GlobalIllumination`, registered under the schema name `og.GlobalIllumi
 | `intensity` | `number` | `1` | ≥ 0 | — | tunable | Scales the bounced light; 1 is physical. With probes the sky's light and emission are not scaled, only what surfaces bounce. |
 | `maxDistance` | `number` | `16` | ≥ 0 | `m` | tunable | How far each ray travels at most: the reach of a bounce. A ray also stops where it leaves the screen, its steps spread over what it crosses on screen. With probes (`both`) the rays reach one probe spacing at most: farther, the probes give the light. |
 | `thickness` | `number` | `0.5` | ≥ 0 | `m` | tunable | How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it. |
-| `steps` | `number` | `12` | 4 … 64 | — | — | Steps along each ray. |
-| `rays` | `number` | `4` | 1 … 16 | — | — | Rays per pixel each frame: more is smoother and costlier (TAA adds the frames' rays together). |
+| `steps` | `number` | `16` | 4 … 64 | — | — | Steps along each ray: more finds thinner things and gives a smoother still frame. |
+| `rays` | `number` | `2` | 1 … 16 | — | — | Rays per pixel each frame, two to a line across the pixel (an odd count is the next even one); each gathers every surface along it, so two give the whole bounce. More is smoother and costlier (TAA adds the frames' rays together). |
 | `occlusion` | `number` | `1` | 0 … 1 | — | tunable | How much of the ambient light the rays that hit something take away (1 physical, 0 the bounce is only added); not read while PostEffects.ao is on, whose term occludes. |
 | `resolution` | `AoResolution` | `"full"` | — | — | — | Full resolution, or half for a quarter of the rays and a depth-aware upsample. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's. |
 | `probeSpacing` | `number` | `1` | ≥ 0.05 | `m` | — | With probes: the distance between neighbouring probes of the finest cascade (16 × 8 × 16 probes around the camera); each next cascade's probes are twice as far apart, reaching twice as far. About a third of a room's size indoors, a few metres outdoors. |
@@ -54,13 +54,13 @@ resource GlobalIllumination {
     unit m
     tunable true
   }
-  field steps u32 "Steps along each ray." {
-    default 12
+  field steps u32 "Steps along each ray: more finds thinner things and gives a smoother still frame." {
+    default 16
     min 4
     max 64
   }
-  field rays u32 "Rays per pixel each frame: more is smoother and costlier (TAA adds the frames' rays together)." {
-    default 4
+  field rays u32 "Rays per pixel each frame, two to a line across the pixel (an odd count is the next even one); each gathers every surface along it, so two give the whole bounce. More is smoother and costlier (TAA adds the frames' rays together)." {
+    default 2
     min 1
     max 16
   }

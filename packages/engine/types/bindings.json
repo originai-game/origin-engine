@@ -10497,12 +10497,12 @@
         {
           "name": "steps",
           "column": "u32",
-          "default": 12
+          "default": 16
         },
         {
           "name": "rays",
           "column": "u32",
-          "default": 4
+          "default": 2
         },
         {
           "name": "occlusion",

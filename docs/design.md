@@ -1094,7 +1094,10 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   FidelityFX SSSR and its denoiser (MIT, `third_party/fidelityfx-sssr`),
   on opaque surfaces of the main perspective 3D camera, over the probes and
   environment.
-- **Global illumination** (`og.GlobalIllumination`): screen-space GI, DDGI
+- **Global illumination** (`og.GlobalIllumination`): screen-space GI as a
+  horizon gather over visibility bitmasks (Therrien et al. 2023; a slice's
+  sectors each lit once by the nearest surface that covers them, its light
+  last frame's), DDGI
   probe GI after Wicked Engine's (MIT, `third_party/wicked-ddgi`) traced in
   software (WebGPU has no hardware ray tracing), GTAO bent normals (XeGTAO,
   MIT), and realtime light volumes. The live procedural sky drives the

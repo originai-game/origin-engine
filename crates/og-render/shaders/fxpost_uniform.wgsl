@@ -23,7 +23,7 @@ struct FxPost {
   blur: vec4<f32>,            // the screen blur: x kind (0 off, 1 zoom, 2 spin, 3 directional), y strength, zw centre (uv)
   blur2: vec4<f32>,           // x: taps, yz: directional's offset (uv) at t = 1
   gi0: vec4<f32>,             // screen-space GI (ssgi.wgsl): x max distance, y thickness, z intensity (0: off), w steps
-  gi1: vec4<f32>,             // x: rays, y: the noise's frame offset (px), z: 1 with last frame's lit image (tex_a), w: the occlusion from 0 the rays, 1 GTAO, 2 SSAO
+  gi1: vec4<f32>,             // x: rays, y: the noise's frame (ssgi.rs noise_offset), z: 1 with last frame's lit image (tex_a), w: the occlusion from 0 the rays, 1 GTAO, 2 SSAO
   gi2: vec4<f32>,             // x: how much the rays' hits occlude the ambient light
   // Fog of war (post/sight.rs): row 0 the map's min corner in its plane
   // (from the frame's origin) and 1 over its extent, row 1 the unseen's

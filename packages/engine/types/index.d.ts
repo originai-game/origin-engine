@@ -8391,16 +8391,16 @@ export interface GlobalIllumination {
    */
   thickness: number;
   /**
-   * Steps along each ray.
+   * Steps along each ray: more finds thinner things and gives a smoother still frame.
    *
-   * @default 12
+   * @default 16
    * @range 4..64
    */
   steps: number;
   /**
-   * Rays per pixel each frame: more is smoother and costlier (TAA adds the frames' rays together).
+   * Rays per pixel each frame, two to a line across the pixel (an odd count is the next even one); each gathers every surface along it, so two give the whole bounce. More is smoother and costlier (TAA adds the frames' rays together).
    *
-   * @default 4
+   * @default 2
    * @range 1..16
    */
   rays: number;

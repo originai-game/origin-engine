@@ -638,13 +638,13 @@
       unit m
       tunable true
     }
-    field steps u32 "Steps along each ray." {
-      default 12
+    field steps u32 "Steps along each ray: more finds thinner things and gives a smoother still frame." {
+      default 16
       min 4
       max 64
     }
-    field rays u32 "Rays per pixel each frame: more is smoother and costlier (TAA adds the frames' rays together)." {
-      default 4
+    field rays u32 "Rays per pixel each frame, two to a line across the pixel (an odd count is the next even one); each gathers every surface along it, so two give the whole bounce. More is smoother and costlier (TAA adds the frames' rays together)." {
+      default 2
       min 1
       max 16
     }
