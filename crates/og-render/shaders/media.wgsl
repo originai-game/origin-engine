@@ -1,7 +1,8 @@
 // What the air and the water between the eye and a point do to its light,
 // for every pass that draws into the HDR target: the frame's fog (distance
-// and height, og.Fog) and the underwater view's water body (the sun's
-// shafts in it are the water volume's). Part of the frame group's text (shader_source.rs FRAME_WGSL),
+// and height, og.Fog), the underwater view's water body (the sun's
+// shafts in it are the water volume's) and the phase function of what
+// scatters in them. Part of the frame group's text (shader_source.rs FRAME_WGSL),
 // after frame.wgsl, whose `frame` uniform it reads.
 
 // Fog: distance (exponential from start, or a linear ramp start..end) and
@@ -80,4 +81,13 @@ fn apply_fog(color: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
 fn fog_keep(p: vec3<f32>) -> f32 {
   if (frame.fog_color.w < 0.5) { return 1.0; }
   return 1.0 - fog_amount(p).a;
+}
+
+// The Henyey-Greenstein phase function: the share of light scattered by
+// the angle whose cosine is `cos_t` (between the light's travel and the
+// scattered ray), per steradian, for the mean cosine `g` (0 even, towards 1
+// forward). An even share is 0.25 / PI.
+fn hg_phase(cos_t: f32, g: f32) -> f32 {
+  let g2 = g * g;
+  return (1.0 - g2) / (4.0 * PI * pow(max(1.0 + g2 - 2.0 * g * cos_t, 1e-4), 1.5));
 }

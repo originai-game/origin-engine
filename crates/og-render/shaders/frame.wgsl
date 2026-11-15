@@ -23,6 +23,23 @@ struct LocalLight {
   cone: vec4<f32>,            // x: cos outer, y: 1 / (cos inner - cos outer), z: normal offset per metre, w: depth bias
 };
 
+// How much of a local light's intensity reaches `d2` (the squared distance
+// from it), before the inverse square: Karis's window (UE4, 2013), which
+// falls smoothly to 0 at its range.
+fn range_window(light: LocalLight, d2: f32) -> f32 {
+  let range = light.position_range.w;
+  let ratio = d2 / (range * range);
+  let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
+  return window * window;
+}
+
+// How much of a spot light's cone the direction `l` (towards the light)
+// lies in: 1 inside the inner cone, falling to 0 at the outer one.
+fn spot_cone(light: LocalLight, l: vec3<f32>) -> f32 {
+  let t = clamp((dot(-l, light.direction_slot.xyz) - light.cone.x) * light.cone.y, 0.0, 1.0);
+  return t * t;
+}
+
 struct Frame {
   view_proj: mat4x4<f32>,     // jittered when TAA is on
   inv_view_proj: mat4x4<f32>,

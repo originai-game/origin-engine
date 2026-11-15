@@ -153,7 +153,8 @@ fn the_compiled_wgsl_is_the_source_without_its_comments() {
 /// A mechanism's shader code has one copy, in the file that owns it: no
 /// other file writes these tokens (a definition of a library function or
 /// of a constant pi; Oklab's matrix, or Rec.601's weights where every
-/// shader means Rec.709's; the GGX lobe; the
+/// shader means Rec.709's; a local light's window and a spot's cone; a
+/// phase function; the GGX lobe; the
 /// choice between a cascade's depth and a local light's value, which
 /// every caster takes from `shadow_depth` or `shadow_card`; the fog and
 /// the water body between the eye and a point; the sky of a look; a read of the
@@ -209,7 +210,16 @@ fn a_mechanisms_shader_code_is_written_once() {
                 "fn value_noise3_at(",
             ],
         ),
-        (&["frame.wgsl"], &["fn toward_eye("]),
+        (
+            &["frame.wgsl"],
+            &[
+                "fn toward_eye(",
+                "fn range_window(",
+                "fn spot_cone(",
+                "1.0 - ratio * ratio",
+                "* light.cone.y",
+            ],
+        ),
         (
             &["ggx.wgsl"],
             &["fn d_ggx(", "fn v_ggx(", "* sqrt(n_dot_v * n_dot_v"],
@@ -229,6 +239,8 @@ fn a_mechanisms_shader_code_is_written_once() {
                 "fn fog_keep(",
                 "fn underwater_light(",
                 "fn underwater_body(",
+                "fn hg_phase(",
+                "2.0 * g * cos",
             ],
         ),
         (

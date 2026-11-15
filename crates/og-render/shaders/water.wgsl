@@ -176,9 +176,7 @@ fn water_optics(v: vec3<f32>, l: vec3<f32>, thickness: f32, forward: vec3<f32>) 
 // Sea water's phase function for the sun's light: a Henyey–Greenstein lobe of g 0.9 (particles scatter forward;
 // Mobley's Light and Water, ch. 3), mixed with a fifth of an even share for the water's own molecular scattering.
 fn hg_water(cos_t: f32) -> f32 {
-  let g = 0.9;
-  let hg = (1.0 - g * g) / (12.5663706 * pow(1.0 + g * g - 2.0 * g * cos_t, 1.5));
-  return mix(hg, 0.0795775, 0.2);
+  return mix(hg_phase(cos_t, 0.9), 0.25 / PI, 0.2);
 }
 
 // The light on white water (a bank's or a ripple's foam, a wake's, a fall's sheet), over its colour: a cloud of

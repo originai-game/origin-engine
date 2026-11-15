@@ -209,11 +209,6 @@ fn cloud_sun(p: vec3<f32>, radius: f32, to_light: vec3<f32>, light: vec3<f32>, p
   return 3.0 * frame.sky_glow.yzw * scatter_sun_transmittance(r_km, dot(normalize(p), to_light));
 }
 
-fn cloud_hg(cos_t: f32, g: f32) -> f32 {
-  let g2 = g * g;
-  return (1.0 - g2) / (12.566371 * pow(max(1.0 + g2 - 2.0 * g * cos_t, 1e-4), 1.5));
-}
-
 // A cloud layer over a background it has not seen: rgb its light, a how much of the background it lets through
 // (what a march answers: every step of one is linear in what lies behind it, so the clouds are marched without their
 // background, at the sky's vertices and into the low-resolution cloud target as at a pixel). No clouds: (0, 1).
@@ -385,7 +380,7 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   if (physical) { to_light = normalize(frame.sky_sun_dir.xyz); }
   let light = frame.light_color.rgb / max(c[4].y, 9.1e-4);
   let cos_t = dot(d, to_light);
-  let phase = mix(cloud_hg(cos_t, 0.6), cloud_hg(cos_t, -0.25), 0.35);
+  let phase = mix(hg_phase(cos_t, 0.6), hg_phase(cos_t, -0.25), 0.35);
   // The clear sky's light from above and from the horizon (sky_look.wgsl clear_sky_light: never the image-based light,
   // which the live sky fills with these clouds).
   let sky_scale = frame.params.x / max(c[4].z, 0.05);

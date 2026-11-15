@@ -111,10 +111,7 @@ fn area_shade(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3
   var hw = light.direction_slot.xyz;
   let hh = light.cone.xyz;
   let to_p = p - center;
-  let d2 = max(dot(to_p, to_p), 1e-4);
-  let range = light.position_range.w;
-  let ratio = d2 / (range * range);
-  let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
+  let window = range_window(light, max(dot(to_p, to_p), 1e-4));
   if (window <= 0.0) { return o; }
   // Emits along -(hw × hh); the back face too when two-sided (reversed
   // winding).
@@ -128,7 +125,7 @@ fn area_shade(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3
   let m_inv = mat3x3<f32>(vec3<f32>(t.m.x, 0.0, t.m.y), vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(t.m.z, 0.0, t.m.w));
   let fresnel = s.f0 * t.fresnel.x + (vec3<f32>(1.0) - s.f0) * t.fresnel.y;
   let identity = mat3x3<f32>(vec3<f32>(1.0, 0.0, 0.0), vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(0.0, 0.0, 1.0));
-  let radiance = light.color_kind.rgb * window * window;
+  let radiance = light.color_kind.rgb * window;
   o.specular = radiance * fresnel * ltc_evaluate(n, v, p, m_inv, rect);
   o.diffuse = radiance * s.albedo * (1.0 - s.metallic) * ltc_evaluate(n, v, p, identity, rect);
   if (s.translucency > 0.0) {
@@ -300,16 +297,9 @@ fn local_reach(light: LocalLight, translucency: f32, p: vec3<f32>, n: vec3<f32>)
   o.lit = false;
   let to_light = light.position_range.xyz - p;
   let d2 = max(dot(to_light, to_light), 1e-4);
-  let range = light.position_range.w;
-  let ratio = d2 / (range * range);
-  let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
-  var atten = window * window / d2;
+  var atten = range_window(light, d2) / d2;
   o.l = to_light * inverseSqrt(d2);
-  if (light.color_kind.w > 0.5) {
-    let cos_angle = dot(-o.l, light.direction_slot.xyz);
-    let t = clamp((cos_angle - light.cone.x) * light.cone.y, 0.0, 1.0);
-    atten *= t * t;
-  }
+  if (light.color_kind.w > 0.5) { atten *= spot_cone(light, o.l); }
   if (atten <= 0.0 || (dot(n, o.l) <= 0.0 && translucency <= 0.0)) { return o; }
   o.radiance = light.color_kind.rgb * light_cookie(light, -o.l) * atten;
   o.lit = true;

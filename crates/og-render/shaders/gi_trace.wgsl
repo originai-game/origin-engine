@@ -181,22 +181,16 @@ fn gi_shade(p: vec3<f32>, n: vec3<f32>, d: vec3<f32>, record: u32, seed: u32) ->
       direct += frame.light_color.rgb * n_dot_l;
     }
   }
-  // One local light at random, as many times as there are lights (UE4's
-  // windowed inverse square, the cone of a spot, as pbr.wgsl).
+  // One local light at random, as many times as there are lights (its
+  // windowed inverse square and a spot's cone, frame.wgsl's).
   let lights = gp.misc.w;
   if (lights > 0u) {
     let light = light_at(pcg(seed) % lights);
     let to_light = light.position_range.xyz - q;
     let d2 = max(dot(to_light, to_light), 1e-4);
-    let range = light.position_range.w;
-    let ratio = d2 / (range * range);
-    let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
-    var atten = window * window / d2;
+    var atten = range_window(light, d2) / d2;
     let lv = to_light * inverseSqrt(d2);
-    if (light.color_kind.w > 0.5) {
-      let t = clamp((dot(-lv, light.direction_slot.xyz) - light.cone.x) * light.cone.y, 0.0, 1.0);
-      atten *= t * t;
-    }
+    if (light.color_kind.w > 0.5) { atten *= spot_cone(light, lv); }
     let ndl = dot(n, lv);
     if (atten > 0.0 && ndl > 0.0) {
       if (gi_trace(q, lv, sqrt(d2), true).record == 0u) {

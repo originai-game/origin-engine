@@ -221,9 +221,7 @@ fn fs_spray(in: SprayOut) -> @location(0) vec4<f32> {
   // dense cloud of them), lit by the sun through the shadows and by the sky above.
   let l = normalize(frame.light_dir.xyz);
   let v = normalize(frame.view_pos.xyz - in.world);
-  let g = 0.75;
-  let cos_t = dot(l, -v);
-  let hg = (1.0 - g * g) / (12.5663706 * pow(1.0 + g * g - 2.0 * g * cos_t, 1.5));
+  let hg = hg_phase(dot(l, -v), 0.75);
   var sun = 1.0;
   if (water.extra.x > 0.0 && frame.light_dir.w > 0.5) {
     sun = mix(1.0, cascade_shadow(in.world, vec3<f32>(0.0, 1.0, 0.0), max(l.y, 0.0)), water.extra.x);

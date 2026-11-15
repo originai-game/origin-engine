@@ -74,11 +74,6 @@ fn vol_medium(p: vec3<f32>) -> vec4<f32> {
   return m;
 }
 
-fn hg_phase(cos_theta: f32, g: f32) -> f32 {
-  let g2 = g * g;
-  return (1.0 - g2) / (4.0 * PI * pow(max(1.0 + g2 - 2.0 * g * cos_theta, 1e-4), 1.5));
-}
-
 // The view depth of a slice edge at fraction f of the grid's depth.
 fn slice_depth(f: f32) -> f32 {
   return vol.extent.x * f * f;
@@ -143,10 +138,7 @@ fn locals_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32) -> vec3<f
     let light = light_at(cluster_ref(first + k));
     let to_light = light.position_range.xyz - p;
     let d2 = max(dot(to_light, to_light), 1e-4);
-    let range = light.position_range.w;
-    let ratio = d2 / (range * range);
-    let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
-    var atten = window * window / d2;
+    var atten = range_window(light, d2) / d2;
     let l = to_light * inverseSqrt(d2);
     let kind = light.color_kind.w;
     if (kind < -0.5) {
@@ -160,10 +152,7 @@ fn locals_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32) -> vec3<f
         atten *= rect_shadow(light, p, l);
       }
     } else {
-      if (kind > 0.5) {
-        let t = clamp((dot(-l, light.direction_slot.xyz) - light.cone.x) * light.cone.y, 0.0, 1.0);
-        atten *= t * t;
-      }
+      if (kind > 0.5) { atten *= spot_cone(light, l); }
       if (atten > 0.0) {
         atten *= local_shadow_lookup(light, p, l, false);
       }
