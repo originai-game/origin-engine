@@ -485,3 +485,64 @@ fn compute_and_cpu_agree_on_curves_attractors_fields_and_splines() {
         );
     }
 }
+
+/// A system no view can see costs no draw, and one whose particles reach
+/// into view still draws: the particles scene with a fountain far behind
+/// its camera draws the same frame with the same draw count as without
+/// it; with one off the left edge whose particles a wind carries into
+/// view, its frame differs (the wind is what brings them, so a bound that
+/// leaves it out culls them).
+#[test]
+#[ignore = "requires GPU"]
+fn a_system_out_of_view_is_not_drawn_and_one_blown_into_it_is() {
+    let desc = small();
+    let frame = |scene: &mut RenderScene| run(&desc, scene, 150, |s, f| fx::tick_all(s, f as u64));
+    let with = |at: Vec3, air: Vec3| {
+        let mut scene = fx::particles_scene();
+        let e = scene.add_emitter(ParticleEmitter {
+            max_particles: 400,
+            rate: 150.0,
+            lifetime: [2.0, 2.0],
+            speed: [0.2, 0.5],
+            size: [0.2, 0.3],
+            color: [3.0, 2.0, 0.5, 1.0],
+            // Only the wind carries them far.
+            gravity: Vec3::ZERO,
+            noise: og_render::ParticleNoise {
+                strength: 0.0,
+                ..Default::default()
+            },
+            drag: 3.0,
+            wind: 1.0,
+            space: og_render::SimulationSpace::World,
+            ..Default::default()
+        });
+        let mut sys = ParticleSystem::new(900, e, Mat4::from_translation(at), 4, 0);
+        sys.air = air;
+        scene.effects.particles.push(sys);
+        scene
+    };
+    let (plain, plain_stats, _) = frame(&mut fx::particles_scene());
+    let (behind, behind_stats, _) = frame(&mut with(Vec3::new(0.0, 2.0, 40.0), Vec3::ZERO));
+    assert_eq!(
+        behind_stats.particle_systems,
+        plain_stats.particle_systems + 1,
+        "simulated"
+    );
+    assert_eq!(behind_stats.draw_calls, plain_stats.draw_calls, "not drawn");
+    let differ = |a: &[u8], b: &[u8]| a.chunks(4).zip(b.chunks(4)).filter(|(x, y)| x != y).count();
+    assert_eq!(
+        differ(&behind.pixels, &plain.pixels),
+        0,
+        "pixels a system behind the camera changed"
+    );
+    let (blown, _, _) = frame(&mut with(
+        Vec3::new(-13.0, 1.0, 0.0),
+        Vec3::new(8.0, 0.0, 0.0),
+    ));
+    assert!(
+        differ(&blown.pixels, &plain.pixels) > 100,
+        "its particles blown into view: {} pixels",
+        differ(&blown.pixels, &plain.pixels)
+    );
+}

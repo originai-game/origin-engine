@@ -310,6 +310,7 @@ impl Renderer {
                         group,
                         u32::MAX,
                         false,
+                        None,
                         particles_gpu::ParticlePart::All,
                         |t: Option<TextureHandle>| match t {
                             None => white,

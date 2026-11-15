@@ -69,7 +69,7 @@ pub struct ParticleClock {
 
 impl ParticleClock {
     /// Seconds of the system's time at the start of `tick`.
-    pub(crate) fn at(&self, tick: u64, dt: f64) -> f64 {
+    pub fn at(&self, tick: u64, dt: f64) -> f64 {
         self.time + tick.saturating_sub(self.tick) as f64 * (dt * f64::from(self.scale))
     }
 }

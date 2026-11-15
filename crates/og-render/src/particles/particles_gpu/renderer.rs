@@ -20,6 +20,9 @@ impl ParticleRenderer {
         for s in self.systems.values_mut() {
             s.shift += d;
             moved(&mut s.cpu.prev_transform);
+            for p in &mut s.path {
+                p.1 += d;
+            }
             if let Some(g) = &mut s.gpu {
                 moved(&mut g.prev_transform);
             }
@@ -376,7 +379,9 @@ impl ParticleRenderer {
 
     /// Draws the frame's 3D systems on a camera's layers (`mask`) that
     /// `part` selects, far to near. `distort`: the group carries the pass's scene copy, so its
-    /// distortion systems draw (elsewhere they are left out). `mesh`: a
+    /// distortion systems draw (elsewhere they are left out). `view`: the
+    /// camera's frustum, which skips a system whose bound it does not
+    /// touch (None: every system draws). `mesh`: a
     /// mesh's f32 vertices, indices and index count. Returns the draws.
     #[allow(clippy::too_many_arguments)]
     pub fn draw<'b>(
@@ -387,6 +392,7 @@ impl ParticleRenderer {
         group: &wgpu::BindGroup,
         mask: u32,
         distort: bool,
+        view: Option<&crate::frame::Frustum>,
         part: ParticlePart<'_>,
         texture_group: impl Fn(Option<crate::TextureHandle>) -> &'b wgpu::BindGroup,
         mesh: impl Fn(crate::MeshHandle) -> Option<(&'b wgpu::Buffer, &'b wgpu::Buffer, u32)>,
@@ -397,6 +403,9 @@ impl ParticleRenderer {
                 && s.kind != DrawKind::Sprite
                 && (distort || s.kind != DrawKind::Distort)
                 && part.draws(s)
+                && !view
+                    .zip(s.bound)
+                    .is_some_and(|(f, (lo, hi))| !f.intersects_box(lo, hi))
         }) {
             let Some(state) = self.systems.get(&s.id) else {
                 continue;

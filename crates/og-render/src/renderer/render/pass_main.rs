@@ -358,6 +358,7 @@ impl Renderer {
                 group,
                 scene.frame.camera_layers,
                 true,
+                Some(view_frustum),
                 part,
                 |t: Option<TextureHandle>| match t {
                     None => white,

@@ -622,3 +622,94 @@ fn every_live_particle_is_in_its_systems_live_spawn_range() {
         }
     }
 }
+
+/// A system's cull bound holds every particle it has alive, tick by tick:
+/// a world-space emitter that circles and jumps leaves particles where
+/// they were born, gravity pulls them, drag carries them on a wind faster
+/// than they were thrown, its time scale slows and freezes and its tick
+/// goes back (a seek); a local-space one carries them with it. Once the
+/// emitter has stood still for a lifetime the bound shrinks back to that
+/// one place.
+#[test]
+fn every_live_particle_is_inside_its_systems_cull_bound() {
+    use crate::particles::particles_gpu::swept_bound;
+    for space in [SimulationSpace::World, SimulationSpace::Local] {
+        let e = ParticleEmitter {
+            rate: 120.0,
+            lifetime: [0.3, 0.9],
+            speed: [1.0, 3.0],
+            shape: EmitterShape::Cone {
+                angle_degrees: 40.0,
+                radius: 0.3,
+            },
+            gravity: Vec3::new(0.0, -1.0, 0.0),
+            drag: 2.0,
+            wind: 1.0,
+            space,
+            max_particles: 512,
+            ..Default::default()
+        };
+        let mut cpu = CpuParticles::default();
+        let points = shape_points(&e.shape, None);
+        let mut sys = ParticleSystem::new(1, EmitterHandle(0), Mat4::IDENTITY, 9, 0);
+        sys.air = Vec3::new(30.0, 0.0, 0.0);
+        let mut path = std::collections::VecDeque::new();
+        let at = |t: u64| match t {
+            // Circling fast, then a jump, then still.
+            0..120 => Vec3::new(
+                6.0 * og_core::math::cos(t as f32 * 0.2),
+                2.0,
+                6.0 * og_core::math::sin(t as f32 * 0.2),
+            ),
+            120..200 => Vec3::new(40.0, 0.0, -10.0),
+            _ => Vec3::new(-20.0, 5.0, 3.0),
+        };
+        let mut ticks: Vec<u64> = (0..330).collect();
+        // A seek back to tick 150 and on from there.
+        ticks.extend(150..400);
+        let mut last = None;
+        let (mut seeked, mut before) = (false, 0);
+        for t in ticks {
+            seeked |= t < before;
+            before = t;
+            sys.tick = t;
+            sys.transform = Mat4::from_translation(at(t));
+            sys.time_scale = match t {
+                160..220 => 0.3,
+                220..250 => 0.0,
+                _ => 1.0,
+            };
+            cpu.advance(&e, &sys, 60.0, &points, &[], &[], None, None);
+            let (lo, hi) = swept_bound(&e, &sys, 60.0, &cpu.clock, &mut path);
+            for p in cpu.slots.iter().filter(|p| p.alive()) {
+                let mut q = Vec3::from_slice(&p.pos_age[..3]);
+                if space == SimulationSpace::Local {
+                    q = sys.transform.transform_point3(q);
+                }
+                assert!(
+                    q.cmpge(lo).all() && q.cmple(hi).all(),
+                    "{space:?} tick {t}: a particle at {q} outside {lo}..{hi}"
+                );
+            }
+            // Circling: the circle's 12 m and one place's box (64 m).
+            if t == 100 && !seeked && space == SimulationSpace::World {
+                assert!((hi - lo).max_element() < 80.0, "circling: {lo}..{hi}");
+            }
+            // Just after the seek back, standing at one place since it (one
+            // place's box is 64 m across; two places are 60 m apart).
+            if seeked && t == 199 && space == SimulationSpace::World {
+                assert!(
+                    (hi - lo).max_element() < 70.0,
+                    "the places from before the seek stayed: {lo}..{hi}"
+                );
+            }
+            last = Some((lo, hi));
+        }
+        // Still at the last place for well over a lifetime of its time.
+        let (lo, hi) = last.unwrap();
+        assert!(
+            (hi - lo).max_element() < 70.0,
+            "{space:?}: the bound still spans the old places: {lo}..{hi}"
+        );
+    }
+}

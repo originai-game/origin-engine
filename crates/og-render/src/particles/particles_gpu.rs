@@ -162,6 +162,9 @@ struct SystemState {
     shift: Vec3,
     /// Its sub-emitters' vertex buffers, by sub-emitter.
     children: Vec<Option<wgpu::Buffer>>,
+    /// Where a world-space system's emitter stood in its particles' longest
+    /// life ([`swept_bound`]).
+    path: std::collections::VecDeque<(f64, Vec3)>,
 }
 
 /// One system's work this frame.
@@ -184,6 +187,9 @@ pub(crate) struct FrameSystem {
     child: Option<usize>,
     /// The slots drawn, as instance ranges in slot order ([`drawn`]).
     slots: [std::ops::Range<u32>; 2],
+    /// A box its particles stay inside ([`swept_bound`]): a view it does
+    /// not touch skips it. None: drawn in every view.
+    bound: Option<(Vec3, Vec3)>,
     kind: DrawKind,
     mesh: Option<crate::MeshHandle>,
     /// Its effect material (`effect.rs`) and how its pipeline differs.
@@ -486,6 +492,47 @@ fn reach(e: &ParticleEmitter, transform: Mat4, tick_rate: f32) -> (Vec3, Vec3) {
     let r = (shape + speed * life + 0.5 * pull * life * life + 0.5).min(500.0);
     let at = transform.w_axis.truncate();
     (at - Vec3::splat(r), at + Vec3::splat(r))
+}
+
+/// The box a system's particles stay inside after its tick, its clock at
+/// that tick: [`reach`] about every place its emitter stood within its
+/// particles' longest life of the system's own time (a world-space
+/// particle stays where it was born; a local one moves with the emitter),
+/// widened by the air its drag carries them on, which `reach` leaves out.
+/// `path` holds those places for a world-space system, kept from frame to
+/// frame; it starts over when the system's time goes back (a seek).
+pub(crate) fn swept_bound(
+    e: &ParticleEmitter,
+    sys: &crate::particles::ParticleSystem,
+    tick_rate: f32,
+    clock: &crate::particles::ParticleClock,
+    path: &mut std::collections::VecDeque<(f64, Vec3)>,
+) -> (Vec3, Vec3) {
+    let (lo, hi) = reach(e, sys.transform, tick_rate);
+    let at = sys.transform.w_axis.truncate();
+    let life = f64::from(e.max_lifetime()) + 2.0 / f64::from(tick_rate.max(1e-3));
+    let air = crate::particles::carrying_air(e, sys.air, None).length() * life as f32;
+    let (mut lo, mut hi) = (lo - Vec3::splat(air), hi + Vec3::splat(air));
+    if e.space == SimulationSpace::World {
+        let now = clock.at(sys.tick + 1, 1.0 / f64::from(tick_rate.max(1e-3)));
+        if path.back().is_some_and(|p| p.0 > now) {
+            path.clear();
+        }
+        if path.back().is_none_or(|p| p.1 != at) {
+            path.push_back((now, at));
+        }
+        // The oldest place goes once the one after it is a life old: the
+        // emitter stood there until then.
+        while path.len() > 1 && path[1].0 <= now - life {
+            path.pop_front();
+        }
+        let (below, above) = (at - lo, hi - at);
+        for &(_, p) in path.iter() {
+            lo = lo.min(p - below);
+            hi = hi.max(p + above);
+        }
+    }
+    (lo, hi)
 }
 
 /// The particle draw module after the frame group, the light tables and

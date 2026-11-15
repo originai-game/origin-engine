@@ -111,6 +111,7 @@ impl ParticleRenderer {
                 seen: 0,
                 shift: Vec3::ZERO,
                 children: Vec::new(),
+                path: Default::default(),
             });
             if state.emitter != sys.emitter.index() || state.max != e.max_particles {
                 *state = SystemState {
@@ -122,6 +123,7 @@ impl ParticleRenderer {
                     seen: 0,
                     shift: Vec3::ZERO,
                     children: Vec::new(),
+                    path: Default::default(),
                 };
             }
             state.seen = self.frame;
@@ -381,6 +383,7 @@ impl ParticleRenderer {
                 g.last_tick = Some(sys.tick);
                 g.prev_transform = Some(sys.transform);
                 let live = crate::particles::live_spawns(e, sys, tick_rate, &g.clock);
+                let bound = swept_bound(e, sys, tick_rate, &g.clock, &mut state.path);
                 let n_points = (points.len() / 2) as u32;
                 let local = e.space == SimulationSpace::Local;
                 for s in &steps {
@@ -438,6 +441,7 @@ impl ParticleRenderer {
                     layers,
                     child: None,
                     slots: drawn(e.max_particles, Some(live)),
+                    bound: Some(bound),
                     kind,
                     mesh,
                     effect,
@@ -475,6 +479,7 @@ impl ParticleRenderer {
                 }
                 out.cpu_alive += state.cpu.alive() as u32;
                 upload(device, queue, &mut state.upload, &state.cpu.slots);
+                let stepped = state.cpu.last_tick == Some(sys.tick);
                 entries.push(emitter_gpu(
                     e,
                     sys.transform,
@@ -501,10 +506,12 @@ impl ParticleRenderer {
                     // A hosted system's state may stand at another tick.
                     slots: drawn(
                         state.cpu.slots.len() as u32,
-                        (state.cpu.last_tick == Some(sys.tick)).then(|| {
+                        stepped.then(|| {
                             crate::particles::live_spawns(e, sys, tick_rate, &state.cpu.clock)
                         }),
                     ),
+                    bound: stepped
+                        .then(|| swept_bound(e, sys, tick_rate, &state.cpu.clock, &mut state.path)),
                     kind,
                     mesh,
                     effect,
@@ -569,6 +576,7 @@ impl ParticleRenderer {
                     layers,
                     child: Some(k),
                     slots: drawn(c.slots.len() as u32, None),
+                    bound: None,
                     kind,
                     mesh: match ce.render {
                         ParticleRender::Mesh { mesh } => Some(mesh),
@@ -951,6 +959,7 @@ impl ParticleRenderer {
                 seen: 0,
                 shift: Vec3::ZERO,
                 children: Vec::new(),
+                path: Default::default(),
             });
             state.seen = self.frame;
             upload(
@@ -992,6 +1001,7 @@ impl ParticleRenderer {
                 layers: m.layers,
                 child: None,
                 slots: drawn(1, None),
+                bound: None,
                 kind: DrawKind::Mesh,
                 mesh: Some(m.mesh),
                 effect: Some(m.material),

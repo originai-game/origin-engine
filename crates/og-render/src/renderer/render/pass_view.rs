@@ -199,6 +199,7 @@ impl Renderer {
                     group,
                     p.layers,
                     false,
+                    Some(&frustum),
                     particles_gpu::ParticlePart::All,
                     |t: Option<TextureHandle>| match t {
                         None => white,
