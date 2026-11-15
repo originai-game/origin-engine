@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "rendering: impostors",
+      "summary": "A near impostor baked with `impostorBelow` and seen from under its horizon costs less to draw and no longer draws a band of crown across its trunk up close: its three views each found their own surface point, marching up to three rays a pixel; now the view weighted most marches once, with steps sized to the atlas's texels and a bisection at the hit, and the other views show that point where they see it."
+    }
+  ]
+}

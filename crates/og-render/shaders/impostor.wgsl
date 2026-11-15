@@ -108,8 +108,8 @@ fn imp_surface(in: ImpostorOut) -> ImpSurface {
   let along = toward + m3 * (ray - eye);
   let dd = imp_depths(transpose(m3) * (in.rest - in.centre) / in.extent, ray, in.frames);
   let par01 = vec4<f32>(imp_frame_par(ray, in.frames.x), imp_frame_par(ray, in.frames.y));
-  let uvs = imp_uvs(in.uv01, in.uv2, par01, imp_frame_par(ray, in.frames.z), in.frames, dd.pd, centre_eye.y < 0.0);
-  let c = imp_coverage(uvs.uv01, uvs.uv2, in.frames, in.weights);
+  let uvs = imp_uvs(in.uv01, in.uv2, par01, imp_frame_par(ray, in.frames.z), in.frames, dd, in.weights, centre_eye.y < 0.0);
+  let c = imp_coverage(uvs.uv01, uvs.uv2, in.frames, uvs.weights);
   let total = max(c.wa.x + c.wa.y + c.wa.z, 1e-5);
   let rgb = textureSampleLevel(base_color_tex, material_sampler, c.a0, imp_level).rgb * c.wa.x
     + textureSampleLevel(base_color_tex, material_sampler, c.a1, imp_level).rgb * c.wa.y

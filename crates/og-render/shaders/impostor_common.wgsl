@@ -224,23 +224,31 @@ fn imp_depth_at(f: u32, at: vec2<f32>, level: f32) -> ImpDepthAt {
 // How far a landing's fine depth may stand from the fixed point's (radii,
 // at level 0; doubling a level) and still be the surface the ray meets.
 const IMP_LANDED: f32 = 0.06;
-// The march's steps across the model's sphere, front to back.
-const IMP_MARCH: i32 = 16;
+// The march's step along the ray, in texels of the level read, and the
+// most steps it takes across the model's sphere.
+const IMP_STEP: f32 = 3.0;
+const IMP_STEPS: f32 = 24.0;
+// The halvings that place a hit between the march's last two steps.
+const IMP_BISECT: i32 = 4;
 // How many levels coarser an uncovered landing's coverage is read to say
 // the model is near it (none: the ray passes clear, and is not marched).
 const IMP_NEAR: f32 = 1.0;
+// How far apart (radii) a frame's depth and the point the march found
+// may stand and still be one surface.
+const IMP_AGREE: f32 = 0.12;
 // The level from which a card no longer marches.
 const IMP_MARCH_LEVEL: f32 = 1.0;
-// How far behind a frame's front surface a step may land and still meet
-// it: two steps' depth, past the surface's slope over one step.
-const IMP_THICK: f32 = 4.0 / f32(IMP_MARCH);
+// How far behind a frame's front surface the ray may meet it and still
+// meet that surface (radii; past it, the ray passed behind the surface).
+const IMP_THICK: f32 = 0.25;
 
 // Where frame `f` sees the surface the eye's ray through the card's point
 // meets, from its image `uv` of the card's point (`par`: imp_frame_par of
 // that ray; `pd`: imp_depths). The ray's point at frame depth z is
 // uv + par (z - pd); the surface is the first z, from the eye's side, whose
 // frame depth is at least z on a covered texel. A point moved past the
-// frame's square, or a ray that meets nothing, is uncovered.
+// frame's square, or a ray that meets nothing, is uncovered. Returns the
+// point in the frame's square and z there.
 //
 // Two fixed-point steps on the depth two levels coarser find it where the
 // depth is smooth (most of a card, and every card seen from above). Seen
@@ -252,7 +260,7 @@ const IMP_THICK: f32 = 4.0 / f32(IMP_MARCH);
 // model, marches the ray instead. Only cards read at the atlas's finest
 // level march: a coarser card's trunk is a few pixels wide, and marching
 // a screen of them cost the main pass as much again (Metal, 300 cards).
-fn imp_parallax(f: u32, uv: vec2<f32>, par: vec2<f32>, pd: f32, march: bool) -> vec2<f32> {
+fn imp_parallax(f: u32, uv: vec2<f32>, par: vec2<f32>, pd: f32, march: bool) -> vec3<f32> {
   var at = uv;
   var z = 0.0;
   for (var k = 0; k < 2; k++) {
@@ -260,34 +268,76 @@ fn imp_parallax(f: u32, uv: vec2<f32>, par: vec2<f32>, pd: f32, march: bool) -> 
     at = uv + par * (z - pd);
   }
   if (!march || imp_level >= IMP_MARCH_LEVEL) {
-    return at;
+    return vec3<f32>(at, z);
   }
   // The fine depth where the fixed point landed agrees with it.
   let landed = imp_depth_at(f, at, imp_level);
   if (landed.covered && abs(landed.depth - z) < IMP_LANDED * exp2(imp_level)) {
-    return at;
+    return vec3<f32>(at, z);
   }
   if (!landed.covered && textureSampleLevel(base_color_tex, material_sampler, imp_atlas(f, at), imp_level + IMP_NEAR).a <= 0.0) {
-    return at;
+    return vec3<f32>(at, z);
   }
-  var prev_z = 1.0;
-  var prev_gap = -1.0;
-  for (var k = 0; k <= IMP_MARCH; k++) {
-    let zk = 1.0 - 2.0 * f32(k) / f32(IMP_MARCH);
-    let p = uv + par * (zk - pd);
-    let s = imp_depth_at(f, p, imp_level);
-    let gap = s.depth - zk;
-    if (s.covered && gap >= 0.0) {
-      // The frame holds one layer: a step landing well behind its front
-      // surface went behind it, where the frame cannot see what the ray
-      // meets, so it shows none (a crown's edge seen past the trunk).
-      if (gap > IMP_THICK) { break; }
-      // Between the last step in front of the surface and this one.
-      let t = select(0.0, prev_gap / (prev_gap - gap), k > 0 && prev_gap < 0.0);
-      return uv + par * (mix(prev_z, zk, clamp(t, 0.0, 1.0)) - pd);
+  // The ray at frame depth 0, and the part of it inside the model's
+  // sphere (every surface the frame holds is): |o + par z|² + z² ≤ 1.
+  let o = uv - par * pd;
+  let qa = dot(par, par) + 1.0;
+  let qb = dot(o, par);
+  let qc = qb * qb - qa * (dot(o, o) - 1.0);
+  if (qc <= 0.0) { return vec3<f32>(4.0, 4.0, 0.0); }
+  let z_in = (sqrt(qc) - qb) / qa;
+  let z_out = (-sqrt(qc) - qb) / qa;
+  // A step per IMP_STEP texels the ray crosses at the level read.
+  let texels = f32(textureDimensions(base_color_tex, 0).y) / (2.0 * f32(imp_grid())) * exp2(-imp_level);
+  let n = clamp(ceil(length(par) * (z_in - z_out) * texels / IMP_STEP), 2.0, IMP_STEPS);
+  let dz = (z_in - z_out) / n;
+  var front = z_in;
+  for (var k = 0.0; k <= n; k += 1.0) {
+    let zk = z_in - dz * k;
+    // Depth alone first: coverage is read only where the surface stands
+    // before the ray. (The sphere lies inside the frame's square.)
+    let a = imp_atlas(f, o + par * zk);
+    var depth = textureSampleLevel(normal_tex, material_sampler, a, imp_level).a * 2.0 - 1.0;
+    if (depth < zk || textureSampleLevel(base_color_tex, material_sampler, a, imp_level).a <= 0.5) {
+      front = zk;
+      continue;
     }
-    prev_z = zk;
-    prev_gap = gap;
+    // The surface lies between the last step before it and this one:
+    // bisect to it, so the point found is the surface's to a fraction of
+    // a step, close enough for the other frames to confirm (imp_seen).
+    var hit = zk;
+    if (k > 0.0) {
+      for (var b = 0; b < IMP_BISECT; b++) {
+        let zm = 0.5 * (front + hit);
+        let s = imp_depth_at(f, o + par * zm, imp_level);
+        if (s.covered && s.depth >= zm) {
+          hit = zm;
+          depth = s.depth;
+        } else {
+          front = zm;
+        }
+      }
+    }
+    // The frame holds one layer: a ray meeting it well behind its front
+    // surface passed behind that surface, where the frame cannot see what
+    // the ray meets, so it shows none (a crown's edge seen past the trunk).
+    if (depth - hit > IMP_THICK) { break; }
+    return vec3<f32>(o + par * hit, hit);
+  }
+  return vec3<f32>(4.0, 4.0, 0.0);
+}
+
+// Frame `f`'s image of the point the eye's ray meets `step` radii from
+// the card's point (imp_uvs), where the frame's own depth there agrees
+// that it sees that point. A frame that sees another surface there (one
+// standing before the point from its side), or a ray that met nothing,
+// draws none: falling back to the frame's own fixed point drew loose
+// pieces of crown beside the trunk.
+fn imp_seen(f: u32, uv: vec2<f32>, par: vec2<f32>, pd: f32, vd: f32, step: f32, found: bool) -> vec2<f32> {
+  let at = uv + par * (step * vd);
+  if (found && all(abs(at) <= vec2<f32>(1.0))) {
+    let s = imp_depth_at(f, at, imp_level);
+    if (s.covered && abs(s.depth - (pd + step * vd)) < IMP_AGREE) { return at; }
   }
   return vec2<f32>(4.0);
 }
@@ -296,12 +346,57 @@ fn imp_parallax(f: u32, uv: vec2<f32>, par: vec2<f32>, pd: f32, march: bool) -> 
 struct ImpUvs {
   uv01: vec4<f32>,
   uv2: vec2<f32>,
+  // The frames' weights in the blend: the card's, or seen from below
+  // those of the frames that see the point the march found, rescaled to
+  // the whole (a frame that sees another surface there has no say).
+  weights: vec3<f32>,
 };
 
-fn imp_uvs(uv01: vec4<f32>, uv2: vec2<f32>, par01: vec4<f32>, par2: vec2<f32>, frames: vec3<u32>, pd: vec3<f32>, march: bool) -> ImpUvs {
+fn imp_uvs(uv01: vec4<f32>, uv2: vec2<f32>, par01: vec4<f32>, par2: vec2<f32>, frames: vec3<u32>, dd: ImpDepths, weights: vec3<f32>, march: bool) -> ImpUvs {
   var o: ImpUvs;
-  o.uv01 = vec4<f32>(imp_parallax(frames.x, uv01.xy, par01.xy, pd.x, march), imp_parallax(frames.y, uv01.zw, par01.zw, pd.y, march));
-  o.uv2 = imp_parallax(frames.z, uv2, par2, pd.z, march);
+  if (!march || imp_level >= IMP_MARCH_LEVEL) {
+    o.uv01 = vec4<f32>(imp_parallax(frames.x, uv01.xy, par01.xy, dd.pd.x, false).xy, imp_parallax(frames.y, uv01.zw, par01.zw, dd.pd.y, false).xy);
+    o.uv2 = imp_parallax(frames.z, uv2, par2, dd.pd.z, false).xy;
+    o.weights = weights;
+    return o;
+  }
+  // Seen from below, the frame weighted most finds where the eye's ray
+  // meets the model, and every frame shows that one point: its image moved
+  // along the ray by the same step. Each frame finding its own (the fixed
+  // point on one, the march on another) put the three on points apart in
+  // depth by as much as the trunk's width: up close from 60 degrees below
+  // a band of crown drew across the trunk, and the blended surface point
+  // jumped from pixel to pixel. It also marched up to three rays a pixel,
+  // which made a screen of near cards seen from below cost the main pass
+  // a third more than from above (lavapipe; +69% on the L4).
+  let k1 = weights.y > weights.x && weights.y >= weights.z;
+  let k2 = weights.z > weights.x && weights.z > weights.y;
+  let uv = select(select(uv01.xy, uv01.zw, k1), uv2, k2);
+  let par = select(select(par01.xy, par01.zw, k1), par2, k2);
+  let f = select(select(frames.x, frames.y, k1), frames.z, k2);
+  let pd = select(select(dd.pd.x, dd.pd.y, k1), dd.pd.z, k2);
+  let vd = select(select(dd.vd.x, dd.vd.y, k1), dd.vd.z, k2);
+  let hit = imp_parallax(f, uv, par, pd, true);
+  // The step along the eye (radii), as imp_blended_step has it.
+  let step = (hit.z - pd) / vd;
+  let found = all(abs(hit.xy) <= vec2<f32>(1.0));
+  o.uv01 = vec4<f32>(imp_seen(frames.x, uv01.xy, par01.xy, dd.pd.x, dd.vd.x, step, found), imp_seen(frames.y, uv01.zw, par01.zw, dd.pd.y, dd.vd.y, step, found));
+  o.uv2 = imp_seen(frames.z, uv2, par2, dd.pd.z, dd.vd.z, step, found);
+  // The frame that found the point shows it as found.
+  if (k2) {
+    o.uv2 = hit.xy;
+  } else if (k1) {
+    o.uv01 = vec4<f32>(o.uv01.xy, hit.xy);
+  } else {
+    o.uv01 = vec4<f32>(hit.xy, o.uv01.zw);
+  }
+  let sees = vec3<f32>(
+    imp_inside(o.uv01.xy),
+    imp_inside(o.uv01.zw),
+    imp_inside(o.uv2),
+  );
+  let w = weights * max(sees, vec3<f32>(f32(!k1 && !k2), f32(k1), f32(k2)));
+  o.weights = w / max(w.x + w.y + w.z, 1e-5);
   return o;
 }
 
