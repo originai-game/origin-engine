@@ -656,7 +656,7 @@ fn text(
             text: s.to_string(),
             ..t.content().clone()
         };
-        super::flex::text_lines(part.at(t.step), m, t.wrap.then_some(w + 0.5))
+        super::text::text_lines(part.at(t.step), m, t.wrap.then_some(w + 0.5))
     };
     let full = (tx1 - tx0).max(0.0);
     let (mut lines, mut shifts) = (Vec::new(), Vec::new());
