@@ -259,6 +259,19 @@ impl Ui {
                 None::<crate::tokens::ElementClass>,
             )
             .ok();
+            // Its panel is `dialog::part(panel)` as an in-place dialog's is:
+            // the top layer moves the box, not what it is.
+            if !desc.bare {
+                self.tree.el_mut(panel).part = crate::dress::PartRef::parse(
+                    if open {
+                        "dialog::part(panel):open"
+                    } else {
+                        "dialog::part(panel)"
+                    },
+                    crate::tokens::ElementClass::Panel,
+                )
+                .ok();
+            }
             self.tree.nodes[panel].a11y.name = Some(desc.name.clone());
             return r;
         }

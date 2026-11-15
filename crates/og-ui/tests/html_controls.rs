@@ -369,7 +369,20 @@ fn each_control_is_dressed_by_its_named_parts() {
     modal.set("ask", json!(true));
     modal.settle();
     assert!(modal.el("Ask/Panel").is_some());
-    parts.extend(modal.ui.parts().iter().flatten().map(|p| format!("{p}")));
+    let in_top_layer: Vec<String> = modal
+        .ui
+        .parts()
+        .iter()
+        .flatten()
+        .map(|p| format!("{p}"))
+        .collect();
+    // A modal dialog in the top layer keeps its panel part, as one opened
+    // in place has it.
+    assert!(
+        in_top_layer.iter().any(|p| p == "dialog::part(panel):open"),
+        "{in_top_layer:?}"
+    );
+    parts.extend(in_top_layer);
     for want in [
         "select[aria-expanded=true]::part(trigger):open",
         "select::part(list)",
