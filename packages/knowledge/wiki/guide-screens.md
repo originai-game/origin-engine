@@ -87,7 +87,13 @@ the look (`ui "scifi"`), which makes the cook bundle it, or load it as
 change one, copy it with `og style add scifi` into `assets/styles/scifi/`,
 which the look then resolves before the built-in one, and edit the copy:
 every value is a `:root` token in its `base.css`, so a file of tokens
-sorting after it restyles the pack with no other rule. `og style list`
+sorting after it restyles the pack with no other rule. The palette is
+derived from seed colours. A pack or a game that only wants its own
+colours sets those (`:root { --seed-primary: #c8102e; --seed-neutral:
+#3a3226; }`, or `og.ui.configure(engine, { seeds: { primary:
+color.fromHex(0xc8102e) } })`), and every ground, ink, state, status and
+team colour follows in both schemes with its contrast kept. Configuring
+new seeds at run time restyles the whole UI. `og style list`
 names the built-in and installed packs.
 
 1. Run `og style new my-style --look neon-vector --scheme dark` in your

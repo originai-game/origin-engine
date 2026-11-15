@@ -471,3 +471,191 @@ fn css_tokens_and_theme_writes_share_the_same_values() {
         assert_eq!(ui.sizes().control_md, 41.0);
     }
 }
+
+/// Whatever seeds a style or a game sets, the palette derived from them
+/// keeps the language's pairs in both schemes (packages/design/tokens/
+/// contrast.css): text 4.5:1, focus, rims and team marks 3:1, text over
+/// glass 4.5:1 over the brightest and darkest scenes. The seeds sweep
+/// lightness, chroma and hue, with the neutral the seed itself or grey.
+#[test]
+fn any_seeds_keep_the_contrast_pairs() {
+    let base = tokens();
+    let srgb = |rgb: [u8; 3], alpha: f32| Srgba { rgb, alpha };
+    let hex = |s: &str| -> Option<Srgba> {
+        let n = u32::from_str_radix(s.strip_prefix('#')?, 16).ok()?;
+        Some(Srgba::rgb((n >> 16) as u8, (n >> 8) as u8, n as u8))
+    };
+    let mut low = Vec::new();
+    let mut seeds = Vec::new();
+    for l in [
+        0.02, 0.15, 0.3, 0.42, 0.5, 0.56, 0.6, 0.65, 0.72, 0.8, 0.9, 0.98,
+    ] {
+        for c in [0.0, 0.1, 0.2, 0.37] {
+            for h in (0..360).step_by(30) {
+                if c == 0.0 && h > 0 {
+                    continue;
+                }
+                seeds.push(format!("oklch({l} {c} {h})"));
+            }
+        }
+    }
+    for seed in &seeds {
+        for neutral in [seed.as_str(), "#808080"] {
+            let mut t = base.clone();
+            for path in ["/seed", "/dark/seed"] {
+                let m = t
+                    .pointer_mut(path)
+                    .and_then(|v| v.as_object_mut())
+                    .expect("seeds");
+                for key in [
+                    "primary", "accent", "danger", "warn", "success", "info", "team",
+                ] {
+                    m.insert(key.into(), seed.as_str().into());
+                }
+                m.insert("neutral".into(), neutral.into());
+            }
+            for dark in [false, true] {
+                let scheme = if dark { "dark" } else { "light" };
+                let color = |name: &str| -> Srgba {
+                    hex(name).unwrap_or_else(|| {
+                        let (rgb, a) = theme_codegen::role_colour(&t, dark, "color", name)
+                            .unwrap_or_else(|e| panic!("{seed}: {name}: {e}"));
+                        srgb(rgb, a)
+                    })
+                };
+                let linear = |name: &str| -> Srgba {
+                    let (rgb, a) = theme_codegen::role_colour(&t, dark, "linear", name)
+                        .unwrap_or_else(|e| panic!("{seed}: {name}: {e}"));
+                    srgb(rgb, a)
+                };
+                // A translucent ground over `under` (the ground `bg` when
+                // unnamed), mixed as a browser mixes it.
+                let ground = |name: &str, under: Option<&str>| -> Srgba {
+                    let g = color(name);
+                    if g.alpha < 1.0 {
+                        g.over(color(under.unwrap_or("bg")))
+                    } else {
+                        g
+                    }
+                };
+                let words = |v: &serde_json::Value| -> Vec<Vec<String>> {
+                    v.as_array()
+                        .expect("a list of pairs")
+                        .iter()
+                        .map(|p| {
+                            p.as_array()
+                                .expect("a pair")
+                                .iter()
+                                .map(|w| w.as_str().expect("a name").to_owned())
+                                .collect()
+                        })
+                        .collect()
+                };
+                let mut check = |what: String, r: f32, bar: f32| {
+                    if r < bar {
+                        low.push(format!("{scheme} {seed} neutral {neutral}: {what} {r:.2}"));
+                    }
+                };
+                for p in words(&t["contrast"]) {
+                    if dark && p.iter().any(|w| w.starts_with("stage")) {
+                        continue;
+                    }
+                    let r = color(&p[0]).contrast(ground(&p[1], p.get(2).map(String::as_str)));
+                    check(p.join(" "), r, 4.5);
+                }
+                for p in words(&t["nonText"]) {
+                    check(p.join(" "), color(&p[0]).contrast(ground(&p[1], None)), 3.0);
+                }
+                for p in words(&t["glassContrast"]["pairs"]) {
+                    let mut g = color(&p[1]).over(color(&p[2]));
+                    if let Some(fill) = p.get(3) {
+                        g = linear(fill).over_linear(g);
+                    }
+                    check(p.join(" "), color(&p[0]).contrast(g), 4.5);
+                }
+            }
+        }
+    }
+    let n = low.len();
+    low.truncate(40);
+    assert!(n == 0, "{n} pairs read low:\n{}", low.join("\n"));
+}
+
+/// Seeds given at run time (UiDesc.seeds) restyle the whole UI: the
+/// palette the widgets read, the team colours and what a document's CSS
+/// draws all follow a second set of seeds as they followed the first.
+#[test]
+fn seeds_set_at_run_time_restyle_the_whole_ui() {
+    use og_ui::*;
+    let linear = |hex: u32| {
+        let c = Srgba::rgb((hex >> 16) as u8, (hex >> 8) as u8, hex as u8).linear();
+        [c[0], c[1], c[2]]
+    };
+    let hue = |c: Srgba| {
+        let [r, g, b] = c.rgb;
+        // Red or blue the strongest channel.
+        (r > g && r > b, b > r && b > g)
+    };
+    let mut ui = Ui::new(UiDesc::default());
+    ui.define_document(
+        UiDocument::parse(
+            "seeds.svelte",
+            r#"
+<meta name="component" content="seeds">
+<column><column id="Box"></column></column>
+<style>#Box { width: 33px; height: 7px; background: var(--primary); }</style>
+"#,
+        )
+        .unwrap(),
+    );
+    ui.mount_document(
+        reactive::SourceId::new("test", "t"),
+        "seeds",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let neutral = ui.theme().palette;
+    let drawn = |ui: &mut Ui| {
+        ui.begin(InputFrame::default(), Viewport::new(1280.0, 720.0));
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+        let fill = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| i.cmd.filled())
+            .find(|(r, _)| r.width == 33.0)
+            .unwrap()
+            .1;
+        (fill, *ui.theme())
+    };
+    for (primary, team, red) in [(0xc8102e, 0x2f7fef, true), (0x1f6fd0, 0xe8364f, false)] {
+        let mut theme = Theme::dark();
+        theme.seeds.0[0] = Some(linear(primary));
+        theme.seeds.0[7] = Some(linear(team));
+        ui.set_theme(theme);
+        let (fill, t) = drawn(&mut ui);
+        let p = t.palette;
+        assert_eq!(
+            fill,
+            p.primary.linear(),
+            "the document draws the seeded primary"
+        );
+        assert_eq!(hue(p.primary), (red, !red), "{:?}", p.primary);
+        assert_ne!(p.primary_hover, neutral.primary_hover);
+        assert!(p.on_primary.contrast(p.primary) >= 4.5);
+        assert!(p.on_primary.contrast(p.primary_hover) >= 4.5);
+        // The accent and the neutral follow the primary.
+        assert_eq!(hue(p.highlight), (red, !red), "{:?}", p.highlight);
+        assert_ne!(p.panel, neutral.panel);
+        assert!(p.ink.contrast(p.panel_raised) >= 4.5);
+        assert_eq!(
+            hue(t.tokens.colors.team[0].color),
+            (!red, red),
+            "{:?}",
+            t.tokens.colors.team[0].color
+        );
+    }
+}

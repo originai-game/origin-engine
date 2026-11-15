@@ -25156,7 +25156,7 @@ export interface Viewport {
 }
 
 /**
- * How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it.
+ * How the UI looks: the scheme, the density, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -25210,11 +25210,11 @@ export interface UiDesc {
    */
   readonly contrast?: Contrast;
   /**
-   * A linear RGB colour (`color.fromHex(0xff8800)` for a hex or CSS colour) as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's.
+   * The seed colours the whole palette is derived from, over the style's (docs/ui.md §3.1): a faction's or the time of day's, given again at run time to restyle the whole UI. Given whole: a seed left out takes the style's. null keeps the style's seeds.
    *
    * @default null
    */
-  readonly primaryColor?: Color | null;
+  readonly seeds?: UiSeeds | null;
   /**
    * Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion).
    *
@@ -25300,6 +25300,62 @@ export interface UiDesc {
    * @default null
    */
   readonly sounds?: UiSounds | null;
+}
+
+/**
+ * The colours a UI palette is derived from (packages/design/tokens/seed.css): every ground, ink, accent, state, status and team colour follows them, each scheme keeping its text at 4.5:1 and its focus ring, rims and team marks at 3:1 whatever they are. Each a linear RGB colour (`color.fromHex(0xc8102e)` for a hex or CSS colour); a seed left out or null takes the style's.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface UiSeeds {
+  /**
+   * The brand: the primary fill, its hover and pressed tones, its soft wash and the ink on it.
+   *
+   * @default null
+   */
+  readonly primary?: Color | null;
+  /**
+   * The second accent: the highlight ink (emphasised text, a badge, the current tab), the accent role and the focus ring. The style's, which by default follows primary.
+   *
+   * @default null
+   */
+  readonly accent?: Color | null;
+  /**
+   * The tint of the grounds, surfaces, lines, fills and inks: its hue, its chroma up to 0.04 (OKLCH). The style's, which by default is primary's hue at chroma up to 0.012.
+   *
+   * @default null
+   */
+  readonly neutral?: Color | null;
+  /**
+   * The danger hue (errors, damage, a destructive button).
+   *
+   * @default null
+   */
+  readonly danger?: Color | null;
+  /**
+   * The warning hue.
+   *
+   * @default null
+   */
+  readonly warn?: Color | null;
+  /**
+   * The success hue (the ok state, healing).
+   *
+   * @default null
+   */
+  readonly success?: Color | null;
+  /**
+   * The information hue.
+   *
+   * @default null
+   */
+  readonly info?: Color | null;
+  /**
+   * The first team's colour; the other seven are turned from it (`--team1` to `--team8`, UiTheme.tokens.team).
+   *
+   * @default null
+   */
+  readonly team?: Color | null;
 }
 
 /**

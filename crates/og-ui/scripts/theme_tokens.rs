@@ -105,6 +105,7 @@ const GROUPS: &[&str] = &[
     "radius",
     "role",
     "safeArea",
+    "seed",
     "shadow",
     "size",
     "space",
@@ -143,7 +144,7 @@ fn kebab(s: &str) -> String {
 }
 
 /// The path of the custom property `name` (without its `--`).
-fn path(name: &str) -> Vec<String> {
+pub fn path(name: &str) -> Vec<String> {
     let group = GROUPS
         .iter()
         .filter(|g| {

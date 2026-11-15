@@ -232,11 +232,39 @@ impl Breakpoint {
 /// 2026-11-04). A larger UiDesc.textScale lays out at this.
 pub const MAX_TEXT_SCALE: f32 = 1.5;
 
+/// The seed colours a game gives (IDL `UiDesc.seeds`), each a linear RGB
+/// colour or `None` (the style's): the UI writes them as the root's
+/// `--seed-*` tokens (packages/design/tokens/seed.css), from which the
+/// default style derives every palette colour, so setting one restyles
+/// the whole UI.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Seeds(pub [Option<[f32; 3]>; Seeds::NAMES.len()]);
+
+impl Seeds {
+    /// Each seed's name, its token `--seed-<name>`.
+    pub const NAMES: [&'static str; 8] = [
+        "primary", "accent", "neutral", "danger", "warn", "success", "info", "team",
+    ];
+
+    /// The `--seed-*` root tokens of the seeds given.
+    pub fn tokens(&self) -> impl Iterator<Item = (String, String)> + '_ {
+        Seeds::NAMES.iter().zip(self.0).filter_map(|(name, c)| {
+            let [r, g, b] = c?;
+            Some((
+                format!("--seed-{name}"),
+                format!("color(srgb-linear {r} {g} {b})"),
+            ))
+        })
+    }
+}
+
 /// Everything a widget reads its look from: a style's values and its art.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Theme {
     pub scheme: Scheme,
     pub palette: Palette,
+    /// The seed colours a game gave, over the style's ([`Seeds`]).
+    pub seeds: Seeds,
     /// The style's own colour roles (docs/ui.md §3.1), read with the
     /// palette's by [`Theme::color`]; the default style declares none.
     pub roles: Roles,
@@ -352,6 +380,7 @@ impl Theme {
         Theme {
             scheme,
             palette,
+            seeds: Seeds::default(),
             roles: Roles::NONE,
             space: theme::SPACE,
             radius: theme::RADIUS,
@@ -546,57 +575,6 @@ impl Theme {
     /// ([`crate::Art::atlas_dense`]; `None` where the style has none).
     pub fn with_dense_atlases(mut self, dense: [Option<og_draw::TextureHandle>; 2]) -> Theme {
         self.art.atlas_dense = dense;
-        self
-    }
-
-    /// This theme with a game's own primary colour: its hover and active
-    /// tones 15 % towards either end of the scale (a dark primary lightens
-    /// hovered and darkens pressed, a light one the other way),
-    /// its soft wash at the palette's alpha, its `highlight` (the accent
-    /// ink on that wash: the primary moved towards the scheme's ink until it
-    /// reads 5:1 there, so a gold game's badges are gold, not the style's
-    /// pink), and the ink on
-    /// it whichever of the palette's `ink` and `inkInverse` reads better.
-    /// `focus` is the style's own and stays.
-    pub fn with_primary(mut self, primary: Srgba) -> Theme {
-        let a = Srgba {
-            alpha: 1.0,
-            ..primary
-        };
-        // Hover moves away from the nearer end of the scale, a press towards it.
-        let (lift, sink) = if a.luminance() > 0.4 {
-            (Srgba::BLACK, Srgba::WHITE)
-        } else {
-            (Srgba::WHITE, Srgba::BLACK)
-        };
-        let p = &mut self.palette;
-        p.primary = a;
-        p.primary_hover = a.mix(lift, 0.15);
-        p.primary_active = a.mix(sink, 0.15);
-        p.primary_soft = Srgba {
-            alpha: p.primary_soft.alpha,
-            ..a
-        };
-        // The accent ink: the primary moved towards the scheme's ink as
-        // little as it takes to read on its own wash over a panel (with a
-        // margin: the wash sits on frame art, not the flat panel).
-        let wash = p.primary_soft.over_linear(p.panel);
-        p.highlight = a
-            .readable_on(wash, READABLE + 0.5)
-            .filter(|c| {
-                (c.luminance() > wash.luminance()) == (p.ink.luminance() > wash.luminance())
-            })
-            .unwrap_or_else(|| {
-                (1..=20)
-                    .map(|n| a.mix(p.ink, n as f32 * 0.05))
-                    .find(|c| c.contrast(wash) >= READABLE + 0.5)
-                    .unwrap_or(p.ink)
-            });
-        p.on_primary = if a.contrast(p.ink) >= a.contrast(p.ink_inverse) {
-            p.ink
-        } else {
-            p.ink_inverse
-        };
         self
     }
 

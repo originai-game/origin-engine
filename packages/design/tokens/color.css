@@ -1,57 +1,78 @@
 /* Colour: the neutral ladder and its roles, the hues, the metals, the fills
-   restated for linear-light blending, and what a control takes on glass. */
+   restated for linear-light blending, and what a control takes on glass.
+   Every palette colour is a relative colour of a seed (seed.css), resolved
+   when it is drawn. The neutral ladder is the neutral's hue at fixed OKLCH
+   lightness steps, its chroma held to 0.04 (inks 0.025, fills 0.02). The
+   primary's tone (`accent-tone`) turns a seed that would vanish into the
+   scheme's ground to the other end, and `accent` moves it out of the band
+   where neither ink reads. The status, highlight, focus and team colours
+   keep their seed's hue (first clipped into sRGB) and are scaled in linear
+   light (CIE XYZ y is WCAG luminance) to the luminance their pairs need:
+   darkened by scaling, lightened by mixing with white. The glass tints,
+   black and white washes, the game roles, the twelve hues and the metals
+   are fixed. */
 :root {
-  --color-bg: #f2f2f7;
-  --color-bg-subtle: #e9e9ee;
-  --color-surface: #ffffff;
-  --color-surface-raised: #ffffff;
-  --color-surface-hover: #e5e5ea;
-  --color-fill: rgb(120 120 128 / 0.12);
-  --color-fill-strong: rgb(120 120 128 / 0.2);
-  --color-thumb: #ffffff;
-  --color-border: #dcdce1;
-  --color-border-strong: #c4c4c9;
-  --color-fg: #18181a;
-  --color-fg-muted: #46464c;
-  --color-fg-subtle: #636369;
-  --color-fg-inverse: #fafafa;
-  --color-accent: #1c1c1e;
-  --color-accent-hover: #3a3a3c;
-  --color-accent-active: #000000;
-  --color-accent-soft: rgb(0 0 0 / 0.06);
-  --color-accent-fg: #fafafa;
-  --color-accent-ink: #18181a;
-  --color-focus: #3a3a3c;
+  --color-bg: oklch(from var(--seed-neutral) 0.963 min(c, 0.04) h);
+  --color-bg-subtle: oklch(from var(--seed-neutral) 0.935 min(c, 0.04) h);
+  --color-surface: oklch(from var(--seed-neutral) 1 min(c, 0.04) h);
+  --color-surface-raised: oklch(from var(--seed-neutral) 1 min(c, 0.04) h);
+  --color-surface-hover: oklch(from var(--seed-neutral) 0.923 min(c, 0.04) h);
+  --color-fill: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.12);
+  --color-fill-strong: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.2);
+  --color-thumb: oklch(from var(--seed-neutral) 1 min(c, 0.04) h);
+  --color-border: oklch(from var(--seed-neutral) 0.896 min(c, 0.04) h);
+  --color-border-strong: oklch(from var(--seed-neutral) 0.822 min(c, 0.04) h);
+  --color-well-rim: oklch(from var(--seed-neutral) 0.66 min(c, 0.04) h);
+  --color-fg: oklch(from var(--seed-neutral) 0.21 min(c, 0.025) h);
+  --color-fg-muted: oklch(from var(--seed-neutral) 0.396 min(c, 0.025) h);
+  --color-fg-subtle: oklch(from var(--seed-neutral) 0.502 min(c, 0.025) h);
+  --color-fg-inverse: oklch(from var(--seed-neutral) 0.985 min(c, 0.025) h);
+  --color-accent-tone: oklch(from var(--seed-primary) calc(l + calc(1.16 - 2 * l) * clamp(0, calc(calc(l - 0.9) * 1000000), 1)) c h);
+  --color-accent: oklch(from var(--color-accent-tone) calc(min(l, 0.39) * clamp(0, calc(calc(0.585 - l) * 1000000), 1) + max(l, 0.74) * calc(1 - clamp(0, calc(calc(0.585 - l) * 1000000), 1))) c h);
+  --color-accent-hover: oklch(from var(--color-accent) calc(l + 0.12) c h);
+  --color-accent-active: oklch(from var(--color-accent) max(calc(l - 0.1), 0) c h);
+  --color-accent-soft: oklch(from var(--color-accent) l c h / 0.06);
+  --color-accent-fg: oklch(from var(--color-accent) calc(0.179 + 0.806 * clamp(0, calc(calc(0.585 - l) * 1000000), 1)) min(c, 0.004) h);
+  --color-accent-ink: color(from color(from oklch(from var(--seed-accent) calc(l - 0.02) c h) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.125 / y))) calc(y * min(1, calc(0.125 / y))) calc(z * min(1, calc(0.125 / y))));
+  --color-focus: color(from color(from oklch(from var(--seed-accent) calc(l + 0.12) c h) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.245 / y))) calc(y * min(1, calc(0.245 / y))) calc(z * min(1, calc(0.245 / y))));
   --color-shadow: #000000;
-  --color-danger: #b20011;
-  --color-success: #1a7a37;
-  --color-warn: #c2410c;
-  --color-info: #0062c4;
-  --color-stage: #000000;
-  --color-stage-surface: #141416;
-  --color-stage-raised: #1c1c1e;
-  --color-stage-border: #2c2c2e;
-  --color-stage-fg: #f5f5f7;
-  --color-stage-muted: #a1a1a6;
-  --color-stage-danger: #ff6b5e;
+  --color-danger: color(from color(from var(--seed-danger) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.148 / y))) calc(y * min(1, calc(0.148 / y))) calc(z * min(1, calc(0.148 / y))));
+  --color-success: color(from color(from var(--seed-success) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.148 / y))) calc(y * min(1, calc(0.148 / y))) calc(z * min(1, calc(0.148 / y))));
+  --color-warn: color(from color(from var(--seed-warn) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.148 / y))) calc(y * min(1, calc(0.148 / y))) calc(z * min(1, calc(0.148 / y))));
+  --color-info: color(from color(from var(--seed-info) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.148 / y))) calc(y * min(1, calc(0.148 / y))) calc(z * min(1, calc(0.148 / y))));
+  --color-stage: oklch(from var(--seed-neutral) 0 min(c, 0.04) h);
+  --color-stage-surface: oklch(from var(--seed-neutral) 0.192 min(c, 0.04) h);
+  --color-stage-raised: oklch(from var(--seed-neutral) 0.227 min(c, 0.04) h);
+  --color-stage-border: oklch(from var(--seed-neutral) 0.294 min(c, 0.04) h);
+  --color-stage-fg: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
+  --color-stage-muted: oklch(from var(--seed-neutral) 0.711 min(c, 0.04) h);
+  --color-stage-danger: color(from color(from var(--seed-danger) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
   --color-material-thin: rgb(255 255 255 / 0.36);
   --color-material-regular: rgb(250 250 252 / 0.58);
   --color-material-thick: rgb(246 246 248 / 0.8);
   --color-material-edge: rgb(0 0 0 / 0.07);
-  --color-material-control: rgb(120 120 128 / 0.16);
-  --color-material-control-hover: rgb(120 120 128 / 0.09);
+  --color-material-control: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.16);
+  --color-material-control-hover: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.09);
   --color-scrim: rgb(0 0 0 / 0.22);
   --color-health: #1b7a38;
   --color-mana: #0062c4;
   --color-xp: #7d3fc4;
   --color-gold: #8a5a00;
-  --color-hud: rgb(250 250 252 / 0.86);
-  --color-knob: #ffffff;
+  --color-hud: oklch(from var(--seed-neutral) 0.986 min(c, 0.04) h / 0.86);
+  --color-knob: oklch(from var(--seed-neutral) 1 min(c, 0.04) h);
   --color-sheen: rgb(255 255 255 / 0.5);
-  --color-track: #707075;
-  --color-minimap: #16161899;
+  --color-track: oklch(from var(--seed-neutral) 0.547 min(c, 0.04) h);
+  --color-minimap: oklch(from var(--seed-neutral) 0.201 min(c, 0.04) h / 0.6);
   --color-minimap-edge: #ffffff14;
   --color-slot-selected-edge: #ffffff8c;
+  --color-team1: color(from color(from oklch(from var(--seed-team) l c h) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.245 / y))) calc(y * min(1, calc(0.245 / y))) calc(z * min(1, calc(0.245 / y))));
+  --color-team2: color(from color(from oklch(from var(--seed-team) calc(l + 0.045) calc(c * 1.08) calc(h + 123.3)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.245 / y))) calc(y * min(1, calc(0.245 / y))) calc(z * min(1, calc(0.245 / y))));
+  --color-team3: color(from color(from oklch(from var(--seed-team) calc(l + 0.091) calc(c * 0.86) calc(h + 246)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.245 / y))) calc(y * min(1, calc(0.245 / y))) calc(z * min(1, calc(0.245 / y))));
+  --color-team4: color(from color(from oklch(from var(--seed-team) calc(l + 0.232) calc(c * 0.84) calc(h + 184.7)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.245 / y))) calc(y * min(1, calc(0.245 / y))) calc(z * min(1, calc(0.245 / y))));
+  --color-team5: color(from color(from oklch(from var(--seed-team) calc(l - 0.011) calc(c * 1.25) calc(h + 39.8)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.245 / y))) calc(y * min(1, calc(0.245 / y))) calc(z * min(1, calc(0.245 / y))));
+  --color-team6: color(from color(from oklch(from var(--seed-team) calc(l + 0.126) calc(c * 0.86) calc(h + 153.2)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.245 / y))) calc(y * min(1, calc(0.245 / y))) calc(z * min(1, calc(0.245 / y))));
+  --color-team7: color(from color(from oklch(from var(--seed-team) calc(l + 0.131) calc(c * 0.61) calc(h + 292.6)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.245 / y))) calc(y * min(1, calc(0.245 / y))) calc(z * min(1, calc(0.245 / y))));
+  --color-team8: color(from color(from oklch(from var(--seed-team) calc(l + 0.09) calc(c * 1.04) calc(h + 89.8)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.245 / y))) calc(y * min(1, calc(0.245 / y))) calc(z * min(1, calc(0.245 / y))));
   --hue-red: #ff3b30;
   --hue-orange: #ff9500;
   --hue-yellow: #ffcc00;
@@ -86,11 +107,11 @@
   --linear-over-material-control-hover: surface-raised;
   --linear-over-accent-soft: surface;
   --linear-over-scrim: #808080;
-  --linear-color-fill: rgb(120 120 128 / 0.169);
-  --linear-color-fill-strong: rgb(120 120 128 / 0.271);
-  --linear-color-material-control: rgb(120 120 128 / 0.223);
-  --linear-color-material-control-hover: rgb(120 120 128 / 0.127);
-  --linear-color-accent-soft: rgb(0 0 0 / 0.131);
+  --linear-color-fill: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.169);
+  --linear-color-fill-strong: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.271);
+  --linear-color-material-control: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.223);
+  --linear-color-material-control-hover: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.127);
+  --linear-color-accent-soft: oklch(from var(--color-accent) l c h / 0.131);
   --linear-color-scrim: rgb(0 0 0 / 0.416);
   /* Lenses on Liquid Glass: inside bars and capsules the hover, current and
      selected fills become the clear control tints of the material they sit on,
@@ -109,31 +130,30 @@
 }
 
 :root[data-scheme=dark] {
-  --color-bg: #000000;
-  --color-bg-subtle: #111113;
-  --color-surface: #1c1c1e;
-  --color-surface-raised: #2c2c2e;
-  --color-surface-hover: #3a3a3c;
-  --color-fill: rgb(120 120 128 / 0.24);
-  --color-fill-strong: rgb(120 120 128 / 0.36);
-  --color-thumb: #636366;
-  --color-border: #38383a;
-  --color-border-strong: #545458;
-  --color-fg: #f5f5f7;
-  --color-fg-muted: #c8c8cd;
-  --color-fg-subtle: #9e9ea3;
-  --color-fg-inverse: #18181a;
-  --color-accent: #e8e8ed;
-  --color-accent-hover: #ffffff;
-  --color-accent-active: #c7c7cc;
-  --color-accent-soft: rgb(255 255 255 / 0.12);
-  --color-accent-fg: #111113;
-  --color-accent-ink: #f5f5f7;
-  --color-focus: #f5f5f7;
-  --color-danger: #ff8a82;
-  --color-success: #3dd68c;
-  --color-warn: #ff8a3d;
-  --color-info: #5cc8ff;
+  --color-bg: oklch(from var(--seed-neutral) 0 min(c, 0.04) h);
+  --color-bg-subtle: oklch(from var(--seed-neutral) 0.179 min(c, 0.04) h);
+  --color-surface: oklch(from var(--seed-neutral) 0.227 min(c, 0.04) h);
+  --color-surface-raised: oklch(from var(--seed-neutral) 0.294 min(c, 0.04) h);
+  --color-surface-hover: oklch(from var(--seed-neutral) 0.349 min(c, 0.04) h);
+  --color-fill: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.24);
+  --color-fill-strong: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.36);
+  --color-thumb: oklch(from var(--seed-neutral) 0.501 min(c, 0.04) h);
+  --color-border: oklch(from var(--seed-neutral) 0.341 min(c, 0.04) h);
+  --color-border-strong: oklch(from var(--seed-neutral) 0.447 min(c, 0.04) h);
+  --color-well-rim: oklch(from var(--seed-neutral) 0.58 min(c, 0.04) h);
+  --color-fg: oklch(from var(--seed-neutral) 0.971 min(c, 0.025) h);
+  --color-fg-muted: oklch(from var(--seed-neutral) 0.842 min(c, 0.025) h);
+  --color-fg-subtle: oklch(from var(--seed-neutral) 0.701 min(c, 0.025) h);
+  --color-fg-inverse: oklch(from var(--seed-neutral) 0.21 min(c, 0.025) h);
+  --color-accent-tone: oklch(from var(--seed-primary) calc(l + calc(1.16 - 2 * l) * clamp(0, calc(calc(0.3 - l) * 1000000), 1)) c h);
+  --color-accent-hover: oklch(from var(--color-accent) calc(l + 0.07) c h);
+  --color-accent-soft: oklch(from var(--color-accent) l c h / 0.12);
+  --color-accent-ink: color(from color(from oklch(from var(--seed-accent) calc(l + 0.04) c h) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.42 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.42 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.42 - y)) / max(calc(1 - y), 0.001)))));
+  --color-focus: color(from color(from oklch(from var(--seed-accent) calc(l + 0.04) c h) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))));
+  --color-danger: color(from color(from var(--seed-danger) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
+  --color-success: color(from color(from var(--seed-success) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
+  --color-warn: color(from color(from var(--seed-warn) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
+  --color-info: color(from color(from var(--seed-info) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
   --color-material-thin: rgb(44 44 48 / 0.28);
   --color-material-regular: rgb(30 30 34 / 0.64);
   --color-material-thick: rgb(28 28 30 / 0.78);
@@ -145,9 +165,17 @@
   --color-mana: #409cff;
   --color-xp: #bf5af2;
   --color-gold: #ffd60a;
-  --color-hud: rgb(22 22 24 / 0.8);
-  --color-knob: #f5f5f7;
+  --color-hud: oklch(from var(--seed-neutral) 0.201 min(c, 0.04) h / 0.8);
+  --color-knob: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
   --color-sheen: rgb(255 255 255 / 0.12);
+  --color-team1: color(from color(from oklch(from var(--seed-team) l c h) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))));
+  --color-team2: color(from color(from oklch(from var(--seed-team) calc(l + 0.045) calc(c * 1.08) calc(h + 123.3)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))));
+  --color-team3: color(from color(from oklch(from var(--seed-team) calc(l + 0.091) calc(c * 0.86) calc(h + 246)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))));
+  --color-team4: color(from color(from oklch(from var(--seed-team) calc(l + 0.232) calc(c * 0.84) calc(h + 184.7)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))));
+  --color-team5: color(from color(from oklch(from var(--seed-team) calc(l - 0.011) calc(c * 1.25) calc(h + 39.8)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))));
+  --color-team6: color(from color(from oklch(from var(--seed-team) calc(l + 0.126) calc(c * 0.86) calc(h + 153.2)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))));
+  --color-team7: color(from color(from oklch(from var(--seed-team) calc(l + 0.131) calc(c * 0.61) calc(h + 292.6)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))));
+  --color-team8: color(from color(from oklch(from var(--seed-team) calc(l + 0.09) calc(c * 1.04) calc(h + 89.8)) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.195 - y)) / max(calc(1 - y), 0.001)))));
   --hue-red: #ff453a;
   --hue-orange: #ff9f0a;
   --hue-yellow: #ffd60a;
@@ -160,10 +188,10 @@
   --hue-purple: #bf5af2;
   --hue-pink: #ff375f;
   --hue-brown: #ac8e68;
-  --linear-color-fill: rgb(120 120 128 / 0.115);
-  --linear-color-fill-strong: rgb(120 120 128 / 0.195);
+  --linear-color-fill: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.115);
+  --linear-color-fill-strong: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.195);
   --linear-color-material-control: rgb(255 255 255 / 0.039);
   --linear-color-material-control-hover: rgb(255 255 255 / 0.019);
-  --linear-color-accent-soft: rgb(255 255 255 / 0.028);
+  --linear-color-accent-soft: oklch(from var(--color-accent) l c h / 0.03);
   --linear-color-scrim: rgb(0 0 0 / 0.687);
 }

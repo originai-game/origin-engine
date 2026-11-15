@@ -1,6 +1,6 @@
 //! The default CSS stylesheet generated from the design tokens.
 
-use super::{ROLES, colour, role_colour};
+use super::{ROLES, role_colour};
 use serde_json::Value;
 use std::fmt::Write;
 
@@ -260,18 +260,13 @@ const HEAD: &str = "/* Generated from packages/design/tokens/*.css by crates/og-
  * cannot express that material; it supplies blur/saturation, not a second\n\
  * backdrop. The material owns its tint, border and elevation shadows.\n\
  * All --* values below are ordinary CSS variables, not engine hooks.\n\
- * --well-rim is the generated 3:1 unchecked-mark rim in each scheme.\n\
+ * --well-rim is each scheme's 3:1 unchecked-mark rim (--color-well-rim).\n\
  * --motion-ui-easing samples the existing UI spring at 60 Hz; CSS\n\
  * transitions restart from the current value, not the old spring velocity.\n\
  * No default uses atlas border-image, procedural segments or ornaments.\n\
  * Borders paint inside the existing part box (box-sizing: border-box);\n\
  * focus uses an outside outline and never changes the part's geometry.\n\
  */\n@layer og-default {\n";
-
-fn css_color(rgb: [u8; 3], alpha: f32) -> String {
-    let [r, g, b] = rgb;
-    format!("rgb({r} {g} {b} / {alpha})")
-}
 
 fn kebab(s: &str) -> String {
     let mut out = String::new();
@@ -300,36 +295,6 @@ fn variables(out: &mut String, prefix: &str, value: &Value) {
 }
 
 fn palette(out: &mut String, tokens: &Value, dark: bool) -> Result<(), String> {
-    let mut colors = tokens["color"]
-        .as_object()
-        .ok_or("tokens: color is not an object")?
-        .clone();
-    if dark {
-        colors.extend(
-            tokens["dark"]["color"]
-                .as_object()
-                .ok_or("tokens: dark.color is not an object")?
-                .clone(),
-        );
-    }
-    variables(out, "color", &Value::Object(colors));
-    for (role, source, key) in ROLES {
-        let (rgb, a) = role_colour(tokens, dark, source, key)?;
-        writeln!(out, "    --{}: {};", kebab(role), css_color(rgb, a)).unwrap();
-    }
-    // Same contrast rule as dress::well_rim, evaluated from the input
-    // tokens rather than the already generated theme compiled into og-ui.
-    let c = |key| -> Result<og_ui::Srgba, String> {
-        let (rgb, alpha) = role_colour(tokens, dark, "color", key)?;
-        Ok(og_ui::Srgba { rgb, alpha }.fade(1.0))
-    };
-    let mut rim = c("border-strong")?;
-    for ground in [c("surface-raised")?, c("surface")?] {
-        if rim.contrast(ground) < 3.0 {
-            rim = rim.readable_on(ground, 3.0).unwrap_or(c("fg")?);
-        }
-    }
-    writeln!(out, "    --well-rim: {};", css_color(rim.rgb, rim.alpha)).unwrap();
     let scheme = |group: &str| -> Result<serde_json::Map<String, Value>, String> {
         let mut map = super::get(tokens, &[group])?
             .as_object()
@@ -340,6 +305,29 @@ fn palette(out: &mut String, tokens: &Value, dark: bool) -> Result<(), String> {
         }
         Ok(map)
     };
+    // The seeds and the colours derived from them stay expressions: a seed
+    // a pack or og.ui.configure sets restyles every colour that reads it.
+    variables(out, "seed", &Value::Object(scheme("seed")?));
+    variables(out, "color", &Value::Object(scheme("color")?));
+    for (role, source, key) in ROLES {
+        let value = match *source {
+            // The linear fills are not variables of their own: the role
+            // takes the scheme's authored value.
+            "linear" => {
+                let fills = &tokens["linear"];
+                let pick = |m: &Value| m["color"][*key].as_str().map(str::to_owned);
+                (if dark { pick(&fills["dark"]) } else { None })
+                    .or_else(|| pick(fills))
+                    .ok_or_else(|| format!("the tokens have no linear colour `{key}`"))?
+            }
+            _ => format!("var(--color-{key})"),
+        };
+        writeln!(out, "    --{}: {value};", kebab(role)).unwrap();
+    }
+    writeln!(out, "    --well-rim: var(--color-well-rim);").unwrap();
+    for k in 1..=8 {
+        writeln!(out, "    --team{k}: var(--color-team{k});").unwrap();
+    }
     variables(out, "glass", &Value::Object(scheme("glass")?));
     variables(out, "shadow", &Value::Object(scheme("shadow")?));
     variables(out, "shadow", &tokens["derived"]["shadow"]);
@@ -351,10 +339,12 @@ fn palette(out: &mut String, tokens: &Value, dark: bool) -> Result<(), String> {
         let key = super::text(tint, &["color"])?;
         let alpha = super::get(tint, &["alpha"])?
             .as_f64()
-            .ok_or_else(|| format!("tokens: derived.tint.{name}.alpha"))?
-            as f32;
-        let (rgb, a) = role_colour(tokens, dark, "color", key)?;
-        writeln!(out, "    --{name}: {};", css_color(rgb, a * alpha)).unwrap();
+            .ok_or_else(|| format!("tokens: derived.tint.{name}.alpha"))?;
+        writeln!(
+            out,
+            "    --{name}: rgb(from var(--color-{key}) r g b / calc(alpha * {alpha}));"
+        )
+        .unwrap();
     }
     let ([r, g, b], alpha) = role_colour(tokens, dark, "color", "shadow")?;
     for name in ["raised", "floating"] {
@@ -551,12 +541,14 @@ pub fn generate(t: &Value) -> Result<String, String> {
     }
     // Check all role colours here too; malformed tokens must never produce
     // a partially valid stylesheet.
-    for v in t["color"]
-        .as_object()
-        .ok_or("tokens: color is not an object")?
-        .values()
-    {
-        colour(v.as_str().ok_or("tokens: color is not a string")?)?;
+    for dark in [false, true] {
+        for key in t["color"]
+            .as_object()
+            .ok_or("tokens: color is not an object")?
+            .keys()
+        {
+            role_colour(t, dark, "color", key)?;
+        }
     }
     out.push_str(FALLBACKS);
     // node_draw draws one focus part per local player. The host exposes

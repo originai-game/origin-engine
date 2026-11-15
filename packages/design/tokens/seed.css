@@ -1,0 +1,34 @@
+/* Seed: the few colours the whole palette is derived from (color.css writes
+   every ground, ink, accent, state, status and team colour as an OKLCH
+   relative colour of one of them). A style pack or a game sets a seed, never
+   the colours derived from it: `:root { --seed-primary: #c8102e; }` in a
+   pack, or og.ui.configure's `seeds` at run time, which restyles the whole
+   UI. A seed is any CSS colour, given once for both schemes: each scheme
+   moves what it derives to the luminance its text needs for 4.5:1 (focus
+   rings, rims and team marks 3:1), keeping the seed's hue. `primary` is the brand: the primary fill and
+   its states. `accent` (by default the primary) is the second accent: the
+   highlight ink, the accent role and the focus ring. `neutral` (by default
+   the primary's hue at chroma up to 0.012) tints the grounds, surfaces,
+   lines, inks and glass at its hue, its chroma up to 0.04. `danger`, `warn`,
+   `success` and `info` are the status hues, `team` the first team's colour,
+   the other seven turned from it. The default seeds are the design
+   language's neutral chrome: a near-black primary in light, a near-white one
+   in dark. */
+:root {
+  --seed-primary: #1c1c1e;
+  --seed-accent: var(--seed-primary);
+  --seed-neutral: oklch(from var(--seed-primary) l min(c, 0.012) h);
+  --seed-danger: #b20011;
+  --seed-warn: #c2410c;
+  --seed-success: #1a7a37;
+  --seed-info: #0062c4;
+  --seed-team: #3d7eff;
+}
+
+:root[data-scheme=dark] {
+  --seed-primary: #e8e8ed;
+  --seed-danger: #ff8a82;
+  --seed-warn: #ff8a3d;
+  --seed-success: #3dd68c;
+  --seed-info: #5cc8ff;
+}

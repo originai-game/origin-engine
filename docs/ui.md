@@ -1158,7 +1158,8 @@ number.
 
 | Token family | What it controls |
 |---|---|
-| `--color-*`, the role names (`--ink`, `--primary`…) | Colours, per scheme; `--color-track`, `--color-minimap`, `--color-minimap-edge`, `--color-slot-selected-edge` for the engine's own parts |
+| `--seed-primary`, `--seed-accent`, `--seed-neutral`, `--seed-danger`, `--seed-warn`, `--seed-success`, `--seed-info`, `--seed-team` | The seed colours every colour below is derived from (below) |
+| `--color-*`, the role names (`--ink`, `--primary`…), `--team1` to `--team8` | Colours, per scheme, derived from the seeds; `--color-track`, `--color-minimap`, `--color-minimap-edge`, `--color-slot-selected-edge` for the engine's own parts |
 | `--common`, `--uncommon`, `--rare`, `--epic`, `--legendary`, `--mythic` | The rarity colours (by default each a status colour: `--line-strong`, `--success`, `--info`, `--xp`, `--warn`, `--danger`) |
 | `--space-*`, `--radius-*`, `--size-*`, `--stroke-*` | Spacing, corners, icon and art sizes (`--size-xs` to `--size-7xl`; a layout takes a step, never a multiple of one), line widths (`--stroke-edge` the material hairline) |
 | `--type-*`, `--text-*`, `--font-*` | The type ramp and its roles, authored at 100 %: a `--type-*-size` or line height set in px grows with the player's text scale wherever it is set (the root, a pack's sheet, a component), as the ramp widgets draw with does, so text set with `font: var(--text-sm)` follows it; `--font-leading-*` (`flat`, `tight`, `snug`, `normal`), `--font-tracking-*` and `--font-weight-*` for text a part sizes itself; `--font-step-2xs` to `--font-step-6xl` are sizes in `em` of the surrounding text, so a part sized with one follows the player's text scale; `--font-step-px` is one px at 100 % text grown by the scale, for a part that grows with the text as a whole |
@@ -1209,6 +1210,20 @@ inserts the variant (`--button-primary-hover-fill`).
 
 Icon path coordinates and behaviour constants (key repeat, dead zones,
 caret blink, typewriter speed) are not tokens.
+
+**Seeds.** The default stylesheet derives every colour token from the seed
+tokens as CSS relative colours (`packages/design/tokens/seed.css` and
+`color.css`, packages/design/design-language.md §Colour). These are
+expressions resolved when drawn. A pack sets the palette by setting seeds in
+its `:root`, once for both schemes, and the derivation keeps each scheme's
+text at 4.5:1 and its focus ring, rims and team marks at 3:1 whatever the
+seeds. A pack that sets a derived token itself (`--primary`) keeps it and
+gives up the derivation for it. A game sets seeds at run time with
+`og.ui.configure`'s `seeds` (UiSeeds), written as root tokens over the
+style's. Calling it again with new seeds (a faction, the time of day)
+restyles the whole UI from the next tick. A look's `uiSeeds { primary
+"#rrggbb" }` block gives them with its style. Seeds are read at the root: a
+seed set on an element below it does not re-derive that subtree's colours.
 
 **Role parts.** A built-in component names a part by its role
 (`Shop.frame`, `Friends.row`, `Chat.title`), and the default style

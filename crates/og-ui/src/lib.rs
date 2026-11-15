@@ -152,7 +152,7 @@ pub use rich::{InlineAtom, TextSpan, TextSpanStyle, TextSpanValue};
 pub use slot::{Aspect, SlotKind, SlotSpec};
 pub use style::{
     Breakpoint, Contrast, Controls, Densities, Density, DensityMode, Durations, Palette, READABLE,
-    Radius, Roles, Scheme, Space, Spring, Srgba, State, Theme, TypeRamp, TypeStep,
+    Radius, Roles, Scheme, Seeds, Space, Spring, Srgba, State, Theme, TypeRamp, TypeStep,
 };
 pub use style_file::{Art, Slice, SliceFill, StylePart, UiSound};
 pub use text::text_path;

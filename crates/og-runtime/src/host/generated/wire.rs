@@ -16356,7 +16356,7 @@ pub struct UiDesc {
     pub rounded_font: Option<u64>,
     pub fallback_fonts: Vec<u64>,
     pub contrast: Contrast,
-    pub primary_color: Option<Color>,
+    pub seeds: Option<UiSeeds>,
     pub reduced_motion: bool,
     pub text_scale: f32,
     pub unit_scale: f32,
@@ -16383,7 +16383,7 @@ impl Default for UiDesc {
             rounded_font: Default::default(),
             fallback_fonts: Default::default(),
             contrast: Default::default(),
-            primary_color: Default::default(),
+            seeds: Default::default(),
             reduced_motion: Default::default(),
             text_scale: 1.0_f32,
             unit_scale: 0.0_f32,
@@ -16416,7 +16416,7 @@ impl FromJson for UiDesc {
             rounded_font: field(o, "roundedFont", d.rounded_font)?,
             fallback_fonts: field(o, "fallbackFonts", d.fallback_fonts)?,
             contrast: field(o, "contrast", d.contrast)?,
-            primary_color: field(o, "primaryColor", d.primary_color)?,
+            seeds: field(o, "seeds", d.seeds)?,
             reduced_motion: field(o, "reducedMotion", d.reduced_motion)?,
             text_scale: field(o, "textScale", d.text_scale)?,
             unit_scale: field(o, "unitScale", d.unit_scale)?,
@@ -16445,7 +16445,7 @@ impl ToJson for UiDesc {
         o.insert("roundedFont".into(), self.rounded_font.to_json());
         o.insert("fallbackFonts".into(), self.fallback_fonts.to_json());
         o.insert("contrast".into(), self.contrast.to_json());
-        o.insert("primaryColor".into(), self.primary_color.to_json());
+        o.insert("seeds".into(), self.seeds.to_json());
         o.insert("reducedMotion".into(), self.reduced_motion.to_json());
         o.insert("textScale".into(), self.text_scale.to_json());
         o.insert("unitScale".into(), self.unit_scale.to_json());
@@ -16459,6 +16459,68 @@ impl ToJson for UiDesc {
         o.insert("hudMaxAspect".into(), self.hud_max_aspect.to_json());
         o.insert("style".into(), self.style.to_json());
         o.insert("sounds".into(), self.sounds.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `UiSeeds`: packages/knowledge/wiki/ui.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct UiSeeds {
+    pub primary: Option<Color>,
+    pub accent: Option<Color>,
+    pub neutral: Option<Color>,
+    pub danger: Option<Color>,
+    pub warn: Option<Color>,
+    pub success: Option<Color>,
+    pub info: Option<Color>,
+    pub team: Option<Color>,
+}
+
+impl Default for UiSeeds {
+    fn default() -> Self {
+        Self {
+            primary: Default::default(),
+            accent: Default::default(),
+            neutral: Default::default(),
+            danger: Default::default(),
+            warn: Default::default(),
+            success: Default::default(),
+            info: Default::default(),
+            team: Default::default(),
+        }
+    }
+}
+
+impl FromJson for UiSeeds {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            primary: field(o, "primary", d.primary)?,
+            accent: field(o, "accent", d.accent)?,
+            neutral: field(o, "neutral", d.neutral)?,
+            danger: field(o, "danger", d.danger)?,
+            warn: field(o, "warn", d.warn)?,
+            success: field(o, "success", d.success)?,
+            info: field(o, "info", d.info)?,
+            team: field(o, "team", d.team)?,
+        })
+    }
+}
+
+impl ToJson for UiSeeds {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("primary".into(), self.primary.to_json());
+        o.insert("accent".into(), self.accent.to_json());
+        o.insert("neutral".into(), self.neutral.to_json());
+        o.insert("danger".into(), self.danger.to_json());
+        o.insert("warn".into(), self.warn.to_json());
+        o.insert("success".into(), self.success.to_json());
+        o.insert("info".into(), self.info.to_json());
+        o.insert("team".into(), self.team.to_json());
         Value::Object(o)
     }
 }

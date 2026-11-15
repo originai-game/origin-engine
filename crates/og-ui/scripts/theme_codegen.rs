@@ -12,7 +12,7 @@ mod theme_css;
 pub use theme_css::generate as generate_css;
 #[path = "theme_tokens.rs"]
 mod theme_tokens;
-pub use theme_tokens::{docs, json, load};
+pub use theme_tokens::{docs, load};
 
 /// Each og-ui role and the token it is drawn from: `color` (the scheme's
 /// colour, `dark.color` over `color`) or `linear` (the fill restated for
@@ -114,12 +114,133 @@ fn unit(v: &Value, path: &[&str], suffix: &str) -> Result<f32, String> {
         })
 }
 
-/// A token's colour, any CSS colour that reads no other token.
-fn colour(s: &str) -> Result<([u8; 3], f32), String> {
-    let c = og_css::color::parse_str(s)?
+/// A token's text with each `var(--name)` it reads replaced by that
+/// token's text in the scheme (`dark` over the base), as the cascade
+/// substitutes custom properties: the seeds' derivations (seed.css,
+/// color.css) resolve here to the colours they make.
+fn substitute(t: &Value, dark: bool, text: &str, depth: u8) -> Result<String, String> {
+    if depth > 16 {
+        return Err(format!("`{text}` reads tokens 16 deep (a cycle?)"));
+    }
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(i) = rest.find("var(--") {
+        out.push_str(&rest[..i]);
+        let body = &rest[i + 4..];
+        let mut nest = 0;
+        let close = body
+            .char_indices()
+            .find(|&(_, c)| {
+                nest += match c {
+                    '(' => 1,
+                    ')' => -1,
+                    _ => 0,
+                };
+                nest < 0
+            })
+            .map(|(k, _)| k)
+            .ok_or_else(|| format!("`{text}`: var() is not closed"))?;
+        let name = body[2..close].split(',').next().unwrap_or_default().trim();
+        let mut path = theme_tokens::path(name);
+        let base: Vec<&str> = path.iter().map(String::as_str).collect();
+        let own = get(t, &base).ok().cloned();
+        if path[0] == "linear" {
+            path.insert(1, "dark".into());
+        } else {
+            path.insert(0, "dark".into());
+        }
+        let over: Vec<&str> = path.iter().map(String::as_str).collect();
+        let value = dark
+            .then(|| get(t, &over).ok().cloned())
+            .flatten()
+            .or(own)
+            .ok_or_else(|| format!("`{text}` reads --{name}, which no token sets"))?;
+        let value = match value {
+            Value::String(s) => s,
+            v => v.to_string(),
+        };
+        out.push_str(&substitute(t, dark, &value, depth + 1)?);
+        rest = &body[close + 1..];
+    }
+    out.push_str(rest);
+    Ok(out)
+}
+
+/// A token's colour in the scheme: any CSS colour, its `var()`s read from
+/// the tokens.
+fn colour(t: &Value, dark: bool, s: &str) -> Result<([u8; 3], f32), String> {
+    let text = substitute(t, dark, s, 0)?;
+    let c = og_css::color::parse_str(&text)
+        .map_err(|e| format!("`{s}`: {e}"))?
         .literal()
         .ok_or_else(|| format!("`{s}` is not a colour of its own"))?;
     Ok((c.rgb, c.alpha))
+}
+
+/// `tokens.json`: the tokens as one tree, each colour of the seeds and the
+/// palette (`seed`, `color`, `linear.color` and their dark ones) the
+/// default seeds' resolved sRGB, for a client that reads JSON rather than
+/// CSS (origin-agent); the CSS files keep the derivations.
+pub fn json(tokens: &Value, docs: &[(Vec<String>, String)]) -> Result<String, String> {
+    let resolved = |dark: bool, text: &str, key: &str| -> Result<String, String> {
+        let ([r, g, b], a) = colour(tokens, dark, text).map_err(|e| format!("{key}: {e}"))?;
+        Ok(if a >= 1.0 {
+            format!("#{r:02x}{g:02x}{b:02x}")
+        } else {
+            format!("rgb({r} {g} {b} / {})", (a * 1000.0).round() / 1000.0)
+        })
+    };
+    let mut tree = tokens.clone();
+    for (base, over) in [
+        (&["seed"][..], &["dark", "seed"][..]),
+        (&["color"], &["dark", "color"]),
+        (&["linear", "color"], &["linear", "dark", "color"]),
+    ] {
+        let light = get(tokens, base)?
+            .as_object()
+            .ok_or_else(|| format!("tokens: {} is not an object", base.join(".")))?;
+        let own = get(tokens, over).ok().and_then(Value::as_object);
+        let mut lights = serde_json::Map::new();
+        let mut darks = serde_json::Map::new();
+        for (key, value) in light {
+            let Some(text) = value.as_str() else {
+                lights.insert(key.clone(), value.clone());
+                continue;
+            };
+            let l = resolved(false, text, key)?;
+            // The dark scheme's text where it sets one, else the light's,
+            // read in the dark scheme: a derivation that resolves apart
+            // there is a dark value too.
+            let dark_text = own
+                .and_then(|o| o.get(key))
+                .and_then(Value::as_str)
+                .unwrap_or(text);
+            let d = resolved(true, dark_text, key)?;
+            if d != l || own.is_some_and(|o| o.contains_key(key)) {
+                darks.insert(key.clone(), Value::String(d));
+            }
+            lights.insert(key.clone(), Value::String(l));
+        }
+        set(&mut tree, base, Value::Object(lights));
+        set(&mut tree, over, Value::Object(darks));
+    }
+    theme_tokens::json(&tree, docs)
+}
+
+/// Sets the value at `path`, making the groups on the way.
+fn set(tree: &mut Value, path: &[&str], value: Value) {
+    let (last, groups) = path.split_last().expect("a path");
+    let mut at = tree;
+    for g in groups {
+        at = at
+            .as_object_mut()
+            .expect("a group")
+            .entry(g.to_string())
+            .or_insert_with(|| Value::Object(serde_json::Map::new()));
+    }
+    at.as_object_mut()
+        .expect("a group")
+        .insert(last.to_string(), value);
 }
 
 fn num(x: f32) -> String {
@@ -145,7 +266,12 @@ fn bezier(s: &str) -> Result<[f32; 4], String> {
     Ok([a, b, c, d])
 }
 
-fn role_colour(t: &Value, dark: bool, source: &str, key: &str) -> Result<([u8; 3], f32), String> {
+pub fn role_colour(
+    t: &Value,
+    dark: bool,
+    source: &str,
+    key: &str,
+) -> Result<([u8; 3], f32), String> {
     let (base, over): (&[&str], &[&str]) = match source {
         "linear" => (&["linear", "color"], &["linear", "dark", "color"]),
         _ => (&["color"], &["dark", "color"]),
@@ -159,7 +285,7 @@ fn role_colour(t: &Value, dark: bool, source: &str, key: &str) -> Result<([u8; 3
     let s = (if dark { pick(over) } else { None })
         .or_else(|| pick(base))
         .ok_or_else(|| format!("the tokens have no {source} colour `{key}`"))?;
-    colour(s)
+    colour(t, dark, s)
 }
 
 fn palette(t: &Value, dark: bool, out: &mut String) -> Result<(), String> {

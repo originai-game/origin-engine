@@ -363,6 +363,20 @@ impl Ui {
                     .expect("configured role fits");
             }
         }
+        // The team colours (`--team1` …, derived from `--seed-team`) are
+        // the tokens' (UiTheme.tokens.team, `var(--team3)` in a paint).
+        let context = crate::css_color::Context::of(&self.env.theme);
+        let teams: Vec<_> = (1..=self.env.theme.tokens.colors.team.len())
+            .map(|k| {
+                let value = root.get(&format!("--team{k}"))?.as_ref()?;
+                Some(crate::css_color::parse_str(value).ok()?.resolve(&context))
+            })
+            .collect();
+        for (swatch, color) in self.env.theme.tokens.colors.team.iter_mut().zip(teams) {
+            if let Some(color) = color {
+                swatch.color = color;
+            }
+        }
         scalars(&mut self.env.theme, |name, unit, target| {
             if let Some(Some(value)) = root.get(&format!("--{name}"))
                 && let Some(value) = unit.read(value)
@@ -477,6 +491,7 @@ impl crate::ui::Style {
         }
         let mut values = palette_css(&theme);
         values.retain(|name, value| old.get(name) != Some(value));
+        values.extend(theme.seeds.tokens());
         // Of a name two fields read, the first that differs is written.
         for (name, value) in scalar_css(&theme) {
             if old.get(&name) != Some(&value) {

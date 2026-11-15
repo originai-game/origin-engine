@@ -100,12 +100,19 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
         if u.contrast == wire::Contrast::High {
             theme = theme.to_high_contrast();
         }
-        if let Some(c) = &u.primary_color {
-            // A channel left out is 1.
-            let raw = &d["primaryColor"];
-            let ch =
-                |k: &str, x: f32| super::ui_desc::srgb8(if raw[k].is_null() { 1.0 } else { x });
-            theme = theme.with_primary(Srgba::rgb(ch("r", c.r), ch("g", c.g), ch("b", c.b)));
+        if let Some(seeds) = &u.seeds {
+            // In og_ui::Seeds::NAMES order.
+            let given = [
+                &seeds.primary,
+                &seeds.accent,
+                &seeds.neutral,
+                &seeds.danger,
+                &seeds.warn,
+                &seeds.success,
+                &seeds.info,
+                &seeds.team,
+            ];
+            theme.seeds = og_ui::Seeds(given.map(|c| c.as_ref().map(|c| [c.r, c.g, c.b])));
         }
         theme.reduced_motion = u.reduced_motion;
         theme.reduced_transparency = u.reduced_transparency;

@@ -74,6 +74,29 @@ alike.
 
 ## Colour
 
+**Seeds.** The palette is derived from a few seed colours (`tokens/seed.css`):
+`--seed-primary` (the brand), `--seed-accent` (a second accent, by default
+the primary), `--seed-neutral` (the tint of grounds, surfaces, lines and
+inks, by default the primary's hue at chroma up to 0.012), the status hues
+`--seed-danger`, `--seed-warn`, `--seed-success`, `--seed-info`, and
+`--seed-team`. `color.css` writes every ground, ink, accent, state, status and
+team colour as a CSS relative colour of a seed. The neutral ladder keeps
+its OKLCH lightness steps and takes the neutral's hue, with its chroma held
+to 0.04 (0.025 for inks, 0.02 for fills). The primary's tone is moved out of the band where neither
+ink reads (OKLCH lightness 0.39 to 0.74), and a primary that would vanish
+into the scheme's ground is turned to the other end of the scale. Hover is
+0.12 lighter (0.07 in dark), press 0.1 darker. The ink on it is whichever
+end reads. The status, highlight, focus and team colours keep their seed's
+hue and are scaled in linear light (CIE XYZ) to the luminance their pair
+needs: at most 0.148 for text on light grounds, at least 0.3 (0.42 for the
+highlight) on dark ones, and 0.245 or 0.195 for focus and team marks. WCAG
+contrast is a function of luminance alone, so these pairs hold for any
+seed. A style or a game sets seeds, not the colours derived from them; the
+default seeds are the neutral chrome below. og-ui's
+`tests/theme.rs` holds every pair below across a sweep of seeds.
+Glass tints (`material-thin/regular/thick`) are og-render's presets and
+stay neutral.
+
 Semantic tokens only (`bg`, `bg-subtle`, `surface`, `surface-raised`,
 `surface-hover`, `fill`, `fill-strong`, `thumb`, `border`, `border-strong`,
 `fg`, `fg-muted`, `fg-subtle`, `fg-inverse`, `accent*`, `focus`, `danger`,
