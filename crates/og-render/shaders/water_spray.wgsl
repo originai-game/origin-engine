@@ -38,6 +38,8 @@ struct SprayOut {
   @location(1) corner: vec2<f32>,
   @location(2) alpha: f32,
   @location(3) @interpolate(flat) sheet: u32,
+  // A spume sheet's own hash (0 to 1): its strands, its sway and where along it it is densest.
+  @location(4) @interpolate(flat) seed: f32,
 };
 
 @vertex
@@ -48,6 +50,7 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   o.corner = vec2<f32>(0.0);
   o.alpha = 0.0;
   o.sheet = ii / SPRAY_SLOTS;
+  o.seed = 0.0;
   let wind = water.sea_wind.z;
   let gust = smoothstep(10.0, 20.0, wind) * water.spray.x;
   if (gust <= 0.0 || !is_sea()) { return o; }
@@ -122,10 +125,11 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   // 0.4 m, in a gale some 0.15; the spume's sheets, heavier and caught broadside, less). (Thrown up at 1 to 7 m/s, a
   // gale's spume stood over its crest in a plume as tall as the crest.)
   // The spume's sheets leave each along a heading of its own: the gusts' veer, some 25 m patches turning the air up to
-  // 25 degrees either way, and the sheet's own 12. All along the mean wind, a gale's spume lay in rows of parallel,
-  // combed smears across the sea.
-  let veer = select(0.0, 0.45 * (foam_noise(rest / 25.0 + vec2<f32>(5.3, 1.7)) * 2.0 - 1.0)
-    + 0.2 * (hash_unit(hm + 7u) * 2.0 - 1.0), pop == 1u);
+  // 25 degrees either way, and the sheet's own, up to 23 where the gusts are even and 9 where they veer most. All along
+  // the mean wind, a gale's spume lay in rows of parallel, combed smears across the sea; with a sheet's own 12 alone, a
+  // patch of even gusts still fanned its fifteen sheets out of one vanishing point.
+  let gv = foam_noise(rest / 25.0 + vec2<f32>(5.3, 1.7)) * 2.0 - 1.0;
+  let veer = select(0.0, 0.45 * gv + mix(0.4, 0.15, abs(gv)) * (hash_unit(hm + 7u) * 2.0 - 1.0), pop == 1u);
   let wd = vec2<f32>(cos(veer) * water.sea_wind.x - sin(veer) * water.sea_wind.y,
     sin(veer) * water.sea_wind.x + cos(veer) * water.sea_wind.y);
   let side = vec2<f32>(-wd.y, wd.x);
@@ -198,10 +202,17 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   var world = p + (right * c.x * stretch + upv * c.y / stretch) * size * 0.5;
   if (pop == 1u) {
     let u = 0.5 * (c.x + 1.0);
-    let head = start + vec3<f32>(0.0, 0.05, 0.0);
+    // Its back end: on the crest while the crest still feeds it, or, for some sheets, a burst of spume already blown
+    // clear of it (the stream from a share of its flight on). All rooted on their crests, a patch's sheets started in a
+    // row at the same distance, bright, as one brush stroke.
+    let th = tau * 0.6 * pow(hash_unit(hm + 9u), 2.0);
+    let back = start + air * th + (v0 - air) * (1.0 - exp(-k * th)) / k;
+    let head = vec3<f32>(back.x, start.y + 0.05, back.z);
     let flight = p - head;
     let across_sheet = normalize(cross(to_eye, flight) + vec3<f32>(1e-5, 0.0, 0.0));
-    world = mix(head, p, u) + across_sheet * c.y * size * 0.3 * (1.0 - 0.6 * u);
+    // (1.4 times its width: room for its sway, fs_spray.)
+    world = mix(head, p, u) + across_sheet * c.y * size * 0.42 * (1.0 - 0.6 * u);
+    o.seed = hash_unit(hm + 10u);
   }
   o.clip = frame.view_proj * vec4<f32>(world, 1.0);
   o.world = world;
@@ -218,9 +229,17 @@ fn fs_spray(in: SprayOut) -> @location(0) vec4<f32> {
     // (Clamped: the interpolated corner can pass 1 at the quad's edge, and pow(1 - u, 1.5) of a negative is NaN, which
     // the bloom's mips then spread into a black block over the frame.)
     let u = clamp(0.5 * (in.corner.x + 1.0), 0.0, 1.0);
-    let across = min(in.corner.y * in.corner.y, 1.0);
-    let strands = 0.4 + 0.6 * foam_noise(vec2<f32>(u * 6.0 - water.spray.y * 2.0, in.corner.y * 10.0));
-    a = in.alpha * exp(-3.0 * across) * (1.0 - across) * smoothstep(0.0, 0.12, u) * pow(1.0 - u, 1.5) * strands;
+    let s = in.seed;
+    // Each sheet its own: its middle line sways across the quad (straight, the sheets read as brush strokes), its
+    // strands (the same noise for every sheet drew the same streaks in each) and where along it it is densest, in one
+    // to three clots (all densest by an eighth of their length, they all started bright at the same distance).
+    let sway = 0.28 * sin(u * mix(4.0, 9.0, s) + s * 40.0) * smoothstep(0.0, 0.35, u);
+    let y = (in.corner.y - sway) * 1.4;
+    let across = min(y * y, 1.0);
+    let strands = 0.4 + 0.6 * foam_noise(vec2<f32>(u * 6.0 - water.spray.y * 2.0 + s * 53.0, y * 7.0 + s * 17.0));
+    let peak = mix(0.08, 0.5, fract(s * 7.31));
+    let clots = 0.3 + 0.7 * foam_noise(vec2<f32>(u * mix(2.0, 4.5, fract(s * 3.7)) + s * 91.0, s * 23.0));
+    a = in.alpha * exp(-3.0 * across) * (1.0 - across) * smoothstep(0.0, peak, u) * pow(1.0 - u, 1.5) * strands * clots;
   } else {
     if (r2 >= 1.0) { discard; }
     // A puff of fine droplets, thinner in places, not one drop: an even disc drew each as a white oval.
