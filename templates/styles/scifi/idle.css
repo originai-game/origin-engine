@@ -48,7 +48,7 @@
 [part="IdleResources.row"] {
   border: var(--stroke-hairline) solid var(--line);
   border-radius: var(--radius-sm);
-  background: var(--plate-fill);
+  background: var(--scifi-plate-solid-fill);
   box-shadow: var(--plate-shadow);
   color: var(--scene-ink);
 }

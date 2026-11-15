@@ -60,7 +60,8 @@ tokens alone.
   `--plate-fill`.
 - Pack-private `--scifi-*`, where no engine token means that thing:
   - the materials every composite is built from (`--scifi-glass-*`,
-    `--scifi-plate-*`, `--scifi-cell-*`, `--scifi-key-*`, the glow, shade
+    `--scifi-plate-*`, their thinner `--scifi-frost-*` for what blurs,
+    `--scifi-cell-*`, `--scifi-key-*`, the glow, shade
     and keyline steps, `--scifi-chosen-*`). The light scheme restates the
     palette, the inks and these, and nothing else;
   - the cuts (`--scifi-cut-*`, a two-value radius that `corner-shape: bevel`
@@ -74,10 +75,23 @@ Two things about the engine shape the values:
 
 - It blends in linear light. A dark glass over a bright scene reads much
   thinner than its alpha (and lets bright text under it ghost through), and
-  a bright wash over dark glass much stronger, so the glass alphas are high
-  (0.95 and up; a frame's, which can cover other panels, 0.97) and the
-  washes low (0.1 and under). The light scheme needs the opposite, which is
-  why the wash steps are material tokens.
+  a bright wash over dark glass much stronger, so glass that does not blur
+  is nearly opaque (0.95 and up) and the washes are low (0.1 and under).
+  The light scheme needs the opposite, which is why the wash steps are
+  material tokens.
+- Glass that blurs is frost: the backdrop blur removes the detail that
+  would ghost through, so frost is thinner (0.78 to 0.84) and the scene
+  shows through it as soft colour. The HUD's frost (`--scifi-frost-plate-*`,
+  0.88 to 0.91) stays denser, because a HUD stands over a sky or a lit wall
+  where its captions still have to read. `--scifi-glass-blur` (panels,
+  dialogs, tooltips and every role frame) and the lighter
+  `--scifi-plate-blur` (HUD plates: `.hud` frames, which wear the HUD's
+  frost, `hud`, the shooter's vitals and ammunition, the rpg compass) are
+  the blurs. A bare frame, a frame inside another (it
+  stands on glass that already blurred), world tags, per-value bars, the
+  small chips of a busy HUD and trays its slots cover do not blur: they
+  wear the solid `--scifi-frame-solid-fill` and `--scifi-plate-solid-fill`
+  instead, since each blur is a capture of its own.
 - A pack's files apply in lexical order, so `arena.css` and `card.css` are
   read before `controls.css`. A component button that names its own part
   still matches `button::part(base)`, and at equal specificity the later
@@ -93,8 +107,9 @@ Rajdhani) come from `@styles/shared` under their own licences there.
 
 ## Pending engine gaps
 
-- `backdrop-filter` on a part is pending parts-as-nodes, so the glass is
-  translucent but does not blur what is behind it.
+- A core `panel` and `dialog` draw an opaque surface under their frame
+  part, so their frost and blur do not show: the scene stays hidden even
+  with the fill at 0.25. Role frames, HUD plates and the compass blur.
 - The focus part of a button whose document names its own part also takes
   `button::part(base)`'s rules, so a plate is drawn over the button's
   content on keyboard focus. `controls.css` clears `button::part(focus)` to

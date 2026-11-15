@@ -54,5 +54,10 @@ button::part(LootLabel\.tag):hover { background: var(--panel-hover); box-shadow:
 [part="RadialMenu.slice"].chosen .wedge { stroke: var(--primary); }
 button::part(RadialMenu\.item) { padding: 0; border: none; background: none; box-shadow: none; }
 
+/* ── World tags and per-value bars: many at once over a moving scene, so
+   they do not blur and stand on solid glass. */
+[part="SpeechBubble.frame"] { backdrop-filter: none; background: var(--scifi-frame-solid-fill); }
+:is([part="InteractionPrompt.frame"], [part="StatBar.frame"].hud) { backdrop-filter: none; background: var(--scifi-plate-solid-fill); }
+
 /* ── Speech bubble: the tail is a shape, so it takes the glass as one colour. */
 [part="SpeechBubble.tail"] { fill: var(--scifi-glass-lo); }

@@ -105,6 +105,15 @@
   --scifi-chosen-lo: rgb(from var(--accent) r g b / 0.015);
   --scifi-plate-hi: #0a1a29f2;
   --scifi-plate-lo: #050d16f5;
+  /* Frost: the glass and plates that blur what is behind them. The blur
+     keeps a scene's detail and another panel's text from ghosting through,
+     so frost is thinner than the glass and plates that do not blur. The
+     HUD's frost stays denser: it stands over the bright world, a sky or a
+     lit wall, where a caption still has to read. */
+  --scifi-frost-hi: #10253ac7;
+  --scifi-frost-lo: #07121cd6;
+  --scifi-frost-plate-hi: #0a1a29e0;
+  --scifi-frost-plate-lo: #050d16e8;
   --scifi-cell-hi: #143044;
   --scifi-cell-lo: #0a1824;
   --scifi-cell-pressed: #071019;
@@ -386,12 +395,19 @@
   --scifi-key-pressed: var(--scifi-cell-pressed);
   --scifi-key-disabled: var(--scifi-disabled-fill);
   --scifi-scanlines: repeating-linear-gradient(180deg, var(--scifi-scan) 0, var(--scifi-scan) 1px, rgb(from var(--primary) r g b / 0) 1px, rgb(from var(--primary) r g b / 0) var(--scifi-scan-pitch));
+  /* The backdrop blurs: a panel, dialog, tooltip or frame blurs the scene
+     behind it, a HUD plate a little less. World tags, per-value bars and
+     the small chips of a busy HUD do not blur (solid glass instead): there
+     are many of them over a moving scene, each a capture of its own. */
+  --scifi-glass-blur: blur(16px) saturate(1.3);
+  --scifi-plate-blur: blur(10px) saturate(1.2);
   --panel-fill:
     var(--scifi-scanlines),
     linear-gradient(180deg, var(--primary-12), rgb(from var(--primary) r g b / 0) 28%),
-    linear-gradient(180deg, var(--scifi-glass-hi), var(--scifi-glass-lo));
+    linear-gradient(180deg, var(--scifi-frost-hi), var(--scifi-frost-lo));
   --panel-shadow: inset 0 0 0 1px var(--scifi-keyline), 0 0 14px var(--scifi-glow-20), 0 12px 32px var(--scifi-shade);
-  --scifi-tooltip: linear-gradient(180deg, var(--scifi-plate-hi), var(--scifi-plate-lo));
+  --scifi-tooltip: linear-gradient(180deg, var(--scifi-frost-plate-hi), var(--scifi-frost-plate-lo));
+  --scifi-hud-fill: linear-gradient(180deg, var(--scifi-frost-plate-hi), var(--scifi-frost-plate-lo));
   --scifi-tooltip-shadow: 0 0 10px var(--scifi-glow-20), 0 6px 16px var(--scifi-shade);
   --scifi-touch-plate: rgb(from var(--well) r g b / 0.62);
   /* What cannot be used goes grey and dark, but its words stay readable. */
@@ -411,21 +427,25 @@
 
   /* ── The role parts' surfaces: what every frame, plate, band, title,
      row, cell, badge and well of a built-in component wears. */
-  --frame-fill:
+  /* A frame's and a plate's art over their glass: frost where they blur,
+     the glass and plate where they do not (the -solid fills). */
+  --scifi-frame-art:
     var(--scifi-bracket-tl) left top / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
     var(--scifi-bracket-tr) right top / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
     var(--scifi-bracket-bl) left bottom / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
     var(--scifi-bracket-br) right bottom / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
     var(--scifi-scanlines),
-    linear-gradient(180deg, var(--primary-12), rgb(from var(--primary) r g b / 0) 28%),
-    linear-gradient(180deg, var(--scifi-glass-hi), var(--scifi-glass-lo));
-  --frame-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 28px var(--scifi-glow-10), 0 0 14px var(--scifi-glow-20), 0 14px 36px var(--scifi-shade);
-  --scifi-stats-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 28px var(--scifi-glow-10), 0 12px 32px var(--scifi-shade);
-  --plate-fill:
+    linear-gradient(180deg, var(--primary-12), rgb(from var(--primary) r g b / 0) 28%);
+  --scifi-plate-art:
     var(--scifi-bracket-tl) left top / var(--scifi-corner-hud) var(--scifi-corner-hud) no-repeat,
     var(--scifi-bracket-br) right bottom / var(--scifi-corner-hud) var(--scifi-corner-hud) no-repeat,
-    var(--scifi-scanlines),
-    linear-gradient(180deg, var(--scifi-plate-hi), var(--scifi-plate-lo));
+    var(--scifi-scanlines);
+  --frame-fill: var(--scifi-frame-art), linear-gradient(180deg, var(--scifi-frost-hi), var(--scifi-frost-lo));
+  --scifi-frame-solid-fill: var(--scifi-frame-art), linear-gradient(180deg, var(--scifi-glass-hi), var(--scifi-glass-lo));
+  --frame-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 28px var(--scifi-glow-10), 0 0 14px var(--scifi-glow-20), 0 14px 36px var(--scifi-shade);
+  --scifi-stats-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 28px var(--scifi-glow-10), 0 12px 32px var(--scifi-shade);
+  --plate-fill: var(--scifi-plate-art), linear-gradient(180deg, var(--scifi-frost-plate-hi), var(--scifi-frost-plate-lo));
+  --scifi-plate-solid-fill: var(--scifi-plate-art), linear-gradient(180deg, var(--scifi-plate-hi), var(--scifi-plate-lo));
   --plate-shadow: inset 0 0 0 1px var(--scifi-keyline), 0 0 10px var(--scifi-glow-10), 0 8px 20px var(--scifi-shade);
   --band-fill: linear-gradient(90deg, rgb(from var(--primary) r g b / 0) 0%, var(--primary-16) 16%, var(--primary-32) 50%, var(--primary-16) 84%, rgb(from var(--primary) r g b / 0) 100%);
   --band-lead-fill: linear-gradient(90deg, var(--primary-32) 0%, var(--primary-16) 40%, var(--primary-8) 78%, rgb(from var(--primary) r g b / 0) 100%);
@@ -487,7 +507,7 @@
   --scifi-tick: var(--line-strong-60);
   --scifi-compass-strip:
     var(--band-rule-image) center / 100% var(--scifi-rule-height) no-repeat,
-    linear-gradient(180deg, var(--scifi-plate-lo), var(--scifi-plate-hi) 50%, var(--scifi-plate-lo));
+    linear-gradient(180deg, var(--scifi-frost-plate-lo), var(--scifi-frost-plate-hi) 50%, var(--scifi-frost-plate-lo));
   --scifi-compass-shadow: 0 0 10px var(--scifi-glow-10), 0 4px 12px var(--scifi-shade-soft);
   --scifi-member-fill: linear-gradient(180deg, var(--scifi-cell-hi), var(--scifi-cell-lo));
   --scifi-member-shadow: inset 0 0 0 1px var(--scifi-keyline), 0 6px 14px var(--scifi-shade-soft);
@@ -608,6 +628,10 @@
   --scifi-chosen-lo: rgb(from var(--accent) r g b / 0.08);
   --scifi-plate-hi: #f8fbfde0;
   --scifi-plate-lo: #e8f0f5e6;
+  --scifi-frost-hi: #fbfdfec7;
+  --scifi-frost-lo: #eaf1f5cc;
+  --scifi-frost-plate-hi: #f8fbfdd6;
+  --scifi-frost-plate-lo: #e8f0f5dd;
   --scifi-cell-hi: #f7fbfd;
   --scifi-cell-lo: #dde9f0;
   --scifi-cell-pressed: #cddde7;

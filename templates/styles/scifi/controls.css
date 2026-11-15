@@ -167,10 +167,11 @@ panel::part(frame), dialog::part(panel) {
   corner-shape: bevel;
   background: var(--panel-fill);
   box-shadow: var(--panel-shadow);
+  backdrop-filter: var(--scifi-glass-blur);
 }
 dialog::part(backdrop) { background: var(--scrim); }
-tooltip::part(frame) { border: var(--stroke-hairline) solid var(--line-strong); border-radius: var(--scifi-cut-chip); corner-shape: bevel; background: var(--scifi-tooltip); box-shadow: var(--scifi-tooltip-shadow); backdrop-filter: none; }
-hud::part(frame) { border: var(--stroke-hairline) solid var(--line-strong-50); border-radius: var(--scifi-cut-plate); corner-shape: bevel; background: var(--hud); backdrop-filter: none; }
+tooltip::part(frame) { border: var(--stroke-hairline) solid var(--line-strong); border-radius: var(--scifi-cut-chip); corner-shape: bevel; background: var(--scifi-tooltip); box-shadow: var(--scifi-tooltip-shadow); backdrop-filter: var(--scifi-glass-blur); }
+hud::part(frame) { border: var(--stroke-hairline) solid var(--line-strong-50); border-radius: var(--scifi-cut-plate); corner-shape: bevel; background: var(--scifi-hud-fill); backdrop-filter: var(--scifi-plate-blur); }
 popover::part(arrow) { background: var(--panel-raised); }
 og-spotlight::part(edge) { border: var(--stroke-regular) solid var(--accent); }
 
@@ -228,5 +229,13 @@ og-icon::part(secondary) { color: var(--accent); }
 /* An icon keeps the engine's own tint, which follows the scheme; an atlas of
    full-colour pictures (IconAtlasDesc.pictures) draws in its own colours. */
 joystick::part(direction) { background: var(--accent); }
+
+/* ── The role frames' frost blurs the scene behind it. A HUD frame
+   (the plate's denser frost) blurs a little less. A bare frame
+   wears nothing, and a frame inside another stands on glass that already
+   blurred, so neither takes a capture. */
+[part$=".frame"] { backdrop-filter: var(--scifi-glass-blur); }
+[part$=".frame"].hud { backdrop-filter: var(--scifi-plate-blur); }
+[part$=".frame"].bare, [part$=".frame"] [part$=".frame"] { backdrop-filter: none; }
 
 } /* @layer scifi-controls */

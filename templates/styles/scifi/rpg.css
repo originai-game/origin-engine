@@ -229,7 +229,7 @@ button[aria-selected=true]::part(RpgConversation\.row) { border: var(--stroke-ha
 [part="RpgConversation.frame"] .reply-mark { background: var(--mark-diamond) center / contain no-repeat; }
 
 /* ── Compass. */
-[part="RpgCompass.frame"] .strip { background: var(--scifi-compass-strip); border-block: var(--stroke-hairline) solid var(--line-strong-60); box-shadow: var(--scifi-compass-shadow); }
+[part="RpgCompass.frame"] .strip { background: var(--scifi-compass-strip); backdrop-filter: var(--scifi-plate-blur); border-block: var(--stroke-hairline) solid var(--line-strong-60); box-shadow: var(--scifi-compass-shadow); }
 [part="RpgCompass.frame"] .end.start { background: var(--band-end-start-image) center / contain no-repeat; }
 [part="RpgCompass.frame"] .end.finish { background: var(--band-end-finish-image) center / contain no-repeat; }
 [part="RpgCompass.frame"] .mark[data-kind=tick] { background: var(--scifi-tick); }

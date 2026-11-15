@@ -13,6 +13,7 @@
   corner-shape: bevel;
   background: var(--plate-fill);
   box-shadow: var(--plate-shadow);
+  backdrop-filter: var(--scifi-plate-blur);
 }
 
 /* ── Ammunition: a plate, the magazine the largest figure on the HUD, its
@@ -25,6 +26,7 @@
   corner-shape: bevel;
   background: var(--plate-fill);
   box-shadow: var(--plate-shadow);
+  backdrop-filter: var(--scifi-plate-blur);
   color: var(--scene-ink);
   font-family: var(--font-body);
 }

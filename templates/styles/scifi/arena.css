@@ -13,7 +13,7 @@
 :is([part="ArenaRoundHud.team"], [part="ArenaRoundHud.round"]) {
   border: var(--stroke-hairline) solid var(--line);
   border-radius: var(--radius-sm);
-  background: var(--plate-fill);
+  background: var(--scifi-plate-solid-fill);
   box-shadow: var(--plate-shadow);
   color: var(--scene-ink);
   font-family: var(--font-body);
@@ -99,7 +99,7 @@ button[data-locked=true]::part(ArenaRoster\.cell), button[data-taken=true]::part
 [part="ArenaDraft.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
 
 /* ── Versus. */
-[part="ArenaVersus.side"] { border: var(--stroke-regular) solid var(--frame-rim); border-radius: var(--radius-xs); background: var(--plate-fill); box-shadow: var(--plate-shadow); color: var(--ink); font-family: var(--font-body); }
+[part="ArenaVersus.side"] { border: var(--stroke-regular) solid var(--frame-rim); border-radius: var(--radius-xs); background: var(--scifi-plate-solid-fill); box-shadow: var(--plate-shadow); color: var(--ink); font-family: var(--font-body); }
 [part="ArenaVersus.side"][data-team=a] { border-color: var(--team1); }
 [part="ArenaVersus.side"][data-team=b] { border-color: var(--team2); }
 [part="ArenaVersus.heading"] { font-family: var(--font-display); font-size: var(--font-step-3xl); letter-spacing: var(--font-tracking-md); text-transform: uppercase; text-shadow: var(--title-shadow); }
