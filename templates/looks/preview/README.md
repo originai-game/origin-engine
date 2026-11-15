@@ -13,8 +13,6 @@ never promises more than a game in that look draws (docs/art.md §2.6).
   prop budget) from `sources/`; the rest is `type model` text.
 - `2d/`: a far layer, a strip of ground, a tree, the hero, a crate and a
   lantern, each a sprite of the look's authored art.
-- `flat/models/field.ogt`: a flat one-colour field for toy-3d's voxel
-  variant, whose 0.1 m cubes would raise the rolling meadow over the props.
 - `preview.json`: which scene each look and variant takes, and the art it
   takes from `templates/looks/` (a look's own models, pixel sprites stood in
   the 3D set, the 2D art and its sizes). A look not listed draws the 3D
