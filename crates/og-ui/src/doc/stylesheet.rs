@@ -75,10 +75,50 @@ fn selectors(mut rules: Vec<Rule>) -> Result<Vec<(Selector, Rule)>, Error> {
             selector.global = rule.global;
             let mut rule = rule.clone();
             rule.selector = selector.source.clone();
+            root_scheme(&mut selector, &mut rule.query);
             parsed.push((selector, rule));
         }
     }
     Ok(parsed)
+}
+
+/// The host sets `data-scheme` on the root to the theme's scheme, as a page
+/// sets it on `<html>`. Every document's root is a `:root`, and none of them
+/// carries the attribute, so `:root[data-scheme=…]` is read as what it tests:
+/// the scheme, a `prefers-color-scheme` condition on the rule. The attribute
+/// is replaced by a second `:root`, which keeps the selector's specificity.
+fn root_scheme(selector: &mut Selector, query: &mut AtQuery) {
+    use super::media::{Feature, Query};
+    use super::selectors::Simple;
+    for compound in &mut selector.compounds {
+        if !compound.0.contains(&Simple::Root) {
+            continue;
+        }
+        for simple in &mut compound.0 {
+            let Simple::Attribute { name, test } = simple else {
+                continue;
+            };
+            if name != "data-scheme" {
+                continue;
+            }
+            let holds = |scheme: &str| test.as_ref().is_none_or(|t| t.test(scheme));
+            let scheme = match (holds("light"), holds("dark")) {
+                (true, true) => Query::All,
+                (false, true) => Query::Feature(Feature::Dark(true)),
+                (true, false) => Query::Feature(Feature::Dark(false)),
+                (false, false) => Query::Not(Box::new(Query::All)),
+            };
+            query.media = match std::mem::take(&mut query.media) {
+                Query::All => scheme,
+                Query::And(mut all) => {
+                    all.push(scheme);
+                    Query::And(all)
+                }
+                media => Query::And(vec![media, scheme]),
+            };
+            *simple = Simple::Root;
+        }
+    }
 }
 
 /// Where a rule sorts in the cascade: user-agent rules first, then by

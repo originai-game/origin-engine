@@ -453,3 +453,52 @@ fn a_pack_restyles_role_parts_through_role_tokens_alone() {
         286.0
     );
 }
+
+#[test]
+fn a_packs_light_block_applies_under_the_light_scheme() {
+    use og_ui::{Scheme, Theme, UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    let pack = StylePack::parse(
+        "styles/test",
+        vec![(
+            "styles/test/main.css".into(),
+            ":root { --size: 73px; }\n:root[data-scheme=light] { --size: 41px; }\ndiv { width: var(--size); height: 25px; }"
+                .into(),
+        )],
+    )
+    .unwrap();
+    for source in ["@ui/test/main.svelte", "ui/game.svelte"] {
+        let doc = UiDocument::parse(
+            source,
+            r#"<meta name="screen" content="test"><div><div id="Box"></div></div>"#,
+        )
+        .unwrap();
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(doc);
+        ui.set_style_pack(&pack).unwrap();
+        ui.mount_document(
+            SourceId::new("test", "test"),
+            "test",
+            Default::default(),
+            Default::default(),
+            &NoEnv,
+        )
+        .unwrap();
+        for (scheme, expected) in [
+            (Scheme::Dark, 73.0),
+            (Scheme::Light, 41.0),
+            (Scheme::Dark, 73.0),
+        ] {
+            ui.set_theme(Theme::new(scheme));
+            ui.begin(Default::default(), Viewport::new(600.0, 400.0));
+            ui.build_retained_documents(&NoEnv).unwrap();
+            ui.end();
+            let width = ui
+                .elements()
+                .iter()
+                .find(|e| e.path.ends_with("/Box"))
+                .unwrap()
+                .width;
+            assert_eq!(width, expected, "{source} {scheme:?}");
+        }
+    }
+}
