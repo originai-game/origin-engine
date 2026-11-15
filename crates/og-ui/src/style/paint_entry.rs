@@ -313,6 +313,7 @@ impl<'a> Cursor<'a> {
                     stops,
                     spread,
                     dither: true,
+                    interpolation: None,
                 }
             }
             "radial" | "diamond" => {
@@ -328,6 +329,7 @@ impl<'a> Cursor<'a> {
                     stops,
                     spread,
                     dither: true,
+                    interpolation: None,
                 }
             }
             "conic" => {
@@ -341,6 +343,7 @@ impl<'a> Cursor<'a> {
                     stops,
                     spread,
                     dither: true,
+                    interpolation: None,
                 }
             }
             _ => return Ok(None),

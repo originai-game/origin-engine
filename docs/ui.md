@@ -476,7 +476,9 @@ rules and limits:
   document load registers; it never selects an atlas icon or a numeric
   handle. A missing image warns. Monochrome icons are `mask-image: url()`
   over `background-color: currentColor`.
-- Gradients take at most 8 stops, mixed in OKLab. A gradient layer is a
+- Gradients take at most 8 stops, mixed in OKLab, or in the space an
+  `in <colour space> [<hue> hue]` names: `color`'s piecewise OKLab
+  approximation of that mix, within 8 stops in all. A gradient layer is a
   tile of its concrete size (`UiPaint::GradientImage`); each layer is one
   image fill whose size, placement and repeat og-render resolves per pixel
   from the texture's own size (`UiFit::Background`), so a host never tells

@@ -14,6 +14,7 @@
 use crate::draw::DrawCmd;
 use crate::layout::Rect;
 use crate::style::{Srgba, Theme};
+use color::{ColorSpaceTag, HueDirection};
 use og_core::glam::Vec2;
 pub use og_draw::{
     TextureHandle, UiAlign as StrokeAlign, UiBlend as Blend, UiBuiltin as Builtin, UiCap as Cap,
@@ -96,7 +97,7 @@ pub struct Stop {
 /// A gradient over the element's box: `from` and `to` are fractions of it
 /// (0,0 top left); radial and diamond take `to` as the radii, conic
 /// `to[0]` as the start angle (radians clockwise from +x). Up to 8 stops,
-/// mixed in OKLab, dithered.
+/// mixed in OKLab (or `interpolation`'s space), dithered.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Gradient {
     pub kind: GradientKind,
@@ -105,6 +106,9 @@ pub struct Gradient {
     pub stops: Vec<Stop>,
     pub spread: Spread,
     pub dither: bool,
+    /// Another colour space to mix the stops in (CSS Images 4's `in
+    /// oklch longer hue`); `None` mixes in OKLab.
+    pub interpolation: Option<(ColorSpaceTag, HueDirection)>,
 }
 
 impl Default for Gradient {
@@ -116,17 +120,24 @@ impl Default for Gradient {
             stops: Vec::new(),
             spread: Spread::Pad,
             dither: true,
+            interpolation: None,
         }
     }
 }
 
 impl Gradient {
     pub fn resolve(&self, theme: &Theme) -> og_draw::UiGradient {
-        og_draw::UiGradient {
-            kind: self.kind,
-            from: Vec2::from(self.from),
-            to: Vec2::from(self.to),
-            stops: self
+        let stops = match self.interpolation {
+            Some((space, hue)) if space != ColorSpaceTag::Oklab => {
+                let srgb = |c: &ColorRef| c.srgb(theme).unwrap_or(Srgba::rgb(255, 0, 255));
+                let stops: Vec<_> = self
+                    .stops
+                    .iter()
+                    .map(|s| (s.offset, srgb(&s.color)))
+                    .collect();
+                stops_in(&stops, space, hue)
+            }
+            _ => self
                 .stops
                 .iter()
                 .map(|s| og_draw::UiStop {
@@ -134,9 +145,48 @@ impl Gradient {
                     color: s.color.resolve(theme),
                 })
                 .collect(),
+        };
+        og_draw::UiGradient {
+            kind: self.kind,
+            from: Vec2::from(self.from),
+            to: Vec2::from(self.to),
+            stops,
             spread: self.spread,
             dither: self.dither,
         }
+    }
+}
+
+/// Stops mixed in `space`, restated as the piecewise OKLab ramp og-render
+/// mixes: `color`'s gradient approximation of each span, its tolerance
+/// (deltaEOK, from 0.01) loosened until the stops fit og-draw's budget.
+fn stops_in(
+    stops: &[(f32, Srgba)],
+    space: ColorSpaceTag,
+    hue: HueDirection,
+) -> Vec<og_draw::UiStop> {
+    let mut tolerance = 0.01;
+    loop {
+        let mut out: Vec<og_draw::UiStop> = Vec::new();
+        for pair in stops.windows(2) {
+            let [(o0, c0), (o1, c1)] = [pair[0], pair[1]];
+            let (a, b) = (
+                crate::css_color::interpolating(c0.into(), space),
+                crate::css_color::interpolating(c1.into(), space),
+            );
+            let ramp = color::gradient::<color::Oklab>(a, b, space, hue, tolerance);
+            // A span's first stop is the last one's end.
+            for (t, c) in ramp.skip(usize::from(!out.is_empty())) {
+                out.push(og_draw::UiStop {
+                    offset: o0 + (o1 - o0) * t,
+                    color: c.un_premultiply().convert::<color::LinearSrgb>().components,
+                });
+            }
+        }
+        if out.len() <= og_draw::UI_GRADIENT_STOPS || tolerance > 2.0 {
+            return out;
+        }
+        tolerance *= 2.0;
     }
 }
 

@@ -496,5 +496,6 @@ pub(super) fn gradient(
             .collect(),
         spread: placed.spread,
         dither: true,
+        interpolation: None,
     })
 }

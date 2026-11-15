@@ -103,6 +103,7 @@ impl CssGradient {
                 Spread::Pad
             },
             dither: true,
+            interpolation: self.interpolation,
         }
     }
 }

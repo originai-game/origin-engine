@@ -104,10 +104,25 @@ pub(super) fn gradient(t: &Tok) -> Option<Result<CssGradient, String>> {
 fn gradient_of(kind: &str, repeating: bool, args: &[Vec<Tok>]) -> Result<CssGradient, String> {
     let first = args.first().ok_or("no colour stops")?;
     let prelude = !first.is_empty() && !is_color(&first[0]);
+    // `in <colour space> [<hue> hue]` anywhere in the prelude (CSS Images 4).
+    let mut first = first.clone();
+    let mut interpolation = None;
+    if prelude
+        && let Some(i) = first
+            .iter()
+            .position(|t| matches!(t, Tok::Ident(w) if w == "in"))
+    {
+        let hue = matches!(first.get(i + 3), Some(Tok::Ident(w)) if w == "hue");
+        let end = (i + if hue { 4 } else { 2 }).min(first.len());
+        interpolation = Some(crate::css_color::interpolation(&first[i + 1..end])?);
+        first.drain(i..end);
+    }
+    let first = &first;
     let (shape, stops) = match kind {
         "linear-gradient" => {
             let dir = match first.as_slice() {
                 _ if !prelude => Dir::Angle(PI),
+                [] => Dir::Angle(PI),
                 [a] => Dir::Angle(angle(a)?),
                 [Tok::Ident(to), sides @ ..] if to == "to" => {
                     let (mut x, mut y) = (0.0, 0.0);
@@ -249,5 +264,6 @@ fn gradient_of(kind: &str, repeating: bool, args: &[Vec<Tok>]) -> Result<CssGrad
         shape,
         repeating,
         stops: out,
+        interpolation,
     })
 }

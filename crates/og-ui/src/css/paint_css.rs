@@ -94,6 +94,7 @@ pub struct CssGradient {
     shape: Shape,
     repeating: bool,
     stops: Vec<(ColorRef, Option<crate::Length>)>,
+    interpolation: Option<(color::ColorSpaceTag, color::HueDirection)>,
 }
 
 /// A layer's image as drawn: a gradient, or a texture region.
@@ -630,6 +631,34 @@ mod tests {
         assert_eq!(
             r.stops[0].color.resolve(&theme),
             theme.palette.panel_raised.linear()
+        );
+        // `in hsl longer hue` goes from red to blue the long way, through
+        // green halfway, in the stops og-render mixes in OKLab; with no
+        // method the two stops stay as they are.
+        let at = |s: &str, t: f32| {
+            let r = g(s).resolve(10.0, 10.0).resolve(&theme);
+            assert!((2..=og_draw::UI_GRADIENT_STOPS).contains(&r.stops.len()));
+            let k = r.stops.iter().rposition(|s| s.offset <= t).unwrap();
+            let (a, b) = (r.stops[k], r.stops[k + 1]);
+            let u = (t - a.offset) / (b.offset - a.offset);
+            let [x, y] = [a, b].map(|s| og_core::color::oklab([0, 1, 2].map(|i| s.color[i])));
+            let mid = og_core::color::oklab_to_linear([0, 1, 2].map(|i| x[i] + (y[i] - x[i]) * u));
+            (r.stops.len(), mid)
+        };
+        let (n, mid) = at(
+            "linear-gradient(to right in hsl longer hue, red, blue)",
+            0.5,
+        );
+        assert!(n > 2, "{n} stops");
+        assert!(
+            mid[0] < 0.03 && mid[1] > 0.95 && mid[2] < 0.03,
+            "the long way passes green: {mid:?}"
+        );
+        assert_eq!(at("linear-gradient(to right, red, blue)", 0.5).0, 2);
+        assert!(
+            background("linear-gradient(in lab longer hue, red, blue)")
+                .unwrap()
+                .is_err()
         );
         assert!(background("linear-gradient(red)").unwrap().is_err());
         assert!(
