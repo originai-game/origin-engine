@@ -295,6 +295,20 @@ impl Selector {
                         {
                             matches = combine(Op::Or, matches, expression(attr)?);
                         }
+                        // A button's variant is one of its classes, as on
+                        // its parts (`button.primary::part(base)`); only a
+                        // variant's word can name one.
+                        if tag == "button"
+                            && button_variant(name)
+                            && let Some(attr) = attrs.iter().find(|a| a.name == "variant")
+                        {
+                            let variant = if attr.bound {
+                                Expr::HasToken(Box::new(expression(attr)?), name.clone())
+                            } else {
+                                Expr::Lit((attr.value == *name).into())
+                            };
+                            matches = combine(Op::Or, matches, variant);
+                        }
                         matches
                     }
                     Simple::Attribute { name, test } => {
@@ -502,6 +516,14 @@ const CASELESS: &[&str] = &[
     "valuetype",
     "vlink",
 ];
+
+/// Whether `name` is one of a button's variants (`variant="primary"`).
+fn button_variant(name: &str) -> bool {
+    matches!(
+        super::schema::prop("variant").map(|(_, p)| &p.ty),
+        Some(super::schema::Ty::Word(words)) if words.contains(&name)
+    )
+}
 
 fn combine(op: Op, a: Expr, b: Expr) -> Expr {
     let identity = op == Op::And;

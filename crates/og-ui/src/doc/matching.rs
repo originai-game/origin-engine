@@ -481,6 +481,7 @@ impl Profile {
         match simple {
             Simple::Class(_) => {
                 self.attributes.insert("class".into());
+                self.attributes.insert("variant".into());
                 false
             }
             Simple::Id(_) => {

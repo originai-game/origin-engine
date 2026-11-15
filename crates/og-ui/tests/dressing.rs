@@ -1540,6 +1540,64 @@ fn a_pack_restyles_core_controls_through_their_tokens_alone() {
     );
 }
 
+/// A document button's variant (`variant="primary"`) is one of its classes
+/// for the pack's host rules as for its parts' (docs/ui.md §3.2):
+/// `button.primary` inks the label as `button.primary::part(base)` fills
+/// the plate, and a bound variant stays out of rules for other classes
+/// (`.art`). Wrong: the variant's plate under the plain button's ink.
+#[test]
+fn a_document_buttons_variant_inks_its_label() {
+    let mut ui = ui_with_font(test_font());
+    ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+    let mut d = mounted(
+        ui,
+        r#"<column id="Root"><button variant="primary">Pri</button><button variant="danger">Dan</button><button variant="ghost">Gho</button><button class="primary">Cls</button><button>Pla</button><button variant={$v}>Bnd</button><footer class="actions"><button id="Confirm" variant="primary" disabled={!$ok}><kbd class="key" data-action="details"></kbd><span>Lck</span></button></footer></column>
+<style>.actions button { gap: 4px; } .art { object-fit: cover; }</style>"#,
+        &[("ok", json!(true)), ("v", json!("danger"))],
+        Viewport::new(400.0, 700.0),
+    );
+    // The pack comes after the documents, as a game's `og.ui.configure`.
+    let pack = og_ui::style_pack::StylePack::parse(
+        "styles/test",
+        vec![(
+            "styles/test/main.css".into(),
+            ":root { --button-ink: #ff0000; --button-primary-ink: #00ff00;
+               --button-danger-ink: #0000ff; --button-ghost-ink: #ffff00; }"
+                .into(),
+        )],
+    )
+    .unwrap();
+    d.ui.set_style_pack(&pack).unwrap();
+    for _ in 0..60 {
+        d.step(InputFrame::default());
+    }
+    let ink = |want: &str| {
+        d.ui.frame().items.iter().find_map(|i| {
+            let text = match &i.cmd {
+                DrawCmd::StyledText { text, .. } => text.as_ref(),
+                other => other,
+            };
+            match text {
+                DrawCmd::Text { text, color, .. } if text == want => Some(*color),
+                _ => None,
+            }
+        })
+    };
+    let colour = |hex: &str| og_ui::style_file::parse_color(hex).unwrap();
+    for (label, hex) in [
+        ("Pri", "#00ff00"),
+        ("Dan", "#0000ff"),
+        ("Gho", "#ffff00"),
+        ("Cls", "#00ff00"),
+        ("Pla", "#ff0000"),
+        ("Bnd", "#0000ff"),
+        ("Lck", "#00ff00"),
+    ] {
+        let got = ink(label).unwrap_or_else(|| panic!("{label} drawn"));
+        assert!(near(got, colour(hex)), "{label}: {got:?}, want {hex}");
+    }
+}
+
 /// A quiet or ghost button is text on the surface, so it takes inks of its
 /// own: a pack whose plates are dark in a light scheme inks them dark while
 /// its plate buttons keep a light label. Wrong: a text button hovered in the
