@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Terrain",
+      "summary": "The terrain's lit pipeline compiles faster on NVIDIA: its per-layer sampling loops now run to the number of layers a pixel picks, and a layer's second read on an unfolded wall only where there is one, instead of to constant counts that NVIDIA's shader compiler unrolled into copies of the layers' code. The picture is unchanged."
+    }
+  ]
+}
