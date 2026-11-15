@@ -15,9 +15,8 @@
 // A into B); `rows` transforms (h + p, v) along x; `columns` along z, turns each mode, and transforms back along z;
 // `unrows` back along x into the new state (B and the spectrum into A). `compose` writes what the sea draws.
 //
-// The transform (bit-reversed loads, radix-2 butterflies in shared memory, two complex signals per texel) is
-// ocean_fft.wgsl's, ported from Noniv/web-ocean's js/wgsl/sim.js (MIT, Copyright (c) 2026 Maksymilian Dendura;
-// notice: third_party/ocean/).
+// The transform is fft.wgsl's (ported from Noniv/web-ocean's js/wgsl/sim.js, MIT, Copyright (c) 2026 Maksymilian
+// Dendura; notice: third_party/ocean/).
 
 struct Params {
   // x: the grid's side (points, N), y: its cell (m), z: the step's dt (s), w: the waves' damping (1/s)
@@ -54,24 +53,15 @@ const G: f32 = 9.81;
 
 var<workgroup> wa: array<vec4<f32>, 256>;
 
-fn cmul(a: vec2<f32>, b: vec2<f32>) -> vec2<f32> { return vec2<f32>(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x); }
-fn bitrev(i: u32) -> u32 { return reverseBits(i) >> (32u - LOGN); }
-fn signed_index(i: u32) -> f32 { return f32(select(i32(i), i32(i) - i32(N), i >= N / 2u)); }
-
 // The transform of wa in place (its input already bit-reversed): y[j] = Σ x[n] e^{sign 2πi jn/N}.
 fn butterflies(t: u32, sign: f32) {
   for (var s = 0u; s < LOGN; s++) {
-    let half = 1u << s;
-    let pos = t & (half - 1u);
-    let i0 = ((t >> s) << (s + 1u)) + pos;
-    let i1 = i0 + half;
-    let ang = sign * PI * f32(pos) / f32(half);
-    let w = vec2<f32>(cos(ang), sin(ang));
-    let a0 = wa[i0];
-    let a1 = wa[i1];
-    let ta = vec4<f32>(cmul(a1.xy, w), cmul(a1.zw, w));
-    wa[i0] = a0 + ta;
-    wa[i1] = a0 - ta;
+    let f = butterfly(t, s, sign);
+    let a0 = wa[f.i0];
+    let a1 = wa[f.i1];
+    let ta = vec4<f32>(cmul(a1.xy, f.w), cmul(a1.zw, f.w));
+    wa[f.i0] = a0 + ta;
+    wa[f.i1] = a0 - ta;
     workgroupBarrier();
   }
 }

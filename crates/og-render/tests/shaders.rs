@@ -155,11 +155,12 @@ fn the_compiled_wgsl_is_the_source_without_its_comments() {
 /// of a constant pi; Oklab's matrix, or Rec.601's weights where every
 /// shader means Rec.709's; a local light's window and a spot's cone; a
 /// phase function; the GGX lobe; the cofactor that carries a normal; a
-/// vertex's joint blend; the choice between a cascade's depth and a local
-/// light's value, which every caster takes from `shadow_depth` or
-/// `shadow_card`; the fog and the water body between the eye and a point;
-/// the sky of a look; a read of the occluders' depth pyramid, a cull's
-/// scan, or a level's error against the pixel threshold).
+/// vertex's joint blend; an FFT stage; the choice between a cascade's
+/// depth and a local light's value, which every caster takes from
+/// `shadow_depth` or `shadow_card`; the fog and the water body between the
+/// eye and a point; the sky of a look; a read of the occluders' depth
+/// pyramid, a cull's scan, or a level's error against the pixel
+/// threshold).
 #[test]
 fn a_mechanisms_shader_code_is_written_once() {
     const OWNED: &[(&[&str], &[&str])] = &[
@@ -235,6 +236,10 @@ fn a_mechanisms_shader_code_is_written_once() {
                 "palette_joint(palette, joints.x)",
                 "s.joints.x)",
             ],
+        ),
+        (
+            &["fft.wgsl"],
+            &["fn cmul(", "fn bitrev(", "fn signed_index(", "<< (s + 1u)"],
         ),
         (&["fullscreen.wgsl"], &["log2(0.18)"]),
         (

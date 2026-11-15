@@ -1,9 +1,8 @@
 // The FFT sea's wave fields (R5, ocean_fft/): each cascade's spectrum evolved to the frame's time and transformed to
 // the surface, one 256-texel row or column per workgroup in workgroup memory, rows first, then columns.
 //
-// The transform (bit-reversed loads, radix-2 butterflies in shared memory, two packed complex signals per texel) is
-// ported from Noniv/web-ocean's js/wgsl/sim.js (MIT, Copyright (c) 2026 Maksymilian Dendura); the spectrum's layout
-// and its time folding (a·e^{∓iωt}, ω = 2π m / 4096 s, m·phase split for float32) from goldflag/blue-water-sea-and-
+// The transform is fft.wgsl's (ported from Noniv/web-ocean's js/wgsl/sim.js, MIT, Copyright (c) 2026 Maksymilian
+// Dendura); the spectrum's layout and its time folding (a·e^{∓iωt}, ω = 2π m / 4096 s, m·phase split for float32) from goldflag/blue-water-sea-and-
 // sky's ocean/shaders/fft.wgsl (MIT, Copyright (c) 2026 Bill Yang). Notices: third_party/ocean/.
 //
 // Packed per texel, as web-ocean: A = (Dx + i Dz, h + i ∂Dx/∂z), B = (∂h/∂x + i ∂h/∂z, ∂Dx/∂x + i ∂Dz/∂z), each a real
@@ -35,30 +34,20 @@ const LOGN: u32 = 8u;
 var<workgroup> wa: array<vec4<f32>, 256>;
 var<workgroup> wb: array<vec4<f32>, 256>;
 
-fn cmul(a: vec2<f32>, b: vec2<f32>) -> vec2<f32> { return vec2<f32>(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x); }
-fn mul_i(a: vec2<f32>) -> vec2<f32> { return vec2<f32>(-a.y, a.x); }
-fn bitrev(i: u32) -> u32 { return reverseBits(i) >> (32u - LOGN); }
-fn signed_index(i: u32) -> f32 { return f32(select(i32(i), i32(i) - i32(N), i >= N / 2u)); }
-
 // The inverse transform of wa and wb in place (their input already bit-reversed): y[j] = Σ x[n] e^{+2πi jn/N}.
 fn butterflies(t: u32) {
   for (var s = 0u; s < LOGN; s++) {
-    let half = 1u << s;
-    let pos = t & (half - 1u);
-    let i0 = ((t >> s) << (s + 1u)) + pos;
-    let i1 = i0 + half;
-    let ang = 3.14159265358979 * f32(pos) / f32(half);
-    let w = vec2<f32>(cos(ang), sin(ang));
-    let a0 = wa[i0];
-    let a1 = wa[i1];
-    let b0 = wb[i0];
-    let b1 = wb[i1];
-    let ta = vec4<f32>(cmul(a1.xy, w), cmul(a1.zw, w));
-    let tb = vec4<f32>(cmul(b1.xy, w), cmul(b1.zw, w));
-    wa[i0] = a0 + ta;
-    wa[i1] = a0 - ta;
-    wb[i0] = b0 + tb;
-    wb[i1] = b0 - tb;
+    let f = butterfly(t, s, 1.0);
+    let a0 = wa[f.i0];
+    let a1 = wa[f.i1];
+    let b0 = wb[f.i0];
+    let b1 = wb[f.i1];
+    let ta = vec4<f32>(cmul(a1.xy, f.w), cmul(a1.zw, f.w));
+    let tb = vec4<f32>(cmul(b1.xy, f.w), cmul(b1.zw, f.w));
+    wa[f.i0] = a0 + ta;
+    wa[f.i1] = a0 - ta;
+    wb[f.i0] = b0 + tb;
+    wb[f.i1] = b0 - tb;
     workgroupBarrier();
   }
 }
