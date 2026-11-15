@@ -210,7 +210,7 @@ fn gi_shade(p: vec3<f32>, n: vec3<f32>, d: vec3<f32>, record: u32, seed: u32) ->
   let bounce = gi_gather(p, n, -d, true);
   let env = textureSampleLevel(irradiance_map, ibl_sampler, n, 0.0).rgb * frame.params.x;
   let indirect = mix(env, gi_eval(bounce, n) * 0.95, bounce.w) + hemi_irradiance(n);
-  let reflected = albedo * (direct / GI_PI + indirect) * gp.trace.z;
+  let reflected = albedo * (direct / PI + indirect) * gp.trace.z;
   return reflected + emissive;
 }
 

@@ -174,11 +174,11 @@ struct SeaFoam {
 fn sea_surf(sh: Shoal) -> f32 {
   if (water.shore[0].w < 0.5 || water.shore[2].z <= 0.0) { return 0.0; }
   if (sh.inside <= 0.0) { return 0.0; }
-  let half = 3.14159265 / max(water.shore[1].z, 1e-6);
+  let half = PI / max(water.shore[1].z, 1e-6);
   // Breaking where the trains lean over: inshore of a third of their half length, at the breaking depth.
   let breaking = (1.0 - smoothstep(0.08 * half, 0.4 * half, sh.depth)) * step(1e-4, sh.amp);
   // The time since the crest passed, as a share of a period (the phase falls as time goes on; the crest at pi/2).
-  let age = fract((1.5707963 - sh.phase) / 6.2831853);
+  let age = fract((0.5 * PI - sh.phase) / (2.0 * PI));
   // A broken crest runs on inshore as a bore, its face white and the foam it sheds trailing a third of a period behind
   // it; the inner surf zone holds the foam of the bores before it between them (Basco 1985's bore; the surf zone of a
   // beach at any moment is white over most of it, its lines brightest just behind each bore).
@@ -195,7 +195,7 @@ fn sea_surf(sh: Shoal) -> f32 {
 fn surf_zone(sh: Shoal) -> f32 {
   if (water.shore[0].w < 0.5) { return 0.0; }
   if (sh.inside <= 0.0) { return 0.0; }
-  let half = 3.14159265 / max(water.shore[1].z, 1e-6);
+  let half = PI / max(water.shore[1].z, 1e-6);
   return sh.inside * (1.0 - smoothstep(0.08 * half, 0.4 * half, sh.depth)) * step(0.0, sh.depth - 1e-3);
 }
 
@@ -218,7 +218,7 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   // where the water is deep for the waves that reach the shore (over half their length). Inshore of that the seabed
   // bunches every crest far under the level, and the steep gain whitened the sea from there to the beach: the least
   // gain there (sea.rs FRESH_GAIN), the surf's foam being sea_surf's.
-  let shoal_half = 3.14159265 / max(water.shore[1].z, 1e-6);
+  let shoal_half = PI / max(water.shore[1].z, 1e-6);
   let shoals = sh.inside * (1.0 - smoothstep(0.4 * shoal_half, shoal_half, sh.depth));
   let fresh_gain = mix(water.ocean.w, 2.5, shoals);
   // W3: the wakes' foam (their breaking crests and the hulls' sides) is fresh foam too.

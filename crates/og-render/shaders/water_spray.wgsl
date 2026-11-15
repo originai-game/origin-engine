@@ -238,7 +238,7 @@ fn fs_spray(in: SprayOut) -> @location(0) vec4<f32> {
   // (Without the twilight's adaptation, water.ao.w, as the foam.)
   let sky_grey = mix(sky, vec3<f32>(luma(sky)), 0.85) * 1.55 * water.ao.w;
   let ambient = mix(sky_grey, deck_up.rgb * 1.4, deck_up.a);
-  let lit = water.foam.rgb * (sun_e * (0.6 * hg + 0.4 * 0.0795775) + ambient);
+  let lit = water.foam.rgb * (sun_e * (0.6 * hg + 0.4 * 0.25 / PI) + ambient);
   let fogged = apply_fog(lit, in.world);
   return vec4<f32>(fogged * a, a);
 }

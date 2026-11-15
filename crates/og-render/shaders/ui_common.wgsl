@@ -51,7 +51,6 @@ struct UiGradient {
 // occluders (UiOccluder) and mass elements (ui_mass.wgsl).
 @group(0) @binding(5) var scene_depth: texture_2d<f32>;
 
-const PI: f32 = 3.14159265;
 const TAU: f32 = 6.28318531;
 
 // Geometry kinds, corner kinds, caps and joins (src/ui/build.rs).

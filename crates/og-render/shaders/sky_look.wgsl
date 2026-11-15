@@ -28,7 +28,7 @@ fn moon_at(d: vec3<f32>, up: f32) -> vec4<f32> {
   let r = length(q);
   let above = smoothstep(-0.004, 0.004, up);
   let coverage = (1.0 - smoothstep(0.92, 1.0, r)) * above;
-  let theta = frame.sky_moon_look.w * 6.2831853;
+  let theta = frame.sky_moon_look.w * 2.0 * PI;
   let lit_fraction = 0.5 - 0.5 * cos(theta);
   // The halo: a few radii of scattered moonlight, as bright as the moon is
   // full, gone with the moon below the horizon.

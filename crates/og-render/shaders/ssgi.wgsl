@@ -35,7 +35,7 @@ const GI_PLASTIC: f32 = 0.75487766625;
 // for the uniform pair `u`.
 fn gi_cosine_dir(n: vec3<f32>, u: vec2<f32>) -> vec3<f32> {
   let r = sqrt(u.x);
-  let phi = 2.0 * FX_PI * u.y;
+  let phi = 2.0 * PI * u.y;
   let f = orthonormal_basis(n);
   return normalize(f[0] * (r * cos(phi)) + f[1] * (r * sin(phi)) + n * sqrt(max(1.0 - u.x, 0.0)));
 }

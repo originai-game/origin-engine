@@ -7,8 +7,7 @@
 // ibl.wgsl `fs_brdf_lut` into the BRDF table's blue channel, scales the
 // layers under the sheen so that what the fibres reflect is taken from
 // them (energy conservation, as Filament and Imageworks), and lights the
-// sheen under the image-based light. Shared by ibl.wgsl and physical.wgsl;
-// PI comes from either.
+// sheen under the image-based light. Shared by ibl.wgsl and physical.wgsl.
 
 // The Charlie distribution: sin(theta_h)^(1/alpha) normalised.
 // `alpha` is the sheen's roughness squared (three.js, Filament).

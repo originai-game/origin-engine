@@ -94,7 +94,7 @@ fn grass_vertex(r: GrassRef, eye: GrassEye) -> GrassVertex {
   // thin out to lines.
   var to_eye = select(eye.position.xz - b.root.xz, eye.toward.xz, eye.orthographic);
   to_eye = select(vec2<f32>(0.0, 1.0), normalize(to_eye), dot(to_eye, to_eye) > 1e-8);
-  let yaw = b.facing * GRASS_TAU;
+  let yaw = b.facing * 2.0 * PI;
   var face = vec2<f32>(sin(yaw), cos(yaw));
   let facing_eye = dot(face, to_eye);
   let edge_on = 1.0 - abs(facing_eye);

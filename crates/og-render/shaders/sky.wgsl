@@ -348,7 +348,7 @@ fn far_clouds(color: vec4<f32>, d: vec3<f32>, a: f32, b: f32, o: vec3<f32>, to_l
   var e = 1.0;
   for (var m = 0u; m < 3u; m++) {
     let od = depth * e;
-    sun += sun_here * k * (1.0 - exp(-od)) / max(od, 1e-4) * mix(phase, 0.0795775, 1.0 - k);
+    sun += sun_here * k * (1.0 - exp(-od)) / max(od, 1e-4) * mix(phase, 0.25 / PI, 1.0 - k);
     k *= 0.6;
     e *= 0.3;
   }
@@ -488,7 +488,7 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
       var a = 1.0;
       var b = 1.0;
       for (var m = 0u; m < 3u; m++) {
-        sun += sun_here * a * exp(-od * b) * mix(phase, 0.0795775, 1.0 - a);
+        sun += sun_here * a * exp(-od * b) * mix(phase, 0.25 / PI, 1.0 - a);
         a *= 0.6;
         b *= 0.3;
       }
@@ -498,7 +498,7 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
         // (it has bounced many times), no streaks.
         let to = flash_at - p;
         let dist2 = dot(to, to);
-        sun += vec3<f32>(0.75, 0.82, 1.0) * flash.w * 0.0795775 * exp(-sqrt(dist2) * c[0].y * 0.03) / (1.0 + dist2 / 3.6e5);
+        sun += vec3<f32>(0.75, 0.82, 1.0) * flash.w * (0.25 / PI) * exp(-sqrt(dist2) * c[0].y * 0.03) / (1.0 + dist2 / 3.6e5);
       }
       let hf = clamp((h - c[0].z) / c[0].w, 0.0, 1.0);
       var ambient = mix(sky_side * 0.6, sky_top, hf) * (0.35 + 0.65 * hf);

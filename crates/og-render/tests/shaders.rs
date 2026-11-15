@@ -151,7 +151,8 @@ fn the_compiled_wgsl_is_the_source_without_its_comments() {
 }
 
 /// A mechanism's shader code has one copy, in the file that owns it: no
-/// other file writes these tokens (a definition of a library function; the
+/// other file writes these tokens (a definition of a library function or
+/// of a constant pi; the
 /// choice between a cascade's depth and a local light's value, which
 /// every caster takes from `shadow_depth` or `shadow_card`; the fog and
 /// the water body between the eye and a point; the sky of a look; a read of the
@@ -182,6 +183,7 @@ fn a_mechanisms_shader_code_is_written_once() {
                 "fn orthonormal_basis(",
                 "fn face_dir(",
                 "const SKY_VIEW_DEPTH",
+                "PI: f32 =",
             ],
         ),
         (

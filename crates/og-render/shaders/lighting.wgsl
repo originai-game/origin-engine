@@ -3,8 +3,6 @@
 // cascaded shadows and the local lights' shadows, read with explicit
 // compares. Prepended after frame.wgsl.
 
-const PI: f32 = 3.14159265359;
-
 fn d_ggx(n_dot_h: f32, a: f32) -> f32 {
   let a2 = a * a;
   let d = n_dot_h * n_dot_h * (a2 - 1.0) + 1.0;
@@ -156,7 +154,7 @@ var<private> shadow_closed: bool = false;
 // smooth disc they sample.
 fn shadow_turn(texel: vec2<f32>) -> f32 {
   let k = max(frame.shadow.w - 1.0, 0.0);
-  return 6.2831853 * ign(texel + k * 5.588238);
+  return 2.0 * PI * ign(texel + k * 5.588238);
 }
 
 // The sun's soft shadows (PCSS, `DirectionalLight::shadow_softness`, and

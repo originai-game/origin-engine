@@ -67,7 +67,6 @@ const FRAME_INFO_EXPOSURE: i32 = 0;
 const FRAME_INFO_LOG_LUMA: i32 = 1;
 const FRAME_INFO_SCENE_AVERAGE_LUMA: i32 = 2;
 const RESET_AUTO_EXPOSURE_AVERAGE_SMOOTHING: f32 = 1e4;
-const PI: f32 = 3.141592653589793;
 
 fn render_size() -> vec2<i32> { return fsr.render.xy; }
 fn previous_render_size() -> vec2<i32> { return fsr.render.zw; }

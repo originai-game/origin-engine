@@ -274,7 +274,7 @@ fn project(@builtin(global_invocation_id) id: vec3<u32>) {
   var a = aux_b[i];
   if (sim.step.y > 0.5 && sim.shift[level].z == 0) { a = vec4<f32>(a.xy, lean); }
   let goal = lean_of(u);
-  let omega = WIND_TAU * WIND_SPRING_HZ;
+  let omega = 2.0 * PI * WIND_SPRING_HZ;
   // Semi-implicit Euler in sub-steps of at most 1/60 s, stable for the
   // spring's frequency.
   let steps = max(ceil(sim.step.x * 60.0), 1.0);

@@ -125,7 +125,7 @@ fn at_emitter(i: u32, n: u32) {
     let axis = select(vec3<f32>(0.0, -1.0, 0.0), v / speed, speed > 1e-6);
     let side = normalize(select(cross(axis, vec3<f32>(0.0, 1.0, 0.0)), cross(axis, vec3<f32>(1.0, 0.0, 0.0)), abs(axis.y) > 0.9));
     let other = cross(axis, side);
-    let angle = 6.2831853 * k.x;
+    let angle = 2.0 * PI * k.x;
     let disc = (side * cos(angle) + other * sin(angle)) * (r * sqrt(k.y));
     let along = v * (DT * f32(head[SUBSTEPS]) * k.z);
     // A real nozzle's flow is never laminar: each particle leaves a little

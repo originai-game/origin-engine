@@ -89,7 +89,6 @@ struct Ssr {
 // read, upsampled from the history.
 @group(1) @binding(25) var lit_out: texture_storage_2d<rgba16float, write>;
 
-const SSR_PI: f32 = 3.14159265359;
 const SSR_BIG: f32 = 3.0e38;
 // Below this roughness a surface is a mirror: its own ray only, and the
 // hit point's parallax for its history.
@@ -215,7 +214,7 @@ fn ssr_lobe_sample(px: vec2<i32>) -> vec2<f32> {
 // height-correlated visibility (Heitz 2014), for alpha = roughness².
 fn ssr_d(n_dot_h: f32, a2: f32) -> f32 {
   let k = n_dot_h * n_dot_h * (a2 - 1.0) + 1.0;
-  return a2 / (SSR_PI * k * k);
+  return a2 / (PI * k * k);
 }
 
 fn ssr_g1(n_dot_v: f32, a2: f32) -> f32 {
@@ -237,7 +236,7 @@ fn ssr_alpha(roughness: f32) -> f32 {
 // with Spherical Caps".
 fn ssr_vndf(wi: vec3<f32>, alpha: f32, u: vec2<f32>) -> vec3<f32> {
   let wi_std = normalize(vec3<f32>(wi.xy * alpha, wi.z));
-  let phi = 2.0 * SSR_PI * u.x;
+  let phi = 2.0 * PI * u.x;
   let z = (1.0 - u.y) * (1.0 + wi_std.z) - wi_std.z;
   let sin_theta = sqrt(clamp(1.0 - z * z, 0.0, 1.0));
   let h_std = vec3<f32>(sin_theta * cos(phi), sin_theta * sin(phi), z) + wi_std;
@@ -559,7 +558,7 @@ fn resolve(@builtin(global_invocation_id) gid: vec3<u32>) {
   // Mirrors take their own ray (a neighbour's lies off their lobe); rougher
   // surfaces the ring, wider as the lobe widens.
   let count = select(9, 1, roughness < SSR_MIRROR);
-  let angle = 2.0 * SSR_PI * ssr_rand(px, 1u).x;
+  let angle = 2.0 * PI * ssr_rand(px, 1u).x;
   let rot = mat2x2<f32>(cos(angle), sin(angle), -sin(angle), cos(angle));
   let radius = mix(1.0, 2.5, smoothstep(0.1, 0.6, roughness));
   var sum_w = 0.0;
@@ -661,7 +660,7 @@ fn ssr_prefilter(px: vec2<i32>, step: f32, stream: u32) {
   let w0 = max(exp(-SSR_RADIANCE_BIAS * length(center.rgb - mean.rgb)), 1e-2);
   var sum = center * w0;
   var weight = w0;
-  let angle = 2.0 * SSR_PI * ssr_rand(px, stream).x;
+  let angle = 2.0 * PI * ssr_rand(px, stream).x;
   let rot = mat2x2<f32>(cos(angle), sin(angle), -sin(angle), cos(angle));
   var taps = SSR_HALTON;
   for (var i = 0; i < 15; i++) {

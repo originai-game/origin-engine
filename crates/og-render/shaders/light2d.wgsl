@@ -63,8 +63,6 @@ fn vs(@builtin(vertex_index) vi: u32, l: LightIn) -> LightOut {
   return o;
 }
 
-const TAU: f32 = 6.283185307179586;
-
 // Texel `c` (wrapped) of `row`: the distance to the first occluder on
 // its ray and where the ray leaves it.
 fn texel(row: i32, c: i32) -> vec2<f32> {
@@ -127,7 +125,7 @@ fn apart(c: i32, x: f32) -> f32 {
 // first touches it, where the filter it sets still reads fully lit: the
 // lit end of the penumbra has no jump.
 fn blockers(row: i32, x: f32, d: f32, source: f32, w: f32) -> vec2<f32> {
-  let per_radian = lights2d.info.x / TAU;
+  let per_radian = lights2d.info.x / (2.0 * PI);
   var s = vec2<f32>(0.0);
   var ca = i32(floor(x - w));
   var ta = texel(row, ca);
@@ -181,8 +179,8 @@ fn blockers(row: i32, x: f32, d: f32, source: f32, w: f32) -> vec2<f32> {
 fn visibility(row: i32, theta: f32, d: f32, source: f32, near: f32) -> f32 {
   if (d <= near) { return 1.0; }
   let n = lights2d.info.x;
-  let per_radian = n / TAU;
-  let x = fract(theta / TAU) * n;
+  let per_radian = n / (2.0 * PI);
+  let x = fract(theta / (2.0 * PI)) * n;
   // As far as a blocker could block: one at `near`, the nearest there is.
   let w = clamp(source * (1.0 / near - 1.0 / d) * per_radian, 0.5, n / 8.0);
   let s = blockers(row, x, d, source, w);

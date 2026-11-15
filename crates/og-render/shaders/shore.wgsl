@@ -77,7 +77,7 @@ fn shoaling(p: vec2<f32>) -> Shoal {
     v += (a.z * f) * (a.z * f) * 0.5;
   }
   let k = sea_shore(1u).z;
-  let half = 3.14159265 / max(k, 1e-6);
+  let half = PI / max(k, 1e-6);
   let a_s = sea_shore(1u).w * (1.0 - smoothstep(0.5 * half, half, o.depth)) * sp.coherence * sp.inside;
   v += a_s * a_s * 0.5;
   let hs = 4.0 * sqrt(v);

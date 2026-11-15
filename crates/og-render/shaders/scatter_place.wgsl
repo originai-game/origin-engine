@@ -51,7 +51,6 @@ const PLACE_LANES: u32 = 256u;
 const PLACE_PER_LANE: u32 = 4u;
 // scatter_cull.rs MAX_CHUNK_COPIES: the chunk's draws' first vector.
 const PLACE_TAIL: u32 = 4096u;
-const PLACE_TAU: f32 = 6.283185307179586;
 
 // The ground's raw level-0 height sample (column `c`, row `r`, clamped to
 // the field), its lowest bit the hole flag of the cell at it with holes.
@@ -330,7 +329,7 @@ fn place_copy(li: u32, x: u32, z: u32, transform: bool) -> PlaceCopy {
   } else if (up.y <= 1.0 - 1e-6) {
     arc = normalize(vec4<f32>(up.z, 0.0, -up.x, 1.0 + up.y));
   }
-  let turn = hash_to_unit(hash_lowbias(c.h0 ^ 4u)) * PLACE_TAU * 0.5;
+  let turn = hash_to_unit(hash_lowbias(c.h0 ^ 4u)) * PI;
   let ty = vec4<f32>(0.0, sin(turn), 0.0, cos(turn));
   // The product arc · ty.
   let q = vec4<f32>(

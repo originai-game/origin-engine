@@ -246,7 +246,7 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   b.clump = clump.x;
   // The lean at rest: along the blade's face by a share of `lean`, and
   // out from its clump's centre by `clump lean` (more at its rim).
-  let face = vec2<f32>(sin(b.facing * GRASS_TAU), cos(b.facing * GRASS_TAU));
+  let face = vec2<f32>(sin(b.facing * 2.0 * PI), cos(b.facing * 2.0 * PI));
   let out_local = clump.zw / max(gen.clump.x * 0.5, 1e-4);
   let out = (terrain.model * vec4<f32>(out_local.x, 0.0, out_local.y, 0.0)).xz;
   let out_len = length(out);

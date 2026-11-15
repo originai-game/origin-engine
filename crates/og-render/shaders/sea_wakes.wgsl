@@ -40,7 +40,6 @@ struct Cut {
 
 const N: u32 = 256u;
 const LOGN: u32 = 8u;
-const PI: f32 = 3.14159265358979;
 const G: f32 = 9.81;
 
 @group(0) @binding(0) var<uniform> params: Params;

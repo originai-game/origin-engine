@@ -1,9 +1,13 @@
 // What any shader may call, after the hashes (hash.wgsl): one copy each of
-// the octahedral map of unit vectors, the triangle that covers the screen,
-// the view-space point under a pixel and interleaved gradient noise. Pure
-// functions: a module that reads its own uniform passes it in. The two
-// files are LIBRARY_WGSL, which the frame group's text starts with
-// (FRAME_WGSL) and a module without the frame group puts first.
+// pi, the octahedral map of unit vectors, the triangle that covers the
+// screen, the view-space point under a pixel and interleaved gradient
+// noise. Pure functions: a module that reads its own uniform passes it in.
+// The library's files are LIBRARY_WGSL, which the frame group's text
+// starts with (FRAME_WGSL) and a module without the frame group puts first.
+
+// Pi as an f32 (every shorter spelling of it rounds to this one); write a
+// turn as 2.0 * PI and other multiples from it.
+const PI: f32 = 3.141592653589793;
 
 // Octahedral encoding of a unit vector into -1..1 (two channels): the
 // G-buffer's normals, the probes' maps, a compact vertex's normal

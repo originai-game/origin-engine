@@ -47,7 +47,7 @@ fn hit(o: vec2<f32>, d: vec2<f32>, ab: vec4<f32>) -> f32 {
 fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec2<f32> {
   let col = u32(pos.x);
   let row = min(u32(pos.y), 63u);
-  let theta = (f32(col) + 0.5) / f32(max(shadows.info.x, 1u)) * 6.283185307179586;
+  let theta = (f32(col) + 0.5) / f32(max(shadows.info.x, 1u)) * 2.0 * PI;
   let d = vec2<f32>(cos(theta), sin(theta));
   let o = shadows.rows[row].xy;
   let range = shadows.ranges[row];

@@ -18,8 +18,6 @@ struct GridParams {
 @group(0) @binding(2) var<uniform> grid: GridParams;
 
 const THREADS: u32 = 64u;
-const INV_4PI: f32 = 0.0795774715;
-const INV_2PI: f32 = 0.1591549431;
 
 var<workgroup> partial: array<array<vec4<f32>, 3>, 64>;
 
@@ -51,7 +49,7 @@ fn cs_project(@builtin(local_invocation_index) t: u32) {
     var l = textureLoad(capture, vec2<u32>(px, py), face, 0).rgb;
     // Nothing negative, infinite or NaN from a face reaches the probe.
     l = select(vec3<f32>(0.0), min(l, vec3<f32>(6.0e4)), l > vec3<f32>(0.0));
-    let basis = vec4<f32>(d * INV_2PI, INV_4PI) * w;
+    let basis = vec4<f32>(d * (0.5 / PI), 0.25 / PI) * w;
     acc[0] += basis * l.r;
     acc[1] += basis * l.g;
     acc[2] += basis * l.b;

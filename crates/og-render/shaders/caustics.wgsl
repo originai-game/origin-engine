@@ -54,7 +54,7 @@ const RIPPLE_FOCUS: f32 = 0.35;
 // The lines' share of the sun's light on the bed. They reach six times the flat surface's light where the callers
 // add them times the albedo and the sun (a diffuse surface returns 1 / pi of that), so at their full value every
 // line clipped to white: over pi they are as bright as the light that makes them.
-const RIPPLE_LIGHT: f32 = 0.31830989;
+const RIPPLE_LIGHT: f32 = 1.0 / PI;
 
 fn ripple(i: i32) -> vec4<f32> {
   var waves = array<vec4<f32>, 10>(
@@ -72,7 +72,7 @@ fn ripple(i: i32) -> vec4<f32> {
 // texture). The light is moved, not added: the pattern is over its own mean (a fit, within 6 % for every `k`).
 fn ripple_light(cell: vec2<f32>, octave: f32, k: f32, seconds: f32) -> f32 {
   let size = exp2(octave);
-  let u = fract(cell / (16.0 * size)) * 6.2831853;
+  let u = fract(cell / (16.0 * size)) * 2.0 * PI;
   let rate = seconds * inverseSqrt(size);
   var h = vec3<f32>(0.0);
   for (var i = 0; i < RIPPLES; i++) {

@@ -440,7 +440,7 @@ if (is_sea()) {
     sea_f = sea_foam(in.rest, sea.jac);
     // The detail ripples are the sea's own shortest waves: kept only where a pixel holds them (else they alias into
     // stripes towards the horizon).
-    slope *= 1.0 - smoothstep(0.785, 1.571, water.waves.x * 6.2831853 * 3.9 * footprint);
+    slope *= 1.0 - smoothstep(0.25 * PI, 0.5 * PI, water.waves.x * 2.0 * PI * 3.9 * footprint);
   }
   }
   // With ripples (water_ripples.wgsl): their own slope per pixel bends the grid's normal (finer than its vertices;
@@ -716,7 +716,7 @@ if (sea) {
     let cov = sea_cov + vec3<f32>(SUN_DISC, SUN_DISC, 0.0);
     let det = max(cov.x * cov.y - cov.z * cov.z, 1e-10);
     let e = (dsl.x * dsl.x * cov.y + dsl.y * dsl.y * cov.x - 2.0 * dsl.x * dsl.y * cov.z) / det;
-    let pdf = exp(-0.5 * e) / (6.2831853 * sqrt(det));
+    let pdf = exp(-0.5 * e) / (2.0 * PI * sqrt(det));
     let hy2 = h.y * h.y;
     let dm = pdf / max(hy2 * hy2, 1e-6);
     let g = 1.0 / (1.0 + smith_lambda(v, cov) + smith_lambda(l, cov));
@@ -740,14 +740,14 @@ if (sea) {
     let dsl = hs + ms;
     let det = max(cov.x * cov.y - cov.z * cov.z, 1e-10);
     let e = (dsl.x * dsl.x * cov.y + dsl.y * dsl.y * cov.x - 2.0 * dsl.x * dsl.y * cov.z) / det;
-    let pdf = exp(-0.5 * e) / (6.2831853 * sqrt(det));
+    let pdf = exp(-0.5 * e) / (2.0 * PI * sqrt(det));
     let hy2 = h.y * h.y;
     let dm = pdf / max(hy2 * hy2, 1e-6);
     let g = 1.0 / (1.0 + smith_lambda(v, cov) + smith_lambda(l, cov));
     let fh = f0 + (1.0 - f0) * pow(1.0 - clamp(dot(v, h), 0.0, 1.0), 5.0);
     let spec = fh * dm * g / (4.0 * max(v.y, 0.02)) * step(0.0, l.y);
     // The share of the facets whose slope lies on the sun's disc (its area in slope space, 2π its variance).
-    let share = clamp(pdf * 6.2831853 * SUN_DISC, 0.0, 1.0);
+    let share = clamp(pdf * 2.0 * PI * SUN_DISC, 0.0, 1.0);
     let glint = sun_e * spec * water.look.x * lake_glints(in.local, foot_area, share, t);
     // Each glint soft-capped at some eight times the sunlit white: a facet mirrors the sun's own radiance, which no
     // display holds, and uncapped each pinpoint bloomed into a halo many pixels wide.

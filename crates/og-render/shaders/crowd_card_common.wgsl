@@ -33,7 +33,7 @@ fn card_frames() -> u32 { return max(u32(scatter.fade.w), 1u); }
 // The direction column `col` was baked from (from the centre towards the
 // viewer) and its right and up (crowd_bake.wgsl bake_basis).
 fn card_basis(col: f32) -> mat3x3<f32> {
-  let a = 6.283185307 * col / f32(card_views());
+  let a = 2.0 * PI * col / f32(card_views());
   let e = scatter.impostor_light.w;
   let d = vec3<f32>(cos(e) * sin(a), sin(e), cos(e) * cos(a));
   let r = normalize(cross(vec3<f32>(0.0, 1.0, 0.0), d));
@@ -67,7 +67,7 @@ fn card_make(model: mat4x4<f32>, vertex: u32, toward: vec3<f32>, is_dir: bool, p
   let to_eye = select(toward - centre, toward, is_dir);
   let v = transpose(m3) * to_eye;
   let views = f32(card_views());
-  let at = atan2(v.x, v.z) / 6.283185307 * views;
+  let at = atan2(v.x, v.z) / (2.0 * PI) * views;
   let col = at - views * floor(at / views);
   var o: Card;
   o.cols = vec2<f32>(floor(col), (floor(col) + 1.0) % views);

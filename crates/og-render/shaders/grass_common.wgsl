@@ -19,7 +19,6 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-const GRASS_TAU: f32 = 6.283185307;
 // A blade's width is stored up to this many times the field's.
 const GRASS_WIDTH_RANGE: f32 = 4.0;
 // Vertex indices between one level of detail and the next (grass.rs LOD_STRIDE).
@@ -43,7 +42,7 @@ fn grass_bend(w: WindField, lean: vec2<f32>, seed: f32, stiffness: f32, sway: f3
   let flex = mix(1.6, 0.4, clamp(stiffness, 0.0, 1.0));
   let time = select(w.time.x, w.time.y, previous);
   let frequency = wind_periodic(mix(1.1, 2.4, stiffness) * (0.85 + 0.3 * seed));
-  let s = sin(time * frequency + seed * GRASS_TAU);
+  let s = sin(time * frequency + seed * 2.0 * PI);
   let across = vec2<f32>(-dir.y, dir.x);
   let wobble = (dir * 0.5 + across * 0.5) * s * (0.03 + 0.3 * strength) * flex;
   return clamp(l * flex + wobble, vec2<f32>(-1.0), vec2<f32>(1.0));

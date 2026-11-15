@@ -160,7 +160,7 @@ fn rect_shadow_tap(i: u32, n: u32, turn: f32) -> vec2<f32> {
 // read as fine grain instead of copies of the caster.
 fn rect_shadow_turn(p: vec3<f32>) -> f32 {
   let h = bitcast<u32>(p.x) ^ (bitcast<u32>(p.y) * 0x9e3779b9u) ^ (bitcast<u32>(p.z) * 0x85ebca6bu);
-  return hash_unit(h) * 6.2831853;
+  return hash_unit(h) * 2.0 * PI;
 }
 
 // How much of a shadowed rect light reaches p (normal n): 1 without a

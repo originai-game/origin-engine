@@ -22,7 +22,6 @@ struct FftParams {
 
 const N: u32 = 256u;
 const LOGN: u32 = 8u;
-const TAU: f32 = 6.283185307179586;
 
 @group(0) @binding(0) var<uniform> fft: FftParams;
 // Per texel (Re a, Im a, ±m, 0), cascades one after another, rows of x.
@@ -81,7 +80,7 @@ fn evolve(x: u32, z: u32, c: u32) -> array<vec4<f32>, 2> {
   let phase = fft.time.x;
   let high = floor(a.z / 256.0);
   let low = a.z - high * 256.0;
-  let turn = fract(high * fract(phase * 256.0) + low * phase) * TAU;
+  let turn = fract(high * fract(phase * 256.0) + low * phase) * 2.0 * PI;
   let c_ = cos(turn);
   let s_ = sin(turn);
   let h = vec2<f32>(a.x * c_ + a.y * s_, a.y * c_ - a.x * s_);

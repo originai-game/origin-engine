@@ -8,7 +8,6 @@
 // Mikelenas: the full notice is in grass_common.wgsl and
 // third_party/bevy-grass/LICENSE.
 
-const WIND_TAU: f32 = 6.283185307;
 // Seconds after which the wind's clock starts again (wind.rs TIME_PERIOD).
 const WIND_TIME_PERIOD: f32 = 3600.0;
 // Metres per cell of the gust noise, and its period in cells (wind.rs).
@@ -38,7 +37,7 @@ fn wind_hash2(a: u32, b: u32) -> u32 {
 // `frequency` (radians per second) rounded to whole cycles per
 // WIND_TIME_PERIOD, so a sine of the clock does not jump where it wraps.
 fn wind_periodic(frequency: f32) -> f32 {
-  let step = WIND_TAU / WIND_TIME_PERIOD;
+  let step = 2.0 * PI / WIND_TIME_PERIOD;
   return round(frequency / step) * step;
 }
 
@@ -77,7 +76,7 @@ fn wind_gust(w: WindField, at: vec2<f32>, previous: bool) -> f32 {
 fn wind_gust_share(w: WindField, at: vec2<f32>, previous: bool) -> f32 {
   let dir = w.dir.xy;
   let phase = select(w.phase.xy, w.phase.zw, previous);
-  let x = WIND_TAU / WIND_WAVELENGTH * dot(at, dir);
+  let x = 2.0 * PI / WIND_WAVELENGTH * dot(at, dir);
   let wave = (sin(x - phase.x) + 0.5 * sin(2.3 * x + 1.7 - phase.y)) / 1.5;
   return clamp(0.5 * wave + 1.4 * (wind_gust(w, at, previous) - 0.5), -1.0, 1.0);
 }

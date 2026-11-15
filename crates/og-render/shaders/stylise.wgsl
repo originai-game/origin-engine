@@ -877,7 +877,7 @@ fn contour_at(px: vec2<i32>, r: f32) -> f32 {
   let t = line_texel(px);
   let clump = (t.y & 32u) != 0u;
   for (var i = 0; i < 4; i++) {
-    let a = f32(i) * 0.7853982;
+    let a = f32(i) * 0.25 * PI;
     let o = vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * r));
     let dp = view_depth(px + o);
     let dm = view_depth(px - o);
@@ -918,7 +918,7 @@ fn depth_edge_at(px: vec2<i32>, r: f32) -> f32 {
   let t = line_texel(px);
   let clump = (t.y & 32u) != 0u;
   for (var i = 0; i < 8; i++) {
-    let a = f32(i) * 0.7853982;
+    let a = f32(i) * 0.25 * PI;
     let q = px + vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * r));
     let d = view_depth(q);
     if (clump) {
@@ -952,7 +952,7 @@ fn hatch_screen(p: vec2<f32>, t: f32) -> f32 {
   for (var k = 0.0; k < levels; k += 1.0) {
     let threshold = 1.0 - (k + 1.0) / (levels + 1.0);
     if (t < threshold) {
-      let turn = st.hatching.w + k * (1.5707963 / max(levels - 1.0, 1.0)) + select(0.0, 1.5707963, (i32(k) & 1) == 1);
+      let turn = st.hatching.w + k * (0.5 * PI / max(levels - 1.0, 1.0)) + select(0.0, 0.5 * PI, (i32(k) & 1) == 1);
       let f = fade_in(threshold, t, levels);
       ink = max(ink, stroke(p, turn, st.hatching.y, f) * f);
     }
@@ -978,7 +978,7 @@ fn hatch_plane(q: vec2<f32>, t: f32, spacing: f32, j: vec4<f32>) -> f32 {
   for (var k = 0.0; k < levels; k += 1.0) {
     let threshold = 1.0 - (k + 1.0) / (levels + 1.0);
     if (t < threshold) {
-      let turn = st.hatching.w + k * (1.5707963 / max(levels - 1.0, 1.0)) + select(0.0, 1.5707963, (i32(k) & 1) == 1);
+      let turn = st.hatching.w + k * (0.5 * PI / max(levels - 1.0, 1.0)) + select(0.0, 0.5 * PI, (i32(k) & 1) == 1);
       let width = screen_width(vec2<f32>(cos(turn), sin(turn)), j);
       let f = fade_in(threshold, t, levels);
       ink = max(ink, stroke_on(q, turn, spacing, width * f, 0.75 * width) * f);
@@ -1078,7 +1078,7 @@ fn cmyk(p: vec2<f32>, surf: Surf, osurf: Surf, c: vec3<f32>, paper: vec3<f32>, r
   let r = st.print.y;
   let dc = plate(p, surf, osurf, 1.0 - cmy.x * reach, a - 0.5235988, vec2<f32>(r, 0.0));
   let dm = plate(p, surf, osurf, 1.0 - cmy.y * reach, a + 0.5235988, vec2<f32>(0.0, r));
-  let dy = plate(p, surf, osurf, 1.0 - cmy.z * reach, a - 0.7853982, vec2<f32>(-0.7071, -0.7071) * r);
+  let dy = plate(p, surf, osurf, 1.0 - cmy.z * reach, a - 0.25 * PI, vec2<f32>(-0.7071, -0.7071) * r);
   let dk = plate(p, surf, osurf, 1.0 - k * reach, a, vec2<f32>(0.0));
   let ground = srgb_encode(clamp(paper, vec3<f32>(0.0), vec3<f32>(1.0)));
   let printed = ground * vec3<f32>(1.0 - dc, 1.0 - dm, 1.0 - dy) * (1.0 - dk);

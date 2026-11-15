@@ -345,7 +345,7 @@ fn horizon_texel(r: TileRef, i: vec2<u32>) -> array<f32, 8> {
     let k = first + w;
     let v = u32(height_word(vec2<i32>(i32(k % hs), i32(hs + k / hs)), i32(r.slot)));
     for (var b = 0u; b < 2u; b++) {
-      out[w * 2u + b] = (f32((v >> (12u * b)) & 4095u) / 4095.0 * 2.0 - 1.0) * 1.5707963;
+      out[w * 2u + b] = (f32((v >> (12u * b)) & 4095u) / 4095.0 * 2.0 - 1.0) * (0.5 * PI);
     }
   }
   return out;
@@ -386,7 +386,7 @@ fn terrain_horizon_from(o: Resident) -> Horizon {
 // The horizon's elevation (radians) towards azimuth `phi` (radians from
 // +x towards +z), between its two nearest azimuths.
 fn horizon_towards(h: Horizon, phi: f32) -> f32 {
-  let a = fract(phi / 6.2831853) * 8.0;
+  let a = fract(phi / (2.0 * PI)) * 8.0;
   let k = u32(floor(a)) % 8u;
   return mix(h.angles[k], h.angles[(k + 1u) % 8u], fract(a));
 }

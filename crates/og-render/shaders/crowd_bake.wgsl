@@ -52,7 +52,7 @@ struct BakeOut {
 // The direction tile column `view` looks from (from the centre towards the
 // viewer), and its right and up (impostor_common.wgsl imp_right's rule).
 fn bake_basis(view: u32) -> mat3x3<f32> {
-  let a = 6.283185307 * f32(view) / f32(bake.tiles.x);
+  let a = 2.0 * PI * f32(view) / f32(bake.tiles.x);
   let d = vec3<f32>(bake.view.y * sin(a), bake.view.x, bake.view.y * cos(a));
   let r = normalize(cross(vec3<f32>(0.0, 1.0, 0.0), d));
   return mat3x3<f32>(r, cross(d, r), d);

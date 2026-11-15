@@ -48,7 +48,7 @@ fn lake_glints(p: vec2<f32>, footprint: f32, share: f32, t: f32) -> f32 {
     let step = floor(t * 6.0 * max(water.waves.y, 0.0) + hash_unit(id));
     let h = pcg(id ^ (bitcast<u32>(i32(step)) * 2654435761u));
     let u = hash_unit(h);
-    let z = sqrt(-2.0 * log(max(hash_unit(h + 1u), 1e-7))) * cos(6.2831853 * hash_unit(h + 2u));
+    let z = sqrt(-2.0 * log(max(hash_unit(h + 1u), 1e-7))) * cos(2.0 * PI * hash_unit(h + 2u));
     let k = poisson_count(mu, u, z);
     let w = select(1.0 - (at - lo), at - lo, j == 1);
     sum += w * select(1.0, k / mu, mu > 1e-6);
@@ -98,7 +98,7 @@ fn lake_wave(i: i32) -> vec4<f32> {
 
 // The detail from the lake's wind waves (`lake_wave`), in local xz, over a pixel of `w` metres (0: every wave kept).
 fn wave_slope(p: vec2<f32>, t: f32, w: f32) -> Detail {
-  let k = water.waves.x * 6.2831853;
+  let k = water.waves.x * 2.0 * PI;
   let s = water.waves.y;
   var o = Detail(vec2<f32>(0.0), vec3<f32>(0.0));
   for (var i = 0; i < 16; i++) {
@@ -233,7 +233,7 @@ fn stream_slope(p: vec2<f32>, d_in: vec2<f32>, t: f32, fast: f32, w: f32, river:
   // Where the flow is slower than the surface's flow (a flow map's still water, `fast` under 1), its ripples are
   // longer and lower; at the flow's own speed they are as before.
   let pace = mix(0.7, 1.0, smoothstep(0.3, 1.0, fast));
-  let k = water.waves.x * 6.2831853 * pace;
+  let k = water.waves.x * 2.0 * PI * pace;
   // W5: a river's reach is glassy, its surface marked only by faint, irregular streaks drawn out along the current
   // (the shear's boils and seams), not by fronts across it: fronts at one wavenumber over a long reach read, at a
   // grazing view, as bank-to-bank bands. So its trains run along the flow (their wave vectors across it), lower.

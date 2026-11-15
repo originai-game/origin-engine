@@ -13,7 +13,6 @@
 //   [5] rgb: the night sky's radiance
 //   [6..38] the multiple-scattering table: 16 sun zenith cosines at 0 km, then at 8 km
 
-const SCATTER_PI: f32 = 3.14159265;
 const SCATTER_MS: u32 = 16u;
 
 fn scatter_on() -> bool { return SCATTER[0].w > 0.5; }
@@ -32,7 +31,7 @@ fn scatter_sphere(o: vec3<f32>, d: vec3<f32>, r: f32) -> vec3<f32> {
 // The Chapman column above the horizon (sky_physical.rs `chapman`).
 fn scatter_chapman_up(x: f32, mu: f32) -> f32 {
   let y = sqrt(0.5 * x) * mu;
-  return sqrt(0.5 * SCATTER_PI * x) * 2.911 / (1.911 * sqrt(SCATTER_PI) * y + sqrt(SCATTER_PI * y * y + 8.474));
+  return sqrt(0.5 * PI * x) * 2.911 / (1.911 * sqrt(PI) * y + sqrt(PI * y * y + 8.474));
 }
 
 fn scatter_chapman(r: f32, mu: f32, h: f32, bottom: f32) -> f32 {
@@ -93,8 +92,8 @@ fn scatter_ms(h: f32, mu: f32) -> vec3<f32> {
 fn scatter_phases(nu: f32) -> vec2<f32> {
   let g = SCATTER[2].w;
   let g2 = g * g;
-  let pr = 3.0 / (16.0 * SCATTER_PI) * (1.0 + nu * nu);
-  let pm = 3.0 / (8.0 * SCATTER_PI) * (1.0 - g2) * (1.0 + nu * nu)
+  let pr = 3.0 / (16.0 * PI) * (1.0 + nu * nu);
+  let pm = 3.0 / (8.0 * PI) * (1.0 - g2) * (1.0 + nu * nu)
     / ((2.0 + g2) * pow(max(1.0 + g2 - 2.0 * g * nu, 1e-6), 1.5));
   return vec2<f32>(pr, pm);
 }
@@ -181,7 +180,7 @@ fn physical_sky(d: vec3<f32>, sun: vec3<f32>, h0: f32, steps: u32) -> vec3<f32> 
   if (hits) {
     let p = o + d * ground.x;
     let mu = dot(p / length(p), sun);
-    l += t * scatter_sun_transmittance(bottom, mu) * max(mu, 0.0) * SCATTER[4].rgb / SCATTER_PI;
+    l += t * scatter_sun_transmittance(bottom, mu) * max(mu, 0.0) * SCATTER[4].rgb / PI;
   }
   return l * SCATTER[3].w;
 }

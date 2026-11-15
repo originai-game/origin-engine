@@ -196,7 +196,7 @@ struct HexTap {
 // origin's offset from its cell's centre and `c` that centre's uv.
 fn hex_tap(v: vec2<f32>, base: vec2<i32>, u: vec2<f32>, mf: vec2<f32>, c: vec2<f32>, strength: f32, gx: vec2<f32>, gy: vec2<f32>) -> HexTap {
   let h = hex_hash(vec2<i32>(v) + base);
-  let angle = (h.x * 2.0 - 1.0) * 3.14159265359 * strength;
+  let angle = (h.x * 2.0 - 1.0) * PI * strength;
   let turn = vec2<f32>(cos(angle), sin(angle));
   let back = vec2<f32>(turn.x, -turn.y);
   let cen = hex_centre(v);
@@ -333,7 +333,7 @@ fn layer_height(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f3
 // by the tile's id texture): a field of setts, flags or tiles laid in
 // one texture reads as stones of different quarries.
 fn cell_tone(c: f32, s: f32) -> vec3<f32> {
-  let a = 6.2831853 * c;
+  let a = 2.0 * PI * c;
   let bright = 1.0 + s * 0.25 * sin(3.0 * a);
   let warm = s * 0.2 * sin(5.0 * a);
   return bright * vec3<f32>(1.0 + warm, 1.0 + 0.3 * warm, 1.0 - warm);

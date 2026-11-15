@@ -1,0 +1,11 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "shaders: the WGSL library",
+      "change": "Every game shader now has `const PI` in scope from the engine's one copy (material and UI shaders had one already; post shaders did not), so a post shader that declares its own `PI` no longer compiles.",
+      "fix": "Delete your own `PI` and use the library's (write a turn as `2.0 * PI`), or rename yours.",
+      "find": ["PI"]
+    }
+  ]
+}

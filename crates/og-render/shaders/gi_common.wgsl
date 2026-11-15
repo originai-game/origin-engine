@@ -33,7 +33,6 @@ const GI_SH_AT: u32 = 1u;
 const GI_DEPTH_AT: u32 = 4u;
 // The radiance's octahedral texels the blend filters in time (6 × 6).
 const GI_RADIANCE: u32 = 6u;
-const GI_PI: f32 = 3.14159265359;
 
 // The texel of an n × n octahedral map that texel (x, y), up to one past
 // an edge, stands for: across an edge the map folds over itself, so a
@@ -75,7 +74,7 @@ const GI_FIXED_RAYS: u32 = 16u;
 
 fn gi_fibonacci(i: f32, n: f32) -> vec3<f32> {
   let golden = 0.61803398875;
-  let phi = 2.0 * GI_PI * fract(i * golden);
+  let phi = 2.0 * PI * fract(i * golden);
   let cos_theta = 1.0 - (2.0 * i + 1.0) / n;
   let sin_theta = sqrt(clamp(1.0 - cos_theta * cos_theta, 0.0, 1.0));
   return vec3<f32>(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);

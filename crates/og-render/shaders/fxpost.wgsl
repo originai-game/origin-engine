@@ -12,8 +12,6 @@
 @group(0) @binding(4) var tex_gbuffer: texture_2d<f32>;  // oct normal, velocity
 @group(0) @binding(5) var tex_b: texture_2d<f32>;   // filterable: outline ids, AO, the blurred half
 
-const FX_PI: f32 = 3.14159265359;
-
 // The prepass texel under pixel `px` of this pass's frame (`fxp.screen`):
 // the same pixel, or under TAAU, where the passes after TAA run at the
 // output's size, the scene pixel it lies in.
@@ -155,7 +153,7 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
   let dsize_f = vec2<f32>(dsize);
   for (var s = 0u; s < slices; s++) {
     let jitter = fract(noise * 4.0 + f32(s) * 0.37);
-    let phi = (f32(s) + noise) * FX_PI / f32(slices);
+    let phi = (f32(s) + noise) * PI / f32(slices);
     // The slice's direction in the frame where the view runs along +z,
     // turned to the view ray v, so the slices are even about v. XeGTAO's
     // (cos, sin, 0) are even about the screen's axis instead, and off the
@@ -174,8 +172,8 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
     let sign_n = sign(dot(ortho, proj_n));
     let cos_n = clamp(dot(proj_n, v) / max(proj_len, 1e-5), 0.0, 1.0);
     let ang_n = sign_n * acos(cos_n);
-    let low0 = cos(ang_n + FX_PI * 0.5);
-    let low1 = cos(ang_n - FX_PI * 0.5);
+    let low0 = cos(ang_n + PI * 0.5);
+    let low1 = cos(ang_n - PI * 0.5);
     var h0 = low0;
     var h1 = low1;
     for (var k = 1u; k <= steps; k++) {
@@ -196,8 +194,8 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
     }
     var a0 = -acos(clamp(h1, -1.0, 1.0));
     var a1 = acos(clamp(h0, -1.0, 1.0));
-    a0 = ang_n + clamp(a0 - ang_n, -FX_PI * 0.5, FX_PI * 0.5);
-    a1 = ang_n + clamp(a1 - ang_n, -FX_PI * 0.5, FX_PI * 0.5);
+    a0 = ang_n + clamp(a0 - ang_n, -PI * 0.5, PI * 0.5);
+    a1 = ang_n + clamp(a1 - ang_n, -PI * 0.5, PI * 0.5);
     let arc0 = (cos_n + 2.0 * a0 * sin(ang_n) - cos(2.0 * a0 - ang_n)) * 0.25;
     let arc1 = (cos_n + 2.0 * a1 * sin(ang_n) - cos(2.0 * a1 - ang_n)) * 0.25;
     vis += proj_len * (arc0 + arc1);
@@ -274,7 +272,7 @@ fn ssao_term(in: VsOut) -> f32 {
   let p = view_pos(ao_uv(px, in.uv), d);
   let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
   let radius = select(fxp.ao.x, min(fxp.ao.x, fxp.ao2.x * length(p)), fxp.ao2.x > 0.0);
-  let a = ign(in.pos.xy) * 6.2831853;
+  let a = ign(in.pos.xy) * 2.0 * PI;
   var helper = vec3<f32>(cos(a), sin(a), 0.0);
   if (abs(dot(helper, n)) > 0.95) { helper = vec3<f32>(0.0, 0.0, 1.0); }
   let t = normalize(helper - n * dot(helper, n));
@@ -434,7 +432,7 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
     let ri = select(inside + 0.5, max(inside - 0.5, 1.0), ring == 0);
     var edges = 0.0;
     for (var i = 0u; i < 8u; i++) {
-      let a = f32(i) * FX_PI * 0.25;
+      let a = f32(i) * PI * 0.25;
       let dir = vec2<f32>(cos(a), sin(a));
       // The crease test at the line's width; the silhouette's at its
       // inside share.
@@ -720,8 +718,8 @@ fn band_color(a: vec3<f32>, b: vec3<f32>, t: f32) -> vec3<f32> {
   if (ca < 1e-4) { ha = hb; }
   if (cb < 1e-4) { hb = ha; }
   var dh = hb - ha;
-  if (dh > FX_PI) { dh -= 2.0 * FX_PI; }
-  if (dh < -FX_PI) { dh += 2.0 * FX_PI; }
+  if (dh > PI) { dh -= 2.0 * PI; }
+  if (dh < -PI) { dh += 2.0 * PI; }
   let h = ha + dh * t;
   let chroma = mix(ca, cb, t);
   return max(linear_of(vec3<f32>(mix(la.x, lb.x, t), chroma * cos(h), chroma * sin(h))), vec3<f32>(0.0));
@@ -828,7 +826,7 @@ fn fs_motion_blur(in: VsOut) -> @location(0) vec4<f32> {
   var v = textureLoad(tex_gbuffer, prepass_px(px, size), 0).zw;
   let reach = i32(fxp.mb.z * 0.5);
   for (var i = 0u; i < 8u; i++) {
-    let a = f32(i) * FX_PI * 0.25;
+    let a = f32(i) * PI * 0.25;
     let q = px + vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * f32(reach)));
     let w = textureLoad(tex_gbuffer, prepass_px(q, size), 0).zw;
     if (dot(w, w) > dot(v, v)) { v = w; }

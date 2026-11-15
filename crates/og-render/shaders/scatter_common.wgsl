@@ -121,7 +121,7 @@ fn scatter_sway(local: vec3<f32>, base: vec3<f32>, scale: f32, previous: bool) -
   if (sway <= 0.0 || top <= 0.0 || local.y <= 0.0) {
     return vec3<f32>(0.0);
   }
-  let jitter = scatter_copy_unit(base) * WIND_WAVELENGTH / WIND_TAU;
+  let jitter = scatter_copy_unit(base) * WIND_WAVELENGTH / (2.0 * PI);
   let lean4 = wind_lean(scatter_wind_tex, scatter_wind, base.xz - scatter.wind.xy * jitter);
   // Trampled (G3): parted away from the pusher, as the grass is.
   let tall = top * scale;

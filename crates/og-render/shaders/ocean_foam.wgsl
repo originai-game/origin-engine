@@ -17,7 +17,7 @@
 
 fn hash_grad(i: vec2<i32>) -> vec2<f32> {
   let h = pcg(u32(i.x) * 1664525u + pcg(u32(i.y) + 1013904223u));
-  let a = f32(h) * (6.28318530718 / 4294967296.0);
+  let a = f32(h) * (2.0 * PI / 4294967296.0);
   return vec2<f32>(cos(a), sin(a));
 }
 
@@ -199,7 +199,7 @@ fn windrows(pa: vec2<f32>, wd: vec2<f32>, speed: f32) -> vec3<f32> {
   for (var i = 0; i < 2; i++) {
     let l = spacing[i];
     let meander = pnoise(vec2<f32>(along / (4.0 * l), f32(i) * 7.3 + across / (16.0 * l)), 4096) * 0.8 * l;
-    let k = 6.2831853 / l;
+    let k = 2.0 * PI / l;
     let ph = (across + meander) * k;
     let c = speed * share[i];
     v -= perp * c * sin(ph);
@@ -239,7 +239,7 @@ fn update(@builtin(global_invocation_id) id: vec3<u32>) {
   // where the water is deep for the waves that reach the shore (over half their length). Inshore of that the seabed
   // bunches every crest far under the level: the least gain there, as water_sea.wgsl sea_foam's.
   let sh = shoaling(p);
-  let half = 3.14159265 / max(foam.shore[1].z, 1e-6);
+  let half = PI / max(foam.shore[1].z, 1e-6);
   let shoals = sh.inside * (1.0 - smoothstep(0.4 * half, half, sh.depth));
   let gain = mix(select(foam.p0.w, foam.thresholds.w, level == 1u), foam.base[level].w, shoals);
   // No more cover than the surface is bunched here: a texel squeezed to j of its area has about twice the rest of it
