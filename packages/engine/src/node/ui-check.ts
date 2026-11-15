@@ -1094,7 +1094,7 @@ interface LaidRun {
  * The run the layout draws an element's text in, where it can be read
  * (null where it draws none): a run of it drawn at half its colour's alpha or more (not faded out,
  * not mid-fade) with at least 60 % of its line's height and 6 px of its width
- * in view. Such text is measured even when a scroll cuts its element, and
+ * (60 % of a narrower run's: a lone "1") in view. Such text is measured even when a scroll cuts its element, and
  * when it shows no ink at all it reads 1:1: the most invisible line is the
  * one that most needs reporting ("Inventory" in navy on indigo). "hidden"
  * where the frame draws text but none of this element's at half alpha or
@@ -1110,7 +1110,8 @@ function laidRun(f: Pick<UiFrameSnapshot, "texts">, e: UiElementDump): LaidRun |
     drawn ||= bx < e.x + e.width && bx + bw > e.x && by < e.y + e.height && by + bh > e.y;
     const x0 = Math.max(bx, t.clip[0], e.x - 1), y0 = Math.max(by, t.clip[1], e.y - 1);
     const x1 = Math.min(bx + bw, t.clip[0] + t.clip[2], e.x + e.width + 1), y1 = Math.min(by + bh, t.clip[1] + t.clip[3], e.y + e.height + 1);
-    if (y1 - y0 < 0.6 * bh || x1 - x0 < 6 || (x1 - x0) * (y1 - y0) <= most) continue;
+    // A run is in view when most of its own height and width are (a lone "1" is a run 5 px wide).
+    if (y1 - y0 < 0.6 * bh || x1 - x0 < Math.min(6, 0.6 * bw) || (x1 - x0) * (y1 - y0) <= most) continue;
     most = (x1 - x0) * (y1 - y0);
     // The run's colour is linear RGB: its relative luminance directly.
     best = { ink: 0.2126 * t.color[0]! + 0.7152 * t.color[1]! + 0.0722 * t.color[2]!, box: [x0, y0, x1 - x0, y1 - y0] };

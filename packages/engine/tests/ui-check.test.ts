@@ -266,6 +266,19 @@ test("contrast reads the ground a line draws on: a right-aligned figure on a sca
   expect(layered[0]![1]).toBeGreaterThan(15);
   // One 0.3 tint alone covers less than half: the text is over the scene, judged by eye, not measured.
   expect(measured("contrast", cellOf([[0, 0, 240, 40, 0.3]]), cell, img)).toEqual([]);
+  // A lone "1", its run 4 px wide at the cell's far end, is read on its own line too, not on the cell's scanlines.
+  const one = new Uint8Array(rgba);
+  for (let y = 0; y < height; y++) for (let x = 228; x < 240; x++) {
+    const v = x >= 233 && x < 236 && y >= 12 && y < 28 ? 255 : y % 3 === 0 ? 60 : 20;
+    one.set([v, v, v, 255], (y * width + x) * 4);
+  }
+  const lone = measured("contrast", frame({
+    elements: [el("Qty", "", "label", "text", [0, 0, 240, 40], { text: "1" })],
+    texts: [{ text: "1", size: 18, bounds: [232, 8, 4.5, 24] as R4, clip: [0, 0, width, height] as R4, color: [1, 1, 1, 1] }],
+    grounds: [[0, 0, 240, 40, 0.4], [0, 0, 240, 40, 0.4]],
+  }, vp), cell, { width, height, rgba: one });
+  expect(lone.length).toBe(1);
+  expect(lone[0]![1]).toBeGreaterThan(15);
 });
 
 test("text size: each text's size by its element, marked dense under a dense ancestor only", () => {
