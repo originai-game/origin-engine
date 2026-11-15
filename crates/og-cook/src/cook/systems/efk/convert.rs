@@ -165,6 +165,88 @@ struct Ctx<'a> {
     looping: bool,
     end_frame: f32,
     models: Vec<(String, String)>,
+    /// What each element adds to the picture as it starts (the impact).
+    onsets: Vec<Onset>,
+}
+
+/// What an element adds to the picture as it starts: where and when, its
+/// size (m) and its brightness over that area, and its colour.
+#[derive(Clone, Copy, Debug)]
+struct Onset {
+    at: f32,
+    offset: Vec3,
+    extent: f32,
+    weight: f32,
+    color: [f32; 3],
+}
+
+impl Onset {
+    /// An element of `count` parts `extent` across in colour `c` (linear,
+    /// with alpha) starting at `at` seconds where `offset` is.
+    fn new(at: f32, offset: Vec3, extent: f32, count: f32, c: [f32; 4]) -> Onset {
+        let peak = c[0].max(c[1]).max(c[2]).max(1e-4);
+        Onset {
+            at,
+            offset,
+            extent,
+            weight: count * extent * extent * peak.min(4.0) * c[3].clamp(0.0, 1.0),
+            color: [c[0] / peak, c[1] / peak, c[2] / peak],
+        }
+    }
+}
+
+/// The impact of a one-shot effect `duration` seconds long, the pixel
+/// effects' rule (vfx2d's `render`) on what starts instead of what is
+/// covered: the frame in its first 60% where the most is added to the
+/// picture at once (area times brightness), the earliest of equals.
+/// `None` when nothing is drawn.
+fn impact_frame(onsets: &[Onset], duration: f32) -> Option<u32> {
+    let last = (duration * FPS * 0.6).ceil().max(1.0) as u32;
+    let mut added = std::collections::BTreeMap::<u32, f32>::new();
+    for o in onsets {
+        let f = (o.at * FPS).round().max(0.0) as u32;
+        if f < last {
+            *added.entry(f).or_default() += o.weight;
+        }
+    }
+    let (f, w) = added
+        .into_iter()
+        .fold((0, 0.0), |b, (f, w)| if w > b.1 { (f, w) } else { b });
+    (w > 0.0).then_some(f)
+}
+
+/// A hit's light and shake at its impact frame `f`: a flash in the colour
+/// of what starts there, as far as it reaches, and a shake by its size.
+fn hit_elements(onsets: &[Onset], f: u32) -> String {
+    let at = f as f32 / FPS;
+    let here: Vec<&Onset> = onsets
+        .iter()
+        .filter(|o| (o.at * FPS).round().max(0.0) as u32 == f)
+        .collect();
+    let total: f32 = here.iter().map(|o| o.weight).sum::<f32>().max(1e-6);
+    let mean = |g: &dyn Fn(&Onset) -> Vec3| {
+        here.iter()
+            .fold(Vec3::ZERO, |a, o| a + g(o) * (o.weight / total))
+    };
+    let c = mean(&|o| Vec3::from(o.color));
+    let c = c / c.max_element().max(1e-4);
+    let offset = mean(&|o| o.offset);
+    let extent = here.iter().map(|o| o.extent).fold(0.0, f32::max);
+    let mut s = format!("light {{\n  at {}\n  life 0.3\n", n(at));
+    if offset.length() > 1e-4 {
+        let _ = writeln!(s, "  offset {}", ns(&offset.to_array()));
+    }
+    let _ = writeln!(s, "  color {}", ns(&c.to_array()));
+    s.push_str("  intensity curve 0 8 1 0\n");
+    let _ = writeln!(s, "  distance {}", n((extent * 4.0).clamp(2.0, 12.0)));
+    s.push_str("}\n");
+    let _ = writeln!(
+        s,
+        "shake {{\n  at {}\n  trauma {}\n}}",
+        n(at),
+        n((0.1 + extent * 0.1).clamp(0.1, 0.4))
+    );
+    s
 }
 
 impl Ctx<'_> {
@@ -212,8 +294,8 @@ fn png_size(b: &[u8]) -> Option<[f32; 2]> {
     None
 }
 
-/// Converts a read project.
-pub fn convert(project: &Project, links: &Links<'_>) -> Conversion {
+/// Converts a read project; a `hit` gets a light and a shake at its impact.
+pub fn convert(project: &Project, links: &Links<'_>, hit: bool) -> Conversion {
     let mut cx = Ctx {
         links,
         findings: Vec::new(),
@@ -224,6 +306,7 @@ pub fn convert(project: &Project, links: &Links<'_>) -> Conversion {
         looping: false,
         end_frame: project.end_frame,
         models: Vec::new(),
+        onsets: Vec::new(),
     };
     let mut chain = Vec::new();
     for n in &project.nodes {
@@ -254,6 +337,16 @@ pub fn convert(project: &Project, links: &Links<'_>) -> Conversion {
     let _ = writeln!(vfx, "duration {}", n(duration));
     if cx.looping {
         vfx.push_str("loop true\n");
+    }
+    // A one-shot's impact; a hit's light and shake there.
+    let impact = (!cx.looping)
+        .then(|| impact_frame(&cx.onsets, duration))
+        .flatten();
+    if let Some(f) = impact {
+        let _ = writeln!(vfx, "impact {}", n(f as f32 / FPS));
+        if hit && cx.elements.len() + 2 <= MAX_ELEMENTS {
+            cx.elements.push(hit_elements(&cx.onsets, f));
+        }
     }
     for e in &cx.elements {
         vfx.push_str(e);
@@ -975,6 +1068,9 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
         s.push_str("}\n");
         cx.elements.push(s);
         cx.end = cx.end.max(at + life / FPS);
+        let widest = scale.iter().map(|k| k.1[0]).fold(0.0, f32::max);
+        cx.onsets
+            .push(Onset::new(at, me.offset, base * widest * 2.0, 1.0, col));
     }
 }
 
@@ -1154,6 +1250,9 @@ struct Emitted {
     unlimited: bool,
     /// Its particles' longest life, frames.
     life: f32,
+    /// What its first tenth of a second draws: particles, their size
+    /// (m) and their brightest colour (none for a parent's).
+    onset: (f32, f32, [f32; 4]),
 }
 
 fn emitter(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule) {
@@ -1225,6 +1324,11 @@ fn emitter(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule) {
             },
         );
         let life = pe.life + c.life;
+        let (k, size, color) = c.onset;
+        let pe = Emitted {
+            onset: (k * hosts.min(64.0), size, color),
+            ..pe
+        };
         emitter_element(cx, &parent_place, &parent_sch, &pe, life);
         return;
     }
@@ -1283,6 +1387,11 @@ fn emitter_element(cx: &mut Ctx<'_>, p: &Place, sch: &Schedule, e: &Emitted, lif
     el.push_str("}\n");
     cx.elements.push(el);
     cx.end = cx.end.max(at + span / FPS + life / FPS);
+    let (k, size, color) = e.onset;
+    if k > 0.0 {
+        cx.onsets
+            .push(Onset::new(at, place.offset, size, k.min(256.0), color));
+    }
 }
 
 fn emitter_file(
@@ -1448,6 +1557,8 @@ fn emitter_file(
     if mo.speed_keys.len() > 1 && !curve::flat(&mo.speed_keys, 0.05) {
         let _ = writeln!(e, "speedOverLife {}", curve_line(&mo.speed_keys));
     }
+    // What it draws in its first tenth of a second (the impact).
+    let mut onset = (0.0, 0.0, [0.0; 4]);
     if let Role::Parent { child, .. } = role {
         // Its particles draw nothing; each runs the child's emission.
         e.push_str("size 0\n");
@@ -1491,6 +1602,18 @@ fn emitter_file(
             }
             e.push_str("}\n");
         }
+        let brightest = color_keys(node, lc, None)
+            .into_iter()
+            .fold([0.0f32; 4], |m, k| if k.1[3] > m[3] { k.1 } else { m });
+        let tenth = 0.1 * FPS;
+        let first = match sch.count {
+            None => tenth / sch.interval.max(0.1) * p.nested,
+            Some(c) => {
+                let per = p.nested.round().max(1.0);
+                per * (c as f32).min((tenth / sch.interval.max(1e-3)).floor() + 1.0)
+            }
+        };
+        onset = (first, size * rel.max, brightest);
         if roll.max.abs() > 1e-3 || roll.min.abs() > 1e-3 {
             let _ = writeln!(e, "rotation {}", ns(&[roll.min, roll.max]));
         }
@@ -1541,6 +1664,7 @@ fn emitter_file(
         center,
         unlimited: sch.count.is_none(),
         life: life.max,
+        onset,
     }
 }
 

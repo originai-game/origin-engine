@@ -20,6 +20,10 @@ fn png(w: u32, h: u32) -> Vec<u8> {
 }
 
 fn run(bytes: &[u8]) -> Conversion {
+    run_as(bytes, false)
+}
+
+fn run_as(bytes: &[u8], hit: bool) -> Conversion {
     let own = |leaf: &str| format!("fx/a.efkproj#{leaf}");
     let asset = |p: &str| format!("fx/{p}");
     let read = |_: &str| Some(png(128, 128));
@@ -30,6 +34,7 @@ fn run(bytes: &[u8]) -> Conversion {
             asset: &asset,
             read: &read,
         },
+        hit,
     )
     .unwrap()
 }
@@ -367,7 +372,7 @@ fn effects_imported_into_one_folder_share_their_textures() {
     let import_all = || {
         for dir in ["a", "b", "c"] {
             let f = root.join("src").join(dir).join(format!("{dir}.efkproj"));
-            import(&f, &out, Some(&root.join("assets"))).unwrap();
+            import(&f, &out, Some(&root.join("assets")), false).unwrap();
         }
     };
     import_all();
@@ -442,7 +447,7 @@ fn texture_names_that_differ_in_case_are_one_file() {
     let out = root.join("assets/fx");
     for dir in ["a", "b", "c"] {
         let f = root.join("src").join(dir).join(format!("{dir}.efkproj"));
-        import(&f, &out, Some(&root.join("assets"))).unwrap();
+        import(&f, &out, Some(&root.join("assets")), false).unwrap();
     }
     let mut h = og_core::hash::StableHasher::new();
     h.write(&png(16, 16));
@@ -736,4 +741,78 @@ fn subtractive_and_multiply_sprites_keep_their_blend() {
         ["a subtractive trail: drawn alpha blended"],
         "{found:?}"
     );
+}
+
+/// A one-shot effect's impact is the frame in its first 60% where the
+/// most is added to the picture at once: a few small sparks winding up at
+/// frame 0, a big flash at frame 20, smoke at 40 and a huge late burst at
+/// 110 (past 60% of its 2.8 s) make it the flash's frame, not the first,
+/// the last or the largest. As a hit it gets a light and a shake there;
+/// without, neither; a looping effect has no impact.
+#[test]
+fn a_one_shots_impact_is_where_the_most_starts_and_a_hit_lights_and_shakes_there() {
+    let burst = |name: &str, count: u32, scale: f32, at: u32, life: u32| {
+        format!(
+            "<Node><CommonValues><MaxGeneration><Value>{count}</Value></MaxGeneration>\
+             <Life><Center>{life}</Center><Max>{life}</Max><Min>{life}</Min></Life>\
+             <GenerationTime><Center>0</Center><Max>0</Max><Min>0</Min></GenerationTime>\
+             <GenerationTimeOffset><Center>{at}</Center><Max>{at}</Max><Min>{at}</Min></GenerationTimeOffset></CommonValues>\
+             <ScalingValues><Fixed><Scale><X>{scale}</X><Y>{scale}</Y><Z>{scale}</Z></Scale></Fixed></ScalingValues>\
+             <RendererCommonValues><AlphaBlend>2</AlphaBlend></RendererCommonValues>\
+             <DrawingValues><Type>2</Type></DrawingValues><Name>{name}</Name><Children /></Node>"
+        )
+    };
+    let nodes = [
+        burst("WindUp", 4, 0.2, 0, 60),
+        burst("Flash", 10, 2.0, 20, 20),
+        burst("Smoke", 10, 1.0, 40, 60),
+        burst("Late", 10, 4.0, 110, 60),
+    ]
+    .concat();
+    let fx = project(&nodes);
+    let parsed = |hit: bool| og_bundle::vfx::parse_vfx(&run_as(&fx, hit).vfx).unwrap();
+    let plain = parsed(false);
+    let at = |v: &og_bundle::vfx::Vfx, name: &str| -> Vec<f32> {
+        v.events
+            .iter()
+            .filter(|e| e.name == name)
+            .map(|e| e.time)
+            .collect()
+    };
+    assert!(plain.duration > 2.5, "{}", plain.duration);
+    let impact = at(&plain, "impact");
+    assert_eq!(impact.len(), 1, "{:?}", plain.events);
+    assert!((impact[0] - 20.0 / 60.0).abs() < 1e-3, "{impact:?}");
+    let kinds = |v: &og_bundle::vfx::Vfx| -> Vec<(&'static str, f32)> {
+        v.elements
+            .iter()
+            .filter_map(|e| match &e.kind {
+                og_bundle::vfx::VfxKind::Light { distance, .. } => {
+                    assert!((2.0..=12.0).contains(distance), "{distance}");
+                    Some(("light", e.at))
+                }
+                og_bundle::vfx::VfxKind::Shake { trauma } => {
+                    assert!((0.1..=0.4).contains(trauma), "{trauma}");
+                    Some(("shake", e.at))
+                }
+                _ => None,
+            })
+            .collect()
+    };
+    assert!(kinds(&plain).is_empty(), "{:?}", kinds(&plain));
+    let hit = parsed(true);
+    let k = kinds(&hit);
+    assert_eq!(k.len(), 2, "{k:?}");
+    assert!(
+        k.iter().all(|(_, t)| (t - impact[0]).abs() < 1e-3),
+        "{k:?} against {impact:?}"
+    );
+    // Looping: an unlimited generator has no impact.
+    let looping = project(
+        "<Node><CommonValues><MaxGeneration><Infinite>True</Infinite></MaxGeneration></CommonValues>\
+         <DrawingValues><Type>2</Type></DrawingValues><Name>L</Name><Children /></Node>",
+    );
+    let l = og_bundle::vfx::parse_vfx(&run_as(&looping, true).vfx).unwrap();
+    assert!(l.looping, "{}", run(&looping).vfx);
+    assert!(at(&l, "impact").is_empty() && kinds(&l).is_empty());
 }

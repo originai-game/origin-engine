@@ -126,9 +126,13 @@ fn an_effects_meshes_are_held_to_no_face_budget() {
             std::fs::write(dir.join("m.efkmodel"), efkmodel_sphere()).unwrap();
         }
         let out = root.join("assets/imported");
-        let i =
-            og_cook::cook::efk::import(&root.join("m.efkproj"), &out, Some(&root.join("assets")))
-                .unwrap();
+        let i = og_cook::cook::efk::import(
+            &root.join("m.efkproj"),
+            &out,
+            Some(&root.join("assets")),
+            false,
+        )
+        .unwrap();
         assert!(
             i.written.iter().any(|w| w.ends_with("m/model-m.glb.ogt")),
             "{:?}",

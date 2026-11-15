@@ -46,11 +46,12 @@ pub fn handles(rel: &str) -> bool {
     EXTENSIONS.contains(&super::ext(rel).as_str())
 }
 
-/// Reads and converts an Effekseer project's bytes.
-pub fn convert(bytes: &[u8], links: &Links<'_>) -> Result<Conversion, String> {
+/// Reads and converts an Effekseer project's bytes; a `hit` gets a light
+/// and a shake at its impact.
+pub fn convert(bytes: &[u8], links: &Links<'_>, hit: bool) -> Result<Conversion, String> {
     let root = xml::read_project(bytes)?;
     let p = project::read(&root)?;
-    Ok(convert::convert(&p, links))
+    Ok(convert::convert(&p, links, hit))
 }
 
 /// The vfx text with the findings carried in it as comments.
@@ -105,7 +106,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
             asset: &asset,
             read: &read_file,
         };
-        let c = match convert(&s.bytes, &links) {
+        let c = match convert(&s.bytes, &links, false) {
             Ok(c) => c,
             Err(e) => {
                 s.error = Some(format!("Effekseer import: {e}"));
@@ -198,7 +199,7 @@ pub struct Imported {
 /// or importing more effects, is idempotent). Asset ids are relative to
 /// `root` (the game's `assets/`), by default the nearest `assets` folder
 /// holding `out`, else `out` itself.
-pub fn import(file: &Path, out: &Path, root: Option<&Path>) -> Result<Imported, String> {
+pub fn import(file: &Path, out: &Path, root: Option<&Path>, hit: bool) -> Result<Imported, String> {
     let bytes = std::fs::read(file).map_err(|e| format!("{}: {e}", file.display()))?;
     std::fs::create_dir_all(out).map_err(|e| format!("{}: {e}", out.display()))?;
     let out = out
@@ -289,6 +290,7 @@ pub fn import(file: &Path, out: &Path, root: Option<&Path>) -> Result<Imported, 
             asset: &asset,
             read: &read,
         },
+        hit,
     )?;
     let write = |path: PathBuf, b: &[u8]| -> Result<PathBuf, String> {
         if let Some(d) = path.parent() {

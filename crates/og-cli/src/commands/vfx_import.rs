@@ -1,23 +1,26 @@
-//! `og vfx import <file.efkproj|file.efkefc> <out-dir> [--root <assets-dir>]`:
+//! `og vfx import <file.efkproj|file.efkefc> <out-dir> [--root <assets-dir>] [--hit]`:
 //! an Effekseer effect converted to the engine's own effect as text to edit
 //! (og-cook's `efk`): `<out-dir>/<name>.ogt` (`type vfx`) and `<name>/`
 //! beside it (emitters, effect materials, meshes), the textures it names in
 //! `<out-dir>/textures/`, shared by every effect imported there, with what
-//! did not convert listed.
+//! did not convert listed. A one-shot effect gets an `impact` where the
+//! most starts at once; `--hit` adds a light and a shake there.
 
 use std::path::Path;
 use std::process::ExitCode;
 
 const USAGE: &str =
-    "usage: og vfx import <file.efkproj|file.efkefc> <out-dir> [--root <assets-dir>]";
+    "usage: og vfx import <file.efkproj|file.efkefc> <out-dir> [--root <assets-dir>] [--hit]";
 
 fn go(args: &[&str]) -> Result<(), String> {
-    let (file, out, root) = match args {
-        [file, out] => (*file, *out, None),
-        [file, out, "--root", root] => (*file, *out, Some(Path::new(*root))),
+    let hit = args.contains(&"--hit");
+    let args: Vec<&str> = args.iter().copied().filter(|a| *a != "--hit").collect();
+    let (file, out, root) = match args[..] {
+        [file, out] => (file, out, None),
+        [file, out, "--root", root] => (file, out, Some(Path::new(root))),
         _ => return Err(USAGE.into()),
     };
-    let i = og_cook::cook::efk::import(Path::new(file), Path::new(out), root)?;
+    let i = og_cook::cook::efk::import(Path::new(file), Path::new(out), root, hit)?;
     for f in &i.findings {
         println!("finding: {f}");
     }

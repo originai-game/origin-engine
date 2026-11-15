@@ -409,7 +409,10 @@ A composed effect (a fireball's impact, a heal, a level-up) is an
 systems as text. An Effekseer effect in assets/ (`.efkproj`, `.efkefc`)
 loads too: the cook converts its nodes into the engine's vfx, emitters,
 effect materials and meshes and warns of what it could not carry.
-`og vfx import` writes the same conversion as `.ogt` text to edit.
+`og vfx import` writes the same conversion as `.ogt` text to edit. A
+one-shot effect gets an `impact` at the frame where the most starts at
+once; `og vfx import --hit` also adds a light and a camera shake there,
+for hits and explosions.
 
 ```text
 type vfx
