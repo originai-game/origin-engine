@@ -41,11 +41,15 @@
 
 <style>
 #Face { width: stretch; height: stretch; align-items: center; justify-content: center; }
-#AbilitySlot { align-items: center; gap: var(--space-xxs); }
-#Slot { width: var(--size-lg); height: var(--size-lg); padding: 0; overflow: hidden; transition-property: scale; transition-duration: var(--motion-duration-fast); transition-timing-function: var(--motion-easing-out); }
-.ultimate #Slot { width: var(--size-xl); height: var(--size-xl); border-radius: var(--radius-capsule); }
+/* The slot grows with the player's text scale, as the text in it does,
+   so its icon, badges and ring keep their proportions:
+   --text-px is one CSS px at 100 % text (rem is the body type step, 14 px
+   at 100 %, grown by the scale). */
+#AbilitySlot { --text-px: calc(1rem / 14); align-items: center; gap: var(--space-xxs); }
+#Slot { width: calc(48 * var(--text-px)); height: calc(48 * var(--text-px)); padding: 0; overflow: hidden; transition-property: scale; transition-duration: var(--motion-duration-fast); transition-timing-function: var(--motion-easing-out); }
+.ultimate #Slot { width: calc(64 * var(--text-px)); height: calc(64 * var(--text-px)); border-radius: var(--radius-capsule); }
 #Art { width: stretch; height: stretch; align-items: center; justify-content: center; }
-#Icon { width: var(--size-md); height: var(--size-md); color: var(--ink); }
+#Icon { width: calc(32 * var(--text-px)); height: calc(32 * var(--text-px)); color: var(--ink); }
 #Slot.tinted #Art { background: var(--danger-45); }
 #Slot.tinted #Icon { color: var(--danger); }
 #Slot.locked #Art { filter: var(--filter-locked); }
@@ -55,10 +59,10 @@
 #Ultimate { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; stroke: var(--scrim); }
 #UltimateFill { stroke: var(--gold); }
 #Sweep { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; stroke: var(--scrim); }
-#Time { position: absolute; top: var(--space-md); inset-inline-start: 0; width: stretch; text-align: center; font-size: var(--font-step-xl); }
+#Time { position: absolute; top: calc(12 * var(--text-px)); inset-inline-start: 0; width: stretch; text-align: center; font-size: var(--font-step-xl); }
 #Percent { position: absolute; bottom: var(--space-xxs); inset-inline-start: 0; width: stretch; text-align: center; font: var(--text-caption); color: var(--gold); }
 #Slash { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; stroke: var(--danger); }
-#Lock { position: absolute; top: var(--space-md); inset-inline-start: var(--space-md); width: var(--size-sm); height: var(--size-sm); color: var(--ink); }
+#Lock { position: absolute; top: calc(12 * var(--text-px)); inset-inline-start: calc(12 * var(--text-px)); width: calc(24 * var(--text-px)); height: calc(24 * var(--text-px)); color: var(--ink); }
 /* The cost sits in a row of its own: at the bottom's leading corner on a
    square slot; on an ultimate, whose percent takes the bottom, centred at
    the top, where the round slot is wide enough for it and where nothing

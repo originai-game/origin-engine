@@ -26,19 +26,21 @@
 <style>
 .face { width: stretch; height: stretch; align-items: center; justify-content: center; }
 ul, ol { list-style-type: none; }
-#AbilityBar { display: flex; gap: var(--space-sm); flex-wrap: wrap; justify-content: center; max-width: var(--measure-xl); }
+/* The slots grow with the player's text scale, as AbilitySlot's do:
+   --text-px is one CSS px at 100 % text. */
+#AbilityBar { --text-px: calc(1rem / 14); display: flex; gap: calc(8 * var(--text-px)); flex-wrap: wrap; justify-content: center; max-width: var(--measure-xl); }
 #AbilityBar.column { flex-direction: column; flex-wrap: nowrap; }
 .cell { align-items: center; gap: var(--space-xxs); }
-.slot { width: var(--size-lg); height: var(--size-lg); padding: 0; overflow: hidden; }
+.slot { width: calc(48 * var(--text-px)); height: calc(48 * var(--text-px)); padding: 0; overflow: hidden; }
 .art { width: stretch; height: stretch; align-items: center; justify-content: center; }
-.icon { width: var(--size-md); height: var(--size-md); color: var(--ink); }
+.icon { width: calc(32 * var(--text-px)); height: calc(32 * var(--text-px)); color: var(--ink); }
 .slot.tinted .art { background: var(--danger-45); }
 .slot.tinted .icon { color: var(--danger); }
 .slot.locked .art { filter: var(--filter-locked); }
 .slot.active { box-shadow: 0 0 var(--space-md) var(--primary), inset 0 0 0 var(--stroke-regular) var(--primary); animation-name: breathe; animation-duration: var(--motion-duration-bounce); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
 .sweep { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; stroke: var(--scrim); }
-.time { position: absolute; top: var(--space-md); inset-inline-start: 0; width: stretch; text-align: center; font-size: var(--font-step-xl); }
-.lock { position: absolute; top: var(--space-md); inset-inline-start: var(--space-md); width: var(--size-sm); height: var(--size-sm); color: var(--ink); }
+.time { position: absolute; top: calc(12 * var(--text-px)); inset-inline-start: 0; width: stretch; text-align: center; font-size: var(--font-step-xl); }
+.lock { position: absolute; top: calc(12 * var(--text-px)); inset-inline-start: calc(12 * var(--text-px)); width: calc(24 * var(--text-px)); height: calc(24 * var(--text-px)); color: var(--ink); }
 .cost { position: absolute; bottom: var(--space-xxs); inset-inline-start: var(--space-xxs); padding: 0 var(--space-xs); font-size: var(--font-step-sm); color: var(--mana); }
 .cost.short { color: var(--danger); }
 .hotkey { font-size: var(--font-step-sm); }

@@ -314,55 +314,76 @@ fn main_menu_scrolls_when_it_is_taller_than_the_screen() {
     }
 }
 
-/// A charging ultimate shows its cost and its charge percent apart, at
-/// the player's normal and largest text, so neither hides the other.
+/// An ability slot grows with the player's text scale, and its readouts
+/// (the cost, the charges, an ultimate's percent) stay apart at normal and
+/// largest text, so none hides another.
 ///
-/// Ways it could fail: the cost kept at the slot's bottom corner, where
-/// the ultimate's percent also sits (the cost's plate drew over "72%"), or
-/// two readouts that only clear each other at 100 % text.
+/// Ways it could fail: a slot kept at its 100 % size while its badges grow
+/// (at 150 % a square slot's cost and charges met in the middle), or the
+/// cost kept at the bottom corner, where an ultimate's percent also sits.
 #[test]
-fn an_ultimates_cost_and_percent_never_overlap() {
+fn an_ability_slot_grows_with_the_text_and_keeps_its_readouts_apart() {
     let (docs, messages) = engine_documents(&["src/ui/components"]);
     let doc = docs
         .iter()
         .find(|d| d.path == "src/ui/components/ability-slot.svelte")
         .expect("ability-slot.svelte");
-    let mut props = doc.props.clone();
-    let p = props.as_object_mut().unwrap();
-    for (k, v) in [
+    let square = [
+        ("cooldown", serde_json::json!(0)),
+        ("charges", serde_json::json!(2)),
+        ("maxCharges", serde_json::json!(3)),
+        ("cost", serde_json::json!("40")),
+    ];
+    let ultimate = [
         ("cooldown", serde_json::json!(0)),
         ("maxCharges", serde_json::json!(0)),
         ("cost", serde_json::json!("40")),
         ("ultimate", serde_json::json!(0.72)),
+    ];
+    for (name, set, size, readouts) in [
+        ("square", &square, 48.0, &["Cost", "Charges"][..]),
+        ("ultimate", &ultimate, 64.0, &["Cost", "Percent"][..]),
     ] {
-        p.insert(k.into(), v);
-    }
-    let ultimate = EngineDocument {
-        path: doc.path.clone(),
-        doc: doc.doc.clone(),
-        props,
-    };
-    for scale in [1.0, 1.5] {
-        let mut ui = ui_with_font(test_font_metrics());
-        ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
-        let mut theme = *ui.theme();
-        theme.text_scale = scale;
-        ui.set_theme(theme);
-        preview(&mut ui, &docs, &ultimate, &messages, 1280.0, 720.0);
-        let rect = |id: &str| {
-            let e = ui
-                .elements()
-                .iter()
-                .find(|e| e.path.ends_with(&format!("/{id}")))
-                .unwrap_or_else(|| panic!("{scale}: no {id}"));
-            (e.x, e.y, e.width, e.height)
+        let mut props = doc.props.clone();
+        let p = props.as_object_mut().unwrap();
+        for (k, v) in set.iter() {
+            p.insert((*k).into(), v.clone());
+        }
+        let slot = EngineDocument {
+            path: doc.path.clone(),
+            doc: doc.doc.clone(),
+            props,
         };
-        let (cost, percent) = (rect("Cost"), rect("Percent"));
-        let apart = cost.0 + cost.2 <= percent.0
-            || percent.0 + percent.2 <= cost.0
-            || cost.1 + cost.3 <= percent.1
-            || percent.1 + percent.3 <= cost.1;
-        assert!(apart, "{scale}: cost {cost:?} overlaps percent {percent:?}");
+        for scale in [1.0, 1.5] {
+            let mut ui = ui_with_font(test_font_metrics());
+            ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+            let mut theme = *ui.theme();
+            theme.text_scale = scale;
+            ui.set_theme(theme);
+            preview(&mut ui, &docs, &slot, &messages, 1280.0, 720.0);
+            let rect = |id: &str| {
+                let e = ui
+                    .elements()
+                    .iter()
+                    .find(|e| e.path.ends_with(&format!("/{id}")))
+                    .unwrap_or_else(|| panic!("{name} {scale}: no {id}"));
+                (e.x, e.y, e.width, e.height)
+            };
+            let s = rect("Slot");
+            assert!(
+                (s.2 - size * scale).abs() < 0.5 && (s.3 - size * scale).abs() < 0.5,
+                "{name} {scale}: slot {s:?}, not {}",
+                size * scale
+            );
+            let (a, b) = (rect(readouts[0]), rect(readouts[1]));
+            let apart =
+                a.0 + a.2 <= b.0 || b.0 + b.2 <= a.0 || a.1 + a.3 <= b.1 || b.1 + b.3 <= a.1;
+            assert!(
+                apart,
+                "{name} {scale}: {} {a:?} overlaps {} {b:?}",
+                readouts[0], readouts[1]
+            );
+        }
     }
 }
 
