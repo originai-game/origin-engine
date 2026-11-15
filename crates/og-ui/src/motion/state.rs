@@ -189,9 +189,25 @@ pub struct MotionState {
         std::collections::BTreeMap<u64, std::collections::BTreeMap<String, super::css::StyleState>>,
 }
 
-/// The key of channel `c` of element `key`.
+/// The key of channel `c` of element `key`. The motion pass asks for every
+/// channel of each node it steps or forgets, each tick, so an element's
+/// channel keys are hashed once and kept on the thread (they are a pure
+/// function of its key).
 pub(crate) fn channel_key(key: u64, c: usize) -> u64 {
-    crate::id::child_key(key, CHANNEL_NAMES[c])
+    /// The most elements whose keys are kept; past it, it starts again.
+    const CAP: usize = 8192;
+    type Keys = crate::id::KeyMap<[u64; CHANNEL_NAMES.len()]>;
+    thread_local! {
+        static KEYS: std::cell::RefCell<Keys> = Default::default();
+    }
+    KEYS.with_borrow_mut(|keys| {
+        if keys.len() >= CAP && !keys.contains_key(&key) {
+            keys.clear();
+        }
+        keys.entry(key)
+            .or_insert_with(|| std::array::from_fn(|c| crate::id::child_key(key, CHANNEL_NAMES[c])))
+            [c]
+    })
 }
 
 /// The key of group `group` of element `key`.
