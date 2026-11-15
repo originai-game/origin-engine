@@ -54,30 +54,32 @@
 
 <style>
 #Loadout { width: stretch; height: stretch; gap: var(--space-lg); }
-#Title { font: var(--text-xl2); font-family: var(--font-display); }
+/* Sizes are steps in em of the surrounding text, so they follow the player's
+   text scale (a --text-* step is px and does not). */
+#Title { font-size: var(--font-step-2xl); line-height: var(--font-leading-normal); font-family: var(--font-display); }
 #Body { width: stretch; height: stretch; gap: var(--space-lg); }
 /* The scrollbar is drawn on the right in either direction, so the room beside it is
    on the right too. */
 #Groups { width: stretch; height: stretch; overflow-y: auto; scrollbar-gutter: stable; padding-right: var(--space-lg); container-type: scroll-state; gap: var(--space-xl); display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 3), 1fr)); align-content: start; }
 .group { gap: var(--space-sm); }
-.category { font: var(--text-caption); color: var(--ink-faint); text-transform: uppercase; letter-spacing: var(--font-tracking-lg); }
+.category { font-size: var(--font-step-sm); line-height: var(--font-leading-normal); color: var(--ink-faint); text-transform: uppercase; letter-spacing: var(--font-tracking-lg); }
 .items { gap: var(--space-xs); }
 .item { width: stretch; height: auto; min-height: var(--size-touch); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); }
 .face { display: flex; width: stretch; align-items: center; gap: var(--space-md); }
 .icon { flex: none; width: var(--size-sm); height: var(--size-sm); color: var(--ink-muted); }
 .text { width: stretch; min-width: 0; gap: var(--space-xxs); align-items: flex-start; }
-.name { font: var(--text-body); text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: stretch; }
+.name { font-size: var(--font-step-md); line-height: var(--font-leading-normal); text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: stretch; }
 /* The tag drops under the figures when a long translation leaves no room beside them. */
 .sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xxs) var(--space-sm); }
-.detail { text-align: start; font: var(--text-caption); font-family: var(--font-mono); white-space: nowrap; }
+.detail { text-align: start; font-size: var(--font-step-sm); line-height: var(--font-leading-normal); font-family: var(--font-mono); white-space: nowrap; }
 /* Equipped is a tag on the detail line, so every row's price stands alone at its end
    and the name keeps the row's width. */
-.badge { flex: 0 1 auto; max-width: stretch; overflow: hidden; text-overflow: ellipsis; font: var(--text-caption); color: var(--accent); text-transform: uppercase; white-space: nowrap; padding: 0 var(--space-xs); border: var(--stroke-hairline) solid var(--accent); border-radius: var(--radius-xs); }
+.badge { flex: 0 1 auto; max-width: stretch; overflow: hidden; text-overflow: ellipsis; font-size: var(--font-step-sm); line-height: var(--font-leading-normal); color: var(--accent); text-transform: uppercase; white-space: nowrap; padding: 0 var(--space-xs); border: var(--stroke-hairline) solid var(--accent); border-radius: var(--radius-xs); }
 .cost { display: flex; flex: none; align-items: center; gap: var(--space-xxs); }
-.price { font: var(--text-caption); font-family: var(--font-mono); white-space: nowrap; }
+.price { font-size: var(--font-step-sm); line-height: var(--font-leading-normal); font-family: var(--font-mono); white-space: nowrap; }
 .coin { width: var(--size-xs); height: var(--size-xs); color: var(--gold); }
 .locked .name, .locked .icon { color: var(--ink-faint); }
-#Empty { font: var(--text-body); color: var(--ink-muted); }
+#Empty { font-size: var(--font-step-md); line-height: var(--font-leading-normal); color: var(--ink-muted); }
 /* The bottom edge fades while there is more to scroll, so a cut row reads as more below. */
 #Fade { grid-column: 1 / -1; position: sticky; bottom: 0; height: var(--size-xl); margin-top: calc(var(--size-xl) * -1); background: linear-gradient(to bottom, transparent, var(--backdrop)); pointer-events: none; opacity: 0; }
 @container scroll-state(scrollable: bottom) { #Fade { opacity: 1; } }
@@ -88,7 +90,7 @@
    list keeps the page's height. */
 @media (height < 600px) and (orientation: landscape) {
   #Loadout { gap: var(--space-sm); }
-  #Title { font: var(--text-lg); font-family: var(--font-display); margin: 0; }
+  #Title { font-size: var(--font-step-xl); margin: 0; }
   .category { margin: 0; }
   #Body { flex-direction: row; gap: var(--space-md); }
   #Groups { gap: var(--space-md); grid-template-columns: minmax(0, 1fr); }

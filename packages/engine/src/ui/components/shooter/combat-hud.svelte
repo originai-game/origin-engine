@@ -17,6 +17,7 @@
 <meta name="prop:reloading" content="number" data-default="-1" data-doc="Reload progress 0 to 1; negative when not reloading.">
 <meta name="prop:hits" content="list" data-doc="Incoming hits (DamageDirection).">
 <meta name="prop:feed" content="list" data-doc="Killfeed rows, newest first (Killfeed).">
+<meta name="parts" content="CombatHud.vitals">
 <meta name="fixture:default" content='{"health":72,"healthMax":100,"shield":50,"shieldMax":100,"spread":0.25,"hit":"headshot","hitAt":1,"aimed":true,"shape":"cross","weapon":"Halcyon Carbine","mode":"auto","magazine":24,"capacity":28,"reserve":112,"reloading":-1,"hits":[{"id":"h1","angle":0.9,"strength":0.9,"kind":"normal"}],"feed":[{"id":"k1","killer":"Kestrel","victim":"Vanta","weapon":"Halcyon","headshot":true,"self":true,"team":"ally"}]}'>
 
 <div id="CombatHud">
@@ -25,7 +26,7 @@
     <div id="Aim"><Crosshair spread={spread} hit={hit} hitAt={hitAt} aimed={aimed} shape={shape} /></div>
   </div>
   <div id="Feed"><Killfeed rows={feed} /></div>
-  <div id="Vitals"><StatBar value={health} max={healthMax} kind="health" segment={25} shield={shield} shieldMax={shieldMax} heal={0} recoverable={0} label="" icon="heart" showValue={true} valueInside={false} valueText="" low={0.3} critical={0.15} bare={true} name={t("shooter.hud.health")} /></div>
+  <div id="Vitals" part="CombatHud.vitals"><StatBar value={health} max={healthMax} kind="health" segment={25} shield={shield} shieldMax={shieldMax} heal={0} recoverable={0} label="" icon="heart" showValue={true} valueInside={false} valueText="" low={0.3} critical={0.15} bare={true} name={t("shooter.hud.health")} /></div>
   <div id="Ammo"><AmmoCounter weapon={weapon} mode={mode} magazine={magazine} capacity={capacity} reserve={reserve} reloading={reloading} low={0.25} /></div>
 </div>
 

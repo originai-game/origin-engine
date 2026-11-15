@@ -1,0 +1,18 @@
+{
+  "added": [
+    {
+      "member": "shooter components",
+      "summary": "More parts for a style pack to dress: CombatHud.vitals (the plate behind the health bar), Crosshair.ring (the circle shape's ring), Ammo.track (the tracks of the magazine strip and the reload bar), Ammo.magazine[low] (the magazine strip's fill), Ammo.weapon, Ammo.label (the reload's label), Ammo.prompt (the empty magazine's prompt) and Killfeed.headshot (the headshot mark, an og-icon). The group's README lists every part with its qualifiers."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "shooter components",
+      "summary": "The shooter components' text follows the player's text scale (UiDesc.textScale). Their sizes were type ramp steps written as font: var(--text-<step>), which a document resolves in px; they are now steps in em of the surrounding text (--font-step-*), so a style pack that sets those steps also sets these sizes. The StatBar inside CombatHud is a core component and keeps its size."
+    },
+    {
+      "member": "Killfeed",
+      "summary": "A phone on its side shows the three newest rows, as an upright phone does. It showed every row, which covered the upper corner of the play area."
+    }
+  ]
+}

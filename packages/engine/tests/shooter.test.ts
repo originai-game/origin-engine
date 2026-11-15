@@ -309,10 +309,11 @@ test("DamageDirection and Killfeed follow their collections by key and order", (
 });
 
 const PHONE = { width: 390, height: 844, dpr: 2, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" };
+const LANDSCAPE = { width: 844, height: 390, dpr: 2, safeArea: { left: 47, top: 0, right: 47, bottom: 21 }, coarsePointer: true, breakpoint: "phoneLandscape" };
 const DESKTOP = { width: 1920, height: 1080, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" };
 const meet = (a: El, b: El): boolean => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
-for (const pack of ["", "fantasy"]) for (const [name, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
+for (const pack of ["", "fantasy"]) for (const [name, viewport] of [["desktop", DESKTOP], ["phone", PHONE], ["landscape phone", LANDSCAPE]] as const) {
   test(`CombatHud on a ${name} in ${pack || "the default style"}: readouts inside the safe area and clear of each other; a phone shows three feed rows`, () => {
     const e = engine("hudTest", HUD, [], pack);
     try {
@@ -328,14 +329,33 @@ for (const pack of ["", "fantasy"]) for (const [name, viewport] of [["desktop", 
       for (const r of readouts) {
         expect(r.y).toBeGreaterThanOrEqual(viewport.safeArea.top);
         expect(r.y + r.height).toBeLessThanOrEqual(viewport.height - viewport.safeArea.bottom);
-        expect(r.x).toBeGreaterThanOrEqual(0);
-        expect(r.x + r.width).toBeLessThanOrEqual(viewport.width);
+        expect(r.x).toBeGreaterThanOrEqual(viewport.safeArea.left);
+        expect(r.x + r.width).toBeLessThanOrEqual(viewport.width - viewport.safeArea.right);
       }
       for (let i = 0; i < readouts.length; i++) for (let j = i + 1; j < readouts.length; j++) expect(`${i}-${j} ${meet(readouts[i]!, readouts[j]!)} ${JSON.stringify([readouts[i], readouts[j]].map((r) => [r!.x, r!.y, r!.width, r!.height]))}`).toContain(" false ");
       const shown = elements(e).filter((x) => /Feed\/[^/]+\/[^/]+#k\d$/.test(x.path) && x.height > 0).length;
-      expect(shown).toBe(name === "phone" ? 3 : 4);
+      expect(shown).toBe(name === "desktop" ? 4 : 3);
     } finally {
       e.destroy();
     }
   });
 }
+
+test("CombatHud and Loadout text follows the player's text scale", () => {
+  // The magazine count, a killfeed name and a slot's name, by their text.
+  for (const [page, stores, text] of [["hudTest", HUD, "24"], ["hudTest", HUD, "Killer0"], ["loadoutTest", { title: "", categories: CATEGORIES, slots: SLOTS, selected: "halcyon" }, "Halcyon"]] as const) {
+    const height = (scale: number): number => {
+      const e = engine(page, stores);
+      try {
+        og.ui.previewViewport(e.world, DESKTOP as never);
+        og.ui.configure(e.world, { textScale: scale });
+        e.advance(4);
+        return elements(e).find((x) => x.text === text && x.height > 0)!.height;
+      } finally {
+        e.destroy();
+      }
+    };
+    // A line box rounds to whole pixels, so the ratio is 1.5 within a few hundredths.
+    expect(`${text} ${(height(1.5) / height(1)).toFixed(1)}`).toBe(`${text} 1.5`);
+  }
+});

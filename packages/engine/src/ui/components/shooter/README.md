@@ -27,7 +27,7 @@ never for its art, brand or layout.
 | `Crosshair` | `spread` 0–1; `hit` none, hit, headshot, kill or shieldBreak (the game clears it to none); `hitAt` (a new id replays the mark); `aimed`; `shape` cross, dot or circle | none |
 | `AmmoCounter` | `weapon`, `mode` (auto, burst, single), `magazine`, `capacity`, `reserve`, `reloading` 0–1 (negative: not reloading), `low` (a fraction of capacity) | none |
 | `DamageDirection` | `hits` keyed `{ id, angle (rad, 0 ahead, clockwise), strength 0–1, kind (normal, shield, critical) }` | none |
-| `Killfeed` | `rows` keyed `{ id, killer, victim, weapon, headshot, self, team (ally or enemy, the killer's side) }`, newest first; a phone shows the three newest | none |
+| `Killfeed` | `rows` keyed `{ id, killer, victim, weapon, headshot, self, team (ally or enemy, the killer's side) }`, newest first; a phone, upright or on its side, shows the three newest | none |
 | `Loadout` | `title` (empty: the component's Loadout), `categories` keyed `{ id, label }` (an empty label: the component's string for primary, secondary, melee or utility), `slots` keyed `{ id, category, name, icon, detail, equipped, locked, cost }`, `selected` (a slot id) | `select` (row key: a tap, Enter or A on a slot), `equip` (row key: the Equip button sends the selected slot's, X or pad Y the focused slot's), `back` (the Back button, Escape or B) |
 | `CombatHud` | the members' inputs, plus `health`, `healthMax`, `shield`, `shieldMax` over core `StatBar`, and `feed` for the killfeed | none |
 
@@ -44,17 +44,38 @@ the Back and Equip buttons drop their keycaps.
 
 ## Parts (dressed by packs)
 
-`Crosshair.arm`, `Crosshair.dot`, `Crosshair.hit[headshot|kill|shieldBreak]`
-(the arms and dot take `.aimed`), `Ammo.frame`, `Ammo.count[low|empty]`,
-`Ammo.reserve`, `Ammo.mode`, `Ammo.reload`,
-`DamageDirection.arc[shield|critical]`, `Killfeed.row[self]`,
-`Killfeed.name[killer|victim][ally|enemy]`, `Killfeed.weapon`,
-`Loadout.item[equipped][locked]` (a button, so hover, pressed, focused,
-selected and disabled come from the control), `Loadout.category`,
-`Loadout.detail` and `Loadout.price`. A pack inks the text parts with
-`color`: the killfeed's names by team (`[part="Killfeed.name"].ally`,
-`.enemy`), and the weapon, reserve, fire mode and a slot's figures a step
-quieter.
+| Part | What it is | Qualifiers |
+| --- | --- | --- |
+| `CombatHud.vitals` | The plate behind the health and shield bar | |
+| `Crosshair.arm` | Each of the cross's four arms | `.aimed` |
+| `Crosshair.ring` | The circle shape's ring: its ink is its `border-color` | `.aimed` |
+| `Crosshair.dot` | The centre dot | `.aimed` |
+| `Crosshair.hit` | Each of the four hit ticks | `.headshot`, `.kill`, `.shieldBreak` |
+| `Ammo.frame` | The readout's plate | `.low`, `.empty` |
+| `Ammo.count` | Rounds in the magazine | `.low`, `.empty` |
+| `Ammo.reserve` | Rounds in reserve | |
+| `Ammo.track` | The track of the magazine strip and of the reload bar | |
+| `Ammo.magazine` | The magazine strip's fill | `.low` |
+| `Ammo.weapon` | The weapon's name | |
+| `Ammo.mode` | The fire mode's tag | |
+| `Ammo.reload` | The reload bar's fill | |
+| `Ammo.label` | The reload's label | |
+| `Ammo.prompt` | The empty magazine's prompt | |
+| `DamageDirection.arc` | One incoming hit's arc (an SVG path: its ink is `stroke`) | `.shield`, `.critical` |
+| `Killfeed.row` | One elimination | `.self` |
+| `Killfeed.name` | A player's name | `.killer`, `.victim`, `.ally`, `.enemy` |
+| `Killfeed.weapon` | The weapon's name | |
+| `Killfeed.headshot` | The headshot mark, an `og-icon`: its ink is `og-icon[part="Killfeed.headshot"]::part(image)`'s `color` | |
+| `Loadout.category` | A category's heading | |
+| `Loadout.item` | A slot, a button: hover, pressed, focused, selected and disabled come from the control | `.equipped`, `.locked` |
+| `Loadout.detail` | A slot's detail line | |
+| `Loadout.price` | A slot's cost | |
+
+A pack inks the text parts with `color`: the killfeed's names by team
+(`[part="Killfeed.name"].ally`, `.enemy`), and the weapon, reserve, fire
+mode and a slot's figures a step quieter. Text is sized in `em` steps
+(`--font-step-*`) of the text around it, so it follows the player's text
+scale; a pack that resizes a text part uses the same steps.
 Undressed, they take the scene's or the menu's ink. The low and empty
 count keeps the `--warn` and `--danger` tokens, since it is a signal
 every pack must show. A `Killfeed.row` plate stays at
@@ -97,4 +118,6 @@ intents by row key from touch, keyboard and pad, and checks that disabled
 slots send nothing. It covers the empty outcome and checks that selection
 keeps its slot through a reorder, a removal and a restore. It also covers
 hit-mark replay, the ammunition states, the order of keyed collections,
-and the safe area and spacing of the HUD on a desktop and a phone.
+the safe area and spacing of the HUD on a desktop and on a phone both ways
+(where the feed shows three rows), in the default style and in a pack, and
+that the HUD's and the loadout's text follows the player's text scale.

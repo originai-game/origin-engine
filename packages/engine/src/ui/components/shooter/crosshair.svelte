@@ -5,7 +5,7 @@
 <meta name="prop:hitAt" content="number" data-doc="The id of that hit (its tick): a new id plays the mark again.">
 <meta name="prop:aimed" content="bool" data-doc="The aim rests on an enemy: the reticle takes the target ink.">
 <meta name="prop:shape" content="string" data-default="cross" data-doc="cross (four arms and a dot), dot, or circle (a ring and a dot).">
-<meta name="parts" content="Crosshair.arm Crosshair.dot Crosshair.hit">
+<meta name="parts" content="Crosshair.arm Crosshair.ring Crosshair.dot Crosshair.hit">
 <meta name="fixture:default" content='{"spread":0.2,"hit":"none","hitAt":0,"aimed":false,"shape":"cross"}'>
 <meta name="fixture:headshot" content='{"spread":0.45,"hit":"headshot","hitAt":12,"aimed":true,"shape":"cross"}'>
 <meta name="fixture:kill" content='{"spread":0,"hit":"kill","hitAt":30,"aimed":false,"shape":"dot"}'>
@@ -16,7 +16,7 @@
   <div id="Down" class="arm vertical" part="Crosshair.arm" class:aimed={aimed}></div>
   <div id="Left" class="arm horizontal" part="Crosshair.arm" class:aimed={aimed}></div>
   <div id="Right" class="arm horizontal" part="Crosshair.arm" class:aimed={aimed}></div>
-  <div id="Ring" class:aimed={aimed}></div>
+  <div id="Ring" part="Crosshair.ring" class:aimed={aimed}></div>
   <div id="Dot" part="Crosshair.dot" class:aimed={aimed}></div>
   {#key hitAt}
     <div id="Hit" class:shown={hit != 'none'}>
