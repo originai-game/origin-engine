@@ -37,3 +37,31 @@ button::part(AbilitySlot\.cell):disabled, button::part(AbilityBar\.cell):disable
   --well-shadow: var(--fantasy-skill-shadow);
   --badge-shadow: var(--fantasy-slot-badge-shadow);
 }
+
+/* ── MinimapView: the glass is a button, so the painted plate's rules reach
+   it and drew the plate's gold ends as bands across the top and bottom of
+   the map, where the north mark sits. These undo the plate: the glass is
+   the dark well in a brass rim the bezel holds, shaded at its edge, and the
+   north mark stands on a small lamp-black plate of its own, so it reads
+   over any map. */
+button::part(MinimapView\.glass) {
+  min-height: 0;
+  padding: 0;
+  border-image: none;
+  border: var(--stroke-regular) solid var(--line-strong);
+  background: var(--well);
+  box-shadow: var(--fantasy-minimap-inner);
+  text-shadow: none;
+}
+[part="MinimapView.north"] {
+  inset-inline-start: 50%;
+  width: fit-content;
+  translate: -50% 0;
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: var(--well);
+  box-shadow: var(--fantasy-slot-badge-shadow);
+  font-family: var(--label-font);
+  letter-spacing: var(--label-tracking);
+  text-shadow: none;
+}
