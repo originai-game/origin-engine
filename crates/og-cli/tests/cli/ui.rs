@@ -715,3 +715,68 @@ fn ui_slots_json_gives_each_slot_its_generation_spec_and_set() {
     );
     assert_eq!(frame["problems"], serde_json::json!([]), "{frame}");
 }
+
+/// A cook reads a built-in style pack from the engine's styles directory,
+/// outside the project: after the pack's CSS changes the next cook (`og ui
+/// preview` and `og ui review` cook first) takes the new CSS, not the
+/// cooked/ the project kept. Ways it could fail: the cook's index answering
+/// "unchanged" from the project's own files alone, or a code-only recook
+/// forgetting the pack's files.
+#[test]
+fn a_cook_takes_the_style_pack_as_changed_since() {
+    let dir = TempDir::new("og-cook-pack");
+    let pack = dir.join("styles/probe");
+    std::fs::create_dir_all(&pack).unwrap();
+    let game = dir.join("game");
+    std::fs::create_dir_all(game.join("src")).unwrap();
+    std::fs::create_dir_all(game.join("assets/looks")).unwrap();
+    std::fs::write(game.join("src/main.ts"), "export default 0;\n").unwrap();
+    std::fs::write(
+        game.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        game.join("assets/looks/probe.ogt"),
+        "type look\nversion 1\n---\nname \"probe\"\nui \"probe\"\n",
+    )
+    .unwrap();
+    let cooked_has = |marker: &str| {
+        fn walk(d: &Path, marker: &[u8]) -> bool {
+            std::fs::read_dir(d).unwrap().flatten().any(|e| {
+                let p = e.path();
+                if p.is_dir() {
+                    walk(&p, marker)
+                } else {
+                    std::fs::read(&p)
+                        .unwrap()
+                        .windows(marker.len())
+                        .any(|w| w == marker)
+                }
+            })
+        }
+        walk(&game.join("cooked"), marker.as_bytes())
+    };
+    let cook = || {
+        let out = og()
+            .arg("cook")
+            .arg(&game)
+            .env("OG_STYLES_DIR", dir.join("styles"))
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{}", text(&out));
+    };
+    std::fs::write(pack.join("base.css"), ":root { --probe-first: 1px; }\n").unwrap();
+    cook();
+    assert!(cooked_has("--probe-first"));
+    // Code alone changes: the pack's files are still the cook's inputs.
+    std::fs::write(game.join("src/main.ts"), "export default 1;\n").unwrap();
+    cook();
+    std::fs::write(pack.join("base.css"), ":root { --probe-second: 22px; }\n").unwrap();
+    cook();
+    assert!(
+        cooked_has("--probe-second"),
+        "the pack's edit was not cooked"
+    );
+    assert!(!cooked_has("--probe-first"));
+}

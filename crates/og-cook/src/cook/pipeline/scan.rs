@@ -38,6 +38,10 @@ pub(crate) struct Scan {
     /// Each component name the documents use or declare, by the id of the
     /// document that defines it: the game's own, else a built-in one.
     pub(crate) components: BTreeMap<String, String>,
+    /// The files outside the project its built-in assets were read from (a
+    /// style pack's, a built-in document's): inputs of the cook as much as
+    /// its own assets are.
+    pub(crate) external: Vec<PathBuf>,
 }
 
 pub(crate) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
@@ -201,6 +205,14 @@ pub(crate) fn scan_with(
     for id in builtins.keys() {
         files.push((id.clone(), assets_dir.join(id)));
     }
+    let external = builtins
+        .keys()
+        .filter_map(|id| {
+            look::style_path(id)
+                .map(Path::to_path_buf)
+                .or_else(|| ui_components::path(id).ok())
+        })
+        .collect();
     let read = |rel: &str, path: &Path| -> Result<Vec<u8>, CookError> {
         match builtins.get(rel) {
             Some(b) => Ok(b.to_vec()),
@@ -371,6 +383,7 @@ pub(crate) fn scan_with(
         ignored,
         early_errors,
         components,
+        external,
     })
 }
 

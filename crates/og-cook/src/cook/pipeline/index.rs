@@ -119,6 +119,10 @@ struct Saved {
     /// What the checkpointed cook held before it read the project's code.
     #[serde(default)]
     before_code: Option<BeforeCode>,
+    /// The files outside the project the checkpointed cook read (a style
+    /// pack's, a built-in document's), each settled before the cook began.
+    #[serde(default)]
+    external: BTreeMap<PathBuf, Stat>,
 }
 
 pub(crate) struct Index {
@@ -135,6 +139,19 @@ pub(crate) struct Index {
     /// A racy output's hash is taken as the index is saved.
     racy: BTreeMap<PathBuf, String>,
     options: String,
+    /// The files outside the project this cook read ([`Index::note_external`]).
+    external: Mutex<External>,
+}
+
+/// What a cook knows of the files outside the project it reads.
+enum External {
+    /// It read none of them anew (code alone changed): the checkpoint's
+    /// stand, as it checked them.
+    Kept,
+    /// It read these, settled before its clock.
+    Read(BTreeMap<PathBuf, Stat>),
+    /// One changed after its clock, so no stat proves what it read.
+    Unsettled,
 }
 
 fn tree(dir: &Path, out: &mut BTreeMap<PathBuf, Stat>) -> std::io::Result<()> {
@@ -192,7 +209,7 @@ impl Index {
         let mut options = options.clone();
         options.threads = 0;
         let options = cache::key(
-            "index-v1",
+            "index-v2",
             &[format!(
                 "{options:?} {:?}",
                 super::texture::encoder_name(&options.texture)
@@ -220,7 +237,23 @@ impl Index {
             inputs,
             racy,
             options,
+            external: Mutex::new(External::Kept),
         }
+    }
+
+    /// The files outside the project this cook reads: a later cook is up
+    /// to date only while they are as they were. One written after the
+    /// clock may have changed after it was read, so the cook is not
+    /// checkpointed.
+    pub fn note_external(&self, paths: &[PathBuf]) {
+        let stats: Option<BTreeMap<_, _>> = self.clock.and_then(|clock| {
+            paths
+                .iter()
+                .map(|p| Some((p.clone(), stat(p).ok().filter(|s| !s.racy(clock))?)))
+                .collect()
+        });
+        *self.external.lock().expect("index lock") =
+            stats.map_or(External::Unsettled, External::Read);
     }
 
     /// The checkpointed cook's report, when nothing it read or wrote has
@@ -252,6 +285,10 @@ impl Index {
                 .filter(|(path, _)| !code(path))
                 .eq(saved.inputs.iter().filter(|(path, _)| !code(path)))
             || outputs(&self.root).ok()? != saved.outputs
+            || saved
+                .external
+                .iter()
+                .any(|(path, was)| stat(path).ok().as_ref() != Some(was))
         {
             return None;
         }
@@ -396,8 +433,14 @@ impl Index {
             && let Some(clock) = clock(&self.root)
             && let Ok(outputs) = outputs(&self.root)
             && let Ok(mut racy) = racy(&outputs, clock)
+            && let Some(external) = match &*self.external.lock().expect("index lock") {
+                External::Kept => Some(saved.external.clone()),
+                External::Read(read) => Some(read.clone()),
+                External::Unsettled => None,
+            }
         {
             racy.extend(self.racy.clone());
+            saved.external = external;
             saved.options.clone_from(&self.options);
             saved.headers = headers(report);
             saved.inputs.clone_from(before);

@@ -68,7 +68,9 @@ pub(crate) fn scan_sources(
         ignored,
         early_errors,
         components,
+        external,
     } = scan::scan_with(assets_dir, &|path| cook_index.read(path), threads)?;
+    cook_index.note_external(&external);
     let mut consumed: BTreeSet<String> = BTreeSet::new();
     // Pixel effects and flipbooks of animated sources become ordinary
     // sheets (`vfx2d.rs`, `animated.rs`).

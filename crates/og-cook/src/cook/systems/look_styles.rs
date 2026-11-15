@@ -199,6 +199,17 @@ pub fn styles_dir() -> Option<&'static Path> {
     table().dir.as_deref()
 }
 
+/// Where the built-in style file `id` (`@styles/fantasy/base.css`) is
+/// read from.
+pub fn style_path(id: &str) -> Option<&'static Path> {
+    let t = table();
+    t.styles
+        .iter()
+        .chain(&t.licences)
+        .find(|f| f.id == id)
+        .map(|f| f.path.as_path())
+}
+
 /// Every cooked file of the built-in styles, sorted by id.
 pub fn styles() -> &'static [StyleFile] {
     &table().styles

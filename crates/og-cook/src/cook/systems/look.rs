@@ -30,7 +30,9 @@
 //!   the looks built on it.
 
 pub use super::look_assets::{BUILTINS, MOOD_LAYERS, PRESETS};
-pub use super::look_styles::{StyleFile, fonts_dir, style_licences, styles, styles_dir};
+pub use super::look_styles::{
+    StyleFile, fonts_dir, style_licences, style_path, styles, styles_dir,
+};
 use super::{
     CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root, stamp,
 };

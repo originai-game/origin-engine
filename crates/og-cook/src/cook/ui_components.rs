@@ -74,15 +74,21 @@ pub fn ui_dir() -> Option<&'static Path> {
     .as_deref()
 }
 
-/// The bytes of the built-in file `id` (`@ui/components/rpg/rpg.en.ogt`).
-pub fn read(id: &str) -> Result<Vec<u8>, String> {
+/// Where the built-in file `id` (`@ui/components/rpg/rpg.en.ogt`) is read
+/// from.
+pub fn path(id: &str) -> Result<PathBuf, String> {
     let rel = id
         .strip_prefix(PREFIX)
         .filter(|r| ROOTS.iter().any(|root| r.starts_with(root)))
         .filter(|r| !r.split('/').any(|c| c == ".." || c.is_empty()))
         .ok_or_else(|| format!("'{id}' is not a built-in UI file"))?;
     let dir = ui_dir().ok_or("the engine package has no src/ui")?;
-    std::fs::read(dir.join(rel)).map_err(|e| format!("{id}: {e}"))
+    Ok(dir.join(rel))
+}
+
+/// The bytes of the built-in file `id` (`@ui/components/rpg/rpg.en.ogt`).
+pub fn read(id: &str) -> Result<Vec<u8>, String> {
+    std::fs::read(path(id)?).map_err(|e| format!("{id}: {e}"))
 }
 
 /// Every built-in document by its name. An error names a document that

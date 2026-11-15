@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"og cook","summary":"A cook counts the built-in style pack and built-in UI documents it bundles among its inputs: after an edit to a pack's CSS (or to a built-in component) the next `og cook`, `og ui preview` or `og ui review` cooks it again. It kept the project's cooked/ while the project's own files were unchanged, so a pack edit did not show until the sheet was copied afresh."}
+  ]
+}
