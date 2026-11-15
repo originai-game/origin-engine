@@ -38,17 +38,17 @@
 #Page { position: relative; width: stretch; height: stretch; overflow: hidden; }
 #Sky { position: absolute; left: 0; top: 0; width: stretch; height: 50%; background: linear-gradient(180deg, #9cc7e8, #e2e6df); }
 #Floor { position: absolute; left: 0; bottom: 0; width: stretch; height: 50%; background: linear-gradient(180deg, #4b4038, #16120e); }
-#TopLeft { position: absolute; left: env(-og-hud-inset-left, var(--space-lg)); top: env(-og-hud-inset-top, var(--space-lg)); display: flex; flex-direction: column; gap: var(--space-xs); width: calc(var(--size-xxl) * 4.5); }
+#TopLeft { position: absolute; left: calc(env(-og-hud-inset-left) + var(--space-lg)); top: calc(env(-og-hud-inset-top) + var(--space-lg)); display: flex; flex-direction: column; gap: var(--space-xs); width: calc(var(--size-xxl) * 4.5); }
 .bar { display: flex; width: stretch; }
-#TopMid { position: absolute; left: 30%; right: 30%; top: env(-og-hud-inset-top, var(--space-lg)); display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); }
+#TopMid { position: absolute; left: 30%; right: 30%; top: calc(env(-og-hud-inset-top) + var(--space-lg)); display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); }
 #Compass { display: flex; width: stretch; }
-#TopRight { position: absolute; right: env(-og-hud-inset-right, var(--space-lg)); top: env(-og-hud-inset-top, var(--space-lg)); }
+#TopRight { position: absolute; right: calc(env(-og-hud-inset-right) + var(--space-lg)); top: calc(env(-og-hud-inset-top) + var(--space-lg)); }
 /* The hints sit right above the bottom cluster, so they clear the
    ability bar however tall the text scale makes it. */
-#Lower { position: absolute; left: 0; right: 0; bottom: env(-og-hud-inset-bottom, var(--space-lg)); display: flex; flex-direction: column-reverse; align-items: flex-end; gap: var(--space-sm); }
+#Lower { position: absolute; left: 0; right: 0; bottom: calc(env(-og-hud-inset-bottom) + var(--space-lg)); display: flex; flex-direction: column-reverse; align-items: flex-end; gap: var(--space-sm); }
 #Bottom { display: flex; width: stretch; align-items: flex-end; justify-content: center; gap: var(--space-lg); }
 #Abilities { display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); }
-#Hints { margin-inline-end: env(-og-hud-inset-right, var(--space-lg)); }
+#Hints { margin-inline-end: calc(env(-og-hud-inset-right) + var(--space-lg)); }
 @media (width < 600px), (height < 500px) {
   #Page { display: flex; flex-direction: column; align-items: center; gap: var(--space-lg); padding: env(safe-area-inset-top) var(--space-xs) env(safe-area-inset-bottom); overflow-y: auto; }
   #TopLeft, #TopMid, #TopRight, #Lower { position: relative; left: auto; right: auto; top: auto; bottom: auto; }
