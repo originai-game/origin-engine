@@ -21,8 +21,9 @@ use std::path::Path;
 pub(crate) const TIMELINE_TYPE: &str = og_timeline::TIMELINE_TYPE;
 
 /// The caption files a timeline names, asset-relative.
+/// Its translations found beside them included (a new one recooks it).
 pub(crate) fn caption_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
-    let Ok(doc) = Document::parse(text) else {
+    let Ok(doc) = Document::parse(&with_translations(rel, root, text)) else {
         return Vec::new();
     };
     let mut out = Vec::new();
@@ -31,13 +32,96 @@ pub(crate) fn caption_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
             continue;
         }
         let Some(b) = &t.block else { continue };
-        for c in b.get_all("captions") {
-            if let Some(f) = c.values.first().and_then(|v| v.as_str()) {
-                out.push(resolve(rel, root, f));
+        let locales = b.get_all("locale").filter_map(|l| l.block.as_ref());
+        for block in std::iter::once(b).chain(locales) {
+            for c in block.get_all("captions") {
+                if let Some(f) = c.values.first().and_then(|v| v.as_str()) {
+                    out.push(resolve(rel, root, f));
+                }
             }
         }
     }
     out
+}
+
+/// A timeline's text with each caption file's translations beside it
+/// (`kitchen.zh.srt`, `kitchen.pt-BR.srt` beside `kitchen.srt`) as
+/// `locale "<tag>" { captions "<file>" [offset] }` in its track, unless the
+/// track writes that locale itself. Unchanged without any.
+pub(crate) fn with_translations(rel: &str, root: &Path, text: &str) -> String {
+    let Ok(mut doc) = Document::parse(text) else {
+        return text.to_string();
+    };
+    let tag_ok = |t: &str| {
+        let mut parts = t.split('-');
+        parts.next().is_some_and(|l| {
+            (2..=3).contains(&l.len()) && l.chars().all(|c| c.is_ascii_alphabetic())
+        }) && parts
+            .all(|p| (1..=8).contains(&p.len()) && p.chars().all(|c| c.is_ascii_alphanumeric()))
+    };
+    let mut changed = false;
+    for t in doc.body.entries.iter_mut().filter(|e| e.key == "track") {
+        if t.values.first().and_then(|v| v.as_word()) != Some("caption") {
+            continue;
+        }
+        let Some(b) = &mut t.block else { continue };
+        let mut have: Vec<String> = b
+            .get_all("locale")
+            .filter_map(|l| l.values.first().and_then(|v| v.as_str()))
+            .map(str::to_ascii_lowercase)
+            .collect();
+        let mut add = Vec::new();
+        for c in b.get_all("captions") {
+            let Some(f) = c.values.first().and_then(|v| v.as_str()) else {
+                continue;
+            };
+            let file = root.join(resolve(rel, root, f));
+            let (Some(dir), Some(stem), Some(ext)) = (
+                file.parent(),
+                file.file_stem().and_then(|s| s.to_str()),
+                file.extension().and_then(|s| s.to_str()),
+            ) else {
+                continue;
+            };
+            let Ok(entries) = std::fs::read_dir(dir) else {
+                continue;
+            };
+            let mut found: Vec<String> = entries
+                .filter_map(|e| e.ok()?.file_name().into_string().ok())
+                .collect();
+            found.sort();
+            for name in found {
+                let Some(tag) = name
+                    .strip_prefix(&format!("{stem}."))
+                    .and_then(|r| r.strip_suffix(&format!(".{ext}")))
+                else {
+                    continue;
+                };
+                if !tag_ok(tag) || have.contains(&tag.to_ascii_lowercase()) {
+                    continue;
+                }
+                have.push(tag.to_ascii_lowercase());
+                // The authored path with the translation's name, so it
+                // resolves as the base file does.
+                let path = match f.rsplit_once('/') {
+                    Some((d, _)) => format!("{d}/{name}"),
+                    None => name.clone(),
+                };
+                let mut captions = c.clone();
+                captions.values[0] = og_core::ogt::Value::String(path);
+                let mut e = og_core::ogt::Entry::new("locale")
+                    .with(og_core::ogt::Value::String(tag.to_string()));
+                e.block = Some(og_core::ogt::Block::new().with(captions));
+                add.push(e);
+            }
+        }
+        changed |= !add.is_empty();
+        b.entries.extend(add);
+    }
+    match changed.then(|| doc.to_text()) {
+        Some(Ok(t)) => t,
+        _ => text.to_string(),
+    }
 }
 
 /// The timelines a timeline nests (`track timeline { key 0 { play ... } }`),
@@ -93,20 +177,28 @@ pub(crate) fn dependencies(s: &Source) -> String {
         .join("\n")
 }
 
-pub(crate) fn cook_timeline(
-    s: &Source,
-    known: &dyn Fn(&str) -> bool,
-    stamp: u64,
-) -> Result<(Vec<u8>, Vec<String>), CookError> {
+/// A timeline source parsed, its caption files (and their translations,
+/// [`with_translations`]) read beside it or from `assets/`.
+pub(crate) fn parse(s: &Source) -> Result<Timeline, CookError> {
     let text = std::str::from_utf8(&s.bytes)
         .map_err(|_| CookError("a timeline is text (UTF-8)".into()))?;
     let root = assets_root(s);
+    let text = &with_translations(&s.rel, &root, text);
     let mut read = |file: &str| -> Result<String, String> {
         let rel = resolve(&s.rel, &root, file);
         std::fs::read_to_string(root.join(&rel))
             .map_err(|e| format!("{rel} (beside the timeline or under assets/): {e}"))
     };
-    let t = Timeline::parse(text, &mut read).map_err(CookError)?;
+    Timeline::parse(text, &mut read).map_err(CookError)
+}
+
+pub(crate) fn cook_timeline(
+    s: &Source,
+    known: &dyn Fn(&str) -> bool,
+    stamp: u64,
+) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    let t = parse(s)?;
+    let root = assets_root(s);
     // Every sound, model, timeline and video it names is a cooked asset.
     let mut missing = Vec::new();
     let mut need = |id: &str, what: &str| {

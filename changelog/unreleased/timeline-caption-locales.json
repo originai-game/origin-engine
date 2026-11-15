@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "type timeline track caption",
+      "summary": "A caption file's translations beside it (`narration.zh.srt`, `narration.pt-BR.srt` beside `narration.srt`, each with its own times) cook with the timeline, and the track says the one of the locale the player asked for (og.i18n.setLocale), its language's for a regional tag, else its own. `locale \"zh\" { captions \"…\" }` in a caption track names a translation kept elsewhere."
+    }
+  ]
+}

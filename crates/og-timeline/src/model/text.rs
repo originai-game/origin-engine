@@ -369,11 +369,21 @@ fn write_track(tr: &Track) -> Entry {
             }
         }
         Track::Caption(c) => {
-            for k in &c.keys {
-                let mut kb = Block::new();
-                kb.push(Entry::new("text").with(Value::String(k.text.clone())));
-                kb.push(Entry::new("end").with(num(k.end)));
-                b.push(key_entry(k.time, kb));
+            let caption_keys = |b: &mut Block, keys: &[crate::CaptionKey]| {
+                for k in keys {
+                    let mut kb = Block::new();
+                    kb.push(Entry::new("text").with(Value::String(k.text.clone())));
+                    kb.push(Entry::new("end").with(num(k.end)));
+                    b.push(key_entry(k.time, kb));
+                }
+            };
+            caption_keys(&mut b, &c.keys);
+            for (locale, keys) in &c.locales {
+                let mut lb = Block::new();
+                caption_keys(&mut lb, keys);
+                let mut e = Entry::new("locale").with(Value::String(locale.clone()));
+                e.block = Some(lb);
+                b.push(e);
             }
         }
         Track::Event(ks) => {

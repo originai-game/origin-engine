@@ -336,7 +336,15 @@ pub(super) fn evaluate(
                 }
             }
             Track::Caption(c) => {
-                if let Some((ki, k)) = eval::caption_at(c, t) {
+                // The locale the player asked for, so a translated caption
+                // shows without a string table of that locale.
+                let l = crate::bind::i18n::og_i18n_locale(engine_id);
+                let locale = if l.requested.is_empty() {
+                    l.active
+                } else {
+                    l.requested
+                };
+                if let Some((ki, k)) = eval::caption_at(c, &locale, t) {
                     out.captions.push((ti32, ki, k.text.clone()));
                 }
             }

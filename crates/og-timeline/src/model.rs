@@ -192,6 +192,28 @@ pub struct CaptionKey {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CaptionTrack {
     pub keys: Vec<CaptionKey>,
+    /// Its translations by locale tag (`locale "zh" { … }`; the cook adds
+    /// one for each `<name>.<locale>.srt` beside a `captions` file), each
+    /// with keys of its own.
+    pub locales: Vec<(String, Vec<CaptionKey>)>,
+}
+
+impl CaptionTrack {
+    /// The keys said in `locale`: its translation, else its language's
+    /// (`zh` for `zh-Hans`), else the track's own.
+    pub fn keys_in(&self, locale: &str) -> &[CaptionKey] {
+        let find = |tag: &str| {
+            self.locales
+                .iter()
+                .find(|(l, _)| l.eq_ignore_ascii_case(tag))
+                .map(|(_, k)| k.as_slice())
+        };
+        let language = locale.split(['-', '_']).next().unwrap_or("");
+        (!locale.is_empty())
+            .then(|| find(locale).or_else(|| find(language)))
+            .flatten()
+            .unwrap_or(&self.keys)
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]

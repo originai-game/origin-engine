@@ -264,10 +264,15 @@ pub fn video_at(track: &VideoTrack, t: f32) -> Option<(usize, f32)> {
     Some((i, k.from + (t - k.time) * k.speed))
 }
 
-/// The caption showing at `t`: the latest started that has not ended.
-pub fn caption_at(track: &CaptionTrack, t: f32) -> Option<(usize, &CaptionKey)> {
+/// The caption showing at `t` in `locale` ([`CaptionTrack::keys_in`]): the
+/// latest started that has not ended.
+pub fn caption_at<'a>(
+    track: &'a CaptionTrack,
+    locale: &str,
+    t: f32,
+) -> Option<(usize, &'a CaptionKey)> {
     let showing = |(_, k): &(usize, &CaptionKey)| k.time <= t && t < k.end;
-    track.keys.iter().enumerate().rev().find(showing)
+    track.keys_in(locale).iter().enumerate().rev().find(showing)
 }
 
 /// How a transition track covers the screen at a time.

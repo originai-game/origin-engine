@@ -17,8 +17,8 @@
 
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_game_game, og_host_begin_bundle,
-    og_load_timeline, og_timeline_seek, og_timeline_stop, og_world_insert, og_world_spawn,
-    set_hooks, shared_ui,
+    og_i18n_set_locale, og_load_timeline, og_timeline_seek, og_timeline_stop, og_world_insert,
+    og_world_spawn, set_hooks, shared_ui,
 };
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -87,9 +87,13 @@ fn value(text: String) -> Value {
 
 /// An entity whose og.Timeline holds `t.ogt`, stopped.
 fn timeline(engine: u32) -> f64 {
+    timeline_of(engine, "timelines/t.ogt")
+}
+
+fn timeline_of(engine: u32, path: &str) -> f64 {
     let asset = value(og_runtime::host_impl::answer(og_load_timeline(
         engine,
-        "timelines/t.ogt".into(),
+        path.into(),
     )));
     let entity = value(og_runtime::host_impl::answer(og_world_spawn(
         engine,
@@ -188,4 +192,67 @@ fn a_caption_track_feeds_the_subtitles_screen_and_draws_nothing_itself() {
     value(og_runtime::host_impl::answer(og_timeline_stop(engine, b)));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert_eq!(said(engine), [""; 0]);
+}
+
+/// A caption file's translations beside it (`lines.zh.srt`,
+/// `lines.pt-BR.srt` beside `lines.srt`) cook with the timeline, and the
+/// track says the one of the locale the player asked for, its language's
+/// for a regional tag (zh-Hans), else its own. A translation keeps its own
+/// times (pt-BR's line starts at 2 s, not 1 s).
+///
+/// Ways this could fail: the translations not found (only `lines.srt`
+/// cooked); a translation's text put on the base's times; zh-Hans missing
+/// `zh`; a locale with no translation saying nothing instead of the base.
+#[test]
+fn a_caption_file_s_translations_are_said_in_the_player_s_locale() {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!(
+        "og-runtime-timeline-captions-locales-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&root);
+    let dir = root.join("assets/timelines");
+    std::fs::create_dir_all(&dir).unwrap();
+    let srt = |at: &str, text: &str| format!("1\n{at}\n{text}\n");
+    for (file, text) in [
+        (
+            "l.ogt",
+            "type timeline\nversion 1\n---\nduration 4\ntrack caption {\n  captions \"lines.srt\"\n}\n".to_string(),
+        ),
+        ("lines.srt", srt("00:00:01,000 --> 00:00:02,000", "First.")),
+        ("lines.zh.srt", srt("00:00:01,000 --> 00:00:02,000", "第一句。")),
+        ("lines.pt-BR.srt", srt("00:00:02,000 --> 00:00:03,000", "Primeira.")),
+    ] {
+        std::fs::write(dir.join(file), text).unwrap();
+    }
+    let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+
+    set_hooks(Rc::new(Game));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(json!({ "seed": 1, "systems": [] }).to_string()));
+    let options = json!({ "root": root.to_str().unwrap() }).to_string();
+    let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let t = timeline_of(engine, "timelines/l.ogt");
+    {
+        let ui = shared_ui(engine).unwrap();
+        let mut ui = ui.lock();
+        ui.define_document(
+            og_ui::UiDocument::parse(
+                "ui/screens/subtitles.svelte",
+                include_str!("../../../packages/engine/src/ui/screens/subtitles.svelte"),
+            )
+            .unwrap(),
+        );
+        ui.push_screen("subtitles", json!({ "lines": [] })).unwrap();
+    }
+    let at = |locale: &str, seconds: f64| {
+        og_i18n_set_locale(engine, locale.into());
+        seek(engine, t, seconds);
+        said(engine)
+    };
+    assert_eq!(at("en", 1.5), ["First."]);
+    assert_eq!(at("zh-Hans", 1.5), ["第一句。"], "zh for zh-Hans");
+    assert_eq!(at("pt-BR", 1.5), [""; 0], "pt-BR's line starts at 2 s");
+    assert_eq!(at("pt-BR", 2.5), ["Primeira."]);
+    assert_eq!(at("fr", 1.5), ["First."], "no French: the base");
 }

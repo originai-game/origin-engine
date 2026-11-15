@@ -422,11 +422,48 @@ type RawCaption = (f32, Option<f32>, String);
 const CAPTION_LOOK: &str = "a caption is text only: the screen that shows `$captions` (the built-in `subtitles`) and the style pack decide where and how it is drawn";
 
 fn caption(block: &Block, read: &mut Read<'_>) -> Result<CaptionTrack, String> {
-    let mut c = CaptionTrack::default();
+    let mut locales = Vec::new();
+    let keys = caption_keys(block, read, Some(&mut locales))?;
+    Ok(CaptionTrack { keys, locales })
+}
+
+/// A caption track's keys (or a `locale` block's), from its files and its
+/// own keys; its translations into `locales` (`None` inside one).
+fn caption_keys(
+    block: &Block,
+    read: &mut Read<'_>,
+    mut locales: Option<&mut Vec<(String, Vec<CaptionKey>)>>,
+) -> Result<Vec<CaptionKey>, String> {
+    let mut out = Vec::new();
     let mut raw: Vec<RawCaption> = Vec::new();
     for e in &block.entries {
         match e.key.as_str() {
             "style" | "anchor" => return Err(at(e, CAPTION_LOOK)),
+            "locale" => {
+                let Some(found) = locales.as_deref_mut() else {
+                    return Err(at(
+                        e,
+                        "a caption locale holds captions and keys, not another locale",
+                    ));
+                };
+                let (tag, b) = match (e.values.as_slice(), &e.block) {
+                    ([Value::String(t)], Some(b)) if !t.is_empty() => (t.clone(), b),
+                    _ => {
+                        return Err(at(
+                            e,
+                            "`locale \"<tag>\" { captions \"<file>.srt\" }` (or its own keys)",
+                        ));
+                    }
+                };
+                if found.iter().any(|(l, _)| l.eq_ignore_ascii_case(&tag)) {
+                    return Err(at(
+                        e,
+                        format!("the locale '{tag}' twice in one caption track"),
+                    ));
+                }
+                let keys = caption_keys(b, read, None)?;
+                found.push((tag, keys));
+            }
             "captions" => {
                 no_block(e)?;
                 let (file, offset) = match e.values.as_slice() {
@@ -474,7 +511,7 @@ fn caption(block: &Block, read: &mut Read<'_>) -> Result<CaptionTrack, String> {
                 raw.push((time, end, text));
             }
             _ => {
-                return Err(unknown(e, "caption track entry", "captions or key"));
+                return Err(unknown(e, "caption track entry", "captions, key or locale"));
             }
         }
     }
@@ -485,13 +522,13 @@ fn caption(block: &Block, read: &mut Read<'_>) -> Result<CaptionTrack, String> {
             next.unwrap_or(time + CAPTION_SECONDS)
                 .min(time + CAPTION_SECONDS)
         });
-        c.keys.push(CaptionKey {
+        out.push(CaptionKey {
             time: *time,
             end,
             text: text.clone(),
         });
     }
-    Ok(c)
+    Ok(out)
 }
 
 /// A caption file by its extension: SubRip, or word timestamps in JSON.
