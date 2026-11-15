@@ -96,9 +96,12 @@ names the built-in and installed packs.
 3. Run `og style check assets/styles/my-style`. Fix parser diagnostics,
    unresolved URLs and every literal outside a `:root` rule (a colour, a
    length other than 0, a duration or a `url()`): move the value into a
-   `:root` token and read it with `var()`. Contrast reports root-token
-   ratios, not a grade or a guarantee about text over images and
-   gradients.
+   `:root` token and read it with `var()`. Then read its contrast facts
+   (§5): every text the core-control sheet and the built-in documents draw
+   under the pack, in both schemes, on what is drawn under it, and how far
+   apart its team and state colours stay under each colour vision. The
+   check measures; the bars are §5's. `og style check default` reads the
+   core default, `og style check fantasy` a bundled pack.
 4. Run `og ui sheet my-style` to inspect every core-control page at
    desktopHd and phonePortrait, at 100% and 150% text scale (a pack by its
    name: the project's `assets/styles/<name>`, or a bundled one as
@@ -430,7 +433,34 @@ bars it does not hold, this guide does:
   overlapping.
 - **Contrast**: live text at least 4.5:1 against what it is drawn on,
   3:1 for text over 24 px and for icons and control outlines; 7:1 in the
-  high-contrast mode. No meaning by colour alone.
+  high-contrast mode. No meaning by colour alone. APCA's Lc, which
+  `og style check` reports beside the ratio, reads light text on dark
+  more fairly: body text at |Lc| 75 or more (60 for text over 24 px or
+  bold over 18 px, 45 for a large heading, 30 for a disabled control's
+  text and placeholders, which WCAG exempts). Hold both bars; a pair that
+  meets one only is an ink to move.
+- **Text over the scene**: `og style check` reads a ground the UI covers
+  only partly (a translucent plate, a HUD label on nothing) over black and
+  over white, keeps the worse and calls it `scene`. Such text holds 4.5:1
+  either on its plate over a bright scene (a sky, snow, a muzzle flash)
+  or on its halo (`text-shadow`, `-webkit-text-stroke`; the check reports
+  "on its halo", read a pixel out from the glyphs' edge on their weakest
+  side): a round timer's caption on a translucent plate over a bright sky
+  fell to 3.3:1. A nearly opaque plate, or a halo that rings the glyphs,
+  is what holds it. A blurred shadow covers at most half at the glyphs'
+  edge and an offset one lies on one side only (it reads as a second,
+  embossed copy), so `0 0 2px, 0 1px 2px` reads as no halo at all; eight
+  unblurred copies 1–1.5 px round the glyphs, in the ink's inverse, read
+  12:1 over a white sky (the default `--tag-halo`).
+- **`contrast-color()`** is white or black, whichever reads more on its
+  ground: at least 4.58:1 on any opaque ground. Use it for ink on a
+  colour the game or the player picks (a team colour, a dye); an accented
+  control (`accent-color`) inks its check mark the same way.
+- **Colour vision**: colours that mean different things (the teams, the
+  states success, warn, danger and info) stay 0.1 or more apart in OKLab
+  (ΔEOK) under protanopia, deuteranopia and tritanopia, as
+  `og style check` simulates them; under 0.05 they read as one colour.
+  Where a set cannot, the meaning also takes a shape, an icon or a label.
 - **Touch**: a control's shorter side at least 44 CSS px on a coarse
   pointer, and 8 px between neighbouring targets; primary actions in the
   bottom half on a phone held in portrait.

@@ -32,6 +32,11 @@ serde_json = "1"
 tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
 # `og style pack` starts a new style from the prototype's palette and radii.
 og-ui = { path = "../og-ui" }
+# og style check's contrast facts: the draws' paints and the colour-vision
+# simulation (og-draw), OKLab for gradients and distances (color, as og-css
+# takes it).
+og-draw = { path = "../og-draw" }
+color = { version = "0.3.3", default-features = false, features = ["libm"] }
 # og style check reads a pack's declaration values (style/literals.rs).
 cssparser = "0.38.0"
 # og compare's FLIP and the agents' captures (og-probe's frame module).

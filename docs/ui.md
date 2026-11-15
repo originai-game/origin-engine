@@ -446,16 +446,19 @@ the line count, `pretty` at the widest that keeps it with no one-word last
 line, `stable` is `auto`. `hyphens: none` drops soft hyphens.
 `-webkit-text-stroke`, `-webkit-text-fill-color` and `paint-order` outline
 and fill glyphs. Inherited properties pass down as custom properties do,
-re-resolving only their readers. `accent-color` inks switches, sliders,
-radios and progress; `caret-color` a field's caret; `color-scheme` picks
-`light-dark()`'s side.
+re-resolving only their readers. `accent-color` inks checkboxes,
+switches, sliders, radios and progress, and what a control draws on its
+accent (a check mark) is `contrast-color()` of it; `caret-color` a
+field's caret; `color-scheme` picks `light-dark()`'s side.
 
 Colours take all of CSS Color 4 and 5 (`crates/og-ui/src/style/css_color.rs`).
 Linebender's `color` crate parses absolute colours and owns every space,
 conversion and CSS Color 4 §12 interpolation; og-css adds `var()` roles,
-`currentColor`, `light-dark()`, `color-mix()`'s percentages, relative
-colours and gamut mapping (out-of-gamut colours by OKLCh chroma
-reduction). A colour that
+`currentColor`, `light-dark()`, `contrast-color()` (white or black,
+whichever has the greater WCAG 2 ratio: at least 4.58:1 on any opaque
+ground), `color-mix()` over one colour or more (CSS Color 5 §3.3, OKLab
+when no space is named), relative colours and gamut mapping
+(out-of-gamut colours by OKLCh chroma reduction). A colour that
 reads no role, `currentColor` or `light-dark()` reduces to sRGB at cook;
 others resolve against the active style when drawn. One parse
 (`style_file::parse_color`) reads every hex literal.
@@ -1440,10 +1443,20 @@ rules, transitions and shared `-og-sound`s. Finishes: flat, gradient,
 glass, hologram, neon, paper, bevel, brush. `--scheme` picks the fallback
 root palette; `data-scheme` still selects at run time.
 
-`og style check <directory> [--json]` checks CSS and asset URLs, fails
-literals outside `:root` (§3.1) and reports root-token contrast ratios as
-facts (not over images or gradients). `og style check-project` is the
-game's art-contract checker.
+`og style check <directory|pack|default> [--json]` checks CSS and asset
+URLs, fails literals outside `:root` (§3.1) and reports contrast as facts.
+It builds the core-control sheet's pages (every state held) and every
+built-in document from its `fixture:default` under the pack, in both
+schemes, without a GPU, and reads each drawn text on what is drawn under
+it, composited in linear light: fills, gradients and image texels where
+the text is, glass by its tint, layers by their opacity; a ground the UI
+covers only partly is read over black and over white and called `scene`.
+Each pair carries its WCAG 2 ratio, APCA Lc and, under a `text-shadow` or
+stroke, its ratio on that halo. It also reports how far apart (ΔEOK) the
+team and state colours stay under protanopia, deuteranopia and
+tritanopia (og-draw's simulation). Nothing is graded; the bars are the
+screens guide's (§5). `og style check-project` is the game's art-contract
+checker.
 
 `og ui sheet <pack>` renders a pack's core-control pages at desktopHd and
 phonePortrait at 100 % and 150 % text, scroll pages captured to the
@@ -1893,7 +1906,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | --- | --- | --- | --- | --- |
 | `abs-sign` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `absolute-positioning` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::positioning_places_as_css_positioning_does`](../crates/og-ui/tests/css_layout.rs). Both builders assert relative flow reservation, asymmetric absolute insets, viewport-fixed corners, sticky wheel scrolling, anchor()/anchor-size(), position-area and position-try. Anchor animation and visibility are not covered. |
-| `accent-color` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `accent-color` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_paint::accent_color_inks_the_built_in_controls_and_what_they_draw_on_it_reads`](../crates/og-ui/tests/css_paint.rs). A checked box, a switch that is on, a chosen radio, a range's filled track and a progress fill draw the accent set in <style>, in the style attribute or on an ancestor, in both schemes and through a scheme switch (light-dark()); an unaccented sibling keeps the style's primary; the check mark reads at least 4.5:1 on a light and a dark accent. A pack's own ::part art over the accent is not covered. |
 | `active-view-transition` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `align-content-block` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `alignment-baseline` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -1940,7 +1953,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `calc-constants` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `calc-size` | Not Baseline | Missing | Pending parts-as-nodes | No calc-size evaluation or animated output proof. |
 | `cap` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `caret-color` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `caret-color` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_paint::caret_color_paints_a_focused_fields_caret`](../crates/og-ui/tests/css_paint.rs). A focused single-line field's drawn caret takes its own caret-color, an inherited one, currentColor as the field's text colour, and auto as the style's primary. Text areas are not asserted. |
 | `caret-shape` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `cascade-layers` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `case-insensitive-attributes` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -1956,7 +1969,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `color-function` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `color-gamut` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `color-mix` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `color-mix-variadic` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `color-mix-variadic` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_paint::contrast_color_and_variadic_color_mix_reach_the_frame`](../crates/og-ui/tests/css_paint.rs). A three-colour color-mix() draws the three's average (CSS Color 5 §3.3) and a mix with no space is OKLab's; contrast-color(var(--panel)) draws white text on the dark panel and black once the scheme turns light. og-css's color_mix_takes_any_number_of_colours covers omitted and under-100% percentages, one colour and all-0% (transparent); contrast_color_picks_the_ink_that_reads_most holds the pick at √21:1 or more over a grid of grounds. |
 | `color-scheme` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `colrv0` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `colrv1` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -1980,7 +1993,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `container-style-queries` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `content` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `content-visibility` | Newly | Supported (scope →) | Pending parts-as-nodes | [`css_contain::content_visibility_skips_contents_off_screen`](../crates/og-ui/tests/css_contain.rs). Computed offscreen placeholder/remembered sizes, re-entry and hidden accessibility contents. |
-| `contrast-color` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `contrast-color` | Newly | Supported (scope →) | Pending parts-as-nodes | [`css_paint::contrast_color_and_variadic_color_mix_reach_the_frame`](../crates/og-ui/tests/css_paint.rs). A three-colour color-mix() draws the three's average (CSS Color 5 §3.3) and a mix with no space is OKLab's; contrast-color(var(--panel)) draws white text on the dark panel and black once the scheme turns light. og-css's color_mix_takes_any_number_of_colours covers omitted and under-100% percentages, one colour and all-0% (transparent); contrast_color_picks_the_ink_that_reads_most holds the pick at √21:1 or more over a grid of grounds. |
 | `corner-shape` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`box_decor::corners_take_css_radii_and_shapes`](../crates/og-ui/tests/box_decor.rs). Both builders emit fill/stroke ellipse radii with overlap scaling, percentages, slash syntax and bevel corners. |
 | `counter-reset-reversed` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `counter-set` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |

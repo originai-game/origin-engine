@@ -2860,6 +2860,7 @@ dependencies = [
 name = "og-cli"
 version = "0.7.7"
 dependencies = [
+ "color",
  "cssparser",
  "glam 0.34.1",
  "gltf",
@@ -2870,6 +2871,7 @@ dependencies = [
  "og-bake",
  "og-cook",
  "og-core",
+ "og-draw",
  "og-env",
  "og-i18n",
  "og-idl",

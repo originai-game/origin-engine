@@ -27,6 +27,8 @@ use systems::{
     navmesh, rig2d, shader_check, story, story_functions, strings, terrain, vfx,
 };
 mod formats;
+/// A source image decoded to RGBA8 (`og style check` reads a pack's art).
+pub use formats::texture::{Image as DecodedImage, decode as decode_image};
 pub use formats::{
     anim, audio, bc6h, cube_source, icons, ktx2_source, model_text, prefab, sfx, texture_array,
     video, vox,
