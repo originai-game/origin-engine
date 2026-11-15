@@ -24,6 +24,7 @@ pub mod flow;
 mod grid;
 pub(crate) mod multicol;
 mod node;
+mod text;
 #[doc(hidden)]
 pub mod virtualize;
 mod writing;
@@ -45,6 +46,7 @@ pub(crate) use node::{
     UsedText, Widget, WrapStyle, ellipsis_of, snap_pixel_text, step_tracking, text_features,
 };
 pub use node::{Family, FontRole};
+use text::*;
 
 use crate::FontMetrics;
 use crate::element::{Edges, GridFlow, LayoutMode, Patch, Query, Track};
