@@ -51,7 +51,7 @@ const PART_RULES: &[(&str, &str, &str)] = &[
         "slot::part(frame)",
         "background: var(--slot-fill, revert-layer); \
          border-width: var(--slot-rim-width, 0px); border-style: solid; border-color: var(--slot-rim, var(--line)); \
-         box-shadow: none; corner-shape: var(--slot-corner-shape);",
+         box-shadow: var(--slot-shadow); corner-shape: var(--slot-corner-shape);",
     ),
     (
         "Slot::frame:selected",
@@ -888,6 +888,7 @@ const FALLBACKS: &str = r#"
     border-width: var(--stroke-hairline); border-style: solid; border-color: var(--checkbox-box-rim);
     background: var(--checkbox-box-fill, revert-layer);
     box-shadow: var(--checkbox-box-shadow);
+    border-radius: var(--checkbox-radius, var(--field-radius));
     corner-shape: var(--checkbox-corner-shape);
   }
   input[type=radio]::part(ring) {
@@ -959,6 +960,7 @@ const FALLBACKS: &str = r#"
   input[type=checkbox][switch]::part(knob) {
     border-width: var(--stroke-hairline); border-style: solid; border-color: var(--switch-knob-rim); border-radius: var(--chip-radius);
     background: var(--switch-knob-fill, revert-layer);
+    box-shadow: var(--switch-knob-shadow, revert-layer);
   }
   input[type=checkbox][switch]::part(track):checked {
     border-color: var(--switch-checked-rim, var(--switch-track-rim));

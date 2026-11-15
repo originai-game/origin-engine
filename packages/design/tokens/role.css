@@ -65,7 +65,7 @@
   --role-cell-selected-rim: var(--focus);
   --role-cell-radius: var(--slot-radius);
   --role-cell-corner-shape: round;
-  --role-cell-shadow: var(--slot-shadow);
+  --role-cell-shadow: var(--shadow-well);
   --role-cell-hover-shadow: var(--shadow-float);
   --role-cell-pressed-fill: var(--control-strong);
   --role-cell-empty-shadow: var(--shadow-well);

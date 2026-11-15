@@ -44,7 +44,7 @@
   --controls-chip-radius: var(--radius-button);
   --controls-tabs-radius: var(--radius-button);
   --controls-slot-radius: var(--radius-control);
-  --controls-slot-shadow: var(--shadow-well);
+  --controls-slot-shadow: none;
   --controls-meter-radius: var(--radius-capsule);
   --controls-meter-shadow: var(--shadow-groove);
   --controls-meter-fill-shadow: var(--shadow-fill-sheen);
