@@ -11,7 +11,9 @@ use crate::doc::{
 pub struct StylePack {
     pub name: String,
     pub sheet: Sheet,
-    pub(crate) css: String,
+    /// Its rules over the default style's, read once for every document
+    /// it dresses.
+    pub(crate) global: std::sync::Arc<crate::doc::stylesheet::Global>,
     pub(crate) rules: Vec<StyleRule>,
     /// Resolved asset IDs used by CSS url(), excluding imported stylesheets.
     pub assets: Vec<String>,
@@ -66,11 +68,13 @@ impl StylePack {
                 }
             }
         }
-        let (rules, sheet) =
-            crate::doc::stylesheet::part_rules_from(&format!("{directory}/"), &css, files)?;
+        let source = format!("{directory}/");
+        // The part rules first: their errors name the line.
+        let (rules, sheet) = crate::doc::stylesheet::part_rules_from(&source, &css, files.clone())?;
+        let global = crate::doc::stylesheet::Global::read(&source, &css, files)?;
         Ok(Self {
             name: directory.rsplit('/').next().unwrap_or(directory).to_owned(),
-            css,
+            global: std::sync::Arc::new(global),
             sheet,
             rules,
             assets: assets.into_iter().collect(),
