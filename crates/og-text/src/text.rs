@@ -19,7 +19,7 @@ use og_i18n::Direction;
 use std::ops::Range;
 use std::sync::Arc;
 
-#[cfg(feature = "shaping")]
+mod layout_font;
 pub mod paragraph;
 
 /// Advances, kerning and vertical extents of a font, in em.

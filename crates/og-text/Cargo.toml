@@ -12,7 +12,7 @@ default = ["shaping"]
 # conjuncts, marks placed by the font's GPOS. Without it a shaped script is
 # drawn unshaped (its characters in visual order); bidi, kerning and run-time
 # glyphs stay. og-ui passes it on (`shaping`).
-shaping = ["dep:harfrust", "dep:parley"]
+shaping = ["dep:harfrust"]
 
 [dependencies]
 og-core = { path = "../og-core" }
@@ -23,7 +23,9 @@ og-i18n = { path = "../og-i18n" }
 # Match Parley 0.12's font stack; libm, never host floating-point math.
 harfrust = { version = "=0.12.0", optional = true, default-features = false, features = ["libm"] }
 skrifa = { version = "=0.44.0", default-features = false, features = ["libm"] }
-parley = { version = "=0.12.0", optional = true, default-features = false, features = ["libm", "complex-scripts"] }
+# Parley lays out shaped paragraphs and every edited text (its cursor and
+# selection place the caret, with or without `shaping`).
+parley = { version = "=0.12.0", default-features = false, features = ["libm", "complex-scripts"] }
 parley_engine = { version = "=0.12.0", default-features = false, features = ["libm", "complex-scripts"] }
 # The bidirectional algorithm (UAX #9): a line's runs in visual order.
 unicode-bidi = "0.3.18"

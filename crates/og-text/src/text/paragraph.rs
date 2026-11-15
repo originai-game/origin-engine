@@ -1,8 +1,15 @@
-//! Cooked-font paragraph layout. The collection never discovers host fonts.
-use super::{Features, FontMetrics, VisualGlyph};
+//! Cooked-font paragraph layout with Parley. The collection never
+//! discovers host fonts: it holds the cooked fonts' files and the
+//! layout-only faces built for fonts without a usable one
+//! ([`super::layout_font`]).
+#[cfg(feature = "shaping")]
+use super::VisualGlyph;
+use super::{Features, FontMetrics};
 use crate::shape::FontFile;
 use og_i18n::Direction;
 use parley::{FontContext, Layout, LayoutContext, StyleProperty};
+use std::collections::{BTreeSet, HashMap};
+use std::ops::Range;
 use std::{cell::RefCell, sync::Arc};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -15,6 +22,9 @@ pub struct Context {
     pub fonts: FontContext,
     pub layout: LayoutContext<Brush>,
     pub files: Vec<Arc<FontFile>>,
+    /// The layout-only faces registered, by a hash of their bytes: their
+    /// family's number.
+    built: HashMap<u64, usize>,
 }
 
 impl Default for Context {
@@ -31,6 +41,7 @@ impl Default for Context {
             },
             layout: LayoutContext::new(),
             files: Vec::new(),
+            built: HashMap::new(),
         }
     }
 }
@@ -59,12 +70,155 @@ impl Context {
         };
         format!("og-{index}")
     }
+
+    /// The family of a layout-only face for `chars` in `metrics`, built
+    /// and registered once per distinct face.
+    fn built(&mut self, metrics: &FontMetrics, chars: &BTreeSet<char>) -> String {
+        let bytes = super::layout_font::build(metrics, chars);
+        let key = og_core::hash::hash_bytes(&bytes);
+        let next = self.built.len();
+        let index = *self.built.entry(key).or_insert_with(|| {
+            let name = format!("og-layout-{next}");
+            self.fonts.collection.register_fonts(
+                parley::fontique::Blob::new(Arc::new(bytes)),
+                Some(parley::fontique::FontInfoOverride {
+                    family_name: Some(&name),
+                    ..Default::default()
+                }),
+            );
+            next
+        });
+        format!("og-layout-{index}")
+    }
+
+    /// Starts over when it holds too many faces (game reloads, a headless
+    /// text growing its characters one at a time).
+    fn bound(&mut self) {
+        if self.files.len() + self.built.len() > 128 {
+            *self = Context::default();
+        }
+    }
+}
+
+/// A paragraph's styles: its size, tracking (none on a shaped script's
+/// run, whose letters join), features, and each font run's family and
+/// brush, as both layouts below set them.
+#[allow(clippy::too_many_arguments)]
+fn styled<'a>(
+    cx: &'a mut Context,
+    text: &'a str,
+    size: f32,
+    tracking: f32,
+    features: Features,
+    direction: Direction,
+    runs: &[(Range<usize>, usize)],
+    families: &[String],
+) -> parley::RangedBuilder<'a, Brush> {
+    let mut builder = cx.layout.ranged_builder(&mut cx.fonts, text, 1.0, false);
+    builder.set_line_break_override(Some(&super::keep_katakana));
+    builder.set_base_direction(match direction {
+        Direction::Ltr => parley::BaseDirection::Ltr,
+        Direction::Rtl => parley::BaseDirection::Rtl,
+    });
+    builder.push_default(StyleProperty::FontSize(size));
+    builder.push_default(StyleProperty::OverflowWrap(parley::OverflowWrap::Anywhere));
+    let settings = features
+        .tags()
+        .map(|tag| format!("'{tag}' 1"))
+        .collect::<Vec<_>>()
+        .join(",");
+    builder.push_default(StyleProperty::FontFeatures(settings.as_str().into()));
+    for ((range, k), family) in runs.iter().zip(families) {
+        builder.push(
+            StyleProperty::FontFamily(family.as_str().into()),
+            range.clone(),
+        );
+        builder.push(
+            StyleProperty::Brush(Brush {
+                font: *k as u8,
+                span: 0,
+            }),
+            range.clone(),
+        );
+        let track = if text[range.clone()].chars().any(og_i18n::needs_shaping) {
+            0.0
+        } else {
+            tracking * size
+        };
+        builder.push(StyleProperty::LetterSpacing(track), range.clone());
+    }
+    builder
+}
+
+/// A text as it is edited: laid out by Parley in every font, at `size`
+/// CSS px, its bidi base `direction`, broken at `width` (none: one line
+/// per paragraph), each line `line_height` tall, its lines aligned to
+/// `start`'s edge (the UI's start, whichever way the text runs). A font Parley
+/// shapes from its file is laid out as [`layout`] lays it out for drawing;
+/// any other (fixed metrics, an atlas without its file, a pixel font)
+/// through a layout-only face of its own advances and kerning, so Parley's
+/// cursor and selection place a caret where og-text draws the text.
+#[allow(clippy::too_many_arguments)]
+pub fn editable(
+    metrics: &FontMetrics,
+    text: &str,
+    size: f32,
+    tracking: f32,
+    direction: Direction,
+    start: Direction,
+    width: Option<f32>,
+    line_height: f32,
+) -> Layout<Brush> {
+    let runs = metrics.font_runs(text);
+    CONTEXT.with_borrow_mut(|cx| {
+        cx.bound();
+        let mut families = Vec::with_capacity(runs.len());
+        for (_, k) in &runs {
+            let m = metrics.part(*k).expect("a font of the run");
+            let family = match &m.file {
+                Some(file) if cfg!(feature = "shaping") && m.fixed.is_none() && m.pixel == 0 => {
+                    cx.family(file.clone())
+                }
+                _ => {
+                    let chars = runs
+                        .iter()
+                        .filter(|(_, j)| j == k)
+                        .flat_map(|(r, _)| text[r.clone()].chars())
+                        .collect();
+                    cx.built(m, &chars)
+                }
+            };
+            families.push(family);
+        }
+        let mut builder = styled(
+            cx,
+            text,
+            size,
+            tracking,
+            Features::NONE,
+            direction,
+            &runs,
+            &families,
+        );
+        builder.push_default(StyleProperty::LineHeight(parley::LineHeight::Absolute(
+            line_height,
+        )));
+        let mut layout = builder.build(text);
+        layout.break_all_lines(width);
+        let align = match start {
+            Direction::Ltr => parley::Alignment::Left,
+            Direction::Rtl => parley::Alignment::Right,
+        };
+        layout.align(align, parley::AlignmentOptions::default());
+        layout
+    })
 }
 
 /// Parley 0.12 treats SHY as default-ignorable, but does not reserve or
 /// draw the discretionary glyph. Select its breaks from Parley's shaped
 /// graphemes and UAX #14 opportunities, reserving the hyphen only at a
 /// taken break. Prefix advances keep a long discretionary word linear.
+#[cfg(feature = "shaping")]
 pub fn discretionary(
     metrics: &FontMetrics,
     text: &str,
@@ -212,52 +366,21 @@ pub fn layout(
         .collect::<Option<Vec<_>>>()?;
     CONTEXT.with_borrow_mut(|cx| {
         // Bound ownership of font bytes across game reloads.
-        if cx.files.len() > 128 {
-            *cx = Context::default();
-        }
+        cx.bound();
         let mut families = Vec::with_capacity(files.len());
         for file in files {
             families.push(cx.family(file));
         }
-        let mut builder = cx.layout.ranged_builder(&mut cx.fonts, text, 1.0, false);
-        builder.set_line_break_override(Some(&super::keep_katakana));
-        builder.set_base_direction(match direction {
-            Direction::Ltr => parley::BaseDirection::Ltr,
-            Direction::Rtl => parley::BaseDirection::Rtl,
-        });
-        builder.push_default(StyleProperty::FontSize(size));
-        builder.push_default(StyleProperty::OverflowWrap(parley::OverflowWrap::Anywhere));
-        let settings = features
-            .tags()
-            .map(|tag| format!("'{tag}' 1"))
-            .collect::<Vec<_>>()
-            .join(",");
-        builder.push_default(StyleProperty::FontFeatures(settings.as_str().into()));
-        for ((range, k), family) in runs.iter().zip(&families) {
-            builder.push(
-                StyleProperty::FontFamily(family.as_str().into()),
-                range.clone(),
-            );
-            builder.push(
-                StyleProperty::Brush(Brush {
-                    font: *k as u8,
-                    span: 0,
-                }),
-                range.clone(),
-            );
-            let track = if text[range.clone()].chars().any(og_i18n::needs_shaping) {
-                0.0
-            } else {
-                tracking * size
-            };
-            builder.push(StyleProperty::LetterSpacing(track), range.clone());
-        }
+        let builder = styled(
+            cx, text, size, tracking, features, direction, &runs, &families,
+        );
         let mut layout = builder.build(text);
         layout.break_all_lines(width);
         Some(layout)
     })
 }
 
+#[cfg(feature = "shaping")]
 pub fn visual(metrics: &FontMetrics, text: &str, layout: &Layout<Brush>) -> Vec<VisualGlyph> {
     let mut out = Vec::new();
     let mut indices = vec![0; text.len() + 1];
