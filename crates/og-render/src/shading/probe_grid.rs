@@ -200,9 +200,9 @@ impl ProbeGrid {
 /// What projects the frame's captures onto the probes.
 pub(crate) struct GridProjector {
     layout: wgpu::BindGroupLayout,
-    /// Compiled on the compile workers once the first frame is submitted
-    /// (natively; deferred.rs): only a realtime light volume uses it, so
-    /// no first frame waits for it.
+    /// Compiled on the compile workers when a frame first captures a
+    /// probe ([`GridProjector::write`]; natively, deferred.rs): only a
+    /// realtime light volume uses it.
     pipeline: crate::deferred::Deferred<wgpu::ComputePipeline>,
     /// Each capture's [`GridCapture::at`] and intensity, 256 bytes apart.
     params: wgpu::Buffer,
@@ -272,8 +272,6 @@ impl GridProjector {
                 })
             }
         });
-        #[cfg(not(target_arch = "wasm32"))]
-        pipeline.start_at(crate::deferred::Priority::Background);
         let params = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("probe grid params"),
             size: PARAMS_STRIDE * MAX_GRID_CAPTURES as u64,
@@ -292,6 +290,11 @@ impl GridProjector {
         if captures.is_empty() {
             return;
         }
+        // Compiled once a frame captures a probe, on the workers while the
+        // frame is prepared: started with every renderer, it held a compile
+        // worker in the background for 12 to 25 s on lavapipe, light
+        // volumes or not.
+        crate::deferred::Start::start(&self.pipeline);
         let mut bytes = vec![0u8; PARAMS_STRIDE as usize * captures.len()];
         for (k, c) in captures.iter().enumerate() {
             let o = k * PARAMS_STRIDE as usize;

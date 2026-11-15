@@ -409,8 +409,6 @@ impl ScatterCull {
                 })
             }
         });
-        #[cfg(not(target_arch = "wasm32"))]
-        crate::deferred::Start::start(&pipeline);
         let make = |label, size, usage| {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(label),
@@ -492,6 +490,11 @@ impl ScatterCull {
         if n == 0 {
             return Vec::new();
         }
+        // Compiled once a frame has copies to cull, on the workers while
+        // the frame is prepared: made with every renderer, it took a
+        // compile worker for 0.2 to 0.35 s of every first frame (lavapipe),
+        // scattered copies or not.
+        crate::deferred::Start::start(&self.pipeline);
         if let Some(own) = &mut self.per_draw {
             own.ensure(device, 8 * n as usize);
         }
