@@ -30,9 +30,12 @@ Only `base.css` writes values; `motion.css` and `sounds.css` name them with
 `var()` (`og style check` enforces it), so a variant restyles the pack by
 setting tokens alone.
 
-- The palette roles (`--panel`, `--ink`, `--line`, `--line-strong`,
-  `--primary`, `--accent`, `--focus`, `--gold`, `--hud`, `--warn`,
-  `--danger`, `--scene-*`, `--color-shadow`…), the rarity colours, `--font-*`,
+- The seeds: `--seed-primary` (cyan; a deeper teal in the light scheme),
+  `--seed-accent` (amber), `--seed-neutral` (deep sea), the status seeds and
+  `--seed-team`. The default style derives every palette role from them in
+  both schemes at the contrast its pairs need. `--line-strong` stays a
+  literal cyan on top, because the derived lines are near-neutral. Then
+  `--gold`, `--color-shadow`, the rarity colours, `--font-*`,
   the em type steps, `--radius-*`, the curve and every duration.
   `--line-strong` is every cyan rim, `--primary` the lit face of the main
   action and every glow, and `--accent` every amber wash. `--primary-N`,
@@ -56,7 +59,8 @@ setting tokens alone.
   (`--scifi-glass-*`, `--scifi-plate-*`, the thinner `--scifi-frost-*` for
   what blurs, `--scifi-cell-*`, `--scifi-key-*`, the glow, shade and keyline
   steps, `--scifi-chosen-*`), the cuts, the art and the blurs. The light
-  scheme restates the palette, the inks and these, and nothing else.
+  scheme restates the light brand seed, `--line-strong` and these, and
+  nothing else.
 
 Two things about the engine shape the values:
 

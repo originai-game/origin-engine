@@ -25,9 +25,13 @@ Only `base.css` writes values; `motion.css` and `sounds.css` name them with
 `var()` (`og style check` enforces it), so a variant restyles the pack by
 setting tokens alone (`templates/styles/tests/fantasy-frost`).
 
-- The palette roles (`--panel`, `--ink`, `--line`, `--line-strong`,
-  `--primary`, `--accent`, `--focus`, `--gold`, `--hud`, `--scene-*`,
-  `--color-shadow`…), `--font-*`, the em type steps (`--font-step-*`),
+- The seeds: `--seed-primary` (crimson), `--seed-accent` (brass),
+  `--seed-neutral` (walnut), the status seeds and `--seed-team`. The default
+  style derives every palette role (`--panel`, `--ink`, `--line`,
+  `--primary`, `--accent`, `--focus`, `--hud`, `--scene-*`, the statuses and
+  teams) from them in both schemes at the contrast its pairs need, so a
+  variant or `og.ui.configure`'s `seeds` retints the pack. Then `--gold`,
+  `--color-shadow`, `--font-*`, the em type steps (`--font-step-*`),
   `--radius-*`, and the curve and durations. `--line-strong` is every brass
   rim and `--accent` every gold wash and glow, so changing one restyles all
   of them. `--accent-N`, `--line-strong-N` and `--shadow-N` are the role at

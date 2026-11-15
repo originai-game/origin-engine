@@ -48,6 +48,19 @@
 @font-face { font-family: "Cartoon Label"; src: url(/@styles/cjk/ZCOOLKuaiLe-Regular.ttf); font-weight: 700; unicode-range: U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF; }
 
 :root {
+  /* ── The palette: seeds (sunflower brand and accent, indigo neutral). The default style
+     derives every ground, ink, accent, status and team colour from them,
+     in both schemes, at the contrast its pairs need; what follows is the
+     pack's art on top. */
+  --seed-primary: #ffc71f;
+  --seed-accent: #ffd23f;
+  --seed-neutral: #232a73;
+  --seed-danger: #ff7272;
+  --seed-warn: #ffb629;
+  --seed-success: #62e24f;
+  --seed-info: #5cd0ff;
+  --seed-team: #45b3ff;
+
   /* ── The core controls, as tokens the default style's control rules read.
      A control is a plate inside the dark outline standing on a lip that
      goes when it is pressed; hover brightens, focus is a ring outside. */
@@ -281,17 +294,8 @@
   --control-strong: #4b5ad1;
   --color-surface: var(--panel);
   --color-track: var(--well);
-  --primary: #ffc71f;
-  --primary-hover: #ffd84d;
-  --primary-active: #eda600;
-  --on-primary: #161a4d;
-  --primary-soft: #ffc71f40;
-  --highlight: #ffd84d;
   --selection: #2f6df2;
   --on-selection: #ffffff;
-  --accent: #ffd23f;
-  --focus: #ff7ac8;
-  --knob: #ffffff;
   --hud: #171c54f2;
   --scrim: #0a0d33b8;
   --shadow: #05072499;
@@ -300,10 +304,6 @@
   --scene-ink: #ffffff;
   --scene-plate: #171c54e0;
   --scene-shadow: #070a2ecc;
-  --success: #62e24f;
-  --warn: #ffb629;
-  --danger: #ff7272;
-  --info: #5cd0ff;
   --health: #ff4f64;
   --mana: #39a8ff;
   --xp: #cb7cff;
@@ -321,8 +321,6 @@
   --mythic: #ff5c7c;
 
   /* Sides of a fight. */
-  --team1: #45b3ff;
-  --team2: #ff6257;
   --neutral: #ffd23f;
 
   /* The roles' translucent steps (the engine's --line-70 naming). */
@@ -649,11 +647,6 @@
   --well-fill: var(--well);
   --well-radius: var(--radius-sm);
   --figure-shadow: var(--cartoon-text-drop-small);
-  /* World tags over the scene: ringed in the scene's shadow (white under
-     the light scheme), with the small drop. */
-  /* Text over the scene: eight unblurred copies in the inverse ink, an
-     outline that holds over any ground in either scheme. */
-  --tag-halo: 1.5px 0 0 var(--ink-inverse), -1.5px 0 0 var(--ink-inverse), 0 1.5px 0 var(--ink-inverse), 0 -1.5px 0 var(--ink-inverse), 1px 1px 0 var(--ink-inverse), -1px 1px 0 var(--ink-inverse), 1px -1px 0 var(--ink-inverse), -1px -1px 0 var(--ink-inverse);
   --label-tracking: 0.03em;
   --label-transform: uppercase;
 
@@ -705,6 +698,10 @@
 /* The light scheme: a day sky, cream panels and indigo ink; the same
    outline, yellow and candy plates. */
 :root[data-scheme=light] {
+  /* The derived accent, a step deeper over the sky (darker than the
+     derived grounds it is balanced for). */
+  --accent: oklch(from var(--color-accent-ink) calc(l - 0.1) c h);
+  --highlight: var(--accent);
   --button-ghost-hover-fill: var(--ink-14);
   --button-quiet-hover-fill: var(--ink-14);
   --backdrop: #7fd3ff;
@@ -720,12 +717,8 @@
   --ink-inverse: #ffffff;
   --control: #ffffff;
   --control-strong: #e6eeff;
-  --on-primary: #211d52;
-  --highlight: #7f4600;
   --selection: #4ccaff;
   --on-selection: #211d52;
-  --accent: #7f4600;
-  --focus: #d6006f;
   --hud: #fffaf0eb;
   /* A layer's dim is a day veil, as the ink on it is dark. */
   --scrim: #eef8ffd9;
@@ -735,10 +728,6 @@
   --scene-ink: #211d52;
   --scene-plate: #fffaf0eb;
   --scene-shadow: #ffffffcc;
-  --success: #15802a;
-  --warn: #a35400;
-  --danger: #cc1f3a;
-  --info: #0e6bcf;
   --health: #e8384f;
   --mana: #1f8bf0;
   --xp: #8f35d6;
@@ -750,8 +739,6 @@
   --epic: #8f35d6;
   --legendary: #b86200;
   --mythic: #d11f4a;
-  --team1: #0e6bcf;
-  --team2: #cc1f3a;
   --neutral: #7f4600;
   --gloss: #ffffffa6;
   --gloss-soft: #ffffffd9;

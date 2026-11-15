@@ -25,46 +25,32 @@
 @font-face { font-family: "Scifi Figure"; src: url(/@styles/shared/ChakraPetch-SemiBold.ttf); font-weight: 700; unicode-range: U+2190-21FF; }
 
 :root {
+  /* ── The palette: seeds (cyan brand, amber accent, deep-sea neutral). The default style
+     derives every ground, ink, accent, status and team colour from them,
+     in both schemes, at the contrast its pairs need; what follows is the
+     pack's art on top. */
+  --seed-primary: #22c7f5;
+  --seed-accent: #ffb52e;
+  --seed-neutral: #0a1622;
+  --seed-danger: #ff6b6f;
+  --seed-warn: #ffe04a;
+  --seed-success: #45e3a0;
+  --seed-info: #6cc7ff;
+  --seed-team: #4fb3ff;
+
   /* ── The core roles, in this pack's materials. --line-strong is the cyan
      rim of every control and frame, --primary the lit cyan of the main
      action and of every glow, --accent the amber of what is chosen,
      tracked or focused. */
-  --backdrop: #04090f;
-  --well: #050c14;
-  --panel: #0a1622;
-  --panel-hover: #12293a;
-  --panel-raised: #0f2030;
-  --line: #1c3a4e;
   --line-strong: #2ea6cf;
-  --ink: #e6f6ff;
-  --ink-muted: #a9c6d6;
-  --ink-faint: #809fb1;
-  --ink-inverse: #04121a;
-  --control: #0f2536;
-  --control-strong: #16364c;
-  --primary: #22c7f5;
-  --primary-hover: #63dbff;
-  --primary-active: #109fcb;
-  --on-primary: #02141d;
-  --primary-soft: #22c7f533;
+  /* The lit cyan of every button ink and hover rim (the derived highlight
+     would take the amber accent's hue). */
   --highlight: #8eeaff;
-  --selection: #4a3306;
-  --on-selection: #fff3d6;
-  --accent: #ffb52e;
-  --focus: #ffc65c;
-  --knob: #d4f4ff;
-  --hud: #06111bf2;
   --scrim: #02060bcc;
   --shadow: #000000a6;
   --color-shadow: #000;
   --sheen: #bfeeff30;
-  --scene-ink: #eafaff;
-  --scene-plate: #06111bf2;
   --scene-shadow: #000000a0;
-  --success: #45e3a0;
-  --warn: #ffe04a;
-  --danger: #ff6b6f;
-  --info: #6cc7ff;
   --health: #c8324a;
   --mana: #3f8cff;
   --xp: #b98cff;
@@ -79,8 +65,6 @@
   --mythic: #ff7896;
 
   /* Sides of a fight. */
-  --team1: #4fb3ff;
-  --team2: #ff6b57;
   --neutral: #c9d6de;
 
   /* ── Materials: what every composite below is made of. The light scheme
@@ -326,7 +310,7 @@
   --button-primary-pressed-fill: linear-gradient(180deg, var(--primary-active), var(--primary));
   --button-primary-shadow: inset 0 1px 0 #ffffff80, 0 0 16px var(--scifi-glow-55);
   --button-danger-rim: var(--danger);
-  --button-danger-ink: #fff0f0;
+  --button-danger-ink: #ffffff;
   --button-danger-fill: linear-gradient(180deg, rgb(from var(--danger) r g b / 0.24), rgb(from var(--danger) r g b / 0.1)), linear-gradient(180deg, var(--scifi-key-hi), var(--scifi-key-lo));
   --button-danger-hover-fill: linear-gradient(180deg, rgb(from var(--danger) r g b / 0.45), rgb(from var(--danger) r g b / 0.2)), linear-gradient(180deg, var(--scifi-key-hi), var(--scifi-key-lo));
   --button-danger-shadow: inset 0 1px 0 rgb(from var(--danger) r g b / 0.45), 0 0 12px rgb(from var(--danger) r g b / 0.3);
@@ -647,9 +631,6 @@
      than --mana, which is also an ink on dark glass (a slot's cost). */
   /* A nameplate's cast bar carries the spell's name in the ink, so it is a
      deep amber where --warn would put white on yellow. */
-  /* The spell over that fill in the scheme's ink (light here, dark on the
-     light scheme's yellow fill). */
-  --ink-on-warn: var(--ink);
 
   font-family: "Scifi Text", sans-serif;
   /* A number, so every line box follows its own font size, which follows the
@@ -662,40 +643,12 @@
    and ink, a darker amber. It restates the palette roles, the inks and the
    materials; every composite above follows them. */
 :root[data-scheme=light] {
-  /* Text over the scene stands on a pale strip in the dark ink. */
-  --scene-ink: #0a1c27;
-  --scene-plate: #f3f8fbf2;
-  --backdrop: #dfe8ee;
-  --well: #d3dfe7;
-  --panel: #f1f6f9;
-  --panel-hover: #dcebf2;
-  --panel-raised: #f8fbfd;
-  --line: #a9c0cd;
+  /* The light scheme's brand, deeper. */
+  --seed-primary: #006f93;
   --line-strong: #0b7fa6;
-  --ink: #0a1c27;
-  --ink-muted: #2d4654;
-  --ink-faint: #4a6373;
-  --ink-inverse: #f1f9fd;
-  --control: #dde9f0;
-  --control-strong: #c9dbe5;
-  --primary: #006f93;
-  --primary-hover: #0079a1;
-  --primary-active: #005a78;
-  --on-primary: #ffffff;
-  --primary-soft: #006f9326;
   --highlight: #005f80;
-  --selection: #ffe2ad;
-  --on-selection: #2a1a00;
-  --accent: #8a4700;
-  --focus: #a35400;
-  --knob: #ffffff;
-  --hud: #f3f8fbe0;
   --scrim: #0a1c2766;
   --sheen: #ffffff80;
-  --success: #0d7a4a;
-  --warn: #8a5a00;
-  --danger: #b3202c;
-  --info: #0a5ea8;
   --health: #c22a3a;
   --mana: #1f5fc4;
   --xp: #6a3fc0;
@@ -706,8 +659,6 @@
   --epic: #7a3fd0;
   --legendary: #b34a00;
   --mythic: #b81d4f;
-  --team1: #1565b8;
-  --team2: #b53a2a;
   --neutral: #4a5c68;
   --scifi-glass-lo: #eaf1f5e6;
   --scifi-chosen-hi: rgb(from var(--accent) r g b / 0.34);

@@ -30,9 +30,14 @@ Only `base.css` writes values; `motion.css` and `sounds.css` name them with
 `var()` (`og style check` enforces it), so a variant restyles the pack by
 setting tokens alone.
 
-- The palette roles (`--backdrop`, `--panel`, `--well`, `--ink`, `--line`,
-  `--line-strong`, `--primary`, `--selection`, `--accent`, `--focus`,
-  `--gold`, `--hud`, `--scene-*`, the tones and teams), the rarity colours,
+- The seeds: `--seed-primary` and `--seed-accent` (sunflower),
+  `--seed-neutral` (indigo), the status seeds and `--seed-team`, from which
+  the default style derives the primary, accent, focus, status and team
+  colours in both schemes. The grounds and their inks (`--backdrop`,
+  `--panel`, `--well`, `--ink`, `--line`, `--line-strong`, `--selection`,
+  `--hud`, `--scene-*`) stay literal on top: the sky and indigo are more
+  saturated than the derived grounds' chroma allows. Then `--gold`, the
+  tones, the rarity colours,
   `--font-*` and the em type steps, `--radius-*`, the strokes, the motion
   curve, every duration and the spring and scale steps. `--line-strong` is
   the outline around everything and `--selection` the blue of whatever is

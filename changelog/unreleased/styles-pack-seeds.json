@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "fantasy, scifi and cartoon style packs",
+      "summary": "Each pack's palette is now its --seed-* colours (fantasy: crimson, brass, walnut; scifi: cyan with a deeper teal in the light scheme, amber, deep sea; cartoon: sunflower, indigo), from which the default style derives the grounds, inks, accents, statuses and teams in both schemes at the contrast their pairs need, so og.ui.configure's seeds retints a pack. What the derivation cannot express stays on top as art: scifi's cyan rims and highlight, cartoon's saturated sky and indigo grounds and their inks. Text over the scene takes the default's halo. Fantasy's light buttons ink a step deeper brass, its epic tier and selected tab read at 4.5:1."
+    }
+  ]
+}
