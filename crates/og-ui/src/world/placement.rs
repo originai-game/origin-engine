@@ -233,6 +233,134 @@ fn declutter(
     )
 }
 
+/// The most numbers a template lays apart on one tick; the rest stand on
+/// their points.
+const SPAWNED_PLACED: usize = 64;
+
+impl crate::world::WorldUi {
+    /// Lays the numbers and texts spawned in the world this tick (damage
+    /// numbers) apart, as games stack a target's hits: each clear of the
+    /// tags placed (`taken`, the screen boxes `world_anchors` returns), of
+    /// those still rising and of those spawned before it (each over the
+    /// path it rises along while it shows), at the nearest
+    /// spot a stack takes (above, then below, then any way), moved once
+    /// by its offset (`aux`) for its whole life. One with no room in reach
+    /// is dropped rather than drawn over another, where neither reads.
+    pub(super) fn place_spawned(&mut self, env: &crate::ui::Env, tick: u32, mut taken: Vec<Rect>) {
+        use og_draw::UiMassKind;
+        let Some(view) = self.declared.view else {
+            return;
+        };
+        let vp = env.viewport;
+        let unit = env.unit.max(1e-6);
+        let safe = Rect::new(
+            vp.safe_area.left,
+            vp.safe_area.top,
+            vp.width - vp.safe_area.horizontal(),
+            vp.height - vp.safe_area.vertical(),
+        );
+        let gap = env.theme.space.xs;
+        let metrics = &env.fonts.body.metrics;
+        for (k, (_, t, space)) in self.declared.templates.iter().enumerate() {
+            let words = matches!(t.kind, UiMassKind::Number { .. } | UiMassKind::Text { .. });
+            if *space != UiMassSpace::World || t.lifetime == 0 || !words {
+                continue;
+            }
+            let Some(pool) = self.state.pools.get_mut(&(k as u32)) else {
+                continue;
+            };
+            // Its box on the screen at `age` (a fraction of its life), as
+            // the shader draws it at rest size: projected, offset by its
+            // key and its own move, the pivot on the point.
+            let boxed = |i: &UiMassInstance, age: f32| -> Option<Rect> {
+                let text = match &t.kind {
+                    UiMassKind::Number {
+                        decimals,
+                        plus,
+                        compact,
+                    } => og_draw::format_number(i.value, *decimals, *plus, *compact),
+                    UiMassKind::Text { strings } => strings.get(i.value.max(0.0) as usize)?.clone(),
+                    _ => return None,
+                };
+                let (x, y, depth) = view.project(Vec3::from(i.position), vp.width, vp.height)?;
+                let d = if t.distance.x > 0.0 {
+                    (t.distance.x / depth.max(1e-4)).clamp(t.distance.y, t.distance.z)
+                } else {
+                    1.0
+                };
+                let (off, scale, _) = t.sample(age);
+                let em = t.size.x * i.scale * scale.min(1.0) * d;
+                let w = metrics.measure(&text, em);
+                let at = Vec2::new(x, y) + (off + Vec2::new(i.aux[0], i.aux[1]) / unit) * d;
+                Some(Rect::new(
+                    at.x - t.pivot.x * w,
+                    at.y - t.pivot.y * em,
+                    w,
+                    em,
+                ))
+            };
+            // The path it rises along from `age` while it still shows
+            // (at its keys and each eighth of its life, while half visible or
+            // more): what it
+            // covers until it fades, not only where it starts.
+            let stops: Vec<f32> = t
+                .keys_drawn()
+                .iter()
+                .map(|k| k.t)
+                .chain((1..=8).map(|k| k as f32 / 8.0))
+                .collect();
+            let swept = |i: &UiMassInstance, age: f32| -> Option<Rect> {
+                let mut r = boxed(i, age)?;
+                for &at in stops
+                    .iter()
+                    .filter(|&&at| at > age && t.sample(at).2 >= 0.5)
+                {
+                    if let Some(b) = boxed(i, at) {
+                        let (x, y) = (r.x.min(b.x), r.y.min(b.y));
+                        r = Rect::new(
+                            x,
+                            y,
+                            r.right().max(b.right()) - x,
+                            r.bottom().max(b.bottom()) - y,
+                        );
+                    }
+                }
+                Some(r)
+            };
+            // Those of earlier ticks over the rest of their rise.
+            for i in pool.iter().filter(|i| i.start != tick && i.color[3] > 0.0) {
+                let age = tick.wrapping_sub(i.start) as f32 / t.lifetime as f32;
+                taken.extend(swept(i, age));
+            }
+            for i in pool
+                .iter_mut()
+                .filter(|i| i.start == tick)
+                .take(SPAWNED_PLACED)
+            {
+                let Some(b) = swept(i, 0.0) else {
+                    continue;
+                };
+                let reach = 3.0 * b.height.max(b.width.min(160.0));
+                let (x, y) = (safe.x.min(b.x), safe.y.min(b.y));
+                let inside = Rect::new(
+                    x,
+                    y,
+                    safe.right().max(b.right()) - x,
+                    safe.bottom().max(b.bottom()) - y,
+                );
+                match declutter(Declutter::Stack, b, &taken, gap, reach, inside) {
+                    Some(d) => {
+                        i.aux[0] += d.x * unit;
+                        i.aux[1] += d.y * unit;
+                        taken.push(Rect::new(b.x + d.x, b.y + d.y, b.width, b.height));
+                    }
+                    None => i.color[3] = 0.0,
+                }
+            }
+        }
+    }
+}
+
 impl Ui {
     pub(super) fn world_metas(&mut self) {
         let metas = std::mem::take(&mut self.world.declared.metas);
@@ -267,7 +395,7 @@ impl crate::ui::Layout {
         world: &mut crate::world::WorldUi,
         env: &crate::ui::Env,
         tree: &mut crate::ui::Tree,
-    ) {
+    ) -> Vec<Rect> {
         let vp = env.viewport;
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
         let safe = Rect::new(
@@ -623,6 +751,7 @@ impl crate::ui::Layout {
         world.state.smooth.retain(|k, _| seen.contains(k));
         world.placement.last.retain(|k, _| seen.contains(k));
         world.declared.anchors = anchors;
+        taken
     }
 
     pub(super) fn world_panels(

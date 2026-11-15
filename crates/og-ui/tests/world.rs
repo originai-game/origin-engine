@@ -776,3 +776,129 @@ fn decluttered_tags_keep_clear_of_a_grounds_text() {
         "the tag covers the badge: {badge:?} {tag:?}"
     );
 }
+
+/// Numbers spawned on one point on one tick (a target's hits) stand
+/// apart, each whole on the screen and clear of the tag over the target.
+///
+/// Ways it could fail: mass numbers left out of declutter (a target's
+/// hits drawn one over another and over its nameplate, "44277009640"),
+/// or a number moved off the screen or dropped while there is room.
+#[test]
+fn numbers_spawned_together_stand_apart() {
+    let mut ui = ui();
+    mount(
+        &mut ui,
+        r#"<anchor id="Plate" at="0 1 0"><div id="Tag" class="tag">Ashen Pyre</div></anchor>"#,
+        ".tag { width: 120px; height: 30px; background: #202020; }",
+    );
+    let h = ui.define_mass("damage", numbers(), UiMassSpace::World);
+    run(&mut ui, 3, |_| {});
+    run(&mut ui, 1, |ui| {
+        for _ in 0..8 {
+            ui.spawn_mass(
+                h,
+                UiMassInstance {
+                    position: [0.0, 1.0, 0.0],
+                    value: 88.0,
+                    color: [1.0; 4],
+                    scale: 1.0,
+                    ..Default::default()
+                },
+            );
+        }
+    });
+    let tag = ui
+        .probe_elements()
+        .into_iter()
+        .find(|e| e.id == "Tag")
+        .expect("the tag");
+    let tag = (tag.x, tag.y, tag.width, tag.height);
+    let (x, y, _) = view().project(Vec3::new(0.0, 1.0, 0.0), W, H).unwrap();
+    // The template's 18 px numbers, centred on their points.
+    let w = test_font_metrics().metrics.measure("88", 18.0);
+    let boxes: Vec<_> = ui.world_frame().batches[0]
+        .instances
+        .iter()
+        .map(|i| {
+            assert!(i.color[3] > 0.0, "a number dropped: {i:?}");
+            (x + i.aux[0] - w / 2.0, y + i.aux[1] - 9.0, w, 18.0)
+        })
+        .collect();
+    assert_eq!(boxes.len(), 8);
+    for (k, a) in boxes.iter().enumerate() {
+        assert!(
+            a.0 >= 0.0 && a.1 >= 0.0 && a.0 + a.2 <= W && a.1 + a.3 <= H,
+            "off the screen: {a:?}"
+        );
+        assert!(apart(*a, tag, 3.9), "on the tag: {a:?} {tag:?}");
+        for b in &boxes[k + 1..] {
+            assert!(apart(*a, *b, 3.9), "one over another: {a:?} {b:?}");
+        }
+    }
+}
+
+/// A number keeps clear of a tag over the whole path it rises along
+/// while it shows, not only where it is spawned.
+///
+/// Ways it could fail: a number placed clear of the tag over its target
+/// only where it starts, so it rises straight into the nameplate (the
+/// crowd's hits drawn over Ashen Pyre's name).
+#[test]
+fn a_rising_number_keeps_clear_of_the_tag_over_it() {
+    let mut ui = ui();
+    mount(
+        &mut ui,
+        r#"<anchor id="Plate" at="0 0.4 0"><div id="Tag" class="tag">Ashen Pyre</div></anchor>"#,
+        ".tag { width: 120px; height: 30px; background: #202020; }",
+    );
+    let rising = UiMassTemplate {
+        keys: vec![
+            og_draw::UiMassKey::default(),
+            og_draw::UiMassKey {
+                t: 1.0,
+                offset: Vec2::new(0.0, -120.0),
+                alpha: 0.0,
+                ..Default::default()
+            },
+        ],
+        ..numbers()
+    };
+    let h = ui.define_mass("damage", rising.clone(), UiMassSpace::World);
+    run(&mut ui, 3, |_| {});
+    run(&mut ui, 1, |ui| {
+        ui.spawn_mass(
+            h,
+            UiMassInstance {
+                position: [0.0, 0.0, 0.0],
+                value: 88.0,
+                color: [1.0; 4],
+                scale: 1.0,
+                ..Default::default()
+            },
+        )
+    });
+    let tag = ui
+        .probe_elements()
+        .into_iter()
+        .find(|e| e.id == "Tag")
+        .expect("the tag");
+    let tag = (tag.x, tag.y, tag.width, tag.height);
+    let i = ui.world_frame().batches[0].instances[0];
+    assert!(i.color[3] > 0.0, "the number dropped");
+    let (x, y, _) = view().project(Vec3::ZERO, W, H).unwrap();
+    let w = test_font_metrics().metrics.measure("88", 18.0);
+    // Its first half life, while it is half visible or more.
+    for k in 0..=24 {
+        let (off, _, _) = rising.sample(k as f32 / 48.0);
+        let b = (
+            x + i.aux[0] + off.x - w / 2.0,
+            y + i.aux[1] + off.y - 9.0,
+            w,
+            18.0,
+        );
+        assert!(
+            apart(b, tag, 0.0),
+            "it rises onto the tag at {k}/48: {b:?} {tag:?}"
+        );
+    }
+}

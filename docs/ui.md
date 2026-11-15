@@ -826,6 +826,10 @@ None of these has a web standard; each is named for what it does.
   keys are the template's timeline: a row with one spawns one instance when
   it appears (a damage number); one without stands with its row (an
   overhead bar), pushed every tick with nothing built.
+  Numbers and texts spawned in the world on one tick are laid apart as a
+  stack, clear of the tags and of those still rising (a target's hits
+  stand one over another, never on each other); one with no room in
+  reach is not drawn.
 - `<og-emitter effect>` emits UI particles while its element stands: a
   preset (`sparkles`, `confetti`, `embers`, `snow`, `bubbles`, `dust`,
   `sparks`, `fireworks`) in the style's colours or a rate, with `burst

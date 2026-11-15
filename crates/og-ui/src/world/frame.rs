@@ -326,12 +326,16 @@ impl Ui {
     // ── the frame ────────────────────────────────────────────────────────
 
     /// Places this frame's world layers once laid out: anchors on their
-    /// projected points (scaled, faded, decluttered, clamped), panels in
-    /// their targets, meta layers over the screen. Called by `end` before
+    /// projected points (scaled, faded, decluttered, clamped), the numbers
+    /// spawned this tick apart from them and each other, panels in their
+    /// targets, meta layers over the screen. Called by `end` before
     /// transforms are applied.
     pub(crate) fn world_place(&mut self) {
-        self.layout
+        let taken = self
+            .layout
             .world_anchors(&mut self.world, &self.env, &mut self.tree);
+        let tick = self.interaction.state.tick as u32;
+        self.world.place_spawned(&self.env, tick, taken);
         self.layout
             .world_panels(&mut self.world, &self.env, &mut self.tree);
         self.world_metas();
