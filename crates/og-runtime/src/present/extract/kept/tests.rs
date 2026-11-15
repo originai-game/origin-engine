@@ -2,6 +2,8 @@
 //! step, one forgetting its kept models before every frame, and every
 //! frame each draws the same instances, levels, impostors, keys, levels
 //! of detail and HLOD replacements.
+//! The kept engine's promises to the renderer (`og_render::KeptInstances`)
+//! are checked against the lists they name, captures among them.
 //!
 //! Ways this could fail: a row copied after its model moved, was tinted
 //! or hidden, or after the camera moved its level; a proxy copied after
@@ -9,14 +11,17 @@
 //! the list or with another key; the cluster path's levels shifted or
 //! padded differently; the hysteresis of a copied row lost; and nothing
 //! copied, so the test checks nothing (as when the wind's writes to its
-//! copies' parameters, every tick, counted as changed materials).
+//! copies' parameters, every tick, counted as changed materials); a
+//! promise naming a list other than the one drawn before, or promising
+//! stillness when a capture drew a list in between.
 
 use crate::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame,
-    og_engine_write_resource, og_game_game, og_host_begin_bundle, og_load_gltf, og_load_scene,
-    og_world_despawn, og_world_find, og_world_insert, og_world_instantiate, og_world_set,
-    og_world_spawn, set_hooks, set_render_backend,
+    og_engine_probe_commands, og_engine_write_resource, og_game_game, og_host_begin_bundle,
+    og_load_gltf, og_load_scene, og_world_despawn, og_world_find, og_world_insert,
+    og_world_instantiate, og_world_set, og_world_spawn, set_hooks, set_render_backend,
 };
+use og_core::glam::Mat4;
 use serde_json::{Value, json};
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
@@ -131,8 +136,22 @@ impl Hooks for Disk {
     }
 }
 
-/// What a frame handed the renderer of the models, every bit of it.
-struct Recorder(Rc<RefCell<String>>);
+/// The promises (`og_render::KeptInstances`) the frames made, checked
+/// against the lists they name.
+#[derive(Default)]
+struct Promises {
+    /// The last two lists drawn: their numbers and instances.
+    lists: Vec<(u64, Vec<og_render::Instance>)>,
+    /// Promises made of some instances, and of their stillness.
+    made: usize,
+    still: usize,
+    /// The first promise broken.
+    broken: Option<String>,
+}
+
+/// What a frame handed the renderer of the models, every bit of it, and
+/// the promises it made of them.
+struct Recorder(Rc<RefCell<String>>, Rc<RefCell<Promises>>);
 
 impl RenderBackend for Recorder {
     fn tier(&self) -> String {
@@ -141,21 +160,65 @@ impl RenderBackend for Recorder {
     fn size(&self) -> (u32, u32) {
         (1920, 1080)
     }
+    /// TAA: the frames keep the previous transforms by position.
+    fn antialias(&self) -> String {
+        "taa".into()
+    }
     fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
+        self.see(scene);
+        Ok(())
+    }
+    /// A capture's list is a list drawn too.
+    fn capture(
+        &mut self,
+        scene: &og_render::RenderScene,
+        _: u32,
+        _: u32,
+    ) -> Option<og_render::RgbaImage> {
+        self.see(scene);
+        None
+    }
+}
+
+impl Recorder {
+    /// Keeps what `scene` draws and checks its promise.
+    fn see(&mut self, scene: &og_render::RenderScene) {
         let o = &scene.objects;
         *self.0.borrow_mut() = format!(
             "{:?}\n{:?}\n{:?}",
             o.instances, o.instance_levels, o.impostors
         );
-        Ok(())
-    }
-    fn capture(
-        &mut self,
-        _: &og_render::RenderScene,
-        _: u32,
-        _: u32,
-    ) -> Option<og_render::RgbaImage> {
-        None
+        let mut p = self.1.borrow_mut();
+        let k = o.kept;
+        let n = k.count.min(o.instances.len());
+        if k.from != 0 && p.broken.is_none() {
+            let bits = |i: &[og_render::Instance]| format!("{i:?}");
+            let broken = match p.lists.iter().find(|l| l.0 == k.from) {
+                None => Some(format!("list {} promised of {}, not drawn", k.list, k.from)),
+                Some(l) if k.count > n || k.count > l.1.len() => {
+                    Some(format!("list {} promises {} instances", k.list, k.count))
+                }
+                Some(l) if bits(&l.1[..n]) != bits(&o.instances[..n]) => Some(format!(
+                    "list {}'s first {n} are not list {}'s",
+                    k.list, k.from
+                )),
+                Some(_) => None,
+            };
+            let previous = &o.previous_transforms;
+            let one_each = previous.len() == o.instances.len();
+            let own = |(p, i): (&Mat4, &og_render::Instance)| {
+                p.to_cols_array().map(f32::to_bits) == i.transform.to_cols_array().map(f32::to_bits)
+            };
+            let moved = k.still && one_each && !previous[..n].iter().zip(&o.instances).all(own);
+            let moved = moved.then(|| format!("list {} moved, promised still", k.list));
+            p.broken = broken.or(moved);
+            p.made += usize::from(n > 0);
+            p.still += usize::from(n > 0 && k.still && one_each);
+        }
+        p.lists.push((k.list, o.instances.clone()));
+        if p.lists.len() > 2 {
+            p.lists.remove(0);
+        }
     }
 }
 
@@ -173,6 +236,7 @@ fn answer<T: crate::host::wire::ToJson>(r: Result<T, String>) -> Value {
 struct Run {
     e: u32,
     drawn: Rc<RefCell<String>>,
+    promises: Rc<RefCell<Promises>>,
     /// Forgets its kept models before every frame.
     fresh: bool,
 }
@@ -186,7 +250,9 @@ impl Run {
         let options = json!({ "root": root.to_str().unwrap() }).to_string();
         let e = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
         let drawn = Rc::new(RefCell::new(String::new()));
-        set_render_backend(e, Some(Box::new(Recorder(drawn.clone())))).unwrap();
+        let promises = Rc::new(RefCell::new(Promises::default()));
+        let recorder = Recorder(drawn.clone(), promises.clone());
+        set_render_backend(e, Some(Box::new(recorder))).unwrap();
         // The cluster path on, so the rows' levels for it are kept too.
         crate::engine::engine(e)
             .unwrap()
@@ -227,7 +293,12 @@ impl Run {
                 Some(model.to_string()),
             ));
         }
-        Run { e, drawn, fresh }
+        Run {
+            e,
+            drawn,
+            promises,
+            fresh,
+        }
     }
 
     fn frame(&self) -> String {
@@ -315,6 +386,15 @@ fn a_kept_frame_draws_what_a_fresh_one_does() {
             }),
         ),
         (
+            "a strider moved, then a capture",
+            Box::new(|r| {
+                let at = json!({ "position": { "x": 44, "y": 0, "z": -60 } });
+                r.set("strider-6", "og.Transform", at);
+                let shot = og_engine_probe_commands(r.e, "0:screenshot".into());
+                assert!(shot.contains("\"scheduled\":1"), "{shot}");
+            }),
+        ),
+        (
             "a strider tinted",
             Box::new(|r| {
                 r.set(
@@ -371,4 +451,15 @@ fn a_kept_frame_draws_what_a_fresh_one_does() {
     assert!(copied_rows > 100, "only {copied_rows} rows were copied");
     assert!(copied_hlod, "the proxies were never copied");
     assert!(leveled, "no instance had a level for the cluster path");
+    // The renderer was promised the kept models, truly, and their
+    // stillness; the engine that keeps nothing promised nothing.
+    let p = kept.promises.borrow();
+    assert_eq!(p.broken, None);
+    assert!(
+        p.made > 10 && p.still > 10,
+        "promised {} times, {} still",
+        p.made,
+        p.still
+    );
+    assert_eq!(fresh.promises.borrow().made, 0, "the fresh engine promised");
 }

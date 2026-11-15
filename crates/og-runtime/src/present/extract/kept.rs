@@ -15,6 +15,11 @@
 //! loaded or reloaded forgets the whole list ([`KeptModels::forget`]).
 //! The HLOD proxies are copied when every row and the HLOD places are
 //! as they were and its last walk changed no choice.
+//!
+//! Each frame's list is numbered, and a frame that copied every model
+//! promises the renderer that its models' instances are the last list's
+//! (`og_render::KeptInstances`, [`KeptModels::promise`]), so the renderer
+//! does not compare them again.
 
 use super::*;
 use crate::present::hlod::PlaceIn;
@@ -135,6 +140,9 @@ struct Frame {
     keys: Vec<(u64, u32)>,
     /// Per instance its level for the cluster path, `u8::MAX` for none.
     levels: Vec<u8>,
+    /// Where the models' instances start in the frame's list (after a
+    /// fractured model's chunks).
+    start: usize,
     impostors: Vec<og_render::ImpostorDraw>,
 }
 
@@ -146,6 +154,13 @@ pub(crate) struct KeptModels {
     /// Rows the last frame copied, and whether it copied its proxies.
     pub(crate) copied: usize,
     pub(crate) copied_hlod: bool,
+    /// The number of the last frame's list (one more each frame).
+    pub(crate) list: u64,
+    /// The last frame's promise: the list before it, and how many of its
+    /// first instances this one repeats (every model copied, none before).
+    repeats: Option<(u64, usize)>,
+    /// The render origin the last list was moved to, as bits.
+    origin: Option<[u32; 3]>,
 }
 
 /// A frame's models being built against the last frame's.
@@ -167,6 +182,29 @@ impl KeptModels {
     pub(crate) fn forget(&mut self) {
         self.last.view = None;
         self.last.stored = false;
+    }
+
+    /// The renderer's promise for this frame's list, moved to render origin
+    /// `origin`, whose previous transforms are list `previous`'s
+    /// transforms (`crate::present::fx::motion`; 0: none): its models'
+    /// instances are the last list's when every model was copied and the
+    /// origin held.
+    pub(crate) fn promise(&mut self, origin: Vec3, previous: u64) -> og_render::KeptInstances {
+        let origin = origin.to_array().map(f32::to_bits);
+        let moved = self.origin.replace(origin) != Some(origin);
+        let list = self.list;
+        match self.repeats.filter(|_| !moved) {
+            Some((from, count)) => og_render::KeptInstances {
+                list,
+                from,
+                count,
+                still: previous == from,
+            },
+            None => og_render::KeptInstances {
+                list,
+                ..Default::default()
+            },
+        }
     }
 
     /// Starts this frame's models under `view` with `rows`.
@@ -241,6 +279,7 @@ impl Build {
         };
         let to = at(scene.objects.instances.len(), keys.len());
         self.kept.next.hlod = Some((inputs, at(from.0, from.1), to));
+        self.kept.next.start = from.0;
     }
 
     /// Where the output of row `i` starts.
@@ -308,6 +347,7 @@ impl Build {
         } = self;
         kept.copied = copied;
         kept.copied_hlod = hlod_copied;
+        kept.list += 1;
         let next = &mut kept.next;
         next.at.push(At {
             instances: scene.objects.instances.len(),
@@ -315,7 +355,13 @@ impl Build {
             impostors: scene.objects.impostors.len(),
         });
         let hlod_same = hlod_copied || (kept.last.hlod.is_none() && next.hlod.is_none());
-        if reusable && fresh == 0 && !fractured && hlod_same && same.len() == kept.last.rows.len() {
+        let whole =
+            reusable && fresh == 0 && !fractured && hlod_same && same.len() == kept.last.rows.len();
+        // Every model copied, from the start of both lists: the models'
+        // instances are the last list's.
+        kept.repeats = (whole && next.start == 0 && kept.last.start == 0)
+            .then(|| (kept.list - 1, scene.objects.instances.len()));
+        if whole {
             return kept;
         }
         let matched = same.iter().filter(|&&s| s).count();

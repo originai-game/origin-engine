@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "render CPU time of still scenes with many models",
+      "summary": "A frame whose og.Model instances were all kept from the last frame tells the renderer so, and the renderer no longer compares those instances with the last frame's, nor tests them for motion when their previous transforms are known to be their own. Frames are unchanged. Sorting a still frame of 95,000 instances took 2.94 ms of CPU and now takes 0.015 ms (release, software Vulkan host)."
+    }
+  ]
+}

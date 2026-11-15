@@ -243,6 +243,9 @@ pub(crate) struct FxState {
     /// the transforms whole, with no copy of the keys or lookup by key.
     pub drawn_keys: Vec<(u64, u32)>,
     pub drawn: Vec<Mat4>,
+    /// The number of the instance list `drawn` holds the transforms of
+    /// (`crate::present::extract::KeptModels`; 0: none known).
+    pub drawn_list: u64,
     /// The last frame's joints of each posed model by entity, in the world
     /// (its instance's transform times its palette): TAA's skinned motion.
     pub drawn_joints: IdMap<u64, Vec<Mat4>>,

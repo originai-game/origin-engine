@@ -39,6 +39,7 @@ impl FxState {
         self.previous_by_key = None;
         self.drawn_keys.clone_from(&c.drawn_keys);
         self.drawn.clone_from(&c.drawn);
+        self.drawn_list = 0;
         self.drawn_joints.clone_from(&c.drawn_joints);
         self.drawn_weights.clone_from(&c.drawn_weights);
         self.drawn_deformed.clone_from(&c.drawn_deformed);
@@ -61,7 +62,17 @@ pub(crate) fn taa(rs: &RenderState) -> bool {
 /// before it (TAA's history is that frame), instances and posed models'
 /// joints alike (`previous_joint_palettes`). Only what is drawn is read:
 /// the simulation never sees any of it.
-pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: &IdMap<u64, ()>) {
+///
+/// `list` is this frame's instance list's number; the answer is the number
+/// of the list whose transforms are now `previous_transforms`, by position
+/// (0: none such), so a list that repeats it did not move.
+pub(crate) fn motion(
+    rs: &mut RenderState,
+    keys: &[(u64, u32)],
+    tick: u64,
+    cut: &IdMap<u64, ()>,
+    list: u64,
+) -> u64 {
     let taa = taa(rs);
     let RenderState {
         scene,
@@ -106,10 +117,11 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     if !blur && !taa {
         fx.drawn_keys.clear();
         fx.drawn.clear();
+        fx.drawn_list = 0;
         fx.drawn_joints.clear();
         fx.drawn_weights.clear();
         fx.drawn_deformed.clear();
-        return;
+        return 0;
     }
     // A capture (every extraction but a display frame's) draws the tick as
     // a still frame: its warm-up redraws one scene, so its instances and
@@ -117,7 +129,7 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     // the display drew (or did not draw: `og run --capture-only`) neither
     // reach it nor are moved by it (docs/design.md §2.4).
     if !interp.display {
-        return;
+        return 0;
     }
     joints(scene, atmo, fx);
     let from_drawn = if blur {
@@ -130,6 +142,8 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     // whole (both vectors keep their capacity) and this frame's refill
     // the other; the keys are copied only when the drawn set changed.
     let same = fx.drawn_keys.as_slice() == keys && fx.drawn.len() == keys.len();
+    // A cut instance moves from where it is drawn: still the list's.
+    let from = if from_drawn && same { fx.drawn_list } else { 0 };
     if from_drawn {
         if same {
             std::mem::swap(&mut fx.drawn, &mut scene.objects.previous_transforms);
@@ -171,6 +185,8 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
             .take(keys.len())
             .map(|i| i.transform),
     );
+    fx.drawn_list = list;
+    from
 }
 
 /// Whether `before` keyed the same instances in the same order as `keys`,

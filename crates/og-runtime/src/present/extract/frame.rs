@@ -457,7 +457,8 @@ fn finish(
             }
         }
     }
-    super::fx::motion(rs, keys, tick, &cut);
+    let list = rs.kept_models.list;
+    let previous = super::fx::motion(rs, keys, tick, &cut, list);
     // Layer masks, secondary cameras and custom post passes.
     super::views::extract(world, rs, keys, &mut h);
     // Which entity each instance came from, for the probe's id pass.
@@ -477,6 +478,8 @@ fn finish(
     crate::author::inspector::emit(rs);
     super::interpolate::end(rs, &mut h);
     rebase(&mut rs.scene, origin, look_along);
+    // What the renderer need not compare of the list (`kept.rs`).
+    rs.scene.objects.kept = rs.kept_models.promise(origin, previous);
     // The frame's zero is the grid point, in the absolute world.
     rs.scene.frame.origin += zero.as_vec3();
     rs.zero = zero.as_vec3();
