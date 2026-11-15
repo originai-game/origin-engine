@@ -1099,6 +1099,34 @@ fn vertical_align_places_inline_boxes_as_css_does() {
 }
 
 #[test]
+fn every_rich_line_holds_its_paragraphs_strut() {
+    // CSS 2.1 §10.8.1: each line box starts with a zero-width inline box
+    // of the paragraph's own font and line height, so a line of smaller
+    // spans keeps the paragraph's line height. Shaped by Parley (a cooked
+    // face) and broken span by span (atlas-only metrics) alike.
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <p id="Plain">x</p>
+  <p id="Small"><span part="sm">small</span><span part="sm">er</span></p>
+  <p id="Tall"><span part="lg">big</span></p>
+</div></div>
+<style>
+#Root { width: 300px; }
+p::part(sm) { font-size: 8px; line-height: 9px; }
+p::part(lg) { font-size: 20px; line-height: 40px; }
+</style>"#;
+    let mut shaped = crate::features::font("Inter-Display.ttf");
+    shaped.handle = crate::support::test_font().handle;
+    for (name, font) in [("shaped", shaped), ("atlas", crate::support::test_font())] {
+        let d = Doc::with_font(text, &[], font);
+        let line = d.get("Plain").height;
+        assert!(line > 9.0, "{name}: {line}");
+        assert_eq!(d.get("Small").height, line, "{name}: smaller spans");
+        assert_eq!(d.get("Tall").height, 40.0, "{name}: a taller span grows it");
+    }
+}
+
+#[test]
 fn direction_lays_out_as_css_writing_modes_does() {
     let text = r#"<meta name="component" content="t">
 <div><div id="Root">

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI rich text",
+      "summary": "A rich paragraph's line boxes are Parley's (CSS 2 §10.8): every line holds the paragraph's strut, its own text's line height and font size, so a line of smaller spans keeps the paragraph's line height; `vertical-align` on a span or inline icon is placed by the same line box, and lines beside floats break at each line's room in one pass over the shaped paragraph. A line used to take only its tallest span's height, the strut counting only when a span had a `vertical-align`."
+    }
+  ]
+}
