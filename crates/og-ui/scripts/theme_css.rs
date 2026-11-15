@@ -606,6 +606,7 @@ const FALLBACKS: &str = r#"
   button.primary { color: var(--button-primary-ink); }
   button.danger { color: var(--button-danger-ink); }
   button.ghost { color: var(--button-ghost-ink); }
+  button.quiet { color: var(--button-quiet-ink, var(--button-ink)); }
   button[aria-pressed=true] { color: var(--button-selected-ink); }
   button:disabled { color: var(--button-disabled-ink); }
   button.primary:disabled { color: var(--button-primary-disabled-ink, var(--button-disabled-ink)); }
@@ -691,6 +692,11 @@ const FALLBACKS: &str = r#"
   button.quiet::part(base):active { background: var(--button-quiet-pressed-fill); }
   button.ghost::part(base):hover { background: var(--button-ghost-hover-fill); }
   button.ghost::part(base):active { background: var(--button-ghost-pressed-fill); }
+  /* Text buttons ink as text on the surface, not as a plate's label. */
+  button.quiet::part(base):hover { color: var(--button-quiet-hover-ink, var(--button-hover-ink, revert-layer)); }
+  button.quiet::part(base):active { color: var(--button-quiet-pressed-ink, var(--button-pressed-ink, revert-layer)); }
+  button.ghost::part(base):hover { color: var(--button-ghost-hover-ink, var(--button-hover-ink, revert-layer)); }
+  button.ghost::part(base):active { color: var(--button-ghost-pressed-ink, var(--button-pressed-ink, revert-layer)); }
   button.danger::part(base) {
     background: var(--button-danger-fill);
     border-color: var(--button-danger-rim, var(--button-rim, var(--line)));

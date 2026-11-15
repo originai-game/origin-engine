@@ -1540,6 +1540,61 @@ fn a_pack_restyles_core_controls_through_their_tokens_alone() {
     );
 }
 
+/// A quiet or ghost button is text on the surface, so it takes inks of its
+/// own: a pack whose plates are dark in a light scheme inks them dark while
+/// its plate buttons keep a light label. Wrong: a text button hovered in the
+/// plate's hover ink, or a plate button taking the text button's.
+#[test]
+fn quiet_and_ghost_buttons_take_their_own_inks() {
+    let mut ui = ui_with_font(test_font());
+    ui.set_part_css(&format!(
+        "{DEFAULT_CSS}\n:root {{ --button-hover-ink: #ff0000; --button-quiet-ink: #00ff00;
+           --button-ghost-hover-ink: #0000ff; }}"
+    ))
+    .unwrap();
+    let mut d = mounted(
+        ui,
+        r#"<column id="Root"><button id="G" variant="ghost">Ghost</button><button id="Q" variant="quiet">Quiet</button><button id="P">Plate</button></column>
+<style>#Root { align-items: flex-start; } button { width: 80px; height: 40px; }</style>"#,
+        &[],
+        Viewport::new(300.0, 300.0),
+    );
+    let ink = |d: &Doc, want: &str| {
+        d.ui.frame().items.iter().find_map(|i| {
+            let text = match &i.cmd {
+                DrawCmd::StyledText { text, .. } => text.as_ref(),
+                other => other,
+            };
+            match text {
+                DrawCmd::Text { text, color, .. } if text == want => Some(*color),
+                _ => None,
+            }
+        })
+    };
+    let colour = |hex: &str| og_ui::style_file::parse_color(hex).unwrap();
+    let hover = |d: &mut Doc, id: &str| {
+        let e = at(&d.ui, id);
+        for _ in 0..60 {
+            d.step(InputFrame::hover(e.x + e.width / 2.0, e.y + e.height / 2.0));
+        }
+    };
+    d.step(InputFrame::default());
+    assert!(
+        near(ink(&d, "Quiet").unwrap(), colour("#00ff00")),
+        "quiet at rest"
+    );
+    hover(&mut d, "G");
+    assert!(
+        near(ink(&d, "Ghost").unwrap(), colour("#0000ff")),
+        "ghost hovered"
+    );
+    hover(&mut d, "P");
+    assert!(
+        near(ink(&d, "Plate").unwrap(), colour("#ff0000")),
+        "plate hovered"
+    );
+}
+
 /// A kit's text element that names its part takes the part's `-og-ink` and
 /// `-og-step` (docs/ui.md §3.2), qualified by its classes, as a field's
 /// `text` part does: a pack inks a killfeed's names by team. Wrong: the
