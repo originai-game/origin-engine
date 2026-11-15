@@ -8,6 +8,26 @@ impl Resolved {
         self.part_text(theme, step, &|_| false).step(step)
     }
 
+    /// [`Resolved::part_text`] with the families documents declare, for
+    /// a part's kept values under the frame's theme: answered once for each
+    /// type step ([`TextKept`]).
+    pub(crate) fn kept_part_text(
+        &self,
+        theme: &crate::Theme,
+        step: crate::TypeStep,
+        style: &crate::ui::Style,
+        env: &crate::ui::Env,
+    ) -> super::super::text_css::TextCss {
+        let fonts = env.fonts.families.len();
+        let mut kept = self.text_kept.0.lock().expect("part text memo");
+        if let Some((.., text)) = kept.iter().find(|(s, f, _)| *s == step && *f == fonts) {
+            return text.clone();
+        }
+        let text = self.part_text(theme, step, &|name| style.family_declared(name, env));
+        kept.push((step, fonts, text.clone()));
+        text
+    }
+
     fn part_text(
         &self,
         theme: &crate::Theme,
@@ -354,9 +374,7 @@ impl Ui {
         *self.tree.props_mut(i) = props;
         let text_style = match &*self.tree.nodes[i].content {
             crate::layout::Content::Text(text) => {
-                Some(r.part_text(&self.env.theme, text.step, &|name| {
-                    self.style.family_declared(name, &self.env)
-                }))
+                Some(r.kept_part_text(&self.env.theme, text.step, &self.style, &self.env))
             }
             _ => None,
         };

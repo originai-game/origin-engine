@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"og.ui","summary":"A focused or hovered control built again each tick no longer recomputes its parts' text style: it is kept with the part's style for each type step. An idle leaderboard screen spends 0.28 ms a tick instead of 0.32 ms on Windows, and every library screen about 0.04 ms less."}
+  ]
+}

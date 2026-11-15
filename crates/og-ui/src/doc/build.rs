@@ -85,6 +85,24 @@ pub struct Resolved {
     /// states as qualifiers ([`Ui::document_part`]).
     part: Option<crate::dress::PartRef>,
     part_host: Option<Arc<PartHost>>,
+    /// Its text style for a part's type steps ([`Resolved::kept_part_text`]).
+    text_kept: TextKept,
+}
+
+/// A part's text styles answered from its values, by type step and the
+/// number of font families then loaded (fonts are only added): the part's
+/// kept values ([`Ui::part_values`]) are asked each time its node is built
+/// again, and the answer is a pure function of them. A copy starts empty,
+/// since a copy may be changed.
+#[derive(Default)]
+pub(crate) struct TextKept(
+    std::sync::Mutex<Vec<(crate::TypeStep, usize, super::text_css::TextCss)>>,
+);
+
+impl Clone for TextKept {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
 }
 
 /// Authored host facts shared by all parts of a document control.
@@ -601,7 +619,9 @@ impl Ui {
         };
         let r = self.part_values(&part, Some(self.tree.nodes[i].key));
         let step = match &*self.tree.nodes[i].content {
-            crate::layout::Content::Text(text) => r.part_type(&self.env.theme, text.step),
+            crate::layout::Content::Text(text) => r
+                .kept_part_text(&self.env.theme, text.step, &self.style, &self.env)
+                .step(text.step),
             _ => self.env.theme.type_ramp.body,
         };
         let ink = r.color("color");
