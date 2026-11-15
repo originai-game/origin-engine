@@ -59,5 +59,8 @@
 [part="Nameplate.shield"] { position: absolute; top: 0; inset-inline-start: calc(var(--hp) * var(--bar)); width: calc(var(--shield) * var(--bar)); height: stretch; background: var(--scene-ink); }
 #Cast { height: var(--space-md); align-items: center; justify-content: center; }
 [part="Nameplate.cast"] { position: absolute; top: 0; inset-inline-start: 0; width: calc(var(--cast) * var(--bar)); height: stretch; background: var(--warn); }
-[part="Nameplate.spell"] { font: var(--text-caption); color: var(--ink); white-space: nowrap; }
+/* Across the bar (a name longer than it ends in an ellipsis), its glyphs
+   inked for the warn fill as far as the cast has run and in the well's
+   ink past it: it reads over both. */
+[part="Nameplate.spell"] { width: var(--bar); text-align: center; font: var(--text-caption); white-space: nowrap; text-overflow: ellipsis; color: transparent; background: linear-gradient(90deg, var(--ink-on-warn) calc(var(--cast) * 100%), var(--ink) calc(var(--cast) * 100%)); background-clip: text; }
 </style>

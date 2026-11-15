@@ -1139,7 +1139,7 @@ number.
 | `--state-*` | Hover wash, press scales (`press-scale` a button's part, `control-press-scale` a control row's), lift, disabled opacities (`touch-disabled-opacity` the stick, pad and action button), press duration, focus ring and player rings |
 | `--opacity-*`, `--filter-*` | How strongly a thing shows (`faint`, `dim` what cannot be used, `muted` what is done, `soft`, `wash` how much of a colour a soft wash lays over what is under it), and what art takes out of reach (`--filter-locked`, `--filter-spent`) |
 | `--shadow-*`, `--elevation-*`, `--glass-*` | Shadows per scheme and the controls' inset shadows, the two drop elevations, glass blur and saturation |
-| `--frame-*`, `--plate-*`, `--band-*`, `--title-*`, `--row-*`, `--cell-*`, `--badge-*`, `--well-*`, `--figure-*`, `--tag-*`, `--label-*`, `--ink-label/bright/done/disabled/selected/down/mark`, `--trend-*`, `--tone-*`, `--mark-*`, `--sfx-*` | What the built-in components' role parts wear (below) |
+| `--frame-*`, `--plate-*`, `--band-*`, `--title-*`, `--row-*`, `--cell-*`, `--badge-*`, `--well-*`, `--figure-*`, `--tag-*`, `--label-*`, `--ink-label/bright/done/disabled/selected/down/mark/on-warn`, `--trend-*`, `--tone-*`, `--mark-*`, `--sfx-*` | What the built-in components' role parts wear (below) |
 | `--button-*` | Radius, border width, rest and pressed shadows (stepper, details, keyboard keys and option rows take them); `--button-selected-fill` and `-ink` a button that is on (`aria-pressed`: a toggle, a chip), whatever its variant |
 | `--field-*` | Radius, border width and well shadow of text boxes, triggers, steppers, checkbox boxes and radio rings |
 | `--checkbox-*` | Box size, radius and mark ratios, the mark's pop spring and its exit |
@@ -1175,6 +1175,7 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 | `cell` | `--cell-fill/rim/rim-width/selected-rim/radius/shadow/hover-shadow/pressed-fill/empty-shadow`, `--cell-<rarity>-fill/shadow` | hover, pressed, selected, `data-rarity`, `data-empty`, disabled or `data-locked` |
 | `badge`, `well`, `figure` | `--badge-fill/ink/radius/shadow`, `--well-fill/radius/shadow`, `--figure-ink/font/shadow` | |
 | text over the scene (StatusGrid's time left, Nameplate's name and subtitle, Waypoint's label and distance) | `--tag-halo` its outline, `--tag-fill/pad/radius` a ground of its own (none in the default style) | |
+| text over a warn fill (Nameplate's spell) | `--ink-on-warn` | |
 | `label`, `heading` | `--label-font/tracking/transform`, `--ink-label` | |
 | any part | `--trend-up/down`, `--tone-damage/heal/crit` | `data-trend`, `data-tone` |
 

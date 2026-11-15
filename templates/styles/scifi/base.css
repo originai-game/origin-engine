@@ -540,6 +540,9 @@
   /* A nameplate's cast bar carries the spell's name in the ink, so it is a
      deep amber where --warn would put white on yellow. */
   --scifi-cast-fill: linear-gradient(90deg, #7a5000, #9a6600);
+  /* The spell over that fill in the scheme's ink (light here, dark on the
+     light scheme's yellow fill). */
+  --ink-on-warn: var(--ink);
   --scifi-bar-rim: var(--line-strong-60);
   --scifi-tray-shadow: inset 0 0 0 1px var(--scifi-keyline), 0 0 10px var(--scifi-glow-10), 0 6px 16px var(--scifi-shade);
   --scifi-skill-fill: linear-gradient(160deg, var(--scifi-cell-hi), var(--scifi-cell-pressed));

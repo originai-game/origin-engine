@@ -452,9 +452,10 @@ fn interaction_prompts_over_one_spot_stand_apart() {
 }
 
 /// A pack's tokens reach the parts that read them: the tag tokens the
-/// text a status grid, a nameplate and a waypoint draw over the scene.
-/// Fails when a component writes its own value over the token (the status
-/// grid's figures kept their own halo whatever a pack set).
+/// text a status grid, a nameplate and a waypoint draw over the scene,
+/// `--ink-on-warn` the spell over a cast's fill. Fails when a component
+/// writes its own value over the token (the status grid's figures kept
+/// their own halo whatever a pack set).
 #[test]
 fn packs_dress_text_over_the_scene_through_its_tokens() {
     let (docs, messages) = engine_documents(&["src/ui/components"]);
@@ -477,6 +478,7 @@ fn packs_dress_text_over_the_scene_through_its_tokens() {
         ("StatusGrid", "--tag-fill", "none", "#ff0000"),
         ("Nameplate", "--tag-halo", "none", "0 0 4px #ff0000"),
         ("Nameplate", "--tag-fill", "none", "#ff0000"),
+        ("Nameplate", "--ink-on-warn", "#000000", "#00ff00"),
         ("Waypoint", "--tag-halo", "none", "0 0 4px #ff0000"),
         ("Waypoint", "--tag-fill", "none", "#ff0000"),
     ] {

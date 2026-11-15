@@ -129,6 +129,8 @@
   --role-ink-selected: var(--on-selection);
   --role-ink-down: var(--ink-faint);
   --role-ink-mark: var(--ink-muted);
+  /* Text over a warn fill (a cast bar's spell). */
+  --role-ink-on-warn: var(--ink-inverse);
 
   /* A value moving up or down, and what a hit did. */
   --role-trend-up: var(--success);
