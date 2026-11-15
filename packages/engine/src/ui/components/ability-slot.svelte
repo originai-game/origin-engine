@@ -80,5 +80,9 @@
 #Pips { width: calc(var(--ranks) * var(--space-md) - var(--space-xs)); height: var(--space-xs); background: repeating-linear-gradient(90deg, var(--scrim) 0, var(--scrim) var(--space-sm), transparent var(--space-sm), transparent var(--space-md)); }
 #Ranked { width: calc(var(--level) * var(--space-md) - var(--space-xs)); height: var(--space-xs); background: repeating-linear-gradient(90deg, var(--gold) 0, var(--gold) var(--space-sm), transparent var(--space-sm), transparent var(--space-md)); }
 #Hotkey { font-size: var(--font-step-sm); }
+/* The cap sits under the slot, over the scene: it is the scene's plate in
+   the scene's ink, the pair a pack sets for text over the scene, so it reads
+   over a bright sky as over a dark floor. */
+[part="AbilitySlot.label"] { background: var(--scene-plate); color: var(--scene-ink); }
 @keyframes breathe { from { opacity: 1; } to { opacity: 0.8; } }
 </style>

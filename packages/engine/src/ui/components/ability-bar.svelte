@@ -44,5 +44,9 @@ ul, ol { list-style-type: none; }
 .cost { position: absolute; bottom: var(--space-xxs); inset-inline-start: var(--space-xxs); padding: 0 var(--space-xs); font-size: var(--font-step-sm); color: var(--mana); }
 .cost.short { color: var(--danger); }
 .hotkey { font-size: var(--font-step-sm); }
+/* The cap sits under the slot, over the scene: it is the scene's plate in
+   the scene's ink, the pair a pack sets for text over the scene, so it reads
+   over a bright sky as over a dark floor. */
+[part="AbilityBar.label"] { background: var(--scene-plate); color: var(--scene-ink); }
 @keyframes breathe { from { opacity: 1; } to { opacity: 0.8; } }
 </style>
