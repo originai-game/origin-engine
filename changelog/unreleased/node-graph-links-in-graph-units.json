@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "NodeGraph",
+      "summary": "A view other than 0 0 360 240 no longer squeezes the links: the link layer is the view's size, so a link's path is in the same graph units as the nodes it joins (film-flowchart's 720×360 chart drew its links at half size, off its nodes)."
+    }
+  ]
+}

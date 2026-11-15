@@ -34,7 +34,7 @@
 <style>
 [part="NodeGraph.well"] { width: var(--measure-lg); height: var(--size-7xl); overflow: hidden; }
 #Canvas { position: absolute; top: 0; inset-inline-start: 0; width: var(--measure-md); height: var(--size-6xl); translate: calc(var(--pan-x) + var(--space-xl)) calc(var(--pan-y) + var(--space-xl)); scale: var(--zoom); transform-origin: 0% 0%; }
-#Links { position: absolute; top: 0; inset-inline-start: 0; width: var(--measure-md); height: var(--size-6xl); }
+#Links { position: absolute; top: 0; inset-inline-start: 0; }
 [part="NodeGraph.link"] { fill: none; stroke: var(--line-strong); stroke-width: 3; stroke-dasharray: 6 6; }
 .link.active { stroke: var(--primary); stroke-dasharray: none; }
 [part="NodeGraph.node"] { position: absolute; top: calc(var(--y) - var(--size-lg) / 2); inset-inline-start: calc(var(--x) - var(--size-lg) / 2); width: var(--size-lg); height: var(--size-lg); padding: 0; border-radius: var(--radius-capsule); border: var(--stroke-thick) solid var(--line-strong); background: var(--panel-raised); }
