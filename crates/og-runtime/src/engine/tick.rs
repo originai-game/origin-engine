@@ -230,6 +230,12 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     if let Some(c) = copy {
         answer["copy"] = json!(c);
     }
+    // `buffering`: a playing video player with `wait` could not show its
+    // frame, so the clock holds (no tick runs) until it can: the web shell
+    // tells its page (ShellOptions.onBuffering) to show it is loading.
+    if eng.render.try_borrow().is_ok_and(|rs| rs.video_stalled) {
+        answer["buffering"] = json!(true);
+    }
     if let Some(image) = cursor_image {
         answer["cursorImage"] = image;
     }

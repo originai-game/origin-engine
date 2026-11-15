@@ -302,6 +302,8 @@ export class Engine {
     rumble?: [number, number, number, number][];
     /** The UI's accessibility tree, on the frames where it changed, when the engine was created with `a11y` (web/a11y.ts mirrors it). */
     a11y?: Api.A11yTree;
+    /** A playing video player with `wait` could not show its frame: no tick runs until it can (web/shell.ts onBuffering). Absent: false. */
+    buffering?: boolean;
     /** og.PointerLock.wanted: the game asks for the pointer lock (the web shell requests it on the next press on the canvas, and exits it when false). */
     pointerLock?: boolean;
     /** The pointer's shape the UI resolved over what it is on (a CSS cursor name: og.ui.frameCursor). */

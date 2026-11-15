@@ -59,8 +59,9 @@ export class BootClock {
 /**
  * What a frame's answer tells the shell, each only when it changed: the UI's
  * focused text control (text-input.ts), the accessibility tree (a11y.ts), the
- * pointer's shape, og.PointerLock.wanted, and the page asks (fullscreen, the
- * power preference for the next load); a copy, saved scenes, haptics and
+ * pointer's shape, og.PointerLock.wanted, the page asks (fullscreen, the
+ * power preference for the next load) and whether streamed footage holds the
+ * clock (buffering); a copy, saved scenes, haptics and
  * rumble whenever the frame has them.
  */
 export class PageRelay {
@@ -75,6 +76,8 @@ export class PageRelay {
   #cursorImage: CursorImage | null = null;
   /** The page asks last sent ([fullscreen, lowPower]). */
   #asks = "";
+  /** Whether footage held the clock, as last sent. */
+  #buffering = false;
 
   constructor(post: Post) {
     this.#post = post;
@@ -112,6 +115,11 @@ export class PageRelay {
     if (asks !== this.#asks) {
       this.#asks = asks;
       post({ type: "page", fullscreen: answered.fullscreen === true, lowPower: answered.lowPower === true });
+    }
+    const buffering = answered.buffering === true;
+    if (buffering !== this.#buffering) {
+      this.#buffering = buffering;
+      post({ type: "buffering", on: buffering });
     }
   }
 }

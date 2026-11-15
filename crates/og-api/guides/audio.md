@@ -208,6 +208,8 @@ og.AudioSource in step with the picture.
   does: the world, and its sound, wait for the picture instead of running
   ahead of it. Set it on footage the game is built around (an interactive
   film); leave it off for a screen in the world, and in a lockstep game.
+  The page that hosts the web shell hears the hold (`onBuffering`) and
+  shows a loading sign; the game does nothing for it.
 
 | Decoder (og.video.capabilities) | Real-time size at 30 fps |
 |---|---|

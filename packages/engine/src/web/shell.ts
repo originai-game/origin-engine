@@ -126,6 +126,11 @@ export interface ShellOptions {
   readonly onCrash?: (message: string, error: HostError) => void;
   /** The first frame was rendered. */
   readonly onFirstFrame?: () => void;
+  /**
+   * Streamed footage holds the clock (`true`: a playing video player with `wait` waits for its frame, so
+   * no tick runs and the sound stops with it) or lets it go (`false`). Show a loading sign after a moment.
+   */
+  readonly onBuffering?: (on: boolean) => void;
   /** Without autoplay, take one tick before the first frame (the first screen behind a play gate). */
   readonly prime?: boolean;
   /** The locale og.i18n is asked for; default: `navigator.language`. */
@@ -182,6 +187,7 @@ export class Shell {
   #onScenesSaved: ShellOptions["onScenesSaved"];
   #onProgress: ShellOptions["onProgress"];
   #onStage: ShellOptions["onStage"];
+  #onBuffering: ShellOptions["onBuffering"];
   #ring: SharedArrayBuffer | undefined;
   #dprCap = 2;
   #playing = false;
@@ -285,6 +291,10 @@ export class Shell {
         this.#presentation.want(ask.wanted === true, ask.raw !== false);
         return;
       }
+      if (m.type === "buffering") {
+        this.#onBuffering?.((m as unknown as { on: boolean }).on === true);
+        return;
+      }
       if (m.type === "page") {
         this.#presentation.page(m as unknown as { fullscreen?: boolean; lowPower?: boolean });
         return;
@@ -320,6 +330,7 @@ export class Shell {
     shell.#onScenesSaved = options.onScenesSaved;
     shell.#onProgress = options.onProgress;
     shell.#onStage = options.onStage;
+    shell.#onBuffering = options.onBuffering;
     shell.#playing = options.autoplay ?? true;
     shell.#viewport = { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false };
     shell.#layout = { width: shell.#viewport["width"] as number, height: shell.#viewport["height"] as number };
