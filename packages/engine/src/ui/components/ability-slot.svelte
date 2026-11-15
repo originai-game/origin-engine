@@ -32,7 +32,7 @@
       <svg id="Slash" viewBox="0 0 56 56" hidden={!disabled}><path d="M8 48L48 8" stroke-width="5" stroke-linecap="round"></path></svg>
       <og-icon id="Lock" icon="lock" hidden={!locked}></og-icon>
       <div id="Costs"><span id="Cost" part="AbilitySlot.badge" class="cost" class:short={unaffordable} hidden={!cost || cooldown > 0 || locked}>{cost}</span></div>
-      <span id="Charges" part="AbilitySlot.badge" class="charges" hidden={!(maxCharges > 1) || cooldown > 0}>{formatNumber(charges)}</span>
+      <span id="Charges" part="AbilitySlot.badge" class="charges" hidden={!(maxCharges > 1) || cooldown > 0 || locked}>{formatNumber(charges)}</span>
     </div>
   </button>
   <div id="Pips" part="AbilitySlot.track" hidden={!(maxLevel > 0)} style:--ranks={maxLevel} style:--level={level}><div id="Ranked" part="AbilitySlot.fill"></div></div>
