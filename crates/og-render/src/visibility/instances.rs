@@ -1073,7 +1073,10 @@ mod tests {
             .unwrap();
         assert_same(&looked, &fresh(&scene));
         assert!(!looked.still);
-        assert_ne!(looked.content, moved.content, "a look rides in the GPU transform");
+        assert_ne!(
+            looked.content, moved.content,
+            "a look rides in the GPU transform"
+        );
         assert_eq!(looked.changed.as_ref().map(Vec::len), Some(2));
         kept.restore(looked.transforms, looked.spheres);
         // Another order: sorted again.
