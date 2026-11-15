@@ -1,0 +1,29 @@
+/* scifi: the ungrouped components (packages/engine/src/ui/components/*.svelte).
+   They and the built-in screens are made of core controls and role parts,
+   which controls.css and the role tokens of base.css dress; a rule here is
+   for a component the core button plate is the wrong dress for. */
+
+/* ── Hero button: the one main action, lit like the primary; premium is the
+   amber face, danger the red one. Each state restates the whole border.
+   The secondary tone wears the primary's face and ink: in a ::part()
+   selector `.secondary` is also every button without a variant, so a pack
+   cannot tell that tone from the default (README, gaps). */
+button::part(HeroButton\.base) { border: var(--stroke-hairline) solid var(--highlight); background: var(--button-primary-fill); box-shadow: var(--button-primary-shadow); }
+button::part(HeroButton\.base):hover { border: var(--stroke-hairline) solid var(--ink-bright); background: var(--button-primary-hover-fill); box-shadow: var(--button-primary-shadow); }
+button::part(HeroButton\.base):active { border: var(--stroke-hairline) solid var(--primary); background: var(--button-primary-pressed-fill); box-shadow: var(--button-pressed-shadow); }
+button.premium::part(HeroButton\.base) { border: var(--stroke-hairline) solid var(--ink-selected); background: var(--scifi-premium-fill); box-shadow: var(--button-selected-shadow); }
+button.danger::part(HeroButton\.base) { border: var(--stroke-hairline) solid var(--button-danger-rim); background: var(--button-danger-fill); box-shadow: var(--button-danger-shadow); }
+[part="HeroButton.base"].secondary [part="HeroButton.label"] { color: var(--on-primary); }
+[part="HeroButton.base"].danger [part="HeroButton.label"] { color: var(--button-danger-ink); }
+
+/* ── Menu: quiet rows inside whatever frame holds them, lit under the
+   pointer, amber when ticked, red when they destroy. */
+button::part(Menu\.row) { border: none; border-radius: 0; background: none; box-shadow: none; font-family: var(--font-body); letter-spacing: 0; text-transform: none; text-shadow: none; color: var(--ink); }
+button::part(Menu\.row):hover { background: var(--row-hover-fill); color: var(--ink-bright); }
+button::part(Menu\.row):active { background: var(--row-pressed-fill); }
+button[aria-checked=true]::part(Menu\.row) { background: var(--row-selected-fill); box-shadow: var(--row-selected-edge); color: var(--ink-selected); }
+button.danger::part(Menu\.row) { color: var(--danger); }
+button::part(Menu\.row):disabled { background: none; color: var(--ink-disabled); }
+
+/* ── Speech bubble: the tail is a shape, so it takes the glass as one colour. */
+[part="SpeechBubble.tail"] { fill: var(--scifi-glass-lo); }

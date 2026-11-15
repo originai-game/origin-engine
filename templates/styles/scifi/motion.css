@@ -1,0 +1,40 @@
+/* scifi: motion. Quick and exact: a control answers inside two frames over a
+   curve that lands without overshoot (--motion-easing-out), a tab indicator
+   and a bar run straight to their value, and the only loops are a scan (the
+   fresh badge, the acting portrait). Reduced motion keeps every state change
+   and drops the movement. The durations are tokens in base.css. */
+/* Every core part the default style eases takes the pack's durations. */
+button::part(base), input[type=checkbox]::part(row), input[type=radio]::part(option), select::part(option), stepper::part(button),
+input[type=number]::part(button), details::part(summary), keyboard::part(key), keyboard::part(candidate), input::part(frame),
+textarea::part(frame), select::part(trigger), input[type=checkbox]::part(box), input[type=radio]::part(ring), input[type=radio]::part(card),
+input[type=checkbox][switch]::part(track), input[type=checkbox][switch]::part(knob) {
+  transition: background var(--motion-duration-fast) var(--motion-easing-out), border-color var(--motion-duration-fast) var(--motion-easing-out), box-shadow var(--motion-duration-base) var(--motion-easing-out), color var(--motion-duration-fast) var(--motion-easing-out), opacity var(--motion-duration-fast) var(--motion-easing-out);
+}
+button::part(base), tabs::part(tab), input[type=range]::part(knob), slot::part(frame),
+button::part(RpgBackpack\.tab), button::part(RpgWorldMap\.marker) {
+  transition: background var(--motion-duration-fast) var(--motion-easing-out), border-color var(--motion-duration-fast) var(--motion-easing-out), box-shadow var(--motion-duration-base) var(--motion-easing-out), color var(--motion-duration-fast) var(--motion-easing-out);
+}
+button::part(RpgBackpack\.cell), button::part(RpgCharacter\.cell), button::part(RpgConversation\.row), button::part(RpgQuestLog\.row), button::part(RpgParty\.cell) {
+  transition: box-shadow var(--motion-duration-base) var(--motion-easing-out), background var(--motion-duration-fast) var(--motion-easing-out), border-color var(--motion-duration-fast) var(--motion-easing-out);
+}
+tabs::part(indicator) { transition: left var(--scifi-motion-indicator), width var(--scifi-motion-indicator); }
+@keyframes scifi-glint { from { opacity: 0.55; } to { opacity: 1; } }
+[part="RpgBackpack.frame"] .badge.fresh { animation: scifi-glint var(--scifi-motion-glint) ease-in-out infinite alternate; }
+[part="RpgTurnOrder.cell"][data-acting=true] .ring { transition: box-shadow var(--motion-duration-slow) var(--motion-easing-out); }
+/* HUD: the bars run to their new value; the plates light at once. */
+[part="RpgVitals.frame"] .bar-fill, [part="RpgEnemyInfo.frame"] .bar-fill, [part="RpgParty.frame"] .bar-fill { transition: width var(--motion-duration-slow) var(--motion-easing-out); }
+[part="RpgActionBar.frame"] .cool { transition: height var(--motion-duration-base) linear; }
+button::part(RpgActionBar\.skill), button::part(RpgActionBar\.item), button::part(RpgCommands\.cell), button::part(RpgMenuBar\.tab) {
+  transition: box-shadow var(--motion-duration-base) var(--motion-easing-out), border-color var(--motion-duration-fast) var(--motion-easing-out), background var(--motion-duration-fast) var(--motion-easing-out), color var(--motion-duration-fast) var(--motion-easing-out);
+}
+@keyframes scifi-acting { from { box-shadow: var(--scifi-acting-from); } to { box-shadow: var(--scifi-acting-to); } }
+[part="RpgTurnOrder.cell"][data-acting=true] .ring { animation: scifi-acting var(--scifi-motion-acting) ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) {
+  [part="RpgVitals.frame"] .bar-fill, [part="RpgEnemyInfo.frame"] .bar-fill, [part="RpgParty.frame"] .bar-fill, [part="RpgActionBar.frame"] .cool,
+  button::part(RpgActionBar\.skill), button::part(RpgActionBar\.item), button::part(RpgCommands\.cell), button::part(RpgMenuBar\.tab) { transition: none; }
+  [part="RpgTurnOrder.cell"][data-acting=true] .ring { animation: none; }
+  button::part(base), tabs::part(tab), tabs::part(indicator), input[type=range]::part(knob), slot::part(frame),
+  button::part(RpgBackpack\.tab), button::part(RpgWorldMap\.marker),
+  button::part(RpgBackpack\.cell), button::part(RpgCharacter\.cell), button::part(RpgConversation\.row), button::part(RpgQuestLog\.row), button::part(RpgParty\.cell) { transition: none; }
+  [part="RpgBackpack.frame"] .badge.fresh { animation: none; }
+}

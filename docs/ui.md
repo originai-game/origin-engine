@@ -1496,7 +1496,7 @@ card targets, or note timing.
 | `cartoon` | Rounded forms, deliberate thickness, clear primary actions | Mario Kart 8 Deluxe, Bloons TD 6 | Not yet built |
 | `fantasy` | Painted frames and materials with room for dense content | Baldur's Gate 3, Diablo IV | Built, art-approved (pilot); shipped with the engine |
 | `pixel` | Consistent pixel grid, integer scaling, readable glyphs | Stardew Valley, Octopath Traveler | Not yet built |
-| `scifi` | Instrument hierarchy, precise geometry, sparse emphasis | Elite Dangerous, Starfield | Not yet built |
+| `scifi` | Instrument hierarchy, precise geometry, sparse emphasis | Elite Dangerous, Starfield | Built, awaiting art approval; shipped with the engine |
 | `storybook` | Paper and illustrated edges, quiet ornament, readable text | Pentiment, Strange Horticulture | Not yet built |
 
 The creation order is `clean`, `cartoon`, `fantasy`, `pixel`, `scifi`,

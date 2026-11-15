@@ -1,0 +1,237 @@
+/* scifi: every core control and its states. A control is a cut plate of
+   dark glass with a thin lit rim: hover raises the light, pressed sinks it,
+   what is on or chosen turns amber, and what is disabled goes dark with no
+   glow at all. The cut corners are `corner-shape: bevel` on a token radius.
+   Every value is a token set in base.css. */
+
+/* The whole file is one cascade layer. A pack's files are read in name
+   order, so a component file can come before this one (arena.css, card.css)
+   or after it (rpg.css); in a layer, a rule that names a component's part
+   outranks a core control's rule wherever its file falls. */
+@layer scifi-controls {
+
+/* ── Buttons. The default is a glass plate with a cyan rim; .primary is the
+   lit cyan itself with dark ink; .ghost is the rim alone, .quiet the ink
+   alone, .danger the plate in red; a button that is on (aria-pressed) is
+   amber. The resting ink is on the host, so the button's content inherits
+   it, and on the part, which is where the label reads it; each state's ink
+   is on the part. Variants follow the default's hover and active rules,
+   which have equal specificity; the disabled rules come last. */
+button { color: var(--button-ink); }
+button.primary { color: var(--on-primary); }
+button.danger { color: var(--danger); }
+button[aria-pressed=true] { color: var(--button-selected-ink); }
+button:disabled { color: var(--button-disabled-ink); }
+button::part(base) {
+  padding: 0 var(--space-lg);
+  border: var(--stroke-hairline) solid var(--button-rim);
+  border-radius: var(--scifi-cut-button);
+  corner-shape: bevel;
+  background: var(--button-fill);
+  box-shadow: var(--button-shadow);
+  font-family: var(--button-font);
+  font-size: var(--font-step-lg);
+  letter-spacing: var(--font-tracking-lg);
+  text-transform: uppercase;
+  text-shadow: var(--button-text-shadow);
+}
+button::part(base):hover { border-color: var(--highlight); background: var(--button-hover-fill); box-shadow: var(--button-hover-shadow); color: var(--button-hover-ink); }
+button::part(base):active { border-color: var(--primary); background: var(--button-pressed-fill); box-shadow: var(--button-pressed-shadow); color: var(--button-pressed-ink); }
+button.primary::part(base) { border-color: var(--highlight); background: var(--button-primary-fill); box-shadow: var(--button-primary-shadow); color: var(--on-primary); text-shadow: none; }
+button.primary::part(base):hover { border-color: var(--ink-bright); background: var(--button-primary-hover-fill); box-shadow: var(--button-primary-shadow); color: var(--button-primary-hover-ink); }
+button.primary::part(base):active { border-color: var(--primary); background: var(--button-primary-pressed-fill); box-shadow: var(--button-pressed-shadow); color: var(--button-primary-pressed-ink); }
+button.ghost::part(base) { border-color: var(--line-strong); background: none; box-shadow: none; }
+button.ghost::part(base):hover { border-color: var(--highlight); background: var(--primary-12); box-shadow: var(--button-shadow); }
+button.ghost::part(base):active { border-color: var(--primary); background: var(--primary-25); box-shadow: none; }
+button.quiet::part(base), button[variant=quiet]::part(base) { border-color: transparent; background: none; box-shadow: none; padding: 0 var(--space-sm); }
+button.quiet::part(base):hover, button[variant=quiet]::part(base):hover { border-color: transparent; background: var(--primary-12); box-shadow: none; }
+button.quiet::part(base):active, button[variant=quiet]::part(base):active { border-color: transparent; background: var(--primary-25); box-shadow: none; }
+button.danger::part(base) { border-color: var(--button-danger-rim); background: var(--button-danger-fill); box-shadow: var(--button-danger-shadow); color: var(--button-danger-ink); text-shadow: none; }
+button.danger::part(base):hover { border-color: var(--button-danger-rim); background: var(--button-danger-hover-fill); box-shadow: var(--button-danger-shadow); color: var(--ink-bright); }
+button.danger::part(base):active { border-color: var(--button-danger-rim); background: var(--button-danger-fill); box-shadow: var(--button-pressed-shadow); color: var(--button-danger-ink); }
+button[aria-pressed=true]::part(base), button[aria-pressed=true]::part(base):hover, button[aria-pressed=true]::part(base):active {
+  border-color: var(--accent); background: var(--button-selected-fill); box-shadow: var(--button-selected-shadow); color: var(--button-selected-ink); text-shadow: none;
+}
+button::part(base):disabled, button.primary::part(base):disabled, button.ghost::part(base):disabled, button.quiet::part(base):disabled, button.danger::part(base):disabled {
+  border-color: var(--scifi-disabled-rim); background: var(--button-disabled-fill); box-shadow: none; color: var(--button-disabled-ink); text-shadow: none;
+}
+button.primary::part(base):disabled { color: var(--button-primary-disabled-ink); }
+button.quiet::part(base):disabled, button.ghost::part(base):disabled { background: none; }
+button::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--scifi-focus-offset-plate); }
+/* The focus part is the ring alone. On a button whose document names its
+   own part it also takes button::part(base)'s rules, and a plate there
+   would cover the button's content. */
+button::part(focus), button::part(focus):focus-visible, button::part(focus):focus-visible:hover, button::part(focus):focus-visible:active { border: none; background: none; box-shadow: none; }
+
+/* ── Checkbox, switch and radio. The checkbox is a square that fills with
+   light, the radio a diamond (a bevel on the engine's capsule radius), the
+   switch a cut track with a block that slides. */
+input[type=checkbox]::part(row), input[type=radio]::part(option) { border: none; box-shadow: none; background: none; }
+input[type=checkbox]::part(row):hover, input[type=radio]::part(option):hover { background: var(--primary-8); }
+input[type=checkbox]::part(box), input[type=radio]::part(ring) { border: var(--field-border-width) solid var(--line-strong); background: var(--well); box-shadow: var(--well-shadow); }
+input[type=radio]::part(ring), input[type=radio]::part(dot) { corner-shape: bevel; }
+input[type=checkbox]::part(box):hover, input[type=radio]::part(ring):hover { border-color: var(--highlight); }
+input[type=checkbox]::part(box):checked { border: var(--field-border-width) solid var(--highlight); background: var(--checkbox-checked-fill); box-shadow: var(--scifi-energy-glow); }
+input[type=checkbox][aria-checked=mixed]::part(box) { border: var(--field-border-width) solid var(--highlight); background: var(--checkbox-checked-fill); }
+input[type=checkbox]::part(box):disabled, input[type=radio]::part(ring):disabled { border-color: var(--scifi-disabled-rim); background: var(--scifi-disabled-fill); box-shadow: none; }
+/* What is on and disabled stays told: a dull plate under the same glyph, a dull dot. */
+input[type=checkbox]::part(box):checked:disabled { border-color: var(--scifi-disabled-rim); background: var(--scifi-disabled-on); box-shadow: none; }
+input[type=radio]::part(ring):checked:disabled { border-color: var(--scifi-disabled-rim); background: var(--scifi-disabled-fill); box-shadow: none; }
+input[type=radio]:disabled::part(dot) { background: var(--scifi-disabled-on); }
+input[type=checkbox]::part(box):invalid { border-color: var(--danger); }
+input[type=radio]::part(ring):checked { border: var(--field-border-width) solid var(--highlight); background: var(--well); box-shadow: var(--scifi-energy-glow); }
+input[type=radio]::part(dot) { background: var(--primary); }
+input[type=radio]::part(card) { border: var(--field-border-width) solid var(--line-strong-60); border-radius: var(--scifi-cut-plate); corner-shape: bevel; background: var(--radio-card-fill); box-shadow: none; }
+input[type=radio]::part(card):hover { border-color: var(--highlight); }
+input[type=radio]::part(card):checked { border-color: var(--accent); background: var(--radio-card-checked-fill); box-shadow: var(--radio-card-checked-shadow); }
+input[type=radio]::part(chosen) { border: var(--stroke-regular) solid var(--accent); background: none; }
+input[type=checkbox][switch]::part(track) { border: var(--field-border-width) solid var(--line-strong); border-radius: var(--scifi-cut-chip); corner-shape: bevel; background: var(--well); box-shadow: var(--well-shadow); }
+input[type=checkbox][switch]::part(track):checked { background: var(--switch-checked-fill); border-color: var(--highlight); box-shadow: var(--scifi-energy-glow); }
+input[type=checkbox][switch]::part(track):disabled { border-color: var(--scifi-disabled-rim); background: var(--scifi-disabled-fill); box-shadow: none; }
+input[type=checkbox][switch]::part(knob) { border: var(--field-border-width) solid var(--scifi-knob-rim); border-radius: var(--scifi-cut-chip); corner-shape: bevel; background: var(--switch-knob-fill); }
+input[type=checkbox]::part(focus):focus-visible, input[type=radio]::part(focus):focus-visible,
+input[type=checkbox][switch]::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
+
+/* ── Tabs: condensed capitals over a hairline, the chosen one amber over
+   a glowing rule. */
+tabs::part(track) { background: none; border-bottom: var(--stroke-hairline) solid var(--line-strong-40); }
+tabs::part(tab) { background: none; color: var(--ink-muted); font-family: var(--label-font); font-size: var(--font-step-lg); letter-spacing: var(--font-tracking-lg); text-transform: uppercase; box-shadow: none; }
+tabs::part(tab):hover { background: var(--scifi-tab-hover-wash); color: var(--ink); }
+tabs::part(tab):active { background: var(--primary-25); }
+tabs::part(tab):checked { color: var(--accent); background: var(--scifi-tab-selected-wash); box-shadow: none; }
+tabs::part(tab):disabled { color: var(--ink-disabled); }
+tabs::part(indicator) { height: var(--stroke-regular); background: var(--accent); box-shadow: var(--tabs-indicator-glow); }
+tabs::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
+
+/* ── Slider: a thin rail, an energy fill, a diamond knob. */
+input[type=range]::part(track) { background: var(--well); border: var(--stroke-hairline) solid var(--line-strong-40); box-shadow: var(--well-shadow); }
+input[type=range]::part(fill) { background: var(--scifi-energy-fill); box-shadow: var(--scifi-energy-glow); }
+input[type=range]::part(tick) { background: var(--line-strong-60); box-shadow: none; }
+input[type=range]::part(knob) { corner-shape: bevel; border: var(--stroke-hairline) solid var(--scifi-knob-rim); background: var(--slider-knob-fill); box-shadow: var(--slider-knob-shadow); }
+input[type=range]::part(knob):hover { box-shadow: var(--slider-knob-hover-shadow); }
+input[type=range]::part(knob):active { background: var(--slider-knob-pressed-fill); }
+input[type=range]::part(knob):disabled { border-color: var(--scifi-disabled-rim); background: var(--scifi-disabled-rim); box-shadow: none; }
+input[type=range]::part(core) { corner-shape: bevel; background: var(--primary-active); }
+/* The bubble's figure is always the inverse ink, so its plate is the lit primary. */
+input[type=range]::part(bubble) { border: var(--stroke-hairline) solid var(--highlight); background: var(--primary); box-shadow: var(--scifi-energy-glow); }
+input[type=range]::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--scifi-focus-offset-plate); }
+
+/* ── Fields, select and stepper: a dark well with one cut corner; focus
+   lights the rim. */
+input::part(frame), textarea::part(frame), select::part(trigger), stepper::part(frame),
+input[type=number]::part(frame) {
+  border: var(--field-border-width) solid var(--line-strong-60);
+  border-radius: var(--scifi-cut-field);
+  corner-shape: bevel;
+  background: var(--field-fill);
+  box-shadow: var(--field-shadow);
+}
+input::part(frame):focus-visible, textarea::part(frame):focus-visible { border-color: var(--highlight); box-shadow: var(--field-focus-shadow); }
+input::part(frame):disabled, textarea::part(frame):disabled, select::part(trigger):disabled { border-color: var(--scifi-disabled-rim); background: var(--scifi-disabled-fill); box-shadow: none; }
+input::part(frame):invalid, textarea::part(frame):invalid, select::part(trigger):invalid { border: var(--field-border-width) solid var(--danger); }
+input::part(text), textarea::part(text) { color: var(--ink); font-family: var(--font-body); }
+input::part(placeholder), textarea::part(placeholder) { color: var(--ink-faint); }
+input::part(selection), textarea::part(selection) { background: var(--scifi-selection-40); }
+input::part(caret), textarea::part(caret) { background: var(--accent); }
+input::part(reveal):hover, input::part(clear):hover { background: var(--primary-16); }
+select::part(trigger):hover { border-color: var(--highlight); }
+select::part(trigger):open, select[aria-expanded=true]::part(trigger) { border: var(--field-border-width) solid var(--highlight); padding-inline: calc(var(--space-md) - var(--field-border-width)); box-shadow: var(--field-focus-shadow); }
+select::part(list) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--panel-raised); box-shadow: var(--dropdown-list-shadow); }
+select::part(option) { border: none; box-shadow: none; background: none; color: var(--ink); }
+select::part(option):hover { background: var(--primary-16); }
+select::part(option):active { background: var(--primary-25); }
+select::part(option):disabled { color: var(--ink-disabled); }
+select::part(group) { color: var(--ink-label); font-family: var(--label-font); letter-spacing: var(--font-tracking-lg); text-transform: uppercase; }
+stepper::part(value) { border: none; background: none; box-shadow: none; color: var(--ink); font-family: var(--font-mono); }
+stepper::part(button), input[type=number]::part(button) { border: var(--stroke-hairline) solid var(--line-strong-60); background: var(--scifi-key-fill); box-shadow: none; }
+stepper::part(button):hover, input[type=number]::part(button):hover { border-color: var(--highlight); background: var(--button-hover-fill); }
+stepper::part(button):active, input[type=number]::part(button):active { background: var(--scifi-key-pressed); box-shadow: var(--button-pressed-shadow); }
+stepper::part(button):disabled, input[type=number]::part(button):disabled { border: var(--stroke-hairline) solid var(--scifi-disabled-rim); background: var(--scifi-key-disabled); }
+input::part(focus):focus-visible, textarea::part(focus):focus-visible, select::part(focus):focus-visible,
+stepper::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
+
+/* ── Details. */
+details::part(summary) { border: none; border-bottom: var(--stroke-hairline) solid var(--line-strong-40); background: none; box-shadow: none; color: var(--ink-label); font-family: var(--label-font); letter-spacing: var(--font-tracking-lg); text-transform: uppercase; }
+details::part(summary):hover { background: var(--primary-8); color: var(--ink); }
+details::part(summary):active { background: var(--primary-16); box-shadow: none; }
+details::part(summary):open { color: var(--highlight); border-bottom-color: var(--line-strong); }
+details::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
+
+/* ── Panels, dialogs, tooltips, HUD: translucent glass under scan lines,
+   the leading top and trailing bottom corners cut. */
+panel::part(frame), dialog::part(panel) {
+  border: var(--panel-border-width) solid var(--line-strong-60);
+  border-radius: var(--scifi-cut-frame);
+  corner-shape: bevel;
+  background: var(--panel-fill);
+  box-shadow: var(--panel-shadow);
+}
+dialog::part(backdrop) { background: var(--scrim); }
+tooltip::part(frame) { border: var(--stroke-hairline) solid var(--line-strong); border-radius: var(--scifi-cut-chip); corner-shape: bevel; background: var(--scifi-tooltip); box-shadow: var(--scifi-tooltip-shadow); backdrop-filter: none; }
+hud::part(frame) { border: var(--stroke-hairline) solid var(--line-strong-50); border-radius: var(--scifi-cut-plate); corner-shape: bevel; background: var(--hud); backdrop-filter: none; }
+popover::part(arrow) { background: var(--panel-raised); }
+og-spotlight::part(edge) { border: var(--stroke-regular) solid var(--accent); }
+
+/* ── Slot (core), badge. */
+slot::part(frame) { border: var(--stroke-hairline) solid var(--cell-rim); border-radius: var(--scifi-cut-cell); corner-shape: bevel; background: var(--slot-fill); box-shadow: var(--slot-shadow); }
+slot::part(frame):hover { border-color: var(--highlight); box-shadow: var(--cell-hover-shadow); }
+slot::part(frame):active { background: var(--cell-pressed-fill); }
+slot[aria-selected=true]::part(frame) { border: var(--stroke-regular) solid var(--accent); box-shadow: var(--button-selected-shadow); }
+slot::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--scifi-focus-offset-plate); }
+/* A badge is a dark chip; its tone is its rim and its ink. */
+badge::part(base) { background: var(--badge-fill); color: var(--badge-ink); border: var(--stroke-hairline) solid var(--line-strong-60); font-family: var(--label-font); letter-spacing: var(--font-tracking-sm); text-transform: uppercase; }
+badge[tone=info]::part(base) { color: var(--info); border-color: var(--info); }
+badge[tone=success]::part(base) { color: var(--success); border-color: var(--success); }
+badge[tone=warn]::part(base) { color: var(--warn); border-color: var(--warn); }
+badge[tone=danger]::part(base) { color: var(--danger); border-color: var(--danger); }
+badge[tone=accent]::part(base) { color: var(--accent); border-color: var(--accent); }
+
+/* ── Bars, progress, meters: an energy fill in a hairline well. */
+progress::part(track), meter::part(track) { background: var(--well); border: var(--stroke-hairline) solid var(--line-strong-40); box-shadow: var(--well-shadow); }
+progress::part(fill), meter::part(fill) { background: var(--scifi-energy-fill); box-shadow: var(--scifi-energy-glow); }
+/* A meter out of its best range warns in yellow, then in red. */
+meter[region=suboptimum]::part(fill) { background: var(--scifi-warn-fill); box-shadow: none; }
+meter[region=poor]::part(fill) { background: var(--scifi-danger-fill); box-shadow: none; }
+meter.health::part(fill) { background: var(--scifi-health-fill); box-shadow: none; }
+meter.mana::part(fill) { background: var(--scifi-mana-fill); box-shadow: none; }
+
+/* ── Keyboard (on-screen). */
+keyboard::part(panel) { border-top: var(--stroke-hairline) solid var(--line-strong); background: var(--backdrop); }
+keyboard::part(key), keyboard::part(candidate) { border: var(--stroke-hairline) solid var(--line-strong-50); background: var(--keyboard-key-fill); box-shadow: none; color: var(--ink); font-family: var(--label-font); }
+keyboard::part(key):hover, keyboard::part(candidate):hover { border-color: var(--highlight); }
+keyboard::part(key):active, keyboard::part(candidate):active { background: var(--scifi-key-pressed); border-color: var(--primary); }
+keyboard::part(key):disabled { color: var(--ink-disabled); }
+keyboard::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); }
+
+/* ── Touch controls. */
+joystick::part(base), dpad::part(base) { background: var(--scifi-touch-plate); border: var(--stroke-hairline) solid var(--line-strong); }
+joystick::part(rim):active { border-color: var(--accent); }
+joystick::part(knob) { background: var(--slider-knob-fill); }
+dpad::part(indicator):active, dpad::part(chevron):active { background: var(--accent); }
+
+/* ── Scroll bars. A heading's ::part(flourish) is a text span and takes no
+   background (README.md §Pending engine gaps), so headings carry no rule. */
+scroll::part(bar) { background: var(--line-strong-60); }
+
+/* ── The remaining registry parts: icon children take the lit ink, the
+   IME composition its underline, the keyboard's preview and candidates the
+   panel. `input[type=range]::part(reach)` is the knob's hit area and stays
+   undrawn. */
+details::part(root) { border-bottom: var(--stroke-hairline) solid var(--line-strong-20); }
+details::part(content) { padding: var(--space-xs) var(--space-sm) var(--space-sm); color: var(--ink); }
+keyboard::part(preview) { border-bottom: var(--stroke-hairline) solid var(--line-strong-40); background: var(--well); color: var(--ink); font-family: var(--font-body); }
+keyboard::part(candidates) { border-bottom: var(--stroke-hairline) solid var(--line-strong-27); background: var(--panel); }
+input::part(composition), textarea::part(composition) { text-decoration-line: underline; text-decoration-color: var(--accent); }
+input::part(reveal-icon), input::part(clear-icon) { color: var(--ink-muted); }
+og-icon::part(secondary) { color: var(--accent); }
+/* An icon and a picture keep the engine's own tint: a pack ink here would
+   multiply a full-colour picture, and the light scheme's ink is dark. */
+joystick::part(direction) { background: var(--accent); }
+
+/* ── The role parts' shape: every frame, plate and cell a built-in
+   component draws takes the cut its radius token names. The default style
+   dresses these parts from the role tokens (base.css); this is the one
+   thing a token cannot say. */
+[part$=".frame"], [part$=".cell"] { corner-shape: bevel; }
+
+} /* @layer scifi-controls */

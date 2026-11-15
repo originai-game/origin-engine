@@ -1,0 +1,7 @@
+type import
+version 1
+---
+# A mask: linear, inked by the rule that uses it.
+texture {
+  kind linear
+}
