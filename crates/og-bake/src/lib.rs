@@ -3,7 +3,8 @@
 //! Pure CPU and native: lightmap UVs from xatlas ([`atlas`]), a BVH
 //! ([`bvh`]), a progressive diffuse path tracer ([`trace`]) that fills
 //! lightmap pages ([`lightmap`]) and spherical-harmonic light volumes
-//! ([`volume`]). The crate knows nothing about cooked files or the ECS:
+//! ([`volume`]), and the transfer of a detailed surface's look into a
+//! simpler mesh's pages ([`transfer`], og-cook's HLOD proxies). The crate knows nothing about cooked files or the ECS:
 //! og-cli's `bake_lightmaps.rs` builds a [`scene::Scene`] from a cooked
 //! scene and writes what comes back.
 //!
@@ -19,6 +20,7 @@ pub mod lightmap;
 pub mod projection;
 pub mod scene;
 pub mod trace;
+pub mod transfer;
 pub mod volume;
 
 pub use atlas::{Atlas, AtlasMesh, AtlasVertex, PackSettings, UnwrapMesh, unwrap};
