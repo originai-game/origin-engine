@@ -602,33 +602,55 @@ impl Ui {
                 None
             }
         };
-        // `filter="url(#id)"`: the element and its subtree drawn through
-        // an SVG `<filter>`, the innermost of its layers.
-        let filter = match r.str("svgFilter").map(str::trim) {
-            Some(v) if kind != Kind::Svg && v != "none" && !v.is_empty() => {
-                match self.docs.svg_filter(b, n, kind, r, v, &t, vb, &self.env) {
-                    Ok(f) => Some(f),
+        // `filter`: the element and its subtree drawn through its layers,
+        // the innermost first. The CSS property, which its attribute
+        // presents and a rule overrides, takes a function list
+        // (`drop-shadow()`, `blur()`…) as a box's does; `url(#id)` is an
+        // SVG `<filter>` in the element's user space.
+        let svg_url =
+            |ui: &mut Ui, v: &str| match ui.docs.svg_filter(b, n, kind, r, v, &t, vb, &ui.env) {
+                Ok(f) => Some(f),
+                Err(e) => {
+                    warn(ui, format!("filter: {e}"));
+                    None
+                }
+            };
+        let layers: Vec<crate::paint::Layer> = match (
+            r.str("filter").map(str::trim),
+            r.str("svgFilter").map(str::trim),
+        ) {
+            (Some(v), _) if kind != Kind::Svg && v != "none" && !v.is_empty() => {
+                match crate::doc::paint_css::filter_fns(v, "filter") {
+                    Ok(fns) => {
+                        let theme = *self.theme();
+                        let current = r.color("color").unwrap_or(theme.palette.ink);
+                        crate::doc::paint_css::filter_layers(
+                            &fns,
+                            |c| c.map_or(current.linear(), |c| c.resolve(&theme)),
+                            |u| svg_url(self, u),
+                        )
+                    }
                     Err(e) => {
                         warn(self, format!("filter: {e}"));
-                        None
+                        Vec::new()
                     }
                 }
             }
-            _ => None,
+            (_, Some(v)) if kind != Kind::Svg && v != "none" && !v.is_empty() => svg_url(self, v)
+                .map(|f| crate::paint::Layer {
+                    filter: Some(f),
+                    ..Default::default()
+                })
+                .into_iter()
+                .collect(),
+            _ => Vec::new(),
         };
+        let filter = !layers.is_empty();
         let filtered = |mut d: ElementDraw| {
-            if let Some(f) = &filter {
-                d.filters.insert(
-                    0,
-                    crate::paint::Layer {
-                        filter: Some(f.clone()),
-                        ..Default::default()
-                    },
-                );
-            }
+            d.filters.splice(0..0, layers.iter().cloned());
             d
         };
-        if cut.is_none() && filter.is_some() && kind != Kind::SvgShape {
+        if cut.is_none() && filter && kind != Kind::SvgShape {
             self.set_draw(filtered(ElementDraw {
                 view_box: Some(vb),
                 ..ElementDraw::default()
@@ -733,13 +755,15 @@ impl Ui {
                 Err(e) => warn(self, e),
             }
         }
-        if let Some(f) = &filter {
+        let uses: Vec<&crate::paint::FilterUse> =
+            layers.iter().filter_map(|l| l.filter.as_deref()).collect();
+        if let Some(f) = uses.first() {
             let bbox = f.svg.map_or([0.0; 4], |(_, bbox)| bbox);
             self.build_element_images(
                 b,
                 n,
                 &computed,
-                &[&**f],
+                &uses,
                 ImageSpace::Svg(t, bbox),
                 &mut build_inner,
             );

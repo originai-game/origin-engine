@@ -146,3 +146,45 @@ fn image_sets_reselect_on_density_changes() {
         );
     }
 }
+
+#[test]
+fn a_css_filter_function_list_filters_an_svg_shape() {
+    // The `filter` property a rule sets on an SVG shape is the one its
+    // attribute presents: a function list draws as a box's does.
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(
+        UiDocument::parse(
+            "ui/arc.svelte",
+            r##"<meta name="component" content="arc" />
+<svg viewBox="0 0 100 100" style="width: 100px; height: 100px"><path id="Arc" d="M10 10 L90 90" stroke="#ff0000" stroke-width="8"></path></svg>
+<style>#Arc { filter: drop-shadow(0 0 6px #0000ff); }</style>"##,
+        )
+        .unwrap(),
+    );
+    ui.mount_document(
+        reactive::SourceId::new("test", "arc"),
+        "arc",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    ui.begin(InputFrame::default(), Viewport::new(200.0, 200.0));
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
+    ui.end();
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let items = &ui.frame().items;
+    let shadow = items
+        .iter()
+        .position(|i| {
+            matches!(&i.cmd, DrawCmd::BeginLayer { material, params, .. }
+                if *material == og_draw::UiMaterial::Builtin(og_draw::UiBuiltin::DropShadow)
+                    && params[1] == [0.0, 0.0, 1.0, 1.0])
+        })
+        .expect("a drop-shadow layer in the shadow's colour");
+    let stroke = items
+        .iter()
+        .position(|i| matches!(&i.cmd, DrawCmd::Shape { shape, .. } if shape.paint == og_draw::UiPaint::Solid([1.0, 0.0, 0.0, 1.0])))
+        .expect("the stroke");
+    assert!(shadow < stroke, "the stroke draws inside the layer");
+}

@@ -752,7 +752,9 @@ The parser is the cook's (`og_ui::svg`, shared with `type vector`).
   a side (wider ones run as σ/√n passes), `BackgroundImage`,
   `BackgroundAlpha`, `FillPaint` and `StrokePaint` read transparent black.
   A CSS-box filter region defaults to the border box grown 10 % a side, in
-  its CSS px.
+  its CSS px. A CSS `filter` function list on an SVG element
+  (`drop-shadow()`, `blur()`…) draws as a box's does, and a rule's `filter`
+  overrides the attribute, the property it presents.
 - `<feImage href="#id">` draws that SVG element as `<use>` would (Filter
   Effects 1 §15.17): in the filtered element's user space, moved by the
   primitive's `x` and `y`, inheriting the filtered element's computed
