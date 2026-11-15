@@ -549,7 +549,7 @@ fn a_node_out_on_an_arm_of_an_instanced_parent_stays_folded() {
 /// draws AndrewFM01's 2000 thin lines or Pierre02's fire as quads many
 /// times their area.
 #[test]
-fn a_sprite_is_its_mean_scale_under_its_generators_scale() {
+fn an_uneven_sprite_keeps_its_width_and_height_under_its_generators_scale() {
     let c = run(&project(
         "<Node><CommonValues><MaxGeneration><Value>10</Value></MaxGeneration></CommonValues>\
          <ScalingValues><Fixed><Scale><X>0.5</X><Y>0.5</Y><Z>0.5</Z></Scale></Fixed></ScalingValues>\
@@ -559,7 +559,10 @@ fn a_sprite_is_its_mean_scale_under_its_generators_scale() {
          </Children></Node>",
     ));
     let e = file(&c, "n0-0.emitter.ogt");
-    // sqrt(0.25 × 4) = 1, times the generator's 0.5.
-    assert_eq!(line(e, "size"), "size 0.5 0.5", "{e}");
+    // 0.25 wide and 4 tall, times the generator's 0.5: 0.125 across and
+    // 16 times that tall (2), not a square at their mean.
+    assert_eq!(line(e, "size"), "size 0.125 0.125", "{e}");
+    assert_eq!(line(e, "heightOverLife"), "heightOverLife 0 16 1 16", "{e}");
     assert!(!e.contains("sizeOverLife"), "{e}");
+    assert!(!e.contains("scaled unevenly"), "{e}");
 }

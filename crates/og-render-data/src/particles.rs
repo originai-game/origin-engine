@@ -491,7 +491,13 @@ pub struct ParticleEmitter {
     pub speed: [f32; 2],
     /// Start size (the quad's side) in world units.
     pub size: [f32; 2],
+    /// Scales the size over the life: the width and, without
+    /// [`Self::height_over_life`], the height.
     pub size_over_life: Curve,
+    /// Scales the height alone over the life (a quad's side along its up,
+    /// or the velocity when stretched; a mesh's y): a flame tall and
+    /// narrow, a shockwave flat and wide. None: the height is the width.
+    pub height_over_life: Option<Curve>,
     pub color_over_life: ColorCurve,
     /// Linear tint multiplied with the colour curve and the texture; above 1
     /// is emissive (blooms).
@@ -612,6 +618,7 @@ impl Default for ParticleEmitter {
             speed: [1.5, 2.5],
             size: [0.08, 0.12],
             size_over_life: Curve::default(),
+            height_over_life: None,
             color_over_life: ColorCurve::default(),
             color: [1.0; 4],
             rotation_degrees: [0.0, 0.0],
@@ -724,6 +731,7 @@ impl ParticleEmitter {
             return Err("distortion is drawn by billboards (render billboard)".into());
         }
         for (name, c) in [
+            ("height_over_life", &self.height_over_life),
             ("speed_over_life", &self.speed_over_life),
             ("spin_over_life", &self.spin_over_life),
             ("rate_over_time", &self.rate_over_time),

@@ -90,6 +90,7 @@ pub(super) fn emitter_gpu(
     let (first, count, bursts, time) =
         step.map_or((0, 0, 0, 0.0), |s| (s.first, s.count, s.bursts, s.time));
     let (speed_t, speed_v, speed_n) = curve_gpu(e.speed_over_life.as_ref());
+    let (height_t, height_v, height_n) = curve_gpu(e.height_over_life.as_ref());
     let (spin_t, spin_v, spin_n) = curve_gpu(e.spin_over_life.as_ref());
     let pulls = crate::particles::placed_attractors(e, transform);
     let (mut attract, mut attract_r) = ([[0.0; 4]; 4], [0.0; 4]);
@@ -184,5 +185,8 @@ pub(super) fn emitter_gpu(
         motion: velocity.extend(e.inherit_velocity).to_array(),
         counts2: [speed_n, spin_n, pulls.len() as f32, points as f32 * 2.0],
         air: [0.0; 4],
+        height_t,
+        height_v,
+        counts3: [height_n, 0.0, 0.0, 0.0],
     }
 }

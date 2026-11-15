@@ -88,7 +88,7 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
   o.oit_key = oit_key4(p.pos_age, vec3<f32>(f32(vi / 3u), p.misc.x, 0.0));
   let age = p.pos_age.w;
   let t = clamp(age / max(p.vel_life.w, 1e-6), 0.0, 1.0);
-  let size = p.misc.x * size_curve(t);
+  let size = particle_size(p.misc.x, t);
   var center = p.pos_age.xyz;
   var vel = p.vel_life.xyz;
   if (emitter.ranges2.z > 0.5) {
@@ -102,19 +102,22 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
   let speed = length(v2);
   if (emitter.render.x > 0.5 && speed > 1e-4) {
     let axis = v2 / speed;
-    let len = size + speed * emitter.render.y;
+    let len = size.y + speed * emitter.render.y;
     let along = right * axis.x + up * axis.y;
     let across = right * -axis.y + up * axis.x;
-    offset = along * (c.y * len) + across * (c.x * size);
+    offset = along * (c.y * len) + across * (c.x * size.x);
   } else {
     let rot = particle_rotation(p.misc, age, p.vel_life.w, t);
     let cs = cos(rot);
     let sn = sin(rot);
-    offset = (right * (c.x * cs - c.y * sn) + up * (c.x * sn + c.y * cs)) * size;
+    // The height as a share of the width: exactly 1 for a square one,
+    // whose corner is then the same arithmetic as before heights.
+    let cy = c.y * (size.y / max(size.x, 1e-6));
+    offset = (right * (c.x * cs - cy * sn) + up * (c.x * sn + cy * cs)) * size.x;
   }
   let world = center + offset;
   o.clip = frame.view_proj * vec4<f32>(world, 1.0);
-  o.facing = vec2<f32>(dot(offset, right), dot(offset, up)) / max(size, 1e-6);
+  o.facing = vec2<f32>(dot(offset, right), dot(offset, up)) / max(max(size.x, size.y), 1e-6);
   // The sprite sheet frame.
   let columns = max(emitter.sheet.x, 1.0);
   let rows = max(emitter.sheet.y, 1.0);
@@ -227,14 +230,14 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
   }
   let age = p.pos_age.w;
   let t = clamp(age / max(p.vel_life.w, 1e-6), 0.0, 1.0);
-  let size = p.misc.x * size_curve(t);
+  let size = particle_size(p.misc.x, t);
   var center = p.pos_age.xyz;
   var vel = p.vel_life.xyz;
   if (emitter.ranges2.z > 0.5) {
     center = (emitter.transform * vec4<f32>(center, 1.0)).xyz;
     vel = (emitter.transform * vec4<f32>(vel, 0.0)).xyz;
   }
-  var pos = m.position * size;
+  var pos = m.position * vec3<f32>(size.x, size.y, size.x);
   var nrm = m.normal;
   let speed = length(vel);
   if (emitter.look.z > 1.5) {
@@ -249,7 +252,7 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
     if (dot(x, x) < 1e-6) { x = cross(y, vec3<f32>(1.0, 0.0, 0.0)); }
     x = normalize(x);
     let z = cross(x, y);
-    let stretch = 1.0 + speed * emitter.render.y / max(size, 1e-4);
+    let stretch = 1.0 + speed * emitter.render.y / max(size.y, 1e-4);
     pos = x * pos.x + y * (pos.y * stretch) + z * pos.z;
     nrm = x * nrm.x + y * (nrm.y / stretch) + z * nrm.z;
   } else {

@@ -44,10 +44,10 @@ fn expand(@builtin(global_invocation_id) id: vec3<u32>) {
   let age = p.pos_age.w;
   let alive = age < p.vel_life.w;
   let t = clamp(age / max(p.vel_life.w, 1e-6), 0.0, 1.0);
-  var size = p.misc.x * size_curve(t);
+  var size = particle_size(p.misc.x, t);
   var color = color_curve(t) * emitter.color;
   if (!alive) {
-    size = 0.0;
+    size = vec2<f32>(0.0);
     color = vec4<f32>(0.0);
   }
   let rotation = particle_rotation(p.misc, age, p.vel_life.w, t);
@@ -73,7 +73,7 @@ fn expand(@builtin(global_invocation_id) id: vec3<u32>) {
     uv = vec4<f32>(col * du, row * dv, (col + 1.0) * du, (row + 1.0) * dv);
   }
   put(at, vec4<f32>(pos.x, pos.y, params.z, rotation));
-  put(at + 4u, vec4<f32>(size, size, 0.5, 0.5));
+  put(at + 4u, vec4<f32>(size.x, size.y, 0.5, 0.5));
   put(at + 8u, uv);
   put(at + 12u, color);
   instances[at + 16u] = NO_FLASH;

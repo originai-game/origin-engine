@@ -19,7 +19,8 @@ Every line the three effect formats take, from the tables their parsers read: an
 | `lifetime <min> [<max>]` | `1 1.5` | Seconds a particle lives. |
 | `speed <min> [<max>]` | `1.5 2.5` | Metres per second at birth. |
 | `size <min> [<max>]` | `0.08 0.12` | Metres across at birth. |
-| `sizeOverLife <t> <value> ...` |  | A curve that scales the size over the life (1 when left out). |
+| `sizeOverLife <t> <value> ...` |  | A curve that scales the size over the life (1 when left out): the width and, without `heightOverLife`, the height. |
+| `heightOverLife <t> <value> ...` |  | A curve that scales the height alone over the life (along the sprite's up, or the velocity when stretched; a mesh's y): a tall flame, a flat shockwave. Left out, the height is the width. |
 | `colorOverLife { key <t> <r> <g> <b> <a> ... }` |  | Linear colour keys over the life, at most 8; left out, white fading over the last quarter. |
 | `color <r> <g> <b> [<a>]` | `1 1 1 1` | A linear tint over the colour keys; above 1 blooms. |
 | `rotation <min> [<max>]` | `0` | The start rotation in degrees. |

@@ -497,6 +497,35 @@ fn scale_keys(node: &Node, life: f32) -> (f32, Vec<(f32, [f32; 1])>, bool) {
     (peak, keys, square)
 }
 
+/// One channel's keys over the life ([`curve::keys`]).
+type Keys = Vec<(f32, [f32; 1])>;
+
+/// An unevenly scaled sprite's width and height over its life, each on
+/// the peak width (its `size`): (peak width, width keys, height keys) at
+/// shared times.
+fn width_height_keys(node: &Node, life: f32) -> (f32, Keys, Keys) {
+    let l = life.max(1.0);
+    let s = |t: f32| {
+        let v = at3(&node.scale, t * l, l);
+        [v.x.abs(), v.y.abs()]
+    };
+    let peak = (0..=16)
+        .map(|i| s(i as f32 / 16.0)[0])
+        .fold(0.0, f32::max)
+        .max(1e-4);
+    let keys = curve::keys(
+        |t| {
+            let v = s(t);
+            [v[0] / peak, v[1] / peak]
+        },
+        &[],
+        og_render_data::MAX_CURVE_KEYS,
+        0.01,
+    );
+    let one = |c: usize| keys.iter().map(|(t, v)| (*t, [v[c]])).collect();
+    (peak, one(0), one(1))
+}
+
 fn curve_line(keys: &[(f32, [f32; 1])]) -> String {
     keys.iter()
         .map(|(t, v)| format!("{} {}", n(*t), n(v[0])))
@@ -1281,9 +1310,12 @@ fn emitter_file(
     }
     let mo = motion(cx, chain, p.generator, lc);
     let (dir, speed, mut spread) = direction(&mo.vel);
-    let (peak, size_keys, square) = scale_keys(node, lc);
+    let (mut peak, mut size_keys, square) = scale_keys(node, lc);
+    // Unevenly scaled: its width and height each over its life.
+    let mut height_keys = None;
     if drawn && !square {
-        cx.find(node, "a sprite scaled unevenly: drawn square at its mean");
+        let (w, wk, hk) = width_height_keys(node, lc);
+        (peak, size_keys, height_keys) = (w, wk, Some(hk));
     }
     let start_scale = node.scale[0].start();
     let rel = if start_scale.c().abs() > 1e-4 {
@@ -1418,6 +1450,9 @@ fn emitter_file(
         let _ = writeln!(e, "size {}", ns(&[size * rel.min, size * rel.max]));
         if !curve::flat(&size_keys, 1e-3) {
             let _ = writeln!(e, "sizeOverLife {}", curve_line(&size_keys));
+        }
+        if let Some(h) = &height_keys {
+            let _ = writeln!(e, "heightOverLife {}", curve_line(h));
         }
         e.push_str("colorOverLife {\n");
         for (t, c) in &color_keys(node, lc) {

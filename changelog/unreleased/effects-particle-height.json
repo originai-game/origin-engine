@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "particles: heightOverLife",
+      "summary": "An emitter's `heightOverLife` curve scales a particle's height alone over its life (along its own up, or the velocity when stretched; a mesh particle's y), on both simulation paths and in sprite mode: a flame tall and narrow, a shockwave flat and wide. Left out, the height is the width, so existing emitters draw as before. `og vfx import` writes it for Effekseer sprites scaled unevenly, which it drew square at their mean (840 of the packs' conversion notes)."
+    }
+  ]
+}

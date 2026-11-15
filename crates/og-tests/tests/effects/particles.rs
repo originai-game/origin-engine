@@ -691,3 +691,76 @@ fn quality_thins_busy_systems_and_spares_a_handful() {
         );
     }
 }
+
+/// One still particle 0.4 m across, three times as tall
+/// (`height_over_life`), turned by `degrees`, before a camera 4 m away.
+fn tall_scene(height: bool, degrees: f32) -> RenderScene {
+    let mut scene = RenderScene::new();
+    let e = scene.add_emitter(ParticleEmitter {
+        max_particles: 1,
+        rate: 0.0,
+        bursts: vec![og_render::Burst::once(0.0, 1)],
+        looping: false,
+        duration: 10.0,
+        lifetime: [10.0, 10.0],
+        speed: [0.0, 0.0],
+        size: [0.4, 0.4],
+        height_over_life: height.then(|| Curve::constant(3.0)),
+        color_over_life: og_render::ColorCurve::constant([1.0; 4]),
+        color: [4.0, 4.0, 4.0, 1.0],
+        rotation_degrees: [degrees, degrees],
+        gravity: Vec3::ZERO,
+        blend: og_render::ParticleBlend::Additive,
+        ..Default::default()
+    });
+    scene.effects.particles.push(ParticleSystem::new(
+        1,
+        e,
+        Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0)),
+        3,
+        0,
+    ));
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 1.0, 4.0),
+        target: Vec3::new(0.0, 1.0, 0.0),
+        ..Default::default()
+    };
+    scene
+}
+
+/// A particle with a height curve draws as tall as it says on both paths,
+/// and its rotation turns the tall shape (the height is along the
+/// particle's own up, not the screen's): upright it is about three times
+/// taller than wide, turned 90 degrees three times wider than tall, and
+/// without the curve square. A height lost on a path draws a square; a
+/// height applied after the rotation draws tall when turned.
+#[test]
+#[ignore = "requires GPU"]
+fn a_height_curve_draws_a_tall_particle_along_its_own_up() {
+    for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
+        let desc = RenderDesc {
+            particles: path,
+            ..small()
+        };
+        let aspect = |height: bool, degrees: f32| {
+            let mut scene = tall_scene(height, degrees);
+            let (img, _, _) = run(&desc, &mut scene, 10, |s, f| fx::tick_all(s, f as u64));
+            let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0, 0);
+            for y in 0..img.height {
+                for x in 0..img.width {
+                    if luma(px(&img, x, y)) > 60.0 {
+                        (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x), y1.max(y));
+                    }
+                }
+            }
+            assert!(x1 >= x0, "{path:?}: the particle drew nothing");
+            (y1 - y0 + 1) as f32 / (x1 - x0 + 1) as f32
+        };
+        let (square, tall, turned) = (aspect(false, 0.0), aspect(true, 0.0), aspect(true, 90.0));
+        println!("{path:?}: square {square:.2}, tall {tall:.2}, turned {turned:.2}");
+        assert!((0.8..1.25).contains(&square), "{path:?}: square {square}");
+        assert!((2.4..3.6).contains(&tall), "{path:?}: tall {tall}");
+        assert!((0.28..0.42).contains(&turned), "{path:?}: turned {turned}");
+    }
+}

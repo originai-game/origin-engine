@@ -83,6 +83,12 @@ struct EmitterGpu {
     /// xyz: what drag closes on, in the simulation space
     /// (`carrying_air`: the emitter's `wind` share of the air).
     air: [f32; 4],
+    /// The height over life (`height_over_life`; `counts3.x` keys, 0:
+    /// the size curve's).
+    height_t: [[f32; 4]; 2],
+    height_v: [[f32; 4]; 2],
+    /// x: height keys.
+    counts3: [f32; 4],
 }
 
 /// How a system's particles are drawn.
@@ -463,7 +469,8 @@ fn collider_buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
 
 /// The box a system's particles can reach in their longest life: the
 /// emitter's shape, plus the furthest its fastest particle travels under
-/// gravity and turbulence (drag only shortens it), clamped at 500 m.
+/// gravity and turbulence (drag only shortens it) and half its longest
+/// side, clamped at 500 m.
 fn reach(e: &ParticleEmitter, transform: Mat4, tick_rate: f32) -> (Vec3, Vec3) {
     let scale = transform
         .to_scale_rotation_translation()
@@ -495,7 +502,17 @@ fn reach(e: &ParticleEmitter, transform: Mat4, tick_rate: f32) -> (Vec3, Vec3) {
         + e.noise.strength.abs()
         + field
         + e.attractors.iter().map(|a| a.strength.abs()).sum::<f32>();
-    let r = (shape + speed * life + 0.5 * pull * life * life + 0.5).min(500.0);
+    // Half the particle's longest side (its size curve's peak, its height
+    // curve's, a velocity stretch's length), at least 0.5 m.
+    let peak = |c: &crate::particles::Curve| c.keys.iter().map(|k| k.1).fold(0.0, f32::max);
+    let side = e.size[0].abs().max(e.size[1].abs())
+        * peak(&e.size_over_life).max(e.height_over_life.as_ref().map_or(0.0, peak));
+    let stretch = match e.align {
+        ParticleAlign::Velocity { stretch } => speed * stretch.abs(),
+        _ => 0.0,
+    };
+    let extent = (0.5 * (side + stretch) * scale).max(0.5);
+    let r = (shape + speed * life + 0.5 * pull * life * life + extent).min(500.0);
     let at = transform.w_axis.truncate();
     (at - Vec3::splat(r), at + Vec3::splat(r))
 }

@@ -913,7 +913,7 @@ fn push_sprites(
             sprite: Sprite {
                 texture: if array.is_some() { None } else { e.texture },
                 position: Vec3::new(pos.x, pos.y, z),
-                size: Vec2::splat(size),
+                size: Vec2::from(size),
                 anchor: Vec2::splat(0.5),
                 rotation,
                 color,

@@ -896,16 +896,22 @@ impl CpuParticles {
     }
 }
 
-/// What a particle looks like at its age: (size, colour, rotation, frame
-/// of `frames`: the sheet's, or an array emitter's layers).
+/// What a particle looks like at its age: (width and height, colour,
+/// rotation, frame of `frames`: the sheet's, or an array emitter's layers).
 pub fn appearance(
     e: &ParticleEmitter,
     p: &ParticleState,
     frames: u32,
-) -> (f32, [f32; 4], f32, u32) {
+) -> ([f32; 2], [f32; 4], f32, u32) {
     let frames = frames.max(1);
     let t = (p.pos_age[3] / p.vel_life[3].max(1e-6)).clamp(0.0, 1.0);
-    let size = p.misc[0] * e.size_over_life.eval(t);
+    let width = p.misc[0] * e.size_over_life.eval(t);
+    let size = [
+        width,
+        e.height_over_life
+            .as_ref()
+            .map_or(width, |h| p.misc[0] * h.eval(t)),
+    ];
     let c = e.color_over_life.eval(t);
     let color = [
         c[0] * e.color[0],

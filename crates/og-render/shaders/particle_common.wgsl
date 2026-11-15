@@ -36,6 +36,9 @@ struct Emitter {
   motion: vec4<f32>,       // xyz: the emitter's velocity this tick, w: the fraction a particle inherits
   counts2: vec4<f32>,      // x: speed keys (0 none), y: spin keys (0 none), z: attractors, w: where a grid's vectors start in mesh_points
   air: vec4<f32>,          // xyz: what drag closes on, in the simulation space (the emitter's `wind` share of the air)
+  height_t: array<vec4<f32>, 2>,  // the height over life (counts3.x keys; 0: the size curve's)
+  height_v: array<vec4<f32>, 2>,
+  counts3: vec4<f32>,      // x: height keys
 };
 
 // A curve over life (keys `ts`, `vs`, `n` of them) at `t`.
@@ -129,6 +132,16 @@ fn size_curve(t: f32) -> f32 {
     }
   }
   return v;
+}
+
+// A particle's width and height at life `t` from its start size `s`
+// (appearance in particles/cpu.rs): the size curve, and the height curve
+// for the height where the emitter has one.
+fn particle_size(s: f32, t: f32) -> vec2<f32> {
+  let w = s * size_curve(t);
+  let n = u32(emitter.counts3.x);
+  if (n == 0u) { return vec2<f32>(w, w); }
+  return vec2<f32>(w, s * curve_at(emitter.height_t, emitter.height_v, n, t));
 }
 
 fn color_curve(t: f32) -> vec4<f32> {

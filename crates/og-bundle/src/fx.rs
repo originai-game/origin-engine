@@ -142,8 +142,15 @@ pub const EMITTER_LINES: &[Line] = &[
         "sizeOverLife",
         "<t> <value> ...",
         "",
-        "A curve that scales the size over the life (1 when left out).",
+        "A curve that scales the size over the life (1 when left out): the width and, without `heightOverLife`, the height.",
         "sizeOverLife 0 0.2 0.3 1 1 0",
+    ),
+    Line::new(
+        "heightOverLife",
+        "<t> <value> ...",
+        "",
+        "A curve that scales the height alone over the life (along the sprite's up, or the velocity when stretched; a mesh's y): a tall flame, a flat shockwave. Left out, the height is the width.",
+        "heightOverLife 0 2 1 3",
     ),
     Line::new(
         "colorOverLife",
@@ -950,6 +957,7 @@ pub fn parse_emitter_linked(
                     .ok_or_else(|| format!("line {line}: effect \"<effect asset id>\""))?;
                 em.effect = effect(id).map_err(|r| format!("line {line}: effect {id}: {r}"))?;
             }
+            "heightOverLife" => em.height_over_life = Some(curve(e)?),
             "speedOverLife" => em.speed_over_life = Some(curve(e)?),
             "spinOverLife" => em.spin_over_life = Some(curve(e)?),
             "rateOverTime" => em.rate_over_time = Some(curve(e)?),
