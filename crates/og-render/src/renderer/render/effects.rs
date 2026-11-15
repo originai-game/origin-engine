@@ -41,6 +41,11 @@ pub(super) struct FrameEffects {
     pub motion_read: bool,
     pub ui_depth: bool,
     pub prepass: bool,
+    /// Under TAA or motion blur, whether an instance moved since the frame
+    /// before (its previous transform is not its own, or debris moves):
+    /// without, its previous records are the instances' own and are not
+    /// built (draw_frame.rs `previous_valid`).
+    pub instances_moved: bool,
 }
 
 impl Renderer {
@@ -170,6 +175,10 @@ impl Renderer {
             .overlay
             .as_ref()
             .is_some_and(|o| o.ui.needs_depth());
+        // Walked once, every instance: a still town's 94,784 compared twice
+        // a frame was a tenth of its render call.
+        let instances_moved = (taa_on || motion_blur.is_some())
+            && (objects_moved(scene) || crate::debris::moving(scene));
         let prepass = !custom_posts.is_empty()
             || ao_target
             || contact
@@ -206,7 +215,7 @@ impl Renderer {
             // culling and the meshlet path carry the previous transforms
             // too: cull_gpu.rs `previous`).
             || (taa_on
-                && (skinned_motion == Some(true) || batches.iter().any(|b| b.simulated) || !skinned.garments.is_empty() || skinned.baked_moved || objects_moved(scene) || crate::debris::moving(scene)));
+                && (skinned_motion == Some(true) || batches.iter().any(|b| b.simulated) || !skinned.garments.is_empty() || skinned.baked_moved || instances_moved));
         FrameEffects {
             ao,
             gi,
@@ -228,6 +237,7 @@ impl Renderer {
             motion_read,
             ui_depth,
             prepass,
+            instances_moved,
         }
     }
 }

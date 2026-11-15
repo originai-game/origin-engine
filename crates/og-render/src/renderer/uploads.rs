@@ -159,11 +159,15 @@ impl Renderer {
         } else {
             &[]
         };
-        for (i, inst) in scene.objects.instances.iter().enumerate() {
-            if scene.mesh_foliage(inst.mesh).is_some() {
-                sway[inst.mesh.index()] = sway[inst.mesh.index()]
-                    .max(inst.sway)
-                    .max(previous.get(i).copied().unwrap_or(inst.sway));
+        // Only a scene with a foliage mesh walks its instances (a town of
+        // 94,784 buildings and no foliage walked them every frame).
+        if scene.mesh_foliage_all().iter().any(Option::is_some) {
+            for (i, inst) in scene.objects.instances.iter().enumerate() {
+                if scene.mesh_foliage(inst.mesh).is_some() {
+                    sway[inst.mesh.index()] = sway[inst.mesh.index()]
+                        .max(inst.sway)
+                        .max(previous.get(i).copied().unwrap_or(inst.sway));
+                }
             }
         }
         for (i, mesh) in self.cache.meshes.iter_mut().enumerate() {

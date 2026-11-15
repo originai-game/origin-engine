@@ -380,8 +380,13 @@ impl Renderer {
         // and culls the skinned ones as before.
         // Per-object motion for motion blur and TAA's motion vectors: the
         // previous transforms at the same slots as the instances (GPU
-        // culling compacts its camera pass's beside its own).
-        let previous_valid = !scene.objects.previous_transforms.is_empty()
+        // culling compacts its camera pass's beside its own). A frame where
+        // no instance moved draws its motion from the instances themselves
+        // (pass_prepass.rs), so their previous records are neither built
+        // nor uploaded; foliage's carry its previous sway as well, so a
+        // frame with foliage builds them whatever moved.
+        let previous_valid = (effects.instances_moved || batches.iter().any(|b| b.foliage))
+            && !scene.objects.previous_transforms.is_empty()
             && scene.objects.previous_transforms.len() == scene.objects.instances.len();
         let blur_motion = effects.motion_blur.is_some() && previous_valid;
         let sorted = transforms.len() as u32;

@@ -202,6 +202,12 @@ pub(crate) struct SortedInstances {
     /// The sorted instances whose GPU transform or look the last refresh
     /// found changed.
     changed: Vec<u32>,
+    /// The submitted instances as the last sort or refresh read them, and
+    /// each one's sorted slot (`u32::MAX`: not drawn): a refresh compares
+    /// the submission with them in its own order and visits through the
+    /// sort only the instances that differ.
+    seen: Vec<Instance>,
+    slots: Vec<u32>,
     /// Counts the updates ([`Sorted::serial`]).
     serial: u64,
     /// The materials whose shader parameters moved this frame, ascending
@@ -304,6 +310,27 @@ fn same_bits(a: &Mat4, b: &Mat4) -> bool {
     bytemuck::cast_ref::<Mat4, [u32; 16]>(a) == bytemuck::cast_ref::<Mat4, [u32; 16]>(b)
 }
 
+/// Whether two instances are the same, bit for bit: everything a sort or
+/// a refresh reads of one (its transform, layer, look, flags and sway).
+fn same_instance(a: &Instance, b: &Instance) -> bool {
+    let fx = |f: &crate::InstanceFx| {
+        (
+            f.flash.to_bits(),
+            f.flash_color.to_array().map(f32::to_bits),
+            f.tint.to_array().map(f32::to_bits),
+            f.outline,
+        )
+    };
+    a.mesh == b.mesh
+        && a.material == b.material
+        && same_bits(&a.transform, &b.transform)
+        && a.material_layer == b.material_layer
+        && fx(&a.fx) == fx(&b.fx)
+        && a.cast_shadows == b.cast_shadows
+        && a.receive_shadows == b.receive_shadows
+        && a.sway.to_bits() == b.sway.to_bits()
+}
+
 impl SortedInstances {
     /// The frame's reflection probe boxes, before [`SortedInstances::update`]:
     /// other boxes than the last frame's sort the instances again.
@@ -389,6 +416,7 @@ impl SortedInstances {
         same = same && skipped == self.skipped && !self.probes_moved;
         self.skipped = skipped;
         self.probes_moved = false;
+        same = same && self.seen.len() == instances.len() && self.slots.len() == instances.len();
         // An instance that moved into another probe's box sorts again.
         let rebuilt = !same || self.refresh(scene, &mesh).is_none();
         if rebuilt {
@@ -460,6 +488,10 @@ impl SortedInstances {
         self.looks.clear();
         self.runs.clear();
         self.meshes.clear();
+        self.seen.clear();
+        self.seen.extend_from_slice(instances);
+        self.slots.clear();
+        self.slots.resize(instances.len(), u32::MAX);
         for &i in &order {
             let inst = &instances[i];
             let (mesh, material, cast, mask, probe, mirrored) = (
@@ -511,6 +543,7 @@ impl SortedInstances {
             self.transforms.push(run_transform(&m, inst, run));
             self.matrices.push(m);
             self.looks.push(look(inst));
+            self.slots[i] = self.order.len() as u32;
             self.order.push(i as u32);
         }
         self.sphere_box = fold_box(None, self.spheres.iter().copied());
@@ -529,55 +562,75 @@ impl SortedInstances {
         let instances = &scene.objects.instances;
         let mut changed = 0;
         self.changed.clear();
-        for run in &mut self.runs {
+        // In submission order against the instances as last read: one
+        // that is the same, bit for bit, keeps everything derived from it,
+        // so a still scene's frame reads its instances once, in order (a
+        // walk through the sort's order was 13 ms of a 94,784-instance
+        // town's frame).
+        let mut moved_runs: Vec<usize> = Vec::new();
+        for (i, inst) in instances.iter().enumerate() {
+            if same_instance(&self.seen[i], inst) {
+                continue;
+            }
+            self.seen[i] = *inst;
+            let k = self.slots[i];
+            if k == u32::MAX {
+                continue;
+            }
+            let k = k as usize;
+            let r = self.runs.partition_point(|r| r.first as usize <= k) - 1;
+            let run = &self.runs[r];
+            let m = &inst.transform;
+            if same_bits(m, &self.matrices[k]) {
+                // An array run's layer, whether an instance receives
+                // shadows and its look may change on their own.
+                let (layer, fx, seen) = (run_layer(inst, run), fx_bits(&inst.fx), look(inst));
+                let t = &mut self.transforms[k];
+                if layer.to_bits() != t.layer.to_bits()
+                    || fx.map(f32::to_bits) != t.fx.map(f32::to_bits)
+                    || seen != self.looks[k]
+                {
+                    self.looks[k] = seen;
+                    self.changed.push(k as u32);
+                }
+                t.layer = layer;
+                t.fx = fx;
+                continue;
+            }
+            if mirrors(m) != run.mirrored {
+                return None;
+            }
+            self.spheres[k] = world_sphere(m, mesh_info(run.mesh).0);
+            if !self.probes.is_empty()
+                && crate::probe_select::pick(&self.probes, self.spheres[k].0) != run.probe
+            {
+                return None;
+            }
+            self.transforms[k] = run_transform(m, inst, run);
+            self.matrices[k] = *m;
+            self.looks[k] = look(inst);
+            self.changed.push(k as u32);
+            changed += 1;
+            if moved_runs.last() != Some(&r) {
+                moved_runs.push(r);
+            }
+        }
+        // From the transforms, not the spheres: a frame may have given
+        // those back widened (the debris layer's).
+        moved_runs.sort_unstable();
+        moved_runs.dedup();
+        for r in moved_runs {
+            let run = &mut self.runs[r];
             let bounds = mesh_info(run.mesh).0;
             let members = run.first as usize..(run.first + run.count) as usize;
-            let mut moved = false;
-            for k in members.clone() {
-                let inst = &instances[self.order[k] as usize];
-                let m = &inst.transform;
-                if same_bits(m, &self.matrices[k]) {
-                    // An array run's layer, whether an instance receives
-                    // shadows and its look may change on their own.
-                    let (layer, fx, seen) = (run_layer(inst, run), fx_bits(&inst.fx), look(inst));
-                    let t = &mut self.transforms[k];
-                    if layer.to_bits() != t.layer.to_bits()
-                        || fx.map(f32::to_bits) != t.fx.map(f32::to_bits)
-                        || seen != self.looks[k]
-                    {
-                        self.looks[k] = seen;
-                        self.changed.push(k as u32);
-                    }
-                    t.layer = layer;
-                    t.fx = fx;
-                    continue;
-                }
-                if mirrors(m) != run.mirrored {
-                    return None;
-                }
-                self.spheres[k] = world_sphere(m, bounds);
-                if !self.probes.is_empty()
-                    && crate::probe_select::pick(&self.probes, self.spheres[k].0) != run.probe
-                {
-                    return None;
-                }
-                self.transforms[k] = run_transform(m, inst, run);
-                self.matrices[k] = *m;
-                self.looks[k] = look(inst);
-                self.changed.push(k as u32);
-                changed += 1;
-                moved = true;
-            }
-            // From the transforms, not the spheres: a frame may have given
-            // those back widened (the debris layer's).
-            if moved {
-                let spheres = self.matrices[members].iter();
-                run.reach = fold_box(None, spheres.map(|m| world_sphere(m, bounds)));
-            }
+            let spheres = self.matrices[members].iter();
+            run.reach = fold_box(None, spheres.map(|m| world_sphere(m, bounds)));
         }
         if changed > 0 {
             self.sphere_box = fold_box(None, self.spheres.iter().copied());
         }
+        // In sorted order, as the walk through the runs listed them.
+        self.changed.sort_unstable();
         Some(changed)
     }
 }
@@ -927,6 +980,16 @@ mod tests {
             .unwrap();
         assert_same(&moved, &fresh(&scene));
         kept.restore(moved.transforms, moved.spheres);
+        // Looks changed in place (a flash, the receive flag): refreshed,
+        // listed as changed, nothing moved.
+        scene.objects.instances[12].fx.flash = 0.5;
+        scene.objects.instances[13].receive_shadows = false;
+        let looked = kept
+            .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
+            .unwrap();
+        assert_same(&looked, &fresh(&scene));
+        assert_eq!(looked.changed.as_ref().map(Vec::len), Some(2));
+        kept.restore(looked.transforms, looked.spheres);
         // Another order: sorted again.
         scene.objects.instances.swap(0, 1);
         scene.objects.instances[5].material = scene.objects.instances[6].material;
