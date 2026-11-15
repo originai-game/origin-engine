@@ -74,7 +74,6 @@ fn store_estimate(at: u32, s: Estimate) {
 fn estimate(y_in: vec3<f32>, s_in: Estimate, short_blend: f32) -> Estimate {
   var s = s_in;
   var y = y_in;
-  let luma = vec3<f32>(0.299, 0.587, 0.114);
   // Fireflies held down.
   {
     let dev = sqrt(max(vec3<f32>(1e-5), s.variance));
@@ -89,9 +88,9 @@ fn estimate(y_in: vec3<f32>, s_in: Estimate, short_blend: f32) -> Estimate {
   s.variance = mix(s.variance, delta * delta2, short_blend * 0.5);
   let dev = sqrt(max(vec3<f32>(1e-5), s.variance));
   let short_diff = s.mean - s.short_mean;
-  let relative = dot(luma, abs(short_diff) / max(vec3<f32>(1e-5), dev));
+  let relative = luma(abs(short_diff) / max(vec3<f32>(1e-5), dev));
   s.inconsistency = mix(s.inconsistency, relative, 0.08);
-  let reduction = clamp(dot(luma, 0.5 * s.short_mean / max(vec3<f32>(1e-5), dev)), 1.0 / 32.0, 1.0);
+  let reduction = clamp(luma(0.5 * s.short_mean / max(vec3<f32>(1e-5), dev)), 1.0 / 32.0, 1.0);
   var catch_up = clamp(smoothstep(0.0, 1.0, relative * max(0.02, s.inconsistency - 0.2)), 1.0 / 256.0, 1.0);
   catch_up *= s.vbbr;
   s.vbbr = mix(s.vbbr, reduction, 0.1);

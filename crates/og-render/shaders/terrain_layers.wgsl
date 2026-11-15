@@ -294,8 +294,7 @@ fn taps_albedo(i: u32, t: PlaneTaps, coarse: f32) -> TapsAlbedo {
     let c0 = c[0];
     let c1 = c[1];
     let c2 = c[2];
-    let luma = vec3<f32>(0.299, 0.587, 0.114);
-    let lum = vec3<f32>(dot(c0.rgb, luma), dot(c1.rgb, luma), dot(c2.rgb, luma));
+    let lum = vec3<f32>(luma(c0.rgb), luma(c1.rgb), luma(c2.rgb));
     var w = mix(vec3<f32>(1.0), lum, 0.6) * pow(t.w, vec3<f32>(7.0));
     w = w / max(w.x + w.y + w.z, 1e-12);
     o.albedo = c0 * w.x + c1 * w.y + c2 * w.z;
