@@ -1,6 +1,10 @@
 {
   "added": [
     {
+      "member": "cook: type vector",
+      "summary": "A cooked vector's strokes take stroke-dashoffset (it was refused), and its stroke outlines are kurbo's stroke expansion: offset curves, joins and caps as SVG draws them."
+    },
+    {
       "member": "cook: type icons",
       "summary": "An icon's path data takes arcs (A and a), which were refused; every icon path is read by the same SVG path parser as documents and vectors."
     }

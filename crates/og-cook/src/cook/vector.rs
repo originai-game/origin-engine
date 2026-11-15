@@ -23,7 +23,7 @@
 //! with `offset`, `stop-color` and `stop-opacity`; a `gradientTransform`
 //! of translate and scale); `fill-rule`, `fill-opacity`, `stroke-width`,
 //! `stroke-opacity`, `stroke-linecap`, `stroke-linejoin`,
-//! `stroke-miterlimit`, `stroke-dasharray`, `opacity` (a group's
+//! `stroke-miterlimit`, `stroke-dasharray`, `stroke-dashoffset`, `opacity` (a group's
 //! multiplies its children's alpha); each as an attribute or in `style`.
 //! `<defs>`, `<title>`, `<desc>` and `<metadata>` are read past. Anything
 //! else (text, images, `use`, clips, masks, filters, patterns) is refused
@@ -43,6 +43,7 @@ use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::glam::Vec2;
 use og_core::ogt::{Document, Number, Value};
+use og_draw::kurbo;
 use og_draw::ui::{
     UiGradient, UiGradientKind, UiSpread, UiStop, UiVectorData, UiVectorPaint, UiVectorVertex,
 };
@@ -349,9 +350,6 @@ fn draw(ctx: &Ctx, el: &Element, parent: &Style, mesh: &mut Mesh) -> Result<(), 
         }
         return Ok(());
     }
-    if style.dash_offset != 0.0 {
-        return Err(format!("<{}>: stroke-dashoffset is not supported", el.name));
-    }
     let Some(local) = shape_path(&el.name, &|k| el.get(k), ctx.view_box)? else {
         return Ok(());
     };
@@ -402,29 +400,36 @@ fn draw(ctx: &Ctx, el: &Element, parent: &Style, mesh: &mut Mesh) -> Result<(), 
     if width > 0.0
         && let Some(paint) = resolve(&style.stroke, style.stroke_opacity * style.opacity, mesh)?
     {
+        // The stroke's outline is kurbo's stroke expansion, filled by the
+        // nonzero rule; its dashes are og-ui's (kurbo's, a zero dash a dot).
         let dashes: Vec<f32> = style.dashes.iter().map(|d| d * t.scale()).collect();
-        let mut contours = Vec::new();
-        for (pts, closed) in &lines {
-            let pieces = if dashes.is_empty() {
-                vec![(pts.clone(), *closed)]
-            } else {
-                dash(pts, *closed, &dashes)
-                    .into_iter()
-                    .map(|d| (d, false))
-                    .collect()
-            };
-            for (p, c) in pieces {
-                contours.extend(stroke_outline(
-                    &p,
-                    c,
-                    width / 2.0,
-                    style.cap,
-                    style.join,
-                    style.miter_limit,
-                    tol,
-                ));
-            }
-        }
+        let along = if dashes.is_empty() {
+            path.clone()
+        } else {
+            og_ui::svg::dashed(&path, &dashes, style.dash_offset * t.scale())
+        };
+        let stroke = kurbo::Stroke::new(f64::from(width))
+            .with_caps(match style.cap {
+                Cap::Butt => kurbo::Cap::Butt,
+                Cap::Round => kurbo::Cap::Round,
+                Cap::Square => kurbo::Cap::Square,
+            })
+            .with_join(match style.join {
+                Join::Miter => kurbo::Join::Miter,
+                Join::Round => kurbo::Join::Round,
+                Join::Bevel => kurbo::Join::Bevel,
+            })
+            .with_miter_limit(f64::from(style.miter_limit));
+        let outline = kurbo::stroke(
+            along.iter(),
+            &stroke,
+            &kurbo::StrokeOpts::default(),
+            f64::from(tol),
+        );
+        let contours: Vec<Vec<Vec2>> = og_draw::polylines(&outline, tol)
+            .into_iter()
+            .map(|(p, _)| p)
+            .collect();
         fill(mesh, &contours, false, paint, eps)?;
     }
     Ok(())
