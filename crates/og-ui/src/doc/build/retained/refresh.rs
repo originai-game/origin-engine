@@ -634,10 +634,12 @@ impl RetainedHost {
         );
         self.css.selectors += work.selectors;
         self.css.candidates += work.candidates;
+        let bursts = ui.burst_errors(&values);
         let said: Vec<String> = values
             .cascade
             .diagnostics
             .iter()
+            .chain(&bursts)
             .map(|error| {
                 format!(
                     "{}:{} ({}): {error}",

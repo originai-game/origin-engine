@@ -406,6 +406,16 @@ impl Ui {
         })
     }
 
+    /// The \-og-burst\ keyframes of \ and of its box pseudo-elements
+    /// whose \ar()\ does not resolve, as warnings: reported where \ is
+    /// resolved, with its other style warnings.
+    pub(super) fn burst_errors(&self, r: &Resolved) -> Vec<String> {
+        std::iter::once(r)
+            .chain(r.pseudo.iter().map(|(_, _, v)| &**v))
+            .flat_map(|r| self.keyframe_bursts(r).filter_map(Result::err))
+            .collect()
+    }
+
     /// Shared layout and presentation for document boxes and widget parts.
     pub(super) fn box_props(kind: &NodeKind, r: &Resolved) -> Props {
         let mut p = Props::default();

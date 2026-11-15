@@ -75,10 +75,12 @@ impl Ui {
         r.ordinal = self.docs.ordinal_of(n, &r, |filter, item_values| {
             self.docs.structure_ordinal(filter, item_values)
         });
+        let bursts = self.burst_errors(&r);
         self.out.warnings_mut().extend(
             r.cascade
                 .diagnostics
                 .iter()
+                .chain(&bursts)
                 .map(|error| format!("{}:{} ({path}): {error}", doc.source, n.line)),
         );
         let structural = children.is_some();
@@ -161,12 +163,6 @@ impl Ui {
             self.build_container(container);
         }
         let props = self.props_of(b, n, key, &r, &mut built);
-        let unresolved: Vec<String> = self.keyframe_bursts(&r).filter_map(Result::err).collect();
-        self.out.warnings_mut().extend(
-            unresolved
-                .into_iter()
-                .map(|e| format!("{}:{} ({path}): {e}", doc.source, n.line)),
-        );
         if kind == Kind::Viewport {
             return self.build_viewport(b, n, id.as_str(), &r, props, path, key, built);
         }

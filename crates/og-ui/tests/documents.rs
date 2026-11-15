@@ -932,6 +932,34 @@ fn length_tokens_follow_the_active_style_in_layout_and_states() {
     }
 }
 
+/// A \-og-burst\ whose \ar()\ does not resolve is reported every frame
+/// the element keeps it, as its other style warnings are.
+#[test]
+fn an_unresolved_burst_variable_is_reported_every_frame() {
+    let source = r#"<meta name="screen" content="bursts" data-layer="hud">
+<column id="Root"><button id="Shell">Pop</button></column>
+<style>
+@keyframes pop { 50% { -og-burst: var(--burst-missing); } }
+#Shell { animation: pop 1s infinite; }
+</style>
+"#;
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(UiDocument::parse("bursts.svelte", source).unwrap());
+    ui.push_screen("bursts", Value::Null).unwrap();
+    // Once each frame: not again in a frame that builds the element.
+    for frame in 0..3 {
+        tick(&mut ui, InputFrame::default());
+        let said = ui.frame().warnings.iter();
+        assert_eq!(
+            said.filter(|w| w.contains("-og-burst") && w.contains("--burst-missing"))
+                .count(),
+            1,
+            "frame {frame}: {:?}",
+            ui.frame().warnings
+        );
+    }
+}
+
 fn key(code: &'static str) -> InputFrame {
     let ui_key = UiKey::ALL.into_iter().find(|k| k.code() == code);
     InputFrame {
