@@ -25724,6 +25724,15 @@
           "x-og-unit": "ratio",
           "x-og-tunable": true
         },
+        "paintStrokes": {
+          "type": "number",
+          "description": "Brush strokes in the paint, sized by paintRadius: marks along each stroke (the image's structure, or a slowly turning lay over flat regions), their own light and dark, and ragged edges where strokes meet. 0 is none; 1 bold, visible at a glance.\nSee `looks §10`.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
         "paintCanvas": {
           "$ref": "#/$defs/Texture",
           "description": "A tileable paper or canvas texture (og.load.texture) laid over the frame by paintCanvasStrength; 0 is none.",

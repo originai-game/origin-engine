@@ -436,6 +436,7 @@ pub(super) fn stylise(
             anisotropy: s.paint_anisotropy,
             edge_darkening: s.paint_edge_darkening,
             bleed: s.paint_bleed,
+            strokes: s.paint_strokes,
             canvas: texture(s.paint_canvas),
             canvas_strength: s.paint_canvas_strength,
             canvas_scale: s.paint_canvas_scale,

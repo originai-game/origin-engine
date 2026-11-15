@@ -20,8 +20,13 @@
 //! 3. pigment pooling at the edges of regions as a pigment density (MNPR,
 //!    Montesdeoca et al. 2018: the colour raised to 1 + density), the
 //!    density from the smoothed tensor's edge strength;
-//! 4. colour bleeding from a ring two radii out, and the canvas's grain;
-//! 5. the watercolour wash over the painted texels ([`Wash`], the frame's
+//! 4. brush strokes ([`Paint::strokes`], the frame's `brush`): the filter's
+//!    masses read displaced along the stroke (a ragged edge where two
+//!    meet) and value noise smeared along it at two scales, the stroke's
+//!    load of paint and its bristles ([`STROKE_LENGTH`] and the rest, as
+//!    stylise.wgsl's);
+//! 5. colour bleeding from a ring two radii out, and the canvas's grain;
+//! 6. the watercolour wash over the painted texels ([`Wash`], the frame's
 //!    `watercolor` pass): a pigment density about 1 (Bousseau et al. 2006,
 //!    C' = C(1 - (1 - C)(d - 1)) relative to the paper), weighed by the
 //!    pigment load so bare paper stays clean, from the pigment settling
@@ -222,6 +227,83 @@ pub fn pool(c: [f64; 3], darkening: f64, edge: f64) -> [f64; 3] {
     c.map(|v| v.max(0.0).powf(1.0 + density))
 }
 
+/// The brush strokes' constants, as stylise.wgsl's `STROKE_*`: taps along
+/// a streak, a body's length and width in radii, a bristle's width and
+/// length in texels, the lay's turning cell in texels, its mean angle and
+/// its turn in radians, and the ragged edge's reach in radii.
+pub const STROKE_TAPS: i32 = 9;
+pub const STROKE_LENGTH: f64 = 5.0;
+pub const STROKE_BODY: f64 = 0.9;
+pub const STROKE_BRISTLE: f64 = 1.25;
+pub const STROKE_BRISTLE_LENGTH: f64 = 10.0;
+pub const STROKE_LAY_CELL: f64 = 96.0;
+pub const STROKE_LAY: f64 = 0.3;
+pub const STROKE_TURN: f64 = 2.4;
+pub const STROKE_EDGE: f64 = 0.9;
+
+/// The shaders' `value_noise2` (noise.wgsl): the library's value noise on
+/// the lattice's layer `layer`, its z a whole cell so the fade drops out.
+fn value_noise2(p: [f64; 2], layer: i32) -> f64 {
+    f64::from(og_render_data::particles::value_noise3(
+        glam::Vec3::new(p[0] as f32, p[1] as f32, layer as f32),
+        0,
+    ))
+}
+
+fn smooth(a: f64, b: f64, x: f64) -> f64 {
+    let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+/// The stroke's direction at texel centre `p` (stylise.wgsl `stroke_dir`):
+/// the structure's where it is coherent, the slowly turning lay elsewhere.
+pub fn stroke_dir(p: [f64; 2], dir: [f64; 2], aniso: f64, edge: f64) -> [f64; 2] {
+    let turn = STROKE_LAY
+        + (value_noise2([p[0] / STROKE_LAY_CELL, p[1] / STROKE_LAY_CELL], 61) - 0.5) * STROKE_TURN;
+    let lay = [turn.cos(), turn.sin()];
+    let s = if dir[0] * lay[0] + dir[1] * lay[1] < 0.0 {
+        -1.0
+    } else {
+        1.0
+    };
+    let k = smooth(0.3, 0.8, aniso) * smooth(0.03, 0.15, edge);
+    let d = [0, 1].map(|i| lay[i] + (dir[i] * s - lay[i]) * k);
+    let len = (d[0] * d[0] + d[1] * d[1]).sqrt();
+    if len > 1e-3 { d.map(|v| v / len) } else { lay }
+}
+
+/// Where the filter reads a texel's colour mass (stylise.wgsl
+/// `stroke_edge`): the stroke's ragged edge, in whole texels.
+pub fn stroke_edge(p: [f64; 2], radius: f64, strokes: f64, d: [f64; 2]) -> (i64, i64) {
+    let cell = p.map(|v| v / (radius * STROKE_BODY * 2.0));
+    let n = [value_noise2(cell, 64) - 0.5, value_noise2(cell, 65) - 0.5];
+    let reach = radius * STROKE_EDGE * strokes * 2.0;
+    let across = [-d[1], d[0]];
+    let o = [0, 1].map(|i| (d[i] * n[0] + across[i] * n[1] * 0.33) * reach);
+    (o[0].round() as i64, o[1].round() as i64)
+}
+
+/// Value noise of `cell` integrated along `d` over `length` about `p`
+/// (stylise.wgsl `stroke_streak`).
+fn stroke_streak(p: [f64; 2], d: [f64; 2], length: f64, cell: f64, layer: i32) -> f64 {
+    let mut sum = 0.0;
+    for i in 0..STROKE_TAPS {
+        let t = (f64::from(i) / f64::from(STROKE_TAPS - 1) - 0.5) * length;
+        sum += value_noise2([(p[0] + d[0] * t) / cell, (p[1] + d[1] * t) / cell], layer);
+    }
+    let cells = (length / cell).clamp(1.0, f64::from(STROKE_TAPS));
+    (sum / f64::from(STROKE_TAPS) - 0.5) * 5.0 * cells.sqrt()
+}
+
+/// The painted colour `c` with its stroke's body and bristles (stylise.wgsl
+/// `brush`).
+pub fn brush(c: [f64; 3], p: [f64; 2], radius: f64, strokes: f64, d: [f64; 2]) -> [f64; 3] {
+    let body = stroke_streak(p, d, radius * STROKE_LENGTH, radius * STROKE_BODY, 62);
+    let bristle = stroke_streak(p, d, STROKE_BRISTLE_LENGTH, STROKE_BRISTLE, 63);
+    let load = (body * 0.2 + bristle * 0.08).clamp(-0.45, 0.45) * strokes;
+    c.map(|v| (v * (1.0 + load)).max(0.0))
+}
+
 /// Canvas texels per cell of the turbulence's noise, as stylise.wgsl's
 /// `WASH_TURBULENCE_CELL`.
 pub const WASH_TURBULENCE_CELL: f64 = 96.0;
@@ -331,6 +413,8 @@ pub struct Paint {
     pub anisotropy: f64,
     pub edge: f64,
     pub bleed: f64,
+    /// Brush strokes, 0 to 1 (`paintStrokes`), drawn with the radius.
+    pub strokes: f64,
     /// The canvas's grain (its red channel, linear) and size.
     pub canvas: Option<(Vec<f64>, u32, u32)>,
     pub canvas_strength: f64,
@@ -356,6 +440,9 @@ impl Paint {
             ));
             if self.anisotropy > 0.0 {
                 v.push(format!("anisotropy {}", self.anisotropy));
+            }
+            if self.strokes > 0.0 {
+                v.push(format!("brush strokes {}", self.strokes));
             }
         }
         if self.bleed > 0.0 {
@@ -635,10 +722,24 @@ impl Paint {
                     ([0.0, 1.0], 0.0, 0.0)
                 };
                 if self.radius > 0.0 {
-                    let tap =
-                        |dx: i64, dy: i64| opaque(x + dx, y + dy).then(|| texel(x + dx, y + dy));
+                    let strokes = self.strokes.clamp(0.0, 1.0);
+                    let p = [x as f64 + 0.5, y as f64 + 0.5];
+                    let d = stroke_dir(p, dir, aniso, edge);
+                    // A ragged stroke reads its mass from beside the texel.
+                    let (sx, sy) = if strokes > 0.0 {
+                        let (ox, oy) = stroke_edge(p, self.radius, strokes, d);
+                        (x + ox, y + oy)
+                    } else {
+                        (x, y)
+                    };
+                    let tap = |dx: i64, dy: i64| {
+                        opaque(sx + dx, sy + dy).then(|| texel(sx + dx, sy + dy))
+                    };
                     if let Some(k) = kuwahara(self.radius, alpha, (dir, aniso), &tap) {
                         c = k;
+                    }
+                    if strokes > 0.0 {
+                        c = brush(c, p, self.radius, strokes, d);
                     }
                 }
                 if self.bleed > 0.0 {
@@ -757,6 +858,52 @@ mod tests {
                 "texel {i}: on {on:.3} off {off:.3} (full {full:.3})"
             );
         }
+    }
+
+    /// paintStrokes lays a flat field in strokes: marks appear where the
+    /// filter alone leaves it flat, and they run along the stroke's
+    /// direction (neighbours along it alike, across it apart). Ways this
+    /// could fail: the strokes not drawn, or the noise not smeared along
+    /// the stroke (blotches, not strokes).
+    #[test]
+    fn strokes_mark_a_flat_field_along_their_direction() {
+        let (w, h) = (64u32, 64u32);
+        let flat = vec![[150u8, 120, 90, 255]; (w * h) as usize];
+        let painted = |strokes: f64| {
+            let mut px = flat.clone();
+            Paint {
+                radius: 4.0,
+                anisotropy: 0.9,
+                strokes,
+                ..Paint::default()
+            }
+            .apply(&mut px, w, h);
+            px
+        };
+        assert_eq!(painted(0.0), flat, "no strokes: the field stays flat");
+        let px = painted(1.0);
+        let at = |x: f64, y: f64| f64::from(px[(y as u32 * w + x as u32) as usize][0]);
+        // A flat field has no structure: every stroke follows the lay.
+        let d = stroke_dir([32.0, 32.0], [0.0, 1.0], 0.0, 0.0);
+        let (mut along, mut across, mut spread) = (0.0, 0.0, 0.0);
+        let mut n = 0.0;
+        for y in 20..44 {
+            for x in 20..44 {
+                let (x, y) = (f64::from(x), f64::from(y));
+                let c = at(x, y);
+                along += (c - at(x + (d[0] * 4.0).round(), y + (d[1] * 4.0).round())).abs();
+                across += (c - at(x - (d[1] * 4.0).round(), y + (d[0] * 4.0).round())).abs();
+                spread += (c - 150.0).abs();
+                n += 1.0;
+            }
+        }
+        assert!(spread / n > 4.0, "the strokes mark the field: {}", spread / n);
+        assert!(
+            along < across * 0.7,
+            "marks run along the stroke: along {} across {}",
+            along / n,
+            across / n
+        );
     }
 
     /// Incoherent texture (noise, grass) is painted over: its spread falls

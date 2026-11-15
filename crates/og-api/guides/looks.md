@@ -214,6 +214,15 @@ and the dither cells.
   radius of 3 to 5, and a line a pixel wide is drawn a little softer.
   Under 3 pixels it reads every pixel, where a block would show as a
   square along a leaf's edge, and keeps that line as it is.
+- The filter alone flattens colour into masses but draws no mark, and at
+  a preview's size reads as a softened render. paintStrokes lays each
+  mass in brush strokes the radius's size: a stroke runs along the
+  image's structure where it is coherent and along a slowly turning lay
+  over flat ground and sky. Value noise smeared along it lightens and
+  darkens each stroke and its bristles, and the masses meet with ragged
+  edges. 0.5 to 0.7 reads as paint at a glance; 1 is bold and
+  expressionist. paintRadius is in logical pixels, so on a frame twice
+  as tall the strokes are half as large a part of the picture.
 - paintDetail keeps faces, hands and lettering drawn while grass and
   broad areas paint. It runs the prepass only where meshes are drawn.
 - In a profile 2d project under the art contract, the cook applies the
