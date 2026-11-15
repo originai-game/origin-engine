@@ -456,6 +456,15 @@ pub fn reduce(text: &str) -> Result<String, String> {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some((at, name)) = next_function(rest) {
+        // A relative colour's channels read its origin's (`calc(h + 180)`
+        // in `oklch(from var(--accent) …)`): the colour reduces them.
+        if let Some((start, close)) = relative_colour(rest)
+            && start < at
+        {
+            out.push_str(&rest[..=close]);
+            rest = &rest[close + 1..];
+            continue;
+        }
         out.push_str(&rest[..at]);
         let open = at + name.len();
         let close = closing(rest, open).ok_or_else(|| format!("{name}( is not closed"))?;
@@ -477,6 +486,33 @@ pub fn reduce(text: &str) -> Result<String, String> {
     }
     out.push_str(rest);
     Ok(out)
+}
+
+/// The first relative colour in `s` (`oklch(from …)`): where its name
+/// starts, and its `)`.
+fn relative_colour(s: &str) -> Option<(usize, usize)> {
+    const COLOURS: [&str; 10] = [
+        "rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "oklab", "oklch", "color",
+    ];
+    let mut from = 0;
+    while let Some(open) = s[from..].find('(').map(|i| from + i) {
+        let name = s[..open]
+            .bytes()
+            .rev()
+            .take_while(|b| b.is_ascii_alphanumeric() || *b == b'-')
+            .count();
+        let start = open - name;
+        let origin = s[open + 1..].trim_start().strip_prefix("from");
+        if COLOURS
+            .iter()
+            .any(|c| s[start..open].eq_ignore_ascii_case(c))
+            && origin.is_some_and(|r| r.starts_with(char::is_whitespace))
+        {
+            return Some((start, closing(s, open)?));
+        }
+        from = open + 1;
+    }
+    None
 }
 
 /// Whether `text` holds a math function.
@@ -1053,6 +1089,12 @@ mod tests {
             ("calc(0.5turn)", "180deg"),
             ("translate(calc(2 * 3px), 4px)", "translate(6px, 4px)"),
             ("12px minmax(80px, 1fr)", "12px minmax(80px, 1fr)"),
+            // A relative colour's channels are the colour's to reduce.
+            (
+                "oklch(from var(--a) l c calc(h + 180)) calc(2 * 3px)",
+                "oklch(from var(--a) l c calc(h + 180)) 6px",
+            ),
+            ("rgb(calc(255 / 5) 0 0)", "rgb(51 0 0)"),
         ] {
             assert_eq!(reduce(text).as_deref(), Ok(want), "{text}");
         }

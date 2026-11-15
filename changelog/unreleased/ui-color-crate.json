@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "CSS relative colours in a stylesheet",
+      "summary": "A relative colour whose channel uses math (`background: oklch(from var(--accent) l c calc(h + 180))`) no longer fails the declaration with \"calc() does not take 'h'\": the channel keywords are the colour's to resolve."
+    }
+  ]
+}
