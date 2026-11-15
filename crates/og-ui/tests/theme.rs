@@ -474,7 +474,7 @@ fn css_tokens_and_theme_writes_share_the_same_values() {
 
 /// Whatever seeds a style or a game sets, the palette derived from them
 /// keeps the language's pairs in both schemes (packages/design/tokens/
-/// contrast.css): text 4.5:1, focus, rims and team marks 3:1, text over
+/// contrast.css): text and team inks 4.5:1, focus and rims 3:1, text over
 /// glass 4.5:1 over the brightest and darkest scenes. The seeds sweep
 /// lightness, chroma and hue, with the neutral the seed itself or grey.
 #[test]
