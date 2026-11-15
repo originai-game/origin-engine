@@ -41,15 +41,21 @@ impl ParticleRenderer {
             entries: &[
                 uniform_entry(0, wgpu::ShaderStages::COMPUTE, true),
                 uniform_entry(1, wgpu::ShaderStages::COMPUTE, false),
-                storage_entry(2, false),
-                storage_entry(3, true),
-                depth_entry(4, wgpu::ShaderStages::COMPUTE),
-                depth_entry(5, wgpu::ShaderStages::COMPUTE),
-                storage_entry(6, true),
+                depth_entry(2, wgpu::ShaderStages::COMPUTE),
+                depth_entry(3, wgpu::ShaderStages::COMPUTE),
+                storage_entry(4, true),
             ],
         });
+        let sim_system_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("particle sim system"),
+            entries: &[storage_entry(0, false), storage_entry(1, true)],
+        });
         let sim = {
-            let (device, sim_layout) = (device.clone(), sim_layout.clone());
+            let (device, sim_layout, system_layout) = (
+                device.clone(),
+                sim_layout.clone(),
+                sim_system_layout.clone(),
+            );
             Deferred::new(move || {
                 let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                     label: Some("particle sim"),
@@ -57,7 +63,7 @@ impl ParticleRenderer {
                 });
                 let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("particle sim"),
-                    bind_group_layouts: &[Some(&sim_layout)],
+                    bind_group_layouts: &[Some(&sim_layout), Some(&system_layout)],
                     immediate_size: 0,
                 });
                 let pipeline = |entry: &str| {
@@ -148,6 +154,7 @@ impl ParticleRenderer {
             sprites_pipeline,
             sprites_params,
             sim_layout,
+            sim_system_layout,
             sim,
             draw_layout,
             draw: HashMap::new(),
@@ -182,49 +189,44 @@ impl ParticleRenderer {
             label: Some("particle sim"),
             timestamp_writes: None,
         });
+        // The pass runs only when a system simulates here
+        // (`ParticleFrame::any_gpu`).
+        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("particle sim"),
+            layout: &self.sim_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &self.emitter_buffer,
+                        offset: 0,
+                        size: wgpu::BufferSize::new(std::mem::size_of::<EmitterGpu>() as u64),
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.view_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(depth),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(gbuffer),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: self.colliders.as_entire_binding(),
+                },
+            ],
+        });
         for fs in frame.systems.iter().filter(|s| s.gpu) {
             let Some(g) = self.systems.get(&fs.id).and_then(|s| s.gpu.as_ref()) else {
                 continue;
             };
             let max = self.systems[&fs.id].max;
-            let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("particle sim"),
-                layout: &self.sim_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                            buffer: &self.emitter_buffer,
-                            offset: 0,
-                            size: wgpu::BufferSize::new(std::mem::size_of::<EmitterGpu>() as u64),
-                        }),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: self.view_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: g.buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: g.points.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: wgpu::BindingResource::TextureView(depth),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 5,
-                        resource: wgpu::BindingResource::TextureView(gbuffer),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 6,
-                        resource: self.colliders.as_entire_binding(),
-                    },
-                ],
-            });
+            pass.set_bind_group(1, &g.group, &[]);
             let groups = max.div_ceil(64);
             if let Some(k) = fs.shift {
                 pass.set_pipeline(shift);

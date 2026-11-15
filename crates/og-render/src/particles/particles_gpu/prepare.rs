@@ -348,8 +348,8 @@ impl ParticleRenderer {
             });
             let first_entry = entries.len() as u32;
             if gpu {
-                let g = state.gpu.get_or_insert_with(|| GpuSystem {
-                    buffer: device.create_buffer(&wgpu::BufferDescriptor {
+                let g = state.gpu.get_or_insert_with(|| {
+                    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
                         label: Some("particles"),
                         size: PARTICLE_STRIDE * e.max_particles as u64,
                         usage: wgpu::BufferUsages::STORAGE
@@ -357,8 +357,8 @@ impl ParticleRenderer {
                             | wgpu::BufferUsages::COPY_SRC
                             | wgpu::BufferUsages::COPY_DST,
                         mapped_at_creation: false,
-                    }),
-                    points: crate::buffer_init(
+                    });
+                    let points = crate::buffer_init(
                         device,
                         queue,
                         &wgpu::util::BufferInitDescriptor {
@@ -366,10 +366,28 @@ impl ParticleRenderer {
                             contents: bytemuck::cast_slice(all_points),
                             usage: wgpu::BufferUsages::STORAGE,
                         },
-                    ),
-                    last_tick: None,
-                    prev_transform: None,
-                    clock: Default::default(),
+                    );
+                    let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("particle sim system"),
+                        layout: &self.sim_system_layout,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: buffer.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 1,
+                                resource: points.as_entire_binding(),
+                            },
+                        ],
+                    });
+                    GpuSystem {
+                        buffer,
+                        group,
+                        last_tick: None,
+                        prev_transform: None,
+                        clock: Default::default(),
+                    }
                 });
                 let (reset, steps) = plan_ticks(
                     e,

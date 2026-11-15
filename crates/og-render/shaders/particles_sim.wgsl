@@ -8,13 +8,15 @@
 // particles.rs. Prepended by noise.wgsl, particle_common.wgsl and
 // scene_colliders.wgsl.
 
+// Group 0 is the frame's, shared by every system; group 1 is the
+// system's own, made with its buffers.
 @group(0) @binding(0) var<uniform> emitter: Emitter;
 @group(0) @binding(1) var<uniform> view: ParticleView;
-@group(0) @binding(2) var<storage, read_write> particles: array<Particle>;
-@group(0) @binding(3) var<storage, read> mesh_points: array<vec4<f32>>;
-@group(0) @binding(4) var scene_depth: texture_2d<f32>;
-@group(0) @binding(5) var scene_gbuffer: texture_2d<f32>;
-@group(0) @binding(6) var<storage, read> colliders: array<vec4<f32>>;
+@group(0) @binding(2) var scene_depth: texture_2d<f32>;
+@group(0) @binding(3) var scene_gbuffer: texture_2d<f32>;
+@group(0) @binding(4) var<storage, read> colliders: array<vec4<f32>>;
+@group(1) @binding(0) var<storage, read_write> particles: array<Particle>;
+@group(1) @binding(1) var<storage, read> mesh_points: array<vec4<f32>>;
 
 const TAU: f32 = 6.28318530718;
 

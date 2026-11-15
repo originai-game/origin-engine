@@ -143,7 +143,9 @@ struct PointsTable {
 
 struct GpuSystem {
     buffer: wgpu::Buffer,
-    points: wgpu::Buffer,
+    /// Its sim bind group (`particles_sim.wgsl`'s group 1): its particles
+    /// and its emitter's surface points, made with them.
+    group: wgpu::BindGroup,
     last_tick: Option<u64>,
     prev_transform: Option<Mat4>,
     clock: crate::particles::ParticleClock,
@@ -307,6 +309,7 @@ pub(crate) struct ParticleRenderer {
     sprites_pipeline: Deferred<wgpu::ComputePipeline>,
     sprites_params: wgpu::Buffer,
     sim_layout: wgpu::BindGroupLayout,
+    sim_system_layout: wgpu::BindGroupLayout,
     /// simulate, clear, shift.
     sim: Deferred<(
         wgpu::ComputePipeline,
