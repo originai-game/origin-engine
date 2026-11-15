@@ -60,8 +60,6 @@ pub struct DocState {
     /// copy is stale ([`crate::Ui::take_control_zones`]).
     pub zones: BTreeMap<u64, og_input::ControlZone>,
     pub zones_changed: bool,
-    /// The instantiated sibling levels of the screen being built.
-    pub levels: Vec<super::structure::Level>,
     /// `data-og-instant` elements whose first entrance has landed: a
     /// later one plays (presentation, outside `world_hash`).
     pub(crate) entered: BTreeSet<u64>,
