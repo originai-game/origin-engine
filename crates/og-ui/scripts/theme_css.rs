@@ -577,6 +577,7 @@ const FALLBACKS: &str = r#"
   button { color: var(--ink); }
   button.primary { color: var(--on-primary); }
   button.danger { color: var(--danger); }
+  button[aria-pressed=true] { color: var(--button-selected-ink); }
   button:disabled { color: var(--ink-faint); }
   button::part(base) { background: var(--control); }
   button::part(base):hover, button::part(base):active { background: var(--control-strong); }
@@ -603,6 +604,10 @@ const FALLBACKS: &str = r#"
   button.danger::part(base):hover, button.danger::part(base):active {
     background: color-mix(in srgb, var(--danger) 15%, var(--color-surface));
   }
+  /* A button that is on (`aria-pressed`: a toggle, a chip) wears the
+     selection, whatever its variant, at rest, hovered and held. */
+  button[aria-pressed=true]::part(base), button[aria-pressed=true]::part(base):hover,
+  button[aria-pressed=true]::part(base):active { background: var(--button-selected-fill); }
   button::part(base):disabled,
   button.primary::part(base):disabled, button.quiet::part(base):disabled,
   button.ghost::part(base):disabled, button.danger::part(base):disabled {

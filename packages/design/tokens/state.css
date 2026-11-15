@@ -27,11 +27,14 @@
      docs/ui.md §3.1): what their part rules dress with (each by default a
      semantic token) and the sizes, ratios and motion their geometry takes (each
      the number it drew with; og-ui's theme reads them back). A ratio is of the
-     control's own size. */
+     control's own size. `button-pressed-*` is a button held down;
+     `button-selected-*` one that is on (`aria-pressed`: a toggle, a chip). */
   --controls-button-radius: var(--radius-button);
   --controls-button-border-width: var(--stroke-hairline);
   --controls-button-shadow: var(--shadow-sheen);
   --controls-button-pressed-shadow: var(--shadow-pressed);
+  --controls-button-selected-fill: var(--selection);
+  --controls-button-selected-ink: var(--on-selection);
   --controls-field-radius: var(--radius-button);
   --controls-field-border-width: var(--stroke-thin);
   --controls-field-shadow: var(--shadow-well);

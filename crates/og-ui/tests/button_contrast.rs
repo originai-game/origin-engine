@@ -186,6 +186,58 @@ fn every_button_role_reads_at_4_5_to_1_on_its_fill_in_both_themes_and_every_stat
     assert!(failing.is_empty(), "under 3:1:\n{}", failing.join("\n"));
 }
 
+/// A button that is on (`aria-pressed="true"`: a toggle, a chip) wears the
+/// selection, whatever its variant: `--button-selected-fill` under
+/// `--button-selected-ink`, at 3:1 in both themes; one that is off keeps
+/// its variant's look. Ways this could fail: the default style giving the
+/// state no look (the button reads as its off neighbour), a variant's own
+/// fill or ink winning over it, or `aria-pressed="false"` taking it.
+#[test]
+fn a_button_that_is_on_wears_the_selection_in_every_variant_and_both_themes() {
+    for (theme_name, theme) in [("light", Theme::light()), ("dark", Theme::dark())] {
+        let p = theme.palette;
+        let buttons: String = ROLES
+            .iter()
+            .map(|(name, variant)| {
+                format!(
+                    r#"<button id="{name}" variant="{variant}" aria-pressed="true">{name}</button>"#
+                )
+            })
+            .collect();
+        let mut d = Doc::with_ui(
+            themed(theme),
+            &format!(
+                r#"<meta name="component" content="t">
+<column>{buttons}<button id="Off" aria-pressed="false">Off</button><button id="Plain">Plain</button></column>"#
+            ),
+        );
+        d.viewport = Viewport::new(800.0, 600.0);
+        for _ in 0..60 {
+            d.step(InputFrame::default());
+        }
+        let ground = rgb(p.backdrop);
+        let near = |a: [f32; 3], b: [f32; 3]| (0..3).all(|i| (a[i] - b[i]).abs() < 0.004);
+        for (label, _) in ROLES {
+            let (ink, fill) = measured(&d.ui, label, ground);
+            assert!(
+                near(fill, over(p.selection.linear(), ground)),
+                "{theme_name} {label}: its fill is {fill:?}, not the selection"
+            );
+            assert!(
+                near(ink, over(p.on_selection.linear(), fill)),
+                "{theme_name} {label}: its ink is {ink:?}, not the selection's"
+            );
+            let r = ratio(ink, fill);
+            assert!(r >= 3.0, "{theme_name} {label} on: {r:.2}:1");
+        }
+        assert_eq!(
+            measured(&d.ui, "Off", ground),
+            measured(&d.ui, "Plain", ground),
+            "{theme_name}: aria-pressed=\"false\" is a plain button"
+        );
+    }
+}
+
 /// Every tab's label against what it sits on, in both themes, once the
 /// selected tab's ground has slid in: the selected one on `knob`, the
 /// others on the track. Ways this could fail: the selected label drawn in
