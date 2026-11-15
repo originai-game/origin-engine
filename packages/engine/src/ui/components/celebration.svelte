@@ -1,6 +1,6 @@
 <meta name="component" content="Celebration">
 <meta name="strings" content="./celebration.en.ogt">
-<meta name="parts" content="Celebration.ring Celebration.shell Celebration.rays Celebration.halo Celebration.title Celebration.value">
+<meta name="parts" content="Celebration.ring Celebration.shell Celebration.stage Celebration.rays Celebration.halo Celebration.title Celebration.value">
 <meta name="prop:kind" content="string" data-doc="Which one: confetti (falling over its box from the top edge), burst (a ring and sparks thrown from its centre), levelUp (a ring of light, rays turning behind the title and the new level, sparks rising) or fireworks (shells bursting across its top).">
 <meta name="prop:shots" content="list" data-doc="Its plays, each { id } (the tick it fired, as text): a new id plays it again; a kept one plays once.">
 <meta name="prop:title" content="string" data-doc="levelUp: the big word; empty is Level up.">
@@ -20,7 +20,7 @@
         <div part="Celebration.shell" class="shell four"></div>
         <div part="Celebration.shell" class="shell five"></div>
       </div>
-      <div class="stage" role="status" aria-label={(title || t("component.celebration.level-up")) + " " + value}>
+      <div part="Celebration.stage" class="stage" role="status" aria-label={(title || t("component.celebration.level-up")) + " " + value}>
         <svg part="Celebration.rays" class="rays" viewBox="-50 -50 100 100">
           <polygon points="0,-50 4,-9 22,-45 8,-5 39,-31 10,0 48,-11 9,4 45,22 5,8 31,39 0,10 11,48 -4,9 -22,45 -8,5 -39,31 -10,0 -48,11 -9,-4 -45,-22 -5,-8 -31,-39 0,-10 -11,-48 4,-9"></polygon>
         </svg>

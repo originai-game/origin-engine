@@ -94,7 +94,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `ActionHints` (`action-hints.svelte`) | `frame`, `row` (a button), `cap`, `label` |
 | `Breadcrumbs` (`breadcrumbs.svelte`) | `frame`, `crumb` (`.current`), `icon`, `link` (`[aria-current]`), `current`, `separator` |
 | `Carousel` (`carousel.svelte`) | `frame`, `cell`, `art`, `well`, `title`, `body`, `prev` (a button), `next` (a button), `dot`, `lit` |
-| `Celebration` (`celebration.svelte`) | `ring`, `shell`, `rays`, `halo`, `title`, `value` |
+| `Celebration` (`celebration.svelte`) | `ring`, `shell`, `stage`, `rays`, `halo`, `title`, `value` |
 | `Chart` (`chart.svelte`) | `frame`, `title`, `subtitle`, `tick`, `grid`, `bar` (`.tinted`), `area`, `line`, `label` |
 | `Compass` (`compass.svelte`) | `frame`, `window`, `poi` (`.ally` `.enemy` `.loot` `.objective` `.ping`), `distance`, `notch`, `badge` |
 | `Cooldown` (`cooldown.svelte`) | `cell` (a button: `.ready` `:disabled`), `icon`, `figure` |
