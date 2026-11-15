@@ -544,3 +544,46 @@ fn the_minimap_north_mark_stands_clear_of_the_bezel() {
         glass.y
     );
 }
+
+/// A node graph's well stretches over its container, and the graph stands
+/// in its middle as an SVG viewBox's xMidYMid does. Ways it could fail: the
+/// canvas pinned at the well's top-left (the map in a corner of an empty
+/// panel), or the well kept at a fixed size.
+#[test]
+fn a_node_graph_centres_its_graph_in_its_well() {
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    let doc = docs
+        .iter()
+        .find(|d| d.path.ends_with("/node-graph.svelte"))
+        .expect("the node graph");
+    let mut ui = ui_with_font(test_font_metrics());
+    preview(&mut ui, &docs, doc, &messages, 1280.0, 720.0);
+    let elements = ui.probe_elements();
+    let well = elements
+        .iter()
+        .find(|e| e.name == "Graph")
+        .expect("the well");
+    assert!(well.width > 1000.0, "the well stretches: {}", well.width);
+    let nodes: Vec<_> = elements
+        .iter()
+        .filter(|e| {
+            ["Strength", "Cleave", "Guard", "Rage"].contains(&e.name.as_str()) && e.kind == "button"
+        })
+        .collect();
+    assert_eq!(nodes.len(), 4);
+    let span = |lo: f32, hi: f32| (lo + hi) / 2.0;
+    let x = span(
+        nodes.iter().map(|e| e.x).fold(f32::MAX, f32::min),
+        nodes.iter().map(|e| e.x + e.width).fold(f32::MIN, f32::max),
+    );
+    let y = span(
+        nodes.iter().map(|e| e.y).fold(f32::MAX, f32::min),
+        nodes
+            .iter()
+            .map(|e| e.y + e.height)
+            .fold(f32::MIN, f32::max),
+    );
+    let (cx, cy) = (well.x + well.width / 2.0, well.y + well.height / 2.0);
+    assert!((x - cx).abs() < 40.0, "across: graph {x}, well {cx}");
+    assert!((y - cy).abs() < 40.0, "down: graph {y}, well {cy}");
+}

@@ -33,9 +33,10 @@
 
 <style>
 /* It sizes as a box does: across its container and down it, never under a
-   graph's worth of height. */
+   graph's worth of height. The graph stands in the middle of it, as an SVG
+   viewBox's xMidYMid does, and zooms about that middle. */
 [part="NodeGraph.well"] { width: stretch; height: stretch; min-height: var(--size-6xl); overflow: hidden; }
-#Canvas { position: absolute; top: 0; inset-inline-start: 0; width: var(--measure-md); height: var(--size-6xl); translate: calc(var(--pan-x) + var(--space-xl)) calc(var(--pan-y) + var(--space-xl)); scale: var(--zoom); transform-origin: 0% 0%; }
+#Canvas { position: absolute; inset: 0; margin: auto; width: var(--measure-md); height: var(--size-6xl); translate: calc(var(--pan-x) + var(--space-xl)) calc(var(--pan-y) + var(--space-xl)); scale: var(--zoom); transform-origin: 50% 50%; }
 #Links { position: absolute; top: 0; inset-inline-start: 0; }
 [part="NodeGraph.link"] { fill: none; stroke: var(--line-strong); stroke-width: 3; stroke-dasharray: 6 6; }
 .link.active { stroke: var(--primary); stroke-dasharray: none; }
