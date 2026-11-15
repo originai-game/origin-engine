@@ -17,14 +17,16 @@ structure (`og-components`) and below a game's own styles (`og-game`, unlayered)
 | `base.css` | Fonts (`@font-face` from `@styles/shared`) and every value the pack draws with, as `:root` tokens for the dark scheme and a `:root[data-scheme=light]` block: colours, gradients, shadows, lengths, durations, easings, filters, font families, art and sound `url()`s |
 | `controls.css` | Every core control's parts and states through `host::part(name):state`: cut button plates, tabs, toggles, sliders, inputs, slots, badges, tooltips, dialogs and the rest, and the one rule that cuts the corners of every role frame and cell. The file is one cascade layer (`scifi-controls`), see below |
 | `rpg.css`, `shooter.css`, `strategy.css`, `racing.css`, `card.css`, `puzzle.css`, `idle.css`, `rhythm.css`, `arena.css`, `general.css` | One file for each built-in component group (`packages/engine/src/ui/components/<group>`), through the components' named parts (`[part="RpgBackpack.frame"]`, `button::part(RpgBackpack\.cell)`) and `data-*` states; `rpg.css` also dresses the rpg sheet's `.rpg-ground`, `.rpg-fold` and `.rpg-minimap` wrappers |
-| `components.css` | The ungrouped components (`packages/engine/src/ui/components/*.svelte`) where the core button plate is the wrong dress: the hero button's faces, a menu's quiet rows, the speech bubble's tail |
+| `components.css` | The ungrouped components (`packages/engine/src/ui/components/*.svelte`) where the role dress is not enough: the hero button's faces, a menu's quiet rows, the data grid's headings on its lit band, the loot label's tag on the scene plate, a nameplate's cast bar, a status effect's time on the scene plate, the speech bubble's tail |
 | `motion.css` | Transitions over a curve that lands without overshoot, a straight `-og-spring()` on tab indicators, the scan loops on the acting portrait and fresh badges; a `prefers-reduced-motion` branch keeps the state changes and drops the movement |
 | `sounds.css` | `-og-sound` sets from the shared library for press, hover, select, confirm, back, open, close, error and reward, pitched up and kept short and quiet |
 | `art/` | Corner brackets (a dark and a light set), band ends and rule, the ground grid and the map and list marks, all SVG, each with its import `.ogt` (colour art sRGB) |
 
 The other ungrouped components and the built-in screens have no rule of
 their own: they are made of core controls and role parts, which
-`controls.css` and the role tokens dress.
+`controls.css` and the role tokens dress. Review them under the pack with
+`og ui review components --style scifi`, and likewise `screens` and
+`world`.
 
 ## Tokens
 
@@ -135,8 +137,3 @@ Rajdhani) come from `@styles/shared` under their own licences there.
   one colour.
 - A node graph's hex node clips its own label with its `clip-path` (the
   card run map loses "Event" and "Treasure" under fantasy too).
-- There is no review sheet for the ungrouped components or the built-in
-  screens; they were judged in a scratch project. The seven world-anchored
-  components (overhead bars, interaction prompt, loot label, damage
-  numbers, speech bubble, waypoint, nameplate) had no world point on
-  screen there and have not been seen in a frame under this pack.

@@ -1,7 +1,8 @@
 /* scifi: the ungrouped components (packages/engine/src/ui/components/*.svelte).
    They and the built-in screens are made of core controls and role parts,
    which controls.css and the role tokens of base.css dress; a rule here is
-   for a component the core button plate is the wrong dress for. */
+   for a component that dress does not suit: a button the core plate is
+   wrong for, or text the component draws over the scene or a lit fill. */
 
 /* ── Hero button: the one main action, lit like the primary; premium is the
    amber face, danger the red one. Each state restates the whole border.
@@ -16,6 +17,10 @@ button.danger::part(HeroButton\.base) { border: var(--stroke-hairline) solid var
 [part="HeroButton.base"].secondary [part="HeroButton.label"] { color: var(--on-primary); }
 [part="HeroButton.base"].danger [part="HeroButton.label"] { color: var(--button-danger-ink); }
 
+/* ── Data grid: its headings stand on the lit small band, where the label
+   ink is too close to the band: the full ink. */
+[part="DataGrid.band"] [part="DataGrid.heading"] { color: var(--ink); }
+
 /* ── Menu: quiet rows inside whatever frame holds them, lit under the
    pointer, amber when ticked, red when they destroy. */
 button::part(Menu\.row) { border: none; border-radius: 0; background: none; box-shadow: none; font-family: var(--font-body); letter-spacing: 0; text-transform: none; text-shadow: none; color: var(--ink); }
@@ -24,6 +29,23 @@ button::part(Menu\.row):active { background: var(--row-pressed-fill); }
 button[aria-checked=true]::part(Menu\.row) { background: var(--row-selected-fill); box-shadow: var(--row-selected-edge); color: var(--ink-selected); }
 button.danger::part(Menu\.row) { color: var(--danger); }
 button::part(Menu\.row):disabled { background: none; color: var(--ink-disabled); }
+
+/* ── Loot label: a tag on the scene's plate with its rarity's rim, as the
+   component draws it; the core button plate would cover the plate and put
+   the rarity's ink on a lit face. */
+button::part(LootLabel\.tag) { padding: var(--space-xxs) var(--space-sm); border: var(--stroke-hairline) solid var(--line-strong-60); background: var(--scene-plate); box-shadow: none; letter-spacing: 0; text-transform: none; text-shadow: none; }
+button.uncommon::part(LootLabel\.tag) { border: var(--stroke-hairline) solid var(--uncommon); }
+button.rare::part(LootLabel\.tag) { border: var(--stroke-hairline) solid var(--rare); }
+button.epic::part(LootLabel\.tag) { border: var(--stroke-hairline) solid var(--epic); }
+button.legendary::part(LootLabel\.tag) { border: var(--stroke-hairline) solid var(--legendary); }
+button::part(LootLabel\.tag):hover { background: var(--panel-hover); box-shadow: var(--button-hover-shadow); }
+
+/* ── Nameplate: the cast bar under the spell's name (base.css). */
+[part="Nameplate.cast"] { background: var(--scifi-cast-fill); }
+
+/* ── Status grid: an effect's time stands over the scene under its cell, so
+   it sits on the scene plate. */
+[part="StatusGrid.figure"] { padding: 0 var(--space-xxs); border-radius: var(--scifi-cut-chip); corner-shape: bevel; background: var(--scene-plate); color: var(--scene-ink); }
 
 /* ── Speech bubble: the tail is a shape, so it takes the glass as one colour. */
 [part="SpeechBubble.tail"] { fill: var(--scifi-glass-lo); }

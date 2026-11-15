@@ -64,13 +64,13 @@
   --color-shadow: #000;
   --sheen: #bfeeff30;
   --scene-ink: #eafaff;
-  --scene-plate: #06111bd9;
+  --scene-plate: #06111bf2;
   --scene-shadow: #000000a0;
   --success: #45e3a0;
   --warn: #ffe04a;
   --danger: #ff5a5f;
   --info: #6cc7ff;
-  --health: #f0475a;
+  --health: #c8324a;
   --mana: #3f8cff;
   --xp: #b98cff;
   --gold: #ffb52e;
@@ -78,10 +78,10 @@
   /* Rarity: a rim, a glow and a tinted cell, and the name's ink. */
   --common: #9fb4c1;
   --uncommon: #4fe38b;
-  --rare: #4f9dff;
-  --epic: #b574ff;
+  --rare: #6fb2ff;
+  --epic: #c48cff;
   --legendary: #ff8a3c;
-  --mythic: #ff4f7b;
+  --mythic: #ff7896;
 
   /* Sides of a fight. */
   --team1: #4fb3ff;
@@ -160,6 +160,7 @@
   --shadow-69: rgb(from var(--color-shadow) r g b / 0.69);
   --well-50: rgb(from var(--well) r g b / 0.5);
   --well-80: rgb(from var(--well) r g b / 0.8);
+  --well-95: rgb(from var(--well) r g b / 0.95);
 
   /* ── Type: Chakra Petch for display, Barlow Condensed for labels,
      Barlow Semi Condensed to read, Rajdhani for figures. */
@@ -294,7 +295,7 @@
   --cell-radius: var(--scifi-cut-cell);
   --cell-selected-rim: var(--accent);
   --badge-radius: 0px;
-  --well-fill: var(--well-80);
+  --well-fill: var(--well-95);
   --well-radius: 0px;
   --scifi-corner-hud: 24px;
   --scifi-band-mark: 30px;
@@ -498,8 +499,14 @@
     radial-gradient(ellipse at 50% 40%, var(--scifi-ground-hi) 0%, var(--scifi-ground-lo) 100%);
   --scifi-vitals-ring-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 10px var(--scifi-shade), 0 0 0 1px var(--scifi-keyline), 0 0 0 3px var(--scifi-key-lo), 0 0 0 4px var(--line-strong), 0 0 12px var(--scifi-glow-35);
   --scifi-vitals-ring-large-shadow: inset 0 0 0 2px var(--scifi-keyline), inset 0 0 16px var(--scifi-shade), 0 0 0 2px var(--scifi-key-lo), 0 0 0 4px var(--line-strong), 0 0 0 5px var(--highlight), 0 0 18px var(--scifi-glow-55);
-  --scifi-vitals-health: linear-gradient(90deg, rgb(from var(--health) r g b / 0.7), var(--health) 70%, #ffb3bb);
-  --scifi-vitals-mana: linear-gradient(90deg, rgb(from var(--mana) r g b / 0.7), var(--mana) 70%, #b5d3ff);
+  /* The vitals bar carries a white figure, so its mana is a deeper blue
+     than --mana, which is also an ink on dark glass (a slot's cost). */
+  --scifi-mana-deep: #2c68d6;
+  --scifi-vitals-health: linear-gradient(90deg, rgb(from var(--health) r g b / 0.7), var(--health) 97%, #ffb3bb);
+  --scifi-vitals-mana: linear-gradient(90deg, rgb(from var(--scifi-mana-deep) r g b / 0.7), var(--scifi-mana-deep) 97%, #b5d3ff);
+  /* A nameplate's cast bar carries the spell's name in the ink, so it is a
+     deep amber where --warn would put white on yellow. */
+  --scifi-cast-fill: linear-gradient(90deg, #7a5000, #9a6600);
   --scifi-bar-rim: var(--line-strong-60);
   --scifi-tray-shadow: inset 0 0 0 1px var(--scifi-keyline), 0 0 10px var(--scifi-glow-10), 0 6px 16px var(--scifi-shade);
   --scifi-skill-fill: linear-gradient(160deg, var(--scifi-cell-hi), var(--scifi-cell-pressed));
@@ -644,4 +651,5 @@
   --slider-knob-fill: linear-gradient(180deg, #ffffff, #e6f0f5);
   --scifi-vitals-health: linear-gradient(90deg, rgb(from var(--health) r g b / 0.7), var(--health));
   --scifi-vitals-mana: linear-gradient(90deg, rgb(from var(--mana) r g b / 0.7), var(--mana));
+  --scifi-cast-fill: linear-gradient(90deg, #ffd25a, #ffc531);
 }
