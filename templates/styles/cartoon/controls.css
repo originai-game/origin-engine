@@ -1,0 +1,226 @@
+/* cartoon: every core control and its states. Each control is a plate
+   inside the dark outline (--line-strong), standing on a bottom edge that
+   goes when it is pressed; hover brightens, focus is a ring outside the
+   outline. Every value is a token set in base.css. */
+
+/* The whole file is one cascade layer. A pack's files are read in name
+   order, so a component file can come before this one (arena.css, card.css)
+   or after it (rpg.css); in a layer, a rule that names a component's part
+   outranks a core control's rule wherever its file falls. */
+@layer cartoon-controls {
+
+/* ── Buttons: a rounded plate with a darker lip along its foot. The label
+   sits on the face, above the lip; pressed, the lip and the edge under the
+   plate close up and the label sinks with the face. The default is violet
+   with white ink at night and white with dark ink by day, so content
+   written in --ink reads on it; .primary is the yellow main action, .danger red, .ghost an
+   outline, .quiet bare. A button that is on (aria-pressed) is sky blue.
+   The type and the resting ink are on the host, so the label and the
+   button's content inherit them (the size once: its step is in em); each
+   variant's and state's ink is on the part. */
+button:not([part]) { color: var(--button-ink); font-family: var(--button-font); font-size: var(--font-step-xl); letter-spacing: var(--font-tracking-xs); text-transform: uppercase; }
+button.primary:not([part]), button[variant=primary]:not([part]) { color: var(--on-primary); }
+button.danger:not([part]), button[variant=danger]:not([part]) { color: var(--button-danger-ink); }
+button.ghost:not([part]), button.quiet:not([part]), button[variant=ghost]:not([part]), button[variant=quiet]:not([part]) { color: var(--button-ghost-ink); }
+button[aria-pressed=true]:not([part]) { color: var(--button-selected-ink); }
+button:disabled:not([part]) { color: var(--button-disabled-ink); }
+/* A button that names its own part (a tile, a row, a tab) is not this
+   plate: its ink is the panel's and its group's file draws it, so the
+   plate's rules select only buttons without one. */
+button[part] { color: var(--ink); }
+button:not([part])::part(base) {
+  min-height: var(--size-touch);
+  padding: var(--button-pad);
+  border: var(--button-border-width) solid var(--line-strong);
+  border-radius: var(--button-radius);
+  background: var(--button-fill);
+  box-shadow: var(--button-shadow);
+  font-family: var(--button-font);
+  letter-spacing: var(--font-tracking-xs);
+  text-transform: uppercase;
+  text-shadow: var(--button-text-shadow);
+}
+button:not([part])::part(base):hover { background: var(--button-hover-fill); }
+button:not([part])::part(base):active { background: var(--button-fill); box-shadow: var(--button-pressed-shadow); padding: var(--button-pressed-pad); }
+button.primary:not([part])::part(base) { color: var(--on-primary); background: var(--button-primary-fill); box-shadow: var(--button-primary-shadow); text-shadow: none; }
+button.primary:not([part])::part(base):hover { background: var(--button-primary-hover-fill); }
+button.primary:not([part])::part(base):active { background: var(--button-primary-fill); box-shadow: var(--button-pressed-shadow); }
+button.danger:not([part])::part(base) { color: var(--button-danger-ink); background: var(--button-danger-fill); box-shadow: var(--button-danger-shadow); text-shadow: var(--button-danger-text-shadow); }
+button.danger:not([part])::part(base):hover { background: var(--button-danger-hover-fill); }
+button.danger:not([part])::part(base):active { background: var(--button-danger-fill); box-shadow: var(--button-pressed-shadow); }
+button.ghost:not([part])::part(base) { color: var(--button-ghost-ink); background: none; box-shadow: none; padding: 0 var(--space-xl); }
+button.ghost:not([part])::part(base):hover { background: var(--button-ghost-hover-fill); }
+button.ghost:not([part])::part(base):active { background: var(--button-ghost-hover-fill); box-shadow: var(--button-pressed-shadow); padding: var(--button-pressed-pad); }
+button.quiet:not([part])::part(base) { color: var(--button-ghost-ink); border-color: transparent; background: none; box-shadow: none; padding: 0 var(--space-md); }
+button.quiet:not([part])::part(base):hover { background: var(--button-quiet-hover-fill); }
+button.quiet:not([part])::part(base):active { background: var(--button-quiet-hover-fill); box-shadow: none; padding: 0 var(--space-md); }
+button[aria-pressed=true]:not([part])::part(base), button[aria-pressed=true]:not([part])::part(base):hover { border-color: var(--line-strong); background: var(--button-selected-fill); box-shadow: var(--button-selected-shadow); }
+button[aria-pressed=true]:not([part])::part(base):active { background: var(--button-selected-fill); box-shadow: var(--button-pressed-shadow); }
+button:not([part])::part(base):disabled, button.primary:not([part])::part(base):disabled, button.danger:not([part])::part(base):disabled {
+  background: var(--button-disabled-fill); box-shadow: var(--button-disabled-shadow); text-shadow: none;
+}
+button:not([part])::part(base):disabled, button.primary:not([part])::part(base):disabled, button.danger:not([part])::part(base):disabled { color: var(--button-disabled-ink); }
+button.ghost:not([part])::part(base):disabled, button.quiet:not([part])::part(base):disabled { color: var(--ink-disabled); background: none; box-shadow: none; }
+button::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); border-radius: var(--button-radius); }
+/* The focus part of a button that names its own part also takes the
+   default plate's rules; it is the ring alone, over whatever the button is. */
+button::part(focus), button::part(focus):focus-visible, button::part(focus):focus-visible:hover, button::part(focus):focus-visible:active { border: none; background: none; box-shadow: none; }
+
+/* ── Checkbox, switch and radio: a sunk well in the outline; checked, it
+   fills green and stands up. */
+input[type=checkbox]::part(row), input[type=radio]::part(option) { border: none; box-shadow: none; background: none; border-radius: var(--radius-sm); }
+input[type=checkbox]::part(row):hover, input[type=radio]::part(option):hover { background: var(--ink-8); }
+input[type=checkbox]::part(box), input[type=radio]::part(ring) { border: var(--field-border-width) solid var(--line-strong); background: var(--checkbox-fill); box-shadow: var(--checkbox-shadow); }
+input[type=checkbox]::part(box) { border-radius: var(--checkbox-radius); }
+input[type=checkbox]::part(box):hover, input[type=radio]::part(ring):hover { background: var(--control); }
+input[type=checkbox]::part(box):checked, input[type=radio]::part(ring):checked { border: var(--field-border-width) solid var(--line-strong); background: var(--checkbox-checked-fill); box-shadow: var(--checkbox-checked-shadow); }
+input[type=checkbox]::part(box):disabled, input[type=radio]::part(ring):disabled { background: var(--field-disabled-fill); box-shadow: none; }
+input[type=checkbox]::part(box):invalid { border-color: var(--danger); }
+input[type=radio]::part(dot) { background: var(--line-strong); }
+input[type=radio]::part(card) { border: var(--cartoon-outline-width) solid var(--line-strong); background: var(--radio-card-fill); box-shadow: var(--radio-card-shadow); }
+input[type=radio]::part(card):hover { background: var(--cartoon-slate-hover); }
+input[type=radio]::part(card):checked { background: var(--radio-card-checked-fill); box-shadow: var(--radio-card-checked-shadow); color: var(--on-selection); }
+input[type=radio]::part(chosen) { border: var(--cartoon-outline-thin) solid var(--line-strong); background: var(--cartoon-green); }
+input[type=checkbox][switch]::part(track) { border: var(--field-border-width) solid var(--line-strong); background: var(--switch-fill); box-shadow: var(--checkbox-shadow); }
+input[type=checkbox][switch]::part(track):checked { background: var(--switch-checked-fill); }
+input[type=checkbox][switch]::part(track):disabled { background: var(--field-disabled-fill); box-shadow: none; }
+input[type=checkbox][switch]::part(knob) { border: var(--field-border-width) solid var(--line-strong); background: var(--switch-knob-fill); box-shadow: var(--switch-knob-shadow); }
+input[type=checkbox]::part(focus):focus-visible, input[type=radio]::part(focus):focus-visible,
+input[type=checkbox][switch]::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
+
+/* ── Tabs: a sunk track; the chosen tab is a yellow plate standing in it. */
+tabs::part(track) { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--tabs-radius); background: var(--tabs-track-fill); box-shadow: var(--cartoon-sunk); }
+tabs::part(tab) { background: none; color: var(--ink-muted); font-family: var(--button-font); letter-spacing: var(--font-tracking-xs); text-transform: uppercase; }
+tabs::part(tab):hover { background: var(--tabs-hover-fill); color: var(--ink); }
+tabs::part(tab):active { background: var(--ink-25); }
+tabs::part(tab):checked { color: var(--tabs-selected-ink); background: var(--tabs-selected-fill); box-shadow: var(--tabs-selected-shadow); }
+tabs::part(tab):disabled { color: var(--ink-disabled); }
+tabs::part(tab):checked:disabled { color: var(--button-disabled-ink); background: var(--button-disabled-fill); box-shadow: var(--cartoon-ring); }
+tabs::part(indicator) { height: var(--cartoon-outline-width); background: var(--tabs-indicator-fill); border-radius: var(--radius-capsule); }
+tabs::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
+
+/* ── Slider: a fat rail in the outline, a yellow fill and a white knob. */
+input[type=range]::part(track) { background: var(--well); border: var(--cartoon-outline-thin) solid var(--line-strong); box-shadow: var(--cartoon-sunk); }
+input[type=range]::part(fill) { background: var(--slider-fill); box-shadow: var(--meter-fill-shadow); }
+input[type=range]::part(tick) { background: var(--line-strong); }
+input[type=range]::part(knob) { border: var(--cartoon-outline-width) solid var(--line-strong); background: var(--slider-knob-fill); box-shadow: var(--slider-knob-shadow); }
+input[type=range]::part(knob):hover { box-shadow: var(--slider-knob-hover-shadow); }
+input[type=range]::part(knob):active { background: var(--slider-knob-pressed-fill); box-shadow: var(--cartoon-edge-small); }
+input[type=range]::part(knob):disabled { background: var(--button-disabled-fill); box-shadow: var(--cartoon-edge-small); }
+input[type=range]::part(core) { background: none; }
+input[type=range]::part(bubble) { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-sm); background: var(--primary); color: var(--on-primary); font-family: var(--figure-font); box-shadow: var(--cartoon-edge-small); }
+input[type=range]::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
+
+/* ── Fields, select and stepper: sunk wells; focus lights the rim. */
+input::part(frame), textarea::part(frame), select::part(trigger), stepper::part(frame),
+input[type=number]::part(frame) {
+  border: var(--field-border-width) solid var(--line-strong); border-radius: var(--field-radius);
+  background: var(--field-fill);
+  box-shadow: var(--field-shadow);
+}
+input::part(frame):focus-visible, textarea::part(frame):focus-visible { border-color: var(--line-strong); box-shadow: var(--field-focus-shadow); }
+input::part(frame):disabled, textarea::part(frame):disabled, select::part(trigger):disabled { background: var(--field-disabled-fill); box-shadow: none; }
+input::part(frame):invalid, textarea::part(frame):invalid, select::part(trigger):invalid { border: var(--field-border-width) solid var(--danger); }
+input::part(text), textarea::part(text) { color: var(--ink); font-family: var(--font-body); }
+input::part(placeholder), textarea::part(placeholder) { color: var(--ink-faint); }
+input::part(selection), textarea::part(selection) { background: var(--selection-30); }
+input::part(caret), textarea::part(caret) { background: var(--selection); }
+input::part(reveal):hover, input::part(clear):hover { background: var(--ink-14); }
+select::part(trigger) { color: var(--ink); }
+select::part(trigger):hover { background: var(--panel-hover); }
+select::part(trigger):open { border: var(--field-border-width) solid var(--line-strong); background: var(--panel-hover); padding-inline: calc(var(--space-md) - var(--field-border-width)); }
+select::part(list) { border: var(--cartoon-outline-width) solid var(--line-strong); border-radius: var(--radius-md); background: var(--panel-raised); box-shadow: var(--dropdown-list-shadow); }
+select::part(option) { border: none; box-shadow: none; background: none; color: var(--ink); border-radius: var(--radius-xs); }
+select::part(option):hover { background: var(--ink-14); }
+select::part(option):active { background: var(--ink-25); }
+select::part(option):disabled { color: var(--ink-disabled); }
+select::part(group) { color: var(--ink-label); font-family: var(--label-font); font-weight: var(--cartoon-weight-label); letter-spacing: var(--label-tracking); text-transform: uppercase; }
+stepper::part(value) { border: none; background: none; box-shadow: none; color: var(--ink); font-family: var(--figure-font); }
+stepper::part(button), input[type=number]::part(button) { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-xs); background: var(--cartoon-key-fill); box-shadow: none; color: var(--cartoon-key-ink); }
+stepper::part(button):hover, input[type=number]::part(button):hover { background: var(--button-primary-fill); }
+stepper::part(button):active, input[type=number]::part(button):active { background: var(--button-primary-fill); box-shadow: var(--button-pressed-shadow); }
+stepper::part(button):disabled, input[type=number]::part(button):disabled { border: var(--cartoon-outline-thin) solid var(--line-strong); background: var(--button-disabled-fill); }
+input::part(focus):focus-visible, textarea::part(focus):focus-visible, select::part(focus):focus-visible,
+stepper::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); border-radius: var(--field-radius); }
+
+/* ── Details: the summary is a slate bar that opens downwards. */
+details::part(root) { border: none; }
+details::part(summary) { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-sm); background: var(--cartoon-slate); box-shadow: var(--cartoon-edge-small); color: var(--ink); font-family: var(--button-font); letter-spacing: var(--font-tracking-xs); text-transform: uppercase; }
+details::part(summary):hover { background: var(--cartoon-slate-hover); }
+details::part(summary):active { box-shadow: var(--button-pressed-shadow); }
+details::part(summary):open { background: var(--cartoon-slate-hover); }
+details::part(content) { padding: var(--space-sm) var(--space-sm) var(--space-sm); color: var(--ink); }
+details::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
+
+/* ── Panels, dialogs, tooltips, HUD. */
+panel::part(frame), dialog::part(panel) {
+  border: var(--panel-border-width) solid var(--line-strong); border-radius: var(--panel-radius);
+  background: var(--panel-fill);
+  box-shadow: var(--panel-shadow);
+}
+dialog::part(backdrop) { background: var(--scrim); }
+tooltip::part(frame) { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-md); background: var(--tooltip-fill); box-shadow: var(--tooltip-shadow); backdrop-filter: none; }
+hud::part(frame) { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--hud-radius); background: var(--hud); box-shadow: var(--cartoon-edge-small); backdrop-filter: none; }
+popover::part(arrow) { background: var(--panel-raised); }
+og-spotlight::part(edge) { border: var(--cartoon-outline-width) solid var(--accent); }
+
+/* ── Slot (core), badge. */
+slot::part(frame) { border: var(--cartoon-outline-width) solid var(--line-strong); background: var(--slot-fill); box-shadow: var(--slot-shadow); }
+slot::part(frame):hover { box-shadow: var(--slot-hover-shadow); }
+slot::part(frame):active { background: var(--cell-pressed-fill); box-shadow: var(--button-pressed-shadow); }
+slot[aria-selected=true]::part(frame) { border: var(--cartoon-outline-width) solid var(--line-strong); box-shadow: var(--cell-selected-shadow); }
+slot::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
+/* A badge is a solid capsule in the outline; its tone is its plate. */
+badge::part(base) { background: var(--cartoon-slate); color: var(--ink); border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--badge-radius); font-family: var(--label-font); }
+badge[tone=info]::part(base) { background: var(--cartoon-blue); color: var(--on-primary); }
+badge[tone=success]::part(base) { background: var(--cartoon-green); color: var(--on-primary); }
+badge[tone=warn]::part(base) { background: var(--cartoon-orange); color: var(--on-primary); }
+badge[tone=danger]::part(base) { background: var(--cartoon-red); color: var(--badge-ink); }
+badge[tone=accent]::part(base), badge[tone=primary]::part(base) { background: var(--cartoon-yellow); color: var(--on-primary); }
+
+/* ── Bars, progress, meters: a sunk capsule, a glossy fill. */
+progress::part(track), meter::part(track) { background: var(--well); border: var(--cartoon-outline-thin) solid var(--line-strong); box-shadow: var(--cartoon-sunk); }
+progress::part(fill) { background: var(--meter-fill); box-shadow: var(--meter-fill-shadow); }
+meter::part(fill) { box-shadow: var(--meter-fill-shadow); }
+meter.health::part(fill) { background: var(--meter-health-fill); }
+meter.mana::part(fill) { background: var(--meter-mana-fill); }
+
+/* ── Keyboard (on-screen): white keys on the ground. */
+keyboard::part(panel) { border-top: var(--cartoon-outline-width) solid var(--line-strong); background: var(--panel); }
+keyboard::part(key), keyboard::part(candidate) { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-xs); background: var(--keyboard-key-fill); box-shadow: var(--cartoon-key-shadow); color: var(--cartoon-key-ink); font-family: var(--button-font); }
+keyboard::part(key):hover, keyboard::part(candidate):hover { background: var(--button-primary-fill); }
+keyboard::part(key):active, keyboard::part(candidate):active { background: var(--button-primary-fill); box-shadow: var(--button-pressed-shadow); }
+keyboard::part(key):disabled { border: var(--cartoon-outline-thin) solid var(--line-strong); background: var(--button-disabled-fill); color: var(--button-disabled-ink); }
+keyboard::part(preview) { border-bottom: var(--cartoon-outline-thin) solid var(--line-strong); background: var(--well); color: var(--ink); font-family: var(--font-body); }
+keyboard::part(candidates) { border-bottom: var(--cartoon-outline-thin) solid var(--line-strong); background: var(--panel-raised); }
+keyboard::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); }
+
+/* ── Touch controls. */
+joystick::part(base), dpad::part(base) { background: var(--touch-plate-fill); border: var(--cartoon-outline-width) solid var(--line-strong); }
+joystick::part(rim):active { border-color: var(--accent); }
+joystick::part(knob) { border: var(--cartoon-outline-width) solid var(--line-strong); background: var(--slider-knob-fill); box-shadow: var(--switch-knob-shadow); }
+joystick::part(direction) { background: var(--accent); }
+dpad::part(indicator):active, dpad::part(chevron):active { background: var(--accent); }
+
+/* ── Scroll bars, and the remaining registry parts: the IME composition's
+   underline, the icons' inks (an icon takes its ink from where it sits, so
+   one on a plate is the plate's ink). `input[type=range]::part(reach)` is the
+   knob's hit area and stays undrawn. */
+scroll::part(bar) { background: var(--ink-25); border-radius: var(--radius-capsule); }
+input::part(composition), textarea::part(composition) { text-decoration-line: underline; text-decoration-color: var(--selection); }
+input::part(reveal-icon), input::part(clear-icon) { color: var(--ink-muted); }
+og-icon::part(secondary) { color: var(--accent); }
+art::part(icon), artslot::part(icon) { color: var(--ink); }
+
+/* ── Role parts: what the role tokens do not carry. A band is a plate of
+   its own inside the frame; a chosen tile wears a sky ring outside its
+   outline; labels are heavy. */
+[part$=".band"] { border: var(--band-rule-width) solid var(--band-rule); border-radius: var(--band-radius); }
+[part$=".title"] { line-height: var(--cartoon-leading-display); }
+[part$=".cell"]:where([aria-selected=true], [aria-current=true], [data-selected=true]) { box-shadow: var(--cell-selected-shadow); }
+[part$=".cell"]:where([data-empty=true]) { background: var(--cell-empty-fill); }
+[part$=".label"], [part$=".heading"] { font-weight: var(--cartoon-weight-label); }
+[part$=".badge"] { border: var(--cartoon-outline-thin) solid var(--line-strong); }
+[part$=".well"] { border: var(--cartoon-outline-thin) solid var(--line-strong); }
+
+} /* @layer cartoon-controls */

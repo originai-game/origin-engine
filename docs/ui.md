@@ -1513,7 +1513,7 @@ rewards, legal card targets, or note timing.
 | --- | --- | --- | --- |
 | `fantasy` | Painted frames and materials with room for dense content | Baldur's Gate 3, Diablo IV | Built, shipped with the engine; art-approved (pilot) |
 | `scifi` | Instrument hierarchy, precise geometry, sparse emphasis | Elite Dangerous, Starfield | Built, shipped with the engine; awaiting art approval |
-| `cartoon` | Rounded forms, deliberate thickness, clear primary actions | Mario Kart 8 Deluxe, Bloons TD 6 | In progress, not on main |
+| `cartoon` | Rounded forms, deliberate thickness, clear primary actions | Mario Kart 8 Deluxe, Bloons TD 6 | Built, shipped with the engine |
 | `pixel` | Consistent pixel grid, integer scaling, readable glyphs | Stardew Valley, Octopath Traveler | Not yet built |
 | `storybook` | Paper and illustrated edges, quiet ornament, readable text | Pentiment, Strange Horticulture | Not yet built |
 
@@ -1521,8 +1521,8 @@ A built pack lives in `templates/styles/<name>/` and ships with the engine
 as `@styles/<name>`, with the art its CSS names: `base.css` holds every
 value as a `:root` token (with a `:root[data-scheme=light]` block),
 `controls.css` dresses the core controls, one file per component group
-(`rpg.css` … `general.css`) dresses that group's parts (scifi's
-`components.css` some ungrouped components), and `motion.css`
+(`rpg.css` … `general.css`) dresses that group's parts (scifi's and
+cartoon's `components.css` some ungrouped components), and `motion.css`
 and `sounds.css` hold its transitions and `-og-sound` sets; each pack's
 README lists its files and tokens. `templates/styles/shared/` holds the
 fonts, sounds and art packs share (`/@styles/shared/`) and

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "@styles/cartoon",
+      "summary": "A built-in style pack, loaded with og.load.style(world, \"@styles/cartoon\") or a look's ui \"cartoon\": a casual cartoon dress with bright candy colours on a sky ground, one thick dark outline around every control, frame and tile, chunky rounded buttons that stand on a raised bottom edge and sink onto it when pressed, bold rounded type (Lilita One and Fredoka, with ZCOOL KuaiLe for Chinese), soft drop shadows and springy motion with a prefers-reduced-motion branch. It has a dark and a light scheme, dresses every core control, the ten built-in component groups, the ungrouped components and the built-in screens, and sets the rarity colours (--common to --mythic), the long durations, --opacity-wash and --button-selected-*. Only base.css writes values, so a variant restyles it by setting tokens."
+    }
+  ]
+}

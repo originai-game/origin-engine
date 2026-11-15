@@ -1,0 +1,209 @@
+/* cartoon × general components: the built-in general documents
+   (packages/engine/src/ui/components/general) dressed through their named parts
+   and data-* states. Frames, bands, titles, rows and cells wear the role
+   tokens (base.css); the rules here are what one member alone wears. A
+   button that names a part takes its plate through button::part(Name\.part).
+   The components' own <style> holds layout only. Every value is a token set
+   in base.css. */
+
+/* Smaller panels carry a lead band, as the quest log does. */
+:is([part="DailyQuests.band"], [part="DailyRewards.band"], [part="Friends.band"], [part="Achievements.band"]) {
+  justify-content: flex-start;
+  background: var(--band-lead-fill);
+  padding-inline-start: var(--space-md);
+}
+:is([part="DailyQuests.title"], [part="DailyRewards.title"], [part="Friends.title"], [part="Achievements.title"], [part="ShopConfirm.title"]) { font-size: var(--font-step-3xl); letter-spacing: var(--font-tracking-xs); }
+
+/* Labels in heavy capitals. */
+:is([part="Shop.frame"], [part="ShopConfirm.frame"], [part="Achievements.frame"], [part="DailyQuests.frame"], [part="DailyRewards.frame"], [part="Friends.frame"])
+  :is([part="Shop.status"], [part="Achievements.state"], [part="Achievements.tier"], [part="DailyRewards.label"], [part="DailyRewards.state"], [part="Friends.heading"], .featured, .claimed, .short) {
+  font-family: var(--label-font);
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+}
+:is([part="Shop.frame"], [part="ShopConfirm.frame"], [part="Achievements.frame"], [part="DailyQuests.frame"], [part="DailyRewards.frame"], [part="Chat.frame"], [part="Friends.frame"]) :is(.figure, .was) { font-family: var(--figure-font); }
+[part="Chat.time"], [part="Achievements.rarity"], [part="DailyRewards.amount"] { font-family: var(--figure-font); }
+:is([part="Shop.frame"], [part="Achievements.frame"], [part="DailyQuests.frame"], [part="Friends.frame"], [part="Chat.frame"]) :is(.state-text, .empty-text, .empty) {
+  font-family: var(--label-font);
+  color: var(--ink-faint);
+  letter-spacing: var(--label-tracking);
+}
+:is([part="Shop.frame"], [part="ShopConfirm.frame"], [part="Achievements.frame"], [part="DailyQuests.frame"], [part="DailyRewards.frame"], [part="Chat.frame"], [part="Friends.frame"]) :is(.state-mark, .empty-mark) { color: var(--accent); }
+:is([part="Shop.frame"], [part="ShopConfirm.frame"], [part="Achievements.frame"], [part="DailyQuests.frame"], [part="DailyRewards.frame"], [part="Chat.frame"], [part="Friends.frame"]) :is(.mark, .currency, .status-mark, .short-mark, .send-mark) { color: var(--accent); }
+/* A mark on a button's plate is the plate's ink: gold on the white or the
+   yellow plate would not read. */
+:is([part="Shop.frame"], [part="ShopConfirm.frame"], [part="Achievements.frame"], [part="DailyQuests.frame"], [part="DailyRewards.frame"], [part="Chat.frame"], [part="Friends.frame"]) button:not([part]) :is(.mark, .currency, .status-mark, .short-mark, .send-mark) { color: inherit; }
+
+/* The components' buttons that name parts take the type and inks here,
+   then their own plates below. */
+button::part(Shop\.tab), button::part(Shop\.offer), button::part(DailyRewards\.day), button::part(Chat\.tab), button::part(Friends\.row) {
+  min-height: var(--size-touch);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+  font-family: var(--button-font);
+  text-shadow: var(--button-text-shadow);
+}
+
+/* ── Tabs: the chosen one is a blue plate standing in the row. */
+[part="Shop.frame"] .tabs, [part="Chat.frame"] .tabs { padding: 0 0 var(--space-xs); border-bottom: var(--cartoon-outline-thin) solid var(--divider); }
+[part="Shop.tab"], [part="Chat.tab"] { color: var(--ink-muted); }
+[part="Shop.tab"][aria-selected=true], [part="Chat.tab"][aria-selected=true] { color: var(--tabs-selected-ink); }
+button::part(Shop\.tab), button::part(Chat\.tab) { font-size: var(--font-step-md); letter-spacing: var(--font-tracking-xs); text-transform: uppercase; padding: 0 var(--space-md); border-radius: var(--radius-sm); }
+button::part(Shop\.tab):hover, button::part(Chat\.tab):hover { background: var(--tabs-hover-fill); color: var(--ink-bright); }
+button[aria-selected=true]::part(Shop\.tab), button[aria-selected=true]::part(Chat\.tab),
+button[aria-selected=true]::part(Shop\.tab):hover, button[aria-selected=true]::part(Chat\.tab):hover { background: var(--tabs-selected-fill); box-shadow: var(--tabs-selected-shadow); color: var(--tabs-selected-ink); }
+[part="Chat.unread"] { border-radius: var(--radius-pill); background: var(--badge-fill); color: var(--badge-ink); font-family: var(--figure-font); font-size: var(--font-step-xs); box-shadow: var(--badge-shadow); }
+
+/* ── Shop: the wallet as sunk capsules, offers as tiles; the featured
+   offer is an orange plate with dark ink, the chosen one wears the ring. */
+[part="Shop.balance"] { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-pill); background: var(--well-85); box-shadow: var(--well-shadow); }
+[part="Shop.balance"] .figure { font-size: var(--font-step-xl); color: var(--figure-ink); }
+[part="Shop.balance"] .currency { color: var(--gold); }
+button::part(Shop\.offer) {
+  padding: var(--space-sm);
+  border: var(--cartoon-outline-width) solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--cell-fill);
+  box-shadow: var(--cell-shadow);
+}
+button::part(Shop\.offer):hover { box-shadow: var(--cell-hover-shadow); }
+button::part(Shop\.offer):active { background: var(--cell-pressed-fill); }
+button[data-featured=true]::part(Shop\.offer) { background: var(--cartoon-orange); box-shadow: var(--cartoon-featured-shadow); }
+button[data-sold-out=true]::part(Shop\.offer), button[data-owned=true]::part(Shop\.offer), button[data-affordable=false]::part(Shop\.offer) { background: var(--cell-empty-fill); box-shadow: var(--cell-empty-shadow); }
+button[aria-selected=true]::part(Shop\.offer), button[aria-selected=true]::part(Shop\.offer):hover { box-shadow: var(--cell-selected-shadow); }
+[part="Shop.offer"][data-featured=true] :is([part="Shop.name"], .detail, .figure, .was, .currency) { color: var(--on-primary); text-shadow: none; }
+[part="Shop.offer"] .art { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-sm); background: var(--well); }
+[part="Shop.offer"] .art-icon { color: var(--highlight); }
+[part="Shop.offer"][data-sold-out=true] .art-icon, [part="Shop.offer"][data-affordable=false] .art-icon { opacity: var(--opacity-wash); }
+[part="Shop.name"] { font-family: var(--font-display); font-size: var(--font-step-xl); letter-spacing: var(--font-tracking-xs); text-transform: uppercase; color: var(--ink); line-height: 1.12; }
+[part="Shop.offer"]:is([data-sold-out=true], [data-owned=true], [data-affordable=false]) [part="Shop.name"] { color: var(--ink-disabled); }
+[part="Shop.offer"] .detail { font-size: var(--font-step-md); color: var(--ink-muted); }
+[part="Shop.badge"] { border-radius: var(--radius-pill); background: var(--badge-fill); color: var(--badge-ink); font-family: var(--figure-font); font-size: var(--font-step-sm); letter-spacing: var(--label-tracking); text-transform: uppercase; box-shadow: var(--cartoon-edge-small); }
+[part="Shop.offer"] .featured { border-radius: var(--radius-pill); background: var(--cartoon-key-fill); color: var(--cartoon-key-ink); font-size: var(--font-step-sm); box-shadow: var(--cartoon-ring); }
+[part="Shop.price"] .figure, [part="ShopConfirm.price"] .figure { font-size: var(--font-step-xl); color: var(--figure-ink); text-shadow: var(--figure-shadow); }
+[part="Shop.price"] .currency, [part="ShopConfirm.price"] .currency { color: var(--gold); }
+[part="Shop.price"] .was, [part="ShopConfirm.price"] .was { font-size: var(--font-step-md); color: var(--ink-faint); }
+[part="Shop.price"][data-short=true] .figure, [part="ShopConfirm.price"][data-short=true] .figure { color: var(--danger); }
+[part="Shop.status"] { font-size: var(--font-step-sm); color: var(--ink-muted); }
+[part="Shop.status"][data-kind=owned], [part="Shop.status"][data-kind=owned] .status-mark { color: var(--success); }
+[part="Shop.status"][data-kind=short], [part="Shop.status"][data-kind=short] .status-mark { color: var(--danger); }
+[part="Shop.status"][data-kind=soldOut] .status-mark { color: var(--ink-faint); }
+
+/* ── Purchase confirmation: the offer over a rule, the cost in a well. */
+[part="ShopConfirm.frame"] .art { border: var(--cartoon-outline-width) solid var(--line-strong); border-radius: var(--radius-md); background: var(--cell-fill); box-shadow: var(--cell-shadow); }
+[part="ShopConfirm.frame"] .art-icon { color: var(--highlight); }
+[part="ShopConfirm.name"] { font-family: var(--font-display); font-size: var(--font-step-3xl); letter-spacing: var(--font-tracking-xs); text-transform: uppercase; color: var(--ink); text-shadow: var(--cartoon-text-drop-small); line-height: 1.12; }
+[part="ShopConfirm.frame"] .detail { font-size: var(--font-step-lg); color: var(--ink-muted); line-height: 1.45; }
+[part="ShopConfirm.frame"] .prices { border-top: var(--cartoon-outline-thin) solid var(--divider); padding-top: var(--space-sm); }
+[part="ShopConfirm.price"] { border-radius: var(--radius-sm); background: var(--well-60); box-shadow: var(--well-shadow); }
+[part="ShopConfirm.price"] .after { font-family: var(--figure-font); font-size: var(--font-step-md); color: var(--ink-muted); }
+[part="ShopConfirm.frame"] .short { font-size: var(--font-step-sm); color: var(--danger); }
+[part="ShopConfirm.frame"] .short .short-mark { color: var(--danger); }
+[part="ShopConfirm.error"] { padding: var(--space-xs) var(--space-sm); border-inline-start: var(--stroke-thick) solid var(--danger); background: var(--well-85); color: var(--ink); font-size: var(--font-step-lg); }
+
+/* ── Rows: achievements and quests on a quiet well, a yellow edge when a reward waits. */
+[part="Achievements.row"], [part="DailyQuests.row"] {
+  border-bottom: var(--cartoon-outline-thin) solid var(--divider);
+  background: var(--well-60);
+  border-radius: var(--radius-xs);
+}
+[part="Achievements.row"][data-claimable=true] { border-inline-start: var(--stroke-thick) solid var(--gold); }
+[part="Achievements.row"][data-claimed=true] [part="Achievements.name"] { color: var(--ink-done); }
+[part="Achievements.medal"], [part="DailyQuests.medal"] { border: var(--cartoon-outline-width) solid var(--line-strong); border-radius: 50%; background: var(--cell-fill); box-shadow: var(--cell-shadow); }
+[part="Achievements.medal"] .medal-icon, [part="DailyQuests.medal"] .medal-icon { color: var(--highlight); }
+/* An unlocked medal is a plate in its tier's colour; a locked one stays slate. */
+[part="Achievements.row"][data-state=unlocked] [part="Achievements.medal"] { background: var(--cartoon-yellow); }
+[part="Achievements.row"][data-state=unlocked] .medal-icon { color: var(--on-primary); }
+[part="Achievements.row"][data-state=unlocked][data-tier=rare] [part="Achievements.medal"] { background: var(--cartoon-blue); }
+[part="Achievements.row"][data-state=unlocked][data-tier=epic] [part="Achievements.medal"] { background: var(--cartoon-purple); }
+[part="Achievements.row"][data-state=unlocked][data-tier=legendary] [part="Achievements.medal"] { background: var(--cartoon-orange); }
+[part="Achievements.row"][data-state=locked] .medal-icon, [part="Achievements.row"][data-hidden=true] .medal-icon { color: var(--ink-disabled); }
+[part="Achievements.name"], [part="DailyQuests.name"] { font-family: var(--font-display); font-size: var(--font-step-xl); letter-spacing: var(--font-tracking-xs); text-transform: uppercase; color: var(--ink); line-height: 1.12; }
+[part="Achievements.row"][data-state=locked] [part="Achievements.name"] { color: var(--ink-muted); }
+[part="Achievements.row"][data-hidden=true] [part="Achievements.name"] { color: var(--ink-disabled); }
+[part="Achievements.row"] .about { font-size: var(--font-step-lg); color: var(--ink-muted); line-height: 1.35; }
+[part="Achievements.state"] { font-size: var(--font-step-sm); color: var(--ink-faint); }
+[part="Achievements.state"][data-state=unlocked], [part="Achievements.state"][data-state=unlocked] .state-mark { color: var(--success); }
+[part="Achievements.rarity"], [part="Achievements.tier"] { font-size: var(--font-step-sm); color: var(--gold); }
+[part="Achievements.rarity"][data-tier=rare], [part="Achievements.tier"][data-tier=rare] { color: var(--rare); }
+[part="Achievements.rarity"][data-tier=epic], [part="Achievements.tier"][data-tier=epic] { color: var(--epic); }
+[part="Achievements.rarity"][data-tier=legendary], [part="Achievements.tier"][data-tier=legendary] { color: var(--legendary); }
+[part="Achievements.summary"] .figure { font-size: var(--font-step-xl); color: var(--figure-ink); }
+:is([part="Achievements.frame"], [part="DailyQuests.frame"]) .claimed { font-size: var(--font-step-sm); color: var(--success); }
+:is([part="Achievements.frame"], [part="DailyQuests.frame"]) .claimed .state-mark, [part="DailyQuests.frame"] .claimed .mark { color: var(--success); }
+[part="DailyQuests.row"][data-state=claimed] [part="DailyQuests.name"] { color: var(--ink-done); }
+[part="DailyQuests.row"][data-state=done] { border-inline-start: var(--stroke-thick) solid var(--gold); }
+[part="DailyQuests.reward"] .figure { font-size: var(--font-step-xl); color: var(--figure-ink); }
+[part="DailyQuests.reward"] .mark { color: var(--gold); }
+[part="DailyQuests.refresh"], [part="DailyRewards.refresh"] { font-family: var(--figure-font); font-size: var(--font-step-md); color: var(--ink-muted); }
+
+/* ── Login calendar: day plates; today's wears the yellow ring (and
+   wobbles while its reward waits: motion.css), a milestone is an orange
+   plate with dark ink. */
+button::part(DailyRewards\.day), div[part="DailyRewards.day"] {
+  padding: var(--space-xs);
+  border: var(--cartoon-outline-width) solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--cell-fill);
+  box-shadow: var(--cell-shadow);
+}
+button[data-milestone=true]::part(DailyRewards\.day), div[part="DailyRewards.day"][data-milestone=true]:not([data-state=claimed]):not([data-state=missed]) { background: var(--cartoon-orange); }
+[part="DailyRewards.day"][data-milestone=true]:not([data-state=claimed]):not([data-state=missed]) :is([part="DailyRewards.label"], [part="DailyRewards.amount"], [part="DailyRewards.state"], .reward, .mark) { color: var(--on-primary); }
+/* Today wears the ring; only the claimable button glows. */
+button[data-state=today]::part(DailyRewards\.day), div[part="DailyRewards.day"][data-state=today] { box-shadow: var(--cell-shadow), var(--cartoon-ring-accent); }
+button[data-state=today]::part(DailyRewards\.day):enabled { box-shadow: var(--cell-shadow), var(--cartoon-glow); }
+button[data-state=today]::part(DailyRewards\.day):enabled:hover { box-shadow: var(--cell-hover-shadow); }
+div[part="DailyRewards.day"][data-state=claimed], div[part="DailyRewards.day"][data-state=missed] { background: var(--cell-empty-fill); box-shadow: var(--cell-empty-shadow); }
+div[part="DailyRewards.day"][data-state=missed] { border: var(--cartoon-outline-width) dashed var(--divider-strong); }
+[part="DailyRewards.label"] { font-size: var(--font-step-sm); color: var(--ink); }
+[part="DailyRewards.day"] .reward { color: var(--highlight); }
+[part="DailyRewards.day"][data-state=claimed] .reward, [part="DailyRewards.day"][data-state=missed] .reward { opacity: var(--opacity-wash); }
+[part="DailyRewards.amount"] { font-size: var(--font-step-lg); color: var(--figure-ink); }
+[part="DailyRewards.state"] { font-size: var(--font-step-xs); color: var(--ink-faint); }
+[part="DailyRewards.state"][data-state=claimed], [part="DailyRewards.state"][data-state=claimed] .mark { color: var(--success); }
+[part="DailyRewards.state"][data-state=today], [part="DailyRewards.state"][data-state=today] .mark { color: var(--gold); }
+[part="DailyRewards.state"][data-state=missed] .mark { color: var(--danger); }
+
+/* ── Chat: a sunk log, others' lines plain, the player's a blue bubble,
+   system lines behind a rule. */
+[part="Chat.log"] { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-sm); background: var(--well-60); box-shadow: var(--well-shadow); }
+[part="Chat.message"] { border-radius: var(--radius-sm); }
+[part="Chat.message"][data-kind=own] { background: var(--row-selected-fill); box-shadow: var(--cartoon-ring); }
+[part="Chat.message"][data-kind=own] :is([part="Chat.sender"], [part="Chat.time"], [part="Chat.text"]) { color: var(--on-selection); }
+[part="Chat.message"][data-kind=system] { border-inline-start: var(--cartoon-outline-width) solid var(--divider); }
+[part="Chat.sender"] { font-family: var(--font-display); font-size: var(--font-step-lg); letter-spacing: var(--font-tracking-xs); color: var(--ink-label); }
+[part="Chat.sender"][data-kind=system] { font-family: var(--label-font); font-size: var(--font-step-sm); letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--accent); }
+[part="Chat.time"] { font-size: var(--font-step-xs); color: var(--ink-faint); }
+[part="Chat.text"] { font-size: var(--font-step-xl); line-height: 1.4; color: var(--ink); }
+[part="Chat.text"][data-kind=system] { color: var(--ink); }
+[part="Chat.notice"] { font-family: var(--label-font); font-size: var(--font-step-sm); letter-spacing: var(--label-tracking); color: var(--warn); }
+
+/* ── Friends: a request is a raised strip, the chosen friend a blue
+   plate; presence is a lit dot beside its word. */
+[part="Friends.heading"] { font-size: var(--font-step-md); color: var(--ink-label); border-bottom: var(--cartoon-outline-thin) solid var(--divider); }
+[part="Friends.request"] { border-radius: var(--radius-sm); background: var(--panel-raised); box-shadow: var(--cartoon-ring), var(--cartoon-edge-small); }
+button::part(Friends\.row) { padding: 0; border-bottom: var(--cartoon-outline-thin) solid var(--divider); }
+button::part(Friends\.row):hover { background: var(--row-hover-fill); }
+button[data-selected=true]::part(Friends\.row), button[data-selected=true]::part(Friends\.row):hover { border: none; border-radius: var(--row-radius); background: var(--row-selected-fill); box-shadow: var(--row-selected-edge); }
+[part="Friends.row"][data-selected=true] :is([part="Friends.name"], [part="Friends.status"], .activity, .note) { color: var(--on-selection); }
+[part="Friends.avatar"] { border: var(--cartoon-outline-width) solid var(--line-strong); border-radius: 50%; background: var(--backdrop); box-shadow: var(--cartoon-edge-small); }
+[part="Friends.avatar"] .avatar-icon { color: var(--highlight); }
+[part="Friends.avatar"][data-status=offline] .avatar-icon { color: var(--ink-disabled); }
+[part="Friends.presence"] { border-radius: 50%; border: var(--cartoon-outline-thin) solid var(--line-strong); background: var(--ink-faint); }
+[part="Friends.presence"][data-status=online] { background: var(--success); }
+[part="Friends.presence"][data-status=ingame] { background: var(--gold); }
+[part="Friends.presence"][data-status=away] { background: var(--warn); }
+[part="Friends.name"] { font-family: var(--font-display); font-size: var(--font-step-xl); letter-spacing: var(--font-tracking-xs); color: var(--ink); }
+[part="Friends.row"][data-status=offline] [part="Friends.name"] { color: var(--ink-muted); }
+[part="Friends.status"] { font-family: var(--label-font); font-size: var(--font-step-sm); letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--ink-faint); }
+[part="Friends.status"][data-status=online] { color: var(--success); }
+[part="Friends.status"][data-status=ingame] { color: var(--gold); }
+[part="Friends.status"][data-status=away] { color: var(--warn); }
+[part="Friends.frame"] .activity, [part="Friends.frame"] .note { font-size: var(--font-step-md); color: var(--ink-muted); }
+[part="Friends.frame"] #Invite[data-invited=true] .mark { color: var(--ink-faint); }
+
+/* The sheet's ground, as .rpg-ground: the review pages' root, outside every
+   frame, so it cannot be scoped under one. */
+.general-ground { background: var(--cartoon-ground); }

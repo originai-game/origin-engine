@@ -1,0 +1,141 @@
+/* cartoon × strategy components: the built-in strategy documents
+   (packages/engine/src/ui/components/strategy) dressed through their named parts
+   and data-* states. Frames, bands, titles, rows and cells wear the role
+   tokens (base.css); the rules here are what one member alone wears. A
+   button that names a part takes its plate through button::part(Name\.part).
+   The components' own <style> holds layout only. Every value is a token set
+   in base.css. */
+
+/* HUD plates over the field: outlined plates. */
+:is([part="StrategyQueue.frame"], [part="StrategyWave.frame"]) {
+  box-sizing: border-box;
+  border: var(--plate-rim-width) solid var(--plate-rim);
+  border-radius: var(--plate-radius);
+  box-shadow: var(--plate-shadow);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+[part="StrategyQueue.frame"] { padding: var(--space-xs) var(--space-sm) var(--space-sm); }
+[part="StrategyQueue.frame"] [part="StrategyQueue.band"] { min-height: var(--size-md); padding: var(--space-xxs) var(--space-sm); background: var(--band-small-fill); }
+[part="StrategyQueue.band"] [part="StrategyQueue.title"] { font-size: var(--font-step-lg); letter-spacing: var(--label-tracking); }
+
+/* Captions and short words in heavy capitals. */
+:is([part="StrategyWave.title"], [part="StrategySelection.frame"] .line, [part="StrategyTower.frame"] .label,
+[part="StrategyTower.frame"] .tier, [part="StrategySelection.frame"] .command-label) {
+  font-family: var(--label-font);
+  font-size: var(--font-step-xs);
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+  color: var(--ink-label);
+}
+/* Tags: a small outlined capsule, its word in capitals. */
+:is([part="StrategySelection.badge"], [part="StrategyQueue.badge"], [part="StrategyWave.badge"], [part="StrategyTower.badge"],
+[part="StrategySelection.frame"] .on) {
+  font-family: var(--label-font);
+  font-size: var(--font-step-2xs);
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+  border: var(--cartoon-outline-thin) solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--well);
+  color: var(--ink);
+}
+/* Reasons a thing cannot be done: a quiet line in words, never a colour alone. */
+:is([part="StrategySelection.reason"], [part="StrategyQueue.reason"], [part="StrategyTower.reason"]) {
+  font-family: var(--font-body);
+  font-size: var(--font-step-xs);
+  color: var(--warn);
+}
+:is([part="StrategySelection.frame"], [part="StrategyQueue.frame"], [part="StrategyTower.frame"]) .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
+
+/* ── Selection. */
+[part="StrategySelection.band"] .summary { color: var(--ink-label); }
+[part="StrategySelection.frame"] .roster { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-md); background: var(--well); box-shadow: var(--well-shadow); }
+button::part(StrategySelection\.cell) { border: var(--cartoon-outline-width) solid var(--line-strong); border-radius: var(--radius-sm); background: var(--cell-fill); box-shadow: var(--cell-shadow); }
+button::part(StrategySelection\.cell):hover { box-shadow: var(--cell-hover-shadow); }
+button[aria-selected=true]::part(StrategySelection\.cell) { box-shadow: var(--cell-selected-shadow); }
+button[data-kind=building]::part(StrategySelection\.cell) { border-radius: var(--radius-xs); }
+[part="StrategySelection.portrait"] { border-radius: var(--radius-xs); background: none; box-shadow: none; }
+[part="StrategySelection.portrait"] .mark { color: var(--title-ink); }
+[part="StrategySelection.cell"] .count { font-family: var(--font-display); font-size: var(--font-step-xs); color: var(--ink-bright); background: var(--well-85); }
+[part="StrategySelection.meter"] { border-radius: var(--radius-xs); background: var(--well-85); }
+[part="StrategySelection.meter"] .fill { background: var(--meter-health-fill); }
+[part="StrategySelection.detail"] { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-md); background: var(--well); box-shadow: var(--well-shadow); }
+[part="StrategySelection.name"] { font-family: var(--font-display); font-size: var(--font-step-2xl); letter-spacing: var(--font-tracking-xs); color: var(--title-ink); text-shadow: var(--cartoon-text-drop-small); }
+[part="StrategySelection.detail"] .status { color: var(--ink-muted); }
+[part="StrategySelection.grid"] { padding: var(--space-xs); border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-md); background: var(--well); box-shadow: var(--well-shadow); }
+button::part(StrategySelection\.command) { border: var(--cartoon-outline-width) solid var(--line-strong); border-radius: var(--radius-sm); background: var(--cell-fill); box-shadow: var(--cell-shadow); color: var(--ink); }
+button::part(StrategySelection\.command):hover { color: var(--ink-bright); background: var(--cell-pressed-fill); box-shadow: var(--cell-hover-shadow); }
+button::part(StrategySelection\.command):active { color: var(--ink); background: var(--cell-pressed-fill); box-shadow: var(--button-pressed-shadow); }
+button::part(StrategySelection\.command):disabled { color: var(--ink-disabled); background: var(--cell-empty-fill); box-shadow: var(--cell-empty-shadow); }
+button[data-active=true]::part(StrategySelection\.command), button[data-active=true]::part(StrategySelection\.command):hover { background: var(--cartoon-selected); box-shadow: var(--cell-selected-shadow); }
+[part="StrategySelection.command"] .cool { background: var(--well-85); }
+[part="StrategySelection.command"] .cool-text { font-family: var(--font-display); font-size: var(--font-step-lg); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
+[part="StrategySelection.key"] { font-family: var(--label-font); font-size: var(--font-step-2xs); color: var(--badge-ink); }
+[part="StrategySelection.frame"] .on { background: var(--primary); color: var(--on-primary); }
+[part="StrategySelection.command"] .reason { font-size: var(--font-step-2xs); }
+
+/* ── Production queue. */
+[part="StrategyQueue.row"] { border-bottom: var(--cartoon-outline-thin) solid var(--divider); }
+[part="StrategyQueue.row"][data-state=building] { border-bottom: none; background: var(--row-selected-fill); box-shadow: var(--row-selected-edge); }
+[part="StrategyQueue.row"][data-state=building] .cancel { color: var(--ink-selected); }
+[part="StrategyQueue.cell"] { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-sm); background: var(--cell-fill); box-shadow: var(--cartoon-edge-small); color: var(--ink); }
+/* The cancel is a small square button: the plate's padding would push its mark out. */
+button.cancel::part(base) { padding: 0; border-radius: var(--radius-sm); }
+[part="StrategyQueue.cell"] .stack { font-family: var(--font-display); font-size: var(--font-step-xs); color: var(--ink-bright); background: var(--well-85); }
+[part="StrategyQueue.name"] { font-family: var(--font-display); font-size: var(--font-step-lg); letter-spacing: var(--font-tracking-xs); color: var(--title-ink); }
+[part="StrategyQueue.frame"] .time { font-family: var(--figure-font); font-size: var(--font-step-md); color: var(--figure-ink); }
+[part="StrategyQueue.badge"].capacity { color: var(--ink-bright); }
+[part="StrategyQueue.badge"][data-full=true], [part="StrategyQueue.badge"].full { color: var(--warn); }
+[part="StrategyQueue.badge"][data-state=paused] { color: var(--warn); }
+[part="StrategyQueue.badge"][data-state=blocked] { color: var(--danger); }
+[part="StrategyQueue.badge"][data-state=waiting] { color: var(--ink-muted); }
+[part="StrategyQueue.row"][data-state=waiting] [part="StrategyQueue.name"] { color: var(--ink-muted); }
+[part="StrategyQueue.row"][data-state=blocked] [part="StrategyQueue.cell"] { background: var(--cell-empty-fill); box-shadow: var(--cell-empty-shadow); }
+[part="StrategyQueue.row"] .cancel { color: var(--ink-label); }
+
+/* ── Waves: the count and the timer as sunk readouts. */
+[part="StrategyWave.cell"] { padding: var(--cartoon-readout-pad); border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--well-radius); background: var(--well-fill); box-shadow: var(--well-shadow); }
+[part="StrategyWave.cell"] .now { font-family: var(--font-display); font-size: var(--font-step-4xl); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
+[part="StrategyWave.cell"] .of { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--ink-muted); }
+[part="StrategyWave.frame"][data-final=true] [part="StrategyWave.cell"] .now { color: var(--gold); }
+[part="StrategyWave.badge"].phase[data-phase=active] { color: var(--danger); }
+[part="StrategyWave.badge"].phase[data-phase=done] { color: var(--success); }
+[part="StrategyWave.badge"].final, [part="StrategyWave.badge"].boss { background: var(--primary); color: var(--on-primary); }
+[part="StrategyWave.frame"] .incoming { border-top: var(--cartoon-outline-thin) solid var(--divider); padding-top: var(--space-xxs); }
+[part="StrategyWave.row"] .mark { color: var(--team2); }
+[part="StrategyWave.row"][data-boss=true] .mark { color: var(--gold); }
+[part="StrategyWave.name"] { font-family: var(--font-body); font-size: var(--font-step-lg); color: var(--ink); }
+[part="StrategyWave.row"][data-boss=true] [part="StrategyWave.name"] { font-family: var(--font-display); color: var(--title-ink); }
+[part="StrategyWave.row"][data-scouted=false] [part="StrategyWave.name"] { color: var(--ink-faint); }
+[part="StrategyWave.frame"] .enemy-count { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--figure-ink); }
+[part="StrategyWave.frame"] .reward { font-family: var(--label-font); font-size: var(--font-step-xs); letter-spacing: var(--label-tracking); color: var(--on-primary); }
+
+/* ── Tower inspector. */
+[part="StrategyTower.portrait"] { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-sm); background: var(--button-primary-fill); box-shadow: var(--cartoon-edge-small); color: var(--on-primary); }
+[part="StrategyTower.badge"].level { background: var(--primary); color: var(--on-primary); }
+[part="StrategyTower.row"] { border-bottom: var(--cartoon-outline-thin) solid var(--divider); }
+[part="StrategyTower.row"] .value { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--figure-ink); }
+[part="StrategyTower.row"] .next { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--success); }
+[part="StrategyTower.path"] { border: var(--cartoon-outline-thin) solid var(--line-strong); border-radius: var(--radius-md); background: var(--cell-fill); box-shadow: var(--cartoon-plate-shadow); }
+[part="StrategyTower.path"] .path-mark { color: var(--title-ink); }
+[part="StrategyTower.path"][data-state=affordable] { box-shadow: var(--cartoon-plate-shadow), var(--cartoon-ring-accent); }
+[part="StrategyTower.path"][data-state=locked] { background: var(--cell-empty-fill); box-shadow: var(--cell-empty-shadow); }
+[part="StrategyTower.path"][data-state=locked] :is(.path-mark, [part="StrategyTower.name"]) { color: var(--ink-down); }
+[part="StrategyTower.path"][data-state=maxed] { background: var(--cell-empty-fill); box-shadow: var(--cell-empty-shadow); }
+[part="StrategyTower.name"] { font-family: var(--font-display); font-size: var(--font-step-lg); letter-spacing: var(--font-tracking-xs); color: var(--title-ink); }
+[part="StrategyTower.path"] .detail { font-size: var(--font-step-sm); color: var(--ink-muted); }
+[part="StrategyTower.path"] .track { border-radius: var(--radius-xs); background: var(--well-85); }
+[part="StrategyTower.path"] .fill { background: var(--meter-fill); }
+[part="StrategyTower.cost"] { font-family: var(--font-display); font-size: var(--font-step-md); }
+[part="StrategyTower.cost"][data-state=affordable] { color: var(--on-primary); }
+[part="StrategyTower.cost"]:is([data-state=unaffordable], [data-state=locked]) { color: var(--button-disabled-ink); }
+[part="StrategyTower.badge"].state[data-state=unaffordable] { color: var(--danger); }
+[part="StrategyTower.badge"].state[data-state=locked] { color: var(--ink-muted); }
+[part="StrategyTower.badge"].state[data-state=maxed] { background: var(--primary); color: var(--on-primary); }
+[part="StrategyTower.frame"] .refund { font-family: var(--label-font); font-size: var(--font-step-xs); letter-spacing: var(--label-tracking); color: var(--gold); }
+
+@media (width < 600px) {
+  [part="StrategyWave.cell"] .now { font-size: var(--font-step-3xl); }
+  :is([part="StrategySelection.frame"], [part="StrategyTower.frame"]) { padding: var(--space-sm); }
+}
