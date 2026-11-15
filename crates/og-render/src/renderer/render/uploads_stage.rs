@@ -93,6 +93,7 @@ impl Renderer {
                 !self.output_format.is_srgb()
                     && self.output_format != HDR_FORMAT
                     && !self.has_linear_view(target),
+                self.output_format,
             );
             ui_uniform = Some(u);
         }

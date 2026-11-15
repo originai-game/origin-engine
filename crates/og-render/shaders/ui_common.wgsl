@@ -10,7 +10,8 @@ struct UiFrame {
   // w: 1 when the shader encodes sRGB (a non-sRGB target).
   output: vec4<f32>,
   // xy: the target's top left in CSS px (a layer's rectangle; 0 for the
-  // output); z: the UI clock in seconds.
+  // output); z: the UI clock in seconds; w: one code value of the output,
+  // encoded (1/255 for 8 bits), a gradient's dither.
   origin: vec4<f32>,
 };
 @group(0) @binding(0) var<uniform> frame: UiFrame;
@@ -966,8 +967,14 @@ fn gradient_color(gi: u32, f: vec2<f32>, size: vec2<f32>, pixel: vec2<f32>) -> v
   }
   rgb = max(rgb, vec3<f32>(0.0));
   if (g.head.w > 0.5) {
-    // Half a code value of noise in the encoded output, so 8 bits show no bands.
-    let n = (ign(pixel) - 0.5) / 255.0;
+    // Triangular noise of an output code value either way, encoded, after
+    // the mix: a shallow ramp shows no steps where the output stores it,
+    // and its grain is as strong on a code as between two (uniform noise
+    // leaves pixels on a code clean, stripes across the ramp). Interleaved
+    // gradient noise remapped to a triangular distribution keeps its even
+    // spread (Gjøl, "Banding in Games", 2016).
+    let u = ign(pixel) * 2.0 - 1.0;
+    let n = sign(u) * (1.0 - sqrt(1.0 - abs(u))) * frame.origin.w;
     rgb = decode(clamp(encode(rgb) + vec3<f32>(n), vec3<f32>(0.0), vec3<f32>(1.0)));
   }
   return vec4<f32>(rgb, c.w);

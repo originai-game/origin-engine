@@ -975,7 +975,13 @@ impl OverlayRenderer {
     /// The uniform (`UiFrame`) for `overlay` on an output of
     /// `width`×`height` device pixels: its scale, or (0) the scale that
     /// fits its height to the output.
-    pub fn uniform(width: u32, height: u32, overlay: &Overlay, encode: bool) -> [f32; 8] {
+    pub fn uniform(
+        width: u32,
+        height: u32,
+        overlay: &Overlay,
+        encode: bool,
+        format: wgpu::TextureFormat,
+    ) -> [f32; 8] {
         let scale = Self::scale(height, overlay);
         [
             width as f32,
@@ -985,7 +991,7 @@ impl OverlayRenderer {
             0.0,
             0.0,
             overlay.ui.time,
-            0.0,
+            dither_step(format),
         ]
     }
 
@@ -1032,3 +1038,16 @@ pub(crate) fn overlay_source() -> String {
 }
 
 const OVERLAY_WGSL: &str = wgsl!("overlay.wgsl");
+
+/// One code value of the output `format`, encoded: what a gradient's dither
+/// spreads its pixels across so a shallow ramp shows no steps where the
+/// output stores it. A float output is dithered for the 8 bits a display
+/// or a capture reads it back at.
+fn dither_step(format: wgpu::TextureFormat) -> f32 {
+    use wgpu::TextureFormat as F;
+    match format {
+        F::Rgb10a2Unorm => 1.0 / 1023.0,
+        F::Rgba16Unorm => 1.0 / 65535.0,
+        _ => 1.0 / 255.0,
+    }
+}
