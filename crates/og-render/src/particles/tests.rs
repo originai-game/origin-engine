@@ -519,3 +519,106 @@ fn a_life_sub_emitter_runs_its_emission_from_every_living_parent() {
     assert!(kids.iter().all(|k| k.x.abs() <= 2.05 && k.y.abs() < 1e-4));
     assert_eq!(a.children[0].slots, go(150).children[0].slots);
 }
+
+/// A system's live spawn range holds every particle alive, tick by tick,
+/// for steady, curved, bursting, one-shot and stopped emission, a random
+/// lifetime, a slowed and a frozen time scale and a ring that wraps; and
+/// once the emission settles it is the share of the ring alive, not all
+/// of it (what lets the renderer draw only those slots).
+#[test]
+fn every_live_particle_is_in_its_systems_live_spawn_range() {
+    let base = ParticleEmitter {
+        rate: 90.0,
+        lifetime: [0.4, 1.1],
+        max_particles: 256,
+        ..Default::default()
+    };
+    let burst = |time: f32, count: u32| Burst {
+        time,
+        count,
+        cycles: 1,
+        interval: 0.0,
+    };
+    let cases: Vec<(&str, ParticleEmitter, Option<u64>, f32)> = vec![
+        ("steady", base.clone(), None, 1.0),
+        (
+            "curved",
+            ParticleEmitter {
+                duration: 1.5,
+                rate_over_time: Some(Curve::new(&[(0.0, 0.0), (0.5, 3.0), (1.0, 0.5)])),
+                ..base.clone()
+            },
+            None,
+            1.0,
+        ),
+        (
+            "bursts",
+            ParticleEmitter {
+                rate: 0.0,
+                duration: 0.7,
+                bursts: vec![burst(0.0, 40), burst(0.3, 25)],
+                ..base.clone()
+            },
+            None,
+            1.0,
+        ),
+        (
+            "one-shot",
+            ParticleEmitter {
+                looping: false,
+                duration: 0.5,
+                ..base.clone()
+            },
+            None,
+            1.0,
+        ),
+        ("stopped", base.clone(), Some(50), 1.0),
+        ("slowed", base.clone(), None, 0.25),
+        ("frozen", base.clone(), None, 0.0),
+        (
+            "wraps",
+            ParticleEmitter {
+                rate: 400.0,
+                max_particles: 100,
+                ..base.clone()
+            },
+            None,
+            1.0,
+        ),
+    ];
+    for (name, e, stop, scale) in cases {
+        let mut cpu = CpuParticles::default();
+        let points = shape_points(&e.shape, None);
+        let mut sys = ParticleSystem::new(1, EmitterHandle(0), Mat4::IDENTITY, 3, 0);
+        sys.start_tick = 5;
+        sys.stop_tick = stop;
+        let max = u64::from(e.max_particles);
+        let mut narrowest = u64::MAX;
+        for t in 0..240 {
+            sys.tick = t;
+            // Frozen only after it has particles in the air.
+            sys.time_scale = if t < 30 { 1.0 } else { scale };
+            cpu.advance(&e, &sys, 60.0, &points, &[], &[], None, None);
+            let live = live_spawns(&e, &sys, 60.0, &cpu.clock);
+            let slots: std::collections::BTreeSet<u64> = live
+                .clone()
+                .rev()
+                .take(max as usize)
+                .map(|i| i % max)
+                .collect();
+            for (j, p) in cpu.slots.iter().enumerate() {
+                assert!(
+                    !p.alive() || slots.contains(&(j as u64)),
+                    "{name} tick {t}: slot {j} alive outside {live:?}"
+                );
+            }
+            if t > 100 {
+                narrowest = narrowest.min(live.end - live.start);
+            }
+        }
+        if name == "steady" {
+            // 90 a second for at most 1.1 s, two ticks wider: about 102.
+            assert!(narrowest < 110, "{name}: {narrowest} of {max} slots drawn");
+        }
+    }
+}

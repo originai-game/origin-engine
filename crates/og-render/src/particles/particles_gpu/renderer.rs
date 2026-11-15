@@ -419,16 +419,24 @@ impl ParticleRenderer {
             let (effect, offset) = self.effects.bind(s.effect);
             pass.set_bind_group(3, effect, &[offset]);
             pass.set_vertex_buffer(0, buffer.slice(..));
+            let slots = s.slots.iter().filter(|r| !r.is_empty()).cloned();
             match s.mesh.map(&mesh) {
                 Some(Some((vertices, indices, count))) => {
                     pass.set_vertex_buffer(1, vertices.slice(..));
                     pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
-                    pass.draw_indexed(0..count, 0, 0..s.max);
+                    for r in slots {
+                        pass.draw_indexed(0..count, 0, r);
+                        draws += 1;
+                    }
                 }
                 Some(None) => continue,
-                None => pass.draw(0..6, 0..s.max),
+                None => {
+                    for r in slots {
+                        pass.draw(0..6, r);
+                        draws += 1;
+                    }
+                }
             }
-            draws += 1;
         }
         draws
     }

@@ -182,13 +182,29 @@ pub(crate) struct FrameSystem {
     pub layers: u32,
     /// A sub-emitter's particles: which of the system's.
     child: Option<usize>,
-    /// Slots drawn.
-    max: u32,
+    /// The slots drawn, as instance ranges in slot order ([`drawn`]).
+    slots: [std::ops::Range<u32>; 2],
     kind: DrawKind,
     mesh: Option<crate::MeshHandle>,
     /// Its effect material (`effect.rs`) and how its pipeline differs.
     effect: Option<crate::EffectMaterialHandle>,
     look: Look,
+}
+
+/// The instance ranges a system of `max` slots draws: every slot, or with
+/// `live` (its [`crate::particles::live_spawns`]) only those its living
+/// particles can be in. The ring wraps, so that is at most two ranges,
+/// drawn in slot order as the whole ring is (an alpha-blended system's
+/// particles overlap in the same order).
+fn drawn(max: u32, live: Option<std::ops::Range<u64>>) -> [std::ops::Range<u32>; 2] {
+    let m = u64::from(max);
+    match live {
+        Some(r) if r.end - r.start < m => {
+            let (a, b) = ((r.start % m) as u32, (r.end % m) as u32);
+            if a <= b { [a..b, 0..0] } else { [0..b, a..max] }
+        }
+        _ => [0..max, 0..0],
+    }
 }
 
 /// What an effect material changes in a system's pipeline: its hook's

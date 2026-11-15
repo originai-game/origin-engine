@@ -380,6 +380,7 @@ impl ParticleRenderer {
                 );
                 g.last_tick = Some(sys.tick);
                 g.prev_transform = Some(sys.transform);
+                let live = crate::particles::live_spawns(e, sys, tick_rate, &g.clock);
                 let n_points = (points.len() / 2) as u32;
                 let local = e.space == SimulationSpace::Local;
                 for s in &steps {
@@ -436,7 +437,7 @@ impl ParticleRenderer {
                     depth,
                     layers,
                     child: None,
-                    max: e.max_particles,
+                    slots: drawn(e.max_particles, Some(live)),
                     kind,
                     mesh,
                     effect,
@@ -497,7 +498,13 @@ impl ParticleRenderer {
                     depth,
                     layers,
                     child: None,
-                    max: state.cpu.slots.len() as u32,
+                    // A hosted system's state may stand at another tick.
+                    slots: drawn(
+                        state.cpu.slots.len() as u32,
+                        (state.cpu.last_tick == Some(sys.tick)).then(|| {
+                            crate::particles::live_spawns(e, sys, tick_rate, &state.cpu.clock)
+                        }),
+                    ),
                     kind,
                     mesh,
                     effect,
@@ -561,7 +568,7 @@ impl ParticleRenderer {
                     depth,
                     layers,
                     child: Some(k),
-                    max: c.slots.len() as u32,
+                    slots: drawn(c.slots.len() as u32, None),
                     kind,
                     mesh: match ce.render {
                         ParticleRender::Mesh { mesh } => Some(mesh),
@@ -984,7 +991,7 @@ impl ParticleRenderer {
                 depth: (m.transform.w_axis.truncate() - eye).dot(forward),
                 layers: m.layers,
                 child: None,
-                max: 1,
+                slots: drawn(1, None),
                 kind: DrawKind::Mesh,
                 mesh: Some(m.mesh),
                 effect: Some(m.material),

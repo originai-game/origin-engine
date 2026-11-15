@@ -76,6 +76,36 @@ pub(super) fn spawned_before(e: &ParticleEmitter, elapsed: f64, stop: f64) -> (u
     (continuous, bursts)
 }
 
+/// The spawn indices `from..to` a system may hold alive once `clock` has
+/// stepped its tick `sys.tick`: `to` the next it spawns, `from` the first
+/// spawned within its longest lifetime of the system's own time (two ticks
+/// wider: a particle's age adds up in f32 on its slot, this range from the
+/// f64 clock, and rounding must never leave a living one out). Spawn index `i` is in
+/// slot `i % max_particles`, so every slot outside the range is dead and a
+/// draw of only these slots draws the same. A system slowed or frozen by
+/// its time scale keeps its old particles in range, as they keep living.
+pub fn live_spawns(
+    e: &ParticleEmitter,
+    sys: &ParticleSystem,
+    tick_rate: f32,
+    clock: &ParticleClock,
+) -> std::ops::Range<u64> {
+    if sys.tick < sys.start_tick {
+        return 0..0;
+    }
+    let dt = 1.0 / tick_rate.max(1e-3) as f64;
+    let stop = sys
+        .stop_tick
+        .map_or(f64::INFINITY, |s| clock.at(s.max(sys.start_tick), dt));
+    let index = |t: f64| {
+        let (c, b) = spawned_before(e, t, stop);
+        c + b
+    };
+    let now = clock.at(sys.tick + 1, dt);
+    let reach = f64::from(e.max_lifetime()) + 2.0 * dt * f64::from(clock.scale.max(0.0));
+    index(now - reach)..index(now)
+}
+
 /// The spawns of `tick` for a system.
 pub fn tick_step(
     e: &ParticleEmitter,
