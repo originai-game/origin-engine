@@ -6,7 +6,19 @@
    holds layout and the scene tokens' fallback plate. Every value is a
    token set in base.css. */
 
-/* ── Ammunition: a plate, the magazine the largest figure on the HUD. */
+/* ── Vitals: the ammunition's cut plate, at the other corner. */
+[part="CombatHud.vitals"] {
+  border: var(--plate-rim-width) solid var(--plate-rim);
+  border-radius: var(--plate-radius);
+  corner-shape: bevel;
+  background: var(--plate-fill);
+  box-shadow: var(--plate-shadow);
+}
+
+/* ── Ammunition: a plate, the magazine the largest figure on the HUD, its
+   strip lit cyan on a hairline track, the weapon and the reload's words in
+   condensed capitals. The low strip and the empty prompt keep the
+   component's --warn and --danger. */
 [part="Ammo.frame"] {
   border: var(--plate-rim-width) solid var(--plate-rim);
   border-radius: var(--plate-radius);
@@ -23,12 +35,21 @@
 [part="Ammo.count"].empty { color: var(--danger); }
 [part="Ammo.reserve"] { font-family: var(--figure-font); color: var(--ink-muted); text-shadow: var(--scifi-text-shadow); }
 [part="Ammo.mode"] { font-family: var(--label-font); letter-spacing: var(--font-tracking-lg); color: var(--ink-label); }
+[part="Ammo.track"] { background: var(--line-strong-25); }
+[part="Ammo.magazine"] { background: var(--primary); }
+[part="Ammo.magazine"].low { background: var(--warn); }
+:is([part="Ammo.weapon"], [part="Ammo.label"], [part="Ammo.prompt"]) { font-family: var(--label-font); letter-spacing: var(--font-tracking-lg); }
+[part="Ammo.weapon"] { color: var(--ink); }
+[part="Ammo.label"] { color: var(--ink-label); }
 [part="Ammo.reload"] { background: var(--accent); box-shadow: var(--scifi-fresh-glow); }
 
 /* ── Reticle: the scene's ink over a dark keyline, red on a target; the hit
-   mark turns amber for a headshot, red for a kill, blue for a broken shield. */
+   mark turns amber for a headshot, red for a kill, blue for a broken shield.
+   The circle's ring keeps the component's inks and takes the keyline on
+   both of its edges. */
 [part="Crosshair.arm"], [part="Crosshair.dot"] { border-radius: 0; background: var(--scene-ink); box-shadow: var(--scifi-reticle-shadow); }
 [part="Crosshair.arm"].aimed, [part="Crosshair.dot"].aimed { background: var(--danger); }
+[part="Crosshair.ring"] { box-shadow: var(--scifi-reticle-ring-shadow); }
 [part="Crosshair.hit"] { background: var(--ink-bright); box-shadow: var(--scifi-reticle-shadow); }
 [part="Crosshair.hit"].headshot { background: var(--accent); }
 [part="Crosshair.hit"].kill { background: var(--danger); }
@@ -40,13 +61,15 @@
 [part="DamageDirection.arc"].critical { stroke: var(--mythic); }
 
 /* ── Killfeed: opaque rows (they sit over open sky) with a lit leading
-   edge, the names in their team's ink; the player's own rows are amber-edged. */
+   edge, the names in their team's ink, a headshot's mark amber as on the
+   reticle; the player's own rows are amber-edged. */
 [part="Killfeed.row"] { border-radius: 0; border-inline-start: var(--stroke-regular) solid var(--line-strong); background: var(--scifi-feed-fill); box-shadow: var(--scifi-shadow-xs); }
 [part="Killfeed.row"].self { border-inline-start-color: var(--accent); background: var(--scifi-feed-self-fill); }
 [part="Killfeed.name"] { font-family: var(--font-body); color: var(--scene-ink); text-shadow: none; }
 [part="Killfeed.name"].ally { color: var(--team1); }
 [part="Killfeed.name"].enemy { color: var(--team2); }
 [part="Killfeed.weapon"] { font-family: var(--label-font); letter-spacing: var(--font-tracking-md); color: var(--ink-muted); }
+og-icon[part="Killfeed.headshot"]::part(image) { color: var(--accent); }
 
 /* ── Loadout: categories in condensed capitals over a hairline; each slot
    a cut cell, lit when equipped, amber when chosen, dark when locked. */

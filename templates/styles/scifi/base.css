@@ -523,6 +523,7 @@
   --scifi-minimap-inner: inset 0 0 18px var(--scifi-shade);
   --scifi-log-fade: linear-gradient(180deg, #000 0, #000 calc(100% - 36px), #0000 100%);
   --scifi-reticle-shadow: 0 0 0 1px var(--scifi-keyline);
+  --scifi-reticle-ring-shadow: 0 0 0 1px var(--scifi-keyline), inset 0 0 0 1px var(--scifi-keyline);
   --scifi-feed-fill: linear-gradient(90deg, var(--panel-raised), var(--panel));
   --scifi-feed-self-fill: linear-gradient(90deg, var(--selection), var(--panel));
   --scifi-shadow-xs: 0 2px 4px var(--scifi-shade-soft);
