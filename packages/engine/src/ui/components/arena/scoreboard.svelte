@@ -1,6 +1,6 @@
 <meta name="component" content="ArenaScoreboard">
 <meta name="strings" content="./arena.en.ogt">
-<meta name="parts" content="ArenaScoreboard.frame ArenaScoreboard.band ArenaScoreboard.title ArenaScoreboard.team ArenaScoreboard.heading ArenaScoreboard.score ArenaScoreboard.row ArenaScoreboard.stat ArenaScoreboard.name ArenaScoreboard.badge">
+<meta name="parts" content="ArenaScoreboard.frame ArenaScoreboard.band ArenaScoreboard.title ArenaScoreboard.team ArenaScoreboard.heading ArenaScoreboard.score ArenaScoreboard.row ArenaScoreboard.stat ArenaScoreboard.name ArenaScoreboard.badge ArenaScoreboard.plate ArenaScoreboard.figure">
 <meta name="prop:title" content="string" data-doc="The board's heading; empty takes the kit's (Scoreboard).">
 <meta name="prop:columns" content="string" data-doc="What each row shows: kda (kills, deaths, assists and score) or score (score only).">
 <meta name="prop:nameA" content="string" data-doc="The first team's name; empty takes the kit's (Blue team).">
@@ -27,10 +27,10 @@
   {#if rows.length}
     <scroll class="list">
       <div class="teams">
-        <table part="ArenaScoreboard.team" class="team" aria-label={(nameA != '' ? nameA : t("arena.team.a"))}>
+        <table part="ArenaScoreboard.team ArenaScoreboard.plate" class="team" aria-label={(nameA != '' ? nameA : t("arena.team.a"))}>
           <thead>
             <tr part="ArenaScoreboard.heading" class="heading" data-team="a">
-              <th class="team-head" scope="col"><div class="head"><span class="team-name">{(nameA != '' ? nameA : t("arena.team.a"))}</span><span part="ArenaScoreboard.score" class="team-score" data-team="a" hidden={scoreA == ''} aria-description={t("arena.score.teamScore")}>{scoreA}</span></div></th>
+              <th class="team-head" scope="col"><div class="head"><span class="team-name">{(nameA != '' ? nameA : t("arena.team.a"))}</span><span part="ArenaScoreboard.score ArenaScoreboard.figure" class="team-score" data-team="a" hidden={scoreA == ''} aria-description={t("arena.score.teamScore")}>{scoreA}</span></div></th>
               <th class="num" scope="col" aria-label={t("arena.score.killsName")} hidden={columns != 'kda'}>{t("arena.score.kills")}</th>
               <th class="num" scope="col" aria-label={t("arena.score.deathsName")} hidden={columns != 'kda'}>{t("arena.score.deaths")}</th>
               <th class="num" scope="col" aria-label={t("arena.score.assistsName")} hidden={columns != 'kda'}>{t("arena.score.assists")}</th>
@@ -42,19 +42,19 @@
               {#if r.team == 'a'}
                 <tr part="ArenaScoreboard.row" aria-current={r.local} data-local={r.local} data-disconnected={r.disconnected}>
                   <th class="who-cell" scope="row"><div class="who"><span part="ArenaScoreboard.name" class="name">{r.name}</span><span part="ArenaScoreboard.badge" class="you" data-tag="you" hidden={!r.local}>{t("arena.you")}</span><span part="ArenaScoreboard.badge" class="off" data-tag="disconnected" hidden={!r.disconnected}>{t("arena.score.disconnected")}</span></div></th>
-                  <td part="ArenaScoreboard.stat" class="num" hidden={columns != 'kda'}>{formatNumber(r.kills)}</td>
-                  <td part="ArenaScoreboard.stat" class="num" hidden={columns != 'kda'}>{formatNumber(r.deaths)}</td>
-                  <td part="ArenaScoreboard.stat" class="num" hidden={columns != 'kda'}>{formatNumber(r.assists)}</td>
-                  <td part="ArenaScoreboard.stat" class="total">{formatNumber(r.score)}</td>
+                  <td part="ArenaScoreboard.stat ArenaScoreboard.figure" class="num" hidden={columns != 'kda'}>{formatNumber(r.kills)}</td>
+                  <td part="ArenaScoreboard.stat ArenaScoreboard.figure" class="num" hidden={columns != 'kda'}>{formatNumber(r.deaths)}</td>
+                  <td part="ArenaScoreboard.stat ArenaScoreboard.figure" class="num" hidden={columns != 'kda'}>{formatNumber(r.assists)}</td>
+                  <td part="ArenaScoreboard.stat ArenaScoreboard.figure" class="total">{formatNumber(r.score)}</td>
                 </tr>
               {/if}
             {/each}
           </tbody>
         </table>
-        <table part="ArenaScoreboard.team" class="team" aria-label={(nameB != '' ? nameB : t("arena.team.b"))}>
+        <table part="ArenaScoreboard.team ArenaScoreboard.plate" class="team" aria-label={(nameB != '' ? nameB : t("arena.team.b"))}>
           <thead>
             <tr part="ArenaScoreboard.heading" class="heading" data-team="b">
-              <th class="team-head" scope="col"><div class="head"><span class="team-name">{(nameB != '' ? nameB : t("arena.team.b"))}</span><span part="ArenaScoreboard.score" class="team-score" data-team="b" hidden={scoreB == ''} aria-description={t("arena.score.teamScore")}>{scoreB}</span></div></th>
+              <th class="team-head" scope="col"><div class="head"><span class="team-name">{(nameB != '' ? nameB : t("arena.team.b"))}</span><span part="ArenaScoreboard.score ArenaScoreboard.figure" class="team-score" data-team="b" hidden={scoreB == ''} aria-description={t("arena.score.teamScore")}>{scoreB}</span></div></th>
               <th class="num" scope="col" aria-label={t("arena.score.killsName")} hidden={columns != 'kda'}>{t("arena.score.kills")}</th>
               <th class="num" scope="col" aria-label={t("arena.score.deathsName")} hidden={columns != 'kda'}>{t("arena.score.deaths")}</th>
               <th class="num" scope="col" aria-label={t("arena.score.assistsName")} hidden={columns != 'kda'}>{t("arena.score.assists")}</th>
@@ -66,10 +66,10 @@
               {#if r.team == 'b'}
                 <tr part="ArenaScoreboard.row" aria-current={r.local} data-local={r.local} data-disconnected={r.disconnected}>
                   <th class="who-cell" scope="row"><div class="who"><span part="ArenaScoreboard.name" class="name">{r.name}</span><span part="ArenaScoreboard.badge" class="you" data-tag="you" hidden={!r.local}>{t("arena.you")}</span><span part="ArenaScoreboard.badge" class="off" data-tag="disconnected" hidden={!r.disconnected}>{t("arena.score.disconnected")}</span></div></th>
-                  <td part="ArenaScoreboard.stat" class="num" hidden={columns != 'kda'}>{formatNumber(r.kills)}</td>
-                  <td part="ArenaScoreboard.stat" class="num" hidden={columns != 'kda'}>{formatNumber(r.deaths)}</td>
-                  <td part="ArenaScoreboard.stat" class="num" hidden={columns != 'kda'}>{formatNumber(r.assists)}</td>
-                  <td part="ArenaScoreboard.stat" class="total">{formatNumber(r.score)}</td>
+                  <td part="ArenaScoreboard.stat ArenaScoreboard.figure" class="num" hidden={columns != 'kda'}>{formatNumber(r.kills)}</td>
+                  <td part="ArenaScoreboard.stat ArenaScoreboard.figure" class="num" hidden={columns != 'kda'}>{formatNumber(r.deaths)}</td>
+                  <td part="ArenaScoreboard.stat ArenaScoreboard.figure" class="num" hidden={columns != 'kda'}>{formatNumber(r.assists)}</td>
+                  <td part="ArenaScoreboard.stat ArenaScoreboard.figure" class="total">{formatNumber(r.score)}</td>
                 </tr>
               {/if}
             {/each}
@@ -89,8 +89,8 @@
 [part="ArenaScoreboard.title"] { margin: 0; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .list { width: stretch; flex: 1; min-height: 0; }
 .teams { display: flex; flex-direction: column; width: stretch; gap: var(--space-md); }
-[part="ArenaScoreboard.team"] { width: stretch; }
-[part="ArenaScoreboard.team"] :is(th, td) { padding: var(--space-xxs) var(--space-sm); font-weight: inherit; }
+[part="ArenaScoreboard.team ArenaScoreboard.plate"] { width: stretch; }
+[part="ArenaScoreboard.team ArenaScoreboard.plate"] :is(th, td) { padding: var(--space-xxs) var(--space-sm); font-weight: inherit; }
 [part="ArenaScoreboard.row"] { min-height: var(--size-md); }
 /* The name column takes what the figures leave; the figures size to their widest value. */
 .team-head, .who-cell { width: 100%; text-align: start; }
@@ -104,12 +104,12 @@
 .num { min-width: var(--size-md); }
 .empty-text { margin: 0; padding: var(--space-lg); text-align: center; }
 @container (width < 600px) {
-  [part="ArenaScoreboard.team"] :is(th, td) { padding: var(--space-xxs) var(--space-xs); }
+  [part="ArenaScoreboard.team ArenaScoreboard.plate"] :is(th, td) { padding: var(--space-xxs) var(--space-xs); }
   /* A narrow board cannot hold a long name beside four figures at large
      text: the name takes its own line and the figures share the line under
      it in even columns, the same in every row, so they still line up. */
-  [part="ArenaScoreboard.team"], [part="ArenaScoreboard.team"] :is(thead, tbody) { display: block; }
-  [part="ArenaScoreboard.team"] tr { display: flex; flex-wrap: wrap; align-items: center; width: stretch; }
+  [part="ArenaScoreboard.team ArenaScoreboard.plate"], [part="ArenaScoreboard.team ArenaScoreboard.plate"] :is(thead, tbody) { display: block; }
+  [part="ArenaScoreboard.team ArenaScoreboard.plate"] tr { display: flex; flex-wrap: wrap; align-items: center; width: stretch; }
   .team-head, .who-cell { flex: 1 1 100%; width: auto; min-width: 0; max-width: stretch; }
   .num { flex: 1 1 0; min-width: 0; }
   .total { flex: 2 1 0; min-width: 0; }

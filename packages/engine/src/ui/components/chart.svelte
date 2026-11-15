@@ -1,6 +1,6 @@
 <meta name="component" content="Chart">
 <meta name="strings" content="./chart.en.ogt">
-<meta name="parts" content="Chart.frame Chart.title Chart.subtitle Chart.tick Chart.grid Chart.bar Chart.area Chart.line Chart.label">
+<meta name="parts" content="Chart.frame Chart.title Chart.subtitle Chart.tick Chart.grid Chart.bar Chart.area Chart.line Chart.label Chart.plate">
 <meta name="prop:title" content="string" data-doc="A title over it; empty is none.">
 <meta name="prop:subtitle" content="string" data-doc="A line under the title.">
 <meta name="prop:max" content="number" data-default="1" data-doc="The value axis' top (its bottom is 0).">
@@ -18,7 +18,7 @@
       {#each ticks as tick (tick.id)}<span part="Chart.tick" class="tick" style:--at={tick.at}>{tick.label}</span>{/each}
     </div>
     <div id="Plot">
-      {#each ticks as tick (tick.id)}<div part="Chart.grid" class="grid" style:--at={tick.at}></div>{/each}
+      {#each ticks as tick (tick.id)}<div part="Chart.grid Chart.plate" class="grid" style:--at={tick.at}></div>{/each}
       <div id="Bars">
         {#each bars as bar (bar.id)}
           <div class="column" aria-label={bar.label + " " + formatNumber(bar.value)}>

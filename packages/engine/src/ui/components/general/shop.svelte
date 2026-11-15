@@ -1,6 +1,6 @@
 <meta name="component" content="Shop">
 <meta name="strings" content="./general.en.ogt">
-<meta name="parts" content="Shop.frame Shop.band Shop.title Shop.wallet Shop.balance Shop.tab Shop.offer Shop.name Shop.badge Shop.price Shop.status">
+<meta name="parts" content="Shop.frame Shop.band Shop.title Shop.wallet Shop.balance Shop.tab Shop.offer Shop.name Shop.badge Shop.price Shop.status Shop.figure Shop.cell Shop.label">
 <meta name="prop:title" content="string" data-doc="The shop's heading; empty takes the group's (Shop).">
 <meta name="prop:wallet" content="list" data-doc="The player's balances shown in the band, keyed rows of { id, icon, label, amount }: amount as the game formats it; label names the currency for a screen reader.">
 <meta name="prop:tabs" content="list" data-doc="The categories, keyed rows of { id, label }; empty shows no tab row.">
@@ -35,7 +35,7 @@
     <h2 part="Shop.title">{title != '' ? title : t("general.shop.name")}</h2>
     <ul part="Shop.wallet" aria-label={t("general.shop.wallet")} hidden={!wallet.length}>
       {#each wallet as w (w.id)}
-        <li part="Shop.balance" aria-label={t("general.shop.amount", { amount: w.amount, currency: w.label })}><og-icon class="currency" icon={w.icon}></og-icon><span class="figure">{w.amount}</span></li>
+        <li part="Shop.balance Shop.figure" aria-label={t("general.shop.amount", { amount: w.amount, currency: w.label })}><og-icon class="currency" icon={w.icon}></og-icon><span class="figure">{w.amount}</span></li>
       {/each}
     </ul>
   </header>
@@ -57,7 +57,7 @@
       <div class="grid" role="grid" aria-label={title != '' ? title : t("general.shop.name")}>
         {#each offers as o (o.id)}
           {#if !o.soldOut && !o.owned && o.affordable}
-            <button part="Shop.offer" role="gridcell" data-featured={o.featured} data-sold-out={o.soldOut} data-owned={o.owned} data-affordable={o.affordable} aria-selected={o.id == selected} aria-label={o.name} onclick={buy}><div class="face">
+            <button part="Shop.offer Shop.cell" role="gridcell" data-featured={o.featured} data-sold-out={o.soldOut} data-owned={o.owned} data-affordable={o.affordable} aria-selected={o.id == selected} aria-label={o.name} onclick={buy}><div class="face">
               <div class="tags" hidden={o.badge == '' && !o.featured}>
                 <span class="featured" hidden={!o.featured}>{t("general.shop.featured")}</span>
                 <p part="Shop.badge" hidden={o.badge == ''}>{o.badge}</p>
@@ -70,7 +70,7 @@
               <div class="prices" aria-label={t("general.shop.price")}>
                 {#each prices as p (p.id)}
                   {#if p.offer == o.id}
-                    <div part="Shop.price" data-short={p.short} aria-label={t("general.shop.amount", { amount: p.amount, currency: p.label })}>
+                    <div part="Shop.price Shop.figure" data-short={p.short} aria-label={t("general.shop.amount", { amount: p.amount, currency: p.label })}>
                       <og-icon class="currency" icon={p.icon}></og-icon>
                       <span class="was" hidden={p.was == ''} aria-label={t("general.shop.was", { price: p.was })}>{p.was}</span>
                       <span class="figure">{p.amount}</span>
@@ -80,7 +80,7 @@
               </div>
             </div></button>
           {:else}
-            <button part="Shop.offer" role="gridcell" data-featured={o.featured} data-sold-out={o.soldOut} data-owned={o.owned} data-affordable={o.affordable} aria-selected={o.id == selected} aria-disabled={true} aria-label={t("general.shop.refused", { name: o.name, status: o.soldOut ? t("general.shop.soldOut") : o.owned ? t("general.shop.owned") : t("general.shop.short") })}><div class="face">
+            <button part="Shop.offer Shop.cell" role="gridcell" data-featured={o.featured} data-sold-out={o.soldOut} data-owned={o.owned} data-affordable={o.affordable} aria-selected={o.id == selected} aria-disabled={true} aria-label={t("general.shop.refused", { name: o.name, status: o.soldOut ? t("general.shop.soldOut") : o.owned ? t("general.shop.owned") : t("general.shop.short") })}><div class="face">
               <div class="tags" hidden={o.badge == '' && !o.featured}>
                 <span class="featured" hidden={!o.featured}>{t("general.shop.featured")}</span>
                 <p part="Shop.badge" hidden={o.badge == ''}>{o.badge}</p>
@@ -93,7 +93,7 @@
               <div class="prices" aria-label={t("general.shop.price")}>
                 {#each prices as p (p.id)}
                   {#if p.offer == o.id}
-                    <div part="Shop.price" data-short={p.short} aria-label={t("general.shop.amount", { amount: p.amount, currency: p.label })}>
+                    <div part="Shop.price Shop.figure" data-short={p.short} aria-label={t("general.shop.amount", { amount: p.amount, currency: p.label })}>
                       <og-icon class="currency" icon={p.icon}></og-icon>
                       <span class="was" hidden={p.was == ''} aria-label={t("general.shop.was", { price: p.was })}>{p.was}</span>
                       <span class="figure">{p.amount}</span>
@@ -101,9 +101,9 @@
                   {/if}
                 {/each}
               </div>
-              <div part="Shop.status" data-kind="soldOut" hidden={!o.soldOut}><og-icon class="status-mark" icon="close"></og-icon><span>{t("general.shop.soldOut")}</span></div>
-              <div part="Shop.status" data-kind="owned" hidden={!o.owned}><og-icon class="status-mark" icon="check"></og-icon><span>{t("general.shop.owned")}</span></div>
-              <div part="Shop.status" data-kind="short" hidden={o.affordable || o.soldOut || o.owned}><og-icon class="status-mark" icon="lock"></og-icon><span>{t("general.shop.short")}</span></div>
+              <div part="Shop.status Shop.label" data-kind="soldOut" hidden={!o.soldOut}><og-icon class="status-mark" icon="close"></og-icon><span>{t("general.shop.soldOut")}</span></div>
+              <div part="Shop.status Shop.label" data-kind="owned" hidden={!o.owned}><og-icon class="status-mark" icon="check"></og-icon><span>{t("general.shop.owned")}</span></div>
+              <div part="Shop.status Shop.label" data-kind="short" hidden={o.affordable || o.soldOut || o.owned}><og-icon class="status-mark" icon="lock"></og-icon><span>{t("general.shop.short")}</span></div>
             </div></button>
           {/if}
         {/each}
@@ -120,7 +120,7 @@
 [part="Shop.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); flex: none; flex-wrap: wrap; }
 [part="Shop.title"] { margin: 0; flex: 1; min-width: 0; }
 [part="Shop.wallet"] { display: flex; margin: 0; padding: 0; list-style: none; gap: var(--space-sm); flex-wrap: wrap; justify-content: flex-end; }
-[part="Shop.balance"] { display: flex; align-items: center; gap: var(--space-xxs); padding: var(--space-xxs) var(--space-sm); }
+[part="Shop.balance Shop.figure"] { display: flex; align-items: center; gap: var(--space-xxs); padding: var(--space-xxs) var(--space-sm); }
 .currency { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .figure { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tabs { display: flex; width: stretch; flex: none; }
@@ -129,9 +129,9 @@
 [part="Shop.tab"] { flex: none; min-height: var(--size-touch); padding: 0 var(--space-md); }
 .grid-scroll { width: stretch; flex: 1; min-height: 0; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 2.6), 1fr)); gap: var(--space-sm); width: stretch; padding: var(--space-xs); }
-[part="Shop.offer"] { position: relative; width: stretch; height: stretch; min-height: calc(var(--size-xxl) * 2.2); padding: var(--space-sm); align-items: stretch; justify-content: flex-start; }
-[part="Shop.offer"][data-featured=true] { grid-column: span 2; }
-[part="Shop.offer"] .face { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-xs); }
+[part="Shop.offer Shop.cell"] { position: relative; width: stretch; height: stretch; min-height: calc(var(--size-xxl) * 2.2); padding: var(--space-sm); align-items: stretch; justify-content: flex-start; }
+[part="Shop.offer Shop.cell"][data-featured=true] { grid-column: span 2; }
+[part="Shop.offer Shop.cell"] .face { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-xs); }
 .art { display: flex; width: stretch; flex: 1; min-height: calc(var(--size-xl) * 1.5); align-items: center; justify-content: center; }
 .art-icon { width: var(--size-xl); height: var(--size-xl); }
 .tags { display: flex; width: stretch; flex: none; align-items: center; gap: var(--space-xs); }
@@ -141,9 +141,9 @@
 [part="Shop.name"] { width: stretch; text-align: start; overflow-wrap: anywhere; }
 .detail { width: stretch; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .prices { display: flex; width: stretch; flex-wrap: wrap; gap: var(--space-xxs) var(--space-sm); }
-[part="Shop.price"] { display: flex; align-items: center; gap: var(--space-xxs); min-width: 0; }
+[part="Shop.price Shop.figure"] { display: flex; align-items: center; gap: var(--space-xxs); min-width: 0; }
 .was { text-decoration-line: line-through; white-space: nowrap; }
-[part="Shop.status"] { display: flex; align-items: center; gap: var(--space-xxs); width: stretch; text-align: start; }
+[part="Shop.status Shop.label"] { display: flex; align-items: center; gap: var(--space-xxs); width: stretch; text-align: start; }
 .status-mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .state { display: flex; flex-direction: column; width: stretch; flex: 1; gap: var(--space-sm); align-items: center; justify-content: center; padding: var(--space-lg); }
 .state-mark { width: var(--size-lg); height: var(--size-lg); }

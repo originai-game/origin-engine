@@ -1,6 +1,6 @@
 <meta name="component" content="Achievements">
 <meta name="strings" content="./general.en.ogt">
-<meta name="parts" content="Achievements.frame Achievements.band Achievements.title Achievements.summary Achievements.row Achievements.medal Achievements.name Achievements.state Achievements.tier Achievements.rarity">
+<meta name="parts" content="Achievements.frame Achievements.band Achievements.title Achievements.summary Achievements.row Achievements.medal Achievements.name Achievements.state Achievements.tier Achievements.rarity Achievements.label">
 <meta name="prop:title" content="string" data-doc="The list's heading; empty takes the group's (Achievements).">
 <meta name="prop:summary" content="string" data-doc="The overall count as the game words it (34 / 120); empty hides it with its bar.">
 <meta name="prop:done" content="number" data-doc="The overall share unlocked, 0 to 1, for the summary bar.">
@@ -22,7 +22,7 @@
 <section id="Achievements" part="Achievements.frame" aria-label={title != '' ? title : t("general.achievements.name")}>
   <header part="Achievements.band">
     <h2 part="Achievements.title">{title != '' ? title : t("general.achievements.name")}</h2>
-    <div part="Achievements.summary" hidden={summary == ''}>
+    <div part="Achievements.summary Achievements.label" hidden={summary == ''}>
       <span class="figure">{summary}</span>
       <div class="total"><ProgressBar value={done} buffer={0} label="" valueText={summary} showValue={false} indeterminate={false} tone="neutral" /></div>
     </div>
@@ -37,9 +37,9 @@
               <p part="Achievements.name">{a.hidden && a.state != 'unlocked' ? t("general.achievements.hidden") : a.name}</p>
               <p class="about" hidden={!(a.hidden && a.state != 'unlocked') && a.about == ''}>{a.hidden && a.state != 'unlocked' ? t("general.achievements.hiddenAbout") : a.about}</p>
               <div class="meta">
-                <div part="Achievements.state" data-state={a.state} hidden={a.state == 'progress'}><og-icon class="state-mark" icon={a.state == 'unlocked' ? 'check' : 'lock'}></og-icon><span>{a.state == 'unlocked' ? (a.date != '' ? t("general.achievements.unlockedOn", { date: a.date }) : t("general.achievements.unlocked")) : t("general.achievements.locked")}</span></div>
+                <div part="Achievements.state Achievements.label" data-state={a.state} hidden={a.state == 'progress'}><og-icon class="state-mark" icon={a.state == 'unlocked' ? 'check' : 'lock'}></og-icon><span>{a.state == 'unlocked' ? (a.date != '' ? t("general.achievements.unlockedOn", { date: a.date }) : t("general.achievements.unlocked")) : t("general.achievements.locked")}</span></div>
                 <div class="bar" hidden={a.state != 'progress'}><ProgressBar value={a.progress} buffer={0} label={t("general.achievements.progress")} valueText={a.progressText} showValue={true} indeterminate={false} tone="neutral" /></div>
-                <p part="Achievements.tier" data-tier={a.tier} hidden={a.tier == ''}>{a.tier == 'legendary' ? t("general.achievements.tierLegendary") : a.tier == 'epic' ? t("general.achievements.tierEpic") : a.tier == 'rare' ? t("general.achievements.tierRare") : t("general.achievements.tierCommon")}</p>
+                <p part="Achievements.tier Achievements.label" data-tier={a.tier} hidden={a.tier == ''}>{a.tier == 'legendary' ? t("general.achievements.tierLegendary") : a.tier == 'epic' ? t("general.achievements.tierEpic") : a.tier == 'rare' ? t("general.achievements.tierRare") : t("general.achievements.tierCommon")}</p>
                 <p part="Achievements.rarity" data-tier={a.tier} hidden={a.rarity == ''}>{t("general.achievements.rarity", { percent: a.rarity })}</p>
               </div>
             </div>
@@ -61,7 +61,7 @@
 [part="Achievements.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
 [part="Achievements.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); flex: none; flex-wrap: wrap; }
 [part="Achievements.title"] { margin: 0; flex: 1; min-width: 0; }
-[part="Achievements.summary"] { display: flex; align-items: center; gap: var(--space-sm); width: calc(var(--size-xxl) * 3); max-width: stretch; }
+[part="Achievements.summary Achievements.label"] { display: flex; align-items: center; gap: var(--space-sm); width: calc(var(--size-xxl) * 3); max-width: stretch; }
 .total { width: stretch; }
 .figure { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rows-scroll { width: stretch; flex: 1; min-height: 0; }
@@ -73,10 +73,10 @@
 [part="Achievements.name"] { text-align: start; overflow-wrap: anywhere; }
 .about { margin: 0; text-align: start; }
 .meta { display: flex; width: stretch; align-items: center; flex-wrap: wrap; gap: var(--space-xxs) var(--space-md); }
-[part="Achievements.state"], .claimed { display: flex; align-items: center; gap: var(--space-xxs); white-space: nowrap; }
+[part="Achievements.state Achievements.label"], .claimed { display: flex; align-items: center; gap: var(--space-xxs); white-space: nowrap; }
 .state-mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .bar { width: calc(var(--size-xxl) * 3); max-width: stretch; }
-[part="Achievements.tier"] { margin: 0; white-space: nowrap; }
+[part="Achievements.tier Achievements.label"] { margin: 0; white-space: nowrap; }
 [part="Achievements.rarity"] { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .end { display: flex; flex: none; align-items: center; }
 #Claim { min-height: var(--size-touch); }

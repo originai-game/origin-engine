@@ -1,6 +1,6 @@
 <meta name="component" content="CardReward">
 <meta name="strings" content="./card.en.ogt">
-<meta name="parts" content="CardReward.frame CardReward.band CardReward.title CardReward.choice CardReward.relic">
+<meta name="parts" content="CardReward.frame CardReward.band CardReward.title CardReward.choice CardReward.relic CardReward.cell">
 <meta name="prop:title" content="string" data-doc="The heading as the game words it (Choose a card, Treasure).">
 <meta name="prop:choices" content="list" data-doc="The offers the game rolled, keyed rows of { id, relic, name, cost, icon, art, type, typeLabel, rarity, text, enabled }: relic true draws a relic (its icon, name and text) instead of a card; enabled false when the game will not let it be taken.">
 <meta name="prop:selected" content="string" data-doc="The offer the player is looking at (focused or tapped once); empty is none.">
@@ -30,7 +30,7 @@
           <span class="relic-text">{c.text}</span>
         </div></button>
       {:else}
-        <button part="CardReward.choice" role="option" data-type={c.type} data-rarity={c.rarity} disabled={!c.enabled} aria-selected={c.id == selected} aria-label={c.name} aria-description={c.text} onclick={pick}><div class="face">
+        <button part="CardReward.choice CardReward.cell" role="option" data-type={c.type} data-rarity={c.rarity} disabled={!c.enabled} aria-selected={c.id == selected} aria-label={c.name} aria-description={c.text} onclick={pick}><div class="face">
           <CardFace name={c.name} cost={c.cost} icon={c.icon} art={c.art} type={c.type} typeLabel={c.typeLabel} rarity={c.rarity} text={c.text} />
         </div></button>
       {/if}
@@ -51,9 +51,9 @@
 /* The offers share one row, each at most three icon sizes wide and no
    taller than the height left under the band and over Skip. */
 .choices { display: flex; flex-wrap: wrap; width: stretch; min-height: 0; gap: var(--space-md); align-items: center; justify-content: center; }
-[part="CardReward.choice"], [part="CardReward.relic"] { flex: 1 1 0; min-width: calc(var(--size-xxl) * 1.1); max-width: min(calc(var(--size-xxl) * 3), calc((100cqh - var(--size-lg) * 3) * 0.7)); aspect-ratio: 0.7; }
-[part="CardReward.choice"] { padding: 0; align-items: stretch; justify-content: stretch; }
-[part="CardReward.choice"] .face { width: stretch; height: stretch; }
+[part="CardReward.choice CardReward.cell"], [part="CardReward.relic"] { flex: 1 1 0; min-width: calc(var(--size-xxl) * 1.1); max-width: min(calc(var(--size-xxl) * 3), calc((100cqh - var(--size-lg) * 3) * 0.7)); aspect-ratio: 0.7; }
+[part="CardReward.choice CardReward.cell"] { padding: 0; align-items: stretch; justify-content: stretch; }
+[part="CardReward.choice CardReward.cell"] .face { width: stretch; height: stretch; }
 [part="CardReward.relic"] { padding: var(--space-sm); align-items: center; justify-content: center; }
 .relic-face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: flex-start; gap: var(--space-xs); overflow: hidden; text-align: center; }
 .relic-mark { display: flex; width: 46%; aspect-ratio: 1; flex: none; align-items: center; justify-content: center; }
@@ -68,6 +68,6 @@
 /* A phone: thirds of the row, so an offer that wraps keeps the others' size. */
 @container (width < 640px) {
   .choices { gap: var(--space-sm); }
-  [part="CardReward.choice"], [part="CardReward.relic"] { flex: 0 0 calc((100% - var(--space-sm) * 2) / 3); min-width: 0; }
+  [part="CardReward.choice CardReward.cell"], [part="CardReward.relic"] { flex: 0 0 calc((100% - var(--space-sm) * 2) / 3); min-width: 0; }
 }
 </style>

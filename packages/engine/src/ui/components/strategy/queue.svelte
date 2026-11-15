@@ -1,6 +1,6 @@
 <meta name="component" content="StrategyQueue">
 <meta name="strings" content="./strategy.en.ogt">
-<meta name="parts" content="StrategyQueue.frame StrategyQueue.band StrategyQueue.title StrategyQueue.badge StrategyQueue.row StrategyQueue.cell StrategyQueue.name StrategyQueue.reason">
+<meta name="parts" content="StrategyQueue.frame StrategyQueue.band StrategyQueue.title StrategyQueue.badge StrategyQueue.row StrategyQueue.cell StrategyQueue.name StrategyQueue.reason StrategyQueue.label">
 <meta name="prop:title" content="string" data-doc="The queue's heading; empty takes the kit's (Production).">
 <meta name="prop:items" content="list" data-doc="The queue in the game's order, first in production, keyed rows of { id, name, icon, count, progress, timeText, state, reason }: count a stack of the same order (shown above 1); progress 0 to 1 done; timeText the time left as the game words it (0:12), empty hides it; state building, waiting, paused or blocked (data-state, and a word for every state but building); reason why it is blocked (Need 2 supply), empty none.">
 <meta name="prop:queued" content="number" data-doc="Orders queued, as the game counts them (stacks included), shown over limit.">
@@ -38,7 +38,7 @@
               <span class="time" hidden={q.timeText == ''}>{q.timeText}</span>
             </div>
             <div class="bar"><ProgressBar value={q.progress} buffer={0} label="" valueText={q.timeText} showValue={false} indeterminate={false} tone={q.state == 'paused' ? 'warn' : (q.state == 'blocked' ? 'danger' : '')} /></div>
-            <span part="StrategyQueue.reason" class="reason" hidden={q.reason == ''}>{q.reason}</span>
+            <span part="StrategyQueue.reason StrategyQueue.label" class="reason" hidden={q.reason == ''}>{q.reason}</span>
           </div>
           <button class="cancel" variant="ghost" aria-label={t("strategy.queue.cancel", { name: q.name })} onclick={cancel}><og-icon class="cancel-mark" icon="close"></og-icon></button>
         </div>

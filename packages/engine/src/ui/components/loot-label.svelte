@@ -1,5 +1,5 @@
 <meta name="component" content="LootLabel">
-<meta name="parts" content="LootLabel.tag LootLabel.name LootLabel.count">
+<meta name="parts" content="LootLabel.tag LootLabel.name LootLabel.count LootLabel.figure">
 <meta name="prop:entity" content="number" data-doc="The item, by its bits (0: use at).">
 <meta name="prop:at" content="string" data-default="0 0 0" data-doc="A world point it sits over without an entity (x y z).">
 <meta name="prop:height" content="number" data-doc="World units above it.">
@@ -12,7 +12,7 @@
 <anchor id="LootLabel" entity={entity || null} at={at} offset={"0 " + height + " 0"} declutter="stack" occlusion="fade" priority="10" max-distance="30">
   <button id="Tag" part="LootLabel.tag" onclick={pick} class:uncommon={rarity == 'uncommon'} class:rare={rarity == 'rare'} class:epic={rarity == 'epic'} class:legendary={rarity == 'legendary'}>
     <span id="Name" part="LootLabel.name">{name}</span>
-    <span id="Count" part="LootLabel.count" hidden={!(count > 1)}>{"×" + formatNumber(count)}</span>
+    <span id="Count" part="LootLabel.count LootLabel.figure" hidden={!(count > 1)}>{"×" + formatNumber(count)}</span>
   </button>
 </anchor>
 
@@ -25,5 +25,5 @@
 [part="LootLabel.tag"].legendary { --tier: var(--legendary); --rim: var(--legendary); }
 [part="LootLabel.tag"]:hover { background: var(--panel-hover); }
 [part="LootLabel.name"] { font: var(--text-sm); color: var(--tier); white-space: nowrap; }
-[part="LootLabel.count"] { font: var(--text-caption); color: var(--ink-muted); }
+[part="LootLabel.count LootLabel.figure"] { font: var(--text-caption); color: var(--ink-muted); }
 </style>

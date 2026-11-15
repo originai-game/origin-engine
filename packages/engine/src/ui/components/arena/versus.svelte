@@ -1,6 +1,6 @@
 <meta name="component" content="ArenaVersus">
 <meta name="strings" content="./arena.en.ogt">
-<meta name="parts" content="ArenaVersus.frame ArenaVersus.side ArenaVersus.heading ArenaVersus.card ArenaVersus.portrait ArenaVersus.name ArenaVersus.rank ArenaVersus.badge">
+<meta name="parts" content="ArenaVersus.frame ArenaVersus.side ArenaVersus.heading ArenaVersus.card ArenaVersus.portrait ArenaVersus.name ArenaVersus.rank ArenaVersus.badge ArenaVersus.plate ArenaVersus.picture ArenaVersus.label">
 <meta name="prop:nameA" content="string" data-doc="The first side's team name; empty takes the kit's (Blue team).">
 <meta name="prop:nameB" content="string" data-doc="The second side's team name; empty takes the kit's (Red team).">
 <meta name="prop:sideA" content="list" data-doc="The first side's fighters in the game's order, keyed rows of { id, name, portrait, icon, character, rank, local }: portrait a texture (0 shows the icon); character the champion's name (empty hides); rank as the game words it (Gold II, 1840 SR; empty hides); local marks the local player (You).">
@@ -21,17 +21,17 @@
 <section id="ArenaVersus" part="ArenaVersus.frame" class="bare" aria-label={t("arena.versus.name")}>
   {#key at}
     <div class="stage">
-      <div part="ArenaVersus.side" class="side a" data-team="a" role="group" aria-label={nameA != '' ? nameA : t("arena.team.a")}>
+      <div part="ArenaVersus.side ArenaVersus.plate" class="side a" data-team="a" role="group" aria-label={nameA != '' ? nameA : t("arena.team.a")}>
         <h2 part="ArenaVersus.heading" class="team-name" data-team="a">{nameA != '' ? nameA : t("arena.team.a")}</h2>
         {#if sideA.length}
           <div class="cards" role="list">
             {#each sideA as f (f.id)}
               <div part="ArenaVersus.card" class="card" role="listitem" aria-current={f.local} data-local={f.local}>
-                <div part="ArenaVersus.portrait" class="portrait"><img class="art" src={f.portrait} alt="" hidden={!f.portrait}><og-icon class="glyph" icon={f.icon} hidden={!!f.portrait}></og-icon></div>
+                <div part="ArenaVersus.portrait ArenaVersus.picture" class="portrait"><img class="art" src={f.portrait} alt="" hidden={!f.portrait}><og-icon class="glyph" icon={f.icon} hidden={!!f.portrait}></og-icon></div>
                 <div class="who">
                   <span part="ArenaVersus.name" class="name">{f.name}</span>
                   <span class="character" hidden={f.character == ''}>{f.character}</span>
-                  <span part="ArenaVersus.rank" class="rank" hidden={f.rank == ''}>{f.rank}</span>
+                  <span part="ArenaVersus.rank ArenaVersus.label" class="rank" hidden={f.rank == ''}>{f.rank}</span>
                   <span class="you" hidden={!f.local}>{t("arena.you")}</span>
                 </div>
               </div>
@@ -42,17 +42,17 @@
         {/if}
       </div>
       <div class="seal"><span part="ArenaVersus.badge" class="vs">{t("arena.versus.vs")}</span></div>
-      <div part="ArenaVersus.side" class="side b" data-team="b" role="group" aria-label={nameB != '' ? nameB : t("arena.team.b")}>
+      <div part="ArenaVersus.side ArenaVersus.plate" class="side b" data-team="b" role="group" aria-label={nameB != '' ? nameB : t("arena.team.b")}>
         <h2 part="ArenaVersus.heading" class="team-name" data-team="b">{nameB != '' ? nameB : t("arena.team.b")}</h2>
         {#if sideB.length}
           <div class="cards" role="list">
             {#each sideB as f (f.id)}
               <div part="ArenaVersus.card" class="card" role="listitem" aria-current={f.local} data-local={f.local}>
-                <div part="ArenaVersus.portrait" class="portrait"><img class="art" src={f.portrait} alt="" hidden={!f.portrait}><og-icon class="glyph" icon={f.icon} hidden={!!f.portrait}></og-icon></div>
+                <div part="ArenaVersus.portrait ArenaVersus.picture" class="portrait"><img class="art" src={f.portrait} alt="" hidden={!f.portrait}><og-icon class="glyph" icon={f.icon} hidden={!!f.portrait}></og-icon></div>
                 <div class="who">
                   <span part="ArenaVersus.name" class="name">{f.name}</span>
                   <span class="character" hidden={f.character == ''}>{f.character}</span>
-                  <span part="ArenaVersus.rank" class="rank" hidden={f.rank == ''}>{f.rank}</span>
+                  <span part="ArenaVersus.rank ArenaVersus.label" class="rank" hidden={f.rank == ''}>{f.rank}</span>
                   <span class="you" hidden={!f.local}>{t("arena.you")}</span>
                 </div>
               </div>
@@ -70,7 +70,7 @@
 [part="ArenaVersus.frame"][hidden], [part="ArenaVersus.frame"] [hidden] { display: none; }
 [part="ArenaVersus.frame"] { display: flex; width: stretch; min-width: 0; max-height: stretch; }
 .stage { display: flex; width: stretch; min-width: 0; align-items: center; gap: var(--space-lg); }
-[part="ArenaVersus.side"] { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; gap: var(--space-sm); padding: var(--space-md); animation-duration: var(--motion-duration-slow); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
+[part="ArenaVersus.side ArenaVersus.plate"] { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; gap: var(--space-sm); padding: var(--space-md); animation-duration: var(--motion-duration-slow); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
 .side.a { animation-name: arena-from-start; }
 .side.b, .side.a:dir(rtl) { animation-name: arena-from-end; }
 .side.b:dir(rtl) { animation-name: arena-from-start; }
@@ -78,7 +78,7 @@
 .cards { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }
 [part="ArenaVersus.card"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xs); }
 .b [part="ArenaVersus.card"] { flex-direction: row-reverse; }
-[part="ArenaVersus.portrait"] { display: flex; flex: none; width: var(--size-xl); height: var(--size-xl); align-items: center; justify-content: center; overflow: hidden; }
+[part="ArenaVersus.portrait ArenaVersus.picture"] { display: flex; flex: none; width: var(--size-xl); height: var(--size-xl); align-items: center; justify-content: center; overflow: hidden; }
 .art { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .glyph { width: var(--size-md); height: var(--size-md); }
 .who { display: flex; flex-direction: column; flex: 1; min-width: 0; }
@@ -92,13 +92,13 @@
 @keyframes arena-from-start { from { opacity: 0; translate: -12% 0; } to { opacity: 1; translate: 0 0; } }
 @keyframes arena-from-end { from { opacity: 0; translate: 12% 0; } to { opacity: 1; translate: 0 0; } }
 @keyframes arena-seal { from { opacity: 0; scale: 1.8; } to { opacity: 1; scale: 1; } }
-@media (prefers-reduced-motion: reduce) { [part="ArenaVersus.side"], .seal { animation-name: none; } }
+@media (prefers-reduced-motion: reduce) { [part="ArenaVersus.side ArenaVersus.plate"], .seal { animation-name: none; } }
 /* The reveal fills the screen, so the screen's width decides: a phone stacks the sides with the seal between them. */
 @media (width < 600px) {
   .stage { flex-direction: column; align-items: stretch; gap: var(--space-xs); }
-  [part="ArenaVersus.side"] { padding: var(--space-xs); gap: var(--space-xs); }
+  [part="ArenaVersus.side ArenaVersus.plate"] { padding: var(--space-xs); gap: var(--space-xs); }
   .seal { align-self: center; width: var(--size-lg); height: var(--size-lg); }
-  [part="ArenaVersus.portrait"] { width: var(--size-lg); height: var(--size-lg); }
+  [part="ArenaVersus.portrait ArenaVersus.picture"] { width: var(--size-lg); height: var(--size-lg); }
   .glyph { width: var(--size-sm); height: var(--size-sm); }
 }
 </style>

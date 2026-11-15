@@ -1,6 +1,6 @@
 <meta name="component" content="ArenaLobby">
 <meta name="strings" content="./arena.en.ogt">
-<meta name="parts" content="ArenaLobby.frame ArenaLobby.band ArenaLobby.title ArenaLobby.row ArenaLobby.portrait ArenaLobby.name ArenaLobby.badge ArenaLobby.state">
+<meta name="parts" content="ArenaLobby.frame ArenaLobby.band ArenaLobby.title ArenaLobby.row ArenaLobby.portrait ArenaLobby.name ArenaLobby.badge ArenaLobby.state ArenaLobby.picture ArenaLobby.label">
 <meta name="prop:title" content="string" data-doc="The lobby's heading (the match's name); empty takes the kit's (Lobby).">
 <meta name="prop:detail" content="string" data-doc="A line beside the heading as the game words it (Ranked · 2 v 2, Waiting for the host); empty hides it.">
 <meta name="prop:slots" content="list" data-doc="The lobby's seats in the game's order, keyed rows of { id, name, portrait, icon, open, host, ready, local }: open the seat is free (an Invite button reporting invite with the seat's key, when canInvite); portrait a texture (0 shows the icon); host marks the host (Host); ready Ready or Not ready in words; local the local player (You).">
@@ -32,7 +32,7 @@
       <div class="rows" role="list" aria-label={t("arena.lobby.players")}>
         {#each slots as s (s.id)}
           <div part="ArenaLobby.row" role="listitem" aria-current={s.local} data-open={s.open} data-local={s.local}>
-            <div part="ArenaLobby.portrait" class="portrait" data-open={s.open}><img class="art" src={s.portrait} alt="" hidden={!s.portrait || s.open}><og-icon class="glyph" icon={s.open ? 'plus' : s.icon} hidden={!!s.portrait && !s.open}></og-icon></div>
+            <div part="ArenaLobby.portrait ArenaLobby.picture" class="portrait" data-open={s.open}><img class="art" src={s.portrait} alt="" hidden={!s.portrait || s.open}><og-icon class="glyph" icon={s.open ? 'plus' : s.icon} hidden={!!s.portrait && !s.open}></og-icon></div>
             <div class="who">
               <span part="ArenaLobby.name" class="name">{s.open ? t("arena.lobby.open") : s.name}</span>
               <div class="tags" hidden={!(s.host || s.local)}>
@@ -40,7 +40,7 @@
                 <span part="ArenaLobby.badge" class="tag" data-tag="you" hidden={!s.local}>{t("arena.you")}</span>
               </div>
             </div>
-            <div part="ArenaLobby.state" class="state" data-ready={s.ready} hidden={s.open}><og-icon class="check" icon={s.ready ? 'check' : 'clock'}></og-icon><span>{s.ready ? t("arena.lobby.ready") : t("arena.lobby.notReady")}</span></div>
+            <div part="ArenaLobby.state ArenaLobby.label" class="state" data-ready={s.ready} hidden={s.open}><og-icon class="check" icon={s.ready ? 'check' : 'clock'}></og-icon><span>{s.ready ? t("arena.lobby.ready") : t("arena.lobby.notReady")}</span></div>
             <button id="Invite" variant="ghost" hidden={!(s.open && canInvite)} onclick={invite}><og-icon class="check" icon="plus"></og-icon><span>{t("arena.lobby.invite")}</span></button>
           </div>
         {/each}
@@ -68,14 +68,14 @@
 .list { width: stretch; flex: 1; min-height: 0; }
 .rows { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }
 [part="ArenaLobby.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) var(--space-sm); min-height: var(--size-touch); }
-[part="ArenaLobby.portrait"] { display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; overflow: hidden; }
+[part="ArenaLobby.portrait ArenaLobby.picture"] { display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; overflow: hidden; }
 .art { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .glyph { width: var(--size-sm); height: var(--size-sm); }
 .who { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xxs); }
 .name { width: stretch; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .tags { display: flex; gap: var(--space-xxs); }
 .tag { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
-[part="ArenaLobby.state"] { display: flex; flex: none; align-items: center; gap: var(--space-xxs); white-space: nowrap; }
+[part="ArenaLobby.state ArenaLobby.label"] { display: flex; flex: none; align-items: center; gap: var(--space-xxs); white-space: nowrap; }
 .check { width: var(--size-xs); height: var(--size-xs); }
 #Invite { flex: none; min-height: var(--size-md); gap: var(--space-xxs); }
 .empty-text { margin: 0; padding: var(--space-lg); text-align: center; }
@@ -85,7 +85,7 @@
 /* The lobby sits in a panel: its own width, not the screen's, tightens it. */
 @container (width < 600px) {
   [part="ArenaLobby.row"] { gap: var(--space-xs); padding: var(--space-xxs) var(--space-xs); }
-  [part="ArenaLobby.portrait"] { width: var(--size-md); height: var(--size-md); }
+  [part="ArenaLobby.portrait ArenaLobby.picture"] { width: var(--size-md); height: var(--size-md); }
   /* The actions share the width; when their words do not fit side by side, each takes a line. */
   .actions { flex-wrap: wrap; }
   .actions button { flex: 1 1 auto; }

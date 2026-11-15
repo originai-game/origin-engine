@@ -20,11 +20,11 @@
 -->
 <section id="RhythmScoreHud" part="RhythmScoreHud.frame" class="hud" aria-label={t("rhythm.hud.name")} data-danger={danger} data-failed={failed}>
   <div class="cells">
-    <div part="RhythmScoreHud.readout" class="score" role="group" aria-label={t("rhythm.hud.score")}>
+    <div part="RhythmScoreHud.readout RhythmScoreHud.figure" class="score" role="group" aria-label={t("rhythm.hud.score")}>
       <span part="RhythmScoreHud.title" class="caption">{t("rhythm.hud.score")}</span>
       <span part="RhythmScoreHud.figure" class="figure">{formatNumber(score)}</span>
     </div>
-    <div part="RhythmScoreHud.readout" class="accuracy" role="group" aria-label={t("rhythm.hud.accuracy")} hidden={accuracy == ''}>
+    <div part="RhythmScoreHud.readout RhythmScoreHud.figure" class="accuracy" role="group" aria-label={t("rhythm.hud.accuracy")} hidden={accuracy == ''}>
       <span part="RhythmScoreHud.title" class="caption">{t("rhythm.hud.accuracy")}</span>
       <span part="RhythmScoreHud.figure" class="figure">{accuracy}</span>
     </div>
@@ -41,9 +41,9 @@
 [part="RhythmScoreHud.frame"][hidden], [part="RhythmScoreHud.frame"] [hidden] { display: none; }
 [part="RhythmScoreHud.frame"] { display: flex; flex-direction: column; min-width: calc(var(--size-xxl) * 3.2); max-width: stretch; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
 .cells { display: flex; flex-wrap: wrap; width: stretch; gap: var(--space-xxs) var(--space-lg); align-items: flex-end; }
-[part="RhythmScoreHud.readout"] { display: flex; flex-direction: column; align-items: flex-start; }
-[part="RhythmScoreHud.readout"].score { flex: 1; }
-[part="RhythmScoreHud.readout"].accuracy { flex: none; align-items: flex-end; }
+[part="RhythmScoreHud.readout RhythmScoreHud.figure"] { display: flex; flex-direction: column; align-items: flex-start; }
+[part="RhythmScoreHud.readout RhythmScoreHud.figure"].score { flex: 1; }
+[part="RhythmScoreHud.readout RhythmScoreHud.figure"].accuracy { flex: none; align-items: flex-end; }
 /* A figure is never cut: the frame grows with it (a score is read whole). */
 [part="RhythmScoreHud.figure"] { white-space: nowrap; font-variant-numeric: tabular-nums; }
 [part="RhythmScoreHud.row"] { display: flex; width: stretch; align-items: flex-end; gap: var(--space-xs); }

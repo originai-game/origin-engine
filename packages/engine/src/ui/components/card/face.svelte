@@ -1,6 +1,6 @@
 <meta name="component" content="CardFace">
 <meta name="strings" content="./card.en.ogt">
-<meta name="parts" content="CardFace.frame CardFace.cost CardFace.art CardFace.name CardFace.type CardFace.text">
+<meta name="parts" content="CardFace.frame CardFace.cost CardFace.art CardFace.name CardFace.type CardFace.text CardFace.picture CardFace.label CardFace.figure">
 <meta name="prop:name" content="string" data-doc="The card's name as the game words it (an upgraded card's name included).">
 <meta name="prop:cost" content="string" data-doc="Its cost as the game words it (2, X, 0); empty hides the cost gem (a relic, an unplayable curse).">
 <meta name="prop:icon" content="string" data-doc="Its art as an icon in the style's or the game's atlas, used when art is 0.">
@@ -21,11 +21,11 @@
   ratio); long names cut at one line and the rules text at the foot.
 -->
 <div id="CardFace" part="CardFace.frame" class="bare" data-type={type} data-rarity={rarity}>
-  <div class="window"><img class="picture" src={art} alt="" hidden={!art}><og-icon part="CardFace.art" class="art" icon={icon} hidden={!!art}></og-icon></div>
+  <div class="window"><img class="picture" src={art} alt="" hidden={!art}><og-icon part="CardFace.art CardFace.picture" class="art" icon={icon} hidden={!!art}></og-icon></div>
   <p part="CardFace.name" class="name">{name}</p>
-  <p part="CardFace.type" class="type" hidden={!typeLabel}>{typeLabel}</p>
+  <p part="CardFace.type CardFace.label" class="type" hidden={!typeLabel}>{typeLabel}</p>
   <p part="CardFace.text" class="text">{text}</p>
-  <div part="CardFace.cost" class="cost" hidden={!cost} aria-label={t("card.face.cost", { cost })}><span class="cost-figure">{cost}</span></div>
+  <div part="CardFace.cost CardFace.figure" class="cost" hidden={!cost} aria-label={t("card.face.cost", { cost })}><span class="cost-figure">{cost}</span></div>
 </div>
 
 <style>

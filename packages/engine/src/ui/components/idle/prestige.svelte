@@ -50,9 +50,9 @@
           <li part="IdlePrestige.row" aria-label={r.label}>
             <og-icon class="row-icon" icon={r.icon}></og-icon>
             <span part="IdlePrestige.name" class="name">{r.label}</span>
-            <span part="IdlePrestige.readout" data-tag="now">{r.now}</span>
+            <span part="IdlePrestige.readout IdlePrestige.figure" data-tag="now">{r.now}</span>
             <og-icon class="row-arrow" icon="play"></og-icon>
-            <span part="IdlePrestige.readout" data-tag="after">{r.after}</span>
+            <span part="IdlePrestige.readout IdlePrestige.figure" data-tag="after">{r.after}</span>
           </li>
         {/each}
       </ul>
@@ -100,7 +100,7 @@
 [part="IdlePrestige.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) var(--space-sm); min-height: var(--size-md); }
 .row-icon { width: var(--size-sm); height: var(--size-sm); flex: none; }
 [part="IdlePrestige.name"] { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-[part="IdlePrestige.readout"] { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+[part="IdlePrestige.readout IdlePrestige.figure"] { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
 [part="IdlePrestige.requirement"] { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); }
 .req-line { display: flex; width: stretch; align-items: center; gap: var(--space-xs); }
 .req-mark { width: var(--size-xs); height: var(--size-xs); flex: none; }

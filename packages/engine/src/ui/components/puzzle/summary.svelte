@@ -1,6 +1,6 @@
 <meta name="component" content="PuzzleSummary">
 <meta name="strings" content="./puzzle.en.ogt">
-<meta name="parts" content="PuzzleSummary.frame PuzzleSummary.band PuzzleSummary.title PuzzleSummary.level PuzzleSummary.stars PuzzleSummary.earned PuzzleSummary.record PuzzleSummary.breakdown PuzzleSummary.row PuzzleSummary.rowLabel PuzzleSummary.rowValue PuzzleSummary.total PuzzleSummary.actions PuzzleSummary.next PuzzleSummary.retry PuzzleSummary.menu">
+<meta name="parts" content="PuzzleSummary.frame PuzzleSummary.band PuzzleSummary.title PuzzleSummary.level PuzzleSummary.stars PuzzleSummary.earned PuzzleSummary.record PuzzleSummary.breakdown PuzzleSummary.row PuzzleSummary.rowLabel PuzzleSummary.rowValue PuzzleSummary.total PuzzleSummary.actions PuzzleSummary.next PuzzleSummary.retry PuzzleSummary.menu PuzzleSummary.label">
 <meta name="prop:result" content="string" data-doc="How the level ended: win or lose.">
 <meta name="prop:level" content="string" data-doc="The level's name as the game words it (Level 12); empty hides it.">
 <meta name="prop:score" content="number" data-doc="The final score, as the game counts it.">
@@ -29,12 +29,12 @@
 <section id="PuzzleSummary" part="PuzzleSummary.frame" data-result={result} aria-label={result == 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")} onback={menu}>
   <header part="PuzzleSummary.band" data-result={result}>
     <h2 part="PuzzleSummary.title">{result == 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")}</h2>
-    <p part="PuzzleSummary.level" hidden={!level}>{level}</p>
+    <p part="PuzzleSummary.level PuzzleSummary.label" hidden={!level}>{level}</p>
   </header>
   <div part="PuzzleSummary.stars" data-result={result}>
     <StarBar value={score} max={scoreMax} stars={thresholds} label="" valueText="" compact={false} />
-    <span part="PuzzleSummary.earned" class="earned">{t("puzzle.summary.stars", { stars: stars, max: maxStars })}</span>
-    <span part="PuzzleSummary.record" hidden={!record}>{t("puzzle.summary.record")}</span>
+    <span part="PuzzleSummary.earned PuzzleSummary.label" class="earned">{t("puzzle.summary.stars", { stars: stars, max: maxStars })}</span>
+    <span part="PuzzleSummary.record PuzzleSummary.label" hidden={!record}>{t("puzzle.summary.record")}</span>
   </div>
   <scroll part="PuzzleSummary.breakdown" role="table" aria-label={t("puzzle.summary.breakdown")} hidden={!rows.length}>
     {#each rows as r (r.id)}
@@ -43,7 +43,7 @@
         <span part="PuzzleSummary.rowValue" role="cell">{r.value}</span>
       </div>
     {/each}
-    <div part="PuzzleSummary.total" role="row" hidden={!total}>
+    <div part="PuzzleSummary.total PuzzleSummary.label" role="row" hidden={!total}>
       <span class="total-label" role="rowheader">{t("puzzle.summary.total")}</span>
       <span class="total-value" role="cell">{total}</span>
     </div>
@@ -60,12 +60,12 @@
 [part="PuzzleSummary.frame"] { display: flex; flex-direction: column; width: stretch; max-height: stretch; min-height: 0; gap: var(--space-md); padding: var(--space-lg); background: var(--panel); }
 [part="PuzzleSummary.band"] { display: flex; flex: none; flex-direction: column; align-items: center; gap: var(--space-xxs); padding: var(--space-sm) var(--space-lg); }
 [part="PuzzleSummary.title"] { margin: 0; text-align: center; }
-[part="PuzzleSummary.level"] { margin: 0; width: stretch; text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+[part="PuzzleSummary.level PuzzleSummary.label"] { margin: 0; width: stretch; text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 [part="PuzzleSummary.stars"] { display: flex; flex: none; width: stretch; flex-direction: column; align-items: center; gap: var(--space-xs); }
-[part="PuzzleSummary.earned"], [part="PuzzleSummary.record"] { white-space: nowrap; }
-[part="PuzzleSummary.record"] { padding: var(--space-xxs) var(--space-sm); }
+[part="PuzzleSummary.earned PuzzleSummary.label"], [part="PuzzleSummary.record PuzzleSummary.label"] { white-space: nowrap; }
+[part="PuzzleSummary.record PuzzleSummary.label"] { padding: var(--space-xxs) var(--space-sm); }
 [part="PuzzleSummary.breakdown"] { width: stretch; flex: 1 1 auto; min-height: 0; }
-[part="PuzzleSummary.row"], [part="PuzzleSummary.total"] { display: flex; width: stretch; align-items: baseline; gap: var(--space-md); padding: var(--space-xs) var(--space-sm); }
+[part="PuzzleSummary.row"], [part="PuzzleSummary.total PuzzleSummary.label"] { display: flex; width: stretch; align-items: baseline; gap: var(--space-md); padding: var(--space-xs) var(--space-sm); }
 [part="PuzzleSummary.rowLabel"], .total-label { flex: 1; min-width: 0; text-align: start; }
 [part="PuzzleSummary.rowValue"], .total-value { flex: none; text-align: end; white-space: nowrap; }
 [part="PuzzleSummary.actions"] { display: flex; flex: none; width: stretch; gap: var(--space-sm); justify-content: center; }

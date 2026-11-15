@@ -1,6 +1,6 @@
 <meta name="component" content="RhythmJudgement">
 <meta name="strings" content="./rhythm.en.ogt">
-<meta name="parts" content="RhythmJudgement.frame RhythmJudgement.plate RhythmJudgement.title RhythmJudgement.badge RhythmJudgement.combo">
+<meta name="parts" content="RhythmJudgement.frame RhythmJudgement.plate RhythmJudgement.title RhythmJudgement.badge RhythmJudgement.combo RhythmJudgement.figure">
 <meta name="prop:judgement" content="string" data-default="none" data-doc="The last hit's judgement as the game judged it: perfect, great, good, bad, miss, or none (nothing shown); on data-judgement for the pack, and always a word.">
 <meta name="prop:label" content="string" data-doc="The judgement's word as the game names it (Critical, Marvelous); empty takes the kit's word for judgement.">
 <meta name="prop:timing" content="string" data-doc="early or late beside the word (Early, Late); empty hides it.">
@@ -29,7 +29,7 @@
       <span part="RhythmJudgement.badge" class="timing" data-timing={timing} hidden={timing == ''}>{timing == 'early' ? t("rhythm.judge.early") : t("rhythm.judge.late")}</span>
     </div>
   {/key}
-  <div part="RhythmJudgement.combo" class="combo" hidden={!(combo > 0) && !broken} data-broken={broken}>
+  <div part="RhythmJudgement.combo RhythmJudgement.figure" class="combo" hidden={!(combo > 0) && !broken} data-broken={broken}>
     <span class="count" hidden={broken}>{formatNumber(combo)}</span>
     <span class="combo-word">{broken ? t("rhythm.judge.broken") : t("rhythm.judge.combo")}</span>
   </div>
@@ -41,7 +41,7 @@
 [part="RhythmJudgement.plate"] { display: flex; max-width: stretch; align-items: baseline; justify-content: center; gap: var(--space-xs); padding: var(--space-xxs) var(--space-lg); }
 .word { min-width: 0; text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .timing { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
-[part="RhythmJudgement.combo"] { display: flex; flex-direction: column; align-items: center; }
+[part="RhythmJudgement.combo RhythmJudgement.figure"] { display: flex; flex-direction: column; align-items: center; }
 .count { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .combo-word { white-space: nowrap; }
 </style>

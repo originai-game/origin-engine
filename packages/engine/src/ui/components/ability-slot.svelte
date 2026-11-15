@@ -35,7 +35,7 @@
       <span id="Charges" part="AbilitySlot.badge" class="charges" hidden={!(maxCharges > 1) || cooldown > 0 || locked}>{formatNumber(charges)}</span>
     </div>
   </button>
-  <div id="Pips" part="AbilitySlot.track" hidden={!(maxLevel > 0)} style:--ranks={maxLevel} style:--level={level}><div id="Ranked" part="AbilitySlot.fill"></div></div>
+  <div id="Pips" part="AbilitySlot.track AbilitySlot.well" hidden={!(maxLevel > 0)} style:--ranks={maxLevel} style:--level={level}><div id="Ranked" part="AbilitySlot.fill"></div></div>
   <kbd id="Hotkey" part="AbilitySlot.label" data-action={action} hidden={!hotkey && !action}>{hotkey}</kbd>
 </div>
 

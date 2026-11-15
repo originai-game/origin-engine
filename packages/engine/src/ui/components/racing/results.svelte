@@ -1,6 +1,6 @@
 <meta name="component" content="RacingResults">
 <meta name="strings" content="./racing.en.ogt">
-<meta name="parts" content="RacingResults.frame RacingResults.band RacingResults.title RacingResults.heading RacingResults.row RacingResults.place RacingResults.name RacingResults.badge">
+<meta name="parts" content="RacingResults.frame RacingResults.band RacingResults.title RacingResults.heading RacingResults.row RacingResults.place RacingResults.name RacingResults.badge RacingResults.label">
 <meta name="prop:title" content="string" data-doc="The page's heading (the event's name); empty takes the kit's (Results).">
 <meta name="prop:rows" content="list" data-doc="The finishing order as the game classifies it, keyed rows of { id, position, name, time, points, fastest, player, state }: time the race time or gap as the game words it; points as text (empty hides it); fastest marks the fastest lap; player the local player's row; state finished, dnf or dsq (dnf and dsq are named in words and show no place or time).">
 <meta name="prop:bestLap" content="string" data-doc="The race's fastest lap time, formatted; empty hides the line under the table.">
@@ -32,7 +32,7 @@
       <div class="rows" role="list" aria-label={title != '' ? title : t("racing.results.title")}>
         {#each rows as r (r.id)}
           <div part="RacingResults.row" role="listitem" aria-current={r.player} aria-label={r.name} data-player={r.player} data-state={r.state} data-fastest={r.fastest}>
-            <span part="RacingResults.place" class="place">{r.state == 'dnf' || r.state == 'dsq' ? t("racing.results.unplaced") : formatNumber(r.position)}</span>
+            <span part="RacingResults.place RacingResults.label" class="place">{r.state == 'dnf' || r.state == 'dsq' ? t("racing.results.unplaced") : formatNumber(r.position)}</span>
             <div class="name"><span part="RacingResults.name" class="driver">{r.name}</span><span class="you" hidden={!r.player}>{t("racing.results.you")}</span><span part="RacingResults.badge" class="fastest" hidden={!r.fastest} aria-label={t("racing.results.fastest")}>{t("racing.results.fastest")}</span></div>
             <span class="time" hidden={r.state == 'dnf' || r.state == 'dsq'}>{r.time}</span>
             <span part="RacingResults.badge" class="out" data-state={r.state} hidden={!(r.state == 'dnf' || r.state == 'dsq')} aria-label={r.state == 'dsq' ? t("racing.results.dsqName") : t("racing.results.dnfName")}>{r.state == 'dsq' ? t("racing.results.dsq") : t("racing.results.dnf")}</span>

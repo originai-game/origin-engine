@@ -1,6 +1,6 @@
 <meta name="component" content="Friends">
 <meta name="strings" content="./general.en.ogt">
-<meta name="parts" content="Friends.frame Friends.band Friends.title Friends.heading Friends.request Friends.row Friends.avatar Friends.presence Friends.name Friends.status">
+<meta name="parts" content="Friends.frame Friends.band Friends.title Friends.heading Friends.request Friends.row Friends.avatar Friends.presence Friends.name Friends.status Friends.picture Friends.well Friends.label">
 <meta name="prop:title" content="string" data-doc="The panel's heading; empty takes the group's (Friends).">
 <meta name="prop:requests" content="list" data-doc="Friend requests waiting for an answer: keyed rows of { id, name, avatar, note }: avatar an icon of the style's atlas; note a second line as the game words it (3 mutual friends), empty hides it. Empty hides the section.">
 <meta name="prop:friends" content="list" data-doc="The friends in the game's order: keyed rows of { id, name, avatar, status, activity, canInvite, invited }: status online, ingame, away or offline, shown in words and by a mark; activity what they are doing (Ranked match, Last seen 2 d ago), empty hides it; canInvite the game will send an invite; invited one is pending.">
@@ -30,7 +30,7 @@
       <ul class="rows">
         {#each requests as r (r.id)}
           <li part="Friends.request" aria-label={r.name}>
-            <div part="Friends.avatar"><og-icon class="avatar-icon" icon={r.avatar}></og-icon></div>
+            <div part="Friends.avatar Friends.picture"><og-icon class="avatar-icon" icon={r.avatar}></og-icon></div>
             <div class="who">
               <p part="Friends.name">{r.name}</p>
               <span class="note" hidden={r.note == ''}>{r.note}</span>
@@ -50,10 +50,10 @@
           {#each friends as f (f.id)}
             <li class="friend">
               <button part="Friends.row" data-status={f.status} data-selected={f.id == selected} aria-current={f.id == selected ? 'true' : 'false'} aria-label={f.name} onclick={choose}><div class="face">
-                <div part="Friends.avatar" data-status={f.status}><og-icon class="avatar-icon" icon={f.avatar}></og-icon><div part="Friends.presence" data-status={f.status}></div></div>
+                <div part="Friends.avatar Friends.picture" data-status={f.status}><og-icon class="avatar-icon" icon={f.avatar}></og-icon><div part="Friends.presence Friends.well" data-status={f.status}></div></div>
                 <div class="who">
                   <p part="Friends.name">{f.name}</p>
-                  <div class="line"><p part="Friends.status" data-status={f.status}>{f.status == 'ingame' ? t("general.friends.ingame") : f.status == 'online' ? t("general.friends.online") : f.status == 'away' ? t("general.friends.away") : t("general.friends.offline")}</p><span class="activity" hidden={f.activity == ''}>{f.activity}</span></div>
+                  <div class="line"><p part="Friends.status Friends.label" data-status={f.status}>{f.status == 'ingame' ? t("general.friends.ingame") : f.status == 'online' ? t("general.friends.online") : f.status == 'away' ? t("general.friends.away") : t("general.friends.offline")}</p><span class="activity" hidden={f.activity == ''}>{f.activity}</span></div>
                 </div>
               </div></button>
               <button id="Invite" class="secondary" data-invited={f.invited} hidden={!f.canInvite && !f.invited} disabled={f.invited} aria-label={f.invited ? t("general.friends.invitedName", { name: f.name }) : t("general.friends.inviteName", { name: f.name })} onclick={invite}><og-icon class="mark" icon={f.invited ? 'clock' : 'plus'}></og-icon><span class="action-label">{f.invited ? t("general.friends.invited") : t("general.friends.invite")}</span></button>
@@ -83,13 +83,13 @@
 [part="Friends.request"] { padding: var(--space-xs) var(--space-sm); flex-wrap: wrap; }
 [part="Friends.row"] { width: stretch; min-width: 0; min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); justify-content: flex-start; }
 [part="Friends.row"] .face { display: flex; width: stretch; align-items: center; gap: var(--space-sm); }
-[part="Friends.avatar"] { position: relative; display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; }
+[part="Friends.avatar Friends.picture"] { position: relative; display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; }
 .avatar-icon { width: var(--size-sm); height: var(--size-sm); }
-[part="Friends.presence"] { position: absolute; inset-inline-end: 0; bottom: 0; width: var(--space-md); height: var(--space-md); }
+[part="Friends.presence Friends.well"] { position: absolute; inset-inline-end: 0; bottom: 0; width: var(--space-md); height: var(--space-md); }
 .who { display: flex; flex-direction: column; width: stretch; min-width: 0; gap: 0; flex: 1; }
 [part="Friends.name"] { text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .line { display: flex; width: stretch; min-width: 0; gap: var(--space-sm); align-items: baseline; }
-[part="Friends.status"] { flex: none; white-space: nowrap; }
+[part="Friends.status Friends.label"] { flex: none; white-space: nowrap; }
 .activity, .note { min-width: 0; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .actions { display: flex; flex: none; gap: var(--space-xs); margin-inline-start: auto; }
 .actions button, #Invite { flex: none; min-height: var(--size-touch); min-width: var(--size-touch); gap: var(--space-xs); }

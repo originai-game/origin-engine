@@ -1,6 +1,6 @@
 <meta name="component" content="RpgQuestDetail">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgQuestDetail.frame RpgQuestDetail.band RpgQuestDetail.title RpgQuestDetail.row RpgQuestDetail.reward">
+<meta name="parts" content="RpgQuestDetail.frame RpgQuestDetail.band RpgQuestDetail.title RpgQuestDetail.row RpgQuestDetail.reward RpgQuestDetail.figure">
 <meta name="prop:name" content="string" data-doc="The quest's name, in the heading band.">
 <meta name="prop:summary" content="string" data-doc="Its story so far, as the game writes it.">
 <meta name="prop:objectives" content="list" data-doc="Keyed rows of { id, text, done, optional, step }: step 0 is a stage, 1 a task under it; done ticks it, optional marks it so.">
@@ -37,7 +37,7 @@
       <h3 class="part-head">{t("rpg.quest.rewards")}</h3>
       <ul class="rewards">
         {#each rewards as r (r.id)}
-          <li part="RpgQuestDetail.reward"><og-icon class="reward-mark" icon={r.icon}></og-icon><div class="reward-text"><span class="reward-label">{r.label}</span><span class="reward-detail" hidden={!r.detail}>{r.detail}</span></div></li>
+          <li part="RpgQuestDetail.reward RpgQuestDetail.figure"><og-icon class="reward-mark" icon={r.icon}></og-icon><div class="reward-text"><span class="reward-label">{r.label}</span><span class="reward-detail" hidden={!r.detail}>{r.detail}</span></div></li>
         {/each}
       </ul>
     </section>
@@ -58,7 +58,7 @@
 [part="RpgQuestDetail.row"][data-step="1"] { padding-inline-start: var(--space-xl); }
 .objective-mark { width: var(--space-lg); height: var(--space-lg); flex: none; }
 .objective-text { width: stretch; }
-[part="RpgQuestDetail.reward"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-xxs) 0; }
+[part="RpgQuestDetail.reward RpgQuestDetail.figure"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-xxs) 0; }
 .reward-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .reward-text { display: flex; flex-direction: column; gap: 0; }
 .scenery { position: absolute; right: 0; bottom: 0; width: 55%; height: stretch; object-fit: cover; object-position: right bottom; }

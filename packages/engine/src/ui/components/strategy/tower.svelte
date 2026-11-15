@@ -1,6 +1,6 @@
 <meta name="component" content="StrategyTower">
 <meta name="strings" content="./strategy.en.ogt">
-<meta name="parts" content="StrategyTower.frame StrategyTower.band StrategyTower.title StrategyTower.badge StrategyTower.portrait StrategyTower.row StrategyTower.path StrategyTower.name StrategyTower.cost StrategyTower.reason">
+<meta name="parts" content="StrategyTower.frame StrategyTower.band StrategyTower.title StrategyTower.badge StrategyTower.portrait StrategyTower.row StrategyTower.path StrategyTower.name StrategyTower.cost StrategyTower.reason StrategyTower.picture StrategyTower.label StrategyTower.figure">
 <meta name="prop:name" content="string" data-doc="The tower's name; empty takes the kit's (Tower).">
 <meta name="prop:icon" content="string" data-doc="An icon of the atlas for the tower, drawn when portrait is 0.">
 <meta name="prop:portrait" content="number" data-doc="A texture of the tower (og.load.texture); 0 draws icon.">
@@ -25,7 +25,7 @@
 -->
 <section id="StrategyTower" part="StrategyTower.frame" aria-label={name != '' ? name : t("strategy.tower.name")}>
   <header part="StrategyTower.band">
-    <div part="StrategyTower.portrait" class="picture"><img class="art" src={portrait} alt="" hidden={!portrait}><og-icon class="mark" icon={icon} hidden={!!portrait}></og-icon></div>
+    <div part="StrategyTower.portrait StrategyTower.picture" class="picture"><img class="art" src={portrait} alt="" hidden={!portrait}><og-icon class="mark" icon={icon} hidden={!!portrait}></og-icon></div>
     <h2 part="StrategyTower.title">{name != '' ? name : t("strategy.tower.name")}</h2>
     <span part="StrategyTower.badge" class="level" hidden={!(level > 0)}>{t("strategy.tower.level", { level: level })}</span>
   </header>
@@ -43,11 +43,11 @@
             <span part="StrategyTower.name" class="path-name">{p.name}</span>
             <span class="detail" hidden={p.detail == ''}>{p.detail}</span>
             <div class="pips" role="meter" aria-label={t("strategy.tower.tierName", { tier: p.tier, tiers: p.tiers })} aria-valuemin="0" aria-valuemax={p.tiers} aria-valuenow={p.tier}><span class="tier">{t("strategy.tower.tier", { tier: p.tier, tiers: p.tiers })}</span><div class="track" style:--fill={p.tiers > 0 ? p.tier / p.tiers : 0}><div class="fill"></div></div></div>
-            <span part="StrategyTower.reason" class="reason" hidden={p.state != 'locked' || p.reason == ''}>{p.reason}</span>
+            <span part="StrategyTower.reason StrategyTower.label" class="reason" hidden={p.state != 'locked' || p.reason == ''}>{p.reason}</span>
           </div>
           <button class="buy" variant={p.state == 'affordable' ? 'primary' : 'secondary'} disabled={p.state != 'affordable'} aria-label={t("strategy.tower.upgrade", { name: p.name })} aria-description={p.state == 'locked' ? p.reason : p.cost} data-state={p.state} onclick={upgrade}><div class="buy-face">
             <span part="StrategyTower.badge" class="state" data-state={p.state} hidden={p.state == 'affordable'}>{p.state == 'maxed' ? t("strategy.tower.maxed") : (p.state == 'locked' ? t("strategy.tower.locked") : t("strategy.tower.short"))}</span>
-            <span part="StrategyTower.cost" class="cost" data-state={p.state} hidden={p.state == 'maxed' || p.cost == ''}>{p.cost}</span>
+            <span part="StrategyTower.cost StrategyTower.figure" class="cost" data-state={p.state} hidden={p.state == 'maxed' || p.cost == ''}>{p.cost}</span>
           </div></button>
         </div>
       {/each}
@@ -64,7 +64,7 @@
 [part="StrategyTower.frame"][hidden], [part="StrategyTower.frame"] [hidden] { display: none; }
 [part="StrategyTower.frame"] { display: flex; flex-direction: column; width: stretch; min-width: 0; gap: var(--space-sm); container-type: inline-size; }
 [part="StrategyTower.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); flex: none; }
-[part="StrategyTower.portrait"] { flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; overflow: hidden; }
+[part="StrategyTower.portrait StrategyTower.picture"] { flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; overflow: hidden; }
 .art { width: stretch; height: stretch; object-fit: cover; }
 .mark { width: 70%; height: 70%; }
 [part="StrategyTower.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }

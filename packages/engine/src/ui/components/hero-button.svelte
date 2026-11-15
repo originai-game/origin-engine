@@ -9,7 +9,7 @@
 
 <button id="HeroButton" part="HeroButton.base" variant={tone == 'secondary' || tone == 'danger' ? tone : 'primary'} class:premium={tone == 'premium'} class:secondary={tone == 'secondary'} class:danger={tone == 'danger'} disabled={disabled} onclick={press}>
   <span id="Label" part="HeroButton.label">{label}</span>
-  <kbd id="Key" part="HeroButton.key" hidden={!key}>{key}</kbd>
+  <kbd id="Key" part="HeroButton.key HeroButton.label" hidden={!key}>{key}</kbd>
 </button>
 
 <style>
@@ -23,5 +23,5 @@
 [part="HeroButton.label"] { font: var(--text-lg); color: var(--on-primary); text-transform: uppercase; white-space: nowrap; }
 .premium [part="HeroButton.label"] { color: var(--ink-inverse); }
 .secondary [part="HeroButton.label"] { color: var(--ink); }
-[part="HeroButton.key"] { font: var(--text-caption); }
+[part="HeroButton.key HeroButton.label"] { font: var(--text-caption); }
 </style>

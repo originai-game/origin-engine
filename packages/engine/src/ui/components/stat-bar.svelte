@@ -1,6 +1,6 @@
 <meta name="component" content="StatBar">
 <meta name="strings" content="./stat-bar.en.ogt">
-<meta name="parts" content="StatBar.shield StatBar.frame StatBar.label StatBar.track StatBar.fill StatBar.inside StatBar.figure">
+<meta name="parts" content="StatBar.shield StatBar.frame StatBar.label StatBar.track StatBar.fill StatBar.inside StatBar.figure StatBar.well">
 <meta name="prop:value" content="number" data-doc="The value.">
 <meta name="prop:max" content="number" data-default="1" data-doc="Its maximum.">
 <meta name="prop:kind" content="string" data-default="health" data-doc="What it measures (its colour): health, mana, stamina or xp; health turns warn and danger as it falls.">
@@ -25,7 +25,7 @@
   <div id="Main" part="StatBar.frame" class:hud={!bare} class:bare={bare}>
     <og-icon id="Icon" icon={icon} hidden={!icon}></og-icon>
     <span id="Label" part="StatBar.label" hidden={!label}>{label}</span>
-    <div id="Track" part="StatBar.track" style:--value={value / max} style:--heal={heal / max} style:--recoverable={recoverable / max} style:--block={segment / max}>
+    <div id="Track" part="StatBar.track StatBar.well" style:--value={value / max} style:--heal={heal / max} style:--recoverable={recoverable / max} style:--block={segment / max}>
       <div id="Recoverable"></div>
       <div id="Ghost"></div>
       <div id="Heal" hidden={!(heal > 0)}></div>
@@ -50,7 +50,7 @@
 [part="StatBar.frame"] { display: flex; width: stretch; gap: var(--space-sm); align-items: center; }
 #Icon { width: var(--size-xs); height: var(--size-xs); color: var(--meter); }
 [part="StatBar.label"] { font: var(--text-sm); font-family: var(--label-font); white-space: nowrap; text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
-[part="StatBar.track"] { width: stretch; height: var(--space-lg); border-radius: var(--meter-radius); background: var(--control-strong); overflow: hidden; box-shadow: var(--meter-shadow); }
+[part="StatBar.track StatBar.well"] { width: stretch; height: var(--space-lg); border-radius: var(--meter-radius); background: var(--control-strong); overflow: hidden; box-shadow: var(--meter-shadow); }
 #Recoverable, #Ghost, #Fill, #Heal, #Blocks, #Gloss { position: absolute; top: 0; height: stretch; }
 #Recoverable { inset-inline-start: 0; width: calc(var(--recoverable) * 100%); background: var(--ink-muted); opacity: var(--opacity-muted); }
 #Ghost { inset-inline-start: 0; width: stretch; background: var(--scene-ink); opacity: var(--opacity-soft); scale: var(--value) 1; transform-origin: 0% 50%; transition: scale var(--motion-duration-bounce) var(--motion-easing-in-out) var(--motion-duration-slow); }

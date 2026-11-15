@@ -1,6 +1,6 @@
 <meta name="component" content="ArenaDraft">
 <meta name="strings" content="./arena.en.ogt">
-<meta name="parts" content="ArenaDraft.frame ArenaDraft.band ArenaDraft.title ArenaDraft.team ArenaDraft.heading ArenaDraft.slot ArenaDraft.portrait ArenaDraft.name ArenaDraft.badge">
+<meta name="parts" content="ArenaDraft.frame ArenaDraft.band ArenaDraft.title ArenaDraft.team ArenaDraft.heading ArenaDraft.slot ArenaDraft.portrait ArenaDraft.name ArenaDraft.badge ArenaDraft.plate ArenaDraft.picture">
 <meta name="prop:title" content="string" data-doc="The draft's heading; empty takes the kit's (Draft).">
 <meta name="prop:phase" content="string" data-doc="The phase the game is in: ban, pick or done (each named in words in the band).">
 <meta name="prop:active" content="string" data-doc="The team choosing now: a, b, or empty for neither (its column is marked current and named in the band).">
@@ -37,14 +37,14 @@
   </header>
   {#if slots.length}
     <div class="teams">
-      <div part="ArenaDraft.team" class="team" aria-current={active == 'a'} role="group" aria-label={(nameA != '' ? nameA : t("arena.team.a"))}>
+      <div part="ArenaDraft.team ArenaDraft.plate" class="team" aria-current={active == 'a'} role="group" aria-label={(nameA != '' ? nameA : t("arena.team.a"))}>
         <h3 part="ArenaDraft.heading" class="team-name" data-team="a">{(nameA != '' ? nameA : t("arena.team.a"))}</h3>
         <span class="section">{t("arena.draft.bans")}</span>
         <div class="bans" role="list" aria-label={t("arena.draft.bans")}>
           {#each slots as s (s.id)}
             {#if s.team == 'a' && s.kind == 'ban'}
               <div part="ArenaDraft.slot" class="ban" role="listitem" aria-current={s.active} data-kind="ban" data-state={s.active ? 'active' : (s.name != '' ? 'banned' : 'empty')}>
-                <div part="ArenaDraft.portrait" class="portrait small" data-state={s.name != '' ? 'banned' : 'empty'}>
+                <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait small" data-state={s.name != '' ? 'banned' : 'empty'}>
                   <img class="art" src={s.portrait} alt="" hidden={!s.portrait}>
                   <og-icon class="glyph" icon={s.icon} hidden={!!s.portrait || s.icon == ''}></og-icon>
                   <og-icon class="strike" icon="close" hidden={s.name == ''}></og-icon>
@@ -60,7 +60,7 @@
           {#each slots as s (s.id)}
             {#if s.team == 'a' && s.kind == 'pick'}
               <div part="ArenaDraft.slot" class="pick" role="listitem" aria-current={s.active} data-kind="pick" data-state={s.active ? 'active' : (s.name != '' ? 'filled' : 'empty')}>
-                <div part="ArenaDraft.portrait" class="portrait" data-state={s.name != '' ? 'filled' : 'empty'}>
+                <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait" data-state={s.name != '' ? 'filled' : 'empty'}>
                   <img class="art" src={s.portrait} alt="" hidden={!s.portrait}>
                   <og-icon class="glyph" icon={s.icon} hidden={!!s.portrait || s.icon == ''}></og-icon>
                 </div>
@@ -76,14 +76,14 @@
           {/each}
         </div>
       </div>
-      <div part="ArenaDraft.team" class="team" aria-current={active == 'b'} role="group" aria-label={(nameB != '' ? nameB : t("arena.team.b"))}>
+      <div part="ArenaDraft.team ArenaDraft.plate" class="team" aria-current={active == 'b'} role="group" aria-label={(nameB != '' ? nameB : t("arena.team.b"))}>
         <h3 part="ArenaDraft.heading" class="team-name" data-team="b">{(nameB != '' ? nameB : t("arena.team.b"))}</h3>
         <span class="section">{t("arena.draft.bans")}</span>
         <div class="bans" role="list" aria-label={t("arena.draft.bans")}>
           {#each slots as s (s.id)}
             {#if s.team == 'b' && s.kind == 'ban'}
               <div part="ArenaDraft.slot" class="ban" role="listitem" aria-current={s.active} data-kind="ban" data-state={s.active ? 'active' : (s.name != '' ? 'banned' : 'empty')}>
-                <div part="ArenaDraft.portrait" class="portrait small" data-state={s.name != '' ? 'banned' : 'empty'}>
+                <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait small" data-state={s.name != '' ? 'banned' : 'empty'}>
                   <img class="art" src={s.portrait} alt="" hidden={!s.portrait}>
                   <og-icon class="glyph" icon={s.icon} hidden={!!s.portrait || s.icon == ''}></og-icon>
                   <og-icon class="strike" icon="close" hidden={s.name == ''}></og-icon>
@@ -99,7 +99,7 @@
           {#each slots as s (s.id)}
             {#if s.team == 'b' && s.kind == 'pick'}
               <div part="ArenaDraft.slot" class="pick" role="listitem" aria-current={s.active} data-kind="pick" data-state={s.active ? 'active' : (s.name != '' ? 'filled' : 'empty')}>
-                <div part="ArenaDraft.portrait" class="portrait" data-state={s.name != '' ? 'filled' : 'empty'}>
+                <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait" data-state={s.name != '' ? 'filled' : 'empty'}>
                   <img class="art" src={s.portrait} alt="" hidden={!s.portrait}>
                   <og-icon class="glyph" icon={s.icon} hidden={!!s.portrait || s.icon == ''}></og-icon>
                 </div>
@@ -134,7 +134,7 @@
 .turn { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .clock { flex: none; }
 .teams { display: flex; width: stretch; flex: 1; min-height: 0; gap: var(--space-md); overflow-y: auto; }
-[part="ArenaDraft.team"] { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; gap: var(--space-xs); padding: var(--space-sm); }
+[part="ArenaDraft.team ArenaDraft.plate"] { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; gap: var(--space-xs); padding: var(--space-sm); }
 [part="ArenaDraft.heading"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .section { white-space: nowrap; }
 .bans { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
@@ -142,8 +142,8 @@
 /* A ban is as wide as its words (Banned, the name), at any text size: the word is never cut, a long name wraps. */
 [part="ArenaDraft.slot"].ban { display: flex; flex-direction: column; flex: 0 1 auto; align-items: center; gap: var(--space-xxs); min-width: var(--size-xl); max-width: stretch; }
 [part="ArenaDraft.slot"].pick { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) var(--space-xs); min-height: var(--size-touch); }
-[part="ArenaDraft.portrait"] { position: relative; display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; overflow: hidden; }
-[part="ArenaDraft.portrait"].small { width: var(--size-md); height: var(--size-md); }
+[part="ArenaDraft.portrait ArenaDraft.picture"] { position: relative; display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; overflow: hidden; }
+[part="ArenaDraft.portrait ArenaDraft.picture"].small { width: var(--size-md); height: var(--size-md); }
 .art { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .glyph { width: var(--size-sm); height: var(--size-sm); }
 .small .glyph { width: var(--size-xs); height: var(--size-xs); }
@@ -161,9 +161,9 @@
 @container (width < 600px) {
   [part="ArenaDraft.band"] { flex-wrap: wrap; gap: var(--space-xs); }
   .teams { gap: var(--space-xs); }
-  [part="ArenaDraft.team"] { padding: var(--space-xs); }
+  [part="ArenaDraft.team ArenaDraft.plate"] { padding: var(--space-xs); }
   [part="ArenaDraft.slot"].pick { gap: var(--space-xs); padding: var(--space-xxs); }
-  [part="ArenaDraft.portrait"] { width: var(--size-md); height: var(--size-md); }
+  [part="ArenaDraft.portrait ArenaDraft.picture"] { width: var(--size-md); height: var(--size-md); }
   .actions button { flex: 1; }
 }
 </style>

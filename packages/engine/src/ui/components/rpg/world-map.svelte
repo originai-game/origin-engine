@@ -1,6 +1,6 @@
 <meta name="component" content="RpgWorldMap">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgWorldMap.frame RpgWorldMap.marker RpgWorldMap.row">
+<meta name="parts" content="RpgWorldMap.frame RpgWorldMap.marker RpgWorldMap.row RpgWorldMap.cell">
 <meta name="prop:map" content="number" data-doc="The map's texture (og.load.texture); markers sit on it in fractions of its size.">
 <meta name="prop:markers" content="list" data-doc="Keyed rows of { id, kind, x, y, label }: kind is quest, waypoint, danger or player; x and y 0 to 1 across and down the map.">
 <meta name="prop:selected" content="string" data-doc="The marker selected; empty is none.">
@@ -27,7 +27,7 @@
       <img class="terrain" src={map} alt="">
       <div class="markers" role="group" aria-label={t("rpg.map.places")}>
         {#each markers as m (m.id)}
-          <button part="RpgWorldMap.marker" data-kind={m.kind} disabled={m.kind == 'player'} aria-selected={m.id == selected} aria-label={m.label} style:--x={m.x} style:--y={m.y} onclick={choose}><div class="face">
+          <button part="RpgWorldMap.marker RpgWorldMap.cell" data-kind={m.kind} disabled={m.kind == 'player'} aria-selected={m.id == selected} aria-label={m.label} style:--x={m.x} style:--y={m.y} onclick={choose}><div class="face">
             <div class="marker-mark"></div>
           </div></button>
         {/each}
@@ -49,8 +49,8 @@
 .land { position: absolute; left: 0; top: 0; width: calc(var(--zoom) * 100%); height: calc(var(--zoom) * 100%); translate: var(--pan-x) var(--pan-y); }
 .terrain { position: absolute; left: 0; top: 0; width: stretch; height: stretch; object-fit: cover; }
 .markers { position: absolute; left: 0; top: 0; width: stretch; height: stretch; }
-[part="RpgWorldMap.marker"] { position: absolute; left: calc(var(--x) * 100%); top: calc(var(--y) * 100%); width: var(--size-md); height: var(--size-md); padding: 0; translate: -50% -50%; align-items: center; justify-content: center; }
-[part="RpgWorldMap.marker"] .face { width: stretch; height: stretch; align-items: center; justify-content: center; }
+[part="RpgWorldMap.marker RpgWorldMap.cell"] { position: absolute; left: calc(var(--x) * 100%); top: calc(var(--y) * 100%); width: var(--size-md); height: var(--size-md); padding: 0; translate: -50% -50%; align-items: center; justify-content: center; }
+[part="RpgWorldMap.marker RpgWorldMap.cell"] .face { width: stretch; height: stretch; align-items: center; justify-content: center; }
 .marker-mark { width: 62%; height: 62%; }
 .here { position: absolute; left: 0; bottom: 0; display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-md); margin: 0; }
 .here:dir(rtl) { left: auto; right: 0; }

@@ -1,6 +1,6 @@
 <meta name="component" content="Chat">
 <meta name="strings" content="./general.en.ogt">
-<meta name="parts" content="Chat.frame Chat.tab Chat.unread Chat.log Chat.message Chat.sender Chat.time Chat.text Chat.notice Chat.compose">
+<meta name="parts" content="Chat.frame Chat.tab Chat.unread Chat.log Chat.message Chat.sender Chat.time Chat.text Chat.notice Chat.compose Chat.plate Chat.label Chat.figure">
 <meta name="prop:channels" content="list" data-doc="The channels, keyed rows of { id, label, unread }: unread the count the game keeps, 0 hides its badge. Empty shows no tab row.">
 <meta name="prop:channel" content="string" data-doc="The channel shown.">
 <meta name="prop:messages" content="list" data-doc="The shown channel's messages, oldest first: keyed rows of { id, kind, sender, time, text }: kind player, own (the player's) or system; time as the game formats it; text wraps, and a long word breaks.">
@@ -33,19 +33,19 @@
       </div>
     </scroll>
   </div>
-  <div part="Chat.log" role="log" aria-label={t("general.chat.messages")} aria-live="polite">
+  <div part="Chat.log Chat.plate" role="log" aria-label={t("general.chat.messages")} aria-live="polite">
     {#if messages.length}
       <ol class="messages">
         {#each messages as m (m.id)}
           <li part="Chat.message" data-kind={m.kind}>
             <div class="head" hidden={m.kind == 'system'}>
-              <p part="Chat.sender" data-kind={m.kind}>{m.kind == 'own' ? t("general.chat.you") : m.sender}</p>
-              <p part="Chat.time">{m.time}</p>
+              <p part="Chat.sender Chat.label" data-kind={m.kind}>{m.kind == 'own' ? t("general.chat.you") : m.sender}</p>
+              <p part="Chat.time Chat.figure">{m.time}</p>
             </div>
             <div class="head" hidden={m.kind != 'system'}>
               <og-icon class="mark" icon="bolt"></og-icon>
-              <p part="Chat.sender" data-kind="system">{t("general.chat.system")}</p>
-              <p part="Chat.time">{m.time}</p>
+              <p part="Chat.sender Chat.label" data-kind="system">{t("general.chat.system")}</p>
+              <p part="Chat.time Chat.figure">{m.time}</p>
             </div>
             <p part="Chat.text" data-kind={m.kind}>{m.text}</p>
           </li>
@@ -55,7 +55,7 @@
       <p class="empty" role="status">{t("general.chat.empty")}</p>
     {/if}
   </div>
-  <p part="Chat.notice" role="status" hidden={notice == ''}>{notice}</p>
+  <p part="Chat.notice Chat.label" role="status" hidden={notice == ''}>{notice}</p>
   <form part="Chat.compose" onsubmit={send}>
     <input id="Draft" type="text" aria-label={t("general.chat.placeholder")} placeholder={t("general.chat.placeholder")} maxlength={maxLength} disabled={!canSend} bind:value={draft}>
     <button id="Send" variant="primary" aria-label={t("general.chat.send")} disabled={!canSend}><og-icon class="send-mark" icon="play"></og-icon><span class="send-label">{t("general.chat.send")}</span></button>
@@ -71,19 +71,19 @@
 [part="Chat.tab"] { flex: none; min-height: var(--size-touch); padding: 0 var(--space-sm); gap: var(--space-xs); }
 .tab-label { white-space: nowrap; max-width: calc(var(--size-xxl) * 2.5); overflow: hidden; text-overflow: ellipsis; }
 [part="Chat.unread"] { min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; font-variant-numeric: tabular-nums; }
-[part="Chat.log"] { display: flex; flex-direction: column-reverse; width: stretch; flex: 1; min-height: 0; overflow-y: auto; }
+[part="Chat.log Chat.plate"] { display: flex; flex-direction: column-reverse; width: stretch; flex: 1; min-height: 0; overflow-y: auto; }
 .messages { display: flex; flex-direction: column; width: stretch; margin: 0; padding: var(--space-xs); list-style: none; gap: var(--space-xs); }
 [part="Chat.message"] { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); padding: var(--space-xs) var(--space-sm); }
 [part="Chat.message"][data-kind=own] { align-items: flex-end; }
 .head { display: flex; width: stretch; align-items: center; gap: var(--space-sm); }
 [part="Chat.message"][data-kind=own] .head { justify-content: flex-end; }
-[part="Chat.sender"] { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-[part="Chat.time"] { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+[part="Chat.sender Chat.label"] { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[part="Chat.time Chat.figure"] { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
 [part="Chat.text"] { margin: 0; max-width: stretch; text-align: start; overflow-wrap: anywhere; }
 [part="Chat.message"][data-kind=own] [part="Chat.text"] { text-align: end; }
 .empty { margin: 0; padding: var(--space-lg); text-align: center; }
-[part="Chat.notice"] { margin: 0; flex: none; }
+[part="Chat.notice Chat.label"] { margin: 0; flex: none; }
 [part="Chat.compose"] { display: flex; width: stretch; gap: var(--space-xs); align-items: stretch; flex: none; }
 #Draft { width: stretch; min-width: 0; min-height: var(--size-touch); }
 #Send { flex: none; min-height: var(--size-touch); min-width: var(--size-touch); gap: var(--space-xs); }

@@ -1,6 +1,6 @@
 <meta name="component" content="MinimapView">
 <meta name="strings" content="./minimap-view.en.ogt">
-<meta name="parts" content="MinimapView.bezel MinimapView.glass MinimapView.grid MinimapView.marker MinimapView.player MinimapView.north MinimapView.badge">
+<meta name="parts" content="MinimapView.bezel MinimapView.glass MinimapView.grid MinimapView.marker MinimapView.player MinimapView.north MinimapView.badge MinimapView.plate MinimapView.cell">
 <meta name="prop:texture" content="number" data-doc="The map texture (og.load.texture); 0 draws the well with a grid.">
 <meta name="prop:centerX" content="number" data-doc="The map point at its centre (the player's), 0 to 1 across.">
 <meta name="prop:centerY" content="number" data-doc="The map point at its centre, 0 to 1 down.">
@@ -18,9 +18,9 @@
     <button id="Glass" part="MinimapView.glass" onclick={pick} aria-label={t("component.minimap-view.name")}>
       <div id="World" class:turning={rotate}>
         <img id="Map" src={texture} hidden={!texture}>
-        <div id="Grid" part="MinimapView.grid" hidden={!!texture}></div>
+        <div id="Grid" part="MinimapView.grid MinimapView.plate" hidden={!!texture}></div>
         {#each markers as m (m.id)}
-          <div class="marker" part="MinimapView.marker" class:ally={m.kind == 'ally'} class:enemy={m.kind == 'enemy'} class:objective={m.kind == 'objective'} class:ping={m.kind == 'ping'} class:loot={m.kind == 'loot'} style:--x={m.x} style:--y={m.y} aria-label={m.label}></div>
+          <div class="marker" part="MinimapView.marker MinimapView.cell" class:ally={m.kind == 'ally'} class:enemy={m.kind == 'enemy'} class:objective={m.kind == 'objective'} class:ping={m.kind == 'ping'} class:loot={m.kind == 'loot'} style:--x={m.x} style:--y={m.y} aria-label={m.label}></div>
         {/each}
       </div>
       <svg id="Player" part="MinimapView.player" viewBox="0 0 16 16" class:turning={!rotate}><path d="M8 1l6 13-6-3.5L2 14z"></path></svg>
@@ -39,8 +39,8 @@
 #World { position: absolute; top: 0; inset-inline-start: 0; width: var(--side); height: var(--side); transform-origin: 50% 50%; }
 #World.turning { rotate: calc(var(--heading) * -1deg); }
 #Map { position: absolute; width: calc(var(--side) / var(--zoom)); height: calc(var(--side) / var(--zoom)); inset-inline-start: calc(var(--side) / 2 - var(--cx) * var(--side) / var(--zoom)); top: calc(var(--side) / 2 - var(--cy) * var(--side) / var(--zoom)); }
-[part="MinimapView.grid"] { position: absolute; top: 0; inset-inline-start: 0; width: var(--side); height: var(--side); background: repeating-linear-gradient(0deg, var(--color-minimap-edge) 0%, var(--color-minimap-edge) var(--stroke-hairline), transparent var(--stroke-hairline), transparent var(--size-sm)), repeating-linear-gradient(90deg, var(--color-minimap-edge) 0%, var(--color-minimap-edge) var(--stroke-hairline), transparent var(--stroke-hairline), transparent var(--size-sm)); }
-[part="MinimapView.marker"] { position: absolute; width: var(--pip); height: var(--pip); border-radius: var(--radius-capsule); inset-inline-start: calc(var(--side) / 2 + (var(--x) - var(--cx)) * var(--side) / var(--zoom) - var(--pip) / 2); top: calc(var(--side) / 2 + (var(--y) - var(--cy)) * var(--side) / var(--zoom) - var(--pip) / 2); background: var(--ink); border: var(--stroke-hairline) solid var(--scene-shadow); }
+[part="MinimapView.grid MinimapView.plate"] { position: absolute; top: 0; inset-inline-start: 0; width: var(--side); height: var(--side); background: repeating-linear-gradient(0deg, var(--color-minimap-edge) 0%, var(--color-minimap-edge) var(--stroke-hairline), transparent var(--stroke-hairline), transparent var(--size-sm)), repeating-linear-gradient(90deg, var(--color-minimap-edge) 0%, var(--color-minimap-edge) var(--stroke-hairline), transparent var(--stroke-hairline), transparent var(--size-sm)); }
+[part="MinimapView.marker MinimapView.cell"] { position: absolute; width: var(--pip); height: var(--pip); border-radius: var(--radius-capsule); inset-inline-start: calc(var(--side) / 2 + (var(--x) - var(--cx)) * var(--side) / var(--zoom) - var(--pip) / 2); top: calc(var(--side) / 2 + (var(--y) - var(--cy)) * var(--side) / var(--zoom) - var(--pip) / 2); background: var(--ink); border: var(--stroke-hairline) solid var(--scene-shadow); }
 .marker.ally { background: var(--info); }
 .marker.enemy { background: var(--danger); border-radius: 0; rotate: 45deg; }
 .marker.objective { --pip: var(--space-md); border-radius: var(--radius-control); rotate: 45deg; background: var(--gold); }
