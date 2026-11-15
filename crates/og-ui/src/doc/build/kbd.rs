@@ -45,7 +45,16 @@ impl Ui {
                         .write_back(b, n, "binding", serde_json::json!(code));
                 }
             }
-            let shown = if on { "…".to_string() } else { cap };
+            // The key it holds (`bind:value`) is the binding the player
+            // sees and changes; the action's glyph only stands in for none.
+            let binding = r.str("binding").unwrap_or_default();
+            let shown = if on {
+                "…".to_string()
+            } else if !binding.is_empty() {
+                og_input::key_glyph(binding).text
+            } else {
+                cap
+            };
             let resp = self.button(
                 id,
                 &shown,

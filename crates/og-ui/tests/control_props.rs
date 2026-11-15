@@ -1715,11 +1715,12 @@ fn aria_attributes_reach_the_accessibility_tree() {
 /// Device-following glyphs (G7): `<kbd data-action>` shows the action's
 /// key on a keyboard and its button on a pad, rebuilt when the device
 /// changes; `$ui` carries the device, the coarse pointer and the action
-/// bar; `data-og-rebind` captures the next key into its bound value; a
-/// name only og-input defines shows that action's binding.
+/// bar; `data-og-rebind` captures the next key into its bound value and
+/// shows it; a name only og-input defines shows that action's binding.
 /// Ways it could fail: a glyph stuck on the device it was built for, `$ui`
 /// not reaching a mounted document, the capture writing Escape or never
-/// ending, a game's og.input action drawn as its raw name.
+/// ending, the rebind cap showing the action's key and not its own, a
+/// game's og.input action drawn as its raw name.
 #[test]
 fn kbd_glyphs_follow_the_device_and_rebind() {
     let text = r#"<meta name="component" content="t">
@@ -1774,6 +1775,11 @@ fn kbd_glyphs_follow_the_device_and_rebind() {
         });
         d.step(InputFrame::default());
         assert_eq!(d.read("key"), json!("KeyQ"), "the next key is its binding");
+        assert_eq!(
+            d.get("R").text,
+            "Q",
+            "the cap shows its binding, not jump's E"
+        );
         d.click("R");
         d.step(InputFrame {
             keys_pressed: vec!["Escape"],

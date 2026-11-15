@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"A `<kbd data-og-rebind bind:value>` shows the key it holds (`Space`, then the key the player captured), not the action's default glyph or name."}
+  ]
+}
