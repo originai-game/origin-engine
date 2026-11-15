@@ -188,10 +188,9 @@ fn every_shading_path_honours_each_diagnostic_or_marks_it_unsupported() {
                         | DebugView::AoDepth
                         | DebugView::AoRaw
                 ),
-                "terrain-near" => matches!(
-                    view,
-                    DebugView::AmbientOcclusion | DebugView::AoDepth | DebugView::AoRaw
-                ),
+                // The terrain shades every diagnostic, the screen AO's
+                // included (terrain_lit.wgsl binds the shared fx group).
+                "terrain-near" => false,
                 _ => matches!(
                     view,
                     DebugView::Terrain
