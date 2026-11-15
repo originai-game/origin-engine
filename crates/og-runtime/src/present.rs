@@ -14,6 +14,7 @@ pub(crate) mod feel;
 pub(crate) mod fx;
 pub(crate) mod geometry;
 pub(crate) mod glyphs;
+pub(crate) mod hlod;
 pub(crate) mod interpolate;
 pub(crate) mod light2d_at;
 pub(crate) mod look;

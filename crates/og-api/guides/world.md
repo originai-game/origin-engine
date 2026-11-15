@@ -244,6 +244,77 @@ from og.load.scene) is a cell.
   landed when the cell loads and the tick never waits. It is read only for
   fetching, never by a tick.
 
+### Distant models as proxies (HLOD)
+
+A town of a thousand buildings is a thousand models' draws and triangles
+however far away it is. A scene with an `hlod` block has the cook merge
+its `static` models into proxies, and the frame draws a proxy in place of
+its models once the difference is under a pixel:
+
+```
+type scene
+version 1
+---
+hlod {
+  size 64
+  error 0.25
+  texels 1024
+}
+entity "house-12" {
+  model "models/house.glb"
+  static true
+  Transform {
+    position 120 0 48
+  }
+}
+```
+
+| Field | Default | Meaning |
+|---|---|---|
+| `size` | 64 | a leaf's cell in metres along x and z; each level above is twice as wide |
+| `error` | `size` / 256 | how far a leaf's proxy may stand off its models, in metres; each level above doubles it |
+| `texels` | 1024 | the longest side of a proxy's textures |
+
+- A proxy takes over where its error is under a pixel: at 1080p and fov
+  60, a 0.25 m leaf from about 230 m, the level above from 470 m. A
+  smaller `error` keeps the models nearer and costs proxy triangles and
+  texels; RenderSettings.lodBias moves every switch as it moves a model's
+  levels.
+- What it saves depends on the scene. Triangles fall wherever proxies
+  draw. Draw calls fall where a proxy stands in for several kinds of
+  model: copies of one model are one instanced draw a pass already, and
+  every proxy is a draw of its own in each pass. A town of 1,156 buildings
+  of 24 kinds went from 345 draws and 1.23 M triangles to 41 and 58 k seen
+  whole from 500 m off, and from 345 draws and 614 k triangles to 699 and
+  258 k seen across from its edge, where the near buildings still draw
+  every kind and 59 proxies add theirs. Read `draws`, `triangles` and
+  `hlod` in `dump_render` at the game's own views before keeping a block.
+- A proxy's textures hold one texel per `error`, so detail a texel wide (a
+  window at the leaves' distance) is softer on a proxy than on its model.
+- Nothing changes for the tick: the models stay in the world with their
+  colliders and are found by queries. A model that is despawned, hidden,
+  moved, tinted or flashed returns its node to its models at once, so a
+  building the player destroys is gone from the distance too.
+- A model stays itself, and `og cook --report` says why (the scene's
+  `hlod` lines in cook-report.json), when it is
+  skinned, has an impostor (already its distant stand-in), a cut-out or
+  translucent material, a `fracture` block or GPU instances, sets `tint`,
+  `flash`, `variant` or `sway`, is hidden, or is larger than a leaf.
+  Trees and foliage want `model { impostor true }`, not HLOD.
+- A cell's sub-scene has its own block and tree. Its proxies stay in the
+  boot bundle and draw at the cell while it is not loaded, so the far
+  world is on screen before it streams in. A `persist` cell's kept
+  changes are not in them.
+- An edit to one model cooks only the nodes above it again.
+- `dump_render`'s `hlod` gives the proxies drawn and the models they
+  replaced, and `dump_entity` says `render.hlod` for a model a proxy is
+  drawing. `RenderOptions.debugView lod` tints a proxy blue, towards
+  violet the higher its node, where the regular path draws it; a proxy
+  the cluster path draws shows green, as a full mesh does.
+- A proxy has base colour, roughness, metalness and emission, no normal
+  map, and takes the scene's lights, not its models' baked lightmaps: keep
+  `error` small enough that the switch is beyond where either shows.
+
 ## 6. Tilemaps
 
 - A tileset (`type tileset`) gives the grid, solid tiles and collision

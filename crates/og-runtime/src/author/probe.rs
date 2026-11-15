@@ -119,6 +119,9 @@ impl Capture for RuntimeCapture {
         if let Some(level) = rs.lod_drawn.get(&entity.to_bits()) {
             out.insert("lod".into(), json!(level));
         }
+        if rs.hlod.replaced.contains_key(&entity.to_bits()) {
+            out.insert("hlod".into(), json!(true));
+        }
         if let Some(issue) = rs.fx.pose_issues.get(&entity.to_bits()) {
             out.insert("skinIssue".into(), issue.clone());
         }
@@ -171,7 +174,7 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
         "dump_render",
         og_probe::CommandDesc {
             usage: "dump_render[:path]".into(),
-            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), its draw calls (`draws`, every pass), blended instances and draws (`transparent`, `transparentDraws`), sprite draws, particle systems with their slots and CPU-simulated live particles (`particles`: systems, capacity, cpu) and trail strips and segments, render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, and the fraction between the last two ticks it was drawn at (interpolation, null at the tick), the antialiasing resolved, the frames drawn and the frames TAA's history holds (antialias, frameIndex, taaHistoryFrames), and the material shaders whose sprite pipelines the device refused (spriteShaderErrors: shader and message; their sprites draw plain)".into(),
+            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), its draw calls (`draws`, every pass), blended instances and draws (`transparent`, `transparentDraws`), sprite draws, particle systems with their slots and CPU-simulated live particles (`particles`: systems, capacity, cpu) and trail strips and segments, render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, its HLOD (`hlod`: the scenes' trees walked, the proxies drawn, those of them for cells not loaded, and the models they drew in place of), and the fraction between the last two ticks it was drawn at (interpolation, null at the tick), the antialiasing resolved, the frames drawn and the frames TAA's history holds (antialias, frameIndex, taaHistoryFrames), and the material shaders whose sprite pipelines the device refused (spriteShaderErrors: shader and message; their sprites draw plain)".into(),
         },
         0,
         move |_world, _args| {
@@ -207,6 +210,15 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
                 "debugView": crate::present::geometry::current_view(&rs),
                 "debugCoverage": crate::present::geometry::debug_coverage(crate::present::geometry::current_view(&rs)),
                 "lodLevels": &levels[..last],
+                // HLOD (present/hlod.rs): the trees walked, the proxies
+                // drawn (`unloaded`: of cells not loaded) and the models
+                // they drew in place of.
+                "hlod": {
+                    "scenes": rs.hlod.drawn.scenes,
+                    "proxies": rs.hlod.drawn.proxies,
+                    "unloaded": rs.hlod.drawn.unloaded,
+                    "replaced": rs.hlod.drawn.replaced,
+                },
                 // RenderOptions.transparency's frame: the pixels whose
                 // fragments outnumbered their nodes and were resolved
                 // weighted, as last read back from the GPU (`fallbackLag`

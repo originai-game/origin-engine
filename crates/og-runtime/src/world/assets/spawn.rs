@@ -396,6 +396,7 @@ pub(crate) fn spawn_part(
             load_scene(eng, sub).map_err(|r| format!("{}: sub-scene {sub}: {r}", scene.id))?;
         if is_cell {
             crate::world::stream::cells::set_scene(eng, entity, handle(index))?;
+            crate::present::hlod::cell_placed(eng, entity, sub);
             continue;
         }
         // Whether its pack has landed or not: only a cell loads a cell
@@ -421,6 +422,7 @@ pub(crate) fn spawn_part(
         ));
     }
     crate::present::baked::scene_spawned(eng, scene, spawned);
+    crate::present::hlod::scene_spawned(eng, scene, placement, spawned);
     eng.state
         .borrow_mut()
         .scene_instances

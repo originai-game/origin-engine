@@ -47,6 +47,10 @@ mod font_packs;
 mod garment;
 #[path = "../geometry_uv_repeat.rs"]
 mod geometry_uv_repeat;
+// It reads the probe's dump_render, which a publish build has not.
+#[cfg(not(feature = "publish"))]
+#[path = "../hlod.rs"]
+mod hlod;
 #[path = "../insert_ranges.rs"]
 mod insert_ranges;
 #[cfg(not(feature = "publish"))]

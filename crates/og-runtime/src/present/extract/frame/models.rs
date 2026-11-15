@@ -257,7 +257,35 @@ pub(super) fn models(
             }
         }
     }
+    // HLOD (`crate::present::hlod`): the proxies of this frame, and the
+    // models they stand in for.
+    let replaced = {
+        // A row with a variant's materials holds its own copy of its parts.
+        let rows = || {
+            let plain = |r: &Row<'_>| {
+                r.3.fx.flash == 0.0
+                    && r.3.fx.tint == Vec3::ONE
+                    && matches!(r.2, std::borrow::Cow::Borrowed(_))
+            };
+            let rows = model_parts.iter().map(|r| {
+                let (asset, plain) = (r.1, plain(r));
+                (r.0, crate::present::hlod::Row { asset, plain })
+            });
+            rows.collect()
+        };
+        let view = crate::present::hlod::View {
+            models: &models,
+            rows: &rows,
+            view_height,
+            bias: settings_bias,
+            debug: debug_lod,
+        };
+        crate::present::hlod::draw(world, rs, h, &view, keys)
+    };
     for (e, asset, mut parts, mut look, bias, sway) in model_parts {
+        if replaced.contains_key(&e) {
+            continue;
+        }
         let m = h.world_of(e);
         let level = match model_lods.get(&asset) {
             Some(l) => {
@@ -369,6 +397,7 @@ pub(super) fn models(
             keys.push((e, k as u32));
         }
     }
+    rs.hlod.replaced = replaced;
     rs.model_lods = model_lods;
     rs.lod_drawn = drawn;
     rs.models = models;

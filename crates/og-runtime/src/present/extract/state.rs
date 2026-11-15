@@ -230,6 +230,8 @@ pub(crate) struct RenderState {
     pub views: crate::present::views::ViewState,
     /// Baked lighting of the scenes instantiated (`crate::present::baked`).
     pub baked: crate::present::baked::BakedState,
+    /// The HLOD trees of the scenes instantiated (`crate::present::hlod`).
+    pub hlod: crate::present::hlod::HlodState,
     /// The review camera in force (`view`, `turntable`: `crate::author::review`).
     pub review: Option<crate::author::review::ReviewView>,
     /// The art contract's runtime defaults (`crate::present::art`).
@@ -306,6 +308,7 @@ impl RenderState {
             ids: Default::default(),
             views: Default::default(),
             baked: Default::default(),
+            hlod: Default::default(),
             review: None,
             art: Default::default(),
             ui_draw: Default::default(),

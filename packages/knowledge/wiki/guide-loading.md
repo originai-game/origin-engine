@@ -129,6 +129,9 @@ dump_entity shows the level drawn.
 | below 1 | a crowd: detail dropped sooner |
 | 0 | always the full mesh |
 
+A scene's distant static models can also be merged into proxies by the
+cook (HLOD): the world guide, §5.
+
 ### Sway and baked lighting
 
 - Model.sway moves each vertex above the model's origin downwind by its

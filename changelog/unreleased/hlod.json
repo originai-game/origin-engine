@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "scene hlod",
+      "summary": "A scene with an `hlod { size error texels }` block has its `static` models merged by the cook into a tree of simplified, textured proxies, and the frame draws a proxy in place of every model under it once its measured error is under a pixel (the rule a model's own levels follow, moved by RenderSettings.lodBias): a distant town is a handful of draws. Presentation only: the models stay in the world, and one that is despawned, hidden, moved, tinted or flashed returns its node to its models. A cell's sub-scene draws its proxies at the cell while it is not loaded. Skinned, impostor, cut-out, fractured and GPU-instanced models keep drawing themselves, counted by reason in `og cook --report` (cook-report.json's `hlod`, with the tree and each proxy's triangles, texels and error). `dump_render` gains `hlod` (proxies drawn, models replaced) and `dump_entity` `render.hlod`; `debugView lod` tints the proxies the regular path draws blue. The world guide, §5."
+    }
+  ]
+}

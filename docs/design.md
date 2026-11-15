@@ -1075,7 +1075,7 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
 - Code: `og-timeline` (evaluation, no ECS), og-cook (timelines, captions,
   paths in scenes), the `path` and `timeline` IDL modules.
 
-### 10.6 Mesh LOD, reflection probes, screen-space reflections
+### 10.6 Mesh LOD, HLOD, reflection probes, screen-space reflections
 
 - **Mesh LOD.** The cook simplifies every model mesh into levels (glTF
   `MSFT_lod` kept) and measures each level's error in model units
@@ -1083,6 +1083,30 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   whose error projects under one pixel, with hysteresis, scaled by
   `og.Model.lodBias × RenderSettings.lodBias`. Every view and shadow pass
   draws the level the camera picked.
+- **HLOD.** A scene with an `hlod { size error texels }` block has its
+  `static` models merged by the cook into a quadtree of proxies over x and
+  z: a leaf is a `size` cell of two models or more, each level above twice
+  as wide, a proxy one ordinary cooked model built from the level below
+  (welded, parts flush on a larger one dropped, simplified by
+  meshoptimizer, charted by xatlas, its base colour, roughness, metalness
+  and emission painted from what it stands in for by og-bake's
+  `transfer`). A proxy's error is measured, as a model
+  level's is, and it is drawn by the same one-pixel rule in place of every
+  model under its node, so the renderer knows nothing of it: a proxy is
+  instances like any other. It is presentation only. The models stay in
+  the world, and a node whose model was destroyed, hidden, moved or given
+  a look of its own draws its models again. A cell's sub-scene keeps its
+  tree in the boot bundle and draws its proxies at the cell while the cell
+  is not loaded. A proxy is one batch, drawn once a pass: it saves draw
+  calls where it stands in for several kinds of model, and only triangles
+  where its models were instanced copies of a few
+  (`packages/engine/bench/hlod-town.ts` measures both). Left to
+  themselves, with the reason in the cook report:
+  skinned, impostor, cut-out, fractured, GPU-instanced and tinted models,
+  and one larger than a leaf. Not yet: a node over cells (each sub-scene
+  has its own tree), a dithered cross-fade (a proxy replaces its models in
+  one frame, under a pixel of error), merged foliage (impostors draw it),
+  normal maps on proxies, and a proxy lit by its models' bake.
 - **Reflection probes** (`og.ReflectionProbe`): box-projected cubes (the
   box and fade of the `og.Volume` on the entity, as every region) captured
   with the lit pipelines and prefiltered like the environment, chosen per
@@ -1102,8 +1126,10 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   software (WebGPU has no hardware ray tracing), GTAO bent normals (XeGTAO,
   MIT), and realtime light volumes. The live procedural sky drives the
   image-based light without a half-made sky ever bound.
-- Code: og-cook (lod), og-render `lod.rs`, `probes.rs`, `ssr.rs`, `ssgi.rs`,
-  `gi_probes.rs`, `sky_capture.rs`, `probe_grid.rs`; og-cli `bake_probes.rs`.
+- Code: og-cook (lod, `systems/hlod.rs`), og-bake `transfer.rs`, og-bundle
+  `hlod.rs`, og-runtime `present/hlod.rs`, og-render `lod.rs`, `probes.rs`,
+  `ssr.rs`, `ssgi.rs`, `gi_probes.rs`, `sky_capture.rs`, `probe_grid.rs`;
+  og-cli `bake_probes.rs`.
 
 ### 10.7 Baked lighting, irradiance volumes, volumetric fog, area lights, cookies
 

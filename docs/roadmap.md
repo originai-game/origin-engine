@@ -82,6 +82,12 @@ band for buoyancy) and wgpu 31 (unpublished). Ray tracing is a non-goal.
   platform for a `connect-src` policy on the play origin, check that both
   hosts disable floating-point contraction, and pin tick and save proofs in
   the fixtures.
+- **HLOD follow-ups** (`docs/design.md` §10.6): a node over several
+  cells, a dithered cross-fade, proxies lit by their models' bake, normal
+  maps on proxies, proxy textures streamed (a scene's proxies all load
+  with it), and one draw for a tree's proxies (each is a batch of its own
+  in every pass, so a town of few instanced kinds gains triangles but not
+  draws at middle distances).
 - **Agent observability:** a `visible` reason code in the probe and
   `dump_entity`, a record of what was drawn after culling, borrow-conflict
   errors naming component, entity and source line, and captures from
