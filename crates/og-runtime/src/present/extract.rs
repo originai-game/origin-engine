@@ -18,6 +18,7 @@
 
 mod frame;
 mod hierarchy;
+mod kept;
 mod wind;
 
 use crate::{
@@ -29,6 +30,7 @@ use crate::{
 pub(crate) use frame::extract;
 pub use hierarchy::Hierarchy;
 pub(crate) use hierarchy::{Blend, blend};
+pub(crate) use kept::KeptModels;
 
 use crate::host::codec::{Cells, Col, ColRow, Layout, Rec, Slot as FieldSlot};
 use crate::host::wire::FromJson;

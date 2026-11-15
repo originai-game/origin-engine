@@ -59,6 +59,9 @@ pub(crate) struct BakedState {
     pub lighting: BakedLighting,
     /// Whether RenderSettings.bakedLighting was on in the last frame.
     pub enabled: bool,
+    /// Counts the gathers: the models' lightmapped parts (`overrides`)
+    /// change only with one.
+    pub serial: u64,
 }
 
 impl BakedState {
@@ -66,6 +69,7 @@ impl BakedState {
     /// the order their scenes were instantiated (their volumes in that
     /// order).
     fn gather(&mut self) {
+        self.serial += 1;
         let mut lighting = BakedLighting::default();
         for d in self
             .scenes

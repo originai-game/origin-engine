@@ -82,6 +82,13 @@ pub(crate) struct HlodState {
     /// The models the last frame's proxies drew in place of, by entity
     /// (the probe's `dump_entity`).
     pub replaced: IdMap<u64, ()>,
+    /// Counts the changes to the places other than a frame's draw: a
+    /// place added, or given its members.
+    pub changes: u64,
+    /// Whether the last draw kept every place and every node's choice as
+    /// it found them: a frame with its rows, its view and [`inputs`] the
+    /// same draws the same proxies again.
+    pub settled: bool,
 }
 
 /// The tree of scene `id`, loaded with its proxies the first time.
@@ -139,6 +146,7 @@ pub(crate) fn cell_placed(eng: &Engine, cell: Entity, scene: &str) {
     let mut rs = eng.render.borrow_mut();
     let state = &mut rs.hlod;
     state.serial += 1;
+    state.changes += 1;
     state.places.push(Place {
         scene: og_bundle::runtime::asset_id(scene).to_string(),
         drew: vec![None; tree.hlod.nodes.len()],
@@ -179,6 +187,7 @@ pub(crate) fn scene_spawned(
     let alive = |e: u64| eng.world().is_ok_and(|w| w.is_alive(Entity::from_bits(e)));
     let mut rs = eng.render.borrow_mut();
     let state = &mut rs.hlod;
+    state.changes += 1;
     // A cell's place is its own from when the cell was placed.
     if cell
         && let Some(p) = state
@@ -231,6 +240,38 @@ fn debug_color(level: u32) -> Vec3 {
     Vec3::new(0.15 + 0.6 * t, 0.45 - 0.3 * t, 1.0)
 }
 
+/// What [`draw`] reads of one place besides the models' rows.
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) struct PlaceIn {
+    alive: bool,
+    /// Whether its cell is loaded (true for a place of no cell).
+    loaded: bool,
+    /// Its root's world matrix, bit for bit.
+    root: [u32; 16],
+}
+
+/// [`PlaceIn`] of every place.
+pub(crate) fn inputs(world: &World, rs: &RenderState, h: &mut Hierarchy) -> Vec<PlaceIn> {
+    let places = rs.hlod.places.iter().map(|p| {
+        let alive = p.root.is_some_and(|r| world.is_alive(Entity::from_bits(r)));
+        let loaded = match (p.cell, p.root) {
+            (true, Some(cell)) => cell_loaded(world, cell).unwrap_or(false),
+            _ => true,
+        };
+        let root = match p.root {
+            Some(r) if alive => h.world_of(r),
+            _ => Mat4::IDENTITY,
+        };
+        let root = root.to_cols_array().map(f32::to_bits);
+        PlaceIn {
+            alive,
+            loaded,
+            root,
+        }
+    });
+    places.collect()
+}
+
 /// og.StreamCell's `loaded` of `cell`; none when it is no cell (despawned).
 fn cell_loaded(world: &World, cell: u64) -> Option<bool> {
     let id = world.id_by_name(crate::world::stream::cells::CELL).ok()?;
@@ -271,8 +312,10 @@ pub(crate) fn draw(
     let mut replaced = IdMap::new();
     let mut drawn = Drawn::default();
     let mut places = std::mem::take(&mut rs.hlod.places);
+    let before = places.len();
     // A cell that is gone takes its place with it.
     places.retain(|p| !p.cell || p.root.is_some_and(|c| world.is_alive(Entity::from_bits(c))));
+    let mut settled = places.len() == before;
     let rows = (!places.is_empty()).then(|| (view.rows)());
     for place in &mut places {
         let Some(rows) = &rows else { break };
@@ -336,11 +379,13 @@ pub(crate) fn draw(
                 // leaf's are all its own).
                 Some(_) => !near || own < node.members.1,
             };
+            settled &= place.drew[n] == Some(proxy);
             place.drew[n] = Some(proxy);
             let Some(parts) = parts.filter(|_| proxy) else {
                 stack.extend(children.into_iter().rev());
                 continue;
             };
+            settled &= place.drew[n + 1..node.end].iter().all(Option::is_none);
             place.drew[n + 1..node.end].fill(None);
             drawn.proxies += 1;
             if loaded {
@@ -382,5 +427,6 @@ pub(crate) fn draw(
     drawn.replaced = replaced.len() as u32;
     rs.hlod.places = places;
     rs.hlod.drawn = drawn;
+    rs.hlod.settled = settled;
     replaced
 }

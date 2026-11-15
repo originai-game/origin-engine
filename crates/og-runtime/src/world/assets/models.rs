@@ -466,6 +466,8 @@ pub(crate) fn insert_model(
         None => assets.push(&id, Status::Ready, payload),
     };
     rs.models.insert(handle(index), parts.parts);
+    // The models drawn from the parts it replaces are built again.
+    rs.kept_models.forget();
     // Its top above its origin: how high og.Model.sway's wind reaches.
     rs.wind.tops.insert(handle(index), model.max.y);
     match lods {

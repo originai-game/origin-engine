@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "CPU time of frames with many models",
+      "summary": "Extraction keeps what each og.Model drew in the last frame and copies it when its inputs are unchanged (its model, look, lodBias, sway, variant and drawn place) under the same view (the camera, the view's height, RenderSettings.lodBias, the level view, baked lighting and the meshes and materials the cluster path can see) and its level of detail has settled, so a frame builds only the models that moved; a scene's HLOD proxies are copied when nothing changed. Frames are unchanged. 6,000 static houses (12,028 instances) took 33.6 ms of engine frame CPU against 38.0 a still frame, and 38.4 against 44.6 with one of them moving every frame (release build, a renderer that draws nothing)."
+    }
+  ]
+}

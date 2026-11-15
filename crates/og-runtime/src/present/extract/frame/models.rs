@@ -1,6 +1,7 @@
 //! The frame's models and meshes.
 
 use super::*;
+use crate::present::extract::kept;
 
 /// Baked lighting, then the models: a fractured destructible's by its
 /// chunks, the rest at their level of detail, posed, as crowds, as
@@ -43,14 +44,9 @@ pub(super) fn models(
     // by offset, the fields resolved once a frame: decoding each row to
     // JSON was about a third of Lantern Vale's extraction
     // (the former test sample
-    type Row<'a> = (
-        u64,
-        u64,
-        std::borrow::Cow<'a, Parts>,
-        super::fx::ModelLook,
-        f32,
-        f32,
-    );
+    // Each with its inputs, as the kept list compares them
+    // (`crate::present::extract::kept`).
+    type Row<'a> = (std::borrow::Cow<'a, Parts>, kept::RowIn);
     let model_rows = layouts
         .model
         .as_ref()
@@ -97,8 +93,8 @@ pub(super) fn models(
                         Some(_) => 0.0,
                         None => num(&sway, 0.0).max(0.0),
                     };
-                    let mut parts =
-                        std::borrow::Cow::Borrowed(lightmapped.or_else(|| models.get(&asset))?);
+                    let source = lightmapped.or_else(|| models.get(&asset))?;
+                    let mut parts = std::borrow::Cow::Borrowed(source);
                     // KHR_materials_variants: the variant's material on every
                     // part (the parts the model's own; -1 keeps the glTF's).
                     let v = v.num(&variant).unwrap_or(-1.0);
@@ -112,7 +108,19 @@ pub(super) fn models(
                             p.1 = m;
                         }
                     }
-                    Some((e, asset, parts, look, bias, sway))
+                    let row = kept::RowIn {
+                        entity: e,
+                        asset,
+                        source: source.as_ptr() as usize,
+                        variant: v.to_bits(),
+                        look,
+                        bias,
+                        sway,
+                        matrix: Mat4::IDENTITY,
+                        posed: false,
+                        crowd: false,
+                    };
+                    Some((parts, row))
                 })
                 .collect()
         }
@@ -150,8 +158,9 @@ pub(super) fn models(
             .collect();
     let (chunked, model_parts): (Vec<_>, Vec<_>) = model_parts
         .into_iter()
-        .partition(|m| fractured.contains_key(&m.0));
-    for (e, asset, parts, look, _, _) in chunked {
+        .partition(|m| fractured.contains_key(&m.1.entity));
+    for (parts, r) in chunked {
+        let (e, asset, look) = (r.entity, r.asset, r.look);
         let nodes = rs
             .fx
             .models
@@ -257,19 +266,37 @@ pub(super) fn models(
             }
         }
     }
+    // The rows' drawn places and paths, then the rows against the last
+    // frame's (`crate::present::extract::kept`).
+    let (parts_of, rows): (Vec<_>, Vec<_>) = model_parts
+        .into_iter()
+        .map(|(parts, mut r)| {
+            r.matrix = h.world_of(r.entity);
+            r.posed = posed.contains(&r.entity);
+            r.crowd = crowds.contains_key(&r.entity);
+            (parts, r)
+        })
+        .unzip();
+    let view = kept::ModelsView::of(rs, view_height, settings_bias, debug_lod, baked);
+    let mut build = std::mem::take(&mut rs.kept_models).begin(view, rows);
     // HLOD (`crate::present::hlod`): the proxies of this frame, and the
-    // models they stand in for.
-    let replaced = {
+    // models they stand in for; the last frame's when nothing changed.
+    let hlod_inputs = crate::present::hlod::inputs(world, rs, h);
+    let hlod_from = (rs.scene.objects.instances.len(), keys.len());
+    let settled = rs.hlod.settled;
+    let replaced = if build.copy_hlod(&mut rs.scene, keys, &hlod_inputs, settled) {
+        std::mem::take(&mut rs.hlod.replaced)
+    } else {
         // A row with a variant's materials holds its own copy of its parts.
         let rows = || {
-            let plain = |r: &Row<'_>| {
-                r.3.fx.flash == 0.0
-                    && r.3.fx.tint == Vec3::ONE
-                    && matches!(r.2, std::borrow::Cow::Borrowed(_))
+            let plain = |(parts, r): (&std::borrow::Cow<'_, Parts>, &kept::RowIn)| {
+                r.look.fx.flash == 0.0
+                    && r.look.fx.tint == Vec3::ONE
+                    && matches!(parts, std::borrow::Cow::Borrowed(_))
             };
-            let rows = model_parts.iter().map(|r| {
-                let (asset, plain) = (r.1, plain(r));
-                (r.0, crate::present::hlod::Row { asset, plain })
+            let rows = parts_of.iter().zip(build.rows()).map(|row| {
+                let (asset, plain) = (row.1.asset, plain(row));
+                (row.1.entity, crate::present::hlod::Row { asset, plain })
             });
             rows.collect()
         };
@@ -282,12 +309,24 @@ pub(super) fn models(
         };
         crate::present::hlod::draw(world, rs, h, &view, keys)
     };
-    for (e, asset, mut parts, mut look, bias, sway) in model_parts {
-        if replaced.contains_key(&e) {
+    build.hlod_drawn(hlod_inputs, hlod_from, &rs.scene, keys);
+    for (i, mut parts) in parts_of.into_iter().enumerate() {
+        let r = build.rows()[i];
+        let (e, asset, bias, sway, m) = (r.entity, r.asset, r.bias, r.sway, r.matrix);
+        let mut look = r.look;
+        let is_replaced = replaced.contains_key(&e);
+        build.start(&rs.scene, keys);
+        if let Some(level) = build.copy_row(i, is_replaced, &mut rs.scene, keys) {
+            if let Some(level) = level {
+                drawn.insert(e, level);
+            }
             continue;
         }
-        let m = h.world_of(e);
-        let level = match model_lods.get(&asset) {
+        if is_replaced {
+            build.built(true, u8::MAX, true);
+            continue;
+        }
+        let (level, settled) = match model_lods.get(&asset) {
             Some(l) => {
                 let scale = m.to_scale_rotation_translation().0.abs().max_element();
                 let per_unit = og_render::lod::pixels_per_unit(
@@ -297,15 +336,19 @@ pub(super) fn models(
                     view_height,
                 );
                 let previous = last_drawn.get(&e).map(|&x| x as usize);
-                og_render::lod::select(
+                let level = og_render::lod::select(
                     &l.errors(),
                     per_unit * scale,
                     bias * settings_bias,
                     previous,
-                )
+                );
+                (level, previous == Some(level))
             }
-            None => 0,
+            None => (0, true),
         };
+        // Copied by the next frame when its level held here (the
+        // hysteresis then keeps it) and nothing animates it.
+        build.built(false, level as u8, settled && !r.posed && !r.crowd);
         drawn.insert(e, level as u8);
         if debug_lod {
             look.fx.flash = 0.8;
@@ -397,6 +440,7 @@ pub(super) fn models(
             keys.push((e, k as u32));
         }
     }
+    rs.kept_models = build.finish(&rs.scene, keys, !fractured.is_empty());
     rs.hlod.replaced = replaced;
     rs.model_lods = model_lods;
     rs.lod_drawn = drawn;

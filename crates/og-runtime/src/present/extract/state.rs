@@ -130,6 +130,8 @@ pub(crate) struct RenderState {
     /// The level each og.Model entity drew last (by entity bits): the
     /// hysteresis of the next choice, and what dump_entity reports.
     pub lod_drawn: IdMap<u64, u8>,
+    /// The last frame's models, copied by a frame where they hold (`kept.rs`).
+    pub kept_models: KeptModels,
     /// The models' wind (og.Model.sway): their tops and the wind copies
     /// of their materials (`wind.rs`).
     pub wind: wind::WindModels,
@@ -269,6 +271,7 @@ impl RenderState {
             model_lods: IdMap::new(),
             shared: Default::default(),
             lod_drawn: IdMap::new(),
+            kept_models: KeptModels::default(),
             wind: Default::default(),
             probe_bakes: Default::default(),
             fonts: Vec::new(),

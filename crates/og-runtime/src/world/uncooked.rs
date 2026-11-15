@@ -356,6 +356,7 @@ pub(crate) fn release(eng: &Engine, index: Option<usize>) -> Result<(), String> 
         Payload::Gltf { .. } => {
             let key = crate::world::assets::handle(i);
             let parts = rs.models.insert(key, Vec::new()).unwrap_or_default();
+            rs.kept_models.forget();
             rs.model_lods.remove(&key);
             rs.fx.models.remove(&key);
             rs.fx.model_materials.remove(&key);
