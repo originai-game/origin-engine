@@ -3,3 +3,4 @@ version 1
 ---
 locale "en"
 string "screen.film-choices.label" "Choose"
+string "screen.film-choices.qte" "Hold or press"
