@@ -34,9 +34,12 @@ pub(crate) const CHANGED: &str = "og.SceneChanged";
 pub(crate) const RECORDS: [&str; 2] = [STATE, CHANGED];
 
 /// The groups og.scene.preload asked for, by scene asset id (the engine's,
-/// not the world's: og.stream.request is too).
+/// not the world's: og.stream.request is too); and og.SceneState.current
+/// as this tick started, which og.scene.current answers while a system
+/// runs (the world is the step's then, and a system need not declare the
+/// resource; it changes only in [`before_tick`]).
 #[derive(Default)]
-pub(crate) struct ModuleState(RefCell<BTreeMap<String, Vec<String>>>);
+pub(crate) struct ModuleState(RefCell<BTreeMap<String, Vec<String>>>, RefCell<String>);
 
 /// A scene's asset id from a GameDesc.scenes name or an asset id.
 fn resolve(eng: &Engine, scene: &str) -> Result<String, String> {
@@ -273,12 +276,22 @@ pub fn og_scene_change(world: u32, scene: String) -> Result<f64, String> {
     Ok(h as f64)
 }
 
-/// The asset id of the scene in place.
+/// The asset id of the scene in place: og.SceneState's, else the boot
+/// scene's. While a system runs, the one this tick started with.
 fn current_id(eng: &Engine) -> Option<String> {
-    match eng.world().ok().and_then(|w| state(eng, w)) {
-        Some(s) if !s.current.is_empty() => Some(s.current),
-        _ => eng.state.borrow().scene_source.clone(),
+    let current = match running(eng.id) {
+        Some(_) => eng.modules.scenes.1.borrow().clone(),
+        None => eng
+            .world()
+            .ok()
+            .and_then(|w| state(eng, w))
+            .map(|s| s.current)
+            .unwrap_or_default(),
+    };
+    if current.is_empty() {
+        return eng.state.borrow().scene_source.clone();
     }
+    Some(current)
 }
 
 /// `og.scene.current`.
@@ -321,8 +334,16 @@ fn in_place(eng: &Engine, world: &World, s: &SceneState) -> Vec<Entity> {
     out
 }
 
-/// As each tick starts: a pending change put in place.
+/// As each tick starts: a pending change put in place, and the scene in
+/// place kept for og.scene.current inside this tick's systems.
 pub(crate) fn before_tick(eng: &Engine, world: &mut World) {
+    place(eng, world);
+    let current = state(eng, world).map(|s| s.current).unwrap_or_default();
+    *eng.modules.scenes.1.borrow_mut() = current;
+}
+
+/// Puts a scene og.scene.change asked for in place.
+fn place(eng: &Engine, world: &mut World) {
     let Some(mut s) = state(eng, world) else {
         return;
     };

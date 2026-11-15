@@ -25,8 +25,8 @@ use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_probe_dump, og_game_game,
     og_host_begin_bundle, og_loading_done, og_loading_stage, og_loading_status, og_scene_change,
     og_scene_current, og_scene_preload, og_scene_progress, og_scene_release, og_stream_request,
-    og_stream_status, og_world_find, og_world_restore, og_world_snapshot, og_world_spawn,
-    set_hooks,
+    og_stream_status, og_system_define_system, og_world_find, og_world_restore, og_world_snapshot,
+    og_world_spawn, set_hooks,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -83,12 +83,21 @@ struct Net {
     asked: bool,
     /// og.loading's reports, as the host heard them.
     loading: Vec<(String, f64, String)>,
+    /// What og.scene.current answered inside the Watch system, a tick each.
+    current: Vec<Option<String>>,
 }
+
+/// The system id of [`a_system_reads_the_scene_in_place`]'s Watch.
+const WATCH: u32 = 1;
 
 struct Host(Rc<RefCell<Net>>);
 
 impl Hooks for Host {
-    fn dispatch(&self, _call: &Dispatch) -> Result<String, String> {
+    fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
+        if call.kind == 0 && call.id == WATCH {
+            let now = og_scene_current(call.engine);
+            self.0.borrow_mut().current.push(now);
+        }
         Ok(String::new())
     }
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
@@ -127,17 +136,28 @@ fn ok<T: og_runtime::wire::ToJson>(r: Result<T, String>) -> Value {
 }
 
 fn start(project_text: Option<&str>) -> (u32, Rc<RefCell<Net>>) {
+    start_with(project_text, false)
+}
+
+/// The engine, with the Watch system when `watch`.
+fn start_with(project_text: Option<&str>, watch: bool) -> (u32, Rc<RefCell<Net>>) {
     let net = Rc::new(RefCell::new(Net::default()));
     set_hooks(Rc::new(Host(net.clone())));
     og_host_begin_bundle();
-    let game = og_game_game(Some(
-        json!({
-            "seed": 1,
-            "scenes": { "main": "scenes/main.ogt", "level2": "scenes/level2.ogt" },
-            "scene": "main",
-        })
-        .to_string(),
-    ));
+    let mut desc = json!({
+        "seed": 1,
+        "scenes": { "main": "scenes/main.ogt", "level2": "scenes/level2.ogt" },
+        "scene": "main",
+    });
+    if watch {
+        let system = og_system_define_system(
+            "Watch".into(),
+            json!({ "reads": [], "writes": [] }).to_string(),
+            WATCH,
+        );
+        desc["systems"] = json!([system]);
+    }
+    let game = og_game_game(Some(desc.to_string()));
     let mut options = json!({ "root": project().to_str().unwrap() });
     if let Some(text) = project_text {
         options["project"] = json!(text);
@@ -337,4 +357,21 @@ fn a_world_that_never_changes_scene_keeps_its_hash_and_loading_reaches_the_host(
         hash(c),
         "a preload is its stream requests; loading is not world state"
     );
+}
+
+/// og.scene.current read by a system (the world is the step's then) names
+/// the scene in place, from the tick og.SceneChanged arrives in: not the
+/// boot scene it answered before (the loading guide's example found it).
+#[test]
+fn a_system_reads_the_scene_in_place() {
+    let (e, net) = start_with(None, true);
+    frame(e);
+    ok(og_scene_change(e, "level2".into()));
+    frame(e);
+    frame(e);
+    let main = Some("scenes/main.ogt".to_string());
+    let level2 = Some("scenes/level2.ogt".to_string());
+    let seen = net.borrow().current.clone();
+    assert_eq!(seen.first(), Some(&main), "{seen:?}");
+    assert_eq!(seen[seen.len() - 2..], [level2.clone(), level2], "{seen:?}");
 }
