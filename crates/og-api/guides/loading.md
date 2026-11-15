@@ -515,6 +515,60 @@ og.scene.change(world, "level2");
 - og.stream.status and og.stream.budget give each group's `received`
   and `progress`; og.load.progress gives a bundle's.
 
+The built-in `loading` screen (key art, place, tip, bar, percent) is the
+cover. Mount it with stores, feed its bar each tick, change once the
+groups are resident, and unmount it when og.SceneChanged arrives: that
+tick starts with the old scene gone and the new one spawned, so nothing
+uncovered shows a stand-in or the old scene.
+
+```ts
+const Travel = defineResource("Travel", { scene: str(64), changing: bool() });
+
+// A command, a trigger or a menu: fetch the scene and cover the screen.
+function travel(world: World, scene: string, place: string): void {
+  const t = world.resource(Travel);
+  if (!t.ok || t.value.scene || !og.scene.preload(world, scene).ok) return;
+  t.value.scene = scene;
+  t.value.changing = false;
+  const ui = og.ui.scope(world, "loading");
+  const stores = { place: ui.writable("place", ""), progress: ui.writable("progress", 0), ready: ui.writable("ready", false) };
+  stores.place.set(place);
+  stores.progress.set(0);
+  stores.ready.set(false);
+  ui.mount("loading", "loading", stores);
+}
+
+const Arrive = defineSystem("Arrive", { reads: [og.SceneChanged], writes: [Travel] }, (_q, _time, world) => {
+  const t = world.resource(Travel);
+  if (!t.ok || !t.value.scene) return;
+  const ui = og.ui.scope(world, "loading");
+  if (world.events(og.SceneChanged).length > 0) {
+    ui.unmount("loading"); // the new scene is in place
+    t.value.scene = "";
+    return;
+  }
+  const p = og.scene.progress(world, t.value.scene);
+  if (!p.ok) return;
+  ui.writable("progress", 0).set(p.value.fraction);
+  ui.writable("ready", false).set(p.value.ready);
+  if (p.value.ready && !t.value.changing) {
+    og.scene.change(world, t.value.scene);
+    t.value.changing = true;
+  }
+});
+
+// og.game({ resources: [Travel], systems: [Arrive],
+//   start(world) { og.load.document(world, "@ui/screens/loading.svelte"); }, … })
+```
+
+- Waiting on `ready` branches a tick on progress. That is fine alone;
+  in a networked game change at a tick the game agrees on (a door, a
+  vote, a timer) and keep the cover up until `ready` instead.
+- Pass `keyArt` and `tip` the same way. `og ui eject loading` copies the
+  screen to rearrange it; a style pack dresses its parts
+  (`loading.scrim`, `loading.frame`, `loading.title`).
+- The opening load is §13 (og.loading); this is every load after it.
+
 ## 13. Loading screens
 
 project.ogt picks who draws the loading screen:
