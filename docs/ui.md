@@ -811,10 +811,11 @@ None of these has a web standard; each is named for what it does.
 - `<anchor entity|at offset occlusion declutter clamp priority
   max-distance scale-at>` holds a column over a world point, placed every
   tick; a moving camera builds nothing. Decluttered by rank (priority,
-  then nearness), each takes the nearest spot clear of those placed
-  before it that is on the screen and within its reach (`stack` straight
-  above, then below, then any way; `shift` any way), and fades out while
-  none is.
+  then nearness), each takes the nearest spot a gap clear of all those
+  placed before it draw (their scaled and overflowing parts included) and
+  of the grounds' text, on the screen and within its reach (`stack`
+  straight above, then below, then any way; `shift` any way), and fades
+  out while none is.
 - `<panel world entity|at size rotation src>` lays a box out at its CSS
   size into the render target `src`, which the game shows on a quad of
   `size` world units; pointer rays meeting the quad reach its controls

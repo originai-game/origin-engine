@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "anchor",
+      "summary": "World tags declutter by everything they draw (a targeted nameplate's scaled frame, a name wider than its plate), keep a gap from each other instead of touching, and keep clear of the text a ground draws (a PathLine's badge), so no tag covers another."
+    }
+  ]
+}

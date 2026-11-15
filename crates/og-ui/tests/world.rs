@@ -666,3 +666,113 @@ fn decluttered_tags_stay_on_the_screen_and_clear() {
         }
     }
 }
+
+/// Mounts the document `body` (with `css`) as the only one.
+fn mount(ui: &mut Ui, body: &str, css: &str) {
+    let doc = format!(
+        "<meta name=\"component\" content=\"sel\">\n<div id=\"Root\">\n{body}\n</div>\n<style>{css}</style>"
+    );
+    ui.define_document(UiDocument::parse("sel.svelte", &doc).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "sel"),
+        "sel",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+}
+
+/// Boxes (x, y, width, height) at least `gap` apart.
+fn apart(a: (f32, f32, f32, f32), b: (f32, f32, f32, f32), gap: f32) -> bool {
+    a.0 + a.2 + gap <= b.0
+        || b.0 + b.2 + gap <= a.0
+        || a.1 + a.3 + gap <= b.1
+        || b.1 + b.3 + gap <= a.1
+}
+
+/// A decluttered tag keeps a gap from all a tag over it draws: a
+/// targeted nameplate's frame scaled up past its box, a name wider than
+/// its plate.
+///
+/// Ways it could fail: tags kept apart by their layout boxes only (the
+/// scaled frame drawn over the tag stacked on it), or tags that touch
+/// counted as clear.
+#[test]
+fn decluttered_tags_keep_clear_of_what_each_draws() {
+    let mut ui = ui();
+    mount(
+        &mut ui,
+        r#"<anchor id="A" at="0 0 0" declutter="stack" priority="50"><div id="Big" class="tag big">A</div></anchor>
+<anchor id="B" at="0 0 0" declutter="stack" priority="10"><div id="Small" class="tag">B</div></anchor>"#,
+        ".tag { width: 100px; height: 40px; background: #202020; } .big { scale: 1.5; }",
+    );
+    run(&mut ui, 40, |_| {});
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let at = |id: &str| {
+        let e = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.id == id)
+            .unwrap_or_else(|| panic!("no {id}"));
+        (e.x, e.y, e.width, e.height)
+    };
+    let (big, small) = (at("Big"), at("Small"));
+    // Drawn half again its 100 × 40.
+    assert!((big.2 - 150.0).abs() < 0.5, "{big:?}");
+    assert!(apart(big, small, 3.9), "B on A's frame: {big:?} {small:?}");
+}
+
+/// A tag keeps clear of the text a ground draws on the scene (a path's
+/// badge at its end), which is pinned and never moves for it.
+///
+/// Ways it could fail: grounds left out of declutter, so a prompt over a
+/// path's end hides its badge ("Out of reach" read "ut of reach").
+#[test]
+fn decluttered_tags_keep_clear_of_a_grounds_text() {
+    let mut ui = ui();
+    mount(
+        &mut ui,
+        r#"<ground id="Path" at="0 0 0" size="3 3"><span id="Badge">Out of reach</span></ground>
+<anchor id="Prompt" at="0 0 0" declutter="shift"><div id="Tag" class="tag">E</div></anchor>"#,
+        "#Path { width: 200px; height: 200px; } #Badge { position: absolute; left: 50px; top: 90px; width: 100px; height: 20px; } .tag { width: 60px; height: 40px; background: #202020; }",
+    );
+    let above = WorldView::look_at(
+        Vec3::new(0.0, 5.0, 6.0),
+        Vec3::ZERO,
+        Vec3::Y,
+        50.0,
+        W / H,
+        0.1,
+        100.0,
+    );
+    for _ in 0..40 {
+        ui.begin(InputFrame::default(), vp());
+        ui.set_world_view(Some(above));
+        ui.end();
+    }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    // The badge is the middle half of the 3 m box across and a tenth of
+    // it deep: ±0.75 m by ±0.15 m about the point, seen from above.
+    let seen: Vec<Vec2> = [(-0.75, -0.15), (0.75, -0.15), (0.75, 0.15), (-0.75, 0.15)]
+        .iter()
+        .map(|&(x, z)| {
+            let (sx, sy, _) = above.project(Vec3::new(x, 0.0, z), W, H).unwrap();
+            Vec2::new(sx, sy)
+        })
+        .collect();
+    let (lo, hi) = seen
+        .iter()
+        .fold((seen[0], seen[0]), |(lo, hi), p| (lo.min(*p), hi.max(*p)));
+    let badge = (lo.x, lo.y, hi.x - lo.x, hi.y - lo.y);
+    let tag = ui
+        .probe_elements()
+        .into_iter()
+        .find(|e| e.id == "Tag")
+        .expect("the tag");
+    let tag = (tag.x, tag.y, tag.width, tag.height);
+    assert!(
+        apart(badge, tag, 0.0),
+        "the tag covers the badge: {badge:?} {tag:?}"
+    );
+}

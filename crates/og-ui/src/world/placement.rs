@@ -39,20 +39,34 @@ fn clamp_to_edge(area: Rect, half: Vec2, dir: Vec2) -> Vec2 {
 }
 
 /// The top left and bottom right, in layout px, of what node `i` draws:
-/// its box and every shown box under it, out-of-flow ones included.
+/// its box and every shown box under it, out-of-flow ones included, each
+/// mapped by its own transform and those between it and `i` (a targeted
+/// nameplate's frame scaled up), as it is drawn.
 fn drawn_box(nodes: &[crate::layout::Node], i: usize) -> (Vec2, Vec2) {
     let r = nodes[i].placed.rect;
     let (mut lo, mut hi) = (Vec2::new(r.x, r.y), Vec2::new(r.right(), r.bottom()));
-    let kids =
-        |n: &crate::layout::Node| n.children.iter().chain(&n.out).copied().collect::<Vec<_>>();
-    let mut stack = kids(&nodes[i]);
-    while let Some(j) = stack.pop() {
+    let kids = |n: &crate::layout::Node, m: Affine| {
+        n.children
+            .iter()
+            .chain(&n.out)
+            .map(|&j| (j, m))
+            .collect::<Vec<_>>()
+    };
+    let mut stack = kids(&nodes[i], Affine::IDENTITY);
+    while let Some((j, m)) = stack.pop() {
         let b = nodes[j].placed.rect;
+        let t = nodes[j].style.sampled.transform;
+        let m = if t.is_identity() {
+            m
+        } else {
+            m.mul(&t.matrix(&b))
+        };
         if !b.is_empty() {
+            let b = m.map_rect(&b);
             lo = lo.min(Vec2::new(b.x, b.y));
             hi = hi.max(Vec2::new(b.right(), b.bottom()));
         }
-        stack.extend(kids(&nodes[j]));
+        stack.extend(kids(&nodes[j], m));
     }
     (lo, hi)
 }
@@ -85,6 +99,71 @@ fn ground_labels(nodes: &[crate::layout::Node], i: usize) -> Vec<usize> {
     out
 }
 
+/// What the grounds' text covers on the screen, og-ui px: a path's badge,
+/// a placement's label. A ground lies pinned on the scene, so its text
+/// is in place before any tag is decluttered, and the tags keep clear of
+/// it (a prompt drawn over "Out of reach" hid it).
+fn ground_text(
+    world: &crate::world::WorldUi,
+    nodes: &[crate::layout::Node],
+    vp: Vec2,
+) -> Vec<Rect> {
+    let Some(view) = world.declared.view else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for p in world.declared.panels.iter().filter(|p| p.desc.projected) {
+        let Some((t, rotation, size)) = p.desc.quad else {
+            continue;
+        };
+        let Some((center, q)) = world.pose_of(t) else {
+            continue;
+        };
+        let q = q * rotation;
+        let r = nodes[p.node].placed.rect;
+        // A layout point's screen point, through the plane (as drawn).
+        let seen = |x: f32, y: f32| {
+            let on = Vec3::new(
+                (x - r.x) / r.width.max(1e-6) * size.x - size.x / 2.0,
+                size.y / 2.0 - (y - r.y) / r.height.max(1e-6) * size.y,
+                0.0,
+            );
+            let (sx, sy, _) = view.project(center + q * on, vp.x, vp.y)?;
+            Some(Vec2::new(sx, sy))
+        };
+        let mut stack: Vec<usize> = nodes[p.node]
+            .children
+            .iter()
+            .chain(&nodes[p.node].out)
+            .copied()
+            .collect();
+        while let Some(j) = stack.pop() {
+            let n = &nodes[j];
+            stack.extend(n.children.iter().chain(&n.out).copied());
+            let b = n.placed.rect;
+            if n.probe_text.trim().is_empty() || b.is_empty() {
+                continue;
+            }
+            let corners = [
+                (b.x, b.y),
+                (b.right(), b.y),
+                (b.right(), b.bottom()),
+                (b.x, b.bottom()),
+            ]
+            .map(|(x, y)| seen(x, y));
+            if corners.iter().any(Option::is_none) {
+                continue;
+            }
+            let c = corners.map(Option::unwrap);
+            let (lo, hi) = c[1..]
+                .iter()
+                .fold((c[0], c[0]), |(lo, hi), p| (lo.min(*p), hi.max(*p)));
+            out.push(Rect::new(lo.x, lo.y, hi.x - lo.x, hi.y - lo.y));
+        }
+    }
+    out
+}
+
 /// The spot nearest `b`'s own that is clear of `placed`, as the move
 /// there, or `None`: nothing fits and it is hidden. As map labels are
 /// placed (MapLibre's collision index): by rank, each in the first of its
@@ -103,7 +182,11 @@ fn declutter(
     reach: f32,
     inside: Rect,
 ) -> Option<Vec2> {
-    let clear = |r: &Rect| !placed.iter().any(|p| p.overlaps(r));
+    // Clear: a gap from every placed box (touching is not clear).
+    let clear = |r: &Rect| {
+        let r = r.outset(gap - 0.01);
+        !placed.iter().any(|p| p.overlaps(&r))
+    };
     if clear(&b) {
         return Some(Vec2::ZERO);
     }
@@ -205,7 +288,8 @@ impl crate::ui::Layout {
             alpha: f32,
             depth: f32,
             info: AnchorInfo,
-            rect: Rect,
+            /// What it draws on the screen (`drawn_box`), which declutters.
+            drawn: Rect,
             arrow: Option<(f32, Srgba, f32)>,
         }
         let mut placed: Vec<Placed> = Vec::new();
@@ -229,7 +313,7 @@ impl crate::ui::Layout {
                     alpha: 0.0,
                     depth: 0.0,
                     info,
-                    rect: Rect::default(),
+                    drawn: Rect::default(),
                     arrow: None,
                 });
                 continue;
@@ -337,11 +421,13 @@ impl crate::ui::Layout {
                     alpha = 0.0;
                 }
             }
-            let rect = Rect::new(
-                at.x - pivot.0 * half.x * 2.0,
-                at.y - pivot.1 * half.y * 2.0,
-                half.x * 2.0,
-                half.y * 2.0,
+            let (lo, hi) = drawn_box(&tree.nodes, a.node);
+            let (px, py) = (r.x + pivot.0 * r.width, r.y + pivot.1 * r.height);
+            let drawn = Rect::new(
+                at.x + (lo.x - px) * scale,
+                at.y + (lo.y - py) * scale,
+                (hi.x - lo.x) * scale,
+                (hi.y - lo.y) * scale,
             );
             placed.push(Placed {
                 entry: e,
@@ -352,7 +438,7 @@ impl crate::ui::Layout {
                 alpha,
                 depth,
                 info,
-                rect,
+                drawn,
                 arrow,
             });
         }
@@ -368,23 +454,24 @@ impl crate::ui::Layout {
                 .then(x.cmp(&y))
         });
         let gap = env.theme.space.xs;
-        let mut taken: Vec<Rect> = Vec::new();
+        // The grounds' text first: pinned, it never moves for a tag.
+        let mut taken = ground_text(world, &tree.nodes, Vec2::new(vp.width, vp.height));
         let mut moves = vec![(Vec2::ZERO, 1.0f32); placed.len()];
         for &k in &by_rank {
             let pl = &placed[k];
-            if pl.alpha <= 0.0 || pl.rect.is_empty() {
+            if pl.alpha <= 0.0 || pl.drawn.is_empty() {
                 continue;
             }
             let mode = anchors[pl.entry].desc.declutter;
             if mode == Declutter::None {
-                taken.push(pl.rect);
+                taken.push(pl.drawn);
                 continue;
             }
-            let reach = 3.0 * pl.rect.height.max(pl.rect.width.min(160.0));
+            let reach = 3.0 * pl.drawn.height.max(pl.drawn.width.min(160.0));
             let a = &anchors[pl.entry].desc;
             // A move never takes it off the safe area, nor further off
             // than its own spot is (a tag at the edge stays where it is).
-            let b = pl.rect;
+            let b = pl.drawn;
             let inside = if a.contain && a.clamp.is_none() {
                 safe
             } else {
@@ -396,9 +483,9 @@ impl crate::ui::Layout {
                     safe.bottom().max(b.bottom()) - y,
                 )
             };
-            match declutter(mode, pl.rect, &taken, gap, reach, inside) {
+            match declutter(mode, b, &taken, gap, reach, inside) {
                 Some(d) => {
-                    let r = pl.rect;
+                    let r = pl.drawn;
                     taken.push(Rect::new(r.x + d.x, r.y + d.y, r.width, r.height));
                     moves[k] = (d, 1.0);
                 }
@@ -881,6 +968,13 @@ mod tests {
             Some(Vec2::new(0.0, -38.0))
         );
         assert_eq!(declutter(Declutter::Hide, b, &[a], 2.0, 100.0, ANY), None);
+        // Touching a's bottom is not clear: it keeps a gap (a bubble's
+        // tail on a cast bar).
+        let t = Rect::new(0.0, 20.0, 100.0, 20.0);
+        assert_eq!(
+            declutter(Declutter::Shift, t, &[a], 2.0, 100.0, ANY),
+            Some(Vec2::new(0.0, 2.0))
+        );
         // Clear: no move.
         let c = Rect::new(0.0, 40.0, 100.0, 20.0);
         assert_eq!(
