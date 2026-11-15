@@ -57,6 +57,14 @@ pub struct RenderQuality {
     /// and fewer pixels blended where an effect has many. Drawing only:
     /// the tick's particle events and collisions are the full emitter's.
     pub particle_emission: f32,
+    /// At most this many composed effects (the API's og.Vfx) drawn at once,
+    /// and at most this many particle slots among their emitters: past
+    /// either, extraction leaves out the oldest one-shot effects, then the
+    /// oldest looping ones. Drawing only: their events, shakes and sounds
+    /// are the tick's. The renderer draws whatever it is given; extraction
+    /// reads these.
+    pub max_vfx: u32,
+    pub max_vfx_particles: u32,
     /// `PostEffects::ssr` draws; false leaves smooth surfaces the
     /// reflection probes' and the environment's reflection.
     pub ssr: bool,
@@ -105,6 +113,8 @@ impl Default for RenderQuality {
             volumetric_fog: true,
             soft_particles: true,
             particle_emission: 1.0,
+            max_vfx: 64,
+            max_vfx_particles: 65_536,
             ssr: true,
             ambient_occlusion: true,
             global_illumination: true,
@@ -123,7 +133,7 @@ impl Default for RenderQuality {
 pub enum QualityPreset {
     /// The cheapest frame: no rect-light shadows, two shadowed lights,
     /// two cascades, half-size shadow maps, plain fog, hard particles at
-    /// half their emission, no screen-space
+    /// half their emission, half the composed effects, no screen-space
     /// reflections, ambient occlusion or global illumination, one sample per pixel; and, for a
     /// game that turns one of those back on, ambient occlusion at half
     /// resolution and half the reflection and fog steps.
@@ -134,8 +144,8 @@ pub enum QualityPreset {
     /// renderer allows ([`MAX_SHADOWED_LIGHTS`]), the shadow maps at twice
     /// their side, FSR 3.1 for the temporal resolve,
     /// ambient occlusion at full resolution whatever the scene asks,
-    /// twice the screen-space reflection steps and twice the volumetric
-    /// fog's slices.
+    /// twice the screen-space reflection steps, twice the volumetric
+    /// fog's slices and twice the composed effects.
     High,
 }
 
@@ -151,6 +161,8 @@ impl RenderQuality {
                 volumetric_fog: false,
                 soft_particles: false,
                 particle_emission: 0.5,
+                max_vfx: 32,
+                max_vfx_particles: 32_768,
                 ssr: false,
                 ambient_occlusion: false,
                 global_illumination: false,
@@ -168,6 +180,8 @@ impl RenderQuality {
                 ao_resolution: Some(AoResolution::Full),
                 ssr_step_scale: 2.0,
                 volumetric_step_scale: 2.0,
+                max_vfx: 128,
+                max_vfx_particles: 131_072,
                 upscaler: crate::Upscaler::Fsr3,
                 ..RenderQuality::default()
             },
@@ -193,6 +207,8 @@ impl RenderQuality {
             volumetric_fog: self.volumetric_fog && row.volumetric_fog,
             soft_particles: self.soft_particles && row.soft_particles,
             particle_emission: self.particle_emission.min(row.particle_emission),
+            max_vfx: self.max_vfx.min(row.max_vfx),
+            max_vfx_particles: self.max_vfx_particles.min(row.max_vfx_particles),
             ssr: self.ssr && row.ssr,
             ambient_occlusion: self.ambient_occlusion && row.ambient_occlusion,
             global_illumination: self.global_illumination && row.global_illumination,

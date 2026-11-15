@@ -190,6 +190,13 @@ is measured:
   than 8 alive keeps more, so flashes and rings stay whole. Judge an
   effect at low as well as medium: one made of a few large sprites costs
   the same at both.
+- Each preset caps the composed effects drawn at once (RenderSettings.maxVfx:
+  32, 64, 128) and the particle slots among them (maxVfxParticles: 32768,
+  65536, 131072). Past either, the oldest one-shot effects are left out
+  first, then the oldest looping ones; their events, shakes and sounds
+  still come. The probe's dump_render counts them (`vfx.dropped`): a
+  dropped effect means a burst of them outlived the budget, so shorten
+  their life or lower the slots their emitters hold (`maxParticles`).
 - An emitter with `subEmitter` lines runs on the CPU; one with `events`
   is stepped in the tick. Keep both to the effects that need them.
 - The frame as a whole is `testing §6`.

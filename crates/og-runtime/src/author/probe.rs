@@ -174,7 +174,7 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
         "dump_render",
         og_probe::CommandDesc {
             usage: "dump_render[:path]".into(),
-            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), its draw calls (`draws`, every pass), blended instances and draws (`transparent`, `transparentDraws`), sprite draws, particle systems with their slots and CPU-simulated live particles (`particles`: systems, capacity, cpu) and trail strips and segments, render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, its HLOD (`hlod`: the scenes' trees walked, the proxies drawn, those of them for cells not loaded, and the models they drew in place of), and the fraction between the last two ticks it was drawn at (interpolation, null at the tick), the antialiasing resolved, the frames drawn and the frames TAA's history holds (antialias, frameIndex, taaHistoryFrames), and the material shaders whose sprite pipelines the device refused (spriteShaderErrors: shader and message; their sprites draw plain)".into(),
+            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), its draw calls (`draws`, every pass), blended instances and draws (`transparent`, `transparentDraws`), sprite draws, particle systems with their slots and CPU-simulated live particles (`particles`: systems, capacity, cpu), the og.Vfx drawn and left out past RenderSettings.maxVfx or maxVfxParticles (`vfx`: drawn, dropped) and trail strips and segments, render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, its HLOD (`hlod`: the scenes' trees walked, the proxies drawn, those of them for cells not loaded, and the models they drew in place of), and the fraction between the last two ticks it was drawn at (interpolation, null at the tick), the antialiasing resolved, the frames drawn and the frames TAA's history holds (antialias, frameIndex, taaHistoryFrames), and the material shaders whose sprite pipelines the device refused (spriteShaderErrors: shader and message; their sprites draw plain)".into(),
         },
         0,
         move |_world, _args| {
@@ -204,6 +204,9 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
                     "capacity": st.frame.particle_capacity,
                     "cpu": st.frame.particles_cpu,
                 },
+                // The composed effects the frame drew, and those left out
+                // past RenderSettings.maxVfx or maxVfxParticles.
+                "vfx": { "drawn": rs.vfx_drawn, "dropped": rs.vfx_dropped },
                 "strips": st.frame.strips,
                 "stripSegments": st.frame.strip_segments,
                 "renderMs": (st.render_ms * 1000.0).round() / 1000.0,

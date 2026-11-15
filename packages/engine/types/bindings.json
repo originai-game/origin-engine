@@ -9761,6 +9761,16 @@
           "default": 1
         },
         {
+          "name": "maxVfx",
+          "column": "u32",
+          "default": 64
+        },
+        {
+          "name": "maxVfxParticles",
+          "column": "u32",
+          "default": 65536
+        },
+        {
           "name": "screenSpaceReflections",
           "column": "bool",
           "default": true

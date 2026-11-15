@@ -77,6 +77,20 @@ fn project() -> &'static Path {
              mesh ring {\n  life 0.4\n  effect \"fx/shock.ogt\"\n  when crit\n}\n\
              light {\n  life 0.4\n}\n",
         );
+        // RenderSettings.maxVfx's effects: 100 particle slots each, two
+        // seconds one-shot or looping every second.
+        write(
+            "fx/ember.ogt",
+            "type particles\nversion 1\n---\nmaxParticles 100\nrate 20\nlifetime 1\n",
+        );
+        write(
+            "fx/pop.ogt",
+            "type vfx\nversion 1\n---\nduration 2\nemitter \"fx/ember.ogt\" {\n  at 0\n}\n",
+        );
+        write(
+            "fx/hum.ogt",
+            "type vfx\nversion 1\n---\nduration 1\nloop true\nemitter \"fx/ember.ogt\" {\n  at 0\n}\n",
+        );
         // fx/hit.ogt from 1 s, on the entity named "target", 1 m up.
         write(
             "timelines/fx.ogt",
@@ -777,5 +791,116 @@ fn an_effect_mesh_draws_its_geometry_with_its_material_at_its_life() {
     assert_eq!(
         seen.borrow().last().cloned().expect("a frame"),
         vec![([3.0, 0.0, 0.0], 0.25, [2.0, 1.0, 0.5, 0.5])]
+    );
+}
+
+/// Each frame's particle systems, by where they stand (x, rounded).
+struct Placed(Rc<RefCell<Vec<Vec<i32>>>>);
+
+impl RenderBackend for Placed {
+    fn tier(&self) -> String {
+        "none".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (320, 180)
+    }
+    fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+        let mut xs: Vec<i32> = scene
+            .effects
+            .particles
+            .iter()
+            .map(|p| p.transform.w_axis.x.round() as i32)
+            .collect();
+        xs.sort();
+        self.0.borrow_mut().push(xs);
+        Ok(())
+    }
+    fn frame_stats(&self) -> og_render::FrameStats {
+        Default::default()
+    }
+    fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
+        None
+    }
+}
+
+/// Past RenderSettings.maxVfx or maxVfxParticles the oldest one-shot
+/// effects are left out, then looping ones, and the render dump counts
+/// them; the effects' entities stay.
+///
+/// Ways it could fail: the newest left out instead of the oldest, a
+/// looping effect left out while a one-shot draws, the particle limit
+/// ignored or counted per effect, the count wrong, or the cap reaching
+/// the world (an effect despawned).
+#[test]
+fn past_max_vfx_the_oldest_one_shot_effects_are_left_out() {
+    set_hooks(Rc::new(Game(Seen::default())));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(json!({ "seed": 5 }).to_string()));
+    let options = json!({ "root": project().to_str().unwrap() }).to_string();
+    let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let placed = Rc::new(RefCell::new(Vec::new()));
+    set_render_backend(engine, Some(Box::new(Placed(placed.clone())))).unwrap();
+    ticks(engine, 1);
+    let load = |path: &str| {
+        value(og_runtime::host_impl::answer(og_load_vfx(
+            engine,
+            path.into(),
+        )))
+    };
+    let (hum, pop) = (load("fx/hum.ogt"), load("fx/pop.ogt"));
+    // The looping hum first, then a pop a tick later and another after it.
+    let mut pops = Vec::new();
+    for (asset, x) in [(&hum, -5), (&pop, 0), (&pop, 5)] {
+        let e = value(og_runtime::host_impl::answer(og_vfx_spawn(
+            engine,
+            Some(json!({ "asset": asset, "position": { "x": x, "y": 0, "z": 0 } }).to_string()),
+        )));
+        if x >= 0 {
+            pops.push(e.as_f64().unwrap());
+        }
+        ticks(engine, 1);
+    }
+    let frame = |settings: Value| {
+        value(og_runtime::og_engine_write_resource(
+            engine,
+            "og.RenderSettings".into(),
+            settings.to_string(),
+        ));
+        // A frame drawn with them, which the dump then reports.
+        ticks(engine, 1);
+        og_runtime::og_engine_probe_commands(engine, "0:dump_render".into());
+        ticks(engine, 1);
+        let outputs: Value =
+            serde_json::from_str(&og_runtime::og_engine_take_outputs(engine)).unwrap();
+        let dump: Value = outputs
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|o| o["kind"] == "json")
+            .map(|o| serde_json::from_str(o["data"].as_str().unwrap()).unwrap())
+            .expect("a render dump");
+        let xs = placed.borrow().last().cloned().unwrap();
+        (xs, dump["vfx"].clone())
+    };
+    let counts = |drawn: u32, dropped: u32| json!({ "drawn": drawn, "dropped": dropped });
+    assert_eq!(frame(json!({})), (vec![-5, 0, 5], counts(3, 0)));
+    assert_eq!(frame(json!({ "maxVfx": 2 })), (vec![-5, 5], counts(2, 1)));
+    assert_eq!(frame(json!({ "maxVfx": 1 })), (vec![-5], counts(1, 2)));
+    // 300 slots past 250: the older pop goes; under 100 none fits.
+    assert_eq!(
+        frame(json!({ "maxVfx": 64, "maxVfxParticles": 250 })),
+        (vec![-5, 5], counts(2, 1))
+    );
+    assert_eq!(
+        frame(json!({ "maxVfxParticles": 99 })),
+        (vec![], counts(0, 3))
+    );
+    assert!(
+        pops.iter().all(|e| og_world_alive(engine, *e)),
+        "drawing only"
+    );
+    assert_eq!(
+        frame(json!({ "maxVfxParticles": 65536 })),
+        (vec![-5, 0, 5], counts(3, 0))
     );
 }

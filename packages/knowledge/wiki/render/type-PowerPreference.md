@@ -23,4 +23,4 @@ enum PowerPreference {
 }
 ```
 
-<sub>Module `render` line 3052</sub>
+<sub>Module `render` line 3058</sub>

@@ -196,6 +196,10 @@ pub(crate) struct RenderState {
     /// without og.RenderSettings.decalAtlas, each once a run
     /// (`crate::present::vfx`).
     pub vfx_decals_warned: std::collections::BTreeSet<String>,
+    /// The last frame's og.Vfx: drawn, and left out past
+    /// RenderSettings.maxVfx or maxVfxParticles (the render dump's `vfx`).
+    pub vfx_drawn: u32,
+    pub vfx_dropped: u32,
     /// The next frame waits for every run-time glyph asked for (a capture
     /// is the frame a build that rendered them on the frame draws).
     pub glyphs_settle: bool,
@@ -292,6 +296,8 @@ impl RenderState {
             notes: Vec::new(),
             glyphs_judged: Default::default(),
             vfx_decals_warned: Default::default(),
+            vfx_drawn: 0,
+            vfx_dropped: 0,
             glyphs_settle: false,
             #[cfg(not(feature = "publish"))]
             inspector: None,

@@ -23840,8 +23840,8 @@
       ],
       "x-og-variants": {
         "medium": "The full frame: every quality field at its default.",
-        "low": "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles at half emission, no SSR, ambient occlusion or GI, FXAA for MSAA; for a game that turns one back on, half-resolution AO and half the reflection and fog steps.",
-        "high": "The full frame refined: FSR 3.1 as the temporal upscaler, shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps)."
+        "low": "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles at half emission, half as many og.Vfx, no SSR, ambient occlusion or GI, FXAA for MSAA; for a game that turns one back on, half-resolution AO and half the reflection and fog steps.",
+        "high": "The full frame refined: FSR 3.1 as the temporal upscaler, shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps, twice the volumetric fog's slices (or raymarch steps) and twice the og.Vfx drawn at once."
       }
     },
     "AoResolutionSetting": {
@@ -24045,6 +24045,20 @@
           "default": 1,
           "minimum": 0,
           "maximum": 1
+        },
+        "maxVfx": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "At most this many composed effects (og.Vfx) drawn at once: past it the oldest one-shot effects are left out, then the oldest looping ones, and the probe's dump_render counts them (vfx.dropped). 64; the low preset 32, high 128. Drawing only: their events, shakes and sounds still come.",
+          "default": 64
+        },
+        "maxVfxParticles": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "At most this many particle slots (the emitters' maxParticles, summed) among the og.Vfx drawn: past it the oldest one-shot effects are left out, then the oldest looping ones, as with maxVfx. 65536; the low preset 32768, high 131072.",
+          "default": 65536
         },
         "screenSpaceReflections": {
           "type": "boolean",

@@ -401,6 +401,8 @@ The quality rows:
 | volumetricFog | false | true | true |
 | softParticles | false | true | true |
 | particleEmission | 0.5 | 1 | 1 |
+| maxVfx | 32 | 64 | 128 |
+| maxVfxParticles | 32768 | 65536 | 131072 |
 | screenSpaceReflections | false | true | true |
 | ambientOcclusion | false | true | true |
 | aoResolution | half | postEffects | full |

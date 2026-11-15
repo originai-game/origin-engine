@@ -124,6 +124,8 @@ pub fn og_render_apply_quality(world: u32, preset: String) -> Result<(), String>
         "volumetricFog": q.volumetric_fog,
         "softParticles": q.soft_particles,
         "particleEmission": q.particle_emission,
+        "maxVfx": q.max_vfx,
+        "maxVfxParticles": q.max_vfx_particles,
         "screenSpaceReflections": q.ssr,
         "ambientOcclusion": q.ambient_occlusion,
         "aoResolution": crate::present::extract::ao_resolution_setting(q.ao_resolution),

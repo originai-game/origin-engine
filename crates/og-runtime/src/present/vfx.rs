@@ -15,10 +15,43 @@ use og_render::{
     RibbonUv, Trail, TrailStyle,
 };
 
+/// A playing og.Vfx expanded for the frame: its asset, start, look and
+/// draws, and the particle slots its emitters hold.
+struct Playing<'a> {
+    l: &'a crate::bind::vfx::Loaded,
+    start: u64,
+    tint: Vec3,
+    emission: f32,
+    hue: f32,
+    draws: Vec<og_bundle::vfx::VfxDraw>,
+    slots: u64,
+}
+
+/// Which of the playing effects draw: all of them within
+/// RenderSettings.maxVfx and maxVfxParticles; past either, the oldest
+/// one-shot effects are left out first, then the oldest looping ones
+/// (the same start: the later in the scene's order first kept).
+fn kept(playing: &[Playing], q: &og_render::RenderQuality) -> Vec<bool> {
+    let mut kept = vec![true; playing.len()];
+    let (mut count, mut slots) = (playing.len(), playing.iter().map(|p| p.slots).sum::<u64>());
+    let mut order: Vec<usize> = (0..playing.len()).collect();
+    order.sort_by_key(|&k| (playing[k].l.vfx.looping, playing[k].start, k));
+    for k in order {
+        if count <= q.max_vfx as usize && slots <= u64::from(q.max_vfx_particles) {
+            break;
+        }
+        kept[k] = false;
+        count -= 1;
+        slots -= playing[k].slots;
+    }
+    kept
+}
+
 /// Every playing og.Vfx expanded into the scene's systems, meshes, trails,
 /// beams, lights and decals for the frame at `tick`. A `frame`'s
 /// extraction (not the tick start's, which runs before RenderSettings is
-/// read) also notes a decal drawn from an atlas region with no atlas set.
+/// read) also notes a decal drawn from an atlas region with no atlas set,
+/// and counts the effects drawn and left out (`kept`).
 pub(crate) fn extract(
     world: &World,
     rs: &mut RenderState,
@@ -36,6 +69,7 @@ pub(crate) fn extract(
     let loaded = lock(&registry).clone();
     let rate = rs.scene.frame.tick_rate.max(1.0);
     let mut air: Option<og_env::air::Air> = None;
+    let mut playing = Vec::new();
     for (e, v) in rows {
         let Ok(row) = record::Vfx::from_json(&v) else {
             continue;
@@ -60,7 +94,45 @@ pub(crate) fn extract(
             hue,
             params: l.vfx.values(&row.params),
         };
-        for d in l.vfx.draws(&instance, start, tick, rate) {
+        let draws = l.vfx.draws(&instance, start, tick, rate);
+        if draws.is_empty() {
+            continue;
+        }
+        let slots = draws
+            .iter()
+            .map(|d| match &l.links[d.element] {
+                Link::Emitter(handle) if matches!(d.kind, VfxDrawKind::Emitter { .. }) => rs
+                    .scene
+                    .emitter(*handle)
+                    .map_or(0, |m| u64::from(m.max_particles)),
+                _ => 0,
+            })
+            .sum();
+        playing.push(Playing {
+            l,
+            start,
+            tint,
+            emission,
+            hue,
+            draws,
+            slots,
+        });
+    }
+    let kept = kept(&playing, &rs.scene.frame.quality);
+    if frame {
+        rs.vfx_drawn = kept.iter().filter(|k| **k).count() as u32;
+        rs.vfx_dropped = playing.len() as u32 - rs.vfx_drawn;
+    }
+    for (p, _) in playing.into_iter().zip(kept).filter(|(_, k)| *k) {
+        let Playing {
+            l,
+            tint,
+            emission,
+            hue,
+            draws,
+            ..
+        } = p;
+        for d in draws {
             let id = d.id;
             match (d.kind, &l.links[d.element]) {
                 (

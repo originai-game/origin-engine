@@ -271,6 +271,8 @@ fn settings(world: &World, rs: &mut RenderState, b: &Begun, exposure: f32) {
             volumetric_fog: s.volumetric_fog,
             soft_particles: s.soft_particles,
             particle_emission: s.particle_emission.clamp(0.0, 1.0),
+            max_vfx: s.max_vfx,
+            max_vfx_particles: s.max_vfx_particles,
             ssr: s.screen_space_reflections,
             ambient_occlusion: s.ambient_occlusion,
             // On the lazy og.GlobalIllumination's `allowed` (crate::present::fx).
