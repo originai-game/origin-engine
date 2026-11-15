@@ -595,16 +595,7 @@ fn at(e: &Entry, msg: impl std::fmt::Display) -> String {
 }
 
 fn number(e: &Entry, i: usize) -> Result<f32, String> {
-    let v = e
-        .values
-        .get(i)
-        .and_then(Value::as_number)
-        .map(|n| n.as_f32())
-        .ok_or_else(|| at(e, format!("`{}` takes a number", e.key)))?;
-    if !v.is_finite() {
-        return Err(at(e, format!("`{}` must be finite", e.key)));
-    }
-    Ok(v)
+    e.finite(i).map_err(|x| x.to_string())
 }
 
 fn one_number(e: &Entry) -> Result<f32, String> {
@@ -618,7 +609,7 @@ fn vec3(e: &Entry) -> Result<Vec3, String> {
     if e.values.len() != 3 {
         return Err(at(e, format!("`{}` takes three numbers: x y z", e.key)));
     }
-    Ok(Vec3::new(number(e, 0)?, number(e, 1)?, number(e, 2)?))
+    e.vec3(0).map_err(|x| x.to_string())
 }
 
 fn string(e: &Entry) -> Result<String, String> {
@@ -636,10 +627,8 @@ fn word(e: &Entry) -> Result<&str, String> {
 }
 
 fn flag(e: &Entry) -> Result<bool, String> {
-    match e.values.as_slice() {
-        [v] => v
-            .as_bool()
-            .ok_or_else(|| at(e, format!("`{}` takes true or false", e.key))),
+    match e.values.len() {
+        1 => e.flag(0).map_err(|x| x.to_string()),
         _ => Err(at(e, format!("`{}` takes true or false", e.key))),
     }
 }

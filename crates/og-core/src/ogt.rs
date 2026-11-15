@@ -300,6 +300,83 @@ impl Entry {
             .and_then(Value::as_word)
             .ok_or_else(|| self.missing(i, "word"))
     }
+
+    /// A parse error about this line: `"line {line}: `{key}` {what}"`.
+    pub fn error(&self, what: impl std::fmt::Display) -> Error {
+        Error::new(
+            ErrorKind::Parse,
+            format!("line {}: `{}` {what}", self.line, self.key),
+        )
+    }
+
+    /// The number at `i`, refused unless it is finite: the strict reader
+    /// every asset format's numbers go through.
+    pub fn finite(&self, i: usize) -> Result<f32> {
+        let v = self
+            .values
+            .get(i)
+            .and_then(Value::as_number)
+            .ok_or_else(|| self.error("takes a number"))?
+            .as_f32();
+        if v.is_finite() {
+            Ok(v)
+        } else {
+            Err(self.error("must be finite"))
+        }
+    }
+
+    /// Every value from `from` on, each a finite number.
+    pub fn numbers(&self, from: usize) -> Result<Vec<f32>> {
+        self.values[from.min(self.values.len())..]
+            .iter()
+            .map(|v| {
+                v.as_number()
+                    .map(Number::as_f32)
+                    .filter(|f| f.is_finite())
+                    .ok_or_else(|| self.error("takes numbers"))
+            })
+            .collect()
+    }
+
+    /// The words `true` or `false` at `i`.
+    pub fn flag(&self, i: usize) -> Result<bool> {
+        self.values
+            .get(i)
+            .and_then(Value::as_bool)
+            .ok_or_else(|| self.error("takes true or false"))
+    }
+
+    /// Three finite numbers from `i`.
+    pub fn vec3(&self, i: usize) -> Result<glam::Vec3> {
+        if self.values.len() < i + 3 {
+            return Err(self.error("takes three numbers: x y z"));
+        }
+        Ok(glam::Vec3::new(
+            self.finite(i)?,
+            self.finite(i + 1)?,
+            self.finite(i + 2)?,
+        ))
+    }
+
+    /// A colour from `i`: three or four finite numbers (r g b [a]), alpha 1
+    /// when there are three; the line holds nothing after it.
+    pub fn color(&self, i: usize) -> Result<[f32; 4]> {
+        match self.values.len().checked_sub(i) {
+            Some(3) => Ok([
+                self.finite(i)?,
+                self.finite(i + 1)?,
+                self.finite(i + 2)?,
+                1.0,
+            ]),
+            Some(4) => Ok([
+                self.finite(i)?,
+                self.finite(i + 1)?,
+                self.finite(i + 2)?,
+                self.finite(i + 3)?,
+            ]),
+            _ => Err(self.error("takes a colour: r g b [a]")),
+        }
+    }
 }
 
 /// An ordered list of entries; keys may repeat (a scene lists many `entity`).
@@ -837,6 +914,32 @@ entity "camera" {
                 Value::Word(w) => format!("w:{w}"),
             })
             .collect()
+    }
+
+    #[test]
+    fn the_strict_readers_refuse_what_their_value_is_not() {
+        let doc = parse("type t\nversion 1\n---\nat 1 2 3\nbig 1e39 0 0\ntint 0.5 0.25 1\nfaded 1 1 1 0.5\non true\nhalf 0 1\n").unwrap();
+        let e = |k: &str| doc.body.get(k).unwrap();
+        assert_eq!(
+            e("at").vec3(0).unwrap(),
+            crate::math::Vec3::new(1.0, 2.0, 3.0)
+        );
+        // 1e39 is past f32: infinite, refused.
+        let big = e("big").finite(0).unwrap_err();
+        assert_eq!(big.kind(), ErrorKind::Parse);
+        assert_eq!(big.reason(), "line 5: `big` must be finite");
+        assert_eq!(e("tint").color(0).unwrap(), [0.5, 0.25, 1.0, 1.0]);
+        assert_eq!(e("faded").color(0).unwrap(), [1.0, 1.0, 1.0, 0.5]);
+        assert!(e("half").color(0).is_err());
+        assert!(e("half").vec3(0).is_err());
+        assert!(e("on").flag(0).unwrap());
+        assert_eq!(
+            e("at").flag(0).unwrap_err().reason(),
+            "line 4: `at` takes true or false"
+        );
+        assert!(e("on").finite(0).is_err());
+        assert_eq!(e("faded").numbers(1).unwrap(), [1.0, 1.0, 0.5]);
+        assert!(e("big").numbers(0).is_err());
     }
 
     #[test]

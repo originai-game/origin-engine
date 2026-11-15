@@ -265,15 +265,7 @@ pub fn parse_effect(text: &str, links: &mut EffectLinks<'_>) -> Result<EffectMat
 }
 
 pub(crate) fn nums(e: &Entry, from: usize) -> Result<Vec<f32>, String> {
-    e.values[from.min(e.values.len())..]
-        .iter()
-        .map(|v| {
-            v.as_number()
-                .map(|n| n.as_f32())
-                .filter(|f| f.is_finite())
-                .ok_or_else(|| format!("line {}: `{}` takes numbers", e.line, e.key))
-        })
-        .collect()
+    e.numbers(from).map_err(|x| x.to_string())
 }
 
 pub(crate) fn one(e: &Entry) -> Result<f32, String> {

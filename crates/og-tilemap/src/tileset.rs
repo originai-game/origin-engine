@@ -154,8 +154,7 @@ pub(crate) fn uint(e: &Entry, i: usize) -> Result<u32> {
 }
 
 pub(crate) fn num(e: &Entry, i: usize) -> Result<f32> {
-    e.f32(i)
-        .map_err(|_| err(e.line, format!("'{}' needs a number at {}", e.key, i + 1)))
+    e.finite(i)
 }
 
 impl Tileset {

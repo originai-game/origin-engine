@@ -15,13 +15,7 @@ pub(super) fn name_of(e: &Entry) -> Result<String> {
 }
 
 pub(super) fn num(e: &Entry, i: usize) -> Result<f32> {
-    let v = e
-        .f32(i)
-        .map_err(|_| parse_err(e.line, format!("`{}` needs a number at {}", e.key, i + 1)))?;
-    if !v.is_finite() {
-        return Err(parse_err(e.line, format!("`{}`: {v} is not finite", e.key)));
-    }
-    Ok(v)
+    e.finite(i)
 }
 
 fn word(e: &Entry, i: usize) -> Result<String> {
@@ -716,10 +710,7 @@ fn weighted(c: &Entry, from: usize, bones: &[String], what: &str) -> Result<Vec<
 
 /// `true` or `false` at value 0.
 fn flag(c: &Entry) -> Result<bool> {
-    c.values
-        .first()
-        .and_then(Value::as_bool)
-        .ok_or_else(|| parse_err(c.line, format!("`{}` is true or false", c.key)))
+    c.flag(0)
 }
 
 /// `clockwise` (false) or `counterclockwise` (true) at value `i`.

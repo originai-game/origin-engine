@@ -697,16 +697,12 @@ impl Vfx {
 }
 
 fn color(e: &Entry) -> Result<[f32; 4], String> {
-    match nums(e, 0)?[..] {
-        [r, g, b] => Ok([r, g, b, 1.0]),
-        [r, g, b, a] => Ok([r, g, b, a]),
-        _ => Err(format!("line {}: color <r> <g> <b> [<a>]", e.line)),
-    }
+    e.color(0).map_err(|x| x.to_string())
 }
 
 fn vec3(e: &Entry) -> Result<glam::Vec3, String> {
-    match nums(e, 0)?[..] {
-        [x, y, z] => Ok(glam::Vec3::new(x, y, z)),
+    match e.values.len() {
+        3 => e.vec3(0).map_err(|x| x.to_string()),
         _ => Err(format!("line {}: {} <x> <y> <z>", e.line, e.key)),
     }
 }

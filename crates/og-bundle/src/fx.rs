@@ -389,15 +389,7 @@ fn curve(e: &Entry) -> Result<Curve, String> {
 pub const EMITTER_TYPE: &str = "particles";
 
 fn nums(e: &Entry) -> Result<Vec<f32>, String> {
-    e.values
-        .iter()
-        .map(|v| {
-            v.as_number()
-                .map(|n| n.as_f32())
-                .filter(|f| f.is_finite())
-                .ok_or_else(|| format!("line {}: `{}` takes numbers", e.line, e.key))
-        })
-        .collect()
+    e.numbers(0).map_err(|x| x.to_string())
 }
 
 fn range(e: &Entry) -> Result<[f32; 2], String> {
