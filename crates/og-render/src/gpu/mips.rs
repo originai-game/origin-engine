@@ -1,5 +1,6 @@
 //! Mip chains for uploaded textures, generated with render passes.
 
+use crate::deferred::Deferred;
 use std::collections::HashMap;
 
 pub(crate) struct MipGenerator {
@@ -7,8 +8,20 @@ pub(crate) struct MipGenerator {
     layout: wgpu::BindGroupLayout,
     pipeline_layout: wgpu::PipelineLayout,
     sampler: wgpu::Sampler,
-    pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
+    /// One a format ([`MipGenerator::prepare`]), those of the uploaded
+    /// textures started on the compile workers with the renderer
+    /// ([`UPLOAD_FORMATS`]).
+    pipelines: HashMap<wgpu::TextureFormat, Deferred<wgpu::RenderPipeline>>,
 }
+
+/// The formats of the textures the renderer uploads with generated levels
+/// (`upload_texture`): natively their pipelines start compiling when the
+/// renderer is made, so a scene's first sync does not stop to make one
+/// (about 60 ms on Metal, before any of the first frame's compiles began).
+const UPLOAD_FORMATS: [wgpu::TextureFormat; 2] = [
+    wgpu::TextureFormat::Rgba8UnormSrgb,
+    wgpu::TextureFormat::Rgba8Unorm,
+];
 
 /// The number of levels down to 1x1.
 pub(crate) fn mip_count(width: u32, height: u32) -> u32 {
@@ -74,13 +87,18 @@ impl MipGenerator {
             min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
-        MipGenerator {
+        let mut mips = MipGenerator {
             shader,
             layout,
             pipeline_layout,
             sampler,
             pipelines: HashMap::new(),
+        };
+        for format in UPLOAD_FORMATS {
+            mips.prepare(device, format);
+            crate::deferred::Start::start(&mips.pipelines[&format]);
         }
+        mips
     }
 
     /// Records passes filling levels 1.. of `texture` from level 0.
@@ -94,35 +112,22 @@ impl MipGenerator {
         self.record(device, encoder, texture);
     }
 
-    /// Makes the pipeline for `format` ([`MipGenerator::record`] needs it).
+    /// Asks for the pipeline for `format` ([`MipGenerator::record`] needs
+    /// it): made when a chain of the format is first recorded, and waited
+    /// for there if it was started.
     pub(crate) fn prepare(&mut self, device: &wgpu::Device, format: wgpu::TextureFormat) {
-        self.pipelines.entry(format).or_insert_with(|| {
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("mipmap"),
-                layout: Some(&self.pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &self.shader,
-                    entry_point: Some("vs"),
-                    compilation_options: Default::default(),
-                    buffers: &[],
-                },
-                primitive: Default::default(),
-                depth_stencil: None,
-                multisample: Default::default(),
-                fragment: Some(wgpu::FragmentState {
-                    module: &self.shader,
-                    entry_point: Some("fs"),
-                    compilation_options: Default::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format,
-                        blend: None,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                multiview_mask: None,
-                cache: crate::pipeline_cache::of(device).as_ref(),
-            })
-        });
+        if self.pipelines.contains_key(&format) {
+            return;
+        }
+        let (device, layout, shader) = (
+            device.clone(),
+            self.pipeline_layout.clone(),
+            self.shader.clone(),
+        );
+        self.pipelines.insert(
+            format,
+            Deferred::anywhere(move || pipeline(&device, &layout, &shader, format)),
+        );
     }
 
     /// [`MipGenerator::generate`] for a format made with [`MipGenerator::prepare`].
@@ -172,7 +177,7 @@ impl MipGenerator {
 
     /// Records passes filling levels 1.. of `chain`'s texture from level 0.
     pub(crate) fn record_chain(&self, encoder: &mut crate::Encoder, chain: &MipChain) {
-        let pipeline = &self.pipelines[&chain.format];
+        let pipeline = self.pipelines[&chain.format].get();
         for (target, bind_group) in chain.levels.iter().skip(1).zip(&chain.groups) {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("mipmap"),
@@ -215,6 +220,40 @@ impl MipChain {
     pub(crate) fn level_count(&self) -> u32 {
         self.levels.len() as u32
     }
+}
+
+/// The mip generator's pipeline into a target of `format`.
+fn pipeline(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    shader: &wgpu::ShaderModule,
+    format: wgpu::TextureFormat,
+) -> wgpu::RenderPipeline {
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("mipmap"),
+        layout: Some(layout),
+        vertex: wgpu::VertexState {
+            module: shader,
+            entry_point: Some("vs"),
+            compilation_options: Default::default(),
+            buffers: &[],
+        },
+        primitive: Default::default(),
+        depth_stencil: None,
+        multisample: Default::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: shader,
+            entry_point: Some("fs"),
+            compilation_options: Default::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview_mask: None,
+        cache: crate::pipeline_cache::of(device).as_ref(),
+    })
 }
 
 /// The mip generator's module (`crate::shaders` validates it).
