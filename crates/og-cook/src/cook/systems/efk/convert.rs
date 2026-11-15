@@ -535,16 +535,19 @@ fn curve_line(keys: &[(f32, [f32; 1])]) -> String {
         .join(" ")
 }
 
-fn blend(cx: &mut Ctx<'_>, node: &Node) -> &'static str {
+/// The node's blend; a strip's (a trail's) is additive or alpha.
+fn blend(cx: &mut Ctx<'_>, node: &Node, strip: bool) -> &'static str {
     match node.render.blend {
         2 => "additive",
         0 | 1 => "alpha",
+        3 if !strip => "subtractive",
+        4 if !strip => "multiply",
         3 => {
-            cx.find(node, "subtractive blend: drawn alpha blended");
+            cx.find(node, "a subtractive trail: drawn alpha blended");
             "alpha"
         }
         4 => {
-            cx.find(node, "multiplicative blend: drawn alpha blended");
+            cx.find(node, "a multiplicative trail: drawn alpha blended");
             "alpha"
         }
         b => {
@@ -755,7 +758,7 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
     let life = node.life.c().max(1.0);
     let (peak, mut scale, square) = scale_keys(node, life);
     let mut colors = color_keys(node, life, None);
-    let blend = blend(cx, node);
+    let blend = blend(cx, node, false);
     let texture = cx.texture(node);
     let mut base = peak * p.scale * p.own;
     // A ring's own shape: its lines in the element.
@@ -909,7 +912,7 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
     // hundred).
     let stacked = sch.count.unwrap_or(copies) as f32 / copies as f32;
     if together && stacked > 1.0 {
-        if blend == "additive" {
+        if blend == "additive" || blend == "subtractive" {
             for c in &mut col[..3] {
                 *c *= stacked;
             }
@@ -1502,7 +1505,7 @@ fn emitter_file(
         let _ = writeln!(e, "gravity {}", ns(&[gl.x, gl.y, gl.z]));
     }
     if drawn {
-        let blend = blend(cx, node);
+        let blend = blend(cx, node, false);
         let texture = cx.texture(node);
         if let Some((id, size)) = &texture {
             let _ = writeln!(e, "texture \"{id}\"");
@@ -1567,7 +1570,7 @@ fn trail(cx: &mut Ctx<'_>, chain: &[&Node]) {
     let sch = schedule(g);
     let life = node.life.c().max(1.0);
     let colors = color_keys(node, life, None);
-    let blend = blend(cx, node);
+    let blend = blend(cx, node, true);
     let texture = cx.texture(node);
     let (peak, _, _) = scale_keys(node, life);
     let width = match &node.draw {

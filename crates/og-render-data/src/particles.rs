@@ -320,6 +320,14 @@ pub enum ParticleBlend {
     /// Alpha blended: smoke, dust. Unsorted within a system; systems draw
     /// back to front.
     Alpha,
+    /// Taken away from what is behind, at its alpha: dark smoke over a
+    /// bright sky, a void, an ink cloud. Order independent. Particles and
+    /// effect meshes; a trail, ribbon or beam blends it as alpha.
+    Subtractive,
+    /// What is behind multiplied by its colour, at its alpha (scorch,
+    /// tinted glass, a shadow under a spell). Order independent. Particles
+    /// and effect meshes; a trail, ribbon or beam blends it as alpha.
+    Multiply,
 }
 
 /// The space particles move in.
@@ -791,6 +799,16 @@ impl ParticleEmitter {
                     "a trail is drawn behind billboard or mesh particles, not sprite mode".into(),
                 );
             }
+        }
+        if matches!(
+            self.blend,
+            ParticleBlend::Subtractive | ParticleBlend::Multiply
+        ) && matches!(self.render, ParticleRender::Sprite { .. })
+        {
+            return Err(
+                "a subtractive or multiply blend draws billboards and meshes, not sprite mode"
+                    .into(),
+            );
         }
         if !(self.distortion.is_finite() && self.distortion >= 0.0) {
             return Err(format!("distortion {}", self.distortion));

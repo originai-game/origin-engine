@@ -204,6 +204,15 @@ pub(crate) struct RibbonRun {
 /// drops its oldest points early.
 pub(crate) const MAX_TRAIL_POINTS: u32 = 1024;
 
+/// The blend a strip draws with: additive or alpha (a subtractive or
+/// multiply one blends as alpha; strips have those two pipelines).
+pub(crate) fn strip_blend(b: ParticleBlend) -> ParticleBlend {
+    match b {
+        ParticleBlend::Additive => ParticleBlend::Additive,
+        _ => ParticleBlend::Alpha,
+    }
+}
+
 /// How many ticks a point of `style` lasts at `tick_rate`.
 pub(crate) fn life_ticks(style: &TrailStyle, tick_rate: f32) -> u64 {
     (style.lifetime.max(0.0) * tick_rate).ceil() as u64
@@ -465,7 +474,7 @@ impl Trails {
             match out.runs.last_mut() {
                 Some(r)
                     if r.texture == s.texture
-                        && r.blend == s.blend
+                        && r.blend == strip_blend(s.blend)
                         && r.layer == s.layer
                         && r.effect == s.effect =>
                 {
@@ -473,7 +482,7 @@ impl Trails {
                 }
                 _ => out.runs.push(RibbonRun {
                     texture: s.texture,
-                    blend: s.blend,
+                    blend: strip_blend(s.blend),
                     layer: s.layer,
                     points: false,
                     first,

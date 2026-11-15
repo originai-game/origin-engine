@@ -474,7 +474,7 @@ impl GpuTrails {
             match out.runs.last_mut() {
                 Some(r)
                     if r.texture == *texture
-                        && r.blend == *blend
+                        && r.blend == crate::ribbons::strip_blend(*blend)
                         && r.layer == *layer
                         && r.effect == *effect =>
                 {
@@ -482,7 +482,7 @@ impl GpuTrails {
                 }
                 _ => out.runs.push(RibbonRun {
                     texture: *texture,
-                    blend: *blend,
+                    blend: crate::ribbons::strip_blend(*blend),
                     layer: *layer,
                     points: true,
                     first,

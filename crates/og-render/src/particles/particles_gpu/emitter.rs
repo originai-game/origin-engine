@@ -163,6 +163,8 @@ pub(super) fn emitter_gpu(
             match e.blend {
                 ParticleBlend::Additive => 0.0,
                 ParticleBlend::Alpha => 1.0,
+                ParticleBlend::Subtractive => 2.0,
+                ParticleBlend::Multiply => 3.0,
             },
         ],
         counts: [

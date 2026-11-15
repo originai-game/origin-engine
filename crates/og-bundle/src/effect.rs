@@ -15,7 +15,7 @@ use crate::grammar::{Line, find, keys};
 use og_core::ogt::{Block, Document, Entry, Value};
 use og_render_data::{
     ColorCurve, Curve, EFFECT_PARAMS, EffectChannel, EffectMaterial, EffectTexture, EffectUv,
-    EffectValue, Erosion, Flow, Fresnel, MAX_CURVE_KEYS, ParticleBlend, ShaderHandle, ShaderParam,
+    EffectValue, Erosion, Flow, Fresnel, MAX_CURVE_KEYS, ShaderHandle, ShaderParam,
     TextureHandle,
 };
 
@@ -146,9 +146,9 @@ pub const EFFECT_LINES: &[Line] = &[
     ),
     Line::new(
         "blend",
-        "additive | alpha",
+        crate::grammar::BLENDS,
         "",
-        "Over the surface's own blend.",
+        "Over the surface's own blend. Subtractive takes its colour away from what is behind (dark smoke, a void), multiply tints what is behind by it (scorch, shadow); a trail, ribbon or beam blends either as alpha.",
         "blend additive",
     ),
     Line::new(
@@ -492,11 +492,10 @@ pub fn parse_effect_block(
                 m.custom[k / 4][k % 4] = value(e, 1)?;
             }
             "blend" => {
-                m.blend = Some(match e.values.first().and_then(Value::as_word) {
-                    Some("additive") => ParticleBlend::Additive,
-                    Some("alpha") => ParticleBlend::Alpha,
-                    _ => return Err(format!("line {line}: blend additive | alpha")),
-                })
+                m.blend = Some(
+                    crate::grammar::blend_word(e.values.first().and_then(Value::as_word))
+                        .ok_or_else(|| format!("line {line}: blend {}", crate::grammar::BLENDS))?,
+                )
             }
             "doubleSided" => m.double_sided = flag(e)?,
             "shader" => {
@@ -598,7 +597,7 @@ mod tests {
         assert!(f.invert && f.power == 2.0 && f.strength == 0.5);
         // Slot 6 is custom 2's y.
         assert_eq!(m.custom[1][1], EffectValue::Random([2.0, 6.0]));
-        assert_eq!(m.blend, Some(ParticleBlend::Alpha));
+        assert_eq!(m.blend, Some(og_render_data::ParticleBlend::Alpha));
     }
 
     #[test]

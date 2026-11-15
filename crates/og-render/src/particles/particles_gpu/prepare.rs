@@ -511,7 +511,8 @@ impl ParticleRenderer {
                         layers,
                         blend: match e.blend {
                             ParticleBlend::Additive => crate::SpriteBlend::Additive,
-                            ParticleBlend::Alpha => crate::SpriteBlend::Alpha,
+                            // Sprite mode takes no other (validate).
+                            _ => crate::SpriteBlend::Alpha,
                         },
                         glow: e.glow,
                         soft: e.round || (e.texture.is_none() && array.is_none()),
@@ -939,7 +940,8 @@ fn push_sprites(
     let rows = e.sheet.rows.max(1);
     let blend = match e.blend {
         ParticleBlend::Additive => crate::SpriteBlend::Additive,
-        ParticleBlend::Alpha => crate::SpriteBlend::Alpha,
+        // Sprite mode takes no other (validate).
+        _ => crate::SpriteBlend::Alpha,
     };
     let z = sys.transform.w_axis.z;
     let frames = array.map_or_else(|| sheet_frames(&e.sheet), |(_, n)| n);

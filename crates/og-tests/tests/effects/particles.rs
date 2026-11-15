@@ -1095,3 +1095,73 @@ fn a_particles_trail_follows_its_path_and_narrows_to_its_tail() {
         "compute {g} against CPU {c} pixels"
     );
 }
+
+/// A subtractive particle takes its colour away from what is behind it
+/// and a multiply one tints what is behind by its colour, on both paths:
+/// one large still particle, its colour (0.5, 0.1, 0.1), over a grey
+/// background. Subtracted, the grey loses more red than green; multiplied,
+/// it keeps more red than green and every channel falls; added, every
+/// channel rises. Drawn alpha blended instead, it would show its own dull
+/// red; a subtraction drawn the wrong way round, red.
+#[test]
+#[ignore = "requires GPU"]
+fn subtractive_and_multiply_particles_change_what_is_behind() {
+    let scene = |blend: og_render::ParticleBlend| {
+        let mut scene = RenderScene::new();
+        let e = scene.add_emitter(ParticleEmitter {
+            max_particles: 1,
+            rate: 0.0,
+            bursts: vec![og_render::Burst::once(0.0, 1)],
+            looping: false,
+            duration: 10.0,
+            lifetime: [10.0, 10.0],
+            speed: [0.0, 0.0],
+            size: [1.5, 1.5],
+            color_over_life: og_render::ColorCurve::constant([1.0; 4]),
+            color: [0.5, 0.1, 0.1, 1.0],
+            gravity: Vec3::ZERO,
+            texture: None,
+            blend,
+            ..Default::default()
+        });
+        scene.effects.particles.push(ParticleSystem::new(
+            1,
+            e,
+            Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0)),
+            3,
+            0,
+        ));
+        scene.lighting.environment.background = Background::Color(Vec3::splat(0.6));
+        scene.frame.camera = Camera {
+            position: Vec3::new(0.0, 1.0, 4.0),
+            target: Vec3::new(0.0, 1.0, 0.0),
+            ..Default::default()
+        };
+        scene
+    };
+    for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
+        let desc = RenderDesc {
+            particles: path,
+            ..small()
+        };
+        let centre = |blend| {
+            let (img, _, _) = run(&desc, &mut scene(blend), 10, |s, f| fx::tick_all(s, f as u64));
+            let (w, h) = (img.width, img.height);
+            (px(&img, 2, 2).map(f32::from), px(&img, w / 2, h / 2).map(f32::from))
+        };
+        let (bg, sub) = centre(og_render::ParticleBlend::Subtractive);
+        let (_, mul) = centre(og_render::ParticleBlend::Multiply);
+        let (_, add) = centre(og_render::ParticleBlend::Additive);
+        println!("{path:?}: behind {bg:?}, subtractive {sub:?}, multiply {mul:?}, additive {add:?}");
+        let drop = |c: [f32; 3], i: usize| bg[i] - c[i];
+        assert!(
+            drop(sub, 0) > drop(sub, 1) + 20.0 && drop(sub, 1) > 5.0,
+            "{path:?}: subtractive {sub:?} over {bg:?}"
+        );
+        assert!(
+            drop(mul, 0) > 10.0 && drop(mul, 1) > drop(mul, 0) + 20.0,
+            "{path:?}: multiply {mul:?} over {bg:?}"
+        );
+        assert!((0..3).all(|i| add[i] > bg[i] + 5.0), "{path:?}: additive {add:?}");
+    }
+}

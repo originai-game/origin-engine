@@ -707,3 +707,26 @@ fn a_track_is_one_trail_through_its_instances() {
         moving.findings
     );
 }
+
+/// Effekseer's subtractive (3) and multiplicative (4) blends carry over to
+/// a sprite's emitter, where the old converter drew them alpha blended; a
+/// ribbon, a strip, keeps alpha and says so.
+#[test]
+fn subtractive_and_multiply_sprites_keep_their_blend() {
+    let node = |name: &str, ty: u32, blend: u32| {
+        format!(
+            "<Node><RendererCommonValues><AlphaBlend>{blend}</AlphaBlend></RendererCommonValues>\
+             <DrawingValues><Type>{ty}</Type></DrawingValues><Name>{name}</Name><Children /></Node>"
+        )
+    };
+    let c = run(&project(&format!(
+        "{}{}{}",
+        node("S", 2, 3),
+        node("M", 2, 4),
+        node("R", 3, 3)
+    )));
+    assert_eq!(line(file(&c, "n0.emitter.ogt"), "blend"), "blend subtractive");
+    assert_eq!(line(file(&c, "n1.emitter.ogt"), "blend"), "blend multiply");
+    let found: Vec<&str> = c.findings.iter().map(|f| f.what.as_str()).collect();
+    assert_eq!(found, ["a subtractive trail: drawn alpha blended"], "{found:?}");
+}

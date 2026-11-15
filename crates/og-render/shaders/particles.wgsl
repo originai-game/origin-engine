@@ -444,10 +444,10 @@ fn fs_mesh(in: ParticleOut) -> @location(0) vec4<f32> {
   if (effect_on()) {
     var c = particle_hue(particle_effect_color(in, 1.0, in.normal));
     c.a *= particle_soft(in);
-    c = vec4<f32>(apply_fog(c.rgb, in.world), c.a);
+    c = particle_fog(c, in.world);
     if (c.a <= 0.0) { discard; }
     if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
-    return c;
+    return blend_out(c);
   }
   var c = particle_hue(in.color);
   if (emitter.look.x > 0.5 && emitter.look.w < 1.0) {
@@ -455,10 +455,18 @@ fn fs_mesh(in: ParticleOut) -> @location(0) vec4<f32> {
   } else if (emitter.look.x > 0.5) {
     c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, normalize(in.normal)), c.a);
   }
-  c = vec4<f32>(apply_fog(c.rgb, in.world), c.a);
+  c = particle_fog(c, in.world);
   if (c.a <= 0.0) { discard; }
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
-  return c;
+  return blend_out(c);
+}
+
+// A mesh's colour through the fog: towards the fog's for one that adds
+// or covers; a subtractive or multiply one fades out instead (the fog
+// colour taken away or multiplied would darken it).
+fn particle_fog(c: vec4<f32>, world: vec3<f32>) -> vec4<f32> {
+  if (emitter.render.w < 1.5) { return vec4<f32>(apply_fog(c.rgb, world), c.a); }
+  return vec4<f32>(c.rgb, c.a * fog_keep(world));
 }
 
 // Distortion: the scene copy behind the particle, shifted along the
@@ -549,5 +557,12 @@ fn particle_fragment(in: ParticleOut) -> vec4<f32> {
   c.a *= fog_keep(in.world);
   if (c.a <= 0.0) { discard; }
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
-  return c;
+  return blend_out(c);
+}
+
+// The colour a multiply system's blend (Dst times it) needs: its own,
+// mixed towards white as its alpha falls, so a faint one changes little.
+fn blend_out(c: vec4<f32>) -> vec4<f32> {
+  if (emitter.render.w < 2.5) { return c; }
+  return vec4<f32>(mix(vec3<f32>(1.0), c.rgb, clamp(c.a, 0.0, 1.0)), c.a);
 }

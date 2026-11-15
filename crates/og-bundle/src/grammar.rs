@@ -161,6 +161,21 @@ Every line the three effect formats take, from the tables their parsers read: an
     out
 }
 
+/// A `blend` line's word: additive, alpha, subtractive or multiply.
+pub(crate) fn blend_word(w: Option<&str>) -> Option<og_render_data::ParticleBlend> {
+    use og_render_data::ParticleBlend::*;
+    Some(match w? {
+        "additive" => Additive,
+        "alpha" => Alpha,
+        "subtractive" => Subtractive,
+        "multiply" => Multiply,
+        _ => return None,
+    })
+}
+
+/// [`blend_word`]'s words, for a line's syntax and its errors.
+pub(crate) const BLENDS: &str = "additive | alpha | subtractive | multiply";
+
 #[cfg(test)]
 mod tests {
     use super::*;

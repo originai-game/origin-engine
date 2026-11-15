@@ -1,5 +1,12 @@
 use super::*;
 
+/// A blend that leaves the target's alpha as it is.
+const KEEP_ALPHA: wgpu::BlendComponent = wgpu::BlendComponent {
+    src_factor: wgpu::BlendFactor::Zero,
+    dst_factor: wgpu::BlendFactor::One,
+    operation: wgpu::BlendOperation::Add,
+};
+
 impl ParticleRenderer {
     /// Makes one compute pipeline not yet made; false when all are
     /// ([`crate::Renderer::warm`]).
@@ -343,6 +350,25 @@ impl ParticleRenderer {
                     },
                 },
                 ParticleBlend::Alpha => wgpu::BlendState::ALPHA_BLENDING,
+                // What is behind less the colour at its alpha.
+                ParticleBlend::Subtractive => wgpu::BlendState {
+                    color: wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::SrcAlpha,
+                        dst_factor: wgpu::BlendFactor::One,
+                        operation: wgpu::BlendOperation::ReverseSubtract,
+                    },
+                    alpha: KEEP_ALPHA,
+                },
+                // What is behind times the colour (`blend_out` mixes it
+                // towards white by its alpha).
+                ParticleBlend::Multiply => wgpu::BlendState {
+                    color: wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::Dst,
+                        dst_factor: wgpu::BlendFactor::Zero,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    alpha: KEEP_ALPHA,
+                },
             };
             let mesh = s.kind == DrawKind::Mesh;
             let trail = s.kind == DrawKind::Trail;

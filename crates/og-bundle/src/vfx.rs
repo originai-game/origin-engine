@@ -264,9 +264,9 @@ pub const ELEMENT_LINES: &[Line] = &[
     Line::of(
         &["mesh", "flipbook"],
         "blend",
-        "additive | alpha",
+        crate::grammar::BLENDS,
         "",
-        "A mesh adds by default, a flipbook blends alpha.",
+        "A mesh adds by default, a flipbook blends alpha; a flipbook takes additive or alpha only.",
         "blend alpha",
     ),
     Line::of(
@@ -1040,11 +1040,15 @@ fn element(e: &Entry, version: u32, params: &[VfxParam]) -> Result<VfxElement, S
                     _ => return Err(format!("line {kl}: face camera")),
                 }
             }
-            ("blend", VfxKind::Mesh { blend, .. } | VfxKind::Flipbook { blend, .. }) => {
+            ("blend", VfxKind::Mesh { blend, .. }) => {
+                *blend = crate::grammar::blend_word(k.values.first().and_then(Value::as_word))
+                    .ok_or_else(|| format!("line {kl}: blend {}", crate::grammar::BLENDS))?
+            }
+            ("blend", VfxKind::Flipbook { blend, .. }) => {
                 *blend = match k.values.first().and_then(Value::as_word) {
                     Some("additive") => ParticleBlend::Additive,
                     Some("alpha") => ParticleBlend::Alpha,
-                    _ => return Err(format!("line {kl}: blend additive | alpha")),
+                    _ => return Err(format!("line {kl}: a flipbook's blend is additive | alpha")),
                 }
             }
             (

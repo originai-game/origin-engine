@@ -34,7 +34,7 @@ Every line the three effect formats take, from the tables their parsers read: an
 | `noise <strength> [<frequency> <scroll>]` | `0 0.5 0.3` | Turbulence: value noise pushing the particles. |
 | `texture "<id>"` |  | A texture asset; left out, a soft dot. |
 | `sheet <columns> <rows> [<frames> [off \| life <cycles> \| fps <n> \| random]]` | `1 1` | The texture as a sprite sheet: a frame by age, at a rate, or one at random. |
-| `blend additive \| alpha` |  | Left out: alpha for a lit mesh (a solid chip; added it would glow white), additive for everything else. |
+| `blend additive \| alpha \| subtractive \| multiply` |  | Left out: alpha for a lit mesh (a solid chip; added it would glow white), additive for everything else. Subtractive takes the colour away from what is behind (dark smoke), multiply tints what is behind by it (scorch); neither in sprite mode. |
 | `space world \| local` | `world` | Particles left behind in the world, or carried with the emitter. |
 | `align camera \| velocity [<stretch>] \| upright [<x> <y> <z>] \| facing <x> <y> <z>` | `camera` | Billboards face the camera, stretch along their velocity (stretch 0.05 when left out), stand on an axis of the emitter turning to face the eye (0 1 0 when left out: flames), or lie across one whatever the camera (facing 0 1 0: flat on the ground). |
 | `softDistance <metres>` | `0` | Fade where a billboard meets the scene behind it. |
@@ -82,7 +82,7 @@ Every line the three effect formats take, from the tables their parsers read: an
 | `offsetU <value>` | `0` | Added to the main u. |
 | `offsetV <value>` | `0` | Added to the main v. |
 | `custom <slot 1 to 8> <value>` |  | A number a material shader reads: slots 1 to 4 are effect_custom1().x to .w, 5 to 8 effect_custom2(). |
-| `blend additive \| alpha` |  | Over the surface's own blend. |
+| `blend additive \| alpha \| subtractive \| multiply` |  | Over the surface's own blend. Subtractive takes its colour away from what is behind (dark smoke, a void), multiply tints what is behind by it (scorch, shadow); a trail, ribbon or beam blends either as alpha. |
 | `doubleSided true \| false` | `false` | Meshes: draw both faces. |
 | `shader "<id>"` |  | A material shader (`type shader`) whose surface_color hook runs last; it reads effect_life(), effect_random(), effect_custom1() and effect_custom2(). |
 | `param <name> <1 to 4 numbers>` |  | One of the shader's parameters by name. |
@@ -138,7 +138,7 @@ An element's block takes these lines; In names the elements that take one (every
 | `scale <value>` | mesh | `1` | Uniform scale over its life. |
 | `spin <x> <y> <z>` | mesh | `0 0 0` | Degrees per second. |
 | `face camera` | mesh |  | Turned to face the eye as a billboard is (a glow ring seen from any side): its spin and scale kept, the effect's and its own rotation left out. Without it a mesh lies as it is placed. |
-| `blend additive \| alpha` | mesh, flipbook |  | A mesh adds by default, a flipbook blends alpha. |
+| `blend additive \| alpha \| subtractive \| multiply` | mesh, flipbook |  | A mesh adds by default, a flipbook blends alpha; a flipbook takes additive or alpha only. |
 | `color <r> <g> <b> [<a>]` | mesh, trail, beam, decal, glow, flipbook, light | `1 1 1 1` | A linear colour; above 1 blooms (a light's alpha is ignored). |
 | `width <head> [<tail>]` | trail | `0.2 0` | Metres across at its head and its tail. |
 | `width <metres>` | beam | `0.2` | Metres across. |

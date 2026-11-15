@@ -231,9 +231,9 @@ pub const EMITTER_LINES: &[Line] = &[
     ),
     Line::new(
         "blend",
-        "additive | alpha",
+        crate::grammar::BLENDS,
         "",
-        "Left out: alpha for a lit mesh (a solid chip; added it would glow white), additive for everything else.",
+        "Left out: alpha for a lit mesh (a solid chip; added it would glow white), additive for everything else. Subtractive takes the colour away from what is behind (dark smoke), multiply tints what is behind by it (scorch); neither in sprite mode.",
         "blend alpha",
     ),
     Line::new(
@@ -742,11 +742,10 @@ pub fn parse_emitter_linked(
                 em.sheet.mode = sheet_mode(line, "sheet", rest)?;
             }
             "blend" => {
-                blend = Some(match word(e, 0)? {
-                    "additive" => ParticleBlend::Additive,
-                    "alpha" => ParticleBlend::Alpha,
-                    other => return Err(format!("line {line}: blend `{other}` (additive, alpha)")),
-                });
+                let w = word(e, 0)?;
+                blend = Some(crate::grammar::blend_word(Some(w)).ok_or_else(|| {
+                    format!("line {line}: blend `{w}` ({})", crate::grammar::BLENDS)
+                })?);
             }
             "space" => {
                 em.space = match word(e, 0)? {
