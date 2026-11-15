@@ -1685,19 +1685,19 @@ cook bundle it) and its name in `STYLES`.
 
 | Group | Normal page | Stress page | Other pages | Styles |
 | --- | --- | --- | --- | --- |
-| rpg | `inventory` | `journal` | `equipment`, `explore`, `combat` | fantasy, scifi |
-| shooter | `combat` | `loadout` | | fantasy, scifi, default |
-| strategy | `field` | `defence` | `states` | fantasy, scifi, default |
-| racing | `race` | `garage` | `states` | fantasy, scifi, default |
-| card | `table` | `builder` | `run` | fantasy, scifi |
-| puzzle | `play` | `map` | `states` | fantasy, scifi, default |
-| idle | `play` | `reset` | `states` | fantasy, scifi, default |
-| rhythm | `songs` | `play` | `states` | fantasy, scifi, default |
-| arena | `select` | `match` | `states` | fantasy, scifi, default |
-| general | `store` | `social` | `progress`, `states` | fantasy, scifi |
-| components | `hud` | `panels` | `states` | fantasy, scifi, default |
-| screens | each screen's default state | its `overflow` (or first other) state | every state through `--states` | fantasy, scifi, default |
-| world | `field` | `crowd` | | fantasy, scifi, default |
+| rpg | `inventory` | `journal` | `equipment`, `explore`, `combat` | fantasy, scifi, cartoon |
+| shooter | `combat` | `loadout` | | fantasy, scifi, cartoon, default |
+| strategy | `field` | `defence` | `states` | fantasy, scifi, cartoon, default |
+| racing | `race` | `garage` | `states` | fantasy, scifi, cartoon, default |
+| card | `table` | `builder` | `run` | fantasy, scifi, cartoon |
+| puzzle | `play` | `map` | `states` | fantasy, scifi, cartoon, default |
+| idle | `play` | `reset` | `states` | fantasy, scifi, cartoon, default |
+| rhythm | `songs` | `play` | `states` | fantasy, scifi, cartoon, default |
+| arena | `select` | `match` | `states` | fantasy, scifi, cartoon, default |
+| general | `store` | `social` | `progress`, `states` | fantasy, scifi, cartoon |
+| components | `hud` | `panels` | `states` | fantasy, scifi, cartoon, default |
+| screens | each screen's default state | its `overflow` (or first other) state | every state through `--states` | fantasy, scifi, cartoon, default |
+| world | `field` | `crowd` | | fantasy, scifi, cartoon, default |
 
 `og ui sheet <group>` renders the screens `project.ogt` declares at
 desktop (1920×1080) and phone portrait (390×844), at 100 % and 150 %

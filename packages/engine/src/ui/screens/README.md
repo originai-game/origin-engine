@@ -42,7 +42,7 @@ before play goes on holds its own input until `next`.
 `og ui eject --list` prints these generic screens. og-ui's
 `tests/component_documents.rs` builds each from its fixtures, and
 og-tests-ui's `tests/document_frames.rs` draws its `fixture:default` in
-the default style against its reference frames (`references/vulkan/`); the fantasy and scifi packs dress them through the role parts and
+the default style against its reference frames (`references/vulkan/`); the fantasy, scifi and cartoon packs dress them through the role parts and
 the core controls.
 
 | Purpose | Documents |

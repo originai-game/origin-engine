@@ -100,7 +100,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `Cooldown` (`cooldown.svelte`) | `cell` (a button: `.ready` `:disabled`), `icon`, `figure` |
 | `DamageNumbers` (`damage-numbers.svelte`) | `figure` (`.tinted`) |
 | `DataGrid` (`data-grid.svelte`) | `frame`, `band`, `heading` (`.numeric`), `row` (a button: `[aria-selected]`), `value` (`.numeric`), `ghost`, `error`, `empty`, `mark`, `message`, `hint`, `retry` (a button) |
-| `HeroButton` (`hero-button.svelte`) | `base` (a button: `.danger` `.premium` `.secondary` `:disabled`), `label`, `key` |
+| `HeroButton` (`hero-button.svelte`) | `base` (a button: `[variant]` primary, secondary or danger, `.danger` `.premium` `.secondary` `:disabled`), `label`, `key` |
 | `HoldButton` (`hold-button.svelte`) | `base` (a button: `.primary` `.secondary` `:disabled`), `icon`, `label`, `hint` |
 | `HudTimer` (`hud-timer.svelte`) | `frame` (`.critical` `.paused` `.warn`), `label`, `ring`, `figure` |
 | `InteractionPrompt` (`interaction-prompt.svelte`) | `frame` (`.disabled` `:disabled`), `key`, `verb`, `name`, `reason` (`:disabled`) |
@@ -117,7 +117,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `PlacementGhost` (`placement-ghost.svelte`) | `reach`, `footprint`, `badge` |
 | `ProgressBar` (`progress-bar.svelte`) | `label`, `figure`, `track`, `buffer`, `fill` |
 | `ProgressRing` (`progress-ring.svelte`) | `ring`, `figure` |
-| `RadialMenu` (`radial-menu.svelte`) | `disc`, `slice` (`.chosen` `.disabled` `:disabled`), `label`, `centre` |
+| `RadialMenu` (`radial-menu.svelte`) | `disc`, `slice` (`.chosen` `.disabled`), `item` (a button: `:disabled`), `label`, `centre` |
 | `RadialMeter` (`radial-meter.svelte`) | `wheels` |
 | `Ribbon` (`ribbon.svelte`) | `frame` (`.bottomLeft` `.bottomRight` `.center` `.danger` `.info` `.success` `.topLeft` `.warn`), `ribbon`, `text` |
 | `SelectionRing` (`selection-ring.svelte`) | `ring` (`.hostile` `.hover` `.neutral` `.segmented`) |

@@ -24,10 +24,9 @@ Streams report to the coordinator thread
 [T-01a1c3df](https://ampcode.com/threads/T-01a1c3df-23c6-73be-9bb8-0da680008e82).
 
 - **The UI rebuild, the packs:** the ten component groups are built into
-  `@ui/`, and the fantasy and scifi packs ship with the engine and dress
-  all of them. The cartoon pack, the fantasy controls and shooter parts,
-  and the engine gaps the packs found are in progress; the frame review of
-  the built-in screens under each pack is next.
+  `@ui/`, and the fantasy, scifi and cartoon packs ship with the engine
+  and dress all of them. The frame review of the built-in screens under
+  each pack is running on the L4.
 - **The structure work** (§Structure).
 - **Screenshots and recordings for agents:** numbered marks on captures
   mapped to source lines, key frames by event with a timeline, and

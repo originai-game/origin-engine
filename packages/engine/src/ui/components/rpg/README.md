@@ -21,9 +21,8 @@ for example `RpgBackpack::cell[data-rarity=epic]`. Each member lists its
 parts in its `<meta name="parts">`: its `frame`, and as it has them its
 `band` and `title`, `tab`, `cell`, `row`, `name` and the like
 (`RpgBackpack.cell`, `RpgQuestLog.row`; every member's are under Parts).
-Classes are left for inner structure and state. The fantasy and scifi
-packs dress them in `templates/styles/fantasy/rpg.css` and
-`templates/styles/scifi/rpg.css`.
+Classes are left for inner structure and state. The fantasy, scifi and
+cartoon packs dress them in `templates/styles/<pack>/rpg.css`.
 
 Hooks for a pack: `data-rarity` (common, uncommon, rare, epic, legendary,
 mythic) on backpack and equipment cells and on the item card;
@@ -102,8 +101,8 @@ ja, zh-CN and ar string tables for the locale cells. The sheet's painted
 art (portraits, figure, item and skill icons, scene, map) was generated for
 it with gpt-image-2.6 through the OriginGame gateway and is sheet fixture
 data, not part of the components.
-`og ui review rpg --style scifi` renders the same pages in the scifi pack
-(`templates/styles/scifi/rpg.css`).
+`og ui review rpg --style scifi` (or `--style cartoon`) renders the same
+pages in that pack (`templates/styles/<pack>/rpg.css`).
 
 `bun test tests/rpg.test.ts` (from `packages/engine`) mounts every member
 by name from a game page at desktop and phone, checks the intents, disabled

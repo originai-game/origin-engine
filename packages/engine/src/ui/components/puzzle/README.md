@@ -77,8 +77,8 @@ won level's summary) and states (every member in every fixture). The sheet's
 fixtures in `src/fixtures.ts` are the documents' own fixture metas; the icons
 are the shared ink icon sheet, and `assets/strings/` carries ja and ar
 string tables for the locale cells.
-`og ui review puzzle --style scifi` renders the same pages in the scifi pack
-(`templates/styles/scifi/puzzle.css`).
+`og ui review puzzle --style scifi` (or `--style cartoon`) renders the same
+pages in that pack (`templates/styles/<pack>/puzzle.css`).
 
 `bun test tests/puzzle.test.ts` (from `packages/engine`) mounts every member
 by name from a game page from every fixture at desktop and phone, and checks

@@ -72,8 +72,8 @@ the start banner over a bright sky and a dark track), `garage` (the stress
 page: a ten-car garage with long names and a fourteen-row classification)
 and `states` (every member in every fixture state). `style:default` and
 `call:<kind>:<n>` are sheet commands for the default style and motion clips.
-`og ui review racing --style scifi` renders the same pages in the scifi pack
-(`templates/styles/scifi/racing.css`).
+`og ui review racing --style scifi` (or `--style cartoon`) renders the same
+pages in that pack (`templates/styles/<pack>/racing.css`).
 
 `bun test tests/racing.test.ts` (from `packages/engine`) mounts every member
 by name from a game page in every fixture at desktop and phone, checks the

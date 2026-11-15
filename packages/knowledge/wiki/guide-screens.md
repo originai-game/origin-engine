@@ -78,10 +78,11 @@ text (§5). The materials resource pack is documented in ui-materials §1.
 A style pack is a directory of CSS and assets, with no manifest or
 `style.ogt`. Structure stays in `.svelte` documents. Haptics stay in `og.*`.
 
-The engine ships two packs that dress every core control, component and
-screen: `fantasy` (crimson bands, brass rims, painted plates) and `scifi` (dark
-glass, thin glowing rims, chamfered frames). Name one in the look
-(`ui "scifi"`), which makes the cook bundle it, or load it as
+The engine ships three packs that dress every core control, component and
+screen: `fantasy` (crimson bands, brass rims, painted plates), `scifi` (dark
+glass, thin glowing rims, chamfered frames) and `cartoon` (candy colours,
+thick dark outlines, chunky buttons that sink when pressed). Name one in
+the look (`ui "scifi"`), which makes the cook bundle it, or load it as
 `@styles/scifi` in place of a directory of the game's own below. To
 change one, copy it with `og style add scifi` into `assets/styles/scifi/`,
 which the look then resolves before the built-in one, and edit the copy:

@@ -87,8 +87,8 @@ HUD with its won banner over a bright sky and a dark floor, the ten-player
 scoreboard and the five-a-side versus with long names) and `states` (every
 member in every fixture state), in the fantasy pack, and `select` and
 `match` in the core default style.
-`og ui review arena --style scifi` renders the same pages in the scifi pack
-(`templates/styles/scifi/arena.css`).
+`og ui review arena --style scifi` (or `--style cartoon`) renders the same
+pages in that pack (`templates/styles/<pack>/arena.css`).
 
 `bun test tests/arena.test.ts` (from `packages/engine`) mounts every member
 by name from a game page in every fixture at desktop and phone, and under
