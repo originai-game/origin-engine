@@ -543,7 +543,17 @@ impl Ui {
                     // Path text aligns along its path, not in its box: it
                     // keeps the box its path gives (a `circle()` centres in
                     // it), never the column's width a centred line takes.
-                    if r.has("textPath") {
+                    // Nor does a label out of the flow, which is no block
+                    // of its column: it shrinks to fit its text, as CSS
+                    // sizes an absolutely positioned box (CSS 2.1 §10.3.7).
+                    let out_of_flow = match r.str("position") {
+                        Some("absolute" | "screen") => true,
+                        Some("relative" | "sticky") => false,
+                        _ => ["start", "top", "end", "bottom"]
+                            .iter()
+                            .any(|s| r.num(s).is_some()),
+                    };
+                    if r.has("textPath") || out_of_flow {
                         self.tree.el_mut(i).width = width;
                     }
                 }

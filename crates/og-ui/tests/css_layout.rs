@@ -58,8 +58,9 @@
 //!   bottom, or floats and `clear` on the physical left and right →
 //!   `writing_modes_lay_out_as_css_writing_modes_does`
 //! - a positioned box with an `auto` width filling its containing block
-//!   (not shrinking to fit), a definite width between two insets
-//!   stretched, or its margins (`auto` ones too) ignored →
+//!   (not shrinking to fit, a centred label among them), a definite width
+//!   between two insets stretched, or its margins (`auto` ones too)
+//!   ignored →
 //!   `positioning_places_as_css_positioning_does`
 //! - a fixed box with an inset on one axis only standing at the screen's
 //!   edge on the other, not where its parent's flow would have put it →
@@ -599,6 +600,7 @@ fn positioning_places_as_css_positioning_does() {
     <div id="Flip"></div>
     <div id="Named"></div>
     <div id="Shrink"><span>alpha</span></div>
+    <span id="Badge">alpha</span>
     <div id="Wide"><p>one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen</p></div>
     <div id="Mid"></div>
     <div id="Margined"><span>beta</span></div>
@@ -619,6 +621,7 @@ fn positioning_places_as_css_positioning_does() {
 #Flip { position: absolute; position-anchor: --a; position-area: bottom; position-try-fallbacks: flip-block; width: 10px; height: 40px; }
 #Named { position: absolute; position-anchor: --a; top: anchor(bottom); left: anchor(left); position-try-fallbacks: --above; width: 10px; height: 40px; }
 #Shrink { position: absolute; left: 10px; top: 10px; padding: 4px; }
+#Badge { position: absolute; left: 10px; bottom: 10px; text-align: center; }
 #Wide { position: absolute; right: 20px; top: 0; }
 #Mid { position: absolute; inset: 0 10px; width: 100px; height: 10px; margin: auto; }
 #Margined { position: absolute; right: 10px; bottom: 0; margin: 4px 6px; }
@@ -664,6 +667,9 @@ fn positioning_places_as_css_positioning_does() {
         let (sw, _) = wh(d, "Shrink");
         assert!(sw > 8.0 && sw < 80.0, "shrinks to its text: {sw}");
         assert_eq!(at("Shrink", "Stage"), (10.0, 10.0));
+        // A centred line out of the flow is no block of its column: it
+        // shrinks to its text as the same text in a padded box does.
+        assert_eq!(wh(d, "Badge").0, sw - 8.0, "a centred label shrinks too");
         assert_eq!(
             (at("Wide", "Stage").0, wh(d, "Wide").0),
             (0.0, 280.0),
