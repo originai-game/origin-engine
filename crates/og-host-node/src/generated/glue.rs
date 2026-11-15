@@ -4010,6 +4010,18 @@ pub fn og_film_pause(env: Env, world: u32, film: f64) -> String {
     <Host as FilmApi>::og_film_pause(&Host, world, film)
 }
 
+#[napi(js_name = "og_film_skip")]
+pub fn og_film_skip(env: Env, world: u32, film: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as FilmApi>::og_film_skip(&Host, world, film)
+}
+
+#[napi(js_name = "og_film_chart")]
+pub fn og_film_chart(env: Env, world: u32, dialogue: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as FilmApi>::og_film_chart(&Host, world, dialogue)
+}
+
 #[napi(js_name = "og_film_stop")]
 pub fn og_film_stop(env: Env, world: u32, film: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

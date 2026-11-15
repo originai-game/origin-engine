@@ -1503,6 +1503,10 @@ pub trait FilmApi: Wire {
     fn og_film_play(&self, world: u32, film: f64) -> String;
     /// `og.film.pause`
     fn og_film_pause(&self, world: u32, film: f64) -> String;
+    /// `og.film.skip`
+    fn og_film_skip(&self, world: u32, film: f64) -> String;
+    /// `og.film.chart`
+    fn og_film_chart(&self, world: u32, dialogue: String) -> String;
     /// `og.film.stop`
     fn og_film_stop(&self, world: u32, film: f64) -> String;
 }
@@ -2143,6 +2147,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_film_choose",
     "og_film_play",
     "og_film_pause",
+    "og_film_skip",
+    "og_film_chart",
     "og_film_stop",
 ];
 

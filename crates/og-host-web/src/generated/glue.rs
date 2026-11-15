@@ -3350,6 +3350,16 @@ pub fn og_film_pause(world: u32, film: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_film_skip(world: u32, film: f64) -> String {
+    <Host as FilmApi>::og_film_skip(&Host, world, film)
+}
+
+#[wasm_bindgen]
+pub fn og_film_chart(world: u32, dialogue: String) -> String {
+    <Host as FilmApi>::og_film_chart(&Host, world, dialogue)
+}
+
+#[wasm_bindgen]
 pub fn og_film_stop(world: u32, film: f64) -> String {
     <Host as FilmApi>::og_film_stop(&Host, world, film)
 }

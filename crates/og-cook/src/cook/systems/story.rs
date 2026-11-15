@@ -181,13 +181,46 @@ pub(crate) fn check_films(
                 }
                 continue;
             };
-            match segment(seg) {
-                None => errors.push(format!(
-                    "node '{}': its segment '{seg}' is no timeline under assets/",
-                    n.title
-                )),
-                Some(Err(e)) => errors.push(format!("node '{}': segment {seg}: {e}", n.title)),
-                Some(Ok(_)) => {}
+            let hotspots: Option<Vec<String>> = match segment(seg) {
+                None => {
+                    errors.push(format!(
+                        "node '{}': its segment '{seg}' is no timeline under assets/",
+                        n.title
+                    ));
+                    None
+                }
+                Some(Err(e)) => {
+                    errors.push(format!("node '{}': segment {seg}: {e}", n.title));
+                    None
+                }
+                Some(Ok(s)) => Some(s.hotspots.into_iter().map(|k| k.id).collect()),
+            };
+            if let Some(h) = n.headers.get("og-film-dissolve")
+                && let Err(e) = og_timeline::segment::dissolve(h)
+            {
+                errors.push(format!("node '{}': {e}", n.title));
+            }
+            for c in &n.choices {
+                if let (Some(id), Some(known)) = (c.tags.get("hotspot"), &hotspots)
+                    && !known.contains(id)
+                {
+                    errors.push(format!(
+                        "node '{}': choice {} is #hotspot:{id}, which its segment {seg} has no `track hotspot` key for",
+                        n.title, c.index
+                    ));
+                }
+                if let Some(q) = c.tags.get("qte") {
+                    if let Err(e) = og_timeline::segment::Qte::parse(q) {
+                        errors.push(format!("node '{}': choice {}: {e}", n.title, c.index));
+                    } else if c.index as usize >= og_timeline::segment::QTE_CHOICES {
+                        errors.push(format!(
+                            "node '{}': choice {} is a #qte; only a node's first {} choices may be",
+                            n.title,
+                            c.index,
+                            og_timeline::segment::QTE_CHOICES
+                        ));
+                    }
+                }
             }
             let defaults = n
                 .choices

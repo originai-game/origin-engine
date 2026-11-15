@@ -30,7 +30,12 @@ module film {
 | [`og.Film`](film/record-Film.md) | component |  | A film og.film.start made: the conversation it paces and its decks. |
 | [`og.FilmDeck`](film/record-FilmDeck.md) | component |  | An entity og.film plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. |
 | [`WindowView`](film/type-WindowView.md) | struct |  | A segment's choice window. |
+| [`FilmHotspot`](film/type-FilmHotspot.md) | struct |  | A place on the picture that takes a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment), while the window is open. |
+| [`QteView`](film/type-QteView.md) | struct |  | A choice taken by a quick-time event (`#qte:press:<action>`, `#qte:hold:<action>:<ms>`, `#qte:mash:<action>:<presses>`): the og.input action's presses or hold while the window is open. |
 | [`FilmView`](film/type-FilmView.md) | struct |  | What a film shows now. |
+| [`FilmChartNode`](film/type-FilmChartNode.md) | struct |  | A film node on og.film.chart's layout. |
+| [`FilmChartLink`](film/type-FilmChartLink.md) | struct |  | Where a film node may lead, through logic nodes. |
+| [`FilmChart`](film/type-FilmChart.md) | struct |  | A dialogue's film nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen. |
 | [`og.FilmSegment`](film/record-FilmSegment.md) | event |  | A film began a node's segment. |
 | [`og.FilmChoice`](film/record-FilmChoice.md) | event |  | A film took a choice at its cut (before og.story ran it). |
 | [`og.FilmChapter`](film/record-FilmChapter.md) | event |  | A film entered a chapter's node (`og-film-chapter`): a place to save. |
@@ -41,4 +46,6 @@ module film {
 | [`og.film.choose`](film/fn-choose.md) | function | `(world: World, film: Entity, index: number): Result<void>` | Take a choice while the window is open: recorded now (FilmView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. |
 | [`og.film.play`](film/fn-play.md) | function | `(world: World, film: Entity): Result<void>` | Play a paused film from where it is. |
 | [`og.film.pause`](film/fn-pause.md) | function | `(world: World, film: Entity): Result<void>` | Hold a film on its frame (a pause menu); its window's time holds too. |
+| [`og.film.skip`](film/fn-skip.md) | function | `(world: World, film: Entity): Result<void>` | Skip ahead in the segment playing: to its window's open (film.open) when that is ahead, else to its cut, which takes the pending choice, else the default. |
+| [`og.film.chart`](film/fn-chart.md) | function | `(world: World, dialogue: string): Result<FilmChart>` | A prepared dialogue's film nodes and where each may lead, laid out for a flowchart. |
 | [`og.film.stop`](film/fn-stop.md) | function | `(world: World, film: Entity): Result<void>` | End a film: its conversation stops and its decks and entity are despawned this tick. |

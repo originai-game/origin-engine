@@ -30849,7 +30849,7 @@ export interface TimelineEnded {
 /** One track of a loaded timeline. */
 export interface TimelineTrackInfo {
   /**
-   * camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx or video.
+   * camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx, video or hotspot.
    */
   readonly kind: string;
   /**
@@ -33308,6 +33308,31 @@ export interface Film {
    * @readonly written by the engine
    */
   readonly ended: boolean;
+  /**
+   * The deck dissolving out (`og-film-dissolve`), playing on under the current one; 0: none.
+   *
+   * @readonly written by the engine
+   */
+  readonly previous: Entity;
+  /**
+   * The dissolve's length, ticks.
+   *
+   * @readonly written by the engine
+   */
+  readonly dissolve: number;
+  /**
+   * Ticks left of the dissolve; 0: none.
+   *
+   * @readonly written by the engine
+   */
+  readonly dissolveLeft: number;
+  /**
+   * Per choice (ChoiceView.index, the first 8): a quick-time event's progress this window, ticks held or presses.
+   *
+   * @capacity 8 elements (List.u32.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   * @readonly written by the engine
+   */
+  readonly qte: readonly number[];
 }
 
 /**
@@ -33346,6 +33371,60 @@ export interface WindowView {
   readonly locked: boolean;
 }
 
+/**
+ * A place on the picture that takes a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment), while the window is open.
+ */
+export interface FilmHotspot {
+  /** The ChoiceView.index it takes. */
+  readonly choice: number;
+  /** The hotspot's id. */
+  readonly id: string;
+  /**
+   * Its left edge, a fraction of the video frame from its left.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly x: number;
+  /**
+   * Its top edge, from the frame's top.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly y: number;
+  /**
+   * Its width, a fraction of the frame's.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly width: number;
+  /**
+   * Its height.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly height: number;
+}
+
+/**
+ * A choice taken by a quick-time event (`#qte:press:<action>`, `#qte:hold:<action>:<ms>`, `#qte:mash:<action>:<presses>`): the og.input action's presses or hold while the window is open.
+ */
+export interface QteView {
+  /** The ChoiceView.index it takes. */
+  readonly choice: number;
+  /** press, hold or mash. */
+  readonly kind: string;
+  /** The og.input action it reads. */
+  readonly action: string;
+  /**
+   * 0 to 1: the hold's time or the presses so far.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly progress: number;
+  /** Reached: the choice is pending. */
+  readonly done: boolean;
+}
+
 /** What a film shows now. */
 export interface FilmView {
   /** The film. */
@@ -33374,6 +33453,22 @@ export interface FilmView {
   readonly choices: readonly ChoiceView[];
   /** The window, while it is open or locked. */
   readonly window: WindowView | null;
+  /**
+   * The hotspots that take a choice now: while the window is open, those of its enabled choices.
+   */
+  readonly hotspots: readonly FilmHotspot[];
+  /** The quick-time events of its enabled choices while the window is open or locked. */
+  readonly qtes: readonly QteView[];
+  /**
+   * The picture dissolving out (`og-film-dissolve`); 0: none. Draw it under `texture`, which shows at `mix`.
+   */
+  readonly previous: Texture;
+  /**
+   * How far the dissolve is: `texture`'s opacity over `previous`, 1 without one.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly mix: number;
   /** Held by og.film.pause. */
   readonly paused: boolean;
   /** The last chapter entered. */
@@ -33382,6 +33477,52 @@ export interface FilmView {
   readonly ending: string;
   /** It played to its end. */
   readonly ended: boolean;
+}
+
+/** A film node on og.film.chart's layout. */
+export interface FilmChartNode {
+  /** Its title. */
+  readonly node: string;
+  /** Its segment's asset id. */
+  readonly segment: string;
+  /** Its `og-film-chapter`, if any. */
+  readonly chapter: string;
+  /** Its `og-film-ending`, if any. */
+  readonly ending: string;
+  /**
+   * Its column: the fewest film nodes from the start before it (unreached nodes after the deepest).
+   */
+  readonly depth: number;
+  /** Its centre across, graph units (NodeGraph's). */
+  readonly x: number;
+  /** Its centre down. */
+  readonly y: number;
+}
+
+/** Where a film node may lead, through logic nodes. */
+export interface FilmChartLink {
+  /** The node. */
+  readonly from: string;
+  /** The film node it may lead to. */
+  readonly to: string;
+  /** The ChoiceView.index that leads there; -1 for a node without choices. */
+  readonly choice: number;
+  /** A curve from one to the other in SVG path data, graph units (NodeGraph's link `d`). */
+  readonly d: string;
+}
+
+/**
+ * A dialogue's film nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen.
+ */
+export interface FilmChart {
+  /** Its film nodes, in file order. */
+  readonly nodes: readonly FilmChartNode[];
+  /** Where each leads. */
+  readonly links: readonly FilmChartLink[];
+  /** Its extent across, graph units (NodeGraph's view is `0 0 width height`). */
+  readonly width: number;
+  /** Its extent down. */
+  readonly height: number;
 }
 
 /**
@@ -33441,6 +33582,8 @@ export interface FilmEnded {
   /** Its `og-film-ending`, empty without one (at most 63 bytes). */
   readonly ending: string;
 }
+
+
 
 
 
@@ -38362,7 +38505,7 @@ export declare namespace og {
   /**
    * A film og.film.start made: the conversation it paces and its decks. og.film writes it; read og.film.view.
    */
-  const Film: ComponentType<{ readonly conversation: FieldSpec<"u32">; readonly decks: FieldSpec<"u32">; readonly current: FieldSpec<"Entity">; readonly node: FieldSpec<"u32">; readonly pending: FieldSpec<"i32">; readonly window: FieldSpec<"u32">; readonly paused: FieldSpec<"bool">; readonly chapter: FieldSpec<"u32">; readonly ended: FieldSpec<"bool"> }, Film>;
+  const Film: ComponentType<{ readonly conversation: FieldSpec<"u32">; readonly decks: FieldSpec<"u32">; readonly current: FieldSpec<"Entity">; readonly node: FieldSpec<"u32">; readonly pending: FieldSpec<"i32">; readonly window: FieldSpec<"u32">; readonly paused: FieldSpec<"bool">; readonly chapter: FieldSpec<"u32">; readonly ended: FieldSpec<"bool">; readonly previous: FieldSpec<"Entity">; readonly dissolve: FieldSpec<"u32">; readonly dissolveLeft: FieldSpec<"u32">; readonly qte: ListSpec<"u32"> }, Film>;
   /**
    * An entity og.film plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The film's current deck plays; the others hold a segment it may cut to, paused at its first frame.
    */
@@ -38430,6 +38573,22 @@ export declare namespace og {
      * @returns Refused for an entity that is no film.
      */
     function pause(world: World, film: Entity): Result<void>;
+    /**
+     * Skip ahead in the segment playing: to its window's open (film.open) when that is ahead, else to its cut, which takes the pending choice, else the default. For a segment the player has seen; what was seen is the game's (guide film §5). Systems may call it.
+     *
+     * @param world The world.
+     * @param film The film.
+     * @returns Refused for an entity that is no film, or one that has ended.
+     */
+    function skip(world: World, film: Entity): Result<void>;
+    /**
+     * A prepared dialogue's film nodes and where each may lead, laid out for a flowchart.
+     *
+     * @param world The world.
+     * @param dialogue The dialogue (StoryAsset.name), prepared by og.film.load.
+     * @returns Refused for a dialogue og.film.load has not prepared.
+     */
+    function chart(world: World, dialogue: string): Result<FilmChart>;
     /**
      * End a film: its conversation stops and its decks and entity are despawned this tick. Systems may call it.
      *

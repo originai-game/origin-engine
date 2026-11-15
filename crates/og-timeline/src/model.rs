@@ -462,6 +462,20 @@ pub struct VideoTrack {
     pub keys: Vec<VideoKey>,
 }
 
+/// A key of a `hotspot` track: from its time, hotspot `id` covers `rect`
+/// (x, y, width, height in fractions of the video frame, from its top
+/// left), moving linearly to the same id's next key and held after its
+/// last, until a key `off`. A hotspot is a place to click: og.film offers
+/// a choice tagged `#hotspot:<id>` there; nothing draws it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HotspotKey {
+    pub time: f32,
+    pub id: String,
+    pub rect: [f32; 4],
+    /// The hotspot is gone from this key on (its rect unused).
+    pub off: bool,
+}
+
 /// How deep timelines nest (a timeline's own tracks are depth 0).
 pub const NEST_DEPTH: usize = 4;
 
@@ -487,10 +501,12 @@ pub enum Track {
     Vfx(Vec<VfxKey>),
     /// Footage on an entity's og.VideoPlayer.
     Video(VideoTrack),
+    /// Places on the picture to click.
+    Hotspot(Vec<HotspotKey>),
 }
 
 /// Every track kind the file may name, for the refusal of another.
-pub const TRACK_KINDS: &str = "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx or video";
+pub const TRACK_KINDS: &str = "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx, video or hotspot";
 
 impl Track {
     /// The track's kind as the file names it.
@@ -510,6 +526,7 @@ impl Track {
             Track::Shot(_) => "shot",
             Track::Vfx(_) => "vfx",
             Track::Video(_) => "video",
+            Track::Hotspot(_) => "hotspot",
         }
     }
 
@@ -530,6 +547,7 @@ impl Track {
             Track::Shot(c) => c.iter().map(|k| k.time).collect(),
             Track::Vfx(c) => c.iter().map(|k| k.time).collect(),
             Track::Video(c) => c.keys.iter().map(|k| k.time).collect(),
+            Track::Hotspot(c) => c.iter().map(|k| k.time).collect(),
         }
     }
 
@@ -565,6 +583,7 @@ impl Track {
             Track::Shot(k) => k.len(),
             Track::Vfx(k) => k.len(),
             Track::Video(v) => v.keys.len(),
+            Track::Hotspot(k) => k.len(),
         }
     }
 }

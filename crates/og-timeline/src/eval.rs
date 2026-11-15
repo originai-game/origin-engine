@@ -264,6 +264,46 @@ pub fn video_at(track: &VideoTrack, t: f32) -> Option<(usize, f32)> {
     Some((i, k.from + (t - k.time) * k.speed))
 }
 
+/// A hotspot at a time: its id and where it is, x, y, width and height in
+/// fractions of the video frame.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HotspotAt<'a> {
+    pub id: &'a str,
+    pub rect: [f32; 4],
+}
+
+/// The hotspots of a track at `t`, in the order their ids first appear:
+/// each from its key at or before `t` (none before its first or from a
+/// key `off`), moving linearly to its next key and held after its last.
+pub fn hotspots_at(keys: &[HotspotKey], t: f32) -> Vec<HotspotAt<'_>> {
+    let mut ids: Vec<&str> = Vec::new();
+    for k in keys {
+        if !ids.contains(&k.id.as_str()) {
+            ids.push(&k.id);
+        }
+    }
+    let mut out = Vec::new();
+    for id in ids {
+        let mine = || keys.iter().filter(move |k| k.id == id);
+        let Some(a) = mine().rfind(|k| k.time <= t) else {
+            continue;
+        };
+        if a.off {
+            continue;
+        }
+        // Toward its next key, unless that one ends it.
+        let rect = match mine().find(|k| k.time > t) {
+            Some(b) if !b.off => {
+                let u = (t - a.time) / (b.time - a.time);
+                std::array::from_fn(|i| a.rect[i] + (b.rect[i] - a.rect[i]) * u)
+            }
+            _ => a.rect,
+        };
+        out.push(HotspotAt { id, rect });
+    }
+    out
+}
+
 /// The caption showing at `t` in `locale` ([`CaptionTrack::keys_in`]): the
 /// latest started that has not ended.
 pub fn caption_at<'a>(
@@ -344,6 +384,56 @@ pub fn crossed(time: f32, from: f64, to: f64) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_hotspot_moves_between_its_keys_holds_after_the_last_and_ends_at_off() {
+        let text = "type timeline\nversion 1\n---\nduration 20\ntrack hotspot {\n  key 12 {\n    id \"knife\"\n    rect 0.6 0.4 0.1 0.2\n  }\n  key 10 {\n    id \"door\"\n    rect 0 0 0.5 1\n  }\n  key 16 {\n    id \"knife\"\n    rect 0.2 0.4 0.3 0.2\n  }\n  key 18 {\n    id \"door\"\n    off true\n  }\n}\n";
+        let t = Timeline::parse(text, &mut |f: &str| Err(f.to_string())).unwrap();
+        let Track::Hotspot(keys) = &t.tracks[0] else {
+            panic!("{:?}", t.tracks)
+        };
+        let at = |time: f32| -> Vec<(String, [f32; 4])> {
+            hotspots_at(keys, time)
+                .into_iter()
+                .map(|h| {
+                    (
+                        h.id.to_string(),
+                        h.rect.map(|v| (v * 1000.0).round() / 1000.0),
+                    )
+                })
+                .collect()
+        };
+        assert_eq!(at(9.0), vec![]);
+        // Ids in the order they first appear (door's key is earlier in time).
+        assert_eq!(at(11.0), vec![("door".into(), [0.0, 0.0, 0.5, 1.0])]);
+        // A quarter of the way from 12 to 16: x 0.6 → 0.2, width 0.1 → 0.3.
+        assert_eq!(
+            at(13.0),
+            vec![
+                ("door".into(), [0.0, 0.0, 0.5, 1.0]),
+                ("knife".into(), [0.5, 0.4, 0.15, 0.2])
+            ]
+        );
+        // Held after its last key; door, held until its off at 18, is gone.
+        assert_eq!(at(17.0).len(), 2);
+        assert_eq!(at(19.0), vec![("knife".into(), [0.2, 0.4, 0.3, 0.2])]);
+        let back = Timeline::parse(&t.to_text(), &mut |f: &str| Err(f.to_string())).unwrap();
+        assert_eq!(back, t);
+        for bad in [
+            "rect 0.8 0 0.3 0.1",
+            "rect 0 0 0 0.1",
+            "off true\n    rect 0 0 0.1 0.1",
+            "",
+        ] {
+            let text = format!(
+                "type timeline\nversion 1\n---\nduration 5\ntrack hotspot {{\n  key 1 {{\n    id \"a\"\n    {bad}\n  }}\n}}\n"
+            );
+            assert!(
+                Timeline::parse(&text, &mut |f: &str| Err(f.to_string())).is_err(),
+                "{bad}"
+            );
+        }
+    }
 
     fn key(time: f32, x: Option<f32>, ease: Ease) -> TransformKey {
         TransformKey {

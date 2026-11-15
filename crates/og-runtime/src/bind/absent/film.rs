@@ -3,7 +3,7 @@
 //! og.Film, og.FilmDeck or a film event is refused (crate::engine::lazy),
 //! so a world without films keeps the full build's type table and hash.
 
-use crate::host::wire::{FilmInfo, FilmView};
+use crate::host::wire::{FilmChart, FilmInfo, FilmView};
 use og_ecs::World;
 use serde_json::Value;
 
@@ -58,5 +58,13 @@ pub fn og_film_pause(_world: u32, _film: f64) -> Result<(), String> {
 }
 
 pub fn og_film_stop(_world: u32, _film: f64) -> Result<(), String> {
+    Err(ABSENT.into())
+}
+
+pub fn og_film_skip(_world: u32, _film: f64) -> Result<(), String> {
+    Err(ABSENT.into())
+}
+
+pub fn og_film_chart(_world: u32, _dialogue: String) -> Result<FilmChart, String> {
     Err(ABSENT.into())
 }

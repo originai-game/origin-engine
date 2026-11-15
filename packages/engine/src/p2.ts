@@ -93,6 +93,8 @@ export const film = Object.freeze({
   choose: (world: W, film: number, index: number) => parse(abi().og_film_choose(world.id, film, index)),
   play: (world: W, film: number) => parse(abi().og_film_play(world.id, film)),
   pause: (world: W, film: number) => parse(abi().og_film_pause(world.id, film)),
+  skip: (world: W, film: number) => parse(abi().og_film_skip(world.id, film)),
+  chart: (world: W, dialogue: string) => parse(abi().og_film_chart(world.id, dialogue)),
   stop: (world: W, film: number) => parse(abi().og_film_stop(world.id, film)),
 });
 

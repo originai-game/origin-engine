@@ -29,8 +29,13 @@ use crate::bind::story::{
 };
 use crate::engine::{Engine, engine};
 use crate::host::codec::Layout;
-use crate::host::wire::{ChoiceView, FilmDesc, FilmInfo, FilmView, WindowView, record};
+use crate::host::wire::{
+    ChoiceView, FilmChart, FilmChartLink, FilmChartNode, FilmDesc, FilmHotspot, FilmInfo, FilmView,
+    QteView, WindowView, record,
+};
 use og_ecs::{Entity, QueryDesc, SchemaId, SystemContext, SystemDesc, World};
+use og_timeline::HotspotKey;
+use og_timeline::segment::{QTE_CHOICES, Qte, QteKind};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -63,6 +68,12 @@ struct Node {
     cut: f32,
     chapter: String,
     ending: String,
+    /// Seconds its segment dissolves in over the one before (0: a cut).
+    dissolve: f32,
+    /// Its segment's hotspot keys.
+    hotspots: Vec<HotspotKey>,
+    /// Per choice (by index): its quick-time event (`#qte`).
+    qte: Vec<Option<Qte>>,
     /// Per choice (by index): the film nodes it may lead to, through logic
     /// nodes.
     choices: Vec<Vec<u32>>,
@@ -74,6 +85,10 @@ struct Node {
 #[derive(Debug, Default)]
 struct Prepared {
     nodes: BTreeMap<u32, Node>,
+    /// Its film nodes in file order.
+    order: Vec<u32>,
+    /// The film nodes the dialogue's start leads to first.
+    roots: Vec<u32>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -81,6 +96,7 @@ enum Op {
     Choose(u32),
     Play,
     Pause,
+    Skip,
     Stop,
 }
 
@@ -102,6 +118,10 @@ struct Shown {
     chapter: String,
     ending: String,
     ended: bool,
+    hotspots: Vec<FilmHotspot>,
+    qtes: Vec<QteView>,
+    previous: u64,
+    mix: f32,
 }
 
 /// og.film on one engine.
@@ -209,6 +229,27 @@ fn prepare(eng: &Engine, world: &mut World, name: &str) -> Result<(Prepared, Fil
         if defaults > 1 {
             return Err(at(format!("{defaults} choices are #default; one at most")));
         }
+        let dissolve = match n.headers.get("og-film-dissolve") {
+            Some(h) => og_timeline::segment::dissolve(h).map_err(at)?,
+            None => 0.0,
+        };
+        let mut qte = Vec::new();
+        for c in &n.choices {
+            let q = match c.tags.get("qte") {
+                Some(t) => {
+                    let q = Qte::parse(t).map_err(|e| at(format!("choice {}: {e}", c.index)))?;
+                    if c.index as usize >= QTE_CHOICES {
+                        return Err(at(format!(
+                            "choice {} is a #qte; only a node's first {QTE_CHOICES} choices may be",
+                            c.index
+                        )));
+                    }
+                    Some(q)
+                }
+                None => None,
+            };
+            qte.push(q);
+        }
         p.nodes.insert(
             node_id(&n.title),
             Node {
@@ -221,12 +262,21 @@ fn prepare(eng: &Engine, world: &mut World, name: &str) -> Result<(Prepared, Fil
                 cut: s.cut,
                 chapter: header("og-film-chapter"),
                 ending: header("og-film-ending"),
+                dissolve,
+                hotspots: s.hotspots,
+                qte,
                 choices: n.choices.iter().map(|c| reach(&c.to)).collect(),
                 next: reach(&n.to),
             },
         );
+        p.order.push(node_id(&n.title));
         info.segments.push(n.title.clone());
     }
+    let start = crate::bind::story::start_of(eng.id, name)
+        .filter(|s| !s.is_empty())
+        .or_else(|| graph.first().map(|n| n.title.clone()))
+        .unwrap_or_default();
+    p.roots = reach(&[start]);
     if p.nodes.is_empty() {
         return Err(format!(
             "{name} has no film node: give a node an `og-film: segments/<segment>.ogt` header"
@@ -377,6 +427,10 @@ pub fn og_film_view(world: u32, film: f64) -> Option<FilmView> {
         cut: s.cut,
         choices,
         window,
+        hotspots: s.hotspots,
+        qtes: s.qtes,
+        previous: s.previous,
+        mix: s.mix,
         paused: s.paused,
         chapter: s.chapter,
         ending: s.ending,
@@ -410,6 +464,9 @@ fn queue(world: u32, film: f64, op: Op) -> Result<(), String> {
             return Err(format!("choice {i} is disabled: {}", c.reason));
         }
     }
+    if op == Op::Skip && s.ended {
+        return Err("the film has ended: nothing is left to skip".into());
+    }
     lock(&st).ops.push((key, op));
     Ok(())
 }
@@ -426,8 +483,129 @@ pub fn og_film_pause(world: u32, film: f64) -> Result<(), String> {
     queue(world, film, Op::Pause)
 }
 
+pub fn og_film_skip(world: u32, film: f64) -> Result<(), String> {
+    queue(world, film, Op::Skip)
+}
+
 pub fn og_film_stop(world: u32, film: f64) -> Result<(), String> {
     queue(world, film, Op::Stop)
+}
+
+// ── og.film.chart ────────────────────────────────────────────────────────────
+
+/// Graph units between columns and between rows, and around the chart.
+const CHART_COLUMN: f32 = 200.0;
+const CHART_ROW: f32 = 120.0;
+const CHART_MARGIN: f32 = 60.0;
+
+pub fn og_film_chart(world: u32, dialogue: String) -> Result<FilmChart, String> {
+    let st = state(world)?;
+    let p = lock(&st).films.get(&dialogue).cloned().ok_or_else(|| {
+        format!("the dialogue '{dialogue}' is not prepared: og.film.load it in setup")
+    })?;
+    Ok(chart(&p))
+}
+
+/// Columns by the fewest film nodes from the start (breadth first, so a
+/// loop back draws as a link to an earlier column); rows by the order each
+/// column was reached in. Nodes the start never reaches follow the deepest.
+fn chart(p: &Prepared) -> FilmChart {
+    let leads = |n: &Node| -> Vec<u32> {
+        let mut out: Vec<u32> = Vec::new();
+        for to in n.choices.iter().flatten().chain(&n.next) {
+            if !out.contains(to) {
+                out.push(*to);
+            }
+        }
+        out
+    };
+    let mut depth: BTreeMap<u32, u32> = BTreeMap::new();
+    let mut columns: Vec<Vec<u32>> = Vec::new();
+    let mut frontier: Vec<u32> = Vec::new();
+    for r in &p.roots {
+        if p.nodes.contains_key(r) && !depth.contains_key(r) {
+            depth.insert(*r, 0);
+            frontier.push(*r);
+        }
+    }
+    while !frontier.is_empty() {
+        let d = columns.len() as u32;
+        let mut next = Vec::new();
+        for id in &frontier {
+            for to in leads(&p.nodes[id]) {
+                if p.nodes.contains_key(&to) && !depth.contains_key(&to) {
+                    depth.insert(to, d + 1);
+                    next.push(to);
+                }
+            }
+        }
+        columns.push(std::mem::replace(&mut frontier, next));
+    }
+    let unreached: Vec<u32> = p
+        .order
+        .iter()
+        .copied()
+        .filter(|id| !depth.contains_key(id))
+        .collect();
+    if !unreached.is_empty() {
+        for id in &unreached {
+            depth.insert(*id, columns.len() as u32);
+        }
+        columns.push(unreached);
+    }
+    let mut at: BTreeMap<u32, (f32, f32)> = BTreeMap::new();
+    for (c, col) in columns.iter().enumerate() {
+        for (r, id) in col.iter().enumerate() {
+            at.insert(
+                *id,
+                (
+                    CHART_MARGIN + c as f32 * CHART_COLUMN,
+                    CHART_MARGIN + r as f32 * CHART_ROW,
+                ),
+            );
+        }
+    }
+    let rows = columns.iter().map(Vec::len).max().unwrap_or(0);
+    let mut out = FilmChart {
+        width: 2.0 * CHART_MARGIN + columns.len().saturating_sub(1) as f32 * CHART_COLUMN,
+        height: 2.0 * CHART_MARGIN + rows.saturating_sub(1) as f32 * CHART_ROW,
+        ..FilmChart::default()
+    };
+    for id in &p.order {
+        let n = &p.nodes[id];
+        let (x, y) = at[id];
+        out.nodes.push(FilmChartNode {
+            node: n.title.clone(),
+            segment: n.segment.clone(),
+            chapter: n.chapter.clone(),
+            ending: n.ending.clone(),
+            depth: depth[id],
+            x,
+            y,
+        });
+        let mut link = |to: u32, choice: i32| {
+            let Some(t) = p.nodes.get(&to) else { return };
+            let (x2, y2) = at[&to];
+            let mid = (x + x2) * 0.5;
+            out.links.push(FilmChartLink {
+                from: n.title.clone(),
+                to: t.title.clone(),
+                choice,
+                d: format!("M{x} {y} C {mid} {y}, {mid} {y2}, {x2} {y2}"),
+            });
+        };
+        for (i, tos) in n.choices.iter().enumerate() {
+            for to in tos {
+                link(*to, i as i32);
+            }
+        }
+        if n.choices.is_empty() {
+            for to in &n.next {
+                link(*to, -1);
+            }
+        }
+    }
+    out
 }
 
 // ── the system ───────────────────────────────────────────────────────────────
@@ -665,12 +843,26 @@ fn tick(
                 film.paused = *op == Op::Pause;
                 advancing &= !film.paused;
                 if !film.ended && film.node != 0 {
-                    patch(
-                        ctx,
-                        &r.timeline,
-                        current(&film),
-                        json!({ "playing": !film.paused }),
-                    )?;
+                    let playing = json!({ "playing": !film.paused });
+                    patch(ctx, &r.timeline, current(&film), playing.clone())?;
+                    if let Some(p) = previous(&film) {
+                        patch(ctx, &r.timeline, p, playing)?;
+                    }
+                }
+            }
+            Op::Skip => {
+                if let Some(node) = prep.nodes.get(&film.node).filter(|_| !film.ended) {
+                    let t = shows(ctx, &film, advancing)?;
+                    let choosing =
+                        og_story_view(eng.id, conv).is_some_and(|v| !v.choices.is_empty());
+                    let to = if choosing && t + half < node.open {
+                        node.open
+                    } else {
+                        node.cut
+                    };
+                    patch(ctx, &r.timeline, current(&film), json!({ "time": to }))?;
+                    // A sought timeline shows the time written this tick.
+                    advancing = false;
                 }
             }
             Op::Stop => {
@@ -682,6 +874,20 @@ fn tick(
                 return Ok(None);
             }
         }
+    }
+
+    // The dissolve runs out: the deck it showed under lets go.
+    if film.dissolve_left > 0 && !film.paused {
+        film.dissolve_left -= 1;
+    }
+    if film.dissolve_left == 0
+        && let Some(p) = previous(&film)
+    {
+        free_deck(ctx, r, p)?;
+        film.previous = 0;
+    }
+    if film.qte.len() != QTE_CHOICES {
+        film.qte.resize(QTE_CHOICES, 0);
     }
 
     // Begins node `title`'s segment on a deck (a warm one if it holds it),
@@ -704,17 +910,40 @@ fn tick(
             return Ok(());
         };
         let cur = current(film);
+        let prev = previous(film);
         let target = if film.decks > 1 {
             decks
                 .iter()
                 .find(|(d, k)| *d != cur && k.node == id)
+                .or_else(|| decks.iter().find(|(d, _)| *d != cur && Some(*d) != prev))
                 .or_else(|| decks.iter().find(|(d, _)| *d != cur))
                 .map_or(cur, |(d, _)| *d)
         } else {
             cur
         };
+        // A dissolve still running ends at this cut.
+        if let Some(p) = prev {
+            if p != target {
+                free_deck(ctx, r, p)?;
+            }
+            film.previous = 0;
+            film.dissolve_left = 0;
+        }
         if target != cur && decks.iter().any(|(d, _)| *d == cur) {
-            free_deck(ctx, r, cur)?;
+            let ticks = if node.dissolve > 0.0 && film.node != 0 && dt > 0.0 {
+                (node.dissolve / dt).ceil() as u32
+            } else {
+                0
+            };
+            if ticks > 0 {
+                // It plays on under the new segment until the dissolve ends.
+                patch(ctx, &r.deck, cur, json!({ "node": 0 }))?;
+                film.previous = cur.to_bits();
+                film.dissolve = ticks;
+                film.dissolve_left = ticks;
+            } else {
+                free_deck(ctx, r, cur)?;
+            }
         }
         let warm = decks.iter().any(|(d, k)| *d == target && k.node == id);
         if warm {
@@ -733,6 +962,7 @@ fn tick(
         film.node = id;
         film.pending = -1;
         film.window = 0;
+        film.qte = vec![0; QTE_CHOICES];
         send(
             ctx,
             eng,
@@ -779,6 +1009,12 @@ fn tick(
             } else {
                 2
             };
+            if film.window == 1
+                && !film.paused
+                && let Some(v) = &view
+            {
+                qte_tick(eng, st, f, &mut film, node, v, dt);
+            }
             if !film.paused && t + half >= node.cut {
                 // The cut: the pending choice, else the default; then on to
                 // the next hold.
@@ -864,15 +1100,17 @@ fn tick(
         want.retain(|w| seen.insert(*w));
         want.truncate((film.decks - 1) as usize);
         let cur = current(&film);
+        let prev = previous(&film);
+        let spare = |d: &Entity| *d != cur && Some(*d) != prev;
         let wanted: BTreeSet<u32> = want.iter().copied().collect();
         for w in want {
-            if decks.iter().any(|(d, k)| *d != cur && k.node == w) {
+            if decks.iter().any(|(d, k)| spare(d) && k.node == w) {
                 continue;
             }
             // A deck holding nothing the node may lead to.
             let free = decks
                 .iter()
-                .position(|(d, k)| *d != cur && !wanted.contains(&k.node));
+                .position(|(d, k)| spare(d) && !wanted.contains(&k.node));
             let (Some(i), Some(n)) = (free, prep.nodes.get(&w)) else {
                 break;
             };
@@ -892,6 +1130,24 @@ fn tick(
     let node = prep.nodes.get(&film.node);
     let time = shows(ctx, &film, advancing)?;
     let texture = deck_state(ctx, r, current(&film))?.2;
+    let (hotspots, qtes) = match node {
+        Some(n) if film.window > 0 && !film.ended => {
+            let choices = og_story_view(eng.id, conv)
+                .map(|v| v.choices)
+                .unwrap_or_default();
+            offers(n, &film, &choices, time, dt)
+        }
+        _ => (Vec::new(), Vec::new()),
+    };
+    let previous_texture = match previous(&film) {
+        Some(p) => deck_state(ctx, r, p)?.2,
+        None => 0,
+    };
+    let mix = if film.dissolve_left > 0 && film.dissolve > 0 {
+        1.0 - film.dissolve_left as f32 / film.dissolve as f32
+    } else {
+        1.0
+    };
     Ok(Some(Shown {
         conversation: conv,
         node: node.map(|n| n.title.clone()).unwrap_or_default(),
@@ -916,7 +1172,119 @@ fn tick(
             String::new()
         },
         ended: film.ended,
+        hotspots,
+        qtes,
+        previous: previous_texture,
+        mix,
     }))
+}
+
+/// The deck dissolving out under the current one, if any.
+fn previous(film: &record::Film) -> Option<Entity> {
+    (film.previous != 0).then(|| Entity::from_bits(film.previous))
+}
+
+/// Ticks of input a quick-time event needs.
+fn qte_need(q: &Qte, dt: f32) -> u32 {
+    match q.kind {
+        QteKind::Press => 1,
+        QteKind::Hold(ms) if dt > 0.0 => ((ms / 1000.0) / dt).ceil().max(1.0) as u32,
+        QteKind::Hold(_) => 1,
+        QteKind::Mash(n) => n,
+    }
+}
+
+/// Counts this tick's input toward the open window's quick-time events: a
+/// press, a hold (let go: from 0 again) or presses. One that is reached
+/// becomes the pending choice, replacing what was chosen before.
+fn qte_tick(
+    eng: &Engine,
+    st: &ModuleState,
+    f: Entity,
+    film: &mut record::Film,
+    node: &Node,
+    view: &crate::host::wire::DialogueView,
+    dt: f32,
+) {
+    let actions = eng.state.borrow().actions.clone();
+    for c in view.choices.iter().filter(|c| c.enabled) {
+        let i = c.index as usize;
+        let Some(Some(q)) = node.qte.get(i) else {
+            continue;
+        };
+        let need = qte_need(q, dt);
+        if film.qte[i] >= need {
+            continue;
+        }
+        let state = actions
+            .as_ref()
+            .and_then(|a| a.lock().unwrap_or_else(|e| e.into_inner()).state(&q.action));
+        let Some(s) = state else {
+            warn(
+                eng,
+                st,
+                format!(
+                    "film {}: node '{}': choice {i} is #qte:{}:{}, an action og.input.defineAction has not defined",
+                    f.to_bits(),
+                    node.title,
+                    q.kind.name(),
+                    q.action
+                ),
+            );
+            continue;
+        };
+        film.qte[i] = match q.kind {
+            QteKind::Press => u32::from(s.pressed),
+            QteKind::Hold(_) if s.down => film.qte[i] + 1,
+            QteKind::Hold(_) => 0,
+            QteKind::Mash(_) => film.qte[i] + u32::from(s.pressed),
+        };
+        if film.qte[i] >= need {
+            film.pending = c.index as i32;
+        }
+    }
+}
+
+/// The hotspots and quick-time events a node's window offers now: those of
+/// its enabled choices, the hotspots only while it is open.
+fn offers(
+    node: &Node,
+    film: &record::Film,
+    choices: &[ChoiceView],
+    t: f32,
+    dt: f32,
+) -> (Vec<FilmHotspot>, Vec<QteView>) {
+    let mut hotspots = Vec::new();
+    let mut qtes = Vec::new();
+    let here = og_timeline::eval::hotspots_at(&node.hotspots, t);
+    for c in choices.iter().filter(|c| c.enabled) {
+        if film.window == 1
+            && let Some(id) = c.tags.get("hotspot").and_then(Value::as_str)
+            && let Some(h) = here.iter().find(|h| h.id == id)
+        {
+            let [x, y, width, height] = h.rect;
+            hotspots.push(FilmHotspot {
+                choice: c.index,
+                id: id.to_string(),
+                x,
+                y,
+                width,
+                height,
+            });
+        }
+        if let Some(Some(q)) = node.qte.get(c.index as usize) {
+            let need = qte_need(q, dt);
+            let have = film.qte.get(c.index as usize).copied().unwrap_or(0);
+            qtes.push(QteView {
+                choice: c.index,
+                kind: q.kind.name().into(),
+                action: q.action.clone(),
+                progress: (have as f32 / need as f32).min(1.0),
+                done: have >= need,
+            });
+        }
+    }
+    (hotspots, qtes)
 }
 
 fn film_json(f: &record::Film) -> Value {
@@ -930,6 +1298,10 @@ fn film_json(f: &record::Film) -> Value {
         "paused": f.paused,
         "chapter": f.chapter,
         "ended": f.ended,
+        "previous": f.previous as f64,
+        "dissolve": f.dissolve,
+        "dissolveLeft": f.dissolve_left,
+        "qte": f.qte,
     })
 }
 
@@ -966,15 +1338,15 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine_id: u32) {
     let _ = probe.register_command(
         "film",
         og_probe::CommandDesc {
-            usage: "film:choose:<index> | film:play | film:pause".into(),
-            doc: "take a choice in every film's open window (ChoiceView.index), or play or pause every film; it takes effect at this tick's og.film".into(),
+            usage: "film:choose:<index> | film:play | film:pause | film:skip".into(),
+            doc: "take a choice in every film's open window (ChoiceView.index), play or pause every film, or skip ahead in every film's segment (og.film.skip); it takes effect at this tick's og.film".into(),
         },
         move |_world, args| command(engine_id, args),
     );
 }
 
 fn command(engine_id: u32, args: &[String]) -> Result<(), String> {
-    const USAGE: &str = "write film:choose:<index>, film:play or film:pause";
+    const USAGE: &str = "write film:choose:<index>, film:play, film:pause or film:skip";
     let st = state(engine_id)?;
     let films: Vec<u64> = lock(&st).views.keys().copied().collect();
     if films.is_empty() {
@@ -988,6 +1360,7 @@ fn command(engine_id: u32, args: &[String]) -> Result<(), String> {
         ),
         Some("play") => Op::Play,
         Some("pause") => Op::Pause,
+        Some("skip") => Op::Skip,
         _ => return Err(USAGE.into()),
     };
     for f in films {

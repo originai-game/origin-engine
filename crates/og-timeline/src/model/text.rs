@@ -186,6 +186,7 @@ fn track_end(t: &Track) -> f32 {
         Track::Vfx(c) => max(&mut c.iter().map(|k| k.time)),
         Track::Shot(c) => max(&mut c.iter().map(|k| k.time)),
         Track::Video(c) => max(&mut c.keys.iter().map(|k| k.time)),
+        Track::Hotspot(c) => max(&mut c.iter().map(|k| k.time)),
     }
 }
 
@@ -461,6 +462,22 @@ fn write_track(tr: &Track) -> Entry {
                 kb.push(Entry::new("video").with(Value::String(k.video.clone())));
                 kb.push(Entry::new("from").with(num(k.from)));
                 kb.push(Entry::new("speed").with(num(k.speed)));
+                b.push(key_entry(k.time, kb));
+            }
+        }
+        Track::Hotspot(ks) => {
+            for k in ks {
+                let mut kb = Block::new();
+                kb.push(Entry::new("id").with(Value::String(k.id.clone())));
+                if k.off {
+                    kb.push(Entry::new("off").with(boolean(true)));
+                } else {
+                    let mut e = Entry::new("rect");
+                    for v in k.rect {
+                        e = e.with(num(v));
+                    }
+                    kb.push(e);
+                }
                 b.push(key_entry(k.time, kb));
             }
         }

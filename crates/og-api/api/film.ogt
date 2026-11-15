@@ -52,6 +52,18 @@ module film {
     field ended bool "The last segment played to its cut and the conversation ended." {
       readonly true
     }
+    field previous Entity "The deck dissolving out (`og-film-dissolve`), playing on under the current one; 0: none." {
+      readonly true
+    }
+    field dissolve u32 "The dissolve's length, ticks." {
+      readonly true
+    }
+    field dissolveLeft u32 "Ticks left of the dissolve; 0: none." {
+      readonly true
+    }
+    field qte List.u32.8 "Per choice (ChoiceView.index, the first 8): a quick-time event's progress this window, ticks held or presses." {
+      readonly true
+    }
   }
 
   component FilmDeck {
@@ -73,6 +85,35 @@ module film {
     field locked bool "Past film.lock: choosing is over; the cut takes pending, else the default."
   }
 
+  struct FilmHotspot {
+    doc "A place on the picture that takes a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment), while the window is open."
+    field choice u32 "The ChoiceView.index it takes."
+    field id String "The hotspot's id."
+    field x f32 "Its left edge, a fraction of the video frame from its left." {
+      unit ratio
+    }
+    field y f32 "Its top edge, from the frame's top." {
+      unit ratio
+    }
+    field width f32 "Its width, a fraction of the frame's." {
+      unit ratio
+    }
+    field height f32 "Its height." {
+      unit ratio
+    }
+  }
+
+  struct QteView {
+    doc "A choice taken by a quick-time event (`#qte:press:<action>`, `#qte:hold:<action>:<ms>`, `#qte:mash:<action>:<presses>`): the og.input action's presses or hold while the window is open."
+    field choice u32 "The ChoiceView.index it takes."
+    field kind String "press, hold or mash."
+    field action String "The og.input action it reads."
+    field progress f32 "0 to 1: the hold's time or the presses so far." {
+      unit ratio
+    }
+    field done bool "Reached: the choice is pending."
+  }
+
   struct FilmView {
     doc "What a film shows now."
     field film Entity "The film."
@@ -87,10 +128,43 @@ module film {
     }
     field choices List.ChoiceView "The node's choices while its window is open or locked (og.story's)."
     field window Option.WindowView "The window, while it is open or locked."
+    field hotspots List.FilmHotspot "The hotspots that take a choice now: while the window is open, those of its enabled choices."
+    field qtes List.QteView "The quick-time events of its enabled choices while the window is open or locked."
+    field previous Texture "The picture dissolving out (`og-film-dissolve`); 0: none. Draw it under `texture`, which shows at `mix`."
+    field mix f32 "How far the dissolve is: `texture`'s opacity over `previous`, 1 without one." {
+      unit ratio
+    }
     field paused bool "Held by og.film.pause."
     field chapter String "The last chapter entered."
     field ending String "The ending reached, once ended."
     field ended bool "It played to its end."
+  }
+
+  struct FilmChartNode {
+    doc "A film node on og.film.chart's layout."
+    field node String "Its title."
+    field segment String "Its segment's asset id."
+    field chapter String "Its `og-film-chapter`, if any."
+    field ending String "Its `og-film-ending`, if any."
+    field depth u32 "Its column: the fewest film nodes from the start before it (unreached nodes after the deepest)."
+    field x f32 "Its centre across, graph units (NodeGraph's)."
+    field y f32 "Its centre down."
+  }
+
+  struct FilmChartLink {
+    doc "Where a film node may lead, through logic nodes."
+    field from String "The node."
+    field to String "The film node it may lead to."
+    field choice i32 "The ChoiceView.index that leads there; -1 for a node without choices."
+    field d String "A curve from one to the other in SVG path data, graph units (NodeGraph's link `d`)."
+  }
+
+  struct FilmChart {
+    doc "A dialogue's film nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen."
+    field nodes List.FilmChartNode "Its film nodes, in file order."
+    field links List.FilmChartLink "Where each leads."
+    field width f32 "Its extent across, graph units (NodeGraph's view is `0 0 width height`)."
+    field height f32 "Its extent down."
   }
 
   event FilmSegment {
@@ -163,6 +237,20 @@ module film {
     param world World "The world."
     param film Entity "The film."
     returns Result.Void "Refused for an entity that is no film."
+  }
+
+  fn skip {
+    doc "Skip ahead in the segment playing: to its window's open (film.open) when that is ahead, else to its cut, which takes the pending choice, else the default. For a segment the player has seen; what was seen is the game's (guide film §5). Systems may call it."
+    param world World "The world."
+    param film Entity "The film."
+    returns Result.Void "Refused for an entity that is no film, or one that has ended."
+  }
+
+  fn chart {
+    doc "A prepared dialogue's film nodes and where each may lead, laid out for a flowchart."
+    param world World "The world."
+    param dialogue String "The dialogue (StoryAsset.name), prepared by og.film.load."
+    returns Result.FilmChart "Refused for a dialogue og.film.load has not prepared."
   }
 
   fn stop {

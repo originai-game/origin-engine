@@ -1328,6 +1328,10 @@ export interface HostAbi<A, V> {
   og_film_play(world: number, film: number): string;
   /** `og.film.pause` */
   og_film_pause(world: number, film: number): string;
+  /** `og.film.skip` */
+  og_film_skip(world: number, film: number): string;
+  /** `og.film.chart` */
+  og_film_chart(world: number, dialogue: string): string;
   /** `og.film.stop` */
   og_film_stop(world: number, film: number): string;
 }
@@ -1963,6 +1967,8 @@ export const SYMBOLS: readonly string[] = [
   "og_film_choose",
   "og_film_play",
   "og_film_pause",
+  "og_film_skip",
+  "og_film_chart",
   "og_film_stop",
   "og_host_set_dispatcher",
   "og_host_shared",
@@ -2263,6 +2269,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_film_pause(world: number, film: number) {
       if (typeof film !== "number") notEntity("og.film.pause", "film", film);
       return abi.og_film_pause(world, film);
+    },
+    og_film_skip(world: number, film: number) {
+      if (typeof film !== "number") notEntity("og.film.skip", "film", film);
+      return abi.og_film_skip(world, film);
     },
     og_film_stop(world: number, film: number) {
       if (typeof film !== "number") notEntity("og.film.stop", "film", film);

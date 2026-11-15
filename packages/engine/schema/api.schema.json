@@ -16657,7 +16657,12 @@
         "Film",
         "FilmDeck",
         "WindowView",
+        "FilmHotspot",
+        "QteView",
         "FilmView",
+        "FilmChartNode",
+        "FilmChartLink",
+        "FilmChart",
         "FilmSegment",
         "FilmChoice",
         "FilmChapter",
@@ -16795,6 +16800,48 @@
           ],
           "returns": "Result<Void>",
           "returnsDoc": "Refused for an entity that is no film.",
+          "publish": true
+        },
+        {
+          "name": "skip",
+          "doc": "Skip ahead in the segment playing: to its window's open (film.open) when that is ahead, else to its cut, which takes the pending choice, else the default. For a segment the player has seen; what was seen is the game's (guide film §5). Systems may call it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "film",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The film."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity that is no film, or one that has ended.",
+          "publish": true
+        },
+        {
+          "name": "chart",
+          "doc": "A prepared dialogue's film nodes and where each may lead, laid out for a flowchart.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "dialogue",
+              "type": "String",
+              "optional": false,
+              "doc": "The dialogue (StoryAsset.name), prepared by og.film.load."
+            }
+          ],
+          "returns": "Result<FilmChart>",
+          "returnsDoc": "Refused for a dialogue og.film.load has not prepared.",
           "publish": true
         },
         {
@@ -54564,7 +54611,7 @@
       "properties": {
         "kind": {
           "type": "string",
-          "description": "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx or video."
+          "description": "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx, video or hotspot."
         },
         "target": {
           "type": "string",
@@ -57607,6 +57654,40 @@
           "description": "The last segment played to its cut and the conversation ended.",
           "default": false,
           "readOnly": true
+        },
+        "previous": {
+          "$ref": "#/$defs/Entity",
+          "description": "The deck dissolving out (`og-film-dissolve`), playing on under the current one; 0: none.",
+          "default": 0,
+          "readOnly": true
+        },
+        "dissolve": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The dissolve's length, ticks.",
+          "default": 0,
+          "readOnly": true
+        },
+        "dissolveLeft": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks left of the dissolve; 0: none.",
+          "default": 0,
+          "readOnly": true
+        },
+        "qte": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "maxItems": 8,
+          "description": "Per choice (ChoiceView.index, the first 8): a quick-time event's progress this window, ticks held or presses.",
+          "default": [],
+          "readOnly": true
         }
       },
       "additionalProperties": false
@@ -57685,6 +57766,92 @@
       ],
       "additionalProperties": false
     },
+    "FilmHotspot": {
+      "x-og-kind": "struct",
+      "x-og-module": "film",
+      "description": "A place on the picture that takes a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment), while the window is open.",
+      "type": "object",
+      "properties": {
+        "choice": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The ChoiceView.index it takes."
+        },
+        "id": {
+          "type": "string",
+          "description": "The hotspot's id."
+        },
+        "x": {
+          "type": "number",
+          "description": "Its left edge, a fraction of the video frame from its left.",
+          "x-og-unit": "ratio"
+        },
+        "y": {
+          "type": "number",
+          "description": "Its top edge, from the frame's top.",
+          "x-og-unit": "ratio"
+        },
+        "width": {
+          "type": "number",
+          "description": "Its width, a fraction of the frame's.",
+          "x-og-unit": "ratio"
+        },
+        "height": {
+          "type": "number",
+          "description": "Its height.",
+          "x-og-unit": "ratio"
+        }
+      },
+      "required": [
+        "choice",
+        "id",
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "QteView": {
+      "x-og-kind": "struct",
+      "x-og-module": "film",
+      "description": "A choice taken by a quick-time event (`#qte:press:<action>`, `#qte:hold:<action>:<ms>`, `#qte:mash:<action>:<presses>`): the og.input action's presses or hold while the window is open.",
+      "type": "object",
+      "properties": {
+        "choice": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The ChoiceView.index it takes."
+        },
+        "kind": {
+          "type": "string",
+          "description": "press, hold or mash."
+        },
+        "action": {
+          "type": "string",
+          "description": "The og.input action it reads."
+        },
+        "progress": {
+          "type": "number",
+          "description": "0 to 1: the hold's time or the presses so far.",
+          "x-og-unit": "ratio"
+        },
+        "done": {
+          "type": "boolean",
+          "description": "Reached: the choice is pending."
+        }
+      },
+      "required": [
+        "choice",
+        "kind",
+        "action",
+        "progress",
+        "done"
+      ],
+      "additionalProperties": false
+    },
     "FilmView": {
       "x-og-kind": "struct",
       "x-og-module": "film",
@@ -57735,6 +57902,29 @@
           ],
           "description": "The window, while it is open or locked."
         },
+        "hotspots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FilmHotspot"
+          },
+          "description": "The hotspots that take a choice now: while the window is open, those of its enabled choices."
+        },
+        "qtes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QteView"
+          },
+          "description": "The quick-time events of its enabled choices while the window is open or locked."
+        },
+        "previous": {
+          "$ref": "#/$defs/Texture",
+          "description": "The picture dissolving out (`og-film-dissolve`); 0: none. Draw it under `texture`, which shows at `mix`."
+        },
+        "mix": {
+          "type": "number",
+          "description": "How far the dissolve is: `texture`'s opacity over `previous`, 1 without one.",
+          "x-og-unit": "ratio"
+        },
         "paused": {
           "type": "boolean",
           "description": "Held by og.film.pause."
@@ -57761,10 +57951,132 @@
         "cut",
         "choices",
         "window",
+        "hotspots",
+        "qtes",
+        "previous",
+        "mix",
         "paused",
         "chapter",
         "ending",
         "ended"
+      ],
+      "additionalProperties": false
+    },
+    "FilmChartNode": {
+      "x-og-kind": "struct",
+      "x-og-module": "film",
+      "description": "A film node on og.film.chart's layout.",
+      "type": "object",
+      "properties": {
+        "node": {
+          "type": "string",
+          "description": "Its title."
+        },
+        "segment": {
+          "type": "string",
+          "description": "Its segment's asset id."
+        },
+        "chapter": {
+          "type": "string",
+          "description": "Its `og-film-chapter`, if any."
+        },
+        "ending": {
+          "type": "string",
+          "description": "Its `og-film-ending`, if any."
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its column: the fewest film nodes from the start before it (unreached nodes after the deepest)."
+        },
+        "x": {
+          "type": "number",
+          "description": "Its centre across, graph units (NodeGraph's)."
+        },
+        "y": {
+          "type": "number",
+          "description": "Its centre down."
+        }
+      },
+      "required": [
+        "node",
+        "segment",
+        "chapter",
+        "ending",
+        "depth",
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "FilmChartLink": {
+      "x-og-kind": "struct",
+      "x-og-module": "film",
+      "description": "Where a film node may lead, through logic nodes.",
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The node."
+        },
+        "to": {
+          "type": "string",
+          "description": "The film node it may lead to."
+        },
+        "choice": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The ChoiceView.index that leads there; -1 for a node without choices."
+        },
+        "d": {
+          "type": "string",
+          "description": "A curve from one to the other in SVG path data, graph units (NodeGraph's link `d`)."
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "choice",
+        "d"
+      ],
+      "additionalProperties": false
+    },
+    "FilmChart": {
+      "x-og-kind": "struct",
+      "x-og-module": "film",
+      "description": "A dialogue's film nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen.",
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FilmChartNode"
+          },
+          "description": "Its film nodes, in file order."
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FilmChartLink"
+          },
+          "description": "Where each leads."
+        },
+        "width": {
+          "type": "number",
+          "description": "Its extent across, graph units (NodeGraph's view is `0 0 width height`)."
+        },
+        "height": {
+          "type": "number",
+          "description": "Its extent down."
+        }
+      },
+      "required": [
+        "nodes",
+        "links",
+        "width",
+        "height"
       ],
       "additionalProperties": false
     },

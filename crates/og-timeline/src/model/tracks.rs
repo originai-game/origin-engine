@@ -54,6 +54,7 @@ pub(super) fn track(e: &Entry, read: &mut Read<'_>) -> Result<Track, String> {
         "shot" => Track::Shot(shots(block)?),
         "vfx" => Track::Vfx(effects(block)?),
         "video" => Track::Video(video(block, target)?),
+        "hotspot" => Track::Hotspot(hotspots(block)?),
         k => match FieldsKind::from_name(k) {
             Some(kind) => Track::Fields(fields(block, kind, target)?),
             None => {
@@ -866,6 +867,58 @@ fn video(block: &Block, entity: String) -> Result<VideoTrack, String> {
         entity,
         keys: sorted(out, |k| k.time),
     })
+}
+
+fn hotspots(block: &Block) -> Result<Vec<HotspotKey>, String> {
+    let mut out = Vec::new();
+    for e in only_keys(block, "hotspot")? {
+        let mut k = HotspotKey {
+            time: key_time(e)?,
+            id: String::new(),
+            rect: [0.0; 4],
+            off: false,
+        };
+        let mut rect = false;
+        for f in key_block(e)? {
+            no_block(f)?;
+            match f.key.as_str() {
+                "id" => k.id = string(f)?,
+                "rect" => {
+                    if f.values.len() != 4 {
+                        return Err(at(
+                            f,
+                            "rect takes four numbers: x y width height, fractions of the video frame from its top left",
+                        ));
+                    }
+                    for (i, v) in k.rect.iter_mut().enumerate() {
+                        *v = number(f, i)?;
+                    }
+                    let [x, y, w, h] = k.rect;
+                    if !(w > 0.0 && h > 0.0 && x >= 0.0 && y >= 0.0 && x + w <= 1.0 && y + h <= 1.0)
+                    {
+                        return Err(at(
+                            f,
+                            "a rect lies inside the frame: x, y ≥ 0, width and height > 0, x + width and y + height ≤ 1",
+                        ));
+                    }
+                    rect = true;
+                }
+                "off" => k.off = flag(f)?,
+                _ => return Err(unknown(f, "hotspot key entry", "id, rect or off")),
+            }
+        }
+        if k.id.is_empty() || k.id.len() > 63 {
+            return Err(at(e, "a hotspot key has an `id \"...\"` of 1 to 63 bytes"));
+        }
+        if rect == k.off {
+            return Err(at(
+                e,
+                "a hotspot key has a `rect x y width height`, or `off true` to end the hotspot",
+            ));
+        }
+        out.push(k);
+    }
+    Ok(sorted(out, |k| k.time))
 }
 
 fn shots(block: &Block) -> Result<Vec<ShotKey>, String> {

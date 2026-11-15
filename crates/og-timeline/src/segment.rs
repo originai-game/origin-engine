@@ -2,9 +2,9 @@
 //! entity (it plays on the deck's own og.VideoPlayer), and the markers
 //! `film.open`, `film.lock` and `film.cut` that time its choice window.
 //! og-cook checks a dialogue's segments with it and og-runtime plays them
-//! by it, so the two never disagree.
+//! by it, so the two never disagree; so are a choice's `#qte` tags.
 
-use crate::{Timeline, Track};
+use crate::{HotspotKey, Timeline, Track};
 
 /// The marker that shows a film node's choices.
 pub const OPEN: &str = "film.open";
@@ -24,6 +24,77 @@ pub struct Segment {
     pub open: f32,
     pub lock: f32,
     pub cut: f32,
+    /// Every hotspot track's keys, by time (`eval::hotspots_at`).
+    pub hotspots: Vec<HotspotKey>,
+}
+
+/// A quick-time event: a choice taken by an action's input in the window
+/// (`#qte:press:<action>`, `#qte:hold:<action>:<ms>`,
+/// `#qte:mash:<action>:<presses>`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Qte {
+    pub kind: QteKind,
+    /// The og.input action it reads.
+    pub action: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum QteKind {
+    /// One press.
+    Press,
+    /// Held down this long without letting go, ms.
+    Hold(f32),
+    /// Pressed this many times.
+    Mash(u32),
+}
+
+impl QteKind {
+    pub fn name(self) -> &'static str {
+        match self {
+            QteKind::Press => "press",
+            QteKind::Hold(_) => "hold",
+            QteKind::Mash(_) => "mash",
+        }
+    }
+}
+
+/// The most choices of a node a quick-time event may take (og.Film.qte
+/// keeps their progress).
+pub const QTE_CHOICES: usize = 8;
+
+/// A node's `og-film-dissolve` header: the seconds its segment dissolves
+/// in over the one before, more than 0 and at most 5.
+pub fn dissolve(header: &str) -> Result<f32, String> {
+    match header.trim().parse::<f32>() {
+        Ok(s) if s > 0.0 && s <= 5.0 => Ok(s),
+        _ => Err(format!(
+            "og-film-dissolve: {header} is not a dissolve's seconds, more than 0 and at most 5 (`og-film-dissolve: 0.5`)"
+        )),
+    }
+}
+
+impl Qte {
+    /// A `#qte` tag's value (what follows `qte:`).
+    pub fn parse(tag: &str) -> Result<Qte, String> {
+        const FORMS: &str =
+            "#qte:press:<action>, #qte:hold:<action>:<ms> or #qte:mash:<action>:<presses>";
+        let parts: Vec<&str> = tag.split(':').collect();
+        let action = parts
+            .get(1)
+            .filter(|a| !a.is_empty())
+            .map(|a| a.to_string());
+        let amount = parts.get(2).and_then(|n| n.parse::<f32>().ok());
+        let kind = match (parts.first().copied(), parts.len(), amount) {
+            (Some("press"), 2, _) => QteKind::Press,
+            (Some("hold"), 3, Some(ms)) if ms > 0.0 && ms.is_finite() => QteKind::Hold(ms),
+            (Some("mash"), 3, Some(n)) if n >= 1.0 && n.fract() == 0.0 && n <= 1000.0 => {
+                QteKind::Mash(n as u32)
+            }
+            _ => return Err(format!("#qte:{tag} is not one of {FORMS}")),
+        };
+        let action = action.ok_or_else(|| format!("#qte:{tag} names no action: {FORMS}"))?;
+        Ok(Qte { kind, action })
+    }
 }
 
 impl Timeline {
@@ -58,11 +129,22 @@ impl Timeline {
                 "its markers are out of order: {OPEN} {open} s, {LOCK} {lock} s, cut {cut} s (open ≤ lock ≤ cut)"
             ));
         }
+        let mut hotspots: Vec<HotspotKey> = self
+            .tracks
+            .iter()
+            .filter_map(|t| match t {
+                Track::Hotspot(keys) => Some(keys.iter().cloned()),
+                _ => None,
+            })
+            .flatten()
+            .collect();
+        og_core::sort::sort_by(&mut hotspots, |a, b| a.time.total_cmp(&b.time));
         Ok(Segment {
             video: own[0].keys.first().map(|k| (k.video.clone(), k.from)),
             open,
             lock,
             cut,
+            hotspots,
         })
     }
 }
@@ -112,5 +194,29 @@ mod tests {
                 .unwrap_err()
                 .contains("2 video tracks")
         );
+    }
+
+    #[test]
+    fn qte_tags_read_their_kind_action_and_amount_and_refuse_the_rest() {
+        let q = |t: &str| Qte::parse(t).map(|q| (q.kind, q.action));
+        assert_eq!(q("press:jump"), Ok((QteKind::Press, "jump".into())));
+        assert_eq!(
+            q("hold:grip:800"),
+            Ok((QteKind::Hold(800.0), "grip".into()))
+        );
+        assert_eq!(q("mash:hit:12"), Ok((QteKind::Mash(12), "hit".into())));
+        for bad in [
+            "",
+            "press",
+            "press:",
+            "hold:grip",
+            "hold:grip:0",
+            "mash:hit:2.5",
+            "mash:hit:0",
+            "tap:x",
+            "press:jump:3",
+        ] {
+            assert!(Qte::parse(bad).is_err(), "{bad}");
+        }
     }
 }

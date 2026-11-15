@@ -445,6 +445,7 @@ loads it. An og.Timeline component plays it on its entity.
 | `shot` | `camera "<entity>"` (a virtual camera's name) or `none`; `blend` seconds and `ease`: from its key until the next, that og.VirtualCamera is og.CameraBrain.solo, blended over the key's blend by its ease or by the camera's own; `none` and the timeline's end hand back the solo it found |
 | `vfx` | `effect "<vfx>"` (a composed effect, `type vfx`), `at "<entity>"` (played as its child; none: in the world), `position` (offset), `scale`, `seed`: from its key the effect plays its length (a looping one until the timeline stops) at the world's tick; a seek into it joins it there without the events, shakes and sounds already passed; a seek out of it, a stop and the end take it |
 | `video ["<entity>"]` | `video` (a `type video` asset), `from` (seconds into it, 0) and `speed` (0 to 4, 1): from its key until the next, the og.VideoPlayer of the entity (without a name: the og.Timeline's own) plays that video at `from + (t − key) · speed`, paused while the timeline is; loading the timeline loads its videos |
+| `hotspot` | `id` (1 to 63 bytes) and `rect x y width height` (fractions of the video frame from its top left), or `off true`: from its key the hotspot covers the rect, moving linearly to the same id's next key and held after its last until a key `off`. Nothing draws it: og.film offers a choice tagged `#hotspot:<id>` there (`film §3`) |
 
 - The cook checks every field against the engine's records (a field the
   record lacks, one a timeline cannot drive, a value of the wrong shape),

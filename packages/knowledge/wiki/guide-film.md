@@ -42,6 +42,8 @@ og-film-chapter: chapter.kitchen
 -> Take the knife #line:kitchen.knife #hotspot:knife
     <<set $brave = true>>
     <<jump hall>>
+-> Dodge #line:kitchen.dodge #qte:hold:dodge:400
+    <<jump hall>>
 -> Open the door #line:kitchen.door #default
     <<jump door>>
 ===
@@ -52,7 +54,10 @@ og-film-chapter: chapter.kitchen
 | `og-film: <timeline>` | The segment this node plays. A node without it is a logic node: it runs through at once (branch on variables there) |
 | `og-film-chapter: <key>` | Entering it sends og.FilmChapter: a chapter to list and to save at |
 | `og-film-ending: <id>` | Its segment's cut with the conversation over sends og.FilmEnded with this id |
+| `og-film-dissolve: <seconds>` | Its segment dissolves in over the one before (0 to 5 s), which plays on under it; without it the cut is hard |
 | `#default` on a choice | Taken when the window locks with nothing chosen. Put it on exactly one choice of each film node with choices; without one the first enabled choice is taken |
+| `#hotspot:<id>` on a choice | Also taken by clicking the hotspot `id` on the picture (a `track hotspot` key of its segment). FilmView.hotspots gives it while the window is open |
+| `#qte:press:<action>`, `#qte:hold:<action>:<ms>`, `#qte:mash:<action>:<presses>` on a choice | Taken by an og.input action in the window: one press, held that long, or pressed that many times. Only the node's first 8 choices may be a QTE; FilmView.qtes gives their progress |
 
 A film node holds no Yarn lines: what is said is the segment's caption
 track, so there is one source of subtitles. Choice text is the Yarn
@@ -82,6 +87,16 @@ track marker {
     name "film.lock"
   }
 }
+track hotspot {
+  key 12 {
+    id "knife"
+    rect 0.61 0.42 0.12 0.2
+  }
+  key 16 {
+    id "knife"
+    rect 0.58 0.45 0.12 0.2
+  }
+}
 ```
 
 - The video track names no entity: it plays on the og.Timeline's own
@@ -93,6 +108,10 @@ track marker {
 - A node without choices plays to its cut and goes on.
 - `from` lets several segments share one long file, which the one-decoder
   mode needs (§6).
+- A `hotspot` key gives `id` and `rect x y width height` (fractions of the
+  video frame from its top left), or `off true` to end it; it moves linearly
+  to the same id's next key. A choice tagged `#hotspot:<id>` is taken by
+  clicking it. The id must match a `#hotspot` tag the cook checks.
 
 Thresholds that read well:
 
@@ -116,10 +135,24 @@ The built-in `film-choices` screen draws the window
 (`og.load.document(world, "@ui/screens/film-choices.svelte")`, then
 `og.ui.push(world, "film-choices")`). Write its stores from the view each
 tick: `open` (the window is set), `choices` (each ChoiceView as
-`{ id: String(index), text, enabled, chosen: index === window.pending }`),
-`left` (`ticksLeft / ticksTotal`) and `locked`. Its `choose` action reports
-the row's key, the index to pass to `og.film.choose`. Put the subtitles
-screen under it for the segment's captions.
+`{ id: String(index), text, enabled, chosen: index === window.pending,
+progress: qteOf(index) }`, where `progress` is the choice's QteView.progress
+or -1 for a choice without one), `hotspots` (each FilmView.hotspots entry as
+`{ id: String(choice), x, y, width, height, label }`), `left`
+(`ticksLeft / ticksTotal`) and `locked`. Its `choose` action reports a
+choice row's key and `pick` a hotspot's, the index to pass to
+`og.film.choose`. Put the subtitles screen under it for the segment's
+captions.
+
+The screen's hotspot layer fills the surface, so a hotspot's `rect`
+(fractions of the picture) lands on the picture only when the game draws
+`texture` to fill the same surface (the usual FMV presentation). A game that
+letterboxes the video places its own hotspots over where it drew it.
+
+A choice is also taken by its QTE (`#qte` on it) or its hotspot (`#hotspot`):
+read `og.film.view` each tick, feed the stores, and og.film records the QTE
+itself from the actions the tags name. `og.film.skip` jumps a seen segment
+to its window, then to its cut.
 
 On the web, audio starts only after a gesture: start the film paused
 behind a title screen and call `og.film.play` from its Start button.
@@ -131,6 +164,13 @@ A film is world state: a snapshot taken mid-segment restores to the same
 frame, window and pending choice. On og.FilmChapter, take a snapshot into
 a save slot with the chapter's name and the segment's poster
 (VideoInfo.poster) as its thumbnail.
+
+The built-in `film-chapters` screen lists og.film.load's `chapters`, each
+`{ id, title, thumb, locked }` from a chapter's save; `select` plays from
+it. `film-gallery` lists its `endings`, locked until reached. `film-flowchart`
+draws `og.film.chart` (a dialogue's film nodes by depth, through logic nodes)
+as the built-in NodeGraph: pass its `nodes` and `links` as NodeGraph's,
+marking `done` the segments the player has seen, `current` the one playing.
 
 What lasts across playthroughs (segments seen, endings reached) is the
 game's, kept outside the world. Count it from og.FilmSegment and

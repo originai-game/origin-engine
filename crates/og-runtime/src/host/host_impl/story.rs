@@ -113,6 +113,12 @@ macro_rules! __og_host_bindings_story {
             fn og_film_pause(&self, world: u32, film: f64) -> String {
                 $crate::host_impl::answer($crate::og_film_pause(world, film))
             }
+            fn og_film_skip(&self, world: u32, film: f64) -> String {
+                $crate::host_impl::answer($crate::og_film_skip(world, film))
+            }
+            fn og_film_chart(&self, world: u32, dialogue: String) -> String {
+                $crate::host_impl::answer($crate::og_film_chart(world, dialogue))
+            }
             fn og_film_stop(&self, world: u32, film: f64) -> String {
                 $crate::host_impl::answer($crate::og_film_stop(world, film))
             }

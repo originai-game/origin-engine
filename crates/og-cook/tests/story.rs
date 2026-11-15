@@ -165,19 +165,22 @@ fn registered_yarn_functions_typecheck_extract_and_recook_when_the_body_changes(
 
 /// og.film's dialogues: a film node's segment is a timeline with one video
 /// track of its own and its markers in order, at most one choice is
-/// `#default`, a film node says no Yarn lines, and only film nodes offer
-/// choices. Each is an error of the dialogue; a film that keeps them cooks.
+/// `#default`, a film node says no Yarn lines, only film nodes offer
+/// choices, a `#hotspot` names a hotspot of its segment, a `#qte` is one of
+/// its forms and an `og-film-dissolve` is 0 to 5 s. Each is an error of the
+/// dialogue; a film that keeps them cooks.
 #[test]
 fn a_film_dialogue_is_refused_for_each_segment_default_line_and_choice_it_gets_wrong() {
     let segment = |tracks: &str| format!("type timeline\nversion 1\n---\nduration 4\n{tracks}");
     let video = "track video {\n  key 0 {\n    video \"clips/a.ogt\"\n  }\n}\n";
+    let spot = "track hotspot {\n  key 1 {\n    id \"knife\"\n    rect 0.1 0.1 0.2 0.2\n  }\n}\n";
     let late = "track marker {\n  key 3 {\n    name \"film.open\"\n  }\n  key 2 {\n    name \"film.lock\"\n  }\n}\n";
     let head = "#og-profile:yarn-spinner-3.2.2\n#og-name:";
     let good = format!(
-        "{head}good\ntitle: a\nog-film: segments/ok.ogt\n---\n-> Go #line:good.go #default\n    <<jump b>>\n-> Stay #line:good.stay\n    <<jump b>>\n===\ntitle: b\nog-film: segments/ok.ogt\n---\n===\n"
+        "{head}good\ntitle: a\nog-film: segments/spot.ogt\n---\n-> Go #line:good.go #default\n    <<jump b>>\n-> Stay #line:good.stay #hotspot:knife\n    <<jump b>>\n-> Run #line:good.run #qte:hold:run:500\n    <<jump b>>\n===\ntitle: b\nog-film: segments/ok.ogt\nog-film-dissolve: 0.5\n---\n===\n"
     );
     let bad = format!(
-        "{head}bad\ntitle: a\nog-film: segments/missing.ogt\n---\n<<jump b>>\n===\ntitle: b\nog-film: segments/two.ogt\n---\n<<jump c>>\n===\ntitle: c\nog-film: segments/late.ogt\n---\n<<jump d>>\n===\ntitle: d\nog-film: segments/ok.ogt\n---\nMae: Hello. #line:bad.hello\n-> One #line:bad.one #default\n    <<jump e>>\n-> Two #line:bad.two #default\n    <<jump e>>\n===\ntitle: e\n---\n-> Left #line:bad.left\n    <<jump d>>\n===\n"
+        "{head}bad\ntitle: a\nog-film: segments/missing.ogt\n---\n<<jump b>>\n===\ntitle: b\nog-film: segments/two.ogt\n---\n<<jump c>>\n===\ntitle: c\nog-film: segments/late.ogt\n---\n<<jump d>>\n===\ntitle: d\nog-film: segments/ok.ogt\n---\nMae: Hello. #line:bad.hello\n-> One #line:bad.one #default\n    <<jump e>>\n-> Two #line:bad.two #default\n    <<jump e>>\n===\ntitle: e\n---\n-> Left #line:bad.left\n    <<jump d>>\n===\ntitle: g\nog-film: segments/spot.ogt\nog-film-dissolve: 9\n---\n-> X #line:bad.x #hotspot:fork\n    <<jump d>>\n-> Y #line:bad.y #qte:tap:jump\n    <<jump d>>\n===\n"
     );
     let root = project(
         "film",
@@ -185,6 +188,7 @@ fn a_film_dialogue_is_refused_for_each_segment_default_line_and_choice_it_gets_w
             ("story/good.yarn", &good),
             ("story/bad.yarn", &bad),
             ("segments/ok.ogt", &segment(video)),
+            ("segments/spot.ogt", &segment(&format!("{video}{spot}"))),
             ("segments/two.ogt", &segment(&format!("{video}{video}"))),
             ("segments/late.ogt", &segment(&format!("{video}{late}"))),
         ],
@@ -203,6 +207,9 @@ fn a_film_dialogue_is_refused_for_each_segment_default_line_and_choice_it_gets_w
         "node 'd': 2 choices are #default",
         "node 'd' says Yarn lines (line 21)",
         "node 'e' offers choices but has no og-film segment",
+        "node 'g': og-film-dissolve: 9 is not a dissolve's seconds",
+        "node 'g': choice 0 is #hotspot:fork, which its segment segments/spot.ogt has no `track hotspot` key for",
+        "node 'g': choice 1: #qte:tap:jump is not one of",
     ] {
         assert!(e.contains(want), "{want}: {e}");
     }

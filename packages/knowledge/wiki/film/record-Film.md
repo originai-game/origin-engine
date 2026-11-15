@@ -21,6 +21,10 @@ Token `og.Film`, registered under the schema name `og.Film`; its value type is `
 | `paused` | `boolean` | `false` | — | — | read only | Held by og.film.pause (or FilmDesc.paused) until og.film.play. |
 | `chapter` | `number` | `0` | — | — | read only | The node of the last chapter entered (its id, as `node`); 0: none. |
 | `ended` | `boolean` | `false` | — | — | read only | The last segment played to its cut and the conversation ended. |
+| `previous` | `Entity` | `0` | — | — | read only | The deck dissolving out (`og-film-dissolve`), playing on under the current one; 0: none. |
+| `dissolve` | `number` | `0` | — | — | read only | The dissolve's length, ticks. |
+| `dissolveLeft` | `number` | `0` | — | — | read only | Ticks left of the dissolve; 0: none. |
+| `qte` | `readonly number[]` | `[]` | — | — | a list of at most 8 `u32` (`List.u32.8`): reads a frozen copy, writes a whole array, read only | Per choice (ChoiceView.index, the first 8): a quick-time event's progress this window, ticks held or presses. |
 
 ```ogt
 component Film {
@@ -51,6 +55,18 @@ component Film {
     readonly true
   }
   field ended bool "The last segment played to its cut and the conversation ended." {
+    readonly true
+  }
+  field previous Entity "The deck dissolving out (`og-film-dissolve`), playing on under the current one; 0: none." {
+    readonly true
+  }
+  field dissolve u32 "The dissolve's length, ticks." {
+    readonly true
+  }
+  field dissolveLeft u32 "Ticks left of the dissolve; 0: none." {
+    readonly true
+  }
+  field qte List.u32.8 "Per choice (ChoiceView.index, the first 8): a quick-time event's progress this window, ticks held or presses." {
     readonly true
   }
 }

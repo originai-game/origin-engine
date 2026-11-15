@@ -8424,6 +8424,31 @@
           "column": "bool",
           "default": false,
           "readonly": true
+        },
+        {
+          "name": "previous",
+          "column": "Entity",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "dissolve",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "dissolveLeft",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "qte",
+          "column": "u32",
+          "list": 8,
+          "default": [],
+          "readonly": true
         }
       ]
     },
@@ -27520,6 +27545,50 @@
     },
     {
       "id": 629,
+      "kind": "fn",
+      "path": "og.film.skip",
+      "symbol": "og_film_skip",
+      "module": "film",
+      "name": "skip",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "film",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 630,
+      "kind": "fn",
+      "path": "og.film.chart",
+      "symbol": "og_film_chart",
+      "module": "film",
+      "name": "chart",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "dialogue",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<FilmChart>",
+      "publish": true
+    },
+    {
+      "id": 631,
       "kind": "fn",
       "path": "og.film.stop",
       "symbol": "og_film_stop",

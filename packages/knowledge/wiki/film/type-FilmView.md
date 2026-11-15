@@ -18,6 +18,10 @@ What a film shows now.
 | `cut` | `number` | `0` | — | `s` | — | When it cuts to the next: its film.cut marker, else its duration. |
 | `choices` | `readonly ChoiceView[]` | `[]` | — | — | — | The node's choices while its window is open or locked (og.story's). |
 | `window` | `WindowView \| null` | `null` | — | — | — | The window, while it is open or locked. |
+| `hotspots` | `readonly FilmHotspot[]` | `[]` | — | — | — | The hotspots that take a choice now: while the window is open, those of its enabled choices. |
+| `qtes` | `readonly QteView[]` | `[]` | — | — | — | The quick-time events of its enabled choices while the window is open or locked. |
+| `previous` | `Texture` | `0` | — | — | — | The picture dissolving out (`og-film-dissolve`); 0: none. Draw it under `texture`, which shows at `mix`. |
+| `mix` | `number` | `0` | — | `ratio` | — | How far the dissolve is: `texture`'s opacity over `previous`, 1 without one. |
 | `paused` | `boolean` | `false` | — | — | — | Held by og.film.pause. |
 | `chapter` | `string` | `""` | — | — | — | The last chapter entered. |
 | `ending` | `string` | `""` | — | — | — | The ending reached, once ended. |
@@ -38,6 +42,12 @@ struct FilmView {
   }
   field choices List.ChoiceView "The node's choices while its window is open or locked (og.story's)."
   field window Option.WindowView "The window, while it is open or locked."
+  field hotspots List.FilmHotspot "The hotspots that take a choice now: while the window is open, those of its enabled choices."
+  field qtes List.QteView "The quick-time events of its enabled choices while the window is open or locked."
+  field previous Texture "The picture dissolving out (`og-film-dissolve`); 0: none. Draw it under `texture`, which shows at `mix`."
+  field mix f32 "How far the dissolve is: `texture`'s opacity over `previous`, 1 without one." {
+    unit ratio
+  }
   field paused bool "Held by og.film.pause."
   field chapter String "The last chapter entered."
   field ending String "The ending reached, once ended."
@@ -45,4 +55,4 @@ struct FilmView {
 }
 ```
 
-<sub>Module `film` line 76</sub>
+<sub>Module `film` line 117</sub>

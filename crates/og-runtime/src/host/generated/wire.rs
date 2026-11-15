@@ -26968,6 +26968,110 @@ impl ToJson for WindowView {
     }
 }
 
+/// `FilmHotspot`: packages/knowledge/wiki/film.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FilmHotspot {
+    pub choice: u32,
+    pub id: String,
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+impl Default for FilmHotspot {
+    fn default() -> Self {
+        Self {
+            choice: Default::default(),
+            id: Default::default(),
+            x: Default::default(),
+            y: Default::default(),
+            width: Default::default(),
+            height: Default::default(),
+        }
+    }
+}
+
+impl FromJson for FilmHotspot {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            choice: field(o, "choice", d.choice)?,
+            id: field(o, "id", d.id)?,
+            x: field(o, "x", d.x)?,
+            y: field(o, "y", d.y)?,
+            width: field(o, "width", d.width)?,
+            height: field(o, "height", d.height)?,
+        })
+    }
+}
+
+impl ToJson for FilmHotspot {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("choice".into(), self.choice.to_json());
+        o.insert("id".into(), self.id.to_json());
+        o.insert("x".into(), self.x.to_json());
+        o.insert("y".into(), self.y.to_json());
+        o.insert("width".into(), self.width.to_json());
+        o.insert("height".into(), self.height.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `QteView`: packages/knowledge/wiki/film.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct QteView {
+    pub choice: u32,
+    pub kind: String,
+    pub action: String,
+    pub progress: f32,
+    pub done: bool,
+}
+
+impl Default for QteView {
+    fn default() -> Self {
+        Self {
+            choice: Default::default(),
+            kind: Default::default(),
+            action: Default::default(),
+            progress: Default::default(),
+            done: Default::default(),
+        }
+    }
+}
+
+impl FromJson for QteView {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            choice: field(o, "choice", d.choice)?,
+            kind: field(o, "kind", d.kind)?,
+            action: field(o, "action", d.action)?,
+            progress: field(o, "progress", d.progress)?,
+            done: field(o, "done", d.done)?,
+        })
+    }
+}
+
+impl ToJson for QteView {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("choice".into(), self.choice.to_json());
+        o.insert("kind".into(), self.kind.to_json());
+        o.insert("action".into(), self.action.to_json());
+        o.insert("progress".into(), self.progress.to_json());
+        o.insert("done".into(), self.done.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `FilmView`: packages/knowledge/wiki/film.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FilmView {
@@ -26979,6 +27083,10 @@ pub struct FilmView {
     pub cut: f32,
     pub choices: Vec<ChoiceView>,
     pub window: Option<WindowView>,
+    pub hotspots: Vec<FilmHotspot>,
+    pub qtes: Vec<QteView>,
+    pub previous: u64,
+    pub mix: f32,
     pub paused: bool,
     pub chapter: String,
     pub ending: String,
@@ -26996,6 +27104,10 @@ impl Default for FilmView {
             cut: Default::default(),
             choices: Default::default(),
             window: Default::default(),
+            hotspots: Default::default(),
+            qtes: Default::default(),
+            previous: Default::default(),
+            mix: Default::default(),
             paused: Default::default(),
             chapter: Default::default(),
             ending: Default::default(),
@@ -27019,6 +27131,10 @@ impl FromJson for FilmView {
             cut: field(o, "cut", d.cut)?,
             choices: field(o, "choices", d.choices)?,
             window: field(o, "window", d.window)?,
+            hotspots: field(o, "hotspots", d.hotspots)?,
+            qtes: field(o, "qtes", d.qtes)?,
+            previous: field(o, "previous", d.previous)?,
+            mix: field(o, "mix", d.mix)?,
             paused: field(o, "paused", d.paused)?,
             chapter: field(o, "chapter", d.chapter)?,
             ending: field(o, "ending", d.ending)?,
@@ -27038,10 +27154,164 @@ impl ToJson for FilmView {
         o.insert("cut".into(), self.cut.to_json());
         o.insert("choices".into(), self.choices.to_json());
         o.insert("window".into(), self.window.to_json());
+        o.insert("hotspots".into(), self.hotspots.to_json());
+        o.insert("qtes".into(), self.qtes.to_json());
+        o.insert("previous".into(), self.previous.to_json());
+        o.insert("mix".into(), self.mix.to_json());
         o.insert("paused".into(), self.paused.to_json());
         o.insert("chapter".into(), self.chapter.to_json());
         o.insert("ending".into(), self.ending.to_json());
         o.insert("ended".into(), self.ended.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `FilmChartNode`: packages/knowledge/wiki/film.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FilmChartNode {
+    pub node: String,
+    pub segment: String,
+    pub chapter: String,
+    pub ending: String,
+    pub depth: u32,
+    pub x: f32,
+    pub y: f32,
+}
+
+impl Default for FilmChartNode {
+    fn default() -> Self {
+        Self {
+            node: Default::default(),
+            segment: Default::default(),
+            chapter: Default::default(),
+            ending: Default::default(),
+            depth: Default::default(),
+            x: Default::default(),
+            y: Default::default(),
+        }
+    }
+}
+
+impl FromJson for FilmChartNode {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            node: field(o, "node", d.node)?,
+            segment: field(o, "segment", d.segment)?,
+            chapter: field(o, "chapter", d.chapter)?,
+            ending: field(o, "ending", d.ending)?,
+            depth: field(o, "depth", d.depth)?,
+            x: field(o, "x", d.x)?,
+            y: field(o, "y", d.y)?,
+        })
+    }
+}
+
+impl ToJson for FilmChartNode {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("node".into(), self.node.to_json());
+        o.insert("segment".into(), self.segment.to_json());
+        o.insert("chapter".into(), self.chapter.to_json());
+        o.insert("ending".into(), self.ending.to_json());
+        o.insert("depth".into(), self.depth.to_json());
+        o.insert("x".into(), self.x.to_json());
+        o.insert("y".into(), self.y.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `FilmChartLink`: packages/knowledge/wiki/film.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FilmChartLink {
+    pub from: String,
+    pub to: String,
+    pub choice: i32,
+    pub d: String,
+}
+
+impl Default for FilmChartLink {
+    fn default() -> Self {
+        Self {
+            from: Default::default(),
+            to: Default::default(),
+            choice: Default::default(),
+            d: Default::default(),
+        }
+    }
+}
+
+impl FromJson for FilmChartLink {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            from: field(o, "from", d.from)?,
+            to: field(o, "to", d.to)?,
+            choice: field(o, "choice", d.choice)?,
+            d: field(o, "d", d.d)?,
+        })
+    }
+}
+
+impl ToJson for FilmChartLink {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("from".into(), self.from.to_json());
+        o.insert("to".into(), self.to.to_json());
+        o.insert("choice".into(), self.choice.to_json());
+        o.insert("d".into(), self.d.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `FilmChart`: packages/knowledge/wiki/film.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FilmChart {
+    pub nodes: Vec<FilmChartNode>,
+    pub links: Vec<FilmChartLink>,
+    pub width: f32,
+    pub height: f32,
+}
+
+impl Default for FilmChart {
+    fn default() -> Self {
+        Self {
+            nodes: Default::default(),
+            links: Default::default(),
+            width: Default::default(),
+            height: Default::default(),
+        }
+    }
+}
+
+impl FromJson for FilmChart {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            nodes: field(o, "nodes", d.nodes)?,
+            links: field(o, "links", d.links)?,
+            width: field(o, "width", d.width)?,
+            height: field(o, "height", d.height)?,
+        })
+    }
+}
+
+impl ToJson for FilmChart {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("nodes".into(), self.nodes.to_json());
+        o.insert("links".into(), self.links.to_json());
+        o.insert("width".into(), self.width.to_json());
+        o.insert("height".into(), self.height.to_json());
         Value::Object(o)
     }
 }
@@ -37873,6 +38143,10 @@ pub mod record {
         pub paused: bool,
         pub chapter: u32,
         pub ended: bool,
+        pub previous: u64,
+        pub dissolve: u32,
+        pub dissolve_left: u32,
+        pub qte: Vec<u32>,
     }
 
     impl Default for Film {
@@ -37887,6 +38161,10 @@ pub mod record {
                 paused: Default::default(),
                 chapter: Default::default(),
                 ended: Default::default(),
+                previous: Default::default(),
+                dissolve: Default::default(),
+                dissolve_left: Default::default(),
+                qte: Default::default(),
             }
         }
     }
@@ -37907,6 +38185,10 @@ pub mod record {
                 paused: field(o, "paused", d.paused)?,
                 chapter: field(o, "chapter", d.chapter)?,
                 ended: field(o, "ended", d.ended)?,
+                previous: field(o, "previous", d.previous)?,
+                dissolve: field(o, "dissolve", d.dissolve)?,
+                dissolve_left: field(o, "dissolveLeft", d.dissolve_left)?,
+                qte: field(o, "qte", d.qte)?,
             })
         }
     }
