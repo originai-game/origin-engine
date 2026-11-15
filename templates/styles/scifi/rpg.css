@@ -143,7 +143,7 @@ button[aria-selected=true]::part(RpgBackpack\.cell), button[aria-selected=true]:
 [part="RpgCharacter.frame"] .portrait { border: var(--stroke-regular) solid var(--line-strong); box-shadow: var(--scifi-portrait-shadow); }
 [part="RpgCharacter.name"] { font-family: var(--font-display); font-size: var(--font-step-4xl); letter-spacing: var(--font-tracking-lg); text-transform: uppercase; color: var(--ink); }
 [part="RpgCharacter.frame"] .char-line { font-size: var(--font-step-lg); color: var(--ink-muted); }
-[part="RpgCharacter.frame"] .figure { opacity: 0.9; }
+[part="RpgCharacter.frame"] .figure { opacity: var(--scifi-figure-opacity); }
 [part="RpgCharacter.frame"] .doll { background: var(--scifi-stage-ground); border-top: var(--stroke-hairline) solid var(--line-strong-33); border-bottom: var(--stroke-hairline) solid var(--line-strong-33); }
 [part="RpgCharacter.frame"] .attributes { border-top: var(--stroke-hairline) solid var(--line-strong-40); }
 [part="RpgCharacter.row"] { border-bottom: var(--stroke-hairline) solid var(--line-strong-19); }

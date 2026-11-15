@@ -272,9 +272,11 @@
   --frame-rim: var(--line-strong-60);
   --frame-rim-width: var(--stroke-hairline);
   --frame-radius: var(--scifi-cut-frame);
+  --frame-corner-shape: bevel;
   --plate-rim: var(--line-strong-50);
   --plate-rim-width: var(--stroke-hairline);
   --plate-radius: var(--scifi-cut-plate);
+  --plate-corner-shape: bevel;
   --plate-pad: var(--space-sm);
   --band-height: var(--size-lg);
   --band-pad: var(--space-xs) var(--space-xl);
@@ -293,6 +295,7 @@
   --cell-rim: #2b5a73;
   --cell-rim-width: var(--stroke-hairline);
   --cell-radius: var(--scifi-cut-cell);
+  --cell-corner-shape: bevel;
   --cell-selected-rim: var(--accent);
   --badge-radius: 0px;
   --well-fill: var(--well-95);
@@ -354,6 +357,9 @@
   --button-selected-shadow: inset 0 1px 0 var(--accent-60), 0 0 12px var(--scifi-ember-45);
   --well-shadow: inset 0 1px 3px var(--scifi-keyline);
   --checkbox-checked-fill: linear-gradient(180deg, var(--primary-hover), var(--primary-active));
+  /* The tick and the slider's value bubble stand on the lit primary. */
+  --checkbox-mark-ink: var(--on-primary);
+  --slider-bubble-ink: var(--on-primary);
   --radio-card-fill: linear-gradient(180deg, var(--scifi-key-hi), var(--scifi-key-lo));
   --radio-card-checked-fill: linear-gradient(180deg, var(--scifi-chosen-hi), var(--scifi-chosen-mid)), linear-gradient(180deg, var(--scifi-plate-hi), var(--scifi-plate-lo));
   --radio-card-checked-shadow: 0 0 12px var(--scifi-ember-45);
@@ -393,6 +399,8 @@
   --scifi-dim-unplayable: saturate(0.35) brightness(0.72);
   --scifi-dim-spent: brightness(0.8);
   --scifi-dim-down: grayscale(1) brightness(0.7);
+  /* The character sheet's full figure, a little faded like a projection. */
+  --scifi-figure-opacity: 0.9;
   --scifi-map-terrain: saturate(0.85);
   --scifi-selection-40: rgb(from var(--primary) r g b / 0.4);
   --slot-fill: linear-gradient(160deg, var(--scifi-cell-hi), var(--scifi-cell-lo));
@@ -652,4 +660,5 @@
   --scifi-vitals-health: linear-gradient(90deg, rgb(from var(--health) r g b / 0.7), var(--health));
   --scifi-vitals-mana: linear-gradient(90deg, rgb(from var(--mana) r g b / 0.7), var(--mana));
   --scifi-cast-fill: linear-gradient(90deg, #ffd25a, #ffc531);
+  --scifi-figure-opacity: 1;
 }

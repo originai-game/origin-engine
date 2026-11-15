@@ -5,16 +5,17 @@
    wrong for, or text the component draws over the scene or a lit fill. */
 
 /* ── Hero button: the one main action, lit like the primary; premium is the
-   amber face, danger the red one. Each state restates the whole border.
-   The secondary tone wears the primary's face and ink: in a ::part()
-   selector `.secondary` is also every button without a variant, so a pack
-   cannot tell that tone from the default (README, gaps). */
+   amber face, secondary the core button's glass, danger the red one. Each
+   state restates the whole border. */
 button::part(HeroButton\.base) { border: var(--stroke-hairline) solid var(--highlight); background: var(--button-primary-fill); box-shadow: var(--button-primary-shadow); }
 button::part(HeroButton\.base):hover { border: var(--stroke-hairline) solid var(--ink-bright); background: var(--button-primary-hover-fill); box-shadow: var(--button-primary-shadow); }
 button::part(HeroButton\.base):active { border: var(--stroke-hairline) solid var(--primary); background: var(--button-primary-pressed-fill); box-shadow: var(--button-pressed-shadow); }
 button.premium::part(HeroButton\.base) { border: var(--stroke-hairline) solid var(--ink-selected); background: var(--scifi-premium-fill); box-shadow: var(--button-selected-shadow); }
+button.secondary::part(HeroButton\.base) { border: var(--stroke-hairline) solid var(--button-rim); background: var(--button-fill); box-shadow: var(--button-shadow); }
+button.secondary::part(HeroButton\.base):hover { border: var(--stroke-hairline) solid var(--highlight); background: var(--button-hover-fill); box-shadow: var(--button-hover-shadow); }
+button.secondary::part(HeroButton\.base):active { border: var(--stroke-hairline) solid var(--primary); background: var(--button-pressed-fill); box-shadow: var(--button-pressed-shadow); }
 button.danger::part(HeroButton\.base) { border: var(--stroke-hairline) solid var(--button-danger-rim); background: var(--button-danger-fill); box-shadow: var(--button-danger-shadow); }
-[part="HeroButton.base"].secondary [part="HeroButton.label"] { color: var(--on-primary); }
+[part="HeroButton.base"].secondary [part="HeroButton.label"] { color: var(--button-ink); }
 [part="HeroButton.base"].danger [part="HeroButton.label"] { color: var(--button-danger-ink); }
 
 /* ── Data grid: its headings stand on the lit small band, where the label
@@ -46,6 +47,12 @@ button::part(LootLabel\.tag):hover { background: var(--panel-hover); box-shadow:
 /* ── Status grid: an effect's time stands over the scene under its cell, so
    it sits on the scene plate. */
 [part="StatusGrid.figure"] { padding: 0 var(--space-xxs); border-radius: var(--scifi-cut-chip); corner-shape: bevel; background: var(--scene-plate); color: var(--scene-ink); }
+
+/* ── Radial menu: the wedge is the slice's plate, a control's glass, lit
+   when chosen; each item button clears the core button plate. */
+[part="RadialMenu.slice"] .wedge { stroke: var(--control-strong); }
+[part="RadialMenu.slice"].chosen .wedge { stroke: var(--primary); }
+button::part(RadialMenu\.item) { padding: 0; border: none; background: none; box-shadow: none; }
 
 /* ── Speech bubble: the tail is a shape, so it takes the glass as one colour. */
 [part="SpeechBubble.tail"] { fill: var(--scifi-glass-lo); }

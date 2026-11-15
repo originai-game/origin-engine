@@ -114,7 +114,7 @@ input[type=range]::part(knob):hover { box-shadow: var(--slider-knob-hover-shadow
 input[type=range]::part(knob):active { background: var(--slider-knob-pressed-fill); }
 input[type=range]::part(knob):disabled { border-color: var(--scifi-disabled-rim); background: var(--scifi-disabled-rim); box-shadow: none; }
 input[type=range]::part(core) { corner-shape: bevel; background: var(--primary-active); }
-/* The bubble's figure is always the inverse ink, so its plate is the lit primary. */
+/* The bubble is the lit primary plate; its figure takes --slider-bubble-ink. */
 input[type=range]::part(bubble) { border: var(--stroke-hairline) solid var(--highlight); background: var(--primary); box-shadow: var(--scifi-energy-glow); }
 input[type=range]::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--scifi-focus-offset-plate); }
 
@@ -211,8 +211,7 @@ joystick::part(rim):active { border-color: var(--accent); }
 joystick::part(knob) { background: var(--slider-knob-fill); }
 dpad::part(indicator):active, dpad::part(chevron):active { background: var(--accent); }
 
-/* ── Scroll bars. A heading's ::part(flourish) is a text span and takes no
-   background (README.md §Pending engine gaps), so headings carry no rule. */
+/* ── Scroll bars. */
 scroll::part(bar) { background: var(--line-strong-60); }
 
 /* ── The remaining registry parts: icon children take the lit ink, the
@@ -226,14 +225,8 @@ keyboard::part(candidates) { border-bottom: var(--stroke-hairline) solid var(--l
 input::part(composition), textarea::part(composition) { text-decoration-line: underline; text-decoration-color: var(--accent); }
 input::part(reveal-icon), input::part(clear-icon) { color: var(--ink-muted); }
 og-icon::part(secondary) { color: var(--accent); }
-/* An icon and a picture keep the engine's own tint: a pack ink here would
-   multiply a full-colour picture, and the light scheme's ink is dark. */
+/* An icon keeps the engine's own tint, which follows the scheme; an atlas of
+   full-colour pictures (IconAtlasDesc.pictures) draws in its own colours. */
 joystick::part(direction) { background: var(--accent); }
-
-/* ── The role parts' shape: every frame, plate and cell a built-in
-   component draws takes the cut its radius token names. The default style
-   dresses these parts from the role tokens (base.css); this is the one
-   thing a token cannot say. */
-[part$=".frame"], [part$=".cell"] { corner-shape: bevel; }
 
 } /* @layer scifi-controls */
