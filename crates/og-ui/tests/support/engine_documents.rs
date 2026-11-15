@@ -125,9 +125,14 @@ pub fn view(width: f32, height: f32) -> WorldView {
     )
 }
 
+/// The frames [`preview`] builds: half a second at 60 Hz, past the longest
+/// intro an engine document declares (300 ms; a killfeed row's `in:fly` is
+/// 200 ms, 12 frames).
+const PREVIEW_FRAMES: usize = 30;
+
 /// `doc` mounted as `test:preview` with its `props` as its stores, in a UI
-/// that knows every document of `all`, four frames (its transitions
-/// settled), at `width` × `height`. Answers the warnings of those frames,
+/// that knows every document of `all`, [`PREVIEW_FRAMES`] frames (its
+/// intros settled), at `width` × `height`. Answers the warnings of those frames,
 /// each once (an element's hold in every frame). A document that
 /// does not mount or build from its props fails the test, named by its
 /// path.
@@ -150,7 +155,7 @@ pub fn preview(
     )
     .unwrap_or_else(|e| panic!("{}: {e}", doc.path));
     let mut warnings: Vec<String> = Vec::new();
-    for _ in 0..4 {
+    for _ in 0..PREVIEW_FRAMES {
         ui.begin(InputFrame::default(), Viewport::new(width, height));
         ui.build_retained_documents(messages)
             .unwrap_or_else(|e| panic!("{}: {e}", doc.path));
