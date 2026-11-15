@@ -237,9 +237,12 @@ pub(crate) struct FxState {
     /// `previous` by key, made when a frame with object motion blur first
     /// asks for it in its tick (most frames never do).
     pub previous_by_key: Option<BTreeMap<(u64, u32), Mat4>>,
-    /// The last display frame's instance transforms by key, as drawn (blended
-    /// between ticks): what a display frame between ticks moves from.
-    pub drawn: Vec<((u64, u32), Mat4)>,
+    /// The last display frame's instance keys and their transforms as drawn
+    /// (blended between ticks), side by side: what a display frame between
+    /// ticks moves from. Apart, a frame whose keys are the last one's takes
+    /// the transforms whole, with no copy of the keys or lookup by key.
+    pub drawn_keys: Vec<(u64, u32)>,
+    pub drawn: Vec<Mat4>,
     /// The last frame's joints of each posed model by entity, in the world
     /// (its instance's transform times its palette): TAA's skinned motion.
     pub drawn_joints: IdMap<u64, Vec<Mat4>>,

@@ -11,7 +11,8 @@ pub(crate) struct MotionCheckpoint {
     tick: u64,
     current: Vec<((u64, u32), Mat4)>,
     previous: Vec<((u64, u32), Mat4)>,
-    drawn: Vec<((u64, u32), Mat4)>,
+    drawn_keys: Vec<(u64, u32)>,
+    drawn: Vec<Mat4>,
     drawn_joints: IdMap<u64, Vec<Mat4>>,
     drawn_weights: BTreeMap<(u64, usize), [f32; og_render::MAX_MORPH_TARGETS]>,
     drawn_deformed: BTreeMap<(u64, usize), (Mat4, og_render::DeformedVertices)>,
@@ -23,6 +24,7 @@ impl FxState {
             tick: self.tick,
             current: self.current.clone(),
             previous: self.previous.clone(),
+            drawn_keys: self.drawn_keys.clone(),
             drawn: self.drawn.clone(),
             drawn_joints: self.drawn_joints.clone(),
             drawn_weights: self.drawn_weights.clone(),
@@ -35,6 +37,7 @@ impl FxState {
         self.current.clone_from(&c.current);
         self.previous.clone_from(&c.previous);
         self.previous_by_key = None;
+        self.drawn_keys.clone_from(&c.drawn_keys);
         self.drawn.clone_from(&c.drawn);
         self.drawn_joints.clone_from(&c.drawn_joints);
         self.drawn_weights.clone_from(&c.drawn_weights);
@@ -101,6 +104,7 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     // Kept only while motion blur or TAA is on (a copy of every instance's
     // transform a frame otherwise).
     if !blur && !taa {
+        fx.drawn_keys.clear();
         fx.drawn.clear();
         fx.drawn_joints.clear();
         fx.drawn_weights.clear();
@@ -121,11 +125,21 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     } else {
         keyed
     };
+    // The frame's keys as the last frame's (the usual case): the last
+    // frame's transforms are the previous ones by position, swapped in
+    // whole (both vectors keep their capacity) and this frame's refill
+    // the other; the keys are copied only when the drawn set changed.
+    let same = fx.drawn_keys.as_slice() == keys && fx.drawn.len() == keys.len();
     if from_drawn {
-        if same_keys(&fx.drawn, keys) {
-            positional(&fx.drawn, &mut scene.objects.previous_transforms);
+        if same {
+            std::mem::swap(&mut fx.drawn, &mut scene.objects.previous_transforms);
         } else {
-            let last: BTreeMap<(u64, u32), Mat4> = fx.drawn.iter().copied().collect();
+            let last: BTreeMap<(u64, u32), Mat4> = fx
+                .drawn_keys
+                .iter()
+                .copied()
+                .zip(fx.drawn.iter().copied())
+                .collect();
             scene.objects.previous_transforms = keys
                 .iter()
                 .zip(&scene.objects.instances)
@@ -144,11 +158,18 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
             }
         }
     }
+    if !same {
+        fx.drawn_keys.clear();
+        fx.drawn_keys.extend_from_slice(keys);
+    }
     fx.drawn.clear();
     fx.drawn.extend(
-        keys.iter()
-            .zip(&scene.objects.instances)
-            .map(|(k, i)| (*k, i.transform)),
+        scene
+            .objects
+            .instances
+            .iter()
+            .take(keys.len())
+            .map(|i| i.transform),
     );
 }
 

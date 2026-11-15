@@ -349,14 +349,10 @@ impl crate::present::extract::RenderState {
             }
         };
         let fx = &mut self.fx;
-        for (_, t) in fx
-            .current
-            .iter_mut()
-            .chain(fx.previous.iter_mut())
-            .chain(fx.drawn.iter_mut())
-        {
+        for (_, t) in fx.current.iter_mut().chain(fx.previous.iter_mut()) {
             m(t);
         }
+        fx.drawn.iter_mut().for_each(m);
         fx.previous_by_key = None;
         for s in fx.sprites.iter_mut().filter(|s| !s.screen) {
             s.sprite.position = p(s.sprite.position);
