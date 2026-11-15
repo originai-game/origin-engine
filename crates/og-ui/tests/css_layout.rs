@@ -406,6 +406,34 @@ fn balanced_flex_lines_are_even() {
     });
 }
 
+/// `self-start` and `self-end` are the item's own writing mode's sides
+/// (CSS Box Alignment 3 §4.3): across a column, a right-to-left item's
+/// self-start is the right, where `start` stays the container's left.
+#[test]
+fn self_start_and_self_end_follow_the_items_direction() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Col"><div id="A" dir="rtl"></div><div id="B" dir="rtl"></div><div id="C"></div></div>
+  <div id="Items"><div id="D" dir="rtl"></div></div>
+</div></div>
+<style>
+#Col, #Items { display: flex; flex-direction: column; width: 200px; }
+#Col div, #Items div { width: 50px; height: 10px; }
+#A { align-self: self-start; }
+#B { align-self: start; }
+#C { align-self: self-end; }
+#Items { align-items: self-start; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let x = |id: &str, of: &str| d.get(id).x - d.get(of).x;
+        assert_eq!(
+            (x("A", "Col"), x("B", "Col"), x("C", "Col")),
+            (150.0, 0.0, 150.0)
+        );
+        assert_eq!(x("D", "Items"), 150.0);
+    });
+}
+
 #[test]
 fn flex_lays_out_as_css_flexbox_does() {
     let text = r#"<meta name="component" content="t">

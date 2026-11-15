@@ -334,8 +334,8 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         ],
         "flex-wrap" => vec!["wrapReverse", "wrapBalance"],
         "justify-content" => vec!["safeJustify"],
-        "align-items" => vec!["safeAlign", "crossFlex"],
-        "align-self" => vec!["safeAlign", "selfFlex"],
+        "align-items" => vec!["safeAlign", "crossFlex", "crossSelf"],
+        "align-self" => vec!["safeAlign", "selfFlex", "selfSelf"],
         "gap" => vec!["rowGap", "columnGap"],
         "grid-column" => vec!["cell", "span", "columnStart", "columnEnd"],
         "grid-row" => vec!["cell", "span", "rowStart", "rowEnd"],
@@ -351,8 +351,20 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
             "dense",
         ],
         "place-content" => vec!["alignContent", "align", "safeJustify"],
-        "place-items" => vec!["cross", "justifyItems", "safeAlign", "crossFlex"],
-        "place-self" => vec!["alignSelf", "justifySelf", "safeAlign", "selfFlex"],
+        "place-items" => vec![
+            "cross",
+            "justifyItems",
+            "safeAlign",
+            "crossFlex",
+            "crossSelf",
+        ],
+        "place-self" => vec![
+            "alignSelf",
+            "justifySelf",
+            "safeAlign",
+            "selfFlex",
+            "selfSelf",
+        ],
         "mask" => ["maskImage"]
             .iter()
             .chain(&super::paint_css::C4_PROPS[4..11])

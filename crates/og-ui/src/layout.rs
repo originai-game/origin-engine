@@ -591,6 +591,8 @@ pub struct Element {
     /// Its `cross` (bit 0) and its own `align_self` (bit 1) were written
     /// `start` or `end` (the writing mode's sides), not `flex-start`/
     /// `flex-end` or left unwritten: `wrap-reverse` keeps them on that side.
+    /// Bits 2 and 3: they were written `self-start` or `self-end` (the
+    /// item's own writing mode's sides).
     pub cross_logical: u8,
     /// CSS `align-content` of a multi-line flex container (`None`: lines at
     /// its start, each its own size).

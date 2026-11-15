@@ -196,6 +196,16 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Its `alignSelf` names the flex line's sides, as `crossFlex` does for a container's `cross`."
     ),
     p!(
+        "crossSelf",
+        Ty::Bool,
+        "Its `cross` names each item's own writing mode's sides (CSS `self-start`, `self-end`)."
+    ),
+    p!(
+        "selfSelf",
+        Ty::Bool,
+        "Its `alignSelf` names its own writing mode's sides (CSS `self-start`, `self-end`)."
+    ),
+    p!(
         "flexGrow",
         Ty::Num,
         "Its share of a flex line's free space (CSS `flex-grow`)."

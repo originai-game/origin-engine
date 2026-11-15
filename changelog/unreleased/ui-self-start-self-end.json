@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "align-items and align-self take `self-start` and `self-end` as the item's own writing mode's sides (CSS Box Alignment 3 §4.3): a right-to-left item in a left-to-right column sits at the right under `self-start`. They used to read as `start` and `end`, the container's sides."
+    }
+  ]
+}
