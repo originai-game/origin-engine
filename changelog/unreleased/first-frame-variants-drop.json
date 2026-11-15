@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.Renderer",
-      "summary": "Destroying a renderer no longer waits for the full pipeline variants still compiling in the background: they finish on the compile workers, and the process waits for them only when it exits. With an empty shader cache a renderer's destruction right after its first frame took 3.0 s on a software Vulkan adapter (materials scene) and about 0.7 s on Metal (terrain scene); it now takes 20–30 ms."
-    }
-  ]
-}

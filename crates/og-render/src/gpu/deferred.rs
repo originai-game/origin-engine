@@ -85,13 +85,16 @@ impl<T> Make<T> {
 ///
 /// Dropped unreceived, it owns its job still: one not yet started is taken
 /// off the queues and dropped here, with what its closure owns (the
-/// device, layouts, modules). One a worker is running is left to finish
-/// there, and its value is dropped on the worker: the driver cannot stop
-/// a compile, and waiting here held a renderer's drop for its slowest
-/// background variant (about 0.7 s on Metal for `terrain-near`). The
-/// process waits for them when it exits ([`wait_at_exit`]): on NVIDIA's
-/// Linux driver a worker still inside the shader compiler when the process
-/// exited crashed it (SIGSEGV, heap corruption) after the test had passed.
+/// device, layouts, modules), and one running is waited for (the driver
+/// cannot stop a compile). Left to finish on its worker, a compile could
+/// still be inside the driver's shader compiler when the process exited,
+/// and the exit's teardown ran under it: on NVIDIA's Linux driver the
+/// process then died after its tests had passed (heap corruption, SIGSEGV,
+/// a worker spinning in the compiler), about one GPU test in 275 under the
+/// gate's load. No exit handler can come first: the compiler registers
+/// its own as it goes, after any of ours ([`wait_at_exit`] only covers a
+/// renderer still alive at exit). So a renderer dropped after its first
+/// frame waits for the full variants compiling in the background.
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) struct Pending<T> {
     answer: std::sync::mpsc::Receiver<std::thread::Result<T>>,
@@ -102,16 +105,22 @@ pub(crate) struct Pending<T> {
 #[cfg(not(target_arch = "wasm32"))]
 impl<T> Drop for Pending<T> {
     fn drop(&mut self) {
-        // Running or done otherwise: its answer is dropped where it is (a
-        // panic of work nobody uses is not raised again).
-        drop(cancel(self.id));
+        if let Some(job) = cancel(self.id) {
+            drop(job);
+            return;
+        }
+        // Running, or done (its answer, received or not, is dropped here;
+        // a panic of work nobody uses is not raised again).
+        let _ = self.answer.recv();
     }
 }
 
 /// At the process's exit, the jobs no worker has started are dropped and
-/// those running are waited for (see [`Pending`]): registered with the C
-/// runtime's `atexit` when the workers start, so it runs after `main`
-/// returns or `std::process::exit`, before the process ends.
+/// those running are waited for: registered with the C runtime's `atexit`
+/// when the workers start, so it runs after `main` returns or
+/// `std::process::exit`, before the process ends. Only a renderer still
+/// alive at exit has any (a dropped one waited for its own: [`Pending`]),
+/// and handlers the driver registered after this one have run by then.
 #[cfg(not(target_arch = "wasm32"))]
 extern "C" fn wait_at_exit() {
     // Nothing unwinds out of the C runtime's exit.
@@ -930,9 +939,9 @@ mod tests {
     }
 
     /// A started value dropped before its first use leaves no work behind:
-    /// one still queued is dropped with it, with what its closure owns; one
-    /// a worker is making does not hold the drop, and finishes there (the
-    /// process's exit waits for it, as `settle_pipelines` does here).
+    /// one still queued is dropped with it, with what its closure owns, and
+    /// one a worker is making is waited for (it is never left inside the
+    /// driver for the process's exit to tear down under it).
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn a_dropped_started_value_owns_its_compile() {
@@ -957,10 +966,9 @@ mod tests {
             Arc::new(AtomicBool::new(false)),
         );
         let (b, d) = (began.clone(), done.clone());
-        let (go, gate) = std::sync::mpsc::channel::<()>();
         let running = Deferred::anywhere(move || {
             b.store(true, SeqCst);
-            let _ = gate.recv();
+            std::thread::sleep(std::time::Duration::from_millis(200));
             d.store(true, SeqCst);
         });
         running.start();
@@ -968,15 +976,6 @@ mod tests {
             std::thread::yield_now();
         }
         drop(running);
-        assert!(
-            !done.load(SeqCst),
-            "a running compile does not hold the drop"
-        );
-        go.send(()).unwrap();
-        settle_pipelines();
-        assert!(
-            done.load(SeqCst),
-            "a running compile finishes on its worker"
-        );
+        assert!(done.load(SeqCst), "a running compile is waited for");
     }
 }
