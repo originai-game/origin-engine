@@ -60,6 +60,7 @@ cook them independently of style packs.
 | Death, retry, revive offer, game over | `game-over` |
 | Creator tools (inspector, hierarchy, catalogues) | `creator-tools` |
 | Credits | `credits` |
+| Interactive film choices (og.film's window: its choices, the time left, the one taken) | `film-choices` |
 | Card, confirm dialog | `card`, `confirm` |
 | Lists and tables (data list, key-value and stat compare, table, tree, calendar, pagination) | `data-list`, `key-values`, `table`, `tree`, `calendar`, `pagination` |
 | HUD feedback (objectives, rating, banner, subtitles, notifications) | `objective-tracker`, `star-rating`, `banner`, `subtitles`, `notifications` |

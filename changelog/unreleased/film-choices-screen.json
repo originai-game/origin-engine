@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "@ui/screens/film-choices.svelte",
+      "summary": "A built-in screen for og.film's choice window: the choices, a bar of the time left, the one taken outlined (also once the window locks), stacked on a phone. Write its stores open, choices, left and locked from og.film.view; its choose action reports the choice's index as the row key."
+    }
+  ]
+}
