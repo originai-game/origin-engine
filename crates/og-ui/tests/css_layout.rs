@@ -347,7 +347,36 @@ fn a_stretch_height_in_a_block_takes_the_room_left() {
     with_doc(text, &[], |d| {
         let (root, body) = (d.get("Root"), d.get("Body"));
         assert_eq!((body.y - root.y, body.height), (40.0, 260.0));
-        assert_eq!(d.get("Abs").y - root.y, 290.0, "placed in the stretched box");
+        assert_eq!(
+            d.get("Abs").y - root.y,
+            290.0,
+            "placed in the stretched box"
+        );
+    });
+}
+
+/// A block's `align-content` shifts its content as one in its block axis
+/// (CSS Box Alignment 3 §5.1.1), and a flow-root keeps its first line's
+/// baseline for its row to align by (CSS Display 3 §2.3).
+#[test]
+fn a_block_aligns_its_content_and_a_flow_root_keeps_its_baseline() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Box"><div id="A"></div><div id="B"></div></div>
+  <div id="Row"><div id="Fr"><span id="Ft">fr</span></div><span id="T">x</span></div>
+</div></div>
+<style>
+#Root { width: 200px; }
+#Box { height: 100px; align-content: end; }
+#A, #B { height: 20px; }
+#Row { display: flex; align-items: baseline; }
+#Fr { display: flow-root; padding-top: 20px; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let at = |id: &str, of: &str| d.get(id).y - d.get(of).y;
+        assert_eq!((at("A", "Box"), at("B", "Box")), (60.0, 80.0));
+        assert_eq!(at("T", "Row"), at("Ft", "Row"), "baselines meet");
+        assert!(at("T", "Row") >= 19.0, "{}", at("T", "Row"));
     });
 }
 
