@@ -26,6 +26,8 @@ mod fsr;
 mod geometry;
 #[path = "../gfx.rs"]
 mod gfx;
+#[path = "../gi.rs"]
+mod gi;
 #[path = "../graph.rs"]
 mod graph;
 #[path = "../hooks.rs"]
