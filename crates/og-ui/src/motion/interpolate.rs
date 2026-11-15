@@ -564,13 +564,15 @@ fn sum_one(property: &str, a: &T, b: &T) -> Option<T> {
 /// Two fixed colours added in premultiplied sRGB; `None` for colours that
 /// resolve later (tokens, `currentcolor`).
 fn color_sum(a: &str, b: &str) -> Option<String> {
-    let lit = |s: &str| crate::css_color::parse_str(s).ok()?.literal();
-    let (x, y) = (lit(a)?, lit(b)?);
-    let alpha = (x.alpha + y.alpha).min(1.0);
+    let lit = |s: &str| {
+        let c = crate::css_color::parse_str(s).ok()?.literal()?;
+        Some(color::AlphaColor::<color::Srgb>::from(c).premultiply())
+    };
+    let sum = lit(a)? + lit(b)?;
+    let alpha = sum.components[3].min(1.0);
     let channel = |i: usize| {
-        let premul = x.rgb[i] as f32 * x.alpha + y.rgb[i] as f32 * y.alpha;
         if alpha > 0.0 {
-            (premul / alpha).clamp(0.0, 255.0)
+            (sum.components[i] / alpha * 255.0).clamp(0.0, 255.0)
         } else {
             0.0
         }

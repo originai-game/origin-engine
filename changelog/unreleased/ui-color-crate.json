@@ -3,6 +3,10 @@
     {
       "member": "CSS relative colours in a stylesheet",
       "summary": "A relative colour whose channel uses math (`background: oklch(from var(--accent) l c calc(h + 180))`) no longer fails the declaration with \"calc() does not take 'h'\": the channel keywords are the colour's to resolve."
+    },
+    {
+      "member": "CSS colours: none alpha",
+      "summary": "A colour whose alpha is `none` (`rgb(0 0 0 / none)`) draws transparent, as CSS Color 4 treats a missing component as zero; it drew opaque."
     }
   ]
 }

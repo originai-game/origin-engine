@@ -1,7 +1,8 @@
 //! An sRGB colour as a style authors it, and the conversions the UI and
 //! the renderer need.
 
-use og_core::color::{linear_to_srgb8, parse_hex, srgb8_to_linear};
+use color::{AlphaColor, DynamicColor, Srgb};
+use og_core::color::{linear_to_srgb8, srgb8_to_linear};
 
 /// An sRGB colour as a style authors it: 8-bit channels, straight alpha.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -182,12 +183,34 @@ impl Srgba {
     };
 }
 
+impl From<Srgba> for AlphaColor<Srgb> {
+    fn from(c: Srgba) -> AlphaColor<Srgb> {
+        let [r, g, b] = c.rgb.map(|v| f32::from(v) / 255.0);
+        AlphaColor::new([r, g, b, c.alpha])
+    }
+}
+
+impl From<Srgba> for DynamicColor {
+    fn from(c: Srgba) -> DynamicColor {
+        DynamicColor::from_alpha_color(AlphaColor::<Srgb>::from(c))
+    }
+}
+
+impl From<AlphaColor<Srgb>> for Srgba {
+    /// Rounded to 8-bit channels (clipped), the alpha clamped.
+    fn from(c: AlphaColor<Srgb>) -> Srgba {
+        let [r, g, b, alpha] = c.components;
+        Srgba {
+            rgb: [r, g, b].map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8),
+            alpha: alpha.clamp(0.0, 1.0),
+        }
+    }
+}
+
 /// A CSS hex colour: `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`.
 pub fn parse_color(s: &str) -> Option<Srgba> {
-    // CSS needs the `#`, which og-core's reader leaves optional.
-    let [r, g, b, a] = parse_hex(s).filter(|_| s.starts_with('#'))?;
-    Some(Srgba {
-        rgb: [r, g, b],
-        alpha: f32::from(a) / 255.0,
-    })
+    s.starts_with('#')
+        .then(|| color::parse_color(s).ok())
+        .flatten()
+        .map(|c| c.to_alpha_color::<Srgb>().into())
 }

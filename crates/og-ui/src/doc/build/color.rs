@@ -5,13 +5,13 @@
 
 use super::*;
 use crate::paint::{ColorRef, ElementDraw, Gradient, Paint, Stop};
+use ::color::{Hwb, OpaqueColor, Srgb};
 
 /// `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa` as 0–1 channels (the alpha
 /// dropped).
 pub(crate) fn parse_hex(s: &str) -> Option<[f32; 3]> {
-    let s = s.trim();
-    let [r, g, b, _] = og_core::color::parse_hex(s).filter(|_| s.starts_with('#'))?;
-    Some([r, g, b].map(|c| f32::from(c) / 255.0))
+    let c = crate::style_file::parse_color(s.trim())?;
+    Some(c.rgb.map(|c| f32::from(c) / 255.0))
 }
 
 pub(crate) fn to_hex(c: [f32; 3]) -> String {
@@ -19,28 +19,17 @@ pub(crate) fn to_hex(c: [f32; 3]) -> String {
     og_core::color::hex_string([r, g, b, 255])
 }
 
-/// Hue in degrees, saturation and value 0–1.
-pub(crate) fn rgb_to_hsv([r, g, b]: [f32; 3]) -> [f32; 3] {
-    let max = r.max(g).max(b);
-    let d = max - r.min(g).min(b);
-    let h = if d <= 0.0 {
-        0.0
-    } else if max == r {
-        60.0 * ((g - b) / d).rem_euclid(6.0)
-    } else if max == g {
-        60.0 * ((b - r) / d + 2.0)
-    } else {
-        60.0 * ((r - g) / d + 4.0)
-    };
-    [h, if max > 0.0 { d / max } else { 0.0 }, max]
+/// Hue in degrees, saturation and value 0–1: HWB's (`color`'s) restated,
+/// value the whiteness's complement of blackness.
+pub(crate) fn rgb_to_hsv(rgb: [f32; 3]) -> [f32; 3] {
+    let [h, w, b] = OpaqueColor::<Srgb>::new(rgb).convert::<Hwb>().components;
+    let v = 1.0 - b / 100.0;
+    [h, if v > 0.0 { 1.0 - w / 100.0 / v } else { 0.0 }, v]
 }
 
 pub(crate) fn hsv_to_rgb([h, s, v]: [f32; 3]) -> [f32; 3] {
-    let f = |n: f32| {
-        let k = (n + h / 60.0).rem_euclid(6.0);
-        v - v * s * k.min(4.0 - k).clamp(0.0, 1.0)
-    };
-    [f(5.0), f(3.0), f(1.0)]
+    let hwb = [h, (1.0 - s) * v * 100.0, (1.0 - v) * 100.0];
+    OpaqueColor::<Hwb>::new(hwb).convert::<Srgb>().components
 }
 
 fn srgba(c: [f32; 3], alpha: f32) -> crate::Srgba {

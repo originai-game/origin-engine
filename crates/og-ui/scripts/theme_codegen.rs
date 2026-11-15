@@ -114,41 +114,14 @@ fn unit(v: &Value, path: &[&str], suffix: &str) -> Result<f32, String> {
         })
 }
 
-/// `#rrggbb`, `#rrggbbaa` or `rgb(r g b / a)`.
+/// A token's colour, any CSS colour that reads no other token.
 fn colour(s: &str) -> Result<([u8; 3], f32), String> {
-    if let Some(h) = s.strip_prefix('#').filter(|h| h.len() == 6) {
-        let n = u32::from_str_radix(h, 16).map_err(|_| format!("`{s}` is not a colour"))?;
-        return Ok(([(n >> 16) as u8, (n >> 8) as u8, n as u8], 1.0));
-    }
-    if let Some(h) = s.strip_prefix('#').filter(|h| h.len() == 8) {
-        let n = u32::from_str_radix(h, 16).map_err(|_| format!("`{s}` is not a colour"))?;
-        let a = f32::from(n as u8) / 255.0;
-        return Ok(([(n >> 24) as u8, (n >> 16) as u8, (n >> 8) as u8], a));
-    }
-    let inner = s
-        .strip_prefix("rgb(")
-        .and_then(|r| r.strip_suffix(')'))
-        .ok_or_else(|| format!("`{s}` is not a colour (#rrggbb or rgb(r g b / a))"))?;
-    let (rgb, a) = match inner.split_once('/') {
-        Some((rgb, a)) => (
-            rgb,
-            a.trim()
-                .parse::<f32>()
-                .map_err(|_| format!("`{s}`: alpha"))?,
-        ),
-        None => (inner, 1.0),
-    };
-    let c: Vec<u8> = rgb
-        .split_whitespace()
-        .map(|p| p.parse::<u8>().map_err(|_| format!("`{s}`: a channel")))
-        .collect::<Result<_, _>>()?;
-    let [r, g, b] = c[..] else {
-        return Err(format!("`{s}` has not three channels"));
-    };
-    Ok(([r, g, b], a))
+    let c = og_css::color::parse_str(s)?
+        .literal()
+        .ok_or_else(|| format!("`{s}` is not a colour of its own"))?;
+    Ok((c.rgb, c.alpha))
 }
 
-/// A float as Rust source: `14.0`, `0.169`, `-0.01`.
 fn num(x: f32) -> String {
     if x == x.trunc() && x.abs() < 1e7 {
         format!("{x:.1}")

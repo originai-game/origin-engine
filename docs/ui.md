@@ -450,8 +450,12 @@ re-resolving only their readers. `accent-color` inks switches, sliders,
 radios and progress; `caret-color` a field's caret; `color-scheme` picks
 `light-dark()`'s side.
 
-Colours take all of CSS Color 4 and 5 (`crates/og-ui/src/style/css_color.rs`);
-out-of-gamut colours are mapped by OKLCh chroma reduction. A colour that
+Colours take all of CSS Color 4 and 5 (`crates/og-ui/src/style/css_color.rs`).
+Linebender's `color` crate parses absolute colours and owns every space,
+conversion and CSS Color 4 §12 interpolation; og-css adds `var()` roles,
+`currentColor`, `light-dark()`, `color-mix()`'s percentages, relative
+colours and gamut mapping (out-of-gamut colours by OKLCh chroma
+reduction). A colour that
 reads no role, `currentColor` or `light-dark()` reduces to sRGB at cook;
 others resolve against the active style when drawn. One parse
 (`style_file::parse_color`) reads every hex literal.
