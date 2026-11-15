@@ -1500,6 +1500,15 @@ impl Bundle {
         self.lightmap(id, &self.read(id)?)
     }
 
+    /// Decodes a scene's HLOD tree (`og.Hlod`, `<scene>#hlod`).
+    pub fn hlod(&self, id: &str, bytes: &[u8]) -> Result<crate::hlod::Hlod, LoadError> {
+        let blob = self.blob::<format::Hlod>(id, bytes)?;
+        let meta = one::<format::HlodMeta>(&blob)?;
+        let nodes = table::<format::HlodNodeRow>(&blob, "nodes")?;
+        let members = table::<format::HlodMemberRow>(&blob, "members")?;
+        crate::hlod::Hlod::from_rows(&meta, &nodes, &members).map_err(|e| invalid(&blob, e))
+    }
+
     /// The asset bytes of a fracture blob (`og.Fracture`, a model's
     /// `#fracture`), for `og_physics_data::fracture::FractureAsset::from_bytes`.
     pub fn fracture(&self, id: &str, bytes: &[u8]) -> Result<Vec<u8>, LoadError> {

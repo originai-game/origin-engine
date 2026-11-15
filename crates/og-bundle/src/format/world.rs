@@ -479,6 +479,71 @@ impl BlobKind for Fracture {
     }
 }
 
+// ── HLOD: a scene's distant proxies ──────────────────────────────────────
+
+row!(
+    /// The root of an HLOD blob (`<scene>#hlod`, a scene with an `hlod`
+    /// block).
+    HlodMeta, "og.Hlod", 1 {
+        node_count: u32,
+        member_count: u32,
+        /// The leaves' cell size and error in metres, as the scene asks.
+        size: f32,
+        error: f32,
+    }
+);
+
+row!(
+    /// One node of a scene's HLOD tree, in depth-first order (a node, then
+    /// its children's subtrees): the proxy model `<scene>#hlod-<index>`
+    /// (`crate::hlod::node_id`) stands in for its members.
+    HlodNodeRow, "og.HlodNode", 1 {
+        /// Its parent's index ([`NONE`]: a root).
+        parent: u32,
+        /// The index after its last descendant: its children are the
+        /// nodes from the one after it whose parent it is.
+        end: u32,
+        /// Its members, its descendants' together: a range of `members`.
+        member_first: u32,
+        member_count: u32,
+        /// 0 for a leaf's cell size, each level above twice as wide.
+        level: u32,
+        /// The sphere around its members, in the scene's space.
+        center_x: f32, center_y: f32, center_z: f32,
+        radius: f32,
+        /// How far its proxy stands off its members (their surface and
+        /// what a texel of it holds), in metres: the proxy is drawn while
+        /// this projects under a pixel (og-render's `lod`).
+        error: f32,
+    }
+);
+
+row!(
+    /// One member of an HLOD tree: a model entity of the scene and where
+    /// the cook read it standing, as the first three rows of its matrix in
+    /// the scene's space (`x' = xx x + xy y + xz z + xt`).
+    HlodMemberRow, "og.HlodMember", 1 {
+        /// Its index in the scene's `entities`.
+        entity: u32,
+        xx: f32, xy: f32, xz: f32, xt: f32,
+        yx: f32, yy: f32, yz: f32, yt: f32,
+        zx: f32, zy: f32, zz: f32, zt: f32,
+    }
+);
+
+/// The HLOD blob: `nodes` [`HlodNodeRow`] and `members` [`HlodMemberRow`].
+pub struct Hlod;
+impl BlobKind for Hlod {
+    const NAME: &'static str = "og.Hlod";
+    fn schemas() -> Vec<Schema> {
+        vec![
+            HlodMeta::schema(),
+            HlodNodeRow::schema(),
+            HlodMemberRow::schema(),
+        ]
+    }
+}
+
 // ── depth S7: baked lighting ─────────────────────────────────────────────
 
 row!(

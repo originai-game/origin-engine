@@ -25,6 +25,7 @@ pub mod effect;
 pub mod format;
 pub mod fx;
 pub mod grammar;
+pub mod hlod;
 pub mod ktx2;
 pub mod lightmap;
 pub mod look;
