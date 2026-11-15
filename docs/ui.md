@@ -1414,10 +1414,13 @@ literals outside `:root` (§3.1) and reports root-token contrast ratios as
 facts (not over images or gradients). `og style check-project` is the
 game's art-contract checker.
 
-`og ui sheet <directory>` renders a pack's core-control pages at
-desktopHd and phonePortrait at 100 % and 150 % text, scroll pages captured
-to the bottom; `og ui review <directory> --locales game,pseudo,zh,ar` adds
-locales. Both take `--out DIR` and `--json` and a group's sheet (§6).
+`og ui sheet <pack>` renders a pack's core-control pages at desktopHd and
+phonePortrait at 100 % and 150 % text, scroll pages captured to the
+bottom; `og ui review <pack> --locales game,pseudo,zh,ar` adds locales. A
+pack is named as a game names it: `fantasy`, or `@styles/fantasy` as
+`og.load.style` loads it (a bundled pack, or the project's
+`assets/styles/<name>`). Both take `--out DIR` and `--json` and a group's
+sheet (§6).
 Review frames before recording references. The
 [screens guide](../crates/og-api/guides/screens.md#3-style-packs) shows
 loading, selectors, tokens and asset URLs.
@@ -1680,8 +1683,9 @@ cook bundle it) and its name in `STYLES`.
 desktop (1920×1080) and phone portrait (390×844), at 100 % and 150 %
 text; `og ui review <group> --style <pack>` renders every page in each
 named style across `--locales`, as labelled contact sheets. A pack's own
-core-control sheet is `og ui sheet <pack-directory>`. Landscape-heavy
-content also has a genuine landscape fixture. Sheet captures are review
+core-control sheet is `og ui sheet <pack>` (`fantasy` or
+`@styles/fantasy`). Landscape-heavy content also has a genuine
+landscape fixture. Sheet captures are review
 material: locale, right-to-left, landscape and further states get
 risk-based review captures, and any permanent reference names the
 regression it guards. The rpg sheet alone keeps approved cells

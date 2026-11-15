@@ -221,14 +221,19 @@ commands:
                       the flags) and measure their colours, palette and edges; exit 0 within the
                       game's own contract or with no look, 3 off it
   ui sheet <pack|group|sheet-directory> [project] [--out DIR] [--json]
-                      render fixed baseline pages on the pack's own ground, or a component group's
-                      review sheet (the engine package's sheets/<group>), at desktop and phone,
-                      100% and 150%; frames, UI dumps and sheets for review, never a gate step
-  ui review <group|sheet-directory> [project] [--style <pack>]... [--states a,b] [--grid N]
+                      render a style pack's core-control pages on its own ground (a pack by its
+                      name, bundled or in the project's assets/styles: fantasy, or @styles/fantasy
+                      as og.load.style names it), or a component group's review sheet (the engine
+                      package's sheets/<group>: rpg, arena, components, screens, world, ...), at
+                      desktop and phone, 100% and 150%; frames, UI dumps and sheets for review,
+                      never a gate step
+  ui review <group|pack|sheet-directory> [project] [--style <pack>]... [--states a,b] [--grid N]
       [--breakpoints ...] [--locales game,pseudo,zh,ar] [--scales ...] [--out DIR] [--json]
                       every page of a component group's review sheet (the engine package's
-                      sheets/<group>, or a sheet directory) per state fixture and style, at desktop
-                      and phone, 100% and 150%, across locales; labelled contact sheets
+                      sheets/<group>, or a sheet directory) per state fixture and style (each
+                      --style a pack's name: scifi or @styles/scifi), at desktop and phone, 100%
+                      and 150%, across locales, or a pack's core-control pages across locales;
+                      labelled contact sheets and every measure as read
   ui check [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b]
       [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet]
       [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S]

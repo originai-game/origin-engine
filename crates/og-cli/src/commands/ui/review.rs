@@ -1,14 +1,16 @@
 //! `og ui review <group>` (docs/ui.md §6): every page of a component
 //! group's review sheet (`sheets/<group>` of the engine package, or a
-//! sheet directory) × state fixture × style, at 1920×1080 and on a phone both ways,
+//! sheet directory) × state fixture × style (a pack by its name, `fantasy`
+//! or `@styles/fantasy`), at 1920×1080 and on a phone both ways,
 //! 100 % and 150 % text, in the game's locale, Chinese, Arabic and the
 //! pseudo-locale; labelled contact sheets and the measures as read.
 use super::{Project, declared_screens, extensions, project, spawn};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og ui review <group|sheet-directory> [project] [--style <pack>]... [--states a,b] [--grid N] \
-                     [--breakpoints ...] [--locales ...] [--scales ...] [--out DIR] [--json]";
+const USAGE: &str = "usage: og ui review <group|pack|sheet-directory> [project] [--style <pack>]... [--states a,b] [--grid N] \
+                     [--breakpoints ...] [--locales ...] [--scales ...] [--out DIR] [--json] \
+                     (a pack by its name: fantasy or @styles/fantasy)";
 
 /// A sheet screen's commands without its `style:` steps, and those styles.
 fn split_style(commands: &str) -> (String, Vec<String>) {
@@ -111,6 +113,7 @@ fn review(args: &[&str]) -> Result<ExitCode, String> {
     let Some((&name, rest)) = args.split_first().filter(|(n, _)| !n.starts_with('-')) else {
         return Err(USAGE.into());
     };
+    let name = super::pack_name(name);
     let mut root = Path::new(".");
     let mut out = None;
     let mut styles: Vec<String> = Vec::new();
@@ -124,7 +127,7 @@ fn review(args: &[&str]) -> Result<ExitCode, String> {
             }
             "--style" if i + 1 < rest.len() => {
                 i += 1;
-                styles.push(rest[i].to_owned());
+                styles.push(super::pack_name(rest[i]).to_owned());
             }
             a @ ("--states" | "--grid" | "--breakpoints" | "--locales" | "--scales"
             | "--settle")

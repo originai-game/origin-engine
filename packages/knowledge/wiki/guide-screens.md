@@ -103,10 +103,12 @@ names the built-in and installed packs.
    `:root` token and read it with `var()`. Contrast reports root-token
    ratios, not a grade or a guarantee about text over images and
    gradients.
-4. Run `og ui sheet assets/styles/my-style` to inspect every core-control
-   page at desktopHd and phonePortrait, at 100% and 150% text scale.
-   Use `og ui review assets/styles/my-style --locales game,pseudo,zh,ar`
-   for locale coverage. Scrollable pages produce overlapping captures down
+4. Run `og ui sheet my-style` to inspect every core-control page at
+   desktopHd and phonePortrait, at 100% and 150% text scale (a pack by its
+   name: the project's `assets/styles/<name>`, or a bundled one as
+   `fantasy` or `@styles/fantasy`). Use
+   `og ui review my-style --locales game,pseudo,zh,ar` for locale
+   coverage. Scrollable pages produce overlapping captures down
    to the bottom without changing the viewport. Review frames before
    recording references.
 

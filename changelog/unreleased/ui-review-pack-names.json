@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og ui sheet and og ui review",
+      "summary": "A pack is named as a game names it: `og ui sheet fantasy` or `og ui sheet @styles/fantasy` (a bundled pack, or the project's `assets/styles/<name>`), and `--style` takes the same forms. `og ui --help` and the screens guide say so; a group's sheet is still named by its group."
+    }
+  ]
+}

@@ -27,9 +27,10 @@ pub(super) fn group_sheet(package: &Path, name: &str) -> Option<PathBuf> {
 pub(super) fn sheet(args: &[&str], review: bool) -> Result<(), String> {
     let Some((&name, rest)) = args.split_first().filter(|(n, _)| !n.starts_with('-')) else {
         return Err(
-            "usage: og ui sheet <pack|group|sheet-directory> [project] [--out DIR] [--json]".into(),
+            "usage: og ui sheet <pack|group|sheet-directory> [project] [--out DIR] [--json] (a pack by its name: fantasy or @styles/fantasy)".into(),
         );
     };
+    let name = super::pack_name(name);
     let mut root = Path::new(".");
     let mut out = None;
     let mut json = false;
