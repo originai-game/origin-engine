@@ -306,6 +306,8 @@
     var(--fantasy-filigree-br) right bottom / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
     radial-gradient(ellipse at 50% 0%, #2a1e13 0%, #17110b 60%, #0f0a07 100%);
   --frame-shadow: inset 0 0 0 2px var(--well), inset 0 0 0 3px var(--line-strong), inset 0 0 0 5px var(--well), inset 0 0 0 6px var(--line), inset 0 0 48px #000000b0, 0 0 0 1px var(--color-shadow), 0 12px 32px #000000c0;
+  /* The speech bubble's tail: the frame's foot, in one colour. */
+  --fantasy-bubble-tail-fill: var(--well);
   --fantasy-stats-shadow: inset 0 0 0 2px var(--well), inset 0 0 0 3px var(--line-strong), inset 0 0 0 5px var(--well), inset 0 0 0 6px var(--line), inset 0 0 48px #000000b0, 0 12px 32px #000000c0;
   --plate-fill:
     var(--fantasy-filigree-tl) left top / var(--fantasy-corner-hud) var(--fantasy-corner-hud) no-repeat,

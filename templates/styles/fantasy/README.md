@@ -23,6 +23,7 @@ button's base rules, and it must stay a ring whatever plate the button has.
 | `controls.css` | Every core control's parts and states through `host::part(name):state`, in the `fantasy-controls` layer: painted button plates by `border-image`, tabs, toggles, sliders, inputs, slots, tooltips and the rest; and, outside the layer, the button's focus ring |
 | `rpg.css` | The rpg components (`packages/engine/src/ui/components/rpg`) through their named parts (`[part="RpgBackpack.frame"]`, `button::part(RpgBackpack\.cell)`) and `data-*` states: frames, bands, rarity rims, vitals bars, action bar, commands, map, compass; and the rpg sheet's `.rpg-ground`, `.rpg-fold` and `.rpg-minimap` wrappers |
 | `shooter.css` | The shooter components (`packages/engine/src/ui/components/shooter`) through their parts and class qualifiers (`[part="Crosshair.hit"].kill`, `button::part(Loadout\.item)`): the reticle's marks, ring and hit confirmations, each with a dark keyline; opaque lamp-black plates in a brass rim for the vitals, the ammunition and the killfeed rows, the names in their side's ink, the player's rows with a gold edge, a headshot's mark in gold; the weapon and the reload's words in small caps, the fire mode on a crimson tag, the magazine in gold on a brass track; the loadout's categories under crimson bands and its slots as soot plates with every state |
+| `components.css` | The ungrouped components (`packages/engine/src/ui/components`) through their parts: the speech bubble's tail, a shape, in the frame's lamp-black foot with a brass rim (`[part="SpeechBubble.tail"]`), since the frame's fill is layers no shape can take |
 | `motion.css` | Transitions over a slow warm curve, `-og-spring()` on tab indicators, the acting portrait and fresh badges; a `prefers-reduced-motion` branch keeps the state changes and drops the movement |
 | `sounds.css` | `-og-sound` sets from the shared library for press, hover, select, confirm, back, open, close, error and reward, with quieter variants on cells and HUD plates |
 | `art/` | Frame and button art (SVG), filigree corners, the glow and the ground (PNG), each with its import `.ogt` (colour art sRGB; masks linear) |
@@ -30,7 +31,7 @@ button's base rules, and it must stay a ring whatever plate the button has.
 ## Tokens
 
 Only `base.css` writes values; `controls.css`, `motion.css`, `rpg.css`,
-`shooter.css` and `sounds.css` name them with `var()` (`og style check`
+`shooter.css`, `components.css` and `sounds.css` name them with `var()` (`og style check`
 enforces it), so a
 variant restyles the pack by setting tokens alone
 (`templates/styles/tests/fantasy-frost`).

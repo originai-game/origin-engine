@@ -1,0 +1,7 @@
+/* fantasy: the ungrouped components (packages/engine/src/ui/components)
+   through their parts. Every value is a token set in base.css. */
+
+/* ── Speech bubble: the frame is layers of filigree over a gradient, so the
+   tail, a shape, takes the frame's lamp-black foot in one colour and its
+   brass rim. */
+[part="SpeechBubble.tail"] { fill: var(--fantasy-bubble-tail-fill); stroke: var(--line-strong); stroke-width: var(--stroke-hairline); }
