@@ -2,14 +2,16 @@ type look
 version 1
 ---
 # Flat facets in cel bands with hard edges (toon, toonSoftness 0) and six
-# clean tones, nothing else: no gradient survives on a surface. The tones
-# step value and tint apart (posterizeMode tone), so a mood moves a colour's
-# value, never its hue.
+# clean tones, nothing else: no gradient survives on a surface. The facets
+# are the cook's (ArtShape normals flat), each a group of faces within 8
+# degrees with one normal and one colour, so a rolling ground reads as a
+# few broad planes, never as its triangles. The tones step value and tint
+# apart (posterizeMode tone), so a mood moves a colour's value, never its
+# hue.
 name "Minimal geometric color"
 mood "soft"
 ui "default"
 MaterialStyle {
-  flatShading true
   toon true
   toonSoftness 0
 }
@@ -27,4 +29,5 @@ ArtPalette {
 }
 ArtShape {
   normals flat
+  facetAngle 8
 }
