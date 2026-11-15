@@ -408,3 +408,45 @@ fn status_grid_takes_an_effect_extended_past_its_duration() {
     let warnings = preview(&mut ui, &docs, &extended, &messages, 1280.0, 720.0);
     assert!(warnings.is_empty(), "{warnings:?}");
 }
+
+/// Two interaction prompts over one spot (a chest beside a locked vault)
+/// stand apart, the nearer in its place. Fails when the prompt's anchor
+/// does not declutter and one prompt is drawn over the other.
+#[test]
+fn interaction_prompts_over_one_spot_stand_apart() {
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    let page = r#"<meta name="component" content="page">
+<div id="Page">
+  <InteractionPrompt at="0 0 0" height={1.2} verb="Open" name="Vault" disabled={true} reason="Locked" maxDistance={20} />
+  <InteractionPrompt at="0.3 0 0.5" height={1.2} verb="Pick up and equip" name="Ember Blade of the Ninefold Gate" maxDistance={20} />
+</div>"#;
+    let page = EngineDocument {
+        path: "page of prompts".into(),
+        doc: UiDocument::parse("page.svelte", page).unwrap(),
+        props: serde_json::json!({}),
+    };
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+    ui.define_document(page.doc.clone());
+    let warnings = preview(&mut ui, &docs, &page, &messages, 1280.0, 720.0);
+    assert!(warnings.is_empty(), "{warnings:?}");
+    // Shifts glide in over a few ticks.
+    for _ in 0..30 {
+        ui.begin(InputFrame::default(), Viewport::new(1280.0, 720.0));
+        ui.set_world_view(Some(view(1280.0, 720.0)));
+        ui.build_retained_documents(&messages).unwrap();
+        ui.end();
+    }
+    let prompts: Vec<_> = ui
+        .probe_elements()
+        .into_iter()
+        .filter(|e| e.id == "Prompt")
+        .collect();
+    assert_eq!(prompts.len(), 2, "{prompts:#?}");
+    let (a, b) = (&prompts[0], &prompts[1]);
+    let apart = a.x + a.width <= b.x
+        || b.x + b.width <= a.x
+        || a.y + a.height <= b.y
+        || b.y + b.height <= a.y;
+    assert!(apart, "one prompt over the other: {a:#?} {b:#?}");
+}

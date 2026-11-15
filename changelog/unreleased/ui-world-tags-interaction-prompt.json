@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "InteractionPrompt",
+      "summary": "Moves frames: two prompts over nearby things stand apart (it declutters by shifting, the nearer keeping its place); they were drawn one over the other."
+    }
+  ]
+}

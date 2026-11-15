@@ -11,7 +11,7 @@
 <meta name="prop:maxDistance" content="number" data-default="6" data-doc="Hidden past this many world units (6).">
 <meta name="fixture:default" content='{"entity":0,"at":"0 0 0","height":1.2,"action":"interact","verb":"Open","name":"Chest","disabled":false,"reason":""}'>
 
-<anchor id="InteractionPrompt" entity={entity || null} at={at} offset={"0 " + height + " 0"} occlusion="none" priority="300" max-distance={maxDistance}>
+<anchor id="InteractionPrompt" entity={entity || null} at={at} offset={"0 " + height + " 0"} declutter="shift" occlusion="none" priority="300" max-distance={maxDistance}>
   <div id="Prompt" part="InteractionPrompt.frame" class="hud" class:disabled={disabled} role="status">
     <kbd id="Glyph" part="InteractionPrompt.key" data-action={action}></kbd>
     <div id="Words">
