@@ -213,8 +213,8 @@ const palettes: Record<string, { about: string; colors: string[] }> = {
     colors: ["000000", "ffffff"],
   },
   // The moods of the two palette-bound styles (templates/looks/moods/<mood>/):
-  // monochrome-pixel draws in handheld4 (its own mood, soft), and
-  // monochrome-dither-3d in 1bit (its own, high-contrast).
+  // pixel's monochrome variant draws in handheld4 (its own mood, soft), and
+  // low-resolution-3d's monochrome-dither variant in 1bit (its own, high-contrast).
   "handheld4-bright": {
     about: "Four handheld greens in a bright mood: a lifted lime ramp, darkest to lightest.",
     colors: ["1f3a1a", "4f8a2e", "a8cf45", "eef7b0"],

@@ -5,7 +5,7 @@ export const CREATION_CHOICES = {
   genre: ["action-platformer", "shooter", "rpg", "puzzle-match", "strategy-tower-defense", "racing", "runner", "roguelike-card", "idle", "rhythm", "arena", "open-world"],
   view: ["side-2d", "top-down-2d", "isometric-2.5d", "third-person-3d", "first-person-3d"],
   mood: ["bright", "dark", "warm", "cold", "soft", "high-contrast"],
-  ui: ["default"],
+  ui: ["default", "cartoon", "fantasy", "scifi"],
   platform: ["phone-portrait", "phone-landscape", "desktop", "multi"],
   input: ["touch", "keyboard-mouse", "gamepad"],
   players: ["single", "local-multiplayer", "online-lockstep"],

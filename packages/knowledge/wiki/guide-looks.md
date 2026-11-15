@@ -45,8 +45,12 @@ PostEffects {
 - A preset whose catalogue entry is not `full` support still lacks a
   primitive; the catalogue's `missing` names it. Do not promise the
   user that look's whole effect.
-- A preset whose catalogue entry has `look.frozen` is being rebuilt. A
-  game already on it keeps cooking; do not start a new look on it.
+- `variant "<name>"` draws the preset another way: one of the variants
+  its catalogue entry lists (`pixel`'s `8bit` or `monochrome`, `toy-3d`'s
+  `voxel` or `clay`). It is laid over the preset before the mood and the
+  game's own fields. Pick a variant before hand-tuning the preset towards
+  one; request assets with the variant named, so the brief reads its
+  direction.
 
 <a id="guide-looks-2"></a>
 ### `looks §2` What goes where
@@ -257,7 +261,7 @@ and the dither cells.
 <a id="guide-looks-11"></a>
 ### `looks §11` Depth bands
 
-Depth bands make layered-silhouette and stage looks. Use them for side
+Depth bands make silhouette and stage looks (minimal-geometric's layered-silhouette variant). Use them for side
 and three-quarter views, where the depth runs across the frame. Seen
 from above, the play area lies at one depth and falls in one band.
 

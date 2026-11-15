@@ -80,7 +80,7 @@ the variant names given.
 A clip change starts the new clip at 0 (or at `time` if the game wrote it in
 the same tick).
 
-**Stepped playback** (`stepFps`, the sculpted-clay look's stop motion "on
+**Stepped playback** (`stepFps`, toy-3d's clay variant's stop motion "on
 twos" at 12): only the sampled pose steps. `time` advances every tick,
 so markers fire in the tick playback passes them and root motion
 travels smoothly; the pose (of the clip and of the one fading out) is

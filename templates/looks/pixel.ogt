@@ -4,7 +4,7 @@ version 1
 # A finer grid, eight tones per channel through a gentle Bayer 4 dither: the
 # frame's quantise holds anything to the look, while art the cook conformed
 # (64 colours in 6-step ramps, ArtPalette) keeps its own colours.
-name "16-bit-inspired pixel art"
+name "Pixel art"
 mood "bright"
 ui "default"
 antialias off

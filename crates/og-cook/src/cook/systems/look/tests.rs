@@ -326,6 +326,32 @@ fn the_presets_are_the_template_looks() {
     for (slug, text) in PRESETS {
         LookFile::parse(text).unwrap_or_else(|e| panic!("{slug}: {e}"));
     }
+    // Every variant file is compiled in, each a variant of a preset.
+    let mut on_disk: Vec<String> = Vec::new();
+    for slug in std::fs::read_dir(dir.join("variants")).unwrap().flatten() {
+        if !slug.path().is_dir() {
+            continue;
+        }
+        let slug_name = slug.file_name().to_str().unwrap().to_string();
+        assert!(
+            PRESETS.iter().any(|(s, _)| *s == slug_name),
+            "variants/{slug_name}: no such preset"
+        );
+        for v in std::fs::read_dir(slug.path()).unwrap().flatten() {
+            let v = v.file_name().to_str().unwrap().to_string();
+            on_disk.push(format!("{slug_name}/{}", v.strip_suffix(".ogt").unwrap()));
+        }
+    }
+    on_disk.sort();
+    let mut built_in: Vec<String> = VARIANT_LAYERS
+        .iter()
+        .map(|(s, v, _)| format!("{s}/{v}"))
+        .collect();
+    built_in.sort();
+    assert_eq!(
+        built_in, on_disk,
+        "VARIANT_LAYERS lists templates/looks/variants/*/*.ogt"
+    );
 }
 #[test]
 fn names_the_built_in_assets_by_their_reserved_ids() {
@@ -501,10 +527,23 @@ fn every_preset_checks_against_the_records_with_the_built_ins() {
         .map(|(id, _)| *id)
         .chain(styles().iter().map(StyleFile::id))
         .collect();
-    for (slug, _) in PRESETS {
-        let root = project(&[("looks/x.ogt", &format!("{HEAD}extends \"{slug}\"\n"))]);
+    // A built-in UI pack is named by its directory (`@styles/cartoon`).
+    let packs: Vec<String> = style_slugs()
+        .iter()
+        .map(|s| format!("@styles/{s}"))
+        .collect();
+    let looks = PRESETS
+        .iter()
+        .map(|(s, _)| format!("extends \"{s}\""))
+        .chain(
+            VARIANT_LAYERS
+                .iter()
+                .map(|(s, v, _)| format!("extends \"{s}\"\nvariant \"{v}\"")),
+        );
+    for slug in looks {
+        let root = project(&[("looks/x.ogt", &format!("{HEAD}{slug}\n"))]);
         let s = source(&root, "looks/x.ogt");
-        let known = |id: &str| builtin_ids.contains(&id);
+        let known = |id: &str| builtin_ids.contains(&id) || packs.iter().any(|p| p == id);
         resolve(&s, &root, &known, PRESETS).unwrap_or_else(|e| panic!("{slug}: {e}"));
         let text = String::from_utf8_lossy(&s.bytes).to_string();
         for (id, _) in builtin_files(&s.rel, &text, &root) {
@@ -602,7 +641,7 @@ fn a_mood_is_laid_over_the_preset_and_the_games_fields_still_win() {
 fn a_palette_bound_preset_swaps_its_palette_for_the_moods() {
     let root = project(&[(
         "looks/g.ogt",
-        &format!("{HEAD}extends \"monochrome-pixel\"\nmood \"warm\"\n"),
+        &format!("{HEAD}extends \"pixel\"\nvariant \"monochrome\"\nmood \"warm\"\n"),
     )]);
     let s = source(&root, "looks/g.ogt");
     let (l, bases) = resolve(&s, &root, &|_: &str| true, PRESETS).unwrap();
@@ -626,7 +665,8 @@ fn a_palette_bound_preset_swaps_its_palette_for_the_moods() {
     );
     // Its own layer replaces the generic one: no grading from warm.ogt.
     assert_eq!(number_of(&l, "PostEffects", "temperature"), None);
-    assert!(bases.iter().any(|b| b.id == "@moods/warm/monochrome-pixel"));
+    assert!(bases.iter().any(|b| b.id == "@moods/warm/pixel.monochrome"));
+    assert!(bases.iter().any(|b| b.id == "@variants/pixel/monochrome"));
     // The cook bundles the palette the mood names.
     let files = builtin_files(
         "looks/g.ogt",
@@ -648,6 +688,20 @@ fn every_preset_names_its_mood_and_every_mood_lays_on_every_preset() {
             .mood
             .as_deref()
             .unwrap_or_else(|| panic!("{slug}: no mood line"));
+        // Each of its variants lays in every mood too, and keeps its variant.
+        for (_, v, _) in VARIANT_LAYERS.iter().filter(|(s, _, _)| s == slug) {
+            for mood in crate::look::MOODS {
+                let root = project(&[(
+                    "looks/g.ogt",
+                    &format!("{HEAD}extends \"{slug}\"\nvariant \"{v}\"\nmood \"{mood}\"\n"),
+                )]);
+                let s = source(&root, "looks/g.ogt");
+                let (l, _) = resolve(&s, &root, &|_: &str| true, PRESETS)
+                    .unwrap_or_else(|e| panic!("{slug}/{v} in {mood}: {e}"));
+                assert_eq!(l.mood.as_deref(), Some(mood));
+                assert_eq!(l.variant.as_deref(), Some(*v));
+            }
+        }
         for mood in crate::look::MOODS {
             let root = project(&[(
                 "looks/g.ogt",

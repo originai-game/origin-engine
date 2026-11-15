@@ -148,28 +148,33 @@ test("a wiki page that calls a UI style a skin is refused; the glTF, collision a
   ].sort());
 });
 
-test("the style catalogue covers 37 styles, each complete", () => {
+test("the style catalogue offers twelve looks, each complete", () => {
   const cat = JSON.parse(readFileSync(join(real.pkg, "looks/catalogue.json"), "utf8")) as { styles: { slug: string; checks: string[]; look: { support: string; missing: string[] } }[] };
-  expect(cat.styles).toHaveLength(37);
+  expect(cat.styles.map((s) => s.slug)).toEqual(["cinematic-realism", "anime-cel-3d", "inked-comic-3d", "painterly-3d", "faceted-low-poly", "low-resolution-3d", "pixel", "minimal-geometric", "neon-vector", "toy-3d", "cartoon-2d", "pixel-3d-hybrid"]);
   for (const s of cat.styles) {
     expect(s.checks).toHaveLength(3);
     if (s.look.support !== "full") expect(s.look.missing.length).toBeGreaterThan(0);
   }
 });
 
-test("a view left with only frozen styles is refused", () => {
+test("a view with no look, and an incomplete variant, are refused", () => {
   const p = added((r) =>
     edit(join(r.pkg, "looks/catalogue.json"), (s) => {
       const cat = JSON.parse(s);
-      for (const style of cat.styles) if (style.look.views.includes("top-down-2d")) style.look.frozen = true;
-      cat.styles[0].look.frozen = false;
+      for (const style of cat.styles) style.look.views = style.look.views.filter((v: string) => v !== "top-down-2d");
+      const pixel = cat.styles.find((x: { slug: string }) => x.slug === "pixel");
+      const v = pixel.variants.find((x: { name: string }) => x.name === "8bit");
+      v.checks = v.checks.slice(1);
+      v.mood = "gloomy";
+      pixel.variants.push({ ...pixel.variants[1] });
       return JSON.stringify(cat, null, 2);
     }),
   );
-  const first = (JSON.parse(readFileSync(join(real.pkg, "looks/catalogue.json"), "utf8")) as { styles: { slug: string }[] }).styles[0]!.slug;
   expect(p.sort()).toEqual([
-    `looks/catalogue.json: ${first}: look.frozen is true or absent`,
-    "looks/catalogue.json: every style of the top-down-2d view is frozen; a new game of that view has no look to pick",
+    "looks/catalogue.json: no look with a preset suits the top-down-2d view; a new game of that view has no look to pick",
+    "looks/catalogue.json: pixel: variant 8bit: needs exactly three checks a critic can judge on a frame",
+    "looks/catalogue.json: pixel: variant 8bit: mood gloomy is none of bright, dark, warm, cold, soft, high-contrast",
+    "looks/catalogue.json: pixel: variant monochrome: a second variant with this name",
   ].sort());
 });
 

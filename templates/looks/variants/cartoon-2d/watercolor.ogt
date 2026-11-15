@@ -1,0 +1,49 @@
+type look
+version 1
+---
+# Soft strokes that bleed into each other on cold-pressed paper (the engine's
+# @canvas/watercolor), then the watercolour wash: pigment pooled in thin rims
+# where the colour regions meet, granulated into the paper's pits, patchy
+# with turbulence, the paper's tooth left bare under the lightest washes and
+# every edge wavering with the relief, a bright exposure.
+# The watercolor variant of cartoon-2d (`variant "watercolor"`): only what it changes of
+# the preset, a field it turns off written at its default.
+name "Watercolor washes"
+mood "soft"
+Stylise {
+  paintRadius 3
+  paintAnisotropy 0.4
+  paintEdgeDarkening 0.25
+  paintBleed 0.8
+  paintCanvas "@canvas/watercolor"
+  paintCanvasStrength 0.15
+  watercolorEdgeDarkening 0.4
+  watercolorGranulation 0.3
+  watercolorTurbulence 0.4
+  watercolorDryBrush 0.4
+  watercolorWobble 1.0
+  watercolorDilution 0.4
+  posterize 0
+  posterizeMode channel
+}
+PostEffects {
+  vignette false
+  vignetteIntensity 0.35
+}
+ArtPalette {
+  maxColors 24
+  rampSteps 0
+}
+ArtLine {
+  width 0
+  color 0.02 0.02 0.03
+}
+RenderSettings {
+  exposure 1.15
+}
+ArtTexels {
+  density 64
+}
+ArtShape {
+  normals smooth
+}

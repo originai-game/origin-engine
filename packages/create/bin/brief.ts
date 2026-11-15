@@ -827,7 +827,8 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
 
   // References and what to avoid.
   const references: BriefReference[] = [];
-  const preview = look.preview ?? style?.preview;
+  // A variant's palette and grid are not the preview's: only a preview the caller passes goes.
+  const preview = look.preview ?? (look.variant ? undefined : style?.preview);
   if (preview) references.push({ role: "style", path: preview });
   for (const r of options.references ?? []) references.push({ role: "accepted", path: r });
   if (references.length > 0) {

@@ -1,0 +1,20 @@
+{
+  "breaking": [
+    {
+      "member": "looks: presets",
+      "change": "The style catalogue is twelve looks, every one offered to a new game: cinematic-realism, anime-cel-3d, inked-comic-3d, painterly-3d, faceted-low-poly, low-resolution-3d, pixel (was 16bit-pixel), minimal-geometric, neon-vector, toy-3d (new), cartoon-2d (new) and pixel-3d-hybrid. The look.frozen mark and the refusal of a frozen look are gone. Removed presets, previews and catalogue entries, with nothing resolving them: 16bit-pixel (now pixel); folded into a kept look's variant: muted-cinematic-3d (cinematic-realism muted), bold-comic-illustration and heavy-ink-shadows (inked-comic-3d bold-comic, heavy-ink), lush-painted-worlds, luminous-layered-painting and expressionist-painting (painterly-3d lush, luminous-layers, expressionist), monochrome-dither-3d (low-resolution-3d monochrome-dither), 8bit-pixel, monochrome-pixel, detailed-pixel, luminous-pixel, coarse-pixel and topdown-tile-pixel (pixel 8bit, monochrome, detailed, luminous, coarse, topdown), layered-silhouette (minimal-geometric layered-silhouette), voxel-worlds, sculpted-clay, miniature-diorama and paper-craft (toy-3d voxel, clay, diorama, paper), watercolor-wash, decorative-storybook and rubber-hose-animation (cartoon-2d watercolor, storybook, rubber-hose); deleted outright: illuminated-manuscript, black-figure-pottery, classical-painting-collage, gothic-contour, detailed-doodle and pencil-hatching. An old slug is an unknown look: extends, create and presetLook refuse it as any unknown name. painterly-3d and pixel-3d-hybrid now name ui \"fantasy\", neon-vector ui \"scifi\" and draws on a black sky, toy-3d and cartoon-2d ui \"cartoon\"; neon-vector's support is content (its line art is authored).",
+      "fix": "Extend one of the twelve. For a removed style, extend its kept look and name the variant: `extends \"pixel\"` with `variant \"8bit\"`, `extends \"toy-3d\"` with `variant \"voxel\"`; for 16bit-pixel, `extends \"pixel\"`. For a deleted one, pick the nearest look (cartoon-2d for the manuscript, pottery, collage, gothic and doodle styles, inked-comic-3d for pencil-hatching).",
+      "find": ["16bit-pixel", "8bit-pixel", "monochrome-pixel", "detailed-pixel", "luminous-pixel", "coarse-pixel", "topdown-tile-pixel", "muted-cinematic-3d", "bold-comic-illustration", "heavy-ink-shadows", "lush-painted-worlds", "luminous-layered-painting", "expressionist-painting", "monochrome-dither-3d", "layered-silhouette", "voxel-worlds", "sculpted-clay", "miniature-diorama", "paper-craft", "watercolor-wash", "decorative-storybook", "rubber-hose-animation", "illuminated-manuscript", "black-figure-pottery", "classical-painting-collage", "gothic-contour", "detailed-doodle", "pencil-hatching"]
+    }
+  ],
+  "added": [
+    {
+      "member": "looks: variant",
+      "summary": "A look's `variant \"<name>\"` draws the preset its extends chain reaches another way: templates/looks/variants/<slug>/<name>.ogt is laid over the preset before the mood and the game's own fields. Each variant has its catalogue entry under its look's `variants` (title, checks, intended traits, palette, specs, art bible), which artBrief reads in place of the look's; presetLook takes `{ variant }` and BriefLook carries `variant`."
+    },
+    {
+      "member": "create: ui",
+      "summary": "The creation ui choice is default, cartoon, fantasy or scifi, and a look's own pack is the suggestion; creationLooks(styles?) lists the twelve looks."
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 type look
 version 1
 ---
-# muted-cinematic-3d in a soft mood: a low-contrast curve, lifted shadows and
+# cinematic-realism's muted variant in a soft mood: a low-contrast curve, lifted shadows and
 # a paler fog over the stage.
 RenderSettings {
   exposure 1.1

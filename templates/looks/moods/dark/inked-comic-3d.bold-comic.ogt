@@ -1,7 +1,7 @@
 type look
 version 1
 ---
-# bold-comic-illustration in a dark mood: posterize 6 steps every channel
+# inked-comic-3d's bold-comic variant in a dark mood: posterize 6 steps every channel
 # apart, so a vignette or a shadow balance over the sky's gradient breaks it
 # into one ring per channel; the layer darkens and cools without them.
 RenderSettings {

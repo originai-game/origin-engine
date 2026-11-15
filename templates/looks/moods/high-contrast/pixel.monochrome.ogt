@@ -1,7 +1,7 @@
 type look
 version 1
 ---
-# monochrome-pixel in a high-contrast mood: the four handheld tones swapped for the mood's.
+# pixel's monochrome variant in a high-contrast mood: the four handheld tones swapped for the mood's.
 Stylise {
   palette "@palettes/handheld4-high-contrast"
 }

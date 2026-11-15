@@ -468,8 +468,6 @@ interface Style {
   look: {
     preset: string;
     presetReady: boolean;
-    /** Being rebuilt: games that build on it keep cooking, and no new game is offered it. */
-    frozen?: boolean;
     support: string;
     layers: string[];
     profiles: string[];
@@ -483,6 +481,23 @@ interface Style {
   palette: { size: string; rules: string };
   assets: Record<string, string>;
   artBible: { direction: string; avoid: string[] };
+  /** The preset drawn other ways (`variant "<name>"`, templates/looks/variants/<slug>/<name>.ogt): each one's own text, which the brief and the critic read in place of the style's. */
+  variants?: Variant[];
+}
+
+/** One variant of a style: its layer's name and the text a brief and a critic read for it. */
+interface Variant {
+  name: string;
+  title: string;
+  descriptor: string;
+  mood: string;
+  checks: string[];
+  intended: string;
+  premise: Record<string, string>;
+  palette: { size: string; rules: string };
+  assets: Record<string, string>;
+  artBible: { direction: string; avoid: string[] };
+  authored?: { kind: string; what: string }[];
 }
 
 /** What `look.support` may say: full (every primitive draws), partial or planned (`missing` names what is still to land), content (the look is authored art). */
@@ -507,8 +522,10 @@ const ASSET_SPECS = ["logicalResolution", "spriteScale", "faceBudget", "outlineP
  * `type look` file when presetReady), its support honest (`missing` names
  * the primitives a style that is not `full` lacks, and is empty for one
  * that is), the profiles it draws for (`look.profiles`, 2d and/or 3d), every `Resource.field` it names a member of the generated API,
- * no text phrased as an imitation, and every creation view left with a
- * style that is not frozen (`look.frozen`).
+ * no text phrased as an imitation, each variant complete with its layer
+ * (`templates/looks/variants/<slug>/<name>.ogt`, every such file a variant
+ * of the catalogue) and its mood the layer's, and every creation view with
+ * a look to pick.
  */
 function looks(roots: Roots, problems: string[]): void {
   const path = join(roots.pkg, "looks", "catalogue.json");
@@ -528,7 +545,7 @@ function looks(roots: Roots, problems: string[]): void {
   const categories = Object.keys(cat.categories ?? {});
   const packs = cat.ui ?? [];
   for (const p of packs) {
-    if (p !== "default" && existsSync(join(roots.pkg, "..", "..", "templates")) && !existsSync(join(roots.pkg, "..", "..", "templates", "styles", p, "style.ogt"))) problems.push(`${at}: ui names ${p}, which is not a built-in style (templates/styles/${p}/style.ogt)`);
+    if (p !== "default" && existsSync(join(roots.pkg, "..", "..", "templates")) && !existsSync(join(roots.pkg, "..", "..", "templates", "styles", p, "base.css"))) problems.push(`${at}: ui names ${p}, which is not a built-in style pack (templates/styles/${p}/)`);
   }
   for (const m of (cat.artBibleTemplate ?? "").matchAll(/\{(\w+)\}/g)) {
     if (!(BIBLE_FIELDS as readonly string[]).includes(m[1]!)) problems.push(`${at}: artBibleTemplate uses {${m[1]}}, which is none of ${BIBLE_FIELDS.join(", ")}`);
@@ -607,16 +624,47 @@ function looks(roots: Roots, problems: string[]): void {
         if (mood !== look.mood) problems.push(`${id}: ${look.preset} has ${mood ? `mood "${mood}"` : "no mood line"}; the catalogue says mood "${look.mood}"`);
       }
     }
+    const variants = Array.isArray(s.variants) ? s.variants : [];
+    const names = new Set<string>();
+    for (const v of variants) {
+      const vid = `${id}: variant ${v.name ?? "?"}`;
+      if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(v.name ?? "")) problems.push(`${vid}: name is not lowercase-hyphen`);
+      if (names.has(v.name)) problems.push(`${vid}: a second variant with this name`);
+      names.add(v.name);
+      for (const k of ["title", "descriptor"] as const) if (!text(v[k])) problems.push(`${vid}: no ${k}`);
+      if (!Array.isArray(v.checks) || v.checks.length !== 3 || !v.checks.every(text)) problems.push(`${vid}: needs exactly three checks a critic can judge on a frame`);
+      if (!text(v.intended) || !/ (is|are) the style\b/.test(v.intended)) problems.push(`${vid}: needs intended, one sentence naming the traits that look like defects but are the style`);
+      for (const k of PREMISE) if (!text(v.premise?.[k])) problems.push(`${vid}: premise has no ${k}`);
+      for (const k of ASSET_SPECS) if (!text(v.assets?.[k])) problems.push(`${vid}: assets has no ${k}`);
+      if (!text(v.palette?.size) || !text(v.palette?.rules)) problems.push(`${vid}: palette needs a size and rules`);
+      if (!text(v.artBible?.direction) || !Array.isArray(v.artBible?.avoid) || v.artBible.avoid.length === 0) problems.push(`${vid}: artBible needs a direction and what to avoid`);
+      if (!(MOODS as readonly string[]).includes(v.mood)) problems.push(`${vid}: mood ${v.mood} is none of ${MOODS.join(", ")}`);
+      for (const a of v.authored ?? []) if (!(ART_KINDS as readonly string[]).includes(a.kind) || !text(a.what)) problems.push(`${vid}: authored names ${a.kind}, which is not an art brief kind with what it must be`);
+      const layer = join(repo, "templates", "looks", "variants", s.slug, `${v.name}.ogt`);
+      if (existsSync(join(repo, "templates"))) {
+        if (!existsSync(layer)) problems.push(`${vid}: templates/looks/variants/${s.slug}/${v.name}.ogt does not exist`);
+        else {
+          // The layer is drawn in the variant's mood: its own mood line, else the preset's.
+          const mood = /^mood[ \t]+"([^"]+)"/m.exec(readFileSync(layer, "utf8"))?.[1] ?? look.mood;
+          if (mood !== v.mood) problems.push(`${vid}: its layer is drawn in mood "${mood}"; the catalogue says "${v.mood}"`);
+        }
+      }
+    }
+    const variantDir = join(repo, "templates", "looks", "variants", s.slug);
+    if (existsSync(variantDir)) {
+      for (const f of readdirSync(variantDir)) if (f.endsWith(".ogt") && !names.has(f.slice(0, -4))) problems.push(`${id}: templates/looks/variants/${s.slug}/${f} is no variant of the catalogue's`);
+    }
     const all = JSON.stringify(s);
     if (/in the style of|™|®/i.test(all)) problems.push(`${id}: phrased as an imitation (\"in the style of\", a trademark sign); describe the look in its own terms`);
   }
   if (seen.size === 0) problems.push(`${at}: no styles`);
-  for (const s of cat.styles ?? []) {
-    if (s.look?.frozen !== undefined && s.look.frozen !== true) problems.push(`${at}: ${s.slug}: look.frozen is true or absent`);
-  }
-  const offered = (cat.styles ?? []).filter((s) => s.look?.presetReady && !s.look.frozen);
+  const offered = (cat.styles ?? []).filter((s) => s.look?.presetReady);
   for (const v of VIEWS) {
-    if (seen.size > 0 && !offered.some((s) => s.look.views?.includes(v))) problems.push(`${at}: every style of the ${v} view is frozen; a new game of that view has no look to pick`);
+    if (seen.size > 0 && !offered.some((s) => s.look.views?.includes(v))) problems.push(`${at}: no look with a preset suits the ${v} view; a new game of that view has no look to pick`);
+  }
+  const variantsDir = join(repo, "templates", "looks", "variants");
+  if (existsSync(variantsDir)) {
+    for (const d of readdirSync(variantsDir, { withFileTypes: true })) if (d.isDirectory() && !seen.has(d.name)) problems.push(`${at}: templates/looks/variants/${d.name}/ is no style's`);
   }
 }
 

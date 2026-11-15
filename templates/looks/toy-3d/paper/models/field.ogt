@@ -1,7 +1,7 @@
 type model
 version 1
 ---
-# paper-craft's version: the ground as sheets of card, not one plane: the
+# toy-3d's paper variant's version: the ground as sheets of card, not one plane: the
 # table card, and over it a cut sheet the scene stands on whose edge is
 # the card's thickness, with its contact shadow on the sheet below.
 material "table-card" {

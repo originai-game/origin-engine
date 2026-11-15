@@ -4,112 +4,32 @@
 /// shown by fx-showcase's `looks` station with a reference frame each.
 pub const PRESETS: &[(&str, &str)] = &[
     (
-        "16bit-pixel",
-        include_str!("../../../../../templates/looks/pixel.ogt"),
-    ),
-    (
-        "8bit-pixel",
-        include_str!("../../../../../templates/looks/8bit-pixel.ogt"),
-    ),
-    (
         "anime-cel-3d",
         include_str!("../../../../../templates/looks/anime-cel-3d.ogt"),
     ),
     (
-        "black-figure-pottery",
-        include_str!("../../../../../templates/looks/black-figure-pottery.ogt"),
-    ),
-    (
-        "bold-comic-illustration",
-        include_str!("../../../../../templates/looks/bold-comic-illustration.ogt"),
+        "cartoon-2d",
+        include_str!("../../../../../templates/looks/cartoon-2d.ogt"),
     ),
     (
         "cinematic-realism",
         include_str!("../../../../../templates/looks/cinematic-realism.ogt"),
     ),
     (
-        "classical-painting-collage",
-        include_str!("../../../../../templates/looks/classical-painting-collage.ogt"),
-    ),
-    (
-        "coarse-pixel",
-        include_str!("../../../../../templates/looks/coarse-pixel.ogt"),
-    ),
-    (
-        "decorative-storybook",
-        include_str!("../../../../../templates/looks/decorative-storybook.ogt"),
-    ),
-    (
-        "detailed-doodle",
-        include_str!("../../../../../templates/looks/detailed-doodle.ogt"),
-    ),
-    (
-        "detailed-pixel",
-        include_str!("../../../../../templates/looks/detailed-pixel.ogt"),
-    ),
-    (
-        "expressionist-painting",
-        include_str!("../../../../../templates/looks/expressionist-painting.ogt"),
-    ),
-    (
         "faceted-low-poly",
         include_str!("../../../../../templates/looks/faceted-low-poly.ogt"),
-    ),
-    (
-        "gothic-contour",
-        include_str!("../../../../../templates/looks/gothic-contour.ogt"),
-    ),
-    (
-        "heavy-ink-shadows",
-        include_str!("../../../../../templates/looks/heavy-ink-shadows.ogt"),
-    ),
-    (
-        "illuminated-manuscript",
-        include_str!("../../../../../templates/looks/illuminated-manuscript.ogt"),
     ),
     (
         "inked-comic-3d",
         include_str!("../../../../../templates/looks/inked-comic-3d.ogt"),
     ),
     (
-        "layered-silhouette",
-        include_str!("../../../../../templates/looks/layered-silhouette.ogt"),
-    ),
-    (
         "low-resolution-3d",
         include_str!("../../../../../templates/looks/low-resolution-3d.ogt"),
     ),
     (
-        "luminous-layered-painting",
-        include_str!("../../../../../templates/looks/luminous-layered-painting.ogt"),
-    ),
-    (
-        "luminous-pixel",
-        include_str!("../../../../../templates/looks/luminous-pixel.ogt"),
-    ),
-    (
-        "lush-painted-worlds",
-        include_str!("../../../../../templates/looks/lush-painted-worlds.ogt"),
-    ),
-    (
-        "miniature-diorama",
-        include_str!("../../../../../templates/looks/miniature-diorama.ogt"),
-    ),
-    (
         "minimal-geometric",
         include_str!("../../../../../templates/looks/minimal-geometric.ogt"),
-    ),
-    (
-        "monochrome-dither-3d",
-        include_str!("../../../../../templates/looks/monochrome-dither-3d.ogt"),
-    ),
-    (
-        "monochrome-pixel",
-        include_str!("../../../../../templates/looks/monochrome-pixel.ogt"),
-    ),
-    (
-        "muted-cinematic-3d",
-        include_str!("../../../../../templates/looks/muted-cinematic-3d.ogt"),
     ),
     (
         "neon-vector",
@@ -120,36 +40,16 @@ pub const PRESETS: &[(&str, &str)] = &[
         include_str!("../../../../../templates/looks/painterly-3d.ogt"),
     ),
     (
-        "paper-craft",
-        include_str!("../../../../../templates/looks/paper-craft.ogt"),
-    ),
-    (
-        "pencil-hatching",
-        include_str!("../../../../../templates/looks/pencil-hatching.ogt"),
+        "pixel",
+        include_str!("../../../../../templates/looks/pixel.ogt"),
     ),
     (
         "pixel-3d-hybrid",
         include_str!("../../../../../templates/looks/pixel-3d-hybrid.ogt"),
     ),
     (
-        "rubber-hose-animation",
-        include_str!("../../../../../templates/looks/rubber-hose-animation.ogt"),
-    ),
-    (
-        "sculpted-clay",
-        include_str!("../../../../../templates/looks/sculpted-clay.ogt"),
-    ),
-    (
-        "topdown-tile-pixel",
-        include_str!("../../../../../templates/looks/topdown-tile-pixel.ogt"),
-    ),
-    (
-        "voxel-worlds",
-        include_str!("../../../../../templates/looks/voxel-worlds.ogt"),
-    ),
-    (
-        "watercolor-wash",
-        include_str!("../../../../../templates/looks/watercolor-wash.ogt"),
+        "toy-3d",
+        include_str!("../../../../../templates/looks/toy-3d.ogt"),
     ),
 ];
 
@@ -157,7 +57,117 @@ pub const PRESETS: &[(&str, &str)] = &[
 /// docs/art.md §2.11), compiled into the cook as `(slug, variant, text)`: a
 /// look asking for `variant "<variant>"` has the layer laid over the preset
 /// `<slug>` its chain reaches (`cook::look::lay_variant`).
-pub const VARIANT_LAYERS: &[(&str, &str, &str)] = &[];
+pub const VARIANT_LAYERS: &[(&str, &str, &str)] = &[
+    (
+        "cartoon-2d",
+        "rubber-hose",
+        include_str!("../../../../../templates/looks/variants/cartoon-2d/rubber-hose.ogt"),
+    ),
+    (
+        "cartoon-2d",
+        "storybook",
+        include_str!("../../../../../templates/looks/variants/cartoon-2d/storybook.ogt"),
+    ),
+    (
+        "cartoon-2d",
+        "watercolor",
+        include_str!("../../../../../templates/looks/variants/cartoon-2d/watercolor.ogt"),
+    ),
+    (
+        "cinematic-realism",
+        "muted",
+        include_str!("../../../../../templates/looks/variants/cinematic-realism/muted.ogt"),
+    ),
+    (
+        "inked-comic-3d",
+        "bold-comic",
+        include_str!("../../../../../templates/looks/variants/inked-comic-3d/bold-comic.ogt"),
+    ),
+    (
+        "inked-comic-3d",
+        "heavy-ink",
+        include_str!("../../../../../templates/looks/variants/inked-comic-3d/heavy-ink.ogt"),
+    ),
+    (
+        "low-resolution-3d",
+        "monochrome-dither",
+        include_str!(
+            "../../../../../templates/looks/variants/low-resolution-3d/monochrome-dither.ogt"
+        ),
+    ),
+    (
+        "minimal-geometric",
+        "layered-silhouette",
+        include_str!(
+            "../../../../../templates/looks/variants/minimal-geometric/layered-silhouette.ogt"
+        ),
+    ),
+    (
+        "painterly-3d",
+        "expressionist",
+        include_str!("../../../../../templates/looks/variants/painterly-3d/expressionist.ogt"),
+    ),
+    (
+        "painterly-3d",
+        "luminous-layers",
+        include_str!("../../../../../templates/looks/variants/painterly-3d/luminous-layers.ogt"),
+    ),
+    (
+        "painterly-3d",
+        "lush",
+        include_str!("../../../../../templates/looks/variants/painterly-3d/lush.ogt"),
+    ),
+    (
+        "pixel",
+        "8bit",
+        include_str!("../../../../../templates/looks/variants/pixel/8bit.ogt"),
+    ),
+    (
+        "pixel",
+        "coarse",
+        include_str!("../../../../../templates/looks/variants/pixel/coarse.ogt"),
+    ),
+    (
+        "pixel",
+        "detailed",
+        include_str!("../../../../../templates/looks/variants/pixel/detailed.ogt"),
+    ),
+    (
+        "pixel",
+        "luminous",
+        include_str!("../../../../../templates/looks/variants/pixel/luminous.ogt"),
+    ),
+    (
+        "pixel",
+        "monochrome",
+        include_str!("../../../../../templates/looks/variants/pixel/monochrome.ogt"),
+    ),
+    (
+        "pixel",
+        "topdown",
+        include_str!("../../../../../templates/looks/variants/pixel/topdown.ogt"),
+    ),
+    (
+        "toy-3d",
+        "clay",
+        include_str!("../../../../../templates/looks/variants/toy-3d/clay.ogt"),
+    ),
+    (
+        "toy-3d",
+        "diorama",
+        include_str!("../../../../../templates/looks/variants/toy-3d/diorama.ogt"),
+    ),
+    (
+        "toy-3d",
+        "paper",
+        include_str!("../../../../../templates/looks/variants/toy-3d/paper.ogt"),
+    ),
+    (
+        "toy-3d",
+        "voxel",
+        include_str!("../../../../../templates/looks/variants/toy-3d/voxel.ogt"),
+    ),
+];
 
 /// The moods' layers (`templates/looks/moods/`, docs/art.md §2.10), compiled
 /// into the cook: `(mood, None)` is the layer for every style, `(mood,
@@ -173,23 +183,25 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     ),
     (
         "bright",
+        Some("cinematic-realism.muted"),
+        include_str!("../../../../../templates/looks/moods/bright/cinematic-realism.muted.ogt"),
+    ),
+    (
+        "bright",
+        Some("low-resolution-3d.monochrome-dither"),
+        include_str!(
+            "../../../../../templates/looks/moods/bright/low-resolution-3d.monochrome-dither.ogt"
+        ),
+    ),
+    (
+        "bright",
         Some("minimal-geometric"),
         include_str!("../../../../../templates/looks/moods/bright/minimal-geometric.ogt"),
     ),
     (
         "bright",
-        Some("monochrome-dither-3d"),
-        include_str!("../../../../../templates/looks/moods/bright/low-resolution-3d.monochrome-dither.ogt"),
-    ),
-    (
-        "bright",
-        Some("monochrome-pixel"),
+        Some("pixel.monochrome"),
         include_str!("../../../../../templates/looks/moods/bright/pixel.monochrome.ogt"),
-    ),
-    (
-        "bright",
-        Some("muted-cinematic-3d"),
-        include_str!("../../../../../templates/looks/moods/bright/cinematic-realism.muted.ogt"),
     ),
     (
         "dark",
@@ -198,8 +210,15 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     ),
     (
         "dark",
-        Some("bold-comic-illustration"),
+        Some("inked-comic-3d.bold-comic"),
         include_str!("../../../../../templates/looks/moods/dark/inked-comic-3d.bold-comic.ogt"),
+    ),
+    (
+        "dark",
+        Some("low-resolution-3d.monochrome-dither"),
+        include_str!(
+            "../../../../../templates/looks/moods/dark/low-resolution-3d.monochrome-dither.ogt"
+        ),
     ),
     (
         "dark",
@@ -208,12 +227,7 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     ),
     (
         "dark",
-        Some("monochrome-dither-3d"),
-        include_str!("../../../../../templates/looks/moods/dark/low-resolution-3d.monochrome-dither.ogt"),
-    ),
-    (
-        "dark",
-        Some("monochrome-pixel"),
+        Some("pixel.monochrome"),
         include_str!("../../../../../templates/looks/moods/dark/pixel.monochrome.ogt"),
     ),
     (
@@ -223,12 +237,14 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     ),
     (
         "warm",
-        Some("monochrome-dither-3d"),
-        include_str!("../../../../../templates/looks/moods/warm/low-resolution-3d.monochrome-dither.ogt"),
+        Some("low-resolution-3d.monochrome-dither"),
+        include_str!(
+            "../../../../../templates/looks/moods/warm/low-resolution-3d.monochrome-dither.ogt"
+        ),
     ),
     (
         "warm",
-        Some("monochrome-pixel"),
+        Some("pixel.monochrome"),
         include_str!("../../../../../templates/looks/moods/warm/pixel.monochrome.ogt"),
     ),
     (
@@ -238,12 +254,14 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     ),
     (
         "cold",
-        Some("monochrome-dither-3d"),
-        include_str!("../../../../../templates/looks/moods/cold/low-resolution-3d.monochrome-dither.ogt"),
+        Some("low-resolution-3d.monochrome-dither"),
+        include_str!(
+            "../../../../../templates/looks/moods/cold/low-resolution-3d.monochrome-dither.ogt"
+        ),
     ),
     (
         "cold",
-        Some("monochrome-pixel"),
+        Some("pixel.monochrome"),
         include_str!("../../../../../templates/looks/moods/cold/pixel.monochrome.ogt"),
     ),
     (
@@ -253,13 +271,15 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     ),
     (
         "soft",
-        Some("monochrome-dither-3d"),
-        include_str!("../../../../../templates/looks/moods/soft/low-resolution-3d.monochrome-dither.ogt"),
+        Some("cinematic-realism.muted"),
+        include_str!("../../../../../templates/looks/moods/soft/cinematic-realism.muted.ogt"),
     ),
     (
         "soft",
-        Some("muted-cinematic-3d"),
-        include_str!("../../../../../templates/looks/moods/soft/cinematic-realism.muted.ogt"),
+        Some("low-resolution-3d.monochrome-dither"),
+        include_str!(
+            "../../../../../templates/looks/moods/soft/low-resolution-3d.monochrome-dither.ogt"
+        ),
     ),
     (
         "high-contrast",
@@ -273,7 +293,7 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     ),
     (
         "high-contrast",
-        Some("monochrome-pixel"),
+        Some("pixel.monochrome"),
         include_str!("../../../../../templates/looks/moods/high-contrast/pixel.monochrome.ogt"),
     ),
 ];

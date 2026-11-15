@@ -2,7 +2,7 @@
 //! environment the renderer is handed (the image-based light and a
 //! `Background::Sky` are generated from it) carries no look of the sky
 //! that was on. Before the fix the last enabled sky's colours stayed in
-//! the scene for good, so a look that named Sky (heavy-ink-shadows' near
+//! the scene for good, so a look that named Sky (inked-comic-3d's heavy-ink variant's near
 //! black) went on lighting every look after it, and look:none.
 
 use og_render::{ProceduralSky, RenderScene, RgbaImage};

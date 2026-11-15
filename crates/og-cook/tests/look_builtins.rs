@@ -32,10 +32,10 @@ fn a_look_naming_built_ins_cooks_them_into_the_bundle() {
                 "looks/main.ogt",
                 "type look\nversion 1\n---\nStylise {\n  paintCanvas \"@canvas/paper\"\n  paintCanvasStrength 0.5\n  palette \"@palettes/handheld4\"\n}\n",
             ),
-            // Through a preset: watercolor-wash names @canvas/watercolor.
+            // Through a preset's variant: cartoon-2d's watercolor names @canvas/watercolor.
             (
                 "looks/wash.ogt",
-                "type look\nversion 1\n---\nextends \"watercolor-wash\"\n",
+                "type look\nversion 1\n---\nextends \"cartoon-2d\"\nvariant \"watercolor\"\n",
             ),
         ],
     );
@@ -79,14 +79,14 @@ fn a_look_naming_built_ins_cooks_them_into_the_bundle() {
 
 #[test]
 fn the_project_look_carries_the_art_contract() {
-    // monochrome-pixel's contract names @palettes/handheld4 (as its
+    // pixel's monochrome variant's contract names @palettes/handheld4 (as its
     // Stylise does): the built-in is in the bundle, the contract in the
     // cooked look, and the cook report says what the contract sets.
     let root = project(
         "contract",
         &[(
             "looks/main.ogt",
-            "type look\nversion 1\n---\nextends \"monochrome-pixel\"\nArtPalette {\n  maxColors 2\n}\n",
+            "type look\nversion 1\n---\nextends \"pixel\"\nvariant \"monochrome\"\nArtPalette {\n  maxColors 2\n}\n",
         )],
     );
     let manifest = |look: &str| {
@@ -106,7 +106,7 @@ fn the_project_look_carries_the_art_contract() {
         .unwrap();
     assert!(
         main.notes.iter().any(|n| n
-            == "the project's look (project.ogt): its art contract sets ArtPalette, ArtPixels, ArtCamera"),
+            == "the project's look (project.ogt): its art contract sets ArtPalette, ArtPixels, ArtLine, ArtCamera"),
         "{:?}",
         main.notes
     );

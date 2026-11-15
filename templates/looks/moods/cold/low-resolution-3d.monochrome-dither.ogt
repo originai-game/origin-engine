@@ -1,7 +1,7 @@
 type look
 version 1
 ---
-# monochrome-dither-3d in a cold mood: the ink and paper swapped for the mood's.
+# low-resolution-3d's monochrome-dither variant in a cold mood: the ink and paper swapped for the mood's.
 Stylise {
   palette "@palettes/1bit-cold"
 }

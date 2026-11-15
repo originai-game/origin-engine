@@ -1,0 +1,30 @@
+type look
+version 1
+---
+# Very few, very large pixels and four tones: the frame's quantise holds
+# anything to the look, while art the cook conformed (16 colours, ArtPalette)
+# keeps its own colours, so its far layer is not flattened into one mass.
+# The coarse variant of pixel (`variant "coarse"`): only what it changes of
+# the preset, a field it turns off written at its default.
+name "Coarse minimal pixel art"
+mood "dark"
+Stylise {
+  pixelHeight 90
+  posterize 4
+  dither none
+  ditherStrength 1
+}
+ArtPalette {
+  maxColors 16
+  rampSteps 0
+}
+ArtPixels {
+  unit 8
+  logicalHeight 90
+  spriteSizes 6 8 12
+  rotation nearest
+}
+ArtLine {
+  width 0
+  place outside
+}

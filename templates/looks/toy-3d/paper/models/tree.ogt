@@ -1,7 +1,7 @@
 type model
 version 1
 ---
-# paper-craft's version: the stepped tree folded from card
+# toy-3d's paper variant's version: the stepped tree folded from card
 # (paper fold): each tier a six-sided folded cone, the trunk a five-sided
 # rolled tube, every fold a crisp edge.
 material "bark" {

@@ -19,9 +19,9 @@ afterAll(() => {
 const catalogue = JSON.parse(readFileSync(join(import.meta.dir, "..", "looks", "catalogue.json"), "utf8")) as { styles: { slug: string; look: { presetReady: boolean } }[] };
 
 test("the same kind asks a 2D pixel style for a sprite and a 3D shape style for a model", () => {
-  // 16bit-pixel: ArtPixels unit 16, spriteSizes 16 32 48; a 2D style. A prop is 1 m: 16 px, a cell of 16.
+  // pixel: ArtPixels unit 16, spriteSizes 16 32 48; a 2D style. A prop is 1 m: 16 px, a cell of 16.
   // Drawn at the whole number nearest 1024 / 16 = 64.
-  const pixel = artBrief(presetLook("16bit-pixel"), "prop", "a brass lantern");
+  const pixel = artBrief(presetLook("pixel"), "prop", "a brass lantern");
   expect(pixel.medium).toBe("image");
   expect(pixel.model).toBeUndefined();
   expect(pixel.image).toEqual({ transparent: true, width: 1024, height: 1024, grid: { width: 16, height: 16, scale: 64 }, tiling: false });
@@ -34,11 +34,11 @@ test("the same kind asks a 2D pixel style for a sprite and a 3D shape style for 
   expect(pixel.prompt).not.toContain("triangles");
   expect(pixel.prompt).toContain("16 x 16 logical-pixel grid");
   // A character: 2 m tall is 32 px (a cell of 32), 1 m wide 16 px; 1024 / 32 = 32.
-  const hero = artBrief(presetLook("16bit-pixel"), "character", "a courier");
+  const hero = artBrief(presetLook("pixel"), "character", "a courier");
   expect(hero.image?.grid).toEqual({ width: 16, height: 32, scale: 32 });
   expect([hero.image?.width, hero.image?.height]).toEqual([512, 1024]);
-  // The voxel style's character: characterFaces 5000, voxel 0.1, normals flat.
-  const voxel = artBrief(presetLook("voxel-worlds"), "character", "a courier");
+  // toy-3d's voxel variant's character: characterFaces 5000, voxel 0.1, normals flat.
+  const voxel = artBrief(presetLook("toy-3d", { variant: "voxel" }), "character", "a courier");
   expect(voxel.model?.faceBudget).toBe(5000);
   expect(voxel.model?.voxel).toBe(0.1);
   expect(voxel.prompt).toContain("0.1 m cubes");
@@ -119,16 +119,24 @@ test("colours get names a person says, unique within a palette; a .gpl keeps its
 });
 
 test("references: the style's preview first, then the accepted assets in order", () => {
-  const look = presetLook("monochrome-pixel");
-  const b = artBrief(look, "sprite", "a bat", { references: ["assets/sprites/hero.png", "assets/sprites/door.png"] });
+  const refs = ["assets/sprites/hero.png", "assets/sprites/door.png"];
+  const b = artBrief(presetLook("pixel"), "sprite", "a bat", { references: refs });
   expect(b.references.map((r) => r.role)).toEqual(["style", "accepted", "accepted"]);
   // A native path: `\` separators on Windows.
-  expect(b.references[0]!.path.replaceAll(sep, "/").endsWith("previews/monochrome-pixel.webp")).toBe(true);
-  expect(b.references.slice(1).map((r) => r.path)).toEqual(["assets/sprites/hero.png", "assets/sprites/door.png"]);
-  // monochrome-pixel's palette is the built-in @palettes/handheld4: four colours, strict.
+  expect(b.references[0]!.path.replaceAll(sep, "/").endsWith("previews/pixel.webp")).toBe(true);
+  expect(b.references.slice(1).map((r) => r.path)).toEqual(refs);
+  // A variant's palette and grid are not the preview's, so only the accepted assets go.
+  const look = presetLook("pixel", { variant: "monochrome" });
+  expect(look.variant).toBe("monochrome");
+  expect(look.style?.name).toBe("One-ink pixels");
+  const m = artBrief(look, "sprite", "a bat", { references: refs });
+  expect(m.references.map((r) => r.role)).toEqual(["accepted", "accepted"]);
+  expect(m.prompt).toContain("Style: One-ink pixels.");
+  expect(() => presetLook("pixel", { variant: "16bit" })).toThrow('variant "16bit": the preset pixel takes one of 8bit, coarse, detailed, luminous, monochrome, topdown');
+  // The monochrome variant's palette is the built-in @palettes/handheld4: four colours, strict.
   expect(look.palette?.id).toBe("@palettes/handheld4");
   expect(look.palette?.colours.length).toBe(4);
-  expect(b.prompt).toContain("only these 4 colours");
+  expect(m.prompt).toContain("only these 4 colours");
 });
 
 function project(files: Record<string, string>): string {
@@ -147,18 +155,18 @@ test("readLook follows project.ogt's look through the game's own looks to the pr
   const dir = project({
     "project.ogt": manifest("looks/game.ogt"),
     "assets/looks/game.ogt": 'type look\nversion 1\n---\nname "Game"\nextends "looks/base.ogt"\nArtPixels {\n  unit 20   # wins over base and preset\n}\nArtPalette {\n  colors "palettes/mine.hex"\n  accents 1\n}\n',
-    "assets/looks/base.ogt": 'type look\nversion 1\n---\nname "Base"\nextends "16bit-pixel"\nArtPixels {\n  unit 12\n  rotation nearest\n}\n',
+    "assets/looks/base.ogt": 'type look\nversion 1\n---\nname "Base"\nextends "pixel"\nArtPixels {\n  unit 12\n  rotation nearest\n}\n',
     "assets/palettes/mine.hex": "102030\nf0e0d0\n",
   });
   const look = readLook(dir);
-  expect(look.extends).toBe("16bit-pixel");
-  expect(look.style?.slug).toBe("16bit-pixel");
+  expect(look.extends).toBe("pixel");
+  expect(look.style?.slug).toBe("pixel");
   expect(look.profile).toBe("2d");
   // unit from the game, rotation from the base, spriteSizes and logicalHeight from the preset (16 32 48, 224).
   expect(look.art.ArtPixels).toEqual({ unit: 20, rotation: "nearest", spriteSizes: [16, 32, 48], logicalHeight: 224, snap: true });
   expect(look.art.ArtLine).toEqual({ width: 1, place: "inside" });
   expect(look.palette?.colours.map((c) => c.hex)).toEqual(["#102030", "#f0e0d0"]);
-  expect(look.preview?.replaceAll(sep, "/").endsWith("previews/16bit-pixel.webp")).toBe(true);
+  expect(look.preview?.replaceAll(sep, "/").endsWith("previews/pixel.webp")).toBe(true);
   // A 1 m prop at 20 px per metre snaps up to the cell of 32.
   const b = artBrief(look, "prop", "a barrel");
   expect(b.image?.grid).toEqual({ width: 32, height: 32, scale: 32 });
@@ -192,8 +200,8 @@ test("every kind for every preset makes a complete brief", () => {
       if (b.model) expect(Math.log2(b.model.textureSize) % 1).toBe(0);
     }
   }
-  expect(() => artBrief(presetLook("16bit-pixel"), "mesh" as never, "x")).toThrow(/asset kind/);
-  expect(() => artBrief(presetLook("16bit-pixel"), "sprite", "  ")).toThrow(/subject/);
+  expect(() => artBrief(presetLook("pixel"), "mesh" as never, "x")).toThrow(/asset kind/);
+  expect(() => artBrief(presetLook("pixel"), "sprite", "  ")).toThrow(/subject/);
 });
 
 test("a look with no contract still asks for a whole asset", () => {
@@ -247,11 +255,11 @@ test("style art is a nine-slice with its insets and one cell per state", () => {
   expect(() => artBrief(plain, "styleFrame", "x", { insets: [0.5, 0.25, 0.5, 0.25] })).toThrow(/leave a middle/);
   // 16bit-pixel: spriteSizes 16 32 48. A button cell is the largest, 48; five of them 240 x 48, drawn at
   // the whole number nearest 1024 / 240 = 4.27: 4, so 960 x 192. The cook then puts it on the grid.
-  const pixel = artBrief(presetLook("16bit-pixel"), "styleButton", "a stone button");
+  const pixel = artBrief(presetLook("pixel"), "styleButton", "a stone button");
   expect(pixel.image).toEqual({ transparent: true, width: 960, height: 192, grid: { width: 240, height: 48, scale: 4 }, tiling: false });
   expect(pixel.ui?.conform.join(" ")).toContain("pixel grid");
   // A 1 x 2 item there: cells of the smallest size, 16, so 16 x 32 at 1024 / 32 = 32.
-  expect(artBrief(presetLook("16bit-pixel"), "itemIcon", "a torch", { cells: [1, 2] }).image?.grid).toEqual({ width: 16, height: 32, scale: 32 });
+  expect(artBrief(presetLook("pixel"), "itemIcon", "a torch", { cells: [1, 2] }).image?.grid).toEqual({ width: 16, height: 32, scale: 32 });
 });
 
 test("a generated style's art requests become one brief per slot, in its shape language, finish and palette", () => {
@@ -266,7 +274,7 @@ test("a generated style's art requests become one brief per slot, in its shape l
       { name: "fixture/icons", kind: "iconSet" },
     ],
   };
-  const briefs = styleArtBriefs(presetLook("16bit-pixel"), requests);
+  const briefs = styleArtBriefs(presetLook("pixel"), requests);
   expect(briefs.map((b) => b.slot)).toEqual([
     "fixture/panel", "fixture/card", "fixture/field", "fixture/slot", "fixture/tooltip", "fixture/hud",
     "fixture/button", "fixture/button-primary", "fixture/corner", "fixture/divider", "fixture/flourish", "fixture/icons",
@@ -280,7 +288,7 @@ test("a generated style's art requests become one brief per slot, in its shape l
   const corner = briefs.find((b) => b.slot === "fixture/corner")!.brief;
   expect(corner.kind).toBe("ornament");
   expect(corner.prompt).toContain("rich ornament");
-  expect(() => styleArtBriefs(presetLook("16bit-pixel"), { ...requests, slots: [{ name: "x/y", kind: "frame" }] })).toThrow("not an art kind");
+  expect(() => styleArtBriefs(presetLook("pixel"), { ...requests, slots: [{ name: "x/y", kind: "frame" }] })).toThrow("not an art kind");
 });
 
 test("rigParts lists a template's layers back to front, each with its side, its bone and its joint's rule", () => {
@@ -395,34 +403,35 @@ test("the mood: the preset's own, or the one the game's look asks, reaches every
   // The nearest look naming a mood wins: a flashback in dark over a game drawn warm.
   const dir = project({
     "project.ogt": manifest("looks/flashback.ogt"),
-    "assets/looks/game.ogt": 'type look\nversion 1\n---\nextends "monochrome-pixel"\nmood "warm"\n',
+    "assets/looks/game.ogt": 'type look\nversion 1\n---\nextends "pixel"\nvariant "monochrome"\nmood "warm"\n',
     "assets/looks/flashback.ogt": 'type look\nversion 1\n---\nextends "looks/game.ogt"\nmood "dark"\n',
   });
   const look = readLook(dir);
   expect(look.mood).toBe("dark");
-  // monochrome-pixel's own palette is handheld4; its dark layer swaps in handheld4-dark, darkest first.
+  // The monochrome variant's own palette is handheld4; its dark layer swaps in handheld4-dark, darkest first.
   expect(look.palette?.id).toBe("@palettes/handheld4-dark");
   expect(look.palette?.colours.map((c) => c.hex)).toEqual(["#0a120c", "#1c3320", "#3d6234", "#78935a"]);
   expect(artBrief(look, "sprite", "a lamp").prompt).toContain("#78935a");
-  // In its own mood the preset keeps its palette.
-  expect(presetLook("monochrome-pixel").palette?.colours.map((c) => c.hex)).toEqual(["#14261b", "#3d6234", "#84a440", "#c9da8f"]);
-  expect(presetLook("monochrome-pixel", { mood: "soft" }).palette?.id).toBe("@palettes/handheld4");
+  // In its own mood the variant keeps its palette.
+  expect(presetLook("pixel", { variant: "monochrome" }).palette?.colours.map((c) => c.hex)).toEqual(["#14261b", "#3d6234", "#84a440", "#c9da8f"]);
+  expect(presetLook("pixel", { variant: "monochrome", mood: "soft" }).palette?.id).toBe("@palettes/handheld4");
+  expect(presetLook("pixel", { variant: "monochrome" }).mood).toBe("soft");
   // Every mood reads on every preset.
   for (const s of catalogue.styles.filter((x) => x.look.presetReady)) for (const m of MOODS) expect(artBrief(presetLook(s.slug, { mood: m }), "backdrop", "a quay").prompt).toContain(`Mood: ${m === "high-contrast" ? "high contrast" : m}:`);
 });
 
 test("a content style's authored art is what its brief asks for, by kind", () => {
-  const clay = presetLook("sculpted-clay");
+  const clay = presetLook("toy-3d", { variant: "clay" });
   expect(authoredArt(clay).map((a) => a.kind)).toEqual(["character", "prop"]);
   const hero = artBrief(clay, "character", "a baker");
   expect(hero.prompt).toContain("Authored: this style's character art is made for it");
   expect(hero.prompt).toContain("hand-modelled in clay");
   // A kind the style does not author carries no such line, and a full style authors nothing.
   expect(artBrief(clay, "icon", "a loaf").prompt).not.toContain("Authored:");
-  expect(authoredArt(presetLook("16bit-pixel"))).toEqual([]);
+  expect(authoredArt(presetLook("pixel"))).toEqual([]);
   // Every content style names its art, each kind a brief kind whose prompt asks for it.
   const content = (JSON.parse(readFileSync(join(import.meta.dir, "..", "looks", "catalogue.json"), "utf8")) as { styles: { slug: string; look: { support: string } }[] }).styles.filter((s) => s.look.support === "content");
-  expect(content.length).toBe(14);
+  expect(content.map((s) => s.slug)).toEqual(["painterly-3d", "neon-vector", "cartoon-2d"]);
   for (const s of content) {
     const look = presetLook(s.slug);
     const art = authoredArt(look);

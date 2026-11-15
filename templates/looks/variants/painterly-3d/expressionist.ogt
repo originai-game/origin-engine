@@ -1,0 +1,29 @@
+type look
+version 1
+---
+# Wide anisotropic strokes, heavy pigment pooling and bleed, a lifted exposure.
+# The expressionist variant of painterly-3d (`variant "expressionist"`): only what it changes of
+# the preset, a field it turns off written at its default.
+name "Expressionist painting"
+mood "high-contrast"
+Stylise {
+  paintRadius 5
+  paintAnisotropy 0.9
+  paintEdgeDarkening 0.7
+  paintBleed 0.5
+  paintCanvasStrength 0
+}
+PostEffects {
+  vignette false
+  vignetteIntensity 0.35
+}
+ArtTexels {
+  maxSize 2048
+  density 0
+}
+ArtShape {
+  characterFaces 0
+}
+RenderSettings {
+  exposure 1.1
+}

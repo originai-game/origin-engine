@@ -40,7 +40,7 @@ BVH, nodes) and refuses it past project.ogt's triangle and vertex budgets;
 
 A scene's `model` line names the file, and `og.load.gltf` loads its blob
 like any glTF. The look presets carry examples under
-`templates/looks/<slug>/models/`, such as paper-craft's `tree.ogt` and
+`templates/looks/<slug>/models/`, such as toy-3d's paper variant's `paper/models/tree.ogt` and
 `hero.ogt`.
 
 ## 2. Building one

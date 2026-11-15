@@ -22,7 +22,7 @@ fn the_pixel_grid_keeps_its_scale_and_drops_at_most_a_column() {
     assert_eq!(fit(240, 2, p720), (427, 240, 2, (213, 120)));
     // One the height cannot take falls back to the largest that fits.
     assert_eq!(fit(240, 4, p720), (426, 240, 3, (1, 0)));
-    // The 16bit-pixel preset's 224 rows fit 3x with columns to spare.
+    // The pixel preset's 224 rows fit 3x with columns to spare.
     assert_eq!(fit(224, 0, p720), (398, 224, 3, (43, 24)));
     assert_eq!(fit(180, 0, p720), (320, 180, 4, (0, 0)));
     assert_eq!(fit(2160, 0, p720), (1280, 720, 1, (0, 0)));
@@ -192,7 +192,7 @@ fn everything_is_off_by_default() {
 }
 
 /// Shadow darkness alone is a material style: a look that sets only it
-/// (heavy-ink-shadows' black masses) reaches the lit shaders.
+/// (inked-comic-3d's heavy-ink variant's black masses) reaches the lit shaders.
 #[test]
 fn shadow_darkness_alone_is_active() {
     let mut s = Stylise::default();

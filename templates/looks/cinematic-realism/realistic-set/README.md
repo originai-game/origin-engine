@@ -2,15 +2,16 @@
 
 The cinematic 3D family's second asset set: the same beats as the
 family's primitives (a hero, a tree, a crate, a lantern, the ground and a
-far layer) as scanned and generated models, for the styles whose contract
-is realism. `styles/cinematic-realism/set` and
-`styles/muted-cinematic-3d/set` name it; `tools/art-samples/capture.ts`
-lays it over the project (its `assets/models/` in place of the family's,
-`beats.json`, `src/models.ts` and `src/main.ts`). Both styles take the
+far layer) as scanned and generated models, for the look whose contract
+is realism, cinematic-realism, and its muted variant. The art samples
+(`tools/art-samples/capture.ts`, since removed) laid it over the project (its
+`assets/models/` in place of the family's, `beats.json`, `src/models.ts` and
+`src/main.ts`). Both take the
 same unmodified files: the cook's conformance to each look (ArtTexels
 density 512 for one, ArtShape characterFaces 10000 for the other) and the
 look's frame make the difference. The family's base set stays the
-primitives, so painterly-3d and layered-silhouette do not move.
+primitives, so painterly-3d and minimal-geometric's layered-silhouette
+variant do not move.
 
 | Model | Source | Packed |
 |---|---|---|

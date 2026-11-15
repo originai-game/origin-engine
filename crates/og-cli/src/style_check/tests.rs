@@ -184,7 +184,7 @@ fn a_two_texel_sprite_with_a_half_pixel_column_is_found() {
 
 #[test]
 fn a_tile_of_flat_ground_under_a_fringe_is_not_taken_for_a_coarser_grid() {
-    // monochrome-pixel's cooked ground (32x32, one texel per pixel):
+    // pixel's monochrome variant's cooked ground (32x32, one texel per pixel):
     // grass in its top five rows, solid ink below. Its row boundaries
     // are rows 1 to 5; the 26 flat rows carry none, and counted as off
     // a period of 2 they let rows 2 and 4 pass as its half pixels.

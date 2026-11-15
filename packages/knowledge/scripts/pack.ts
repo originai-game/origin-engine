@@ -41,4 +41,5 @@ for (const name of readdirSync(looks)) {
 }
 cpSync(join(looks, "assets", "palettes"), join(presets, "assets", "palettes"), { recursive: true });
 cpSync(join(looks, "moods"), join(presets, "moods"), { recursive: true });
-process.stdout.write(`copied ${p} look presets, the moods and the built-in palettes into presets/\n`);
+cpSync(join(looks, "variants"), join(presets, "variants"), { recursive: true });
+process.stdout.write(`copied ${p} look presets, their variants, the moods and the built-in palettes into presets/\n`);

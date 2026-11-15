@@ -6,7 +6,7 @@ and `assets/`. The entry exports `og.game({})`. There is no 2D or 3D
 variant, sample scene, gameplay, or installed art.
 
 ```sh
-og create my-game --name "My Game" --view side-2d --look 16bit-pixel --no-prompt
+og create my-game --name "My Game" --view side-2d --look pixel --no-prompt
 ```
 
 The agent chooses genre, view, look, mood, UI style, platform, input,
@@ -56,10 +56,11 @@ descriptions for enum choices. Look entries supply Chinese copy; English
 look names and descriptions remain in the catalogue.
 
 `creationLooks()` lists the looks a new game may pick: the catalogue's
-styles with a preset that is not frozen (`look.frozen`, a style whose look
-is being rebuilt). Pass it to `creationSchema`. `create` and
-`resolveCreationChoices` refuse a frozen look by name and never suggest
-one; a game already made on one keeps cooking, and its briefs still read.
+twelve, each with a preset. Pass it to `creationSchema`. A name that is no
+look fails with the list. A look's UI pack (default, cartoon, fantasy or
+scifi) is the default UI choice. A look's variants (`variant "<name>"` in
+the game's look, docs/art.md §2.11) are not creation choices: the agent
+writes one into the look file when the game asks for it.
 
 The inference helpers suggest choices using English and Chinese keywords.
 They do not implement those choices. Languages default to Japanese for
