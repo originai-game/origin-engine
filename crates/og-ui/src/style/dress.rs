@@ -410,8 +410,9 @@ pub fn corner_of(s: ShapeToken) -> (Corner, f32) {
     }
 }
 
-/// The colour a draw shows under its text: its fills' mean over `below`
-/// (a gradient's stops averaged), in linear light as the renderer blends.
+/// The colour a draw shows under its text: its fills' and CSS background
+/// layers' mean over `below` (a gradient's stops averaged), in linear
+/// light as the renderer blends.
 pub fn ground_of(d: &ElementDraw, theme: &Theme, below: Srgba) -> Srgba {
     let mut c = below;
     for effect in &d.effects {
@@ -438,10 +439,19 @@ pub fn ground_of(d: &ElementDraw, theme: &Theme, below: Srgba) -> Srgba {
             c.alpha = 1.0;
         }
     }
-    for f in &d.fills {
+    // Its fills, then its CSS background layers (the bottom, its colour,
+    // first), as they are drawn.
+    let layers = d.fills.iter().chain(
+        d.boxes
+            .iter()
+            .flat_map(|b| b.backgrounds.iter().map(|l| &l.paint)),
+    );
+    for f in layers {
         let top = match f {
             Paint::Solid(r) => Srgba::from_linear(r.resolve(theme)),
-            Paint::Gradient(g) if !g.stops.is_empty() => {
+            Paint::Gradient(g) | Paint::GradientImage { gradient: g, .. }
+                if !g.stops.is_empty() =>
+            {
                 let n = g.stops.len() as f32;
                 let mut sum = [0.0f32; 4];
                 for s in &g.stops {

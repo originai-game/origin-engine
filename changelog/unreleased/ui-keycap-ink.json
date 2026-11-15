@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Badges and keycaps",
+      "summary": "A badge or <kbd> cap reads its ground through its ancestors' CSS background layers (a gradient face, a background colour set with layers) as well as their fills, so its ink holds 4.5:1 there: HeroButton's E cap on the default style's light primary face read 1.16:1 dark and 1.23:1 light, now 4.74:1 and 4.64:1."
+    }
+  ]
+}
