@@ -45,7 +45,7 @@
    so its icon, badges and ring keep their proportions:
    --text-px is one CSS px at 100 % text (rem is the body type step, 14 px
    at 100 %, grown by the scale). */
-#AbilitySlot { --text-px: calc(1rem / 14); align-items: center; gap: var(--space-xxs); }
+#AbilitySlot { --text-px: var(--font-step-px); align-items: center; gap: var(--space-xxs); }
 #Slot { width: calc(48 * var(--text-px)); height: calc(48 * var(--text-px)); padding: 0; overflow: hidden; transition-property: scale; transition-duration: var(--motion-duration-fast); transition-timing-function: var(--motion-easing-out); }
 .ultimate #Slot { width: calc(64 * var(--text-px)); height: calc(64 * var(--text-px)); border-radius: var(--radius-capsule); }
 #Art { width: stretch; height: stretch; align-items: center; justify-content: center; }

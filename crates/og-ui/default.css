@@ -121,6 +121,7 @@
     --font-step-6xl: 4.29em;
     --font-step-lg: 1.14em;
     --font-step-md: 1em;
+    --font-step-px: calc(1rem / 14);
     --font-step-sm: 0.93em;
     --font-step-xl: 1.29em;
     --font-step-xs: 0.86em;

@@ -28,7 +28,7 @@
 ul, ol { list-style-type: none; }
 /* The slots grow with the player's text scale, as AbilitySlot's do:
    --text-px is one CSS px at 100 % text. */
-#AbilityBar { --text-px: calc(1rem / 14); display: flex; gap: calc(8 * var(--text-px)); flex-wrap: wrap; justify-content: center; max-width: var(--measure-xl); }
+#AbilityBar { --text-px: var(--font-step-px); display: flex; gap: calc(8 * var(--text-px)); flex-wrap: wrap; justify-content: center; max-width: var(--measure-xl); }
 #AbilityBar.column { flex-direction: column; flex-wrap: nowrap; }
 .cell { align-items: center; gap: var(--space-xxs); }
 .slot { width: calc(48 * var(--text-px)); height: calc(48 * var(--text-px)); padding: 0; overflow: hidden; }

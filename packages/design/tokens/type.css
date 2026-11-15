@@ -86,7 +86,9 @@
   --font-leading-normal: 1.45;
   /* Steps in em of the text a part stands in, so a part sized with one
      follows the player's text scale (the scale's own sizes are px). `md` is
-     the surrounding size. */
+     the surrounding size. `px` is one CSS px at 100 % text grown by the
+     scale (rem is the body step, 14 px at 100 %), for a part that grows
+     with the text as a whole, such as a HUD slot. */
   --font-step-2xs: 0.72em;
   --font-step-xs: 0.86em;
   --font-step-sm: 0.93em;
@@ -98,6 +100,7 @@
   --font-step-4xl: 2em;
   --font-step-5xl: 3em;
   --font-step-6xl: 4.29em;
+  --font-step-px: calc(1rem / 14);
   /* Tracking a style opens its capitals and small labels with. */
   --font-tracking-xs: 0.02em;
   --font-tracking-sm: 0.04em;

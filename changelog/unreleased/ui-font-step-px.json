@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "--font-step-px",
+      "summary": "A design token for one CSS px at 100 % text, grown by the player's text scale (`calc(1rem / 14)`), so a part that grows with the text as a whole sizes itself as `calc(48 * var(--font-step-px))`. AbilitySlot and AbilityBar read it instead of a literal rem."
+    }
+  ]
+}
