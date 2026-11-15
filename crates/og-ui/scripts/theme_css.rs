@@ -872,7 +872,7 @@ const FALLBACKS: &str = r#"
   select::part(trigger), stepper::part(frame), stepper::part(value) {
     border-width: var(--field-rim-width, var(--field-border-width)); border-style: solid; border-color: var(--field-rim, var(--line));
   }
-  input::part(frame):hover, textarea::part(frame):hover, select::part(trigger):hover, stepper::part(frame):hover {
+  input::part(frame):hover, textarea::part(frame):hover, select::part(trigger):hover {
     background: var(--field-hover-fill, var(--field-fill, revert-layer));
     border-color: var(--field-hover-rim, var(--field-rim, var(--line)));
   }

@@ -291,7 +291,7 @@ These declarations also construct widget part identities and are exported by doc
 | `details` | `root` | `:enabled` |
 | `details` | `summary` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:open` |
 | `details` | `content` | `:enabled` |
-| `stepper` | `frame` | `:enabled` |
+| `stepper` | `frame` | `:enabled`, `:disabled` |
 | `stepper` | `value` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
 | `stepper` | `button` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
 | `keyboard` | `panel` | `:enabled` |

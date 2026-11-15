@@ -62,7 +62,7 @@ parts! {
     DETAILS_ROOT: "details", "root", ["enabled"];
     DETAILS_SUMMARY: "details", "summary", ["enabled", "disabled", "hover", "active", "focus-visible", "open"];
     DETAILS_CONTENT: "details", "content", ["enabled"];
-    STEPPER_FRAME: "stepper", "frame", ["enabled"];
+    STEPPER_FRAME: "stepper", "frame", ["enabled", "disabled"];
     STEPPER_VALUE: "stepper", "value", ["enabled", "disabled", "hover", "active", "focus-visible"];
     STEPPER_BUTTON: "stepper", "button", ["enabled", "disabled", "hover", "active", "focus-visible"];
     KEYBOARD_PANEL: "keyboard", "panel", ["enabled"];
