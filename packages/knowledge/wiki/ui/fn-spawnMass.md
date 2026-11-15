@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.spawnMass`
 
-Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them.
+Start instances of a template on this tick: each plays its template's timeline over its lifetimeTicks and leaves after them (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them.
 
 ```ts
 og.ui.spawnMass(template: number, instances: readonly MassInstance[]): void
@@ -23,11 +23,11 @@ Binding symbol `og_ui_spawn_mass` · publish builds: kept
 
 ```ogt
 fn spawnMass {
-  doc "Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them."
+  doc "Start instances of a template on this tick: each plays its template's timeline over its lifetimeTicks and leaves after them (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them."
   param template u32 "From defineMass."
   param instances List.MassInstance "The instances."
   returns Void
 }
 ```
 
-<sub>Module `ui` line 1501</sub>
+<sub>Module `ui` line 1508</sub>

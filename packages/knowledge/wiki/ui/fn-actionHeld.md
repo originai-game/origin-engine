@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.actionHeld`
 
-A hold action is held past its hold, or its toggle is on.
+A hold action is held: down for its holdMs, or its toggle is on.
 
 ```ts
 og.ui.actionHeld(name: string): boolean
@@ -22,10 +22,10 @@ Binding symbol `og_ui_action_held` · publish builds: kept
 
 ```ogt
 fn actionHeld {
-  doc "A hold action is held past its hold, or its toggle is on."
+  doc "A hold action is held: down for its holdMs, or its toggle is on."
   param name String "The action."
   returns bool
 }
 ```
 
-<sub>Module `ui` line 1780</sub>
+<sub>Module `ui` line 1787</sub>

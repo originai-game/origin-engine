@@ -16145,7 +16145,7 @@ pub struct Paint {
     pub token: Option<ThemeColor>,
     pub role: Option<String>,
     pub color: Option<Color>,
-    pub alpha: f32,
+    pub opacity: f32,
 }
 
 impl Default for Paint {
@@ -16154,7 +16154,7 @@ impl Default for Paint {
             token: Default::default(),
             role: Default::default(),
             color: Default::default(),
-            alpha: 1.0_f32,
+            opacity: 1.0_f32,
         }
     }
 }
@@ -16169,7 +16169,7 @@ impl FromJson for Paint {
             token: field(o, "token", d.token)?,
             role: field(o, "role", d.role)?,
             color: field(o, "color", d.color)?,
-            alpha: field(o, "alpha", d.alpha)?,
+            opacity: field(o, "opacity", d.opacity)?,
         })
     }
 }
@@ -16180,7 +16180,7 @@ impl ToJson for Paint {
         o.insert("token".into(), self.token.to_json());
         o.insert("role".into(), self.role.to_json());
         o.insert("color".into(), self.color.to_json());
-        o.insert("alpha".into(), self.alpha.to_json());
+        o.insert("opacity".into(), self.opacity.to_json());
         Value::Object(o)
     }
 }
@@ -17169,8 +17169,8 @@ pub struct UiPointer {
     pub y: f32,
     pub inside: bool,
     pub down: bool,
-    pub pressed: bool,
-    pub released: bool,
+    pub just_pressed: bool,
+    pub just_released: bool,
     pub shift: bool,
     pub ctrl: bool,
     pub alt: bool,
@@ -17183,8 +17183,8 @@ impl Default for UiPointer {
             y: Default::default(),
             inside: Default::default(),
             down: Default::default(),
-            pressed: Default::default(),
-            released: Default::default(),
+            just_pressed: Default::default(),
+            just_released: Default::default(),
             shift: Default::default(),
             ctrl: Default::default(),
             alt: Default::default(),
@@ -17203,8 +17203,8 @@ impl FromJson for UiPointer {
             y: field(o, "y", d.y)?,
             inside: field(o, "inside", d.inside)?,
             down: field(o, "down", d.down)?,
-            pressed: field(o, "pressed", d.pressed)?,
-            released: field(o, "released", d.released)?,
+            just_pressed: field(o, "justPressed", d.just_pressed)?,
+            just_released: field(o, "justReleased", d.just_released)?,
             shift: field(o, "shift", d.shift)?,
             ctrl: field(o, "ctrl", d.ctrl)?,
             alt: field(o, "alt", d.alt)?,
@@ -17219,8 +17219,8 @@ impl ToJson for UiPointer {
         o.insert("y".into(), self.y.to_json());
         o.insert("inside".into(), self.inside.to_json());
         o.insert("down".into(), self.down.to_json());
-        o.insert("pressed".into(), self.pressed.to_json());
-        o.insert("released".into(), self.released.to_json());
+        o.insert("justPressed".into(), self.just_pressed.to_json());
+        o.insert("justReleased".into(), self.just_released.to_json());
         o.insert("shift".into(), self.shift.to_json());
         o.insert("ctrl".into(), self.ctrl.to_json());
         o.insert("alt".into(), self.alt.to_json());
@@ -17286,7 +17286,7 @@ impl ToJson for ScrollState {
 #[derive(Clone, Debug, PartialEq)]
 pub struct VirtualCursorDesc {
     pub speed: f32,
-    pub accel: f32,
+    pub accel_ms: f32,
     pub magnet: f32,
     pub scroll: f32,
 }
@@ -17295,7 +17295,7 @@ impl Default for VirtualCursorDesc {
     fn default() -> Self {
         Self {
             speed: Default::default(),
-            accel: Default::default(),
+            accel_ms: Default::default(),
             magnet: Default::default(),
             scroll: Default::default(),
         }
@@ -17310,7 +17310,7 @@ impl FromJson for VirtualCursorDesc {
         let o = object(v)?;
         Ok(Self {
             speed: field(o, "speed", d.speed)?,
-            accel: field(o, "accel", d.accel)?,
+            accel_ms: field(o, "accelMs", d.accel_ms)?,
             magnet: field(o, "magnet", d.magnet)?,
             scroll: field(o, "scroll", d.scroll)?,
         })
@@ -17321,7 +17321,7 @@ impl ToJson for VirtualCursorDesc {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("speed".into(), self.speed.to_json());
-        o.insert("accel".into(), self.accel.to_json());
+        o.insert("accelMs".into(), self.accel_ms.to_json());
         o.insert("magnet".into(), self.magnet.to_json());
         o.insert("scroll".into(), self.scroll.to_json());
         Value::Object(o)
@@ -19010,7 +19010,7 @@ impl ToJson for PlayInfo {
 /// `GestureInfo`: packages/knowledge/wiki/ui.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GestureInfo {
-    pub held: bool,
+    pub down: bool,
     pub dragging: bool,
     pub offset_x: f32,
     pub offset_y: f32,
@@ -19033,7 +19033,7 @@ pub struct GestureInfo {
 impl Default for GestureInfo {
     fn default() -> Self {
         Self {
-            held: Default::default(),
+            down: Default::default(),
             dragging: Default::default(),
             offset_x: Default::default(),
             offset_y: Default::default(),
@@ -19062,7 +19062,7 @@ impl FromJson for GestureInfo {
     fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
         let o = object(v)?;
         Ok(Self {
-            held: field(o, "held", d.held)?,
+            down: field(o, "down", d.down)?,
             dragging: field(o, "dragging", d.dragging)?,
             offset_x: field(o, "offsetX", d.offset_x)?,
             offset_y: field(o, "offsetY", d.offset_y)?,
@@ -19087,7 +19087,7 @@ impl FromJson for GestureInfo {
 impl ToJson for GestureInfo {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
-        o.insert("held".into(), self.held.to_json());
+        o.insert("down".into(), self.down.to_json());
         o.insert("dragging".into(), self.dragging.to_json());
         o.insert("offsetX".into(), self.offset_x.to_json());
         o.insert("offsetY".into(), self.offset_y.to_json());
@@ -19419,7 +19419,7 @@ pub struct MassKey {
     pub offset_x: f32,
     pub offset_y: f32,
     pub scale: f32,
-    pub alpha: f32,
+    pub opacity: f32,
     pub ease: String,
 }
 
@@ -19430,7 +19430,7 @@ impl Default for MassKey {
             offset_x: Default::default(),
             offset_y: Default::default(),
             scale: 1.0_f32,
-            alpha: 1.0_f32,
+            opacity: 1.0_f32,
             ease: String::from("none"),
         }
     }
@@ -19447,7 +19447,7 @@ impl FromJson for MassKey {
             offset_x: field(o, "offsetX", d.offset_x)?,
             offset_y: field(o, "offsetY", d.offset_y)?,
             scale: field(o, "scale", d.scale)?,
-            alpha: field(o, "alpha", d.alpha)?,
+            opacity: field(o, "opacity", d.opacity)?,
             ease: field(o, "ease", d.ease)?,
         })
     }
@@ -19460,7 +19460,7 @@ impl ToJson for MassKey {
         o.insert("offsetX".into(), self.offset_x.to_json());
         o.insert("offsetY".into(), self.offset_y.to_json());
         o.insert("scale".into(), self.scale.to_json());
-        o.insert("alpha".into(), self.alpha.to_json());
+        o.insert("opacity".into(), self.opacity.to_json());
         o.insert("ease".into(), self.ease.to_json());
         Value::Object(o)
     }
@@ -19484,7 +19484,7 @@ pub struct MassTemplateDesc {
     pub particle_shape: ParticleShape,
     pub size: Vec2,
     pub pivot: Vec2,
-    pub lifetime: u32,
+    pub lifetime_ticks: u32,
     pub keys: Vec<MassKey>,
     pub drift: f32,
     pub gravity: f32,
@@ -19493,7 +19493,7 @@ pub struct MassTemplateDesc {
     pub min_scale: f32,
     pub max_scale: f32,
     pub occlusion: WorldOcclusion,
-    pub occluded_alpha: f32,
+    pub occluded_opacity: f32,
     pub outline: Option<Paint>,
     pub outline_width: f32,
 }
@@ -19516,7 +19516,7 @@ impl Default for MassTemplateDesc {
             particle_shape: Default::default(),
             size: Default::default(),
             pivot: Vec2::new(0.5_f32, 0.5_f32),
-            lifetime: Default::default(),
+            lifetime_ticks: Default::default(),
             keys: Default::default(),
             drift: Default::default(),
             gravity: Default::default(),
@@ -19525,7 +19525,7 @@ impl Default for MassTemplateDesc {
             min_scale: 0.25_f32,
             max_scale: 4.0_f32,
             occlusion: Default::default(),
-            occluded_alpha: 0.25_f32,
+            occluded_opacity: 0.25_f32,
             outline: Default::default(),
             outline_width: 2.0_f32,
         }
@@ -19554,7 +19554,7 @@ impl FromJson for MassTemplateDesc {
             particle_shape: field(o, "particleShape", d.particle_shape)?,
             size: field(o, "size", d.size)?,
             pivot: field(o, "pivot", d.pivot)?,
-            lifetime: field(o, "lifetime", d.lifetime)?,
+            lifetime_ticks: field(o, "lifetimeTicks", d.lifetime_ticks)?,
             keys: field(o, "keys", d.keys)?,
             drift: field(o, "drift", d.drift)?,
             gravity: field(o, "gravity", d.gravity)?,
@@ -19563,7 +19563,7 @@ impl FromJson for MassTemplateDesc {
             min_scale: field(o, "minScale", d.min_scale)?,
             max_scale: field(o, "maxScale", d.max_scale)?,
             occlusion: field(o, "occlusion", d.occlusion)?,
-            occluded_alpha: field(o, "occludedAlpha", d.occluded_alpha)?,
+            occluded_opacity: field(o, "occludedOpacity", d.occluded_opacity)?,
             outline: field(o, "outline", d.outline)?,
             outline_width: field(o, "outlineWidth", d.outline_width)?,
         })
@@ -19588,7 +19588,7 @@ impl ToJson for MassTemplateDesc {
         o.insert("particleShape".into(), self.particle_shape.to_json());
         o.insert("size".into(), self.size.to_json());
         o.insert("pivot".into(), self.pivot.to_json());
-        o.insert("lifetime".into(), self.lifetime.to_json());
+        o.insert("lifetimeTicks".into(), self.lifetime_ticks.to_json());
         o.insert("keys".into(), self.keys.to_json());
         o.insert("drift".into(), self.drift.to_json());
         o.insert("gravity".into(), self.gravity.to_json());
@@ -19597,7 +19597,7 @@ impl ToJson for MassTemplateDesc {
         o.insert("minScale".into(), self.min_scale.to_json());
         o.insert("maxScale".into(), self.max_scale.to_json());
         o.insert("occlusion".into(), self.occlusion.to_json());
-        o.insert("occludedAlpha".into(), self.occluded_alpha.to_json());
+        o.insert("occludedOpacity".into(), self.occluded_opacity.to_json());
         o.insert("outline".into(), self.outline.to_json());
         o.insert("outlineWidth".into(), self.outline_width.to_json());
         Value::Object(o)

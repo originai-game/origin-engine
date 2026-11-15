@@ -2664,8 +2664,8 @@ pub fn og_ui_define_action(world: u32, desc: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_action(name: String) -> bool {
-    <Host as UiApi>::og_ui_action(&Host, name)
+pub fn og_ui_action_fired(name: String) -> bool {
+    <Host as UiApi>::og_ui_action_fired(&Host, name)
 }
 
 #[wasm_bindgen]

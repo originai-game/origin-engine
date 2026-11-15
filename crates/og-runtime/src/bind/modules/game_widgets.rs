@@ -96,7 +96,7 @@ pub fn og_ui_set_virtual_cursor(desc: String) {
     let d = wire::arg::<Option<wire::VirtualCursorDesc>>(Some(&desc), "desc").unwrap_or_default();
     let desc = d.map(|d| og_ui::VirtualCursorDesc {
         speed: d.speed,
-        accel: d.accel,
+        accel: d.accel_ms,
         magnet: d.magnet,
         scroll: d.scroll,
     });

@@ -76,7 +76,7 @@ impl Hooks for Host {
                 let result: Value =
                     serde_json::from_str(&og_runtime::host_impl::answer(og_ui_define_mass(
                         "damage".into(),
-                        Some(json!({ "kind": "number", "lifetime": 10 }).to_string()),
+                        Some(json!({ "kind": "number", "lifetimeTicks": 10 }).to_string()),
                     )))
                     .unwrap();
                 assert_eq!(result["ok"], true, "{result}");

@@ -264,7 +264,7 @@ pub fn og_ui_animate(id: String, target: f64, transition_desc: String) -> f64 {
 pub fn og_ui_gesture(path: String) -> crate::host::wire::GestureInfo {
     let g = with_ui("og.ui.gesture", |ui| ui.gesture_at(&path)).unwrap_or_default();
     wire::GestureInfo {
-        held: g.held,
+        down: g.held,
         dragging: g.dragging,
         offset_x: g.offset_x,
         offset_y: g.offset_y,

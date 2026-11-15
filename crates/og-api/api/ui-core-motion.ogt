@@ -320,7 +320,7 @@
 
   struct GestureInfo {
     doc "What a drag or pinch on an element is doing (last tick's answer, as responses are)."
-    field held bool "A press is held on it."
+    field down bool "A press is down on it."
     field dragging bool "It moves with the pointer (the press travelled past the threshold)."
     field offsetX f32 "Its offset from where it was laid out." {
       unit cssPx
@@ -331,7 +331,9 @@
     field velocityX f32 "CSS px per second."
     field velocityY f32 "CSS px per second."
     field scale f32 "A pinch's scale (1: none)."
-    field rotation f32 "A pinch's turn, radians."
+    field rotation f32 "A pinch's turn, clockwise on screen." {
+      unit rad
+    }
     field snapped i32 "The snap point the last release chose (-1: none)."
     field dismissed bool "A swipe threw it off."
     field over String "The drop target under the drag (empty: none)."
@@ -341,7 +343,7 @@
     field tapped bool "Its tap this tick (its `tap` attribute), as Response.tapped."
     field doubleTapped bool "Its double tap this tick."
     field longPressed bool "Its long press this tick."
-    field longPress f32 "How far into its long press the held press is, 0 to 1." {
+    field longPress f32 "How far into its long press the press that is down is, 0 to 1." {
       unit ratio
     }
   }

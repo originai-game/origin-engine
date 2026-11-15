@@ -13,16 +13,16 @@ A string: one of the variants below. The zero value is `"none"`.
 | Variant | Doc |
 |---|---|
 | `"none"` | Drawn over the scene. |
-| `"fade"` | Drawn at occludedAlpha where the scene is in front. |
+| `"fade"` | Drawn at occludedOpacity where the scene is in front. |
 | `"hide"` | Not drawn where the scene is in front. |
 
 ```ogt
 enum WorldOcclusion {
   doc "What the scene in front of an anchored element does to it: a depth test of its point against the frame's depth, on the GPU."
   variant none "Drawn over the scene."
-  variant fade "Drawn at occludedAlpha where the scene is in front."
+  variant fade "Drawn at occludedOpacity where the scene is in front."
   variant hide "Not drawn where the scene is in front."
 }
 ```
 
-<sub>Module `ui` line 1354</sub>
+<sub>Module `ui` line 1357</sub>

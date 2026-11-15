@@ -27,7 +27,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `particleShape` | `ParticleShape` | `"square"` | — | — | — | Particles: the shape. |
 | `size` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | — | Text and numbers: x is the em size; bars, icons and particles: width and height. 0: the kind's default, per component (text and numbers 24 × 24, bars 80 × 8, icons 32 × 32, particles 8 × 8). |
 | `pivot` | `Vector2` | `{ x: 0.5, y: 0.5 }` | — | — | — | The element's point on its position, fractions (0.5, 1: its bottom centre). |
-| `lifetime` | `number` | `0` | — | — | — | Ticks an instance lives; 0 shows pushed instances for their tick only. |
+| `lifetimeTicks` | `number` | `0` | — | `ticks` | — | How long an instance lives; 0 shows pushed instances for their tick only. |
 | `keys` | `readonly MassKey[]` | `[]` | — | — | — | The timeline over its life (up to 8). |
 | `drift` | `number` | `0` | — | `cssPx` | — | Each instance drifts sideways up to this far over its life, by its seed. |
 | `gravity` | `number` | `0` | — | `cssPx` | — | Added downward over its life, this much at its end. |
@@ -36,7 +36,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `minScale` | `number` | `0.25` | ≥ 0 | — | — | World space: the smallest distance scale. |
 | `maxScale` | `number` | `4` | ≥ 0 | — | — | World space: the largest distance scale. |
 | `occlusion` | `WorldOcclusion` | `"none"` | — | — | — | World space: what the scene in front of an instance does. |
-| `occludedAlpha` | `number` | `0.25` | 0 … 1 | — | — | Its opacity behind the scene, for occlusion fade. |
+| `occludedOpacity` | `number` | `0.25` | 0 … 1 | `ratio` | — | Its opacity behind the scene, for occlusion fade. |
 | `outline` | `Paint \| null` | `null` | — | — | — | Text and numbers: an outline's ink; null draws none. |
 | `outlineWidth` | `number` | `2` | ≥ 0 | `cssPx` | — | Its width. |
 
@@ -66,7 +66,9 @@ struct MassTemplateDesc {
   field pivot Vector2 "The element's point on its position, fractions (0.5, 1: its bottom centre)." {
     default 0.5 0.5
   }
-  field lifetime u32 "Ticks an instance lives; 0 shows pushed instances for their tick only."
+  field lifetimeTicks u32 "How long an instance lives; 0 shows pushed instances for their tick only." {
+    unit ticks
+  }
   field keys List.MassKey "The timeline over its life (up to 8)."
   field drift f32 "Each instance drifts sideways up to this far over its life, by its seed." {
     unit cssPx
@@ -88,10 +90,11 @@ struct MassTemplateDesc {
     min 0
   }
   field occlusion WorldOcclusion "World space: what the scene in front of an instance does."
-  field occludedAlpha f32 "Its opacity behind the scene, for occlusion fade." {
+  field occludedOpacity f32 "Its opacity behind the scene, for occlusion fade." {
     default 0.25
     min 0
     max 1
+    unit ratio
   }
   field outline Option.Paint "Text and numbers: an outline's ink; null draws none."
   field outlineWidth f32 "Its width." {
@@ -102,4 +105,4 @@ struct MassTemplateDesc {
 }
 ```
 
-<sub>Module `ui` line 1411</sub>
+<sub>Module `ui` line 1415</sub>

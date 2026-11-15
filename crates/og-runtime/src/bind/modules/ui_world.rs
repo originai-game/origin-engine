@@ -152,7 +152,7 @@ fn template(
             t: k.t.clamp(0.0, 1.0),
             offset: Vec2::new(k.offset_x, k.offset_y),
             scale: k.scale.max(0.0),
-            alpha: k.alpha.clamp(0.0, 1.0),
+            alpha: k.opacity.clamp(0.0, 1.0),
             ease: og_tween::Ease::from_text(&k.ease).ok_or_else(|| format!("invalid mass ease '{}': expected a GSAP name, cubic-bezier(x1,y1,x2,y2) with four finite controls and x in [0,1], or steps(n[,position]) with positive integer n and start/end/jump-start/jump-end/jump-none/jump-both (jump-none requires n > 1)", k.ease))?,
         }))
         .collect::<Result<Vec<_>, String>>()?;
@@ -162,7 +162,7 @@ fn template(
         texture: texture_of(d.texture),
         size,
         pivot: d.pivot,
-        lifetime: d.lifetime,
+        lifetime: d.lifetime_ticks,
         keys,
         drift: d.drift,
         gravity: d.gravity,
@@ -174,7 +174,7 @@ fn template(
         ),
         occlusion: match d.occlusion {
             wire::WorldOcclusion::Fade => UiOcclusion::Fade {
-                alpha: d.occluded_alpha.clamp(0.0, 1.0),
+                alpha: d.occluded_opacity.clamp(0.0, 1.0),
             },
             wire::WorldOcclusion::Hide => UiOcclusion::Hide,
             wire::WorldOcclusion::None => UiOcclusion::None,

@@ -1070,8 +1070,8 @@ export interface HostAbi<A, V> {
   og_ui_paused(world: number): boolean;
   /** `og.ui.defineAction` */
   og_ui_define_action(world: number, desc: string): string;
-  /** `og.ui.action` */
-  og_ui_action(name: string): boolean;
+  /** `og.ui.actionFired` */
+  og_ui_action_fired(name: string): boolean;
   /** `og.ui.actionHeld` */
   og_ui_action_held(name: string): boolean;
   /** `og.ui.glyph` */
@@ -1838,7 +1838,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_game_input",
   "og_ui_paused",
   "og_ui_define_action",
-  "og_ui_action",
+  "og_ui_action_fired",
   "og_ui_action_held",
   "og_ui_glyph",
   "og_ui_frame_glyph",

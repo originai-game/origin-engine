@@ -68,16 +68,12 @@ const EXCEPTIONS: [(&str, &str, &str); 8] = [
 /// Debts: members that break a rule and are to be renamed, in modules
 /// this test's stream did not own, as (`Owner.field`, the rule, who).
 ///
-/// The `ui-*.ogt` modules are converted next by the UI stream. The
-/// visual-effects stream owns `vfx.ogt` and og.ParticleSystem, og.Trail,
-/// og.Beam, og.Decal, SpriteBlend and StripBlend; none of their fields
-/// breaks a rule today, and one that comes to is listed here, not renamed
-/// from outside that stream.
-const DEBTS: [(&str, &str, &str); 1] = [(
-    "VirtualCursorDesc.accel",
-    "ms",
-    "ui-core.ogt, the UI stream: a time in milliseconds whose name does not end in Ms",
-)];
+/// None today: the `ui-*.ogt` modules keep every rule. The visual-effects
+/// stream owns `vfx.ogt` and og.ParticleSystem, og.Trail, og.Beam,
+/// og.Decal, SpriteBlend and StripBlend; none of their fields breaks a rule
+/// today, and one that comes to is listed here, not renamed from outside
+/// that stream.
+const DEBTS: [(&str, &str, &str); 0] = [];
 
 /// Every field of the IDL as (part file, owner, field).
 fn fields(api: &Api) -> Vec<(&str, &str, &Field)> {
@@ -129,6 +125,18 @@ fn broken(name: &str, ty: &TypeRef, unit: Option<&str>) -> Vec<(&'static str, &'
         out.push((
             "damping",
             "`damping` is a decay rate and carries `unit perSecond`",
+        ));
+    }
+    if name == "alpha" || name.ends_with("Alpha") {
+        out.push((
+            "opacity",
+            "how opaque a thing is is named `opacity` or ends in `Opacity`",
+        ));
+    }
+    if ty.name() == "bool" && matches!(name, "pressed" | "released") {
+        out.push((
+            "press",
+            "a press's edges are `justPressed` and `justReleased`; `down` is its state",
         ));
     }
     out
@@ -210,4 +218,10 @@ fn each_rule_fails_on_the_old_form() {
     assert_eq!(field("slopeMax", "f32", None), ["deg"]);
     assert_eq!(field("damping", "f32", Some("ratio")), ["damping"]);
     assert_eq!(field("damping", "f32", Some("perSecond")), [""; 0]);
+    assert_eq!(field("alpha", "f32", None), ["opacity"]);
+    assert_eq!(field("occludedAlpha", "f32", Some("ratio")), ["opacity"]);
+    assert_eq!(field("alphaTest", "f32", None), [""; 0]);
+    assert_eq!(field("lifetime", "u32", Some("ticks")), ["ticks"]);
+    assert_eq!(field("pressed", "bool", None), ["press"]);
+    assert_eq!(field("justReleased", "bool", None), [""; 0]);
 }

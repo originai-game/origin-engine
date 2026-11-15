@@ -13,7 +13,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `speed` | `number` | `0` | ≥ 0 | `cssPx` | — | Units a second at full tilt; 0 is 900. |
-| `accel` | `number` | `0` | — | `ms` | — | Milliseconds a held stick takes from a third of its speed to all of it, for fine aim first; 0 is 250, negative is none. |
+| `accelMs` | `number` | `0` | — | `ms` | — | How long a held stick takes from a third of its speed to all of it, for fine aim first; 0 is 250, negative is none. |
 | `magnet` | `number` | `0` | ≤ 1 | — | — | 0 to 1: how much it slows over a control and, once the stick rests, pulls to the control's centre; 0 takes the style's motion magnet (the design language's timing table: 0.5), negative is none. |
 | `scroll` | `number` | `0` | — | `cssPx` | — | Units a second the right stick scrolls under it at full tilt; 0 is 1200, negative leaves the right stick to the game. |
 
@@ -25,7 +25,7 @@ struct VirtualCursorDesc {
     unit cssPx
     min 0
   }
-  field accel f32 "Milliseconds a held stick takes from a third of its speed to all of it, for fine aim first; 0 is 250, negative is none." {
+  field accelMs f32 "How long a held stick takes from a third of its speed to all of it, for fine aim first; 0 is 250, negative is none." {
     unit ms
   }
   field magnet f32 "0 to 1: how much it slows over a control and, once the stick rests, pulls to the control's centre; 0 takes the style's motion magnet (the design language's timing table: 0.5), negative is none." {
@@ -37,4 +37,4 @@ struct VirtualCursorDesc {
 }
 ```
 
-<sub>Module `ui` line 579</sub>
+<sub>Module `ui` line 580</sub>

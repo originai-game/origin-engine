@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `Paint` (desc struct)
 
-A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an alpha. Neither is white.
+A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an opacity. Neither is white.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -15,19 +15,20 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `token` | `ThemeColor \| null` | `null` | — | — | — | A semantic colour of the theme. |
 | `role` | `string \| null` | `null` | — | — | — | A colour role the style declares of its own (its `roles` block, docs/ui.md §3.1: a game's corruption or faction colour) by name, when no token is given; a name the style lacks draws magenta. |
 | `color` | `Color \| null` | `null` | — | — | — | An sRGB colour as authored, when no token or role is given. |
-| `alpha` | `number` | `1` | 0 … 1 | — | — | The opacity. |
+| `opacity` | `number` | `1` | 0 … 1 | `ratio` | — | Its opacity, multiplied with the token's or the role's own. |
 
 ```ogt
 struct Paint {
-  doc "A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an alpha. Neither is white."
+  doc "A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an opacity. Neither is white."
   desc true
   field token Option.ThemeColor "A semantic colour of the theme."
   field role Option.String "A colour role the style declares of its own (its `roles` block, docs/ui.md §3.1: a game's corruption or faction colour) by name, when no token is given; a name the style lacks draws magenta."
   field color Option.Color "An sRGB colour as authored, when no token or role is given."
-  field alpha f32 "The opacity." {
+  field opacity f32 "Its opacity, multiplied with the token's or the role's own." {
     default 1
     min 0
     max 1
+    unit ratio
   }
 }
 ```

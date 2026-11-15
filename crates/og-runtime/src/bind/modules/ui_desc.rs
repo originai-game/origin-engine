@@ -68,7 +68,7 @@ pub const TYPE_STEPS: &[&str] = &[
 
 /// A Paint: a token, else an sRGB colour as authored (0–1), else white.
 pub(super) fn paint(theme: &Theme, p: &wire::Paint) -> Option<Srgba> {
-    let alpha = p.alpha.clamp(0.0, 1.0);
+    let opacity = p.opacity.clamp(0.0, 1.0);
     let name = p.token.map(|t| t.as_str()).or(p.role.as_deref());
     let base = match name {
         Some(t) => token(theme, t)?,
@@ -80,7 +80,7 @@ pub(super) fn paint(theme: &Theme, p: &wire::Paint) -> Option<Srgba> {
             None => Srgba::WHITE,
         },
     };
-    Some(base.fade(alpha))
+    Some(base.fade(opacity))
 }
 
 // ── ui: the calls ───────────────────────────────────────────────────────────
@@ -234,8 +234,8 @@ pub fn og_ui_frame_pointer() -> crate::host::wire::UiPointer {
             y: i.pointer.y,
             inside: i.pointer_inside,
             down: i.down,
-            pressed: i.pressed,
-            released: i.released,
+            just_pressed: i.pressed,
+            just_released: i.released,
             shift: i.shift,
             ctrl: i.ctrl,
             alt: i.alt,

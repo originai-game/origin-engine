@@ -3195,10 +3195,10 @@ pub fn og_ui_define_action(env: Env, world: u32, desc: String) -> String {
     <Host as UiApi>::og_ui_define_action(&Host, world, desc)
 }
 
-#[napi(js_name = "og_ui_action")]
-pub fn og_ui_action(env: Env, name: String) -> bool {
+#[napi(js_name = "og_ui_action_fired")]
+pub fn og_ui_action_fired(env: Env, name: String) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_action(&Host, name)
+    <Host as UiApi>::og_ui_action_fired(&Host, name)
 }
 
 #[napi(js_name = "og_ui_action_held")]

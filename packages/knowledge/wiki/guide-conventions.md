@@ -56,7 +56,11 @@ must(world.resource(og.Camera)).fov = 60;                    // degrees, the who
   suspension's) and a reverb's damping of high frequencies.
 - **Input.** `down` is true while it is down; `justPressed` and
   `justReleased` for the one tick it went down or up; `held` once it has
-  been down for the action's `holdMs`, a long press.
+  been down for the action's `holdMs`, a long press (a `holdMs` of 0 never
+  holds). The UI's pointer, gestures and actions use the same words
+  (`UiPointer.justPressed`, `GestureInfo.down`, `og.ui.actionHeld`).
+- **`opacity`.** How opaque a thing is, 0 to 1, in every module; `alpha`
+  only names a colour's or a texture's alpha channel (`alphaTest`).
 
 ```ts
 const jump = og.input.action(world, "jump");

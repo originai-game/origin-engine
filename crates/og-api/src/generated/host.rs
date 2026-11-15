@@ -1185,8 +1185,8 @@ pub trait UiApi: Wire {
     fn og_ui_paused(&self, world: u32) -> bool;
     /// `og.ui.defineAction`
     fn og_ui_define_action(&self, world: u32, desc: String) -> String;
-    /// `og.ui.action`
-    fn og_ui_action(&self, name: String) -> bool;
+    /// `og.ui.actionFired`
+    fn og_ui_action_fired(&self, name: String) -> bool;
     /// `og.ui.actionHeld`
     fn og_ui_action_held(&self, name: String) -> bool;
     /// `og.ui.glyph`
@@ -2018,7 +2018,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_game_input",
     "og_ui_paused",
     "og_ui_define_action",
-    "og_ui_action",
+    "og_ui_action_fired",
     "og_ui_action_held",
     "og_ui_glyph",
     "og_ui_frame_glyph",

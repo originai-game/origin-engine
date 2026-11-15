@@ -744,8 +744,8 @@ pub fn og_ui_define_action(world: u32, desc: String) -> Result<(), String> {
     }
 }
 
-pub fn og_ui_action(name: String) -> bool {
-    with_ui("og.ui.action", |ui| ui.action(&name)).unwrap_or(false)
+pub fn og_ui_action_fired(name: String) -> bool {
+    with_ui("og.ui.actionFired", |ui| ui.action(&name)).unwrap_or(false)
 }
 
 pub fn og_ui_action_held(name: String) -> bool {

@@ -151,14 +151,14 @@
     returns Result.Void
   }
 
-  fn action {
-    doc "The action fired this tick (a document's `on action` fires on the top layer that takes input)."
+  fn actionFired {
+    doc "The action fired this tick: on its press, its release or once its hold is reached, as its trigger says (a document's `on action` fires on the top layer that takes input). A bool, where og.input.action answers an action's whole state."
     param name String "The action."
     returns bool
   }
 
   fn actionHeld {
-    doc "A hold action is held past its hold, or its toggle is on."
+    doc "A hold action is held: down for its holdMs, or its toggle is on."
     param name String "The action."
     returns bool
   }

@@ -32,7 +32,7 @@ module ui {
 | [`ThemeColor`](ui/type-ThemeColor.md) | enum |  | A colour role of the UI style in effect (the game's style, or the default style before it picks one). |
 | [`TypeStepName`](ui/type-TypeStepName.md) | enum |  | A step of the style's type ramp. |
 | [`Insets`](ui/type-Insets.md) | struct |  | Padding or margins on four sides. |
-| [`Paint`](ui/type-Paint.md) | desc struct |  | A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an alpha. |
+| [`Paint`](ui/type-Paint.md) | desc struct |  | A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an opacity. |
 | [`Viewport`](ui/type-Viewport.md) | struct |  | The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit. |
 | [`UiDesc`](ui/type-UiDesc.md) | desc struct |  | How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. |
 | [`UiSounds`](ui/type-UiSounds.md) | desc struct |  | Sounds the UI plays through og-audio (the ui bus) on its events; null is silent. |
@@ -167,7 +167,7 @@ module ui {
 | [`MassTemplateDesc`](ui/type-MassTemplateDesc.md) | desc struct |  | A mass element template (docs/ui.md §1): declared once, then instanced thousands of times a frame with a few values each. |
 | [`MassInstance`](ui/type-MassInstance.md) | desc struct |  | One mass element: a few values; its template does the rest. |
 | [`og.ui.defineMass`](ui/fn-defineMass.md) | function | `(name: string, desc?: MassTemplateDesc): Result<number>` | Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. |
-| [`og.ui.spawnMass`](ui/fn-spawnMass.md) | function | `(template: number, instances: readonly MassInstance[]): void` | Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). |
+| [`og.ui.spawnMass`](ui/fn-spawnMass.md) | function | `(template: number, instances: readonly MassInstance[]): void` | Start instances of a template on this tick: each plays its template's timeline over its lifetimeTicks and leaves after them (damage numbers, pickups). |
 | [`og.ui.massCount`](ui/fn-massCount.md) | function | `(template: number): number` | The live spawned instances of a template. |
 | [`UiSource`](ui/type-UiSource.md) | interface |  | A store's stable checkpoint identity. |
 | [`UiCollectionDesc`](ui/type-UiCollectionDesc.md) | struct |  | A keyed collection's identity rule. |
@@ -190,8 +190,8 @@ module ui {
 | [`og.ui.gameInput`](ui/fn-gameInput.md) | function | `(world: World): boolean` | Gameplay takes input this tick: no layer whose input is `menu` is on the stack. |
 | [`og.ui.paused`](ui/fn-paused.md) | function | `(world: World): boolean` | A layer that pauses the game (`pause`) is on the stack: the engine holds the time scale at 0 while one is, and gives back the one it had. |
 | [`og.ui.defineAction`](ui/fn-defineAction.md) | function | `(world: World, desc: UiActionDesc): Result<void>` | Define (or redefine) a UI action. |
-| [`og.ui.action`](ui/fn-action.md) | function | `(name: string): boolean` | The action fired this tick (a document's `on action` fires on the top layer that takes input). |
-| [`og.ui.actionHeld`](ui/fn-actionHeld.md) | function | `(name: string): boolean` | A hold action is held past its hold, or its toggle is on. |
+| [`og.ui.actionFired`](ui/fn-actionFired.md) | function | `(name: string): boolean` | The action fired this tick: on its press, its release or once its hold is reached, as its trigger says (a document's `on action` fires on the top layer that takes input). |
+| [`og.ui.actionHeld`](ui/fn-actionHeld.md) | function | `(name: string): boolean` | A hold action is held: down for its holdMs, or its toggle is on. |
 | [`og.ui.glyph`](ui/fn-glyph.md) | function | `(world: World, action: string): UiGlyph \| null` | An action's glyph on the device used last: its first binding there. |
 | [`og.ui.frameGlyph`](ui/fn-frameGlyph.md) | function | `(action: string): UiGlyph \| null` | An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. |
 | [`og.ui.device`](ui/fn-device.md) | function | `(world: World): UiDevice` | The device the player used last (glyphs follow it live): a key or the mouse, a pad of the family set with og.ui.setDevice (Xbox by default), or a touch on a coarse pointer. |
@@ -220,7 +220,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 1296</sub>
+<sub>Module `ui` line 1299</sub>
 
 ```ogt
 column UiMaterial {
@@ -231,4 +231,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 1303</sub>
+<sub>Module `ui` line 1306</sub>

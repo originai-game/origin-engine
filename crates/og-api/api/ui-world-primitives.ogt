@@ -3,7 +3,7 @@
   enum WorldOcclusion {
     doc "What the scene in front of an anchored element does to it: a depth test of its point against the frame's depth, on the GPU."
     variant none "Drawn over the scene."
-    variant fade "Drawn at occludedAlpha where the scene is in front."
+    variant fade "Drawn at occludedOpacity where the scene is in front."
     variant hide "Not drawn where the scene is in front."
   }
 
@@ -47,10 +47,11 @@
       default 1
       min 0
     }
-    field alpha f32 "Its opacity." {
+    field opacity f32 "Its opacity." {
       default 1
       min 0
       max 1
+      unit ratio
     }
     field ease Ease "Shared GSAP names or cubic-bezier()/steps() strings. Non-opcode curves use a deduplicated 4097-sample presentation LUT; step progress is quantized before lookup." {
       default none
@@ -82,7 +83,9 @@
     field pivot Vector2 "The element's point on its position, fractions (0.5, 1: its bottom centre)." {
       default 0.5 0.5
     }
-    field lifetime u32 "Ticks an instance lives; 0 shows pushed instances for their tick only."
+    field lifetimeTicks u32 "How long an instance lives; 0 shows pushed instances for their tick only." {
+      unit ticks
+    }
     field keys List.MassKey "The timeline over its life (up to 8)."
     field drift f32 "Each instance drifts sideways up to this far over its life, by its seed." {
       unit cssPx
@@ -104,10 +107,11 @@
       min 0
     }
     field occlusion WorldOcclusion "World space: what the scene in front of an instance does."
-    field occludedAlpha f32 "Its opacity behind the scene, for occlusion fade." {
+    field occludedOpacity f32 "Its opacity behind the scene, for occlusion fade." {
       default 0.25
       min 0
       max 1
+      unit ratio
     }
     field outline Option.Paint "Text and numbers: an outline's ink; null draws none."
     field outlineWidth f32 "Its width." {
@@ -148,7 +152,7 @@
   }
 
   fn spawnMass {
-    doc "Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them."
+    doc "Start instances of a template on this tick: each plays its template's timeline over its lifetimeTicks and leaves after them (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them."
     param template u32 "From defineMass."
     param instances List.MassInstance "The instances."
     returns Void

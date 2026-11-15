@@ -24743,10 +24743,10 @@
     {
       "id": 500,
       "kind": "fn",
-      "path": "og.ui.action",
-      "symbol": "og_ui_action",
+      "path": "og.ui.actionFired",
+      "symbol": "og_ui_action_fired",
       "module": "ui",
-      "name": "action",
+      "name": "actionFired",
       "params": [
         {
           "name": "name",

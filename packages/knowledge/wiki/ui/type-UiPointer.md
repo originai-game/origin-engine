@@ -14,8 +14,8 @@ The primary pointer as the UI reads it this tick.
 | `y` | `number` | `0` | — | `cssPx` | — | Its y from the surface's top. |
 | `inside` | `boolean` | `false` | — | — | — | It is over the surface: false for a mouse that left it, or a touch screen with no finger down. |
 | `down` | `boolean` | `false` | — | — | — | Its button or finger is down. |
-| `pressed` | `boolean` | `false` | — | — | — | Its button or finger went down this tick: where a drag a component runs itself (an inventory's item, a card) starts. |
-| `released` | `boolean` | `false` | — | — | — | Its button or finger came up this tick: where such a drag ends. |
+| `justPressed` | `boolean` | `false` | — | — | — | Its button or finger went down this tick: where a drag a component runs itself (an inventory's item, a card) starts. |
+| `justReleased` | `boolean` | `false` | — | — | — | Its button or finger came up this tick: where such a drag ends. |
 | `shift` | `boolean` | `false` | — | — | — | A Shift key is held (a split stack, a quick transfer, a range of a list). |
 | `ctrl` | `boolean` | `false` | — | — | — | A Control key is held. |
 | `alt` | `boolean` | `false` | — | — | — | An Alt (Option) key is held. |
@@ -31,12 +31,12 @@ struct UiPointer {
   }
   field inside bool "It is over the surface: false for a mouse that left it, or a touch screen with no finger down."
   field down bool "Its button or finger is down."
-  field pressed bool "Its button or finger went down this tick: where a drag a component runs itself (an inventory's item, a card) starts."
-  field released bool "Its button or finger came up this tick: where such a drag ends."
+  field justPressed bool "Its button or finger went down this tick: where a drag a component runs itself (an inventory's item, a card) starts."
+  field justReleased bool "Its button or finger came up this tick: where such a drag ends."
   field shift bool "A Shift key is held (a split stack, a quick transfer, a range of a list)."
   field ctrl bool "A Control key is held."
   field alt bool "An Alt (Option) key is held."
 }
 ```
 
-<sub>Module `ui` line 445</sub>
+<sub>Module `ui` line 446</sub>

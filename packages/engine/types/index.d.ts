@@ -24982,7 +24982,7 @@ export interface Insets {
 }
 
 /**
- * A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an alpha. Neither is white.
+ * A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an opacity. Neither is white.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -25006,12 +25006,13 @@ export interface Paint {
    */
   readonly color?: Color | null;
   /**
-   * The opacity.
+   * Its opacity, multiplied with the token's or the role's own.
    *
    * @default 1
    * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
    */
-  readonly alpha?: number;
+  readonly opacity?: number;
 }
 
 /**
@@ -25663,9 +25664,9 @@ export interface UiPointer {
   /**
    * Its button or finger went down this tick: where a drag a component runs itself (an inventory's item, a card) starts.
    */
-  readonly pressed: boolean;
+  readonly justPressed: boolean;
   /** Its button or finger came up this tick: where such a drag ends. */
-  readonly released: boolean;
+  readonly justReleased: boolean;
   /** A Shift key is held (a split stack, a quick transfer, a range of a list). */
   readonly shift: boolean;
   /** A Control key is held. */
@@ -25745,12 +25746,12 @@ export interface VirtualCursorDesc {
    */
   readonly speed?: number;
   /**
-   * Milliseconds a held stick takes from a third of its speed to all of it, for fine aim first; 0 is 250, negative is none.
+   * How long a held stick takes from a third of its speed to all of it, for fine aim first; 0 is 250, negative is none.
    *
    * @default 0
    * @unit ms (milliseconds)
    */
-  readonly accel?: number;
+  readonly accelMs?: number;
   /**
    * 0 to 1: how much it slows over a control and, once the stick rests, pulls to the control's centre; 0 takes the style's motion magnet (the design language's timing table: 0.5), negative is none.
    *
@@ -26433,8 +26434,8 @@ export interface PlayInfo {
 
 /** What a drag or pinch on an element is doing (last tick's answer, as responses are). */
 export interface GestureInfo {
-  /** A press is held on it. */
-  readonly held: boolean;
+  /** A press is down on it. */
+  readonly down: boolean;
   /** It moves with the pointer (the press travelled past the threshold). */
   readonly dragging: boolean;
   /**
@@ -26455,7 +26456,11 @@ export interface GestureInfo {
   readonly velocityY: number;
   /** A pinch's scale (1: none). */
   readonly scale: number;
-  /** A pinch's turn, radians. */
+  /**
+   * A pinch's turn, clockwise on screen.
+   *
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
+   */
   readonly rotation: number;
   /** The snap point the last release chose (-1: none). */
   readonly snapped: number;
@@ -26476,7 +26481,7 @@ export interface GestureInfo {
   /** Its long press this tick. */
   readonly longPressed: boolean;
   /**
-   * How far into its long press the held press is, 0 to 1.
+   * How far into its long press the press that is down is, 0 to 1.
    *
    * @unit ratio (a fraction between 0 and 1)
    */
@@ -26732,7 +26737,7 @@ export interface Gradient {
 /**
  * What the scene in front of an anchored element does to it: a depth test of its point against the frame's depth, on the GPU.
  * - `"none"`: Drawn over the scene.
- * - `"fade"`: Drawn at occludedAlpha where the scene is in front.
+ * - `"fade"`: Drawn at occludedOpacity where the scene is in front.
  * - `"hide"`: Not drawn where the scene is in front.
  */
 export type WorldOcclusion = "none" | "fade" | "hide";
@@ -26802,8 +26807,9 @@ export interface MassKey {
    *
    * @default 1
    * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
    */
-  readonly alpha?: number;
+  readonly opacity?: number;
   /**
    * Shared GSAP names or cubic-bezier()/steps() strings. Non-opcode curves use a deduplicated 4097-sample presentation LUT; step progress is quantized before lookup.
    *
@@ -26912,11 +26918,12 @@ export interface MassTemplateDesc {
    */
   readonly pivot?: Vector2;
   /**
-   * Ticks an instance lives; 0 shows pushed instances for their tick only.
+   * How long an instance lives; 0 shows pushed instances for their tick only.
    *
    * @default 0
+   * @unit ticks (fixed simulation steps)
    */
-  readonly lifetime?: number;
+  readonly lifetimeTicks?: number;
   /**
    * The timeline over its life (up to 8).
    *
@@ -26976,8 +26983,9 @@ export interface MassTemplateDesc {
    *
    * @default 0.25
    * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
    */
-  readonly occludedAlpha?: number;
+  readonly occludedOpacity?: number;
   /**
    * Text and numbers: an outline's ink; null draws none.
    *
@@ -37379,7 +37387,7 @@ export declare namespace og {
      */
     function defineMass(name: string, desc?: MassTemplateDesc): Result<number>;
     /**
-     * Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them.
+     * Start instances of a template on this tick: each plays its template's timeline over its lifetimeTicks and leaves after them (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them.
      *
      * @param template From defineMass.
      * @param instances The instances.
@@ -37467,13 +37475,13 @@ export declare namespace og {
      */
     function defineAction(world: World, desc: UiActionDesc): Result<void>;
     /**
-     * The action fired this tick (a document's `on action` fires on the top layer that takes input).
+     * The action fired this tick: on its press, its release or once its hold is reached, as its trigger says (a document's `on action` fires on the top layer that takes input). A bool, where og.input.action answers an action's whole state.
      *
      * @param name The action.
      */
-    function action(name: string): boolean;
+    function actionFired(name: string): boolean;
     /**
-     * A hold action is held past its hold, or its toggle is on.
+     * A hold action is held: down for its holdMs, or its toggle is on.
      *
      * @param name The action.
      */

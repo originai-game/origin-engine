@@ -1,0 +1,74 @@
+{
+  "breaking": [
+    {
+      "member": "Paint.opacity, MassKey.opacity",
+      "change": "Renamed from alpha: how opaque a thing is is named opacity in every module. Same value, 0 to 1, default 1. An alpha left in place is no longer read, so the paint or the key is opaque.",
+      "fix": "Rename alpha to opacity in each Paint ({ token: \"ink\", opacity: 0.5 }) and in each key of a mass template's keys.",
+      "find": [
+        "alpha"
+      ]
+    },
+    {
+      "member": "MassTemplateDesc.occludedOpacity",
+      "change": "Renamed from occludedAlpha, as Paint.opacity. Same value, default 0.25.",
+      "fix": "Rename occludedAlpha to occludedOpacity.",
+      "codemod": {
+        "from": "occludedAlpha",
+        "to": "occludedOpacity"
+      }
+    },
+    {
+      "member": "MassTemplateDesc.lifetimeTicks",
+      "change": "Renamed from lifetime: it is in ticks, and a time not in seconds says its unit in its name. Same value; 0 still shows pushed instances for their tick only. A lifetime left in place is no longer read, so spawned instances last one tick.",
+      "fix": "Rename lifetime to lifetimeTicks in each og.ui.defineMass desc; leave every other lifetime (they are seconds).",
+      "find": [
+        "defineMass",
+        "lifetime"
+      ]
+    },
+    {
+      "member": "VirtualCursorDesc.accelMs",
+      "change": "Renamed from accel: it is in milliseconds. Same value; 0 is still 250 and negative none.",
+      "fix": "Rename accel to accelMs in each og.ui.setVirtualCursor desc.",
+      "find": [
+        "setVirtualCursor",
+        "accel"
+      ]
+    },
+    {
+      "member": "og.ui.actionFired",
+      "change": "Renamed from og.ui.action: it answers a bool, the tick a UI action fires, where og.input.action answers an action's whole state (an object, always truthy in an if). og.ui.actionHeld keeps its name.",
+      "fix": "Call og.ui.actionFired(name) where og.ui.action(name) was.",
+      "codemod": {
+        "from": "og.ui.action(",
+        "to": "og.ui.actionFired("
+      }
+    },
+    {
+      "member": "UiPointer.justPressed, UiPointer.justReleased",
+      "change": "Renamed from pressed and released, the words og.input uses for the one tick a press goes down or comes up; down is still the state.",
+      "fix": "Read justPressed and justReleased on og.ui.framePointer()'s answer.",
+      "find": [
+        "framePointer"
+      ]
+    },
+    {
+      "member": "GestureInfo.down",
+      "change": "Renamed from held: a press is down on the element. held means down for a holdMs, a long press, which a gesture reports as longPressed and longPress.",
+      "fix": "Read down where og.ui.gesture(path).held was.",
+      "find": [
+        "gesture("
+      ]
+    }
+  ],
+  "added": [
+    {
+      "member": "the conventions guide",
+      "summary": "The conventions guide gains the UI's lines: opacity names how opaque a thing is in every module, and the UI's pointer, gestures and actions use down, justPressed, justReleased and held as og.input does."
+    },
+    {
+      "member": "the API's naming rules",
+      "summary": "The test over every field of the API has no UI member left to rename and keeps two more names: a field named alpha or ending in Alpha is an opacity, and a bool named pressed or released is justPressed or justReleased. The UI's fields in ticks, radians and ratios carry their units (MassTemplateDesc.lifetimeTicks, GestureInfo.rotation, the opacities)."
+    }
+  ]
+}

@@ -102,7 +102,7 @@ export const widgets = {
   paused: (world: Api.World): boolean => abi().og_ui_paused(worldId(world)),
   defineAction: (world: Api.World, desc: Api.UiActionDesc): Api.Result<void> =>
     parse(abi().og_ui_define_action(worldId(world), JSON.stringify(desc))),
-  action: (name: string): boolean => abi().og_ui_action(name),
+  actionFired: (name: string): boolean => abi().og_ui_action_fired(name),
   actionHeld: (name: string): boolean => abi().og_ui_action_held(name),
   glyph: (world: Api.World, action: string): Api.UiGlyph | null => parse(abi().og_ui_glyph(worldId(world), action)),
   device: (world: Api.World): Api.UiDevice => abi().og_ui_device(worldId(world)) as Api.UiDevice,

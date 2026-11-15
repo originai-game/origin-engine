@@ -12974,7 +12974,7 @@
         },
         {
           "name": "spawnMass",
-          "doc": "Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them.",
+          "doc": "Start instances of a template on this tick: each plays its template's timeline over its lifetimeTicks and leaves after them (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them.",
           "params": [
             {
               "name": "template",
@@ -13224,8 +13224,8 @@
           "publish": true
         },
         {
-          "name": "action",
-          "doc": "The action fired this tick (a document's `on action` fires on the top layer that takes input).",
+          "name": "actionFired",
+          "doc": "The action fired this tick: on its press, its release or once its hold is reached, as its trigger says (a document's `on action` fires on the top layer that takes input). A bool, where og.input.action answers an action's whole state.",
           "params": [
             {
               "name": "name",
@@ -13239,7 +13239,7 @@
         },
         {
           "name": "actionHeld",
-          "doc": "A hold action is held past its hold, or its toggle is on.",
+          "doc": "A hold action is held: down for its holdMs, or its toggle is on.",
           "params": [
             {
               "name": "name",
@@ -45012,7 +45012,7 @@
     "Paint": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an alpha. Neither is white.",
+      "description": "A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an opacity. Neither is white.",
       "type": "object",
       "properties": {
         "token": {
@@ -45051,12 +45051,13 @@
           "description": "An sRGB colour as authored, when no token or role is given.",
           "default": null
         },
-        "alpha": {
+        "opacity": {
           "type": "number",
-          "description": "The opacity.",
+          "description": "Its opacity, multiplied with the token's or the role's own.",
           "default": 1,
           "minimum": 0,
-          "maximum": 1
+          "maximum": 1,
+          "x-og-unit": "ratio"
         }
       },
       "additionalProperties": false
@@ -46039,11 +46040,11 @@
           "type": "boolean",
           "description": "Its button or finger is down."
         },
-        "pressed": {
+        "justPressed": {
           "type": "boolean",
           "description": "Its button or finger went down this tick: where a drag a component runs itself (an inventory's item, a card) starts."
         },
-        "released": {
+        "justReleased": {
           "type": "boolean",
           "description": "Its button or finger came up this tick: where such a drag ends."
         },
@@ -46065,8 +46066,8 @@
         "y",
         "inside",
         "down",
-        "pressed",
-        "released",
+        "justPressed",
+        "justReleased",
         "shift",
         "ctrl",
         "alt"
@@ -46133,9 +46134,9 @@
           "minimum": 0,
           "x-og-unit": "cssPx"
         },
-        "accel": {
+        "accelMs": {
           "type": "number",
-          "description": "Milliseconds a held stick takes from a third of its speed to all of it, for fine aim first; 0 is 250, negative is none.",
+          "description": "How long a held stick takes from a third of its speed to all of it, for fine aim first; 0 is 250, negative is none.",
           "default": 0,
           "x-og-unit": "ms"
         },
@@ -47709,9 +47710,9 @@
       "description": "What a drag or pinch on an element is doing (last tick's answer, as responses are).",
       "type": "object",
       "properties": {
-        "held": {
+        "down": {
           "type": "boolean",
-          "description": "A press is held on it."
+          "description": "A press is down on it."
         },
         "dragging": {
           "type": "boolean",
@@ -47741,7 +47742,8 @@
         },
         "rotation": {
           "type": "number",
-          "description": "A pinch's turn, radians."
+          "description": "A pinch's turn, clockwise on screen.",
+          "x-og-unit": "rad"
         },
         "snapped": {
           "type": "integer",
@@ -47783,12 +47785,12 @@
         },
         "longPress": {
           "type": "number",
-          "description": "How far into its long press the held press is, 0 to 1.",
+          "description": "How far into its long press the press that is down is, 0 to 1.",
           "x-og-unit": "ratio"
         }
       },
       "required": [
-        "held",
+        "down",
         "dragging",
         "offsetX",
         "offsetY",
@@ -48150,7 +48152,7 @@
       ],
       "x-og-variants": {
         "none": "Drawn over the scene.",
-        "fade": "Drawn at occludedAlpha where the scene is in front.",
+        "fade": "Drawn at occludedOpacity where the scene is in front.",
         "hide": "Not drawn where the scene is in front."
       }
     },
@@ -48236,12 +48238,13 @@
           "default": 1,
           "minimum": 0
         },
-        "alpha": {
+        "opacity": {
           "type": "number",
           "description": "Its opacity.",
           "default": 1,
           "minimum": 0,
-          "maximum": 1
+          "maximum": 1,
+          "x-og-unit": "ratio"
         },
         "ease": {
           "$ref": "#/$defs/Ease",
@@ -48377,12 +48380,13 @@
             "y": 0.5
           }
         },
-        "lifetime": {
+        "lifetimeTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Ticks an instance lives; 0 shows pushed instances for their tick only.",
-          "default": 0
+          "description": "How long an instance lives; 0 shows pushed instances for their tick only.",
+          "default": 0,
+          "x-og-unit": "ticks"
         },
         "keys": {
           "type": "array",
@@ -48433,12 +48437,13 @@
           "description": "World space: what the scene in front of an instance does.",
           "default": "none"
         },
-        "occludedAlpha": {
+        "occludedOpacity": {
           "type": "number",
           "description": "Its opacity behind the scene, for occlusion fade.",
           "default": 0.25,
           "minimum": 0,
-          "maximum": 1
+          "maximum": 1,
+          "x-og-unit": "ratio"
         },
         "outline": {
           "anyOf": [

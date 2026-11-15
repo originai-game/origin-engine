@@ -209,8 +209,8 @@ macro_rules! __og_host_bindings_ui {
             fn og_ui_define_action(&self, world: u32, desc: String) -> String {
                 $crate::host_impl::answer($crate::og_ui_define_action(world, desc))
             }
-            fn og_ui_action(&self, name: String) -> bool {
-                $crate::og_ui_action(name)
+            fn og_ui_action_fired(&self, name: String) -> bool {
+                $crate::og_ui_action_fired(name)
             }
             fn og_ui_action_held(&self, name: String) -> bool {
                 $crate::og_ui_action_held(name)

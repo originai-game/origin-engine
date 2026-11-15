@@ -10,14 +10,14 @@ What a drag or pinch on an element is doing (last tick's answer, as responses ar
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `held` | `boolean` | `false` | — | — | — | A press is held on it. |
+| `down` | `boolean` | `false` | — | — | — | A press is down on it. |
 | `dragging` | `boolean` | `false` | — | — | — | It moves with the pointer (the press travelled past the threshold). |
 | `offsetX` | `number` | `0` | — | `cssPx` | — | Its offset from where it was laid out. |
 | `offsetY` | `number` | `0` | — | `cssPx` | — | Its offset down. |
 | `velocityX` | `number` | `0` | — | — | — | CSS px per second. |
 | `velocityY` | `number` | `0` | — | — | — | CSS px per second. |
 | `scale` | `number` | `0` | — | — | — | A pinch's scale (1: none). |
-| `rotation` | `number` | `0` | — | — | — | A pinch's turn, radians. |
+| `rotation` | `number` | `0` | — | `rad` | — | A pinch's turn, clockwise on screen. |
 | `snapped` | `number` | `0` | — | — | — | The snap point the last release chose (-1: none). |
 | `dismissed` | `boolean` | `false` | — | — | — | A swipe threw it off. |
 | `over` | `string` | `""` | — | — | — | The drop target under the drag (empty: none). |
@@ -27,12 +27,12 @@ What a drag or pinch on an element is doing (last tick's answer, as responses ar
 | `tapped` | `boolean` | `false` | — | — | — | Its tap this tick (its `tap` attribute), as Response.tapped. |
 | `doubleTapped` | `boolean` | `false` | — | — | — | Its double tap this tick. |
 | `longPressed` | `boolean` | `false` | — | — | — | Its long press this tick. |
-| `longPress` | `number` | `0` | — | `ratio` | — | How far into its long press the held press is, 0 to 1. |
+| `longPress` | `number` | `0` | — | `ratio` | — | How far into its long press the press that is down is, 0 to 1. |
 
 ```ogt
 struct GestureInfo {
   doc "What a drag or pinch on an element is doing (last tick's answer, as responses are)."
-  field held bool "A press is held on it."
+  field down bool "A press is down on it."
   field dragging bool "It moves with the pointer (the press travelled past the threshold)."
   field offsetX f32 "Its offset from where it was laid out." {
     unit cssPx
@@ -43,7 +43,9 @@ struct GestureInfo {
   field velocityX f32 "CSS px per second."
   field velocityY f32 "CSS px per second."
   field scale f32 "A pinch's scale (1: none)."
-  field rotation f32 "A pinch's turn, radians."
+  field rotation f32 "A pinch's turn, clockwise on screen." {
+    unit rad
+  }
   field snapped i32 "The snap point the last release chose (-1: none)."
   field dismissed bool "A swipe threw it off."
   field over String "The drop target under the drag (empty: none)."
@@ -53,10 +55,10 @@ struct GestureInfo {
   field tapped bool "Its tap this tick (its `tap` attribute), as Response.tapped."
   field doubleTapped bool "Its double tap this tick."
   field longPressed bool "Its long press this tick."
-  field longPress f32 "How far into its long press the held press is, 0 to 1." {
+  field longPress f32 "How far into its long press the press that is down is, 0 to 1." {
     unit ratio
   }
 }
 ```
 
-<sub>Module `ui` line 1103</sub>
+<sub>Module `ui` line 1104</sub>
