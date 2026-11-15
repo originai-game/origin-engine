@@ -1,6 +1,6 @@
 //! SVG's drawing model, shared by the cook and documents (`docs/ui.md`
-//! §3.3): the XML reader of a `.svg` file ([`parse_xml`]), path data and
-//! the basic shapes as cubics ([`Path`], [`shape_path`]), transforms
+//! §3.3): the XML reader of a `.svg` file ([`parse_xml`]), the basic
+//! shapes as kurbo paths ([`shape_path`]; path data is kurbo's), transforms
 //! ([`Affine`]), the presentation attributes ([`Style`]) and gradients
 //! ([`GradientDef`]).
 //!
@@ -15,7 +15,7 @@ pub mod filter;
 mod path;
 pub mod smil;
 
-pub use path::{Path, bounds, shape_path, subpaths};
+pub use path::{bounds, dashed, path_length, shape_path, subpaths, vertices};
 
 // ── the SVG document ─────────────────────────────────────────────────────
 
@@ -239,6 +239,11 @@ impl Affine {
             a * e2 + c * f2 + e,
             b * e2 + d * f2 + f,
         ])
+    }
+
+    /// As kurbo's, to move a path.
+    pub fn kurbo(&self) -> og_draw::kurbo::Affine {
+        og_draw::kurbo::Affine::new(self.0.map(f64::from))
     }
 
     /// The mean scale (a stroke's width scales by it).

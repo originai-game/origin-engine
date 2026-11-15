@@ -277,7 +277,7 @@ pub fn shape_draw(
         });
     };
     let bbox = bounds(&local);
-    let path = local.transformed(&t);
+    let path = t.kurbo() * &local;
     let paint = |p: &PaintRef, alpha: f32| -> Result<Option<Paint>, String> {
         Ok(match p {
             PaintRef::Url(id) if def(doc, id, &["pattern"]).is_some() => None,
@@ -304,7 +304,7 @@ pub fn shape_draw(
     };
     // Dashes measure the outline in user units, or in `pathLength`.
     let per = match get("pathLength").map(|v| v.trim().parse::<f32>()) {
-        Some(Ok(l)) if l > 0.0 => local.length(vb[2].max(vb[3]) / 2000.0) / l,
+        Some(Ok(l)) if l > 0.0 => crate::svg::path_length(&local, vb[2].max(vb[3]) / 2000.0) / l,
         Some(_) => return Err("pathLength is a positive number".into()),
         None => 1.0,
     } * t.scale();

@@ -563,9 +563,11 @@ impl ShapeKind {
                 join,
                 ..
             } => {
-                // A quarter CSS px from the curve.
+                // A quarter CSS px from the curve, finer on a wide line:
+                // a chord turns its edges, caps and dash ends by half the
+                // width times its angle.
                 let one = path_of(points, &[], *curves, false, Vec2::from(size) * 0.5);
-                let mut line = og_draw::polylines(&one, 0.25)
+                let mut line = og_draw::polylines(&one, 0.25 / (*width / 8.0).max(1.0))
                     .into_iter()
                     .next()
                     .map_or_else(Vec::new, |(l, _)| l);

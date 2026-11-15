@@ -430,7 +430,7 @@ impl Parser {
                     .map(|a| (a.name.clone(), a.value.clone()))
                     .collect();
                 // An `<mpath>` child names the path later: stand in for it.
-                let mpath = (tag == "animateMotion").then(crate::svg::Path::default);
+                let mpath = (tag == "animateMotion").then(og_draw::kurbo::BezPath::new);
                 crate::svg::smil::Animation::parse(tag, &literal, mpath).map_err(|e| (at, e))?;
             }
         }

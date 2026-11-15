@@ -1,371 +1,70 @@
-//! SVG path parsing, shape construction and curve flattening.
+//! SVG's basic shapes as kurbo paths, and what SVG reads from a path: its
+//! bounding box, its dashes, its marker vertices and its cubics as
+//! `ShapeKind::Path` points. Path data itself is kurbo's
+//! ([`og_draw::parse_svg_path`]), arcs included.
 
 use super::*;
+use og_draw::kurbo::{
+    self, BezPath, CubicBez, ParamCurveArclen as _, PathEl, PathSeg, Point, Shape as _, SvgArc,
+};
+use og_draw::{glam_vec2, kurbo_point};
 
-// ── paths ────────────────────────────────────────────────────────────────
+/// The accuracy of a basic shape's arcs, user units: kurbo's own for path
+/// data's arcs, so a `<circle>` and the same circle as `d` agree (no arc
+/// is cut coarser than quarter turns).
+const ARC_TOLERANCE: f64 = 0.1;
 
-/// A path as cubic segments: subpaths of a start point and the cubics
-/// after it (lines are cubics with their control points on the line), and
-/// whether each closes.
-#[derive(Clone, Debug, Default)]
-pub struct Path {
-    pub subpaths: Vec<(Vec2, Vec<[Vec2; 3]>, bool)>,
-}
-
-impl Path {
-    fn move_to(&mut self, p: Vec2) {
-        self.subpaths.push((p, Vec::new(), false));
-    }
-
-    fn end(&self) -> Vec2 {
-        self.subpaths
-            .last()
-            .map_or(Vec2::ZERO, |(s, c, _)| c.last().map_or(*s, |c| c[2]))
-    }
-
-    fn line_to(&mut self, p: Vec2) {
-        let a = self.end();
-        self.cubic_to(a + (p - a) / 3.0, a + (p - a) * (2.0 / 3.0), p);
-    }
-
-    fn cubic_to(&mut self, c1: Vec2, c2: Vec2, p: Vec2) {
-        if self.subpaths.is_empty() {
-            self.move_to(Vec2::ZERO);
-        }
-        self.subpaths
-            .last_mut()
-            .expect("a subpath")
-            .1
-            .push([c1, c2, p]);
-    }
-
-    fn close(&mut self) {
-        if let Some(s) = self.subpaths.last_mut() {
-            s.2 = true;
-        }
-    }
-
-    /// An elliptical arc from the current point (SVG's endpoint
-    /// parametrisation, F.6), as cubics of at most a quarter turn.
-    fn arc_to(&mut self, r: Vec2, rotation: f32, large: bool, sweep: bool, p: Vec2) {
-        let p0 = self.end();
-        if (p - p0).length() < 1e-9 {
-            return;
-        }
-        let (mut rx, mut ry) = (r.x.abs(), r.y.abs());
-        if rx < 1e-9 || ry < 1e-9 {
-            self.line_to(p);
-            return;
-        }
-        let (sin, cos) = rotation.to_radians().sin_cos();
-        let d = (p0 - p) * 0.5;
-        let x1 = cos * d.x + sin * d.y;
-        let y1 = -sin * d.x + cos * d.y;
-        let lambda = (x1 * x1) / (rx * rx) + (y1 * y1) / (ry * ry);
-        if lambda > 1.0 {
-            rx *= lambda.sqrt();
-            ry *= lambda.sqrt();
-        }
-        let num = rx * rx * ry * ry - rx * rx * y1 * y1 - ry * ry * x1 * x1;
-        let den = rx * rx * y1 * y1 + ry * ry * x1 * x1;
-        let mut k = (num / den).max(0.0).sqrt();
-        if large == sweep {
-            k = -k;
-        }
-        let cx1 = k * rx * y1 / ry;
-        let cy1 = -k * ry * x1 / rx;
-        let mid = (p0 + p) * 0.5;
-        let c = Vec2::new(cos * cx1 - sin * cy1 + mid.x, sin * cx1 + cos * cy1 + mid.y);
-        // atan2, not acos: an arc between nearly coincident ends (a circle
-        // drawn as one arc) turns by a tiny angle that acos rounds to 0.
-        let angle = |u: Vec2, v: Vec2| u.perp_dot(v).atan2(u.dot(v));
-        let u = Vec2::new((x1 - cx1) / rx, (y1 - cy1) / ry);
-        let v = Vec2::new((-x1 - cx1) / rx, (-y1 - cy1) / ry);
-        let theta = angle(Vec2::X, u);
-        let mut delta = angle(u, v);
-        if !sweep && delta > 0.0 {
-            delta -= std::f32::consts::TAU;
-        } else if sweep && delta < 0.0 {
-            delta += std::f32::consts::TAU;
-        }
-        let n = (delta.abs() / std::f32::consts::FRAC_PI_2).ceil().max(1.0) as usize;
-        let step = delta / n as f32;
-        let kappa = 4.0 / 3.0 * (step / 4.0).tan();
-        let point = |t: f32| {
-            let (s, c0) = t.sin_cos();
-            Vec2::new(rx * c0, ry * s)
-        };
-        let deriv = |t: f32| {
-            let (s, c0) = t.sin_cos();
-            Vec2::new(-rx * s, ry * c0)
-        };
-        let world = |q: Vec2| Vec2::new(cos * q.x - sin * q.y + c.x, sin * q.x + cos * q.y + c.y);
-        for i in 0..n {
-            let t0 = theta + step * i as f32;
-            let t1 = t0 + step;
-            let a = point(t0);
-            let b = point(t1);
-            let end = if i + 1 == n { p } else { world(b) };
-            self.cubic_to(
-                world(a + deriv(t0) * kappa),
-                world(b - deriv(t1) * kappa),
-                end,
-            );
-        }
-    }
-
-    /// An ellipse at `c` with radii `r`, clockwise from its right.
-    pub fn ellipse(c: Vec2, r: Vec2) -> Path {
-        let mut p = Path::default();
-        p.move_to(c + Vec2::new(r.x, 0.0));
-        for q in [
-            Vec2::new(0.0, r.y),
-            Vec2::new(-r.x, 0.0),
-            Vec2::new(0.0, -r.y),
-            Vec2::new(r.x, 0.0),
-        ] {
-            p.arc_to(r, 0.0, false, true, c + q);
-        }
-        p.close();
-        p
-    }
-
-    pub fn transformed(&self, t: &Affine) -> Path {
-        Path {
-            subpaths: self
-                .subpaths
-                .iter()
-                .map(|(s, cs, closed)| {
-                    (
-                        t.apply(*s),
-                        cs.iter()
-                            .map(|c| [t.apply(c[0]), t.apply(c[1]), t.apply(c[2])])
-                            .collect(),
-                        *closed,
-                    )
-                })
-                .collect(),
-        }
-    }
-
-    /// The subpaths as polylines (within `tolerance`), each with whether
-    /// it closes.
-    pub fn flatten(&self, tolerance: f32) -> Vec<(Vec<Vec2>, bool)> {
-        self.subpaths
-            .iter()
-            .filter_map(|(s, cs, closed)| {
-                let mut pts = vec![*s];
-                let mut at = *s;
-                for c in cs {
-                    let straight = (c[0] - (at + (c[2] - at) / 3.0)).length() < 1e-6
-                        && (c[1] - (at + (c[2] - at) * (2.0 / 3.0))).length() < 1e-6;
-                    if straight {
-                        pts.push(c[2]);
-                    } else {
-                        pts.extend(
-                            og_draw::flatten_cubic(at, c[0], c[1], c[2], tolerance)
-                                .into_iter()
-                                .skip(1),
-                        );
-                    }
-                    at = c[2];
-                }
-                pts.dedup_by(|a, b| (*a - *b).length() < 1e-6);
-                (pts.len() > 1).then_some((pts, *closed))
-            })
-            .collect()
-    }
-
-    /// Its length along every subpath (within `tolerance`).
-    pub fn length(&self, tolerance: f32) -> f32 {
-        self.flatten(tolerance)
-            .iter()
-            .map(|(pts, closed)| {
-                let open: f32 = pts.windows(2).map(|w| (w[1] - w[0]).length()).sum();
-                match (closed, pts.first(), pts.last()) {
-                    (true, Some(a), Some(b)) => open + (*a - *b).length(),
-                    _ => open,
-                }
-            })
-            .sum()
-    }
-
-    /// Parses path data (`d`).
-    pub fn parse(d: &str) -> Result<Path, String> {
-        let mut path = Path::default();
-        let chars: Vec<char> = d.chars().collect();
-        let mut i = 0;
-        let mut start = Vec2::ZERO;
-        let mut last_c: Option<Vec2> = None;
-        let mut last_q: Option<Vec2> = None;
-        while i < chars.len() {
-            let c = chars[i];
-            if c.is_whitespace() || c == ',' {
-                i += 1;
-                continue;
-            }
-            if !c.is_ascii_alphabetic() || c == 'e' || c == 'E' {
-                return Err(format!("path data: '{c}' where a command was expected"));
-            }
-            let mut j = i + 1;
-            while j < chars.len()
-                && !(chars[j].is_ascii_alphabetic() && chars[j] != 'e' && chars[j] != 'E')
-            {
-                j += 1;
-            }
-            let args: Vec<f32> = if c.eq_ignore_ascii_case(&'a') {
-                arc_numbers(&chars[i + 1..j].iter().collect::<String>())?
-            } else {
-                numbers(&chars[i + 1..j].iter().collect::<String>())?
-            };
-            i = j;
-            let rel = c.is_ascii_lowercase();
-            let arity = match c.to_ascii_uppercase() {
-                'M' | 'L' | 'T' => 2,
-                'H' | 'V' => 1,
-                'C' => 6,
-                'S' | 'Q' => 4,
-                'A' => 7,
-                'Z' => 0,
-                other => return Err(format!("path data: '{other}' is not a command")),
-            };
-            if arity == 0 {
-                path.close();
-                // The next command starts at the subpath's start.
-                path.move_to(start);
-                last_c = None;
-                last_q = None;
-                continue;
-            }
-            if args.is_empty() || !args.len().is_multiple_of(arity) {
-                return Err(format!(
-                    "path data: '{c}' takes numbers in groups of {arity}, not {}",
-                    args.len()
-                ));
-            }
-            for (k, a) in args.chunks(arity).enumerate() {
-                let at = path.end();
-                let pt = |x: f32, y: f32| {
-                    if rel {
-                        at + Vec2::new(x, y)
-                    } else {
-                        Vec2::new(x, y)
-                    }
-                };
-                let cmd = if k > 0 && c.eq_ignore_ascii_case(&'m') {
-                    if rel { 'l' } else { 'L' }
-                } else {
-                    c
-                };
-                let (mut nc, mut nq) = (None, None);
-                match cmd.to_ascii_uppercase() {
-                    'M' => {
-                        // A pending start left by Z is replaced.
-                        if path.subpaths.last().is_some_and(|s| s.1.is_empty()) {
-                            path.subpaths.pop();
-                        }
-                        start = pt(a[0], a[1]);
-                        path.move_to(start);
-                    }
-                    'L' => path.line_to(pt(a[0], a[1])),
-                    'H' => path.line_to(Vec2::new(if rel { at.x + a[0] } else { a[0] }, at.y)),
-                    'V' => path.line_to(Vec2::new(at.x, if rel { at.y + a[0] } else { a[0] })),
-                    'C' => {
-                        let (c1, c2, p) = (pt(a[0], a[1]), pt(a[2], a[3]), pt(a[4], a[5]));
-                        path.cubic_to(c1, c2, p);
-                        nc = Some(c2);
-                    }
-                    'S' => {
-                        let c1 = last_c.map_or(at, |c| 2.0 * at - c);
-                        let (c2, p) = (pt(a[0], a[1]), pt(a[2], a[3]));
-                        path.cubic_to(c1, c2, p);
-                        nc = Some(c2);
-                    }
-                    'Q' | 'T' => {
-                        let (q, p) = if cmd.eq_ignore_ascii_case(&'q') {
-                            (pt(a[0], a[1]), pt(a[2], a[3]))
-                        } else {
-                            (last_q.map_or(at, |q| 2.0 * at - q), pt(a[0], a[1]))
-                        };
-                        path.cubic_to(at + (q - at) * (2.0 / 3.0), p + (q - p) * (2.0 / 3.0), p);
-                        nq = Some(q);
-                    }
-                    'A' => {
-                        path.arc_to(
-                            Vec2::new(a[0], a[1]),
-                            a[2],
-                            a[3] != 0.0,
-                            a[4] != 0.0,
-                            pt(a[5], a[6]),
-                        );
-                    }
-                    _ => unreachable!("arity checked above"),
-                }
-                last_c = nc;
-                last_q = nq;
-            }
-        }
-        path.subpaths.retain(|s| !s.1.is_empty());
-        Ok(path)
+/// An elliptical arc from the end of `p` (SVG's endpoint parametrisation),
+/// as kurbo's cubics; a line where the arc is one.
+fn arc_to(p: &mut BezPath, r: Vec2, to: Vec2) {
+    let from = p
+        .elements()
+        .last()
+        .and_then(|e| e.end_point())
+        .unwrap_or(Point::ORIGIN);
+    let arc = SvgArc {
+        from,
+        to: kurbo_point(to),
+        radii: kurbo_point(r).to_vec2(),
+        x_rotation: 0.0,
+        large_arc: false,
+        sweep: true,
+    };
+    match kurbo::Arc::from_svg_arc(&arc) {
+        Some(a) => p.extend(a.append_iter(ARC_TOLERANCE)),
+        None => p.line_to(arc.to),
     }
 }
 
-/// An arc command's numbers, whose flags may be written without a
-/// separator (`a1 1 0 00 1 1`).
-fn arc_numbers(s: &str) -> Result<Vec<f32>, String> {
-    let mut out = Vec::new();
-    let mut rest = s.trim_start_matches(|c: char| c.is_whitespace() || c == ',');
-    while !rest.is_empty() {
-        let k = out.len() % 7;
-        if k == 3 || k == 4 {
-            let c = rest.chars().next().expect("not empty");
-            if c != '0' && c != '1' {
-                return Err(format!("an arc flag is 0 or 1, not '{c}'"));
-            }
-            out.push(if c == '1' { 1.0 } else { 0.0 });
-            rest = &rest[1..];
+/// An ellipse at `c` with radii `r`, clockwise from its right (where SVG
+/// starts a `<circle>`'s and an `<ellipse>`'s dashes).
+fn ellipse(c: Vec2, r: Vec2) -> BezPath {
+    let arc = kurbo::Arc::new(
+        kurbo_point(c),
+        kurbo_point(r).to_vec2(),
+        0.0,
+        std::f64::consts::TAU,
+        0.0,
+    );
+    let mut p: BezPath = arc.path_elements(ARC_TOLERANCE).collect();
+    p.close_path();
+    p
+}
+
+/// A closed or open line through `points`.
+fn polyline(points: impl IntoIterator<Item = Vec2>, closed: bool) -> BezPath {
+    let mut p = BezPath::new();
+    for (k, q) in points.into_iter().enumerate() {
+        if k == 0 {
+            p.move_to(kurbo_point(q));
         } else {
-            let end = number_end(rest);
-            if end == 0 {
-                return Err(format!("'{rest}' in an arc's numbers"));
-            }
-            out.push(
-                rest[..end]
-                    .parse::<f32>()
-                    .map_err(|_| format!("'{}' is not a number", &rest[..end]))?,
-            );
-            rest = &rest[end..];
-        }
-        rest = rest.trim_start_matches(|c: char| c.is_whitespace() || c == ',');
-    }
-    Ok(out)
-}
-
-/// The length of the number at the start of `s`.
-fn number_end(s: &str) -> usize {
-    let b = s.as_bytes();
-    let mut i = 0;
-    if i < b.len() && (b[i] == b'-' || b[i] == b'+') {
-        i += 1;
-    }
-    let mut dot = false;
-    while i < b.len() && (b[i].is_ascii_digit() || (b[i] == b'.' && !dot)) {
-        dot |= b[i] == b'.';
-        i += 1;
-    }
-    if i < b.len() && (b[i] == b'e' || b[i] == b'E') {
-        let mut j = i + 1;
-        if j < b.len() && (b[j] == b'-' || b[j] == b'+') {
-            j += 1;
-        }
-        if j < b.len() && b[j].is_ascii_digit() {
-            i = j;
-            while i < b.len() && b[i].is_ascii_digit() {
-                i += 1;
-            }
+            p.line_to(kurbo_point(q));
         }
     }
-    i
+    if closed {
+        p.close_path();
+    }
+    p
 }
 
 /// The local path of the shape element `name` whose attributes `get`
@@ -374,7 +73,7 @@ pub fn shape_path<'a>(
     name: &str,
     get: &dyn Fn(&str) -> Option<&'a str>,
     vb: [f32; 4],
-) -> Result<Option<Path>, String> {
+) -> Result<Option<BezPath>, String> {
     let (w, h) = (vb[2], vb[3]);
     let diag = (w * w + h * h).sqrt() / std::f32::consts::SQRT_2;
     let len = |attr: &str, whole: f32| {
@@ -384,7 +83,7 @@ pub fn shape_path<'a>(
     };
     Ok(Some(match name {
         "path" => match get("d") {
-            Some(d) => Path::parse(d).map_err(|e| format!("<path>: {e}"))?,
+            Some(d) => og_draw::parse_svg_path(d).map_err(|e| format!("<path>: {e}"))?,
             None => return Ok(None),
         },
         "rect" => {
@@ -411,202 +110,218 @@ pub fn shape_path<'a>(
                 (None, None) => (0.0, 0.0),
             };
             let (rx, ry) = (rx_v.clamp(0.0, rw / 2.0), ry_v.clamp(0.0, rh / 2.0));
-            let mut p = Path::default();
             if rx <= 0.0 || ry <= 0.0 {
-                p.move_to(Vec2::new(x, y));
-                p.line_to(Vec2::new(x + rw, y));
-                p.line_to(Vec2::new(x + rw, y + rh));
-                p.line_to(Vec2::new(x, y + rh));
+                polyline(
+                    [
+                        Vec2::new(x, y),
+                        Vec2::new(x + rw, y),
+                        Vec2::new(x + rw, y + rh),
+                        Vec2::new(x, y + rh),
+                    ],
+                    true,
+                )
             } else {
                 let r = Vec2::new(rx, ry);
-                p.move_to(Vec2::new(x + rx, y));
-                p.line_to(Vec2::new(x + rw - rx, y));
-                p.arc_to(r, 0.0, false, true, Vec2::new(x + rw, y + ry));
-                p.line_to(Vec2::new(x + rw, y + rh - ry));
-                p.arc_to(r, 0.0, false, true, Vec2::new(x + rw - rx, y + rh));
-                p.line_to(Vec2::new(x + rx, y + rh));
-                p.arc_to(r, 0.0, false, true, Vec2::new(x, y + rh - ry));
-                p.line_to(Vec2::new(x, y + ry));
-                p.arc_to(r, 0.0, false, true, Vec2::new(x + rx, y));
+                let mut p = BezPath::new();
+                p.move_to(kurbo_point(Vec2::new(x + rx, y)));
+                p.line_to(kurbo_point(Vec2::new(x + rw - rx, y)));
+                arc_to(&mut p, r, Vec2::new(x + rw, y + ry));
+                p.line_to(kurbo_point(Vec2::new(x + rw, y + rh - ry)));
+                arc_to(&mut p, r, Vec2::new(x + rw - rx, y + rh));
+                p.line_to(kurbo_point(Vec2::new(x + rx, y + rh)));
+                arc_to(&mut p, r, Vec2::new(x, y + rh - ry));
+                p.line_to(kurbo_point(Vec2::new(x, y + ry)));
+                arc_to(&mut p, r, Vec2::new(x + rx, y));
+                p.close_path();
+                p
             }
-            p.close();
-            p
         }
         "circle" => {
             let r = len("r", diag)?;
             if r <= 0.0 {
                 return Ok(None);
             }
-            Path::ellipse(Vec2::new(len("cx", w)?, len("cy", h)?), Vec2::splat(r))
+            ellipse(Vec2::new(len("cx", w)?, len("cy", h)?), Vec2::splat(r))
         }
         "ellipse" => {
             let (rx, ry) = (len("rx", w)?, len("ry", h)?);
             if rx <= 0.0 || ry <= 0.0 {
                 return Ok(None);
             }
-            Path::ellipse(Vec2::new(len("cx", w)?, len("cy", h)?), Vec2::new(rx, ry))
+            ellipse(Vec2::new(len("cx", w)?, len("cy", h)?), Vec2::new(rx, ry))
         }
-        "line" => {
-            let mut p = Path::default();
-            p.move_to(Vec2::new(len("x1", w)?, len("y1", h)?));
-            p.line_to(Vec2::new(len("x2", w)?, len("y2", h)?));
-            p
-        }
+        "line" => polyline(
+            [
+                Vec2::new(len("x1", w)?, len("y1", h)?),
+                Vec2::new(len("x2", w)?, len("y2", h)?),
+            ],
+            false,
+        ),
         "polyline" | "polygon" => {
             let n = numbers(get("points").unwrap_or(""))
                 .map_err(|e| format!("<{name}> points: {e}"))?;
             if n.len() < 4 {
                 return Ok(None);
             }
-            let mut p = Path::default();
-            p.move_to(Vec2::new(n[0], n[1]));
-            for q in n[2..].as_chunks::<2>().0 {
-                p.line_to(Vec2::new(q[0], q[1]));
-            }
-            if name == "polygon" {
-                p.close();
-            }
-            p
+            polyline(
+                n.as_chunks::<2>().0.iter().map(|q| Vec2::new(q[0], q[1])),
+                name == "polygon",
+            )
         }
         _ => return Ok(None),
     }))
 }
 
-/// The bounding box `[x, y, w, h]` of a path's points (control points
-/// included, which bound the curve).
-pub fn bounds(p: &Path) -> [f32; 4] {
-    let mut lo = Vec2::splat(f32::MAX);
-    let mut hi = Vec2::splat(f32::MIN);
-    for (s, cs, _) in &p.subpaths {
-        for q in std::iter::once(s).chain(cs.iter().flatten()) {
-            lo = lo.min(*q);
-            hi = hi.max(*q);
-        }
-    }
-    [lo.x, lo.y, (hi.x - lo.x).max(1e-6), (hi.y - lo.y).max(1e-6)]
+/// The bounding box `[x, y, w, h]` of a path's curves (SVG's
+/// `objectBoundingBox`: the curves' extremes, not their controls).
+pub fn bounds(p: &BezPath) -> [f32; 4] {
+    let b = p.bounding_box();
+    [
+        b.x0 as f32,
+        b.y0 as f32,
+        (b.width() as f32).max(1e-6),
+        (b.height() as f32).max(1e-6),
+    ]
 }
 
-impl Path {
-    /// The dashes of `pattern` (dash, gap, dash…, even in number) from
-    /// `offset` along each subpath (each starts the pattern again, as SVG's
-    /// do), as open polylines within `tolerance`. A dash of no length is a
-    /// tiny one along the path, so its caps still draw a dot.
-    pub fn dashed(&self, pattern: &[f32], offset: f32, tolerance: f32) -> Vec<Vec<Vec2>> {
-        let total: f32 = pattern.iter().sum();
-        let mut out = Vec::new();
-        if pattern.is_empty() || total <= 0.0 || !total.is_finite() {
-            return out;
-        }
-        for (mut pts, closed) in self.flatten(tolerance) {
-            if closed && let Some(&first) = pts.first() {
-                pts.push(first);
-            }
-            // Where `offset` falls in the pattern.
-            let mut phase = offset.rem_euclid(total);
-            let mut k = 0;
-            while phase > pattern[k] || (phase == pattern[k] && phase > 0.0) {
-                phase -= pattern[k];
-                k = (k + 1) % pattern.len();
-            }
-            let mut left = pattern[k] - phase;
-            let mut cur: Vec<Vec2> = Vec::new();
-            let emit_dot = |p: Vec2, dir: Vec2, out: &mut Vec<Vec<Vec2>>| {
-                out.push(vec![p, p + dir.normalize_or_zero() * 1e-3]);
-            };
-            if k % 2 == 0 {
-                cur.push(pts[0]);
-            }
-            for w in pts.windows(2) {
-                let (a, b) = (w[0], w[1]);
-                let seg = (b - a).length();
-                if seg <= 0.0 {
-                    continue;
-                }
-                let dir = (b - a) / seg;
-                let mut at = 0.0;
-                // Steps through the pattern elements this segment crosses
-                // (bounded: a pattern of tiny lengths cannot spin forever).
-                let mut guard = 0;
-                while seg - at >= left && guard < 100_000 {
-                    guard += 1;
-                    at += left;
-                    let p = a + dir * at;
-                    if k % 2 == 0 {
-                        if pattern[k] == 0.0 {
-                            emit_dot(p, dir, &mut out);
-                        } else {
-                            cur.push(p);
-                            out.push(std::mem::take(&mut cur));
-                        }
-                    } else {
-                        cur = vec![p];
-                    }
-                    k = (k + 1) % pattern.len();
-                    left = pattern[k];
-                }
-                left -= seg - at;
-                if k % 2 == 0 && !cur.is_empty() {
-                    cur.push(b);
-                }
-            }
-            if k % 2 == 0 && cur.len() > 1 {
-                out.push(cur);
-            }
-        }
-        out
-    }
+/// Its length along every subpath, kurbo's arc length to `accuracy`.
+pub fn path_length(path: &BezPath, accuracy: f32) -> f32 {
+    path.segments()
+        .map(|s| s.arclen(f64::from(accuracy.max(1e-6))))
+        .sum::<f64>() as f32
+}
 
-    /// Where markers go: every vertex (each subpath's start and each
-    /// segment's end, a closed subpath's closing line too), with the
-    /// direction the path comes in and goes out (`None` at an open end).
-    pub fn vertices(&self) -> Vec<(Vec2, Option<Vec2>, Option<Vec2>)> {
-        let mut out: Vec<(Vec2, Option<Vec2>, Option<Vec2>)> = Vec::new();
-        let dir = |v: Vec2| (v.length() > 1e-9).then(|| v.normalize());
-        for (start, cubics, closed) in &self.subpaths {
-            let mut at = *start;
-            // Each segment's start and end tangents.
-            let mut segs: Vec<(Vec2, Option<Vec2>, Option<Vec2>)> = Vec::new();
-            for c in cubics {
-                let out_dir = dir(c[0] - at).or(dir(c[1] - at)).or(dir(c[2] - at));
-                let in_dir = dir(c[2] - c[1]).or(dir(c[2] - c[0])).or(dir(c[2] - at));
-                segs.push((c[2], out_dir, in_dir));
-                at = c[2];
-            }
-            if *closed && (at - *start).length() > 1e-6 {
-                let d = dir(*start - at);
-                segs.push((*start, d, d));
-            }
-            let closing_in = if *closed {
-                segs.last().and_then(|s| s.2)
+/// The dashes of `pattern` (dash, gap…, an odd one repeated) from `offset`
+/// along each subpath, kurbo's (each subpath starts the pattern again, as
+/// SVG's do, and a closed one's dash across its start is one): each dash
+/// a subpath of its own, its curves kept. A dash of no length is a tiny
+/// one along the path, so its caps still draw a dot.
+pub fn dashed(path: &BezPath, pattern: &[f32], offset: f32) -> BezPath {
+    let mut dashes: Vec<f64> = pattern.iter().map(|d| f64::from(*d)).collect();
+    if dashes.len() % 2 == 1 {
+        dashes.extend_from_within(..);
+    }
+    let total: f64 = dashes.iter().sum();
+    if dashes.is_empty() || total <= 0.0 || !total.is_finite() {
+        return BezPath::new();
+    }
+    const DOT: f64 = 1e-3;
+    for k in (0..dashes.len()).step_by(2) {
+        if dashes[k] <= 0.0 {
+            dashes[k] = DOT;
+            dashes[k + 1] = (dashes[k + 1] - DOT).max(0.0);
+        }
+    }
+    kurbo::dash(path.iter(), f64::from(offset), &dashes).collect()
+}
+
+/// Where markers go: every vertex (each subpath's start and each
+/// segment's end, a closed subpath's closing line too), with the
+/// direction the path comes in and goes out (`None` at an open end). A
+/// subpath of no segments has none.
+pub fn vertices(path: &BezPath) -> Vec<(Vec2, Option<Vec2>, Option<Vec2>)> {
+    let mut out: Vec<(Vec2, Option<Vec2>, Option<Vec2>)> = Vec::new();
+    let dir = |v: Vec2| (v.length() > 1e-9).then(|| v.normalize());
+    // Each segment's end and its start and end tangents.
+    let mut segs: Vec<(Vec2, Option<Vec2>, Option<Vec2>)> = Vec::new();
+    let mut start = Vec2::ZERO;
+    let mut at = Vec2::ZERO;
+    let mut flush = |segs: &mut Vec<(Vec2, Option<Vec2>, Option<Vec2>)>,
+                     start: Vec2,
+                     at: Vec2,
+                     closed: bool| {
+        if segs.is_empty() {
+            return;
+        }
+        if closed && (at - start).length() > 1e-6 {
+            let d = dir(start - at);
+            segs.push((start, d, d));
+        }
+        let closing_in = if closed {
+            segs.last().and_then(|s| s.2)
+        } else {
+            None
+        };
+        out.push((start, closing_in, segs.first().and_then(|s| s.1)));
+        for i in 0..segs.len() {
+            let next = if i + 1 < segs.len() {
+                segs[i + 1].1
+            } else if closed {
+                segs.first().and_then(|s| s.1)
             } else {
                 None
             };
-            out.push((*start, closing_in, segs.first().and_then(|s| s.1)));
-            for (i, (p, _, in_dir)) in segs.iter().enumerate() {
-                let next = if i + 1 < segs.len() {
-                    segs[i + 1].1
-                } else if *closed {
-                    segs.first().and_then(|s| s.1)
-                } else {
-                    None
-                };
-                out.push((*p, *in_dir, next));
-            }
+            out.push((segs[i].0, segs[i].2, next));
         }
-        out
+        segs.clear();
+    };
+    for el in path.iter() {
+        let c = match el {
+            PathEl::MoveTo(p) => {
+                flush(&mut segs, start, at, false);
+                start = glam_vec2(p);
+                at = start;
+                continue;
+            }
+            PathEl::ClosePath => {
+                flush(&mut segs, start, at, true);
+                at = start;
+                continue;
+            }
+            PathEl::LineTo(p) => {
+                let p = glam_vec2(p);
+                [p, p, p]
+            }
+            PathEl::QuadTo(q, p) => [glam_vec2(q), glam_vec2(q), glam_vec2(p)],
+            PathEl::CurveTo(c1, c2, p) => [glam_vec2(c1), glam_vec2(c2), glam_vec2(p)],
+        };
+        let out_dir = dir(c[0] - at).or(dir(c[1] - at)).or(dir(c[2] - at));
+        let in_dir = dir(c[2] - c[1]).or(dir(c[2] - c[0])).or(dir(c[2] - at));
+        segs.push((c[2], out_dir, in_dir));
+        at = c[2];
     }
+    flush(&mut segs, start, at, false);
+    out
 }
 
 /// A path's subpaths as `ShapeKind::Path` points: each its start, then
-/// three points per cubic.
-pub fn subpaths(p: &Path) -> Vec<(Vec<[f32; 2]>, bool)> {
-    p.subpaths
-        .iter()
-        .filter(|(_, cubics, _)| !cubics.is_empty())
-        .map(|(start, cubics, closed)| {
-            let mut pts: Vec<[f32; 2]> = vec![(*start).into()];
-            pts.extend(cubics.iter().flatten().map(|v: &Vec2| <[f32; 2]>::from(*v)));
-            (pts, *closed)
-        })
-        .collect()
+/// three points per cubic (a line or a quadratic raised to one), and
+/// whether it closes. A subpath of no segments is left out.
+pub fn subpaths(path: &BezPath) -> Vec<(Vec<[f32; 2]>, bool)> {
+    let mut out: Vec<(Vec<[f32; 2]>, bool)> = Vec::new();
+    let mut cur: Vec<[f32; 2]> = Vec::new();
+    let mut flush = |cur: &mut Vec<[f32; 2]>, closed: bool| {
+        if cur.len() > 1 {
+            out.push((std::mem::take(cur), closed));
+        }
+        cur.clear();
+    };
+    let mut start = Point::ORIGIN;
+    let mut at = Point::ORIGIN;
+    for el in path.iter() {
+        let seg = match el {
+            PathEl::MoveTo(p) => {
+                flush(&mut cur, false);
+                (start, at) = (p, p);
+                cur.push(glam_vec2(p).into());
+                continue;
+            }
+            PathEl::ClosePath => {
+                flush(&mut cur, true);
+                at = start;
+                continue;
+            }
+            PathEl::LineTo(p) => PathSeg::Line(kurbo::Line::new(at, p)),
+            PathEl::QuadTo(q, p) => PathSeg::Quad(kurbo::QuadBez::new(at, q, p)),
+            PathEl::CurveTo(c1, c2, p) => PathSeg::Cubic(CubicBez::new(at, c1, c2, p)),
+        };
+        if cur.is_empty() {
+            cur.push(glam_vec2(at).into());
+        }
+        let c = seg.to_cubic();
+        cur.extend([c.p1, c.p2, c.p3].map(|p| <[f32; 2]>::from(glam_vec2(p))));
+        at = c.p3;
+    }
+    flush(&mut cur, false);
+    out
 }

@@ -16,7 +16,9 @@ pub use mass::{
     UiMassKind, UiMassSpace, UiMassTemplate, UiOccluder, UiOcclusion, UiParticleShape,
     format_number,
 };
-pub use path::{UiFillRule, UiPath, flatten_cubic, glam_vec2, kurbo_point, polylines};
+pub use path::{
+    UiFillRule, UiPath, flatten_cubic, glam_vec2, kurbo_point, parse_svg_path, polylines,
+};
 
 use crate::TextureHandle;
 use glam::Vec2;

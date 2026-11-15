@@ -34,8 +34,8 @@
 //! texel, where three channels would not; at 48 px an em that is under a
 //! twentieth of iconoir's 24 units). A path's join is its
 //! `stroke-linejoin`, else the set's `join` line, else SVG's `miter`.
-//! SVG support is what line icons use: `<path>` elements with absolute or
-//! relative `M L H V C S Q T Z` commands, `stroke` with `stroke-width`,
+//! SVG support is what line icons use: `<path>` elements with path data
+//! (kurbo's parser: every command, arcs included), `stroke` with `stroke-width`,
 //! `stroke-linecap` (`round`, `butt`, `square` taken as butt),
 //! `stroke-linejoin` (`round`, `miter`, `miter-clip` and `arcs` taken as
 //! miter, `bevel`), `stroke-miterlimit` and `fill` (`currentColor` or any
@@ -205,9 +205,6 @@ struct Shape {
     filled: bool,
 }
 
-/// Pieces per curve: well under a tenth of a pixel at 48 px per 24 units.
-const CURVE_STEPS: u32 = 16;
-
 /// The value of attribute `name` in a start tag's text.
 fn attr<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
     let mut rest = tag;
@@ -261,151 +258,15 @@ fn numbers(s: &str) -> Result<Vec<f32>, String> {
     Ok(out)
 }
 
-/// A path's data flattened into subpaths.
+/// A path's data (kurbo's parser, arcs included) flattened into
+/// subpaths within a hundredth of a unit: a fiftieth of a pixel at 48 px
+/// per 24 units.
 fn flatten(d: &str) -> Result<Vec<Subpath>, String> {
-    let mut out: Vec<Subpath> = Vec::new();
-    let mut cur: Vec<(f32, f32)> = Vec::new();
-    let (mut at, mut start) = ((0.0f32, 0.0f32), (0.0f32, 0.0f32));
-    // The last curve's second control point, for S and T.
-    let mut last_c: Option<(f32, f32)> = None;
-    let mut last_q: Option<(f32, f32)> = None;
-    let mut i = 0;
-    let bytes: Vec<char> = d.chars().collect();
-    while i < bytes.len() {
-        let c = bytes[i];
-        if !c.is_ascii_alphabetic() {
-            if c.is_whitespace() || c == ',' {
-                i += 1;
-                continue;
-            }
-            return Err(format!("path data starts with '{c}', not a command"));
-        }
-        let mut j = i + 1;
-        while j < bytes.len()
-            && !(bytes[j].is_ascii_alphabetic() && bytes[j] != 'e' && bytes[j] != 'E')
-        {
-            j += 1;
-        }
-        let args = numbers(&bytes[i + 1..j].iter().collect::<String>())?;
-        let rel = c.is_ascii_lowercase();
-        let base = |at: (f32, f32), x: f32, y: f32| if rel { (at.0 + x, at.1 + y) } else { (x, y) };
-        let arity = match c.to_ascii_uppercase() {
-            'M' | 'L' | 'T' => 2,
-            'H' | 'V' => 1,
-            'C' => 6,
-            'S' | 'Q' => 4,
-            'Z' => 0,
-            'A' => return Err("arcs (A) are not supported: convert them to curves".into()),
-            other => return Err(format!("'{other}' is not a path command")),
-        };
-        if arity == 0 {
-            if !cur.is_empty() {
-                out.push((std::mem::take(&mut cur), true));
-            }
-            at = start;
-            last_c = None;
-            last_q = None;
-            i = j;
-            continue;
-        }
-        if args.is_empty() || args.len() % arity != 0 {
-            return Err(format!(
-                "'{c}' takes numbers in groups of {arity}, got {}",
-                args.len()
-            ));
-        }
-        for (k, a) in args.chunks(arity).enumerate() {
-            let cmd = if k > 0 && c.eq_ignore_ascii_case(&'M') {
-                if rel { 'l' } else { 'L' }
-            } else {
-                c
-            };
-            let (mut nc, mut nq) = (None, None);
-            match cmd.to_ascii_uppercase() {
-                'M' => {
-                    if cur.len() > 1 {
-                        out.push((std::mem::take(&mut cur), false));
-                    }
-                    cur.clear();
-                    at = base(at, a[0], a[1]);
-                    start = at;
-                    cur.push(at);
-                }
-                'L' => {
-                    at = base(at, a[0], a[1]);
-                    cur.push(at);
-                }
-                'H' => {
-                    at = (if rel { at.0 + a[0] } else { a[0] }, at.1);
-                    cur.push(at);
-                }
-                'V' => {
-                    at = (at.0, if rel { at.1 + a[0] } else { a[0] });
-                    cur.push(at);
-                }
-                'C' | 'S' => {
-                    let (p1, p2, p3) = if cmd.eq_ignore_ascii_case(&'C') {
-                        (
-                            base(at, a[0], a[1]),
-                            base(at, a[2], a[3]),
-                            base(at, a[4], a[5]),
-                        )
-                    } else {
-                        let p1 = last_c.map_or(at, |c| (2.0 * at.0 - c.0, 2.0 * at.1 - c.1));
-                        (p1, base(at, a[0], a[1]), base(at, a[2], a[3]))
-                    };
-                    let p0 = at;
-                    for s in 1..=CURVE_STEPS {
-                        let t = s as f32 / CURVE_STEPS as f32;
-                        let u = 1.0 - t;
-                        let (b0, b1, b2, b3) =
-                            (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
-                        cur.push(if s == CURVE_STEPS {
-                            p3
-                        } else {
-                            (
-                                b0 * p0.0 + b1 * p1.0 + b2 * p2.0 + b3 * p3.0,
-                                b0 * p0.1 + b1 * p1.1 + b2 * p2.1 + b3 * p3.1,
-                            )
-                        });
-                    }
-                    at = p3;
-                    nc = Some(p2);
-                }
-                'Q' | 'T' => {
-                    let (p1, p2) = if cmd.eq_ignore_ascii_case(&'Q') {
-                        (base(at, a[0], a[1]), base(at, a[2], a[3]))
-                    } else {
-                        let p1 = last_q.map_or(at, |q| (2.0 * at.0 - q.0, 2.0 * at.1 - q.1));
-                        (p1, base(at, a[0], a[1]))
-                    };
-                    let p0 = at;
-                    for s in 1..=CURVE_STEPS {
-                        let t = s as f32 / CURVE_STEPS as f32;
-                        let u = 1.0 - t;
-                        cur.push(if s == CURVE_STEPS {
-                            p2
-                        } else {
-                            (
-                                u * u * p0.0 + 2.0 * u * t * p1.0 + t * t * p2.0,
-                                u * u * p0.1 + 2.0 * u * t * p1.1 + t * t * p2.1,
-                            )
-                        });
-                    }
-                    at = p2;
-                    nq = Some(p1);
-                }
-                _ => unreachable!("arity checked above"),
-            }
-            last_c = nc;
-            last_q = nq;
-        }
-        i = j;
-    }
-    if cur.len() > 1 {
-        out.push((cur, false));
-    }
-    Ok(out)
+    let path = og_draw::parse_svg_path(d)?;
+    Ok(og_draw::polylines(&path, 0.01)
+        .into_iter()
+        .map(|(pts, closed)| (pts.into_iter().map(|p| (p.x, p.y)).collect(), closed))
+        .collect())
 }
 
 /// The shapes of an SVG icon and its view box (x, y, width, height); a
@@ -834,7 +695,9 @@ mod tests {
             numbers("1.5-2.25.5e1,3").unwrap(),
             vec![1.5, -2.25, 5.0, 3.0]
         );
-        assert!(flatten("M0 0A1 1 0 0 0 2 2").is_err(), "arcs are refused");
+        // An arc is curves: radii too small to reach grow to a half ellipse.
+        let arc = flatten("M0 0A1 1 0 0 0 2 2").unwrap();
+        assert!(arc[0].0.len() > 8 && arc[0].0.last() == Some(&(2.0, 2.0)));
     }
 
     #[test]

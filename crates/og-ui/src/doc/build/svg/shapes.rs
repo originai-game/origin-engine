@@ -15,7 +15,7 @@ fn cap_of(c: crate::svg::Cap) -> crate::paint::Cap {
 /// into its dashes here.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn painted(
-    path: &crate::svg::Path,
+    path: &og_draw::kurbo::BezPath,
     style: &Style,
     scale: f32,
     per: f32,
@@ -103,13 +103,13 @@ pub(super) fn painted(
             }
         }
         more => {
-            // Every dash its own open polyline, its caps the stroke's.
+            // Every dash its own curve (kurbo's dashes), its caps the
+            // stroke's; one that never breaks round a closed subpath closes.
             let pattern: Vec<f32> = more.iter().map(|d| d * per).collect();
-            let tolerance = vb[2].max(vb[3]) / 4000.0;
-            for dash in path.dashed(&pattern, style.dash_offset * per, tolerance) {
-                let points = dash.into_iter().map(<[f32; 2]>::from).collect();
+            let dashes = crate::svg::dashed(path, &pattern, style.dash_offset * per);
+            for (points, closed) in subpaths(&dashes) {
                 draw.outlines
-                    .push(outline(points, false, false, [0.0; 2], 0.0));
+                    .push(outline(points, closed, true, [0.0; 2], 0.0));
             }
         }
     }
@@ -162,12 +162,12 @@ enum Which {
 pub(super) fn markers(
     doc: &UiDocument,
     value: &dyn Fn(&str) -> Option<String>,
-    local: &crate::svg::Path,
+    local: &og_draw::kurbo::BezPath,
     t: &Affine,
     style: &Style,
     vb: [f32; 4],
 ) -> Result<Vec<ElementDraw>, String> {
-    let verts = local.vertices();
+    let verts = crate::svg::vertices(local);
     let n = verts.len();
     let mut out = Vec::new();
     for (attr, which) in [
@@ -263,7 +263,7 @@ pub(super) fn markers(
                 };
                 let stroke = solid(&s.stroke, s.stroke_opacity);
                 out.push(painted(
-                    &shape.transformed(&at),
+                    &(at.kurbo() * shape),
                     &s,
                     at.scale(),
                     at.scale(),
@@ -289,7 +289,7 @@ pub fn text_path(
 ) -> Result<Option<crate::text_path::TextPath>, String> {
     let (local, length_scale) = if let Some(d) = r.str("svgPath") {
         (
-            crate::svg::Path::parse(d).map_err(|e| format!("<textPath> path: {e}"))?,
+            og_draw::parse_svg_path(d).map_err(|e| format!("<textPath> path: {e}"))?,
             1.0,
         )
     } else if let Some(href) = r.str("svgTextPathHref") {
@@ -297,11 +297,10 @@ pub fn text_path(
     } else {
         return Ok(None);
     };
-    let path = local.transformed(t);
+    let path = t.kurbo() * local;
     let tolerance = vb[2].max(vb[3]) / 4000.0;
     let origin = Vec2::new(vb[0], vb[1]);
-    let subs: Vec<Vec<Vec2>> = path
-        .flatten(tolerance)
+    let subs: Vec<Vec<Vec2>> = og_draw::polylines(&path, tolerance)
         .into_iter()
         .map(|(mut pts, closed)| {
             if closed && let Some(&p) = pts.first() {

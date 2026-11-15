@@ -103,7 +103,7 @@ pub fn def_shapes(
 pub(super) fn basic_box<'a>(
     tag: &str,
     get: &dyn Fn(&str) -> Option<&'a str>,
-    local: &crate::svg::Path,
+    local: &og_draw::kurbo::BezPath,
     t: &Affine,
 ) -> Option<(ShapeKind, [f32; 4])> {
     let [a, b, c, d, ..] = t.0;
@@ -189,7 +189,7 @@ pub(super) fn def_path(
             continue;
         }
         if let Some(local) = shape_path(tag, &get, vb)? {
-            parts.extend(subpaths(&local.transformed(&t.then(own))));
+            parts.extend(subpaths(&(t.then(own).kurbo() * &local)));
         }
     }
     Ok((rule, parts))
@@ -374,7 +374,7 @@ pub(super) fn pattern(
                     tile[1] + j as f32 * tile[3],
                 ]);
                 let to = t.then(&pt).then(&at).then(&content).then(own);
-                parts.extend(subpaths(&local.transformed(&to)));
+                parts.extend(subpaths(&(to.kurbo() * &local)));
             }
         }
         out.push((filled(parts, crate::paint::FillRule::NonZero), paint));

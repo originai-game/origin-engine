@@ -10,13 +10,18 @@ use std::collections::BTreeMap;
 /// no dot for its caps; a dash cut short at a segment's end.
 #[test]
 fn dash_lists_cut_every_dash_and_gap() {
-    let line = crate::svg::Path::parse("M0 0 L8 0 L20 0").unwrap();
+    let line = og_draw::kurbo::BezPath::from_svg("M0 0 L8 0 L20 0").unwrap();
+    // Along the line (kurbo emits a subpath's first dash last, to join a
+    // closed one's across its start).
     let spans = |pattern: &[f32], offset: f32| -> Vec<(f32, f32)> {
-        line.dashed(pattern, offset, 0.01)
-            .iter()
-            .map(|d| (d[0].x, d.last().unwrap().x))
-            .map(|(a, b)| ((a * 1000.0).round() / 1000.0, (b * 1000.0).round() / 1000.0))
-            .collect()
+        let mut s: Vec<(f32, f32)> =
+            og_draw::polylines(crate::svg::dashed(&line, pattern, offset), 0.01)
+                .iter()
+                .map(|(d, _)| (d[0].x, d.last().unwrap().x))
+                .map(|(a, b)| ((a * 1000.0).round() / 1000.0, (b * 1000.0).round() / 1000.0))
+                .collect();
+        s.sort_by(|a, b| a.0.total_cmp(&b.0));
+        s
     };
     let p = [4.0, 2.0, 1.0, 2.0];
     assert_eq!(
@@ -39,13 +44,15 @@ fn dash_lists_cut_every_dash_and_gap() {
             (19.0, 20.0)
         ]
     );
-    // Zero-length dashes are dots, each a tiny dash its caps round.
+    // Zero-length dashes are dots, each a tiny dash its caps round; one
+    // due exactly at the open end is past it (kurbo's dashes are
+    // half-open).
     assert_eq!(
         spans(&[0.0, 5.0], 0.0)
             .iter()
             .map(|s| s.0)
             .collect::<Vec<_>>(),
-        [0.0, 5.0, 10.0, 15.0, 20.0]
+        [0.0, 5.0, 10.0, 15.0]
     );
 }
 

@@ -4,6 +4,7 @@
 //! values it returns; nothing here keeps state.
 
 use super::*;
+use og_draw::kurbo::BezPath;
 
 /// The tags this module reads.
 pub const TAGS: &[&str] = &["animate", "set", "animateTransform", "animateMotion"];
@@ -65,7 +66,10 @@ pub enum Target {
     Transform(&'static str),
     /// The element's position along a path (`<animateMotion>`), as a
     /// transform before its own.
-    Motion { path: Option<Path>, rotate: Rotate },
+    Motion {
+        path: Option<BezPath>,
+        rotate: Rotate,
+    },
 }
 
 /// One value: numbers in a template (`"M 0 0 L 10 5"`, `"3px"`), a
@@ -359,8 +363,8 @@ fn transform_args(kind: &str, v: &Value) -> Value {
 }
 
 /// The point and direction (radians) at `at` of `path`'s length.
-fn along(path: &Path, at: f32) -> Option<(Vec2, f32)> {
-    let lines = path.flatten(0.05);
+fn along(path: &BezPath, at: f32) -> Option<(Vec2, f32)> {
+    let lines = og_draw::polylines(path, 0.05);
     let total: f32 = lines
         .iter()
         .flat_map(|(p, _)| p.windows(2).map(|w| (w[1] - w[0]).length()))
@@ -390,7 +394,7 @@ impl Animation {
     pub fn parse(
         tag: &str,
         attrs: &[(String, String)],
-        mpath: Option<Path>,
+        mpath: Option<BezPath>,
     ) -> Result<Animation, String> {
         for (k, _) in attrs {
             if !ATTRS.contains(&k.as_str()) {
@@ -430,9 +434,10 @@ impl Animation {
             "animateMotion" => Target::Motion {
                 path: match (mpath, get("path")) {
                     (Some(p), _) => Some(p),
-                    (None, Some(d)) => {
-                        Some(Path::parse(d).map_err(|e| format!("<animateMotion path>: {e}"))?)
-                    }
+                    (None, Some(d)) => Some(
+                        og_draw::parse_svg_path(d)
+                            .map_err(|e| format!("<animateMotion path>: {e}"))?,
+                    ),
                     (None, None) => None,
                 },
                 rotate: match get("rotate").map(str::trim) {

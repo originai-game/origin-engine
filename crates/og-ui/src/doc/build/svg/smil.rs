@@ -22,7 +22,7 @@ pub(super) fn shape_by_href(
     doc: &UiDocument,
     href: &str,
     vb: [f32; 4],
-) -> Result<(crate::svg::Path, f32), String> {
+) -> Result<(og_draw::kurbo::BezPath, f32), String> {
     let id = href.trim().strip_prefix('#').unwrap_or(href.trim());
     let node = doc
         .nodes
@@ -44,10 +44,10 @@ pub(super) fn shape_by_href(
     };
     // A length along it measures the path in its pathLength.
     let k = match get("pathLength").map(|v| v.trim().parse::<f32>()) {
-        Some(Ok(l)) if l > 0.0 => shape.length(vb[2].max(vb[3]) / 2000.0) / l,
+        Some(Ok(l)) if l > 0.0 => crate::svg::path_length(&shape, vb[2].max(vb[3]) / 2000.0) / l,
         _ => 1.0,
     };
-    Ok((shape.transformed(&own), k))
+    Ok((own.kurbo() * shape, k))
 }
 
 /// An animation element's begins in seconds of its element's clock,

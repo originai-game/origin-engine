@@ -260,7 +260,7 @@ impl CssClip {
                     }
                     d.push(' ');
                 }
-                match crate::svg::Path::parse(&d) {
+                match og_draw::parse_svg_path(&d) {
                     Ok(p) => path(crate::svg::subpaths(&p), *fill, true),
                     Err(_) => path(Vec::new(), *fill, true),
                 }

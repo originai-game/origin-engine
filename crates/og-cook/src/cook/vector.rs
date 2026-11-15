@@ -357,7 +357,7 @@ fn draw(ctx: &Ctx, el: &Element, parent: &Style, mesh: &mut Mesh) -> Result<(), 
     };
     let bbox = bounds(&local);
     let t = style.transform;
-    let path = local.transformed(&t);
+    let path = t.kurbo() * &local;
     let tol = ctx.tolerance;
     let eps = (ctx.view_box[2].max(ctx.view_box[3]) * 1e-5).max(1e-6);
     let resolve = |p: &PaintRef, alpha: f32, mesh: &mut Mesh| -> Result<Option<u32>, String> {
@@ -386,7 +386,7 @@ fn draw(ctx: &Ctx, el: &Element, parent: &Style, mesh: &mut Mesh) -> Result<(), 
             }
         })
     };
-    let lines = path.flatten(tol);
+    let lines = og_draw::polylines(&path, tol);
     // A line has no inside; a polyline fills as SVG does, closed.
     if el.name != "line"
         && let Some(paint) = resolve(&style.fill, style.fill_opacity * style.opacity, mesh)?

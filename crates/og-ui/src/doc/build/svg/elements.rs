@@ -847,7 +847,7 @@ impl crate::ui::Docs {
             for (tag, attrs, own) in &shapes {
                 let get = |a: &str| attrs.iter().find(|(k, _)| k == a).map(|(_, v)| v.as_str());
                 if let Some(local) = shape_path(tag, &get, vb)? {
-                    bbox = union(bbox, bounds(&local.transformed(own)));
+                    bbox = union(bbox, bounds(&(own.kurbo() * local)));
                 }
             }
         }

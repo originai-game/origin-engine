@@ -13,7 +13,7 @@
 //! eligibility, exact at shared endpoints). See `third_party/vector-paths/`.
 
 use glam::Vec2;
-use kurbo::{BezPath, CubicBez, PathEl, Point};
+use kurbo::{BezPath, CubicBez, PathEl, Point, SvgParseError};
 
 /// Which points a closed path covers.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -165,6 +165,24 @@ impl UiPath {
         out.retain(|q| q.p.iter().all(|p| p.is_finite()));
         out
     }
+}
+
+/// SVG path data (`d`) as kurbo parses it (`BezPath::from_svg`, arcs as
+/// cubics), its errors said for the path's author.
+pub fn parse_svg_path(d: &str) -> Result<BezPath, String> {
+    BezPath::from_svg(d).map_err(|e| match e {
+        SvgParseError::UninitializedPath => {
+            "path data starts with M (a move to its first point)".into()
+        }
+        SvgParseError::UnknownCommand(c) => {
+            format!("'{c}' is not a path command (M L H V C S Q T A Z)")
+        }
+        SvgParseError::Wrong => "path data has a malformed number or arc flag (0 or 1)".into(),
+        SvgParseError::UnexpectedEof => {
+            "path data ends inside a command: a number is missing".into()
+        }
+        other => format!("path data: {other}"),
+    })
 }
 
 /// Path elements flattened by kurbo into polylines no further than

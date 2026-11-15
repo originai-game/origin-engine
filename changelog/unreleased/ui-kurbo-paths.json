@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "cook: type icons",
+      "summary": "An icon's path data takes arcs (A and a), which were refused; every icon path is read by the same SVG path parser as documents and vectors."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "ui: SVG paths",
+      "summary": "SVG path data, arcs, flattening, dashes and cubic-to-quadratic conversion are kurbo's in documents' inline <svg>, clip-path: path(), -og-text-path, cooked vectors and icons, one path model instead of three hand-written parsers. A dash list's dash that runs across a closed shape's start is one dash, not two cut at the seam; a gradient in objectBoundingBox units spans the shape's curves, not their control points; and path data errors name what is wrong in one wording everywhere. A zero-length dash due exactly at an open path's end draws no dot."
+    }
+  ]
+}

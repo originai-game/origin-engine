@@ -210,7 +210,7 @@ pub(crate) fn clip(text: &str) -> Result<Option<(CssClip, GeoBox)>, String> {
             let [Tok::Str(d)] = d else {
                 return Err("path(\"<svg path data>\")".into());
             };
-            let p = crate::svg::Path::parse(d)?;
+            let p = og_draw::parse_svg_path(d)?;
             CssClip::Path(fill, crate::svg::subpaths(&p))
         }
         (f, _) => return Err(format!("{f}() is not a clip-path shape")),
