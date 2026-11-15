@@ -7,11 +7,11 @@
 
 pub(crate) mod color_vision;
 pub(crate) mod contact;
+pub(crate) mod display;
 mod flare;
 pub(crate) mod fsr;
 pub(crate) mod glass;
 mod graph;
-pub(crate) mod hdr;
 mod passes;
 mod plan;
 pub(crate) mod post_custom;
@@ -33,7 +33,6 @@ pub(crate) const FULLSCREEN_WGSL: &str = wgsl_library!("fullscreen.wgsl");
 /// Exposure, bloom and the tonemap, with the bloom chain's filters (shared
 /// with a view's glow, `views_glow.wgsl`).
 const POST_WGSL: &str = concat!(
-    wgsl!("hdr_lpm.wgsl"),
     wgsl!("tonemap.wgsl"),
     wgsl!("post.wgsl"),
     wgsl!("bloom_chain.wgsl")
@@ -642,7 +641,7 @@ pub(crate) fn post_sources() -> Vec<(&'static str, String)> {
         ("smaa edges", smaa::EDGES),
         ("smaa weights", smaa::WEIGHTS),
         ("smaa blend", smaa::BLEND),
-        ("hdr transfer", crate::hdr::TRANSFER),
+        ("display transfer", crate::display::TRANSFER),
         ("stylise", STYLISE_WGSL),
         ("fx post", fx.as_str()),
         ("lens flare", FLARE_WGSL),

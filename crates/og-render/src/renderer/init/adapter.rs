@@ -105,9 +105,12 @@ impl Renderer {
             adapter: adapter_info.name.clone(),
             backend: adapter_info.backend,
             device_type: adapter_info.device_type,
-            hdr_supported: surface
-                .is_some_and(|(s, _)| hdr::surface_space(&s.get_capabilities(adapter)).is_some()),
+            hdr_supported: surface.is_some_and(|(s, _)| {
+                display::choose(&s.get_capabilities(adapter), DisplayOutput::Best, None)
+                    .is_some_and(|(_, space)| space.is_hdr())
+            }),
             hdr: surface.is_some_and(|(_, c)| c.color_space.is_hdr()),
+            wide_gamut: surface.is_some_and(|(_, c)| display::wide(c.color_space)),
             antialias,
             msaa_samples: samples,
             shadow_map_size: shadow_size,

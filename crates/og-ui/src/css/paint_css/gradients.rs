@@ -20,9 +20,10 @@ pub(crate) fn color(t: &Tok) -> Result<ColorRef, String> {
         });
     }
     let c = crate::css_color::parse(t)?;
+    // A wide literal stays an expression: it draws in the output's gamut.
     Ok(match c.literal() {
-        Some(s) => ColorRef::Literal(s),
-        None => ColorRef::Css(std::sync::Arc::new(c)),
+        Some(s) if !c.wide() => ColorRef::Literal(s),
+        _ => ColorRef::Css(std::sync::Arc::new(c)),
     })
 }
 

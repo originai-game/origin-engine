@@ -39,7 +39,7 @@ shading::ibl;`), so a path is `crate::ibl` wherever the file lives.
 
 | Type | What it is |
 |---|---|
-| `RenderDesc` | How to create a renderer: `width`, `height`, `backend` (`Auto`: DX12 on Windows, Metal or Vulkan elsewhere, WebGPU in a browser; `WebGpu`, `Metal`, `Vulkan`), `output_format` (`None`: `Rgba8UnormSrgb` offscreen, the surface's choice on a surface), `hdr` with `paper_white_nits` (0: 203) and `peak_nits` (0: 1000), `antialias`, `shadow_map_size` (2048), `shadow_cascades` (at most `MAX_CASCADES`, 4), `texture_compression`, `particles`, `culling`, `point_shadows` (`PointShadows::{Auto, Cube, Paraboloid}`), `taa_history` (`TaaHistory::{Bilinear, CatmullRom}`), `taa_sharpen` (0 to 1), `volumetric`, `planar_reflections` (1 or 2, `MAX_PLANAR_REFLECTIONS`), `transparency`, `transparency_layers`, `low_power`, `timestamps`, and the test switches `without_features` and `indirect_per_draw`. Default 1280×720, `Auto`, `Antialias::Off`, point shadows `Auto`, a bilinear TAA history, no sharpening, one planar reflection. `RenderDesc::mobile()` is the phone preset. |
+| `RenderDesc` | How to create a renderer: `width`, `height`, `backend` (`Auto`: DX12 on Windows, Metal or Vulkan elsewhere, WebGPU in a browser; `WebGpu`, `Metal`, `Vulkan`), `output_format` (`None`: `Rgba8UnormSrgb` offscreen, the surface's choice on a surface), `output` (`DisplayOutput::Best`) with `paper_white_nits` (0: 203) and `peak_nits` (0: 1000 within the display's headroom), `antialias`, `shadow_map_size` (2048), `shadow_cascades` (at most `MAX_CASCADES`, 4), `texture_compression`, `particles`, `culling`, `point_shadows` (`PointShadows::{Auto, Cube, Paraboloid}`), `taa_history` (`TaaHistory::{Bilinear, CatmullRom}`), `taa_sharpen` (0 to 1), `volumetric`, `planar_reflections` (1 or 2, `MAX_PLANAR_REFLECTIONS`), `transparency`, `transparency_layers`, `low_power`, `timestamps`, and the test switches `without_features` and `indirect_per_draw`. Default 1280×720, `Auto`, `Antialias::Off`, point shadows `Auto`, a bilinear TAA history, no sharpening, one planar reflection. `RenderDesc::mobile()` is the phone preset. |
 | `Antialias` | `Off`, `Tier` (the engine's default method: TAA on every backend), and the explicit `Msaa4`, `Taa`, `Fxaa`, `Smaa` and `SmaaT2x`. `RenderInfo::antialias` reports what was resolved; `Msaa4` falls back to `Fxaa` where the HDR format cannot be multisampled ([Shadows and antialiasing](#shadows-and-antialiasing)). |
 | `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `save_state() -> RendererState` and `restore_state(state) -> Restored` (the display's frame history: the adapted exposure, the TAA, SMAA, GI, SSR and FSR histories, wind, trample, the frame counters and terrain fades, copied on the GPU for a world snapshot, 64 saves within 768 MiB; `RendererState::id`/`from_id` carry it as a u64; `Restored::Afresh` when the save was evicted), `capture().await -> RgbaImage`, `poll()` and `warm()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
 | `renderer_disabled()`, `RENDERER_SWITCH` | Native: `OG_RENDERER=none` makes `Renderer::new` and `with_surface` answer `NoAdapter` naming the switch, as on a machine without a usable adapter, so a host's no-renderer path is testable beside a GPU (`docs/ci.md` §Switches in the environment). |
@@ -71,7 +71,7 @@ shading::ibl;`), so a path is `crate::ibl` wherever the file lives.
 | `RenderQuality`, `QualityPreset` | What a frame may cost, read every frame ([What a frame may cost](#what-a-frame-may-cost-renderquality)). |
 | `DebugView` | `None`, `Cascades` (red/green/blue per cascade, black beyond), `AmbientOcclusion`, and others listed on the enum. |
 | `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_cached`, `shadow_casters`, `lights`, `lights_dropped`, `lights_culled`, `cluster_lights`, `cluster_lights_dropped`, `sprites`, `sprites_culled`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `texture_bytes`, `instance_upload_bytes`, `frame`, `taa_history` (whether TAA blended history this frame), `shadowed_lights`, `shadowed_lights_dropped`, `particle_collision_skipped`, `terrain_draws`, `terrain_triangles`, `terrain_shadow_draws`, `terrain_tiles`, `terrain_uploads`, `scatter_draws`, `scatter_copies`, `scatter_built`, `reflection_draws`, and GPU culling's counts ([The render graph](#the-render-graph)). |
-| `RenderInfo` | Adapter, backend, device type, `antialias`, `msaa_samples`, `shadow_map_size`, `shadow_cascades`, `shadowed_lights`, `point_shadows` (resolved: `Cube` or `Paraboloid`), `planar_reflections`, `transparency`, `texture_formats`, `pipeline_cache`, `hdr_supported`, `hdr`, and `backend_tier()`: the reference-frame directory name and the tier the probe's hello and `og.render.capabilities` report (`tier_name(backend, device_type, adapter)`: `vulkan-cpu` for a software rasterizer, `is_software_adapter`: a CPU device type, or an adapter named llvmpipe, lavapipe or SwiftShader). |
+| `RenderInfo` | Adapter, backend, device type, `antialias`, `msaa_samples`, `shadow_map_size`, `shadow_cascades`, `shadowed_lights`, `point_shadows` (resolved: `Cube` or `Paraboloid`), `planar_reflections`, `transparency`, `texture_formats`, `pipeline_cache`, `hdr_supported`, `hdr`, `wide_gamut`, and `backend_tier()`: the reference-frame directory name and the tier the probe's hello and `og.render.capabilities` report (`tier_name(backend, device_type, adapter)`: `vulkan-cpu` for a software rasterizer, `is_software_adapter`: a CPU device type, or an adapter named llvmpipe, lavapipe or SwiftShader). |
 | `RenderError` | `NoAdapter`, `NoDevice`, `Surface`, `SurfaceOccluded`, `InvalidHandle`, `Readback`, `Unsupported`, `InvalidData`, `DeviceLost`. |
 | `shapes` | `sphere`, `plane`, `cuboid(size)`, `tetrahedron`, `checker`. |
 | `gltf` (feature `gltf`) | `load_glb(bytes) -> GltfModel`, `GltfModel::add_to(&mut scene) -> ModelParts`, `ModelParts::instance`; `gltf::physical_extensions`. Games load cooked models; this bridge serves tests and tools. |
@@ -700,31 +700,47 @@ is Noto Sans SC (an OFL subset; `OFL.txt` alongside), ASCII plus
 numbers of the JSON (`distanceRange`, `lineHeight`). The cook owns
 producing atlases; the renderer only takes a texture and a glyph table.
 
-**HDR output** (`RenderDesc::hdr`, `paper_white_nits`, `peak_nits`) is
-opt-in and not yet accepted on a real HDR display; with HDR off the SDR
-frames are unchanged. Neither `og run`'s shared-frame preview nor the
-headless harness configures an HDR swapchain, so acceptance needs a real
-surface: the opt-in `og-tests` surface example opens a native window,
-calls `Renderer::with_surface` and presents each frame through
+**Display output** (`RenderDesc::output`: `DisplayOutput::{Best, Wide,
+Srgb}`, with `paper_white_nits` and `peak_nits`; `src/post/display.rs`).
+A surface renderer asks the surface for the widest space it offers and
+the display can show: `Best` takes extended range in scRGB (Metal, DX12,
+Vulkan) or extended Display P3 (WebGPU's `display-p3` canvas with
+`toneMapping: extended`), else Display P3 at standard range, else sRGB; a
+display that reports no headroom (`Surface::display_hdr_info`, an SDR
+monitor on a Mac) takes P3 at standard range. With any of these the frame
+composes in the float offscreen target, linear sRGB relative to SDR white
+(a P3 UI colour is a negative channel, a highlight a value above 1), and
+the display pass writes it to the surface: limited to Display P3 and the
+headroom, then in the surface's space. On extended range the tone curves
+(`tonemap.wgsl` `tone_curve_hdr`) keep middle grey and end at the headroom
+(`peak_nits / paper_white_nits`, 1000 / 203 left out, at most the
+display's): ACES and AgX scaled on their inputs, Neutral's shoulder
+rolling to the headroom, none clamped there. `RenderInfo::hdr`,
+`wide_gamut` and `hdr_supported` report it. Offscreen and headless
+renderers, and an sRGB surface, take the 8-bit path as before, so every
+reference frame is unchanged; neither `og run`'s shared-frame preview nor
+the headless harness presents a wide surface. The opt-in `og-tests`
+surface example opens a native window on the primary display, calls
+`Renderer::with_surface` and presents each frame through
 `RenderTarget::Surface`:
 
 ```sh
 cargo build -p og-tests --example surface --features surface
-OG_GFX_BACKEND=metal target/debug/examples/surface bloom hdr 203 1000 120 /tmp/hdr-sdr-preview.png
-OG_GFX_BACKEND=metal target/debug/examples/surface bloom sdr 203 1000 120 /tmp/sdr-preview.png
-OG_GFX_BACKEND=metal target/debug/examples/surface ui-glass-bright hdr
-OG_GFX_BACKEND=metal target/debug/examples/surface views-split hdr
+OG_GFX_BACKEND=metal target/debug/examples/surface display best
+OG_GFX_BACKEND=metal target/debug/examples/surface bloom srgb 203 0 120 /tmp/sdr-preview.png
+OG_GFX_BACKEND=metal target/debug/examples/surface ui-glass-bright best
 ```
 
-Arguments are scene (the reference harness's), `hdr|sdr`, paper-white
-nits, peak nits, frame count (0: until the window closes) and an optional
-preview PNG (a clipped SDR preview, never HDR evidence). An HDR request
-resolving to SDR fails; there is no headless fallback, and the example is
-outside the default gate. `RenderError::SurfaceOccluded` means no drawable
-was acquired and no frame presented: the driver waits for the window to
-become visible, and closing before any present reports that acceptance
-did not run. `hdr_resolved=true` proves surface configuration, not
-physical luminance.
+Arguments are scene (the reference harness's, or `display`: bloom's
+spheres under CSS swatches, each mapped to sRGB beside the same colour in
+the output's gamut), `best|wide|srgb`, paper-white nits, peak nits (0:
+1000 within the display's headroom), frame count (0: until the window
+closes) and an optional preview PNG (a clipped SDR preview, never HDR
+evidence). A wide request resolving to sRGB fails. `screencapture -H -l
+<window>` captures the window in HDR (a HEIC in extended Display P3), the
+evidence a PNG cannot carry. `RenderError::SurfaceOccluded` means no
+drawable was acquired and no frame presented: the driver waits for the
+window to become visible.
 
 ## Performance
 

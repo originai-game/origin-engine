@@ -12,7 +12,7 @@ use winit::{
     window::{Window, WindowId},
 };
 
-const USAGE: &str = "surface [scene=bloom] [hdr|sdr=hdr] [paper-white=203] [peak=1000] [frames=0] [sdr-preview.png]\nFrames 0 keeps the window open until closed. OG_GFX_BACKEND selects metal/vulkan.\nObserve HDR on the actual display; PNGs clip highlights to SDR paper white.";
+const USAGE: &str = "surface [scene=bloom] [best|wide|srgb=best] [paper-white=203] [peak=0] [frames=0] [sdr-preview.png]\nScene `display`: bloom's emissive spheres (highlights past SDR white) under CSS swatches, each the colour mapped to sRGB (left) beside the same colour in the output's gamut (right).\nFrames 0 keeps the window open until closed. OG_GFX_BACKEND selects metal/vulkan.\nObserve HDR on the actual display; PNGs clip highlights to SDR paper white.";
 
 struct App {
     name: String,
@@ -36,6 +36,16 @@ impl App {
                         .with_inner_size(PhysicalSize::new(
                             self.built.desc.width,
                             self.built.desc.height,
+                        ))
+                        // The primary display (a Mac's built-in XDR panel).
+                        .with_position(event_loop.primary_monitor().map_or_else(
+                            || winit::dpi::PhysicalPosition::new(0, 0),
+                            |m| {
+                                winit::dpi::PhysicalPosition::new(
+                                    m.position().x + 80,
+                                    m.position().y + 120,
+                                )
+                            },
                         )),
                 )
                 .map_err(|e| e.to_string())?,
@@ -57,23 +67,27 @@ impl App {
         }
         let info = renderer.info();
         println!(
-            "surface scene={} monitor={:?} size={}x{} backend={:?} adapter={} requested_hdr={} hdr_supported={} hdr_resolved={} paper_white={} peak={}",
+            "surface scene={} monitor={:?} size={}x{} backend={:?} adapter={} output={:?} hdr_supported={} hdr_resolved={} wide_gamut={} paper_white={} peak={}",
             self.name,
             window.current_monitor().and_then(|m| m.name()),
             size.width,
             size.height,
             info.backend,
             info.adapter,
-            self.built.desc.hdr,
+            self.built.desc.output,
             info.hdr_supported,
             info.hdr,
+            info.wide_gamut,
             self.built.desc.paper_white_nits,
             self.built.desc.peak_nits,
         );
-        if self.built.desc.hdr && !info.hdr {
+        if self.built.desc.output != og_render::DisplayOutput::Srgb && !info.wide_gamut {
             return Err(
-                "HDR requested but surface resolved SDR; this run cannot validate HDR".into(),
+                "a wide output was asked for but the surface resolved sRGB; this run cannot validate it".into(),
             );
+        }
+        if self.name == "display" {
+            swatches(&mut self.built, info.wide_gamut)?;
         }
         if let Some(update) = self.built.update {
             update(&mut self.built.scene, self.frame);
@@ -192,10 +206,11 @@ fn main() -> Result<(), String> {
         return Err(USAGE.into());
     }
     let name = args.first().map_or("bloom", String::as_str).to_string();
-    let mut built = scenes::build(&name)?;
-    built.desc.hdr = match args.get(1).map_or("hdr", String::as_str) {
-        "hdr" => true,
-        "sdr" => false,
+    let mut built = scenes::build(if name == "display" { "bloom" } else { &name })?;
+    built.desc.output = match args.get(1).map_or("best", String::as_str) {
+        "best" => og_render::DisplayOutput::Best,
+        "wide" => og_render::DisplayOutput::Wide,
+        "srgb" => og_render::DisplayOutput::Srgb,
         _ => return Err(USAGE.into()),
     };
     built.desc.paper_white_nits = args
@@ -205,7 +220,7 @@ fn main() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     built.desc.peak_nits = args
         .get(3)
-        .map_or("1000", String::as_str)
+        .map_or("0", String::as_str)
         .parse::<f32>()
         .map_err(|e| e.to_string())?;
     let limit = args
@@ -238,4 +253,65 @@ fn main() -> Result<(), String> {
         .run_app(&mut app)
         .map_err(|e| e.to_string())?;
     app.error.map_or(Ok(()), Err)
+}
+
+/// CSS colours outside sRGB, each drawn twice: gamut mapped to sRGB (left)
+/// and as og-ui draws it on this output (right: Display P3 where the
+/// surface presents it, else the same sRGB colour).
+const SWATCHES: [&str; 4] = [
+    "color(display-p3 1 0 0)",
+    "color(display-p3 0 1 0)",
+    "oklch(0.75 0.3 330)",
+    "oklch(0.85 0.25 190)",
+];
+
+/// The `display` scene's swatch pairs over bloom's spheres, whose
+/// highlights run past SDR white.
+fn swatches(g: &mut GfxScene, wide: bool) -> Result<(), String> {
+    use og_css::color::{Context, Gamut, parse_str};
+    let (w, h) = (g.desc.width as f32, g.desc.height as f32);
+    let mut o = og_render::Overlay::new(w, h, 0.0);
+    let tokens = NoTokens;
+    let srgb = Context::of(&tokens);
+    let output = Context {
+        gamut: if wide { Gamut::P3 } else { Gamut::Srgb },
+        ..srgb
+    };
+    let size = w / 12.0;
+    for (k, css) in SWATCHES.iter().enumerate() {
+        let c = parse_str(css)?;
+        let x = w * 0.08 + k as f32 * size * 2.6;
+        let y = h - size * 1.4;
+        o.ui.shapes.push(og_render::UiShape::rect(
+            [x - 6.0, y - 6.0, size * 2.0 + 12.0, size + 12.0],
+            8.0,
+            [0.0, 0.0, 0.0, 1.0],
+        ));
+        o.ui.shapes.push(og_render::UiShape::rect(
+            [x, y, size, size],
+            4.0,
+            c.linear(&srgb),
+        ));
+        o.ui.shapes.push(og_render::UiShape::rect(
+            [x + size, y, size, size],
+            4.0,
+            c.linear(&output),
+        ));
+    }
+    g.scene.ui.overlay = Some(o);
+    Ok(())
+}
+
+struct NoTokens;
+
+impl og_css::color::ColorTokens for NoTokens {
+    fn color(&self, _: &str) -> Option<og_css::Srgba> {
+        None
+    }
+    fn ink(&self) -> og_css::Srgba {
+        og_css::Srgba::rgb(255, 255, 255)
+    }
+    fn dark(&self) -> bool {
+        true
+    }
 }

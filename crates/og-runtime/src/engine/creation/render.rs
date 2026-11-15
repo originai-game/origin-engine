@@ -33,14 +33,20 @@ pub fn render_options(id: u32) -> Value {
 /// out (or tier) is 4x MSAA in a 2D project (options.profile). Both hosts
 /// create their renderer from it, so the options mean the same on each.
 pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDesc {
-    use crate::host::wire::{Antialias, PointShadows, RenderOptions, TaaHistory, Transparency};
+    use crate::host::wire::{
+        Antialias, DisplayOutput, PointShadows, RenderOptions, TaaHistory, Transparency,
+    };
     let given = render_options(id);
     // Options og.game refused (it refuses the engine) read as none given.
     let options: RenderOptions = crate::host::wire::value(&given, "render").unwrap_or_default();
     // A NaN reads as left out.
     let number = |v: f32, or: f32| if v.is_nan() { or } else { v };
     let mut desc = base;
-    desc.hdr = options.hdr;
+    desc.output = match options.output {
+        DisplayOutput::Best => og_render::DisplayOutput::Best,
+        DisplayOutput::Wide => og_render::DisplayOutput::Wide,
+        DisplayOutput::Srgb => og_render::DisplayOutput::Srgb,
+    };
     desc.paper_white_nits = number(options.paper_white_nits, 0.0);
     desc.peak_nits = number(options.peak_nits, 0.0);
     let profile = engine(id).map_or(og_physics::PROFILE_3D, |e| e.state.borrow().profile);

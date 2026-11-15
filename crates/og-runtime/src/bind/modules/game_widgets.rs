@@ -237,6 +237,9 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
             reduced_transparency: v.reduced_transparency.unwrap_or(false),
             mac_keys: v.mac_keys.unwrap_or(false),
             covered: og_ui::Rect::new(c.x, c.y, c.width, c.height),
+            // The renderer's surface says (viewport_of).
+            wide_gamut: false,
+            high_range: false,
         }
     });
     if let Ok(eng) = engine(world) {

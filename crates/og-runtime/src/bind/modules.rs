@@ -312,7 +312,8 @@ fn note_warnings(engine_id: u32, warnings: Vec<String>) {
 /// [`set_viewport`], else the render target at 1 CSS pixel per device
 /// pixel, else 1280×720; a native host (which sets none) on macOS edits
 /// text with the Mac's keys ([`native_keys`]). A `cover` command's
-/// rectangle ([`set_cover`]) is its `covered`, whichever of these it is.
+/// rectangle ([`set_cover`]) is its `covered`, whichever of these it is,
+/// and the renderer's surface its gamut and range.
 pub(crate) fn viewport_of(engine_id: u32) -> Viewport {
     let Ok(eng) = engine(engine_id) else {
         return preview_of(engine_id).unwrap_or_else(|| native_keys(Viewport::default()));
@@ -328,6 +329,12 @@ pub(crate) fn viewport_of(engine_id: u32) -> Viewport {
     });
     if let Some(c) = rs.cover {
         v.covered = c;
+    }
+    // The UI's colours and `color-gamut`/`dynamic-range` follow what the
+    // attached renderer's surface presents, on either host.
+    if let Some(info) = rs.backend.as_ref().and_then(|b| b.info()) {
+        v.wide_gamut = info.wide_gamut;
+        v.high_range = info.hdr;
     }
     v
 }
@@ -404,6 +411,9 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
         // `native_keys` does for the rendered one).
         mac_keys: w.mac_keys.unwrap_or(cfg!(target_os = "macos")),
         covered: og_ui::Rect::new(c.x, c.y, c.width, c.height),
+        // The renderer's surface says (viewport_of).
+        wide_gamut: false,
+        high_range: false,
     };
     eng.render.borrow_mut().viewport = Some(v);
     Ok(())

@@ -3296,6 +3296,7 @@ dependencies = [
  "og-anim",
  "og-bake",
  "og-core",
+ "og-css",
  "og-env",
  "og-geom",
  "og-probe",

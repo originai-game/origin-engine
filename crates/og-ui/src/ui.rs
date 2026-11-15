@@ -495,7 +495,7 @@ const STATE_VERSION: u32 = 23;
 /// its flag on, its contrast preference takes the high-contrast variant,
 /// and reduced transparency (the page's or the game's) the flat variant
 /// (a game's own settings can only add to what the page asks); the type
-/// ramp takes the player's text scale.
+/// ramp takes the player's text scale, and colours the output's gamut.
 fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
     let mut t = theme;
     if viewport.high_contrast && t.contrast != crate::style::Contrast::High {
@@ -506,6 +506,11 @@ fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
         t = t.to_reduced_transparency();
     }
     t.ramp_scale = 1.0;
+    t.gamut = if viewport.wide_gamut {
+        og_css::color::Gamut::P3
+    } else {
+        og_css::color::Gamut::Srgb
+    };
     t.to_text_scale()
 }
 

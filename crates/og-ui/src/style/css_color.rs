@@ -15,6 +15,9 @@ impl ColorTokens for crate::Theme {
     fn dark(&self) -> bool {
         self.scheme == crate::Scheme::Dark
     }
+    fn gamut(&self) -> Gamut {
+        self.gamut
+    }
 }
 
 #[cfg(test)]

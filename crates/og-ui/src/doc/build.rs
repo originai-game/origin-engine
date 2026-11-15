@@ -689,6 +689,10 @@ impl Ui {
             reduced_transparency: theme.reduced_transparency,
             resolution: vp.dpr,
             pad: theme.density == crate::DensityMode::Pad,
+            display: super::media::Display {
+                wide_gamut: vp.wide_gamut,
+                high_range: vp.high_range,
+            },
         }
     }
 

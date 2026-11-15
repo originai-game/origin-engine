@@ -261,7 +261,7 @@ impl Renderer {
                 "keep_frame on a renderer without a surface (it draws offscreen)".into(),
             ));
         };
-        if on && self.hdr.is_none() && !config.usage.contains(wgpu::TextureUsages::COPY_SRC) {
+        if on && self.display.is_none() && !config.usage.contains(wgpu::TextureUsages::COPY_SRC) {
             return Err(RenderError::Unsupported(
                 "this device's surface frames cannot be copied (no COPY_SRC)".into(),
             ));
@@ -320,7 +320,7 @@ impl Renderer {
         // Both probe paths (presented-frame keeping and explicit captures)
         // enter here and read this same retained target, never the swapchain.
         debug_assert_eq!(self.persistent.offscreen.format(), self.output_format);
-        debug_assert!(self.hdr.is_none() || linear_half);
+        debug_assert!(self.display.is_none() || linear_half);
         let row = width * if linear_half { 8 } else { 4 };
         let padded_row =
             row.div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;

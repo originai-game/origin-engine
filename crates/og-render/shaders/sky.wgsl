@@ -644,7 +644,7 @@ fn sky_look_behind(dir: vec3<f32>, pixel: vec2<f32>) -> vec3<f32> {
 }
 
 // Storage bound only, not a display rolloff: avoid half-float infinity
-// before bloom. SDR/AgX and opt-in HDR/LPM own the display peak mapping.
+// before bloom. The tone curves (SDR or HDR) own the display peak mapping.
 fn sky_stored(color: vec3<f32>) -> vec4<f32> {
   return vec4<f32>(clamp(color, vec3<f32>(0.0), vec3<f32>(65504.0)), 1.0);
 }

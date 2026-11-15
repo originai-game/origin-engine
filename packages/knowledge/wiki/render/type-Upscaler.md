@@ -26,4 +26,4 @@ enum Upscaler {
 }
 ```
 
-<sub>Module `render` line 85</sub>
+<sub>Module `render` line 93</sub>

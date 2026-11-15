@@ -10,7 +10,7 @@ autotests = false
 
 [features]
 # Real-window acceptance only; never part of headless reference runs or wasm.
-surface = ["dep:winit", "dep:pollster"]
+surface = ["dep:winit", "dep:pollster", "dep:og-css"]
 
 [dependencies]
 og-render = { path = "../og-render", features = ["gltf", "bake"] }
@@ -30,6 +30,8 @@ og-anim = { path = "../og-anim" }
 # light_scenes: the Cornell box baked by og-bake as the scene is built.
 og-bake = { path = "../og-bake" }
 pollster = { workspace = true, optional = true }
+# The surface example's CSS swatches (the UI's colour path, og-css).
+og-css = { path = "../og-css", optional = true }
 winit = { version = "0.30.12", default-features = false, features = ["rwh_06", "x11"], optional = true }
 
 [dev-dependencies]

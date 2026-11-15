@@ -216,6 +216,23 @@ pub enum Upscaler {
     Fsr3,
 }
 
+/// What a surface presents ([`RenderDesc::output`]). Offscreen and
+/// headless renderers always present sRGB at standard range, so frames
+/// captured there (every reference) never depend on it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum DisplayOutput {
+    /// The widest the surface and its display offer: extended-range (HDR)
+    /// with the Display P3 gamut, else Display P3 at standard range, else
+    /// sRGB. A display known to have no headroom (an SDR monitor) takes
+    /// Display P3 at standard range; one known to be sRGB takes sRGB.
+    #[default]
+    Best,
+    /// Display P3 at standard range where offered, never extended range.
+    Wide,
+    /// sRGB at standard range everywhere.
+    Srgb,
+}
+
 /// How TAA reads its history ([`RenderDesc::taa_history`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum TaaHistory {
@@ -239,11 +256,13 @@ pub struct RenderDesc {
     /// The output (offscreen, surface or caller view) format. `None` picks
     /// [`DEFAULT_OUTPUT_FORMAT`] offscreen and the surface's preference on a surface.
     pub output_format: Option<wgpu::TextureFormat>,
-    /// Opt into an extended-range float surface where supported; otherwise SDR.
-    pub hdr: bool,
+    /// What a surface presents: by default the widest gamut and range the
+    /// surface and display offer ([`DisplayOutput`]).
+    pub output: DisplayOutput,
     /// HDR paper white in nits; zero means 203. Relative on EDR/web.
     pub paper_white_nits: f32,
-    /// HDR display peak in nits; zero means 1000, at least paper white.
+    /// HDR peak in nits, at least paper white; zero means the display's
+    /// reported headroom (Apple EDR, Windows), else 1000.
     pub peak_nits: f32,
     pub antialias: Antialias,
     /// The side of each directional light cascade in texels (clamped to
@@ -376,7 +395,7 @@ impl Default for RenderDesc {
             height: 720,
             backend: Backend::Auto,
             output_format: None,
-            hdr: false,
+            output: DisplayOutput::Best,
             paper_white_nits: 0.0,
             peak_nits: 0.0,
             antialias: Antialias::Off,
@@ -423,8 +442,11 @@ pub struct RenderInfo {
     pub device_type: wgpu::DeviceType,
     /// The surface supports extended-range float output (not a monitor measurement).
     pub hdr_supported: bool,
-    /// The surface was configured for HDR. False without a surface.
+    /// The surface was configured for extended range (HDR). False without a surface.
     pub hdr: bool,
+    /// The surface presents the Display P3 gamut (at standard or extended
+    /// range): colours outside sRGB reach the display. False without a surface.
+    pub wide_gamut: bool,
     /// The resolved antialiasing method (never `Tier`).
     pub antialias: Antialias,
     /// The samples per pixel the device multisamples the scene at:

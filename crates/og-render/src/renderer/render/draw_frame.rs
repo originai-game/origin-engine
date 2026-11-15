@@ -813,7 +813,7 @@ impl Renderer {
                     || overlay_frame
                         .as_ref()
                         .is_some_and(|of| !of.main_runs().is_empty()),
-                hdr_output: self.hdr.is_some() && !matches!(target, RenderTarget::Offscreen),
+                hdr_output: self.display.is_some() && matches!(target, RenderTarget::Surface),
             },
         });
         // The stylise passes' table, key and frame_uniforms.uniform (stylise_frame.rs).
@@ -967,7 +967,9 @@ impl Renderer {
             RenderTarget::View(v) => v,
             RenderTarget::Surface => &surface_frame.as_ref().expect("acquired above").1,
         };
-        let output = if self.hdr.is_some() {
+        // A display output composes in the float offscreen target and its
+        // pass writes the surface; a caller's view takes the composition.
+        let output = if self.display.is_some() && matches!(target, RenderTarget::Surface) {
             &self.persistent.offscreen_view
         } else {
             destination
@@ -976,7 +978,7 @@ impl Renderer {
         // view where the backend has one (linear light either way), else the
         // output itself with the shader encoding (a caller's non-sRGB view).
         let overlay_view = match target {
-            _ if self.output_format.is_srgb() => None,
+            _ if self.output_format.is_srgb() || self.display.is_some() => None,
             RenderTarget::Offscreen => self.persistent.offscreen_linear.as_ref(),
             RenderTarget::Surface => surface_frame.as_ref().and_then(|f| f.2.as_ref()),
             RenderTarget::View(_) => None,

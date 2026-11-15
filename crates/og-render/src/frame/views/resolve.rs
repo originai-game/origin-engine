@@ -10,9 +10,8 @@ const VIEWS_DEPTH_WGSL: &str = wgsl!("views_depth.wgsl");
 
 /// The colour resolve's source (`fs_color`, `fs_linear`).
 pub(crate) fn resolve_color_source() -> String {
-    let lpm = wgsl!("hdr_lpm.wgsl");
     let curves = wgsl!("tonemap.wgsl");
-    format!("{VIEWS_WGSL}{lpm}{curves}{VIEWS_COLOR_WGSL}")
+    format!("{VIEWS_WGSL}{curves}{VIEWS_COLOR_WGSL}")
 }
 
 /// The depth resolve's source (`fs_depth`): the view's linear depth

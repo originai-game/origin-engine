@@ -76,6 +76,14 @@ module render {
     guide "render §3"
   }
 
+  enum DisplayOutput {
+    doc "What the play surface presents, as og-render's DisplayOutput (RenderOptions.output). Offscreen and headless renderers, and so every capture and reference frame, are sRGB at standard range whatever it says."
+    guide "render §5"
+    variant best "The widest the surface and display offer: extended range (HDR) with the Display P3 gamut, else Display P3 at standard range, else sRGB. A display that reports no headroom (an SDR monitor on a Mac) takes Display P3 at standard range."
+    variant wide "Display P3 at standard range where the surface offers it, never extended range."
+    variant srgb "sRGB at standard range on every surface, the output before wide gamut and HDR."
+  }
+
   enum TaaHistory {
     doc "How TAA resamples its history each frame, as og-render's TaaHistory."
     variant bilinear "One bilinear tap: cheap, slightly soft while the camera moves."
@@ -147,11 +155,11 @@ module render {
       unit ratio
     }
     group "Display"
-    field hdr bool "Request extended-range HDR surface output; false keeps SDR and its tone operator. Unsupported surfaces and headless renderers stay SDR; capabilities.hdrSupported reports the extended-sRGB path, capabilities.hdr the resolved mode. HDR maps with LPM, composes the UI linearly, transfers last." {
-      guide "render §12"
+    field output DisplayOutput "What the surface presents: left out (best), extended range and Display P3 where the surface and display offer them, else sRGB. capabilities.hdr and capabilities.wideGamut report the result; the tone curve and the UI's colours follow it." {
+      guide "render §5"
     }
     field paperWhiteNits f32 "HDR reference white; 0 means 203 nits. Clamped to 80..1000. On Apple EDR and web, absolute display nits are unavailable: white follows OS SDR white and peakNits/paperWhiteNits sets relative headroom. On DXGI/Vulkan scRGB this sets absolute paper white. Read once at renderer creation."
-    field peakNits f32 "HDR target peak; 0 means 1000 nits. Clamped to 80..10000 and at least paperWhiteNits. A display can limit actual output below this target. Read once at renderer creation."
+    field peakNits f32 "HDR target peak; 0 means 1000 nits. Clamped to 80..10000 and at least paperWhiteNits; the tone curves end at peakNits / paperWhiteNits over SDR white, no further than the headroom the display reports (Apple EDR, Windows). Read once at renderer creation."
     group "Shadows and reflections"
     field shadowMapSize u32 "The side of each of the directional light's cascade maps (RenderSettings.shadowCascades of them), in texels." {
       default 2048

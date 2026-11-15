@@ -196,6 +196,17 @@ depth-normal prepass: the first one pays for it.
   `post.custom = []`; a look writes `custom "post/tint.ogt" "post/crt.ogt"`),
   set parameters with `og.render.setPostParam`; each also reads the lit
   image. The cap is og-render's MAX_CUSTOM_POSTS.
+- Display output (RenderOptions.output, left out `best`): on a surface
+  that offers them the frame goes out in extended range (HDR) and Display
+  P3; `capabilities.hdr` and `capabilities.wideGamut` say what resolved.
+  On HDR the tone curve keeps middle grey and the SDR image's mid-tones,
+  and ends at the headroom (peakNits / paperWhiteNits, 1000 / 203 left
+  out, no more than the display reports) instead of SDR white: emissive,
+  glow, bloom and sun keep rising past white. Author them as for SDR; a
+  value meant to read as white is still 1. Captures, `og test` frames and
+  references are offscreen, sRGB at standard range, whatever the output.
+  Choose `wide` where a scene's brightness must match SDR players', and
+  `srgb` to show exactly what a capture shows.
 
 ## 6. Materials
 
@@ -454,8 +465,8 @@ og.debug) and shader time stay at the tick.
 
 ## 12. Pitfalls
 
-- HDR output is opt-in and not yet accepted on a real HDR display; ship
-  SDR.
+- Judging an HDR look from a capture: captures clip at SDR white. Look at
+  the game on an HDR display (`capabilities.hdr` true).
 - Judging cost on `vulkan-cpu` or with an effect the scene does not draw.
 - A preset applied, then the game sets a quality field: the field wins, by
   design. A game that names GlobalIllumination after applying a preset
