@@ -274,7 +274,11 @@ test("quick play matches two engines of one mode in a room of their own; a third
   for (const r of [a!, b!]) {
     expect(r.room.state).toBe("in");
     expect(r.room.room).toMatch(/^quick-duel-\d+$/);
-    expect(r.room.peers.length).toBe(2);
+    // The room as the run ended: the peer that reached --ticks first may
+    // have left before the other's last pump (it is up to inputDelayTicks
+    // ahead), so the seats below, not this list, show the two were matched.
+    expect(r.room.peers.length).toBeGreaterThanOrEqual(1);
+    expect(r.room.peers.length).toBeLessThanOrEqual(2);
     expect(r.lockstep.running).toBe(true);
     expect(r.lockstep.desync).toBeNull();
   }
