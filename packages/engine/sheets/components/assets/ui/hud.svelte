@@ -3,8 +3,9 @@
 <!-- The normal page, in play: vitals and buffs top left, the round timer and
      compass top centre, the minimap top right, the ability bar and orbs
      along the bottom with the action hints, over a bright sky and a dark
-     floor (docs/ui.md §6.3: bright and dark HUD backgrounds). On a phone
-     they keep their corners. -->
+     floor (docs/ui.md §6.3: bright and dark HUD backgrounds). A phone has
+     no room for every corner at once, so there they stack in a column that
+     scrolls, each seen whole. -->
 <div id="Page">
   <div id="Sky"></div>
   <div id="Floor"></div>
@@ -43,9 +44,9 @@
 #Abilities { display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); }
 #Hints { position: absolute; right: env(-og-hud-inset-right, var(--space-lg)); bottom: calc(env(-og-hud-inset-bottom, var(--space-lg)) + var(--size-xxl) * 2); }
 @media (width < 600px) {
-  #TopLeft { width: 46%; }
-  #TopMid { left: 50%; right: var(--space-xs); top: calc(env(safe-area-inset-top) + var(--size-xxl) * 2.2); }
-  #Hints { left: var(--space-xs); right: var(--space-xs); bottom: calc(env(-og-hud-inset-bottom, var(--space-lg)) + var(--size-xxl) * 2.6); }
-  #Bottom { gap: var(--space-xs); }
+  #Page { display: flex; flex-direction: column; align-items: center; gap: var(--space-lg); padding: env(safe-area-inset-top) var(--space-xs) env(safe-area-inset-bottom); overflow-y: auto; }
+  #TopLeft, #TopMid, #TopRight, #Bottom, #Hints { position: relative; left: auto; right: auto; top: auto; bottom: auto; }
+  #TopLeft, #TopMid, #Hints { width: stretch; }
+  #Bottom { width: stretch; gap: var(--space-xs); }
 }
 </style>

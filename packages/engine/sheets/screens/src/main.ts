@@ -64,12 +64,16 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }, what
   return r.value;
 }
 
-/** The shared ink icon sheet's cells (templates/styles/shared/ink-icons.png). */
+/**
+ * The shared ink icon sheet's cells (templates/styles/shared/ink-icons.png),
+ * and a row of chevrons (its `back` turned) for pagination, calendar and tree.
+ */
 const INK_NAMES = [
   "heart", "star", "coin", "lock", "pause", "gear", "sword", "shield",
   "potion", "gem", "key", "map", "bolt", "clock", "trophy", "home",
   "plus", "close", "check", "play", "back", "bag", "bomb", "crown",
   "flag", "apple", "leaf", "fire", "drop", "skull", "music", "person",
+  "chevronLeft", "chevronRight", "chevronUp", "chevronDown",
 ];
 
 /**
@@ -79,7 +83,7 @@ const INK_NAMES = [
  */
 function setStyle(world: World, name: string): void {
   const ink = must(og.load.texture(world, "icons/ink-icons.png"), "ink icons");
-  const fallbackIcons = { texture: ink, columns: 8, rows: 4, names: INK_NAMES };
+  const fallbackIcons = { texture: ink, columns: 8, rows: 5, names: INK_NAMES };
   if (name === "default") {
     const font = must(og.load.font(world, "fonts/InstrumentSans-Regular.ttf"), "font");
     og.ui.configure(world, { style: null, font, fallbackIcons });

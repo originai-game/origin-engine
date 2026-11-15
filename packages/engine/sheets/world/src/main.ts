@@ -14,7 +14,7 @@
 // Commands: style:<fantasy|scifi|cartoon|default>, page:<field|crowd>, hits,
 // reduced:<on|off>.
 
-import { og, type UiReadable, type World } from "@origingame/engine";
+import { og, defineSystem, type UiReadable, type World } from "@origingame/engine";
 import { FIXTURES, NAMES } from "./fixtures.ts";
 
 const PAGES = ["field", "crowd"] as const;
@@ -75,11 +75,36 @@ function scene(world: World): void {
   const sun = must(world.spawn({ quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: -0.4, y: -0.8, z: -0.5 }) }), "sun");
   must(world.insert(sun, og.DirectionalLight, { color: { r: 1, g: 0.95, b: 0.85 }, intensity: 2.5, castShadow: true }), "light");
   const cam = must(world.resource(og.Camera), "camera");
-  cam.position = { x: 0, y: 8, z: 11 };
-  cam.quaternion = og.transform.lookAt(cam.position, { x: 0, y: 0.5, z: -3 });
-  cam.fov = 55;
   cam.background = { r: 0.55, g: 0.7, b: 0.85 };
+  frame(world);
 }
+
+/** Where the camera looks, and from where at 16:9. */
+const TARGET = { x: 0, y: 0.5, z: -3 };
+const FROM = { x: 0, y: 8, z: 11 };
+/** The 16:9 view's half-width over its distance (fov 55°). */
+const HALF_WIDTH = Math.tan((55 / 2) * (Math.PI / 180)) * (16 / 9);
+/** How much of that width a narrower viewport keeps: the loot nearest the camera stays on the screen and inside its labels' 30 m reach. */
+const KEEP = 0.85;
+
+/**
+ * The camera framed for the viewport, as a game frames a portrait phone: the
+ * field keeps the width its units stand in (those at its sides stay on the
+ * screen, with their tags), the field of view widening to 80° and the camera
+ * drawing back for the rest.
+ */
+function frame(world: World): void {
+  const cam = must(world.resource(og.Camera), "camera");
+  const vp = og.ui.viewport(world);
+  const need = Math.max(Math.tan((55 / 2) * (Math.PI / 180)), (HALF_WIDTH * KEEP) / (vp.width / vp.height));
+  const fov = Math.min(80, (2 * Math.atan(need) * 180) / Math.PI);
+  const back = need / Math.tan((fov / 2) * (Math.PI / 180));
+  cam.position = { x: TARGET.x + (FROM.x - TARGET.x) * back, y: TARGET.y + (FROM.y - TARGET.y) * back, z: TARGET.z + (FROM.z - TARGET.z) * back };
+  cam.quaternion = og.transform.lookAt(cam.position, TARGET);
+  cam.fov = fov;
+}
+
+const Framing = defineSystem("Framing", { reads: [], writes: [og.Camera] }, (_q, _time, world) => frame(world));
 
 /** Each fixture as a store of its scalars (`<member>_<state>`) and a keyed collection per list (`<member>_<state>_<prop>`). */
 function stores(world: World): Record<string, UiReadable<unknown>> {
@@ -110,6 +135,7 @@ function show(world: World): void {
 }
 
 export default og.game({
+  systems: [Framing],
   tick: 60,
   seed: 1,
   start(world) {

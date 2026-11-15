@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og ui sheet components, screens and world",
+      "summary": "The screens sheet draws pagination's, the calendar's and the tree's chevrons instead of warning on every cell; the components sheet's HUD page stacks into a scrolling column on a phone instead of laying the minimap over the vitals; the world sheet frames its scene for a portrait phone, so its units and their tags stay on the screen; StatusGrid's overflow fixture no longer has more time left than its duration."
+    }
+  ]
+}
