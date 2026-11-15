@@ -114,6 +114,8 @@ export default og.game({
   seed: 1,
   start(world) {
     scene(world);
+    // The prompt's action, defined as a game defines it, so its key shows.
+    og.input.defineAction(world, { name: "interact", kind: "button", bindings: [{ control: "KeyE" }, { control: "pad.x" }] });
     setStyle(world, "fantasy");
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },

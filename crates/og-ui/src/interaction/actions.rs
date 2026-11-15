@@ -214,19 +214,26 @@ impl Ui {
     }
 
     /// An action's glyph on the current device: its first binding there
-    /// (a followed og-input action's: [`ActionDesc::action`]).
+    /// (a followed og-input action's: [`ActionDesc::action`]). A name no
+    /// UI action has is the game's og-input action of that name
+    /// (og.input.defineAction), shown by its own bindings.
     pub fn glyph(&self, name: &str) -> Option<Glyph> {
-        let d = self.action_defs().into_iter().find(|d| d.name == name)?;
         let device = self.interaction.actions.device;
-        if !d.action.is_empty() {
+        let feed_glyph = |action: &str| {
             let feed = self
                 .interaction
                 .actions
                 .feed
                 .iter()
-                .find(|f| f.name == d.action)?;
+                .find(|f| f.name == action)?;
             let parts = og_input::binding_glyphs(&feed.bindings, device);
-            return og_input::combined_glyph(&parts, device).or_else(|| {
+            og_input::combined_glyph(&parts, device)
+        };
+        let Some(d) = self.action_defs().into_iter().find(|d| d.name == name) else {
+            return feed_glyph(name);
+        };
+        if !d.action.is_empty() {
+            return feed_glyph(&d.action).or_else(|| {
                 (device == Device::Touch).then(|| Glyph {
                     icon: format!("touch.{name}"),
                     text: d.label.clone(),

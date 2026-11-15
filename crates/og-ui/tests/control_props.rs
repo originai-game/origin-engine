@@ -1715,10 +1715,11 @@ fn aria_attributes_reach_the_accessibility_tree() {
 /// Device-following glyphs (G7): `<kbd data-action>` shows the action's
 /// key on a keyboard and its button on a pad, rebuilt when the device
 /// changes; `$ui` carries the device, the coarse pointer and the action
-/// bar; `data-og-rebind` captures the next key into its bound value.
+/// bar; `data-og-rebind` captures the next key into its bound value; a
+/// name only og-input defines shows that action's binding.
 /// Ways it could fail: a glyph stuck on the device it was built for, `$ui`
 /// not reaching a mounted document, the capture writing Escape or never
-/// ending.
+/// ending, a game's og.input action drawn as its raw name.
 #[test]
 fn kbd_glyphs_follow_the_device_and_rebind() {
     let text = r#"<meta name="component" content="t">
@@ -1728,8 +1729,17 @@ fn kbd_glyphs_follow_the_device_and_rebind() {
   <p id="Dev">{$ui.device}</p>
   <p id="Count">{$ui.coarsePointer ? "touch" : "fine"}</p>
   <kbd id="R" data-action="jump" data-og-rebind bind:value={$key}></kbd>
+  <kbd id="Use" data-action="interact"></kbd>
 </div>"#;
     with_doc(text, &[("key", json!("KeyE"))], |d| {
+        let interact = vec![og_input::ActionFeed {
+            name: "interact".into(),
+            state: Default::default(),
+            bindings: vec![og_input::Binding {
+                control: "KeyF".into(),
+                ..Default::default()
+            }],
+        }];
         d.ui.define_action(ActionDesc {
             name: "jump".into(),
             keys: vec!["KeyE".into()],
@@ -1738,9 +1748,14 @@ fn kbd_glyphs_follow_the_device_and_rebind() {
             ..ActionDesc::default()
         });
         d.ui.set_device(og_input::Device::KeyboardMouse);
-        d.step(InputFrame::default());
-        d.step(InputFrame::default());
+        d.step(InputFrame::default().with_actions(interact.clone()));
+        d.step(InputFrame::default().with_actions(interact.clone()));
         let key_cap = d.get("J").text;
+        assert_eq!(
+            d.get("Use").text,
+            "F",
+            "og.input's interact, by its binding"
+        );
         assert_eq!(d.get("Esc").text, "Esc");
         assert_eq!(d.get("Dev").text, "keyboardMouse");
         assert_eq!(d.get("Count").text, "fine");
