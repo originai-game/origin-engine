@@ -1529,6 +1529,80 @@ fn part_transitions_retarget_and_restore_the_rendered_value() {
     }
 }
 
+/// A part's rim set by a `border` shorthand holding `var()`, with a hover
+/// rule that writes `border-color`: on leaving the hover, the rim's
+/// colour transitions between the two rim colours, so it never shows the
+/// ink (`currentColor`, the border colour's initial value) and settles on
+/// the shorthand's colour.
+///
+/// Ways it could fail: the transition reading the `border-color` the
+/// hover rule no longer sets as `currentColor` (its initial), so the rim
+/// runs to the ink while the transition lasts and only the last frame is
+/// right.
+#[test]
+fn a_parts_rim_from_a_shorthand_transitions_between_the_rim_colours() {
+    let mut ui = ui_with_font(test_font_metrics());
+    // currentColor is white; the rim is blue and the hover's red. A move
+    // between blue and red never passes through white.
+    ui.set_part_css(
+        "button::part(base) { color: #ffffff; transition: border-color 300ms linear; } \
+         button::part(base):hover { border-color: #ff0000; } \
+         button.ghost::part(base) { --rim: #3366ff; border: 2px solid var(--rim); }",
+    )
+    .unwrap();
+    let mut d = mounted(
+        ui,
+        r#"<column><button id="B" class="ghost"></button></column>
+<style>#B { width: 80px; height: 40px; }</style>"#,
+        &[],
+        Viewport::new(100.0, 100.0),
+    );
+    // The rim's stroke colour this frame.
+    let rim = |d: &Doc| -> [f32; 4] {
+        d.ui.frame()
+            .items
+            .iter()
+            .find_map(|item| match &item.cmd {
+                og_ui::DrawCmd::Shape { shape, .. }
+                    if matches!(shape.mode, og_draw::UiMode::Stroke(_)) =>
+                {
+                    match shape.paint {
+                        og_draw::UiPaint::Solid(c) => Some(c),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            })
+            .expect("the rim's stroke")
+    };
+    let blue = Srgba::rgb(0x33, 0x66, 0xff).linear();
+    let near = |a: [f32; 4], b: [f32; 4]| a.iter().zip(b).all(|(x, y)| (x - y).abs() < 0.01);
+    for _ in 0..20 {
+        d.step(over(false));
+    }
+    assert!(near(rim(&d), blue), "rest rim {:?}", rim(&d));
+    for _ in 0..30 {
+        d.step(over(true));
+    }
+    // While the transition runs after leaving, the rim is a mix of red and
+    // blue: its green stays low and it is never the white ink.
+    for _ in 0..40 {
+        d.step(over(false));
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+        let c = rim(&d);
+        assert!(c[1] < 0.3, "rim green channel {c:?}: the ink leaked in");
+    }
+    // It settles on the shorthand's blue.
+    for _ in 0..300 {
+        d.step(over(false));
+    }
+    assert!(near(rim(&d), blue), "settled rim {:?}", rim(&d));
+}
+
 /// One `button` 80 × 40 at the top left of a 100 × 100 frame, its part
 /// CSS `css` alone.
 fn base_part(css: &str) -> Doc {

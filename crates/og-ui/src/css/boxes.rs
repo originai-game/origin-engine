@@ -298,6 +298,58 @@ fn colour(t: &Tok) -> Result<Option<Vec<Value>>, String> {
     }
 }
 
+/// The colour a `border`/`border-<side>`/`outline` shorthand `value` gives
+/// the longhand `wanted` (`border-color`, `border-top-color`,
+/// `outline-color`), as text: the border family's transitions read a
+/// longhand's value this way when the cascade set it through a shorthand
+/// rather than a matching longhand, so a part whose rim is a `border`
+/// shorthand and whose hover writes `border-color` transitions between the
+/// two rim colours, not from the ink. `None` when the shorthand does not
+/// set `wanted`'s side, or sets its colour to `currentColor` (the
+/// longhand's own initial, which the caller falls back to).
+pub(crate) fn shorthand_colour(name: &str, value: &str, wanted: &str) -> Option<String> {
+    // The side the shorthand covers (all four for `border`/`outline`:
+    // `None`), and the side the wanted colour longhand names; they meet.
+    let covers = match name {
+        "border" | "outline" => None,
+        n => Some(side_index(n.strip_prefix("border-")?)?),
+    };
+    let want_side = match wanted {
+        "border-color" => None,
+        "outline-color" if name == "outline" => None,
+        _ => Some(side_index(
+            wanted.strip_prefix("border-")?.strip_suffix("-color")?,
+        )?),
+    };
+    if name == "outline" && wanted != "outline-color" {
+        return None;
+    }
+    if name != "outline" && wanted == "outline-color" {
+        return None;
+    }
+    if let (Some(a), Some(b)) = (want_side, covers)
+        && a != b
+    {
+        return None;
+    }
+    if want_side.is_none() && covers.is_some() {
+        return None;
+    }
+    let t = super::css::tokens(value).ok()?;
+    let (_, _, c) = shorthand(name, &t).ok()?;
+    match c.as_slice() {
+        [Value::Word(word)] if word.eq_ignore_ascii_case("currentColor") => None,
+        _ => {
+            let text: String = c
+                .iter()
+                .map(|v| v.as_str().or_else(|| v.as_word()).unwrap_or_default())
+                .collect::<Vec<_>>()
+                .join(" ");
+            (!text.is_empty()).then_some(text)
+        }
+    }
+}
+
 type Entries = Vec<(&'static str, Vec<Value>)>;
 
 fn push_triple(

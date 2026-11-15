@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.ui",
+      "summary": "A part whose border colour a transition covers, set through a `border` shorthand (`border: 2px solid var(--rim)`) while a competing rule writes `border-color`, no longer flashes the text colour for the length of the transition after the two rules stop competing: the transition now reads the colour the shorthand gives, so it moves between the two rim colours instead of to `currentColor`. Affected a ghost button, a select trigger after hover, and a hovered checked checkbox under a pack or game that mixed the two forms."
+    }
+  ]
+}

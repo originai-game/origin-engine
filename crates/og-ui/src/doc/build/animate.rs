@@ -168,8 +168,33 @@ impl Ui {
                 Some(entry) => entry.1 = value,
                 None => values.push((name.to_string(), value, 0)),
             };
+        // A border or outline colour the cascade set through a shorthand
+        // (`border: … var(--rim)`) rather than a matching `*-color`
+        // longhand: its computed value for a transition, which reads the
+        // longhand's name. The last shorthand that sets this side wins, as
+        // it does when both lower (`cascade.values` is in cascade order).
+        let from_shorthand = |values: &[(String, String, usize)], name: &str| {
+            (name.starts_with("border") && name.ends_with("-color") || name == "outline-color")
+                .then(|| {
+                    values.iter().rev().find_map(|(n, v, _)| {
+                        matches!(n.as_str(), "border" | "outline")
+                            .then(|| crate::css::boxes::shorthand_colour(n, v, name))
+                            .or_else(|| {
+                                (n.starts_with("border-")
+                                    && !n.ends_with("-width")
+                                    && !n.ends_with("-style")
+                                    && !n.ends_with("-color"))
+                                .then(|| crate::css::boxes::shorthand_colour(n, v, name))
+                            })
+                            .flatten()
+                    })
+                })
+                .flatten()
+        };
         let value_of = |values: &[(String, String, usize)], name: &str| {
-            get(values, name).or_else(|| interpolate::initial(name).map(str::to_string))
+            get(values, name)
+                .or_else(|| from_shorthand(values, name))
+                .or_else(|| interpolate::initial(name).map(str::to_string))
         };
         let mut running = false;
         let mut animated_values = Vec::new();
