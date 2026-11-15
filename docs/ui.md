@@ -749,11 +749,24 @@ The parser is the cook's (`og_ui::svg`, shared with `type vector`).
   Effects 1 primitive in the element's user space, a turned element
   filtered as if unturned. Limits: `feComponentTransfer` tables keep 16
   values, `feConvolveMatrix` at most 64 cells, a blur reads at most 128 px
-  a side (wider ones run as σ/√n passes), `feImage` of an element nests
-  four deep and refuses the filtered element or its ancestors,
-  `BackgroundImage`, `BackgroundAlpha`, `FillPaint` and `StrokePaint` read
-  transparent black. A CSS-box filter region defaults to the border box
-  grown 10 % a side, in its CSS px.
+  a side (wider ones run as σ/√n passes), `BackgroundImage`,
+  `BackgroundAlpha`, `FillPaint` and `StrokePaint` read transparent black.
+  A CSS-box filter region defaults to the border box grown 10 % a side, in
+  its CSS px.
+- `<feImage href="#id">` draws that SVG element as `<use>` would (Filter
+  Effects 1 §15.17): in the filtered element's user space, moved by the
+  primitive's `x` and `y`, inheriting the filtered element's computed
+  values. The element is mounted again where the filter is, in the
+  filtered element's context: its bindings follow their stores and its
+  `{#if}`, `{#each}` and components are built, reading what the filtered
+  element reads (its stores, its row, its component's props). One that
+  reads a row the filtered element is not in draws nothing, with a
+  warning, as does one that is the filtered element or an ancestor of it.
+  The image is a picture: nothing in it takes input, sends an event,
+  writes a store or runs a `use:` action, and to selectors it is no child
+  of the filtered element. Images of images nest four deep. An idle image
+  builds nothing, a changed one writes only what changed, and it is
+  unmounted with its filter, its `href` or its element.
 
 #### Pointer, drag and drop
 
@@ -1050,7 +1063,7 @@ suboptimum | poor]` (undressed: success, warn, danger), over `Meter.track`;
 ### 2.5 Split screen
 
 `og.ui.setPlayers(n)` turns pads 1 to 3 on; each pad moves its own focus
-(`Response.focusedBy`, bit `k`) and presses with A (`Response.pad`).
+(`Response::focused_by`, bit `k`) and presses with A (`Response::pad`).
 `player="k"` (Rust `Props::player`, 0 to 3) makes a subtree player `k`'s
 region, which may be its own scene viewport.
 
@@ -1059,7 +1072,7 @@ region, which may be its own scene viewport.
   and pointer's.
 - Controls outside every region belong to pads with no region; an open
   dialog's controls are reachable by every pad.
-- `Response.player` names the region a control was pressed in, null
+- `Response::player` names the region a control was pressed in, `None`
   outside every region and on unpressed ticks; the pointer presses
   anywhere.
 - A screen with no region is unchanged: every pad sees every control.
@@ -1110,16 +1123,17 @@ number.
 | Token family | What it controls |
 |---|---|
 | `--color-*`, the role names (`--ink`, `--primary`…) | Colours, per scheme; `--color-track`, `--color-minimap`, `--color-minimap-edge`, `--color-slot-selected-edge` for the engine's own parts |
+| `--common`, `--uncommon`, `--rare`, `--epic`, `--legendary`, `--mythic` | The rarity colours (by default each a status colour: `--line-strong`, `--success`, `--info`, `--xp`, `--warn`, `--danger`) |
 | `--space-*`, `--radius-*`, `--size-*`, `--stroke-*` | Spacing, corners, icon and art sizes (`--size-xs` to `--size-7xl`; a layout takes a step, never a multiple of one), line widths (`--stroke-edge` the material hairline) |
 | `--type-*`, `--text-*`, `--font-*` | The type ramp and its roles; `--font-leading-*` (`flat`, `tight`, `snug`, `normal`), `--font-tracking-*` and `--font-weight-*` for text a part sizes itself; `--font-step-2xs` to `--font-step-6xl` are sizes in `em` of the surrounding text, so a part sized with one follows the player's text scale |
 | `--density-compact-*`, `--density-pad-*`, `--density-touch-*` | Each input's control, row and header heights, gutter and section |
 | `--control-sm/md/lg`, `--row`, `--header`, `--gutter`, `--section`, `--touch-target` | The input's density, and the smallest finger target |
-| `--motion-duration-*`, `--motion-easing-*`, `--motion-named-*`, `--motion-scale-*` | Durations, the controls' enter and exit curves (`in-out` for what loops), the named transitions' springs (`ui`, `panel`, `emphasis`, `playful`, `enter`, `exit`), how far a moment scales (`press`, `swell`, `pop`, `shrink`) and how low a waiting thing breathes (`breathe`) |
+| `--motion-duration-*`, `--motion-easing-*`, `--motion-named-*`, `--motion-scale-*` | Durations (the transition steps, then the loops and long plays: `turn` 800 ms, `pulse`, `flare`, `ping`, `sweep`, `breathe`, `sheen`, `drift`, `fanfare`, `orbit` 6 s), the controls' enter and exit curves (`in-out` for what loops), the named transitions' springs (`ui`, `panel`, `emphasis`, `playful`, `enter`, `exit`), how far a moment scales (`press`, `swell`, `pop`, `shrink`) and how low a waiting thing breathes (`breathe`) |
 | `--state-*` | Hover wash, press scales (`press-scale` a button's part, `control-press-scale` a control row's), lift, disabled opacities (`touch-disabled-opacity` the stick, pad and action button), press duration, focus ring and player rings |
-| `--opacity-*`, `--filter-*` | How strongly a thing shows (`faint`, `dim` what cannot be used, `muted` what is done, `soft`), and what art takes out of reach (`--filter-locked`, `--filter-spent`) |
+| `--opacity-*`, `--filter-*` | How strongly a thing shows (`faint`, `dim` what cannot be used, `muted` what is done, `soft`, `wash` how much of a colour a soft wash lays over what is under it), and what art takes out of reach (`--filter-locked`, `--filter-spent`) |
 | `--shadow-*`, `--elevation-*`, `--glass-*` | Shadows per scheme and the controls' inset shadows, the two drop elevations, glass blur and saturation |
 | `--frame-*`, `--plate-*`, `--band-*`, `--title-*`, `--row-*`, `--cell-*`, `--badge-*`, `--well-*`, `--figure-*`, `--label-*`, `--ink-label/bright/done/disabled/selected/down/mark`, `--trend-*`, `--tone-*`, `--mark-*`, `--sfx-*` | What the built-in components' role parts wear (below) |
-| `--button-*` | Radius, border width, rest and pressed shadows (stepper, details, keyboard keys and option rows take them) |
+| `--button-*` | Radius, border width, rest and pressed shadows (stepper, details, keyboard keys and option rows take them); `--button-selected-fill` and `-ink` a button that is on (`aria-pressed`: a toggle, a chip), whatever its variant |
 | `--field-*` | Radius, border width and well shadow of text boxes, triggers, steppers, checkbox boxes and radio rings |
 | `--checkbox-*` | Box size, radius and mark ratios, the mark's pop spring and its exit |
 | `--radio-*` | Ring size, dot ratio, pop spring; `--radio-card-*` a card's radius and shadow |
@@ -1373,7 +1387,11 @@ input glyphs and action prompts own this, and components hard-code no
 button letters. Actions declare `actionMap`; `og.input.setActionMaps`
 selects maps; `isActionDown` reads the down state, `isActionJustPressed`
 and `isActionJustReleased` tick edges; `isActionHeld` keeps its `holdMs`
-threshold; physical controls keep their W3C codes.
+threshold; physical controls keep their W3C codes. The UI's pointer,
+gestures and actions use the same words (`down`, `justPressed`,
+`justReleased`, `held` after `holdMs`; the conventions guide §3):
+`og.ui.actionFired` is the tick a UI action fires, `og.ui.actionHeld` its
+hold.
 
 ### 3.3 Assets and generation
 
@@ -1454,61 +1472,70 @@ one with no COLR glyph is refused. References: `color-emoji-1280`,
 
 ## 4. Shipped catalogue
 
-Core default UI is the only creation `ui` choice until a pack is
-accepted. Every component and screen document under
-`packages/engine/src/ui/` is built into the engine (§5): the generic
-components and screens, and the component groups below, each a directory
-of `packages/engine/src/ui/components/`. The six style packs below are
-approved scope. `fantasy` ships with the engine package
-(`engine/styles/fantasy/`, with the art its CSS names), so a look's
-`ui "fantasy"` resolves in an installed engine; it is not yet a creation
-choice. The others are not released before their acceptance is complete.
-`materials` is an optional resource pack for UI shader finishes, neither a
-component group nor a seventh style. VFX and unrelated extensions are
-outside this catalogue.
+Every component and screen document under `packages/engine/src/ui/` is
+built into the engine (§5): the generic components and screens, and the
+component groups below, each a directory of
+`packages/engine/src/ui/components/`. Core default UI is the only creation
+`ui` choice until a pack is accepted; a look's `ui` line or
+`og.load.style` selects a built-in pack in any game. `materials` is an
+optional resource pack for UI shader finishes, neither a component group
+nor a style. VFX and unrelated extensions are outside this catalogue.
 
-| Component group | Required presentation | Status |
-| --- | --- | --- |
-| `rpg` | Inventory and equipment, journal and tracker, dialogue, party and turn order, world map | Built, dressed through its parts; art re-review pending |
-| `shooter` | Aim, ammunition, damage-direction HUD, killfeed, loadout | Built (pilot), not yet accepted |
-| `strategy` | Selection and commands, production queue, waves, tower-upgrade inspection | Built, dressed in `fantasy` through its parts; not yet accepted |
-| `racing` | Telemetry, laps and standings, race banner, garage selection, results screen | Built, dressed in `fantasy` through its parts; not yet accepted |
-| `card` | Hand and piles, collection and deck building, reward-choice and run-map screens | Built, dressed in `fantasy` through its parts; not yet accepted |
-| `puzzle` | Level path, goals and moves, level summary | Built, dressed in `fantasy` through its parts; not yet accepted |
-| `idle` | Production and purchase rows, prestige preview, offline-summary screen | Built, dressed in `fantasy` through its parts; not yet accepted |
-| `rhythm` | Song and difficulty selection, judgement presentation, results breakdown | Built, dressed in `fantasy` through its parts; not yet accepted |
-| `arena` | Roster and character selection, draft, versus, team scoreboard, round HUD, lobby screen | Built, dressed in `fantasy` through its parts; not yet accepted |
-| `general` | Shop, achievements, daily quests and rewards, chat, friends | Built, dressed in `fantasy` through its parts; not yet accepted |
+| Component group | Required presentation |
+| --- | --- |
+| `rpg` | Inventory and equipment, journal and tracker, dialogue, party and turn order, world map |
+| `shooter` | Aim, ammunition, damage-direction HUD, killfeed, loadout |
+| `strategy` | Selection and commands, production queue, waves, tower-upgrade inspection |
+| `racing` | Telemetry, laps and standings, race banner, garage selection, results screen |
+| `card` | Hand and piles, collection and deck building, reward-choice and run-map screens |
+| `puzzle` | Level path, goals and moves, level summary |
+| `idle` | Production and purchase rows, prestige preview, offline-summary screen |
+| `rhythm` | Song and difficulty selection, judgement presentation, results breakdown |
+| `arena` | Roster and character selection, draft, versus, team scoreboard, round HUD, lobby screen |
+| `general` | Shop, achievements, daily quests and rewards, chat, friends |
 
-Each group is built token- and part-only (§3.1, §3.2), with state
-fixtures (§6.1) and a review sheet (§6.2). Member inputs, intents and
-parts are documented in each group's README
+Every group is built token- and part-only (§3.1, §3.2), with state
+fixtures (§6.1) and a review sheet (§6.2), and both built packs dress it.
+Member inputs, intents and parts are documented in each group's README
 (`packages/engine/src/ui/components/<group>/README.md`) and each
-document's `<meta>` header. Arena owns team and match scores; shooter does
-not duplicate them. RPG also serves open-world games; action-platformer
-and runner use core, with RPG or puzzle compositions when needed.
-Components never calculate damage, production, purchases, rewards, legal
-card targets, or note timing.
+document's `<meta>` header; the ungrouped components' in
+`packages/engine/src/ui/components/README.md`, the screens' in
+`packages/engine/src/ui/screens/README.md`. Arena owns team and match
+scores; shooter does not duplicate them. RPG also serves open-world games;
+action-platformer and runner use core, with RPG or puzzle compositions
+when needed. Components never calculate damage, production, purchases,
+rewards, legal card targets, or note timing.
 
 | Style pack | Visual language | Commercial review references | Status |
 | --- | --- | --- | --- |
-| `clean` | Clear numeric hierarchy, restrained menus, low-interference HUD | Forza Horizon 5, Portal 2 | Pilot, in progress (references only) |
-| `cartoon` | Rounded forms, deliberate thickness, clear primary actions | Mario Kart 8 Deluxe, Bloons TD 6 | Not yet built |
-| `fantasy` | Painted frames and materials with room for dense content | Baldur's Gate 3, Diablo IV | Built, art-approved (pilot); shipped with the engine |
+| `fantasy` | Painted frames and materials with room for dense content | Baldur's Gate 3, Diablo IV | Built, shipped with the engine; art-approved (pilot) |
+| `scifi` | Instrument hierarchy, precise geometry, sparse emphasis | Elite Dangerous, Starfield | Built, shipped with the engine; awaiting art approval |
+| `cartoon` | Rounded forms, deliberate thickness, clear primary actions | Mario Kart 8 Deluxe, Bloons TD 6 | In progress, not on main |
 | `pixel` | Consistent pixel grid, integer scaling, readable glyphs | Stardew Valley, Octopath Traveler | Not yet built |
-| `scifi` | Instrument hierarchy, precise geometry, sparse emphasis | Elite Dangerous, Starfield | Built, awaiting art approval; shipped with the engine |
 | `storybook` | Paper and illustrated edges, quiet ornament, readable text | Pentiment, Strange Horticulture | Not yet built |
 
-The creation order is `clean`, `cartoon`, `fantasy`, `pixel`, `scifi`,
-`storybook`. These values are not exposed before their packages are
-ready; the integration owner updates the schema and bilingual labels
-together. There are no `auto`, `custom`, or `generated` pseudo-packs.
+A built pack lives in `templates/styles/<name>/` and ships with the engine
+as `@styles/<name>`, with the art its CSS names: `base.css` holds every
+value as a `:root` token (with a `:root[data-scheme=light]` block),
+`controls.css` dresses the core controls, one file per component group
+(`rpg.css` … `general.css`) dresses that group's parts (scifi's
+`components.css` some ungrouped components), and `motion.css`
+and `sounds.css` hold its transitions and `-og-sound` sets; each pack's
+README lists its files and tokens. `templates/styles/shared/` holds the
+fonts, sounds and art packs share (`/@styles/shared/`) and
+`templates/styles/cjk/` the CJK faces; neither is a pack.
+`templates/styles/tests/fantasy-frost/` is a token-only variant of
+`fantasy` that proves the pack restyles by tokens alone; it is not
+shipped.
+
+A pack becomes a creation choice only once it is accepted (§6.3); the
+integration owner then updates the schema and bilingual labels together.
+There are no `auto`, `custom`, or `generated` pseudo-packs.
 
 The 37 look presets in `templates/looks/` and the generated look catalogue
 own look-to-UI recommendations; until a pack is accepted every preset uses
 core default UI. A recommendation is a seed, not proof of fit; an explicit
-creation UI choice wins. Scifi is also chosen by subject (shooters,
-strategy, space games). Game-authored styles use explicit asset paths in
+creation UI choice wins. Game-authored styles use explicit asset paths in
 the actual look; the creation block records the initial constraint, not
 the current path.
 
@@ -1531,7 +1558,11 @@ Their ids are under the reserved `@ui/` root: `@ui/components/<path>` and
   (`og.load.document(world, "@ui/screens/pause.svelte")`, then
   `og.ui.push(world, "pause", vm)`). The cook bundles each built-in screen
   whose id the game's code names as a string literal, with its strings and
-  components. `og ui types` types the built-ins the game uses.
+  components. `og ui types` types the built-ins the game uses. A built-in
+  screen reads its declared props bare (`{title}`, `bind:open={open}`), as
+  a component does, so one document is pushed with a viewmodel or mounted
+  with stores; `$toasts` and `$captions` are the engine's stores, not
+  props.
 - A game document of the same name wins. `og ui eject <name>`
   (`rpg/backpack` in a group; `--list` names all) copies a built-in
   document and its companions into `assets/ui/`; the copy then replaces it
@@ -1556,8 +1587,10 @@ the file containing them; a leading slash names an asset-root path
 (`/@styles/shared/`, `/@styles/cjk/`). Pack CSS reaches authored document
 elements and exposed `::part()`s.
 
-Official styles live in `templates/styles/<name>` and ship under
-`styles/<name>`. Resource and effect packs live in
+Built-in styles live in `templates/styles/<name>` and ship in the engine
+package's `styles/<name>`, loaded as `@styles/<name>`
+(`og.load.style(world, "@styles/scifi")`, or a look's `ui "scifi"`); the
+cook bundles only a style the game names. Resource and effect packs live in
 `packages/engine/extensions/<name>` and font packs in
 `templates/fonts/<name>`, each described by its `extension.json`.
 Discovery reads directories and manifests, never a hard-coded name
@@ -1588,9 +1621,9 @@ the complete approved catalogue and platform schema and pin coordination
 ### 6.1 State fixtures
 
 Each component group starts with an input/output and parts inventory, its
-two primary pages, and two named commercial games as information-structure
-references, each an actual page, platform and screenshot source. Authors
-copy no commercial assets, brands or layouts.
+normal and stress pages (§6.2), and two named commercial games as
+information-structure references, each an actual page, platform and
+screenshot source. Authors copy no commercial assets, brands or layouts.
 
 Every member has reproducible fixtures and observable behaviour assertions
 for each applicable case; an inapplicable case needs a reason.
@@ -1621,51 +1654,53 @@ and resources. Removing a pack cannot remove core coverage.
 
 ### 6.2 Frame matrix
 
-Each group's sheet keeps two primary pages, one normal high-frequency page
-and one stress/state page; behaviour tests cover every member. An extra
-page needs a named visual behaviour the two cannot cover. `og ui sheet
-<group>` and `og ui review <group>` take the group's sheet (or a sheet
-project directory); a pack's own sheet is reviewed by its directory.
+Each group's sheet has a normal page, a stress page (long names, dense or
+overflowing content, 150 % text) and, for most groups, a `states` page
+with every member in every fixture state it declares; behaviour tests
+cover every member. A further page needs a named visual behaviour the
+others cannot cover. The sheet's `project.ogt` declares its pages, and its
+`STYLES` (`src/main.ts`) the styles it renders them in: each built pack
+joins a sheet with a look naming it under `assets/looks/` (which makes the
+cook bundle it) and its name in `STYLES`.
 
-| Group | Primary pack | Contrast sample | Normal page; stress/state page |
-| --- | --- | --- | --- |
-| rpg | fantasy | pixel | Inventory and equipment; journal, dialogue, party, map |
-| shooter | clean | scifi | Combat HUD; loadout and killfeed |
-| strategy | scifi | cartoon | Selection, commands, production; upgrades and waves |
-| racing | clean | cartoon | Speed, standings, lap deltas; garage and results |
-| card | fantasy | clean | Hand, targets, piles; collection, rewards, run map |
-| puzzle | cartoon | storybook | Goals and moves; level path and summary |
-| idle | clean | storybook | Production and purchase; prestige, offline, overflow |
-| rhythm | scifi | pixel | Songs and difficulty; judgement and results |
-| arena | clean | fantasy | Selection, draft, lobby; teams, scores, round results |
+| Group | Normal page | Stress page | Other pages | Styles |
+| --- | --- | --- | --- | --- |
+| rpg | `inventory` | `journal` | `equipment`, `explore`, `combat` | fantasy, scifi |
+| shooter | `combat` | `loadout` | | fantasy, scifi, default |
+| strategy | `field` | `defence` | `states` | fantasy, scifi, default |
+| racing | `race` | `garage` | `states` | fantasy, scifi, default |
+| card | `table` | `builder` | `run` | fantasy, scifi |
+| puzzle | `play` | `map` | `states` | fantasy, scifi, default |
+| idle | `play` | `reset` | `states` | fantasy, scifi, default |
+| rhythm | `songs` | `play` | `states` | fantasy, scifi, default |
+| arena | `select` | `match` | `states` | fantasy, scifi, default |
+| general | `store` | `social` | `progress`, `states` | fantasy, scifi |
 
-The `general` group is built with `fantasy` as its primary pack; its
-contrast sample is not yet chosen, and the counts below cover the nine
-groups above.
+`og ui sheet <group>` renders the screens `project.ogt` declares at
+desktop (1920×1080) and phone portrait (390×844), at 100 % and 150 %
+text; `og ui review <group> --style <pack>` renders every page in each
+named style across `--locales`, as labelled contact sheets. A pack's own
+core-control sheet is `og ui sheet <pack-directory>`. Landscape-heavy
+content also has a genuine landscape fixture. Sheet captures are review
+material: locale, right-to-left, landscape and further states get
+risk-based review captures, and any permanent reference names the
+regression it guards. The rpg sheet alone keeps approved cells
+(`sheets/rpg/references/vulkan/`: its five pages at desktop, phone
+portrait and phone landscape in fantasy), which its `verify.ts` compares
+on demand, never as a gate step. A group's behaviour tests mount its
+members under the fantasy pack (scifi has no test of its own yet); neither the
+tests nor a sheet is visual coverage of every combination, and a game's
+actual combination needs review.
 
-Each sampled pair keeps four reference frames: normal desktop at 100 %,
-normal phone at 100 %, stress desktop at 150 %, stress phone at 150 %.
-Desktop is 1920×1080, phone portrait 390×844; landscape-heavy content also
-has a genuine landscape fixture. Nine groups × two packs × four frames is
-72 primary references. `og ui sheet` captures four cells per page, so two
-pages give eight review captures per pair, of which the four above are
-references. Locale, RTL, landscape and further states get risk-based
-review captures, not permanent references.
-
-Each of the six packs also has a core-control state sheet with desktop and
-phone references: 12 more, 84 baseline frames in total. Large text and
-localization are still reviewed per pack; any further reference names the
-regression it guards. All 54 group/pack combinations run nonvisual
-loading, parsing, resource-resolution and runnability checks; the 18
-sampled pairs are not visual coverage of all, and a game's actual
-combination needs review.
-
-Captures record effective style, theme, viewport, DPR, text scale, locale,
-focus, selection, tick and animation history; equal ticks do not prove
-equal state. References are recorded on the GPU host (NVIDIA L4, Vulkan;
-docs/ci.md §The GPU host); other GPU backends are compatibility checks
-under the cross-platform tolerance. A missing GPU is unchecked, never
-passed.
+The references the engine keeps are og-tests-ui's
+`references/vulkan/doc-components-<group>-<document>.png` (each document's
+default fixture), `doc-screens-<screen>.png` and the `documents/` frames,
+in the default style. Captures record effective style, theme, viewport,
+DPR, text scale, locale, focus, selection, tick and animation history;
+equal ticks do not prove equal state. References are recorded on the GPU
+host (NVIDIA L4, Vulkan; docs/ci.md §The GPU host); other GPU backends are
+compatibility checks under the cross-platform tolerance. A missing GPU is
+unchecked, never passed.
 
 ### 6.3 Acceptance and art sign-off
 
@@ -1697,11 +1732,8 @@ screenshot region; the author fixes and recaptures. A palette swap, a
 decorative background or a desktop-only success is not acceptance;
 core-default captures of a group prove behaviour, not final art.
 
-The first accepted set is clean and fantasy with RPG and shooter;
-samples that depend on unbuilt packs stay explicitly pending. The rest of
-the catalogue follows only after that set proves the author-to-review
-process. Release requires the complete matrix; quality failures delay
-release rather than lower scope or waive sign-off.
+Release requires every group signed off under every built pack; quality
+failures delay release rather than lower scope or waive sign-off.
 
 ### 6.4 UI debugger
 
@@ -1742,15 +1774,15 @@ fixtures. Shared API changes go through the integration owner before
 consumers adopt them.
 
 A group's documents, string tables and README live in
-`packages/engine/src/ui/components/<group>/`, its review sheet (with its
-sheet references) in `packages/engine/sheets/<group>/`, its behaviour
-tests in `packages/engine/tests/<group>.test.ts`, and each document's
-cooked frames in og-tests-ui's
-`references/vulkan/doc-components-<group>-<document>.png`. Pack tests and
-references live outside runtime pack roots, under
-`templates/styles/tests/<pack>` and `templates/styles/references/<pack>`.
-Core fixtures live with core tests. Reference changes name the affected
-frames and their reason; recording is not art approval.
+`packages/engine/src/ui/components/<group>/`, its review sheet in
+`packages/engine/sheets/<group>/`, its behaviour tests in
+`packages/engine/tests/<group>.test.ts`, and each document's cooked
+frames in og-tests-ui's
+`references/vulkan/doc-components-<group>-<document>.png`. A pack's files
+and README live in `templates/styles/<pack>/`; pack test material lives
+outside the runtime pack roots, under `templates/styles/tests/`, which
+the cook skips. Core fixtures live with core tests. Reference changes name
+the affected frames and their reason; recording is not art approval.
 
 API declarations, the component catalogue and the wiki are generated from
 IDL, parser metadata and `crates/og-api/guides/`, and are never

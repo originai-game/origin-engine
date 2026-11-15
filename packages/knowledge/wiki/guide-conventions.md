@@ -30,6 +30,11 @@ field's unit.
   towards +X, whether in radians (og.OrbitCamera's `azimuth`) or in
   degrees (og.DayNight's `azimuth`, og.Aurora's `direction`). `facing §1`
   has the 2D one.
+- A turn on the screen is clockwise, since screen y runs down: a UI
+  element's `rotate` (CSS's, and the animated `rotate`), a mass
+  instance's `rotation`, a pinch's `rotation`. A 2D world thing turns the
+  other way, counter-clockwise about +Z with y up (`facing §1`). A UI turn
+  is about the element's pivot (§5).
 
 ```ts
 world.set(lamp, og.SpotLight, { angle: 0.5 });               // radians, half the cone: a beam about 57 degrees across
@@ -88,7 +93,10 @@ the same cell for one point.
 - A world sprite's `anchor` is a fraction of its size from its
   bottom-left corner, y up as the world's: (0.5, 0) stands it on its feet.
 - An image's or a screen element's `pivot` is a fraction from its
-  top-left corner, y down as pixels': (0.5, 1) is its bottom centre.
+  top-left corner, y down as pixels': (0.5, 1) is its bottom centre. A
+  UI element's transform turns and scales about it, (0.5, 0.5) unless
+  set; CSS's `transform-origin` (`0% 0%` the top-left corner, `50% 100%`
+  the bottom centre) is the same point in a document.
 
 The same pair of numbers names opposite edges in the two: (0.5, 0) is the
 bottom centre of a sprite and the top centre of a screen element.

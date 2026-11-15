@@ -11,8 +11,11 @@ it. The catalogue and acceptance contract are in `docs/ui.md` §4 and §6.
 
 Each document declares its name, layer, props, actions, and fixtures with
 standard `<meta>` elements. Structure belongs in scriptless Svelte markup,
-look in scoped CSS and tokens, and data in named sources. Bind sources with
-`{$name}`, name actions with `onclick={action}`, and pass named content with
+look in scoped CSS and tokens, and data in named sources. A screen reads
+its declared props bare (`{title}`, `bind:open={open}`), from a pushed
+screen's viewmodel or a mount's stores of those names; `$toasts` and
+`$captions` are the engine's stores. Name actions with `onclick={action}`,
+and pass named content with
 `{#snippet name()}…{/snippet}` and `{@render name?.()}`. TypeScript builds no
 UI trees. The generated API describes the mount and store signatures.
 
@@ -22,16 +25,9 @@ Each document names a companion English string table with
 Game translations override those base messages. Each screen declares a
 `<meta name="fixture:default" content="…">` JSON fixture for previews.
 
-The conversion preserves the core screen frames except the save/load Auto
-badge tint: CSS resolves the selected parent's background before the child's
-tint. The approved desktop and phone reference changes have RMSE 0.000573
-and 0.000607. Phone control sizes preserve their existing pixels.
-The game-over entrance now targets its title directly; the old relative
-timeline path missed it. Its 300 ms curve and error sound are retained.
-
-The component documents (`card`, `confirm` and the lists, tables and HUD
-feedback rows) are the TS builders' replacements: a game mounts one as
-`<Card title={…}>` once it is loaded, or ejects and edits it. Lists are keyed
+The component documents here (`card`, `confirm` and the lists, tables and
+HUD feedback rows) are used by the name they declare, as any component is,
+or ejected and edited. Lists are keyed
 collections; a nested list is flattened, as a retained `{#each}` reads a
 named collection (a table's `cells` row by row, a tree's visible `rows`).
 
@@ -43,8 +39,11 @@ the card stands at `x` and `y`. Its input mode is `all`, so the player
 can do what a waiting step asks for; a game that wants a step read
 before play goes on holds its own input until `next`.
 
-`og ui eject --list` prints these generic screens. Core document tests
-cook them independently of style packs.
+`og ui eject --list` prints these generic screens. og-ui's
+`tests/component_documents.rs` builds each from its fixtures, and
+og-tests-ui's `tests/document_frames.rs` draws its `fixture:default` in
+the default style against its reference frames (`references/vulkan/`); the fantasy and scifi packs dress them through the role parts and
+the core controls.
 
 | Purpose | Documents |
 |---|---|
@@ -64,3 +63,49 @@ cook them independently of style packs.
 | Card, confirm dialog | `card`, `confirm` |
 | Lists and tables (data list, key-value and stat compare, table, tree, calendar, pagination) | `data-list`, `key-values`, `table`, `tree`, `calendar`, `pagination` |
 | HUD feedback (objectives, rating, banner, subtitles, notifications) | `objective-tracker`, `star-rating`, `banner`, `subtitles`, `notifications` |
+
+## Parts
+
+Each document's parts as its `<meta name="parts">` declares them
+(`pause.frame` in a selector). A part's role name (`frame`, `band`,
+`title`, `row`, `cell`…) takes the default style's role dressing
+(docs/ui.md §3.1). Each part's state qualifiers are listed after it: a
+class (`.selection-on`), an attribute (`[aria-selected]`) or `:disabled`.
+A part that is a button also has the control's own hover, pressed,
+focus-visible and disabled states (docs/ui.md §3.2).
+
+| Document | Parts |
+| --- | --- |
+| `banner` (`banner.svelte`) | `frame`, `title`, `subtitle` |
+| `calendar` (`calendar.svelte`) | `frame`, `band`, `title`, `heading`, `cell` (a button: `.marked` `.outside` `[aria-current]`) |
+| `calibration` (`calibration.svelte`) | `frame`, `label` |
+| `card` (`card.svelte`) | `frame`, `image`, `title`, `body` |
+| `confirm` (`confirm.svelte`) | `title`, `body`, `actions` |
+| `creator-tools` (`creator-tools.svelte`) | `frame` (`.chosen`), `label`, `title` |
+| `credits` (`credits.svelte`) | `frame`, `heading`, `name` |
+| `data-list` (`data-list.svelte`) | `frame`, `row` (a button), `label`, `figure`, `note` |
+| `film-chapters` (`film-chapters.svelte`) | `frame`, `band`, `title`, `card` (`.locked` `.selected` `[aria-disabled]` `:disabled`), `thumb`, `name` |
+| `film-choices` (`film-choices.svelte`) | `frame`, `timer`, `choice` (a button: `.chosen` `[aria-current]` `:disabled`), `hotspot` (a button: `:disabled`), `qte` |
+| `film-flowchart` (`film-flowchart.svelte`) | `frame`, `band`, `title`, `detail` |
+| `film-gallery` (`film-gallery.svelte`) | `frame`, `band`, `title`, `card` (`.locked` `.selected` `[aria-disabled]` `:disabled`), `thumb`, `name` |
+| `game-over` (`game-over.svelte`) | `frame`, `title`, `figure`, `label`, `offer` |
+| `hud-editor` (`hud-editor.svelte`) | `hint`, `dock` |
+| `key-values` (`key-values.svelte`) | `frame`, `row`, `label`, `figure`, `delta` (`.up`) |
+| `leaderboard` (`leaderboard.svelte`) | `frame`, `band`, `title`, `league`, `row` (`.mine-other` `.mine-you`), `rank`, `figure`, `me` |
+| `loading` (`loading.svelte`) | `scrim`, `frame`, `title` |
+| `main-menu` (`main-menu.svelte`) | `frame`, `logo`, `version` |
+| `mode-select` (`mode-select.svelte`) | `frame`, `band`, `title`, `cell` (`.lock-locked` `.lock-open` `.selection-off` `.selection-on`), `name` |
+| `notifications` (`notifications.svelte`) | `frame` (`.danger` `.leaving` `.success` `.warn`), `body` |
+| `objective-tracker` (`objective-tracker.svelte`) | `frame`, `title`, `row` (`.done`), `well`, `fill` |
+| `pagination` (`pagination.svelte`) | `frame`, `gap` |
+| `pause` (`pause.svelte`) | `frame`, `title`, `objective` |
+| `results` (`results.svelte`) | `frame`, `title` (`.outcome-lost` `.outcome-won`), `grade`, `row`, `label`, `figure`, `cell` |
+| `save-load` (`save-load.svelte`) | `frame`, `band`, `title`, `row` (`.selection-off` `.selection-on`), `thumb`, `name` |
+| `settings` (`settings.svelte`) | `frame`, `band`, `title`, `row` |
+| `splash` (`splash.svelte`) | `frame`, `mark` |
+| `star-rating` (`star-rating.svelte`) | `frame` |
+| `subtitles` (`subtitles.svelte`) | `frame`, `line`, `speaker` |
+| `table` (`table.svelte`) | `frame`, `band`, `heading`, `cell` (a button) |
+| `title` (`title.svelte`) | `frame`, `logo`, `prompt` |
+| `tree` (`tree.svelte`) | `row` (`[aria-expanded]` `[aria-selected]`) |
+| `tutorial` (`tutorial.svelte`) | `frame`, `title`, `text`, `step` |

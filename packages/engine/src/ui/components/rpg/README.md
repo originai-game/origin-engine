@@ -2,8 +2,8 @@
 
 Inventory, character and equipment, quests, the world map, conversation and
 the turn-based and exploration HUDs, as documents over core controls
-(docs/ui.md §4). They draw what the game tells it and returns intents
-with stable row keys. It never computes stats, damage, turn order, legality
+(docs/ui.md §4). They draw what the game tells them and return intents
+with stable row keys. They never compute stats, damage, turn order, legality
 or loot.
 
 They are built into the engine: a game's page uses one by name
@@ -20,10 +20,10 @@ parts (docs/ui.md §3.2), qualified by their states and `data-*` attributes,
 for example `RpgBackpack::cell[data-rarity=epic]`. Each member lists its
 parts in its `<meta name="parts">`: its `frame`, and as it has them its
 `band` and `title`, `tab`, `cell`, `row`, `name` and the like
-(`RpgBackpack.cell`, `RpgQuestLog.row`). Classes are left for inner
-structure and state. The fantasy pack (`templates/styles/fantasy/`) is the
-reference dress; its rules on the classes the parts replaced match nothing
-until it moves onto the parts.
+(`RpgBackpack.cell`, `RpgQuestLog.row`; every member's are under Parts).
+Classes are left for inner structure and state. The fantasy and scifi
+packs dress them in `templates/styles/fantasy/rpg.css` and
+`templates/styles/scifi/rpg.css`.
 
 Hooks for a pack: `data-rarity` (common, uncommon, rare, epic, legendary,
 mythic) on backpack and equipment cells and on the item card;
@@ -58,6 +58,35 @@ on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 | `RpgEnemyInfo` | `name`, `portrait`, `level`, `health`, `healthMax`, `effects` keyed `{ id, icon, label, tone }` | none |
 | `RpgCommands` | `commands` keyed `{ id, label, icon, enabled }`, `selected` | `choose` (row key; a disabled command sends nothing) |
 
+## Parts
+
+Each part's state qualifiers are listed after it: a class
+(`.cooling`), an attribute (`[data-rarity]`, `[aria-selected]`) or
+`:disabled`. A part that is a button also has the control's own hover,
+pressed, focus-visible and disabled states (docs/ui.md §3.2).
+
+| Component (document) | Parts |
+| --- | --- |
+| `RpgActionBar` (`action-bar.svelte`) | `frame`, `skill` (a button: `[data-ready]` `:disabled`), `item` (a button) |
+| `RpgBackpack` (`backpack.svelte`) | `frame`, `band`, `title`, `tab` (a button: `[aria-selected]`), `cell` (a button: `[aria-selected]` `[data-broken]` `[data-equipped]` `[data-fresh]` `[data-locked]` `[data-rarity]`) |
+| `RpgCharacter` (`character.svelte`) | `frame`, `band`, `title`, `name`, `cell` (a button: `[aria-selected]` `[data-empty]` `[data-rarity]`), `row` |
+| `RpgCombatLog` (`combat-log.svelte`) | `frame`, `band`, `title`, `row` (`[data-tone]`) |
+| `RpgCommands` (`commands.svelte`) | `frame`, `band`, `title`, `cell` (a button: `.primary` `[aria-selected]` `:disabled`) |
+| `RpgCompass` (`compass.svelte`) | `frame` |
+| `RpgConversation` (`conversation.svelte`) | `frame`, `name`, `row` (a button: `[aria-selected]` `[data-used]`) |
+| `RpgEnemyInfo` (`enemy-info.svelte`) | `frame`, `band`, `title`, `name`, `row` (`[data-tone]`) |
+| `RpgItemCard` (`item-card.svelte`) | `frame` (`[data-rarity]`), `name`, `lead`, `row` |
+| `RpgMenuBar` (`menu-bar.svelte`) | `frame`, `tab` (a button: `[aria-selected]`) |
+| `RpgParty` (`party.svelte`) | `frame`, `cell` (a button: `[aria-selected]` `[data-down]`) |
+| `RpgPlaceCard` (`place-card.svelte`) | `frame`, `name` |
+| `RpgQuestDetail` (`quest-detail.svelte`) | `frame`, `band`, `title`, `row` (`[data-done]` `[data-optional]` `[data-step]`), `reward` |
+| `RpgQuestLog` (`quest-log.svelte`) | `frame`, `band`, `title`, `heading`, `row` (a button: `[aria-selected]` `[data-done]` `[data-fresh]` `[data-tracked]`) |
+| `RpgQuestTracker` (`quest-tracker.svelte`) | `frame`, `title`, `row` (`[data-done]`) |
+| `RpgStats` (`stats.svelte`) | `frame`, `band`, `title`, `row` |
+| `RpgTurnOrder` (`turn-order.svelte`) | `frame`, `cell` (`[aria-current]` `[data-acting]` `[data-down]` `[data-side]`), `title` |
+| `RpgVitals` (`vitals.svelte`) | `frame` (`[data-down]` `[data-plate]`) |
+| `RpgWorldMap` (`world-map.svelte`) | `frame`, `marker` (a button: `[aria-selected]` `[data-kind]` `:disabled`), `row` (`[data-kind]`) |
+
 Every member carries a `fixture:default` the sheet and the tests mount it
 from. Phone layouts come from the members' own media and container queries:
 the backpack's and menu bar's tabs scroll behind an edge fade, the item card
@@ -73,6 +102,8 @@ ja, zh-CN and ar string tables for the locale cells. The sheet's painted
 art (portraits, figure, item and skill icons, scene, map) was generated for
 it with gpt-image-2.6 through the OriginGame gateway and is sheet fixture
 data, not part of the components.
+`og ui review rpg --style scifi` renders the same pages in the scifi pack
+(`templates/styles/scifi/rpg.css`).
 
 `bun test tests/rpg.test.ts` (from `packages/engine`) mounts every member
 by name from a game page at desktop and phone, checks the intents, disabled

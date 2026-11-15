@@ -79,6 +79,8 @@ the score HUD in danger over a bright sky and dark lanes, beside the
 overflow results) and `states` (every member in every fixture state).
 `style:default` and `hit:<judgement>:<early|late|->` are sheet commands for
 the default style and motion clips.
+`og ui review rhythm --style scifi` renders the same pages in the scifi pack
+(`templates/styles/scifi/rhythm.css`).
 
 `bun test tests/rhythm.test.ts` (from `packages/engine`) mounts every member
 by name from a game page in every fixture at desktop and phone, checks the

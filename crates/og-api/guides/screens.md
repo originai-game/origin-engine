@@ -73,6 +73,17 @@ text (§5). The materials resource pack is documented in ui-materials §1.
 A style pack is a directory of CSS and assets, with no manifest or
 `style.ogt`. Structure stays in `.svelte` documents. Haptics stay in `og.*`.
 
+The engine ships two packs that dress every core control, component and
+screen: `fantasy` (crimson bands, brass rims, painted plates) and `scifi` (dark
+glass, thin glowing rims, chamfered frames). Name one in the look
+(`ui "scifi"`), which makes the cook bundle it, or load it as
+`@styles/scifi` in place of a directory of the game's own below. To
+change one, copy it with `og style add scifi` into `assets/styles/scifi/`,
+which the look then resolves before the built-in one, and edit the copy:
+every value is a `:root` token in its `base.css`, so a file of tokens
+sorting after it restyles the pack with no other rule. `og style list`
+names the built-in and installed packs.
+
 1. Run `og style new my-style --look neon-vector --scheme dark` in your
    project. It writes `assets/styles/my-style/main.css` and refuses to
    overwrite an existing directory. `--out` chooses another directory.
@@ -275,6 +286,14 @@ measurements are `og style check-project`.
   block plays as written, any other jumps (opacity and colour fade).
   A keyframe's `-og-sound: error` emits the active style's named sound once
   when playback crosses that frame, at the recorded playback rate.
+- Move, turn and scale with `translate`, `rotate`, `scale` and
+  `transform-origin` (or `transform`); layout keeps the box where it was
+  laid out, and hits, the probe and the accessibility bounds follow the
+  moved box. A turn is clockwise on the screen (`.tilt { rotate: 15deg }`
+  turns the top to the right), and the origin is measured from the box's
+  top-left corner: `transform-origin: 0% 0%` turns about that corner, `50% 100%`
+  about the bottom centre, the centre when unset (conventions §2, §5). An
+  animated `rotate` (a state, a timeline key) turns the same way.
 - Bind structured rich text with `<text spans={$spans}>{$body}</text>`.
   Each `TextSpan` has `name`, `position`, `length`, and scalar `properties`.
   Offsets count Unicode scalars, not bytes or UTF-16 units. Style spans with

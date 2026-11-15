@@ -92,6 +92,8 @@ failed, a purchase that failed, no achievements, quests
 loading and empty, today's reward already taken, a muted chat, no friends).
 Icons come from the shared ink icon sheet; there is no painted art and no
 locale table yet.
+`og ui review general --style scifi` renders the same pages in the scifi pack
+(`templates/styles/scifi/general.css`).
 
 `bun test tests/general.test.ts` (from `packages/engine`) mounts every
 member by name from a game page, from every fixture it declares, at desktop

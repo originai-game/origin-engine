@@ -23,9 +23,11 @@ the changelog; rules are in `AGENTS.md`, the UI contract in `docs/ui.md`.
 Streams report to the coordinator thread
 [T-01a1c3df](https://ampcode.com/threads/T-01a1c3df-23c6-73be-9bb8-0da680008e82).
 
-- **The UI rebuild, stage 7:** the component groups (strategy, racing,
-  card, puzzle, idle, rhythm, arena, general) are being built into `@ui/`.
-  The fantasy style pack ships with the engine.
+- **The UI rebuild, the packs:** the ten component groups are built into
+  `@ui/`, and the fantasy and scifi packs ship with the engine and dress
+  all of them. The cartoon pack, the fantasy controls and shooter parts,
+  and the engine gaps the packs found are in progress; the frame review of
+  the built-in screens under each pack is next.
 - **The structure work** (§Structure).
 - **Screenshots and recordings for agents:** numbered marks on captures
   mapped to source lines, key frames by event with a timeline, and
@@ -33,13 +35,12 @@ Streams report to the coordinator thread
 
 ## Next
 
-1. The docs pass (`docs/ui.md` rewritten, the generated wiki).
-2. The re-record of every reference set on the GPU host (the L4), with art
+1. The re-record of every reference set on the GPU host (the L4), with art
    review, which moves `RECORDING_TIER` off `metal`.
-3. The web-tier re-records.
-4. The performance pass (below).
-5. The real-device run.
-6. 0.8.0.
+2. The web-tier re-records.
+3. The performance pass (below).
+4. The real-device run.
+5. 0.8.0.
 
 ## Below target
 

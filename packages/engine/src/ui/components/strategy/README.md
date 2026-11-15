@@ -73,6 +73,8 @@ forest), `defence` (the stress page: an endless wave with five-digit
 counts, an overflowing queue and a tier-ten tower with long names) and
 `states` (every member in every fixture state). `style:default` is a sheet
 command for the default style.
+`og ui review strategy --style scifi` renders the same pages in the scifi pack
+(`templates/styles/scifi/strategy.css`).
 
 `bun test tests/strategy.test.ts` (from `packages/engine`) mounts every
 member by name from a game page in every fixture at desktop and phone,

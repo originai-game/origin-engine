@@ -1,22 +1,33 @@
 # og-ui
 
-The Origin Engine UI (`docs/design.md` §2.7): an
-immediate-mode toolkit whose tree is declared every tick, laid out
-Clay-style, dressed by the game's own UI style (`type style`; the
-engine's default style until it picks one: the design language the engine
-shares with origin-agent, `packages/design`), drawn through og-render's sprite and
-MSDF text batches, and addressable by the probe through stable string ids
-(`touch_move_to`, `move_to_text`, `dump_ui`).
+The Origin Engine UI (`docs/design.md` §2.7; the contract is `docs/ui.md`):
+the tree that screen and component documents build and the engine's own
+widgets add to, laid out, styled by one CSS cascade (the default style, a
+style pack, the game's own CSS), moved by the tick, and drawn as og-draw's
+commands, which og-render's UI pass draws over the finished frame. The
+probe addresses it through stable string ids (`touch_move_to`,
+`move_to_text`, `dump_ui`). The same Rust runs in the wasm and the native
+host.
 
-It depends on og-core, og-ecs, og-input, og-render, og-probe (no
-default features), og-tween (its spring), og-i18n, unicode-bidi (UAX #9),
-ttf-parser (a font file's metrics and outlines) and, behind the default
-`shaping` feature, rustybuzz only. No layout or GUI library: the layout is
-~600 lines in `src/layout.rs`.
+The UI is crates along its mechanisms (docs/ui.md §7): og-ui-model
+(rectangles, insets, the 2D transforms, the saved bytes' primitives),
+og-css (the value lexer and `calc()`), og-reactive (bindings, formats and
+the reactive session), og-text (measurement, line breaking, bidi, HarfRust
+shaping and run-time glyphs), og-draw (the commands og-render draws) and
+og-rive (Rive artboards). og-ui holds the stages, layout, the cascade,
+motion, paint and the documents; it depends on those and on og-core,
+og-ecs, og-input, og-probe (no default features), og-tween, og-i18n,
+cssparser, Parley and Skrifa, and AccessKit off the web. It never links
+og-render.
 
 ![The sample screen](../og-tests-ui/references/vulkan/sample-screen.png)
 
 ## Using it
+
+A game builds no tree in code: it mounts documents (§Documents), and
+og-runtime runs the UI in the tick on both hosts. The immediate calls below
+are the engine's own front end, which the documents' controls, the
+inspector and the tests use:
 
 ```rust
 let ui = SharedUi::new(Ui::new(UiDesc { fonts: Fonts { body: UiFont::new(handle, &msdf), ..Default::default() }, ..Default::default() }));
@@ -26,24 +37,23 @@ let (desc, run) = ui.system("ui", || viewport, |ui, _ctx| {
         if ui.button("Start", "Start", ButtonDesc { variant: ButtonVariant::Primary, ..Default::default() }).clicked {
             // start
         }
-        ui.tooltip("Starts a new run");
     });
     Ok(())
 });
 world.add_system(desc, run)?;          // builds the UI inside the tick from og.Input
 probe.set_ui(ui.probe());              // dump_ui, touch_move_to, move_to_text
 // after the tick, when rendering:
-let atlas = scene.add_texture(og_ui::atlas_texture());   // once
 let mut overlay = Overlay::new(viewport.width, viewport.height, viewport.dpr);
-ui.lock().frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
-scene.ui.overlay = Some(overlay);                           // over the finished frame, any camera
+let mut ui = ui.lock();
+let time = ui.seconds() as f32;
+ui.frame().emit(&EmitDesc { layer: 1000, time }, &mut overlay);
 ```
 
 `Ui::begin(input, viewport)` … `Ui::end()` is the whole protocol; widgets
 return a `Response { hovered, pressed, clicked, changed, focused, submitted }`
 whose edges last one tick. Interaction is decided against the previous
-tick's rectangles (the immediate-mode rule), which are also what the probe
-resolves against, so a scripted `touch_move_to` and a click agree.
+tick's rectangles, which are also what the probe resolves against, so a
+scripted `touch_move_to` and a click agree.
 
 ## Widgets
 
@@ -60,7 +70,7 @@ resolves against, so a scripted `touch_move_to` and a click agree.
 | `toggle(id, &mut bool, label) -> Response` | a switch (`primary` on) with a label; a click flips it | the label |
 | `text_field(id, &mut String, &FieldDesc) -> Response` | one line: a press focuses it with the caret at the press and a drag selects (Shift+press extends), typed text replaces the selection at the caret, Backspace/Delete/←/→/Home/End edit and Shift with them selects, Ctrl/Cmd+A selects all, +C copies and +X cuts (`Ui::take_clipboard`; the web shell's copy and cut events), an input method's composition shows underlined at the caret until it commits, Enter submits and leaves, Escape leaves, a press elsewhere blurs; the text scrolls to keep the caret in view; the caret blinks (§Text); placeholder; `max_chars`; `invalid` dresses `Field.frame[invalid]` (the danger outline undressed); `bare` draws no frame or ring, for a component's own frame; focus ring in `focus` | the text, or the placeholder while empty |
 | `text_area(id, &mut String, &TextAreaDesc) -> Response` | several lines: the field's editing, Enter breaks the line, ↑/↓ move between lines (and stay out of focus navigation while it is edited), Home/End to a line's ends; wraps between words at its width, `rows` lines tall (default 4), scrolled to keep the caret's line in view | the text, or the placeholder while empty |
-| `rich_text(id, markup, RichTextDesc) -> RichTextResponse` | one paragraph of inline spans from markup (`src/markup.rs`: `[b]`, `[i]` (slanted), `[u]`, `[s]`, `[outline=w,colour]`, `[color=…]`, `[size=…]`, `[font=…]`, `[icon=…]`, `[img=…]` (a picture registered with `set_images`, one em tall at its aspect, in its own colours), `[action=…]` (the action's glyph on the device used last, resolved every frame: its icon, else its key's name on a cap), `[link=…]`, `[wave]`, `[shake]`, `[pulse]`; `[[` is a literal `[`): lines break between the spans' words (a word split across spans stays whole), every span on one baseline, each line as tall as its tallest span; bold thickens the glyphs in the MSDF shader (as far as the field reaches) and draws a second copy a device pixel right; links are child elements (kind `link`) that focus and press like buttons; each line runs the bidirectional algorithm over its whole text at the UI's direction, so pieces reorder and so do runs of either direction inside one span, each run drawn shaped (§Text); a bad tag stays as text and warns | the plain text (links: their text; an action: its glyph's name) |
+| `rich_text(id, markup, RichTextDesc) -> RichTextResponse` | one paragraph of inline spans from markup (`src/text/markup.rs`: `[b]`, `[i]` (slanted), `[u]`, `[s]`, `[outline=w,colour]`, `[color=…]`, `[size=…]`, `[font=…]`, `[icon=…]`, `[img=…]` (a picture registered with `set_images`, one em tall at its aspect, in its own colours), `[action=…]` (the action's glyph on the device used last, resolved every frame: its icon, else its key's name on a cap), `[link=…]`, `[wave]`, `[shake]`, `[pulse]`; `[[` is a literal `[`): lines break between the spans' words (a word split across spans stays whole), every span on one baseline, each line as tall as its tallest span; bold thickens the glyphs in the MSDF shader (as far as the field reaches) and draws a second copy a device pixel right; links are child elements (kind `link`) that focus and press like buttons; each line runs the bidirectional algorithm over its whole text at the UI's direction, so pieces reorder and so do runs of either direction inside one span, each run drawn shaped (§Text); a bad tag stays as text and warns | the plain text (links: their text; an action: its glyph's name) |
 | `tooltip(text)` | for the element just built: shown below it (above without room, clamped to the safe area) once the pointer has rested on it for `motion.duration.slow`; drawn over everything | the text |
 
 Any container with `interactive: true` reports its response from `close()`.
@@ -95,7 +105,7 @@ focus scope are all in `save_state`, so a restored world replays the UI.
 release over another row or cell answers `Response::dropped = Some(source)`
 there; the cell under a drag shows the focus ring.
 
-## Scrolling (`src/scroll.rs`)
+## Scrolling (`src/interaction/scroll.rs`)
 
 A container scrolls vertically (`Element::scroll`), horizontally
 (`Element::scroll_x`; a horizontal scroller never shrinks its children) or
@@ -157,7 +167,8 @@ A screen or component is a scriptless `.svelte` document. Metadata
 declares its contract; markup defines structure and bindings; scoped CSS
 defines appearance. `UiDocument::parse(source, text)` validates it against
 the reflected document schema, and og-cook writes an `og.UiDocument` blob.
-The old `.ogt` screen reader is deleted.
+The engine's built-in components and screens are documents of the same
+form under the `@ui/` root (`packages/engine/src/ui/`, docs/ui.md §5).
 
 ### Grammar
 
@@ -166,11 +177,11 @@ The old `.ogt` screen reader is deleted.
 <meta name="prop:gold" content="number">
 <meta name="prop:price" content="number">
 
-<panel id="Shop">
-	<button id="Buy" disabled={$gold < $price} onclick={buy}>
+<section id="Shop">
+	<button id="Buy" disabled={gold < price} onclick={buy}>
 		{t('shop.buy')}
 	</button>
-</panel>
+</section>
 
 <style>
 #Shop { width: 520px; }
@@ -181,31 +192,26 @@ The old `.ogt` screen reader is deleted.
 ```
 
 The caller supplies `gold`, `price`, the `buy` action, and a string table
-containing `shop.buy`. IDs are unique within the document. Media conditions
-support width, height, aspect ratio, orientation, and reduced-motion
-preferences, min/max and range comparisons, boolean composition, and nested
-intersections. There is no named-breakpoint reader. Container-query runtime
-support is separate and remains pending.
+containing `shop.buy`. IDs are unique within the document. The tags,
+attributes, blocks and CSS a document takes, and what it refuses, are
+docs/ui.md §2 and §3; the [screens guide](../og-api/guides/screens.md)
+says how to write one and the generated
+[component catalogue](../og-api/guides/components.md) lists every element
+and property the schema reflects.
 
-See the [screens guide](../og-api/guides/screens.md) for the document grammar
-and [component catalogue](../og-api/guides/components.md) for reflected
-properties. The [UI contract](../../docs/ui.md) distinguishes implemented
-document support from pending retained mounting.
-
-### Bindings and formats (`src/bind.rs`)
+### Bindings and formats (og-reactive)
 
 A **viewmodel** is JSON: an object code passes (`og.ui.push(world, "shop", vm)`),
-a fixture, or a reflected resource or component code reads into it. A path
-(`hero.health`, `items.0.price`, `items.length`) reads the viewmodel, a
-`for`'s item variable first; a Capitalised root (`Wallet.gold`) is the
-host's (`Env::lookup`: the resource as of the last tick's end). Expressions:
+a fixture, or a mount's stores. A path (`hero.health`, `items.0.price`,
+`items.length`) reads it, an `{#each}` row's alias first. Expressions:
 paths, numbers, strings, `true false null`, `! -`, `* / % + -`,
-`< <= > >= == !=`, `&& ||`, `a ? b : c`, parentheses. Bindings are read every
-tick after the game's systems; an unchanged value leaves its element's
-layout and drawing kept (docs/ui.md §2).
+`< <= > >=`, `== !=`, `&& ||`, `a ? b : c`, parentheses. A binding tracks
+only what it read; an unchanged value leaves its element's layout and
+drawing kept (docs/ui.md §2.1).
 
-Formats (`bind <expr> <format> [digits]`, or `{path, format[, digits]}` in a
-template), by the language og-i18n sets:
+A translated string's arguments take the engine's formats as argument
+types (`{gold, compact}`, `{t, clock}`, `{n, scientific, 4}`), by the
+language og-i18n sets:
 
 | format | 1234567.891 | what it does |
 |---|---|---|
@@ -271,7 +277,7 @@ of its own (id: its screen's name), built in stack order:
 - `save_state` carries the stack, each layer's viewmodel and focus, and the
   states triggers set.
 
-### Actions and glyphs (`src/actions.rs`)
+### Actions and glyphs (`src/interaction/actions.rs`)
 
 Named UI actions bound to og-input's controls: `ActionDesc { name, keys,
 buttons, trigger, toggle, label }` with `trigger` press, release or
@@ -287,147 +293,6 @@ coarse pointer), and `glyph(action)` its glyph there (`icon` a style's
 icon name, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `key.enter`,
 `touch.<action>`, and `text`). `action_bar()` is what an action bar
 component reads: the top layer's `actions` with their hints and glyphs.
-
-### The props
-
-Every kind takes the box and element-model props (`on` all); the rest are
-the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
-`list`, `cells`, `slot` (containers), `label`, `button`, `image`, `art`,
-`icon`, `progress`, `slider`, `toggle`, `tabs`, `field`, `badge`, `spacer`,
-`divider`.
-
-| prop | value | on | what it does |
-|---|---|---|---|
-| `width` | size | all | Its width (fit by default). |
-| `height` | size | all | Its height (fit by default). |
-| `padding` | insets | all | Space inside its edges, CSS px. |
-| `gap` | number | all | Space between its children, CSS px. |
-| `align` | start \| center \| end \| spaceBetween | all | Where children sit along the main axis. |
-| `cross` | start \| center \| end \| stretch \| baseline | all | Where children sit across it. |
-| `wrap` | bool | all | A row breaks its children into lines. |
-| `direction` | row \| column | row, column | Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content). |
-| `background` | paint | all | Its fill. |
-| `radius` | number | all | Its corner radius, CSS px. |
-| `frame` | panel \| card \| button \| buttonHover \| buttonPressed \| buttonDisabled \| field \| slot \| tooltip \| hud \| track \| fill | all | The style frame its background takes. |
-| `<og-rive src>` | name | og-rive | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/: loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
-| `aspect` | number | all | Width over height (0: none). |
-| `fade` | number | scroll | How far, CSS px, its edges fade where its content runs on past them (a cut row reads as more, not as a clip); 0: none. |
-| `fadeInto` | paint | scroll | The colour its fade runs into: the ground it sits on (default panel). |
-| `interactive` | bool | all | It reports clicks (`on click`). |
-| `focusable` | bool | all | With interactive: keys and pads reach it and press it. |
-| `adjustable` | bool | all | With focusable: Left and Right step it while it has the focus instead of moving the focus. |
-| `visible` | bool | all | False leaves it (and its subtree) out of the tree. |
-| `name` | text | all | What a screen reader calls it. |
-| `part` | name | all | Its part name a style dresses (`ShopCard.frame`); the document's `parts` lists them. |
-| `x` | number | all | Moved right after layout, CSS px. |
-| `y` | number | all | Moved down after layout, CSS px. |
-| `xShift` | number | all | Moved right after layout, a fraction of its own width (`translate`'s %). |
-| `yShift` | number | all | Moved down after layout, a fraction of its own height (`translate`'s %). |
-| `scale` | number | all | Both scales. |
-| `scaleX` | number | all | Its horizontal scale. |
-| `scaleY` | number | all | Its vertical scale. |
-| `rotate` | number | all | A turn, radians, clockwise. |
-| `skewX` | number | all | A skew, radians. |
-| `skewY` | number | all | A skew, radians. |
-| `pivot` | x y | all | The transform's origin, fractions of its box. |
-| `opacity` | number | all | 0 to 1, multiplied down the tree. |
-| `z` | number | all | Drawing order among its siblings. |
-| `position` | flow \| absolute \| screen \| anchored | all | In the flow, placed by its insets in its parent, by its insets on the whole screen (full bleed, under the safe area), or against another element. |
-| `start` | number | all | The inset from its parent's start edge (absolute). |
-| `top` | number | all | The inset from the top. |
-| `end` | number | all | The inset from the end edge. |
-| `bottom` | number | all | The inset from the bottom. |
-| `centerX` | bool | all | Centred across its parent. |
-| `centerY` | bool | all | Centred down its parent. |
-| `anchorTo` | name | all | The path of the element an anchored element sits against. |
-| `anchorAt` | topLeft \| top \| topRight \| left \| center \| right \| bottomLeft \| bottom \| bottomRight | all | The target's point it sits on. |
-| `anchorSelf` | topLeft \| top \| topRight \| left \| center \| right \| bottomLeft \| bottom \| bottomRight | all | Its own point that sits there. |
-| `hitSlop` | number | all | Extra pointer reach, CSS px. |
-| `columns` | tracks | all | A grid's column tracks. |
-| `rows` | tracks | all | A grid's row tracks. |
-| `areas` | names | all | A grid's named areas, one string per row. |
-| `flow` | row \| column | all | How a grid auto-places. |
-| `dense` | bool | all | A grid back-fills holes. |
-| `area` | name | all | The named grid area it takes. |
-| `cell` | x y | all | Its grid column and row, 1-based. |
-| `span` | x y | all | Columns and rows it spans. |
-| `match` | name | all | A shared-element key. |
-| `motion` | transition | all | How its animatable values move when they change. |
-| `layoutMotion` | transition | all | Moves from its old rectangle to its new one. |
-| `enter` | presence | all | How it arrives. |
-| `exit` | presence | all | How it leaves. |
-| `inert` | bool | all | It and its subtree take no input. |
-| `navUp` | name | all | Where Up moves the focus from it (a path). |
-| `navDown` | name | all | Where Down moves the focus from it. |
-| `navLeft` | name | all | Where Left moves the focus from it. |
-| `navRight` | name | all | Where Right moves the focus from it. |
-| `navNext` | name | all | Where Tab moves the focus from it. |
-| `navPrev` | name | all | Where Shift+Tab moves the focus from it. |
-| `focusGroup` | stop \| wrap | all | Its focusable controls are a focus group that stops (leaves) or wraps at its edge. |
-| `focusMemory` | bool | all | With focusGroup: focus coming back lands on its last member. |
-| `tap` | bool | all | It recognises a tap (`on tap`). |
-| `doubleTap` | bool | all | It recognises a double tap (`on doubleTap`); its tap waits for it. |
-| `longPress` | bool | all | It recognises a long press (`on longPress`). |
-| `longPressMs` | number | all | How long its long press is held, ms (0: 500). |
-| `gesturePriority` | number | all | Among nested recognisers of one press: higher wins. |
-| `cursor` | auto \| default \| pointer \| text \| grab \| grabbing \| move \| notAllowed \| crosshair \| help \| wait \| progress \| resizeEw \| resizeNs \| resizeNesw \| resizeNwse \| zoomIn \| zoomOut \| none | all | The pointer's shape over it and its subtree. |
-| `customize` | bool | all | The player can move, scale and fade it in the HUD edit mode. |
-| `customizeKey` | name | all | With customize: its name in the saved HUD layout (default: its path). |
-| `text` | text | label, button, badge, toggle, tabs | What it says. |
-| `key` | name | label, button, badge, toggle, tabs | A string table key (og.i18n) its text comes from; `text` is the fallback. |
-| `step` | body \| xs \| meta \| caption \| sm \| reading \| base \| lg \| xl \| xl2 \| xl3 \| xl4 \| xl5 \| xl6 \| xl7 \| xl8 \| displaySm \| displayMd \| displayLg \| displayXl \| displayXl2 \| hero | label | The type step. |
-| `color` | paint | label, icon | Its ink. |
-| `onScene` | bool | label | Scene ink and separation shadow. |
-| `uppercase` | bool | label | Uppercase in the UI's locale, as a type role with `case upper` is. |
-| `secondary` | name | icon | The second icon layer, in the same atlas. |
-| `secondaryTint` | paint | icon | The second layer's ink; accent by default. |
-| `textAlign` | start \| center \| end | label | How its lines align. |
-| `nowrap` | bool | label | One line. |
-| `maxLines` | number | label | The most lines it shows. |
-| `fitMin` | body \| xs \| meta \| caption \| sm \| reading \| base \| lg \| xl \| xl2 \| xl3 \| xl4 \| xl5 \| xl6 \| xl7 \| xl8 \| displaySm \| displayMd \| displayLg \| displayXl \| displayXl2 \| hero | label | Shrinks by type steps to fit its width, down to this step. |
-| `ellipsis` | bool | label | Cut with … where it does not fit. |
-| `font` | body \| display \| mono \| rounded | label | The font role. |
-| `heading` | bool | label | A heading (a style's flourish frames it). |
-| `variant` | secondary \| primary \| quiet \| danger \| ghost | button | The button's role. |
-| `size` | small \| medium \| large | button | The control height. |
-| `disabled` | bool | button, slider, toggle, field | Takes no input. |
-| `autofocus` | bool | button | Takes the focus when it appears. |
-| `square` | bool | button | A square of the control height: an icon button. |
-| `value` | number | progress, slider | Its value (a slider writes it back). Two-way. |
-| `min` | number | slider | The range's low end. |
-| `max` | number | slider | The range's high end. |
-| `stepBy` | number | slider | Snap to multiples of this (0: continuous). |
-| `checked` | bool | toggle | Whether it is on (written back). Two-way. |
-| `items` | names | tabs | The tab labels, literal names or a bound list of strings. |
-| `keys` | names | tabs | A string table key (og.i18n) per tab its label comes from; its item is the fallback. |
-| `values` | names | tabs | A name per tab (a screen's mode) that `current` holds instead of `selected`'s index. |
-| `current` | name | tabs | The selected tab's name from `values`; it takes over from `selected` when `values` is set. Two-way. |
-| `selected` | number | tabs | The selected tab's zero-based index. Two-way. |
-| `fill` | bool | tabs | Equal tabs filling the available width. |
-| `input` | text | field | The field's text (written back). Two-way. |
-| `placeholder` | text | field | Shown while it is empty. |
-| `maxChars` | number | field | The most characters it takes. |
-| `tight` | bool | field | No inset and its text's line height: the text sits where the field is laid (in a box the screen draws). |
-| `component` | name | field | The component its style dresses it as (`Poem`, `Search[large]`): `<component>.frame`, `.text` and `.placeholder`; else Field. |
-| `invalid` | bool | field | Its text is wrong: the danger frame. |
-| `tone` | neutral \| info \| success \| warn \| danger \| accent | badge | Its tone. |
-| `vertical` | bool | divider | Upright. |
-| `texture` | number | image, art | A texture handle (og.load.texture), usually bound. |
-| `tint` | paint | image, art | Multiplies the texture (or fills without one). |
-| `icon` | name | icon | The icon's name in the style's set. |
-| `iconSize` | number | icon | CSS px (24 by default). |
-| `kind` | name | art | The slot's kind (Appendix F: itemIcon, bust, keyArt…). |
-| `ratio` | x y | art | The slot's aspect, width and height in whole numbers. |
-| `focal` | x y | art | The point cropping keeps, 0–1. |
-| `safe` | 4 numbers | art | Where text or controls lie over it: x0 y0 x1 y1, 0–1. |
-| `fit` | cover \| contain \| fill \| nineSlice \| tile | art | How the art fills the slot. |
-| `itemCells` | x y | art | An item icon's grid cells, columns and rows (1 1, 1 2, 2 3 or 2 4). |
-| `slice` | insets | art | A nine-slice's insets as fractions of the art: all, x y, or left top right bottom. |
-| `artSet` | name | art | The set it is generated with for a consistent look (the kind's name by default). |
-| `rowHeight` | number | list | Every row's height, CSS px. |
-| `cellWidth` | number | cells | A cell's width, CSS px. |
-| `cellHeight` | number | cells | A cell's height, CSS px. |
-| `cellColumns` | number | cells | Cells across (0: as many as fit). |
 
 ## Accessibility tree (`src/a11y.rs`)
 
@@ -461,8 +326,8 @@ the page. Focus order is the tree's order (the drawing order: the page,
 then each layer over it): Tab and the pads walk exactly the nodes marked
 `focusable`, within the topmost dialog while one is open.
 `tests/a11y.rs` checks the roles, names, values and states of every
-widget and that Tab walks `focus_order`; the kit's `a11y` playtest checks
-that every screen names every control and gives every text a role.
+widget and that Tab walks `focus_order`; `og ui check` reports a screen's
+unnamed controls and texts without a role.
 
 **The web shell's mirror** (`packages/engine/src/web/a11y.ts`). The Worker
 creates the engine with `a11y`; a frame's answer then carries the tree
@@ -500,12 +365,12 @@ element has the DOM focus still reach the engine as keys (the shell keeps
 the arrows from the native range, so a key steps once). The native host creates no mirror
 and its frame answers carry no tree. `tests/a11y.rs` covers the requests
 and the digest; `packages/engine/tests/web/a11y.ts` checks the DOM against
-the tree on ui-kit's settings screen in Chrome, Chrome's own accessibility
+the tree on the `tests/fixtures/a11y` settings dialog in Chrome, Chrome's own accessibility
 tree, the Master slider's native range lowered by an `input` event (the
 adjust gesture), a screen-reader-style click toggling Mute, the live
 region, and the page preferences below.
 
-## Focus navigation (`src/nav.rs`)
+## Focus navigation (`src/interaction/nav.rs`)
 
 One focus for pointer, keyboard and gamepad. Intents come from the arrow
 keys, Tab/Shift+Tab, Enter, Space and Escape (`InputFrame::keys`, `shift`),
@@ -548,7 +413,7 @@ past half-way once, then after `motion.duration.slow` every
   there is none. With `memory`, focus coming back in lands on the member it
   last had. Tab ignores groups (reading order).
 
-## Gestures and the cursor (`src/recognize.rs`)
+## Gestures and the cursor (`src/interaction/recognize.rs`)
 
 `Props::gestures` (`GestureSpec { tap, double_tap, long_press,
 long_press_ms (500), double_tap_ms (300), slop (10), priority }`) makes any
@@ -589,8 +454,7 @@ and `Response::focused_by` has a bit per pad whose focus is on it;
 `Ui::focus_path(pad)` answers where each pad's focus is. Pad 0 keeps sharing
 its focus with the keyboard and the pointer; Back and adjusting a slider
 stay pad 0's. The pads' focus and sticks are in the UI state
-(`tests/widgets.rs` `pads_beyond_the_first_move_their_own_focus_and_press`;
-the kit's `players` screen and playtest). The probe's `gamepad` command
+(`tests/widgets.rs` `pads_beyond_the_first_move_their_own_focus_and_press`). The probe's `gamepad` command
 addresses them with `@1` to `@3` after the buttons (`gamepad:a@2`).
 
 **Several touches.** `InputFrame::pointers` is og-input's `og.Pointers`
@@ -601,8 +465,8 @@ while the touch that started on it is down, so a thumb on the stick and
 another on Hit work together. Two touches on one scroll container scroll
 it (§Scrolling).
 
-**A virtual cursor for pads (`src/vcursor.rs`).** `Ui::set_virtual_cursor(Some(
-VirtualCursorDesc { speed (900), accel (250 ms), magnet (0.5), scroll (1200) }))`,
+**A virtual cursor for pads (`src/interaction/vcursor.rs`).** `Ui::set_virtual_cursor(Some(
+VirtualCursorDesc { speed (900), accel (250 ms; TypeScript's `accelMs`), magnet (0.5), scroll (1200) }))`,
 declared every tick like `set_players`, turns pad 0 into a pointer for a
 screen built for the mouse (a map, a shop grid, a strategy HUD): the left
 stick moves a cursor (squared for fine aim, from a third of its speed to all
@@ -614,7 +478,7 @@ style draws it (a ring in `focus` on a shadow, larger over a control) and
 `UiFrame::cursor` is `none`. The real pointer moving hides it and the stick
 shows it again. It is UI state (`save_state` version 15).
 
-**The player's HUD layout (`src/hud_layout.rs`).** `Props::customize`
+**The player's HUD layout (`src/interaction/hud_layout.rs`).** `Props::customize`
 (`Customize { key, lock_move, lock_scale, lock_opacity, min_scale (0.5),
 max_scale (2), min_opacity (0.2) }`; the touch controls take it in their
 descs) lets the player move, scale and fade an element. Each player's
@@ -631,7 +495,7 @@ says so, and `Ui::set_hud_layout(player, json)` gives it back on the next run.
 The layouts and the edit mode are UI state (version 15; a version 14 state
 upgrades with none).
 
-## Motion (`src/motion.rs`)
+## Motion (`src/motion/`)
 
 Content moves in and out by CSS: a document's `transition:` and `animate:`
 directives, `@starting-style` and `@keyframes`, eased by the theme's curves
@@ -641,69 +505,46 @@ over a fading scrim; toasts slide. Under `Theme::reduced_motion` every
 movement becomes a fade. The transform applies to the laid-out rectangles
 (so drawing, hit testing and the probe agree), to opacity and to text size.
 
-## Styles (`src/style_file.rs`)
+## Styles (`src/style_pack.rs`, `src/css/`)
 
-A game's UI wears a **style**: one complete asset the theme carries by value
-(`Theme::art`, `Copy`, with the palette, radii, ramp and durations it set
-in the `Theme` itself). Before a game picks one it has the **default
-style** (`src/theme.rs`, generated from `packages/design/tokens/*.css` by
-`scripts/gen-theme.sh`, `tests/theme.rs` failing on drift): the design
-language's neutral ladder, amber primary and focus, radii 4/6/capsule/12,
-flat glass on floating chrome (`default_dressings`: dialogs, sheets,
-menus, popovers and tooltips thick, HUD capsules and action hints regular)
-and borderless controls; a game may ship it as it is (`dump_ui`'s
-`style` is then empty). Nothing of a style comes from the platform: the
-engine owns these values and the platform's design language styles only
-its own pages and the player shell (`docs/design.md` §9).
+A game's UI wears one cascade. Its first layer is the **default style**:
+`default.css`, generated with `src/theme.rs` from
+`packages/design/tokens/*.css` by `scripts/gen-theme.sh` (`tests/theme.rs`
+fails on drift). It sets every value the core controls and the built-in
+components draw with as a `:root` token and dresses every role part once
+(docs/ui.md §3.1); the theme reads the root tokens back each frame
+(`ui/css_tokens.rs`), so a widget drawn in code takes them too. The design
+language is the one the engine shares with origin-agent; nothing of it
+comes from the platform at run time.
 
-A style file is an `.ogt` of `type style` (`parse_style`, grammar in its doc
-comment; og-cook validates it and cooks it as an `og.UiStyle` blob,
-`og.load.style` loads it with its assets; a look's `ui` line names one by
-slug, `@styles/<slug>/style.ogt` built in, or by the game's own id). It declares:
+A **style pack** is a directory of CSS and assets with no manifest
+(`StylePack::parse`, `Ui::set_style_pack`): its direct-child `.css` files
+apply in lexical order in the `og-pack` layer, nested sheets through
+`@import`, URLs beside the file that names them. Its CSS is read once and
+shared by every document. The layers are `og-default`, `og-components`
+(the built-in documents' own `<style>`), `og-pack`, `og-game`, then
+unlayered CSS (docs/ui.md §5). The built-in packs are
+`templates/styles/fantasy` and `templates/styles/scifi`, each with a
+README of its files and tokens.
 
-| Part | What it does |
-|---|---|
-| `scheme`, `palette`, `radius`, `ramp`, `durations` | its light or dark scheme, **every** `ThemeColor` (the palette's 33 roles) and all four radii (`small`, `control`, `bar`, `panel`), and the TypeStepName and duration values it changes from the scheme's: these go into the `Theme` itself, so every widget follows. A style that leaves out a role or a radius is refused, naming them (`type skin` and `base` lines name their fix) |
-| `atlas "<id>" <w> <h>`, `scale` | the texture every frame, ornament and tile is cut from. Every id a style names (atlas, fonts, icons, sounds) is read relative to the style file first (`atlas.png` beside it, `../shared/rope.png`), then from `assets/` (`StyleFile::resolve`, the same in the cook and at load), so a style copied to another directory works unchanged |
-| `slice <part> x y w h <inset…> [tint\|authored] [stretch\|repeat\|round]` | a nine-slice frame per element class (`StylePart`): `panel` (dialogs, anchored screen panels), `card` (`Ui::panel`), `button`, `buttonHover`, `buttonPressed`, `buttonDisabled`, `field`, `slot` (grid cells), `tooltip`, `hud` (HUD boxes, toasts), `track` and `fill` (progress). `tint` frames are white art multiplied by the element's colour (so primary and secondary buttons keep their palette); `authored` ones keep their own colours. Edges and centre `stretch` (the default), `repeat` (tiled at the art's own size from the corner, the last tile cut) or `round` (a whole number of tiles resized to fit, CSS `round`): patterned borders tile, plain ones stretch |
-| `soft` | a blurred white rectangle: soft shadows and glows |
-| `corner` + `corners <parts>`, `divider`, `flourish` | ornaments: four mirrored corners on the named parts, an ornament over `Ui::divider`, a flourish beside a heading (`LabelDesc::heading`; both sides when centred). Ink `authored`, `primary`, `ink`, `muted`, `line` or `focus` |
-| `tile x y w h <tw> <th> <alpha> [inset] <parts>` | a texture tiled over the parts' fill (parchment, scanlines, grain) |
-| `shadow <part> dx dy blur spread "#rrggbbaa"`, `glow <part> size ink alpha` | per class (button states share the button's); blur 0 is a hard shadow |
-| `glass <part> blur fill [tint]` | the part is glass: og-render's blurred frame under it (`DrawCmd::Glass`, `og_render::Glass`: the scene and the overlay layers drawn below the glass, blurred by `blur` CSS px, tinted by the part's fill colour at `tint`, default 0.25), under its nine-slice drawn at `fill` of its opacity. The scifi style's dialogs are glass (`glass panel 16 0.85 0.15`) |
-| `textShadow <role> dx dy blur colour`, `textGlow <role> size ink alpha` | per font role (`body`, `display`, `numeric`); the text glow is og-render's distance-field halo (`Text::glow`, one instance per glyph under its ink) reaching twice `size` CSS px, as far as the font's distance range allows: cook a glowing role's font with a wider `px_range` (the neon and scifi styles' display and numeric fonts take 12) |
-| `textWeight <role> px` | per font role: the glyphs thickened at their edge by `px` device pixels (0 to 2; a phone's 3 device pixels per CSS pixel draw a font's one-dot stroke three wide, so it gains a third, not double) through the distance field, the text shadow with them, within what the font's distance range allows (half its reach at the size drawn, less 0.75 px). For a pixel font whose one-pixel strokes fall between device pixels and so never take their full ink: the pixel style's body takes 0.5 with DotGothic16 cooked at `px_range 8` (at 4 its gold primary labels read 2.9:1, hollowbell FINDINGS #20) |
-| `press sx sy dy`, `hover dy scale` | the press squash and sink, the hover lift, each on a damped spring (og-tween's `Spring`, arithmetic only, in the UI state): the hover on `motion.hoverSpring` (default damping 1 and 350 ms: no overshoot), the press on `motion.pressSpring` (default damping 0.55 over the `instant` duration: in at once, a small bounce past rest on release) |
-| `fonts { body display numeric fallback }`, `icons "<id>" cols rows { names … }` | fonts per role (numeric is the `Mono` role) and a `fallback` (a CJK face for a game that shows CJK): a text whose role font lacks one of its characters is measured and drawn in the fallback (`Fonts::for_text`); the icon set |
-| `motion { enter stagger toast progress shake pop hoverSpring pressSpring }` | dialog and panel entrance (`pop` springs past 1 and settles), the stagger of a panel's controls (shortened so a long list ends within one more entrance; only seen: a control takes input once the panel has arrived, wherever it is drawn), the toast arrival, eased progress bars, the refused-press shake, the count-up landing pop, and the hover and press springs (`<damping ratio> <response ms>`) |
-| `sound <event> "<id>"` | UI sounds (below) |
-
-Six built-in styles live in `templates/styles/<slug>/` (pixel, cartoon,
-fantasy, scifi, paper, neon; og-cook embeds them as `@styles/<slug>/`),
-drawn by `templates/ui-kit/tools/make-styles.py`; art drawn by hand is
-packed by `og style pack <dir>` (og-cli's `src/style.rs`: `<part>.9.png`
-nine-patches, whose one-pixel border marks what stretches, and plain PNGs
-for ornaments, into `atlas.png` and the style file's atlas, slice, soft
-and ornament-region lines, every other line kept;
-`crates/og-cli/tests/cli.rs` packs `tests/fixtures/style-pack`);
-`tests/packs.rs` holds each to 4.5:1 for every ink a template puts on a
-dressed surface, measured over the frame art really under the text, and
-og-tests-cooked's `tests/pack_contrast.rs` holds them and the games' own styles (the
-archetypes' and the examples') to the same bars for every button state,
-field, badge tone, meter label and slot count.
+`style/` keeps what the cascade resolves into: the theme's palette and
+ramp (`style.rs`, `style/tokens.rs`), CSS colours (`style/css_color.rs`),
+the exposed parts' identities (`style/dress.rs`), `-og-sound`
+(`style/sound_css.rs`) and the paint values widgets share
+(`style/style_file.rs`). `tests/style_pack.rs` loads packs, their light
+blocks and their `url()`s through tokens, and `tests/button_contrast.rs`
+holds every button role's label to its fill in both schemes.
 
 **Badges on either side of the scale.** A palette's status tones and
 primary are made for its panels: deep on a cream panel, light on a dark
 one, and no ink reads 4.5:1 on a dark stage and a cream panel at once. So
 a badge reads its ground (`Ui::behind`, the palette's colours): on the
-palette's own side it draws the palette's ink as it is (the tests hold
-the palette there), and on the other side (a light style's badge straight
-on its dark screen, a dark style's on a light card) its ink moves towards
-its own end of the scale until it reads 4.5:1 (`Srgba::readable_on`: a
-deep green lightens, keeping its hue as far as the bar allows). The neutral
-badge's ground is its own flat `control`, so `inkMuted` moves wherever it
-does not read on it, and where no ink of its side could, the fill darkens
-or lightens away from it instead.
+palette's own side it draws the palette's ink as it is, and on the other
+side its ink moves towards its own end of the scale until it reads 4.5:1
+(`Srgba::readable_on`: a deep green lightens, keeping its hue as far as
+the bar allows). The neutral badge's ground is its own flat `control`, so
+`inkMuted` moves wherever it does not read on it, and where no ink of its
+side could, the fill darkens or lightens away from it instead.
 
 ## Icon sets
 
@@ -712,29 +553,26 @@ An icon atlas is a grid of equal cells of a texture (`IconAtlas::texture`,
 font. og-cook's `type icons` file names the SVGs (`source`, `size`,
 `range`, one `icon "<name>" ["<file>"]` a line; `crates/og-cook/src/cook/formats/icons.rs`)
 and cooks them into an `og.Font` blob: icon `i` is the glyph at U+E000 + i,
-its em square the SVG's view box (ascender 1, descender 0), the field a
-true signed distance in all four channels of the stroke's own outline
-(round caps and joins are arcs; a butt cap is cut square; a miter join
-reaches its point within `stroke-miterlimit`, else is bevelled, and a
-bevel is cut across, so a miter's corner stays sharp but for one texel's
-rounding a single channel gives; a path's `stroke-linejoin`, else the
-set's `join` line, else SVG's miter), the names in a `names` section. `og.load.font` loads it, `UiDesc.icons.font`
-(`IconAtlas::font`) makes it the atlas: `icon` draws its glyph fitted to
-the icon's square through the MTSDF text path (crisp at any size, in its
-ink), and rich text's `[icon=name]` draws it inline. The UI kit ships 72
-iconoir icons (the platform's icon set, MIT) as
-`templates/ui-kit/assets/icons/iconoir.ogt` (`join round`), 17 of them
-again under the kit's own names (`coin`, `gear`, `sword`…), at 48 px per
-icon, range 8. Every kit screen draws from it (a style pack keeps its own
-icons; the 32-cell PNG grid is the fallback when the set does not load);
-og-tests-cooked's `tests/materials_gfx.rs` renders them.
+its em square the SVG's view box, the field a true signed distance in all
+four channels of the stroke's own outline (round caps and joins are arcs; a
+butt cap is cut square; a miter join reaches its point within
+`stroke-miterlimit`, else is bevelled; a path's `stroke-linejoin`, else the
+set's `join` line, else SVG's miter), the names in a `names` section.
+`og.load.font` loads it and `UiDesc.icons.font` (`IconAtlas::font`) makes
+it the atlas: `icon` draws its glyph fitted to the icon's square through
+the MTSDF text path (crisp at any size, in its ink), and rich text's
+`[icon=name]` draws it inline. The test fixture
+`tests/fixtures/ui-text/assets/icons/iconoir.ogt` is 72 iconoir icons
+(MIT) at 48 px per icon, range 8; og-tests-cooked's
+`tests/materials_gfx.rs` renders them. A document's monochrome icon is
+CSS (`mask-image: url()` over `currentColor`, docs/ui.md §2).
 
-## Juice and screen covers (`src/juice.rs`)
+## Juice and screen covers (`src/motion/juice.rs`)
 
 - `counter(id, value, CounterDesc)`: a label that counts (ease-out cubic,
   by the tick, f64) from what it shows to `value` whenever `value` changes;
   the first count starts at `from` (none: no count). Grouped with commas,
-  decimals, prefix and suffix; a style's `motion.pop` bumps it on landing.
+  decimals, prefix and suffix; the style's `--motion-scale-pop` bumps it on landing.
 - `cover(&ScreenTransitionDesc, amount, revealing)`: a full-frame cover at
   `amount` this frame, for a caller that times it (a timeline's transition
   track, a screen's `@view-transition`): `Fade`, `Wipe`, `Iris` (2 px
@@ -745,18 +583,20 @@ og-tests-cooked's `tests/materials_gfx.rs` renders them.
 
 ## UI sounds
 
-The UI queues an event when the style (or `UiDesc.sounds` through the host)
-has a sound for it: `Hover` (the pointer reaches a navigable control, or
-keyboard or gamepad focus moves to one), `Press` (by the pointer, Enter,
-Space or the pad's A), `Open` and `Close` (a dialog's first tick each way), `Success`
-(a success toast), `Error` (a danger toast or a refused press).
-`Ui::take_sounds()` hands them to the host; the runtime's `og.ui.sound`
-system (after the physics step, before `og.audio`) plays each through
-og-audio on the `ui` bus, one voice per event kept in the UI state
-(`Ui::voices_mut`), restarted on a repeat. So `og.audio` turns it into the
-same tick's commands and the sound's first sample lies in the tick of the
-input that caused it (`packages/engine/tests/ui-sound.test.ts` reads it
-from the mix `og run --audio` renders).
+A style's `-og-sound` sets (docs/ui.md §3.2) name what each event plays:
+`hover` (the pointer reaches a navigable control, or focus moves to one),
+`press` (by the pointer, Enter, Space or the pad's A), `open` and `close`
+(a dialog's first tick each way), `success` and `error` (a toast's tone, a
+refused press) and the named sounds keyframes cross. `Ui::take_feedback()`
+hands the host each play: one sample of the set, never the one played
+last, at a volume and pitch from its ranges, chosen from the UI state's
+own random stream so a replay plays the same; `take_haptics` the haptic
+patterns at the player's strength. The runtime's `og.ui.sound` system
+(after the physics step, before `og.audio`) plays each through og-audio on
+the `ui` bus, one voice per event, restarted on a repeat, so the sound's
+first sample lies in the tick of the input that caused it
+(`packages/engine/tests/ui-sound.test.ts` reads it from the mix
+`og run --audio` renders).
 
 ## Responsive layout and the safe area
 
@@ -809,7 +649,7 @@ page asks, not take it away. `Ui::theme` answers the effective theme.
 ## Text
 
 Fonts are cooked MTSDF atlases (`crates/og-cook/README.md`: kerning pairs,
-shaped forms, msdfgen's error correction); `FontMetrics` (`src/text.rs`)
+shaped forms, msdfgen's error correction); `FontMetrics` (og-text)
 measures exactly as og-render lays out, so measured and drawn text agree.
 
 - **Roles and choice.** `Fonts` has `body`, `display`, `mono` (the numeric
@@ -823,10 +663,7 @@ measures exactly as og-render lays out, so measured and drawn text agree.
   fallback whose atlas has it all, else the style's fallback, then a font
   that can draw the text with glyphs rendered at run time (below), and
   when no one font can, per run again; so a Japanese label keeps the
-  Japanese face when that face has it cooked. The UI kit cooks a
-  display face (Inter at its display optical size, semibold) and a
-  rounded face (Nunito bold) as atlases of their own
-  (`templates/ui-kit/tools/make-faces.py`).
+  Japanese face when that face has it cooked.
 - **A font per run.** A label that mixes scripts no one font covers
   (`Score 42: مرحبا`, `Level 3 古い水車小屋` with no locale face) takes
   each run from the fallback chain, a grapheme cluster at a time
@@ -856,7 +693,7 @@ measures exactly as og-render lays out, so measured and drawn text agree.
   order (`FontMetrics::visual`, `bidi_runs`): a label at the paragraph
   direction of its first strong character (the UI's with none), rich text
   over each whole line at the UI's direction (pieces reorder, and so do
-  runs inside one span). Each run is shaped whole by rustybuzz in its
+  runs inside one span). Each run is shaped whole by HarfRust in its
   direction when it holds a shaped script and the font ships its file
   (`shape::FontFile`): a shaped form is drawn by its glyph id
   (`GlyphKey::Id`, a key no character shares, so an icon font's
@@ -865,12 +702,12 @@ measures exactly as og-render lays out, so measured and drawn text agree.
   go to og-render as `Text::placements` (Devanagari's
   conjuncts and pre-base signs, marks on their bases, Arabic joining); an
   unshaped right-to-left run (Hebrew) is reversed with its brackets
-  mirrored. Shaping is og-ui's `shaping` feature (rustybuzz; on by default
+  mirrored. Shaping is og-ui's `shaping` feature (HarfRust; on by default
   and in the shipped wasm, passed on by og-runtime and og-host-web): a
   build without it draws shaped scripts unshaped and keeps bidi, kerning
   and run-time glyphs. What it costs the publish wasm: §What it costs.
 - **CJK and other uncooked characters** render at run time
-  (`src/glyphs.rs`): a font cooked with `runtime true` ships its file, a
+  (og-text's `glyphs.rs`): a font cooked with `runtime true` ships its file, a
   character outside its atlas is measured from the file's metrics and
   recorded (`FontFile::take_wanted`), and og-runtime renders it from the
   outlines before the frame is laid out for drawing, into 512² pages of the
@@ -881,11 +718,10 @@ measures exactly as og-render lays out, so measured and drawn text agree.
   the same bytes; at UI sizes its slightly rounded corners do not show. The
   choice over a cook-time fallback atlas: a game cannot know a player's
   name or a chat line, and cooking all of GB2312 is 19.8 MB of atlas, where
-  the subset font file is 2.5 MB and renders only what is shown (the UI
-  kit's locale screens draw 欢迎回来，旅人晨星 and おかえりなさい、旅人さん
-  that way; a frame that still draws a missing glyph warns once).
+  the subset font file is 2.5 MB and renders only what is shown (a frame
+  that still draws a missing glyph warns once).
 - **Ellipsis.** `LabelDesc::ellipsis` (and `max_lines`) cut at layout.
-- **Editing** (`src/edit.rs`): the caret and selection are placed from the
+- **Editing** (`src/text/edit.rs`): the caret and selection are placed from the
   same visual layout the text is drawn with, so a press lands on the
   character under it and a selection covers the glyphs it shows in either
   direction. The selection is a neutral fill (`controlStrong`) under the
@@ -938,11 +774,13 @@ measures exactly as og-render lays out, so measured and drawn text agree.
 
 ## What it costs
 
-rustybuzz (shaping) is behind the default `shaping` feature: a game with no
+HarfRust shaping is behind the default `shaping` feature: a game with no
 shaped script can leave it out of the wasm (`og-host-web
 --no-default-features --features publish`; the shipped build keeps it on).
-A run-time CJK glyph is rendered once per character, then it is an atlas
-glyph like any other (`examples/glyph_costs.rs` times it).
+A run-time glyph is rendered once per character, then it is an atlas
+glyph like any other (`examples/glyph_costs.rs` times it). The per-frame
+CPU bars and what the retained tree costs are measured by
+`tests/perf.rs` and `scripts/perf.sh` (docs/roadmap.md §Below target).
 
 ## Layout
 
@@ -976,8 +814,8 @@ One layout per frame, in five walks over the tree (`src/layout.rs`):
 
 Text is measured and drawn with its font's kerning (§Text) and its type
 step's tracking (`tracking_em`, og-render's `Text::tracking`: the default
-ramp tightens `xl` and up by 0.01 to 0.035 em, and a style's ramp line may set its
-own); tracking is Latin tracking, so a text with CJK characters or a shaped
+ramp tightens `xl` and up by 0.01 to 0.035 em, and a style's
+`--font-tracking-*` tokens set their own); tracking is Latin tracking, so a text with CJK characters or a shaped
 script takes none.
 
 Everything is in CSS pixels of the play surface (origin top left, y down),
@@ -1007,46 +845,46 @@ path  := id ('/' id)*                "Inventory/Slot#3": the element, after its 
 ## Theme
 
 `src/theme.rs` holds the engine's UI values, generated from the design
-language's tokens (`packages/design`):
-the `Palette` (33 roles, `palette!`, `Palette::NAMES` in IDL order, which
-og-api's tests hold to the IDL's `ThemeColor`), the default style's
-`LIGHT` and `DARK`, the spacing scale, the four radii, the type ramp (size,
-leading, tracking, CJK leading), the densities (`auto`, `mouse`, `pad`,
-`touch`), durations, springs, the cubic easings and `press-scale`. No
-platform token file reaches it. `Theme::light()`/`dark()` (dark is the
-default: games run on a stage) read those constants; widgets map roles
-one way whatever the style (`primary` only for the primary action, the
-slider, progress and switch fill and the caret; neutral `control` fills
-for secondary controls and selection; `inkFaint` placeholders;
-`panelRaised` tooltips). Colours convert to linear for og-render
-(`Srgba::linear`).
+language's tokens (`packages/design`) beside `default.css`: the `Palette`
+(33 roles, `palette!`, `Palette::NAMES` in IDL order, which og-api's tests
+hold to the IDL's `ThemeColor`), the default style's `LIGHT` and `DARK`,
+the spacing scale, the radii, the type ramp (size, leading, tracking, CJK
+leading), the densities (`auto`, `mouse`, `pad`, `touch`), durations,
+springs, the cubic easings and `press-scale`. `Theme::light()`/`dark()`
+(dark is the default: games run on a stage) read those constants, and the
+root tokens of the active cascade override them each frame. Widgets map
+roles one way whatever the style (`primary` only for the primary action,
+the slider, progress and switch fill and the caret; neutral `control`
+fills for secondary controls and selection; `inkFaint` placeholders;
+`panelRaised` tooltips). Colours are sRGB as CSS writes them and convert
+to linear for og-render (`Srgba::linear`).
 
-## Drawing
+## Drawing (`src/draw.rs`, `src/paint.rs`)
 
-`UiFrame::emit` appends to an og-render `Overlay` (CSS pixels, origin top
-left, y down), drawn after every post effect, so the style's colours come out
-exactly as authored over any game, at any camera, sharp under TAA:
+`UiFrame::emit` appends to og-draw's `Overlay` (CSS pixels, origin top
+left, y down), which og-render draws after every post effect, so the
+style's colours come out as authored over any game, at any camera, sharp
+under TAA:
 
-- **One atlas.** Every rectangle, rounded or not, is a 9-slice of one 64×64
-  white disc (`atlas_texture()`, coverage supersampled, mips), so panels,
-  buttons, tracks, thumbs, rings and the caret share one sprite run; a
-  texture-less image is a solid slice of it.
+- **Analytic shapes.** Every rectangle, bar, half disc, image and glass
+  panel is a UI shape (`og_draw::UiShape`): a signed distance evaluated per
+  pixel, so its edge is exact at any scale; text is MSDF glyphs. An
+  element's paint (`ElementDraw`: layered fills and strokes, shadows,
+  glow, backdrop, opacity, blend, clip, a material) becomes commands
+  around its own and its children's.
 - **Painter levels.** og-render sorts by (layer, kind, texture). Each command
   gets a level one above every earlier command it overlaps that batches
   differently, and the level of an overlapping earlier command of its own
   batch; commands of different batches on one level never overlap, so the
-  sort reorders nothing visible. The sample screen is 231 sprites and 181
-  glyphs in **4 sprite draws** over 4 painter levels (`levels()` reports the
-  bound; the test allows two draws per level). Put the UI above other
-  overlay sprites with `EmitDesc::layer`.
-- **Clipping per pixel.** Each scroll container and clipped panel adds its
-  rectangle once to `Overlay::clips` (deduplicated); every quad, image,
-  rotated shape and glyph inside names it in `clip`, and the overlay pass
-  discards outside it. A row half out of a list is cut mid-glyph; rotated
-  shapes (`DrawCmd::Bar`: chevrons, ticks, the d-pad's arrows) are cut at
-  the edge instead of dropped
-  (`tests/gfx.rs` `a_scroll_container_clips_everything_it_draws` reads the
-  pixels on both sides of the edge).
+  sort reorders nothing visible, and a typical screen is two to four
+  draws. Put the UI above other overlay sprites with `EmitDesc::layer`.
+- **Clipping per pixel.** Every command carries its clip rectangle, and
+  the commands between a `PushClip` and its `PopClip` are cut to its
+  shape, antialiased (a rounded panel's children, nested). The commands
+  between a `BeginLayer` and its `EndLayer` draw into a layer of their own
+  that its parent composites, through its material.
+- **Maps.** Every command carries its element's map: a turn or skew
+  reaches every shape, clip, vector and composite whole, text per glyph.
 
 The runtime (`og_runtime::modules::emit`) writes the frame into
 `RenderScene::overlay` with scale 0 (fit the output's height), so the UI
@@ -1126,81 +964,59 @@ snapshot and restore).
 
 ## In TypeScript
 
-The IDL module `ui` (`crates/og-api/api/ui.ogt`, `og.ui` in
-`packages/engine/types/index.d.ts`, `packages/knowledge/wiki/ui.md`) carries
-the calls a game makes from TypeScript in lowerCamelCase; the tree itself
-is built from documents (docs/ui.md §2), never call by call; `toast`,
-`dismissToast`, `navigate` and `previewViewport` take the world and work
-between ticks; `frameTheme`, `frameViewport`, `hasIcon`,
-`seconds`, `tick` read the frame being built. The bindings are in
-`og_runtime::modules` (both hosts call them).
+The IDL modules `ui-*` (`crates/og-api/api/ui-*.ogt`, `og.ui` in
+`packages/engine/types/index.d.ts`, `og api show ui`) carry the calls a
+game makes from TypeScript in lowerCamelCase: scopes, stores and mounts,
+the layer stack, actions (`og.ui.actionFired`, `actionHeld`), the frame's
+pointer, gestures and theme, motion and timelines, mass elements, toasts
+and configuration. The tree itself comes from documents (docs/ui.md §2),
+never call by call. The bindings are in `og_runtime::modules` (both hosts
+call them); `packages/engine/src/ui-kit` adds their callback sugar to
+`og.ui`, and `packages/engine/src/ui/reactive.ts` the store helpers.
 
-**The UI kit** (`packages/engine/src/ui-kit`, merged into `og.ui`): the
-small widgets written in TypeScript over those calls and the toast service
-`og.ui.toast`. Whole screens are not templates: a game ejects a screen
-document (`og ui eject <screen>`, `packages/engine/src/ui/screens/`) and fills
-its slots with components and patterns (docs/ui.md §2). `templates/ui-kit`
-shows the components, the patterns and the genre showcases, and is the
-reference source of `references/<tier>/kit-*.png`; the `screens` guide
-(`og api show screens`) tells an agent which to pick and how to check it.
-
-**The component library** (docs/ui.md §2) is documents: the screens in
-`packages/engine/src/ui/screens` (card, dialog and confirm, pagination,
-data lists, tables, trees, calendars, key-value rows, notifications,
-settings) and the components in `packages/engine/src/ui/components` (the
-menu, tooltip card, action bar, split view, carousel, breadcrumbs, radial
-menu, charts, data grid, HUD meters and world tags), each copied into a
-game with `og ui eject <name>` and dressed by its CSS and the style's
-tokens. Popovers and context menus are the document `popover` and
-`contextmenu` attributes.
+The component library is documents: the screens in
+`packages/engine/src/ui/screens` and the components in
+`packages/engine/src/ui/components` (their genre groups included), built
+in under `@ui/`, used by name and ejected with `og ui eject <name>`
+(docs/ui.md §5; each directory's README lists them).
 
 ## Tests
 
 ```sh
-cargo test -p og-ui                                   # what the UI lays out and builds: no renderer
-cargo test -p og-tests-ui                             # the frames og-render draws of it, against references/
-OG_UI_GOLDEN=1  cargo test -p og-ui --test tests layout::  # re-record the layout golden
-OG_UI_CAPTURE=1 cargo test -p og-tests-ui --test tests gfx::  # re-record this tier's reference frames
-OG_UI_CAPTURE=1 og test templates/ui-kit              # re-record this tier's kit frames and sheets
+cargo test -p og-ui                                            # what the UI lays out and builds: no renderer
+cargo test -p og-tests-ui                                      # the frames og-render draws of it, against references/vulkan
+OG_UI_GOLDEN=1  cargo test -p og-ui --test tests layout::      # re-record the layout golden
+OG_UI_CAPTURE=1 cargo test -p og-tests-ui --test tests gfx::   # re-record reference frames (on the GPU host only)
 cargo check --target wasm32-unknown-unknown -p og-ui
 ```
 
-og-ui's own tests (`tests/`) read the commands, the layout and the
-accessibility tree the UI built, and do not build on og-render. Every test
-that draws a frame, with `references/` and the render scenes, is in
-crates/og-tests-ui; a module with both kinds has a file of the same name
-in each crate.
+og-ui's own tests (`tests/`, one binary `tests/it/main.rs`) read the
+commands, the layout and the accessibility tree the UI built, and do not
+build on og-render. Every test that draws a frame is in
+crates/og-tests-ui (one binary as well), a module with both kinds having a
+file of the same name in each crate; those that cook first are in
+crates/og-tests-cooked (`text_gfx.rs`, `materials_gfx.rs`). Each file's
+header says what it covers. The ones a change most often meets:
 
-| Test | Asserts |
+| Test | Covers |
 |---|---|
-| `tests/layout.rs` | a nested tree (grow with a cap, wrap with a growing child, shrink-and-wrap, percent, centre, space-between, stretch, the safe area) gives the rectangles reasoned in the test and `tests/golden/layout.json` |
-| `tests/probe.rs` | through og-probe's command channel only: a click needs press and release inside (press-inside-release-outside, press-outside-release-inside and held presses do not click); `dump_ui` lists every visible element with bounds and text, in draw order; `move_to_text` exact, substring, `@N`, `@-N` and misses (which cancel the next touch); wheel scrolling moves rows, clips them to the list and stops at the content's end; the text field, toggle and slider edit game state; restoring the world and `save_state` replays identical frames |
-| `tests/text.rs` | Shift+arrows select and typing replaces the selection, Ctrl/Cmd+A, C (the clipboard) and X; a drag selects from the press and a Shift+press extends; a text area breaks lines on Enter, ↑/↓ move between lines and stay out of focus navigation, it wraps; a composition shows at the caret, replaces the selection as it starts, commits, ends when empty; the caret shows 32 ticks and hides 32 at 60 Hz and never blinks under reduced motion; once a typed-text stream exists keys type nothing; labels cut with an ellipsis on one line and at two lines, the probe reading the whole text; an auto-fit label keeps its step when it fits, takes the largest smaller step it fits at, and at its minimum step is cut; the edit state survives a save and restore |
-| `tests/rtl.rs` | Arabic shaped into joined forms in visual order; UAX #9 orders runs (digits, neutrals at a line's end, brackets mirrored, Hebrew reversed); Devanagari's conjunct and pre-base sign; kerning pairs tighten the measure and the visual layout alike; a right-to-left UI mirrors |
-| `tests/glyphs.rs` | a run-time glyph has ink inside and none outside, rows top to bottom, the same bytes every render; its advance and plane bounds are the font's at the cook's geometry |
-| `tests/fields.rs` | Alt/Ctrl+arrows move by words and punctuation runs, Alt/Ctrl+Backspace and Delete delete one, Shift+Ctrl+Home/End select to the text's ends; a double click selects the word (or spaces), a third press the field, the line between breaks in an area, a drag from a double click extends by words, a slow second press or one after a drag is a first click; undo groups typing by words and Backspaces in a row, a move ends a step, Ctrl+Y and Shift+Z redo, a new edit drops the redo, a cut comes back selected, a text the game set starts again, 100 steps kept, save and restore replay it; a drag below an area scrolls it a little each tick to its last line and stops, back above scrolls up; the `text-fields-2` scene's state; words are UAX #29's (`can't` one, `42` one, each Han character one, a Thai cluster one; a double click on a Han character takes it alone; each IME commit after Han text an undo step, Thai typed on one); under mac keys Cmd+←/→ go to the line's ends, Option moves by words, Ctrl+← one character, Ctrl+A/E the line's ends (not select all), Cmd+A selects all, Cmd+Backspace deletes to the line's start, Cmd+Z undoes (Ctrl+Z not), Cmd+↑/↓ the text's ends; elsewhere Cmd+← moves one character and Cmd+A still selects all; the caret, Backspace, Delete and a press step over a grapheme cluster (a base and its mark, an emoji and its skin tone, a ZWJ family); ← and → (and with Alt by words) move on in the text in a Hebrew field, a selection collapsing to its left side there; under mac keys Ctrl+F, B, N, P, D, H, K, U and W edit as emacs does, elsewhere nothing; K, U and W kill into a buffer Y yanks (kills in a row add up, a move ends the row, a field yanks without line breaks, a save and restore keeps it), T transposes; ← and → cross a bidi run's edge on screen in a Latin line ending in Hebrew and a Hebrew line ending in Latin, keeping the caret's place at the edge |
-| `tests/runs.rs` | a Latin and CJK label takes each run from the first face that has it and measures as its runs; a base and its combining mark go to one face together, a joiner keeps its letter's face; an Arabic run in a Latin label shaped by the Arabic file, in visual order; neutrals stay with their run; a text one face (or a locale's face) covers whole is not cut, one no face covers is still cut per run; a mixed label draws a command per run in its face, each where the last ended, the same twice; its runs share one baseline centred on every face's extents (a taller fallback face moves it); a `[wave]` span mixing faces moves glyph by glyph, each in its face, and rests under reduced motion |
-| `tests/text_gfx.rs` (crates/og-tests-cooked: it cooks) | `references/<tier>/text-bidi.png`, `text-kerning.png`, `text-edit.png` and `text-mixed-runs.png` from the kit's fonts cooked at test time (og-cook, the project `tests/text-fonts`: the import settings, beside the kit's font files) and decoded from the blobs' bytes, as the browser tiers decode them; the scenes are og-tests-cooked's `tests/support/text_scenes.rs`, which og-tests-web includes: every script, kerned against unkerned (the title narrower kerned), ellipses, a selection, a composition and a text area; Latin labels mixing Japanese, shaped Arabic, Hebrew and Devanagari a run per face (every character in its face's atlas); no missing glyph |
-| `tests/support/scenes.rs` (crates/og-tests-ui) | not a test: builds the five reference scenes (`sample-screen`, `text-glow`, `glass`, `widget-set`, `text-fields-2`) for `gfx.rs`, `kit_gfx.rs` and, through `#[path]`, `crates/og-tests-web`, so the browser draws the same scenes; and the `text-mixed-runs` UI `text_gfx.rs` draws with cooked faces |
-| `tests/gfx.rs` (crates/og-tests-ui: it draws) | a glass panel blurs the frame under it and nothing else, and blurs the overlay layer below it (a bright bar spreads inside the panel) while what is above it stays sharp (`references/<tier>/glass.png`); the sample screen rendered headless matches `references/<tier>/sample-screen.png` (og-tests' tolerance: 32/255 per channel, ≤ 0.5 % outliers, RMSE ≤ 0.01) in at most 2 sprite draws per painter level, no missing glyph; `text-fields-2` (a double-clicked word, an undone field, an area a drag scrolled part way) matches its reference with no missing glyph; a scroll container cuts every sprite and text line it draws to its rectangle |
-| `tests/widgets.rs` | focus: arrows pick the aligned neighbour and wrap, Tab/Shift+Tab walk reading order and wrap, Enter and Space press, the gamepad d-pad and A, the stick at once then after 24 and every 11 ticks; a dialog takes focus, keeps Tab inside, blocks presses to what is under it, closes on the backdrop and Back (not when locked) and returns focus; a HUD asking `back()` before an open dialog is built leaves Back to the dialog (a locked one lets it through); an anchored group moves out of `Viewport::covered`; a select opens, chooses (mouse and keys) and closes on a press outside; a 1000-row list builds at most 13 rows, reaches its last row and scrolls a keyboard-focused row into view; toasts cap at three, leave after 3.2 s and come back with a restored state; anchors keep to the safe area and touch controls to 44 px; a joystick answers (1, 0) at its edge; a game's primary derives its hover, press and ink, high contrast takes `ink` for muted ink; a drag from cell 0 to cell 6 drops once and a click is no drop; two fingers lifting off a list fling it (none under reduced motion) |
-| `tests/style.rs` | a dressed card is nine atlas pieces that cover it with fixed corners, its shadow and corners reach past it; the default style emits no atlas piece; a style file names the wrong line (a missing palette role or radius, (a typo, a region outside the atlas, a glow without `soft`, a bad colour); every screen-transition kind keeps the old screen while covering, switches at full cover, ends, and is one fade per tick under reduced motion; a counter starts at `from`, never goes back, lands at 900 ms and replays after a restore; a refused press shakes and comes to rest, queues `Error` only, an enabled press queues `Press`; a glass part draws the blurred frame under its thinned frame, and under reduced transparency no glass and the frame whole |
-| `tests/packs.rs` | the six built-in styles parse, name only existing assets, and every ink a template draws on a dressed surface is at least 4.5:1 over the frame art under it (and `ink` on a selected tab) |
-| Style-pack contrast coverage | reusable packs retain their contrast coverage; deleted games' private styles are not engine packs. Check each button role's label in each state, panel ink, placeholders, slot counts, meter labels and badges against their composited ground, including rendered text strokes. |
-| `tests/a11y.rs` | roles, names, values and states of every widget; Tab walks `focus_order`; a screen reader's requests (focus, activate, increment, decrement) reach the control the path names and not one under a dialog, increment and decrement on a stepper's spinbutton step it within its range, and the tree's digest moves with what a mirror shows; a slider, a stepper (bounded or not), a progress and a meter carry their bounds and value as numbers; the page's reduced motion, contrast and transparency reach the theme and leave again, reduced transparency (the page's or the game's) flattening the scrim and the translucent fills |
-| `tests/materials_gfx.rs` (crates/og-tests-cooked: it cooks) | `references/<tier>/materials.png`: a dark card, 16 of the kit's iconoir icons cooked at test time (og-cook) at 48 and 24 px and one inline in rich text, a 16:9 picture in a growing column and a list two touches scrolled and flung as they lift; no missing glyph |
-| `tests/kit_gfx.rs` (crates/og-tests-ui: it draws) | the widget set (tabs, an open select menu with the focus ring, stepper, radio, checkboxes, badges, stick, d-pad, a toast) matches `references/<tier>/widget-set.png` |
-| `templates/ui-kit/tests/*.og.ts` | through the command channel on the native host: every template at 1280×720 and 390×844@3 matches `references/<tier>/kit-{desktop,phone}-<screen>.png` over the pack's plain ground; the packs' approved states match their cells of `references/<tier>/kit-style-<pack>[-phone]-states.png`; an iris transition, the count-up and UI voices (`juice`); touch, keyboard and gamepad flows, drag and drop, the phone's safe area and 44 px targets, the tutorial spotlight (`templates/ui-kit/README.md`) |
+| `tests/layout.rs` | a nested tree against `tests/golden/layout.json` |
+| `tests/documents.rs`, `tests/html_text.rs`, `tests/html_controls.rs`, `tests/input_types.rs`, `tests/control_props.rs` | documents, bindings, the layer stack and the HTML elements and controls, tick by tick |
+| `tests/css_*.rs`, `tests/box_decor.rs`, `tests/custom_properties.rs`, `tests/dressing.rs` | the CSS a document and a pack write, and exposed parts |
+| `tests/style_pack.rs`, `tests/theme.rs`, `tests/button_contrast.rs` | packs, the generated default style and button contrast |
+| `tests/component_documents.rs` | every built-in component and screen parses, takes its strings and builds from its fixtures |
+| `tests/text.rs`, `tests/fields.rs`, `tests/rtl.rs`, `tests/runs.rs`, `tests/glyphs.rs`, `tests/linebreak.rs` | text, editing, bidi and shaping, fonts per run, run-time glyphs |
+| `tests/widgets.rs`, `tests/recognizers.rs`, `tests/hud_layout.rs`, `tests/probe.rs`, `tests/a11y.rs` | the widget set, focus, gestures, the probe and the accessibility tree |
+| `tests/perf.rs` | the per-tick CPU cost (the perf lane, `scripts/perf.sh`) |
+| og-tests-ui `tests/document_frames.rs` | every built-in document's `fixture:default` at 1280 and 390, against `references/vulkan/doc-components-*.png`, `doc-screens-*.png` and `documents/` |
+| og-tests-ui `tests/gfx.rs`, `kit_gfx.rs`, and a file per feature | the sample screen, the widget set and each feature's frames |
 
-Reference frames are committed for `metal`; a tier without its own
-reference compares with the `metal` one and says so. The browser tiers
-come from `packages/engine/tests/web/reference-gfx.ts` (the five scenes and
-the text scenes, compiled into og-tests-web; the text scenes' fonts cooked
-first from `tests/text-fonts` with `og cook` and handed to the module as
-blobs, `tests/web/text-fonts.ts`) and `reference-ui.ts` (the kit playtests
-through reference.ts), both in `scripts/check.sh web-reference`, `--record`
-to re-record (`docs/ci.md` §Browser reference tiers). The test font is
-og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
+References are recorded on the GPU host (NVIDIA L4, Vulkan; docs/ci.md
+§The GPU host, §Reference frames); other backends compare with them under
+the cross-platform tolerance, and a missing GPU is unchecked. The browser
+tiers come from `packages/engine/tests/web/reference-gfx.ts` and
+`reference-ui.ts` in `scripts/check.sh web-reference` (docs/ci.md §Browser
+reference tiers).
 
 ## Known limits
 
