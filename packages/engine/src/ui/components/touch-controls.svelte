@@ -56,7 +56,7 @@
 }
 #Start { display: flex; align-items: end; }
 #End { display: flex; align-items: end; gap: var(--space-md); }
-#Actions { display: flex; flex-direction: row-reverse; flex-wrap: wrap-reverse; align-items: flex-start; gap: var(--space-sm); max-width: calc(var(--action-size) * 3.25 + var(--space-sm) * 2); }
+#Actions { display: flex; flex-direction: row-reverse; flex-wrap: wrap-reverse; align-items: end; gap: var(--space-sm); max-width: calc(var(--action-size) * 3.25 + var(--space-sm) * 2); }
 @media (width < 600px) {
   #TouchControls { padding: var(--space-md); gap: var(--space-md); }
   #End { gap: var(--space-sm); }

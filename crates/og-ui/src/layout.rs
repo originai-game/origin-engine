@@ -604,6 +604,10 @@ pub struct Element {
     /// mode's sides), not `flex-start`/`flex-end`: a reversed line keeps it
     /// on that side.
     pub align_logical: bool,
+    /// Its `cross` (bit 0) and its own `align_self` (bit 1) were written
+    /// `start` or `end` (the writing mode's sides), not `flex-start`/
+    /// `flex-end` or left unwritten: `wrap-reverse` keeps them on that side.
+    pub cross_logical: u8,
     /// CSS `align-content` of a multi-line flex container (`None`: lines at
     /// its start, each its own size).
     pub align_content: Option<Align>,
