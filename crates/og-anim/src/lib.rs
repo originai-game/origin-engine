@@ -27,7 +27,6 @@
 //! uninterrupted run.
 
 mod asset;
-mod codec;
 pub mod cooked;
 mod flipbook;
 mod graph;

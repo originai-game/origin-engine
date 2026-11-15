@@ -3,6 +3,7 @@
 
 use crate::timeline::{Callbacks, Child, Item, Timeline};
 use crate::{Ease, Group, GroupKind, Lane, Leaf, Node, Running, State, StepPosition, Target};
+use og_core::bytes::{ByteReader, ByteWriter};
 use og_core::{Error, ErrorKind, Result};
 
 /// 3: a leaf's repeat delay, and timelines (version 2 still decodes).
@@ -11,86 +12,73 @@ const VERSION: u32 = 3;
 /// How deep timelines nest in a state block.
 const MAX_DEPTH: u32 = 16;
 
-fn u32_(out: &mut Vec<u8>, v: u32) {
-    out.extend_from_slice(&v.to_le_bytes());
-}
-fn f32_(out: &mut Vec<u8>, v: f32) {
-    out.extend_from_slice(&v.to_le_bytes());
-}
-fn floats(out: &mut Vec<u8>, v: &[f32]) {
-    u32_(out, v.len() as u32);
+fn floats(w: &mut ByteWriter<'_>, v: &[f32]) {
+    w.u32(v.len() as u32);
     for x in v {
-        f32_(out, *x);
+        w.f32(*x);
     }
 }
 
-fn f64_(out: &mut Vec<u8>, v: f64) {
-    out.extend_from_slice(&v.to_le_bytes());
+fn opt_f64(w: &mut ByteWriter<'_>, v: Option<f64>) {
+    w.u32(v.is_some() as u32);
+    w.f64(v.unwrap_or(0.0));
 }
-fn opt_f64(out: &mut Vec<u8>, v: Option<f64>) {
-    u32_(out, v.is_some() as u32);
-    f64_(out, v.unwrap_or(0.0));
-}
-fn string(out: &mut Vec<u8>, s: &str) {
-    u32_(out, s.len() as u32);
-    out.extend_from_slice(s.as_bytes());
-}
-fn opt_string(out: &mut Vec<u8>, s: &Option<String>) {
+fn opt_string(w: &mut ByteWriter<'_>, s: &Option<String>) {
     match s {
-        None => u32_(out, u32::MAX),
-        Some(s) => string(out, s),
+        None => w.u32(u32::MAX),
+        Some(s) => w.str(s),
     }
 }
-fn callbacks(out: &mut Vec<u8>, c: &Callbacks) {
+fn callbacks(w: &mut ByteWriter<'_>, c: &Callbacks) {
     for n in c.names() {
-        opt_string(out, n);
+        opt_string(w, n);
     }
 }
 
-fn timeline(out: &mut Vec<u8>, t: &Timeline) {
-    u32_(out, t.children.len() as u32);
+fn timeline(w: &mut ByteWriter<'_>, t: &Timeline) {
+    w.u32(t.children.len() as u32);
     for c in &t.children {
-        f64_(out, c.start);
-        u32_(out, c.immediate as u32);
-        opt_f64(out, c.last);
-        callbacks(out, &c.on);
+        w.f64(c.start);
+        w.u32(c.immediate as u32);
+        opt_f64(w, c.last);
+        callbacks(w, &c.on);
         match &c.item {
             Item::Tween(l) => {
-                u32_(out, 0);
-                leaf(out, l);
+                w.u32(0);
+                leaf(w, l);
             }
             Item::Call(name) => {
-                u32_(out, 1);
-                string(out, name);
+                w.u32(1);
+                w.str(name);
             }
             Item::Timeline(nested) => {
-                u32_(out, 2);
-                timeline(out, nested);
+                w.u32(2);
+                timeline(w, nested);
             }
         }
     }
-    u32_(out, t.labels.len() as u32);
+    w.u32(t.labels.len() as u32);
     for (name, at) in &t.labels {
-        string(out, name);
-        f64_(out, *at);
+        w.str(name);
+        w.f64(*at);
     }
-    out.extend_from_slice(&t.repeat.to_le_bytes());
-    u32_(out, t.yoyo as u32);
-    f32_(out, t.repeat_delay);
-    f32_(out, t.time_scale);
-    u32_(out, t.paused as u32);
-    u32_(out, t.reversed as u32);
-    u32_(out, t.auto_kill as u32);
-    callbacks(out, &t.on);
-    f64_(out, t.total);
-    opt_f64(out, t.last);
-    opt_f64(out, t.last_local);
-    u32_(out, t.quiet as u32);
-    u32_(out, t.dirty as u32);
-    u32_(out, t.recent.is_some() as u32);
+    w.i32(t.repeat);
+    w.u32(t.yoyo as u32);
+    w.f32(t.repeat_delay);
+    w.f32(t.time_scale);
+    w.u32(t.paused as u32);
+    w.u32(t.reversed as u32);
+    w.u32(t.auto_kill as u32);
+    callbacks(w, &t.on);
+    w.f64(t.total);
+    opt_f64(w, t.last);
+    opt_f64(w, t.last_local);
+    w.u32(t.quiet as u32);
+    w.u32(t.dirty as u32);
+    w.u32(t.recent.is_some() as u32);
     let (a, b) = t.recent.unwrap_or_default();
-    f64_(out, a);
-    f64_(out, b);
+    w.f64(a);
+    w.f64(b);
 }
 
 fn lane_code(l: Lane) -> u32 {
@@ -103,92 +91,103 @@ fn lane_code(l: Lane) -> u32 {
     }
 }
 
-fn leaf(out: &mut Vec<u8>, l: &Leaf) {
+fn leaf(w: &mut ByteWriter<'_>, l: &Leaf) {
     let t = &l.target;
-    out.extend_from_slice(&t.entity.to_le_bytes());
-    u32_(out, t.component);
-    u32_(out, t.offset);
-    u32_(out, lane_code(t.lane));
-    u32_(out, t.lanes);
-    floats(out, &l.to);
+    w.u64(t.entity);
+    w.u32(t.component);
+    w.u32(t.offset);
+    w.u32(lane_code(t.lane));
+    w.u32(t.lanes);
+    floats(w, &l.to);
     match &l.from {
-        None => u32_(out, u32::MAX),
-        Some(f) => floats(out, f),
+        None => w.u32(u32::MAX),
+        Some(f) => floats(w, f),
     }
-    u32_(out, l.relative as u32);
-    f32_(out, l.duration);
-    f32_(out, l.delay);
-    u32_(out, l.ease.code());
+    w.u32(l.relative as u32);
+    w.f32(l.duration);
+    w.f32(l.delay);
+    w.u32(l.ease.code());
     match l.ease {
         Ease::CubicBezier(controls) => {
             for v in controls {
-                f32_(out, v);
+                w.f32(v);
             }
         }
         Ease::Steps { count, position } => {
-            u32_(out, count);
-            u32_(
-                out,
-                match position {
-                    StepPosition::JumpStart => 0,
-                    StepPosition::JumpEnd => 1,
-                    StepPosition::JumpNone => 2,
-                    StepPosition::JumpBoth => 3,
-                },
-            );
+            w.u32(count);
+            w.u32(match position {
+                StepPosition::JumpStart => 0,
+                StepPosition::JumpEnd => 1,
+                StepPosition::JumpNone => 2,
+                StepPosition::JumpBoth => 3,
+            });
         }
         Ease::Points(p) => {
-            u32_(out, p.len() as u32);
+            w.u32(p.len() as u32);
             for v in p.iter().flatten() {
-                f32_(out, *v);
+                w.f32(*v);
             }
         }
         _ => {}
     }
-    out.extend_from_slice(&l.loops.to_le_bytes());
-    u32_(out, l.yoyo as u32);
-    f32_(out, l.repeat_delay);
-    out.extend_from_slice(&l.elapsed.to_le_bytes());
-    u32_(out, l.started as u32);
-    floats(out, &l.start);
-    floats(out, &l.end);
+    w.i32(l.loops);
+    w.u32(l.yoyo as u32);
+    w.f32(l.repeat_delay);
+    w.f64(l.elapsed);
+    w.u32(l.started as u32);
+    floats(w, &l.start);
+    floats(w, &l.end);
 }
 
 pub(crate) fn encode(state: &State, out: &mut Vec<u8>) {
-    u32_(out, VERSION);
-    out.extend_from_slice(&state.next.to_le_bytes());
-    u32_(out, state.running.len() as u32);
+    let w = &mut ByteWriter::new(out);
+    w.u32(VERSION);
+    w.u64(state.next);
+    w.u32(state.running.len() as u32);
     for (h, r) in &state.running {
-        out.extend_from_slice(&h.to_le_bytes());
-        u32_(out, r.unscaled as u32);
-        u32_(out, r.tag);
+        w.u64(*h);
+        w.u32(r.unscaled as u32);
+        w.u32(r.tag);
         match &r.node {
             Node::Leaf(l) => {
-                u32_(out, 0);
-                leaf(out, l);
+                w.u32(0);
+                leaf(w, l);
             }
             Node::Group(g) => {
-                u32_(out, if g.kind == GroupKind::Sequence { 1 } else { 2 });
-                out.extend_from_slice(&g.loops.to_le_bytes());
-                u32_(out, g.current);
-                u32_(out, g.runs);
-                u32_(out, g.children.len() as u32);
+                w.u32(if g.kind == GroupKind::Sequence { 1 } else { 2 });
+                w.i32(g.loops);
+                w.u32(g.current);
+                w.u32(g.runs);
+                w.u32(g.children.len() as u32);
                 for c in &g.children {
-                    leaf(out, c);
+                    leaf(w, c);
                 }
             }
             Node::Timeline(t) => {
-                u32_(out, 3);
-                timeline(out, t);
+                w.u32(3);
+                timeline(w, t);
             }
         }
     }
 }
 
+/// og-core's [`ByteReader`] (its primitives, by `Deref`) and the block's own values.
 struct Reader<'a> {
-    bytes: &'a [u8],
-    at: usize,
+    bytes: ByteReader<'a>,
     version: u32,
+}
+
+impl<'a> std::ops::Deref for Reader<'a> {
+    type Target = ByteReader<'a>;
+    fn deref(&self) -> &ByteReader<'a> {
+        &self.bytes
+    }
+}
+
+impl std::ops::DerefMut for Reader<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.bytes
+    }
 }
 
 fn bad(what: &str) -> Error {
@@ -196,57 +195,27 @@ fn bad(what: &str) -> Error {
 }
 
 impl Reader<'_> {
-    fn take(&mut self, n: usize) -> Result<&[u8]> {
-        let b = self
-            .bytes
-            .get(self.at..self.at + n)
-            .ok_or_else(|| bad("truncated"))?;
-        self.at += n;
-        Ok(b)
-    }
-    fn u32(&mut self) -> Result<u32> {
-        Ok(u32::from_le_bytes(
-            self.take(4)?.try_into().expect("4 bytes"),
-        ))
-    }
-    fn i32(&mut self) -> Result<i32> {
-        Ok(i32::from_le_bytes(
-            self.take(4)?.try_into().expect("4 bytes"),
-        ))
-    }
-    fn u64(&mut self) -> Result<u64> {
-        Ok(u64::from_le_bytes(
-            self.take(8)?.try_into().expect("8 bytes"),
-        ))
-    }
-    fn f32(&mut self) -> Result<f32> {
-        Ok(f32::from_le_bytes(
-            self.take(4)?.try_into().expect("4 bytes"),
-        ))
-    }
-    fn f64(&mut self) -> Result<f64> {
-        Ok(f64::from_le_bytes(
-            self.take(8)?.try_into().expect("8 bytes"),
-        ))
-    }
     fn opt_f64(&mut self) -> Result<Option<f64>> {
         let some = self.u32()? != 0;
         let v = self.f64()?;
         Ok(some.then_some(v))
     }
     fn string(&mut self) -> Result<String> {
-        let n = self.u32()? as usize;
+        let n = self.u32()?;
+        self.string_of(n)
+    }
+    /// A string of `n` bytes, the length already read.
+    fn string_of(&mut self, n: u32) -> Result<String> {
         if n > 4096 {
             return Err(bad("a name is too long"));
         }
-        String::from_utf8(self.take(n)?.to_vec()).map_err(|_| bad("a name is not UTF-8"))
+        String::from_utf8(self.take(n as usize)?.to_vec()).map_err(|_| bad("a name is not UTF-8"))
     }
     fn opt_string(&mut self) -> Result<Option<String>> {
-        if self.u32()? == u32::MAX {
-            return Ok(None);
+        match self.u32()? {
+            u32::MAX => Ok(None),
+            n => self.string_of(n).map(Some),
         }
-        self.at -= 4;
-        self.string().map(Some)
     }
     fn callbacks(&mut self) -> Result<Callbacks> {
         Ok(Callbacks {
@@ -310,7 +279,11 @@ impl Reader<'_> {
         })
     }
     fn floats(&mut self) -> Result<Vec<f32>> {
-        let n = self.u32()? as usize;
+        let n = self.u32()?;
+        self.floats_of(n)
+    }
+    /// `n` floats, the count already read.
+    fn floats_of(&mut self, n: u32) -> Result<Vec<f32>> {
         if n > 16 {
             return Err(bad("a value list is too long"));
         }
@@ -331,12 +304,9 @@ impl Reader<'_> {
         let lanes = self.u32()?;
         let to = self.floats()?;
         let from = {
-            let n = self.u32()?;
-            if n == u32::MAX {
-                None
-            } else {
-                self.at -= 4;
-                Some(self.floats()?)
+            match self.u32()? {
+                u32::MAX => None,
+                n => Some(self.floats_of(n)?),
             }
         };
         let relative = self.u32()? != 0;
@@ -404,8 +374,7 @@ impl Reader<'_> {
 
 pub(crate) fn decode(bytes: &[u8]) -> Result<State> {
     let mut r = Reader {
-        bytes,
-        at: 0,
+        bytes: ByteReader::new(bytes, "og.tween state block"),
         version: 0,
     };
     r.version = r.u32()?;
@@ -453,7 +422,7 @@ pub(crate) fn decode(bytes: &[u8]) -> Result<State> {
             },
         );
     }
-    if r.at != bytes.len() {
+    if !r.is_done() {
         return Err(bad("trailing bytes"));
     }
     Ok(state)

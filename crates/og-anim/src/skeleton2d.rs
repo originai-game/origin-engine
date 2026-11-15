@@ -8,12 +8,12 @@
 //! ([`skeleton_pose`]), so extraction draws it from the same inputs and
 //! nothing visual is kept as state.
 
-use crate::codec::{Reader as Bytes, Writer};
 use crate::graph2d::{Machine, Played, SpriteGraph, heaviest};
 use crate::machine::Phase;
 use crate::rig2d::{Affine2, Clip2d, Pose2d, Rig2dAsset, atan2};
 use crate::schema::{AnimationGraph, Transform};
 use og_core::IdMap;
+use og_core::bytes::{ByteReader, ByteWriter};
 use og_core::glam::Vec2;
 use og_core::{Error, ErrorKind, Reflect, Result, Str64};
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
@@ -610,40 +610,6 @@ fn drive(
 
 struct SkeletonState(Arc<Mutex<Shared>>);
 
-/// Reads the state block's little-endian fields in order.
-struct Reader<'a> {
-    bytes: &'a [u8],
-    at: usize,
-}
-
-impl Reader<'_> {
-    fn bad() -> Error {
-        Error::new(ErrorKind::Parse, "og.skeleton2d state block: truncated")
-    }
-
-    fn take(&mut self, n: usize) -> Result<&[u8]> {
-        let b = self
-            .bytes
-            .get(self.at..self.at + n)
-            .ok_or_else(Reader::bad)?;
-        self.at += n;
-        Ok(b)
-    }
-
-    fn u32(&mut self) -> Result<u32> {
-        Ok(u32::from_le_bytes(self.take(4)?.try_into().expect("4")))
-    }
-
-    fn u64(&mut self) -> Result<u64> {
-        Ok(u64::from_le_bytes(self.take(8)?.try_into().expect("8")))
-    }
-
-    fn text(&mut self) -> Result<String> {
-        let len = self.u32()? as usize;
-        String::from_utf8(self.take(len)?.to_vec()).map_err(|_| Reader::bad())
-    }
-}
-
 /// The state block's contents: the playback, the boxes and the graph-driven skeletons.
 type Saved = (
     IdMap<u64, Playback>,
@@ -654,36 +620,31 @@ type Saved = (
 impl StateBlock for SkeletonState {
     fn save(&self, out: &mut Vec<u8>) {
         let sh = lock(&self.0);
-        out.extend_from_slice(&(sh.playback.len() as u32).to_le_bytes());
+        let mut w = ByteWriter::new(out);
+        w.length(sh.playback.len());
         for (k, p) in &sh.playback {
-            out.extend_from_slice(&k.to_le_bytes());
-            out.extend_from_slice(&p.rig.to_le_bytes());
-            out.extend_from_slice(&p.clip.to_le_bytes());
-            out.extend_from_slice(&p.time.to_le_bytes());
+            w.u64(*k);
+            w.u64(p.rig);
+            w.u32(p.clip);
+            w.f32(p.time);
         }
-        out.extend_from_slice(&(sh.boxes.len() as u32).to_le_bytes());
-        let text = |out: &mut Vec<u8>, s: &str| {
-            out.extend_from_slice(&(s.len() as u32).to_le_bytes());
-            out.extend_from_slice(s.as_bytes());
-        };
+        w.length(sh.boxes.len());
         for (k, list) in &sh.boxes {
-            out.extend_from_slice(&k.to_le_bytes());
-            out.extend_from_slice(&(list.len() as u32).to_le_bytes());
+            w.u64(*k);
+            w.length(list.len());
             for b in list {
-                text(out, &b.slot);
-                text(out, &b.name);
-                out.extend_from_slice(&(b.points.len() as u32).to_le_bytes());
+                w.str(&b.slot);
+                w.str(&b.name);
+                w.length(b.points.len());
                 for p in &b.points {
-                    out.extend_from_slice(&p.x.to_le_bytes());
-                    out.extend_from_slice(&p.y.to_le_bytes());
+                    w.vec2(*p);
                 }
             }
         }
         // Graph-driven skeletons, written only when there are some (so a
         // world without graphs saves, and hashes, as before).
         if !sh.driven.is_empty() {
-            let mut w = Writer::new(out);
-            w.u32(sh.driven.len() as u32);
+            w.length(sh.driven.len());
             for (k, m) in &sh.driven {
                 w.u64(*k);
                 m.save(&mut w);
@@ -692,7 +653,7 @@ impl StateBlock for SkeletonState {
     }
 
     fn decode(&self, bytes: &[u8]) -> Result<Box<dyn Any + Send>> {
-        let mut r = Reader { bytes, at: 0 };
+        let mut r = ByteReader::new(bytes, "og.skeleton2d state block");
         let n = r.u32()?;
         let mut playback = IdMap::new();
         for _ in 0..n {
@@ -702,7 +663,7 @@ impl StateBlock for SkeletonState {
                 Playback {
                     rig: r.u64()?,
                     clip: r.u32()?,
-                    time: f32::from_bits(r.u32()?),
+                    time: r.f32()?,
                 },
             );
         }
@@ -711,28 +672,22 @@ impl StateBlock for SkeletonState {
             let key = r.u64()?;
             let mut list = Vec::new();
             for _ in 0..r.u32()? {
-                let slot = r.text()?;
-                let name = r.text()?;
+                let slot = r.string()?;
+                let name = r.string()?;
                 let points = (0..r.u32()?)
-                    .map(|_| {
-                        Ok(Vec2::new(
-                            f32::from_bits(r.u32()?),
-                            f32::from_bits(r.u32()?),
-                        ))
-                    })
+                    .map(|_| r.vec2())
                     .collect::<Result<Vec<_>>>()?;
                 list.push(Skeleton2dBox { slot, name, points });
             }
             boxes.insert(key, list);
         }
         let mut driven = IdMap::new();
-        if r.at != bytes.len() {
-            let mut d = Bytes::new(&bytes[r.at..]);
-            for _ in 0..d.count(20)? {
-                let k = d.u64()?;
-                driven.insert(k, Machine::load(&mut d)?);
+        if !r.is_done() {
+            for _ in 0..r.count(20)? {
+                let k = r.u64()?;
+                driven.insert(k, Machine::load(&mut r)?);
             }
-            d.finish()?;
+            r.finish()?;
         }
         let saved: Saved = (playback, boxes, driven);
         Ok(Box::new(saved))

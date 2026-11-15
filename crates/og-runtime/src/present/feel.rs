@@ -399,70 +399,8 @@ fn with_world<T>(
 
 // ── camera ─────────────────────────────────────────────────────────────────
 
-/// A little-endian reader for the feel state blocks.
-pub(crate) struct Reader<'a> {
-    bytes: &'a [u8],
-    at: usize,
-    what: &'static str,
-}
-
-impl<'a> Reader<'a> {
-    pub fn new(bytes: &'a [u8], what: &'static str) -> Reader<'a> {
-        Reader { bytes, at: 0, what }
-    }
-    fn bad(&self) -> Error {
-        Error::new(
-            ErrorKind::Parse,
-            format!("{} state block: truncated or malformed", self.what),
-        )
-    }
-    pub fn take(&mut self, n: usize) -> og_core::Result<&'a [u8]> {
-        let b = self
-            .bytes
-            .get(self.at..self.at + n)
-            .ok_or_else(|| self.bad())?;
-        self.at += n;
-        Ok(b)
-    }
-    pub fn at_end(&self) -> bool {
-        self.at == self.bytes.len()
-    }
-    pub fn u8(&mut self) -> og_core::Result<u8> {
-        Ok(self.take(1)?[0])
-    }
-    pub fn u32(&mut self) -> og_core::Result<u32> {
-        Ok(u32::from_le_bytes(self.take(4)?.try_into().expect("4")))
-    }
-    pub fn i32(&mut self) -> og_core::Result<i32> {
-        Ok(i32::from_le_bytes(self.take(4)?.try_into().expect("4")))
-    }
-    pub fn u64(&mut self) -> og_core::Result<u64> {
-        Ok(u64::from_le_bytes(self.take(8)?.try_into().expect("8")))
-    }
-    pub fn f32(&mut self) -> og_core::Result<f32> {
-        Ok(f32::from_le_bytes(self.take(4)?.try_into().expect("4")))
-    }
-    pub fn f64(&mut self) -> og_core::Result<f64> {
-        Ok(f64::from_le_bytes(self.take(8)?.try_into().expect("8")))
-    }
-    pub fn bytes(&mut self) -> og_core::Result<&'a [u8]> {
-        let n = self.u32()? as usize;
-        self.take(n)
-    }
-    /// The bytes not read yet (a block's trailer), taken.
-    pub fn rest(&mut self) -> &'a [u8] {
-        let r = &self.bytes[self.at..];
-        self.at = self.bytes.len();
-        r
-    }
-    pub fn end(&self) -> og_core::Result<()> {
-        if self.at == self.bytes.len() {
-            Ok(())
-        } else {
-            Err(self.bad())
-        }
-    }
-}
+/// The feel state blocks read with og-core's bounds-checked reader.
+pub(crate) use og_core::bytes::ByteReader as Reader;
 
 fn put_bytes(out: &mut Vec<u8>, b: &[u8]) {
     out.extend_from_slice(&(b.len() as u32).to_le_bytes());

@@ -22,6 +22,7 @@
 //! [`diff`] compares two snapshots the same way and names every entity,
 //! component, field, resource and state block that differs.
 
+use og_core::bytes::ByteReader;
 use og_core::hash::StableHasher;
 use og_core::reflect::{FieldSchema, FieldType, Layout, Schema};
 use serde_json::{Map, Value, json};
@@ -114,53 +115,45 @@ pub struct Snapshot {
     pub resume: Option<String>,
 }
 
-struct Reader<'a> {
-    buf: &'a [u8],
-    pos: usize,
+/// og-core's [`ByteReader`] with its errors as text; lengths and counts as `usize`.
+#[derive(Clone)]
+struct Reader<'a>(ByteReader<'a>);
+
+fn text<T>(r: og_core::Result<T>) -> Result<T, String> {
+    r.map_err(|e| e.to_string())
 }
 
 impl<'a> Reader<'a> {
+    fn new(bytes: &'a [u8]) -> Reader<'a> {
+        Reader(ByteReader::new(bytes, "snapshot"))
+    }
     fn take(&mut self, n: usize) -> Result<&'a [u8], String> {
-        let end = self
-            .pos
-            .checked_add(n)
-            .filter(|&e| e <= self.buf.len())
-            .ok_or_else(|| format!("snapshot: truncated at byte {}", self.pos))?;
-        let out = &self.buf[self.pos..end];
-        self.pos = end;
-        Ok(out)
+        text(self.0.take(n))
     }
     fn u8(&mut self) -> Result<u8, String> {
-        Ok(self.take(1)?[0])
+        text(self.0.u8())
     }
     fn u32(&mut self) -> Result<usize, String> {
-        Ok(u32::from_le_bytes(self.take(4)?.try_into().expect("4 bytes")) as usize)
+        text(self.0.length())
     }
     fn u64(&mut self) -> Result<u64, String> {
-        Ok(u64::from_le_bytes(
-            self.take(8)?.try_into().expect("8 bytes"),
-        ))
+        text(self.0.u64())
     }
     fn count(&mut self, min_item: usize) -> Result<usize, String> {
-        let n = self.u32()?;
-        if n.saturating_mul(min_item) > self.buf.len() - self.pos {
-            return Err(format!("snapshot: count {n} exceeds the data"));
-        }
-        Ok(n)
+        text(self.0.count(min_item))
     }
     fn sized(&mut self) -> Result<&'a [u8], String> {
-        let n = self.u32()?;
-        self.take(n)
+        text(self.0.sized())
     }
     fn str(&mut self) -> Result<String, String> {
-        String::from_utf8(self.sized()?.to_vec()).map_err(|_| "snapshot: text is not UTF-8".into())
+        text(self.0.string())
     }
 }
 
 impl Snapshot {
     /// Reads a snapshot of format 2, 3 or 4.
     pub fn decode(bytes: &[u8]) -> Result<Snapshot, String> {
-        let mut r = Reader { buf: bytes, pos: 0 };
+        let mut r = Reader::new(bytes);
         if r.take(4)? != MAGIC {
             return Err("not a world snapshot".into());
         }
@@ -291,8 +284,8 @@ impl Snapshot {
             }
         }
         let resume = if format == 4 { Some(r.str()?) } else { None };
-        if r.pos != bytes.len() {
-            return Err(format!("snapshot: {} trailing bytes", bytes.len() - r.pos));
+        if !r.0.is_done() {
+            return Err(format!("snapshot: {} trailing bytes", r.0.remaining()));
         }
         Ok(Snapshot {
             format,
@@ -602,7 +595,7 @@ pub fn shared_hash(bytes: &[u8]) -> Result<u64, String> {
     fn text(bytes: &[u8]) -> Result<&str, String> {
         std::str::from_utf8(bytes).map_err(|_| "snapshot: text is not UTF-8".into())
     }
-    let mut r = Reader { buf: bytes, pos: 0 };
+    let mut r = Reader::new(bytes);
     if r.take(4)? != MAGIC {
         return Err("not a world snapshot".into());
     }
@@ -655,9 +648,7 @@ pub fn shared_hash(bytes: &[u8]) -> Result<u64, String> {
     h.write_u32(free as u32);
     h.write(r.take(free * 4)?);
     // The row count leads the rows, and only the archetypes hold it.
-    let at = r.pos;
-    let rows = hash_rows(&mut r, &types, &sizes, None)?;
-    r.pos = at;
+    let rows = hash_rows(&mut r.clone(), &types, &sizes, None)?;
     h.write_u32(rows as u32);
     hash_rows(&mut r, &types, &sizes, Some(&mut h))?;
     for _ in 0..r.count(8)? {
@@ -704,8 +695,8 @@ pub fn shared_hash(bytes: &[u8]) -> Result<u64, String> {
     if format == 4 {
         h.write_str(text(r.sized()?)?);
     }
-    if r.pos != bytes.len() {
-        return Err(format!("snapshot: {} trailing bytes", bytes.len() - r.pos));
+    if !r.0.is_done() {
+        return Err(format!("snapshot: {} trailing bytes", r.0.remaining()));
     }
     Ok(h.finish())
 }

@@ -293,7 +293,7 @@ impl StateBlock for CameraBlock {
     }
 
     fn decode(&self, bytes: &[u8]) -> og_core::Result<Box<dyn Any + Send>> {
-        let mut r = Reader::new(bytes, "og.camera");
+        let mut r = Reader::new(bytes, "og.camera state block");
         let n = r.u32()?;
         let mut ops = Vec::new();
         for _ in 0..n {
@@ -305,7 +305,7 @@ impl StateBlock for CameraBlock {
                 _ => CameraOp::Kick(v),
             });
         }
-        r.end()?;
+        r.finish()?;
         Ok(Box::new(ops))
     }
 

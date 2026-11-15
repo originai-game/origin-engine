@@ -22,11 +22,11 @@
 //! state block.
 
 use crate::asset::NONE;
-use crate::codec::{Reader, Writer};
 use crate::graph::{GraphAsset, Interrupt, LayerMode, Motion};
 use crate::machine::{LayerState, Phase};
 use crate::schema::AnimationGraph;
 use og_core::Result;
+use og_core::bytes::{ByteReader, ByteWriter};
 use std::cell::RefCell;
 
 /// A graph for a 2D target: its asset (clip ids are `1 + ` an index into
@@ -257,7 +257,7 @@ fn guard_of(c: u8) -> Interrupt {
 }
 
 impl Machine {
-    pub(crate) fn save(&self, w: &mut Writer) {
+    pub(crate) fn save(&self, w: &mut ByteWriter<'_>) {
         w.u64(self.asset);
         w.u32(self.layers.len() as u32);
         for l in &self.layers {
@@ -274,7 +274,7 @@ impl Machine {
         }
     }
 
-    pub(crate) fn load(r: &mut Reader) -> Result<Machine> {
+    pub(crate) fn load(r: &mut ByteReader<'_>) -> Result<Machine> {
         let asset = r.u64()?;
         let n = r.count(37)?;
         let mut layers = Vec::with_capacity(n);

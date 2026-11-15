@@ -45,8 +45,9 @@
 use crate::entity::Entity;
 use crate::registry::SchemaId;
 use crate::schedule::{System, SystemContext};
-use crate::snapshot::{Reader, Writer, bad};
+use crate::snapshot::bad;
 use crate::world::World;
+use og_core::bytes::{ByteReader, ByteWriter};
 use og_core::handle::RawHandle;
 use og_core::{Error, ErrorKind, Result};
 
@@ -640,18 +641,19 @@ impl World {
     /// The reactive block's bytes (`unguarded`: taken by a running system,
     /// whose columns are read in place).
     pub(crate) fn save_reactive(&self, unguarded: bool) -> Vec<u8> {
-        let mut w = Writer(Vec::new());
+        let mut out = Vec::new();
+        let mut w = ByteWriter::new(&mut out);
         let r = &self.reactive;
-        w.u32(VERSION as usize);
+        w.length(VERSION as usize);
         w.u64(r.change_tick);
         w.u64(r.step_start);
-        w.u32(self.systems.len());
+        w.length(self.systems.len());
         for s in &self.systems {
             w.sized(s.name.as_bytes());
             w.u64(s.last_run);
         }
         let tracked: Vec<usize> = (0..r.tracked.len()).filter(|&i| r.tracked[i]).collect();
-        w.u32(tracked.len());
+        w.length(tracked.len());
         for &i in &tracked {
             let id = SchemaId(i as u32);
             w.sized(self.registry.name(id).as_bytes());
@@ -661,7 +663,7 @@ impl World {
                 .filter(|a| a.has(id))
                 .map(|a| a.len())
                 .sum();
-            w.u32(rows);
+            w.length(rows);
             for arch in &self.archetypes {
                 let Some(position) = arch.position(id) else {
                     continue;
@@ -680,13 +682,13 @@ impl World {
                 }
             }
             let log = &r.removed[i];
-            w.u32(log.len());
+            w.length(log.len());
             for (e, t) in log {
                 w.u64(e.to_bits());
                 w.u64(*t);
             }
         }
-        w.u32(r.states.len());
+        w.length(r.states.len());
         for s in &r.states {
             w.sized(s.name.as_bytes());
             w.sized(s.values[s.current as usize].as_bytes());
@@ -694,7 +696,7 @@ impl World {
             w.sized(pending.as_bytes());
             w.u8(u8::from(s.entered));
         }
-        w.u32(r.transitions.len());
+        w.length(r.transitions.len());
         for t in &r.transitions {
             let s = &r.states[t.state];
             w.sized(s.name.as_bytes());
@@ -702,7 +704,7 @@ impl World {
             w.sized(from.as_bytes());
             w.sized(s.values[t.to as usize].as_bytes());
         }
-        w.0
+        out
     }
 
     /// Reads a reactive block against this world's systems, tracked types
@@ -714,8 +716,8 @@ impl World {
         bytes: &[u8],
         mut report: Option<&mut crate::MigrationReport>,
     ) -> Result<SavedReactive> {
-        let mut r = Reader { buf: bytes, pos: 0 };
-        let version = r.u32()? as u32;
+        let mut r = ByteReader::new(bytes, "snapshot");
+        let version = r.length()? as u32;
         if version != VERSION {
             return Err(bad(format!(
                 "the og.ecs block is version {version}, this engine reads {VERSION}"
@@ -737,7 +739,7 @@ impl World {
         };
         let n = r.count(12)?;
         for _ in 0..n {
-            let name = r.str("system name")?;
+            let name = r.str()?;
             let last = r.u64()?;
             match self.systems.iter().position(|s| s.name == name) {
                 Some(i) => out.last_run.push((i, last)),
@@ -748,7 +750,7 @@ impl World {
         }
         let n = r.count(12)?;
         for _ in 0..n {
-            let name = r.str("tracked type")?;
+            let name = r.str()?;
             // The type table governs which types a restore takes; change
             // ticks of one it does not (renamed or dropped by a migration)
             // are dropped, and its rows start as tracked afresh.
@@ -782,9 +784,9 @@ impl World {
         }
         let n = r.count(13)?;
         for _ in 0..n {
-            let name = r.str("state name")?;
-            let current = r.str("state value")?;
-            let pending = r.str("state value")?;
+            let name = r.str()?;
+            let current = r.str()?;
+            let pending = r.str()?;
             let entered = r.u8()? != 0;
             let Ok(state) = self.state_index(name) else {
                 lacks(format!(
@@ -815,9 +817,9 @@ impl World {
         }
         let n = r.count(12)?;
         for _ in 0..n {
-            let name = r.str("state name")?;
-            let from = r.str("state value")?;
-            let to = r.str("state value")?;
+            let name = r.str()?;
+            let from = r.str()?;
+            let to = r.str()?;
             let Ok(state) = self.state_index(name) else {
                 lacks(format!(
                     "it holds a transition of state machine '{name}', which this world does not have"
@@ -834,10 +836,10 @@ impl World {
                 (Err(e), _) | (_, Err(e)) => lacks(e.reason().to_string())?,
             }
         }
-        if r.pos != bytes.len() {
+        if !r.is_done() {
             return Err(bad(format!(
                 "{} trailing bytes in the og.ecs block",
-                bytes.len() - r.pos
+                r.remaining()
             )));
         }
         Ok(out)

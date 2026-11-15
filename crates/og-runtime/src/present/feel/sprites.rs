@@ -148,7 +148,7 @@ impl StateBlock for SpriteBlock {
     }
 
     fn decode(&self, bytes: &[u8]) -> og_core::Result<Box<dyn Any + Send>> {
-        let mut r = Reader::new(bytes, "og.sprite");
+        let mut r = Reader::new(bytes, "og.sprite state block");
         let mut sh = FeelShared {
             spawned: r.u64()?,
             ..FeelShared::default()
@@ -174,7 +174,7 @@ impl StateBlock for SpriteBlock {
             sh.ghosts.insert(k, list);
         }
         for _ in 0..r.u32()? {
-            let text = String::from_utf8(r.bytes()?.to_vec()).map_err(|_| {
+            let text = String::from_utf8(r.sized()?.to_vec()).map_err(|_| {
                 Error::new(ErrorKind::Parse, "og.sprite state block: text is not UTF-8")
             })?;
             sh.floating.push(Floating {
@@ -206,7 +206,7 @@ impl StateBlock for SpriteBlock {
                 sh.flash = map;
             }
         }
-        if !r.at_end() {
+        if !r.is_done() {
             for t in &mut sh.floating {
                 t.facing = match r.u8()? {
                     1 => og_render::SpriteFacing::Camera,
@@ -215,7 +215,7 @@ impl StateBlock for SpriteBlock {
                 };
             }
         }
-        r.end()?;
+        r.finish()?;
         Ok(Box::new(sh))
     }
 

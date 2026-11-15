@@ -17,6 +17,7 @@
 //! cells registers them, and with them the block, first. Its bytes are a
 //! function of its state: cells by entity, rows in order.
 
+use og_core::bytes::{ByteReader, ByteWriter};
 use og_core::{Error, ErrorKind, Result};
 use std::any::Any;
 use std::collections::BTreeMap;
@@ -74,50 +75,38 @@ pub(crate) fn lock(s: &Shared) -> std::sync::MutexGuard<'_, Store> {
 /// The block registered with a world.
 pub(crate) struct Block(pub Shared);
 
-fn put_u32(out: &mut Vec<u8>, v: u32) {
-    out.extend_from_slice(&v.to_le_bytes());
-}
-
-fn put_u64(out: &mut Vec<u8>, v: u64) {
-    out.extend_from_slice(&v.to_le_bytes());
-}
-
-fn put_bytes(out: &mut Vec<u8>, b: &[u8]) {
-    put_u32(out, b.len() as u32);
-    out.extend_from_slice(b);
-}
-
 impl Store {
     fn save(&self, out: &mut Vec<u8>) {
-        put_u32(out, VERSION);
-        put_u32(out, self.kept.len() as u32);
+        let mut w = ByteWriter::new(out);
+        w.u32(VERSION);
+        w.u32(self.kept.len() as u32);
         for (cell, rows) in &self.kept {
-            put_u64(out, *cell);
-            put_u32(out, rows.len() as u32);
+            w.u64(*cell);
+            w.u32(rows.len() as u32);
             for r in rows {
-                put_u64(out, r.id);
-                put_bytes(out, r.name.as_bytes());
-                put_u32(out, r.components.len() as u32);
+                w.u64(r.id);
+                w.str(&r.name);
+                w.u32(r.components.len() as u32);
                 for (ty, hash, bytes) in &r.components {
-                    put_bytes(out, ty.as_bytes());
-                    put_u64(out, *hash);
-                    put_bytes(out, bytes);
+                    w.str(ty);
+                    w.u64(*hash);
+                    w.sized(bytes);
                 }
             }
         }
-        put_u32(out, self.loading.len() as u32);
+        w.u32(self.loading.len() as u32);
         for (cell, l) in &self.loading {
-            put_u64(out, *cell);
-            out.push(l.source as u8);
-            put_u32(out, l.spawned.len() as u32);
+            w.u64(*cell);
+            w.u8(l.source as u8);
+            w.u32(l.spawned.len() as u32);
             for e in &l.spawned {
-                put_u64(out, *e);
+                w.u64(*e);
             }
         }
     }
 
     fn read(bytes: &[u8]) -> Result<Store> {
-        let mut r = Reader { bytes, at: 0 };
+        let mut r = ByteReader::new(bytes, BLOCK);
         let version = r.u32()?;
         if version != VERSION {
             return Err(bad(&format!("has version {version}, not {VERSION}")));
@@ -129,13 +118,13 @@ impl Store {
             let mut rows = Vec::with_capacity(n.min(1 << 16) as usize);
             for _ in 0..n {
                 let id = r.u64()?;
-                let name = r.str()?;
+                let name = r.string()?;
                 let k = r.u32()?;
                 let mut components = Vec::with_capacity(k.min(256) as usize);
                 for _ in 0..k {
-                    let ty = r.str()?;
+                    let ty = r.string()?;
                     let hash = r.u64()?;
-                    components.push((ty, hash, r.bytes()?.to_vec()));
+                    components.push((ty, hash, r.sized()?.to_vec()));
                 }
                 rows.push(Row {
                     id,
@@ -159,7 +148,7 @@ impl Store {
             }
             s.loading.insert(cell, Loading { source, spawned });
         }
-        if r.at != bytes.len() {
+        if !r.is_done() {
             return Err(bad("has bytes after its end"));
         }
         Ok(s)
@@ -168,37 +157,6 @@ impl Store {
 
 fn bad(why: &str) -> Error {
     Error::new(ErrorKind::Parse, format!("{BLOCK} {why}"))
-}
-
-struct Reader<'a> {
-    bytes: &'a [u8],
-    at: usize,
-}
-
-impl<'a> Reader<'a> {
-    fn take(&mut self, n: usize) -> Result<&'a [u8]> {
-        let out = self
-            .bytes
-            .get(self.at..self.at + n)
-            .ok_or_else(|| bad("ends early"))?;
-        self.at += n;
-        Ok(out)
-    }
-    fn u32(&mut self) -> Result<u32> {
-        Ok(u32::from_le_bytes(self.take(4)?.try_into().expect("4")))
-    }
-    fn u64(&mut self) -> Result<u64> {
-        Ok(u64::from_le_bytes(self.take(8)?.try_into().expect("8")))
-    }
-    fn bytes(&mut self) -> Result<&'a [u8]> {
-        let n = self.u32()? as usize;
-        self.take(n)
-    }
-    fn str(&mut self) -> Result<String> {
-        std::str::from_utf8(self.bytes()?)
-            .map(str::to_string)
-            .map_err(|_| bad("holds a name that is not UTF-8"))
-    }
 }
 
 impl og_ecs::StateBlock for Block {

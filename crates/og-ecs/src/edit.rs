@@ -21,10 +21,9 @@
 
 use crate::entity::Entity;
 use crate::registry::SchemaId;
-use crate::snapshot::{
-    FORMAT_SELECTION, MigrationReport, Parsed, Writer, bad, parse_any as parse, plan,
-};
+use crate::snapshot::{FORMAT_SELECTION, MigrationReport, Parsed, bad, parse_any as parse, plan};
 use crate::world::{MAX_NAME, World};
+use og_core::bytes::ByteWriter;
 use og_core::handle::{HandleAllocator, RawHandle, SlotState};
 use og_core::reflect::Schema;
 use og_core::{Error, ErrorKind, Result};
@@ -83,17 +82,17 @@ fn sizes(schema: &Schema) -> Vec<usize> {
     schema.fields.iter().map(|f| f.ty.size()).collect()
 }
 
-fn write_types(w: &mut Writer, types: &[Schema]) {
-    w.u32(types.len());
+fn write_types(w: &mut ByteWriter<'_>, types: &[Schema]) {
+    w.length(types.len());
     for t in types {
         w.sized(t.name.as_bytes());
         w.u64(t.layout_hash());
-        w.u32(t.version as usize);
-        w.u32(t.fields.len());
+        w.length(t.version as usize);
+        w.length(t.fields.len());
         for f in &t.fields {
             w.sized(f.name.as_bytes());
             w.sized(f.ty.name().as_bytes());
-            w.u32(f.variants.len());
+            w.length(f.variants.len());
             for v in &f.variants {
                 w.sized(v.as_bytes());
             }
@@ -642,44 +641,45 @@ impl SnapshotEdit {
     /// The snapshot (or selection) as bytes, in its format: a whole world
     /// as format 2, or 3 with state blocks, or 4 taken mid-tick.
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut w = Writer(Vec::new());
+        let mut out = Vec::new();
+        let mut w = ByteWriter::new(&mut out);
         w.bytes(b"OGWS");
         let Some(whole) = &self.whole else {
-            w.u32(FORMAT_SELECTION as usize);
+            w.length(FORMAT_SELECTION as usize);
             write_types(&mut w, &self.types);
-            w.u32(self.filter.len());
+            w.length(self.filter.len());
             for &t in &self.filter {
-                w.u32(t);
+                w.length(t);
             }
             self.write_rows(&mut w);
-            return w.0;
+            return out;
         };
         let format = match (whole.resume.is_some(), whole.blocks.is_empty()) {
             (true, _) => 4,
             (false, true) => 2,
             (false, false) => 3,
         };
-        w.u32(format);
+        w.length(format);
         write_types(&mut w, &self.types);
-        w.u32(whole.slots.len());
+        w.length(whole.slots.len());
         for s in &whole.slots {
-            w.u32(s.generation as usize);
+            w.length(s.generation as usize);
             w.u8(u8::from(s.alive));
         }
-        w.u32(whole.free.len());
+        w.length(whole.free.len());
         for &i in &whole.free {
-            w.u32(i as usize);
+            w.length(i as usize);
         }
-        w.u32(self.archetypes.len());
+        w.length(self.archetypes.len());
         for a in &self.archetypes {
             Self::write_archetype(&mut w, a);
         }
         Self::write_resources(&mut w, &self.resources);
-        w.u32(whole.events.len());
+        w.length(whole.events.len());
         for (t, current, pending) in &whole.events {
-            w.u32(*t);
+            w.length(*t);
             for list in [current, pending] {
-                w.u32(list.len());
+                w.length(list.len());
                 for e in list {
                     w.bytes(e);
                 }
@@ -687,7 +687,7 @@ impl SnapshotEdit {
         }
         self.write_names(&mut w);
         if format != 2 {
-            w.u32(whole.blocks.len());
+            w.length(whole.blocks.len());
             for (name, bytes) in &whole.blocks {
                 w.sized(name.as_bytes());
                 w.sized(bytes);
@@ -696,15 +696,15 @@ impl SnapshotEdit {
         if let Some(r) = &whole.resume {
             w.sized(r.as_bytes());
         }
-        w.0
+        out
     }
 
-    fn write_archetype(w: &mut Writer, a: &Arch) {
-        w.u32(a.types.len());
+    fn write_archetype(w: &mut ByteWriter<'_>, a: &Arch) {
+        w.length(a.types.len());
         for &t in &a.types {
-            w.u32(t);
+            w.length(t);
         }
-        w.u32(a.entities.len());
+        w.length(a.entities.len());
         for e in &a.entities {
             w.u64(e.to_bits());
         }
@@ -715,16 +715,16 @@ impl SnapshotEdit {
         }
     }
 
-    fn write_resources(w: &mut Writer, resources: &[(usize, Vec<u8>)]) {
-        w.u32(resources.len());
+    fn write_resources(w: &mut ByteWriter<'_>, resources: &[(usize, Vec<u8>)]) {
+        w.length(resources.len());
         for (t, b) in resources {
-            w.u32(*t);
+            w.length(*t);
             w.sized(b);
         }
     }
 
-    fn write_names(&self, w: &mut Writer) {
-        w.u32(self.names.len());
+    fn write_names(&self, w: &mut ByteWriter<'_>) {
+        w.length(self.names.len());
         for (e, name) in &self.names {
             w.u64(e.to_bits());
             w.sized(name.as_bytes());
@@ -732,13 +732,13 @@ impl SnapshotEdit {
     }
 
     /// A selection's archetypes (those with rows), resources and names.
-    fn write_rows(&self, w: &mut Writer) {
+    fn write_rows(&self, w: &mut ByteWriter<'_>) {
         let rows: Vec<&Arch> = self
             .archetypes
             .iter()
             .filter(|a| !a.entities.is_empty())
             .collect();
-        w.u32(rows.len());
+        w.length(rows.len());
         for a in rows {
             Self::write_archetype(w, a);
         }

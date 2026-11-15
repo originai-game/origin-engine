@@ -7,10 +7,10 @@
 //! `frame` lines and clips), and what [`FlipbookSheet::parse`] reads back.
 
 use crate::asset::NONE;
-use crate::codec::{Reader, Writer};
 use crate::graph2d::{Machine, SpriteGraph, heaviest};
 use crate::schema::AnimationGraph;
 use og_core::IdMap;
+use og_core::bytes::{ByteReader, ByteWriter};
 use og_core::ogt::{Document, Entry};
 use og_core::{Error, ErrorKind, Reflect, Result, Str64};
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
@@ -927,7 +927,7 @@ impl StateBlock for FlipState {
         // Graph-driven entities, written only when there are some (so a
         // world without graphs saves, and hashes, as before).
         if !sh.driven.is_empty() {
-            let mut w = Writer::new(out);
+            let mut w = ByteWriter::new(out);
             w.u32(sh.driven.len() as u32);
             for (k, d) in &sh.driven {
                 w.u64(*k);
@@ -948,7 +948,7 @@ impl StateBlock for FlipState {
         }
         let mut driven = IdMap::new();
         if bytes.len() > 4 + n * 40 {
-            let mut r = Reader::new(&bytes[4 + n * 40..]);
+            let mut r = ByteReader::new(&bytes[4 + n * 40..], "og.flipbook state block");
             for _ in 0..r.count(32)? {
                 let k = r.u64()?;
                 let machine = Machine::load(&mut r)?;

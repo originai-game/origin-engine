@@ -11,7 +11,6 @@ use playback::{eval_graph, eval_player};
 use state::AnimState;
 
 use crate::asset::{ClipAsset, NONE, SkeletonAsset, bind};
-use crate::codec::{Reader, Writer};
 use crate::graph::{GraphAsset, Interrupt, LayerMode, Motion};
 use crate::ik;
 use crate::machine::{LayerState, Phase};
@@ -20,6 +19,7 @@ use crate::retarget::{FootPlants, HumanoidMap, TwistBone, share_twist, twist_bon
 use crate::schema::*;
 use crate::xform::{Trs, nlerp, rotation_arc, unit};
 use og_core::IdMap;
+use og_core::bytes::{ByteReader, ByteWriter};
 use og_core::glam::{Mat4, Quat, Vec3};
 use og_core::{Error, ErrorKind, Result, Str64};
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};

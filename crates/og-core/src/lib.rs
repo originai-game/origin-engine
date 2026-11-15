@@ -2,6 +2,7 @@
 //!
 //! | module | what it owns |
 //! |---|---|
+//! | [`bytes`] | [`bytes::ByteReader`] and [`bytes::ByteWriter`]: little-endian state blocks and snapshots, the one copy |
 //! | [`color`] | the sRGB transfer, `#rrggbb` hex and Oklab, the one copy of each |
 //! | [`base64`] | [`base64::encode`] and [`base64::decode`]: bytes in JSON and text, the one copy |
 //! | [`error`] | [`Error`] (kind + reason) and [`Result`]: errors are values |
@@ -33,6 +34,7 @@ extern crate self as og_core;
 pub mod alloc;
 pub mod base64;
 pub mod bvh;
+pub mod bytes;
 pub mod color;
 pub mod ease;
 pub mod error;

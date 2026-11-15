@@ -9,6 +9,7 @@ use crate::expr::Val;
 use crate::story::{ChoiceValues, Conv, Event, QuestState, Roll, Shown, Story, Wait};
 use crate::yarn::saliency::Saliency;
 use og_core::Rng;
+use og_core::bytes::{ByteReader, ByteWriter};
 use std::collections::{BTreeMap, BTreeSet};
 
 const MAGIC: &[u8; 4] = b"OGST";
@@ -26,25 +27,23 @@ const MAGIC: &[u8; 4] = b"OGST";
 /// let go from it (og.story's StartDesc.hold), and the held wait.
 pub const SAVE_VERSION: u8 = 9;
 
-struct W<'a>(&'a mut Vec<u8>);
+/// og-core's [`ByteWriter`] (its primitives, by `Deref`) and the story's values.
+struct W<'a>(ByteWriter<'a>);
+
+impl<'a> std::ops::Deref for W<'a> {
+    type Target = ByteWriter<'a>;
+    fn deref(&self) -> &ByteWriter<'a> {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for W<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 impl W<'_> {
-    fn u8(&mut self, v: u8) {
-        self.0.push(v);
-    }
-    fn u32(&mut self, v: u32) {
-        self.0.extend_from_slice(&v.to_le_bytes());
-    }
-    fn u64(&mut self, v: u64) {
-        self.0.extend_from_slice(&v.to_le_bytes());
-    }
-    fn f64(&mut self, v: f64) {
-        self.u64(v.to_bits());
-    }
-    fn str(&mut self, s: &str) {
-        self.u32(s.len() as u32);
-        self.0.extend_from_slice(s.as_bytes());
-    }
     fn val(&mut self, v: &Val) {
         match v {
             Val::Num(n) => {
@@ -98,49 +97,38 @@ impl W<'_> {
     }
 }
 
-struct R<'a> {
-    b: &'a [u8],
-    at: usize,
+/// og-core's [`ByteReader`], its errors as the story's text, and the story's values.
+struct R<'a>(ByteReader<'a>);
+
+fn text<T>(r: og_core::Result<T>) -> Result<T, String> {
+    r.map_err(|e| e.to_string())
 }
 
 impl R<'_> {
-    fn take(&mut self, n: usize) -> Result<&[u8], String> {
-        let end = self.at.checked_add(n).filter(|e| *e <= self.b.len());
-        let end = end.ok_or("the story's saved state is cut short")?;
-        let s = &self.b[self.at..end];
-        self.at = end;
-        Ok(s)
-    }
     fn u8(&mut self) -> Result<u8, String> {
-        Ok(self.take(1)?[0])
+        text(self.0.u8())
     }
     fn bool(&mut self) -> Result<bool, String> {
-        Ok(self.u8()? != 0)
+        text(self.0.bool())
     }
     fn u32(&mut self) -> Result<u32, String> {
-        Ok(u32::from_le_bytes(self.take(4)?.try_into().unwrap()))
+        text(self.0.u32())
     }
     fn u64(&mut self) -> Result<u64, String> {
-        Ok(u64::from_le_bytes(self.take(8)?.try_into().unwrap()))
+        text(self.0.u64())
     }
     fn f64(&mut self) -> Result<f64, String> {
-        Ok(f64::from_bits(self.u64()?))
+        text(self.0.f64())
     }
     fn f32(&mut self) -> Result<f32, String> {
-        Ok(f32::from_bits(self.u32()?))
+        text(self.0.f32())
     }
     fn str(&mut self) -> Result<String, String> {
-        let n = self.u32()? as usize;
-        String::from_utf8(self.take(n)?.to_vec())
-            .map_err(|_| "a string in the story's saved state is not UTF-8".to_string())
+        text(self.0.string())
     }
+    /// Every element takes at least a byte: a count past what is left is corrupt.
     fn count(&mut self) -> Result<usize, String> {
-        let n = self.u32()? as usize;
-        // Every element takes at least a byte: a count past what is left is corrupt.
-        if n > self.b.len() - self.at {
-            return Err("the story's saved state has a count past its end".into());
-        }
-        Ok(n)
+        text(self.0.count(1))
     }
     fn val(&mut self) -> Result<Val, String> {
         Ok(match self.u8()? {
@@ -211,7 +199,7 @@ impl Story {
     /// Appends the saved form.
     pub fn save(&self, out: &mut Vec<u8>) {
         out.extend_from_slice(MAGIC);
-        let mut w = W(out);
+        let mut w = W(ByteWriter::new(out));
         w.u8(SAVE_VERSION);
         w.u32(self.rng.seed());
         w.u32(self.rng.save());
@@ -458,7 +446,7 @@ impl Story {
         let rest = bytes
             .strip_prefix(MAGIC)
             .ok_or("the story's saved state does not start with OGST")?;
-        let mut r = R { b: rest, at: 0 };
+        let mut r = R(ByteReader::new(rest, "the story's saved state"));
         let v = r.u8()?;
         if !(1..=SAVE_VERSION).contains(&v) {
             return Err(format!(
@@ -759,7 +747,7 @@ impl Story {
                 s.content_views.insert(key, r.u32()?);
             }
         }
-        if r.at != r.b.len() {
+        if !r.0.is_done() {
             return Err("the story's saved state has bytes past its end".into());
         }
         Ok(s)

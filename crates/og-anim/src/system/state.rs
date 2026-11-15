@@ -6,26 +6,16 @@ use super::*;
 
 pub(super) struct AnimState(pub(super) Arc<Mutex<Shared>>);
 
-fn write_phase(w: &mut Writer, p: Phase) {
+fn write_phase(w: &mut ByteWriter<'_>, p: Phase) {
     w.u32(p.cycles);
     w.f32(p.frac);
 }
 
-fn read_phase(r: &mut Reader) -> Result<Phase> {
+fn read_phase(r: &mut ByteReader<'_>) -> Result<Phase> {
     Ok(Phase {
         cycles: r.u32()?,
         frac: r.f32()?,
     })
-}
-
-fn write_vec3(w: &mut Writer, v: Vec3) {
-    for x in v.to_array() {
-        w.f32(x);
-    }
-}
-
-fn read_vec3(r: &mut Reader) -> Result<Vec3> {
-    Ok(Vec3::new(r.f32()?, r.f32()?, r.f32()?))
 }
 
 /// Sections after the entities, each a tag and its contents, written only
@@ -57,7 +47,7 @@ fn encode(
     springs: &IdMap<u64, SpringState>,
     out: &mut Vec<u8>,
 ) {
-    let mut w = Writer::new(out);
+    let mut w = ByteWriter::new(out);
     w.u32(1); // format
     w.u32(states.len() as u32);
     for (&e, s) in states {
@@ -116,7 +106,7 @@ fn encode(
                 Lock::Releasing(from, t) => (2, from, t),
             };
             w.u8(mode);
-            write_vec3(&mut w, at);
+            w.vec3(at);
             w.f32(t);
         }
     }
@@ -149,8 +139,8 @@ fn encode(
             w.u32(s.space);
             w.u32(s.tails.len() as u32);
             for &(x, v) in &s.tails {
-                write_vec3(&mut w, x);
-                write_vec3(&mut w, v);
+                w.vec3(x);
+                w.vec3(v);
             }
         }
     }
@@ -196,7 +186,7 @@ fn encode(
 }
 
 fn decode(bytes: &[u8]) -> Result<Saved> {
-    let mut r = Reader::new(bytes);
+    let mut r = ByteReader::new(bytes, "og.anim state block");
     let mut saved = Saved::default();
     if bytes.is_empty() {
         return Ok(saved);
@@ -283,7 +273,7 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
         );
     }
     let mut last_tag = 0;
-    while !r.done() {
+    while !r.is_done() {
         let tag = r.u32()?;
         if tag <= last_tag {
             return Err(Error::new(
@@ -299,7 +289,7 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
                     let e = r.u64()?;
                     let skeleton = r.u64()?;
                     let mode = r.u8()?;
-                    let at = read_vec3(&mut r)?;
+                    let at = r.vec3()?;
                     let t = r.f32()?;
                     let lock = match mode {
                         0 => Lock::Free,
@@ -352,7 +342,7 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
                     let joints = r.count(24)?;
                     let mut tails = Vec::with_capacity(joints);
                     for _ in 0..joints {
-                        tails.push((read_vec3(&mut r)?, read_vec3(&mut r)?));
+                        tails.push((r.vec3()?, r.vec3()?));
                     }
                     saved.springs.insert(
                         e,

@@ -1,6 +1,7 @@
 //! The goals' state block: saved and restored with the world.
 
 use super::*;
+use og_core::bytes::ByteReader;
 
 pub(super) struct Block(pub(super) Arc<Mutex<Goals>>);
 
@@ -75,7 +76,10 @@ pub(super) fn load(bytes: &[u8]) -> og_core::Result<Goals> {
         1
     };
     let modern = version >= 2;
-    let mut r = Reader(if modern { &bytes[8..] } else { bytes });
+    let mut r = ByteReader::new(
+        if modern { &bytes[8..] } else { bytes },
+        "the og.motion state",
+    );
     let mut g = Goals::default();
     for _ in 0..r.u32()? {
         let e = r.u64()?;
@@ -136,42 +140,24 @@ pub(super) fn load(bytes: &[u8]) -> og_core::Result<Goals> {
             a.current = Some(current);
         }
         if modern {
-            let n = r.u32()? as usize;
-            let data =
-                r.0.get(..n)
-                    .ok_or_else(|| invalid("motion performance state is cut short"))?;
+            let data = r.sized()?;
             a.performance = serde_json::from_slice(data).map_err(|e| invalid(e.to_string()))?;
-            r.0 = &r.0[n..];
         }
         g.agents.insert(e, a);
     }
-    if !r.0.is_empty() {
+    if !r.is_done() {
         return Err(invalid("the og.motion state has bytes left over"));
     }
     Ok(g)
 }
 
-pub(super) struct Reader<'a>(pub(super) &'a [u8]);
+/// The og.motion block's own values on og-core's reader.
+trait Reader {
+    fn goal(&mut self, version: u32) -> og_core::Result<Goal>;
+}
 
-impl Reader<'_> {
-    pub(super) fn take<const N: usize>(&mut self) -> og_core::Result<[u8; N]> {
-        let (a, b) = self
-            .0
-            .split_first_chunk::<N>()
-            .ok_or_else(|| invalid("the og.motion state is cut short"))?;
-        self.0 = b;
-        Ok(*a)
-    }
-    pub(super) fn u32(&mut self) -> og_core::Result<u32> {
-        self.take::<4>().map(u32::from_le_bytes)
-    }
-    pub(super) fn u64(&mut self) -> og_core::Result<u64> {
-        self.take::<8>().map(u64::from_le_bytes)
-    }
-    pub(super) fn f32(&mut self) -> og_core::Result<f32> {
-        self.take::<4>().map(f32::from_le_bytes)
-    }
-    pub(super) fn goal(&mut self, version: u32) -> og_core::Result<Goal> {
+impl Reader for ByteReader<'_> {
+    fn goal(&mut self, version: u32) -> og_core::Result<Goal> {
         let kind =
             Kind::from_u32(self.u32()?).ok_or_else(|| invalid("an unknown og.motion goal"))?;
         let pose = self.u32()?;

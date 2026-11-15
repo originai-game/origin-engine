@@ -66,6 +66,7 @@ use crate::storage::Archetype;
 use crate::world::{
     Entities, EventQueue, Location, MAX_NAME, PENDING, ResourceValue, World, resource_to_bytes,
 };
+use og_core::bytes::{ByteReader, ByteWriter};
 use og_core::handle::{HandleAllocator, RawHandle, SlotState};
 use og_core::hash::hash_bytes;
 use og_core::reflect::{FieldSchema, FieldType, Schema};
@@ -95,77 +96,8 @@ fn field_type(name: &str) -> Option<FieldType> {
     FieldType::parse(name)
 }
 
-pub(crate) struct Writer(pub(crate) Vec<u8>);
-
-impl Writer {
-    pub(crate) fn u8(&mut self, v: u8) {
-        self.0.push(v);
-    }
-    pub(crate) fn u32(&mut self, v: usize) {
-        self.0
-            .extend_from_slice(&u32::try_from(v).expect("fits in u32").to_le_bytes());
-    }
-    pub(crate) fn u64(&mut self, v: u64) {
-        self.0.extend_from_slice(&v.to_le_bytes());
-    }
-    pub(crate) fn bytes(&mut self, b: &[u8]) {
-        self.0.extend_from_slice(b);
-    }
-    pub(crate) fn sized(&mut self, b: &[u8]) {
-        self.u32(b.len());
-        self.bytes(b);
-    }
-}
-
-pub(crate) struct Reader<'a> {
-    pub(crate) buf: &'a [u8],
-    pub(crate) pos: usize,
-}
-
 pub(crate) fn bad(reason: impl Into<String>) -> Error {
     Error::new(ErrorKind::Parse, format!("snapshot: {}", reason.into()))
-}
-
-impl<'a> Reader<'a> {
-    pub(crate) fn take(&mut self, n: usize) -> Result<&'a [u8]> {
-        let end = self
-            .pos
-            .checked_add(n)
-            .filter(|&e| e <= self.buf.len())
-            .ok_or_else(|| bad(format!("truncated at byte {}", self.pos)))?;
-        let out = &self.buf[self.pos..end];
-        self.pos = end;
-        Ok(out)
-    }
-    pub(crate) fn u8(&mut self) -> Result<u8> {
-        Ok(self.take(1)?[0])
-    }
-    pub(crate) fn u32(&mut self) -> Result<usize> {
-        Ok(u32::from_le_bytes(self.take(4)?.try_into().expect("4 bytes")) as usize)
-    }
-    pub(crate) fn u64(&mut self) -> Result<u64> {
-        Ok(u64::from_le_bytes(
-            self.take(8)?.try_into().expect("8 bytes"),
-        ))
-    }
-    /// A count of items at least `min_item` bytes each, checked against what is left.
-    pub(crate) fn count(&mut self, min_item: usize) -> Result<usize> {
-        let n = self.u32()?;
-        if n.saturating_mul(min_item) > self.buf.len() - self.pos {
-            return Err(bad(format!(
-                "count {n} at byte {} exceeds the data",
-                self.pos - 4
-            )));
-        }
-        Ok(n)
-    }
-    pub(crate) fn sized(&mut self) -> Result<&'a [u8]> {
-        let n = self.u32()?;
-        self.take(n)
-    }
-    pub(crate) fn str(&mut self, what: &str) -> Result<&'a str> {
-        std::str::from_utf8(self.sized()?).map_err(|_| bad(format!("{what} is not UTF-8")))
-    }
 }
 
 /// What [`World::restore_migrating`] did beyond a plain restore. Entries
@@ -349,11 +281,14 @@ pub(crate) fn layout_difference(saved: &Schema, now: &Schema) -> String {
 }
 
 /// The resources section: `u32 n, n × { u32 type, str bytes }`.
-fn read_resources<'a>(r: &mut Reader<'a>, types: &[SnapType]) -> Result<Vec<(usize, &'a [u8])>> {
+fn read_resources<'a>(
+    r: &mut ByteReader<'a>,
+    types: &[SnapType],
+) -> Result<Vec<(usize, &'a [u8])>> {
     let resource_count = r.count(8)?;
     let mut resources: Vec<(usize, &[u8])> = Vec::with_capacity(resource_count);
     for _ in 0..resource_count {
-        let t = r.u32()?;
+        let t = r.length()?;
         if t >= types.len() {
             return Err(bad(format!("type index {t} out of range")));
         }
@@ -376,7 +311,7 @@ fn read_resources<'a>(r: &mut Reader<'a>, types: &[SnapType]) -> Result<Vec<(usi
 
 /// The rest of a selection after its type table: the filter, the
 /// archetypes (any entity ids, each once), the resources and the names.
-fn parse_selection<'a>(mut r: Reader<'a>, types: Vec<SnapType>) -> Result<Parsed<'a>> {
+fn parse_selection<'a>(mut r: ByteReader<'a>, types: Vec<SnapType>) -> Result<Parsed<'a>> {
     let type_at = |i: usize| -> Result<usize> {
         if i < types.len() {
             Ok(i)
@@ -387,7 +322,7 @@ fn parse_selection<'a>(mut r: Reader<'a>, types: Vec<SnapType>) -> Result<Parsed
     let k = r.count(4)?;
     let mut filter = Vec::with_capacity(k);
     for _ in 0..k {
-        filter.push(type_at(r.u32()?)?);
+        filter.push(type_at(r.length()?)?);
     }
     let arch_count = r.count(8)?;
     let mut seen = std::collections::BTreeSet::new();
@@ -397,7 +332,7 @@ fn parse_selection<'a>(mut r: Reader<'a>, types: Vec<SnapType>) -> Result<Parsed
         let k = r.count(4)?;
         let mut stored = Vec::with_capacity(k);
         for _ in 0..k {
-            stored.push(type_at(r.u32()?)?);
+            stored.push(type_at(r.length()?)?);
         }
         let mut sorted = stored.clone();
         og_core::sort::sort(&mut sorted);
@@ -436,7 +371,7 @@ fn parse_selection<'a>(mut r: Reader<'a>, types: Vec<SnapType>) -> Result<Parsed
     let mut names: Vec<(Entity, String)> = Vec::with_capacity(n);
     for _ in 0..n {
         let e = Entity(RawHandle::from_bits(r.u64()?));
-        let name = r.str("entity name")?;
+        let name = r.str()?;
         if !ids.contains(&e) {
             return Err(bad(format!(
                 "name '{name}' belongs to {e}, which is not selected"
@@ -453,8 +388,8 @@ fn parse_selection<'a>(mut r: Reader<'a>, types: Vec<SnapType>) -> Result<Parsed
         }
         names.push((e, name.to_owned()));
     }
-    if r.pos != r.buf.len() {
-        return Err(bad(format!("{} trailing bytes", r.buf.len() - r.pos)));
+    if !r.is_done() {
+        return Err(bad(format!("{} trailing bytes", r.remaining())));
     }
     Ok(Parsed {
         types,
@@ -486,11 +421,11 @@ fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
 /// lists, in its order, without reading the rest: a host registers a type
 /// it registers lazily before restoring a snapshot that holds it.
 pub fn snapshot_type_names(bytes: &[u8]) -> Result<Vec<String>> {
-    let mut r = Reader { buf: bytes, pos: 0 };
+    let mut r = ByteReader::new(bytes, "snapshot");
     if r.take(4)? != MAGIC {
         return Err(bad("not a world snapshot (magic)"));
     }
-    let format = r.u32()? as u32;
+    let format = r.length()? as u32;
     if !(FORMAT_STATE..=FORMAT_SELECTION).contains(&format) {
         return Err(bad(format!(
             "format {format}, this engine reads {FORMAT_STATE} to {FORMAT_SELECTION}"
@@ -500,10 +435,10 @@ pub fn snapshot_type_names(bytes: &[u8]) -> Result<Vec<String>> {
     let n = r.count(12)?;
     let mut out = Vec::with_capacity(n);
     for _ in 0..n {
-        out.push(r.str("type name")?.to_owned());
+        out.push(r.str()?.to_owned());
         r.u64()?;
         if tables {
-            r.u32()?;
+            r.length()?;
             for _ in 0..r.count(12)? {
                 r.sized()?;
                 r.sized()?;
@@ -518,11 +453,11 @@ pub fn snapshot_type_names(bytes: &[u8]) -> Result<Vec<String>> {
 
 /// Reads and validates a snapshot of any format, or a selection.
 pub(crate) fn parse_any<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
-    let mut r = Reader { buf: bytes, pos: 0 };
+    let mut r = ByteReader::new(bytes, "snapshot");
     if r.take(4)? != MAGIC {
         return Err(bad("not a world snapshot (magic)"));
     }
-    let format = r.u32()? as u32;
+    let format = r.length()? as u32;
     if !(FORMAT_STATE..=FORMAT_SELECTION).contains(&format) {
         return Err(bad(format!(
             "format {format}, this engine reads {FORMAT_STATE} to {FORMAT_SELECTION}"
@@ -542,22 +477,22 @@ pub(crate) fn parse_any<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Pars
     let type_count = r.count(12)?;
     let mut types: Vec<SnapType> = Vec::with_capacity(type_count);
     for _ in 0..type_count {
-        let name = r.str("type name")?.to_owned();
+        let name = r.str()?.to_owned();
         let hash = r.u64()?;
         let (schema, sizes) = if format == FORMAT {
-            let version = r.u32()? as u32;
+            let version = r.length()? as u32;
             let n = r.count(12)?;
             let mut fields = Vec::with_capacity(n);
             for _ in 0..n {
-                let fname = r.str("field name")?;
-                let tname = r.str("field type")?;
+                let fname = r.str()?;
+                let tname = r.str()?;
                 let ty = field_type(tname).ok_or_else(|| {
                     bad(format!("field '{name}.{fname}' has unknown type '{tname}'"))
                 })?;
                 let k = r.count(4)?;
                 let mut variants = Vec::with_capacity(k);
                 for _ in 0..k {
-                    variants.push(r.str("variant name")?.to_owned());
+                    variants.push(r.str()?.to_owned());
                 }
                 let mut f = FieldSchema::new(fname, ty);
                 f.variants = variants;
@@ -616,7 +551,7 @@ pub(crate) fn parse_any<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Pars
     let slot_count = r.count(5)?;
     let mut slots = Vec::with_capacity(slot_count);
     for _ in 0..slot_count {
-        let generation = r.u32()? as u32;
+        let generation = r.length()? as u32;
         let alive = match r.u8()? {
             0 => false,
             1 => true,
@@ -627,7 +562,7 @@ pub(crate) fn parse_any<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Pars
     let free_count = r.count(4)?;
     let mut free = Vec::with_capacity(free_count);
     for _ in 0..free_count {
-        free.push(r.u32()? as u32);
+        free.push(r.length()? as u32);
     }
     let alloc = HandleAllocator::from_parts(&slots, &free).map_err(|e| bad(e.reason()))?;
 
@@ -643,7 +578,7 @@ pub(crate) fn parse_any<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Pars
         let k = r.count(4)?;
         let mut stored = Vec::with_capacity(k);
         for _ in 0..k {
-            stored.push(type_at(r.u32()?)?);
+            stored.push(type_at(r.length()?)?);
         }
         let mut sorted = stored.clone();
         og_core::sort::sort(&mut sorted);
@@ -700,7 +635,7 @@ pub(crate) fn parse_any<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Pars
     let queue_count = r.count(12)?;
     let mut events: Vec<Queue<'_>> = Vec::with_capacity(queue_count);
     for _ in 0..queue_count {
-        let t = type_at(r.u32()?)?;
+        let t = type_at(r.length()?)?;
         if events.iter().any(|(u, _, _)| *u == t) {
             return Err(bad(format!(
                 "event queue '{}' appears twice",
@@ -728,7 +663,7 @@ pub(crate) fn parse_any<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Pars
         let n = r.count(12)?;
         for _ in 0..n {
             let e = Entity(RawHandle::from_bits(r.u64()?));
-            let name = r.str("entity name")?;
+            let name = r.str()?;
             if !alloc.is_alive(e.0) {
                 return Err(bad(format!(
                     "name '{name}' belongs to {e}, which is not alive"
@@ -750,20 +685,16 @@ pub(crate) fn parse_any<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Pars
     if blocks_section {
         let n = r.count(8)?;
         for _ in 0..n {
-            let name = r.str("state block name")?;
+            let name = r.str()?;
             if blocks.iter().any(|(b, _)| *b == name) {
                 return Err(bad(format!("state block '{name}' appears twice")));
             }
             blocks.push((name, r.sized()?));
         }
     }
-    let resume = if resume_section {
-        Some(r.str("resume system name")?)
-    } else {
-        None
-    };
-    if r.pos != bytes.len() {
-        return Err(bad(format!("{} trailing bytes", bytes.len() - r.pos)));
+    let resume = if resume_section { Some(r.str()?) } else { None };
+    if !r.is_done() {
+        return Err(bad(format!("{} trailing bytes", r.remaining())));
     }
     Ok(Parsed {
         types,
@@ -1153,7 +1084,8 @@ impl World {
                 .and_then(|i| self.systems.get(i))
                 .map(|s| s.name.as_str())
         });
-        let mut w = Writer(Vec::new());
+        let mut out = Vec::new();
+        let mut w = ByteWriter::new(&mut out);
         w.bytes(MAGIC);
         let reactive = self.reactive.enabled();
         let no_blocks = self.blocks.is_empty() && !reactive;
@@ -1163,19 +1095,19 @@ impl World {
             (false, true, false) => FORMAT,
             (false, false, false) => FORMAT_BLOCKS,
         };
-        w.u32(format as usize);
+        w.length(format as usize);
 
-        w.u32(self.registry.len());
+        w.length(self.registry.len());
         for t in &self.registry.types {
             w.sized(t.schema.name.as_bytes());
             w.u64(t.layout_hash);
             if !state {
-                w.u32(t.schema.version as usize);
-                w.u32(t.schema.fields.len());
+                w.length(t.schema.version as usize);
+                w.length(t.schema.fields.len());
                 for f in &t.schema.fields {
                     w.sized(f.name.as_bytes());
                     w.sized(f.ty.name().as_bytes());
-                    w.u32(f.variants.len());
+                    w.length(f.variants.len());
                     for v in &f.variants {
                         w.sized(v.as_bytes());
                     }
@@ -1194,35 +1126,35 @@ impl World {
                     .get(i)
                     .is_some_and(|l| l.archetype == PENDING)
         };
-        w.u32(entities.alloc.slot_count());
+        w.length(entities.alloc.slot_count());
         let mut freed = Vec::new();
         for (i, slot) in entities.alloc.slots().enumerate() {
             if slot.alive && pending(i) {
-                w.u32(slot.generation as usize + 1);
+                w.length(slot.generation as usize + 1);
                 w.u8(0);
                 if slot.generation + 1 < og_core::handle::RETIRED_GENERATION {
                     freed.push(i);
                 }
             } else {
-                w.u32(slot.generation as usize);
+                w.length(slot.generation as usize);
                 w.u8(u8::from(slot.alive));
             }
         }
-        w.u32(entities.alloc.free_list().len() + freed.len());
+        w.length(entities.alloc.free_list().len() + freed.len());
         for &i in entities.alloc.free_list() {
-            w.u32(i as usize);
+            w.length(i as usize);
         }
         for i in freed.into_iter().rev() {
-            w.u32(i);
+            w.length(i);
         }
 
-        w.u32(self.archetypes.len());
+        w.length(self.archetypes.len());
         for arch in &self.archetypes {
-            w.u32(arch.types.len());
+            w.length(arch.types.len());
             for id in &arch.types {
-                w.u32(id.0 as usize);
+                w.length(id.0 as usize);
             }
-            w.u32(arch.len());
+            w.length(arch.len());
             for e in &arch.entities {
                 w.u64(e.to_bits());
             }
@@ -1246,13 +1178,13 @@ impl World {
         let present: Vec<usize> = (0..self.resources.len())
             .filter(|&i| self.resources[i].is_some())
             .collect();
-        w.u32(present.len());
+        w.length(present.len());
         for i in present {
             let id = SchemaId(i as u32);
             let value = self.resources[i].as_ref().expect("present").borrow();
             let bytes = resource_to_bytes(&self.registry, id, &value)
                 .expect("resources were validated against their layout on insert");
-            w.u32(i);
+            w.length(i);
             w.sized(&bytes);
         }
 
@@ -1262,12 +1194,12 @@ impl World {
                 !q.current.is_empty() || !q.pending.is_empty()
             })
             .collect();
-        w.u32(queues.len());
+        w.length(queues.len());
         for i in queues {
             let q = self.events[i].borrow();
-            w.u32(i);
+            w.length(i);
             for list in [&q.current, &q.pending] {
-                w.u32(list.len());
+                w.length(list.len());
                 for e in list.iter() {
                     w.bytes(e);
                 }
@@ -1278,7 +1210,7 @@ impl World {
             if state {
                 w.bytes(NAMES_TAG);
             }
-            w.u32(self.names.len());
+            w.length(self.names.len());
             for (e, name) in &self.names {
                 w.u64(e.to_bits());
                 w.sized(name.as_bytes());
@@ -1289,7 +1221,7 @@ impl World {
             if state {
                 w.bytes(BLOCKS_TAG);
             }
-            w.u32(self.blocks.len() + usize::from(reactive));
+            w.length(self.blocks.len() + usize::from(reactive));
             let mut saved = Vec::new();
             for b in &self.blocks {
                 saved.clear();
@@ -1309,7 +1241,7 @@ impl World {
             }
             w.sized(name.as_bytes());
         }
-        w.0
+        out
     }
 
     /// The whole world as bytes (format 2, or 3 with state blocks). See the

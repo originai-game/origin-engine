@@ -1,4 +1,5 @@
 use super::*;
+use og_core::bytes::{ByteReader, ByteWriter};
 
 /// What a snapshot holds: the paths, and the registry's edits.
 #[derive(Debug)]
@@ -56,23 +57,22 @@ mod tag {
     pub const ROWS_DOWN: u16 = 6;
 }
 
-fn put_traverse(o: &mut Vec<u8>, t: &Traverse) {
-    let mut w = Writer(o);
+fn put_traverse(w: &mut ByteWriter<'_>, t: &Traverse) {
     w.u32(t.link);
-    w.0.push(t.kind as u8);
-    w.v3(t.from);
-    w.v3(t.to);
+    w.u8(t.kind as u8);
+    w.vec3(t.from);
+    w.vec3(t.to);
     w.f32(t.elapsed);
     w.f32(t.duration);
-    w.0.push(u8::from(t.game) | u8::from(t.finished) << 1);
+    w.u8(u8::from(t.game) | u8::from(t.finished) << 1);
     w.u32(t.corner);
     w.u32(t.land);
 }
 
-fn get_traverse(r: &mut Reader<'_>) -> Result<Traverse> {
+fn get_traverse(r: &mut ByteReader<'_>) -> Result<Traverse> {
     let link = r.u32()?;
     let kind = LinkKind::from_index(r.take(1)?[0] as u32);
-    let (from, to) = (r.v3()?, r.v3()?);
+    let (from, to) = (r.vec3()?, r.vec3()?);
     let (elapsed, duration) = (r.f32()?, r.f32()?);
     let flags = r.take(1)?[0];
     Ok(Traverse {
@@ -89,85 +89,33 @@ fn get_traverse(r: &mut Reader<'_>) -> Result<Traverse> {
     })
 }
 
-fn put_shape(o: &mut Vec<u8>, s: &Shape) {
-    s.write(o);
+fn put_shape(w: &mut ByteWriter<'_>, s: &Shape) {
+    s.write(w.out());
 }
 
-fn get_shape(r: &mut Reader<'_>) -> Result<Shape> {
-    let mut b = &r.b[r.at..];
-    let before = b.len();
-    let s = Shape::read(&mut b).ok_or_else(|| {
+fn get_shape(r: &mut ByteReader<'_>) -> Result<Shape> {
+    r.parse(Shape::read).ok_or_else(|| {
         Error::new(
             ErrorKind::Invalid,
             "the og.nav state block holds a shape it cannot read",
         )
-    })?;
-    r.at += before - b.len();
-    Ok(s)
-}
-
-struct Writer<'a>(&'a mut Vec<u8>);
-impl Writer<'_> {
-    fn u32(&mut self, v: u32) {
-        self.0.extend_from_slice(&v.to_le_bytes());
-    }
-    fn u64(&mut self, v: u64) {
-        self.0.extend_from_slice(&v.to_le_bytes());
-    }
-    fn f32(&mut self, v: f32) {
-        self.0.extend_from_slice(&v.to_le_bytes());
-    }
-    fn v3(&mut self, v: Vec3) {
-        self.f32(v.x);
-        self.f32(v.y);
-        self.f32(v.z);
-    }
-}
-
-struct Reader<'a> {
-    b: &'a [u8],
-    at: usize,
-}
-impl Reader<'_> {
-    fn take(&mut self, n: usize) -> Result<&[u8]> {
-        if self.at + n > self.b.len() {
-            return Err(Error::new(
-                ErrorKind::Invalid,
-                "the og.nav state block is truncated",
-            ));
-        }
-        let s = &self.b[self.at..self.at + n];
-        self.at += n;
-        Ok(s)
-    }
-    fn u32(&mut self) -> Result<u32> {
-        Ok(u32::from_le_bytes(self.take(4)?.try_into().unwrap()))
-    }
-    fn u64(&mut self) -> Result<u64> {
-        Ok(u64::from_le_bytes(self.take(8)?.try_into().unwrap()))
-    }
-    fn f32(&mut self) -> Result<f32> {
-        Ok(f32::from_le_bytes(self.take(4)?.try_into().unwrap()))
-    }
-    fn v3(&mut self) -> Result<Vec3> {
-        Ok(Vec3::new(self.f32()?, self.f32()?, self.f32()?))
-    }
+    })
 }
 
 impl StateBlock for NavBlock {
     fn save(&self, out: &mut Vec<u8>) {
         let st = lock(&self.0.state);
         let navs = lock(&self.0.navs);
-        let mut w = Writer(out);
+        let mut w = ByteWriter::new(out);
         w.u32(st.paths.len() as u32);
         for (k, p) in &st.paths {
             w.u64(*k);
             w.u32(p.corners.len() as u32);
             for c in &p.corners {
-                w.v3(*c);
+                w.vec3(*c);
             }
             w.u32(p.next);
-            w.v3(p.target);
+            w.vec3(p.target);
             w.u64(p.nav);
             w.u64(p.version);
             w.u32(p.age);
@@ -189,7 +137,7 @@ impl StateBlock for NavBlock {
         for (h, g) in grids {
             w.u64(*h);
             w.u32(g.costs().len() as u32);
-            w.0.extend_from_slice(g.costs());
+            w.bytes(g.costs());
         }
         let meshes: Vec<(&u64, &NavMesh)> = navs
             .entries
@@ -212,13 +160,13 @@ impl StateBlock for NavBlock {
         for (h, m) in &meshes {
             if m.links_moved() {
                 linked += 1;
-                let mut x = Writer(&mut links);
+                let mut x = ByteWriter::new(&mut links);
                 x.u64(**h);
                 let list: Vec<(u32, &Link)> = m.links().collect();
                 x.u32(list.len() as u32);
                 for (id, l) in list {
                     x.u32(id);
-                    l.write(x.0);
+                    l.write(x.out());
                 }
             }
             w.u64(**h);
@@ -232,8 +180,8 @@ impl StateBlock for NavBlock {
             w.u32(boxes.len() as u32);
             for (id, min, max) in boxes {
                 w.u32(id);
-                w.v3(min);
-                w.v3(max);
+                w.vec3(min);
+                w.vec3(max);
             }
             let others: Vec<(u32, &Shape)> = m
                 .obstacles()
@@ -244,18 +192,18 @@ impl StateBlock for NavBlock {
                 continue;
             }
             shaped += 1;
-            let mut x = Writer(&mut shapes);
+            let mut x = ByteWriter::new(&mut shapes);
             x.u64(**h);
             x.u32(others.len() as u32);
             for (id, o) in others {
                 x.u32(id);
-                put_shape(x.0, o);
+                put_shape(&mut x, o);
             }
             x.u32(areas.len() as u32);
             for (id, (shape, area)) in areas {
                 x.u32(id);
-                x.0.push(*area);
-                put_shape(x.0, shape);
+                x.u8(*area);
+                put_shape(&mut x, shape);
             }
         }
         let flows: Vec<(&u64, &Vec<(u32, u32)>)> = navs
@@ -296,7 +244,7 @@ impl StateBlock for NavBlock {
             .collect();
         if !crossing.is_empty() {
             let mut b = Vec::new();
-            let mut x = Writer(&mut b);
+            let mut x = ByteWriter::new(&mut b);
             x.u32(crossing.len() as u32);
             for (k, p) in crossing {
                 x.u64(*k);
@@ -304,14 +252,14 @@ impl StateBlock for NavBlock {
                 for l in &p.links {
                     x.u32(l.corner);
                     x.u32(l.link);
-                    x.0.push(u8::from(l.reverse));
+                    x.u8(u8::from(l.reverse));
                 }
                 match &p.traverse {
                     Some(t) => {
-                        x.0.push(1);
-                        put_traverse(x.0, t);
+                        x.u8(1);
+                        put_traverse(&mut x, t);
                     }
-                    None => x.0.push(0),
+                    None => x.u8(0),
                 }
             }
             sections.push((tag::CROSSING, b));
@@ -331,7 +279,7 @@ impl StateBlock for NavBlock {
             .collect();
         if !stale.is_empty() {
             let mut b = Vec::new();
-            let mut x = Writer(&mut b);
+            let mut x = ByteWriter::new(&mut b);
             x.u32(stale.len() as u32);
             for (h, v) in stale {
                 x.u64(h);
@@ -341,7 +289,7 @@ impl StateBlock for NavBlock {
         }
         if st.origin != Vec3::ZERO {
             let mut b = Vec::new();
-            Writer(&mut b).v3(st.origin);
+            ByteWriter::new(&mut b).vec3(st.origin);
             sections.push((tag::ORIGIN, b));
         }
         let down: Vec<u64> = navs
@@ -351,7 +299,7 @@ impl StateBlock for NavBlock {
             .collect();
         if !down.is_empty() {
             let mut b = Vec::new();
-            let mut x = Writer(&mut b);
+            let mut x = ByteWriter::new(&mut b);
             x.u32(down.len() as u32);
             for h in down {
                 x.u64(h);
@@ -362,19 +310,19 @@ impl StateBlock for NavBlock {
     }
 
     fn decode(&self, bytes: &[u8]) -> Result<Box<dyn Any + Send>> {
-        let mut r = Reader { b: bytes, at: 0 };
+        let mut r = ByteReader::new(bytes, "the og.nav state block");
         let mut paths = IdMap::new();
         for _ in 0..r.u32()? {
             let k = r.u64()?;
             let n = r.u32()? as usize;
             let mut corners = Vec::with_capacity(n.min(4096));
             for _ in 0..n {
-                corners.push(r.v3()?);
+                corners.push(r.vec3()?);
             }
             let p = PathState {
                 corners,
                 next: r.u32()?,
-                target: r.v3()?,
+                target: r.vec3()?,
                 nav: r.u64()?,
                 version: r.u64()?,
                 age: r.u32()?,
@@ -399,8 +347,8 @@ impl StateBlock for NavBlock {
                 list.push((
                     r.u32()?,
                     Shape::Box {
-                        min: r.v3()?,
-                        max: r.v3()?,
+                        min: r.vec3()?,
+                        max: r.vec3()?,
                     },
                 ));
             }
@@ -421,10 +369,10 @@ impl StateBlock for NavBlock {
         let mut versions = BTreeMap::new();
         let mut origin = Vec3::ZERO;
         let mut rows_down = None;
-        for (t, body) in og_ecs::trailer::read(SYSTEM_NAME, &bytes[r.at..])? {
-            let mut r = Reader { b: body, at: 0 };
+        for (t, body) in og_ecs::trailer::read(SYSTEM_NAME, r.rest())? {
+            let mut r = ByteReader::new(body, "the og.nav state block");
             if t == tag::ORIGIN {
-                origin = r.v3()?;
+                origin = r.vec3()?;
             }
             if t == tag::ROWS_DOWN {
                 let mut list = Vec::new();
@@ -439,15 +387,12 @@ impl StateBlock for NavBlock {
                     let mut list = Vec::new();
                     for _ in 0..r.u32()? {
                         let id = r.u32()?;
-                        let mut b = &r.b[r.at..];
-                        let before = b.len();
-                        let l = Link::read(&mut b).ok_or_else(|| {
+                        let l = r.parse(Link::read).ok_or_else(|| {
                             Error::new(
                                 ErrorKind::Invalid,
                                 "the og.nav state block's links are cut short",
                             )
                         })?;
-                        r.at += before - b.len();
                         list.push((id, l));
                     }
                     links.insert(h, list);

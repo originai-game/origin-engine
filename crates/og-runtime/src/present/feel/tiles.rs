@@ -752,7 +752,7 @@ impl StateBlock for TileBlock {
             let t = lock(&self.0);
             (t.maps.clone(), t.originals.clone())
         };
-        let mut r = Reader::new(bytes, "og.tilemap");
+        let mut r = Reader::new(bytes, "og.tilemap state block");
         let n = r.u32()?;
         type Saved<'a> = (u64, u64, Vec3, u32, u32, f32, Vec<u64>, &'a [u8]);
         let mut saved: Vec<Saved> = Vec::new();
@@ -774,18 +774,18 @@ impl StateBlock for TileBlock {
                 layers,
                 friction,
                 colliders,
-                r.bytes()?,
+                r.sized()?,
             ));
         }
         let mut runtime: Vec<(u64, Arc<MapAsset>)> = Vec::new();
         let mut next_runtime = 0;
         for (tag, body) in og_ecs::trailer::read(TILEMAP_SYSTEM, r.rest())? {
-            let mut b = Reader::new(body, "og.tilemap");
+            let mut b = Reader::new(body, "og.tilemap state block");
             match tag {
                 RUNTIME_SECTION => {
                     for _ in 0..b.u32()? {
                         let h = b.u64()?;
-                        let asset = TilemapAsset::decode(b.bytes()?)?;
+                        let asset = TilemapAsset::decode(b.sized()?)?;
                         // The map this session has, when it is the saved one.
                         let have = maps.get(&h).filter(|m| m.asset == asset).cloned();
                         let map = match have {
@@ -799,11 +799,11 @@ impl StateBlock for TileBlock {
                         };
                         runtime.push((h, map));
                     }
-                    b.end()?;
+                    b.finish()?;
                 }
                 COUNTER_SECTION => {
                     next_runtime = b.u64()?;
-                    b.end()?;
+                    b.finish()?;
                 }
                 // A later section this engine does not know: skipped.
                 _ => {}

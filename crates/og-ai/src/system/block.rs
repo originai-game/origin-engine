@@ -1,6 +1,7 @@
 //! The `og.ai` state block: memories, blackboards and pending noises.
 
 use super::*;
+use og_core::bytes::{ByteReader, ByteWriter};
 
 pub(super) struct AiBlock(pub(super) AiSystem);
 
@@ -19,142 +20,88 @@ struct Saved {
     origin: Vec3,
 }
 
-fn put_u32(o: &mut Vec<u8>, v: u32) {
-    o.extend_from_slice(&v.to_le_bytes());
-}
-fn put_u64(o: &mut Vec<u8>, v: u64) {
-    o.extend_from_slice(&v.to_le_bytes());
-}
-fn put_f32(o: &mut Vec<u8>, v: f32) {
-    o.extend_from_slice(&v.to_le_bytes());
-}
-fn put_v3(o: &mut Vec<u8>, v: Vec3) {
-    for x in v.to_array() {
-        put_f32(o, x);
-    }
-}
-fn put_str(o: &mut Vec<u8>, s: &str) {
-    put_u32(o, s.len() as u32);
-    o.extend_from_slice(s.as_bytes());
-}
-fn put_value(o: &mut Vec<u8>, v: Value) {
+fn put_value(w: &mut ByteWriter<'_>, v: Value) {
     match v {
         Value::Num(n) => {
-            o.push(0);
-            o.extend_from_slice(&n.to_le_bytes());
+            w.u8(0);
+            w.f64(n);
         }
         Value::Bool(b) => {
-            o.push(1);
-            o.push(u8::from(b));
+            w.u8(1);
+            w.bool(b);
         }
         Value::Vec(v) => {
-            o.push(2);
-            put_v3(o, v);
+            w.u8(2);
+            w.vec3(v);
         }
         Value::Entity(e) => {
-            o.push(3);
-            put_u64(o, e);
+            w.u8(3);
+            w.u64(e);
         }
     }
 }
 
-struct Rd<'a> {
-    b: &'a [u8],
-    at: usize,
-}
-impl Rd<'_> {
-    fn take(&mut self, n: usize) -> Result<&[u8]> {
-        if self.at + n > self.b.len() {
-            return Err(Error::new(
-                ErrorKind::Invalid,
-                "the og.ai state block is truncated",
-            ));
-        }
-        let s = &self.b[self.at..self.at + n];
-        self.at += n;
-        Ok(s)
-    }
-    fn u8(&mut self) -> Result<u8> {
-        Ok(self.take(1)?[0])
-    }
-    fn u32(&mut self) -> Result<u32> {
-        Ok(u32::from_le_bytes(self.take(4)?.try_into().unwrap()))
-    }
-    fn u64(&mut self) -> Result<u64> {
-        Ok(u64::from_le_bytes(self.take(8)?.try_into().unwrap()))
-    }
-    fn f32(&mut self) -> Result<f32> {
-        Ok(f32::from_le_bytes(self.take(4)?.try_into().unwrap()))
-    }
-    fn v3(&mut self) -> Result<Vec3> {
-        Ok(Vec3::new(self.f32()?, self.f32()?, self.f32()?))
-    }
-    fn string(&mut self) -> Result<String> {
-        let n = self.u32()? as usize;
-        String::from_utf8(self.take(n)?.to_vec())
-            .map_err(|_| Error::new(ErrorKind::Invalid, "the og.ai state block has a bad key"))
-    }
-    fn value(&mut self) -> Result<Value> {
-        Ok(match self.u8()? {
-            0 => Value::Num(f64::from_le_bytes(self.take(8)?.try_into().unwrap())),
-            1 => Value::Bool(self.u8()? != 0),
-            2 => Value::Vec(self.v3()?),
-            _ => Value::Entity(self.u64()?),
-        })
-    }
+fn read_value(r: &mut ByteReader<'_>) -> Result<Value> {
+    Ok(match r.u8()? {
+        0 => Value::Num(r.f64()?),
+        1 => Value::Bool(r.bool()?),
+        2 => Value::Vec(r.vec3()?),
+        _ => Value::Entity(r.u64()?),
+    })
 }
 
 impl StateBlock for AiBlock {
     fn save(&self, o: &mut Vec<u8>) {
         let st = lock(&self.0.state);
-        put_u32(o, st.mems.len() as u32);
+        let mut w = ByteWriter::new(o);
+        w.u32(st.mems.len() as u32);
         for (k, m) in &st.mems {
-            put_u64(o, *k);
-            put_u64(o, m.behaviour);
-            o.push(u8::from(m.started));
-            o.push(u8::from(m.entered));
-            put_u32(o, m.state);
-            put_u64(o, m.state_since);
-            put_u32(o, m.nodes.len() as u32);
+            w.u64(*k);
+            w.u64(m.behaviour);
+            w.bool(m.started);
+            w.bool(m.entered);
+            w.u32(m.state);
+            w.u64(m.state_since);
+            w.u32(m.nodes.len() as u32);
             for n in &m.nodes {
-                o.push(u8::from(n.running));
-                put_u32(o, n.index);
-                put_u32(o, n.count);
-                put_u64(o, n.since);
-                put_u64(o, n.until);
-                put_v3(o, n.point);
+                w.bool(n.running);
+                w.u32(n.index);
+                w.u32(n.count);
+                w.u64(n.since);
+                w.u64(n.until);
+                w.vec3(n.point);
             }
-            put_u32(o, m.keys.len() as u32);
+            w.u32(m.keys.len() as u32);
             for (k, v) in &m.keys {
-                put_str(o, k);
-                put_value(o, *v);
+                w.str(k);
+                put_value(&mut w, *v);
             }
-            put_v3(o, m.home);
-            put_f32(o, m.base_speed);
-            put_u32(o, m.leaf);
-            put_u32(o, m.status);
-            put_u32(o, m.path.len() as u32);
+            w.vec3(m.home);
+            w.f32(m.base_speed);
+            w.u32(m.leaf);
+            w.u32(m.status);
+            w.u32(m.path.len() as u32);
             for p in &m.path {
-                put_u32(o, *p);
+                w.u32(*p);
             }
         }
         for map in [&st.seen_tick, &st.heard_tick] {
-            put_u32(o, map.len() as u32);
+            w.u32(map.len() as u32);
             for (k, v) in map {
-                put_u64(o, *k);
-                put_u64(o, *v);
+                w.u64(*k);
+                w.u64(*v);
             }
         }
-        put_u32(o, st.forward.len() as u32);
+        w.u32(st.forward.len() as u32);
         for (k, v) in &st.forward {
-            put_u64(o, *k);
-            put_v3(o, *v);
+            w.u64(*k);
+            w.vec3(*v);
         }
-        put_u32(o, st.noises.len() as u32);
+        w.u32(st.noises.len() as u32);
         for n in &st.noises {
-            put_v3(o, n.position);
-            put_f32(o, n.loudness);
-            put_u64(o, n.source);
+            w.vec3(n.position);
+            w.f32(n.loudness);
+            w.u64(n.source);
         }
         // The trailer (og_ecs::trailer), written only when a section has
         // something: tag 1, game actions the game finished that have not
@@ -167,54 +114,56 @@ impl StateBlock for AiBlock {
         let mut sections = Vec::new();
         if !pending.is_empty() {
             let mut b = Vec::new();
-            put_u32(&mut b, pending.len() as u32);
+            let mut bw = ByteWriter::new(&mut b);
+            bw.u32(pending.len() as u32);
             for (k, m) in pending {
-                put_u64(&mut b, *k);
-                put_u32(&mut b, m.results.len() as u32);
+                bw.u64(*k);
+                bw.u32(m.results.len() as u32);
                 for (node, ok) in &m.results {
-                    put_u32(&mut b, *node);
-                    b.push(u8::from(*ok));
+                    bw.u32(*node);
+                    bw.bool(*ok);
                 }
             }
             sections.push((TAG_RESULTS, b));
         }
         if st.origin != Vec3::ZERO {
             let mut b = Vec::new();
-            put_v3(&mut b, st.origin);
+            let mut bw = ByteWriter::new(&mut b);
+            bw.vec3(st.origin);
             sections.push((TAG_ORIGIN, b));
         }
         og_ecs::trailer::write(o, &sections);
     }
 
     fn decode(&self, bytes: &[u8]) -> Result<Box<dyn Any + Send>> {
-        let mut r = Rd { b: bytes, at: 0 };
+        let mut r = ByteReader::new(bytes, "the og.ai state block");
         let mut mems = IdMap::new();
         for _ in 0..r.u32()? {
             let k = r.u64()?;
             let mut m = AgentMem {
                 behaviour: r.u64()?,
-                started: r.u8()? != 0,
-                entered: r.u8()? != 0,
+                started: r.bool()?,
+                entered: r.bool()?,
                 state: r.u32()?,
                 state_since: r.u64()?,
                 ..AgentMem::default()
             };
             for _ in 0..r.u32()? {
                 m.nodes.push(NodeMem {
-                    running: r.u8()? != 0,
+                    running: r.bool()?,
                     index: r.u32()?,
                     count: r.u32()?,
                     since: r.u64()?,
                     until: r.u64()?,
-                    point: r.v3()?,
+                    point: r.vec3()?,
                 });
             }
             for _ in 0..r.u32()? {
                 let key = r.string()?;
-                let v = r.value()?;
+                let v = read_value(&mut r)?;
                 m.keys.insert(key, v);
             }
-            m.home = r.v3()?;
+            m.home = r.vec3()?;
             m.base_speed = r.f32()?;
             m.leaf = r.u32()?;
             m.status = r.u32()?;
@@ -233,29 +182,29 @@ impl StateBlock for AiBlock {
         let mut forward = IdMap::new();
         for _ in 0..r.u32()? {
             let k = r.u64()?;
-            forward.insert(k, r.v3()?);
+            forward.insert(k, r.vec3()?);
         }
         let mut noises = Vec::new();
         for _ in 0..r.u32()? {
             noises.push(Noise {
-                position: r.v3()?,
+                position: r.vec3()?,
                 loudness: r.f32()?,
                 source: r.u64()?,
             });
         }
         let mut origin = Vec3::ZERO;
-        for (tag, body) in og_ecs::trailer::read(SYSTEM_NAME, &r.b[r.at..])? {
+        for (tag, body) in og_ecs::trailer::read(SYSTEM_NAME, r.rest())? {
             if tag == TAG_ORIGIN {
-                origin = Rd { b: body, at: 0 }.v3()?;
+                origin = ByteReader::new(body, "the og.ai state block").vec3()?;
             }
             if tag == TAG_RESULTS {
-                let mut r = Rd { b: body, at: 0 };
+                let mut r = ByteReader::new(body, "the og.ai state block");
                 for _ in 0..r.u32()? {
                     let k = r.u64()?;
                     let mut results = BTreeMap::new();
                     for _ in 0..r.u32()? {
                         let node = r.u32()?;
-                        results.insert(node, r.u8()? != 0);
+                        results.insert(node, r.bool()?);
                     }
                     if let Some(m) = mems.get_mut(&k) {
                         m.results = results;

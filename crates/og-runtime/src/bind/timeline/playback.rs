@@ -1,6 +1,7 @@
 //! Timeline playback, snapshot state and scheduled systems.
 
 use super::*;
+use og_core::bytes::ByteReader;
 
 // ── og.timeline: ops and the playback state ─────────────────────────────────
 
@@ -150,28 +151,6 @@ pub fn og_timeline_stop(world: u32, entity: f64) -> Result<(), String> {
 
 // ── the state block ──────────────────────────────────────────────────────────
 
-struct Bytes<'a>(&'a [u8]);
-
-impl Bytes<'_> {
-    fn take<const N: usize>(&mut self) -> og_core::Result<[u8; N]> {
-        let (a, b) = self
-            .0
-            .split_first_chunk::<N>()
-            .ok_or_else(|| invalid("the og.timeline state is cut short"))?;
-        self.0 = b;
-        Ok(*a)
-    }
-    fn u32(&mut self) -> og_core::Result<u32> {
-        self.take::<4>().map(u32::from_le_bytes)
-    }
-    fn u64(&mut self) -> og_core::Result<u64> {
-        self.take::<8>().map(u64::from_le_bytes)
-    }
-    fn f32(&mut self) -> og_core::Result<f32> {
-        self.take::<4>().map(f32::from_le_bytes)
-    }
-}
-
 fn save(sh: &Shared, out: &mut Vec<u8>) {
     let u32_ = |out: &mut Vec<u8>, v: u32| out.extend_from_slice(&v.to_le_bytes());
     let u64_ = |out: &mut Vec<u8>, v: u64| out.extend_from_slice(&v.to_le_bytes());
@@ -230,7 +209,7 @@ fn save(sh: &Shared, out: &mut Vec<u8>) {
 }
 
 fn load_state(bytes: &[u8]) -> og_core::Result<Shared> {
-    let mut b = Bytes(bytes);
+    let mut b = ByteReader::new(bytes, "the og.timeline state");
     let mut sh = Shared::default();
     for _ in 0..b.u32()? {
         let e = b.u64()?;
@@ -280,7 +259,7 @@ fn load_state(bytes: &[u8]) -> og_core::Result<Shared> {
         }
         sh.runs.insert(e, r);
     }
-    if !b.0.is_empty() {
+    if !b.is_done() {
         return Err(invalid("the og.timeline state has bytes left over"));
     }
     Ok(sh)

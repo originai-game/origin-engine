@@ -3,6 +3,7 @@
 
 use crate::tileset::{Tileset, num, uint};
 use glam::Vec2;
+use og_core::bytes::{ByteReader, ByteWriter};
 use og_core::ogt::{Document, Entry};
 use og_core::{Error, ErrorKind, Result};
 
@@ -365,16 +366,7 @@ impl TilemapAsset {
     /// The whole map as bytes (a save's copy of a map made or resized at
     /// run time), little-endian; [`TilemapAsset::decode`] reads it back.
     pub fn encode(&self, out: &mut Vec<u8>) {
-        fn u(out: &mut Vec<u8>, v: u32) {
-            out.extend_from_slice(&v.to_le_bytes());
-        }
-        fn f(out: &mut Vec<u8>, v: f32) {
-            out.extend_from_slice(&v.to_le_bytes());
-        }
-        fn s(out: &mut Vec<u8>, v: &str) {
-            u(out, v.len() as u32);
-            out.extend_from_slice(v.as_bytes());
-        }
+        let mut w = ByteWriter::new(out);
         for v in [
             self.orientation.code(),
             self.width,
@@ -382,27 +374,27 @@ impl TilemapAsset {
             self.tile_width_px,
             self.tile_height_px,
         ] {
-            u(out, v);
+            w.u32(v);
         }
-        f(out, self.unit);
-        u(out, self.tilesets.len() as u32);
+        w.f32(self.unit);
+        w.u32(self.tilesets.len() as u32);
         for t in &self.tilesets {
             match t {
                 TilesetRef::Asset(id) => {
-                    u(out, 0);
-                    s(out, id);
+                    w.u32(0);
+                    w.str(id);
                 }
                 TilesetRef::Embedded(t) => {
-                    u(out, 1);
-                    s(out, &t.to_text());
+                    w.u32(1);
+                    w.str(&t.to_text());
                 }
             }
         }
-        u(out, self.layers.len() as u32);
+        w.u32(self.layers.len() as u32);
         for l in &self.layers {
-            s(out, &l.name);
-            u(out, l.tileset);
-            s(out, l.terrain.as_deref().unwrap_or(""));
+            w.str(&l.name);
+            w.u32(l.tileset);
+            w.str(l.terrain.as_deref().unwrap_or(""));
             for v in [
                 l.parallax.x,
                 l.parallax.y,
@@ -410,7 +402,7 @@ impl TilemapAsset {
                 l.offset.y,
                 l.opacity,
             ] {
-                f(out, v);
+                w.f32(v);
             }
             let flags = [
                 l.visible,
@@ -425,64 +417,40 @@ impl TilemapAsset {
             .enumerate()
             .fold(0u32, |a, (i, &b)| a | (b as u32) << i);
             for v in [flags, l.collider_layers, l.collider_mask, l.z as u32] {
-                u(out, v);
+                w.u32(v);
             }
             for &c in &l.cells {
-                u(out, c);
+                w.u32(c);
             }
         }
-        u(out, self.objects.len() as u32);
+        w.u32(self.objects.len() as u32);
         for o in &self.objects {
-            s(out, &o.name);
-            s(out, &o.kind);
+            w.str(&o.name);
+            w.str(&o.kind);
             for v in [o.x, o.y, o.width, o.height] {
-                f(out, v);
+                w.f32(v);
             }
-            u(out, o.properties.len() as u32);
+            w.u32(o.properties.len() as u32);
             for (k, v) in &o.properties {
-                s(out, k);
-                s(out, v);
+                w.str(k);
+                w.str(v);
             }
         }
     }
 
     /// The map [`TilemapAsset::encode`] wrote, checked.
     pub fn decode(bytes: &[u8]) -> Result<TilemapAsset> {
-        struct R<'a>(&'a [u8]);
-        impl<'a> R<'a> {
-            fn take(&mut self, n: usize) -> Result<&'a [u8]> {
-                if self.0.len() < n {
-                    return Err(Error::new(ErrorKind::Parse, "a saved tilemap is cut short"));
-                }
-                let (a, b) = self.0.split_at(n);
-                self.0 = b;
-                Ok(a)
-            }
-            fn u(&mut self) -> Result<u32> {
-                let b = self.take(4)?;
-                Ok(u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
-            }
-            fn f(&mut self) -> Result<f32> {
-                self.u().map(f32::from_bits)
-            }
-            fn s(&mut self) -> Result<String> {
-                let n = self.u()? as usize;
-                String::from_utf8(self.take(n)?.to_vec()).map_err(|_| {
-                    Error::new(ErrorKind::Parse, "a saved tilemap's text is not UTF-8")
-                })
-            }
-        }
-        let mut r = R(bytes);
-        let orientation = Orientation::from_code(r.u()?).ok_or_else(|| {
+        let mut r = ByteReader::new(bytes, "a saved tilemap");
+        let orientation = Orientation::from_code(r.u32()?).ok_or_else(|| {
             Error::new(ErrorKind::Parse, "a saved tilemap's orientation is unknown")
         })?;
         let mut m = TilemapAsset {
             orientation,
-            width: r.u()?,
-            height: r.u()?,
-            tile_width_px: r.u()?,
-            tile_height_px: r.u()?,
-            unit: r.f()?,
+            width: r.u32()?,
+            height: r.u32()?,
+            tile_width_px: r.u32()?,
+            tile_height_px: r.u32()?,
+            unit: r.f32()?,
             tilesets: Vec::new(),
             layers: Vec::new(),
             objects: Vec::new(),
@@ -491,31 +459,31 @@ impl TilemapAsset {
         if n > 1 << 24 {
             return Err(err(0, "a saved tilemap has more than 16,777,216 cells"));
         }
-        for _ in 0..r.u()? {
-            let embedded = r.u()? == 1;
-            let text = r.s()?;
+        for _ in 0..r.u32()? {
+            let embedded = r.u32()? == 1;
+            let text = r.string()?;
             m.tilesets.push(if embedded {
                 TilesetRef::Embedded(Tileset::parse(&text)?)
             } else {
                 TilesetRef::Asset(text)
             });
         }
-        for _ in 0..r.u()? {
-            let mut l = Layer::new(r.s()?, 0, 0, 0);
-            l.tileset = r.u()?;
-            let terrain = r.s()?;
-            l.parallax = Vec2::new(r.f()?, r.f()?);
-            l.offset = Vec2::new(r.f()?, r.f()?);
-            l.opacity = r.f()?;
-            let flags = r.u()?;
+        for _ in 0..r.u32()? {
+            let mut l = Layer::new(r.string()?, 0, 0, 0);
+            l.tileset = r.u32()?;
+            let terrain = r.string()?;
+            l.parallax = Vec2::new(r.f32()?, r.f32()?);
+            l.offset = Vec2::new(r.f32()?, r.f32()?);
+            l.opacity = r.f32()?;
+            let flags = r.u32()?;
             let bit = |i: u32| flags >> i & 1 == 1;
             (l.visible, l.collision, l.repeat_x, l.repeat_y, l.lit) =
                 (bit(0), bit(1), bit(2), bit(3), bit(4));
             l.terrain = bit(5).then_some(terrain);
             l.cell_colliders = bit(6);
-            l.collider_layers = r.u()?;
-            l.collider_mask = r.u()?;
-            l.z = r.u()? as i32;
+            l.collider_layers = r.u32()?;
+            l.collider_mask = r.u32()?;
+            l.z = r.u32()? as i32;
             let cells = r.take(n * 4)?;
             l.cells = cells
                 .as_chunks::<4>()
@@ -525,12 +493,12 @@ impl TilemapAsset {
                 .collect();
             m.layers.push(l);
         }
-        for _ in 0..r.u()? {
-            let (name, kind) = (r.s()?, r.s()?);
-            let (x, y, width, height) = (r.f()?, r.f()?, r.f()?, r.f()?);
+        for _ in 0..r.u32()? {
+            let (name, kind) = (r.string()?, r.string()?);
+            let (x, y, width, height) = (r.f32()?, r.f32()?, r.f32()?, r.f32()?);
             let mut properties = Vec::new();
-            for _ in 0..r.u()? {
-                properties.push((r.s()?, r.s()?));
+            for _ in 0..r.u32()? {
+                properties.push((r.string()?, r.string()?));
             }
             m.objects.push(MapObject {
                 name,
@@ -542,7 +510,7 @@ impl TilemapAsset {
                 properties,
             });
         }
-        if !r.0.is_empty() {
+        if !r.is_done() {
             return Err(Error::new(
                 ErrorKind::Parse,
                 "a saved tilemap has bytes past its end",

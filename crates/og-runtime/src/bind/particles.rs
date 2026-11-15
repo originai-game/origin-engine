@@ -16,6 +16,7 @@
 use crate::host::codec::{Layout, RecordKind};
 use crate::host::wire::record;
 use glam::{Mat4, Vec3};
+use og_core::bytes::ByteReader;
 use og_core::{Error, ErrorKind};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
 use og_render::{
@@ -384,55 +385,31 @@ fn save(h: &Hosted, out: &mut Vec<u8>) {
     }
 }
 
-struct Reader<'a>(&'a [u8]);
+fn f4(r: &mut ByteReader<'_>) -> og_core::Result<[f32; 4]> {
+    Ok([r.f32()?, r.f32()?, r.f32()?, r.f32()?])
+}
 
-impl Reader<'_> {
-    fn take<const N: usize>(&mut self) -> og_core::Result<[u8; N]> {
-        let (a, b) = self
-            .0
-            .split_first_chunk::<N>()
-            .ok_or_else(|| invalid("the og.particles state is cut short"))?;
-        self.0 = b;
-        Ok(*a)
-    }
-    fn u32(&mut self) -> og_core::Result<u32> {
-        self.take::<4>().map(u32::from_le_bytes)
-    }
-    fn u64(&mut self) -> og_core::Result<u64> {
-        self.take::<8>().map(u64::from_le_bytes)
-    }
-    fn f32(&mut self) -> og_core::Result<f32> {
-        self.take::<4>().map(f32::from_le_bytes)
-    }
-    fn f4(&mut self) -> og_core::Result<[f32; 4]> {
-        Ok([self.f32()?, self.f32()?, self.f32()?, self.f32()?])
-    }
-    fn slots(&mut self) -> og_core::Result<Vec<ParticleState>> {
-        let n = self.u32()? as usize;
-        if n > self.0.len() / 48 {
-            return Err(invalid("the og.particles state is cut short"));
-        }
-        (0..n)
-            .map(|_| {
-                Ok(ParticleState {
-                    pos_age: self.f4()?,
-                    vel_life: self.f4()?,
-                    misc: self.f4()?,
-                })
+fn read_slots(r: &mut ByteReader<'_>) -> og_core::Result<Vec<ParticleState>> {
+    (0..r.count(48)?)
+        .map(|_| {
+            Ok(ParticleState {
+                pos_age: f4(r)?,
+                vel_life: f4(r)?,
+                misc: f4(r)?,
             })
-            .collect()
-    }
+        })
+        .collect()
 }
 
 fn load(bytes: &[u8]) -> og_core::Result<BTreeMap<u64, HostedSystem>> {
-    let mut r = Reader(bytes);
+    let mut r = ByteReader::new(bytes, "the og.particles state");
     let mut systems = BTreeMap::new();
     for _ in 0..r.u32()? {
         let e = r.u64()?;
-        let world = r.take::<1>()?[0] != 0;
-        let slots = r.slots()?;
+        let world = r.u8()? != 0;
+        let slots = read_slots(&mut r)?;
         let last_tick = Some(r.u64()?).filter(|&t| t != u64::MAX);
-        let prev_transform = match r.take::<1>()?[0] {
+        let prev_transform = match r.u8()? {
             0 => None,
             _ => {
                 let mut m = [0.0; 16];
@@ -444,14 +421,14 @@ fn load(bytes: &[u8]) -> og_core::Result<BTreeMap<u64, HostedSystem>> {
         };
         let clock = ParticleClock {
             tick: r.u64()?,
-            time: f64::from_le_bytes(r.take::<8>()?),
+            time: r.f64()?,
             scale: r.f32()?,
         };
         let origin = Vec3::new(r.f32()?, r.f32()?, r.f32()?);
         let mut children = Vec::new();
         for _ in 0..r.u32()? {
             children.push(og_render::ChildParticles {
-                slots: r.slots()?,
+                slots: read_slots(&mut r)?,
                 born: r.u64()?,
             });
         }
@@ -470,7 +447,7 @@ fn load(bytes: &[u8]) -> og_core::Result<BTreeMap<u64, HostedSystem>> {
             },
         );
     }
-    if !r.0.is_empty() {
+    if !r.is_done() {
         return Err(invalid("the og.particles state has bytes left over"));
     }
     Ok(systems)
