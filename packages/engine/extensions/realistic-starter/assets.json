@@ -1,0 +1,566 @@
+{
+  "format": 1,
+  "engine": {
+    "version": "0.8.0",
+    "revision": "d1f0419b9313904ec600f35be2338fe5b9d1281b"
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "874879011af4e73a0f3ffe8c91e7df20ad1f6d9e12b32515dae6efbab1b9f4a4",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "ambient-dust/motes.emitter.ogt",
+      "sha256": "4acef0ed459f887e5607c31cc5a30c69659c95904e4a7a0ef53b0af591c974d1",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "ambient-dust.ogt",
+      "sha256": "87ebe678f978bb4c9ccd1ece1be235443e3012d744b2241799fe87a547d295c8",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "bullet-impact/chips.emitter.ogt",
+      "sha256": "eea7472f733cdff10a4b32673b3fb44c3db407930ee15c63fccc25745e575239",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "bullet-impact/dust.emitter.ogt",
+      "sha256": "568b4ad242ec98bdb742486f38862c1487394ce70cae6b8be880379a4ac393f6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "bullet-impact/mark.emitter.ogt",
+      "sha256": "bcf829298c19c168a3897d05cb22926b76645046c807efa3931c6e8eeb922570",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "bullet-impact/sparks.emitter.ogt",
+      "sha256": "bd04153837e2e484d67ee70b4e9a8667bdddaa7a9ec24fee16b6b02d03a30af6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "bullet-impact.ogt",
+      "sha256": "b82abc87c4255012ad9d37dc19e1c3ca9deb680dc7e9c66b29d55124725fbad2",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "dust-burst/chunks.emitter.ogt",
+      "sha256": "f1471d3410dca704d84d1c655a91a00884dc04e0a5c179c4f591b4b8916ba404",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "dust-burst/cloud.emitter.ogt",
+      "sha256": "703384be6c7a66fec128097d1158346515119b9feefa92f6b05ebfa9b0d49811",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "dust-burst/grit.emitter.ogt",
+      "sha256": "dbce9b2b4dea0308c4f44380b0115bdbef3ca5e5a588bc6ef379c252575ed8f7",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "dust-burst.ogt",
+      "sha256": "cc360a56eb66da68a468364aea04c9c0ee18e4da8b42f73ad80ac82dcf8c9ced",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "explosion/debris.emitter.ogt",
+      "sha256": "de2ace9d089c3e47827db9a0405ed733858f4e946c520897d7e8ae508e17a0ed",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "explosion/dust.emitter.ogt",
+      "sha256": "e1b0e5fd53a24cd5789da49186c88dd8bffece38b6a21dfa012a9dce71af0b84",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "explosion/fireball.emitter.ogt",
+      "sha256": "cc7272916bac8809121c2222c62c607d2d8ed15152aa6a494b835eb2684bdf8e",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "explosion/scorch.emitter.ogt",
+      "sha256": "ec3c5658264f05ed7693d7fb85a4292886eccb56a3403cac0c24c9dbeeaca989",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "explosion/shock.effect.ogt",
+      "sha256": "738f919eba6d6ed69bdc4293ec5915f00bae699e22bbf37fab3fc40772e45ae4",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "explosion/smoke.emitter.ogt",
+      "sha256": "3bdf8a70a5a781ad06e6070662b96bf535106914cb3c92a1dde638e95beaee37",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "explosion/sparks.emitter.ogt",
+      "sha256": "f79eb10d53d068554b89b53f5c5bf2cf4be13b109a0caf73e140f365bf8fd04e",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "explosion.ogt",
+      "sha256": "8408071a0e9192bdda94502803d2e2917e42fd8214d8ffbd7f613ea343c216e6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "extension.json",
+      "sha256": "d1cd3925210834846167864013d59153c525e716541380950af811b3e11b2008",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "muzzle-flash/flash.emitter.ogt",
+      "sha256": "95a6ac07eeffd2ccf3b8bea16777a1e21b8be37f5d0131ac18771e6ad5416d16",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "muzzle-flash/plume.emitter.ogt",
+      "sha256": "851d6a1e9aa32e98a2e74ca7791ece678aa11975a3434fb7d1c78ab8a4dc93ff",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "muzzle-flash/smoke.emitter.ogt",
+      "sha256": "7b713752c89388ab05b6f61442de1f3c28a209f2acfd60feb194bab5f4f86d3d",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "muzzle-flash/sparks.emitter.ogt",
+      "sha256": "ce121f08d50237aa29d66f2bd71732559099e15f3f7d19f7be7ff30ba3182675",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "muzzle-flash.ogt",
+      "sha256": "a6aba8a05f03b1df4268094c87de20689b52dfbad962a9eb85d8240e568c37b8",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "textures/dirt.png",
+      "sha256": "232ded677f1fdba0585fcd8c0971936c50d69dcf65d47765928cffb783fdb85f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine"
+    },
+    {
+      "path": "textures/fire.png",
+      "sha256": "b0fde238e03d5d407588713f7c28555b6ad3e2352d5117834626681622d888ff",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine"
+    },
+    {
+      "path": "textures/flame.png",
+      "sha256": "d4890fd59cdcc93e11be41b0a9a1987b686577243ecd46b24c2938ff565b565e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine"
+    },
+    {
+      "path": "textures/muzzle.png",
+      "sha256": "1ff07057dc1f6ac5cb05ddc3dd4ad6adaec5ba81a5b5183c0979f5b56e528e4f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine"
+    },
+    {
+      "path": "textures/ring.png",
+      "sha256": "513ee482c5602e7a738eb61dc170461a9f75bf0e5f339a95a80dc2df8c859513",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine"
+    },
+    {
+      "path": "textures/scorch.png",
+      "sha256": "ce46d67d70f0d0ac8653dcf9e360fcba0c7aa7bcb5b1ba84db0819e3a0dc17c6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine"
+    },
+    {
+      "path": "textures/smoke.png",
+      "sha256": "396d44615ff1257213f63b9133334e317533341aefb0087019abec1d9aa0fcdc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine"
+    },
+    {
+      "path": "torch-fire/embers.emitter.ogt",
+      "sha256": "72a4fa525ea04c60f3e83b48d1028703d053f40b3edddaee1c1eccc8edc29275",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "torch-fire/flames.emitter.ogt",
+      "sha256": "2ab2a929202c3409402342c1c862b0047e89d2110b79baf0123b476bc9d45eac",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "torch-fire/smoke.emitter.ogt",
+      "sha256": "4c61226e25f230ea53325216563985d1872cbb6fb44c2376738059006ddb363f",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "torch-fire.ogt",
+      "sha256": "54071e5482cf96bdee90408597d457dbd3104e4ec1911ddbae676b3cb8735423",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "water-splash/drops.emitter.ogt",
+      "sha256": "de9be444ebce76000b6d37bbca942dabf0eafba51dbca832d302dfe9abccb443",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "water-splash/mist.emitter.ogt",
+      "sha256": "2116bbb2b009f9c97bc56aaa683501dd3769c497bc4ae743ceab245074203dce",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "water-splash/ripple.emitter.ogt",
+      "sha256": "2cd14a7cab89ce092d915635c0ca03417315082461f08eaf737b17581854c71a",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "water-splash/spray.emitter.ogt",
+      "sha256": "06ec16978e0eb365f28251680334b3523bb7a9b6b8ab47c8ffe0b208e9403e96",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "water-splash.ogt",
+      "sha256": "152cfdbed61de4e9155bcf07bec0a6d7ec2109e0aa9a47970e266f086e3c2116",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    }
+  ],
+  "effects": [
+    {
+      "path": "ambient-dust.ogt",
+      "type": "vfx",
+      "title": "Ambient Dust",
+      "loop": true,
+      "durationSeconds": 8.0,
+      "impact": false,
+      "category": "ambient",
+      "keywords": [
+        "air",
+        "ambient",
+        "dust",
+        "loop",
+        "motes",
+        "room",
+        "sunbeam"
+      ]
+    },
+    {
+      "path": "bullet-impact.ogt",
+      "type": "vfx",
+      "title": "Bullet Impact",
+      "loop": false,
+      "durationSeconds": 1.8,
+      "impact": true,
+      "category": "hit-spark",
+      "keywords": [
+        "bullet",
+        "bullet hole",
+        "chips",
+        "dust",
+        "hit",
+        "impact",
+        "ricochet",
+        "sparks"
+      ]
+    },
+    {
+      "path": "dust-burst.ogt",
+      "type": "vfx",
+      "title": "Dust Burst",
+      "loop": false,
+      "durationSeconds": 3.6,
+      "impact": true,
+      "category": "debris",
+      "keywords": [
+        "break",
+        "collapse",
+        "crash",
+        "debris",
+        "destruction",
+        "dust",
+        "landing",
+        "rubble"
+      ],
+      "element": "earth"
+    },
+    {
+      "path": "explosion.ogt",
+      "type": "vfx",
+      "title": "Explosion",
+      "loop": false,
+      "durationSeconds": 4.0,
+      "impact": true,
+      "category": "explosion",
+      "keywords": [
+        "blast",
+        "debris",
+        "explosion",
+        "fireball",
+        "grenade",
+        "scorch",
+        "shockwave",
+        "smoke"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "muzzle-flash.ogt",
+      "type": "vfx",
+      "title": "Muzzle Flash",
+      "loop": false,
+      "durationSeconds": 1.2,
+      "impact": true,
+      "category": "gunfire",
+      "keywords": [
+        "flash",
+        "gun",
+        "gunshot",
+        "muzzle",
+        "pistol",
+        "rifle",
+        "shot",
+        "smoke"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "torch-fire.ogt",
+      "type": "vfx",
+      "title": "Torch Fire",
+      "loop": true,
+      "durationSeconds": 4.0,
+      "impact": false,
+      "category": "fire",
+      "keywords": [
+        "brazier",
+        "embers",
+        "fire",
+        "flame",
+        "light",
+        "loop",
+        "smoke",
+        "torch"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "water-splash.ogt",
+      "type": "vfx",
+      "title": "Water Splash",
+      "loop": false,
+      "durationSeconds": 1.6,
+      "impact": true,
+      "category": "splash",
+      "keywords": [
+        "droplets",
+        "mist",
+        "ripple",
+        "splash",
+        "spray",
+        "water"
+      ],
+      "element": "water"
+    }
+  ]
+}

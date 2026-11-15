@@ -1,0 +1,37 @@
+{
+  "format": 1,
+  "kind": "vfx",
+  "name": "realistic-starter",
+  "version": "1.0.0",
+  "description": "A starter set of realistic effects for 3D games: a muzzle flash, a bullet impact, an explosion, the dust of something breaking, a water splash, a torch's fire and dust in the air, built on the Kenney Particle Pack's textures",
+  "minEngine": "0.8.0",
+  "tags": {
+    "style": "realistic",
+    "dim": "3d",
+    "category": [
+      "ambient",
+      "debris",
+      "explosion",
+      "fire",
+      "gunfire",
+      "hit-spark",
+      "splash"
+    ],
+    "element": [
+      "earth",
+      "fire",
+      "water"
+    ]
+  },
+  "keywords": [
+    "3d",
+    "debris",
+    "dust",
+    "gunfire",
+    "particles",
+    "realistic",
+    "shooter",
+    "smoke",
+    "starter"
+  ]
+}

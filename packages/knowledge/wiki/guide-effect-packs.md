@@ -117,7 +117,27 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/pixel-scenario/water-splash.ogt` | Aqua Splash | magic-impact | water | 1.067 |  |  | 0.02 | 13 |
 
 <a id="guide-effect-packs-3"></a>
-### `effect-packs §3` effekseer-andrewfm01
+### `effect-packs §3` realistic-starter
+
+A starter set of realistic effects for 3D games: a muzzle flash, a bullet impact, an explosion, the dust of something breaking, a water splash, a torch's fire and dust in the air, built on the Kenney Particle Pack's textures. 7 effects, bundled with the engine: `og vfx add realistic-starter`.
+
+- Style: realistic, 3d
+- Categories: ambient, debris, explosion, fire, gunfire, hit-spark, splash
+- Elements: earth, fire, water
+- Keywords: 3d, debris, dust, gunfire, particles, realistic, shooter, smoke, starter
+
+| Effect | Title | Category | Element | Seconds | Size (m) | Anchor | GPU ms | Draws |
+|---|---|---|---|---|---|---|---|---|
+| `vfx/realistic-starter/ambient-dust.ogt` | Ambient Dust | ambient |  | loops |  |  |  |  |
+| `vfx/realistic-starter/bullet-impact.ogt` | Bullet Impact | hit-spark |  | 1.8 |  |  |  |  |
+| `vfx/realistic-starter/dust-burst.ogt` | Dust Burst | debris | earth | 3.6 |  |  |  |  |
+| `vfx/realistic-starter/explosion.ogt` | Explosion | explosion | fire | 4 |  |  |  |  |
+| `vfx/realistic-starter/muzzle-flash.ogt` | Muzzle Flash | gunfire | fire | 1.2 |  |  |  |  |
+| `vfx/realistic-starter/torch-fire.ogt` | Torch Fire | fire | fire | loops |  |  |  |  |
+| `vfx/realistic-starter/water-splash.ogt` | Water Splash | splash | water | 1.6 |  |  |  |  |
+
+<a id="guide-effect-packs-4"></a>
+### `effect-packs §4` effekseer-andrewfm01
 
 AndrewFM01's Effekseer sample effects (15), converted to type vfx. 15 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-andrewfm01`.
 
@@ -146,8 +166,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-andrewfm01/smallTexturesRibbon.ogt` | Small Textures Ribbon | magic-impact |  | 1.017 |  |  | 0.09 | 20 |
 | `vfx/effekseer-andrewfm01/smallTexturesSquareWave_orbital.ogt` | Small Textures Square Wave Orbital | magic-impact |  | 66.667 |  |  | 0.08 | 17 |
 
-<a id="guide-effect-packs-4"></a>
-### `effect-packs §4` effekseer-effekseer01
+<a id="guide-effect-packs-5"></a>
+### `effect-packs §5` effekseer-effekseer01
 
 Effekseer01's Effekseer sample effects (15), converted to type vfx. 15 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-effekseer01`.
 
@@ -176,8 +196,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-effekseer01/Simple_Sprite_FixedYAxis.ogt` | Simple Sprite Fixed YAxis | basic |  | 2.817 |  |  | 1.07 | 15 |
 | `vfx/effekseer-effekseer01/Simple_Track1.ogt` | Simple Track 1 | basic |  | 3.333 |  |  | 0.51 | 15 |
 
-<a id="guide-effect-packs-5"></a>
-### `effect-packs §5` effekseer-hato01
+<a id="guide-effect-packs-6"></a>
+### `effect-packs §6` effekseer-hato01
 
 HATO01's Effekseer sample effects (4), converted to type vfx. 4 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-hato01`.
 
@@ -195,8 +215,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-hato01/kiroi-chou.ogt` | Kiroi Chou | ambient | nature | 33.375 |  |  | 0.37 | 22 |
 | `vfx/effekseer-hato01/sakura1.ogt` | Sakura 1 | ambient | nature | 13.8 |  |  | 1.55 | 52 |
 
-<a id="guide-effect-packs-6"></a>
-### `effect-packs §6` effekseer-magicalxspiral
+<a id="guide-effect-packs-7"></a>
+### `effect-packs §7` effekseer-magicalxspiral
 
 MAGICAL X SPIRAL's Effekseer sample effects (101), converted to type vfx. 101 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-magicalxspiral`.
 
@@ -311,8 +331,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-magicalxspiral/meteo1.ogt` | Meteo 1 | magic-projectile | fire | 0.858 |  |  | 0.54 | 23 |
 | `vfx/effekseer-magicalxspiral/salamander13.ogt` | Salamander 13 | magic-impact | fire | 1.683 |  |  | 0.34 | 24 |
 
-<a id="guide-effect-packs-7"></a>
-### `effect-packs §7` effekseer-nextsoft01
+<a id="guide-effect-packs-8"></a>
+### `effect-packs §8` effekseer-nextsoft01
 
 NextSoft01's Effekseer sample effects (20), converted to type vfx. 20 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-nextsoft01`.
 
@@ -346,8 +366,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-nextsoft01/Sword1.ogt` | Sword 1 | slash |  | 0.333 |  |  | 0.19 | 17 |
 | `vfx/effekseer-nextsoft01/Sword2.ogt` | Sword 2 | slash |  | 1.1 |  |  | 1.33 | 19 |
 
-<a id="guide-effect-packs-8"></a>
-### `effect-packs §8` effekseer-pierre01
+<a id="guide-effect-packs-9"></a>
+### `effect-packs §9` effekseer-pierre01
 
 Pierre vol.1's Effekseer sample effects (11), converted to type vfx. 11 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-pierre01`.
 
@@ -372,8 +392,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-pierre01/PhantasmMeteor_Single.ogt` | Phantasm Meteor Single | magic-projectile | fire | 3.612 |  |  | 5.55 | 46 |
 | `vfx/effekseer-pierre01/SonicBoom.ogt` | Sonic Boom | magic-projectile |  | 1.833 |  |  | 2.31 | 31 |
 
-<a id="guide-effect-packs-9"></a>
-### `effect-packs §9` effekseer-pierre02
+<a id="guide-effect-packs-10"></a>
+### `effect-packs §10` effekseer-pierre02
 
 Pierre vol.2's Effekseer sample effects (12), converted to type vfx. 12 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-pierre02`.
 
@@ -399,8 +419,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-pierre02/Sword_Sacredlight.ogt` | Sword Sacredlight | slash | holy | loops |  |  | 1.84 | 24 |
 | `vfx/effekseer-pierre02/Sword_Storm.ogt` | Sword Storm | slash | wind | loops |  |  | 3.63 | 28 |
 
-<a id="guide-effect-packs-10"></a>
-### `effect-packs §10` effekseer-suzuki01
+<a id="guide-effect-packs-11"></a>
+### `effect-packs §11` effekseer-suzuki01
 
 Suzuki01's Effekseer sample effects (3), converted to type vfx. 3 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-suzuki01`.
 
@@ -417,8 +437,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-suzuki01/snowstorm11.ogt` | Snowstorm 11 | weather | ice | 8.917 |  |  | 4.00 | 24 |
 | `vfx/effekseer-suzuki01/sword.ogt` | Sword | slash |  | loops |  |  | 1.33 | 30 |
 
-<a id="guide-effect-packs-11"></a>
-### `effect-packs §11` effekseer-tktk01
+<a id="guide-effect-packs-12"></a>
+### `effect-packs §12` effekseer-tktk01
 
 tktk vol.1's Effekseer sample effects (71), converted to type vfx. 71 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-tktk01`.
 
@@ -503,8 +523,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-tktk01/hozyo4.ogt` | Hozyo 4 | buff |  | loops |  |  | 4.68 | 24 |
 | `vfx/effekseer-tktk01/hozyo5.ogt` | Hozyo 5 | buff |  | loops |  |  | 4.63 | 25 |
 
-<a id="guide-effect-packs-12"></a>
-### `effect-packs §12` effekseer-tktk02
+<a id="guide-effect-packs-13"></a>
+### `effect-packs §13` effekseer-tktk02
 
 tktk vol.2's Effekseer sample effects (33), converted to type vfx. 33 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-tktk02`.
 
@@ -551,33 +571,34 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-tktk02/Light3.ogt` | Light 3 | magic-impact | holy | loops |  |  | 6.40 | 93 |
 | `vfx/effekseer-tktk02/Light4.ogt` | Light 4 | magic-impact | holy | 2.777 |  |  | 3.69 | 78 |
 
-<a id="guide-effect-packs-13"></a>
-### `effect-packs §13` Ambient effects
+<a id="guide-effect-packs-14"></a>
+### `effect-packs §14` Ambient effects
 
-Ambient effects (ambient): 12 in `effekseer-hato01`, `effekseer-pierre01`, `effekseer-starter`, `pixel-scenario`.
+Ambient effects (ambient): 13 in `effekseer-hato01`, `effekseer-pierre01`, `effekseer-starter`, `pixel-scenario`, `realistic-starter`.
 
 - effekseer-hato01: `vfx/effekseer-hato01/aoi-chou.ogt` (Aoi Chou), `vfx/effekseer-hato01/iwai-ume.ogt` (Iwai Ume), `vfx/effekseer-hato01/kiroi-chou.ogt` (Kiroi Chou), `vfx/effekseer-hato01/sakura1.ogt` (Sakura 1)
 - effekseer-pierre01: `vfx/effekseer-pierre01/Atmosphere.ogt` (Atmosphere), `vfx/effekseer-pierre01/Background.ogt` (Background)
 - effekseer-starter: `vfx/effekseer-starter/electric_dust.ogt` (Floating Motes), `vfx/effekseer-starter/sakura1.ogt` (Sakura Petals)
 - pixel-scenario: `vfx/pixel-scenario/cherry-blossom-petals.ogt` (Thorn Ambient), `vfx/pixel-scenario/embers-rising.ogt` (Blaze Ambient), `vfx/pixel-scenario/falling-leaves.ogt` (Bloom Ambient), `vfx/pixel-scenario/fireflies.ogt` (Mystic Ambient)
+- realistic-starter: `vfx/realistic-starter/ambient-dust.ogt` (Ambient Dust)
 
-<a id="guide-effect-packs-14"></a>
-### `effect-packs §14` Basic effects
+<a id="guide-effect-packs-15"></a>
+### `effect-packs §15` Basic effects
 
 Basic effects (basic): 11 in `effekseer-effekseer01`.
 
 - effekseer-effekseer01: `vfx/effekseer-effekseer01/Simple_Distortion.ogt` (Simple Distortion), `vfx/effekseer-effekseer01/Simple_GeneratingPosition1.ogt` (Simple Generating Position 1), `vfx/effekseer-effekseer01/Simple_Model_UV.ogt` (Simple Model UV), `vfx/effekseer-effekseer01/Simple_Ribbon_Parent.ogt` (Simple Ribbon Parent), `vfx/effekseer-effekseer01/Simple_Ribbon_Sword.ogt` (Simple Ribbon Sword), `vfx/effekseer-effekseer01/Simple_Ring_Shape1.ogt` (Simple Ring Shape 1), `vfx/effekseer-effekseer01/Simple_Ring_Shape2.ogt` (Simple Ring Shape 2), `vfx/effekseer-effekseer01/Simple_Sprite_BillBoard.ogt` (Simple Sprite Bill Board), `vfx/effekseer-effekseer01/Simple_Sprite_Fixed.ogt` (Simple Sprite Fixed), `vfx/effekseer-effekseer01/Simple_Sprite_FixedYAxis.ogt` (Simple Sprite Fixed YAxis), `vfx/effekseer-effekseer01/Simple_Track1.ogt` (Simple Track 1)
 
-<a id="guide-effect-packs-15"></a>
-### `effect-packs §15` Beam effects
+<a id="guide-effect-packs-16"></a>
+### `effect-packs §16` Beam effects
 
 Beam effects (beam): 5 in `effekseer-andrewfm01`, `effekseer-effekseer01`.
 
 - effekseer-andrewfm01: `vfx/effekseer-andrewfm01/blue_laser.ogt` (Blue Laser)
 - effekseer-effekseer01: `vfx/effekseer-effekseer01/Homing_Laser01.ogt` (Homing Laser 01), `vfx/effekseer-effekseer01/Laser01.ogt` (Laser 01), `vfx/effekseer-effekseer01/Laser02.ogt` (Laser 02), `vfx/effekseer-effekseer01/Laser03.ogt` (Laser 03)
 
-<a id="guide-effect-packs-16"></a>
-### `effect-packs §16` Buff effects
+<a id="guide-effect-packs-17"></a>
+### `effect-packs §17` Buff effects
 
 Buff effects (buff): 14 in `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-starter`, `effekseer-suzuki01`, `effekseer-tktk01`, `pixel-scenario`.
 
@@ -588,21 +609,29 @@ Buff effects (buff): 14 in `effekseer-nextsoft01`, `effekseer-pierre01`, `effeks
 - effekseer-tktk01: `vfx/effekseer-tktk01/hozyo1.ogt` (Hozyo 1), `vfx/effekseer-tktk01/hozyo2.ogt` (Hozyo 2), `vfx/effekseer-tktk01/hozyo3.ogt` (Hozyo 3), `vfx/effekseer-tktk01/hozyo4.ogt` (Hozyo 4), `vfx/effekseer-tktk01/hozyo5.ogt` (Hozyo 5)
 - pixel-scenario: `vfx/pixel-scenario/charge-up-energy.ogt` (Pulse Charge), `vfx/pixel-scenario/dark-shadow-aura.ogt` (Night Aura), `vfx/pixel-scenario/hex-shield-barrier.ogt` (Flux Shield)
 
-<a id="guide-effect-packs-17"></a>
-### `effect-packs §17` Explosion effects
+<a id="guide-effect-packs-18"></a>
+### `effect-packs §18` Debris effects
 
-Explosion effects (explosion): 13 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-pierre02`, `effekseer-starter`, `pixel-scenario`.
+Debris effects (debris): 1 in `realistic-starter`.
+
+- realistic-starter: `vfx/realistic-starter/dust-burst.ogt` (Dust Burst)
+
+<a id="guide-effect-packs-19"></a>
+### `effect-packs §19` Explosion effects
+
+Explosion effects (explosion): 14 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-pierre02`, `effekseer-starter`, `pixel-scenario`, `realistic-starter`.
 
 - effekseer-andrewfm01: `vfx/effekseer-andrewfm01/boss_death.ogt` (Boss Death)
 - effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/Breakdown.ogt` (Breakdown), `vfx/effekseer-magicalxspiral/IcicleBroken.ogt` (Icicle Broken), `vfx/effekseer-magicalxspiral/StairBroken.ogt` (Stair Broken), `vfx/effekseer-magicalxspiral/StairBroken3.ogt` (Stair Broken 3)
 - effekseer-pierre02: `vfx/effekseer-pierre02/FeatherBomb.ogt` (Feather Bomb)
 - effekseer-starter: `vfx/effekseer-starter/Blow4.ogt` (Bright Explosion), `vfx/effekseer-starter/Breakdown.ogt` (Breakdown Burst), `vfx/effekseer-starter/FeatherBomb.ogt` (Smoke Bomb), `vfx/effekseer-starter/boss_death.ogt` (Boss Death), `vfx/effekseer-starter/meteo1.ogt` (Meteor Strike)
 - pixel-scenario: `vfx/pixel-scenario/big-fire-explosion.ogt` (Cinder Explosion), `vfx/pixel-scenario/meteor-strike.ogt` (Ember Meteor)
+- realistic-starter: `vfx/realistic-starter/explosion.ogt` (Explosion)
 
-<a id="guide-effect-packs-18"></a>
-### `effect-packs §18` Fire effects
+<a id="guide-effect-packs-20"></a>
+### `effect-packs §20` Fire effects
 
-Fire effects (fire): 29 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`.
+Fire effects (fire): 30 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`, `realistic-starter`.
 
 - effekseer-andrewfm01: `vfx/effekseer-andrewfm01/fire.ogt` (Fire)
 - effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/FirePot1.ogt` (Fire Pot 1), `vfx/effekseer-magicalxspiral/FirePot2.ogt` (Fire Pot 2), `vfx/effekseer-magicalxspiral/Magic1_fire.ogt` (Magic 1 Fire), `vfx/effekseer-magicalxspiral/Magic2_fire.ogt` (Magic 2 Fire)
@@ -612,9 +641,17 @@ Fire effects (fire): 29 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `
 - effekseer-tktk01: `vfx/effekseer-tktk01/Fire1.ogt` (Fire 1), `vfx/effekseer-tktk01/Fire2.ogt` (Fire 2), `vfx/effekseer-tktk01/Fire3.ogt` (Fire 3), `vfx/effekseer-tktk01/Fire4.ogt` (Fire 4), `vfx/effekseer-tktk01/Fire5.ogt` (Fire 5), `vfx/effekseer-tktk01/Fire6.ogt` (Fire 6), `vfx/effekseer-tktk01/Fire7.ogt` (Fire 7), `vfx/effekseer-tktk01/Fire8.ogt` (Fire 8)
 - effekseer-tktk02: `vfx/effekseer-tktk02/Fire1.ogt` (Fire 1), `vfx/effekseer-tktk02/Fire2.ogt` (Fire 2), `vfx/effekseer-tktk02/Fire3.ogt` (Fire 3), `vfx/effekseer-tktk02/Fire4.ogt` (Fire 4), `vfx/effekseer-tktk02/Fire5.ogt` (Fire 5), `vfx/effekseer-tktk02/Fire6.ogt` (Fire 6), `vfx/effekseer-tktk02/Fire7.ogt` (Fire 7), `vfx/effekseer-tktk02/Fire8.ogt` (Fire 8)
 - pixel-scenario: `vfx/pixel-scenario/campfire.ogt` (Ember Flame), `vfx/pixel-scenario/dragon-fire-breath.ogt` (Cinder Breath), `vfx/pixel-scenario/fire-tornado.ogt` (Blaze Tornado)
+- realistic-starter: `vfx/realistic-starter/torch-fire.ogt` (Torch Fire)
 
-<a id="guide-effect-packs-19"></a>
-### `effect-packs §19` Heal effects
+<a id="guide-effect-packs-21"></a>
+### `effect-packs §21` Gunfire effects
+
+Gunfire effects (gunfire): 1 in `realistic-starter`.
+
+- realistic-starter: `vfx/realistic-starter/muzzle-flash.ogt` (Muzzle Flash)
+
+<a id="guide-effect-packs-22"></a>
+### `effect-packs §22` Heal effects
 
 Heal effects (heal): 17 in `effekseer-nextsoft01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-tktk01`, `pixel-scenario`.
 
@@ -624,27 +661,28 @@ Heal effects (heal): 17 in `effekseer-nextsoft01`, `effekseer-pierre02`, `effeks
 - effekseer-tktk01: `vfx/effekseer-tktk01/Cure1.ogt` (Cure 1), `vfx/effekseer-tktk01/Cure2.ogt` (Cure 2), `vfx/effekseer-tktk01/Cure3.ogt` (Cure 3), `vfx/effekseer-tktk01/Cure4.ogt` (Cure 4), `vfx/effekseer-tktk01/Cure5.ogt` (Cure 5), `vfx/effekseer-tktk01/Cure6.ogt` (Cure 6), `vfx/effekseer-tktk01/Cure7.ogt` (Cure 7)
 - pixel-scenario: `vfx/pixel-scenario/healing-with-rising-crosses.ogt` (Bloom Heal)
 
-<a id="guide-effect-packs-20"></a>
-### `effect-packs §20` Hit spark effects
+<a id="guide-effect-packs-23"></a>
+### `effect-packs §23` Hit spark effects
 
-Hit spark effects (hit-spark): 27 in `effekseer-andrewfm01`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`.
+Hit spark effects (hit-spark): 28 in `effekseer-andrewfm01`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`, `realistic-starter`.
 
 - effekseer-andrewfm01: `vfx/effekseer-andrewfm01/hit_eff.ogt` (Hit Eff)
 - effekseer-starter: `vfx/effekseer-starter/Attack_Impact.ogt` (Attack Impact), `vfx/effekseer-starter/Blow2.ogt` (Spark Hit), `vfx/effekseer-starter/Blow8.ogt` (Star Hit), `vfx/effekseer-starter/hit_eff.ogt` (Hit Flash)
 - effekseer-tktk01: `vfx/effekseer-tktk01/Blow1.ogt` (Blow 1), `vfx/effekseer-tktk01/Blow10.ogt` (Blow 10), `vfx/effekseer-tktk01/Blow11.ogt` (Blow 11), `vfx/effekseer-tktk01/Blow12.ogt` (Blow 12), `vfx/effekseer-tktk01/Blow13.ogt` (Blow 13), `vfx/effekseer-tktk01/Blow14.ogt` (Blow 14), `vfx/effekseer-tktk01/Blow15.ogt` (Blow 15), `vfx/effekseer-tktk01/Blow2.ogt` (Blow 2), `vfx/effekseer-tktk01/Blow3.ogt` (Blow 3), `vfx/effekseer-tktk01/Blow4.ogt` (Blow 4), `vfx/effekseer-tktk01/Blow5.ogt` (Blow 5), `vfx/effekseer-tktk01/Blow6.ogt` (Blow 6), `vfx/effekseer-tktk01/Blow7.ogt` (Blow 7), `vfx/effekseer-tktk01/Blow8.ogt` (Blow 8), `vfx/effekseer-tktk01/Blow9.ogt` (Blow 9)
 - effekseer-tktk02: `vfx/effekseer-tktk02/Blow1.ogt` (Blow 1), `vfx/effekseer-tktk02/Blow2.ogt` (Blow 2), `vfx/effekseer-tktk02/Blow3.ogt` (Blow 3), `vfx/effekseer-tktk02/Blow4.ogt` (Blow 4), `vfx/effekseer-tktk02/Blow5.ogt` (Blow 5), `vfx/effekseer-tktk02/Blow6.ogt` (Blow 6)
 - pixel-scenario: `vfx/pixel-scenario/electric-impact-hit.ogt` (Static Impact)
+- realistic-starter: `vfx/realistic-starter/bullet-impact.ogt` (Bullet Impact)
 
-<a id="guide-effect-packs-21"></a>
-### `effect-packs §21` Level up effects
+<a id="guide-effect-packs-24"></a>
+### `effect-packs §24` Level up effects
 
 Level up effects (level-up): 3 in `effekseer-starter`, `pixel-scenario`.
 
 - effekseer-starter: `vfx/effekseer-starter/Light4.ogt` (Level Up Arrows), `vfx/effekseer-starter/Thunder1.ogt` (Golden Rise)
 - pixel-scenario: `vfx/pixel-scenario/level-up.ogt` (Gilded Level Up)
 
-<a id="guide-effect-packs-22"></a>
-### `effect-packs §22` Magic impact effects
+<a id="guide-effect-packs-25"></a>
+### `effect-packs §25` Magic impact effects
 
 Magic impact effects (magic-impact): 109 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`.
 
@@ -658,8 +696,8 @@ Magic impact effects (magic-impact): 109 in `effekseer-andrewfm01`, `effekseer-m
 - effekseer-tktk02: `vfx/effekseer-tktk02/Dark1.ogt` (Dark 1), `vfx/effekseer-tktk02/Dark2.ogt` (Dark 2), `vfx/effekseer-tktk02/Light1.ogt` (Light 1), `vfx/effekseer-tktk02/Light2.ogt` (Light 2), `vfx/effekseer-tktk02/Light3.ogt` (Light 3), `vfx/effekseer-tktk02/Light4.ogt` (Light 4)
 - pixel-scenario: `vfx/pixel-scenario/arcane-magic-circle.ogt` (Eldritch Magic Circle), `vfx/pixel-scenario/frost-nova.ogt` (Frost Nova), `vfx/pixel-scenario/ground-slam-quake.ogt` (Stone Ground Slam), `vfx/pixel-scenario/holy-pillar-of-light.ogt` (Divine Pillar), `vfx/pixel-scenario/ice-spikes-erupting.ogt` (Frozen Spikes), `vfx/pixel-scenario/lava-eruption-pillar.ogt` (Volcanic Pillar), `vfx/pixel-scenario/lightning-strike-from-the-sky.ogt` (Storm Strike), `vfx/pixel-scenario/water-splash.ogt` (Aqua Splash)
 
-<a id="guide-effect-packs-23"></a>
-### `effect-packs §23` Magic projectile effects
+<a id="guide-effect-packs-26"></a>
+### `effect-packs §26` Magic projectile effects
 
 Magic projectile effects (magic-projectile): 36 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`.
 
@@ -673,8 +711,8 @@ Magic projectile effects (magic-projectile): 36 in `effekseer-andrewfm01`, `effe
 - effekseer-tktk02: `vfx/effekseer-tktk02/Gun1.ogt` (Gun 1), `vfx/effekseer-tktk02/Gun2.ogt` (Gun 2), `vfx/effekseer-tktk02/Gun3.ogt` (Gun 3), `vfx/effekseer-tktk02/Gun4.ogt` (Gun 4), `vfx/effekseer-tktk02/Gun5.ogt` (Gun 5), `vfx/effekseer-tktk02/Gun6.ogt` (Gun 6), `vfx/effekseer-tktk02/Gun7.ogt` (Gun 7), `vfx/effekseer-tktk02/Gun8.ogt` (Gun 8), `vfx/effekseer-tktk02/Gun9.ogt` (Gun 9)
 - pixel-scenario: `vfx/pixel-scenario/blue-energy-beam.ogt` (Aether Beam), `vfx/pixel-scenario/fireball-projectile.ogt` (Ember Projectile), `vfx/pixel-scenario/plasma-orb.ogt` (Ion Orb)
 
-<a id="guide-effect-packs-24"></a>
-### `effect-packs §24` Portal effects
+<a id="guide-effect-packs-27"></a>
+### `effect-packs §27` Portal effects
 
 Portal effects (portal): 9 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-pierre02`, `effekseer-starter`, `pixel-scenario`.
 
@@ -684,16 +722,16 @@ Portal effects (portal): 9 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`
 - effekseer-starter: `vfx/effekseer-starter/Magic2_fire.ogt` (Fire Pentagram), `vfx/effekseer-starter/magic_circle.ogt` (Magic Circle), `vfx/effekseer-starter/smallTexturesSquareWave_orbital.ogt` (Arcane Ring)
 - pixel-scenario: `vfx/pixel-scenario/dimensional-portal.ogt` (Astral Portal), `vfx/pixel-scenario/purple-black-hole-vortex.ogt` (Shadow Vortex), `vfx/pixel-scenario/teleport-blink.ogt` (Mystic Teleport)
 
-<a id="guide-effect-packs-25"></a>
-### `effect-packs §25` Shield effects
+<a id="guide-effect-packs-28"></a>
+### `effect-packs §28` Shield effects
 
 Shield effects (shield): 3 in `effekseer-magicalxspiral`, `effekseer-nextsoft01`.
 
 - effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/Gohlem_Shield1.ogt` (Gohlem Shield 1), `vfx/effekseer-magicalxspiral/Gohlem_Shield2.ogt` (Gohlem Shield 2)
 - effekseer-nextsoft01: `vfx/effekseer-nextsoft01/MagicShield.ogt` (Magic Shield)
 
-<a id="guide-effect-packs-26"></a>
-### `effect-packs §26` Slash effects
+<a id="guide-effect-packs-29"></a>
+### `effect-packs §29` Slash effects
 
 Slash effects (slash): 48 in `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-suzuki01`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`.
 
@@ -706,8 +744,8 @@ Slash effects (slash): 48 in `effekseer-magicalxspiral`, `effekseer-nextsoft01`,
 - effekseer-tktk02: `vfx/effekseer-tktk02/Claw1.ogt` (Claw 1), `vfx/effekseer-tktk02/Claw2.ogt` (Claw 2), `vfx/effekseer-tktk02/Claw3.ogt` (Claw 3), `vfx/effekseer-tktk02/Claw4.ogt` (Claw 4)
 - pixel-scenario: `vfx/pixel-scenario/crescent-sword-slash.ogt` (Razor Slash), `vfx/pixel-scenario/dash-speed-lines.ogt` (Cyclone Dash), `vfx/pixel-scenario/feral-claw-scratch-blood.ogt` (Sanguine Claw), `vfx/pixel-scenario/spinning-wind-slash.ogt` (Cyclone Slash), `vfx/pixel-scenario/triple-slash-combo-with-blue-energy.ogt` (Flux Slash)
 
-<a id="guide-effect-packs-27"></a>
-### `effect-packs §27` Smoke effects
+<a id="guide-effect-packs-30"></a>
+### `effect-packs §30` Smoke effects
 
 Smoke effects (smoke): 12 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-pierre02`, `pixel-scenario`.
 
@@ -716,16 +754,23 @@ Smoke effects (smoke): 12 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`,
 - effekseer-pierre02: `vfx/effekseer-pierre02/CosmicMist.ogt` (Cosmic Mist)
 - pixel-scenario: `vfx/pixel-scenario/poison-gas-cloud.ogt` (Blight Cloud), `vfx/pixel-scenario/smoke-poof.ogt` (Ashen Poof)
 
-<a id="guide-effect-packs-28"></a>
-### `effect-packs §28` Ui effects
+<a id="guide-effect-packs-31"></a>
+### `effect-packs §31` Splash effects
+
+Splash effects (splash): 1 in `realistic-starter`.
+
+- realistic-starter: `vfx/realistic-starter/water-splash.ogt` (Water Splash)
+
+<a id="guide-effect-packs-32"></a>
+### `effect-packs §32` Ui effects
 
 Ui effects (ui): 10 in `effekseer-andrewfm01`, `pixel-scenario`.
 
 - effekseer-andrewfm01: `vfx/effekseer-andrewfm01/actionLines_halo.ogt` (Action Lines Halo), `vfx/effekseer-andrewfm01/actionLines_halo2.ogt` (Action Lines Halo 2), `vfx/effekseer-andrewfm01/actionLines_radial.ogt` (Action Lines Radial), `vfx/effekseer-andrewfm01/actionLines_radial2.ogt` (Action Lines Radial 2), `vfx/effekseer-andrewfm01/actionLines_shockwave.ogt` (Action Lines Shockwave), `vfx/effekseer-andrewfm01/actionLines_strip.ogt` (Action Lines Strip)
 - pixel-scenario: `vfx/pixel-scenario/critical-hit-damage-999.ogt` (Ember Damage Number), `vfx/pixel-scenario/fireworks-celebration.ogt` (Arcane Fireworks), `vfx/pixel-scenario/gold-coins-loot-drop.ogt` (Lucky Loot), `vfx/pixel-scenario/sparkle-twinkle.ogt` (Sacred Sparkle)
 
-<a id="guide-effect-packs-29"></a>
-### `effect-packs §29` Weather effects
+<a id="guide-effect-packs-33"></a>
+### `effect-packs §33` Weather effects
 
 Weather effects (weather): 7 in `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-starter`, `effekseer-suzuki01`, `pixel-scenario`.
 
