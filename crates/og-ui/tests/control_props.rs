@@ -258,25 +258,50 @@ fn root_relative_text_sizes_follow_the_root_not_the_parent() {
 #[test]
 fn type_ramp_tokens_follow_the_text_scale() {
     let source = r#"<meta name="component" content="t"><div><p id="Token">Token</p><label><input type="checkbox"/> Widget</label></div><style>#Token { font: var(--text-sm); }</style>"#;
-    for scale in [1.0, 1.5] {
-        let mut d = Doc::with_font(source, &[], crate::support::test_font());
-        let mut theme = *d.ui.theme();
-        theme.text_scale = scale;
-        d.ui.set_theme(theme);
-        d.step(InputFrame::default());
-        d.step(InputFrame::default());
-        let sizes: Vec<_> =
-            d.ui.frame()
-                .items
-                .iter()
-                .filter_map(|i| match &i.cmd {
-                    DrawCmd::Text { text, size, .. } => Some((text.clone(), *size)),
-                    _ => None,
-                })
-                .collect();
-        let sm = 14.0 * scale;
-        assert!(sizes.contains(&("Token".into(), sm)), "{scale}: {sizes:?}");
-        assert!(sizes.contains(&("Widget".into(), sm)), "{scale}: {sizes:?}");
+    // No pack; a pack, whose sheet sets the ramp again on every document's
+    // root; a pack that sets its own step, grown once.
+    for (pack, sm) in [
+        (None, 14.0),
+        (Some(""), 14.0),
+        (
+            Some(":root { --type-sm-size: 16px; --type-body-size: 16px; }"),
+            16.0,
+        ),
+    ] {
+        for scale in [1.0, 1.5] {
+            let mut d = Doc::with_font(source, &[], crate::support::test_font());
+            if let Some(css) = pack {
+                let pack = og_ui::style_pack::StylePack::parse(
+                    "styles/t",
+                    vec![("styles/t/main.css".into(), css.into())],
+                )
+                .unwrap();
+                d.ui.set_style_pack(&pack).unwrap();
+            }
+            let mut theme = *d.ui.theme();
+            theme.text_scale = scale;
+            d.ui.set_theme(theme);
+            d.step(InputFrame::default());
+            d.step(InputFrame::default());
+            let sizes: Vec<_> =
+                d.ui.frame()
+                    .items
+                    .iter()
+                    .filter_map(|i| match &i.cmd {
+                        DrawCmd::Text { text, size, .. } => Some((text.clone(), *size)),
+                        _ => None,
+                    })
+                    .collect();
+            let sm = sm * scale;
+            assert!(
+                sizes.contains(&("Token".into(), sm)),
+                "{pack:?} {scale}: {sizes:?}"
+            );
+            assert!(
+                sizes.contains(&("Widget".into(), sm)),
+                "{pack:?} {scale}: {sizes:?}"
+            );
+        }
     }
 }
 

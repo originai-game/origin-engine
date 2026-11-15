@@ -803,6 +803,7 @@ impl Ui {
             sheet: Some(&b.doc.sheet),
             starting: false,
             carry: self.docs.library.wide_keywords,
+            text_scale: self.css_text_scale(),
         };
         let mut rule_applies = |rule: &super::StyleRule| {
             applies(&rule.query, &mut media_reads)

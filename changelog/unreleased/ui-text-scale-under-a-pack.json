@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"Under a style pack, text sized by the type ramp's tokens (`font: var(--text-caption)`) follows `UiDesc.textScale` again. A pack's sheet sets the ramp again on every document's root, at its authored px, so only the default style grew it: AbilitySlot's percent stayed 13 px at 150 % under fantasy, scifi and cartoon. A type length set in px now grows wherever it is set."}
+  ]
+}

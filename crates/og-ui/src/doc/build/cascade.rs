@@ -302,6 +302,7 @@ pub(crate) fn resolve_values(
             sheet: None,
             starting: false,
             carry: false,
+            text_scale: 1.0,
         },
         applies,
     )
@@ -321,6 +322,10 @@ pub(crate) struct Options<'a> {
     pub starting: bool,
     /// Carry the winners in the standard-property map for children's `inherit`.
     pub carry: bool,
+    /// The player's text scale: a type ramp length (`--type-*-size`,
+    /// `--type-*-line-height`) set here in px is grown by it, wherever it is
+    /// set, as the ramp widgets draw with is (`Theme::to_text_scale`).
+    pub text_scale: f32,
 }
 
 /// `rules` in cascade order; a subset in that order (rules `applies`
@@ -412,6 +417,21 @@ pub(crate) fn values_with<'r>(
                 specified.insert(name.clone(), value);
             }
             Err(error) => out.diagnostics.push(format!("style:{name}: {error}")),
+        }
+    }
+    // The type ramp is authored at 100 %: the lengths that won here are set
+    // grown, before the tokens built from them (`--text-sm`) resolve. Only
+    // what this element sets is grown; what it inherits already is.
+    if o.text_scale != 1.0 {
+        for (name, value) in &mut specified {
+            if let Some(px) = (!value.has_variables())
+                .then(|| value.substitute(&mut |_| None).ok())
+                .flatten()
+                .and_then(|text| super::parts::type_length(name, &text))
+            {
+                *value =
+                    variables::Value::parse(&format!("{}px", px * o.text_scale)).expect("a length");
+            }
         }
     }
     // Registered custom properties (`@property`): one that does not
