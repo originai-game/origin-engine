@@ -1,0 +1,23 @@
+type project
+version 1
+---
+# The ungrouped built-in components' review sheet (src/ui/components/*.svelte
+# outside a group directory, the world tags and ground marks aside: they are
+# sheets/world's): `og ui sheet components` renders each page at desktop and
+# phone, 100 % and 150 % (docs/ui.md §6.2). hud is the normal page, panels
+# the stress page, states every member in every state src/fixtures.ts
+# declares. The -default screens review the same pages in the core default
+# style.
+name "Ungrouped components sheet"
+id "components-sheet"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+ui {
+  screen "hud-fantasy" "style:fantasy;page:hud"
+  screen "panels-fantasy" "style:fantasy;page:panels"
+  screen "states-fantasy" "style:fantasy;page:states"
+  screen "hud-default" "style:default;page:hud"
+  screen "panels-default" "style:default;page:panels"
+}

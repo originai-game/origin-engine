@@ -1,0 +1,23 @@
+type project
+version 1
+---
+# The world-anchored components' review sheet (nameplate, loot label,
+# interaction prompt, waypoint, speech bubble, selection ring, telegraph,
+# path line, placement ghost, overhead bars, damage numbers), anchored over
+# a 3D scene: `og ui sheet world` renders each page at desktop and phone,
+# 100 % and 150 % (docs/ui.md §6.2). field is the normal page, crowd the
+# stress page; each sends `hits` before its capture (at 2 s), so the
+# damage numbers are mid-rise. The -default screens review the same pages in the core
+# default style.
+name "World components sheet"
+id "world-sheet"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
+ui {
+  screen "field-fantasy" "style:fantasy;page:field;1.7:hits"
+  screen "crowd-fantasy" "style:fantasy;page:crowd;1.7:hits"
+  screen "field-default" "style:default;page:field;1.7:hits"
+  screen "crowd-default" "style:default;page:crowd;1.7:hits"
+}

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og ui sheet components, screens and world",
+      "summary": "Three review sheets cover what no group owns: `components` (the ungrouped built-in components on a HUD, a panels and a states page), `screens` (every built-in screen on its own page, its states through `--states`) and `world` (nameplates, loot labels, damage numbers, overhead bars, prompts, waypoints, selection rings and the other world-anchored components over a 3D scene). Each renders in fantasy, scifi and default."
+    }
+  ]
+}

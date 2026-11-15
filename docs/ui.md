@@ -1646,11 +1646,18 @@ A group's review sheet is a project in `packages/engine/sheets/<group>/`;
 the engine package ships each one in its `sheets/` (without `references/`
 or `verify.ts`), so `og ui sheet <group>` runs on an installed engine. No
 game's cook bundles a sheet: it is data `og ui sheet` and `og ui review`
-read when asked. Its pages use the group's built-in components by name,
-with fixtures from its `src/fixtures.ts`, sample art under `assets/` and
-strings for the review's CJK and right-to-left locales in
-`assets/strings/`; `og ui review` installs those locales' font packs into
-its copy (without them those cells repeat the game locale).
+read when asked. Besides the groups, three sheets cover what no group
+owns: `components` (the ungrouped components of
+`src/ui/components/*.svelte`: a HUD page over a bright sky and a dark
+floor, a panels page, a states page), `screens` (each built-in screen of
+`src/ui/screens/` on a page of its own, in its document's fixture and the
+sheet's own states, `--states` taking any of them) and `world` (the world
+tags, ground marks and mass elements anchored over a 3D scene). A sheet's
+pages use the group's built-in components by name, with fixtures from its
+`src/fixtures.ts`, sample art under `assets/` and strings for the
+review's CJK and right-to-left locales in `assets/strings/`;
+`og ui review` installs those locales' font packs into its copy (without
+them those cells repeat the game locale).
 The group's behaviour tests (`packages/engine/tests/<group>.test.ts`)
 mount its members the same way.
 
@@ -1681,6 +1688,9 @@ cook bundle it) and its name in `STYLES`.
 | rhythm | `songs` | `play` | `states` | fantasy, scifi, default |
 | arena | `select` | `match` | `states` | fantasy, scifi, default |
 | general | `store` | `social` | `progress`, `states` | fantasy, scifi |
+| components | `hud` | `panels` | `states` | fantasy, scifi, default |
+| screens | each screen's default state | its `overflow` (or first other) state | every state through `--states` | fantasy, scifi, default |
+| world | `field` | `crowd` | | fantasy, scifi, default |
 
 `og ui sheet <group>` renders the screens `project.ogt` declares at
 desktop (1920×1080) and phone portrait (390×844), at 100 % and 150 %
