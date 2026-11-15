@@ -507,6 +507,26 @@ pub(crate) struct ShadowMap {
 }
 
 impl ShadowMap {
+    /// The layout entry of the cascades' array where the lit shaders read
+    /// it (frame.wgsl `cascade_map`), in `stages`: a read-only storage
+    /// texture, as every read of it is a `textureLoad`, so it takes none of
+    /// a lit pipeline's sixteen sampled texture slots.
+    pub(crate) fn cascade_layout_entry(
+        binding: u32,
+        stages: wgpu::ShaderStages,
+    ) -> wgpu::BindGroupLayoutEntry {
+        wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: stages,
+            ty: wgpu::BindingType::StorageTexture {
+                access: wgpu::StorageTextureAccess::ReadOnly,
+                format: crate::shadow_keep::CASCADE_FORMAT,
+                view_dimension: wgpu::TextureViewDimension::D2Array,
+            },
+            count: None,
+        }
+    }
+
     pub(crate) fn new(
         device: &wgpu::Device,
         label: &str,
@@ -525,10 +545,17 @@ impl ShadowMap {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format,
+            // The cascades are read as a storage texture
+            // ([`ShadowMap::cascade_layout_entry`]).
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_SRC
-                | wgpu::TextureUsages::COPY_DST,
+                | wgpu::TextureUsages::COPY_DST
+                | if format == crate::shadow_keep::CASCADE_FORMAT {
+                    wgpu::TextureUsages::STORAGE_BINDING
+                } else {
+                    wgpu::TextureUsages::empty()
+                },
             view_formats: &[],
         });
         let depth_texture = target_texture(

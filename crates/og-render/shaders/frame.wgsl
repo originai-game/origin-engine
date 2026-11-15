@@ -126,8 +126,9 @@ fn params_moved(stamp: u32) -> bool {
 }
 
 // Shadow depths stored in R32Float colour targets and read with textureLoad
-// (lighting.wgsl's explicit compares).
-@group(0) @binding(1) var cascade_map: texture_2d_array<f32>;
+// (lighting.wgsl's explicit compares). The cascades are a read-only storage
+// texture, so they take none of the lit pipelines' sixteen texture slots.
+@group(0) @binding(1) var cascade_map: texture_storage_2d_array<r32float, read>;
 @group(0) @binding(2) var local_shadow_map: texture_2d_array<f32>;
 @group(0) @binding(3) var irradiance_map: texture_cube<f32>;
 @group(0) @binding(4) var prefiltered_map: texture_cube<f32>;

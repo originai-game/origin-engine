@@ -384,11 +384,7 @@ impl Froxels {
             label: Some("volumetric frame"),
             entries: &[
                 entry(0, compute, uniform_ty()),
-                entry(
-                    1,
-                    compute,
-                    texture_ty(wgpu::TextureViewDimension::D2Array, false),
-                ),
+                crate::ShadowMap::cascade_layout_entry(1, compute),
                 entry(
                     2,
                     compute,

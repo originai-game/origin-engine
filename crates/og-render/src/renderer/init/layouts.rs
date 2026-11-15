@@ -41,7 +41,9 @@ impl Renderer {
         let [lights_entry, table_entry, refs_entry] = clusters::layout_entries();
         let frame_entries = [
             uniform_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
-            texture_entry(1, false, wgpu::TextureViewDimension::D2Array),
+            // The cascades: a read-only storage texture, so the lit
+            // pipelines keep a texture slot (the terrain's screen AO).
+            ShadowMap::cascade_layout_entry(1, wgpu::ShaderStages::FRAGMENT),
             texture_entry(2, false, wgpu::TextureViewDimension::D2Array),
             texture_entry(3, true, wgpu::TextureViewDimension::Cube),
             texture_entry(4, true, wgpu::TextureViewDimension::Cube),

@@ -93,7 +93,7 @@ fn weather_open(p: vec3<f32>, geo: vec3<f32>) -> f32 {
     for (var i = -2; i <= 2; i++) {
       let tap = at + vec2<f32>(f32(i), f32(j)) * step;
       let t = clamp(vec2<i32>(tap), vec2<i32>(0), vec2<i32>(side - 1));
-      let nearest = textureLoad(cascade_map, t, layer, 0).r;
+      let nearest = textureLoad(cascade_map, t, layer).r;
       // (At most 8 m along the fall either way: a wall's plane is no guide.)
       let plane = c.z + clamp(dot(gradient, tap - uv * ws.z), -0.01, 0.01);
       open += select(0.0, 1.0, plane - ws.w <= nearest);

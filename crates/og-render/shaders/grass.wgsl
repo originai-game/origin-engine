@@ -119,7 +119,7 @@ fn grass_transmittance(p: vec3<f32>) -> f32 {
   if (sp.z > 1.0 || any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) { return 1.0; }
   let size = vec2<i32>(textureDimensions(cascade_map));
   let at = clamp(vec2<i32>(uv * vec2<f32>(size)), vec2<i32>(0), size - 1);
-  let occluder = textureLoad(cascade_map, at, i32(c), 0).r;
+  let occluder = textureLoad(cascade_map, at, i32(c)).r;
   // The map's depth per metre along the light.
   let per_metre = length(vec3<f32>(m[0].z, m[1].z, m[2].z));
   let thickness = max(sp.z - occluder, 0.0) / max(per_metre, 1e-9);

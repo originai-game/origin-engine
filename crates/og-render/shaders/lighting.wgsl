@@ -28,8 +28,8 @@ fn f_schlick_roughness(cos_theta: f32, f0: vec3<f32>, roughness: f32) -> vec3<f3
 // ([`receiver_slope`]): each texel is compared against the receiver's own
 // depth there, so a surface tilted from the light does not shadow itself
 // across the kernel.
-fn pcf(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f32, slope: vec2<f32>) -> f32 {
-  let size = vec2<i32>(textureDimensions(map));
+fn pcf(uv: vec2<f32>, layer: u32, ref_depth: f32, slope: vec2<f32>) -> f32 {
+  let size = vec2<i32>(textureDimensions(cascade_map));
   let p = uv * vec2<f32>(size) - 0.5;
   let base = vec2<i32>(floor(p));
   let f = fract(p);
@@ -38,7 +38,7 @@ fn pcf(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f32, sl
     let o = vec2<i32>(i & 1, i >> 1u);
     let at = clamp(base + o, vec2<i32>(0), size - 1);
     let r = ref_depth + dot(slope, vec2<f32>(o) - f);
-    lit[i] = select(0.0, 1.0, r <= textureLoad(map, at, i32(layer), 0).r);
+    lit[i] = select(0.0, 1.0, r <= textureLoad(cascade_map, at, i32(layer)).r);
   }
   return mix(mix(lit[0], lit[1], f.x), mix(lit[2], lit[3], f.x), f.y);
 }
@@ -54,8 +54,8 @@ fn pcf(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f32, sl
 // PCFs a texel apart averaged those to a faint haze (Metal: smaa's wire
 // grid, gltf-reference's figures). The receiver plane (`slope`, as pcf's)
 // keeps the kernel off the surface's own depth.
-fn pcf_tent(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f32, slope: vec2<f32>) -> f32 {
-  let size = vec2<i32>(textureDimensions(map));
+fn pcf_tent(uv: vec2<f32>, layer: u32, ref_depth: f32, slope: vec2<f32>) -> f32 {
+  let size = vec2<i32>(textureDimensions(cascade_map));
   let p = uv * vec2<f32>(size) - 1.0;
   let base = vec2<i32>(floor(p));
   let f = fract(p);
@@ -67,7 +67,7 @@ fn pcf_tent(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f3
     for (var i = 0; i < 3; i++) {
       let at = clamp(base + vec2<i32>(i, j), vec2<i32>(0), size - 1);
       let r = ref_depth + dot(slope, vec2<f32>(f32(i), f32(j)) - 0.5 - f);
-      row += wx[i] * select(0.0, 1.0, r <= textureLoad(map, at, i32(layer), 0).r);
+      row += wx[i] * select(0.0, 1.0, r <= textureLoad(cascade_map, at, i32(layer)).r);
     }
     lit += wy[j] * row;
   }
@@ -198,7 +198,7 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
   for (var i = 0; i < PCSS_TAPS; i++) {
     let o = vogel(i, PCSS_TAPS, search, turn);
     let at = clamp(vec2<i32>(floor(uv * size + o)), vec2<i32>(0), isize - 1);
-    let d = textureLoad(cascade_map, at, i32(c), 0).r;
+    let d = textureLoad(cascade_map, at, i32(c)).r;
     if (d < reference - slope * length(o)) {
       blockers += 1.0;
       sum += d;
@@ -219,7 +219,7 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
   var lit = 0.0;
   for (var i = 0; i < PCSS_TAPS; i++) {
     let o = vogel(i, PCSS_TAPS, penumbra, turn);
-    lit += pcf(cascade_map, uv + o / size, c, reference - slope * length(o), vec2<f32>(0.0));
+    lit += pcf(uv + o / size, c, reference - slope * length(o), vec2<f32>(0.0));
   }
   lit /= f32(PCSS_TAPS);
   let fill = frame.shadow.z;
@@ -238,7 +238,7 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
   for (var i = 0; i < PCSS_TAPS; i++) {
     let o = vogel(i, PCSS_TAPS, cone, turn + 1.3);
     let at = clamp(vec2<i32>(floor(uv * size + o)), vec2<i32>(0), isize - 1);
-    open += select(0.0, 1.0, textureLoad(cascade_map, at, i32(c), 0).r >= reference - slope * length(o));
+    open += select(0.0, 1.0, textureLoad(cascade_map, at, i32(c)).r >= reference - slope * length(o));
   }
   return mix(lit, 1.0, fill * open / f32(PCSS_TAPS));
 }
@@ -269,7 +269,7 @@ fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) 
       return pcss(uv, c, sp.z - bias.y, bias, sin_l / max(n_dot_l, 0.05));
     }
   }
-  if (!wide) { return pcf(cascade_map, uv, c, sp.z - bias.y, vec2<f32>(0.0)); }
+  if (!wide) { return pcf(uv, c, sp.z - bias.y, vec2<f32>(0.0)); }
   // A closed receiver: a quarter texel past its own depth, flat. Else
   // along the receiver plane, a texel along each tangent (orthographic:
   // exact). A fixed box (bias.w < 0) always compares towards the light
@@ -290,7 +290,7 @@ fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) 
     );
     depth = sp.z - bias.y;
   }
-  return pcf_tent(cascade_map, uv, c, depth, slope);
+  return pcf_tent(uv, c, depth, slope);
 }
 
 // The cascades' shadow at p: across a cascade's blend band (cascade_bias.w
