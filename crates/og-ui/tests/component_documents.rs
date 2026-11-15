@@ -313,3 +313,55 @@ fn main_menu_scrolls_when_it_is_taller_than_the_screen() {
         );
     }
 }
+
+/// A charging ultimate shows its cost and its charge percent apart, at
+/// the player's normal and largest text, so neither hides the other.
+///
+/// Ways it could fail: the cost kept at the slot's bottom corner, where
+/// the ultimate's percent also sits (the cost's plate drew over "72%"), or
+/// two readouts that only clear each other at 100 % text.
+#[test]
+fn an_ultimates_cost_and_percent_never_overlap() {
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    let doc = docs
+        .iter()
+        .find(|d| d.path == "src/ui/components/ability-slot.svelte")
+        .expect("ability-slot.svelte");
+    let mut props = doc.props.clone();
+    let p = props.as_object_mut().unwrap();
+    for (k, v) in [
+        ("cooldown", serde_json::json!(0)),
+        ("maxCharges", serde_json::json!(0)),
+        ("cost", serde_json::json!("40")),
+        ("ultimate", serde_json::json!(0.72)),
+    ] {
+        p.insert(k.into(), v);
+    }
+    let ultimate = EngineDocument {
+        path: doc.path.clone(),
+        doc: doc.doc.clone(),
+        props,
+    };
+    for scale in [1.0, 1.5] {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+        let mut theme = *ui.theme();
+        theme.text_scale = scale;
+        ui.set_theme(theme);
+        preview(&mut ui, &docs, &ultimate, &messages, 1280.0, 720.0);
+        let rect = |id: &str| {
+            let e = ui
+                .elements()
+                .iter()
+                .find(|e| e.path.ends_with(&format!("/{id}")))
+                .unwrap_or_else(|| panic!("{scale}: no {id}"));
+            (e.x, e.y, e.width, e.height)
+        };
+        let (cost, percent) = (rect("Cost"), rect("Percent"));
+        let apart = cost.0 + cost.2 <= percent.0
+            || percent.0 + percent.2 <= cost.0
+            || cost.1 + cost.3 <= percent.1
+            || percent.1 + percent.3 <= cost.1;
+        assert!(apart, "{scale}: cost {cost:?} overlaps percent {percent:?}");
+    }
+}

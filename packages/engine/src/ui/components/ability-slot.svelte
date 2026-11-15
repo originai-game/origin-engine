@@ -31,7 +31,7 @@
       <span id="Percent" part="AbilitySlot.percent" hidden={!(ultimate >= 0 && ultimate < 1)}>{formatPercent(ultimate)}</span>
       <svg id="Slash" viewBox="0 0 56 56" hidden={!disabled}><path d="M8 48L48 8" stroke-width="5" stroke-linecap="round"></path></svg>
       <og-icon id="Lock" icon="lock" hidden={!locked}></og-icon>
-      <span id="Cost" part="AbilitySlot.badge" class="cost" class:short={unaffordable} hidden={!cost || cooldown > 0 || locked}>{cost}</span>
+      <div id="Costs"><span id="Cost" part="AbilitySlot.badge" class="cost" class:short={unaffordable} hidden={!cost || cooldown > 0 || locked}>{cost}</span></div>
       <span id="Charges" part="AbilitySlot.badge" class="charges" hidden={!(maxCharges > 1) || cooldown > 0}>{formatNumber(charges)}</span>
     </div>
   </button>
@@ -59,7 +59,14 @@
 #Percent { position: absolute; bottom: var(--space-xxs); inset-inline-start: 0; width: stretch; text-align: center; font: var(--text-caption); color: var(--gold); }
 #Slash { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; stroke: var(--danger); }
 #Lock { position: absolute; top: var(--space-md); inset-inline-start: var(--space-md); width: var(--size-sm); height: var(--size-sm); color: var(--ink); }
-#Cost { position: absolute; bottom: var(--space-xxs); inset-inline-start: var(--space-xxs); padding: 0 var(--space-xs); font-size: var(--font-step-sm); color: var(--mana); }
+/* The cost sits in a row of its own: at the bottom's leading corner on a
+   square slot; on an ultimate, whose percent takes the bottom, centred at
+   the top, where the round slot is wide enough for it and where nothing
+   else shows while it does (it hides on cooldown and when locked, with the
+   time and the lock). */
+#Costs { position: absolute; bottom: var(--space-xxs); inset-inline-start: var(--space-xxs); inset-inline-end: var(--space-xxs); display: flex; justify-content: flex-start; }
+.ultimate #Costs { top: var(--space-xxs); bottom: auto; justify-content: center; }
+#Cost { padding: 0 var(--space-xs); font-size: var(--font-step-sm); color: var(--mana); }
 #Cost.short { color: var(--danger); }
 #Charges { position: absolute; top: var(--space-xxs); inset-inline-end: var(--space-xxs); min-width: var(--size-xs); padding: 0 var(--space-xxs); font-size: var(--font-step-sm); align-items: center; }
 #Pips { width: calc(var(--ranks) * var(--space-md) - var(--space-xs)); height: var(--space-xs); background: repeating-linear-gradient(90deg, var(--scrim) 0, var(--scrim) var(--space-sm), transparent var(--space-sm), transparent var(--space-md)); }
