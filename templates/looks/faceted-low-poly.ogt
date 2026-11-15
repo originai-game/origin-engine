@@ -17,15 +17,11 @@ PostEffects {
 }
 # The art contract (docs/art.md §2.1), from the catalogue entry's palette and
 # assets: 16 to 32 colours, one per material; characters 300 to 1500
-# triangles, props 50 to 500, flat facets; no textures beyond one small
-# palette texture.
+# triangles, props 50 to 500, flat facets; no textures: with flat normals
+# and no ArtTexels the cook bakes each face one colour (the texture's mean
+# over it, cut to the palette), so the facets read as colour fields.
 ArtPalette {
   maxColors 32
-}
-ArtTexels {
-  maxSize 64
-  filter nearest
-  mips none
 }
 ArtShape {
   propFaces 200

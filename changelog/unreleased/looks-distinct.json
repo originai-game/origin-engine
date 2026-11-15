@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "looks: presets",
+      "summary": "Five looks that read alike on one scene are drawn apart. painterly-3d paints with broad strokes (paintRadius 8, anisotropy 0.9), pooled rims, bleed, a stronger linen canvas and a few soft tone steps; faceted-low-poly sets no ArtTexels, so the cook bakes each face one colour and the facets read as colour fields; minimal-geometric shades in hard cel bands (MaterialStyle.toon, toonSoftness 0), so no gradient survives on a surface; toy-3d keeps textures to 32 texels, deepens its contact occlusion (aoIntensity 1.4) and blurs the top and bottom of the frame with a tilt-shift band (dofTiltShift 0.1); pixel-3d-hybrid's depth of field is a tilt-shift band (dofTiltShift 0.14) in place of a fixed 10 m focus, so its sprites stay sharp at any camera distance. toy-3d's voxel variant turns the band off and its diorama variant narrows it; painterly-3d's and minimal-geometric's variants keep their own frames. Every look's catalogue preview is now an engine render of its preset scene (templates/looks/preview)."
+    }
+  ]
+}

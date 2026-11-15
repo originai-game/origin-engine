@@ -779,8 +779,13 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
     const silhouette = num(shape.silhouette);
     if (silhouette > 0) said3.push(`no feature thinner than ${silhouette} m`);
     if (said3.length > 0) lines.push(`Shape: ${said3.join("; ")}.`);
+    // An untextured style (flat normals and no ArtTexels size or filter, or voxels): the cook bakes each face, or cube, one colour.
+    const baked = model.voxel > 0 || (model.normals === "flat" && density === 0 && num(texels.maxSize) === 0 && filter === "any");
     const tex = `${model.textureSize} x ${model.textureSize} texels${density > 0 ? ` (${density} per metre)` : ""}${filter === "nearest" ? ", sampled nearest" : ""}${mips === "none" ? ", no mip maps" : ""}`;
-    lines.push(`Texture: ${tex}.`);
+    if (baked) {
+      lines.push(`Texture: none needed: the cook bakes each ${model.voxel > 0 ? "cube" : "face"} one flat colour, so give each part one material colour.`);
+      avoid.push("painted texture detail");
+    } else lines.push(`Texture: ${tex}.`);
     if (model.normals === "flat" || model.voxel > 0) avoid.push("smooth shading across facets");
   }
 

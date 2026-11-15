@@ -11,6 +11,8 @@ Stylise {
   paintEdgeDarkening 0
   paintBleed 0
   paintCanvasStrength 0
+  posterize 0
+  posterizeMode channel
 }
 PostEffects {
   vignette false

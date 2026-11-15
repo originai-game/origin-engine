@@ -160,7 +160,9 @@ summary as warnings and never refuses a build.
 `looks/catalogue.json` (`schemaVersion` 3) gives each style:
 
 - `preview`: `previews/<slug>.webp`, 960×540, checked present by the
-  validator.
+  validator: the engine's own frame of the look's preset scene
+  (`templates/looks/preview/`, drawn by its `render.ts --webp`), never a
+  painting of it, so it promises no more than a game in the look draws.
 - `look.layers`: which layers the style needs among `frame`, `conform`,
   `runtime` (§2.4) and `authored` (art no conformance can make).
   `look.support` is derived: `full` when every needed layer but `authored`
@@ -179,8 +181,11 @@ minimal-geometric (default); painterly-3d and pixel-3d-hybrid (fantasy);
 neon-vector (scifi); toy-3d and cartoon-2d (cartoon). The validator keeps a
 look for every creation view.
 
-A style's sample scene belongs to the game's art review; the engine ships
-no sample-game gallery.
+The preset scenes (`templates/looks/preview/`: a 3D meadow of round and
+faceted forms, and a 2D strip of the look's authored art) are the one
+place every look is drawn side by side; each must read as its description
+on them at a glance. Beyond them, a style's sample scene belongs to the
+game's art review; the engine ships no sample-game gallery.
 
 ### 2.7 A style's painted art: the hand-off
 
@@ -359,5 +364,5 @@ asks for the style:
   request goes through `artBrief`, and `og style check-project` runs
   before a screen is called done.
 - **The critic** receives the entry's checks and the captured frames.
-- **Previews** come from the engine package (`knowledge/previews/`); no
-  image is copied by hand.
+- **Previews** come from the engine package (`knowledge/previews/`), each an
+  engine render of its preset scene; no image is copied by hand.

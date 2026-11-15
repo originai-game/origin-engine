@@ -1197,12 +1197,12 @@
       "slug": "toy-3d",
       "name": "Toy 3D",
       "category": "crafted-3d",
-      "descriptor": "Chunky toy pieces of satin plastic with rounded bevelled edges, bright colour and soft contact shadows, a world small enough to pick up.",
+      "descriptor": "Chunky toy pieces of satin plastic with rounded bevelled edges, bright colour and soft contact shadows, seen through a tilt-shift band that blurs the top and bottom of the frame: a world small enough to pick up.",
       "preview": "previews/toy-3d.webp",
       "checks": [
         "Hard edges read rounded: a bevel catches a highlight along every box edge at play distance.",
         "Surfaces have a satin sheen with soft highlights; no gritty texture, no metal or glass realism.",
-        "Pieces touching the ground or each other sit in soft ambient-occlusion shadow."
+        "Pieces touching the ground or each other sit in soft ambient-occlusion shadow, and the frame's top and bottom blur round a sharp middle band, as in a tilt-shift photo of a model."
       ],
       "intended": "Rounded edges on simple chunky forms, a smooth satin sheen and bright saturated colour are the style, not missing detail, low-resolution models or oversaturation.",
       "premise": {
@@ -1246,7 +1246,7 @@
         "spriteScale": "figures 1 to 2 m, chunky proportions",
         "faceBudget": "props 500 to 3k triangles, figures under 8k, bevelled",
         "outlinePx": "0",
-        "textureDensity": "flat colour or simple colour textures up to 256 px"
+        "textureDensity": "flat colour or simple colour textures up to 32 px"
       },
       "artBible": {
         "direction": "Everything is a toy: chunky simplified forms, rounded bevels, satin plastic, bright clean colour, soft shadows under a sunny sky.",

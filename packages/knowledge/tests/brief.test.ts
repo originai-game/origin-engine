@@ -25,12 +25,15 @@ test("the same kind asks a 2D pixel style for a sprite and a 3D shape style for 
   expect(pixel.medium).toBe("image");
   expect(pixel.model).toBeUndefined();
   expect(pixel.image).toEqual({ transparent: true, width: 1024, height: 1024, grid: { width: 16, height: 16, scale: 64 }, tiling: false });
-  // faceted-low-poly: ArtShape propFaces 200, normals flat; ArtTexels maxSize 64, filter nearest, mips none; a 3D style.
+  // faceted-low-poly: ArtShape propFaces 200, normals flat and no ArtTexels, so the cook bakes each face one colour; a 3D style.
   const faceted = artBrief(presetLook("faceted-low-poly"), "prop", "a brass lantern");
   expect(faceted.medium).toBe("model");
   expect(faceted.image).toBeUndefined();
-  expect(faceted.model).toEqual({ faceBudget: 200, textureSize: 64, normals: "flat", voxel: 0, bevel: 0, filter: "nearest", mips: "none", metres: 1 });
+  expect(faceted.model).toEqual({ faceBudget: 200, textureSize: 1024, normals: "flat", voxel: 0, bevel: 0, filter: "any", mips: "any", metres: 1 });
   expect(faceted.prompt).toContain("at most 200 triangles");
+  expect(faceted.prompt).toContain("Texture: none needed: the cook bakes each face one flat colour");
+  // toy-3d keeps its textures (ArtTexels maxSize 32): the brief asks for one.
+  expect(artBrief(presetLook("toy-3d"), "prop", "a brass lantern").prompt).toContain("Texture: 32 x 32 texels.");
   expect(pixel.prompt).not.toContain("triangles");
   expect(pixel.prompt).toContain("16 x 16 logical-pixel grid");
   // A character: 2 m tall is 32 px (a cell of 32), 1 m wide 16 px; 1024 / 32 = 32.

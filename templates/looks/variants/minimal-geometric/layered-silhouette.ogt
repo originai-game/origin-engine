@@ -8,6 +8,8 @@ name "Layered silhouettes"
 mood "high-contrast"
 MaterialStyle {
   flatShading false
+  toon false
+  toonSoftness 1
 }
 Stylise {
   depthBands 6

@@ -144,7 +144,7 @@ test("art and audio briefs remain available without creating a game", () => {
   expect(readFileSync(join(pkg, "bin/brief.ts"), "utf8")).toBe(readFileSync(join(pkg, "../knowledge/scripts/brief.ts"), "utf8"));
   expect(artBrief(presetLook("pixel"), "character", "the courier").image?.grid).toEqual({ width: 16, height: 32, scale: 32 });
   const prop = artBrief(presetLook("faceted-low-poly"), "prop", "a signpost");
-  expect([prop.medium, prop.model?.faceBudget, prop.model?.textureSize]).toEqual(["model", 200, 64]);
+  expect([prop.medium, prop.model?.faceBudget, prop.model?.normals]).toEqual(["model", 200, "flat"]);
   expect([...RIG_TEMPLATES]).toEqual(["humanoid-side", "humanoid-front", "quadruped", "creature"]);
   expect(rigParts("humanoid-front").filter(p => /^(leg|foot)/.test(p.layer)).map(p => [p.layer, p.side, p.bone, p.required])).toEqual([
     ["leg-upper-l", "l", "leg-upper-l", true], ["leg-lower-l", "l", "leg-lower-l", true], ["foot-l", "l", "foot-l", true],

@@ -1,16 +1,14 @@
 type look
 version 1
 ---
-# A tilt-shift depth of field, a vignette and AgX: a tabletop model.
+# A narrower, stronger tilt-shift band than the toy's, a vignette and AgX:
+# a tabletop model photographed close.
 # The diorama variant of toy-3d (`variant "diorama"`): only what it changes of
 # the preset, a field it turns off written at its default.
 name "Miniature dioramas"
 PostEffects {
-  depthOfField true
-  dofFocusDistance 12
-  dofFocusRange 2.5
-  dofMaxBlur 0.014
-  dofQuality high
+  dofTiltShift 0.07
+  dofMaxBlur 0.016
   vignetteIntensity 0.35
   ao false
 }

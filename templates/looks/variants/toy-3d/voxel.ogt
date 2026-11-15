@@ -16,6 +16,7 @@ PostEffects {
   aoIntensity 1.2
   vignette false
   vignetteIntensity 0.35
+  depthOfField false
 }
 ArtPalette {
   maxColors 64
