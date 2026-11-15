@@ -547,9 +547,10 @@ fn the_minimap_north_mark_stands_clear_of_the_bezel() {
 }
 
 /// A node graph's well stretches over its container, and the graph stands
-/// in its middle as an SVG viewBox's xMidYMid does. Ways it could fail: the
-/// canvas pinned at the well's top-left (the map in a corner of an empty
-/// panel), or the well kept at a fixed size.
+/// in its middle, scaled to fit, as an SVG viewBox's xMidYMid meet does. Ways
+/// it could fail: the canvas pinned at the well's top-left (the map in a
+/// corner of an empty panel), the well kept at a fixed size, or the graph
+/// kept at its view's size in a larger well.
 #[test]
 fn a_node_graph_centres_its_graph_in_its_well() {
     let (docs, messages) = engine_documents(&["src/ui/components"]);
@@ -587,4 +588,18 @@ fn a_node_graph_centres_its_graph_in_its_well() {
     let (cx, cy) = (well.x + well.width / 2.0, well.y + well.height / 2.0);
     assert!((x - cx).abs() < 40.0, "across: graph {x}, well {cx}");
     assert!((y - cy).abs() < 40.0, "down: graph {y}, well {cy}");
+    // It fits as xMidYMid meet: the fixture's 360 by 240 view scaled by the
+    // most that holds it, with a node's width (48) to spare at each edge.
+    // Strength stands at x 40 and Rage at x 320.
+    let fit = ((well.width - 96.0) / 360.0).min((well.height - 96.0) / 240.0);
+    let at = |name: &str| {
+        let e = nodes.iter().find(|e| e.name == name).unwrap();
+        e.x + e.width / 2.0
+    };
+    let span = at("Rage") - at("Strength");
+    assert!(
+        (span - 280.0 * fit).abs() < 2.0,
+        "Strength to Rage {span}, the view fitted {}",
+        280.0 * fit
+    );
 }

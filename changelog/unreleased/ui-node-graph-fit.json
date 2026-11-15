@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"NodeGraph fits its `view` in its well as an SVG viewBox does under `xMidYMid meet`: the graph scales to the most that holds it (with a node's width to spare at each edge) and stands in the middle, so CardRunMap's map spans its panel instead of a small patch of it. Nodes keep their size. A caption stands centred under its node on a chip of the well, so a path runs under it, not through it; a diamond's caption turns back about the node's middle instead of standing beside it; a locked node dims its icon and mutes its caption instead of thinning the whole node."}
+  ]
+}
