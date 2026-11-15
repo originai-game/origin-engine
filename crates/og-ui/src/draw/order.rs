@@ -111,7 +111,7 @@ fn collect(
                         &end,
                         (
                             DrawCmd::EndLayer {
-                                ground: Some(Ground::Panel(_)),
+                                ground: Some(Ground::Panel(_) | Ground::Label(_)),
                                 ..
                             },
                             _,

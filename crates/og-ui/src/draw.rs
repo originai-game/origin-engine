@@ -191,6 +191,11 @@ pub enum LayerRole {
 pub enum Ground {
     /// A world panel's, under the screen's levels.
     Panel(u64),
+    /// The texts and badges of the world panel of that key, each a layer
+    /// laid with its panel's quad: over every panel's other drawing, so a
+    /// ground's label reads over the rings and lines of the grounds about
+    /// it, and over its own.
+    Label(u64),
     /// A CSS 3D plane's, in the screen's levels where it stands (and, in a
     /// 3D rendering context, sorted by depth among the context's planes).
     Plane(u64),

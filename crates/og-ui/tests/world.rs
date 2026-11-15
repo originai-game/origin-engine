@@ -511,6 +511,94 @@ fn a_ground_draws_what_overflows_its_box() {
     );
 }
 
+/// A ground's text reads over the other grounds' drawing: a path's badge
+/// stays over a ring laid after it, where it overlaps that ring.
+///
+/// Ways it could fail: the badge composited with its ground's marks, in
+/// the one band every ground shares, so a ground later in the tree (the
+/// ring) draws over it.
+#[test]
+fn a_grounds_label_draws_over_the_other_grounds() {
+    // A font that draws, so the badge's text is in the overlay.
+    let mut ui = ui_with_font(test_font());
+    let doc = r#"<meta name="component" content="sel">
+<div id="Root">
+<ground id="Path" at="0 0 0" size="3 3"><div id="Line"></div><span id="Badge">12 m · 2 AP</span></ground>
+<ground id="Ring" at="0 0 0" size="3 3"><div id="Circle"></div></ground>
+</div>
+<style>
+#Path, #Ring { width: 200px; height: 200px; }
+#Line { width: 200px; height: 4px; background: #fff; }
+#Badge { position: absolute; left: 80px; top: 90px; white-space: nowrap; }
+#Circle { width: 200px; height: 200px; border: 4px solid #3c3; border-radius: 50%; }
+</style>"#;
+    ui.define_document(UiDocument::parse("sel.svelte", doc).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "sel"),
+        "sel",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let above = WorldView::look_at(
+        Vec3::new(0.0, 5.0, 6.0),
+        Vec3::ZERO,
+        Vec3::Y,
+        50.0,
+        W / H,
+        0.1,
+        100.0,
+    );
+    for _ in 0..3 {
+        ui.begin(InputFrame::default(), vp());
+        ui.set_world_view(Some(above));
+        ui.end();
+    }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let mut o = Overlay::new(W, H, 1.0);
+    ui.frame().emit(
+        &EmitDesc {
+            layer: 1000,
+            time: 0.0,
+        },
+        &mut o,
+    );
+    let text = o
+        .texts
+        .iter()
+        .find(|t| t.text.contains("AP"))
+        .expect("the badge's text");
+    let layers = &o.ui.layers;
+    let holding = |level: i32| {
+        layers
+            .iter()
+            .enumerate()
+            .rfind(|(_, l)| l.capture[0] <= level && level <= l.capture[1])
+            .map(|(k, _)| k as u32)
+            .expect("the text is drawn into a layer")
+    };
+    // Where each ground layer is composited on the screen.
+    let composite = |k: u32| {
+        o.ui.shapes
+            .iter()
+            .find(|s| s.paint == og_draw::UiPaint::Layer(k))
+            .map(|s| s.layer)
+            .expect("a ground layer composited")
+    };
+    let label = holding(text.layer);
+    let others: Vec<i32> = (0..layers.len() as u32)
+        .filter(|&k| k != label && layers[k as usize].ground.is_some())
+        .map(composite)
+        .collect();
+    assert_eq!(others.len(), 2, "two grounds' marks: {others:?}");
+    assert!(
+        others.iter().all(|&l| composite(label) > l),
+        "the badge at {} under a ground's marks at {others:?}",
+        composite(label)
+    );
+}
+
 /// Decluttered tags stay on the screen and clear of each other: a crowd
 /// of nameplates whose point is near the top stacks down under the first
 /// once stacking up would leave the screen, and a moved tag never leaves

@@ -270,8 +270,9 @@ fn shifted(item: &DrawItem, d: Vec2) -> DrawItem {
 }
 
 /// How far under a frame's level 0 its grounds' composites draw: under the
-/// world frame's mass elements ([`crate::WorldFrame::emit`], one under).
-const GROUND_BELOW: i32 = 2;
+/// world frame's mass elements ([`crate::WorldFrame::emit`], one under),
+/// their labels ([`Ground::Label`]) one over the rest.
+const GROUND_BELOW: i32 = 3;
 
 /// The levels of the planes of each 3D rendering context, farthest
 /// first (CSS Transforms 2 §6.2): a context's composites are consecutive
@@ -571,10 +572,16 @@ pub(crate) fn emit(
                     overlay.ui.shapes.push(placed(s, parent + level, c));
                     continue;
                 }
-                if let Some(Ground::Panel(key)) = ground {
+                let band = match ground {
+                    Some(Ground::Panel(key)) => Some((key, GROUND_BELOW)),
+                    Some(Ground::Label(key)) => Some((key, GROUND_BELOW - 1)),
+                    _ => None,
+                };
+                if let Some((key, below)) = band {
                     // Draped where its panel is seen, under the screen's
-                    // levels and the world frame's mass elements; nowhere
-                    // when it is not seen (no layer composited is drawn).
+                    // levels and the world frame's mass elements, a label
+                    // over every ground; nowhere when it is not seen (no
+                    // layer composited is drawn).
                     let Some(g) = grounds.iter().find(|g| g.key == *key) else {
                         continue;
                     };
@@ -589,10 +596,7 @@ pub(crate) fn emit(
                     s.paint = UiPaint::Layer(k);
                     s.opacity = *opacity;
                     s.blend = *blend;
-                    overlay
-                        .ui
-                        .shapes
-                        .push(placed(s, desc.layer - GROUND_BELOW, c));
+                    overlay.ui.shapes.push(placed(s, desc.layer - below, c));
                     continue;
                 }
                 let parent = spaces.last().map_or(desc.layer, |s| s.base);

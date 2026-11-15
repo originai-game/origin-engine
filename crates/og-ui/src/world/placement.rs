@@ -57,6 +57,34 @@ fn drawn_box(nodes: &[crate::layout::Node], i: usize) -> (Vec2, Vec2) {
     (lo, hi)
 }
 
+/// The shown nodes under ground `i` that show text (a badge, a label), the
+/// outermost of each branch with what is under it: the ground's labels
+/// rather than its marks on the ground.
+fn ground_labels(nodes: &[crate::layout::Node], i: usize) -> Vec<usize> {
+    let mut out = Vec::new();
+    let mut stack: Vec<usize> = nodes[i]
+        .children
+        .iter()
+        .chain(&nodes[i].out)
+        .copied()
+        .collect();
+    while let Some(j) = stack.pop() {
+        let n = &nodes[j];
+        if n.hidden {
+            continue;
+        }
+        if matches!(
+            &*n.content,
+            crate::layout::Content::Text(_) | crate::layout::Content::Rich(_)
+        ) {
+            out.push(j);
+        } else {
+            stack.extend(n.children.iter().chain(&n.out).copied());
+        }
+    }
+    out
+}
+
 /// The spot nearest `b`'s own that is clear of `placed`, as the move
 /// there, or `None`: nothing fits and it is hidden. As map labels are
 /// placed (MapLibre's collision index): by rank, each in the first of its
@@ -527,28 +555,47 @@ impl crate::ui::Layout {
                 // and rebuilds nothing. Inert: no ray, no focus.
                 tree.nodes[p.node].style.sampled.inert = true;
                 let all = Rect::new(-1e9, -1e9, 2e9, 2e9);
+                let begin = || DrawCmd::BeginLayer {
+                    material: og_draw::UiMaterial::Plain,
+                    params: [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS],
+                    mask: None,
+                    expand: 0.0,
+                    rect: Rect::default(),
+                    filter: None,
+                    role: Default::default(),
+                };
+                let end = |rect: Rect, ground| DrawCmd::EndLayer {
+                    geometry: None,
+                    rect,
+                    opacity: 1.0,
+                    blend: og_draw::UiBlend::Normal,
+                    clip: all,
+                    ground: Some(ground),
+                };
                 ui_world.placement.marks.insert(
                     key,
                     Marks {
-                        enter: vec![DrawCmd::BeginLayer {
-                            material: og_draw::UiMaterial::Plain,
-                            params: [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS],
-                            mask: None,
-                            expand: 0.0,
-                            rect: Rect::default(),
-                            filter: None,
-                            role: Default::default(),
-                        }],
-                        leave: vec![DrawCmd::EndLayer {
-                            geometry: None,
-                            rect: tree.nodes[p.node].placed.rect,
-                            opacity: 1.0,
-                            blend: og_draw::UiBlend::Normal,
-                            clip: all,
-                            ground: Some(crate::draw::Ground::Panel(key)),
-                        }],
+                        enter: vec![begin()],
+                        leave: vec![end(
+                            tree.nodes[p.node].placed.rect,
+                            crate::draw::Ground::Panel(key),
+                        )],
                     },
                 );
+                // Its texts and badges: a layer each, laid with it over
+                // every ground's other drawing (`Ground::Label`).
+                for j in ground_labels(&tree.nodes, p.node) {
+                    let m = ui_world
+                        .placement
+                        .marks
+                        .entry(tree.nodes[j].key)
+                        .or_default();
+                    m.enter.insert(0, begin());
+                    m.leave.push(end(
+                        tree.nodes[j].placed.rect,
+                        crate::draw::Ground::Label(key),
+                    ));
+                }
                 if let (Some(view), Some((t, rotation, size))) =
                     (ui_world.declared.view, p.desc.quad)
                     && let Some((center, q)) = ui_world.pose_of(t)
