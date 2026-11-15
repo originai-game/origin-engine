@@ -1220,7 +1220,12 @@ glyph, skipping unavailable names; generics map to the style's roles
 `font-style`, then `font-weight`, and per character the last-declared face
 whose `unicode-range` has it. After the list come the role's face, the CJK
 companion, the locale's and the game's fonts. A missing weight or slant is
-synthesised. A `::part` run keeps the same list.
+synthesised. A `::part` run keeps the same list. A role `UiDesc` gives no
+font takes the first family with a face that the style's `--font-body`
+(else `--font-sans`), `--font-display`, `--font-mono` or `--font-rounded`
+names, so a pack that brings its faces only through `@font-face` sets the
+text widgets draw by role, as a browser's text with no `font-family` of
+its own takes the root's.
 
 **Custom properties** are lexical and inherit through instantiated
 parents, component mounts included; they resolve on the declaring element

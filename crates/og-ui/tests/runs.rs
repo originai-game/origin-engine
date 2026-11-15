@@ -740,6 +740,55 @@ p { width: max-content; }
 }
 
 #[test]
+fn a_styles_body_family_backs_the_role_a_widget_sets_its_text_in() {
+    // A style that brings its faces only through @font-face and names its
+    // body family in --font-body: a widget's own text (a checkbox's label,
+    // a badge) draws in that family, as text with no font-family of its own
+    // takes the root's in a browser, instead of in a body role without a
+    // face, which draws nothing.
+    let mut handles = Handles::default();
+    let f = faces(&mut handles);
+    let source = r#"<meta name="component" content="t"><div><label><input type="checkbox"/> Vertical sync</label><badge>best</badge></div>"#;
+    crate::support::with_doc(source, &[], |d| {
+        d.ui.set_part_css(":root { --font-body: \"Brand\", serif; }")
+            .unwrap();
+        d.ui.set_fonts(Fonts {
+            families: vec![FamilyFace {
+                family: "Brand".into(),
+                weight: (400, 400),
+                font: f.latin.clone(),
+                ..FamilyFace::default()
+            }],
+            ..Fonts::default()
+        });
+        d.step(InputFrame::default());
+        let drawn = commands(d.ui.frame());
+        for text in ["Vertical sync", "best"] {
+            assert!(
+                drawn
+                    .iter()
+                    .any(|c| c.0 == text && Some(c.1) == f.latin.handle),
+                "{text}: {drawn:?}"
+            );
+        }
+        // A font of the role's own is kept: the family only backs a role
+        // that has none.
+        d.ui.set_fonts(Fonts {
+            body: f.cjk.clone(),
+            ..d.ui.fonts().clone()
+        });
+        d.step(InputFrame::default());
+        let drawn = commands(d.ui.frame());
+        assert!(
+            drawn
+                .iter()
+                .any(|c| c.0 == "best" && Some(c.1) == f.cjk.handle),
+            "{drawn:?}"
+        );
+    });
+}
+
+#[test]
 fn a_keycap_draws_in_the_family_it_inherits() {
     // A pack that brings its faces through @font-face leaves the body role
     // without one: a <kbd> draws its text in the family it inherits, as a

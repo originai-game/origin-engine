@@ -281,6 +281,10 @@ pub struct Fonts {
     pub families: Vec<FamilyFace>,
     /// Interned CSS family lists and their resolved weight/style combinations.
     pub family_lists: FamilyLists,
+    /// The face a style's named family backs each of body, display, mono
+    /// and rounded with ([`Fonts::back_roles`]), where it has no font of
+    /// its own.
+    pub backed: [Option<og_draw::FontHandle>; 4],
 }
 
 type FamilySelection = (u32, usize, u16, bool);
@@ -525,6 +529,81 @@ impl Fonts {
             return self.for_styled(role, 0, false, text).0;
         }
         self.resolve(self.get(role), self.companion(role), text)
+    }
+
+    /// Gives each of body, display, mono and rounded that has no font of
+    /// its own the face of the first family of its list (the style's
+    /// `--font-body`, `--font-display`, `--font-mono`, `--font-rounded`)
+    /// with a face ([`Fonts::families`]): its normal face nearest the
+    /// role's weight that draws Latin. A style that brings its faces with
+    /// `@font-face` has no other font, and text a widget sets in a role
+    /// then draws in the style's family, as text with no font-family of
+    /// its own takes the root's in a browser. Roles backed before are
+    /// backed again, so a new style or new faces replace them.
+    pub fn back_roles(&mut self, lists: [Vec<FontFamily>; 4]) {
+        for (i, list) in lists.iter().enumerate() {
+            let slot = match i {
+                0 => Some(&self.body),
+                1 => self.display.as_ref(),
+                2 => self.mono.as_ref(),
+                _ => self.rounded.as_ref(),
+            };
+            let handle = slot.and_then(|f| f.handle);
+            // A backed role still holding its backing face gives it up; a
+            // font set over it since is the role's own.
+            if let Some(backing) = std::mem::take(&mut self.backed[i])
+                && handle == Some(backing)
+            {
+                if i < 3 {
+                    self.weights[i] = 0;
+                }
+                match i {
+                    0 => self.body = UiFont::default(),
+                    1 => self.display = None,
+                    2 => self.mono = None,
+                    _ => self.rounded = None,
+                }
+            }
+            let own = match i {
+                0 => self.body.handle.is_some(),
+                1 => self.display.is_some(),
+                2 => self.mono.is_some(),
+                _ => self.rounded.is_some(),
+            };
+            if own {
+                continue;
+            }
+            let weight = self
+                .weights
+                .get(i)
+                .copied()
+                .filter(|&w| w > 0)
+                .unwrap_or(400);
+            let Some((font, got)) = list.iter().find_map(|name| {
+                let FontFamily::Named(name) = name else {
+                    return None;
+                };
+                let (set, got, _) =
+                    self.family_set(crate::Family::new(name, FontRole::Body), weight, false);
+                let face = set
+                    .iter()
+                    .find(|f| f.font.metrics.has('a'))
+                    .or(set.first())?;
+                Some((face.font.clone(), got))
+            }) else {
+                continue;
+            };
+            self.backed[i] = font.handle;
+            match i {
+                0 => self.body = font,
+                1 => self.display = Some(font),
+                2 => self.mono = Some(font),
+                _ => self.rounded = Some(font),
+            }
+            if i < 3 {
+                self.weights[i] = got;
+            }
+        }
     }
 
     /// Whether the named family `name` has a face ([`Fonts::families`]).

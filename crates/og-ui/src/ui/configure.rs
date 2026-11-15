@@ -455,8 +455,33 @@ impl Ui {
         // The theme's type steps name their families among these fonts.
         self.style.theme_read = None;
         self.tree.invalidation.epoch += 1;
+        self.back_role_fonts();
         self.env.fonts.link();
         self.layout.texts.clear();
+    }
+
+    /// Backs the roles without a font of their own with the families the
+    /// style's `--font-body` (else `--font-sans`), `--font-display`,
+    /// `--font-mono` and `--font-rounded` name ([`Fonts::back_roles`]).
+    pub(crate) fn back_role_fonts(&mut self) {
+        let root = self.css_root_variables();
+        let list = |names: &[&str]| {
+            names
+                .iter()
+                .find_map(|name| {
+                    let value = root.get(&format!("--font-{name}"))?.as_deref()?;
+                    crate::css::text_css::family_list(value).ok()
+                })
+                .map(|(names, _)| names)
+                .unwrap_or_default()
+        };
+        let lists = [
+            list(&["body", "sans"]),
+            list(&["display"]),
+            list(&["mono"]),
+            list(&["rounded"]),
+        ];
+        self.env.fonts.back_roles(lists);
     }
 
     /// How many text measurements the last frame's layout made: a text's
