@@ -483,6 +483,42 @@ pub fn wrap_angle_f64(a: f64) -> f64 {
     a - ((a - PI) / (2.0 * PI)).ceil() * (2.0 * PI)
 }
 
+/// A right-handed perspective projection onto depth 0..1 (glam's
+/// `perspective_rh`, WebGPU's clip space) whose vertical focal length is
+/// `focal_y` (`1 / tan(fov_y / 2)`, times a three.js zoom): x and y by
+/// `focal_y / aspect` and `focal_y`, depth `near` to 0 and `far` to 1.
+pub fn perspective_focal(focal_y: f32, aspect: f32, near: f32, far: f32) -> Mat4 {
+    let r = far / (near - far);
+    Mat4::from_cols(
+        Vec4::new(focal_y / aspect, 0.0, 0.0, 0.0),
+        Vec4::new(0.0, focal_y, 0.0, 0.0),
+        Vec4::new(0.0, 0.0, r, -1.0),
+        Vec4::new(0.0, 0.0, r * near, 0.0),
+    )
+}
+
+/// [`perspective_focal`] for a vertical field of view of `fov_y` radians,
+/// with the deterministic [`sin_cos`] (glam's `perspective_rh` uses the
+/// host `libm`): the engine's one camera perspective.
+pub fn perspective(fov_y: f32, aspect: f32, near: f32, far: f32) -> Mat4 {
+    let (s, c) = sin_cos(fov_y * 0.5);
+    perspective_focal(c / s, aspect, near, far)
+}
+
+/// A right-handed orthographic projection onto depth 0..1 of the box
+/// `half_width` by `half_height` about the view axis, `near` to `far`
+/// (glam's `orthographic_rh` for a centred box): the engine's one camera
+/// orthographic.
+pub fn orthographic(half_width: f32, half_height: f32, near: f32, far: f32) -> Mat4 {
+    let r = 1.0 / (near - far);
+    Mat4::from_cols(
+        Vec4::new(1.0 / half_width, 0.0, 0.0, 0.0),
+        Vec4::new(0.0, 1.0 / half_height, 0.0, 0.0),
+        Vec4::new(0.0, 0.0, r, 0.0),
+        Vec4::new(0.0, 0.0, r * near, 1.0),
+    )
+}
+
 /// A value a spline runs through: `f64`, `f32` and glam's `Vec2`, `Vec3`,
 /// `DVec2` and `DVec3`.
 pub trait SplinePoint:
@@ -627,6 +663,26 @@ mod math_contracts {
         Quat, Vec3, acos, atan, atan2, cos, exp, ln, pow, quat_from_axis_angle, quat_slerp, sin,
         sin_cos,
     };
+
+    #[test]
+    #[allow(clippy::disallowed_methods)]
+    fn the_projections_are_glams_on_depth_zero_to_one() {
+        use crate::math::{Mat4, orthographic, perspective};
+        let near = |a: Mat4, b: Mat4| a.abs_diff_eq(b, 1e-6);
+        let p = perspective(1.1, 1.6, 0.1, 500.0);
+        assert!(near(
+            p,
+            crate::math::camera::rh::proj::directx::perspective(1.1, 1.6, 0.1, 500.0)
+        ));
+        // The near plane lands on depth 0, the far on 1.
+        let at = |z: f32| p.project_point3(Vec3::new(0.0, 0.0, -z)).z;
+        assert!(at(0.1).abs() < 1e-6 && (at(500.0) - 1.0).abs() < 1e-5);
+        let o = orthographic(4.0, 2.5, 0.5, 80.0);
+        assert!(near(
+            o,
+            crate::math::camera::rh::proj::directx::orthographic(-4.0, 4.0, -2.5, 2.5, 0.5, 80.0)
+        ));
+    }
 
     #[test]
     fn catmull_rom_runs_through_its_points_with_their_neighbours_slopes() {

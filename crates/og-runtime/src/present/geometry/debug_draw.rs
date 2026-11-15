@@ -178,27 +178,7 @@ pub(super) fn texts(rs: &mut RenderState, vp: (f32, f32)) {
     let cam = &rs.scene.frame.camera;
     let view = glam::camera::rh::view::look_at_mat4(cam.position, cam.target, cam.up);
     let aspect = vp.0 / vp.1;
-    let proj = match cam.projection {
-        og_render::Projection::Perspective { fov_y_degrees } => {
-            glam::camera::rh::proj::directx::perspective(
-                fov_y_degrees.to_radians(),
-                aspect,
-                cam.near,
-                cam.far,
-            )
-        }
-        og_render::Projection::Orthographic { height } => {
-            let h = height.abs().max(1e-6) * 0.5;
-            glam::camera::rh::proj::directx::orthographic(
-                -h * aspect,
-                h * aspect,
-                -h,
-                h,
-                cam.near,
-                cam.far,
-            )
-        }
-    };
+    let proj = cam.projection.matrix(aspect, cam.near, cam.far);
     let vpm = proj * view;
     let ui = rs.ui.clone();
     let mut out = Vec::new();

@@ -93,6 +93,24 @@ pub enum Projection {
     Orthographic { height: f32 },
 }
 
+impl Projection {
+    /// The projection on a target `aspect` wide per unit tall, depth `near`
+    /// to `far` onto 0..1 (og-core's [`og_core::math::perspective`] and
+    /// [`og_core::math::orthographic`]): what the frame, the shadow
+    /// cascades and the debug labels project with.
+    pub fn matrix(&self, aspect: f32, near: f32, far: f32) -> glam::Mat4 {
+        match *self {
+            Projection::Perspective { fov_y_degrees } => {
+                og_core::math::perspective(fov_y_degrees.to_radians(), aspect, near, far)
+            }
+            Projection::Orthographic { height } => {
+                let h = height.abs().max(1e-6) * 0.5;
+                og_core::math::orthographic(h * aspect, h, near, far)
+            }
+        }
+    }
+}
+
 impl Default for Projection {
     fn default() -> Self {
         Projection::Perspective {

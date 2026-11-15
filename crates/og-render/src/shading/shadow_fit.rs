@@ -72,19 +72,11 @@ pub(crate) struct Cascade {
 
 /// The camera's projection with its near and far planes moved to `n` and `f`.
 fn slice_projection(cam: &Camera, aspect: f32, n: f32, f: f32) -> Mat4 {
-    match cam.projection {
-        Projection::Perspective { fov_y_degrees } => glam::camera::rh::proj::directx::perspective(
-            fov_y_degrees.to_radians(),
-            aspect,
-            n.max(1e-4),
-            f,
-        ),
-        Projection::Orthographic { height } => {
-            let h = height.abs().max(1e-6) * 0.5;
-            let w = h * aspect;
-            glam::camera::rh::proj::directx::orthographic(-w, w, -h, h, n, f)
-        }
-    }
+    let n = match cam.projection {
+        Projection::Perspective { .. } => n.max(1e-4),
+        Projection::Orthographic { .. } => n,
+    };
+    cam.projection.matrix(aspect, n, f)
 }
 
 /// The scene's `origin` in light space past whole `step`s (f64): added to

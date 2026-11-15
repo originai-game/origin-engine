@@ -607,26 +607,11 @@ fn camera_view_proj(cam: &record::Camera, w: f32, h: f32) -> glam::Mat4 {
     let zoom = cam.zoom.max(0.01);
     let proj = if cam.orthographic {
         let half_h = cam.height / 2.0 / zoom;
-        let half_w = half_h * w / h;
-        let r = 1.0 / (near - far);
-        glam::Mat4::from_cols(
-            glam::Vec4::new(1.0 / half_w, 0.0, 0.0, 0.0),
-            glam::Vec4::new(0.0, 1.0 / half_h, 0.0, 0.0),
-            glam::Vec4::new(0.0, 0.0, r, 0.0),
-            glam::Vec4::new(0.0, 0.0, r * near, 1.0),
-        )
+        og_core::math::orthographic(half_h * w / h, half_h, near, far)
     } else {
-        // perspective_rh by hand: glam's calls the host libm, og_core::math does not.
-        let half = cam.fov.to_radians() / 2.0;
-        let (s, c) = og_core::math::sin_cos(half);
-        let f = c / s * zoom;
-        let r = far / (near - far);
-        glam::Mat4::from_cols(
-            glam::Vec4::new(f / (w / h), 0.0, 0.0, 0.0),
-            glam::Vec4::new(0.0, f, 0.0, 0.0),
-            glam::Vec4::new(0.0, 0.0, r, -1.0),
-            glam::Vec4::new(0.0, 0.0, r * near, 0.0),
-        )
+        // three.js zoom scales the focal length.
+        let (s, c) = og_core::math::sin_cos(cam.fov.to_radians() / 2.0);
+        og_core::math::perspective_focal(c / s * zoom, w / h, near, far)
     };
     proj * view
 }

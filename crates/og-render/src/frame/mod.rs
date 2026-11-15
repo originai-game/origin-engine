@@ -130,25 +130,8 @@ pub(crate) struct CameraFrame {
 
 pub(crate) fn camera_frame(cam: &Camera, aspect: f32, jitter_ndc: Vec2) -> CameraFrame {
     let view = glam::camera::rh::view::look_at_mat4(cam.position, cam.target, cam.up);
-    let (proj, orthographic) = match cam.projection {
-        Projection::Perspective { fov_y_degrees } => (
-            glam::camera::rh::proj::directx::perspective(
-                fov_y_degrees.to_radians(),
-                aspect,
-                cam.near,
-                cam.far,
-            ),
-            false,
-        ),
-        Projection::Orthographic { height } => {
-            let h = height.abs().max(1e-6) * 0.5;
-            let w = h * aspect;
-            (
-                glam::camera::rh::proj::directx::orthographic(-w, w, -h, h, cam.near, cam.far),
-                true,
-            )
-        }
-    };
+    let proj = cam.projection.matrix(aspect, cam.near, cam.far);
+    let orthographic = matches!(cam.projection, Projection::Orthographic { .. });
     let view_proj = proj * view;
     let jittered_view_proj = if jitter_ndc == Vec2::ZERO {
         view_proj
