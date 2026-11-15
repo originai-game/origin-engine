@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "align-content on a block container shifts its content as one in the block axis (CSS Box Alignment 3 §5.1.1): `align-content: end` on a tall block sits its children at its bottom, and any value but `normal` starts a formatting context of its own. A flow-root, a multi-column box or a box in another writing mode now starts a context of its own the way Taffy's block layout does, and keeps its baseline: a flow-root in a baseline-aligned row aligns by its first line instead of its bottom edge."
+    }
+  ]
+}

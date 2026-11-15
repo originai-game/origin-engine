@@ -357,9 +357,14 @@ impl tf::CoreStyle for View<'_> {
     fn is_block(&self) -> bool {
         let n = self.n();
         let el = self.el();
+        // A flow-root, a multi-column box and an orthogonal flow start a
+        // context of their own (CSS Display 3 §2.3, CSS Writing Modes 4
+        // §7.3): Taffy lays them out as boxes of their own, not in their
+        // parent's flow.
+        let orthogonal = turns(frame_of(self.nodes, self.i)) != turns(frame_of(self.nodes, n.up));
         match kind(self.nodes, self.i) {
-            Kind::Block | Kind::Lines | Kind::Multicol => true,
-            Kind::Leaf => el.block && !el.inline,
+            Kind::Block | Kind::Lines => !el.bfc && !orthogonal,
+            Kind::Leaf => el.block && !el.inline && !orthogonal,
             _ => false,
         }
     }
@@ -492,20 +497,14 @@ impl tf::CoreStyle for View<'_> {
 
     fn contain(&self) -> tf::Contain {
         let el = self.el();
-        let n = self.n();
-        // An orthogonal flow starts a context of its own (CSS Writing
-        // Modes 4 §7.3).
-        let orthogonal = turns(frame_of(self.nodes, self.i)) != turns(frame_of(self.nodes, n.up));
-        if el.bfc
-            || orthogonal
-            || el.contain.has(Contain::LAYOUT)
-            || el.contain.has(Contain::PAINT)
-            || !matches!(kind(self.nodes, self.i), Kind::Block | Kind::Lines | Kind::Leaf)
-        {
-            tf::Contain::LAYOUT
-        } else {
-            tf::Contain::NONE
+        let mut c = tf::Contain::NONE;
+        if el.contain.has(Contain::LAYOUT) {
+            c = c.union(tf::Contain::LAYOUT);
         }
+        if el.contain.has(Contain::PAINT) {
+            c = c.union(tf::Contain::PAINT);
+        }
+        c
     }
 }
 
@@ -588,7 +587,17 @@ impl tf::FlexboxItemStyle for View<'_> {
     }
 }
 
-impl tf::BlockContainerStyle for View<'_> {}
+impl tf::BlockContainerStyle for View<'_> {
+    /// CSS Box Alignment 3 §5.1.1: a block's content shifted as one in its
+    /// block axis; any value but `normal` starts a context of its own.
+    fn align_content(&self) -> tf::AlignContent {
+        let el = self.el();
+        match el.align_content {
+            None | Some(Align::Stretch) => tf::AlignContent::NORMAL,
+            Some(a) => safe_content(content(a, true), el.safe & 1 != 0),
+        }
+    }
+}
 
 impl tf::BlockItemStyle for View<'_> {
     fn is_table(&self) -> bool {
