@@ -73,10 +73,12 @@ pub const MAX_ATTRS: usize = 3;
 /// `Bag.cell`): the default style dresses each from its tokens
 /// (`ROLE_RULES` in crates/og-ui/scripts/theme_css.rs, docs/ui.md §3.2).
 pub const ROLES: &[&str] = &[
-    "frame", "plate", "band", "title", "row", "cell", "badge", "well", "figure", "label", "heading",
+    "frame", "plate", "band", "title", "row", "cell", "badge", "well", "figure", "label",
+    "heading", "name", "picture", "tab",
 ];
 
-/// The role a part named `Component.role` wears, if any.
+/// The role a part named `Component.role` wears, if any: a part list
+/// (`Bag.portrait Bag.picture`) wears its last name's.
 pub fn role(part: &str) -> Option<&'static str> {
     let (_, end) = part.rsplit_once('.')?;
     ROLES.iter().copied().find(|r| *r == end)

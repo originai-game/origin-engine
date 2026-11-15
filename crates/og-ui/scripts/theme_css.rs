@@ -131,7 +131,8 @@ const PART_RULES: &[(&str, &str, &str)] = &[
 /// pack restyles all of them by setting values. Each selector sits in
 /// `:where()`: no specificity, so a component's or a pack's rule for its
 /// own part wins whatever the order.
-const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, badge, well, figure, label. */
+const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, badge, well, figure, label,
+     heading, name, picture, tab. */
   :where([part$=".frame"]) {
     box-sizing: border-box;
     padding: var(--frame-pad);
@@ -227,14 +228,49 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
     text-transform: var(--label-transform);
     color: var(--ink-label);
   }
+  /* A name (a player's, an item's, a character's), unset in the default
+     style: the component's own type stands. */
+  :where([part$=".name"]) {
+    font-family: var(--name-font, revert-layer);
+    font-size: var(--name-size, revert-layer);
+    letter-spacing: var(--name-tracking, revert-layer);
+    text-transform: var(--name-transform, revert-layer);
+    color: var(--name-ink, revert-layer);
+    text-shadow: var(--name-shadow, revert-layer);
+  }
+  :where([part$=".name"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
+    color: var(--name-selected-ink, var(--name-ink, revert-layer));
+  }
+  /* A picture (a portrait, an avatar, a jacket, art), unset by default. */
+  :where([part$=".picture"]) {
+    background: var(--picture-fill, revert-layer);
+    border: var(--picture-rim-width, 0px) solid var(--picture-rim, transparent);
+    border-radius: var(--picture-radius, revert-layer);
+    box-shadow: var(--picture-shadow, revert-layer);
+  }
+  /* A component's tab wears the core tabs' hooks. */
+  :where([part$=".tab"]) {
+    background: var(--tabs-tab-fill, revert-layer);
+    color: var(--tabs-tab-ink, revert-layer);
+    font-family: var(--tabs-font, revert-layer);
+    letter-spacing: var(--tabs-tracking, revert-layer);
+    text-transform: var(--tabs-transform, revert-layer);
+  }
+  :where([part$=".tab"]:hover) { background: var(--tabs-tab-hover-fill, var(--tabs-tab-fill, revert-layer)); }
+  :where([part$=".tab"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
+    background: var(--tabs-tab-selected-fill, revert-layer);
+    color: var(--tabs-tab-selected-ink, revert-layer);
+  }
   /* A role part on a team (`data-team=a|b`) wears the team's colour as its
      ink and rim. */
   :where(:is([part$=".frame"], [part$=".plate"], [part$=".band"], [part$=".title"], [part$=".row"], [part$=".cell"],
-              [part$=".badge"], [part$=".well"], [part$=".figure"], [part$=".label"], [part$=".heading"])[data-team=a]) {
+              [part$=".badge"], [part$=".well"], [part$=".figure"], [part$=".label"], [part$=".heading"],
+              [part$=".name"], [part$=".picture"], [part$=".tab"])[data-team=a]) {
     color: var(--team1); border-color: var(--team1);
   }
   :where(:is([part$=".frame"], [part$=".plate"], [part$=".band"], [part$=".title"], [part$=".row"], [part$=".cell"],
-              [part$=".badge"], [part$=".well"], [part$=".figure"], [part$=".label"], [part$=".heading"])[data-team=b]) {
+              [part$=".badge"], [part$=".well"], [part$=".figure"], [part$=".label"], [part$=".heading"],
+              [part$=".name"], [part$=".picture"], [part$=".tab"])[data-team=b]) {
     color: var(--team2); border-color: var(--team2);
   }
   :where([data-trend=up]) { color: var(--trend-up); }

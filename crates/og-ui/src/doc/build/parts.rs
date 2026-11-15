@@ -139,7 +139,10 @@ impl PartIndex {
             }
             Some(part) => {
                 at.extend(&self.loose);
-                for name in std::iter::once(part).chain(facts.own_part.filter(|o| *o != part)) {
+                for name in part
+                    .split_ascii_whitespace()
+                    .chain(facts.own_part.filter(|o| *o != part))
+                {
                     at.extend(self.named.get(name).into_iter().flatten());
                 }
             }

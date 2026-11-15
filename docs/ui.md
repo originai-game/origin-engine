@@ -1241,6 +1241,10 @@ dresses every part of a role once, from that role's tokens
 (`packages/design/tokens/role.css`). A pack restyles all of them by
 setting the tokens; it writes a rule only for what one component alone
 wears. The role rules sit in `:where()`, so any pack or document rule wins.
+A part named for what it shows declares its role with a part list, as in
+HTML: `part="ArenaRoster.portrait ArenaRoster.picture"` is reached by
+`::part()` under either name, by its document's `[part~="ArenaRoster.portrait"]`,
+and wears the role of its last name. Every name is in the `parts` line.
 A control named for a role (`<button part="Bag.cell">`) wears the role
 alone, as `appearance: none` gives a browser's button its page's look: its
 own part's rules (`button::part(base)`) do not reach it. A control named
@@ -1260,6 +1264,9 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 | text over the scene (StatusGrid's time left, Nameplate's name and subtitle, Waypoint's label and distance) | `--tag-halo` its outline, `--tag-fill/pad/radius` a ground of its own (none in the default style) | |
 | text over a warn fill (Nameplate's spell) | `--ink-on-warn` | |
 | `label`, `heading` | `--label-font/tracking/transform`, `--ink-label` | |
+| `name` | `--name-font/size/tracking/transform/ink/shadow`, `--name-selected-ink` (all unset by default: the component's own type stands) | selected |
+| `picture` | `--picture-fill/rim/rim-width/radius/shadow` (unset by default) | |
+| `tab` | the core tabs' `--tabs-tab-fill/hover-fill/selected-fill/ink/selected-ink`, `--tabs-font/tracking/transform` | hover, selected |
 | any part | `--trend-up/down`, `--tone-damage/heal/crit` | `data-trend`, `data-tone` |
 | any role part | `--team1`, `--team2` | `data-team=a` and `data-team=b`: the team's colour as its ink and rim |
 

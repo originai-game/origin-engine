@@ -1200,6 +1200,44 @@ fn fill_none_clears_a_controls_own_fill() {
 /// (a bare box, a `Button::base` button), a class or `aria-selected` never
 /// qualified it, the control lost its hover and variant, or a core frame
 /// was refused as a part the document does not list.
+/// A part list names an element by each of its names (CSS Shadow Parts
+/// §4.1): `::part()` reaches it by any of them, the document's `[part~=]`
+/// by its own, and it wears the role of its last name (docs/ui.md §3.2).
+/// Wrong: a list matched as one name, a role read from the first name, or
+/// a name missing from the `parts` line let through.
+#[test]
+fn a_part_list_names_its_element_by_each_name_and_wears_the_last_role() {
+    let mut d = mounted(
+        dressed(
+            "div::part(t\\.portrait) { width: 70px; }\n\
+             :root { --picture-fill: #00ff00; }",
+        ),
+        r#"<meta name="parts" content="t.portrait t.picture t.badge">
+<column id="Root">
+  <div id="Face" part="t.portrait t.picture">a</div>
+  <div id="Other" part="t.badge">b</div>
+</column>
+<style>#Root { align-items: flex-start; } [part~="t.portrait"] { height: 30px; }</style>"#,
+        &[],
+        Viewport::new(400.0, 300.0),
+    );
+    d.step(InputFrame::default());
+    let face = at(&d.ui, "Face");
+    assert_eq!([face.width, face.height], [70.0, 30.0]);
+    let fills = fills_in(&d.ui, Rect::new(face.x, face.y, face.width, face.height));
+    let green = og_ui::style_file::parse_color("#00ff00").unwrap();
+    assert!(fills.iter().any(|f| near(*f, green)), "{fills:?}");
+    let bad = UiDocument::parse(
+        "ui/u.svelte",
+        r#"<meta name="component" content="u"><meta name="parts" content="u.portrait">
+<div part="u.portrait u.picture">a</div>"#,
+    );
+    assert!(
+        format!("{bad:?}").contains("'u.picture' is not in the document's `parts` line"),
+        "{bad:?}"
+    );
+}
+
 #[test]
 fn a_document_part_takes_its_dressing_classes_and_states() {
     use og_ui::reactive::SourceId;
@@ -1322,12 +1360,12 @@ fn a_role_part_on_a_team_wears_the_teams_colour() {
     .unwrap();
     let mut d = mounted(
         ui,
-        r#"<meta name="parts" content="t.heading t.figure t.name">
+        r#"<meta name="parts" content="t.heading t.figure t.caption">
 <column id="Root">
   <h2 part="t.heading" data-team="a">Wolves</h2>
   <span part="t.figure" data-team="b">12</span>
   <h2 part="t.heading">Neutral</h2>
-  <span part="t.name" data-team="a">Plain</span>
+  <span part="t.caption" data-team="a">Plain</span>
 </column>"#,
         &[],
         Viewport::new(400.0, 300.0),
