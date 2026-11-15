@@ -5,7 +5,8 @@
      along the bottom with the action hints, over a bright sky and a dark
      floor (docs/ui.md §6.3: bright and dark HUD backgrounds). A phone,
      upright or on its side, has no room for every corner at once, so there
-     they stack in a column that scrolls, each seen whole. -->
+     they stack in a column that scrolls, each seen whole; on its side, a
+     screen each. -->
 <div id="Page">
   <div id="Sky"></div>
   <div id="Floor"></div>
@@ -55,5 +56,15 @@
   #Hints { margin-inline-end: 0; }
   #TopLeft, #TopMid, #Hints { width: stretch; }
   #Bottom { width: stretch; gap: var(--space-xs); }
+}
+/* A phone on its side is too short for two corners at once: each corner
+   fills the screen, centred, and the scroll snaps a screen at a time, so
+   no corner is ever cut at the screen's edge. The bottom cluster, the one
+   play needs, comes first. */
+@media (height < 500px) and (width >= 600px) {
+  #Page { gap: 0; scroll-snap-type: y mandatory; }
+  #TopLeft, #TopMid, #TopRight, #Lower { box-sizing: border-box; flex-shrink: 0; min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)); justify-content: center; scroll-snap-align: start; }
+  #TopRight { display: flex; flex-direction: column; align-items: center; }
+  #Lower { order: -1; }
 }
 </style>
