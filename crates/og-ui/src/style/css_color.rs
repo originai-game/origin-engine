@@ -35,5 +35,11 @@ mod tests {
             mix.resolve(&Context::of(&dark)).rgb,
             p.map(|v| (f32::from(v) / 2.0).round() as u8)
         );
+        // contrast-color() of a role is resolved where it is drawn: black
+        // on the light scheme's panel, white on the dark one's.
+        let ink = parse_str("contrast-color(var(--panel))").unwrap();
+        assert!(ink.literal().is_none());
+        assert_eq!(ink.resolve(&Context::of(&light)), Srgba::BLACK);
+        assert_eq!(ink.resolve(&Context::of(&dark)), Srgba::WHITE);
     }
 }

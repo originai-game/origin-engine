@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS color-mix()",
+      "summary": "color-mix() takes one colour or more (CSS Color 5 §3.3): each is mixed into the mix of those before it by its share of their percentages, normalised as CSS Values 5 §6.1 says, and the colour space may be left out (OKLab). Percentages that are all 0% give a transparent colour instead of a parse error. Two-colour mixes draw as before."
+    }
+  ]
+}

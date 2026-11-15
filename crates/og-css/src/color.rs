@@ -5,9 +5,9 @@
 //! (CSS Color 4 §12: missing components, hue directions, premultiplied
 //! alpha) are linebender's `color` crate. This module adds what it leaves
 //! to the host: `var(--role)`, `currentColor`, `light-dark()`,
-//! `color-mix()`'s percentages, relative colours
-//! (`oklch(from var(--accent) l c calc(h + 180))`) and CSS Color 4 §13.2
-//! gamut mapping.
+//! `contrast-color()`, `color-mix()`'s percentages over any number of
+//! colours, relative colours (`oklch(from var(--accent) l c calc(h + 180))`)
+//! and CSS Color 4 §13.2 gamut mapping.
 //!
 //! A colour that reads no token, no `currentColor` and no `light-dark()`
 //! reduces to sRGB when it is parsed ([`Color::literal`]); one that does
@@ -41,13 +41,15 @@ pub enum Color {
     Token(String),
     Current,
     LightDark(Box<Color>, Box<Color>),
+    /// `contrast-color(<ground>)`: white or black, whichever reads more on
+    /// the ground ([`Srgba::contrast_color`]).
+    Contrast(Box<Color>),
+    /// `color-mix()`: one or more colours, each with its percentage if it
+    /// was given, mixed in order.
     Mix {
         space: Space,
         hue: HueDirection,
-        a: Box<Color>,
-        pa: Option<f32>,
-        b: Box<Color>,
-        pb: Option<f32>,
+        items: Vec<(Color, Option<f32>)>,
     },
     Relative {
         /// The function's space; `rgb()` keeps its 0–255 channels
@@ -130,7 +132,8 @@ impl Color {
         match self {
             Color::Abs(_) => true,
             Color::Token(_) | Color::Current | Color::LightDark(..) => false,
-            Color::Mix { a, b, .. } => a.fixed() && b.fixed(),
+            Color::Contrast(c) => c.fixed(),
+            Color::Mix { items, .. } => items.iter().all(|(c, _)| c.fixed()),
             Color::Relative { from, .. } => from.fixed(),
         }
     }
@@ -140,10 +143,9 @@ impl Color {
         match self {
             Color::Current => true,
             Color::Abs(_) | Color::Token(_) => false,
-            Color::LightDark(a, b) | Color::Mix { a, b, .. } => {
-                a.uses_current() || b.uses_current()
-            }
-            Color::Relative { from, .. } => from.uses_current(),
+            Color::LightDark(a, b) => a.uses_current() || b.uses_current(),
+            Color::Mix { items, .. } => items.iter().any(|(c, _)| c.uses_current()),
+            Color::Contrast(from) | Color::Relative { from, .. } => from.uses_current(),
         }
     }
 
@@ -152,11 +154,12 @@ impl Color {
         match self {
             Color::Token(t) => out.push(t.clone()),
             Color::Abs(_) | Color::Current => {}
-            Color::LightDark(a, b) | Color::Mix { a, b, .. } => {
+            Color::LightDark(a, b) => {
                 a.tokens(out);
                 b.tokens(out);
             }
-            Color::Relative { from, .. } => from.tokens(out),
+            Color::Mix { items, .. } => items.iter().for_each(|(c, _)| c.tokens(out)),
+            Color::Contrast(from) | Color::Relative { from, .. } => from.tokens(out),
         }
     }
 
@@ -181,14 +184,12 @@ impl Color {
                     l.eval(cx)
                 }
             }
-            Color::Mix {
-                space,
-                hue,
-                a,
-                pa,
-                b,
-                pb,
-            } => mix(*space, *hue, a.eval(cx), *pa, b.eval(cx), *pb),
+            Color::Contrast(ground) => to_srgba(ground.eval(cx)).contrast_color().into(),
+            Color::Mix { space, hue, items } => mix(
+                *space,
+                *hue,
+                items.iter().map(|(c, p)| (c.eval(cx), *p)).collect(),
+            ),
             Color::Relative {
                 space,
                 rgb255,
@@ -348,6 +349,10 @@ pub fn parse(t: &Tok) -> Result<Color, String> {
                 _ => Err("light-dark(<light>, <dark>)".into()),
             },
             "color-mix" => color_mix(args),
+            "contrast-color" => match args.as_slice() {
+                [a] => Ok(Color::Contrast(Box::new(one(a)?))),
+                _ => Err("contrast-color(<colour>)".into()),
+            },
             f @ ("rgb" | "rgba" | "hsl" | "hsla" | "hwb" | "lab" | "lch" | "oklab" | "oklch"
             | "color") => match args.as_slice() {
                 [body] if matches!(body.first(), Some(Tok::Ident(w)) if w == "from") => {
@@ -564,74 +569,76 @@ impl ExprParser<'_> {
 }
 
 fn color_mix(args: &[Vec<Tok>]) -> Result<Color, String> {
-    const HOW: &str = "color-mix(in <space> [<hue> hue], <colour> [<n>%], <colour> [<n>%])";
-    let [method, a, b] = args else {
-        return Err(HOW.into());
-    };
-    let (space, hue) = match method.as_slice() {
-        [Tok::Ident(i), rest @ ..] if i == "in" => {
-            interpolation(rest).map_err(|e| format!("color-mix(): {e}"))?
+    const HOW: &str = "color-mix([in <space> [<hue> hue],] <colour> [<n>%], …): one colour or more";
+    // CSS Color 5 §3.1: without a method, the mix is in OKLab.
+    let (space, hue, items) = match args.first().map(Vec::as_slice) {
+        Some([Tok::Ident(i), rest @ ..]) if i == "in" => {
+            let (space, hue) = interpolation(rest).map_err(|e| format!("color-mix(): {e}"))?;
+            (space, hue, &args[1..])
         }
-        _ => return Err(HOW.into()),
+        _ => (Space::Oklab, HueDirection::Shorter, args),
     };
-    let part = |t: &[Tok]| -> Result<(Color, Option<f32>), String> {
-        let pct = |t: &Tok| match t {
-            Tok::Num(n, u) if u == "%" => n
-                .parse::<f32>()
-                .ok()
-                .filter(|p| (0.0..=100.0).contains(p))
-                .ok_or_else(|| format!("color-mix(): '{n}%' is not 0% to 100%")),
-            t => Err(format!(
-                "color-mix(): '{}' is not a percentage",
-                describe(t)
-            )),
-        };
-        match t {
+    if items.is_empty() {
+        return Err(HOW.into());
+    }
+    let pct = |t: &Tok| match t {
+        Tok::Num(n, u) if u == "%" => n
+            .parse::<f32>()
+            .ok()
+            .filter(|p| (0.0..=100.0).contains(p))
+            .ok_or_else(|| format!("color-mix(): '{n}%' is not 0% to 100%")),
+        t => Err(format!(
+            "color-mix(): '{}' is not a percentage",
+            describe(t)
+        )),
+    };
+    let items = items
+        .iter()
+        .map(|t| match t.as_slice() {
             [c] => Ok((parse(c)?, None)),
             [c, p] if matches!(p, Tok::Num(..)) => Ok((parse(c)?, Some(pct(p)?))),
             [p, c] => Ok((parse(c)?, Some(pct(p)?))),
-            _ => Err(HOW.into()),
-        }
-    };
-    let (a, pa) = part(a)?;
-    let (b, pb) = part(b)?;
-    if pa == Some(0.0) && pb == Some(0.0) {
-        return Err("color-mix(): the percentages sum to 0%".into());
-    }
-    Ok(Color::Mix {
-        space,
-        hue,
-        a: Box::new(a),
-        pa,
-        b: Box::new(b),
-        pb,
-    })
+            _ => Err(HOW.to_string()),
+        })
+        .collect::<Result<_, _>>()?;
+    Ok(Color::Mix { space, hue, items })
 }
 
 // ---- mixing
 
-/// `color-mix()`: CSS Color 5 §2.1's percentages over `color`'s CSS
-/// Color 4 §12 interpolation.
-fn mix(
-    space: Space,
-    hue: HueDirection,
-    a: DynamicColor,
-    pa: Option<f32>,
-    b: DynamicColor,
-    pb: Option<f32>,
-) -> DynamicColor {
-    let (p1, p2) = match (pa, pb) {
-        (None, None) => (50.0, 50.0),
-        (Some(p), None) => (p, 100.0 - p),
-        (None, Some(p)) => (100.0 - p, p),
-        (Some(x), Some(y)) => (x, y),
+/// `color-mix()`: CSS Color 5 §3.3 over `color`'s CSS Color 4 §12
+/// interpolation. The percentages are normalised (CSS Values 5 §6.1, forced):
+/// omitted ones share what the given ones leave of 100%, and all are scaled
+/// to sum to 100%; what they summed to under 100% is the alpha multiplier
+/// (all 0%: transparent). Then each colour is mixed into the mix of those
+/// before it, in order, by its share of their combined percentage.
+fn mix(space: Space, hue: HueDirection, items: Vec<(DynamicColor, Option<f32>)>) -> DynamicColor {
+    let given = items.iter().filter_map(|(_, p)| *p).sum::<f32>().min(100.0);
+    let omitted = items.iter().filter(|(_, p)| p.is_none()).count().max(1) as f32;
+    let mut parts: Vec<(DynamicColor, f32)> = items
+        .into_iter()
+        .map(|(c, p)| (c, p.unwrap_or((100.0 - given) / omitted)))
+        .collect();
+    let total: f32 = parts.iter().map(|(_, p)| p).sum();
+    if total > 0.0 {
+        parts.iter_mut().for_each(|(_, p)| *p *= 100.0 / total);
+    }
+    let alpha = 1.0 - (100.0 - total).max(0.0) / 100.0;
+    let mut parts = parts.into_iter();
+    let Some((first, mut weight)) = parts.next() else {
+        return DynamicColor::from_alpha_color(color::AlphaColor::<color::Srgb>::TRANSPARENT);
     };
-    let sum = p1 + p2;
-    let (a, b) = (interpolating(a, space), interpolating(b, space));
-    let mixed = a.interpolate(b, space, hue).eval(p2 / sum);
-    // Percentages summing under 100% scale the alpha.
-    if sum < 100.0 {
-        mixed.multiply_alpha(sum / 100.0)
+    let mut mixed = interpolating(first, space);
+    for (c, p) in parts {
+        let combined = weight + p;
+        let t = if combined > 0.0 { p / combined } else { 0.5 };
+        mixed = interpolating(mixed, space)
+            .interpolate(interpolating(c, space), space, hue)
+            .eval(t);
+        weight = combined;
+    }
+    if alpha < 1.0 {
+        mixed.multiply_alpha(alpha)
     } else {
         mixed
     }
@@ -774,8 +781,110 @@ mod tests {
         assert_eq!(lit("hsl(from red calc(h + 180) s l)"), [0, 255, 255, 255]);
         assert_eq!(lit("rgb(from #ff8000 r g b / 50%)"), [255, 128, 0, 128]);
         assert_eq!(lit("rgb(from #204060 calc(r * 2) g b)"), [64, 64, 96, 255]);
-        assert!(parse_str("color-mix(in srgb, red 0%, blue 0%)").is_err());
         assert!(parse_str("rgb(1, 2 3)").is_err());
         assert!(parse_str("notacolour").is_err());
+    }
+
+    /// CSS Color 5 §3.3: each colour is mixed into the mix of those before
+    /// it by its share of their combined percentage, so three equal colours
+    /// average (a pairwise halving would give blue half: 64 64 128); omitted
+    /// percentages share what is left, a sum under 100% is the alpha, and
+    /// all 0% is transparent (no longer a parse error).
+    #[test]
+    fn color_mix_takes_any_number_of_colours() {
+        assert_eq!(
+            lit("color-mix(in srgb, red, lime, blue)"),
+            [85, 85, 85, 255]
+        );
+        assert_eq!(
+            lit("color-mix(in srgb, red 20%, lime 30%, blue)"),
+            [51, 77, 128, 255]
+        );
+        assert_eq!(
+            lit("color-mix(in srgb, red 10%, lime 10%, blue 20%)"),
+            [64, 64, 128, 102]
+        );
+        // One colour: itself, in the space, its percentage the alpha.
+        assert_eq!(lit("color-mix(in srgb, red 50%)"), [255, 0, 0, 128]);
+        assert_eq!(lit("color-mix(in srgb, red 0%, blue 0%)")[3], 0);
+        // Without a method the mix is in OKLab.
+        assert_eq!(
+            lit("color-mix(red, blue)"),
+            lit("color-mix(in oklab, red, blue)")
+        );
+        assert_ne!(
+            lit("color-mix(red, blue)"),
+            lit("color-mix(in srgb, red, blue)")
+        );
+        // Two colours keep their CSS Color 4 results.
+        assert_eq!(
+            lit("color-mix(in srgb, red 30%, blue 20%)"),
+            [153, 0, 102, 128]
+        );
+        assert!(parse_str("color-mix(in srgb)").is_err());
+        assert!(parse_str("color-mix(in srgb, red 120%, blue)").is_err());
+    }
+
+    /// `contrast-color()` is white or black by the greater WCAG 2 ratio, so
+    /// mid grey takes black (5.3:1 against white's 3.9:1, where a
+    /// lightness-over-half rule takes white), and every ground reads at
+    /// least √21:1 with its pick. A role's ground stays an expression
+    /// until it is drawn.
+    #[test]
+    fn contrast_color_picks_the_ink_that_reads_most() {
+        assert_eq!(lit("contrast-color(white)"), [0, 0, 0, 255]);
+        assert_eq!(lit("contrast-color(black)"), [255, 255, 255, 255]);
+        assert_eq!(lit("contrast-color(gray)"), [0, 0, 0, 255]);
+        assert_eq!(lit("contrast-color(#2060c0)"), [255, 255, 255, 255]);
+        // Its alpha is not read; the result is opaque.
+        assert_eq!(
+            lit("contrast-color(rgb(0 0 0 / 10%))"),
+            [255, 255, 255, 255]
+        );
+        for r in (0..=255).step_by(17) {
+            for g in (0..=255).step_by(17) {
+                for b in (0..=255).step_by(51) {
+                    let ground = Srgba::rgb(r, g, b);
+                    let ink = ground.contrast_color();
+                    assert!(ink.contrast(ground) >= 21f32.sqrt() - 1e-4, "{ground:?}");
+                }
+            }
+        }
+        let c = parse_str("contrast-color(var(--primary))").unwrap();
+        assert!(c.literal().is_none());
+        let mut roles = vec![];
+        c.tokens(&mut roles);
+        assert_eq!(roles, ["primary"]);
+        // Inside a mix, against a style's role.
+        struct Light;
+        impl ColorTokens for Light {
+            fn color(&self, _: &str) -> Option<Srgba> {
+                Some(Srgba::rgb(250, 250, 240))
+            }
+            fn ink(&self) -> Srgba {
+                Srgba::BLACK
+            }
+            fn dark(&self) -> bool {
+                false
+            }
+        }
+        let m = parse_str("color-mix(in srgb, contrast-color(var(--panel)), white)").unwrap();
+        assert_eq!(m.resolve(&Context::of(&Light)).rgb, [128; 3]);
+    }
+
+    /// APCA-W3 0.0.98G-4g's own published examples (apca-w3's README).
+    #[test]
+    fn apca_matches_its_reference_values() {
+        let grey = Srgba::rgb(136, 136, 136);
+        let near = |a: f32, b: f32| (a - b).abs() < 0.01;
+        assert!(
+            near(grey.apca(Srgba::WHITE), 63.056),
+            "{}",
+            grey.apca(Srgba::WHITE)
+        );
+        assert!(near(Srgba::WHITE.apca(grey), -68.541));
+        assert!(near(Srgba::BLACK.apca(Srgba::WHITE), 106.041));
+        assert!(near(Srgba::WHITE.apca(Srgba::BLACK), -107.885));
+        assert_eq!(grey.apca(Srgba::rgb(137, 137, 137)), 0.0);
     }
 }

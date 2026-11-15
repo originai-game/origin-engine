@@ -134,6 +134,7 @@ fn markup_colour(line: &str) -> Option<&str> {
         "oklch(",
         "oklab(",
         "color-mix(",
+        "contrast-color(",
     ]
     .into_iter()
     .find_map(|function| {
