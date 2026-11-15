@@ -45,36 +45,55 @@ fn frame(engine: u32) -> Value {
     let p = &theme.palette;
     let mut fills = Vec::new();
     // What text can sit on: every filled rectangle, UI-pass shape and glass
-    // of at least 8×8 (a solid under half opacity is a tint, not a ground).
-    // Text over none of them is over the scene (§16.5).
+    // of at least 8×8, each with how much it covers (its alpha). A stack of
+    // translucent ones composites into a ground (a plate's gradient under
+    // its scanlines); the check composites them, and text whose stack
+    // covers less than half is over the scene (§16.5).
     let mut grounds = Vec::new();
     for item in &f.items {
-        // A rotated or skewed command's rectangle is not where it shows.
-        if !item.transform.is_identity() {
+        // A rotated or skewed command's rectangle is not where it shows; a
+        // shape keeps its translation and scale (a scroll's offset), mapped here.
+        if !item.transform.is_axis_aligned() {
             continue;
         }
         let ground = match &item.cmd {
-            DrawCmd::Quad { rect: r, color, .. } | DrawCmd::Image { rect: r, color, .. }
-                if color[3] >= 0.5 =>
-            {
-                Some(*r)
+            DrawCmd::Quad { rect: r, color, .. } | DrawCmd::Image { rect: r, color, .. } => {
+                Some((*r, color[3]))
             }
-            DrawCmd::Glass { rect: r, .. } => Some(*r),
+            DrawCmd::Glass { rect: r, .. } => Some((*r, 1.0)),
             DrawCmd::Shape { shape, .. }
                 if shape.mode == og_render::UiMode::Fill
-                    && !matches!(shape.paint, og_render::UiPaint::Solid(c) if c[3] < 0.5) =>
+                    && shape.transform == [1.0, 0.0, 0.0, 1.0] =>
             {
-                Some(Rect::new(
-                    shape.center.x - shape.half.x,
-                    shape.center.y - shape.half.y,
-                    shape.half.x * 2.0,
-                    shape.half.y * 2.0,
+                let mean = |g: &og_render::UiGradient| {
+                    g.stops.iter().map(|s| s.color[3]).sum::<f32>() / g.stops.len().max(1) as f32
+                };
+                let alpha = match &shape.paint {
+                    og_render::UiPaint::Solid(c) => c[3],
+                    og_render::UiPaint::Gradient(g) => mean(g),
+                    og_render::UiPaint::GradientImage(g) => mean(&g.gradient),
+                    og_render::UiPaint::Image(i) => i.tint[3],
+                    og_render::UiPaint::Layer(_) => 1.0,
+                };
+                let (c, h) = (shape.center, shape.half);
+                Some((
+                    Rect::new(c.x - h.x, c.y - h.y, h.x * 2.0, h.y * 2.0),
+                    alpha * shape.opacity,
                 ))
             }
             _ => None,
         };
-        if let Some(r) = ground.filter(|r| r.width >= 8.0 && r.height >= 8.0) {
-            grounds.push(rect(&r));
+        if let Some((r, alpha)) = ground {
+            let m = &item.transform;
+            let (x0, y0) = m.apply(r.x, r.y);
+            let (x1, y1) = m.apply(r.x + r.width, r.y + r.height);
+            let r = Rect::new(x0.min(x1), y0.min(y1), (x1 - x0).abs(), (y1 - y0).abs());
+            if r.width >= 8.0 && r.height >= 8.0 && alpha > 0.0 {
+                grounds.push(json!([r.x, r.y, r.width, r.height, alpha]));
+            }
+        }
+        if !item.transform.is_identity() {
+            continue;
         }
         match &item.cmd {
             DrawCmd::Quad { rect: r, color, .. } | DrawCmd::Image { rect: r, color, .. }

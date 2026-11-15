@@ -90,8 +90,12 @@ export interface UiFrameSnapshot {
   texts: Array<{ text: string; size: number; bounds: Rect4; clip: Rect4; color: number[] }>;
   /** Solid and image fills of at least 8×8 CSS px, linear RGBA. */
   fills: Array<{ rect: Rect4; color: number[] }>;
-  /** What text can sit on: filled rectangles, UI-pass shapes and glass of at least 8×8 CSS px; text over none is over the scene. */
-  grounds?: Rect4[];
+  /**
+   * What text can sit on: filled rectangles, UI-pass shapes and glass of at
+   * least 8×8 CSS px, each [x, y, width, height, alpha] (older dumps: no
+   * alpha, opaque). Text whose stack covers less than half is over the scene.
+   */
+  grounds?: number[][];
   /** The style's dimmed inks (inkMuted, inkFaint), linear RGBA: text in one is dimmed on purpose. */
   dimInks?: number[][];
   /** navigation: false when the screen took the pad itself (og.ui.setNavigation(false)); absent in older dumps: on. */
@@ -207,7 +211,7 @@ export const RULES: readonly UiRule[] = [
   { id: "feedback", kind: "finding", title: "an interactive element without hover or press states, or a style without a hover or press sound", status: "partial", note: "og-ui's widgets carry their hover and press; a custom interactive container is checked for declared visual states (frame.motion), its resolved states arrive with U3's dump_ui" },
   { id: "motion", kind: "finding", title: "durations outside the style's bounds, missing reduced-motion fallbacks, input refused longer than the entrance", status: "not checkable yet", note: "the style's motion bounds and per-element fallbacks are U4's style v2 tokens on U2's states; the frame does not carry a transition's duration or its reduced variant yet" },
   { id: "art-slot", kind: "finding", title: "art slots still on their placeholder; focal points outside the crop", status: "not checkable yet", note: "slots are specified (og_ui::slot) but not built into a frame or drawn from the style yet (U1, U4); nothing lists a slot's art" },
-  { id: "contrast", kind: "measure", title: "each live text's contrast on the drawn pixels, :1", status: "checked", note: "dimmed, disabled, decorative and over-the-scene text is not measured: its ground is not the UI's" },
+  { id: "contrast", kind: "measure", title: "each live text's contrast on the drawn pixels, :1: its ink against the composited ground behind its line", status: "checked", note: "dimmed, disabled, decorative and over-the-scene text (where the UI's grounds, composited, cover less than half) is not measured: its ground is not the UI's" },
   { id: "text-size", kind: "measure", title: "each text's size, CSS px (dense when its element is marked dense, og-ui's Props::dense)", status: "checked" },
   { id: "touch-target", kind: "measure", title: "each control's shorter side on a coarse pointer, CSS px", status: "checked", note: "an element's hitSlop is not in the frame; a link inside a rich text's sentence is marked inline" },
   { id: "text-scale", kind: "measure", title: "each text's size at the cell's text scale, as a percentage of its size at 100 %", status: "checked", note: "a scale cell configures UiDesc.textScale (og.ui.configure); a text cut there is a text-cut finding of that cell" },
@@ -744,7 +748,11 @@ export function measureFrame(frame: UiFrameSnapshot, cell: UiCell, opts: Measure
     const scale = opts.image.width / v.width;
     const scaled: UiDump = { tick: 0, elements: f.elements.map((e) => ({ ...e, x: e.x * scale, y: e.y * scale, width: e.width * scale, height: e.height * scale })) };
     const high = cell.highContrast || v.highContrast || f.contrast === "high";
-    for (const b of textBoxes(opts.image, scaled, (n) => laidInk(f, f.elements[n]!))) {
+    const laid = (n: number) => {
+      const r = laidRun(f, f.elements[n]!);
+      return r && r !== "hidden" ? { ink: r.ink, box: r.box.map((v) => v * scale) as Rect4 } : r;
+    };
+    for (const b of textBoxes(opts.image, scaled, laid)) {
       if (!gated(f, f.elements[b.index]!)) continue;
       add("contrast", {
         paths: [paths[b.index]!],
@@ -1058,8 +1066,9 @@ export interface TextBox {
 /**
  * Whether a text element's contrast is gated (§16.5): live text on a UI
  * ground. Text drawn in a dimmed ink (inkMuted, inkFaint) is dimmed on
- * purpose, and text whose centre lies on no UI ground (a fill, a shape,
- * glass) is HUD over the scene: both are judged by eye.
+ * purpose, and text whose centre the UI's grounds cover less than half of,
+ * composited (a plate's translucent gradient under its scanlines covers it
+ * as one ground), is HUD over the scene: both are judged by eye.
  */
 export function gated(f: Pick<UiFrameSnapshot, "texts" | "grounds" | "dimInks">, e: UiElementDump): boolean {
   const inside = (r: Rect4, x: number, y: number) => x >= r[0] && x <= r[0] + r[2] && y >= r[1] && y <= r[1] + r[3];
@@ -1067,13 +1076,23 @@ export function gated(f: Pick<UiFrameSnapshot, "texts" | "grounds" | "dimInks">,
   const same = (a: number[], b: number[]) => a.length >= 3 && b.length >= 3 && [0, 1, 2].every((k) => Math.abs(a[k]! - b[k]!) < 0.004);
   const drawn = f.texts.filter((t) => inside([e.x - 1, e.y - 1, e.width + 2, e.height + 2], t.bounds[0] + t.bounds[2] / 2, t.bounds[1] + t.bounds[3] / 2));
   if (drawn.length > 0 && f.dimInks && drawn.every((t) => f.dimInks!.some((d) => same(t.color, d)))) return false;
-  if (f.grounds && !f.grounds.some((g) => inside(g, cx, cy))) return false;
+  if (f.grounds) {
+    let clear = 1;
+    for (const g of f.grounds) if (inside(g as Rect4, cx, cy)) clear *= 1 - Math.min(1, g[4] ?? 1);
+    if (1 - clear < 0.5) return false;
+  }
   return true;
 }
 
+/** A run the layout draws an element's text in: its ink's luminance and the part of its line box in view, CSS px. */
+interface LaidRun {
+  ink: number;
+  box: Rect4;
+}
+
 /**
- * The luminance of the ink the layout draws an element's text in, where it
- * can be read (null where it draws none): a run of it drawn at half its colour's alpha or more (not faded out,
+ * The run the layout draws an element's text in, where it can be read
+ * (null where it draws none): a run of it drawn at half its colour's alpha or more (not faded out,
  * not mid-fade) with at least 60 % of its line's height and 6 px of its width
  * in view. Such text is measured even when a scroll cuts its element, and
  * when it shows no ink at all it reads 1:1: the most invisible line is the
@@ -1082,9 +1101,9 @@ export function gated(f: Pick<UiFrameSnapshot, "texts" | "grounds" | "dimInks">,
  * more: faded out (a world prompt past its maxDistance) or not drawn, it is
  * not measured, as the pixels under it are no text of its.
  */
-function laidInk(f: Pick<UiFrameSnapshot, "texts">, e: UiElementDump): number | null | "hidden" {
+function laidRun(f: Pick<UiFrameSnapshot, "texts">, e: UiElementDump): LaidRun | null | "hidden" {
   // The run most in view gives the ink (a meter's label is two runs in two inks, each clipped to its part).
-  let best: number | null = null, most = 0, drawn = false;
+  let best: LaidRun | null = null, most = 0, drawn = false;
   for (const t of f.texts) {
     if ((t.color[3] ?? 1) < 0.5) continue;
     const [bx, by, bw, bh] = t.bounds;
@@ -1094,7 +1113,7 @@ function laidInk(f: Pick<UiFrameSnapshot, "texts">, e: UiElementDump): number | 
     if (y1 - y0 < 0.6 * bh || x1 - x0 < 6 || (x1 - x0) * (y1 - y0) <= most) continue;
     most = (x1 - x0) * (y1 - y0);
     // The run's colour is linear RGB: its relative luminance directly.
-    best = 0.2126 * t.color[0]! + 0.7152 * t.color[1]! + 0.0722 * t.color[2]!;
+    best = { ink: 0.2126 * t.color[0]! + 0.7152 * t.color[1]! + 0.0722 * t.color[2]!, box: [x0, y0, x1 - x0, y1 - y0] };
   }
   return best === null && !drawn && f.texts.length > 0 ? "hidden" : best;
 }
@@ -1133,9 +1152,41 @@ function behindScrim(ui: UiDump): Set<number> {
 }
 
 /**
+ * The ground behind a line's glyphs, from its pixels' luminances and its
+ * ink's: the pixels split in two (two means, seeded at the pixel nearest
+ * the ink and the one farthest from it), and the median of the side away
+ * from the ink. However much of the box the glyphs fill (a bold line can
+ * fill half of it), the ground is what lies behind them; scanlines and a
+ * gradient's slope stay in it.
+ */
+function behindGlyphs(lum: number[], ink: number): number {
+  let near = lum[0]!, far = lum[0]!;
+  for (const v of lum) {
+    if (Math.abs(v - ink) < Math.abs(near - ink)) near = v;
+    if (Math.abs(v - ink) > Math.abs(far - ink)) far = v;
+  }
+  let side: number[] = lum;
+  for (let k = 0; k < 8 && near !== far; k++) {
+    const glyph: number[] = [], ground: number[] = [];
+    for (const v of lum) (Math.abs(v - near) < Math.abs(v - far) ? glyph : ground).push(v);
+    side = ground;
+    const mean = (xs: number[], or: number) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : or);
+    const [n, f] = [mean(glyph, near), mean(ground, far)];
+    if (n === near && f === far) break;
+    [near, far] = [n, f];
+  }
+  return median(side.length ? side : lum);
+}
+
+/**
  * The text elements of a frame: the contrast between ink and ground, and the
- * height of the ink's lines. Inside the element's rectangle (inset from its
- * rounded ends), the ground is the median luminance. The ink is measured
+ * height of the ink's lines, read where the text draws, as a WCAG tool reads
+ * a rendered page: over the line box of the run `laid` names (the element's
+ * rectangle, inset from its rounded ends, where the layout names none), the
+ * ground is the composited pixels behind the glyphs, the median of those
+ * nearer the line's median than the run's ink (the panels, gradients,
+ * scanlines and plates under it, as drawn; a right-aligned "K" in a wide
+ * cell is read on its own line, not on the cell's far end). The ink is measured
  * over the text's own glyphs, not the rectangle: the glyph pixels are those
  * at least half-way from the ground to the strongest ink (nearer the text's
  * colour than the ground's), and the ink is the mean of the farthest
@@ -1150,20 +1201,21 @@ function behindScrim(ui: UiDump): Set<number> {
  * a coin toss on a textured ground: cartoon's dark "Inventory" read as
  * light, 1.74:1 for 5.6:1).
  */
-export function textBoxes(img: Image, ui: UiDump, laid: (n: number) => number | null | "hidden" = () => null): TextBox[] {
+export function textBoxes(img: Image, ui: UiDump, laid: (n: number) => { ink: number; box: Rect4 } | null | "hidden" = () => null): TextBox[] {
   const out: TextBox[] = [];
   const byId = new Map(ui.elements.map((e) => [e.id, e]));
   const dimmed = behindScrim(ui);
   for (const [n, e] of ui.elements.entries()) {
     const laidAs = laid(n);
     if (laidAs === "hidden") continue;
-    const known = laidAs;
+    const known = laidAs === null ? null : laidAs.ink;
     const drawn = known !== null;
     if (dimmed.has(n) || !/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId, drawn) || e.width < 6 || e.height < 6) continue;
-    // A pill's rounded ends show what is behind it: inset a wide element's ends.
+    // The line the text draws in; without one the element, a pill's rounded ends (what is behind it) inset.
     const ix = e.width > 3 * e.height ? Math.min(e.height / 2, 12) : 0, iy = e.height * 0.12;
-    const x0 = Math.max(0, Math.floor(e.x + ix)), y0 = Math.max(0, Math.floor(e.y + iy));
-    const x1 = Math.min(img.width, Math.ceil(e.x + e.width - ix)), y1 = Math.min(img.height, Math.ceil(e.y + e.height - iy));
+    const [rx, ry, rw, rh] = laidAs?.box ?? [e.x + ix, e.y + iy, e.width - 2 * ix, e.height - 2 * iy];
+    const x0 = Math.max(0, Math.floor(rx)), y0 = Math.max(0, Math.floor(ry));
+    const x1 = Math.min(img.width, Math.ceil(rx + rw)), y1 = Math.min(img.height, Math.ceil(ry + rh));
     if (x1 - x0 < 3 || y1 - y0 < 3) continue;
     const w = x1 - x0;
     const lum: number[] = [];
@@ -1171,7 +1223,7 @@ export function textBoxes(img: Image, ui: UiDump, laid: (n: number) => number | 
       const i = (y * img.width + x) * 4;
       lum.push(luminance(img.rgba[i]!, img.rgba[i + 1]!, img.rgba[i + 2]!));
     }
-    const ground = median(lum);
+    const ground = known === null ? median(lum) : behindGlyphs(lum, known);
     // The glyphs' side of the ground: the known ink's, else the side most of the strong pixels are.
     const side = known === null ? null : known > ground;
     const dev = lum.map((v) => (side === null || v > ground === side ? Math.abs(v - ground) : 0));

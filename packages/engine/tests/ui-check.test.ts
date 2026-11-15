@@ -241,6 +241,33 @@ test("a measure names the element measured, though ids repeat; known ink sets th
   expect(got.get("B/Text")).toBe(1);
 });
 
+test("contrast reads the ground a line draws on: a right-aligned figure on a scanlined, layered plate; a lone tint is no ground", () => {
+  type R4 = [number, number, number, number];
+  // A 240×40 scoreboard cell: a dark plate (20) with a lighter scanline every third row (60), and a white "3"
+  // right-aligned at its far end, where the cell's rounded ends would be. The plate is two translucent layers
+  // (a gradient under its scanlines), each 0.4: composited they cover 0.64 of what is behind.
+  const width = 240, height = 40, rgba = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const glyph = x >= 229 && x < 236 && y >= 12 && y < 28 && (x < 231 || y < 14 || y >= 26 || (y >= 19 && y < 21) || x >= 234);
+    const v = glyph ? 255 : y % 3 === 0 ? 60 : 20;
+    rgba.set([v, v, v, 255], (y * width + x) * 4);
+  }
+  const img = { width, height, rgba };
+  const vp = { width, height, safeArea: [0, 0, 0, 0] as R4 };
+  const cellOf = (grounds: number[][]) => frame({
+    elements: [el("Score", "", "label", "text", [0, 0, 240, 40], { text: "3" })],
+    texts: [{ text: "3", size: 18, bounds: [228, 8, 9, 24] as R4, clip: [0, 0, width, height] as R4, color: [1, 1, 1, 1] }],
+    grounds,
+  }, vp);
+  // White (luminance 1) on the plate's majority row (20: luminance 0.007) is about 18:1; the cell's left end, all
+  // scanlines, would read under 2.
+  const layered = measured("contrast", cellOf([[0, 0, 240, 40, 0.4], [0, 0, 240, 40, 0.4]]), cell, img);
+  expect(layered.length).toBe(1);
+  expect(layered[0]![1]).toBeGreaterThan(15);
+  // One 0.3 tint alone covers less than half: the text is over the scene, judged by eye, not measured.
+  expect(measured("contrast", cellOf([[0, 0, 240, 40, 0.3]]), cell, img)).toEqual([]);
+});
+
 test("text size: each text's size by its element, marked dense under a dense ancestor only", () => {
   const t = (size: number) => [{ text: "Small", size, bounds: [10, 100, 40, 14] as [number, number, number, number], clip: [0, 0, 1920, 1080] as [number, number, number, number], color: [1, 1, 1, 1] }];
   const els = [el("Small", "", "label", "text", [10, 100, 40, 14], { text: "Small" })];
