@@ -807,7 +807,12 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
     }
     lines_of(nodes, i);
     if nodes[i].layout.used.flip {
-        mirror(nodes, i, sx, &flow, &out);
+        // Taffy lays a right-to-left box's flow out from the right
+        // (`View::direction`); what og-ui places itself flips here: a
+        // stack's and multi-column box's children, a vertical box's
+        // block axis, and out-of-flow boxes at their static position.
+        let own = matches!(kind(nodes, i), Kind::Stack | Kind::Multicol) || turns(s);
+        mirror(nodes, i, sx, if own { &flow } else { &[] }, &out);
     }
     relative(nodes, i, &flow, scroll, (sx, sy));
 }

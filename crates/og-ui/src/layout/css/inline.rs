@@ -1082,7 +1082,12 @@ impl Tree<'_, '_> {
                 (p.layout.css.size.width - p.layout.used.padding.horizontal()).max(0.0)
             };
             let margin = n.shape_outside.as_ref().map_or(0.0, |s| s.margin.at(cb));
+            // Its side and contour as Taffy placed it: physical, where a
+            // flipping parent's mirror no longer turns them.
+            let flips = View::item(self.nodes, f).parent_flips();
             let contour = n.shape_outside.as_ref().map(|s| {
+                let mut s = s.clone();
+                s.rtl ^= flips;
                 s.edges(
                     n,
                     [l.size.width, l.size.height],
@@ -1091,7 +1096,10 @@ impl Tree<'_, '_> {
                     margin,
                 )
             });
-            let left = !matches!(n.layout.used.float, FloatSide::Right);
+            let left = {
+                use tf::BlockItemStyle;
+                View::item(self.nodes, f).float() != tf::Float::Right
+            };
             floats.push((
                 f,
                 Placed {
