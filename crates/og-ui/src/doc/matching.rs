@@ -278,8 +278,13 @@ fn position<T: Tree>(
 pub fn own(facts: &Facts<'_>, simple: &Simple) -> bool {
     match simple {
         Simple::Type(name) => facts.tag == name,
+        // A part list names the element by each of its names (CSS Shadow
+        // Parts §4.1: `::part()` matches any of them).
         Simple::Part(name) => {
-            facts.part == Some(name.as_str()) || facts.own_part == Some(name.as_str())
+            facts
+                .part
+                .is_some_and(|p| p.split_ascii_whitespace().any(|n| n == name))
+                || facts.own_part == Some(name.as_str())
         }
         Simple::Root => facts.root,
         Simple::Id(name) => facts.attributes.get("id").and_then(Value::as_str) == Some(name),

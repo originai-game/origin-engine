@@ -153,12 +153,15 @@ impl UiDocument {
             if let Some(p) = n.props.iter().find(|p| p.name() == "part")
                 && let PropValue::Lit(Lit::Str(name)) = &p.value
             {
-                used_parts.push(name.clone());
-                if !self.parts.contains(name) {
-                    errors.push(format!(
-                        "line {}: the part '{name}' is not in the document's `parts` line",
-                        p.line
-                    ));
+                // A part list (`part="Bag.portrait Bag.picture"`): each name.
+                for name in name.split_ascii_whitespace() {
+                    used_parts.push(name.to_string());
+                    if !self.parts.iter().any(|p| p == name) {
+                        errors.push(format!(
+                            "line {}: the part '{name}' is not in the document's `parts` line",
+                            p.line
+                        ));
+                    }
                 }
             }
             if !self.props.is_empty() {
