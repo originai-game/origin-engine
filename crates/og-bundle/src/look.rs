@@ -19,6 +19,10 @@
 //!                               # other look, the mood asked of the preset its
 //!                               # chain reaches (`MOODS`, the cook lays the
 //!                               # mood's layer over that preset)
+//! variant "8bit"                # one of the variants of the preset its chain
+//!                               # reaches (templates/looks/variants/<slug>/):
+//!                               # the variant's layer is laid over that preset
+//!                               # before the mood's
 //! ui "paper"                   # the UI style applied with the look: a built-in
 //!                               # (templates/styles/<slug>), the game's own
 //!                               # styles/<slug>/style.ogt first, or an asset id
@@ -113,7 +117,7 @@ pub const MOODS: [&str; 6] = ["bright", "dark", "warm", "cold", "soft", "high-co
 pub const MAX_EXTENDS: usize = 8;
 
 /// The top-level keys of a look file.
-const TOP: [&str; 5] = ["name", "extends", "mood", "ui", "antialias"];
+const TOP: [&str; 6] = ["name", "extends", "mood", "variant", "ui", "antialias"];
 
 /// One resource block: its IDL name and its fields in file order, each with
 /// its values as written (numbers, `true`/`false`, a variant word, or a
@@ -142,6 +146,10 @@ pub struct LookFile {
     /// The mood: a preset's own, or the one a game's look asks of its
     /// preset; the cooked look carries the mood it was laid in.
     pub mood: Option<String>,
+    /// The variant of the preset the chain reaches (docs/art.md §2.11): one
+    /// a game's look asks for; the cooked look carries the variant it was
+    /// laid in.
+    pub variant: Option<String>,
     pub ui: Option<String>,
     pub antialias: Option<String>,
     pub blocks: Vec<LookBlock>,
@@ -243,6 +251,22 @@ impl LookFile {
                     }
                     look.mood = Some(m);
                 }
+                "variant" => {
+                    let v = one_string(e)?;
+                    let word = !v.is_empty()
+                        && v.split('-').all(|w| {
+                            !w.is_empty()
+                                && w.chars()
+                                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+                        });
+                    if !word {
+                        return Err(format!(
+                            "line {}: 'variant' names one of the preset's variants, a lowercase-hyphen word",
+                            e.line
+                        ));
+                    }
+                    look.variant = Some(v);
+                }
                 "ui" => look.ui = Some(one_string(e)?),
                 "extends" => {
                     look.extends = e
@@ -316,6 +340,10 @@ impl LookFile {
             doc.body
                 .push(Entry::new("mood").with(Value::String(m.clone())));
         }
+        if let Some(v) = &self.variant {
+            doc.body
+                .push(Entry::new("variant").with(Value::String(v.clone())));
+        }
         if let Some(s) = &self.ui {
             doc.body
                 .push(Entry::new("ui").with(Value::String(s.clone())));
@@ -342,7 +370,7 @@ impl LookFile {
     /// look's own (a look is not called after its base), its ui style and
     /// antialias win where given, a resource either names takes both
     /// blocks' fields with this look's winning field by field, the mood
-    /// this look's where it names one, and `extends`
+    /// and variant this look's where it names one, and `extends`
     /// becomes `base_id` followed by `base`'s own chain.
     pub fn over(&self, base: &LookFile, base_id: &str) -> LookFile {
         let mut blocks: Vec<LookBlock> = base.blocks.clone();
@@ -365,6 +393,7 @@ impl LookFile {
             name: self.name.clone(),
             extends,
             mood: self.mood.clone().or_else(|| base.mood.clone()),
+            variant: self.variant.clone().or_else(|| base.variant.clone()),
             ui: self.ui.clone().or_else(|| base.ui.clone()),
             antialias: self.antialias.clone().or_else(|| base.antialias.clone()),
             blocks,
@@ -509,6 +538,13 @@ mod tests {
                 .as_deref(),
             Some("warm")
         );
+        let v = LookFile::parse("type look\nversion 1\n---\nvariant \"8bit\"\n").unwrap();
+        assert_eq!(v.variant.as_deref(), Some("8bit"));
+        assert_eq!(
+            LookFile::default().over(&v, "b").variant.as_deref(),
+            Some("8bit")
+        );
+        assert_eq!(LookFile::parse(&v.to_text()).unwrap(), v);
         let text = moody("high-contrast").to_text();
         assert_eq!(
             LookFile::parse(&text).unwrap().mood.as_deref(),
@@ -533,6 +569,7 @@ mod tests {
         assert!(bad("antialias fxaa\n").contains("one of tier, off, msaa4, taa"));
         assert!(bad("palette \"p.hex\"\n").contains("not a look entry"));
         assert!(bad("Stylise {\n  posterize 4\n  posterize 5\n}\n").contains("set twice"));
+        assert!(bad("variant \"8 Bit\"\n").contains("lowercase-hyphen"));
         assert!(
             bad("mood \"gloomy\"\n")
                 .contains("one of bright, dark, warm, cold, soft, high-contrast")

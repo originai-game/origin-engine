@@ -667,16 +667,46 @@ fn every_preset_names_its_mood_and_every_mood_lays_on_every_preset() {
         }
     }
     // Every layer sets only what a mood may, and names fields that exist.
-    for (mood, slug, _) in MOOD_LAYERS {
+    for (mood, key, _) in MOOD_LAYERS {
         assert!(crate::look::MOODS.contains(mood), "{mood}");
-        lay_mood(&LookFile::default(), mood, *slug).unwrap_or_else(|e| panic!("{e}"));
-        if let Some(slug) = slug {
-            assert!(
-                PRESETS.iter().any(|(s, _)| s == slug),
-                "{mood}/{slug}: no such preset"
-            );
+        lay_mood(&LookFile::default(), mood, key.as_slice()).unwrap_or_else(|e| panic!("{e}"));
+        if let Some(key) = key {
+            let known = match key.split_once('.') {
+                Some((slug, v)) => VARIANT_LAYERS.iter().any(|(s, n, _)| *s == slug && *n == v),
+                None => PRESETS.iter().any(|(s, _)| s == key),
+            };
+            assert!(known, "{mood}/{key}: no such preset or variant");
         }
     }
+}
+
+#[test]
+fn a_variant_is_one_of_the_preset_its_chain_reaches() {
+    let presets = [("cel", PRESET)];
+    let cook_in = |files: &[(&str, &str)]| {
+        let root = project(files);
+        let s = source(&root, "looks/g.ogt");
+        resolve(&s, &root, &|_: &str| true, &presets).map(|(l, _)| l)
+    };
+    let e = cook_in(&[(
+        "looks/g.ogt",
+        &format!("{HEAD}extends \"cel\"\nvariant \"8bit\"\n"),
+    )])
+    .unwrap_err();
+    assert!(
+        e.contains("variant \"8bit\": the preset cel has no variants"),
+        "{e}"
+    );
+    let e = cook_in(&[("looks/g.ogt", &format!("{HEAD}variant \"8bit\"\n"))]).unwrap_err();
+    assert!(e.contains("reaches no preset"), "{e}");
+    // A preset is drawn as it is; only a look extending it asks for a variant.
+    let presets = [("cel", "type look\nversion 1\n---\nvariant \"x\"\n")];
+    let root = project(&[("looks/g.ogt", &format!("{HEAD}extends \"cel\"\n"))]);
+    let s = source(&root, "looks/g.ogt");
+    let e = resolve(&s, &root, &|_: &str| true, &presets)
+        .map(|(l, _)| l)
+        .unwrap_err();
+    assert!(e.contains("a preset names no variant"), "{e}");
 }
 
 #[test]

@@ -26,10 +26,17 @@
 //!   the preset the chain reaches ([`lay_mood`]) before the looks above it,
 //!   so the game's own fields still win. A chain that reaches no preset
 //!   lays the layer under its deepest look.
+//! - `variant "<name>"` asks for one of the variants of the preset the
+//!   chain reaches ([`VARIANT_LAYERS`], `templates/looks/variants/<slug>/`):
+//!   its layer is laid over the preset ([`lay_variant`]) field by field,
+//!   before the mood's, and the mood then reads the variant's own layer
+//!   (`moods/<mood>/<slug>.<variant>.ogt`) first. The nearest look's
+//!   variant wins for the whole chain; a chain that reaches no preset, or a
+//!   preset without that variant, is refused.
 //! - The stamp covers every look in the chain, so editing a base re-cooks
 //!   the looks built on it.
 
-pub use super::look_assets::{BUILTINS, MOOD_LAYERS, PRESETS};
+pub use super::look_assets::{BUILTINS, MOOD_LAYERS, PRESETS, VARIANT_LAYERS};
 pub use super::look_styles::{
     StyleFile, fonts_dir, style_licences, style_path, styles, styles_dir,
 };
@@ -278,11 +285,12 @@ fn flatten(
     seen: &mut Vec<String>,
     bases: &mut Vec<Base>,
 ) -> Result<LookFile, String> {
-    flatten_asked(id, text, root, presets, seen, bases, None)
+    flatten_asked(id, text, root, presets, seen, bases, None, None)
 }
 
-/// [`flatten`] with the mood a look above asked for (`asked`), which wins
-/// over this look's own `mood`.
+/// [`flatten`] with the mood and variant a look above asked for (`asked`,
+/// `asked_variant`), which win over this look's own `mood` and `variant`.
+#[allow(clippy::too_many_arguments)]
 fn flatten_asked(
     id: &str,
     text: &str,
@@ -291,6 +299,7 @@ fn flatten_asked(
     seen: &mut Vec<String>,
     bases: &mut Vec<Base>,
     asked: Option<&str>,
+    asked_variant: Option<&str>,
 ) -> Result<LookFile, String> {
     let mut look = LookFile::parse(text).map_err(|e| {
         if seen.len() > 1 {
@@ -302,12 +311,28 @@ fn flatten_asked(
     // The mood asked here: the one asked from above (the nearest look's
     // wins for the whole chain), else this look's own.
     let asked = asked.map(str::to_string).or_else(|| look.mood.clone());
+    let asked_variant = asked_variant
+        .map(str::to_string)
+        .or_else(|| look.variant.clone());
     let Some(name) = look.extends.first().cloned() else {
+        let is_preset = presets.iter().any(|(s, _)| *s == id);
+        if is_preset && look.variant.is_some() {
+            return Err(format!(
+                "{id}: a preset names no variant; a look extending it asks for one"
+            ));
+        }
+        if let Some(v) = asked_variant.as_deref()
+            && !is_preset
+        {
+            return Err(format!(
+                "variant \"{v}\": a variant is one of a preset's, and this look's chain reaches no preset"
+            ));
+        }
         // A chain that reaches no preset: the mood lies under its root.
         if let Some(m) = asked.as_deref()
             && !presets.iter().any(|(s, _)| *s == id)
         {
-            let (layer, layer_base) = lay_mood(&LookFile::default(), m, None)?;
+            let (layer, layer_base) = lay_mood(&LookFile::default(), m, &[])?;
             bases.insert(0, layer_base);
             let mut merged = look.over(&layer, "");
             merged.extends.clear();
@@ -341,13 +366,27 @@ fn flatten_asked(
         seen,
         bases,
         asked.as_deref(),
+        asked_variant.as_deref(),
     )?;
     let is_preset = presets.iter().any(|(s, _)| *s == base.id);
+    if let Some(v) = asked_variant.as_deref()
+        && is_preset
+    {
+        let (layered, layer_base) = lay_variant(&base_look, &base.id, v)?;
+        base_look = layered;
+        bases.insert(0, layer_base);
+    }
     if let Some(m) = asked.as_deref()
         && is_preset
         && base_look.mood.as_deref() != Some(m)
     {
-        let (layered, layer_base) = lay_mood(&base_look, m, Some(&base.id))?;
+        let own = asked_variant.as_deref().map(|v| format!("{}.{v}", base.id));
+        let keys: Vec<&str> = own
+            .as_deref()
+            .into_iter()
+            .chain([base.id.as_str()])
+            .collect();
+        let (layered, layer_base) = lay_mood(&base_look, m, &keys)?;
         base_look = layered;
         bases.insert(0, layer_base);
     }
@@ -357,13 +396,59 @@ fn flatten_asked(
     Ok(merged)
 }
 
-/// The moods' layer for `slug`: its own (`moods/<mood>/<slug>.ogt`), else
-/// every style's (`moods/<mood>.ogt`), with its id.
-fn mood_layer(mood: &str, slug: Option<&str>) -> Option<(String, &'static str)> {
-    let own = slug.and_then(|s| {
+/// The variants' layer `variant` of the preset `slug`
+/// (`variants/<slug>/<variant>.ogt`) laid over `base`, the preset
+/// flattened: field by field, the layer winning, its name, mood and
+/// antialias where it gives them. Returns the laid look, carrying the
+/// variant, and the layer as a base for the stamp.
+fn lay_variant(base: &LookFile, slug: &str, variant: &str) -> Result<(LookFile, Base), String> {
+    let Some((_, _, text)) = VARIANT_LAYERS
+        .iter()
+        .find(|(s, v, _)| *s == slug && *v == variant)
+    else {
+        let names: Vec<&str> = VARIANT_LAYERS
+            .iter()
+            .filter(|(s, _, _)| *s == slug)
+            .map(|(_, v, _)| *v)
+            .collect();
+        return Err(if names.is_empty() {
+            format!("variant \"{variant}\": the preset {slug} has no variants")
+        } else {
+            format!(
+                "variant \"{variant}\": the preset {slug} takes one of {}",
+                names.join(", ")
+            )
+        });
+    };
+    let id = format!("@variants/{slug}/{variant}");
+    let layer = LookFile::parse(text).map_err(|e| format!("{id}: {e}"))?;
+    if !layer.extends.is_empty() || layer.variant.is_some() {
+        return Err(format!(
+            "{id}: a variant's layer names neither extends nor variant"
+        ));
+    }
+    let mut out = layer.over(base, slug);
+    out.extends = base.extends.clone();
+    out.name = layer.name.clone().or_else(|| base.name.clone());
+    out.variant = Some(variant.to_string());
+    Ok((
+        out,
+        Base {
+            id,
+            text: text.to_string(),
+        },
+    ))
+}
+
+/// The moods' layer for the first of `keys` that has its own
+/// (`moods/<mood>/<key>.ogt`: a preset's variant `<slug>.<variant>`, then
+/// the preset `<slug>`), else every style's (`moods/<mood>.ogt`), with its
+/// id.
+fn mood_layer(mood: &str, keys: &[&str]) -> Option<(String, &'static str)> {
+    let own = keys.iter().find_map(|s| {
         MOOD_LAYERS
             .iter()
-            .find(|(m, l, _)| *m == mood && *l == Some(s))
+            .find(|(m, l, _)| *m == mood && *l == Some(*s))
             .map(|(_, _, t)| (format!("@moods/{mood}/{s}"), *t))
     });
     own.or_else(|| {
@@ -396,14 +481,14 @@ fn default_numbers(json: &str) -> Vec<f64> {
         .unwrap_or_default()
 }
 
-/// `base` laid in `mood` (docs/art.md §2.10): the mood's layer for `slug`
+/// `base` laid in `mood` (docs/art.md §2.10): the mood's layer for `keys`
 /// over it, a number moving the base's value (else the field's default) by
 /// the layer's distance from the default, clamped to the field's range and
 /// rounded for a whole-number field; any other value replacing the base's.
 /// Returns the laid look, carrying the mood, and the layer as a base for the
 /// stamp.
-fn lay_mood(base: &LookFile, mood: &str, slug: Option<&str>) -> Result<(LookFile, Base), String> {
-    let (id, text) = mood_layer(mood, slug)
+fn lay_mood(base: &LookFile, mood: &str, keys: &[&str]) -> Result<(LookFile, Base), String> {
+    let (id, text) = mood_layer(mood, keys)
         .ok_or_else(|| format!("mood \"{mood}\": one of {}", crate::look::MOODS.join(", ")))?;
     let layer = LookFile::parse(text).map_err(|e| format!("{id}: {e}"))?;
     let mut out = base.clone();

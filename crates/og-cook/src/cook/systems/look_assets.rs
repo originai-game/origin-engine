@@ -153,9 +153,16 @@ pub const PRESETS: &[(&str, &str)] = &[
     ),
 ];
 
+/// The presets' variants (`templates/looks/variants/<slug>/<variant>.ogt`,
+/// docs/art.md §2.11), compiled into the cook as `(slug, variant, text)`: a
+/// look asking for `variant "<variant>"` has the layer laid over the preset
+/// `<slug>` its chain reaches (`cook::look::lay_variant`).
+pub const VARIANT_LAYERS: &[(&str, &str, &str)] = &[];
+
 /// The moods' layers (`templates/looks/moods/`, docs/art.md §2.10), compiled
 /// into the cook: `(mood, None)` is the layer for every style, `(mood,
-/// Some(slug))` one style's in its place. A look asking a preset for a mood
+/// Some(key))` one style's in its place, where the key is a preset's slug or
+/// one of its variants as `<slug>.<variant>`. A look asking a preset for a mood
 /// other than the preset's own has the layer laid over the preset
 /// (`cook::look::lay_mood`).
 pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
