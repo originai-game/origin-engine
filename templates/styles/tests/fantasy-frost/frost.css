@@ -53,7 +53,7 @@
   --band-fill: linear-gradient(90deg, #0b1a2a00 0%, #163552 14%, #1f4a70 50%, #163552 86%, #0b1a2a00 100%);
   --cell-fill: radial-gradient(circle at 50% 45%, #2a3440 0%, #141b23 72%, #0b1015 100%);
   --panel-fill: radial-gradient(ellipse at 50% 0%, #1c2836, #0f161e 55%, #090d12);
-  --fantasy-ground:
+  --ground-fill:
     radial-gradient(ellipse at 50% 40%, #00000000 40%, #000000a8 100%),
     linear-gradient(180deg, #0c131c, #070b10);
 }

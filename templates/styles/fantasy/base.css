@@ -2,17 +2,12 @@
    (docs/ui.md §4). Lamp-black leather and dark walnut grounds, aged brass
    rims, parchment ink, a crimson primary and gold for focus and selection.
 
-   Files apply in lexical order. controls.css (every core control and its
-   states) keeps its rules in a layer under the other files, so a component
-   group's file dresses its parts wherever its name sorts; motion, one file
-   for each built-in component group's parts, and sounds are unlayered. This
-   file holds every value the pack draws with,
-   as :root tokens: the engine's own (palette roles, radii, control and role
-   tokens: frames, bands, titles, cells and the rest wear the default role
-   rules with these values), then the pack's (--fantasy-*, for the art and
-   the one-component composites; README.md lists them). The other files only select
-   parts and states and name these tokens, so a variant restyles the pack by
-   setting tokens alone. */
+   The pack is a theme: this file holds every value it draws with, as :root
+   tokens for the dark and light schemes, and the default style's control
+   and role rules (frames, plates, bands, titles, rows, cells, badges, wells,
+   figures, labels, tags) wear them. It selects no component part; motion.css
+   and sounds.css set only transitions and sounds. A variant restyles the
+   pack by setting tokens alone (templates/styles/tests/fantasy-frost). */
 
 @font-face { font-family: "Fantasy Display"; src: url(/@styles/shared/Cinzel-Bold.ttf); font-weight: 700; }
 @font-face { font-family: "Fantasy Caps"; src: url(/@styles/shared/SpectralSC-SemiBold.ttf); font-weight: 600; }
@@ -57,7 +52,7 @@
   --color-shadow: #000;
   --sheen: #fff1d040;
   --scene-ink: #f5ead3;
-  --scene-plate: #140f0bea;
+  --scene-plate: #140f0bf7;
   --scene-shadow: #000000a0;
   --success: #86c98f;
   --warn: #e6b04f;
@@ -84,24 +79,14 @@
   /* The roles' translucent steps (the engine's --line-70 / --shadow-30 naming). */
   --accent-8: rgb(from var(--accent) r g b / 0.078);
   --accent-11: rgb(from var(--accent) r g b / 0.11);
-  --accent-20: rgb(from var(--accent) r g b / 0.2);
   --accent-25: rgb(from var(--accent) r g b / 0.251);
   --accent-27: rgb(from var(--accent) r g b / 0.267);
   --accent-33: rgb(from var(--accent) r g b / 0.333);
   --accent-38: rgb(from var(--accent) r g b / 0.376);
-  --accent-40: rgb(from var(--accent) r g b / 0.4);
   --accent-53: rgb(from var(--accent) r g b / 0.533);
   --accent-60: rgb(from var(--accent) r g b / 0.6);
-  --accent-80: rgb(from var(--accent) r g b / 0.8);
-  --line-strong-15: rgb(from var(--line-strong) r g b / 0.149);
-  --line-strong-19: rgb(from var(--line-strong) r g b / 0.188);
-  --line-strong-20: rgb(from var(--line-strong) r g b / 0.2);
-  --line-strong-25: rgb(from var(--line-strong) r g b / 0.251);
-  --line-strong-27: rgb(from var(--line-strong) r g b / 0.267);
   --line-strong-33: rgb(from var(--line-strong) r g b / 0.333);
   --line-strong-40: rgb(from var(--line-strong) r g b / 0.4);
-  --line-strong-50: rgb(from var(--line-strong) r g b / 0.502);
-  --line-strong-53: rgb(from var(--line-strong) r g b / 0.533);
   --line-strong-60: rgb(from var(--line-strong) r g b / 0.6);
   --shadow-60: rgb(from var(--color-shadow) r g b / 0.6);
   --shadow-63: rgb(from var(--color-shadow) r g b / 0.627);
@@ -141,7 +126,6 @@
 
   /* ── Materials. */
   --well-50: rgb(from var(--well) r g b / 0.502);
-  --well-80: rgb(from var(--well) r g b / 0.8);
   --fantasy-soot-disabled: #15100c;
   --fantasy-iron-pressed: #1a1612;
   --fantasy-iron-disabled: #1a1714;
@@ -151,8 +135,6 @@
   --cell-rim: #6f6658;
   --fantasy-tooltip: #140f0bf2;
   --fantasy-touch-plate: #140f0bb0;
-  --fantasy-legend-ground: #140f0be6;
-  --fantasy-tick: #b8924daa;
   --fantasy-amber-40: #8a642066;
 
   /* ── Inks. */
@@ -190,9 +172,7 @@
   --fantasy-filigree-tr: url(art/filigree-tr.png);
   --fantasy-filigree-bl: url(art/filigree-bl.png);
   --fantasy-filigree-br: url(art/filigree-br.png);
-  --fantasy-glow-image: url(art/glow.png);
   --fantasy-ground-image: url(art/ground.png);
-  --fantasy-bar-frame: url(art/bar-frame.svg);
   --band-rule-image: url(art/rule.svg);
   --band-end-start-image: url(art/flourish-left.svg);
   --band-end-finish-image: url(art/flourish-right.svg);
@@ -218,7 +198,6 @@
 
   /* ── Lengths. */
   --button-image-end: 24px;
-  --fantasy-focus-offset-plate: 3px;
   --frame-pad: calc(var(--space-md) + 4px);
   --frame-corner-size: 58px;
   --frame-rim-width: var(--stroke-regular);
@@ -246,24 +225,14 @@
   --well-fill: var(--well);
   --well-radius: var(--radius-xs);
   --fantasy-corner-hud: 34px;
-  --fantasy-band-mark: 34px;
   --fantasy-rule-height: 12px;
-  --fantasy-needle: 22px;
-  --fantasy-ring-large: 4px;
-  --fantasy-bar-frame-width: 4px 12px;
-  --fantasy-bar-frame-outset: 2px 10px;
-  --fantasy-minimap-pad: 6px;
 
   /* ── Motion: a slow, warm curve. */
   --motion-easing-out: cubic-bezier(0.22, 0.8, 0.3, 1);
   --motion-duration-fast: 160ms;
   --motion-duration-base: 220ms;
   --motion-duration-slow: 420ms;
-  --fantasy-motion-glint: 1.2s;
-  --fantasy-motion-acting: 1.4s;
   --fantasy-motion-indicator: -og-spring(260ms, 0.18);
-  --fantasy-acting-from: 0 0 0 2px var(--accent), 0 0 10px var(--accent-40);
-  --fantasy-acting-to: 0 0 0 2px var(--button-hover-ink), 0 0 22px var(--accent-80);
 
   /* ── Core controls' surfaces. */
   --button-font: "Fantasy Text";
@@ -298,7 +267,186 @@
   --fantasy-mana-fill: linear-gradient(180deg, #4f7ed8, #213f86);
   --keyboard-key-fill: linear-gradient(180deg, #3a322a, #241f1a);
 
-  /* ── The rpg components' surfaces. */
+  /* ── The core controls, as tokens the default style's control rules read
+     (the painted plate is the button's border-image). */
+  --button-min-height: var(--size-touch);
+  --button-pad-inline: var(--space-xl);
+  --button-border-width: 0px;
+  --button-radius: 0;
+  --button-shadow: none;
+  --button-fill: none;
+  --button-hover-fill: none;
+  --button-pressed-fill: none;
+  --button-disabled-fill: none;
+  --button-primary-fill: none;
+  --button-primary-hover-fill: none;
+  --button-primary-pressed-fill: none;
+  /* Danger is the iron plate in the danger's ink, never a square behind it. */
+  --button-danger-fill: none;
+  --button-danger-hover-fill: none;
+  --button-danger-pressed-fill: none;
+  --button-danger-ink: var(--danger);
+  --button-image-slice: 28 24 fill;
+  --button-image-width: 50% var(--button-image-end);
+  --button-primary-image-disabled: var(--button-image-disabled);
+  --button-primary-ink: var(--on-primary);
+  --button-font-size: var(--font-step-2xl);
+  --button-tracking: var(--font-tracking-wide);
+  --button-transform: uppercase;
+  --checkbox-row-hover-fill: var(--accent-8);
+  --checkbox-box-fill: var(--well);
+  --checkbox-box-rim: var(--line-strong);
+  --checkbox-box-shadow: var(--well-shadow);
+  --checkbox-box-hover-rim: var(--accent);
+  --checkbox-checked-rim: var(--accent);
+  --checkbox-disabled-fill: var(--fantasy-soot-disabled);
+  --checkbox-disabled-rim: var(--line);
+  --checkbox-mark-ink: var(--on-primary);
+  --radio-ring-fill: var(--well);
+  --radio-ring-rim: var(--line-strong);
+  --radio-ring-shadow: var(--well-shadow);
+  --radio-checked-rim: var(--accent);
+  --radio-dot-fill: var(--gold);
+  --radio-card-rim: var(--line-strong);
+  --radio-card-hover-rim: var(--accent);
+  --radio-card-checked-rim: var(--gold);
+  --radio-chosen-fill: var(--gold);
+  --switch-track-fill: var(--well);
+  --switch-track-rim: var(--line-strong);
+  --switch-track-shadow: var(--well-shadow);
+  --switch-checked-rim: var(--accent);
+  --switch-knob-rim: var(--fantasy-knob-rim);
+  --tabs-radius: 0;
+  --tabs-track-fill: none;
+  --tabs-track-rule: var(--stroke-hairline) solid var(--line-strong-33);
+  --tabs-tab-fill: none;
+  --tabs-tab-hover-fill: var(--fantasy-tab-hover-wash);
+  --tabs-tab-pressed-fill: var(--well-50);
+  --tabs-tab-selected-fill: var(--fantasy-tab-selected-wash);
+  --tabs-tab-ink: var(--ink-muted);
+  --tabs-tab-selected-ink: var(--gold);
+  --tabs-tab-disabled-ink: var(--ink-disabled);
+  --tabs-font: var(--label-font);
+  --tabs-tracking: var(--font-tracking-lg);
+  --tabs-transform: uppercase;
+  --tabs-indicator-fill: var(--gold);
+  --tabs-indicator-height: var(--stroke-regular);
+  --tabs-indicator-radius: 0;
+  --slider-track-fill: var(--well);
+  --slider-track-rim: var(--line);
+  --slider-track-shadow: var(--well-shadow);
+  --slider-fill: var(--fantasy-gold-fill);
+  --slider-tick-fill: var(--line-strong-60);
+  --slider-knob-rim: var(--fantasy-knob-rim);
+  --slider-knob-disabled-fill: var(--line);
+  --slider-core-fill: var(--control);
+  --slider-bubble-fill: var(--panel);
+  --slider-bubble-rim: var(--line-strong);
+  --slider-bubble-ink: var(--ink);
+  --field-rim: var(--line-strong);
+  --field-radius: var(--radius-field);
+  --field-hover-rim: var(--accent);
+  --field-focus-rim: var(--gold);
+  --field-disabled-fill: var(--fantasy-soot-disabled);
+  --field-disabled-rim: var(--line);
+  --field-invalid-rim: var(--danger);
+  --field-ink: var(--ink);
+  --field-font: var(--font-body);
+  --field-placeholder-ink: var(--ink-faint);
+  --field-selection-fill: var(--fantasy-amber-40);
+  --field-caret-fill: var(--gold);
+  --dropdown-list-fill: var(--panel);
+  --dropdown-list-rim: var(--line-strong);
+  --dropdown-option-hover-fill: var(--accent-11);
+  --dropdown-option-pressed-fill: var(--well);
+  --stepper-button-fill: var(--fantasy-iron-fill);
+  --stepper-button-rim: var(--line-strong);
+  --stepper-button-hover-rim: var(--accent);
+  --stepper-button-pressed-fill: var(--fantasy-iron-pressed);
+  --stepper-button-disabled-fill: var(--fantasy-iron-disabled);
+  --details-summary-fill: none;
+  --details-summary-hover-fill: var(--accent-8);
+  --details-summary-rule: var(--line-strong-33);
+  --details-summary-ink: var(--ink-label);
+  --details-summary-open-ink: var(--gold);
+  --details-content-ink: var(--ink);
+  --panel-rim: var(--line-strong);
+  --dialog-backdrop: var(--scrim);
+  --tooltip-fill: var(--fantasy-tooltip);
+  --tooltip-rim: var(--line-strong);
+  --tooltip-shadow: var(--fantasy-tooltip-shadow);
+  --tooltip-glass: none;
+  --hud-fill: var(--hud);
+  --hud-rim: var(--line-strong);
+  --hud-glass: none;
+  --popover-arrow-fill: var(--panel);
+  --spotlight-edge: var(--gold);
+  --slot-rim: var(--cell-rim);
+  --slot-rim-width: var(--stroke-regular);
+  --slot-hover-rim: var(--accent);
+  --slot-pressed-fill: var(--well);
+  --meter-track-fill: var(--well);
+  --meter-track-rim: var(--line);
+  --meter-track-shadow: var(--well-shadow);
+  --meter-fill: var(--fantasy-gold-fill);
+  --meter-health-fill: var(--fantasy-health-fill);
+  --meter-mana-fill: var(--fantasy-mana-fill);
+  --progress-fill: var(--fantasy-gold-fill);
+  --keyboard-panel-fill: var(--backdrop);
+  --keyboard-key-rim: var(--line-strong);
+  --keyboard-key-hover-rim: var(--accent);
+  --keyboard-key-pressed-fill: var(--well);
+  --touch-plate-fill: var(--fantasy-touch-plate);
+  --touch-plate-rim: var(--line-strong);
+  --touch-knob-fill: var(--slider-knob-fill);
+  --touch-active-fill: var(--gold);
+  --heading-flourish: var(--band-rule-image) center / 100% var(--fantasy-rule-height) no-repeat;
+  --scrollbar-fill: var(--line-strong-60);
+  --scrollbar-radius: var(--radius-xs);
+  --icon-secondary-ink: var(--gold);
+  /* The control hooks' rim widths and the shadows the default never drew. */
+  --field-rim-width: var(--field-border-width);
+  --field-frame-shadow: var(--field-shadow);
+  --checkbox-checked-rim-width: var(--field-border-width);
+  --radio-checked-rim-width: var(--field-border-width);
+  --radio-card-rim-width: var(--field-border-width);
+  --radio-option-hover-fill: var(--accent-8);
+  --slider-track-rim-width: var(--stroke-hairline);
+  --meter-track-rim-width: var(--stroke-hairline);
+  --tooltip-rim-width: var(--stroke-hairline);
+  --hud-rim-width: var(--stroke-hairline);
+  /* A badge is a crimson seal in a gold hairline. */
+  --badge-neutral-fill: var(--primary-active);
+  --badge-neutral-ink: var(--on-primary);
+  --badge-rim: var(--accent);
+  --badge-rim-width: var(--stroke-hairline);
+
+  /* ── Names and pictures: a name in display capitals over a dark shadow,
+     a picture in a cell's well with a black keyline. */
+  --name-font: var(--font-display);
+  --name-tracking: var(--font-tracking-sm);
+  --name-transform: uppercase;
+  --name-ink: var(--ink);
+  --name-shadow: 0 2px 3px var(--color-shadow);
+  --name-selected-ink: var(--ink-selected);
+  --picture-fill: var(--cell-fill);
+  --picture-rim: var(--cell-rim);
+  --picture-radius: var(--radius-xs);
+  --picture-shadow: inset 0 0 0 1px var(--color-shadow), 0 0 0 1px var(--color-shadow);
+
+  /* ── One component's own look, as the tokens it reads. */
+  --bubble-tail-fill: var(--well);
+  --reticle-keyline: 0 0 0 var(--stroke-hairline) var(--color-shadow), 0 0 3px var(--shadow-69);
+  --reticle-ring: var(--reticle-keyline), inset 0 0 0 1px var(--color-shadow);
+  --damage-arc-stroke: var(--tone-damage);
+  --minimap-bezel: radial-gradient(circle, var(--well) 64%, var(--line) 66%, var(--accent) 69%, var(--line-strong) 72%, var(--control) 75%, var(--well) 77%);
+  --ground-fill:
+    radial-gradient(ellipse at 50% 40%, #00000000 40%, #000000a8 100%),
+    var(--fantasy-ground-image) center / 768px 768px repeat,
+    #140e09;
+
+  /* ── The roles every component wears: frames and plates with filigree
+     corners, crimson bands, cells with rarity rims, badges and tags. */
   --frame-fill:
     var(--fantasy-filigree-tl) left top / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
     var(--fantasy-filigree-tr) right top / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
@@ -306,9 +454,6 @@
     var(--fantasy-filigree-br) right bottom / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
     radial-gradient(ellipse at 50% 0%, #2a1e13 0%, #17110b 60%, #0f0a07 100%);
   --frame-shadow: inset 0 0 0 2px var(--well), inset 0 0 0 3px var(--line-strong), inset 0 0 0 5px var(--well), inset 0 0 0 6px var(--line), inset 0 0 48px #000000b0, 0 0 0 1px var(--color-shadow), 0 12px 32px #000000c0;
-  /* The speech bubble's tail: the frame's foot, in one colour. */
-  --fantasy-bubble-tail-fill: var(--well);
-  --fantasy-stats-shadow: inset 0 0 0 2px var(--well), inset 0 0 0 3px var(--line-strong), inset 0 0 0 5px var(--well), inset 0 0 0 6px var(--line), inset 0 0 48px #000000b0, 0 12px 32px #000000c0;
   --plate-fill:
     var(--fantasy-filigree-tl) left top / var(--fantasy-corner-hud) var(--fantasy-corner-hud) no-repeat,
     var(--fantasy-filigree-tr) right top / var(--fantasy-corner-hud) var(--fantasy-corner-hud) no-repeat,
@@ -321,16 +466,10 @@
   --band-small-fill: linear-gradient(90deg, rgb(from var(--fantasy-crimson-lo) r g b / 0), var(--primary-active) 18%, var(--primary-active) 82%, rgb(from var(--fantasy-crimson-lo) r g b / 0));
   --band-shadow: 0 1px 0 #00000080;
   --title-shadow: 0 2px 3px #000000c0;
-  --fantasy-name-shadow: 0 2px 3px var(--color-shadow);
-  --fantasy-text-shadow: 0 1px 2px var(--color-shadow);
-  --fantasy-label-shadow: 0 1px 3px var(--color-shadow);
   --figure-shadow: 0 1px 2px var(--color-shadow), 0 0 4px var(--color-shadow);
-  /* World tags over the scene: an inked outline, as the figures wear. */
-  --tag-halo: 0 0 2px var(--color-shadow), 0 1px 2px var(--color-shadow), 0 0 4px var(--color-shadow);
-  --fantasy-rule:
-    var(--mark-diamond) center / 10px 10px no-repeat,
-    linear-gradient(90deg, #b8924d00, var(--accent) 50%, #b8924d00) center / 100% 1px no-repeat;
-  --fantasy-split: linear-gradient(180deg, rgb(from var(--line-strong) r g b / 0), rgb(from var(--line-strong) r g b / 0.8), rgb(from var(--line-strong) r g b / 0));
+  /* Text over the scene (names, damage numbers, keycaps): a full inked
+     outline, so a red name holds over a red ground. */
+  --tag-halo: 0 0 1px var(--color-shadow), 0 0 2px var(--color-shadow), 0 1px 2px var(--color-shadow), 0 0 5px var(--color-shadow);
   --cell-fill: radial-gradient(circle at 50% 45%, #3a332a 0%, #1d1812 72%, #120e0a 100%);
   --cell-shadow: inset 0 0 0 1px var(--shadow-60), inset 0 0 14px var(--shadow-63), 0 0 6px #00000080;
   --cell-common-fill: radial-gradient(circle at 50% 45%, #4a453d 0%, #25211b 70%, #15120e 100%);
@@ -348,82 +487,11 @@
   --cell-empty-shadow: inset 0 0 12px #000000c0;
   --cell-hover-shadow: inset 0 0 0 1px var(--shadow-60), inset 0 0 22px var(--accent-25), 0 0 14px var(--accent-38);
   --cell-pressed-fill: radial-gradient(circle at 50% 50%, #241c14 0%, var(--well) 100%);
-  --fantasy-fresh-glow: 0 0 6px var(--gold);
-  --fantasy-weight-fill: linear-gradient(180deg, #f2d27f, #c79438 60%, #8a6220);
-  --fantasy-over-fill: linear-gradient(180deg, #e0786a, #a8392a);
-  --fantasy-portrait-shadow: inset 0 0 0 1px var(--color-shadow), 0 0 0 1px var(--color-shadow), 0 4px 10px #000a;
-  --fantasy-picture-shadow: inset 0 0 0 1px var(--color-shadow), 0 0 0 1px var(--color-shadow);
-  --fantasy-doll-ground: radial-gradient(ellipse at 50% 40%, #2a2017 0%, var(--backdrop) 75%);
   --row-hover-fill: linear-gradient(90deg, rgb(from var(--accent) r g b / 0.133), rgb(from var(--accent) r g b / 0));
   --row-selected-fill: linear-gradient(90deg, #8a6420 0%, #6a4a18 55%, #3c2a0e 100%);
   --row-selected-edge: inset 3px 0 0 var(--gold);
-  --fantasy-reply-hover: linear-gradient(90deg, var(--accent-11), rgb(from var(--accent) r g b / 0));
-  --fantasy-reply-selected: linear-gradient(90deg, #6a4a18 0%, #3c2a0e 60%, #22180a 100%);
-  --fantasy-reply-selected-glow: 0 0 10px var(--accent-25);
-  --fantasy-scenery-fade: linear-gradient(90deg, #0000, #000 60%);
-  --fantasy-map-shadow: inset 0 0 0 1px var(--color-shadow), inset 0 0 60px #000000a0, 0 8px 24px #000c;
-  --fantasy-marker-selected-shadow: 0 0 14px rgb(from var(--focus) r g b / 0.8), 0 0 0 2px var(--focus);
-  --fantasy-here-ground: linear-gradient(90deg, #e6d4aee6, #e6d4ae00);
-  --fantasy-compass-strip:
-    var(--band-rule-image) center / 100% var(--fantasy-rule-height) no-repeat,
-    linear-gradient(180deg, #0d0906d8, #1a120be0 50%, #0d0906d8);
-  --fantasy-compass-shadow: 0 4px 12px #0009;
-  --fantasy-member-fill: linear-gradient(180deg, var(--panel-raised), var(--backdrop));
-  --fantasy-member-shadow: inset 0 0 0 1px var(--color-shadow), 0 6px 14px #000c;
-  --fantasy-member-selected-shadow: inset 0 0 0 1px var(--color-shadow), 0 0 12px var(--accent-40);
-  --fantasy-member-down-fill: linear-gradient(180deg, #1c1a17, #0e0d0b);
-  --fantasy-seal-fill: radial-gradient(circle, var(--control), #110b06);
-  --fantasy-ring-shadow: inset 0 0 0 1px var(--color-shadow), 0 4px 10px #000c;
-  --fantasy-acting-shadow: 0 0 16px #f0b04acc, 0 0 0 1px var(--color-shadow);
-  --fantasy-round-fill: linear-gradient(180deg, #7a1e14, var(--fantasy-crimson-lo));
-  --fantasy-round-shadow: inset 0 0 0 2px #2a0a06, 0 4px 10px #000c;
-  --fantasy-fold: linear-gradient(180deg, #0a070400 0%, #0a0704d0 32%, #0a0704 55%);
-  --fantasy-tabs-fade: linear-gradient(90deg, #17110b00, #17110b);
-  --fantasy-tabs-fade-rtl: linear-gradient(270deg, #17110b00, #17110b);
-  --fantasy-ground:
-    radial-gradient(ellipse at 50% 40%, #00000000 40%, #000000a8 100%),
-    var(--fantasy-ground-image) center / 768px 768px repeat,
-    #140e09;
-  --fantasy-vitals-ring-shadow: inset 0 0 0 1px var(--color-shadow), inset 0 0 10px #000c, 0 0 0 1px var(--color-shadow), 0 0 0 3px #5a4020, 0 0 0 4px var(--highlight), 0 4px 10px #000c;
-  --fantasy-vitals-ring-large-shadow: inset 0 0 0 2px var(--color-shadow), inset 0 0 16px #000c, 0 0 0 2px var(--control), 0 0 0 5px var(--line-strong), 0 0 0 6px #f0d590, 0 6px 16px var(--color-shadow);
   --badge-fill: radial-gradient(circle at 50% 35%, #3a2a18, var(--well) 70%);
   --badge-shadow: 0 0 0 1px var(--color-shadow), 0 2px 4px var(--color-shadow);
-  --fantasy-vitals-health: linear-gradient(180deg, #ff9a82 0%, #ea3f2b 22%, #b81e14 62%, #7a0f0a 100%);
-  --fantasy-vitals-mana: linear-gradient(180deg, #a9c6ff 0%, #3e7cf0 22%, #2149c4 62%, #12286e 100%);
-  --fantasy-tray-shadow: inset 0 0 0 1px var(--color-shadow), 0 6px 16px #000c;
-  --fantasy-skill-fill: radial-gradient(circle, #2a2017, var(--well));
-  --fantasy-skill-shadow: inset 0 0 0 1px var(--color-shadow), inset 0 0 12px #000a;
-  /* An ability slot's badge (a cost, charges): its own small plate on the well. */
-  --fantasy-slot-badge-shadow: inset 0 0 0 1px var(--line-strong-60), 0 1px 3px var(--color-shadow);
-  --fantasy-skill-hover-shadow: inset 0 0 0 1px var(--color-shadow), 0 0 10px var(--accent-40);
-  --fantasy-foe-picture-shadow: inset 0 0 0 1px var(--color-shadow), 0 0 12px rgb(from var(--team2) r g b / 0.333);
-  --fantasy-enemy-bar-shadow: 0 0 0 1px rgb(from var(--line) r g b / 0.502);
-  --fantasy-enemy-health: linear-gradient(180deg, #d24a3c, #8a1e16);
-  --fantasy-command-fill: linear-gradient(180deg, #3a3129, #1b1612);
-  --fantasy-command-shadow: inset 0 0 0 2px var(--well), inset 0 1px 0 3px #ffffff10, 0 4px 10px #000c;
-  --fantasy-command-primary-fill: linear-gradient(180deg, #c0412c, #7d1f13);
-  --fantasy-command-primary-shadow: inset 0 0 0 2px #3a0c07, 0 0 14px var(--accent-40);
-  --fantasy-menu-fill: linear-gradient(180deg, #1c130cf0, #0d0906f0);
-  --fantasy-menu-tab-fill: linear-gradient(180deg, #3c120c, #22090a);
-  --fantasy-menu-tab-selected-fill: linear-gradient(180deg, var(--primary), var(--fantasy-crimson-lo));
-  --fantasy-menu-tab-selected-shadow: inset 0 0 0 1px var(--color-shadow), 0 0 10px var(--accent-33);
-  --fantasy-keyline-shadow: inset 0 0 0 1px var(--color-shadow);
-  --fantasy-menu-fade: linear-gradient(90deg, #140d0900, #140d09);
-  --fantasy-menu-fade-rtl: linear-gradient(270deg, #140d0900, #140d09);
-  --fantasy-minimap-bezel: radial-gradient(circle, var(--well) 64%, var(--line) 66%, var(--accent) 69%, var(--line-strong) 72%, var(--control) 75%, var(--well) 77%);
-  --fantasy-minimap-inner: inset 0 0 18px var(--color-shadow);
-  --fantasy-minimap-mask: radial-gradient(circle, #000 69%, #0000 70.5%);
-  --fantasy-log-fade: linear-gradient(180deg, #000 0, #000 calc(100% - 36px), #0000 100%);
-  /* ── The shooter components' surfaces. The HUD is read over a moving
-     scene: its plates are opaque (the frame is blended in linear light, so
-     a bright sky lifts a translucent one and drops a foe's red name under
-     4.5:1), and a mark with no plate carries its own dark keyline. */
-  --fantasy-hud-plate: rgb(from var(--scene-plate) r g b / 1);
-  --fantasy-reticle-keyline: 0 0 0 var(--stroke-hairline) var(--color-shadow), 0 0 3px var(--shadow-69);
-  --fantasy-shadow-xs: 0 2px 4px var(--color-shadow);
-  --fantasy-shadow-sm: 0 4px 10px #000a;
-  --fantasy-shadow-md: 0 6px 16px #000c;
-  --fantasy-shadow-lg: 0 8px 20px #000c;
 
   font-family: "Fantasy Text", "Fantasy Serif", serif;
   /* A number, so every line box follows its own font size, which follows the

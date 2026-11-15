@@ -20,8 +20,8 @@ above it) supplies every appearance through the members' named parts
 (docs/ui.md §3.2), qualified by their states and `data-*` attributes, for
 example `CardFace.frame[data-rarity=legendary]` or
 `button[aria-selected=true]::part(CardHand\.card)`. Each member lists its
-parts in its `<meta name="parts">`. The fantasy pack's `card.css`
-(`templates/styles/fantasy/`) is the reference dress.
+parts in its `<meta name="parts">`. The fantasy pack dresses them
+through its tokens alone (`templates/styles/fantasy/base.css`).
 
 Hooks for a pack: `data-type` (attack, skill, power, status, curse, relic,
 or the game's word) and `data-rarity` (common, uncommon, rare, epic,

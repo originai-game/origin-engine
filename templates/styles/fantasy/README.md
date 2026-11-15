@@ -6,69 +6,52 @@ corners, gold dividers with a centre diamond, painted button plates (crimson
 primary, dark iron secondary) and rarity rims that glow over a tinted well.
 Load it with `og.load.style(world, "@styles/fantasy")`.
 
-The pack's CSS applies in the `og-pack` layer, above the built-in components'
-structure (`og-components`) and below a game's own styles (`og-game`, unlayered).
-Inside it, `controls.css` keeps the core controls in a layer of its own
-(`fantasy-controls`), under the pack's other files. A button that a component
-names as a part still matches `button::part(base)`, so without the layer a
-group file's rule for it would lose to the core button's whenever the group's
-name sorts before `controls` (arena, card) or a state rule has the higher
-specificity. With it, a rule that names a component part wins. Only the
-button's focus ring stands outside the layer: the focus part wears the
-button's base rules, and it must stay a ring whatever plate the button has.
+The pack is a theme of CSS tokens. It applies in the `og-pack` layer, above
+the built-in components' structure (`og-components`) and below a game's own
+styles (`og-game`, unlayered), and it selects no component part: every
+built-in component wears the default style's control and role rules, which
+read these tokens.
 
 | File | What it holds |
 | --- | --- |
-| `base.css` | Fonts (`@font-face` from `@styles/shared`) and every value the pack draws with, as `:root` tokens for the dark and light schemes: colours, gradients, shadows, lengths, durations, easings, font families, art and sound `url()`s |
-| `controls.css` | Every core control's parts and states through `host::part(name):state`, in the `fantasy-controls` layer: painted button plates by `border-image`, tabs, toggles, sliders, inputs, slots, tooltips and the rest; and, outside the layer, the button's focus ring |
-| `rpg.css` | The rpg components (`packages/engine/src/ui/components/rpg`) through their named parts (`[part="RpgBackpack.frame"]`, `button::part(RpgBackpack\.cell)`) and `data-*` states: frames, bands, rarity rims, vitals bars, action bar, commands, map, compass; and the rpg sheet's `.rpg-ground`, `.rpg-fold` and `.rpg-minimap` wrappers |
-| `shooter.css` | The shooter components (`packages/engine/src/ui/components/shooter`) through their parts and class qualifiers (`[part="Crosshair.hit"].kill`, `button::part(Loadout\.item)`): the reticle's marks, ring and hit confirmations, each with a dark keyline; opaque lamp-black plates in a brass rim for the vitals, the ammunition and the killfeed rows, the names in their side's ink, the player's rows with a gold edge, a headshot's mark in gold; the weapon and the reload's words in small caps, the fire mode on a crimson tag, the magazine in gold on a brass track; the loadout's categories under crimson bands and its slots as soot plates with every state |
-| `components.css` | The ungrouped components (`packages/engine/src/ui/components`) through their parts: the speech bubble's tail, a shape, in the frame's lamp-black foot with a brass rim (`[part="SpeechBubble.tail"]`), since the frame's fill is layers no shape can take; the ability bar's and ability slot's cells as dark wells in a brass rim (`button::part(AbilitySlot\.cell)`), not the painted button plate, their wells and badges dressed through the role tokens they set (`--well-fill`, `--badge-shadow`) so the components' own states still show; the minimap's glass as a dark well in a brass rim (`button::part(MinimapView\.glass)`), not the button plate, and its north mark on a small lamp-black plate |
-| `motion.css` | Transitions over a slow warm curve, `-og-spring()` on tab indicators, the acting portrait and fresh badges; a `prefers-reduced-motion` branch keeps the state changes and drops the movement |
-| `sounds.css` | `-og-sound` sets from the shared library for press, hover, select, confirm, back, open, close, error and reward, with quieter variants on cells and HUD plates |
+| `base.css` | Fonts (`@font-face` from `@styles/shared`) and every value the pack draws with, as `:root` tokens for the dark and light schemes |
+| `motion.css` | Transitions on the core controls over the pack's slow warm curve, a spring on the tab indicator; a `prefers-reduced-motion` branch keeps the state changes and drops the movement |
+| `sounds.css` | `-og-sound` sets from the shared library for press, hover, select, confirm, back, open, close, error and reward |
 | `art/` | Frame and button art (SVG), filigree corners, the glow and the ground (PNG), each with its import `.ogt` (colour art sRGB; masks linear) |
 
 ## Tokens
 
-Only `base.css` writes values; `controls.css`, `motion.css`, `rpg.css`,
-`shooter.css`, `components.css` and `sounds.css` name them with `var()` (`og style check`
-enforces it), so a
-variant restyles the pack by setting tokens alone
-(`templates/styles/tests/fantasy-frost`).
+Only `base.css` writes values; `motion.css` and `sounds.css` name them with
+`var()` (`og style check` enforces it), so a variant restyles the pack by
+setting tokens alone (`templates/styles/tests/fantasy-frost`).
 
-- Engine tokens it sets: the palette roles (`--panel`, `--ink`, `--line`,
-  `--line-strong`, `--primary`, `--accent`, `--focus`, `--gold`, `--hud`,
-  `--scene-*`, `--color-shadow`…), `--font-*`, `--radius-*`,
-  `--field-border-width`, `--field-shadow`, `--slot-shadow`,
-  `--button-pressed-shadow`, `--dropdown-list-shadow`. `--line-strong` is
-  every brass rim and `--accent` every gold wash and glow, so changing one
-  restyles all of them.
-- Steps of a role: `--accent-N`, `--line-strong-N`, `--shadow-N` are the
-  role at N % alpha (`rgb(from var(--accent) r g b / …)`), the engine's
-  `--line-70` naming; they follow the role.
-- Control-named tokens the engine does not read (it has no image, ink or
-  fill token for these): `--button-image*`, `--button-primary-image*`,
-  `--button-*-ink`, `--button-font`, `--button-text-shadow`,
-  `--button-image-end` (the plate's slice), `--checkbox-checked-fill`,
-  `--radio-card-*`, `--switch-*-fill`, `--slider-knob-*`, `--field-fill`,
-  `--field-focus-shadow`, `--panel-fill`, `--panel-shadow`, `--slot-fill`,
-  `--tabs-indicator-glow`, `--keyboard-key-fill`, `--action-face-*`.
+- The palette roles (`--panel`, `--ink`, `--line`, `--line-strong`,
+  `--primary`, `--accent`, `--focus`, `--gold`, `--hud`, `--scene-*`,
+  `--color-shadow`…), `--font-*`, the em type steps (`--font-step-*`),
+  `--radius-*`, and the curve and durations. `--line-strong` is every brass
+  rim and `--accent` every gold wash and glow, so changing one restyles all
+  of them. `--accent-N`, `--line-strong-N` and `--shadow-N` are the role at
+  N % alpha (the engine's `--line-70` naming).
+- The core controls' tokens: `--button-*` (the painted plate is
+  `--button-image*` with `--button-image-slice` and `--button-image-width`),
+  `--checkbox-*`, `--radio-*`, `--switch-*`, `--tabs-*`, `--slider-*`,
+  `--field-*`, `--dropdown-*`, `--stepper-*`, `--details-*`, `--panel-*`,
+  `--tooltip-*`, `--hud-*`, `--slot-*`, `--meter-*`, `--keyboard-*`,
+  `--touch-*`, `--heading-flourish`, `--scrollbar-*`.
 - The role tokens (docs/ui.md §3.1): `--frame-*`, `--plate-*`, `--band-*`,
-  `--title-*`, `--row-*`, `--cell-*` (and `--cell-<rarity>-*`), `--badge-*`,
-  `--well-*`, `--figure-*`, `--label-*`, the state inks, `--trend-*`,
-  `--tone-*`, the art marks (`--mark-*`) and sounds (`--sfx-*`). The default
-  style dresses every frame, band, title, row and cell from them, so the
-  pack has no rule for those roles; it also sets the em type steps
-  (`--font-step-*`) and the curve and durations (`--motion-easing-out`,
-  `--motion-duration-*`).
-- Pack-private `--fantasy-*`, where no engine token means that thing: the
-  filigree and ground art, long loops (`--fantasy-motion-glint`,
-  `-acting`), and the composite fills and shadows one rpg component alone
-  wears (the minimap bezel, the compass strip, party members, the vitals
-  rings, command plates…). The shooter HUD's two: `--fantasy-hud-plate`,
-  `--scene-plate` made opaque (a translucent plate over a bright sky drops
-  a foe's red name under 4.5:1), and `--fantasy-reticle-keyline`, the dark
-  line round each mark of the crosshair.
+  `--title-*`, `--row-*`, `--cell-*` (and `--cell-<rarity>-*`),
+  `--badge-*`, `--well-*`, `--figure-*`, `--label-*`, `--tag-*`, the state
+  inks, `--trend-*`, `--tone-*`, the art marks (`--mark-*`) and sounds
+  (`--sfx-*`). The filigree corners are layers of `--frame-fill` and
+  `--plate-fill`, so they need no rule.
+- One component's own look: `--bubble-tail-fill`, `--reticle-keyline`, and
+  the sheets' `--ground-fill`.
+- Pack-private `--fantasy-*`: the art `url()`s and the few values the tokens
+  above share.
+
+Tokens the engine does not read yet are listed with the engine-gaps thread
+as missing hooks; until it reads them, that part wears the default shape in
+this pack's colours.
 
 ## Art provenance
 
@@ -77,12 +60,3 @@ The SVGs were drawn by hand for this pack. `ground.png` and
 through the OriginGame gateway (2026-11) and post-processed (cropped,
 mirrored, keyed to alpha); `glow.png` is a computed soft radial falloff.
 Fonts come from `@styles/shared` under their own licences there.
-
-## Pending engine gaps
-
-Rules written in their correct form are kept and marked `/* pending: … */`
-where an engine feature is still landing:
-
-- A heading's `::part(flourish)` is read as a text span and refuses
-  `background`, so the gold rule under a heading is not drawn yet
-  (parts-as-nodes).

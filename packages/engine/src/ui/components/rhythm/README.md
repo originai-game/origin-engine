@@ -20,8 +20,8 @@ tokens. It sets no colour, font or art, and lands in the `og-components`
 layer. A style pack (`og-pack`) supplies every appearance through the
 members' named parts (docs/ui.md §3.2), qualified by their states and
 `data-*` attributes, for example `RhythmResults::row[data-judgement=miss]` or
-`button::part(RhythmDifficulty\.row)[data-tier=expert]`. The fantasy pack's
-dress is `templates/styles/fantasy/rhythm.css`.
+`button::part(RhythmDifficulty\.row)[data-tier=expert]`. The fantasy pack dresses them
+through its tokens alone (`templates/styles/fantasy/base.css`).
 
 Hooks for a pack: `data-status` (``, loading, error) on the song select
 frame; `data-locked`, `data-fresh`, `data-cleared`, `data-previewing` and

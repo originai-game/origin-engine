@@ -28,8 +28,8 @@ the members' named parts (docs/ui.md §3.2), qualified by their states and
 lists its parts in its `<meta name="parts">`. The plain action buttons
 (Claim, Buy, Cancel, Send, Accept, Decline, Invite, Add friend, Try again)
 name no part: they are core buttons (`variant="primary"`, `secondary`,
-`ghost`) and take the pack's plates. The fantasy pack's
-`templates/styles/fantasy/general.css` is the reference dress.
+`ghost`) and take the pack's plates. The fantasy pack dresses them
+through its tokens alone (`templates/styles/fantasy/base.css`).
 
 State never rests on colour alone: a refused offer says Sold out, Owned or
 Not enough beside a mark, and in its accessible name; an achievement says

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "fantasy style pack",
+      "summary": "The pack is a theme of CSS tokens: base.css (dark and light :root tokens), its art, motion.css and sounds.css. Its controls and per-group files are gone, so it no longer restyles a component's internals part by part; every control and component wears the default style's rules in the pack's brass, crimson and walnut. Text over the scene takes a stronger --tag-halo, so a red name or damage number holds over a red ground."
+    }
+  ]
+}

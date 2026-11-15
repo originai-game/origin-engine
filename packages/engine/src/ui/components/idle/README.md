@@ -21,8 +21,8 @@ tokens. It sets no colour, font or art, and lands in the `og-components`
 layer. A style pack (`og-pack`) supplies every appearance through the
 members' named parts (docs/ui.md §3.2), qualified by their states and
 `data-*` attributes, for example `IdleResources::row[data-full=true]` or
-`button::part(IdleGenerators\.row)[data-locked=true]`. The fantasy pack's
-dress is `templates/styles/fantasy/idle.css`.
+`button::part(IdleGenerators\.row)[data-locked=true]`. The fantasy pack dresses them
+through its tokens alone (`templates/styles/fantasy/base.css`).
 
 Hooks for a pack: `data-full`, `data-loading` and `data-trend` (up, down,
 flat) on resource rows, `data-trend` on their rate; `aria-selected`,

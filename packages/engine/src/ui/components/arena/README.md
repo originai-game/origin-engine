@@ -21,8 +21,8 @@ tokens. It sets no colour, font or art, and lands in the `og-components`
 layer. A style pack (`og-pack`) supplies every appearance through the
 members' named parts (docs/ui.md §3.2), qualified by their states and
 `data-*` attributes, for example `[part="ArenaScoreboard.row"][data-local=true]`
-or `button::part(ArenaRoster\.cell)[data-taken=true]`. The fantasy pack's
-dress is `templates/styles/fantasy/arena.css`.
+or `button::part(ArenaRoster\.cell)[data-taken=true]`. The fantasy pack dresses them
+through its tokens alone (`templates/styles/fantasy/base.css`).
 
 Hooks for a pack: `data-role`, `data-locked`, `data-taken` and
 `aria-selected` on roster cells, `data-role` on their role,

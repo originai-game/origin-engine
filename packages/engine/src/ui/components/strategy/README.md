@@ -21,8 +21,8 @@ tokens. It sets no colour, font or art, and lands in the `og-components`
 layer. A style pack (`og-pack`) supplies every appearance through the
 members' named parts (docs/ui.md §3.2), qualified by their states and
 `data-*` attributes, for example `StrategyTower::path[data-state=locked]` or
-`button[data-active=true]::part(StrategySelection\.command)`. The fantasy
-pack's dress is `templates/styles/fantasy/strategy.css`.
+`button[data-active=true]::part(StrategySelection\.command)`. The fantasy pack dresses them
+through its tokens alone (`templates/styles/fantasy/base.css`).
 
 Hooks for a pack: `data-kind` (unit, building) on selection cells and the
 detail; `aria-selected` on the focused cell; `data-active` and

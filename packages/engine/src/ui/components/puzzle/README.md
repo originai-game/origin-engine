@@ -19,8 +19,8 @@ a token background on its frame. It lands in the `og-components` layer; a
 style pack (`og-pack`, above it) supplies every appearance through the
 members' named parts (docs/ui.md §3.2), qualified by their states and
 `data-*` attributes, for example `PuzzleLevelPath::node[data-state=current]`.
-The fantasy pack's `templates/styles/fantasy/puzzle.css` is the reference
-dress.
+The fantasy pack dresses them
+through its tokens alone (`templates/styles/fantasy/base.css`).
 
 Hooks for a pack: `data-state` (locked, open, current, done) on level-path
 lanes, trails, nodes and stars, `aria-selected` on the node the player

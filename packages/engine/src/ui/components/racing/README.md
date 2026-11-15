@@ -19,8 +19,8 @@ tokens. It sets no colour, font or art, and lands in the `og-components`
 layer. A style pack (`og-pack`) supplies every appearance through the
 members' named parts (docs/ui.md §3.2), qualified by their states and
 `data-*` attributes, for example `RacingStandings::row[data-player=true]` or
-`button[data-locked=true]::part(RacingGarage\.tile)`. The fantasy pack's
-dress is `templates/styles/fantasy/racing.css`.
+`button[data-locked=true]::part(RacingGarage\.tile)`. The fantasy pack dresses them
+through its tokens alone (`templates/styles/fantasy/base.css`).
 
 Hooks for a pack: `data-dial` (radial, bar), `data-shift`, `data-boosting`
 and `data-redline` on the telemetry frame; `data-final` on the lap HUD and
