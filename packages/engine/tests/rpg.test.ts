@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 import { defineSystem, og } from "@origingame/engine";
 
 declare const Bun: { spawnSync(cmd: string[], o: { cwd: string; env: Record<string, string | undefined>; stdout: "ignore"; stderr: "pipe" }): { exitCode: number; stderr: Uint8Array } };
-import { loadNativeHost } from "../src/node/index.ts";
+import { loadNativeHost, native } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { ogBin } from "./support/og-bin.ts";
 
@@ -31,6 +31,11 @@ type Event = { mount: string; path: string; rowKey: string; kind: string; name: 
 const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
 const GROUP = join(ENGINE, "src/ui/components/rpg");
 const STYLES = join(ENGINE, "../../templates/styles");
+// The packs the group is dressed by. Every test runs in the first; each
+// fixture is mounted in the others too, where a pack's own type, rims and
+// padding decide what fits a screen.
+const PACKS = ["fantasy", "scifi"] as const;
+type Pack = (typeof PACKS)[number];
 let root = "";
 let styles = "";
 
@@ -45,14 +50,14 @@ beforeAll(() => {
   loadNativeHost();
   root = mkdtempSync(join(tmpdir(), "og-rpg-kit-"));
   styles = mkdtempSync(join(tmpdir(), "og-rpg-styles-"));
-  for (const d of ["fantasy", "shared"]) cpSync(join(STYLES, d), join(styles, d), { recursive: true });
+  for (const d of [...PACKS, "shared"]) cpSync(join(STYLES, d), join(styles, d), { recursive: true });
   writeFileSync(join(styles, "fantasy/zz-cascade-probe.css"), PROBE_PACK);
   mkdirSync(join(root, "assets/ui"), { recursive: true });
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Rpg kit"\nid "rpg-kit"\nentry "main.ts"\n');
   writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
-  // A look naming the pack is what makes the cook bundle it (@styles/fantasy).
+  // A look naming a pack is what makes the cook bundle it (@styles/<pack>).
   mkdirSync(join(root, "assets/looks"), { recursive: true });
-  writeFileSync(join(root, "assets/looks/fantasy.ogt"), 'type look\nversion 1\n---\nname "rpg kit fantasy"\nui "fantasy"\n');
+  for (const pack of PACKS) writeFileSync(join(root, `assets/looks/${pack}.ogt`), `type look\nversion 1\n---\nname "rpg kit ${pack}"\nui "${pack}"\n`);
   for (const f of readdirSync(GROUP).filter((f) => f.endsWith(".svelte"))) {
     const text = readFileSync(join(GROUP, f), "utf8");
     const component = /<meta name="component" content="([^"]+)">/.exec(text)![1]!;
@@ -86,8 +91,8 @@ type View = { width: number; height: number; dpr: number; safeArea: { left: numb
 const DESKTOP: View = { width: 1280, height: 720, dpr: 1.5, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktopHd" };
 const PHONE: View = { width: 390, height: 844, dpr: 2, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" };
 
-/** An engine mounting `component` dressed by the fantasy pack (or by the default style), its document events collected in `events`. */
-function engine(component: string, stores: Record<string, unknown>, o: { events?: Event[]; view?: View; pack?: boolean } = {}): Engine {
+/** An engine mounting `component` dressed by a pack, the first unless named (or by the default style), its document events collected in `events`. */
+function engine(component: string, stores: Record<string, unknown>, o: { events?: Event[]; view?: View; pack?: Pack | false } = {}): Engine {
   const events = o.events ?? [];
   const Collect = defineSystem("RpgKitEvents", {}, (_q, _t, world) => {
     for (const e of og.ui.docEvents(world)) events.push(e as unknown as Event);
@@ -96,7 +101,7 @@ function engine(component: string, stores: Record<string, unknown>, o: { events?
     systems: [Collect],
     start(world) {
       if (o.pack !== false) {
-        const style = og.load.style(world, "@styles/fantasy");
+        const style = og.load.style(world, `@styles/${o.pack ?? PACKS[0]}`);
         if (!style.ok) throw new Error(style.reason);
         og.ui.configure(world, { style: style.value });
       }
@@ -146,18 +151,21 @@ const pad = (e: Engine, spec: string): void => {
   e.advance(8);
 };
 const errors = (e: Engine): readonly string[] => og.ui.scope(e.world, "t").takeErrors();
+/** Style values a pack left unresolved: a var() naming no token or a value invalid where it is used, from the frame's warnings (as og ui check reads them). */
+const unresolved = (e: Engine): string[] => ((JSON.parse(native().og_node_ui_frame((e as unknown as { id: number }).id)) as { warnings?: string[] }).warnings ?? []).filter((w) => w.includes("computed-value"));
 const row = (e: Engine, k: string): El => find(e, new RegExp(`#${k}$`))!;
 
-// One test per view and a third of the members, so none runs long.
-for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
+// One test per pack, view and a third of the members, so none runs long.
+for (const pack of PACKS) for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
   const names = readdirSync(GROUP).filter((f) => f.endsWith(".svelte")).map((f) => f.replace(".svelte", ""));
   for (let third = 0; third < 3; third++) {
     const some = names.filter((_, i) => i % 3 === third);
-    test(`${some.join(", ")} mount from their fixtures on a ${view}, dressed by the pack, inside the screen's width`, () => {
+    test(`${some.join(", ")} mount from their fixtures on a ${view}, dressed by ${pack}, inside the screen's width`, () => {
       for (const name of some) {
-        run(member(name, {}, { view: viewport }), (e) => {
+        run(member(name, {}, { view: viewport, pack }), (e) => {
           e.advance(3);
           expect(`${name}: ${errors(e).join("; ")}`).toBe(`${name}: `);
+          expect(`${name}: ${unresolved(e).join("; ")}`).toBe(`${name}: `);
           const box = find(e, /^t:page\/[^/]+$/)!;
           expect(`${name} ${box.x + box.width <= viewport.width + 0.5}`).toBe(`${name} true`);
         });
@@ -168,7 +176,7 @@ for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const
 
 test("the pack beats a component rule of equal specificity (og-components < og-pack), and the component rule holds without the pack", () => {
   const inset = (pack: boolean) => {
-    const e = member("backpack", {}, { pack });
+    const e = member("backpack", {}, { pack: pack && PACKS[0] });
     try {
       e.advance(3);
       const all = elements(e);

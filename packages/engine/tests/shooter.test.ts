@@ -2,7 +2,7 @@
 // used by name from the game's own pages with nothing copied or loaded but
 // the pages, using the default style, each member mounted from named stores
 // and driven through the probe's touch, key and pad commands; the HUD is
-// laid out again in the fantasy pack.
+// laid out again in the fantasy and scifi packs.
 //
 // Ways it could fail: an intent sent without its row key or for a disabled
 // (locked) slot; selection following a row's index instead of its key
@@ -11,7 +11,9 @@
 // killfeed out of the collection's order or crowding a phone; HUD readouts
 // under the phone's safe area or on top of each other, in the default style
 // or under a pack's larger type and rims; a reticle a pack leaves undrawn
-// because one of the pack's :root tokens has the name of its own variable.
+// because one of the pack's :root tokens has the name of its own variable;
+// a pack's ink on the magazine count hiding its low and empty inks; a pack's
+// button plate drawn again over a slot's content when the keyboard focuses it.
 import { afterAll, beforeAll, expect, setDefaultTimeout, test } from "bun:test";
 
 // The tests run on ticks, not the clock; a time limit only guards a hang
@@ -22,7 +24,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineSystem, og } from "@origingame/engine";
-import { loadNativeHost } from "../src/node/index.ts";
+import { loadNativeHost, native } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { cookProject } from "./support/og-bin.ts";
 
@@ -30,6 +32,7 @@ type El = { id: string; path: string; text: string; x: number; y: number; width:
 type Event = { mount: string; path: string; rowKey: string; kind: string; name: string };
 
 const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
+const PACKS = ["fantasy", "scifi"] as const;
 let root = "";
 
 const SLOTS = [
@@ -58,8 +61,8 @@ beforeAll(() => {
   cpSync(join(ENGINE, "../../templates/styles/shared/InstrumentSans-Regular.ttf"), join(root, "assets/fonts/body.ttf"));
   writeFileSync(join(root, "assets/fonts/body.ttf.ogt"), 'type import\nversion 1\n---\nfont {\n  charset latin\n}\n');
   for (const [name, text] of Object.entries(PAGES)) writeFileSync(join(root, "assets/ui", `${name}.svelte`), text);
-  // A look naming the pack is what makes the cook bundle it (@styles/fantasy).
-  writeFileSync(join(root, "assets/looks/fantasy.ogt"), 'type look\nversion 1\n---\nname "shooter kit fantasy"\nui "fantasy"\n');
+  // A look naming a pack is what makes the cook bundle it (@styles/<pack>).
+  for (const pack of PACKS) writeFileSync(join(root, `assets/looks/${pack}.ogt`), `type look\nversion 1\n---\nname "shooter kit ${pack}"\nui "${pack}"\n`);
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Shooter kit"\nid "shooter-kit"\nentry "main.ts"\n');
   writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
   cookProject(root, root);
@@ -284,6 +287,51 @@ test("AmmoCounter: the count, the reload in progress, and the empty magazine's p
   }
 });
 
+// What the native host drew, as og ui check reads it: each line of text with
+// its ink, and every filled rectangle text can sit on, in CSS px.
+type Frame = { texts: { text: string; color: number[] }[]; grounds: [number, number, number, number][] };
+const frame = (e: Engine): Frame => JSON.parse(native().og_node_ui_frame((e as unknown as { id: number }).id)) as Frame;
+
+for (const pack of ["", ...PACKS]) {
+  test(`AmmoCounter in ${pack || "the default style"}: the count's ink tells a low magazine and an empty one from a full one`, () => {
+    const e = engine("hudTest", HUD, [], pack);
+    try {
+      // 24 of 28 rounds, then 6 (under the quarter that is low), then none.
+      const ink = (magazine: number): string => {
+        store(e).writable("magazine", 0).set(magazine);
+        e.advance(30);
+        const count = frame(e).texts.find((t) => t.text === String(magazine));
+        return count ? count.color.map((c) => c.toFixed(2)).join(" ") : `no count ${magazine}`;
+      };
+      const [full, low, empty] = [ink(24), ink(6), ink(0)];
+      expect(`${full} | ${low} | ${empty}`).not.toContain("no count");
+      expect(new Set([full, low, empty]).size).toBe(3);
+    } finally {
+      e.destroy();
+    }
+  });
+}
+
+for (const pack of PACKS) {
+  test(`Loadout in ${pack}: a slot the keyboard focuses keeps its content, with no plate drawn over it`, () => {
+    const e = engine("loadoutTest", { title: "", categories: CATEGORIES, slots: SLOTS, selected: "halcyon" }, [], pack);
+    try {
+      e.advance(3);
+      // The filled rectangles covering a slot: its own plate's layers.
+      const plates = (slot: El): number => frame(e).grounds.filter(([x, y, w, h]) => Math.abs(x - slot.x) <= 2 && Math.abs(y - slot.y) <= 2 && Math.abs(w - slot.width) <= 4 && Math.abs(h - slot.height) <= 4).length;
+      const slots = () => elements(e).filter((x) => /#(strider|halcyon|pike|wren)$/.test(x.path));
+      const before = Object.fromEntries(slots().map((x) => [x.path, plates(x)]));
+      e.probe.commands("0:key_down:ArrowDown;0.05:key_up:ArrowDown");
+      e.advance(8);
+      const focused = slots().find((x) => x.states?.includes("focused"));
+      expect(focused).toBeDefined();
+      expect(`${focused!.path.split("#").pop()} ${plates(focused!)}`).toBe(`${focused!.path.split("#").pop()} ${before[focused!.path]}`);
+    } finally {
+      e.destroy();
+    }
+  });
+}
+
 test("DamageDirection and Killfeed follow their collections by key and order", () => {
   const e = engine("hudTest", HUD);
   try {
@@ -313,7 +361,7 @@ const LANDSCAPE = { width: 844, height: 390, dpr: 2, safeArea: { left: 47, top: 
 const DESKTOP = { width: 1920, height: 1080, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" };
 const meet = (a: El, b: El): boolean => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
-for (const pack of ["", "fantasy"]) for (const [name, viewport] of [["desktop", DESKTOP], ["phone", PHONE], ["landscape phone", LANDSCAPE]] as const) {
+for (const pack of ["", ...PACKS]) for (const [name, viewport] of [["desktop", DESKTOP], ["phone", PHONE], ["landscape phone", LANDSCAPE]] as const) {
   test(`CombatHud on a ${name} in ${pack || "the default style"}: readouts inside the safe area and clear of each other; a phone shows three feed rows`, () => {
     const e = engine("hudTest", HUD, [], pack);
     try {

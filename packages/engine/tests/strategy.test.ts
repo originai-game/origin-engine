@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 import { defineSystem, og } from "@origingame/engine";
 
 declare const Bun: { spawnSync(cmd: string[], o: { cwd: string; env: Record<string, string | undefined>; stdout: "ignore"; stderr: "pipe" }): { exitCode: number; stderr: Uint8Array } };
-import { loadNativeHost } from "../src/node/index.ts";
+import { loadNativeHost, native } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { ogBin } from "./support/og-bin.ts";
 
@@ -30,6 +30,11 @@ type Event = { mount: string; path: string; rowKey: string; kind: string; name: 
 const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
 const GROUP = join(ENGINE, "src/ui/components/strategy");
 const STYLES = join(ENGINE, "../../templates/styles");
+// The packs the group is dressed by. Every test runs in the first; each
+// fixture is mounted in the others too, where a pack's own type, rims and
+// padding decide what fits a screen.
+const PACKS = ["fantasy", "scifi"] as const;
+type Pack = (typeof PACKS)[number];
 let root = "";
 let styles = "";
 
@@ -41,13 +46,13 @@ beforeAll(() => {
   root = mkdtempSync(join(tmpdir(), "og-strategy-kit-"));
   styles = mkdtempSync(join(tmpdir(), "og-strategy-styles-"));
   loadNativeHost();
-  for (const d of ["fantasy", "shared"]) cpSync(join(STYLES, d), join(styles, d), { recursive: true });
+  for (const d of [...PACKS, "shared"]) cpSync(join(STYLES, d), join(styles, d), { recursive: true });
   mkdirSync(join(root, "assets/ui"), { recursive: true });
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Strategy kit"\nid "strategy-kit"\nentry "main.ts"\n');
   writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
-  // A look naming the pack is what makes the cook bundle it (@styles/fantasy).
+  // A look naming a pack is what makes the cook bundle it (@styles/<pack>).
   mkdirSync(join(root, "assets/looks"), { recursive: true });
-  writeFileSync(join(root, "assets/looks/fantasy.ogt"), 'type look\nversion 1\n---\nname "strategy kit fantasy"\nui "fantasy"\n');
+  for (const pack of PACKS) writeFileSync(join(root, `assets/looks/${pack}.ogt`), `type look\nversion 1\n---\nname "strategy kit ${pack}"\nui "${pack}"\n`);
   for (const f of readdirSync(GROUP).filter((f) => f.endsWith(".svelte"))) {
     const text = readFileSync(join(GROUP, f), "utf8");
     const component = /<meta name="component" content="([^"]+)">/.exec(text)![1]!;
@@ -76,7 +81,7 @@ type View = { width: number; height: number; dpr: number; safeArea: { left: numb
 const DESKTOP: View = { width: 1280, height: 720, dpr: 1.5, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktopHd" };
 const PHONE: View = { width: 390, height: 844, dpr: 2, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" };
 
-function engine(component: string, stores: Record<string, unknown>, o: { events?: Event[]; view?: View; textScale?: number } = {}): Engine {
+function engine(component: string, stores: Record<string, unknown>, o: { events?: Event[]; view?: View; textScale?: number; pack?: Pack } = {}): Engine {
   const events = o.events ?? [];
   const Collect = defineSystem("StrategyKitEvents", {}, (_q, _t, world) => {
     for (const e of og.ui.docEvents(world)) events.push(e as unknown as Event);
@@ -84,7 +89,7 @@ function engine(component: string, stores: Record<string, unknown>, o: { events?
   const r = createEngine(og.game({
     systems: [Collect],
     start(world) {
-      const style = og.load.style(world, "@styles/fantasy");
+      const style = og.load.style(world, `@styles/${o.pack ?? PACKS[0]}`);
       if (!style.ok) throw new Error(style.reason);
       og.ui.configure(world, { style: style.value, textScale: o.textScale ?? 1 });
       for (const path of DOCUMENTS(component)) {
@@ -123,18 +128,21 @@ const run = (e: Engine, f: (e: Engine) => void) => {
   }
 };
 const errors = (e: Engine): readonly string[] => og.ui.scope(e.world, "t").takeErrors();
+/** Style values a pack left unresolved: a var() naming no token or a value invalid where it is used, from the frame's warnings (as og ui check reads them). */
+const unresolved = (e: Engine): string[] => ((JSON.parse(native().og_node_ui_frame((e as unknown as { id: number }).id)) as { warnings?: string[] }).warnings ?? []).filter((w) => w.includes("computed-value"));
 /** The words shown, lower-cased: a pack may set them in capitals. */
 const texts = (e: Engine): string[] => elements(e).filter((x) => x.width > 0).map((x) => x.text.toLowerCase());
 /** The button of a keyed row: the row's own (its path ends in #key) or the one inside it (under #key/). */
 const rowButton = (e: Engine, k: string): El => elements(e).find((x) => x.role === "button" && (x.path.endsWith(`#${k}`) || x.path.includes(`#${k}/`)) && x.width > 0)!;
 
-// One test per member and view: each fixture boots its own engine.
-for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
+// One test per pack, member and view: each fixture boots its own engine.
+for (const pack of PACKS) for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
   for (const name of ["selection", "queue", "wave", "tower"]) {
-    test(`${name} mounts from every fixture on a ${view} without errors, inside the screen's width`, () => {
+    test(`${name} mounts from every fixture on a ${view} in ${pack} without errors, inside the screen's width`, () => {
       for (const fixture of Object.keys(MEMBERS[name]!.fixtures)) {
-        run(member(name, fixture, { view: viewport }), (e) => {
+        run(member(name, fixture, { view: viewport, pack }), (e) => {
           expect(`${name}/${fixture}: ${errors(e).join("; ")}`).toBe(`${name}/${fixture}: `);
+          expect(`${name}/${fixture}: ${unresolved(e).join("; ")}`).toBe(`${name}/${fixture}: `);
           const frame = find(e, /^t:page\/Root\/node1$/)!;
           expect(`${name}/${fixture} ${frame.x >= -0.5 && frame.x + frame.width <= viewport.width + 0.5}`).toBe(`${name}/${fixture} true`);
         });
@@ -226,10 +234,10 @@ test("StrategyWave: wave n of m, the countdown, the enemies by kind, and Call ea
   run(member("wave", "done"), (e) => expect(texts(e)).toContain("all waves cleared"));
 });
 
-for (const textScale of [1, 1.5]) {
-  test(`on a phone at ${textScale * 100} % text, long names and reasons never push a row's or a command's button off the screen`, () => {
+for (const pack of PACKS) for (const textScale of [1, 1.5]) {
+  test(`on a phone at ${textScale * 100} % text in ${pack}, long names and reasons never push a row's or a command's button off the screen`, () => {
     for (const [name, list] of [["queue", "items"], ["tower", "paths"], ["selection", "commands"]] as const) {
-      run(member(name, "overflow", { view: PHONE, textScale }), (e) => {
+      run(member(name, "overflow", { view: PHONE, textScale, pack }), (e) => {
         for (const { id } of MEMBERS[name]!.fixtures.overflow![list] as { id: string }[]) {
           const b = rowButton(e, id);
           expect(`${textScale} ${name} ${id} ${!!b && b.x >= -0.5 && b.x + b.width <= PHONE.width + 0.5}`).toBe(`${textScale} ${name} ${id} true`);

@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 import { defineSystem, og } from "@origingame/engine";
 
 declare const Bun: { spawnSync(cmd: string[], o: { cwd: string; env: Record<string, string | undefined>; stdout: "ignore"; stderr: "pipe" }): { exitCode: number; stderr: Uint8Array } };
-import { loadNativeHost } from "../src/node/index.ts";
+import { loadNativeHost, native } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { ogBin } from "./support/og-bin.ts";
 
@@ -30,6 +30,11 @@ type Event = { mount: string; path: string; rowKey: string; kind: string; name: 
 const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
 const GROUP = join(ENGINE, "src/ui/components/general");
 const STYLES = process.env.OG_STYLES_DIR ?? join(ENGINE, "../../templates/styles");
+// The packs the group is dressed by. Every test runs in the first; each
+// fixture is mounted in the others too, where a pack's own type, rims and
+// padding decide what fits a screen.
+const PACKS = ["fantasy", "scifi"] as const;
+type Pack = (typeof PACKS)[number];
 let root = "";
 
 /** Each member's component name, its parts and its fixtures, read from its document as a game's tooling reads them. */
@@ -41,9 +46,9 @@ beforeAll(() => {
   mkdirSync(join(root, "assets/ui"), { recursive: true });
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "General kit"\nid "general-kit"\nentry "main.ts"\n');
   writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
-  // A look naming the pack is what makes the cook bundle it (@styles/fantasy).
+  // A look naming a pack is what makes the cook bundle it (@styles/<pack>).
   mkdirSync(join(root, "assets/looks"), { recursive: true });
-  writeFileSync(join(root, "assets/looks/fantasy.ogt"), 'type look\nversion 1\n---\nname "general kit fantasy"\nui "fantasy"\n');
+  for (const pack of PACKS) writeFileSync(join(root, `assets/looks/${pack}.ogt`), `type look\nversion 1\n---\nname "general kit ${pack}"\nui "${pack}"\n`);
   for (const f of readdirSync(GROUP).filter((f) => f.endsWith(".svelte"))) {
     const text = readFileSync(join(GROUP, f), "utf8");
     const component = /<meta name="component" content="([^"]+)">/.exec(text)![1]!;
@@ -72,8 +77,8 @@ type View = { width: number; height: number; dpr: number; safeArea: { left: numb
 const DESKTOP: View = { width: 1280, height: 720, dpr: 1.5, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktopHd" };
 const PHONE: View = { width: 390, height: 844, dpr: 2, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" };
 
-/** An engine mounting `component` dressed by the fantasy pack, its document events collected in `events`. */
-function engine(component: string, stores: Record<string, unknown>, o: { events?: Event[]; view?: View } = {}): Engine {
+/** An engine mounting `component` dressed by a pack, the first unless named, its document events collected in `events`. */
+function engine(component: string, stores: Record<string, unknown>, o: { events?: Event[]; view?: View; pack?: Pack } = {}): Engine {
   const events = o.events ?? [];
   const Collect = defineSystem("GeneralKitEvents", {}, (_q, _t, world) => {
     for (const e of og.ui.docEvents(world)) events.push(e as unknown as Event);
@@ -81,7 +86,7 @@ function engine(component: string, stores: Record<string, unknown>, o: { events?
   const r = createEngine(og.game({
     systems: [Collect],
     start(world) {
-      const style = og.load.style(world, "@styles/fantasy");
+      const style = og.load.style(world, `@styles/${o.pack ?? PACKS[0]}`);
       if (!style.ok) throw new Error(style.reason);
       og.ui.configure(world, { style: style.value });
       for (const path of DOCUMENTS(component)) {
@@ -128,6 +133,8 @@ const pad = (e: Engine, spec: string): void => {
   e.advance(8);
 };
 const errors = (e: Engine): readonly string[] => og.ui.scope(e.world, "t").takeErrors();
+/** Style values a pack left unresolved: a var() naming no token or a value invalid where it is used, from the frame's warnings (as og ui check reads them). */
+const unresolved = (e: Engine): string[] => ((JSON.parse(native().og_node_ui_frame((e as unknown as { id: number }).id)) as { warnings?: string[] }).warnings ?? []).filter((w) => w.includes("computed-value"));
 const row = (e: Engine, k: string): El => find(e, new RegExp(`#${k}$`))!;
 /** The element with id `id` inside the row keyed `k`. */
 const inRow = (e: Engine, k: string, id: string): El => {
@@ -391,14 +398,15 @@ test("keyboard focus walks the shop's tiles from the first, Enter and the pad's 
   });
 });
 
-// One test per member and view: each fixture boots its own engine.
-for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
+// One test per pack, member and view: each fixture boots its own engine.
+for (const pack of PACKS) for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
   for (const name of readdirSync(GROUP).filter((f) => f.endsWith(".svelte")).map((f) => f.replace(".svelte", ""))) {
-    test(`${name} mounts from every fixture on a ${view}, dressed by the pack, inside the screen's width`, () => {
+    test(`${name} mounts from every fixture on a ${view}, dressed by ${pack}, inside the screen's width`, () => {
       for (const fixture of Object.keys(MEMBERS[name]!.fixtures)) {
-        run(member(name, fixture, {}, { view: viewport }), (e) => {
+        run(member(name, fixture, {}, { view: viewport, pack }), (e) => {
           e.advance(3);
           expect(`${name}/${fixture}: ${errors(e).join("; ")}`).toBe(`${name}/${fixture}: `);
+          expect(`${name}/${fixture}: ${unresolved(e).join("; ")}`).toBe(`${name}/${fixture}: `);
           const box = find(e, /^t:page\/[^/]+$/)!;
           expect(`${name}/${fixture} ${box.x + box.width <= viewport.width + 0.5}`).toBe(`${name}/${fixture} true`);
         });
