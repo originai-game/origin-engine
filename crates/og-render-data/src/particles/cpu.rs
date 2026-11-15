@@ -486,12 +486,7 @@ pub fn spline_points(points: &[Vec3], closed: bool) -> Vec<[f32; 4]> {
         let s = ((u * segments as f32) as usize).min(segments - 1);
         let t = u * segments as f32 - s as f32;
         let i = s as isize;
-        let (p0, p1, p2, p3) = (p(i - 1), p(i), p(i + 1), p(i + 2));
-        let (t2, t3) = (t * t, t * t * t);
-        0.5 * (2.0 * p1
-            + (p2 - p0) * t
-            + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2
-            + (3.0 * p1 - p0 - 3.0 * p2 + p3) * t3)
+        og_core::math::catmull_rom([p(i - 1), p(i), p(i + 1), p(i + 2)], t)
     };
     // Even by length: a dense polyline, then its length's equal steps.
     const DENSE: usize = 4096;

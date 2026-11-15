@@ -227,18 +227,8 @@ pub(super) fn camera_zone(
 /// `i`, parameter `t`.
 pub(super) fn catmull(p: &[Vec3], i: usize, t: f32) -> Vec3 {
     let at = |k: isize| p[k.clamp(0, p.len() as isize - 1) as usize];
-    let (p0, p1, p2, p3) = (
-        at(i as isize - 1),
-        at(i as isize),
-        at(i as isize + 1),
-        at(i as isize + 2),
-    );
-    let (t2, t3) = (t * t, t * t * t);
-    ((p1 * 2.0)
-        + (p2 - p0) * t
-        + (p0 * 2.0 - p1 * 5.0 + p2 * 4.0 - p3) * t2
-        + (p1 * 3.0 - p0 - p2 * 3.0 + p3) * t3)
-        * 0.5
+    let i = i as isize;
+    og_core::math::catmull_rom([at(i - 1), at(i), at(i + 1), at(i + 2)], t)
 }
 
 /// The rail point nearest `target`: 32 samples per segment, then a refinement.

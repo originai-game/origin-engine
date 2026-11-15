@@ -30,7 +30,9 @@ enum Curve {
     },
 }
 
-// three.js's Interpolations.
+// three.js's Interpolations, in its operation order: the points match the
+// TypeScript runtime's bit for bit (geom_contracts), so this is not
+// og_core::math::catmull_rom.
 fn catmull_rom(t: f64, p0: f64, p1: f64, p2: f64, p3: f64) -> f64 {
     let v0 = (p2 - p0) * 0.5;
     let v1 = (p3 - p1) * 0.5;

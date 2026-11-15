@@ -213,15 +213,7 @@ impl Path {
     fn cubic(&self, i: usize) -> [Vec3; 4] {
         match self.desc.kind {
             PathKind::CatmullRom => {
-                let [p0, p1, p2, p3] = self.cardinal(i);
-                let k = self.desc.tension;
-                let (t0, t1) = ((p2 - p0) * k, (p3 - p1) * k);
-                [
-                    p1,
-                    t0,
-                    p1 * -3.0 + p2 * 3.0 - t0 * 2.0 - t1,
-                    p1 * 2.0 - p2 * 2.0 + t0 + t1,
-                ]
+                og_core::math::cardinal_cubic(self.cardinal(i), self.desc.tension)
             }
             PathKind::Bezier => {
                 let b = 3 * i as isize;
@@ -242,8 +234,7 @@ impl Path {
 
     /// Segment `i`'s point at its own parameter `s` (0..1, not arc length).
     pub fn point(&self, i: usize, s: f32) -> Vec3 {
-        let [c0, c1, c2, c3] = self.cubic(i);
-        c0 + (c1 + (c2 + c3 * s) * s) * s
+        og_core::math::cubic_at(self.cubic(i), s)
     }
 
     /// Segment `i`'s derivative at `s`.

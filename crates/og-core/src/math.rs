@@ -483,6 +483,56 @@ pub fn wrap_angle_f64(a: f64) -> f64 {
     a - ((a - PI) / (2.0 * PI)).ceil() * (2.0 * PI)
 }
 
+/// A value a spline runs through: `f64`, `f32` and glam's `Vec2`, `Vec3`,
+/// `DVec2` and `DVec3`.
+pub trait SplinePoint:
+    Copy
+    + std::ops::Add<Output = Self>
+    + std::ops::Sub<Output = Self>
+    + std::ops::Mul<Self::Scalar, Output = Self>
+{
+    type Scalar: Copy;
+}
+
+macro_rules! spline_point {
+    ($($v:ty => $s:ty),*) => {$( impl SplinePoint for $v { type Scalar = $s; } )*};
+}
+spline_point!(f32 => f32, f64 => f64, Vec2 => f32, Vec3 => f32, DVec2 => f64, DVec3 => f64);
+
+/// The cubic `c0 + c1 s + c2 s² + c3 s³` of a cardinal spline's segment
+/// from `p[1]` to `p[2]`, `p[0]` and `p[3]` its neighbours: tangents
+/// `(p[2] - p[0]) * tension` and `(p[3] - p[1]) * tension`, Catmull-Rom at
+/// a tension of 0.5 (three.js `CatmullRomCurve3` with `curveType
+/// "catmullrom"`). The one copy; evaluate it with [`cubic_at`].
+pub fn cardinal_cubic<V: SplinePoint>(p: [V; 4], tension: V::Scalar) -> [V; 4]
+where
+    V::Scalar: From<f32>,
+{
+    let [p0, p1, p2, p3] = p;
+    let (t0, t1) = ((p2 - p0) * tension, (p3 - p1) * tension);
+    let k = |x: f32| V::Scalar::from(x);
+    [
+        p1,
+        t0,
+        p1 * k(-3.0) + p2 * k(3.0) - t0 * k(2.0) - t1,
+        p1 * k(2.0) - p2 * k(2.0) + t0 + t1,
+    ]
+}
+
+/// The cubic `c` at `s`, by Horner's rule.
+pub fn cubic_at<V: SplinePoint>(c: [V; 4], s: V::Scalar) -> V {
+    c[0] + (c[1] + (c[2] + c[3] * s) * s) * s
+}
+
+/// The uniform Catmull-Rom spline's point at `s` (0..1) between `p[1]` and
+/// `p[2]`: [`cardinal_cubic`] at a tension of 0.5.
+pub fn catmull_rom<V: SplinePoint>(p: [V; 4], s: V::Scalar) -> V
+where
+    V::Scalar: From<f32>,
+{
+    cubic_at(cardinal_cubic(p, V::Scalar::from(0.5)), s)
+}
+
 /// A vector the segment helpers work on: glam's `Vec2`, `Vec3`, `DVec2`
 /// and `DVec3`.
 pub trait SegmentVector: Copy {
@@ -577,6 +627,30 @@ mod math_contracts {
         Quat, Vec3, acos, atan, atan2, cos, exp, ln, pow, quat_from_axis_angle, quat_slerp, sin,
         sin_cos,
     };
+
+    #[test]
+    fn catmull_rom_runs_through_its_points_with_their_neighbours_slopes() {
+        use crate::math::catmull_rom;
+        let p = [
+            Vec3::new(-1.0, 3.0, 0.0),
+            Vec3::ZERO,
+            Vec3::new(2.0, 1.0, 0.0),
+            Vec3::new(5.0, -4.0, 1.0),
+        ];
+        assert_eq!(catmull_rom(p, 0.0), p[1]);
+        assert!((catmull_rom(p, 1.0) - p[2]).length() < 1e-6);
+        // The textbook form, 0.5 (2 p1 + (p2 - p0) t + ... ), at t = 0.3.
+        let t = 0.3f64;
+        let q = [-1.0, 0.0, 2.0, 5.0];
+        let want = 0.5
+            * (2.0 * q[1]
+                + (q[2] - q[0]) * t
+                + (2.0 * q[0] - 5.0 * q[1] + 4.0 * q[2] - q[3]) * t * t
+                + (3.0 * q[1] - q[0] - 3.0 * q[2] + q[3]) * t * t * t);
+        assert!((catmull_rom(q, t) - want).abs() < 1e-12);
+        // Collinear evenly spaced points: a straight, evenly paced line.
+        assert!((catmull_rom([0.0f64, 1.0, 2.0, 3.0], 0.25) - 1.25).abs() < 1e-12);
+    }
 
     #[test]
     fn an_angle_wraps_into_minus_pi_to_pi() {
