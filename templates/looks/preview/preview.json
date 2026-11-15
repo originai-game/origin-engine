@@ -4,7 +4,6 @@
   "low-resolution-3d": { "scene": "3d", "models": "low-resolution-3d/models" },
   "pixel-3d-hybrid": { "scene": "3d", "art": "pixel-3d-hybrid/art", "sprites": { "hero": { "file": "hero.png", "height": 2 }, "tree": { "file": "tree.png", "height": 3.4 } } },
   "toy-3d:paper": { "scene": "3d", "models": "toy-3d/paper/models" },
-  "toy-3d:voxel": { "scene": "3d", "models": "preview/flat/models" },
   "pixel": { "scene": "2d", "art": "pixel/art", "view": 14, "heights": { "hero": 2, "tree": 3, "crate": 2, "lantern": 3, "ground": 1.625, "backdrop": 14 } },
   "pixel:8bit": { "scene": "2d", "art": "pixel/8bit/art", "view": 12, "heights": { "hero": 2, "tree": 2.5, "crate": 1.5, "lantern": 3, "ground": 2, "backdrop": 12 } },
   "pixel:coarse": { "scene": "2d", "art": "pixel/coarse/art", "view": 12, "heights": { "hero": 2, "tree": 2.5, "crate": 1.5, "lantern": 3, "ground": 2, "backdrop": 12 } },
