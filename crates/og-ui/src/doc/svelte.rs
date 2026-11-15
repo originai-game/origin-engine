@@ -144,7 +144,7 @@ pub(crate) fn parse_with_pack(
             &p.selectors,
             &p.styles,
             // Without a pack the default style still dresses the role parts.
-            Some(pack.map_or(crate::DEFAULT_ROLE_CSS.as_str(), |p| p.css.as_str())),
+            pack.map_or(&*super::stylesheet::DEFAULT_GLOBAL, |p| &*p.global),
         )?;
         // Inline declarations come last: they win over every rule but an
         // `!important` one, which an `|important` one wins over in turn.

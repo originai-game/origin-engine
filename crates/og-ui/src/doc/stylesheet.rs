@@ -64,7 +64,8 @@ fn rank(layers: &[String], layer: &Option<String>) -> u32 {
     }
 }
 
-fn parsed_rules(mut rules: Vec<Rule>, layers: &[String]) -> Result<Vec<(Selector, Rule)>, Error> {
+/// `rules` under each selector of their lists, in the order read.
+fn selectors(mut rules: Vec<Rule>) -> Result<Vec<(Selector, Rule)>, Error> {
     for rule in &mut rules {
         pseudo_element(rule)?;
     }
@@ -77,14 +78,23 @@ fn parsed_rules(mut rules: Vec<Rule>, layers: &[String]) -> Result<Vec<(Selector
             parsed.push((selector, rule));
         }
     }
-    parsed.sort_by_key(|(selector, rule)| {
-        let layer = if rule.ua {
-            0
-        } else {
-            rank(layers, &rule.layer)
-        };
-        (!rule.ua, layer, selector.specificity(), rule.order)
-    });
+    Ok(parsed)
+}
+
+/// Where a rule sorts in the cascade: user-agent rules first, then by
+/// layer, specificity and the order read.
+fn cascade_key(selector: &Selector, rule: &Rule, layers: &[String]) -> impl Ord + use<> {
+    let layer = if rule.ua {
+        0
+    } else {
+        rank(layers, &rule.layer)
+    };
+    (!rule.ua, layer, selector.specificity(), rule.order)
+}
+
+fn parsed_rules(rules: Vec<Rule>, layers: &[String]) -> Result<Vec<(Selector, Rule)>, Error> {
+    let mut parsed = selectors(rules)?;
+    parsed.sort_by_key(|(selector, rule)| cascade_key(selector, rule, layers));
     Ok(parsed)
 }
 
@@ -302,54 +312,125 @@ pub(crate) fn order_layers(names: &[String]) -> Vec<String> {
     out
 }
 
-fn read(
-    source: &str,
-    sheet: &mut super::at_rules::Sheet,
-    styles: &[(String, usize)],
-    global: Option<&str>,
-) -> Result<Vec<Rule>, Error> {
-    let mut rules = Vec::new();
-    let mut reader = Reader {
-        sheet,
-        layers: ["og-default", "og-components", "og-pack", "og-game"]
-            .map(str::to_owned)
-            .to_vec(),
-        anonymous: 0,
-        base: source.to_owned(),
-        imports_open: true,
-        depth: 0,
-    };
-    reader.rules(super::lists::UA_CSS, 0, &Context::default(), &mut rules)?;
-    for rule in &mut rules {
-        // Its offsets are in the UA text, not the document's.
-        rule.ua = true;
-        rule.at = 0;
-        rule.body_at = 0;
+/// What a rule's body lowers to: its declarations and their prop entries.
+type Lowered = (Vec<StyleDeclaration>, Vec<og_core::ogt::Entry>);
+
+/// One rule of a [`Global`] stylesheet under one of its selectors.
+struct GlobalRule {
+    selector: std::sync::Arc<Selector>,
+    rule: Rule,
+    /// Its body, and its box pseudo-element's, lowered with the sheet's own
+    /// keyframes known. A `::part()` rule is lowered where it is placed.
+    lowered: Option<(Lowered, Option<Lowered>)>,
+    /// Its body names an animation, which reads differently once a
+    /// document defines keyframes of its own.
+    animates: bool,
+}
+
+/// A global stylesheet read once for every document it dresses: HTML's
+/// user-agent rules, then a style pack's (or the default style's role
+/// rules), tokenized, their selectors parsed and their bodies lowered. A
+/// document's own `<style>` is read after it ([`apply`]), and only matching
+/// its elements is left to do per document.
+pub struct Global {
+    /// What its at-rules declare, and its keyframes.
+    sheet: super::at_rules::Sheet,
+    /// Its cascade layers in first-seen order, and the anonymous ones.
+    layers: Vec<String>,
+    anonymous: usize,
+    /// How many rules it read: a document's rules are ordered after them.
+    count: usize,
+    transitions: Vec<Rule>,
+    rules: Vec<GlobalRule>,
+}
+
+impl std::fmt::Debug for Global {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Global")
+            .field("rules", &self.rules.len())
+            .finish_non_exhaustive()
     }
-    if let Some(css) = global {
-        reader.imports_open = true;
+}
+
+/// The default style's role rules, for a document shown without a pack.
+pub(crate) static DEFAULT_GLOBAL: std::sync::LazyLock<Global> = std::sync::LazyLock::new(|| {
+    Global::read("", &crate::DEFAULT_ROLE_CSS, Vec::new()).expect("the default style's CSS reads")
+});
+
+impl Global {
+    /// Reads `css` (written beside `source`) with the stylesheets it
+    /// `@import`s.
+    pub fn read(source: &str, css: &str, imports: Vec<(String, String)>) -> Result<Self, String> {
+        let error = |(_, message): Error| format!("{source}: {message}");
+        let mut sheet = super::at_rules::Sheet {
+            imports,
+            ..Default::default()
+        };
+        let mut rules = Vec::new();
+        let mut reader = Reader::new(&mut sheet, source);
+        reader.user_agent(&mut rules).map_err(error)?;
         let start = rules.len();
-        reader.rules(css, 0, &Context::default(), &mut rules)?;
+        reader
+            .rules(css, 0, &Context::default(), &mut rules)
+            .map_err(error)?;
         for rule in &mut rules[start..] {
             rule.global = true;
             rule.at = 0;
             rule.body_at = 0;
         }
+        let (layers, anonymous) = (std::mem::take(&mut reader.layers), reader.anonymous);
+        let count = rules.len();
+        keyframes(&mut sheet, &mut rules).map_err(error)?;
+        sheet.imports.clear();
+        let (transitions, rules): (Vec<_>, Vec<_>) = rules
+            .into_iter()
+            .partition(|r| super::view_transition::selects(&r.selector));
+        let line = syntax::location("", 0).0;
+        let known = |name: &str| sheet.keyframe_rules.iter().any(|(n, ..)| n == name);
+        let mut out = Vec::new();
+        for (selector, rule) in selectors(rules).map_err(error)? {
+            let lowered = if rule.selector.contains("::part(") {
+                None
+            } else {
+                let own = lowered(&rule.body, line, &known).map_err(|e| error((0, e)))?;
+                let boxed = match rule.pseudo {
+                    Some(_) if !rule.boxed.is_empty() => {
+                        Some(lowered(&rule.boxed, line, &known).map_err(|e| error((0, e)))?)
+                    }
+                    _ => None,
+                };
+                Some((own, boxed))
+            };
+            out.push(GlobalRule {
+                selector: std::sync::Arc::new(selector),
+                animates: rule.body.contains("animation") || rule.boxed.contains("animation"),
+                rule,
+                lowered,
+            });
+        }
+        Ok(Self {
+            sheet,
+            layers,
+            anonymous,
+            count,
+            transitions,
+            rules: out,
+        })
     }
-    for (text, at) in styles {
-        reader.imports_open = true;
-        // A built-in component's rules sit below every pack's.
-        let context = Context {
-            layer: source
-                .trim_start_matches('/')
-                .starts_with("@ui/")
-                .then(|| "og-components".into()),
-            ..Context::default()
-        };
-        reader.rules(text, *at, &context, &mut rules)?;
-    }
-    sheet.layers = order_layers(&reader.layers);
-    for rule in &rules {
+}
+
+/// A rule body lowered and read as props, its entries at `line`.
+fn lowered(body: &str, line: usize, known: &dyn Fn(&str) -> bool) -> Result<Lowered, String> {
+    let (declarations, body) = lower(body, known)?;
+    let entries = css::declarations(&body, line)?;
+    Ok((declarations, entries))
+}
+
+/// Takes the `@keyframes` out of `rules` into `sheet`, each parsed: a
+/// later definition of a name replaces an earlier one under the same
+/// conditions.
+fn keyframes(sheet: &mut super::at_rules::Sheet, rules: &mut Vec<Rule>) -> Result<(), Error> {
+    for rule in rules.iter() {
         if let Some(name) = rule
             .selector
             .strip_prefix("@keyframes")
@@ -389,20 +470,77 @@ fn read(
         }
     }
     rules.retain(|rule| !rule.selector.to_ascii_lowercase().starts_with("@keyframes"));
+    Ok(())
+}
+
+/// Reads `styles` into `sheet` and answers their rules. After `global`,
+/// they continue its layers, its keyframes and its rule order, and what it
+/// declares is the sheet's; without one, HTML's user-agent rules come
+/// first.
+fn read(
+    source: &str,
+    sheet: &mut super::at_rules::Sheet,
+    styles: &[(String, usize)],
+    global: Option<&Global>,
+) -> Result<Vec<Rule>, Error> {
+    let mut rules = Vec::new();
+    if let Some(global) = global {
+        let declared = global.sheet.clone();
+        let imports = std::mem::take(&mut sheet.imports);
+        *sheet = super::at_rules::Sheet {
+            imports,
+            ..declared
+        };
+        // Its rules' places, so the document's are ordered after them.
+        rules.resize_with(global.count, Rule::default);
+    }
+    let mut reader = Reader::new(sheet, source);
+    match global {
+        Some(global) => {
+            reader.layers.clone_from(&global.layers);
+            reader.anonymous = global.anonymous;
+        }
+        None => reader.user_agent(&mut rules)?,
+    }
+    for (text, at) in styles {
+        reader.imports_open = true;
+        // A built-in component's rules sit below every pack's.
+        let context = Context {
+            layer: source
+                .trim_start_matches('/')
+                .starts_with("@ui/")
+                .then(|| "og-components".into()),
+            ..Context::default()
+        };
+        reader.rules(text, *at, &context, &mut rules)?;
+    }
+    let layers = order_layers(&reader.layers);
+    sheet.layers = layers;
+    if let Some(global) = global {
+        rules.drain(..global.count);
+    }
+    keyframes(sheet, &mut rules)?;
     Ok(rules)
 }
 
+/// Places `global`'s rules and the document's own `styles` on the
+/// document's elements, in cascade order.
 pub fn apply(
     doc: &mut UiDocument,
     elements: &[(usize, String, Vec<Attr>)],
     styles: &[(String, usize)],
-    global: Option<&str>,
+    global: &Global,
 ) -> Result<(), Error> {
-    let mut rules = read(&doc.source, &mut doc.sheet, styles, global)?;
+    let mut rules = read(&doc.source, &mut doc.sheet, styles, Some(global))?;
     let layers = doc.sheet.layers.clone();
-    let transitions: Vec<(&str, &str, usize, bool)> = rules
+    let transitions: Vec<(&str, &str, usize, bool)> = global
+        .transitions
         .iter()
-        .filter(|r| super::view_transition::selects(&r.selector))
+        .chain(
+            rules
+                .iter()
+                .filter(|r| super::view_transition::selects(&r.selector)),
+        )
         .map(|r| {
             let conditional = r.query != AtQuery::default();
             (r.selector.as_str(), r.body.as_str(), r.at, conditional)
@@ -410,11 +548,30 @@ pub fn apply(
         .collect();
     super::view_transition::apply(doc, &transitions)?;
     rules.retain(|r| !super::view_transition::selects(&r.selector));
-    let parsed = parsed_rules(rules, &layers)?;
-    for (parsed, rule) in parsed {
-        let structure = parsed
-            .structural()
-            .then(|| std::sync::Arc::new(parsed.clone()));
+    let own: Vec<(std::sync::Arc<Selector>, Rule)> = selectors(rules)?
+        .into_iter()
+        .map(|(selector, rule)| (std::sync::Arc::new(selector), rule))
+        .collect();
+    let known: Vec<String> = doc
+        .sheet
+        .keyframe_rules
+        .iter()
+        .map(|(n, ..)| n.clone())
+        .collect();
+    let known = |name: &str| known.iter().any(|k| k == name);
+    // A global rule's lowering holds unless the document's own keyframes
+    // could change how its animation reads.
+    let more_keyframes = doc.sheet.keyframe_rules.len() != global.sheet.keyframe_rules.len();
+    // Cascade order: the global sheet's rules and the document's together.
+    let mut order: Vec<(&std::sync::Arc<Selector>, &Rule, Option<&GlobalRule>)> = global
+        .rules
+        .iter()
+        .map(|g| (&g.selector, &g.rule, Some(g)))
+        .chain(own.iter().map(|(selector, rule)| (selector, rule, None)))
+        .collect();
+    order.sort_by_key(|(selector, rule, _)| cascade_key(selector, rule, &layers));
+    for (parsed, rule, kept) in order {
+        let structure = parsed.structural().then(|| parsed.clone());
         if let Some((parent, selector)) = rule.selector.split_once("::part(") {
             if structure.is_some() {
                 return Err((
@@ -435,9 +592,6 @@ pub fn apply(
             });
             let mut text_span = false;
             for (i, _, _) in elements {
-                let Some(condition) = matches(doc, elements, *i, parent, rule.at)? else {
-                    continue;
-                };
                 // A text element's spans: `text::part(name)`, `p::part(…)`.
                 if doc.nodes[*i].kind != NodeKind::Element(Kind::Label)
                     || doc.nodes[*i].selector_tag.as_deref().is_some_and(|tag| {
@@ -446,6 +600,9 @@ pub fn apply(
                 {
                     continue;
                 }
+                let Some(condition) = matches(doc, elements, *i, parent, rule.at)? else {
+                    continue;
+                };
                 text_span = true;
                 let mut span =
                     super::spans::parse(selector, &rule.body).map_err(|e| (rule.at, e))?;
@@ -454,18 +611,15 @@ pub fn apply(
                 doc.nodes[*i].span_rules.push(span);
             }
             if !text_span {
-                part_selector(&parsed).map_err(|e| (rule.at, e))?;
-                let (declarations, _) = lower(&rule.body, &|name| {
-                    doc.sheet.keyframe_rules.iter().any(|(n, ..)| n == name)
-                })
-                .map_err(|e| (rule.at, e))?;
+                part_selector(parsed).map_err(|e| (rule.at, e))?;
+                let (declarations, _) = lower(&rule.body, &known).map_err(|e| (rule.at, e))?;
                 doc.part_rules.push(StyleRule {
                     inline: false,
                     layer: rank(&layers, &rule.layer),
                     starting: rule.starting,
-                    query: rule.query,
+                    query: rule.query.clone(),
                     condition: None,
-                    structure: Some(std::sync::Arc::new(parsed)),
+                    structure: Some(parsed.clone()),
                     props: Vec::new(),
                     declarations,
                     line: syntax::location(&doc.text, rule.at).0,
@@ -474,27 +628,28 @@ pub fn apply(
             continue;
         }
         let structure = if parsed.global {
-            Some(std::sync::Arc::new(parsed.clone()))
+            Some(parsed.clone())
         } else {
             structure
         };
-        let known: Vec<String> = doc
-            .sheet
-            .keyframe_rules
-            .iter()
-            .map(|(n, ..)| n.clone())
-            .collect();
         let line = syntax::location(&doc.text, rule.at).0;
-        let lowered = |body: &str| -> Result<_, Error> {
-            let (declarations, body) =
-                lower(body, &|name| known.iter().any(|k| k == name)).map_err(|e| (rule.at, e))?;
-            let entries = css::declarations(&body, line).map_err(|e| (rule.at, e))?;
-            Ok((declarations, entries))
-        };
-        let own = lowered(&rule.body)?;
-        let boxed = match rule.pseudo {
-            Some(_) if !rule.boxed.is_empty() => Some(lowered(&rule.boxed)?),
-            _ => None,
+        let fresh;
+        let kept = kept
+            .filter(|g| !(more_keyframes && g.animates))
+            .and_then(|g| g.lowered.as_ref());
+        let (own, boxed) = match kept {
+            Some(kept) => (&kept.0, kept.1.as_ref()),
+            None => {
+                let own = lowered(&rule.body, line, &known).map_err(|e| (rule.at, e))?;
+                let boxed = match rule.pseudo {
+                    Some(_) if !rule.boxed.is_empty() => {
+                        Some(lowered(&rule.boxed, line, &known).map_err(|e| (rule.at, e))?)
+                    }
+                    _ => None,
+                };
+                fresh = (own, boxed);
+                (&fresh.0, fresh.1.as_ref())
+            }
         };
         for (i, _, _) in elements {
             let condition = match &structure {
@@ -549,14 +704,14 @@ pub fn apply(
             };
             // The pseudo-element's box, when its element draws one: its
             // node takes the box declarations under the element's condition.
-            let target = match (rule.pseudo, &boxed) {
+            let target = match (rule.pseudo, boxed) {
                 (Some(pseudo), Some(_)) if holds(pseudo, kind, &doc.nodes[*i]) => {
                     Some(pseudo_node(doc, *i, pseudo))
                 }
                 _ => None,
             };
-            let mut parts = vec![(*i, kind, &own)];
-            if let (Some(node), Some(boxed)) = (target, &boxed) {
+            let mut parts = vec![(*i, kind, own)];
+            if let (Some(node), Some(boxed)) = (target, boxed) {
                 parts.push((node, Kind::Box, boxed));
             }
             for (node, kind, (declarations, entries)) in parts {
@@ -725,7 +880,34 @@ fn layer_name(name: &str) -> bool {
     })
 }
 
-impl Reader<'_> {
+impl<'a> Reader<'a> {
+    /// A reader of the stylesheets written beside `source`, into `sheet`.
+    fn new(sheet: &'a mut super::at_rules::Sheet, source: &str) -> Self {
+        Reader {
+            sheet,
+            layers: ["og-default", "og-components", "og-pack", "og-game"]
+                .map(str::to_owned)
+                .to_vec(),
+            anonymous: 0,
+            base: source.to_owned(),
+            imports_open: true,
+            depth: 0,
+        }
+    }
+
+    /// HTML's user-agent rules, before any other.
+    fn user_agent(&mut self, rules: &mut Vec<Rule>) -> Result<(), Error> {
+        self.rules(super::lists::UA_CSS, 0, &Context::default(), rules)?;
+        for rule in rules {
+            // Its offsets are in the UA text, not the document's.
+            rule.ua = true;
+            rule.at = 0;
+            rule.body_at = 0;
+        }
+        self.imports_open = true;
+        Ok(())
+    }
+
     /// A layer's full name inside `context`, registered on first sight.
     fn layer(&mut self, context: &Context, name: Option<&str>) -> String {
         let name = name.map_or_else(

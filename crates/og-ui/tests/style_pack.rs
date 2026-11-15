@@ -314,6 +314,90 @@ fn pack_audio_preserves_sample_sets_ranges_silence_and_replay() {
     }
 }
 
+/// A pack's CSS is read once and shared by every document it dresses, so
+/// what one document's own `<style>` declares must stay that document's:
+/// each gets the pack's keyframes and rules, and its own on top. Ways it
+/// could fail: a document's keyframes or layers left in the shared sheet
+/// (the next document animates with them), a document's own keyframes
+/// replacing nothing because the pack's were kept apart, or a document's
+/// rule losing to the pack's lower layer.
+#[test]
+fn documents_share_a_pack_s_rules_and_keep_their_own() {
+    use og_ui::UiDocument;
+    let pack = StylePack::parse(
+        "styles/test",
+        vec![(
+            "styles/test/main.css".into(),
+            "@keyframes drift { to { opacity: 0.5; } }\n.card { width: 30px; height: 10px; animation: drift 2s; }".into(),
+        )],
+    )
+    .unwrap();
+    let first = UiDocument::parse(
+        "ui/first.svelte",
+        r#"<meta name="component" content="First"><div id="A" class="card"></div>
+<style>
+@layer extra { .card { height: 44px; } }
+@keyframes sway { to { opacity: 0; } }
+@keyframes drift { to { opacity: 0.25; } }
+.card { width: 61px; }
+</style>"#,
+    )
+    .unwrap();
+    let second = UiDocument::parse(
+        "ui/second.svelte",
+        r#"<meta name="component" content="Second"><div id="B" class="card"></div>"#,
+    )
+    .unwrap();
+    let (first, second) = (
+        pack.apply_document(&first).unwrap(),
+        pack.apply_document(&second).unwrap(),
+    );
+    let keyframes = |doc: &UiDocument| -> Vec<String> {
+        let mut names: Vec<String> = doc.sheet.keyframes.iter().map(|(k, _)| k.clone()).collect();
+        names.retain(|n| n == "drift" || n == "sway");
+        names.sort();
+        names
+    };
+    assert_eq!(keyframes(&first), ["drift", "sway"]);
+    assert_eq!(
+        keyframes(&second),
+        ["drift"],
+        "the first document's are its own"
+    );
+    assert!(first.sheet.layers.iter().any(|l| l == "extra"));
+    assert!(!second.sheet.layers.iter().any(|l| l == "extra"));
+    let mut ui = Ui::new(UiDesc::default());
+    ui.set_style_pack(&pack).unwrap();
+    ui.define_document(first);
+    ui.define_document(second);
+    use og_ui::{Viewport, bind::NoEnv, reactive::SourceId};
+    for name in ["First", "Second"] {
+        ui.mount_document(
+            SourceId::new("test", name),
+            name,
+            Default::default(),
+            Default::default(),
+            &NoEnv,
+        )
+        .unwrap();
+    }
+    ui.begin(Default::default(), Viewport::new(300.0, 300.0));
+    ui.build_retained_documents(&NoEnv).unwrap();
+    ui.end();
+    // A mount's root is at its mount's name.
+    let size = |id: &str| {
+        let e = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with(id))
+            .unwrap_or_else(|| panic!("no element {id}"));
+        (e.width, e.height)
+    };
+    // The document's unlayered rule and its own layer win over the pack's.
+    assert_eq!(size("First"), (61.0, 44.0));
+    assert_eq!(size("Second"), (30.0, 10.0));
+}
+
 /// A role part wears the default dress from the role tokens, a pack restyles
 /// it by setting those tokens alone, and a pack token may read any default
 /// token.
