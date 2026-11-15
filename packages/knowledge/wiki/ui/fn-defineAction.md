@@ -9,13 +9,13 @@ Module [`ui`](../ui.md) · [index](../index.md)
 Define (or redefine) a UI action. confirm (Enter, Space, A), back (Escape, B), tabNext (E, ], RB), tabPrev (Q, [, LB), details (X, Y) and rotate (R, X) are defined by default.
 
 ```ts
-og.ui.defineAction(world: World, desc: UiActionDesc): Result<void>
+og.ui.defineAction(world: World, desc?: UiActionDesc): Result<void>
 ```
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world. |
-| `desc` | `UiActionDesc` | no | The action. |
+| `desc` | `UiActionDesc` | yes | The action. |
 
 **Returns** `Result<void>`.
 
@@ -30,4 +30,4 @@ fn defineAction {
 }
 ```
 
-<sub>Module `ui` line 1774</sub>
+<sub>Module `ui` line 1778</sub>

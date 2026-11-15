@@ -176,7 +176,7 @@ module ui {
 | [`UiDocEvent`](ui/type-UiDocEvent.md) | struct |  | Something a document did (docs/ui.md §2.1): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back i… |
 | [`UiLayer`](ui/type-UiLayer.md) | struct |  | A layer of the stack (docs/ui.md §2.1), as its screen declares it. |
 | [`UiActionTrigger`](ui/type-UiActionTrigger.md) | enum |  | When a UI action fires. |
-| [`UiActionDesc`](ui/type-UiActionDesc.md) | struct |  | A named UI action (docs/ui.md §2.1) bound to og-input's controls: a component asks for an action, not a key. |
+| [`UiActionDesc`](ui/type-UiActionDesc.md) | desc struct |  | A named UI action (docs/ui.md §2.1) bound to og-input's controls: a component asks for an action, not a key. |
 | [`UiDevice`](ui/type-UiDevice.md) | enum |  | The device a glyph set is for: the one the player used last. |
 | [`UiGlyph`](ui/type-UiGlyph.md) | struct |  | An action's control on the device used last. |
 | [`UiActionHint`](ui/type-UiActionHint.md) | struct |  | One entry of the action bar: an action the top layer accepts, its hint and glyph. |
@@ -189,7 +189,7 @@ module ui {
 | [`og.ui.docEvents`](ui/fn-docEvents.md) | function | `(world: World): readonly UiDocEvent[]` | Take the events of the documents built this frame: pushed layers and store-driven mounts. |
 | [`og.ui.gameInput`](ui/fn-gameInput.md) | function | `(world: World): boolean` | Gameplay takes input this tick: no layer whose input is `menu` is on the stack. |
 | [`og.ui.paused`](ui/fn-paused.md) | function | `(world: World): boolean` | A layer that pauses the game (`pause`) is on the stack: the engine holds the time scale at 0 while one is, and gives back the one it had. |
-| [`og.ui.defineAction`](ui/fn-defineAction.md) | function | `(world: World, desc: UiActionDesc): Result<void>` | Define (or redefine) a UI action. |
+| [`og.ui.defineAction`](ui/fn-defineAction.md) | function | `(world: World, desc?: UiActionDesc): Result<void>` | Define (or redefine) a UI action. |
 | [`og.ui.actionFired`](ui/fn-actionFired.md) | function | `(name: string): boolean` | The action fired this tick: on its press, its release or once its hold is reached, as its trigger says (a document's `on action` fires on the top layer that takes input). |
 | [`og.ui.actionHeld`](ui/fn-actionHeld.md) | function | `(name: string): boolean` | A hold action is held: down for its holdMs, or its toggle is on. |
 | [`og.ui.glyph`](ui/fn-glyph.md) | function | `(world: World, action: string): UiGlyph \| null` | An action's glyph on the device used last: its first binding there. |
@@ -220,7 +220,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 1299</sub>
+<sub>Module `ui` line 1302</sub>
 
 ```ogt
 column UiMaterial {
@@ -231,4 +231,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 1306</sub>
+<sub>Module `ui` line 1309</sub>

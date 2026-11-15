@@ -296,7 +296,10 @@
     desc true
     field reverse bool "Plays backwards."
     field repeat Repeat "How it repeats."
-    field speed f32 "Its rate (0: 1)."
+    field speed f32 "Its playback rate: 1 as authored, 2 twice as fast, 0 holds its time while it plays (as og.Timeline's speed). `reverse` plays it backwards." {
+      default 1
+      min 0
+    }
     field fromMs f32 "Start this far in." {
       unit ms
     }

@@ -72,9 +72,30 @@
       "find": [
         "gesture("
       ]
+    },
+    {
+      "member": "UiActionDesc.holdMs",
+      "change": "Its default is 500, and a holdMs of 0 never holds, as ActionDesc.holdMs: the action fires on no hold and og.ui.actionHeld stays false (a toggle's taps still turn it on and off). Before, 0 meant 500.",
+      "fix": "Remove a holdMs: 0 written only to fill the field from og.ui.defineAction descs (left out is 500 ms; see UiActionDesc under added); other values are unchanged.",
+      "find": [
+        "holdMs"
+      ]
+    },
+    {
+      "member": "PlayDesc.speed",
+      "change": "Its default is 1, and a speed of 0 holds the play's time while it plays, as og.Timeline's speed: the element keeps the timeline's values at fromMs until og.ui.seek moves it. Before, 0 meant 1. A negative speed holds too (reverse plays backwards).",
+      "fix": "Remove an explicit speed: 0 from og.ui.play and og.ui.playTimeline descs (left out is 1); other values are unchanged.",
+      "find": [
+        "playTimeline",
+        "ui.play("
+      ]
     }
   ],
   "added": [
+    {
+      "member": "UiActionDesc",
+      "summary": "A desc, as og.input's ActionDesc: every field may be left out and takes its default (trigger press, holdMs 500, no toggle, an empty label), so og.ui.defineAction(world, { name: \"skip\", keys: [\"KeyX\"], buttons: [\"y\"] }) is a whole action. Descs that write every field are unchanged."
+    },
     {
       "member": "the conventions guide",
       "summary": "The UI modules keep the rules of the conventions guide, which gains their lines: a UI Paint's color is a linear Color like any other while colours the UI takes as text or bare numbers are sRGB; opacity names how opaque a thing is in every module; the UI's pointer, gestures and actions use down, justPressed, justReleased and held as og.input does."

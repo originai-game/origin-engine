@@ -1069,7 +1069,7 @@ export interface HostAbi<A, V> {
   /** `og.ui.paused` */
   og_ui_paused(world: number): boolean;
   /** `og.ui.defineAction` */
-  og_ui_define_action(world: number, desc: string): string;
+  og_ui_define_action(world: number, desc: string | undefined): string;
   /** `og.ui.actionFired` */
   og_ui_action_fired(name: string): boolean;
   /** `og.ui.actionHeld` */

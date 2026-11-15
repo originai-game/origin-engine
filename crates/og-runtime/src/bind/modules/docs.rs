@@ -716,17 +716,20 @@ pub fn og_ui_paused(world: u32) -> bool {
 
 // ── og.ui: actions and glyphs ───────────────────────────────────────────────
 
-pub fn og_ui_define_action(world: u32, desc: String) -> Result<(), String> {
-    let d: crate::host::wire::UiActionDesc = crate::host::wire::arg(Some(&desc), "desc")?;
+pub fn og_ui_define_action(world: u32, desc: Option<String>) -> Result<(), String> {
+    let d: crate::host::wire::UiActionDesc = crate::host::wire::arg(desc.as_deref(), "desc")?;
     if d.name.is_empty() {
         return Err("an action has a name".into());
     }
     let trigger = match d.trigger {
         crate::host::wire::UiActionTrigger::Release => ActionTrigger::Release,
-        // A hold of 0 is 500 ms.
-        crate::host::wire::UiActionTrigger::Hold => {
-            ActionTrigger::Hold(if d.hold_ms == 0.0 { 500.0 } else { d.hold_ms })
-        }
+        // A holdMs of 0 never holds (as ActionDesc.holdMs): og-ui counts the
+        // hold in ticks, and no press reaches an endless one.
+        crate::host::wire::UiActionTrigger::Hold => ActionTrigger::Hold(if d.hold_ms > 0.0 {
+            d.hold_ms
+        } else {
+            f32::INFINITY
+        }),
         crate::host::wire::UiActionTrigger::Press => ActionTrigger::Press,
     };
     let desc = ActionDesc {
@@ -736,7 +739,7 @@ pub fn og_ui_define_action(world: u32, desc: String) -> Result<(), String> {
         trigger,
         toggle: d.toggle,
         label: d.label,
-        action: d.action.unwrap_or_default(),
+        action: d.action,
     };
     match on_ui(world, |ui| ui.define_action(desc)) {
         Ok(()) => Ok(()),

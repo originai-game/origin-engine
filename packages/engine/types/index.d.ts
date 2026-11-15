@@ -26380,9 +26380,10 @@ export interface PlayDesc {
    */
   readonly repeat?: Repeat;
   /**
-   * Its rate (0: 1).
+   * Its playback rate: 1 as authored, 2 twice as fast, 0 holds its time while it plays (as og.Timeline's speed). `reverse` plays it backwards.
    *
-   * @default 0
+   * @default 1
+   * @range 0..
    */
   readonly speed?: number;
   /**
@@ -27224,31 +27225,59 @@ export interface UiLayer {
 export type UiActionTrigger = "press" | "release" | "hold";
 
 /**
- * A named UI action (docs/ui.md §2.1) bound to og-input's controls: a component asks for an action, not a key.
+ * A named UI action (docs/ui.md §2.1) bound to og-input's controls: a component asks for an action, not a key. A field left out takes its default: an action with only a name and its keys or buttons fires on their press.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
 export interface UiActionDesc {
-  /** Its name: confirm, back, tabNext, tabPrev, details, or the game's own. */
-  readonly name: string;
-  /** Key codes (KeyboardEvent.code: `Enter`, `KeyE`). */
-  readonly keys: readonly string[];
-  /** Standard-mapping pad buttons (GamepadButton's names: `a`, `rightBumper`). */
-  readonly buttons: readonly string[];
-  /** When it fires. */
-  readonly trigger: UiActionTrigger;
   /**
-   * How long a hold is (0: 500).
+   * Its name: confirm, back, tabNext, tabPrev, details, or the game's own.
    *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Key codes (KeyboardEvent.code: `Enter`, `KeyE`).
+   *
+   * @default []
+   */
+  readonly keys?: readonly string[];
+  /**
+   * Standard-mapping pad buttons (GamepadButton's names: `a`, `rightBumper`).
+   *
+   * @default []
+   */
+  readonly buttons?: readonly string[];
+  /**
+   * When it fires.
+   *
+   * @default "press"
+   */
+  readonly trigger?: UiActionTrigger;
+  /**
+   * How long it is down before a hold fires and og.ui.actionHeld answers true (0: never, as ActionDesc.holdMs; a toggle's taps still turn it on and off).
+   *
+   * @default 500
+   * @range 0..
    * @unit ms (milliseconds)
    */
-  readonly holdMs: number;
+  readonly holdMs?: number;
   /**
    * A hold's toggle alternative (XAG 107): a tap turns it on, the next tap off; og.ui.actionHeld answers true between.
+   *
+   * @default false
    */
-  readonly toggle: boolean;
-  /** What it says when no document gives it a hint. */
-  readonly label: string;
+  readonly toggle?: boolean;
+  /**
+   * What it says when no document gives it a hint.
+   *
+   * @default ""
+   */
+  readonly label?: string;
   /**
    * A gameplay action (og.input.defineAction) it follows instead of keys and buttons: it is down when that action is, and its glyph is that action's binding on the device used last, so the player's rebinding moves the prompt too. Empty: keys and buttons.
+   *
+   * @default ""
    */
   readonly action?: string;
 }
@@ -37475,7 +37504,7 @@ export declare namespace og {
      * @param world The world.
      * @param desc The action.
      */
-    function defineAction(world: World, desc: UiActionDesc): Result<void>;
+    function defineAction(world: World, desc?: UiActionDesc): Result<void>;
     /**
      * The action fired this tick: on its press, its release or once its hold is reached, as its trigger says (a document's `on action` fires on the top layer that takes input). A bool, where og.input.action answers an action's whole state.
      *

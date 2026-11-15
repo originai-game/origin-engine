@@ -2659,7 +2659,7 @@ pub fn og_ui_paused(world: u32) -> bool {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_define_action(world: u32, desc: String) -> String {
+pub fn og_ui_define_action(world: u32, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_define_action(&Host, world, desc)
 }
 

@@ -3190,7 +3190,7 @@ pub fn og_ui_paused(env: Env, world: u32) -> bool {
 }
 
 #[napi(js_name = "og_ui_define_action")]
-pub fn og_ui_define_action(env: Env, world: u32, desc: String) -> String {
+pub fn og_ui_define_action(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_define_action(&Host, world, desc)
 }

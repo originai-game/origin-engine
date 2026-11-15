@@ -167,8 +167,7 @@ fn play_desc(d: &wire::PlayDesc) -> PlayDesc {
             wire::Repeat::PingPong => Repeat::PingPong,
             wire::Repeat::Once => Repeat::Once,
         },
-        // og.ui's PlayDesc.speed reads 0 as 1.
-        speed: if d.speed > 0.0 { d.speed } else { 1.0 },
+        speed: d.speed,
         from_ms: d.from_ms,
         from_label: d.from_label.clone(),
         hold: d.hold,

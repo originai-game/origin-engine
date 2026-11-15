@@ -206,7 +206,7 @@ macro_rules! __og_host_bindings_ui {
             fn og_ui_paused(&self, world: u32) -> bool {
                 $crate::og_ui_paused(world)
             }
-            fn og_ui_define_action(&self, world: u32, desc: String) -> String {
+            fn og_ui_define_action(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_ui_define_action(world, desc))
             }
             fn og_ui_action_fired(&self, name: String) -> bool {

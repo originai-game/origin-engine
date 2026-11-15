@@ -100,8 +100,8 @@ export const widgets = {
   docEvents: (world: Api.World): readonly Api.UiDocEvent[] => parse(abi().og_ui_doc_events(worldId(world))),
   gameInput: (world: Api.World): boolean => abi().og_ui_game_input(worldId(world)),
   paused: (world: Api.World): boolean => abi().og_ui_paused(worldId(world)),
-  defineAction: (world: Api.World, desc: Api.UiActionDesc): Api.Result<void> =>
-    parse(abi().og_ui_define_action(worldId(world), JSON.stringify(desc))),
+  defineAction: (world: Api.World, desc?: Api.UiActionDesc): Api.Result<void> =>
+    parse(abi().og_ui_define_action(worldId(world), json(desc))),
   actionFired: (name: string): boolean => abi().og_ui_action_fired(name),
   actionHeld: (name: string): boolean => abi().og_ui_action_held(name),
   glyph: (world: Api.World, action: string): Api.UiGlyph | null => parse(abi().og_ui_glyph(worldId(world), action)),

@@ -14,7 +14,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `reverse` | `boolean` | `false` | — | — | — | Plays backwards. |
 | `repeat` | `Repeat` | `"once"` | — | — | — | How it repeats. |
-| `speed` | `number` | `0` | — | — | — | Its rate (0: 1). |
+| `speed` | `number` | `1` | ≥ 0 | — | — | Its playback rate: 1 as authored, 2 twice as fast, 0 holds its time while it plays (as og.Timeline's speed). `reverse` plays it backwards. |
 | `fromMs` | `number` | `0` | — | `ms` | — | Start this far in. |
 | `fromLabel` | `string` | `""` | — | — | — | Start at a label of its first timeline (wins over fromMs). |
 | `hold` | `boolean` | `false` | — | — | — | Keep the last values once it ends, until stopped. |
@@ -26,7 +26,10 @@ struct PlayDesc {
   desc true
   field reverse bool "Plays backwards."
   field repeat Repeat "How it repeats."
-  field speed f32 "Its rate (0: 1)."
+  field speed f32 "Its playback rate: 1 as authored, 2 twice as fast, 0 holds its time while it plays (as og.Timeline's speed). `reverse` plays it backwards." {
+    default 1
+    min 0
+  }
   field fromMs f32 "Start this far in." {
     unit ms
   }

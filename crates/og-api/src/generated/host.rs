@@ -1184,7 +1184,7 @@ pub trait UiApi: Wire {
     /// `og.ui.paused`
     fn og_ui_paused(&self, world: u32) -> bool;
     /// `og.ui.defineAction`
-    fn og_ui_define_action(&self, world: u32, desc: String) -> String;
+    fn og_ui_define_action(&self, world: u32, desc: Option<String>) -> String;
     /// `og.ui.actionFired`
     fn og_ui_action_fired(&self, name: String) -> bool;
     /// `og.ui.actionHeld`

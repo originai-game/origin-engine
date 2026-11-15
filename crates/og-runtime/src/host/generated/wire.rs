@@ -18916,7 +18916,7 @@ impl Default for PlayDesc {
         Self {
             reverse: Default::default(),
             repeat: Default::default(),
-            speed: Default::default(),
+            speed: 1.0_f32,
             from_ms: Default::default(),
             from_label: Default::default(),
             hold: Default::default(),
@@ -19863,7 +19863,7 @@ pub struct UiActionDesc {
     pub hold_ms: f32,
     pub toggle: bool,
     pub label: String,
-    pub action: Option<String>,
+    pub action: String,
 }
 
 impl Default for UiActionDesc {
@@ -19873,7 +19873,7 @@ impl Default for UiActionDesc {
             keys: Default::default(),
             buttons: Default::default(),
             trigger: Default::default(),
-            hold_ms: Default::default(),
+            hold_ms: 500.0_f32,
             toggle: Default::default(),
             label: Default::default(),
             action: Default::default(),
@@ -19910,9 +19910,7 @@ impl ToJson for UiActionDesc {
         o.insert("holdMs".into(), self.hold_ms.to_json());
         o.insert("toggle".into(), self.toggle.to_json());
         o.insert("label".into(), self.label.to_json());
-        if let Some(x) = &self.action {
-            o.insert("action".into(), x.to_json());
-        }
+        o.insert("action".into(), self.action.to_json());
         Value::Object(o)
     }
 }

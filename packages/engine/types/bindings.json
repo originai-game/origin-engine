@@ -24734,7 +24734,7 @@
         {
           "name": "desc",
           "type": "UiActionDesc",
-          "optional": false
+          "optional": true
         }
       ],
       "returns": "Result<Void>",
