@@ -345,7 +345,7 @@ pub(crate) fn rich_lines_around(
 ) -> Broken {
     #[cfg(feature = "shaping")]
     if v.is_none()
-        && let Some(b) = shaped_lines(rc, fonts, 0.0, &room_at)
+        && let Some(b) = crate::text::paragraph::lines_beside(rc, fonts, &room_at)
     {
         return b;
     }
@@ -356,54 +356,6 @@ pub(crate) fn rich_lines_around(
 /// line's left, width and the floats' next bottom): the lines, each one's
 /// left, drop and width, whether a float narrowed one, and the drop.
 pub(crate) type Broken = (Vec<RichLine>, Vec<[f32; 3]>, bool, f32);
-
-/// [`rich`]'s lines from its paragraph shaped once
-/// ([`crate::text::paragraph::Breaker`]): bidi and soft hyphens see the
-/// whole paragraph. `None` when it cannot be shaped.
-#[cfg(feature = "shaping")]
-fn shaped_lines(
-    rc: &RichContent,
-    fonts: &dyn Metrics,
-    mut y: f32,
-    room_at: impl Fn(f32, f32) -> (f32, f32, Option<f32>),
-) -> Option<Broken> {
-    let mut breaker = crate::text::paragraph::Breaker::new(rc, fonts)?;
-    let guess = rc.base.0.line_height;
-    let (mut lines, mut shifts) = (Vec::new(), Vec::new());
-    let (mut drop, mut narrowed) = (0.0f32, false);
-    loop {
-        // The room beside the line as tall as the line it holds.
-        let mut h = guess;
-        let (step, got, l, avail, next) = loop {
-            let (l, avail, next) = room_at(y, h);
-            let step = breaker.next(avail);
-            let got = breaker.lines(&step, fonts)?;
-            let height: f32 = got.iter().map(|l| l.height).sum();
-            if height <= h + 0.01 || next.is_none() {
-                break (step, got, l, avail, next);
-            }
-            h = height;
-        };
-        let width = got.iter().map(|l| l.width).fold(0.0, f32::max);
-        if let Some(b) = next
-            && width > avail + 0.5
-        {
-            drop += b - y;
-            y = b;
-            continue;
-        }
-        narrowed |= next.is_some();
-        for line in got {
-            y += line.height;
-            shifts.push([l, drop, avail]);
-            lines.push(line);
-        }
-        if breaker.take(&step) {
-            break;
-        }
-    }
-    Some((lines, shifts, narrowed, drop))
-}
 
 /// [`rich`]'s lines where its faces cannot be shaped (fixed or atlas-only
 /// metrics) or run down a vertical line `v`: each line broken from the

@@ -411,22 +411,20 @@ fn build_line(rc: &RichContent, fonts: &dyn Metrics, units: Vec<&Unit>) -> RichL
 }
 
 /// A line's height and baseline from its pieces' spans, and each piece's
-/// rise. The baseline-aligned spans share one baseline, their extents
-/// centred in the tallest line height. A span with another
-/// `vertical-align` sits against the paragraph's text (CSS 2.1 §10.8.1,
-/// half its leading above and below it) and the line grows to hold it and
-/// the paragraph's own line (its strut).
+/// rise, where Parley cannot shape them. The baseline-aligned spans share
+/// one baseline, their extents centred in the tallest line height. A span
+/// with another `vertical-align` sits against the paragraph's text (CSS
+/// 2.1 §10.8.1, half its leading above and below it). Every line holds
+/// the paragraph's own line (its strut) and grows to hold its spans.
 pub(crate) fn place_line(
     rc: &RichContent,
     fonts: &dyn Metrics,
     pieces: &mut [Piece],
 ) -> (f32, f32) {
     let (mut h, mut a, mut d) = (0.0f32, 0.0f32, 0.0f32);
-    let mut moved = false;
     for p in pieces.iter() {
         let s = &rc.spans[p.span];
         if s.valign != VerticalAlign::Baseline {
-            moved = true;
             continue;
         }
         let (lh, asc, desc) = span_metrics(s, fonts);
@@ -440,9 +438,6 @@ pub(crate) fn place_line(
         h = s.step.line_height;
     }
     let baseline = (h - (a - d)) / 2.0 + a;
-    if !moved {
-        return (h, baseline);
-    }
     let (step, font) = rc.base;
     let m = fonts.metrics_styled(font, step.weight, false, "");
     let strut = Strut {
