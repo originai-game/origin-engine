@@ -646,23 +646,7 @@ pub(crate) fn face_frames(base: &Camera, at: Vec3, far: f32) -> [crate::frame::C
     })
 }
 
-/// IEEE half to f32 (the prefiltered cube's texels, read back).
-pub(crate) fn f16_to_f32(h: u16) -> f32 {
-    let sign = if h & 0x8000 != 0 { -1.0 } else { 1.0 };
-    let exp = ((h >> 10) & 0x1f) as i32;
-    let man = (h & 0x3ff) as f32;
-    match exp {
-        0 => sign * man * 2f32.powi(-24),
-        31 => {
-            if man == 0.0 {
-                sign * f32::INFINITY
-            } else {
-                f32::NAN
-            }
-        }
-        _ => sign * (1.0 + man / 1024.0) * 2f32.powi(exp - 15),
-    }
-}
+pub(crate) use og_core::half::f16_to_f32;
 
 /// Reads a slot's prefiltered cube back (blocking): its
 /// [`crate::ENVIRONMENT_MAP_LEVELS`] levels, each six faces of linear RGB

@@ -374,30 +374,7 @@ pub(super) fn foam_uv(origin: Vec3, wind: Vec2, seconds: f64) -> [[f32; 4]; 2] {
     ]
 }
 
-/// The IEEE half nearest `v` (rounding half up), for the height fields'
-/// rgba16float.
-pub(super) fn f16_bits(v: f32) -> u16 {
-    let b = v.to_bits();
-    let sign = ((b >> 16) & 0x8000) as u16;
-    let exp = ((b >> 23) & 0xff) as i32 - 127 + 15;
-    let man = b & 0x7f_ffff;
-    if v.is_nan() {
-        0x7e00
-    } else if exp >= 31 {
-        sign | 0x7c00
-    } else if exp <= 0 {
-        if exp < -10 {
-            return sign;
-        }
-        let m = man | 0x80_0000;
-        let shift = (14 - exp) as u32;
-        let h = (m >> shift) + ((m >> (shift - 1)) & 1);
-        sign | h as u16
-    } else {
-        let h = ((exp as u32) << 10 | (man >> 13)) + ((man >> 12) & 1);
-        sign | h as u16
-    }
-}
+pub(super) use og_core::half::f32_to_f16 as f16_bits;
 
 /// The largest height field accepted.
 pub(super) const MAX_RESOLUTION: u32 = 512;

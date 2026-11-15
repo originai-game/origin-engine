@@ -105,24 +105,7 @@ struct Entry {
     data_offsets: [usize; 2],
 }
 
-/// IEEE half to single precision.
-pub fn f16_to_f32(bits: u16) -> f32 {
-    let sign = ((bits >> 15) as u32) << 31;
-    let exponent = ((bits >> 10) & 0x1f) as u32;
-    let mantissa = (bits & 0x3ff) as u32;
-    let value = match exponent {
-        0 if mantissa == 0 => sign,
-        0 => {
-            // Subnormal: normalise the mantissa.
-            let shift = mantissa.leading_zeros() - 21;
-            let mantissa = (mantissa << shift) & 0x3ff;
-            sign | ((113 - shift) << 23) | (mantissa << 13)
-        }
-        0x1f => sign | 0x7f80_0000 | (mantissa << 13),
-        _ => sign | ((exponent + 112) << 23) | (mantissa << 13),
-    };
-    f32::from_bits(value)
-}
+pub use og_core::half::f16_to_f32;
 
 impl Bundle {
     /// Parses a safetensors file (F32 or F16 tensors) and its `config` metadata.
@@ -243,20 +226,4 @@ pub fn read_safetensors(
         );
     }
     Ok((tensors, metadata))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::f16_to_f32;
-
-    #[test]
-    fn half_precision_values() {
-        assert_eq!(f16_to_f32(0x3c00), 1.0);
-        assert_eq!(f16_to_f32(0xc000), -2.0);
-        assert_eq!(f16_to_f32(0x3555), 0.333_251_95);
-        assert_eq!(f16_to_f32(0x0001), 5.960_464_5e-8); // smallest subnormal
-        assert_eq!(f16_to_f32(0x7bff), 65504.0);
-        assert!(f16_to_f32(0x7c00).is_infinite());
-        assert_eq!(f16_to_f32(0x8000).to_bits(), (-0.0f32).to_bits());
-    }
 }

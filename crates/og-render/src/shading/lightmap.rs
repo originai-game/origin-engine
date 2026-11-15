@@ -218,31 +218,7 @@ pub(crate) fn fit_counts(c: [u32; 3], room: usize) -> Option<[u32; 3]> {
     Some(n)
 }
 
-/// An f32 as an IEEE half (round to nearest; overflow to infinity).
-pub(crate) fn f16_bits(x: f32) -> u16 {
-    let b = x.to_bits();
-    let sign = ((b >> 16) & 0x8000) as u16;
-    let exp = ((b >> 23) & 0xff) as i32;
-    let mant = b & 0x7f_ffff;
-    if exp == 0xff {
-        return sign | 0x7c00 | if mant != 0 { 0x200 } else { 0 };
-    }
-    let e = exp - 127 + 15;
-    if e >= 0x1f {
-        return sign | 0x7c00;
-    }
-    if e <= 0 {
-        if e < -10 {
-            return sign;
-        }
-        let m = (mant | 0x80_0000) >> (1 - e);
-        let round = (m >> 12) & 1;
-        return sign | ((m >> 13) + round) as u16;
-    }
-    let half = sign as u32 | ((e as u32) << 10) | (mant >> 13);
-    // Round to nearest (a carry into the exponent is the right result).
-    (half + ((mant >> 12) & 1)) as u16
-}
+pub(crate) use og_core::half::f32_to_f16 as f16_bits;
 
 /// The GPU side of [`BakedLighting`].
 pub(crate) struct Lightmaps {
@@ -771,15 +747,5 @@ mod tests {
         // The far corner keeps its value: 15 + 7.5 + 3.75.
         let last = (n[0] * n[1] * n[2] - 1) as usize;
         assert!((out[HEADER + last * 3][3] - 26.25).abs() < 1e-3);
-    }
-
-    #[test]
-    fn half_floats() {
-        assert_eq!(f16_bits(1.0), 0x3c00);
-        assert_eq!(f16_bits(-2.0), 0xc000);
-        assert_eq!(f16_bits(0.0), 0);
-        assert_eq!(f16_bits(65504.0), 0x7bff);
-        assert_eq!(f16_bits(1e6), 0x7c00);
-        assert_eq!(f16_bits(0.333_333_34), 0x3555);
     }
 }

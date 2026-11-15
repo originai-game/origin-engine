@@ -6,6 +6,7 @@
 //! | [`color`] | the sRGB transfer, `#rrggbb` hex and Oklab, the one copy of each |
 //! | [`base64`] | [`base64::encode`] and [`base64::decode`]: bytes in JSON and text, the one copy |
 //! | [`error`] | [`Error`] (kind + reason) and [`Result`]: errors are values |
+//! | [`half`] | [`half::f32_to_f16`] and [`half::f16_to_f32`]: IEEE half floats, the one copy |
 //! | [`handle`] | generational handles: [`RawHandle`], [`HandleAllocator`], [`Handle`], [`Pool`] |
 //! | [`reflect`] | [`Reflect`] and `#[derive(Reflect)]`, [`Schema`] and its JSON, packed [`Layout`]s |
 //! | [`ogt`] | the `.ogt` text format: [`ogt::Document`] reader and canonical writer |
@@ -39,6 +40,7 @@ pub mod color;
 pub mod ease;
 pub mod error;
 pub mod facing;
+pub mod half;
 pub mod handle;
 pub mod hash;
 pub mod idmap;

@@ -48,37 +48,7 @@ fn the_device_budget_resolves_the_requested_layers() {
 /// IEEE half precision, round to nearest even (what an RGBA16F blend
 /// stores).
 fn half(x: f32) -> f32 {
-    let b = x.to_bits();
-    let sign = (b >> 16) & 0x8000;
-    let exp = ((b >> 23) & 0xff) as i32 - 127 + 15;
-    let mant = b & 0x7f_ffff;
-    // Drops `shift` bits of `m`, rounding to nearest even.
-    let round = |m: u32, shift: u32| {
-        let kept = m >> shift;
-        let rest = m & ((1 << shift) - 1);
-        let halfway = 1 << (shift - 1);
-        kept + u32::from(rest > halfway || (rest == halfway && kept & 1 == 1))
-    };
-    let h = if exp >= 31 {
-        sign | 0x7c00
-    } else if exp <= 0 {
-        if exp < -10 {
-            sign
-        } else {
-            sign | round(mant | 0x80_0000, (14 - exp) as u32)
-        }
-    } else {
-        // A carry out of the mantissa is the next exponent's, as it
-        // should be (and 0x7c00 is infinity).
-        sign | round(((exp as u32) << 23) | mant, 13)
-    };
-    let (s, e, m) = (h >> 15, (h >> 10) & 31, h & 1023);
-    let magnitude = match e {
-        0 => m as f32 * 2f32.powi(-24),
-        31 => f32::INFINITY,
-        e => (1.0 + m as f32 / 1024.0) * 2f32.powi(e as i32 - 15),
-    };
-    if s == 1 { -magnitude } else { magnitude }
+    og_core::half::f16_to_f32(og_core::half::f32_to_f16(x))
 }
 
 /// `oit.wgsl` `oit_weight`, on the CPU.
@@ -142,15 +112,4 @@ fn weighted_results_of_two_orders_stay_within_the_half_float_bound() {
     let codes = weighted_order_codes(4, mean, f.2, a);
     assert_eq!(codes, 1, "the tolerance for four fragments here");
     assert!(u32::from(srgb_code(b).abs_diff(srgb_code(a))) <= codes);
-}
-
-#[test]
-fn half_rounding_matches_ieee() {
-    assert_eq!(half(1.0), 1.0);
-    assert_eq!(half(65504.0), 65504.0);
-    assert!(half(70000.0).is_infinite());
-    // 1 + 2^-11 is a tie between 1 and 1 + 2^-10: to the even, 1.
-    assert_eq!(half(1.0 + 2f32.powi(-11)), 1.0);
-    assert_eq!(half(1.0 + 3.0 * 2f32.powi(-11)), 1.0 + 2.0 * 2f32.powi(-10));
-    assert_eq!(half(2f32.powi(-24)), 2f32.powi(-24));
 }
