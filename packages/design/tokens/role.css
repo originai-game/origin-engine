@@ -10,6 +10,7 @@
   --role-frame-rim: var(--line);
   --role-frame-rim-width: var(--stroke-hairline);
   --role-frame-radius: var(--radius-panel);
+  --role-frame-corner-shape: round;
   --role-frame-shadow: var(--shadow-float);
   --role-frame-pad: var(--space-lg);
   --role-frame-corner-image: none;
@@ -18,6 +19,7 @@
   --role-plate-rim: var(--line-70);
   --role-plate-rim-width: var(--stroke-hairline);
   --role-plate-radius: var(--hud-radius);
+  --role-plate-corner-shape: round;
   --role-plate-shadow: none;
   --role-plate-pad: var(--space-sm);
 
@@ -54,6 +56,7 @@
   --role-row-selected-fill: var(--selection);
   --role-row-selected-edge: inset var(--stroke-thick) 0 0 var(--primary);
   --role-row-radius: var(--radius-control);
+  --role-row-corner-shape: round;
 
   /* Cell: a tile of a grid (an item, a card, a day). */
   --role-cell-fill: var(--control);
@@ -61,6 +64,7 @@
   --role-cell-rim-width: var(--stroke-hairline);
   --role-cell-selected-rim: var(--focus);
   --role-cell-radius: var(--slot-radius);
+  --role-cell-corner-shape: round;
   --role-cell-shadow: var(--slot-shadow);
   --role-cell-hover-shadow: var(--shadow-float);
   --role-cell-pressed-fill: var(--control-strong);
@@ -92,9 +96,11 @@
   --role-badge-fill: var(--control-strong);
   --role-badge-ink: var(--ink);
   --role-badge-radius: var(--radius-capsule);
+  --role-badge-corner-shape: round;
   --role-badge-shadow: none;
   --role-well-fill: var(--well);
   --role-well-radius: var(--radius-control);
+  --role-well-corner-shape: round;
   --role-well-shadow: var(--shadow-well);
   --role-figure-ink: var(--ink);
   --role-figure-font: var(--type-numeric-font);

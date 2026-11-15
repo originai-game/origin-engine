@@ -334,6 +334,7 @@
     --switch-inset-ratio: 0.11;
     --switch-width-ratio: 1.72;
     --tabs-radius: var(--radius-button);
+    --badge-corner-shape: round;
     --badge-fill: var(--control-strong);
     --badge-ink: var(--ink);
     --badge-radius: var(--radius-capsule);
@@ -353,6 +354,7 @@
     --band-small-pad: var(--space-xxs) var(--space-md);
     --cell-common-fill: var(--control);
     --cell-common-shadow: inset 0 0 0 var(--stroke-regular) var(--common);
+    --cell-corner-shape: round;
     --cell-empty-shadow: var(--shadow-well);
     --cell-epic-fill: var(--control);
     --cell-epic-shadow: inset 0 0 0 var(--stroke-regular) var(--epic);
@@ -378,6 +380,7 @@
     --figure-ink: var(--ink);
     --figure-shadow: none;
     --frame-corner-image: none;
+    --frame-corner-shape: round;
     --frame-corner-size: var(--size-lg);
     --frame-fill: var(--panel);
     --frame-pad: var(--space-lg);
@@ -409,6 +412,7 @@
     --mark-travel: none;
     --mark-triangle: none;
     --mythic: var(--danger);
+    --plate-corner-shape: round;
     --plate-fill: var(--hud);
     --plate-pad: var(--space-sm);
     --plate-radius: var(--hud-radius);
@@ -416,6 +420,7 @@
     --plate-rim-width: var(--stroke-hairline);
     --plate-shadow: none;
     --rare: var(--info);
+    --row-corner-shape: round;
     --row-fill: none;
     --row-hover-fill: var(--panel-hover);
     --row-pressed-fill: var(--control-strong);
@@ -444,6 +449,7 @@
     --trend-down: var(--danger);
     --trend-up: var(--success);
     --uncommon: var(--success);
+    --well-corner-shape: round;
     --well-fill: var(--well);
     --well-radius: var(--radius-control);
     --well-shadow: var(--shadow-well);
@@ -1255,7 +1261,7 @@
     box-sizing: border-box;
     padding: var(--frame-pad);
     border: var(--frame-rim-width) solid var(--frame-rim);
-    border-radius: var(--frame-radius);
+    border-radius: var(--frame-radius); corner-shape: var(--frame-corner-shape);
     background: var(--frame-fill);
     box-shadow: var(--frame-shadow);
     color: var(--ink);
@@ -1264,7 +1270,7 @@
   :where([part$=".frame"]:where(.hud)) {
     padding: var(--plate-pad);
     border: var(--plate-rim-width) solid var(--plate-rim);
-    border-radius: var(--plate-radius);
+    border-radius: var(--plate-radius); corner-shape: var(--plate-corner-shape);
     background: var(--plate-fill);
     box-shadow: var(--plate-shadow);
   }
@@ -1297,7 +1303,7 @@
      element's whole subtree. */
   :where([part$=".band"]:where(.lead)) { --title-size: var(--title-lead-size); }
   :where([part$=".band"]:where(.small)) { --title-size: var(--title-small-size); }
-  :where([part$=".row"]) { border-radius: var(--row-radius); background: var(--row-fill); color: var(--ink); }
+  :where([part$=".row"]) { border-radius: var(--row-radius); corner-shape: var(--row-corner-shape); background: var(--row-fill); color: var(--ink); }
   :where([part$=".row"]:hover) { background: var(--row-hover-fill); }
   :where([part$=".row"]:active) { background: var(--row-pressed-fill); }
   :where([part$=".row"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
@@ -1310,7 +1316,7 @@
   :where([part$=".cell"]) {
     box-sizing: border-box;
     border: var(--cell-rim-width) solid var(--cell-rim);
-    border-radius: var(--cell-radius);
+    border-radius: var(--cell-radius); corner-shape: var(--cell-corner-shape);
     background: var(--cell-fill);
     box-shadow: var(--cell-shadow);
     color: var(--ink);
@@ -1327,13 +1333,13 @@
   :where([part$=".cell"]:where([data-empty=true])) { box-shadow: var(--cell-empty-shadow); }
   :where([part$=".cell"]:where(:disabled, [aria-disabled=true], [data-locked=true])) { box-shadow: var(--cell-empty-shadow); color: var(--ink-disabled); }
   :where([part$=".badge"]) {
-    border-radius: var(--badge-radius);
+    border-radius: var(--badge-radius); corner-shape: var(--badge-corner-shape);
     background: var(--badge-fill);
     box-shadow: var(--badge-shadow);
     color: var(--badge-ink);
     font-family: var(--figure-font);
   }
-  :where([part$=".well"]) { border-radius: var(--well-radius); background: var(--well-fill); box-shadow: var(--well-shadow); }
+  :where([part$=".well"]) { border-radius: var(--well-radius); corner-shape: var(--well-corner-shape); background: var(--well-fill); box-shadow: var(--well-shadow); }
   :where([part$=".figure"]) { font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--figure-shadow); }
   :where([part$=".label"], [part$=".heading"]) {
     font-family: var(--label-font);

@@ -123,7 +123,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
     box-sizing: border-box;
     padding: var(--frame-pad);
     border: var(--frame-rim-width) solid var(--frame-rim);
-    border-radius: var(--frame-radius);
+    border-radius: var(--frame-radius); corner-shape: var(--frame-corner-shape);
     background: var(--frame-fill);
     box-shadow: var(--frame-shadow);
     color: var(--ink);
@@ -132,7 +132,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
   :where([part$=".frame"]:where(.hud)) {
     padding: var(--plate-pad);
     border: var(--plate-rim-width) solid var(--plate-rim);
-    border-radius: var(--plate-radius);
+    border-radius: var(--plate-radius); corner-shape: var(--plate-corner-shape);
     background: var(--plate-fill);
     box-shadow: var(--plate-shadow);
   }
@@ -165,7 +165,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
      element's whole subtree. */
   :where([part$=".band"]:where(.lead)) { --title-size: var(--title-lead-size); }
   :where([part$=".band"]:where(.small)) { --title-size: var(--title-small-size); }
-  :where([part$=".row"]) { border-radius: var(--row-radius); background: var(--row-fill); color: var(--ink); }
+  :where([part$=".row"]) { border-radius: var(--row-radius); corner-shape: var(--row-corner-shape); background: var(--row-fill); color: var(--ink); }
   :where([part$=".row"]:hover) { background: var(--row-hover-fill); }
   :where([part$=".row"]:active) { background: var(--row-pressed-fill); }
   :where([part$=".row"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
@@ -178,7 +178,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
   :where([part$=".cell"]) {
     box-sizing: border-box;
     border: var(--cell-rim-width) solid var(--cell-rim);
-    border-radius: var(--cell-radius);
+    border-radius: var(--cell-radius); corner-shape: var(--cell-corner-shape);
     background: var(--cell-fill);
     box-shadow: var(--cell-shadow);
     color: var(--ink);
@@ -195,13 +195,13 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
   :where([part$=".cell"]:where([data-empty=true])) { box-shadow: var(--cell-empty-shadow); }
   :where([part$=".cell"]:where(:disabled, [aria-disabled=true], [data-locked=true])) { box-shadow: var(--cell-empty-shadow); color: var(--ink-disabled); }
   :where([part$=".badge"]) {
-    border-radius: var(--badge-radius);
+    border-radius: var(--badge-radius); corner-shape: var(--badge-corner-shape);
     background: var(--badge-fill);
     box-shadow: var(--badge-shadow);
     color: var(--badge-ink);
     font-family: var(--figure-font);
   }
-  :where([part$=".well"]) { border-radius: var(--well-radius); background: var(--well-fill); box-shadow: var(--well-shadow); }
+  :where([part$=".well"]) { border-radius: var(--well-radius); corner-shape: var(--well-corner-shape); background: var(--well-fill); box-shadow: var(--well-shadow); }
   :where([part$=".figure"]) { font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--figure-shadow); }
   :where([part$=".label"], [part$=".heading"]) {
     font-family: var(--label-font);
