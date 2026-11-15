@@ -116,6 +116,8 @@ proof("font-family", "runs", "ordered_named_families_preserve_primary_glyphs_and
       "Both builders assert exact glyph/font handles for inherited lists, rich spans, reversed named/generic order, names after generics and quoted generic names. Generics map to engine font roles, not installed system fonts.")
 proof("gradients", "css_paint", "repeating_gradients_repeat_the_stop_interval",
       "GPU pixels prove repeating radial intervals with positive/negative starts, all eight conic half-quadrants and collapsed linear stops. Subpixel periods and unbounded stop counts are not covered.")
+proof("gradient-interpolation", "css_paint", "gradients_mix_in_the_colour_space_they_name",
+      "GPU pixels within deltaEOK 0.02 of CSS Color 4's formulas prove a full `in hsl longer hue` turn, `in hsl` red to blue the short way through magenta, and `in srgb` against the default Oklab. Other spaces and conic/radial forms are seen in review frames, not asserted.")
 proof("margin", "html_text", "block_margins_follow_the_ua_stylesheet_and_collapse",
       "Both builders assert positive/negative sibling and parent-child margin collapse, padding/fixed-height boundaries, noncollapsing flex margins, UA em margins and keyed insertion.")
 proof("text-wrap-balance text-wrap-pretty text-overflow", "html_text", "text_wrap_styles_and_overflow_strings_lay_out_as_css_does",

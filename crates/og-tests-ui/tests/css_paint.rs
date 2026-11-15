@@ -429,6 +429,102 @@ div { margin: 0; }
 
 #[test]
 #[ignore = "requires GPU"]
+fn gradients_mix_in_the_colour_space_they_name() {
+    use og_render::*;
+    let mut scene = RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    let text = r##"<meta name="component" content="spaces"/>
+<div>
+  <div id="longer"></div><div id="shorter"></div><div id="srgb"></div>
+</div>
+<style>
+div { margin: 0; }
+#longer, #shorter, #srgb { width: 256px; height: 32px; }
+#longer { background: linear-gradient(to right in hsl longer hue, red, red); }
+#shorter { background: linear-gradient(to right in hsl, red, blue); }
+#srgb { background: linear-gradient(to right in srgb, red, blue); }
+</style>"##;
+    ui.define_document(UiDocument::parse("ui/spaces.svelte", text).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "spaces"),
+        "spaces",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    ui.begin(InputFrame::default(), Viewport::new(256.0, 96.0));
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
+    ui.end();
+    let mut overlay = Overlay::new(256.0, 96.0, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.ui.overlay = Some(overlay);
+    scene.look.post.tonemap = Tonemap::None;
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: 256,
+        height: 96,
+        ..Default::default()
+    })
+    .expect("a headless adapter");
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let pixels = renderer.read_offscreen().unwrap().pixels;
+    image::save_buffer(
+        out_dir().join("css-gradient-spaces.png"),
+        &pixels,
+        256,
+        96,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
+    let check = |x: usize, y: usize, expected: [f32; 3]| {
+        // Averaged over a 4 x 4 block: the dither's grain cancels.
+        let mut sum = [0.0f32; 3];
+        for dy in 0..4 {
+            for dx in 0..4 {
+                let at = ((y + dy) * 256 + x + dx) * 4;
+                for k in 0..3 {
+                    sum[k] += f32::from(pixels[at + k]) / 16.0;
+                }
+            }
+        }
+        // Within one just-noticeable difference (deltaEOK 0.02): sRGB codes
+        // near 0 are too steep for a code tolerance.
+        let lab = |c: [f32; 3]| {
+            og_core::color::oklab(c.map(|v| og_core::color::srgb_to_linear(v / 255.0)))
+        };
+        let (a, b) = (lab(sum), lab(expected));
+        let d = (0..3).map(|k| (a[k] - b[k]).powi(2)).sum::<f32>().sqrt();
+        assert!(
+            d < 0.02,
+            "({x}, {y}): expected {expected:?}, got {sum:?} (deltaEOK {d})"
+        );
+    };
+    // HSL at full saturation and half lightness, by CSS Color 4's formula,
+    // at the hue of the block's centre (2 px in).
+    let hsl = |hue: f32| {
+        let f = |n: f32| {
+            let k = (n + hue / 30.0).rem_euclid(12.0);
+            (0.5 - 0.5 * (k - 3.0).min(9.0 - k).clamp(-1.0, 1.0)) * 255.0
+        };
+        [f(0.0), f(8.0), f(4.0)]
+    };
+    let t = |x: usize| (x as f32 + 2.0) / 256.0;
+    // A whole turn the long way round: yellow, green, cyan, blue, magenta.
+    for x in [40, 84, 126, 168, 210] {
+        check(x, 14, hsl(360.0 * t(x)));
+    }
+    // Red to blue the short way, through magenta (hue 360 down to 240).
+    for x in [60, 126, 190] {
+        check(x, 46, hsl(360.0 - 120.0 * t(x)));
+    }
+    // In sRGB, halfway is an even purple, not OKLab's lighter one.
+    let k = t(126);
+    let encode = |v: f32| v * 255.0;
+    check(126, 78, [encode(1.0 - k), 0.0, encode(k)]);
+}
+
+#[test]
+#[ignore = "requires GPU"]
 fn masks_hide_invisible_boxes_and_fade_image_content() {
     use og_render::*;
     struct Env(TextureHandle);
