@@ -12,31 +12,8 @@ impl RetainedHost {
         let identity = &element.context.node;
         let build = element.build(env, Arc::default());
         let node = &element.document.nodes[element.index];
-        let mut classes = BTreeSet::new();
-        let mut has_classes = false;
-        for (name, expression) in &node.selector_attrs {
-            let value = build.eval(expression);
-            if name == "class" {
-                has_classes = true;
-                if let Some(value) = value.as_str() {
-                    classes.extend(value.split_whitespace().map(str::to_owned));
-                }
-            } else if let Some(class) = name.strip_prefix("class:") {
-                has_classes = true;
-                if truthy(&value) {
-                    classes.insert(class.to_owned());
-                }
-                self.topology.set_attribute(identity, name, Some(value))?;
-            } else {
-                self.topology.set_attribute(identity, name, Some(value))?;
-            }
-        }
-        if has_classes {
-            self.topology.set_attribute(
-                identity,
-                "class",
-                Some(json!(classes.into_iter().collect::<Vec<_>>().join(" "))),
-            )?;
+        for (name, value) in crate::doc::build::structure::selector_facts(node, |e| build.eval(e)) {
+            self.topology.set_attribute(identity, &name, Some(value))?;
         }
         let mut facts = BTreeMap::new();
         for prop in &node.props {
