@@ -281,12 +281,7 @@ impl Ui {
     pub(super) fn apply_part_box(&mut self, i: usize) {
         self.tree.rewrite(i);
         let part = self.tree.nodes[i].part_box.clone().expect("part node");
-        let owner = &self.tree.nodes[part.owner];
-        let reference = if owner.content_slot == i {
-            owner.part().unwrap_or(part.reference)
-        } else {
-            part.reference
-        };
+        let reference = self.part_box_reference(i);
         let r = self.part_values(&reference, Some(self.tree.nodes[i].key));
         let document = self
             .tree
@@ -390,7 +385,94 @@ impl Ui {
                 text.color = ink;
             }
         }
+        self.inherit_part_text(i, &r);
         self.text_frame_box(i, &r);
+    }
+
+    /// The widget's text inside part `i` (a tab's label, a select's value,
+    /// a stepper's value under its frame) inherits the text properties the
+    /// part declares, as CSS inherits them (CSS Cascade 4 §7.2): a nested
+    /// part's declarations win inside it. Document content keeps its own
+    /// cascade, and a part's own text is styled by its own pass.
+    pub(super) fn inherit_part_text(&mut self, i: usize, r: &Arc<Resolved>) {
+        let carried = Carried::of(r);
+        if !carried.any() {
+            return;
+        }
+        let mut stack: Vec<(usize, Chain)> = vec![(i, vec![(r.clone(), carried)])];
+        while let Some((at, chain)) = stack.pop() {
+            for k in 0..self.tree.nodes[at].built_children.len() {
+                let c = self.tree.nodes[at].built_children[k];
+                let n = &self.tree.nodes[c];
+                if n.part_host.is_some() {
+                    continue;
+                }
+                let own = if n.part_box.is_some() {
+                    Some(self.part_box_reference(c))
+                } else if n.content_slot == NONE {
+                    n.part()
+                        .or_else(|| n.el.frame.map(crate::StylePart::part_ref))
+                } else {
+                    None
+                };
+                if let Some(part) = own {
+                    let nested = self.part_values(&part, Some(self.tree.nodes[c].key));
+                    let mut chain = chain.clone();
+                    chain.push((nested.clone(), Carried::of(&nested)));
+                    stack.push((c, chain));
+                    continue;
+                }
+                self.inherit_text(c, &chain);
+                stack.push((c, chain.clone()));
+            }
+        }
+    }
+
+    /// Text node `c` under the parts of `chain` (outermost first): each
+    /// one's carried properties over its own step, font and ink.
+    fn inherit_text(&mut self, c: usize, chain: &Chain) {
+        let crate::layout::Content::Text(text) = &*self.tree.nodes[c].content else {
+            return;
+        };
+        let (mut step, mut font, mut color) = (text.step, text.font, text.color);
+        for (r, carried) in chain {
+            let style = r.kept_part_text(&self.env.theme, step, &self.style, &self.env);
+            step = carried.mask(&style).step(step);
+            if carried.transform && style.transform.is_none() {
+                step.uppercase = false;
+            }
+            if carried.family {
+                let role = style.font_role.unwrap_or(font);
+                font = style
+                    .family
+                    .as_deref()
+                    .map_or(role, |names| self.env.fonts.family_list(names, role));
+            }
+            if carried.color
+                && let Some(ink) = r.color("color")
+            {
+                color = ink;
+            }
+        }
+        if (step, font, color) == (text.step, text.font, text.color) {
+            return;
+        }
+        self.tree.rewrite(c);
+        if let crate::layout::Content::Text(text) = self.tree.content_mut(c) {
+            (text.step, text.font, text.color) = (step, font, color);
+        }
+    }
+
+    /// The part a part box is styled as: its owner's for the box its
+    /// content is built in, else its own reference.
+    fn part_box_reference(&self, i: usize) -> crate::dress::PartRef {
+        let part = self.tree.nodes[i].part_box.as_ref().expect("part node");
+        let owner = &self.tree.nodes[part.owner];
+        if owner.content_slot == i {
+            owner.part().unwrap_or(part.reference)
+        } else {
+            part.reference
+        }
     }
 
     pub(crate) fn css_feedback(
@@ -1015,4 +1097,85 @@ pub(crate) fn type_length(name: &str, value: &str) -> Option<f32> {
         return None;
     }
     value.trim().strip_suffix("px")?.trim().parse::<f32>().ok()
+}
+
+/// The parts a text is inside, outermost first, with what each carries.
+type Chain = Vec<(Arc<Resolved>, Carried)>;
+
+/// The inherited text properties a part declares itself, which the widget
+/// text inside it takes ([`Ui::inherit_part_text`]). A declaration rolled
+/// back (`revert-layer`, as an unset hook leaves it) or deferring to the
+/// parent (`inherit`, `unset`) declares nothing.
+#[derive(Clone, Copy, Debug, Default)]
+struct Carried {
+    family: bool,
+    size: bool,
+    weight: bool,
+    stretch: bool,
+    line_height: bool,
+    letter_spacing: bool,
+    word_spacing: bool,
+    transform: bool,
+    color: bool,
+}
+
+impl Carried {
+    fn of(r: &Resolved) -> Self {
+        let mut c = Self::default();
+        for (name, value) in &r.cascade.text {
+            if matches!(
+                value.trim(),
+                "inherit" | "unset" | "revert" | "revert-layer" | "initial"
+            ) {
+                continue;
+            }
+            match name.as_str() {
+                "font" => {
+                    c.family = true;
+                    c.size = true;
+                    c.weight = true;
+                    c.stretch = true;
+                    c.line_height = true;
+                }
+                "font-family" | "-og-font-name" => c.family = true,
+                "font-size" => c.size = true,
+                "font-weight" => c.weight = true,
+                "font-stretch" | "font-width" => c.stretch = true,
+                "line-height" => c.line_height = true,
+                "letter-spacing" => c.letter_spacing = true,
+                "word-spacing" => c.word_spacing = true,
+                "text-transform" => c.transform = true,
+                _ => {}
+            }
+        }
+        // The colour is a reflected value: there only where declared.
+        c.color = r.color("color").is_some();
+        c
+    }
+
+    fn any(self) -> bool {
+        self.family
+            || self.size
+            || self.weight
+            || self.stretch
+            || self.line_height
+            || self.letter_spacing
+            || self.word_spacing
+            || self.transform
+            || self.color
+    }
+
+    /// `style`'s step fields this part declares, the rest unset.
+    fn mask(self, style: &super::super::text_css::TextCss) -> super::super::text_css::TextCss {
+        super::super::text_css::TextCss {
+            size: style.size.filter(|_| self.size),
+            weight: style.weight.filter(|_| self.weight),
+            stretch: style.stretch.filter(|_| self.stretch),
+            line_height: style.line_height.filter(|_| self.line_height),
+            letter_spacing: style.letter_spacing.filter(|_| self.letter_spacing),
+            word_spacing: style.word_spacing.filter(|_| self.word_spacing),
+            transform: style.transform.clone().filter(|_| self.transform),
+            ..Default::default()
+        }
+    }
 }

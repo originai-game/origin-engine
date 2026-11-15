@@ -668,6 +668,7 @@ impl Ui {
                 text.font = font;
             }
         }
+        self.inherit_part_text(i, &r);
     }
 
     /// What document media queries read: the viewport and the theme.

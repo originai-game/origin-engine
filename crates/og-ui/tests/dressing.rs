@@ -790,6 +790,93 @@ hr { width: 173px; color: #23d145; }
     }
 }
 
+/// The drawn text commands whose text is `label`: font, ink and tracking (em).
+fn drawn_text(ui: &Ui, label: &str) -> Vec<(og_draw::FontHandle, [f32; 4], f32)> {
+    ui.frame()
+        .items
+        .iter()
+        .map(|item| match &item.cmd {
+            DrawCmd::StyledText { text, .. } => &**text,
+            cmd => cmd,
+        })
+        .filter_map(|cmd| match cmd {
+            DrawCmd::Text {
+                text,
+                font,
+                color,
+                tracking,
+                ..
+            } if text == label => Some((*font, *color, *tracking)),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn a_parts_text_properties_reach_the_widget_text_inside_it() {
+    // CSS inheritance: a tab's label, a select's value and a date
+    // stepper's value are text inside their part, so the font, case,
+    // spacing and ink a pack's hooks declare on the part reach them, as
+    // they reach a part's own text (a number field's value).
+    let mut handles = Handles::default();
+    let body = handles.test_font();
+    let display = handles.test_font();
+    let display_handle = display.handle.unwrap();
+    let mut ui = Ui::new(UiDesc {
+        fonts: Fonts {
+            body,
+            families: vec![FamilyFace {
+                family: "Fantasy Display".into(),
+                weight: (100, 900),
+                font: display,
+                ..Default::default()
+            }],
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+    ui.set_part_css(&format!(
+        "{DEFAULT_CSS}
+         :root {{ --tabs-font: \"Fantasy Display\"; --tabs-transform: uppercase; --tabs-tracking: 3px;
+                  --tabs-tab-ink: #d12345; --field-font: \"Fantasy Display\"; }}"
+    ))
+    .unwrap();
+    let d = mounted(
+        ui,
+        r#"<column id="Root">
+  <tabs id="Tabs" items="First Second" bind:selected={$tab}></tabs>
+  <select id="Select" bind:value={$choice}><option value="o">Choose</option></select>
+  <input type="number" id="Number" value="3" min="0" max="9" />
+  <input type="date" id="When" value="2000-01-01" />
+</column>"#,
+        &[("tab", json!(1)), ("choice", json!("o"))],
+        Viewport::new(600.0, 400.0),
+    );
+    let ui = &d.ui;
+    let ink = Srgba::rgb(209, 35, 69).linear();
+    for (label, selected) in [("FIRST", false), ("SECOND", true)] {
+        let drawn = drawn_text(ui, label);
+        assert!(!drawn.is_empty(), "{label} drawn uppercase");
+        for (font, color, tracking) in drawn {
+            assert_eq!(font, display_handle, "{label}: the tab's family");
+            // The selected tab takes `--tabs-tab-selected-ink`, unset here.
+            assert_eq!(color == ink, !selected, "{label}: the tab's ink");
+            assert!(
+                tracking > 0.1,
+                "{label}: the tab's 3 px tracking, got {tracking} em"
+            );
+        }
+    }
+    for label in ["Choose", "3", "2000"] {
+        let drawn = drawn_text(ui, label);
+        assert!(!drawn.is_empty(), "{label} drawn");
+        assert!(
+            drawn.iter().all(|(font, ..)| *font == display_handle),
+            "{label}: the part's family"
+        );
+    }
+}
+
 #[test]
 fn part_host_negation_and_part_states_select_distinct_paint() {
     let mut ui = ui_with_font(test_font_metrics());
