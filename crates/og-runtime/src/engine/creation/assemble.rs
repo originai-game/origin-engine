@@ -396,8 +396,9 @@ pub(crate) fn assemble(
                 .ok_or_else(|| format!("the game lists system {s}, which was never declared"))?,
         );
     }
-    // Lazy records a game system or hook names: registered before the
-    // systems that declare them, their modules granted them once mounted.
+    // Lazy records a game system or hook names, with their partners and
+    // what their modules need: registered before the systems that declare
+    // them, their modules granted them once mounted.
     let lazy_named: Vec<&'static str> = crate::engine::lazy::LAZY
         .iter()
         .map(|l| l.name)
@@ -416,7 +417,11 @@ pub(crate) fn assemble(
                 })
             })
         })
-        .flat_map(crate::engine::lazy::with_partners)
+        .flat_map(|n| {
+            let mut v = crate::engine::lazy::with_partners(n);
+            v.extend(crate::engine::lazy::needs(n));
+            v
+        })
         .collect();
     // In LAZY's order, once each (a partner joins at its own place).
     let lazy_named: Vec<&'static str> = crate::engine::lazy::LAZY

@@ -215,6 +215,32 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::bind::story::BARK_SAID,
         enable: |w, _| w.grant(crate::bind::story::SYSTEM, &[crate::bind::story::BARK_SAID]),
     },
+    // og.film: its system once a game loads a film (og.film.load registers
+    // its records together, TOGETHER).
+    Lazy {
+        name: crate::bind::film::RECORDS[0],
+        enable: crate::bind::film::enable,
+    },
+    Lazy {
+        name: crate::bind::film::RECORDS[1],
+        enable: crate::bind::film::enable,
+    },
+    Lazy {
+        name: crate::bind::film::RECORDS[2],
+        enable: crate::bind::film::enable,
+    },
+    Lazy {
+        name: crate::bind::film::RECORDS[3],
+        enable: crate::bind::film::enable,
+    },
+    Lazy {
+        name: crate::bind::film::RECORDS[4],
+        enable: crate::bind::film::enable,
+    },
+    Lazy {
+        name: crate::bind::film::RECORDS[5],
+        enable: crate::bind::film::enable,
+    },
     // G3-3: world cells, read and written by the runtime's before-tick
     // hook (stream::cells); no module to grant. Naming any of the cell's
     // records registers them together; an anchor alone is its own.
@@ -468,12 +494,27 @@ const TOGETHER: &[&[&str]] = &[
     &crate::bind::destruction::RECORDS,
     &crate::bind::destruction2d::RECORDS,
     &crate::bind::vfx::RECORDS,
+    &crate::bind::film::RECORDS,
     &[
         crate::world::stream::cells::CELL,
         crate::world::stream::cells::MEMBER,
         crate::world::stream::cells::EVENT,
     ],
 ];
+
+/// Lazy records a module's system declares beside its own, registered
+/// before its records enable it: og.film's system writes its decks'
+/// og.VideoPlayer.
+const NEEDS: &[(&[&str], &[&str])] =
+    &[(&crate::bind::film::RECORDS, &[crate::bind::video::PLAYER])];
+
+/// The lazy records lazy record `name`'s module needs registered first.
+pub(crate) fn needs(name: &str) -> &'static [&'static str] {
+    NEEDS
+        .iter()
+        .find(|(group, _)| group.contains(&name))
+        .map_or(&[], |(_, n)| n)
+}
 
 /// Lazy record `name` and the ones registered with it.
 pub(crate) fn with_partners(name: &'static str) -> Vec<&'static str> {
@@ -536,6 +577,9 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
         if st.names_by_id.len() == id.index() as usize {
             st.names_by_id.push(name.to_string());
         }
+    }
+    for need in needs(name) {
+        ensure(eng, world, need)?;
     }
     let mount = Mount {
         id: eng.id,

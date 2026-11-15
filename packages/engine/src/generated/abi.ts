@@ -1316,6 +1316,20 @@ export interface HostAbi<A, V> {
   og_sight_reveal(world: number, team: number, point: string, radius: number): string;
   /** `og.sight.forget` */
   og_sight_forget(world: number, team: number): string;
+  /** `og.film.load` */
+  og_film_load(world: number, dialogue: string): string;
+  /** `og.film.start` */
+  og_film_start(world: number, desc: string | undefined): string;
+  /** `og.film.view` */
+  og_film_view(world: number, film: number): string;
+  /** `og.film.choose` */
+  og_film_choose(world: number, film: number, index: number): string;
+  /** `og.film.play` */
+  og_film_play(world: number, film: number): string;
+  /** `og.film.pause` */
+  og_film_pause(world: number, film: number): string;
+  /** `og.film.stop` */
+  og_film_stop(world: number, film: number): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -1943,6 +1957,13 @@ export const SYMBOLS: readonly string[] = [
   "og_sight_explored",
   "og_sight_reveal",
   "og_sight_forget",
+  "og_film_load",
+  "og_film_start",
+  "og_film_view",
+  "og_film_choose",
+  "og_film_play",
+  "og_film_pause",
+  "og_film_stop",
   "og_host_set_dispatcher",
   "og_host_shared",
   "og_engine_create",
@@ -2226,6 +2247,26 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_destruction_cell2d(world: number, entity: number, point: string) {
       if (typeof entity !== "number") notEntity("og.destruction.cell2d", "entity", entity);
       return abi.og_destruction_cell2d(world, entity, point);
+    },
+    og_film_view(world: number, film: number) {
+      if (typeof film !== "number") notEntity("og.film.view", "film", film);
+      return abi.og_film_view(world, film);
+    },
+    og_film_choose(world: number, film: number, index: number) {
+      if (typeof film !== "number") notEntity("og.film.choose", "film", film);
+      return abi.og_film_choose(world, film, index);
+    },
+    og_film_play(world: number, film: number) {
+      if (typeof film !== "number") notEntity("og.film.play", "film", film);
+      return abi.og_film_play(world, film);
+    },
+    og_film_pause(world: number, film: number) {
+      if (typeof film !== "number") notEntity("og.film.pause", "film", film);
+      return abi.og_film_pause(world, film);
+    },
+    og_film_stop(world: number, film: number) {
+      if (typeof film !== "number") notEntity("og.film.stop", "film", film);
+      return abi.og_film_stop(world, film);
     },
   };
 }

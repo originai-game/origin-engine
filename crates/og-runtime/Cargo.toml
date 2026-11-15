@@ -49,7 +49,7 @@ og-video = { path = "../og-video", optional = true }
 image = { workspace = true, features = ["exr"] }
 
 [features]
-default = ["shaping", "physics2d", "physics3d", "story", "video", "destruction", "motion", "nav", "ai"]
+default = ["shaping", "physics2d", "physics3d", "story", "video", "film", "destruction", "motion", "nav", "ai"]
 # A published game: the probe keeps only its player-facing members, the
 # renderer times no pass on the GPU (og-render's `publish`), and the
 # reflected and record field docs are empty (og-core's and og-api's
@@ -78,6 +78,9 @@ story = ["dep:og-story"]
 # og.video and a document's <video> and <audio> (og-video: the streamed
 # decode plan, natively its rav1d decoder; src/video.rs).
 video = ["dep:og-video"]
+# og.film: a Yarn dialogue paced by its footage (src/bind/film.rs); it plays
+# og.story's conversations on og.video's players, so it needs both.
+film = ["story", "video"]
 # og.destruction: prefractured props and pixel terrain (og-physics'
 # `destruction`; src/destruction.rs, src/destruction2d.rs).
 destruction = ["og-physics/destruction"]

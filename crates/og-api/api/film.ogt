@@ -1,0 +1,174 @@
+module film {
+  doc "Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-film: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `film.open` marker, lock at `film.lock` and are taken at its cut (`film.cut`, else its end), the default (`#default`) when none was chosen."
+  doc "The story stays og.story's, the footage og.video's, the timing og.timeline's: og.film moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state."
+  guide "film"
+
+  struct FilmDesc {
+    doc "A film to start."
+    desc true
+    field dialogue String "The dialogue (StoryAsset.name), loaded with og.story.load and og.film.load."
+    field node String "The node to start at (empty: the dialogue's start)."
+    field decks u32 "Decks to play on, 1 to 3 (0: 3). One plays; the others warm what the film may cut to. 1 warms nothing (one decoder: WeChat on iOS)." {
+      max 3
+    }
+    field paused bool "Start holding the first segment's first frame, warmed, until og.film.play (a title screen before the first gesture)."
+  }
+
+  struct FilmInfo {
+    doc "What og.film.load prepared."
+    field dialogue String "The dialogue."
+    field segments List.String "Its film nodes (those with `og-film`), in file order."
+    field chapters List.String "Its chapters' i18n keys (`og-film-chapter`), in file order."
+    field endings List.String "Its endings (`og-film-ending`), in file order."
+  }
+
+  component Film {
+    doc "A film og.film.start made: the conversation it paces and its decks. og.film writes it; read og.film.view."
+    field conversation u32 "Its og.story conversation." {
+      readonly true
+    }
+    field decks u32 "Its decks." {
+      readonly true
+    }
+    field current Entity "The deck playing now (an og.FilmDeck)." {
+      readonly true
+    }
+    field node u32 "The film node playing, as its id (a hash of its title; og.film.view names it); 0 before the first." {
+      readonly true
+    }
+    field pending i32 "The choice taken in the window (ChoiceView.index); -1: none yet." {
+      default -1
+      readonly true
+    }
+    field window u32 "0 closed, 1 open (choices shown), 2 locked (past film.lock: the cut takes pending, else the default)." {
+      readonly true
+    }
+    field paused bool "Held by og.film.pause (or FilmDesc.paused) until og.film.play." {
+      readonly true
+    }
+    field chapter u32 "The node of the last chapter entered (its id, as `node`); 0: none." {
+      readonly true
+    }
+    field ended bool "The last segment played to its cut and the conversation ended." {
+      readonly true
+    }
+  }
+
+  component FilmDeck {
+    doc "An entity og.film plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The film's current deck plays; the others hold a segment it may cut to, paused at its first frame."
+    field film Entity "Its film." {
+      readonly true
+    }
+    field node u32 "The film node whose segment it holds (its id, as og.Film.node); 0: none." {
+      readonly true
+    }
+  }
+
+  struct WindowView {
+    doc "A segment's choice window."
+    field ticksLeft u32 "Ticks until it locks (film.lock)."
+    field ticksTotal u32 "Ticks from film.open to film.lock."
+    field defaultChoice u32 "The ChoiceView.index taken when nothing was chosen (`#default`, else the first enabled)."
+    field pending Option.u32 "The choice taken so far."
+    field locked bool "Past film.lock: choosing is over; the cut takes pending, else the default."
+  }
+
+  struct FilmView {
+    doc "What a film shows now."
+    field film Entity "The film."
+    field node String "The film node playing."
+    field segment String "Its segment's asset id."
+    field texture Texture "The current deck's picture (its og.VideoPlayer.texture): put it on a full-screen sprite or image."
+    field time f32 "Seconds into the segment." {
+      unit s
+    }
+    field cut f32 "When it cuts to the next: its film.cut marker, else its duration." {
+      unit s
+    }
+    field choices List.ChoiceView "The node's choices while its window is open or locked (og.story's)."
+    field window Option.WindowView "The window, while it is open or locked."
+    field paused bool "Held by og.film.pause."
+    field chapter String "The last chapter entered."
+    field ending String "The ending reached, once ended."
+    field ended bool "It played to its end."
+  }
+
+  event FilmSegment {
+    doc "A film began a node's segment."
+    field film Entity "The film."
+    field node String "The node (at most 63 bytes)."
+    field segment String "Its segment's asset id (at most 63 bytes)."
+  }
+
+  event FilmChoice {
+    doc "A film took a choice at its cut (before og.story ran it)."
+    field film Entity "The film."
+    field node String "The node (at most 63 bytes)."
+    field index u32 "The ChoiceView.index taken."
+    field timedOut bool "Nothing was chosen in the window: the default was taken."
+  }
+
+  event FilmChapter {
+    doc "A film entered a chapter's node (`og-film-chapter`): a place to save."
+    field film Entity "The film."
+    field node String "The node (at most 63 bytes)."
+    field chapter String "The chapter's i18n key (at most 63 bytes)."
+  }
+
+  event FilmEnded {
+    doc "A film's last segment reached its cut with the conversation ended."
+    field film Entity "The film."
+    field node String "The last node (at most 63 bytes)."
+    field ending String "Its `og-film-ending`, empty without one (at most 63 bytes)."
+  }
+
+  fn load {
+    doc "Prepare a loaded dialogue's film: every segment's timeline (and through it every video, which fetches nothing until it plays) and og.film's records. Call it in setup, after og.story.load, in every process that restores a film."
+    param world World "The world."
+    param dialogue String "The dialogue (StoryAsset.name)."
+    returns Result.FilmInfo "Refused for a dialogue not loaded, or a segment that is not a cooked timeline with a video track."
+  }
+
+  fn start {
+    doc "Start a film: its decks, and its conversation held at the first film node, whose segment plays from the next tick. Outside a system (setup or a command)."
+    param world World "The world."
+    param desc FilmDesc "The dialogue, and optionally the node, the decks and whether it starts paused."
+    returns Result.Entity "The film's entity (og.Film), or why not: a dialogue og.film.load has not prepared, an unknown node, or inside a system."
+  }
+
+  fn view {
+    doc "What a film shows now: its picture, segment time, choices and window."
+    param world World "The world."
+    param film Entity "The film."
+    returns Option.FilmView "Null for an entity that is no film."
+  }
+
+  fn choose {
+    doc "Take a choice while the window is open: recorded now (FilmView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. Systems may call it; og.film applies it this tick."
+    param world World "The world."
+    param film Entity "The film."
+    param index u32 "ChoiceView.index."
+    returns Result.Void "Refused outside an open window, or for a choice that is hidden or disabled."
+  }
+
+  fn play {
+    doc "Play a paused film from where it is. Systems may call it."
+    param world World "The world."
+    param film Entity "The film."
+    returns Result.Void "Refused for an entity that is no film."
+  }
+
+  fn pause {
+    doc "Hold a film on its frame (a pause menu); its window's time holds too. Systems may call it."
+    param world World "The world."
+    param film Entity "The film."
+    returns Result.Void "Refused for an entity that is no film."
+  }
+
+  fn stop {
+    doc "End a film: its conversation stops and its decks and entity are despawned this tick. Systems may call it."
+    param world World "The world."
+    param film Entity "The film."
+    returns Result.Void "Refused for an entity that is no film."
+  }
+}

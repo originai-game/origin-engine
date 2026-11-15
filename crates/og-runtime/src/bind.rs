@@ -27,6 +27,12 @@ pub(crate) mod destruction;
 #[cfg(not(feature = "destruction"))]
 #[path = "bind/absent/destruction2d.rs"]
 pub(crate) mod destruction2d;
+#[cfg(feature = "film")]
+pub(crate) mod film;
+// Without the `film` feature og.film answers the refusal (bind/absent/film.rs).
+#[cfg(not(feature = "film"))]
+#[path = "bind/absent/film.rs"]
+pub(crate) mod film;
 pub(crate) mod forces;
 pub(crate) mod garment;
 pub(crate) mod i18n;

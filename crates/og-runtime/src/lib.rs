@@ -83,6 +83,10 @@ pub use bind::destruction2d::{
     og_destruction_carve2d, og_destruction_cell2d, og_destruction_explode2d, og_destruction_fill2d,
     og_destruction_fracture2d,
 };
+pub use bind::film::{
+    og_film_choose, og_film_load, og_film_pause, og_film_play, og_film_start, og_film_stop,
+    og_film_view,
+};
 pub use bind::i18n::{
     fonts_pending, og_i18n_format_compact, og_i18n_format_currency, og_i18n_format_date,
     og_i18n_format_duration, og_i18n_format_number, og_i18n_format_time, og_i18n_has, og_i18n_load,

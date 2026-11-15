@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "og.film",
+      "summary": "Interactive film (guide film): a Yarn dialogue whose nodes headed `og-film: <timeline>` each play a segment, a timeline with one video track of its own. og.film.load prepares a loaded dialogue, og.film.start plays it on up to three decks (one plays, the others hold the segments the current node may lead to on their first frame), og.film.view answers the picture, the choices and the window, og.film.choose takes a choice between the segment's `film.open` and `film.lock` markers, and at `film.cut` (else its end) the choice, else the `#default`, is taken. Snapshots carry it all. Events og.FilmSegment, og.FilmChoice, og.FilmChapter, og.FilmEnded; commands film:choose:<index>, film:play, film:pause."
+    },
+    {
+      "member": "cook: film dialogues",
+      "summary": "The cook refuses a dialogue og.film plays when a film node's segment is missing, has other than one video track of its own or its markers out of order, two of a node's choices are #default, a film node says Yarn lines, or a node without a segment offers choices."
+    }
+  ]
+}

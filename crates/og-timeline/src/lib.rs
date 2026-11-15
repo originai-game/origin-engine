@@ -12,6 +12,8 @@
 //! - [`eval`]: every value a track sets as a function of the time alone, so
 //!   seeking is exact.
 //! - [`captions`]: `.srt` cues and word-timestamp `.json` (the cook's import).
+//! - [`segment`]: a timeline as og.film's segment (its own video track and
+//!   the markers that time its choice window).
 //!
 //! Only `+ − × ÷`, `sqrt` and og-core's deterministic trigonometry: the same
 //! bits on every host.
@@ -20,6 +22,7 @@ pub mod captions;
 pub mod eval;
 mod model;
 mod path;
+pub mod segment;
 
 pub use model::*;
 pub use path::{Nearest, Path, PathDesc, PathKind, PathSample, SAMPLES, up_of};

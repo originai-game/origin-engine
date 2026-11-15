@@ -600,6 +600,29 @@ pub(crate) fn diagnose(
             r.notes.push(what);
         }
     }
+    // Dialogues og.film plays: their segments, defaults and lines. An error
+    // of the dialogue's (the cook fails), on a cached cook too.
+    let segment = |id: &str| {
+        sources
+            .iter()
+            .find(|s| s.rel == id && s.kind == &timeline::TIMELINE)
+            .map(|s| {
+                timeline::parse(s)
+                    .map_err(|e| e.0)
+                    .and_then(|t| t.segment())
+            })
+    };
+    for (rel, what) in story::check_films(&stories, &segment, story_functions) {
+        if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
+            match &mut r.error {
+                Some(e) => {
+                    e.push_str("; ");
+                    e.push_str(&what);
+                }
+                None => r.error = Some(what),
+            }
+        }
+    }
     // A text model past the project's triangle or vertex budget: cooked, and said.
     for r in reports.iter().filter(|r| r.kind == "model") {
         for n in r

@@ -148,6 +148,73 @@ pub(crate) fn check_story_keys(
     out
 }
 
+/// The cook's check of the dialogues og.film plays (those with a node
+/// headed `og-film`): each film node's segment is a timeline og.film can
+/// play (`segment` answers it by asset id: `None` when there is none), at
+/// most one of its choices is `#default`, it says no Yarn lines, and every
+/// node with choices is a film node. As (source, error).
+pub(crate) fn check_films(
+    stories: &[(&str, &[u8])],
+    segment: &dyn Fn(&str) -> Option<Result<og_timeline::segment::Segment, String>>,
+    functions: &std::collections::BTreeMap<String, og_story::yarn::types::Function>,
+) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for (rel, bytes) in stories.iter().filter(|(r, _)| r.ends_with(".yarn")) {
+        let Some(d) = std::str::from_utf8(bytes)
+            .ok()
+            .and_then(|t| og_story::yarn::compile_with_functions(t, functions.clone()).ok())
+        else {
+            continue;
+        };
+        let graph = d.graph();
+        if !graph.iter().any(|n| n.headers.contains_key("og-film")) {
+            continue;
+        }
+        let mut errors = Vec::new();
+        for n in &graph {
+            let Some(seg) = n.headers.get("og-film") else {
+                if !n.choices.is_empty() {
+                    errors.push(format!(
+                        "node '{}' offers choices but has no og-film segment: in a film every choice is a film node's, timed by its segment",
+                        n.title
+                    ));
+                }
+                continue;
+            };
+            match segment(seg) {
+                None => errors.push(format!(
+                    "node '{}': its segment '{seg}' is no timeline under assets/",
+                    n.title
+                )),
+                Some(Err(e)) => errors.push(format!("node '{}': segment {seg}: {e}", n.title)),
+                Some(Ok(_)) => {}
+            }
+            let defaults = n
+                .choices
+                .iter()
+                .filter(|c| c.tags.contains_key("default"))
+                .count();
+            if defaults > 1 {
+                errors.push(format!(
+                    "node '{}': {defaults} choices are #default; one at most",
+                    n.title
+                ));
+            }
+            let said = d.said_in(&n.title);
+            if !said.is_empty() {
+                let lines: Vec<String> = said.iter().map(usize::to_string).collect();
+                errors.push(format!(
+                    "node '{}' says Yarn lines (line {}): a film node shows none; put what is said in its segment's caption track",
+                    n.title,
+                    lines.join(", ")
+                ));
+            }
+        }
+        out.extend(errors.into_iter().map(|e| (rel.to_string(), e)));
+    }
+    out
+}
+
 pub(crate) static DIALOGUE: KindDef = KindDef {
     name: "dialogue",
     extensions: &["yarn"],

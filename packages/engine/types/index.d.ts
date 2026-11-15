@@ -33190,6 +33190,258 @@ export interface SightBlocker {
 
 
 
+// ── film ────────────────────────────────────────────────────────
+// Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-film: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `film.open` marker, lock at `film.lock` and are taken at its cut (`film.cut`, else its end), the default (`#default`) when none was chosen.
+// The story stays og.story's, the footage og.video's, the timing og.timeline's: og.film moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state.
+// See `film`.
+
+/**
+ * A film to start.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FilmDesc {
+  /**
+   * The dialogue (StoryAsset.name), loaded with og.story.load and og.film.load.
+   *
+   * @default ""
+   */
+  readonly dialogue?: string;
+  /**
+   * The node to start at (empty: the dialogue's start).
+   *
+   * @default ""
+   */
+  readonly node?: string;
+  /**
+   * Decks to play on, 1 to 3 (0: 3). One plays; the others warm what the film may cut to. 1 warms nothing (one decoder: WeChat on iOS).
+   *
+   * @default 0
+   * @range ..3
+   */
+  readonly decks?: number;
+  /**
+   * Start holding the first segment's first frame, warmed, until og.film.play (a title screen before the first gesture).
+   *
+   * @default false
+   */
+  readonly paused?: boolean;
+}
+
+/** What og.film.load prepared. */
+export interface FilmInfo {
+  /** The dialogue. */
+  readonly dialogue: string;
+  /** Its film nodes (those with `og-film`), in file order. */
+  readonly segments: readonly string[];
+  /** Its chapters' i18n keys (`og-film-chapter`), in file order. */
+  readonly chapters: readonly string[];
+  /** Its endings (`og-film-ending`), in file order. */
+  readonly endings: readonly string[];
+}
+
+/**
+ * A film og.film.start made: the conversation it paces and its decks. og.film writes it; read og.film.view.
+ *
+ * The value of the `Film` component (token `og.Film`).
+ */
+export interface Film {
+  /**
+   * Its og.story conversation.
+   *
+   * @readonly written by the engine
+   */
+  readonly conversation: number;
+  /**
+   * Its decks.
+   *
+   * @readonly written by the engine
+   */
+  readonly decks: number;
+  /**
+   * The deck playing now (an og.FilmDeck).
+   *
+   * @readonly written by the engine
+   */
+  readonly current: Entity;
+  /**
+   * The film node playing, as its id (a hash of its title; og.film.view names it); 0 before the first.
+   *
+   * @readonly written by the engine
+   */
+  readonly node: number;
+  /**
+   * The choice taken in the window (ChoiceView.index); -1: none yet.
+   *
+   * @default -1
+   * @readonly written by the engine
+   */
+  readonly pending: number;
+  /**
+   * 0 closed, 1 open (choices shown), 2 locked (past film.lock: the cut takes pending, else the default).
+   *
+   * @readonly written by the engine
+   */
+  readonly window: number;
+  /**
+   * Held by og.film.pause (or FilmDesc.paused) until og.film.play.
+   *
+   * @readonly written by the engine
+   */
+  readonly paused: boolean;
+  /**
+   * The node of the last chapter entered (its id, as `node`); 0: none.
+   *
+   * @readonly written by the engine
+   */
+  readonly chapter: number;
+  /**
+   * The last segment played to its cut and the conversation ended.
+   *
+   * @readonly written by the engine
+   */
+  readonly ended: boolean;
+}
+
+/**
+ * An entity og.film plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The film's current deck plays; the others hold a segment it may cut to, paused at its first frame.
+ *
+ * The value of the `FilmDeck` component (token `og.FilmDeck`).
+ */
+export interface FilmDeck {
+  /**
+   * Its film.
+   *
+   * @readonly written by the engine
+   */
+  readonly film: Entity;
+  /**
+   * The film node whose segment it holds (its id, as og.Film.node); 0: none.
+   *
+   * @readonly written by the engine
+   */
+  readonly node: number;
+}
+
+/** A segment's choice window. */
+export interface WindowView {
+  /** Ticks until it locks (film.lock). */
+  readonly ticksLeft: number;
+  /** Ticks from film.open to film.lock. */
+  readonly ticksTotal: number;
+  /**
+   * The ChoiceView.index taken when nothing was chosen (`#default`, else the first enabled).
+   */
+  readonly defaultChoice: number;
+  /** The choice taken so far. */
+  readonly pending: number | null;
+  /** Past film.lock: choosing is over; the cut takes pending, else the default. */
+  readonly locked: boolean;
+}
+
+/** What a film shows now. */
+export interface FilmView {
+  /** The film. */
+  readonly film: Entity;
+  /** The film node playing. */
+  readonly node: string;
+  /** Its segment's asset id. */
+  readonly segment: string;
+  /**
+   * The current deck's picture (its og.VideoPlayer.texture): put it on a full-screen sprite or image.
+   */
+  readonly texture: Texture;
+  /**
+   * Seconds into the segment.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly time: number;
+  /**
+   * When it cuts to the next: its film.cut marker, else its duration.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly cut: number;
+  /** The node's choices while its window is open or locked (og.story's). */
+  readonly choices: readonly ChoiceView[];
+  /** The window, while it is open or locked. */
+  readonly window: WindowView | null;
+  /** Held by og.film.pause. */
+  readonly paused: boolean;
+  /** The last chapter entered. */
+  readonly chapter: string;
+  /** The ending reached, once ended. */
+  readonly ending: string;
+  /** It played to its end. */
+  readonly ended: boolean;
+}
+
+/**
+ * A film began a node's segment.
+ *
+ * The payload of the `FilmSegment` event (token `og.FilmSegment`).
+ */
+export interface FilmSegment {
+  /** The film. */
+  readonly film: Entity;
+  /** The node (at most 63 bytes). */
+  readonly node: string;
+  /** Its segment's asset id (at most 63 bytes). */
+  readonly segment: string;
+}
+
+/**
+ * A film took a choice at its cut (before og.story ran it).
+ *
+ * The payload of the `FilmChoice` event (token `og.FilmChoice`).
+ */
+export interface FilmChoice {
+  /** The film. */
+  readonly film: Entity;
+  /** The node (at most 63 bytes). */
+  readonly node: string;
+  /** The ChoiceView.index taken. */
+  readonly index: number;
+  /** Nothing was chosen in the window: the default was taken. */
+  readonly timedOut: boolean;
+}
+
+/**
+ * A film entered a chapter's node (`og-film-chapter`): a place to save.
+ *
+ * The payload of the `FilmChapter` event (token `og.FilmChapter`).
+ */
+export interface FilmChapter {
+  /** The film. */
+  readonly film: Entity;
+  /** The node (at most 63 bytes). */
+  readonly node: string;
+  /** The chapter's i18n key (at most 63 bytes). */
+  readonly chapter: string;
+}
+
+/**
+ * A film's last segment reached its cut with the conversation ended.
+ *
+ * The payload of the `FilmEnded` event (token `og.FilmEnded`).
+ */
+export interface FilmEnded {
+  /** The film. */
+  readonly film: Entity;
+  /** The last node (at most 63 bytes). */
+  readonly node: string;
+  /** Its `og-film-ending`, empty without one (at most 63 bytes). */
+  readonly ending: string;
+}
+
+
+
+
+
+
+
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -38099,5 +38351,85 @@ export declare namespace og {
      * @returns Refused for a world without an og.SightMap or a team over 31.
      */
     function forget(world: World, team: number): Result<void>;
+  }
+  /**
+   * A film og.film.start made: the conversation it paces and its decks. og.film writes it; read og.film.view.
+   */
+  const Film: ComponentType<{ readonly conversation: FieldSpec<"u32">; readonly decks: FieldSpec<"u32">; readonly current: FieldSpec<"Entity">; readonly node: FieldSpec<"u32">; readonly pending: FieldSpec<"i32">; readonly window: FieldSpec<"u32">; readonly paused: FieldSpec<"bool">; readonly chapter: FieldSpec<"u32">; readonly ended: FieldSpec<"bool"> }, Film>;
+  /**
+   * An entity og.film plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The film's current deck plays; the others hold a segment it may cut to, paused at its first frame.
+   */
+  const FilmDeck: ComponentType<{ readonly film: FieldSpec<"Entity">; readonly node: FieldSpec<"u32"> }, FilmDeck>;
+  /** A film began a node's segment. */
+  const FilmSegment: EventType<FilmSegment>;
+  /** A film took a choice at its cut (before og.story ran it). */
+  const FilmChoice: EventType<FilmChoice>;
+  /** A film entered a chapter's node (`og-film-chapter`): a place to save. */
+  const FilmChapter: EventType<FilmChapter>;
+  /** A film's last segment reached its cut with the conversation ended. */
+  const FilmEnded: EventType<FilmEnded>;
+  /**
+   * Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-film: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `film.open` marker, lock at `film.lock` and are taken at its cut (`film.cut`, else its end), the default (`#default`) when none was chosen.
+   * The story stays og.story's, the footage og.video's, the timing og.timeline's: og.film moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state.
+   * See `film`.
+   */
+  namespace film {
+    /**
+     * Prepare a loaded dialogue's film: every segment's timeline (and through it every video, which fetches nothing until it plays) and og.film's records. Call it in setup, after og.story.load, in every process that restores a film.
+     *
+     * @param world The world.
+     * @param dialogue The dialogue (StoryAsset.name).
+     * @returns Refused for a dialogue not loaded, or a segment that is not a cooked timeline with a video track.
+     */
+    function load(world: World, dialogue: string): Result<FilmInfo>;
+    /**
+     * Start a film: its decks, and its conversation held at the first film node, whose segment plays from the next tick. Outside a system (setup or a command).
+     *
+     * @param world The world.
+     * @param desc The dialogue, and optionally the node, the decks and whether it starts paused.
+     * @returns The film's entity (og.Film), or why not: a dialogue og.film.load has not prepared, an unknown node, or inside a system.
+     */
+    function start(world: World, desc?: FilmDesc): Result<Entity>;
+    /**
+     * What a film shows now: its picture, segment time, choices and window.
+     *
+     * @param world The world.
+     * @param film The film.
+     * @returns Null for an entity that is no film.
+     */
+    function view(world: World, film: Entity): FilmView | null;
+    /**
+     * Take a choice while the window is open: recorded now (FilmView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. Systems may call it; og.film applies it this tick.
+     *
+     * @param world The world.
+     * @param film The film.
+     * @param index ChoiceView.index.
+     * @returns Refused outside an open window, or for a choice that is hidden or disabled.
+     */
+    function choose(world: World, film: Entity, index: number): Result<void>;
+    /**
+     * Play a paused film from where it is. Systems may call it.
+     *
+     * @param world The world.
+     * @param film The film.
+     * @returns Refused for an entity that is no film.
+     */
+    function play(world: World, film: Entity): Result<void>;
+    /**
+     * Hold a film on its frame (a pause menu); its window's time holds too. Systems may call it.
+     *
+     * @param world The world.
+     * @param film The film.
+     * @returns Refused for an entity that is no film.
+     */
+    function pause(world: World, film: Entity): Result<void>;
+    /**
+     * End a film: its conversation stops and its decks and entity are despawned this tick. Systems may call it.
+     *
+     * @param world The world.
+     * @param film The film.
+     * @returns Refused for an entity that is no film.
+     */
+    function stop(world: World, film: Entity): Result<void>;
   }
 }

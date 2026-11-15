@@ -26826,6 +26826,226 @@ impl ToJson for SightPlane {
     }
 }
 
+/// `FilmDesc`: packages/knowledge/wiki/film.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FilmDesc {
+    pub dialogue: String,
+    pub node: String,
+    pub decks: u32,
+    pub paused: bool,
+}
+
+impl Default for FilmDesc {
+    fn default() -> Self {
+        Self {
+            dialogue: Default::default(),
+            node: Default::default(),
+            decks: Default::default(),
+            paused: Default::default(),
+        }
+    }
+}
+
+impl FromJson for FilmDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            dialogue: field(o, "dialogue", d.dialogue)?,
+            node: field(o, "node", d.node)?,
+            decks: field(o, "decks", d.decks)?,
+            paused: field(o, "paused", d.paused)?,
+        })
+    }
+}
+
+impl ToJson for FilmDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("dialogue".into(), self.dialogue.to_json());
+        o.insert("node".into(), self.node.to_json());
+        o.insert("decks".into(), self.decks.to_json());
+        o.insert("paused".into(), self.paused.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `FilmInfo`: packages/knowledge/wiki/film.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FilmInfo {
+    pub dialogue: String,
+    pub segments: Vec<String>,
+    pub chapters: Vec<String>,
+    pub endings: Vec<String>,
+}
+
+impl Default for FilmInfo {
+    fn default() -> Self {
+        Self {
+            dialogue: Default::default(),
+            segments: Default::default(),
+            chapters: Default::default(),
+            endings: Default::default(),
+        }
+    }
+}
+
+impl FromJson for FilmInfo {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            dialogue: field(o, "dialogue", d.dialogue)?,
+            segments: field(o, "segments", d.segments)?,
+            chapters: field(o, "chapters", d.chapters)?,
+            endings: field(o, "endings", d.endings)?,
+        })
+    }
+}
+
+impl ToJson for FilmInfo {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("dialogue".into(), self.dialogue.to_json());
+        o.insert("segments".into(), self.segments.to_json());
+        o.insert("chapters".into(), self.chapters.to_json());
+        o.insert("endings".into(), self.endings.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `WindowView`: packages/knowledge/wiki/film.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct WindowView {
+    pub ticks_left: u32,
+    pub ticks_total: u32,
+    pub default_choice: u32,
+    pub pending: Option<u32>,
+    pub locked: bool,
+}
+
+impl Default for WindowView {
+    fn default() -> Self {
+        Self {
+            ticks_left: Default::default(),
+            ticks_total: Default::default(),
+            default_choice: Default::default(),
+            pending: Default::default(),
+            locked: Default::default(),
+        }
+    }
+}
+
+impl FromJson for WindowView {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            ticks_left: field(o, "ticksLeft", d.ticks_left)?,
+            ticks_total: field(o, "ticksTotal", d.ticks_total)?,
+            default_choice: field(o, "defaultChoice", d.default_choice)?,
+            pending: field(o, "pending", d.pending)?,
+            locked: field(o, "locked", d.locked)?,
+        })
+    }
+}
+
+impl ToJson for WindowView {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("ticksLeft".into(), self.ticks_left.to_json());
+        o.insert("ticksTotal".into(), self.ticks_total.to_json());
+        o.insert("defaultChoice".into(), self.default_choice.to_json());
+        o.insert("pending".into(), self.pending.to_json());
+        o.insert("locked".into(), self.locked.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `FilmView`: packages/knowledge/wiki/film.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FilmView {
+    pub film: u64,
+    pub node: String,
+    pub segment: String,
+    pub texture: u64,
+    pub time: f32,
+    pub cut: f32,
+    pub choices: Vec<ChoiceView>,
+    pub window: Option<WindowView>,
+    pub paused: bool,
+    pub chapter: String,
+    pub ending: String,
+    pub ended: bool,
+}
+
+impl Default for FilmView {
+    fn default() -> Self {
+        Self {
+            film: Default::default(),
+            node: Default::default(),
+            segment: Default::default(),
+            texture: Default::default(),
+            time: Default::default(),
+            cut: Default::default(),
+            choices: Default::default(),
+            window: Default::default(),
+            paused: Default::default(),
+            chapter: Default::default(),
+            ending: Default::default(),
+            ended: Default::default(),
+        }
+    }
+}
+
+impl FromJson for FilmView {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            film: field(o, "film", d.film)?,
+            node: field(o, "node", d.node)?,
+            segment: field(o, "segment", d.segment)?,
+            texture: field(o, "texture", d.texture)?,
+            time: field(o, "time", d.time)?,
+            cut: field(o, "cut", d.cut)?,
+            choices: field(o, "choices", d.choices)?,
+            window: field(o, "window", d.window)?,
+            paused: field(o, "paused", d.paused)?,
+            chapter: field(o, "chapter", d.chapter)?,
+            ending: field(o, "ending", d.ending)?,
+            ended: field(o, "ended", d.ended)?,
+        })
+    }
+}
+
+impl ToJson for FilmView {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("film".into(), self.film.to_json());
+        o.insert("node".into(), self.node.to_json());
+        o.insert("segment".into(), self.segment.to_json());
+        o.insert("texture".into(), self.texture.to_json());
+        o.insert("time".into(), self.time.to_json());
+        o.insert("cut".into(), self.cut.to_json());
+        o.insert("choices".into(), self.choices.to_json());
+        o.insert("window".into(), self.window.to_json());
+        o.insert("paused".into(), self.paused.to_json());
+        o.insert("chapter".into(), self.chapter.to_json());
+        o.insert("ending".into(), self.ending.to_json());
+        o.insert("ended".into(), self.ended.to_json());
+        Value::Object(o)
+    }
+}
+
 /// The rows of the engine's records (IDL `component`, `resource` and
 /// `event`), as their layouts decode them: every field, with its IDL
 /// default, read through the same rules as the wire types.
@@ -37634,6 +37854,216 @@ pub mod record {
             let o = object(v)?;
             Ok(Self {
                 enabled: field(o, "enabled", d.enabled)?,
+            })
+        }
+    }
+
+    /// `Film`: packages/knowledge/wiki/film.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Film {
+        pub conversation: u32,
+        pub decks: u32,
+        pub current: u64,
+        pub node: u32,
+        pub pending: i32,
+        pub window: u32,
+        pub paused: bool,
+        pub chapter: u32,
+        pub ended: bool,
+    }
+
+    impl Default for Film {
+        fn default() -> Self {
+            Self {
+                conversation: Default::default(),
+                decks: Default::default(),
+                current: Default::default(),
+                node: Default::default(),
+                pending: -1,
+                window: Default::default(),
+                paused: Default::default(),
+                chapter: Default::default(),
+                ended: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Film {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                conversation: field(o, "conversation", d.conversation)?,
+                decks: field(o, "decks", d.decks)?,
+                current: field(o, "current", d.current)?,
+                node: field(o, "node", d.node)?,
+                pending: field(o, "pending", d.pending)?,
+                window: field(o, "window", d.window)?,
+                paused: field(o, "paused", d.paused)?,
+                chapter: field(o, "chapter", d.chapter)?,
+                ended: field(o, "ended", d.ended)?,
+            })
+        }
+    }
+
+    /// `FilmDeck`: packages/knowledge/wiki/film.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FilmDeck {
+        pub film: u64,
+        pub node: u32,
+    }
+
+    impl Default for FilmDeck {
+        fn default() -> Self {
+            Self {
+                film: Default::default(),
+                node: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for FilmDeck {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                film: field(o, "film", d.film)?,
+                node: field(o, "node", d.node)?,
+            })
+        }
+    }
+
+    /// `FilmSegment`: packages/knowledge/wiki/film.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FilmSegment {
+        pub film: u64,
+        pub node: String,
+        pub segment: String,
+    }
+
+    impl Default for FilmSegment {
+        fn default() -> Self {
+            Self {
+                film: Default::default(),
+                node: Default::default(),
+                segment: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for FilmSegment {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                film: field(o, "film", d.film)?,
+                node: field(o, "node", d.node)?,
+                segment: field(o, "segment", d.segment)?,
+            })
+        }
+    }
+
+    /// `FilmChoice`: packages/knowledge/wiki/film.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FilmChoice {
+        pub film: u64,
+        pub node: String,
+        pub index: u32,
+        pub timed_out: bool,
+    }
+
+    impl Default for FilmChoice {
+        fn default() -> Self {
+            Self {
+                film: Default::default(),
+                node: Default::default(),
+                index: Default::default(),
+                timed_out: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for FilmChoice {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                film: field(o, "film", d.film)?,
+                node: field(o, "node", d.node)?,
+                index: field(o, "index", d.index)?,
+                timed_out: field(o, "timedOut", d.timed_out)?,
+            })
+        }
+    }
+
+    /// `FilmChapter`: packages/knowledge/wiki/film.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FilmChapter {
+        pub film: u64,
+        pub node: String,
+        pub chapter: String,
+    }
+
+    impl Default for FilmChapter {
+        fn default() -> Self {
+            Self {
+                film: Default::default(),
+                node: Default::default(),
+                chapter: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for FilmChapter {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                film: field(o, "film", d.film)?,
+                node: field(o, "node", d.node)?,
+                chapter: field(o, "chapter", d.chapter)?,
+            })
+        }
+    }
+
+    /// `FilmEnded`: packages/knowledge/wiki/film.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FilmEnded {
+        pub film: u64,
+        pub node: String,
+        pub ending: String,
+    }
+
+    impl Default for FilmEnded {
+        fn default() -> Self {
+            Self {
+                film: Default::default(),
+                node: Default::default(),
+                ending: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for FilmEnded {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                film: field(o, "film", d.film)?,
+                node: field(o, "node", d.node)?,
+                ending: field(o, "ending", d.ending)?,
             })
         }
     }

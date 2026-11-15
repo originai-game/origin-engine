@@ -7,10 +7,10 @@
 //! never the process's.
 
 use crate::{
-    bind::agents, bind::destruction, bind::destruction2d, bind::i18n, bind::modules, bind::motion,
-    bind::net, bind::particles, bind::sight, bind::story, bind::terrain, bind::timeline, bind::vfx,
-    bind::video, bind::wind, engine::invariants, host::platform, present::atmosphere,
-    world::origin, world::stream,
+    bind::agents, bind::destruction, bind::destruction2d, bind::film, bind::i18n, bind::modules,
+    bind::motion, bind::net, bind::particles, bind::sight, bind::story, bind::terrain,
+    bind::timeline, bind::vfx, bind::video, bind::wind, engine::invariants, host::platform,
+    present::atmosphere, world::origin, world::stream,
 };
 
 /// Each module's state on one engine (an optional module left out of the
@@ -22,6 +22,7 @@ use crate::{
         feature = "motion",
         feature = "video",
         feature = "story",
+        feature = "film",
         not(feature = "profile2d")
     )),
     allow(dead_code)
@@ -40,6 +41,7 @@ pub(crate) struct Modules {
     pub stream: stream::ModuleState,
     pub agents: agents::ModuleState,
     pub story: story::ModuleState,
+    pub film: film::ModuleState,
     pub platform: platform::ModuleState,
     pub net: net::ModuleState,
     pub i18n: i18n::ModuleState,

@@ -1489,10 +1489,28 @@ pub trait SightApi: Wire {
     fn og_sight_forget(&self, world: u32, team: u32) -> String;
 }
 
-/// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi + SightApi {}
+/// `film`: packages/knowledge/wiki/film.md.
+pub trait FilmApi: Wire {
+    /// `og.film.load`
+    fn og_film_load(&self, world: u32, dialogue: String) -> String;
+    /// `og.film.start`
+    fn og_film_start(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.film.view`
+    fn og_film_view(&self, world: u32, film: f64) -> String;
+    /// `og.film.choose`
+    fn og_film_choose(&self, world: u32, film: f64, index: u32) -> String;
+    /// `og.film.play`
+    fn og_film_play(&self, world: u32, film: f64) -> String;
+    /// `og.film.pause`
+    fn og_film_pause(&self, world: u32, film: f64) -> String;
+    /// `og.film.stop`
+    fn og_film_stop(&self, world: u32, film: f64) -> String;
+}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi + SightApi> Host for T {}
+/// Every trait: a host is a type that implements all of them.
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi {}
+
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -2119,6 +2137,13 @@ pub const SYMBOLS: &[&str] = &[
     "og_sight_explored",
     "og_sight_reveal",
     "og_sight_forget",
+    "og_film_load",
+    "og_film_start",
+    "og_film_view",
+    "og_film_choose",
+    "og_film_play",
+    "og_film_pause",
+    "og_film_stop",
 ];
 
 pub use og_records::{COLUMNS, ColumnDecl, FieldDecl, RECORDS, RecordDecl};

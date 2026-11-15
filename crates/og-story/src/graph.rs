@@ -74,6 +74,27 @@ impl Dialogue {
     }
 }
 
+impl Dialogue {
+    /// The source lines of the lines node `title` says, its choices' bodies
+    /// included (og.film refuses them in a film node).
+    pub fn said_in(&self, title: &str) -> Vec<usize> {
+        let mut out: Vec<usize> = self
+            .nodes
+            .iter()
+            .filter(|b| b.title == title)
+            .flat_map(|b| {
+                b.steps
+                    .iter()
+                    .zip(&b.lines)
+                    .filter(|(s, _)| matches!(s, Step::Say(_)))
+                    .map(|(_, &l)| l)
+            })
+            .collect();
+        out.sort_unstable();
+        out
+    }
+}
+
 /// The source nodes reachable from block `start` of node `title` without
 /// taking a choice: its jumps, and the blocks of other nodes it reaches.
 /// `group` sees each block of `title` it walks (for its option groups).

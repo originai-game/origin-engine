@@ -1,4 +1,4 @@
-//! The story's bindings (StoryApi).
+//! The story's bindings (StoryApi, FilmApi).
 //! Expanded for a host by [`crate::host_bindings!`].
 
 #[doc(hidden)]
@@ -92,6 +92,29 @@ macro_rules! __og_host_bindings_story {
             }
             fn og_story_mark(&self, world: u32, id: String, desc: Option<String>) -> bool {
                 $crate::og_story_mark(world, id, desc)
+            }
+        }
+        impl $crate::host_impl::api::FilmApi for $host {
+            fn og_film_load(&self, world: u32, dialogue: String) -> String {
+                $crate::host_impl::answer($crate::og_film_load(world, dialogue))
+            }
+            fn og_film_start(&self, world: u32, desc: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_film_start(world, desc))
+            }
+            fn og_film_view(&self, world: u32, film: f64) -> String {
+                $crate::host_impl::json($crate::og_film_view(world, film))
+            }
+            fn og_film_choose(&self, world: u32, film: f64, index: u32) -> String {
+                $crate::host_impl::answer($crate::og_film_choose(world, film, index))
+            }
+            fn og_film_play(&self, world: u32, film: f64) -> String {
+                $crate::host_impl::answer($crate::og_film_play(world, film))
+            }
+            fn og_film_pause(&self, world: u32, film: f64) -> String {
+                $crate::host_impl::answer($crate::og_film_pause(world, film))
+            }
+            fn og_film_stop(&self, world: u32, film: f64) -> String {
+                $crate::host_impl::answer($crate::og_film_stop(world, film))
             }
         }
     };

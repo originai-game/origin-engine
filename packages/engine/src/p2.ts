@@ -1,4 +1,4 @@
-// The phase 2 and depth modules' namespaces (IDL `terrain`, `stream`, `path`, `timeline`, `motion`, `destruction`, `vfx`): thin calls into the host's binding symbols,
+// The phase 2 and depth modules' namespaces (IDL `terrain`, `stream`, `path`, `timeline`, `motion`, `destruction`, `vfx`, `video`, `film`): thin calls into the host's binding symbols,
 // typed by the generated declarations through index.ts.
 
 import type { HostAbi } from "./generated/abi.ts";
@@ -83,6 +83,17 @@ export const vfx = Object.freeze({
 /** og.video: how streams play on this host (the module's other calls are og.load.video and og.VideoPlayer). */
 export const video = Object.freeze({
   capabilities: (world: W) => parse(abi().og_video_capabilities(world.id)),
+});
+
+/** og.film: an interactive film, a Yarn dialogue paced by its footage. */
+export const film = Object.freeze({
+  load: (world: W, dialogue: string) => parse(abi().og_film_load(world.id, dialogue)),
+  start: (world: W, desc?: unknown) => parse(abi().og_film_start(world.id, json(desc))),
+  view: (world: W, film: number) => parse(abi().og_film_view(world.id, film)),
+  choose: (world: W, film: number, index: number) => parse(abi().og_film_choose(world.id, film, index)),
+  play: (world: W, film: number) => parse(abi().og_film_play(world.id, film)),
+  pause: (world: W, film: number) => parse(abi().og_film_pause(world.id, film)),
+  stop: (world: W, film: number) => parse(abi().og_film_stop(world.id, film)),
 });
 
 // og.destruction (IDL `destruction`): props that break into their prefractured chunks.

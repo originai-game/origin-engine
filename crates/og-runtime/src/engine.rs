@@ -798,6 +798,7 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
 pub(crate) fn register_module_actions(probe: &mut og_probe::Probe, engine_id: u32) {
     crate::bind::agents::register_commands(probe, engine_id);
     crate::bind::timeline::register_commands(probe, engine_id);
+    crate::bind::film::register_commands(probe, engine_id);
     crate::bind::motion::register_commands(probe, engine_id);
     crate::bind::modules::docs::register_commands(probe, engine_id);
     crate::author::probe::register_render_dump(probe, engine_id);

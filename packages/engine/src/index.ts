@@ -29,7 +29,7 @@ import {
 import { cameras } from "./systems/cameras.ts";
 import { ai, i18n, nav, net, platform, story } from "./e6.ts";
 import { input } from "./input.ts";
-import { destruction, motion, path, procgen, sight, stream, terrain, timeline, vfx, video } from "./p2.ts";
+import { destruction, film, motion, path, procgen, sight, stream, terrain, timeline, vfx, video } from "./p2.ts";
 import { debug, depthRender } from "./depth.ts";
 import { assertModule } from "./assert.ts";
 import { geomRender, Path2, Shape } from "./geom.ts";
@@ -100,6 +100,7 @@ export const og: typeof Api.og = Object.freeze({
   destruction,
   vfx,
   video,
+  film,
   ui: Object.freeze({ ...ui, ...uiKit, formatNumber: formatNotation }),
   systems: Object.freeze({ cameras }),
 }) as unknown as typeof Api.og;

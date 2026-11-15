@@ -16645,6 +16645,182 @@
       ],
       "interfaces": [],
       "callbacks": []
+    },
+    {
+      "name": "film",
+      "doc": "Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-film: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `film.open` marker, lock at `film.lock` and are taken at its cut (`film.cut`, else its end), the default (`#default`) when none was chosen.\nThe story stays og.story's, the footage og.video's, the timing og.timeline's: og.film moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state.\nSee `film`.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "FilmDesc",
+        "FilmInfo",
+        "Film",
+        "FilmDeck",
+        "WindowView",
+        "FilmView",
+        "FilmSegment",
+        "FilmChoice",
+        "FilmChapter",
+        "FilmEnded"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "load",
+          "doc": "Prepare a loaded dialogue's film: every segment's timeline (and through it every video, which fetches nothing until it plays) and og.film's records. Call it in setup, after og.story.load, in every process that restores a film.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "dialogue",
+              "type": "String",
+              "optional": false,
+              "doc": "The dialogue (StoryAsset.name)."
+            }
+          ],
+          "returns": "Result<FilmInfo>",
+          "returnsDoc": "Refused for a dialogue not loaded, or a segment that is not a cooked timeline with a video track.",
+          "publish": true
+        },
+        {
+          "name": "start",
+          "doc": "Start a film: its decks, and its conversation held at the first film node, whose segment plays from the next tick. Outside a system (setup or a command).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "FilmDesc",
+              "optional": true,
+              "doc": "The dialogue, and optionally the node, the decks and whether it starts paused."
+            }
+          ],
+          "returns": "Result<Entity>",
+          "returnsDoc": "The film's entity (og.Film), or why not: a dialogue og.film.load has not prepared, an unknown node, or inside a system.",
+          "publish": true
+        },
+        {
+          "name": "view",
+          "doc": "What a film shows now: its picture, segment time, choices and window.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "film",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The film."
+            }
+          ],
+          "returns": "Option<FilmView>",
+          "returnsDoc": "Null for an entity that is no film.",
+          "publish": true
+        },
+        {
+          "name": "choose",
+          "doc": "Take a choice while the window is open: recorded now (FilmView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. Systems may call it; og.film applies it this tick.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "film",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The film."
+            },
+            {
+              "name": "index",
+              "type": "u32",
+              "optional": false,
+              "doc": "ChoiceView.index."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused outside an open window, or for a choice that is hidden or disabled.",
+          "publish": true
+        },
+        {
+          "name": "play",
+          "doc": "Play a paused film from where it is. Systems may call it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "film",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The film."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity that is no film.",
+          "publish": true
+        },
+        {
+          "name": "pause",
+          "doc": "Hold a film on its frame (a pause menu); its window's time holds too. Systems may call it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "film",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The film."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity that is no film.",
+          "publish": true
+        },
+        {
+          "name": "stop",
+          "doc": "End a film: its conversation stops and its decks and entity are despawned this tick. Systems may call it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "film",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The film."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity that is no film.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
     }
   ],
   "$defs": {
@@ -57279,6 +57455,421 @@
           "default": true
         }
       },
+      "additionalProperties": false
+    },
+    "FilmDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "film",
+      "description": "A film to start.",
+      "type": "object",
+      "properties": {
+        "dialogue": {
+          "type": "string",
+          "description": "The dialogue (StoryAsset.name), loaded with og.story.load and og.film.load.",
+          "default": ""
+        },
+        "node": {
+          "type": "string",
+          "description": "The node to start at (empty: the dialogue's start).",
+          "default": ""
+        },
+        "decks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Decks to play on, 1 to 3 (0: 3). One plays; the others warm what the film may cut to. 1 warms nothing (one decoder: WeChat on iOS).",
+          "default": 0,
+          "maximum": 3
+        },
+        "paused": {
+          "type": "boolean",
+          "description": "Start holding the first segment's first frame, warmed, until og.film.play (a title screen before the first gesture).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "FilmInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "film",
+      "description": "What og.film.load prepared.",
+      "type": "object",
+      "properties": {
+        "dialogue": {
+          "type": "string",
+          "description": "The dialogue."
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its film nodes (those with `og-film`), in file order."
+        },
+        "chapters": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its chapters' i18n keys (`og-film-chapter`), in file order."
+        },
+        "endings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its endings (`og-film-ending`), in file order."
+        }
+      },
+      "required": [
+        "dialogue",
+        "segments",
+        "chapters",
+        "endings"
+      ],
+      "additionalProperties": false
+    },
+    "Film": {
+      "x-og-kind": "component",
+      "x-og-module": "film",
+      "description": "A film og.film.start made: the conversation it paces and its decks. og.film writes it; read og.film.view.",
+      "type": "object",
+      "properties": {
+        "conversation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its og.story conversation.",
+          "default": 0,
+          "readOnly": true
+        },
+        "decks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its decks.",
+          "default": 0,
+          "readOnly": true
+        },
+        "current": {
+          "$ref": "#/$defs/Entity",
+          "description": "The deck playing now (an og.FilmDeck).",
+          "default": 0,
+          "readOnly": true
+        },
+        "node": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The film node playing, as its id (a hash of its title; og.film.view names it); 0 before the first.",
+          "default": 0,
+          "readOnly": true
+        },
+        "pending": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The choice taken in the window (ChoiceView.index); -1: none yet.",
+          "default": -1,
+          "readOnly": true
+        },
+        "window": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "0 closed, 1 open (choices shown), 2 locked (past film.lock: the cut takes pending, else the default).",
+          "default": 0,
+          "readOnly": true
+        },
+        "paused": {
+          "type": "boolean",
+          "description": "Held by og.film.pause (or FilmDesc.paused) until og.film.play.",
+          "default": false,
+          "readOnly": true
+        },
+        "chapter": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The node of the last chapter entered (its id, as `node`); 0: none.",
+          "default": 0,
+          "readOnly": true
+        },
+        "ended": {
+          "type": "boolean",
+          "description": "The last segment played to its cut and the conversation ended.",
+          "default": false,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "FilmDeck": {
+      "x-og-kind": "component",
+      "x-og-module": "film",
+      "description": "An entity og.film plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The film's current deck plays; the others hold a segment it may cut to, paused at its first frame.",
+      "type": "object",
+      "properties": {
+        "film": {
+          "$ref": "#/$defs/Entity",
+          "description": "Its film.",
+          "default": 0,
+          "readOnly": true
+        },
+        "node": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The film node whose segment it holds (its id, as og.Film.node); 0: none.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "WindowView": {
+      "x-og-kind": "struct",
+      "x-og-module": "film",
+      "description": "A segment's choice window.",
+      "type": "object",
+      "properties": {
+        "ticksLeft": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks until it locks (film.lock)."
+        },
+        "ticksTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks from film.open to film.lock."
+        },
+        "defaultChoice": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The ChoiceView.index taken when nothing was chosen (`#default`, else the first enabled)."
+        },
+        "pending": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The choice taken so far."
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Past film.lock: choosing is over; the cut takes pending, else the default."
+        }
+      },
+      "required": [
+        "ticksLeft",
+        "ticksTotal",
+        "defaultChoice",
+        "pending",
+        "locked"
+      ],
+      "additionalProperties": false
+    },
+    "FilmView": {
+      "x-og-kind": "struct",
+      "x-og-module": "film",
+      "description": "What a film shows now.",
+      "type": "object",
+      "properties": {
+        "film": {
+          "$ref": "#/$defs/Entity",
+          "description": "The film."
+        },
+        "node": {
+          "type": "string",
+          "description": "The film node playing."
+        },
+        "segment": {
+          "type": "string",
+          "description": "Its segment's asset id."
+        },
+        "texture": {
+          "$ref": "#/$defs/Texture",
+          "description": "The current deck's picture (its og.VideoPlayer.texture): put it on a full-screen sprite or image."
+        },
+        "time": {
+          "type": "number",
+          "description": "Seconds into the segment.",
+          "x-og-unit": "s"
+        },
+        "cut": {
+          "type": "number",
+          "description": "When it cuts to the next: its film.cut marker, else its duration.",
+          "x-og-unit": "s"
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChoiceView"
+          },
+          "description": "The node's choices while its window is open or locked (og.story's)."
+        },
+        "window": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WindowView"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The window, while it is open or locked."
+        },
+        "paused": {
+          "type": "boolean",
+          "description": "Held by og.film.pause."
+        },
+        "chapter": {
+          "type": "string",
+          "description": "The last chapter entered."
+        },
+        "ending": {
+          "type": "string",
+          "description": "The ending reached, once ended."
+        },
+        "ended": {
+          "type": "boolean",
+          "description": "It played to its end."
+        }
+      },
+      "required": [
+        "film",
+        "node",
+        "segment",
+        "texture",
+        "time",
+        "cut",
+        "choices",
+        "window",
+        "paused",
+        "chapter",
+        "ending",
+        "ended"
+      ],
+      "additionalProperties": false
+    },
+    "FilmSegment": {
+      "x-og-kind": "event",
+      "x-og-module": "film",
+      "description": "A film began a node's segment.",
+      "type": "object",
+      "properties": {
+        "film": {
+          "$ref": "#/$defs/Entity",
+          "description": "The film."
+        },
+        "node": {
+          "type": "string",
+          "description": "The node (at most 63 bytes)."
+        },
+        "segment": {
+          "type": "string",
+          "description": "Its segment's asset id (at most 63 bytes)."
+        }
+      },
+      "required": [
+        "film",
+        "node",
+        "segment"
+      ],
+      "additionalProperties": false
+    },
+    "FilmChoice": {
+      "x-og-kind": "event",
+      "x-og-module": "film",
+      "description": "A film took a choice at its cut (before og.story ran it).",
+      "type": "object",
+      "properties": {
+        "film": {
+          "$ref": "#/$defs/Entity",
+          "description": "The film."
+        },
+        "node": {
+          "type": "string",
+          "description": "The node (at most 63 bytes)."
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The ChoiceView.index taken."
+        },
+        "timedOut": {
+          "type": "boolean",
+          "description": "Nothing was chosen in the window: the default was taken."
+        }
+      },
+      "required": [
+        "film",
+        "node",
+        "index",
+        "timedOut"
+      ],
+      "additionalProperties": false
+    },
+    "FilmChapter": {
+      "x-og-kind": "event",
+      "x-og-module": "film",
+      "description": "A film entered a chapter's node (`og-film-chapter`): a place to save.",
+      "type": "object",
+      "properties": {
+        "film": {
+          "$ref": "#/$defs/Entity",
+          "description": "The film."
+        },
+        "node": {
+          "type": "string",
+          "description": "The node (at most 63 bytes)."
+        },
+        "chapter": {
+          "type": "string",
+          "description": "The chapter's i18n key (at most 63 bytes)."
+        }
+      },
+      "required": [
+        "film",
+        "node",
+        "chapter"
+      ],
+      "additionalProperties": false
+    },
+    "FilmEnded": {
+      "x-og-kind": "event",
+      "x-og-module": "film",
+      "description": "A film's last segment reached its cut with the conversation ended.",
+      "type": "object",
+      "properties": {
+        "film": {
+          "$ref": "#/$defs/Entity",
+          "description": "The film."
+        },
+        "node": {
+          "type": "string",
+          "description": "The last node (at most 63 bytes)."
+        },
+        "ending": {
+          "type": "string",
+          "description": "Its `og-film-ending`, empty without one (at most 63 bytes)."
+        }
+      },
+      "required": [
+        "film",
+        "node",
+        "ending"
+      ],
       "additionalProperties": false
     }
   }

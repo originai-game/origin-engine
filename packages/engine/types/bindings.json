@@ -8364,6 +8364,88 @@
           "default": true
         }
       ]
+    },
+    {
+      "id": 112,
+      "name": "Film",
+      "schema": "og.Film",
+      "module": "film",
+      "fields": [
+        {
+          "name": "conversation",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "decks",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "current",
+          "column": "Entity",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "node",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "pending",
+          "column": "i32",
+          "default": -1,
+          "readonly": true
+        },
+        {
+          "name": "window",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "paused",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        },
+        {
+          "name": "chapter",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "ended",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 113,
+      "name": "FilmDeck",
+      "schema": "og.FilmDeck",
+      "module": "film",
+      "fields": [
+        {
+          "name": "film",
+          "column": "Entity",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "node",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
     }
   ],
   "resources": [
@@ -13910,6 +13992,103 @@
           "name": "time",
           "type": "f32",
           "default": 0
+        }
+      ]
+    },
+    {
+      "id": 63,
+      "name": "FilmSegment",
+      "schema": "og.FilmSegment",
+      "module": "film",
+      "fields": [
+        {
+          "name": "film",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "node",
+          "type": "String",
+          "default": ""
+        },
+        {
+          "name": "segment",
+          "type": "String",
+          "default": ""
+        }
+      ]
+    },
+    {
+      "id": 64,
+      "name": "FilmChoice",
+      "schema": "og.FilmChoice",
+      "module": "film",
+      "fields": [
+        {
+          "name": "film",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "node",
+          "type": "String",
+          "default": ""
+        },
+        {
+          "name": "index",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "timedOut",
+          "type": "bool",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": 65,
+      "name": "FilmChapter",
+      "schema": "og.FilmChapter",
+      "module": "film",
+      "fields": [
+        {
+          "name": "film",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "node",
+          "type": "String",
+          "default": ""
+        },
+        {
+          "name": "chapter",
+          "type": "String",
+          "default": ""
+        }
+      ]
+    },
+    {
+      "id": 66,
+      "name": "FilmEnded",
+      "schema": "og.FilmEnded",
+      "module": "film",
+      "fields": [
+        {
+          "name": "film",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "node",
+          "type": "String",
+          "default": ""
+        },
+        {
+          "name": "ending",
+          "type": "String",
+          "default": ""
         }
       ]
     }
@@ -27191,6 +27370,165 @@
         {
           "name": "team",
           "type": "u32",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 623,
+      "kind": "fn",
+      "path": "og.film.load",
+      "symbol": "og_film_load",
+      "module": "film",
+      "name": "load",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "dialogue",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<FilmInfo>",
+      "publish": true
+    },
+    {
+      "id": 624,
+      "kind": "fn",
+      "path": "og.film.start",
+      "symbol": "og_film_start",
+      "module": "film",
+      "name": "start",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "FilmDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Entity>",
+      "publish": true
+    },
+    {
+      "id": 625,
+      "kind": "fn",
+      "path": "og.film.view",
+      "symbol": "og_film_view",
+      "module": "film",
+      "name": "view",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "film",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Option<FilmView>",
+      "publish": true
+    },
+    {
+      "id": 626,
+      "kind": "fn",
+      "path": "og.film.choose",
+      "symbol": "og_film_choose",
+      "module": "film",
+      "name": "choose",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "film",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "index",
+          "type": "u32",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 627,
+      "kind": "fn",
+      "path": "og.film.play",
+      "symbol": "og_film_play",
+      "module": "film",
+      "name": "play",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "film",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 628,
+      "kind": "fn",
+      "path": "og.film.pause",
+      "symbol": "og_film_pause",
+      "module": "film",
+      "name": "pause",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "film",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 629,
+      "kind": "fn",
+      "path": "og.film.stop",
+      "symbol": "og_film_stop",
+      "module": "film",
+      "name": "stop",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "film",
+          "type": "Entity",
           "optional": false
         }
       ],

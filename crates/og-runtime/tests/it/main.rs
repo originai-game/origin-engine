@@ -39,6 +39,8 @@ mod display;
 mod drop_shadows;
 #[path = "../extract_cost.rs"]
 mod extract_cost;
+#[path = "../film.rs"]
+mod film;
 #[path = "../font_packs.rs"]
 mod font_packs;
 #[path = "../garment.rs"]

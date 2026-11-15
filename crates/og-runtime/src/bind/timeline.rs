@@ -520,6 +520,39 @@ pub(crate) fn owns_camera(engine: u32) -> bool {
         .any(|r| r.camera.is_some())
 }
 
+/// Loaded timeline `h` as og.film's segment, with its video's handle and
+/// `from` in place of its id.
+#[cfg(feature = "film")]
+pub(crate) fn segment(
+    engine: u32,
+    h: u64,
+) -> Result<(og_timeline::segment::Segment, Option<(u64, f32)>), String> {
+    let t = lock(&registry(engine))
+        .timeline(h)
+        .ok_or("it did not load")?;
+    let l = lock(&t);
+    l.timeline.segment().map(|s| {
+        let first = s
+            .video
+            .as_ref()
+            .and_then(|(id, from)| l.videos.get(id).map(|&h| (h, *from)));
+        (s, first)
+    })
+}
+
+/// A timeline's handle by asset path, loaded (and granted) as
+/// og.load.timeline does.
+#[cfg(feature = "film")]
+pub(crate) fn load_granted(
+    eng: &Engine,
+    path: &str,
+    world: Option<&mut World>,
+) -> Result<u64, String> {
+    let h = load(eng, path)?;
+    grant(eng, h, world)?;
+    Ok(h)
+}
+
 /// Whether og.timeline was granted `record` (a field track writes only those).
 pub(crate) fn granted(engine: u32, record: &str) -> bool {
     lock(&registry(engine)).granted.contains(record)

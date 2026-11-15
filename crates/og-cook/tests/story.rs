@@ -162,3 +162,48 @@ fn registered_yarn_functions_typecheck_extract_and_recook_when_the_body_changes(
             .contains("pure function cannot call stateful 'random'")
     );
 }
+
+/// og.film's dialogues: a film node's segment is a timeline with one video
+/// track of its own and its markers in order, at most one choice is
+/// `#default`, a film node says no Yarn lines, and only film nodes offer
+/// choices. Each is an error of the dialogue; a film that keeps them cooks.
+#[test]
+fn a_film_dialogue_is_refused_for_each_segment_default_line_and_choice_it_gets_wrong() {
+    let segment = |tracks: &str| format!("type timeline\nversion 1\n---\nduration 4\n{tracks}");
+    let video = "track video {\n  key 0 {\n    video \"clips/a.ogt\"\n  }\n}\n";
+    let late = "track marker {\n  key 3 {\n    name \"film.open\"\n  }\n  key 2 {\n    name \"film.lock\"\n  }\n}\n";
+    let head = "#og-profile:yarn-spinner-3.2.2\n#og-name:";
+    let good = format!(
+        "{head}good\ntitle: a\nog-film: segments/ok.ogt\n---\n-> Go #line:good.go #default\n    <<jump b>>\n-> Stay #line:good.stay\n    <<jump b>>\n===\ntitle: b\nog-film: segments/ok.ogt\n---\n===\n"
+    );
+    let bad = format!(
+        "{head}bad\ntitle: a\nog-film: segments/missing.ogt\n---\n<<jump b>>\n===\ntitle: b\nog-film: segments/two.ogt\n---\n<<jump c>>\n===\ntitle: c\nog-film: segments/late.ogt\n---\n<<jump d>>\n===\ntitle: d\nog-film: segments/ok.ogt\n---\nMae: Hello. #line:bad.hello\n-> One #line:bad.one #default\n    <<jump e>>\n-> Two #line:bad.two #default\n    <<jump e>>\n===\ntitle: e\n---\n-> Left #line:bad.left\n    <<jump d>>\n===\n"
+    );
+    let root = project(
+        "film",
+        &[
+            ("story/good.yarn", &good),
+            ("story/bad.yarn", &bad),
+            ("segments/ok.ogt", &segment(video)),
+            ("segments/two.ogt", &segment(&format!("{video}{video}"))),
+            ("segments/late.ogt", &segment(&format!("{video}{late}"))),
+        ],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    let errors = report.errors();
+    let of = |rel: &str| -> Vec<&String> { errors.iter().filter(|e| e.starts_with(rel)).collect() };
+    assert!(of("assets/story/good.yarn").is_empty(), "{errors:?}");
+    let bad = of("assets/story/bad.yarn");
+    assert_eq!(bad.len(), 1, "{errors:?}");
+    let e = bad[0];
+    for want in [
+        "node 'a': its segment 'segments/missing.ogt' is no timeline",
+        "node 'b': segment segments/two.ogt: it has 2 video tracks",
+        "node 'c': segment segments/late.ogt: its markers are out of order",
+        "node 'd': 2 choices are #default",
+        "node 'd' says Yarn lines (line 21)",
+        "node 'e' offers choices but has no og-film segment",
+    ] {
+        assert!(e.contains(want), "{want}: {e}");
+    }
+}

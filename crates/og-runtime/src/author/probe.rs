@@ -363,6 +363,7 @@ pub(crate) const MODULE_ACTIONS: &[&str] = &[
     "dump_room",
     "dump_story",
     "dump_stream",
+    "film",
     "inspect",
     "lanes",
     "locale",

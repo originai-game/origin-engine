@@ -3318,3 +3318,38 @@ pub fn og_sight_reveal(world: u32, team: u32, point: String, radius: f64) -> Str
 pub fn og_sight_forget(world: u32, team: u32) -> String {
     <Host as SightApi>::og_sight_forget(&Host, world, team)
 }
+
+#[wasm_bindgen]
+pub fn og_film_load(world: u32, dialogue: String) -> String {
+    <Host as FilmApi>::og_film_load(&Host, world, dialogue)
+}
+
+#[wasm_bindgen]
+pub fn og_film_start(world: u32, desc: Option<String>) -> String {
+    <Host as FilmApi>::og_film_start(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_film_view(world: u32, film: f64) -> String {
+    <Host as FilmApi>::og_film_view(&Host, world, film)
+}
+
+#[wasm_bindgen]
+pub fn og_film_choose(world: u32, film: f64, index: u32) -> String {
+    <Host as FilmApi>::og_film_choose(&Host, world, film, index)
+}
+
+#[wasm_bindgen]
+pub fn og_film_play(world: u32, film: f64) -> String {
+    <Host as FilmApi>::og_film_play(&Host, world, film)
+}
+
+#[wasm_bindgen]
+pub fn og_film_pause(world: u32, film: f64) -> String {
+    <Host as FilmApi>::og_film_pause(&Host, world, film)
+}
+
+#[wasm_bindgen]
+pub fn og_film_stop(world: u32, film: f64) -> String {
+    <Host as FilmApi>::og_film_stop(&Host, world, film)
+}
