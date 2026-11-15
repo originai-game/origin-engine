@@ -44,6 +44,9 @@ impl Renderer {
         stages.end("wait for frame N-2");
         self.sync(scene)?;
         stages.end("sync");
+        // With its materials' (toon, the dissolve), as the material pass
+        // left them (a capture's are all of them already).
+        self.frame_features = self.frame_features | self.cache.material_features;
         // What the frame keeps for each of its passes from their plan
         // steps to their encode, and what they encode from (pass.rs).
         let mut frames = PassFrames::default();

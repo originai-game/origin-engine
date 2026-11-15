@@ -169,6 +169,8 @@ pub(crate) struct GpuMaterial {
     pub(crate) outline: bool,
     /// Uses toon, rim, flash or dissolve.
     pub(crate) effects: bool,
+    /// The lit features it draws with (`Features::of_material`).
+    pub(crate) features: crate::pipeline_features::Features,
     /// Its material shader (the scene's index).
     pub(crate) shader: Option<usize>,
     /// Writes exactly the depth of its triangles (opaque, no alpha cut,
@@ -233,6 +235,10 @@ pub(crate) struct SceneCache {
     /// it moved (engine s96). A shader parameter change needs no pass on
     /// the frame after it: its uniform's stamp ends its motion (s100).
     pub(crate) material_serial: Option<u64>,
+    /// The lit features of every material, as the material pass last left
+    /// them: what a frame's lit variants need for its materials
+    /// (`Features::of_material`).
+    pub(crate) material_features: crate::pipeline_features::Features,
     pub(crate) scene_id: u64,
     pub(crate) meshes: Vec<GpuMesh>,
     /// The lit shader with each of the scene's material shaders.

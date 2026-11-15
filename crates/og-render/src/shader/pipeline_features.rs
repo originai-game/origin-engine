@@ -6,8 +6,10 @@
 //! (`OG_WEATHER`, `OG_LOCAL_LIGHTS`, `OG_AREA`, `OG_DECALS`, `OG_GI`,
 //! `OG_CAUSTICS`, the terrain's diagnostic views' `OG_DEBUG`, og.Grass's far
 //! colour's `OG_GRASS`, MaterialStyle's made surfaces' `OG_SURFACE` and the
-//! sun's soft shadows' `OG_PCSS`, true by default) as well as its own runtime test (no rain, no light, no
-//! decal: the code is skipped). A pipeline made with a feature's constant
+//! sun's soft shadows' `OG_PCSS`, cel shading's `OG_TOON` and the
+//! dissolve's `OG_DISSOLVE`, true by default) as well as its own runtime
+//! test (no rain, no light, no decal, no toon material: the code is
+//! skipped). A pipeline made with a feature's constant
 //! false has that code folded away before the backend sees it (naga's
 //! `process_overrides`), so it compiles in a fraction of the time: on DX12
 //! DXC inlines every call, and the full lit fragment stages took 1.6 to
@@ -53,7 +55,7 @@ use std::cell::OnceCell;
 pub(crate) struct Features(u16);
 
 /// Each feature's bit and its override's name.
-const NAMES: [(Features, &str); 13] = [
+const NAMES: [(Features, &str); 15] = [
     (Features::WEATHER, "OG_WEATHER"),
     (Features::LOCAL_LIGHTS, "OG_LOCAL_LIGHTS"),
     (Features::DECALS, "OG_DECALS"),
@@ -67,6 +69,8 @@ const NAMES: [(Features, &str); 13] = [
     (Features::FLOW, "OG_FLOW"),
     (Features::RIPPLES, "OG_RIPPLES"),
     (Features::AREA, "OG_AREA"),
+    (Features::TOON, "OG_TOON"),
+    (Features::DISSOLVE, "OG_DISSOLVE"),
 ];
 
 impl Features {
@@ -94,7 +98,14 @@ impl Features {
     /// Rect lights (`LightKind::Rect`; area.wgsl's linearly transformed
     /// cosines and their shadows).
     pub(crate) const AREA: Features = Features(4096);
-    pub(crate) const ALL: Features = Features(8191);
+    /// Cel shading: a material's `toon`, or the material style's
+    /// (`material::styled`). Toon is most of the effect shader's code (its
+    /// ramp, a metal's bands, the flat ambient): with it, a lit variant
+    /// compiled in twice the time.
+    pub(crate) const TOON: Features = Features(8192);
+    /// A material's dissolve (`StandardMaterial::dissolve`).
+    pub(crate) const DISSOLVE: Features = Features(16384);
+    pub(crate) const ALL: Features = Features(32767);
 
     pub(crate) fn contains(self, other: Features) -> bool {
         self.0 & other.0 == other.0
@@ -143,7 +154,8 @@ impl Features {
     }
 
     /// The features `scene` draws with that no world system decides (each
-    /// system adds its own: `systems::features`): every one whose runtime
+    /// system adds its own: `systems::features`) and its materials do not
+    /// (the renderer's material pass: [`Self::of_material`]): every one whose runtime
     /// test could pass this frame (a superset is always safe; a missing
     /// one would leave it undrawn).
     pub(crate) fn of(scene: &crate::RenderScene) -> Features {
@@ -172,6 +184,14 @@ impl Features {
                     .iter()
                     .any(|l| matches!(l.kind, crate::LightKind::Rect { .. })),
             )
+    }
+
+    /// The features a material draws with (`m` styled, as uploaded): toon
+    /// and the dissolve. A frame has those of every material of its scene.
+    pub(crate) fn of_material(m: &crate::StandardMaterial) -> Features {
+        Features::NONE
+            .with(Features::TOON, m.toon != 0)
+            .with(Features::DISSOLVE, m.dissolves())
     }
 
     /// The pipeline constants that leave out what `self` lacks, for a

@@ -400,6 +400,11 @@ fn vs_prepass_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedIns
 // False for materials and frames without effects: their code folds away.
 override EFFECTS: bool = true;
 
+// Whether a pipeline has cel shading (a material's toon, or the material
+// style's: pipeline_features.rs). Most of the effects' code is toon's: its
+// ramp, its metal's bands and its flat ambient.
+override OG_TOON: bool = true;
+
 // The width of a toon band's edge in N·L (half of it each side), from the
 // fragment's screen derivatives times the style's softness in pixels
 // (frame.toon.x; lilToon's anti-aliased shading): set by the lit fragment
@@ -469,7 +474,7 @@ fn shadow_keep(sun: f32, mode: u32) -> f32 {
   let d = frame.outline_style.y;
   if (d <= 0.0 || (mode & 8u) != 0u) { return 1.0; }
   var lit = smoothstep(0.0, 0.25, sun);
-  if (EFFECTS && material.toon.x > 0.5) {
+  if (EFFECTS && OG_TOON && material.toon.x > 0.5) {
     let dark = toon_ramp(0.0);
     lit = clamp((toon_ramp(sun) - dark) / max(1.0 - dark, 1e-3), 0.0, 1.0);
   }
@@ -490,7 +495,7 @@ fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec
   if (!r.lit) { return vec3<f32>(0.0); }
   var shadow = 1.0;
   if (receives) { shadow = local_shadow(light, p, leaf_shadow_normal(s, n, r.l)) * contact_shadow(light, p); }
-  if (EFFECTS && material.toon.x > 0.5) {
+  if (EFFECTS && OG_TOON && material.toon.x > 0.5) {
     return toon_light(s, n, v, r.l, shadow) * r.radiance;
   }
   return brdf(s, n, v, r.l) * r.radiance * shadow;

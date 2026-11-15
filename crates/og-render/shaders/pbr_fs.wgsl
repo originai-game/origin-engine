@@ -345,14 +345,14 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0) && receives) {
     shadow = cascade_shadow(in.world_pos, leaf_shadow_normal(s, normalize(in.normal), l), abs(dot(n, l)));
   }
-  if (EFFECTS && material.toon.x > 0.5) {
+  if (EFFECTS && OG_TOON && material.toon.x > 0.5) {
     toon_edges(dot(n, l));
     if (s.metallic > 0.0) {
       toon_metal_lit = toon_metal_bands(s, n, v, in.world_pos);
     }
   }
   var color: vec3<f32>;
-  if (EFFECTS && material.toon.x > 0.5) {
+  if (EFFECTS && OG_TOON && material.toon.x > 0.5) {
     color = toon_light(s, n, v, l, shadow) * frame.light_color.rgb;
   } else {
     color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
@@ -383,7 +383,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0 && (mode & 8u) == 0u) {
     var tinted = (1.0 - shadow) * n_dot_l;
     var tint = frame.shadow_tint.rgb * frame.shadow_tint.w;
-    if (EFFECTS && material.toon.x > 0.5) {
+    if (EFFECTS && OG_TOON && material.toon.x > 0.5) {
       tinted = toon_ramp(n_dot_l) - toon_ramp(n_dot_l * shadow);
       // Never more than the diffuse light the ramp took (1 / π of the albedo): a white tint at 1 fills the shadow, never outshines the lit side.
       tint = min(tint, vec3<f32>(1.0 / PI));
@@ -405,7 +405,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let n_dot_v = clamp(dot(n, v), 1e-4, 1.0);
   let at = ShadeAt(in.world_pos, n, v, in.clip.xy, EFFECTS, !oit_pass && (u32(material.flags.w) & 4u) == 0u, false);
   var around = surface_ambient(s, at);
-  if (EFFECTS && material.toon.x > 0.5 && frame.toon.y < 1.0) {
+  if (EFFECTS && OG_TOON && material.toon.x > 0.5 && frame.toon.y < 1.0) {
     // Toon ambient (frame.toon.y 0): one flat colour, the light from above
     // and below averaged (MToon's equalised ambient), and the environment's
     // reflection as its roughest, flat colour at f0, so the ramp's bands sit
