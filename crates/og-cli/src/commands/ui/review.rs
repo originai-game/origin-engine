@@ -180,7 +180,13 @@ fn review(args: &[&str]) -> Result<ExitCode, String> {
         .ancestors()
         .find(|p| p.join(".git").exists())
         .unwrap_or(&cwd);
-    let scratch = worktree.join(".og/review").join(name);
+    // One scratch per sheet and style list: reviews of one sheet in different
+    // styles run at once without removing each other's copy.
+    let scratch = worktree.join(".og/review").join(if styles.is_empty() {
+        name.to_owned()
+    } else {
+        format!("{name}-{}", styles.join("-"))
+    });
     if scratch.exists() {
         std::fs::remove_dir_all(&scratch).map_err(|e| format!("{}: {e}", scratch.display()))?;
     }
