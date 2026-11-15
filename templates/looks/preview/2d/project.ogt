@@ -1,0 +1,11 @@
+type project
+version 1
+---
+name "Look preview"
+id "look-preview"
+engine "0.7.7"
+entry "src/main.ts"
+tick 60
+seed 1
+look "looks/main.ogt"
+profile "2d"

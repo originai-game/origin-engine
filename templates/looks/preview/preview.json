@@ -1,0 +1,18 @@
+{
+  "//": "Which preview scene draws each look and variant (README.md), and the art it takes from templates/looks/. scene: 3d or 2d. models: a directory whose models replace the 3D scene's of the same name (the look's authored models). sprites: 3D beats stood in the set as pixel sprites, by beat: the file under art and its height in metres. art: the art directory. view: the 2D view's height in metres; heights: each 2D beat's height in metres (its width from the image). A look or variant not listed draws the 3D scene with its own models.",
+  "neon-vector": { "scene": "3d", "models": "neon-vector/models" },
+  "low-resolution-3d": { "scene": "3d", "models": "low-resolution-3d/models" },
+  "pixel-3d-hybrid": { "scene": "3d", "art": "pixel-3d-hybrid/art", "sprites": { "hero": { "file": "hero.png", "height": 2 }, "tree": { "file": "tree.png", "height": 3.4 } } },
+  "toy-3d:paper": { "scene": "3d", "models": "toy-3d/paper/models" },
+  "toy-3d:voxel": { "scene": "3d", "models": "preview/flat/models" },
+  "pixel": { "scene": "2d", "art": "pixel/art", "view": 14, "heights": { "hero": 2, "tree": 3, "crate": 2, "lantern": 3, "ground": 1.625, "backdrop": 14 } },
+  "pixel:8bit": { "scene": "2d", "art": "pixel/8bit/art", "view": 12, "heights": { "hero": 2, "tree": 2.5, "crate": 1.5, "lantern": 3, "ground": 2, "backdrop": 12 } },
+  "pixel:coarse": { "scene": "2d", "art": "pixel/coarse/art", "view": 12, "heights": { "hero": 2, "tree": 2.5, "crate": 1.5, "lantern": 3, "ground": 2, "backdrop": 12 } },
+  "pixel:detailed": { "scene": "2d", "art": "pixel/detailed/art", "view": 14, "heights": { "hero": 2, "tree": 3, "crate": 1.5, "lantern": 3, "ground": 2, "backdrop": 14 } },
+  "pixel:luminous": { "scene": "2d", "art": "pixel/luminous/art", "view": 14, "heights": { "hero": 2, "tree": 3, "crate": 1.5, "lantern": 3, "ground": 2, "backdrop": 14 } },
+  "pixel:monochrome": { "scene": "2d", "art": "pixel/monochrome/art", "view": 12, "heights": { "hero": 2, "tree": 2.5, "crate": 1.5, "lantern": 3, "ground": 2, "backdrop": 12 } },
+  "cartoon-2d": { "scene": "2d", "art": "cartoon-2d/storybook/art", "view": 9, "heights": { "hero": 1.9, "tree": 3.4, "crate": 1.3, "lantern": 2.6, "ground": 1.2, "backdrop": 9 } },
+  "cartoon-2d:storybook": { "scene": "2d", "art": "cartoon-2d/storybook/art", "view": 9, "heights": { "hero": 1.9, "tree": 3.4, "crate": 1.3, "lantern": 2.6, "ground": 1.2, "backdrop": 9 } },
+  "cartoon-2d:rubber-hose": { "scene": "2d", "art": "cartoon-2d/rubber-hose/art", "view": 9, "heights": { "hero": 1.9, "tree": 3.4, "crate": 1.3, "lantern": 2.6, "ground": 1.2, "backdrop": 9 } },
+  "cartoon-2d:watercolor": { "scene": "2d", "art": "cartoon-2d/storybook/art", "view": 9, "heights": { "hero": 1.9, "tree": 3.4, "crate": 1.3, "lantern": 2.6, "ground": 1.2, "backdrop": 9 } }
+}
