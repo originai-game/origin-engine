@@ -15,8 +15,8 @@
 //! tritanopia (og-draw's simulation, full strength).
 
 use og_draw::{
-    ColorFilter, ColorVision, ColorVisionFilter, TextureHandle, UiBlend, UiGeometry, UiGradient,
-    UiGradientKind, UiMode, UiPaint, UiSpread,
+    ColorFilter, ColorVision, ColorVisionFilter, TextureHandle, UiBackground, UiBackgroundSize,
+    UiBlend, UiFit, UiGeometry, UiGradient, UiGradientKind, UiMode, UiPaint, UiRepeat, UiSpread,
 };
 use og_ui::{DrawCmd, DrawItem, Srgba};
 use serde_json::{Value, json};
@@ -39,7 +39,10 @@ pub struct Pair {
     pub ink: Srgba,
     pub ground: Srgba,
     /// What the ground is made of: `solid`, `gradient`, `image`, `glass`,
-    /// `scene` (the UI covers it only partly, read over black and white).
+    /// `scene` (the UI covers it only partly, read over black and white),
+    /// `unchecked` (a layer under it is an image fitted in a way the check
+    /// does not sample: nine-slice, border image, pattern, cover, contain;
+    /// its ratio leaves that layer out).
     pub over: &'static str,
     pub disabled: bool,
     /// The worst WCAG 2 ratio of the ink on its halo (text-shadow and
@@ -218,16 +221,29 @@ impl Textures {
         }
     }
 
+    /// Texture `t` decoded, if it is one of these.
+    fn decoded(&mut self, t: TextureHandle) -> Option<&(u32, u32, Vec<u8>)> {
+        let files = &self.files;
+        self.decoded
+            .entry(t.0)
+            .or_insert_with(|| {
+                let (_, path) = files.get(t.index().checked_sub(1)?)?;
+                let bytes = std::fs::read(path).ok()?;
+                let i = og_cook::cook::decode_image(&bytes).ok()?;
+                Some((i.width, i.height, i.rgba))
+            })
+            .as_ref()
+    }
+
+    /// Texture `t`'s texels across and down.
+    fn size(&mut self, t: TextureHandle) -> Option<[f32; 2]> {
+        let (w, h, _) = self.decoded(t)?;
+        Some([*w as f32, *h as f32])
+    }
+
     /// The straight sRGB texel at `uv` of texture `t`, if it is one of these.
     fn texel(&mut self, t: TextureHandle, uv: [f32; 2]) -> Option<[f32; 4]> {
-        let files = &self.files;
-        let image = self.decoded.entry(t.0).or_insert_with(|| {
-            let (_, path) = files.get(t.index().checked_sub(1)?)?;
-            let bytes = std::fs::read(path).ok()?;
-            let i = og_cook::cook::decode_image(&bytes).ok()?;
-            Some((i.width, i.height, i.rgba))
-        });
-        let (w, h, rgba) = image.as_ref()?;
+        let (w, h, rgba) = self.decoded(t)?;
         let x = ((uv[0].clamp(0.0, 1.0) * *w as f32) as u32).min(w - 1);
         let y = ((uv[1].clamp(0.0, 1.0) * *h as f32) as u32).min(h - 1);
         let at = ((y * w + x) * 4) as usize;
@@ -497,11 +513,43 @@ fn paint_at(
                 (x + shape.half.x) / w.max(1e-3),
                 (y + shape.half.y) / h.max(1e-3),
             ];
+            let (pos, size) = ([x + shape.half.x, y + shape.half.y], [w, h]);
+            // Where in a fitted image the point falls, as og-render places
+            // it: `None` past it (a gap, past a lone tile), and the pair
+            // unchecked for a fit this does not sample.
+            let unchecked = Some(([0.0; 4], "unchecked"));
             let (mut color, what) = match &shape.paint {
                 UiPaint::Solid(c) => (*c, "solid"),
                 UiPaint::Gradient(g) => (gradient(g, f, (w, h)), "gradient"),
-                UiPaint::GradientImage(g) => (gradient(&g.gradient, f, (w, h)), "gradient"),
+                UiPaint::GradientImage(g) => {
+                    let tile = if g.size.x > 0.0 && g.size.y > 0.0 {
+                        [g.size.x, g.size.y]
+                    } else {
+                        size
+                    };
+                    let f = match &g.fit {
+                        UiFit::Fill => f,
+                        UiFit::Background(b) => background(b, pos, size, tile)?,
+                        _ => return unchecked,
+                    };
+                    (gradient(&g.gradient, f, (tile[0], tile[1])), "gradient")
+                }
                 UiPaint::Image(i) => {
+                    let f = match &i.fit {
+                        UiFit::Fill => f,
+                        UiFit::Background(b) => {
+                            // Its natural size: its region's texels, one a
+                            // CSS px at its density.
+                            let t = textures.size(i.texture)?;
+                            let density = i.density.max(1e-3);
+                            let nat = [
+                                ((i.uv[2] - i.uv[0]).abs() * t[0] / density).max(1.0),
+                                ((i.uv[3] - i.uv[1]).abs() * t[1] / density).max(1.0),
+                            ];
+                            background(b, pos, size, nat)?
+                        }
+                        _ => return unchecked,
+                    };
                     let at = [
                         i.uv[0] + f[0] * (i.uv[2] - i.uv[0]),
                         i.uv[1] + f[1] * (i.uv[3] - i.uv[1]),
@@ -515,6 +563,85 @@ fn paint_at(
         }
         _ => None,
     }
+}
+
+/// Where `pos` (CSS px from the box's top left, the box `size`) falls in
+/// a CSS background layer's image of natural size `nat`, as og-render's
+/// `image_uv` places it (CSS Backgrounds 3 §3.6–3.9): the fraction of the
+/// image, or `None` where no image is drawn.
+fn background(b: &UiBackground, pos: [f32; 2], size: [f32; 2], nat: [f32; 2]) -> Option<[f32; 2]> {
+    let pos = [pos[0] - b.area[0], pos[1] - b.area[1]];
+    let size = [
+        size[0] - b.area[0] - b.area[2],
+        size[1] - b.area[1] - b.area[3],
+    ];
+    let (auto, mut w) = match b.size {
+        UiBackgroundSize::Cover => {
+            let k = (size[0] / nat[0]).max(size[1] / nat[1]);
+            ([false; 2], [nat[0] * k, nat[1] * k])
+        }
+        UiBackgroundSize::Contain => {
+            let k = (size[0] / nat[0]).min(size[1] / nat[1]);
+            ([false; 2], [nat[0] * k, nat[1] * k])
+        }
+        UiBackgroundSize::Given(g) => {
+            let w = match (g[0].map(|v| v.max(0.0)), g[1].map(|v| v.max(0.0))) {
+                (Some(x), Some(y)) => [x, y],
+                (Some(x), None) => [x, x * nat[1] / nat[0]],
+                (None, Some(y)) => [y * nat[0] / nat[1], y],
+                (None, None) => nat,
+            };
+            ([g[0].is_none(), g[1].is_none()], w)
+        }
+    };
+    let given = w;
+    let round = |len: f32, w: f32| len / (len / w.max(1e-4)).round().max(1.0);
+    for k in 0..2 {
+        if b.repeat[k] == UiRepeat::Round {
+            w[k] = round(size[k], given[k]);
+        }
+    }
+    // Round on one axis keeps the ratio on the other when its size is auto.
+    let rounds = b.repeat.map(|r| r == UiRepeat::Round);
+    if rounds[0] && !rounds[1] && auto[1] {
+        w[1] = given[1] * w[0] / given[0].max(1e-4);
+    }
+    if rounds[1] && !rounds[0] && auto[0] {
+        w[0] = given[0] * w[1] / given[1].max(1e-4);
+    }
+    let axis = |k: usize| {
+        let origin = [b.align.x, b.align.y][k] * (size[k] - w[k]) + [b.offset.x, b.offset.y][k];
+        background_axis(pos[k], size[k], w[k], origin, b.repeat[k])
+    };
+    Some([axis(0)?, axis(1)?])
+}
+
+/// One axis of [`background`]: `x` CSS px along `len`, the image `w` long
+/// placed at `origin` and repeated by `rep`: the fraction of the image
+/// there, `None` in a gap or past a lone image (og-render's
+/// `background_axis`).
+fn background_axis(x: f32, len: f32, w: f32, origin: f32, rep: UiRepeat) -> Option<f32> {
+    let iw = w.max(1e-4);
+    let (mut o, mut pitch, mut tiled) = (origin, iw, rep != UiRepeat::NoRepeat);
+    if rep == UiRepeat::Space {
+        // Whole images from edge to edge, the room left between them;
+        // fewer than two fit, one placed by its position.
+        let n = (len / iw).floor();
+        if n >= 2.0 {
+            pitch = iw + (len - n * iw) / (n - 1.0);
+            o = 0.0;
+        } else {
+            tiled = false;
+        }
+    }
+    let q = x - o;
+    if !tiled {
+        let t = q / iw;
+        return (0.0..=1.0).contains(&t).then_some(t);
+    }
+    let k = q / pitch;
+    let t = (k - k.floor()) * pitch / iw;
+    (t <= 1.0).then_some(t)
 }
 
 fn mul(a: [f32; 4], b: [f32; 4]) -> [f32; 4] {
@@ -701,6 +828,7 @@ fn read(
         let effects = effects.filter(|e| e.outline.is_some() || !e.shadows.is_empty());
         let mut halo: Option<f32> = None;
         let mut worst: Option<(f32, Rgb, Rgb, &'static str)> = None;
+        let mut unchecked = false;
         for (u, v) in [
             (1.0, 1.0),
             (3.0, 1.0),
@@ -723,6 +851,7 @@ fn read(
                     continue;
                 }
                 if let Some((mut c, kind)) = paint_at(under, p, textures) {
+                    unchecked |= kind == "unchecked";
                     c[3] = (c[3] * opacity[j]).clamp(0.0, 1.0);
                     if c[3] > 0.02 {
                         if kind != "solid" {
@@ -769,6 +898,7 @@ fn read(
         let Some((wcag, ink, ground, over)) = worst else {
             continue;
         };
+        let over = if unchecked { "unchecked" } else { over };
         let centre = (shown.x + shown.width / 2.0, shown.y + shown.height / 2.0);
         // The innermost element there that shows the text, else the
         // innermost there.
@@ -928,7 +1058,8 @@ mod tests {
     /// fill reads the two colours' own ratio; a hard-stop gradient is read
     /// where the text is, so a caption on its black half reads 21:1 where
     /// the average of its stops (mid grey) would give 2.9:1; a black
-    /// gradient cut to the text on white reads 21:1.
+    /// gradient cut to the text on white reads 21:1, as does black text on
+    /// white beside a black 20 px corner tile.
     #[test]
     fn texts_are_read_on_what_is_drawn_under_them() {
         let pairs = read_body(
@@ -937,6 +1068,8 @@ mod tests {
   <div id="Solid"><p id="OnSolid">Solid</p></div>
   <div id="Split"><p id="OnSplit">Split</p></div>
   <div id="White"><p id="Clipped">Clipped</p></div>
+  <div id="Corner"><p id="InCorner">Corner</p></div>
+  <div id="Framed"><p id="InFrame">Framed</p></div>
 </div>
 <style>
 #Page { display: flex; flex-direction: column; gap: 8px; }
@@ -947,6 +1080,10 @@ p { color: #ffffff; margin: 0; }
 #Split { width: 200px; height: 200px; background: linear-gradient(#000 0%, #000 50%, #fff 50%, #fff 100%); }
 #White { background: #ffffff; width: 200px; }
 #Clipped { color: transparent; background: linear-gradient(#000, #000); background-clip: text; }
+#Corner { width: 200px; padding: 40px 0 0 60px; background: linear-gradient(#000, #000) left top / 20px 20px no-repeat, #ffffff; }
+#InCorner { color: #000000; }
+#Framed { width: 200px; padding: 20px; border: 10px solid transparent; border-image: linear-gradient(#000, #000) 10; background: #ffffff; }
+#InFrame { color: #000000; }
 </style>"#,
         );
         let plate = of(&pairs, "Plate");
@@ -973,5 +1110,17 @@ p { color: #ffffff; margin: 0; }
             hex(clipped[0].ink),
             hex(clipped[0].ground)
         );
+        // A background tile is read where it is drawn: a 20 px corner
+        // square leaves the black text on white, not on the square
+        // stretched over the box.
+        let corner = of(&pairs, "Corner");
+        assert!(
+            corner.wcag > 20.0,
+            "{} on {}",
+            hex(corner.ink),
+            hex(corner.ground)
+        );
+        // A border image is not sampled: the pair says so.
+        assert_eq!(of(&pairs, "Framed").over, "unchecked");
     }
 }

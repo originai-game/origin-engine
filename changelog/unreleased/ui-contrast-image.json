@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "og style check",
+      "summary": "A background layer's image or gradient tile is read where og-render draws it (its background-size, -position, -repeat and -origin): fantasy's 58 px filigree corners were read stretched over each frame, under every text in it. A pair over an image the check does not sample (nine-slice, border image, pattern, cover, contain) is reported over \"unchecked\" instead of a ratio that leaves its look out."
+    },
+    {
+      "member": "--ink-on-warn",
+      "summary": "The default ink on a warn fill (Nameplate's cast name on its bar) is contrast-color(var(--warn)), so it reads 4.5:1 or more on any warn a style gives without its own --ink-on-warn (it was --ink-inverse)."
+    }
+  ]
+}
