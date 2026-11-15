@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og vfx preview --quality",
+      "summary": "`--quality low|medium|high` plays the effects with that graphics preset applied (og.render.applyQuality), as a player who picked it sees them: the frames, the measured size and the milliseconds, alone or `--together`, are at that preset."
+    }
+  ]
+}

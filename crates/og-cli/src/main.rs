@@ -187,7 +187,7 @@ commands:
                       nearest assets/ above <out-dir>), listing what did not convert; an
                       Effekseer file in assets/ is converted the same way by og cook
   vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--decal-atlas <texture>]
-              [--no-cost | --cost-only | --together] [--keep] [--json]
+              [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]
                       play each effect (type vfx, or type vfx2d in a 2D project) alone on a
                       dark stage and report it: six frames in time order tiled into
                       <out>/<effect>.png (default out: og-out/vfx-preview), the camera placed

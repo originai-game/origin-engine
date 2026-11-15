@@ -1,5 +1,5 @@
 //! `og vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH]
-//! [--decal-atlas <texture>] [--no-cost | --cost-only | --together] [--keep] [--json]`: what an effect looks like, how big
+//! [--decal-atlas <texture>] [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]`: what an effect looks like, how big
 //! it is and what it costs, without writing a scene for it.
 //!
 //! Each effect (an asset id of the project, `fx/hit.ogt`, or a file under
@@ -53,7 +53,10 @@
 //! `--decal-atlas textures/atlas.png` is the texture the stage sets as
 //! og.RenderSettings.decalAtlas, as the game does, for effects with `decal`
 //! elements (without one a decal drawn from a region of the atlas draws a
-//! white square, and the engine warns so). `--keep` leaves the stage's
+//! white square, and the engine warns so). `--quality low` plays them with
+//! that graphics preset applied (og.render.applyQuality), as a player who
+//! picked it sees them: every frame, size and millisecond is at it (the
+//! default is the stage's own settings, medium's). `--keep` leaves the stage's
 //! runs in `.og/vfx-preview/` (the measuring frames among them).
 //!
 //! `<out>/<effect>.json` (default out: `<project>/og-out/vfx-preview`)
@@ -67,7 +70,7 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--decal-atlas <texture>] [--no-cost | --cost-only | --together] [--keep] [--json]";
+const USAGE: &str = "usage: og vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--decal-atlas <texture>] [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]";
 
 const STAGE: &str = include_str!("vfx_preview/stage.ts");
 const TICK: f64 = 60.0;
@@ -123,6 +126,8 @@ struct Args {
     cost_only: bool,
     json: bool,
     decal_atlas: String,
+    /// The graphics preset the stage applies ("": none).
+    quality: String,
     keep: bool,
     together: bool,
 }
@@ -137,6 +142,7 @@ fn parse(args: &[&str]) -> Result<Args, String> {
         cost_only: false,
         json: false,
         decal_atlas: String::new(),
+        quality: String::new(),
         keep: false,
         together: false,
     };
@@ -148,7 +154,7 @@ fn parse(args: &[&str]) -> Result<Args, String> {
             "--cost-only" => a.cost_only = true,
             "--keep" => a.keep = true,
             "--together" => a.together = true,
-            flag @ ("--project" | "--out" | "--size" | "--decal-atlas") => {
+            flag @ ("--project" | "--out" | "--size" | "--decal-atlas" | "--quality") => {
                 let Some(v) = args.get(i + 1) else {
                     return Err(format!("{flag} needs a value. {USAGE}"));
                 };
@@ -156,6 +162,10 @@ fn parse(args: &[&str]) -> Result<Args, String> {
                     "--project" => a.project = v.to_string(),
                     "--out" => a.out = Some(v.to_string()),
                     "--decal-atlas" => a.decal_atlas = v.to_string(),
+                    "--quality" if matches!(*v, "low" | "medium" | "high") => {
+                        a.quality = v.to_string()
+                    }
+                    "--quality" => return Err(format!("--quality {v}: low, medium or high")),
                     _ => {
                         let size = v
                             .split_once('x')
@@ -243,6 +253,8 @@ struct Stage<'a> {
     scratch: PathBuf,
     runs: std::cell::Cell<u32>,
     decal_atlas: &'a str,
+    /// The graphics preset applied at the start ("": none).
+    quality: &'a str,
     /// Leave each run's outputs in the scratch directory.
     keep: bool,
 }
@@ -271,6 +283,7 @@ impl Stage<'_> {
             .replace("__W__", &size.0.to_string())
             .replace("__H__", &size.1.to_string())
             .replace("__DECAL_ATLAS__", self.decal_atlas)
+            .replace("__QUALITY__", self.quality)
             .replace("__ANTIALIAS__", antialias);
         std::fs::write(&entry, text).map_err(|e| format!("{}: {e}", entry.display()))?;
         project::bundle_native(
@@ -1122,6 +1135,7 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
         scratch: scratch.clone(),
         runs: Default::default(),
         decal_atlas: &a.decal_atlas,
+        quality: &a.quality,
         keep: a.keep,
     };
     let show = stage.bundle(dim, &pixel, a.size, "tier").map_err(fail)?;

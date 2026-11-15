@@ -12,7 +12,7 @@
 //   add:x:z:<asset id>  another effect at (x, 0, z), keeping the others
 //   clear           despawns them
 import { og, defineSystem } from "@origingame/engine";
-import type { Entity, World } from "@origingame/engine";
+import type { Entity, GraphicsQuality, World } from "@origingame/engine";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   if (!r.ok) throw new Error(r.reason);
@@ -21,6 +21,7 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
 const DIM: string = "__DIM__";
 const VFX2D: string[] = __VFX2D__;
 const DECAL_ATLAS: string = "__DECAL_ATLAS__";
+const QUALITY: string = "__QUALITY__";
 const VIEW_HEIGHT = __H__;
 const VIEW_WIDTH = __W__;
 const shown: Entity[] = [];
@@ -109,7 +110,10 @@ export default og.game({
       for (const e of world.events(og.FlipbookEvent)) log.push({ name: e.name, tick: world.tick });
     }),
   ],
-  start: (world) => stage(world, "show"),
+  start: (world) => {
+    if (QUALITY !== "") must(og.render.applyQuality(world, QUALITY as GraphicsQuality));
+    stage(world, "show");
+  },
   // Pixel art keeps its pixels, and a measured frame its edges: no temporal
   // antialiasing to soften either or to carry one view into the next.
   render: { antialias: DIM === "2d" ? "off" : "__ANTIALIAS__" },
