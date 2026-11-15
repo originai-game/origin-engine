@@ -52,8 +52,9 @@ the Back and Equip buttons drop their keycaps.
 `Loadout.item[equipped][locked]` (a button, so hover, pressed, focused,
 selected and disabled come from the control), `Loadout.category`,
 `Loadout.detail` and `Loadout.price`. A pack inks the text parts with
-`-og-ink`: the killfeed's names by team (`Killfeed::name.ally`, `.enemy`),
-and the weapon, reserve, fire mode and a slot's figures a step quieter.
+`color`: the killfeed's names by team (`[part="Killfeed.name"].ally`,
+`.enemy`), and the weapon, reserve, fire mode and a slot's figures a step
+quieter.
 Undressed, they take the scene's or the menu's ink. The low and empty
 count keeps the `--warn` and `--danger` tokens, since it is a signal
 every pack must show. A `Killfeed.row` plate stays at

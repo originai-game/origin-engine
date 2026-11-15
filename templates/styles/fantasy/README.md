@@ -14,14 +14,16 @@ structure (`og-components`) and below a game's own styles (`og-game`, unlayered)
 | `base.css` | Fonts (`@font-face` from `@styles/shared`) and every value the pack draws with, as `:root` tokens for the dark and light schemes: colours, gradients, shadows, lengths, durations, easings, font families, art and sound `url()`s |
 | `controls.css` | Every core control's parts and states through `host::part(name):state`: painted button plates by `border-image`, tabs, toggles, sliders, inputs, slots, tooltips and the rest |
 | `rpg.css` | The rpg components (`packages/engine/src/ui/components/rpg`) through their named parts (`[part="RpgBackpack.frame"]`, `button::part(RpgBackpack\.cell)`) and `data-*` states: frames, bands, rarity rims, vitals bars, action bar, commands, map, compass; and the rpg sheet's `.rpg-ground`, `.rpg-fold` and `.rpg-minimap` wrappers |
+| `shooter.css` | The shooter components (`packages/engine/src/ui/components/shooter`) through their parts and class qualifiers (`[part="Crosshair.hit"].kill`, `button::part(Loadout\.item)`): the reticle's marks and hit confirmations, each with a dark keyline; opaque lamp-black plates in a brass rim for the ammunition and the killfeed rows, the names in their side's ink, the player's rows with a gold edge; the fire mode on a crimson tag; the loadout's categories under crimson bands and its slots as soot plates with every state |
 | `motion.css` | Transitions over a slow warm curve, `-og-spring()` on tab indicators, the acting portrait and fresh badges; a `prefers-reduced-motion` branch keeps the state changes and drops the movement |
 | `sounds.css` | `-og-sound` sets from the shared library for press, hover, select, confirm, back, open, close, error and reward, with quieter variants on cells and HUD plates |
 | `art/` | Frame and button art (SVG), filigree corners, the glow and the ground (PNG), each with its import `.ogt` (colour art sRGB; masks linear) |
 
 ## Tokens
 
-Only `base.css` writes values; `controls.css`, `motion.css`, `rpg.css` and
-`sounds.css` name them with `var()` (`og style check` enforces it), so a
+Only `base.css` writes values; `controls.css`, `motion.css`, `rpg.css`,
+`shooter.css` and `sounds.css` name them with `var()` (`og style check`
+enforces it), so a
 variant restyles the pack by setting tokens alone
 (`templates/styles/tests/fantasy-frost`).
 
@@ -54,7 +56,10 @@ variant restyles the pack by setting tokens alone
   filigree and ground art, long loops (`--fantasy-motion-glint`,
   `-acting`), and the composite fills and shadows one rpg component alone
   wears (the minimap bezel, the compass strip, party members, the vitals
-  rings, command plates…).
+  rings, command plates…). The shooter HUD's two: `--fantasy-hud-plate`,
+  `--scene-plate` made opaque (a translucent plate over a bright sky drops
+  a foe's red name under 4.5:1), and `--fantasy-reticle-keyline`, the dark
+  line round each mark of the crosshair.
 
 ## Art provenance
 

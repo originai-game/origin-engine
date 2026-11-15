@@ -406,6 +406,12 @@
   --fantasy-minimap-inner: inset 0 0 18px var(--color-shadow);
   --fantasy-minimap-mask: radial-gradient(circle, #000 69%, #0000 70.5%);
   --fantasy-log-fade: linear-gradient(180deg, #000 0, #000 calc(100% - 36px), #0000 100%);
+  /* ── The shooter components' surfaces. The HUD is read over a moving
+     scene: its plates are opaque (the frame is blended in linear light, so
+     a bright sky lifts a translucent one and drops a foe's red name under
+     4.5:1), and a mark with no plate carries its own dark keyline. */
+  --fantasy-hud-plate: rgb(from var(--scene-plate) r g b / 1);
+  --fantasy-reticle-keyline: 0 0 0 var(--stroke-hairline) var(--color-shadow), 0 0 3px var(--shadow-69);
   --fantasy-shadow-xs: 0 2px 4px var(--color-shadow);
   --fantasy-shadow-sm: 0 4px 10px #000a;
   --fantasy-shadow-md: 0 6px 16px #000c;
