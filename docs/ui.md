@@ -1287,6 +1287,8 @@ and the structural, form, `:open`, `:modal`, `:popover-open`, `:target`
   attributes; `:state(name)` reads `state:name`; `:defined` matches every
   element, `:scope` the root, `:any-link` an `<a href>`. An ancestor
   selector reads that ancestor's own interaction state.
+- A `<button>`'s `variant` is one of its classes, for its host's rules as
+  for its parts': `button.primary` selects `<button variant="primary">`.
 - Structural selectors read the instantiated tree after `{#if}`, keyed
   `{#each}`, snippets and components (blocks are not siblings; `:empty`
   means no element children and no text) and never select `::part` spans.

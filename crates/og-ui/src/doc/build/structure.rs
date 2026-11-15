@@ -5,7 +5,8 @@ use super::*;
 use crate::doc::selectors::Selector;
 
 /// The selector facts a node's authored inputs evaluate to, as the retained
-/// topology records them: `class` joins the class list and true `class:` names.
+/// topology records them: `class` joins the class list, true `class:` names
+/// and a button's variant.
 pub fn selector_facts(
     node: &DocNode,
     eval: impl Fn(&crate::bind::Expr) -> Value,
@@ -26,6 +27,12 @@ pub fn selector_facts(
             has_classes = true;
             if truthy(&value) {
                 classes.insert(class.to_owned());
+            }
+        }
+        if name == "variant" && node.selector_tag.as_deref() == Some("button") {
+            has_classes = true;
+            if let Some(value) = value.as_str() {
+                classes.insert(value.to_owned());
             }
         }
         out.insert(name.clone(), value);
