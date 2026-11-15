@@ -43,6 +43,166 @@ pub struct Cascade {
     pub scroll_reads: BTreeSet<u64>,
 }
 
+/// An element's last cascades, by everything [`values_with`] read for
+/// them: an element styled again into a state it had (a card lifted and
+/// set down, a row hovered and left) cascades nothing again. Kept from its
+/// second style on, so an element styled once keeps none.
+#[derive(Clone, Default)]
+pub(crate) struct Kept {
+    cascades: Vec<(Inputs, Cascade)>,
+    /// Its text styles ([`crate::doc::text_css::inherit`]), by the text
+    /// declarations and computed map they read and [`TextInputs`].
+    texts: Vec<(TextRead, TextGave)>,
+}
+
+/// What an element's text style reads beyond its cascade and its theme
+/// (whose change drops what the element kept): its text colour and type
+/// step, and how many font families are installed (what a named family's
+/// availability changes with).
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) struct TextInputs {
+    pub current: crate::Srgba,
+    pub step: crate::theme::TypeStep,
+    pub fonts: usize,
+}
+
+/// What a text style read: the element's computed map and text
+/// declarations, and [`TextInputs`].
+#[derive(Clone)]
+struct TextRead {
+    computed: Arc<variables::Computed>,
+    text: Vec<(String, String)>,
+    inputs: TextInputs,
+}
+
+/// What a text style gave: the computed map with the text values, the
+/// names read and the diagnostics, and the style.
+#[derive(Clone)]
+struct TextGave {
+    computed: Arc<variables::Computed>,
+    reads: Vec<String>,
+    diagnostics: Vec<String>,
+    style: crate::doc::text_css::TextCss,
+}
+
+/// How many cascades an element keeps: the two states it moves between.
+const KEPT: usize = 2;
+
+/// What one element's cascade read: its document node, the rules that
+/// applied, its own custom properties and attributes, what it inherits,
+/// its units, and whether it carries its winners.
+#[derive(Clone)]
+pub(crate) struct Inputs {
+    pub doc: Arc<crate::doc::UiDocument>,
+    pub node: usize,
+    pub rules: Vec<usize>,
+    pub inline: Vec<(String, String)>,
+    pub attrs: Vec<Option<String>>,
+    pub inherited: variables::Computed,
+    pub basis: Option<crate::doc::calc::Basis>,
+    pub carry: bool,
+}
+
+impl Inputs {
+    fn same(&self, other: &Inputs) -> bool {
+        Arc::ptr_eq(&self.doc, &other.doc)
+            && self.node == other.node
+            && self.carry == other.carry
+            && self.basis == other.basis
+            && self.rules == other.rules
+            && self.inline == other.inline
+            && self.attrs == other.attrs
+            && self.inherited.same(&other.inherited)
+    }
+}
+
+impl Kept {
+    /// The cascade of `inputs`: a kept one, or `cascade`'s, then kept.
+    pub(crate) fn cascade(&mut self, inputs: Inputs, cascade: impl FnOnce() -> Cascade) -> Cascade {
+        if let Some(at) = self
+            .cascades
+            .iter()
+            .position(|(kept, _)| kept.same(&inputs))
+        {
+            let kept = self.cascades.remove(at);
+            let out = kept.1.clone();
+            self.cascades.push(kept);
+            return out;
+        }
+        let out = cascade();
+        if self.cascades.len() >= KEPT {
+            self.cascades.remove(0);
+        }
+        self.cascades.push((inputs, out.clone()));
+        out
+    }
+
+    /// The text style of `c` ([`crate::doc::text_css::inherit`]): its
+    /// inherited text values written into its computed map, the names it
+    /// read and what was wrong, and the style. A kept one when `kept` has
+    /// one for these inputs.
+    pub(crate) fn text(
+        kept: Option<&mut Kept>,
+        c: &mut Cascade,
+        theme: &crate::Theme,
+        inputs: TextInputs,
+        declared: &dyn Fn(&str) -> bool,
+    ) -> crate::doc::text_css::TextCss {
+        let found = kept.as_ref().and_then(|kept| {
+            kept.texts.iter().position(|(read, _)| {
+                read.inputs == inputs
+                    && read.text == c.text
+                    && (Arc::ptr_eq(&read.computed, &c.computed) || read.computed.same(&c.computed))
+            })
+        });
+        let mut kept = kept;
+        if let (Some(kept), Some(at)) = (kept.as_deref_mut(), found) {
+            let entry = kept.texts.remove(at);
+            let gave = &entry.1;
+            c.computed = gave.computed.clone();
+            c.inherited_reads.extend(gave.reads.iter().cloned());
+            c.diagnostics.extend(gave.diagnostics.iter().cloned());
+            let style = gave.style.clone();
+            kept.texts.push(entry);
+            return style;
+        }
+        let read = c.computed.clone();
+        let (mut reads, mut diagnostics) = (BTreeSet::new(), Vec::new());
+        let style = crate::doc::text_css::inherit(crate::doc::text_css::Inputs {
+            local: &c.text,
+            computed: Arc::make_mut(&mut c.computed),
+            reads: &mut reads,
+            diagnostics: &mut diagnostics,
+            theme,
+            current: inputs.current,
+            step: inputs.step,
+            declared,
+        });
+        c.diagnostics.extend(diagnostics.iter().cloned());
+        let reads: Vec<String> = reads.into_iter().collect();
+        c.inherited_reads.extend(reads.iter().cloned());
+        if let Some(kept) = kept {
+            if kept.texts.len() >= KEPT {
+                kept.texts.remove(0);
+            }
+            kept.texts.push((
+                TextRead {
+                    computed: read,
+                    text: c.text.clone(),
+                    inputs,
+                },
+                TextGave {
+                    computed: c.computed.clone(),
+                    reads,
+                    diagnostics,
+                    style: style.clone(),
+                },
+            ));
+        }
+        style
+    }
+}
+
 /// The CSS properties whose computed value an element inherits when it
 /// does not declare them (CSS's "Inherited: yes").
 pub(crate) fn inherited_property(name: &str) -> bool {
@@ -622,13 +782,61 @@ pub(crate) fn flow(
 }
 
 /// Sends each winning value to the part of the build that reads it, a
-/// logical property as the physical one it names in `flow`.
+/// logical property as the physical one it names in `flow`. What it sends
+/// is a pure function of the winners and the flow, so it is kept by them
+/// ([`crate::css::memo`]): an element styled again into a state it had (a
+/// card lifted and set down) routes nothing again.
 pub(crate) fn route(out: &mut Cascade, flow: crate::layout::Flow) {
+    let key = (flow, std::mem::take(&mut out.values));
+    let kept = ROUTED.with_borrow(|m| m.get(&key).cloned());
+    let routed = match kept {
+        Some(routed) => routed,
+        None => {
+            let routed = std::sync::Arc::new(routed(&key.1, flow));
+            ROUTED.with_borrow_mut(|m| m.keep(key.clone(), routed.clone()));
+            routed
+        }
+    };
+    out.values = key.1;
+    let Routed {
+        text,
+        motion,
+        transform,
+        container,
+        svg,
+        generated,
+        props,
+        diagnostics,
+    } = &*routed;
+    out.text.extend_from_slice(text);
+    out.motion.extend_from_slice(motion);
+    out.transform.extend_from_slice(transform);
+    out.container.extend_from_slice(container);
+    out.svg.extend_from_slice(svg);
+    out.generated.extend_from_slice(generated);
+    out.props.extend_from_slice(props);
+    out.diagnostics.extend_from_slice(diagnostics);
+}
+
+/// What [`route`] adds to a cascade's lists.
+#[derive(Default)]
+struct Routed {
+    text: Vec<(String, String)>,
+    motion: Vec<(String, String)>,
+    transform: Vec<(String, String)>,
+    container: Vec<(String, String)>,
+    svg: Vec<(String, String)>,
+    generated: Vec<(String, String)>,
+    props: Vec<crate::doc::PropSet>,
+    diagnostics: Vec<String>,
+}
+
+fn routed(values: &[(String, String, usize)], flow: crate::layout::Flow) -> Routed {
+    let mut out = Routed::default();
     let mut body = String::new();
     // The winners stay with the cascade: the UI debugger names each one's
     // line (`Ui::debug_element`).
-    let values: Vec<(String, String, usize)> = out
-        .values
+    let values: Vec<(String, String, usize)> = values
         .iter()
         .flat_map(|(name, value, line)| {
             match crate::layout::flow::physical(name, value, flow) {
@@ -731,12 +939,16 @@ pub(crate) fn route(out: &mut Cascade, flow: crate::layout::Flow) {
     };
     out.props.extend(props);
     out.diagnostics.extend(said);
+    out
 }
 
 /// What [`route`] knows of computed declarations, by their text
 /// ([`crate::css::memo`]): those that parse, and each body's props.
 type Lowered = (Vec<crate::doc::PropSet>, Vec<String>);
+type RouteKey = (crate::layout::Flow, Vec<(String, String, usize)>);
 thread_local! {
+    static ROUTED: std::cell::RefCell<crate::css::memo::Memo<RouteKey, std::sync::Arc<Routed>>> =
+        Default::default();
     static VALID: std::cell::RefCell<crate::css::memo::Memo<String, ()>> = Default::default();
     static LOWERED: std::cell::RefCell<crate::css::memo::Memo<String, Lowered>> =
         Default::default();

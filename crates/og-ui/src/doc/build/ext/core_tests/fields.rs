@@ -93,6 +93,7 @@ fn settled_document_fields_match_fresh_styles_without_rebuilding_controls() {
                     &mut Built::default(),
                     &build.inherited,
                     &mut |_| false,
+                    None,
                 );
                 (
                     node.node,

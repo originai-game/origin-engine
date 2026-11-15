@@ -692,8 +692,10 @@ impl Ui {
     }
 
     /// Resolves a node's props: its lines, its matching `at` blocks, then
-    /// the probe's edits of `path`.
-    pub fn resolve(
+    /// the probe's edits of `path`. `kept` are the element's last cascades
+    /// ([`cascade::Kept`]), when it keeps them.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn resolve(
         &self,
         b: &Build<'_>,
         n: &DocNode,
@@ -701,6 +703,7 @@ impl Ui {
         built: &mut Built,
         inherited: &super::variables::Computed,
         structure: &mut dyn FnMut(&super::selectors::Selector) -> bool,
+        kept: Option<&mut cascade::Kept>,
     ) -> Resolved {
         let root_variables;
         let inherited = if inherited.is_empty() {
@@ -846,7 +849,30 @@ impl Ui {
                     .collect();
             }
         }
-        r.cascade = cascade::values_with(rules.iter(), &options, &mut rule_applies);
+        let mut kept = kept;
+        r.cascade = match kept.as_deref_mut() {
+            // Rules a binding wrote are not the node's: they cascade anew.
+            Some(kept) if matches!(rules, std::borrow::Cow::Borrowed(_)) => {
+                let applying: Vec<usize> = (0..rules.len())
+                    .filter(|&k| !rules[k].starting && rule_applies(&rules[k]))
+                    .collect();
+                let inputs = cascade::Inputs {
+                    doc: b.doc.clone(),
+                    node: std::ptr::from_ref(n) as usize,
+                    attrs: n.selector_attrs.iter().map(|(a, _)| attr(a)).collect(),
+                    rules: applying.clone(),
+                    inline: inline.clone(),
+                    inherited: inherited.clone(),
+                    basis: Some(basis),
+                    carry: options.carry,
+                };
+                // The rules that apply, in order, cascade as all of them do.
+                kept.cascade(inputs, || {
+                    cascade::values_with(applying.iter().map(|&k| &rules[k]), &options, |_| true)
+                })
+            }
+            _ => cascade::values_with(rules.iter(), &options, &mut rule_applies),
+        };
         // The root's own `vi` and `vb` follow the writing mode it declares.
         let (basis, options) = if cascade::root_vertical(inherited).is_none()
             && cascade::declares_vertical(&r.cascade.values)
@@ -1242,19 +1268,17 @@ impl Ui {
                 .and_then(|s| crate::style_file::ramp_step(&mut ramp, s).copied())
                 .unwrap_or(self.env.theme.type_ramp.body);
             let current = r.color("color").unwrap_or(self.env.theme.palette.ink);
-            let local = std::mem::take(&mut r.cascade.text);
-            let cascade = &mut r.cascade;
-            let text = super::text_css::inherit(super::text_css::Inputs {
-                local: &local,
-                computed: Arc::make_mut(&mut cascade.computed),
-                reads: &mut cascade.inherited_reads,
-                diagnostics: &mut cascade.diagnostics,
-                theme: &self.env.theme,
-                current,
-                step,
-                declared: &|name| self.style.family_declared(name, &self.env),
-            });
-            cascade.text = local;
+            let text = cascade::Kept::text(
+                kept,
+                &mut r.cascade,
+                &self.env.theme,
+                cascade::TextInputs {
+                    current,
+                    step,
+                    fonts: self.env.fonts.families.len(),
+                },
+                &|name| self.style.family_declared(name, &self.env),
+            );
             r.text = (text != Default::default()).then(|| Arc::new(text));
         }
         r.part_host = n.selector_tag.as_ref().map(|tag| {
@@ -1334,6 +1358,7 @@ impl Ui {
                 &mut Built::default(),
                 &inherited,
                 structure,
+                None,
             );
             let c = &mut r.cascade;
             c.inherited_reads.extend(

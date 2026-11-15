@@ -95,7 +95,7 @@ fn is_length(unit: &str) -> bool {
 }
 
 /// What the units [`absolute`] resolves are worth for one element.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Basis {
     /// The viewport's dynamic size (the surface's now), and its small and
     /// large ones (CSS Values 4 §6.1.2).

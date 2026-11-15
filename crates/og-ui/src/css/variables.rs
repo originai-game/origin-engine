@@ -94,6 +94,14 @@ impl Computed {
         Arc::ptr_eq(&self.base, &other.base) && Arc::ptr_eq(&self.layer, &other.layer)
     }
 
+    /// Whether both hold the same values, answered only where that is
+    /// cheap: they share their base. `false` may still be equal maps.
+    pub(crate) fn same(&self, other: &Computed) -> bool {
+        self.properties == other.properties
+            && (self.shares(other)
+                || (Arc::ptr_eq(&self.base, &other.base) && self.layer == other.layer))
+    }
+
     pub fn get(&self, name: &str) -> Option<&Option<String>> {
         match self.layer.get(name) {
             Some(set) => set.as_ref(),

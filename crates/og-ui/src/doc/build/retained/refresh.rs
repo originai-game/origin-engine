@@ -605,6 +605,17 @@ impl RetainedHost {
                 );
             }
         }
+        // An element styled once keeps no cascade; one styled again keeps
+        // its last ones.
+        // A new theme (or direction) drops them: the texts kept do not
+        // name the theme they read.
+        let mut kept = e
+            .cascades
+            .take()
+            .filter(|_| e.theme_epoch == self.theme_epoch);
+        if e.resolved.is_some() {
+            kept.get_or_insert_default();
+        }
         let build = e.build(env, inherited);
         let mut probe = Built {
             path: e.path.clone(),
@@ -631,7 +642,9 @@ impl RetainedHost {
                     &mut work,
                 )
             },
+            kept.as_mut().map(Arc::make_mut),
         );
+        e.cascades = kept;
         values.ordinal = ui.docs.ordinal_of(
             &e.document.nodes[e.index],
             &values,

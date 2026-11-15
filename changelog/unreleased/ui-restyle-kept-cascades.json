@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.ui",
+      "summary": "A frame that restyles document elements into a state they had before (a card lifted and set down, a row hovered and left) costs about a quarter less: each element keeps the cascades and text styles of its last two states and reuses one whose inputs are unchanged."
+    }
+  ]
+}

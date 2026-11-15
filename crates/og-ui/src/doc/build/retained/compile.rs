@@ -117,6 +117,7 @@ impl RetainedHost {
             scope,
             cached: CachedInputs::default(),
             resolved: None,
+            cascades: Default::default(),
             style_dirty: true,
             theme_epoch: self.theme_epoch,
             children: Vec::new(),

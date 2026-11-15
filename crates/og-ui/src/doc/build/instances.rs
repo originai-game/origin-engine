@@ -57,6 +57,9 @@ pub struct ElementInstance {
     pub cached: CachedInputs,
     /// Its resolution, shared: a build reads it without copying it.
     pub resolved: Option<Arc<ResolvedNode>>,
+    /// Its last cascades ([`super::cascade::Kept`]), from its second
+    /// style on; shared, as an emit copies the element.
+    pub(crate) cascades: Option<Arc<super::cascade::Kept>>,
     pub style_dirty: bool,
     pub theme_epoch: u64,
     pub children: Vec<Child>,
