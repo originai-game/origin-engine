@@ -231,9 +231,11 @@ fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, face: vec3<f32>, lift: f32, 
     var t: PlaneTaps;
     var w = vec3<f32>(0.0);
     var a = vec4<f32>(0.0);
-    for (var j = 0u; j < 2u; j++) {
+    // (Its bound read, not a constant: NVIDIA's compiler unrolls a
+    // constant one, and copies of the taps' code cost it compile time.)
+    let reads = select(1u, 2u, has_albedo && !(at.wall <= 0.0));
+    for (var j = 0u; j < reads; j++) {
       let share = select(at.wall, 1.0 - at.wall, j == 0u);
-      if (j == 1u && (!has_albedo || share <= 0.0)) { break; }
       let here = j == 0u;
       let taps = plane_taps(i, plane, select(at.p, p, here), select(at.dpx, dpx, here), select(at.dpy, dpy, here));
       if (here) {
@@ -348,8 +350,9 @@ fn terrain_look(p: vec3<f32>, n_geo: vec3<f32>, face: vec3<f32>, lift: f32, cont
   // The picked layers' colours and normals (a layer of weight 0 skips its maps).
   var samples: array<LayerSample, 4>;
   var heights_of = vec4<f32>(1.0);
-  for (var k = 0u; k < 4u; k++) {
-    if (k < pick.n && (pick.w[k] > 0.0 || k == 0u)) {
+  // To the picked count, not to a constant 4 (as `sample_layer`'s reads).
+  for (var k = 0u; k < pick.n; k++) {
+    if (pick.w[k] > 0.0 || k == 0u) {
       samples[k] = sample_layer(pick.ids[k], p, n_geo, face, lift, dpx, dpy);
       heights_of[k] = samples[k].albedo.a;
     }
@@ -357,8 +360,8 @@ fn terrain_look(p: vec3<f32>, n_geo: vec3<f32>, face: vec3<f32>, lift: f32, cont
   let w = blend_weights(pick, heights_of);
   var albedo = vec3<f32>(0.0);
   var normal = vec3<f32>(0.0);
-  for (var k = 0u; k < 4u; k++) {
-    if (k < pick.n && w[k] > 0.0) {
+  for (var k = 0u; k < pick.n; k++) {
+    if (w[k] > 0.0) {
       albedo += samples[k].albedo.rgb * terrain.layers[pick.ids[k]].color.rgb * macro_tint(pick.ids[k], p) * w[k];
       normal += samples[k].normal * w[k];
     }
