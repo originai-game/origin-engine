@@ -44,7 +44,7 @@
 .marker.ally { background: var(--info); }
 .marker.enemy { background: var(--danger); border-radius: 0; rotate: 45deg; }
 .marker.objective { --pip: var(--space-md); border-radius: var(--radius-control); rotate: 45deg; background: var(--gold); }
-.marker.ping { background: transparent; border: var(--stroke-regular) solid var(--warn); animation: ping calc(var(--motion-duration-slow) * 3) var(--motion-easing-out) infinite; }
+.marker.ping { background: transparent; border: var(--stroke-regular) solid var(--warn); animation: ping var(--motion-duration-ping) var(--motion-easing-out) infinite; }
 .marker.loot { border-radius: 0; background: var(--xp); }
 [part="MinimapView.player"] { position: absolute; top: calc(var(--side) / 2 - var(--size-xs) / 2); inset-inline-start: calc(var(--side) / 2 - var(--size-xs) / 2); width: var(--size-xs); height: var(--size-xs); fill: var(--primary); stroke: var(--ink); stroke-width: 1.2; transform-origin: 50% 50%; }
 [part="MinimapView.player"].turning { rotate: calc(var(--heading) * 1deg); }

@@ -36,9 +36,11 @@
   --vars-press-scale: 0.96;
   /* How strongly a thing shows (`--opacity-*`): `faint` a watermark or an
      empty slot's mark, `dim` what cannot be used, `muted` what is done or
-     secondary, `soft` what steps back a little. A disabled control takes
-     `--state-disabled-opacity`. */
+     secondary, `soft` what steps back a little; `wash` is how much of a
+     colour a soft wash lays over what is under it (a chart's area, rays of
+     light). A disabled control takes `--state-disabled-opacity`. */
   --opacity-faint: 0.25;
+  --opacity-wash: 0.25;
   --opacity-dim: 0.45;
   --opacity-muted: 0.6;
   --opacity-soft: 0.85;

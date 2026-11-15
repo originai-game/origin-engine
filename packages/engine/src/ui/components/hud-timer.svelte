@@ -30,8 +30,8 @@
 .track { stroke: var(--well); }
 #Left { stroke: var(--clock); }
 [part="HudTimer.figure"] { font: var(--text-xl2); color: var(--clock); white-space: nowrap; }
-.critical [part="HudTimer.figure"] { animation: beat calc(var(--motion-duration-slow) * 2.5) var(--motion-easing-out) infinite; }
-.paused [part="HudTimer.figure"] { animation: breathe calc(var(--motion-duration-slow) * 2.5) var(--motion-easing-in-out) infinite alternate; }
+.critical [part="HudTimer.figure"] { animation: beat var(--motion-duration-pulse) var(--motion-easing-out) infinite; }
+.paused [part="HudTimer.figure"] { animation: breathe var(--motion-duration-pulse) var(--motion-easing-in-out) infinite alternate; }
 @keyframes beat { 0% { scale: var(--motion-scale-swell); } 25% { scale: 1; } }
 @keyframes breathe { from { opacity: 1; } to { opacity: var(--motion-scale-breathe); } }
 </style>

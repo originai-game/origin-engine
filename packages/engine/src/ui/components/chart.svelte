@@ -50,7 +50,7 @@
 .bar { width: stretch; height: calc(var(--v) * var(--size-5xl)); border-radius: var(--radius-control); background: var(--primary); opacity: var(--opacity-soft); }
 .bar.tinted { background: var(--c); }
 #Line { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; }
-#Area { fill: var(--gold); fill-opacity: var(--opacity-faint); }
+#Area { fill: var(--gold); fill-opacity: var(--opacity-wash); }
 #Stroke { stroke: var(--gold); stroke-width: 2; stroke-linejoin: round; }
 #Categories { display: flex; gap: var(--space-sm); padding: 0 var(--space-sm) 0 calc(var(--size-md) + var(--space-xs) + var(--space-sm)); }
 .category { width: stretch; text-align: center; font-size: var(--font-step-sm); }

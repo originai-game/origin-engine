@@ -25,7 +25,7 @@
 [part="ProgressRing.ring"] { width: var(--size-lg); height: var(--size-lg); }
 #Track { stroke: var(--control-strong); }
 #Fill { stroke: var(--tone); }
-.spinning [part="ProgressRing.ring"] { animation-name: turn; animation-duration: calc(var(--motion-duration-slow) * 2); animation-timing-function: linear; animation-iteration-count: infinite; }
+.spinning [part="ProgressRing.ring"] { animation-name: turn; animation-duration: var(--motion-duration-turn); animation-timing-function: linear; animation-iteration-count: infinite; }
 [part="ProgressRing.figure"] { font: var(--text-caption); font-family: var(--figure-font); white-space: nowrap; }
 @keyframes turn { from { rotate: 0deg; } to { rotate: 360deg; } }
 </style>

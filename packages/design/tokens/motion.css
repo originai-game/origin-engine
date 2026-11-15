@@ -6,6 +6,23 @@
   --motion-duration-slow: 400ms;
   --motion-duration-spring: 520ms;
   --motion-duration-bounce: 640ms;
+  /* Longer than a transition: what loops and long plays take, each named for
+     the loop it was measured on. `turn` a spinner's turn, a flash going out;
+     `pulse` a beat (a timer's last seconds); `flare` a ring thrown from a
+     burst; `ping` a ping going out; `sweep` an indeterminate bar's pass;
+     `breathe` a waiting thing's breath, a shell's flight; `sheen` a light
+     crossing a bar; `drift` a liquid's sway; `fanfare` a reward held on
+     screen; `orbit` a ring's slow turn. */
+  --motion-duration-turn: 800ms;
+  --motion-duration-pulse: 1000ms;
+  --motion-duration-flare: 1040ms;
+  --motion-duration-ping: 1200ms;
+  --motion-duration-sweep: 1400ms;
+  --motion-duration-breathe: 1600ms;
+  --motion-duration-sheen: 2000ms;
+  --motion-duration-drift: 2400ms;
+  --motion-duration-fanfare: 2560ms;
+  --motion-duration-orbit: 6000ms;
   --motion-easing-out: cubic-bezier(0.23, 1, 0.32, 1);
   --motion-easing-exit: cubic-bezier(0.4, 0, 1, 1);
   --motion-easing-in-out: cubic-bezier(0.42, 0, 0.58, 1);

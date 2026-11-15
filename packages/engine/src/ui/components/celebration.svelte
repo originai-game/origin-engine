@@ -41,22 +41,22 @@
 
 .confetti .sky { display: block; position: absolute; top: 0; inset-inline-start: 0; inset-inline-end: 0; height: var(--space-xxs); }
 
-.burst .ring { display: block; width: var(--size-xl); height: var(--size-xl); border-radius: var(--radius-capsule); border: var(--stroke-thick) solid var(--highlight); box-shadow: 0 0 var(--space-sm) var(--highlight); animation-name: ring; animation-duration: calc(var(--motion-duration-spring) * 2); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
+.burst .ring { display: block; width: var(--size-xl); height: var(--size-xl); border-radius: var(--radius-capsule); border: var(--stroke-thick) solid var(--highlight); box-shadow: 0 0 var(--space-sm) var(--highlight); animation-name: ring; animation-duration: var(--motion-duration-flare); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
 .burst .sparks { display: block; position: absolute; width: var(--space-sm); height: var(--space-sm); }
 
 .shells { display: none; }
 .fireworks .shells { display: flex; flex-direction: row; position: absolute; top: 0; inset-inline-start: 0; inset-inline-end: 0; height: var(--size-6xl); justify-content: space-between; padding: 0 var(--space-3xl); }
-.shell { width: var(--space-sm); height: var(--space-sm); border-radius: var(--radius-capsule); background: var(--gold); opacity: 0; animation-name: shell; animation-duration: calc(var(--motion-duration-slow) * 4); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
+.shell { width: var(--space-sm); height: var(--space-sm); border-radius: var(--radius-capsule); background: var(--gold); opacity: 0; animation-name: shell; animation-duration: var(--motion-duration-breathe); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
 .shell.one { margin-top: var(--space-3xl); }
 .shell.two { margin-top: var(--space-xl); animation-delay: calc(var(--motion-duration-base) * 4); }
 .shell.three { margin-top: calc(var(--space-3xl) * 2); animation-delay: var(--motion-duration-base); }
 .shell.four { margin-top: var(--space-xxl); animation-delay: calc(var(--motion-duration-base) * 2); }
 .shell.five { margin-top: calc(var(--space-3xl) + var(--space-xl)); animation-delay: calc(var(--motion-duration-base) * 3); }
 
-.level .stage { display: flex; width: var(--measure-lg); height: var(--size-7xl); align-items: center; justify-content: center; animation-name: stage; animation-duration: calc(var(--motion-duration-bounce) * 4); animation-timing-function: linear; animation-fill-mode: both; }
-.rays polygon { fill: var(--gold); fill-opacity: var(--opacity-faint); }
-.rays { position: absolute; width: var(--measure-lg); height: var(--measure-lg); animation-name: rays; animation-duration: calc(var(--motion-duration-bounce) * 4); animation-timing-function: linear; animation-fill-mode: both; }
-.halo { position: absolute; width: var(--size-5xl); height: var(--size-5xl); border-radius: var(--radius-capsule); border: var(--stroke-thick) solid var(--gold); box-shadow: 0 0 var(--space-lg) var(--gold); animation-name: halo; animation-duration: calc(var(--motion-duration-slow) * 2); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
+.level .stage { display: flex; width: var(--measure-lg); height: var(--size-7xl); align-items: center; justify-content: center; animation-name: stage; animation-duration: var(--motion-duration-fanfare); animation-timing-function: linear; animation-fill-mode: both; }
+.rays polygon { fill: var(--gold); fill-opacity: var(--opacity-wash); }
+.rays { position: absolute; width: var(--measure-lg); height: var(--measure-lg); animation-name: rays; animation-duration: var(--motion-duration-fanfare); animation-timing-function: linear; animation-fill-mode: both; }
+.halo { position: absolute; width: var(--size-5xl); height: var(--size-5xl); border-radius: var(--radius-capsule); border: var(--stroke-thick) solid var(--gold); box-shadow: 0 0 var(--space-lg) var(--gold); animation-name: halo; animation-duration: var(--motion-duration-turn); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
 .title { font: var(--text-xl5); text-transform: uppercase; white-space: nowrap; color: var(--gold); text-shadow: 0 0 var(--stroke-regular) var(--scene-shadow), 0 var(--stroke-regular) 0 var(--scene-shadow); animation-name: title; animation-duration: var(--motion-duration-spring); animation-timing-function: var(--motion-easing-bounce); animation-fill-mode: both; }
 .value { font: var(--text-xl4); white-space: nowrap; color: var(--gold); text-shadow: 0 0 var(--stroke-regular) var(--scene-shadow), 0 var(--stroke-regular) 0 var(--scene-shadow); animation-name: value; animation-duration: var(--motion-duration-base); animation-timing-function: var(--motion-easing-out); animation-delay: var(--motion-duration-base); animation-fill-mode: both; }
 .rise { position: absolute; bottom: var(--space-xxl); width: var(--measure-sm); height: var(--space-xs); }

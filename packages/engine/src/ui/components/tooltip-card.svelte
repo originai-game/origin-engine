@@ -75,12 +75,12 @@
 <style>
 #TooltipCard { display: flex; flex-direction: row; align-items: start; gap: var(--space-sm); --rarity: var(--line-strong); }
 [part="TooltipCard.frame"] { display: flex; flex-direction: column; width: var(--measure-md); gap: var(--space-sm); }
-.common { --rarity: var(--common, var(--line-strong)); }
-.uncommon { --rarity: var(--uncommon, var(--success)); }
-.rare { --rarity: var(--rare, var(--info)); }
-.epic { --rarity: var(--epic, var(--xp)); }
-.legendary { --rarity: var(--legendary, var(--warn)); }
-.mythic { --rarity: var(--mythic, var(--danger)); }
+.common { --rarity: var(--common); }
+.uncommon { --rarity: var(--uncommon); }
+.rare { --rarity: var(--rare); }
+.epic { --rarity: var(--epic); }
+.legendary { --rarity: var(--legendary); }
+.mythic { --rarity: var(--mythic); }
 /* A rarity is the frame's rim and the title's ink, through their tokens, so a pack's frame still dresses it. */
 #Card.common, #Card.uncommon, #Card.rare, #Card.epic, #Card.legendary, #Card.mythic { --frame-rim: var(--rarity); --frame-rim-width: var(--stroke-thin); --title-ink: var(--rarity); }
 #Eyebrow { font: var(--text-sm); text-transform: uppercase; color: var(--ink-muted); }

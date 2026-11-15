@@ -25,7 +25,7 @@
 #Ring.hover #Line { stroke-width: 2; opacity: var(--opacity-muted); }
 #Ring.hover #Glow { opacity: 0; }
 #Ring.segmented #Line { stroke-dasharray: 26 13.36; }
-#Ring.segmented { animation-name: turn; animation-duration: calc(var(--motion-duration-slow) * 15); animation-timing-function: linear; animation-iteration-count: infinite; }
+#Ring.segmented { animation-name: turn; animation-duration: var(--motion-duration-orbit); animation-timing-function: linear; animation-iteration-count: infinite; }
 @keyframes land { from { scale: 1.3; opacity: 0; } to { scale: 1; opacity: 1; } }
 @keyframes turn { from { rotate: 0deg; } to { rotate: 360deg; } }
 </style>

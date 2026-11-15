@@ -20,7 +20,7 @@
 </div>
 
 <style>
-#SkeletonGroup { width: stretch; gap: var(--space-lg); animation-name: breathe; animation-duration: calc(var(--motion-duration-slow) * 4); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; }
+#SkeletonGroup { width: stretch; gap: var(--space-lg); animation-name: breathe; animation-duration: var(--motion-duration-breathe); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; }
 .item { width: stretch; gap: var(--space-sm); }
 .art { display: none; background: var(--control-strong); border-radius: var(--radius-block); }
 .lines { width: stretch; gap: var(--space-sm); }

@@ -1,0 +1,16 @@
+{
+  "added": [
+    {
+      "member": "--motion-duration-turn",
+      "summary": "Durations longer than a transition, for loops and long plays: --motion-duration-turn (800ms), -pulse (1000ms), -flare (1040ms), -ping (1200ms), -sweep (1400ms), -breathe (1600ms), -sheen (2000ms), -drift (2400ms), -fanfare (2560ms) and -orbit (6000ms). The built-in components' spinners, pings, sweeps and celebration plays take them in place of multiples of --motion-duration-slow, at the lengths they had; a style retimes them by setting the token."
+    },
+    {
+      "member": "--common",
+      "summary": "The six rarity colours are tokens of the default style: --common, --uncommon, --rare, --epic, --legendary and --mythic, each the status colour a rarity borrowed before (--line-strong, --success, --info, --xp, --warn, --danger). A style that names its own still wins, and var(--rare) needs no fallback. A loot label's common tier is the scene's ink under every style."
+    },
+    {
+      "member": "--opacity-wash",
+      "summary": "--opacity-wash (0.25): how much of a colour a soft wash lays over what is under it. A chart's area and the celebration's rays take it."
+    }
+  ]
+}
