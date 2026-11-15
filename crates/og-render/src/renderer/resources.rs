@@ -385,6 +385,11 @@ pub(crate) struct Batch {
     pub(crate) layers: u32,
     /// The reflection probe its instances sample (`probe_select.rs`).
     pub(crate) probe: u8,
+    /// The box of its instances' world spheres ([`instances::Run::reach`]);
+    /// none where it is not known: a skinned batch, whose instances are
+    /// culled by boxes of their own, and one holding debris, which the GPU
+    /// moves.
+    pub(crate) reach: Option<(Vec3, Vec3)>,
     /// A crowd's draw (`crowd.rs`, its index in the frame's crowd draws)
     /// drawn from the crowd cull's records and indirect draws, not the
     /// skinned instances' (`crowd_gpu.rs`).
@@ -478,19 +483,33 @@ pub(crate) struct DrawList {
     pub(crate) before: Vec<u32>,
 }
 
-/// GPU culling's list for pass `g`: every `include`d batch, drawn indirect
-/// from the pass's region.
+impl Batch {
+    /// Whether one of its instances may touch the volume inside `planes`
+    /// ([`instances::reaches`]): false where a GPU cull of that volume
+    /// keeps none of them, so its draw there would draw nothing.
+    pub(crate) fn reaches(&self, planes: &[glam::Vec4]) -> bool {
+        instances::reaches(self.reach, planes)
+    }
+}
+
+/// GPU culling's list for pass `g`, which sees `frustum`: every `include`d
+/// batch that reaches it ([`Batch::reaches`]), drawn indirect from the
+/// pass's region. A draw costs its state changes even when the GPU kept
+/// none of its instances, so a batch the pass cannot see is not in the
+/// list: a scene of many batches (a town's HLOD proxies, each a mesh of
+/// its own) draws those in view, as the CPU path's lists do.
 pub(crate) fn indirect_list(
     batches: &[Batch],
     n: u32,
     g: u32,
+    frustum: &Frustum,
     include: impl Fn(&Batch) -> bool,
 ) -> DrawList {
     DrawList {
         ranges: batches
             .iter()
             .enumerate()
-            .filter(|(_, b)| include(b))
+            .filter(|(_, b)| include(b) && b.reaches(cull_gpu::tested(frustum.planes())))
             .map(|(i, b)| (i as u32, (g + 1) * n + b.first, b.count))
             .collect(),
         indirect: Some(g),
@@ -932,5 +951,52 @@ mod foliage_layout_tests {
             SHADOW_SLOT_STRIDE
         );
         assert_eq!(SHADOW_SLOT_STRIDE % 256, 0);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::meshlet_gpu::tests::batch;
+
+    /// Under GPU culling a pass draws each batch of its list whole, so the
+    /// list holds only the batches that reach the pass's volume: one behind
+    /// the camera or off to its side is left out, one across a plane or of
+    /// an unknown reach stays, and what stays is drawn from the pass's
+    /// region as before.
+    #[test]
+    fn a_gpu_pass_lists_only_the_batches_that_reach_it() {
+        let view = glam::camera::rh::view::look_at_mat4(Vec3::ZERO, Vec3::NEG_Z, Vec3::Y);
+        let proj = og_core::math::perspective(60f32.to_radians(), 1.0, 0.1, 100.0);
+        let frustum = Frustum::from_view_proj(proj * view);
+        let boxed = |first: u32, lo: [f32; 3], hi: [f32; 3]| Batch {
+            reach: Some((lo.into(), hi.into())),
+            ..batch(0, first, 2)
+        };
+        let batches = [
+            // Ahead, inside.
+            boxed(0, [-1.0, -1.0, -11.0], [1.0, 1.0, -9.0]),
+            // Behind the camera.
+            boxed(2, [-1.0, -1.0, 9.0], [1.0, 1.0, 11.0]),
+            // Ahead, but off to the right of the view.
+            boxed(4, [40.0, -1.0, -11.0], [42.0, 1.0, -9.0]),
+            // Across the left plane.
+            boxed(6, [-8.0, -1.0, -11.0], [-4.0, 1.0, -9.0]),
+            // Past the far plane.
+            boxed(8, [-1.0, -1.0, -140.0], [1.0, 1.0, -120.0]),
+            // Not known (skinned, a crowd's): always listed.
+            batch(0, 10, 2),
+            // Inside, but not asked for.
+            Batch {
+                transparent: true,
+                ..boxed(12, [-1.0, -1.0, -11.0], [1.0, 1.0, -9.0])
+            },
+        ];
+        let list = indirect_list(&batches, 100, 1, &frustum, |b| !b.transparent);
+        assert_eq!(list.indirect, Some(1));
+        assert_eq!(list.ranges, [(0, 200, 2), (3, 206, 2), (5, 210, 2)]);
+        // A volume that holds everything leaves nothing out.
+        let all = indirect_list(&batches, 100, 0, &Frustum(Vec::new()), |_| true);
+        assert_eq!(all.ranges.len(), batches.len());
     }
 }

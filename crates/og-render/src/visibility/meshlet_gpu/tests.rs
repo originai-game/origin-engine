@@ -4,7 +4,7 @@ use super::*;
 use crate::meshlet::{Cluster, ClusterLevel};
 use glam::Vec3;
 
-pub(super) fn batch(mesh: usize, first: u32, count: u32) -> Batch {
+pub(crate) fn batch(mesh: usize, first: u32, count: u32) -> Batch {
     Batch {
         mesh,
         material: 0,
@@ -27,6 +27,7 @@ pub(super) fn batch(mesh: usize, first: u32, count: u32) -> Batch {
         cast: true,
         layers: 1,
         probe: 0,
+        reach: None,
         crowd: None,
     }
 }

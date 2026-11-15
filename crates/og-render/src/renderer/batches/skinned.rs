@@ -225,6 +225,7 @@ impl Renderer {
                         cast,
                         layers,
                         probe,
+                        reach: None,
                         crowd: None,
                     });
                 }

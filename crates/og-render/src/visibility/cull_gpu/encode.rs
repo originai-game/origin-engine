@@ -346,7 +346,7 @@ impl GpuCulling {
             .chain(&main)
             .map(|&g| {
                 let pass = &passes[g];
-                let planes = &pass.planes[..pass.planes.len().min(MAX_PLANES)];
+                let planes = tested(&pass.planes);
                 let mut gpu: PassGpu = bytemuck::Zeroable::zeroed();
                 for (i, plane) in planes.iter().enumerate() {
                     gpu.planes[i] = plane.to_array();
@@ -487,8 +487,11 @@ impl GpuCulling {
                 if let Some(g) = occluders {
                     pass.set_bind_group(0, &self.view_group, &[]);
                     let mut kind = None;
+                    let seen = tested(&passes[g].planes);
                     for (i, x) in batches.iter().enumerate() {
-                        if skinned_batch(i) || !materials[x.material].occluder {
+                        // An occluder out of the camera's view has none of
+                        // its instances kept: its draw would draw nothing.
+                        if skinned_batch(i) || !materials[x.material].occluder || !x.reaches(seen) {
                             continue;
                         }
                         if kind != Some((x.faces, x.compact)) {

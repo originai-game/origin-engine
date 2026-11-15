@@ -74,6 +74,7 @@ impl Renderer {
                     cast: c.cast_shadows,
                     layers: c.layers,
                     probe: crate::probe_select::NONE,
+                    reach: None,
                     crowd: Some(k as u32),
                 }
             })

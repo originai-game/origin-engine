@@ -89,7 +89,7 @@ impl Renderer {
             if occlusion {
                 vis.gpu_pass(cull_gpu::PassKind::Occluders, view_frustum, None, None);
             }
-            let mut list = indirect_list(batches, cull_n, g, |b| {
+            let mut list = indirect_list(batches, cull_n, g, view_frustum, |b| {
                 !b.transparent && b.layers & mask != 0
             });
             // The meshlet path draws its batches itself; the camera's

@@ -68,7 +68,7 @@ impl MeshletGpu {
                 scene.frame.camera.projection,
                 crate::Projection::Perspective { .. }
             );
-        let (rows, draws, items, workgroups, list) = plan(
+        let (rows, mut draws, items, workgroups, list) = plan(
             batches,
             views.iter().map(|v| (v.taken.as_slice(), v.lit)),
             |m| pools.slots.get(&m).copied(),
@@ -80,6 +80,16 @@ impl MeshletGpu {
         if rows.is_empty() || items as u64 * 8 > self.max_binding {
             return None;
         }
+        // A batch out of a view's planes has none of its clusters kept
+        // there: its draw (and its resolve) would draw nothing, so the view
+        // leaves it out. Its row stays, so every cluster keeps its slot in
+        // the visibility halves while the camera turns. A foliage batch is
+        // drawn whatever its box: its clusters' spheres widen by the wind
+        // here on their own.
+        draws.retain(|d| {
+            let b = &batches[d.batch as usize];
+            b.foliage || b.reaches(tested(&views[d.view as usize].planes))
+        });
         let slots = rows
             .last()
             .map_or(0, |r| r.first_item + r.instances * r.most);

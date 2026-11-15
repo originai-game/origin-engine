@@ -1097,9 +1097,11 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   the world, and a node whose model was destroyed, hidden, moved or given
   a look of its own draws its models again. A cell's sub-scene keeps its
   tree in the boot bundle and draws its proxies at the cell while the cell
-  is not loaded. A proxy is one batch, drawn once a pass: it saves draw
-  calls where it stands in for several kinds of model, and only triangles
-  where its models were instanced copies of a few
+  is not loaded. A proxy is one batch, drawn in the passes whose volume
+  its box reaches (under GPU culling a list leaves out a batch whose
+  instances' box misses the pass, as the CPU path's do): it saves draw
+  calls where it stands in for several kinds of model, and mostly
+  triangles where its models were instanced copies of a few
   (`packages/engine/bench/hlod-town.ts` measures both). Left to
   themselves, with the reason in the cook report:
   skinned, impostor, cut-out, fractured, GPU-instanced and tinted models,

@@ -69,10 +69,16 @@ impl<'a> Casters<'a> {
         }
     }
 
-    /// The casters of GPU pass `g` that `keep` keeps; with a meshlet
-    /// `view`, less its clustered casters.
-    fn caster_list(&self, g: u32, view: u32, keep: &dyn Fn(&Batch) -> bool) -> DrawList {
-        let mut list = indirect_list(self.seen.batches, self.seen.cull_n, g, |b| {
+    /// The casters of GPU pass `g`, which sees `frustum`, that `keep`
+    /// keeps; with a meshlet `view`, less its clustered casters.
+    fn caster_list(
+        &self,
+        g: u32,
+        frustum: &Frustum,
+        view: u32,
+        keep: &dyn Fn(&Batch) -> bool,
+    ) -> DrawList {
+        let mut list = indirect_list(self.seen.batches, self.seen.cull_n, g, frustum, |b| {
             b.cast && keep(b)
         });
         if view > 0 {
@@ -158,8 +164,8 @@ impl<'a> Casters<'a> {
             };
             (
                 [
-                    self.caster_list(g, view, &|b| self.static_keep(plan, b)),
-                    self.caster_list(g, view, &|b| self.dynamic_keep(plan, b)),
+                    self.caster_list(g, frustum, view, &|b| self.static_keep(plan, b)),
+                    self.caster_list(g, frustum, view, &|b| self.dynamic_keep(plan, b)),
                 ],
                 view,
             )
@@ -490,7 +496,7 @@ impl Pass for ShelterPass {
                 view = cull
                     .vis
                     .shadow_view(meshlet_gpu, batches, casters.meshlet_casters, &s.1);
-                casters.caster_list(g, view, &|_| true)
+                casters.caster_list(g, &s.1, view, &|_| true)
             } else {
                 r.cull(
                     casters.seen.batches,

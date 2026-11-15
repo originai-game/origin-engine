@@ -115,6 +115,11 @@ pub(crate) const VIEW_PLANES: usize = 12;
 /// unit, its projection (`meshlet_cull.wgsl` `VIEW_ROWS`).
 const VIEW_ROWS: usize = VIEW_PLANES + 2;
 
+/// The planes of a view the cull tests: its first [`VIEW_PLANES`].
+fn tested(planes: &[Vec4]) -> &[Vec4] {
+    &planes[..planes.len().min(VIEW_PLANES)]
+}
+
 /// vec4 rows per mesh in the mesh table: its sphere, its level count, then
 /// one per level (`meshlet_cull.wgsl` `MESH_ROWS`).
 const MESH_ROWS: usize = 10;
@@ -430,4 +435,4 @@ fn grow(
 impl MeshletGpu {}
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

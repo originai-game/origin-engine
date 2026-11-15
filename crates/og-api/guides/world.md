@@ -283,11 +283,13 @@ entity "house-12" {
 - What it saves depends on the scene. Triangles fall wherever proxies
   draw. Draw calls fall where a proxy stands in for several kinds of
   model: copies of one model are one instanced draw a pass already, and
-  every proxy is a draw of its own in each pass. A town of 1,156 buildings
-  of 24 kinds went from 345 draws and 1.23 M triangles to 41 and 58 k seen
-  whole from 500 m off, and from 345 draws and 614 k triangles to 699 and
-  258 k seen across from its edge, where the near buildings still draw
-  every kind and 59 proxies add theirs. Read `draws`, `triangles` and
+  every proxy is a draw of its own in each pass that sees it. A town of
+  1,156 buildings of 24 kinds went from 177 draws and 1.23 M triangles to
+  41 and 58 k seen whole from 500 m off, and from 244 draws and 616 k
+  triangles to 404 and 258 k seen across from its edge, where the near
+  buildings still draw every kind and 59 proxies add theirs; built of
+  1,156 distinct buildings, the same view went from 13,929 draws to under
+  4,000. Read `draws`, `triangles` and
   `hlod` in `dump_render` at the game's own views before keeping a block.
 - A proxy's textures hold one texel per `error`, so detail a texel wide (a
   window at the leaves' distance) is softer on a proxy than on its model.

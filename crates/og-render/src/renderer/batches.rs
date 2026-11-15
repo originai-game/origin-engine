@@ -65,6 +65,7 @@ impl Renderer {
                     cast: r.cast,
                     layers: r.layers,
                     probe: r.probe,
+                    reach: r.reach,
                     crowd: None,
                 }
             })

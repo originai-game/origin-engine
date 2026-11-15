@@ -81,6 +81,15 @@ impl Renderer {
                 }
             }
             sphere_box = instances::fold_box(None, spheres.iter().copied());
+            for b in &mut batches {
+                let members = b.first as usize..(b.first + b.count) as usize;
+                if submission[members.clone()]
+                    .iter()
+                    .any(|i| debris_instances.contains_key(i))
+                {
+                    b.reach = instances::fold_box(None, spheres[members].iter().copied());
+                }
+            }
         }
         let mut origins = submission.clone();
         self.prepare_full_meshes(scene, &batches);

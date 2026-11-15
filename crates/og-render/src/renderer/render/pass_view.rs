@@ -436,7 +436,7 @@ impl Pass for ViewPass {
                         None,
                         Some(p.layers),
                     );
-                    return indirect_list(batches, seen.cull_n, g, include);
+                    return indirect_list(batches, seen.cull_n, g, &frustum, include);
                 }
                 r.cull(
                     batches,

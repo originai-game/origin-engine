@@ -261,7 +261,7 @@ impl Pass for ReflectionPass {
                 let g = cull
                     .vis
                     .gpu_pass(cull_gpu::PassKind::Reflection, &frustum, None, None);
-                indirect_list(batches, seen.cull_n, g, include)
+                indirect_list(batches, seen.cull_n, g, &frustum, include)
             } else {
                 r.cull(
                     batches,

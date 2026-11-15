@@ -123,6 +123,10 @@ pub(crate) struct Run {
     /// Its instances mirror the mesh ([`mirrors`]): its triangles wind the
     /// other way as seen ([`crate::Faces::mirrored`]).
     pub mirrored: bool,
+    /// The box of its instances' world spheres ([`fold_box`]). A pass under
+    /// GPU culling draws a run whole, whatever the GPU keeps of it, so it
+    /// leaves out the runs whose box misses it ([`crate::Batch::reaches`]).
+    pub reach: Option<(Vec3, Vec3)>,
 }
 
 /// Whether `m` mirrors what it places: a negative determinant, which turns
@@ -270,6 +274,24 @@ pub(crate) fn fold_box(
         hi = hi.max(c + Vec3::splat(r));
     }
     (lo.x <= hi.x).then_some((lo, hi))
+}
+
+/// Whether a run reaching `reach` ([`Run::reach`]; none: not known) may
+/// touch the volume inside `planes` (`n · p + d >= 0` inside). False only
+/// when its box lies outside one of them, where a GPU cull of that volume
+/// keeps none of its instances: the box is widened past the rounding of
+/// the GPU's own spheres (cull.wgsl), so a run is never found out of a
+/// volume the GPU keeps one of its instances in.
+pub(crate) fn reaches(reach: Option<(Vec3, Vec3)>, planes: &[glam::Vec4]) -> bool {
+    let Some((lo, hi)) = reach else {
+        return true;
+    };
+    let pad = 1e-4 * (lo.abs().max(hi.abs()).max_element() + (hi - lo).max_element());
+    let (lo, hi) = (lo - Vec3::splat(pad), hi + Vec3::splat(pad));
+    planes.iter().all(|p| {
+        let n = p.truncate();
+        n.dot(Vec3::select(n.cmpge(Vec3::ZERO), hi, lo)) + p.w >= 0.0
+    })
 }
 
 /// An instance's own material and its sway (as bits): what the static
@@ -478,11 +500,14 @@ impl SortedInstances {
                     array: array(material),
                     probe,
                     mirrored,
+                    reach: None,
                 }),
             }
             let m = inst.transform;
-            self.spheres.push(world_sphere(&m, bounds));
-            let run = self.runs.last().expect("pushed above");
+            let sphere = world_sphere(&m, bounds);
+            self.spheres.push(sphere);
+            let run = self.runs.last_mut().expect("pushed above");
+            run.reach = fold_box(run.reach, [sphere]);
             self.transforms.push(run_transform(&m, inst, run));
             self.matrices.push(m);
             self.looks.push(look(inst));
@@ -504,9 +529,11 @@ impl SortedInstances {
         let instances = &scene.objects.instances;
         let mut changed = 0;
         self.changed.clear();
-        for run in &self.runs {
+        for run in &mut self.runs {
             let bounds = mesh_info(run.mesh).0;
-            for k in run.first as usize..(run.first + run.count) as usize {
+            let members = run.first as usize..(run.first + run.count) as usize;
+            let mut moved = false;
+            for k in members.clone() {
                 let inst = &instances[self.order[k] as usize];
                 let m = &inst.transform;
                 if same_bits(m, &self.matrices[k]) {
@@ -539,6 +566,13 @@ impl SortedInstances {
                 self.looks[k] = look(inst);
                 self.changed.push(k as u32);
                 changed += 1;
+                moved = true;
+            }
+            // From the transforms, not the spheres: a frame may have given
+            // those back widened (the debris layer's).
+            if moved {
+                let spheres = self.matrices[members].iter();
+                run.reach = fold_box(None, spheres.map(|m| world_sphere(m, bounds)));
             }
         }
         if changed > 0 {
@@ -597,6 +631,36 @@ mod tests {
         };
         assert_eq!(bits(&a.spheres), bits(&b.spheres));
         assert_eq!(a.sphere_box, b.sphere_box);
+        // Each run reaches as far as its own instances' spheres.
+        for r in &a.runs {
+            let members = r.first as usize..(r.first + r.count) as usize;
+            let spheres = a.spheres[members].iter().copied();
+            assert_eq!(r.reach, fold_box(None, spheres), "{r:?}");
+        }
+    }
+
+    /// A box is out of a volume only when it lies wholly outside one of
+    /// its planes: a corner on the plane, or a hair past it (the GPU's
+    /// spheres are rounded on their own), still reaches, as does a run
+    /// whose box is not known.
+    #[test]
+    fn a_box_reaches_a_volume_until_it_is_outside_one_plane() {
+        // x >= 0 and x <= 10.
+        let planes = [
+            glam::Vec4::new(1.0, 0.0, 0.0, 0.0),
+            glam::Vec4::new(-1.0, 0.0, 0.0, 10.0),
+        ];
+        let at = |lo: f32, hi: f32| Some((Vec3::new(lo, -1.0, -1.0), Vec3::new(hi, 1.0, 1.0)));
+        assert!(reaches(at(2.0, 3.0), &planes), "inside");
+        assert!(reaches(at(-5.0, 1.0), &planes), "across the first");
+        assert!(reaches(at(9.0, 50.0), &planes), "across the second");
+        assert!(reaches(at(-50.0, 50.0), &planes), "around both");
+        assert!(!reaches(at(-5.0, -1.0), &planes), "below");
+        assert!(!reaches(at(11.0, 12.0), &planes), "above");
+        assert!(reaches(at(-5.0, 0.0), &planes), "touching");
+        assert!(reaches(at(-5.0, -1e-5), &planes), "within the rounding");
+        assert!(reaches(None, &planes), "not known");
+        assert!(reaches(at(-5.0, -1.0), &[]), "no planes: everywhere");
     }
 
     /// One mesh and material in two reflection probes' boxes is two runs,

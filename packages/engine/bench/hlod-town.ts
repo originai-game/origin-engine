@@ -24,7 +24,7 @@
 // `--kinds` is how many models the buildings are drawn from (24 by
 // default; 0: every building its own). It decides what HLOD saves in draw
 // calls: copies of one model are one instanced draw a pass already, while
-// every proxy is a draw of its own, so a town of few kinds gains draws
+// every proxy is a draw of its own in each pass that sees it, so a town of few kinds gains draws
 // only where a proxy stands in for more kinds than it adds passes.
 //
 // The project is generated under target/evidence/hlod-town/ (not

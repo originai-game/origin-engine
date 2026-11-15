@@ -139,6 +139,11 @@ pub(crate) const DEPTH_WGSL: &str = concat!(wgsl!("instance.wgsl"), wgsl!("cull_
 
 /// Planes per pass (a cascade's box and the slice planes facing the light).
 const MAX_PLANES: usize = 12;
+
+/// The planes of a pass's volume the cull tests: its first [`MAX_PLANES`].
+pub(crate) fn tested(planes: &[Vec4]) -> &[Vec4] {
+    &planes[..planes.len().min(MAX_PLANES)]
+}
 const WORKGROUP: u32 = 256;
 const READBACKS: usize = 3;
 

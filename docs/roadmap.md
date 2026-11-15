@@ -87,8 +87,9 @@ band for buoyancy) and wgpu 31 (unpublished). Ray tracing is a non-goal.
   cells, a dithered cross-fade, proxies lit by their models' bake, normal
   maps on proxies, proxy textures streamed (a scene's proxies all load
   with it), and one draw for a tree's proxies (each is a batch of its own
-  in every pass, so a town of few instanced kinds gains triangles but not
-  draws at middle distances).
+  in every pass that sees it, so a town of few instanced kinds still
+  draws more at middle distances: 244 to 404 looking across the bench
+  town).
 - **Agent observability:** a `visible` reason code in the probe and
   `dump_entity`, a record of what was drawn after culling, borrow-conflict
   errors naming component, entity and source line, and captures from
