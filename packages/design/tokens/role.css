@@ -108,10 +108,15 @@
 
   /* Tag: a name, label or figure drawn straight over the scene (a
      nameplate's name, a waypoint's label and distance, a status grid's
-     time left). Its halo outlines it against any ground; a pack may also
-     give it a ground of its own, a fill padded and rounded (none by
+     time left). Its halo outlines it against any ground: eight unblurred
+     copies of the glyphs around them, 1.5px along the axes and 1px on the
+     diagonals, in the inverse of the ink (dark round the dark scheme's pale
+     ink, light round the light scheme's dark ink). A blurred shadow covers
+     at most half at the glyphs' edge and an offset one lies on one side
+     (it read as a second, embossed copy), so neither outlines. A pack may
+     also give it a ground of its own, a fill padded and rounded (none by
      default). */
-  --role-tag-halo: 0 0 var(--stroke-regular) var(--scene-shadow), 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow);
+  --role-tag-halo: 1.5px 0 0 var(--ink-inverse), -1.5px 0 0 var(--ink-inverse), 0 1.5px 0 var(--ink-inverse), 0 -1.5px 0 var(--ink-inverse), 1px 1px 0 var(--ink-inverse), -1px 1px 0 var(--ink-inverse), 1px -1px 0 var(--ink-inverse), -1px -1px 0 var(--ink-inverse);
   --role-tag-fill: none;
   --role-tag-pad: 0px;
   --role-tag-radius: var(--radius-control);
