@@ -641,7 +641,24 @@ impl Ui {
                 {
                     continue;
                 }
-                let r = crate::layout::on_screen(&self.tree.nodes, i, &screen, &offset);
+                let mut r = crate::layout::on_screen(&self.tree.nodes, i, &screen, &offset, None);
+                if crate::layout::auto_height(&self.tree.nodes[i]) {
+                    // Its height is its content's at its width: laid out at
+                    // that width first, then placed by that height.
+                    layout(
+                        &mut self.tree.nodes,
+                        i,
+                        r,
+                        &mut measure,
+                        &offset,
+                        dpr,
+                        screen,
+                        &mut self.layout.cache,
+                        &mut self.layout.queries,
+                    );
+                    let h = self.tree.nodes[i].layout.css.size.height;
+                    r = crate::layout::on_screen(&self.tree.nodes, i, &screen, &offset, Some(h));
+                }
                 place_box(
                     &mut self.tree.nodes,
                     &mut self.layout.placed,

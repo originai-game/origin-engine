@@ -23,7 +23,7 @@ pub(crate) use cache::{
     DrawSig, Invalidation, LayoutCache, Measure, Metrics, MotionCache, PaintCache, TextCache,
     draw_eq, input_changes, painted_eq,
 };
-pub(crate) use css::{layout, on_screen};
+pub(crate) use css::{auto_height, layout, on_screen};
 pub use flow::{Bidi, Flow};
 pub use multicol::Multicol;
 use node::truncate_lines;

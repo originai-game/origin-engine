@@ -119,8 +119,7 @@ impl Tree<'_, '_> {
             let w = out_size(n, 0, size[0], size[0]);
             let h0 = out_size(n, 1, size[1], size[0]);
             // Its height is its content's at its width unless set.
-            let h_set = !matches!(n.layout.used.height, Size::Fit { .. })
-                || (n.layout.insets.top.is_some() && n.layout.insets.bottom.is_some());
+            let h_set = !auto_height(n);
             let got = self.lay_physical(
                 c,
                 tf::RunMode::PerformLayout,
@@ -499,18 +498,31 @@ fn static_position(
     (x, y)
 }
 
+/// Whether out-of-flow node `n`'s height is its content's at its width
+/// (CSS 2.1 §10.6.7): `auto`, and not between a top and a bottom inset.
+pub(crate) fn auto_height(n: &Node) -> bool {
+    matches!(n.layout.used.height, Size::Fit { .. })
+        && !(n.layout.insets.top.is_some() && n.layout.insets.bottom.is_some())
+}
+
 /// Where an out-of-flow element placed on the screen ([`Position::Screen`])
 /// stands: its size and place by its insets in the whole surface; an axis
-/// with no inset keeps its static position.
+/// with no inset keeps its static position. An [`auto_height`] is
+/// `content`, its content's height laid out at the width this gives; its
+/// height at its least width, which `out_size` would take, is no bound.
 pub(crate) fn on_screen(
     nodes: &[Node],
     i: usize,
     screen: &Rect,
     _scroll: &dyn Fn(u64) -> (f32, f32),
+    content: Option<f32>,
 ) -> Rect {
     let n = &nodes[i];
     let w = out_size(n, 0, screen.width, screen.width);
-    let h = out_size(n, 1, screen.height, screen.width);
+    let h = match content {
+        Some(h) if auto_height(n) => clamp_to(n, 1, Some(screen.height), h),
+        _ => out_size(n, 1, screen.height, screen.width),
+    };
     let (mut x, mut y) = place_out(screen, n, w, h);
     let ins = &n.layout.insets;
     let free_x = ins.start.is_none() && ins.end.is_none() && ins.across.is_none() && !ins.center_x;

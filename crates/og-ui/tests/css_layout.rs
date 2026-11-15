@@ -355,6 +355,27 @@ fn a_stretch_height_in_a_block_takes_the_room_left() {
     });
 }
 
+/// A fixed box's `auto` height is its content's at the width it shrinks
+/// to (CSS 2.1 §10.6.7), not its content's at its least width: a column
+/// whose last line wraps at that width ("km/" "h") is one line short of
+/// it, and a `bottom` inset places it by its real height.
+#[test]
+fn a_fixed_boxs_auto_height_is_its_contents_at_its_width() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Speed"><span id="Value">39</span><span id="Unit">km/h</span></div></div>
+<style>
+#Speed { position: fixed; right: 24px; bottom: 24px; display: flex; flex-direction: column; gap: 12px; padding: 10px 16px; }
+#Value { font: 700 28px/32px var(--font-body); white-space: nowrap; }
+#Unit { font: 400 13px/18px var(--font-body); }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let (speed, unit) = (d.get("Speed"), d.get("Unit"));
+        assert_eq!(speed.height, 10.0 + 32.0 + 12.0 + 18.0 + 10.0);
+        assert_eq!(speed.y + speed.height, d.viewport.height - 24.0);
+        assert_eq!(unit.y + unit.height + 10.0, speed.y + speed.height);
+    });
+}
+
 /// A block's `align-content` shifts its content as one in its block axis
 /// (CSS Box Alignment 3 §5.1.1), and a flow-root keeps its first line's
 /// baseline for its row to align by (CSS Display 3 §2.3).
