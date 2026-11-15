@@ -1,6 +1,6 @@
 <meta name="component" content="Carousel">
 <meta name="strings" content="./carousel.en.ogt">
-<meta name="parts" content="Carousel.frame Carousel.cell Carousel.art Carousel.well Carousel.title Carousel.body Carousel.prev Carousel.next Carousel.dot Carousel.lit">
+<meta name="parts" content="Carousel.frame Carousel.cell Carousel.art Carousel.well Carousel.title Carousel.body Carousel.prev Carousel.next Carousel.dot Carousel.lit Carousel.picture">
 <meta name="prop:pages" content="list" data-doc="The pages: each { id, title, body, image }, image a texture handle (0: none).">
 <meta name="prop:index" content="number" data-doc="The current page, from 0 (its dot lit).">
 <meta name="prop:label" content="string" data-doc="What a screen reader calls it.">
@@ -12,7 +12,7 @@
   <div id="Viewport">
     {#each pages as page (page.id)}
       <div part="Carousel.cell" class="page">
-        <img part="Carousel.art" class="art" src={page.image} hidden={!page.image}>
+        <img part="Carousel.art Carousel.picture" class="art" src={page.image} hidden={!page.image}>
         <div part="Carousel.well" class="well" hidden={!!page.image}></div>
         <span part="Carousel.title" class="title">{page.title}</span>
         <span part="Carousel.body" class="body">{page.body}</span>

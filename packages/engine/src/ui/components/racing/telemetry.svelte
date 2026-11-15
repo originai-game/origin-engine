@@ -1,6 +1,6 @@
 <meta name="component" content="RacingTelemetry">
 <meta name="strings" content="./racing.en.ogt">
-<meta name="parts" content="RacingTelemetry.frame RacingTelemetry.dial RacingTelemetry.speed RacingTelemetry.units RacingTelemetry.gear RacingTelemetry.badge">
+<meta name="parts" content="RacingTelemetry.frame RacingTelemetry.dial RacingTelemetry.speed RacingTelemetry.units RacingTelemetry.gear RacingTelemetry.badge RacingTelemetry.plate RacingTelemetry.figure RacingTelemetry.label">
 <meta name="prop:speed" content="number" data-doc="The speed as the game measures it, already in its units (a whole number reads best).">
 <meta name="prop:units" content="string" data-doc="The speed's unit as the game words it (km/h, mph); shown under the figure and read with it.">
 <meta name="prop:gear" content="string" data-doc="The gear as the game names it: R, N, 1 to 8; empty hides the gear plate.">
@@ -27,10 +27,10 @@
 <div id="RacingTelemetry" part="RacingTelemetry.frame" class="hud" role="group" aria-label={t("racing.telemetry.name")} data-dial={dial} data-shift={shift} data-boosting={boosting} data-redline={redline > 0 && rpm >= redline}>
   {#if dial == 'bar'}
     <div class="strip">
-      <div part="RacingTelemetry.gear" class="gear" hidden={gear == ''} role="group" aria-label={t("racing.telemetry.gearValue", { gear: gear })}><span class="gear-value">{gear}</span></div>
+      <div part="RacingTelemetry.gear RacingTelemetry.plate" class="gear" hidden={gear == ''} role="group" aria-label={t("racing.telemetry.gearValue", { gear: gear })}><span class="gear-value">{gear}</span></div>
       <div class="readout" role="group" aria-label={t("racing.telemetry.speed", { speed: speed, units: units })}>
-        <span part="RacingTelemetry.speed" class="speed">{formatNumber(speed)}</span>
-        <span part="RacingTelemetry.units" class="units">{units}</span>
+        <span part="RacingTelemetry.speed RacingTelemetry.figure" class="speed">{formatNumber(speed)}</span>
+        <span part="RacingTelemetry.units RacingTelemetry.label" class="units">{units}</span>
       </div>
       <div class="bars">
         <div part="RacingTelemetry.dial" class="rev"><StatBar value={rpm} max={rpmMax} kind="stamina" segment={rpmMax / 8} shield={0} shieldMax={0} heal={0} recoverable={0} label="" icon="" showValue={false} valueInside={false} valueText={t("racing.telemetry.rpmValue", { rpm: rpm })} low={0} critical={0} bare={true} name={t("racing.telemetry.rpm")} /></div>
@@ -46,10 +46,10 @@
         <circle class="rev" cx="60" cy="60" r="50" fill="none" stroke-width="8" pathLength="1" stroke-dasharray={(rpmMax > 0 ? (rpm >= rpmMax ? 0.75 : 0.75 * rpm / rpmMax) : 0) + " 1"} transform="rotate(135 60 60)"></circle>
       </svg>
       <div class="centre" role="group" aria-label={t("racing.telemetry.speed", { speed: speed, units: units })}>
-        <span part="RacingTelemetry.speed" class="speed">{formatNumber(speed)}</span>
-        <span part="RacingTelemetry.units" class="units">{units}</span>
+        <span part="RacingTelemetry.speed RacingTelemetry.figure" class="speed">{formatNumber(speed)}</span>
+        <span part="RacingTelemetry.units RacingTelemetry.label" class="units">{units}</span>
       </div>
-      <div part="RacingTelemetry.gear" class="gear" hidden={gear == ''} role="group" aria-label={t("racing.telemetry.gearValue", { gear: gear })}><span class="gear-value">{gear}</span></div>
+      <div part="RacingTelemetry.gear RacingTelemetry.plate" class="gear" hidden={gear == ''} role="group" aria-label={t("racing.telemetry.gearValue", { gear: gear })}><span class="gear-value">{gear}</span></div>
       <div class="boost-ring" hidden={!(boostMax > 0)}><svg class="boost-dial" viewBox="0 0 56 56" role="meter" aria-label={t("racing.telemetry.boost")} aria-valuemin="0" aria-valuemax={boostMax} aria-valuenow={boost}><circle class="track" cx="28" cy="28" r="22" fill="none" stroke-width="7"></circle><circle class="boost" cx="28" cy="28" r="22" fill="none" stroke-width="7" pathLength="1" stroke-dasharray={(boostMax > 0 ? (boost >= boostMax ? 1 : boost / boostMax) : 0) + " 1"} transform="rotate(-90 28 28)"></circle></svg><span class="boost-label">{t("racing.telemetry.boost")}</span></div>
       <span part="RacingTelemetry.badge" class="shift" hidden={!shift} role="status">{t("racing.telemetry.shift")}</span>
     </div>

@@ -1,6 +1,6 @@
 <meta name="component" content="IdleOffline">
 <meta name="strings" content="./idle.en.ogt">
-<meta name="parts" content="IdleOffline.frame IdleOffline.band IdleOffline.title IdleOffline.summary IdleOffline.row IdleOffline.name IdleOffline.figure">
+<meta name="parts" content="IdleOffline.frame IdleOffline.band IdleOffline.title IdleOffline.summary IdleOffline.row IdleOffline.name IdleOffline.figure IdleOffline.label">
 <meta name="prop:title" content="string" data-doc="The panel's heading; empty takes the group's (Welcome back).">
 <meta name="prop:away" content="string" data-doc="How long the player was away, as the game words it (it wins; empty shows seconds as a duration: 1h 2m).">
 <meta name="prop:seconds" content="number" data-doc="How long the player was away, in seconds, when away is empty.">
@@ -21,7 +21,7 @@
 -->
 <section id="IdleOffline" part="IdleOffline.frame" aria-label={title != '' ? title : t("idle.offline.name")}>
   <header part="IdleOffline.band"><h2 part="IdleOffline.title">{title != '' ? title : t("idle.offline.name")}</h2></header>
-  <p part="IdleOffline.summary">{t("idle.offline.away", { time: away != '' ? away : formatDuration(seconds) })}</p>
+  <p part="IdleOffline.summary IdleOffline.label">{t("idle.offline.away", { time: away != '' ? away : formatDuration(seconds) })}</p>
   {#if earned.length}
     <scroll class="body">
       <ul class="rows" aria-label={t("idle.offline.earned")}>
@@ -48,7 +48,7 @@
 [part="IdleOffline.frame"] { display: flex; flex-direction: column; width: stretch; max-width: var(--modal-width); max-height: 100%; min-height: 0; gap: var(--space-md); }
 [part="IdleOffline.band"] { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
 [part="IdleOffline.title"] { margin: 0; text-align: center; overflow-wrap: anywhere; }
-[part="IdleOffline.summary"] { margin: 0; text-align: center; flex: none; overflow-wrap: anywhere; }
+[part="IdleOffline.summary IdleOffline.label"] { margin: 0; text-align: center; flex: none; overflow-wrap: anywhere; }
 .body { width: stretch; flex: 0 1 auto; min-height: 0; }
 .rows { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xxs); }
 [part="IdleOffline.row"] { display: flex; flex-wrap: wrap; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm); min-height: var(--size-md); }

@@ -1,6 +1,6 @@
 <meta name="component" content="RhythmDifficulty">
 <meta name="strings" content="./rhythm.en.ogt">
-<meta name="parts" content="RhythmDifficulty.frame RhythmDifficulty.band RhythmDifficulty.title RhythmDifficulty.row RhythmDifficulty.name RhythmDifficulty.rating RhythmDifficulty.badge">
+<meta name="parts" content="RhythmDifficulty.frame RhythmDifficulty.band RhythmDifficulty.title RhythmDifficulty.row RhythmDifficulty.name RhythmDifficulty.rating RhythmDifficulty.badge RhythmDifficulty.figure">
 <meta name="prop:title" content="string" data-doc="The heading (the song's title); empty takes the kit's (Difficulty).">
 <meta name="prop:levels" content="list" data-doc="The song's charts in the game's order, keyed rows of { id, tier, label, rating, grade, score, locked }: tier the chart's family (easy, normal, hard, expert, master, special; on data-tier for the pack's colour, never alone); label its name as the game words it (Hard); rating its level number; grade the player's best grade on it (S, AA; empty unplayed); score the best score as the game formats it (981,200; empty Not played); locked it cannot be played yet (disabled).">
 <meta name="prop:selected" content="string" data-doc="The chart the game holds as chosen (selected, named Selected); empty is none.">
@@ -24,7 +24,7 @@
         {#each levels as l (l.id)}
           <button part="RhythmDifficulty.row" role="option" aria-selected={l.id == selected} aria-label={t("rhythm.difficulty.ratingName", { label: l.label, rating: l.rating })} disabled={l.locked} data-tier={l.tier} data-locked={l.locked} onclick={choose}><div class="face">
             <span part="RhythmDifficulty.name" class="name">{l.label}</span>
-            <span part="RhythmDifficulty.rating" class="rating">{t("rhythm.difficulty.rating", { rating: l.rating })}</span>
+            <span part="RhythmDifficulty.rating RhythmDifficulty.figure" class="rating">{t("rhythm.difficulty.rating", { rating: l.rating })}</span>
             <div class="best">
               <span part="RhythmDifficulty.badge" class="grade" data-tag="grade" hidden={l.grade == ''}>{l.grade}</span>
               <span class="score">{l.score != '' ? l.score : t("rhythm.difficulty.unplayed")}</span>

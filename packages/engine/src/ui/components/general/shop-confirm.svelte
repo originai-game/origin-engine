@@ -1,6 +1,6 @@
 <meta name="component" content="ShopConfirm">
 <meta name="strings" content="./general.en.ogt">
-<meta name="parts" content="ShopConfirm.frame ShopConfirm.band ShopConfirm.title ShopConfirm.name ShopConfirm.price ShopConfirm.error">
+<meta name="parts" content="ShopConfirm.frame ShopConfirm.band ShopConfirm.title ShopConfirm.name ShopConfirm.price ShopConfirm.error ShopConfirm.figure">
 <meta name="prop:title" content="string" data-doc="The panel's heading; empty takes the group's (Confirm purchase).">
 <meta name="prop:name" content="string" data-doc="The offer's name.">
 <meta name="prop:icon" content="string" data-doc="The offer's icon in the style's atlas.">
@@ -38,7 +38,7 @@
       </div>
       <ul class="prices" aria-label={t("general.confirm.cost")}>
         {#each prices as p (p.id)}
-          <li part="ShopConfirm.price" data-short={p.short}>
+          <li part="ShopConfirm.price ShopConfirm.figure" data-short={p.short}>
             <og-icon class="currency" icon={p.icon}></og-icon>
             <span class="was" hidden={p.was == ''} aria-label={t("general.shop.was", { price: p.was })}>{p.was}</span>
             <span class="figure" aria-label={t("general.shop.amount", { amount: p.amount, currency: p.label })}>{p.amount}</span>
@@ -69,7 +69,7 @@
 .text { display: flex; flex-direction: column; width: stretch; min-width: 0; gap: var(--space-xxs); }
 [part="ShopConfirm.name"], .detail { margin: 0; overflow-wrap: anywhere; }
 .prices { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xs); }
-[part="ShopConfirm.price"] { display: flex; width: stretch; align-items: center; flex-wrap: wrap; gap: var(--space-xxs) var(--space-sm); padding: var(--space-xs) var(--space-sm); }
+[part="ShopConfirm.price ShopConfirm.figure"] { display: flex; width: stretch; align-items: center; flex-wrap: wrap; gap: var(--space-xxs) var(--space-sm); padding: var(--space-xs) var(--space-sm); }
 .currency, .short-mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .figure { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .was { text-decoration-line: line-through; white-space: nowrap; }

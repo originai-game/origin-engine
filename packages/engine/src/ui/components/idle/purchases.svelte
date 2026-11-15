@@ -1,6 +1,6 @@
 <meta name="component" content="IdlePurchases">
 <meta name="strings" content="./idle.en.ogt">
-<meta name="parts" content="IdlePurchases.frame IdlePurchases.band IdlePurchases.title IdlePurchases.amount IdlePurchases.row IdlePurchases.name IdlePurchases.effect IdlePurchases.cost IdlePurchases.badge">
+<meta name="parts" content="IdlePurchases.frame IdlePurchases.band IdlePurchases.title IdlePurchases.amount IdlePurchases.row IdlePurchases.name IdlePurchases.effect IdlePurchases.cost IdlePurchases.badge IdlePurchases.figure">
 <meta name="prop:title" content="string" data-doc="The list's heading; empty takes the group's (Upgrades).">
 <meta name="prop:amounts" content="list" data-doc="The buy amounts offered, keyed rows of { id, label }: label the amount as the game words it (it wins; empty reads the key max as Max and any other key as ×key: ×1, ×10, ×100). An empty list hides the choice.">
 <meta name="prop:amount" content="string" data-doc="The buy amount chosen, one of the amounts' keys.">
@@ -26,7 +26,7 @@
     <h2 part="IdlePurchases.title">{title != '' ? title : t("idle.purchases.name")}</h2>
     <div class="amounts" role="radiogroup" aria-label={t("idle.purchases.amount")} hidden={!amounts.length}>
       {#each amounts as a (a.id)}
-        <button part="IdlePurchases.amount" role="radio" aria-checked={a.id == amount} data-amount={a.id} onclick={chooseamount}>{a.label != '' ? a.label : a.id == 'max' ? t("idle.purchases.max") : t("idle.purchases.times", { count: a.id })}</button>
+        <button part="IdlePurchases.amount IdlePurchases.figure" role="radio" aria-checked={a.id == amount} data-amount={a.id} onclick={chooseamount}>{a.label != '' ? a.label : a.id == 'max' ? t("idle.purchases.max") : t("idle.purchases.times", { count: a.id })}</button>
       {/each}
     </div>
   </header>
@@ -49,7 +49,7 @@
               <span part="IdlePurchases.badge" data-tag="short" hidden={u.maxed || u.locked || u.affordable}>{t("idle.purchases.short")}</span>
               <button id="Buy" variant="primary" hidden={u.maxed} disabled={!u.affordable || u.maxed || u.locked} aria-label={u.cost != '' ? t("idle.purchases.buyFor", { name: u.name, cost: u.cost }) : t("idle.purchases.buyNamed", { name: u.name })} data-affordable={u.affordable} onclick={buy}><div class="buy">
                 <span class="count" hidden={u.count == ''}>{u.count}</span>
-                <div part="IdlePurchases.cost" hidden={u.cost == ''}><og-icon class="cost-icon" icon={u.costIcon}></og-icon><span class="cost-figure">{u.cost}</span></div>
+                <div part="IdlePurchases.cost IdlePurchases.figure" hidden={u.cost == ''}><og-icon class="cost-icon" icon={u.costIcon}></og-icon><span class="cost-figure">{u.cost}</span></div>
                 <span class="buy-word" hidden={u.cost != ''}>{t("idle.purchases.buy")}</span>
               </div></button>
             </div>
@@ -68,7 +68,7 @@
 [part="IdlePurchases.band"] { display: flex; width: stretch; align-items: center; flex-wrap: wrap; gap: var(--space-xs) var(--space-md); flex: none; }
 [part="IdlePurchases.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .amounts { display: flex; flex: none; gap: var(--space-xxs); }
-[part="IdlePurchases.amount"] { min-height: var(--size-touch); min-width: var(--size-touch); padding: 0 var(--space-sm); }
+[part="IdlePurchases.amount IdlePurchases.figure"] { min-height: var(--size-touch); min-width: var(--size-touch); padding: 0 var(--space-sm); }
 .rows-scroll { width: stretch; flex: 1; min-height: 0; }
 .rows { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xs); }
 [part="IdlePurchases.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm); }
@@ -83,7 +83,7 @@
 #Buy { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.1); max-width: stretch; padding: var(--space-xxs) var(--space-sm); }
 .buy { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: stretch; }
 .count { white-space: nowrap; font-variant-numeric: tabular-nums; }
-[part="IdlePurchases.cost"] { display: flex; align-items: center; gap: var(--space-xxs); min-width: 0; max-width: stretch; }
+[part="IdlePurchases.cost IdlePurchases.figure"] { display: flex; align-items: center; gap: var(--space-xxs); min-width: 0; max-width: stretch; }
 .cost-icon { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .cost-figure { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-variant-numeric: tabular-nums; }
 .empty-text { margin: 0; flex: 1; text-align: center; }
@@ -91,7 +91,7 @@
    amounts under the title and each row's price and Buy under its name. */
 @container (width < 560px) {
   [part="IdlePurchases.band"] .amounts { flex: 1 0 100%; }
-  [part="IdlePurchases.amount"] { flex: 1; min-width: 0; }
+  [part="IdlePurchases.amount IdlePurchases.figure"] { flex: 1; min-width: 0; }
   [part="IdlePurchases.row"] { flex-wrap: wrap; padding: var(--space-xs); }
   .art { width: var(--size-md); height: var(--size-md); }
   .icon { width: var(--size-sm); height: var(--size-sm); }

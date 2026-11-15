@@ -178,7 +178,7 @@ for (const name of readdirSync(GROUP).filter((f) => f.endsWith(".svelte")).map((
     const drawn = new Set<string>();
     for (const fixture of Object.keys(m.fixtures)) {
       run(member(name, {}, {}, fixture), (e) => {
-        for (const x of elements(e)) for (const p of m.parts) if (x.part?.includes(`::part(${p})`)) drawn.add(p);
+        for (const x of elements(e)) for (const p of x.part?.match(/::part\(([^)]*)\)/)?.[1]?.split(/\s+/) ?? []) drawn.add(p);
       });
     }
     expect(`${name}: ${m.parts.filter((p) => !drawn.has(p)).join(" ")}`).toBe(`${name}: `);

@@ -168,9 +168,10 @@ test("every member names its frame first and only its own parts", () => {
     expect(`${name} ${m.parts[0]}`).toBe(`${name} ${m.component}.frame`);
     // The markup only: a part named in the <style> alone is not drawn.
     const text = readFileSync(join(GROUP, `${name}.svelte`), "utf8").split("<style>")[0]!;
-    for (const p of m.parts) expect(`${name} ${p} ${p.startsWith(`${m.component}.`) && text.includes(`part="${p}"`)}`).toBe(`${name} ${p} true`);
+    const named = new Set([...text.matchAll(/part="([^"]+)"/g)].flatMap((x) => x[1]!.split(/\s+/)));
+    for (const p of m.parts) expect(`${name} ${p} ${p.startsWith(`${m.component}.`) && named.has(p)}`).toBe(`${name} ${p} true`);
     // Every part the document draws is declared.
-    for (const used of text.matchAll(/part="([^"]+)"/g)) expect(m.parts).toContain(used[1]!);
+    for (const used of named) expect(m.parts).toContain(used);
   }
 });
 

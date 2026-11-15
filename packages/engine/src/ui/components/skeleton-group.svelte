@@ -1,6 +1,6 @@
 <meta name="component" content="SkeletonGroup">
 <meta name="strings" content="./skeleton-group.en.ogt">
-<meta name="parts" content="SkeletonGroup.art SkeletonGroup.line">
+<meta name="parts" content="SkeletonGroup.art SkeletonGroup.line SkeletonGroup.picture">
 <meta name="prop:shape" content="string" data-doc="What it stands in for: lines (empty), avatar, block, row or card.">
 <meta name="prop:items" content="list" data-doc="One entry per repeat (rows of a list), each with a stable id.">
 <meta name="prop:name" content="string" data-doc="What a screen reader says while it loads; empty is Loading.">
@@ -9,7 +9,7 @@
 <div id="SkeletonGroup" role="progressbar" aria-busy="true" aria-label={name || t("component.skeleton-group.loading")} class:avatar={shape == 'avatar'} class:block={shape == 'block'} class:row={shape == 'row'} class:card={shape == 'card'}>
   {#each items as item (item.id)}
     <div class="item">
-      <div class="art" part="SkeletonGroup.art"></div>
+      <div class="art" part="SkeletonGroup.art SkeletonGroup.picture"></div>
       <div class="lines">
         <div class="piece first" part="SkeletonGroup.line"></div>
         <div class="piece" part="SkeletonGroup.line"></div>

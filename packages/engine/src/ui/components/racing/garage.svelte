@@ -1,6 +1,6 @@
 <meta name="component" content="RacingGarage">
 <meta name="strings" content="./racing.en.ogt">
-<meta name="parts" content="RacingGarage.frame RacingGarage.band RacingGarage.title RacingGarage.hero RacingGarage.tile RacingGarage.name RacingGarage.badge RacingGarage.row">
+<meta name="parts" content="RacingGarage.frame RacingGarage.band RacingGarage.title RacingGarage.hero RacingGarage.tile RacingGarage.name RacingGarage.badge RacingGarage.row RacingGarage.picture RacingGarage.cell">
 <meta name="prop:title" content="string" data-doc="The page's heading; empty takes the kit's (Garage).">
 <meta name="prop:vehicles" content="list" data-doc="The cars in the game's order, keyed rows of { id, title, body, image, owned, locked, affordable, price }: title the car's name, body its class line, image a texture (og.load.texture, 0 none); owned the player has it; locked it cannot be had yet; affordable the game allows buying it now (false disables Buy and names it Too costly); price what buying costs or why it is locked, as the game words it (12,500 cr, Reach level 12).">
 <meta name="prop:shown" content="string" data-doc="The car in view (its tile selected, its stats shown, the action for it); empty is none.">
@@ -34,7 +34,7 @@
       <div class="show" ontabPrev={prev} ontabNext={next}>
         {#each vehicles as v (v.id)}
           {#if v.id == shown}
-            <figure part="RacingGarage.hero" class="hero" aria-label={v.title} data-owned={v.owned} data-locked={v.locked} data-chosen={v.id == chosen}>
+            <figure part="RacingGarage.hero RacingGarage.picture" class="hero" aria-label={v.title} data-owned={v.owned} data-locked={v.locked} data-chosen={v.id == chosen}>
               <img class="art" src={v.image} alt="" hidden={!v.image}>
               <div class="well" hidden={!!v.image}></div>
               <span class="hero-name">{v.title}</span>
@@ -75,7 +75,7 @@
     <scroll class="tiles-scroll">
       <div class="tiles" role="listbox" aria-label={t("racing.garage.vehicles")}>
         {#each vehicles as v (v.id)}
-          <button part="RacingGarage.tile" role="option" aria-selected={v.id == shown} aria-label={v.title} data-owned={v.owned} data-locked={v.locked} data-chosen={v.id == chosen} onclick={choose}><div class="face">
+          <button part="RacingGarage.tile RacingGarage.cell" role="option" aria-selected={v.id == shown} aria-label={v.title} data-owned={v.owned} data-locked={v.locked} data-chosen={v.id == chosen} onclick={choose}><div class="face">
             <span part="RacingGarage.name" class="name">{v.title}</span>
             <span part="RacingGarage.badge" class="tag" data-tag={v.id == chosen ? 'driving' : (v.locked ? 'locked' : (v.owned ? 'owned' : 'price'))}>{v.id == chosen ? t("racing.garage.driving") : (v.locked ? t("racing.garage.locked") : (v.owned ? t("racing.garage.owned") : v.price))}</span>
           </div></button>
@@ -97,7 +97,7 @@
 [part="RacingGarage.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .body { display: flex; width: stretch; flex: 1; min-height: 0; gap: var(--space-xl); align-items: flex-start; justify-content: center; }
 .show { flex: none; align-items: center; gap: var(--space-sm); width: calc(var(--size-xxl) * 3.6); max-width: stretch; }
-[part="RacingGarage.hero"] { display: flex; flex-direction: column; width: stretch; margin: 0; gap: var(--space-xxs); padding: var(--space-sm); }
+[part="RacingGarage.hero RacingGarage.picture"] { display: flex; flex-direction: column; width: stretch; margin: 0; gap: var(--space-xxs); padding: var(--space-sm); }
 .art, .well { width: stretch; aspect-ratio: 1.8; }
 .art { object-fit: cover; }
 .hero-name, .hero-body { width: stretch; text-align: start; }
@@ -117,8 +117,8 @@
 /* The strip scrolls inside the garage's width and never widens it. */
 .tiles-scroll { width: stretch; min-width: 0; flex: none; contain: inline-size; }
 .tiles { display: flex; gap: var(--space-sm); padding: var(--space-xxs); }
-[part="RacingGarage.tile"] { flex: none; width: calc(var(--size-xxl) * 1.7); min-height: var(--size-xl); padding: var(--space-xs) var(--space-sm); }
-[part="RacingGarage.tile"] .face { display: flex; flex-direction: column; width: stretch; align-items: flex-start; gap: var(--space-xxs); }
+[part="RacingGarage.tile RacingGarage.cell"] { flex: none; width: calc(var(--size-xxl) * 1.7); min-height: var(--size-xl); padding: var(--space-xs) var(--space-sm); }
+[part="RacingGarage.tile RacingGarage.cell"] .face { display: flex; flex-direction: column; width: stretch; align-items: flex-start; gap: var(--space-xxs); }
 .name { width: stretch; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .tag { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: stretch; padding: 0 var(--space-xs); }
 .empty { display: flex; flex-direction: column; flex: 1; align-items: center; justify-content: center; gap: var(--space-md); }

@@ -1,6 +1,6 @@
 <meta name="component" content="DailyRewards">
 <meta name="strings" content="./general.en.ogt">
-<meta name="parts" content="DailyRewards.frame DailyRewards.band DailyRewards.title DailyRewards.refresh DailyRewards.day DailyRewards.label DailyRewards.amount DailyRewards.state">
+<meta name="parts" content="DailyRewards.frame DailyRewards.band DailyRewards.title DailyRewards.refresh DailyRewards.day DailyRewards.label DailyRewards.amount DailyRewards.state DailyRewards.cell DailyRewards.figure">
 <meta name="prop:title" content="string" data-doc="The calendar's heading; empty takes the group's (Daily rewards).">
 <meta name="prop:refresh" content="string" data-doc="When the next day's reward opens, as the game words it; empty hides it.">
 <meta name="prop:days" content="list" data-doc="The calendar's days in order: keyed rows of { id, label, icon, amount, state, milestone }: label the day in words (Day 1); amount the reward in words (x100); state claimed, today, upcoming or missed, each shown by its own word: the game sends claimed for today once its reward is taken; milestone a big reward the pack marks.">
@@ -21,28 +21,28 @@
 <section id="DailyRewards" part="DailyRewards.frame" aria-label={title != '' ? title : t("general.rewards.name")}>
   <header part="DailyRewards.band">
     <h2 part="DailyRewards.title">{title != '' ? title : t("general.rewards.name")}</h2>
-    <div part="DailyRewards.refresh" role="timer" hidden={refresh == ''}><og-icon class="mark" icon="clock"></og-icon><span>{refresh}</span></div>
+    <div part="DailyRewards.refresh DailyRewards.label" role="timer" hidden={refresh == ''}><og-icon class="mark" icon="clock"></og-icon><span>{refresh}</span></div>
   </header>
   <scroll class="days-scroll">
     <ol class="days">
       {#each days as d (d.id)}
         <li class="slot">
           {#if d.state == 'today' && canClaim}
-            <button part="DailyRewards.day" data-state={d.state} data-milestone={d.milestone} aria-current="date" aria-label={t("general.rewards.day", { day: d.label, reward: d.amount, state: t("general.rewards.claim") })} onclick={claim}><div class="face">
+            <button part="DailyRewards.day DailyRewards.cell" data-state={d.state} data-milestone={d.milestone} aria-current="date" aria-label={t("general.rewards.day", { day: d.label, reward: d.amount, state: t("general.rewards.claim") })} onclick={claim}><div class="face">
               <p part="DailyRewards.label">{d.label}</p>
               <og-icon class="reward" icon={d.icon}></og-icon>
-              <p part="DailyRewards.amount">{d.amount}</p>
-              <div part="DailyRewards.state" data-state={d.state}>
+              <p part="DailyRewards.amount DailyRewards.figure">{d.amount}</p>
+              <div part="DailyRewards.state DailyRewards.label" data-state={d.state}>
                 <og-icon class="mark" icon="star"></og-icon>
                 <span class="state-text">{t("general.rewards.claim")}</span>
               </div>
             </div></button>
           {:else}
-            <div part="DailyRewards.day" role="group" data-state={d.state} data-milestone={d.milestone} aria-current={d.state == 'today' ? 'date' : 'false'} aria-label={t("general.rewards.day", { day: d.label, reward: d.amount, state: d.state == 'claimed' ? t("general.rewards.claimed") : d.state == 'missed' ? t("general.rewards.missed") : d.state == 'today' ? t("general.rewards.today") : t("general.rewards.upcoming") })}><div class="face">
+            <div part="DailyRewards.day DailyRewards.cell" role="group" data-state={d.state} data-milestone={d.milestone} aria-current={d.state == 'today' ? 'date' : 'false'} aria-label={t("general.rewards.day", { day: d.label, reward: d.amount, state: d.state == 'claimed' ? t("general.rewards.claimed") : d.state == 'missed' ? t("general.rewards.missed") : d.state == 'today' ? t("general.rewards.today") : t("general.rewards.upcoming") })}><div class="face">
               <p part="DailyRewards.label">{d.label}</p>
               <og-icon class="reward" icon={d.icon}></og-icon>
-              <p part="DailyRewards.amount">{d.amount}</p>
-              <div part="DailyRewards.state" data-state={d.state}>
+              <p part="DailyRewards.amount DailyRewards.figure">{d.amount}</p>
+              <div part="DailyRewards.state DailyRewards.label" data-state={d.state}>
                 <og-icon class="mark" icon={d.state == 'claimed' ? 'check' : d.state == 'missed' ? 'close' : d.state == 'today' ? 'star' : 'clock'}></og-icon>
                 <span class="state-text">{d.state == 'claimed' ? t("general.rewards.claimed") : d.state == 'missed' ? t("general.rewards.missed") : d.state == 'today' ? t("general.rewards.today") : t("general.rewards.upcoming")}</span>
               </div>
@@ -59,22 +59,22 @@
 [part="DailyRewards.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
 [part="DailyRewards.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); flex: none; flex-wrap: wrap; }
 [part="DailyRewards.title"] { margin: 0; flex: 1; min-width: 0; }
-[part="DailyRewards.refresh"] { display: flex; align-items: center; gap: var(--space-xxs); }
+[part="DailyRewards.refresh DailyRewards.label"] { display: flex; align-items: center; gap: var(--space-xxs); }
 .mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .days-scroll { width: stretch; flex: 1; min-height: 0; }
 .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-xs); width: stretch; margin: 0; padding: var(--space-xxs); list-style: none; }
 .slot { display: flex; width: stretch; min-width: 0; }
-[part="DailyRewards.day"] { width: stretch; min-width: 0; height: stretch; min-height: calc(var(--size-xxl) * 1.5); padding: var(--space-xs); align-items: stretch; justify-content: flex-start; }
-div[part="DailyRewards.day"] { display: flex; box-sizing: border-box; }
-[part="DailyRewards.day"] .face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; gap: var(--space-xxs); }
-[part="DailyRewards.label"], [part="DailyRewards.amount"] { width: stretch; text-align: center; overflow-wrap: anywhere; }
+[part="DailyRewards.day DailyRewards.cell"] { width: stretch; min-width: 0; height: stretch; min-height: calc(var(--size-xxl) * 1.5); padding: var(--space-xs); align-items: stretch; justify-content: flex-start; }
+div[part="DailyRewards.day DailyRewards.cell"] { display: flex; box-sizing: border-box; }
+[part="DailyRewards.day DailyRewards.cell"] .face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; gap: var(--space-xxs); }
+[part="DailyRewards.label"], [part="DailyRewards.amount DailyRewards.figure"] { width: stretch; text-align: center; overflow-wrap: anywhere; }
 .reward { width: var(--size-lg); height: var(--size-lg); flex: none; }
-[part="DailyRewards.amount"] { flex: 1; font-variant-numeric: tabular-nums; }
-[part="DailyRewards.state"] { display: flex; width: stretch; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--space-xxs); }
+[part="DailyRewards.amount DailyRewards.figure"] { flex: 1; font-variant-numeric: tabular-nums; }
+[part="DailyRewards.state DailyRewards.label"] { display: flex; width: stretch; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--space-xxs); }
 .state-text { min-width: 0; text-align: center; overflow-wrap: anywhere; }
 @container (width < 560px) {
   .days { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  [part="DailyRewards.day"] { min-height: calc(var(--size-xxl) * 1.3); }
+  [part="DailyRewards.day DailyRewards.cell"] { min-height: calc(var(--size-xxl) * 1.3); }
   .reward { width: var(--size-md); height: var(--size-md); }
 }
 @container (width < 400px) {

@@ -34,13 +34,13 @@
     <div class="content">
       <div class="top">
       <div class="verdict">
-        <span part="RhythmResults.grade" class="grade" hidden={grade == ''} aria-label={t("rhythm.results.gradeName", { grade: grade })} data-cleared={cleared}>{grade}</span>
+        <span part="RhythmResults.grade RhythmResults.figure" class="grade" hidden={grade == ''} aria-label={t("rhythm.results.gradeName", { grade: grade })} data-cleared={cleared}>{grade}</span>
         <div class="words">
           <span part="RhythmResults.badge" data-tag={cleared ? 'cleared' : 'failed'}>{cleared ? t("rhythm.results.cleared") : t("rhythm.results.failed")}</span>
           <span part="RhythmResults.badge" data-tag={mark} hidden={mark == ''}>{mark == 'allPerfect' ? t("rhythm.results.allPerfect") : t("rhythm.results.fullCombo")}</span>
         </div>
       </div>
-      <div part="RhythmResults.readout" class="score-cell" role="group" aria-label={t("rhythm.results.score")}>
+      <div part="RhythmResults.readout RhythmResults.figure" class="score-cell" role="group" aria-label={t("rhythm.results.score")}>
         <span class="caption">{t("rhythm.results.score")}</span>
         <span part="RhythmResults.figure" class="score">{formatNumber(score)}</span>
         <div class="best">
@@ -51,8 +51,8 @@
       </div>
       <div class="lower">
       <div class="stats">
-        <div part="RhythmResults.readout" class="stat" role="group" aria-label={t("rhythm.results.maxCombo")}><span class="caption">{t("rhythm.results.maxCombo")}</span><span part="RhythmResults.figure" class="value">{formatNumber(maxCombo)}</span></div>
-        <div part="RhythmResults.readout" class="stat" role="group" aria-label={t("rhythm.results.accuracy")} hidden={accuracy == ''}><span class="caption">{t("rhythm.results.accuracy")}</span><span part="RhythmResults.figure" class="value">{accuracy}</span></div>
+        <div part="RhythmResults.readout RhythmResults.figure" class="stat" role="group" aria-label={t("rhythm.results.maxCombo")}><span class="caption">{t("rhythm.results.maxCombo")}</span><span part="RhythmResults.figure" class="value">{formatNumber(maxCombo)}</span></div>
+        <div part="RhythmResults.readout RhythmResults.figure" class="stat" role="group" aria-label={t("rhythm.results.accuracy")} hidden={accuracy == ''}><span class="caption">{t("rhythm.results.accuracy")}</span><span part="RhythmResults.figure" class="value">{accuracy}</span></div>
       </div>
       {#if counts.length}
         <div class="counts" role="list" aria-label={t("rhythm.results.counts")}>
@@ -83,7 +83,7 @@
 .top { display: flex; flex-wrap: wrap; width: stretch; align-items: center; justify-content: space-between; gap: var(--space-sm) var(--space-xl); }
 .lower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); width: stretch; gap: var(--space-md) var(--space-xl); align-items: start; }
 .verdict { display: flex; flex: none; align-items: center; gap: var(--space-md); }
-[part="RhythmResults.grade"] { flex: none; min-width: var(--size-xl); text-align: center; white-space: nowrap; }
+[part="RhythmResults.grade RhythmResults.figure"] { flex: none; min-width: var(--size-xl); text-align: center; white-space: nowrap; }
 .words { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xxs); min-width: 0; }
 [part="RhythmResults.badge"] { white-space: nowrap; padding: 0 var(--space-xs); }
 .score-cell { display: flex; flex-direction: column; flex: none; max-width: stretch; align-items: flex-end; margin-inline-start: auto; }

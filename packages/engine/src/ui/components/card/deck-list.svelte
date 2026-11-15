@@ -1,6 +1,6 @@
 <meta name="component" content="CardDeckList">
 <meta name="strings" content="./card.en.ogt">
-<meta name="parts" content="CardDeckList.frame CardDeckList.band CardDeckList.title CardDeckList.size CardDeckList.row CardDeckList.cost CardDeckList.name CardDeckList.copies CardDeckList.step">
+<meta name="parts" content="CardDeckList.frame CardDeckList.band CardDeckList.title CardDeckList.size CardDeckList.row CardDeckList.cost CardDeckList.name CardDeckList.copies CardDeckList.step CardDeckList.figure CardDeckList.label CardDeckList.cell">
 <meta name="prop:title" content="string" data-doc="The deck's name as the player named it.">
 <meta name="prop:entries" content="list" data-doc="The deck's cards in the game's order (by cost, then name), keyed rows of { id, name, cost, type, rarity, copies, canAdd, canRemove }: copies the game's count; canAdd and canRemove the game's answers (its copy limit, its deck limit, a card the deck must keep).">
 <meta name="prop:total" content="number" data-doc="How many cards the deck holds (the game's count).">
@@ -37,12 +37,12 @@
         {#each entries as e (e.id)}
           <div part="CardDeckList.row" role="listitem" data-type={e.type} data-rarity={e.rarity} data-selected={e.id == selected} aria-current={e.id == selected}>
             <button class="pick" variant="quiet" aria-label={e.name} onclick={choose}><div class="pick-face">
-              <div part="CardDeckList.cost" class="cost" aria-label={t("card.face.cost", { cost: e.cost })}><span class="cost-figure">{e.cost}</span></div>
+              <div part="CardDeckList.cost CardDeckList.figure" class="cost" aria-label={t("card.face.cost", { cost: e.cost })}><span class="cost-figure">{e.cost}</span></div>
               <span part="CardDeckList.name" class="name">{e.name}</span>
-              <span part="CardDeckList.copies" class="copies">{t("card.deck.copies", { count: e.copies })}</span>
+              <span part="CardDeckList.copies CardDeckList.label" class="copies">{t("card.deck.copies", { count: e.copies })}</span>
             </div></button>
-            <button part="CardDeckList.step" class="minus" variant="quiet" disabled={!e.canRemove} aria-label={t("card.deck.remove", { name: e.name })} onclick={remove} ondetails={remove}><span class="step-mark">{t("card.deck.less")}</span></button>
-            <button part="CardDeckList.step" class="plus" variant="quiet" disabled={!e.canAdd} aria-label={t("card.deck.add", { name: e.name })} onclick={add}><span class="step-mark">{t("card.deck.more")}</span></button>
+            <button part="CardDeckList.step CardDeckList.cell" class="minus" variant="quiet" disabled={!e.canRemove} aria-label={t("card.deck.remove", { name: e.name })} onclick={remove} ondetails={remove}><span class="step-mark">{t("card.deck.less")}</span></button>
+            <button part="CardDeckList.step CardDeckList.cell" class="plus" variant="quiet" disabled={!e.canAdd} aria-label={t("card.deck.add", { name: e.name })} onclick={add}><span class="step-mark">{t("card.deck.more")}</span></button>
           </div>
         {/each}
       </div>
@@ -69,10 +69,10 @@
 [part="CardDeckList.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-xxs); }
 .pick { flex: 1; min-width: 0; min-height: var(--size-touch); padding: 0 var(--space-sm); justify-content: flex-start; }
 .pick-face { display: flex; width: stretch; align-items: center; gap: var(--space-sm); }
-[part="CardDeckList.cost"] { display: flex; flex: none; width: var(--size-sm); height: var(--size-sm); align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+[part="CardDeckList.cost CardDeckList.figure"] { display: flex; flex: none; width: var(--size-sm); height: var(--size-sm); align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
 [part="CardDeckList.name"] { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-[part="CardDeckList.copies"] { flex: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
-[part="CardDeckList.step"] { flex: none; width: var(--size-touch); min-height: var(--size-touch); padding: 0; align-items: center; justify-content: center; }
+[part="CardDeckList.copies CardDeckList.label"] { flex: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
+[part="CardDeckList.step CardDeckList.cell"] { flex: none; width: var(--size-touch); min-height: var(--size-touch); padding: 0; align-items: center; justify-content: center; }
 .step-mark { text-align: center; }
 .empty { display: flex; width: stretch; flex: 1; align-items: center; justify-content: center; }
 .empty-text { margin: 0; }

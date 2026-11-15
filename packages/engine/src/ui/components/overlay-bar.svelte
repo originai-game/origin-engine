@@ -1,6 +1,6 @@
 <meta name="component" content="OverlayBar">
 <meta name="strings" content="./overlay-bar.en.ogt">
-<meta name="parts" content="OverlayBar.frame OverlayBar.title OverlayBar.ramp OverlayBar.label OverlayBar.bar OverlayBar.option OverlayBar.art OverlayBar.well OverlayBar.icon OverlayBar.name">
+<meta name="parts" content="OverlayBar.frame OverlayBar.title OverlayBar.ramp OverlayBar.label OverlayBar.bar OverlayBar.option OverlayBar.art OverlayBar.well OverlayBar.icon OverlayBar.name OverlayBar.picture">
 <meta name="prop:overlays" content="list" data-doc="The map overlays, a keyed collection of { id, name, icon, image, ramp, low, high }: icon an icon name shown when there is no image, image a texture handle (0: none), ramp the legend's CSS gradient stops low to high (#2b6cb0, #f6e05e, #e53e3e), low and high the words at its ends.">
 <meta name="prop:selected" content="string" data-doc="The id of the overlay shown (its legend over the bar, its button lit and named); empty is none.">
 <meta name="prop:label" content="string" data-doc="What a screen reader calls the bar; empty is Overlays.">
@@ -24,7 +24,7 @@
     {#each overlays as o (o.id)}
       <button id="Overlay" part="OverlayBar.option" class="overlay" aria-label={o.name} aria-pressed={o.id == selected} onclick={choose}>
         <div class="face">
-          <img class="art" part="OverlayBar.art" src={o.image} hidden={!o.image}>
+          <img class="art" part="OverlayBar.art OverlayBar.picture" src={o.image} hidden={!o.image}>
           <div class="well" part="OverlayBar.well" hidden={!!o.image}><og-icon class="glyph" part="OverlayBar.icon" icon={o.icon}></og-icon></div>
           <span class="name" part="OverlayBar.name">{o.name}</span>
         </div>
@@ -45,7 +45,7 @@
 [part="OverlayBar.option"] { height: calc(var(--size-lg) + var(--space-xs) * 2); padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-xs); border-radius: var(--radius-capsule); background: var(--control); }
 [part="OverlayBar.option"][aria-pressed=true] { background: var(--button-selected-fill); outline: var(--stroke-regular) solid var(--primary); box-shadow: var(--shadow-slot-selected); }
 .face { display: flex; align-items: center; gap: var(--space-sm); }
-[part="OverlayBar.art"], [part="OverlayBar.well"] { width: var(--size-lg); height: var(--size-lg); border-radius: var(--radius-capsule); }
+[part="OverlayBar.art OverlayBar.picture"], [part="OverlayBar.well"] { width: var(--size-lg); height: var(--size-lg); border-radius: var(--radius-capsule); }
 [part="OverlayBar.well"] { align-items: center; justify-content: center; }
 [part="OverlayBar.icon"] { width: var(--size-sm); height: var(--size-sm); color: var(--ink-muted); }
 [aria-pressed=true] [part="OverlayBar.icon"] { color: var(--button-selected-ink); }

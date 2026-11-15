@@ -31,7 +31,7 @@
     <scroll class="filters-scroll">
       <div class="filters-row">
         {#each filters as f (f.id)}
-          <button part="CardCollection.filter" variant="quiet" role="tab" aria-selected={f.id == filter} onclick={choosefilter}>{f.label}</button>
+          <button part="CardCollection.filter CardCollection.cell" variant="quiet" role="tab" aria-selected={f.id == filter} onclick={choosefilter}>{f.label}</button>
         {/each}
       </div>
     </scroll>
@@ -74,7 +74,7 @@
 .filters { display: flex; width: stretch; flex: none; }
 .filters-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; }
 .filters-row { display: flex; gap: var(--space-xs); }
-[part="CardCollection.filter"] { flex: none; min-height: var(--size-touch); padding: 0 var(--space-md); }
+[part="CardCollection.filter CardCollection.cell"] { flex: none; min-height: var(--size-touch); padding: 0 var(--space-md); }
 .grid-scroll { width: stretch; flex: 1; min-height: 0; }
 .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-md); width: stretch; padding: var(--space-xs); }
 [part="CardCollection.cell"] { width: stretch; aspect-ratio: 0.7; padding: 0; align-items: stretch; justify-content: stretch; }

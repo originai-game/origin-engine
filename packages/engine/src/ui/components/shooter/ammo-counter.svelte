@@ -7,7 +7,7 @@
 <meta name="prop:reserve" content="number" data-doc="Rounds carried beyond the magazine.">
 <meta name="prop:reloading" content="number" data-default="-1" data-doc="The reload's progress, 0 to 1; negative while not reloading.">
 <meta name="prop:low" content="number" data-default="0.25" data-doc="The fraction of capacity at or under which the count turns low (0.25).">
-<meta name="parts" content="Ammo.frame Ammo.count Ammo.reserve Ammo.track Ammo.magazine Ammo.weapon Ammo.mode Ammo.reload Ammo.label Ammo.prompt">
+<meta name="parts" content="Ammo.frame Ammo.count Ammo.reserve Ammo.track Ammo.magazine Ammo.weapon Ammo.mode Ammo.reload Ammo.label Ammo.prompt Ammo.figure Ammo.well">
 <meta name="fixture:default" content='{"weapon":"Halcyon Carbine","mode":"auto","magazine":24,"capacity":28,"reserve":112,"reloading":-1,"low":0.25}'>
 <meta name="fixture:low" content='{"weapon":"Brace-12","mode":"single","magazine":2,"capacity":6,"reserve":18,"reloading":-1,"low":0.34}'>
 <meta name="fixture:empty" content='{"weapon":"Talon AR","mode":"burst","magazine":0,"capacity":30,"reserve":0,"reloading":-1,"low":0.25}'>
@@ -15,21 +15,21 @@
 
 <div id="AmmoCounter" part="Ammo.frame" role="group" aria-label={t("shooter.ammo.name")} aria-valuetext={t("shooter.ammo.value", { magazine: magazine, capacity: capacity, reserve: reserve })} class:low={magazine > 0 && magazine <= capacity * low} class:empty={magazine <= 0}>
   <div id="Rounds">
-    <span id="Count" part="Ammo.count" class:low={magazine > 0 && magazine <= capacity * low} class:empty={magazine <= 0}>{formatNumber(magazine)}</span>
+    <span id="Count" part="Ammo.count Ammo.figure" class:low={magazine > 0 && magazine <= capacity * low} class:empty={magazine <= 0}>{formatNumber(magazine)}</span>
     <span id="Reserve" part="Ammo.reserve">{formatNumber(reserve)}</span>
   </div>
-  <div id="Magazine" part="Ammo.track" style:--fill={capacity > 0 ? magazine / capacity : 0}><div id="MagazineFill" part="Ammo.magazine" class:low={magazine > 0 && magazine <= capacity * low}></div></div>
+  <div id="Magazine" part="Ammo.track Ammo.well" style:--fill={capacity > 0 ? magazine / capacity : 0}><div id="MagazineFill" part="Ammo.magazine Ammo.well" class:low={magazine > 0 && magazine <= capacity * low}></div></div>
   <div id="Weapon">
-    <span id="Name" part="Ammo.weapon">{weapon}</span>
+    <span id="Name" part="Ammo.weapon Ammo.label">{weapon}</span>
     <span id="Auto" class="mode" part="Ammo.mode" hidden={mode != 'auto'}>{t("shooter.ammo.auto")}</span>
     <span id="Burst" class="mode" part="Ammo.mode" hidden={mode != 'burst'}>{t("shooter.ammo.burst")}</span>
     <span id="Single" class="mode" part="Ammo.mode" hidden={mode != 'single'}>{t("shooter.ammo.single")}</span>
   </div>
   <div id="Reload" hidden={reloading < 0} style:--progress={reloading}>
-    <div id="ReloadTrack" part="Ammo.track"><div id="ReloadFill" part="Ammo.reload"></div></div>
+    <div id="ReloadTrack" part="Ammo.track Ammo.well"><div id="ReloadFill" part="Ammo.reload"></div></div>
     <span id="ReloadLabel" part="Ammo.label">{t("shooter.ammo.reloading")}</span>
   </div>
-  <span id="Prompt" part="Ammo.prompt" hidden={!(magazine <= 0 && reloading < 0)}>{t("shooter.ammo.empty")}</span>
+  <span id="Prompt" part="Ammo.prompt Ammo.label" hidden={!(magazine <= 0 && reloading < 0)}>{t("shooter.ammo.empty")}</span>
 </div>
 
 <style>

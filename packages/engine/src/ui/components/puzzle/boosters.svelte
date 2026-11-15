@@ -1,6 +1,6 @@
 <meta name="component" content="PuzzleBoosters">
 <meta name="strings" content="./puzzle.en.ogt">
-<meta name="parts" content="PuzzleBoosters.frame PuzzleBoosters.booster PuzzleBoosters.count PuzzleBoosters.name PuzzleBoosters.state PuzzleBoosters.empty">
+<meta name="parts" content="PuzzleBoosters.frame PuzzleBoosters.booster PuzzleBoosters.count PuzzleBoosters.name PuzzleBoosters.state PuzzleBoosters.empty PuzzleBoosters.cell PuzzleBoosters.figure PuzzleBoosters.label">
 <meta name="prop:boosters" content="list" data-doc="The boosters in tray order, keyed rows of { id, icon, name, count, available }: count how many the player holds, as the game counts them; available false when the game will not take it now (none left, not allowed on this level, a move in progress): the booster is disabled, sends nothing and says so.">
 <meta name="prop:armed" content="string" data-doc="The booster the game has armed (waiting for its target on the board); empty is none. Shown pressed and worded Armed.">
 <meta name="action:choose" content="Use">
@@ -23,14 +23,14 @@
     <scroll class="tray-scroll">
       <div class="tray" role="toolbar" aria-label={t("puzzle.boosters.name")}>
         {#each boosters as b (b.id)}
-          <button part="PuzzleBoosters.booster" data-available={b.available} data-armed={b.id == armed} aria-pressed={b.id == armed} disabled={!b.available} aria-label={!b.available ? t("puzzle.boosters.unavailable", { name: b.name }) : b.id == armed ? t("puzzle.boosters.armedName", { name: b.name, count: b.count }) : t("puzzle.boosters.count", { name: b.name, count: b.count })} onclick={choose}><div class="face">
+          <button part="PuzzleBoosters.booster PuzzleBoosters.cell" data-available={b.available} data-armed={b.id == armed} aria-pressed={b.id == armed} disabled={!b.available} aria-label={!b.available ? t("puzzle.boosters.unavailable", { name: b.name }) : b.id == armed ? t("puzzle.boosters.armedName", { name: b.name, count: b.count }) : t("puzzle.boosters.count", { name: b.name, count: b.count })} onclick={choose}><div class="face">
             <div class="well">
               <og-icon class="art" icon={b.icon}></og-icon>
               {#if !b.available}<og-icon class="lock" icon="lock"></og-icon>{/if}
-              <span part="PuzzleBoosters.count" data-available={b.available}>{formatNumber(b.count)}</span>
+              <span part="PuzzleBoosters.count PuzzleBoosters.figure" data-available={b.available}>{formatNumber(b.count)}</span>
             </div>
             <span part="PuzzleBoosters.name" class="name">{b.name}</span>
-            <span part="PuzzleBoosters.state" data-armed={b.available && b.id == armed} hidden={b.available && b.id != armed}>{b.available ? t("puzzle.boosters.armed") : t("puzzle.boosters.locked")}</span>
+            <span part="PuzzleBoosters.state PuzzleBoosters.label" data-armed={b.available && b.id == armed} hidden={b.available && b.id != armed}>{b.available ? t("puzzle.boosters.armed") : t("puzzle.boosters.locked")}</span>
           </div></button>
         {/each}
       </div>
@@ -45,18 +45,18 @@
 [part="PuzzleBoosters.frame"] { display: flex; width: stretch; min-width: 0; padding: var(--space-xs); container-type: inline-size; }
 .tray-scroll { width: stretch; min-width: 0; overflow-x: auto; overflow-y: hidden; }
 .tray { display: flex; width: max-content; min-width: 100%; justify-content: center; gap: var(--space-sm); padding: var(--space-xxs); }
-[part="PuzzleBoosters.booster"] { flex: none; width: max-content; min-width: calc(var(--size-xl) * 1.5); max-width: calc(var(--size-xl) * 2.5); min-height: var(--size-touch); padding: var(--space-xs); }
-[part="PuzzleBoosters.booster"] .face { display: flex; flex-direction: column; width: stretch; align-items: center; gap: var(--space-xxs); }
+[part="PuzzleBoosters.booster PuzzleBoosters.cell"] { flex: none; width: max-content; min-width: calc(var(--size-xl) * 1.5); max-width: calc(var(--size-xl) * 2.5); min-height: var(--size-touch); padding: var(--space-xs); }
+[part="PuzzleBoosters.booster PuzzleBoosters.cell"] .face { display: flex; flex-direction: column; width: stretch; align-items: center; gap: var(--space-xxs); }
 .well { position: relative; display: flex; width: var(--size-xl); height: var(--size-xl); align-items: center; justify-content: center; }
 .art { width: 72%; height: 72%; }
 .lock { position: absolute; inset-inline-start: 0; top: 0; width: var(--size-xs); height: var(--size-xs); }
-[part="PuzzleBoosters.count"] { position: absolute; inset-inline-end: calc(var(--space-xs) * -1); bottom: calc(var(--space-xxs) * -1); min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; white-space: nowrap; }
+[part="PuzzleBoosters.count PuzzleBoosters.figure"] { position: absolute; inset-inline-end: calc(var(--space-xs) * -1); bottom: calc(var(--space-xxs) * -1); min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; white-space: nowrap; }
 [part="PuzzleBoosters.name"] { width: stretch; text-align: center; text-wrap: balance; }
-[part="PuzzleBoosters.state"] { max-width: stretch; padding: 0 var(--space-xxs); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+[part="PuzzleBoosters.state PuzzleBoosters.label"] { max-width: stretch; padding: 0 var(--space-xxs); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 [part="PuzzleBoosters.empty"] { margin: 0; width: stretch; padding: var(--space-sm); text-align: center; }
 @container (width < 600px) {
   .tray { justify-content: flex-start; gap: var(--space-xs); }
-  [part="PuzzleBoosters.booster"] { min-width: calc(var(--size-lg) * 1.75); max-width: calc(var(--size-lg) * 3); }
+  [part="PuzzleBoosters.booster PuzzleBoosters.cell"] { min-width: calc(var(--size-lg) * 1.75); max-width: calc(var(--size-lg) * 3); }
   .well { width: var(--size-lg); height: var(--size-lg); }
 }
 </style>

@@ -1,6 +1,6 @@
 <meta name="component" content="NodeGraph">
 <meta name="strings" content="./node-graph.en.ogt">
-<meta name="parts" content="NodeGraph.well NodeGraph.link NodeGraph.node NodeGraph.icon NodeGraph.label">
+<meta name="parts" content="NodeGraph.well NodeGraph.link NodeGraph.node NodeGraph.icon NodeGraph.label NodeGraph.cell">
 <meta name="prop:nodes" content="list" data-doc="The nodes: each { id, x, y, label, icon, state, shape, team }, x and y in graph units (CSS px at zoom 1), state available, locked, active, done or current (a ring and a mark as well as a colour), shape circle, square, hex or diamond, team ally, enemy or empty (pair a side with a shape so sides are not told by colour alone).">
 <meta name="prop:links" content="list" data-doc="The links under the nodes: each { id, d, active }, d its SVG path data in graph units (the game draws a curve or a line), active a path taken.">
 <meta name="prop:view" content="string" data-default="0 0 600 400" data-doc="The graph's extent in graph units, as an SVG viewBox (0 0 600 400): it fits the well as xMidYMid meet, scaled to the most that holds it and centred.">
@@ -23,7 +23,7 @@
       {/each}
     </svg>
     {#each nodes as node (node.id)}
-      <button class="node" part="NodeGraph.node" class:locked={node.state == 'locked'} class:active={node.state == 'active'} class:done={node.state == 'done'} class:current={node.state == 'current'} class:square={node.shape == 'square'} class:hex={node.shape == 'hex'} class:diamond={node.shape == 'diamond'} class:ally={node.team == 'ally'} class:enemy={node.team == 'enemy'} class:selected={node.id == selected} aria-label={node.label} aria-valuetext={node.state} aria-disabled={node.state == 'locked'} style:--x={node.x} style:--y={node.y} onclick={pick}>
+      <button class="node" part="NodeGraph.node NodeGraph.cell" class:locked={node.state == 'locked'} class:active={node.state == 'active'} class:done={node.state == 'done'} class:current={node.state == 'current'} class:square={node.shape == 'square'} class:hex={node.shape == 'hex'} class:diamond={node.shape == 'diamond'} class:ally={node.team == 'ally'} class:enemy={node.team == 'enemy'} class:selected={node.id == selected} aria-label={node.label} aria-valuetext={node.state} aria-disabled={node.state == 'locked'} style:--x={node.x} style:--y={node.y} onclick={pick}>
         <og-icon class="icon" part="NodeGraph.icon" icon={node.icon}></og-icon>
         <span class="caption" part="NodeGraph.label">{node.label}</span>
       </button>
@@ -43,7 +43,7 @@
 #Links { position: absolute; inset: 0; width: stretch; height: stretch; }
 [part="NodeGraph.link"] { fill: none; stroke: var(--line-strong); stroke-width: 3; stroke-dasharray: 6 6; }
 .link.active { stroke: var(--primary); stroke-dasharray: none; }
-[part="NodeGraph.node"] { position: absolute; top: calc((var(--y) - var(--vy)) / var(--vh) * 100% - var(--size-lg) / 2); left: calc((var(--x) - var(--vx)) / var(--vw) * 100% - var(--size-lg) / 2); width: var(--size-lg); height: var(--size-lg); padding: 0; border-radius: var(--radius-capsule); border: var(--stroke-thick) solid var(--line-strong); background: var(--panel-raised); }
+[part="NodeGraph.node NodeGraph.cell"] { position: absolute; top: calc((var(--y) - var(--vy)) / var(--vh) * 100% - var(--size-lg) / 2); left: calc((var(--x) - var(--vx)) / var(--vw) * 100% - var(--size-lg) / 2); width: var(--size-lg); height: var(--size-lg); padding: 0; border-radius: var(--radius-capsule); border: var(--stroke-thick) solid var(--line-strong); background: var(--panel-raised); }
 .node.square { border-radius: var(--radius-card); }
 /* A hexagon as its corners, not a clip: a clip-path would cut its caption too. */
 .node.hex { corner-shape: bevel; border-radius: 25% / 50%; }

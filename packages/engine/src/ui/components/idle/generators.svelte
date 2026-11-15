@@ -1,6 +1,6 @@
 <meta name="component" content="IdleGenerators">
 <meta name="strings" content="./idle.en.ogt">
-<meta name="parts" content="IdleGenerators.frame IdleGenerators.band IdleGenerators.title IdleGenerators.row IdleGenerators.name IdleGenerators.figure IdleGenerators.rate IdleGenerators.meter IdleGenerators.badge">
+<meta name="parts" content="IdleGenerators.frame IdleGenerators.band IdleGenerators.title IdleGenerators.row IdleGenerators.name IdleGenerators.figure IdleGenerators.rate IdleGenerators.meter IdleGenerators.badge IdleGenerators.label IdleGenerators.well">
 <meta name="prop:title" content="string" data-doc="The list's heading; empty takes the group's (Generators).">
 <meta name="prop:generators" content="list" data-doc="The producers in the game's order, keyed rows of { id, icon, name, owned, rate, cycle, cycleText, level, boost, auto, locked }: owned how many the player has (a number, compacted; 0 hides it); rate what it yields as the game words it (+1.2K/s; on a locked row what unlocks it); cycle the running cycle 0 to 1 (negative hides the bar); cycleText the time left as the game words it (empty shows the percent); level its level (0 hides it); boost a multiplier as the game words it (×2; empty hides it); auto it runs by itself (named Auto); locked not yet available (named Locked, disabled).">
 <meta name="prop:selected" content="string" data-doc="The generator the player last chose, selected; empty is none.">
@@ -31,7 +31,7 @@
                 <span part="IdleGenerators.figure" hidden={g.locked || !(g.owned > 0)}>{t("idle.generators.owned", { owned: formatCompact(g.owned) })}</span>
               </div>
               <div class="line">
-                <span part="IdleGenerators.rate" class="rate">{g.rate}</span>
+                <span part="IdleGenerators.rate IdleGenerators.label" class="rate">{g.rate}</span>
                 <div class="badges">
                   <span part="IdleGenerators.badge" data-tag="level" hidden={g.locked || !(g.level > 0)}>{t("idle.generators.level", { level: formatNumber(g.level) })}</span>
                   <span part="IdleGenerators.badge" data-tag="boost" hidden={g.locked || g.boost == ''}>{g.boost}</span>
@@ -39,7 +39,7 @@
                   <span part="IdleGenerators.badge" data-tag="locked" hidden={!g.locked}>{t("idle.generators.locked")}</span>
                 </div>
               </div>
-              <div part="IdleGenerators.meter" role="group" aria-label={t("idle.generators.cycle")} hidden={g.locked || g.cycle < 0}><ProgressBar value={g.cycle} buffer={0} label="" valueText={g.cycleText} showValue={true} indeterminate={false} tone="neutral" /></div>
+              <div part="IdleGenerators.meter IdleGenerators.well" role="group" aria-label={t("idle.generators.cycle")} hidden={g.locked || g.cycle < 0}><ProgressBar value={g.cycle} buffer={0} label="" valueText={g.cycleText} showValue={true} indeterminate={false} tone="neutral" /></div>
             </div>
           </div></button>
         {/each}
@@ -65,10 +65,10 @@
 .line { display: flex; width: stretch; align-items: center; gap: var(--space-sm); min-width: 0; }
 [part="IdleGenerators.name"] { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 [part="IdleGenerators.figure"] { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-[part="IdleGenerators.rate"] { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-variant-numeric: tabular-nums; }
+[part="IdleGenerators.rate IdleGenerators.label"] { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-variant-numeric: tabular-nums; }
 .badges { display: flex; flex: none; gap: var(--space-xxs); }
 [part="IdleGenerators.badge"] { white-space: nowrap; padding: 0 var(--space-xs); }
-[part="IdleGenerators.meter"] { width: stretch; }
+[part="IdleGenerators.meter IdleGenerators.well"] { width: stretch; }
 .empty-text { margin: 0; flex: 1; text-align: center; }
 /* A narrow panel (a phone, or a side column on a wide screen) tightens the
    rows and wraps each line's figures under its name. */

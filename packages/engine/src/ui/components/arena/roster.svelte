@@ -1,6 +1,6 @@
 <meta name="component" content="ArenaRoster">
 <meta name="strings" content="./arena.en.ogt">
-<meta name="parts" content="ArenaRoster.frame ArenaRoster.band ArenaRoster.title ArenaRoster.cell ArenaRoster.portrait ArenaRoster.name ArenaRoster.role ArenaRoster.badge ArenaRoster.mark">
+<meta name="parts" content="ArenaRoster.frame ArenaRoster.band ArenaRoster.title ArenaRoster.cell ArenaRoster.portrait ArenaRoster.name ArenaRoster.role ArenaRoster.badge ArenaRoster.mark ArenaRoster.picture ArenaRoster.label">
 <meta name="prop:title" content="string" data-doc="The screen's heading; empty takes the kit's (Choose your champion).">
 <meta name="prop:characters" content="list" data-doc="The roster in the game's order, keyed rows of { id, name, portrait, icon, role, roleLabel, locked, takenBy }: portrait a texture (og.load.texture, 0 shows the icon instead); icon an icon name; role a key for the pack (tank, damage, support…) and roleLabel its word; locked the player cannot pick it yet; takenBy who already holds it (empty: free). Locked and taken cells are disabled and say why in words.">
 <meta name="prop:selected" content="string" data-doc="The local player's character (aria-selected, named under the grid); empty is none.">
@@ -28,7 +28,7 @@
       <div class="grid" role="listbox" aria-label={t("arena.roster.characters")}>
         {#each characters as c (c.id)}
           <button part="ArenaRoster.cell" role="option" aria-selected={c.id == selected} aria-label={c.name} aria-description={c.locked ? t("arena.roster.locked") : (c.takenBy != '' ? t("arena.roster.taken", { name: c.takenBy }) : c.roleLabel)} data-role={c.role} data-locked={c.locked} data-taken={c.takenBy != ''} disabled={c.locked || c.takenBy != ''} onclick={choose}><div class="face">
-            <div part="ArenaRoster.portrait" class="portrait">
+            <div part="ArenaRoster.portrait ArenaRoster.picture" class="portrait">
               <img class="art" src={c.portrait} alt="" hidden={!c.portrait}>
               <og-icon class="glyph" icon={c.icon} hidden={!!c.portrait}></og-icon>
               <div class="marks">
@@ -40,7 +40,7 @@
               </div>
             </div>
             <span part="ArenaRoster.name" class="name">{c.name}</span>
-            <span part="ArenaRoster.role" class="role" data-role={c.role}>{c.roleLabel}</span>
+            <span part="ArenaRoster.role ArenaRoster.label" class="role" data-role={c.role}>{c.roleLabel}</span>
             <span part="ArenaRoster.badge" class="tag" data-tag={c.locked ? 'locked' : 'taken'} hidden={!(c.locked || c.takenBy != '')}>{c.locked ? t("arena.roster.locked") : t("arena.roster.taken", { name: c.takenBy })}</span>
           </div></button>
         {/each}
@@ -51,7 +51,7 @@
         {#if c.id == selected}
           <span part="ArenaRoster.badge" class="tag" data-tag="selected">{t("arena.roster.chosen")}</span>
           <span part="ArenaRoster.name" class="chosen-name">{c.name}</span>
-          <span part="ArenaRoster.role" class="chosen-role" data-role={c.role}>{c.roleLabel}</span>
+          <span part="ArenaRoster.role ArenaRoster.label" class="chosen-role" data-role={c.role}>{c.roleLabel}</span>
         {/if}
       {/each}
     </footer>
@@ -69,7 +69,7 @@
 .grid { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-sm); width: stretch; padding: var(--space-xxs); }
 [part="ArenaRoster.cell"] { flex: none; width: calc(var(--size-xxl) * 1.25); padding: var(--space-xs); align-items: stretch; justify-content: flex-start; }
 [part="ArenaRoster.cell"] .face { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
-[part="ArenaRoster.portrait"] { position: relative; display: flex; width: stretch; aspect-ratio: 1; align-items: center; justify-content: center; overflow: hidden; }
+[part="ArenaRoster.portrait ArenaRoster.picture"] { position: relative; display: flex; width: stretch; aspect-ratio: 1; align-items: center; justify-content: center; overflow: hidden; }
 .art { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .glyph { width: var(--size-lg); height: var(--size-lg); }
 .marks { position: absolute; left: var(--space-xxs); right: var(--space-xxs); top: var(--space-xxs); display: flex; flex-wrap: wrap; gap: var(--space-xxs); }

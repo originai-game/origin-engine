@@ -161,7 +161,7 @@ const shows = (e: Engine, k: string, id: string): boolean => elements(e).some((x
 test("every part a member names in its markup is in its parts list, and every listed part is named", () => {
   for (const [name, m] of Object.entries(MEMBERS)) {
     const text = readFileSync(join(GROUP, `${name}.svelte`), "utf8");
-    const named = new Set([...text.matchAll(/part="([A-Za-z]+\.[a-z]+)/g)].map((x) => x[1]!));
+    const named = new Set([...text.matchAll(/part="([^"{]+)"/g)].flatMap((x) => x[1]!.split(/\s+/)));
     expect(`${name}: ${[...named].sort().join(" ")}`).toBe(`${name}: ${[...m.parts].sort().join(" ")}`);
     expect(m.parts.every((p) => p.startsWith(`${m.component}.`))).toBeTrue();
   }

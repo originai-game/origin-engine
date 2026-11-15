@@ -1,6 +1,6 @@
 <meta name="component" content="StarBar">
 <meta name="strings" content="./star-bar.en.ogt">
-<meta name="parts" content="StarBar.label StarBar.figure StarBar.track StarBar.fill StarBar.star">
+<meta name="parts" content="StarBar.label StarBar.figure StarBar.track StarBar.fill StarBar.star StarBar.well">
 <meta name="prop:value" content="number" data-doc="The score.">
 <meta name="prop:max" content="number" data-default="1" data-doc="The bar's full score (its last threshold).">
 <meta name="prop:stars" content="list" data-doc="The thresholds: each { id, at } with at a fraction of max (0 to 1) and lit once the score reaches it.">
@@ -13,7 +13,7 @@
   <span id="Label" part="StarBar.label" hidden={!label || compact}>{label}</span>
   <span id="Value" part="StarBar.figure">{valueText || formatNumber(value)}</span>
   <stack id="Bar">
-    <div id="Track" part="StarBar.track" style:--fill={value / max}><div id="Fill" part="StarBar.fill"></div></div>
+    <div id="Track" part="StarBar.track StarBar.well" style:--fill={value / max}><div id="Fill" part="StarBar.fill"></div></div>
     <div id="Stars">
       {#each stars as star (star.id)}
         <svg class="star" part="StarBar.star" class:lit={value >= star.at * max} viewBox="0 0 24 24" style:--at={star.at}>
@@ -33,7 +33,7 @@
 .compact [part="StarBar.figure"] { font: var(--text-lg); font-family: var(--figure-font); }
 #Bar { width: var(--bar); height: calc(var(--star) + var(--space-xs)); }
 .compact #Bar { height: var(--star); }
-[part="StarBar.track"] { position: absolute; inset-inline-start: 0; bottom: 0; width: stretch; height: var(--space-md); border-radius: var(--meter-radius); background: var(--well); box-shadow: var(--meter-shadow); overflow: hidden; }
+[part="StarBar.track StarBar.well"] { position: absolute; inset-inline-start: 0; bottom: 0; width: stretch; height: var(--space-md); border-radius: var(--meter-radius); background: var(--well); box-shadow: var(--meter-shadow); overflow: hidden; }
 [part="StarBar.fill"] { width: calc(var(--fill) * 100%); height: stretch; border-radius: var(--meter-radius); background: linear-gradient(180deg, var(--sheen), transparent 50%, var(--shadow-30)), var(--gold); box-shadow: 0 0 var(--space-xs) var(--gold); }
 #Stars { position: absolute; inset-inline-start: 0; top: 0; width: stretch; height: var(--star); }
 [part="StarBar.star"] { position: absolute; top: 0; inset-inline-start: calc(var(--at) * (var(--bar) - var(--star))); width: var(--star); height: var(--star); }

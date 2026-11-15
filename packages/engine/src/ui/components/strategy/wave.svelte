@@ -1,6 +1,6 @@
 <meta name="component" content="StrategyWave">
 <meta name="strings" content="./strategy.en.ogt">
-<meta name="parts" content="StrategyWave.frame StrategyWave.readout StrategyWave.title StrategyWave.badge StrategyWave.row StrategyWave.name">
+<meta name="parts" content="StrategyWave.frame StrategyWave.readout StrategyWave.title StrategyWave.badge StrategyWave.row StrategyWave.name StrategyWave.figure">
 <meta name="prop:wave" content="number" data-doc="The wave on now or last fought, from 1; 0 before the first.">
 <meta name="prop:waves" content="number" data-doc="Waves in the level; 0 is an endless run (no total shown).">
 <meta name="prop:phase" content="string" data-doc="countdown (the next wave is coming), active (a wave is on) or done (every wave cleared), as the game says: data-phase and a word.">
@@ -26,7 +26,7 @@
 -->
 <section id="StrategyWave" part="StrategyWave.frame" class="hud" aria-label={t("strategy.wave.name")} data-phase={phase} data-final={finalWave}>
   <div class="head">
-    <div part="StrategyWave.readout" class="count" role="group" aria-label={waves > 0 ? t("strategy.wave.ofName", { wave: wave, waves: waves }) : t("strategy.wave.nName", { wave: wave })}>
+    <div part="StrategyWave.readout StrategyWave.figure" class="count" role="group" aria-label={waves > 0 ? t("strategy.wave.ofName", { wave: wave, waves: waves }) : t("strategy.wave.nName", { wave: wave })}>
       <span part="StrategyWave.title" class="caption">{t("strategy.wave.wave")}</span>
       <div class="figure"><span class="now">{formatNumber(wave)}</span><span class="of" hidden={!(waves > 0)}>{t("strategy.wave.of", { total: waves })}</span></div>
     </div>
@@ -56,7 +56,7 @@
 [part="StrategyWave.frame"][hidden], [part="StrategyWave.frame"] [hidden] { display: none; }
 [part="StrategyWave.frame"] { display: flex; flex-direction: column; width: fit-content; max-width: stretch; min-width: 0; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); }
 .head { display: flex; align-items: flex-end; gap: var(--space-md); flex-wrap: wrap; }
-[part="StrategyWave.readout"] { display: flex; flex-direction: column; align-items: flex-start; gap: 0; flex: none; }
+[part="StrategyWave.readout StrategyWave.figure"] { display: flex; flex-direction: column; align-items: flex-start; gap: 0; flex: none; }
 .caption { white-space: nowrap; }
 .figure { display: flex; align-items: baseline; gap: var(--space-xxs); white-space: nowrap; }
 .now, .of, .enemy-count { font-variant-numeric: tabular-nums; white-space: nowrap; }

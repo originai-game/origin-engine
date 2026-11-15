@@ -1,6 +1,6 @@
 <meta name="component" content="IdleResources">
 <meta name="strings" content="./idle.en.ogt">
-<meta name="parts" content="IdleResources.frame IdleResources.row IdleResources.name IdleResources.figure IdleResources.rate IdleResources.badge IdleResources.placeholder">
+<meta name="parts" content="IdleResources.frame IdleResources.row IdleResources.name IdleResources.figure IdleResources.rate IdleResources.badge IdleResources.placeholder IdleResources.label">
 <meta name="prop:currencies" content="list" data-doc="The currencies in the game's order, keyed rows of { id, icon, name, amount, value, rate, perSecond, full }: value the amount as the game formats it (it wins; empty shows amount, a number, compacted: 12.3K, counting to each new amount); rate the income as the game words it (+1.2K/s; it wins; empty shows perSecond, a number per second, compacted; 0 hides it); perSecond also sets data-trend (up, down, flat) whether or not rate is given, so pass it with a worded rate too; full the store is at its cap, named Full.">
 <meta name="prop:loading" content="bool" data-doc="The amounts are on their way: each row keeps its icon and name and shows a placeholder for its figures.">
 <meta name="fixture:default" content='{"currencies":[{"id":"gold","icon":"coin","name":"Gold","amount":1234567,"value":"","rate":"","perSecond":4820,"full":false},{"id":"gems","icon":"gem","name":"Gems","amount":320,"value":"320","rate":"","perSecond":0,"full":false},{"id":"wood","icon":"leaf","name":"Wood","amount":5000,"value":"5,000 / 5,000","rate":"+12/s","perSecond":12,"full":true}],"loading":false}'>
@@ -34,7 +34,7 @@
               {:else}
                 <og-counter part="IdleResources.figure" class="figure" value={c.amount} format="compact" duration="300"></og-counter>
               {/if}
-              <span part="IdleResources.rate" data-trend={c.perSecond < 0 ? 'down' : c.perSecond > 0 ? 'up' : 'flat'} hidden={c.rate == '' && c.perSecond == 0}>{c.rate != '' ? c.rate : c.perSecond > 0 ? t("idle.resources.perSecond", { rate: formatCompact(c.perSecond) }) : t("idle.resources.perSecondDown", { rate: formatCompact(c.perSecond) })}</span>
+              <span part="IdleResources.rate IdleResources.label" data-trend={c.perSecond < 0 ? 'down' : c.perSecond > 0 ? 'up' : 'flat'} hidden={c.rate == '' && c.perSecond == 0}>{c.rate != '' ? c.rate : c.perSecond > 0 ? t("idle.resources.perSecond", { rate: formatCompact(c.perSecond) }) : t("idle.resources.perSecondDown", { rate: formatCompact(c.perSecond) })}</span>
               <span part="IdleResources.badge" hidden={!c.full}>{t("idle.resources.full")}</span>
             </div>
             <div id="Placeholder" part="IdleResources.placeholder" hidden={!loading}></div>
@@ -57,7 +57,7 @@
 [part="IdleResources.name"] { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; text-align: start; }
 .figures { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 var(--space-xs); min-width: 0; }
 [part="IdleResources.figure"] { font-variant-numeric: tabular-nums; white-space: nowrap; }
-[part="IdleResources.rate"] { font-variant-numeric: tabular-nums; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; min-width: 0; }
+[part="IdleResources.rate IdleResources.label"] { font-variant-numeric: tabular-nums; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; min-width: 0; }
 [part="IdleResources.badge"] { white-space: nowrap; padding: 0 var(--space-xxs); }
 [part="IdleResources.placeholder"] { width: var(--size-xl); height: var(--space-sm); margin-block: var(--space-xxs); border-radius: var(--radius-xs); background: var(--control-strong); }
 .empty-text { margin: 0; }
