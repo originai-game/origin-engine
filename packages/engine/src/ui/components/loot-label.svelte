@@ -18,11 +18,11 @@
 
 <style>
 #LootLabel { align-items: center; }
-[part="LootLabel.tag"] { gap: var(--space-xs); padding: var(--space-xxs) var(--space-sm); min-height: 0; border-radius: var(--radius-control); background: var(--scene-plate); border: var(--stroke-hairline) solid var(--tier); --tier: var(--scene-ink); }
-[part="LootLabel.tag"].uncommon { --tier: var(--uncommon); }
-[part="LootLabel.tag"].rare { --tier: var(--rare); }
-[part="LootLabel.tag"].epic { --tier: var(--epic); }
-[part="LootLabel.tag"].legendary { --tier: var(--legendary); }
+[part="LootLabel.tag"] { gap: var(--space-xs); padding: var(--space-xxs) var(--space-sm); min-height: 0; border-radius: var(--radius-control); background: var(--scene-plate); border: var(--stroke-hairline) solid var(--rim); --tier: var(--scene-ink); --rim: var(--common); }
+[part="LootLabel.tag"].uncommon { --tier: var(--uncommon); --rim: var(--uncommon); }
+[part="LootLabel.tag"].rare { --tier: var(--rare); --rim: var(--rare); }
+[part="LootLabel.tag"].epic { --tier: var(--epic); --rim: var(--epic); }
+[part="LootLabel.tag"].legendary { --tier: var(--legendary); --rim: var(--legendary); }
 [part="LootLabel.tag"]:hover { background: var(--panel-hover); }
 [part="LootLabel.name"] { font: var(--text-sm); color: var(--tier); white-space: nowrap; }
 [part="LootLabel.count"] { font: var(--text-caption); color: var(--ink-muted); }
