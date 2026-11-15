@@ -69,6 +69,19 @@ pub const MAX_FLAGS: usize = 8;
 /// Attributes a [`PartRef`] carries (`rarity=epic`, `tone=success`).
 pub const MAX_ATTRS: usize = 3;
 
+/// The roles a component's part wears by the end of its name (`Shop.frame`,
+/// `Bag.cell`): the default style dresses each from its tokens
+/// (`ROLE_RULES` in crates/og-ui/scripts/theme_css.rs, docs/ui.md §3.2).
+pub const ROLES: &[&str] = &[
+    "frame", "plate", "band", "title", "row", "cell", "badge", "well", "figure", "label", "heading",
+];
+
+/// The role a part named `Component.role` wears, if any.
+pub fn role(part: &str) -> Option<&'static str> {
+    let (_, end) = part.rsplit_once('.')?;
+    ROLES.iter().copied().find(|r| *r == end)
+}
+
 /// A name made `'static` once, so a part a game names at run time
 /// (`og.ui` element descs, documents) is as cheap to carry as a widget's
 /// own: the set of component, part, flag and attribute names is small.
@@ -94,10 +107,13 @@ pub struct PartRef {
     pub component: &'static str,
     pub part: &'static str,
     /// The control's own part when a document names another on its host
-    /// (`<button part="Bag.cell">`), empty otherwise. Rules for either name
+    /// (`<button part="Shop.buy">`), empty otherwise. Rules for either name
     /// match, as a `part` attribute exposes an element without taking its
     /// own styling away: `button::part(base)` still draws the plate and the
-    /// named part's rules dress it further.
+    /// named part's rules dress it further. A part named for a role
+    /// ([`role`]: `<button part="Bag.cell">`) wears that role instead, as
+    /// an author's `appearance: none` gives a button its page's look: only
+    /// the rules for its name match it.
     pub own: &'static str,
     /// Widget layout classification. It supplies no styling fallback.
     pub class: Option<ElementClass>,
@@ -366,7 +382,7 @@ impl PartRef {
             scope: "",
             tag: &tag,
             part: Some(self.part),
-            own_part: Some(self.own).filter(|p| !p.is_empty()),
+            own_part: Some(self.own).filter(|p| !p.is_empty() && role(self.part).is_none()),
             root: false,
             attributes: &attributes,
             states: &states,

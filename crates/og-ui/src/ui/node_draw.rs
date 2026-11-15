@@ -17,7 +17,10 @@ impl Ui {
                 .part
                 .or_else(|| n.el.frame.map(StylePart::part_ref))
                 .unwrap_or_else(|| crate::dress::PartRef::of(self.tree.kinds[i].0, "focus", None));
+            // The ring is the control's `focus` part alone: a named
+            // control's own part (`button::part(base)`) does not dress it.
             part.part = "focus";
+            part.own = "";
             part.class = None;
             part.level = None;
             part = part

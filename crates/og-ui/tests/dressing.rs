@@ -1215,6 +1215,69 @@ fn a_document_part_takes_its_dressing_classes_and_states() {
     assert!(has(fill(&ui, "Item"), "#ffffff"), "{:?}", fill(&ui, "Item"));
 }
 
+/// A button a component names for a role (`t.cell`) wears the role and its
+/// tokens (`--cell-fill`), as
+/// `appearance: none` hands a browser's button to its page's rules: the
+/// button's own `button::part(base)` dress does not reach it, while a
+/// button named for no role (`t.buy`) keeps it. Its focus ring is its
+/// `focus` part alone and draws no plate. Wrong: the cell took the
+/// button's plate over its role, or the ring repainted the base's fill
+/// over the focused cell.
+#[test]
+fn a_part_named_for_a_role_wears_the_role_not_its_controls_dress() {
+    let mut d = mounted(
+        dressed(
+            "button::part(base) { background: #ff0000; padding: 0 20px; }\n\
+             :root { --cell-fill: #00ff00; }",
+        ),
+        r#"<meta name="parts" content="t.buy t.cell">
+<column id="Root">
+  <button id="Buy" part="t.buy">Buy</button>
+  <button id="Cell" part="t.cell">Cell</button>
+</column>
+<style>#Root { align-items: flex-start; }</style>"#,
+        &[],
+        Viewport::new(400.0, 300.0),
+    );
+    let fill = |ui: &Ui, id: &str| {
+        let e = at(ui, id);
+        fills_in(ui, Rect::new(e.x, e.y, e.width, e.height))
+    };
+    let has = |fills: &[[f32; 4]], hex: &str| {
+        let c = og_ui::style_file::parse_color(hex).unwrap();
+        fills.iter().any(|f| near(*f, c))
+    };
+    d.step(InputFrame::default());
+    assert!(
+        has(&fill(&d.ui, "Buy"), "#ff0000"),
+        "{:?}",
+        fill(&d.ui, "Buy")
+    );
+    let cell = fill(&d.ui, "Cell");
+    assert!(has(&cell, "#00ff00") && !has(&cell, "#ff0000"), "{cell:?}");
+    assert!(
+        at(&d.ui, "Cell").width < at(&d.ui, "Buy").width,
+        "the base's padding stays off the cell"
+    );
+    for _ in 0..2 {
+        d.step(InputFrame {
+            keys: vec![UiKey::Tab],
+            ..Default::default()
+        });
+        d.step(InputFrame::default());
+    }
+    assert!(
+        d.ui.focus_path(0).ends_with("/Cell"),
+        "{}",
+        d.ui.focus_path(0)
+    );
+    for _ in 0..10 {
+        d.step(InputFrame::default());
+    }
+    let cell = fill(&d.ui, "Cell");
+    assert!(!has(&cell, "#ff0000"), "the ring drew the base: {cell:?}");
+}
+
 /// A kit's text element that names its part takes the part's `-og-ink` and
 /// `-og-step` (docs/ui.md §3.2), qualified by its classes, as a field's
 /// `text` part does: a pack inks a killfeed's names by team. Wrong: the
