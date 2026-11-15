@@ -709,8 +709,8 @@ fn fs_sight(in: VsOut) -> @location(0) vec4<f32> {
 fn band_color(a: vec3<f32>, b: vec3<f32>, t: f32) -> vec3<f32> {
   if (t <= 0.0) { return a; }
   if (t >= 1.0) { return b; }
-  let la = oklab_of(a);
-  let lb = oklab_of(b);
+  let la = oklab_encode(a);
+  let lb = oklab_encode(b);
   let ca = length(la.yz);
   let cb = length(lb.yz);
   var ha = atan2(la.z, la.y);
@@ -722,36 +722,7 @@ fn band_color(a: vec3<f32>, b: vec3<f32>, t: f32) -> vec3<f32> {
   if (dh < -PI) { dh += 2.0 * PI; }
   let h = ha + dh * t;
   let chroma = mix(ca, cb, t);
-  return max(linear_of(vec3<f32>(mix(la.x, lb.x, t), chroma * cos(h), chroma * sin(h))), vec3<f32>(0.0));
-}
-
-fn cbrt(x: f32) -> f32 {
-  return sign(x) * pow(abs(x), 1.0 / 3.0);
-}
-
-// Linear sRGB to Oklab (Ottosson).
-fn oklab_of(c: vec3<f32>) -> vec3<f32> {
-  let l = cbrt(0.4122214708 * c.r + 0.5363325363 * c.g + 0.0514459929 * c.b);
-  let m = cbrt(0.2119034982 * c.r + 0.6806995451 * c.g + 0.1073969566 * c.b);
-  let s = cbrt(0.0883024619 * c.r + 0.2817188376 * c.g + 0.6299787005 * c.b);
-  return vec3<f32>(
-    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
-    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
-    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s);
-}
-
-// Oklab to linear sRGB.
-fn linear_of(lab: vec3<f32>) -> vec3<f32> {
-  let l1 = lab.x + 0.3963377774 * lab.y + 0.2158037573 * lab.z;
-  let m1 = lab.x - 0.1055613458 * lab.y - 0.0638541728 * lab.z;
-  let s1 = lab.x - 0.0894841775 * lab.y - 1.2914855480 * lab.z;
-  let l = l1 * l1 * l1;
-  let m = m1 * m1 * m1;
-  let s = s1 * s1 * s1;
-  return vec3<f32>(
-    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s);
+  return max(oklab_decode(vec3<f32>(mix(la.x, lb.x, t), chroma * cos(h), chroma * sin(h))), vec3<f32>(0.0));
 }
 
 // The signed circle of confusion in half-resolution pixels (near < 0).

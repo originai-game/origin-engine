@@ -3,10 +3,10 @@ use crate::shader_capability::{Capability, assemble};
 use crate::{Shading, skin};
 
 /// What any shader may call, one copy for every module: the integer
-/// hashes (hash.wgsl), then the octahedral map, the fullscreen triangle,
-/// the view-space point under a pixel and interleaved gradient noise
-/// (common.wgsl), the sRGB curve and luminance (color.wgsl), value noise
-/// (noise.wgsl). [`FRAME_WGSL`] starts with it, and a module without the frame group puts this first.
+/// hashes (hash.wgsl), then pi, the octahedral map, the fullscreen
+/// triangle, the view-space point under a pixel and interleaved gradient
+/// noise (common.wgsl), the sRGB curve, luminance and Oklab (color.wgsl),
+/// value noise (noise.wgsl). [`FRAME_WGSL`] starts with it, and a module without the frame group puts this first.
 pub const LIBRARY_WGSL: &str = concat!(
     wgsl!("hash.wgsl"),
     wgsl!("common.wgsl"),

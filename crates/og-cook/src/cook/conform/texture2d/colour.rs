@@ -1,5 +1,5 @@
 //! Colour for conformance: sRGB bytes, linear light and Oklab (Björn
-//! Ottosson's, the matrices stylise.wgsl's `oklab` uses), with Oklab held
+//! Ottosson's, the matrices color.wgsl's `oklab_encode` uses), with Oklab held
 //! as fixed-point integers so every comparison the cook makes between two
 //! colours is exact and the same on every machine.
 

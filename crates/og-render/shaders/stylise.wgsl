@@ -1170,7 +1170,7 @@ fn lines(in: VsOut) -> vec3<f32> {
       // art keeps its authored colour, as the quantize pass keeps it. Each
       // stroke is the colour darkened towards the hatching colour, so the
       // hue stays under the strokes instead of turning grey.
-      let lab = oklab(c);
+      let lab = oklab_encode(c);
       let lift = st.hatching.x * 0.85;
       var wash: vec3<f32>;
       if (is_conformed(drawn_at(p))) {
@@ -1186,7 +1186,7 @@ fn lines(in: VsOut) -> vec3<f32> {
         let pigment = mix(1.0, smoothstep(0.02, 0.14, length(lab.yz)), min(lift * 2.0, 1.0) * (1.0 - smoothstep(0.8, 0.92, lab.x)));
         // The lightness of one-ink's ground (its mix towards white in
         // linear light), so the wash is as light as that paper.
-        let paper = oklab(mix(c, vec3<f32>(1.0), lift)).x;
+        let paper = oklab_encode(mix(c, vec3<f32>(1.0), lift)).x;
         wash = vec3<f32>(paper, lab.yz * (1.0 - lift * 0.5) * pigment);
       }
       // Laid on the paper: what the wash lets through, the paper reflects
@@ -1195,7 +1195,7 @@ fn lines(in: VsOut) -> vec3<f32> {
       // paper's colour at the page's own lightness (over its luminance): a
       // cream sheet warms the wash without greying it.
       let sheet = st.hatching_paper.rgb / max(luma(st.hatching_paper.rgb), 1e-3);
-      let ground = clamp(clamp(oklab_to_linear(wash), vec3<f32>(0.0), vec3<f32>(1.0)) * sheet, vec3<f32>(0.0), vec3<f32>(1.0));
+      let ground = clamp(clamp(oklab_decode(wash), vec3<f32>(0.0), vec3<f32>(1.0)) * sheet, vec3<f32>(0.0), vec3<f32>(1.0));
       let stroke = c * 0.3 + st.hatching_color.rgb * 0.5;
       c = mix(ground, stroke, ink * st.hatching.x);
     } else {
@@ -1409,33 +1409,6 @@ fn conformed(c: vec3<f32>) -> bool {
   return false;
 }
 
-// Oklab, for the nearest palette colour by perceived difference.
-fn oklab(c: vec3<f32>) -> vec3<f32> {
-  let l = 0.4122214708 * c.r + 0.5363325363 * c.g + 0.0514459929 * c.b;
-  let m = 0.2119034982 * c.r + 0.6806995451 * c.g + 0.1073969566 * c.b;
-  let s = 0.0883024619 * c.r + 0.2817188376 * c.g + 0.6299787005 * c.b;
-  let l3 = pow(max(l, 0.0), 1.0 / 3.0);
-  let m3 = pow(max(m, 0.0), 1.0 / 3.0);
-  let s3 = pow(max(s, 0.0), 1.0 / 3.0);
-  return vec3<f32>(
-    0.2104542553 * l3 + 0.7936177850 * m3 - 0.0040720468 * s3,
-    1.9779984951 * l3 - 2.4285922050 * m3 + 0.4505937099 * s3,
-    0.0259040371 * l3 + 0.7827717662 * m3 - 0.8086757660 * s3);
-}
-
-fn oklab_to_linear(c: vec3<f32>) -> vec3<f32> {
-  let l3 = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
-  let m3 = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;
-  let s3 = c.x - 0.0894841775 * c.y - 1.2914855480 * c.z;
-  let l = l3 * l3 * l3;
-  let m = m3 * m3 * m3;
-  let s = s3 * s3 * s3;
-  return vec3<f32>(
-    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s);
-}
-
 // How near (Oklab distance) a pixel must lie to a palette colour to be
 // that colour as it is: about one just-noticeable difference, wider than
 // the 8-bit rounding of a conformed texel through the frame's targets.
@@ -1443,12 +1416,12 @@ const PALETTE_KEEP: f32 = 0.02;
 
 // The nearest palette colour to `c` and its squared Oklab distance.
 fn nearest_palette(c: vec3<f32>, count: i32) -> vec4<f32> {
-  let want = oklab(c);
+  let want = oklab_encode(c);
   var best = c;
   var best_d = 1e9;
   for (var i = 0; i < count; i++) {
     let p = textureLoad(palette, vec2<i32>(i, 0), 0).rgb;
-    let delta = oklab(p) - want;
+    let delta = oklab_encode(p) - want;
     let dist = dot(delta, delta);
     if (dist < best_d) {
       best_d = dist;
