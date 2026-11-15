@@ -464,6 +464,14 @@ impl Ui {
         let t = self.env.theme;
         let h = self.by_text(t.controls.slider_bubble_height);
         let ink = self.role("ink");
+        let part =
+            crate::dress::PartRef::parse("input[type=range]::part(bubble)", ElementClass::Tooltip)
+                .ok();
+        // Its text takes the part's ink (`--slider-bubble-ink`), as text
+        // takes its box's `color`.
+        let text_ink = part
+            .and_then(|p| self.part_values(&p, None).color("color"))
+            .map_or(Ink::Role("inkInverse"), |c| Ink::C(C::of(c)));
         self.open_part(
             "Bubble",
             Element {
@@ -474,11 +482,7 @@ impl Ui {
                 cross: Cross::Center,
                 radius: t.radius.control,
                 background: Some(ink.srgba()),
-                part: crate::dress::PartRef::parse(
-                    "input[type=range]::part(bubble)",
-                    ElementClass::Tooltip,
-                )
-                .ok(),
+                part,
                 ..Element::default()
             },
         );
@@ -487,7 +491,7 @@ impl Ui {
             label,
             Text {
                 step: Some(t.type_ramp.sm),
-                color: Ink::Role("inkInverse"),
+                color: text_ink,
                 nowrap: true,
                 font: FontRole::Mono,
                 ..Text::default()

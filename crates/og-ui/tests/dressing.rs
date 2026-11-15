@@ -535,6 +535,7 @@ input { color: #d3b517; font-size: 21px; }
 input[type=checkbox]::part(box) { width: 34px; height: 30px; background: #fb0307; translate: 7px 0; opacity: 0.5; border: none; transition: none; }
 input[type=checkbox][switch]::part(track) { width: 70px; height: 32px; background: #03fb07; border: none; transition: none; }
 input[type=radio]::part(ring) { width: 38px; height: 26px; background: #0307fb; border: none; transition: none; }
+input[type=checkbox]::part(mark) { color: #2f7a11; }
 "#).unwrap();
     let mut d = mounted(
         ui,
@@ -565,7 +566,8 @@ input[type=radio]::part(ring) { width: 38px; height: 26px; background: #0307fb; 
             .filter_map(|i| i.cmd.filled())
             .map(|(_, c)| c)
             .collect();
-        for rgb in [[251, 3, 7], [3, 251, 7], [3, 7, 251]] {
+        // The tick takes its mark's ink.
+        for rgb in [[251, 3, 7], [3, 251, 7], [3, 7, 251], [47, 122, 17]] {
             let expected = Srgba::rgb(rgb[0], rgb[1], rgb[2]).linear();
             assert!(
                 fills.iter().any(|c| c[..3] == expected[..3]),

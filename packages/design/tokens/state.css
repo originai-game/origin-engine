@@ -55,6 +55,7 @@
   --controls-checkbox-size: 22px;
   --controls-checkbox-radius-ratio: 0.24;
   --controls-checkbox-mark-ratio: 0.78;
+  --controls-checkbox-mark-ink: var(--on-primary);
   --controls-checkbox-pop-duration: 260ms;
   --controls-checkbox-pop-bounce: 0.45;
   --controls-checkbox-unmark-duration: 90ms;
@@ -74,6 +75,7 @@
   --controls-slider-tick-width: 2px;
   --controls-slider-bubble-height: 26px;
   --controls-slider-bubble-exit-duration: 90ms;
+  --controls-slider-bubble-ink: var(--ink-inverse);
   --controls-segmented-pad-ratio: 0.08;
   --controls-dropdown-row: 36px;
   --controls-dropdown-option-row: 40px;

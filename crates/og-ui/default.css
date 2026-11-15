@@ -281,6 +281,7 @@
     --button-selected-fill: var(--selection);
     --button-selected-ink: var(--on-selection);
     --button-shadow: var(--shadow-sheen);
+    --checkbox-mark-ink: var(--on-primary);
     --checkbox-mark-ratio: 0.78;
     --checkbox-pop-bounce: 0.45;
     --checkbox-pop-duration: 260ms;
@@ -318,6 +319,7 @@
     --segmented-pad-ratio: 0.08;
     --slider-bubble-exit-duration: 90ms;
     --slider-bubble-height: 26px;
+    --slider-bubble-ink: var(--ink-inverse);
     --slider-knob: 20px;
     --slider-knob-touch: 26px;
     --slider-rail: 4px;
@@ -1072,6 +1074,9 @@
   select::part(list), input[type=range]::part(bubble) {
     box-shadow: var(--dropdown-list-shadow);
   }
+  /* The value bubble's text and the checkbox's tick take these parts' ink. */
+  input[type=range]::part(bubble) { color: var(--slider-bubble-ink); }
+  input[type=checkbox]::part(mark) { color: var(--checkbox-mark-ink); }
   /* Hud */
   hud::part(frame) {
     border: var(--stroke-hairline) solid var(--line-70);

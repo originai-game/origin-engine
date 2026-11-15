@@ -529,6 +529,15 @@ impl Ui {
                         ..Element::default()
                     },
                 );
+                let mark = crate::dress::PartRef::parse(
+                    "input[type=checkbox]::part(mark)",
+                    ElementClass::Badge,
+                )
+                .ok();
+                // The tick takes the mark's ink (`--checkbox-mark-ink`).
+                let tick = mark
+                    .and_then(|p| ui.part_values(&p, None).color("color"))
+                    .map_or(on_primary, C::of);
                 ui.open_part(
                     "Mark",
                     Element {
@@ -536,11 +545,7 @@ impl Ui {
                         height: Size::px(bx),
                         align: Align::Center,
                         cross: Cross::Center,
-                        part: crate::dress::PartRef::parse(
-                            "input[type=checkbox]::part(mark)",
-                            ElementClass::Badge,
-                        )
-                        .ok(),
+                        part: mark,
                         ..Element::default()
                     },
                 );
@@ -548,7 +553,7 @@ impl Ui {
                     "Glyph",
                     if mixed { "minus" } else { "tick" },
                     (bx * t.controls.checkbox_mark_ratio).round(),
-                    on_primary,
+                    tick,
                     Some((bx / 9.0).max(2.0)),
                 );
                 ui.close();

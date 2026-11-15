@@ -637,6 +637,9 @@ const FALLBACKS: &str = r#"
   select::part(list), input[type=range]::part(bubble) {
     box-shadow: var(--dropdown-list-shadow);
   }
+  /* The value bubble's text and the checkbox's tick take these parts' ink. */
+  input[type=range]::part(bubble) { color: var(--slider-bubble-ink); }
+  input[type=checkbox]::part(mark) { color: var(--checkbox-mark-ink); }
   /* Hud */
   hud::part(frame) {
     border: var(--stroke-hairline) solid var(--line-70);
