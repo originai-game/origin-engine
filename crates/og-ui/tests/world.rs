@@ -510,3 +510,71 @@ fn a_ground_draws_what_overflows_its_box() {
         g.bounds
     );
 }
+
+/// Decluttered tags stay on the screen and clear of each other: a crowd
+/// of nameplates whose point is near the top stacks down under the first
+/// once stacking up would leave the screen, and a moved tag never leaves
+/// it (as map labels are placed: a candidate off the screen is no spot).
+///
+/// Ways it could fail: a stack climbing off the top of the screen (moves
+/// bounded only for `contain` tags), tags left on top of each other, or
+/// the crowd hidden when there is room below.
+#[test]
+fn decluttered_tags_stay_on_the_screen_and_clear() {
+    let mut ui = ui();
+    let tag = |name: &str, priority: u32, mode: &str| {
+        format!(
+            r#"<anchor id="{name}" at="0 1.8 0" declutter="{mode}" priority="{priority}"><div class="tag">{name}</div></anchor>"#
+        )
+    };
+    let tags = [
+        tag("A", 50, "stack"),
+        tag("B", 40, "stack"),
+        tag("C", 30, "shift"),
+        tag("D", 20, "stack"),
+        tag("E", 10, "stack"),
+    ]
+    .join("\n");
+    let doc = format!(
+        r#"<meta name="component" content="sel">
+<div id="Root">
+{tags}
+</div>
+<style>.tag {{ width: 160px; height: 40px; background: #202020; }}</style>"#
+    );
+    ui.define_document(UiDocument::parse("sel.svelte", &doc).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "sel"),
+        "sel",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    // Gliding and fading settle.
+    run(&mut ui, 40, |_| {});
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let shown: Vec<_> = ui
+        .probe_elements()
+        .into_iter()
+        .filter(|e| e.kind != "world" && e.opaque && e.width == 160.0)
+        .collect();
+    // Its point is 82px from the top: one tag fits above it, so the rest
+    // stack down beneath, all five shown.
+    assert_eq!(shown.len(), 5, "{shown:#?}");
+    for e in &shown {
+        assert!(
+            !e.clipped && e.x >= 0.0 && e.y >= 0.0 && e.x + e.width <= W && e.y + e.height <= H,
+            "off the screen: {e:#?}"
+        );
+    }
+    for (k, a) in shown.iter().enumerate() {
+        for b in &shown[k + 1..] {
+            let apart = a.x + a.width <= b.x
+                || b.x + b.width <= a.x
+                || a.y + a.height <= b.y
+                || b.y + b.height <= a.y;
+            assert!(apart, "overlapping: {a:#?} {b:#?}");
+        }
+    }
+}

@@ -57,10 +57,16 @@ fn drawn_box(nodes: &[crate::layout::Node], i: usize) -> (Vec2, Vec2) {
     (lo, hi)
 }
 
-/// The first spot clear of `placed` for `b` (moved by `shift` mode), or
-/// `None`: overlapping; `reach` bounds the move, and a moved box stays
-/// inside `inside` (a contained tag's safe area: a crowd stacked off the
-/// top of the screen hides its lowest-ranked instead).
+/// The spot nearest `b`'s own that is clear of `placed`, as the move
+/// there, or `None`: nothing fits and it is hidden. As map labels are
+/// placed (MapLibre's collision index): by rank, each in the first of its
+/// candidate spots clear of those placed before it and inside the screen.
+/// A spot is clear only against a side of a box near it, so the
+/// candidates are `b` a `gap` off the sides of the boxes within `reach`,
+/// on either axis or both. `Stack` first takes the nearest straight above,
+/// then straight below (nameplates over a crowd); `Shift` and a stack with
+/// no room either way take the nearest of all. A moved box stays inside
+/// `inside` (the screen) and within `reach` of its spot.
 fn declutter(
     mode: Declutter,
     b: Rect,
@@ -73,61 +79,47 @@ fn declutter(
     if clear(&b) {
         return Some(Vec2::ZERO);
     }
-    let within = |r: &Rect| {
-        r.x >= inside.x - 0.5
+    if !matches!(mode, Declutter::Shift | Declutter::Stack) {
+        return None;
+    }
+    let moved = |d: Vec2| Rect::new(b.x + d.x, b.y + d.y, b.width, b.height);
+    let fits = |d: Vec2| {
+        let r = moved(d);
+        d.length() <= reach
+            && r.x >= inside.x - 0.5
             && r.y >= inside.y - 0.5
             && r.right() <= inside.right() + 0.5
             && r.bottom() <= inside.bottom() + 0.5
+            && clear(&r)
     };
-    let moved = |d: Vec2| Rect::new(b.x + d.x, b.y + d.y, b.width, b.height);
-    if mode == Declutter::Shift {
-        // The shortest way clear of each box it meets, nearest first.
-        let mut tries: Vec<Vec2> = Vec::new();
-        for p in placed.iter().filter(|p| p.overlaps(&b)) {
-            tries.push(Vec2::new(0.0, p.y - gap - b.bottom()));
-            tries.push(Vec2::new(0.0, p.bottom() + gap - b.y));
-            tries.push(Vec2::new(p.x - gap - b.right(), 0.0));
-            tries.push(Vec2::new(p.right() + gap - b.x, 0.0));
-        }
-        og_core::sort::sort_by_key(&mut tries, |d| (d.length() * 16.0) as u32);
-        if let Some(d) = tries
-            .into_iter()
-            .find(|&d| d.length() <= reach && clear(&moved(d)) && within(&moved(d)))
-        {
-            return Some(d);
-        }
+    let (mut xs, mut ys) = (vec![0.0], vec![0.0]);
+    for p in placed.iter().filter(|p| p.overlaps(&b.outset(reach))) {
+        xs.extend([p.x - gap - b.right(), p.right() + gap - b.x]);
+        ys.extend([p.y - gap - b.bottom(), p.bottom() + gap - b.y]);
     }
-    if matches!(mode, Declutter::Shift | Declutter::Stack) {
-        // Up over what it meets, again and again; where that leaves the
-        // area, down under it instead.
+    let nearest = |mut tries: Vec<Vec2>| {
+        // Shortest first; equal ones straight before aslant, then up and
+        // to the start, so a tie settles the same way every tick.
+        og_core::sort::sort_by(&mut tries, |a, c| {
+            (a.length(), a.x.abs(), a.y, a.x)
+                .partial_cmp(&(c.length(), c.x.abs(), c.y, c.x))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        tries.into_iter().find(|&d| fits(d))
+    };
+    if mode == Declutter::Stack {
         for up in [true, false] {
-            let mut d = Vec2::ZERO;
-            for _ in 0..16 {
-                let r = moved(d);
-                let hit = placed.iter().filter(|p| p.overlaps(&r));
-                let edge = if up {
-                    hit.map(|p| p.y).reduce(f32::min)
-                } else {
-                    hit.map(|p| p.bottom()).reduce(f32::max)
-                };
-                let Some(edge) = edge else {
-                    if within(&r) {
-                        return Some(d);
-                    }
-                    break;
-                };
-                d.y = if up {
-                    edge - gap - b.bottom()
-                } else {
-                    edge + gap - b.y
-                };
-                if d.y.abs() > reach {
-                    break;
-                }
+            let way = ys.iter().filter(|&&y| if up { y < 0.0 } else { y > 0.0 });
+            if let Some(d) = nearest(way.map(|&y| Vec2::new(0.0, y)).collect()) {
+                return Some(d);
             }
         }
     }
-    None
+    nearest(
+        xs.iter()
+            .flat_map(|&x| ys.iter().map(move |&y| Vec2::new(x, y)))
+            .collect(),
+    )
 }
 
 impl Ui {
@@ -362,10 +354,19 @@ impl crate::ui::Layout {
             }
             let reach = 3.0 * pl.rect.height.max(pl.rect.width.min(160.0));
             let a = &anchors[pl.entry].desc;
+            // A move never takes it off the safe area, nor further off
+            // than its own spot is (a tag at the edge stays where it is).
+            let b = pl.rect;
             let inside = if a.contain && a.clamp.is_none() {
                 safe
             } else {
-                Rect::new(-1e6, -1e6, 2e6, 2e6)
+                let (x, y) = (safe.x.min(b.x), safe.y.min(b.y));
+                Rect::new(
+                    x,
+                    y,
+                    safe.right().max(b.right()) - x,
+                    safe.bottom().max(b.bottom()) - y,
+                )
             };
             match declutter(mode, pl.rect, &taken, gap, reach, inside) {
                 Some(d) => {
@@ -856,6 +857,12 @@ mod tests {
             Some(Vec2::new(0.0, 16.0))
         );
         assert_eq!(declutter(Declutter::Stack, b, &[a], 2.0, 100.0, top), None);
+        // With no room above or below but room beside, it goes beside.
+        let wide = Rect::new(0.0, 0.0, 300.0, 40.0);
+        assert_eq!(
+            declutter(Declutter::Stack, b, &[a], 2.0, 120.0, wide),
+            Some(Vec2::new(102.0, 0.0))
+        );
     }
 
     #[test]

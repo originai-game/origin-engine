@@ -192,14 +192,17 @@ pub enum WorldOcclusion {
 }
 
 /// How an anchored element that overlaps one of higher priority resolves.
+/// A moved one stays on the screen; one with no room within its reach
+/// fades out until there is.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Declutter {
     /// It overlaps.
     #[default]
     None,
-    /// Moved the shortest way clear of what it overlaps (else stacked).
+    /// Moved the shortest way clear of what it overlaps, any way.
     Shift,
-    /// Moved above what it overlaps, one over another.
+    /// Moved above what it overlaps, one over another (else below it,
+    /// else the shortest way clear).
     Stack,
     /// Faded out while it overlaps.
     Hide,
