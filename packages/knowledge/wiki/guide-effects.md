@@ -45,6 +45,15 @@ whole fight), the element for a part of one effect (a dash's trail for its
   between two points, re-jittered every tick), a pixel effect's `bolt`
   layer (`pixel-vfx`, baked) or og.render.ribbon through points you
   compute (forks). Use the beam in 3D, `bolt` in 2D.
+- A 3D effect plays under an orthographic camera (a 2D game with a 3D
+  stage, a side view) as it does in perspective, its metres the camera's
+  metres (Camera.height across the view). What lies flat on the ground (a
+  `mesh ring` laid down, a `decal`, `align facing 0 1 0` ripples and
+  scorches) is edge on to a level side view and disappears: tilt the
+  camera down, or stand the part up. A level view sees the ground edge on
+  too, so `collision` off the drawn depth misses it and sparks fall
+  through: give them `collision colliders` or `die`. A pixel game's
+  effects are `pixel-vfx`.
 - Some particles are their system's own and stay so: the ocean's foam
   comes from its waves (`render`), destruction's debris are rigid
   bodies (`physics`), `<og-emitter>` is the UI's (`components`) and a
