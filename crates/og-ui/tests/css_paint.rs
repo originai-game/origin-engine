@@ -482,7 +482,7 @@ fn contrast_color_and_variadic_color_mix_reach_the_frame() {
         d.ui.frame()
             .items
             .iter()
-            .find_map(|it| match &it.cmd {
+            .find_map(|it| match it.cmd.unstyled() {
                 DrawCmd::Text { text, color, .. } if text == "Ink" => {
                     Some(Srgba::from_linear(*color))
                 }
@@ -496,4 +496,110 @@ fn contrast_color_and_variadic_color_mix_reach_the_frame() {
         d.step(InputFrame::default());
     }
     assert_eq!(ink(&d), Srgba::BLACK, "on the light panel");
+}
+
+/// The effects (`None`: drawn plain) and the frame index of the text
+/// command that draws `text`.
+fn text_effects(ui: &Ui, text: &str) -> (usize, Option<og_draw::UiTextEffects>) {
+    ui.frame()
+        .items
+        .iter()
+        .enumerate()
+        .find_map(|(k, it)| match &it.cmd {
+            DrawCmd::Text { text: t, .. } if t == text => Some((k, None)),
+            DrawCmd::StyledText { text: t, effects } => match &**t {
+                DrawCmd::Text { text: t, .. } if t == text => Some((k, Some((**effects).clone()))),
+                _ => None,
+            },
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("no text {text}"))
+}
+
+/// Text drawn straight over the scene takes the style's tag treatment
+/// when nothing under it holds it 4.5:1 over a black and a white scene:
+/// the default's `--tag-halo`, eight hard copies in the contrast-color()
+/// of the text's own ink (black round pale or gold ink, white round
+/// navy). An opaque panel holds its text, which stays plain; a 30 % black
+/// plate does not (pale ink on it over white reads 2.3:1). A text's own
+/// soft shadow, which outlines nothing, keeps its place and gets the halo
+/// beside it. A pack that sets `--tag-fill` gives such text a plate.
+///
+/// Ways it could fail: every text outlined (a panel's ground not read),
+/// the halo in the style's ink-inverse instead of the text's own
+/// contrast (navy ink outlined in near-black read 1.4:1), a text with a
+/// shadow of its own left bare, or the plate drawn over the glyphs.
+#[test]
+fn text_over_the_scene_takes_the_tag_treatment() {
+    let text = r#"<meta name="component" content="t">
+<column>
+  <p id="Bare">Bare</p>
+  <div style="background: #1c1c1e"><p>Panel</p></div>
+  <div style="background: rgb(0 0 0 / 30%)"><p>Thin</p></div>
+  <p style="text-shadow: 0 1px 2px #000000">Soft</p>
+  <p style="color: #ffd60a">Gold</p>
+  <p style="color: #1a237e">Navy</p>
+</column>"#;
+    let d = Doc::with_font(text, &[], test_font());
+    let black = [0.0, 0.0, 0.0, 1.0];
+    let white = [1.0, 1.0, 1.0, 1.0];
+    for (t, color) in [
+        ("Bare", black),
+        ("Thin", black),
+        ("Gold", black),
+        ("Navy", white),
+    ] {
+        let fx = text_effects(&d.ui, t)
+            .1
+            .unwrap_or_else(|| panic!("{t} is drawn bare"));
+        assert_eq!(fx.shadows.len(), 8, "{t}: {:?}", fx.shadows);
+        assert!(
+            fx.shadows.iter().all(|s| s.color == color && s.blur == 0.0),
+            "{t}: {:?}",
+            fx.shadows
+        );
+    }
+    assert!(
+        text_effects(&d.ui, "Panel")
+            .1
+            .is_none_or(|fx| fx.shadows.is_empty())
+    );
+    let soft = text_effects(&d.ui, "Soft").1.unwrap();
+    assert_eq!(soft.shadows.len(), 9, "its own first, then the halo");
+    assert_eq!(soft.shadows[0].blur, 2.0);
+
+    let mut ui = ui_with_font(test_font());
+    let pack = og_ui::style_pack::StylePack::parse(
+        "styles/test",
+        vec![(
+            "styles/test/main.css".into(),
+            ":root { --tag-halo: none; --tag-fill: #102030; --tag-pad: 2px 4px; --tag-radius: 3px; }".into(),
+        )],
+    );
+    ui.set_style_pack(&pack.unwrap()).unwrap();
+    let d = Doc::with_ui(ui, text);
+    let (k, fx) = text_effects(&d.ui, "Bare");
+    assert!(fx.is_none_or(|fx| fx.shadows.is_empty()));
+    let plate = Srgba::rgb(0x10, 0x20, 0x30).linear();
+    let DrawCmd::Quad {
+        rect,
+        radius,
+        color,
+        ..
+    } = &d.ui.frame().items[k - 1].cmd
+    else {
+        panic!(
+            "no plate under the text: {:?}",
+            d.ui.frame().items[k - 1].cmd
+        );
+    };
+    assert!(
+        same(*color, Srgba::from_linear(plate)) && *radius == 3.0,
+        "{color:?} {radius}"
+    );
+    let bare = d.get("Bare");
+    assert!(
+        rect.x < bare.x && rect.width > bare.width,
+        "{rect:?} {bare:?}"
+    );
 }

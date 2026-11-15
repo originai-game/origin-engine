@@ -273,6 +273,15 @@ fn band_with(
     }
 }
 
+/// The text command `c` draws: its own, or the one a `StyledText` wraps
+/// (text over the scene takes its halo that way).
+fn drawn_text(c: &DrawCmd) -> &DrawCmd {
+    match c {
+        DrawCmd::StyledText { text, .. } => text,
+        c => c,
+    }
+}
+
 /// One frame of `ui`'s mounted documents at [`vp`].
 fn step(ui: &mut Ui, input: InputFrame) {
     super::scenes::step_screen(ui, input, vp());
@@ -488,7 +497,7 @@ fn kerning_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
         .frame()
         .items
         .iter()
-        .filter_map(|i| match &i.cmd {
+        .filter_map(|i| match drawn_text(&i.cmd) {
             DrawCmd::Text { text, .. } => Some(text.clone()),
             _ => None,
         })
@@ -580,7 +589,7 @@ fn mixed_runs_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
         .frame()
         .items
         .iter()
-        .filter_map(|i| match &i.cmd {
+        .filter_map(|i| match drawn_text(&i.cmd) {
             DrawCmd::Text { font, bounds, .. }
                 if (bounds.y - line.y).abs() < 1.0 && bounds.x < line.x + line.width =>
             {
@@ -593,7 +602,7 @@ fn mixed_runs_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
     // Every character a command draws is in the atlas of the face it names.
     let all = [&f.display, &japanese, &f.arabic, &f.hebrew, &f.devanagari];
     for i in &ui.frame().items {
-        if let DrawCmd::Text { font, text, .. } = &i.cmd {
+        if let DrawCmd::Text { font, text, .. } = drawn_text(&i.cmd) {
             let face = all
                 .iter()
                 .find(|u| u.handle == Some(*font))

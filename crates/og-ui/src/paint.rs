@@ -26,6 +26,7 @@ pub use og_draw::{
 pub(crate) mod decor;
 mod effect;
 mod element_draw;
+pub(crate) use element_draw::snap_to_cells;
 pub mod particles;
 pub mod slot;
 pub mod svg;

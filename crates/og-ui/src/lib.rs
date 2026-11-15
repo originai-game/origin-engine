@@ -48,6 +48,7 @@ pub use og_reactive::bind;
 pub(crate) use paint::decor;
 pub use style::css_color;
 pub use text::colr;
+pub use ui::scene_text::halo_contrast;
 pub mod css;
 pub mod doc;
 mod draw;

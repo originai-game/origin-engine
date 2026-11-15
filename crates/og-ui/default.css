@@ -495,7 +495,7 @@
     --sfx-tap: none;
     --sfx-tap2: none;
     --tag-fill: none;
-    --tag-halo: 1.5px 0 0 var(--ink-inverse), -1.5px 0 0 var(--ink-inverse), 0 1.5px 0 var(--ink-inverse), 0 -1.5px 0 var(--ink-inverse), 1px 1px 0 var(--ink-inverse), -1px 1px 0 var(--ink-inverse), 1px -1px 0 var(--ink-inverse), -1px -1px 0 var(--ink-inverse);
+    --tag-halo: 1.5px 0 0 contrast-color(currentColor), -1.5px 0 0 contrast-color(currentColor), 0 1.5px 0 contrast-color(currentColor), 0 -1.5px 0 contrast-color(currentColor), 1px 1px 0 contrast-color(currentColor), -1px 1px 0 contrast-color(currentColor), 1px -1px 0 contrast-color(currentColor), -1px -1px 0 contrast-color(currentColor);
     --tag-pad: 0px;
     --tag-radius: var(--radius-control);
     --title-font: var(--type-title-font);

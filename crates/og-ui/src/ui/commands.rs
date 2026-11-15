@@ -501,12 +501,14 @@ impl Ui {
                         place(c, n.placed.alpha, unplaced, clip, &world);
                     }
                 }
+                let grid = self.tree.nodes[i]
+                    .text()
+                    .map_or(0, |t| t.metrics(&self.env.fonts).pixel_grid());
                 if let Some(d) = &draw {
-                    let grid = self.tree.nodes[i]
-                        .text()
-                        .map_or(0, |t| t.metrics(&self.env.fonts).pixel_grid());
                     d.style_text(&theme, &mut local, grid);
                 }
+                // Text over the scene takes the style's scene treatment.
+                self.dress_scene_text(i, &theme, &mut local, grid);
                 let kept_at = kept_now.then_some(local.len());
                 let mut local = local.into_iter().map(|c| (c, world));
                 let from = cmds.len();

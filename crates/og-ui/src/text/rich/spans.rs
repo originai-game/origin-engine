@@ -359,9 +359,16 @@ mod tests {
         let mut plain = Vec::new();
         for i in &ui.frame().items {
             match &i.cmd {
-                DrawCmd::StyledText { text, effects } => {
+                // Text over nothing also takes the scene halo: only an
+                // outline marks the span.
+                DrawCmd::StyledText { text, effects } if effects.outline.is_some() => {
                     if let DrawCmd::Text { text, .. } = &**text {
-                        outlined.push((text.clone(), effects.outline.is_some()));
+                        outlined.push((text.clone(), true));
+                    }
+                }
+                DrawCmd::StyledText { text, .. } => {
+                    if let DrawCmd::Text { text, .. } = &**text {
+                        plain.push(text.clone());
                     }
                 }
                 DrawCmd::Text { text, .. } => plain.push(text.clone()),

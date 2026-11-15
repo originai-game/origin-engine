@@ -384,6 +384,7 @@ impl Ui {
                 *target = value;
             }
         });
+        self.style.scene_text = scene_text(&root, &self.env.theme);
         eases(&mut self.env.theme, |name, target| {
             if let Some(Some(value)) = root.get(&format!("--{name}"))
                 && let Some(ease) = crate::motion::Ease::from_text(value.trim())
@@ -508,6 +509,50 @@ impl crate::ui::Style {
         });
         self.root_inputs_changed();
     }
+}
+
+/// The tag role's treatment of text over the scene from the `:root`
+/// tokens: `--tag-halo` (a `text-shadow`), and `--tag-fill` (none: no
+/// plate) padded by `--tag-pad` (one or two lengths) and rounded by
+/// `--tag-radius`.
+fn scene_text(
+    root: &crate::css::variables::Computed,
+    theme: &Theme,
+) -> crate::ui::scene_text::SceneText {
+    let get = |name: &str| root.get(name).and_then(|v| v.as_deref()).map(str::trim);
+    let halo = get("--tag-halo")
+        .filter(|v| *v != "none")
+        .and_then(|v| {
+            crate::css::paint_css::text_shadows(v, crate::paint::ColorRef::token("ink")).ok()
+        })
+        .unwrap_or_default();
+    let context = crate::css_color::Context::of(theme);
+    let plate = get("--tag-fill")
+        .filter(|v| *v != "none")
+        .and_then(|v| crate::css_color::parse_str(v).ok())
+        .map(|c| c.resolve(&context))
+        .filter(|c| c.alpha > 0.0)
+        .map(|color| {
+            let pad: Vec<f32> = get("--tag-pad")
+                .map(|v| {
+                    v.split_whitespace()
+                        .filter_map(|l| Unit::Px.read(l))
+                        .collect()
+                })
+                .unwrap_or_default();
+            crate::ui::scene_text::Plate {
+                color,
+                pad: match pad[..] {
+                    [b, i, ..] => [i, b],
+                    [a] => [a, a],
+                    [] => [0.0, 0.0],
+                },
+                radius: get("--tag-radius")
+                    .and_then(|v| Unit::Px.read(v))
+                    .unwrap_or(0.0),
+            }
+        });
+    crate::ui::scene_text::SceneText { halo, plate }
 }
 
 #[cfg(test)]

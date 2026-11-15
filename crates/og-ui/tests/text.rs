@@ -125,7 +125,7 @@ fn drawn_texts(ui: &Ui) -> Vec<(String, f32, f32, f32)> {
     ui.frame()
         .items
         .iter()
-        .filter_map(|i| match &i.cmd {
+        .filter_map(|i| match i.cmd.unstyled() {
             DrawCmd::Text {
                 text, size, bounds, ..
             } => Some((text.clone(), *size, bounds.width, bounds.y)),

@@ -978,7 +978,7 @@ input.poem::part(placeholder) {
         ui.frame()
             .items
             .iter()
-            .filter_map(|it| match &it.cmd {
+            .filter_map(|it| match it.cmd.unstyled() {
                 DrawCmd::Text {
                     text,
                     x,
@@ -1699,10 +1699,13 @@ fn a_buttons_content_follows_its_ink() {
             d.step(InputFrame::default());
         }
         let ink = |want: &str| {
-            d.ui.frame().items.iter().find_map(|i| match &i.cmd {
-                DrawCmd::Text { text, color, .. } if text == want => Some(*color),
-                _ => None,
-            })
+            d.ui.frame()
+                .items
+                .iter()
+                .find_map(|i| match i.cmd.unstyled() {
+                    DrawCmd::Text { text, color, .. } if text == want => Some(*color),
+                    _ => None,
+                })
         };
         for (label, hex) in [("Pri", pri), ("Pla", pla), ("Own", "#123456")] {
             let got = ink(label).unwrap_or_else(|| panic!("{label} drawn"));
@@ -1809,7 +1812,7 @@ fn a_kit_text_part_takes_its_ink_and_step() {
         ui.frame()
             .items
             .iter()
-            .find_map(|it| match &it.cmd {
+            .find_map(|it| match it.cmd.unstyled() {
                 DrawCmd::Text {
                     text, size, color, ..
                 } if text == want => Some((*size, *color)),

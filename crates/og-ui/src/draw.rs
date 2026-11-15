@@ -365,6 +365,15 @@ fn mapped_bounds(c: &DrawCmd, m: &Affine) -> Rect {
 }
 
 impl DrawCmd {
+    /// It without its text effects: a styled text's text, any other
+    /// command itself (text over the scene is drawn styled, in its halo).
+    pub fn unstyled(&self) -> &DrawCmd {
+        match self {
+            DrawCmd::StyledText { text, .. } => text,
+            c => c,
+        }
+    }
+
     /// What it fills, when it is a flat area of colour: a quad, an untextured
     /// image, or a UI shape's fill (a gradient as the mean of its stops), as
     /// its rectangle and linear colour with its opacity. Shadows, strokes,

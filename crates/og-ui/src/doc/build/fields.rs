@@ -441,7 +441,25 @@ impl Ui {
             .str("textShadow")
             .map(|v| p::text_shadows(v, crate::paint::ColorRef::Literal(current)))
         {
-            c.text_shadows = s;
+            // `currentColor` inside a colour function is this element's
+            // colour too (a halo in `contrast-color(currentColor)`), not
+            // the style's ink it would resolve to when drawn.
+            let theme = self.theme();
+            c.text_shadows = s
+                .into_iter()
+                .map(|mut sh| {
+                    if let crate::paint::ColorRef::Css(e) = &sh.color
+                        && e.uses_current()
+                    {
+                        let cx = crate::css_color::Context {
+                            current,
+                            ..crate::css_color::Context::of(theme)
+                        };
+                        sh.color = crate::paint::ColorRef::Literal(e.resolve(&cx));
+                    }
+                    sh
+                })
+                .collect();
         }
         if let Some((clip, geo)) = r.str("clipPath").and_then(|v| p::clip(v).ok()).flatten() {
             c.clip_box = geo;
