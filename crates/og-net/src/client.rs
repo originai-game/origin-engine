@@ -1137,15 +1137,32 @@ mod tests {
             sent.elapsed()
         );
         drop(a);
+        // An unreliable frame keeps no order, so one may still come after
+        // the departure: whatever arrives within the jitter after it counts.
+        let left = Event::PeerLeft { peer: 0 };
         let mut got = first;
+        let mut left_at = None;
         for _ in 0..3000 {
             got.extend(b.poll().iter().map(|v| Event::parse(v).expect("an event")));
-            if got.last() == Some(&Event::PeerLeft { peer: 0 }) {
+            if left_at.is_none() && got.contains(&left) {
+                left_at = Some(std::time::Instant::now());
+            }
+            if left_at.is_some_and(|t| t.elapsed() > Duration::from_millis(100)) {
                 break;
             }
             thread::sleep(Duration::from_millis(1));
         }
-        assert_eq!(got.last(), Some(&Event::PeerLeft { peer: 0 }), "{got:?}");
+        let gone = got
+            .iter()
+            .position(|e| *e == left)
+            .expect("the departure arrives");
+        let last_reliable = got.iter().rposition(|e| {
+            matches!(e, Event::Message { payload: Payload::Json(v), .. } if v.as_i64().is_some_and(|v| v % 3 == 0))
+        });
+        assert!(
+            last_reliable < Some(gone),
+            "the departure after every reliable message: {got:?}"
+        );
         let values: Vec<i64> = got
             .iter()
             .filter_map(|e| match e {
