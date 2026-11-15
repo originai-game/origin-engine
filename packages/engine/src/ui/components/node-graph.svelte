@@ -32,7 +32,7 @@
 </div>
 
 <style>
-[part="NodeGraph.well"] { width: var(--measure-lg); height: var(--size-7xl); overflow: hidden; }
+[part="NodeGraph.well"] { width: var(--measure-lg); max-width: 100%; height: var(--size-7xl); max-height: 100%; overflow: hidden; }
 #Canvas { position: absolute; top: 0; inset-inline-start: 0; width: var(--measure-md); height: var(--size-6xl); translate: calc(var(--pan-x) + var(--space-xl)) calc(var(--pan-y) + var(--space-xl)); scale: var(--zoom); transform-origin: 0% 0%; }
 #Links { position: absolute; top: 0; inset-inline-start: 0; }
 [part="NodeGraph.link"] { fill: none; stroke: var(--line-strong); stroke-width: 3; stroke-dasharray: 6 6; }

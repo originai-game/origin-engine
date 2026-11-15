@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "NodeGraph",
+      "summary": "The graph fits its container: it is at most as wide and as tall as the space it is given, so CardRunMap and film-flowchart on a 390-wide phone no longer lay their rooms out past the screen's edge."
+    }
+  ]
+}
