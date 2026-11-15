@@ -15,9 +15,7 @@
 //! or wake, and the rain rings it through weather_rain.wgsl, which is not
 //! this capability); the water reads the screen's occlusion through its
 //! own binding; only meshes are lightmapped. The guides say the same to
-//! an author (render.md, looks.md). One is a debt: the terrain's stub for
-//! the screen's occlusion (its pipelines have no texture slot left), so
-//! what stands on the ground darkens no ground around its foot.
+//! an author (render.md, looks.md).
 #![cfg(not(feature = "profile2d"))]
 
 use og_render::Capability;
@@ -80,8 +78,8 @@ sprite skin                              | -            | -       | -      | ful
 tiles                                    | -            | -       | -      | full | -                 | -         | -        | -
 fluid 3d                                 | full         | -       | -      | -    | -                 | stub      | -        | full
 stylise object                           | full         | full    | full   | full | stub              | full      | full     | full
-terrain                                  | full         | full    | full   | -    | stub              | stub      | -        | full
-terrain (layer arrays)                   | full         | full    | full   | -    | stub              | stub      | -        | full
+terrain                                  | full         | full    | full   | -    | stub              | full      | -        | full
+terrain (layer arrays)                   | full         | full    | full   | -    | stub              | full      | -        | full
 wind                                     | full         | full    | full   | full | stub              | full      | full     | full
 scatter                                  | full         | full    | full   | -    | stub              | full      | -        | full
 grass                                    | full         | full    | full   | -    | stub              | full      | -        | full

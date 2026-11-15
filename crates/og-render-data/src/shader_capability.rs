@@ -255,8 +255,7 @@ impl Shading {
     }
 
     /// With projected decals ([`Capability::Decals`]), read from the
-    /// effect group or from the bindings the module declares itself (the
-    /// terrain's).
+    /// effect group.
     pub const fn decals(self) -> Shading {
         Shading {
             decals: true,

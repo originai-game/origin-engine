@@ -23,18 +23,23 @@ impl Renderer {
             let atlas_view = scene.effects.decal_atlas.map_or(&self.default_white, |t| {
                 &self.cache.textures[t.index()].view
             });
-            self.world.terrain.fx.bind(
-                &self.device,
-                atlas_view,
-                &self.trilinear_sampler,
-                &self.lights.decal_buffers,
-                &self.world.trample.view,
-            );
             let ao_view = if ao {
                 self.graph.view("ao")
             } else {
                 &self.post.white
             };
+            self.world.terrain.fx.bind(
+                &self.device,
+                crate::terrain::fx::TerrainFxBinds {
+                    fx: &self.lights.fx_buffer,
+                    ao: ao_view,
+                    white: &self.post.white,
+                    atlas: atlas_view,
+                    sampler: &self.trilinear_sampler,
+                    records: &self.lights.decal_buffers,
+                    trample: &self.world.trample.view,
+                },
+            );
             // This frame's planar reflection, for the material shaders that
             // read it (pbr.wgsl `planar_reflection`; fx `reserved` says
             // whether it is there).

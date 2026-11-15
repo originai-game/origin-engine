@@ -14,17 +14,13 @@
 // StandardMaterial (cascaded shadows, local lights, image-based light),
 // caustics under the frame's water, then fog.
 
-// `trample`: the trample map (trample.rs `Trample::grid`): its min corner
-// (x, z from the frame's origin), cell and cells a side (0: none).
-struct TerrainFx { decal_info: vec4<f32>, trample: vec4<f32> };
-@group(3) @binding(0) var<uniform> fx: TerrainFx;
-@group(3) @binding(2) var decal_atlas: texture_2d<f32>;
-@group(3) @binding(3) var fx_sampler: sampler;
-@group(3) @binding(5) var<storage, read> decal_list: array<DecalGpu>;
-@group(3) @binding(6) var<storage, read> decal_cells: array<u32>;
-// The trample map (trample.rs; trample_read.wgsl): read-only storage, the
-// stage's sixteen texture slots being taken.
+// Group 3 is the lit passes' effect group (fx.wgsl: the screen AO, the
+// decals), then the trample map (trample.rs; trample_read.wgsl), read-only
+// storage, the stage's sixteen texture slots being taken, and its grid
+// (`Trample::grid`): its min corner (x, z from the frame's origin), cell
+// and cells a side (0: none).
 @group(3) @binding(7) var trample_map: texture_storage_2d<rgba32float, read>;
+@group(3) @binding(8) var<uniform> trample_grid: vec4<f32>;
 
 struct TerrainOut {
   @builtin(position) clip: vec4<f32>,
@@ -311,7 +307,7 @@ const TRACK_FILLS: f32 = 240.0;
 // leaves none. Drawn by the lit pass only: the prepass and the shadows
 // keep the untrodden surface.
 fn ground_track(p: vec3<f32>, lying: f32) -> vec3<f32> {
-  let t = trample_tap(fx.trample, p.xz);
+  let t = trample_tap(trample_grid, p.xz);
   if (!t.ok) { return vec3<f32>(0.0); }
   let depth = max(frame.weather_depth.x, 0.05);
   let tr = trample_blend(
@@ -615,7 +611,9 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, gr
     n = normalize(n + vec3<f32>(track.x, 0.0, track.y));
   }
   if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) {
-    return debug_unsupported(clip);
+    // Debug (DebugView::AmbientOcclusion): the screen occlusion here.
+    let ao = textureSampleLevel(ssao_tex, fx_sampler, clip * fx.screen.zw, 0.0).r;
+    return vec4<f32>(vec3<f32>(select(1.0, ao, fx.ao.x > 0.5)), 1.0);
   }
   if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) {
     return vec4<f32>(s.albedo, 1.0);
@@ -660,10 +658,9 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, gr
   sun.direct += through;
   // The caustics, the local lights and the light around the ground, as
   // every lit surface's (surface_shade.wgsl): under the sky its horizon
-  // and the far grass leave, with what the decals on it emit. The
-  // terrain's pipelines have no texture slot left for the screen's
-  // occlusion (`screen` false).
-  let at = ShadeAt(p, n, v, clip, false, true, true);
+  // and the far grass leave, with what the decals on it emit, and the
+  // screen's occlusion: what stands on the ground darkens it round its foot.
+  let at = ShadeAt(p, n, v, clip, true, true, true);
   let lit = surface_shade(s, at, sun, n_dot_l * shadow, decal_emissive, 1.0, sky);
   let view = u32(frame.light_color.w);
   if (view > 3u) { return vec4<f32>(shaded_debug(lit, s.albedo, view), 1.0); }

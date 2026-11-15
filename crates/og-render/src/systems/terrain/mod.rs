@@ -59,7 +59,7 @@
 //! terrain first uses it. A terrain of separate textures draws exactly as
 //! before.
 
-mod fx;
+pub(crate) mod fx;
 mod renderer;
 pub(crate) use renderer::*;
 

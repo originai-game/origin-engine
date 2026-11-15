@@ -85,10 +85,10 @@ const TERRAIN_LAYERS_WGSL: &str = wgsl3d!("terrain_layers.wgsl");
 /// The clipmap's mesh with its displacement (after [`TERRAIN_LAYERS_WGSL`]):
 /// the lit and shadow modules' `terrain_local_vertex`.
 const TERRAIN_VERTEX_WGSL: &str = wgsl3d!("terrain_vertex.wgsl");
-/// What the ground takes of the shared shading: the weather, and the
-/// decals over its own bindings (terrain_lit.wgsl declares them; it has no
-/// effect group, so no screen AO).
-const SHADING: crate::Shading = crate::Shading::lit().weather().decals();
+/// What the ground takes of the shared shading: the weather, and the lit
+/// passes' effect group at group 3 with the screen AO and the decals
+/// (`fx.rs`: the trample map after them).
+const SHADING: crate::Shading = crate::Shading::lit().weather().effects(3).decals();
 
 /// The terrain's lit module: the frame, the shared shading, then the
 /// ground.
