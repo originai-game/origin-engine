@@ -1,0 +1,6 @@
+type look
+version 1
+---
+# Names the bundled cartoon pack so the cook bundles it (@styles/cartoon/); the sheet loads it itself.
+name "screens sheet cartoon"
+ui "cartoon"

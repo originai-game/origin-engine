@@ -10,14 +10,14 @@
 // components by name, as a game does, with fixture stores. The world tags
 // and ground marks are the world sheet's (sheets/world).
 //
-// Commands: style:<fantasy|scifi|default>, page:<hud|panels|states>,
+// Commands: style:<fantasy|scifi|cartoon|default>, page:<hud|panels|states>,
 // reduced:<on|off>.
 
 import { og, type UiReadable, type World } from "@origingame/engine";
 import { FIXTURES, NAMES } from "./fixtures.ts";
 
 const PAGES = ["hud", "panels", "states"] as const;
-const STYLES = ["fantasy", "scifi", "default"] as const;
+const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 
 const DOCUMENTS = ["ui/hud.svelte", "ui/panels.svelte", "ui/states.svelte", "ui/sheet.svelte"];
 

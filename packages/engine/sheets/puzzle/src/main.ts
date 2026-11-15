@@ -12,7 +12,7 @@ import { og, type UiReadable, type World } from "@origingame/engine";
 import { FIXTURES, NAMES } from "./fixtures.ts";
 
 const PAGES = ["play", "map", "states"] as const;
-const STYLES = ["fantasy", "scifi", "default"] as const;
+const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 
 const DOCUMENTS = ["ui/play.svelte", "ui/map.svelte", "ui/states.svelte", "ui/sheet.svelte"];
 

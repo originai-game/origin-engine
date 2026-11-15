@@ -7,13 +7,13 @@
 // state's fixture as its viewmodel; a component screen (card, table,
 // confirm) is mounted with the state's fixture as its stores.
 //
-// Commands: style:<fantasy|scifi|default>, page:<screen>[:<state>],
+// Commands: style:<fantasy|scifi|cartoon|default>, page:<screen>[:<state>],
 // state:<state> (og ui review --states), reduced:<on|off>.
 
 import { og, type UiReadable, type World } from "@origingame/engine";
 import { FIXTURES, NAMES } from "./fixtures.ts";
 
-const STYLES = ["fantasy", "scifi", "default"] as const;
+const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 
 /** The screens that are layers (`<meta name="screen">`); the rest are components. */
 const LAYERS = new Set([

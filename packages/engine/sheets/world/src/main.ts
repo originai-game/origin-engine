@@ -11,14 +11,14 @@
 // Damage numbers rise and fade within a second of their hit, so each screen
 // sends `hits` just before its capture: every hit again, as new rows.
 //
-// Commands: style:<fantasy|scifi|default>, page:<field|crowd>, hits,
+// Commands: style:<fantasy|scifi|cartoon|default>, page:<field|crowd>, hits,
 // reduced:<on|off>.
 
 import { og, type UiReadable, type World } from "@origingame/engine";
 import { FIXTURES, NAMES } from "./fixtures.ts";
 
 const PAGES = ["field", "crowd"] as const;
-const STYLES = ["fantasy", "scifi", "default"] as const;
+const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 
 const DOCUMENTS = ["ui/field.svelte", "ui/crowd.svelte", "ui/sheet.svelte"];
 

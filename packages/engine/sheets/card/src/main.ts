@@ -11,7 +11,7 @@ import { og, type World } from "@origingame/engine";
 import { BUILDER, INK_NAMES, RUN, TABLE } from "./fixtures.ts";
 
 const PAGES = ["table", "builder", "run"] as const;
-const STYLES = ["fantasy", "scifi"] as const;
+const STYLES = ["fantasy", "scifi", "cartoon"] as const;
 
 const DOCUMENTS = [
   "ui/table.svelte",

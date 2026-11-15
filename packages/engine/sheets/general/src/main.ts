@@ -12,7 +12,7 @@ import { og, type World } from "@origingame/engine";
 import { INK_NAMES, PROGRESS, SOCIAL, STATES, STORE } from "./fixtures.ts";
 
 const PAGES = ["store", "progress", "social", "states"] as const;
-const STYLES = ["fantasy", "scifi"] as const;
+const STYLES = ["fantasy", "scifi", "cartoon"] as const;
 
 const DOCUMENTS = [
   "ui/store.svelte",

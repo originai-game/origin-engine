@@ -14,7 +14,7 @@ import { og, type UiReadable, type World } from "@origingame/engine";
 import { FIXTURES, NAMES } from "./fixtures.ts";
 
 const PAGES = ["select", "match", "states"] as const;
-const STYLES = ["fantasy", "scifi", "default"] as const;
+const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 const PICTURES = ["brenna", "idris", "maren", "sela", "ysolde", "lurker", "oarsman"];
 
 const DOCUMENTS = ["ui/select.svelte", "ui/match.svelte", "ui/states.svelte", "ui/sheet.svelte"];
