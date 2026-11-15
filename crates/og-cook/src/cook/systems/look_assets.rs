@@ -5,7 +5,7 @@
 pub const PRESETS: &[(&str, &str)] = &[
     (
         "16bit-pixel",
-        include_str!("../../../../../templates/looks/16bit-pixel.ogt"),
+        include_str!("../../../../../templates/looks/pixel.ogt"),
     ),
     (
         "8bit-pixel",
@@ -179,17 +179,17 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     (
         "bright",
         Some("monochrome-dither-3d"),
-        include_str!("../../../../../templates/looks/moods/bright/monochrome-dither-3d.ogt"),
+        include_str!("../../../../../templates/looks/moods/bright/low-resolution-3d.monochrome-dither.ogt"),
     ),
     (
         "bright",
         Some("monochrome-pixel"),
-        include_str!("../../../../../templates/looks/moods/bright/monochrome-pixel.ogt"),
+        include_str!("../../../../../templates/looks/moods/bright/pixel.monochrome.ogt"),
     ),
     (
         "bright",
         Some("muted-cinematic-3d"),
-        include_str!("../../../../../templates/looks/moods/bright/muted-cinematic-3d.ogt"),
+        include_str!("../../../../../templates/looks/moods/bright/cinematic-realism.muted.ogt"),
     ),
     (
         "dark",
@@ -199,7 +199,7 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     (
         "dark",
         Some("bold-comic-illustration"),
-        include_str!("../../../../../templates/looks/moods/dark/bold-comic-illustration.ogt"),
+        include_str!("../../../../../templates/looks/moods/dark/inked-comic-3d.bold-comic.ogt"),
     ),
     (
         "dark",
@@ -209,12 +209,12 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     (
         "dark",
         Some("monochrome-dither-3d"),
-        include_str!("../../../../../templates/looks/moods/dark/monochrome-dither-3d.ogt"),
+        include_str!("../../../../../templates/looks/moods/dark/low-resolution-3d.monochrome-dither.ogt"),
     ),
     (
         "dark",
         Some("monochrome-pixel"),
-        include_str!("../../../../../templates/looks/moods/dark/monochrome-pixel.ogt"),
+        include_str!("../../../../../templates/looks/moods/dark/pixel.monochrome.ogt"),
     ),
     (
         "warm",
@@ -224,12 +224,12 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     (
         "warm",
         Some("monochrome-dither-3d"),
-        include_str!("../../../../../templates/looks/moods/warm/monochrome-dither-3d.ogt"),
+        include_str!("../../../../../templates/looks/moods/warm/low-resolution-3d.monochrome-dither.ogt"),
     ),
     (
         "warm",
         Some("monochrome-pixel"),
-        include_str!("../../../../../templates/looks/moods/warm/monochrome-pixel.ogt"),
+        include_str!("../../../../../templates/looks/moods/warm/pixel.monochrome.ogt"),
     ),
     (
         "cold",
@@ -239,12 +239,12 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     (
         "cold",
         Some("monochrome-dither-3d"),
-        include_str!("../../../../../templates/looks/moods/cold/monochrome-dither-3d.ogt"),
+        include_str!("../../../../../templates/looks/moods/cold/low-resolution-3d.monochrome-dither.ogt"),
     ),
     (
         "cold",
         Some("monochrome-pixel"),
-        include_str!("../../../../../templates/looks/moods/cold/monochrome-pixel.ogt"),
+        include_str!("../../../../../templates/looks/moods/cold/pixel.monochrome.ogt"),
     ),
     (
         "soft",
@@ -254,12 +254,12 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     (
         "soft",
         Some("monochrome-dither-3d"),
-        include_str!("../../../../../templates/looks/moods/soft/monochrome-dither-3d.ogt"),
+        include_str!("../../../../../templates/looks/moods/soft/low-resolution-3d.monochrome-dither.ogt"),
     ),
     (
         "soft",
         Some("muted-cinematic-3d"),
-        include_str!("../../../../../templates/looks/moods/soft/muted-cinematic-3d.ogt"),
+        include_str!("../../../../../templates/looks/moods/soft/cinematic-realism.muted.ogt"),
     ),
     (
         "high-contrast",
@@ -274,7 +274,7 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     (
         "high-contrast",
         Some("monochrome-pixel"),
-        include_str!("../../../../../templates/looks/moods/high-contrast/monochrome-pixel.ogt"),
+        include_str!("../../../../../templates/looks/moods/high-contrast/pixel.monochrome.ogt"),
     ),
 ];
 
