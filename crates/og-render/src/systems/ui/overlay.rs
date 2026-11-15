@@ -974,14 +974,16 @@ impl OverlayRenderer {
 
     /// The uniform (`UiFrame`) for `overlay` on an output of
     /// `width`×`height` device pixels: its scale, or (0) the scale that
-    /// fits its height to the output.
+    /// fits its height to the output; `wide` when the output keeps
+    /// Display P3 (a gradient maps into that gamut, not sRGB's).
     pub fn uniform(
         width: u32,
         height: u32,
         overlay: &Overlay,
         encode: bool,
         format: wgpu::TextureFormat,
-    ) -> [f32; 8] {
+        wide: bool,
+    ) -> [f32; 12] {
         let scale = Self::scale(height, overlay);
         [
             width as f32,
@@ -992,6 +994,10 @@ impl OverlayRenderer {
             0.0,
             overlay.ui.time,
             dither_step(format),
+            wide as u32 as f32,
+            0.0,
+            0.0,
+            0.0,
         ]
     }
 

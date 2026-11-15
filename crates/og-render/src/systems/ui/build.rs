@@ -251,7 +251,7 @@ impl UiTables {
             self.points.push(offsets);
         }
         // A stop outside the output's gamut keeps its colour (OKLab has no
-        // gamut): the mix is clipped where it is drawn, pixel by pixel.
+        // gamut): the mix is gamut mapped where it is drawn, pixel by pixel.
         for s in &stops {
             let a = s.color[3].clamp(0.0, 1.0);
             let lab = oklab([s.color[0], s.color[1], s.color[2]]);

@@ -8,7 +8,7 @@ pub(super) struct UploadUiInputs<'a> {
     pub scene: &'a RenderScene,
     pub cam: &'a frame::CameraFrame,
     pub overlay_frame: &'a Option<crate::overlay::OverlayFrame>,
-    pub ui_uniform: Option<[f32; 8]>,
+    pub ui_uniform: Option<[f32; 12]>,
     pub glass_on: bool,
 }
 

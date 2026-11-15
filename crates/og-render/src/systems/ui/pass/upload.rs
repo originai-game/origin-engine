@@ -17,7 +17,7 @@ impl UiRenderer {
         overlay_layout: &wgpu::BindGroupLayout,
         scene: &RenderScene,
         frame: &OverlayFrame,
-        uniform: [f32; 8],
+        uniform: [f32; 12],
         backdrop: Option<(
             &wgpu::TextureView,
             &wgpu::TextureView,
@@ -63,7 +63,7 @@ impl UiRenderer {
         );
         let need = 1 + frame.layers.len();
         while self.uniforms.len() < need {
-            self.uniforms.push(uniform_buffer(device, "ui frame", 32));
+            self.uniforms.push(uniform_buffer(device, "ui frame", 48));
         }
         while self.layer_params.len() < frame.layers.len() {
             self.layer_params.push(uniform_buffer(
@@ -281,8 +281,13 @@ impl UiRenderer {
                 plan.origin[0],
                 plan.origin[1],
                 uniform[6],
-                // A layer reaches the output: dithered for the output's codes.
+                // A layer reaches the output: dithered for the output's
+                // codes, mapped into its gamut.
                 uniform[7],
+                uniform[8],
+                0.0,
+                0.0,
+                0.0,
             ];
             queue.write_buffer(&self.uniforms[n + 1], 0, bytemuck::cast_slice(&u));
             let builtin = match layer.material {

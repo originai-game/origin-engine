@@ -13,6 +13,9 @@ struct UiFrame {
   // output); z: the UI clock in seconds; w: one code value of the output,
   // encoded (1/255 for 8 bits), a gradient's dither.
   origin: vec4<f32>,
+  // x: 1 when the output keeps Display P3 (a wide surface), whose gamut a
+  // gradient maps into; 0 for sRGB.
+  display: vec4<f32>,
 };
 @group(0) @binding(0) var<uniform> frame: UiFrame;
 
@@ -892,6 +895,25 @@ fn stop_color(g: UiGradient, i: u32) -> vec4<f32> {
   return points[u32(g.stops.x) + (u32(g.head.y) + 3u) / 4u + i];
 }
 
+// Linear `c` on the sRGB curve, as a gradient averages and dithers it: on
+// a P3 output, whose sRGB channels go below 0 and above 1, mirrored below
+// zero as extended sRGB is (the display transfer limits it to P3); on an
+// sRGB output, within its codes.
+fn gradient_encode(c: vec3<f32>, p3: bool) -> vec3<f32> {
+  if (p3) {
+    return sign(c) * srgb_encode(abs(c));
+  }
+  return encode(c);
+}
+
+// gradient_encode's inverse.
+fn gradient_decode(c: vec3<f32>, p3: bool) -> vec3<f32> {
+  if (p3) {
+    return sign(c) * srgb_decode(abs(c));
+  }
+  return decode(c);
+}
+
 // Gradient `gi` at `f` (fractions of a box of `size` CSS px), straight
 // alpha, linear; `pixel` the device pixel, for the dither.
 fn gradient_color(gi: u32, f: vec2<f32>, size: vec2<f32>, pixel: vec2<f32>) -> vec4<f32> {
@@ -951,21 +973,24 @@ fn gradient_color(gi: u32, f: vec2<f32>, size: vec2<f32>, pixel: vec2<f32>) -> v
       c = mix(stop_color(g, lo), stop_color(g, hi), k);
     }
   }
-  var rgb = oklab_decode(c.xyz / max(c.w, 1e-6));
+  // A mix of two stops inside the output's gamut can leave it (a hue
+  // turned in OKLCh, a wide oklch or P3 stop): mapped into the gamut the
+  // output keeps (CSS Color 4 §13.2), not clipped per channel.
+  let p3 = frame.display.x > 0.5;
+  var rgb = gamut_map(c.xyz / max(c.w, 1e-6), p3);
   if (collapsed && count > 1u) {
     // CSS Images 3 §3.3: coincident stops are averaged as equally spaced
     // stops in premultiplied sRGBA, with half weight at the two endpoints.
     var average = vec4<f32>(0.0);
     for (var i = 0u; i < count; i++) {
       let stop = stop_color(g, i);
-      let color = encode(max(oklab_decode(stop.xyz / max(stop.w, 1e-6)), vec3<f32>(0.0)));
+      let color = gradient_encode(gamut_map(stop.xyz / max(stop.w, 1e-6), p3), p3);
       let weight = select(1.0, 0.5, i == 0u || i == count - 1u) / f32(count - 1u);
       average += vec4<f32>(color * stop.w, stop.w) * weight;
     }
-    rgb = decode(average.xyz / max(average.w, 1e-6));
+    rgb = gradient_decode(average.xyz / max(average.w, 1e-6), p3);
     c.w = average.w;
   }
-  rgb = max(rgb, vec3<f32>(0.0));
   if (g.head.w > 0.5) {
     // Triangular noise of an output code value either way, encoded, after
     // the mix: a shallow ramp shows no steps where the output stores it,
@@ -975,7 +1000,11 @@ fn gradient_color(gi: u32, f: vec2<f32>, size: vec2<f32>, pixel: vec2<f32>) -> v
     // spread (Gjøl, "Banding in Games", 2016).
     let u = ign(pixel) * 2.0 - 1.0;
     let n = sign(u) * (1.0 - sqrt(1.0 - abs(u))) * frame.origin.w;
-    rgb = decode(clamp(encode(rgb) + vec3<f32>(n), vec3<f32>(0.0), vec3<f32>(1.0)));
+    var dithered = gradient_encode(rgb, p3) + vec3<f32>(n);
+    if (!p3) {
+      dithered = clamp(dithered, vec3<f32>(0.0), vec3<f32>(1.0));
+    }
+    rgb = gradient_decode(dithered, p3);
   }
   return vec4<f32>(rgb, c.w);
 }
