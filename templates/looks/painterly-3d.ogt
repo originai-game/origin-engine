@@ -2,9 +2,9 @@ type look
 version 1
 ---
 # Broad anisotropic brush strokes (the widest the filter takes) that flatten
-# the lit scene into colour masses, pigment pooling at their rims and bleed
-# between them, a few soft tone steps, all on a woven canvas (the engine's
-# @canvas/linen).
+# the lit scene into colour masses, each mass laid in visible strokes with
+# ragged edges, pigment pooling at their rims and bleed between them, a few
+# soft tone steps, all on a woven canvas (the engine's @canvas/linen).
 name "Painterly 3D"
 mood "warm"
 ui "fantasy"
@@ -13,6 +13,7 @@ Stylise {
   paintAnisotropy 0.9
   paintEdgeDarkening 0.7
   paintBleed 0.5
+  paintStrokes 0.7
   paintCanvas "@canvas/linen"
   paintCanvasStrength 0.7
   posterize 12

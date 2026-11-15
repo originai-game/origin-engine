@@ -1,21 +1,23 @@
 type look
 version 1
 ---
-# Wide anisotropic strokes, heavy pigment pooling and bleed, a lifted exposure.
+# Bolder than the base: full brush strokes with their marks and ragged edges
+# at their strongest, heavy pigment pooling, saturated colour with more
+# contrast and no tone steps, and a lifted exposure.
 # The expressionist variant of painterly-3d (`variant "expressionist"`): only what it changes of
 # the preset, a field it turns off written at its default.
 name "Expressionist painting"
 mood "high-contrast"
 Stylise {
-  paintRadius 5
-  paintAnisotropy 0.9
-  paintEdgeDarkening 0.7
-  paintBleed 0.5
+  paintEdgeDarkening 1
+  paintStrokes 1
   paintCanvasStrength 0
   posterize 0
   posterizeMode channel
 }
 PostEffects {
+  saturation 0.45
+  contrast 0.15
   vignette false
   vignetteIntensity 0.35
 }
