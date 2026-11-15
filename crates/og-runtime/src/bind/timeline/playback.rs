@@ -704,6 +704,7 @@ fn timeline_system(
                 &mut lt,
                 &mut run,
                 &Step {
+                    owner: e,
                     t,
                     playing,
                     spans: &spans,

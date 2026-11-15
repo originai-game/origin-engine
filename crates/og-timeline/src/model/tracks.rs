@@ -21,9 +21,9 @@ pub(super) fn track(e: &Entry, read: &mut Read<'_>) -> Result<Track, String> {
     };
     let needs_target = matches!(
         kind,
-        "transform" | "animation" | "light" | "visibility" | "blendshape" | "material" | "video"
+        "transform" | "animation" | "light" | "visibility" | "blendshape" | "material"
     );
-    let may_target = needs_target || kind == "property";
+    let may_target = needs_target || matches!(kind, "property" | "video");
     match (&target, needs_target) {
         _ if may_target && !needs_target => {}
         (None, true) => {

@@ -443,7 +443,9 @@ fn write_track(tr: &Track) -> Entry {
             }
         }
         Track::Video(v) => {
-            head = head.with(Value::String(v.entity.clone()));
+            if !v.entity.is_empty() {
+                head = head.with(Value::String(v.entity.clone()));
+            }
             for k in &v.keys {
                 let mut kb = Block::new();
                 kb.push(Entry::new("video").with(Value::String(k.video.clone())));

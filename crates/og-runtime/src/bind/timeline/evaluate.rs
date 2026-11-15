@@ -61,6 +61,8 @@ pub(super) struct Evaluated {
 
 /// What a tick's evaluation of one timeline is given.
 pub(super) struct Step<'a> {
+    /// The og.Timeline's entity (a video track without an entity plays on it).
+    pub owner: Entity,
     pub t: f32,
     pub playing: bool,
     pub spans: &'a [(f64, f64)],
@@ -84,6 +86,7 @@ pub(super) fn evaluate(
     out: &mut Evaluated,
 ) -> og_core::Result<()> {
     let Step {
+        owner,
         t,
         playing,
         spans,
@@ -103,7 +106,7 @@ pub(super) fn evaluate(
             Track::Vfx(keys) if playing => {
                 effects(ctx, engine_id, r, lt, run, (ti32, keys), t, spans, dt)?;
             }
-            Track::Video(v) => video(ctx, engine_id, r, lt, v, t, playing.then_some(speed))?,
+            Track::Video(v) => video(ctx, engine_id, r, lt, v, step)?,
             Track::Fields(f) if f.kind != og_timeline::FieldsKind::Material => {
                 fields(ctx, engine_id, &lt.id, f, t)?;
             }
@@ -136,6 +139,7 @@ pub(super) fn evaluate(
                     &mut cl,
                     run,
                     &Step {
+                        owner,
                         t: eval::child_time(k, t, d),
                         playing,
                         spans: &cspans,
@@ -565,9 +569,10 @@ fn shot(
     Ok(())
 }
 
-/// A video track at `t`: the entity's og.VideoPlayer plays the key's video
-/// from `from + (t − key) · speed`, at the timeline's speed while it plays
-/// (`speed` None: paused, the player holds that frame). og.video runs
+/// A video track at the step's `t`: the entity's og.VideoPlayer (the step
+/// owner's without a name) plays the key's video from
+/// `from + (t − key) · speed`, at the timeline's speed while it plays
+/// (paused: the player holds that frame). og.video runs
 /// before og.timeline, so the time written is the one its next tick
 /// advances from.
 fn video(
@@ -576,16 +581,21 @@ fn video(
     r: &Rec,
     lt: &Loaded,
     v: &og_timeline::VideoTrack,
-    t: f32,
-    speed: Option<f32>,
+    step: &Step<'_>,
 ) -> og_core::Result<()> {
-    let Some((ki, vt)) = eval::video_at(v, t) else {
+    let speed = step.playing.then_some(step.speed);
+    let Some((ki, vt)) = eval::video_at(v, step.t) else {
         return Ok(());
     };
     let (Ok(id), Some(l)) = (ctx.id_by_name(crate::bind::video::PLAYER), &r.video) else {
         return Ok(());
     };
-    let Some(e) = ctx.find(&v.entity) else {
+    let found = if v.entity.is_empty() {
+        Some(step.owner)
+    } else {
+        ctx.find(&v.entity)
+    };
+    let Some(e) = found else {
         note(
             engine_id,
             format!(

@@ -435,6 +435,7 @@ pub struct VideoKey {
 /// A track that plays footage on an entity's og.VideoPlayer.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct VideoTrack {
+    /// The entity by name; empty: the og.Timeline's own.
     pub entity: String,
     pub keys: Vec<VideoKey>,
 }

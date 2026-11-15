@@ -2,7 +2,7 @@
   "added": [
     {
       "member": "type timeline track video",
-      "summary": "A timeline's `video` track plays footage on an entity's og.VideoPlayer: `track video \"deck\" { key 0 { video \"clips/kitchen.ogt\" from 0 speed 1 } }`. The video's time is `from + (t − key) · speed` at the timeline's time, so seeking a timeline and playing it to the same moment show the same frame, and several segments can share one long file through `from`. Loading the timeline loads its videos; the cook refuses a video it does not have."
+      "summary": "A timeline's `video` track plays footage on an og.VideoPlayer: `track video \"tv\" { key 0 { video \"clips/kitchen.ogt\" from 0 speed 1 } }` plays on the entity named `tv`, `track video { … }` on the og.Timeline's own entity. The video's time is `from + (t − key) · speed` at the timeline's time, so seeking a timeline and playing it to the same moment show the same frame, and several segments can share one long file through `from`. Loading the timeline loads its videos; the cook refuses a video it does not have."
     }
   ]
 }
