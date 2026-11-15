@@ -44,7 +44,9 @@
 //! [`SPACING`] metres apart (a fight with many effects on screen), in one
 //! traced run framed to show the whole grid: the frame's and each render
 //! pass's GPU milliseconds over the empty stage, at the run's peak (90th
-//! percentile) and typical (median) frame, and three frames of it tiled into
+//! percentile) and typical (median) frame, the same rows for the CPU's
+//! time recording them (`cpu`: a pass's draws and dispatches are its CPU
+//! time), and three frames of it tiled into
 //! `<out>/together.png`, written to `<out>/together.json`. Each effect starts
 //! at its origin on the ground, whatever its anchor.
 //!
@@ -752,9 +754,44 @@ fn shots(
     Ok(done)
 }
 
-/// A rendered frame of a trace: its tick, its GPU milliseconds and each
-/// pass's.
+/// A rendered frame of a trace: its tick, its milliseconds and each
+/// pass's, on the GPU ([`gpu_frames`]) or the CPU ([`cpu_frames`]).
 type GpuFrame = (f64, f64, Vec<(String, f64)>);
+
+/// The trace's rendered frames as the CPU spent them: recording and
+/// submitting each frame and each of its passes (the draws a pass issues
+/// are its CPU time).
+fn cpu_frames(trace: &Path) -> Result<Vec<GpuFrame>, String> {
+    let text = std::fs::read(trace).map_err(|e| format!("{}: {e}", trace.display()))?;
+    let doc: Value =
+        serde_json::from_slice(&text).map_err(|e| format!("{}: {e}", trace.display()))?;
+    let none = Vec::new();
+    let events = doc["traceEvents"]
+        .as_array()
+        .or(doc.as_array())
+        .unwrap_or(&none);
+    let mut frames: std::collections::BTreeMap<u64, (f64, Vec<(String, f64)>)> = Default::default();
+    for e in events.iter().filter(|e| e["ph"] == "X") {
+        let (Some(tick), Some(name)) = (e["args"]["tick"].as_u64(), e["name"].as_str()) else {
+            continue;
+        };
+        let ms = e["dur"].as_f64().unwrap_or(0.0) / 1000.0;
+        let slot = frames.entry(tick).or_default();
+        if e["cat"] == "render" && name.starts_with("frame ") {
+            slot.0 += ms;
+        } else if e["cat"] == "pass" {
+            match slot.1.iter_mut().find(|p| p.0 == name) {
+                Some(p) => p.1 += ms,
+                None => slot.1.push((name.to_string(), ms)),
+            }
+        }
+    }
+    Ok(frames
+        .into_iter()
+        .filter(|(_, f)| f.0 > 0.0)
+        .map(|(tick, (ms, passes))| (tick as f64, ms, passes))
+        .collect())
+}
 
 fn gpu_frames(trace: &Path) -> Result<Vec<GpuFrame>, String> {
     let text = std::fs::read(trace).map_err(|e| format!("{}: {e}", trace.display()))?;
@@ -944,48 +981,56 @@ fn together(
         .save(&sheet_path)
         .map_err(|e| format!("{}: {e}", sheet_path.display()))?;
     stage.done(&dir);
-    let frames = gpu_frames(&trace)?;
+    let gpu = gpu_frames(&trace)?;
+    let cpu = cpu_frames(&trace)?;
     let _ = std::fs::remove_file(&trace);
-    let base: Vec<_> = frames
-        .iter()
-        .filter(|f| f.0 >= BASE_FROM * TICK && f.0 < start * TICK)
-        .collect();
-    let window: Vec<_> = frames
-        .iter()
-        .filter(|f| f.0 >= start * TICK + WARM && f.0 <= end * TICK)
-        .collect();
-    if base.is_empty() || window.is_empty() {
+    // Each clock's frame, then each pass the effects grew by a microsecond
+    // or more.
+    let growth = |frames: &[GpuFrame]| {
+        let base: Vec<_> = frames
+            .iter()
+            .filter(|f| f.0 >= BASE_FROM * TICK && f.0 < start * TICK)
+            .collect();
+        let window: Vec<_> = frames
+            .iter()
+            .filter(|f| f.0 >= start * TICK + WARM && f.0 <= end * TICK)
+            .collect();
+        if base.is_empty() || window.is_empty() {
+            return None;
+        }
+        let row = |of: &dyn Fn(&GpuFrame) -> f64| {
+            let was = median(base.iter().map(|f| of(f)).collect());
+            let all: Vec<f64> = window.iter().map(|f| of(f)).collect();
+            json!({
+                "emptyMs": round3(was),
+                "peakMs": round3((p90(all.clone(), was) - was).max(0.0)),
+                "typicalMs": round3((median(all) - was).max(0.0)),
+            })
+        };
+        let mut names: Vec<&str> = Vec::new();
+        for f in base.iter().chain(&window) {
+            for (name, _) in &f.2 {
+                if !names.contains(&name.as_str()) {
+                    names.push(name);
+                }
+            }
+        }
+        let mut passes = serde_json::Map::new();
+        for name in names {
+            let r = row(&|f: &GpuFrame| f.2.iter().find(|p| p.0 == name).map_or(0.0, |p| p.1));
+            if r["peakMs"].as_f64().unwrap_or(0.0) >= 0.001 {
+                passes.insert(name.to_string(), r);
+            }
+        }
+        Some((row(&|f: &GpuFrame| f.1), passes))
+    };
+    let Some((frame, passes)) = growth(&gpu) else {
         return Err(format!(
             "the trace has no GPU times (the renderer `{}` reports none)",
             summary["renderer"].as_str().unwrap_or("?")
         ));
-    }
-    let pass = |f: &GpuFrame, name: &str| f.2.iter().find(|p| p.0 == name).map_or(0.0, |p| p.1);
-    let mut names: Vec<String> = Vec::new();
-    for f in base.iter().chain(&window) {
-        for (name, _) in &f.2 {
-            if !names.contains(name) {
-                names.push(name.clone());
-            }
-        }
-    }
-    // The frame, then each pass the effects grew by a microsecond or more.
-    let row = |of: &dyn Fn(&GpuFrame) -> f64| {
-        let was = median(base.iter().map(|f| of(f)).collect());
-        let all: Vec<f64> = window.iter().map(|f| of(f)).collect();
-        json!({
-            "emptyMs": round3(was),
-            "peakMs": round3((p90(all.clone(), was) - was).max(0.0)),
-            "typicalMs": round3((median(all) - was).max(0.0)),
-        })
     };
-    let mut passes = serde_json::Map::new();
-    for name in &names {
-        let r = row(&|f: &GpuFrame| pass(f, name));
-        if r["peakMs"].as_f64().unwrap_or(0.0) >= 0.001 {
-            passes.insert(name.clone(), r);
-        }
-    }
+    let (cpu_frame, cpu_passes) = growth(&cpu).ok_or("the trace has no rendered frames")?;
     Ok(json!({
         "effects": effects.iter().map(|e| e.id.as_str()).collect::<Vec<_>>(),
         "spacing": SPACING,
@@ -993,8 +1038,9 @@ fn together(
         "size": format!("{}x{}", size.0, size.1),
         "shownSeconds": round3(show),
         "sheet": sheet_path,
-        "frame": row(&|f: &GpuFrame| f.1),
+        "frame": frame,
         "passes": passes,
+        "cpu": { "frame": cpu_frame, "passes": cpu_passes },
     }))
 }
 

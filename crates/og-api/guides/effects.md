@@ -174,8 +174,8 @@ is measured:
 | every effect on screen at once | 1.5 to 2 ms |
 
 - `og vfx preview --together a.ogt b.ogt ...` plays several at once on a
-  grid and reports the frame's and each pass's milliseconds: the
-  on-screen total.
+  grid and reports the frame's and each pass's milliseconds on the GPU,
+  and the CPU's for recording them (`cpu`): the on-screen total.
 - For scale: the twenty starter effects playing at once on the reference
   host add 0.32 ms to the frame at their peak and 0.18 ms typically.
   Almost all of it is the main pass drawing their sprites (overdraw); the
