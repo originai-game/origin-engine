@@ -167,27 +167,10 @@ fn effect_ramp(x: f32) -> vec4<f32> {
   return v;
 }
 
-fn fx_lattice(c: vec2<i32>) -> f32 {
-  return hash_unit((bitcast<u32>(c.x) * 73856093u) ^ (bitcast<u32>(c.y) * 19349663u));
-}
-
-// Two octaves of 2D value noise in [0, 1): the erosion's noise without a
-// texture.
+// Two octaves of 2D value noise in [0, 1) (the library's, its own layer):
+// the erosion's noise without a texture.
 fn effect_value_noise(p: vec2<f32>) -> f32 {
-  var sum = 0.0;
-  var q = p;
-  var w = 0.65;
-  for (var o = 0u; o < 2u; o++) {
-    let i = vec2<i32>(floor(q));
-    let f = fract(q);
-    let u = f * f * (3.0 - 2.0 * f);
-    let a = mix(fx_lattice(i), fx_lattice(i + vec2<i32>(1, 0)), u.x);
-    let b = mix(fx_lattice(i + vec2<i32>(0, 1)), fx_lattice(i + vec2<i32>(1, 1)), u.x);
-    sum += w * mix(a, b, u.y);
-    q = q * 2.03 + vec2<f32>(17.0, 31.0);
-    w = 0.35;
-  }
-  return sum;
+  return 0.65 * value_noise2(p, 7) + 0.35 * value_noise2(p * 2.03 + vec2<f32>(17.0, 31.0), 7);
 }
 
 // What a surface hands the effect at a fragment.
