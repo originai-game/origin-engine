@@ -5,13 +5,15 @@
    pack, or og.ui.configure's `seeds` at run time, which restyles the whole
    UI. A seed is any CSS colour, given once for both schemes: each scheme
    moves what it derives to the luminance its text needs for 4.5:1 (focus
-   rings, rims and team marks 3:1), keeping the seed's hue. `primary` is the brand: the primary fill and
-   its states. `accent` (by default the primary) is the second accent: the
+   rings and rims 3:1), keeping the seed's hue. `primary` is the brand: the
+   primary fill and its states. `accent` (by default the primary) is the second accent: the
    highlight ink, the accent role and the focus ring. `neutral` (by default
    the primary's hue at chroma up to 0.012) tints the grounds, surfaces,
    lines, inks and glass at its hue, its chroma up to 0.04. `danger`, `warn`,
-   `success` and `info` are the status hues, `team` the first team's colour,
-   the other seven turned from it. The default seeds are the design
+   `success` and `info` are the status hues. `team` picks the first team:
+   of six colours every colour vision tells apart (vermilion, yellow, bluish
+   green, blue, violet, reddish purple), the one nearest its hue, the next
+   five following in Okabe-Ito order; teams 7 and 8 are fixed. The default seeds are the design
    language's neutral chrome: a near-black primary in light, a near-white one
    in dark. */
 :root {

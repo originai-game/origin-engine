@@ -469,6 +469,9 @@ bars it does not hold, this guide does:
   (ΔEOK) under protanopia, deuteranopia and tritanopia, as
   `og style check` simulates them; under 0.05 they read as one colour.
   Where a set cannot, the meaning also takes a shape, an icon or a label.
+  The default teams 1 to 6 hold 0.1 for any team seed; past six teams
+  colour alone cannot (teams 7 and 8 hold 0.07), so a game with more than
+  six sides gives each a second cue: a shape, a pattern or an icon.
 - **Touch**: a control's shorter side at least 44 CSS px on a coarse
   pointer, and 8 px between neighbouring targets; primary actions in the
   bottom half on a phone held in portrait.

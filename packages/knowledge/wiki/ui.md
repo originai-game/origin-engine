@@ -35,7 +35,7 @@ module ui {
 | [`Paint`](ui/type-Paint.md) | desc struct |  | A colour: a theme token, a role of the style, or a Color (linear RGB, as every Color of the API), with an opacity. |
 | [`Viewport`](ui/type-Viewport.md) | struct |  | The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit. |
 | [`UiDesc`](ui/type-UiDesc.md) | desc struct |  | How the UI looks: the scheme, the density, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. |
-| [`UiSeeds`](ui/type-UiSeeds.md) | desc struct |  | The colours a UI palette is derived from (packages/design/tokens/seed.css): every ground, ink, accent, state, status and team colour follows them, each scheme keeping its text at 4.5:1 and its focus … |
+| [`UiSeeds`](ui/type-UiSeeds.md) | desc struct |  | The colours a UI palette is derived from (packages/design/tokens/seed.css): every ground, ink, accent, state, status and team colour follows them, each scheme keeping its text and team inks at 4.5:1,… |
 | [`UiSounds`](ui/type-UiSounds.md) | desc struct |  | Sounds the UI plays through og-audio (the ui bus) on its events; null is silent. |
 | [`TypeStep`](ui/type-TypeStep.md) | struct |  | One step of the type ramp. |
 | [`ControlSizes`](ui/type-ControlSizes.md) | struct |  | The control, row and header heights and the gutter of the density in effect. |

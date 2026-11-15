@@ -1226,8 +1226,8 @@ tokens as CSS relative colours (`packages/design/tokens/seed.css` and
 `color.css`, packages/design/design-language.md §Colour). These are
 expressions resolved when drawn. A pack sets the palette by setting seeds in
 its `:root`, once for both schemes, and the derivation keeps each scheme's
-text at 4.5:1 and its focus ring, rims and team marks at 3:1 whatever the
-seeds. A pack that sets a derived token itself (`--primary`) keeps it and
+text and team inks at 4.5:1, its focus ring and rims at 3:1, and teams 1 to
+6 0.1 apart in OKLab under every colour vision, whatever the seeds. A pack that sets a derived token itself (`--primary`) keeps it and
 gives up the derivation for it. A game sets seeds at run time with
 `og.ui.configure`'s `seeds` (UiSeeds), written as root tokens over the
 style's. Calling it again with new seeds (a faction, the time of day)

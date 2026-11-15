@@ -586,6 +586,36 @@ fn any_seeds_keep_the_contrast_pairs() {
                         );
                     }
                 }
+                // The teams as each colour vision sees them (og style
+                // check's simulation): teams 1 to 6 stay 0.1 apart in
+                // OKLab, and 7 and 8, past what colour alone holds, 0.07.
+                let teams: Vec<Srgba> = (1..=8).map(|i| color(&format!("team{i}"))).collect();
+                let lab = |rgb: [u8; 3]| {
+                    use color::ColorSpaceTag as S;
+                    let l = Srgba::rgb(rgb[0], rgb[1], rgb[2]).linear();
+                    S::LinearSrgb.convert(S::Oklab, [l[0], l[1], l[2]])
+                };
+                for vision in og_draw::ColorVision::ALL {
+                    let filter = og_draw::ColorFilter::new(
+                        vision,
+                        og_draw::ColorVisionFilter::Simulate,
+                        1.0,
+                    );
+                    let seen =
+                        |c: Srgba| lab(filter.as_ref().map_or(c.rgb, |f| f.apply_srgb8(c.rgb)));
+                    for i in 0..8 {
+                        for j in i + 1..8 {
+                            let (a, b) = (seen(teams[i]), seen(teams[j]));
+                            let d = (0..3).map(|k| (a[k] - b[k]).powi(2)).sum::<f32>().sqrt();
+                            let bar = if j < 6 { 0.1 } else { 0.07 };
+                            check(
+                                format!("team{} team{} {}", i + 1, j + 1, vision.name()),
+                                d,
+                                bar,
+                            );
+                        }
+                    }
+                }
             }
         }
     }

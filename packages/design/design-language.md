@@ -86,12 +86,18 @@ to 0.04 (0.025 for inks, 0.02 for fills). The primary's tone is moved out of the
 ink reads (OKLCH lightness 0.39 to 0.74), and a primary that would vanish
 into the scheme's ground is turned to the other end of the scale. Hover is
 0.12 lighter (0.07 in dark), press 0.1 darker. The ink on it is whichever
-end reads. The status, highlight, focus and team colours keep their seed's
-hue and are scaled in linear light (CIE XYZ) to the luminance their pair
-needs: at most 0.148 for text on light grounds, at least 0.3 (0.42 for the
-highlight) on dark ones, and 0.245 or 0.195 for focus and team marks. WCAG
-contrast is a function of luminance alone, so these pairs hold for any
-seed. A style or a game sets seeds, not the colours derived from them; the
+end reads. The status, highlight, focus and team colours are scaled in
+linear light (CIE XYZ) to the luminance their pair needs: at most 0.088 for
+status text on light grounds (it also reads on its own badge wash), 0.125
+for the highlight and 0.135 for team inks; at least 0.45, 0.42 and 0.31 on
+dark ones; 0.25 or 0.195 for the focus ring. WCAG contrast is a function of
+luminance alone, so these pairs hold for any seed. The status, highlight
+and focus colours keep their seed's hue. The team colours do not: teams 1
+to 6 are six fixed entries per scheme (vermilion, yellow, bluish green,
+blue, violet, reddish purple, alternately lighter and darker) that stay 0.1
+apart in OKLab under protanopia, deuteranopia and tritanopia, and the team
+seed's hue only picks which leads, the rest following in Okabe-Ito order.
+Teams 7 and 8 are fixed and hold 0.07: past six, colour alone cannot. A style or a game sets seeds, not the colours derived from them; the
 default seeds are the neutral chrome below. og-ui's
 `tests/theme.rs` holds every pair below across a sweep of seeds.
 Glass tints (`material-thin/regular/thick`) are og-render's presets and
