@@ -236,6 +236,7 @@ pub fn effect_materials_scene() -> RenderScene {
         blend: ParticleBlend::Additive,
         layers: 1,
         hue: 0.0,
+        billboard: false,
     });
     // 3. A shield dome: a fresnel rim over scrolling hex-ish noise.
     let shield = scene.add_effect_material(EffectMaterial {
@@ -263,6 +264,7 @@ pub fn effect_materials_scene() -> RenderScene {
         blend: ParticleBlend::Additive,
         layers: 1,
         hue: 0.0,
+        billboard: false,
     });
     // 4. A slash: an open arc whose bar mask runs along it, its noise
     // scrolling with the swing and eroding the tail.
@@ -302,6 +304,7 @@ pub fn effect_materials_scene() -> RenderScene {
         blend: ParticleBlend::Additive,
         layers: 1,
         hue: 0.0,
+        billboard: false,
     });
     // 5. A trail through scrolling noise, fading to its tail by a curve.
     let streak = scene.add_effect_material(EffectMaterial {

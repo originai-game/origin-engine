@@ -238,10 +238,10 @@ pub const EMITTER_LINES: &[Line] = &[
     ),
     Line::new(
         "align",
-        "camera | velocity [<stretch>]",
+        "camera | velocity [<stretch>] | upright [<x> <y> <z>] | facing <x> <y> <z>",
         "camera",
-        "Billboards face the camera, or stretch along their velocity (stretch 0.05 when left out).",
-        "align velocity 0.1",
+        "Billboards face the camera, stretch along their velocity (stretch 0.05 when left out), stand on an axis of the emitter turning to face the eye (0 1 0 when left out: flames), or lie across one whatever the camera (facing 0 1 0: flat on the ground).",
+        "align facing 0 1 0",
     ),
     Line::new(
         "softDistance",
@@ -749,9 +749,31 @@ pub fn parse_emitter_linked(
                             .and_then(Value::as_number)
                             .map_or(0.05, |n| n.as_f32()),
                     },
+                    m @ ("upright" | "facing") => {
+                        let axis = match e.values[1..]
+                            .iter()
+                            .map(|v| v.as_number().map(|n| n.as_f32()))
+                            .collect::<Option<Vec<_>>>()
+                            .as_deref()
+                        {
+                            Some([x, y, z]) => glam::Vec3::new(*x, *y, *z),
+                            Some([]) if m == "upright" => glam::Vec3::Y,
+                            _ => glam::Vec3::ZERO,
+                        };
+                        if axis.length_squared() < 1e-12 {
+                            return Err(format!(
+                                "line {line}: align {m} takes an axis <x> <y> <z>"
+                            ));
+                        }
+                        if m == "upright" {
+                            ParticleAlign::Upright { axis }
+                        } else {
+                            ParticleAlign::Facing { normal: axis }
+                        }
+                    }
                     other => {
                         return Err(format!(
-                            "line {line}: align `{other}` (camera, velocity <stretch>)"
+                            "line {line}: align `{other}` (camera, velocity <stretch>, upright <axis>, facing <axis>)"
                         ));
                     }
                 }

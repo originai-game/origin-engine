@@ -81,9 +81,11 @@ pub(super) fn emitter_gpu(
         SheetMode::Fps(fps) => (2.0, fps),
         SheetMode::Random => (3.0, 0.0),
     };
-    let (align, stretch) = match e.align {
-        ParticleAlign::Camera => (0.0, 0.0),
-        ParticleAlign::Velocity { stretch } => (1.0, stretch),
+    let (align, stretch, axis) = match e.align {
+        ParticleAlign::Camera => (0.0, 0.0, Vec3::Y),
+        ParticleAlign::Velocity { stretch } => (1.0, stretch, Vec3::Y),
+        ParticleAlign::Upright { axis } => (2.0, 0.0, axis.normalize_or(Vec3::Y)),
+        ParticleAlign::Facing { normal } => (3.0, 0.0, normal.normalize_or(Vec3::Y)),
     };
     let (bounce, friction) = e.collision.map_or((0.0, 0.0), |c| (c.bounce, c.friction));
     let max = e.max_particles;
@@ -188,5 +190,6 @@ pub(super) fn emitter_gpu(
         height_t,
         height_v,
         counts3: [height_n, 0.0, 0.0, 0.0],
+        axis: axis.extend(0.0).to_array(),
     }
 }

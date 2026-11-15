@@ -95,18 +95,24 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
     center = (emitter.transform * vec4<f32>(center, 1.0)).xyz;
     vel = (emitter.transform * vec4<f32>(vel, 0.0)).xyz;
   }
-  let right = view.cam_right.xyz;
-  let up = view.cam_up.xyz;
+  var right = view.cam_right.xyz;
+  var up = view.cam_up.xyz;
   var offset: vec3<f32>;
   let v2 = vec2<f32>(dot(vel, right), dot(vel, up));
   let speed = length(v2);
-  if (emitter.render.x > 0.5 && speed > 1e-4) {
+  let align = particle_align();
+  if (align == 1u && speed > 1e-4) {
     let axis = v2 / speed;
     let len = size.y + speed * emitter.render.y;
     let along = right * axis.x + up * axis.y;
     let across = right * -axis.y + up * axis.x;
     offset = along * (c.y * len) + across * (c.x * size.x);
   } else {
+    if (align >= 2u) {
+      let b = particle_basis(align, center);
+      right = b[0];
+      up = b[1];
+    }
     let rot = particle_rotation(p.misc, age, p.vel_life.w, t);
     let cs = cos(rot);
     let sn = sin(rot);
@@ -199,6 +205,31 @@ fn particle_gloss(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, c: vec4<f32>, rou
 // 0.6 of the half-size), where a soft texture is still dense: a ball as
 // wide as the quad tilts only at the edges, which a puff's alpha has
 // already faded, and both sides then read alike.
+// How its quads face: 0 the camera, 1 along the velocity, 2 upright on
+// the emitter's axis, 3 across it.
+fn particle_align() -> u32 {
+  return u32(emitter.render.x + 0.5);
+}
+
+// An upright or facing particle's right, up and normal (towards the eye
+// for an upright one) at `center`, in the world.
+fn particle_basis(align: u32, center: vec3<f32>) -> mat3x3<f32> {
+  let axis = normalize((emitter.transform * vec4<f32>(emitter.axis.xyz, 0.0)).xyz);
+  if (align == 2u) {
+    let side = cross(axis, toward_eye(center));
+    // Seen along its axis it has no side to turn to: the camera's right.
+    let right = select(view.cam_right.xyz, normalize(side), dot(side, side) > 1e-8);
+    return mat3x3<f32>(right, axis, cross(right, axis));
+  }
+  // Up: the emitter's +y laid into the plane, else its +x.
+  let ey = (emitter.transform * vec4<f32>(0.0, 1.0, 0.0, 0.0)).xyz;
+  let ex = (emitter.transform * vec4<f32>(1.0, 0.0, 0.0, 0.0)).xyz;
+  var up = ey - axis * dot(ey, axis);
+  if (dot(up, up) < 1e-6 * dot(ey, ey)) { up = ex - axis * dot(ex, axis); }
+  up = normalize(up);
+  return mat3x3<f32>(cross(up, axis), up, axis);
+}
+
 fn ball_normal(local: vec2<f32>) -> vec3<f32> {
   var q = local * (2.0 / 0.6);
   let r = length(q);
@@ -240,12 +271,29 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
   var pos = m.position * vec3<f32>(size.x, size.y, size.x);
   var nrm = m.normal;
   let speed = length(vel);
+  let align = particle_align();
   if (emitter.look.z > 1.5) {
     // An effect mesh: the entry's transform places it whole.
     center = (emitter.transform * vec4<f32>(m.position, 1.0)).xyz;
     pos = vec3<f32>(0.0);
     nrm = (emitter.transform * vec4<f32>(m.normal, 0.0)).xyz;
-  } else if (emitter.render.x > 0.5 && speed > 1e-4) {
+    if (emitter.axis.w > 0.5) {
+      // Facing the camera: its rotation and scale in the camera's frame.
+      let l = center - emitter.transform[3].xyz;
+      let b = mat3x3<f32>(view.cam_right.xyz, view.cam_up.xyz, -view.cam_forward.xyz);
+      center = emitter.transform[3].xyz + b * l;
+      nrm = b * nrm;
+    }
+  } else if (align >= 2u) {
+    // Its own +z across the quad's plane, spun about it by its rotation.
+    let b = particle_basis(align, center);
+    let rot = particle_rotation(p.misc, age, p.vel_life.w, t);
+    let z = vec3<f32>(0.0, 0.0, 1.0);
+    pos = rotate(pos, z, rot);
+    nrm = rotate(nrm, z, rot);
+    pos = b[0] * pos.x + b[1] * pos.y + b[2] * pos.z;
+    nrm = b[0] * nrm.x + b[1] * nrm.y + b[2] * nrm.z;
+  } else if (align == 1u && speed > 1e-4) {
     // +y along the velocity, stretched by the speed.
     let y = vel / speed;
     var x = cross(y, vec3<f32>(0.0, 0.0, 1.0));

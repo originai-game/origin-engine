@@ -352,6 +352,11 @@ pub struct EffectMesh {
     /// Radians it turns the hue of what it draws (as
     /// [`crate::ParticleSystem::hue`]); 0 draws it as it is.
     pub hue: f32,
+    /// Turned to face the camera, as a billboard is: `transform`'s
+    /// rotation and scale are taken in the camera's frame (x right, y up,
+    /// z towards the eye) about its position, so a ring in its xy plane
+    /// faces the eye whichever way the camera looks.
+    pub billboard: bool,
 }
 
 /// An effect ring with its own shape (a `type vfx` mesh element's `mesh

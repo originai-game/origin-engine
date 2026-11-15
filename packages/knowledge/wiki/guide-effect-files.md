@@ -35,7 +35,7 @@ Every line the three effect formats take, from the tables their parsers read: an
 | `sheet <columns> <rows> [<frames> [off \| life <cycles> \| fps <n> \| random]]` | `1 1` | The texture as a sprite sheet: a frame by age, at a rate, or one at random. |
 | `blend additive \| alpha` |  | Left out: alpha for a lit mesh (a solid chip; added it would glow white), additive for everything else. |
 | `space world \| local` | `world` | Particles left behind in the world, or carried with the emitter. |
-| `align camera \| velocity [<stretch>]` | `camera` | Billboards face the camera, or stretch along their velocity (stretch 0.05 when left out). |
+| `align camera \| velocity [<stretch>] \| upright [<x> <y> <z>] \| facing <x> <y> <z>` | `camera` | Billboards face the camera, stretch along their velocity (stretch 0.05 when left out), stand on an axis of the emitter turning to face the eye (0 1 0 when left out: flames), or lie across one whatever the camera (facing 0 1 0: flat on the ground). |
 | `softDistance <metres>` | `0` | Fade where a billboard meets the scene behind it. |
 | `collision [<bounce> [<friction>]] [depth \| colliders]` |  | Bounce (0.4) with friction (0.2) off the drawn depth (what the camera sees), or off the scene's og.Collider shapes on or off screen; sprite mode always meets the colliders. |
 | `render billboard \| sprite [<layer>] \| mesh box \| sphere \| tetrahedron \| "<model id>"` | `billboard` | 3D billboards, 2D sprites in a sprite layer, or a small mesh per particle that tumbles with its rotation (a model's first mesh). |
@@ -135,6 +135,7 @@ An element's block takes these lines; In names the elements that take one (every
 | `effect "<id>"` | mesh, trail, beam |  | Its effect material (§2); a mesh needs one. |
 | `scale <value>` | mesh | `1` | Uniform scale over its life. |
 | `spin <x> <y> <z>` | mesh | `0 0 0` | Degrees per second. |
+| `face camera` | mesh |  | Turned to face the eye as a billboard is (a glow ring seen from any side): its spin and scale kept, the effect's and its own rotation left out. Without it a mesh lies as it is placed. |
 | `blend additive \| alpha` | mesh, flipbook |  | A mesh adds by default, a flipbook blends alpha. |
 | `color <r> <g> <b> [<a>]` | mesh, trail, beam, decal, glow, flipbook, light | `1 1 1 1` | A linear colour; above 1 blooms (a light's alpha is ignored). |
 | `width <head> [<tail>]` | trail | `0.2 0` | Metres across at its head and its tail. |

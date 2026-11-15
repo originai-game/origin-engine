@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "particles: align upright, align facing",
+      "summary": "An emitter's `align upright [<x> <y> <z>]` stands its particles on an axis of the emitter, turned about it to face the eye (flames and pillars that do not tip over as the camera pitches), and `align facing <x> <y> <z>` lays them across one whatever the camera (`facing 0 1 0`: a shockwave flat on the ground); their rotation and height turn within that plane. Both simulation paths and mesh particles take them; sprite mode, which is 2D, faces the camera as before. `og vfx import` writes them for Effekseer's y-axis and fixed sprites and `align velocity` for its directional ones, all of which it drew facing the camera (1241 of the packs' conversion notes)."
+    },
+    {
+      "member": "og.EffectMesh.billboard, type vfx mesh face camera",
+      "summary": "A `face camera` line on a `type vfx` mesh element, and `og.EffectMesh.billboard`, turn an effect mesh to face the eye with its scale and spin kept (a glow ring seen from any side). `og vfx import` writes it for Effekseer's billboard rings, which it drew in their own plane (150 of the packs' conversion notes)."
+    }
+  ]
+}

@@ -48,6 +48,7 @@ fn draw(mesh: MeshData, material: EffectMaterial, scale: Vec3, color: f32) -> (V
         blend: ParticleBlend::Additive,
         layers: 1,
         hue: 0.0,
+        billboard: false,
     });
     let desc = scenes::base_desc();
     let (img, _) = frame(&desc, &scene, 1);

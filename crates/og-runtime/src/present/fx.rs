@@ -649,6 +649,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             },
             layers: 1,
             hue: 0.0,
+            billboard: v.billboard,
         });
     }
 }

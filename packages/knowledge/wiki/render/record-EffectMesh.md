@@ -21,6 +21,7 @@ Token `og.EffectMesh`, registered under the schema name `og.EffectMesh`; its val
 | `opacity` | `number` | `1` | 0 … 1 | — | tunable | The alpha it is multiplied by. |
 | `seed` | `number` | `0` | — | — | — | Its random value's seed (the material's `random` and noise offset). |
 | `blend` | `Blend` | `"additive"` | — | — | — | Its blend when the material names none: additive (the default, a glow) or alpha. |
+| `billboard` | `boolean` | `false` | — | — | — | Turned to face the camera: its rotation and scale are taken in the camera's frame (x right, y up, z towards the eye), so a ring in its xy plane faces the eye from any side. |
 
 ```ogt
 component EffectMesh {
@@ -46,6 +47,7 @@ component EffectMesh {
   field blend Blend "Its blend when the material names none: additive (the default, a glow) or alpha." {
     default additive
   }
+  field billboard bool "Turned to face the camera: its rotation and scale are taken in the camera's frame (x right, y up, z towards the eye), so a ring in its xy plane faces the eye from any side."
 }
 ```
 

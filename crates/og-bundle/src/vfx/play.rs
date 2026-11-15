@@ -109,6 +109,10 @@ pub enum VfxDrawKind {
         seed: u64,
         color: [f32; 4],
         blend: ParticleBlend,
+        /// Turned to face the camera (`face camera`): `transform`'s
+        /// rotation and scale are in the camera's frame
+        /// (`og_render_data::EffectMesh::billboard`).
+        billboard: bool,
     },
     /// A trail's head this tick and its style's numbers.
     Trail {
@@ -330,22 +334,36 @@ impl Vfx {
                     spin,
                     color,
                     blend,
+                    face_camera,
                     ..
-                } if alive => VfxDrawKind::Mesh {
-                    transform: local
-                        * Mat4::from_quat(euler(*spin * te))
-                        * Mat4::from_scale(Vec3::splat(size.eval(x, rnd) * amount)),
-                    life: x,
-                    seed: u64::from(seed) ^ i as u64,
-                    color: tinted(*color, tint),
-                    blend: *blend,
-                },
+                } if alive => {
+                    let s = Mat4::from_scale(Vec3::splat(size.eval(x, rnd) * amount));
+                    // Facing the camera: where it is and how large, its
+                    // spin in the camera's frame (the renderer's), no
+                    // rotation of its own.
+                    let placed = if *face_camera {
+                        let (scale, _, at) = local.to_scale_rotation_translation();
+                        Mat4::from_translation(at)
+                            * Mat4::from_scale(Vec3::splat(scale.abs().element_sum() / 3.0))
+                    } else {
+                        local
+                    };
+                    VfxDrawKind::Mesh {
+                        transform: placed * Mat4::from_quat(euler(*spin * te)) * s,
+                        life: x,
+                        seed: u64::from(seed) ^ i as u64,
+                        color: tinted(*color, tint),
+                        blend: *blend,
+                        billboard: *face_camera,
+                    }
+                }
                 VfxKind::Glow { size, color } if alive => VfxDrawKind::Mesh {
                     transform: local * Mat4::from_scale(Vec3::splat(size.eval(x, rnd) * amount)),
                     life: x,
                     seed: u64::from(seed) ^ i as u64,
                     color: tinted(*color, tint),
                     blend: ParticleBlend::Additive,
+                    billboard: false,
                 },
                 VfxKind::Trail {
                     width,
@@ -550,6 +568,57 @@ mod tests {
         )
         .unwrap_err();
         assert!(e.contains("`power`") && e.contains("declared: crit"), "{e}");
+    }
+
+    /// A `face camera` mesh keeps where it is placed and its size (the
+    /// instance's scale and its own) but none of the instance's or its own
+    /// rotation, only its spin, which the renderer turns to the eye; one
+    /// without it keeps them. A rotation left in turns it in the camera's
+    /// frame; a scale dropped draws it at 1.
+    #[test]
+    fn a_camera_facing_mesh_keeps_its_place_size_and_spin_only() {
+        let fx = |face: &str| {
+            crate::vfx::parse_vfx(&format!(
+                "type vfx\nversion 2\n---\nduration 1\nmesh ring {{\n  life 1\n  effect \"fx/a.ogt\"\n  rotate 90 0 0\n  scale 0.5\n  spin 0 0 90\n{face}}}\n"
+            ))
+            .expect("parses")
+        };
+        let at = VfxInstance {
+            id: 1,
+            seed: 1,
+            transform: Mat4::from_scale_rotation_translation(
+                Vec3::splat(2.0),
+                Quat::from_rotation_y(1.0),
+                Vec3::new(3.0, 0.0, 0.0),
+            ),
+            scale: 2.0,
+            tint: Vec3::ONE,
+            hue: 0.0,
+            params: [0.0; MAX_PARAMS],
+        };
+        let mesh = |face: &str| {
+            // Half a second in: a quarter turn of spin about z.
+            match fx(face).draws(&at, 0, 30, 60.0)[0].kind {
+                VfxDrawKind::Mesh {
+                    transform,
+                    billboard,
+                    ..
+                } => (transform, billboard),
+                ref other => panic!("{other:?}"),
+            }
+        };
+        let (facing, billboard) = mesh("  face camera\n");
+        assert!(billboard);
+        let (scale, rot, place) = facing.to_scale_rotation_translation();
+        assert!(place.abs_diff_eq(Vec3::new(3.0, 0.0, 0.0), 1e-4), "{place}");
+        assert!(scale.abs_diff_eq(Vec3::splat(1.0), 1e-4), "{scale}");
+        assert!(
+            rot.angle_between(Quat::from_rotation_z(std::f32::consts::FRAC_PI_4)) < 1e-3,
+            "{rot}"
+        );
+        let (placed, billboard) = mesh("");
+        assert!(!billboard);
+        assert!(placed.to_scale_rotation_translation().1.angle_between(rot) > 0.5);
     }
 
     #[test]

@@ -1830,6 +1830,11 @@
           "name": "blend",
           "column": "Blend",
           "default": "additive"
+        },
+        {
+          "name": "billboard",
+          "column": "bool",
+          "default": false
         }
       ]
     },

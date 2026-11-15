@@ -784,6 +784,7 @@
     field blend Blend "Its blend when the material names none: additive (the default, a glow) or alpha." {
       default additive
     }
+    field billboard bool "Turned to face the camera: its rotation and scale are taken in the camera's frame (x right, y up, z towards the eye), so a ring in its xy plane faces the eye from any side."
   }
 
   component Beam {

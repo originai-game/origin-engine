@@ -30605,6 +30605,7 @@ pub mod record {
         pub opacity: f32,
         pub seed: u32,
         pub blend: Blend,
+        pub billboard: bool,
     }
 
     impl Default for EffectMesh {
@@ -30617,6 +30618,7 @@ pub mod record {
                 opacity: 1.0_f32,
                 seed: Default::default(),
                 blend: Blend::Additive,
+                billboard: Default::default(),
             }
         }
     }
@@ -30635,6 +30637,7 @@ pub mod record {
                 opacity: field(o, "opacity", d.opacity)?,
                 seed: field(o, "seed", d.seed)?,
                 blend: field(o, "blend", d.blend)?,
+                billboard: field(o, "billboard", d.billboard)?,
             })
         }
     }

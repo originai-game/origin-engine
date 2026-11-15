@@ -1,6 +1,7 @@
 //! Particle simulation, trails and beam frame tests.
 
 use super::*;
+use og_render::ParticleAlign;
 
 // ---------------------------------------------------------------------------
 // Particles.
@@ -692,9 +693,10 @@ fn quality_thins_busy_systems_and_spares_a_handful() {
     }
 }
 
-/// One still particle 0.4 m across, three times as tall
-/// (`height_over_life`), turned by `degrees`, before a camera 4 m away.
-fn tall_scene(height: bool, degrees: f32) -> RenderScene {
+/// One still particle 0.4 m across at (0, 1, 0), three times as tall
+/// (`height_over_life`), turned by `degrees`, facing as `align` says,
+/// before a camera at `eye`.
+fn tall_scene(height: bool, degrees: f32, align: ParticleAlign, eye: Vec3) -> RenderScene {
     let mut scene = RenderScene::new();
     let e = scene.add_emitter(ParticleEmitter {
         max_particles: 1,
@@ -711,6 +713,7 @@ fn tall_scene(height: bool, degrees: f32) -> RenderScene {
         rotation_degrees: [degrees, degrees],
         gravity: Vec3::ZERO,
         blend: og_render::ParticleBlend::Additive,
+        align,
         ..Default::default()
     });
     scene.effects.particles.push(ParticleSystem::new(
@@ -722,7 +725,7 @@ fn tall_scene(height: bool, degrees: f32) -> RenderScene {
     ));
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 1.0, 4.0),
+        position: eye,
         target: Vec3::new(0.0, 1.0, 0.0),
         ..Default::default()
     };
@@ -744,23 +747,152 @@ fn a_height_curve_draws_a_tall_particle_along_its_own_up() {
             ..small()
         };
         let aspect = |height: bool, degrees: f32| {
-            let mut scene = tall_scene(height, degrees);
-            let (img, _, _) = run(&desc, &mut scene, 10, |s, f| fx::tick_all(s, f as u64));
-            let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0, 0);
-            for y in 0..img.height {
-                for x in 0..img.width {
-                    if luma(px(&img, x, y)) > 60.0 {
-                        (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x), y1.max(y));
-                    }
-                }
-            }
-            assert!(x1 >= x0, "{path:?}: the particle drew nothing");
-            (y1 - y0 + 1) as f32 / (x1 - x0 + 1) as f32
+            let scene = tall_scene(height, degrees, ParticleAlign::Camera, SIDE);
+            lit_box(&desc, scene)
+                .map(|(w, h)| h as f32 / w as f32)
+                .unwrap_or_else(|| panic!("{path:?}: the particle drew nothing"))
         };
         let (square, tall, turned) = (aspect(false, 0.0), aspect(true, 0.0), aspect(true, 90.0));
         println!("{path:?}: square {square:.2}, tall {tall:.2}, turned {turned:.2}");
         assert!((0.8..1.25).contains(&square), "{path:?}: square {square}");
         assert!((2.4..3.6).contains(&tall), "{path:?}: tall {tall}");
         assert!((0.28..0.42).contains(&turned), "{path:?}: turned {turned}");
+    }
+}
+
+/// The eye level with the particle, 4 m in front, and one 5 m away
+/// looking down at it from 53 degrees above the horizon.
+const SIDE: Vec3 = Vec3::new(0.0, 1.0, 4.0);
+const ABOVE: Vec3 = Vec3::new(0.0, 5.0, 3.0);
+
+/// The width and height in pixels of what a scene's particles light, run
+/// ten frames; `None` when they light nothing.
+fn lit_box(desc: &RenderDesc, mut scene: RenderScene) -> Option<(u32, u32)> {
+    let (img, _, _) = run(desc, &mut scene, 10, |s, f| fx::tick_all(s, f as u64));
+    let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0, 0);
+    for y in 0..img.height {
+        for x in 0..img.width {
+            if luma(px(&img, x, y)) > 60.0 {
+                (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x), y1.max(y));
+            }
+        }
+    }
+    (x1 >= x0).then(|| (x1 - x0 + 1, y1 - y0 + 1))
+}
+
+/// An upright particle stands on its axis whatever the camera's pitch, and
+/// a facing one lies across its normal, on both paths. Seen from above, a
+/// tall camera-facing particle is three times taller than wide but an
+/// upright one is shortened as its axis tips away from the eye (about
+/// 1.8); a tall particle lying flat on the ground (`facing 0 1 0`) is
+/// edge-on from the side and draws at most a line, and from above lies
+/// along the emitter's x (its up when its normal is +y), about a quarter
+/// as deep on the screen as it is wide. A mode drawn as camera-facing
+/// fails each.
+#[test]
+#[ignore = "requires GPU"]
+fn upright_and_facing_particles_keep_their_axis_whatever_the_camera() {
+    let upright = ParticleAlign::Upright { axis: Vec3::Y };
+    let flat = ParticleAlign::Facing { normal: Vec3::Y };
+    for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
+        let desc = RenderDesc {
+            particles: path,
+            ..small()
+        };
+        let aspect = |align: ParticleAlign, height: bool, eye: Vec3| {
+            let (w, h) = lit_box(&desc, tall_scene(height, 0.0, align, eye))
+                .unwrap_or_else(|| panic!("{path:?}: {align:?} from {eye} drew nothing"));
+            h as f32 / w as f32
+        };
+        let facing = aspect(ParticleAlign::Camera, true, ABOVE);
+        let standing = aspect(upright, true, ABOVE);
+        let level = aspect(upright, true, SIDE);
+        let lying = aspect(flat, true, ABOVE);
+        let edge = lit_box(&desc, tall_scene(true, 0.0, flat, SIDE));
+        println!(
+            "{path:?}: camera {facing:.2}, upright {standing:.2} (level {level:.2}), flat {lying:.2}, edge-on {edge:?}"
+        );
+        assert!((2.4..3.6).contains(&facing), "{path:?}: camera {facing}");
+        assert!(
+            (1.5..2.3).contains(&standing),
+            "{path:?}: upright {standing}"
+        );
+        assert!(
+            (2.4..3.6).contains(&level),
+            "{path:?}: upright level {level}"
+        );
+        assert!((0.18..0.4).contains(&lying), "{path:?}: flat {lying}");
+        assert!(
+            edge.is_none_or(|(w, h)| h <= 3 && w > 10 * h),
+            "{path:?}: edge-on {edge:?}"
+        );
+    }
+}
+
+/// A camera-facing effect mesh (`EffectMesh::billboard`) turns to the eye
+/// with its scale kept in the camera's frame, on both paths: a quad 2 m
+/// wide and 1 m tall in its xy plane, seen along its edge from +x, draws
+/// nothing as placed but a shape twice as wide as tall when facing; seen
+/// face on it is the same shape either way. A flag dropped draws nothing
+/// edge-on; its scale taken in the mesh's own frame draws it square or
+/// tall.
+#[test]
+#[ignore = "requires GPU"]
+fn a_camera_facing_effect_mesh_turns_to_the_eye_with_its_scale() {
+    let scene = |billboard: bool, eye: Vec3| {
+        let mut scene = RenderScene::new();
+        let mesh = scene.add_mesh(og_render::shapes::plane_xy(1.0, 1.0));
+        let material = scene.add_effect_material(og_render::EffectMaterial::default());
+        scene.effects.effect_meshes.push(og_render::EffectMesh {
+            id: 1,
+            mesh,
+            material,
+            transform: Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0))
+                * Mat4::from_scale(Vec3::new(2.0, 1.0, 1.0)),
+            life: 0.5,
+            seed: 1,
+            color: [4.0, 4.0, 4.0, 1.0],
+            blend: og_render::ParticleBlend::Additive,
+            layers: 1,
+            hue: 0.0,
+            billboard,
+        });
+        scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+        scene.frame.camera = Camera {
+            position: eye,
+            target: Vec3::new(0.0, 1.0, 0.0),
+            ..Default::default()
+        };
+        scene
+    };
+    let edge_eye = Vec3::new(5.0, 1.0, 0.0);
+    let face_eye = Vec3::new(0.0, 1.0, 5.0);
+    for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
+        let desc = RenderDesc {
+            particles: path,
+            ..small()
+        };
+        let aspect = |b: Option<(u32, u32)>| b.map(|(w, h)| h as f32 / w as f32);
+        let placed_edge = lit_box(&desc, scene(false, edge_eye));
+        let facing_edge = aspect(lit_box(&desc, scene(true, edge_eye)));
+        let placed_face = aspect(lit_box(&desc, scene(false, face_eye)));
+        let facing_face = aspect(lit_box(&desc, scene(true, face_eye)));
+        println!(
+            "{path:?}: edge-on placed {placed_edge:?} facing {facing_edge:?}; face on placed {placed_face:?} facing {facing_face:?}"
+        );
+        assert!(
+            placed_edge.is_none_or(|(w, h)| w <= 3 && h > 10 * w),
+            "{path:?}: placed edge-on {placed_edge:?}"
+        );
+        for (what, a) in [
+            ("facing edge-on", facing_edge),
+            ("placed face on", placed_face),
+            ("facing face on", facing_face),
+        ] {
+            assert!(
+                a.is_some_and(|a| (0.4..0.62).contains(&a)),
+                "{path:?}: {what} {a:?}"
+            );
+        }
     }
 }

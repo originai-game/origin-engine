@@ -164,6 +164,7 @@ pub(crate) fn extract(
                         seed,
                         color,
                         blend,
+                        billboard,
                     },
                     Link::Mesh(mesh, material),
                 ) => {
@@ -178,6 +179,7 @@ pub(crate) fn extract(
                         blend,
                         layers: 1,
                         hue,
+                        billboard,
                     });
                 }
                 (

@@ -599,7 +599,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>Module `render` line 2949</sub>
+<sub>Module `render` line 2950</sub>
 
 ```ogt
 column Shader {
@@ -610,7 +610,7 @@ column Shader {
 }
 ```
 
-<sub>Module `render` line 2999</sub>
+<sub>Module `render` line 3000</sub>
 
 ```ogt
 column LineMode {
@@ -621,7 +621,7 @@ column LineMode {
 }
 ```
 
-<sub>Module `render` line 3806</sub>
+<sub>Module `render` line 3807</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -632,7 +632,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>Module `render` line 4017</sub>
+<sub>Module `render` line 4018</sub>
 
 ```ogt
 column RenderTarget {
@@ -643,7 +643,7 @@ column RenderTarget {
 }
 ```
 
-<sub>Module `render` line 4026</sub>
+<sub>Module `render` line 4027</sub>
 
 ```ogt
 column Post {
@@ -654,7 +654,7 @@ column Post {
 }
 ```
 
-<sub>Module `render` line 4166</sub>
+<sub>Module `render` line 4167</sub>
 
 ## Constants
 
@@ -676,22 +676,22 @@ const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never 
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>Module `render` line 2867</sub>
+<sub>Module `render` line 2868</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>Module `render` line 2868</sub>
+<sub>Module `render` line 2869</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included, in their layers' order either way."
 ```
 
-<sub>Module `render` line 2869</sub>
+<sub>Module `render` line 2870</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>Module `render` line 2941</sub>
+<sub>Module `render` line 2942</sub>

@@ -1037,6 +1037,7 @@ impl ParticleRenderer {
             let mut entry = emitter_gpu(&look, m.transform, None, dt, seed, 0, false, false, soft);
             entry.look[2] = 2.0;
             entry.counts[3] = m.hue;
+            entry.axis[3] = m.billboard as u32 as f32;
             entries.push(entry);
             out.systems.push(FrameSystem {
                 id: key,

@@ -566,3 +566,71 @@ fn an_uneven_sprite_keeps_its_width_and_height_under_its_generators_scale() {
     assert!(!e.contains("sizeOverLife"), "{e}");
     assert!(!e.contains("scaled unevenly"), "{e}");
 }
+
+/// A sprite's billboard mode becomes its emitter's `align`: a y-axis
+/// billboard stands on its y, a fixed sprite lies in its own plane (turned
+/// by its rotation: 90° about x lays it flat), a directional one turns
+/// along its motion, and a plain billboard faces the camera. A mode
+/// dropped draws them all facing the camera; an axis left unturned by
+/// the sprite's rotation stands the fixed one up. A billboard ring is a
+/// `face camera` mesh, a fixed one lies in its plane.
+#[test]
+fn a_sprites_billboard_mode_is_its_emitters_align() {
+    let sprite = |name: &str, billboard: u32, rotation: &str| {
+        format!(
+            "<Node>{rotation}<DrawingValues><Type>2</Type><Sprite><Billboard>{billboard}</Billboard></Sprite></DrawingValues>\
+             <Name>{name}</Name><Children /></Node>"
+        )
+    };
+    let flat = "<RotationValues><Type>1</Type><PVA><Rotation><X><Center>90</Center><Max>90</Max><Min>90</Min></X></Rotation></PVA></RotationValues>";
+    let ring = |name: &str, billboard: u32| {
+        format!(
+            "<Node><DrawingValues><Type>4</Type><Ring><Billboard>{billboard}</Billboard></Ring></DrawingValues>\
+             <Name>{name}</Name><Children /></Node>"
+        )
+    };
+    let c = run(&project(&format!(
+        "<Node><CommonValues><MaxGeneration><Value>10</Value></MaxGeneration></CommonValues>\
+         <DrawingValues><Type>0</Type></DrawingValues><Name>G</Name><Children>{}{}{}{}</Children></Node>{}{}",
+        sprite("Y", 1, ""),
+        sprite("F", 2, flat),
+        sprite("D", 4, ""),
+        sprite("B", 0, ""),
+        ring("RB", 0),
+        ring("RF", 2),
+    )));
+    let rings: Vec<bool> = og_bundle::vfx::parse_vfx(&c.vfx)
+        .unwrap()
+        .elements
+        .iter()
+        .filter_map(|e| match &e.kind {
+            og_bundle::vfx::VfxKind::Mesh { face_camera, .. } => Some(*face_camera),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(rings, [true, false], "{}", c.vfx);
+    let up = file(&c, "n0-0.emitter.ogt");
+    assert_eq!(line(up, "align"), "align upright 0 1 0", "{up}");
+    let fixed = file(&c, "n0-1.emitter.ogt");
+    let normal: Vec<f32> = line(fixed, "align")
+        .strip_prefix("align facing ")
+        .unwrap_or_else(|| panic!("{fixed}"))
+        .split(' ')
+        .map(|v| v.parse().unwrap())
+        .collect();
+    assert!(
+        normal[0].abs() < 1e-3 && (normal[1].abs() - 1.0).abs() < 1e-3 && normal[2].abs() < 1e-3,
+        "{fixed}"
+    );
+    let dir = file(&c, "n0-2.emitter.ogt");
+    assert_eq!(line(dir, "align"), "align velocity 0", "{dir}");
+    let plain = file(&c, "n0-3.emitter.ogt");
+    assert!(!plain.contains("align"), "{plain}");
+    assert!(
+        !c.findings.iter().any(|f| f.what.contains("billboard")
+            || f.what.contains("fixed sprite")
+            || f.what.contains("ring:")),
+        "{:?}",
+        c.findings
+    );
+}

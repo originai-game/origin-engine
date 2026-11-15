@@ -341,6 +341,15 @@ pub enum ParticleAlign {
     /// Stretched along the screen-space velocity: length is `size + speed
     /// * stretch` (sparks, rain).
     Velocity { stretch: f32 },
+    /// Standing along `axis` (the emitter's space; its +y is upright),
+    /// turned about it to face the eye: flames, trees of light, a pillar
+    /// seen from any side but never from above.
+    Upright { axis: Vec3 },
+    /// Lying across `normal` (the emitter's space), whatever the camera:
+    /// a shockwave flat on the ground (`0 1 0`), a portal standing still.
+    /// Its up is the emitter's +y laid into its plane (its +x when the
+    /// normal is the +y).
+    Facing { normal: Vec3 },
 }
 
 /// Particles bounce off what [`ParticleCollision::against`] names, in

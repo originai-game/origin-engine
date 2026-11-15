@@ -760,8 +760,8 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
     let mut ring = String::new();
     let shape = match &node.draw {
         Draw::Ring(r) => {
-            if r.billboard != 2 {
-                cx.find(node, "a camera-facing ring: drawn in its own plane");
+            if r.billboard == 1 {
+                cx.find(node, "a y-axis ring: drawn in its own plane");
             }
             let outer = |t: f32| r.outer.at(t * life, life).abs();
             let o_peak = (0..=16)
@@ -944,6 +944,11 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
         s.push_str(&ring);
         let _ = writeln!(s, "  life {}", n(life / FPS));
         let _ = writeln!(s, "  effect \"{effect}\"");
+        // Effekseer's billboard (0) and rotated billboard (3) rings face
+        // the camera.
+        if matches!(&node.draw, Draw::Ring(r) if r.billboard == 0 || r.billboard == 3) {
+            s.push_str("  face camera\n");
+        }
         if scale.len() > 1 && !curve::flat(&scale, 1e-3) {
             let _ = writeln!(
                 s,
@@ -1291,18 +1296,19 @@ fn emitter_file(
     let s = p.scale;
     let so = s * p.own;
     let drawn = matches!(role, Role::Drawn { .. });
-    if drawn
-        && let Draw::Sprite { billboard } = node.draw
-        && billboard != 0
-        && billboard != 3
+    // How a drawn sprite faces: Effekseer's 1 stands on its y, 2 lies in
+    // its own plane, 4 turns along its motion (0 and 3 face the camera).
+    let billboard = match (drawn, &node.draw) {
+        (true, Draw::Sprite { billboard }) => *billboard,
+        _ => 0,
+    };
+    if billboard == 2
+        && let Rotation::Euler(a) = &node.rotation
+        && (a[0].start().h() > 5.0 || a[1].start().h() > 5.0)
     {
         cx.find(
             node,
-            match billboard {
-                1 => "a y-axis billboard: drawn facing the camera",
-                2 => "a fixed sprite with many instances: drawn facing the camera",
-                _ => "a directional billboard: drawn facing the camera",
-            },
+            "a fixed sprite turned at random: its mean plane drawn",
         );
     }
     if drawn && node.color.random_spread() > 0.1 {
@@ -1453,6 +1459,18 @@ fn emitter_file(
         }
         if let Some(h) = &height_keys {
             let _ = writeln!(e, "heightOverLife {}", curve_line(h));
+        }
+        // Its own axes, in the emitter's space (turned by `rot`).
+        let own = |v: Vec3| rot.inverse() * (start_rotation(&node.rotation) * v);
+        match billboard {
+            1 => {
+                let _ = writeln!(e, "align upright {}", ns(&own(Vec3::Y).to_array()));
+            }
+            2 => {
+                let _ = writeln!(e, "align facing {}", ns(&own(Vec3::Z).to_array()));
+            }
+            4 => e.push_str("align velocity 0\n"),
+            _ => {}
         }
         e.push_str("colorOverLife {\n");
         for (t, c) in &color_keys(node, lc) {

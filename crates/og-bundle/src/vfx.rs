@@ -254,6 +254,14 @@ pub const ELEMENT_LINES: &[Line] = &[
         "spin 0 180 0",
     ),
     Line::of(
+        MESH,
+        "face",
+        "camera",
+        "",
+        "Turned to face the eye as a billboard is (a glow ring seen from any side): its spin and scale kept, the effect's and its own rotation left out. Without it a mesh lies as it is placed.",
+        "face camera",
+    ),
+    Line::of(
         &["mesh", "flipbook"],
         "blend",
         "additive | alpha",
@@ -580,6 +588,8 @@ pub enum VfxKind {
         spin: glam::Vec3,
         color: [f32; 4],
         blend: ParticleBlend,
+        /// `face camera`: turned to face the eye, its spin and scale kept.
+        face_camera: bool,
     },
     Trail {
         effect: Option<String>,
@@ -890,6 +900,7 @@ fn element(e: &Entry, version: u32, params: &[VfxParam]) -> Result<VfxElement, S
                 spin: glam::Vec3::ZERO,
                 color: [1.0; 4],
                 blend: ParticleBlend::Additive,
+                face_camera: false,
             },
             "trail" => VfxKind::Trail {
                 effect: None,
@@ -1023,6 +1034,12 @@ fn element(e: &Entry, version: u32, params: &[VfxParam]) -> Result<VfxElement, S
             }
             ("scale", VfxKind::Mesh { scale, .. }) => *scale = value(k, 0)?,
             ("spin", VfxKind::Mesh { spin, .. }) => *spin = vec3(k)?,
+            ("face", VfxKind::Mesh { face_camera, .. }) => {
+                *face_camera = match k.values.first().and_then(Value::as_word) {
+                    Some("camera") => true,
+                    _ => return Err(format!("line {kl}: face camera")),
+                }
+            }
             ("blend", VfxKind::Mesh { blend, .. } | VfxKind::Flipbook { blend, .. }) => {
                 *blend = match k.values.first().and_then(Value::as_word) {
                     Some("additive") => ParticleBlend::Additive,

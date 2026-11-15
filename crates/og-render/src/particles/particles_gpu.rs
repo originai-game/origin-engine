@@ -89,6 +89,9 @@ struct EmitterGpu {
     height_v: [[f32; 4]; 2],
     /// x: height keys.
     counts3: [f32; 4],
+    /// xyz: an upright or facing particle's axis, in the emitter's space;
+    /// w: 1 an effect mesh facing the camera.
+    axis: [f32; 4],
 }
 
 /// How a system's particles are drawn.

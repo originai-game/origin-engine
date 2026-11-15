@@ -9700,6 +9700,10 @@ export interface EffectMesh {
    * @default "additive"
    */
   blend: Blend;
+  /**
+   * Turned to face the camera: its rotation and scale are taken in the camera's frame (x right, y up, z towards the eye), so a ring in its xy plane faces the eye from any side.
+   */
+  billboard: boolean;
 }
 
 /**
@@ -34603,7 +34607,7 @@ export declare namespace og {
   /**
    * A mesh drawn with an effect material (og.load.effect) at the entity's MatrixWorld: a shockwave dome, a slash arc, a portal's swirl, with the material's scrolling textures, erosion and fresnel. Its curves run on `life`, which the game or a tween drives from 0 to 1 (a composed effect's `mesh` element is one og.vfx drives).
    */
-  const EffectMesh: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly effect: FieldSpec<"EffectMaterial">; readonly life: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly blend: FieldSpec<"Blend"> }, EffectMesh>;
+  const EffectMesh: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly effect: FieldSpec<"EffectMaterial">; readonly life: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly blend: FieldSpec<"Blend">; readonly billboard: FieldSpec<"bool"> }, EffectMesh>;
   /**
    * A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter).
    */
