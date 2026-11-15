@@ -251,8 +251,18 @@ impl Ui {
         let off_fill = mix(self.role("controlStrong"), self.role("ink"), 0.12);
         let on_fill = self.role("primary");
         let knob_fill = self.role("knob");
+        // A knob that would vanish on the filled track (and its tick, drawn
+        // in the track's colour) takes whichever of the scheme's two inks
+        // reads more on the track: inkInverse alone is light in the light
+        // scheme, where a light primary or accent-color left a white knob
+        // with a gold tick at 1.4:1.
         let knob_on = if knob_fill.srgba().contrast(on_fill.srgba()) < 1.5 {
-            self.role("inkInverse")
+            let (inverse, ink) = (self.role("inkInverse"), self.role("ink"));
+            if inverse.srgba().contrast(on_fill.srgba()) >= ink.srgba().contrast(on_fill.srgba()) {
+                inverse
+            } else {
+                ink
+            }
         } else {
             knob_fill
         };
@@ -534,10 +544,16 @@ impl Ui {
                     ElementClass::Badge,
                 )
                 .ok();
-                // The tick takes the mark's ink (`--checkbox-mark-ink`).
-                let tick = mark
-                    .and_then(|p| ui.part_values(&p, None).color("color"))
-                    .map_or(on_primary, C::of);
+                // The tick takes the mark's ink (`--checkbox-mark-ink`),
+                // which a style picks for its own primary; on an
+                // `accent-color` it is the accent's contrast-color()
+                // (`onPrimary` of the accented palette).
+                let tick = match ui.front.accent {
+                    Some(_) => on_primary,
+                    None => mark
+                        .and_then(|p| ui.part_values(&p, None).color("color"))
+                        .map_or(on_primary, C::of),
+                };
                 ui.open_part(
                     "Mark",
                     Element {

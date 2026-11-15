@@ -345,9 +345,13 @@ impl Ui {
 
     fn role(&self, name: &str) -> C {
         if let Some(a) = self.front.accent
-            && matches!(name, "primary" | "primaryHover" | "primaryActive")
+            && let Some(c) = self.env.theme.palette.with_accent(a).get(name)
+            && matches!(
+                name,
+                "primary" | "primaryHover" | "primaryActive" | "onPrimary"
+            )
         {
-            return C::of(a);
+            return C::of(c);
         }
         C::of(
             self.env

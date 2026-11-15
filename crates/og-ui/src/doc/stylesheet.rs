@@ -1925,6 +1925,7 @@ pub fn inline(
             || super::motion::longhand(name)
             || super::container::longhand(name)
             || super::extern_element::svg_longhand(name)
+            || super::text_css::longhand(name)
             || crate::layout::flow::longhand(name)
         {
             continue;

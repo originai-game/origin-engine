@@ -601,3 +601,62 @@ fn flex_ratios_absolute_fades_and_state_border_images_render() {
         rgb(120, 332)
     );
 }
+
+/// `references/vulkan/accent-color-{dark,light}.png` (640 × 240): a row of the
+/// built-in controls (a checked box, an empty one, a switch that is on, a
+/// chosen radio, a range, a progress bar) under a gold accent, a navy one
+/// and none, in each scheme. Ways it could fail: the accent reaching the
+/// commands but not the frame, a check mark unreadable on its accent, or
+/// an accent leaking into the unaccented row.
+#[test]
+#[ignore = "requires GPU"]
+fn accent_color_controls_match_their_reference_frames() {
+    use og_render::*;
+    let row = |id: &str| {
+        format!(
+            r#"<div class="row" id="{id}"><span>{id}</span><input type="checkbox" checked /><input type="checkbox" /><input type="checkbox" switch checked /><input type="radio" checked /><input type="range" min="0" max="10" value="6" /><progress value="0.6"></progress></div>"#
+        )
+    };
+    let text = format!(
+        r#"<meta name="component" content="accent"/>
+<column id="Page">{}{}{}</column>
+<style>
+#Page {{ background: var(--backdrop); padding: 12px; gap: 8px; width: stretch; height: stretch; }}
+.row {{ display: flex; align-items: center; gap: 12px; }}
+.row > span {{ width: 56px; }}
+.row > input[type=range], .row > progress {{ width: 120px; }}
+#Gold {{ accent-color: #ffd60a; }}
+#Navy {{ accent-color: #1a237e; }}
+</style>"#,
+        row("Gold"),
+        row("Navy"),
+        row("None")
+    );
+    for (name, theme) in [("dark", Theme::dark()), ("light", Theme::light())] {
+        let mut scene = RenderScene::new();
+        let mut ui = ui_with_font(add_test_font(&mut scene));
+        ui.set_theme(theme);
+        ui.define_document(UiDocument::parse("ui/accent.svelte", &text).unwrap());
+        ui.mount_document(
+            reactive::SourceId::new("test", "accent"),
+            "accent",
+            Default::default(),
+            Default::default(),
+            &bind::NoEnv,
+        )
+        .unwrap();
+        for _ in 0..4 {
+            ui.begin(InputFrame::default(), Viewport::new(640.0, 240.0));
+            ui.build_retained_documents(&bind::NoEnv).unwrap();
+            ui.end();
+        }
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        let frame = render_ui(&ui, &mut scene, 640, 240);
+        matches_reference(
+            &format!("accent-color-{name}"),
+            &frame.image,
+            &frame.info,
+            Against::Recorded,
+        );
+    }
+}

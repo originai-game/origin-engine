@@ -321,6 +321,21 @@ impl Default for Theme {
     }
 }
 
+impl theme::Palette {
+    /// The palette under CSS `accent-color: a` (CSS UI 4 §6.1): the primary
+    /// and its states are the accent, and what a control draws on it
+    /// (`onPrimary`) is its `contrast-color()`, so it reads on a light
+    /// accent and a dark one in either scheme.
+    pub(crate) fn with_accent(&self, a: Srgba) -> theme::Palette {
+        let mut p = *self;
+        p.primary = a;
+        p.primary_hover = a;
+        p.primary_active = a;
+        p.on_primary = a.contrast_color();
+        p
+    }
+}
+
 impl Theme {
     /// The default style, light.
     pub fn light() -> Theme {

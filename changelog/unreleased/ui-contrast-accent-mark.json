@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "CSS accent-color",
+      "summary": "A control with an accent-color draws what sits on the accent in contrast-color() of it: a check mark on a navy accent in the dark scheme was the scheme's near-black on-primary ink (1.4:1) and now reads at least 4.58:1 on any accent. The fill of a checked box, a switch that is on, a chosen radio, a range's track and a progress bar take the accent as before."
+    },
+    {
+      "member": "switch",
+      "summary": "A switch that is on keeps its knob readable on a light track: when the knob would vanish on the filled track (a light primary or accent-color), it takes whichever of the scheme's ink and inverse ink reads more on the track. In the light scheme a gold accent left a white knob, and the gold tick on it, at 1.35:1; it is now the dark ink."
+    }
+  ]
+}

@@ -421,11 +421,10 @@ impl Ui {
                 let accented;
                 let theme = match ui.tree.nearest(i, |n| n.accent) {
                     Some(a) => {
-                        let mut t = theme;
-                        t.palette.primary = a;
-                        t.palette.primary_hover = a;
-                        t.palette.primary_active = a;
-                        accented = t;
+                        accented = Theme {
+                            palette: theme.palette.with_accent(a),
+                            ..theme
+                        };
                         &accented
                     }
                     None => &theme,
