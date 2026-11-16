@@ -12,6 +12,10 @@ profile "2d"
 tick 60
 seed 1
 ui {
+  screen "store-default" "style:default;page:store"
+  screen "progress-default" "style:default;page:progress"
+  screen "social-default" "style:default;page:social"
+  screen "states-default" "style:default;page:states"
   screen "store-fantasy" "style:fantasy;page:store"
   screen "progress-fantasy" "style:fantasy;page:progress"
   screen "social-fantasy" "style:fantasy;page:social"

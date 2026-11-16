@@ -27,29 +27,29 @@
 -->
 <section id="ShopConfirm" part="ShopConfirm.frame" aria-label={title != '' ? title : t("general.confirm.name")} aria-busy={busy} onback={cancel}>
   <header part="ShopConfirm.band"><h2 part="ShopConfirm.title">{title != '' ? title : t("general.confirm.name")}</h2></header>
-  <scroll class="body">
+  <div class="body">
     <div class="body-inner">
       <div class="offer">
         <div class="art"><og-icon class="art-icon" icon={icon}></og-icon></div>
         <div class="text">
           <h3 part="ShopConfirm.name">{name}</h3>
-          <p class="detail" hidden={detail == ''}>{detail}</p>
+          {#if detail}<p class="detail">{detail}</p>{/if}
         </div>
       </div>
       <ul class="prices" aria-label={t("general.confirm.cost")}>
         {#each prices as p (p.id)}
           <li part="ShopConfirm.price ShopConfirm.figure" data-short={p.short}>
             <og-icon class="currency" icon={p.icon}></og-icon>
-            <span class="was" hidden={p.was == ''} aria-label={t("general.shop.was", { price: p.was })}>{p.was}</span>
+            {#if p.was}<span class="was" aria-label={t("general.shop.was", { price: p.was })}>{p.was}</span>{/if}
             <span class="figure" aria-label={t("general.shop.amount", { amount: p.amount, currency: p.label })}>{p.amount}</span>
-            <div class="short" hidden={!p.short}><og-icon class="short-mark" icon="lock"></og-icon><span>{t("general.shop.short")}</span></div>
-            <span class="after" hidden={p.after == ''}>{t("general.confirm.after", { amount: p.after })}</span>
+            {#if p.short}<div class="short"><og-icon class="short-mark" icon="lock"></og-icon><span>{t("general.shop.short")}</span></div>{/if}
+            {#if p.after}<span class="after">{t("general.confirm.after", { amount: p.after })}</span>{/if}
           </li>
         {/each}
       </ul>
     </div>
-  </scroll>
-  <p part="ShopConfirm.error" role="alert" hidden={error == ''}>{error}</p>
+  </div>
+  {#if error}<p part="ShopConfirm.error" role="alert">{error}</p>{/if}
   <footer class="actions">
     <button id="Cancel" variant="ghost" onclick={cancel}><span>{t("general.confirm.cancel")}</span></button>
     <button id="Buy" variant="primary" disabled={!canBuy || busy} aria-busy={busy} onclick={confirm}><span>{busy ? t("general.confirm.busy") : t("general.confirm.buy")}</span></button>
@@ -57,14 +57,13 @@
 </section>
 
 <style>
-[part="ShopConfirm.frame"][hidden], [part="ShopConfirm.frame"] [hidden] { display: none; }
-[part="ShopConfirm.frame"] { display: flex; flex-direction: column; width: stretch; max-width: var(--modal-width); max-height: 100%; min-height: 0; gap: var(--space-md); }
-.body { width: stretch; flex: 0 1 auto; min-height: 0; }
+:host { display: flex; flex-direction: column; inline-size: stretch; max-inline-size: var(--modal-width); max-block-size: 100%; min-block-size: 0; gap: var(--space-md); }
+.body { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
 .body-inner { display: flex; flex-direction: column; width: stretch; gap: var(--space-md); }
 [part="ShopConfirm.band"] { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
 [part="ShopConfirm.title"] { margin: 0; text-align: center; }
 .offer { display: flex; width: stretch; gap: var(--space-md); align-items: center; }
-.art { display: flex; flex: none; width: var(--size-xxl); height: var(--size-xxl); align-items: center; justify-content: center; }
+.art { display: flex; flex: none; width: var(--size-xxl); height: var(--size-xxl); align-items: center; justify-content: center; background: var(--control-strong); border-radius: var(--well-radius); }
 .art-icon { width: var(--size-xl); height: var(--size-xl); }
 .text { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xxs); }
 [part="ShopConfirm.name"], .detail { margin: 0; overflow-wrap: anywhere; }
@@ -72,9 +71,9 @@
 [part="ShopConfirm.price ShopConfirm.figure"] { display: flex; width: stretch; align-items: center; flex-wrap: wrap; gap: var(--space-xxs) var(--space-sm); padding: var(--space-xs) var(--space-sm); }
 .currency, .short-mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .figure { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.was { text-decoration-line: line-through; white-space: nowrap; }
+.was { text-decoration-line: line-through; white-space: nowrap; color: var(--ink-muted); }
 .short { display: flex; align-items: center; gap: var(--space-xxs); }
-.after { margin-inline-start: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.after { margin-inline-start: auto; font: var(--text-sm); color: var(--ink-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 [part="ShopConfirm.error"] { flex: none; margin: 0; }
 .actions { display: flex; flex: none; width: stretch; justify-content: flex-end; gap: var(--space-sm); flex-wrap: wrap; }
 .actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }

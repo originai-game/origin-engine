@@ -19,12 +19,12 @@
 <section id="DailyQuests" part="DailyQuests.frame" aria-label={title != '' ? title : t("general.quests.name")} aria-busy={loading}>
   <header part="DailyQuests.band">
     <h2 part="DailyQuests.title">{title != '' ? title : t("general.quests.name")}</h2>
-    <div part="DailyQuests.refresh DailyQuests.label" role="timer" hidden={refresh == ''}><og-icon class="mark" icon="clock"></og-icon><span class="refresh-text">{refresh}</span></div>
+    {#if refresh}<div part="DailyQuests.refresh DailyQuests.label" role="timer"><og-icon class="mark" icon="clock"></og-icon><span class="refresh-text">{refresh}</span></div>{/if}
   </header>
   {#if loading}
-    <div class="empty" role="status"><Spinner size={0} name={t("general.quests.loading")} /><p class="empty-text">{t("general.quests.loading")}</p></div>
+    <div class="empty" role="status"><Spinner name={t("general.quests.loading")} /><p class="empty-text">{t("general.quests.loading")}</p></div>
   {:else if quests.length}
-    <scroll class="rows-scroll">
+    <div class="rows-scroll">
       <ul class="rows" aria-label={title != '' ? title : t("general.quests.name")}>
         {#each quests as q (q.id)}
           <li part="DailyQuests.row" data-state={q.state} aria-label={q.name}>
@@ -35,34 +35,33 @@
             </div>
             <div class="end">
               <div part="DailyQuests.reward DailyQuests.figure" aria-label={t("general.quests.reward", { reward: q.reward })}><og-icon class="mark" icon={q.rewardIcon}></og-icon><span class="figure">{q.reward}</span></div>
-              <button id="Claim" variant="primary" hidden={q.state != 'done'} onclick={claim}>{t("general.quests.claim")}</button>
-              <div class="claimed" hidden={q.state != 'claimed'}><og-icon class="mark" icon="check"></og-icon><span>{t("general.quests.claimed")}</span></div>
+              {#if q.state == 'done'}<button id="Claim" variant="primary" onclick={claim}>{t("general.quests.claim")}</button>{/if}
+              {#if q.state == 'claimed'}<div class="claimed"><og-icon class="mark" icon="check"></og-icon><span>{t("general.quests.claimed")}</span></div>{/if}
             </div>
           </li>
         {/each}
       </ul>
-    </scroll>
+    </div>
   {:else}
     <div class="empty" role="status"><og-icon class="empty-mark" icon="flag"></og-icon><p class="empty-text">{t("general.quests.empty")}</p></div>
   {/if}
 </section>
 
 <style>
-[part="DailyQuests.frame"][hidden], [part="DailyQuests.frame"] [hidden] { display: none; }
-[part="DailyQuests.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
+:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-sm); container-type: inline-size; }
 [part="DailyQuests.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); flex: none; flex-wrap: wrap; }
 [part="DailyQuests.title"] { margin: 0; flex: 1; min-width: 0; }
 [part="DailyQuests.refresh DailyQuests.label"] { display: flex; align-items: center; gap: var(--space-xxs); max-width: stretch; }
 .refresh-text { text-align: end; }
 .mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .figure { font-variant-numeric: tabular-nums; }
-.rows-scroll { width: stretch; flex: 1; min-height: 0; }
+.rows-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .rows { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xs); }
 [part="DailyQuests.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); }
-[part="DailyQuests.medal"] { display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; }
+[part="DailyQuests.medal"] { display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; border-radius: var(--radius-capsule); background: var(--control-strong); }
 .medal-icon { width: var(--size-sm); height: var(--size-sm); }
 .body { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xs); }
-[part="DailyQuests.name"] { text-align: start; overflow-wrap: anywhere; }
+[part="DailyQuests.name"] { margin: 0; text-align: start; font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; }
 .end { display: flex; flex: none; flex-direction: column; align-items: flex-end; gap: var(--space-xxs); max-width: 40%; }
 [part="DailyQuests.reward DailyQuests.figure"] { display: flex; align-items: center; gap: var(--space-xxs); max-width: stretch; }
 [part="DailyQuests.reward DailyQuests.figure"] .figure { text-align: end; }

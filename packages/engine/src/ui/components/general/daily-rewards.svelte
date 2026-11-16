@@ -21,9 +21,9 @@
 <section id="DailyRewards" part="DailyRewards.frame" aria-label={title != '' ? title : t("general.rewards.name")}>
   <header part="DailyRewards.band">
     <h2 part="DailyRewards.title">{title != '' ? title : t("general.rewards.name")}</h2>
-    <div part="DailyRewards.refresh DailyRewards.label" role="timer" hidden={refresh == ''}><og-icon class="mark" icon="clock"></og-icon><span>{refresh}</span></div>
+    {#if refresh}<div part="DailyRewards.refresh DailyRewards.label" role="timer"><og-icon class="mark" icon="clock"></og-icon><span>{refresh}</span></div>{/if}
   </header>
-  <scroll class="days-scroll">
+  <div class="days-scroll">
     <ol class="days">
       {#each days as d (d.id)}
         <li class="slot">
@@ -51,28 +51,27 @@
         </li>
       {/each}
     </ol>
-  </scroll>
+  </div>
 </section>
 
 <style>
-[part="DailyRewards.frame"][hidden], [part="DailyRewards.frame"] [hidden] { display: none; }
-[part="DailyRewards.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
+:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-sm); container-type: inline-size; }
 [part="DailyRewards.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); flex: none; flex-wrap: wrap; }
 [part="DailyRewards.title"] { margin: 0; flex: 1; min-width: 0; }
 [part="DailyRewards.refresh DailyRewards.label"] { display: flex; align-items: center; gap: var(--space-xxs); }
 .mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
-.days-scroll { width: stretch; flex: 1; min-height: 0; }
+.days-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-xs); width: stretch; margin: 0; padding: var(--space-xxs); list-style: none; }
 .slot { display: flex; width: stretch; min-width: 0; }
 [part="DailyRewards.day DailyRewards.cell"] { width: stretch; min-width: 0; height: stretch; min-height: calc(var(--size-xxl) * 1.5); padding: var(--space-xs); align-items: stretch; justify-content: flex-start; }
 div[part="DailyRewards.day DailyRewards.cell"] { display: flex; box-sizing: border-box; }
 [part="DailyRewards.day DailyRewards.cell"] .face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; gap: var(--space-xxs); }
-[part="DailyRewards.label"], [part="DailyRewards.amount DailyRewards.figure"] { width: stretch; text-align: center; overflow-wrap: anywhere; }
+[part="DailyRewards.label"], [part="DailyRewards.amount DailyRewards.figure"] { margin: 0; text-align: center; overflow-wrap: anywhere; }
 .reward { width: var(--size-lg); height: var(--size-lg); flex: none; }
 [part="DailyRewards.amount DailyRewards.figure"] { flex: 1; font-variant-numeric: tabular-nums; }
 [part="DailyRewards.state DailyRewards.label"] { display: flex; width: stretch; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--space-xxs); }
-.state-text { min-width: 0; text-align: center; overflow-wrap: anywhere; }
-@container (width < 560px) {
+.state-text { text-align: center; }
+@container (width < 760px) {
   .days { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   [part="DailyRewards.day DailyRewards.cell"] { min-height: calc(var(--size-xxl) * 1.3); }
   .reward { width: var(--size-md); height: var(--size-md); }

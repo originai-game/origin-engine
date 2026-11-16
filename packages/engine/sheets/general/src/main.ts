@@ -12,7 +12,7 @@ import { og, type World } from "@origingame/engine";
 import { INK_NAMES, PROGRESS, SOCIAL, STATES, STORE } from "./fixtures.ts";
 
 const PAGES = ["store", "progress", "social", "states"] as const;
-const STYLES = ["fantasy", "scifi", "cartoon"] as const;
+const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 
 const DOCUMENTS = [
   "ui/store.svelte",
@@ -29,9 +29,12 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }, what
 
 /** The style and the icon set in one configure, so neither resets the other. */
 function setStyle(world: World, name: string): void {
-  const style = must(og.load.style(world, `@styles/${name}`), name);
   const ink = must(og.load.texture(world, "icons/ink-icons.png"), "ink icons");
-  og.ui.configure(world, { style, fallbackIcons: { texture: ink, columns: 8, rows: 4, names: INK_NAMES } });
+  const fallbackIcons = { texture: ink, columns: 8, rows: 4, names: INK_NAMES };
+  if (name === "default") {
+    const font = must(og.load.font(world, "fonts/InstrumentSans-Regular.ttf"), "font");
+    og.ui.configure(world, { style: null, font, fallbackIcons });
+  } else og.ui.configure(world, { style: must(og.load.style(world, `@styles/${name}`), name), font: null, fallbackIcons });
 }
 
 /** Mounts the sheet, its stores the fixtures and the page shown. */

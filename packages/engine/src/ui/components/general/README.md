@@ -19,9 +19,11 @@ results screen are the built-in screens of those names; a menu is `Menu`.
 
 ## Structure and appearance
 
-Each member's `<style>` holds structure only: layout, token sizes and
-spacing. It sets no colour, font or art, and lands in the `og-components`
-layer. A style pack (`og-pack`, above it) supplies every appearance through
+Each member's `<style>` supplies its HTML layout and readable default
+appearance through shared spacing, typography and surface tokens, in the
+`og-components` layer. Optional content uses conditionals; bounded lists
+use CSS overflow. A style pack (`og-pack`, above it) restyles the meaningful
+pieces through
 the members' named parts (docs/ui.md §3.2), qualified by their states and
 `data-*` attributes, for example `Shop::offer[data-sold-out=true]` or
 `button::part(DailyRewards\.day)` for a part that is a button. Each member
@@ -85,12 +87,13 @@ message at the foot.
 ## Review sheet and tests
 
 `og ui sheet general` renders the four review pages from
-`packages/engine/sheets/general/`, dressed by the fantasy pack: `store`
+`packages/engine/sheets/general/`, in the default style and fantasy pack: `store`
 (shop, purchase confirmation, login calendar), `progress` (achievements,
 daily quests, calendar), `social` (chat, friends) and `states` (the shop
 failed, a purchase that failed, no achievements, quests
 loading and empty, today's reward already taken, a muted chat, no friends).
-Icons come from the shared ink icon sheet; there is no painted art and no
+Icons come from the shared ink icon sheet; the default style uses the
+sheet's licensed Instrument Sans font. There is no painted art and no
 locale table yet.
 `og ui review general --style scifi` (or `--style cartoon`) renders the same
 pages in that pack, dressed by its tokens
