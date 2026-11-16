@@ -1479,8 +1479,12 @@ be a project font cooked by its own settings; `local()` names nothing (no
 system fonts). The runtime registers the first source the bundle has.
 `font-family` tries named and generic families in authored order per
 glyph, skipping unavailable names; generics map to the style's roles
-(`monospace`, `ui-rounded`, `fantasy`/`cursive`, else body), and a quoted
-`"serif"` is a named family. In a family the text takes the nearest
+(`monospace`, `fantasy`/`cursive`, else body), and a quoted `"serif"` is
+a named family. The optional generics (Fonts 4 §2.1.3) match only a face
+that suits them: `system-ui` and `ui-sans-serif` the style's body face,
+`ui-monospace` and `ui-rounded` its own mono and rounded faces (one an
+`@font-face` family backs counts); where it has none, and always for
+`ui-serif` and `math`, the list goes on to its next family. In a family the text takes the nearest
 `font-stretch` (`font-width`; at or under normal the narrower faces
 first, over it the wider), then `font-style`, then `font-weight`, and per
 character the last-declared face whose `unicode-range` has it. After the list come the role's face, the CJK

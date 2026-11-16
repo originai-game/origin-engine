@@ -30,6 +30,11 @@
 //!   list, its overrides or base dropped, an index past the font's
 //!   palettes not falling back to the first, or a palette not inherited →
 //!   `font_palette_draws_a_colour_face_in_the_palette_css_picks`
+//! - `ui-monospace` or `ui-rounded` drawn in a face standing in for the
+//!   role where the style has none of its own instead of going on down the
+//!   list, `ui-serif` or `math` taken as the body face ahead of a later
+//!   family, or `system-ui` not the style's UI face →
+//!   `generic_families_take_the_style_faces_that_suit_them`
 
 use crate::support::Doc;
 use og_draw::FontHandle;
@@ -92,6 +97,19 @@ const TEXT_WEIGHT: f32 = 0.5;
 /// (handle 1) and its `@font-face` families `faces`, in a style that
 /// thickens text by [`TEXT_WEIGHT`].
 fn doc(faces: Vec<FamilyFace>, body: &str, css: &str) -> Doc {
+    doc_in(
+        Fonts {
+            body: face(NOTO, 1),
+            ..Fonts::default()
+        },
+        faces,
+        body,
+        css,
+    )
+}
+
+/// [`doc`] with the style's role faces `fonts`.
+fn doc_in(fonts: Fonts, faces: Vec<FamilyFace>, body: &str, css: &str) -> Doc {
     let mut theme = Theme::default();
     theme.art.text_weights = [TEXT_WEIGHT; 3];
     let declared: String = faces
@@ -104,9 +122,8 @@ fn doc(faces: Vec<FamilyFace>, body: &str, css: &str) -> Doc {
         })
         .collect();
     let mut fonts = Fonts {
-        body: face(NOTO, 1),
         families: faces,
-        ..Fonts::default()
+        ..fonts
     };
     fonts.link();
     let ui = Ui::new(UiDesc {
@@ -570,4 +587,76 @@ fn font_palette_draws_a_colour_face_in_the_palette_css_picks() {
         pixel(&a.image, &a.image.rgba, 32.0, 0.75, 0.4),
         [255, 255, 0]
     ));
+}
+
+/// CSS Fonts 4 §2.1.3: `system-ui` and `ui-sans-serif` are the style's UI
+/// face (body); `ui-monospace` and `ui-rounded` its own mono and rounded
+/// faces; and where the style has no face that suits one (none ever for
+/// `ui-serif` and `math`), the family matches nothing and the list goes
+/// on, where `monospace`, which always matches, takes body's face.
+#[test]
+fn generic_families_take_the_style_faces_that_suit_them() {
+    let fancy = || family("Fancy", (400, 400), face(GARAMOND, 9));
+    let body = r#"<p id="System">Ab</p><p id="Sans">Ab</p><p id="Mono">Ab</p><p id="Round">Ab</p>
+<p id="Serif">Ab</p><p id="Math">Ab</p><p id="SerifMono">Ab</p><p id="MathFancy">Ab</p>
+<p id="MonoFancy">Ab</p><p id="RoundFancy">Ab</p><p id="Always">Ab</p>"#;
+    let css = r#"#System { font-family: system-ui; } #Sans { font-family: ui-sans-serif; }
+#Mono { font-family: ui-monospace; } #Round { font-family: ui-rounded; }
+#Serif { font-family: ui-serif; } #Math { font-family: math; }
+#SerifMono { font-family: ui-serif, ui-monospace; } #MathFancy { font-family: math, "Fancy"; }
+#MonoFancy { font-family: ui-monospace, "Fancy"; } #RoundFancy { font-family: ui-rounded, "Fancy"; }
+#Always { font-family: monospace, "Fancy"; }"#;
+    let face_of = |d: &Doc, id: &str| {
+        let t = drawn(d, id);
+        assert!(!t.is_empty(), "#{id} draws");
+        t[0].font
+    };
+    let h = FontHandle::from_index;
+    // A style with its own mono and rounded faces.
+    let styled = doc_in(
+        Fonts {
+            body: face(NOTO, 1),
+            mono: Some(face(INTER, 2)),
+            rounded: Some(face(GARAMOND, 3)),
+            ..Fonts::default()
+        },
+        vec![fancy()],
+        body,
+        css,
+    );
+    for (id, want) in [
+        ("System", 1),
+        ("Sans", 1),
+        ("Mono", 2),
+        ("Round", 3),
+        // Nothing suits them: the list ends, at the text's default face.
+        ("Serif", 1),
+        ("Math", 1),
+        ("SerifMono", 2),
+        ("MathFancy", 9),
+        ("MonoFancy", 2),
+        ("RoundFancy", 3),
+        ("Always", 2),
+    ] {
+        assert_eq!(face_of(&styled, id), h(want), "#{id} in the styled fonts");
+    }
+    // A style with a body face only: the ui- families go on down the list.
+    let plain = doc_in(
+        Fonts {
+            body: face(NOTO, 1),
+            ..Fonts::default()
+        },
+        vec![fancy()],
+        body,
+        css,
+    );
+    for (id, want) in [
+        ("System", 1),
+        ("Mono", 1),
+        ("MonoFancy", 9),
+        ("RoundFancy", 9),
+        ("Always", 1),
+    ] {
+        assert_eq!(face_of(&plain, id), h(want), "#{id} in body-only fonts");
+    }
 }

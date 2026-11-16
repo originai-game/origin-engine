@@ -306,7 +306,13 @@ type ResolvedFamily = (UiFont, Synth, (u16, u16));
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FontFamily {
     Named(String),
+    /// A generic family every style has a face for (`serif`, `monospace`,
+    /// …): the role's face, another's where it has none.
     Generic(FontRole),
+    /// A generic family only a suitable face matches (`system-ui`,
+    /// `ui-sans-serif`, `ui-monospace`, `ui-rounded`; CSS Fonts 4 §2.1.3):
+    /// the role's own face, else none and the list goes on.
+    Ui(FontRole),
 }
 
 impl FontFamily {
@@ -318,6 +324,12 @@ impl FontFamily {
                 FontRole::Display => "fantasy",
                 FontRole::Rounded => "ui-rounded",
                 _ => "sans-serif",
+            }
+            .into(),
+            Self::Ui(role) => match role.base() {
+                FontRole::Mono => "ui-monospace",
+                FontRole::Rounded => "ui-rounded",
+                _ => "system-ui",
             }
             .into(),
         }
@@ -605,7 +617,9 @@ impl Fonts {
             })
     }
 
-    /// Retain named and generic families in CSS order, then use the fallback role.
+    /// Retain named and generic families in CSS order, then use the fallback
+    /// role. A [`FontFamily::Ui`] stays only where the style has the role's
+    /// own face ([`Fonts::has_own`]), as its generic.
     pub fn family_list(&self, names: &[FontFamily], fallback: FontRole) -> FontRole {
         let names: Vec<FontFamily> = names
             .iter()
@@ -614,6 +628,7 @@ impl Fonts {
                     .has_family(name)
                     .then(|| FontFamily::Named(name.to_ascii_lowercase())),
                 FontFamily::Generic(_) => Some(n.clone()),
+                FontFamily::Ui(role) => self.has_own(*role).then_some(FontFamily::Generic(*role)),
             })
             .collect();
         match names.as_slice() {
@@ -634,6 +649,17 @@ impl Fonts {
                 }
                 FontRole::Family(family)
             }
+        }
+    }
+
+    /// Whether the style has a face of `role`'s own, not another role's
+    /// standing in (body always has one).
+    pub fn has_own(&self, role: FontRole) -> bool {
+        match role.base() {
+            FontRole::Display => self.display.is_some(),
+            FontRole::Mono => self.mono.is_some(),
+            FontRole::Rounded => self.rounded.is_some(),
+            _ => true,
         }
     }
 
@@ -937,7 +963,7 @@ impl Fonts {
                                     slanted,
                                 )
                             }
-                            FontFamily::Generic(role) => {
+                            FontFamily::Generic(role) | FontFamily::Ui(role) => {
                                 let (font, got, slanted) = self.latin(*role, weight, italic);
                                 (
                                     std::iter::once(font)

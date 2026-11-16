@@ -569,11 +569,27 @@ pub(crate) fn family_list(v: &str) -> Result<(Vec<crate::FontFamily>, String), S
 
             match item {
                 "" => return Err("font-family: an empty family in the list".into()),
-                "monospace" | "ui-monospace" => Some("mono"),
-                "ui-rounded" => Some("rounded"),
+                "monospace" => Some("mono"),
                 "fantasy" | "cursive" => Some("display"),
-                "serif" | "sans-serif" | "system-ui" | "ui-serif" | "ui-sans-serif" | "math"
-                | "emoji" | "fangsong" => Some("body"),
+                "serif" | "sans-serif" | "emoji" | "fangsong" => Some("body"),
+                // CSS Fonts 4 §2.1.3: these match only a face that suits
+                // them, else the list goes on. The style's UI face is the
+                // system's and its sans-serif; its own mono and rounded
+                // faces are its ui-monospace and ui-rounded
+                // (`Fonts::family_list`); it has no serif or math face.
+                "system-ui" | "ui-sans-serif" => {
+                    names.push(crate::FontFamily::Ui(crate::FontRole::Body));
+                    continue;
+                }
+                "ui-monospace" => {
+                    names.push(crate::FontFamily::Ui(crate::FontRole::Mono));
+                    continue;
+                }
+                "ui-rounded" => {
+                    names.push(crate::FontFamily::Ui(crate::FontRole::Rounded));
+                    continue;
+                }
+                "ui-serif" | "math" => continue,
                 _ => None,
             }
         };
@@ -1337,7 +1353,7 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
                 .into_iter()
                 .filter(|n| match n {
                     crate::FontFamily::Named(name) => declared(name),
-                    crate::FontFamily::Generic(_) => true,
+                    crate::FontFamily::Generic(_) | crate::FontFamily::Ui(_) => true,
                 })
                 .collect()
         });
