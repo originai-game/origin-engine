@@ -2365,7 +2365,7 @@ follow [release rules](release.md), with separate release authorization.
 closed.** og-ui implements game-UI CSS, not a browser: a row is in scope
 when a component, a style pack or a guide needs it, and work goes to
 proving rows in use before adding rows. A feature outside the pinned
-inventory, or a row the owner marks out of scope, is refused by the parser
+inventory, or a row marked Not needed, is refused by the parser
 by name, never half-rendered. Moving the pin to a newer web-features
 version is a decision of its own.
 
@@ -2376,6 +2376,9 @@ The checklist of every WebDX CSS feature lives in
 from the proofs it lists; it is never edited by hand. A row is
 **Supported** when the output assertion it names proves the listed scope
 (not every syntax grouped under that WebDX name), **Missing** for an
-implementation gap or a missing output proof (the reason says which), and
+implementation gap or a missing output proof (the reason says which),
 **Not applicable** when the feature cannot apply to a game engine's UI
-(print, cross-document navigation, browser chrome).
+(print, cross-document navigation, browser chrome), and **Not needed**
+when it could apply but no game needs it. Not needed closes a row without
+an implementation and carries its reason, like Not applicable; a row that
+is neither impossible nor needed goes there, not into the gap list.

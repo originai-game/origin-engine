@@ -52,6 +52,35 @@ def not_applicable(features, reason):
         NOT_APPLICABLE[feature] = reason
 
 
+# Feature: one-line reason no game needs it, though it could apply to a
+# game engine's UI. Closed without an implementation; neither a gap nor support.
+NOT_NEEDED = {}
+
+
+def not_needed(features, reason):
+    for feature in features.split():
+        if feature in NOT_NEEDED:
+            raise ValueError(f"duplicate not needed: {feature}")
+        NOT_NEEDED[feature] = reason
+
+
+not_needed("webvtt",
+           "WebVTT text tracks and ::cue style captions a <video> draws. A game's subtitles are `$captions` and the "
+           "built-in subtitles screen, a document that documents and style packs already style.")
+not_needed("time-relative-selectors",
+           ":past and :future match WebVTT cues during playback; subtitles are `$captions` and the subtitles screen, "
+           "so there are no cues to match.")
+not_needed("mathml",
+           "Mathematical markup (display: math, math-style, math-depth). Game UI does not typeset formulas, and no "
+           "component, style pack or guide needs it.")
+not_needed("speak speak-as",
+           "Aural rendering of text by a speech synthesiser. The screen-reader bridge speaks the accessibility tree "
+           "through the platform, and no game steers pronunciation from CSS.")
+not_needed("link-parameters",
+           "Passes param() values through an image URL into an external SVG's var(). A game's SVG is inline markup "
+           "or a cooked image, styled by its document, and no component or style pack parameterises one by URL.")
+
+
 proof("aspect-ratio box-sizing width-height min-max-width-height fit-content-function min-max-content logical-properties padding",
       "css_layout", "the_box_model_sizes_as_css_does",
       "Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths.")
@@ -522,15 +551,14 @@ not_applicable("autonomous-custom-elements",
 MISSING = {
     "file-selector-button": "Accepted and styles nothing: a file input's button is not a stylable box.",
     "view-transitions-element-scoped": "No view-transition-scope or element-scoped transitions: a transition captures a whole layer.",
-    "webvtt": "No WebVTT captions or ::cue: a video draws no text track.",
-    # layout
-    "time-relative-selectors": ":past and :future match WebVTT cues during media playback; <video> draws no text track yet (motion is building WebVTT), and the selectors come with it.",
 }
 
 if overlap := PROVEN.keys() & MISSING.keys():
     raise ValueError(f"a proof must state its remaining gaps, not hide MISSING: {sorted(overlap)}")
 if overlap := NOT_APPLICABLE.keys() & (PROVEN.keys() | MISSING.keys()):
     raise ValueError(f"a feature is either not applicable or proved/missing: {sorted(overlap)}")
+if overlap := NOT_NEEDED.keys() & (PROVEN.keys() | MISSING.keys() | NOT_APPLICABLE.keys()):
+    raise ValueError(f"a feature is either not needed or proved/missing/not applicable: {sorted(overlap)}")
 
 PART_PROVEN = {}
 
@@ -614,7 +642,7 @@ def main():
         data = json.load(package.extractfile("package/data.json"))["features"]
     features = {key: value for key, value in data.items()
                 if any(name.startswith("css.") for name in value.get("compat_features", []))}
-    if len(features) != 454 or (PROVEN.keys() | MISSING.keys() | NOT_APPLICABLE.keys() | PART_PROVEN.keys()) - features.keys():
+    if len(features) != 454 or (PROVEN.keys() | MISSING.keys() | NOT_APPLICABLE.keys() | NOT_NEEDED.keys() | PART_PROVEN.keys()) - features.keys():
         raise ValueError("feature inventory drift")
     lines = ["# Standard CSS output-proof checklist",
              "",
@@ -631,7 +659,9 @@ def main():
              "**Missing means an implementation gap or a missing output proof**, distinguished in the reason. "
              "A missing proof is not evidence that the implementation is absent. "
              "**Not applicable means the feature cannot apply to a game engine's UI** "
-             "(print, cross-document navigation, browser chrome), with the reason in the row. Parser acceptance, "
+             "(print, cross-document navigation, browser chrome), with the reason in the row. "
+             "**Not needed means the feature could apply to games but no game needs it**: the row is closed "
+             "without an implementation, with the reason in the row. Parser acceptance, "
              "a property name in source, and an entire test file are not support evidence. "
              "This is a conservative, incomplete conformance inventory; unresolved rows stay visible.",
              "",
@@ -660,10 +690,13 @@ def main():
         elif key in NOT_APPLICABLE:
             state = "Not applicable"
             reason = NOT_APPLICABLE[key]
+        elif key in NOT_NEEDED:
+            state = "Not needed"
+            reason = NOT_NEEDED[key]
         else:
             state = "Missing"
             reason = MISSING.get(key, "Output proof not yet reviewed; implementation status unverified.")
-        part_state = "Not applicable" if key in NOT_APPLICABLE else "Missing"
+        part_state = "Not applicable" if key in NOT_APPLICABLE else "Not needed" if key in NOT_NEEDED else "Missing"
         for module, test, scope in PART_PROVEN.get(key, []):
             source = proof_source(module, test, "part proof")
             part_state = "Supported (scope →)"
@@ -676,7 +709,7 @@ def main():
     else:
         CHECKLIST.write_text(new)
     print(f"454 CSS entries: {len(PROVEN)} scoped output proofs; {len(NOT_APPLICABLE)} not applicable; "
-          f"{454 - len(PROVEN) - len(NOT_APPLICABLE)} missing/gap rows")
+          f"{len(NOT_NEEDED)} not needed; {454 - len(PROVEN) - len(NOT_APPLICABLE) - len(NOT_NEEDED)} missing/gap rows")
 
 
 if __name__ == "__main__":
