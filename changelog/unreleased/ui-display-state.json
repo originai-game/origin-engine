@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI CSS @media (display-state)",
+      "summary": "`@media (display-state: fullscreen)` matches, as `display-mode: fullscreen` does: the play surface fills its display. `normal`, `maximized` and `minimized` never match; the bare `(display-state)` is true."
+    }
+  ]
+}

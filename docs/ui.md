@@ -1412,7 +1412,7 @@ is the device in use) and `-og-color-vision` (below). `color-gamut` and
 `high_range`, from `RenderInfo::wide_gamut` and `hdr`): `p3` and `high`
 match where it presents Display P3 and extended range, `srgb` and
 `standard` always, `rec2020` never. The other display features answer
-fixed values: `display-mode: fullscreen`, `update: fast`, `scripting: enabled`,
+fixed values: `display-mode: fullscreen`, `display-state: fullscreen`, `update: fast`, `scripting: enabled`,
 `forced-colors: none`, `inverted-colors: none`, `prefers-reduced-data:
 no-preference`, `color: 8`, and 0 for `monochrome`, `color-index` and
 `grid`. There is no named-breakpoint reader. Each element re-resolves only

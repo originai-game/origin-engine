@@ -947,6 +947,7 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
                 | "update"
                 | "scripting"
                 | "display-mode"
+                | "display-state"
                 | "prefers-color-scheme"
                 | "dynamic-range"
                 | "device-posture"
@@ -1072,6 +1073,7 @@ fn keyword_feature(name: &str, input: &mut Parser<'_>) -> Result<Option<Feature>
             "browser",
             "picture-in-picture",
         ],
+        "display-state" => &["fullscreen", "maximized", "minimized", "normal"],
         "update" => &["none", "slow", "fast"],
         "scripting" => &["none", "initial-only", "enabled"],
         "inverted-colors" => &["none", "inverted"],
@@ -1110,7 +1112,7 @@ fn keyword_feature(name: &str, input: &mut Parser<'_>) -> Result<Option<Feature>
             ("forced-colors", "none")
                 | ("color-gamut", "srgb")
                 | ("dynamic-range" | "video-dynamic-range", "standard")
-                | ("display-mode", "fullscreen")
+                | ("display-mode" | "display-state", "fullscreen")
                 | ("update", "fast")
                 | ("scripting", "enabled")
                 | ("inverted-colors", "none")
@@ -1275,6 +1277,8 @@ mod tests {
             ("(dynamic-range: high)", false, Some(10)),
             ("(video-dynamic-range: standard)", true, None),
             ("(display-mode: fullscreen)", true, None),
+            ("(display-state: fullscreen)", true, None),
+            ("(display-state: normal)", false, None),
             ("(update: fast)", true, None),
             ("(scripting: enabled)", true, None),
             ("(min-color: 8)", true, None),

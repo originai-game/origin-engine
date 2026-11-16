@@ -263,7 +263,7 @@ measurements are `og style check-project`.
   and `(dynamic-range: high)` match where the renderer's surface presents
   Display P3 and extended range (`og.render.capabilities()`'s
   `wideGamut` and `hdr`); `rec2020` never does. The other display features
-  (`display-mode`, `update`…) answer fixed values for the play surface. `screen` and `all` are the media types; square
+  (`display-mode`, `display-state`, `update`…) answer fixed values for the play surface. `screen` and `all` are the media types; square
   viewports are portrait; `em`/`rem` in a condition are the initial 16px.
   Unsupported features, zero-denominator ratios, viewport units and
   `calc()` in a condition fail cooking, as do names such as `@media phone`.
