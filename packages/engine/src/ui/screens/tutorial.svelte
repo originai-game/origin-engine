@@ -14,47 +14,46 @@
 <meta name="action:back" content="Skip">
 <meta name="fixture:default" content="{&quot;step&quot;:2,&quot;steps&quot;:5,&quot;target&quot;:&quot;&quot;,&quot;text&quot;:&quot;Press the dodge button just before an attack lands to slip past it.&quot;,&quot;texture&quot;:0,&quot;title&quot;:&quot;Dodge&quot;,&quot;waits&quot;:false,&quot;x&quot;:64,&quot;y&quot;:120}">
 
-<stack id="Tutorial">
-  <column id="Highlight">{@render highlight?.()}</column>
+<div id="Tutorial">
+  <div id="Highlight">{@render highlight?.()}</div>
   {#if target}
     <og-spotlight id="Spot" class="card" part="tutorial.frame" open target={target}>{@render card()}</og-spotlight>
   {:else}
-    <column id="Card" class="card" part="tutorial.frame">{@render card()}</column>
+    <section id="Card" class="card" part="tutorial.frame">{@render card()}</section>
   {/if}
-</stack>
+</div>
 
 {#snippet card()}
-  <art id="Art" kind="tutorial" src={texture} hidden={!((texture != 0.0))}></art>
-  <text id="Title" part="tutorial.title" heading="true">{title}</text>
-  <text id="Text" part="tutorial.text">{text}</text>
-  <column id="Hint">{@render hint?.()}</column>
-  <row id="Foot">
-    <text id="Step" part="tutorial.step">{t("screen.tutorial.Step", { step: step, steps: steps })}</text>
-    <spacer id="Node9"></spacer>
+  {#if texture != 0}<art id="Art" kind="tutorial" src={texture}></art>{/if}
+  <h2 id="Title" part="tutorial.title">{title}</h2>
+  <p id="Text" part="tutorial.text">{text}</p>
+  <div id="Hint">{@render hint?.()}</div>
+  <footer id="Foot">
+    <p id="Step" part="tutorial.step">{t("screen.tutorial.Step", { step: step, steps: steps })}</p>
     <button id="Skip" variant="quiet" onclick={skip}>{t("screen.tutorial.skip")}</button>
-    <button id="Next" variant="primary" hidden={!(!(waits))} onclick={next} onconfirm={next}>{t("screen.tutorial.next")}</button>
-  </row>
+    {#if !waits}<button id="Next" variant="primary" onclick={next} onconfirm={next}>{t("screen.tutorial.next")}</button>{/if}
+  </footer>
 {/snippet}
 
 <style>
-button, button::part(base) { height: var(--control-sm); }
+:root { position: relative; block-size: stretch; }
+#Highlight { position: absolute; inset: 0; }
+h2, p { margin: 0; }
+/* The card: at the spotlight's target, else at the game's x and y. */
+.card { gap: var(--space-sm); inline-size: 100%; max-inline-size: var(--measure-md); transition: opacity var(--motion-enter), scale var(--motion-enter); }
+@starting-style { .card { opacity: 0; scale: 0.6; } }
+#Card { display: flex; flex-direction: column; position: absolute; inset-inline-start: bind(x); top: bind(y); }
+[part="tutorial.title"] { font-size: var(--type-lg-size); letter-spacing: var(--type-lg-tracking); }
+[part="tutorial.text"] { font: var(--text-reading); letter-spacing: var(--type-reading-tracking); line-clamp: 5; }
+#Foot { display: flex; align-items: center; gap: var(--space-sm); }
+[part="tutorial.step"] { flex: 1; font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
+button, button::part(base) { block-size: var(--control-sm); }
 button::part(base) { padding: 0 var(--space-md); }
 @media (width < 600px), (height < 600px) {
-button, button::part(base) { height: var(--control-md); }
-button::part(base) { padding: 0 var(--space-lg); }
+  button, button::part(base) { block-size: var(--control-md); }
+  button::part(base) { padding: 0 var(--space-lg); }
 }
-#Tutorial { width: stretch; height: stretch; min-height: 0; }
-#Highlight { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
-.card { width: stretch; max-width: var(--measure-md); gap: var(--space-sm); opacity: 1; scale: 1; transition: opacity var(--motion-enter), scale var(--motion-enter); }
-@starting-style { .card { opacity: 0; scale: 0.6; } }
-#Card { position: absolute; inset-inline-start: bind(x); top: bind(y); }
 @media (width < 600px) and (orientation: portrait) {
-#Card { inset-inline-start: var(--space-md); inset-inline-end: var(--space-md); top: bind(y); }
+  #Card { inset-inline: var(--space-md); inline-size: auto; }
 }
-#Art { width: stretch; }
-#Title { font-size: var(--type-lg-size); }
-#Text { font: var(--text-reading); letter-spacing: var(--type-reading-tracking); line-clamp: 5; }
-#Hint { width: stretch; }
-#Foot { width: stretch; gap: var(--space-sm); align-items: center; }
-#Step { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 </style>

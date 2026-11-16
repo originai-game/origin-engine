@@ -12,15 +12,15 @@
 <meta name="action:tabPrev" content="Previous page">
 <meta name="fixture:default" content="{&quot;note&quot;:&quot;&quot;}">
 
-<column id="Screen" part="settings.frame" class="bare">
-  <row id="Header" part="settings.band">
+<div id="Screen" part="settings.frame" class="bare">
+  <header id="Header" part="settings.band">
     <button id="Back" variant="quiet" onclick={back}>{t("screen.common.back")}</button>
-    <column id="Heading">
-      <text id="Title" part="settings.title" heading="true">{t("screen.settings.title")}</text>
-      <text id="Note" hidden={!((note != ""))}>{note}</text>
-    </column>
-  </row>
-  <column id="Tree">
+    <div id="Heading">
+      <h1 id="Title" part="settings.title">{t("screen.settings.title")}</h1>
+      {#if note != ""}<p id="Note">{note}</p>{/if}
+    </div>
+  </header>
+  <div id="Tree">
     {#if page}
       <nav id="Pages" role="tablist">
         {#each pages as p (p.id)}
@@ -57,25 +57,24 @@
       </footer>
     {/if}
     {@render tree?.()}
-  </column>
-</column>
+  </div>
+</div>
 
 <style>
-#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-lg); min-height: 0; }
-@media (width < 600px), (height < 600px) {
-#Screen { padding: var(--space-lg); gap: var(--space-md); }
-}
-#Header { width: stretch; gap: var(--space-md); align-items: center; }
-#Heading { flex: 1; min-width: 0; gap: var(--space-xxs); }
-#Title { font-size: var(--type-xl2-size); }
-@media (width < 600px), (height < 600px) {
-#Title { font-size: var(--type-xl-size); }
-}
+:root { display: flex; flex-direction: column; gap: var(--space-lg); block-size: stretch; padding: var(--space-xxl); }
+h1, #Note { margin: 0; }
+[part="settings.band"] { display: flex; align-items: center; gap: var(--space-md); }
+#Heading { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; gap: var(--space-xxs); }
+[part="settings.title"] { font-size: var(--type-xl2-size); letter-spacing: var(--type-xl2-tracking); }
 #Note { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); line-clamp: 2; }
-#Tree { width: stretch; flex: 1; min-height: 0; gap: var(--space-md); }
-#Pages { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
-#Entries { list-style: none; padding: 0; margin: 0; width: stretch; flex: 1; min-height: 0; overflow-y: auto; }
-.entry { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; border-bottom: var(--stroke-hairline) solid var(--line); }
-.entry .name { flex: 1; min-width: 0; }
-#Foot { display: flex; justify-content: end; gap: var(--space-sm); width: stretch; }
+#Tree { flex: 1; min-block-size: 0; display: flex; flex-direction: column; gap: var(--space-md); }
+#Pages { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+#Entries { flex: 1; min-block-size: 0; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
+.entry { display: flex; align-items: center; gap: var(--space-md); padding-block: var(--space-sm); border-block-end: var(--stroke-hairline) solid var(--line); }
+.entry .name { flex: 1; min-inline-size: 0; }
+#Foot { display: flex; justify-content: end; gap: var(--space-sm); }
+@media (width < 600px), (height < 600px) {
+  :root { padding: var(--space-lg); gap: var(--space-md); }
+  [part="settings.title"] { font-size: var(--type-xl-size); letter-spacing: var(--type-xl-tracking); }
+}
 </style>
