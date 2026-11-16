@@ -49,6 +49,13 @@ impl Doc {
     /// [`Doc::new`] in `ui`, which may hold other documents (those it
     /// embeds).
     pub(crate) fn mounted(mut ui: Ui, text: &str, stores: &[(&str, Value)]) -> Doc {
+        super::define_controls(&mut ui);
+        Doc::without_controls(ui, text, stores)
+    }
+
+    /// [`Doc::mounted`] without the library's control documents: each
+    /// control is og-ui's fallback until one is defined.
+    pub(crate) fn without_controls(mut ui: Ui, text: &str, stores: &[(&str, Value)]) -> Doc {
         // Against the pack `ui` was given, as a host parses a document.
         let doc = ui
             .parse_document("ui/t.svelte", text, Vec::new())
@@ -83,6 +90,7 @@ impl Doc {
     /// CSS), with no stores: the first step builds under that setup.
     pub(crate) fn with_ui(ui: Ui, text: &str) -> Doc {
         let mut ui = ui;
+        super::define_controls(&mut ui);
         // Against the pack `ui` was given, as a host parses a document.
         let doc = ui
             .parse_document("ui/t.svelte", text, Vec::new())

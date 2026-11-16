@@ -146,7 +146,11 @@ meter[region=poor]::part(track) { height: 4px; }
 #[test]
 fn a_control_defined_after_its_host_is_mounted_takes_it_over() {
     // A screen's load defines the controls it uses after the screen.
-    let mut d = Doc::new(BAR, &[("v", json!(0.5))]);
+    let mut d = Doc::without_controls(
+        ui_with_font(test_font_metrics()),
+        BAR,
+        &[("v", json!(0.5))],
+    );
     d.step(InputFrame::default());
     assert!(d.el("P/Track").is_none(), "the fallback draws no document");
     let path = engine_dir("src/ui/controls/progress.svelte");
@@ -429,4 +433,27 @@ fn exportparts_is_read_where_a_part_can_be_exported() {
     assert!(refused(&mut ui, instance).contains("component instance"));
     let list = r#"<meta name="control" content="meter"><div><progress exportparts="fill: :x"></progress></div>"#;
     assert!(refused(&mut ui, list).contains("part names"));
+}
+
+#[test]
+fn a_checkbox_toggles_its_binding_and_draws_its_state() {
+    let text = r#"<meta name="component" content="t">
+<div id="Form"><label><input type="checkbox" id="C" bind:checked={$on}> Music</label></div>"#;
+    let mut d = Doc::mounted(with_control("checkbox"), text, &[("on", json!(false))]);
+    d.step(InputFrame::default());
+    assert_eq!(d.a11y("C").role, "checkbox");
+    d.click("C");
+    assert_eq!(d.read("on"), json!(true), "a press writes the binding back");
+    for _ in 0..60 {
+        d.step(InputFrame::default());
+    }
+    assert!(d.a11y("C").states.contains(&"checked".to_owned()));
+    assert_eq!(d.a11y("C").name, "Music", "the caption names it");
+    let box_ = d.get("C/Row/Box");
+    let palette = d.ui.theme().palette;
+    let fills = fills_in(&d.ui, Rect::new(box_.x, box_.y, box_.width, box_.height));
+    assert!(fills.iter().any(|f| near(*f, palette.primary)), "checked fills primary: {fills:?}");
+    assert!(d.get("C/Row/Text").x > box_.x + box_.width, "the caption follows the box");
+    d.click("C");
+    assert_eq!(d.read("on"), json!(false));
 }

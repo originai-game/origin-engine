@@ -222,9 +222,26 @@ impl RetainedHost {
         let mut lexical = Lexical::default();
         let derived = derived(node);
         for prop in &control.props {
-            let written = node.selector_attrs.iter().find(|(name, _)| {
-                *name == prop.name || name.strip_prefix("bind:") == Some(prop.name.as_str())
-            });
+            // Its attribute, else its `data-` attribute (`data-icon` for
+            // `icon`, `data-badge-tone` for `badgeTone`), as HTML's dataset
+            // names one: what an element of its kind has no attribute for.
+            let data = format!(
+                "data-{}",
+                prop.name.chars().fold(String::new(), |mut s, c| {
+                    if c.is_ascii_uppercase() {
+                        s.push('-');
+                    }
+                    s.push(c.to_ascii_lowercase());
+                    s
+                })
+            );
+            let written = node
+                .selector_attrs
+                .iter()
+                .find(|(name, _)| {
+                    *name == prop.name || name.strip_prefix("bind:") == Some(prop.name.as_str())
+                })
+                .or_else(|| node.selector_attrs.iter().find(|(name, _)| *name == data));
             let state = derived.iter().find(|(name, _)| *name == prop.name);
             let (expression, model) = match written {
                 _ if let Some((_, expression)) = state => (expression.clone(), None),
@@ -245,6 +262,28 @@ impl RetainedHost {
                         _ => None,
                     },
                 ),
+                // What the element's markup sets beside its attributes: a
+                // checkbox's caption (`text`) and description, the side
+                // its caption is written on.
+                None if let Some(set) = node.props.iter().rev().find(|p| p.name() == prop.name) => {
+                    let expression = match &set.value {
+                        PropValue::Lit(lit) => Expr::Lit(literal(lit)).into(),
+                        PropValue::Bind(e, format) => format
+                            .map_or_else(|| e.clone(), |f| Expr::Format(f, Box::new(e.clone())))
+                            .into(),
+                        PropValue::Model(path) => Expr::Path(path.clone()).into(),
+                        PropValue::Template(t) => BindingExpression::Template(t.clone()),
+                    };
+                    lexical.props.insert(
+                        prop.name.clone(),
+                        PropRef {
+                            expression,
+                            model: None,
+                            context: user.clone(),
+                        },
+                    );
+                    continue;
+                }
                 None => match &prop.default {
                     Some(default) => (Expr::Lit(default.clone()), None),
                     None => continue,

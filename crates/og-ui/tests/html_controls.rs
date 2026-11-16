@@ -221,19 +221,13 @@ fn meter_fills(ui: &Ui, hp: &UiElement) -> Vec<[f32; 4]> {
     ui.frame()
         .items
         .iter()
-        .filter_map(|it| match &it.cmd {
-            DrawCmd::Shape { shape, .. }
-                if (shape.center.y - (hp.y + hp.height / 2.0)).abs() < 1.0
-                    && shape.center.x > hp.x
-                    && shape.center.x < hp.x + hp.width =>
-            {
-                match shape.paint {
-                    og_draw::UiPaint::Solid(c) => Some(c),
-                    _ => None,
-                }
-            }
-            _ => None,
+        .filter_map(|it| it.cmd.filled())
+        .filter(|(r, _)| {
+            (r.y + r.height / 2.0 - (hp.y + hp.height / 2.0)).abs() < 1.0
+                && r.x + r.width / 2.0 > hp.x
+                && r.x + r.width / 2.0 < hp.x + hp.width
         })
+        .map(|(_, c)| c)
         .collect()
 }
 

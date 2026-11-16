@@ -454,6 +454,10 @@ pub struct Interaction {
     pub(crate) vcursor: Option<crate::vcursor::VirtualCursorDesc>,
     /// The control a widget asked to focus this frame.
     pub(crate) request_focus: u64,
+    /// Each focus group whose selection follows the focus (a `tablist`'s
+    /// or a `radiogroup`'s, [`crate::interaction::nav`]) and its checked
+    /// member (0: none), as the last frame drew them.
+    pub(crate) selects: og_core::IdMap<u64, u64>,
     /// `state.hits`' order for sequential focus where a container's
     /// `reading-flow` changes it, as indices into them (`None`: theirs;
     /// [`crate::layout::reading`]). Pointer hits keep the tree's order.

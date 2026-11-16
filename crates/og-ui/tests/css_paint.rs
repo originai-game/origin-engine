@@ -2810,3 +2810,17 @@ p {{ margin: 0; font-size: 20px; width: 105px; }}
         before.iter().map(|b| (b.0, b.1, b.2)).collect::<Vec<_>>()
     );
 }
+
+#[test]
+fn zz_scratch() {
+    let mut d = Doc::new(r#"<meta name="component" content="t">
+<column><input type="checkbox" id="Gold" checked style="accent-color: #ffd60a" /><input type="checkbox" id="Plain" bind:checked={$on} /></column>"#, &[("on", serde_json::json!(false))]);
+    d.step(InputFrame::default());
+    d.set("on", serde_json::json!(true));
+    eprintln!("DBG palette primary {:?} well {:?}", d.ui.theme().palette.primary.linear(), d.ui.theme().palette.well.linear());
+    eprintln!("DBG a11y {:?}", d.a11y("Plain").states);
+    for _ in 0..60 { d.step(InputFrame::default()); }
+    for e in d.ui.probe_elements() { eprintln!("DBG {} x{} y{} w{} h{}", e.path, e.x, e.y, e.width, e.height); }
+    for id in ["Gold", "Plain"] { eprintln!("DBG {id} {:?}", paints_in(&d.ui, &d.get(id))); }
+    for it in &d.ui.frame().items { eprintln!("DBG cmd {:?}", match &it.cmd { DrawCmd::Shape { shape, .. } => format!("shape {:?} {:?} {:?}", shape.center, shape.half, shape.paint), DrawCmd::Quad { rect, color, .. } => format!("quad {rect:?} {color:?}"), _ => "other".into() }); }
+}

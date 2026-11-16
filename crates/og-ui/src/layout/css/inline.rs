@@ -355,9 +355,9 @@ impl Tree<'_, '_> {
     }
 
     /// Node `i`'s floats, the floats of its context reaching its content,
-    /// or its boxes' `vertical-align`: its lines laid out one at a time
-    /// ([`Tree::line_boxes`]). Otherwise `None`: it lays out as a
-    /// wrapping flex row.
+    /// its boxes' `vertical-align`, or a block-level box: its lines laid out one at a time
+    /// ([`Tree::line_boxes`]), as are lines a block-level box breaks.
+    /// Otherwise `None`: it lays out as a wrapping flex row.
     pub(super) fn lines(
         &mut self,
         i: usize,
@@ -367,9 +367,18 @@ impl Tree<'_, '_> {
         let n = &self.nodes[i];
         let near = ctx.as_ref().is_some_and(|c| c.has_active_floats(0.0));
         let shaped = self.shapes(i).is_some();
+        // A block-level box among the lines keeps its own size on a line
+        // of its own (CSS 2 §9.2.1.1), which a wrapping row cannot break.
+        let blocks = n.children.iter().any(|&c| {
+            let k = &self.nodes[c];
+            !k.props.out_of_flow()
+                && k.layout.used.float == crate::layout::FloatSide::None
+                && !style::inline_level(k)
+        });
         if n.floats.is_empty()
             && !near
             && !shaped
+            && !blocks
             && !n
                 .children
                 .iter()
@@ -788,36 +797,36 @@ impl Tree<'_, '_> {
             },
             vertical_margins_are_collapsible: tf::Line::FALSE,
         };
+        // Its own width, else the line box's.
+        let fills = v.size().width.is_auto();
+        let own = if fills {
+            cw
+        } else {
+            self.width_of(
+                id(c),
+                tf::Size::NONE,
+                tf::Size {
+                    width: Some(inner),
+                    height: None,
+                },
+                tf::Size {
+                    width: tf::AvailableSpace::Definite(cw),
+                    height: tf::AvailableSpace::MaxContent,
+                },
+                tf::SizingMode::InherentSize,
+                tf::AbsoluteAxis::Horizontal,
+                tf::Line::FALSE,
+            )
+        };
         let (x, y, out) = if joins {
             let y = top + m.top;
             let x = x0 + m.left;
-            let mut sub = ctx.sub_context(y, [x, (w - x - cw).max(0.0)]);
-            let out = self.lay_in(id(c), at(input.run_mode, cw), Some(&mut sub));
+            let mut sub = ctx.sub_context(y, [x, (w - x - own).max(0.0)]);
+            let out = self.lay_in(id(c), at(input.run_mode, own), Some(&mut sub));
             (x, y, out)
         } else {
-            // Its own width, else the line box's; narrowed to the room
-            // beside the floats down to its least, moved below them where
-            // that does not fit.
-            let fills = v.size().width.is_auto();
-            let own = if fills {
-                cw
-            } else {
-                self.width_of(
-                    id(c),
-                    tf::Size::NONE,
-                    tf::Size {
-                        width: Some(inner),
-                        height: None,
-                    },
-                    tf::Size {
-                        width: tf::AvailableSpace::Definite(cw),
-                        height: tf::AvailableSpace::MaxContent,
-                    },
-                    tf::SizingMode::InherentSize,
-                    tf::AbsoluteAxis::Horizontal,
-                    tf::Line::FALSE,
-                )
-            };
+            // Narrowed to the room beside the floats down to its least,
+            // moved below them where that does not fit.
             let least = if fills {
                 self.width_of(
                     id(c),

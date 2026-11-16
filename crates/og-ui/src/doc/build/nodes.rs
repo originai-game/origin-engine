@@ -482,6 +482,70 @@ impl Ui {
                     now: value,
                 });
             }
+            Kind::Toggle => {
+                let mixed = r.flag("indeterminate");
+                semantics.role = Some(if r.flag("switch") {
+                    "switch"
+                } else {
+                    "checkbox"
+                });
+                semantics.checked = Some(r.flag("checked"));
+                if mixed {
+                    semantics.value = Some("mixed".into());
+                } else if let Some(said) = r
+                    .str(if r.flag("checked") { "dataOn" } else { "dataOff" })
+                    .filter(|s| !s.is_empty())
+                {
+                    semantics.value = Some(said.into());
+                }
+            }
+            Kind::Radio => {
+                semantics.role = Some("radio");
+                semantics.checked = Some(radio_checked(r));
+            }
+            _ => {}
+        }
+    }
+
+    /// What a control's host of kind `kind` does with the press `resp`
+    /// (its document draws it): a checkbox toggles, a mixed one turns on,
+    /// and a radio chooses its value. Each writes its binding back.
+    fn host_behaviour(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        kind: Kind,
+        r: &Resolved,
+        resp: &mut crate::ui::Response,
+    ) {
+        if !resp.clicked || r.flag("disabled") {
+            return;
+        }
+        match kind {
+            Kind::Toggle => {
+                // A mixed box turns on, as a group's parent does.
+                let on = r.flag("indeterminate") || !r.flag("checked");
+                self.feedback(if on {
+                    crate::tokens::SoundEvent::ToggleOn
+                } else {
+                    crate::tokens::SoundEvent::ToggleOff
+                });
+                resp.changed = true;
+                self.docs.write_back(b, n, "checked", json!(on));
+            }
+            Kind::Radio if !radio_checked(r) => {
+                self.feedback(crate::tokens::SoundEvent::Select);
+                resp.changed = true;
+                // A group of numbers (a tab's index) stays numbers.
+                let choice = r.str("choice").unwrap_or("on");
+                let number = |s: &str| s.trim().parse::<f64>().ok();
+                let value = match (number(choice), r.str("group").and_then(number)) {
+                    (Some(x), Some(_)) if x.fract() == 0.0 => json!(x as i64),
+                    (Some(x), Some(_)) => json!(x),
+                    _ => json!(choice),
+                };
+                self.docs.write_back(b, n, "group", value);
+            }
             _ => {}
         }
     }
@@ -663,13 +727,27 @@ impl Ui {
         // A closed dialog or disclosure builds no content (HTML renders
         // none): opened, its controls are built fresh and take input.
         let mut shows_content = true;
-        // What a controlled host keeps of its kind is its semantics.
+        // What a controlled host keeps of its kind is its semantics and its
+        // behaviour: a choice takes the press and the focus.
         let hosted = b.controlled && !kind.container();
+        let host_kind = hosted.then_some(kind);
         let kind = if hosted { Kind::Box } else { kind };
         let shell = match kind {
             _ if hosted => {
-                self.open(id.as_str(), Element::default());
+                let chooses = matches!(host_kind, Some(Kind::Toggle | Kind::Radio));
+                let enabled = chooses && !r.flag("disabled");
+                self.open(
+                    id.as_str(),
+                    Element {
+                        interactive: enabled,
+                        focusable: enabled,
+                        ..Element::default()
+                    },
+                );
                 let at = self.tree.parent();
+                if chooses {
+                    self.tree.nodes[at].disabled = !enabled;
+                }
                 let NodeKind::Element(own) = n.kind else {
                     unreachable!("a host is an element");
                 };
@@ -876,6 +954,9 @@ impl Ui {
             Shell::Details => self.close_details(),
             Shell::Button => self.close_button(),
             Shell::Box => resp = self.close(),
+        }
+        if let Some(own) = host_kind {
+            self.host_behaviour(b, n, own, r, &mut resp);
         }
         if kind == Kind::Select {
             self.close_base_select(
@@ -1422,12 +1503,7 @@ impl Ui {
         text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
     ) -> crate::ui::Response {
         let choice = r.str("choice").unwrap_or("on").to_string();
-        let on = if r.has("group") {
-            r.str("group") == Some(choice.as_str())
-                || r.num("group").is_some_and(|g| g.to_string() == choice)
-        } else {
-            r.flag("checked")
-        };
+        let on = radio_checked(r);
         let out = self.radio_group(
             id.as_str(),
             &crate::widgets::RadioGroupDesc {
@@ -1733,6 +1809,16 @@ impl crate::ui::Docs {
             b.event("", "set", &w, v.clone());
         }
         b.event("", "changed", prop, v);
+    }
+}
+
+/// Whether a radio resolved as `r` is checked: its group holds its value,
+/// else its own `checked`.
+pub(crate) fn radio_checked(r: &Resolved) -> bool {
+    if r.has("group") {
+        r.str("group") == Some(r.str("choice").unwrap_or("on"))
+    } else {
+        r.flag("checked")
     }
 }
 

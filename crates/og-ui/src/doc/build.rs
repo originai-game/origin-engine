@@ -850,6 +850,28 @@ impl Ui {
             inline.extend_from_slice(&self.style.root_tokens);
             inline.extend_from_slice(&self.style.root_type_tokens[self.breakpoint() as usize]);
         }
+        // A control document draws its host's `accent-color` (CSS UI 4
+        // §6.1) as its primary: its top elements take the style's primary
+        // tokens derived from that accent, as paint derives them.
+        if b.doc.control.is_some()
+            && n.parent == b.doc.root
+            && let Some(accent) = inherited
+                .get(&super::text_css::key("accent-color"))
+                .and_then(Option::as_deref)
+                .filter(|v| *v != "auto")
+                .and_then(|v| crate::css_color::parse_str(v).ok())
+        {
+            let accent = accent.resolve(&crate::css_color::Context::of(self.theme()));
+            let palette = self.accent_palette(accent);
+            for name in ["primary", "primaryHover", "primaryActive", "onPrimary"] {
+                let c = palette.get(name).expect("a palette colour");
+                let [red, green, blue] = c.rgb;
+                inline.push((
+                    format!("--{}", crate::css::values::kebab(name)),
+                    format!("rgb({red} {green} {blue} / {})", c.alpha),
+                ));
+            }
+        }
         // Bound custom properties: a value a rule reads with var(); null
         // (or a list) leaves the property unset, so var()'s fallback holds.
         // Their expressions are the element's attributes too, so a change

@@ -270,6 +270,29 @@ impl crate::ui::Interaction {
                 recognizers.insert(n.key, (spec, around(i, &o.gesture_of)));
             }
         }
+        // The groups whose selection follows the focus, by their role, and
+        // the member each has checked (ARIA APG: tabs, radio groups).
+        let mut selects: IdMap<u64, u64> = IdMap::new();
+        for &i in o.with(crate::ui::visit::feat::GROUP) {
+            let n = &tree.nodes[i];
+            if n.props.focus_group.is_some()
+                && super::nav::SELECT_FOLLOWS_ROLES.contains(&crate::a11y::role_of(tree.kinds[i].0, n))
+            {
+                selects.insert(n.key, 0);
+            }
+        }
+        if !selects.is_empty() {
+            for (i, n) in tree.nodes.iter().enumerate() {
+                if n.nav
+                    && (n.a11y.checked == Some(true) || n.a11y.selected == Some(true))
+                    && let Some(member) = selects.get_mut(&o.group_of[i])
+                    && *member == 0
+                {
+                    *member = n.key;
+                }
+            }
+        }
+        self.selects = selects;
         self.state.groups = groups;
         self.state.recognizers = recognizers;
         // Explicit moves: each path resolved to where it lands.

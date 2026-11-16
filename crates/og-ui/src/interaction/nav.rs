@@ -178,6 +178,12 @@ fn toward(from: &Rect, cands: &[(u64, Rect)], dir: Nav) -> Option<u64> {
 /// type-select roles).
 const TYPE_SELECT_ROLES: [&str; 5] = ["menu", "listbox", "list", "tree", "tablist"];
 
+/// The roles of a group whose selection follows the focus (ARIA APG's tabs
+/// with automatic activation, and radio groups): a key or pad moving the
+/// focus to another member activates it, and the focus coming into the
+/// group lands on its checked member.
+pub(crate) const SELECT_FOLLOWS_ROLES: [&str; 2] = ["tablist", "radiogroup"];
+
 /// A move's slot in [`crate::NavLinks`] and the UI state's links.
 fn link_slot(nav: Nav) -> Option<usize> {
     match nav {
@@ -519,7 +525,22 @@ impl Ui {
             self.interaction.state.focus = cands[j].key;
             self.interaction.state.focus_visible = true;
             self.sound(crate::style_file::UiSound::Hover);
+            self.select_follows(from.key, cands[j].key);
             self.scroll_into_view(self.interaction.state.focus);
+        }
+    }
+
+    /// A move of the focus from `from` to `to` inside one group whose
+    /// selection follows it ([`SELECT_FOLLOWS_ROLES`]) activates `to`, as a
+    /// press on it would.
+    fn select_follows(&mut self, from: u64, to: u64) {
+        let i = &self.interaction;
+        if let (Some(a), Some(b)) = (i.hit(from), i.hit(to))
+            && a.group == b.group
+            && i.selects.contains_key(&b.group)
+            && b.has(HIT_NAV)
+        {
+            self.interaction.nav.activate = to;
         }
     }
 
@@ -596,6 +617,7 @@ impl Ui {
                 if k != before {
                     // Focus reaching a control by key or pad sounds as the pointer reaching it.
                     self.sound(crate::style_file::UiSound::Hover);
+                    self.select_follows(before, k);
                 }
             }
         }
@@ -788,6 +810,12 @@ impl crate::ui::Interaction {
             return Some(target);
         }
         let g = self.state.groups.get(&target)?;
+        if let Some(&member) = self.selects.get(&target)
+            && member != 0
+            && cands.iter().any(|h| h.key == member)
+        {
+            return Some(member);
+        }
         if g.spec.memory && g.last != 0 && cands.iter().any(|h| h.key == g.last) {
             return Some(g.last);
         }
@@ -813,7 +841,12 @@ impl crate::ui::Interaction {
             if self.in_group(from.group, g) {
                 break;
             }
-            if gs.spec.memory && gs.last != 0 && cands.iter().any(|h| h.key == gs.last) {
+            if let Some(&member) = self.selects.get(&g)
+                && member != 0
+                && cands.iter().any(|h| h.key == member)
+            {
+                pick = member;
+            } else if gs.spec.memory && gs.last != 0 && cands.iter().any(|h| h.key == gs.last) {
                 pick = gs.last;
             }
             g = gs.parent;

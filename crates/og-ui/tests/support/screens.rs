@@ -40,10 +40,37 @@ pub fn set_screen_value(ui: &mut Ui, name: &str, value: Value) {
     );
 }
 
+/// The library's control documents (`packages/engine/src/ui/controls/`).
+pub const CONTROLS: [(&str, &str); 6] = [
+    ("checkbox", include_str!("../../../../packages/engine/src/ui/controls/checkbox.svelte")),
+    ("meter", include_str!("../../../../packages/engine/src/ui/controls/meter.svelte")),
+    ("progress", include_str!("../../../../packages/engine/src/ui/controls/progress.svelte")),
+    ("radio", include_str!("../../../../packages/engine/src/ui/controls/radio.svelte")),
+    ("switch", include_str!("../../../../packages/engine/src/ui/controls/switch.svelte")),
+    ("tab", include_str!("../../../../packages/engine/src/ui/controls/tab.svelte")),
+];
+
+/// Defines [`CONTROLS`] in `ui`, parsed against its pack, as a game's cook
+/// bundles the controls its documents use: a test's `<input
+/// type="checkbox">` is drawn by its control document. A control the test
+/// defined itself (its own `meter`) stays.
+pub fn define_controls(ui: &mut Ui) {
+    for (name, text) in CONTROLS {
+        let source = format!("@ui/controls/{name}.svelte");
+        let doc = ui
+            .parse_document(&source, text, Vec::new())
+            .unwrap_or_else(|e| panic!("{source}: {e:?}"));
+        if ui.document(&doc.name).is_none() {
+            ui.define_document(doc);
+        }
+    }
+}
+
 /// Defines the document `text` (component `name`) in `ui` and mounts it
 /// as `screen:<name>` with `stores`, declared in the scope `screen` (a list
 /// of objects is a collection keyed by `id`).
 pub fn mount_screen_document(ui: &mut Ui, name: &str, text: &str, stores: &[(&str, Value)]) {
+    define_controls(ui);
     let doc = ui
         .parse_document(&format!("ui/{name}.svelte"), text, Vec::new())
         .unwrap_or_else(|e| panic!("{name}: {e:?}"));

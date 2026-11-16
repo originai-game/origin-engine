@@ -115,6 +115,13 @@ impl RetainedHost {
             .and_then(Value::as_str)
             .is_some_and(|v| !v.is_empty());
         let open = flag("open");
+        // A radio is checked while its group holds its value.
+        let checked = match (kind, facts.get("group")) {
+            (Some(Kind::Radio), Some(group)) => {
+                group.as_str() == Some(facts.get("choice").and_then(Value::as_str).unwrap_or("on"))
+            }
+            _ => flag("checked"),
+        };
         if facts.contains_key("popover") {
             let key = super::popover::popover_key(&build.mount, &node.id);
             self.popover_nodes.insert(key, identity.clone());
@@ -127,7 +134,7 @@ impl RetainedHost {
         for (state, enabled) in [
             (Disabled, disabled),
             (Enabled, form && !disabled),
-            (Checked, flag("checked")),
+            (Checked, checked),
             (Invalid, invalid),
             (Valid, form && !invalid),
             // After the player changed it: a field with text it refuses,
@@ -755,6 +762,28 @@ impl RetainedHost {
             && let Some(part) = own.document.nodes[own.index].part_name()
         {
             let mut names: Vec<String> = part.split_ascii_whitespace().map(str::to_owned).collect();
+            // A part matches `::part(x):checked`, `:hover` and the rest by
+            // its own states, and also by its host's, as the native part
+            // drew its host's state: a checkbox's box is `:checked` and
+            // `:hover` while its checkbox is. A part that is a control of
+            // its own (a tab) has its own states only.
+            let own_states = self
+                .topology
+                .node(identity)
+                .map(|facts| facts.states.clone())
+                .unwrap_or_default();
+            let a_control = matches!(
+                own.document.nodes[own.index].kind,
+                NodeKind::Element(
+                    Kind::Button
+                        | Kind::Toggle
+                        | Kind::Radio
+                        | Kind::Slider
+                        | Kind::Field
+                        | Kind::Select
+                        | Kind::Color
+                )
+            );
             let mut inside = own;
             let mut depth = 1;
             while !names.is_empty()
@@ -765,13 +794,18 @@ impl RetainedHost {
             {
                 let node = &element.document.nodes[element.index];
                 let tag = node.selector_tag.as_deref().unwrap_or_default();
+                let states = if a_control {
+                    own_states.clone()
+                } else {
+                    facts.states.union(&own_states).copied().collect()
+                };
                 for name in &names {
                     reaching.extend(ui.control_part_rules(
                         &element.document,
                         tag,
                         name,
                         facts.attributes,
-                        facts.states,
+                        &states,
                         depth,
                     ));
                 }
