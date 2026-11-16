@@ -286,3 +286,36 @@ fn a_removed_instance_takes_its_state_with_it() {
     assert!(d.el("L#x/Switch").is_some(), "the row is back");
     assert_eq!(lit(&d), [""; 0], "its lamp starts off");
 }
+
+#[test]
+fn a_separator_is_drawn_by_the_default_styles_rule() {
+    // `<hr>` has no inside and no look in Rust: the default style's `hr`
+    // rule is its line, and a document's rule for it wins as on any box.
+    let text = r#"<meta name="component" content="t">
+<div id="Form">
+  <hr id="Line">
+  <hr id="Thick" class="thick">
+  <div id="Row"><hr id="Post" vertical></div>
+</div>
+<style>
+#Form { width: 400px; padding: 0; }
+#Row { display: flex; height: 40px; }
+.thick { block-size: 3px; color: #ff0000; }
+</style>"#;
+    let mut d = Doc::new(text, &[]);
+    d.step(InputFrame::default());
+    let painted = |d: &Doc, id: &str| {
+        let e = d.get(id);
+        let fills = fills_in(&d.ui, Rect::new(e.x, e.y, e.width, e.height));
+        ((e.width, e.height), fills)
+    };
+    let line = d.ui.theme().palette.line;
+    let (size, fills) = painted(&d, "Line");
+    assert_eq!(size, (400.0, 1.0));
+    assert!(fills.iter().any(|f| near(*f, line)), "{fills:?}");
+    let (size, fills) = painted(&d, "Thick");
+    assert_eq!(size, (400.0, 3.0));
+    assert!(fills.contains(&Srgba::rgb(255, 0, 0).linear()), "{fills:?}");
+    assert_eq!(painted(&d, "Post").0, (1.0, 40.0));
+    assert_eq!(d.a11y("Line").role, "separator");
+}
