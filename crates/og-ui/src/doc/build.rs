@@ -123,6 +123,43 @@ pub struct PartHost {
     plate: Vec<(usize, V)>,
 }
 
+/// `color` inherits (CSS Color 4 §3.1), on the text channel the other
+/// inherited text properties ride (`text_css`): an element that declares
+/// it hands its colour down, and text that declares none takes its
+/// parent's, recording the read so a change there restyles it. A button's
+/// content takes the ink of its plate instead (`Ui::content_ink`), as
+/// slotted content inherits from its slot.
+fn inherit_color(r: &mut Resolved, kind: &NodeKind) {
+    let key = super::text_css::key("color");
+    let own = r.color("color");
+    let computed = Arc::make_mut(&mut r.cascade.computed);
+    match (own, kind) {
+        (_, NodeKind::Element(Kind::Button)) => {
+            computed.remove(&key);
+        }
+        (Some(c), _) => {
+            let [red, green, blue] = c.rgb;
+            let alpha = (c.alpha.clamp(0.0, 1.0) * 255.0).round() as u8;
+            computed.insert(
+                key,
+                Some(format!("#{red:02x}{green:02x}{blue:02x}{alpha:02x}")),
+            );
+        }
+        (None, NodeKind::Element(Kind::Label)) => {
+            let inherited = computed
+                .get(&key)
+                .cloned()
+                .flatten()
+                .and_then(|v| crate::style_file::parse_color(&v));
+            r.cascade.inherited_reads.insert(key);
+            if let (Some(c), Some((spec, _))) = (inherited, schema::prop("color")) {
+                r.vals.push((spec, V::Color(c)));
+            }
+        }
+        _ => {}
+    }
+}
+
 /// Whether `name` makes an element's box: its background, border, padding,
 /// corners and shadows.
 fn plate_prop(name: &str) -> bool {
@@ -1064,6 +1101,7 @@ impl Ui {
                 built.edits.push((e.prop.clone(), e.source.clone()));
             }
         }
+        inherit_color(&mut r, &n.kind);
         r.part = Self::document_part(&r, n, b);
         if let Some(V::Spans(Ok(spans))) = r.get("spans") {
             let rules: Vec<_> = n

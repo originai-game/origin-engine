@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "`color` inherits between document elements, as in CSS: text under an element that declares it (`<div style=\"color: #123456\"><span>…</span></div>`, a class, a role rule such as a frame's `--ink`) takes that colour, however deep, and follows it when it changes. Before, text that declared no colour drew the palette's ink. A `<button>`'s content still takes the ink of the button's plate."
+    }
+  ]
+}

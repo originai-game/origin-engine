@@ -1794,6 +1794,47 @@ fn an_inherited_change_reaches_through_elements_between() {
     }
 }
 
+/// `color` inherits between document elements (CSS Color 4 §3.1), with or
+/// without carried values (a document declaring `list-style-type`): text
+/// under an element that declares it, however deep, takes it and follows
+/// it. A button's content keeps its plate's ink, as slotted content
+/// inherits from its slot. Wrong: the palette's ink under a coloured
+/// `<div>`.
+#[test]
+fn color_inherits_between_document_elements() {
+    let colour = |hex: &str| og_ui::style_file::parse_color(hex).unwrap();
+    for carry in [false, true] {
+        let style = if carry {
+            "#Root { list-style-type: none; }"
+        } else {
+            ""
+        };
+        let mut d = mounted(
+            ui_with_font(test_font()),
+            &format!(
+                r##"<column id="Root"><div style="color: #123456"><span>Div</span></div><div class:c={{$on}}><div><p>Deep</p></div></div><div class="c"><button><span>Btn</span></button></div></column>
+<style>.c {{ color: #ff8800; }} button {{ color: #00ff00; }} {style}</style>"##
+            ),
+            &[("on", json!(true))],
+            Viewport::new(400.0, 600.0),
+        );
+        for (label, hex) in [("Div", "#123456"), ("Deep", "#ff8800"), ("Btn", "#00ff00")] {
+            let got = text_ink(&d, label).unwrap_or_else(|| panic!("{label} drawn"));
+            assert!(
+                near(got, colour(hex)),
+                "carry {carry}: {label}: {got:?}, want {hex}"
+            );
+        }
+        d.set("on", json!(false));
+        d.step(InputFrame::default());
+        let deep = text_ink(&d, "Deep").expect("Deep drawn");
+        assert!(
+            !near(deep, colour("#ff8800")),
+            "carry {carry}: Deep kept the class's colour"
+        );
+    }
+}
+
 /// The ink of the drawn text `want`.
 fn text_ink(d: &Doc, want: &str) -> Option<[f32; 4]> {
     d.ui.frame().items.iter().find_map(|i| {
