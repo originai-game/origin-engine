@@ -440,7 +440,6 @@ impl BoxLayer {
             }
         }
     }
-
 }
 
 /// `geometry` inset by `inset` (left, top, right, bottom): a rectangle's
