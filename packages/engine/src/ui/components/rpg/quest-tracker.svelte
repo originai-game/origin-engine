@@ -12,26 +12,29 @@
   their ticks, and the distance to its marker. Read only; the journal owns
   choosing what to track.
 -->
-<section id="RpgQuestTracker" part="RpgQuestTracker.frame" class="hud" role="status" aria-label={t("rpg.quests.tracked")} hidden={!name}>
+<section id="RpgQuestTracker" part="RpgQuestTracker.frame" class="hud" data-empty={!name} role="status" aria-label={t("rpg.quests.tracked")}>
+  {#if name}
   <h3 part="RpgQuestTracker.title">{name}</h3>
   <ul class="tracker-steps">
     {#each steps as s (s.id)}
-      <li part="RpgQuestTracker.row" data-done={s.done}><div class="tracker-mark"></div><span class="tracker-text">{s.text}</span></li>
+      <li part="RpgQuestTracker.row" data-done={s.done}><og-icon class="tracker-mark" icon={s.done ? 'check' : 'flag'}></og-icon><span class="tracker-text">{s.text}</span></li>
     {/each}
   </ul>
-  <div class="tracker-distance" hidden={!distance}><div class="tracker-arrow"></div><span class="tracker-far">{distance}</span></div>
+  {#if distance}<div class="tracker-distance"><og-icon class="tracker-arrow" icon="map"></og-icon><span class="tracker-far">{distance}</span></div>{/if}
+  {/if}
 </section>
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="RpgQuestTracker.frame"][hidden], [part="RpgQuestTracker.frame"] [hidden] { display: none; }
-[part="RpgQuestTracker.frame"] { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
-[part="RpgQuestTracker.title"] { margin: 0; text-align: center; }
-.tracker-steps { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; gap: var(--space-xxs); }
+:host { display: flex; flex-direction: column; inline-size: stretch; gap: var(--space-sm); padding: var(--space-md); }
+[part="RpgQuestTracker.frame"][data-empty=true] { display: none; }
+[part="RpgQuestTracker.title"] { margin: 0; text-align: start; font-size: var(--font-step-lg); }
+.tracker-steps { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; gap: var(--space-sm); }
 [part="RpgQuestTracker.row"] { display: flex; align-items: center; gap: var(--space-sm); }
-.tracker-mark { width: var(--space-md); height: var(--space-md); flex: none; }
+.tracker-mark { width: var(--size-xs); height: var(--size-xs); flex: none; color: var(--primary); }
+[part="RpgQuestTracker.row"][data-done=true] .tracker-mark { color: var(--success); }
 .tracker-text { flex: 1; min-width: 0; }
-.tracker-distance { display: flex; align-items: center; justify-content: center; gap: var(--space-xs); }
+.tracker-distance { display: flex; align-items: center; gap: var(--space-xs); padding-block-start: var(--space-xs); border-block-start: var(--stroke-hairline) solid var(--line); color: var(--ink-muted); font: var(--text-caption); }
 .tracker-arrow { width: var(--space-md); height: var(--space-md); }
 </style>

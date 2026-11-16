@@ -16,30 +16,30 @@
   line about it is left out.
 -->
 <section id="RpgPlaceCard" part="RpgPlaceCard.frame" aria-label={name}>
-  <img class="picture" src={picture} alt="" hidden={!picture}>
+  {#if picture}<img class="picture" src={picture} alt="">{/if}
   <div class="side">
     <div class="text">
       <h3 part="RpgPlaceCard.name">{name}</h3>
       <div class="rpg-rule" role="separator"></div>
-      <p class="about" hidden={!about}>{about}</p>
+      {#if about}<p class="about">{about}</p>{/if}
     </div>
     <div class="actions">
-      <button id="Mark" class="act secondary" data-glyph="mark" data-marked={marked} onclick={mark}><div class="face"><div class="act-mark"></div><span class="act-label">{marked ? t("rpg.place.unmark") : t("rpg.place.mark")}</span></div></button>
-      <button id="Travel" class="act secondary" data-glyph="travel" disabled={!canTravel} onclick={travel}><div class="face"><div class="act-mark"></div><span class="act-label">{t("rpg.place.travel")}</span></div></button>
+      <button id="Mark" class="act secondary" data-glyph="mark" data-marked={marked} aria-pressed={marked} onclick={mark}><div class="face"><og-icon class="act-mark" icon="flag"></og-icon><span class="act-label">{marked ? t("rpg.place.unmark") : t("rpg.place.mark")}</span></div></button>
+      <button id="Travel" class="act secondary" data-glyph="travel" disabled={!canTravel} onclick={travel}><div class="face"><og-icon class="act-mark" icon="map"></og-icon><span class="act-label">{t("rpg.place.travel")}</span></div></button>
     </div>
   </div>
 </section>
 
 <style>
-[part="RpgPlaceCard.frame"][hidden], [part="RpgPlaceCard.frame"] [hidden] { display: none; }
-[part="RpgPlaceCard.frame"] { display: flex; width: stretch; height: stretch; gap: var(--space-md); container-type: inline-size; }
+:host { display: flex; inline-size: stretch; block-size: stretch; gap: var(--space-md); container-type: inline-size; }
 .picture { width: 34%; height: stretch; object-fit: cover; flex: none; }
 .side { display: flex; flex: 1; gap: var(--space-md); align-items: center; min-width: 0; }
 .text { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xs); }
 [part="RpgPlaceCard.name"], .about { margin: 0; }
+.about { color: var(--ink-muted); line-height: var(--font-leading-normal); }
 .actions { display: flex; flex-direction: column; gap: var(--space-sm); flex: none; width: 40%; }
-.act { width: stretch; min-height: var(--size-touch); gap: var(--space-sm); min-width: 0; }
-.act .face { display: flex; width: stretch; align-items: center; justify-content: center; gap: var(--space-sm); }
+.act { min-height: var(--size-touch); gap: var(--space-sm); }
+.act .face { display: flex; align-items: center; justify-content: center; gap: var(--space-sm); }
 .act-mark { width: var(--space-lg); height: var(--space-lg); flex: none; }
 @container (width < 560px) {
   .picture { width: 48%; }

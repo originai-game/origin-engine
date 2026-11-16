@@ -16,50 +16,53 @@
 -->
 <article id="RpgQuestDetail" part="RpgQuestDetail.frame" aria-label={name}>
   <header part="RpgQuestDetail.band"><div class="band-mark"></div><h2 part="RpgQuestDetail.title">{name}</h2></header>
-  <scroll class="body">
+  <div class="body">
     <p class="summary">{summary}</p>
     <div class="rpg-rule" role="separator"></div>
-    <section class="part" aria-label={t("rpg.quest.objectives")} hidden={!objectives.length}>
+    {#if objectives.length}<section class="part" aria-label={t("rpg.quest.objectives")}>
       <h3 class="part-head">{t("rpg.quest.objectives")}</h3>
       <ul class="objectives">
         {#each objectives as o (o.id)}
           <li part="RpgQuestDetail.row" data-step={o.step} data-done={o.done} data-optional={o.optional}>
             <div class="objective-mark"></div>
             <span class="objective-text">{o.text}</span>
-            <span class="objective-optional" hidden={!o.optional}>{t("rpg.quest.optional")}</span>
+            {#if o.optional}<span class="objective-optional">{t("rpg.quest.optional")}</span>{/if}
           </li>
         {/each}
       </ul>
-    </section>
-    <div class="rpg-rule" role="separator" hidden={!rewards.length}></div>
-    <section class="part rewards-part" aria-label={t("rpg.quest.rewards")} hidden={!rewards.length}>
-      <img class="scenery" src={scenery} alt="" hidden={!scenery}>
+    </section>{/if}
+    {#if rewards.length}<div class="rpg-rule" role="separator"></div>
+    <section class="part rewards-part" aria-label={t("rpg.quest.rewards")}>
+      {#if scenery}<img class="scenery" src={scenery} alt="">{/if}
       <h3 class="part-head">{t("rpg.quest.rewards")}</h3>
       <ul class="rewards">
         {#each rewards as r (r.id)}
-          <li part="RpgQuestDetail.reward RpgQuestDetail.figure"><og-icon class="reward-mark" icon={r.icon}></og-icon><div class="reward-text"><span class="reward-label">{r.label}</span><span class="reward-detail" hidden={!r.detail}>{r.detail}</span></div></li>
+          <li part="RpgQuestDetail.reward RpgQuestDetail.figure"><og-icon class="reward-mark" icon={r.icon}></og-icon><div class="reward-text"><span class="reward-label">{r.label}</span>{#if r.detail}<span class="reward-detail">{r.detail}</span>{/if}</div></li>
         {/each}
       </ul>
-    </section>
-  </scroll>
+    </section>{/if}
+  </div>
 </article>
 
 <style>
-[part="RpgQuestDetail.frame"][hidden], [part="RpgQuestDetail.frame"] [hidden] { display: none; }
-[part="RpgQuestDetail.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); }
+:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-md); }
 [part="RpgQuestDetail.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); flex: none; }
 .band-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
-.body { width: stretch; flex: 1; min-height: 0; gap: var(--space-sm); padding: 0 var(--space-sm); }
+.body { display: flex; flex-direction: column; flex: 1; min-block-size: 0; overflow-y: auto; gap: var(--space-lg); padding: 0 var(--space-sm); }
 .summary { margin: 0; }
-.part { display: flex; flex-direction: column; position: relative; width: stretch; gap: var(--space-xs); }
+.part { display: flex; flex-direction: column; position: relative; flex: none; gap: var(--space-sm); }
 .part-head { margin: 0; }
 .objectives, .rewards { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; width: stretch; gap: var(--space-xxs); }
 [part="RpgQuestDetail.row"] { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) 0; }
 [part="RpgQuestDetail.row"][data-step="1"] { padding-inline-start: var(--space-xl); }
-.objective-mark { width: var(--space-lg); height: var(--space-lg); flex: none; }
+.objective-mark { width: var(--space-sm); height: var(--space-sm); flex: none; border: var(--stroke-regular) solid var(--line-strong); border-radius: var(--radius-capsule); }
+[part="RpgQuestDetail.row"][data-done=true] .objective-mark { background: var(--success); border-color: var(--success); }
+.objective-optional, .reward-detail { color: var(--ink-muted); font: var(--text-caption); }
+.reward-label { font-weight: var(--font-weight-semibold); }
+.rewards-part { padding: var(--space-md); background: var(--well); border-radius: var(--radius-panel); }
 .objective-text { flex: 1; min-width: 0; }
 [part="RpgQuestDetail.reward RpgQuestDetail.figure"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-xxs) 0; }
 .reward-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .reward-text { display: flex; flex-direction: column; gap: 0; }
-.scenery { position: absolute; right: 0; bottom: 0; width: 55%; height: stretch; object-fit: cover; object-position: right bottom; }
+.scenery { position: absolute; right: 0; top: 0; bottom: 0; width: 55%; height: 100%; object-fit: cover; object-position: right bottom; opacity: var(--state-disabled-opacity); }
 </style>

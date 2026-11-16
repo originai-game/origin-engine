@@ -13,7 +13,7 @@
   <div class="end start"></div>
   <div class="strip">
     {#each marks as m (m.id)}
-      <div class="mark" data-kind={m.kind} style:--at={m.at}><span class="mark-label" hidden={m.kind != 'cardinal'}>{m.label}</span></div>
+      <div class="mark" data-kind={m.kind} style:--at={m.at}>{#if m.kind == 'cardinal'}<span class="mark-label">{m.label}</span>{/if}</div>
     {/each}
   </div>
   <div class="needle"></div>
@@ -23,12 +23,13 @@
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="RpgCompass.frame"][hidden], [part="RpgCompass.frame"] [hidden] { display: none; }
-[part="RpgCompass.frame"] { position: relative; display: flex; width: stretch; height: var(--size-lg); align-items: center; }
-.end { width: var(--size-md); height: stretch; flex: none; }
-.strip { position: relative; flex: 1; min-width: 0; height: stretch; }
-.mark { display: flex; flex-direction: column; position: absolute; left: calc(var(--at) * 100%); top: 0; height: stretch; translate: -50% 0; align-items: center; justify-content: center; }
-.mark[data-kind=tick] { width: var(--stroke-hairline); height: 30%; top: 35%; }
-.mark[data-kind=quest], .mark[data-kind=waypoint], .mark[data-kind=danger] { width: var(--space-lg); height: var(--space-lg); top: 0; }
-.needle { position: absolute; left: 50%; top: 0; width: var(--size-md); height: stretch; translate: -50% 0; }
+:host { position: relative; display: flex; inline-size: stretch; block-size: var(--size-lg); align-items: center; background: var(--scene-plate); color: var(--scene-ink); border-radius: var(--radius-capsule); }
+.end { width: var(--size-md); align-self: stretch; flex: none; }
+.strip { position: relative; flex: 1; min-inline-size: 0; align-self: stretch; overflow: hidden; }
+.mark { display: flex; flex-direction: column; position: absolute; left: calc(var(--at) * 100%); top: 0; bottom: 0; translate: -50% 0; align-items: center; justify-content: center; }
+.mark[data-kind=tick] { width: var(--stroke-hairline); height: 30%; top: 35%; background: var(--ink-muted); }
+.mark[data-kind=quest], .mark[data-kind=waypoint], .mark[data-kind=danger] { width: var(--space-sm); height: var(--space-sm); top: var(--space-xs); background: var(--warn); border-radius: var(--radius-capsule); }
+.mark[data-kind=danger] { background: var(--danger); }
+.mark[data-kind=waypoint] { background: var(--info); }
+.needle { position: absolute; left: 50%; top: 0; width: var(--space-xs); height: var(--space-sm); background: var(--primary); border-radius: var(--radius-capsule); translate: -50% 0; }
 </style>

@@ -4,14 +4,14 @@
 // the map), dressed by a style pack. The pages use the built-in components
 // by name, as a game does, with fixture stores; loading a page loads them.
 //
-// Commands: style:<fantasy>, page:<inventory|journal|equipment|explore|combat>,
+// Commands: style:<fantasy|default>, page:<inventory|journal|equipment|explore|combat>,
 // reduced:<on|off>.
 
 import { og, type World } from "@origingame/engine";
 import { CMD_NAMES, EQUIPMENT, localized, ITEM_NAMES, SKILL_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
 
 const PAGES = ["inventory", "journal", "equipment", "explore", "combat"] as const;
-const STYLES = ["fantasy", "scifi", "cartoon"] as const;
+const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 
 const DOCUMENTS = [
   "ui/inventory.svelte",
@@ -29,11 +29,13 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }, what
 
 /** The style and both icon sets in one configure, so neither resets the other. */
 function setStyle(world: World, name: string): void {
-  const style = must(og.load.style(world, `@styles/${name}`), name);
+  const style = name === "default" ? null : must(og.load.style(world, `@styles/${name}`), name);
+  const font = name === "default" ? must(og.load.font(world, "fonts/InstrumentSans-Regular.ttf"), "font") : null;
   const items = must(og.load.texture(world, "art/items.png"), "items");
   const ink = must(og.load.texture(world, "icons/ink-icons.png"), "ink icons");
   og.ui.configure(world, {
     style,
+    font,
     icons: { texture: items, columns: 8, rows: 6, pictures: true, names: [...ITEM_NAMES.map((n) => `item-${n}`), ...SKILL_NAMES.map((n) => `skill-${n}`), ...CMD_NAMES.map((n) => `cmd-${n}`)] },
     fallbackIcons: { texture: ink, columns: 8, rows: 4, names: INK_NAMES },
   });

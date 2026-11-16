@@ -13,11 +13,14 @@ change it; the game's copy of the same name wins.
 
 ## Structure and appearance
 
-Each member's `<style>` holds structure only: layout, sizes and spacing. It
-sets no colour, font or art, and it lands in the `og-components` layer. A style pack
-(`og-pack`, above it) supplies every appearance through the members' named
-parts (docs/ui.md §3.2), qualified by their states and `data-*` attributes,
-for example `RpgBackpack::cell[data-rarity=epic]`. Each member lists its
+Each member is HTML with component CSS in the `og-components` layer.
+`:host` owns the root layout; parts and classes own the interior. Optional
+pieces use `{#if}`, and scrolling is ordinary CSS overflow. Semantic tokens
+supply the default appearance: health and mana fills, grounded count and
+key badges, quiet captions, selected rings and quest progress marks. A style
+pack (`og-pack`, above it) overrides the members' named parts (docs/ui.md
+§3.2), qualified by states, for example
+`RpgBackpack::cell[data-rarity=epic]`. Each member lists its
 parts in its `<meta name="parts">`: its `frame`, and as it has them its
 `band` and `title`, `tab`, `cell`, `row`, `name` and the like
 (`RpgBackpack.cell`, `RpgQuestLog.row`; every member's are under Parts).
@@ -88,15 +91,15 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 
 Every member carries a `fixture:default` the sheet and the tests mount it
 from. Phone layouts come from the members' own media and container queries:
-the backpack's and menu bar's tabs scroll behind an edge fade, the item card
+the backpack's and menu bar's tabs scroll, the item card
 shrinks its hero so two stat rows show, the commands take two rows of three
 and the enemy info drops its portrait.
 
 ## Review sheet and tests
 
 `og ui sheet rpg` renders the five review pages (inventory, journal,
-equipment, explore, combat) from `packages/engine/sheets/rpg/`, dressed by
-the fantasy pack, with
+equipment, explore, combat) from `packages/engine/sheets/rpg/`, in the
+default style (the fantasy pack is also available), with
 ja, zh-CN and ar string tables for the locale cells. The sheet's painted
 art (portraits, figure, item and skill icons, scene, map) was generated for
 it with gpt-image-2.6 through the OriginGame gateway and is sheet fixture

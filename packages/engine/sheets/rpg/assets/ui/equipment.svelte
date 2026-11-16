@@ -22,16 +22,16 @@
 #Page { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-md); padding: 0 var(--space-xl) var(--space-lg); }
 #Menu { width: stretch; flex: none; }
 #Body { display: flex; width: stretch; flex: 1; min-height: 0; gap: var(--space-lg); }
-#Hero { width: 52%; height: stretch; min-height: 0; }
-#Stats { width: 48%; height: stretch; min-height: 0; }
+#Hero { flex: 52; min-width: 0; height: stretch; min-height: 0; }
+#Stats { flex: 48; min-width: 0; height: stretch; min-height: 0; }
 #Foot { display: flex; width: stretch; flex: none; gap: var(--space-md); align-items: center; }
 #Foot button { width: calc(var(--size-xxl) * 2.6); }
 #FootGap { flex: 1; }
 @media (width < 600px) {
   #Page { padding: 0 var(--space-sm) var(--space-sm); gap: var(--space-sm); }
   #Body { flex-direction: column; gap: var(--space-sm); }
-  #Hero { width: stretch; height: 40%; }
-  #Stats { width: stretch; height: 60%; }
+  #Hero { flex: 60; width: stretch; height: auto; }
+  #Stats { flex: 40; width: stretch; height: auto; }
   #Foot { flex-wrap: wrap; gap: var(--space-xs); }
   #Foot button { width: calc(50% - var(--space-xs) / 2); }
   /* Two to a row on a phone: a step smaller and tighter, so AUTO-EQUIP fits whole at 150 % text. */

@@ -10,19 +10,19 @@
 
 <style>
 #Page { display: flex; width: stretch; height: stretch; gap: var(--space-lg); padding: var(--space-xl); }
-#Bag { width: 40%; height: stretch; min-height: 0; }
-#Card { width: 28%; height: stretch; min-height: 0; }
-#Hero { width: 32%; height: stretch; min-height: 0; }
+#Bag { flex: 40; min-width: 0; height: stretch; min-height: 0; }
+#Card { flex: 28; min-width: 0; height: stretch; min-height: 0; }
+#Hero { flex: 32; min-width: 0; height: stretch; min-height: 0; }
 @media (width < 600px) {
   #Page { flex-direction: column; gap: var(--space-sm); margin: calc(env(safe-area-inset-top) * -1) 0 calc(env(safe-area-inset-bottom) * -1); padding: calc(env(safe-area-inset-top) + var(--space-sm)) var(--space-sm) calc(env(safe-area-inset-bottom) + var(--space-sm)); height: calc(100% + env(safe-area-inset-top) + env(safe-area-inset-bottom)); }
-  #Bag { width: stretch; height: 54%; }
-  #Card { width: stretch; height: 46%; }
+  #Bag { flex: 54; width: stretch; height: auto; }
+  #Card { flex: 46; width: stretch; height: auto; }
   #Hero { display: none; }
 }
 @media (height < 600px) and (orientation: landscape) {
   #Page { gap: var(--space-sm); padding: var(--space-sm) var(--space-md); }
-  #Bag { width: 58%; }
-  #Card { width: 42%; }
+  #Bag { flex: 58; }
+  #Card { flex: 42; }
   #Hero { display: none; }
 }
 </style>

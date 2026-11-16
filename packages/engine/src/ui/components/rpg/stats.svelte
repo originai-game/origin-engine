@@ -12,7 +12,7 @@
 -->
 <section id="RpgStats" part="RpgStats.frame" aria-label={title}>
   <header part="RpgStats.band"><div class="band-end start"></div><h2 part="RpgStats.title">{title}</h2><div class="band-end finish"></div></header>
-  <scroll class="body">
+  <div class="body">
     <div class="columns">
       <div class="column" role="table">
         {#each groups as g (g.id)}
@@ -38,21 +38,23 @@
         {/each}
       </div>
     </div>
-  </scroll>
+  </div>
 </section>
 
 <style>
-[part="RpgStats.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
+:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-sm); container-type: inline-size; }
 [part="RpgStats.band"] { display: flex; width: stretch; align-items: center; justify-content: center; gap: var(--space-md); flex: none; }
 .band-end { width: var(--size-lg); height: var(--space-lg); flex: none; }
-.body { width: stretch; flex: 1; min-height: 0; }
+.body { flex: 1; min-block-size: 0; overflow-y: auto; }
 .columns { display: flex; width: stretch; gap: var(--space-md); padding: 0 var(--space-xs); }
 .column { display: flex; flex-direction: column; flex: 1; min-width: 0; align-self: stretch; gap: var(--space-sm); }
-.split { width: var(--stroke-hairline); align-self: stretch; }
+.split { width: var(--stroke-hairline); align-self: stretch; background: var(--line); }
 .group { display: flex; flex-direction: column; width: stretch; padding-bottom: var(--space-xs); }
 [part="RpgStats.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-sm) 0; }
 .row-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .row-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.row-value { flex: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.row-value { flex: none; font-family: var(--figure-font); font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+[part="RpgStats.row"] { border-block-end: var(--stroke-hairline) solid var(--line); }
+.row-mark { color: var(--ink-muted); }
 @container (width < 420px) { .columns { flex-direction: column; gap: 0; } .split { display: none; } }
 </style>

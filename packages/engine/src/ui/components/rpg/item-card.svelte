@@ -26,24 +26,24 @@
   figures and the lore scroll, the buttons keep the foot.
 -->
 <article id="RpgItemCard" part="RpgItemCard.frame" data-rarity={rarity} aria-label={name} ondetails={equip}>
-  <div class="hero"><div class="hero-glow"></div><img class="hero-picture" src={art} alt="" hidden={!art}><og-icon class="hero-art" icon={icon} hidden={!!art}></og-icon></div>
+  <div class="hero"><div class="hero-glow"></div>{#if art}<img class="hero-picture" src={art} alt="">{:else}<og-icon class="hero-art" icon={icon}></og-icon>{/if}</div>
   <header class="head">
     <h2 part="RpgItemCard.name">{name}</h2>
     <p class="item-kind">{kind}</p>
   </header>
   <div class="rpg-rule" role="separator"></div>
-  <scroll class="body">
+  <div class="body">
     {#each lead as s (s.id)}
       <div part="RpgItemCard.lead" aria-label={s.label}>
         <og-icon class="stat-mark" icon={s.icon}></og-icon>
         <div class="lead-main">
           <span class="caption">{s.label}</span>
-          <div class="lead-figures"><span class="lead-value">{s.value}</span><span class="delta" data-trend={s.trend} hidden={!s.delta}>{s.delta}</span></div>
+          <div class="lead-figures"><span class="lead-value">{s.value}</span>{#if s.delta}<span class="delta" data-trend={s.trend}>{s.delta}</span>{/if}</div>
         </div>
-        <div class="lead-current" hidden={!s.current}>
+        {#if s.current}<div class="lead-current">
           <span class="caption">{t("rpg.card.current")}</span>
           <span class="current-value">{s.current}</span>
-        </div>
+        </div>{/if}
       </div>
     {/each}
     <div class="stats" role="table">
@@ -57,25 +57,24 @@
         </div>
       {/each}
     </div>
-    <p class="lore" hidden={!lore}>{lore}</p>
-  </scroll>
-  <div class="rpg-rule" role="separator" hidden={!primary && !secondary}></div>
-  <footer class="actions" hidden={!primary && !secondary}>
-    <button id="Primary" class="primary act" hidden={!primary} disabled={!canPrimary} onclick={equip}>{primary}</button>
-    <button id="Secondary" class="secondary act" hidden={!secondary} disabled={!canSecondary} onclick={discard}>{secondary}</button>
-  </footer>
+    {#if lore}<p class="lore">{lore}</p>{/if}
+  </div>
+  {#if primary || secondary}<div class="rpg-rule" role="separator"></div>
+  <footer class="actions">
+    {#if primary}<button id="Primary" class="primary act" disabled={!canPrimary} onclick={equip}>{primary}</button>{/if}
+    {#if secondary}<button id="Secondary" class="secondary act" disabled={!canSecondary} onclick={discard}>{secondary}</button>{/if}
+  </footer>{/if}
 </article>
 
 <style>
-[part="RpgItemCard.frame"][hidden], [part="RpgItemCard.frame"] [hidden] { display: none; }
-[part="RpgItemCard.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-xs); container-type: inline-size; }
+:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-sm); container-type: inline-size; }
 .hero { position: relative; display: flex; width: stretch; height: calc(var(--size-xxl) * 1.25); flex: none; align-items: center; justify-content: center; }
-.hero-glow { position: absolute; left: 6%; top: 0; width: 88%; height: stretch; }
+.hero-glow { position: absolute; inset-inline-start: 6%; top: 0; bottom: 0; inline-size: 88%; }
 .hero-picture { position: relative; width: stretch; height: stretch; object-fit: contain; }
 .hero-art { position: relative; width: calc(var(--size-xxl) * 1.8); height: calc(var(--size-xxl) * 1.8); }
 .head { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); align-items: center; text-align: center; }
 [part="RpgItemCard.name"], .item-kind { margin: 0; }
-.body { width: stretch; flex: 1; min-height: 0; gap: var(--space-sm); }
+.body { display: flex; flex-direction: column; flex: 1; min-block-size: 0; overflow-y: auto; gap: var(--space-sm); }
 [part="RpgItemCard.lead"] { display: flex; flex-wrap: wrap; width: stretch; align-items: center; row-gap: var(--space-xs); gap: var(--space-sm); padding: 0 0 var(--space-xxs); }
 .lead-main { display: flex; flex-direction: column; width: auto; flex: 1 0 auto; gap: var(--space-xxs); }
 .lead-figures { display: flex; align-items: baseline; gap: var(--space-sm); }
@@ -85,7 +84,11 @@
 [part="RpgItemCard.row"] { display: grid; grid-template-columns: var(--size-sm) 1fr auto var(--size-xl) var(--size-lg); column-gap: var(--space-sm); align-items: center; width: stretch; padding: var(--space-xxs) 0; }
 .stat-value, .delta, .stat-current, .lead-value, .current-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stat-value, .stat-current { text-align: end; }
-.lore { margin: 0; padding: var(--space-xs) var(--space-xs); flex: none; }
+.lore { margin: 0; padding: var(--space-sm); flex: none; color: var(--ink-muted); line-height: var(--font-leading-normal); background: var(--well); border-radius: var(--radius-control); }
+.item-kind, .caption { color: var(--ink-muted); font: var(--text-caption); }
+.lead-value { font-size: var(--font-step-2xl); font-weight: var(--font-weight-semibold); font-family: var(--figure-font); }
+.stat-value { font-weight: var(--font-weight-semibold); }
+[part="RpgItemCard.row"] { border-block-end: var(--stroke-hairline) solid var(--line); }
 @media (width < 600px), (height < 500px) { .lore { display: none; } }
 .actions { display: flex; flex-direction: column; width: stretch; gap: var(--space-sm); flex: none; }
 .act { flex: 1; min-width: 0; align-self: stretch; min-height: calc(var(--size-touch) * 1.25); }

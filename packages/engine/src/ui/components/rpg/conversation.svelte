@@ -21,9 +21,9 @@
   press before that does.
 -->
 <section id="RpgConversation" part="RpgConversation.frame" aria-label={speaker ? speaker : t("rpg.talk.narration")}>
-  <img class="portrait" src={portrait} alt="" hidden={!portrait}>
+  {#if portrait}<img class="portrait" src={portrait} alt="">{/if}
   <div class="said">
-    <h3 part="RpgConversation.name" hidden={!speaker}>{speaker}</h3>
+    {#if speaker}<h3 part="RpgConversation.name">{speaker}</h3>{/if}
     <og-typewriter id="Line" class="line" rate={rate} onrevealed={revealed}>{line}</og-typewriter>
   </div>
   {#if replies.length}
@@ -38,18 +38,19 @@
 </section>
 
 <style>
-[part="RpgConversation.frame"][hidden], [part="RpgConversation.frame"] [hidden] { display: none; }
-[part="RpgConversation.frame"] { display: flex; width: stretch; height: stretch; gap: var(--space-lg); container-type: inline-size; }
+:host { display: flex; inline-size: stretch; block-size: stretch; gap: var(--space-lg); container-type: inline-size; }
 .portrait { width: calc(var(--size-xxl) * 1.9); height: stretch; object-fit: cover; object-position: center top; flex: none; }
 .said { display: flex; flex-direction: column; width: 42%; gap: var(--space-sm); padding: var(--space-md) 0; flex: none; }
 [part="RpgConversation.name"], .line { margin: 0; }
-.line { display: block; }
+.line { display: block; line-height: var(--font-leading-normal); }
+[part="RpgConversation.name"] { color: var(--primary); font-weight: var(--font-weight-semibold); }
 .replies { display: flex; flex-direction: column; margin: 0; padding: var(--space-md) 0; list-style: none; flex: 1; min-width: 0; gap: var(--space-xxs); }
 .reply-item { width: stretch; }
 [part="RpgConversation.row"] { width: stretch; min-height: var(--size-touch); gap: var(--space-md); align-items: center; justify-content: flex-start; padding: var(--space-xs) var(--space-md); }
 [part="RpgConversation.row"] .face { display: flex; width: stretch; align-items: center; gap: var(--space-md); }
 .reply-number { flex: none; font-variant-numeric: tabular-nums; }
-.reply-text { width: stretch; text-align: start; }
+.reply-text { flex: 1; text-align: start; }
+.reply-number { color: var(--ink-muted); font-family: var(--figure-font); }
 .reply-mark { width: var(--space-lg); height: var(--space-lg); flex: none; visibility: hidden; }
 [part="RpgConversation.row"][aria-selected=true] .reply-mark { visibility: visible; }
 @media (pointer: fine) and (width >= 600px) { [part="RpgConversation.row"] { min-height: calc(var(--size-touch) * 0.8); } .replies { padding: var(--space-sm) 0; } }

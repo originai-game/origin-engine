@@ -21,11 +21,13 @@
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="RpgCommands.frame"] { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }
-[part="RpgCommands.band"] { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
-.plates { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-xs); width: stretch; }
-[part="RpgCommands.cell"] { width: stretch; height: calc(var(--size-xl) * 1.2); padding: 0; min-width: 0; }
-.face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: center; gap: var(--space-xxs); }
+:host { display: flex; flex-direction: column; inline-size: stretch; gap: var(--space-sm); }
+[part="RpgCommands.band"] { display: flex; align-items: center; justify-content: center; flex: none; }
+.plates { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-xs); }
+[part="RpgCommands.cell"] { block-size: calc(var(--size-xl) * 1.2); padding: 0; min-inline-size: 0; }
+[part="RpgCommands.cell"][aria-selected=true] { background: var(--selection); box-shadow: inset 0 0 0 var(--stroke-regular) var(--focus); }
+.face { display: flex; flex-direction: column; inline-size: 100%; block-size: 100%; align-items: center; justify-content: center; gap: var(--space-xs); }
+.command-label { font-weight: var(--font-weight-semibold); }
 .command-mark { width: var(--size-lg); height: var(--size-lg); }
 @media (width < 600px), (height < 500px) { .plates { grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); } }
 </style>

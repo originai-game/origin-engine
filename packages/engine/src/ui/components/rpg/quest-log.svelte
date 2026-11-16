@@ -19,7 +19,7 @@
 <section id="RpgQuestLog" part="RpgQuestLog.frame" aria-label={title}>
   <header part="RpgQuestLog.band"><h2 part="RpgQuestLog.title">{title}</h2></header>
   {#if quests.length}
-    <scroll class="groups">
+    <div class="groups">
       {#each groups as g (g.id)}
         <section class="group" data-done={g.done} aria-label={g.label}>
           <div part="RpgQuestLog.heading" role="heading"><div class="group-mark"></div><span class="group-label">{g.label}</span></div>
@@ -36,23 +36,25 @@
           </div>
         </section>
       {/each}
-    </scroll>
+    </div>
   {:else}
     <div class="empty" role="status"><p class="empty-text">{t("rpg.quests.empty")}</p></div>
   {/if}
 </section>
 
 <style>
-[part="RpgQuestLog.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-xs); }
+:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-sm); }
 [part="RpgQuestLog.band"] { display: flex; width: stretch; align-items: center; flex: none; }
-.groups { width: stretch; flex: 1; min-height: 0; gap: var(--space-sm); }
-.group { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
+.groups { display: flex; flex-direction: column; flex: 1; min-block-size: 0; overflow-y: auto; gap: var(--space-lg); }
+.group { display: flex; flex: none; flex-direction: column; gap: var(--space-xs); }
 [part="RpgQuestLog.heading"] { display: flex; margin: 0; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm); }
-.group-mark { width: var(--space-md); height: var(--space-md); flex: none; }
+.group-mark { width: var(--space-xs); height: var(--space-md); flex: none; background: var(--primary); border-radius: var(--radius-control); }
+.group-label { font: var(--text-caption); font-weight: var(--font-weight-semibold); color: var(--ink-muted); }
 .rows { display: flex; flex-direction: column; width: stretch; }
 [part="RpgQuestLog.row"] { width: stretch; min-height: var(--size-touch); align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-md); justify-content: flex-start; min-width: 0; }
 [part="RpgQuestLog.row"] .face { display: flex; width: stretch; align-items: center; gap: var(--space-sm); }
-.quest-mark { width: var(--space-lg); height: var(--space-lg); flex: none; }
+.quest-mark { width: var(--space-sm); height: var(--space-sm); flex: none; border: var(--stroke-regular) solid var(--line-strong); border-radius: var(--radius-capsule); }
+[part="RpgQuestLog.row"][data-tracked=true] .quest-mark { background: var(--primary); border-color: var(--primary); }
 .quest-name { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .quest-open { display: none; width: var(--space-md); height: var(--space-md); flex: none; }
 [part="RpgQuestLog.row"][aria-selected=true] .quest-open { display: block; }

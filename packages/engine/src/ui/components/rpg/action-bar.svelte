@@ -15,34 +15,33 @@
     {#each skills as s (s.id)}
       <button part="RpgActionBar.skill RpgActionBar.cell" data-ready={s.ready} aria-label={s.name} disabled={!s.ready} onclick={use}><div class="face">
         <og-icon class="skill-art" icon={s.icon}></og-icon>
-        <div class="cool" hidden={!(s.cooldown > 0)} style:--cool={s.cooldown}></div>
+        {#if s.cooldown > 0}<div class="cool" style:--cool={s.cooldown}></div>{/if}
         <span class="hotkey">{s.key}</span>
       </div></button>
     {/each}
   </div>
-  <div class="items" role="toolbar" hidden={!items.length}>
+  {#if items.length}<div class="items" role="toolbar">
     {#each items as i (i.id)}
       <button part="RpgActionBar.item RpgActionBar.cell" aria-label={i.name} onclick={use}><div class="face">
         <og-icon class="item-art" icon={i.icon}></og-icon>
-        <span class="count" hidden={!(i.count > 0)}>{formatNumber(i.count)}</span>
+        {#if i.count > 0}<span class="count">{formatNumber(i.count)}</span>{/if}
         <span class="hotkey">{i.key}</span>
       </div></button>
     {/each}
-  </div>
+  </div>{/if}
 </nav>
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="RpgActionBar.frame"][hidden], [part="RpgActionBar.frame"] [hidden] { display: none; }
-[part="RpgActionBar.frame"] { display: flex; align-items: flex-end; gap: var(--space-lg); width: fit-content; }
+:host { display: flex; align-items: flex-end; gap: var(--space-lg); inline-size: fit-content; }
 .skills, .items { display: flex; gap: var(--space-xs); padding: var(--space-xs); }
 [part="RpgActionBar.skill RpgActionBar.cell"], [part="RpgActionBar.item RpgActionBar.cell"] { width: calc(var(--size-xl) * 0.85); height: calc(var(--size-xl) * 0.85); padding: 0; }
-.face { display: flex; flex-direction: column; position: relative; width: stretch; height: stretch; align-items: center; justify-content: center; }
-.skill-art { width: stretch; height: stretch; }
+.face { display: flex; flex-direction: column; position: relative; inline-size: 100%; block-size: 100%; align-items: center; justify-content: center; overflow: hidden; border-radius: var(--radius-control); }
+.skill-art { inline-size: 100%; block-size: 100%; }
 .item-art { width: 84%; height: 84%; }
-.cool { position: absolute; left: 0; top: 0; width: stretch; height: calc(var(--cool) * 100%); }
-.hotkey { position: absolute; left: 0; top: calc(100% + var(--space-xxs)); width: stretch; text-align: center; }
-.count { position: absolute; left: 0; top: calc(100% - var(--space-lg)); width: calc(100% - var(--space-xxs)); text-align: end; }
+.cool { position: absolute; inset-inline: 0; top: 0; block-size: calc(var(--cool) * 100%); background: var(--scrim); }
+.hotkey { position: absolute; inset-inline-start: var(--space-xxs); top: var(--space-xxs); padding: 0 var(--space-xs); background: var(--scene-plate); color: var(--scene-ink); border-radius: var(--radius-control); font: var(--text-caption); }
+.count { position: absolute; inset-inline-end: var(--space-xxs); bottom: var(--space-xxs); padding: 0 var(--space-xs); background: var(--scene-plate); color: var(--scene-ink); border-radius: var(--radius-control); font-family: var(--figure-font); }
 @media (width < 600px), (height < 500px) { .items { display: none; } [part="RpgActionBar.skill RpgActionBar.cell"] { width: var(--size-lg); height: var(--size-lg); } }
 </style>

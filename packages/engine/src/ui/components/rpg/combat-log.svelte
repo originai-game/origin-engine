@@ -10,20 +10,22 @@
 -->
 <section id="RpgCombatLog" part="RpgCombatLog.frame" class="hud" role="log" aria-label={t("rpg.log.name")}>
   <header class="small" part="RpgCombatLog.band"><h3 part="RpgCombatLog.title">{t("rpg.log.name")}</h3></header>
-  <scroll class="lines">
+  <div class="lines">
     {#each lines as l (l.id)}
-      <div part="RpgCombatLog.row" data-tone={l.tone}><span class="line-text">{l.text}</span><span class="line-detail" hidden={!l.detail}>{l.detail}</span></div>
+      <div part="RpgCombatLog.row" data-tone={l.tone}><span class="line-text">{l.text}</span>{#if l.detail}<span class="line-detail">{l.detail}</span>{/if}</div>
     {/each}
-  </scroll>
+  </div>
 </section>
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="RpgCombatLog.frame"][hidden], [part="RpgCombatLog.frame"] [hidden] { display: none; }
-[part="RpgCombatLog.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-xs); }
-[part="RpgCombatLog.band"] { display: flex; width: stretch; align-items: center; flex: none; }
-.lines { width: stretch; flex: 1; min-height: 0; }
-[part="RpgCombatLog.row"] { display: flex; flex-direction: column; padding: 0 var(--space-sm); }
-.line-detail { padding-inline-start: var(--space-md); }
+:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-sm); }
+[part="RpgCombatLog.band"] { display: flex; align-items: center; flex: none; }
+.lines { display: flex; flex-direction: column; gap: var(--space-sm); flex: 1; min-block-size: 0; overflow-y: auto; }
+[part="RpgCombatLog.row"] { display: flex; flex: none; flex-direction: column; gap: var(--space-xxs); padding: var(--space-xs) var(--space-sm); border-inline-start: var(--stroke-regular) solid var(--line); }
+[part="RpgCombatLog.row"][data-tone=damage] { border-color: var(--danger); }
+[part="RpgCombatLog.row"][data-tone=heal] { border-color: var(--success); }
+[part="RpgCombatLog.row"][data-tone=crit] { border-color: var(--warn); }
+.line-detail { padding-inline-start: var(--space-md); color: var(--ink-muted); font: var(--text-caption); }
 </style>

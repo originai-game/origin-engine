@@ -16,29 +16,28 @@
 <section id="RpgEnemyInfo" part="RpgEnemyInfo.frame" class="hud" aria-label={name}>
   <header class="small" part="RpgEnemyInfo.band"><h3 part="RpgEnemyInfo.title">{t("rpg.enemy.name")}</h3></header>
   <p part="RpgEnemyInfo.name">{name}</p>
-  <div class="picture"><img class="portrait" src={portrait} alt="" hidden={!portrait}></div>
+  <div class="picture">{#if portrait}<img class="portrait" src={portrait} alt="">{/if}</div>
   <p class="enemy-level">{t("rpg.party.level", { level: level })}</p>
   <div class="bar" role="meter" aria-label={t("rpg.party.health")} style:--fill={healthMax > 0 ? health / healthMax : 0}><div class="bar-fill"></div><span class="bar-figure">{t("rpg.party.figure", { now: health, max: healthMax })}</span></div>
-  <ul class="effects" hidden={!effects.length}>
+  {#if effects.length}<ul class="effects">
     {#each effects as e (e.id)}
       <li part="RpgEnemyInfo.row" data-tone={e.tone}><og-icon class="effect-mark" icon={e.icon}></og-icon><span class="effect-label">{e.label}</span></li>
     {/each}
-  </ul>
+  </ul>{/if}
 </section>
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="RpgEnemyInfo.frame"][hidden], [part="RpgEnemyInfo.frame"] [hidden] { display: none; }
-[part="RpgEnemyInfo.frame"] { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); align-items: center; }
+:host { display: flex; flex-direction: column; inline-size: stretch; gap: var(--space-sm); align-items: center; }
 [part="RpgEnemyInfo.band"] { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
 [part="RpgEnemyInfo.name"], .enemy-level { margin: 0; text-align: center; }
 .picture { width: 46%; aspect-ratio: 1; overflow: hidden; }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
-.bar { position: relative; display: flex; width: stretch; height: calc(var(--space-md) * 1.4); align-items: center; justify-content: center; }
-.bar-fill { position: absolute; left: 0; top: 0; width: calc(var(--fill) * 100%); height: stretch; }
-.bar-fill:dir(rtl) { left: auto; right: 0; }
-.bar-figure { position: relative; font-variant-numeric: tabular-nums; }
+.bar { position: relative; display: flex; align-self: stretch; height: calc(var(--space-md) * 1.4); align-items: center; justify-content: center; background: var(--well); border-radius: var(--meter-radius); overflow: hidden; }
+.bar-fill { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); background: var(--health); }
+.bar-figure { position: relative; font-family: var(--figure-font); font-variant-numeric: tabular-nums; color: var(--scene-ink); text-shadow: var(--tag-halo); }
+.enemy-level { color: var(--ink-muted); font: var(--text-caption); }
 .effects { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xs); }
 [part="RpgEnemyInfo.row"] { display: flex; align-items: center; gap: var(--space-sm); }
 .effect-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }

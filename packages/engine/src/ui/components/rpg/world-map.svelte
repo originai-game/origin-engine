@@ -33,31 +33,36 @@
         {/each}
       </div>
     </div>
-    <div class="here" hidden={!here}><div class="here-mark"></div><span class="here-text">{here}</span></div>
+    {#if here}<div class="here"><div class="here-mark"></div><span class="here-text">{here}</span></div>{/if}
   </div>
-  <div class="legend" hidden={!legend.length} aria-label={t("rpg.map.legend")}>
+  {#if legend.length}<div class="legend" aria-label={t("rpg.map.legend")}>
     {#each legend as l (l.id)}
       <div part="RpgWorldMap.row" data-kind={l.kind}><div class="legend-mark"></div><span class="legend-label">{l.label}</span></div>
     {/each}
-  </div>
+  </div>{/if}
 </figure>
 
 <style>
-[part="RpgWorldMap.frame"][hidden], [part="RpgWorldMap.frame"] [hidden] { display: none; }
-[part="RpgWorldMap.frame"] { position: relative; width: stretch; height: stretch; margin: 0; container-type: inline-size; }
+:host { position: relative; display: block; inline-size: stretch; block-size: stretch; margin: 0; container-type: inline-size; }
 .sheet { position: relative; width: stretch; height: stretch; overflow: hidden; }
 .land { position: absolute; left: 0; top: 0; width: calc(var(--zoom) * 100%); height: calc(var(--zoom) * 100%); translate: var(--pan-x) var(--pan-y); }
-.terrain { position: absolute; left: 0; top: 0; width: stretch; height: stretch; object-fit: cover; }
-.markers { position: absolute; left: 0; top: 0; width: stretch; height: stretch; }
+.terrain { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.markers { position: absolute; inset: 0; }
 [part="RpgWorldMap.marker RpgWorldMap.cell"] { position: absolute; left: calc(var(--x) * 100%); top: calc(var(--y) * 100%); width: var(--size-md); height: var(--size-md); padding: 0; translate: -50% -50%; align-items: center; justify-content: center; }
 [part="RpgWorldMap.marker RpgWorldMap.cell"] .face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: center; }
-.marker-mark { width: 62%; height: 62%; }
+.marker-mark { width: 45%; height: 45%; background: var(--primary); border-radius: var(--radius-capsule); }
+[data-kind=danger] .marker-mark { background: var(--danger); }
+[data-kind=player] .marker-mark { background: var(--success); }
+[part="RpgWorldMap.marker RpgWorldMap.cell"][aria-selected=true] { border-color: var(--focus); box-shadow: 0 0 0 var(--stroke-regular) var(--focus); }
 .here { position: absolute; left: 0; bottom: 0; display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-md); margin: 0; }
 .here:dir(rtl) { left: auto; right: 0; }
-.here-mark { width: var(--space-lg); height: var(--space-lg); }
+.here-mark { width: var(--space-sm); height: var(--space-sm); background: var(--success); border-radius: var(--radius-capsule); }
+.here { background: var(--scene-plate); color: var(--scene-ink); border-radius: var(--radius-control); }
 /* Over the map art, which the game draws: the scene plate and its ink. */
 .legend { position: absolute; left: 50%; bottom: var(--space-sm); translate: -50% 0; display: flex; align-items: center; gap: var(--space-md); padding: var(--space-xxs) var(--space-md); white-space: nowrap; background: var(--scene-plate); color: var(--scene-ink); border-radius: var(--radius-control); }
 @container (width < 760px) { .legend { left: auto; right: var(--space-sm); translate: none; } .here { bottom: auto; top: 0; } .legend:dir(rtl) { right: auto; left: var(--space-sm); } }
 [part="RpgWorldMap.row"] { display: flex; align-items: center; gap: var(--space-xs); flex: none; }
-.legend-mark { width: var(--space-lg); height: var(--space-lg); }
+.legend-mark { width: var(--space-sm); height: var(--space-sm); background: var(--primary); border-radius: var(--radius-capsule); }
+[data-kind=danger] .legend-mark { background: var(--danger); }
+[data-kind=player] .legend-mark { background: var(--success); }
 </style>

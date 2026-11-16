@@ -17,7 +17,7 @@
     <ol class="turns">
       {#each turns as u (u.id)}
         <li part="RpgTurnOrder.cell" data-side={u.side} data-acting={u.acting} data-down={u.down} aria-label={u.name} aria-current={u.acting}>
-          <div class="ring"><img class="portrait" src={u.portrait} alt="" hidden={!u.portrait}></div>
+          <div class="ring">{#if u.portrait}<img class="portrait" src={u.portrait} alt="">{/if}</div>
         </li>
       {/each}
     </ol>
@@ -29,16 +29,17 @@
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="RpgTurnOrder.frame"][hidden], [part="RpgTurnOrder.frame"] [hidden] { display: none; }
-[part="RpgTurnOrder.frame"] { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); align-items: center; }
+:host { display: flex; flex-direction: column; inline-size: stretch; gap: var(--space-xs); align-items: center; }
 .track { display: flex; width: stretch; align-items: center; gap: var(--space-xs); }
 .end { width: var(--size-sm); height: var(--size-md); flex: none; }
 .turns { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-xs); flex: 1; min-width: 0; margin: 0; padding: var(--space-xs) 0; list-style: none; }
-[part="RpgTurnOrder.cell"] { display: flex; flex-direction: column; width: stretch; align-items: center; }
-.ring { width: stretch; max-width: var(--size-xxl); aspect-ratio: 1; overflow: hidden; border-radius: 50%; }
+[part="RpgTurnOrder.cell"] { display: flex; flex-direction: column; align-items: center; padding: var(--space-xs); background: var(--scene-plate); border-radius: var(--radius-card); }
+[part="RpgTurnOrder.cell"][data-acting=true] { border-color: var(--focus); box-shadow: inset 0 0 0 var(--stroke-regular) var(--focus); }
+[part="RpgTurnOrder.cell"][data-down=true] { opacity: var(--state-disabled-opacity); }
+.ring { width: stretch; max-width: var(--size-xxl); aspect-ratio: 1; overflow: hidden; border-radius: var(--radius-capsule); }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .round-rule { display: flex; width: stretch; align-items: center; gap: var(--space-sm); }
 .round-rule .rpg-rule { width: stretch; flex: 1; }
-[part="RpgTurnOrder.title"] { flex: none; padding: var(--space-xxs) var(--space-xl); white-space: nowrap; }
+[part="RpgTurnOrder.title"] { flex: none; padding: var(--space-xs) var(--space-xl); white-space: nowrap; background: var(--scene-plate); color: var(--scene-ink); border-radius: var(--radius-capsule); }
 @media (height < 500px) { .ring { max-width: var(--size-xl); } .turns { padding: 0; } [part="RpgTurnOrder.title"] { padding: 0 var(--space-lg); } }
 </style>
