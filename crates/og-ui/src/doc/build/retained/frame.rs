@@ -63,10 +63,11 @@ impl RetainedHost {
                 }
             }
         }
-        // A pointer moving or wheeling over the hovered control reaches
-        // it as it builds (a range's nearer knob, a picker's option).
+        // A pointer moving over the hovered control reaches it as it builds
+        // (a range's nearer knob, a picker's option). The wheel is read as
+        // a build only by a viewport's camera-controls, built every frame.
         let pointer = [i.pointer.x, i.pointer.y];
-        if pointer != self.last_pointer || i.wheel != og_core::glam::Vec2::ZERO {
+        if pointer != self.last_pointer {
             held.push(s.hot);
             self.last_pointer = pointer;
         }
