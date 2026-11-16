@@ -250,6 +250,8 @@ proof("interactivity", "css_interact", "interactivity_inert_stops_a_subtree_and_
       "A button inside a box with interactivity: inert sends nothing when pressed; a declared interactivity: auto on an [inert] box makes its button answer (the attribute is HTML's UA rule, which a declaration overrides); an [inert] box alone stays inert and a button outside both answers. Pointer presses only; keyboard focus skipping and find-in-page are not asserted.")
 proof("interest-invokers", "control_props", "interest_delays_time_when_a_hint_shows_and_leaves",
       "At 60 ticks a second, an interestfor control with interest-delay: 200ms 300ms shows its hint exactly 18 ticks before one with interest-delay-start: 500ms and hides it exactly 18 ticks after one with interest-delay-end: 0s; a one-value shorthand sets both; the fixed engine latency is at most 3 ticks to show and 2 to hide. control_props::titles_and_popovers_show_against_their_controls covers hover and keyboard-focus interest. The interest and loseinterest events, :interest-source/:interest-target and long-press interest on touch are not covered.")
+proof("appearance", "control_props", "dialogs_close_as_closedby_says",
+      "appearance: none drops a dialog's own frame: its content sits at the dialog's corner with no padding. dressing::a_tight_field_takes_its_components_text_parts proves it on a field: one line of its text tall with the placeholder at its edge, no inset. appearance applies to dialogs and fields (auto | none); the compat keywords (button, checkbox, menulist-button, textfield…) and base-select are not taken.")
 not_applicable("webxr-dom-overlays", "Styles the DOM overlay of a WebXR session; the engine renders its own UI in its world and has no WebXR DOM layer.")
 not_applicable("window-controls-overlay window-drag", "Installed web-app title-bar integration (the OS window's caption buttons and drag regions); a game's UI is drawn inside its own surface, and the host owns its window.")
 not_applicable("picture-in-picture", "Styles a video in the browser's floating picture-in-picture window, which is browser chrome outside the game's surface.")
@@ -310,6 +312,20 @@ MISSING = {
     "file-selector-button": "Accepted and styles nothing: a file input's button is not a stylable box.",
     "active-view-transition": ":active-view-transition-type() qualifies only ::view-transition-* rules; :active-view-transition does not match elements during a transition (a selectors-side gap).",
     "view-transitions-element-scoped": "No view-transition-scope or element-scoped transitions: a transition captures a whole layer.",
+    "scroll-markers": "No ::scroll-marker or ::scroll-marker-group: the properties and pseudo-elements are refused.",
+    "scroll-marker-targets": "No :target-current, :target-before or :target-after (needs scroll markers; the selectors are engine-gaps').",
+    "scroll-target-group": "No scroll-target-group: anchor links do not act as scroll markers.",
+    "scroll-buttons": "No ::scroll-button(): a scroll container generates no buttons.",
+    "scroll-initial-target": "No scroll-initial-target: a scroll container starts at its origin.",
+    "scroll-axis-lock": "No scroll-axis-lock property; how og-ui's pan treats a mostly-one-axis drag is not asserted either.",
+    "scroll-triggered-animations": "No timeline-trigger or animation-trigger: scroll timelines drive animations (scroll-driven), but none starts or stops one.",
+    "overflow-anchor": "No scroll anchoring: content inserted above the scrollport moves what is shown.",
+    "details-content": "No ::details-content: a details element's content is not one stylable box.",
+    "customizable-select": "::picker(select) styles the open list (control_props::a_select_takes_aria_invalid_and_its_picker_height), but appearance: base-select, ::picker-icon, ::checkmark and <selectedcontent> are not taken.",
+    "caret-shape": "No caret-shape: a field's caret is always a bar.",
+    "highlight": "No ::highlight() or highlight registry: only ::selection paints a text range.",
+    "webvtt": "No WebVTT captions or ::cue: a video draws no text track.",
+    "autofill": "The autocomplete hint reaches the host, but the host reports no autofilled field and :autofill matches nothing (the selector is engine-gaps').",
     # layout
     "scrollbar-gutter": "Gap: a box with overflow-y: auto or scroll and overflow-x left visible (which computes to auto) reserves no gutter, because a box that may scroll both ways draws its bars over its content.",
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
