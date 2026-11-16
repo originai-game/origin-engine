@@ -235,6 +235,26 @@ test("StrategyWave: wave n of m, the countdown, the enemies by kind, and Call ea
   run(member("wave", "done"), (e) => expect(texts(e)).toContain("all waves cleared"));
 });
 
+test("StrategyWave: a long phone reward wraps without splitting Call early", () => {
+  for (const pack of ["default", ...PACKS] as const) {
+    let labelHeight = 0;
+    for (const fixture of ["default", "overflow"]) run(member("wave", fixture, { view: PHONE, pack: pack === "default" ? undefined : pack }), (e) => {
+      if (pack === "default") { og.ui.configure(e.world, { style: null }); e.advance(3); }
+      const button = find(e, /\/CallEarly$/)!;
+      const label = elements(e).find((x) => x.path.startsWith(`${button.path}/`) && x.text.toLowerCase() === "call early")!;
+      expect(label).toBeDefined();
+      if (fixture === "default") labelHeight = label.height;
+      else expect(label.height).toBe(labelHeight);
+      for (const text of elements(e).filter((x) => x.path.startsWith(`${button.path}/`) && x.text)) {
+        expect(text.clipped).not.toBeTrue();
+        expect(text.x).toBeGreaterThanOrEqual(button.x);
+        expect(text.x + text.width).toBeLessThanOrEqual(button.x + button.width + 0.5);
+        expect(text.y + text.height).toBeLessThanOrEqual(button.y + button.height + 0.5);
+      }
+    });
+  }
+});
+
 for (const pack of PACKS) for (const textScale of [1, 1.5]) {
   test(`on a phone at ${textScale * 100} % text in ${pack}, long names and reasons keep every row's or command's button reachable inside its panel`, () => {
     for (const [name, list] of [["queue", "items"], ["tower", "paths"], ["selection", "commands"]] as const) {

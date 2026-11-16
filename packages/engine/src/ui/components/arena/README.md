@@ -1,7 +1,8 @@
 # arena: built-in components
 
 Character selection, the ban and pick draft, the versus reveal, the team
-scoreboard, the round HUD and the lobby, as documents over core controls
+scoreboard, the round HUD, the lobby, ready checks, map voting and spectator
+controls, as documents over core controls
 (docs/ui.md §4). They draw what the game tells them and return intents with
 stable row keys. They never compute scores, kills, ranks, round outcomes,
 turn order, timers, pick legality or readiness: every figure arrives from
@@ -76,13 +77,36 @@ screen and the round HUD spans it, so they answer the screen's width: the
 versus stacks its sides around the seal, the round HUD puts each team's
 name on a line of its own over its score.
 
-Every member carries a `fixture:default` and the states that apply
+## Ready checks, voting and spectating
+
+`ArenaReady` shows participant responses and reports `accept` or `decline`.
+The game supplies the local response and countdown text; a click neither
+changes readiness locally nor starts a timer. Ended checks, loading and
+empty participant lists disable both response buttons.
+
+`ArenaVote` reports `choose` with the option's stable row key. The game
+supplies the selected option, tallies and winner independently: the local
+vote need not be the winning map. Unavailable options show their reason;
+closed voting keeps the result readable without accepting another vote.
+
+`ArenaSpectator` reports keyed `follow` intents and `previous`, `next`,
+`free` and `leave`. The game decides camera mode, cycling order and which
+subjects can be followed. Loading hides stale subjects and disables camera
+controls, but leaves the exit available unless the game disallows leaving.
+
+All three have loading, empty, disabled and long-content fixtures, plus the
+states specific to their jobs (responded or closed, a vote result, free camera).
+Their inner lists scroll with a fade cue in a bounded slot. Response and
+exit controls stay outside those scrollers; status is also written in words.
+
+The six match setup and score displays carry a `fixture:default` and the
+states that apply
 (roster: empty, none, full, disabled, overflow; draft: ban, empty, done,
 overflow; versus: teams, waiting, overflow; scoreboard: score, empty,
 disconnected, overflow; round HUD: won, lost, draw, critical, overflow;
 lobby: full, guest, empty, disabled, overflow). Loading and error do not
-apply: the members draw data the game already has (a game shows a waiting
-lobby or roster through `detail` and the empty states).
+apply to these six displays: they draw data the game already has (a game
+shows a waiting lobby or roster through `detail` and the empty states).
 
 ## Review sheet and tests
 
@@ -101,3 +125,13 @@ by name from a game page in every fixture at desktop and phone, and under
 the default style; checks the declared parts, the intents and their keys,
 the disabled states, keyed selection through a reorder, keyboard and pad
 focus, the team placement and order, and that each state is a word.
+
+`packages/engine/sheets/arena-social/` reviews ready checks, voting and
+spectating in the default style. For example, `og ui preview
+packages/engine/sheets/arena-social --screen 'vote-closed=page:vote;state:closed'
+--breakpoints desktop,phonePortrait` captures the ended vote at both sizes;
+the component metadata names the other fixture states. From `packages/engine`,
+`bun test tests/arena-social.test.ts` checks every fixture, authoritative
+state updates, keyed intents after reordering, disabled silence, keyboard
+activation and last-row scrolling in short phone slots without losing
+response or exit controls.

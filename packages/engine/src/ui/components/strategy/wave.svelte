@@ -51,7 +51,7 @@
     </div>
   </div>
   {/if}
-  {#if canCallEarly && phase != 'done'}<button id="CallEarly" variant="primary" onclick={callEarly}><span>{t("strategy.wave.callEarly")}</span>{#if reward != ''}<span class="reward">{reward}</span>{/if}</button>{/if}
+  {#if canCallEarly && phase != 'done'}<button id="CallEarly" variant="primary" onclick={callEarly}><span class="call-label">{t("strategy.wave.callEarly")}</span>{#if reward != ''}<span class="reward">{reward}</span>{/if}</button>{/if}
 </section>
 
 <style>
@@ -75,6 +75,7 @@
 .enemy-name { flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .enemy-count { flex: none; min-width: var(--size-lg); text-align: end; }
 #CallEarly { align-self: stretch; flex-wrap: wrap; min-height: var(--size-touch); gap: var(--space-xxs) var(--space-sm); max-width: stretch; }
+.call-label { flex: none; white-space: nowrap; }
 .reward { font: var(--text-sm); overflow-wrap: anywhere; }
 @media (width < 600px) {
   :host { inline-size: stretch; padding: var(--space-sm); gap: var(--space-sm); }
