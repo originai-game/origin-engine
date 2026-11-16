@@ -153,6 +153,7 @@ impl RetainedHost {
         if self.restoring {
             self.topology.take_changes();
             self.topology.take_fact_changes();
+            self.states_restored = true;
         }
         self.restoring = false;
         Ok(())

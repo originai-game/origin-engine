@@ -717,6 +717,10 @@ impl ControlHost {
     }
 }
 
+/// The scope of the stores that hold instance state (docs/ui.md §2): one
+/// per instance and state, named by the instance's mount and path.
+pub const STATE_SCOPE: &str = "og.state";
+
 /// The node index a control document's selectors read its host under
 /// ([`selectors::host_node`]): no node of the document, bound to the host
 /// element in [`crate::bind::BindingContext::selector_nodes`] where the
@@ -740,6 +744,10 @@ pub struct UiDocument {
     pub strings: Vec<String>,
     pub layer: LayerSpec,
     pub props: Vec<ContractProp>,
+    /// Its instance state (docs/ui.md §2): `<meta name="state:open"
+    /// content="bool">`, a value each instance holds for itself, read by
+    /// its name and written with `bind:`.
+    pub states: Vec<ContractProp>,
     pub parts: Vec<String>,
     /// The action bar's hints: an action and what it does here.
     pub actions: Vec<(String, String)>,

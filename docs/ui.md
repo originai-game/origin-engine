@@ -92,7 +92,8 @@ syntax. A document must meet these requirements:
   string tables. The pseudo-locale (`og ui check`'s pseudo cells,
   `og run --locale pseudo`) shows them accented, 40 % longer and in
   brackets (`og_i18n::pseudo_text`).
-- JSX, `$state`, `$effect`, `$bindable` outside a prop's default,
+- JSX, `$state` (instance state is metadata, see Components in
+  documents), `$effect`, `$bindable` outside a prop's default,
   statements, imports and functions in a script, `{@html}`, `on:click`,
   `<svelte:document>`, `<svelte:boundary>` and the Svelte 4 elements are
   refused, each with the form to use. Parse errors name file, line,
@@ -675,6 +676,20 @@ UI state lives in scope sources and core interaction state (§2.1), never
 module globals: two worlds cannot share selection, reordering or removing
 data cannot select a different object, and snapshots keep what an
 interaction needs to resume.
+
+A document holds UI state of its own as instance state:
+`<meta name="state:open" content="bool">` (a `number`, `string` or `bool`,
+with `data-default`) gives every instance of the document, and every host
+of a control document, a value of its own. The document reads it by its
+name and writes it with `bind:` (`<details bind:open={open}>`,
+`<input type="checkbox" bind:checked={open}>`); nothing outside the
+instance reads it, and a state shares no name with a prop. It is for what
+the game has no stake in: a picker being open, the tab shown, a row
+expanded. What the game must know stays a store the game binds. The value
+is a store of the UI's reactive session named by the instance's mount and
+path, so a snapshot carries it and a restored instance finds its own; it
+goes when the instance does (a row removed and added again starts from
+the default). `$state` stays refused.
 
 A control is its HTML element (§2.4): og-ui holds the element's value,
 binding, role, focus and behaviour, and the element's inside is a control

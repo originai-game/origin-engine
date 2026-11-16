@@ -21,6 +21,12 @@ its parts in `<meta name="parts">`, and reads tokens only. A pack dresses
 it through the control's hook tokens and `host::part(name)` rules, which
 outrank the document's own.
 
+A control that must remember something between frames that the game has
+no stake in (its picker being open) declares it as instance state,
+`<meta name="state:open" content="bool">`: each host has its own value,
+which the document writes with `bind:` and a snapshot carries
+(docs/ui.md §2 Components in documents).
+
 | Host element | Document |
 |---|---|
 | `<progress>`: a track filled to its value | `controls/progress` |

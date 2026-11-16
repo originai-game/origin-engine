@@ -145,6 +145,7 @@ impl Ui {
                 }
             }
             if result.is_ok() {
+                host.sweep_states(self);
                 host.built_tick = Some(self.tick());
             }
         }

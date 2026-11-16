@@ -183,6 +183,11 @@ pub struct Sources {
 }
 
 impl Sources {
+    /// The sources declared in `scope`.
+    pub fn in_scope<'a>(&'a self, scope: &'a str) -> impl Iterator<Item = &'a SourceId> {
+        self.sources.keys().filter(move |id| id.scope == scope)
+    }
+
     pub fn signal(&mut self, source: SourceId, initial: Value) -> Result<(), String> {
         self.declare_signal(source, initial, false)
     }

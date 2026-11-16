@@ -134,6 +134,11 @@ pub struct RetainedHost {
     pub managed: Option<BTreeMap<SourceId, Registration>>,
     pub pending_mounts: BTreeSet<SourceId>,
     pub restoring: bool,
+    /// The stores of each instance's state, by the instance's root
+    /// ([`RetainedHost::declare_states`]); `states_restored`: a restore
+    /// finished, and the next sweep also drops stores no instance holds.
+    pub states: BTreeMap<MountedNode, Vec<SourceId>>,
+    pub states_restored: bool,
     pub each: BTreeMap<MountedNode, EachInstance>,
     pub branches: BTreeMap<MountedNode, BranchInstance>,
     /// The element images mounted, by their roots.

@@ -37,7 +37,10 @@ pub(super) fn read(text: &str, base: usize) -> Result<Vec<(String, Expr)>, Error
         };
         let value = value.trim();
         if value.starts_with("$state") {
-            return Err(refuse("$state is not allowed"));
+            return Err((
+                at,
+                "$state is not read; game state goes in a TS system and reaches the document through a store, and UI state an instance holds for itself (open, the tab shown) is <meta name=\"state:name\" content=\"bool\">, written with bind:".into(),
+            ));
         }
         if value.starts_with("$effect") {
             return Err(refuse("$effect is not allowed"));

@@ -13,6 +13,13 @@
 //! - a control held by a control document gets no inside of its own, or
 //!   the holding document's rules do not reach it
 //!   → `a_control_document_nests_another_control`
+//!
+//! Instance state (docs/ui.md §2 Components in documents):
+//! - two instances share one value, or `bind:` does not write it
+//!   → `an_instance_holds_its_own_state`
+//! - a snapshot loses it → `instance_state_is_carried_by_a_snapshot`
+//! - a removed instance's value is found by the next one at its path
+//!   → `a_removed_instance_takes_its_state_with_it`
 
 use crate::support::*;
 use og_ui::*;
@@ -196,4 +203,86 @@ progress::part(fill) { border-radius: 0; background: #00ff00; }
         d.step(InputFrame::default());
     }
     assert_eq!(d.get("M/Frame/Bar/Track/Fill").width, 50.0);
+}
+
+/// A component that keeps whether it is switched on for itself.
+const LAMP: &str = r#"<meta name="component" content="Lamp">
+<meta name="state:on" content="bool">
+<meta name="prop:label" content="string">
+<div id="Lamp">
+  <input id="Switch" type="checkbox" bind:checked={on}>
+  <p id="Lit" hidden={!on}>{label}</p>
+</div>"#;
+
+const LAMPS: &str = r#"<meta name="component" content="t">
+<div id="Room">
+  <Lamp id="A" label="a"/>
+  <Lamp id="B" label="b"/>
+</div>"#;
+
+fn lamps() -> Doc {
+    let mut ui = ui_with_font(test_font_metrics());
+    let lamp = ui.parse_document("lamp.svelte", LAMP, Vec::new()).unwrap();
+    ui.define_document(lamp);
+    let mut d = Doc::mounted(ui, LAMPS, &[]);
+    d.step(InputFrame::default());
+    d
+}
+
+#[test]
+fn an_instance_holds_its_own_state() {
+    let mut d = lamps();
+    assert!(d.el("A/Lit").is_none() && d.el("B/Lit").is_none());
+    d.click("A/Switch");
+    assert!(
+        d.el("A/Lit").is_some(),
+        "the press wrote the instance's state"
+    );
+    assert!(d.el("B/Lit").is_none(), "the other instance has its own");
+    d.click("A/Switch");
+    assert!(d.el("A/Lit").is_none());
+}
+
+#[test]
+fn instance_state_is_carried_by_a_snapshot() {
+    let mut d = lamps();
+    d.click("B/Switch");
+    let saved = d.ui.save_state();
+    d.click("B/Switch");
+    d.click("A/Switch");
+    assert!(d.el("A/Lit").is_some() && d.el("B/Lit").is_none());
+    d.ui.restore_state(&saved).unwrap();
+    d.step(InputFrame::default());
+    assert!(d.el("B/Lit").is_some(), "B is on again");
+    assert!(d.el("A/Lit").is_none(), "A is off again");
+}
+
+#[test]
+fn a_removed_instance_takes_its_state_with_it() {
+    // A row's lamp is switched on, the row goes and comes back: the new
+    // instance starts from the state's default, not the old one's value.
+    let mut ui = ui_with_font(test_font_metrics());
+    let lamp = ui.parse_document("lamp.svelte", LAMP, Vec::new()).unwrap();
+    ui.define_document(lamp);
+    let text = r#"<meta name="component" content="t">
+<div id="Room">
+  {#each $lamps as lamp (lamp.id)}
+    <Lamp id="L" label={lamp.id}/>
+  {/each}
+</div>"#;
+    let rows = json!([{"id": "x"}, {"id": "y"}]);
+    let mut d = Doc::mounted(ui, text, &[("lamps", rows)]);
+    d.step(InputFrame::default());
+    let lit = |d: &Doc| {
+        ["x", "y"]
+            .into_iter()
+            .filter(|row| d.el(&format!("L#{row}/Lit")).is_some())
+            .collect::<Vec<_>>()
+    };
+    d.click("L#x/Switch");
+    assert_eq!(lit(&d), ["x"], "each row's lamp has its own state");
+    d.edit("lamps", json!({"op": "remove", "key": "x"}));
+    d.edit("lamps", json!({"op": "insert", "row": {"id": "x"}}));
+    assert!(d.el("L#x/Switch").is_some(), "the row is back");
+    assert_eq!(lit(&d), [""; 0], "its lamp starts off");
 }

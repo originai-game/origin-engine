@@ -169,6 +169,7 @@ impl UiDocument {
                 for (path, line) in self.node_paths_at(n) {
                     let root = path.split('.').next().unwrap_or("").trim_start_matches('$');
                     let known = self.props.iter().any(|p| p.name == root)
+                        || self.states.iter().any(|p| p.name == root)
                         || locals.iter().any(|l| l == root)
                         || root.starts_with(|c: char| c.is_ascii_uppercase())
                         || root.starts_with('$')
@@ -282,7 +283,8 @@ impl UiDocument {
             for path in paths {
                 let root = path.split('.').next().unwrap_or_default();
                 let named = root.starts_with(|c: char| c.is_ascii_lowercase() || c == '_');
-                if named && !locals.iter().any(|local| local == root) {
+                let state = self.states.iter().any(|state| state.name == root);
+                if named && !state && !locals.iter().any(|local| local == root) {
                     out.insert(root.to_owned());
                 }
             }
