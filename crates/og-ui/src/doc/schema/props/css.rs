@@ -390,6 +390,20 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `overflow-anchor: auto | none`: a scrolled container keeps what it shows in place when content above it changes size, by following an anchor box; `none` on the container turns that off, and on an element keeps it and its subtree from being the anchor.",
     },
     PropSpec {
+        name: "scrollMarkerGroup",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `scroll-marker-group: none | [before | after] || [links | tabs]` on a scroll container: it generates a `::scroll-marker-group` box just before or after itself holding the `::scroll-marker` of each element inside it, in document order; a marker scrolls its element to the container's start when pressed, and the one for the section in view matches `:target-current`. `tabs` makes the group a tab list.",
+    },
+    PropSpec {
+        name: "scrollTargetGroup",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `scroll-target-group: none | auto`: the element's `<a href=\"#id\">` descendants act as scroll markers for the elements they name: the one whose target is the section in view matches `:target-current`, those before it `:target-before`, those after `:target-after`; pressing one scrolls its target to its container's start.",
+    },
+    PropSpec {
         name: "scrollAxisLock",
         ty: Ty::Text,
         on: On::All,

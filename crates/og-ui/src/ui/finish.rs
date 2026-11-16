@@ -912,6 +912,11 @@ impl Ui {
             match self.settle_layout_queries(&mut settlement, &mut *resolve) {
                 Ok(true) => {}
                 Ok(false) => {
+                    // Scroll markers and buttons: the presses scroll, laid
+                    // out again where they moved; the current marker follows.
+                    if self.docs.library.scroll_controls && self.settle_scroll_controls() {
+                        continue;
+                    }
                     self.interaction.select_scroll_anchors(&self.tree);
                     break;
                 }

@@ -3,8 +3,9 @@
 //! (CSS Overscroll 1), `scroll-behavior`, `scroll-margin*`,
 //! `scroll-padding*` and `scroll-snap-stop` (CSS Scroll Snap 1, CSSOM
 //! View), `scroll-initial-target` (CSS Scroll Snap 2 §3), `scroll-axis-lock` (CSS Overflow 5 §4), `overflow-anchor` (CSS Scroll
-//! Anchoring 1 §3), `scrollbar-color` and `scrollbar-gutter` (CSS Scrollbars 1,
-//! CSS Overflow 3 §4).
+//! Anchoring 1 §3), `scroll-marker-group` and `scroll-target-group` (CSS
+//! Overflow 5 §3.1), `scrollbar-color` and `scrollbar-gutter` (CSS
+//! Scrollbars 1, CSS Overflow 3 §4).
 //!
 //! Each longhand is one reflected prop holding its CSS value as written,
 //! checked here when the stylesheet is lowered (shorthands and logical
@@ -15,7 +16,7 @@ use super::css::{Tok, describe, tokens};
 use crate::scroll::{Overscroll, ScrollCss};
 
 /// Each longhand's reflected prop and CSS name.
-pub(crate) const PROPS: [(&str, &str); 17] = [
+pub(crate) const PROPS: [(&str, &str); 19] = [
     ("overscrollBehaviorX", "overscroll-behavior-x"),
     ("overscrollBehaviorY", "overscroll-behavior-y"),
     ("scrollBehavior", "scroll-behavior"),
@@ -33,6 +34,8 @@ pub(crate) const PROPS: [(&str, &str); 17] = [
     ("scrollInitialTarget", "scroll-initial-target"),
     ("scrollAxisLock", "scroll-axis-lock"),
     ("overflowAnchor", "overflow-anchor"),
+    ("scrollMarkerGroup", "scroll-marker-group"),
+    ("scrollTargetGroup", "scroll-target-group"),
 ];
 
 const SIDES: [&str; 4] = ["Top", "Right", "Bottom", "Left"];
@@ -96,6 +99,8 @@ pub(crate) fn form(prop: &str) -> Option<&'static str> {
         "scrollInitialTarget" => "none | nearest",
         "scrollAxisLock" => "auto | none",
         "overflowAnchor" => "auto | none",
+        "scrollMarkerGroup" => "none | [before | after] || [links | tabs]",
+        "scrollTargetGroup" => "none | auto",
         _ => return None,
     })
 }
@@ -180,6 +185,11 @@ fn check(css: &str, value: &str) -> Result<String, String> {
             "auto" | "none" => Ok(()),
             w => Err(format!("overflow-anchor: '{w}' is not auto or none")),
         },
+        "scrollMarkerGroup" => marker_group(value).map(|_| ()),
+        "scrollTargetGroup" => match word(value)?.as_str() {
+            "none" | "auto" => Ok(()),
+            w => Err(format!("scroll-target-group: '{w}' is not none or auto")),
+        },
         "scrollAxisLock" => match word(value)?.as_str() {
             "auto" | "none" => Ok(()),
             w => Err(format!("scroll-axis-lock: '{w}' is not auto or none")),
@@ -239,6 +249,32 @@ fn scrollbar_color(value: &str) -> Result<Option<[crate::css_color::Color; 2]>, 
         ])),
         _ => Err("auto, or two colours: the thumb's and the track's".into()),
     }
+}
+
+/// `scroll-marker-group`: whether the container's group stands before it
+/// (`Some(true)`), after it (`Some(false)`) or is not generated (`none`).
+/// `links` and `tabs` are checked; both build the same group.
+pub(crate) fn marker_group(value: &str) -> Result<Option<bool>, String> {
+    let mut words = Vec::new();
+    for t in &tokens(value)? {
+        match t {
+            Tok::Ident(w) => words.push(w.to_ascii_lowercase()),
+            t => return Err(format!("'{}' is not a keyword", describe(t))),
+        }
+    }
+    if words == ["none"] {
+        return Ok(None);
+    }
+    let (mut at, mut mode) = (None, false);
+    for w in &words {
+        match w.as_str() {
+            "before" | "after" if at.is_none() => at = Some(w == "before"),
+            "links" | "tabs" if !mode => mode = true,
+            _ => return Err("none | [before | after] || [links | tabs]".into()),
+        }
+    }
+    at.map(Some)
+        .ok_or_else(|| "scroll-marker-group: before or after places the group".into())
 }
 
 /// `scrollbar-gutter`: 0 auto, 1 stable, 2 stable on both edges.

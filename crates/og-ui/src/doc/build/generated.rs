@@ -66,11 +66,24 @@ impl Ui {
         i: usize,
         (at, node): &(usize, ResolvedNode),
     ) {
-        let n = &b.doc.nodes[*at];
+        let mut built = node.probe.clone();
+        let props = self.props_of(b, &b.doc.nodes[*at], node.key, &node.values, &mut built);
+        self.apply_pseudo_box(&b.doc, i, *at, node, props);
+    }
+
+    /// Styles node `i` as pseudo-element `node` (node `at` of `doc`) with
+    /// its `props`, resolved where its originating element was built.
+    pub(crate) fn apply_pseudo_box(
+        &mut self,
+        doc: &crate::doc::UiDocument,
+        i: usize,
+        at: usize,
+        node: &ResolvedNode,
+        props: Props,
+    ) {
+        let n = &doc.nodes[at];
         let styled = (self.tree.nodes()[i].key, node.key);
         self.docs.state_mut().pseudo_boxes.push(styled);
-        let mut built = node.probe.clone();
-        let props = self.props_of(b, n, node.key, &node.values, &mut built);
         let fields = fields::RenderFields::capture(
             self,
             self.tree.nodes()[i].key,
@@ -80,7 +93,7 @@ impl Ui {
             props,
             None,
         );
-        self.apply_document_fields(&b.doc, n, &node.values, &fields);
+        self.apply_document_fields(doc, n, &node.values, &fields);
     }
 
     /// A pseudo-element's text style from its declarations (`name:

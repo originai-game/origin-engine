@@ -264,7 +264,7 @@ impl Ui {
     }
 
     /// The fraction of a fling's velocity a tick keeps off (1 − its decay).
-    fn fling_keep(&self) -> f32 {
+    pub(crate) fn fling_keep(&self) -> f32 {
         let response = (crate::theme::SPRING_MOMENTUM.response_ms / 1000.0).max(1e-3);
         let decay = (1.0 - 1.0 / (self.ticks_per_second() as f32 * response)).max(0.0);
         1.0 - decay
@@ -629,24 +629,10 @@ impl crate::ui::Interaction {
             let (Some(c), Some(t)) = (tree.index.find(container), tree.index.find(target)) else {
                 continue;
             };
-            let (cn, tn) = (&tree.nodes[c], &tree.nodes[t]);
-            let pad = cn.layout.used.padding;
-            let view = cn.placed.rect;
-            let (w, h) = (
-                (view.width - pad.horizontal()).max(0.0),
-                (view.height - pad.vertical()).max(0.0),
-            );
-            let sp = cn.el.scroll_css.padding_px(w, h);
-            let m = tn.el.scroll_css.margin;
-            let r = tn.placed.rect;
+            let cn = &tree.nodes[c];
             let at = self.offset(container);
             let range = Vec2::new(cn.max_scroll_x(), cn.max_scroll());
-            let to = (at
-                + Vec2::new(
-                    r.x - m[3] - (view.x + pad.left + sp[3]),
-                    r.y - m[0] - (view.y + pad.top + sp[0]),
-                ))
-            .clamp(Vec2::ZERO, range.max(Vec2::ZERO));
+            let to = (at + into_view_start(tree, c, t)).clamp(Vec2::ZERO, range.max(Vec2::ZERO));
             let s = &mut self.state;
             if cn.el.scroll_x && to.x != at.x {
                 s.scroll_x.insert(container, to.x);
@@ -1056,4 +1042,25 @@ pub(crate) fn bar_len(len: f32, inner: f32, content: f32, min: f32) -> f32 {
         return len;
     }
     (len * inner / content).max(min).min(len)
+}
+
+/// How far scroll container `c` scrolls (unclamped) to bring node `t`'s
+/// scroll-margin box to its view's start, inside its padding and
+/// scroll-padding (CSSOM View's scroll-into-view position, `start`
+/// alignment), from the boxes as laid out.
+pub(crate) fn into_view_start(tree: &crate::ui::Tree, c: usize, t: usize) -> Vec2 {
+    let (cn, tn) = (&tree.nodes[c], &tree.nodes[t]);
+    let pad = cn.layout.used.padding;
+    let view = cn.placed.rect;
+    let (w, h) = (
+        (view.width - pad.horizontal()).max(0.0),
+        (view.height - pad.vertical()).max(0.0),
+    );
+    let sp = cn.el.scroll_css.padding_px(w, h);
+    let m = tn.el.scroll_css.margin;
+    let r = tn.placed.rect;
+    Vec2::new(
+        r.x - m[3] - (view.x + pad.left + sp[3]),
+        r.y - m[0] - (view.y + pad.top + sp[0]),
+    )
 }

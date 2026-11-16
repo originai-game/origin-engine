@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 /// The element-backed pseudo-elements a rule may select, as written after
 /// `::`. CSS 2's single-colon spellings of the first four are accepted too.
-pub const PSEUDOS: [&str; 9] = [
+pub const PSEUDOS: [&str; 14] = [
     "before",
     "after",
     "marker",
@@ -25,6 +25,20 @@ pub const PSEUDOS: [&str; 9] = [
     "selection",
     "target-text",
     "file-selector-button",
+    "scroll-marker",
+    "scroll-button-up",
+    "scroll-button-down",
+    "scroll-button-left",
+    "scroll-button-right",
+];
+
+/// The `::scroll-button()` pseudo-elements by direction: up, down, left,
+/// right (the order [`Generated::scroll_buttons`] keeps).
+pub const BUTTONS: [&str; 4] = [
+    "scroll-button-up",
+    "scroll-button-down",
+    "scroll-button-left",
+    "scroll-button-right",
 ];
 
 /// The text properties generated text and the text pseudo-elements take,
@@ -56,6 +70,11 @@ pub fn allows(pseudo: &str, property: &str) -> bool {
             )
         }
         "marker" => text || property == "content",
+        // A scroll control's label: its content and text style; its box
+        // takes the rest.
+        p if p == "scroll-marker" || p.starts_with("scroll-button-") => {
+            text && property != "display" || property == "content"
+        }
         "first-letter" | "first-line" => text,
         "placeholder" => property == "color",
         "selection" | "target-text" => matches!(
@@ -186,6 +205,12 @@ pub struct Generated {
     pub placeholder: Option<String>,
     pub selection: Option<String>,
     pub target_text: Option<String>,
+    /// `::scroll-marker`'s label (CSS Overflow 5 §3.1.5): generated only
+    /// for a `content` other than `normal` or `none`.
+    pub scroll_marker: Option<PseudoBox>,
+    /// Each `::scroll-button()`'s label, up, down, left and right (§3.2),
+    /// on the same terms.
+    pub scroll_buttons: [Option<PseudoBox>; 4],
 }
 
 /// A pseudo-element's computed content and text style.
@@ -265,6 +290,11 @@ impl Generated {
             }
         }
         out.ops = Arc::new(ops);
+        out.first_letter = styles.remove("first-letter");
+        out.first_line = styles.remove("first-line");
+        out.placeholder = styles.remove("placeholder");
+        out.selection = styles.remove("selection");
+        out.target_text = styles.remove("target-text");
         let mut take = |p: &str| {
             let (mut b, ops) = boxes.remove(p).unwrap_or_default();
             b.ops = Arc::new(ops);
@@ -274,11 +304,9 @@ impl Generated {
         out.before = take("before");
         out.after = take("after");
         out.marker = take("marker");
-        out.first_letter = styles.remove("first-letter");
-        out.first_line = styles.remove("first-line");
-        out.placeholder = styles.remove("placeholder");
-        out.selection = styles.remove("selection");
-        out.target_text = styles.remove("target-text");
+        let shown = |b: Option<PseudoBox>| b.filter(|b| matches!(b.content, Content::Pieces(_)));
+        out.scroll_marker = shown(take("scroll-marker"));
+        out.scroll_buttons = BUTTONS.map(|p| shown(take(p)));
         out
     }
 

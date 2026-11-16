@@ -69,7 +69,24 @@ fn rank(layers: &[String], layer: &Option<String>) -> u32 {
 }
 
 /// `rules` under each selector of their lists, in the order read.
-fn selectors(mut rules: Vec<Rule>) -> Result<Vec<(Selector, Rule)>, Error> {
+fn selectors(rules: Vec<Rule>) -> Result<Vec<(Selector, Rule)>, Error> {
+    // `::scroll-button(*)` is the four buttons, each its own rule.
+    let mut rules: Vec<Rule> = rules
+        .into_iter()
+        .flat_map(|rule| {
+            if !rule.selector.to_ascii_lowercase().contains(ANY_BUTTON) {
+                return vec![rule];
+            }
+            ["up", "down", "left", "right"]
+                .map(|d| {
+                    let mut r = rule.clone();
+                    r.selector =
+                        replace_ci(&rule.selector, ANY_BUTTON, &format!("::scroll-button({d})"));
+                    r
+                })
+                .to_vec()
+        })
+        .collect();
     for rule in &mut rules {
         pseudo_element(rule)?;
     }
@@ -84,6 +101,19 @@ fn selectors(mut rules: Vec<Rule>) -> Result<Vec<(Selector, Rule)>, Error> {
         }
     }
     Ok(parsed)
+}
+
+/// `text` with every ASCII-case-insensitive `from` replaced by `to`.
+fn replace_ci(text: &str, from: &str, to: &str) -> String {
+    let lower = text.to_ascii_lowercase();
+    let (mut out, mut at) = (String::new(), 0);
+    while let Some(k) = lower[at..].find(from) {
+        out.push_str(&text[at..at + k]);
+        out.push_str(to);
+        at += k + from.len();
+    }
+    out.push_str(&text[at..]);
+    out
 }
 
 /// The host sets `data-scheme` on the root to the theme's scheme, as a page
@@ -2175,8 +2205,12 @@ fn rule_props(entries: &[og_core::ogt::Entry], kind: Kind) -> Result<Vec<PropSet
 /// `::picker(select)`, a disclosure's `::details-content` (CSS
 /// Pseudo-Elements 4 §5.2), and the engine's `::-og-hold`, the fill a
 /// `data-hold` press grows, and `::-og-arrow`, a popover's arrow toward its
-/// anchor), by their name in [`DocNode::pseudo`].
-const BOXES: [(&str, &str); 7] = [
+/// anchor), and CSS Overflow 5's scroll controls (`::scroll-marker-group`,
+/// `::scroll-marker`, `::scroll-button(<dir>)`, the logical directions as
+/// horizontal-tb left to right names them), by their name in
+/// [`DocNode::pseudo`]. Longer spellings come first: a selector is matched
+/// by its ending.
+const BOXES: [(&str, &str); 17] = [
     ("::before", "before"),
     ("::after", "after"),
     ("::backdrop", "backdrop"),
@@ -2184,7 +2218,20 @@ const BOXES: [(&str, &str); 7] = [
     ("::details-content", "details-content"),
     ("::-og-hold", "hold"),
     ("::-og-arrow", "arrow"),
+    ("::scroll-marker-group", "scroll-marker-group"),
+    ("::scroll-marker", "scroll-marker"),
+    ("::scroll-button(up)", "scroll-button-up"),
+    ("::scroll-button(block-start)", "scroll-button-up"),
+    ("::scroll-button(down)", "scroll-button-down"),
+    ("::scroll-button(block-end)", "scroll-button-down"),
+    ("::scroll-button(left)", "scroll-button-left"),
+    ("::scroll-button(inline-start)", "scroll-button-left"),
+    ("::scroll-button(right)", "scroll-button-right"),
+    ("::scroll-button(inline-end)", "scroll-button-right"),
 ];
+
+/// `::scroll-button(*)`, which selects all four of a container's buttons.
+const ANY_BUTTON: &str = "::scroll-button(*)";
 
 /// Whether `node`, an element of `kind`, draws `pseudo` as a box: a box
 /// element's `::before` and `::after` (a text element's join its text as
@@ -2201,6 +2248,14 @@ fn holds(pseudo: &str, kind: Kind, node: &DocNode) -> bool {
         "details-content" => kind == Kind::Details,
         "hold" => node.props.iter().any(|p| p.name() == "dataHold"),
         "arrow" => node.props.iter().any(|p| p.name() == "popover"),
+        // Any element may have a marker (its nearest scroll container
+        // decides whether it shows); the group and buttons a container's.
+        "scroll-marker" => true,
+        "scroll-marker-group"
+        | "scroll-button-up"
+        | "scroll-button-down"
+        | "scroll-button-left"
+        | "scroll-button-right" => kind.container(),
         _ => false,
     }
 }
@@ -2308,16 +2363,20 @@ fn pseudo_suffix(selector: &str) -> Option<(&'static str, &str, Vec<InteractionS
     {
         return Some((name, &selector[..at], states));
     }
-    super::generated::PSEUDOS.iter().find_map(|&p| {
-        let double = format!("::{p}");
-        if lower.ends_with(&double) {
-            return Some((p, &selector[..selector.len() - double.len()], Vec::new()));
-        }
-        let single = format!(":{p}");
-        (matches!(p, "before" | "after" | "first-line" | "first-letter")
-            && lower.ends_with(&single))
-        .then(|| (p, &selector[..selector.len() - single.len()], Vec::new()))
-    })
+    // A scroll control is written as its box ([`BOXES`]), never by name.
+    super::generated::PSEUDOS
+        .iter()
+        .filter(|p| !p.starts_with("scroll-"))
+        .find_map(|&p| {
+            let double = format!("::{p}");
+            if lower.ends_with(&double) {
+                return Some((p, &selector[..selector.len() - double.len()], Vec::new()));
+            }
+            let single = format!(":{p}");
+            (matches!(p, "before" | "after" | "first-line" | "first-letter")
+                && lower.ends_with(&single))
+            .then(|| (p, &selector[..selector.len() - single.len()], Vec::new()))
+        })
 }
 
 /// A rule on an element-backed pseudo-element selects its originating
@@ -2356,7 +2415,7 @@ fn pseudo_element(rule: &mut Rule) -> Result<(), (usize, String)> {
         let important = if d.important { " !important" } else { "" };
         let generated = !matches!(
             pseudo,
-            "backdrop" | "picker" | "details-content" | "hold" | "arrow"
+            "backdrop" | "picker" | "details-content" | "hold" | "arrow" | "scroll-marker-group"
         ) && super::generated::allows(pseudo, &d.name);
         if generated {
             body.push_str(&format!(

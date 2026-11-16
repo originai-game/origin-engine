@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"ui","summary":"Scroll markers and buttons (CSS Overflow 5 §3): `scroll-marker-group: before | after` on a scroll container builds a `::scroll-marker-group` beside it holding each inner element's `::scroll-marker` (a carousel's dots, a chapter list), which scroll their element into view when pressed; `::scroll-button(up | down | left | right | *)` pages the container by 85% of its view and matches `:disabled` at its ends. The marker for the section in view matches `:target-current`, those before and after `:target-before` and `:target-after`; `scroll-target-group: auto` gives `<a href=\"#id\">` links the same states."}
+  ]
+}

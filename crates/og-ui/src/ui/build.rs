@@ -490,6 +490,22 @@ impl crate::ui::Tree {
         self.nodes[parent].built_children.push(i);
     }
 
+    /// Moves node `i` among its parent's children to stand just before
+    /// (or after) its sibling `at`: a box built after `at` that stands
+    /// beside it (a scroll container's `::scroll-marker-group`), once.
+    pub(crate) fn place_beside(&mut self, i: usize, at: usize, before: bool) {
+        let parent = self.nodes[i].parent;
+        if parent == NONE {
+            return;
+        }
+        let list = &mut self.nodes[parent].built_children;
+        list.retain(|&c| c != i);
+        match list.iter().position(|&c| c == at) {
+            Some(k) => list.insert(if before { k } else { k + 1 }, i),
+            None => list.push(i),
+        }
+    }
+
     /// Puts back a retained node the element being emitted owns and does
     /// not write again (a virtual list's row): it stays owned and keeps
     /// its subtree.

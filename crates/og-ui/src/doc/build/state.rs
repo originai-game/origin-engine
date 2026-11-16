@@ -40,6 +40,29 @@ pub struct DocState {
     /// ([`crate::Ui::set_selector_state`]): `(key, state, on)`, applied
     /// when the documents next refresh.
     pub selector_states: Vec<(u64, crate::bind::InteractionState, bool)>,
+    /// The scroll controls built for each scroll container and each
+    /// `scroll-target-group` element, by its render key, as last built
+    /// (CSS Overflow 5 §3).
+    pub scroll_groups: BTreeMap<u64, super::scroll_markers::Group>,
+    /// Each element's `::scroll-marker` as it was last built, by the
+    /// element's render key.
+    pub scroll_markers: BTreeMap<u64, Arc<super::scroll_markers::Marker>>,
+    /// The `#id` each element with an `href` naming one names, by its
+    /// render key.
+    pub scroll_anchors: BTreeMap<u64, String>,
+    /// The elements with `scroll-target-group: auto`, by render key.
+    pub target_groups: BTreeSet<u64>,
+    /// The scroll controls pressed this frame, by their container's key:
+    /// they scroll once the frame is laid out.
+    pub scroll_presses: Vec<(u64, super::scroll_markers::Press)>,
+    /// The `:target-*` state each scroll marker was last given, by its key.
+    pub marker_states: BTreeMap<u64, crate::bind::InteractionState>,
+    /// The scroll buttons last set `:disabled`, by key.
+    pub button_states: BTreeSet<u64>,
+    /// Each scroll container's current scroll target, by key: the target
+    /// a marker scrolled it to and the offset it aimed at, kept while the
+    /// container stays there.
+    pub scroll_pins: BTreeMap<u64, (u64, og_core::glam::Vec2)>,
     /// The boxes styled as a pseudo-element since the last refresh:
     /// `(the box's render key, the pseudo-element's key)`.
     pub pseudo_boxes: Vec<(u64, u64)>,
@@ -109,6 +132,7 @@ impl DocState {
     /// Restores what a snapshot carried.
     pub(crate) fn restore(&mut self, v: &Value) -> Result<(), String> {
         self.memory.restore(v)?;
+        self.restore_scroll_controls(v.get("scrollControls"))?;
         self.built_tick = 0;
         Ok(())
     }
@@ -132,6 +156,11 @@ impl DocState {
     /// Keeps the widget memory of elements `built` this frame or kept by
     /// their mounts, and forgets the rest.
     pub(crate) fn retain_element_memory(&mut self, built: impl Fn(u64) -> bool) {
+        self.scroll_groups.retain(|k, _| built(*k));
+        self.scroll_markers.retain(|k, _| built(*k));
+        self.scroll_anchors.retain(|k, _| built(*k));
+        self.target_groups.retain(|k| built(*k));
+        self.scroll_pins.retain(|k, _| built(*k));
         let retained = &self.memory.retained;
         self.validity
             .retain(|k, _| built(*k) || retained.keeps_memory(*k));

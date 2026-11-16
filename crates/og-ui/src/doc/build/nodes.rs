@@ -98,6 +98,9 @@ impl Ui {
         if r.str("scrollInitialTarget") == Some("nearest") {
             self.note_initial_target(key);
         }
+        if self.docs.library.scroll_controls {
+            self.note_scroll_controls(b, n, r, &path, key);
+        }
         if kind == Kind::Viewport {
             return self.build_viewport(b, n, id.as_str(), r, props, path, key, built);
         }
@@ -816,6 +819,10 @@ impl Ui {
             Shell::Details => self.close_details(),
             Shell::Button => self.close_button(),
             Shell::Box => resp = self.close(),
+        }
+        if self.docs.library.scroll_controls {
+            let own = self.tree.last_closed();
+            self.build_scroll_controls(b, n, r, &path, own);
         }
         if let Some(open) = opened {
             self.docs.state_mut().happened.push(When::Toggle);

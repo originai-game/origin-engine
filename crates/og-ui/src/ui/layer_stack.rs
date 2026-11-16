@@ -339,7 +339,7 @@ impl crate::ui::Docs {
     pub(crate) fn docs_state(&self) -> Value {
         let stack = &self.layers;
         let m = &self.state.memory;
-        json!({
+        let mut out = json!({
             "next": stack.next,
             "heldScale": stack.held_scale,
             "stores": m.reactive.save(),
@@ -354,6 +354,10 @@ impl crate::ui::Docs {
             "last": m.last.iter().map(|((k, i), v)| json!([k.to_string(), i, v])).collect::<Vec<_>>(),
             "values": m.values.iter().map(|(k, v)| json!([k.to_string(), v])).collect::<Vec<_>>(),
             "open": m.open.iter().map(|(k, v)| json!([k.to_string(), v])).collect::<Vec<_>>(),
-        })
+        });
+        if let Some(controls) = self.state.save_scroll_controls() {
+            out["scrollControls"] = controls;
+        }
+        out
     }
 }

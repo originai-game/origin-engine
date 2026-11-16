@@ -1741,6 +1741,7 @@ mod parts;
 pub(crate) use parts::{PartIndex, PartStyles};
 pub(crate) mod popover;
 pub(crate) mod retained;
+pub(crate) mod scroll_markers;
 pub(crate) mod state;
 #[doc(hidden)]
 pub mod structure;

@@ -595,7 +595,20 @@ the first box in view, searched inside the first one only partly in
 view; when content above it changes size, the offset moves by as much on
 the same frame (saved UI state). `overflow-anchor: none` turns it off on
 a container and keeps a subtree from anchoring; snapping containers and
-floating layers are not anchored. A modal
+floating layers are not anchored. `scroll-marker-group: before | after`
+(Overflow 5 §3) builds a `::scroll-marker-group` box beside a scroll
+container holding the `::scroll-marker` (given a `content`) of each
+element inside it, in tree order; a marker scrolls its element to the
+container's start when pressed. `::scroll-button(<dir> | *)` with a
+`content` builds a button before the container that pages 85% of its
+view, and matches `:disabled` where it cannot scroll further. The marker
+for the section in view matches `:target-current` (those before and
+after it `:target-before` and `:target-after`), by §3.1.8's example
+algorithm at the offset a glide comes to rest at; the one pressed stays
+current while the container stays where it scrolled to. On
+`scroll-target-group: auto` the `<a href="#id">` links inside take the
+same states. The states follow one frame after the scroll (saved UI
+state). A modal
 `<dialog data-detents="40% 90%">` is a
 bottom sheet (full width, opened at its first detent, dragged between
 detents, swiped down to close, writing `open` back); `data-edge=

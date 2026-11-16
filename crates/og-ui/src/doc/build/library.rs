@@ -22,6 +22,10 @@ pub(crate) struct Library {
     /// Some defined document uses `sibling-index()` or `sibling-count()`,
     /// so builds give each element its place among its siblings.
     pub(crate) uses_siblings: bool,
+    /// Some defined document declares `scroll-marker-group`,
+    /// `scroll-target-group` or a `::scroll-button()`, so builds look for
+    /// the scroll controls a container stands among (CSS Overflow 5 §3).
+    pub(crate) scroll_controls: bool,
     /// The textures documents name by asset path (a view transition's
     /// cover image), by path.
     pub(crate) textures: BTreeMap<String, og_draw::TextureHandle>,
@@ -58,6 +62,16 @@ impl Library {
                 || d.name == "display" && d.source.contains("list-item")
         });
         self.uses_siblings |= crate::doc::matching::counts_siblings(&doc);
+        self.scroll_controls |= declarations().any(|d| {
+            matches!(
+                d.name.as_str(),
+                "scroll-marker-group" | "scroll-target-group"
+            )
+        }) || doc.nodes.iter().any(|n| {
+            n.pseudo
+                .iter()
+                .any(|(p, _)| p.starts_with("scroll-button-"))
+        });
         self.wide_keywords |= declarations().any(|d| {
             d.value.binding().is_some()
                 || super::cascade::CARRIED_BY_DEFAULT.contains(&d.name.as_str())
