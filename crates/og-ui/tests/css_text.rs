@@ -248,6 +248,76 @@ fn line_height_and_letter_spacing_compute_as_css_does() {
     );
 }
 
+/// The thickening and shear each text command of `id` is drawn with:
+/// its synthesised weight (0: none) and its effects' transform.
+fn synthesised(d: &Doc, id: &str) -> Vec<(f32, [f32; 4])> {
+    let r = d.get(id);
+    d.ui.frame()
+        .items
+        .iter()
+        .filter_map(|it| {
+            let (text, transform) = match &it.cmd {
+                DrawCmd::StyledText { text, effects } => (&**text, effects.transform),
+                c => (c, [1.0, 0.0, 0.0, 1.0]),
+            };
+            match text {
+                DrawCmd::Text { bounds, weight, .. }
+                    if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0)) =>
+                {
+                    Some((*weight, transform))
+                }
+                _ => None,
+            }
+        })
+        .collect()
+}
+
+/// CSS Fonts 4 §3.1: a weight or a slant no face of the font has (the
+/// test face is Noto Sans Regular alone) is synthesised, unless
+/// `font-synthesis-weight` or `-style` (or `font-synthesis` without
+/// that word) says none. §2.4: an oblique is slanted by its angle,
+/// 14deg when it names none. The italic texts here are spans, the path
+/// that synthesises.
+#[test]
+fn font_synthesis_and_oblique_angles_draw_as_css_fonts_says() {
+    let d = doc(
+        r#"<p id="R">Ab</p><p id="B">Ab</p><p id="Bn">Ab</p><p id="Bs">Ab</p><p id="I">Ab</p>
+<p id="O">Ab</p><p id="O14">Ab</p><p id="In">Ab</p>"#,
+        "#B, #Bn, #Bs { font-weight: 700; font-style: italic; }
+#Bn { font-synthesis-weight: none; } #Bs { font-synthesis: style; }
+#I { font-style: italic; } #O { font-style: oblique 30deg; } #O14 { font-style: oblique; }
+#In { font-style: italic; font-synthesis-style: none; }",
+    );
+    let bold = |id| {
+        let cmds = synthesised(&d, id);
+        assert!(!cmds.is_empty(), "#{id} draws");
+        cmds.iter().any(|(w, _)| *w > 0.0)
+    };
+    let shear = |id| synthesised(&d, id)[0].1[2];
+    assert!(!bold("R") && shear("R") == 0.0, "regular");
+    assert!(
+        bold("B") && shear("B") < 0.0,
+        "a bold italic with neither face"
+    );
+    assert!(
+        !bold("Bn") && shear("Bn") < 0.0,
+        "font-synthesis-weight: none"
+    );
+    assert!(!bold("Bs") && shear("Bs") < 0.0, "font-synthesis: style");
+    assert!(
+        (shear("O") + 30f32.to_radians().tan()).abs() < 1e-4,
+        "{}",
+        shear("O")
+    );
+    assert!(
+        (shear("O14") + 14f32.to_radians().tan()).abs() < 1e-4,
+        "{}",
+        shear("O14")
+    );
+    assert!(shear("I") < 0.0, "italic slants");
+    assert_eq!(shear("In"), 0.0, "font-synthesis-style: none");
+}
+
 /// CSS Text 3 §8.1: `word-spacing` adds its length after each word
 /// separator (a space or a no-break space), never between the letters
 /// of a word; it computes to an absolute length, so a child twice the

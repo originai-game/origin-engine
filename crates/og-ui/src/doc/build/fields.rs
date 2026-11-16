@@ -1603,6 +1603,13 @@ impl Resolved {
         let style = crate::TextSpanStyle {
             italic: t.italic,
             weight: t.weight,
+            oblique: t.slant,
+            synthesis: (t.synthesis[0].is_some() || t.synthesis[1].is_some()).then(|| {
+                crate::Synth {
+                    bold: t.synthesis[0] != Some(false),
+                    italic: t.synthesis[1] != Some(false),
+                }
+            }),
             color: t.fill.map(crate::paint::ColorRef::Literal),
             // A stroke centred on the glyphs' edge, over the fill (Compat
             // §5.4); `paint-order: stroke` paints it under, so only its

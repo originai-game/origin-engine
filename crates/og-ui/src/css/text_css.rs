@@ -927,7 +927,9 @@ pub struct TextCss {
     pub size: Option<f32>,
     pub weight: Option<u16>,
     pub italic: Option<bool>,
-    /// Oblique angle in degrees (`oblique 10deg`); italic is 14.
+    /// A synthesised oblique's angle in degrees (`oblique 10deg`, 14 when
+    /// it names none, CSS Fonts 4 §2.4); `None` for italic, which slants
+    /// as the engine's markup italic does.
     pub slant: Option<f32>,
     pub stretch: Option<f32>,
     /// A multiple of the size (`normal`: the step's own).
@@ -1189,10 +1191,7 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
     };
     match get("font-style").as_deref() {
         Some("normal") => t.italic = Some(false),
-        Some("italic") => {
-            t.italic = Some(true);
-            t.slant = Some(14.0);
-        }
+        Some("italic") => t.italic = Some(true),
         Some(o) if o.starts_with("oblique") => {
             t.italic = Some(true);
             t.slant = Some(

@@ -46,6 +46,9 @@ pub struct RichSpan {
     pub weight: u16,
     /// The bold and slant no real face of the style draws, synthesised.
     pub synth: crate::ui::Synth,
+    /// A synthesised oblique's angle, degrees (CSS `font-style: oblique
+    /// <angle>`); `None`: the engine's slant.
+    pub oblique: Option<f32>,
     pub underline: bool,
     pub strike: bool,
     /// An outline's width (CSS px), colour and where it runs against the
@@ -1101,7 +1104,8 @@ impl Ui {
                         }),
                         fill_box: [bounds.x, bounds.y, bounds.width, bounds.height],
                         transform: if s.synth.italic {
-                            [1.0, 0.0, -SLANT, 1.0]
+                            let shear = s.oblique.map_or(SLANT, |a| a.to_radians().tan());
+                            [1.0, 0.0, -shear, 1.0]
                         } else {
                             [1.0, 0.0, 0.0, 1.0]
                         },

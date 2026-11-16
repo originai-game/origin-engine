@@ -64,6 +64,13 @@ pub struct TextSpanStyle {
     pub size_scale: Option<f32>,
     /// CSS `word-spacing`, px.
     pub word_spacing: Option<f32>,
+    /// Which of a bold and a slant it may synthesise when no face of its
+    /// font has them (CSS `font-synthesis-weight` and `-style`); `None`:
+    /// both.
+    pub synthesis: Option<crate::ui::Synth>,
+    /// A synthesised oblique's angle, degrees (CSS `font-style: oblique
+    /// <angle>`).
+    pub oblique: Option<f32>,
 }
 
 /// An inline object of a text (a document's `<img>`, `<og-icon>` or `<kbd
@@ -152,6 +159,7 @@ impl Ui {
                 italic: false,
                 weight: step.weight,
                 synth: Default::default(),
+                oblique: None,
                 underline: false,
                 strike: false,
                 outline: None,
@@ -180,6 +188,9 @@ impl Ui {
                 }
                 if let Some(w) = style.word_spacing {
                     s.word_spacing = w;
+                }
+                if let Some(a) = style.oblique {
+                    s.oblique = Some(a);
                 }
                 if let Some(k) = style.size_scale {
                     s.step.size *= k;
@@ -279,6 +290,15 @@ impl Ui {
                 .for_styled(s.font, s.weight, s.italic, &s.text)
                 .1;
             s.synth.bold &= s.bold;
+            if let Some(allow) = ranges
+                .iter()
+                .filter(|(a, b, _)| *a <= start && end <= *b)
+                .filter_map(|(_, _, style)| style.synthesis)
+                .next_back()
+            {
+                s.synth.bold &= allow.bold;
+                s.synth.italic &= allow.italic;
+            }
             runs.push(s);
         }
         self.tree.el_mut(i).width = desc.width;
