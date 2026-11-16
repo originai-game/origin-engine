@@ -88,19 +88,33 @@ pub(crate) fn text_lines(t: UsedText<'_>, m: &FontMetrics, width: Option<f32>) -
 }
 
 /// A text's preferred width (its widest line) and the least it can take:
-/// its ellipsis, its longest word when it wraps, else all of it.
+/// its ellipsis, its longest word when it wraps (its widest character
+/// under `overflow-wrap: anywhere`), else all of it.
 pub(super) fn text_widths(t: UsedText<'_>, fonts: &dyn Metrics) -> (f32, f32) {
     let m = t.metrics(fonts);
     let pref = text_widest(t, m);
     let min = if t.ellipsis {
         // It can shrink to its ellipsis.
         text_measure(t, m, t.cut.as_deref().unwrap_or_else(|| ellipsis_of(m))).min(pref)
+    } else if t.wrap && t.overflow_wrap == OverflowWrap::Anywhere {
+        text_widest_char(t, m)
     } else if t.wrap {
         text_longest(t, m)
     } else {
         pref
     };
     (pref, min)
+}
+
+/// The widest character of a text along its line: the least a line that
+/// may break anywhere takes.
+pub(super) fn text_widest_char(t: UsedText<'_>, m: &FontMetrics) -> f32 {
+    let mut buf = [0; 4];
+    t.text
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .map(|c| text_measure(t, m, c.encode_utf8(&mut buf)))
+        .fold(0.0, f32::max)
 }
 
 /// A text shows whole at `width` at its step: one line no wider, or (wrapping)

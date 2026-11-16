@@ -889,6 +889,16 @@ mod text {
             Content::Text(t) => {
                 let t = n.used_text(t);
                 let (pref, min) = measure.texts.widths(t, || text_widths(t, fonts));
+                // break-word breaks an overlong word at the line, though
+                // its min-content keeps the word (CSS Text 3 §5.5).
+                let min = if t.wrap
+                    && t.overflow_wrap == crate::layout::OverflowWrap::BreakWord
+                    && avail.width != tf::AvailableSpace::MinContent
+                {
+                    super::super::text::text_widest_char(t, t.metrics(fonts))
+                } else {
+                    min
+                };
                 let min = match t.fit.last() {
                     Some(&small) => {
                         let s = t.at(small);

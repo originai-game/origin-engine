@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "CSS overflow-wrap",
+      "summary": "overflow-wrap: anywhere and break-word (and word-break: break-word) break a word too wide for its line between its letters once it has a line of its own; anywhere also lowers the text's min-content width to its widest letter."
+    },
+    {
+      "member": "CSS text-align-last and text-justify",
+      "summary": "text-align-last aligns a text's last line and each line a forced break ends (justify-all justifies it too); text-justify takes a justified line's room at its spaces (auto, inter-word), between every two characters (inter-character) or nowhere (none)."
+    }
+  ]
+}

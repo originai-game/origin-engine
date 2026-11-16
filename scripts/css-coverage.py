@@ -188,6 +188,10 @@ proof("font-variant-east-asian", "css_text", "east_asian_variants_take_the_fonts
       "Drawn glyphs of Noto Sans SC: full-width takes its one-em fwid forms of A, 1 and !, and proportional-width leaves proportional Latin as it is. The JIS and simplified/traditional and ruby forms are mapped but not asserted (the subset has none).")
 proof("white-space white-space-collapse tab-size text-wrap", "css_text", "white_space_and_tab_size_process_the_source_as_css_text_does",
       "Drawn lines of a literal text: normal, pre, pre-line, pre-wrap (spaces hang), break-spaces (spaces keep their room), preserve-spaces, tabs to tab-size 4 and the default 8, and text-wrap: nowrap against wrap. Text with inline markup or bound expressions keeps HTML-collapsed white space; a tab-size length and text-wrap-style: stable are not covered.")
+proof("overflow-wrap word-break-break-word", "css_text", "overflow_wrap_breaks_a_word_only_when_it_cannot_fit",
+      "Drawn lines at 60px: anywhere, break-word and word-break: break-word move a long word to its own line, then break it within the box, while normal overflows; min-content is the widest letter under anywhere and the whole word under break-word.")
+proof("text-align-last text-justify", "css_text", "justification_and_the_last_line_align_as_css_text_does",
+      "Drawn line edges at 200px: justified lines end at the box edge with their room at spaces (auto) or one equal extra between every two characters (inter-character); none and auto's last line stay at the start; text-align-last right, center and justify-all. Plain horizontal text only: rich paragraphs and vertical lines are not justified here, and CJK inter-character spacing under auto is not covered.")
 proof("font-face", "runs", "a_font_face_family_takes_its_faces_by_weight_and_range",
       "Glyph faces per character for @font-face weight ranges matched in CSS Fonts 4 §5.2's order, unicode-range and a declared family in a document's font-family list. src resolution is runtime ui_configure's; font-style, font-stretch, format() and tech() descriptors are not covered.")
 

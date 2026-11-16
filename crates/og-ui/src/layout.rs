@@ -29,8 +29,9 @@ pub use multicol::Multicol;
 use node::truncate_lines;
 pub use node::{Changed, Content, NONE, Shape};
 pub(crate) use node::{
-    EditView, Media, Node, ObjectFit, PartBox, PartGeometry, Placement, Stagger, TextContent,
-    UsedText, Widget, WrapStyle, ellipsis_of, snap_pixel_text, step_tracking, text_features,
+    EditView, Media, Node, ObjectFit, OverflowWrap, PartBox, PartGeometry, Placement, Stagger,
+    TextContent, TextJustify, UsedText, Widget, WrapStyle, ellipsis_of, snap_pixel_text,
+    step_tracking, text_features,
 };
 pub use node::{Family, FontRole};
 pub(crate) use table::{Table, derive_table, shown_children};

@@ -283,9 +283,24 @@ impl Ui {
                         };
                         let ly = top + (k as f32 * lh) + fy * sk + dy;
                         let free = bw - line.width * sk;
+                        // The last line of a paragraph (its text's, or one
+                        // a forced break ends) takes `text-align-last`.
+                        let last = k + 1 == n.layout.lines.len()
+                            || tc.text.contains(&format!("{}\n", line.text));
+                        let align = match (last, tc.align_last, tc.align) {
+                            (true, Some(a), _) => a,
+                            (true, None, TextAlign::Justify) => TextAlign::Start,
+                            (_, _, a) => a,
+                        };
+                        let align = match (align, tc.justify) {
+                            (TextAlign::Justify, crate::layout::TextJustify::None) => {
+                                TextAlign::Start
+                            }
+                            (a, _) => a,
+                        };
                         let x = bx
                             + if rtl { -fx } else { fx } * sk
-                            + match (tc.align, rtl) {
+                            + match (align, rtl) {
                                 (TextAlign::Start | TextAlign::Justify, false)
                                 | (TextAlign::End, true) => 0.0,
                                 (TextAlign::Center, _) => free / 2.0,
@@ -359,12 +374,22 @@ impl Ui {
                         // Justified: every line but the last of its paragraph
                         // takes the free room at its spaces.
                         let spaces = line.text.chars().filter(|c| *c == ' ').count();
-                        let justify = tc.align == TextAlign::Justify
-                            && k + 1 < n.layout.lines.len()
-                            && spaces > 0
-                            && free > 0.0
-                            && !tc.text.contains(&format!("{}\n", line.text));
-                        let pieces = if justify {
+                        let gaps = line.text.chars().count().saturating_sub(1);
+                        let justify = align == TextAlign::Justify && free > 0.0;
+                        let pieces = if justify
+                            && tc.justify == crate::layout::TextJustify::InterCharacter
+                            && gaps > 0
+                        {
+                            // Between every two characters: as tracking,
+                            // the last character's past the line's end.
+                            crate::text::pieces_with(
+                                font,
+                                &line.text,
+                                para,
+                                tc.tracking() + free / gaps as f32 / size.max(1e-3),
+                                tc.features(),
+                            )
+                        } else if justify && spaces > 0 {
                             crate::text::pieces_spaced(
                                 font,
                                 &line.text,

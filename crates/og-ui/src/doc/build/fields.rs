@@ -1240,7 +1240,8 @@ impl Ui {
 }
 
 impl crate::ui::Tree {
-    /// A label's CSS `text-wrap-style` and `text-overflow: <string>`.
+    /// A label's CSS `text-wrap-style`, `overflow-wrap`, `text-align-last`,
+    /// `text-justify` and `text-overflow: <string>`.
     pub fn css_text_content(&mut self, i: usize, r: &Resolved) {
         use crate::layout::WrapStyle;
         let style = match r.text.as_deref().and_then(|t| t.wrap_style.as_deref()) {
@@ -1248,12 +1249,32 @@ impl crate::ui::Tree {
             Some("pretty") => WrapStyle::Pretty,
             _ => WrapStyle::Auto,
         };
+        use crate::layout::OverflowWrap;
+        let overflow_wrap = match r.text.as_deref() {
+            Some(t) if t.word_break.as_deref() == Some("break-word") => OverflowWrap::Anywhere,
+            Some(t) => match t.overflow_wrap.as_deref() {
+                Some("anywhere") => OverflowWrap::Anywhere,
+                Some("break-word") => OverflowWrap::BreakWord,
+                _ => OverflowWrap::Normal,
+            },
+            None => OverflowWrap::Normal,
+        };
+        let align_last = r.text_align_last(r.own_flow().rtl);
+        let justify = match r.text.as_deref().and_then(|t| t.justify.as_deref()) {
+            Some("none") => crate::layout::TextJustify::None,
+            Some("inter-word") => crate::layout::TextJustify::InterWord,
+            Some("inter-character" | "distribute") => crate::layout::TextJustify::InterCharacter,
+            _ => crate::layout::TextJustify::Auto,
+        };
         let cut = r
             .str("ellipsisText")
             .filter(|s| !s.is_empty())
             .map(str::to_owned);
         if let crate::layout::Content::Text(t) = self.content_mut(i) {
             t.wrap_style = style;
+            t.overflow_wrap = overflow_wrap;
+            t.align_last = align_last;
+            t.justify = justify;
             t.cut = cut;
         }
     }
@@ -1438,14 +1459,19 @@ impl Resolved {
             .as_deref()
             .and_then(|t| t.align.as_deref())
             .or(self.str("textAlign"))?;
-        Some(match a {
-            "center" => TextAlign::Center,
-            "end" => TextAlign::End,
-            "left" if rtl => TextAlign::End,
-            "right" if !rtl => TextAlign::End,
-            "justify" | "justify-all" => TextAlign::Justify,
-            _ => TextAlign::Start,
-        })
+        Some(text_align_of(a, rtl))
+    }
+
+    /// Its CSS `text-align-last` (CSS Text 3 §6.3): `auto` is `text-align`,
+    /// but start for `justify`; `justify-all` justifies the last line too.
+    fn text_align_last(&self, rtl: bool) -> Option<TextAlign> {
+        let t = self.text.as_deref()?;
+        match t.align_last.as_deref() {
+            Some("auto") | None => {
+                (t.align.as_deref() == Some("justify-all")).then_some(TextAlign::Justify)
+            }
+            Some(a) => Some(text_align_of(a, rtl)),
+        }
     }
 
     pub fn label_desc(&self, theme: &crate::Theme, fonts: &crate::Fonts, rtl: bool) -> LabelDesc {
@@ -1564,6 +1590,19 @@ impl Resolved {
             align: self.text_align(self.flow.rtl),
             part: self.part,
         }
+    }
+}
+
+/// A CSS `text-align` keyword: left and right are physical, start and end
+/// follow the direction (the line drawer mirrors Start and End).
+fn text_align_of(a: &str, rtl: bool) -> TextAlign {
+    match a {
+        "center" => TextAlign::Center,
+        "end" => TextAlign::End,
+        "left" if rtl => TextAlign::End,
+        "right" if !rtl => TextAlign::End,
+        "justify" | "justify-all" => TextAlign::Justify,
+        _ => TextAlign::Start,
     }
 }
 

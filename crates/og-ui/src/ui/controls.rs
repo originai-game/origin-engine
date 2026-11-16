@@ -52,6 +52,9 @@ impl Ui {
             emphasis: 0.0,
             fit,
             wrap_style: Default::default(),
+            overflow_wrap: Default::default(),
+            align_last: None,
+            justify: Default::default(),
             cut: None,
             vertical: None,
         });

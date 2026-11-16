@@ -41,6 +41,7 @@ struct TextKey {
     ellipsis: bool,
     max_lines: u32,
     wrap_style: crate::layout::node::WrapStyle,
+    overflow_wrap: crate::layout::OverflowWrap,
     vertical: Option<crate::layout::flow::VerticalText>,
     cut: Option<u64>,
     /// The width the lines break or cut at (`None`: only at `\n`).
@@ -60,6 +61,7 @@ impl TextKey {
             ellipsis: t.ellipsis,
             max_lines: t.max_lines,
             wrap_style: t.wrap_style,
+            overflow_wrap: t.overflow_wrap,
             vertical: t.vertical,
             cut: t.cut.as_deref().map(|c| {
                 use std::hash::{Hash, Hasher};
@@ -671,6 +673,7 @@ fn content_layout_eq(a: &Content, b: &Content) -> bool {
                 && x.max_lines == y.max_lines
                 && x.fit == y.fit
                 && x.wrap_style == y.wrap_style
+                && x.overflow_wrap == y.overflow_wrap
                 && x.cut == y.cut
         }
         (Content::Image { .. }, Content::Image { .. }) => true,

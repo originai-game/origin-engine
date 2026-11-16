@@ -206,6 +206,14 @@ pub struct TextContent {
     pub fit: Vec<TypeStep>,
     /// How its lines are chosen when it wraps (CSS `text-wrap-style`).
     pub wrap_style: WrapStyle,
+    /// Whether a word wider than its line breaks inside (CSS
+    /// `overflow-wrap`).
+    pub overflow_wrap: OverflowWrap,
+    /// How its last line, and each line a forced break ends, aligns (CSS
+    /// `text-align-last`); `None`: as `align`, but start for `Justify`.
+    pub align_last: Option<TextAlign>,
+    /// Where a justified line takes its free room (CSS `text-justify`).
+    pub justify: TextJustify,
     /// What its cut ends in instead of "…" (CSS `text-overflow: <string>`).
     pub cut: Option<String>,
     /// Set in a vertical line (CSS `writing-mode`): its widths are its
@@ -223,6 +231,30 @@ pub enum WrapStyle {
     Balance,
     /// No last line of one word where a narrower break avoids it.
     Pretty,
+}
+
+/// CSS `text-justify` (CSS Text 3 §7.4): a justified line's free room at
+/// its word separators (`auto` too), between every two characters, or
+/// nowhere (the line stays at its start).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum TextJustify {
+    #[default]
+    Auto,
+    None,
+    InterWord,
+    InterCharacter,
+}
+
+/// CSS `overflow-wrap` (CSS Text 3 §5.5): a word too wide for its line
+/// breaks between its characters under `anywhere` and `break-word`;
+/// `anywhere` also counts those breaks in its min-content width
+/// (`word-break: break-word` is `anywhere`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum OverflowWrap {
+    #[default]
+    Normal,
+    Anywhere,
+    BreakWord,
 }
 
 /// The OpenType features a text in `step` and `font` is set with: the

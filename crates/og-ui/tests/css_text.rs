@@ -521,3 +521,118 @@ c</p><p id="Tab4">a	b</p><p id="Tab8">a	b</p>
     assert!(nowrap.len() == 1 && nowrap[0].width > 70.0, "{nowrap:?}");
     assert_eq!(lines(&d, "Wraps").len(), 2);
 }
+
+/// CSS Text 3 §5.5: under `overflow-wrap: anywhere` and `break-word` a
+/// word too wide for its line breaks between its letters, after moving to
+/// a line of its own (so "ab" keeps its line, unlike `break-all`);
+/// `anywhere` counts those breaks in its min-content width (the widest
+/// letter, m), `break-word` does not (the whole word); `word-break:
+/// break-word` is `anywhere`. `normal` overflows.
+#[test]
+fn overflow_wrap_breaks_a_word_only_when_it_cannot_fit() {
+    let d = doc(
+        r#"<p id="Normal">ab abcdefghijklmnop</p><p id="Any">ab abcdefghijklmnop</p><p id="Word">ab abcdefghijklmnop</p>
+<p id="WB">ab abcdefghijklmnop</p><p id="MinAny">abcdefghijklm</p><p id="MinWord">abcdefghijklm</p>"#,
+        "#Normal, #Any, #Word, #WB { width: 60px; } #Any, #MinAny { overflow-wrap: anywhere; }
+#Word, #MinWord { overflow-wrap: break-word; } #WB { word-break: break-word; }
+#MinAny, #MinWord { width: min-content; }",
+    );
+    let read = |id| lines(&d, id).iter().map(reads).collect::<Vec<_>>();
+    assert_eq!(read("Normal"), ["ab", "abcdefghijklmnop"]);
+    for id in ["Any", "Word", "WB"] {
+        let l = lines(&d, id);
+        assert_eq!(reads(&l[0]), "ab", "#{id}: {l:?}");
+        assert_eq!(
+            l.iter().skip(1).map(reads).collect::<String>(),
+            "abcdefghijklmnop"
+        );
+        assert!(
+            l.len() > 2 && l.iter().all(|l| l.width <= 60.0),
+            "#{id}: {l:?}"
+        );
+    }
+    let m = &d.ui.fonts().body.metrics;
+    assert_eq!(d.get("MinAny").width, m.measure("m", 14.0).round());
+    assert!(
+        d.get("MinWord").width >= m.measure("abcdefghijklm", 14.0).floor(),
+        "{}",
+        d.get("MinWord").width
+    );
+}
+
+/// The right edge of a line as drawn: its left and its glyphs' advances,
+/// the last one's tracking-free.
+fn drawn_right(l: &Line) -> f32 {
+    let n = l.glyphs.len();
+    let adv: f32 = l.glyphs[..n - 1].iter().map(|g| g.advance).sum();
+    l.x + (adv + l.glyphs[n - 1].advance - l.tracking) * l.size
+}
+
+/// CSS Text 3 §6.3: `text-align-last` aligns the last line (right,
+/// centre), `auto` under `justify` leaves it at the start and
+/// `justify-all` justifies it too; §7.4: a justified line ends at the
+/// box's edge, its free room at the spaces (`auto`, `inter-word`) or
+/// between every two characters (`inter-character`), and `none` leaves
+/// it at the start.
+#[test]
+fn justification_and_the_last_line_align_as_css_text_does() {
+    let words = "alpha beta gamma delta epsilon zeta eta theta";
+    let d = doc(
+        &["Auto", "Last", "Center", "All", "Char", "None"]
+            .map(|id| format!(r#"<p id="{id}">{words}</p>"#))
+            .concat(),
+        "p { width: 200px; text-align: justify; } #Last { text-align-last: right; }
+#Center { text-align: start; text-align-last: center; } #All { text-align: justify-all; }
+#Char { text-justify: inter-character; } #None { text-justify: none; }",
+    );
+    let l = |id| lines(&d, id);
+    let auto = l("Auto");
+    assert_eq!(auto.len(), 2, "{auto:?}");
+    assert!((drawn_right(&auto[0]) - 200.0).abs() < 0.05, "{auto:?}");
+    assert!(
+        auto[0]
+            .glyphs
+            .iter()
+            .filter(|g| g.advance > 0.5 && g.glyph.is_none())
+            .count()
+            >= 3
+    );
+    assert_eq!(auto[1].x, 0.0, "auto: the last line at the start");
+    assert!(drawn_right(&auto[1]) < 199.0);
+    assert!((drawn_right(&l("Last")[1]) - 200.0).abs() < 0.5, "right");
+    let c = &l("Center")[1];
+    assert!(
+        (c.x - (200.0 - c.width) / 2.0).abs() < 0.5,
+        "centred: {c:?}"
+    );
+    assert!(
+        (drawn_right(&l("All")[1]) - 200.0).abs() < 0.05,
+        "justify-all"
+    );
+    // inter-character: one extra after every character, the last's past
+    // the end, so the last glyph ends at the edge.
+    let (ch, plain) = (&l("Char")[0], &l("None")[0]);
+    let extra: Vec<f32> = ch
+        .glyphs
+        .iter()
+        .zip(&plain.glyphs)
+        .map(|(a, b)| a.advance - b.advance)
+        .collect();
+    assert!(
+        extra
+            .iter()
+            .all(|e| (e - extra[0]).abs() < 1e-4 && *e > 0.0),
+        "{extra:?}"
+    );
+    let pen: f32 = ch.glyphs[..ch.glyphs.len() - 1]
+        .iter()
+        .map(|g| g.advance)
+        .sum::<f32>();
+    let last = plain.glyphs.last().unwrap().advance;
+    assert!(((pen + last) * ch.size - 200.0).abs() < 0.05, "{ch:?}");
+    let none = l("None");
+    assert!(
+        none[0].x == 0.0 && drawn_right(&none[0]) < 199.0,
+        "{none:?}"
+    );
+}

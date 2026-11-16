@@ -588,6 +588,9 @@ impl crate::ui::Tree {
             emphasis: 0.0,
             fit: Vec::new(),
             wrap_style: Default::default(),
+            overflow_wrap: Default::default(),
+            align_last: None,
+            justify: Default::default(),
             cut: None,
             vertical: None,
         }
