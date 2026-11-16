@@ -20,8 +20,8 @@ declare module "node:path" {
 
 declare module "node:fs" {
   export function existsSync(path: string): boolean;
-  export function readFileSync(path: string): Uint8Array;
-  export function readFileSync(path: string, encoding: string): string;
+  export function readFileSync(path: string | URL): Uint8Array;
+  export function readFileSync(path: string | URL, encoding: string): string;
   export function writeFileSync(path: string, data: string | Uint8Array): void;
   export function appendFileSync(path: string, data: string): void;
   export function writeSync(fd: number, data: Uint8Array, offset?: number, length?: number): number;

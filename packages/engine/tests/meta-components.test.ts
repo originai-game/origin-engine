@@ -2,10 +2,11 @@ import { afterAll, beforeAll, expect, setDefaultTimeout, test } from "bun:test";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineSystem, og } from "../src/index.ts";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine } from "../src/runtime.ts";
-import { ogBin } from "./support/og-bin.ts";
+import { cookProject } from "./support/og-bin.ts";
 
 setDefaultTimeout(60_000);
 let root = "";
@@ -16,11 +17,11 @@ beforeAll(() => {
   loadNativeHost();
   root = mkdtempSync(join(tmpdir(), "og-meta-components-"));
   mkdirSync(join(root, "assets/ui"), { recursive: true });
-  cpSync(join(import.meta.dir, "../sheets/components/assets/fonts"), join(root, "assets/fonts"), { recursive: true });
+  cpSync(fileURLToPath(new URL("../sheets/components/assets/fonts", import.meta.url)), join(root, "assets/fonts"), { recursive: true });
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Meta components"\nid "meta-components-test"\nentry "main.ts"\n');
   writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
   for (const [name, file] of Object.entries({ PassTrack: "meta/pass-track", Reveal: "meta/reveal", Inbox: "meta/inbox", News: "meta/news", TooltipCard: "panels/tooltip-card" })) {
-    const source = readFileSync(join(import.meta.dir, `../src/ui/components/${file}.svelte`), "utf8");
+    const source = readFileSync(new URL(`../src/ui/components/${file}.svelte`, import.meta.url), "utf8");
     const props = [...source.matchAll(/<meta name="prop:([^"]+)" content="([^"]+)"([^>]*)>/g)];
     defaults[name] = Object.fromEntries(props.map(m => {
       const value = /data-default="([^"]*)"/.exec(m[3]!)?.[1];
@@ -29,8 +30,7 @@ beforeAll(() => {
     Object.assign(defaults[name]!, JSON.parse(/<meta name="fixture:default" content='([^']+)'/.exec(source)![1]!));
     writeFileSync(join(root, `assets/ui/${name}.svelte`), `<meta name="screen" content="Host${name}" data-layer="menu" data-input="menu"><div style="display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; padding: 16px"><${name} ${props.map(m => `${m[1]}={$input_${m[1]}}`).join(" ")} /></div>`);
   }
-  const cooked = Bun.spawnSync([ogBin(), "cook", root], { cwd: root, stdout: "ignore", stderr: "pipe" });
-  if (cooked.exitCode !== 0) throw new Error(new TextDecoder().decode(cooked.stderr));
+  cookProject(root, root);
 });
 afterAll(() => { if (root) rmSync(root, { recursive: true, force: true }); });
 function mount(name: string, overrides: Record<string, unknown> = {}) {

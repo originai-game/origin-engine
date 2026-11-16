@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { defineSystem, og } from "@origingame/engine";
 import { loadNativeHost } from "../../../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../../../src/runtime.ts";
-import { ogBin } from "../../../tests/support/og-bin.ts";
+import { cookProject } from "../../../tests/support/og-bin.ts";
 
 type Element = { path: string; part: string; role: string; name: string; text: string; x: number; y: number; width: number; height: number; states?: string[]; disabled?: boolean };
 type Intent = { name: string; rowKey: string };
@@ -28,8 +28,7 @@ beforeAll(() => {
     conversation: '<RpgConversation speaker="Marissa" line="Choose the road." replies={$rows} showControls={$controls} canBacklog={$allowed} canSkip={$allowed} canAuto={$allowed} auto={$auto} />',
   };
   for (const [name, body] of Object.entries(screens)) writeFileSync(join(root, `assets/ui/${name}.svelte`), `<meta name="screen" content="${name}" data-layer="menu" data-input="menu"><div style="width: stretch; height: stretch; padding: 24px">${body}</div>`);
-  const cook = Bun.spawnSync([ogBin(), "cook", root], { env: process.env, stdout: "ignore", stderr: "pipe" });
-  if (cook.exitCode) throw new Error(new TextDecoder().decode(cook.stderr));
+  cookProject(root, process.cwd());
 });
 afterAll(() => { if (root) rmSync(root, { recursive: true, force: true }); });
 

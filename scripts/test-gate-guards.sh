@@ -148,5 +148,35 @@ esac
   { echo 'FAIL the gate summary does not record the skips'; exit 1; }
 echo 'ok   OG_GATE_SKIP refuses unknown steps and reports skips as not run'
 
+# Engine type errors must block both lanes without needing wasm or a GPU.
+python3 - "$root/scripts/gate/run.py" <<'PY'
+import runpy
+import sys
+gate = runpy.run_path(sys.argv[1])
+assert 'engine-typecheck' in gate['QUICK']
+assert 'engine-typecheck' in gate['FULL']
+assert gate['NEEDS']['engine-typecheck'] == ('rust-build',)
+assert 'engine-typecheck' in gate['NEEDS']['bun-test']
+PY
+if [ "$?" -ne 0 ]; then echo 'FAIL engine typecheck lane coverage'; exit 1; fi
+t="$scratch/typecheck"
+mkdir -p "$t/debug"
+cat > "$t/debug/og" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$OG_TYPECHECK_CALLS"
+[ "${OG_TYPECHECK_FAIL:-}" != "$2" ]
+EOF
+chmod +x "$t/debug/og"
+for bad in none tsconfig.runtime.json; do
+  calls="$scratch/typecheck-$bad.calls"
+  out="$(CARGO_TARGET_DIR="$t" OG_TYPECHECK_CALLS="$calls" OG_TYPECHECK_FAIL="$bad" run_step engine-typecheck 2>&1)"; rc=$?
+  if { [ "$bad" = none ] && [ "$rc" -ne 0 ]; } || { [ "$bad" != none ] && [ "$rc" -eq 0 ]; }; then
+    echo "FAIL engine-typecheck with $bad: $out"; exit 1
+  fi
+  [ "$(cat "$calls")" = "$(printf 'check tsconfig.json\ncheck tsconfig.runtime.json\ncheck tsconfig.templates.json')" ] ||
+    { echo 'FAIL engine-typecheck did not check all configurations'; exit 1; }
+done
+echo 'ok   engine typecheck covers quick/full and propagates runtime errors without wasm'
+
 [ "$failures" -eq 0 ] || { echo "$failures case(s) failed"; exit 1; }
 echo "every case failed as it should"

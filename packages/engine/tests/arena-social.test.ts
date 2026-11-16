@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { defineSystem, og } from "@origingame/engine";
 import { loadNativeHost, native } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
-import { ogBin } from "./support/og-bin.ts";
+import { cookProject } from "./support/og-bin.ts";
 import { FIXTURES } from "../sheets/arena-social/src/fixtures.ts";
 
 type El = { path: string; text: string; role: string; x: number; y: number; width: number; height: number; clipped?: boolean; disabled?: boolean; states?: string[] };
@@ -25,8 +25,7 @@ beforeAll(() => {
     const props = [...source.matchAll(/name="prop:([^"]+)"/g)].map((m) => `${m[1]}={$${m[1]}}`).join(" ");
     writeFileSync(join(root, `assets/ui/${name}.svelte`), `<meta name="component" content="Test_${component}"><div style="width: stretch; height: stretch; padding: 16px"><${component} ${props} /></div>`);
   }
-  const cook = Bun.spawnSync([ogBin(), "cook", root], { stdout: "ignore", stderr: "pipe" });
-  if (cook.exitCode) throw new Error(new TextDecoder().decode(cook.stderr));
+  cookProject(root, process.cwd());
 });
 afterAll(() => { if (root) rmSync(root, { recursive: true, force: true }); });
 const elements = (e: Engine) => (e.probe.dump({ what: "ui" }) as unknown as { elements: El[] }).elements.filter((x) => x.width > 0 && x.height > 0);

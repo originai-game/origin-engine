@@ -238,7 +238,7 @@ test("StrategyWave: wave n of m, the countdown, the enemies by kind, and Call ea
 test("StrategyWave: a long phone reward wraps without splitting Call early", () => {
   for (const pack of ["default", ...PACKS] as const) {
     let labelHeight = 0;
-    for (const fixture of ["default", "overflow"]) run(member("wave", fixture, { view: PHONE, pack: pack === "default" ? undefined : pack }), (e) => {
+    for (const fixture of ["default", "overflow"]) run(member("wave", fixture, { view: PHONE, ...(pack === "default" ? {} : { pack }) }), (e) => {
       if (pack === "default") { og.ui.configure(e.world, { style: null }); e.advance(3); }
       const button = find(e, /\/CallEarly$/)!;
       const label = elements(e).find((x) => x.path.startsWith(`${button.path}/`) && x.text.toLowerCase() === "call early")!;

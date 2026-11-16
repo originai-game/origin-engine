@@ -356,10 +356,13 @@ step_check_conformance() {
   scripts/tsrs-diff.sh
 }
 
+step_engine_typecheck() {
+  (cd packages/engine && OG_BIN="$OG_TARGET_DIR/debug/og" bun run typecheck)
+}
+
 step_bun_test() {
   require_wasm bun-test || return 1
   OG_GATE=1 sh packages/engine/scripts/build.sh || return 1
-  (cd packages/engine && bun run typecheck) || return 1
   bun scripts/gate/bun.ts full
 }
 

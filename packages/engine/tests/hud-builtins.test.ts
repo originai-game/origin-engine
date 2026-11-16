@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { defineSystem, og } from "@origingame/engine";
 import { loadNativeHost, native } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
-import { ogBin } from "./support/og-bin.ts";
+import { cookProject } from "./support/og-bin.ts";
 
 const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
 const PATHS = ["base/pips", "hud/boss-bar", "hud/combo", "hud/pickup-feed", "hud/perf-readout", "hud/qte-prompt"];
@@ -33,8 +33,7 @@ beforeAll(() => {
     writeFileSync(join(root, `assets/ui/${m.name}.svelte`), `<meta name="screen" content="Host_${m.name}" data-layer="menu" data-input="menu">\n<div id="Page" style="width: stretch; padding: 16px"><${m.name} ${props} /></div>`);
   }
   writeFileSync(join(root, "assets/ui/keyed.svelte"), '<meta name="screen" content="Keyed" data-layer="menu" data-input="menu">\n<div id="Page">{#each prompts as p (p.id)}<QtePrompt label={p.label} mode={p.mode} holdMs={300} state={p.state} disabled={p.disabled} />{/each}</div>');
-  const cooked = Bun.spawnSync([ogBin(), "cook", root], { cwd: root, stdout: "ignore", stderr: "pipe" });
-  if (cooked.exitCode) throw new Error(new TextDecoder().decode(cooked.stderr));
+  cookProject(root, root);
 });
 afterAll(() => { if (root) rmSync(root, { recursive: true, force: true }); });
 
@@ -57,7 +56,7 @@ function mount(name: string, stores: Record<string, unknown>, phone = false, eve
     },
   }) as unknown as GameToken, { root });
   if (!r.ok) throw new Error(r.reason);
-  og.ui.previewViewport(r.value.world, { width: phone ? 390 : 1280, height: phone ? 844 : 720, dpr: 1, safeArea: { left: 0, right: 0, top: 0, bottom: 0 }, coarsePointer: phone, breakpoint: phone ? "phonePortrait" : "desktopHd" });
+  og.ui.previewViewport(r.value.world, { width: phone ? 390 : 1280, height: phone ? 844 : 720, dpr: 1, safeArea: { left: 0, right: 0, top: 0, bottom: 0 }, coarsePointer: phone, breakpoint: phone ? "phonePortrait" : "desktop" });
   r.value.advance(3);
   return r.value;
 }

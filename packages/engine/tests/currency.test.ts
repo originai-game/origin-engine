@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { og } from "@origingame/engine";
 import { loadNativeHost, native } from "../src/node/index.ts";
 import { createEngine, type GameToken } from "../src/runtime.ts";
-import { ogBin } from "./support/og-bin.ts";
+import { cookProject } from "./support/og-bin.ts";
 
 const source = readFileSync(new URL("../src/ui/components/base/currency.svelte", import.meta.url), "utf8");
 const fixtures = Object.fromEntries([...source.matchAll(/<meta name="fixture:([^\"]+)" content='([^']*)'>/g)].map((m) => [m[1]!, JSON.parse(m[2]!)]));
@@ -18,8 +18,7 @@ beforeAll(() => {
   writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});');
   const props = [...source.matchAll(/name="prop:([^\"]+)"/g)].map((m) => `${m[1]}={$${m[1]}}`).join(" ");
   writeFileSync(join(root, "assets/ui/page.svelte"), `<meta name="component" content="CurrencyTest"><div style="padding: 16px; width: stretch"><Currency ${props} /></div>`);
-  const cooked = Bun.spawnSync([ogBin(), "cook", root], { stdout: "ignore", stderr: "pipe" });
-  if (cooked.exitCode) throw new Error(new TextDecoder().decode(cooked.stderr));
+  cookProject(root, process.cwd());
 });
 afterAll(() => { if (root) rmSync(root, { recursive: true, force: true }); });
 
