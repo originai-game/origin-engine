@@ -1629,6 +1629,53 @@ fn a_carried_colour_stays_under_a_widgets_own_ink() {
     assert_eq!(keycap(true), Some(alone));
 }
 
+/// A button's content without a colour of its own takes the button's ink
+/// as that ink moves, as slotted content inherits from its slot: a pack set
+/// after mount and a scheme switch reach it, under the default style's
+/// colour transition. Wrong: the ink the button had when it was built.
+#[test]
+fn a_buttons_content_follows_its_ink() {
+    let mut d = mounted(
+        ui_with_font(test_font()),
+        r##"<column id="Root"><button variant="primary"><span>Pri</span></button><button><div><span>Pla</span></div></button><button><span style="color: #123456">Own</span></button></column>"##,
+        &[],
+        Viewport::new(400.0, 300.0),
+    );
+    let pack = og_ui::style_pack::StylePack::parse(
+        "styles/test",
+        vec![(
+            "styles/test/main.css".into(),
+            ":root { --button-ink: #ff0000; --button-primary-ink: #00ff00; }
+             :root[data-scheme=light] { --button-ink: #ff00ff; --button-primary-ink: #00ffff; }"
+                .into(),
+        )],
+    )
+    .unwrap();
+    d.ui.set_style_pack(&pack).unwrap();
+    let colour = |hex: &str| og_ui::style_file::parse_color(hex).unwrap();
+    for (light, pri, pla) in [(false, "#00ff00", "#ff0000"), (true, "#00ffff", "#ff00ff")] {
+        if light {
+            d.ui.set_theme(Theme::new(Scheme::Light));
+        }
+        for _ in 0..30 {
+            d.step(InputFrame::default());
+        }
+        let ink = |want: &str| {
+            d.ui.frame().items.iter().find_map(|i| match &i.cmd {
+                DrawCmd::Text { text, color, .. } if text == want => Some(*color),
+                _ => None,
+            })
+        };
+        for (label, hex) in [("Pri", pri), ("Pla", pla), ("Own", "#123456")] {
+            let got = ink(label).unwrap_or_else(|| panic!("{label} drawn"));
+            assert!(
+                near(got, colour(hex)),
+                "light {light}: {label}: {got:?}, want {hex}"
+            );
+        }
+    }
+}
+
 /// A kit's text element that names its part takes the part's `-og-ink` and
 /// `-og-step` (docs/ui.md §3.2), qualified by its classes, as a field's
 /// `text` part does: a pack inks a killfeed's names by team. Wrong: the
