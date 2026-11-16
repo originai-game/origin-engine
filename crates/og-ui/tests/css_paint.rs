@@ -663,3 +663,668 @@ fn text_over_the_scene_takes_the_tag_treatment() {
             .is_none_or(|fx| fx.shadows.is_empty())
     );
 }
+
+/// The colour `id` fills itself with: its one solid fill, as sRGB.
+fn fill_of(d: &Doc, id: &str) -> Srgba {
+    let e = d.get(id);
+    match paints_in(&d.ui, &e).as_slice() {
+        [c, ..] => Srgba::from_linear(*c),
+        [] => panic!("{id} draws no fill"),
+    }
+}
+
+/// `a` is `rgb` at `alpha`, each channel within one step of 255 (the
+/// spec's values are rounded; an f32 conversion may fall either side).
+fn about(a: Srgba, rgb: [u8; 3], alpha: f32) -> bool {
+    a.rgb.iter().zip(rgb).all(|(a, b)| a.abs_diff(b) <= 1) && (a.alpha - alpha).abs() < 0.01
+}
+
+/// Every colour syntax of CSS Color 4 and 5 fills a box with the colour
+/// the spec gives for it: the numbers are the specs' worked examples
+/// (`lab(29.2345% 39.3825 20.0664)`, its `lch()`, `oklab()` and `oklch()`
+/// forms are all #7d2329) or arithmetic on their formulas (`hwb(120 20%
+/// 30%)` is green scaled by 1 − w − b plus w: 51 179 51), never values
+/// read back from og-css. The system colours are the style's roles, the
+/// "system" a game's UI runs in.
+///
+/// Ways it could fail: a percentage of `rgb()` read as a fraction of 1
+/// (128 drawn as 1), a hue in the wrong unit, a lab or OKLab channel
+/// scaled wrongly, a mix that is not premultiplied (red with transparent
+/// would be half-transparent dark red), a relative colour that drops its
+/// origin's alpha, `alpha()` refused, or a system colour drawn as the
+/// missing-token magenta.
+#[test]
+fn every_colour_syntax_draws_the_colour_the_spec_gives() {
+    let rows: &[(&str, [u8; 3], f32)] = &[
+        ("#0f08", [0, 255, 0], 136.0 / 255.0),
+        ("rgb(255 50% 0 / 0.5)", [255, 128, 0], 0.5),
+        ("rgba(0, 128, 255, 25%)", [0, 128, 255], 0.25),
+        ("hsl(120deg 100% 25%)", [0, 128, 0], 1.0),
+        ("hsla(0.5turn, 100%, 50%, 0.5)", [0, 255, 255], 0.5),
+        ("hwb(120 20% 30%)", [51, 179, 51], 1.0),
+        ("lab(29.2345% 39.3825 20.0664)", [125, 35, 41], 1.0),
+        ("lch(29.2345% 44.2 27)", [125, 35, 41], 1.0),
+        ("oklab(40.101% 0.1147 0.0453)", [125, 35, 41], 1.0),
+        ("oklch(40.101% 0.12332 21.555)", [125, 35, 41], 1.0),
+        ("RebeccaPurple", [102, 51, 153], 1.0),
+        ("color(srgb 0.5 0 1)", [128, 0, 255], 1.0),
+        ("color(srgb-linear 0.05088 0 0)", [64, 0, 0], 1.0),
+        ("color-mix(in srgb, red 25%, blue)", [64, 0, 191], 1.0),
+        ("color-mix(in srgb, red, transparent)", [255, 0, 0], 0.5),
+        ("hsl(from red calc(h + 120) s l)", [0, 255, 0], 1.0),
+        ("rgb(from #204060 r g b / 50%)", [32, 64, 96], 0.5),
+        ("oklch(from #7d2329 l c h)", [125, 35, 41], 1.0),
+        ("alpha(from #ff8000 / 25%)", [255, 128, 0], 0.25),
+        (
+            "alpha(from rgb(0 0 255 / 50%) / calc(alpha / 2))",
+            [0, 0, 255],
+            0.25,
+        ),
+        ("alpha(from rgb(0 0 255 / 50%))", [0, 0, 255], 0.5),
+    ];
+    let p = Theme::dark().palette;
+    let system = [
+        ("Canvas", p.backdrop),
+        ("CanvasText", p.ink),
+        ("AccentColor", p.primary),
+        ("AccentColorText", p.on_primary),
+        ("ButtonFace", p.control),
+        ("ButtonBorder", p.line_strong),
+        ("Mark", p.primary_soft),
+        ("Highlight", p.selection),
+    ];
+    let mut body = String::new();
+    let mut style = String::new();
+    let all = rows
+        .iter()
+        .map(|&(css, rgb, a)| (css, rgb, a))
+        .chain(system.iter().map(|(css, c)| (*css, c.rgb, c.alpha)))
+        .collect::<Vec<_>>();
+    for (k, (css, ..)) in all.iter().enumerate() {
+        body += &format!("<div id=\"K{k}\"></div>");
+        style += &format!("#K{k} {{ background-color: {css}; }}\n");
+    }
+    let text = format!(
+        "<meta name=\"component\" content=\"t\">\n<column>{body}</column>\n<style>\ndiv {{ width: 10px; height: 10px; }}\n{style}</style>"
+    );
+    let d = Doc::new(&text, &[]);
+    assert!(
+        d.ui.frame().warnings.is_empty(),
+        "{:?}",
+        d.ui.frame().warnings
+    );
+    for (k, (css, rgb, a)) in all.iter().enumerate() {
+        let got = fill_of(&d, &format!("K{k}"));
+        assert!(
+            about(got, *rgb, *a),
+            "{css}: drew {got:?}, not {rgb:?} at {a}"
+        );
+    }
+}
+
+/// The first drawn gradient's stop colours inside `id`, as sRGB.
+fn gradient_stops(d: &Doc, id: &str) -> Vec<Srgba> {
+    let e = d.get(id);
+    d.ui.frame()
+        .items
+        .iter()
+        .find_map(|it| match &it.cmd {
+            DrawCmd::Shape { shape, .. }
+                if (e.x..=e.x + e.width).contains(&shape.center.x)
+                    && (e.y..=e.y + e.height).contains(&shape.center.y) =>
+            {
+                match &shape.paint {
+                    og_draw::UiPaint::GradientImage(g) => Some(
+                        g.gradient
+                            .stops
+                            .iter()
+                            .map(|s| Srgba::from_linear(s.color))
+                            .collect(),
+                    ),
+                    _ => None,
+                }
+            }
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("{id} draws no gradient"))
+}
+
+/// The textures `id` draws, in draw order.
+fn textures_in(d: &Doc, id: &str) -> Vec<og_draw::TextureHandle> {
+    let e = d.get(id);
+    d.ui.frame()
+        .items
+        .iter()
+        .filter_map(|it| match &it.cmd {
+            DrawCmd::Shape { shape, .. }
+                if (e.x..=e.x + e.width).contains(&shape.center.x)
+                    && (e.y..=e.y + e.height).contains(&shape.center.y) =>
+            {
+                match &shape.paint {
+                    og_draw::UiPaint::Image(i) => Some(i.texture),
+                    _ => None,
+                }
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// `currentColor` is the element's own `color`, declared or inherited
+/// (CSS Color 4 §6.4), wherever a colour is written: a border with no
+/// colour, an outline, a gradient's stops, a background and `color`
+/// itself (whose `currentColor` is the inherited colour). `light-dark()`
+/// takes the element's used colour scheme (CSS Color 5 §2): `color-scheme:
+/// light` or `dark` on it or an ancestor forces it, `light dark` and none
+/// leave the style's, and `light-dark()` of two images picks between them
+/// the same way.
+///
+/// Ways it could fail (each did before): `currentColor` in a background or
+/// gradient resolved as the style's ink instead of the inherited red,
+/// `light-dark()` ignoring `color-scheme` and taking the style's scheme,
+/// or `light-dark(url(), url())` refused as a colour.
+#[test]
+fn current_color_and_light_dark_resolve_in_the_element() {
+    let text = r#"<meta name="component" content="t">
+<column>
+  <div style="color: #ff0000">
+    <div id="Border" style="border: 2px solid; outline: 1px solid; background: linear-gradient(currentColor, #0000ff)"></div>
+    <div id="Own" style="color: #00ff00; background: currentColor"></div>
+    <div id="Mixed" style="color: color-mix(in srgb, currentColor, #0000ff)"><div id="MixedKid" style="background: currentColor"></div></div>
+  </div>
+  <div style="color-scheme: light">
+    <div id="Light" style="background: light-dark(#ff0000, #0000ff)"></div>
+    <div id="LightImage" style="background: light-dark(url(a.png), url(b.png))"></div>
+  </div>
+  <div style="color-scheme: dark">
+    <div id="Forced" style="background: light-dark(#ff0000, #0000ff)"></div>
+    <div id="Both" style="color-scheme: light dark; background: light-dark(#ff0000, #0000ff)"></div>
+  </div>
+  <div id="Style" style="background: light-dark(#ff0000, #0000ff)"></div>
+  <div id="StyleImage" style="background: light-dark(url(a.png), url(b.png))"></div>
+</column>
+<style>div div, #Style, #StyleImage { width: 10px; height: 10px; }</style>"#;
+    let red = Srgba::rgb(255, 0, 0);
+    let blue = Srgba::rgb(0, 0, 255);
+    for scheme in [Scheme::Dark, Scheme::Light] {
+        let mut ui = ui_with_font(test_font_metrics());
+        let mut h = Handles::default();
+        let (a, b) = (h.texture(), h.texture());
+        ui.define_texture("ui/a.png", a);
+        ui.define_texture("ui/b.png", b);
+        ui.set_theme(Theme::new(scheme));
+        let d = Doc::with_ui(ui, text);
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+        let e = d.get("Border");
+        let strokes: Vec<_> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|it| match &it.cmd {
+                    DrawCmd::Shape { shape, .. }
+                        if matches!(shape.mode, og_draw::UiMode::Stroke(_))
+                            && (shape.center.y - (e.y + e.height / 2.0)).abs() < 0.5 =>
+                    {
+                        match shape.paint {
+                            og_draw::UiPaint::Solid(c) => Some(Srgba::from_linear(c)),
+                            _ => None,
+                        }
+                    }
+                    _ => None,
+                })
+                .collect();
+        assert_eq!(
+            strokes,
+            [red, red],
+            "{scheme:?}: the border and the outline"
+        );
+        assert_eq!(gradient_stops(&d, "Border"), [red, blue]);
+        assert_eq!(fill_of(&d, "Own"), Srgba::rgb(0, 255, 0));
+        assert_eq!(fill_of(&d, "MixedKid"), Srgba::rgb(128, 0, 128));
+        let style = if scheme == Scheme::Dark { blue } else { red };
+        for (id, want) in [
+            ("Light", red),
+            ("Forced", blue),
+            ("Both", style),
+            ("Style", style),
+        ] {
+            assert_eq!(fill_of(&d, id), want, "{scheme:?} {id}");
+        }
+        assert_eq!(textures_in(&d, "LightImage"), [a]);
+        let styled = if scheme == Scheme::Dark { b } else { a };
+        assert_eq!(textures_in(&d, "StyleImage"), [styled], "{scheme:?}");
+    }
+}
+
+/// The background layer `id` draws with texture `t`: its placement and
+/// its shape's box (left, top, width, height).
+fn layer_of(
+    d: &Doc,
+    id: &str,
+    t: og_draw::TextureHandle,
+) -> (og_draw::UiBackground, [f32; 4], og_draw::UiBlend) {
+    let e = d.get(id);
+    d.ui.frame()
+        .items
+        .iter()
+        .find_map(|it| match &it.cmd {
+            DrawCmd::Shape { shape, .. }
+                if (e.x..=e.x + e.width).contains(&shape.center.x)
+                    && (e.y..=e.y + e.height).contains(&shape.center.y) =>
+            {
+                match &shape.paint {
+                    og_draw::UiPaint::Image(i) if i.texture == t => match i.fit {
+                        og_draw::UiFit::Background(bg) => Some((
+                            bg,
+                            [
+                                shape.center.x - shape.half.x,
+                                shape.center.y - shape.half.y,
+                                2.0 * shape.half.x,
+                                2.0 * shape.half.y,
+                            ],
+                            shape.blend,
+                        )),
+                        _ => None,
+                    },
+                    _ => None,
+                }
+            }
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("{id} draws no background layer of {t:?}"))
+}
+
+/// CSS Backgrounds 3 and 4's layer properties place each image where the
+/// spec's arithmetic puts it: og-render's own `place` reads the emitted
+/// layer, and each answer is worked out by hand from §3.6–3.11.
+/// `right 3px top 25%` of an 8×4 image in a 20 px box starts at
+/// x = 20 − 8 − 3 = 9 and y = 25% × (20 − 4) = 4; `space` puts three 6 px
+/// tiles at 0, 7 and 14; `round` stretches them to 20 / 3; `cover` makes a
+/// 4×4 image 20×20 in a 20×10 box, centred 5 px above it; a `fixed` layer
+/// tiles from the viewport's origin. `background-position-x` overrides the
+/// shorthand's x only, `background-origin: content-box` places inside the
+/// border and padding, `background-clip: padding-box` cuts the colour to
+/// inside the border, and each layer keeps its own blend mode, the first
+/// layer drawn last.
+///
+/// Ways it could fail: a position keyword's offset taken from the wrong
+/// edge, a percentage of the box rather than of the box less the image,
+/// space's gaps at the edges, round not keeping a whole number, cover
+/// fitting the short side, a fixed layer placed from the element, the
+/// layers drawn in written order, or one blend mode applied to all.
+#[test]
+fn background_layers_size_place_repeat_clip_and_blend_as_css_does() {
+    let text = r#"<meta name="component" content="t">
+<column>
+  <div id="Place" style="background: url(a.png) right 3px top 25% / 8px 4px no-repeat"></div>
+  <div id="Axis" style="background: url(a.png) no-repeat; background-size: 8px 4px; background-position: left 1px top 2px; background-position-x: right 3px"></div>
+  <div id="RepeatX" style="background: url(a.png) 0 0 / 8px 4px repeat-x"></div>
+  <div id="Space" style="background: url(a.png) 0 0 / 6px 6px space"></div>
+  <div id="Round" style="background: url(a.png) 0 0 / 6px 6px round"></div>
+  <div id="Cover" style="height: 10px; background: url(a.png) center / cover no-repeat"></div>
+  <div id="Contain" style="height: 10px; background: url(a.png) center / contain no-repeat"></div>
+  <div id="Origin" style="box-sizing: border-box; padding: 2px; border: 2px solid transparent; background: url(a.png) no-repeat content-box"></div>
+  <div id="Clip" style="box-sizing: border-box; border: 2px solid transparent; background-color: #ff0000; background-clip: padding-box"></div>
+  <div id="Fixed" style="margin-left: 30px; background: url(a.png) fixed"></div>
+  <div id="Blend" style="background: url(a.png), url(b.png), #ff0000; background-blend-mode: multiply, screen"></div>
+</column>
+<style>div { width: 20px; height: 20px; flex-shrink: 0; }</style>"#;
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut h = Handles::default();
+    let (a, b) = (h.texture(), h.texture());
+    ui.define_texture("ui/a.png", a);
+    ui.define_texture("ui/b.png", b);
+    let d = Doc::with_ui(ui, text);
+    assert!(
+        d.ui.frame().warnings.is_empty(),
+        "{:?}",
+        d.ui.frame().warnings
+    );
+    // Where box point `p` (from the element's top left) falls in the image.
+    let at = |id: &str, p: [f32; 2], nat: [f32; 2]| {
+        let e = d.get(id);
+        let (bg, r, _) = layer_of(&d, id, a);
+        bg.place([e.x + p[0] - r[0], e.y + p[1] - r[1]], [r[2], r[3]], nat)
+            .map(|f| f.map(|v| (v * 1000.0).round() / 1000.0))
+    };
+    let nat = [4.0, 4.0];
+    assert_eq!(at("Place", [10.0, 5.0], nat), Some([0.125, 0.25]));
+    assert_eq!(at("Place", [8.5, 5.0], nat), None);
+    assert_eq!(at("Place", [10.0, 8.5], nat), None);
+    assert_eq!(at("Axis", [10.0, 3.0], nat), Some([0.125, 0.25]));
+    assert_eq!(at("RepeatX", [18.0, 1.0], nat), Some([0.25, 0.25]));
+    assert_eq!(at("RepeatX", [18.0, 5.0], nat), None);
+    assert_eq!(at("Space", [6.5, 0.5], nat), None);
+    assert_eq!(at("Space", [7.5, 0.5], nat), Some([0.083, 0.083]));
+    assert_eq!(at("Space", [14.5, 14.5], nat), Some([0.083, 0.083]));
+    assert_eq!(at("Round", [7.0, 7.0], nat), Some([0.05, 0.05]));
+    assert_eq!(at("Cover", [5.0, 0.0], nat), Some([0.25, 0.25]));
+    assert_eq!(at("Contain", [4.5, 5.0], nat), None);
+    assert_eq!(at("Contain", [7.5, 5.0], nat), Some([0.25, 0.5]));
+    assert_eq!(at("Origin", [3.5, 4.5], nat), None);
+    assert_eq!(at("Origin", [4.5, 4.5], nat), Some([0.125, 0.125]));
+    let f = d.get("Fixed");
+    let tile = |v: f32| ((v.rem_euclid(8.0) / 8.0) * 1000.0).round() / 1000.0;
+    assert_eq!(
+        at("Fixed", [0.0, 0.0], [8.0, 8.0]),
+        Some([tile(f.x), tile(f.y)])
+    );
+    // The colour, cut inside the border.
+    let c = d.get("Clip");
+    let cut = d.ui.frame().items.iter().find_map(|it| match &it.cmd {
+        DrawCmd::Quad { rect, color, .. }
+            if same(*color, Srgba::rgb(255, 0, 0)) && (rect.y - c.y).abs() < 3.0 =>
+        {
+            Some(*rect)
+        }
+        DrawCmd::Shape { shape, .. }
+            if shape.paint == og_draw::UiPaint::Solid([1.0, 0.0, 0.0, 1.0])
+                && (shape.center.y - c.y - 10.0).abs() < 0.5 =>
+        {
+            Some(Rect::new(
+                shape.center.x - shape.half.x,
+                shape.center.y - shape.half.y,
+                2.0 * shape.half.x,
+                2.0 * shape.half.y,
+            ))
+        }
+        _ => None,
+    });
+    assert_eq!(cut, Some(Rect::new(c.x + 2.0, c.y + 2.0, 16.0, 16.0)));
+    assert_eq!(textures_in(&d, "Blend"), [b, a], "the first layer on top");
+    assert_eq!(layer_of(&d, "Blend", a).2, og_draw::UiBlend::Multiply);
+    assert_eq!(layer_of(&d, "Blend", b).2, og_draw::UiBlend::Screen);
+}
+
+/// The shapes drawn with their centre inside `id`, in draw order.
+fn shapes_in(d: &Doc, id: &str) -> Vec<og_draw::UiShape> {
+    let e = d.get(id);
+    d.ui.frame()
+        .items
+        .iter()
+        .filter_map(|it| match &it.cmd {
+            DrawCmd::Shape { shape, .. }
+                if (e.x..=e.x + e.width).contains(&shape.center.x)
+                    && (e.y..=e.y + e.height).contains(&shape.center.y) =>
+            {
+                Some((**shape).clone())
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// The clip `id` pushes: its path's points from the element's top left,
+/// and its fill rule.
+fn clip_of(d: &Doc, id: &str) -> Option<(Vec<[f32; 2]>, og_draw::UiFillRule)> {
+    let e = d.get(id);
+    d.ui.frame().items.iter().find_map(|it| match &it.cmd {
+        DrawCmd::PushClip {
+            geometry: og_draw::UiGeometry::Path(p),
+            center,
+            ..
+        } if (e.x..=e.x + e.width).contains(&center.0)
+            && (e.y..=e.y + e.height).contains(&center.1) =>
+        {
+            let mut points = Vec::new();
+            for el in p.path.elements() {
+                let end = match *el {
+                    og_draw::kurbo::PathEl::MoveTo(q)
+                    | og_draw::kurbo::PathEl::LineTo(q)
+                    | og_draw::kurbo::PathEl::QuadTo(_, q)
+                    | og_draw::kurbo::PathEl::CurveTo(_, _, q) => q,
+                    og_draw::kurbo::PathEl::ClosePath => continue,
+                };
+                let q = [
+                    (end.x as f32 + center.0 - e.x).round(),
+                    (end.y as f32 + center.1 - e.y).round(),
+                ];
+                if points.last() != Some(&q) {
+                    points.push(q);
+                }
+            }
+            Some((points, p.fill_rule))
+        }
+        _ => None,
+    })
+}
+
+/// `opacity` (a number or, CSS Color 4 §5.2, a percentage), `outline`
+/// (CSS UI 4 §4: `thin`, `medium` and `thick` are 1, 3 and 5 px, a
+/// `double` two lines a third as wide whose outer edge is the width out,
+/// `outline-offset` moving it out), `image-rendering: crisp-edges`
+/// (nearest sampling, CSS Images 3 §5.3), CSS 2's `clip: rect()` (CSS
+/// Masking 1 §8.1: edges offset from the top left, `auto` the box's own,
+/// only out of flow) and `clip-path: path()` (its points in the box, its
+/// fill rule) draw as their specs say.
+///
+/// Ways it could fail: `50%` refused or read as 50, an outline drawn
+/// inside the box or a double's lines both at the box edge, crisp-edges
+/// sampled smoothly, `clip`'s right and bottom read as insets from the far
+/// edges (rect() is not inset()), `clip` cutting a box in flow, or a
+/// path's even-odd rule lost.
+#[test]
+fn opacity_outline_crisp_edges_and_clips_draw_as_css_says() {
+    let text = r#"<meta name="component" content="t">
+<column>
+  <div id="Half" style="opacity: 50%; background: #ff0000"></div>
+  <div id="Quarter" style="opacity: 0.25; background: #ff0000"></div>
+  <div id="Thin" style="outline: thin solid #00ff00"></div>
+  <div id="Medium" style="outline: medium dashed #00ff00"></div>
+  <div id="Thick" style="outline: thick double #00ff00"></div>
+  <div id="Offset" style="outline: 2px solid #00ff00; outline-offset: 3px"></div>
+  <div id="None" style="outline: none"></div>
+  <div id="Crisp" style="background: url(a.png); image-rendering: crisp-edges"></div>
+  <div id="Smooth" style="background: url(a.png); image-rendering: smooth"></div>
+  <div style="position: relative">
+    <div id="Clip" style="position: absolute; clip: rect(2px, 10px, 12px, 4px); background: #ff0000"></div>
+  </div>
+  <div style="position: relative">
+    <div id="Auto" style="position: absolute; clip: rect(2px auto auto 4px); background: #ff0000"></div>
+  </div>
+  <div id="Flow" style="clip: rect(2px, 10px, 12px, 4px); background: #ff0000"></div>
+  <div id="Path" style="clip-path: path(evenodd, 'M0 0 L20 0 L0 20 Z'); background: #ff0000"></div>
+  <div id="NonZero" style="clip-path: path('M 2 2 h 10 v 10 z'); background: #ff0000"></div>
+</column>
+<style>column > div, column > div > div { width: 20px; height: 20px; flex-shrink: 0; margin-bottom: 8px; }</style>"#;
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_texture("ui/a.png", Handles::default().texture());
+    let d = Doc::with_ui(ui, text);
+    assert!(
+        d.ui.frame().warnings.is_empty(),
+        "{:?}",
+        d.ui.frame().warnings
+    );
+    for (id, alpha) in [("Half", 0.5), ("Quarter", 0.25)] {
+        let fill = fill_of(&d, id);
+        assert!(about(fill, [255, 0, 0], alpha), "{id}: {fill:?}");
+    }
+    // Each outline's strokes: width, how far out its centre line lies
+    // past the 10 px half box, and dashed.
+    let outline = |id: &str| -> Vec<(f32, f32, bool)> {
+        shapes_in(&d, id)
+            .iter()
+            .filter_map(|s| match s.mode {
+                og_draw::UiMode::Stroke(st) => {
+                    let mid = match st.align {
+                        og_draw::UiAlign::Outside => st.width / 2.0,
+                        og_draw::UiAlign::Inside => -st.width / 2.0,
+                        og_draw::UiAlign::Center => 0.0,
+                    };
+                    let out = s.half.x - 10.0 + mid;
+                    Some((
+                        (st.width * 1000.0).round() / 1000.0,
+                        (out * 1000.0).round() / 1000.0,
+                        st.dash[0] > 0.0,
+                    ))
+                }
+                _ => None,
+            })
+            .collect()
+    };
+    assert_eq!(outline("Thin"), [(1.0, 0.5, false)]);
+    // A dashed line is placed side by side (its corners solid).
+    let medium = outline("Medium");
+    assert!(
+        medium.iter().all(|&(w, out, _)| (w, out) == (3.0, 1.5)) && medium.iter().any(|l| l.2),
+        "{medium:?}"
+    );
+    // The outer line ends 5 px out, the inner starts at the box.
+    assert_eq!(
+        outline("Thick"),
+        [(1.667, 0.833, false), (1.667, 4.167, false)]
+    );
+    assert_eq!(outline("Offset"), [(2.0, 4.0, false)]);
+    assert_eq!(outline("None"), []);
+    let nearest = |id: &str| {
+        shapes_in(&d, id).iter().find_map(|s| match &s.paint {
+            og_draw::UiPaint::Image(i) => Some(i.nearest),
+            _ => None,
+        })
+    };
+    assert_eq!(nearest("Crisp"), Some(true));
+    assert_eq!(nearest("Smooth"), Some(false));
+    let rect = |l: f32, t: f32, r: f32, b: f32| vec![[l, t], [r, t], [r, b], [l, b]];
+    let bounds = |id: &str| {
+        let (points, _) = clip_of(&d, id).unwrap_or_else(|| panic!("{id} is not cut"));
+        let xs = points.iter().map(|p| p[0]);
+        let ys = points.iter().map(|p| p[1]);
+        let (l, r) = (
+            xs.clone().fold(f32::MAX, f32::min),
+            xs.fold(f32::MIN, f32::max),
+        );
+        let (t, b) = (
+            ys.clone().fold(f32::MAX, f32::min),
+            ys.fold(f32::MIN, f32::max),
+        );
+        rect(l, t, r, b)
+    };
+    assert_eq!(bounds("Clip"), rect(4.0, 2.0, 10.0, 12.0));
+    assert_eq!(bounds("Auto"), rect(4.0, 2.0, 20.0, 20.0));
+    assert!(
+        clip_of(&d, "Flow").is_none(),
+        "clip cuts only a box out of flow"
+    );
+    assert_eq!(
+        clip_of(&d, "Path"),
+        Some((
+            vec![[0.0, 0.0], [20.0, 0.0], [0.0, 20.0]],
+            og_draw::UiFillRule::EvenOdd
+        ))
+    );
+    assert_eq!(
+        clip_of(&d, "NonZero"),
+        Some((
+            vec![[2.0, 2.0], [12.0, 2.0], [12.0, 12.0]],
+            og_draw::UiFillRule::NonZero
+        ))
+    );
+}
+
+/// An SVG shape's `fill-opacity` and `stroke-opacity` (attribute, number
+/// or percentage, and CSS) scale each paint's alpha alone; `paint-order`
+/// (SVG 2 §13.7, on the shape or inherited) draws its stroke under its
+/// fill, the paints it leaves out in their default order; a `<mask>`'s
+/// `mask-type: alpha` (CSS Masking 1 §7.1) cuts by its content's alpha
+/// where the default `luminance` cuts by luminance times alpha (red's is
+/// 0.2125); and `mask-border` (CSS Masking 1 §8) slices its image: a
+/// gradient's 30 % of a 20 px border area is 6 px.
+///
+/// Ways it could fail: one opacity applied to both paints, a percentage
+/// refused, `paint-order` parsed but never drawn (it was), an inherited
+/// order lost, an alpha mask still read by luminance, or a mask border's
+/// slice taken of the gradient as if it had no size.
+#[test]
+fn svg_paint_opacities_order_and_mask_types_draw_as_svg_says() {
+    let text = r##"<meta name="component" content="t">
+<column>
+  <svg id="Opacity" viewBox="0 0 10 10"><rect width="10" height="10" fill="#ff0000" fill-opacity="0.25" stroke="#0000ff" stroke-opacity="50%" stroke-width="2"/></svg>
+  <svg id="CssOpacity" viewBox="0 0 10 10"><rect width="10" height="10" fill="#ff0000" stroke="#0000ff" stroke-width="2" style="fill-opacity: 75%; stroke-opacity: 0.125"/></svg>
+  <svg id="Normal" viewBox="0 0 10 10"><rect width="10" height="10" fill="#ff0000" stroke="#0000ff" stroke-width="2"/></svg>
+  <svg id="Stroke" viewBox="0 0 10 10"><rect width="10" height="10" fill="#ff0000" stroke="#0000ff" stroke-width="2" style="paint-order: stroke"/></svg>
+  <svg id="Inherited" viewBox="0 0 10 10" style="paint-order: markers stroke"><rect width="10" height="10" fill="#ff0000" stroke="#0000ff" stroke-width="2"/></svg>
+  <svg id="Masks" viewBox="0 0 20 10">
+    <defs>
+      <linearGradient id="g"><stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#ff0000" stop-opacity="0.5"/></linearGradient>
+      <mask id="alpha" mask-type="alpha"><rect width="10" height="10" fill="url(#g)"/></mask>
+      <mask id="luminance"><rect width="10" height="10" fill="url(#g)"/></mask>
+    </defs>
+    <rect id="AlphaCut" width="10" height="10" fill="#0000ff" mask="url(#alpha)"/>
+    <rect id="LuminanceCut" x="10" width="10" height="10" fill="#0000ff" mask="url(#luminance)"/>
+  </svg>
+  <div id="MaskBorder" style="width: 20px; height: 20px; background: #ff0000; mask-border: linear-gradient(#000, transparent) 30% / 4px"></div>
+</column>
+<style>svg { width: 20px; height: 20px; flex-shrink: 0; } #Masks { width: 40px; }</style>"##;
+    let d = Doc::new(text, &[]);
+    assert!(
+        d.ui.frame().warnings.is_empty(),
+        "{:?}",
+        d.ui.frame().warnings
+    );
+    // What a shape draws, in order: fill or stroke, and its alpha.
+    let paints = |id: &str| -> Vec<(&'static str, f32)> {
+        shapes_in(&d, id)
+            .iter()
+            .filter_map(|s| match s.paint {
+                og_draw::UiPaint::Solid(c) => Some((
+                    if matches!(s.mode, og_draw::UiMode::Fill) {
+                        "fill"
+                    } else {
+                        "stroke"
+                    },
+                    (c[3] * 1000.0).round() / 1000.0,
+                )),
+                _ => None,
+            })
+            .collect()
+    };
+    assert_eq!(paints("Opacity"), [("fill", 0.25), ("stroke", 0.5)]);
+    assert_eq!(paints("CssOpacity"), [("fill", 0.75), ("stroke", 0.125)]);
+    assert_eq!(paints("Normal"), [("fill", 1.0), ("stroke", 1.0)]);
+    assert_eq!(paints("Stroke"), [("stroke", 1.0), ("fill", 1.0)]);
+    assert_eq!(paints("Inherited"), [("stroke", 1.0), ("fill", 1.0)]);
+    // The masks' gradients, as their stops' colour and alpha.
+    let masks: Vec<Vec<[f32; 4]>> =
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                DrawCmd::BeginLayer {
+                    mask: Some(og_draw::UiMask::Gradient(g)),
+                    ..
+                } => Some(
+                    g.stops
+                        .iter()
+                        .map(|s| s.color.map(|v| (v * 10_000.0).round() / 10_000.0))
+                        .collect(),
+                ),
+                _ => None,
+            })
+            .collect();
+    assert_eq!(
+        masks,
+        [
+            vec![[1.0, 0.0, 0.0, 1.0], [1.0, 0.0, 0.0, 0.5]],
+            vec![[1.0, 1.0, 1.0, 0.2125], [1.0, 1.0, 1.0, 0.1063]],
+        ],
+        "alpha, then luminance"
+    );
+    let border = shapes_in(&d, "MaskBorder")
+        .iter()
+        .find_map(|s| match &s.paint {
+            og_draw::UiPaint::GradientImage(g) => match g.fit {
+                og_draw::UiFit::BorderImage(b) => Some(b),
+                _ => None,
+            },
+            _ => None,
+        });
+    let border = border.expect("the mask border's image");
+    assert_eq!(
+        (border.slice, border.width, border.fill),
+        ([6.0; 4], [4.0; 4], false)
+    );
+}

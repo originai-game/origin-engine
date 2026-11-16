@@ -250,6 +250,33 @@ not_applicable("frame-sizing",
 not_applicable("page-breaks page-break-aliases page-orientation page-selectors page-setup",
                "Paged media for printing: a game's UI is laid out on a screen, never paginated, so there are no pages to break, select, rotate or set up. Column breaks are multi-column's (column-breaks).")
 
+# colour, paint and effects
+proof("alpha rgb hsl hwb lab oklab named-color color-function color-mix relative-color system-color system-color-accentcolor background-color",
+      "css_paint", "every_colour_syntax_draws_the_colour_the_spec_gives",
+      "Emitted background-color fills match the specs' worked values (#7d2329 for lab/lch/oklab/oklch, hwb by its formula) for hex alpha, rgb() percentages and legacy commas, hsl() turns, color(srgb|srgb-linear), premultiplied color-mix() with transparent, relative hsl/rgb/oklch, and alpha() with and without calc(alpha). System colours (Canvas, CanvasText, AccentColor, AccentColorText, ButtonFace, ButtonBorder, Mark, Highlight) are the style's palette roles; the other system keywords map the same way but are not each asserted. Wide-gamut color() spaces are covered by og-css's P3 tests, not here.")
+proof("currentcolor light-dark light-dark-image color-scheme",
+      "css_paint", "current_color_and_light_dark_resolve_in_the_element",
+      "In both style schemes, currentColor is the declared or inherited colour in a colourless border, an outline, gradient stops, a background and color itself (color-mix(currentColor) inherits); light-dark() of colours and of url() images follows color-scheme light/dark on the element or an ancestor, and the style's scheme under `light dark` or none. color-scheme does not restyle built-in controls or scrollbars beyond their colours.")
+proof("background background-attachment background-blend-mode background-clip background-origin background-position background-repeat background-size",
+      "css_paint", "background_layers_size_place_repeat_clip_and_blend_as_css_does",
+      "Emitted layers read through og-render's own placement land where CSS Backgrounds 3 arithmetic puts them: edge-offset and percentage positions, background-position-x over the shorthand, repeat-x, space and round tiling, cover and contain, content-box origin, padding-box colour clip, fixed attachment from the viewport origin, and per-layer blend modes with the first layer drawn last. background-attachment: local and background-clip: text are not asserted here (text clips the element's own text only).")
+proof("background-clip-border-area", "css_paint", "border_area_paints_a_layer_only_under_the_border",
+      "GPU pixels prove a border-area colour and an image layer over a colour paint only under a 6 px transparent border, leaving the padding box empty or the colour beneath. Rounded and shaped corners follow the box's corner geometry but are not asserted.")
+proof("opacity outline crisp-edges clip path-shape",
+      "css_paint", "opacity_outline_crisp_edges_and_clips_draw_as_css_says",
+      "Emitted output: opacity as a number and a percentage; outline thin/medium/thick widths (1/3/5 px), dashed, double's two thirds-wide lines spanning 5 px, outline-offset and none; image-rendering: crisp-edges sampling nearest; CSS 2 clip: rect() with commas, spaces and auto edges on absolute boxes only; clip-path path() points and both fill rules. path() for shape-outside, offset-path and the d property is not covered.")
+proof("opacity-svg paint-order mask-type mask-border",
+      "css_paint", "svg_paint_opacities_order_and_mask_types_draw_as_svg_says",
+      "SVG fill-opacity and stroke-opacity (attributes, percentages and CSS) scale only their paint; paint-order draws a shape's stroke under its fill, on the shape or inherited, with omitted paints in default order; a <mask>'s mask-type attribute (alpha vs luminance) changes the emitted gradient mask; mask-border slices a gradient's border area. Text paint-order, mask-type in a stylesheet rule and non-gradient masks are not covered.")
+proof("svg", "inline_svg", "inline_svg_matches_its_reference_frames",
+      "References at 1280/390 compare inline SVG paths, polygons, a url(#) gradient fill, even-odd fill-rule, a pathLength dash offset and bound path data in CSS-sized boxes. css_paint::svg_paint_opacities_order_and_mask_types_draw_as_svg_says adds paint opacities, paint-order and mask types. The SVG DOM interfaces, <foreignObject>, <a>, <script>, <switch> and systemLanguage are not covered.")
+not_applicable("color-adjust print-color-adjust",
+               "Print colour economy: a game draws to its screen, never to paper or a printer's economy mode.")
+not_applicable("paint",
+               "The CSS Painting API runs a browser JavaScript paint worklet (CSS.paintWorklet, PaintRenderingContext2D); a document has no worklet runtime, and engine art comes from materials, vectors and images.")
+not_applicable("svg-discouraged",
+               "SVG 1.1 features SVG 2 removed (xlink: attributes, SVG fonts, SVGPathSeg and other DOM methods, zoomAndPan, baseProfile); documents are SVG 2 markup with no script DOM.")
+
 MISSING = {
     "anchor-positioning-animations": "A transition between anchor() values jumps: interpolation treats two anchor() calls as discrete, and calc() takes anchor() only as anchor(…) + px.",
     "motion-path": "No offset-path, offset-distance, offset-rotate, offset-anchor or offset-position: the properties are refused.",
@@ -267,6 +294,13 @@ MISSING = {
     "calc-size": "No calc-size evaluation or animated output proof.",
     "table": "Table spans/captions have computed output tests, but border-spacing and border-collapse have no implementation/output proof.",
     "backdrop-filter": "Ordinary staged backdrop chains have fixtures; native glass rejects chains requiring intermediate clamps, drop-shadow and SVG url filters.",
+    "background-clip-text": "background-clip: text clips to the element's own glyphs only; CSS also clips to its descendants' text, which needs the subtree's text grouped where og-ui draws it (ui/commands.rs).",
+    "filter-function": "No filter(<image>, <filter-function>) image: background and mask layers take url(), image-set(), gradients and light-dark() only.",
+    "cross-fade": "No cross-fade() image: a box layer draws one image, and a premultiplied sum of several needs layers that hold more than one.",
+    "element": "No element() image; feImage's element images exist for SVG filters but no background or border layer reads a live element.",
+    "image-orientation": "The cook decodes images without their EXIF orientation and there is no image-orientation property; from-image and none are both unimplemented.",
+    "border-shape": "No border-shape: borders, border images, outlines and shadows follow border-radius and corner-shape only.",
+    "box-decoration-break": "Inline boxes and column fragments draw no per-fragment decorations, so neither slice nor clone is implemented.",
     "shadow-parts": "Host/part/state selector registry is present; all-property part applicability awaits the parts-as-nodes stream and its output tests.",
 }
 
