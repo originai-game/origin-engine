@@ -62,6 +62,8 @@ pub struct TextSpanStyle {
     /// Its font size and line height as a fraction of what it would
     /// otherwise take (HTML's `<sub>` and `<sup>`: CSS `font-size: smaller`).
     pub size_scale: Option<f32>,
+    /// CSS `word-spacing`, px.
+    pub word_spacing: Option<f32>,
 }
 
 /// An inline object of a text (a document's `<img>`, `<og-icon>` or `<kbd
@@ -158,6 +160,7 @@ impl Ui {
                 fx: SpanFx::None,
                 decoration: None,
                 valign: crate::VerticalAlign::Baseline,
+                word_spacing: 0.0,
             };
             for (_, _, style) in ranges.iter().filter(|(a, b, _)| *a <= start && end <= *b) {
                 if let Some(c) = &style.color {
@@ -174,6 +177,9 @@ impl Ui {
                 }
                 if let Some(tracking) = style.tracking_em {
                     s.step.tracking_em = tracking;
+                }
+                if let Some(w) = style.word_spacing {
+                    s.word_spacing = w;
                 }
                 if let Some(k) = style.size_scale {
                     s.step.size *= k;

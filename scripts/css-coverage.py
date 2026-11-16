@@ -185,6 +185,8 @@ proof("word-break", "css_text", "word_break_all_breaks_inside_words",
       "break-all fills 50px lines inside a word that normal keeps whole. keep-all on CJK text is not asserted.")
 proof("text-decoration text-underline-offset text-underline-position", "css_text", "decoration_lines_sit_where_css_text_decoration_puts_them",
       "Drawn lines: a 5px offset below the baseline at an explicit 4px thickness and colour, from-font offset and thickness at Noto Sans's post underline, under at its hhea descent and a length offset from there, overline above the cap height, line-through under the x-height, double two lines a thickness apart, and propagation through a child's none. Auto offset and thickness are the engine's fractions of the em; left and right (vertical text) are not covered.")
+proof("word-spacing", "css_text", "word_spacing_widens_each_word_separator",
+      "Drawn glyph positions: a px and an em word-spacing after each space and no-break space, none inside a word, and the em computed once and inherited as px. Text in a fixed-advance or pixel font (laid out without Parley) is not covered.")
 proof("text-stroke-fill", "css_text", "text_stroke_and_fill_paint_as_the_compat_standard_does",
       "Emitted text ink and outline effect: the fill colour over color, a stroke centred on the edge at its width and colour, currentcolor by default, and paint-order: stroke drawing only its outer half under the fill.")
 proof("custom-ellipses", "html_text", "text_wrap_styles_and_overflow_strings_lay_out_as_css_does",

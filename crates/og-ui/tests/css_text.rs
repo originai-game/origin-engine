@@ -218,6 +218,65 @@ fn line_height_and_letter_spacing_compute_as_css_does() {
     );
 }
 
+/// CSS Text 3 §8.1: `word-spacing` adds its length after each word
+/// separator (a space or a no-break space), never between the letters
+/// of a word; it computes to an absolute length, so a child twice the
+/// size keeps its parent's px.
+#[test]
+fn word_spacing_widens_each_word_separator() {
+    let d = doc(
+        r#"<p id="N">ab cd ef</p><p id="W">ab cd ef</p><p id="E">ab cd ef</p>
+<div id="Em"><p id="Big">ab cd ef</p></div><p id="Nb">ab&nbsp;cd</p><p id="Nb0">ab&nbsp;cd</p>
+<p id="One">abcdef</p><p id="One0">abcdef</p>"#,
+        "#W, #Nb, #One { word-spacing: 10px; } #E { word-spacing: 0.5em; }
+#Em { word-spacing: 0.5em; } #Big { font-size: 28px; }",
+    );
+    // Where each drawn glyph starts, from the pen and its advances.
+    let starts = |id| -> Vec<f32> {
+        let mut out = Vec::new();
+        for l in lines(&d, id) {
+            let mut pen = l.x;
+            for g in &l.glyphs {
+                out.push(pen + g.x * l.size);
+                pen += g.advance * l.size;
+            }
+        }
+        out
+    };
+    let (n, w, e) = (starts("N"), starts("W"), starts("E"));
+    assert_eq!((n.len(), w.len()), (8, 8), "{n:?} {w:?}");
+    // a b ␠ c d ␠ e f: each glyph after k separators is k × 10px on.
+    for (i, k) in [0, 0, 0, 1, 1, 1, 2, 2].into_iter().enumerate() {
+        assert!(
+            (w[i] - n[i] - 10.0 * k as f32).abs() < 0.05,
+            "10px at {i}: {w:?} vs {n:?}"
+        );
+        assert!(
+            (e[i] - n[i] - 7.0 * k as f32).abs() < 0.05,
+            "0.5em of 14px at {i}: {e:?}"
+        );
+    }
+    let width = |id| lines(&d, id).iter().map(|l| l.width).sum::<f32>();
+    assert!(
+        (width("W") - width("N") - 20.0).abs() < 0.05,
+        "two separators"
+    );
+    let big = starts("Big");
+    let big0 = starts("N").iter().map(|x| x * 2.0).collect::<Vec<_>>();
+    assert!(
+        ((big[7] - big[0]) - (big0[7] - big0[0]) - 14.0).abs() < 0.1,
+        "the parent's 7px per separator at 28px: {big:?}"
+    );
+    assert!(
+        (width("Nb") - width("Nb0") - 10.0).abs() < 0.05,
+        "a no-break space separates"
+    );
+    assert!(
+        (width("One") - width("One0")).abs() < 0.01,
+        "no separator, no room"
+    );
+}
+
 /// CSS Text 3 §5.2: `break-all` lets a line break between any two
 /// letters, so a word wider than its 50px box fills each line instead of
 /// overflowing; `normal` keeps it whole.

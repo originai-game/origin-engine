@@ -58,6 +58,8 @@ pub struct RichSpan {
     pub decoration: Option<crate::css::text_css::Decoration>,
     /// Where it sits in its line against the paragraph's text.
     pub valign: VerticalAlign,
+    /// CSS `word-spacing`, px: added after each word separator.
+    pub word_spacing: f32,
 }
 
 /// An italic's slant: x moves by this much of the height above the baseline.

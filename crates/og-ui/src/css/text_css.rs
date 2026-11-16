@@ -1486,12 +1486,14 @@ impl TextCss {
         step
     }
 
-    /// Whether the text needs a span of its own (a style, a decoration,
-    /// a stroke or a fill the plain text path does not draw), or is a
+    /// Whether the text needs a span of its own (a style, word spacing, a
+    /// decoration, a stroke or a fill the plain text path does not draw),
+    /// or is a
     /// paragraph Parley lays out (an indent, a `line-break`).
     pub fn rich(&self) -> bool {
         let p = self.paragraph();
         self.italic == Some(true)
+            || self.word_spacing.is_some_and(|w| w != 0.0)
             || self.decoration.any()
             || self.stroke.is_some()
             || p.0 != Default::default()

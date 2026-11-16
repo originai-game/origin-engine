@@ -1569,6 +1569,7 @@ impl Resolved {
                 }
             }),
             decoration: t.decoration.any().then(|| t.decoration.clone()),
+            word_spacing: t.word_spacing.filter(|w| *w != 0.0),
             ..Default::default()
         };
         Some((span, style))

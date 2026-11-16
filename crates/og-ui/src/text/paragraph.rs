@@ -440,6 +440,7 @@ fn shaped<R>(
                 StyleProperty::LetterSpacing(span_tracking(s, &s.text) * s.step.size),
                 range.clone(),
             );
+            builder.push(StyleProperty::WordSpacing(s.word_spacing), range.clone());
             let features = s.step.features.css();
             builder.push(
                 StyleProperty::FontFeatures(features.as_str().into()),

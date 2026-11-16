@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS word-spacing",
+      "summary": "word-spacing adds its length after each space and no-break space of a text, which was parsed but never laid out."
+    }
+  ]
+}
