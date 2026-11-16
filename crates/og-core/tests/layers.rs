@@ -81,6 +81,7 @@ const LAYERS: &[(&str, &[&str])] = &[
             "og-tests-cooked",
             "og-tests-ui",
             "og-tests-web",
+            "og-ui-fuzz",
         ],
     ),
 ];
