@@ -250,8 +250,7 @@ fn shorthand_parts(name: &str, v: &str) -> Result<Vec<(String, String)>, String>
             for item in split_top(v) {
                 match item.as_str() {
                     "none" => {}
-                    "underline" | "overline" | "line-through" | "blink" | "spelling-error"
-                    | "grammar-error" => lines.push(item),
+                    "underline" | "overline" | "line-through" | "blink" => lines.push(item),
                     "solid" | "double" | "dotted" | "dashed" | "wavy" => style = item,
                     "auto" | "from-font" => thick = item,
                     t if t.ends_with("px") || t.ends_with("em") || t.ends_with('%') || t == "0" => {
@@ -834,15 +833,7 @@ fn check(name: &str, v: &str) -> Result<(), String> {
             return words_in(
                 name,
                 v,
-                &[
-                    "none",
-                    "underline",
-                    "overline",
-                    "line-through",
-                    "blink",
-                    "spelling-error",
-                    "grammar-error",
-                ],
+                &["none", "underline", "overline", "line-through", "blink"],
             );
         }
         "text-decoration-style" => matches!(v, "solid" | "double" | "dotted" | "dashed" | "wavy"),
@@ -1604,10 +1595,6 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
     if let Some(v) = get("font-variation-settings").filter(|v| v != "normal") {
         t.variations = variation_settings(&v).unwrap_or_default();
     }
-    // A spelling or grammar error's line (CSS Text Decoration 4 §2.1):
-    // the UA's wavy underline in the theme's danger or success colour,
-    // which no other decoration property changes (§2.8, §2.10).
-    let mut error = None;
     for part in lines.split('|').filter(|p| !p.is_empty()) {
         let f: Vec<&str> = part.split(';').collect();
         let d = &mut t.decoration;
@@ -1616,8 +1603,6 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
                 "underline" => d.underline = true,
                 "overline" => d.overline = true,
                 "line-through" => d.through = true,
-                "spelling-error" => error = Some(theme.palette.danger),
-                "grammar-error" => error = Some(theme.palette.success),
                 // `blink`: the text does not blink, as §2.1 allows.
                 _ => {}
             }
@@ -1642,15 +1627,6 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         .unwrap_or_default();
     t.decoration.offset = DecorationLength::parse(get("text-underline-offset").as_deref());
     t.decoration.under = get("text-underline-position").is_some_and(|v| v.contains("under"));
-    if let Some(ink) = error {
-        t.decoration = Decoration {
-            underline: true,
-            style: DecorationStyle::Wavy,
-            color: Some(ink),
-            skip_ink: SkipInk::None,
-            ..Decoration::default()
-        };
-    }
     if let Some(w) = num(get("-webkit-text-stroke-width")).filter(|w| *w > 0.0) {
         t.stroke = Some((w, color(get("-webkit-text-stroke-color"))));
     }

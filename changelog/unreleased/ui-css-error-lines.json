@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "CSS text-decoration-line: spelling-error and grammar-error",
-      "summary": "text-decoration-line (and the text-decoration shorthand) takes spelling-error and grammar-error, as CSS Text Decoration 4 §2.1 defines them: the UA's wavy underline in the theme's danger or success colour, which the decoration's own colour, style, thickness, offset, position and skips do not change. A game marks a misspelt word or a wrong answer in a word puzzle with it."
-    }
-  ]
-}
