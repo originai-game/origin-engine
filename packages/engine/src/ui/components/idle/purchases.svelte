@@ -27,7 +27,7 @@
     {#if amounts.length}
     <div class="amounts" role="radiogroup" aria-label={t("idle.purchases.amount")}>
       {#each amounts as a (a.id)}
-        <button part="IdlePurchases.amount IdlePurchases.figure" role="radio" aria-checked={a.id == amount} data-amount={a.id} onclick={chooseamount}>{a.label != '' ? a.label : a.id == 'max' ? t("idle.purchases.max") : t("idle.purchases.times", { count: a.id })}</button>
+        <button part="IdlePurchases.amount" role="radio" aria-checked={a.id == amount} data-amount={a.id} onclick={chooseamount}>{a.label != '' ? a.label : a.id == 'max' ? t("idle.purchases.max") : t("idle.purchases.times", { count: a.id })}</button>
       {/each}
     </div>
     {/if}
@@ -73,7 +73,7 @@
 [part="IdlePurchases.band"] { display: flex; width: stretch; align-items: center; flex-wrap: wrap; gap: var(--space-xs) var(--space-md); flex: none; }
 [part="IdlePurchases.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .amounts { display: flex; flex: none; gap: var(--space-xxs); }
-[part="IdlePurchases.amount IdlePurchases.figure"] { min-height: var(--size-touch); min-width: var(--size-touch); padding: 0 var(--space-sm); }
+[part="IdlePurchases.amount"] { font-family: var(--figure-font); min-height: var(--size-touch); min-width: var(--size-touch); padding: 0 var(--space-sm); }
 .rows-shell { position: relative; display: flex; flex-direction: column; flex: 1; min-block-size: 0; }
 .rows-scroll { overflow-y: auto; flex: 1; min-height: 0; }
 .scroll-fade { position: absolute; inset-inline: 0; bottom: 0; block-size: var(--space-lg); pointer-events: none; background: linear-gradient(transparent, var(--panel)); }
@@ -98,7 +98,7 @@
    amounts under the title and each row's price and Buy under its name. */
 @container (width < 560px) {
   [part="IdlePurchases.band"] .amounts { flex: 1 0 100%; }
-  [part="IdlePurchases.amount IdlePurchases.figure"] { flex: 1; min-width: 0; }
+  [part="IdlePurchases.amount"] { flex: 1; min-width: 0; }
   [part="IdlePurchases.row"] { flex-wrap: wrap; padding: var(--space-xs); }
   .art { width: var(--size-md); height: var(--size-md); }
   .icon { width: var(--size-sm); height: var(--size-sm); }
