@@ -1,5 +1,5 @@
 <meta name="component" content="DamageDirection">
-<meta name="strings" content="./shooter.en.ogt">
+<meta name="strings" content="./damage-direction.en.ogt">
 <meta name="prop:hits" content="list" data-doc="Recent hits, a keyed collection of { id, angle, strength, kind }: angle in radians from straight ahead, clockwise, relative to the view; strength 0 to 1 (the arc's opacity and length); kind normal, shield (the shield took it) or critical. The game removes a hit when its mark should go.">
 <meta name="parts" content="DamageDirection.arc">
 <meta name="fixture:default" content='{"hits":[{"id":"h1","angle":0.9,"strength":0.9,"kind":"normal"},{"id":"h2","angle":-2.4,"strength":0.5,"kind":"shield"}]}'>

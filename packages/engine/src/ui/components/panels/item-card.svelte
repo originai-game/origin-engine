@@ -1,5 +1,5 @@
 <meta name="component" content="RpgItemCard">
-<meta name="strings" content="./rpg.en.ogt">
+<meta name="strings" content="./item-card.en.ogt">
 <meta name="parts" content="RpgItemCard.frame RpgItemCard.name RpgItemCard.lead RpgItemCard.row">
 <meta name="prop:name" content="string" data-doc="The item's name.">
 <meta name="prop:icon" content="string" data-doc="Its icon in the style's or the game's atlas, drawn large at the top.">

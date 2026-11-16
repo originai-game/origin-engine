@@ -1,5 +1,5 @@
 <meta name="component" content="RpgQuestLog">
-<meta name="strings" content="./rpg.en.ogt">
+<meta name="strings" content="./quest-log.en.ogt">
 <meta name="parts" content="RpgQuestLog.frame RpgQuestLog.band RpgQuestLog.title RpgQuestLog.heading RpgQuestLog.row">
 <meta name="prop:title" content="string" data-doc="The log's heading (Quest Journal).">
 <meta name="prop:groups" content="list" data-doc="The groups in order, keyed rows of { id, label, done }: done marks the group of finished quests, shown struck and quiet.">

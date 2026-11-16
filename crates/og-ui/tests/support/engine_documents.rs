@@ -26,7 +26,7 @@ impl bind::Env for Messages {
     }
 }
 
-/// An engine document: its path under `packages/engine` (`src/ui/components/menu.svelte`).
+/// An engine document: its path under `packages/engine` (`src/ui/components/panels/menu.svelte`).
 pub struct EngineDocument {
     pub path: String,
     pub doc: UiDocument,

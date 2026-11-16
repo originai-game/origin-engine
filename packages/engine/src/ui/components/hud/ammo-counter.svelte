@@ -1,5 +1,5 @@
 <meta name="component" content="AmmoCounter">
-<meta name="strings" content="./shooter.en.ogt">
+<meta name="strings" content="./ammo-counter.en.ogt">
 <meta name="prop:weapon" content="string" data-doc="The weapon's name.">
 <meta name="prop:mode" content="string" data-default="auto" data-doc="Its fire mode: auto, burst or single.">
 <meta name="prop:magazine" content="number" data-doc="Rounds in the magazine.">

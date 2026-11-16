@@ -1,5 +1,5 @@
 <meta name="component" content="Killfeed">
-<meta name="strings" content="./shooter.en.ogt">
+<meta name="strings" content="./killfeed.en.ogt">
 <meta name="prop:rows" content="list" data-doc="The eliminations to show, newest first, a keyed collection of { id, killer, victim, weapon, headshot, self, team }: self the player took part (the row is emphasised); team ally or enemy, the killer's side (the victim takes the other). The game trims old rows; a new row slides in.">
 <meta name="parts" content="Killfeed.row Killfeed.name Killfeed.weapon Killfeed.headshot Killfeed.label">
 <meta name="fixture:default" content='{"rows":[{"id":"k3","killer":"Kestrel","victim":"Vanta","weapon":"Halcyon","headshot":true,"self":true,"team":"ally"},{"id":"k2","killer":"Halden","victim":"Moraine","weapon":"Brace-12","headshot":false,"self":false,"team":"enemy"},{"id":"k1","killer":"Sable","victim":"Quill","weapon":"Talon AR","headshot":false,"self":false,"team":"ally"}]}'>

@@ -1,5 +1,5 @@
 <meta name="component" content="RpgQuestTracker">
-<meta name="strings" content="./rpg.en.ogt">
+<meta name="strings" content="./quest-tracker.en.ogt">
 <meta name="parts" content="RpgQuestTracker.frame RpgQuestTracker.title RpgQuestTracker.row">
 <meta name="prop:name" content="string" data-doc="The tracked quest's name, on the plate; empty hides the tracker.">
 <meta name="prop:steps" content="list" data-doc="Its current objectives, keyed rows of { id, text, done }: done ticks and quiets one.">

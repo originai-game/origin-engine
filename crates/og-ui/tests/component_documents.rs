@@ -327,7 +327,7 @@ fn an_ability_slot_grows_with_the_text_and_keeps_its_readouts_apart() {
     let (docs, messages) = engine_documents(&["src/ui/components"]);
     let doc = docs
         .iter()
-        .find(|d| d.path == "src/ui/components/ability-slot.svelte")
+        .find(|d| d.path == "src/ui/components/hud/ability-slot.svelte")
         .expect("ability-slot.svelte");
     let square = [
         ("cooldown", serde_json::json!(0)),

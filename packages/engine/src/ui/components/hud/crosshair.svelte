@@ -1,5 +1,5 @@
 <meta name="component" content="Crosshair">
-<meta name="strings" content="./shooter.en.ogt">
+<meta name="strings" content="./crosshair.en.ogt">
 <meta name="prop:spread" content="number" data-doc="The weapon's current spread, 0 (settled) to 1 (widest): the arms move out from the centre.">
 <meta name="prop:hit" content="string" data-default="none" data-doc="The last hit to confirm: none, hit, headshot, kill or shieldBreak. The game clears it to none when its mark should go.">
 <meta name="prop:hitAt" content="number" data-doc="The id of that hit (its tick): a new id plays the mark again.">

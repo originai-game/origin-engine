@@ -936,15 +936,17 @@ mod tests {
             std::fs::read(dir.join("assets/ui/pause.en.ogt")).unwrap(),
             std::fs::read(library()[0].join("pause.en.ogt")).unwrap()
         );
-        let got = eject_from(&library(), "ability-bar", &dir, false).unwrap();
+        // A component keeps its folder, beside its own strings.
+        let got = eject_from(&library(), "hud/ability-bar", &dir, false).unwrap();
+        assert_eq!(got, dir.join("assets/ui/hud/ability-bar.svelte"));
         assert_eq!(
             std::fs::read(&got).unwrap(),
-            std::fs::read(library()[1].join("ability-bar.svelte")).unwrap()
+            std::fs::read(library()[1].join("hud/ability-bar.svelte")).unwrap()
         );
-        assert!(dir.join("assets/ui/ability-bar.en.ogt").is_file());
-        // A group's document keeps its directory, beside its group's strings.
-        let got = eject_from(&library(), "rpg/backpack", &dir, false).unwrap();
-        assert_eq!(got, dir.join("assets/ui/rpg/backpack.svelte"));
+        assert!(dir.join("assets/ui/hud/ability-bar.en.ogt").is_file());
+        // A genre kit's document sits beside its kit's strings.
+        let got = eject_from(&library(), "rpg/character", &dir, false).unwrap();
+        assert_eq!(got, dir.join("assets/ui/rpg/character.svelte"));
         assert!(dir.join("assets/ui/rpg/rpg.en.ogt").is_file());
         std::fs::remove_dir_all(&dir).unwrap();
     }

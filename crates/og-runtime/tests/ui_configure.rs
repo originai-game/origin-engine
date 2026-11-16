@@ -289,7 +289,7 @@ fn shape_outside_images_take_their_contour_from_cooked_alpha() {
 }
 
 /// A screen that uses a built-in component mounts it with only its own
-/// load: the game never loads `@ui/components/stat-bar.svelte`. Ways it could fail:
+/// load: the game never loads `@ui/components/hud/stat-bar.svelte`. Ways it could fail:
 /// the component undefined (the frame warns "no component 'StatBar'" and
 /// draws nothing in its place).
 #[test]

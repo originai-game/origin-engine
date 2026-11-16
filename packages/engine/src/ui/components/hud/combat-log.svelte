@@ -1,5 +1,5 @@
 <meta name="component" content="RpgCombatLog">
-<meta name="strings" content="./rpg.en.ogt">
+<meta name="strings" content="./combat-log.en.ogt">
 <meta name="parts" content="RpgCombatLog.frame RpgCombatLog.band RpgCombatLog.title RpgCombatLog.row">
 <meta name="prop:lines" content="list" data-doc="The log, oldest first, keyed rows of { id, text, tone, detail }: tone damage, heal, status, crit or plain inks the line; detail a quieter second line (→ 42 damage), empty for none. The game words every line.">
 <meta name="fixture:default" content='{"lines":[{"id":"l1","text":"Sir Aldric uses Shield Bash on Cultist.","tone":"plain","detail":"→ 42 damage"},{"id":"l2","text":"Cultist is Stunned!","tone":"status","detail":""}]}'>

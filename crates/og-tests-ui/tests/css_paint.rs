@@ -707,8 +707,8 @@ fn masks_hide_invisible_boxes_and_fade_image_content() {
     ui.set_style_pack(&pack).unwrap();
     for (source, text) in [
         (
-            "@ui/components/minimap.svelte",
-            include_str!("../../../packages/engine/src/ui/components/minimap.svelte"),
+            "@ui/components/world/minimap.svelte",
+            include_str!("../../../packages/engine/src/ui/components/world/minimap.svelte"),
         ),
         ("@ui/test/masks.svelte", text),
     ] {

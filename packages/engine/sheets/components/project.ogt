@@ -1,9 +1,8 @@
 type project
 version 1
 ---
-# The ungrouped built-in components' review sheet (src/ui/components/*.svelte
-# outside a group directory, the world tags and ground marks aside: they are
-# sheets/world's): `og ui sheet components` renders each page at desktop and
+# The base/, hud/ and panels/ built-in components' review sheet (the world
+# tags and ground marks are sheets/world's): `og ui sheet components` renders each page at desktop and
 # phone, 100 % and 150 % (docs/ui.md §6.2). hud is the normal page, panels
 # the stress page, states every member in every state src/fixtures.ts
 # declares. The -default screens review the same pages in the core default

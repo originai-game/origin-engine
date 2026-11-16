@@ -4,11 +4,14 @@ Aim, ammunition, damage direction, killfeed and loadout, as documents over
 core controls (docs/ui.md §4). They draw what the game tells it and
 returns intents with stable ids. It never computes damage, spread,
 reloads, kills or legality. Team and match scores belong to `arena`.
+`Crosshair`, `AmmoCounter`, `DamageDirection` and `Killfeed` are filed in
+`../hud/`, since any game with aiming uses them; this README keeps their
+contract, and the kit holds `CombatHud` and `Loadout`.
 
 They are built into the engine: a game's page uses one by name
 (`<Killfeed .../>`) and loading the page loads it, with the `StatBar`
-that `CombatHud` composes. `og ui eject shooter/killfeed` copies one into
-`assets/ui/shooter/` to change it; the game's copy of the same name wins.
+that `CombatHud` composes. `og ui eject hud/killfeed` copies one into
+`assets/ui/hud/` to change it; the game's copy of the same name wins.
 
 ## Information-structure references (§6.1)
 

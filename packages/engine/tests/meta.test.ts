@@ -28,7 +28,7 @@ type El = { id: string; path: string; text: string; x: number; y: number; width:
 type Event = { mount: string; path: string; rowKey: string; kind: string; name: string; value?: unknown };
 
 const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
-const GROUP = join(ENGINE, "src/ui/components/general");
+const GROUP = join(ENGINE, "src/ui/components/meta");
 const STYLES = process.env.OG_STYLES_DIR ?? join(ENGINE, "../../templates/styles");
 // The packs the group is dressed by. Every test runs in the first; each
 // fixture is mounted in the others too, where a pack's own type, rims and

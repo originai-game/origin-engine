@@ -10,8 +10,8 @@ formatted, and decides what an intent does.
 
 They are built into the engine: a game's page uses one by name
 (`<Shop .../>`) and loading the page loads it, with the `ProgressBar` and
-`Spinner` they use. `og ui eject general/shop` copies one into
-`assets/ui/general/` to change it; the game's copy of the same name wins.
+`Spinner` they use. `og ui eject meta/shop` copies one into
+`assets/ui/meta/` to change it; the game's copy of the same name wins.
 
 They compose the generic components rather than repeat them: progress is
 `ProgressBar`, a wait is `Spinner`. A leaderboard, notifications and a
@@ -87,7 +87,7 @@ message at the foot.
 ## Review sheet and tests
 
 `og ui sheet general` renders the four review pages from
-`packages/engine/sheets/general/`, in the default style and fantasy pack: `store`
+`packages/engine/sheets/meta/`, in the default style and fantasy pack: `store`
 (shop, purchase confirmation, login calendar), `progress` (achievements,
 daily quests, calendar), `social` (chat, friends) and `states` (the shop
 failed, a purchase that failed, no achievements, quests
@@ -99,7 +99,7 @@ locale table yet.
 pages in that pack, dressed by its tokens
 (`templates/styles/<pack>/base.css`).
 
-`bun test tests/general.test.ts` (from `packages/engine`) mounts every
+`bun test tests/meta.test.ts` (from `packages/engine`) mounts every
 member by name from a game page, from every fixture it declares, at desktop
 and phone; checks every intent with its row key and that refused offers
 (by pointer, Enter and pad A), days, purchases, claims and sends are silent;

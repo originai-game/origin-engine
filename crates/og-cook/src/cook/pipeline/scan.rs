@@ -148,7 +148,7 @@ pub(crate) fn scan_with(
     }
     // The built-in components the game's documents use and the built-in
     // screens its code names, that it does not declare, join it as well
-    // (`@ui/components/rpg/backpack.svelte`, with its strings), and those
+    // (`@ui/components/panels/backpack.svelte`, with its strings), and those
     // they use in turn; a game's document of the same name wins.
     let mut game = BTreeMap::new();
     let mut used = BTreeSet::new();

@@ -1,5 +1,5 @@
 <meta name="component" content="RpgBackpack">
-<meta name="strings" content="./rpg.en.ogt">
+<meta name="strings" content="./backpack.en.ogt">
 <meta name="parts" content="RpgBackpack.frame RpgBackpack.band RpgBackpack.title RpgBackpack.tab RpgBackpack.cell">
 <meta name="prop:title" content="string" data-doc="The bag's heading (Backpack, Stash, a chest's name).">
 <meta name="prop:tabs" content="list" data-doc="The categories, a keyed collection of { id, label }.">

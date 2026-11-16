@@ -2186,8 +2186,8 @@ Every group is built token- and part-only (§3.1, §3.2), with state
 fixtures (§6.1) and a review sheet (§6.2), and both built packs dress it.
 Member inputs, intents and parts are documented in each group's README
 (`packages/engine/src/ui/components/<group>/README.md`) and each
-document's `<meta>` header; the ungrouped components' in
-`packages/engine/src/ui/components/README.md`, the screens' in
+document's `<meta>` header; the `base/`, `hud/`, `world/` and `panels/`
+components' in `packages/engine/src/ui/components/README.md`, the screens' in
 `packages/engine/src/ui/screens/README.md`. Arena owns team and match
 scores; shooter does not duplicate them. RPG also serves open-world games;
 action-platformer and runner use core, with RPG or puzzle compositions
@@ -2231,7 +2231,11 @@ the current path.
 ## 5. Package lifecycle
 
 Built-in documents live in the engine package: components in
-`packages/engine/src/ui/components/` (a group's in `<group>/`), screens
+`packages/engine/src/ui/components/`, filed by function: `base/` (building
+blocks), `hud/` (drawn over play), `world/` (anchored in the world),
+`panels/` (data, menus, inventories, logs), `meta/` (shop, social,
+rewards), and a genre's own screens in its kit (`rpg/`, `card/`…). A piece
+any genre uses is filed by function, never under a genre. Screens
 and the generic components beside them in `packages/engine/src/ui/screens/`.
 Their ids are under the reserved `@ui/` root: `@ui/components/<path>` and
 `@ui/screens/<file>`. This section owns the use, load and eject workflow.
@@ -2253,7 +2257,7 @@ Their ids are under the reserved `@ui/` root: `@ui/components/<path>` and
   with stores; `$toasts` and `$captions` are the engine's stores, not
   props.
 - A game document of the same name wins. `og ui eject <name>`
-  (`rpg/backpack` in a group; `--list` names all) copies a built-in
+  (`panels/backpack` by its path; `--list` names all) copies a built-in
   document and its companions into `assets/ui/`; the copy then replaces it
   everywhere, and loading its `@ui/` id loads `ui/<file>`. Companion edits
   survive; `--force` replaces only the requested document.
@@ -2344,8 +2348,7 @@ the engine package ships each one in its `sheets/` (without `references/`
 or `verify.ts`), so `og ui sheet <group>` runs on an installed engine. No
 game's cook bundles a sheet: it is data `og ui sheet` and `og ui review`
 read when asked. Besides the groups, three sheets cover what no group
-owns: `components` (the ungrouped components of
-`src/ui/components/*.svelte`: a HUD page over a bright sky and a dark
+owns: `components` (the `base/`, `hud/` and `panels/` components: a HUD page over a bright sky and a dark
 floor, a panels page, a states page), `screens` (each built-in screen of
 `src/ui/screens/` on a page of its own, in its document's fixture and the
 sheet's own states, `--states` taking any of them) and `world` (the world

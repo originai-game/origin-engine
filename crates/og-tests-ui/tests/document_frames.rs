@@ -17,9 +17,9 @@ use support::*;
 /// Documents (`doc-<path>`) with no reference yet, and why their
 /// `fixture:default` alone draws nothing.
 const PLACEHOLDERS: &[(&str, &str)] = &[
-    ("doc-components-damage-numbers", WORLD),
-    ("doc-components-interaction-prompt", WORLD),
-    ("doc-components-overhead-bars", WORLD),
+    ("doc-components-hud-damage-numbers", WORLD),
+    ("doc-components-world-interaction-prompt", WORLD),
+    ("doc-components-world-overhead-bars", WORLD),
     ("doc-screens-calendar", VIEW_MODEL),
     ("doc-screens-confirm", VIEW_MODEL),
     ("doc-screens-data-list", VIEW_MODEL),

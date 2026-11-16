@@ -1,8 +1,8 @@
 //! The engine's built-in UI documents: every `.svelte` under the engine
-//! package's `src/ui/components/` (its group directories, `rpg/` and
-//! `shooter/`, included) and `src/ui/screens/`, by the name its
+//! package's `src/ui/components/` (in its folders: `base/`, `hud/`,
+//! `world/`, `panels/`, `meta/` and the genre kits) and `src/ui/screens/`, by the name its
 //! `<meta name="component">` or `<meta name="screen">` declares, under
-//! the reserved id `@ui/<path under src/ui>` (`@ui/components/rpg/backpack.svelte`,
+//! the reserved id `@ui/<path under src/ui>` (`@ui/components/panels/backpack.svelte`,
 //! `@ui/screens/pause.svelte`). A game uses a component by its name
 //! (`<RpgBackpack/>`) and loads a screen by its id
 //! (`og.load.document(world, "@ui/screens/pause.svelte")`) without a copy;

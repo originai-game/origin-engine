@@ -8,8 +8,11 @@ or loot.
 
 They are built into the engine: a game's page uses one by name
 (`<RpgBackpack .../>`) and loading the page loads it, with the `Minimap`
-it uses. `og ui eject rpg/backpack` copies one into `assets/ui/rpg/` to
+it uses. `og ui eject rpg/party` copies one into `assets/ui/rpg/` to
 change it; the game's copy of the same name wins.
+The backpack, item card, quest log and conversation are in `../panels/`, and
+the combat log and quest tracker in `../hud/`: every genre uses them. They
+keep their names (`RpgBackpack`…) and their contract here.
 
 ## Structure and appearance
 
@@ -70,20 +73,20 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | Component (document) | Parts |
 | --- | --- |
 | `RpgActionBar` (`action-bar.svelte`) | `frame`, `skill` (a button: `[data-ready]` `:disabled`), `item` (a button) |
-| `RpgBackpack` (`backpack.svelte`) | `frame`, `band`, `title`, `tab` (a button: `[aria-selected]`), `cell` (a button: `[aria-selected]` `[data-broken]` `[data-equipped]` `[data-fresh]` `[data-locked]` `[data-rarity]`) |
+| `RpgBackpack` (`../panels/backpack.svelte`) | `frame`, `band`, `title`, `tab` (a button: `[aria-selected]`), `cell` (a button: `[aria-selected]` `[data-broken]` `[data-equipped]` `[data-fresh]` `[data-locked]` `[data-rarity]`) |
 | `RpgCharacter` (`character.svelte`) | `frame`, `band`, `title`, `name`, `cell` (a button: `[aria-selected]` `[data-empty]` `[data-rarity]`), `row` |
-| `RpgCombatLog` (`combat-log.svelte`) | `frame`, `band`, `title`, `row` (`[data-tone]`) |
+| `RpgCombatLog` (`../hud/combat-log.svelte`) | `frame`, `band`, `title`, `row` (`[data-tone]`) |
 | `RpgCommands` (`commands.svelte`) | `frame`, `band`, `title`, `cell` (a button: `.primary` `[aria-selected]` `:disabled`) |
 | `RpgCompass` (`compass.svelte`) | `frame` |
-| `RpgConversation` (`conversation.svelte`) | `frame`, `name`, `row` (a button: `[aria-selected]` `[data-used]`) |
+| `RpgConversation` (`../panels/conversation.svelte`) | `frame`, `name`, `row` (a button: `[aria-selected]` `[data-used]`) |
 | `RpgEnemyInfo` (`enemy-info.svelte`) | `frame`, `band`, `title`, `name`, `row` (`[data-tone]`) |
-| `RpgItemCard` (`item-card.svelte`) | `frame` (`[data-rarity]`), `name`, `lead`, `row` |
+| `RpgItemCard` (`../panels/item-card.svelte`) | `frame` (`[data-rarity]`), `name`, `lead`, `row` |
 | `RpgMenuBar` (`menu-bar.svelte`) | `frame`, `tab` (a button: `[aria-selected]`) |
 | `RpgParty` (`party.svelte`) | `frame`, `cell` (a button: `[aria-selected]` `[data-down]`) |
 | `RpgPlaceCard` (`place-card.svelte`) | `frame`, `name` |
 | `RpgQuestDetail` (`quest-detail.svelte`) | `frame`, `band`, `title`, `row` (`[data-done]` `[data-optional]` `[data-step]`), `reward` |
-| `RpgQuestLog` (`quest-log.svelte`) | `frame`, `band`, `title`, `heading`, `row` (a button: `[aria-selected]` `[data-done]` `[data-fresh]` `[data-tracked]`) |
-| `RpgQuestTracker` (`quest-tracker.svelte`) | `frame`, `title`, `row` (`[data-done]`) |
+| `RpgQuestLog` (`../panels/quest-log.svelte`) | `frame`, `band`, `title`, `heading`, `row` (a button: `[aria-selected]` `[data-done]` `[data-fresh]` `[data-tracked]`) |
+| `RpgQuestTracker` (`../hud/quest-tracker.svelte`) | `frame`, `title`, `row` (`[data-done]`) |
 | `RpgStats` (`stats.svelte`) | `frame`, `band`, `title`, `row` |
 | `RpgTurnOrder` (`turn-order.svelte`) | `frame`, `cell` (`[aria-current]` `[data-acting]` `[data-down]` `[data-side]`), `title` |
 | `RpgVitals` (`vitals.svelte`) | `frame` (`[data-down]` `[data-plate]`) |

@@ -1,5 +1,5 @@
 <meta name="component" content="RpgConversation">
-<meta name="strings" content="./rpg.en.ogt">
+<meta name="strings" content="./conversation.en.ogt">
 <meta name="parts" content="RpgConversation.frame RpgConversation.name RpgConversation.row">
 <meta name="prop:speaker" content="string" data-doc="The speaker's name; empty is narration.">
 <meta name="prop:portrait" content="number" data-doc="The speaker's portrait (og.load.texture); 0 hides it.">

@@ -16,7 +16,7 @@ import { afterAll, beforeAll, expect, setDefaultTimeout, test } from "bun:test";
 setDefaultTimeout(60_000);
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineSystem, og } from "@origingame/engine";
 
@@ -29,7 +29,12 @@ type El = { id: string; path: string; text: string; x: number; y: number; width:
 type Event = { mount: string; path: string; rowKey: string; kind: string; name: string };
 
 const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
-const GROUP = join(ENGINE, "src/ui/components/rpg");
+const COMPONENTS = join(ENGINE, "src/ui/components");
+// The rpg kit, and the pieces of it every genre uses, filed by function.
+const FILES = [
+  ...readdirSync(join(COMPONENTS, "rpg")).filter((f) => f.endsWith(".svelte")).map((f) => join(COMPONENTS, "rpg", f)),
+  ...["hud/combat-log", "hud/quest-tracker", "panels/backpack", "panels/item-card", "panels/quest-log", "panels/conversation"].map((p) => join(COMPONENTS, `${p}.svelte`)),
+];
 const STYLES = join(ENGINE, "../../templates/styles");
 // The packs the group is dressed by. Every test runs in the first; each
 // fixture is mounted in the others too, where a pack's own type, rims and
@@ -58,8 +63,9 @@ beforeAll(() => {
   // A look naming a pack is what makes the cook bundle it (@styles/<pack>).
   mkdirSync(join(root, "assets/looks"), { recursive: true });
   for (const pack of PACKS) writeFileSync(join(root, `assets/looks/${pack}.ogt`), `type look\nversion 1\n---\nname "rpg kit ${pack}"\nui "${pack}"\n`);
-  for (const f of readdirSync(GROUP).filter((f) => f.endsWith(".svelte"))) {
-    const text = readFileSync(join(GROUP, f), "utf8");
+  for (const file of FILES) {
+    const f = basename(file);
+    const text = readFileSync(file, "utf8");
     const component = /<meta name="component" content="([^"]+)">/.exec(text)![1]!;
     const fixture = /<meta name="fixture:default" content='([^']*)'>/.exec(text);
     const name = f.replace(".svelte", "");
@@ -157,7 +163,7 @@ const row = (e: Engine, k: string): El => find(e, new RegExp(`#${k}$`))!;
 
 // One test per pack, view and a third of the members, so none runs long.
 for (const pack of PACKS) for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
-  const names = readdirSync(GROUP).filter((f) => f.endsWith(".svelte")).map((f) => f.replace(".svelte", ""));
+  const names = FILES.map((f) => basename(f, ".svelte"));
   for (let third = 0; third < 3; third++) {
     const some = names.filter((_, i) => i % 3 === third);
     test(`${some.join(", ")} mount from their fixtures on a ${view}, dressed by ${pack}, inside the screen's width`, () => {
