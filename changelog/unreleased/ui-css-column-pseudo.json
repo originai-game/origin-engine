@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS ::column and ::column::scroll-marker",
+      "summary": "A multi-column container's columns are ::column pseudo-elements (CSS Multicol 2 §4.8). ::column takes scroll-snap-align, scroll-snap-stop and scroll-margin, so each column is a snap area of its scroll container. ::column::scroll-marker gives each column a marker in the container's ::scroll-marker-group, and pressing one scrolls its column to the view's start. Columns that overflow a multi-column scroll container now scroll into view; before, the container's scrollable width stopped at its box. A column marker does not yet take :target-current, :target-before or :target-after."
+    }
+  ]
+}

@@ -295,6 +295,34 @@ fn gutter(value: &str) -> Result<u8, String> {
     }
 }
 
+/// Its `::column`s' scroll snap (CSS Multicol 2 §4.8) from the
+/// declarations its `::column` rules left (`name: value;` each, checked when
+/// the CSS cooked): `scroll-snap-align`, `scroll-snap-stop` and the
+/// `scroll-margin` family, as an element's own.
+pub(crate) fn column_snap(body: &str) -> crate::layout::ColumnSnap {
+    let mut out = crate::layout::ColumnSnap::default();
+    for (name, value) in super::values::split_decls(body).unwrap_or_default() {
+        if name == "scroll-snap-align" {
+            out.align = super::paint_css::snap_align(&value).unwrap_or(0);
+            continue;
+        }
+        let Some(Ok(longhands)) = lower(&name, &value) else {
+            continue;
+        };
+        for (prop, v) in longhands {
+            if prop == "scrollSnapStop" {
+                out.stop = v.eq_ignore_ascii_case("always");
+            } else if let Some(k) = prop
+                .strip_prefix("scrollMargin")
+                .and_then(|side| SIDES.iter().position(|s| *s == side))
+            {
+                out.margin[k] = length(&v, false).map_or(0.0, |l| l.0);
+            }
+        }
+    }
+    out
+}
+
 /// The element's [`ScrollCss`] from its props (`get`), its colours resolved
 /// in `cx`. Values were checked when the CSS was lowered.
 pub(crate) fn build<'a>(

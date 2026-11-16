@@ -26,7 +26,7 @@ pub(crate) use cache::{
 };
 pub(crate) use css::{Holder, auto_height, containing_block, layout, on_screen};
 pub use flow::{Bidi, Flow};
-pub use multicol::Multicol;
+pub use multicol::{ColumnSnap, Multicol};
 use node::truncate_lines;
 pub use node::{Changed, Content, GapSeg, NONE, Shape};
 pub(crate) use node::{

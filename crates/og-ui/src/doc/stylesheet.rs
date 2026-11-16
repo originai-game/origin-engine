@@ -2568,10 +2568,11 @@ fn rule_props(entries: &[og_core::ogt::Entry], kind: Kind) -> Result<Vec<PropSet
 /// `data-hold` press grows, and `::-og-arrow`, a popover's arrow toward its
 /// anchor), and CSS Overflow 5's scroll controls (`::scroll-marker-group`,
 /// `::scroll-marker`, `::scroll-button(<dir>)`, the logical directions as
-/// horizontal-tb left to right names them), by their name in
-/// [`DocNode::pseudo`]. Longer spellings come first: a selector is matched
-/// by its ending.
-const BOXES: [(&str, &str); 17] = [
+/// horizontal-tb left to right names them), and a multi-column
+/// container's `::column::scroll-marker` (CSS Multicol 2 §4.8), by their
+/// name in [`DocNode::pseudo`]. Longer spellings come first: a selector is
+/// matched by its ending.
+const BOXES: [(&str, &str); 18] = [
     ("::before", "before"),
     ("::after", "after"),
     ("::backdrop", "backdrop"),
@@ -2580,6 +2581,7 @@ const BOXES: [(&str, &str); 17] = [
     ("::-og-hold", "hold"),
     ("::-og-arrow", "arrow"),
     ("::scroll-marker-group", "scroll-marker-group"),
+    ("::column::scroll-marker", "column-scroll-marker"),
     ("::scroll-marker", "scroll-marker"),
     ("::scroll-button(up)", "scroll-button-up"),
     ("::scroll-button(block-start)", "scroll-button-up"),
@@ -2613,6 +2615,7 @@ fn holds(pseudo: &str, kind: Kind, node: &DocNode) -> bool {
         // decides whether it shows); the group and buttons a container's.
         "scroll-marker" => true,
         "scroll-marker-group"
+        | "column-scroll-marker"
         | "scroll-button-up"
         | "scroll-button-down"
         | "scroll-button-left"
@@ -2728,7 +2731,7 @@ fn pseudo_suffix(selector: &str) -> Option<(&'static str, &str, Vec<InteractionS
     // A scroll control is written as its box ([`BOXES`]), never by name.
     super::generated::PSEUDOS
         .iter()
-        .filter(|p| !p.starts_with("scroll-"))
+        .filter(|p| !p.starts_with("scroll-") && **p != "column-scroll-marker")
         .find_map(|&p| {
             let double = format!("::{p}");
             if lower.ends_with(&double) {

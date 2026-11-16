@@ -805,11 +805,32 @@ impl crate::ui::Interaction {
         // Each axis's snap positions, and whether the area says
         // `scroll-snap-stop: always`.
         let mut found: [Vec<(f32, bool)>; 2] = Default::default();
+        // A multi-column box's `::column`s are snap areas (CSS Multicol 2
+        // §4.8), the container's own among them.
+        let columns = |cn: &crate::layout::Node, found: &mut [Vec<(f32, bool)>; 2]| {
+            let Some(m) = cn.layout.used.multicol.filter(|m| m.snap.align != 0) else {
+                return;
+            };
+            for &r in &cn.layout.columns {
+                for (axis, found) in found.iter_mut().enumerate() {
+                    let align = (m.snap.align >> (2 * axis)) & 3;
+                    if snap & (1 << axis) == 0 || align == 0 {
+                        continue;
+                    }
+                    let d = snap_delta_of(axis, align, r, m.snap.margin, view);
+                    found.push((at[axis] + d, m.snap.stop));
+                }
+            }
+        };
+        columns(n, &mut found);
         let mut stack: Vec<usize> = n.children.clone();
         while let Some(c) = stack.pop() {
             let cn = &tree.nodes[c];
             if cn.is_hidden() {
                 continue;
+            }
+            if !(cn.el.scroll || cn.el.scroll_x) {
+                columns(cn, &mut found);
             }
             let a = cn.el.snap_align;
             if a == 0 {
@@ -1013,8 +1034,19 @@ fn snapport(n: &crate::layout::Node) -> crate::layout::Rect {
 /// its aligned place in snapport `view` on `axis` (`align` 1 start, 2
 /// centre, 3 end).
 fn snap_delta(axis: usize, align: u8, n: &crate::layout::Node, view: crate::layout::Rect) -> f32 {
-    let [mt, mr, mb, ml] = n.el.scroll_css.margin;
-    let r = n.placed.rect;
+    snap_delta_of(axis, align, n.placed.rect, n.el.scroll_css.margin, view)
+}
+
+/// [`snap_delta`] of a snap area `r` with `scroll-margin` `margin` (top,
+/// right, bottom, left): an element's box or a `::column`.
+fn snap_delta_of(
+    axis: usize,
+    align: u8,
+    r: crate::layout::Rect,
+    margin: [f32; 4],
+    view: crate::layout::Rect,
+) -> f32 {
+    let [mt, mr, mb, ml] = margin;
     let (lo, len, vlo, vlen) = if axis == 0 {
         (r.x - ml, r.width + ml + mr, view.x, view.width)
     } else {
@@ -1049,7 +1081,19 @@ pub(crate) fn bar_len(len: f32, inner: f32, content: f32, min: f32) -> f32 {
 /// scroll-padding (CSSOM View's scroll-into-view position, `start`
 /// alignment), from the boxes as laid out.
 pub(crate) fn into_view_start(tree: &crate::ui::Tree, c: usize, t: usize) -> Vec2 {
-    let (cn, tn) = (&tree.nodes[c], &tree.nodes[t]);
+    let tn = &tree.nodes[t];
+    into_view_start_of(tree, c, tn.placed.rect, tn.el.scroll_css.margin)
+}
+
+/// [`into_view_start`] of a box `r` with `scroll-margin` `m` (top, right,
+/// bottom, left): an element's or a `::column`'s.
+pub(crate) fn into_view_start_of(
+    tree: &crate::ui::Tree,
+    c: usize,
+    r: crate::layout::Rect,
+    m: [f32; 4],
+) -> Vec2 {
+    let cn = &tree.nodes[c];
     let pad = cn.layout.used.padding;
     let view = cn.placed.rect;
     let (w, h) = (
@@ -1057,8 +1101,6 @@ pub(crate) fn into_view_start(tree: &crate::ui::Tree, c: usize, t: usize) -> Vec
         (view.height - pad.vertical()).max(0.0),
     );
     let sp = cn.el.scroll_css.padding_px(w, h);
-    let m = tn.el.scroll_css.margin;
-    let r = tn.placed.rect;
     Vec2::new(
         r.x - m[3] - (view.x + pad.left + sp[3]),
         r.y - m[0] - (view.y + pad.top + sp[0]),

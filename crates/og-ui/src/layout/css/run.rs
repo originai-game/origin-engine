@@ -276,7 +276,7 @@ impl Tree<'_, '_> {
             y += size.height + mg[2];
             prev = mg[2];
         }
-        let content = multicol::balanced_height(self.nodes, i, &tops, &hs);
+        let (content, across) = multicol::balanced_height(self.nodes, i, &tops, &hs);
         let h = input.known_dimensions.height.unwrap_or_else(|| {
             let ch = content + pad.vertical();
             el.height
@@ -289,10 +289,12 @@ impl Tree<'_, '_> {
             width: w,
             height: h,
         });
+        // Columns past the count overflow across (CSS Multicol 1 §8.2).
+        let span = across as f32 * (cols.1 + m.gap) - m.gap;
         out.scrollable_overflow_rect = tf::Rect {
             left: 0.0,
             top: 0.0,
-            right: w - pad.right,
+            right: (pad.left + span).max(w - pad.right),
             bottom: pad.top + content,
         };
         out
@@ -910,7 +912,7 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
         k.margin_x = [l.margin.left, l.margin.right];
     }
     if nodes[i].layout.used.multicol.is_some() {
-        multicol::place(nodes, i);
+        multicol::place(nodes, i, sx);
     }
     if nodes[i].layout.table.is_some() {
         table_parts(nodes, i);

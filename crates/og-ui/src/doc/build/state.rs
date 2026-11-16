@@ -47,6 +47,13 @@ pub struct DocState {
     /// Each element's `::scroll-marker` as it was last built, by the
     /// element's render key.
     pub scroll_markers: BTreeMap<u64, Arc<super::scroll_markers::Marker>>,
+    /// Each multi-column element's `::column::scroll-marker` as it was last
+    /// built, by the element's render key: a marker for each of its columns.
+    pub column_markers: BTreeMap<u64, Arc<super::scroll_markers::Marker>>,
+    /// The column each `::column::scroll-marker` targets, by the target key
+    /// its group names it by ([`super::scroll_markers::column_target`]):
+    /// its multi-column element's render key and the column's index.
+    pub column_targets: BTreeMap<u64, (u64, usize)>,
     /// The `#id` each element with an `href` naming one names, by its
     /// render key.
     pub scroll_anchors: BTreeMap<u64, String>,
@@ -158,6 +165,8 @@ impl DocState {
     pub(crate) fn retain_element_memory(&mut self, built: impl Fn(u64) -> bool) {
         self.scroll_groups.retain(|k, _| built(*k));
         self.scroll_markers.retain(|k, _| built(*k));
+        self.column_markers.retain(|k, _| built(*k));
+        self.column_targets.retain(|_, (owner, _)| built(*owner));
         self.scroll_anchors.retain(|k, _| built(*k));
         self.target_groups.retain(|k| built(*k));
         self.scroll_pins.retain(|k, _| built(*k));

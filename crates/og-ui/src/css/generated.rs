@@ -15,7 +15,9 @@ use std::sync::Arc;
 
 /// The element-backed pseudo-elements a rule may select, as written after
 /// `::`. CSS 2's single-colon spellings of the first four are accepted too.
-pub const PSEUDOS: [&str; 14] = [
+/// `column` is CSS Multicol 2 §4.8's `::column`, and `column-scroll-marker`
+/// its `::column::scroll-marker`.
+pub const PSEUDOS: [&str; 16] = [
     "before",
     "after",
     "marker",
@@ -30,6 +32,8 @@ pub const PSEUDOS: [&str; 14] = [
     "scroll-button-down",
     "scroll-button-left",
     "scroll-button-right",
+    "column",
+    "column-scroll-marker",
 ];
 
 /// The `::scroll-button()` pseudo-elements by direction: up, down, left,
@@ -72,10 +76,16 @@ pub fn allows(pseudo: &str, property: &str) -> bool {
         "marker" => text || property == "content",
         // A scroll control's label: its content and text style; its box
         // takes the rest.
-        p if p == "scroll-marker" || p.starts_with("scroll-button-") => {
+        p if p.ends_with("scroll-marker") || p.starts_with("scroll-button-") => {
             text && property != "display" || property == "content"
         }
         "first-letter" | "first-line" => text,
+        // Each column's place as a snap area (CSS Multicol 2 §4.8): it
+        // takes nothing else.
+        "column" => {
+            matches!(property, "scroll-snap-align" | "scroll-snap-stop")
+                || property.starts_with("scroll-margin")
+        }
         "placeholder" => property == "color",
         "selection" | "target-text" => matches!(
             property,
@@ -121,6 +131,9 @@ pub fn check(name: &str, value: &str) -> Result<(), String> {
             parse_ops(property, value).map(|_| ())
         }
         _ if pseudo == Some("file-selector-button") => Ok(()),
+        _ if pseudo == Some("column") => {
+            super::css::declarations(&format!("{property}: {value};"), 0).map(|_| ())
+        }
         "text-decoration" if matches!(pseudo, Some("selection" | "target-text")) => {
             selection_decoration(value).map(|_| ())
         }
@@ -211,6 +224,12 @@ pub struct Generated {
     /// Each `::scroll-button()`'s label, up, down, left and right (§3.2),
     /// on the same terms.
     pub scroll_buttons: [Option<PseudoBox>; 4],
+    /// `::column`'s declarations (`name: value;`): its columns' snap
+    /// alignment, stop and margin.
+    pub column: Option<String>,
+    /// `::column::scroll-marker`'s label, on `::scroll-marker`'s terms: a
+    /// marker for each of its columns.
+    pub column_marker: Option<PseudoBox>,
 }
 
 /// A pseudo-element's computed content and text style.
@@ -295,6 +314,7 @@ impl Generated {
         out.placeholder = styles.remove("placeholder");
         out.selection = styles.remove("selection");
         out.target_text = styles.remove("target-text");
+        out.column = styles.remove("column");
         let mut take = |p: &str| {
             let (mut b, ops) = boxes.remove(p).unwrap_or_default();
             b.ops = Arc::new(ops);
@@ -307,6 +327,7 @@ impl Generated {
         let shown = |b: Option<PseudoBox>| b.filter(|b| matches!(b.content, Content::Pieces(_)));
         out.scroll_marker = shown(take("scroll-marker"));
         out.scroll_buttons = BUTTONS.map(|p| shown(take(p)));
+        out.column_marker = shown(take("column-scroll-marker"));
         out
     }
 

@@ -17,7 +17,9 @@
 //! CSS Multicol 2: a `column-height` makes every row of columns that
 //! tall; the columns past the count overflow beside them, or with
 //! `column-wrap: wrap` (the default with a height) start a new row below,
-//! `row-gap` apart, each with its own rules.
+//! `row-gap` apart, each with its own rules. Each column is a `::column`
+//! (§4.8): a snap area ([`ColumnSnap`]) and the target of a
+//! `::column::scroll-marker`, at the box [`place`] keeps for it.
 
 use super::*;
 
@@ -47,6 +49,19 @@ pub struct Multicol {
     /// The rule's colour is the theme's ink (`currentcolor` with no colour
     /// of its own).
     pub current: bool,
+    /// Its `::column`s' scroll snap.
+    pub snap: ColumnSnap,
+}
+
+/// The scroll snap its `::column` rules give each column (CSS Multicol 2
+/// §4.8), as an element's own: `scroll-snap-align` (bits as
+/// [`Element::snap_align`]; 0: none), `scroll-snap-stop: always` and
+/// `scroll-margin` (top, right, bottom, left, px).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ColumnSnap {
+    pub align: u8,
+    pub stop: bool,
+    pub margin: [f32; 4],
 }
 
 /// A box's breaks in a fragmented flow (CSS Fragmentation 3 §3).
@@ -301,15 +316,18 @@ fn run_height(m: &Multicol, cols: usize, n: usize, tallest: f32) -> f32 {
 
 /// Node `i`'s content height in columns, its children laid out in one
 /// column at `tops` (from its content box's top, in `children` order)
-/// with their border-box heights `hs`: as [`place`] will lay them out.
-pub(crate) fn balanced_height(nodes: &[Node], i: usize, tops: &[f32], hs: &[f32]) -> f32 {
+/// with their border-box heights `hs`, as [`place`] will lay them out, and
+/// the most columns one row of them holds: those past the count overflow
+/// in the inline direction, into its scrollable overflow (§8.2).
+pub(crate) fn balanced_height(nodes: &[Node], i: usize, tops: &[f32], hs: &[f32]) -> (f32, usize) {
     let Some(m) = nodes[i].layout.used.multicol else {
-        return 0.0;
+        return (0.0, 0);
     };
     let cols = nodes[i].layout.cols.0.max(1);
     let kids = &nodes[i].children;
     let mut saved = 0.0f32;
     let mut bottom = 0.0f32;
+    let mut across = 0;
     for run in runs(nodes, kids) {
         match run {
             Err(c) => bottom = bottom.max(tops[c] + hs[c] - saved),
@@ -327,18 +345,23 @@ pub(crate) fn balanced_height(nodes: &[Node], i: usize, tops: &[f32], hs: &[f32]
                 let (starts, tallest) = balance(&p, cols, limit(&nodes[i], &m), m.fill_auto);
                 let height = run_height(&m, cols, starts.len(), tallest);
                 bottom = bottom.max(top - saved + height);
+                across = (0..starts.len()).fold(across, |a, k| a.max(cell(&m, cols, k).1 + 1));
                 let flow = p.last().map_or(0.0, |q| q.bottom);
                 saved += flow - height;
             }
         }
     }
-    bottom
+    (bottom, across)
 }
 
 /// Moves node `i`'s children, laid out in one column of the column width
 /// by the flow, into its columns, splits a text across a break
 /// ([`Node::frag`]) and keeps the rules between the columns.
-pub(crate) fn place(nodes: &mut [Node], i: usize) {
+///
+/// `sx` is how far it is scrolled across: its columns' boxes move with its
+/// content. Each `::column` is its column's width and, in one row, its
+/// content box's height (§4.8; a wrapped row's column is the row's).
+pub(crate) fn place(nodes: &mut [Node], i: usize, sx: f32) {
     let Some(m) = nodes[i].layout.used.multicol else {
         return;
     };
@@ -347,6 +370,7 @@ pub(crate) fn place(nodes: &mut [Node], i: usize) {
     let x0 = nodes[i].layout.x + nodes[i].layout.used.padding.left;
     let limit = limit(&nodes[i], &m);
     let mut rules = Vec::new();
+    let mut columns = Vec::new();
     for &c in &kids {
         nodes[c].layout.frag.clear();
     }
@@ -374,6 +398,7 @@ pub(crate) fn place(nodes: &mut [Node], i: usize) {
             let (row, col) = cell(&m, cols.max(1), k);
             let down = row as f32 * (row_h + m.row_gap);
             let shift = [col as f32 * (w + m.gap), -p[s].top - saved + down];
+            columns.push(Rect::new(x0 - sx + shift[0], top - saved + down, w, row_h));
             for (j, piece) in p[s..end].iter().enumerate() {
                 let c = run[piece.kid];
                 match moved[piece.kid] {
@@ -410,4 +435,15 @@ pub(crate) fn place(nodes: &mut [Node], i: usize) {
         saved += flow - run_height(&m, cols.max(1), starts.len(), tallest);
     }
     nodes[i].layout.col_rules = rules;
+    // One row of columns fills the content box's height.
+    if columns.iter().all(|c| c.y == columns[0].y) {
+        let n = &nodes[i];
+        let pad = n.layout.used.padding;
+        let h = (n.layout.h - pad.vertical()).max(0.0);
+        let y = n.layout.y + pad.top;
+        for c in &mut columns {
+            (c.y, c.height) = (y, h.max(c.height));
+        }
+    }
+    nodes[i].layout.columns = columns;
 }

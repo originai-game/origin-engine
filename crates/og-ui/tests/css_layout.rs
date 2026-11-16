@@ -3721,3 +3721,124 @@ fn frame_sizing_follows_an_embedded_documents_content() {
     assert_eq!(wh(&d, "Wide"), (300.0, 150.0), "no opt-in: 300 × 150");
     assert_eq!(wh(&d, "Sized"), (120.0, 40.0), "auto keeps the CSS sizes");
 }
+
+/// CSS Multicol 2 §4.8: a multi-column scroll container's `::column`s are
+/// snap areas, each its column's width and the content box's height:
+/// with `scroll-snap-align: start` a wheel settles with a column at the
+/// view's start, with `center` with one centred, and `scroll-margin` on
+/// `::column` grows the area it aligns.
+///
+/// Ways it could fail: `::column` refused or its declarations left on the
+/// container, or the container's own columns not taken (no snap: Start
+/// rests at 150), the columns kept where they were before it scrolled
+/// (150 too), the overflow columns left out of its scrollable overflow
+/// (it cannot scroll: 0), the gap counted in a column (Center at 160), or
+/// the margin ignored (Margin at 220).
+#[test]
+fn column_pseudo_elements_are_snap_areas() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Start" class="car"><div></div><div></div><div></div><div></div><div></div></div>
+  <div id="Center" class="car"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+  <div id="Margin" class="car"><div></div><div></div><div></div><div></div><div></div></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+.car { width: 200px; height: 50px; column-gap: 20px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; scroll-snap-type: x mandatory; }
+.car div { height: 50px; }
+#Start, #Margin { columns: 1; }
+#Start::column { scroll-snap-align: start; }
+#Center { columns: 2; }
+#Center::column { scroll-snap-align: center; }
+#Margin::column { scroll-snap-align: start; scroll-margin-left: 40px; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let settle = |d: &mut Doc, id: &str, by: f32| {
+            let b = d.get(id);
+            for _ in 0..3 {
+                d.step(InputFrame {
+                    wheel: Vec2::new(by / 3.0, 0.0),
+                    ..InputFrame::hover(b.x + 10.0, b.y + 10.0)
+                });
+            }
+            for _ in 0..300 {
+                d.step(InputFrame::hover(b.x + 10.0, b.y + 10.0));
+            }
+            d.ui.scroll_state(&d.get(id).path).unwrap().offset_x
+        };
+        // 200 wide columns 20 apart start at 0, 220, 440…: 150 settles on 220.
+        let at = settle(d, "Start", 150.0);
+        assert!((at - 220.0).abs() < 0.5, "start: {at}");
+        // 90 wide columns 20 apart, centred in a 200 view at k × 110 − 55:
+        // 150 settles on 165.
+        let at = settle(d, "Center", 150.0);
+        assert!((at - 165.0).abs() < 0.5, "center: {at}");
+        // A 40px margin before each column: positions −40, 180, 400…: 150
+        // settles on 180.
+        let at = settle(d, "Margin", 150.0);
+        assert!((at - 180.0).abs() < 0.5, "margin: {at}");
+    });
+}
+
+/// CSS Multicol 2 §4.8: a multi-column scroll container's
+/// `::column::scroll-marker` gives each column a marker in its
+/// `::scroll-marker-group`, in column order, and pressing one scrolls
+/// that column to the view's start. Four 50px-tall children in one
+/// 200px column at a time make four columns at 0, 220, 440 and 660.
+///
+/// Ways it could fail: no markers (the rule refused or read as an
+/// element's `::scroll-marker`), one marker for the container instead of
+/// one per column, a marker scrolling to the container instead of its
+/// column (offset 0), or to the wrong column (220 or 660).
+#[test]
+fn column_scroll_markers_scroll_to_their_columns() {
+    let text = r#"<meta name="component" content="t">
+<div>
+  <div id="S"><div></div><div></div><div></div><div></div></div>
+</div>
+<style>
+#S { width: 200px; height: 50px; columns: 1; column-gap: 20px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; scroll-marker-group: before; }
+#S div { height: 50px; }
+#S::column::scroll-marker { content: ""; width: 10px; height: 10px; background: #0000ff; }
+</style>"#;
+    let mut d = Doc::new(text, &[]);
+    for _ in 0..3 {
+        d.step(InputFrame::default());
+    }
+    let markers = |d: &Doc| -> Vec<f32> {
+        let mut x: Vec<f32> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|i| i.cmd.filled())
+                .filter(|(r, c)| r.width == 10.0 && r.height == 10.0 && c[2] == 1.0)
+                .map(|(r, _)| r.x)
+                .collect();
+        x.sort_by(f32::total_cmp);
+        x
+    };
+    assert_eq!(
+        markers(&d),
+        [0.0, 10.0, 20.0, 30.0],
+        "one marker per column"
+    );
+    let path = d.get("S").path;
+    d.click_at(Vec2::new(25.0, 5.0));
+    for _ in 0..3 {
+        d.step(InputFrame::default());
+    }
+    assert_eq!(
+        d.ui.scroll_state(&path).unwrap().offset_x,
+        440.0,
+        "the third marker scrolls the third column to the start"
+    );
+    d.click_at(Vec2::new(5.0, 5.0));
+    for _ in 0..3 {
+        d.step(InputFrame::default());
+    }
+    assert_eq!(
+        d.ui.scroll_state(&path).unwrap().offset_x,
+        0.0,
+        "and the first back"
+    );
+}

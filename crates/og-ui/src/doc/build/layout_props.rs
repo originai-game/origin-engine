@@ -127,6 +127,12 @@ impl Ui {
                 row_gap: el.gaps[1].or(r.num("gap")).unwrap_or(em),
                 rule,
                 current,
+                snap: r
+                    .generated
+                    .as_ref()
+                    .and_then(|g| g.column.as_deref())
+                    .map(crate::doc::scroll_css::column_snap)
+                    .unwrap_or_default(),
             }
         });
         if r.has("columnCount") || r.has("columnWidth") || r.has("columnHeight") {

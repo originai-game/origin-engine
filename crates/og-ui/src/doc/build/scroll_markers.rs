@@ -6,7 +6,9 @@
 //! and which buttons are disabled is decided at the offsets just laid
 //! out, and reaches the selectors (`:target-current`, `:target-before`,
 //! `:target-after`, `:disabled`) through [`Ui::set_selector_state`] from
-//! the next frame on.
+//! the next frame on. A multi-column element's `::column::scroll-marker`
+//! (CSS Multicol 2 §4.8) gives each of its columns a marker that scrolls
+//! to that column.
 use super::*;
 use crate::bind::InteractionState::{self, Disabled, TargetAfter, TargetBefore, TargetCurrent};
 use crate::doc::generated::BUTTONS;
@@ -25,6 +27,10 @@ pub struct Marker {
     /// their props (`None`: no rule styles its box).
     styled: Option<(Arc<UiDocument>, usize, ResolvedNode, Props)>,
 }
+
+/// A `::column` marker's target key ([`column_target`]) with its
+/// element's key and the column's index.
+type ColumnTarget = (u64, (u64, usize));
 
 impl std::fmt::Debug for Marker {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -79,28 +85,13 @@ impl Ui {
         path: &str,
         key: u64,
     ) {
-        let content = r.generated.as_ref().and_then(|g| g.scroll_marker.clone());
-        let marker = content.and_then(|m| {
-            let text = self.docs.pseudo_text(b, n, r, &m)?;
-            let styled = self.style.pseudo_node(b, r, path, "scroll-marker");
-            let values = styled.as_ref().map_or(r, |(_, s)| &s.values);
-            let desc = values.label_desc(self.env.theme(), self.fonts(), values.own_flow().rtl);
-            let key = styled.as_ref().map_or_else(
-                || crate::id::key_of_path(&format!("{path}/::scroll-marker")),
-                |(_, s)| s.key,
-            );
-            let styled = styled.map(|(at, node)| {
-                let mut built = node.probe.clone();
-                let props = self.props_of(b, &b.doc.nodes[at], node.key, &node.values, &mut built);
-                (b.doc.clone(), at, node, props)
-            });
-            Some(Arc::new(Marker {
-                text,
-                key,
-                desc,
-                styled,
-            }))
-        });
+        let g = r.generated.as_ref();
+        let column = g
+            .and_then(|g| g.column_marker.clone())
+            .and_then(|m| self.marker(b, n, r, path, "column-scroll-marker", m));
+        let marker = g
+            .and_then(|g| g.scroll_marker.clone())
+            .and_then(|m| self.marker(b, n, r, path, "scroll-marker", m));
         let href = r
             .str("href")
             .and_then(|h| h.strip_prefix('#'))
@@ -114,6 +105,10 @@ impl Ui {
             Some(m) => s.scroll_markers.insert(key, m),
             None => s.scroll_markers.remove(&key),
         };
+        match column {
+            Some(m) => s.column_markers.insert(key, m),
+            None => s.column_markers.remove(&key),
+        };
         match href {
             Some(id) => s.scroll_anchors.insert(key, id),
             None => s.scroll_anchors.remove(&key),
@@ -122,6 +117,40 @@ impl Ui {
             s.target_groups.insert(key);
         } else {
             s.target_groups.remove(&key);
+        }
+    }
+
+    /// Element `r`'s (`n`, at `path`) marker pseudo-element `which` with
+    /// content `m`: its label where the element stands, its box's style.
+    fn marker(
+        &mut self,
+        b: &Build<'_>,
+        n: &DocNode,
+        r: &Resolved,
+        path: &str,
+        which: &str,
+        m: crate::doc::generated::PseudoBox,
+    ) -> Option<Arc<Marker>> {
+        {
+            let text = self.docs.pseudo_text(b, n, r, &m)?;
+            let styled = self.style.pseudo_node(b, r, path, which);
+            let values = styled.as_ref().map_or(r, |(_, s)| &s.values);
+            let desc = values.label_desc(self.env.theme(), self.fonts(), values.own_flow().rtl);
+            let key = styled.as_ref().map_or_else(
+                || crate::id::key_of_path(&format!("{path}/::{which}")),
+                |(_, s)| s.key,
+            );
+            let styled = styled.map(|(at, node)| {
+                let mut built = node.probe.clone();
+                let props = self.props_of(b, &b.doc.nodes[at], node.key, &node.values, &mut built);
+                (b.doc.clone(), at, node, props)
+            });
+            Some(Arc::new(Marker {
+                text,
+                key,
+                desc,
+                styled,
+            }))
         }
     }
 
@@ -191,7 +220,8 @@ impl Ui {
             self.tree.place_beside(at, own, true);
         }
         if let Some(before) = place {
-            let markers = self.markers_in(own);
+            let (markers, columns) = self.markers_in(own);
+            self.docs.state_mut().column_targets.extend(columns);
             self.open(format!("::scroll-marker-group~{key:x}"), Element::default());
             let at = self.tree.parent();
             if let Some(s) = self.style.pseudo_node(b, r, path, "scroll-marker-group") {
@@ -230,11 +260,38 @@ impl Ui {
     }
 
     /// The markers of the elements inside scroll container `own`, in tree
-    /// order, by their render key: those whose nearest scroll container
-    /// it is (a scroll container inside it keeps its own).
-    fn markers_in(&self, own: usize) -> Vec<(u64, Arc<Marker>)> {
-        let (nodes, kept) = (self.tree.nodes(), &self.docs.state().scroll_markers);
+    /// order, by their target's key: those whose nearest scroll container
+    /// it is (a scroll container inside it keeps its own). A multi-column
+    /// element's `::column`s, the container's own among them, are its
+    /// children (CSS Multicol 2 §4.8): their markers follow its own, one
+    /// for each column it was last laid out with, each with its target's
+    /// column ([`column_target`]).
+    fn markers_in(&self, own: usize) -> (Vec<(u64, Arc<Marker>)>, Vec<ColumnTarget>) {
+        let state = self.docs.state();
+        let (nodes, kept) = (self.tree.nodes(), &state.scroll_markers);
         let mut out = Vec::new();
+        let mut targets = Vec::new();
+        let mut columns = |i: usize, out: &mut Vec<(u64, Arc<Marker>)>| {
+            let key = nodes[i].key;
+            let Some(m) = state.column_markers.get(&key) else {
+                return;
+            };
+            // The node is being built: its columns are the last frame's.
+            let laid = self.tree.previous_node(i).filter(|p| p.key == key);
+            for k in 0..laid.map_or(0, |p| p.layout.columns.len()) {
+                let target = column_target(key, k);
+                let state = crate::id::key_of_path(&format!("{:x}/::column({k})", m.key));
+                out.push((
+                    target,
+                    Arc::new(Marker {
+                        key: state,
+                        ..(**m).clone()
+                    }),
+                ));
+                targets.push((target, (key, k)));
+            }
+        };
+        columns(own, &mut out);
         let mut stack: Vec<usize> = nodes[own].built_children.iter().rev().copied().collect();
         while let Some(i) = stack.pop() {
             let n = &nodes[i];
@@ -242,6 +299,7 @@ impl Ui {
                 out.push((n.key, m.clone()));
             }
             if !(n.el.scroll || n.el.scroll_x) {
+                columns(i, &mut out);
                 stack.extend(
                     n.built_children
                         .iter()
@@ -250,7 +308,29 @@ impl Ui {
                 );
             }
         }
-        out
+        (out, targets)
+    }
+
+    /// How far scroll container `c` scrolls from where it is (unclamped)
+    /// to bring marker target `target` to its view's start: an element's
+    /// box, or a `::column` ([`column_target`]); `None` when it is gone.
+    fn target_start(&self, c: usize, target: u64) -> Option<Vec2> {
+        use crate::interaction::scroll::{into_view_start, into_view_start_of};
+        if let Some(&(owner, k)) = self.docs.state().column_targets.get(&target) {
+            let n = &self.tree.nodes()[self.tree.index().find(owner)?];
+            let margin = n.layout.used.multicol.map_or([0.0; 4], |m| m.snap.margin);
+            return Some(into_view_start_of(
+                &self.tree,
+                c,
+                *n.layout.columns.get(k)?,
+                margin,
+            ));
+        }
+        Some(into_view_start(
+            &self.tree,
+            c,
+            self.tree.index().find(target)?,
+        ))
     }
 
     /// Once the frame is laid out: the scrolls of the controls pressed as
@@ -268,11 +348,10 @@ impl Ui {
             let at = self.interaction.offset(container);
             let to = match press {
                 Press::Marker(target) => {
-                    let Some(t) = self.tree.index().find(target) else {
+                    let Some(d) = self.target_start(c, target) else {
                         continue;
                     };
-                    let to = (at + crate::interaction::scroll::into_view_start(&self.tree, c, t))
-                        .clamp(Vec2::ZERO, range.max(Vec2::ZERO));
+                    let to = (at + d).clamp(Vec2::ZERO, range.max(Vec2::ZERO));
                     // Its target is the current one while the offset
                     // stays where it aimed (§3.1.8's current scroll target).
                     self.docs
@@ -396,12 +475,12 @@ impl Ui {
         markers: &[(u64, u64)],
         out: &mut BTreeMap<u64, InteractionState>,
     ) {
-        let targets: Vec<(usize, usize)> = markers
+        let targets: Vec<(usize, Vec2)> = markers
             .iter()
             .enumerate()
-            .filter_map(|(k, &(_, t))| Some((k, self.tree.index().find(t)?)))
+            .filter_map(|(k, &(_, t))| Some((k, self.target_start(c, t)?)))
             .collect();
-        let Some(current) = self.current_target(container, c, &targets) else {
+        let Some(current) = self.current_target(container, c, markers, &targets) else {
             return;
         };
         for (k, &(key, _)) in markers.iter().enumerate() {
@@ -415,18 +494,20 @@ impl Ui {
     }
 
     /// CSS Overflow 5 §3.1.8's example algorithm: of `targets` (a marker's
-    /// index and its target's node) in scroll container `container` (node
-    /// `c`), the marker whose target is current at its eventual offset;
-    /// the target it was last scrolled to by a marker while it stays there.
+    /// index and how far its target is from the view's start, in `markers`
+    /// order) in scroll container `container` (node `c`), the marker whose
+    /// target is current at its eventual offset; the target it was last
+    /// scrolled to by a marker while it stays there.
     fn current_target(
         &self,
         container: u64,
         c: usize,
-        targets: &[(usize, usize)],
+        markers: &[(u64, u64)],
+        targets: &[(usize, Vec2)],
     ) -> Option<usize> {
         let nodes = self.tree.nodes();
         if let Some(&(pinned, _)) = self.docs.state().scroll_pins.get(&container)
-            && let Some(&(k, _)) = targets.iter().find(|(_, t)| nodes[*t].key == pinned)
+            && let Some(&(k, _)) = targets.iter().find(|(k, _)| markers[*k].1 == pinned)
         {
             return Some(k);
         }
@@ -437,15 +518,10 @@ impl Ui {
         );
         let position = self.eventual(container, range);
         let at = self.interaction.offset(container);
-        let mut set: Vec<(usize, usize)> = targets.to_vec();
+        let mut set: Vec<(usize, Vec2)> = targets.to_vec();
         // The block axis (horizontal-tb), then the inline axis.
         for axis in [1, 0] {
-            let mut pos: Vec<f32> = set
-                .iter()
-                .map(|&(_, t)| {
-                    (at + crate::interaction::scroll::into_view_start(&self.tree, c, t))[axis]
-                })
-                .collect();
+            let mut pos: Vec<f32> = set.iter().map(|&(_, d)| (at + d)[axis]).collect();
             redistribute(&mut pos, port[axis], range[axis]);
             let chosen = select(&pos, position[axis], port[axis])?;
             set = set
@@ -603,4 +679,10 @@ fn select(pos: &[f32], position: f32, port: f32) -> Option<f32> {
         }
     }
     best.or_else(|| pos.first().copied())
+}
+
+/// The key a group names column `k` of multi-column element `owner` by,
+/// as a `::column::scroll-marker`'s target.
+fn column_target(owner: u64, k: usize) -> u64 {
+    crate::id::key_of_path(&format!("{owner:x}/::column({k})"))
 }
