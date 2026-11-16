@@ -765,7 +765,7 @@
   --tone-crit: #a35400;
   --cartoon-grey: linear-gradient(180deg, #b4b9d6 0%, #9da3c6 100%) padding-box;
   --cartoon-grey-lip: #7a80a8;
-  --cartoon-selected: linear-gradient(180deg, #8fe2ff 0%, #4ccaff 55%, #2bb4f2 100%) padding-box;
+  --cartoon-selected: linear-gradient(180deg, #a8eaff 0%, #7dd9ff 55%, #5ccdfb 100%) padding-box;
   --cartoon-selected-lip: #1687c9;
   --cartoon-band: linear-gradient(180deg, #ffe46b 0%, #ffc71f 55%, #ffb300 100%) padding-box;
   --cartoon-band-lip: #d18400;

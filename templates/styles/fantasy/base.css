@@ -128,14 +128,14 @@
   --ink-disabled: #6b5e4c;
   --ink-label: #d8bf86;
   --title-ink: #ecd9b0;
-  --ink-done: #8a7c66;
+  --ink-done: #c9bca3;
   --ink-selected: #fff3d8;
   --figure-ink: #f3e6c8;
   --ink-bright: #fff4dc;
   --badge-ink: #f6e6c2;
   --ink-down: #9a948a;
   --trend-up: #6fd060;
-  --trend-down: #e0584a;
+  --trend-down: #f07f73;
   --tone-damage: #e06a55;
   --tone-heal: #7ccf6e;
   --tone-crit: #f0942a;
@@ -482,6 +482,9 @@
 
 /* The light scheme: parchment and ink, the same brass and crimson. */
 :root[data-scheme=light] {
+  /* The derived brass, a step deeper on parchment rather than white. */
+  --accent: oklch(from var(--color-accent-ink) calc(l - 0.08) c h);
+  --highlight: var(--accent);
   /* Trend, XP and tier inks, deep enough for parchment. */
   --trend-up: #2e6b2a;
   --trend-down: #a3271b;
