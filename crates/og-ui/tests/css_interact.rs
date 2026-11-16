@@ -428,3 +428,124 @@ button { width: 80px; height: 40px; }
     d.click("First");
     assert_eq!(widths(&d), [180.0, 160.0, 120.0]);
 }
+
+/// CSS Transforms 1 and 2 place the box and its hit test by the
+/// matrix the spec composes: `transform-origin` (default the centre, here a
+/// corner), `matrix()`, `skewX()`, `transform-box: content-box` moving the
+/// reference box, and in 3D `perspective` with `perspective-origin`,
+/// `translateZ` and `rotateY` projected through the viewer's distance. Expected
+/// bounds are worked from the spec's matrices (comments), not read back.
+/// Ways it could fail: the origin taken as the top-left by default (or the
+/// centre when a corner is written), matrix() arguments read in another
+/// order, skew applied to y, the content box ignored, perspective scaling
+/// about the box's own centre instead of the perspective origin, a sign
+/// flipped in rotateY's depth, the probe or the pointer keeping the
+/// untransformed box.
+#[test]
+fn transforms_place_and_hit_by_the_specs_matrices() {
+    const BOXES: &str = r#"<meta name="component" content="ix">
+<div id="Root">
+  <div id="Rot" class="b"></div>
+  <div id="Corner" class="b"></div>
+  <div id="Mat" class="b"></div>
+  <div id="Skew" class="b"></div>
+  <div id="Persp"><div id="Near" class="b"></div><div id="Turn" class="b"></div></div>
+  <div id="Content" class="b pad"></div>
+  <div id="Border" class="b pad"></div>
+</div>
+<style>
+#Root { width: 800px; height: 900px; cursor: help; }
+.b { position: absolute; width: 100px; height: 40px; background: #808080; cursor: copy; }
+#Rot { left: 100px; top: 100px; transform: rotate(90deg); }
+#Corner { left: 300px; top: 100px; transform-origin: 0 0; transform: rotate(90deg); }
+#Mat { left: 500px; top: 100px; transform: matrix(2, 0, 0, 0.5, 10, 20); }
+#Skew { left: 100px; top: 250px; transform: skewX(45deg); }
+#Persp { position: absolute; left: 0; top: 400px; width: 800px; height: 200px; perspective: 200px; perspective-origin: 150px 20px; }
+#Near { left: 100px; top: 0; transform: translateZ(100px); }
+#Turn { left: 300px; top: 0; transform: rotateY(60deg); }
+.pad { top: 300px; padding: 20px; box-sizing: border-box; transform-origin: 0 0; transform: scale(2); }
+#Content { left: 300px; transform-box: content-box; }
+#Border { left: 550px; transform-box: border-box; }
+</style>"#;
+    let mut ui = mounted("ui/ix.svelte", BOXES);
+    frame(&mut ui, Vec2::ZERO);
+    let bounds = |ui: &Ui, id: &str| {
+        let e = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.id == id)
+            .unwrap_or_else(|| {
+                panic!(
+                    "no {id}: {:?}",
+                    ui.probe_elements()
+                        .iter()
+                        .map(|e| e.id.clone())
+                        .collect::<Vec<_>>()
+                )
+            });
+        [e.x, e.y, e.width, e.height]
+    };
+    let near = |a: [f32; 4], b: [f32; 4]| a.iter().zip(b).all(|(x, y)| (x - y).abs() < 1e-3);
+    let cases: [(&str, [f32; 4]); 7] = [
+        // Centre (150, 120); (x, y) → (−y, x) about it.
+        ("Rot", [130.0, 70.0, 40.0, 100.0]),
+        // About (300, 100): x 300−40..300, y 100..200.
+        ("Corner", [260.0, 100.0, 40.0, 100.0]),
+        // (±50, ±20) about (550, 120) → (±100, ±10) + (10, 20).
+        ("Mat", [460.0, 130.0, 200.0, 20.0]),
+        // x' = x + y·tan 45° over y ∈ ±20 about the centre.
+        ("Skew", [80.0, 250.0, 140.0, 40.0]),
+        // d / (d − z) = 200 / 100 = 2 about the perspective origin
+        // (150, 420): x 150 ± 2·50 → 50..250, y 420 + 2·(−20..20).
+        ("Near", [50.0, 380.0, 200.0, 80.0]),
+        // Content box origin (320, 320): x 320 + 2·(300 − 320) = 280.
+        ("Content", [280.0, 280.0, 200.0, 80.0]),
+        // Border box origin (550, 300).
+        ("Border", [550.0, 300.0, 200.0, 80.0]),
+    ];
+    for (id, expected) in cases {
+        assert!(
+            near(bounds(&ui, id), expected),
+            "{id}: {:?}",
+            bounds(&ui, id)
+        );
+    }
+    // rotateY(60°) about its centre (350, 420): x' = x·cos θ, z = −x·sin θ,
+    // then projected about the origin (150, 420) by d / (d − z).
+    let project = |x: f32, y: f32| {
+        let (s, c) = 60f32.to_radians().sin_cos();
+        let (px, z) = (350.0 + x * c, -x * s);
+        let k = 200.0 / (200.0 - z);
+        (150.0 + (px - 150.0) * k, 420.0 + y * k)
+    };
+    let corners =
+        [(-50.0, -20.0), (50.0, -20.0), (-50.0, 20.0), (50.0, 20.0)].map(|(x, y)| project(x, y));
+    let (x0, x1) = corners
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(a, b), c| (a.min(c.0), b.max(c.0)));
+    let (y0, y1) = corners
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(a, b), c| (a.min(c.1), b.max(c.1)));
+    assert!(
+        near(bounds(&ui, "Turn"), [x0, y0, x1 - x0, y1 - y0]),
+        "Turn: {:?} vs {:?}",
+        bounds(&ui, "Turn"),
+        [x0, y0, x1 - x0, y1 - y0]
+    );
+    // The pointer follows the transformed box, not the laid-out one.
+    for (at, cursor) in [
+        // Inside the rotated box, above the laid-out one.
+        (Vec2::new(150.0, 80.0), Cursor::Copy),
+        // Inside the laid-out box, left of the rotated one.
+        (Vec2::new(110.0, 120.0), Cursor::Help),
+        // Laid out at 300..400, 400..440 but projected onto 335..373; the
+        // near edge is taller than the laid-out box.
+        (Vec2::new(330.0, 420.0), Cursor::Help),
+        (Vec2::new(380.0, 420.0), Cursor::Help),
+        (Vec2::new(345.0, 420.0), Cursor::Copy),
+        (Vec2::new(368.0, 397.0), Cursor::Copy),
+    ] {
+        frame(&mut ui, at);
+        assert_eq!(frame(&mut ui, at), cursor, "at {at}");
+    }
+}

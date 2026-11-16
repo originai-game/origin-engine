@@ -214,6 +214,15 @@ not_applicable("namespace",
                "A document's elements are in one namespace (a .svelte document is not XML), so @namespace prefixes "
                "select nothing apart; the rule is accepted and has no effect.")
 
+# animation and interaction
+proof("transitions transition-behavior starting-style linear-easing steps-easing display-animation animation-composition",
+      "motion", "transitions_and_easings_sample_the_specs_curves_by_the_tick",
+      "Laid-out widths sampled every tick for 64 ticks (60 a second, within 0.5 px) match independently worked curves for linear, ease (bisection-solved), steps(4, jump-start), steps(2, jump-both), linear() with a placed point and a 100ms delay; allow-discrete holds display and content-visibility shown for the whole 200ms where normal flips at once; an entrance starts from @starting-style; replace/add/accumulate of keyframe scale(3) over scale(2) give 3, 6 and 4; a mid-way checkpoint replays the frame exactly. Transitions of width only; other animated types are covered by the og-ui unit tests, not this proof.")
+proof("transforms2d transform-box", "css_interact", "transforms_place_and_hit_by_the_specs_matrices",
+      "Probe bounds match spec-derived matrices for rotate() about the default centre and a written corner origin, matrix(a..f), skewX(), and transform-box content-box versus border-box; the cursor follows the rotated box, not the laid-out one. fill-box/stroke-box/view-box (SVG boxes) are not asserted.")
+proof("transforms3d", "css_interact", "transforms_place_and_hit_by_the_specs_matrices",
+      "perspective with perspective-origin, translateZ() and rotateY() project bounds as d/(d−z) about the origin, and the pointer hits the projected quad (inverse of the homography), not the laid-out box. backface-visibility and preserve-3d sorting are not asserted.")
+
 MISSING = {
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
