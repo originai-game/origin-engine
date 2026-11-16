@@ -438,14 +438,12 @@ engine differs or limits as follows:
   `::placeholder` takes `color`; `::selection` takes `background-color`,
   `color`, `text-decoration` and `text-shadow`, its glyphs redrawn clipped
   to the selected runs (without its own `text-shadow`, selected text keeps
-  the text's drop). `::target-text` takes the same four and marks what a
-  followed link's text fragment matched (below); its default background
-  is the `Mark` system colour. `::highlight(<name>)` takes the same four
+  the text's drop). `::highlight(<name>)` takes the same four
   and styles the ranges the game registers under that name with
   `og.ui.setHighlight` (CSS Custom Highlight API); a highlight with no rule
-  paints nothing. The overlays stack under `::target-text`'s by priority;
-  of equal priorities, the highlight registered later is above. In all
-  three, each property comes from the nearest of the text's element and
+  paints nothing. The overlays stack under the selection's by priority;
+  of equal priorities, the highlight registered later is above. In
+  both, each property comes from the nearest of the text's element and
   its ancestors that declares it, `background-color` too (highlight
   inheritance), so `:root::selection { … }` styles every element. `::file-selector-button` is a file input's button, a box of its own beside the names chosen: its rules style it as they style a `<button>`, and the input takes the press and the focus. The CSS 2
   single-colon spellings work.
@@ -1475,10 +1473,8 @@ and attribute operator with `i`/`s` flags (HTML's case-insensitive
 attributes compare so unless `s`), `:not()`, `:is()`, `:where()`, `:has()`
 and the structural, form, `:open`, `:modal`, `:popover-open`, `:target`
 (the element the last `#fragment` link named, scrolled to the start of
-its scrollers as HTML's "scroll to the fragment" does; with a text
-fragment, `#id:~:text=[prefix-,]start[,end][,-suffix]` per URL Fragment
-Text Directives, the nearest element holding the first passage it
-matched, its line centred, else the id's), `:lang()` (RFC 4647),
+its scrollers as HTML's "scroll to the fragment" does; text directives
+are not read), `:lang()` (RFC 4647),
 `:dir()`, `:heading` and `:heading(1, 2)` (an `<h1>` to `<h6>`, by level),
 `:active-view-transition` and `:active-view-transition-type()` (a
 screen's root while its layer's view transition runs, by the types its

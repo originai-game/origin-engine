@@ -962,10 +962,7 @@ impl Ui {
             Content::None => {}
         }
         // The highlight overlays, bottom first (CSS Pseudo-Elements 4 §3.6).
-        let under = self.highlight_commands(i, text_from, cmds);
-        if !n.marks.target_text.is_empty() {
-            self.target_text_commands(i, under, cmds);
-        }
+        self.highlight_commands(i, text_from, cmds);
         self.shape_commands(n, cmds);
     }
 }

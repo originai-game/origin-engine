@@ -375,18 +375,9 @@ screen can wait for it.
   text-shadow }` style text.
 - A link `<a href="#rules">` makes `#rules` `:target` and scrolls it to
   the start of its scroller (its `scroll-margin` above it, inside the
-  scroller's `scroll-padding`). Add a text
-  fragment to point at a passage instead: `href="#:~:text=the%20gate"`,
-  or `#:~:text=Gate-,is,-shut` (a prefix and a suffix pick one of several
-  "is"), or `#:~:text=chapter,end` (from "chapter" to the first "end"
-  after it, across paragraphs). The match ignores case, accents and runs
-  of spaces, and each term starts and ends on a word boundary. Every
-  `text=` match is marked, and the first scrolls to the middle of its
-  scroller. The element holding it becomes `:target`. Style the marks
-  with `::target-text { background-color; color; text-decoration;
-  text-shadow }` (by default the `Mark` colour behind the text). When
-  nothing matches, the id before `:~:` is `:target` and is scrolled to. Percent-encode `-`,
-  `,` and `&` in a term.
+  scroller's `scroll-padding`). To point at a passage, put an id on its
+  element and mark the words with `og.ui.setHighlight` and a
+  `::highlight(<name>)` rule.
 - Use `<meta name="screen" content="pause" data-layer="menu"
   data-focus="Menu/Resume" data-pause="true">` for a screen.
   Components use `name="component"`. Props use `name="prop:volume"`,

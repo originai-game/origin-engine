@@ -46601,7 +46601,7 @@
           "type": "integer",
           "minimum": -2147483648,
           "maximum": 2147483647,
-          "description": "Where its overlay stacks: higher priorities paint above, and of equal ones the highlight registered later is above. Every custom highlight paints under ::target-text and the selection.",
+          "description": "Where its overlay stacks: higher priorities paint above, and of equal ones the highlight registered later is above. Every custom highlight paints under the selection.",
           "default": 0
         }
       },

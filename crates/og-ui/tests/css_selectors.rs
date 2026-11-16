@@ -267,30 +267,22 @@ button, input, a { width: 80px; height: 30px; }
     );
 }
 
-/// A link's text fragment (`#:~:text=[prefix-,]start[,end][,-suffix]`)
-/// finds its passage in the laid-out text, marks it with `::target-text`'s
-/// background and ink, scrolls it to the middle of its scroll container
-/// and makes the element holding it `:target`; with no match, the id
-/// before `:~:` is `:target` and nothing is marked. A plain `#id` link
-/// (and one whose text matches nothing) scrolls its element's
-/// scroll-margin box to the start of the scroller's view, inside its
-/// scroll-padding, as HTML's "scroll to the fragment" does.
+/// A `#id` link scrolls its element's scroll-margin box to the start of
+/// the scroller's view, inside its scroll-padding, as HTML's "scroll to the
+/// fragment" does, and makes it `:target`. Text directives are not read:
+/// `#Near:~:text=gate` names no element.
 ///
-/// Ways it could fail: the first "is" marked though its context does not
-/// fit (a prefix or suffix ignored, or case read), a range stopping at
-/// its first element, the marks or the red ink covering the whole line,
-/// the passage left out of view, `:target` staying on the id when the
-/// text matched or the marks staying after a link that matches nothing,
-/// an `#id` left out of view, centred, or placed without its
-/// scroll-margin and the scroller's scroll-padding.
+/// Ways it could fail: an `#id` left out of view, centred, or placed
+/// without its scroll-margin and the scroller's scroll-padding; `:target`
+/// left on the last element; the old text-fragment syntax still finding
+/// Near.
 #[test]
-fn a_text_fragment_marks_scrolls_to_and_targets_its_passage() {
+fn a_fragment_link_scrolls_its_element_into_view() {
     let doc = r##"<meta name="component" content="tt">
 <column id="Root">
-  <a href="#:~:text=Gate-,IS,-shut" id="Go">go</a>
-  <a href="#:~:text=gate,open" id="Range">range</a>
-  <a href="#Near:~:text=nowhere" id="Miss">miss</a>
   <a href="#Far" id="Plain">plain</a>
+  <a href="#Near" id="Back">back</a>
+  <a href="#Near:~:text=gate" id="Text">text</a>
   <div id="Box">
     <p id="Near">this is the gate</p>
     <div class="pad"></div>
@@ -305,35 +297,8 @@ a { width: 80px; height: 30px; }
 .pad { height: 300px; }
 p { width: max-content; margin: 0; }
 p:target { margin-left: 7px; }
-#Box:target { margin-left: 3px; }
-::target-text { background-color: #00ff00; color: #ff0000; }
 </style>"##;
     let mut d = Doc::with_font(doc, &[], test_font());
-    let near = |a: [f32; 4], b: Srgba| {
-        let b = b.linear();
-        a.iter().zip(b).all(|(x, y)| (x - y).abs() < 0.02)
-    };
-    // The marks drawn: green bands, and the clips of red and other ink.
-    let drawn = |d: &Doc| {
-        let (mut bands, mut red, mut other) = (vec![], vec![], vec![]);
-        for item in &d.ui.frame().items {
-            let cmd = match &item.cmd {
-                DrawCmd::StyledText { text, .. } => text.as_ref(),
-                c => c,
-            };
-            match cmd {
-                DrawCmd::Quad { rect, color, .. } if near(*color, Srgba::rgb(0, 255, 0)) => {
-                    bands.push(*rect)
-                }
-                DrawCmd::Text { color, clip, .. } if near(*color, Srgba::rgb(255, 0, 0)) => {
-                    red.push(*clip)
-                }
-                DrawCmd::Text { clip, bounds, .. } => other.push((*clip, *bounds)),
-                _ => {}
-            }
-        }
-        (bands, red, other)
-    };
     let follow = |d: &mut Doc, id: &str| {
         let a = d.get(id);
         d.click_at(Vec2::new(a.x + 3.0, a.y + a.height / 2.0));
@@ -342,165 +307,23 @@ p:target { margin-left: 7px; }
         }
     };
     let base = d.get("Near").x;
-    assert!(drawn(&d).0.is_empty(), "nothing marked yet");
 
-    // "is" after "Gate" and before "shut": the second "is" of Far, not
-    // Near's or Far's first.
-    follow(&mut d, "Go");
-    let (far, boxed) = (d.get("Far"), d.get("Box"));
-    // (The probe lists what is on screen: Near has scrolled away.)
-    assert_eq!(far.x, base + 7.0, "Far is :target");
-    let (bands, red, other) = drawn(&d);
-    assert_eq!(bands.len(), 1, "{bands:?}");
-    let band = bands[0];
-    assert!(
-        band.x > far.x + far.width * 0.7 && band.right() < far.x + far.width * 0.9,
-        "the second \"is\": {band:?} in {far:?}"
-    );
-    assert!((band.y - far.y).abs() < 1.0, "{band:?} {far:?}");
-    // Its glyphs in red, cut to the band; the rest of the line in its own ink.
-    assert!(!red.is_empty(), "no target-text ink");
-    for c in &red {
-        assert!(
-            c.x >= band.x - 0.5 && c.right() <= band.right() + 0.5,
-            "{c:?} {band:?}"
-        );
-    }
-    assert!(
-        other
-            .iter()
-            .any(|(c, b)| (b.y - far.y).abs() < 1.0 && c.right() <= band.x + 0.5)
-            && other
-                .iter()
-                .any(|(c, b)| (b.y - far.y).abs() < 1.0 && c.x >= band.right() - 0.5),
-        "Far's unmarked text on both sides"
-    );
-    // Scrolled so its line stands in the middle of the box.
-    let (mid, view) = (
-        far.y + far.height / 2.0,
-        boxed.y + 6.0 + (boxed.height - 6.0) / 2.0,
-    );
-    assert!((mid - view).abs() < 2.0, "{mid} vs {view}");
-
-    // "gate" to the first "open" after it: Near's last word on to Far's
-    // "the gate is open", their box the element holding it. Scrolled to
-    // Near's line, Far is below the view.
-    follow(&mut d, "Range");
-    let n = d.get("Near");
-    assert_eq!(
-        (n.x, d.get("Box").x),
-        (base + 3.0, base + 3.0),
-        "Box is :target, not either paragraph"
-    );
-    let (bands, ..) = drawn(&d);
-    assert_eq!(bands.len(), 1, "Far is below the view: {bands:?}");
-    let a = bands[0];
-    assert!(
-        (a.y - n.y).abs() < 1.0
-            && a.x > n.x + n.width * 0.6
-            && (a.right() - (n.x + n.width)).abs() < 1.0,
-        "Near's \"gate\": {a:?} in {n:?}"
-    );
-    // Scrolled down to Far: its first four words marked.
-    let b = d.get("Box");
-    d.step(InputFrame {
-        pointer: Vec2::new(b.x + 50.0, b.y + 50.0),
-        pointer_inside: true,
-        wheel: Vec2::new(0.0, 280.0),
-        ..InputFrame::default()
-    });
-    d.step(InputFrame::default());
-    let far = d.get("Far");
-    let (bands, ..) = drawn(&d);
-    let b = *bands.last().expect("Far's band");
-    assert!(
-        (b.y - far.y).abs() < 1.0
-            && (b.x - far.x).abs() < 1.0
-            && b.width > far.width * 0.3
-            && b.width < far.width * 0.5,
-        "Far's \"the gate is open\": {b:?} in {far:?}"
-    );
-
-    // A plain #id: Far's scroll-margin box at the start of the view inside
-    // its scroll-padding (10 + 6 px above its top), not centred.
+    // Far's scroll-margin box at the start of the view inside its
+    // scroll-padding (10 + 6 px above its top), not centred.
     follow(&mut d, "Plain");
     let (far, boxed) = (d.get("Far"), d.get("Box"));
     assert_eq!(far.x, base + 7.0, "Far is :target");
     assert!((far.y - boxed.y - 16.0).abs() < 0.5, "{far:?} in {boxed:?}");
-    assert!(drawn(&d).0.is_empty(), "nothing marked");
 
-    // No match: Near, the id, is :target and scrolled to (the scroller's
-    // first box, at offset 0), and the marks are gone.
-    follow(&mut d, "Miss");
-    assert!((d.get("Near").y - d.get("Box").y).abs() < 0.5);
-    assert_eq!(d.get("Near").x, base + 7.0);
-    assert!(drawn(&d).0.is_empty(), "marks cleared");
-}
+    // Back to Near, the scroller's first box, at offset 0.
+    follow(&mut d, "Back");
+    let near = d.get("Near");
+    assert!((near.y - d.get("Box").y).abs() < 0.5, "{near:?}");
+    assert_eq!(near.x, base + 7.0, "Near is :target");
 
-/// `::target-text` follows highlight inheritance (CSS Pseudo-Elements 4
-/// §3.5): the passage in #In, inside #Box, takes its green background
-/// from #Box and its red ink from :root. The passage in #Out takes the
-/// red ink from :root and keeps the default background, since #Box does
-/// not reach it.
-///
-/// Ways it could fail: only the text element's own rule read (default
-/// background, own ink); #Box's background reaching #Out; the ink not
-/// inherited because a nearer ancestor set only the background.
-#[test]
-fn target_text_styles_inherit_from_ancestors_property_by_property() {
-    let doc = r##"<meta name="component" content="tt">
-<column id="Root">
-  <a href="#:~:text=inside&text=outside" id="Go">go</a>
-  <div id="Box"><p id="In">we are inside now</p></div>
-  <p id="Out">we are outside now</p>
-</column>
-<style>
-a { width: 80px; height: 30px; }
-p { width: max-content; margin: 0; }
-:root::target-text { color: #ff0000; }
-#Box::target-text { background-color: #00ff00; }
-</style>"##;
-    let mut d = Doc::with_font(doc, &[], test_font());
-    let near = |a: [f32; 4], b: Srgba| {
-        let b = b.linear();
-        a.iter().zip(b).all(|(x, y)| (x - y).abs() < 0.02)
-    };
-    let go = d.get("Go");
-    d.click_at(Vec2::new(go.x + 3.0, go.y + go.height / 2.0));
-    for _ in 0..3 {
-        d.step(InputFrame::default());
-    }
-    let (inner, outer) = (d.get("In"), d.get("Out"));
-    let row = |r: &og_ui::Rect, e: &og_ui::UiElement| (r.y - e.y).abs() < 1.0;
-    let (mut green, mut red) = (vec![], vec![]);
-    for item in &d.ui.frame().items {
-        let cmd = match &item.cmd {
-            DrawCmd::StyledText { text, .. } => text.as_ref(),
-            c => c,
-        };
-        match cmd {
-            DrawCmd::Quad { rect, color, .. } if near(*color, Srgba::rgb(0, 255, 0)) => {
-                green.push(*rect)
-            }
-            DrawCmd::Text { color, bounds, .. } if near(*color, Srgba::rgb(255, 0, 0)) => {
-                red.push(*bounds)
-            }
-            _ => {}
-        }
-    }
-    assert_eq!(green.len(), 1, "#Box's background on #In only: {green:?}");
-    assert!(row(&green[0], &inner), "{green:?} {inner:?}");
-    assert!(
-        green[0].x > inner.x + inner.width * 0.3 && green[0].right() < inner.x + inner.width * 0.8,
-        "\"inside\": {green:?} {inner:?}"
-    );
-    for e in [&inner, &outer] {
-        assert!(
-            red.iter().any(|b| row(b, e)),
-            ":root's ink on {}: {red:?}",
-            e.id
-        );
-    }
+    // A text directive is part of the id: nothing is :target.
+    follow(&mut d, "Text");
+    assert_eq!(d.get("Near").x, base, "Near is not :target");
 }
 
 /// Custom highlights (CSS Custom Highlight API 1) paint as the spec's

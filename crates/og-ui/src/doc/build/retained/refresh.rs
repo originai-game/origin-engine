@@ -1,5 +1,4 @@
 use super::*;
-use crate::doc::build::state::FragmentTarget;
 use crate::doc::schema::Kind;
 
 impl RetainedHost {
@@ -497,15 +496,12 @@ impl RetainedHost {
             let old = std::mem::take(&mut self.target.1);
             let id = ui.docs.state().target.clone();
             let new: Vec<MountedNode> = match &id {
-                Some(FragmentTarget::Id(id)) => self
+                Some(id) => self
                     .elements
                     .iter()
                     .filter(|(_, e)| e.id == *id || e.document.nodes[e.index].id == *id)
                     .map(|(node, _)| node.clone())
                     .collect(),
-                Some(FragmentTarget::Element(key)) => {
-                    self.by_key.get(key).cloned().into_iter().collect()
-                }
                 None => Vec::new(),
             };
             for (nodes, enabled) in [(&old, false), (&new, true)] {

@@ -7,9 +7,8 @@
 //! Pseudo-Elements 4 §3.5). A highlight with no style paints nothing:
 //! custom highlights have no default (§4.2.2).
 //!
-//! Paint stacks the overlays under `::target-text`'s and the selection's,
-//! in ascending priority, a tie by registration order, the later one
-//! above (§4.2.5). Within one highlight, overlapping ranges paint once,
+//! Paint stacks the overlays under the selection's, in ascending
+//! priority, a tie by registration order, the later one above (§4.2.5). Within one highlight, overlapping ranges paint once,
 //! as their union, and a collapsed range paints nothing (§4.2.4).
 
 use super::select::SelectEnd;
@@ -135,16 +134,6 @@ impl Ui {
     /// ([`Self::inherited_highlight`]).
     pub(crate) fn selection_paint(&self, i: usize) -> Option<Selection> {
         let styles = &self.docs.state.selection;
-        if styles.is_empty() {
-            return None;
-        }
-        self.inherited_highlight(i, |key| styles.get(&key).map(|s| &**s))
-    }
-
-    /// `::target-text`'s style for node `i`'s text
-    /// ([`Self::inherited_highlight`]).
-    pub(crate) fn target_text_paint(&self, i: usize) -> Option<Selection> {
-        let styles = &self.docs.state.target_text;
         if styles.is_empty() {
             return None;
         }

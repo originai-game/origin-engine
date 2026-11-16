@@ -1657,13 +1657,10 @@ impl Ui {
                 Some(k) => n.links.get(k).cloned().unwrap_or_default(),
                 None => r.str("href").unwrap_or_default().to_string(),
             };
-            if let Some(fragment) = href.strip_prefix('#') {
-                // `#id:~:text=…`: the id is `:target` until the layout
-                // finds the text, whose element then is.
-                let (id, text) = crate::ui::target_text::parse_fragment(fragment);
+            if let Some(id) = href.strip_prefix('#') {
                 let state = self.docs.state_mut();
-                state.target = (!id.is_empty()).then_some(super::state::FragmentTarget::Id(id));
-                state.text_directives = Some(text);
+                state.target = (!id.is_empty()).then(|| id.to_string());
+                state.scroll_to_target = true;
             }
             b.event(path, "link", &href, Value::Null);
         }

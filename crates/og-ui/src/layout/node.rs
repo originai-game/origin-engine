@@ -1015,7 +1015,7 @@ impl Default for StyleNode {
 }
 
 /// What interaction marks on a node for paint: its focus rings, the
-/// characters the player selected and those a text fragment matched.
+/// characters the player selected and its custom highlights.
 #[derive(Clone, Debug, Default)]
 pub struct NodeMarks {
     /// Draw the focus ring (focused by keyboard or gamepad).
@@ -1025,9 +1025,6 @@ pub struct NodeMarks {
     /// The characters of its text the player selected (`user-select`),
     /// `[start, end)` over its lines joined by one break each.
     pub selected: Option<(u32, u32)>,
-    /// The characters a followed text fragment matched (`::target-text`),
-    /// each `[start, end)` as [`Self::selected`] counts them.
-    pub target_text: Vec<(u32, u32)>,
     /// The custom highlights over its characters, bottom first
     /// ([`crate::ui::highlight`]).
     pub highlights: crate::ui::highlight::HighlightMarks,

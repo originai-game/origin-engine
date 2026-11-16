@@ -429,8 +429,8 @@ impl Ui {
         }
     }
 
-    /// Records a built element's `::selection`, `::target-text` and
-    /// `::highlight()` styles for the draw.
+    /// Records a built element's `::selection` and `::highlight()` styles
+    /// for the draw.
     pub(crate) fn note_selection(&mut self, key: u64, r: &Resolved) {
         let g = r.generated.as_ref();
         let highlights: BTreeMap<String, crate::doc::generated::Selection> = g
@@ -447,34 +447,16 @@ impl Ui {
                 map.insert(key, highlights);
             }
         }
-        for target in [false, true] {
-            let body = g.and_then(|g| {
-                if target {
-                    g.target_text.as_ref()
-                } else {
-                    g.selection.as_ref()
-                }
-            });
-            let style = body.and_then(|body| self.selection_style(body));
-            let state = self.docs.state();
-            let map = if target {
-                &state.target_text
-            } else {
-                &state.selection
-            };
-            let same = match &style {
-                Some(s) => map.get(&key).is_some_and(|old| **old == *s),
-                None => !map.contains_key(&key),
-            };
-            if same {
-                continue;
-            }
-            let state = self.docs.state_mut();
-            let map = if target {
-                &mut state.target_text
-            } else {
-                &mut state.selection
-            };
+        let style = g
+            .and_then(|g| g.selection.as_ref())
+            .and_then(|body| self.selection_style(body));
+        let map = &self.docs.state().selection;
+        let same = match &style {
+            Some(s) => map.get(&key).is_some_and(|old| **old == *s),
+            None => !map.contains_key(&key),
+        };
+        if !same {
+            let map = &mut self.docs.state_mut().selection;
             match style {
                 Some(s) => map.insert(key, Arc::new(s)),
                 None => map.remove(&key),
