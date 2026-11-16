@@ -29,7 +29,9 @@ pub fn selector_facts(
                 classes.insert(class.to_owned());
             }
         }
-        if name == "variant" && node.selector_tag.as_deref() == Some("button") {
+        if name == "variant"
+            && crate::doc::selectors::variant_is_class(node.selector_tag.as_deref())
+        {
             has_classes = true;
             if let Some(value) = value.as_str() {
                 classes.insert(value.to_owned());

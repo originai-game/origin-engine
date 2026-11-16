@@ -245,7 +245,7 @@ impl<'a, T: Tree> Element for DocElement<'a, T> {
     }
 
     fn has_local_name(&self, name: &str) -> bool {
-        !self.foreign() && (self.facts.tag == name || self.facts.tag.eq_ignore_ascii_case(name))
+        !self.foreign() && super::selectors::type_matches(self.facts.tag, name)
     }
 
     fn has_namespace(&self, _: &str) -> bool {
@@ -302,7 +302,7 @@ impl<'a, T: Tree> Element for DocElement<'a, T> {
                 .facts
                 .attributes
                 .get(&format!("state:{}", name.0))
-                .is_some_and(|v| crate::bind::truthy(v) && v.as_str() != Some("false")),
+                .is_some_and(super::selectors::custom_state_on),
             PseudoClass::Defined => true,
             PseudoClass::HasSlotted => {
                 let mut child = self.tree.first_child(self.id);

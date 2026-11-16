@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Selectors",
+      "summary": "A selector reads an element's own facts the same way whether it is lowered when the document is parsed or matched on the mounted tree. An HTML type selector matches caselessly everywhere (`DIV#x` selects `<div id=\"x\">`; before, it did only in a structural selector), and `:state(name)` is on for `state:name` with any true value but the word \"false\" (`state:on=\"\"` is off, as a bound empty string already was; before, a literal empty value turned it on)."
+    }
+  ]
+}

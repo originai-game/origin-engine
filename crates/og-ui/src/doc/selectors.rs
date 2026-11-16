@@ -1073,7 +1073,7 @@ fn condition(
         };
         for c in &compounds[part] {
             let test = match c {
-                Component::LocalName(name) => Expr::Lit((name.name.0 == *tag).into()),
+                Component::LocalName(name) => Expr::Lit(type_matches(tag, &name.name.0).into()),
                 Component::ExplicitUniversalType
                 | Component::ExplicitAnyNamespace
                 | Component::ExplicitNoNamespace
@@ -1110,10 +1110,9 @@ fn condition(
                     if let Some(attr) = attrs.iter().find(|a| a.name == format!("class:{name}")) {
                         matches = combine(Op::Or, matches, expression(attr)?);
                     }
-                    // A button's variant is one of its classes, as on
-                    // its parts (`button.primary::part(base)`); only a
-                    // variant's word can name one.
-                    if tag == "button"
+                    // Only a variant's word can name one: a bound variant
+                    // is one of them, so another class never matches it.
+                    if variant_is_class(Some(tag))
                         && button_variant(name)
                         && let Some(attr) = attrs.iter().find(|a| a.name == "variant")
                     {
@@ -1181,8 +1180,19 @@ fn condition(
                 }
                 Component::NonTSPseudoClass(PseudoClass::Custom(name)) => {
                     match attrs.iter().find(|a| a.name == format!("state:{}", name.0)) {
-                        Some(attr) if attr.bound => expression(attr)?,
-                        Some(attr) => Expr::Lit((attr.value != "false").into()),
+                        Some(attr) if attr.bound => {
+                            let value = expression(attr)?;
+                            combine(
+                                Op::And,
+                                value.clone(),
+                                Expr::Bin(
+                                    Op::Ne,
+                                    Box::new(value),
+                                    Box::new(Expr::Lit("false".into())),
+                                ),
+                            )
+                        }
+                        Some(attr) => Expr::Lit(custom_state_on(&attr.value.clone().into()).into()),
                         None => Expr::Lit(false.into()),
                     }
                 }
@@ -1367,12 +1377,35 @@ fn inherited<'a>(
     None
 }
 
+// What a simple selector asks of an element's own facts, read the same way
+// where a selector is lowered at cook ([`Selector::condition`]) and where it
+// is matched on the instantiated tree ([`super::matching`]): one predicate
+// each, so the two cannot disagree.
+
+/// Whether an element of `tag` is of type `name`: an HTML element's type
+/// matches caselessly (Selectors 4 §5.1, HTML §4.16.2).
+pub(crate) fn type_matches(tag: &str, name: &str) -> bool {
+    tag == name || tag.eq_ignore_ascii_case(name)
+}
+
+/// Whether a `state:name` value turns `:state(name)` on: a true value
+/// other than the word "false".
+pub(crate) fn custom_state_on(value: &serde_json::Value) -> bool {
+    crate::bind::truthy(value) && value.as_str() != Some("false")
+}
+
 /// Whether `name` is one of a button's variants (`variant="primary"`).
 fn button_variant(name: &str) -> bool {
     matches!(
         super::schema::prop("variant").map(|(_, p)| &p.ty),
         Some(super::schema::Ty::Word(words)) if words.contains(&name)
     )
+}
+
+/// Whether an element of `tag` counts its `variant` among its classes, as
+/// a button does (`button.primary`, `button.primary::part(base)`).
+pub(crate) fn variant_is_class(tag: Option<&str>) -> bool {
+    tag == Some("button")
 }
 
 pub(crate) fn combine(op: Op, a: Expr, b: Expr) -> Expr {

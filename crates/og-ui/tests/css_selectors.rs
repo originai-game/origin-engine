@@ -1236,3 +1236,45 @@ fn slotted_refusals_name_their_fix() {
     }
     assert_eq!(said(".b::slotted(p:hover) { width: 1px; }"), "");
 }
+
+/// A selector lowered at cook and one matched on the instantiated tree
+/// read an element's facts alike: each probe pair below is one selector,
+/// the second made structural with `:nth-child(n)` so it is matched on the
+/// mounted tree, and both must size the same. HTML's type selectors match
+/// caselessly; `:state()` is on for a true value but the word "false";
+/// a button's variant is among its classes.
+///
+/// Ways it could fail: `DIV` missing a `<div>` at cook only, `state:on=""`
+/// on at cook but off on the tree, or a button's variant read as a class
+/// on one side only.
+#[test]
+fn cook_and_tree_matching_read_an_elements_facts_alike() {
+    let text = r#"<meta name="component" content="t">
+<div>
+  <div id="Upper"></div><div id="UpperT"></div>
+  <div id="Empty" state:on=""></div><div id="EmptyT" state:on=""></div>
+  <div id="False" state:on="false"></div><div id="FalseT" state:on="false"></div>
+  <div id="True" state:on="yes"></div><div id="TrueT" state:on="yes"></div>
+  <button id="Own" variant="danger"></button><button id="OwnT" variant="danger"></button>
+</div>
+<style>
+div > * { width: 10px; height: 4px; }
+DIV#Upper, DIV#UpperT:nth-child(n) { width: 50px; }
+#Empty:state(on), #EmptyT:state(on):nth-child(n) { width: 50px; }
+#False:state(on), #FalseT:state(on):nth-child(n) { width: 50px; }
+#True:state(on), #TrueT:state(on):nth-child(n) { width: 50px; }
+#Own.danger, #OwnT.danger:nth-child(n) { width: 50px; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        for (id, want) in [
+            ("Upper", 50.0),
+            ("Empty", 10.0),
+            ("False", 10.0),
+            ("True", 50.0),
+            ("Own", 50.0),
+        ] {
+            let (cook, tree) = (d.get(id).width, d.get(&format!("{id}T")).width);
+            assert_eq!((cook, tree), (want, want), "{id}: cook {cook}, tree {tree}");
+        }
+    });
+}
