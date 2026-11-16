@@ -31,7 +31,15 @@ impl Ui {
     /// (`Details.content`) that is hidden while closed. Build the content,
     /// then call [`Ui::close_details`]. Role button with `expanded` on the
     /// summary, group on the whole. Probe: `<id>/Summary`, `<id>/Content`.
-    pub(crate) fn open_details(&mut self, id: impl Into<Id>, desc: &DetailsDesc) -> DetailsResult {
+    /// `own` builds the summary row's content in place of the marker
+    /// and the summary text (a document's `<summary>`, a list item whose
+    /// marker its style draws).
+    pub(crate) fn open_details(
+        &mut self,
+        id: impl Into<Id>,
+        desc: &DetailsDesc,
+        mut own: Option<&mut dyn FnMut(&mut Ui)>,
+    ) -> DetailsResult {
         let t = self.env.theme;
         let mut open = desc.open;
         self.open(
@@ -48,9 +56,6 @@ impl Ui {
         } else {
             desc.summary.as_str()
         };
-        let ink = self.role("ink");
-        let icon = self.by_text(self.env.theme.controls.details_icon);
-        let rtl = self.rtl();
         let built = self.ctl(
             "Summary",
             Ctl {
@@ -62,7 +67,7 @@ impl Ui {
                 padding: Insets::xy(t.space.sm, t.space.xs),
                 gap: t.space.sm,
                 align: Align::Start,
-                wash: Some(Some(ink)),
+                wash: Some(Some(self.role("ink"))),
                 wash_by: 0.06,
                 lift: 0.0,
                 press: 0.99,
@@ -75,16 +80,11 @@ impl Ui {
                 ..self.ctl_base()
             },
             |ui, _| {
-                // Closed it points to the inline end (right, left in RTL),
-                // open it points down: HTML's disclosure triangle.
-                ui.chevron(
-                    "Marker",
-                    icon,
-                    ink,
-                    open,
-                    2.2,
-                    (if rtl { 1.0 } else { -1.0 }, 0.0),
-                );
+                if let Some(own) = &mut own {
+                    own(ui);
+                    return;
+                }
+                ui.disclosure_marker("Marker", None, open);
                 ui.text(
                     "Text",
                     summary,
@@ -119,6 +119,23 @@ impl Ui {
         let content = self.tree.parent();
         self.tree.nodes[content].hidden = !open;
         DetailsResult { open, toggled }
+    }
+
+    /// HTML's disclosure triangle as the theme draws it, in `ink` (the
+    /// role's by default): a chevron that points to the inline end (right,
+    /// left in RTL) while closed and down while open.
+    pub(crate) fn disclosure_marker(&mut self, id: impl Into<Id>, ink: Option<Srgba>, open: bool) {
+        let ink = ink.map_or_else(|| self.role("ink"), C::of);
+        let icon = self.by_text(self.env.theme.controls.details_icon);
+        let rtl = self.rtl();
+        self.chevron(
+            id,
+            icon,
+            ink,
+            open,
+            2.2,
+            (if rtl { 1.0 } else { -1.0 }, 0.0),
+        );
     }
 
     /// Closes a disclosure opened with [`Ui::open_details`].

@@ -143,7 +143,9 @@ impl RetainedHost {
         let resolved = e.resolved.as_ref().expect("resolved mount");
         let mut b = e.build(env, resolved.values.cascade.computed.clone());
         let mut result = Ok(());
-        let mut children_built = false;
+        // The ranges of its children it built: a closed disclosure builds
+        // its summary alone.
+        let mut children_built: Vec<std::ops::Range<usize>> = Vec::new();
         let mut images = Vec::new();
         let node = &e.document.nodes[e.index];
         let list_item = resolved.values.str("display") == Some("listItem")
@@ -154,7 +156,7 @@ impl RetainedHost {
             let built = match inner {
                 Inner::Children(virtual_props) => {
                     *ui.tree.scope_mut() = None;
-                    children_built = true;
+                    children_built.push(0..e.children.len());
                     if let Some(props) = virtual_props {
                         self.emit_virtual(ui, &e, b, *props, env, events, writes)
                     } else {
@@ -162,6 +164,15 @@ impl RetainedHost {
                             .iter()
                             .try_for_each(|child| self.emit(ui, child, env, events, writes))
                     }
+                }
+                Inner::Range(range) => {
+                    *ui.tree.scope_mut() = None;
+                    let len = e.children.len();
+                    let range = range.start.min(len)..range.end.min(len);
+                    children_built.push(range.clone());
+                    e.children[range]
+                        .iter()
+                        .try_for_each(|child| self.emit(ui, child, env, events, writes))
                 }
                 Inner::Image(image) => {
                     self.emit_image(ui, identity, image, &mut images, env, events, writes)
@@ -195,10 +206,18 @@ impl RetainedHost {
                     .map(|(path, value)| (e.context.clone(), path, value)),
             );
         }
-        let slot = owned.slots.iter().copied().find(|&i| {
-            ui.tree.nodes()[i].key == identity.key
-                && (ui.tree.nodes()[i].parent == parent_slot || ui.tree.nodes()[i].parent == NONE)
-        });
+        // Its node: the one of its key, else (inside a control's own box,
+        // such as a disclosure's summary row or content, whose path the key
+        // does not take) the first it wrote under the open element.
+        let under = |i: usize| {
+            ui.tree.nodes()[i].parent == parent_slot || ui.tree.nodes()[i].parent == NONE
+        };
+        let slot = owned
+            .slots
+            .iter()
+            .copied()
+            .find(|&i| ui.tree.nodes()[i].key == identity.key && under(i))
+            .or_else(|| owned.slots.iter().copied().find(|&i| under(i)));
         let mut retired: Vec<usize> = e.owned.clone();
         let mut kept = owned.slots.clone();
         kept.sort_unstable();
@@ -274,12 +293,12 @@ impl RetainedHost {
             }
             self.elements.get_mut(identity).unwrap().images = images;
         }
-        if slot.is_none() || !children_built {
-            // Not shown (`visible` false), or showing no content (a closed
-            // dialog or disclosure): its descendants' nodes go too, and are
-            // built afresh when shown.
-            for child in e.children.clone() {
-                self.release(ui, &child);
+        // Not shown (`visible` false), or showing no content (a closed
+        // dialog or disclosure): its descendants' nodes go too, and are
+        // built afresh when shown.
+        for (k, child) in e.children.clone().iter().enumerate() {
+            if slot.is_none() || !children_built.iter().any(|r| r.contains(&k)) {
+                self.release(ui, child);
             }
         }
         result

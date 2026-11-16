@@ -123,9 +123,10 @@ impl Ui {
         }
     }
 
-    /// A text element's text with its `::before` and `::after` content and
-    /// the runs that style them and its `::first-letter`; `None` when it
-    /// generates nothing.
+    /// A text element's text with its inside `::marker` and its `::before`
+    /// and `::after` content, and the runs that style them and its
+    /// `::first-letter` and `::first-line`; `None` when it generates
+    /// nothing.
     pub(crate) fn generated_text(
         &mut self,
         b: &Build<'_>,
@@ -134,7 +135,16 @@ impl Ui {
         key: u64,
         text: &str,
     ) -> Option<(String, Vec<(crate::TextSpan, crate::TextSpanStyle)>)> {
-        let g = r.generated.clone()?;
+        // A text list item's inside marker is its first run.
+        let marker = (r.str("display") == Some("listItem")
+            && r.str("markerPosition") == Some("inside"))
+        .then(|| self.inside_text_marker(b, n, r))
+        .flatten();
+        let g = match &r.generated {
+            Some(g) => g.clone(),
+            None if marker.is_some() => Default::default(),
+            None => return None,
+        };
         let pre = g
             .before
             .as_ref()
@@ -143,12 +153,32 @@ impl Ui {
             .after
             .as_ref()
             .and_then(|w| Some((self.docs.pseudo_text(b, n, r, w)?, w)));
-        if pre.is_none() && post.is_none() && g.first_letter.is_none() && g.first_line.is_none() {
+        if marker.is_none()
+            && pre.is_none()
+            && post.is_none()
+            && g.first_letter.is_none()
+            && g.first_line.is_none()
+        {
             return None;
         }
         let mut spans = Vec::new();
         let mut full = String::new();
         let mut body_at = 0u32;
+        if let Some((text, style)) = marker {
+            let length = text.chars().count() as u32;
+            spans.push((
+                crate::TextSpan {
+                    name: "::marker".into(),
+                    position: 0,
+                    length,
+                    properties: Default::default(),
+                },
+                style,
+            ));
+            full = text;
+        }
+        let marked = full.chars().count();
+        let mut at = marked as u32;
         let parts = [
             pre.as_ref()
                 .map(|(s, w)| (s.as_str(), Some(w.style.as_str()), "::before")),
@@ -156,7 +186,6 @@ impl Ui {
             post.as_ref()
                 .map(|(s, w)| (s.as_str(), Some(w.style.as_str()), "::after")),
         ];
-        let mut at = 0u32;
         for (s, style, name) in parts.into_iter().flatten() {
             let length = s.chars().count() as u32;
             match style {
@@ -179,9 +208,12 @@ impl Ui {
             at += length;
         }
         // `::first-letter`: the first typographic letter unit, with the
-        // punctuation around it, of the text including `::before`.
+        // punctuation around it, of the text including `::before` (not the
+        // marker's).
+        let after_marker: String = full.chars().skip(marked).collect();
         if let Some(style) = &g.first_letter
-            && let Some((start, end)) = og_i18n::text::first_letter(&full)
+            && let Some((start, end)) = og_i18n::text::first_letter(&after_marker)
+            && let (start, end) = (start + marked, end + marked)
         {
             let style = self.pseudo_style(style, r);
             spans.push((

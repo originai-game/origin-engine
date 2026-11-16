@@ -341,7 +341,8 @@ li::marker { content: counter(list-item, thumbs); color: #ff0000; }"#,
 /// list-item` is a list item with a `::marker` in its `list-style-type`,
 /// and (§4.6) increments `list-item` by 1 unless its `counter-increment`
 /// names that counter: A 1, B 2, C with `list-item 5` 7, D 8. The
-/// disclosure styles draw ▸ (U+25B8) and ▾ (U+25BE). An `<li>` set to
+/// disclosure styles (CSS Counter Styles 3 §6.4's ▸ and ▾) draw the
+/// theme's closed and open disclosure chevrons, as `<details>` does. An `<li>` set to
 /// `display: block` is no list item, so it has no marker.
 ///
 /// Ways it could fail: a marker only for `<li>`, every item numbered 1
@@ -358,8 +359,73 @@ fn display_list_item_makes_any_box_a_list_item() {
 #Blocks > li { display: block; }",
     );
     assert_eq!(d.markers("L"), ["1.", "2.", "7.", "8."]);
-    assert_eq!(d.markers("Disc"), ["\u{25B8}", "\u{25BE}"]);
+    assert_eq!(d.markers("Disc"), ["disclosure-closed", "disclosure-open"]);
     assert!(d.markers("Blocks").is_empty(), "{:?}", d.markers("Blocks"));
+}
+
+/// CSS Display 3 §2.5: `display: list-item` makes any element a list
+/// item, a text-only `<p>` or `<span>` too: each gets a `::marker`
+/// counting `list-item` (1, 2, 3). An outside marker sits before the
+/// item's start edge on its first line (CSS Lists 3 §3.1); an inside one
+/// is the first inline box of its text, ending in the U+00A0 the decimal
+/// style's suffix gives (CSS Counter Styles 3 §6.1), in the `::marker`
+/// colour. HTML's rendering section (§15.3.12) makes `<summary>` a list
+/// item whose marker is `disclosure-closed`, or `disclosure-open` while
+/// its `<details>` is open; toggling the details flips it, and
+/// `list-style: none` removes it.
+///
+/// Ways it could fail: a text-only item left without a marker, the
+/// inside marker in the text's colour or without its suffix, the summary
+/// marker fixed at one state, or a summary drawn as plain text.
+#[test]
+fn text_list_items_and_summaries_draw_their_markers() {
+    let mut d = doc(
+        r#"<div id="L"><p class="i" id="P1">One</p><span class="i" id="S2">Two</span><p class="i" id="In">Three</p></div>
+<details id="Dc"><summary id="Sc">More</summary><p>hidden</p></details>
+<details id="Do" open><summary id="So">Open</summary><p id="Body">shown</p></details>
+<details id="Dn"><summary id="Sn">Plain</summary><p>x</p></details>"#,
+        ".i { display: list-item; } #L { padding-left: 40px; list-style-type: decimal; }
+#In { list-style-position: inside; } #In::marker { color: rgb(255, 0, 0); } #Sn { list-style: none; }",
+    );
+    d.step(InputFrame::default());
+    for (item, text) in [("P1", "1."), ("S2", "2.")] {
+        let (m, e) = (d.get(&format!("{item}::marker")), d.get(item));
+        assert_eq!(m.text, text, "{item}");
+        assert!(m.x + m.width <= e.x && m.y == e.y, "{item}: {m:?} {e:?}");
+    }
+    let inside = inked(&d, "In");
+    assert_eq!(inside[0].0, "3.\u{a0}");
+    assert!(near(inside[0].1, Srgba::rgb(255, 0, 0)), "{inside:?}");
+    assert_eq!(inside[1].0, "Three");
+    assert!(!near(inside[1].1, Srgba::rgb(255, 0, 0)), "{inside:?}");
+
+    let summary = |d: &Doc, s: &str| {
+        let marker = d.markers(s);
+        let label =
+            d.ui.probe_elements()
+                .into_iter()
+                .find(|e| e.path.contains(&format!("/{s}/")) && e.kind == "label")
+                .map(|e| e.text);
+        (marker, label)
+    };
+    assert_eq!(
+        summary(&d, "Sc"),
+        (vec!["disclosure-closed".into()], Some("More".into()))
+    );
+    assert_eq!(
+        summary(&d, "So"),
+        (vec!["disclosure-open".into()], Some("Open".into()))
+    );
+    assert_eq!(summary(&d, "Sn"), (vec![], Some("Plain".into())));
+    assert!(d.el("Body").is_some());
+
+    d.click("Sc");
+    d.step(InputFrame::default());
+    assert_eq!(summary(&d, "Sc").0, ["disclosure-open"]);
+    d.click("So");
+    d.step(InputFrame::default());
+    assert_eq!(summary(&d, "So").0, ["disclosure-closed"]);
+    assert!(d.el("Body").is_none(), "a closed details builds no content");
 }
 
 /// CSS Lists 3 §4.4.2: `reversed(c)` with no value starts at the sum of
