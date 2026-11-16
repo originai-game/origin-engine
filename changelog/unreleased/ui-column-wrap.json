@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI CSS column-height, column-wrap, columns",
+      "summary": "`column-height` makes every row of a multi-column container's columns that tall, and the columns past the count wrap into a new row below, `row-gap` apart (`normal`: 1em), each row with its own `column-rule`. `column-wrap: nowrap` keeps them beside instead; `auto` (the default) wraps when a `column-height` is set (CSS Multicol 2 §4.2, §4.4). A row keeps its height when its content is shorter. `columns` takes `/ <column-height>` and resets `column-wrap`."
+    }
+  ]
+}

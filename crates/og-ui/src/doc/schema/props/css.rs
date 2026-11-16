@@ -579,6 +579,20 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `column-fill`: `balance` (and `balance-all`) evens the columns' heights; `auto` fills them in turn to the container's definite height.",
     },
     PropSpec {
+        name: "columnHeight",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `column-height`: `auto` or the height of each row of columns; content past one row overflows into more columns, beside or below by `column-wrap`.",
+    },
+    PropSpec {
+        name: "columnWrap",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `column-wrap`: `wrap` puts the columns past the count in a new row below, `row-gap` apart; `nowrap` lays them beside; `auto` (the default) wraps when `column-height` is set.",
+    },
+    PropSpec {
         name: "columnRuleWidth",
         ty: Ty::Text,
         on: On::All,

@@ -46,12 +46,38 @@ pub(crate) fn lower(name: &str, value: &str) -> Option<Result<Vec<Lowered>, Stri
             v if px(v).is_some_and(|w| w > 0.0) => Ok(vec![("columnWidth", text(v))]),
             v => Err(format!("'{v}' is no column-width: auto or a px length")),
         },
-        // `columns: <column-width> || <column-count>`, either `auto`.
+        // CSS Multicol 2 §4.2: `auto` or the columns' height.
+        "column-height" => match v {
+            "auto" => Ok(vec![("columnHeight", text("auto"))]),
+            v if px(v).is_some() => Ok(vec![("columnHeight", text(v))]),
+            v => Err(format!("'{v}' is no column-height: auto or a px length")),
+        },
+        // CSS Multicol 2 §4.4.
+        "column-wrap" => match v {
+            "auto" | "nowrap" | "wrap" => Ok(vec![("columnWrap", text(v))]),
+            v => Err(format!("'{v}' is no column-wrap: auto, nowrap or wrap")),
+        },
+        // `columns: [<column-width> || <column-count>] [/ <column-height>]?`,
+        // either `auto`; it resets `column-wrap` (CSS Multicol 2 §4.5).
         "columns" => {
             let (mut width, mut cnt) = ("auto", "auto");
+            let (v, height) = match v.split_once('/') {
+                Some((a, h)) => match h.trim() {
+                    "auto" => (a.trim(), "auto"),
+                    h if px(h).is_some() => (a.trim(), h),
+                    h => {
+                        return Some(Err(format!(
+                            "'{h}' is no column height: columns: 12em / 20em"
+                        )));
+                    }
+                },
+                None => (v, "auto"),
+            };
             let words: Vec<&str> = v.split_whitespace().collect();
             if words.is_empty() || words.len() > 2 {
-                return Some(Err("columns: <column-width> || <column-count>".into()));
+                return Some(Err(
+                    "columns: <column-width> || <column-count> [/ <column-height>]".into(),
+                ));
             }
             for w in &words {
                 if count(w).is_some() {
@@ -67,6 +93,8 @@ pub(crate) fn lower(name: &str, value: &str) -> Option<Result<Vec<Lowered>, Stri
             Ok(vec![
                 ("columnWidth", text(width)),
                 ("columnCount", text(cnt)),
+                ("columnHeight", text(height)),
+                ("columnWrap", text("auto")),
             ])
         }
         "break-before" | "break-after" | "page-break-before" | "page-break-after" => {

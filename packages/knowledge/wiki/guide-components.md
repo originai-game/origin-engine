@@ -252,6 +252,8 @@ What every kind takes: its box, layout, paint, motion and input.
 | `clear:` | `<n>px \| <n>%` | CSS `clear` (`none`, `left`, `right`, `both`, `inline-start`, `inline-end`): it is placed below the earlier floats on those sides. |
 | `column-span:` | `<n>px \| <n>%` | CSS `column-span: none \| all`: in a multi-column container, `all` spans every column and starts a new set of columns below it. |
 | `column-fill:` | `<n>px \| <n>%` | CSS `column-fill`: `balance` (and `balance-all`) evens the columns' heights; `auto` fills them in turn to the container's definite height. |
+| `column-height:` | `<n>px \| <n>%` | CSS `column-height`: `auto` or the height of each row of columns; content past one row overflows into more columns, beside or below by `column-wrap`. |
+| `column-wrap:` | `<n>px \| <n>%` | CSS `column-wrap`: `wrap` puts the columns past the count in a new row below, `row-gap` apart; `nowrap` lays them beside; `auto` (the default) wraps when `column-height` is set. |
 | `column-rule-width:` | `<n>px \| <n>%` | CSS `column-rule-width`: a px length, `thin`, `medium` or `thick`. |
 | `column-rule-style:` | `<n>px \| <n>%` | CSS `column-rule-style`: a line style (`none`, `solid`, `dashed`, `dotted`, `double`…). |
 | `column-rule-color:` | `<n>px \| <n>%` | CSS `column-rule-color` (`currentcolor`: its text colour). |

@@ -91,7 +91,8 @@ impl Ui {
             .and_then(|v| v.parse::<u16>().ok())
             .unwrap_or(0);
         let width = r.str("columnWidth").and_then(px).unwrap_or(0.0);
-        let columns = (count > 0 || width > 0.0).then(|| {
+        let height = r.str("columnHeight").and_then(px).unwrap_or(0.0);
+        let columns = (count > 0 || width > 0.0 || height > 0.0).then(|| {
             let rule = r
                 .str("columnRuleStyle")
                 .and_then(crate::decor::LineStyle::from_css)
@@ -114,11 +115,18 @@ impl Ui {
                 width,
                 gap: el.gaps[0].or(r.num("gap")).unwrap_or(em),
                 fill_auto: r.str("columnFill") == Some("auto"),
+                height,
+                wrap: match r.str("columnWrap") {
+                    Some("wrap") => true,
+                    Some("nowrap") => false,
+                    _ => height > 0.0,
+                },
+                row_gap: el.gaps[1].or(r.num("gap")).unwrap_or(em),
                 rule,
                 current,
             }
         });
-        if r.has("columnCount") || r.has("columnWidth") {
+        if r.has("columnCount") || r.has("columnWidth") || r.has("columnHeight") {
             el.multicol = columns;
         }
         if let Some(v) = r.str("columnSpan") {

@@ -2955,3 +2955,70 @@ fn an_anchored_box_follows_its_anchors_transform() {
     );
     assert_eq!(at(&d), (0.0, 0.0));
 }
+
+/// CSS Multicol 2 §4.2, §4.4: `column-height` makes every row of columns
+/// that tall; the columns past the count wrap into a new row below,
+/// `row-gap` apart (`column-wrap: auto` wraps with a height), each row
+/// with its own rules; `nowrap` lays them beside instead; a row keeps its
+/// height when its content is shorter.
+///
+/// Ways it could fail: no wrap (K5 beside at x 220), the row gap left out
+/// (K5 at y 40) or the column gap used for it (y 50), the height ignored
+/// (balanced columns 60 tall), the container only as tall as one row (40,
+/// or its flow 140), the second row's rule missing or drawn in the first
+/// row, or a short row shrunk to its content (10).
+#[test]
+fn column_height_wraps_columns_into_rows() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Wr"><div id="K1"></div><div id="K2"></div><div id="K3"></div><div id="K4"></div><div id="K5"></div><div id="K6"></div><div id="K7"></div></div>
+  <div id="Nw"><div id="N1"></div><div id="N2"></div><div id="N3"></div><div id="N4"></div><div id="N5"></div></div>
+  <div id="Sh"><div id="S1"></div></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#Wr, #Nw, #Sh { columns: 2 / 40px; column-gap: 10px; row-gap: 6px; width: 210px; }
+#Wr { column-rule: 2px solid #ff0000; }
+#Nw { column-wrap: nowrap; }
+#Wr > div, #Nw > div { height: 20px; }
+#S1 { height: 10px; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let at = |id: &str, of: &str| {
+            let (e, p) = (d.get(id), d.get(of));
+            (e.x - p.x, e.y - p.y)
+        };
+        // Columns of (210 − 10) / 2 = 100, two 20px blocks to each 40px one.
+        for (id, xy) in [
+            ("K2", (0.0, 20.0)),
+            ("K3", (110.0, 0.0)),
+            ("K4", (110.0, 20.0)),
+            ("K5", (0.0, 46.0)),
+            ("K6", (0.0, 66.0)),
+            ("K7", (110.0, 46.0)),
+        ] {
+            assert_eq!(at(id, "Wr"), xy, "{id}");
+        }
+        assert_eq!(d.get("Wr").height, 86.0, "two rows and a row gap");
+        let wr = d.get("Wr");
+        let rules: Vec<_> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|i| i.cmd.filled())
+                .filter(|(_, c)| *c == [1.0, 0.0, 0.0, 1.0])
+                .map(|(r, _)| (r.x - wr.x, r.y - wr.y, r.width, r.height))
+                .collect();
+        assert_eq!(
+            rules,
+            vec![(104.0, 0.0, 2.0, 40.0), (104.0, 46.0, 2.0, 40.0)],
+            "a rule in each row's gap"
+        );
+        assert_eq!(
+            (at("N5", "Nw"), d.get("Nw").height),
+            ((220.0, 0.0), 40.0),
+            "nowrap"
+        );
+        assert_eq!(d.get("Sh").height, 40.0, "a short row keeps its height");
+    });
+}

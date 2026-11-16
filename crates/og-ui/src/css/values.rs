@@ -237,6 +237,8 @@ pub const STYLE: &[(&str, &str)] = &[
     ("columnWidth", "column-width"),
     ("columnSpan", "column-span"),
     ("columnFill", "column-fill"),
+    ("columnHeight", "column-height"),
+    ("columnWrap", "column-wrap"),
     ("columnRuleWidth", "column-rule-width"),
     ("columnRuleStyle", "column-rule-style"),
     ("columnRuleColor", "column-rule-color"),
@@ -329,7 +331,7 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         "inset-inline-start" => vec!["insetLeft"],
         "inset-inline-end" => vec!["insetRight"],
         "position-try" => vec!["positionTry", "positionTryOrder"],
-        "columns" => vec!["columnWidth", "columnCount"],
+        "columns" => vec!["columnWidth", "columnCount", "columnHeight", "columnWrap"],
         "interest-delay" => vec!["interestDelayStart", "interestDelayEnd"],
         "contain-intrinsic-size" => vec!["containIntrinsicWidth", "containIntrinsicHeight"],
         "contain-intrinsic-inline-size" => vec!["containIntrinsicWidth"],
@@ -451,10 +453,10 @@ fn conv(prop: &str) -> Conv {
         "insetTop" | "insetRight" | "insetBottom" | "insetLeft" | "anchorName"
         | "positionAnchor" | "positionArea" | "positionTry" | "positionTryOrder"
         | "positionVisibility" | "anchorWidth" | "anchorHeight" => Conv::Raw,
-        "columnCount" | "columnWidth" | "columnSpan" | "columnFill" | "columnRuleWidth"
-        | "columnRuleStyle" | "columnRuleColor" | "breakBefore" | "breakAfter" | "breakInside"
-        | "orphans" | "widows" | "float" | "clear" | "fitTolerance" | "marginTrim"
-        | "borderSpacing" | "borderCollapse" => Conv::Raw,
+        "columnCount" | "columnWidth" | "columnSpan" | "columnFill" | "columnHeight"
+        | "columnWrap" | "columnRuleWidth" | "columnRuleStyle" | "columnRuleColor"
+        | "breakBefore" | "breakAfter" | "breakInside" | "orphans" | "widows" | "float"
+        | "clear" | "fitTolerance" | "marginTrim" | "borderSpacing" | "borderCollapse" => Conv::Raw,
         "viewTransitionName" | "viewTransitionClass" | "viewTransitionGroup" => Conv::Raw,
         "backgroundImage"
         | "backgroundSize"

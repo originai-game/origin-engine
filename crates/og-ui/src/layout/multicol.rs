@@ -13,6 +13,11 @@
 //! and never inside a text with `break-inside: avoid`. `break-before` and
 //! `break-after` `column` (or `page`, `always`) force a break. Any other
 //! box is monolithic: it moves to the next column whole.
+//!
+//! CSS Multicol 2: a `column-height` makes every row of columns that
+//! tall; the columns past the count overflow beside them, or with
+//! `column-wrap: wrap` (the default with a height) start a new row below,
+//! `row-gap` apart, each with its own rules.
 
 use super::*;
 
@@ -27,6 +32,16 @@ pub struct Multicol {
     pub gap: f32,
     /// `column-fill: auto`: columns fill in turn, not balanced.
     pub fill_auto: bool,
+    /// `column-height` in px (0: auto): every row of columns is this
+    /// tall, and content past one row makes more columns (CSS Multicol 2
+    /// §4.2).
+    pub height: f32,
+    /// Columns past the count start a new row below, `row_gap` apart
+    /// (`column-wrap: wrap`, or `auto` with a `column-height`; CSS
+    /// Multicol 2 §4.4). Without a `column-height` it does nothing.
+    pub wrap: bool,
+    /// The used `row-gap` between rows of columns (`normal`: 1em).
+    pub row_gap: f32,
     /// `column-rule` (`None`: style `none` or width 0).
     pub rule: Option<crate::decor::Line>,
     /// The rule's colour is the theme's ink (`currentcolor` with no colour
@@ -232,12 +247,41 @@ pub(crate) fn in_column(n: &Node) -> bool {
     !n.layout.used.span_all
 }
 
-/// The height columns may not pass: a definite height's content box.
-fn limit(n: &Node) -> Option<f32> {
+/// The height columns may not pass: `column-height`, else a definite
+/// height's content box.
+fn limit(n: &Node, m: &Multicol) -> Option<f32> {
+    if m.height > 0.0 {
+        return Some(m.height);
+    }
     match n.layout.used.height {
         Size::Fixed(v) => Some((v - n.layout.used.padding.vertical()).max(0.0)),
         _ => None,
     }
+}
+
+/// Where column `k` of a run goes with `cols` to a row: its row and its
+/// place in the row (CSS Multicol 2 §4.4: one row unless it wraps).
+fn cell(m: &Multicol, cols: usize, k: usize) -> (usize, usize) {
+    if m.wrap && m.height > 0.0 {
+        (k / cols, k % cols)
+    } else {
+        (0, k)
+    }
+}
+
+/// A row's height: `column-height`, else its tallest column.
+fn row_height(m: &Multicol, tallest: f32) -> f32 {
+    if m.height > 0.0 { m.height } else { tallest }
+}
+
+/// The height of a run of `n` columns, `cols` to a row, its tallest
+/// `tallest`: its rows and the row gaps between them.
+fn run_height(m: &Multicol, cols: usize, n: usize, tallest: f32) -> f32 {
+    if n == 0 {
+        return 0.0;
+    }
+    let rows = cell(m, cols, n - 1).0 + 1;
+    rows as f32 * row_height(m, tallest) + (rows - 1) as f32 * m.row_gap
 }
 
 /// Node `i`'s content height in columns, its children laid out in one
@@ -265,10 +309,11 @@ pub(crate) fn balanced_height(nodes: &[Node], i: usize, tops: &[f32], hs: &[f32]
                     hs[k]
                 };
                 let p = pieces(nodes, &kids[r.clone()], &rel, &at);
-                let (_, tallest) = balance(&p, cols, limit(&nodes[i]), m.fill_auto);
-                bottom = bottom.max(top - saved + tallest);
+                let (starts, tallest) = balance(&p, cols, limit(&nodes[i], &m), m.fill_auto);
+                let height = run_height(&m, cols, starts.len(), tallest);
+                bottom = bottom.max(top - saved + height);
                 let flow = p.last().map_or(0.0, |q| q.bottom);
-                saved += flow - tallest;
+                saved += flow - height;
             }
         }
     }
@@ -285,7 +330,7 @@ pub(crate) fn place(nodes: &mut [Node], i: usize) {
     let (cols, w) = nodes[i].layout.cols;
     let kids = nodes[i].children.clone();
     let x0 = nodes[i].layout.x + nodes[i].layout.used.padding.left;
-    let limit = limit(&nodes[i]);
+    let limit = limit(&nodes[i], &m);
     let mut rules = Vec::new();
     for &c in &kids {
         nodes[c].layout.frag.clear();
@@ -306,11 +351,14 @@ pub(crate) fn place(nodes: &mut [Node], i: usize) {
         let tops: Vec<f32> = run.iter().map(|&c| nodes[c].layout.y - top).collect();
         let p = pieces(nodes, run, &tops, &|n: &Node| n.layout.h);
         let (starts, tallest) = balance(&p, cols.max(1), limit, m.fill_auto);
+        let row_h = row_height(&m, tallest);
         // Each child's move (dx, dy), from the column its first piece is in.
         let mut moved: Vec<Option<[f32; 2]>> = vec![None; run.len()];
         for (k, &s) in starts.iter().enumerate() {
             let end = starts.get(k + 1).copied().unwrap_or(p.len());
-            let shift = [k as f32 * (w + m.gap), -p[s].top - saved];
+            let (row, col) = cell(&m, cols.max(1), k);
+            let down = row as f32 * (row_h + m.row_gap);
+            let shift = [col as f32 * (w + m.gap), -p[s].top - saved + down];
             for (j, piece) in p[s..end].iter().enumerate() {
                 let c = run[piece.kid];
                 match moved[piece.kid] {
@@ -323,10 +371,11 @@ pub(crate) fn place(nodes: &mut [Node], i: usize) {
                     Some(_) => {}
                 }
             }
-            if k > 0 {
-                // A rule in the middle of the gap, from the box's origin.
-                let x = x0 + k as f32 * (w + m.gap) - m.gap / 2.0 - nodes[i].layout.x;
-                rules.push([x, top - saved - nodes[i].layout.y, tallest]);
+            if col > 0 {
+                // A rule in the middle of the gap, from the box's origin,
+                // as long as its row.
+                let x = x0 + col as f32 * (w + m.gap) - m.gap / 2.0 - nodes[i].layout.x;
+                rules.push([x, top - saved - nodes[i].layout.y + down, row_h]);
             }
         }
         for (k, &c) in run.iter().enumerate() {
@@ -341,7 +390,7 @@ pub(crate) fn place(nodes: &mut [Node], i: usize) {
             }
         }
         let flow = p.last().map_or(0.0, |q| q.bottom);
-        saved += flow - tallest;
+        saved += flow - run_height(&m, cols.max(1), starts.len(), tallest);
     }
     nodes[i].layout.col_rules = rules;
 }
