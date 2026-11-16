@@ -21,6 +21,9 @@
 //!   WebSocket relay that keeps rooms of peers and forwards their messages
 //!   in order, and the client `og run --room ws://127.0.0.1:P/<room>`
 //!   drives an engine's room through.
+//! - [`http`] (feature `http`, native only): the HTTP client the native
+//!   host fetches remote images and packages with, under the browser's
+//!   CORS, referrer policy and integrity rules.
 
 pub mod lockstep;
 pub mod protocol;
@@ -28,6 +31,8 @@ pub mod state;
 
 #[cfg(all(feature = "ws", not(target_arch = "wasm32")))]
 pub mod client;
+#[cfg(all(feature = "http", not(target_arch = "wasm32")))]
+pub mod http;
 #[cfg(all(feature = "ws", not(target_arch = "wasm32")))]
 pub mod relay;
 

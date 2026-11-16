@@ -11,6 +11,10 @@ default = []
 # The native relay (`og relay`) and its client (`og run --room`, which also
 # reaches a relay behind TLS: `wss://`). Ignored on wasm32.
 ws = ["dep:tungstenite", "dep:rustls", "dep:webpki-roots"]
+# The native HTTP client (src/http.rs) for remote url() images and packages
+# served from an asset base, with the browser's CORS, referrer policy and
+# integrity rules. Ignored on wasm32, where the engine Worker fetches.
+http = ["dep:ureq", "dep:ring"]
 
 [dependencies]
 og-core = { path = "../og-core" }
@@ -22,6 +26,10 @@ tungstenite = { version = "=0.30.0", default-features = false, features = ["hand
 # webpki-roots carries them, so it needs nothing of the system it runs on.
 rustls = { version = "0.23", default-features = false, features = ["std", "ring"], optional = true }
 webpki-roots = { version = "1", optional = true }
+# The HTTP client: ureq on rustls with ring and webpki-roots, as above.
+ureq = { version = "3.5", default-features = false, features = ["rustls"], optional = true }
+# Subresource Integrity's SHA-2 digests (rustls's own crypto provider).
+ring = { version = "0.17", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 # The client's `wss://` test makes its relay's certificate.
