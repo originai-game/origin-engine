@@ -181,25 +181,44 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
     return g!;
   };
 
-  /** One run: an engine of its own, the script, then its UI frame and the frames it captured. */
-  const runCell = async (bp: string, locale: string, steps: string[], shots: Array<{ at: number; name: string }>, scale = 100): Promise<{ frame: UiFrameSnapshot | null; images: Map<string, Image>; warnings: string[]; pages: Array<{ frame: UiFrameSnapshot; image: Image }> }> => {
-    const game = await freshGame();
+  // Only the engine-owned style sheet promises stateless page commands.
+  // Checks and arbitrary game previews still need fresh module state per cell.
+  const sheetEngines = new Map<string, { engine: Engine; initial: string }>();
+  cleanup.push(() => {
+    for (const { engine } of sheetEngines.values()) engine.destroy();
+  });
+  /** Run a cell's script, then read its UI frame and captures. */
+  const runCell = async (bp: string, locale: string, steps: string[], shots: Array<{ at: number; name: string }>, scale = 100, sheetKey?: string): Promise<{ frame: UiFrameSnapshot | null; images: Map<string, Image>; warnings: string[]; pages: Array<{ frame: UiFrameSnapshot; image: Image }> }> => {
     const vp = BREAKPOINTS[bp]!;
-    let engine: Engine | undefined;
+    const reused = sheetKey === undefined ? undefined : sheetEngines.get(sheetKey);
+    let engine = reused?.engine;
     const warnings: string[] = [];
     const images = new Map<string, Image>();
     try {
-      const created = createEngine(game, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}) });
-      if (!created.ok) fail(created.reason);
-      engine = created.value;
-      engine.attachPlatform(nativePlatform());
-      const attached = attachRenderer(engine.id, vp.width * vp.dpr, vp.height * vp.dpr);
-      if (!attached.ok) fail(attached.reason);
-      const started = engine.advance(0);
-      if (!started.ok) fail(started.reason);
+      if (!engine) {
+        const game = await freshGame();
+        const created = createEngine(game, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}) });
+        if (!created.ok) fail(created.reason);
+        engine = created.value;
+        engine.attachPlatform(nativePlatform());
+        const attached = attachRenderer(engine.id, vp.width * vp.dpr, vp.height * vp.dpr);
+        if (!attached.ok) fail(attached.reason);
+        if (sheetKey !== undefined) native().og_node_capture_only(engine.id, true);
+        const started = engine.advance(0);
+        if (!started.ok) fail(started.reason);
+        if (sheetKey !== undefined) {
+          const initial = engine.probe.snapshot();
+          if (!initial) fail("cannot snapshot the sheet's initial state");
+          sheetEngines.set(sheetKey, { engine, initial: initial.id });
+        }
+      } else if (reused && !engine.probe.restore(reused.initial)) {
+        // Scroll paging and hover input from the previous cell must not
+        // leak into the next. Definitions and the renderer stay resident.
+        fail("cannot restore the sheet's initial state");
+      }
       // The player's text size: configure keeps it through the game's own
-      // configure calls (a field they leave out keeps its value).
-      if (scale !== 100) og.ui.configure(engine.world, { textScale: scale / 100 });
+      // configure calls. A reused engine also needs the reset to 100 %.
+      if (scale !== 100 || sheetKey !== undefined) og.ui.configure(engine.world, { textScale: scale / 100 });
       og.ui.previewViewport(engine.world, { width: vp.width, height: vp.height, dpr: vp.dpr, safeArea: vp.safeArea, coarsePointer: vp.coarsePointer, highContrast, breakpoint: bp } as never);
       // The probe takes a script in time order: a capture before a later step goes before it.
       const script = [...steps, ...shots.map((s) => `${s.at}:screenshot:${s.name}.png`)].sort((a, b) => parseFloat(a) - parseFloat(b));
@@ -259,7 +278,7 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
       }
       return { frame: f.error ? null : f, images, warnings, pages };
     } finally {
-      engine?.destroy();
+      if (sheetKey === undefined || !sheetEngines.has(sheetKey)) engine?.destroy();
     }
   };
 
@@ -331,8 +350,9 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
       const unscaledPages = new Map<number, UiFrameSnapshot>();
       for (const scale of scales) {
         if (scale !== 100 && !scalesGiven && locale !== "" && locale !== "pseudo") continue;
-        const steps = [...(style ? timed(styleCmd.replaceAll("{style}", style)) : []), ...timed(screen.commands), ...(state ? timed(stateCmd.replaceAll("{state}", state)) : [])];
-        const run = await runCell(bp, locale, steps, [{ at: screen.at ?? settle, name: "cell" }], scale);
+        const sheetKey = mode === "sheet" && argv.includes("--baseline") ? JSON.stringify([bp, locale, style]) : undefined;
+        const steps = [...(style && (sheetKey === undefined || !sheetEngines.has(sheetKey)) ? timed(styleCmd.replaceAll("{style}", style)) : []), ...timed(screen.commands), ...(state ? timed(stateCmd.replaceAll("{state}", state)) : [])];
+        const run = await runCell(bp, locale, steps, [{ at: screen.at ?? settle, name: "cell" }], scale, sheetKey);
         for (const [page, r] of [{ frame: run.frame, image: run.images.get("cell") ?? null }, ...run.pages].entries()) {
           const cell: UiCell = { screen: page === 0 ? screen.name : `${screen.name}/scroll-${page + 1}`, breakpoint: bp, locale, style, scale, highContrast, ...(state ? { state } : {}) };
           const index = cells.length;

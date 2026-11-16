@@ -12,6 +12,27 @@ fn copy_tree(from: &Path, to: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Replace source inputs, including deleted files, but keep incremental
+/// cook and bundle outputs. A legacy extension's project lives in sheet/.
+fn clear_sources(dir: &Path) -> Result<(), String> {
+    for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let name = entry.file_name();
+        if name == "cooked" || name == ".og" {
+            continue;
+        }
+        let path = entry.path();
+        if name == "sheet" && entry.file_type().is_ok_and(|t| t.is_dir()) {
+            clear_sources(&path)?;
+        } else if entry.file_type().is_ok_and(|t| t.is_dir()) {
+            std::fs::remove_dir_all(path).map_err(|e| e.to_string())?;
+        } else {
+            std::fs::remove_file(path).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
 /// The review sheet project of a component group: `name` itself when it
 /// is a project directory, else the engine package's `sheets/<name>/`
 /// (a checkout's; `sheets/style` is the style packs' sheet, not a group's).
@@ -85,77 +106,90 @@ pub(super) fn sheet(args: &[&str], review: bool) -> Result<(), String> {
     let out = std::env::current_dir()
         .map_err(|e| e.to_string())?
         .join(out.unwrap_or_else(|| root.join(format!("og-out/ui-{mode}")).join(name)));
-    let scratch = std::env::temp_dir().join(format!("og-ui-sheet-{}", std::process::id()));
-    std::fs::create_dir(&scratch).map_err(|e| format!("{}: {e}", scratch.display()))?;
-    let result = (|| {
-        let demo = if let Some(dir) = &group {
-            // The group's components are built in: its pages use them by
-            // name, as a game's do.
-            copy_tree(dir, &scratch)?;
-            if declared_screens(&scratch)?.is_empty() {
-                return Err(format!(
-                    "`{name}` needs a project.ogt with fixed ui screen entries (docs/ui.md §6)"
-                ));
-            }
-            scratch.clone()
-        } else if let Some(extension) = extension.filter(|_| pack) {
-            let shipped = package.join("ui-sheet");
-            let source = if shipped.join("project.ogt").is_file() {
-                shipped
-            } else {
-                package.join("sheets/style")
-            };
-            for dir in ["assets", "src"] {
-                copy_tree(&source.join(dir), &scratch.join(dir))?;
-            }
-            std::fs::copy(source.join("project.ogt"), scratch.join("project.ogt"))
-                .map_err(|e| e.to_string())?;
-            extensions::install(extension, &scratch)?;
-            scratch.clone()
+    let source = group
+        .as_ref()
+        .unwrap_or_else(|| &extension.expect("checked above").directory);
+    let mut key = og_core::hash::StableHasher::new();
+    key.write_str(&package.to_string_lossy());
+    key.write_str(
+        &source
+            .canonicalize()
+            .map_err(|e| e.to_string())?
+            .to_string_lossy(),
+    );
+    key.write_str(mode);
+    let scratch = root
+        .join(".og/ui-sheet")
+        .join(format!("{:016x}", key.finish()));
+    std::fs::create_dir_all(&scratch).map_err(|e| format!("{}: {e}", scratch.display()))?;
+    let lock = std::fs::File::create(scratch.with_extension("lock")).map_err(|e| e.to_string())?;
+    lock.lock().map_err(|e| e.to_string())?;
+    clear_sources(&scratch)?;
+    let demo = if let Some(dir) = &group {
+        // The group's components are built in: its pages use them by
+        // name, as a game's do.
+        copy_tree(dir, &scratch)?;
+        if declared_screens(&scratch)?.is_empty() {
+            return Err(format!(
+                "`{name}` needs a project.ogt with fixed ui screen entries (docs/ui.md §6)"
+            ));
+        }
+        scratch.clone()
+    } else if let Some(extension) = extension.filter(|_| pack) {
+        let shipped = package.join("ui-sheet");
+        let source = if shipped.join("project.ogt").is_file() {
+            shipped
         } else {
-            let extension = extension.expect("checked above");
-            copy_tree(&extension.directory, &scratch)?;
-            let demo = scratch.join("sheet");
-            if !demo.join("project.ogt").is_file() || declared_screens(&demo)?.is_empty() {
-                return Err(format!(
-                    "`{name}` needs sheet/project.ogt with fixed ui screen entries (docs/ui.md §6)"
-                ));
-            }
-            // Installed as a game installs it, so its pages name the pack's
-            // files exactly as a game does.
-            extensions::install(extension, &demo)?;
-            demo
+            package.join("sheets/style")
         };
-        if review {
-            super::review::install_font_packs(root, &demo, &["--locales".into(), locales.into()])?;
+        for dir in ["assets", "src"] {
+            copy_tree(&source.join(dir), &scratch.join(dir))?;
         }
-        let p = Project::open(&demo)?;
-        crate::cook::cook(&p.root, 0, false)?;
-        let bundle = project::bundle_native(&p, &package)?;
-        let mut forward = vec![
-            "--breakpoints",
-            "desktopHd,phonePortrait",
-            "--scales",
-            "100,150",
-            "--locales",
-            locales,
-            "--settle",
-            "2",
-        ];
-        if pack {
-            forward.extend(["--baseline", "--styles", name]);
+        std::fs::copy(source.join("project.ogt"), scratch.join("project.ogt"))
+            .map_err(|e| e.to_string())?;
+        extensions::install(extension, &scratch)?;
+        scratch.clone()
+    } else {
+        let extension = extension.expect("checked above");
+        copy_tree(&extension.directory, &scratch)?;
+        let demo = scratch.join("sheet");
+        if !demo.join("project.ogt").is_file() || declared_screens(&demo)?.is_empty() {
+            return Err(format!(
+                "`{name}` needs sheet/project.ogt with fixed ui screen entries (docs/ui.md §6)"
+            ));
         }
-        if json {
-            forward.push("--json");
-        }
-        let status = spawn(mode, &p, &package, &bundle, &out, &forward)?;
-        if status != ExitCode::SUCCESS {
-            return Err(format!("renderer exited {status:?}"));
-        }
-        Ok(())
-    })();
-    let cleanup = std::fs::remove_dir_all(&scratch).map_err(|e| e.to_string());
-    result.and(cleanup)
+        // Installed as a game installs it, so its pages name the pack's
+        // files exactly as a game does.
+        extensions::install(extension, &demo)?;
+        demo
+    };
+    if review {
+        super::review::install_font_packs(root, &demo, &["--locales".into(), locales.into()])?;
+    }
+    let p = Project::open(&demo)?;
+    crate::cook::cook(&p.root, 0, false)?;
+    let bundle = project::bundle_native(&p, &package)?;
+    let mut forward = vec![
+        "--breakpoints",
+        "desktopHd,phonePortrait",
+        "--scales",
+        "100,150",
+        "--locales",
+        locales,
+        "--settle",
+        "2",
+    ];
+    if pack {
+        forward.extend(["--baseline", "--styles", name]);
+    }
+    if json {
+        forward.push("--json");
+    }
+    let status = spawn(mode, &p, &package, &bundle, &out, &forward)?;
+    if status != ExitCode::SUCCESS {
+        return Err(format!("renderer exited {status:?}"));
+    }
+    Ok(())
 }
 
 pub(super) fn run(args: &[&str]) -> ExitCode {
