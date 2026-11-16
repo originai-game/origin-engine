@@ -183,6 +183,12 @@ proof("view-transitions view-transition-class cross-document-view-transitions", 
       "A layer replacing another is the navigation @view-transition { navigation: auto } opts into (without it nothing transitions): a view-transition-name group draws both images on lerp(old box, new box, easing) every tick, 400ms linear from ::view-transition-group(*.card) when view-transition-class is card and the UA's 0.25s ease when it is none. Cross-document means the engine's layer navigations, not page loads; the default root cross-fade and covers are tested in og-ui's layers unit tests, not here.")
 proof("touch-action scroll-behavior", "css_interact", "touch_action_filters_pans_and_scroll_behavior_glides",
       "A diagonal touch drag on a coarse pointer pans only what the touched element allows: pan-y drops x, pan-left keeps only a finger moving left, pan-y inside pan-x intersects to none, auto pans both, and a mouse ignores it; a scroll into view under scroll-behavior: smooth glides monotonically and settles on the target within three seconds, while auto lands on the first tick. The used value intersects every ancestor's (the spec stops at the scroll container); pinch-zoom and manipulation are not asserted.")
+proof("grid-animation clip-path-animatable", "motion", "grid_tracks_and_clip_paths_transition_by_their_values",
+      "Every tick of a 600ms linear transition: grid-template-columns 100px 200px → 200px 100px lays out the first track at 100 + 100t (±0.5 px), and clip-path inset(0) → inset(50px) bounds where the cursor applies at 50t from each edge. Other track lists (repeat(), fr) and clip shapes are not asserted.")
+proof("user-select", "user_select", "presses_select_words_lines_and_whole_elements_where_allowed",
+      "Real presses: a double press selects the word, a triple the line, user-select: all the whole element at one press, none and a button's label nothing, with the I-beam only over selectable text. og-ui's default is none (a game's text is not selectable unless it says so), not CSS's auto.")
+proof("selection", "user_select", "selection_ink_lines_and_shadows_cover_only_the_selected_run",
+      "p::selection's color, text-decoration and text-shadow draw on the selected word's glyphs only, clipped to the run, with the rest of the line in its own ink and one underline under the word. Its background is judged in the GPU frames (user_select::the_selection_matches_its_reference_frames).")
 not_applicable("webxr-dom-overlays", "Styles the DOM overlay of a WebXR session; the engine renders its own UI in its world and has no WebXR DOM layer.")
 not_applicable("window-controls-overlay window-drag", "Installed web-app title-bar integration (the OS window's caption buttons and drag regions); a game's UI is drawn inside its own surface, and the host owns its window.")
 not_applicable("picture-in-picture", "Styles a video in the browser's floating picture-in-picture window, which is browser chrome outside the game's surface.")
@@ -191,6 +197,12 @@ not_applicable("resizable", "@media (resizable) asks whether script may resize t
 not_applicable("ime-mode", "Obsolete, non-standard IME switch that browsers ignore in favour of inputmode; og-ui fields take inputmode and the platform's text input.")
 
 MISSING = {
+    "anchor-positioning-animations": "A transition between anchor() values jumps: interpolation treats two anchor() calls as discrete, and calc() takes anchor() only as anchor(…) + px.",
+    "motion-path": "No offset-path, offset-distance, offset-rotate, offset-anchor or offset-position: the properties are refused.",
+    "popover": ":popover-open restyles an open popover (control_props::titles_and_popovers_show_against_their_controls covers the popover attribute), but a popover draws no ::backdrop and its open/close ignores @starting-style and display/overlay allow-discrete transitions.",
+    "overlay": "The overlay value holds its shown side in a discrete transition, but nothing keeps a closing popover or dialog in the top layer while its transition runs.",
+    "active-view-transition": ":active-view-transition-type() qualifies only ::view-transition-* rules; :active-view-transition does not match elements during a transition (a selectors-side gap).",
+    "view-transitions-element-scoped": "No view-transition-scope or element-scoped transitions: a transition captures a whole layer.",
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
     "calc-size": "No calc-size evaluation or animated output proof.",
