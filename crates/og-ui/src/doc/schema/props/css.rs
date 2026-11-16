@@ -250,6 +250,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `clip-path`: a basic shape (`inset()`, `rect()`, `xywh()`, `circle()`, `ellipse()`, `polygon()`, `path()` or `shape()`) over a geometry box (`border-box` by default, `padding-box`, `content-box`, `margin-box`; `fill-box` is the content box, `stroke-box` and `view-box` the border box), a geometry box alone (that box with its corners), or `url(#id)` of a `<clipPath>` in the document. It cuts everything the element draws (shadows, background, borders) and its children, by the shape's coverage with either fill rule.",
     },
     PropSpec {
+        name: "clipRect",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS 2's `clip: rect(<top>, <right>, <bottom>, <left>)` (CSS Masking 1 §8.1): on an absolutely positioned element, the border-box rectangle it is cut to, each edge offset from the box's top and left, `auto` an edge of the box. `auto` (and any element in flow) cuts nothing; `clip-path` wins over it.",
+    },
+    PropSpec {
         name: "shapeOutside",
         ty: Ty::Text,
         on: On::All,

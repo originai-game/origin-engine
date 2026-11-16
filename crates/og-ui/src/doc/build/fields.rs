@@ -464,7 +464,13 @@ impl Ui {
                 })
                 .collect();
         }
-        if let Some((clip, geo)) = r.str("clipPath").and_then(|v| p::clip(v).ok()).flatten() {
+        // `clip` applies to an absolutely positioned box, under `clip-path`.
+        let legacy = r
+            .str("clipRect")
+            .filter(|_| matches!(r.str("position"), Some("absolute" | "screen")))
+            .and_then(|v| p::legacy_clip(v).ok().flatten());
+        let clip_path = r.str("clipPath").map(str::to_owned).or(legacy);
+        if let Some((clip, geo)) = clip_path.and_then(|v| p::clip(&v).ok()).flatten() {
             c.clip_box = geo;
             c.clip = Some(match clip {
                 p::CssClip::Url(u) => match doc

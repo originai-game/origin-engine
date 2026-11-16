@@ -195,6 +195,7 @@ pub fn cut(
     }
     let mut shapes = Vec::new();
     def_shapes(doc, node, Affine::IDENTITY, &mut shapes)?;
+    let alpha = mask_type(&attrs).is_some_and(|t| t == "alpha");
     if tags[0] == "mask" && shapes.len() == 1 {
         let (tag, attrs, own) = &shapes[0];
         if let Some(gid) = attrs
@@ -206,8 +207,9 @@ pub fn cut(
             let local = shape_path(tag, &get, vb)?.ok_or("the mask's shape is empty")?;
             let at = t.then(own);
             let mut g = gradient(doc, gid, bounds(&local), &at, 1.0)?;
-            // A mask is luminance times alpha: white, as alpha.
-            for stop in &mut g.stops {
+            // A mask is luminance times alpha: white, as alpha; one whose
+            // `mask-type` is `alpha` is its alpha alone (CSS Masking 1 §7.1).
+            for stop in g.stops.iter_mut().filter(|_| !alpha) {
                 if let ColorRef::Literal(c) = &mut stop.color {
                     let [r, gr, b] = c.rgb.map(|v| f32::from(v) / 255.0);
                     let lum = 0.2125 * r + 0.7154 * gr + 0.0721 * b;
@@ -231,6 +233,22 @@ pub fn cut(
     }
     let (rule, parts) = def_path(&shapes, tags[0] == "mask", id, vb, t)?;
     Ok(Some(Cut::Shape(filled(parts, rule))))
+}
+
+/// A `<mask>`'s `mask-type`: its attribute, or its `style` attribute's.
+fn mask_type(attrs: &[(String, String)]) -> Option<String> {
+    let style = attrs.iter().find(|(k, _)| k == "style").and_then(|(_, v)| {
+        v.split(';').find_map(|d| {
+            let (k, v) = d.split_once(':')?;
+            (k.trim() == "mask-type").then(|| v.trim().to_owned())
+        })
+    });
+    style.or_else(|| {
+        attrs
+            .iter()
+            .find(|(k, _)| k == "mask-type")
+            .map(|(_, v)| v.trim().to_owned())
+    })
 }
 
 /// A shape's draw, the tiles of a pattern fill drawn inside it, the box
