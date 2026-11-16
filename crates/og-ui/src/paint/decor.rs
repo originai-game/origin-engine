@@ -98,6 +98,22 @@ pub struct BoxDecor {
     /// Its content box's edges in from its border box (its border and
     /// padding), left, top, right, bottom: a layer's `content-box`.
     pub content: [f32; 4],
+    /// A grid's gap rules (CSS Gap Decorations 1), its column gaps' and
+    /// its row gaps', each with where it breaks.
+    pub gap_rules: [Option<(Line, GapBreak)>; 2],
+}
+
+/// CSS `column-rule-break` and `row-rule-break` (CSS Gap Decorations 1
+/// §3.2).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum GapBreak {
+    /// Through crossing gaps, stopped by an item that spans the gap.
+    #[default]
+    Normal,
+    /// End to end.
+    None,
+    /// At every crossing gap.
+    Intersection,
 }
 
 /// CSS corners as written: each corner's horizontal and vertical radius

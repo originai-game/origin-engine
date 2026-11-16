@@ -3132,3 +3132,77 @@ fn tab_follows_reading_flow() {
     d.set("swap", serde_json::json!(true));
     assert_eq!(round(&mut d), "C B A X Z Y W S2 S1 N1 N2", "order swapped");
 }
+
+/// CSS Gap Decorations 1: a grid's `column-rule` and `row-rule` are drawn
+/// centred in its gaps, from the first track's start to the last one's
+/// end. `normal` runs a rule through the crossing gaps and stops it where
+/// an item spans its gap; `intersection` stops it at every crossing gap;
+/// `none` runs it end to end, under the spanning item.
+///
+/// Ways it could fail: rules drawn only in multi-column containers (none
+/// here), a rule off the gap's centre or as long as the box, `normal`
+/// drawn through the spanning item (44 tall 46) or broken at every
+/// crossing, `intersection` read as `normal` (one 46 tall segment), or
+/// `row-rule` read as the column rule.
+#[test]
+fn grid_gap_rules_break_as_css_gap_decorations_do() {
+    let cells = |p: &str| {
+        format!(
+            r#"<div id="{p}"><div></div><div></div><div></div><div class="wide"></div><div></div></div>"#
+        )
+    };
+    let text = format!(
+        r#"<meta name="component" content="t">
+<div><div id="Root">{}{}{}</div></div>
+<style>
+#Root {{ width: 400px; }}
+#N, #I, #Z {{ display: grid; grid-template-columns: 40px 40px 40px; grid-template-rows: 20px 20px; column-gap: 10px; row-gap: 6px; width: 140px; margin-bottom: 10px; }}
+.wide {{ grid-column: 1 / 3; }}
+#N {{ column-rule: 2px solid #ff0000; row-rule: 2px solid #0000ff; }}
+#I {{ column-rule: 2px solid #00ff00; column-rule-break: intersection; }}
+#Z {{ column-rule: 2px solid #ffff00; rule-break: none; }}
+</style>"#,
+        cells("N"),
+        cells("I"),
+        cells("Z")
+    );
+    with_doc(&text, &[], |d| {
+        let rules = |id: &str, c: [f32; 4]| {
+            let b = d.get(id);
+            let mut v: Vec<_> =
+                d.ui.frame()
+                    .items
+                    .iter()
+                    .filter_map(|i| i.cmd.filled())
+                    .filter(|(_, k)| *k == c)
+                    .map(|(r, _)| (r.x - b.x, r.y - b.y, r.width, r.height))
+                    .collect();
+            v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            v
+        };
+        assert_eq!(
+            rules("N", [1.0, 0.0, 0.0, 1.0]),
+            vec![(44.0, 0.0, 2.0, 20.0), (94.0, 0.0, 2.0, 46.0)],
+            "normal: stopped by the spanning item, through the crossing"
+        );
+        assert_eq!(
+            rules("N", [0.0, 0.0, 1.0, 1.0]),
+            vec![(0.0, 22.0, 140.0, 2.0)],
+            "row rule"
+        );
+        assert_eq!(
+            rules("I", [0.0, 1.0, 0.0, 1.0]),
+            vec![
+                (44.0, 0.0, 2.0, 20.0),
+                (94.0, 0.0, 2.0, 20.0),
+                (94.0, 26.0, 2.0, 20.0)
+            ],
+            "intersection"
+        );
+        assert_eq!(
+            rules("Z", [1.0, 1.0, 0.0, 1.0]),
+            vec![(44.0, 0.0, 2.0, 46.0), (94.0, 0.0, 2.0, 46.0)],
+            "none"
+        );
+    });
+}

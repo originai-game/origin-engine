@@ -911,6 +911,7 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
     if nodes[i].layout.table.is_some() {
         table_parts(nodes, i);
     }
+    gap_rules(nodes, i);
     lines_of(nodes, i);
     if nodes[i].layout.used.flip {
         // Taffy lays a right-to-left box's flow out from the right
@@ -951,6 +952,90 @@ fn lines_of(nodes: &mut [Node], i: usize) {
         rows.push((start, n.children.len()));
     }
     nodes[i].layout.rows = rows;
+}
+
+/// A grid's gap rules' segments (CSS Gap Decorations 1): a column gap's
+/// rule runs down the rows, a row gap's along the columns, from the first
+/// track's start to the last one's end. `normal` runs it through every
+/// crossing gap and stops it, at the crossing gaps' edges, where an item
+/// spans its gap (§3.2); `intersection` stops it at every crossing gap;
+/// `none` runs it end to end. Row rules are drawn over column rules
+/// (`rule-overlap: row-over-column`).
+fn gap_rules(nodes: &mut [Node], i: usize) {
+    let n = &nodes[i];
+    let Some(rules) = n
+        .decor
+        .as_ref()
+        .map(|d| d.gap_rules.map(|r| r.map(|(_, b)| b)))
+    else {
+        if !n.layout.gap_segs.is_empty() {
+            nodes[i].layout.gap_segs.clear();
+        }
+        return;
+    };
+    let [cols, rows] = &n.layout.grid_tracks;
+    let areas = &n.layout.grid_items;
+    let mut segs = Vec::new();
+    for (axis, brk) in rules.into_iter().enumerate() {
+        let Some(brk) = brk else { continue };
+        // Gaps across this axis, and the tracks the rule runs along.
+        let (across, along) = if axis == 0 {
+            (cols, rows)
+        } else {
+            (rows, cols)
+        };
+        if along.is_empty() {
+            continue;
+        }
+        for g in 0..across.len().saturating_sub(1) {
+            let at = (across[g][1] + across[g + 1][0]) / 2.0;
+            // Whether an item spans gap `g` in track `t` along the rule
+            // (grid lines are 1-based: tracks g and g + 1 are lines g + 1
+            // to g + 3).
+            let spanned = |t: usize| {
+                areas.iter().any(|a| {
+                    let (s, e, ts, te) = if axis == 0 {
+                        (a[0], a[1], a[2], a[3])
+                    } else {
+                        (a[2], a[3], a[0], a[1])
+                    };
+                    usize::from(s) <= g + 1
+                        && usize::from(e) >= g + 3
+                        && usize::from(ts) <= t + 1
+                        && usize::from(te) >= t + 2
+                })
+            };
+            let runs: Vec<(usize, usize)> = match brk {
+                crate::decor::GapBreak::None => vec![(0, along.len() - 1)],
+                crate::decor::GapBreak::Intersection => (0..along.len())
+                    .filter(|&t| !spanned(t))
+                    .map(|t| (t, t))
+                    .collect(),
+                crate::decor::GapBreak::Normal => {
+                    let mut out: Vec<(usize, usize)> = Vec::new();
+                    for t in (0..along.len()).filter(|&t| !spanned(t)) {
+                        match out.last_mut() {
+                            Some(r) if r.1 + 1 == t => r.1 = t,
+                            _ => out.push((t, t)),
+                        }
+                    }
+                    out
+                }
+            };
+            for (a, b) in runs {
+                let (start, len) = (along[a][0], along[b][1] - along[a][0]);
+                segs.push((
+                    axis as u8,
+                    if axis == 0 {
+                        [at, start, len]
+                    } else {
+                        [start, at, len]
+                    },
+                ));
+            }
+        }
+    }
+    nodes[i].layout.gap_segs = segs;
 }
 
 /// A table's row, group and column boxes over their slots.

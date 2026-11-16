@@ -244,6 +244,11 @@ pub const STYLE: &[(&str, &str)] = &[
     ("columnRuleWidth", "column-rule-width"),
     ("columnRuleStyle", "column-rule-style"),
     ("columnRuleColor", "column-rule-color"),
+    ("columnRuleBreak", "column-rule-break"),
+    ("rowRuleWidth", "row-rule-width"),
+    ("rowRuleStyle", "row-rule-style"),
+    ("rowRuleColor", "row-rule-color"),
+    ("rowRuleBreak", "row-rule-break"),
     ("breakBefore", "break-before"),
     ("breakAfter", "break-after"),
     ("breakInside", "break-inside"),
@@ -339,6 +344,19 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         "contain-intrinsic-inline-size" => vec!["containIntrinsicWidth"],
         "contain-intrinsic-block-size" => vec!["containIntrinsicHeight"],
         "column-rule" => vec!["columnRuleWidth", "columnRuleStyle", "columnRuleColor"],
+        "row-rule" => vec!["rowRuleWidth", "rowRuleStyle", "rowRuleColor"],
+        "rule" => vec![
+            "columnRuleWidth",
+            "columnRuleStyle",
+            "columnRuleColor",
+            "rowRuleWidth",
+            "rowRuleStyle",
+            "rowRuleColor",
+        ],
+        "rule-width" => vec!["columnRuleWidth", "rowRuleWidth"],
+        "rule-style" => vec!["columnRuleStyle", "rowRuleStyle"],
+        "rule-color" => vec!["columnRuleColor", "rowRuleColor"],
+        "rule-break" => vec!["columnRuleBreak", "rowRuleBreak"],
         "page-break-before" => vec!["breakBefore"],
         "page-break-after" => vec!["breakAfter"],
         "page-break-inside" => vec!["breakInside"],
@@ -458,6 +476,7 @@ fn conv(prop: &str) -> Conv {
         | "positionVisibility" | "anchorWidth" | "anchorHeight" => Conv::Raw,
         "columnCount" | "columnWidth" | "columnSpan" | "columnFill" | "columnHeight"
         | "columnWrap" | "columnRuleWidth" | "columnRuleStyle" | "columnRuleColor"
+        | "columnRuleBreak" | "rowRuleWidth" | "rowRuleStyle" | "rowRuleColor" | "rowRuleBreak"
         | "breakBefore" | "breakAfter" | "breakInside" | "orphans" | "widows" | "float"
         | "clear" | "fitTolerance" | "marginTrim" | "borderSpacing" | "borderCollapse" => Conv::Raw,
         "viewTransitionName" | "viewTransitionClass" | "viewTransitionGroup" => Conv::Raw,

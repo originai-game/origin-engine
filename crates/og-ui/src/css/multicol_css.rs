@@ -201,6 +201,39 @@ pub(crate) fn lower(name: &str, value: &str) -> Option<Result<Vec<Lowered>, Stri
                 ("columnRuleColor", text(col)),
             ])
         }
+        // CSS Gap Decorations 1 §3.2: where a rule breaks.
+        "column-rule-break" | "row-rule-break" | "rule-break" => match v {
+            "normal" | "none" | "intersection" => Ok(match name {
+                "column-rule-break" => vec![("columnRuleBreak", text(v))],
+                "row-rule-break" => vec![("rowRuleBreak", text(v))],
+                _ => vec![("columnRuleBreak", text(v)), ("rowRuleBreak", text(v))],
+            }),
+            v => Err(format!("'{v}' is no {name}: normal, none or intersection")),
+        },
+        // The row gaps' rules (CSS Gap Decorations 1 §4), read as the
+        // column rules are; `rule-*` sets both.
+        n if n.starts_with("row-rule") || n.starts_with("rule") => {
+            let column = format!("column-{}", n.strip_prefix("row-").unwrap_or(n));
+            let both = !n.starts_with("row-");
+            let parts = lower(&column, value)?;
+            parts.map(|parts| {
+                parts
+                    .into_iter()
+                    .flat_map(|(k, v)| {
+                        let row = match k {
+                            "columnRuleWidth" => "rowRuleWidth",
+                            "columnRuleStyle" => "rowRuleStyle",
+                            _ => "rowRuleColor",
+                        };
+                        let mut out = vec![(row, v.clone())];
+                        if both {
+                            out.push((k, v));
+                        }
+                        out
+                    })
+                    .collect()
+            })
+        }
         _ => return None,
     })
 }

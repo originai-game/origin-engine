@@ -823,6 +823,10 @@ pub struct LayoutBox {
     /// A multi-column container's rules between columns, from its box's
     /// top left: each one's middle x, its top and its length.
     pub col_rules: Vec<[f32; 3]>,
+    /// A grid's gap rules' segments, from its box's origin: the column
+    /// gaps' (axis 0: x, top, height), then the row gaps' (axis 1: left,
+    /// y, width), as CSS Gap Decorations 1 breaks them.
+    pub gap_segs: Vec<(u8, [f32; 3])>,
     /// A text a column break splits: from each line on, how far its lines
     /// move from where its box puts them (into the next column).
     pub frag: Vec<(u32, [f32; 2])>,
@@ -911,6 +915,7 @@ impl Default for LayoutBox {
             anchor_placed: crate::anchor::Placed::default(),
             cols: (1, 0.0),
             col_rules: Vec::new(),
+            gap_segs: Vec::new(),
             frag: Vec::new(),
             stuck: 0,
             cv_skip: false,
@@ -1395,6 +1400,7 @@ impl Node {
         self.layout.anchor_placed = previous.layout.anchor_placed;
         self.layout.cols = previous.layout.cols;
         self.layout.col_rules.clone_from(&previous.layout.col_rules);
+        self.layout.gap_segs.clone_from(&previous.layout.gap_segs);
         self.layout.frag.clone_from(&previous.layout.frag);
         self.layout.stuck = previous.layout.stuck;
         self.layout.laid_clip = previous.layout.laid_clip;

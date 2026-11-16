@@ -163,6 +163,52 @@ impl Ui {
                 }
             }
         }
+        // A grid's gap rules (CSS Gap Decorations 1), centred on their gaps.
+        if let Some(d) = n.decor.as_deref()
+            && d.gap_rules.iter().any(Option::is_some)
+        {
+            for &(axis, [x, y, len]) in &n.layout.gap_segs {
+                let Some((line, _)) = d.gap_rules[usize::from(axis)] else {
+                    continue;
+                };
+                let (w, color) = (line.width, line.color);
+                // One stroke across the rule, `off` in from its edge.
+                let piece = |off: f32, thick: f32, at: f32, long: f32| {
+                    if axis == 0 {
+                        Rect::new(rect.x + x - w / 2.0 + off, rect.y + y + at, thick, long)
+                    } else {
+                        Rect::new(rect.x + x + at, rect.y + y - w / 2.0 + off, long, thick)
+                    }
+                };
+                let strokes: &[(f32, f32)] =
+                    if line.style == crate::decor::LineStyle::Double && w >= 3.0 {
+                        &[(0.0, 1.0 / 3.0), (2.0 / 3.0, 1.0 / 3.0)]
+                    } else {
+                        &[(0.0, 1.0)]
+                    };
+                for &(off, k) in strokes {
+                    match line.style {
+                        crate::decor::LineStyle::Dashed | crate::decor::LineStyle::Dotted => {
+                            let on = if line.style == crate::decor::LineStyle::Dashed {
+                                3.0 * w
+                            } else {
+                                w
+                            };
+                            let mut at = 0.0;
+                            while at < len {
+                                cmds.push(quad(
+                                    piece(off * w, k * w, at, on.min(len - at)),
+                                    0.0,
+                                    color,
+                                ));
+                                at += 2.0 * on.max(0.5);
+                            }
+                        }
+                        _ => cmds.push(quad(piece(off * w, k * w, 0.0, len), 0.0, color)),
+                    }
+                }
+            }
+        }
     }
 
     /// The element's content and selection markers (after its background).

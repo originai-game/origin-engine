@@ -465,6 +465,7 @@ pub(crate) fn painted_eq(a: &Node, b: &Node) -> bool {
         && a.props.text_path == b.props.text_path
         && a.layout.rich_lines == b.layout.rich_lines
         && a.layout.col_rules == b.layout.col_rules
+        && a.layout.gap_segs == b.layout.gap_segs
         && a.layout.frag == b.layout.frag
         && a.layout.wrap_lines == b.layout.wrap_lines
 }

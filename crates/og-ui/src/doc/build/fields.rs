@@ -289,6 +289,37 @@ impl Ui {
         if r.has("radius") {
             d.radius = Some(el.radius);
         }
+        // A grid's gap rules (CSS Gap Decorations 1); a multi-column
+        // container draws its column rules itself.
+        if super::inner_display(r.str("display")) == "grid" {
+            for (k, axis) in ["column", "row"].iter().enumerate() {
+                let style = r
+                    .str(&format!("{axis}RuleStyle"))
+                    .and_then(LineStyle::from_css);
+                let width = match r.str(&format!("{axis}RuleWidth")) {
+                    None | Some("medium") => 3.0,
+                    Some("thin") => 1.0,
+                    Some("thick") => 5.0,
+                    Some(v) => v.trim_end_matches("px").parse().unwrap_or(0.0),
+                };
+                let brk = match r.str(&format!("{axis}RuleBreak")) {
+                    Some("none") => crate::decor::GapBreak::None,
+                    Some("intersection") => crate::decor::GapBreak::Intersection,
+                    _ => crate::decor::GapBreak::Normal,
+                };
+                if let Some(style) = style.filter(|_| width > 0.0) {
+                    let color = r.color(&format!("{axis}RuleColor")).unwrap_or(current);
+                    d.gap_rules[k] = Some((
+                        Line {
+                            width,
+                            style,
+                            color,
+                        },
+                        brk,
+                    ));
+                }
+            }
+        }
         // A layer's content box, and the edge a content-box clip margin
         // starts from.
         if d.css.is_some() || d.clip_margin.is_some() {
