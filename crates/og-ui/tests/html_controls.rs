@@ -466,3 +466,45 @@ dialog { width: 200px; }
         .join("\n");
     assert!(err.contains("apart"), "{bad}: {err}");
 }
+
+/// `::backdrop` inherits from its originating element (CSS Position 4
+/// §3.2, as resolved for dialogs): a custom property set on the dialog
+/// reaches the scrim's fill through `var()`, over the value of the column
+/// around it, which it inherits when the dialog sets none. Ways it could
+/// fail: the backdrop inheriting from the root or the dialog's parent
+/// instead, or var() left unresolved there.
+#[test]
+fn the_backdrop_inherits_from_its_dialog() {
+    let fill = |dialog: &str, backdrop: &str| {
+        let doc = format!(
+            r#"<meta name="component" content="form">
+<column id="Form" style="--scrim: #ff0000">
+  <dialog id="Ask" modal open aria-label="Quit?"><button id="Yes">Yes</button></dialog>
+</column>
+<style>
+dialog {{ {dialog} }}
+dialog::backdrop {{ {backdrop} }}
+</style>"#
+        );
+        let d = crate::support::Doc::new(&doc, &[]);
+        d.ui.frame()
+            .items
+            .iter()
+            .find_map(|it| match &it.cmd {
+                DrawCmd::Shape { shape, .. } if shape.half.x >= 399.0 => match shape.paint {
+                    og_draw::UiPaint::Solid(c) => Some(c),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .expect("a scrim")
+    };
+    let blue = Srgba::rgb(0, 0, 255).linear();
+    assert_eq!(fill("--scrim: #0000ff;", "background: var(--scrim);"), blue);
+    // The column around the dialog sets --scrim red: without the dialog's
+    // own, the backdrop inherits the column's through the dialog.
+    assert_eq!(
+        fill("", "background: var(--scrim);"),
+        Srgba::rgb(255, 0, 0).linear()
+    );
+}

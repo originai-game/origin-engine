@@ -232,11 +232,18 @@ proof("user-select", "user_select", "presses_select_words_lines_and_whole_elemen
       "Real presses: a double press selects the word, a triple the line, user-select: all the whole element at one press, none and a button's label nothing, with the I-beam only over selectable text. og-ui's default is none (a game's text is not selectable unless it says so), not CSS's auto.")
 proof("selection", "user_select", "selection_ink_lines_and_shadows_cover_only_the_selected_run",
       "p::selection's color, text-decoration and text-shadow draw on the selected word's glyphs only, clipped to the run, with the rest of the line in its own ink and one underline under the word. Its background is judged in the GPU frames (user_select::the_selection_matches_its_reference_frames).")
+proof("backdrop", "html_controls", "the_backdrop_pseudo_element_fills_the_scrim",
+      "A modal dialog's ::backdrop draws the scrim in its background and lays it out by its box properties (padding-top moves the centred panel). html_controls::the_backdrop_inherits_from_its_dialog proves it inherits from the dialog: var() takes the dialog's custom property over its column's, and the column's through the dialog when the dialog sets none. A popover's ::backdrop is not drawn (the popover row); currentColor there is not asserted; fullscreen's is not applicable.")
+proof("smooth", "css_interact", "images_take_object_fit_position_and_inherited_image_rendering",
+      "image-rendering: smooth on an image under a pixelated parent emits a linearly sampled image paint, where the parent's value makes its sibling's nearest.")
+proof("video-dynamic-range", "css_interact", "video_dynamic_range_follows_the_surface",
+      "(video-dynamic-range: standard) matches on standard and extended-range surfaces, (… high) only on one with Viewport::high_range, and a change of surface restyles on the next frame.")
 not_applicable("webxr-dom-overlays", "Styles the DOM overlay of a WebXR session; the engine renders its own UI in its world and has no WebXR DOM layer.")
 not_applicable("window-controls-overlay window-drag", "Installed web-app title-bar integration (the OS window's caption buttons and drag regions); a game's UI is drawn inside its own surface, and the host owns its window.")
 not_applicable("picture-in-picture", "Styles a video in the browser's floating picture-in-picture window, which is browser chrome outside the game's surface.")
 not_applicable("fullscreen", "The Fullscreen API's :fullscreen and its ::backdrop style one element taken full screen by the browser; the game's surface is the screen, and the host decides whether its window is full screen.")
 not_applicable("resizable", "@media (resizable) asks whether script may resize the browser window; the host, not a document, owns the game's window.")
+not_applicable("target-text", "::target-text styles the text a URL scroll-to-text fragment matched on navigation; a game's documents are not navigated to by URL.")
 not_applicable("ime-mode", "Obsolete, non-standard IME switch that browsers ignore in favour of inputmode; og-ui fields take inputmode and the platform's text input.")
 
 # layout
@@ -284,6 +291,8 @@ not_applicable("svg-discouraged",
                "SVG 1.1 features SVG 2 removed (xlink: attributes, SVG fonts, SVGPathSeg and other DOM methods, zoomAndPan, baseProfile); documents are SVG 2 markup with no script DOM.")
 
 MISSING = {
+    "will-change": "will-change on a stacking property draws a group layer, but neither half of its contract is observable yet: a transform does not make a containing block for fixed descendants, and z-index never lifts a child above its parent's later siblings (both routed to their streams).",
+    "file-selector-button": "Accepted and styles nothing: a file input's button is not a stylable box.",
     "anchor-positioning-animations": "A transition between anchor() values jumps: interpolation treats two anchor() calls as discrete, and calc() takes anchor() only as anchor(…) + px.",
     "motion-path": "No offset-path, offset-distance, offset-rotate, offset-anchor or offset-position: the properties are refused.",
     "popover": ":popover-open restyles an open popover (control_props::titles_and_popovers_show_against_their_controls covers the popover attribute), but a popover draws no ::backdrop and its open/close ignores @starting-style and display/overlay allow-discrete transitions.",

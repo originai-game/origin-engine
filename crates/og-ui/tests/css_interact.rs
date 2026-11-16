@@ -267,11 +267,12 @@ fn images_take_object_fit_position_and_inherited_image_rendering() {
     let mut handles = Handles::default();
     let t = handles.texture();
     let doc = r#"<meta name="component" content="im">
-<div id="Root"><img id="Pic" src={1} alt="" /><img id="Plain" src={1} alt="" /></div>
+<div id="Root"><img id="Pic" src={1} alt="" /><img id="Plain" src={1} alt="" /><img id="Smooth" src={1} alt="" /></div>
 <style>
 #Root { image-rendering: pixelated; }
 #Pic { width: 100px; height: 50px; object-fit: contain; object-position: right 10px top; }
 #Plain { width: 10px; height: 10px; image-rendering: auto; }
+#Smooth { width: 40px; height: 40px; object-fit: cover; image-rendering: smooth; }
 </style>"#;
     let mut ui = ui_with_font(test_font_metrics());
     ui.define_document(UiDocument::parse("ui/im.svelte", doc).expect("parses"));
@@ -303,8 +304,9 @@ fn images_take_object_fit_position_and_inherited_image_rendering() {
         .collect();
     // The fitted one, sampled nearest by its parent's image-rendering and
     // placed 10 px in from the right edge; the one saying auto is a plain
-    // stretched image (not a shape).
-    assert_eq!(images.len(), 1, "{images:?}");
+    // stretched image (not a shape); `smooth` under the same pixelated
+    // parent samples smoothly again (CSS Images 3 §5.3).
+    assert_eq!(images.len(), 2, "{images:?}");
     let im = images[0];
     assert_eq!(im.fit, og_draw::UiFit::Contain);
     assert_eq!(
@@ -312,6 +314,8 @@ fn images_take_object_fit_position_and_inherited_image_rendering() {
         (Vec2::new(1.0, 0.0), Vec2::new(-10.0, 0.0))
     );
     assert!(im.nearest);
+    assert_eq!(images[1].fit, og_draw::UiFit::Cover);
+    assert!(!images[1].nearest, "smooth resets the inherited pixelated");
 }
 
 /// `translate`'s percentages are of the element's own box, as CSS's: a
@@ -679,4 +683,30 @@ fn touch_action_filters_pans_and_scroll_behavior_glides() {
         "settles: {:?}",
         &smooth[150..]
     );
+}
+
+/// Media Queries 5 §6.5 `video-dynamic-range`: `standard` matches on
+/// every surface, `high` only where the surface presents extended range
+/// (`Viewport::high_range`), and a change of surface restyles at once.
+/// Ways it could fail: `high` matching a standard surface, `standard`
+/// failing on a high one (it is a minimum, not an exact match), or the
+/// query kept from the first frame.
+#[test]
+fn video_dynamic_range_follows_the_surface() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root"><div id="Std"></div><div id="High"></div></div>
+<style>
+#Std, #High { width: 10px; height: 10px; }
+@media (video-dynamic-range: standard) { #Std { width: 20px; } }
+@media (video-dynamic-range: high) { #High { width: 30px; } }
+</style>"#;
+    let mut d = crate::support::Doc::new(text, &[]);
+    let widths = |d: &crate::support::Doc| (d.get("Std").width, d.get("High").width);
+    assert_eq!(widths(&d), (20.0, 10.0), "standard surface");
+    d.viewport.high_range = true;
+    d.step(InputFrame::default());
+    assert_eq!(widths(&d), (20.0, 30.0), "extended-range surface");
+    d.viewport.high_range = false;
+    d.step(InputFrame::default());
+    assert_eq!(widths(&d), (20.0, 10.0), "back to standard");
 }
