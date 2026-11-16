@@ -210,12 +210,21 @@ SVG `<tspan>`, each with any attributes (`class`, `id`, `data-*`, `lang`,
 attribute, structural (among their text's inline elements), child and
 descendant, and states (`a:hover`, from the pointer over a link's words or
 the probe). Every inherited text property and `vertical-align` and
-`display` apply to the words in them; a box property (`padding`,
-`background`, `width`…) is ignored on them for now. Each one styling its
-words is a node under its text (kind `inline`, in the probe), out of its
-flow: its fragments are one per line it has words on, each around its
-words' content area (CSS 2 §9.4.2, §10.6.1), and its box their union. A
-link is hit on its fragments, not across the lines between them. HTML's look is the UA sheet's (`b { font-weight:
+`display` apply to the words in them. Their margin, border and padding
+take room on the line before their first character and after their last
+(CSS 2 §10.3.1), the first and last characters shaped apart; across the
+line they grow the element's fragments, never the line (§10.6.1). Under
+`box-decoration-break: clone` each line holds both edges, and the line
+breaks with room for them (CSS Fragmentation 3 §5.4). An edge's side is
+its words' direction's: a wrapped element whose words run against its
+own direction (Chinese in a `dir="rtl"` span) takes its left edge on its
+first line, not CSS 2 §8.6's right. `width`, `height`
+and percentage or `auto` margins and padding take no room on them. Each
+one styling its words or taking room is a node under its text (kind
+`inline`, in the probe), out of its flow: its fragments are one per line
+it has words on, each its border box around its words' content area (CSS
+2 §9.4.2), and its box their union. A link is hit on its fragments, not
+across the lines between them. HTML's look is the UA sheet's (`b { font-weight:
 bold }`, `sub { vertical-align: sub; font-size: smaller }`, the ruby
 `display`s), so a rule overrides it. An inline element takes no event
 handlers, `bind:`, `use:` or transitions: put them on the text. In a block,

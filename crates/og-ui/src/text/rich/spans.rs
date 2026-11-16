@@ -96,6 +96,8 @@ pub struct TextSpanStyle {
     pub owners: Vec<u64>,
     /// How its emoji are presented (CSS `font-variant-emoji`).
     pub emoji: Option<crate::text::EmojiStyle>,
+    /// Each owner's edges at this run, as [`RichSpan::edges`].
+    pub edges: Vec<InlineEdges>,
 }
 
 /// An inline object of a text (a document's `<img>`, `<og-icon>` or `<kbd
@@ -205,6 +207,7 @@ impl Ui {
                 word_spacing: 0.0,
                 combine: None,
                 owners: Vec::new(),
+                edges: Vec::new(),
             };
             for (_, _, style) in ranges.iter().filter(|(a, b, _)| *a <= start && end <= *b) {
                 if let Some(c) = &style.color {
@@ -333,6 +336,7 @@ impl Ui {
                 }
                 if !style.owners.is_empty() {
                     s.owners = style.owners.clone();
+                    s.edges = style.edges.clone();
                 }
                 if let Some(link) = &style.link {
                     s.link = Some(link.clone());

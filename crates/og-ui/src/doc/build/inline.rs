@@ -6,7 +6,7 @@
 
 use super::{Build, Resolved, V, schema};
 use crate::doc::DocNode;
-use crate::rich::{InlineAtom, RubyLeaf, RubyOut, RubyRole, ruby_structure};
+use crate::rich::{InlineAtom, InlineEdges, RubyLeaf, RubyOut, RubyRole, ruby_structure};
 use crate::ui::Ui;
 use crate::{TextSpan, TextSpanStyle};
 
@@ -252,21 +252,74 @@ impl Ui {
                     .collect::<Vec<u64>>(),
             );
         }
-        // Elements that style nothing, decorate no box and name no part
-        // leave it a plain text.
-        if out
-            .span_styles
+        // Each element's edges: its start's on the run that begins it, its
+        // end's on the run that ends it (`box-decoration-break: slice`),
+        // their sides its words' direction's (its first strong character's,
+        // else the text's): the room before its first character is on
+        // the left of left-to-right words.
+        let all: Vec<(u64, InlineEdges)> = b
+            .inline
             .iter()
-            .all(|(span, s)| span.name == "inline" && *s == TextSpanStyle::default())
+            .map(|(i, e)| {
+                let words: String = leaves
+                    .iter()
+                    .filter(|l| l.path.iter().any(|&(p, _)| p as usize == *i))
+                    .map(|l| l.text.as_str())
+                    .collect();
+                let text = if flow.rtl {
+                    og_i18n::Direction::Rtl
+                } else {
+                    og_i18n::Direction::Ltr
+                };
+                // Down a vertical line, its text's.
+                let rtl = if flow.mode.vertical() {
+                    flow.rtl
+                } else {
+                    og_i18n::paragraph_direction(&words, text) == og_i18n::Direction::Rtl
+                };
+                (e.key, self.inline_edges(&e.values, flow.mode, rtl))
+            })
+            .collect();
+        let edges: Vec<Vec<InlineEdges>> = owners
+            .iter()
+            .enumerate()
+            .map(|(k, own)| {
+                own.iter()
+                    .map(|key| {
+                        let mut e = all
+                            .iter()
+                            .find(|(i, _)| i == key)
+                            .map_or_else(InlineEdges::default, |(_, e)| *e);
+                        e.opens = k == 0 || !owners[k - 1].contains(key);
+                        e.closes = owners.get(k + 1).is_none_or(|o| !o.contains(key));
+                        e
+                    })
+                    .collect()
+            })
+            .collect();
+        let edged = edges.iter().flatten().any(InlineEdges::any);
+        // Elements that style nothing, decorate no box, take no room and
+        // name no part leave it a plain text.
+        if !edged
+            && out
+                .span_styles
+                .iter()
+                .all(|(span, s)| span.name == "inline" && *s == TextSpanStyle::default())
             && b.inline
                 .iter()
                 .all(|(_, e)| self.inline_decor(b, &e.values).is_none())
         {
             out.span_styles.clear();
         } else if let Some((spec, _)) = schema::prop("spans") {
-            // Each run names the elements it sits in: their fragments.
-            for ((_, style), owners) in out.span_styles.iter_mut().zip(owners) {
+            // Each run names the elements it sits in (their fragments) and
+            // their edges there.
+            for ((_, style), (owners, edges)) in out
+                .span_styles
+                .iter_mut()
+                .zip(owners.into_iter().zip(edges))
+            {
                 style.owners = owners;
+                style.edges = edges;
             }
             out.vals.push((spec, V::Spans(Ok(spans))));
         }
@@ -299,6 +352,53 @@ impl Ui {
         let p = el.padding;
         d.content = [p.left, p.top, p.right, p.bottom];
         (d != crate::decor::BoxDecor::default()).then_some(d)
+    }
+
+    /// An inline element's margin, border and padding from its values `e`
+    /// in writing mode `mode`, its words right to left (`rtl`), at its
+    /// inline start and end and across its lines ([`InlineEdges`]): its
+    /// start the left of left-to-right words, the right of right-to-left
+    /// ones, the top of a vertical line (the bottom of a right-to-left or
+    /// `sideways-lr` one). A percentage margin or padding (of a containing
+    /// block not laid out yet) and `auto` take none.
+    fn inline_edges(
+        &self,
+        e: &Resolved,
+        mode: crate::layout::flow::WritingMode,
+        rtl: bool,
+    ) -> InlineEdges {
+        use crate::layout::flow::WritingMode;
+        let theme = self.theme();
+        let em = e
+            .label_desc(theme, self.fonts(), rtl)
+            .step
+            .unwrap_or(theme.type_ramp.body)
+            .size;
+        let mut el = Ui::box_of(e, crate::Element::default(), em);
+        // Its border's widths pad it.
+        let _ = self.box_decor(
+            None,
+            e,
+            &mut el,
+            Some(schema::Kind::Inline),
+            &mut Vec::new(),
+        );
+        let p = el.padding;
+        let pad = [p.top, p.right, p.bottom, p.left];
+        let margin = el.margin.map(|m| if m.auto { 0.0 } else { m.len.px });
+        let ([start, end], across) = if mode.vertical() {
+            let up = rtl != (mode == WritingMode::SidewaysLr);
+            (if up { [2, 0] } else { [0, 2] }, [3, 1])
+        } else {
+            (if rtl { [1, 3] } else { [3, 1] }, [0, 2])
+        };
+        InlineEdges {
+            start: [margin[start], pad[start]],
+            end: [margin[end], pad[end]],
+            across: [pad[across[0]], pad[across[1]]],
+            clone: e.str("boxDecorationBreak") == Some("clone"),
+            ..InlineEdges::default()
+        }
     }
 
     /// Text node `text`'s inline elements as nodes under it, nested as

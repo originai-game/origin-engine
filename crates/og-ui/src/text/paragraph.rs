@@ -66,11 +66,41 @@ fn laid_out(
     // Each line's room held back for its hyphen, found by the passes
     // before (a line ending at a SHY whose hyphen does not fit).
     let mut reserve: Vec<f32> = Vec::new();
+    // Each line's room held back for the edges of the cloned inline
+    // elements its breaks split (`box-decoration-break: clone`), found by
+    // the passes before; a few passes settle it.
+    let mut hold: Vec<f32> = Vec::new();
+    let mut passes = 0;
     loop {
         let mut planned = Vec::new();
+        passes += 1;
         let pass = shaped(content, fonts, direction, |layout, text, indices| {
             let widths = layout.calculate_content_widths();
-            let (broke, narrowed, drop) = break_beside(layout, content, &mut reserve, room);
+            let (broke, narrowed, drop) = break_beside(layout, content, &mut reserve, &hold, room);
+            // Each line's cut edges: at its start (its first span and their
+            // width) and at its end.
+            let mut cuts = vec![((0, 0.0), (0, 0.0)); broke.len()];
+            for k in 1..broke.len() {
+                let (Some(last), Some(next)) = (
+                    line_span(content, text, &broke[k - 1].range, true),
+                    line_span(content, text, &broke[k].range, false),
+                ) else {
+                    continue;
+                };
+                let [end, start] = crate::rich::cut_room(content, last, next);
+                cuts[k - 1].1 = (last, end);
+                cuts[k].0 = (next, start);
+            }
+            let wanted: Vec<f32> = cuts.iter().map(|(a, b)| a.1 + b.1).collect();
+            let held = |k: usize| hold.get(k).copied().unwrap_or(0.0);
+            if passes < 8
+                && wanted
+                    .iter()
+                    .enumerate()
+                    .any(|(k, w)| (w - held(k)).abs() > 0.01)
+            {
+                return Err(Retry::Hold(wanted));
+            }
             // A line ending at a SHY: its hyphen, which a pass must make
             // room for when it does not fit.
             for (k, b) in broke.iter().enumerate() {
@@ -88,7 +118,7 @@ fn laid_out(
                 let m = line.metrics();
                 let width = m.advance - m.hanging_advance + m.indent + hyphens[span];
                 if width > b.shift[2] + 0.01 && reserve.get(k).is_none_or(|&r| r == 0.0) {
-                    return Err((k, hyphens[span]));
+                    return Err(Retry::Hyphen(k, hyphens[span]));
                 }
             }
             let mut lines = Vec::new();
@@ -104,14 +134,21 @@ fn laid_out(
                 lines.push(rich_line(content, fonts, text, indices, &line));
             }
             let shifts = broke.iter().map(|b| b.shift).collect();
-            Ok(((lines, shifts, narrowed, drop), (widths.max, widths.min)))
+            let rtl = layout.is_rtl();
+            Ok((
+                (lines, shifts, narrowed, drop),
+                (widths.max, widths.min),
+                cuts,
+                rtl,
+            ))
         })?;
         match pass {
-            Err((k, hyphen)) => {
+            Err(Retry::Hyphen(k, hyphen)) => {
                 reserve.resize(reserve.len().max(k + 1), 0.0);
                 reserve[k] = hyphen;
             }
-            Ok((mut broken, widths)) => {
+            Err(Retry::Hold(wanted)) => hold = wanted,
+            Ok((mut broken, widths, cuts, rtl)) => {
                 // Shape each hyphenated line again outside the font
                 // context's borrow: contextual glyphs and bidi see the
                 // visible hyphen; the spans keep their ink, links and
@@ -119,14 +156,56 @@ fn laid_out(
                 for (k, line) in planned {
                     broken.0[k] = reshape(line, fonts)?;
                 }
+                for (line, (start, end)) in broken.0.iter_mut().zip(cuts) {
+                    crate::rich::with_room(line, start, end, rtl);
+                }
                 return Some((broken, widths));
             }
         }
     }
 }
 
+/// Why a pass breaks the lines again: a line's hyphen does not fit (its
+/// index and the hyphen's width), or the room cut edges take differs from
+/// what the lines held back (what each line holds now).
+enum Retry {
+    Hyphen(usize, f32),
+    Hold(Vec<f32>),
+}
+
+/// The span of a line's first character, or of its last before its
+/// hanging spaces (`last`).
+fn line_span(
+    content: &RichContent,
+    text: &str,
+    range: &std::ops::Range<usize>,
+    last: bool,
+) -> Option<usize> {
+    // A line Parley left empty has no span.
+    if range.is_empty() {
+        return None;
+    }
+    let at = if last {
+        range.start
+            + text[range.clone()]
+                .trim_end_matches([' ', '\t', '\n'])
+                .len()
+    } else {
+        range.start + 1
+    }
+    .checked_sub(1)?;
+    let mut start = 0;
+    content.spans.iter().position(|s| {
+        let len = if s.atom.is_some() { 0 } else { s.text.len() };
+        let hit = (start..start + len).contains(&at);
+        start += len;
+        hit
+    })
+}
+
 /// Breaks the layout's lines one at a time at the room beside each
-/// (`reserve`: what each line holds back for its hyphen; negative where
+/// (`hold`: what each line holds back for the edges its breaks cut;
+/// `reserve`: what each line holds back for its hyphen; negative where
 /// holding it back left only an emergency break, so the line breaks at
 /// its SHY as if it were not there, its hyphen not shown): a line taller
 /// than the room asked for asks again as tall as it is, and a line wider
@@ -136,6 +215,7 @@ fn break_beside(
     layout: &mut Layout<Brush>,
     content: &RichContent,
     reserve: &mut [f32],
+    hold: &[f32],
     room: Room<'_>,
 ) -> (Vec<Broke>, bool, f32) {
     let guess = content.base.0.line_height;
@@ -150,8 +230,9 @@ fn break_beside(
             loop {
                 let (l, avail, next) = room(y, h);
                 let held = reserve.get(out.len()).copied().unwrap_or(0.0).max(0.0);
+                let cut = hold.get(out.len()).copied().unwrap_or(0.0);
                 let state = lines.state_mut();
-                state.set_line_max_advance((avail - held).max(0.0));
+                state.set_line_max_advance((avail - held - cut).max(0.0));
                 state.set_line_y(f64::from(y));
                 let Some(YieldData::LineBreak(d)) = lines.break_next() else {
                     break 'lines;
@@ -231,6 +312,16 @@ fn rich_line(
     let mut segments: Vec<Segment> = Vec::new();
     // Each segment's first character, counted over the segments' text.
     let mut at = 0;
+    // Each span's first byte in the text.
+    let starts: Vec<usize> = content
+        .spans
+        .iter()
+        .scan(0, |at, s| {
+            let start = *at;
+            *at += if s.atom.is_some() { 0 } else { s.text.len() };
+            Some(start)
+        })
+        .collect();
     for item in line.items() {
         match item {
             PositionedLayoutItem::InlineBox(b) => segments.push(Segment {
@@ -249,11 +340,32 @@ fn rich_line(
                 let file = font.file.as_ref().expect("cooked font");
                 let run = glyph_run.run();
                 let range = run.text_range();
+                // The room its owners' start takes after its first grapheme
+                // (its end's after its last) is drawn before it: the glyphs
+                // move along by it, on its right in a right-to-left run.
+                let [before, after] = s.room();
+                let edges = crate::rich::edge_graphemes(&s.text);
+                let shift = |cr: &std::ops::Range<usize>| {
+                    let Some((first, last)) = &edges else {
+                        return 0.0;
+                    };
+                    let edge = if run.is_rtl() {
+                        (last, after)
+                    } else {
+                        (first, before)
+                    };
+                    if cr.start == starts[brush.span] + edge.0.start {
+                        edge.1
+                    } else {
+                        0.0
+                    }
+                };
                 let mut glyphs = Vec::new();
                 for cluster in run.visual_clusters().filter(|c| c.style().brush == brush) {
                     let cr = cluster.text_range();
                     let source = text[cr.clone()].chars().next().unwrap_or(' ');
                     let index = indices[cr.start] - indices[range.start];
+                    let dx = shift(&cr);
                     for g in cluster.glyphs() {
                         let (ch, glyph) =
                             file.character_for_glyph(g.id, source, &|k| font.in_atlas_key(k));
@@ -261,7 +373,7 @@ fn rich_line(
                             ch,
                             glyph,
                             advance: g.advance / s.step.size,
-                            x: g.x / s.step.size,
+                            x: (g.x + dx) / s.step.size,
                             y: -g.y / s.step.size,
                             index,
                             rtl: run.is_rtl(),
@@ -363,11 +475,13 @@ fn shaped<R>(
                 }
                 _ => (s.step.size * 1.1, s.step.size * 0.85),
             };
+            // Its owners' edges take room in its box, drawn inside it.
+            let [before, after] = s.room();
             boxes.push(parley::InlineBox {
                 id: span as u64,
                 index: start,
                 kind: parley::InlineBoxKind::InFlow,
-                width: span_width(s, "", fonts),
+                width: span_width(s, "", fonts) + before + after,
                 height,
                 baseline: Some(baseline),
                 vertical_align: valign(s.valign, s.step.size, s.step.line_height),
@@ -452,10 +566,29 @@ fn shaped<R>(
                 StyleProperty::VerticalAlign(valign(s.valign, s.step.size, line_height(s))),
                 range.clone(),
             );
-            builder.push(
-                StyleProperty::LetterSpacing(span_tracking(s, &s.text) * s.step.size),
-                range.clone(),
-            );
+            let tracking = span_tracking(s, &s.text) * s.step.size;
+            builder.push(StyleProperty::LetterSpacing(tracking), range.clone());
+            // Its owners' start and end take room after its first and last
+            // grapheme, which [`rich_line`] turns into room before the
+            // first. Each is shaped apart from its neighbours (with them as
+            // context: joins hold), as CSS Text 3 §7.3 breaks shaping at a
+            // box's padding.
+            let [before, after] = s.room();
+            if s.atom.is_none()
+                && (before, after) != (0.0, 0.0)
+                && let Some((first, last)) = crate::rich::edge_graphemes(&s.text)
+            {
+                let at = |r: std::ops::Range<usize>| range.start + r.start..range.start + r.end;
+                if first == last {
+                    builder.push(
+                        StyleProperty::LetterSpacing(tracking + before + after),
+                        at(first),
+                    );
+                } else {
+                    builder.push(StyleProperty::LetterSpacing(tracking + before), at(first));
+                    builder.push(StyleProperty::LetterSpacing(tracking + after), at(last));
+                }
+            }
             builder.push(StyleProperty::WordSpacing(s.word_spacing), range.clone());
             let features = s.step.features.css();
             builder.push(
@@ -531,6 +664,12 @@ fn planned_line(
         }
         let mut span = s.clone();
         span.text = text[a..b].to_owned();
+        // Its owners' start takes room only before its first character,
+        // their end only after its last.
+        for e in &mut span.edges {
+            e.opens &= a == start - s.text.len();
+            e.closes &= b == start;
+        }
         if k == shy && b == end {
             span.text.pop();
             span.text.push_str(s.hyphen.as_deref().unwrap_or("-"));

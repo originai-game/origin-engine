@@ -2690,14 +2690,15 @@ fn inline_boxes_draw_on_their_line_fragments() {
     // CSS 2 §10.8 and CSS Fragmentation 3 §5.4: an inline element's
     // background and border draw on each line fragment, under its words.
     // With 20 px Noto Sans SC (each ideograph 20 px), あい日本東京中漢です
-    // in 100 px breaks after 東: the span 日本東京中漢 has fragments from
-    // 40 to 100 on the first line and 0 to 60 on the second, each around
-    // its words' content area (ascent 1.160 em, descent 0.288 em). Under
-    // `clone` each fragment draws its own whole box; under `slice`, the
-    // initial value, each draws the box as if unbroken (120 px long),
-    // moved so its part shows and cut at the break, so the border's
-    // start edge is drawn on the first line only and its end edge on the
-    // last. A label change outside the text keeps the boxes as a whole
+    // in 105 px breaks after 東: the span 日本東京中漢, its 2 px border
+    // taking room at its edges, has fragments (border boxes) from 40 to
+    // 102 on the first line and 0 to 62 on the second under `slice`, the
+    // initial value, each around its words' content area (ascent 1.160
+    // em, descent 0.288 em); each draws the box as if unbroken (124 px
+    // long), moved so its part shows and cut at the break, so the
+    // border's start edge is drawn on the first line only and its end
+    // edge on the last. Under `clone` each line holds both edges (40 to
+    // 104, 0 to 64) and each fragment draws its own whole box. A label change outside the text keeps the boxes as a whole
     // build draws them (run with OG_UI_CHECK_BOUNDED=1 too).
     //
     // Ways it could fail: one box over the union of the lines, or none;
@@ -2705,7 +2706,7 @@ fn inline_boxes_draw_on_their_line_fragments() {
     // or the unbroken box not continued across the break; the right to
     // left line's box continued the wrong way.
     const SC: &str = "tests/fixtures/ui-text/assets/fonts/NotoSansSC-Regular-subset.ttf";
-    let doc = |mode: &str, dir: &str| {
+    let doc = |mode: &str, dir: &str, css: &str| {
         let text = format!(
             r#"<meta name="component" content="t">
 <meta name="prop:label" content="string">
@@ -2715,8 +2716,9 @@ fn inline_boxes_draw_on_their_line_fragments() {
 </div></div>
 <style>
 #Root {{ width: 400px; }}
-p {{ margin: 0; font-size: 20px; width: 100px; }}
+p {{ margin: 0; font-size: 20px; width: 105px; }}
 #S {{ background: #ff0000; border: 2px solid #00ff00; box-decoration-break: {mode}; }}
+{css}
 </style>"#
         );
         let mut font = crate::features::font_at(SC);
@@ -2784,7 +2786,7 @@ p {{ margin: 0; font-size: 20px; width: 100px; }}
     };
     let r = |x: f32, y: f32, w: f32, h: f32| [x, y, w, h].map(|v| (v * 100.0).round() / 100.0);
 
-    let slice = doc("slice", "ltr");
+    let slice = doc("slice", "ltr", "");
     let p = slice.get("P");
     let (boxes, words) = drawn(&slice);
     assert!(
@@ -2794,10 +2796,10 @@ p {{ margin: 0; font-size: 20px; width: 100px; }}
     let strip = |b: Vec<(bool, [f32; 4], [f32; 4], usize)>| -> Vec<(bool, [f32; 4], [f32; 4])> {
         b.into_iter().map(|(g, a, s, _)| (g, a, s)).collect()
     };
-    // Clone: a whole box on each fragment, 40 to 100 then 0 to 60. Across
+    // Clone: a whole box on each fragment, 40 to 104 then 0 to 64. Across
     // the line each is its line's fragment (its words' content area): the
     // second line's below the first's, each around its words' baseline.
-    let clone = strip(drawn(&doc("clone", "ltr")).0);
+    let clone = strip(drawn(&doc("clone", "ltr", "")).0);
     assert_eq!(clone.len(), 4, "{clone:?}");
     let (first, second) = (clone[0].1, clone[2].1);
     assert_eq!(
@@ -2812,47 +2814,59 @@ p {{ margin: 0; font-size: 20px; width: 100px; }}
     );
     assert_eq!(
         [first[0], first[2], second[0], second[2]],
-        [p.x + 40.0, 60.0, p.x, 60.0]
+        [p.x + 40.0, 64.0, p.x, 64.0]
     );
+    // Across the line: its words' content area (1.448 em) and its 2 px
+    // border above and below, which may overflow its line without growing
+    // it (CSS 2 §10.6.1); the second a line below the first.
     let line = p.height / 2.0;
     assert!(
-        first[1] >= p.y - 0.01
-            && first[1] + first[3] <= p.y + line + 0.01
-            && second[1] >= first[1] + first[3]
-            && second[1] + second[3] <= p.y + p.height + 0.01,
+        (first[3] - (1.448 * 20.0 + 4.0)).abs() < 0.1
+            && second[3] == first[3]
+            && (second[1] - first[1] - line).abs() < 0.5
+            && first[1] < p.y + line / 2.0
+            && first[1] + first[3] > p.y + line / 2.0,
         "{first:?} {second:?} in {p:?}"
     );
-    // Slice: the 120 px box from 40 on the first line, from -60 on the
+    // Slice: the 124 px box from 40 on the first line, from -62 on the
     // second, each showing its fragment along the line (its block sides
     // and the edge it holds not cut).
-    let unbroken = |f: [f32; 4], x: f32| r(x, f[1], 120.0, f[3]);
-    let (a, b) = (unbroken(first, p.x + 40.0), unbroken(second, p.x - 60.0));
+    let unbroken = |f: [f32; 4], x: f32, w: f32| r(x, f[1], w, f[3]);
+    let (one, two) = (
+        r(p.x + 40.0, first[1], 62.0, first[3]),
+        r(p.x, second[1], 62.0, second[3]),
+    );
+    let (a, b) = (
+        unbroken(first, p.x + 40.0, 124.0),
+        unbroken(second, p.x - 62.0, 124.0),
+    );
     assert_eq!(
         strip(boxes),
         [
-            (false, a, first),
-            (true, a, first),
-            (false, b, second),
-            (true, b, second),
+            (false, a, one),
+            (true, a, one),
+            (false, b, two),
+            (true, b, two),
         ],
         "slice"
     );
 
     // Right to left: the ideographs are a left to right run, so the
     // fragments stay where they were, but the element's start edge is at
-    // its right: the unbroken box runs on leftward from the first
+    // its right: the unbroken background runs on leftward from the first
     // fragment's right edge (-20 to 100) and the second shows its left
-    // part (0 to 120).
-    let rtl = strip(drawn(&doc("slice", "rtl")).0);
-    let (a, b) = (unbroken(first, p.x - 20.0), unbroken(second, p.x));
+    // part (0 to 120). No border here: where a wrapped element's words run
+    // against its direction, its edges' room follows its words (its left
+    // edge on its first line), not yet CSS 2 §8.6's lines.
+    let rtl = strip(drawn(&doc("slice", "rtl", "#S { border: none; }")).0);
+    let (one, two) = (
+        r(p.x + 40.0, first[1] + 2.0, 60.0, first[3] - 4.0),
+        r(p.x, second[1] + 2.0, 60.0, second[3] - 4.0),
+    );
+    let (a, b) = (unbroken(one, p.x - 20.0, 120.0), unbroken(two, p.x, 120.0));
     assert_eq!(
         rtl,
-        [
-            (false, a, first),
-            (true, a, first),
-            (false, b, second),
-            (true, b, second),
-        ],
+        [(false, a, one), (false, b, two)],
         "right to left slice"
     );
 

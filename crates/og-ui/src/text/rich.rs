@@ -86,6 +86,108 @@ pub struct RichSpan {
     pub combine: Option<crate::layout::flow::Combine>,
     /// The keys of the inline elements it sits in, outermost first.
     pub owners: Vec<u64>,
+    /// Each owner's edges at this span, beside [`RichSpan::owners`].
+    pub edges: Vec<InlineEdges>,
+}
+
+/// An inline element's margin, border and padding at one of its spans (CSS
+/// 2 §10.3.1, §10.6.1). Its inline start's and end's (`[margin, border
+/// and padding]`, px) take room on the line before its first character and
+/// after its last: on the span that `opens` it and the one that `closes`
+/// it, and under `box-decoration-break: clone` at each line break inside
+/// it too (CSS Fragmentation 3 §5.4, [`cut_room`]). Its border and padding
+/// across its lines (above and below a horizontal line, left and right of
+/// a vertical one) only grow its fragments.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct InlineEdges {
+    pub start: [f32; 2],
+    pub end: [f32; 2],
+    pub across: [f32; 2],
+    pub opens: bool,
+    pub closes: bool,
+    pub clone: bool,
+}
+
+impl InlineEdges {
+    /// The room it takes before a span's text and after it.
+    fn room(&self) -> [f32; 2] {
+        [
+            if self.opens {
+                self.start[0] + self.start[1]
+            } else {
+                0.0
+            },
+            if self.closes {
+                self.end[0] + self.end[1]
+            } else {
+                0.0
+            },
+        ]
+    }
+
+    /// It takes room or grows its fragments.
+    pub(crate) fn any(&self) -> bool {
+        [self.start, self.end, self.across] != [[0.0; 2]; 3]
+    }
+}
+
+/// The room a line break between spans `last` and `next` takes: the end's
+/// of each element it splits under `box-decoration-break: clone`, before
+/// it, and their start's after it (CSS Fragmentation 3 §5.4).
+pub(crate) fn cut_room(rc: &RichContent, last: usize, next: usize) -> [f32; 2] {
+    let (a, b) = (&rc.spans[last], &rc.spans[next]);
+    a.owners
+        .iter()
+        .zip(&a.edges)
+        .filter(|(o, e)| e.clone && b.owners.contains(o))
+        .fold([0.0; 2], |[x, y], (_, e)| {
+            [x + e.end[0] + e.end[1], y + e.start[0] + e.start[1]]
+        })
+}
+
+/// Line `line` with room for the edges a break splits at its logical start
+/// (`start`: its first span and the width) and end, on its left and right
+/// (the other way round when `rtl`): pieces with no text, as an edge's room
+/// at an element's start and end is.
+pub(crate) fn with_room(line: &mut RichLine, start: (usize, f32), end: (usize, f32), rtl: bool) {
+    let (left, right) = if rtl { (end, start) } else { (start, end) };
+    let piece = |(span, width): (usize, f32), x: f32| Piece {
+        span,
+        text: String::new(),
+        x,
+        width,
+        rise: 0.0,
+    };
+    let segment = |(span, width): (usize, f32)| Segment {
+        span,
+        text: String::new(),
+        at: 0,
+        glyphs: None,
+        width,
+        rise: 0.0,
+    };
+    if left.1 > 0.0 {
+        for p in &mut line.pieces {
+            p.x += left.1;
+        }
+        line.pieces.insert(0, piece(left, 0.0));
+        if let Some(segments) = &mut line.shaped {
+            segments.insert(0, segment(left));
+        }
+        line.width += left.1;
+    }
+    if right.1 > 0.0 {
+        let x = line.pieces.last().map_or(0.0, |p| p.x + p.width);
+        line.pieces.push(piece(right, x));
+        if let Some(segments) = &mut line.shaped {
+            let at = segments.last().map_or(0, |s| s.at + s.text.chars().count());
+            segments.push(Segment {
+                at,
+                ..segment(right)
+            });
+        }
+        line.width += right.1;
+    }
 }
 
 impl RichSpan {
@@ -106,6 +208,14 @@ impl RichSpan {
         v: crate::layout::flow::VerticalText,
     ) -> crate::layout::flow::VerticalText {
         self.combine.map_or(v, |c| v.combining(c, &self.text))
+    }
+
+    /// The room its owners' edges take before its text and after it, px.
+    pub(crate) fn room(&self) -> [f32; 2] {
+        self.edges.iter().fold([0.0; 2], |[a, b], e| {
+            let [s, t] = e.room();
+            [a + s, b + t]
+        })
     }
 
     /// Whether it is composed in one upright em down `v`, one unit of
@@ -358,6 +468,18 @@ pub(crate) fn span_metrics(s: &RichSpan, fonts: &dyn Metrics) -> (f32, f32, f32)
     (lh, a * s.step.size, d * s.step.size)
 }
 
+/// The byte ranges of `text`'s first and last grapheme, where an inline
+/// element's start and end take room ([`RichSpan::room`]): the same
+/// range for a text of one. `None` for an empty text.
+pub(crate) fn edge_graphemes(
+    text: &str,
+) -> Option<(std::ops::Range<usize>, std::ops::Range<usize>)> {
+    let g = og_i18n::graphemes(text);
+    let (first, last) = (g.first()?, g.last()?);
+    let byte = |c: usize| text.char_indices().nth(c).map_or(text.len(), |(b, _)| b);
+    Some((byte(first.0)..byte(first.1), byte(last.0)..byte(last.1)))
+}
+
 /// The paragraphs' units (paragraphs split at `\n`), measured along a
 /// line ([`span_advance`]).
 fn paragraphs(
@@ -367,7 +489,9 @@ fn paragraphs(
 ) -> Vec<Vec<Unit>> {
     let mut out: Vec<Vec<Unit>> = vec![Vec::new()];
     for (k, s) in rc.spans.iter().enumerate() {
-        // An atom, or a text composed in one em: one unit of the line.
+        let [before, after] = s.room();
+        // An atom, or a text composed in one em: one unit of the line. An
+        // atom's box holds its owners' edges.
         if s.atom.is_some() || s.combined(v) {
             let text = if s.atom.is_some() {
                 String::new()
@@ -375,13 +499,24 @@ fn paragraphs(
                 s.text.replace('\n', "")
             };
             let glued = out.last().and_then(|p| p.last()).is_some_and(|u| !u.space);
+            let room = if s.atom.is_some() {
+                before + after
+            } else {
+                0.0
+            };
+            if s.atom.is_none() {
+                room_unit(&mut out, k, before, glued);
+            }
             out.last_mut().expect("a paragraph").push(Unit {
                 span: k,
-                width: span_advance(s, &text, fonts, v),
+                width: span_advance(s, &text, fonts, v) + room,
                 text,
                 space: false,
-                glued,
+                glued: glued || (s.atom.is_none() && before != 0.0),
             });
+            if s.atom.is_none() {
+                room_unit(&mut out, k, after, true);
+            }
             continue;
         }
         for (n, para) in s.text.split('\n').enumerate() {
@@ -395,6 +530,12 @@ fn paragraphs(
                         .last()
                         .and_then(|p| p.last())
                         .is_some_and(|u| !u.space && u.span != k);
+                // Its owners' start: room before its first word, glued to it
+                // and broken before as the word is.
+                if n == 0 && i == 0 && before != 0.0 {
+                    room_unit(&mut out, k, before, glued);
+                }
+                let glued = glued || (n == 0 && i == 0 && before != 0.0 && !space);
                 out.last_mut().expect("a paragraph").push(Unit {
                     span: k,
                     text: t.to_string(),
@@ -404,8 +545,23 @@ fn paragraphs(
                 });
             }
         }
+        room_unit(&mut out, k, after, true);
     }
     out
+}
+
+/// Room of `width` for span `k`'s owners' edges ([`RichSpan::room`]): a
+/// unit with no text, its own piece of the line.
+fn room_unit(out: &mut [Vec<Unit>], k: usize, width: f32, glued: bool) {
+    if width != 0.0 {
+        out.last_mut().expect("a paragraph").push(Unit {
+            span: k,
+            text: String::new(),
+            space: false,
+            width,
+            glued,
+        });
+    }
 }
 
 /// The widest paragraph unbroken, and the widest unbreakable group: along
@@ -469,24 +625,38 @@ pub(crate) fn rich_lines(
         let mut width = 0.0f32;
         let mut pending: Vec<&Unit> = Vec::new();
         let mut pending_w = 0.0f32;
-        let finish = |line: &mut Vec<&Unit>, lines: &mut Vec<RichLine>| {
-            lines.push(build_line(rc, fonts, std::mem::take(line)));
+        // The room the edges a break cuts take at the line's start.
+        let mut start = (0, 0.0);
+        let finish = |line: &mut Vec<&Unit>, lines: &mut Vec<RichLine>, start, end| {
+            let mut l = build_line(rc, fonts, std::mem::take(line));
+            with_room(&mut l, start, end, false);
+            lines.push(l);
         };
         let mut any = false;
-        for g in groups {
+        for (gi, g) in groups.iter().enumerate() {
             if g[0].space {
                 pending.extend(g.iter().copied());
                 pending_w += g.iter().map(|u| u.width).sum::<f32>();
                 continue;
             }
             let gw: f32 = g.iter().map(|u| u.width).sum();
+            // The room a break after it would hold back for the edges it
+            // cuts.
+            let last = g[g.len() - 1].span;
+            let after = groups[gi + 1..]
+                .iter()
+                .find(|n| !n[0].space)
+                .map_or(0.0, |n| cut_room(rc, last, n[0].span)[0]);
             if let Some(max) = max
                 && !line.is_empty()
-                && width + pending_w + gw > max
+                && width + pending_w + gw + after > max
             {
-                finish(&mut line, &mut lines);
+                let last = line[line.len() - 1].span;
+                let [end, next] = cut_room(rc, last, g[0].span);
+                finish(&mut line, &mut lines, start, (last, end));
+                start = (g[0].span, next);
                 any = true;
-                width = 0.0;
+                width = next;
             } else if !line.is_empty() {
                 line.extend(pending.iter().copied());
                 width += pending_w;
@@ -497,7 +667,7 @@ pub(crate) fn rich_lines(
             width += gw;
         }
         if !line.is_empty() || !any {
-            finish(&mut line, &mut lines);
+            finish(&mut line, &mut lines, start, (0, 0.0));
         }
     }
     lines
@@ -508,7 +678,13 @@ fn build_line(rc: &RichContent, fonts: &dyn Metrics, units: Vec<&Unit>) -> RichL
     let mut x = 0.0;
     for u in units {
         match pieces.last_mut() {
-            Some(p) if p.span == u.span && rc.spans[u.span].atom.is_none() => {
+            // Room is a piece of its own: no text is drawn in it.
+            Some(p)
+                if p.span == u.span
+                    && rc.spans[u.span].atom.is_none()
+                    && !p.text.is_empty()
+                    && !u.text.is_empty() =>
+            {
                 p.text.push_str(&u.text);
                 p.width += u.width;
             }
@@ -707,7 +883,8 @@ fn visual_segments(
         starts.push(chars);
         chars += p.text.chars().count();
         let start = text.len();
-        if rc.spans[p.span].atom.is_some() {
+        // An atom, or an inline element's room, is one object of the line.
+        if rc.spans[p.span].atom.is_some() || p.text.is_empty() {
             text.push('\u{fffc}');
         } else {
             text.push_str(&p.text);
@@ -733,7 +910,7 @@ fn visual_segments(
             let p = &line.pieces[k];
             let s = &rc.spans[p.span];
             let at = starts[k] + text[ranges[k].start..r.start].chars().count();
-            if s.atom.is_some() {
+            if s.atom.is_some() || p.text.is_empty() {
                 out.push(Segment {
                     span: p.span,
                     text: String::new(),
@@ -899,8 +1076,10 @@ impl Ui {
             if !owns(s) {
                 continue;
             }
+            // Down a vertical line, its em box about the line's centre.
             let r = if vertical {
-                p.rect
+                let em = s.step.size * sk;
+                Rect::new(p.baseline - em / 2.0, p.rect.y, em, p.rect.height)
             } else {
                 let (_, a, d) = span_metrics(s, &self.env.fonts);
                 Rect::new(p.rect.x, p.baseline - a * sk, p.rect.width, (a - d) * sk)
@@ -915,9 +1094,11 @@ impl Ui {
     }
 
     /// The inline element nodes of each document text among `order` on
-    /// their fragments: each one's `inline_frags`, and its box their union
-    /// (an empty box at its text's corner when it has no words on a line).
-    /// Returns the nodes it placed, to map.
+    /// their fragments: each one's `inline_frags` (border boxes: its words'
+    /// content area grown by its border and padding across the line, and
+    /// at its start and end on the fragments that hold them), and its box
+    /// their union (an empty box at its text's corner when it has no words
+    /// on a line). Returns the nodes it placed, to map.
     pub(crate) fn place_inline_fragments(&mut self, order: &[usize]) -> Vec<usize> {
         let mut placed = Vec::new();
         for &text in order {
@@ -938,8 +1119,9 @@ impl Ui {
                     continue;
                 }
                 let key = self.tree.nodes[i].key;
-                let rects = self.rich_frags(text, &pieces, |s| s.owners.contains(&key));
+                let mut rects = self.rich_frags(text, &pieces, |s| s.owners.contains(&key));
                 let last = rects.len().saturating_sub(1);
+                self.border_boxes(text, &pieces, key, &mut rects);
                 let n = &mut self.tree.nodes[i];
                 n.placed.rect = rects
                     .iter()
@@ -960,6 +1142,104 @@ impl Ui {
             }
         }
         placed
+    }
+
+    /// Inline element `key`'s fragments `rects` of rich node `i` (its
+    /// words' content area on each line, about its edges' room) as its
+    /// border boxes ([`InlineEdges`]): out by its border and padding across
+    /// the line, in from its first and last piece by the room before its
+    /// edge (its margin, an outer element's edge there).
+    fn border_boxes(&self, i: usize, pieces: &[DrawnPiece], key: u64, rects: &mut [Rect]) {
+        let n = &self.tree.nodes[i];
+        let Content::Rich(rc) = &*n.content else {
+            return;
+        };
+        let sk = n.placed.scale;
+        let at = |k: usize| {
+            let s = &rc.spans[k];
+            let j = s.owners.iter().position(|&o| o == key)?;
+            Some((s.edges.get(j).copied()?, &s.edges[..j]))
+        };
+        let first = (0..rc.spans.len()).find_map(|k| Some((k, at(k)?)));
+        let last = (0..rc.spans.len()).rev().find_map(|k| Some((k, at(k)?)));
+        let (Some((fk, (e, outer))), Some((lk, (end, outer_end)))) = (first, last) else {
+            return;
+        };
+        let into = [
+            outer.iter().map(|o| o.room()[0]).sum::<f32>() + e.start[0],
+            outer_end.iter().map(|o| o.room()[1]).sum::<f32>() + end.end[0],
+        ]
+        .map(|v| v * sk);
+        // Under `clone` each fragment holds both edges: at a break, inside
+        // the room of the cloned elements around it (CSS Fragmentation 3
+        // §5.4).
+        let cut = |side: fn(&InlineEdges) -> [f32; 2], own: f32| {
+            let outer: f32 = outer
+                .iter()
+                .filter(|o| o.clone)
+                .map(|o| side(o)[0] + side(o)[1])
+                .sum();
+            (outer + own) * sk
+        };
+        let cut = [cut(|o| o.start, e.start[0]), cut(|o| o.end, end.end[0])];
+        let across = e.across.map(|v| v * sk);
+        // The side its start is on: the right of a right-to-left run (an
+        // atom's: the UI's direction), the bottom of a line set from it.
+        let vertical = self.tree.rich_vertical(i);
+        let reversed = |k: usize| match vertical {
+            Some(v) => self.rich_from_bottom(i, v),
+            None => pieces
+                .iter()
+                .find(|p| p.span == k)
+                .and_then(|p| p.glyphs.as_ref()?.first().map(|g| g.rtl))
+                .unwrap_or(self.env.direction == og_i18n::Direction::Rtl),
+        };
+        let count = rects.len();
+        for (f, r) in rects.iter_mut().enumerate() {
+            // Its inline axis: [from, to] along it.
+            let (mut from, mut to) = match vertical {
+                Some(_) => (r.y, r.bottom()),
+                None => (r.x, r.right()),
+            };
+            let (first, last) = (f == 0, f + 1 == count);
+            for (holds, k, inset, end) in [
+                (
+                    first || e.clone,
+                    fk,
+                    if first { into[0] } else { cut[0] },
+                    false,
+                ),
+                (
+                    last || e.clone,
+                    lk,
+                    if last { into[1] } else { cut[1] },
+                    true,
+                ),
+            ] {
+                if !holds {
+                    continue;
+                }
+                if reversed(k) != end {
+                    to -= inset;
+                } else {
+                    from += inset;
+                }
+            }
+            *r = match vertical {
+                Some(_) => Rect::new(
+                    r.x - across[0],
+                    from,
+                    r.width + across[0] + across[1],
+                    to - from,
+                ),
+                None => Rect::new(
+                    from,
+                    r.y - across[0],
+                    to - from,
+                    r.height + across[0] + across[1],
+                ),
+            };
+        }
     }
 
     /// The fragments of each link of rich node `i`, in logical order.
@@ -1099,6 +1379,18 @@ impl Ui {
             let (k, text, r, baseline) = (piece.span, piece.text, piece.rect, piece.baseline);
             let s = &rc.spans[k];
             let size = s.step.size * n.placed.scale;
+            // An atom is drawn inside its owners' edges.
+            let r = if s.atom.is_some() {
+                let [before, after] = s.room().map(|e| e * n.placed.scale);
+                let left = if self.env.direction == og_i18n::Direction::Rtl {
+                    after
+                } else {
+                    before
+                };
+                Rect::new(r.x + left, r.y, r.width - before - after, r.height)
+            } else {
+                r
+            };
             let link_key = s.link.as_deref().map(|l| child_key(n.key, l));
             // A document's inline `<a>` takes its hover from its CSS (`a:hover`).
             let hot =
@@ -1200,6 +1492,10 @@ impl Ui {
                         });
                     }
                 }
+                continue;
+            }
+            // An inline element's room: nothing to draw.
+            if text.is_empty() {
                 continue;
             }
             let font = self.env.fonts.for_styled(s.font, s.query(), &text).0;
@@ -1604,7 +1900,7 @@ impl Ui {
                 .iter()
                 .map(|seg| {
                     let sp = &rc.spans[seg.span];
-                    if sp.atom.is_some() {
+                    if sp.atom.is_some() || seg.text.is_empty() {
                         return seg.width * sk;
                     }
                     let font = self.env.fonts.for_styled(sp.font, sp.query(), &seg.text).0;
@@ -1786,7 +2082,19 @@ impl Ui {
             .filter(|s| s.color.is_some() || s.decoration.is_some() || s.shadows.is_some());
         for piece in self.rich_pieces(i) {
             let s = &rc.spans[piece.span];
-            let r = piece.rect;
+            // An atom is drawn inside its owners' edges.
+            let r = if s.atom.is_some() {
+                let [before, after] = s.room().map(|e| e * n.placed.scale);
+                let r = piece.rect;
+                let top = if self.rich_from_bottom(i, v) {
+                    after
+                } else {
+                    before
+                };
+                Rect::new(r.x, r.y + top, r.width, r.height - before - after)
+            } else {
+                piece.rect
+            };
             let mid = piece.baseline;
             let em = s.step.size * n.placed.scale;
             let link_key = s.link.as_deref().map(|l| child_key(n.key, l));
@@ -1869,7 +2177,7 @@ impl Ui {
                 _ => (piece.text.clone(), em, 0.0),
             };
             let font = self.env.fonts.for_styled(s.font, s.query(), &text).0;
-            if font.handle.is_none() {
+            if font.handle.is_none() || text.is_empty() {
                 continue;
             }
             let weight = if s.synth.bold {

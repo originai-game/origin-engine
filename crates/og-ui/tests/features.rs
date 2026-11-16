@@ -54,11 +54,18 @@ pub(crate) fn font_at(path: &str) -> UiFont {
         glyphs,
         kerning: Vec::new(),
     };
+    // Its extents are its file's, as a cooked font's are.
+    let extents = (
+        f32::from(face.ascender()) / em,
+        f32::from(face.descender()) / em,
+    );
     let file = FontFile::new(Arc::new(bytes)).expect("a font rustybuzz reads");
     // No render handle: the pieces are laid out, not drawn.
     UiFont {
         handle: None,
-        metrics: FontMetrics::from_msdf(&msdf).with_file(Some(file)),
+        metrics: FontMetrics::from_msdf(&msdf)
+            .with_extents(extents.0, extents.1)
+            .with_file(Some(file)),
     }
 }
 

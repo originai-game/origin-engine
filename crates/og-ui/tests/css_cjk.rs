@@ -52,6 +52,8 @@ struct Glyphs {
     size: f32,
     transform: [f32; 4],
     color: [f32; 4],
+    /// Where its first glyph is drawn: its pen and its placement.
+    ink: f32,
 }
 
 /// The glyph commands drawn inside element `id` (their line boxes'
@@ -74,6 +76,7 @@ fn glyphs(d: &Doc, id: &str) -> Vec<Glyphs> {
                     size,
                     bounds,
                     color,
+                    placements,
                     ..
                 } if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0))
                     && (r.x..r.x + r.width).contains(&(bounds.x + bounds.width / 2.0)) =>
@@ -85,6 +88,7 @@ fn glyphs(d: &Doc, id: &str) -> Vec<Glyphs> {
                         size: *size,
                         transform,
                         color: *color,
+                        ink: *x + placements.first().map_or(0.0, |p| p.x * *size),
                     })
                 }
                 _ => None,
@@ -251,6 +255,105 @@ fn inline_elements_fragment_on_their_lines_and_links_hover_as_their_a() {
         });
     }
     assert!(green(&d), "{:?}", one(&d, "P", "日本東"));
+}
+
+/// An inline element's margin, border and padding (CSS 2 §8.1, §10.3.1,
+/// §10.6.1): at its start and end they take room on the line, before its
+/// first character and after its last, only on the lines holding them
+/// (`box-decoration-break: slice`); across the line they grow its
+/// fragments, its border boxes, and not the line. Down a vertical line its
+/// start is its top.
+///
+/// Ways it could fail: room drawn after the first character rather than
+/// before it; the start's room on every line a wrapped element is on, or
+/// none past a break; the margin inside its border box; a fragment as
+/// high as its content area, or a line grown by its padding; a vertical
+/// line's room across it.
+#[test]
+fn inline_edges_take_room_at_their_start_and_end() {
+    let d = doc(
+        r#"<p id="Plain">あい<u>日本</u>です</p><p id="P">あい<span id="S">日本</span>です</p>
+<p id="W" style="width: 100px">あい<span id="T">日本東京中漢</span>です</p>
+<p id="V">あ<b id="VS">日</b>本</p>
+<p id="C" style="width: 100px">あい<span id="CS" class="c">日本東京中漢</span>です</p>"#,
+        "span { margin: 0 4px 0 3px; border-left: 2px solid #f00; padding: 5px 8px 7px 6px; }
+#V { writing-mode: vertical-rl; height: 200px; }
+b { font-weight: normal; margin: 3px 0 4px; padding: 6px 2px 8px 3px; }
+u { text-decoration: none; color: #f00; } .c { box-decoration-break: clone; }",
+    );
+    // Start: margin 3, border 2, padding 6; end: padding 8, margin 4.
+    let p = d.get("P");
+    // Its first and last characters are shaped apart (CSS Text 3 §7.3).
+    let (ri, hon, de) = (one(&d, "P", "日"), one(&d, "P", "本"), one(&d, "P", "です"));
+    assert!(
+        close(ri.ink - p.x, 40.0 + 11.0)
+            && close(hon.ink - p.x, 40.0 + 11.0 + 20.0)
+            && close(de.x - p.x, 40.0 + 40.0 + 23.0),
+        "{ri:?} {hon:?} {de:?}"
+    );
+    let s = d.get("S");
+    let top = ri.baseline - ASCENT * 20.0 - 5.0;
+    let bottom = ri.baseline + DESCENT * 20.0 + 7.0;
+    assert!(
+        close(s.x - p.x, 43.0)
+            && close(s.x + s.width - p.x, 99.0)
+            && close(s.y, top)
+            && close(s.y + s.height, bottom),
+        "{s:?}: 43 to 99, {top} to {bottom}"
+    );
+    // Its line is the plain one (the boxes' heights snapped to pixels).
+    let plain = d.get("Plain").height;
+    assert!((p.height - plain).abs() <= 1.0, "{p:?} {plain}");
+    // あい + 11 + 日本 | 東京中漢 + 12 | です: the start's room on the first
+    // line only, the end's on the second.
+    let w = d.get("W");
+    let (ri, to, de) = (
+        one(&d, "W", "日"),
+        one(&d, "W", "東京中"),
+        one(&d, "W", "です"),
+    );
+    assert!(
+        close(ri.ink - w.x, 51.0) && close(to.ink - w.x, 0.0) && close(de.x - w.x, 0.0),
+        "{ri:?} {to:?} {de:?}"
+    );
+    assert!(de.baseline > to.baseline + 10.0 && to.baseline > ri.baseline + 10.0);
+    let t = d.get("T");
+    assert!(
+        close(t.x - w.x, 0.0) && close(t.x + t.width - w.x, 91.0),
+        "the union of 43..91 and 0..88: {t:?}"
+    );
+    // clone: each line holds both edges, 11 before and 12 after: あい +
+    // 11 + 日 + 12 | 11 + 本東京 + 12 | 11 + 中漢 + 12 + で | す.
+    let c = d.get("C");
+    let at = |t: &str| {
+        let g = one(&d, "C", t);
+        (g.ink - c.x, g.baseline)
+    };
+    let (ni, hon, chu, de) = (at("日"), at("本東京"), at("中"), at("で"));
+    assert!(
+        close(ni.0, 51.0) && close(hon.0, 11.0) && close(chu.0, 11.0) && close(de.0, 63.0),
+        "{ni:?} {hon:?} {chu:?} {de:?}"
+    );
+    assert!(hon.1 > ni.1 + 10.0 && chu.1 > hon.1 + 10.0 && de.1 == chu.1);
+    // Room is drawn as nothing.
+    assert!(glyphs(&d, "C").iter().all(|g| !g.text.is_empty()));
+    let cs = d.get("CS");
+    assert!(
+        close(cs.x - c.x, 3.0) && close(cs.x + cs.width - c.x, 79.0),
+        "each fragment inside its margins: {cs:?}"
+    );
+    // Down the line: start 3 + 6 above 日, end 8 + 4 below it.
+    let (a, ni, hon) = (one(&d, "V", "あ"), one(&d, "V", "日"), one(&d, "V", "本"));
+    assert!(
+        close(ni.baseline - a.baseline, 29.0) && close(hon.baseline - ni.baseline, 32.0),
+        "{a:?} {ni:?} {hon:?}"
+    );
+    let (v, vs) = (d.get("V"), d.get("VS"));
+    assert!(
+        close(vs.y - v.y, 23.0) && close(vs.height, 6.0 + 20.0 + 8.0),
+        "{vs:?} in {v:?}"
+    );
+    assert!(close(vs.width, 20.0 + 3.0 + 2.0), "{vs:?}");
 }
 
 #[test]

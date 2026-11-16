@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"ui","summary":"An inline element of a text takes room for its margin, border and padding before its first character and after its last (CSS 2 §10.3.1), on the lines holding those edges; its fragments are its border boxes, grown by its border and padding across the line without growing the line. Under `box-decoration-break: clone` every line it is on holds both edges and breaks with room for them. Down a vertical line its edges take room along the column."}
+  ],
+  "breaking": [
+    {"member":"ui","change":"`padding`, `border` and `margin` on a `<span>`, `<a>` or another inline element of a text were ignored; they now move the words after them and can change where its lines break.","fix":"Drop inline padding or margin you did not mean to apply, or move it to a block around the text."}
+  ]
+}
