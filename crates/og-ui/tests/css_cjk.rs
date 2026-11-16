@@ -297,10 +297,12 @@ fn vertical_text_orients_and_combines_as_css_writing_modes_does() {
 fn emphasis_marks_sit_where_css_text_decoration_puts_them() {
     let d = doc(
         r#"<p id="Plain">日本、年 月</p><p id="Dot">日本、年 月</p><p id="Under">日本</p>
-<p id="Open">日</p><p id="Str">日本</p><p id="Down">日本</p><p id="Left">日</p>"#,
+<p id="Open">日</p><p id="Str">日本</p><p id="Down">日本</p><p id="Left">日</p>
+<div lang="zh-Hans"><p id="Zh">日本</p><p id="Ja" lang="ja">日本</p><p id="ZhDown">日</p></div>"#,
         "#Dot { text-emphasis: dot #ff0000; } #Under { text-emphasis: filled; text-emphasis-position: under; color: #0000ff; }
 #Open { text-emphasis: open; } #Str { text-emphasis: \"*\"; }
-#Down, #Left { writing-mode: vertical-rl; height: 100px; text-emphasis: filled; } #Left { text-emphasis-position: over left; }",
+#Down, #Left, #ZhDown { writing-mode: vertical-rl; height: 100px; text-emphasis: filled; } #Left { text-emphasis-position: over left; }
+#Zh, #Ja { text-emphasis: filled; }",
     );
     // Not on 、 or the space: four dots, centred on 日, 本, 年 and 月,
     // 0.15 of the mark's 10 px em across, red, 5 px over the content area.
@@ -365,4 +367,24 @@ fn emphasis_marks_sit_where_css_text_decoration_puts_them() {
             "{id}: {m:?} {g:?}"
         );
     }
+    // The position from the content language (§3.4's UA sheet): under
+    // right in Chinese, over right in Japanese inside it.
+    let zb = one(&d, "Zh", "日本").baseline;
+    let zh = marks(&d, "Zh");
+    assert!(
+        zh.len() == 2 && zh.iter().all(|m| m.0[1] > zb),
+        "{zh:?} {zb}"
+    );
+    let jb = one(&d, "Ja", "日本").baseline;
+    let ja = marks(&d, "Ja");
+    assert!(
+        ja.len() == 2 && ja.iter().all(|m| m.0[1] < jb - ASCENT * 20.0),
+        "{ja:?} {jb}"
+    );
+    let g = one(&d, "ZhDown", "日");
+    let m = marks(&d, "ZhDown");
+    assert!(
+        m.len() == 1 && close(m[0].0[0], g.x + 10.0 + 15.0),
+        "{m:?} {g:?}"
+    );
 }

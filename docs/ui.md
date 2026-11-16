@@ -373,8 +373,9 @@ engine differs or limits as follows:
   `<rt>` annotates the words before it as one unbreakable box (no `<rtc>`,
   no nested ruby, no `display: ruby` on other elements). `ruby-position`
   takes `over` and `under` (`alternate` is `over`, `inter-character` is
-  read as `over`). Emphasis marks are drawn shapes; the engine does not
-  choose their side by language, and a ruby's base takes none.
+  read as `over`). Emphasis marks are drawn shapes; their side follows
+  the content language through the user-agent rules (under for `zh`, over
+  for `ja` and `ko`), and a ruby's base takes none.
 - **Anchors.** Anchors are this frame's boxes; the winning
   `position-try` option and its side are kept per frame for a popover's
   arrow.

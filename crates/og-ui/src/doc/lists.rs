@@ -22,7 +22,8 @@ use serde_json::Value;
 /// style's own rule for a button. A `<menu>` is a menu (its buttons
 /// are menu items): each item spans the menu, so its items are as wide as
 /// each other, with their labels at the start, as a desktop's and a game's
-/// menus are.
+/// menus are. Emphasis marks take their side from the content language
+/// (CSS Text Decoration 4 Appendix B).
 pub(super) const UA_CSS: &str = "
 ul, ol { padding: 0 0 0 40px; }
 ul { list-style-type: disc; }
@@ -48,6 +49,8 @@ tfoot { display: table-footer-group; }
 tr { display: table-row; }
 td, th { display: table-cell; padding: 1px; }
 th { font-weight: bold; text-align: center; }
+:root:lang(zh), [lang|=zh] { text-emphasis-position: under right; }
+[lang|=ja], [lang|=ko] { text-emphasis-position: over right; }
 ";
 
 const POSITIONS: [&str; 2] = ["outside", "inside"];

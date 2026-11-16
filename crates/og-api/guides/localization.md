@@ -65,10 +65,12 @@ string "coins" "{n, plural, =0 {コインなし} other {# コイン}}"
   longer numbers lie sideways. Latin words lie sideways by default;
   `text-orientation: upright` stacks them, which reads well only for short
   initialisms.
-- Emphasis marks (`text-emphasis: filled`) sit over horizontal text and to
-  the right of vertical text. Chinese convention puts them under:
-  `text-emphasis-position: under right` on Chinese text; the engine does
-  not pick a side from the language.
+- Emphasis marks (`text-emphasis: filled`) take their side from the
+  content language, as CSS Text Decoration 4's default sheet does: under
+  horizontal Chinese text (`lang="zh"` on an element, or a Chinese locale
+  at the root), over Japanese and Korean, right of vertical text in all
+  three. Set `lang` on mixed-language text; `text-emphasis-position`
+  overrides it.
 
 ## 5. Formatting
 
