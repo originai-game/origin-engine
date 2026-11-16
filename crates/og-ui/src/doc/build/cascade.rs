@@ -357,17 +357,27 @@ pub(crate) fn values_with<'r>(
 ) -> Cascade {
     let (inline, inherited, basis, attr) = (o.inline, o.inherited, o.basis, o.attr);
     let mut out = Cascade::default();
+    /// A declaration's rank, its fields in the order they compare.
+    /// Importance ranks first, then the origin (the user-agent sheet under
+    /// the author's), the rule's depth and tree context, the style
+    /// attribute, the layer and order (CSS Cascade 5 §6): normal
+    /// declarations of a higher depth and a later context or layer win,
+    /// important ones of a lower and an earlier.
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+    struct Priority {
+        important: bool,
+        author: bool,
+        depth: i8,
+        context: u8,
+        inline: bool,
+        layer: u32,
+        /// The rule's index in `rules`.
+        order: usize,
+        position: usize,
+    }
     // Every applying declaration of each property: (priority, declaration,
-    // line, layer). Importance ranks first, then the rule's tree context,
-    // the style attribute, the layer and order (CSS Cascade 5 §6): normal
-    // declarations of a later context or layer win, important ones of an
-    // earlier.
-    type Candidate<'a> = (
-        (bool, u8, bool, u32, usize, usize),
-        &'a crate::doc::StyleDeclaration,
-        usize,
-        u32,
-    );
+    // line, layer).
+    type Candidate<'a> = (Priority, &'a crate::doc::StyleDeclaration, usize, u32);
     let mut candidates: BTreeMap<&str, Vec<Candidate<'_>>> = BTreeMap::new();
     let rules: Vec<&StyleRule> = rules.into_iter().collect();
     for (order, rule) in rules.iter().enumerate() {
@@ -383,18 +393,28 @@ pub(crate) fn values_with<'r>(
             } else {
                 (rule.context as u8, rule.layer)
             };
+            // The user-agent sheet is an origin of its own, under every
+            // author rule whatever its depth (and over it when important).
+            let author = (rule.layer != 0) != declaration.important;
+            let depth = if declaration.important {
+                -rule.depth
+            } else {
+                rule.depth
+            };
             candidates
                 .entry(declaration.name.as_str())
                 .or_default()
                 .push((
-                    (
-                        declaration.important,
+                    Priority {
+                        important: declaration.important,
+                        author,
+                        depth,
                         context,
-                        rule.inline,
+                        inline: rule.inline,
                         layer,
                         order,
                         position,
-                    ),
+                    },
                     declaration,
                     rule.line,
                     rule.layer,
@@ -412,19 +432,19 @@ pub(crate) fn values_with<'r>(
     fn pick<'a>(
         list: &[Candidate<'a>],
         keyword: &dyn Fn(&crate::doc::StyleDeclaration) -> Option<&'static str>,
-    ) -> ((bool, u8, bool, u32, usize, usize), Winner<'a>, usize) {
+    ) -> (Priority, Winner<'a>, usize) {
         let (mut ua_only, mut below) = (false, None);
         // The rules rolled back by `revert-rule`, by their order.
         let mut without: Vec<usize> = Vec::new();
         for (priority, declaration, line, layer) in list {
             if (ua_only && *layer != 0)
                 || below.is_some_and(|b| *layer >= b)
-                || without.contains(&priority.4)
+                || without.contains(&priority.order)
             {
                 continue;
             }
             match keyword(declaration) {
-                Some("revert-rule") => without.push(priority.4),
+                Some("revert-rule") => without.push(priority.order),
                 Some("revert") => ua_only = true,
                 Some("revert-layer") if *layer > 0 => below = Some(*layer),
                 Some("revert-layer") => ua_only = true,
@@ -455,7 +475,7 @@ pub(crate) fn values_with<'r>(
     for (name, value) in inline {
         if winners
             .get(name.as_str())
-            .is_some_and(|((important, ..), ..)| *important)
+            .is_some_and(|(priority, ..)| priority.important)
         {
             continue;
         }
@@ -619,7 +639,7 @@ pub(crate) fn values_with<'r>(
     out.reduced_motion_authored = declarations.iter().any(|(name, (priority, winner, _))| {
         name.starts_with("transition")
             && matches!(winner, Winner::Declared(_))
-            && names_reduced_motion(&rules[priority.4].query.media)
+            && names_reduced_motion(&rules[priority.order].query.media)
     });
     declarations.sort_by_key(|(_, (priority, _, _))| *priority);
     if o.carry {

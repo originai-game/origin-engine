@@ -223,6 +223,7 @@ pub fn part_rules_from(
         out.push(StyleRule {
             inline: false,
             context: super::TreeContext::Tree,
+            depth: 0,
             layer: rank(&sheet.layers, &rule.layer),
             starting: rule.starting,
             query: rule.query,
@@ -747,6 +748,7 @@ pub fn apply(
                 doc.part_rules.push(StyleRule {
                     inline: false,
                     context: super::TreeContext::Outer,
+                    depth: 0,
                     layer: rank(&layers, &rule.layer),
                     starting: rule.starting,
                     query: rule.query.clone(),
@@ -790,6 +792,7 @@ pub fn apply(
                     doc.nodes[*i].rules.push(StyleRule {
                         inline: false,
                         context: super::TreeContext::Tree,
+                        depth: 0,
                         layer: rank(&layers, &rule.layer),
                         starting: false,
                         query: rule.query.clone(),
@@ -936,6 +939,7 @@ pub fn apply(
                 doc.nodes[node].rules.push(StyleRule {
                     inline: false,
                     context: super::TreeContext::Tree,
+                    depth: 0,
                     layer: if rule.ua {
                         0
                     } else {

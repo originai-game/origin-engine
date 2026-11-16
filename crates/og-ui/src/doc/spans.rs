@@ -320,6 +320,7 @@ pub(crate) fn resolve(
         .map(|rule| super::StyleRule {
             inline: false,
             context: super::TreeContext::Tree,
+            depth: 0,
             layer: u32::MAX,
             starting: false,
             structure: None,

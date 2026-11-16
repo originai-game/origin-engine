@@ -323,6 +323,15 @@ pub struct StyleRule {
     pub inline: bool,
     /// Set where the rule is read, never by the list it is appended to.
     pub context: TreeContext,
+    /// How many shadow boundaries lie between the document the rule is
+    /// written in and the element it styles (CSS Cascade 5 §6.1, the
+    /// encapsulation context), ranked before `context`: 0 for a rule of
+    /// the element's own document or of a sheet adopted into it, negative
+    /// for one reaching out of a document onto what it was given
+    /// (`::slotted()`, -1), positive for one reaching in from the host's
+    /// document. Normal declarations of a higher depth win; `!important`
+    /// ones of a lower.
+    pub depth: i8,
     /// Its cascade layer's rank: 0 for the user-agent sheet, the layer's
     /// place in [`at_rules::Sheet::layers`] plus one, `u32::MAX` unlayered.
     /// Normal declarations of a higher rank win; `!important` ones of a
