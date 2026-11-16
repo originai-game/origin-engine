@@ -3015,7 +3015,8 @@ fn layout_primitives_are_the_styles_and_answer_their_container() {
             Viewport::new(800.0, 600.0),
         );
         [
-            "G1", "G2", "G3", "T1", "W1", "W2", "N1", "N2", "Side", "Main", "Q", "Body", "O", "Fade",
+            "G1", "G2", "G3", "T1", "W1", "W2", "N1", "N2", "Side", "Main", "Q", "Body", "O",
+            "Fade",
         ]
         .map(|p| at(&d.ui, p))
     };
