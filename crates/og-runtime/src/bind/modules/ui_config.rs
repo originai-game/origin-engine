@@ -312,6 +312,9 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
         }
         ui.set_hud_max_aspect(u.hud_max_aspect);
         drop(ui);
+        if let Some((pack, ..)) = &style {
+            crate::world::remote::request(&eng, &pack.sheet.remote);
+        }
         let mut st = eng.state.borrow_mut();
         st.ui_desc = d;
         if fontless {

@@ -85,6 +85,8 @@ export type Message =
   | { type: "fullscreen"; on: boolean }
   | { type: "mouse-report"; active: boolean; unsupported: boolean }
   | { type: "keyboard-layout"; labels: { code: string; label: string }[] }
+  /** The page drew an SVG this Worker asked for (boot.ts PageSvg). */
+  | { type: "svg"; id: number; bitmap?: ImageBitmap; error?: string }
   | AudioMessage
   | AudioLatencyMessage;
 

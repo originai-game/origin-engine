@@ -212,6 +212,16 @@ pub trait Hooks {
         let _ = (key, bytes);
         false
     }
+    /// Starts fetching a document's http(s) image (`request`: its URL, CORS
+    /// credentials, integrity and referrer policy) and decoding it, answered
+    /// by [`Hooks::image_decode_take`] under `key`: the web host's engine
+    /// Worker `fetch()`es it in CORS mode and decodes it with the browser.
+    /// `false`: this host cannot, and the runtime fetches and decodes on a
+    /// worker thread natively (feature `fetch`; world/remote.rs).
+    fn remote_image_start(&self, key: u64, request: &og_ui::css::request::UrlRequest) -> bool {
+        let _ = (key, request);
+        false
+    }
     /// The RGBA8 image a started decode answered, once (`Pending` until then).
     fn image_decode_take(&self, key: u64) -> Fetch<crate::world::uncooked::Decoded> {
         Fetch::Failed(format!("image decode {key} was never started"))

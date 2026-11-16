@@ -204,6 +204,8 @@ export interface WebExtras {
   og_web_set_image_decoder?(decode: (key: number, bytes: Uint8Array) => void): void;
   og_web_put_image?(key: number, width: number, height: number, rgba: Uint8Array): void;
   og_web_fail_image?(key: number, reason: string): void;
+  /** A document's http(s) image (og-runtime's world/remote.rs), answered with og_web_put_image or og_web_fail_image. */
+  og_web_set_remote_fetcher?(fetch: (key: number, url: string, credentials: boolean, integrity: string, referrerPolicy: string) => void): void;
   og_web_bundle_files(manifest: string): string;
   og_web_texture_ktx2(manifest: string, id: string, bytes: Uint8Array): Uint8Array;
   og_web_pack_ktx2?(engine: number | undefined, manifest: string, pack: Uint8Array): Array<string | Uint8Array>;

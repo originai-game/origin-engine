@@ -233,9 +233,17 @@ proof("calc-size", "css_layout", "calc_size_scales_its_basis_size",
       "width and height: max-content, min-content, fit-content, stretch and a block's auto width, an auto height in an auto-height parent, a percentage basis, a nested calc-size(), max-width after, content-box padding, and a flex row item's width, each the basis size through a calculation linear in size; non-linear calculations, size outside calc-size() and calc-size() in min-/max- bounds fail to cook. Not covered: flex-basis and bounds (refused), a flex item's cross axis (it aligns flex-start, CSS Flexbox 1 §8.3, not asserted), and animating to it (interpolate-size).")
 proof("all", "documents", "all_sets_every_property_but_direction",
       "all: inherit takes the parent's width, height and font size; all: initial gives width auto (0 with no content) and the root's font size over a class's 10px; all: unset then width: 2em reads the inherited 20px, and width: 2em then all: unset loses; custom properties and direction (rtl under all: initial) are kept. revert and revert-layer through all are not asserted.")
-not_applicable("url-cross-origin url-integrity url-referrer-policy",
-               "Request modifiers for a network fetch: a game's url() names a file of its own cooked package, "
-               "which is never fetched across origins, so CORS, subresource integrity and referrers do not arise.")
+proof("url-cross-origin", "remote_images", "remote_images_load_under_their_request_modifiers",
+      "A document's url()s name PNG, JPEG, WebP and SVG images on another origin, fetched natively in CORS mode with the game's Origin and drawn on the first frame at their own size. "
+      "A response without Access-Control-Allow-Origin draws nothing and warns; cross-origin(use-credentials) is refused under * and loads with the origin named and Access-Control-Allow-Credentials: true, "
+      "where cross-origin(anonymous) loads either. remote_images::an_image_still_fetched_draws_the_fallback_until_it_lands proves the host's own fetch (the web's) is asked with the modifiers and the layer draws only its background colour until the image lands. "
+      "Credentials send no cookies natively; the web Worker's fetch() is not exercised here.")
+proof("url-integrity", "remote_images", "remote_images_load_under_their_request_modifiers",
+      "integrity(\"sha384-…\") with the bytes' hash draws the image, a wrong hash draws nothing and warns with the bytes' hash, and metadata with a wrong sha256 beside a right sha384 loads (only the strongest algorithm counts). "
+      "og-net's http unit tests cover base64url and unknown algorithms.")
+proof("url-referrer-policy", "remote_images", "remote_images_load_under_their_request_modifiers",
+      "The server records the Referer of requests from a game at http://127.0.0.1:9/game/ to another origin: none under no-referrer and same-origin, the whole URL under unsafe-url, and the origin alone by default (strict-origin-when-cross-origin). "
+      "og-net's http unit tests check all eight policies, same-origin and downgrade cases.")
 not_applicable("namespace",
                "A document's elements are in one namespace (a .svelte document is not XML), so @namespace prefixes "
                "select nothing apart; the rule is accepted and has no effect.")
@@ -443,8 +451,8 @@ part_proof("image-set", "css_paint", "image_sets_render_density_correct_backgrou
 
 
 def proof_source(module, test, kind):
-    """The file of `module` that defines `test`: og-ui's, or the frame tests' (og-tests-ui)."""
-    for crate in ("og-ui", "og-tests-ui"):
+    """The file of `module` that defines `test`: og-ui's, the frame tests' (og-tests-ui), or the runtime's (og-runtime: what an engine fetches and loads)."""
+    for crate in ("og-ui", "og-tests-ui", "og-runtime"):
         source = f"crates/{crate}/tests/{module}.rs"
         if (ROOT / source).exists() and f"fn {test}(" in (ROOT / source).read_text():
             return source
@@ -522,7 +530,8 @@ def main():
              "Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document drift. "
              "The archive is fetched once per host into the gate cache (`~/.cache/og-gate`), or passed with `--archive <web-features-3.45.0.tgz>`; its SHA-256 is pinned in the script and checked on every read. "
              "Proof entries are manually reviewed assertions, not name matches. Tests below live in "
-             "`crates/og-ui/tests/` (what the UI builds) or `crates/og-tests-ui/tests/` (the frames drawn of it), "
+             "`crates/og-ui/tests/` (what the UI builds), `crates/og-tests-ui/tests/` (the frames drawn of it) "
+             "or `crates/og-runtime/tests/` (what an engine fetches and loads for it), "
              "each one integration test binary; GPU proofs need a GPU and are judged against the frames recorded on the GPU host (the L4, Vulkan; docs/ci.md §Reference frames).",
              "",
              "| WebDX feature | Baseline | Document elements | Widget ::part | Proof scope or missing reason |",

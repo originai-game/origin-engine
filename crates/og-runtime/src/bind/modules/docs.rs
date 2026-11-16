@@ -380,6 +380,7 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
         crate::engine::lazy::ensure(eng, eng.world()?, crate::bind::video::MEDIA_INTENT)?;
     }
     let faces = family_faces(eng, &doc)?;
+    crate::world::remote::request(eng, &doc.sheet.remote);
     {
         let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
         let mut ui = ui.lock();
@@ -515,6 +516,7 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
         }) {
             Ok((rive, materials, textures, faces, doc)) => {
                 let alphas = read_shape_alphas(eng, &doc, &textures);
+                crate::world::remote::request(eng, &doc.sheet.remote);
                 let hashes: Vec<(String, u64)> =
                     rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
                 with(eng.id, |d| {

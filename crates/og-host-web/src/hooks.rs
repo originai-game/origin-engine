@@ -186,6 +186,27 @@ impl Hooks for WebHooks {
         })
     }
 
+    fn remote_image_start(&self, key: u64, request: &og_runtime::UrlRequest) -> bool {
+        crate::REMOTE_FETCHER.with(|f| match &*f.borrow() {
+            Some(fetch) => {
+                let args = js_sys::Array::new();
+                for v in [
+                    JsValue::from_f64(key as f64),
+                    JsValue::from_str(&request.url),
+                    JsValue::from_bool(
+                        request.cross_origin == og_runtime::CrossOrigin::UseCredentials,
+                    ),
+                    JsValue::from_str(request.integrity.as_deref().unwrap_or("")),
+                    JsValue::from_str(request.referrer_policy.as_deref().unwrap_or("")),
+                ] {
+                    args.push(&v);
+                }
+                fetch.apply(&JsValue::NULL, &args).is_ok()
+            }
+            None => false,
+        })
+    }
+
     fn image_decode_take(&self, key: u64) -> Fetch<og_runtime::Decoded> {
         match DECODED_IMAGES.with(|m| m.borrow_mut().remove(&key)) {
             Some(Ok(d)) => Fetch::Ready(d),

@@ -135,6 +135,8 @@ pub(crate) struct Assets {
     pub model_shadows: IdMap<usize, ModelShadows>,
     /// Uncooked loads (og.load.imageData) and their journal.
     pub uncooked: crate::world::uncooked::Uncooked,
+    /// The http(s) images documents name, by request key.
+    pub remote: crate::world::remote::Remote,
 }
 
 /// GltfDesc's `castShadow` and `receiveShadow`: what world.instantiate of

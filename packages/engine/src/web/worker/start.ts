@@ -7,7 +7,7 @@
 import { boundHost, createEngine, isPublishBuild, systemClock, type GameToken } from "../../runtime.ts";
 import { SourceMap } from "../../sourcemap.ts";
 import { useSourceMap } from "../../spawn-site.ts";
-import { type Fetched, Received, TRACE_BEFORE_ENGINE, UPLOAD_BUDGET, deviceReport, installFetcher, installImageDecoder, installInflater, installVideo, onBar, preloadBundle, transcodeBundle } from "../boot.ts";
+import { type Fetched, Received, TRACE_BEFORE_ENGINE, UPLOAD_BUDGET, deviceReport, installFetcher, installImageDecoder, installInflater, installRemoteFetcher, installVideo, onBar, pageSvg, preloadBundle, transcodeBundle } from "../boot.ts";
 import { FrameCounter } from "../frames.ts";
 import { loadWebHost } from "../host.ts";
 import * as pipelines from "../pipelines.ts";
@@ -121,6 +121,8 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     await installVideo(glue, data.av1);
     // Uncooked images (og.load.imageData) are decoded by the browser, never in the wasm.
     installImageDecoder(glue);
+    // A document's http(s) images are fetched here and decoded by the browser (an SVG by the page).
+    installRemoteFetcher(glue, (bytes) => pageSvg.ask(bytes));
     progress(data.expect ? received.value : 0.1, "bundle");
     let fetched: Fetched | null = null;
     if (data.root !== undefined) {
