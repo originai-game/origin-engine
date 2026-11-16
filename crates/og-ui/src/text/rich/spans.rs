@@ -285,7 +285,6 @@ impl Ui {
             }
             s.bold = s.weight >= 700;
             s.synth = self.env.fonts.for_styled(s.font, s.query(), &s.text).1;
-            s.synth.bold &= s.bold;
             if let Some(allow) = ranges
                 .iter()
                 .filter(|(a, b, _)| *a <= start && end <= *b)

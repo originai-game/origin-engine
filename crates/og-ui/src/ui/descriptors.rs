@@ -453,6 +453,14 @@ impl FontQuery {
     }
 }
 
+/// Whether a text at `weight` drawn in a face of weight `got` is given a
+/// synthesised bold: it asks for 600 or more and the face is lighter
+/// than 600, as browsers decide (CSS Fonts 4 §7.1 leaves the line to the
+/// user agent).
+fn needs_bold(weight: u16, got: u16) -> bool {
+    weight >= 600 && got < 600
+}
+
 /// The candidate nearest `want` (CSS's rule: from 500 up a tie goes
 /// heavier, below it lighter), with its weight.
 fn nearest<'a>(
@@ -701,8 +709,8 @@ impl Fonts {
     /// and slant: the role's face nearest the weight among its own and
     /// [`Fonts::faces`], an italic one first when `italic`, with the CJK
     /// companion nearest the same weight; and what it could not find a
-    /// real face for ([`Synth`]: a bold asked for 600 or more with no face
-    /// within 100 of it, an italic with no italic face).
+    /// real face for ([`Synth`]: a weight of 600 or more whose face is
+    /// lighter than 600, an italic with no italic face).
     pub fn for_styled(&self, role: FontRole, query: FontQuery, text: &str) -> (&UiFont, Synth) {
         let FontQuery { weight, italic } = query;
         if let FontRole::Family(family) = role {
@@ -740,7 +748,7 @@ impl Fonts {
                         let renders = set.iter().any(|f| f.handle.is_some());
                         if fonts.is_empty() || (!rendered && renders) {
                             synth = Synth {
-                                bold: weight >= 600 && got + 100 < weight,
+                                bold: needs_bold(weight, got),
                                 italic: italic && !slanted,
                             };
                         }
@@ -784,7 +792,7 @@ impl Fonts {
                 .get(family.fallback_index())
                 .unwrap_or(&face.font);
             let synth = Synth {
-                bold: weight >= 600 && got + 100 < weight,
+                bold: needs_bold(weight, got),
                 italic: italic && !slanted,
             };
             let companion = self.companion_styled(family.fallback(), weight);
@@ -792,7 +800,7 @@ impl Fonts {
         }
         let (f, got, slanted) = self.latin(role, weight, italic);
         let synth = Synth {
-            bold: weight >= 600 && got + 100 < weight,
+            bold: needs_bold(weight, got),
             italic: italic && !slanted,
         };
         let face = self.resolve(f, self.companion_styled(role, weight), text);

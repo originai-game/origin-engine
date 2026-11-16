@@ -207,7 +207,7 @@ proof("font-style font-synthesis font-synthesis-weight font-synthesis-style", "c
 proof("font-face", "runs", "a_font_face_family_takes_its_faces_by_weight_and_range",
       "Glyph faces per character for @font-face weight ranges matched in CSS Fonts 4 §5.2's order, unicode-range and a declared family in a document's font-family list. src resolution is runtime ui_configure's; font-style, font-stretch, format() and tech() descriptors are not covered.")
 proof("font-weight", "css_fonts", "font_weight_picks_the_face_and_synthesises_a_missing_bold",
-      "Drawn font handle and thickening per element: bold, 650 and 550 take a family's 700 face, 300 its 400; bolder over 400 and lighter over 700 step by Fonts 4 §2.2's table; a family with only a 400 face draws 700 thickened twice one device pixel apart and 400 to 600 plain, and font-synthesis-weight: none draws it plain. Variable weight axes, and semibold synthesis (the engine synthesises from 700, as rich text does), are not covered.")
+      "Drawn font handle and thickening per element: bold, 650 and 550 take a family's 700 face, 300 its 400; bolder over 400 and lighter over 700 step by Fonts 4 §2.2's table; a family with only a 400 face draws 600 and 700 thickened twice one device pixel apart, at the thickening a rich span at 600 draws, in place of the style's textWeight, and 400 and 500 plain; font-synthesis-weight: none draws it plain. Variable weight axes are not covered.")
 
 # values, units, media and at-rules
 proof("abs-sign calc-constants exp-functions trig-functions q-unit", "custom_properties", "math_functions_and_constants_take_their_mathematical_values",

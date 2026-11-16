@@ -582,7 +582,12 @@ fn ordered_named_families_preserve_primary_glyphs_and_inherit() {
                 ..Fonts::default()
             });
             d.step(InputFrame::default());
-            let drawn = commands(d.ui.frame());
+            let mut drawn = commands(d.ui.frame());
+            // A semibold label's synthesised bold: its second copy, one
+            // device pixel right, is the same run.
+            drawn.dedup_by(|b, a| {
+                a.0 == b.0 && a.1 == b.1 && a.3 == b.3 && (b.2 - a.2).abs() <= 1.0
+            });
             let glyphs: Vec<_> = drawn
                 .iter()
                 .flat_map(|c| c.0.chars().map(move |ch| (ch, Some(c.1))))

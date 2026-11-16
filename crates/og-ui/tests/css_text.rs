@@ -96,6 +96,9 @@ fn lines(d: &Doc, id: &str) -> Vec<Line> {
             })
             .collect();
     out.sort_by(|a, b| a.baseline.total_cmp(&b.baseline).then(a.x.total_cmp(&b.x)));
+    // A synthesised bold's second copy, one device pixel right, is the
+    // same line.
+    out.dedup_by(|b, a| a.text == b.text && a.baseline == b.baseline && (b.x - a.x).abs() <= 1.0);
     out
 }
 

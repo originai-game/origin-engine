@@ -411,19 +411,7 @@ impl Ui {
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
                         let role = tc.font.effect_index();
                         let tracking = tc.tracking();
-                        // The style's thickening for the role (`textWeight`, device
-                        // pixels: what a stroke between two pixels lacks), shadow included.
-                        let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
-                        // A bold the face lacks: thickened, and drawn
-                        // again one device pixel right, as a rich text's
-                        // bold span is (CSS Fonts 4 §7.1).
-                        let (bold, smear) =
-                            if synth.bold && tc.synthesize_bold && tc.step.weight >= 700 {
-                                crate::rich::synthetic_bold(size, dpr)
-                            } else {
-                                (0.0, 0.0)
-                            };
-                        let weight = weight + bold;
+                        let (weight, smear) = self.plain_weight(&tc, synth, sk, true);
                         // A style's text glow: the font's distance field, under the glyphs.
                         let glow = t.art.text_glows[role].map(|g| {
                             let c = g
@@ -1019,6 +1007,36 @@ const FLOURISH_MIN_TITLE: f32 = 28.0;
 const CAP_HEIGHT: f32 = 0.7;
 
 impl Ui {
+    /// A plain text's thickening (device pixels' worth, in its units)
+    /// and how far right its second copy is drawn (0: none). The style's
+    /// thickening for its role (`textWeight`: what a stroke between two
+    /// pixels lacks) and its emphasis; or, for a weight its face lacks
+    /// ([`crate::Synth::bold`] under `font-synthesis-weight: auto`), a
+    /// synthesised bold in place of `textWeight`, as a rich text's bold
+    /// span (CSS Fonts 4 §7.1): drawn twice when `copies`, else all in
+    /// the shader (glyphs set along a path or down a line).
+    fn plain_weight(
+        &self,
+        tc: &crate::layout::UsedText<'_>,
+        synth: crate::Synth,
+        sk: f32,
+        copies: bool,
+    ) -> (f32, f32) {
+        let dpr = self.env.viewport.dpr();
+        let size = tc.step.size * sk;
+        let emphasis = tc.emphasis * size;
+        if !(synth.bold && tc.synthesize_bold) {
+            let role = tc.font.effect_index();
+            return (
+                self.paint_theme().art.text_weights[role] * sk / dpr + emphasis,
+                0.0,
+            );
+        }
+        let (bold, smear) =
+            crate::rich::synthetic_bold(size, if copies { dpr } else { f32::INFINITY });
+        (bold + emphasis, smear)
+    }
+
     /// Text on a path (`-og-text-path`, SVG 2 `<textPath>`): each grapheme
     /// cluster drawn on its own, its advance's middle on the path at its
     /// distance along it, turned to the path there, its baseline on the
@@ -1033,15 +1051,11 @@ impl Ui {
         cmds: &mut Vec<DrawCmd>,
     ) {
         let n = &self.tree.nodes[i];
-        let font = self
-            .env
-            .fonts
-            .for_styled(
-                tc.font,
-                crate::FontQuery::new(tc.step.weight, false),
-                &tc.text,
-            )
-            .0;
+        let (font, synth) = self.env.fonts.for_styled(
+            tc.font,
+            crate::FontQuery::new(tc.step.weight, false),
+            &tc.text,
+        );
         if font.handle.is_none() {
             return;
         }
@@ -1063,10 +1077,7 @@ impl Ui {
         let walk = crate::text_path::Walk::new(&subs, closed);
         // One line: its breaks are spaces.
         let line: String = tc.text.replace('\n', " ");
-        let t = self.paint_theme();
-        let dpr = self.env.viewport.dpr();
-        let role = tc.font.effect_index();
-        let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
+        let weight = self.plain_weight(&tc, synth, sk, false).0;
         let color = n.style.sampled.ink.fade(n.placed.alpha).linear();
         let offset = if tp.percent {
             tp.offset * walk.length
@@ -1296,15 +1307,11 @@ impl Ui {
         use crate::layout::flow::WritingMode;
         use crate::text::vertical::runs;
         let n = &self.tree.nodes[i];
-        let font = self
-            .env
-            .fonts
-            .for_styled(
-                tc.font,
-                crate::FontQuery::new(tc.step.weight, false),
-                &tc.text,
-            )
-            .0;
+        let (font, synth) = self.env.fonts.for_styled(
+            tc.font,
+            crate::FontQuery::new(tc.step.weight, false),
+            &tc.text,
+        );
         let m = &font.metrics;
         let sk = n.placed.scale;
         let size = tc.step.size * sk;
@@ -1318,10 +1325,9 @@ impl Ui {
             (rect.width - pad.horizontal() * sk).max(0.0),
             (rect.height - pad.vertical() * sk).max(0.0),
         );
-        let dpr = self.env.viewport.dpr();
         let t = self.paint_theme();
         let role = tc.font.effect_index();
-        let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
+        let weight = self.plain_weight(&tc, synth, sk, false).0;
         let color = n.style.sampled.ink.fade(n.placed.alpha).linear();
         // A style's text glow: the font's distance field, under the glyphs.
         let glow = t.art.text_glows[role].map(|g| {

@@ -1391,7 +1391,10 @@ glyph, skipping unavailable names; generics map to the style's roles
 `font-style`, then `font-weight`, and per character the last-declared face
 whose `unicode-range` has it. After the list come the role's face, the CJK
 companion, the locale's and the game's fonts. A missing weight or slant is
-synthesised. A `::part` run keeps the same list. A role `UiDesc` gives no
+synthesised: a computed weight of 600 or more whose face is lighter than
+600 is thickened and drawn again one device pixel right, in place of the
+style's `textWeight` (a style that wants its own sets
+`font-synthesis-weight: none`). A `::part` run keeps the same list. A role `UiDesc` gives no
 font takes the first family with a face that the style's `--font-body`
 (else `--font-sans`), `--font-display`, `--font-mono` or `--font-rounded`
 names, so a pack that brings its faces only through `@font-face` sets the
