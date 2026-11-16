@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Development native builds",
+      "summary": "OG_GATE=1 scripts/build.sh --native now incrementally builds the addon and og before copying them, so UI previews use the current engine rather than stale native outputs. Gate consumers still copy without rebuilding after the scheduler records a successful rust-build."
+    }
+  ]
+}

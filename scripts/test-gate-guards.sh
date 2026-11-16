@@ -178,5 +178,40 @@ for bad in none tsconfig.runtime.json; do
 done
 echo 'ok   engine typecheck covers quick/full and propagates runtime errors without wasm'
 
+# OG_GATE selects dev outputs, not permission to copy a stale addon. Only
+# a successful rust-build in this gate lets consumers skip the cargo build.
+t="$scratch/native-build"
+mkdir -p "$t/packages/engine/scripts" "$t/scripts" "$t/bin" "$t/target/debug"
+cp "$root/packages/engine/scripts/build.sh" "$t/packages/engine/scripts/build.sh"
+: > "$t/scripts/lock.sh"
+printf '%s\n' '#!/bin/sh' 'exit 0' > "$t/bin/bun"
+printf '%s\n' '#!/bin/sh' 'echo linux-x64' > "$t/bin/node"
+cat > "$t/bin/cargo" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "$CARGO_TARGET_DIR/cargo.calls"
+[ "${FAIL_NATIVE_BUILD:-0}" != 1 ] || exit 97
+echo fresh-addon > "$CARGO_TARGET_DIR/debug/libog_host_node.so"
+echo fresh-og > "$CARGO_TARGET_DIR/debug/og"
+EOF
+chmod +x "$t/bin/"*
+for ran in '' ' rust-build '; do
+  rm -f "$t/target/cargo.calls"
+  echo old-addon > "$t/target/debug/libog_host_node.so"
+  echo old-og > "$t/target/debug/og"
+  PATH="$t/bin:$PATH" CARGO_TARGET_DIR="$t/target" OG_GATE=1 OG_GATE_RAN="$ran" OG_RELEASE= \
+    sh "$t/packages/engine/scripts/build.sh" --native || exit 1
+  if [ -z "$ran" ]; then
+    [ "$(cat "$t/target/cargo.calls")" = 'build -q -p og-host-node -p og-cli' ] &&
+      [ "$(cat "$t/packages/engine/native/origin-engine.linux-x64.node")" = fresh-addon ] &&
+      [ "$(cat "$t/packages/engine/native/og.linux-x64")" = fresh-og ] ||
+      { echo 'FAIL standalone dev build reused stale native outputs'; exit 1; }
+  else
+    [ ! -f "$t/target/cargo.calls" ] || { echo 'FAIL gate consumer rebuilt native outputs'; exit 1; }
+  fi
+done
+PATH="$t/bin:$PATH" CARGO_TARGET_DIR="$t/target" OG_GATE=1 OG_GATE_RAN= OG_RELEASE= FAIL_NATIVE_BUILD=1 \
+  sh "$t/packages/engine/scripts/build.sh" --native && { echo 'FAIL native build error was ignored'; exit 1; }
+echo 'ok   standalone dev builds refresh native outputs; gate consumers reuse their completed rust-build'
+
 [ "$failures" -eq 0 ] || { echo "$failures case(s) failed"; exit 1; }
 echo "every case failed as it should"

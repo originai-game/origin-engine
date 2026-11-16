@@ -411,7 +411,12 @@ lane reaches the page as a structured `panic` error (docs/web-export.md
 
 Standalone (`bun run build`, `bun run test` in `packages/engine`), build.sh
 reuses the gate's dev addon, `og` and wasm whenever the gate has built in
-this target directory, and says so. It compiles release and its own wasm
+this target directory, and says so. It incrementally rebuilds the dev addon
+and `og` before copying them, including with explicit `OG_GATE=1 --native`.
+`OG_GATE=1` selects dev mode; only the scheduler's successful `rust-build`
+entry in `OG_GATE_RAN` permits copying without cargo, so concurrent gate
+consumers do not relink binaries other steps are running.
+It compiles release and its own wasm
 only with `OG_RELEASE=1`, with `--linux-x64`, or when the gate has not
 built here; a release build holds the gate lock, and `OG_RELEASE=1` runs
 the shipping-size check. `native/build-profile` records `dev` or
