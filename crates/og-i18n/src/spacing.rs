@@ -1,7 +1,8 @@
-//! The character classes CSS Text 4 §8 spaces text by: fullwidth
-//! punctuation, which `text-spacing-trim` sets half-width (§8.5.3), and
+//! The character classes CSS Text 4 spaces and hangs text by: fullwidth
+//! punctuation, which `text-spacing-trim` sets half-width (§8.5.3),
 //! ideographs beside other letters and numerals, between which
-//! `text-autospace` puts room (§8.4.1).
+//! `text-autospace` puts room (§8.4.1), and the brackets, quotes, stops
+//! and commas `hanging-punctuation` hangs (§9.2.1).
 
 /// A class of CSS Text 4 §8.5.3's fullwidth punctuation, which
 /// `text-spacing-trim` sets half-width.
@@ -130,4 +131,52 @@ pub fn separator(c: char) -> bool {
     use icu_properties::CodePointMapData;
     use icu_properties::props::{GeneralCategory as G, GeneralCategoryGroup as Group};
     Group::Separator.contains(CodePointMapData::<G>::new().get(c))
+}
+
+/// Which edge of a line §9.2.1's `hanging-punctuation` may hang `c` at.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Hangs {
+    /// An opening bracket or quote, or an ideographic space (`first`).
+    Opening,
+    /// A closing bracket or quote (`last`).
+    Closing,
+    /// A quote that opens or closes (Pi, Pf, `'` and `"`): either.
+    Quote,
+    /// A stop or comma (`force-end`, `allow-end`).
+    Stop,
+}
+
+/// The §9.2.1 class of `c`: Ps and U+3000 open, Pe closes, Pi, Pf and
+/// the ASCII quotes do either; the stops and commas are §9.2.1's list.
+pub fn hangs(c: char) -> Option<Hangs> {
+    use icu_properties::CodePointMapData;
+    use icu_properties::props::GeneralCategory as G;
+    if matches!(
+        c,
+        ',' | '.'
+            | '\u{60c}'
+            | '\u{6d4}'
+            | '\u{3001}'
+            | '\u{3002}'
+            | '\u{ff0c}'
+            | '\u{ff0e}'
+            | '\u{fe50}'
+            | '\u{fe51}'
+            | '\u{fe52}'
+            | '\u{ff61}'
+            | '\u{ff64}'
+    ) {
+        return Some(Hangs::Stop);
+    }
+    match c {
+        '\'' | '"' => return Some(Hangs::Quote),
+        '\u{3000}' => return Some(Hangs::Opening),
+        _ => {}
+    }
+    match CodePointMapData::<G>::new().get(c) {
+        G::OpenPunctuation => Some(Hangs::Opening),
+        G::ClosePunctuation => Some(Hangs::Closing),
+        G::InitialPunctuation | G::FinalPunctuation => Some(Hangs::Quote),
+        _ => None,
+    }
 }

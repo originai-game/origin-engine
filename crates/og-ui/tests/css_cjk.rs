@@ -959,3 +959,24 @@ fn autospace_spaces_ideographs_from_latin_as_text_autospace_says() {
         pens(&d, "Fr")
     );
 }
+
+#[test]
+fn zz_probe_hang() {
+    let d = doc(
+        r#"<p id="F" style="hanging-punctuation: first; width: 100px">「日日」</p>
+<p id="FE" style="hanging-punctuation: force-end; width: 100px">日日日日日。日</p>
+<p id="AE" style="hanging-punctuation: allow-end; width: 100px">日日日日日。日</p>
+<p id="AF" style="hanging-punctuation: allow-end; width: 120px">日日日日日。日</p>
+<p id="FF" style="hanging-punctuation: force-end; width: 120px">日日日日日。日</p>
+<p id="L" style="hanging-punctuation: last; width: 100px; text-align: right">“Hi”</p>"#,
+        "",
+    );
+    for id in ["F", "FE", "AE", "AF", "FF", "L"] {
+        eprintln!(
+            "{id} {:?} | {:?} / {:?}",
+            pens(&d, id),
+            line(&d, id, 0),
+            line(&d, id, 1)
+        );
+    }
+}

@@ -6,6 +6,7 @@ pub use og_text::text::*;
 
 pub mod colr;
 pub(crate) mod edit;
+pub mod hanging;
 #[doc(hidden)]
 pub mod input_type;
 pub(crate) mod line_edges;

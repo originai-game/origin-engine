@@ -255,6 +255,8 @@ pub struct RichContent {
     /// CSS `text-autospace` and `text-spacing-trim` (CSS Text 4 §8.4,
     /// §8.5).
     pub spacing: crate::text::spacing::CjkSpacing,
+    /// CSS `hanging-punctuation` (CSS Text 4 §9.2.1).
+    pub hanging: crate::text::hanging::HangingPunctuation,
 }
 
 /// CSS `text-indent` (CSS Text 3 §8.1): the room its lines leave at
@@ -328,6 +330,8 @@ pub struct RichTextDesc {
     pub ruby: RubyStyle,
     /// CSS `text-autospace` and `text-spacing-trim`.
     pub spacing: crate::text::spacing::CjkSpacing,
+    /// CSS `hanging-punctuation`.
+    pub hanging: crate::text::hanging::HangingPunctuation,
 }
 
 /// What a paragraph's links did this tick.

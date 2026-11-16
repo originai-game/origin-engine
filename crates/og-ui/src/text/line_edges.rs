@@ -1,11 +1,11 @@
 //! What a paragraph sets that depends on where its lines break: CJK
 //! spacing ([`super::spacing`]) at a line's start and end and between
-//! neighbours on one line. Each pass plans it on the lines the pass
+//! neighbours on one line, and hanging punctuation ([`super::hanging`]). Each pass plans it on the lines the pass
 //! before broke ([`Sides`]) and the paragraph is shaped again until the
 //! plan holds; a unit the next line starts with is pulled back onto a
 //! line where, set as a line's last, it fits.
 
-use super::spacing;
+use super::{hanging, spacing};
 use crate::rich::RichContent;
 use std::ops::Range;
 use std::sync::Arc;
@@ -39,11 +39,15 @@ pub(crate) struct Sides {
 }
 
 /// What a paragraph sets on its lines: the fullwidth punctuation set
-/// half-width, and room after units (CSS px, from `text-autospace`).
+/// half-width, room after units (CSS px, from `text-autospace`), and
+/// what hangs: the units at a line's end and the width each takes back,
+/// and the width hanging before the first line.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct Plan {
     pub halt: Vec<Range<usize>>,
     pub space: Vec<(Range<usize>, f32)>,
+    pub hang: Vec<(Range<usize>, f32)>,
+    pub hang_start: f32,
 }
 
 impl Sides {
@@ -74,9 +78,16 @@ impl Sides {
     /// What the paragraph sets on these lines.
     pub fn plan(&self, content: &RichContent, fonts: &dyn crate::layout::Metrics) -> Plan {
         let mut out = Plan::default();
+        if !applies(content) {
+            return out;
+        }
+        let p = Paragraph::new(content, &self.lines);
+        let metrics = Metrics(content, fonts);
         if spacing::applies(content) {
-            let p = Paragraph::new(content, &self.lines);
-            spacing::plan(&p, &Metrics(content, fonts), &self.pulled, &mut out);
+            spacing::plan(&p, &metrics, &self.pulled, &mut out);
+        }
+        if hanging::applies(content) {
+            hanging::plan(&p, &metrics, &self.pulled, &mut out);
         }
         out
     }
@@ -97,7 +108,7 @@ impl Sides {
         used: &Plan,
         advance: &dyn Fn(Range<usize>) -> f32,
     ) -> Option<Self> {
-        if !spacing::applies(content) {
+        if !applies(content) {
             return None;
         }
         let p = Paragraph::new(content, &lines);
@@ -116,14 +127,19 @@ impl Sides {
         let breaks = opportunities(content, &p.text);
         let mut pulled = Vec::new();
         for (k, line) in lines.iter().enumerate() {
-            // Its last unit, trimmed: kept where its full width does not fit.
+            // Its last unit, trimmed or hung: kept where it does not fit
+            // otherwise.
             if let Some(u) = p.units.iter().find(|u| u.range.end == ends[k])
                 && self.pulled.contains(&u.range.start)
-                && spacing::trims_at_end(&p, u)
-                && line.width + advance(u.range.clone()) > line.room + 0.01
             {
-                pulled.push(u.range.start);
-                continue;
+                let restored = match hanging::allowed(&p, u, used) {
+                    Some(w) => Some(w),
+                    None => spacing::trims_at_end(&p, u).then(|| advance(u.range.clone())),
+                };
+                if restored.is_some_and(|w| line.width + w > line.room + 0.01) {
+                    pulled.push(u.range.start);
+                    continue;
+                }
             }
             let Some(next) = lines.get(k + 1).filter(|_| line.wrapped) else {
                 continue;
@@ -144,7 +160,11 @@ impl Sides {
                 continue;
             };
             let u = &p.units[last];
-            let lost = spacing::lost_at_end(&p, u, used, advance);
+            let lost = if hanging::may_hang_at_end(&p, u) {
+                advance(u.range.clone())
+            } else {
+                spacing::lost_at_end(&p, u, used, advance)
+            };
             if lost > 0.0
                 && !rejected.contains(&u.range.start)
                 && line.width + advance(p.units[first].range.start..u.range.end) - lost
@@ -160,6 +180,11 @@ impl Sides {
         };
         (out.plan(content, fonts) != *used).then_some(out)
     }
+}
+
+/// Whether a paragraph sets anything at its line edges.
+fn applies(content: &RichContent) -> bool {
+    spacing::applies(content) || hanging::applies(content)
 }
 
 /// A paragraph on its lines, as its edges are planned: its text as its
@@ -218,6 +243,18 @@ impl<'a> Paragraph<'a> {
     pub fn ends_line(&self, u: &Unit) -> bool {
         self.line_of(u.range.start)
             .is_some_and(|l| self.body_end(l) == u.range.end)
+    }
+
+    /// Whether inline padding, a border or an atomic inline is at byte
+    /// `at`.
+    pub fn barrier(&self, at: usize) -> bool {
+        self.barriers.contains(&at)
+    }
+
+    /// Whether `u` is the paragraph's last unit before the spaces that
+    /// hang.
+    pub fn ends_paragraph(&self, u: &Unit) -> bool {
+        self.text.trim_end_matches([' ', '\t', '\n']).len() == u.range.end
     }
 
     /// Its content language.
@@ -329,6 +366,11 @@ impl Metrics<'_> {
 
     /// U+202F NARROW NO-BREAK SPACE's advance: else a thin space's, else
     /// a fifth of an em (a thin space's traditional width).
+    /// What `text` of span `k` takes, with its tracking.
+    pub fn width(&self, k: usize, text: &str) -> f32 {
+        crate::rich::span_width(&self.0.spans[k], text, self.1)
+    }
+
     pub fn narrow(&self, k: usize) -> f32 {
         [self.advance(k, '\u{202f}'), self.advance(k, '\u{2009}')]
             .into_iter()

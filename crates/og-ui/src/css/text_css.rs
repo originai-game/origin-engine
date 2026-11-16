@@ -70,6 +70,8 @@ pub(crate) const INHERITED: &[&str] = &[
     // CSS Text 4 §8.4, §8.5.
     "text-autospace",
     "text-spacing-trim",
+    // CSS Text 4 §9.2.1.
+    "hanging-punctuation",
     // CSS Inline 3 §4.1.
     "dominant-baseline",
     "text-underline-position",
@@ -843,6 +845,7 @@ fn check(name: &str, v: &str) -> Result<(), String> {
         "dominant-baseline" => v == "auto" || crate::layout::Baseline::parse(v).is_some(),
         "text-autospace" => crate::text::spacing::Autospace::parse(v).is_some(),
         "text-spacing-trim" => crate::text::spacing::SpacingTrim::parse(v).is_some(),
+        "hanging-punctuation" => crate::text::hanging::HangingPunctuation::parse(v).is_some(),
         "text-size-adjust" => {
             matches!(v, "auto" | "none")
                 || v.strip_suffix('%')
@@ -1291,6 +1294,8 @@ pub struct TextCss {
     pub dominant: crate::layout::Baseline,
     /// CSS `text-autospace` and `text-spacing-trim`.
     pub spacing: crate::text::spacing::CjkSpacing,
+    /// CSS `hanging-punctuation`.
+    pub hanging: crate::text::hanging::HangingPunctuation,
     /// Named and generic families in authored order, skipping unavailable names.
     pub family: Option<Vec<crate::FontFamily>>,
     pub font_role: Option<crate::FontRole>,
@@ -1708,6 +1713,9 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
             .and_then(|v| crate::text::spacing::SpacingTrim::parse(v.trim()))
             .unwrap_or_default(),
     };
+    t.hanging = get("hanging-punctuation")
+        .and_then(|v| crate::text::hanging::HangingPunctuation::parse(v.trim()))
+        .unwrap_or_default();
     let mark_color = get("text-emphasis-color")
         .filter(|c| !c.eq_ignore_ascii_case("currentcolor"))
         .and_then(|c| color(Some(c)));
