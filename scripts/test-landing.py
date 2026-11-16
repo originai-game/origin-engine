@@ -295,12 +295,9 @@ git add -A && git commit -qm "outside $n" && git push -q origin HEAD:refs/heads/
         self.assertEqual(self.run_git(self.remote, 'log', '-5', '--format=%s').splitlines(),
                          ['d', 'c', 'outside 0', 'b', 'upstream'])
 
-    def checklist_conflict(self, written_conflict=False):
-        # docs/ui.md's checklist region is generated from scripts/
-        # css-coverage.py's proof lists, as in the engine. a and b each add
-        # a proof and a missing row at the same place and regenerate, so
-        # both files conflict; a's edit to the written intro merges cleanly.
-        (self.a / 'scripts/css-coverage.py').write_text('''from pathlib import Path
+    # A stand-in for scripts/css-coverage.py: proof calls and MISSING entries,
+    # then the checklist written from them, as the engine's does.
+    COVERAGE = '''from pathlib import Path
 ROWS = []
 def proof(features, module, test, scope):
     ROWS.extend(features.split())
@@ -309,24 +306,42 @@ proof("seed", "m", "t", "s")
 MISSING = {
     "gap": "reason",
 }
-doc = Path(__file__).resolve().parent.parent / "docs/ui.md"
+rows = [f"| {f} | proved |" for f in sorted(ROWS)] + [f"| {k} | missing |" for k in sorted(MISSING)]
+'''
+    # Today's checklist: a file of its own, written whole.
+    WHOLE = '''(Path(__file__).resolve().parent.parent / "docs/css-coverage.md").write_text("\\n".join(rows) + "\\n")
+'''
+    # Before the move: a marked region of docs/ui.md.
+    REGION = '''doc = Path(__file__).resolve().parent.parent / "docs/ui.md"
 head, _, rest = doc.read_text().partition("<!-- css-coverage:start -->")
 _, _, tail = rest.partition("<!-- css-coverage:end -->")
-rows = [f"| {f} | proved |" for f in sorted(ROWS)] + [f"| {k} | missing |" for k in sorted(MISSING)]
 doc.write_text(head + "<!-- css-coverage:start -->\\n" + "\\n".join(rows) + "\\n<!-- css-coverage:end -->" + tail)
-''')
+'''
+
+    def add_entries(self, repo, name):
+        p = repo / 'scripts/css-coverage.py'
+        p.write_text(p.read_text()
+                     .replace('# more proofs', f'proof("{name}", "m", "t", "s")\n# more proofs')
+                     .replace('    "gap": "reason",', f'    "gap": "reason",\n    "{name}-gap": "reason",'))
+        subprocess.check_call(['python3', 'scripts/css-coverage.py'], cwd=repo)
+
+    def seed_checklist(self, layout, doc):
+        (self.a / 'scripts/css-coverage.py').write_text(self.COVERAGE + layout)
         (self.a / 'docs').mkdir()
-        (self.a / 'docs/ui.md').write_text('# UI\n\nintro\n\n<!-- css-coverage:start -->\n<!-- css-coverage:end -->\n\noutro\n')
+        (self.a / 'docs/ui.md').write_text(doc)
         subprocess.check_call(['python3', 'scripts/css-coverage.py'], cwd=self.a)
         self.commit(self.a, 'checklist')
         self.run_git(self.a, 'push', '-q', 'origin', 'main')
         self.run_git(self.b, 'reset', '-q', '--hard', 'main')
+
+    def checklist_conflict(self, written_conflict=False):
+        # docs/css-coverage.md is generated whole from scripts/
+        # css-coverage.py's proof lists. a and b each add a proof and a
+        # missing row at the same place and regenerate, so both files
+        # conflict; a's edit to docs/ui.md's written intro merges cleanly.
+        self.seed_checklist(self.WHOLE, '# UI\n\nintro\n\n## 8\n\nsee css-coverage.md\n\noutro\n')
         for repo, name in ((self.a, 'alpha'), (self.b, 'beta')):
-            p = repo / 'scripts/css-coverage.py'
-            p.write_text(p.read_text()
-                         .replace('# more proofs', f'proof("{name}", "m", "t", "s")\n# more proofs')
-                         .replace('    "gap": "reason",', f'    "gap": "reason",\n    "{name}-gap": "reason",'))
-            subprocess.check_call(['python3', 'scripts/css-coverage.py'], cwd=repo)
+            self.add_entries(repo, name)
             doc = repo / 'docs/ui.md'
             if repo == self.a:
                 doc.write_text(doc.read_text().replace('intro', 'intro by a'))
@@ -343,10 +358,11 @@ doc.write_text(head + "<!-- css-coverage:start -->\\n" + "\\n".join(rows) + "\\n
         output = self.checklist_conflict()
         self.assertIn('regenerating the CSS checklist', output)
         self.assertEqual(self.calls('b'), 2)
-        doc = self.run_git(self.remote, 'show', 'main:docs/ui.md')
-        for row in ('| alpha | proved |', '| beta | proved |', '| alpha-gap | missing |', '| beta-gap | missing |', 'intro by a'):
-            self.assertIn(row, doc)
-        self.assertNotIn('<<<<<<<', doc)
+        checklist = self.run_git(self.remote, 'show', 'main:docs/css-coverage.md')
+        for row in ('| alpha | proved |', '| beta | proved |', '| alpha-gap | missing |', '| beta-gap | missing |'):
+            self.assertIn(row, checklist)
+        self.assertNotIn('<<<<<<<', checklist)
+        self.assertIn('intro by a', self.run_git(self.remote, 'show', 'main:docs/ui.md'))
         self.assertEqual(self.run_git(self.remote, 'log', '-2', '--format=%s').splitlines(), ['beta', 'alpha'])
         self.assertEqual(self.run_git(self.b, 'status', '--porcelain'), '')
 
@@ -355,6 +371,43 @@ doc.write_text(head + "<!-- css-coverage:start -->\\n" + "\\n".join(rows) + "\\n
         self.assertNotIn('regenerating the CSS checklist', output)
         self.assertEqual(self.run_git(self.remote, 'log', '-1', '--format=%s'), 'alpha')
         self.assertIn('docs/ui.md', self.run_git(self.b, 'diff', '--name-only', '--diff-filter=U'))
+
+    def test_a_branch_from_before_the_move_drops_its_old_region(self):
+        # b branched while the checklist was a region of docs/ui.md: it adds
+        # a proof (regenerating the region), touches only the region in a
+        # second commit, and edits the written outro in a third. Main then
+        # moves the checklist to docs/css-coverage.md and adds a proof of
+        # its own beside b's. b lands with its region edits dropped, the
+        # region-only commit gone, its outro kept and the new file
+        # regenerated with both proofs.
+        old_doc = '# UI\n\nintro\n\n<!-- css-coverage:start -->\n<!-- css-coverage:end -->\n\noutro\n'
+        self.seed_checklist(self.REGION, old_doc)
+        self.add_entries(self.b, 'beta')
+        self.commit(self.b, 'beta')
+        doc = self.b / 'docs/ui.md'
+        doc.write_text(doc.read_text().replace('| seed | proved |', '| seed | proved (touched) |'))
+        self.commit(self.b, 'region only')
+        doc.write_text(doc.read_text().replace('outro', 'outro by b'))
+        self.commit(self.b, 'written')
+        coverage = self.a / 'scripts/css-coverage.py'
+        coverage.write_text(coverage.read_text().replace(self.REGION, self.WHOLE))
+        (self.a / 'docs/ui.md').write_text('# UI\n\nintro\n\n## 8\n\nsee css-coverage.md\n\noutro\n')
+        subprocess.check_call(['python3', 'scripts/css-coverage.py'], cwd=self.a)
+        self.commit(self.a, 'move')
+        self.add_entries(self.a, 'alpha')
+        self.commit(self.a, 'alpha')
+        self.run_git(self.a, 'push', '-q', 'origin', 'main')
+        (self.root / 'b.go').touch()
+        output = self.finish(self.start(self.b))
+        self.assertIn('regenerating the CSS checklist', output)
+        self.assertEqual(self.run_git(self.remote, 'log', '-4', '--format=%s').splitlines(),
+                         ['written', 'beta', 'alpha', 'move'])
+        ui = self.run_git(self.remote, 'show', 'main:docs/ui.md')
+        self.assertEqual(ui, '# UI\n\nintro\n\n## 8\n\nsee css-coverage.md\n\noutro by b')
+        checklist = self.run_git(self.remote, 'show', 'main:docs/css-coverage.md')
+        for row in ('| alpha | proved |', '| beta | proved |', '| alpha-gap | missing |', '| beta-gap | missing |'):
+            self.assertIn(row, checklist)
+        self.assertEqual(self.run_git(self.b, 'status', '--porcelain'), '')
 
     def test_failed_gate_never_pushes(self):
         (self.a / 'first').write_text('first')

@@ -141,7 +141,7 @@ and is verified once on the GPU host. Open work is collected on PR #40.
   panel, tooltip, slots, the HUD and touch controls behind the part-box
   painter's two ordering issues.
 - The `-og` migration's revision-3 extras and the final reflection audit.
-- The `docs/ui.md` §8 inventory's named gaps on PR #40.
+- The `docs/css-coverage.md` inventory's named gaps on PR #40.
 - PR #9 waits for its author; #23 stays a draft until the performance pass.
 - The GPU host's open portability failures: ui-debug's missing DX12
   reference fallback, core documents compared as bytes, a 2-unit CSS tint,

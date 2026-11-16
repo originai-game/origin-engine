@@ -353,7 +353,7 @@ step_check_conformance() {
   scripts/tsrs-diff.sh
 }
 
-# docs/ui.md's CSS checklist is exactly what scripts/css-coverage.py makes
+# docs/css-coverage.md, the CSS checklist, is exactly what scripts/css-coverage.py makes
 # of its proofs and their test entry points, so the head that leaves it
 # stale fails. Seconds, so it never skips on unchanged inputs. The pinned
 # WebDX archive comes from the host's gate cache, fetched once; with no

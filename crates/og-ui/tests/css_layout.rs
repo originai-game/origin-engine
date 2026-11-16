@@ -2277,7 +2277,7 @@ fn flex_items_stretch_across_their_line_by_default() {
     });
 }
 
-/// The box rows of docs/ui.md's CSS checklist, each against the number its
+/// The box rows of docs/css-coverage.md's CSS checklist, each against the number its
 /// spec gives: `display`'s outer types (CSS Display 3 §2), `position:
 /// static` ignoring its insets (CSS Position 3 §3.1), the physical insets
 /// with `auto` (CSS Position 3 §3.5, CSS 2 §10.3.7), block

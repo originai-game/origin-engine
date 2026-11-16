@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-import re
 import tempfile
 
 
@@ -18,14 +17,14 @@ OUTPUTS = (
     'crates/og-host-node/src/generated', 'packages/knowledge/wiki',
 )
 THEME = 'crates/og-ui/src/theme.rs'
-# docs/ui.md's CSS checklist is generated between these markers from the
-# proof lists in scripts/css-coverage.py; the rest of the file is written.
-CHECKLIST = 'docs/ui.md'
+# docs/css-coverage.md is wholly generated from scripts/css-coverage.py's
+# proof lists. It was once a region of docs/ui.md between MARKERS; a branch
+# from before the move still edits that region (transition_text).
+CHECKLIST = 'docs/css-coverage.md'
 COVERAGE = 'scripts/css-coverage.py'
+DESIGN = 'docs/ui.md'
 MARKERS = ('<!-- css-coverage:start -->', '<!-- css-coverage:end -->')
 ENTRY_CALLS = {'proof', 'not_applicable', 'part_proof'}
-# Conflict blocks as git writes them with merge.conflictStyle=merge.
-BLOCK = re.compile(r'^<<<<<<< [^\n]*\n(.*?)^=======\n(.*?)^>>>>>>> [^\n]*\n', re.S | re.M)
 
 
 def git(*args, check=True):
@@ -69,16 +68,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     git('add', '-A', '--', *OUTPUTS, THEME)
 
 
-def checklist_text(text):
-    """docs/ui.md with its conflicts taken from one side, or None when a
-    conflict reaches outside the generated checklist (the written part)."""
-    start, end = (text.find(marker) for marker in MARKERS)
-    blocks = list(BLOCK.finditer(text))
-    if start < 0 or end < start or not blocks or text.count('<<<<<<< ') != len(blocks):
+def region(text):
+    """text split around its old checklist region, markers included, or None."""
+    start, end = text.find(MARKERS[0]), text.find(MARKERS[1])
+    if start < 0 or end < start:
         return None
-    if not all(text.index('\n', start) < b.start() and b.end() <= end for b in blocks):
+    end += len(MARKERS[1])
+    return text[:start], text[start:end], text[end:]
+
+
+def transition_text(base, ours, theirs):
+    """docs/ui.md for a commit from before the checklist left it: ours has
+    no region, base and theirs do. Theirs' region edits are dropped (the
+    regenerated docs/css-coverage.md carries them); everything else merges
+    as git would. None when the region is not there to drop or the written
+    text conflicts."""
+    if region(ours) is not None or region(base) is None or region(theirs) is None:
         return None
-    return BLOCK.sub(lambda b: b.group(1), text)
+    before, _, after = region(theirs)
+    with tempfile.TemporaryDirectory() as scratch:
+        paths = []
+        for name, text in (('ours', ours), ('base', base), ('theirs', before + region(base)[1] + after)):
+            paths.append(Path(scratch) / name)
+            paths[-1].write_text(text)
+        merged = subprocess.run(['git', 'merge-file', '-p', *map(str, paths)], stdout=subprocess.PIPE)
+    return merged.stdout.decode() if merged.returncode == 0 else None
 
 
 def entries(side):
@@ -141,28 +155,39 @@ def coverage_text(base, ours, theirs):
     return merged
 
 
+def stages(path):
+    """The merge base's, ours and theirs texts of a conflicted path, or None."""
+    shown = [subprocess.run(['git', 'show', f':{n}:{path}'], stdout=subprocess.PIPE,
+                            stderr=subprocess.DEVNULL) for n in (1, 2, 3)]
+    return None if any(r.returncode for r in shown) else [r.stdout.decode() for r in shown]
+
+
 def checklist():
     if subprocess.run([sys.executable, COVERAGE], stdout=subprocess.DEVNULL).returncode:
         sys.exit('land: scripts/css-coverage.py failed over the merged proofs; inspect the stopped rebase')
-    git('add', '--', CHECKLIST, COVERAGE)
+    git('add', '--', *(p for p in (CHECKLIST, COVERAGE, DESIGN) if Path(p).exists()))
 
 
 def rebase(base):
     old = git('rev-parse', 'HEAD')
-    style = ['-c', 'merge.conflictStyle=merge']
-    result = subprocess.run(['git', *style, 'rebase', base])
+    result = subprocess.run(['git', 'rebase', base])
     listed = False
     while result.returncode:
         conflicts = [os.fsdecode(p) for p in
                      git('diff', '--name-only', '--diff-filter=U', '-z').split(b'\0') if p]
+        if not conflicts and listed and not git('diff', '--cached', '--name-only') and \
+                Path(os.fsdecode(git('rev-parse', '--git-path', 'rebase-merge').strip())).is_dir():
+            # A commit that only edited the old region is empty once that is dropped.
+            print('land: dropping a commit the regenerated CSS checklist left empty', flush=True)
+            result = subprocess.run(['git', 'rebase', '--skip'])
+            continue
         written = {}
+        for path, resolve in ((DESIGN, transition_text), (COVERAGE, coverage_text)):
+            if path in conflicts:
+                texts = stages(path)
+                written[path] = texts and resolve(*texts)
         if CHECKLIST in conflicts:
-            written[CHECKLIST] = checklist_text(Path(CHECKLIST).read_text())
-        if COVERAGE in conflicts:
-            stages = [subprocess.run(['git', 'show', f':{n}:{COVERAGE}'], stdout=subprocess.PIPE,
-                                     stderr=subprocess.DEVNULL) for n in (1, 2, 3)]
-            written[COVERAGE] = None if any(r.returncode for r in stages) else \
-                coverage_text(*(r.stdout.decode() for r in stages))
+            written[CHECKLIST] = ''  # regenerated whole below
         if not conflicts or None in written.values() or \
                 not all(generated(p) or p in written for p in conflicts):
             sys.exit('land: non-generated conflict or rebase failure; inspect the stopped rebase')
@@ -175,12 +200,12 @@ def rebase(base):
                 Path(path).write_text(text)
             checklist()
             listed = True
-        result = subprocess.run(['git', *style, '-c', 'core.editor=true', 'rebase', '--continue'])
+        result = subprocess.run(['git', '-c', 'core.editor=true', 'rebase', '--continue'])
     if git('rev-parse', 'HEAD') not in (old, git('rev-parse', base)):
         # Later commits can text-merge cleanly over regenerated output while
         # leaving it stale. Always regenerate the completed source tree too.
         regenerate()
-        if listed:
+        if listed or git('diff', '--name-only', base, 'HEAD', '--', COVERAGE).strip():
             checklist()
         if git('diff', '--cached', '--name-only'):
             git('-c', 'core.editor=true', 'commit', '--amend', '--no-edit')

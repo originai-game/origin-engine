@@ -54,7 +54,7 @@ What is running, next and open: `docs/roadmap.md`.
 
 - **Now:** the UI catalogue's phase 1 (the rpg kit and the fantasy pack
   art-approved; the remaining parts as retained nodes, the move from `-og`
-  properties to standard CSS, the CSS inventory in `docs/ui.md` §8), then a
+  properties to standard CSS, the CSS inventory in `docs/css-coverage.md`), then a
   docs pass, phase 2 (the other kits and packs), one performance pass, a
   real-device run and 0.8.0.
 - **Delivery:** the web first, on WebGPU. Native store packages (TypeScript
@@ -132,7 +132,7 @@ What is on main, grouped by area, with the API module (`og.<module>`, from
   flex, grid, floats and shapes, anchor positioning, transitions with
   `@starting-style`, view transitions, masks, filters), mounted as a
   retained tree, drawn through og-render and addressable by the probe;
-  rich text, RTL, vertical text and CJK shaping. `docs/ui.md` §8 lists
+  rich text, RTL, vertical text and CJK shaping. `docs/css-coverage.md` lists
   what each property is proved to do.
 - UI styles: each game ships its own (`type style`); built-in style packs
   under `templates/styles` (fantasy accepted, the others being rebuilt),

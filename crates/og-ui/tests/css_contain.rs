@@ -169,7 +169,7 @@ fn a_resize_handle_drags_the_size_onto_the_element() {
     });
 }
 
-/// The paint rows of docs/ui.md's CSS checklist: `z-index` orders
+/// The paint rows of docs/css-coverage.md's CSS checklist: `z-index` orders
 /// positioned boxes by stack level, negative under `auto` under positive
 /// whatever their source order (CSS 2 §9.9.1, Appendix E); `contain:
 /// paint` and `overflow: clip` clip what their subtree draws to their box

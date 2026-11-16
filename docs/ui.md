@@ -1988,7 +1988,7 @@ The [gate rules](ci.md) own test lanes, locks and toolchain policy;
 `scripts/land.sh` owns landing on main. Release and platform installation
 follow [release rules](release.md), with separate release authorization.
 
-**The CSS dialect is the §8 inventory at its pinned version, and it is
+**The CSS dialect is the §8 inventory ([css-coverage.md](css-coverage.md)) at its pinned version, and it is
 closed.** og-ui implements game-UI CSS, not a browser: a row is in scope
 when a component, a style pack or a guide needs it, and work goes to
 proving rows in use before adding rows. A feature outside the pinned

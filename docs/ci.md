@@ -40,11 +40,13 @@ push is retried on the new main, without a gate when what landed is
 disjoint from the head's inputs and after a recheck otherwise, until it
 lands or the recheck fails. Conflicts confined to generated
 files (`og_idl::OUTPUT_DIRS`, the UI theme) are regenerated, and so are
-conflicts inside docs/ui.md's CSS checklist (between its
-`css-coverage` markers) once `scripts/css-coverage.py` is merged, both
-sides kept where both added whole proof or MISSING entries at one place;
-the recheck then runs the steps this changed. Any other conflict,
-including one in docs/ui.md's written text, stops for the author. `python3 scripts/test-landing.py` exercises
+conflicts in the wholly generated CSS checklist, docs/css-coverage.md,
+once `scripts/css-coverage.py` is merged, both sides kept where both added
+whole proof or MISSING entries at one place; the recheck then runs the
+steps this changed. A branch from before the checklist left docs/ui.md
+has its edits to the old `css-coverage` region dropped, and the new file
+regenerated in their place. Any other conflict, including one in
+docs/ui.md's written text, stops for the author. `python3 scripts/test-landing.py` exercises
 concurrent landings against a disposable bare remote.
 
 ## Toolchain
@@ -242,7 +244,7 @@ split, and the lowest such crate is its cause.
 | `bun-quick` | Non-engine package tests, without rebuilding native artifacts. | quick, full |
 | `wasm-lanes-check` | `scripts/wasm-lanes.sh check` of each `lanes` variant in `scripts/wasm-crates.txt` whenever og-render, og-host-web or a crate they depend on changes, because under atomics wgpu's web types are not Send. | quick, full |
 | `wasm-check` | `cargo check --target wasm32-unknown-unknown -p og-tests-web` whenever it or a crate it depends on changes: the crate is empty natively, so the workspace's check and clippy never compile it. | quick, full |
-| `css-coverage` | `python3 scripts/css-coverage.py --check`: docs/ui.md's CSS checklist is what the proofs generate, so the head that leaves it stale fails. The pinned WebDX archive is read from the host's gate cache (`~/.cache/og-gate`, or `OG_GATE_CACHE`), fetched once and hash-checked on every read; with neither a cached copy nor the network the step is unchecked (SKIPPED, no green), never passed. | quick, full |
+| `css-coverage` | `python3 scripts/css-coverage.py --check`: docs/css-coverage.md, the CSS checklist, is what the proofs generate, so the head that leaves it stale fails. The pinned WebDX archive is read from the host's gate cache (`~/.cache/og-gate`, or `OG_GATE_CACHE`), fetched once and hash-checked on every read; with neither a cached copy nor the network the step is unchecked (SKIPPED, no green), never passed. | quick, full |
 | `wasm-build` | Build `scripts/wasm-crates.txt` modules in `wasm-test` into `target/og-wasm/raw`. `OG_WASM_VARIANTS` picks them: `dev` (the development module alone: bun-test's cross-host tests, a landing), `reference` (adds the 3D publish pair, web-reference alone), `all` (every publish and lanes variant: a run with `browser`, and `scripts/release-wasm.sh`). Tests that load a publish or lanes module skip without one. | full |
 | `wasm-bindgen` | Bindgen-only modules for all variants in `target/og-wasm/dev`. `dev-all.txt` lists every module; `dev.txt` selects publish and lanes variants. | full, web-reference prerequisite |
 | `size-gate` | Brotli-11 bytes of each shipping-profile bindgen module in `dev.txt`, checked against `wasm_core_brotli_bytes` before packing. | release only |
