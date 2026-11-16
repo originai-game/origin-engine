@@ -636,7 +636,9 @@ fn place(p: &Placement, f: &Frame<'_>) -> (Rect, Rect) {
         });
         let both = insets[lo_k].is_some() && insets[hi_k].is_some() && area.is_none();
         let (lo_b, hi_b) = match f.size[axis] {
-            Size::Fit { min, max } | Size::Grow { min, max } => (min, max.max(min)),
+            Size::Fit { min, max } | Size::Grow { min, max } | Size::Stretch { min, max } => {
+                (min, max.max(min))
+            }
             _ => (0.0, f32::INFINITY),
         };
         let size = match (anchor_size, f.size[axis]) {
@@ -646,7 +648,7 @@ fn place(p: &Placement, f: &Frame<'_>) -> (Rect, Rect) {
             (None, Size::Calc(c)) => c.of(len[axis]),
             (None, Size::MinContent) => least,
             (None, Size::MaxContent) => pref,
-            (None, Size::Grow { .. }) => room.clamp(lo_b, hi_b),
+            (None, Size::Grow { .. } | Size::Stretch { .. }) => room.clamp(lo_b, hi_b),
             // Auto between two insets fills them (CSS Position 3 §5.1),
             // else it shrinks to fit its room.
             (None, Size::Fit { .. }) if both => room.max(least).clamp(lo_b, hi_b),

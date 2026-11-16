@@ -719,7 +719,7 @@ fn parse_ease(e: &str) -> Result<Ease, String> {
 }
 
 fn parse_size(vals: &[Value]) -> Result<Size, String> {
-    const HOW: &str = "a size: fit [min max], grow [min max], fixed <px> (or a number), percent <0–1>, minContent, maxContent";
+    const HOW: &str = "a size: fit [min max], stretch [min max], fixed <px> (or a number), percent <0–1>, minContent, maxContent";
     if let [Value::Number(n)] = vals {
         return Ok(Size::Fixed(n.as_f32()));
     }
@@ -731,9 +731,9 @@ fn parse_size(vals: &[Value]) -> Result<Size, String> {
             let (min, max) = range();
             Size::Fit { min, max }
         }
-        "grow" => {
+        "stretch" => {
             let (min, max) = range();
-            Size::Grow { min, max }
+            Size::Stretch { min, max }
         }
         "minContent" => Size::MinContent,
         "maxContent" => Size::MaxContent,

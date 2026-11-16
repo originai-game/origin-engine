@@ -350,11 +350,11 @@ span { flex: 1; white-space: nowrap; overflow: hidden; }
     });
 }
 
-/// `stretch` is the room the parent leaves (docs/ui.md, Sizes): along a
-/// block's flow, a `height: stretch` box takes the height its siblings
-/// leave, as a column's `flex: 1` would, not its content's (none here).
+/// A block's `stretch` height is its containing block's less its margins
+/// (CSS Sizing 4 §3.1), not the room its siblings leave: it overflows
+/// below a sibling, and what it positions is placed in it.
 #[test]
-fn a_stretch_height_in_a_block_takes_the_room_left() {
+fn a_stretch_height_in_a_block_fills_its_containing_block() {
     let text = r#"<meta name="component" content="t">
 <div><div id="Root"><div id="Head"></div><div id="Body"><div id="Abs"></div></div></div></div>
 <style>
@@ -365,10 +365,10 @@ fn a_stretch_height_in_a_block_takes_the_room_left() {
 </style>"#;
     with_doc(text, &[], |d| {
         let (root, body) = (d.get("Root"), d.get("Body"));
-        assert_eq!((body.y - root.y, body.height), (40.0, 260.0));
+        assert_eq!((body.y - root.y, body.height), (40.0, 300.0));
         assert_eq!(
             d.get("Abs").y - root.y,
-            290.0,
+            330.0,
             "placed in the stretched box"
         );
     });
@@ -2089,4 +2089,54 @@ p {{ margin: 0; }}
     assert_eq!(lines("Norm")[0].2, "alpha");
     let any = lines("Any");
     assert!(any[0].2.starts_with("alpha b"), "{any:?}");
+}
+
+/// `stretch` in a flex line is its stretch-fit size (CSS Sizing 4 §3.1).
+/// Across the line it fills the line as `align-self: stretch` does, and
+/// the item is laid out at that size, so a row holding a `flex: 1` text is
+/// one line tall and a fitting column takes the row's content width. Along
+/// the line it is the container's inner size: content taller than that
+/// does not floor it, and a sibling does not share it (it overflows).
+#[test]
+fn stretch_in_a_flex_line_is_its_stretch_fit_size() {
+    let body = r#"<row id="Row"><text id="A">Store</text><text id="B">原点引擎</text></row>"#;
+    let css = "#Row { width: stretch; } #B { flex: 1; min-width: 0; }";
+    let filled = format!(
+        "<meta name=\"component\" content=\"t\">\n<row id=\"S\"><column id=\"R\">{body}</column></row>\n\
+         <style>#S {{ width: stretch; height: stretch; }} #R {{ width: 600px; height: stretch; }} {css}</style>"
+    );
+    with_doc(&filled, &[], |d| {
+        let (row, a) = (d.get("Row"), d.get("A"));
+        assert_eq!(
+            (row.width, row.height),
+            (600.0, a.height),
+            "one line, at the line's width"
+        );
+        assert_eq!(d.get("B").width, 600.0 - a.width);
+    });
+    let fitted = format!(
+        "<meta name=\"component\" content=\"t\">\n<div><column id=\"R\">{body}</column></div>\n<style>{css}</style>"
+    );
+    with_doc(&fitted, &[], |d| {
+        let (r, a, b) = (d.get("R"), d.get("A"), d.get("B"));
+        assert_eq!(
+            (r.width, r.height),
+            (a.width + b.width, a.height),
+            "its contents' width"
+        );
+    });
+    let along = r#"<meta name="component" content="t">
+<div><div id="Col"><div id="Tall"><div id="Rows"></div></div></div><div id="Pair"><div id="Head"></div><div id="Body"></div></div></div>
+<style>
+#Col { display: flex; flex-direction: column; height: 200px; }
+#Tall { height: stretch; }
+#Rows { height: 700px; }
+#Pair { display: flex; flex-direction: column; height: 200px; }
+#Head { height: 40px; }
+#Body { height: stretch; }
+</style>"#;
+    with_doc(along, &[], |d| {
+        assert_eq!(d.get("Tall").height, 200.0, "not floored by its content");
+        assert_eq!(d.get("Body").height, 200.0, "the whole line, not a share");
+    });
 }

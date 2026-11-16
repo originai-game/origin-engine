@@ -192,7 +192,7 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
             match w.as_str() {
                 "fixed" => px(vals.get(1).ok_or("fixed <px>")?),
                 "fit" => Ok("fit-content".into()),
-                "grow" => Ok("stretch".into()),
+                "stretch" => Ok("stretch".into()),
                 "minContent" => Ok("min-content".into()),
                 "maxContent" => Ok("max-content".into()),
                 "percent" => Ok(format!(
@@ -334,7 +334,7 @@ pub fn decl_line(
                 }
                 let w = vals.first().map(text_of).unwrap_or_default();
                 match w.as_str() {
-                    "fit" | "grow" => {
+                    "fit" | "stretch" => {
                         out.push((
                             css.into(),
                             if w == "fit" { "fit-content" } else { "stretch" }.into(),

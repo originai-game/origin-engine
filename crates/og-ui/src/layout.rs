@@ -51,8 +51,14 @@ pub use og_ui_model::{Insets, Rect};
 pub enum Size {
     /// Its content, between `min` and `max` (the default: 0 to unbounded).
     Fit { min: f32, max: f32 },
-    /// Its content, then whatever its parent has left, between `min` and `max`.
+    /// A Rust builder's share of the room its parent leaves along the
+    /// parent's main axis (`flex: 1`), filling it across, between `min`
+    /// and `max`. Documents and CSS size with [`Size::Stretch`].
     Grow { min: f32, max: f32 },
+    /// CSS `stretch` (CSS Sizing 4 §3.1): its stretch-fit size, the room
+    /// its containing block leaves its margin box, between `min` and
+    /// `max`.
+    Stretch { min: f32, max: f32 },
     /// Exactly this many CSS pixels.
     Fixed(f32),
     /// A fraction (0–1) of the parent's inner size.
@@ -222,6 +228,13 @@ impl Size {
         }
     }
 
+    pub const fn stretch() -> Size {
+        Size::Stretch {
+            min: 0.0,
+            max: f32::INFINITY,
+        }
+    }
+
     pub const fn px(v: f32) -> Size {
         Size::Fixed(v)
     }
@@ -240,7 +253,7 @@ impl Size {
             Size::Calc(c) => basis.map(|b| c.of(b)),
             Size::MinContent => Some(min),
             Size::MaxContent => Some(pref),
-            Size::Fit { .. } | Size::Grow { .. } => None,
+            Size::Fit { .. } | Size::Grow { .. } | Size::Stretch { .. } => None,
         }
     }
 }
