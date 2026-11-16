@@ -57,6 +57,12 @@ pub(super) fn calc_of(nodes: &[Node], p: *const (), basis: f32) -> f32 {
     match s {
         slot::WIDTH if let Size::CalcSize { scale, add, .. } = el.width => fills(0, scale, add),
         slot::HEIGHT if let Size::CalcSize { scale, add, .. } = el.height => fills(1, scale, add),
+        // A `stretch` sized as a length (`View::stretch_aligned`): its
+        // stretch-fit size, the basis less its margins (CSS Sizing 4 §3.1).
+        slot::WIDTH if matches!(el.width, Size::Stretch { .. }) => fills(0, 1.0, Length::default()),
+        slot::HEIGHT if matches!(el.height, Size::Stretch { .. }) => {
+            fills(1, 1.0, Length::default())
+        }
         slot::WIDTH => size(el.width),
         slot::HEIGHT => size(el.height),
         b if (slot::BOUNDS..slot::MARGIN).contains(&b) => {
@@ -452,25 +458,18 @@ impl<'a> View<'a> {
     }
 
     /// A `stretch` size across a flex line that the line centres or puts at
-    /// its end, with no margins across it: its stretch-fit size is the
-    /// line's, clamped, and only then aligned (CSS Sizing 4 §3.1, CSS Box
-    /// Alignment 3 §6.1). Taffy's `align-self: stretch` would clamp it and
-    /// leave it at the line's start, so it is sized `100%` and keeps the
-    /// line's alignment.
+    /// its end: its stretch-fit size is the line's less its margins,
+    /// clamped, and only then aligned (CSS Sizing 4 §3.1, CSS Box Alignment
+    /// 3 §6.1). Taffy's `align-self: stretch` would clamp it and leave it
+    /// at the line's start, so it is sized `calc(100% - margins)` and keeps
+    /// the line's alignment.
     fn stretch_aligned(&self) -> bool {
-        let Some(axis) = self.stretch_across() else {
+        if self.stretch_across().is_none() {
             return false;
-        };
+        }
         let own = self.el().align_self;
         let line = self.parent().map(|(p, _)| p.layout.used.cross);
-        let zero = tf::LengthPercentageAuto::length(0.0);
-        let m = tf::CoreStyle::margin(self);
-        let margins = if axis == 0 {
-            [m.left, m.right]
-        } else {
-            [m.top, m.bottom]
-        };
-        matches!(own.or(line), Some(Cross::Center | Cross::End)) && margins == [zero, zero]
+        matches!(own.or(line), Some(Cross::Center | Cross::End))
     }
 
     /// A `stretch` size across its parent's main axis stretches it there.
@@ -617,8 +616,12 @@ impl tf::CoreStyle for View<'_> {
         // is measured with no width, so a stretched row's height came out
         // at its content's width.
         match self.stretch_across() {
-            Some(0) if self.stretch_aligned() => size.width = tf::Dimension::percent(1.0),
-            Some(_) if self.stretch_aligned() => size.height = tf::Dimension::percent(1.0),
+            Some(0) if self.stretch_aligned() => {
+                size.width = tf::Dimension::calc(self.calc(slots[self.phys(0)]))
+            }
+            Some(_) if self.stretch_aligned() => {
+                size.height = tf::Dimension::calc(self.calc(slots[self.phys(1)]))
+            }
             Some(0) => size.width = tf::Dimension::auto(),
             Some(_) => size.height = tf::Dimension::auto(),
             None => {}

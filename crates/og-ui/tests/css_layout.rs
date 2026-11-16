@@ -2559,10 +2559,12 @@ p {{ margin: 0; }}
 #[test]
 fn a_clamped_stretch_box_takes_its_lines_alignment() {
     let doc = r#"<meta name="component" content="t">
-<div><div id="Col"><div id="Mid"><p>Go</p></div></div><div id="Row"><div id="End"></div></div></div>
+<div><div id="Col"><div id="Mid"><p>Go</p></div><div id="Marg"><p>Go</p></div><div id="Wide"><p>Go</p></div></div><div id="Row"><div id="End"></div></div></div>
 <style>
 #Col { display: flex; flex-direction: column; align-items: center; width: 600px; }
 #Mid { width: stretch; max-width: 200px; }
+#Marg { width: stretch; max-width: 200px; margin-left: 40px; }
+#Wide { width: stretch; max-width: 1000px; margin: 0 30px 0 10px; }
 #Row { display: flex; align-items: flex-end; height: 300px; }
 #End { width: 10px; height: stretch; max-height: 100px; }
 </style>"#;
@@ -2572,6 +2574,20 @@ fn a_clamped_stretch_box_takes_its_lines_alignment() {
             (mid.x - col.x, mid.width),
             (200.0, 200.0),
             "centred, at its max"
+        );
+        // With margins its stretch-fit size is the line's less them
+        // (calc(100% - margins)): 560 clamped to 200, then its 240px
+        // margin box is centred; unclamped it fills the line between them.
+        let (marg, wide) = (d.get("Marg"), d.get("Wide"));
+        assert_eq!(
+            (marg.x - col.x, marg.width),
+            (220.0, 200.0),
+            "centred with its margin"
+        );
+        assert_eq!(
+            (wide.x - col.x, wide.width),
+            (10.0, 560.0),
+            "the line less its margins"
         );
         let (row, end) = (d.get("Row"), d.get("End"));
         assert_eq!(
