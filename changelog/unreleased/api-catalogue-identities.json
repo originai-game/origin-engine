@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og api find",
+      "summary": "Component catalogue sections now have stable identities keyed by kind instead of enum position, so inserting or reordering kinds no longer changes saved guide references or API search results. Restored the existing control sections after inline elements were added."
+    }
+  ]
+}

@@ -14,6 +14,60 @@ use super::schema::{Kind, On, PROPS, PropSpec, Ty};
 /// Where the catalogue lives, from the repository root.
 pub const PATH: &str = "crates/og-api/guides/components.md";
 
+/// Published section identities, keyed by kind rather than its position
+/// in `Kind::ALL`. Existing `components §N` references keep their meaning
+/// when a kind is inserted or the catalogue is reordered.
+fn section(kind: Kind) -> u32 {
+    match kind {
+        Kind::Column => 2,
+        Kind::Row => 3,
+        Kind::Stack => 4,
+        Kind::Grid => 5,
+        Kind::Panel => 6,
+        Kind::Scroll => 7,
+        Kind::List => 8,
+        Kind::Cells => 9,
+        Kind::Label => 10,
+        Kind::Inline => 47,
+        Kind::Button => 11,
+        Kind::Kbd => 12,
+        Kind::Image => 13,
+        Kind::Art => 14,
+        Kind::Icon => 15,
+        Kind::Progress => 16,
+        Kind::Slider => 17,
+        Kind::Toggle => 18,
+        Kind::Color => 19,
+        Kind::Datetime => 20,
+        Kind::Video => 21,
+        Kind::Audio => 22,
+        Kind::File => 23,
+        Kind::Radio => 24,
+        Kind::Tabs => 25,
+        Kind::Field => 26,
+        Kind::Badge => 27,
+        Kind::Spacer => 28,
+        Kind::Divider => 29,
+        Kind::Select => 30,
+        Kind::Dialog => 31,
+        Kind::Details => 32,
+        Kind::Box => 33,
+        Kind::Meter => 34,
+        Kind::Anchor => 35,
+        Kind::Ground => 36,
+        Kind::Joystick => 37,
+        Kind::Dpad => 38,
+        Kind::Viewport => 39,
+        Kind::Svg => 40,
+        Kind::SvgGroup => 41,
+        Kind::SvgShape => 42,
+        Kind::SvgText => 43,
+        Kind::SvgForeign => 44,
+        Kind::SvgUse => 45,
+        Kind::SvgDef => 46,
+    }
+}
+
 fn value(p: &PropSpec) -> String {
     let words: &[&str] = match p.ty {
         Ty::Word(ws) => ws,
@@ -123,7 +177,7 @@ pub fn markdown() -> String {
     for (name, grammar, reason) in super::schema::MEDIA_FEATURES {
         let _ = writeln!(out, "| `{name}` | `{grammar}` | {reason} |");
     }
-    for (n, k) in Kind::ALL.iter().copied().enumerate() {
+    for &k in Kind::ALL {
         let own: Vec<&PropSpec> = PROPS
             .iter()
             .filter(|p| matches!(p.on, On::Kinds(ks) if ks.contains(&k)))
@@ -132,7 +186,7 @@ pub fn markdown() -> String {
         let _ = writeln!(
             out,
             "\n## {}. {} (`{}`): {}\n\n{} {} {}.",
-            n + 2,
+            section(k),
             written
                 .iter()
                 .map(|(tag, _)| format!("`<{tag}>`"))
@@ -179,6 +233,26 @@ mod tests {
             Kind::ALL.len() + 1,
             "every element, then each kind"
         );
+        let ids: std::collections::BTreeSet<_> = sections
+            .iter()
+            .map(|s| s.split_once(". ").unwrap().0)
+            .collect();
+        assert_eq!(ids.len(), sections.len(), "section identities are unique");
+        for (kind, id) in [
+            ("button", 11),
+            ("toggle", 18),
+            ("joystick", 37),
+            ("inline", 47),
+        ] {
+            let s = sections
+                .iter()
+                .find(|s| s.lines().next().unwrap().contains(&format!("(`{kind}`)")))
+                .unwrap();
+            assert!(
+                s.starts_with(&format!("{id}. ")),
+                "published {kind} section: {s}"
+            );
+        }
         let written = |p: &PropSpec| format!("\n| {} |", written(p));
         for p in PROPS.iter().filter(|p| p.on == On::All) {
             assert!(
