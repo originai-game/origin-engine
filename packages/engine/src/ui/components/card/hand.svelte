@@ -57,7 +57,7 @@
    (a card's proportion), but at most 0.36 of the frame's width, so a
    tall hand on a narrow screen keeps every card in reach. The row keeps
    room at its ends for the fan's outer cards to lean into. */
-.cards { --card-width: min(calc((100cqh - var(--space-xl) * 2 - var(--space-md)) * 0.7), 36cqw); --card-height: calc(var(--card-width) / 0.7); display: flex; width: stretch; height: stretch; align-items: flex-end; justify-content: center; padding: 0 var(--space-xl) var(--space-xl); }
+.cards { --card-width: min(calc((100cqh - var(--space-xl) * 2 - var(--space-md)) * 0.7), 36cqw); --card-height: calc(var(--card-width) / 0.7); display: flex; width: stretch; height: stretch; align-items: flex-end; justify-content: center; padding: 0 var(--space-xl) var(--space-xl); min-width: 0; }
 /* A slot is the card's share of the row: a card's width while there is
    room, less as the hand grows, so the next card overlaps it. The last
    slot keeps the whole card. */
@@ -68,14 +68,14 @@
 .stack { position: absolute; left: 0; bottom: 0; width: var(--card-width); height: stretch; }
 .stack:dir(rtl) { left: auto; right: 0; }
 [part="CardHand.card"] { position: relative; width: stretch; height: stretch; padding: 0; align-items: stretch; justify-content: stretch; }
-[part="CardHand.card"] .face { width: stretch; height: stretch; }
+[part="CardHand.card"] .face { width: stretch; height: stretch; min-width: 0; }
 /* Under the cost seal, on the edge the next card leaves uncovered. */
 .unplayable { position: absolute; left: var(--space-xxs); top: calc(var(--size-md) + var(--space-xs)); display: flex; width: var(--size-sm); height: var(--size-sm); align-items: center; justify-content: center; }
 .unplayable:dir(rtl) { left: auto; right: var(--space-xxs); }
 .unplayable og-icon { width: 70%; height: 70%; }
 /* Below the card's foot, in the room the lift leaves, so it never covers the rules text. */
 .play { position: absolute; left: 10%; top: calc(100% + var(--space-xxs)); width: 80%; min-height: var(--size-touch); }
-.empty { display: flex; width: stretch; height: stretch; align-items: center; justify-content: center; }
+.empty { display: flex; width: stretch; height: stretch; align-items: center; justify-content: center; min-width: 0; }
 .empty-text { margin: 0; }
 @media (prefers-reduced-motion: reduce) { [part="CardHand.slot"] { transition: none; } }
 </style>

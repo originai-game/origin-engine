@@ -74,17 +74,17 @@ const TREE: &str = r#"<meta name="component" content="layout">
 #Tree { width: stretch; height: stretch; align-items: start; }
 #Bar { width: stretch; height: 40px; padding: 4px; gap: 8px; align-items: center; }
 #Icon { width: 32px; height: 32px; }
-#Spacer { width: stretch; }
-#Badge { width: stretch; max-width: 50px; height: 10px; }
+#Spacer { flex: 1; }
+#Badge { flex: 1; max-width: 50px; height: 10px; }
 #Wrap { width: 200px; padding: 5px; gap: 10px; flex-wrap: wrap; }
 #Tile { width: 50px; height: 20px; }
-#Fill { width: stretch; height: 20px; }
+#Fill { flex: 1; height: 20px; }
 #Shrink { width: 150px; }
 #Box { width: 40px; height: 10px; }
 #Split { width: 200px; }
 #Center { width: 100px; height: 60px; justify-content: center; align-items: center; }
 #Quarter { width: 25%; height: 10px; }
-#Rest { width: stretch; height: stretch; }
+#Rest { flex: 1; height: stretch; }
 #Between { width: 200px; justify-content: space-between; }
 #Dot { width: 20px; height: 10px; }
 #Stack { width: 120px; padding: 0 10px; align-items: stretch; }

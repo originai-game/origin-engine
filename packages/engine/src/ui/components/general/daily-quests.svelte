@@ -61,7 +61,7 @@
 [part="DailyQuests.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); }
 [part="DailyQuests.medal"] { display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; }
 .medal-icon { width: var(--size-sm); height: var(--size-sm); }
-.body { display: flex; flex-direction: column; width: stretch; min-width: 0; gap: var(--space-xs); }
+.body { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xs); }
 [part="DailyQuests.name"] { text-align: start; overflow-wrap: anywhere; }
 .end { display: flex; flex: none; flex-direction: column; align-items: flex-end; gap: var(--space-xxs); max-width: 40%; }
 [part="DailyQuests.reward DailyQuests.figure"] { display: flex; align-items: center; gap: var(--space-xxs); max-width: stretch; }

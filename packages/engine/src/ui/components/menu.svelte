@@ -40,7 +40,7 @@
 
 <style>
 [part="Menu.frame"] { display: flex; flex-direction: column; min-width: var(--measure-xs); max-width: var(--measure-md); margin: 0; padding: var(--space-xs); gap: 0; list-style: none; }
-[part="Menu.row"] { width: stretch; height: var(--row); padding: 0 var(--space-md); }
+[part="Menu.row"] { width: stretch; height: var(--row); padding: 0 var(--space-md); min-width: 0; }
 .row { display: flex; flex-direction: column; width: stretch; }
 .face { display: flex; align-items: center; gap: var(--space-sm); width: stretch; height: stretch; }
 [part="Menu.row"]:focus-visible { background: var(--row-hover-fill); }
@@ -50,7 +50,7 @@
 .danger [part="Menu.icon"] { color: var(--danger); }
 [part="Menu.check"] { width: 75%; height: 75%; fill: none; stroke: var(--primary); stroke-width: var(--stroke-regular); }
 [part="Menu.dot"] { width: 50%; height: 50%; border-radius: var(--radius-capsule); background: var(--primary); }
-.name { width: stretch; font: var(--text-base); text-align: start; white-space: nowrap; text-overflow: ellipsis; }
+.name { flex: 1; min-width: 0; font: var(--text-base); text-align: start; white-space: nowrap; text-overflow: ellipsis; }
 [part="Menu.shortcut"] { font: var(--text-sm); color: var(--ink-muted); white-space: nowrap; }
 [part="Menu.chevron"] { width: var(--font-step-2xs); height: var(--font-step-2xs); fill: none; stroke: var(--ink-muted); stroke-width: var(--stroke-thin); }
 .back .name { color: var(--ink-muted); }

@@ -28,7 +28,7 @@
 
 <style>
 [part="RpgMenuBar.frame"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); }
-.menu-wrap { position: relative; width: stretch; min-width: 0; }
+.menu-wrap { position: relative; flex: 1; min-width: 0; }
 .menu-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; }
 .menu-fade { display: none; position: absolute; left: calc(100% - var(--size-lg)); top: 0; width: var(--size-lg); height: stretch; pointer-events: none; }
 .menu-fade:dir(rtl) { left: 0; }

@@ -53,21 +53,21 @@
 </section>
 
 <style>
-#Loadout { width: stretch; height: stretch; gap: var(--space-lg); }
+#Loadout { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-lg); }
 /* Sizes are steps in em of the surrounding text, so they follow the player's
    text scale (a --text-* step is px and does not). */
 #Title { font-size: var(--font-step-2xl); line-height: var(--font-leading-normal); font-family: var(--font-display); }
-#Body { width: stretch; height: stretch; gap: var(--space-lg); }
+#Body { display: flex; flex-direction: column; width: stretch; flex: 1; min-height: 0; gap: var(--space-lg); }
 /* The scrollbar is drawn on the right in either direction, so the room beside it is
    on the right too. */
-#Groups { width: stretch; height: stretch; overflow-y: auto; scrollbar-gutter: stable; padding-right: var(--space-lg); container-type: scroll-state; gap: var(--space-xl); display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 3), 1fr)); align-content: start; }
+#Groups { width: stretch; flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding-right: var(--space-lg); container-type: scroll-state; gap: var(--space-xl); display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 3), 1fr)); align-content: start; }
 .group { gap: var(--space-sm); }
 .category { font-size: var(--font-step-sm); line-height: var(--font-leading-normal); color: var(--ink-faint); text-transform: uppercase; letter-spacing: var(--font-tracking-lg); }
 .items { gap: var(--space-xs); }
-.item { width: stretch; height: auto; min-height: var(--size-touch); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); }
+.item { width: stretch; height: auto; min-height: var(--size-touch); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); min-width: 0; }
 .face { display: flex; width: stretch; align-items: center; gap: var(--space-md); }
 .icon { flex: none; width: var(--size-sm); height: var(--size-sm); color: var(--ink-muted); }
-.text { width: stretch; min-width: 0; gap: var(--space-xxs); align-items: flex-start; }
+.text { flex: 1; min-width: 0; gap: var(--space-xxs); align-items: flex-start; }
 .name { font-size: var(--font-step-md); line-height: var(--font-leading-normal); text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: stretch; }
 /* The tag drops under the figures when a long translation leaves no room beside them. */
 .sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xxs) var(--space-sm); }

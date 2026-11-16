@@ -62,14 +62,14 @@
 [part="Achievements.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); flex: none; flex-wrap: wrap; }
 [part="Achievements.title"] { margin: 0; flex: 1; min-width: 0; }
 [part="Achievements.summary Achievements.label"] { display: flex; align-items: center; gap: var(--space-sm); width: calc(var(--size-xxl) * 3); max-width: stretch; }
-.total { width: stretch; }
+.total { flex: 1; min-width: 0; }
 .figure { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rows-scroll { width: stretch; flex: 1; min-height: 0; }
 .rows { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xs); }
 [part="Achievements.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); }
 [part="Achievements.medal"] { display: flex; flex: none; width: var(--size-xl); height: var(--size-xl); align-items: center; justify-content: center; }
 .medal-icon { width: var(--size-md); height: var(--size-md); }
-.body { display: flex; flex-direction: column; width: stretch; min-width: 0; gap: var(--space-xxs); }
+.body { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xxs); }
 [part="Achievements.name"] { text-align: start; overflow-wrap: anywhere; }
 .about { margin: 0; text-align: start; }
 .meta { display: flex; width: stretch; align-items: center; flex-wrap: wrap; gap: var(--space-xxs) var(--space-md); }

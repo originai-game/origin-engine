@@ -25,9 +25,9 @@
 <style>
 #DataList { width: stretch; height: stretch; }
 #Rows { width: stretch; height: stretch; gap: var(--space-xs); }
-.row { width: stretch; padding: var(--space-sm) var(--space-md); }
-.face { display: flex; align-items: center; gap: var(--space-md); width: stretch; }
-.text { width: stretch; gap: var(--space-xxs); }
+.row { width: stretch; padding: var(--space-sm) var(--space-md); min-width: 0; }
+.face { display: flex; align-items: center; gap: var(--space-md); width: stretch; min-width: 0; }
+.text { flex: 1; min-width: 0; gap: var(--space-xxs); }
 .title, .value { margin: 0; }
 .note { color: var(--ink-muted); margin: var(--space-lg) 0; text-align: center; width: stretch; }
 </style>

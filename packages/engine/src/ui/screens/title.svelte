@@ -20,7 +20,7 @@
 </stack>
 
 <style>
-#Title { width: stretch; height: stretch; }
+#Title { width: stretch; height: stretch; min-height: 0; }
 #Art { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #Background { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #Foot { width: stretch; height: stretch; padding: var(--space-3xl); gap: var(--space-lg); align-items: center; }

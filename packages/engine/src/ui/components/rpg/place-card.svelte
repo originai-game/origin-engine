@@ -34,11 +34,11 @@
 [part="RpgPlaceCard.frame"][hidden], [part="RpgPlaceCard.frame"] [hidden] { display: none; }
 [part="RpgPlaceCard.frame"] { display: flex; width: stretch; height: stretch; gap: var(--space-md); container-type: inline-size; }
 .picture { width: 34%; height: stretch; object-fit: cover; flex: none; }
-.side { display: flex; width: stretch; gap: var(--space-md); align-items: center; }
-.text { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }
+.side { display: flex; flex: 1; gap: var(--space-md); align-items: center; min-width: 0; }
+.text { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xs); }
 [part="RpgPlaceCard.name"], .about { margin: 0; }
 .actions { display: flex; flex-direction: column; gap: var(--space-sm); flex: none; width: 40%; }
-.act { width: stretch; min-height: var(--size-touch); gap: var(--space-sm); }
+.act { width: stretch; min-height: var(--size-touch); gap: var(--space-sm); min-width: 0; }
 .act .face { display: flex; width: stretch; align-items: center; justify-content: center; gap: var(--space-sm); }
 .act-mark { width: var(--space-lg); height: var(--space-lg); flex: none; }
 @container (width < 560px) {

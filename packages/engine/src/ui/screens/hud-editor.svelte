@@ -15,7 +15,7 @@
 <style>
 :root { --surface-saturation: 120%; }
 @media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
-#RootEditor { width: stretch; height: stretch; }
+#RootEditor { width: stretch; height: stretch; min-height: 0; }
 #Hint { position: absolute; top: var(--space-xl); inset-inline: 0; margin-inline: auto; width: max-content; max-width: 100%; padding: var(--space-md); background: none; border: none; box-shadow: none; border-radius: var(--radius-button); backdrop-filter: blur(var(--glass-blur-regular)) saturate(var(--surface-saturation)); -og-material: glass regular float; }
 panel[id=Hint]::part(frame) { border: none; }
 @media (width < 600px), (height < 600px) {

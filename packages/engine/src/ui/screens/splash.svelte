@@ -25,7 +25,7 @@
 </column>
 
 <style>
-#Splash { width: stretch; height: stretch; padding: var(--space-3xl); gap: var(--space-xl); justify-content: center; align-items: center; background: var(--backdrop); }
+#Splash { width: stretch; height: stretch; padding: var(--space-3xl); gap: var(--space-xl); justify-content: center; align-items: center; background: var(--backdrop); min-height: 0; }
 @media (width < 600px), (height < 600px) {
 #Splash { padding: var(--space-xl); }
 }

@@ -88,7 +88,7 @@
 [part="TooltipCard.well"] { display: flex; width: var(--size-touch); height: var(--size-touch); align-items: center; justify-content: center; overflow: hidden; }
 #Art { width: var(--size-touch); height: var(--size-touch); }
 .glyph { width: var(--size-sm); height: var(--size-sm); color: var(--rarity); }
-#Names { display: flex; flex-direction: column; gap: var(--space-xxs); width: stretch; }
+#Names { display: flex; flex-direction: column; gap: var(--space-xxs); flex: 1; min-width: 0; }
 [part="TooltipCard.title"] { line-clamp: 2; }
 #Sub { display: flex; align-items: center; gap: var(--space-xs); }
 #Pips { display: flex; gap: var(--space-xs); }
@@ -97,7 +97,7 @@
 .rule { width: stretch; height: var(--stroke-hairline); background: var(--rarity); opacity: var(--opacity-muted); }
 .stats { display: flex; flex-direction: column; gap: var(--space-xxs); width: stretch; margin: 0; padding: 0; list-style: none; }
 [part="TooltipCard.row"] { display: flex; align-items: center; gap: var(--space-sm); width: stretch; }
-[part="TooltipCard.label"] { width: stretch; font: var(--text-base); font-family: var(--label-font); white-space: nowrap; text-overflow: ellipsis; }
+[part="TooltipCard.label"] { flex: 1; min-width: 0; font: var(--text-base); font-family: var(--label-font); white-space: nowrap; text-overflow: ellipsis; }
 [part="TooltipCard.figure"] { font: var(--text-base); font-family: var(--figure-font); white-space: nowrap; }
 .delta { display: flex; align-items: center; gap: var(--space-xxs); }
 .good { color: var(--trend-up); }

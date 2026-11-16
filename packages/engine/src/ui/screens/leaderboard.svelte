@@ -58,7 +58,7 @@
 #Period, #Period::part(base) { height: var(--control-md); }
 #Period::part(base) { padding: 0 var(--space-lg); }
 }
-#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-md); }
+#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-md); min-height: 0; }
 @media (width < 600px), (height < 600px) {
 #Screen { padding: var(--space-lg); }
 }
@@ -74,7 +74,7 @@ button.selection-off::part(base) { border-color: transparent; }
 #LeagueBarName { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 #Lines { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 #Ends { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); }
-#Body { width: stretch; height: stretch; }
+#Body { width: stretch; flex: 1; min-height: 0; }
 #List { width: stretch; gap: var(--space-xs); }
 #Board { width: stretch; }
 #Row { width: stretch; padding: var(--space-sm); gap: var(--space-md); align-items: center; }
@@ -85,9 +85,9 @@ button.selection-off::part(base) { border-color: transparent; }
 #Row:focus-visible { scale: 1.01; }
 #RowRank { min-width: var(--size-xl); white-space: nowrap; font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 #Avatar { width: var(--size-md); height: var(--size-md); }
-#RowName { width: stretch; line-clamp: 1; text-overflow: ellipsis; }
+#RowName { flex: 1; min-width: 0; line-clamp: 1; text-overflow: ellipsis; }
 #Me { width: stretch; padding: var(--space-md); gap: var(--space-md); align-items: center; background: var(--panel-raised); border-radius: var(--radius-card); outline: var(--stroke-hairline) solid var(--line); outline-offset: calc(var(--stroke-hairline) * -1); }
 #MeRank { min-width: var(--size-xl); white-space: nowrap; font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
-#MeName { width: stretch; line-clamp: 1; text-overflow: ellipsis; }
+#MeName { flex: 1; min-width: 0; line-clamp: 1; text-overflow: ellipsis; }
 #MeScore { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 </style>

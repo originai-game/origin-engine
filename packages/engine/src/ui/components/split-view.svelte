@@ -20,7 +20,7 @@
 [part="SplitView.frame"].column { flex-direction: column; }
 [part="SplitView.start"] { width: calc(var(--ratio) * 100%); height: stretch; background: var(--well); }
 .column [part="SplitView.start"] { width: stretch; height: calc(var(--ratio) * 100%); }
-[part="SplitView.end"] { width: stretch; height: stretch; }
+[part="SplitView.end"] { flex: 1; min-width: 0; height: stretch; }
 [part="SplitView.divider"] { width: var(--space-sm); height: stretch; align-items: center; justify-content: center; background: var(--line); cursor: ew-resize; }
 .column [part="SplitView.divider"] { width: stretch; height: var(--space-sm); cursor: ns-resize; }
 [part="SplitView.divider"]:hover { background: var(--primary); }

@@ -51,7 +51,7 @@
 
 <style>
 #Tap, #Tap::part(base) { height: var(--control-lg); }
-#Calibration { width: stretch; height: stretch; padding: var(--space-xxl); justify-content: center; align-items: center; }
+#Calibration { width: stretch; height: stretch; padding: var(--space-xxl); justify-content: center; align-items: center; min-height: 0; }
 @media (width < 600px), (height < 600px) {
 #Calibration { padding: var(--space-md); }
 }
@@ -66,7 +66,7 @@
 #Measure { width: stretch; gap: var(--space-md); align-items: center; }
 #Taps { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 #Manual { width: stretch; gap: var(--space-md); align-items: center; }
-#ManualValue { width: stretch; }
+#ManualValue { flex: 1; min-width: 0; }
 #Ms { width: var(--size-xl); text-align: end; }
 #ControllerStep { width: stretch; gap: var(--space-sm); }
 #ControllerHint { line-clamp: 3; }

@@ -66,7 +66,7 @@
 .offer { display: flex; width: stretch; gap: var(--space-md); align-items: center; }
 .art { display: flex; flex: none; width: var(--size-xxl); height: var(--size-xxl); align-items: center; justify-content: center; }
 .art-icon { width: var(--size-xl); height: var(--size-xl); }
-.text { display: flex; flex-direction: column; width: stretch; min-width: 0; gap: var(--space-xxs); }
+.text { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xxs); }
 [part="ShopConfirm.name"], .detail { margin: 0; overflow-wrap: anywhere; }
 .prices { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xs); }
 [part="ShopConfirm.price ShopConfirm.figure"] { display: flex; width: stretch; align-items: center; flex-wrap: wrap; gap: var(--space-xxs) var(--space-sm); padding: var(--space-xs) var(--space-sm); }

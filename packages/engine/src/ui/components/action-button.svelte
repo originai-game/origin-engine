@@ -20,7 +20,7 @@
 </button>
 
 <style>
-#Face { width: stretch; height: stretch; align-items: center; justify-content: center; }
+#Face { width: stretch; height: stretch; align-items: center; justify-content: center; min-width: 0; }
 #ActionButton { width: var(--action-size); height: var(--action-size); padding: 0; border-radius: var(--radius-capsule); border: var(--stroke-regular) solid var(--line-strong); background: radial-gradient(circle at 50% 35%, var(--sheen), var(--shadow-30)), var(--control-strong); box-shadow: var(--shadow-float); }
 #ActionButton.primary { width: calc(var(--action-size) * 1.25); height: calc(var(--action-size) * 1.25); background: radial-gradient(circle at 50% 35%, var(--sheen), var(--shadow-30)), var(--primary); }
 #ActionButton:active { scale: var(--state-press-scale); filter: brightness(1.2); }

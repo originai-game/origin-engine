@@ -50,7 +50,7 @@
 [part="StatBar.frame"] { display: flex; width: stretch; gap: var(--space-sm); align-items: center; }
 #Icon { width: var(--size-xs); height: var(--size-xs); color: var(--meter); }
 [part="StatBar.label"] { font: var(--text-sm); font-family: var(--label-font); white-space: nowrap; text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
-[part="StatBar.track StatBar.well"] { width: stretch; height: var(--space-lg); border-radius: var(--meter-radius); background: var(--control-strong); overflow: hidden; box-shadow: var(--meter-shadow); }
+[part="StatBar.track StatBar.well"] { flex: 1; min-width: 0; height: var(--space-lg); border-radius: var(--meter-radius); background: var(--control-strong); overflow: hidden; box-shadow: var(--meter-shadow); }
 #Recoverable, #Ghost, #Fill, #Heal, #Blocks, #Gloss { position: absolute; top: 0; height: stretch; }
 #Recoverable { inset-inline-start: 0; width: calc(var(--recoverable) * 100%); background: var(--ink-muted); opacity: var(--opacity-muted); }
 #Ghost { inset-inline-start: 0; width: stretch; background: var(--scene-ink); opacity: var(--opacity-soft); scale: var(--value) 1; transform-origin: 0% 50%; transition: scale var(--motion-duration-bounce) var(--motion-easing-in-out) var(--motion-duration-slow); }

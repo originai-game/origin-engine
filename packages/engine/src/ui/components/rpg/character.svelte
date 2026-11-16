@@ -67,7 +67,7 @@
 .band-end { width: var(--size-lg); height: var(--space-lg); flex: none; }
 .who { display: flex; width: stretch; gap: var(--space-md); align-items: center; flex: none; }
 .portrait { width: calc(var(--size-xxl) * 1.15); height: calc(var(--size-xxl) * 1.15); object-fit: cover; flex: none; }
-.who-text { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); align-items: center; text-align: center; }
+.who-text { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xxs); align-items: center; text-align: center; }
 [part="RpgCharacter.name"], .char-line { margin: 0; }
 .doll { position: relative; display: flex; width: stretch; flex: 1; min-height: 0; justify-content: space-between; padding: var(--space-sm) var(--space-xs); }
 .figure { position: absolute; left: 15%; top: 0; width: 70%; height: stretch; object-fit: contain; object-position: center bottom; }
@@ -76,11 +76,11 @@
 [part="RpgCharacter.cell"] .face { display: flex; width: stretch; height: stretch; align-items: center; justify-content: center; }
 .art { width: stretch; height: stretch; }
 .attributes { display: flex; width: stretch; gap: var(--space-md); flex: none; padding: var(--space-sm) var(--space-xs) 0; }
-.attr-column { display: flex; flex-direction: column; width: stretch; }
+.attr-column { display: flex; flex-direction: column; flex: 1; min-width: 0; align-self: stretch; }
 .attr-split { width: var(--stroke-hairline); align-self: stretch; }
 [part="RpgCharacter.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xs) 0; }
 .attr-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
-.attr-label { width: stretch; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.attr-label { flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 [part="RpgCharacter.row"] { column-gap: var(--space-xs); }
 .attr-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
 @container (width < 300px) { .attributes { flex-direction: column; gap: 0; } .attr-split { display: none; } }

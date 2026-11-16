@@ -57,7 +57,7 @@
 [part="RpgQuestDetail.row"] { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) 0; }
 [part="RpgQuestDetail.row"][data-step="1"] { padding-inline-start: var(--space-xl); }
 .objective-mark { width: var(--space-lg); height: var(--space-lg); flex: none; }
-.objective-text { width: stretch; }
+.objective-text { flex: 1; min-width: 0; }
 [part="RpgQuestDetail.reward RpgQuestDetail.figure"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-xxs) 0; }
 .reward-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .reward-text { display: flex; flex-direction: column; gap: 0; }

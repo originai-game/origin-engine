@@ -66,7 +66,7 @@
 [part="Chat.frame"][hidden], [part="Chat.frame"] [hidden] { display: none; }
 [part="Chat.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-xs); container-type: inline-size; }
 .tabs { display: flex; width: stretch; flex: none; }
-.tabs-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; }
+.tabs-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; min-width: 0; }
 .tabs-row { display: flex; gap: var(--space-xxs); }
 [part="Chat.tab"] { flex: none; min-height: var(--size-touch); padding: 0 var(--space-sm); gap: var(--space-xs); }
 .tab-label { white-space: nowrap; max-width: calc(var(--size-xxl) * 2.5); overflow: hidden; text-overflow: ellipsis; }
@@ -85,7 +85,7 @@
 .empty { margin: 0; padding: var(--space-lg); text-align: center; }
 [part="Chat.notice Chat.label"] { margin: 0; flex: none; }
 [part="Chat.compose"] { display: flex; width: stretch; gap: var(--space-xs); align-items: stretch; flex: none; }
-#Draft { width: stretch; min-width: 0; min-height: var(--size-touch); }
+#Draft { flex: 1; min-width: 0; min-height: var(--size-touch); }
 #Send { flex: none; min-height: var(--size-touch); min-width: var(--size-touch); gap: var(--space-xs); }
 .send-mark { width: var(--size-xs); height: var(--size-xs); }
 .send-mark:dir(rtl) { transform: scaleX(-1); }

@@ -39,7 +39,7 @@
 [part="OverlayBar.title"] { white-space: nowrap; }
 [part="OverlayBar.ramp"] { width: stretch; height: var(--space-sm); border-radius: var(--radius-capsule); background: var(--ramp); border: var(--stroke-hairline) solid var(--line); }
 #Ends { display: flex; gap: var(--space-md); width: stretch; }
-[part="OverlayBar.label"] { width: stretch; font: var(--text-caption); white-space: nowrap; }
+[part="OverlayBar.label"] { flex: 1; min-width: 0; font: var(--text-caption); white-space: nowrap; }
 .high { text-align: end; }
 [part="OverlayBar.bar"] { display: flex; gap: var(--space-sm); padding: var(--space-sm); border-radius: var(--radius-capsule); backdrop-filter: blur(var(--glass-blur-thick)) saturate(var(--glass-saturation)); -og-material: glass thick lift; overflow-x: auto; scrollbar-width: none; }
 [part="OverlayBar.option"] { height: calc(var(--size-lg) + var(--space-xs) * 2); padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-xs); border-radius: var(--radius-capsule); background: var(--control); }

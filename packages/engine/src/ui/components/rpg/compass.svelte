@@ -24,7 +24,7 @@
 [part="RpgCompass.frame"][hidden], [part="RpgCompass.frame"] [hidden] { display: none; }
 [part="RpgCompass.frame"] { position: relative; display: flex; width: stretch; height: var(--size-lg); align-items: center; }
 .end { width: var(--size-md); height: stretch; flex: none; }
-.strip { position: relative; width: stretch; height: stretch; }
+.strip { position: relative; flex: 1; min-width: 0; height: stretch; }
 .mark { position: absolute; left: calc(var(--at) * 100%); top: 0; height: stretch; translate: -50% 0; align-items: center; justify-content: center; }
 .mark[data-kind=tick] { width: var(--stroke-hairline); height: 30%; top: 35%; }
 .mark[data-kind=quest], .mark[data-kind=waypoint], .mark[data-kind=danger] { width: var(--space-lg); height: var(--space-lg); top: 0; }

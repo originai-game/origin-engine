@@ -33,7 +33,7 @@
 [part="RpgParty.frame"][hidden], [part="RpgParty.frame"] [hidden] { display: none; }
 [part="RpgParty.frame"] { width: stretch; }
 .cards { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-sm); width: stretch; }
-[part="RpgParty.cell"] { position: relative; width: stretch; padding: var(--space-xs); gap: var(--space-xxs); align-items: stretch; justify-content: flex-start; }
+[part="RpgParty.cell"] { position: relative; width: stretch; padding: var(--space-xs); gap: var(--space-xxs); align-items: stretch; justify-content: flex-start; min-width: 0; }
 [part="RpgParty.cell"] .face { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
 .picture { width: stretch; aspect-ratio: 1.15; overflow: hidden; }
 @media (width >= 600px) and (height >= 500px) { .picture { aspect-ratio: 1.5; } }

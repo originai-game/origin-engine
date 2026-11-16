@@ -36,7 +36,7 @@
 
 <style>
 #Revive, #Retry, #Revive::part(base), #Retry::part(base) { height: var(--control-lg); }
-#GameOver { width: stretch; height: stretch; padding: var(--space-xxl); justify-content: center; align-items: center; }
+#GameOver { width: stretch; height: stretch; padding: var(--space-xxl); justify-content: center; align-items: center; min-height: 0; }
 @media (width < 600px), (height < 600px) {
 #GameOver { padding: var(--space-lg); }
 }

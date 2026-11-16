@@ -25,7 +25,7 @@
 <style>
 #Calendar { display: flex; flex-direction: column; gap: var(--space-sm); width: var(--measure-sm); }
 #Head { display: flex; align-items: center; }
-#Month { width: stretch; text-align: center; }
+#Month { flex: 1; min-width: 0; text-align: center; }
 #Days { grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr; gap: var(--space-xxs); }
 .weekday { text-align: center; }
 .day { width: stretch; }

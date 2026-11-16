@@ -19,5 +19,5 @@
 #Tree { width: stretch; height: stretch; }
 .row { display: flex; align-items: center; gap: var(--space-xxs); margin-left: calc(var(--depth) * var(--space-lg)); }
 .twisty { width: var(--control-sm); }
-.item { width: stretch; justify-content: start; }
+.item { flex: 1; min-width: 0; justify-content: start; }
 </style>

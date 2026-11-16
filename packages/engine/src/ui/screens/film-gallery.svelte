@@ -28,10 +28,10 @@
 </column>
 
 <style>
-#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-lg); }
+#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-lg); min-height: 0; }
 #Header { width: stretch; gap: var(--space-md); align-items: center; }
 #Title { font-size: var(--type-xl2-size); }
-#Body { width: stretch; height: stretch; }
+#Body { width: stretch; flex: 1; min-height: 0; }
 #Endings { display: flex; flex-wrap: wrap; width: stretch; gap: var(--space-lg); }
 .card { flex: none; width: var(--size-5xl); gap: var(--space-xs); padding: var(--space-xs); border-radius: var(--radius-card); background: var(--panel-raised); }
 .card.selected { background: var(--row-selected-fill); outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }

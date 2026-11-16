@@ -19,7 +19,7 @@
 </column>
 
 <style>
-#Notifications { width: stretch; height: stretch; align-items: end; padding: var(--space-lg); gap: var(--space-sm); }
+#Notifications { width: stretch; height: stretch; align-items: end; padding: var(--space-lg); gap: var(--space-sm); min-height: 0; }
 .note { display: flex; align-items: center; gap: var(--space-sm); width: var(--measure-md); border-left: var(--stroke-thick) solid var(--info); }
 .note.success { border-left-color: var(--success); }
 .note.warn { border-left-color: var(--warn); }
@@ -29,7 +29,7 @@
 .said { width: stretch; }
 .toast.leaving { animation: leave var(--motion-exit) both; }
 @keyframes leave { to { translate: var(--space-xl) 0; opacity: 0; } }
-.text { width: stretch; gap: var(--space-xxs); }
+.text { flex: 1; min-width: 0; gap: var(--space-xxs); }
 .title { margin: 0; }
 .body { color: var(--ink-muted); }
 </style>

@@ -53,7 +53,7 @@
 [part="PuzzleBoosters.count PuzzleBoosters.figure"] { position: absolute; inset-inline-end: calc(var(--space-xs) * -1); bottom: calc(var(--space-xxs) * -1); min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; white-space: nowrap; }
 [part="PuzzleBoosters.name"] { width: stretch; text-align: center; text-wrap: balance; }
 [part="PuzzleBoosters.state PuzzleBoosters.label"] { max-width: stretch; padding: 0 var(--space-xxs); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-[part="PuzzleBoosters.empty"] { margin: 0; width: stretch; padding: var(--space-sm); text-align: center; }
+[part="PuzzleBoosters.empty"] { margin: 0; width: stretch; padding: var(--space-sm); text-align: center; min-width: 0; }
 @container (width < 600px) {
   .tray { justify-content: flex-start; gap: var(--space-xs); }
   [part="PuzzleBoosters.booster PuzzleBoosters.cell"] { min-width: calc(var(--size-lg) * 1.75); max-width: calc(var(--size-lg) * 3); }

@@ -28,7 +28,7 @@
 </stack>
 
 <style>
-#Credits { width: stretch; height: stretch; background: var(--backdrop); }
+#Credits { width: stretch; height: stretch; background: var(--backdrop); min-height: 0; }
 #Roll { position: absolute; inset-inline-start: 0; inset-inline-end: 0; top: 0; padding: var(--space-3xl); gap: var(--space-3xl); align-items: center; translate: 0 bind("-offset"); }
 @media (width < 600px), (height < 600px) {
 #Roll { padding: var(--space-xl); gap: var(--space-xl); }

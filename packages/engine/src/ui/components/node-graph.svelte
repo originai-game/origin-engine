@@ -38,7 +38,7 @@
    the whole view (and a node's half beyond each edge) in the well, and it
    stands in the middle. The nodes keep their size; only where they stand,
    and the links between them, scale. It zooms about that middle. */
-[part="NodeGraph.well"] { width: stretch; height: stretch; min-height: var(--size-6xl); overflow: hidden; container-type: size; }
+[part="NodeGraph.well"] { width: stretch; height: stretch; min-height: var(--size-6xl); overflow: hidden; container-type: size; min-width: 0; }
 #Canvas { --fit: min((100cqw - var(--size-lg) * 2) / var(--vw), (100cqh - var(--size-lg) * 2) / var(--vh)); position: absolute; inset: 0; margin: auto; width: calc(var(--vw) * var(--fit)); height: calc(var(--vh) * var(--fit)); translate: var(--pan-x) var(--pan-y); scale: var(--zoom); transform-origin: 50% 50%; }
 #Links { position: absolute; inset: 0; width: stretch; height: stretch; }
 [part="NodeGraph.link"] { fill: none; stroke: var(--line-strong); stroke-width: 3; stroke-dasharray: 6 6; }

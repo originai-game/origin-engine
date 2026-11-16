@@ -18,7 +18,7 @@
 </button>
 
 <style>
-#Face { width: stretch; height: stretch; align-items: center; justify-content: center; }
+#Face { width: stretch; height: stretch; align-items: center; justify-content: center; min-width: 0; }
 #Cooldown { width: var(--size-lg); height: var(--size-lg); padding: 0; overflow: hidden; }
 #Cooldown.ready { animation-name: ready; animation-duration: var(--motion-duration-slow); animation-timing-function: var(--motion-easing-out); box-shadow: 0 0 var(--space-sm) var(--primary); }
 #Icon { width: var(--size-md); height: var(--size-md); }

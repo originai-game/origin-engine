@@ -30,10 +30,10 @@
 </column>
 
 <style>
-#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-lg); }
+#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-lg); min-height: 0; }
 #Header { width: stretch; gap: var(--space-md); align-items: center; }
 #Title { font-size: var(--type-xl2-size); }
-#Body { width: stretch; height: stretch; min-height: 0; }
+#Body { width: stretch; flex: 1; min-height: 0; }
 #Detail { width: stretch; gap: var(--space-md); align-items: center; justify-content: space-between; padding: var(--space-md); background: var(--hud); border-radius: var(--radius-card); }
 #What { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); line-clamp: 1; text-overflow: ellipsis; }
 @media (width < 600px), (height < 600px) {

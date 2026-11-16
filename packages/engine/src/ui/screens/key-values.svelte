@@ -16,7 +16,7 @@
 <style>
 #KeyValues { list-style: none; padding: 0; margin: 0; width: stretch; }
 .row { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) 0; border-bottom: var(--stroke-hairline) solid var(--line); }
-.key { width: stretch; margin: 0; }
+.key { flex: 1; min-width: 0; margin: 0; }
 .value { margin: 0; }
 .delta { margin: 0; width: var(--size-lg); text-align: end; color: var(--trend-down); }
 .delta.up { color: var(--trend-up); }

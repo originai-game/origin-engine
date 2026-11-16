@@ -50,7 +50,7 @@
 <style>
 [part="IdleResources.frame"][hidden], [part="IdleResources.frame"] [hidden] { display: none; }
 [part="IdleResources.frame"] { display: flex; width: stretch; }
-.chips { display: flex; flex-wrap: wrap; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xs); }
+.chips { display: flex; flex-wrap: wrap; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xs); min-width: 0; }
 [part="IdleResources.row"] { display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-xxs) var(--space-sm); min-height: var(--size-touch); min-width: 0; max-width: stretch; }
 .icon { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .text { display: flex; flex-direction: column; min-width: 0; gap: 0; }
