@@ -920,7 +920,9 @@ fn font_size_adjust_sizes_each_face_by_its_metric() {
         Vec::new(),
         "<p id=\"None\">x水</p><p id=\"Num\">x水</p><p id=\"From\">x水</p><p id=\"Ch\">x水</p>\
 <div id=\"Up\"><p id=\"Inherit\">x水</p><p id=\"Off\">x水</p></div><p id=\"Rich\">x水</p>",
-        r#"p { font-size: 20px; } #Num { font-size-adjust: 0.5; }
+        // No autospace between x and 水 (CSS Text 4 §8.4): only the faces'
+        // sizes move the second run.
+        r#"p { font-size: 20px; text-autospace: no-autospace; } #Num { font-size-adjust: 0.5; }
 #From { font-size-adjust: from-font; } #Ch { font-size-adjust: ch-width 0.6; }
 #Up { font-size-adjust: 0.5; } #Off { font-size-adjust: none; }
 #Rich { font-size-adjust: 0.5; text-decoration: underline; }"#,

@@ -709,3 +709,253 @@ fn emphasis_marks_sit_where_css_text_decoration_puts_them() {
         "{m:?} {g:?}"
     );
 }
+
+/// Each drawn character inside element `id` and its glyph's origin and
+/// advance, CSS px.
+fn pens(d: &Doc, id: &str) -> Vec<(char, f32, f32)> {
+    let r = d.get(id);
+    let mut out = Vec::new();
+    for it in &d.ui.frame().items {
+        let cmd = match &it.cmd {
+            DrawCmd::StyledText { text, .. } => &**text,
+            c => c,
+        };
+        if let DrawCmd::Text {
+            text,
+            x,
+            size,
+            bounds,
+            placements,
+            ..
+        } = cmd
+            && (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0))
+        {
+            let mut pen = x - r.x;
+            for (c, p) in text.chars().zip(placements) {
+                out.push((c, pen + p.x * size, p.advance * size));
+                pen += p.advance * size;
+            }
+        }
+    }
+    out
+}
+
+/// The drawn characters of line `n` (from 0) of element `id`, by their
+/// baseline.
+fn line(d: &Doc, id: &str, n: usize) -> String {
+    let mut rows: Vec<(f32, String)> = Vec::new();
+    for g in glyphs(d, id) {
+        match rows.iter_mut().find(|(b, _)| (b - g.baseline).abs() < 1.0) {
+            Some((_, t)) => t.push_str(&g.text),
+            None => rows.push((g.baseline, g.text.clone())),
+        }
+    }
+    rows.sort_by(|a, b| a.0.total_cmp(&b.0));
+    rows.get(n).map(|r| r.1.clone()).unwrap_or_default()
+}
+
+/// The origin and advance of character `c`'s `nth` glyph in `id`.
+fn pen(d: &Doc, id: &str, c: char, nth: usize) -> (f32, f32) {
+    let all = pens(d, id);
+    all.iter()
+        .filter(|p| p.0 == c)
+        .nth(nth)
+        .map(|p| (p.1, p.2))
+        .unwrap_or_else(|| panic!("{c} #{nth} in {id}: {all:?}"))
+}
+
+/// CSS Text 4 §8.5 `text-spacing-trim`, in Noto Sans SC at 20 px, whose
+/// fullwidth punctuation is one em (20 px) and whose `halt` sets it half
+/// an em, kerning its blank half (the start of an opening bracket, the
+/// end of a closing one and, in a Chinese font, of its colons and dots).
+/// `normal` is `space-start trim-adjacent allow-end`: a line's first
+/// opening bracket is spaced; an opening one after an opening one, and a
+/// closing one before a closing one or a dot, are trimmed (§8.5.2); a
+/// closing one ends a line trimmed only where it would not otherwise fit
+/// (§8.5). `trim-all` trims every one; `space-all` none; `trim-start` and
+/// `space-first` trim a line's first, `space-first` not on the first line.
+///
+/// Ways it could fail: `hwid` glyphs or an advance cut on the wrong side
+/// (an opening bracket keeps its blank half and loses its ink); pairs
+/// trimmed across a line break or not at all; the first line's bracket
+/// trimmed under `space-first`; `allow-end` never pulling the next line's
+/// `日。` back, or trimming a closing bracket that fits; `space-end`
+/// trimming.
+#[test]
+fn fullwidth_punctuation_trims_as_text_spacing_trim_says() {
+    let d = doc(
+        r#"<p id="N">（「日」）。水</p>
+<p id="All" style="text-spacing-trim: trim-all">（「日」）。水</p>
+<p id="Sp" style="text-spacing-trim: space-all">（「日」）。水</p>
+<p id="TS" style="text-spacing-trim: trim-start; width: 100px">（日日日日（日</p>
+<p id="SF" style="text-spacing-trim: space-first; width: 100px">（日日日日（日</p>
+<p id="AE" style="width: 110px">日日日日日。日日</p>
+<p id="Fit" style="width: 120px">日日日日日。日日</p>
+<p id="SE" style="text-spacing-trim: space-end; width: 110px">日日日日日。日日</p>"#,
+        "",
+    );
+    let near =
+        |(x, w): (f32, f32), at: f32, width: f32| (x - at).abs() < 0.6 && (w - width).abs() < 0.01;
+    // normal: （ spaced at the line's start; 「 after （, 」 before ） and
+    // ） before 。 trimmed; 。 before 水 not.
+    for (c, n, at, w) in [
+        ('（', 0, 0.0, 20.0),
+        ('「', 0, 10.0, 10.0),
+        ('日', 0, 30.0, 20.0),
+        ('」', 0, 50.0, 10.0),
+        ('）', 0, 60.0, 10.0),
+        ('。', 0, 70.0, 20.0),
+        ('水', 0, 90.0, 20.0),
+    ] {
+        assert!(near(pen(&d, "N", c, n), at, w), "{c}: {:?}", pens(&d, "N"));
+    }
+    // trim-all: every bracket and dot half an em; an opening one's ink
+    // starts where its box does.
+    assert!(
+        near(pen(&d, "All", '（', 0), -10.0, 10.0),
+        "{:?}",
+        pens(&d, "All")
+    );
+    assert!(
+        near(pen(&d, "All", '。', 0), 60.0, 10.0),
+        "{:?}",
+        pens(&d, "All")
+    );
+    assert!(
+        near(pen(&d, "All", '水', 0), 70.0, 20.0),
+        "{:?}",
+        pens(&d, "All")
+    );
+    assert!(
+        near(pen(&d, "Sp", '水', 0), 120.0, 20.0),
+        "{:?}",
+        pens(&d, "Sp")
+    );
+    // trim-start trims each line's first bracket; space-first all but the
+    // first line's. The second （, spaced in the line, would not fit
+    // after 日日日日, so it starts the second line.
+    assert_eq!(line(&d, "TS", 1), "（日");
+    assert!(
+        near(pen(&d, "TS", '（', 0), -10.0, 10.0),
+        "{:?}",
+        pens(&d, "TS")
+    );
+    assert!(
+        near(pen(&d, "TS", '（', 1), -10.0, 10.0),
+        "{:?}",
+        pens(&d, "TS")
+    );
+    assert_eq!(line(&d, "SF", 1), "（日");
+    assert!(
+        near(pen(&d, "SF", '（', 0), 0.0, 20.0),
+        "{:?}",
+        pens(&d, "SF")
+    );
+    assert!(
+        near(pen(&d, "SF", '（', 1), -10.0, 10.0),
+        "{:?}",
+        pens(&d, "SF")
+    );
+    // allow-end: 日。 (no break before 。) fits the 110 px line only with
+    // 。 trimmed (100 + 20 + 10), so it is; on a 120 px line it fits
+    // spaced; space-end leaves it to the next line.
+    assert_eq!(line(&d, "AE", 0), "日日日日日。");
+    assert!(
+        near(pen(&d, "AE", '。', 0), 100.0, 10.0),
+        "{:?}",
+        pens(&d, "AE")
+    );
+    assert_eq!(line(&d, "Fit", 0), "日日日日日。");
+    assert!(
+        near(pen(&d, "Fit", '。', 0), 100.0, 20.0),
+        "{:?}",
+        pens(&d, "Fit")
+    );
+    assert_eq!(line(&d, "SE", 0), "日日日日");
+    assert_eq!(line(&d, "SE", 1), "日。日日");
+}
+
+/// CSS Text 4 §8.4 `text-autospace`: `normal` puts an eighth of an
+/// ideograph's advance (Noto Sans SC's 水 at 20 px: 2.5 px) between an
+/// ideograph and a Latin letter or a digit on one line, inside the
+/// character before, not where a space already is; none at a line's
+/// break, so the room never pushes a character to the next line;
+/// `replace` sets a U+0020 between them at that width; `punctuation`
+/// spaces French's `:` (a no-break space) and `?` (a narrow one, here a
+/// fifth of an em: the face has neither U+202F nor U+2009).
+///
+/// Ways it could fail: the room on the wrong side or a quarter em;
+/// spacing kept at a line's end, breaking `日日日` early; ideographic
+/// punctuation taken for an ideograph; `no-autospace` or
+/// `ideograph-alpha` ignored; `replace` adding to the space.
+#[test]
+fn autospace_spaces_ideographs_from_latin_as_text_autospace_says() {
+    let d = doc(
+        r#"<p id="N">日A日1日。A</p>
+<p id="Off" style="text-autospace: no-autospace">日A日1日</p>
+<p id="Alpha" style="text-autospace: ideograph-alpha">日A日1日</p>
+<p id="Sp">日 A</p>
+<p id="Rep" style="text-autospace: replace">日 A</p>
+<p id="W" style="width: 60px">日日日Ab</p>
+<p id="Fr" lang="fr" style="text-autospace: punctuation">a:b?</p>"#,
+        "",
+    );
+    let at = |id: &str, c: char, n: usize| pen(&d, id, c, n).0;
+    // 日 20, A 12.16 (608 units), 1 11.1 (555 units), each + 2.5.
+    for (c, n, x) in [
+        ('A', 0, 22.5),
+        ('日', 1, 37.16),
+        ('1', 0, 59.66),
+        ('日', 2, 73.26),
+    ] {
+        assert!((at("N", c, n) - x).abs() < 0.6, "{c}: {:?}", pens(&d, "N"));
+    }
+    // 。 is no ideograph: nothing between it and A.
+    let full_stop = pen(&d, "N", '。', 0);
+    assert!(
+        (at("N", 'A', 1) - full_stop.0 - full_stop.1).abs() < 0.6,
+        "{:?}",
+        pens(&d, "N")
+    );
+    assert!(
+        (at("Off", 'A', 0) - 20.0).abs() < 0.6,
+        "{:?}",
+        pens(&d, "Off")
+    );
+    assert!(
+        (at("Alpha", 'A', 0) - 22.5).abs() < 0.6,
+        "{:?}",
+        pens(&d, "Alpha")
+    );
+    assert!(
+        (at("Alpha", '1', 0) - 57.16).abs() < 0.6,
+        "{:?}",
+        pens(&d, "Alpha")
+    );
+    // A space keeps its own width (224 units, 4.48 px); replace sets it
+    // at 2.5 px.
+    assert!(
+        (at("Sp", 'A', 0) - 24.48).abs() < 0.6,
+        "{:?}",
+        pens(&d, "Sp")
+    );
+    assert!(
+        (at("Rep", 'A', 0) - 22.5).abs() < 0.6,
+        "{:?}",
+        pens(&d, "Rep")
+    );
+    // Three ideographs fill the 60 px line: no room after the third.
+    assert_eq!(line(&d, "W", 0), "日日日");
+    assert_eq!(line(&d, "W", 1), "Ab");
+    // a 11.26 + 4.48 (U+00A0), : 5.56, b 12.36 + 4 (an em / 5).
+    assert!(
+        (at("Fr", ':', 0) - 15.74).abs() < 0.6,
+        "{:?}",
+        pens(&d, "Fr")
+    );
+    assert!(
+        (at("Fr", '?', 0) - 37.66).abs() < 0.6,
+        "{:?}",
+        pens(&d, "Fr")
+    );
+}

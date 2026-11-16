@@ -423,6 +423,7 @@ impl Ui {
             line_break: desc.line_break,
             emphasis: desc.emphasis,
             dominant: desc.dominant,
+            spacing: desc.spacing,
         });
         node.layout.links.clear();
         for r in &node_runs_links(&node.content) {
