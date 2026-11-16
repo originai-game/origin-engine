@@ -252,7 +252,9 @@ impl Ui {
             .map(|names| names.map(|name| r.size(name)));
         el.bounds = bounds;
         for (axis, size) in [&mut el.width, &mut el.height].into_iter().enumerate() {
-            if let Size::Fit { min, max } | Size::Grow { min, max } = size {
+            if let Size::Fit { min, max } | Size::Grow { min, max } | Size::Stretch { min, max } =
+                size
+            {
                 // A zero minimum stays a bound of its own: the range's 0
                 // is no minimum (`auto`, a flex item's content), and
                 // `min-width: 0` is CSS's way to lift that floor.
@@ -292,6 +294,10 @@ impl Ui {
                     max: max + p,
                 },
                 Size::Grow { min, max } => Size::Grow {
+                    min: if min > 0.0 { min + p } else { min },
+                    max: max + p,
+                },
+                Size::Stretch { min, max } => Size::Stretch {
                     min: if min > 0.0 { min + p } else { min },
                     max: max + p,
                 },

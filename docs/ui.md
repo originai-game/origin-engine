@@ -419,11 +419,16 @@ engine differs or limits as follows:
   full-screen art and dialogs read the safe-area insets. A change to any
   of these re-resolves only their readers.
 - **Sizes.** Every element is `box-sizing: border-box` by default (the
-  common reset as UA rule). `stretch` is the room the parent leaves. A
-  percentage bound against an unknown size is ignored. A flex item without
-  `flex` properties keeps its kind: `width: stretch` grows and shrinks, a
-  fit-content item shrinks to its content, a definite one neither. `order`
-  keeps the document's reading order.
+  common reset as UA rule). `stretch` is CSS Sizing 4's stretch-fit size:
+  the containing block's size less the box's margins, the same in a block,
+  a flex line or a grid area. Across a flex line it fills the line, as
+  `align-self: stretch` does. Along one it is the container's whole inner
+  size, so siblings that share a row or column say so with `flex: 1` (and
+  `min-width: 0` or `min-height: 0` to let content shrink), never with
+  `stretch`. A percentage bound against an unknown size is ignored. A flex
+  item without `flex` properties keeps its kind: a fit-content item
+  shrinks to its content, and a definite or `stretch` one neither grows
+  nor shrinks. `order` keeps the document's reading order.
 - **Grid.** One `repeat(auto-fill | auto-fit, …)` of fixed sizes per axis.
   A masonry item keeps the width of the track it is first given.
 
@@ -2346,7 +2351,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `static-positioning` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `steps-easing` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `sticky-positioning` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::positioning_places_as_css_positioning_does`](../crates/og-ui/tests/css_layout.rs). Both builders assert relative flow reservation, asymmetric absolute insets, viewport-fixed corners, sticky wheel scrolling, anchor()/anchor-size(), position-area and position-try. Anchor animation and visibility are not covered. |
-| `stretch` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `stretch` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_layout::stretch_in_a_flex_line_is_its_stretch_fit_size`](../crates/og-ui/tests/css_layout.rs). Computed sizes of `stretch` across a flex line (filling it, the row laid out at the line's width), along one (the container's inner size, not floored by taller content nor shared with a sibling); a block's stretch height is asserted in css_layout::a_stretch_height_in_a_block_fills_its_containing_block. Grid areas and absolute boxes are not asserted. |
 | `style-query-range-syntax` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `subgrid` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::grid_lays_out_as_css_grid_does`](../crates/og-ui/tests/css_layout.rs). Computed named/negative/spanning tracks, auto-fit/fill, fr minimums, areas, alignment and inherited subgrid tracks. |
 | `supports` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |

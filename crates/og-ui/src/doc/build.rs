@@ -276,7 +276,7 @@ impl Resolved {
             Some(Size::Percent(p)) => (available * p).max(0.0),
             Some(Size::Calc(c)) => c.of(available).max(0.0),
             Some(Size::Fit { min, max }) => current.clamp(min, max),
-            Some(Size::Grow { min, max }) => available.clamp(min, max),
+            Some(Size::Grow { min, max } | Size::Stretch { min, max }) => available.clamp(min, max),
             _ => current,
         };
         let width = extent("width", rect.width, owner.width);
@@ -316,7 +316,7 @@ pub fn coerce(ui: &Ui, ty: Ty, v: &Value) -> Option<V> {
         }
         Ty::Size => match v {
             Value::String(s) => match s.as_str() {
-                "grow" => V::Size(Size::grow()),
+                "stretch" => V::Size(Size::stretch()),
                 "fit" => V::Size(Size::fit()),
                 _ => V::Size(Size::Fixed(s.parse().ok()?)),
             },

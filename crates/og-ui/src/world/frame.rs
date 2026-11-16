@@ -63,10 +63,16 @@ impl Ui {
     ) -> AnchorInfo {
         let mut el = desc.element;
         // Laid out at its own size: never stretched to the screen.
-        if matches!(el.width, Size::Grow { .. } | Size::Percent(_)) {
+        if matches!(
+            el.width,
+            Size::Grow { .. } | Size::Stretch { .. } | Size::Percent(_)
+        ) {
             el.width = Size::fit();
         }
-        if matches!(el.height, Size::Grow { .. } | Size::Percent(_)) {
+        if matches!(
+            el.height,
+            Size::Grow { .. } | Size::Stretch { .. } | Size::Percent(_)
+        ) {
             el.height = Size::fit();
         }
         let i = self.open_world_layer("world", id, key, el);

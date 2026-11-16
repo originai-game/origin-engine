@@ -36,7 +36,7 @@ pub(super) fn calc_of(nodes: &[Node], p: *const (), basis: f32) -> f32 {
         Size::Fixed(v) => v,
         // A content size a bound names: what layout measured last.
         Size::MinContent | Size::MaxContent => basis,
-        Size::Fit { .. } | Size::Grow { .. } => 0.0,
+        Size::Fit { .. } | Size::Grow { .. } | Size::Stretch { .. } => 0.0,
     };
     match s {
         slot::WIDTH => size(el.width),
@@ -46,6 +46,12 @@ pub(super) fn calc_of(nodes: &[Node], p: *const (), basis: f32) -> f32 {
             match el.bounds[k / 2][k % 2] {
                 Some(Size::MinContent) => n.layout.min_content[k / 2],
                 Some(Size::MaxContent) => [n.layout.pref_w, n.layout.pref_h][k / 2],
+                // `stretch` as a bound: the stretch-fit size, the basis
+                // less the margins along its axis (CSS Sizing 4 §3.1).
+                Some(Size::Stretch { .. }) => {
+                    let [a, b] = if k / 2 == 0 { [3, 1] } else { [0, 2] };
+                    (basis - el.margin[a].len.of(basis) - el.margin[b].len.of(basis)).max(0.0)
+                }
                 Some(s) => size(s),
                 None => 0.0,
             }
@@ -121,9 +127,10 @@ pub(crate) fn kind(nodes: &[Node], i: usize) -> Kind {
     }
 }
 
-/// A block whose flow holds a `stretch` box along its block axis lays
-/// out as a column flex container, where that box shares the free room
-/// (docs/ui.md, Sizes); one with floats stays a block.
+/// A block whose flow holds a growing box (`Size::Grow`, a Rust
+/// builder's share) along its block axis lays out as a column flex
+/// container, where that box shares the free room; one with floats stays
+/// a block.
 fn grows_down(nodes: &[Node], i: usize) -> bool {
     let n = &nodes[i];
     let turned = turns(frame_of(nodes, i));
@@ -241,6 +248,7 @@ impl<'a> View<'a> {
             Size::Calc(_) => tf::Dimension::calc(calc_ptr(self.i, sl)),
             Size::MinContent => tf::Dimension::min_content(),
             Size::MaxContent => tf::Dimension::max_content(),
+            Size::Stretch { .. } => tf::Dimension::stretch(),
             Size::Fit { .. } | Size::Grow { .. } => tf::Dimension::auto(),
         }
     }
@@ -258,15 +266,23 @@ impl<'a> View<'a> {
         let size = [el.width, el.height][axis];
         let held = match (size, end) {
             (Size::Grow { min, .. }, 0) if along => Some(min),
-            (Size::Fit { min, .. } | Size::Grow { min, .. }, 0) if min > 0.0 => Some(min),
-            (Size::Fit { max, .. } | Size::Grow { max, .. }, 1) if max.is_finite() => Some(max),
+            (Size::Fit { min, .. } | Size::Grow { min, .. } | Size::Stretch { min, .. }, 0)
+                if min > 0.0 =>
+            {
+                Some(min)
+            }
+            (Size::Fit { max, .. } | Size::Grow { max, .. } | Size::Stretch { max, .. }, 1)
+                if max.is_finite() =>
+            {
+                Some(max)
+            }
             _ => None,
         };
         let sl = slot::BOUNDS + axis * 2 + end;
         match el.bounds[axis][end] {
             Some(Size::Fixed(v)) => tf::LengthPercentageAuto::length(v),
             Some(Size::Percent(p)) => tf::LengthPercentageAuto::percent(p),
-            Some(Size::Calc(_) | Size::MinContent | Size::MaxContent) => {
+            Some(Size::Calc(_) | Size::MinContent | Size::MaxContent | Size::Stretch { .. }) => {
                 tf::LengthPercentageAuto::calc(calc_ptr(self.i, sl))
             }
             Some(Size::Fit { .. } | Size::Grow { .. }) | None => held.map_or(
@@ -307,6 +323,22 @@ impl<'a> View<'a> {
     fn sized(&self, axis: usize) -> Size {
         let el = self.el();
         [el.width, el.height][self.phys(axis)]
+    }
+
+    /// Its frame axis that is a `stretch` size along its flex parent's
+    /// main axis.
+    fn stretch_along(&self) -> Option<usize> {
+        let flex = self.parent().is_some_and(|(_, k)| k == Kind::Flex);
+        let axis = if self.main_across() { 0 } else { 1 };
+        (flex && !self.line && matches!(self.sized(axis), Size::Stretch { .. })).then_some(axis)
+    }
+
+    /// Its frame axis that is a `stretch` size across its flex parent's
+    /// main axis.
+    fn stretch_across(&self) -> Option<usize> {
+        let flex = self.parent().is_some_and(|(_, k)| k == Kind::Flex);
+        let axis = if self.main_across() { 1 } else { 0 };
+        (flex && !self.line && matches!(self.sized(axis), Size::Stretch { .. })).then_some(axis)
     }
 
     /// A `stretch` size across its parent's main axis stretches it there.
@@ -443,20 +475,50 @@ impl tf::CoreStyle for View<'_> {
                 height: self.dim(self.sized(1), slots[self.phys(1)]),
             };
         }
-        tf::Size {
+        let mut size = tf::Size {
             width: self.dim(self.sized(0), slots[self.phys(0)]),
             height: self.dim(self.sized(1), slots[self.phys(1)]),
+        };
+        // A `stretch` across a flex line is `align-self: stretch` on an
+        // `auto` size (CSS Sizing 4 §3.1), which is how Taffy reads it
+        // everywhere but its flex-basis step: there a keyword cross size
+        // is measured with no width, so a stretched row's height came out
+        // at its content's width.
+        match self.stretch_across() {
+            Some(0) => size.width = tf::Dimension::auto(),
+            Some(_) => size.height = tf::Dimension::auto(),
+            None => {}
         }
+        size
     }
 
     fn min_size(&self) -> tf::Size<tf::LengthPercentageAuto> {
         if self.line {
             return tf::Size::auto();
         }
-        tf::Size {
+        let mut min = tf::Size {
             width: self.bound(0, 0),
             height: self.bound(1, 0),
+        };
+        // A `stretch` along a flex line: CSS caps its automatic minimum
+        // at its stretched size, the specified size suggestion (CSS
+        // Flexbox 1 §4.5), which Taffy takes only from a length. With no
+        // `flex` it neither grows nor shrinks, so a zero minimum keeps it
+        // at that size as the cap would; without one its content floored
+        // it (a screen as tall as its rows).
+        if let Some(axis) = self.stretch_along()
+            && self.el().flex.is_none()
+        {
+            let side = if axis == 0 {
+                &mut min.width
+            } else {
+                &mut min.height
+            };
+            if side.is_auto() {
+                *side = tf::LengthPercentageAuto::length(0.0);
+            }
         }
+        min
     }
 
     fn max_size(&self) -> tf::Size<tf::LengthPercentageAuto> {
@@ -613,6 +675,10 @@ impl tf::FlexboxItemStyle for View<'_> {
 
     fn align_self(&self) -> Option<tf::AlignSelf> {
         let el = self.el();
+        // A box filling its line has no room to align in.
+        if self.stretch_across().is_some() {
+            return Some(tf::AlignItems::STRETCH);
+        }
         match el.align_self {
             Some(c) => Some(safe_items(
                 items_of(c, el.cross_logical & 2 != 0, el.cross_logical & 8 != 0),

@@ -334,7 +334,10 @@ impl Tree<'_, '_> {
             }
         }
         let content = (bottom.iter().copied().fold(0.0, f32::max) - gap).max(0.0);
-        if matches!(el.height, Size::Fit { .. } | Size::Grow { .. }) {
+        if matches!(
+            el.height,
+            Size::Fit { .. } | Size::Grow { .. } | Size::Stretch { .. }
+        ) {
             out.size.height = out
                 .size
                 .height
@@ -369,14 +372,18 @@ pub(super) fn out_size(n: &Node, axis: usize, outer: f32, basis: f32) -> f32 {
     let margins = n.layout.used.margin[lead].of(basis) + n.layout.used.margin[trail].of(basis);
     let room = (outer - a.unwrap_or(0.0) - b.unwrap_or(0.0) - margins).max(0.0);
     let (lo, hi) = match size {
-        Size::Fit { min, max } | Size::Grow { min, max } => (min, max.max(min)),
+        Size::Fit { min, max } | Size::Grow { min, max } | Size::Stretch { min, max } => {
+            (min, max.max(min))
+        }
         _ => (0.0, f32::INFINITY),
     };
     let v = match (a, b, size) {
         (_, _, Size::Fixed(v)) => v,
         (_, _, Size::Percent(p)) => p * outer,
         (_, _, Size::Calc(c)) => c.of(outer),
-        (Some(_), Some(_), Size::Fit { .. }) | (_, _, Size::Grow { .. }) => room.clamp(lo, hi),
+        (Some(_), Some(_), Size::Fit { .. }) | (_, _, Size::Grow { .. } | Size::Stretch { .. }) => {
+            room.clamp(lo, hi)
+        }
         (_, _, Size::Fit { .. }) => pref.min(room).max(min).clamp(lo, hi),
         (_, _, Size::MinContent) => min,
         (_, _, Size::MaxContent) => pref,
@@ -597,12 +604,16 @@ pub(crate) fn layout(
     let el = tree.nodes[root].layout.used;
     let w = match el.width {
         Size::Fit { .. } => Some(pref.min(area.width).max(min)),
-        Size::Grow { min: lo, max: hi } => Some(area.width.clamp(lo, hi.max(lo))),
+        Size::Grow { min: lo, max: hi } | Size::Stretch { min: lo, max: hi } => {
+            Some(area.width.clamp(lo, hi.max(lo)))
+        }
         _ => None,
     }
     .map(|w| el.bounded(0, Some(area.width), pref, min, w));
     let h = match el.height {
-        Size::Grow { min: lo, max: hi } => Some(area.height.clamp(lo, hi.max(lo))),
+        Size::Grow { min: lo, max: hi } | Size::Stretch { min: lo, max: hi } => {
+            Some(area.height.clamp(lo, hi.max(lo)))
+        }
         _ => None,
     };
     let got = tree.lay_physical(root, tf::RunMode::PerformLayout, [w, h], parent, avail);

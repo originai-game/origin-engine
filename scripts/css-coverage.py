@@ -124,6 +124,8 @@ proof("margin", "html_text", "block_margins_follow_the_ua_stylesheet_and_collaps
       "Both builders assert positive/negative sibling and parent-child margin collapse, padding/fixed-height boundaries, noncollapsing flex margins, UA em margins and keyed insertion.")
 proof("text-wrap-balance text-wrap-pretty text-overflow", "html_text", "text_wrap_styles_and_overflow_strings_lay_out_as_css_does",
       "Both builders inspect emitted lines: balance reduces width spread at the same line count; pretty avoids the final single-word line; custom overflow text replaces the ellipsis on one clipped line.")
+proof("stretch", "css_layout", "stretch_in_a_flex_line_is_its_stretch_fit_size",
+      "Computed sizes of `stretch` across a flex line (filling it, the row laid out at the line's width), along one (the container's inner size, not floored by taller content nor shared with a sibling); a block's stretch height is asserted in css_layout::a_stretch_height_in_a_block_fills_its_containing_block. Grid areas and absolute boxes are not asserted.")
 proof("text-indent text-indent-each-line text-indent-hanging line-break", "css_layout", "text_indent_and_line_break_lay_out_as_css_text_does",
       "Drawn lines of a shaped face show the first-line, hanging and each-line indents, a right-aligned indented line ending at its box, a max-content box growing by the indent, and line-break: anywhere filling a line mid-word. Strict/loose CJK punctuation rules are Parley's and not asserted; atlas-only and pixel faces are not indented.")
 proof("container-queries", "documents", "container_queries_restyle_lists_grids_and_rive_frames_before_paint",

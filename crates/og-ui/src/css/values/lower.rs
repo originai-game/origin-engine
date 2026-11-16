@@ -471,7 +471,7 @@ fn lower_size(name: &str, t: Vec<Tok>) -> Result<Vec<Part>, String> {
     let mut parts = Vec::new();
     let vals = match &v {
         Tok::Ident(k) if k == "fit-content" => vec![Value::Word("fit".into())],
-        Tok::Ident(k) if k == "stretch" => vec![Value::Word("grow".into())],
+        Tok::Ident(k) if k == "stretch" => vec![Value::Word("stretch".into())],
         Tok::Ident(k) if k == "min-content" => vec![Value::Word("minContent".into())],
         Tok::Ident(k) if k == "max-content" => vec![Value::Word("maxContent".into())],
         // fit-content(<length>): its content, at most the length and

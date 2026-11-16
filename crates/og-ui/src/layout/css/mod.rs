@@ -583,7 +583,7 @@ impl<'a, 'm> Tree<'a, 'm> {
             let size = [el.width, el.height][axis];
             let basis = [parent.width, parent.height][axis];
             [input.known_dimensions.width, input.known_dimensions.height][axis].or(match size {
-                Size::Grow { .. } => None,
+                Size::Grow { .. } | Size::Stretch { .. } => None,
                 s => s
                     .definite(0.0, 0.0, basis)
                     .filter(|_| !matches!(s, Size::MinContent | Size::MaxContent)),
@@ -615,7 +615,7 @@ impl<'a, 'm> Tree<'a, 'm> {
             let k = &self.nodes[c];
             let ins = k.layout.insets;
             let fills = |size: Size, a: Option<f32>, b: Option<f32>, stretch: bool| {
-                matches!(size, Size::Grow { .. })
+                matches!(size, Size::Grow { .. } | Size::Stretch { .. })
                     || (a.is_some() && b.is_some() && !matches!(size, Size::Fixed(_)))
                     || (stretch && matches!(size, Size::Fit { .. }))
             };

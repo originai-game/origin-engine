@@ -32,7 +32,7 @@ pub enum Ty {
     Word(&'static [&'static str]),
     /// A name: a word or a string (a timeline, an icon, a path).
     Name,
-    /// `fit [min max]`, `grow [min max]`, `fixed <px>` (or a bare number),
+    /// `fit [min max]`, `stretch [min max]`, `fixed <px>` (or a bare number),
     /// `percent <0–1>`.
     Size,
     /// A colour: `token <role>` (a palette role) or `"#rrggbb[aa]"`.
