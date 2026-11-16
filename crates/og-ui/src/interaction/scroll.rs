@@ -686,10 +686,18 @@ impl crate::ui::Interaction {
     pub(crate) fn select_scroll_anchors(&mut self, tree: &crate::ui::Tree) {
         use crate::element::Position;
         self.state.scroll_anchors.clear();
-        for (c, cn) in tree.nodes.iter().enumerate() {
-            let at = self.offset(cn.key).y;
-            if at <= 0.0
-                || !cn.layout.used.scroll
+        let mut scrolled: Vec<_> = self
+            .state
+            .scroll
+            .iter()
+            .filter(|(_, at)| **at > 0.0)
+            .filter_map(|(&key, &at)| tree.index.find(key).map(|c| (c, at)))
+            .collect();
+        // Keep the slot order used by the anchors' application pass.
+        scrolled.sort_unstable_by_key(|&(c, _)| c);
+        for (c, at) in scrolled {
+            let cn = &tree.nodes[c];
+            if !cn.layout.used.scroll
                 || cn.el.scroll_css.no_anchor
                 || cn.el.snap & 3 != 0
                 || cn.hidden
