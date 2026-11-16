@@ -409,6 +409,58 @@ fn each_control_is_dressed_by_its_named_parts() {
     );
 }
 
+/// CSS Pseudo-Elements 4 §5.2 `::details-content`: a details element's
+/// expandable content is one box its rules style. Its padding (20px left,
+/// 30px top) places the content inside it over the disclosure's own, its
+/// background fills it from the details' left edge across its width, and
+/// a rule under the originating element's `[open]` (set by `open={$open}`)
+/// wins while it is open; closed, the content and its box draw nothing. Ways it could
+/// fail: the rules dropped (the content at the disclosure's own inset),
+/// the box styled as the whole details rather than its content, or the
+/// `[open]` condition not read.
+#[test]
+fn details_content_styles_the_disclosures_content_box() {
+    let text = r#"<meta name="component" content="t">
+<column>
+  <details id="D" summary="More" open={$open}><text id="Body">x</text></details>
+</column>
+<style>
+#D { width: 300px; }
+#D::details-content { padding: 30px 0 0 20px; background: #ff0000; }
+#D[open]::details-content { background: #00ff00; }
+</style>"#;
+    let mut d = crate::support::Doc::new(text, &[("open", json!(false))]);
+    let fill = |d: &crate::support::Doc, want: [f32; 3]| {
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|i| i.cmd.filled())
+            .find(|(_, c)| [c[0], c[1], c[2]] == want)
+            .map(|(r, _)| r)
+    };
+    let (red, green) = ([1.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+    assert!(d.el("Body").is_none(), "closed: no content");
+    assert!(
+        fill(&d, red).is_none() && fill(&d, green).is_none(),
+        "closed: no box"
+    );
+    d.set("open", json!(true));
+    let (details, body) = (d.get("D"), d.get("Body"));
+    assert!(fill(&d, red).is_none(), "[open] wins while open");
+    let r = fill(&d, green).expect("the open content box draws its background");
+    assert_eq!(
+        (r.x, r.width),
+        (details.x, details.width),
+        "across the details"
+    );
+    assert!(r.y > details.y, "below the summary: {r:?} in {details:?}");
+    assert_eq!(
+        (body.x - r.x, body.y - r.y),
+        (20.0, 30.0),
+        "its padding places the content"
+    );
+}
+
 #[test]
 fn the_backdrop_pseudo_element_fills_the_scrim() {
     let doc = r#"<meta name="component" content="form">

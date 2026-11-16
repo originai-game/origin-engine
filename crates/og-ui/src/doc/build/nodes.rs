@@ -578,7 +578,7 @@ impl Ui {
                 Shell::Dialog
             }
             Kind::Details => {
-                (opened, shows_content) = self.doc_details(b, id, key, r, &open_now, opened);
+                (opened, shows_content) = self.doc_details(b, id, &path, key, r, &open_now, opened);
                 Shell::Details
             }
             Kind::Button => {
@@ -858,6 +858,7 @@ impl Ui {
         &mut self,
         b: &mut Build<'_>,
         id: &String,
+        path: &str,
         key: u64,
         r: &Resolved,
         open_now: &impl Fn(&mut Ui) -> bool,
@@ -883,6 +884,12 @@ impl Ui {
                 width: r.size("width"),
             },
         );
+        // `::details-content` styles the content box the disclosure just
+        // opened (its rules over the disclosure's own padding and gap).
+        if let Some(content) = self.style.pseudo_node(b, r, path, "details-content") {
+            let at = self.tree.parent();
+            self.style_pseudo_box(b, at, &content);
+        }
         let shows_content = out.open;
         if out.toggled || closing {
             opened = Some(out.open);

@@ -1137,7 +1137,12 @@ press, Enter, Space or pad A; its marker points to the inline end closed
 and down open. A literal `open` is the initial state; the player's toggle
 is saved UI state. `<details name>` is an exclusive group. A closed dialog
 or disclosure builds no content: its children are released and built
-afresh when it opens.
+afresh when it opens. `details::details-content` (Pseudo-Elements 4)
+styles the content box under the summary with every box property over
+the disclosure's own padding and gap; a closed disclosure hides the box
+whole (CSS keeps its margins, borders and background and hides only its
+contents), and `details[open]` follows a literal or one-way `open`, not
+`bind:open` or the player's toggle.
 
 `<meter>` dresses its fill by HTML's region, `Meter.fill[region=optimum |
 suboptimum | poor]` (undressed: success, warn, danger), over `Meter.track`;
