@@ -14,8 +14,8 @@
 
 <style>
 #Page { width: stretch; height: stretch; }
-#Grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xl); padding: var(--space-xl); }
-.slot { display: flex; min-width: 0; justify-content: center; align-items: flex-start; }
+#Grid { display: grid; width: stretch; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xl); padding: var(--space-xl); }
+.slot { min-width: 0; }
 @media (width < 600px) {
   #Grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-md); padding: var(--space-sm); }
 }

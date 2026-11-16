@@ -16,9 +16,14 @@ copy of the same name wins.
 
 ## Structure and appearance
 
-Each member's `<style>` holds structure only: layout, sizes and spacing from
-tokens. It sets no colour, font or art, and lands in the `og-components`
-layer. A style pack (`og-pack`) supplies every appearance through the
+The documents use HTML elements with CSS: `:host` styles the root,
+`{#if}` mounts optional content, and parts and classes select the inner
+boxes. Scrolling is `overflow-y: auto` on a `div`. Element ids and parts
+remain stable when a game ejects a document.
+
+Each member's `<style>` supplies layout and a token-based default look:
+type hierarchy, spacing and quiet row surfaces, in the `og-components`
+layer. A style pack (`og-pack`) overrides appearance through the
 members' named parts (docs/ui.md §3.2), qualified by their states and
 `data-*` attributes, for example `IdleResources::row[data-full=true]` or
 `button::part(IdleGenerators\.row)[data-locked=true]`. The fantasy pack dresses them
@@ -71,7 +76,9 @@ disabled, empty, overflow).
 `packages/engine/sheets/idle/`, dressed by the fantasy pack: play (the
 resource bar over generators and the upgrade shop), reset (prestige asking
 to confirm and the welcome-back panel, then their long forms) and states
-(every member in every fixture state, a scrolling page). The commands
+(every member in every fixture state, a scrolling page). Each page also
+has a `-default` screen with its explicit `style:default;page:<page>`
+commands. The commands
 `page:states-resources`, `-generators`, `-purchases`, `-prestige` and
 `-offline` show one member's states on one desktop screen for `og ui
 preview --screen "x=style:fantasy;page:states-purchases"`.

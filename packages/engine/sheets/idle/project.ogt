@@ -17,4 +17,7 @@ ui {
   screen "play-fantasy" "style:fantasy;page:play"
   screen "reset-fantasy" "style:fantasy;page:reset"
   screen "states-fantasy" "style:fantasy;page:states"
+  screen "play-default" "style:default;page:play"
+  screen "reset-default" "style:default;page:reset"
+  screen "states-default" "style:default;page:states"
 }

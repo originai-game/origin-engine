@@ -30,7 +30,7 @@
 -->
 <section id="IdlePrestige" part="IdlePrestige.frame" aria-label={title != '' ? title : t("idle.prestige.name")} data-met={met} data-confirming={confirming}>
   <header part="IdlePrestige.band"><h2 part="IdlePrestige.title">{title != '' ? title : t("idle.prestige.name")}</h2></header>
-  <scroll class="body">
+  <div class="body">
     <div class="body-inner">
       <div class="totals">
         <og-icon class="currency-icon" icon={icon}></og-icon>
@@ -45,27 +45,33 @@
         </div>
         <span class="currency">{currency}</span>
       </div>
-      <ul class="rows" aria-label={t("idle.prestige.bonus")} hidden={!rows.length}>
+      {#if rows.length}
+      <ul class="rows" aria-label={t("idle.prestige.bonus")}>
         {#each rows as r (r.id)}
           <li part="IdlePrestige.row" aria-label={r.label}>
             <og-icon class="row-icon" icon={r.icon}></og-icon>
             <span part="IdlePrestige.name" class="name">{r.label}</span>
-            <span part="IdlePrestige.readout IdlePrestige.figure" data-tag="now">{r.now}</span>
-            <og-icon class="row-arrow" icon="play"></og-icon>
-            <span part="IdlePrestige.readout IdlePrestige.figure" data-tag="after">{r.after}</span>
+            <div class="readouts">
+              <span part="IdlePrestige.readout IdlePrestige.figure" data-tag="now">{r.now}</span>
+              <og-icon class="row-arrow" icon="play"></og-icon>
+              <span part="IdlePrestige.readout IdlePrestige.figure" data-tag="after">{r.after}</span>
+            </div>
           </li>
         {/each}
       </ul>
-      <div part="IdlePrestige.requirement" data-met={met} hidden={requirement == ''}>
+      {/if}
+      {#if requirement != ''}
+      <div part="IdlePrestige.requirement" data-met={met}>
         <div class="req-line">
           <og-icon class="req-mark" icon={met ? 'check' : 'lock'}></og-icon>
           <span class="req-text">{requirement}</span>
           <span part="IdlePrestige.badge" data-met={met}>{met ? t("idle.prestige.met") : t("idle.prestige.notMet")}</span>
         </div>
-        <div class="bar" role="group" aria-label={t("idle.prestige.progress")} hidden={progress < 0}><ProgressBar value={progress} buffer={0} label="" valueText={progressText} showValue={true} indeterminate={false} tone={met ? 'success' : 'neutral'} /></div>
+        {#if progress >= 0}<div class="bar" role="group" aria-label={t("idle.prestige.progress")}><ProgressBar value={progress} buffer={0} label="" valueText={progressText} showValue={true} indeterminate={false} tone={met ? 'success' : 'neutral'} /></div>{/if}
       </div>
+      {/if}
     </div>
-  </scroll>
+  </div>
   {#if confirming}
     <div part="IdlePrestige.confirm" role="alertdialog" aria-label={t("idle.prestige.ask", { gain: gain, currency: currency })} onback={cancel}>
       <p class="ask">{t("idle.prestige.ask", { gain: gain, currency: currency })}</p>
@@ -82,17 +88,17 @@
 </section>
 
 <style>
-[part="IdlePrestige.frame"][hidden], [part="IdlePrestige.frame"] [hidden] { display: none; }
-[part="IdlePrestige.frame"] { display: flex; flex-direction: column; width: stretch; max-height: 100%; min-height: 0; gap: var(--space-md); container-type: inline-size; }
+:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; max-block-size: 100%; min-block-size: 0; gap: var(--space-lg); container-type: inline-size; }
 [part="IdlePrestige.band"] { display: flex; width: stretch; align-items: center; flex: none; }
 [part="IdlePrestige.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.body { width: stretch; flex: 0 1 auto; min-height: 0; }
+.body { overflow-y: auto; flex: 0 1 auto; min-height: 0; }
 .body-inner { display: flex; flex-direction: column; width: stretch; gap: var(--space-md); }
 .totals { display: flex; width: stretch; align-items: center; flex-wrap: wrap; gap: var(--space-xs) var(--space-md); }
 .currency-icon { width: var(--size-lg); height: var(--size-lg); flex: none; }
 .total { display: flex; flex-direction: column; min-width: 0; }
-.caption { white-space: nowrap; }
+.caption { font: var(--text-sm); color: var(--ink-muted); white-space: nowrap; }
 [part="IdlePrestige.figure"] { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.total [part="IdlePrestige.figure"] { font: var(--text-xl2); font-weight: var(--font-weight-semibold); }
 .arrow, .row-arrow { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .arrow:dir(rtl), .row-arrow:dir(rtl) { scale: -1 1; }
 .currency { min-width: 0; overflow-wrap: anywhere; }
@@ -100,14 +106,15 @@
 [part="IdlePrestige.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) var(--space-sm); min-height: var(--size-md); }
 .row-icon { width: var(--size-sm); height: var(--size-sm); flex: none; }
 [part="IdlePrestige.name"] { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.readouts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-xs); }
 [part="IdlePrestige.readout IdlePrestige.figure"] { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-[part="IdlePrestige.requirement"] { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); }
+[part="IdlePrestige.requirement"] { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-sm); background: var(--well); border-radius: var(--radius-control); }
 .req-line { display: flex; width: stretch; align-items: center; gap: var(--space-xs); }
 .req-mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .req-text { flex: 1; min-width: 0; text-align: start; overflow-wrap: anywhere; }
 [part="IdlePrestige.badge"] { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
 .bar { width: stretch; }
-[part="IdlePrestige.confirm"] { display: flex; flex-direction: column; width: stretch; flex: none; gap: var(--space-sm); padding: var(--space-sm); }
+[part="IdlePrestige.confirm"] { display: flex; flex-direction: column; flex: none; gap: var(--space-md); padding: var(--space-md); border: var(--stroke-hairline) solid var(--warn); border-radius: var(--radius-control); background: var(--control); }
 .ask { margin: 0; overflow-wrap: anywhere; }
 .actions { display: flex; width: stretch; flex: none; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-sm); }
 .actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
@@ -116,8 +123,8 @@
 /* A narrow panel (a phone, or a side column on a wide screen) wraps each
    row's figures under its name; the actions share the width. */
 @container (width < 560px) {
-  [part="IdlePrestige.row"] { flex-wrap: wrap; gap: 0 var(--space-xs); padding: var(--space-xxs) var(--space-xs); }
-  [part="IdlePrestige.name"] { flex-basis: 60%; }
+  [part="IdlePrestige.row"] { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 var(--space-xs); padding: var(--space-xxs) var(--space-xs); }
+  .readouts { grid-column: 2; }
   .actions button { flex: 1; min-width: 0; }
 }
 </style>

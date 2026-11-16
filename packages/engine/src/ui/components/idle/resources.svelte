@@ -28,16 +28,19 @@
           <og-icon class="icon" icon={c.icon}></og-icon>
           <div class="text">
             <span part="IdleResources.name" class="name">{c.name}</span>
-            <div class="figures" hidden={loading}>
+            {#if !loading}
+            <div class="figures">
               {#if c.value != ''}
                 <span part="IdleResources.figure" class="figure">{c.value}</span>
               {:else}
                 <og-counter part="IdleResources.figure" class="figure" value={c.amount} format="compact" duration="300"></og-counter>
               {/if}
-              <span part="IdleResources.rate IdleResources.label" data-trend={c.perSecond < 0 ? 'down' : c.perSecond > 0 ? 'up' : 'flat'} hidden={c.rate == '' && c.perSecond == 0}>{c.rate != '' ? c.rate : c.perSecond > 0 ? t("idle.resources.perSecond", { rate: formatCompact(c.perSecond) }) : t("idle.resources.perSecondDown", { rate: formatCompact(c.perSecond) })}</span>
-              <span part="IdleResources.badge" hidden={!c.full}>{t("idle.resources.full")}</span>
+              {#if c.rate != '' || c.perSecond != 0}<span part="IdleResources.rate IdleResources.label" data-trend={c.perSecond < 0 ? 'down' : c.perSecond > 0 ? 'up' : 'flat'}>{c.rate != '' ? c.rate : c.perSecond > 0 ? t("idle.resources.perSecond", { rate: formatCompact(c.perSecond) }) : t("idle.resources.perSecondDown", { rate: formatCompact(c.perSecond) })}</span>{/if}
+              {#if c.full}<span part="IdleResources.badge">{t("idle.resources.full")}</span>{/if}
             </div>
-            <div id="Placeholder" part="IdleResources.placeholder" hidden={!loading}></div>
+            {:else}
+            <div id="Placeholder" part="IdleResources.placeholder"></div>
+            {/if}
           </div>
         </li>
       {/each}
@@ -50,19 +53,18 @@
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="IdleResources.frame"][hidden], [part="IdleResources.frame"] [hidden] { display: none; }
-[part="IdleResources.frame"] { display: flex; width: stretch; }
+:host { display: flex; inline-size: stretch; }
 .chips { display: flex; flex-wrap: wrap; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xs); min-width: 0; }
-[part="IdleResources.row"] { display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-xxs) var(--space-sm); min-height: var(--size-touch); min-width: 0; max-width: stretch; }
+[part="IdleResources.row"] { display: flex; flex: 1 1 auto; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); min-height: var(--size-touch); min-width: 0; max-width: stretch; background: var(--hud); border: var(--stroke-hairline) solid var(--line); border-radius: var(--radius-control); }
 .icon { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .text { display: flex; flex-direction: column; min-width: 0; gap: 0; }
-[part="IdleResources.name"] { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; text-align: start; }
+[part="IdleResources.name"] { font: var(--text-sm); color: var(--ink-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; text-align: start; }
 .figures { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 var(--space-xs); min-width: 0; }
-[part="IdleResources.figure"] { font-variant-numeric: tabular-nums; white-space: nowrap; }
+[part="IdleResources.figure"] { font: var(--text-xl); font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
 [part="IdleResources.rate IdleResources.label"] { font-variant-numeric: tabular-nums; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; min-width: 0; }
 [part="IdleResources.badge"] { white-space: nowrap; padding: 0 var(--space-xxs); }
 [part="IdleResources.placeholder"] { width: var(--size-xl); height: var(--space-sm); margin-block: var(--space-xxs); border-radius: var(--radius-xs); background: var(--control-strong); }
-.empty-text { margin: 0; }
+.empty-text { margin: 0; padding: var(--space-md); color: var(--ink-muted); }
 @media (width < 600px) {
   [part="IdleResources.row"] { padding: var(--space-xxs) var(--space-xs); }
 }

@@ -23,7 +23,7 @@
   <header part="IdleOffline.band"><h2 part="IdleOffline.title">{title != '' ? title : t("idle.offline.name")}</h2></header>
   <p part="IdleOffline.summary IdleOffline.label">{t("idle.offline.away", { time: away != '' ? away : formatDuration(seconds) })}</p>
   {#if earned.length}
-    <scroll class="body">
+    <div class="body">
       <ul class="rows" aria-label={t("idle.offline.earned")}>
         {#each earned as e (e.id)}
           <li part="IdleOffline.row" aria-label={e.name}>
@@ -33,33 +33,32 @@
           </li>
         {/each}
       </ul>
-    </scroll>
+    </div>
   {:else}
     <p class="empty-text" role="status">{t("idle.offline.empty")}</p>
   {/if}
   <footer class="actions">
-    <button id="Double" variant="secondary" hidden={!canDouble} onclick={double}><div class="double"><span>{t("idle.offline.double")}</span><span class="double-text" hidden={doubleText == ''}>{doubleText}</span></div></button>
+    {#if canDouble}<button id="Double" variant="secondary" onclick={double}><div class="double"><span>{t("idle.offline.double")}</span>{#if doubleText != ''}<span class="double-text">{doubleText}</span>{/if}</div></button>{/if}
     <button id="Collect" variant="primary" onclick={collect}><span>{t("idle.offline.collect")}</span></button>
   </footer>
 </section>
 
 <style>
-[part="IdleOffline.frame"][hidden], [part="IdleOffline.frame"] [hidden] { display: none; }
-[part="IdleOffline.frame"] { display: flex; flex-direction: column; width: stretch; max-width: var(--modal-width); max-height: 100%; min-height: 0; gap: var(--space-md); }
+:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; max-inline-size: var(--modal-width); max-block-size: 100%; min-block-size: 0; gap: var(--space-lg); }
 [part="IdleOffline.band"] { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
 [part="IdleOffline.title"] { margin: 0; text-align: center; overflow-wrap: anywhere; }
-[part="IdleOffline.summary IdleOffline.label"] { margin: 0; text-align: center; flex: none; overflow-wrap: anywhere; }
-.body { width: stretch; flex: 0 1 auto; min-height: 0; }
+[part="IdleOffline.summary IdleOffline.label"] { margin: 0; font: var(--text-sm); color: var(--ink-muted); text-align: center; flex: none; overflow-wrap: anywhere; }
+.body { overflow-y: auto; flex: 0 1 auto; min-height: 0; }
 .rows { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xxs); }
-[part="IdleOffline.row"] { display: flex; flex-wrap: wrap; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm); min-height: var(--size-md); }
+[part="IdleOffline.row"] { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); padding: var(--space-sm); min-height: var(--size-touch); background: var(--control); border-radius: var(--radius-control); }
 .icon { width: var(--size-sm); height: var(--size-sm); flex: none; }
 [part="IdleOffline.name"] { flex: 1 1 0; min-width: calc(var(--size-xxl) * 1.5); text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-[part="IdleOffline.figure"] { flex: 0 1 auto; min-width: 0; max-width: stretch; margin-inline-start: auto; text-align: end; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-variant-numeric: tabular-nums; }
-.empty-text { margin: 0; text-align: center; }
+[part="IdleOffline.figure"] { flex: 0 1 auto; min-width: 0; max-width: stretch; margin-inline-start: auto; font: var(--text-lg); font-weight: var(--font-weight-semibold); text-align: end; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-variant-numeric: tabular-nums; }
+.empty-text { margin: 0; padding: var(--space-lg); text-align: center; color: var(--ink-muted); }
 .actions { display: flex; width: stretch; flex: none; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-sm); }
 .actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); max-width: stretch; gap: var(--space-xs); }
 .double { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: stretch; }
-.double-text { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: stretch; }
+.double-text { font: var(--text-xs); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: stretch; }
 @media (pointer: coarse) { .actions button { flex: 1; } }
 @media (width < 600px) { .actions button { flex: 1; min-width: 0; } }
 </style>

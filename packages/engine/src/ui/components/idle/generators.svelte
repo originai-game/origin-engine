@@ -20,7 +20,7 @@
 <section id="IdleGenerators" part="IdleGenerators.frame" aria-label={title != '' ? title : t("idle.generators.name")}>
   <header part="IdleGenerators.band"><h2 part="IdleGenerators.title">{title != '' ? title : t("idle.generators.name")}</h2></header>
   {#if generators.length}
-    <scroll class="rows-scroll">
+    <div class="rows-scroll">
       <div class="rows" role="listbox" aria-label={title != '' ? title : t("idle.generators.name")}>
         {#each generators as g (g.id)}
           <button part="IdleGenerators.row" role="option" aria-selected={g.id == selected} aria-label={g.name} aria-disabled={g.locked} disabled={g.locked} data-locked={g.locked} data-auto={g.auto} data-boosted={g.boost != ''} onclick={choose}><div class="face">
@@ -28,48 +28,47 @@
             <div class="body">
               <div class="line">
                 <span part="IdleGenerators.name" class="name">{g.name}</span>
-                <span part="IdleGenerators.figure" hidden={g.locked || !(g.owned > 0)}>{t("idle.generators.owned", { owned: formatCompact(g.owned) })}</span>
+                {#if !g.locked && g.owned > 0}<span part="IdleGenerators.figure">{t("idle.generators.owned", { owned: formatCompact(g.owned) })}</span>{/if}
               </div>
               <div class="line">
                 <span part="IdleGenerators.rate IdleGenerators.label" class="rate">{g.rate}</span>
                 <div class="badges">
-                  <span part="IdleGenerators.badge" data-tag="level" hidden={g.locked || !(g.level > 0)}>{t("idle.generators.level", { level: formatNumber(g.level) })}</span>
-                  <span part="IdleGenerators.badge" data-tag="boost" hidden={g.locked || g.boost == ''}>{g.boost}</span>
-                  <span part="IdleGenerators.badge" data-tag="auto" hidden={g.locked || !g.auto}>{t("idle.generators.auto")}</span>
-                  <span part="IdleGenerators.badge" data-tag="locked" hidden={!g.locked}>{t("idle.generators.locked")}</span>
+                  {#if !g.locked && g.level > 0}<span part="IdleGenerators.badge" data-tag="level">{t("idle.generators.level", { level: formatNumber(g.level) })}</span>{/if}
+                  {#if !g.locked && g.boost != ''}<span part="IdleGenerators.badge" data-tag="boost">{g.boost}</span>{/if}
+                  {#if !g.locked && g.auto}<span part="IdleGenerators.badge" data-tag="auto">{t("idle.generators.auto")}</span>{/if}
+                  {#if g.locked}<span part="IdleGenerators.badge" data-tag="locked">{t("idle.generators.locked")}</span>{/if}
                 </div>
               </div>
-              <div part="IdleGenerators.meter IdleGenerators.well" role="group" aria-label={t("idle.generators.cycle")} hidden={g.locked || g.cycle < 0}><ProgressBar value={g.cycle} buffer={0} label="" valueText={g.cycleText} showValue={true} indeterminate={false} tone="neutral" /></div>
+              {#if !g.locked && g.cycle >= 0}<div part="IdleGenerators.meter IdleGenerators.well" role="group" aria-label={t("idle.generators.cycle")}><ProgressBar value={g.cycle} buffer={0} label="" valueText={g.cycleText} showValue={true} indeterminate={false} tone="neutral" /></div>{/if}
             </div>
           </div></button>
         {/each}
       </div>
-    </scroll>
+    </div>
   {:else}
     <p class="empty-text" role="status">{t("idle.generators.empty")}</p>
   {/if}
 </section>
 
 <style>
-[part="IdleGenerators.frame"][hidden], [part="IdleGenerators.frame"] [hidden] { display: none; }
-[part="IdleGenerators.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); min-height: 0; container-type: inline-size; }
+:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-md); min-block-size: 0; container-type: inline-size; }
 [part="IdleGenerators.band"] { display: flex; width: stretch; align-items: center; flex: none; }
 [part="IdleGenerators.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.rows-scroll { width: stretch; flex: 1; min-height: 0; }
-.rows { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); padding: var(--space-xxs); }
+.rows-scroll { overflow-y: auto; flex: 1; min-height: 0; }
+.rows { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-xxs); }
 [part="IdleGenerators.row"] { width: stretch; min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); min-width: 0; }
 .face { display: flex; width: stretch; align-items: center; gap: var(--space-sm); }
 .art { display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; }
 .icon { width: var(--size-md); height: var(--size-md); }
 .body { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xxs); }
 .line { display: flex; width: stretch; align-items: center; gap: var(--space-sm); min-width: 0; }
-[part="IdleGenerators.name"] { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+[part="IdleGenerators.name"] { flex: 1; min-width: 0; font: var(--text-lg); font-weight: var(--font-weight-semibold); text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 [part="IdleGenerators.figure"] { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-[part="IdleGenerators.rate IdleGenerators.label"] { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-variant-numeric: tabular-nums; }
-.badges { display: flex; flex: none; gap: var(--space-xxs); }
+[part="IdleGenerators.rate IdleGenerators.label"] { flex: 1; min-width: 0; font: var(--text-sm); color: var(--ink-muted); text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-variant-numeric: tabular-nums; }
+.badges { display: flex; flex-wrap: wrap; gap: var(--space-xxs); font: var(--text-xs); }
 [part="IdleGenerators.badge"] { white-space: nowrap; padding: 0 var(--space-xs); }
 [part="IdleGenerators.meter IdleGenerators.well"] { width: stretch; }
-.empty-text { margin: 0; flex: 1; text-align: center; }
+.empty-text { margin: 0; flex: 1; padding: var(--space-lg); text-align: center; color: var(--ink-muted); }
 /* A narrow panel (a phone, or a side column on a wide screen) tightens the
    rows and wraps each line's figures under its name. */
 @container (width < 560px) {

@@ -46,11 +46,12 @@
 
 <style>
 #Page { width: stretch; height: stretch; }
-#Cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 3.6), 1fr)); gap: var(--space-lg); padding: var(--space-lg); }
-.cell { display: flex; flex-direction: column; gap: var(--space-xs); min-width: 0; width: stretch; }
-.caption { font: var(--text-caption); color: var(--ink-muted); }
-.stage { display: flex; flex-direction: column; width: stretch; min-width: 0; height: calc(var(--size-xxl) * 3); align-items: stretch; padding: var(--space-sm); border-radius: var(--radius-sm); background: var(--well); }
+#Cells { display: grid; width: stretch; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-lg); padding: var(--space-lg); }
+.cell { display: flex; flex-direction: column; gap: var(--space-xs); min-width: 0; }
+.caption { font: var(--text-caption); color: var(--ink-muted); white-space: normal; overflow-wrap: anywhere; }
+.stage { display: flex; flex-direction: column; min-width: 0; height: calc(var(--size-xxl) * 3); align-items: stretch; padding: var(--space-sm); border-radius: var(--radius-sm); background: var(--well); }
 .cell[data-member=resources] .stage { height: auto; min-height: calc(var(--size-xxl) * 1.2); }
+@media (width < 1000px) { #Cells { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (width < 600px) {
   #Cells { grid-template-columns: minmax(0, 1fr); padding: var(--space-sm); gap: var(--space-md); }
   .stage { height: calc(var(--size-xxl) * 5.5); }
