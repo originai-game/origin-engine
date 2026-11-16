@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI documents: a remote url() image's EXIF orientation on the web",
+      "summary": "On the web, image-orientation: none now draws a remote JPEG, PNG or WebP as its file stores it, as natively; before, the browser's decoder had already turned it upright. from-image is unchanged."
+    }
+  ]
+}

@@ -2,11 +2,15 @@
 
 use super::*;
 
-/// A decoded image: RGBA8, rows top to bottom.
+/// A decoded image: RGBA8, rows top to bottom, as its file stores them.
 pub struct Decoded {
     pub width: u32,
     pub height: u32,
     pub rgba: Vec<u8>,
+    /// The EXIF orientation its metadata names for those texels (1 to 8;
+    /// 1 is upright): a remote `url()` image's texture keeps it for CSS
+    /// `image-orientation` (world/remote.rs). og.load.imageData's is 1.
+    pub orientation: u32,
 }
 
 /// Where an image's decode is.
@@ -42,6 +46,7 @@ pub(super) fn decode_native(bytes: &[u8], header: ImageHeader) -> Result<Decoded
         width: img.width(),
         height: img.height(),
         rgba: img.into_raw(),
+        orientation: 1,
     })
 }
 

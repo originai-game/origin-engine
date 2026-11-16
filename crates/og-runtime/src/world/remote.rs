@@ -47,7 +47,7 @@ enum Image {
     Host(u64),
     /// On a worker thread of this process.
     #[cfg(not(target_arch = "wasm32"))]
-    Thread(std::sync::mpsc::Receiver<Result<(Decoded, u32), String>>),
+    Thread(std::sync::mpsc::Receiver<Result<Decoded, String>>),
     /// Bound in the UI under its key.
     Bound,
     Failed,
@@ -130,9 +130,7 @@ pub(crate) fn settle(eng: &Engine) {
             };
             let got = match image {
                 Image::Host(k) => match h.as_deref().map(|h| h.image_decode_take(*k)) {
-                    // The browser's decoder has turned it by its EXIF
-                    // already (createImageBitmap's `from-image`).
-                    Some(Fetch::Ready(d)) => Some(Ok((d, 1))),
+                    Some(Fetch::Ready(d)) => Some(Ok(d)),
                     Some(Fetch::Failed(e)) => Some(Err(e)),
                     Some(Fetch::Pending) => None,
                     None => Some(Err("no host is installed to fetch it".into())),
@@ -161,7 +159,7 @@ pub(crate) fn settle(eng: &Engine) {
     let _ = wait;
     for (key, got) in landed {
         match got {
-            Ok((d, exif)) => {
+            Ok(d) => {
                 let mut rs = eng.render.borrow_mut();
                 let handle = rs.scene.add_texture(og_render::TextureData {
                     width: d.width,
@@ -171,8 +169,10 @@ pub(crate) fn settle(eng: &Engine) {
                     mips: og_render::Mips::Generate,
                 });
                 // Stored as sent; CSS image-orientation turns it at draw time.
-                rs.scene
-                    .set_texture_orientation(handle, og_render::UiOrientation::from_exif(exif));
+                rs.scene.set_texture_orientation(
+                    handle,
+                    og_render::UiOrientation::from_exif(d.orientation),
+                );
                 drop(rs);
                 if let Some(ui) = eng.state.borrow().ui.clone() {
                     ui.lock().define_texture(&key, handle);
@@ -211,6 +211,121 @@ fn drop_warning(eng: &Engine, key: &str, why: &str) {
     }));
 }
 
+/// The EXIF orientation (1 to 8) a PNG (`eXIf`), JPEG (APP1 `Exif`) or
+/// WebP (`EXIF`) names for its stored texels, read from its metadata alone;
+/// 1 when it names none or is another format. Both hosts read a remote
+/// image's with it: natively beside the `image` crate's decode, on the web
+/// over the bytes the Worker fetched (og-host-web's
+/// `og_web_image_orientation`), whose `createImageBitmap` has turned the
+/// texels and so turns them back as stored.
+pub fn exif_orientation(bytes: &[u8]) -> u32 {
+    let tiff = if bytes.starts_with(&[0xff, 0xd8]) {
+        jpeg_exif(bytes)
+    } else if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        chunks(
+            &bytes[8..],
+            |b| {
+                let len = u32::from_be_bytes(b.get(..4)?.try_into().ok()?) as usize;
+                Some((b.get(4..8)?, 8, len, len + 12))
+            },
+            b"eXIf",
+        )
+    } else if bytes.len() >= 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
+        chunks(
+            &bytes[12..],
+            |b| {
+                let len = u32::from_le_bytes(b.get(4..8)?.try_into().ok()?) as usize;
+                Some((b.get(..4)?, 8, len, 8 + len + (len & 1)))
+            },
+            b"EXIF",
+        )
+        // Some writers keep JPEG's `Exif\0\0` before the TIFF header.
+        .map(|t| t.strip_prefix(b"Exif\0\0").unwrap_or(t))
+    } else {
+        None
+    };
+    tiff.and_then(tiff_orientation)
+        .filter(|o| (1..=8).contains(o))
+        .unwrap_or(1)
+}
+
+/// The first chunk named `want` of a chunked container: `head` reads one
+/// chunk's (name, data offset, data length, whole length).
+fn chunks<'a>(
+    mut b: &'a [u8],
+    head: impl Fn(&[u8]) -> Option<(&[u8], usize, usize, usize)>,
+    want: &[u8; 4],
+) -> Option<&'a [u8]> {
+    while let Some((name, at, len, whole)) = head(b) {
+        if name == want {
+            return b.get(at..at + len);
+        }
+        b = b.get(whole..)?;
+    }
+    None
+}
+
+/// A JPEG's APP1 `Exif` payload: its TIFF bytes. Stops at the scan.
+fn jpeg_exif(bytes: &[u8]) -> Option<&[u8]> {
+    let mut i = 2;
+    while i + 4 <= bytes.len() {
+        if bytes[i] != 0xff {
+            return None;
+        }
+        let marker = bytes[i + 1];
+        match marker {
+            // Fill bytes and markers without a length.
+            0xff => i += 1,
+            0x01 | 0xd0..=0xd7 => i += 2,
+            0xd9 | 0xda => return None,
+            _ => {
+                let len = usize::from(u16::from_be_bytes([bytes[i + 2], bytes[i + 3]]));
+                let seg = bytes.get(i + 4..i + 2 + len)?;
+                if marker == 0xe1
+                    && let Some(tiff) = seg.strip_prefix(b"Exif\0\0")
+                {
+                    return Some(tiff);
+                }
+                i += 2 + len;
+            }
+        }
+    }
+    None
+}
+
+/// IFD0's Orientation (tag 0x0112, a SHORT) of TIFF bytes, either byte order.
+fn tiff_orientation(t: &[u8]) -> Option<u32> {
+    let big = match t.get(..4)? {
+        b"II\x2a\0" => false,
+        b"MM\0\x2a" => true,
+        _ => return None,
+    };
+    let u16_at = |at: usize| -> Option<u16> {
+        let b: [u8; 2] = t.get(at..at + 2)?.try_into().ok()?;
+        Some(if big {
+            u16::from_be_bytes(b)
+        } else {
+            u16::from_le_bytes(b)
+        })
+    };
+    let u32_at = |at: usize| -> Option<u32> {
+        let b: [u8; 4] = t.get(at..at + 4)?.try_into().ok()?;
+        Some(if big {
+            u32::from_be_bytes(b)
+        } else {
+            u32::from_le_bytes(b)
+        })
+    };
+    let ifd = u32_at(4)? as usize;
+    for n in 0..usize::from(u16_at(ifd)?) {
+        let entry = ifd + 2 + n * 12;
+        if u16_at(entry)? == 0x0112 && u16_at(entry + 2)? == 3 {
+            return u16_at(entry + 8).map(u32::from);
+        }
+    }
+    None
+}
+
 #[cfg(all(feature = "fetch", not(target_arch = "wasm32")))]
 mod native {
     use super::*;
@@ -231,8 +346,9 @@ mod native {
     }
 
     /// PNG, JPEG and WebP by their signature, SVG by its markup, with the
-    /// EXIF orientation their metadata names (1, upright, for SVG).
-    pub(super) fn decode(bytes: &[u8]) -> Result<(Decoded, u32), String> {
+    /// EXIF orientation their metadata names ([`exif_orientation`]; 1 for
+    /// SVG).
+    pub(super) fn decode(bytes: &[u8]) -> Result<Decoded, String> {
         let format = if bytes.starts_with(b"\x89PNG") {
             image::ImageFormat::Png
         } else if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
@@ -240,27 +356,19 @@ mod native {
         } else if bytes.len() >= 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
             image::ImageFormat::WebP
         } else if is_svg(bytes) {
-            return svg(bytes).map(|d| (d, 1));
+            return svg(bytes);
         } else {
             return Err("not a PNG, JPEG, WebP or SVG image".into());
         };
-        use image::ImageDecoder;
-        let bad = |e: image::ImageError| format!("the image does not decode ({e})");
-        let mut decoder = image::ImageReader::with_format(std::io::Cursor::new(bytes), format)
-            .into_decoder()
-            .map_err(bad)?;
-        let exif = decoder.orientation().map_or(1, |o| u32::from(o.to_exif()));
-        let img = image::DynamicImage::from_decoder(decoder)
-            .map_err(bad)?
+        let img = image::load_from_memory_with_format(bytes, format)
+            .map_err(|e| format!("the image does not decode ({e})"))?
             .into_rgba8();
-        Ok((
-            Decoded {
-                width: img.width(),
-                height: img.height(),
-                rgba: img.into_raw(),
-            },
-            exif,
-        ))
+        Ok(Decoded {
+            width: img.width(),
+            height: img.height(),
+            rgba: img.into_raw(),
+            orientation: exif_orientation(bytes),
+        })
     }
 
     /// The cook's test: UTF-8 text holding an `<svg` element.
@@ -294,6 +402,115 @@ mod native {
             width: size.width(),
             height: size.height(),
             rgba,
+            orientation: 1,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::exif_orientation;
+
+    /// TIFF bytes whose IFD0 holds Orientation `o`, in either byte order,
+    /// after one other tag so the reader walks the directory.
+    fn tiff(o: u16, big: bool) -> Vec<u8> {
+        let u16b = |v: u16| {
+            if big {
+                v.to_be_bytes()
+            } else {
+                v.to_le_bytes()
+            }
+        };
+        let u32b = |v: u32| {
+            if big {
+                v.to_be_bytes()
+            } else {
+                v.to_le_bytes()
+            }
+        };
+        let mut t = if big {
+            b"MM\0\x2a".to_vec()
+        } else {
+            b"II\x2a\0".to_vec()
+        };
+        t.extend(u32b(8));
+        t.extend(u16b(2));
+        // ImageWidth (0x0100), LONG 1 = 640: not the orientation.
+        t.extend(u16b(0x0100));
+        t.extend(u16b(4));
+        t.extend(u32b(1));
+        t.extend(u32b(640));
+        t.extend(u16b(0x0112));
+        t.extend(u16b(3));
+        t.extend(u32b(1));
+        t.extend(u16b(o));
+        t.extend([0, 0]);
+        t.extend(u32b(0));
+        t
+    }
+
+    fn jpeg(app: &[(u8, Vec<u8>)]) -> Vec<u8> {
+        let mut out = vec![0xff, 0xd8];
+        for (marker, data) in app {
+            out.extend([0xff, *marker]);
+            out.extend(((data.len() + 2) as u16).to_be_bytes());
+            out.extend(data);
+        }
+        out.extend([0xff, 0xda, 0, 2, 0xff, 0xd9]);
+        out
+    }
+
+    fn png(chunks: &[(&[u8; 4], Vec<u8>)]) -> Vec<u8> {
+        let mut out = b"\x89PNG\r\n\x1a\n".to_vec();
+        for (name, data) in chunks {
+            out.extend((data.len() as u32).to_be_bytes());
+            out.extend(*name);
+            out.extend(data);
+            out.extend([0; 4]);
+        }
+        out
+    }
+
+    fn webp(chunks: &[(&[u8; 4], Vec<u8>)]) -> Vec<u8> {
+        let mut body = b"WEBP".to_vec();
+        for (name, data) in chunks {
+            body.extend(*name);
+            body.extend((data.len() as u32).to_le_bytes());
+            body.extend(data);
+            if data.len() % 2 == 1 {
+                body.push(0);
+            }
+        }
+        [
+            b"RIFF".to_vec(),
+            (body.len() as u32).to_le_bytes().to_vec(),
+            body,
+        ]
+        .concat()
+    }
+
+    /// Each container's EXIF, in both byte orders, behind a chunk or
+    /// segment that is not it (an odd-length one in WebP, whose padding a
+    /// reader must skip); and what names no orientation reads upright.
+    #[test]
+    fn exif_orientation_reads_each_containers_metadata() {
+        for big in [false, true] {
+            let exif = [b"Exif\0\0".to_vec(), tiff(6, big)].concat();
+            let j = jpeg(&[(0xe0, b"JFIF\0\x01\x02".to_vec()), (0xe1, exif.clone())]);
+            assert_eq!(exif_orientation(&j), 6, "JPEG big-endian {big}");
+            let p = png(&[(b"IHDR", vec![0; 13]), (b"eXIf", tiff(8, big))]);
+            assert_eq!(exif_orientation(&p), 8, "PNG big-endian {big}");
+            let w = webp(&[(b"VP8X", vec![0; 9]), (b"EXIF", tiff(3, big))]);
+            assert_eq!(exif_orientation(&w), 3, "WebP big-endian {big}");
+            let w = webp(&[(b"VP8X", vec![0; 9]), (b"EXIF", exif)]);
+            assert_eq!(exif_orientation(&w), 6, "WebP with JPEG's Exif prefix");
+        }
+        assert_eq!(exif_orientation(&jpeg(&[(0xe0, b"JFIF\0".to_vec())])), 1);
+        assert_eq!(exif_orientation(&png(&[(b"IHDR", vec![0; 13])])), 1);
+        // Out of range, truncated, and not an image.
+        let j = jpeg(&[(0xe1, [b"Exif\0\0".to_vec(), tiff(9, false)].concat())]);
+        assert_eq!(exif_orientation(&j), 1);
+        assert_eq!(exif_orientation(&j[..12]), 1);
+        assert_eq!(exif_orientation(b"<svg/>"), 1);
     }
 }

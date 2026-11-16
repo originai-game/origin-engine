@@ -6,7 +6,7 @@
 // stream the engine is told to inflate on its own.
 import { expect, test } from "bun:test";
 import { deflateSync } from "node:zlib";
-import { installInflater } from "../src/web/boot.ts";
+import { installInflater, storedTurn } from "../src/web/boot.ts";
 
 function host() {
   const put = new Map<number, Uint8Array>();
@@ -49,4 +49,35 @@ test("without DecompressionStream the engine inflates on its own", () => {
   } finally {
     (globalThis as { DecompressionStream?: unknown }).DecompressionStream = saved;
   }
+});
+
+// A remote image's texels, which createImageBitmap has turned upright, go
+// back as its file stores them (installRemoteFetcher), so the texture's
+// EXIF orientation means on the web what it means natively. The truth is
+// og-draw's UiOrientation (crates/og-draw/src/ui/mod.rs): the turn a
+// displayed point takes back to the stored one, bit 2 swapping the axes
+// first, then bit 0 flipping x and bit 1 flipping y. A wrong matrix for one
+// value (a quarter turn the wrong way, 5 and 7 swapped) maps some pixel of
+// the asymmetric 3 x 2 image to another stored texel.
+test("storedTurn puts each upright texel back where its file stores it, for every EXIF orientation", () => {
+  const bits: Record<number, number> = { 1: 0, 2: 0b001, 3: 0b011, 4: 0b010, 5: 0b100, 6: 0b110, 7: 0b111, 8: 0b101 };
+  const [uw, uh] = [3, 2];
+  for (let exif = 1; exif <= 8; exif++) {
+    const b = bits[exif]!;
+    const t = storedTurn(exif, uw, uh);
+    expect([t.width, t.height]).toEqual(b & 0b100 ? [uh, uw] : [uw, uh]);
+    const [a, bb, c, d, e, f] = t.matrix;
+    for (let uy = 0; uy < uh; uy++) {
+      for (let ux = 0; ux < uw; ux++) {
+        const [px, py] = [(ux + 0.5) / uw, (uy + 0.5) / uh];
+        let [x, y] = b & 0b100 ? [py, px] : [px, py];
+        if (b & 0b001) x = 1 - x;
+        if (b & 0b010) y = 1 - y;
+        const want = [x * t.width, y * t.height];
+        const got = [a * (ux + 0.5) + c * (uy + 0.5) + e, bb * (ux + 0.5) + d * (uy + 0.5) + f];
+        expect(got.map((v) => Math.round(v * 1000) / 1000)).toEqual(want.map((v) => Math.round(v * 1000) / 1000));
+      }
+    }
+  }
+  expect(storedTurn(0, 3, 2)).toEqual({ width: 3, height: 2, matrix: [1, 0, 0, 1, 0, 0] });
 });

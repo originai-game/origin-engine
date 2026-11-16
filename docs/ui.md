@@ -1655,13 +1655,16 @@ mounted); a layer naming an unbound key draws nothing and warns nothing.
   per key naming the URL and the reason.
 - A build without og-runtime's `fetch` feature fetches nothing natively
   and warns per key.
-- **Orientation.** Natively the decoder reads the image's EXIF
-  orientation from its metadata (`ImageDecoder::orientation`) and sets it
-  on the texture (`RenderScene::set_texture_orientation`); the texels stay
-  as sent and `image-orientation` turns them at draw time, as for a
-  cooked image. The web's `createImageBitmap` has turned a JPEG already
-  (its `from-image`, which no option undoes), so there a remote image
-  draws upright under `image-orientation: none` too.
+- **Orientation.** Both hosts read the image's EXIF orientation from its
+  metadata with one reader (og-runtime's `exif_orientation`: PNG `eXIf`,
+  JPEG APP1, WebP `EXIF`) and set it on the texture
+  (`RenderScene::set_texture_orientation`); the texels stay as the file
+  stores them and `image-orientation` turns them at draw time, as for a
+  cooked image. The web's `createImageBitmap` always turns an image
+  upright, so the Worker reads the orientation through the wasm
+  (`og_web_image_orientation`) and draws the bitmap turned back
+  (boot.ts `storedTurn`) before handing its texels over
+  (tests/web/remote-images.ts).
 
 ### 3.4 Font packs
 

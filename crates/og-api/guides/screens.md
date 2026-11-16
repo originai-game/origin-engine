@@ -213,8 +213,7 @@ go after the quoted URL:
   `strict-origin-when-cross-origin` (the game's origin only).
 
 A photo turned by its EXIF orientation draws upright, as a package image
-does; `image-orientation: none` draws it as stored natively, but a web
-browser has already turned it.
+does, and `image-orientation: none` draws it as stored, on both hosts.
 
 A refused or failed image is one warning in the log naming the URL and
 the reason (CORS, integrity, HTTP status, decoding); the element keeps

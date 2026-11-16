@@ -202,7 +202,10 @@ export interface WebExtras {
   og_web_put_inflated?(key: number, bytes: Uint8Array): void;
   og_web_fail_inflated?(key: number, reason: string): void;
   og_web_set_image_decoder?(decode: (key: number, bytes: Uint8Array) => void): void;
-  og_web_put_image?(key: number, width: number, height: number, rgba: Uint8Array): void;
+  /** RGBA8 rows as the file stores them, and the EXIF orientation it names for them (1: upright). */
+  og_web_put_image?(key: number, width: number, height: number, rgba: Uint8Array, orientation: number): void;
+  /** The EXIF orientation (1 to 8) a PNG, JPEG or WebP names: the native host's reader (og-runtime's exif_orientation). */
+  og_web_image_orientation?(bytes: Uint8Array): number;
   og_web_fail_image?(key: number, reason: string): void;
   /** A document's http(s) image (og-runtime's world/remote.rs), answered with og_web_put_image or og_web_fail_image. */
   og_web_set_remote_fetcher?(fetch: (key: number, url: string, credentials: boolean, integrity: string, referrerPolicy: string) => void): void;

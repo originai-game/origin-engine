@@ -278,6 +278,28 @@ fn drawn(e: u32, sizes: &Sizes, cells: &[&str]) -> BTreeMap<String, (u32, u32)> 
     out
 }
 
+/// The orientation bits of the texture cell `id` draws (`cells` in order).
+fn turn(e: u32, cells: &[&str], id: &str) -> Option<u8> {
+    let ui = og_runtime::shared_ui(e).unwrap();
+    let ui = ui.lock();
+    let cell = cells.iter().position(|c| *c == id).unwrap();
+    ui.frame()
+        .items
+        .iter()
+        .find_map(|item| match &item.cmd {
+            og_ui::DrawCmd::Shape { shape, .. }
+                if (shape.center.x / 40.0).floor() as usize == cell =>
+            {
+                match &shape.paint {
+                    og_render::UiPaint::Image(image) => Some(image.texture.to_bits()),
+                    _ => None,
+                }
+            }
+            _ => None,
+        })
+        .and_then(|t| TURNS.with(|o| o.borrow().get(&t).copied()))
+}
+
 fn warnings(e: u32) -> Vec<String> {
     let log: Value = serde_json::from_str(&og_runtime::og_engine_take_log(e)).unwrap();
     log.as_array()
@@ -412,31 +434,15 @@ fn remote_images_load_under_their_request_modifiers() {
     );
     // The texels stay as sent; the EXIF orientation is the texture's, for
     // CSS image-orientation to turn at draw time (6: a quarter turn).
-    let turn = |id: &str| {
-        let ui = og_runtime::shared_ui(e).unwrap();
-        let ui = ui.lock();
-        let cell = ids.iter().position(|c| *c == id).unwrap();
-        ui.frame()
-            .items
-            .iter()
-            .find_map(|item| match &item.cmd {
-                og_ui::DrawCmd::Shape { shape, .. }
-                    if (shape.center.x / 40.0).floor() as usize == cell =>
-                {
-                    match &shape.paint {
-                        og_render::UiPaint::Image(image) => Some(image.texture.to_bits()),
-                        _ => None,
-                    }
-                }
-                _ => None,
-            })
-            .and_then(|t| TURNS.with(|o| o.borrow().get(&t).copied()))
-    };
     assert_eq!(
-        turn("Turned"),
+        turn(e, &ids, "Turned"),
         Some(og_render::UiOrientation::from_exif(6).bits())
     );
-    assert_eq!(turn("Jpeg"), Some(0), "a JPEG without EXIF is upright");
+    assert_eq!(
+        turn(e, &ids, "Jpeg"),
+        Some(0),
+        "a JPEG without EXIF is upright"
+    );
     let warned = warnings(e);
     let one = |needle: &str, url: &str| {
         assert!(
@@ -529,6 +535,8 @@ fn an_image_still_fetched_draws_the_fallback_until_it_lands() {
             width: 2,
             height: 8,
             rgba: vec![255; 2 * 8 * 4],
+            // The web host reads it from the fetched bytes.
+            orientation: 6,
         },
     );
     og_runtime::og_engine_frame(e, 1000.0 / 60.0);
@@ -536,6 +544,11 @@ fn an_image_still_fetched_draws_the_fallback_until_it_lands() {
         drawn(e, &sizes, &["Coin"]).get("Coin"),
         Some(&(2, 8)),
         "drawn from the frame after it lands"
+    );
+    assert_eq!(
+        turn(e, &["Coin"], "Coin"),
+        Some(og_render::UiOrientation::from_exif(6).bits()),
+        "the host's orientation reaches the texture"
     );
     assert!(og_runtime::og_engine_destroy(e));
 }

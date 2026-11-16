@@ -232,6 +232,7 @@ pub use present::views::{
     og_load_post, og_render_post_errors, og_render_render_target, og_render_set_post_param,
 };
 pub use world::assets::Fetch;
+pub use world::remote::exif_orientation;
 pub use world::save::{
     og_save_edit_close, og_save_edit_drop_type, og_save_edit_get_version, og_save_edit_records,
     og_save_edit_rename_field, og_save_edit_rename_type, og_save_edit_set_records,
