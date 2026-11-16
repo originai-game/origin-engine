@@ -53,15 +53,15 @@
   --scene-shadow: #000000a0;
   --health: #c8324a;
   --mana: #3f8cff;
-  --xp: #b98cff;
-  --gold: #ffb52e;
+  --xp: #d9c2ff;
+  --gold: #ffc861;
 
   /* Rarity: a rim, a glow and a tinted cell, and the name's ink. */
   --common: #9fb4c1;
   --uncommon: #4fe38b;
   --rare: #6fb2ff;
   --epic: #c48cff;
-  --legendary: #ff8a3c;
+  --legendary: #ffbf91;
   --mythic: #ff7896;
 
   /* Sides of a fight. */
@@ -197,9 +197,9 @@
   --button-primary-pressed-ink: #02141d;
   --button-primary-disabled-ink: #6d8491;
   --ink-disabled: #6f8796;
-  --ink-label: #8fd3ec;
+  --ink-label: #b8e8f6;
   --title-ink: #dff8ff;
-  --ink-done: #6f8998;
+  --ink-done: #a9bfcc;
   --ink-selected: #fff3d6;
   --figure-ink: #f2fbff;
   --ink-bright: #ffffff;
@@ -207,7 +207,7 @@
   --ink-down: #7b8a94;
   --ink-mark: var(--primary);
   --trend-up: #45e3a0;
-  --trend-down: #ff5a5f;
+  --trend-down: #ffa3a5;
   --tone-damage: #ff6f73;
   --tone-heal: #45e3a0;
   --tone-crit: #ffb52e;
@@ -420,7 +420,7 @@
   --tabs-tab-pressed-fill: var(--primary-16);
   --tabs-tab-selected-fill: var(--scifi-tab-selected-wash);
   --tabs-tab-ink: var(--ink-muted);
-  --tabs-tab-selected-ink: var(--accent);
+  --tabs-tab-selected-ink: oklch(from var(--accent) calc(l + 0.06) c h);
   --tabs-tab-disabled-ink: var(--ink-disabled);
   --tabs-font: var(--label-font);
   --tabs-font-size: var(--font-step-lg);
@@ -578,20 +578,22 @@
     var(--scifi-bracket-bl) left bottom / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
     var(--scifi-bracket-br) right bottom / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
     var(--scifi-scanlines),
-    linear-gradient(180deg, var(--primary-12), rgb(from var(--primary) r g b / 0) 28%);
+    linear-gradient(180deg, rgb(from var(--primary) r g b / 0.05), rgb(from var(--primary) r g b / 0) 28%);
   --scifi-plate-art:
     var(--scifi-bracket-tl) left top / var(--scifi-corner-hud) var(--scifi-corner-hud) no-repeat,
     var(--scifi-bracket-br) right bottom / var(--scifi-corner-hud) var(--scifi-corner-hud) no-repeat,
     var(--scifi-scanlines);
   --frame-fill: var(--scifi-frame-art), linear-gradient(180deg, var(--scifi-frost-hi), var(--scifi-frost-lo));
   --frame-glass: var(--scifi-glass-blur);
-  --frame-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 28px var(--scifi-glow-10), 0 0 14px var(--scifi-glow-20), 0 14px 36px var(--scifi-shade);
+  --frame-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 28px rgb(from var(--primary) r g b / 0.05), 0 0 14px var(--scifi-glow-20), 0 14px 36px var(--scifi-shade);
   --plate-fill: var(--scifi-plate-art), linear-gradient(180deg, var(--scifi-frost-plate-hi), var(--scifi-frost-plate-lo));
   --plate-glass: var(--scifi-plate-blur);
   --plate-shadow: inset 0 0 0 1px var(--scifi-keyline), 0 0 10px var(--scifi-glow-10), 0 8px 20px var(--scifi-shade);
-  --band-fill: linear-gradient(90deg, rgb(from var(--primary) r g b / 0) 0%, var(--primary-16) 16%, var(--primary-32) 50%, var(--primary-16) 84%, rgb(from var(--primary) r g b / 0) 100%);
-  --band-lead-fill: linear-gradient(90deg, var(--primary-32) 0%, var(--primary-16) 40%, var(--primary-8) 78%, rgb(from var(--primary) r g b / 0) 100%);
-  --band-small-fill: linear-gradient(90deg, var(--primary-25), var(--primary-12) 60%, rgb(from var(--primary) r g b / 0));
+  /* A band's wash stays light (12 % at its heart): over glass over a white
+     sky, its title and the muted label beside it keep 4.5:1. */
+  --band-fill: linear-gradient(90deg, rgb(from var(--primary) r g b / 0) 0%, var(--primary-8) 16%, var(--primary-12) 50%, var(--primary-8) 84%, rgb(from var(--primary) r g b / 0) 100%);
+  --band-lead-fill: linear-gradient(90deg, var(--primary-12) 0%, var(--primary-8) 40%, rgb(from var(--primary) r g b / 0.04) 78%, rgb(from var(--primary) r g b / 0) 100%);
+  --band-small-fill: linear-gradient(90deg, var(--primary-12), rgb(from var(--primary) r g b / 0.06) 60%, rgb(from var(--primary) r g b / 0));
   --band-shadow: 0 1px 0 var(--scifi-keyline);
   /* A banner called over the scene: the band's light on a plate of its own. */
   --title-shadow: 0 0 12px var(--scifi-glow-55), 0 1px 2px var(--scifi-shade);
@@ -644,6 +646,8 @@
    and ink, a darker amber. It restates the palette roles, the inks and the
    materials; every composite above follows them. */
 :root[data-scheme=light] {
+  /* The selected tab's amber, a step deeper on the white frost. */
+  --tabs-tab-selected-ink: oklch(from var(--accent) calc(l - 0.06) c h);
   /* The light scheme's brand, deeper. */
   --seed-primary: #006f93;
   --line-strong: #0b7fa6;
@@ -658,19 +662,20 @@
   --uncommon: #0d7a4a;
   --rare: #1f5fc4;
   --epic: #7a3fd0;
-  --legendary: #b34a00;
+  --legendary: #8a3a00;
   --mythic: #b81d4f;
   --neutral: #4a5c68;
   --scifi-glass-lo: #eaf1f5e6;
-  --scifi-chosen-hi: rgb(from var(--accent) r g b / 0.34);
-  --scifi-chosen-mid: rgb(from var(--accent) r g b / 0.2);
+  --scifi-chosen-hi: rgb(from var(--accent) r g b / 0.22);
+  --scifi-chosen-mid: rgb(from var(--accent) r g b / 0.14);
   --scifi-chosen-lo: rgb(from var(--accent) r g b / 0.08);
   --scifi-plate-hi: #f8fbfde0;
   --scifi-plate-lo: #e8f0f5e6;
-  --scifi-frost-hi: #fbfdfeb8;
-  --scifi-frost-lo: #eaf1f5c2;
-  --scifi-frost-plate-hi: #f8fbfdd6;
-  --scifi-frost-plate-lo: #e8f0f5dd;
+  /* The white frost holds the dark inks over a black scene (about 90 %). */
+  --scifi-frost-hi: #fbfdfee6;
+  --scifi-frost-lo: #eaf1f5eb;
+  --scifi-frost-plate-hi: #f8fbfdeb;
+  --scifi-frost-plate-lo: #e8f0f5f0;
   --scifi-cell-hi: #f7fbfd;
   --scifi-cell-lo: #dde9f0;
   --scifi-cell-pressed: #cddde7;
@@ -705,7 +710,7 @@
   --ink-disabled: #7c8f9b;
   --ink-label: #0b5f7d;
   --title-ink: #06303f;
-  --ink-done: #63798a;
+  --ink-done: #4f6575;
   --ink-selected: #2a1a00;
   --figure-ink: #06222e;
   --ink-bright: #021017;
