@@ -1026,8 +1026,11 @@ accessibility tree, and keeps its last laid-out size under
 `contain-intrinsic-size: auto`. `resize` (CSS UI 4) draws a three-row dot
 handle in the style's strong control ink; a drag sets width or height in
 CSS px within its bounds, presentation state (not saved) written only
-while dragged. `will-change` on a stacking property draws the element as
-its own group layer.
+while dragged. `will-change` makes now what the properties it names would
+(Will Change 1 §2): a stacking property makes a stacking context drawn as
+its own group layer, and `transform`, `perspective`, `filter`,
+`backdrop-filter` or `contain` also holds fixed descendants; other names
+make neither.
 
 #### Images
 

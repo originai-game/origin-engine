@@ -279,6 +279,8 @@ proof("appearance", "control_props", "dialogs_close_as_closedby_says",
 not_applicable("autofill", "og's fields are engine-drawn; no browser or OS autofill fills them, so there is no autofilled state to style.")
 proof("caret-shape", "css_paint", "caret_shape_draws_a_bar_block_or_underscore_over_the_next_character",
       "A focused 20px field with its caret before \"i\": bar and auto draw the same thin bar at the insertion point; block is the bar's full height and exactly the font's advance of \"i\" wide, starting at the bar and drawn before the text; underscore is that advance wide, at most 1px thick, its bottom on the bar's bottom, drawn after the text. At the end of the text both take 1ch (the advance of \"0\") at the bar's position. The shape inherits from a column. Text areas, right-to-left text and the caret shorthand are not covered; the block does not recolour the character it covers.")
+proof("will-change", "css_contain", "will_change_makes_what_its_properties_would_and_nothing_else",
+      "Drawn order and a fixed box's place, one document switching classes: will-change: transform, and left, filter (a list whose stacking entry comes second), keep a z-index: 1 child under its parent's later sibling and hold a position: fixed; left: 3px; top: 4px child at 3, 4 inside the element; opacity keeps the child in but leaves the fixed box at 3, 4 on the viewport; left, scroll-position, contents and auto do neither. will-change naming z-index or position (stacking only with other values) and any rendering hint are not covered.")
 proof("scroll-axis-lock", "css_interact", "scroll_axis_lock_keeps_a_drag_to_the_axis_it_starts_along",
       "Scroll offsets of a 200px scroller over 1000x1000 content, read while the drag is held: a first move 40 across and 19 down scrolls 40, 0 and one 19 across and 40 down 0, 40 (within a 2:1 slope the other axis is dropped); 40 by 21 moves both; a drag locked to x by its first move and then turned 50px down never moves y; the next press decides afresh; scroll-axis-lock: none follows every drag and the turn. Mouse drags only (a touch drag takes the same path after touch-action); the wheel and two-finger pans are not locked.")
 proof("scroll-initial-target", "css_interact", "a_scroller_starts_at_its_initial_target",
@@ -356,7 +358,6 @@ not_applicable("autonomous-custom-elements",
                "customElements.define() is a script API. A game's components are .svelte documents used by their own tag, with no script to register a class.")
 
 MISSING = {
-    "will-change": "will-change on a stacking property draws a group layer, but neither half of its contract is observable yet: a transform does not make a containing block for fixed descendants, and z-index never lifts a child above its parent's later siblings (both routed to their streams).",
     "file-selector-button": "Accepted and styles nothing: a file input's button is not a stylable box.",
     "active-view-transition": ":active-view-transition-type() qualifies only ::view-transition-* rules; :active-view-transition does not match elements during a transition (a selectors-side gap).",
     "view-transitions-element-scoped": "No view-transition-scope or element-scoped transitions: a transition captures a whole layer.",
