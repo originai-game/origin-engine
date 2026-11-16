@@ -752,6 +752,19 @@ impl std::ops::BitOrAssign for Changed {
     }
 }
 
+/// One line's piece of an inline element of a text (a fragment of its
+/// inline box, CSS Display 3 §2.1).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct InlineFrag {
+    /// Its box around its words' content area (their fonts' ascent and
+    /// descent), where `placed.rect` is: physical down a vertical line.
+    pub rect: crate::Rect,
+    /// It holds the element's inline-start edge (its first fragment in
+    /// logical order) and its inline-end edge (its last).
+    pub start: bool,
+    pub end: bool,
+}
+
 /// What layout computes for a node: its sizes, its place in its parent,
 /// its lines, rows, tracks and floats, and what the layout cache keeps.
 #[derive(Clone, Debug)]
@@ -824,6 +837,9 @@ pub struct LayoutBox {
     pub rich_lines: Vec<crate::rich::RichLine>,
     /// A rich text's links, by id, in order.
     pub links: Vec<String>,
+    /// An inline element of a text: its fragments, one per line it has
+    /// words on, in logical order (CSS 2 §9.4.2).
+    pub inline_frags: Vec<InlineFrag>,
     /// A wrapping row's lines: ranges of `children`.
     pub rows: Vec<(usize, usize)>,
     /// Constraints and parent-relative position of the cached layout.
@@ -932,6 +948,7 @@ impl Default for LayoutBox {
             lines: Vec::new(),
             rich_lines: Vec::new(),
             links: Vec::new(),
+            inline_frags: Vec::new(),
             rows: Vec::new(),
             layout_size: [0.0; 2],
             layout_offset: [0.0; 2],

@@ -50,6 +50,8 @@ impl RetainedHost {
         state: InteractionState,
         enabled: bool,
     ) -> Result<(), String> {
+        // A text's inline link is its `<a>` element.
+        let key = self.link_element(key).unwrap_or(key);
         let graph = &mut ui.docs.state_mut().memory.reactive.graph;
         if let Some(node) = self.by_key.get(&key)
             && let Some(instance) = self.topology.node(node)
@@ -83,6 +85,43 @@ impl RetainedHost {
             }
         }
         Ok(())
+    }
+
+    /// The key of the `<a>` element a text's inline link `key` is (the
+    /// text's `link<k>` hit, `k` its `<a>`'s order among the text's).
+    fn link_element(&self, key: u64) -> Option<u64> {
+        let text = self.owner_of.get(&key)?;
+        if text.key == key {
+            return None;
+        }
+        let mut stack: Vec<&MountedNode> = self
+            .elements
+            .get(text)?
+            .children
+            .iter()
+            .rev()
+            .filter_map(|c| match c {
+                Child::Element(e) => Some(e),
+                _ => None,
+            })
+            .collect();
+        let mut k = 0;
+        while let Some(child) = stack.pop() {
+            let Some(e) = self.elements.get(child).filter(|_| self.is_inline(child)) else {
+                continue;
+            };
+            if e.document.nodes[e.index].selector_tag.as_deref() == Some("a") {
+                if crate::id::child_key(text.key, &format!("link{k}")) == key {
+                    return Some(child.key);
+                }
+                k += 1;
+            }
+            stack.extend(e.children.iter().rev().filter_map(|c| match c {
+                Child::Element(e) => Some(e),
+                _ => None,
+            }));
+        }
+        None
     }
 
     /// Forgets `element`'s box pseudo-elements: it is unmounted.

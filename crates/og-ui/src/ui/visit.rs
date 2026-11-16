@@ -634,29 +634,34 @@ impl Ui {
                     });
                 }
             }
-            // A rich text's links are controls of their own.
+            // A rich text's links are controls of their own, hit on each
+            // line's fragment (not across the lines between), reached by
+            // the pad on their first.
             if !n.layout.links.is_empty() && !n.placed.inert {
-                for (l, lr) in self.rich_links(i) {
-                    let lr = n.placed.world.map_rect(&lr);
-                    let shown = lr.intersect(&n.placed.clip);
-                    if shown.is_empty() {
-                        continue;
+                for (l, frags) in self.rich_link_frags(i) {
+                    for (k, lr) in frags.iter().enumerate() {
+                        let lr = n.placed.world.map_rect(lr);
+                        let shown = lr.intersect(&n.placed.clip);
+                        if shown.is_empty() {
+                            continue;
+                        }
+                        let nav = if k == 0 { HIT_NAV } else { 0 };
+                        hits.push(Hit {
+                            key: child_key(n.key, &l),
+                            rect: shown,
+                            full: lr,
+                            flags: HIT_POINTER | nav | if pass { HIT_PASS } else { 0 },
+                            scope: o.scope_of[i],
+                            scroller: o.scroller_of[i],
+                            owner: o.owner_of[i],
+                            inv: Affine::IDENTITY,
+                            local: shown,
+                            clip: n.placed.clip,
+                            group: o.group_of[i],
+                            gesture: o.gesture_of[i],
+                            player: o.player_of[i],
+                        });
                     }
-                    hits.push(Hit {
-                        key: child_key(n.key, &l),
-                        rect: shown,
-                        full: lr,
-                        flags: HIT_POINTER | HIT_NAV | if pass { HIT_PASS } else { 0 },
-                        scope: o.scope_of[i],
-                        scroller: o.scroller_of[i],
-                        owner: o.owner_of[i],
-                        inv: Affine::IDENTITY,
-                        local: shown,
-                        clip: n.placed.clip,
-                        group: o.group_of[i],
-                        gesture: o.gesture_of[i],
-                        player: o.player_of[i],
-                    });
                 }
             }
         }

@@ -112,7 +112,12 @@ impl Ui {
         let anchored = self.tree.orders.with(visit::feat::ANCHORED).to_vec();
         self.layout
             .place_anchored(&anchored, &mut self.out, &mut self.tree);
-        let (seeds, animated) = self.frame_motion(&order, whole, vp);
+        let (mut seeds, animated) = self.frame_motion(&order, whole, vp);
+        // A text's inline elements on its lines, as motion left them.
+        let fragments = self.place_inline_fragments(&order);
+        if let Some(seeds) = seeds.as_mut() {
+            seeds.extend(fragments);
+        }
         let (order, mapped) = self.place_frame(order, &seeds, &animated);
 
         let (cursor, cursor_images, selected) =
@@ -258,9 +263,12 @@ impl Ui {
             }
             let shown = crate::layout::shown_children(&self.tree.nodes, i);
             // Out of the flow (absolute, anchored): laid out against the box.
-            let (out, inside): (Vec<usize>, Vec<usize>) = shown
+            let (out, mut inside): (Vec<usize>, Vec<usize>) = shown
                 .iter()
                 .partition(|&&c| self.tree.nodes[c].props.out_of_flow());
+            // A text's inline elements are drawn and hit on its lines, not
+            // laid out in its flow (`place_inline_fragments`).
+            inside.retain(|&c| self.tree.kinds[c].0 != "inline");
             // A table draws its rows and groups under their cells, places
             // them itself, and lays out its captions and cells by slot.
             let (kept, mut flow, table) = if self.tree.nodes[i].el.table == TablePart::Table {

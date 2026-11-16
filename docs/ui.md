@@ -208,10 +208,14 @@ A text element's inline markup is elements (kind `inline`, CSS 2 §9.2.2):
 SVG `<tspan>`, each with any attributes (`class`, `id`, `data-*`, `lang`,
 `style`, `part`). Selectors match them as any element: class, id,
 attribute, structural (among their text's inline elements), child and
-descendant, and states (`a:hover`). Every inherited text property and
-`vertical-align` and `display` apply to the words in them; a box property
-(`padding`, `background`, `width`…) is ignored on them for now, as their
-fragments are not boxes yet. HTML's look is the UA sheet's (`b { font-weight:
+descendant, and states (`a:hover`, from the pointer over a link's words or
+the probe). Every inherited text property and `vertical-align` and
+`display` apply to the words in them; a box property (`padding`,
+`background`, `width`…) is ignored on them for now. Each one styling its
+words is a node under its text (kind `inline`, in the probe), out of its
+flow: its fragments are one per line it has words on, each around its
+words' content area (CSS 2 §9.4.2, §10.6.1), and its box their union. A
+link is hit on its fragments, not across the lines between them. HTML's look is the UA sheet's (`b { font-weight:
 bold }`, `sub { vertical-align: sub; font-size: smaller }`, the ruby
 `display`s), so a rule overrides it. An inline element takes no event
 handlers, `bind:`, `use:` or transitions: put them on the text. In a block,

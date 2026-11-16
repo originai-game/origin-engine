@@ -18,6 +18,7 @@
 //!   `emphasis_marks_sit_where_css_text_decoration_puts_them`
 
 use crate::support::Doc;
+use og_core::glam::Vec2;
 use og_ui::*;
 
 const SC: &str = "tests/fixtures/ui-text/assets/fonts/NotoSansSC-Regular-subset.ttf";
@@ -188,6 +189,68 @@ p::part(big) { font-size: 40px; }",
     d.step(InputFrame::default());
     assert_eq!(ink(&d, "す"), [false, true, true]);
     assert_eq!(ink(&d, "で"), [false, false, true]);
+}
+
+/// An inline element is one fragment per line it has words on (CSS 2
+/// §9.4.2): its box their union, a link hit on each fragment and not
+/// across the lines between, and the pointer over a link hovering its
+/// `<a>` (`a:hover`).
+///
+/// Ways it could fail: one hit over the union, so a press on the words
+/// before a wrapped link follows it; the element's box its text's, or one
+/// line's; a link's hover kept on the text's link id and never reaching
+/// the `<a>`'s rules.
+#[test]
+fn inline_elements_fragment_on_their_lines_and_links_hover_as_their_a() {
+    let mut d = doc(
+        r#"<p id="P" style="width: 100px">あい<a id="L" href="r">日本東京中漢</a>です</p>"#,
+        "a { color: #ff0000; } a:hover { color: #00ff00; }",
+    );
+    let p = d.get("P");
+    // あい日本東 | 京中漢です: the link from 40 to 100 on the first line
+    // and from 0 to 60 on the second.
+    let (ri, kyo) = (one(&d, "P", "日本東"), one(&d, "P", "京中漢"));
+    assert!(
+        close(ri.x - p.x, 40.0) && close(kyo.x - p.x, 0.0),
+        "{ri:?} {kyo:?}"
+    );
+    assert!(kyo.baseline > ri.baseline + 10.0);
+    let l = d.get("L");
+    assert!(
+        close(l.x, p.x)
+            && close(l.width, 100.0)
+            && l.y >= p.y
+            && l.y + l.height <= p.y + p.height + 0.5,
+        "the union of its two fragments: {l:?} in {p:?}"
+    );
+    let first = Vec2::new(p.x + 10.0, ri.baseline - 8.0);
+    let second = Vec2::new(p.x + 10.0, kyo.baseline - 8.0);
+    let events = d.click_at(first);
+    assert!(!events.iter().any(|e| e.kind == "link"), "{events:?}");
+    let events = d.click_at(second);
+    assert!(
+        events.iter().any(|e| e.kind == "link" && e.name == "r"),
+        "{events:?}"
+    );
+    let green = |d: &Doc| {
+        let c = one(d, "P", "日本東").color;
+        c[1] > 0.5 && c[0] < 0.5
+    };
+    d.step(InputFrame {
+        pointer: Vec2::new(p.x + 50.0, p.y + p.height + 100.0),
+        pointer_inside: true,
+        ..Default::default()
+    });
+    d.step(InputFrame::default());
+    assert!(!green(&d));
+    for _ in 0..3 {
+        d.step(InputFrame {
+            pointer: second,
+            pointer_inside: true,
+            ..Default::default()
+        });
+    }
+    assert!(green(&d), "{:?}", one(&d, "P", "日本東"));
 }
 
 #[test]

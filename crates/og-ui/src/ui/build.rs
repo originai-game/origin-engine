@@ -338,6 +338,11 @@ impl Ui {
 }
 
 impl crate::ui::Tree {
+    /// The kind node `i` was written as (`"richtext"`, `"inline"`…).
+    pub(crate) fn kind_of(&self, i: usize) -> &'static str {
+        self.kinds[i].0
+    }
+
     pub fn path_of(&self, mut i: usize) -> String {
         let mut parts = Vec::new();
         let own = i;

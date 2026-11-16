@@ -82,6 +82,8 @@ pub struct RichSpan {
     /// Its own `text-combine-upright` (CSS Writing Modes 4 §9.1); `None`:
     /// its text's.
     pub combine: Option<crate::layout::flow::Combine>,
+    /// The keys of the inline elements it sits in, outermost first.
+    pub owners: Vec<u64>,
 }
 
 impl RichSpan {
@@ -608,6 +610,19 @@ pub(crate) struct DrawnPiece {
     pub glyphs: Option<Vec<crate::text::VisualGlyph>>,
     pub rect: Rect,
     pub baseline: f32,
+    /// Its line, in logical order.
+    pub line: usize,
+}
+
+/// The smallest rectangle holding `a` and `b`.
+fn union(a: Rect, b: Rect) -> Rect {
+    let (x0, y0) = (a.x.min(b.x), a.y.min(b.y));
+    Rect::new(
+        x0,
+        y0,
+        a.right().max(b.right()) - x0,
+        a.bottom().max(b.bottom()) - y0,
+    )
 }
 
 /// One segment of a line in visual order: a piece, or the part of one in a
@@ -843,6 +858,7 @@ impl Ui {
                     glyphs: seg.glyphs,
                     rect: Rect::new(x, y, seg.width * sk, line.height * sk),
                     baseline: y + (line.baseline - seg.rise) * sk,
+                    line: k,
                 });
                 x += seg.width * sk;
             }
@@ -855,6 +871,106 @@ impl Ui {
             line_y += line.height * sk;
         }
         out
+    }
+
+    /// The fragments of rich node `i` whose `pieces` (its
+    /// [`Ui::rich_pieces`]) are of the spans `owns` picks: on each line
+    /// with one, in logical order, the union of their content areas (their
+    /// fonts' ascent and descent about their baseline; down a vertical
+    /// line, their pieces).
+    pub(crate) fn rich_frags(
+        &self,
+        i: usize,
+        pieces: &[DrawnPiece],
+        owns: impl Fn(&RichSpan) -> bool,
+    ) -> Vec<Rect> {
+        let n = &self.tree.nodes[i];
+        let Content::Rich(rc) = &*n.content else {
+            return Vec::new();
+        };
+        let vertical = self.tree.rich_vertical(i).is_some();
+        let sk = n.placed.scale;
+        let mut out: Vec<(usize, Rect)> = Vec::new();
+        for p in pieces {
+            let s = &rc.spans[p.span];
+            if !owns(s) {
+                continue;
+            }
+            let r = if vertical {
+                p.rect
+            } else {
+                let (_, a, d) = span_metrics(s, &self.env.fonts);
+                Rect::new(p.rect.x, p.baseline - a * sk, p.rect.width, (a - d) * sk)
+            };
+            match out.iter_mut().find(|(line, _)| *line == p.line) {
+                Some((_, u)) => *u = union(*u, r),
+                None => out.push((p.line, r)),
+            }
+        }
+        out.sort_by_key(|(line, _)| *line);
+        out.into_iter().map(|(_, r)| r).collect()
+    }
+
+    /// The inline element nodes of each document text among `order` on
+    /// their fragments: each one's `inline_frags`, and its box their union
+    /// (an empty box at its text's corner when it has no words on a line).
+    /// Returns the nodes it placed, to map.
+    pub(crate) fn place_inline_fragments(&mut self, order: &[usize]) -> Vec<usize> {
+        let mut placed = Vec::new();
+        for &text in order {
+            let n = &self.tree.nodes[text];
+            if !matches!(&*n.content, Content::Rich(_))
+                || !n
+                    .ordered_children
+                    .iter()
+                    .any(|&c| self.tree.kind_of(c) == "inline")
+            {
+                continue;
+            }
+            let pieces = self.rich_pieces(text);
+            let corner = n.placed.rect;
+            let mut stack: Vec<usize> = n.ordered_children.clone();
+            while let Some(i) = stack.pop() {
+                if self.tree.kind_of(i) != "inline" {
+                    continue;
+                }
+                let key = self.tree.nodes[i].key;
+                let rects = self.rich_frags(text, &pieces, |s| s.owners.contains(&key));
+                let last = rects.len().saturating_sub(1);
+                let n = &mut self.tree.nodes[i];
+                n.placed.rect = rects
+                    .iter()
+                    .copied()
+                    .reduce(union)
+                    .unwrap_or(Rect::new(corner.x, corner.y, 0.0, 0.0));
+                n.layout.inline_frags = rects
+                    .into_iter()
+                    .enumerate()
+                    .map(|(k, rect)| crate::layout::InlineFrag {
+                        rect,
+                        start: k == 0,
+                        end: k == last,
+                    })
+                    .collect();
+                stack.extend_from_slice(&n.ordered_children);
+                placed.push(i);
+            }
+        }
+        placed
+    }
+
+    /// The fragments of each link of rich node `i`, in logical order.
+    pub(crate) fn rich_link_frags(&self, i: usize) -> Vec<(String, Vec<Rect>)> {
+        let pieces = self.rich_pieces(i);
+        self.tree.nodes[i]
+            .layout
+            .links
+            .iter()
+            .map(|l| {
+                let frags = self.rich_frags(i, &pieces, |s| s.link.as_deref() == Some(l.as_str()));
+                (l.clone(), frags)
+            })
+            .collect()
     }
 
     /// The rectangle of each link of rich node `i` (the union of its pieces).
@@ -937,7 +1053,9 @@ impl Ui {
             let s = &rc.spans[k];
             let size = s.step.size * n.placed.scale;
             let link_key = s.link.as_deref().map(|l| child_key(n.key, l));
-            let hot = link_key.is_some_and(|lk| self.interaction.state.hot == lk);
+            // A document's inline `<a>` takes its hover from its CSS (`a:hover`).
+            let hot =
+                s.owners.is_empty() && link_key.is_some_and(|lk| self.interaction.state.hot == lk);
             let color = if hot { p.primary_hover } else { s.color };
             if let Some(Atom::Ruby(ruby)) = &s.atom {
                 let at = ruby::RubyAt {
@@ -1486,6 +1604,7 @@ impl Ui {
                         glyphs: seg.glyphs,
                         rect: Rect::new(col, y, across, len),
                         baseline: mid + seg.rise * sk,
+                        line: k,
                     },
                 ));
                 at += len;
@@ -1624,7 +1743,9 @@ impl Ui {
             let mid = piece.baseline;
             let em = s.step.size * n.placed.scale;
             let link_key = s.link.as_deref().map(|l| child_key(n.key, l));
-            let hot = link_key.is_some_and(|lk| self.interaction.state.hot == lk);
+            // A document's inline `<a>` takes its hover from its CSS (`a:hover`).
+            let hot =
+                s.owners.is_empty() && link_key.is_some_and(|lk| self.interaction.state.hot == lk);
             let color = if hot { p.primary_hover } else { s.color };
             let upright_box = |w: f32, h: f32| {
                 let h = h.min(r.height.max(1.0));

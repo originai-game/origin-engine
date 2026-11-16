@@ -28,7 +28,7 @@ pub(crate) use css::{Holder, auto_height, containing_block, layout, on_screen};
 pub use flow::{Bidi, Flow};
 pub use multicol::{ColumnSnap, Multicol};
 use node::truncate_lines;
-pub use node::{Changed, Content, GapSeg, NONE, Shape};
+pub use node::{Changed, Content, GapSeg, InlineFrag, NONE, Shape};
 pub(crate) use node::{
     EditView, Media, Node, ObjectFit, OverflowWrap, PartBox, PartGeometry, Placement, Stagger,
     TextContent, TextJustify, UsedText, Widget, WrapStyle, ellipsis_of, snap_pixel_text,

@@ -91,6 +91,9 @@ pub struct TextSpanStyle {
     pub ruby_position: Option<RubyPosition>,
     /// A colour face's palette (CSS `font-palette`).
     pub palette: Option<crate::shape::Palette>,
+    /// The keys of the inline elements of a document's text it sits in,
+    /// outermost first: their fragments are its pieces.
+    pub owners: Vec<u64>,
 }
 
 /// An inline object of a text (a document's `<img>`, `<og-icon>` or `<kbd
@@ -198,6 +201,7 @@ impl Ui {
                 valign: crate::VerticalAlign::Baseline,
                 word_spacing: 0.0,
                 combine: None,
+                owners: Vec::new(),
             };
             for (_, _, style) in ranges.iter().filter(|(a, b, _)| *a <= start && end <= *b) {
                 if let Some(c) = &style.color {
@@ -320,6 +324,9 @@ impl Ui {
                 }
                 if let Some(h) = &style.hyphen {
                     s.hyphen = Some(h.clone());
+                }
+                if !style.owners.is_empty() {
+                    s.owners = style.owners.clone();
                 }
                 if let Some(link) = &style.link {
                     s.link = Some(link.clone());

@@ -308,6 +308,13 @@ impl Ui {
         }
         self.tree.pending_host = None;
         *self.front.accent_mut() = None;
+        // A text's inline elements: nodes under its own, on its lines.
+        if kind == Kind::Label && !b.inline.is_empty() && !styled.span_styles.is_empty() {
+            let text = self.tree.last_closed();
+            if text != NONE && self.tree.kind_of(text) == "richtext" {
+                self.inline_nodes(b, i, text);
+            }
+        }
         let last = self.tree.last_closed();
         if last != NONE && last < self.tree.nodes().len() {
             let mut fields =
