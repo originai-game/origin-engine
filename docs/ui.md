@@ -536,6 +536,15 @@ style's body, display or mono role. `text-transform` cases for the UI's
 locale. `text-wrap-style: balance` breaks at the narrowest width keeping
 the line count, `pretty` at the widest that keeps it with no one-word last
 line, `stable` is `auto`. `hyphens: none` drops soft hyphens.
+CJK spacing follows Text 4 §8.4 and §8.5, planned on the lines a pass
+broke and shaped again until it holds: `text-autospace` puts 1/8ic
+between an ideograph and a Latin letter or digit on one line (never at a
+break, so it never pushes a character to the next line), and French
+no-break spaces under `punctuation`; `text-spacing-trim` sets fullwidth
+punctuation half-width by the face's `halt` (a face without it keeps the
+full width), a line's start and end by its keywords, `allow-end` pulling
+the next line's character and closing bracket back when only trimmed it
+fits. Both are the paragraph's values, horizontal lines only.
 `-webkit-text-stroke`, `-webkit-text-fill-color` and `paint-order` outline
 and fill glyphs. Inherited properties pass down as custom properties do,
 re-resolving only their readers. `accent-color` inks checkboxes,

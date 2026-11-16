@@ -252,6 +252,9 @@ pub struct RichContent {
     /// CSS `dominant-baseline`: the baseline of its root text a span
     /// aligned at `baseline` meets its own at (CSS Inline 3 §4.1).
     pub dominant: crate::layout::Baseline,
+    /// CSS `text-autospace` and `text-spacing-trim` (CSS Text 4 §8.4,
+    /// §8.5).
+    pub spacing: crate::text::spacing::CjkSpacing,
 }
 
 /// CSS `text-indent` (CSS Text 3 §8.1): the room its lines leave at
@@ -323,6 +326,8 @@ pub struct RichTextDesc {
     /// CSS `ruby-position`, `ruby-align` and `ruby-overhang`: how its
     /// inline `<ruby>` is set.
     pub ruby: RubyStyle,
+    /// CSS `text-autospace` and `text-spacing-trim`.
+    pub spacing: crate::text::spacing::CjkSpacing,
 }
 
 /// What a paragraph's links did this tick.

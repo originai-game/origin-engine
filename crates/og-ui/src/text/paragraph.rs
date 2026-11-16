@@ -11,6 +11,7 @@
 use super::VisualGlyph;
 use crate::layout::float::Broken;
 use crate::rich::{LineBreak, Piece, RichContent, RichLine, Segment, TextIndent};
+use crate::text::line_edges;
 use og_i18n::Direction;
 use og_text::text::paragraph::{Brush, CONTEXT, Context};
 use parley::{BreakReason, Layout, PositionedLayoutItem, StyleProperty, YieldData};
@@ -70,11 +71,15 @@ fn laid_out(
     // elements its breaks split (`box-decoration-break: clone`), found by
     // the passes before; a few passes settle it.
     let mut hold: Vec<f32> = Vec::new();
+    // Where CJK spacing is planned (CSS Text 4 §8.4, §8.5): the lines the
+    // pass before broke.
+    let mut sides = line_edges::Sides::new(content);
     let mut passes = 0;
     loop {
         let mut planned = Vec::new();
         passes += 1;
-        let pass = shaped(content, fonts, direction, |layout, text, indices| {
+        let plan = sides.plan(content, fonts);
+        let pass = shaped(content, fonts, direction, &plan, |layout, text, indices| {
             let widths = layout.calculate_content_widths();
             let (broke, narrowed, drop) = break_beside(layout, content, &mut reserve, &hold, room);
             // Each line's cut edges: at its start (its first span and their
@@ -100,6 +105,44 @@ fn laid_out(
                     .any(|(k, w)| (w - held(k)).abs() > 0.01)
             {
                 return Err(Retry::Hold(wanted));
+            }
+            // CJK spacing on the lines as they broke.
+            let lines = layout
+                .lines()
+                .zip(&broke)
+                .enumerate()
+                .map(|(k, (line, b))| {
+                    let m = line.metrics();
+                    // A line Parley left empty may have no range in the text.
+                    let start = b.range.start.min(text.len());
+                    let range = start..b.range.end.clamp(start, text.len());
+                    line_edges::Line {
+                        first: k == 0 || text[..range.start].ends_with('\n'),
+                        range,
+                        wrapped: b.wrapped,
+                        room: b.shift[2]
+                            - reserve.get(k).copied().unwrap_or(0.0).max(0.0)
+                            - held(k),
+                        width: m.advance - m.hanging_advance + m.indent,
+                    }
+                })
+                .collect();
+            let advance = |r: std::ops::Range<usize>| {
+                let mut at = r.start;
+                let mut w = 0.0;
+                while at < r.end {
+                    let Some(c) = parley::Cluster::from_byte_index(layout, at) else {
+                        break;
+                    };
+                    w += c.advance();
+                    at = c.text_range().end.max(at + 1);
+                }
+                w
+            };
+            if passes < 8
+                && let Some(next) = sides.next(content, fonts, lines, &plan, &advance)
+            {
+                return Err(Retry::Spacing(next));
             }
             // A line ending at a SHY: its hyphen, which a pass must make
             // room for when it does not fit.
@@ -148,6 +191,7 @@ fn laid_out(
                 reserve[k] = hyphen;
             }
             Err(Retry::Hold(wanted)) => hold = wanted,
+            Err(Retry::Spacing(next)) => sides = next,
             Ok((mut broken, widths, cuts, rtl)) => {
                 // Shape each hyphenated line again outside the font
                 // context's borrow: contextual glyphs and bidi see the
@@ -166,11 +210,14 @@ fn laid_out(
 }
 
 /// Why a pass breaks the lines again: a line's hyphen does not fit (its
-/// index and the hyphen's width), or the room cut edges take differs from
-/// what the lines held back (what each line holds now).
+/// index and the hyphen's width), the room cut edges take differs from
+/// what the lines held back (what each line holds now), or the lines'
+/// CJK spacing differs from what they were shaped with (where it is
+/// planned now).
 enum Retry {
     Hyphen(usize, f32),
     Hold(Vec<f32>),
+    Spacing(line_edges::Sides),
 }
 
 /// The span of a line's first character, or of its last before its
@@ -472,6 +519,7 @@ fn shaped<R>(
     content: &RichContent,
     fonts: &dyn crate::layout::Metrics,
     direction: Option<Direction>,
+    plan: &line_edges::Plan,
     f: impl FnOnce(&mut Layout<Brush>, &str, &[usize]) -> R,
 ) -> Option<R> {
     use crate::rich::{span_tracking, span_width};
@@ -643,6 +691,41 @@ fn shaped<R>(
                 StyleProperty::Locale(language.and_then(|l| l.parse().ok())),
                 range.clone(),
             );
+        }
+        // CJK spacing (CSS Text 4 §8.4, §8.5): a trimmed punctuation's
+        // `halt`, and room after a unit beside its span's tracking and its
+        // owners' edges.
+        let span_at = |at: usize| ranges.iter().position(|r| r.contains(&at));
+        for r in &plan.halt {
+            if let Some(k) = span_at(r.start) {
+                let mut features = content.spans[k].step.features.css();
+                if !features.is_empty() {
+                    features.push(',');
+                }
+                features.push_str("'halt' 1");
+                builder.push(
+                    StyleProperty::FontFeatures(features.as_str().into()),
+                    r.clone(),
+                );
+            }
+        }
+        for (r, extra) in &plan.space {
+            let Some(k) = span_at(r.start) else {
+                continue;
+            };
+            let s = &content.spans[k];
+            let mut spacing = span_tracking(s, &s.text) * s.step.size + extra;
+            if let Some((first, last)) = crate::rich::edge_graphemes(&s.text) {
+                let [before, after] = s.room();
+                let local = r.start - ranges[k].start;
+                if first.contains(&local) {
+                    spacing += before;
+                }
+                if last.contains(&local) {
+                    spacing += after;
+                }
+            }
+            builder.push(StyleProperty::LetterSpacing(spacing), r.clone());
         }
         for (range, size) in scaled {
             builder.push(StyleProperty::FontSize(size), range);

@@ -8,10 +8,12 @@ pub mod colr;
 pub(crate) mod edit;
 #[doc(hidden)]
 pub mod input_type;
+pub(crate) mod line_edges;
 pub mod markup;
 pub mod paragraph;
 #[cfg(feature = "shaping")]
 #[doc(hidden)]
 pub mod rich;
+pub mod spacing;
 pub mod text_path;
 pub mod vertical;

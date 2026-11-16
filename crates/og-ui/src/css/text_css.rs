@@ -67,6 +67,9 @@ pub(crate) const INHERITED: &[&str] = &[
     // CSS Mobile Text Size Adjustment 1 §2: parsed and inherited; it has
     // no effect, as the engine inflates no text.
     "text-size-adjust",
+    // CSS Text 4 §8.4, §8.5.
+    "text-autospace",
+    "text-spacing-trim",
     // CSS Inline 3 §4.1.
     "dominant-baseline",
     "text-underline-position",
@@ -838,6 +841,8 @@ fn check(name: &str, v: &str) -> Result<(), String> {
         "baseline-shift" => crate::VerticalAlign::shift(v).is_some(),
         "baseline-source" => crate::VerticalAlign::source(v).is_some(),
         "dominant-baseline" => v == "auto" || crate::layout::Baseline::parse(v).is_some(),
+        "text-autospace" => crate::text::spacing::Autospace::parse(v).is_some(),
+        "text-spacing-trim" => crate::text::spacing::SpacingTrim::parse(v).is_some(),
         "text-size-adjust" => {
             matches!(v, "auto" | "none")
                 || v.strip_suffix('%')
@@ -1284,6 +1289,8 @@ pub struct TextCss {
     pub vertical_align: Option<crate::VerticalAlign>,
     /// CSS `dominant-baseline` (`auto` is `alphabetic`: horizontal text).
     pub dominant: crate::layout::Baseline,
+    /// CSS `text-autospace` and `text-spacing-trim`.
+    pub spacing: crate::text::spacing::CjkSpacing,
     /// Named and generic families in authored order, skipping unavailable names.
     pub family: Option<Vec<crate::FontFamily>>,
     pub font_role: Option<crate::FontRole>,
@@ -1691,6 +1698,16 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         .map(str::trim)
         .and_then(crate::layout::Baseline::parse)
         .unwrap_or_default();
+    t.spacing = crate::text::spacing::CjkSpacing {
+        autospace: get("text-autospace")
+            .as_deref()
+            .and_then(|v| crate::text::spacing::Autospace::parse(v.trim()))
+            .unwrap_or_default(),
+        trim: get("text-spacing-trim")
+            .as_deref()
+            .and_then(|v| crate::text::spacing::SpacingTrim::parse(v.trim()))
+            .unwrap_or_default(),
+    };
     let mark_color = get("text-emphasis-color")
         .filter(|c| !c.eq_ignore_ascii_case("currentcolor"))
         .and_then(|c| color(Some(c)));

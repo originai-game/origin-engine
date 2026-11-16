@@ -1762,14 +1762,15 @@ impl Resolved {
             emphasis: css.and_then(|t| t.emphasis),
             dominant: css.map(|t| t.dominant).unwrap_or_default(),
             ruby: css.map(|t| t.ruby).unwrap_or_default(),
+            spacing: css.map(|t| t.spacing).unwrap_or_default(),
         }
     }
 
     /// Its text as one span styled by its CSS (`font-style`,
-    /// `text-decoration`, `-webkit-text-stroke`, `-webkit-text-fill-color`)
-    /// when the plain text path cannot draw that style, or small capitals
-    /// or super- and subscripts its face of `desc` lacks the forms of
-    /// (rich text synthesises them).
+    /// `text-decoration`, `-webkit-text-stroke`, `-webkit-text-fill-color`,
+    /// CJK spacing) when the plain text path cannot draw that style, or
+    /// small capitals or super- and subscripts its face of `desc` lacks
+    /// the forms of (rich text synthesises them).
     pub fn css_span(
         &self,
         text: &str,
@@ -1778,7 +1779,8 @@ impl Resolved {
         desc: &LabelDesc,
     ) -> Option<(crate::TextSpan, crate::TextSpanStyle)> {
         let t = self.text.as_deref()?;
-        if !t.rich() {
+        // CJK spacing too, which the plain text path does not set.
+        if !t.rich() && !t.spacing.applies(text, t.language.as_deref()) {
             // A label's CSS sets its step (`label_desc`).
             let step = desc.step?;
             let query = crate::FontQuery::new(t.weight.unwrap_or(step.weight), false);

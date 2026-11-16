@@ -29,6 +29,7 @@ pub mod hyphenation;
 pub mod locale;
 pub mod message;
 pub mod plural;
+pub mod spacing;
 pub mod table;
 pub mod text;
 
