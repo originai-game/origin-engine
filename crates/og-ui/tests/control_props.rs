@@ -2058,11 +2058,14 @@ fn popovers_take_their_area_offset_fallback_arrow_and_point() {
             secondary_pressed: true,
             ..InputFrame::default()
         });
-        d.step(InputFrame {
-            pointer: at,
-            pointer_inside: true,
-            ..InputFrame::default()
-        });
+        // It shows from the frame `:popover-open` matches.
+        for _ in 0..2 {
+            d.step(InputFrame {
+                pointer: at,
+                pointer_inside: true,
+                ..InputFrame::default()
+            });
+        }
         let copy = d.get("Copy");
         assert!(
             (copy.x - at.x).abs() < 24.0 && copy.y >= at.y - 0.5 && copy.y < at.y + 24.0,

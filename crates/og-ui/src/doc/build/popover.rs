@@ -23,6 +23,9 @@ pub(super) fn popover_key(mount: &str, id: &str) -> u64 {
     crate::id::key_of_path(&format!("{mount}#{id}~popover"))
 }
 
+/// A popover's widget memory, kept in snapshots: `h` 1 while open, `t`
+/// the tick it stopped showing plus one, `a` 1 while it shows (the style
+/// `:popover-open` matched), `b` 1 while its layer is up.
 impl Ui {
     /// Whether popover `pk` is open (widget memory: kept in snapshots).
     pub(crate) fn popover_open(&mut self, pk: u64) -> bool {
@@ -46,15 +49,18 @@ impl Ui {
                 .collect();
             for k in others {
                 if self.has_anim(k) {
-                    self.set_anim(k, crate::ui::Anim::default());
+                    let a = self.anim(k);
+                    self.set_anim(k, crate::ui::Anim { h: 0, t: 0, ..a });
                 }
             }
         }
+        let a = self.anim(pk);
         self.set_anim(
             pk,
             crate::ui::Anim {
                 h: u64::from(open),
-                ..Default::default()
+                t: 0,
+                ..a
             },
         );
     }
@@ -81,6 +87,12 @@ impl Ui {
         if let Some(target) = r.str("popovertarget") {
             let pk = popover_key(&b.mount, target);
             let open = self.popover_open(pk);
+            // Its node this frame (and, open with none, as after a
+            // restore, it is the anchor).
+            let link = self.docs.state_mut().popovers.entry(pk).or_default();
+            if link.invoker.1 == key || (open && link.invoker.1 == 0) {
+                link.invoker = (at, key);
+            }
             if resp.clicked {
                 let next = match r.str("popovertargetaction") {
                     Some("show") => true,
@@ -131,6 +143,15 @@ impl Ui {
     /// Builds a `popover` element: nothing in its place but an empty box,
     /// and, open, a layer against the control that opened it. It is built
     /// every frame (its controls are other elements).
+    ///
+    /// Closed, it is HTML's `display: none` popover: it keeps no style to
+    /// transition from, so it opens from its `@starting-style` (its layer
+    /// shows from the frame `:popover-open` matches), and its layer carries
+    /// its opacity, transform and their transitions and animations. Closing
+    /// with an `allow-discrete` transition of `overlay` (or `display`), its
+    /// layer stays over the page, inert, until that transition ends, while
+    /// its closed style transitions in (CSS Position 4 §4.2). A styled
+    /// `::backdrop` covers the page under it while its layer is up.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn build_popover(
         &mut self,
@@ -138,6 +159,7 @@ impl Ui {
         n: &DocNode,
         id: &str,
         r: &Resolved,
+        props: Props,
         path: String,
         key: u64,
         built: Built,
@@ -177,8 +199,43 @@ impl Ui {
         } else if mode == Mode::Hint {
             open = false;
         }
-        if open != link.shown {
+        // Closing: the tick it stopped showing (plus one), in its widget
+        // memory, so a restore lands mid-hold too.
+        let now = self.interaction.state().tick;
+        let memory = self.anim(pk);
+        let (was_shown, was_up) = (memory.a != 0.0, memory.b != 0.0);
+        let closed_at = match (open, was_shown) {
+            (true, _) => 0,
+            (false, true) => now + 1,
+            (false, false) => memory.t,
+        };
+        let tps = self.env.ticks_per_second();
+        let tokens = self.env.theme().motion;
+        let hold_ticks = r
+            .transitions
+            .iter()
+            .filter(|t| t.discrete && (t.covers("overlay") || t.covers("display")))
+            .map(|t| {
+                crate::style::Theme::ticks(
+                    t.delay_ms.max(0.0) + t.transition.duration_ms(&tokens),
+                    tps,
+                ) as u64
+            })
+            .max()
+            .unwrap_or(0);
+        let held = closed_at != 0 && now + 1 < closed_at + hold_ticks;
+        // Opening, its layer waits a frame for `:popover-open`'s style
+        // (which follows `shown`) unless it is still up.
+        let up = (open && (was_shown || was_up)) || held;
+        if open != was_shown {
             self.docs.state_mut().happened.push(When::Toggle);
+        }
+        if !up {
+            // Not rendered: no before-change style, as a `display: none`
+            // box keeps none, so the next opening starts afresh.
+            let state = self.docs.state_mut();
+            state.memory.seen_now.remove(&key);
+            self.interaction.state.motion.styles.remove(&key);
         }
         // The element's place in the tree, as a modal dialog's, out of the
         // flow: HTML's popover is in the top layer, never in the page.
@@ -219,18 +276,31 @@ impl Ui {
             self.style.em_of(r, &self.env),
         );
         let local = format!("{}~popover", path.replace('/', "_"));
+        // `::backdrop`: a layer over the page, under the popover's.
+        if up && let Some(backdrop) = self.style.pseudo_node(b, r, &path, "backdrop") {
+            let at = self.open_layer(
+                "backdrop",
+                crate::Id::from(format!("{local}~backdrop").as_str()),
+                Element::default(),
+                crate::layout::Float::Modal,
+                NONE,
+            );
+            self.close();
+            self.style_pseudo_box(b, at, &backdrop);
+            self.tree.nodes[at].backdrop = true;
+        }
         let mut layer = 0;
         let mut layer_at = NONE;
         if mode == Mode::Auto {
-            let out = self.floating(&local, open, anchor, content, |ui| {
+            let out = self.floating(&local, up, anchor, content, |ui| {
                 layer_at = ui.tree.parent();
                 layer = ui.tree.nodes()[layer_at].key;
                 build_inner(ui, b, Inner::Children(None));
             });
-            if out.dismissed {
+            if out.dismissed && open {
                 self.set_popover_open(pk, false);
             }
-        } else if open {
+        } else if up {
             let float = if mode == Mode::Hint {
                 crate::layout::Float::Tooltip
             } else {
@@ -250,12 +320,45 @@ impl Ui {
         }
         if layer_at != NONE {
             self.place_popover(r, layer_at, link.point);
+            // Its own motion on its layer: the engine's drop-in only when
+            // it brings none.
+            let own = !props.transitions.is_empty() || !props.animations.is_empty();
+            let p = self.tree.props_mut(layer_at);
+            if own {
+                p.transform = props.transform;
+                p.opacity = props.opacity;
+            } else {
+                p.opacity *= props.opacity;
+                if props.transform != crate::element::Transform::IDENTITY {
+                    p.transform = props.transform;
+                }
+            }
+            p.space3d = props.space3d;
+            p.transitions = props.transitions;
+            p.animations = props.animations;
+            p.keyframe_bursts = props.keyframe_bursts;
+            p.starting = props.starting;
+            p.motion = props.motion;
+            p.reduced = props.reduced;
+            p.inert |= !open;
         }
         let l = self.docs.state_mut().popovers.entry(pk).or_default();
         if layer != 0 {
             l.layer = layer;
         }
-        l.shown = open && layer != 0;
+        l.shown = open;
+        let up = layer_at != NONE;
+        // A dismiss this frame closed it (`h`).
+        let now_memory = self.anim(pk);
+        let next = crate::ui::Anim {
+            a: f32::from(u8::from(open)),
+            b: f32::from(u8::from(up)),
+            t: closed_at,
+            ..now_memory
+        };
+        if next != now_memory {
+            self.set_anim(pk, next);
+        }
         let resp = crate::ui::Response::default();
         self.fire(b, n, key, &path, resp);
         Some(path)

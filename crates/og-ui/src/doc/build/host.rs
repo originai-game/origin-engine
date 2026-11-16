@@ -176,7 +176,8 @@ pub struct PopoverLink {
     pub interest: bool,
     /// Its layer's key, as last built (hovering it keeps a hint shown).
     pub layer: u64,
-    /// It showed when last built (`ontoggle` fires as that changes).
+    /// It showed when last built (`ontoggle` fires as that changes, and
+    /// `:popover-open` follows it).
     pub shown: bool,
     /// `auto`, `manual` or `hint`, as last built.
     pub mode: Mode,

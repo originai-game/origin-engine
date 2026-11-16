@@ -1817,14 +1817,14 @@ const BOXES: [(&str, &str); 6] = [
 
 /// Whether `node`, an element of `kind`, draws `pseudo` as a box: a box
 /// element's `::before` and `::after` (a text element's join its text as
-/// runs), a dialog's `::backdrop`, a select's `::picker(select)`, a
+/// runs), a dialog's or a popover's `::backdrop`, a select's `::picker(select)`, a
 /// `data-hold` element's `::-og-hold`, a popover's `::-og-arrow`.
 fn holds(pseudo: &str, kind: Kind, node: &DocNode) -> bool {
     match pseudo {
         "before" | "after" => {
             kind.container() && (kind != Kind::Button || !node.children.is_empty())
         }
-        "backdrop" => kind == Kind::Dialog,
+        "backdrop" => kind == Kind::Dialog || node.props.iter().any(|p| p.name() == "popover"),
         "picker" => kind == Kind::Select,
         "hold" => node.props.iter().any(|p| p.name() == "dataHold"),
         "arrow" => node.props.iter().any(|p| p.name() == "popover"),

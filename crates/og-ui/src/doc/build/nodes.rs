@@ -119,7 +119,7 @@ impl Ui {
             );
         }
         if r.has("popover") {
-            return self.build_popover(b, n, id.as_str(), r, path, key, built, build_inner);
+            return self.build_popover(b, n, id.as_str(), r, props, path, key, built, build_inner);
         }
         let t = *self.env.theme();
         let raw_of = |r: &Resolved, b: &Build<'_>| -> String {

@@ -617,3 +617,163 @@ fn anchor_insets_transition_by_their_resolved_lengths() {
         d.step(InputFrame::default());
     }
 }
+
+/// A popover opens and closes as HTML's top layer does (HTML §6.12,
+/// CSS Position 4 §4.2, CSS Transitions 2 §3): closed, it renders
+/// nothing and keeps no style, so its first `:popover-open` frame starts
+/// from its `@starting-style` (width 0 → 200 over 1000 ms linear, opacity
+/// 0 → 1 on its layer); closing, `overlay 500ms allow-discrete` keeps its
+/// layer up for 30 ticks, inert, while its closed width transitions back
+/// (200 → 100), and its `::backdrop` covers the page while it is up. The
+/// samples are counted in ticks and land again after a restore.
+///
+/// Ways it could fail: opening from the closed style (100) or with no
+/// transition at all, the layer missing its own opacity, a close that
+/// removes the layer at once (or keeps it for good, or keeps it taking
+/// presses), a backdrop that never draws or outlives the layer.
+#[test]
+fn popovers_enter_from_starting_style_and_leave_through_overlay() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <button id="Open" popovertarget="Menu">Menu</button>
+  <div id="Menu" popover><div id="Item"></div></div>
+  <p id="Far">far</p>
+</div>
+<style>
+#Page { padding: 40px; gap: 40px; }
+#Item { width: 100%; height: 10px; background: rgb(255 0 0); }
+#Menu {
+  width: 100px; padding: 0; opacity: 0.5;
+  transition: width 1000ms linear, opacity 1000ms linear, overlay 500ms allow-discrete;
+}
+#Menu:popover-open { width: 200px; opacity: 1; }
+#Menu::backdrop { background: rgb(0 0 255); }
+@starting-style { #Menu:popover-open { width: 0px; opacity: 0; } }
+</style>"#;
+    let mut d = doc(text);
+    for _ in 0..3 {
+        d.step(InputFrame::default());
+    }
+    // The fill its item draws (through the popover's opacity), and the
+    // backdrop's.
+    let fill = |d: &Doc, rgb: [f32; 3]| {
+        d.ui.frame().items.iter().find_map(|i| {
+            let (rect, c) = i.cmd.filled()?;
+            ((0..3).all(|k| (c[k] - rgb[k]).abs() < 0.02)).then_some((rect, c[3]))
+        })
+    };
+    let open = d.get("Open");
+    let at = og_core::glam::Vec2::new(open.x + open.width / 2.0, open.y + open.height / 2.0);
+    for (pressed, released) in [(true, false), (false, true)] {
+        d.step(InputFrame {
+            pointer: at,
+            pointer_inside: true,
+            down: pressed,
+            pressed,
+            released,
+            ..InputFrame::default()
+        });
+    }
+    let mut first = None;
+    for _ in 0..4 {
+        if d.el("Item").is_some() {
+            first = Some(());
+            break;
+        }
+        d.step(InputFrame::default());
+    }
+    assert!(first.is_some(), "the popover opens");
+    for k in 0..40 {
+        let want = 200.0 * (k as f32 / 60.0).min(1.0);
+        let w = d.get("Item").width;
+        assert!(
+            (w - want).abs() <= 0.5,
+            "opening width at tick {k}: {w} vs {want}"
+        );
+        // Fully transparent, nothing draws.
+        let alpha = fill(&d, [1.0, 0.0, 0.0]).map_or(0.0, |f| f.1);
+        let want = (k as f32 / 60.0).min(1.0);
+        assert!(
+            (alpha - want).abs() <= 0.02,
+            "opening opacity at tick {k}: {alpha} vs {want}"
+        );
+        let (backdrop, _) = fill(&d, [0.0, 0.0, 1.0]).expect("its backdrop draws");
+        assert!(
+            backdrop.width >= 800.0 && backdrop.height >= 600.0,
+            "{backdrop:?}"
+        );
+        d.step(InputFrame::default());
+    }
+    for _ in 0..30 {
+        d.step(InputFrame::default());
+    }
+    assert_eq!(d.get("Item").width, 200.0);
+    // Closing: the toggle's press, then 30 ticks up while the width
+    // heads back to 100 from 200.
+    for (pressed, released) in [(true, false), (false, true)] {
+        d.step(InputFrame {
+            pointer: at,
+            pointer_inside: true,
+            down: pressed,
+            pressed,
+            released,
+            ..InputFrame::default()
+        });
+    }
+    let mut saved = None;
+    let mut sampled = Vec::new();
+    let mut ticks_up = 0;
+    let mut widths = Vec::new();
+    for k in 0..40 {
+        if k == 10 {
+            saved = Some(d.ui.save_state());
+        }
+        if k > 10 {
+            sampled.push(d.ui.frame().items.clone());
+        }
+        match d.el("Item") {
+            Some(item) => {
+                ticks_up += 1;
+                widths.push(item.width);
+                assert!(
+                    fill(&d, [0.0, 0.0, 1.0]).is_some(),
+                    "the backdrop stays with it"
+                );
+            }
+            None => assert!(
+                fill(&d, [0.0, 0.0, 1.0]).is_none(),
+                "the backdrop leaves with it"
+            ),
+        }
+        d.step(InputFrame::default());
+    }
+    assert!(
+        (29..=31).contains(&ticks_up),
+        "held {ticks_up} ticks, widths {widths:?}"
+    );
+    // `:popover-open` drops on the next frame, which starts the run at
+    // progress 0: then linear from 200 to 100 over 60 ticks (laid out on
+    // whole pixels).
+    for (k, w) in widths.iter().enumerate() {
+        let want = 200.0 - 100.0 * k.saturating_sub(1) as f32 / 60.0;
+        assert!(
+            (w - want).abs() <= 1.0,
+            "closing width at tick {k}: {w} vs {want}"
+        );
+    }
+    d.ui.restore_state(&saved.unwrap()).unwrap();
+    for (k, expected) in sampled.iter().enumerate() {
+        d.step(InputFrame::default());
+        if &d.ui.frame().items != expected {
+            let got = &d.ui.frame().items;
+            eprintln!("len {} vs {}", got.len(), expected.len());
+            for (a, b) in got.iter().zip(expected.iter()) {
+                if a != b {
+                    eprintln!("GOT {:?}\nWANT {:?}", a, b);
+                    break;
+                }
+            }
+        }
+        assert_eq!(&d.ui.frame().items, expected, "replay {k}");
+    }
+}
