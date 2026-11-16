@@ -128,6 +128,10 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
             super::contain_css::check(n, value)?;
             Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
         }
+        n if let Some(prop) = crate::element::motion_path::prop_of(n) => {
+            crate::element::motion_path::check(n, value)?;
+            Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
+        }
         "scroll-snap-type" | "scroll-snap-align" => {
             let prop = match name {
                 "scroll-snap-type" => super::paint_css::snap_type(value).map(|_| "scrollSnapType"),

@@ -274,6 +274,11 @@ pub const STYLE: &[(&str, &str)] = &[
     ("resize", "resize"),
     ("fieldSizing", "field-sizing"),
     ("willChange", "will-change"),
+    ("offsetPath", "offset-path"),
+    ("offsetDistance", "offset-distance"),
+    ("offsetRotate", "offset-rotate"),
+    ("offsetAnchor", "offset-anchor"),
+    ("offsetPosition", "offset-position"),
     ("objectPosition", "object-position"),
     ("userSelect", "user-select"),
     ("textPath", "-og-text-path"),
@@ -415,6 +420,7 @@ fn conv(prop: &str) -> Conv {
         p if super::scroll_css::form(p).is_some() => Conv::Raw,
         p if super::image_css::form(p).is_some() => Conv::Raw,
         p if super::contain_css::form(p).is_some() => Conv::Raw,
+        p if crate::element::motion_path::form(p).is_some() => Conv::Raw,
         "width" | "height" | "minWidth" | "maxWidth" | "minHeight" | "maxHeight" => Conv::Size,
         "padding" => Conv::Insets,
         "paddingTop" | "paddingRight" | "paddingBottom" | "paddingLeft" => Conv::Len,
@@ -513,6 +519,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Raw if let Some(f) = super::image_css::form(prop) => f.into(),
         Conv::Raw if let Some(f) = super::view_transition::form(prop) => f.into(),
         Conv::Raw if let Some(f) = super::contain_css::form(prop) => f.into(),
+        Conv::Raw if let Some(f) = crate::element::motion_path::form(prop) => f.into(),
         Conv::Raw if prop == "boxShadow" => {
             "[inset] <x> <y> [<blur> [<spread>]] [<colour>], … | none".into()
         }

@@ -17,6 +17,7 @@ mod frame;
 #[doc(hidden)]
 pub mod id;
 mod interact;
+pub mod motion_path;
 mod placement;
 pub mod transform3d;
 
@@ -325,6 +326,9 @@ pub struct Props {
     pub select: UserSelect,
     /// Its text set along a path (`-og-text-path`); `None`: in lines.
     pub text_path: Option<crate::text_path::TextPath>,
+    /// Its CSS motion path (`offset-path` and the other `offset-*`);
+    /// `None`: it stays where it is laid out.
+    pub offset: Option<Box<motion_path::Offset>>,
     /// The player can move, scale and fade it (a customisable HUD).
     pub customize: Option<Customize>,
     /// How its animatable values move when they change (`None`: at once).
@@ -402,6 +406,7 @@ impl Default for Props {
             interact: Interact::default(),
             select: UserSelect::Auto,
             text_path: None,
+            offset: None,
             customize: None,
             motion: None,
             transitions: Vec::new(),

@@ -485,6 +485,12 @@ the border box. An element whose plane leaves the screen's draws itself
 and its subtree into a layer through its projective map (perspective-correct
 text; hits through the inverse). A `preserve-3d` context draws its planes
 back to front by centre depth; intersecting planes are not split.
+Motion Path 1's `offset-path` (`path()`, `circle()`, `ray()` with its
+size; not `contain`, `at <position>` or other shapes), `offset-distance`
+(animatable), `offset-rotate`, `offset-anchor` and `offset-position` move
+an element's anchor along a path in its parent's laid-out border box, as
+one matrix between the individual properties and `transform`; the
+`offset` shorthand is not taken.
 
 CSS paint follows Backgrounds 3, Images 3 and 4, Masking 1, Shapes 2
 (`shape()`), Filter Effects 1 and 2 and Compositing 1, with these engine
@@ -1020,8 +1026,8 @@ texture's sampling.
 #### Text on a path
 
 `-og-text-path` sets an element's text along a path as SVG 2's
-`<textPath>` does (CSS `offset-path` moves the element, so it is not
-reused): each grapheme cluster sits centred on the path, turned to it.
+`<textPath>` does (CSS `offset-path` moves the element itself, above):
+each grapheme cluster sits centred on the path, turned to it.
 
 ```css
 .title { -og-text-path: path("M0 90 Q170 -20 340 90"); -og-text-path-offset: 50%; text-align: center; }
@@ -2247,7 +2253,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `min-max-width-height` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::the_box_model_sizes_as_css_does`](../crates/og-ui/tests/css_layout.rs). Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths. |
 | `mix-blend-mode` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_effects::css_effects_match_their_reference_frames`](../crates/og-tests-ui/tests/css_effects.rs). References at 1280/390 compare isolated/grouped blends and rect, xywh, shape, content-box and SVG-reference clipping tiles. |
 | `modal` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `motion-path` | Widely | Missing | Pending parts-as-nodes | No offset-path, offset-distance, offset-rotate, offset-anchor or offset-position: the properties are refused. |
+| `motion-path` | Widely | Supported (scope →) | Pending parts-as-nodes | [`motion::offset_paths_move_the_anchor_along_the_path`](../crates/og-ui/tests/motion.rs). In a 400x200 containing block, a 20x10 box's anchor (its transform origin, or offset-anchor: 0 0) lands on hand-worked points within 0.5 px: path("M0 100 L400 100") at 400p every tick of a 1000ms linear offset-distance transition, path("M200 0 L200 200") at 50px turned 90deg by offset-rotate: auto, circle(100px) at 25% on (300, 100) heading down, ray(90deg sides) from offset-position 0% 50% at 50% on (200, 100) with a fixed 0deg; the cursor follows the moved box and a checkpoint replays exactly. The containing block is the parent's border box; ray() contain and at <position>, other basic shapes, url() paths, coord-box and the offset shorthand are not supported. |
 | `multi-column` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::multi_column_lays_out_as_css_multicol_does`](../crates/og-ui/tests/css_layout.rs). Computed balanced columns, width/count, spanning blocks, auto fill, explicit breaks and split text lines. |
 | `named-color` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_paint::every_colour_syntax_draws_the_colour_the_spec_gives`](../crates/og-ui/tests/css_paint.rs). Emitted background-color fills match the specs' worked values (#7d2329 for lab/lch/oklab/oklch, hwb by its formula) for hex alpha, rgb() percentages and legacy commas, hsl() turns, color(srgb|srgb-linear), premultiplied color-mix() with transparent, relative hsl/rgb/oklch, and alpha() with and without calc(alpha). System colours (Canvas, CanvasText, AccentColor, AccentColorText, ButtonFace, ButtonBorder, Mark, Highlight) are the style's palette roles; the other system keywords map the same way but are not each asserted. Wide-gamut color() spaces are covered by og-css's P3 tests, not here. |
 | `namespace` | Widely | Not applicable | Pending parts-as-nodes | A document's elements are in one namespace (a .svelte document is not XML), so @namespace prefixes select nothing apart; the rule is accepted and has no effect. |

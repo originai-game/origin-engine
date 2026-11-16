@@ -24,11 +24,16 @@ impl Ui {
             )
         };
         let parent = self.tree.nodes[i].parent;
-        let (alpha, inert, pw) = if parent == NONE {
-            (1.0, false, Affine::IDENTITY)
+        let (alpha, inert, pw, prect) = if parent == NONE {
+            (1.0, false, Affine::IDENTITY, Rect::default())
         } else {
             let p = &self.tree.nodes[parent];
-            (p.placed.alpha, p.placed.inert, p.placed.world)
+            (
+                p.placed.alpha,
+                p.placed.inert,
+                p.placed.world,
+                p.placed.rect,
+            )
         };
         // The 3D space its parent gives it: the parent's plane, and the
         // parent's `perspective` (about its perspective-origin).
@@ -104,6 +109,13 @@ impl Ui {
         }
         if !t.is_identity() {
             local = local.mul(&t.matrix(&r));
+        }
+        if let Some(offset) = &n.props.offset {
+            // CSS Motion Path 1: after the individual properties, before
+            // `transform`; along its parent's laid-out border box.
+            let cb = if parent == NONE { r } else { prect };
+            let origin = (r.x + t.pivot_x * r.width, r.y + t.pivot_y * r.height);
+            local = local.mul(&offset.matrix(r, cb, origin));
         }
         if space.is_none() && ppersp.is_none() && pplane.is_none() {
             n.placed.plane = None;

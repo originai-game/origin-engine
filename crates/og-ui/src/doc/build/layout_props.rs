@@ -643,6 +643,19 @@ impl Ui {
             .ok()
             .flatten();
         }
+        if let Some(path) = r.str("offsetPath") {
+            // Checked when the CSS was lowered.
+            p.offset = crate::element::motion_path::Offset::from_css(
+                path,
+                r.str("offsetDistance"),
+                r.str("offsetRotate"),
+                r.str("offsetAnchor"),
+                r.str("offsetPosition"),
+            )
+            .ok()
+            .flatten()
+            .map(Box::new);
+        }
         if let Some(s) = r
             .str("userSelect")
             .and_then(crate::element::UserSelect::from_name)

@@ -777,3 +777,92 @@ fn popovers_enter_from_starting_style_and_leave_through_overlay() {
         assert_eq!(&d.ui.frame().items, expected, "replay {k}");
     }
 }
+
+/// CSS Motion Path 1: the element's anchor rides its `offset-path` in its
+/// containing block (§2–§4). Worked by hand: in a 400×200 track, a 20×10
+/// box's centre sits at `path("M0 100 L400 100")`'s point 400·p along it,
+/// every tick of a 1000 ms linear `offset-distance` transition; on
+/// `M200 0 L200 200` with `offset-rotate: auto` it turns 90° (its bounds
+/// 10×20 about the point); `circle(100px)` from its top clockwise puts
+/// 25% at (300, 100) heading down; `ray(90deg sides)` from `0% 50%` is
+/// 400 long, so 50% is (200, 100) with `offset-anchor: 0 0` (its corner
+/// there) and a fixed `offset-rotate: 0deg`. The cursor follows the moved
+/// box, and a checkpoint replays exactly.
+///
+/// Ways it could fail: the path read from the element's own box instead
+/// of its containing block, the anchor ignored or taken from the corner,
+/// percentages of the wrong length, auto rotation lost or reversed, a
+/// circle starting at 3 o'clock or running anticlockwise, the ray's angle
+/// measured from the x axis, hits left at the laid-out place.
+#[test]
+fn offset_paths_move_the_anchor_along_the_path() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page" class={$mode}>
+  <div id="Track"><div id="Dot"></div><div id="Down"></div><div id="Ring"></div><div id="Ray"></div></div>
+</div>
+<style>
+#Page { padding: 50px; align-items: start; }
+#Track { position: relative; width: 400px; height: 200px; }
+#Track > div { position: absolute; left: 0; top: 0; width: 20px; height: 10px; }
+#Dot { offset-path: path("M0 100 L400 100"); offset-distance: 0%; transition: offset-distance 1000ms linear; cursor: copy; }
+#Page.on #Dot { offset-distance: 100%; }
+#Down { offset-path: path("M200 0 L200 200"); offset-distance: 50px; offset-rotate: auto; }
+#Ring { offset-path: circle(100px); offset-distance: 25%; }
+#Ray { offset-path: ray(90deg sides); offset-position: 0% 50%; offset-distance: 50%; offset-anchor: 0 0; offset-rotate: 0deg; }
+</style>"#;
+    let mut d = Doc::new(text, &[("mode", serde_json::json!("off"))]);
+    d.viewport = vp();
+    d.step(InputFrame::default());
+    d.step(InputFrame::default());
+    let track = d.get("Track");
+    let (tx, ty) = (track.x, track.y);
+    let bounds = |d: &Doc, id: &str| {
+        let e = d.get(id);
+        [e.x - tx, e.y - ty, e.width, e.height]
+    };
+    let near = |a: [f32; 4], b: [f32; 4]| a.iter().zip(b).all(|(x, y)| (x - y).abs() <= 0.5);
+    for (id, want) in [
+        ("Dot", [-10.0, 95.0, 20.0, 10.0]),
+        // (200, 50), turned a quarter: 10 wide, 20 high about it.
+        ("Down", [195.0, 40.0, 10.0, 20.0]),
+        // (300, 100), heading down: turned a quarter too.
+        ("Ring", [295.0, 90.0, 10.0, 20.0]),
+        // Its corner at (200, 100), unturned.
+        ("Ray", [200.0, 100.0, 20.0, 10.0]),
+    ] {
+        let got = bounds(&d, id);
+        assert!(near(got, want), "{id}: {got:?} vs {want:?}");
+    }
+    d.set("mode", serde_json::json!("on"));
+    let mut saved = None;
+    let mut sampled = Vec::new();
+    for k in 1..=64 {
+        let p = (k as f32 / 60.0).min(1.0);
+        let want = [400.0 * p - 10.0, 95.0, 20.0, 10.0];
+        let got = bounds(&d, "Dot");
+        assert!(near(got, want), "Dot at tick {k}: {got:?} vs {want:?}");
+        if k == 20 {
+            saved = Some(d.ui.save_state());
+        }
+        if k > 20 {
+            sampled.push(d.ui.frame().items.clone());
+        }
+        d.step(InputFrame::default());
+    }
+    d.ui.restore_state(&saved.unwrap()).unwrap();
+    for (k, expected) in sampled.iter().enumerate() {
+        d.step(InputFrame::default());
+        assert_eq!(&d.ui.frame().items, expected, "replay {k}");
+    }
+    // Hits follow it: at the path's end, not where it was laid out.
+    let at = |d: &mut Doc, x: f32, y: f32| {
+        d.step(InputFrame {
+            pointer: og_core::glam::Vec2::new(tx + x, ty + y),
+            pointer_inside: true,
+            ..InputFrame::default()
+        });
+        d.ui.frame().cursor
+    };
+    assert_eq!(at(&mut d, 398.0, 100.0), Cursor::Copy, "the moved box");
+    assert_ne!(at(&mut d, 5.0, 5.0), Cursor::Copy, "its laid-out place");
+}
