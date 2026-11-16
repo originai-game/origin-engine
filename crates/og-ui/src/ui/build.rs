@@ -613,6 +613,7 @@ impl crate::ui::Tree {
             stretch: None,
             variations: Default::default(),
             optical_sizing: true,
+            palette: Default::default(),
         }
     }
 }

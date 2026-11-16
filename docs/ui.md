@@ -1806,6 +1806,19 @@ instead. Any project font may declare `font { color true runtime true }`;
 one with no COLR glyph is refused. References: `color-emoji-1280`,
 `color-emoji-390`.
 
+CSS `font-palette` (Fonts 4 §9, inherited) draws such a font in another
+CPAL palette: `light` and `dark` take the first palette the font marks for
+that background (else its first), and a `--name` takes the last
+`@font-palette-values --name` in the document's stylesheet whose
+`font-family` lists one of the text's named families, from its
+`base-palette` (an index past the font's palettes: its first) with its
+`override-colors`; a name with no rule for the family is `normal`, the
+cooked palette. The text is drawn with an instance of the font in that
+palette, whose glyphs the host paints at run time from the frame after it
+first appears (that frame draws it blank). A font cooked without `runtime
+true` keeps its cooked palette. Palette transitions and `palette-mix()`
+are not supported.
+
 ## 4. Shipped catalogue
 
 Every component and screen document under `packages/engine/src/ui/` is

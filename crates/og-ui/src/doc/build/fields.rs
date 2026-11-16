@@ -624,7 +624,7 @@ impl Ui {
                             .unwrap_or_default()
                     });
                 } else if r.get("spans").is_none()
-                    && let Some((span, style)) = r.css_span(&base.text)
+                    && let Some((span, style)) = r.css_span(&base.text, &doc.sheet)
                 {
                     self.apply_text_spans(
                         i,
@@ -644,7 +644,7 @@ impl Ui {
                 } else {
                     let width = desc.width;
                     self.apply_label(i, &base.text, desc);
-                    self.tree.css_text_content(i, r);
+                    self.tree.css_text_content(i, r, &doc.sheet);
                     // Path text aligns along its path, not in its box: it
                     // keeps the box its path gives (a `circle()` centres in
                     // it), never the column's width a centred line takes.
@@ -1362,7 +1362,12 @@ impl Ui {
 impl crate::ui::Tree {
     /// A label's CSS `text-wrap-style`, `overflow-wrap`, `text-align-last`,
     /// `text-justify` and `text-overflow: <string>`.
-    pub fn css_text_content(&mut self, i: usize, r: &Resolved) {
+    pub fn css_text_content(
+        &mut self,
+        i: usize,
+        r: &Resolved,
+        sheet: &crate::css::at_rules::Sheet,
+    ) {
         use crate::layout::WrapStyle;
         let style = match r.text.as_deref().and_then(|t| t.wrap_style.as_deref()) {
             Some("balance") => WrapStyle::Balance,
@@ -1397,11 +1402,15 @@ impl crate::ui::Tree {
             crate::shape::Variations::new(&t.variations)
         });
         let optical_sizing = css.and_then(|t| t.optical_sizing) != Some(false);
+        let palette = css.map_or(Default::default(), |t| {
+            sheet.palette(t.palette.as_deref(), t.family.as_deref())
+        });
         if let crate::layout::Content::Text(t) = self.content_mut(i) {
             t.synthesize_bold = synthesize_bold;
             t.stretch = stretch;
             t.variations = variations;
             t.optical_sizing = optical_sizing;
+            t.palette = palette;
             t.wrap_style = style;
             t.overflow_wrap = overflow_wrap;
             t.align_last = align_last;
@@ -1672,7 +1681,11 @@ impl Resolved {
     /// Its text as one span styled by its CSS (`font-style`,
     /// `text-decoration`, `-webkit-text-stroke`, `-webkit-text-fill-color`)
     /// when the plain text path cannot draw that style.
-    pub fn css_span(&self, text: &str) -> Option<(crate::TextSpan, crate::TextSpanStyle)> {
+    pub fn css_span(
+        &self,
+        text: &str,
+        sheet: &crate::css::at_rules::Sheet,
+    ) -> Option<(crate::TextSpan, crate::TextSpanStyle)> {
         let t = self.text.as_deref().filter(|t| t.rich())?;
         let span = crate::TextSpan {
             name: "css".into(),
@@ -1688,6 +1701,10 @@ impl Resolved {
             variations: (!t.variations.is_empty())
                 .then(|| crate::shape::Variations::new(&t.variations)),
             optical_sizing: t.optical_sizing,
+            palette: t
+                .palette
+                .is_some()
+                .then(|| sheet.palette(t.palette.as_deref(), t.family.as_deref())),
             synthesis: (t.synthesis[0].is_some() || t.synthesis[1].is_some()).then(|| {
                 crate::Synth {
                     bold: t.synthesis[0] != Some(false),

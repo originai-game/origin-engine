@@ -86,6 +86,8 @@ pub struct TextSpanStyle {
     pub ruby_role: Option<RubyRole>,
     /// CSS `ruby-position` on that element.
     pub ruby_position: Option<RubyPosition>,
+    /// A colour face's palette (CSS `font-palette`).
+    pub palette: Option<crate::shape::Palette>,
 }
 
 /// An inline object of a text (a document's `<img>`, `<og-icon>` or `<kbd
@@ -179,6 +181,7 @@ impl Ui {
                 stretch: None,
                 variations: Default::default(),
                 optical_sizing: true,
+                palette: Default::default(),
                 synth: Default::default(),
                 oblique: None,
                 underline: false,
@@ -290,6 +293,9 @@ impl Ui {
                 }
                 if let Some(o) = style.optical_sizing {
                     s.optical_sizing = o;
+                }
+                if let Some(p) = style.palette {
+                    s.palette = p;
                 }
                 if let Some(underline) = style.underline {
                     s.underline = underline;

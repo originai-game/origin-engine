@@ -54,6 +54,8 @@ pub struct RichSpan {
     /// whether its `opsz` follows the size (`font-optical-sizing: auto`).
     pub variations: crate::shape::Variations,
     pub optical_sizing: bool,
+    /// A colour face's palette (CSS `font-palette`).
+    pub palette: crate::shape::Palette,
     /// The bold and slant no real face of the style draws, synthesised.
     pub synth: crate::ui::Synth,
     /// A synthesised oblique's angle, degrees (CSS `font-style: oblique
@@ -85,6 +87,7 @@ impl RichSpan {
         crate::FontQuery::new(self.weight, self.italic)
             .at_width(self.stretch)
             .with_axes(self.variations, self.optical_sizing, self.step.size)
+            .in_palette(self.palette)
     }
 
     /// Its text's setting down a vertical line `v`: under its own

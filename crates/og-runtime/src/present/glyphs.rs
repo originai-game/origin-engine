@@ -282,8 +282,8 @@ struct Image<'a> {
     field: Option<&'a [u8]>,
 }
 
-/// Gives each instance of a variable run-time font the UI made since the
-/// last frame (`og_ui::shape::FontFile::take_instances`) a font of its
+/// Gives each instance of a run-time font the UI made since the last
+/// frame (at a variable font's location, or in another palette) (`og_ui::shape::FontFile::take_instances`) a font of its
 /// own: a first page with no glyph (the atlas is the default location's)
 /// whose glyphs are rendered from the instance like any run-time font's.
 /// The UI draws it from the frame after.
@@ -310,13 +310,12 @@ fn instances(rs: &mut RenderState) {
                 ..first.clone()
             });
             let rf = &rs.runtime_fonts[&render];
-            let font = RuntimeFont::new(
-                file.clone(),
-                rf.em_px,
-                rf.px_range,
-                rf.pixel,
-                rf.color.clone(),
-            );
+            // An instance in another palette paints its colour glyphs in it.
+            let color = rf.color.clone().map(|c| og_bundle::runtime::ColorRuntime {
+                palette: file.palette().map_or(c.palette, <[_]>::to_vec),
+                ..c
+            });
+            let font = RuntimeFont::new(file.clone(), rf.em_px, rf.px_range, rf.pixel, color);
             rs.fonts
                 .push(super::extract::FontPages { pages: vec![head] });
             rs.runtime_fonts.insert(rs.fonts.len() - 1, font);
@@ -809,7 +808,7 @@ mod tests {
         rs.fonts.push(FontPages { pages: vec![first] });
         rs.runtime_fonts
             .insert(0, RuntimeFont::new(file.clone(), 48.0, 16.0, 0, None));
-        let instance = file.instance(&[(*b"wght", 650.0)]);
+        let instance = file.instance(&[(*b"wght", 650.0)], og_ui::shape::Palette::NONE);
         assert!(instance.is_instance());
         assert_eq!(instance.advance('A'), Some(0.8));
         rs.glyphs_settle = true;
@@ -844,6 +843,86 @@ mod tests {
             a.plane_bounds,
             default.plane
         );
+    }
+
+    /// A colour font's instance in another palette (CSS `font-palette`)
+    /// gets a font of its own whose colour glyphs are painted in that
+    /// palette, not the one the font was cooked in: the test font's A is
+    /// entry 0 with entry 1 over its right half, red and green as cooked,
+    /// blue and yellow in its light palette.
+    #[test]
+    fn a_palette_instance_paints_its_colour_glyphs_in_its_palette() {
+        use og_ui::shape::{Palette, PaletteBase, PaletteSpec};
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../og-ui/tests/fixtures/palette-test.ttf"
+        );
+        let file = FontFile::new(Arc::new(std::fs::read(path).unwrap())).unwrap();
+        let mut rs = RenderState::new(serde_json::Value::Null);
+        let atlas = rs.scene.add_texture(TextureData {
+            width: 4,
+            height: 4,
+            rgba: vec![0; 64],
+            color_space: ColorSpace::Linear,
+            mips: Mips::None,
+        });
+        let first = rs.scene.add_font(og_render::MsdfFont {
+            atlas,
+            distance_range: 16.0,
+            foreground: false,
+            silhouette: false,
+            line_height: 1.2,
+            glyphs: Vec::new(),
+            kerning: Vec::new(),
+        });
+        rs.fonts.push(FontPages { pages: vec![first] });
+        let cooked = og_bundle::runtime::ColorRuntime {
+            em_px: 32.0,
+            palette: vec![[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]],
+        };
+        rs.runtime_fonts.insert(
+            0,
+            RuntimeFont::new(file.clone(), 48.0, 16.0, 0, Some(cooked)),
+        );
+        let light = Palette::new(PaletteSpec {
+            base: PaletteBase::Light,
+            overrides: Vec::new(),
+        });
+        let instance = file.instance(&[], light);
+        assert!(instance.is_instance());
+        instance.advance('A');
+        rs.glyphs_settle = true;
+        assert!(generate(&mut rs) > 0);
+        let head = instance.handle().expect("the host made its font");
+        let render = rs
+            .fonts
+            .iter()
+            .position(|p| p.pages[0] == head)
+            .expect("listed");
+        // A's image on the instance's colour page, sampled a quarter in
+        // from either side at mid-height.
+        let (glyph, texture) = rs.fonts[render]
+            .pages
+            .iter()
+            .find_map(|&p| {
+                let font = rs.scene.font(p)?;
+                let g = font.glyphs.iter().find(|g| {
+                    g.key == GlyphKey::Char('A') && g.atlas_bounds[2] > g.atlas_bounds[0]
+                })?;
+                (font.distance_range == 0.0).then_some((*g, font.atlas))
+            })
+            .expect("A on a colour page");
+        let tex = rs.scene.texture(texture).unwrap();
+        let sample = |x: f32| {
+            let [l, b, r, t] = glyph.plane_bounds;
+            let [ax, ay, bx, by] = glyph.atlas_bounds;
+            let col = ax + (x - l) / (r - l) * (bx - ax);
+            let row = ay + (t - 0.4) / (t - b) * (by - ay);
+            let o = (row as usize * tex.width as usize + col as usize) * 4;
+            [tex.rgba[o], tex.rgba[o + 1], tex.rgba[o + 2]]
+        };
+        assert_eq!(sample(0.25), [0, 0, 255]);
+        assert_eq!(sample(0.75), [255, 255, 0]);
     }
 
     /// One batch that fills more than a page (the kit's ja ability cards:

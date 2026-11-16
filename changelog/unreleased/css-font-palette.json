@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui",
+      "summary": "font-palette and @font-palette-values (CSS Fonts 4 \u00a79): a run-time colour font (color true, runtime true) is drawn in the CPAL palette font-palette picks: light, dark, or a named @font-palette-values rule for the text's family with its base-palette and override-colors. The text is drawn with an instance of the font whose colour glyphs the host paints in that palette from the frame after it first appears."
+    }
+  ]
+}

@@ -232,6 +232,8 @@ pub struct TextContent {
     /// Whether a variable face's `opsz` axis follows its size (CSS
     /// `font-optical-sizing: auto`, the initial value).
     pub optical_sizing: bool,
+    /// A colour face's palette (CSS `font-palette`).
+    pub palette: crate::shape::Palette,
 }
 
 /// CSS `text-wrap-style` (CSS Text 4 §6.2): `stable` lays out as `auto`.
@@ -357,6 +359,7 @@ impl<'a> UsedText<'a> {
         crate::FontQuery::new(self.step.weight, false)
             .at_width(self.stretch)
             .with_axes(self.variations, self.optical_sizing, self.step.size)
+            .in_palette(self.palette)
     }
 
     /// The metrics of the face it is drawn in: its role's nearest its

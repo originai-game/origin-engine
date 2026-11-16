@@ -1006,7 +1006,7 @@ impl Ui {
                         .unwrap_or_default()
                 })
                 .response;
-        } else if let Some((span, style)) = r.css_span(&text) {
+        } else if let Some((span, style)) = r.css_span(&text, &doc.sheet) {
             resp = self
                 .rich_text_spans(
                     id.as_str(),
@@ -1031,7 +1031,7 @@ impl Ui {
                 } else {
                     self.apply_label(i, &text, desc);
                 }
-                self.tree.css_text_content(i, styled);
+                self.tree.css_text_content(i, styled, &doc.sheet);
             }
         }
         Some((resp, generated))

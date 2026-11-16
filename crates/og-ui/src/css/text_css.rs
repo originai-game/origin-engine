@@ -55,6 +55,7 @@ pub(crate) const INHERITED: &[&str] = &[
     "font-variation-settings",
     "font-kerning",
     "font-optical-sizing",
+    "font-palette",
     "font-synthesis-weight",
     "font-synthesis-style",
     "font-synthesis-small-caps",
@@ -776,6 +777,7 @@ fn check(name: &str, v: &str) -> Result<(), String> {
         "font-language-override" => v == "normal" || v.starts_with('"'),
         "font-feature-settings" => v == "normal" || feature_settings(v).is_ok(),
         "font-variation-settings" => v == "normal" || variation_settings(v).is_ok(),
+        "font-palette" => matches!(v, "normal" | "light" | "dark") || v.starts_with("--"),
         "text-underline-position" => {
             return words_in(name, v, &["auto", "from-font", "under", "left", "right"]);
         }
@@ -1116,6 +1118,10 @@ pub struct TextCss {
     pub variations: Vec<([u8; 4], f32)>,
     pub kerning: Option<bool>,
     pub optical_sizing: Option<bool>,
+    /// `font-palette`: `light`, `dark` or an `@font-palette-values` name
+    /// (`None`: `normal`), resolved against the document's sheet
+    /// ([`super::at_rules::Sheet::palette`]).
+    pub palette: Option<String>,
     pub synthesis: [Option<bool>; 4],
     pub decoration: Decoration,
     pub stroke: Option<(f32, Option<Srgba>)>,
@@ -1342,6 +1348,7 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         justify: get("text-justify"),
         kerning: get("font-kerning").map(|v| v != "none"),
         optical_sizing: get("font-optical-sizing").map(|v| v != "none"),
+        palette: get("font-palette").filter(|v| v != "normal"),
         caret: color(get("caret-color")),
         caret_shape: get("caret-shape").map(|v| match v.as_str() {
             "bar" => CaretShape::Bar,

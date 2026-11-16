@@ -478,7 +478,8 @@ pub struct Synth {
 /// its width (`font-stretch`, `font-width`) in tenths of a percent of the
 /// normal width; and of a variable face (§7.2) its variation settings
 /// (`font-variation-settings`) and its optical size in tenths of a CSS
-/// px (`font-optical-sizing: auto`, the text's size; 0: `none`).
+/// px (`font-optical-sizing: auto`, the text's size; 0: `none`); and of a
+/// colour face its palette (`font-palette`, §9).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FontQuery {
     pub weight: u16,
@@ -486,6 +487,7 @@ pub struct FontQuery {
     pub stretch: u16,
     pub variations: crate::shape::Variations,
     pub optical: u16,
+    pub palette: crate::shape::Palette,
 }
 
 impl FontQuery {
@@ -500,7 +502,13 @@ impl FontQuery {
             stretch: Self::NORMAL_WIDTH,
             variations: crate::shape::Variations::NONE,
             optical: 0,
+            palette: crate::shape::Palette::NONE,
         }
+    }
+
+    /// In a colour face's `palette`.
+    pub fn in_palette(self, palette: crate::shape::Palette) -> FontQuery {
+        FontQuery { palette, ..self }
     }
 
     /// With a variable face's settings, and its optical size at `size`
@@ -853,6 +861,7 @@ impl Fonts {
         let face = FontQuery {
             variations: crate::shape::Variations::NONE,
             optical: 0,
+            palette: crate::shape::Palette::NONE,
             ..query
         };
         let (font, synth, (weight, stretch)) = self.face_styled(role, face, text);
@@ -864,14 +873,15 @@ impl Fonts {
         (self.instanced(font, drawn).unwrap_or(font), synth)
     }
 
-    /// `font` at its instance at `query`'s axes; `None` for a static face
-    /// and one at its default location.
+    /// `font` at its instance at `query`'s axes and palette; `None` for a
+    /// static face without colour glyphs, and one at its default location
+    /// in its cooked palette.
     fn instanced(&self, font: &UiFont, query: FontQuery) -> Option<&UiFont> {
         let file = font.metrics.file.as_ref()?;
-        if file.axes().is_empty() {
+        if file.axes().is_empty() && !file.is_colour() {
             return None;
         }
-        let instance = file.instance(&query.axes());
+        let instance = file.instance(&query.axes(), query.palette);
         if !instance.is_instance() {
             return None;
         }

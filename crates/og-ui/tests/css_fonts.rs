@@ -22,6 +22,14 @@
 //!   synthesised on top of it, or an instance drawn with the default
 //!   location's font →
 //!   `a_variable_face_is_drawn_at_the_axes_css_sets`
+//! - a COLRv0 layer painted in the wrong palette entry, a COLRv1 gradient
+//!   painted flat or reversed, or a foreground layer painted in a palette
+//!   colour → `colr_glyphs_paint_their_layers_and_gradients_in_colour`
+//! - `font-palette` ignored, `light` or `dark` taking the wrong CPAL
+//!   palette, an `@font-palette-values` applied to a family it does not
+//!   list, its overrides or base dropped, an index past the font's
+//!   palettes not falling back to the first, or a palette not inherited →
+//!   `font_palette_draws_a_colour_face_in_the_palette_css_picks`
 
 use crate::support::Doc;
 use og_draw::FontHandle;
@@ -36,6 +44,27 @@ const GARAMOND: &str = "tests/fixtures/ui-text/assets/fonts/EBGaramond-Medium.tt
 /// `opsz` (8, 14, 72 → 700, 600, 400), D by `GRAD` (-100, 0, 100 → 500,
 /// 600, 800); E, 500, by none.
 const AXES: &str = "crates/og-ui/tests/fixtures/axes-test.ttf";
+/// A colour font (`fixtures/make-palette-font.py`), each glyph an em wide
+/// and 0.8 tall: A a COLRv0 square in entry 0 under a right half in entry
+/// 1, B a COLRv1 linear gradient from entry 0 at its left to entry 1 at its
+/// right, C a COLRv0 layer in the text's colour. Three CPAL palettes:
+/// 0 red and green, 1 blue and yellow (marked light), 2 white and black
+/// (marked dark).
+const PALETTE: &str = "crates/og-ui/tests/fixtures/palette-test.ttf";
+
+/// The sRGB pixel at (`x`, `y`) em from the pen of a colour glyph's image
+/// painted at `em_px`.
+fn pixel(image: &og_ui::colr::ColorImage, rgba: &[u8], em_px: f32, x: f32, y: f32) -> [u8; 4] {
+    let col = ((x - image.plane[0]) * em_px) as usize;
+    let row = ((image.plane[3] - y) * em_px) as usize;
+    let o = (row * image.width as usize + col) * 4;
+    rgba[o..o + 4].try_into().unwrap()
+}
+
+/// Channels within 2 of `want`'s.
+fn near_rgb(got: [u8; 4], want: [u8; 3]) -> bool {
+    got[..3].iter().zip(want).all(|(&g, w)| g.abs_diff(w) <= 2) && got[3] == 255
+}
 
 /// The font at `path` (from the repository's root), shaped from its file,
 /// drawn under handle `slot`.
@@ -405,4 +434,140 @@ fn a_variable_face_is_drawn_at_the_axes_css_sets() {
     // declared 400 is synthesised, thickened twice.
     assert_eq!(drawn(&d, "A700").len(), 1, "no synthesised bold");
     assert_eq!(drawn(&d, "AFixed").len(), 2, "a synthesised bold");
+}
+
+/// COLRv0 (OpenType 1.8's layers, each a glyph in one palette entry, the
+/// later on top) and COLRv1 (paint graphs: here a linear gradient between
+/// two palette entries, interpolated in sRGB as browsers paint it) draw a
+/// colour font's glyphs in colour; a layer in entry 0xFFFF takes the
+/// text's colour, painted black and white so the renderer mixes it.
+#[test]
+fn colr_glyphs_paint_their_layers_and_gradients_in_colour() {
+    let bytes = std::fs::read(format!("{}/../../{PALETTE}", env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let em = 32.0;
+    let palette = [[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]];
+    let paint = |c: char| {
+        og_ui::colr::render_runtime(&bytes, og_draw::GlyphKey::Char(c), em, &palette)
+            .unwrap_or_else(|| panic!("{c} paints"))
+    };
+    // v0: entry 0 under, entry 1 over the right half.
+    let a = paint('A');
+    let at = |g: &og_ui::colr::RuntimeColor, x| pixel(&g.image, &g.image.rgba, em, x, 0.4);
+    assert!(near_rgb(at(&a, 0.25), [255, 0, 0]), "{:?}", at(&a, 0.25));
+    assert!(near_rgb(at(&a, 0.75), [0, 255, 0]), "{:?}", at(&a, 0.75));
+    assert!(!a.image.foreground);
+    // v1: red at the left edge to green at the right, half and half between.
+    let b = paint('B');
+    let (left, middle, right) = (at(&b, 0.05), at(&b, 0.5), at(&b, 0.95));
+    assert!(left[0] > 230 && left[1] < 25, "{left:?}");
+    assert!(right[1] > 230 && right[0] < 25, "{right:?}");
+    assert!(
+        (115..=140).contains(&middle[0]) && (115..=140).contains(&middle[1]) && middle[2] == 0,
+        "{middle:?}"
+    );
+    // The text's colour: black, with a white twin.
+    let c = paint('C');
+    assert!(c.image.foreground);
+    assert!(near_rgb(at(&c, 0.5), [0, 0, 0]));
+    let white = c.white.as_deref().expect("its white twin");
+    assert!(near_rgb(
+        pixel(&c.image, white, em, 0.5, 0.4),
+        [255, 255, 255]
+    ));
+    // A glyph without a colour paint is not painted in colour.
+    assert!(
+        og_ui::colr::render_runtime(&bytes, og_draw::GlyphKey::Char('D'), em, &palette).is_none()
+    );
+}
+
+/// CSS Fonts 4 §9: `font-palette` draws a colour face in another CPAL
+/// palette: `light` and `dark` the first the font marks for that
+/// background, a name the last `@font-palette-values` of that name whose
+/// `font-family` lists the text's family, from its `base-palette` (an
+/// index past the font's palettes: its first) with its `override-colors`
+/// (an entry past the palette's ignored); a name no rule for the family
+/// has is `normal`. The palette is inherited. A text in another palette
+/// is drawn with an instance of its own whose colour glyphs the host
+/// paints in it, from the frame after it first appears.
+#[test]
+fn font_palette_draws_a_colour_face_in_the_palette_css_picks() {
+    let pal = face(PALETTE, 8);
+    let file = pal.metrics.file.clone().expect("its file");
+    let base = pal.handle.unwrap();
+    let mut d = doc(
+        vec![family("Pal", (400, 400), pal)],
+        r#"<p id="N">AB</p><p id="L">AB</p><p id="D">AB</p><p id="Brand">AB</p><p id="Other">AB</p>
+<p id="Far">AB</p><div id="Up"><p id="Inherit">AB</p></div><p id="Rich">AB</p>"#,
+        r#"#Root { font-family: "Pal"; }
+@font-palette-values --brand { font-family: "Pal", Elsewhere; base-palette: 1; override-colors: 1 #808080, 7 red; }
+@font-palette-values --brand { font-family: Elsewhere; base-palette: 2; }
+@font-palette-values --other { font-family: Elsewhere; base-palette: 2; }
+@font-palette-values --far { font-family: Pal; base-palette: 9; }
+#L { font-palette: light; } #D { font-palette: dark; } #Brand { font-palette: --brand; }
+#Other { font-palette: --other; } #Far { font-palette: --far; } #Up { font-palette: dark; }
+#Rich { font-palette: light; text-decoration: underline; }"#,
+    );
+    assert!(
+        drawn(&d, "L").is_empty(),
+        "blank until the host made its font"
+    );
+    let made = file.take_instances();
+    for (i, f) in made.iter().enumerate() {
+        f.set_handle(FontHandle::from_index(100 + i));
+    }
+    d.step(InputFrame::default());
+    // The palette each text is drawn in (`None`: the cooked face).
+    let palette_of = |id: &str| -> Option<Vec<[u8; 4]>> {
+        let t = drawn(&d, id);
+        assert!(!t.is_empty(), "#{id} draws");
+        let font = t[0].font;
+        assert!(t.iter().all(|t| t.font == font), "#{id}: {t:?}");
+        if font == base {
+            return None;
+        }
+        let instance = made
+            .iter()
+            .find(|f| f.handle() == Some(font))
+            .expect("an instance");
+        Some(
+            instance
+                .palette()
+                .expect("in a palette")
+                .iter()
+                .map(|c| c.map(|v| (v * 255.0).round() as u8))
+                .collect(),
+        )
+    };
+    let (red, green) = ([255, 0, 0, 255], [0, 255, 0, 255]);
+    let (blue, yellow) = ([0, 0, 255, 255], [255, 255, 0, 255]);
+    let (white, black) = ([255, 255, 255, 255], [0, 0, 0, 255]);
+    assert_eq!(palette_of("N"), None);
+    assert_eq!(palette_of("L"), Some(vec![blue, yellow]));
+    assert_eq!(palette_of("D"), Some(vec![white, black]));
+    assert_eq!(palette_of("Brand"), Some(vec![blue, [128, 128, 128, 255]]));
+    assert_eq!(palette_of("Other"), None);
+    assert_eq!(palette_of("Far"), Some(vec![red, green]));
+    assert_eq!(palette_of("Inherit"), Some(vec![white, black]));
+    assert_eq!(palette_of("Rich"), Some(vec![blue, yellow]));
+    // Its colour glyphs paint in it: A's left in entry 0, its right in 1.
+    let bytes = file.bytes();
+    let light = made
+        .iter()
+        .find(|f| f.handle() == Some(drawn(&d, "L")[0].font))
+        .unwrap();
+    let a = og_ui::colr::render_runtime(
+        bytes,
+        og_draw::GlyphKey::Char('A'),
+        32.0,
+        light.palette().unwrap(),
+    )
+    .unwrap();
+    assert!(near_rgb(
+        pixel(&a.image, &a.image.rgba, 32.0, 0.25, 0.4),
+        [0, 0, 255]
+    ));
+    assert!(near_rgb(
+        pixel(&a.image, &a.image.rgba, 32.0, 0.75, 0.4),
+        [255, 255, 0]
+    ));
 }

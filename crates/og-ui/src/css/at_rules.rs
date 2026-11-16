@@ -21,6 +21,8 @@ pub struct Sheet {
     /// `@property` registrations by custom property name.
     pub properties: Vec<(String, Property)>,
     pub counter_styles: Vec<(String, CounterStyle)>,
+    /// `@font-palette-values --name` rules in source order.
+    pub palettes: Vec<FontPaletteValues>,
     /// `@position-try --name` fallbacks: their declarations, in order.
     pub position_tries: Vec<(String, Vec<StyleDeclaration>)>,
     /// Cascade layer names in precedence order, lowest first (a layer's
@@ -56,6 +58,19 @@ pub struct FontFace {
     /// `unicode-range` as inclusive code point ranges; empty: all.
     pub unicode_range: Vec<(u32, u32)>,
     pub display: String,
+}
+
+/// One `@font-palette-values` (CSS Fonts 4 §9.1): a palette `font-palette`
+/// names, for the families it lists.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FontPaletteValues {
+    pub name: String,
+    /// `font-family`: the families it applies to, as written.
+    pub families: Vec<String>,
+    /// `base-palette` (`None`: the font's first palette).
+    pub base: Option<crate::shape::PaletteBase>,
+    /// `override-colors`: palette entries and their colours, straight sRGB.
+    pub overrides: Vec<(u16, [u8; 4])>,
 }
 
 /// One `@property` registration (CSS Properties and Values API).
@@ -452,6 +467,106 @@ impl Sheet {
         self.position_tries.retain(|(n, _)| n != name);
         self.position_tries.push((name.to_string(), declarations));
         Ok(())
+    }
+
+    /// `@font-palette-values --name { … }`.
+    pub fn font_palette_values(&mut self, name: &str, body: &str) -> Result<(), String> {
+        let name = name.trim();
+        if !name.starts_with("--") || name.len() < 3 || name.contains(char::is_whitespace) {
+            return Err(format!(
+                "@font-palette-values takes a dashed name (--name), not '{name}'"
+            ));
+        }
+        let mut rule = FontPaletteValues {
+            name: name.to_string(),
+            families: Vec::new(),
+            base: None,
+            overrides: Vec::new(),
+        };
+        for d in super::variables::declarations(body)? {
+            let v = d.source.trim();
+            match d.name.as_str() {
+                "font-family" => {
+                    rule.families = v
+                        .split(',')
+                        .map(|f| unquote(f.trim()))
+                        .filter(|f| !f.is_empty())
+                        .collect();
+                }
+                "base-palette" => {
+                    rule.base = Some(match v {
+                        "light" => crate::shape::PaletteBase::Light,
+                        "dark" => crate::shape::PaletteBase::Dark,
+                        n => crate::shape::PaletteBase::Index(n.parse().map_err(|_| {
+                            format!("base-palette takes light, dark or an index, not {n}")
+                        })?),
+                    });
+                }
+                "override-colors" => {
+                    for entry in v.split(',') {
+                        let entry = entry.trim();
+                        let (index, colour) =
+                            entry.split_once(char::is_whitespace).ok_or_else(|| {
+                                format!("override-colors takes an index and a colour, not {entry}")
+                            })?;
+                        let index: u16 = index.parse().map_err(|_| {
+                            format!("override-colors: '{index}' is not a palette index")
+                        })?;
+                        let c = crate::paint::svg::color(colour)
+                            .map_err(|e| format!("override-colors: {e}"))?;
+                        rule.overrides
+                            .push((index, c.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8)));
+                    }
+                }
+                other => {
+                    return Err(format!(
+                        "@font-palette-values takes font-family, base-palette and override-colors, not {other}"
+                    ));
+                }
+            }
+        }
+        self.palettes.push(rule);
+        Ok(())
+    }
+
+    /// The palette `font-palette: value` gives a text in `families`: `light`
+    /// and `dark` as they say, and a name as the last
+    /// `@font-palette-values` of that name whose `font-family` lists one
+    /// of the text's named families (none: `normal`, CSS Fonts 4 §9.2).
+    pub fn palette(
+        &self,
+        value: Option<&str>,
+        families: Option<&[crate::FontFamily]>,
+    ) -> crate::shape::Palette {
+        use crate::shape::{Palette, PaletteBase, PaletteSpec};
+        let plain = |base| {
+            Palette::new(PaletteSpec {
+                base,
+                overrides: Vec::new(),
+            })
+        };
+        match value {
+            None | Some("normal") => Palette::NONE,
+            Some("light") => plain(PaletteBase::Light),
+            Some("dark") => plain(PaletteBase::Dark),
+            Some(name) => {
+                let named = |f: &str| {
+                    families.unwrap_or_default().iter().any(
+                        |n| matches!(n, crate::FontFamily::Named(n) if n.eq_ignore_ascii_case(f)),
+                    )
+                };
+                self.palettes
+                    .iter()
+                    .rev()
+                    .find(|r| r.name == name && r.families.iter().any(|f| named(f)))
+                    .map_or(Palette::NONE, |r| {
+                        Palette::new(PaletteSpec {
+                            base: r.base.unwrap_or(PaletteBase::Index(0)),
+                            overrides: r.overrides.clone(),
+                        })
+                    })
+            }
+        }
     }
 
     pub fn counter(&self, name: &str) -> Option<&CounterStyle> {

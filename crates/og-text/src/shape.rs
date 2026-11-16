@@ -80,6 +80,63 @@ impl Variations {
     }
 }
 
+/// The CPAL palette a colour face's palette starts from (CSS
+/// `@font-palette-values`' `base-palette`, `font-palette: light | dark`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PaletteBase {
+    /// The palette at this index (the font's first when it has fewer).
+    Index(u16),
+    /// The first palette the font marks usable on a light background,
+    /// else its first.
+    Light,
+    /// The first palette the font marks usable on a dark background, else
+    /// its first.
+    Dark,
+}
+
+/// A colour face's palette (CSS Fonts 4 §9): a CPAL palette and the
+/// entries `override-colors` replaces, each an index and straight sRGB.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PaletteSpec {
+    pub base: PaletteBase,
+    pub overrides: Vec<(u16, [u8; 4])>,
+}
+
+/// A text's palette (CSS `font-palette`), interned as [`Variations`] is so
+/// a font query stays a small hashable value. A face without COLR glyphs
+/// ignores it ([`FontFile::instance`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Palette(u32);
+
+/// Every distinct palette a [`Palette`] has carried, by its id less one.
+static PALETTES: Mutex<Vec<Arc<PaletteSpec>>> = Mutex::new(Vec::new());
+
+impl Palette {
+    /// `normal`: the palette the font was cooked in.
+    pub const NONE: Palette = Palette(0);
+
+    pub fn new(spec: PaletteSpec) -> Palette {
+        let mut all = PALETTES.lock().unwrap_or_else(|e| e.into_inner());
+        let id = match all.iter().position(|s| **s == spec) {
+            Some(i) => i,
+            None => {
+                all.push(Arc::new(spec));
+                all.len() - 1
+            }
+        };
+        Palette(id as u32 + 1)
+    }
+
+    /// Its palette (`None`: `normal`).
+    pub fn spec(self) -> Option<Arc<PaletteSpec>> {
+        let i = self.0.checked_sub(1)?;
+        Some(PALETTES.lock().unwrap_or_else(|e| e.into_inner())[i as usize].clone())
+    }
+}
+
+/// An instance's normalised coordinates' bits and its palette's id.
+type InstanceKey = (Vec<i16>, u32);
+
 /// One axis of a variable font: its tag, and its minimum, default and
 /// maximum in user space.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -287,8 +344,12 @@ pub struct FontFile {
     coords: Vec<NormalizedCoord>,
     #[cfg(feature = "shaping")]
     instance: Option<harfrust::ShaperInstance>,
-    /// Instances made of it, by their normalised coordinates' bits.
-    instances: Mutex<BTreeMap<Vec<i16>, Arc<FontFile>>>,
+    /// The colours an instance in another palette paints its COLR glyphs
+    /// in (`None`: the cooked palette).
+    palette: Option<Arc<[[f32; 4]]>>,
+    /// Instances made of it, by their normalised coordinates' bits and
+    /// their palette.
+    instances: Mutex<BTreeMap<InstanceKey, Arc<FontFile>>>,
     /// Instances made since the host last took them ([`FontFile::take_instances`]).
     fresh: Mutex<Vec<Arc<FontFile>>>,
     /// The font an instance is drawn with, once the host made its pages
@@ -331,6 +392,7 @@ impl PartialEq for FontFile {
         self.runtime == other.runtime
             && Arc::ptr_eq(&self.ttf, &other.ttf)
             && self.coords == other.coords
+            && self.palette == other.palette
     }
 }
 
@@ -351,7 +413,7 @@ impl FontFile {
     }
 
     fn read(ttf: Arc<Vec<u8>>, runtime: bool) -> Option<Arc<FontFile>> {
-        Self::read_at(ttf, runtime, Vec::new(), Vec::new())
+        Self::read_at(ttf, runtime, Vec::new(), Vec::new(), None)
     }
 
     fn read_at(
@@ -359,6 +421,7 @@ impl FontFile {
         runtime: bool,
         variations: Vec<Variation>,
         coords: Vec<NormalizedCoord>,
+        palette: Option<Arc<[[f32; 4]]>>,
     ) -> Option<Arc<FontFile>> {
         let face = skrifa::FontRef::new(&ttf).ok()?;
         let metrics = face.metrics(Size::unscaled(), LocationRef::new(&coords));
@@ -408,6 +471,7 @@ impl FontFile {
             coords,
             #[cfg(feature = "shaping")]
             instance,
+            palette,
             instances: Mutex::new(BTreeMap::new()),
             fresh: Mutex::new(Vec::new()),
             handle: Mutex::new(None),
@@ -439,30 +503,86 @@ impl FontFile {
 
     /// Whether it is an instance away from the default location.
     pub fn is_instance(&self) -> bool {
-        !self.coords.is_empty()
+        !self.coords.is_empty() || self.palette.is_some()
+    }
+
+    /// The colours an instance paints its COLR glyphs in (`None`: the
+    /// cooked palette).
+    pub fn palette(&self) -> Option<&[[f32; 4]]> {
+        self.palette.as_deref()
+    }
+
+    /// `spec`'s colours in this font, straight sRGB 0 to 1 (`None`: it
+    /// has no CPAL palette). A base index past its palettes takes its
+    /// first, as does `light` or `dark` where it marks none; an override
+    /// past the palette's entries is ignored (CSS Fonts 4 §9.1).
+    pub fn colours(&self, spec: &PaletteSpec) -> Option<Vec<[f32; 4]>> {
+        let face = skrifa::FontRef::new(&self.ttf).ok()?;
+        let palettes = face.color_palettes();
+        let n = palettes.len();
+        let marked = |bits: u32| {
+            (0..n).find(|&i| {
+                palettes
+                    .get(i)
+                    .and_then(|p| p.palette_type())
+                    .is_some_and(|t| t.bits() & bits != 0)
+            })
+        };
+        let index = match spec.base {
+            PaletteBase::Index(i) if i < n => i,
+            PaletteBase::Index(_) => 0,
+            PaletteBase::Light => marked(1).unwrap_or(0),
+            PaletteBase::Dark => marked(2).unwrap_or(0),
+        };
+        let mut out: Vec<[f32; 4]> = palettes
+            .get(index)?
+            .colors()
+            .iter()
+            .map(|c| [c.red, c.green, c.blue, c.alpha].map(|v| f32::from(v) / 255.0))
+            .collect();
+        for &(i, c) in &spec.overrides {
+            if let Some(e) = out.get_mut(usize::from(i)) {
+                *e = c.map(|v| f32::from(v) / 255.0);
+            }
+        }
+        Some(out)
     }
 
     /// The instance at `settings` (each clamped to its axis, an unknown
-    /// axis ignored, an axis not named at its default): itself where that
-    /// is the default location, which a static font always is. An
-    /// instance is made once per location and listed for the host
+    /// axis ignored, an axis not named at its default) painting its COLR
+    /// glyphs in `palette` ([`FontFile::colours`]): itself where that is
+    /// the default location in the cooked palette, which a static font
+    /// without colour glyphs always is. An instance is made once per
+    /// location and palette and listed for the host
     /// ([`FontFile::take_instances`]); it renders its glyphs at run time,
     /// so only a font that does (`runtime true`) is varied.
-    pub fn instance(self: &Arc<Self>, settings: &[Variation]) -> Arc<FontFile> {
-        if self.axes.is_empty() || !self.runtime || settings.is_empty() {
+    pub fn instance(self: &Arc<Self>, settings: &[Variation], palette: Palette) -> Arc<FontFile> {
+        let spec = palette.spec().filter(|_| self.colour);
+        let moved = !self.axes.is_empty() && !settings.is_empty();
+        if !self.runtime || (!moved && spec.is_none()) {
             return self.clone();
         }
         let Ok(face) = skrifa::FontRef::new(&self.ttf) else {
             return self.clone();
         };
-        let location = face
-            .axes()
-            .location(settings.iter().map(|(t, v)| (skrifa::Tag::new(t), *v)));
-        let coords = location.coords().to_vec();
-        if coords.iter().all(|c| c.to_bits() == 0) {
+        let mut coords = Vec::new();
+        if moved {
+            let location = face
+                .axes()
+                .location(settings.iter().map(|(t, v)| (skrifa::Tag::new(t), *v)));
+            coords = location.coords().to_vec();
+            if coords.iter().all(|c| c.to_bits() == 0) {
+                coords.clear();
+            }
+        }
+        let colours = spec.and_then(|s| self.colours(&s));
+        if coords.is_empty() && colours.is_none() {
             return self.clone();
         }
-        let key: Vec<i16> = coords.iter().map(|c| c.to_bits()).collect();
+        let key = (
+            coords.iter().map(|c| c.to_bits()).collect::<Vec<i16>>(),
+            if colours.is_some() { palette.0 } else { 0 },
+        );
         let Ok(mut made) = self.instances.lock() else {
             return self.clone();
         };
@@ -474,6 +594,7 @@ impl FontFile {
         let variations: Vec<Variation> = self
             .axes
             .iter()
+            .filter(|_| !coords.is_empty())
             .map(|a| {
                 let v = settings
                     .iter()
@@ -483,7 +604,9 @@ impl FontFile {
                 (a.tag, v)
             })
             .collect();
-        let Some(f) = Self::read_at(self.ttf.clone(), self.runtime, variations, coords) else {
+        let colours = colours.map(Arc::from);
+        let Some(f) = Self::read_at(self.ttf.clone(), self.runtime, variations, coords, colours)
+        else {
             return self.clone();
         };
         made.insert(key, f.clone());
