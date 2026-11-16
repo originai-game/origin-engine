@@ -654,6 +654,17 @@ pub(crate) fn values_with<'r>(
             }),
             (None, Winner::Unset) => unreachable!("unset is a keyword"),
         };
+        // `currentcolor` as the value of `color` is `inherit` (CSS Color 4
+        // §4.4): the element takes its parent's colour, as one that
+        // declares none does (a button's content its plate's ink).
+        if name == "color"
+            && value
+                .as_ref()
+                .is_ok_and(|v| v.trim().eq_ignore_ascii_case("currentcolor"))
+        {
+            out.inherited_reads.insert(name.into());
+            continue;
+        }
         // attr() takes the element's attribute; viewport, root and font
         // units become px; math functions reduce once their variables are
         // known.

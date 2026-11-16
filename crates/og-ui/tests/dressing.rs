@@ -1717,6 +1717,43 @@ fn a_buttons_content_follows_its_ink() {
     }
 }
 
+/// A text role inside a button (a cost's `figure`) is text on the plate, so
+/// it takes the plate's ink, as a figure's ink token inherits from the
+/// button that redefines it; outside a button it keeps the role's ink.
+/// Wrong: the figure kept `--figure-ink` on the primary plate, or every
+/// figure took the button ink.
+#[test]
+fn a_figure_inside_a_button_takes_the_plates_ink() {
+    let mut d = mounted(
+        ui_with_font(test_font()),
+        r##"<meta name="parts" content="t.cost t.figure">
+<column id="Root"><button variant="primary"><div part="t.cost t.figure"><span>Cost</span></div></button><button><span part="t.figure">Plain</span></button><span part="t.figure">Free</span></column>"##,
+        &[],
+        Viewport::new(400.0, 300.0),
+    );
+    let pack = og_ui::style_pack::StylePack::parse(
+        "styles/test",
+        vec![(
+            "styles/test/main.css".into(),
+            ":root { --figure-ink: #0000ff; --button-ink: #ff0000; --button-primary-ink: #00ff00; }".into(),
+        )],
+    )
+    .unwrap();
+    d.ui.set_style_pack(&pack).unwrap();
+    for _ in 0..30 {
+        d.step(InputFrame::default());
+    }
+    let colour = |hex: &str| og_ui::style_file::parse_color(hex).unwrap();
+    for (label, hex) in [
+        ("Cost", "#00ff00"),
+        ("Plain", "#ff0000"),
+        ("Free", "#0000ff"),
+    ] {
+        let got = text_ink(&d, label).unwrap_or_else(|| panic!("{label} drawn"));
+        assert!(near(got, colour(hex)), "{label}: {got:?}, want {hex}");
+    }
+}
+
 /// A quiet or ghost button is text on the surface, so it takes inks of its
 /// own: a pack whose plates are dark in a light scheme inks them dark while
 /// its plate buttons keep a light label. Wrong: a text button hovered in the

@@ -445,10 +445,21 @@ impl Ui {
     }
 
     /// Document content `c` inside a button and what it holds: its text
-    /// that declares no colour and is no part of its own takes `ink`.
+    /// that declares no colour takes `ink`, and so does a part of its own
+    /// whose style declares none (a figure's `color: currentcolor`).
     fn ink_document_content(&mut self, c: usize, ink: Srgba) {
         let n = &self.tree.nodes[c];
-        if n.part().is_some() || n.el.frame.is_some() || n.content_slot != NONE {
+        if n.content_slot != NONE {
+            return;
+        }
+        if let Some(part) = n
+            .part()
+            .or_else(|| n.el.frame.map(crate::StylePart::part_ref))
+            && self
+                .part_values(&part, Some(n.key))
+                .color("color")
+                .is_some()
+        {
             return;
         }
         let declared = self
@@ -880,7 +891,17 @@ impl Ui {
                 carry: false,
                 text_scale: self.css_text_scale(),
             };
-            let mut inherited = (*self.css_root_variables()).clone();
+            // The style's rules for the host read its custom properties: what
+            // its document's elements hand down (a button's `--figure-ink`),
+            // as `var()` reads the element's own computed values.
+            let mut inherited = match host {
+                Some(host) => {
+                    let mut vars = (*host.computed).clone();
+                    vars.properties.clear();
+                    vars
+                }
+                None => (*self.css_root_variables()).clone(),
+            };
             let host_facts = Facts {
                 part: None,
                 own_part: None,
