@@ -1,8 +1,10 @@
-//! Text fragments (URL Fragment Text Directives): a document link's
-//! `#id:~:text=[prefix-,]start[,end][,-suffix]` finds its passage in the
-//! laid-out text, marks every match for `::target-text`, scrolls the first
-//! to the middle of its scroll containers and makes the element holding it
-//! `:target`.
+//! Fragment links (HTML's "scroll to the fragment", URL Fragment Text
+//! Directives): a document link's `#id` scrolls the element with that id to
+//! the start of its scroll containers; `#id:~:text=[prefix-,]start[,end]
+//! [,-suffix]` finds its passage in the laid-out text, marks every match
+//! for `::target-text`, scrolls the first to the middle of its scroll
+//! containers and makes the element holding it `:target` (the id's
+//! element when nothing matches).
 //!
 //! The search reads the text as drawn: each text element's laid-out lines,
 //! a wrapped line's break as its source had it. A term (prefix, start, end
@@ -392,7 +394,7 @@ impl Ui {
         let found = self.tree.find_text(&directives);
         self.interaction.target_text = found.clone();
         let Some(&((key, a), (end_key, _))) = found.first() else {
-            return false;
+            return self.scroll_to_target_id();
         };
         let (Some(i), Some(j)) = (self.tree.index.find(key), self.tree.index.find(end_key)) else {
             return false;
@@ -419,7 +421,35 @@ impl Ui {
         let Some(line) = self.passage_line(i, a) else {
             return false;
         };
-        self.interaction.center_in_scrollers(&self.tree, i, line)
+        self.interaction
+            .scroll_to_fragment(&self.tree, i, line, true)
+    }
+
+    /// HTML's "scroll to the fragment" for a link naming an element by id
+    /// (and a text fragment that matched nothing): the first document
+    /// element with the id, in tree order, scrolled so its scroll-margin
+    /// box starts at each scroller's view (`block: start`, `inline:
+    /// nearest`). Whether an offset moved.
+    fn scroll_to_target_id(&mut self) -> bool {
+        let Some(crate::doc::build::state::FragmentTarget::Id(id)) = &self.docs.state().target
+        else {
+            return false;
+        };
+        let elements = &self.docs.state().memory.retained.by_key;
+        let Some(&i) = self.tree.orders.pre.iter().find(|&&i| {
+            self.tree.nodes[i].id == *id && elements.contains_key(&self.tree.nodes[i].key)
+        }) else {
+            return false;
+        };
+        let n = &self.tree.nodes[i];
+        let (r, m) = (n.placed.rect, n.el.scroll_css.margin);
+        let r = Rect::new(
+            r.x - m[3],
+            r.y - m[0],
+            r.width + m[1] + m[3],
+            r.height + m[0] + m[2],
+        );
+        self.interaction.scroll_to_fragment(&self.tree, i, r, false)
     }
 
     /// The line of text element `i` holding its character `a`, on screen.
@@ -454,12 +484,20 @@ impl Ui {
 }
 
 impl crate::ui::Interaction {
-    /// Moves each scroll container around node `i`, innermost first, so
-    /// `r` stands in the middle of its view along the block axis and is
-    /// shown by the least move across (CSSOM View's scroll into view,
-    /// `block: center`, `inline: nearest`), clamped to its range. Whether
-    /// an offset moved.
-    fn center_in_scrollers(&mut self, tree: &crate::ui::Tree, i: usize, mut r: Rect) -> bool {
+    /// CSSOM View's scroll into view for a fragment: each scroll container
+    /// around node `i`, innermost first, moves so `r` stands in the middle
+    /// of its view (`center`, a text fragment's line) or starts at it (an
+    /// element) along the block axis, and is shown by the least move across
+    /// (`inline: nearest`); the view is inside the container's padding and
+    /// scroll-padding, the offset clamped to its range. Whether an offset
+    /// moved.
+    fn scroll_to_fragment(
+        &mut self,
+        tree: &crate::ui::Tree,
+        i: usize,
+        mut r: Rect,
+        center: bool,
+    ) -> bool {
         let mut moved = false;
         let mut c = tree.nodes[i].parent;
         while c != NONE {
@@ -467,11 +505,16 @@ impl crate::ui::Interaction {
             if cn.el.scroll || cn.el.scroll_x {
                 let pad = cn.layout.used.padding;
                 let p = cn.placed.rect;
-                let view = Rect::new(
-                    p.x + pad.left,
-                    p.y + pad.top,
+                let (w, h) = (
                     (p.width - pad.horizontal()).max(0.0),
                     (p.height - pad.vertical()).max(0.0),
+                );
+                let sp = cn.el.scroll_css.padding_px(w, h);
+                let view = Rect::new(
+                    p.x + pad.left + sp[3],
+                    p.y + pad.top + sp[0],
+                    (w - sp[1] - sp[3]).max(0.0),
+                    (h - sp[0] - sp[2]).max(0.0),
                 );
                 let near = |lo: f32, hi: f32, vlo: f32, vhi: f32| {
                     if hi - lo > vhi - vlo || lo < vlo {
@@ -484,7 +527,11 @@ impl crate::ui::Interaction {
                 };
                 let d = Vec2::new(
                     near(r.x, r.right(), view.x, view.right()),
-                    (r.y + r.height / 2.0) - (view.y + view.height / 2.0),
+                    if center {
+                        (r.y + r.height / 2.0) - (view.y + view.height / 2.0)
+                    } else {
+                        r.y - view.y
+                    },
                 );
                 let at = self.offset(cn.key);
                 let range = Vec2::new(cn.max_scroll_x(), cn.max_scroll()).max(Vec2::ZERO);

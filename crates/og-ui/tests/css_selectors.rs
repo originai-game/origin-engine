@@ -271,13 +271,18 @@ button, input, a { width: 80px; height: 30px; }
 /// finds its passage in the laid-out text, marks it with `::target-text`'s
 /// background and ink, scrolls it to the middle of its scroll container
 /// and makes the element holding it `:target`; with no match, the id
-/// before `:~:` is `:target` and nothing is marked.
+/// before `:~:` is `:target` and nothing is marked. A plain `#id` link
+/// (and one whose text matches nothing) scrolls its element's
+/// scroll-margin box to the start of the scroller's view, inside its
+/// scroll-padding, as HTML's "scroll to the fragment" does.
 ///
 /// Ways it could fail: the first "is" marked though its context does not
 /// fit (a prefix or suffix ignored, or case read), a range stopping at
 /// its first element, the marks or the red ink covering the whole line,
 /// the passage left out of view, `:target` staying on the id when the
-/// text matched or the marks staying after a link that matches nothing.
+/// text matched or the marks staying after a link that matches nothing,
+/// an `#id` left out of view, centred, or placed without its
+/// scroll-margin and the scroller's scroll-padding.
 #[test]
 fn a_text_fragment_marks_scrolls_to_and_targets_its_passage() {
     let doc = r##"<meta name="component" content="tt">
@@ -285,6 +290,7 @@ fn a_text_fragment_marks_scrolls_to_and_targets_its_passage() {
   <a href="#:~:text=Gate-,IS,-shut" id="Go">go</a>
   <a href="#:~:text=gate,open" id="Range">range</a>
   <a href="#Near:~:text=nowhere" id="Miss">miss</a>
+  <a href="#Far" id="Plain">plain</a>
   <div id="Box">
     <p id="Near">this is the gate</p>
     <div class="pad"></div>
@@ -294,7 +300,8 @@ fn a_text_fragment_marks_scrolls_to_and_targets_its_passage() {
 </column>
 <style>
 a { width: 80px; height: 30px; }
-#Box { width: 700px; height: 100px; overflow: auto; scrollbar-width: none; }
+#Box { width: 700px; height: 100px; overflow: auto; scrollbar-width: none; scroll-padding-top: 6px; }
+#Far { scroll-margin-top: 10px; }
 .pad { height: 300px; }
 p { width: max-content; margin: 0; }
 p:target { margin-left: 7px; }
@@ -369,7 +376,10 @@ p:target { margin-left: 7px; }
         "Far's unmarked text on both sides"
     );
     // Scrolled so its line stands in the middle of the box.
-    let (mid, view) = (far.y + far.height / 2.0, boxed.y + boxed.height / 2.0);
+    let (mid, view) = (
+        far.y + far.height / 2.0,
+        boxed.y + 6.0 + (boxed.height - 6.0) / 2.0,
+    );
     assert!((mid - view).abs() < 2.0, "{mid} vs {view}");
 
     // "gate" to the first "open" after it: Near's last word on to Far's
@@ -411,15 +421,18 @@ p:target { margin-left: 7px; }
         "Far's \"the gate is open\": {b:?} in {far:?}"
     );
 
-    // No match: the id is :target, and the marks are gone.
-    let b = d.get("Box");
-    d.step(InputFrame {
-        pointer: Vec2::new(b.x + 50.0, b.y + 50.0),
-        pointer_inside: true,
-        wheel: Vec2::new(0.0, -1000.0),
-        ..InputFrame::default()
-    });
+    // A plain #id: Far's scroll-margin box at the start of the view inside
+    // its scroll-padding (10 + 6 px above its top), not centred.
+    follow(&mut d, "Plain");
+    let (far, boxed) = (d.get("Far"), d.get("Box"));
+    assert_eq!(far.x, base + 7.0, "Far is :target");
+    assert!((far.y - boxed.y - 16.0).abs() < 0.5, "{far:?} in {boxed:?}");
+    assert!(drawn(&d).0.is_empty(), "nothing marked");
+
+    // No match: Near, the id, is :target and scrolled to (the scroller's
+    // first box, at offset 0), and the marks are gone.
     follow(&mut d, "Miss");
+    assert!((d.get("Near").y - d.get("Box").y).abs() < 0.5);
     assert_eq!(d.get("Near").x, base + 7.0);
     assert!(drawn(&d).0.is_empty(), "marks cleared");
 }

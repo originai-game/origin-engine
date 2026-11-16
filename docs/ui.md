@@ -1354,10 +1354,11 @@ behaviour; rules are document-scoped and never affect unrelated mounts.
 and attribute operator with `i`/`s` flags (HTML's case-insensitive
 attributes compare so unless `s`), `:not()`, `:is()`, `:where()`, `:has()`
 and the structural, form, `:open`, `:modal`, `:popover-open`, `:target`
-(the element the last `#fragment` link named; with a text fragment,
-`#id:~:text=[prefix-,]start[,end][,-suffix]` per URL Fragment Text
-Directives, the nearest element holding the first passage it matched,
-else the id's), `:lang()` (RFC 4647),
+(the element the last `#fragment` link named, scrolled to the start of
+its scrollers as HTML's "scroll to the fragment" does; with a text
+fragment, `#id:~:text=[prefix-,]start[,end][,-suffix]` per URL Fragment
+Text Directives, the nearest element holding the first passage it
+matched, its line centred, else the id's), `:lang()` (RFC 4647),
 `:dir()`, `:heading` and `:heading(1, 2)` (an `<h1>` to `<h6>`, by level),
 `:active-view-transition` and `:active-view-transition-type()` (a
 screen's root while its layer's view transition runs, by the types its
