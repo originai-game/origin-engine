@@ -63,6 +63,10 @@ pub struct ElementInstance {
     pub style_dirty: bool,
     pub theme_epoch: u64,
     pub children: Vec<Child>,
+    /// For a control's host: the root of the control document
+    /// instantiated under it, which holds the host's own children as its
+    /// content.
+    pub control: Option<MountedNode>,
     /// The roots of the element images its filters draw ([`ImageMount`]),
     /// as its last build asked for them.
     pub images: Vec<MountedNode>,
@@ -518,6 +522,7 @@ impl ElementInstance {
             writes: Vec::new(),
             cached: Some(&self.cached),
             inline: Vec::new(),
+            controlled: self.control.is_some(),
         }
     }
 }

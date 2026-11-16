@@ -494,7 +494,10 @@ pub fn nested(c: &Component) -> &[Inner] {
 /// document attached under a host element of its own answers that element
 /// here, bound in [`crate::bind::BindingContext::selector_nodes`].
 pub(crate) fn host_node(doc: &UiDocument) -> usize {
-    doc.root
+    match doc.control {
+        Some(_) => super::HOST_NODE,
+        None => doc.root,
+    }
 }
 
 /// What `:host(<compound>)` asks of the host, as a condition: `features`
@@ -522,9 +525,13 @@ fn host_features<'a>(
     let mut all = Expr::Lit(true.into());
     for c in features {
         let test = match c {
-            Component::LocalName(name) => {
-                Expr::Lit(name.name.0.eq_ignore_ascii_case(&doc.name).into())
-            }
+            // A control's host is its element; a component's its instance.
+            Component::LocalName(name) => Expr::Lit(
+                name.name
+                    .0
+                    .eq_ignore_ascii_case(doc.control.as_ref().map_or(&doc.name, |c| &c.tag))
+                    .into(),
+            ),
             Component::ExplicitUniversalType
             | Component::ExplicitAnyNamespace
             | Component::ExplicitNoNamespace
@@ -986,6 +993,27 @@ fn condition(
         index: usize,
         part: usize,
     ) -> Result<Expr, String> {
+        // A control document's host, above its root: featureless to the
+        // document but for `:host`, with nothing of its own tree beyond
+        // it (CSS Scoping 1 §3.2.1).
+        if index == super::HOST_NODE {
+            let mut own = Expr::Lit(true.into());
+            for c in &compounds[part] {
+                let test = match c {
+                    Component::Host(None) => continue,
+                    Component::Host(Some(argument)) => {
+                        host_features(argument.iter_raw_parse_order_from(0), doc, runtime)?
+                    }
+                    _ => return Ok(Expr::Lit(false.into())),
+                };
+                own = combine(Op::And, own, test);
+            }
+            return Ok(if part == 0 {
+                own
+            } else {
+                Expr::Lit(false.into())
+            });
+        }
         let Some((_, tag, attrs)) = elements.iter().find(|(i, _, _)| *i == index) else {
             return Ok(Expr::Lit(false.into()));
         };
@@ -1022,7 +1050,11 @@ fn condition(
                 | Component::Namespace(..)
                 | Component::ImplicitScope
                 | Component::NonTSPseudoClass(PseudoClass::Defined) => Expr::Lit(true.into()),
-                Component::Root | Component::Scope => Expr::Lit((index == doc.root).into()),
+                // A control document's root stands under its host: it is
+                // no `:root`, so the style's root tokens are not declared
+                // again between a control and its parts.
+                Component::Root => Expr::Lit((index == doc.root && doc.control.is_none()).into()),
+                Component::Scope => Expr::Lit((index == doc.root).into()),
                 Component::ID(name) => Expr::Lit(
                     attrs
                         .iter()
@@ -1199,6 +1231,13 @@ fn condition(
                 }
             }
             parent = doc.nodes[parent].parent;
+        }
+        // Above a control document's root stands its host.
+        if doc.control.is_some()
+            && parent == NONE
+            && (candidates.is_empty() || combinator != Combinator::Child)
+        {
+            candidates.push(super::HOST_NODE);
         }
         let mut matches = Expr::Lit(false.into());
         for candidate in candidates {

@@ -743,6 +743,64 @@ impl Ui {
             })
     }
 
+    /// The `::part()` rules that reach the part `part` of a control
+    /// document from outside it (docs/ui.md §2.4): the style's and those
+    /// of the document `host` stands in, matched against the host's facts
+    /// and ranked one shadow boundary in (depth +1), in cascade order.
+    /// A selector that reads the host's siblings or descendants is not
+    /// matched here yet.
+    pub(crate) fn control_part_rules(
+        &self,
+        document: &Arc<UiDocument>,
+        tag: &str,
+        part: &str,
+        attributes: &BTreeMap<String, Value>,
+        states: &BTreeSet<crate::bind::InteractionState>,
+    ) -> Vec<crate::doc::StyleRule> {
+        let merged = (!document.part_rules.is_empty())
+            .then(|| self.document_part_rules(&document.name, document));
+        let global_index;
+        let (rules, index) = match &merged {
+            Some(m) => (&m.0, &m.2),
+            None => {
+                global_index = self
+                    .style
+                    .part_index
+                    .borrow_mut()
+                    .get_or_insert_with(|| Arc::new(PartIndex::new(&self.style.part_rules)))
+                    .clone();
+                (&self.style.part_rules, &*global_index)
+            }
+        };
+        let facts = Facts {
+            scope: "",
+            tag,
+            part: Some(part),
+            own_part: None,
+            root: false,
+            attributes,
+            states,
+            text: "",
+        };
+        index
+            .candidates(rules, &facts)
+            .filter(|rule| {
+                rule.query.container.is_empty()
+                    && rule.structure.as_ref().is_some_and(|s| {
+                        s.inner.is_part()
+                            && s.local.is_none()
+                            && crate::doc::matching::matches_facts(&facts, s)
+                    })
+            })
+            .map(|rule| crate::doc::StyleRule {
+                depth: 1,
+                condition: None,
+                structure: None,
+                ..rule.clone()
+            })
+            .collect()
+    }
+
     pub fn matching_part_rules(&self, part: &crate::dress::PartRef) -> Vec<&crate::doc::StyleRule> {
         part.with_facts(|facts| {
             self.style

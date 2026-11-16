@@ -8,6 +8,8 @@ mod button_contrast;
 mod color_vision;
 #[path = "../component_documents.rs"]
 mod component_documents;
+#[path = "../control_documents.rs"]
+mod control_documents;
 #[path = "../control_props.rs"]
 mod control_props;
 #[path = "../css_cjk.rs"]

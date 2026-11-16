@@ -896,6 +896,41 @@ pub fn apply(
         .collect();
     order.sort_by_key(|(selector, rule, _)| cascade_key(selector, rule, &layers));
     for (parsed, rule, kept) in order {
+        // A control document's rule whose subject is its host: kept apart
+        // and applied to the host element where the document is
+        // instantiated, under every rule written for the host there.
+        if doc.control.is_some() && kept.is_none() {
+            let condition = parsed
+                .condition(doc, elements, super::HOST_NODE)
+                .map_err(|e| (rule.at, e))?;
+            if condition != Expr::Lit(false.into()) {
+                if rule.pseudo.is_some() {
+                    return Err((
+                        rule.at,
+                        format!(
+                            "{}: a pseudo-element of the host is the host document's to style; give the control an element with a part",
+                            rule.selector
+                        ),
+                    ));
+                }
+                let (declarations, _) = lower(&rule.body, &known).map_err(|e| (rule.at, e))?;
+                doc.host_rules.push(StyleRule {
+                    inline: false,
+                    context: super::TreeContext::Tree,
+                    depth: -1,
+                    layer: rank(&layers, &rule.layer),
+                    starting: rule.starting,
+                    query: rule.query.clone(),
+                    condition: (condition != Expr::Lit(true.into())).then_some(condition),
+                    structure: None,
+                    props: Vec::new(),
+                    instance_states: Vec::new(),
+                    declarations,
+                    line: syntax::location(&doc.text, rule.at).0,
+                });
+                continue;
+            }
+        }
         // A `:host` selector matched on the instantiated tree is matched
         // there as the element it selects; what it asks of the host
         // beside that is the rule's condition.

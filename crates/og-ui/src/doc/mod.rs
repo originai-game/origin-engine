@@ -636,11 +636,102 @@ pub struct ContractProp {
     pub default: Option<serde_json::Value>,
 }
 
+/// The element a control document is the inside of (docs/ui.md §2.4):
+/// `<meta name="control" content="input[type=range]">`, a tag and the
+/// literal attributes an element must have.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ControlHost {
+    pub tag: String,
+    /// Attribute tests in order: a name and, with `=`, its value.
+    pub attributes: Vec<(String, Option<String>)>,
+}
+
+impl ControlHost {
+    /// Reads a host selector: a tag and `[name]` or `[name=value]` tests.
+    pub fn parse(text: &str) -> Result<ControlHost, String> {
+        let why = || {
+            format!(
+                "`{text}` is not a control's host: write a tag and attribute tests, as input[type=range]"
+            )
+        };
+        let (tag, mut rest) = text.split_at(text.find('[').unwrap_or(text.len()));
+        let named = |s: &str| {
+            !s.is_empty()
+                && s.chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+        };
+        if !named(tag) {
+            return Err(why());
+        }
+        let mut attributes = Vec::new();
+        while !rest.is_empty() {
+            let (test, after) = rest
+                .strip_prefix('[')
+                .and_then(|r| r.split_once(']'))
+                .ok_or_else(why)?;
+            let (name, value) = match test.split_once('=') {
+                Some((name, value)) => (name, Some(value.trim_matches(['"', '\'']).to_owned())),
+                None => (test, None),
+            };
+            if !named(name) {
+                return Err(why());
+            }
+            attributes.push((name.to_owned(), value));
+            rest = after;
+        }
+        Ok(ControlHost {
+            tag: tag.to_owned(),
+            attributes,
+        })
+    }
+
+    /// The name a control document is defined under: no component is
+    /// named so, since a component's name is an identifier.
+    pub fn document_name(&self) -> String {
+        let mut name = format!("control:{}", self.tag);
+        for (attribute, value) in &self.attributes {
+            name.push_str(&match value {
+                Some(value) => format!("[{attribute}={value}]"),
+                None => format!("[{attribute}]"),
+            });
+        }
+        name
+    }
+
+    /// Whether the element `node` is one this control is the inside of:
+    /// its tag, and each test against a literal attribute of it.
+    pub fn hosts(&self, node: &DocNode) -> bool {
+        node.selector_tag.as_deref() == Some(self.tag.as_str())
+            && self.attributes.iter().all(|(name, value)| {
+                node.selector_attrs.iter().any(|(attribute, written)| {
+                    attribute == name
+                        && match (value, written) {
+                            (None, _) => true,
+                            (Some(value), Expr::Lit(serde_json::Value::String(written))) => {
+                                value == written
+                            }
+                            _ => false,
+                        }
+                })
+            })
+    }
+}
+
+/// The node index a control document's selectors read its host under
+/// ([`selectors::host_node`]): no node of the document, bound to the host
+/// element in [`crate::bind::BindingContext::selector_nodes`] where the
+/// document is instantiated.
+pub const HOST_NODE: usize = usize::MAX - 1;
+
 /// A parsed, validated document.
 #[derive(Clone, Debug, PartialEq)]
 pub struct UiDocument {
     pub kind: DocKind,
     pub name: String,
+    /// For a control document, the element it is the inside of. It is a
+    /// component document ([`DocKind::Component`]) instantiated under each
+    /// such element as its shadow tree, never by a tag of its own.
+    pub control: Option<ControlHost>,
     /// The asset id it was read from (`ui/shop.svelte`; empty: in memory).
     pub source: String,
     /// The text as written.
@@ -665,6 +756,11 @@ pub struct UiDocument {
     /// Its `::slotted()` rules, in cascade order: each applies to the
     /// top-level elements of content rendered inside its elements.
     pub slotted_rules: Vec<StyleRule>,
+    /// A control document's `:host` rules, in cascade order: each applies
+    /// to the host element, at depth -1 (under every rule written for the
+    /// host where it stands). Its condition reads the document's props and
+    /// the host's states, in the document's own context.
+    pub host_rules: Vec<StyleRule>,
     pub nodes: Vec<DocNode>,
     pub root: usize,
     /// Author diagnostics that publish promotes to errors.

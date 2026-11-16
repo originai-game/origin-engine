@@ -177,7 +177,10 @@ impl Ui {
         let mut resp = crate::ui::Response::default();
         let mut generated = None;
         // A button with only text is the leaf control; with content it holds it.
-        let container = kind.container() && (kind != Kind::Button || !n.children.is_empty())
+        // A control's host holds its control document: it is the box
+        // around it, whatever its kind draws without one.
+        let container = b.controlled
+            || kind.container() && (kind != Kind::Button || !n.children.is_empty())
             || super::base_select::is_base_select(kind, r);
         if container {
             self.tree.pending_host = None;
@@ -447,6 +450,42 @@ impl Ui {
         );
     }
 
+    /// The role and value a control's host of kind `kind` tells the
+    /// accessibility tree: what its control document does not draw.
+    fn host_semantics(&mut self, at: usize, kind: Kind, r: &Resolved) {
+        let semantics = self.tree.semantics_mut(at);
+        match kind {
+            Kind::Progress => {
+                let value = r.num("value").filter(|v| v.is_finite()).unwrap_or(0.0);
+                let percent = (value.clamp(0.0, 1.0) * 100.0).round();
+                semantics.role = Some("progressbar");
+                semantics.value = Some(format!("{percent:.0}%"));
+                semantics.range = Some(crate::a11y::A11yRange {
+                    min: Some(0.0),
+                    max: Some(100.0),
+                    now: percent,
+                });
+            }
+            Kind::Meter => {
+                let min = r.num("min").unwrap_or(0.0);
+                let max = r.num("max").unwrap_or(1.0).max(min);
+                let value = r
+                    .num("value")
+                    .filter(|v| v.is_finite())
+                    .unwrap_or(min)
+                    .clamp(min, max);
+                semantics.role = Some("meter");
+                semantics.value = Some(format!("{value}"));
+                semantics.range = Some(crate::a11y::A11yRange {
+                    min: Some(min),
+                    max: Some(max),
+                    now: value,
+                });
+            }
+            _ => {}
+        }
+    }
+
     /// The document's `meter` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     pub(crate) fn doc_meter(&mut self, id: &String, r: &Resolved, axis: crate::widgets::ValueAxis) {
@@ -624,7 +663,19 @@ impl Ui {
         // A closed dialog or disclosure builds no content (HTML renders
         // none): opened, its controls are built fresh and take input.
         let mut shows_content = true;
+        // What a controlled host keeps of its kind is its semantics.
+        let hosted = b.controlled && !kind.container();
+        let kind = if hosted { Kind::Box } else { kind };
         let shell = match kind {
+            _ if hosted => {
+                self.open(id.as_str(), Element::default());
+                let at = self.tree.parent();
+                let NodeKind::Element(own) = n.kind else {
+                    unreachable!("a host is an element");
+                };
+                self.host_semantics(at, own, r);
+                Shell::Box
+            }
             Kind::Dialog if open_now(self) && r.str("spotlight").is_some() => {
                 let target = r.str("spotlight").unwrap_or_default();
                 let shade = self.open_spotlight(id.as_str(), (key, &path), target, r);

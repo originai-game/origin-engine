@@ -10,6 +10,9 @@ pub(crate) struct Library {
     /// The style pack its documents are parsed against
     /// ([`Ui::parse_document`]); none is the default style.
     pub(crate) pack: Option<Arc<crate::style_pack::StylePack>>,
+    /// The control documents defined, by the name they are defined
+    /// under, each with its host ([`crate::doc::ControlHost`]).
+    pub(crate) controls: Vec<(crate::doc::ControlHost, String)>,
     /// CSS `@keyframes` of every defined document, as `<doc>/<name>`.
     pub(crate) keyframes: BTreeMap<String, Arc<crate::motion::css::Keyframes>>,
     /// What structural selectors of every defined document read.
@@ -105,6 +108,28 @@ impl Library {
         {
             self.global_structure.add(selector);
         }
+        self.controls.retain(|(_, name)| *name != doc.name);
+        if let Some(host) = &doc.control {
+            self.controls.push((host.clone(), doc.name.clone()));
+        }
         self.documents.insert(doc.name.clone(), Arc::new(doc));
+    }
+
+    /// The control document for the element `node` of `doc`: of those
+    /// whose host it is, the one with the most attribute tests. None
+    /// inside that control's own document, which is the element's inside
+    /// already.
+    pub(crate) fn control_for(&self, doc: &UiDocument, node: &DocNode) -> Option<&Arc<UiDocument>> {
+        if self.controls.is_empty() || !matches!(node.kind, NodeKind::Element(_)) {
+            return None;
+        }
+        let (_, name) = self
+            .controls
+            .iter()
+            .filter(|(host, _)| host.hosts(node))
+            .max_by_key(|(host, _)| host.attributes.len())?;
+        self.documents
+            .get(name)
+            .filter(|control| control.name != doc.name)
     }
 }
