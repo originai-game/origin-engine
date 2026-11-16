@@ -303,19 +303,16 @@ pub fn og_web_set_image_decoder(decode: js_sys::Function) {
     IMAGE_DECODER.with(|f| *f.borrow_mut() = Some(decode));
 }
 
-/// The Worker's `fetchImage(key, url, credentials, integrity,
-/// referrerPolicy)`, called for a document's http(s) image
-/// (og-runtime's world/remote.rs): it `fetch()`es the URL in CORS mode
-/// (`credentials` true: `include`, else `same-origin`) with the integrity
-/// metadata and referrer policy given (empty: none), decodes it with the
-/// browser, and answers with `og_web_put_image` or `og_web_fail_image`.
+/// The Worker's `fetchImage(key, url, integrity)`, called for a
+/// document's http(s) image (og-runtime's world/remote.rs): it `fetch()`es
+/// the URL in CORS mode, without credentials or a referrer, with the
+/// integrity metadata given (empty: none), decodes it with the browser, and answers with `og_web_put_image` or `og_web_fail_image`.
 #[wasm_bindgen]
 pub fn og_web_set_remote_fetcher(fetch: js_sys::Function) {
     crate::REMOTE_FETCHER.with(|f| *f.borrow_mut() = Some(fetch));
 }
 
-/// The Worker's `fetchText(key, url, credentials, integrity,
-/// referrerPolicy)`, called for a remote `<iframe>`'s document
+/// The Worker's `fetchText(key, url, integrity)`, called for a remote `<iframe>`'s document
 /// (og-runtime's world/remote.rs): it `fetch()`es the URL as
 /// `og_web_set_remote_fetcher`'s does and answers with the response's
 /// bytes through `og_web_put_text`, or `og_web_fail_text`. Only in a

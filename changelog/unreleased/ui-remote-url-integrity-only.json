@@ -1,0 +1,16 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "url() cross-origin() and referrer-policy(); <iframe> crossorigin and referrerpolicy",
+      "change": "A remote url() takes only integrity(). cross-origin() and referrer-policy() are refused, as are a remote <iframe>'s crossorigin and referrerpolicy attributes: the engine fetches without cookies, credentials or a referrer of its own on both hosts, so they protected nothing. A document or style pack that names one fails to load and says why. Natively the engine no longer emulates the browser's CORS check; in a browser the engine Worker still reads another origin's image only when the server allows the game's origin (Access-Control-Allow-Origin).",
+      "fix": "Delete cross-origin(…) and referrer-policy(…) from url() values, and crossorigin and referrerpolicy from remote <iframe>s. Keep integrity(\"sha384-…\") where it is.",
+      "find": [
+        "cross-origin(",
+        "referrer-policy(",
+        "crossorigin",
+        "referrerpolicy"
+      ]
+    }
+  ]
+}

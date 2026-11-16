@@ -4,12 +4,11 @@
 //! texture under that key.
 //!
 //! - **Who fetches.** On the web the host does, from the engine Worker:
-//!   `fetch()` in CORS mode with the request's credentials, integrity and
-//!   referrer policy, then the browser's image decoder
+//!   `fetch()` with the request's integrity (in CORS mode, as a browser
+//!   reads another origin's response), then the browser's image decoder
 //!   ([`Hooks::remote_image_start`], answered through
 //!   [`Hooks::image_decode_take`]). Natively a worker thread does both:
-//!   og-net's HTTP client under the same CORS, integrity and referrer rules,
-//!   then the `image` crate (PNG, JPEG, WebP) or resvg (SVG, at its own size,
+//!   og-net's HTTP client with the same integrity check, then the `image` crate (PNG, JPEG, WebP) or resvg (SVG, at its own size,
 //!   as the cook draws a package's SVG). A build without the `fetch`
 //!   feature fetches nothing natively and says so once.
 //! - **Arrival is presentation.** A layer naming a key not bound yet draws
@@ -21,7 +20,8 @@
 //!   frames and captures are the same on every run. The web draws what has
 //!   landed.
 //! - **Failures are warnings**, one per key, naming the URL and what
-//!   refused it (CORS, integrity, an HTTP status, the decoder); the layer
+//!   refused it (integrity, an HTTP status, the decoder; on the web also
+//!   CORS); the layer
 //!   keeps drawing nothing.
 //! - **Frames' documents.** A remote `<iframe>` (og_ui::doc::frames)
 //!   names its document by request key as an image is named; it is fetched
@@ -32,11 +32,6 @@
 //!   fetched in turn, frames at most `MAX_DEPTH` deep; an executor waits
 //!   for the whole chain. Only with the `frames` feature, which `og build`
 //!   ships to a game whose project.ogt lists `frames`.
-//! - **The game's own URL.** The origin a request is made from and the
-//!   referrer it is taken from are the engine's root when it is an http(s)
-//!   URL (a package served from an asset base, docs/web-export.md §Asset
-//!   base); a game read from files has an opaque origin (`null`) and sends
-//!   no referrer.
 
 use crate::engine::{Engine, hooks};
 use crate::world::assets::Fetch;
@@ -83,14 +78,13 @@ fn next_key() -> u64 {
 
 /// Starts fetching each of `keys` this engine has not asked for yet.
 pub(crate) fn request<'a>(eng: &Engine, keys: impl IntoIterator<Item = &'a String>) {
-    let root = eng.assets.borrow().root.clone();
     let mut a = eng.assets.borrow_mut();
     for key in keys {
         if a.remote.images.contains_key(key) {
             continue;
         }
         let image = match UrlRequest::from_key(key) {
-            Ok(request) => start(&root, &request),
+            Ok(request) => start(&request),
             Err(e) => Err(e),
         };
         let image = image.unwrap_or_else(|e| {
@@ -114,7 +108,6 @@ pub(crate) fn request_frames(eng: &Engine, keys: &[String], depth: usize) {
         .as_ref()
         .map(|p| p.frames.clone())
         .unwrap_or_default();
-    let root = eng.assets.borrow().root.clone();
     for key in keys {
         if eng.assets.borrow().remote.documents.contains_key(key) {
             continue;
@@ -127,7 +120,7 @@ pub(crate) fn request_frames(eng: &Engine, keys: &[String], depth: usize) {
                 og_ui::doc::frames::MAX_DEPTH
             ))
         } else {
-            UrlRequest::from_key(key).and_then(|r| start_text(&root, &r))
+            UrlRequest::from_key(key).and_then(|r| start_text(&r))
         };
         let text = started.unwrap_or_else(|e| {
             frame_warning(eng, key, &e);
@@ -142,21 +135,19 @@ pub(crate) fn request_frames(eng: &Engine, keys: &[String], depth: usize) {
 }
 
 #[cfg(feature = "frames")]
-fn start_text(root: &str, request: &UrlRequest) -> Result<Text, String> {
+fn start_text(request: &UrlRequest) -> Result<Text, String> {
     let key = next_key();
     if let Some(h) = hooks()
         && h.remote_text_start(key, request)
     {
         return Ok(Text::Host(key));
     }
-    let _ = root;
     #[cfg(all(feature = "fetch", not(target_arch = "wasm32")))]
     {
         let (send, recv) = std::sync::mpsc::channel();
         let request = request.clone();
-        let root = root.to_owned();
         std::thread::spawn(move || {
-            let _ = send.send(native::fetch(&root, &request));
+            let _ = send.send(native::fetch(&request));
         });
         Ok(Text::Thread(recv))
     }
@@ -253,21 +244,19 @@ fn frame_warning(eng: &Engine, key: &str, why: &str) {
     }));
 }
 
-fn start(root: &str, request: &UrlRequest) -> Result<Image, String> {
+fn start(request: &UrlRequest) -> Result<Image, String> {
     let key = next_key();
     if let Some(h) = hooks()
         && h.remote_image_start(key, request)
     {
         return Ok(Image::Host(key));
     }
-    let _ = root;
     #[cfg(all(feature = "fetch", not(target_arch = "wasm32")))]
     {
         let (send, recv) = std::sync::mpsc::channel();
         let request = request.clone();
-        let root = root.to_owned();
         std::thread::spawn(move || {
-            let _ = send.send(native::fetch(&root, &request).and_then(|b| native::decode(&b)));
+            let _ = send.send(native::fetch(&request).and_then(|b| native::decode(&b)));
         });
         Ok(Image::Thread(recv))
     }
@@ -514,24 +503,14 @@ fn tiff_orientation(t: &[u8]) -> Option<u32> {
 mod native {
     use super::*;
 
-    /// The request as a browser's engine Worker makes it from `root`.
-    pub(super) fn fetch(root: &str, request: &UrlRequest) -> Result<Vec<u8>, String> {
-        let base =
-            og_net::http::origin_of(root).map(|_| format!("{}/", root.trim_end_matches('/')));
-        let origin = base.as_deref().and_then(og_net::http::origin_of);
+    /// The request: its URL, checked against its integrity.
+    pub(super) fn fetch(request: &UrlRequest) -> Result<Vec<u8>, String> {
         og_net::http::get(&og_net::http::Request {
             url: &request.url,
-            origin: origin.as_deref(),
-            referrer: base.as_deref(),
-            credentials: request.cross_origin == og_ui::css::request::CrossOrigin::UseCredentials,
             integrity: request.integrity.as_deref(),
-            referrer_policy: request.referrer_policy.as_deref(),
         })
     }
 
-    /// PNG, JPEG and WebP by their signature, SVG by its markup, with the
-    /// EXIF orientation their metadata names ([`exif_orientation`]; 1 for
-    /// SVG).
     pub(super) fn decode(bytes: &[u8]) -> Result<Decoded, String> {
         let format = if bytes.starts_with(b"\x89PNG") {
             image::ImageFormat::Png

@@ -108,13 +108,13 @@ thread_local! {
     static INFLATED: RefCell<IdMap<u64, Result<Vec<u8>, String>>> = const { RefCell::new(IdMap::new()) };
     /// The Worker's `decodeImage(key, bytes)` (createImageBitmap), and what it answered by key.
     static IMAGE_DECODER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
-    /// The Worker's `fetchImage(key, url, credentials, integrity,
-    /// referrerPolicy)` for a document's http(s) image, answered in
+    /// The Worker's `fetchImage(key, url, integrity)` for a document's
+    /// http(s) image, answered in
     /// DECODED_IMAGES as a decode is.
     static REMOTE_FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     static DECODED_IMAGES: RefCell<IdMap<u64, Result<og_runtime::Decoded, String>>> = const { RefCell::new(IdMap::new()) };
-    /// The Worker's `fetchText(key, url, credentials, integrity,
-    /// referrerPolicy)` for a remote `<iframe>`'s document, and the bytes
+    /// The Worker's `fetchText(key, url, integrity)` for a remote
+    /// `<iframe>`'s document, and the bytes
     /// it answered by key.
     #[cfg(feature = "frames")]
     static REMOTE_TEXT_FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };

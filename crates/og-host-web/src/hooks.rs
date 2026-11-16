@@ -9,16 +9,14 @@ use crate::{
 use og_runtime::{Dispatch, Fetch, Hooks};
 use wasm_bindgen::prelude::*;
 
-/// A remote request's arguments for the Worker: `(key, url, credentials,
-/// integrity, referrerPolicy)`, empty strings for none.
+/// A remote request's arguments for the Worker: `(key, url, integrity)`,
+/// an empty string for none.
 fn request_args(key: u64, request: &og_runtime::UrlRequest) -> js_sys::Array {
     let args = js_sys::Array::new();
     for v in [
         JsValue::from_f64(key as f64),
         JsValue::from_str(&request.url),
-        JsValue::from_bool(request.cross_origin == og_runtime::CrossOrigin::UseCredentials),
         JsValue::from_str(request.integrity.as_deref().unwrap_or("")),
-        JsValue::from_str(request.referrer_policy.as_deref().unwrap_or("")),
     ] {
         args.push(&v);
     }

@@ -3941,7 +3941,8 @@ fn a_remote_frame_shows_its_fetched_document_and_sends_only_messages() {
         "the page's own events are document events: {events:?}"
     );
     // A remote src is https (http only from localhost), given data rather
-    // than a binding; a local one takes no request attributes.
+    // than a binding; a local one takes no integrity, and neither takes
+    // crossorigin or referrerpolicy.
     for (src, refused) in [
         (r#"src="http://events.example.com/a.svelte""#, true),
         (
@@ -3952,7 +3953,12 @@ fn a_remote_frame_shows_its_fetched_document_and_sends_only_messages() {
             r#"src="https://events.example.com/a.svelte" bind:heading={x}"#,
             true,
         ),
-        (r#"src="news.svelte" referrerpolicy="no-referrer""#, true),
+        (r#"src="news.svelte" integrity="sha384-x""#, true),
+        // crossorigin and referrerpolicy are not needed (no credentials).
+        (
+            r#"src="https://events.example.com/a.svelte" referrerpolicy="no-referrer""#,
+            true,
+        ),
     ] {
         let text =
             format!(r#"<meta name="component" content="t"><div><iframe {src}></iframe></div>"#);

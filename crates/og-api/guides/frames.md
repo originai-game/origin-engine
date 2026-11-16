@@ -91,10 +91,10 @@ it answers false, a remote `src` is refused when the document loads and
 
 `og build` writes the list into og-build.json, so the platform's page can
 reach those origins. The server answers CORS reads from the game's origin
-(`Access-Control-Allow-Origin`). `crossorigin`, `integrity` and
-`referrerpolicy` work as on HTML's iframe and as url()'s request
-modifiers: `integrity` pins the document's bytes, so a changed document is
-refused.
+(`Access-Control-Allow-Origin`). `integrity` works as on HTML's iframe
+and as url()'s request modifier: it pins the document's bytes, so a
+changed document is refused. `crossorigin` and `referrerpolicy` are
+refused: the engine sends no cookies, credentials or referrer.
 
 The engine fetches the document when the embedding one loads, and the
 frame shows only its own box until it arrives; an executor (`og test`,

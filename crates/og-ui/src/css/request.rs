@@ -1,62 +1,30 @@
 //! A `url()` naming an http(s) resource instead of a file of the game's
-//! package, with the request modifiers CSS Values 5 §4.5.4 gives it:
-//! `cross-origin()`, `integrity()` and `referrer-policy()`.
+//! package, with the one request modifier of CSS Values 5 §4.5.4 the
+//! engine takes: `integrity()`.
 //!
 //! A document names a remote image by one string, its [`UrlRequest::key`]:
-//! the URL alone, or the URL followed by its modifiers in CSS syntax. The
+//! the URL alone, or the URL followed by its integrity in CSS syntax. The
 //! host fetches each key once and binds the texture under that key
 //! ([`crate::Ui::define_texture`]); until then the layer that names it
 //! draws nothing, as an image that has not loaded.
+//!
+//! `cross-origin()` and `referrer-policy()` are refused: the engine sends
+//! no cookies or credentials and no `Referer` of its own, so what they
+//! choose protects nothing. (On the web the browser still reads a
+//! cross-origin response only under CORS: the server allows the page's
+//! origin, docs/web-export.md §Asset base.)
 
-/// The `cross-origin()` modifier: a remote image is always fetched in CORS
-/// mode (the engine reads its pixels into a texture, which a browser
-/// allows only for a CORS-readable response), so a `url()` without the
-/// modifier is fetched as `anonymous`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum CrossOrigin {
-    /// Credentials only to the page's own origin; a response passes with
-    /// `Access-Control-Allow-Origin: *` or the page's origin.
-    #[default]
-    Anonymous,
-    /// Credentials (cookies) to any origin; a response passes only with the
-    /// page's origin named and `Access-Control-Allow-Credentials: true`.
-    UseCredentials,
-}
+/// Why `cross-origin()` and `referrer-policy()` are refused.
+const NOT_NEEDED: &str = "is not needed: the engine fetches without cookies, credentials or a referrer of its own; only integrity() applies";
 
-impl CrossOrigin {
-    pub fn name(self) -> &'static str {
-        match self {
-            CrossOrigin::Anonymous => "anonymous",
-            CrossOrigin::UseCredentials => "use-credentials",
-        }
-    }
-}
-
-/// Referrer Policy's values (W3C Referrer Policy §3), which
-/// `referrer-policy()` takes.
-pub const REFERRER_POLICIES: [&str; 8] = [
-    "no-referrer",
-    "no-referrer-when-downgrade",
-    "same-origin",
-    "origin",
-    "strict-origin",
-    "origin-when-cross-origin",
-    "strict-origin-when-cross-origin",
-    "unsafe-url",
-];
-
-/// One remote `url()`: what to fetch and how.
+/// One remote `url()`: what to fetch, and the bytes it must have.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct UrlRequest {
     /// An absolute `http:` or `https:` URL.
     pub url: String,
-    pub cross_origin: CrossOrigin,
     /// Subresource Integrity metadata (`sha384-<base64>`, several separated
     /// by spaces); the response's bytes must match one of its strongest.
     pub integrity: Option<String>,
-    /// One of [`REFERRER_POLICIES`]; `None` is the default,
-    /// `strict-origin-when-cross-origin`.
-    pub referrer_policy: Option<String>,
 }
 
 /// Whether a `url()` names an http(s) resource rather than a package file.
@@ -167,17 +135,6 @@ impl UrlRequest {
                 return Err(format!("url({url}): {name}() is given twice"));
             }
             match name.as_str() {
-                "cross-origin" => {
-                    r.cross_origin = match value.to_ascii_lowercase().as_str() {
-                        "anonymous" => CrossOrigin::Anonymous,
-                        "use-credentials" => CrossOrigin::UseCredentials,
-                        v => {
-                            return Err(format!(
-                                "url({url}): cross-origin() takes anonymous or use-credentials, not '{v}'"
-                            ));
-                        }
-                    }
-                }
                 "integrity" => {
                     if value.trim().is_empty() {
                         return Err(format!(
@@ -186,19 +143,12 @@ impl UrlRequest {
                     }
                     r.integrity = Some(value.trim().to_owned());
                 }
-                "referrer-policy" => {
-                    let v = value.to_ascii_lowercase();
-                    if !REFERRER_POLICIES.contains(&v.as_str()) {
-                        return Err(format!(
-                            "url({url}): referrer-policy() takes one of {}, not '{value}'",
-                            REFERRER_POLICIES.join(", ")
-                        ));
-                    }
-                    r.referrer_policy = Some(v);
+                "cross-origin" | "referrer-policy" => {
+                    return Err(format!("url({url}): {name}() {NOT_NEEDED}"));
                 }
                 other => {
                     return Err(format!(
-                        "url({url}): {other}() is not a request modifier (cross-origin(), integrity(), referrer-policy())"
+                        "url({url}): {other}() is not a request modifier (integrity())"
                     ));
                 }
             }
@@ -208,14 +158,11 @@ impl UrlRequest {
     }
 
     /// The one string a document and its host name this request by: the
-    /// URL, then each modifier that differs from the default in CSS syntax
+    /// URL, then its integrity in CSS syntax, if any
     /// (`https://cdn/a.png integrity("sha384-…")`). A URL holds no space,
     /// so the first space ends it.
     pub fn key(&self) -> String {
         let mut key = self.url.clone();
-        if self.cross_origin == CrossOrigin::UseCredentials {
-            key.push_str(" cross-origin(use-credentials)");
-        }
         if let Some(i) = &self.integrity {
             key.push_str(" integrity(\"");
             for c in i.chars() {
@@ -225,9 +172,6 @@ impl UrlRequest {
                 key.push(c);
             }
             key.push_str("\")");
-        }
-        if let Some(p) = &self.referrer_policy {
-            key.push_str(&format!(" referrer-policy({p})"));
         }
         key
     }
@@ -285,39 +229,30 @@ mod tests {
     fn a_key_names_its_request_and_reads_back() {
         let r = UrlRequest::new(
             "https://cdn.example/a.png",
-            &[
-                ("referrer-policy".into(), "No-Referrer".into()),
-                ("integrity".into(), "sha256-a\"b sha384-c".into()),
-                ("cross-origin".into(), "use-credentials".into()),
-            ],
+            &[("integrity".into(), "sha256-a\"b sha384-c".into())],
         )
         .unwrap();
         let key = r.key();
         assert_eq!(
             key,
-            r#"https://cdn.example/a.png cross-origin(use-credentials) integrity("sha256-a\"b sha384-c") referrer-policy(no-referrer)"#
+            r#"https://cdn.example/a.png integrity("sha256-a\"b sha384-c")"#
         );
         assert_eq!(UrlRequest::from_key(&key).unwrap(), r);
-        // anonymous is the default and is not written.
-        let plain = UrlRequest::new(
-            "https://cdn.example/a.png",
-            &[("cross-origin".into(), "anonymous".into())],
-        )
-        .unwrap();
+        let plain = UrlRequest::new("https://cdn.example/a.png", &[]).unwrap();
         assert_eq!(plain.key(), "https://cdn.example/a.png");
     }
 
     #[test]
     fn a_stylesheet_and_a_value_name_one_request_alike() {
         use crate::css::at_rules::{rebase_urls, remote_urls, urls};
-        let css = r#"a { background: url("https://cdn.example/a.png" referrer-policy(origin) integrity("sha256-x")), url(https://cdn.example/b.png), url(local.png); }
-            b { mask-image: image-set(url("https://cdn.example/c.png" cross-origin(use-credentials)) 2x); }"#;
-        let a = r#"https://cdn.example/a.png integrity("sha256-x") referrer-policy(origin)"#;
-        let c = "https://cdn.example/c.png cross-origin(use-credentials)";
+        let css = r#"a { background: url("https://cdn.example/a.png" integrity("sha256-x")), url(https://cdn.example/b.png), url(local.png); }
+            b { mask-image: image-set(url("https://cdn.example/c.png" integrity("sha384-y")) 2x); }"#;
+        let a = r#"https://cdn.example/a.png integrity("sha256-x")"#;
+        let c = r#"https://cdn.example/c.png integrity("sha384-y")"#;
         assert_eq!(
             remote_urls(css),
             [a, "https://cdn.example/b.png", c],
-            "modifiers in any order give one key; a package file is not remote"
+            "a package file is not remote"
         );
         assert_eq!(urls(css), ["local.png"]);
         // The reader rebases a sheet before its values are read: the key
@@ -332,12 +267,6 @@ mod tests {
         let start = rebased.find("url(").unwrap();
         let end = rebased[start..].find("),").unwrap() + start + 1;
         assert_eq!(value(&rebased[start..end]), a);
-        assert_eq!(
-            value(
-                r#"url("https://cdn.example/a.png" integrity("sha256-x") referrer-policy(origin))"#
-            ),
-            a
-        );
         assert!(
             crate::css::paint_css::background(r#"url("coin.png" integrity("sha256-x"))"#)
                 .is_some_and(|r| r.is_err()),
@@ -349,8 +278,13 @@ mod tests {
     fn modifiers_are_refused_where_they_mean_nothing() {
         assert!(UrlRequest::new("ui/coin.png", &[("integrity".into(), "x".into())]).is_err());
         let bad = |n: &str, v: &str| UrlRequest::new("https://a/b", &[(n.into(), v.into())]);
-        assert!(bad("cross-origin", "always").is_err());
-        assert!(bad("referrer-policy", "never").is_err());
+        for (n, v) in [
+            ("cross-origin", "use-credentials"),
+            ("referrer-policy", "no-referrer"),
+        ] {
+            let e = bad(n, v).unwrap_err();
+            assert!(e.contains("not needed") && e.contains("integrity()"), "{e}");
+        }
         assert!(bad("priority", "high").is_err());
         assert!(bad("integrity", " ").is_err());
     }

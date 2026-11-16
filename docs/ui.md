@@ -833,8 +833,8 @@ document never embeds one it is inside.
 A remote frame's `src` is an `https://` URL (`http://` on localhost) from
 an origin project.ogt's `frames` lists (og_ui::doc::frames; refused at cook
 and, for a frame a remote document names, at run time), with HTML's
-`crossorigin`, `integrity` and `referrerpolicy` as url()'s request
-modifiers; its request key names it. The host fetches the run-time
+`integrity` as url()'s request modifier (`crossorigin` and
+`referrerpolicy` are refused, as url()'s are); its request key names it. The host fetches the run-time
 `.svelte` source as it fetches a remote image (og-runtime's
 world/remote.rs; an executor waits for the chain) and defines it under that
 key (`Ui::define_frame_document`), its relative urls and `<iframe>`s beside
@@ -1834,35 +1834,31 @@ loading, selectors, tokens and asset URLs.
 
 A `url()` naming an `http(s)://` image (in a document, an inline style or
 a style pack) is fetched at run time, not cooked. og-ui reads the URL
-and CSS Values 5's request modifiers, `cross-origin()`, `integrity()` and
-`referrer-policy()`, into one request key (`crates/og-ui/src/css/request.rs`),
-which a sheet lists in `Sheet::remote`; a package file takes no
-modifiers. The runtime (`crates/og-runtime/src/world/remote.rs`) fetches
+and CSS Values 5's `integrity()` request modifier into one request key
+(`crates/og-ui/src/css/request.rs`), which a sheet lists in
+`Sheet::remote`; a package file takes no modifiers. `cross-origin()` and
+`referrer-policy()` are refused as not needed: the engine sends no
+cookies, credentials or referrer of its own, so they protect nothing. The runtime (`crates/og-runtime/src/world/remote.rs`) fetches
 each key once per engine when its document or pack loads and binds the
 decoded image under the key (`Ui::define_texture`, which restyles what is
 mounted); a layer naming an unbound key draws nothing and warns nothing.
 
-- **Fetch.** Always CORS mode (a texture needs readable pixels):
-  credentials `same-origin` by default, `include` under
-  `cross-origin(use-credentials)`, the integrity metadata, and the
-  referrer policy (`strict-origin-when-cross-origin` by default). The web
-  host fetches from the engine Worker and decodes with the browser (an
-  SVG on the page, which a Worker cannot draw); the native host fetches
-  with og-net's client (`crates/og-net/src/http.rs`), which applies the
-  Fetch standard's CORS check (redirect tainting included), the
-  Referrer Policy algorithm and SRI's strongest-hash match, and decodes
+- **Fetch.** No credentials and no referrer, with the integrity
+  metadata. The web host fetches from the engine Worker in CORS mode (the
+  browser reads another origin's response only so) and decodes with the
+  browser (an SVG on the page, which a Worker cannot draw); the native
+  host fetches with og-net's client (`crates/og-net/src/http.rs`), which
+  follows redirects and applies SRI's strongest-hash match, and decodes
   PNG, JPEG and WebP with `image` and SVG with resvg at its own size, as
-  the cook does. The request's origin and referrer are the engine's root
-  when it is an http(s) URL (the page's directory on the web); a game read
-  from files has an opaque origin and sends no referrer. Natively there
-  is no cookie jar.
+  the cook does. Natively no CORS check is made: no request carries
+  anything for one to protect.
 - **Presentation only.** An image is bound at a UI build (the `UI_END`
   system) after it lands; nothing fetched reaches the world or a journal.
   The native host waits there for every fetch started, so executors'
   frames are the same on every run; the web draws what has landed.
   `og.loading.idle` is false while one is pending.
-- **Failures** (CORS, integrity, HTTP status, decoding) are one warning
-  per key naming the URL and the reason.
+- **Failures** (integrity, HTTP status, decoding; on the web also CORS)
+  are one warning per key naming the URL and the reason.
 - A build without og-runtime's `fetch` feature fetches nothing natively
   and warns per key.
 - **Orientation.** Both hosts read the image's EXIF orientation from its

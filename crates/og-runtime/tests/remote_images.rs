@@ -1,6 +1,7 @@
 //! A document's `url()` names http(s) images (docs/ui.md §3.3 Remote
-//! images): the engine fetches each under its request modifiers, decodes
-//! it and draws it in its layer; one refused draws nothing and warns.
+//! images): the engine fetches each (with its integrity, if given),
+//! decodes it and draws it in its layer; one refused draws nothing and
+//! warns.
 //!
 //! The game is served from one origin (its root is an http URL, read here
 //! from disk by the hooks) and its art from another, a local server that
@@ -9,13 +10,11 @@
 //! loads.
 //!
 //! Ways this could fail: a remote URL is looked up as a package file and
-//! warns "names no texture asset"; a modifier is dropped on the way from the
-//! stylesheet to the request, so a wrong integrity hash or a refused CORS
-//! response still draws; `cross-origin(use-credentials)` takes `*`; the
-//! `Referer` ignores the policy (sent under `no-referrer`, the full URL
-//! cross-origin by default); `Origin` is missing on a cross-origin request;
-//! the draw waits a frame natively; a format is not decoded; an image still
-//! being fetched warns, or never draws once it lands.
+//! warns "names no texture asset"; the integrity is dropped on the way from
+//! the stylesheet to the request, so a wrong hash still draws; the request
+//! carries the game's URL (`Origin`, `Referer`), which the engine never
+//! sends; the draw waits a frame natively; a format is not decoded; an image
+//! still being fetched warns, or never draws once it lands.
 
 use og_runtime::{Dispatch, Fetch, Hooks, og_engine_create, og_game_game, set_hooks};
 use serde_json::{Value, json};
@@ -340,19 +339,8 @@ fn remote_images_load_under_their_request_modifiers() {
                 cors("*"),
             ),
         ),
-        ("/nocors.png", (star.clone(), vec![])),
-        (
-            "/creds.png",
-            (star.clone(), {
-                let mut h = cors("http://127.0.0.1:9");
-                h.push(("Access-Control-Allow-Credentials".into(), "true".into()));
-                h
-            }),
-        ),
-        ("/r1.png", (star.clone(), cors("*"))),
-        ("/r2.png", (star.clone(), cors("*"))),
-        ("/r3.png", (star.clone(), cors("*"))),
-        ("/r4.png", (star.clone(), cors("*"))),
+        // No CORS headers: natively nothing reads them.
+        ("/plain.png", (star.clone(), vec![])),
     ]
     .into_iter()
     .map(|(k, v)| (k.to_string(), v))
@@ -382,35 +370,7 @@ fn remote_images_load_under_their_request_modifiers() {
                 sri(&star)
             ),
         ),
-        (
-            "Anonymous",
-            format!("url(\"{}\" cross-origin(anonymous))", at("/creds.png")),
-        ),
-        (
-            "CredStar",
-            format!("url(\"{}\" cross-origin(use-credentials))", at("/star.png")),
-        ),
-        (
-            "CredOk",
-            format!(
-                "url(\"{}\" cross-origin(use-credentials))",
-                at("/creds.png")
-            ),
-        ),
-        ("NoCors", format!("url(\"{}\")", at("/nocors.png"))),
-        (
-            "NoRef",
-            format!("url(\"{}\" referrer-policy(no-referrer))", at("/r1.png")),
-        ),
-        (
-            "Unsafe",
-            format!("url(\"{}\" referrer-policy(unsafe-url))", at("/r2.png")),
-        ),
-        ("Default", format!("url(\"{}\")", at("/r3.png"))),
-        (
-            "SameOrigin",
-            format!("url(\"{}\" referrer-policy(same-origin))", at("/r4.png")),
-        ),
+        ("Plain", format!("url(\"{}\")", at("/plain.png"))),
     ];
     let ids: Vec<&str> = cells.iter().map(|(id, _)| *id).collect();
     let (e, sizes) = engine("modifiers", &cells, None);
@@ -423,12 +383,7 @@ fn remote_images_load_under_their_request_modifiers() {
         ("Turned", (6, 2)),
         ("Good", (3, 5)),
         ("Strongest", (3, 5)),
-        ("Anonymous", (3, 5)),
-        ("CredOk", (3, 5)),
-        ("NoRef", (3, 5)),
-        ("Unsafe", (3, 5)),
-        ("Default", (3, 5)),
-        ("SameOrigin", (3, 5)),
+        ("Plain", (3, 5)),
     ]
     .into_iter()
     .map(|(k, v)| (k.to_string(), v))
@@ -458,39 +413,15 @@ fn remote_images_load_under_their_request_modifiers() {
         );
     };
     one("refused by integrity", &at("/star.png"));
-    one("to name the origin, not *", &at("/star.png"));
-    one("no Access-Control-Allow-Origin", &at("/nocors.png"));
-    assert_eq!(warned.len(), 3, "{warned:#?}");
+    assert_eq!(warned.len(), 1, "{warned:#?}");
     assert!(!warned.iter().any(|w| w.contains("names no texture")));
-
-    // What the requests carried: the game's origin, and the referrer each
-    // policy gives a request to another origin from http://127.0.0.1:9/game/.
+    // The engine sends no cookies, credentials or referrer of its own, so
+    // its requests carry neither the game's origin nor its URL.
     let seen = seen.lock().unwrap().clone();
-    let one_request = |path: &str| {
-        let got: Vec<_> = seen.iter().filter(|(p, ..)| p == path).collect();
-        assert_eq!(got.len(), 1, "{path} fetched once: {seen:#?}");
-        got[0].clone()
-    };
+    assert!(!seen.is_empty());
     assert!(
-        seen.iter()
-            .all(|(_, o, _)| o.as_deref() == Some("http://127.0.0.1:9")),
-        "every request carries the game's origin: {seen:#?}"
-    );
-    assert_eq!(one_request("/r1.png").2, None, "no-referrer");
-    assert_eq!(
-        one_request("/r2.png").2.as_deref(),
-        Some("http://127.0.0.1:9/game/"),
-        "unsafe-url sends the whole URL"
-    );
-    assert_eq!(
-        one_request("/r3.png").2.as_deref(),
-        Some("http://127.0.0.1:9/"),
-        "strict-origin-when-cross-origin sends only the origin"
-    );
-    assert_eq!(
-        one_request("/r4.png").2,
-        None,
-        "same-origin sends none cross-origin"
+        seen.iter().all(|(_, o, r)| o.is_none() && r.is_none()),
+        "{seen:#?}"
     );
     assert!(og_runtime::og_engine_destroy(e));
 }
@@ -709,9 +640,8 @@ iframe {{ width: 120px; height: 60px; }}
     );
     assert!(paths.contains(&"/og/art/star.png"), "{paths:?}");
     assert!(
-        seen.iter()
-            .all(|(_, o, _)| o.as_deref() == Some("http://127.0.0.1:9")),
-        "every request carries the game's origin: {seen:#?}"
+        seen.iter().all(|(_, o, r)| o.is_none() && r.is_none()),
+        "no request carries the game's origin or URL: {seen:#?}"
     );
     assert!(og_runtime::og_engine_destroy(e));
 }

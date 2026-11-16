@@ -188,7 +188,7 @@ pub use host::platform::{
 /// The counting allocator the hosts install (`#[global_allocator]`), for the probe's `memory`.
 pub use og_core::alloc::Counting as CountingAlloc;
 pub use og_render::png;
-pub use og_ui::css::request::{CrossOrigin, UrlRequest};
+pub use og_ui::css::request::UrlRequest;
 pub use present::atmosphere::{
     og_atmosphere_time_of_day, og_load_shader, og_render_set_material_shader,
     og_render_set_shader_param, og_render_shader_material,

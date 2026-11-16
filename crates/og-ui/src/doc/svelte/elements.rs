@@ -572,28 +572,25 @@ impl Parser {
                 crate::svg::smil::Animation::parse(tag, &literal, mpath).map_err(|e| (at, e))?;
             }
         }
-        // A remote `<iframe>`'s request attributes (HTML's `crossorigin`,
-        // `integrity`, `referrerpolicy`), as url()'s modifiers.
+        // A remote `<iframe>`'s `integrity`, as url()'s modifier. HTML's
+        // `crossorigin` and `referrerpolicy` are refused, as url()'s
+        // cross-origin() and referrer-policy() are (css::request).
         let mut request = Vec::new();
         for a in attrs {
-            if frame
-                && let Some(modifier) = match a.name.as_str() {
-                    "crossorigin" => Some("cross-origin"),
-                    "integrity" => Some("integrity"),
-                    "referrerpolicy" => Some("referrer-policy"),
-                    _ => None,
-                }
-            {
+            if frame && matches!(a.name.as_str(), "crossorigin" | "referrerpolicy") {
+                return Err((
+                    a.at,
+                    format!(
+                        "an <iframe>'s {} is not needed: the engine fetches without cookies, credentials or a referrer of its own; only integrity applies",
+                        a.name
+                    ),
+                ));
+            }
+            if frame && a.name == "integrity" {
                 if a.bound {
-                    return Err((a.at, format!("an <iframe>'s {} is a literal", a.name)));
+                    return Err((a.at, "an <iframe>'s integrity is a literal".into()));
                 }
-                // HTML's empty or unknown `crossorigin` is anonymous.
-                let value = match (modifier, a.value.as_str()) {
-                    ("cross-origin", "use-credentials") => "use-credentials",
-                    ("cross-origin", _) => "anonymous",
-                    (_, value) => value,
-                };
-                request.push((modifier.to_string(), value.to_string(), a.at));
+                request.push(("integrity".to_string(), a.value.clone(), a.at));
                 continue;
             }
             if a.name == "id" {
