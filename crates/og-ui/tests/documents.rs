@@ -513,9 +513,11 @@ div div { height: 1px; width: 10px; }
     assert_eq!(fill(&d), (42.0, 3.0));
 }
 
-/// `@supports` (CSS Conditional 3 §2, 4 §2): a declaration the cascade takes
-/// holds, one it refuses does not; `selector()`, `font-format()`,
-/// `font-tech()`, `not`, `and` and `or` combine as written. `@charset` is
+/// `@supports` (CSS Conditional 3 §2, 4 §2, 5 §2): a declaration the
+/// cascade takes holds, one it refuses does not; `selector()`,
+/// `font-format()`, `font-tech()`, `at-rule()` (not `@charset`, which is
+/// no at-rule, nor print's `@page`), `named-feature()` (CSS Color 4 gamut
+/// mapping only) and `env()`, with `not`, `and` and `or`. `@charset` is
 /// the stylesheet's encoding marker only, and the rules after it apply.
 /// `@import` (CSS Cascade 5 §2) brings a sheet into the cascade under its
 /// `layer()`, `supports()` and media conditions.
@@ -528,6 +530,7 @@ fn supports_charset_and_import_conditions_gate_their_rules() {
 @import "narrow.css" (width < 500px);
 @import "grid.css" supports(display: grid);
 @import "none.css" supports(display: blorp);
+@import "at.css" supports(at-rule(@layer));
 #Base { width: 12px; }
 @layer base { #Layered { width: 13px; } }
 @supports (display: grid) { #Decl { width: 21px; } }
@@ -538,10 +541,16 @@ fn supports_charset_and_import_conditions_gate_their_rules() {
 @supports selector(:has(+ a)) { #Selector { width: 26px; } }
 @supports font-format(woff2) and font-tech(variations) { #Font { width: 27px; } }
 @supports font-format(eot) { #Eot { width: 28px; } }
+@supports at-rule(@container) and at-rule(@custom-media) { #AtRule { width: 41px; } }
+@supports at-rule(@charset) or at-rule(@page) { #NoAtRule { width: 42px; } }
+@supports named-feature(gamut-mapping) { #Named { width: 43px; } }
+@supports named-feature(anchor-position-follows-transforms) or named-feature(nope) { #NoNamed { width: 44px; } }
+@supports env(safe-area-inset-top) and env(-og-hud-inset-left) { #Env { width: 45px; } }
+@supports env(viewport-segment-width) { #NoEnv { width: 46px; } }
 @layer defaults { div div { height: 1px; width: 10px; } }"#;
     let ids = [
         "Base", "Layered", "Wide", "Narrow", "Grid", "None", "Decl", "Bad", "Not", "And", "Or",
-        "Selector", "Font", "Eot",
+        "Selector", "Font", "Eot", "At", "AtRule", "NoAtRule", "Named", "NoNamed", "Env", "NoEnv",
     ];
     let body: String = ids
         .iter()
@@ -571,6 +580,7 @@ fn supports_charset_and_import_conditions_gate_their_rules() {
             "ui/none.css".to_string(),
             "#None { width: 34px; }".to_string(),
         ),
+        ("ui/at.css".to_string(), "#At { width: 35px; }".to_string()),
     ];
     let doc = UiDocument::parse_with_imports("ui/t.svelte", &text, imports)
         .unwrap_or_else(|e| panic!("{e:?}"));
@@ -600,6 +610,13 @@ fn supports_charset_and_import_conditions_gate_their_rules() {
         ("Selector", 26.0),
         ("Font", 27.0),
         ("Eot", 10.0),
+        ("At", 35.0),
+        ("AtRule", 41.0),
+        ("NoAtRule", 10.0),
+        ("Named", 43.0),
+        ("NoNamed", 10.0),
+        ("Env", 45.0),
+        ("NoEnv", 10.0),
     ] {
         assert_eq!(width(id), expected, "{id}");
     }

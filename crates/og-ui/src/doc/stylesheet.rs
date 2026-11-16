@@ -1180,10 +1180,8 @@ impl<'a> Reader<'a> {
                             Ok::<_, cssparser::ParseError<()>>(p.slice_from(start).to_string())
                         })
                         .unwrap_or_default();
-                    let condition = if condition.trim_start().starts_with('(')
-                        || condition.trim_start().starts_with("not")
-                        || condition.trim_start().starts_with("selector(")
-                    {
+                    // `supports(display: grid)` is a bare declaration.
+                    let condition = if supports(&condition).is_ok() {
                         condition
                     } else {
                         format!("({condition})")
@@ -1550,9 +1548,11 @@ fn scope_prelude(rest: &str) -> Result<(Option<String>, Option<String>), String>
     Ok((root, limit))
 }
 
-/// An `@supports` condition (CSS Conditional 3 and 4): `(property: value)`
+/// An `@supports` condition (CSS Conditional 3 to 5): `(property: value)`
 /// holds when the document's cascade takes the declaration as written,
-/// `selector(…)` when it takes the selector; `not`, `and`, `or` combine.
+/// `selector(…)` when it takes the selector, `at-rule(…)`,
+/// `named-feature(…)` and `env(…)` when the engine has them; `not`, `and`,
+/// `or` combine.
 pub(super) fn supports(condition: &str) -> Result<bool, String> {
     use cssparser::{ParseError, Parser, Token};
     fn test(p: &mut Parser<'_>) -> Result<bool, ParseError<String>> {
@@ -1626,12 +1626,48 @@ pub(super) fn supports(condition: &str) -> Result<bool, String> {
                             arg.as_str(),
                             "color-colrv0" | "color-colrv1" | "variations" | "features-opentype"
                         ),
+                        // An at-rule the reader takes in some context
+                        // (CSS Conditional 5 §2.1.2; @charset is no
+                        // at-rule).
+                        "at-rule" => matches!(
+                            arg.to_ascii_lowercase().as_str(),
+                            "@media"
+                                | "@container"
+                                | "@supports"
+                                | "@layer"
+                                | "@starting-style"
+                                | "@scope"
+                                | "@font-face"
+                                | "@property"
+                                | "@counter-style"
+                                | "@position-try"
+                                | "@keyframes"
+                                | "@view-transition"
+                                | "@import"
+                                | "@namespace"
+                                | "@custom-media"
+                        ),
+                        // §2.1.3's list: colours out of the output's gamut
+                        // are CSS Color 4 §13.2 mapped. Anchors do not
+                        // follow their transforms, and one scrollable axis
+                        // beside a clipped one is not established.
+                        "named-feature" => arg == "gamut-mapping",
+                        "env" => {
+                            let edge = |prefix: &str| {
+                                arg.strip_prefix(prefix).is_some_and(|edge| {
+                                    matches!(edge, "top" | "right" | "bottom" | "left")
+                                })
+                            };
+                            edge("safe-area-inset-")
+                                || edge("safe-area-max-inset-")
+                                || edge("-og-hud-inset-")
+                        }
                         _ => false,
                     })
                 })
             }
             _ => Err(ParseError::custom(
-                "@supports takes (property: value), selector(…), not, and and or".to_string(),
+                "@supports takes (property: value), selector(…), font-format(…), font-tech(…), at-rule(…), named-feature(…), env(…), not, and and or".to_string(),
             )),
         }
     }
