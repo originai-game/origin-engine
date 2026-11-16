@@ -71,12 +71,31 @@ impl ElementDraw {
                             Blend::Normal,
                         ));
                     }
-                    out.push(shape(
-                        geometry,
-                        at.rect,
-                        l.resolve(theme, at.rect, at.rect),
-                        Blend::SourceOut,
-                    ));
+                    if l.fade.is_empty() {
+                        out.push(shape(
+                            geometry,
+                            at.rect,
+                            l.resolve(theme, at.rect, at.rect),
+                            Blend::SourceOut,
+                        ));
+                    } else {
+                        // A cross-fade's parts summed, then kept off the
+                        // padding box as one image.
+                        out.push(plain_layer(None));
+                        for (part, w) in &l.fade {
+                            let mut s = shape(
+                                geometry.clone(),
+                                at.rect,
+                                l.resolve_part(part, theme, at.rect, at.rect),
+                                Blend::Add,
+                            );
+                            if let DrawCmd::Shape { shape, .. } = &mut s {
+                                shape.opacity = *w;
+                            }
+                            out.push(s);
+                        }
+                        out.push(end_layer(None, at, 1.0, Blend::SourceOut));
+                    }
                     out.push(end_layer(None, at, opacity, blend(l)));
                     continue;
                 }
@@ -93,21 +112,38 @@ impl ElementDraw {
             } else {
                 inset_geometry(self.geometry(&self.shape, at), inset)
             };
-            out.push(DrawCmd::Shape {
+            let shape = |paint, opacity, blend| DrawCmd::Shape {
                 shape: Box::new(og_draw::UiShape {
-                    geometry,
+                    geometry: geometry.clone(),
                     center: Vec2::new(r.x + r.width / 2.0, r.y + r.height / 2.0),
                     half: Vec2::new(r.width / 2.0, r.height / 2.0),
                     transform: [1.0, 0.0, 0.0, 1.0],
-                    paint: l.resolve(theme, at.rect, r),
+                    paint,
                     mode: og_draw::UiMode::Fill,
                     opacity,
-                    blend: blend(l),
+                    blend,
                     layer: 0,
                     clip: None,
                 }),
                 clip: at.clip,
-            });
+            };
+            if l.fade.is_empty() {
+                out.push(shape(l.resolve(theme, at.rect, r), opacity, blend(l)));
+                continue;
+            }
+            // A cross-fade (CSS Images 4 §2.6): each part scaled by its
+            // weight and added, premultiplied, in a group of their own (a
+            // weight short of 100% leaves the rest transparent), which
+            // then combines as one image.
+            out.push(plain_layer(None));
+            for (part, w) in &l.fade {
+                out.push(shape(
+                    l.resolve_part(part, theme, at.rect, r),
+                    *w,
+                    Blend::Add,
+                ));
+            }
+            out.push(end_layer(None, at, opacity, blend(l)));
         }
         out
     }

@@ -313,6 +313,11 @@ pub struct BoxLayer {
     /// An image's or a gradient tile's fit is a CSS background's, its
     /// positioning area `area`.
     pub paint: Paint,
+    /// A `cross-fade()`'s images and their weights (CSS Images 4 §2.6),
+    /// each placed as `paint` would be: drawn scaled by its weight and
+    /// summed in a group of their own, which then combines as `paint`
+    /// would. Empty for one image; `paint` is transparent when it is not.
+    pub fade: Vec<(Paint, f32)>,
     /// The positioning area's edges in from the box's (left, top, right,
     /// bottom; CSS px, negative outside it), or a fixed one's rectangle
     /// on the screen.
@@ -373,7 +378,13 @@ impl BoxLayer {
     /// Its paint drawn in `d`, `inset` (left, top, right, bottom) in from
     /// the box `b`: its fit's positioning area made `d`'s.
     fn resolve(&self, theme: &Theme, b: Rect, d: Rect) -> og_draw::UiPaint {
-        let mut p = self.paint.resolve(theme);
+        self.resolve_part(&self.paint, theme, b, d)
+    }
+
+    /// [`BoxLayer::resolve`] for `paint`, its own or one of its
+    /// cross-fade's parts.
+    fn resolve_part(&self, paint: &Paint, theme: &Theme, b: Rect, d: Rect) -> og_draw::UiPaint {
+        let mut p = paint.resolve(theme);
         let area = match self.area {
             Area::Box([l, t, r, bt]) => [
                 l - (d.x - b.x),
@@ -420,29 +431,41 @@ impl BoxLayer {
             return false;
         }
         let (pos, size) = ([p.0 - r.x, p.1 - r.y], [r.width, r.height]);
-        match self.resolve(theme, b, r) {
-            og_draw::UiPaint::Image(og_draw::UiImage {
-                fit: og_draw::UiFit::Background(bg),
-                ..
-            }) => match bg.size {
-                og_draw::UiBackgroundSize::Given([Some(w), Some(h)]) => {
-                    bg.place(pos, size, [w, h]).is_some()
-                }
-                _ => true,
-            },
-            og_draw::UiPaint::GradientImage(g) => match g.fit {
-                og_draw::UiFit::Background(bg) => {
-                    let tile = if g.size.x > 0.0 && g.size.y > 0.0 {
-                        [g.size.x, g.size.y]
-                    } else {
-                        size
-                    };
-                    bg.place(pos, size, tile).is_some()
-                }
-                _ => true,
-            },
-            _ => true,
+        if !self.fade.is_empty() {
+            return self
+                .fade
+                .iter()
+                .any(|(part, _)| covers(self.resolve_part(part, theme, b, r), pos, size));
         }
+        covers(self.resolve(theme, b, r), pos, size)
+    }
+}
+
+/// Whether a box layer's paint `p` paints at `pos` in its area `size`
+/// ([`BoxLayer::covers`]).
+fn covers(p: og_draw::UiPaint, pos: [f32; 2], size: [f32; 2]) -> bool {
+    match p {
+        og_draw::UiPaint::Image(og_draw::UiImage {
+            fit: og_draw::UiFit::Background(bg),
+            ..
+        }) => match bg.size {
+            og_draw::UiBackgroundSize::Given([Some(w), Some(h)]) => {
+                bg.place(pos, size, [w, h]).is_some()
+            }
+            _ => true,
+        },
+        og_draw::UiPaint::GradientImage(g) => match g.fit {
+            og_draw::UiFit::Background(bg) => {
+                let tile = if g.size.x > 0.0 && g.size.y > 0.0 {
+                    [g.size.x, g.size.y]
+                } else {
+                    size
+                };
+                bg.place(pos, size, tile).is_some()
+            }
+            _ => true,
+        },
+        _ => true,
     }
 }
 

@@ -348,6 +348,8 @@ proof("svg", "inline_svg", "inline_svg_matches_its_reference_frames",
       "References at 1280/390 compare inline SVG paths, polygons, a url(#) gradient fill, even-odd fill-rule, a pathLength dash offset and bound path data in CSS-sized boxes. css_paint::svg_paint_opacities_order_and_mask_types_draw_as_svg_says adds paint opacities, paint-order and mask types. The SVG DOM interfaces, <foreignObject>, <a>, <script>, <switch> and systemLanguage are not covered.")
 proof("image-orientation", "css_paint", "image_orientation_turns_images_by_their_exif_or_draws_them_as_stored",
       "Emitted images read through og-render's own placement against a 2x1 texture carrying EXIF orientations 1, 3, 6 and 8: from-image turns it as EXIF defines (6 red on top, 8 blue on top, 3 blue on the left) with the turned natural size under object-fit: none; none, inherited from the parent, samples the texels as stored; a background follows the property too. og-cook textures::exif_orientation_is_kept_beside_the_texels_as_stored: the cook keeps the orientation beside unturned texels, a streamed tail too. The deprecated <angle> || flip form is refused; sprites and materials sample as stored; the GPU shader path is not pixel-checked.")
+proof("cross-fade", "css_paint", "cross_fade_sums_its_weighted_images_in_a_group",
+      "Emitted output: each part placed as the layer places one image, scaled by its weight and added (plus-lighter) in a group composited as one image; weights normalised as the spec says (an omitted one takes what is left, floored at 0; a sum over 100% scaled; under it the rest transparent), colours as solid images, nested cross-fade() flattened; out-of-range percentages and none refused. Parts keep their own natural sizes rather than the weighted average (equal-sized images are exact; a colour fills the positioning area under an auto size), the sum is in og-render's linear premultiplied space rather than the spec's sRGB, and -webkit-cross-fade() is not taken; the GPU sum is not pixel-checked.")
 not_applicable("color-adjust print-color-adjust",
                "Print colour economy: a game draws to its screen, never to paper or a printer's economy mode.")
 not_applicable("paint",
@@ -392,7 +394,6 @@ MISSING = {
     "backdrop-filter": "Ordinary staged backdrop chains have fixtures; native glass rejects chains requiring intermediate clamps, drop-shadow and SVG url filters.",
     "background-clip-text": "background-clip: text clips to the element's own glyphs only; CSS also clips to its descendants' text, which needs the subtree's text grouped where og-ui draws it (ui/commands.rs).",
     "filter-function": "No filter(<image>, <filter-function>) image: background and mask layers take url(), image-set(), gradients and light-dark() only.",
-    "cross-fade": "No cross-fade() image: a box layer draws one image, and a premultiplied sum of several needs layers that hold more than one.",
     "element": "No element() image; feImage's element images exist for SVG filters but no background or border layer reads a live element.",
     "border-shape": "No border-shape: borders, border images, outlines and shadows follow border-radius and corner-shape only.",
     "box-decoration-break": "Inline boxes and column fragments draw no per-fragment decorations, so neither slice nor clone is implemented.",

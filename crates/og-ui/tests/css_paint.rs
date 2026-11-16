@@ -1534,3 +1534,140 @@ img { width: 10px; height: 20px; object-fit: none; }
     assert_eq!(texel(&stored, 6, [5.0, 10.8]), None, "1 px tall");
     assert_eq!(texel(&upright, 6, [5.0, 10.8]), Some("blue"));
 }
+
+/// `cross-fade()` (CSS Images 4 §2.6) draws its images as one: each part
+/// placed as the layer places an image, scaled by its weight and added
+/// (premultiplied, `plus-lighter`) in a group of its own, which the layer
+/// then composites. The weights are the spec's normalisation, worked by
+/// hand: `a 25%, b` gives b the 75% left; `a 80%, b 60%` sums to 140% and
+/// is scaled to 80/140 and 60/140; `a 30%, red 20%` keeps its 50% (the
+/// rest transparent: no third part), red a solid image; `a 70%, b 50%, a`
+/// leaves the omitted one max(0, 100 − 120)% = 0 and scales to 70/120 and
+/// 50/120; `a 10%, cross-fade(b 30%, a 70%) 90%` flattens to a 10%,
+/// b 27%, a 63%. A percentage outside 0–100% or `none` is refused.
+///
+/// Ways it could fail: the parts drawn over each other (normal blend, so
+/// the last hides the first) or outside a group (added to what is behind
+/// the element), an omitted weight not taking what is left, a sum over
+/// 100% left unscaled, a sum under it padded up, a nested cross-fade
+/// weighted once, or the parts placed differently.
+#[test]
+fn cross_fade_sums_its_weighted_images_in_a_group() {
+    let text = r#"<meta name="component" content="t">
+<column>
+  <div id="Two" style="background: cross-fade(url(a.png) 25%, url(b.png)) 2px 3px / 8px 4px no-repeat"></div>
+  <div id="Over" style="background-image: cross-fade(url(a.png) 80%, url(b.png) 60%)"></div>
+  <div id="Under" style="background-image: cross-fade(url(a.png) 30%, #ff0000 20%)"></div>
+  <div id="Rest" style="background-image: cross-fade(url(a.png) 70%, url(b.png) 50%, url(a.png))"></div>
+  <div id="Nested" style="background-image: cross-fade(url(a.png) 10%, cross-fade(url(b.png) 30%, url(a.png) 70%) 90%)"></div>
+</column>
+<style>div { width: 20px; height: 20px; flex-shrink: 0; }</style>"#;
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut h = Handles::default();
+    let (a, b) = (h.texture(), h.texture());
+    ui.define_texture("ui/a.png", a);
+    ui.define_texture("ui/b.png", b);
+    let d = Doc::with_ui(ui, text);
+    assert!(
+        d.ui.frame().warnings.is_empty(),
+        "{:?}",
+        d.ui.frame().warnings
+    );
+    // The parts each element's group adds, by name and weight (rounded),
+    // and how the group composites.
+    let group = |id: &str| {
+        let e = d.get(id);
+        let inside = |s: &og_draw::UiShape| {
+            (e.x..=e.x + e.width).contains(&s.center.x)
+                && (e.y..=e.y + e.height).contains(&s.center.y)
+        };
+        let mut parts = Vec::new();
+        let mut open = false;
+        for it in &d.ui.frame().items {
+            match &it.cmd {
+                DrawCmd::BeginLayer { .. } => {
+                    open = true;
+                    parts.clear();
+                }
+                DrawCmd::Shape { shape, .. } if open && inside(shape) => {
+                    let name = match &shape.paint {
+                        og_draw::UiPaint::Image(im) if im.texture == a => "a",
+                        og_draw::UiPaint::Image(im) if im.texture == b => "b",
+                        og_draw::UiPaint::GradientImage(g)
+                            if g.gradient
+                                .stops
+                                .iter()
+                                .all(|s| s.color == [1.0, 0.0, 0.0, 1.0]) =>
+                        {
+                            "red"
+                        }
+                        p => panic!("{id}: {p:?}"),
+                    };
+                    assert_eq!(shape.blend, og_draw::UiBlend::Add, "{id}: {name} adds");
+                    parts.push((
+                        name,
+                        (shape.opacity * 1e4).round() / 1e4,
+                        shape.paint.clone(),
+                    ));
+                }
+                DrawCmd::EndLayer {
+                    rect,
+                    opacity,
+                    blend,
+                    ..
+                } if (rect.x, rect.y, rect.width, rect.height) == (e.x, e.y, e.width, e.height)
+                    && open =>
+                {
+                    return (parts, *opacity, *blend);
+                }
+                _ => {}
+            }
+        }
+        panic!("{id}: no cross-fade group");
+    };
+    let names = |id: &str| {
+        let (parts, opacity, blend) = group(id);
+        assert_eq!((opacity, blend), (1.0, og_draw::UiBlend::Normal), "{id}");
+        parts
+            .into_iter()
+            .map(|(n, w, _)| (n, w))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(names("Two"), [("a", 0.25), ("b", 0.75)]);
+    assert_eq!(names("Over"), [("a", 0.5714), ("b", 0.4286)]);
+    assert_eq!(names("Under"), [("a", 0.3), ("red", 0.2)]);
+    assert_eq!(names("Rest"), [("a", 0.5833), ("b", 0.4167), ("a", 0.0)]);
+    assert_eq!(names("Nested"), [("a", 0.1), ("b", 0.27), ("a", 0.63)]);
+    // Both parts placed as the layer places one image: 8 x 4 at (2, 3).
+    let (two, ..) = group("Two");
+    let fits: Vec<_> = two
+        .iter()
+        .map(|(_, _, p)| match p {
+            og_draw::UiPaint::Image(im) => im.fit,
+            p => panic!("{p:?}"),
+        })
+        .collect();
+    assert_eq!(fits[0], fits[1]);
+    let og_draw::UiFit::Background(bg) = fits[0] else {
+        panic!("{:?}", fits[0])
+    };
+    assert_eq!(
+        bg.size,
+        og_draw::UiBackgroundSize::Given([Some(8.0), Some(4.0)])
+    );
+    assert_eq!(bg.offset, og_core::glam::Vec2::new(2.0, 3.0));
+
+    let parse = |value: &str| {
+        UiDocument::parse(
+            "ui/t.svelte",
+            &format!(
+                "<meta name=\"component\" content=\"t\"><div id=\"A\"></div><style>#A {{ background-image: {value} }}</style>"
+            ),
+        )
+        .map(|_| ())
+    };
+    assert!(parse("cross-fade(url(a.png) 50%, url(b.png))").is_ok());
+    assert!(parse("cross-fade(url(a.png) 120%, url(b.png))").is_err());
+    assert!(parse("cross-fade(none 50%, url(b.png))").is_err());
+    assert!(parse("cross-fade(url(a.png) 50% 20%)").is_err());
+}

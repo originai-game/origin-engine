@@ -9,6 +9,12 @@ pub(crate) enum CssImage {
     /// `light-dark(<image>, <image>)` (CSS Color 5 §2.2): the first in a
     /// light colour scheme, the second in a dark one.
     LightDark(Box<CssImage>, Box<CssImage>),
+    /// `cross-fade()` (CSS Images 4 §2.6): its images (a colour is a solid
+    /// image) with their weights, normalised as the spec says (omitted
+    /// percentages share what is left of 100%, a sum over 100% scaled to
+    /// it; under it the rest is transparent) and a nested cross-fade()
+    /// flattened into its parts, so no part is another cross-fade().
+    CrossFade(Vec<(CssImage, f32)>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -23,13 +29,19 @@ impl CssImage {
     pub(crate) fn in_scheme(self, dark: bool) -> CssImage {
         match self {
             Self::LightDark(l, d) => if dark { *d } else { *l }.in_scheme(dark),
+            Self::CrossFade(parts) => Self::CrossFade(
+                parts
+                    .into_iter()
+                    .map(|(i, w)| (i.in_scheme(dark), w))
+                    .collect(),
+            ),
             i => i,
         }
     }
 
     pub(crate) fn select(&self, resolution: f32) -> Option<(&ImageSource, f32)> {
         match self {
-            Self::None | Self::LightDark(..) => None,
+            Self::None | Self::LightDark(..) | Self::CrossFade(_) => None,
             Self::Image(image) => Some((image, 1.0)),
             Self::Set(options) => options
                 .iter()
@@ -62,6 +74,7 @@ impl CssImage {
                 .filter_map(|(image, _)| url(image))
                 .collect(),
             Self::LightDark(l, d) => l.urls().into_iter().chain(d.urls()).collect(),
+            Self::CrossFade(parts) => parts.iter().flat_map(|(i, _)| i.urls()).collect(),
         }
     }
 }
@@ -257,7 +270,7 @@ pub(crate) type Background = (Vec<CssLayer>, Option<Tok>);
 
 pub(super) fn is_image(t: &Tok) -> bool {
     match t {
-        Tok::Func(f, _) if f == "url" || f == "image-set" => true,
+        Tok::Func(f, _) if f == "url" || f == "image-set" || f == "cross-fade" => true,
         // `light-dark()` of images, not of colours.
         Tok::Func(f, a) if f == "light-dark" => a.iter().all(|a| {
             matches!(a.as_slice(), [t] if is_image(t) || matches!(t, Tok::Ident(w) if w == "none"))
@@ -300,6 +313,7 @@ pub(super) fn image(t: &Tok) -> Result<CssImage, String> {
             },
             _ => Err("light-dark(<image>, <image>)".into()),
         },
+        Tok::Func(f, args) if f == "cross-fade" => cross_fade(args),
         Tok::Func(f, options) if f == "image-set" => {
             let mut out = Vec::new();
             for option in options {
@@ -374,6 +388,70 @@ pub(super) fn image(t: &Tok) -> Result<CssImage, String> {
             )),
         },
     }
+}
+
+/// `cross-fade( <cf-image># )`, `<cf-image> = [<image> | <color>] &&
+/// <percentage [0,100]>?` (CSS Images 4 §2.6), its weights normalised
+/// ([`CssImage::CrossFade`]).
+fn cross_fade(args: &[Vec<Tok>]) -> Result<CssImage, String> {
+    const FORM: &str = "cross-fade(): each argument is an image or a colour and an optional percentage from 0% to 100%";
+    let mut parts = Vec::new();
+    for arg in args {
+        let (mut part, mut pct) = (None, None);
+        for t in arg {
+            match t {
+                Tok::Num(n, u) if u == "%" && pct.is_none() => {
+                    let v: f32 = n.parse().map_err(|_| FORM.to_string())?;
+                    if !(0.0..=100.0).contains(&v) {
+                        return Err(FORM.into());
+                    }
+                    pct = Some(v / 100.0);
+                }
+                t if part.is_none() => {
+                    part = Some(match color(t) {
+                        // A solid image of the colour: a gradient of it
+                        // alone, which has no natural size either.
+                        Ok(c) => CssImage::Image(ImageSource::Gradient(CssGradient {
+                            shape: Shape::Linear(Dir::Angle(PI)),
+                            repeating: false,
+                            stops: vec![(c.clone(), None), (c, None)],
+                            interpolation: None,
+                        })),
+                        Err(_) => match image(t)? {
+                            CssImage::None => return Err(FORM.into()),
+                            i => i,
+                        },
+                    });
+                }
+                _ => return Err(FORM.into()),
+            }
+        }
+        parts.push((part.ok_or(FORM)?, pct));
+    }
+    if parts.is_empty() {
+        return Err(FORM.into());
+    }
+    let given: f32 = parts
+        .iter()
+        .filter_map(|(_, p): &(CssImage, Option<f32>)| *p)
+        .sum();
+    let omitted = parts.iter().filter(|(_, p)| p.is_none()).count();
+    let share = if omitted > 0 {
+        (1.0 - given).max(0.0) / omitted as f32
+    } else {
+        0.0
+    };
+    let total = given + share * omitted as f32;
+    let scale = if total > 1.0 { 1.0 / total } else { 1.0 };
+    let mut out = Vec::new();
+    for (image, p) in parts {
+        let w = p.unwrap_or(share) * scale;
+        match image {
+            CssImage::CrossFade(inner) => out.extend(inner.into_iter().map(|(i, v)| (i, v * w))),
+            i => out.push((i, w)),
+        }
+    }
+    Ok(CssImage::CrossFade(out))
 }
 
 /// One axis of a `background-position` (`background-position-x`, `-y`).

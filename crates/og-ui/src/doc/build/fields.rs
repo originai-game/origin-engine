@@ -312,8 +312,7 @@ impl Ui {
         let mut c = p::CssPaint::default();
         let (_, nearest, orient) = r.object_css();
         // Asset paths were resolved beside their stylesheet before the cascade.
-        let mut image = |what: &str, i: p::CssImage| -> Option<p::BgImage> {
-            let i = i.in_scheme(cx.dark);
+        let mut one = |what: &str, i: p::CssImage| -> Option<p::BgImage> {
             let Some((source, density)) = i.select(self.env.viewport.dpr()) else {
                 return (what == "mask" && matches!(i, p::CssImage::Set(_)))
                     .then_some(p::BgImage::Transparent);
@@ -340,6 +339,17 @@ impl Ui {
                     return None;
                 }
             })
+        };
+        // A cross-fade's parts each resolved; one that does not is an
+        // invalid image, transparent (CSS Images 4 §2).
+        let mut image = |what: &str, i: p::CssImage| match i.in_scheme(cx.dark) {
+            p::CssImage::CrossFade(parts) => Some(p::BgImage::CrossFade(
+                parts
+                    .into_iter()
+                    .map(|(i, w)| (one(what, i).unwrap_or(p::BgImage::Transparent), w))
+                    .collect(),
+            )),
+            i => one(what, i),
         };
         let layer = |l: p::CssLayer, image: p::BgImage| p::BgLayer {
             image,

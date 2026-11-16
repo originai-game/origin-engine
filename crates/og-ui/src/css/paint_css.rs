@@ -129,6 +129,27 @@ pub enum BgImage {
         /// `image-orientation: from-image`).
         orient: bool,
     },
+    /// `cross-fade()` (CSS Images 4 §2.6): its images and their weights
+    /// ([`CssImage::CrossFade`]); no part is another cross-fade.
+    CrossFade(Vec<(BgImage, f32)>),
+}
+
+impl BgImage {
+    /// Its paint as a box layer's, and a cross-fade's parts: `paint` each
+    /// image's paint, and the layer's paint with its parts (the paint
+    /// transparent when it has parts).
+    fn paints(
+        &self,
+        paint: impl Fn(&BgImage) -> crate::paint::Paint,
+    ) -> (crate::paint::Paint, Vec<(crate::paint::Paint, f32)>) {
+        match self {
+            BgImage::CrossFade(parts) => (
+                crate::paint::Paint::Solid(ColorRef::Literal(Srgba::TRANSPARENT)),
+                parts.iter().map(|(i, w)| (paint(i), *w)).collect(),
+            ),
+            i => (paint(i), Vec::new()),
+        }
+    }
 }
 
 /// A background or mask layer as drawn: its image and how it is sized,
@@ -159,8 +180,9 @@ pub struct BorderImg {
 impl BgLayer {
     /// Its paint for a positioning area `area` CSS px: a gradient is drawn
     /// as a tile of its concrete size (CSS Images 3 §5.3: no natural size,
-    /// so `auto` takes the area's).
-    fn paint(&self, area: [f32; 2]) -> crate::paint::Paint {
+    /// so `auto` takes the area's). `image` is the layer's or a
+    /// cross-fade's part.
+    fn paint(&self, image: &BgImage, area: [f32; 2]) -> crate::paint::Paint {
         use crate::paint::{ImagePaint, Paint};
         let [aw, ah] = area;
         let bg = |size| og_draw::UiBackground {
@@ -170,8 +192,10 @@ impl BgLayer {
             repeat: self.repeat,
             area: [0.0; 4],
         };
-        match &self.image {
-            BgImage::Transparent => Paint::Solid(ColorRef::Literal(Srgba::TRANSPARENT)),
+        match image {
+            BgImage::Transparent | BgImage::CrossFade(_) => {
+                Paint::Solid(ColorRef::Literal(Srgba::TRANSPARENT))
+            }
             BgImage::Gradient(g) => {
                 let [w, h] = match self.size {
                     BgSize::Cover | BgSize::Contain => [aw, ah],
@@ -283,8 +307,10 @@ impl LayerFrame {
             }
             e => LayerClip::Box(self.edge(e)),
         };
+        let (paint, fade) = l.image.paints(|i| l.paint(i, size));
         BoxLayer {
-            paint: l.paint(size),
+            paint,
+            fade,
             area,
             clip,
             blend: l.blend,
@@ -301,6 +327,7 @@ impl LayerFrame {
         use crate::paint::{Area, BoxLayer, LayerClip};
         BoxLayer {
             paint,
+            fade: Vec::new(),
             area: Area::Box([0.0; 4]),
             clip: match clip {
                 BoxEdge::Text => LayerClip::Text,
@@ -336,54 +363,58 @@ impl LayerFrame {
         let (aw, ah) = (w + out[1] + out[3], h + out[0] + out[2]);
         let whole = |k: usize| if k % 2 == 0 { ah } else { aw };
         let width: Vec<f32> = (0..4).map(|k| len(s.width[k], k, whole(k))).collect();
-        let gradient = matches!(b.image, BgImage::Gradient(_));
-        let slice: Vec<f32> = (0..4)
-            .map(|k| match s.slice[k] {
-                Pos::Px(p) => p.max(0.0),
-                // A fraction of a texture is the renderer's (negative); of
-                // a gradient, of its area.
-                Pos::Frac(f) if gradient => f.max(0.0) * whole(k),
-                Pos::Frac(f) => -f.max(0.0),
-            })
-            .collect();
         let lt = |v: &[f32]| [v[3], v[0], v[1], v[2]];
-        let fit = og_draw::UiFit::BorderImage(og_draw::UiBorderImage {
-            slice: lt(&slice),
-            width: lt(&width),
-            repeat: s.repeat,
-            fill: s.fill,
-        });
-        let paint = match &b.image {
-            BgImage::Transparent => {
-                crate::paint::Paint::Solid(ColorRef::Literal(Srgba::TRANSPARENT))
+        let paint_of = |image: &BgImage| {
+            let gradient = matches!(image, BgImage::Gradient(_));
+            let slice: Vec<f32> = (0..4)
+                .map(|k| match s.slice[k] {
+                    Pos::Px(p) => p.max(0.0),
+                    // A fraction of a texture is the renderer's (negative);
+                    // of a gradient, of its area.
+                    Pos::Frac(f) if gradient => f.max(0.0) * whole(k),
+                    Pos::Frac(f) => -f.max(0.0),
+                })
+                .collect();
+            let fit = og_draw::UiFit::BorderImage(og_draw::UiBorderImage {
+                slice: lt(&slice),
+                width: lt(&width),
+                repeat: s.repeat,
+                fill: s.fill,
+            });
+            match image {
+                BgImage::Transparent | BgImage::CrossFade(_) => {
+                    crate::paint::Paint::Solid(ColorRef::Literal(Srgba::TRANSPARENT))
+                }
+                BgImage::Gradient(g) => crate::paint::Paint::GradientImage {
+                    gradient: g.resolve(aw.max(1e-3), ah.max(1e-3)),
+                    size: [aw.max(1e-3), ah.max(1e-3)],
+                    fit,
+                },
+                BgImage::Texture {
+                    texture,
+                    uv,
+                    density,
+                    nearest,
+                    orient,
+                } => crate::paint::Paint::Image(crate::paint::ImagePaint {
+                    texture: *texture,
+                    uv: *uv,
+                    size: [0.0; 2],
+                    density: *density,
+                    tint: ColorRef::Literal(Srgba::WHITE),
+                    fit,
+                    focal: [0.5; 2],
+                    offset: [0.0; 2],
+                    nearest: *nearest,
+                    orient: *orient,
+                }),
             }
-            BgImage::Gradient(g) => crate::paint::Paint::GradientImage {
-                gradient: g.resolve(aw.max(1e-3), ah.max(1e-3)),
-                size: [aw.max(1e-3), ah.max(1e-3)],
-                fit,
-            },
-            BgImage::Texture {
-                texture,
-                uv,
-                density,
-                nearest,
-                orient,
-            } => crate::paint::Paint::Image(crate::paint::ImagePaint {
-                texture: *texture,
-                uv: *uv,
-                size: [0.0; 2],
-                density: *density,
-                tint: ColorRef::Literal(Srgba::WHITE),
-                fit,
-                focal: [0.5; 2],
-                offset: [0.0; 2],
-                nearest: *nearest,
-                orient: *orient,
-            }),
         };
+        let (paint, fade) = b.image.paints(paint_of);
         let o = [-out[3], -out[0], -out[1], -out[2]];
         BoxLayer {
             paint,
+            fade,
             area: Area::Box(o),
             clip: LayerClip::Rect(o),
             blend: Blend::Normal,

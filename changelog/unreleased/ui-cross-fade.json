@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI CSS cross-fade()",
+      "summary": "`cross-fade()` (CSS Images 4 §2.6) is an image wherever a background, mask or border image takes one: `cross-fade(url(a.png) 30%, url(b.png))` draws each image placed as the layer places it, weighted and summed into one image (a colour is a solid image). Omitted percentages share what is left of 100%, a sum over 100% is scaled to it, and under it the rest is transparent. Images of different sizes each keep their own size."
+    }
+  ]
+}
