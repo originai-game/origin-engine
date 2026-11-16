@@ -243,7 +243,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `position-area:` | `<n>px \| <n>%` | CSS `position-area`: the cell or span of the 3×3 grid its anchor cuts its containing block into (`bottom center`, `span-right top`, `block-end`). |
 | `position-try-fallbacks:` | `<n>px \| <n>%` | CSS `position-try-fallbacks`: flips (`flip-block`, `flip-inline`, `flip-start`), `@position-try` names and position-areas tried in order while it overflows. |
 | `position-try-order:` | `<n>px \| <n>%` | CSS `position-try-order`: normal, most-width or most-height. |
-| `position-visibility:` | `<n>px \| <n>%` | CSS `position-visibility`: always, anchors-visible (the default) or no-overflow. |
+| `position-visibility:` | `<n>px \| <n>%` | CSS `position-visibility`: `always`, or any of `anchors-valid` (hidden while an anchor it names is missing), `anchors-visible` (the default: hidden while its anchor is clipped out of view) and `no-overflow` (hidden while it overflows). |
 | `column-count:` | `<n>px \| <n>%` | CSS `column-count`: `auto` or how many columns its flow lays out in (a multi-column container). |
 | `column-width:` | `<n>px \| <n>%` | CSS `column-width`: `auto` or the least width of a column; with `column-count`, as many columns as fit, at most that count. |
 | `float:` | `<n>px \| <n>%` | CSS `float` (`none`, `left`, `right`, `inline-start`, `inline-end`): in a block's flow it leaves the flow for that side of its containing block, shrinking to fit; the lines beside it shorten and boxes that start a formatting context of their own keep clear of it. |

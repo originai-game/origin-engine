@@ -520,7 +520,7 @@ pub const PROPS: &[PropSpec] = &[
         ty: Ty::Text,
         on: On::All,
         two_way: false,
-        doc: "CSS `position-visibility`: always, anchors-visible (the default) or no-overflow.",
+        doc: "CSS `position-visibility`: `always`, or any of `anchors-valid` (hidden while an anchor it names is missing), `anchors-visible` (the default: hidden while its anchor is clipped out of view) and `no-overflow` (hidden while it overflows).",
     },
     PropSpec {
         name: "anchorWidth",

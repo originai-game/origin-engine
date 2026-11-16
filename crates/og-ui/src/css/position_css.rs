@@ -139,12 +139,10 @@ pub(crate) fn lower(name: &str, value: &str) -> Option<Result<Vec<Lowered>, Stri
                     .map(|_| vec![("positionTryOrder", text(o)), ("positionTry", text(rest))])
             })
         }
-        "position-visibility" => match v {
-            "always" | "anchors-visible" | "no-overflow" => {
-                Ok(vec![("positionVisibility", text(v))])
-            }
-            v => Err(format!(
-                "'{v}' is no position-visibility: always, anchors-visible or no-overflow"
+        "position-visibility" => match anchor::Visibility::parse(v) {
+            Some(_) => Ok(vec![("positionVisibility", text(v))]),
+            None => Err(format!(
+                "'{v}' is no position-visibility: always, or any of anchors-valid, anchors-visible and no-overflow"
             )),
         },
         "width" | "height" | "inline-size" | "block-size" if v.contains("anchor-size(") => {

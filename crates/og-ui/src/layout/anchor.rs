@@ -126,14 +126,60 @@ pub enum TryOrder {
     MostHeight,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Visibility {
-    Always,
-    /// Hidden while its default anchor is clipped out of view (the default).
-    #[default]
-    AnchorsVisible,
+/// CSS `position-visibility: always | [anchors-valid || anchors-visible
+/// || no-overflow]` (CSS Anchor Positioning 1 §4.1): the conditions that
+/// hide it, any of them. The default is `anchors-visible`; `always` is
+/// none.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Visibility {
+    /// Hidden while its default anchor, or an anchor its `anchor()` or
+    /// `anchor-size()` names, does not resolve.
+    pub anchors_valid: bool,
+    /// Hidden while its default anchor is clipped out of view or hidden.
+    pub anchors_visible: bool,
     /// Hidden while it overflows its containing block.
-    NoOverflow,
+    pub no_overflow: bool,
+}
+
+impl Default for Visibility {
+    fn default() -> Self {
+        Visibility {
+            anchors_valid: false,
+            anchors_visible: true,
+            no_overflow: false,
+        }
+    }
+}
+
+impl Visibility {
+    /// `always`: nothing hides it.
+    pub const ALWAYS: Visibility = Visibility {
+        anchors_valid: false,
+        anchors_visible: false,
+        no_overflow: false,
+    };
+
+    /// Its value as written: `always`, or any of its three keywords, in
+    /// any order, each at most once (`None`: not a value of it).
+    pub fn parse(v: &str) -> Option<Visibility> {
+        if v.trim() == "always" {
+            return Some(Self::ALWAYS);
+        }
+        let mut out = Self::ALWAYS;
+        for w in v.split_whitespace() {
+            let bit = match w {
+                "anchors-valid" => &mut out.anchors_valid,
+                "anchors-visible" => &mut out.anchors_visible,
+                "no-overflow" => &mut out.no_overflow,
+                _ => return None,
+            };
+            if *bit {
+                return None;
+            }
+            *bit = true;
+        }
+        (out != Self::ALWAYS).then_some(out)
+    }
 }
 
 /// Where the anchored element ended up, per frame: the option that won (0
@@ -646,7 +692,8 @@ fn place(p: &Placement, f: &Frame<'_>) -> (Rect, Rect) {
     }
     let resolve = |k: usize| length(p.insets[k].as_ref()?, k, f, start, len);
     let insets = [resolve(0), resolve(1), resolve(2), resolve(3)];
-    let anchor = (f.anchor)("");
+    // Read only by an area, so `anchors-valid` sees what the option needs.
+    let anchor = p.area.and_then(|_| (f.anchor)(""));
     // The area's box: the 3×3 grid of the anchor's and the block's edges.
     let area = p.area.zip(anchor).map(|(ar, a)| {
         let lines = |axis: usize| {
@@ -835,7 +882,23 @@ pub(crate) fn resolve(spec: &AnchorSpec, f: &Frame<'_>) -> (Rect, Placed) {
             None
         }
     });
-    let hidden = spec.visibility == Visibility::NoOverflow && won.is_none();
+    // `anchors-valid`: an anchor the placement used reads none (its
+    // fallback, or a missing area anchor).
+    let invalid = spec.visibility.anchors_valid && {
+        let missed = std::cell::Cell::new(false);
+        let read = |name: &str| {
+            let a = (f.anchor)(name);
+            missed.set(missed.get() || a.is_none());
+            a
+        };
+        let g = Frame {
+            anchor: &read,
+            ..*f
+        };
+        place(&options[k], &g);
+        missed.get()
+    };
+    let hidden = spec.visibility.no_overflow && won.is_none() || invalid;
     (
         rect,
         Placed {

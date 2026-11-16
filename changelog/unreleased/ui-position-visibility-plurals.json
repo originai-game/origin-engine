@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI CSS position-visibility",
+      "summary": "`position-visibility` takes `anchors-valid` (hidden while an anchor its placement reads is missing) and any combination of `anchors-valid`, `anchors-visible` and `no-overflow` (CSS Anchor Positioning 1 §4.1); `anchors-visible` stays the default. `no-overflow` together with a clipped anchor now hides on either condition. `anchors-visible` now also hides when a box between the anchor and the anchored element clips it out (`overflow: hidden` or `clip`, paint containment), not only a scroll container."
+    }
+  ]
+}

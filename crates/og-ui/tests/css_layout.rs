@@ -2852,3 +2852,55 @@ fn a_clipping_box_keeps_its_childs_margin() {
         assert_eq!((c.y - p.y, c.height), (45.0, 5.0), "clip collapses through");
     });
 }
+
+/// CSS Anchor Positioning 1 §4.1: `position-visibility: anchors-valid`
+/// hides a box whose anchor is missing; `anchors-visible` (the default)
+/// one whose anchor is clipped out of view; the keywords combine, and
+/// `always` hides for neither.
+///
+/// Ways it could fail: `anchors-valid` refused or read as the default
+/// (V2 drawn), a combination keeping only one keyword (V4 drawn), or
+/// `anchors-valid` hiding a box whose anchor is only clipped (V5 hidden).
+#[test]
+fn position_visibility_hides_by_each_keyword() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="A"></div>
+  <div id="Clip"><div id="C"></div></div>
+  <div id="V1" class="v"></div><div id="V2" class="v"></div><div id="V3" class="v"></div>
+  <div id="V4" class="v"></div><div id="V5" class="v"></div><div id="V6" class="v"></div>
+</div></div>
+<style>
+#Root { position: relative; width: 400px; height: 300px; }
+#A { anchor-name: --a; width: 20px; height: 20px; }
+#Clip { overflow: hidden; width: 10px; height: 10px; }
+#C { anchor-name: --c; margin-top: 50px; width: 10px; height: 10px; }
+.v { position: absolute; width: 10px; height: 10px; top: anchor(bottom, 0px); left: anchor(left, 0px); }
+#V1 { position-anchor: --a; position-visibility: anchors-valid; background: #ff0000; }
+#V2 { position-anchor: --none; position-visibility: anchors-valid; background: #00ff00; }
+#V3 { position-anchor: --none; background: #0000ff; }
+#V4 { position-anchor: --c; position-visibility: anchors-valid anchors-visible; background: #ffff00; }
+#V5 { position-anchor: --c; position-visibility: anchors-valid; background: #ff00ff; }
+#V6 { position-anchor: --c; position-visibility: always; background: #00ffff; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let drawn: Vec<[f32; 3]> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|i| i.cmd.filled())
+                .filter(|(_, c)| c[3] > 0.0)
+                .map(|(_, c)| [c[0], c[1], c[2]])
+                .collect();
+        let shows = |c: [f32; 3]| drawn.contains(&c);
+        assert!(shows([1.0, 0.0, 0.0]), "V1: its anchor is valid");
+        assert!(!shows([0.0, 1.0, 0.0]), "V2: anchors-valid with no anchor");
+        assert!(shows([0.0, 0.0, 1.0]), "V3: the default needs no anchor");
+        assert!(!shows([1.0, 1.0, 0.0]), "V4: valid but clipped out of view");
+        assert!(
+            shows([1.0, 0.0, 1.0]),
+            "V5: clipped, but anchors-valid only"
+        );
+        assert!(shows([0.0, 1.0, 1.0]), "V6: always");
+    });
+}

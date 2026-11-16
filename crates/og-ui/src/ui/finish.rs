@@ -802,13 +802,40 @@ impl Ui {
                     };
                     let (r, mut placed) = crate::anchor::resolve(&spec, &frame);
                     // `anchors-visible`: hidden while its default anchor is
-                    // clipped out of view or hidden.
-                    if spec.visibility == crate::anchor::Visibility::AnchorsVisible
+                    // clipped out of view or hidden, besides what
+                    // `anchors-valid` and `no-overflow` hide.
+                    if spec.visibility.anchors_visible
                         && let Some(a) = default
                     {
-                        let a = &self.tree.nodes[a];
-                        placed.hidden =
-                            a.is_hidden() || !a.layout.laid_clip.overlaps(&a.layout.laid_rect);
+                        // Cut by the scroll containers above it (its laid
+                        // clip) and by the boxes between it and this one
+                        // that clip their content (`overflow: hidden` or
+                        // `clip`, paint containment): CSS Anchor
+                        // Positioning 1 §4.1. A box above this one too
+                        // clips this one as well, so it is not asked.
+                        let nodes = &self.tree.nodes;
+                        let encloses = |j: usize| {
+                            let mut at = nodes[i].parent;
+                            while at != NONE && at != j {
+                                at = nodes[at].parent;
+                            }
+                            at == j
+                        };
+                        // `overlaps`, not an empty intersection: a 0×0
+                        // anchor inside a clip is in view.
+                        let mut seen = nodes[a].layout.laid_rect;
+                        let mut shown = nodes[a].layout.laid_clip.overlaps(&seen);
+                        seen = nodes[a].layout.laid_clip.intersect(&seen);
+                        let mut j = nodes[a].parent;
+                        while shown && j != NONE && !encloses(j) {
+                            if nodes[j].decor.as_ref().is_some_and(|d| d.clip) {
+                                let cut = nodes[j].layout.laid_rect;
+                                shown = cut.overlaps(&seen);
+                                seen = cut.intersect(&seen);
+                            }
+                            j = nodes[j].parent;
+                        }
+                        placed.hidden |= nodes[a].is_hidden() || !shown;
                     }
                     if placed.hidden != self.tree.nodes[i].layout.anchor_placed.hidden {
                         self.layout.cache.anchor_toggled.push(i);

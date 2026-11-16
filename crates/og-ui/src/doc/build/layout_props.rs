@@ -394,11 +394,10 @@ impl Ui {
             Some("most-height") => crate::anchor::TryOrder::MostHeight,
             _ => crate::anchor::TryOrder::Normal,
         };
-        spec.visibility = match r.str("positionVisibility") {
-            Some("always") => crate::anchor::Visibility::Always,
-            Some("no-overflow") => crate::anchor::Visibility::NoOverflow,
-            _ => crate::anchor::Visibility::AnchorsVisible,
-        };
+        spec.visibility = r
+            .str("positionVisibility")
+            .and_then(crate::anchor::Visibility::parse)
+            .unwrap_or_default();
         spec.named = r.position_tries.clone();
         resolved_later |= !spec.tries.is_empty();
         (spec, resolved_later)
