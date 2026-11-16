@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "button",
+      "summary": "A button that is a chosen radio (`role=\"radio\" aria-checked=\"true\"`, such as a quantity among ×1/×10/Max buttons or a segment) wears the default style's selection, as a button with `aria-pressed=\"true\"` does: --button-selected-fill under --button-selected-ink, in every variant, at rest, hovered and held. It was drawn as a plain button, so the chosen one did not show."
+    }
+  ]
+}

@@ -186,12 +186,14 @@ fn every_button_role_reads_at_4_5_to_1_on_its_fill_in_both_themes_and_every_stat
     assert!(failing.is_empty(), "under 3:1:\n{}", failing.join("\n"));
 }
 
-/// A button that is on (`aria-pressed="true"`: a toggle, a chip) wears the
+/// A button that is on (`aria-pressed="true"`: a toggle, a chip) or chosen
+/// (`role="radio" aria-checked="true"`: a quantity among buttons) wears the
 /// selection, whatever its variant: `--button-selected-fill` under
 /// `--button-selected-ink`, at 3:1 in both themes; one that is off keeps
 /// its variant's look. Ways this could fail: the default style giving the
 /// state no look (the button reads as its off neighbour), a variant's own
-/// fill or ink winning over it, or `aria-pressed="false"` taking it.
+/// fill or ink winning over it, a checked button radio drawn as a plain
+/// button, or `aria-pressed="false"` taking it.
 #[test]
 fn a_button_that_is_on_wears_the_selection_in_every_variant_and_both_themes() {
     for (theme_name, theme) in [("light", Theme::light()), ("dark", Theme::dark())] {
@@ -208,7 +210,7 @@ fn a_button_that_is_on_wears_the_selection_in_every_variant_and_both_themes() {
             themed(theme),
             &format!(
                 r#"<meta name="component" content="t">
-<column>{buttons}<button id="Off" aria-pressed="false">Off</button><button id="Plain">Plain</button></column>"#
+<column>{buttons}<button id="Chosen" role="radio" aria-checked="true">Chosen</button><button id="Off" aria-pressed="false">Off</button><button id="Unchosen" role="radio" aria-checked="false">Unchosen</button><button id="Plain">Plain</button></column>"#
             ),
         );
         d.viewport = Viewport::new(800.0, 600.0);
@@ -217,7 +219,7 @@ fn a_button_that_is_on_wears_the_selection_in_every_variant_and_both_themes() {
         }
         let ground = rgb(p.backdrop);
         let near = |a: [f32; 3], b: [f32; 3]| (0..3).all(|i| (a[i] - b[i]).abs() < 0.004);
-        for (label, _) in ROLES {
+        for label in ROLES.iter().map(|(name, _)| *name).chain(["Chosen"]) {
             let (ink, fill) = measured(&d.ui, label, ground);
             assert!(
                 near(fill, over(p.selection.linear(), ground)),
@@ -234,6 +236,11 @@ fn a_button_that_is_on_wears_the_selection_in_every_variant_and_both_themes() {
             measured(&d.ui, "Off", ground),
             measured(&d.ui, "Plain", ground),
             "{theme_name}: aria-pressed=\"false\" is a plain button"
+        );
+        assert_eq!(
+            measured(&d.ui, "Unchosen", ground),
+            measured(&d.ui, "Plain", ground),
+            "{theme_name}: an unchecked button radio is a plain button"
         );
     }
 }

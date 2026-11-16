@@ -1143,7 +1143,7 @@
   button.danger { color: var(--button-danger-ink); }
   button.ghost { color: var(--button-ghost-ink); }
   button.quiet { color: var(--button-quiet-ink, var(--button-ink)); }
-  button[aria-pressed=true] { color: var(--button-selected-ink); }
+  button[aria-pressed=true], button[aria-checked=true] { color: var(--button-selected-ink); }
   button:disabled { color: var(--button-disabled-ink); }
   button.primary:disabled { color: var(--button-primary-disabled-ink, var(--button-disabled-ink)); }
   /* A button's padding: its inline padding by size, or the whole shorthand,
@@ -1242,10 +1242,13 @@
   button.danger::part(base):hover { background: var(--button-danger-hover-fill); }
   button.danger::part(base):active { background: var(--button-danger-pressed-fill); }
   button.danger::part(base):hover, button.danger::part(base):active { color: var(--button-danger-ink); }
-  /* A button that is on (`aria-pressed`: a toggle, a chip) wears the
-     selection, whatever its variant, at rest, hovered and held. */
+  /* A button that is on (`aria-pressed`: a toggle, a chip) or chosen
+     (`aria-checked`: a radio among buttons, a segment) wears the selection,
+     whatever its variant, at rest, hovered and held. */
   button[aria-pressed=true]::part(base), button[aria-pressed=true]::part(base):hover,
-  button[aria-pressed=true]::part(base):active {
+  button[aria-pressed=true]::part(base):active,
+  button[aria-checked=true]::part(base), button[aria-checked=true]::part(base):hover,
+  button[aria-checked=true]::part(base):active {
     background: var(--button-selected-fill);
     color: var(--button-selected-ink);
     border-color: var(--button-selected-rim, var(--button-rim, var(--line)));
