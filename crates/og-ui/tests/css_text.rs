@@ -152,6 +152,36 @@ h3::before { content: counter(sec, upper-roman) ". "; }
     }
 }
 
+/// CSS Containment 2 §3.3: under `contain: style` a `counter-increment`
+/// makes a counter of the subtree's own, nested in the one outside, and
+/// leaves the outside one as it was; quotes opened inside are closed again
+/// at its end.
+///
+/// Ways it could fail: the increments inside counting on the outer
+/// counter (2, 3, then 4 after the box), or the quote depth leaking out
+/// (‘ after the box instead of “).
+#[test]
+fn contain_style_keeps_counters_and_quotes_inside() {
+    let d = doc(
+        r#"<div id="L"><p class="i" id="A">a</p><div id="Box"><p class="i" id="B1">b</p><p class="i" id="B2">c</p><p id="Q">q</p></div><p class="i" id="C">d</p><p id="R">r</p></div>"#,
+        r#"#L { counter-reset: i; }
+.i { counter-increment: i; }
+.i::before { content: counters(i, ".") " "; }
+#Box { contain: style; }
+#Q::before, #R::before { content: open-quote; }"#,
+    );
+    for (id, text) in [
+        ("A", "1 a"),
+        ("B1", "1.1 b"),
+        ("B2", "1.2 c"),
+        ("Q", "\u{201C}q"),
+        ("C", "2 d"),
+        ("R", "\u{201C}r"),
+    ] {
+        assert_eq!(drawn(&d, id), text, "#{id}");
+    }
+}
+
 /// CSS Text 3 §2.1: each transform rewrites what is drawn — every letter
 /// cased, each word's first letter titlecased (after a hyphen too), ASCII
 /// to its full-width form (a space to U+3000), small kana to full size.
