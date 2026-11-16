@@ -293,6 +293,8 @@ proof("appearance", "control_props", "dialogs_close_as_closedby_says",
 not_applicable("autofill", "og's fields are engine-drawn; no browser or OS autofill fills them, so there is no autofilled state to style.")
 proof("caret-shape", "css_paint", "caret_shape_draws_a_bar_block_or_underscore_over_the_next_character",
       "A focused 20px field with its caret before \"i\": bar and auto draw the same thin bar at the insertion point; block is the bar's full height and exactly the font's advance of \"i\" wide, starting at the bar and drawn before the text; underscore is that advance wide, at most 1px thick, its bottom on the bar's bottom, drawn after the text. At the end of the text both take 1ch (the advance of \"0\") at the bar's position. The shape inherits from a column. Text areas, right-to-left text and the caret shorthand are not covered; the block does not recolour the character it covers.")
+proof("overflow-anchor", "css_interact", "scroll_anchoring_keeps_the_view_when_content_above_changes",
+      "Offsets of a 100px scroller of 40px rows scrolled to 100: a 50px block inserted above takes it to exactly 150 with R3 drawn where it was, and its removal back to 100; the anchor (R2) growing below its top moves nothing; overflow-anchor: none on the container, or offset 0, leaves the offset and moves the rows; overflow-anchor: none on R2 makes R3 the anchor, so R2 growing 40px moves the offset 40. Block axis of horizontal writing only; snapping containers, floating layers' scrollers and the focused-field priority candidate are not anchored; the anchor is chosen again every frame rather than kept until a scroll; the property-change suppression triggers are not modelled.")
 proof("details-content", "html_controls", "details_content_styles_the_disclosures_content_box",
       "A 300px details with ::details-content { padding: 30px 0 0 20px; background: red } and [open]::details-content green: closed, neither the content nor any box draws; open, the green fill spans the details' x and width below its top, red is not drawn, and the content sits exactly 20, 30 inside it. [open] is set by open={$open}; bind:open and the player's toggle do not set [open] (an attribute-selector gap); a closed box hides whole where CSS hides only its contents; transitions on the box are not asserted.")
 proof("will-change", "css_contain", "will_change_makes_what_its_properties_would_and_nothing_else",
@@ -414,7 +416,6 @@ MISSING = {
     "scroll-target-group": "No scroll-target-group: anchor links do not act as scroll markers.",
     "scroll-buttons": "No ::scroll-button(): a scroll container generates no buttons.",
     "scroll-triggered-animations": "No timeline-trigger or animation-trigger: scroll timelines drive animations (scroll-driven), but none starts or stops one.",
-    "overflow-anchor": "No scroll anchoring: content inserted above the scrollport moves what is shown.",
     "customizable-select": "::picker(select) styles the open list (control_props::a_select_takes_aria_invalid_and_its_picker_height), but appearance: base-select, ::picker-icon, ::checkmark and <selectedcontent> are not taken.",
     "highlight": "No ::highlight() or highlight registry: only ::selection paints a text range.",
     "webvtt": "No WebVTT captions or ::cue: a video draws no text track.",

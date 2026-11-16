@@ -230,6 +230,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `scroll-padding-right:` | `auto \| <length> \| <n>%` | CSS `scroll-padding-right` (`scroll-padding`, `-inline`, `-inline-end`). |
 | `scroll-padding-bottom:` | `auto \| <length> \| <n>%` | CSS `scroll-padding-bottom` (`scroll-padding`, `-block`, `-block-end`). |
 | `scroll-padding-left:` | `auto \| <length> \| <n>%` | CSS `scroll-padding-left` (`scroll-padding`, `-inline`, `-inline-start`). |
+| `overflow-anchor` | `text` | CSS `overflow-anchor: auto \| none`: a scrolled container keeps what it shows in place when content above it changes size, by following an anchor box; `none` on the container turns that off, and on an element keeps it and its subtree from being the anchor. |
 | `scroll-axis-lock` | `text` | CSS `scroll-axis-lock: auto \| none` on a scroll container: a drag on one that scrolls both ways keeps to the axis it starts along (within a 2:1 slope of it) until released; `none` lets it move freely. |
 | `scroll-initial-target` | `text` | CSS `scroll-initial-target: none \| nearest`: a scroll container appearing starts scrolled so the first such element in it stands at its view's start (its scroll-margin and the container's scroll-padding apply); only the initial position. |
 | `scroll-snap-stop:` | `normal \| always` | CSS `scroll-snap-stop: normal \| always` of a snap area: always stops a fling or a settling wheel at it rather than passing it for a farther one. |

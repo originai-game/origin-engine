@@ -401,6 +401,13 @@ impl Ui {
             {
                 continue;
             }
+            // Scroll anchoring: a scrolled container follows its anchor
+            // box (once a frame), laid out again where it moved.
+            if !self.interaction.state.scroll_anchors.is_empty()
+                && self.interaction.apply_scroll_anchors(&self.tree)
+            {
+                continue;
+            }
             let safe = Rect::new(
                 vp.safe_area.left,
                 vp.safe_area.top,
@@ -887,7 +894,10 @@ impl Ui {
             }
             match self.settle_layout_queries(&mut settlement, &mut *resolve) {
                 Ok(true) => {}
-                Ok(false) => break,
+                Ok(false) => {
+                    self.interaction.select_scroll_anchors(&self.tree);
+                    break;
+                }
                 Err(error) => {
                     self.layout.abort_layout_queries(&mut self.tree);
                     self.paint.inspection = inspect::Inspection::none();

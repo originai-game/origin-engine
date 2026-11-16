@@ -94,6 +94,10 @@ pub struct ScrollCss {
     /// `scroll-axis-lock: none` (CSS Overflow 5 §4): a drag on it is never
     /// locked to one axis.
     pub free_axes: bool,
+    /// `overflow-anchor: none` (CSS Scroll Anchoring 1 §3): a scroll
+    /// container on it anchors nothing, and it and its subtree are never
+    /// an anchor.
+    pub no_anchor: bool,
 }
 
 impl ScrollCss {
@@ -654,6 +658,109 @@ impl crate::ui::Interaction {
             }
         }
         moved
+    }
+
+    /// CSS Scroll Anchoring 1 §2.2: each scroll container that chose an
+    /// anchor box last frame ([`Self::select_scroll_anchors`]) moves its
+    /// offset by how far the anchor moved in its content since, so what it
+    /// shows stays put when content above it grows or shrinks. Suppressed
+    /// at offset 0. Run once a frame, after the trees are laid out (the
+    /// anchors are taken); answers whether an offset moved, so they are
+    /// laid out again.
+    pub(crate) fn apply_scroll_anchors(&mut self, tree: &crate::ui::Tree) -> bool {
+        let mut moved = false;
+        for (container, anchor, was) in std::mem::take(&mut self.state.scroll_anchors) {
+            let (Some(c), Some(a)) = (tree.index.find(container), tree.index.find(anchor)) else {
+                continue;
+            };
+            let at = self.offset(container).y;
+            if at <= 0.0 || !tree.nodes[c].scrolls() {
+                continue;
+            }
+            // Unsnapped: a snapped rect moves by its rounding as it scrolls.
+            let now = tree.nodes[a].layout.y - tree.nodes[c].layout.y + at;
+            let to = (at + now - was).clamp(0.0, tree.nodes[c].max_scroll().max(0.0));
+            if (to - at).abs() > 1.0 / 256.0 {
+                self.state.scroll.insert(container, to);
+                moved = true;
+            }
+        }
+        moved
+    }
+
+    /// CSS Scroll Anchoring 1 §2.1: for each scroll container of the main
+    /// tree scrolled down from its start (and not snapping, not
+    /// `overflow-anchor: none`), the anchor box: the first box in tree
+    /// order wholly inside its view (inset by `scroll-padding`), going
+    /// into the first one only partly inside to find a deeper one. Hidden
+    /// boxes, sticky and screen-fixed ones and `overflow-anchor: none`
+    /// subtrees are skipped; a nested scroll container is a box whose
+    /// content is not searched. Kept with its top in the container's
+    /// content for the next frame.
+    pub(crate) fn select_scroll_anchors(&mut self, tree: &crate::ui::Tree) {
+        use crate::element::Position;
+        self.state.scroll_anchors.clear();
+        for (c, cn) in tree.nodes.iter().enumerate() {
+            let at = self.offset(cn.key).y;
+            if at <= 0.0
+                || !cn.layout.used.scroll
+                || cn.el.scroll_css.no_anchor
+                || cn.el.snap & 3 != 0
+                || cn.hidden
+            {
+                continue;
+            }
+            // The main tree's (floating layers lay out after the anchors
+            // are applied).
+            let mut root = c;
+            while tree.nodes[root].parent != crate::layout::NONE {
+                root = tree.nodes[root].parent;
+            }
+            if root != 0 {
+                continue;
+            }
+            let view = snapport(cn);
+            let (top, bottom) = (view.y, view.y + view.height);
+            let excluded = |n: &crate::layout::Node| {
+                n.hidden
+                    || n.el.scroll_css.no_anchor
+                    || matches!(n.props.position, Position::Sticky | Position::Screen)
+            };
+            // Candidate examination: a box wholly in view is the anchor; one
+            // partly in view is unless a box inside it is.
+            fn examine(
+                tree: &crate::ui::Tree,
+                i: usize,
+                (top, bottom): (f32, f32),
+                excluded: &dyn Fn(&crate::layout::Node) -> bool,
+            ) -> Option<usize> {
+                let n = &tree.nodes[i];
+                let r = n.placed.rect;
+                if excluded(n) || r.y + r.height <= top || r.y >= bottom {
+                    return None;
+                }
+                if r.y >= top && r.y + r.height <= bottom {
+                    return Some(i);
+                }
+                if !n.scrolls() {
+                    for k in crate::layout::all_children(n) {
+                        if let Some(a) = examine(tree, k, (top, bottom), excluded) {
+                            return Some(a);
+                        }
+                    }
+                }
+                Some(i)
+            }
+            let anchor = crate::layout::all_children(cn)
+                .into_iter()
+                .find_map(|k| examine(tree, k, (top, bottom), &excluded));
+            if let Some(a) = anchor {
+                let pos = tree.nodes[a].layout.y - cn.layout.y + at;
+                self.state
+                    .scroll_anchors
+                    .push((cn.key, tree.nodes[a].key, pos));
+            }
+        }
     }
 
     /// The offset of scroll container `key` (x, y).

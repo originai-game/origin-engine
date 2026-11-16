@@ -404,7 +404,7 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         "max-width" | "max-inline-size" => vec!["maxWidth"],
         "min-height" | "min-block-size" => vec!["minHeight"],
         "max-height" | "max-block-size" => vec!["maxHeight"],
-        n if n.starts_with("scroll-") || n.starts_with("overscroll-") => {
+        n if n.starts_with("scroll-") || n.starts_with("overscroll-") || n == "overflow-anchor" => {
             super::scroll_css::targets(n)
         }
         _ => super::boxes::longhands(name),
