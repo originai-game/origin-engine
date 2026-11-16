@@ -363,17 +363,23 @@ impl Ui {
                 }
             }
             s.bold = s.weight >= 700;
-            s.synth = self.env.fonts.for_styled(s.font, s.query(), &s.text).1;
-            if let Some(allow) = ranges
+            let allow = ranges
                 .iter()
                 .filter(|(a, b, _)| *a <= start && end <= *b)
                 .filter_map(|(_, _, style)| style.synthesis)
                 .next_back()
-            {
-                s.synth.bold &= allow.bold;
-                s.synth.italic &= allow.italic;
-            }
-            runs.push(s);
+                .unwrap_or(crate::Synth::ALL);
+            let (font, synth) = self.env.fonts.for_styled(s.font, s.query(), &s.text);
+            s.synth = crate::Synth {
+                bold: synth.bold && allow.bold,
+                italic: synth.italic && allow.italic,
+                ..crate::Synth::default()
+            };
+            let parts = match s.atom {
+                None => synthetic(&s.text, s.step.features, font, allow),
+                Some(_) => Vec::new(),
+            };
+            push_synthetic(&mut runs, s, &parts);
         }
         // Each ruby hangs over what is beside it as `ruby-overhang` lets
         // it: any text but another ruby, or under `spaces` a space only.
@@ -437,6 +443,149 @@ fn resolve_color(color: &ColorRef, theme: &crate::Theme) -> Srgba {
     color
         .srgb(theme)
         .unwrap_or_else(|| Srgba::from_linear(crate::paint::MISSING_TOKEN))
+}
+
+/// How part of a run is drawn when its face lacks the variant forms its
+/// `font-variant-caps` or `font-variant-position` asks for (CSS Fonts 4
+/// §6.3, §6.5).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Synthetic {
+    /// As it is, its features applied.
+    Own,
+    /// A capital at [`SMALL_CAPS`] of the size.
+    SmallCaps,
+    /// Raised or lowered at [`position_scale`] of the size.
+    Super,
+    Sub,
+}
+
+/// A synthesised small capital's size over the text's (Gecko's
+/// `SMALL_CAPS_SCALE_FACTOR`).
+const SMALL_CAPS: f32 = 0.8;
+
+/// A synthesised super- or subscript's size over the text's at `size`:
+/// 82 % up to 20 px, two-thirds from 45 px, between them in proportion
+/// (Gecko's `NS_FONT_SUB_SUPER_SIZE_RATIO_*`).
+fn position_scale(size: f32) -> f32 {
+    let t = ((size - 20.0) / 25.0).clamp(0.0, 1.0);
+    0.82 + (0.667 - 0.82) * t
+}
+
+/// `text`'s ranges (bytes) in `font` under `features` as they are drawn,
+/// where `allow` lets them be synthesised: a lowercase letter whose face
+/// has no `smcp` form (and under `c2sc` a capital with no form of its
+/// own) a small capital, character by character; under `sups` or `subs`
+/// the whole text raised or lowered when its face lacks the form of any
+/// of its characters but spaces (§6.5: a run takes its variant glyphs
+/// only if it has all of them). Empty when nothing is synthesised.
+pub(crate) fn synthetic(
+    text: &str,
+    features: crate::shape::Features,
+    font: &crate::UiFont,
+    allow: crate::Synth,
+) -> Vec<(std::ops::Range<usize>, Synthetic)> {
+    let values = features.values();
+    let on = |tag: &[u8; 4]| values.contains(&(*tag, 1));
+    let m = &font.metrics;
+    // Whether `c` at byte `at` has its form of `tag` in the face that draws it.
+    let runs = m.font_runs(text);
+    let has = |tag: &[u8; 4], at: usize, c: char| {
+        runs.iter()
+            .find(|(r, _)| r.contains(&at))
+            .and_then(|(_, k)| m.part(*k)?.file.as_ref())
+            .is_some_and(|f| f.has_variant(*tag, c))
+    };
+    for (tag, kind) in [(b"sups", Synthetic::Super), (b"subs", Synthetic::Sub)] {
+        if allow.position
+            && on(tag)
+            && text
+                .char_indices()
+                .any(|(at, c)| !c.is_whitespace() && !has(tag, at, c))
+        {
+            return vec![(0..text.len(), kind)];
+        }
+    }
+    if !allow.small_caps || !on(b"smcp") && !on(b"c2sc") {
+        return Vec::new();
+    }
+    let mut out: Vec<(std::ops::Range<usize>, Synthetic)> = Vec::new();
+    for (at, c) in text.char_indices() {
+        // A letter whose capital is one character (ß keeps its own).
+        let single = |u: &mut dyn Iterator<Item = char>| u.next().is_some() && u.next().is_none();
+        let kind = if on(b"smcp")
+            && c.is_lowercase()
+            && single(&mut c.to_uppercase())
+            && !has(b"smcp", at, c)
+            || on(b"c2sc") && c.is_uppercase() && !has(b"c2sc", at, c)
+        {
+            Synthetic::SmallCaps
+        } else {
+            Synthetic::Own
+        };
+        let end = at + c.len_utf8();
+        match out.last_mut() {
+            Some((r, k)) if *k == kind => r.end = end,
+            _ => out.push((at..end, kind)),
+        }
+    }
+    if out.iter().all(|(_, k)| *k == Synthetic::Own) {
+        out.clear();
+    }
+    out
+}
+
+/// Run `s` onto `runs`, cut into `parts` ([`synthetic`]; empty: whole):
+/// a synthesised part with its features off, its small capitals
+/// uppercased and smaller, its super- or subscript smaller and raised or
+/// lowered; its inline elements open on its first part and close on its
+/// last.
+fn push_synthetic(
+    runs: &mut Vec<RichSpan>,
+    s: RichSpan,
+    parts: &[(std::ops::Range<usize>, Synthetic)],
+) {
+    if parts.is_empty() {
+        runs.push(s);
+        return;
+    }
+    let last = parts.len() - 1;
+    for (k, (range, kind)) in parts.iter().enumerate() {
+        let mut p = s.clone();
+        p.text = s.text[range.clone()].to_owned();
+        for e in &mut p.edges {
+            e.opens &= k == 0;
+            e.closes &= k == last;
+        }
+        match kind {
+            Synthetic::Own => {}
+            Synthetic::SmallCaps => {
+                p.text = p.text.chars().flat_map(char::to_uppercase).collect();
+                p.step.size *= SMALL_CAPS;
+                p.step.features = p
+                    .step
+                    .features
+                    .with_settings(&[(*b"smcp", 0), (*b"c2sc", 0)]);
+            }
+            Synthetic::Super | Synthetic::Sub => {
+                let scale = position_scale(s.step.size);
+                p.step.size *= scale;
+                p.step.line_height *= scale;
+                p.step.cjk_line_height *= scale;
+                p.step.features = p
+                    .step
+                    .features
+                    .with_settings(&[(*b"sups", 0), (*b"subs", 0)]);
+                if p.valign == crate::VerticalAlign::Baseline {
+                    p.valign = if *kind == Synthetic::Super {
+                        crate::VerticalAlign::Super
+                    } else {
+                        crate::VerticalAlign::Sub
+                    };
+                }
+            }
+        }
+        runs.push(p);
+    }
 }
 
 #[cfg(test)]

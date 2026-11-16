@@ -493,11 +493,26 @@ pub struct FontFace {
 
 /// What [`Fonts::for_styled`] could not find a real face for: the weight
 /// and slant the draw synthesises (rich text's `[b]` thickening, `[i]`
-/// oblique).
+/// oblique). As what a text may synthesise (CSS `font-synthesis`) it also
+/// says whether its small capitals and super- and subscripts may be, which
+/// rich text does where the face lacks their forms (CSS Fonts 4 §6.3,
+/// §6.5); `for_styled` leaves those false.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Synth {
     pub bold: bool,
     pub italic: bool,
+    pub small_caps: bool,
+    pub position: bool,
+}
+
+impl Synth {
+    /// Everything may be synthesised (CSS `font-synthesis`' initial value).
+    pub const ALL: Synth = Synth {
+        bold: true,
+        italic: true,
+        small_caps: true,
+        position: true,
+    };
 }
 
 /// What a text asks of its font family besides its characters (CSS Fonts
@@ -1099,6 +1114,7 @@ impl Fonts {
                             synth = Synth {
                                 bold: needs_bold(weight, got),
                                 italic: italic && !slanted,
+                                ..Synth::default()
                             };
                             at = (got, width);
                         }
@@ -1146,6 +1162,7 @@ impl Fonts {
             let synth = Synth {
                 bold: needs_bold(weight, got),
                 italic: italic && !slanted,
+                ..Synth::default()
             };
             let companion = self.companion_styled(family.fallback(), weight);
             return (
@@ -1158,6 +1175,7 @@ impl Fonts {
         let synth = Synth {
             bold: needs_bold(weight, got),
             italic: italic && !slanted,
+            ..Synth::default()
         };
         let face = self.resolve(f, self.companion_styled(role, weight), text, query.emoji);
         (face, synth, (got, FontQuery::NORMAL_WIDTH))

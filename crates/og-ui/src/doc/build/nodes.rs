@@ -1105,7 +1105,7 @@ impl Ui {
                         .unwrap_or_default()
                 })
                 .response;
-        } else if let Some((span, style)) = r.css_span(&text, &doc.sheet) {
+        } else if let Some((span, style)) = r.css_span(&text, &doc.sheet, self.fonts(), &desc) {
             resp = self
                 .rich_text_spans(
                     id.as_str(),

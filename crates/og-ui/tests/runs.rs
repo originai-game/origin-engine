@@ -338,7 +338,8 @@ fn a_weight_and_a_locale_pick_the_styles_real_faces() {
             italic.handle,
             Synth {
                 bold: true,
-                italic: false
+                italic: false,
+                ..Synth::default()
             }
         )
     );
@@ -354,7 +355,8 @@ fn a_weight_and_a_locale_pick_the_styles_real_faces() {
             f.latin.handle,
             Synth {
                 bold: true,
-                italic: true
+                italic: true,
+                ..Synth::default()
             }
         )
     );

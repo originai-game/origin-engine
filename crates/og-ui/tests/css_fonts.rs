@@ -1076,3 +1076,100 @@ fn font_face_metric_overrides_set_the_faces_size_and_line_metrics() {
         "{t:?}"
     );
 }
+
+/// CSS Fonts 4 §6.3 and §6.5: where a face has no small-capital form of
+/// a letter, `font-variant-caps` draws its capital smaller (80 %, as
+/// Gecko), letter by letter; where it lacks the superscript or subscript
+/// form of any character of a run, `font-variant-position` draws the
+/// whole run smaller (82 % at 20 px) and raised or lowered. A face with
+/// the forms draws them, and `font-synthesis-small-caps: none` and
+/// `font-synthesis-position: none` draw the text as it is.
+#[test]
+fn small_caps_and_super_and_subscripts_are_synthesised_where_the_face_lacks_them() {
+    let d = doc(
+        vec![
+            family("Garamond", (400, 400), face(GARAMOND, 2)),
+            family("Inter", (400, 400), face(INTER, 3)),
+        ],
+        "<p id=\"Real\">Ab</p><p id=\"Fake\">Ab</p><p id=\"All\">Ab</p><p id=\"Off\">Ab</p>\
+<div id=\"Up\"><p id=\"Inherit\">Ab</p></div><p id=\"Plain\">2n</p><p id=\"Sups\">2n</p>\
+<p id=\"Mixed\">2x</p><p id=\"Sub\">2</p><p id=\"PosOff\">2</p>",
+        r#"p { font-size: 20px; line-height: 30px; }
+#Real { font-family: Garamond; font-variant-caps: small-caps; }
+#Fake, #Off, #Up { font-family: Inter; font-variant-caps: small-caps; }
+#All { font-family: Inter; font-variant-caps: all-small-caps; }
+#Off { font-synthesis-small-caps: none; }
+#Sups, #Mixed { font-variant-position: super; }
+#Sub, #PosOff { font-family: Inter; font-variant-position: sub; }
+#PosOff { font-synthesis-position: none; }"#,
+    );
+    // Each text command: its text, size and baseline below the element's top.
+    let texts = |id: &str| -> Vec<(String, f32, f32)> {
+        let r = d.get(id);
+        let mut out: Vec<_> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|it| match it.cmd.unstyled() {
+                    DrawCmd::Text {
+                        text,
+                        size,
+                        baseline,
+                        bounds,
+                        x,
+                        ..
+                    } if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0)) => {
+                        Some((*x, text.clone(), *size, baseline - r.y))
+                    }
+                    _ => None,
+                })
+                .collect();
+        out.sort_by(|a, b| a.0.total_cmp(&b.0));
+        out.into_iter().map(|(_, t, s, b)| (t, s, b)).collect()
+    };
+    let shown = |id: &str| -> Vec<(String, f32)> {
+        texts(id)
+            .into_iter()
+            .map(|(t, s, _)| (t, (s * 100.0).round() / 100.0))
+            .collect()
+    };
+    let at = |t: &[(&str, f32)]| -> Vec<(String, f32)> {
+        t.iter().map(|(t, s)| (t.to_string(), *s)).collect()
+    };
+    // EB Garamond has smcp: its own forms, at the text's size.
+    assert_eq!(shown("Real"), at(&[("Ab", 20.0)]));
+    // Inter has none: b as a capital at 80 %.
+    assert_eq!(shown("Fake"), at(&[("A", 20.0), ("B", 16.0)]));
+    assert_eq!(shown("Inherit"), at(&[("A", 20.0), ("B", 16.0)]));
+    assert_eq!(shown("All"), at(&[("AB", 16.0)]));
+    assert_eq!(shown("Off"), at(&[("Ab", 20.0)]));
+    // Noto Sans has sups forms of 2 and n but not of x.
+    let plain = texts("Plain");
+    let sups = texts("Sups");
+    assert_eq!(sups.len(), 1, "{sups:?}");
+    assert!(
+        sups[0].1 == 20.0 && (sups[0].2 - plain[0].2).abs() < 0.6,
+        "{sups:?} {plain:?}"
+    );
+    // x has none: the run at 82 %, its baseline a third of the text's
+    // size above the paragraph's (which the taller line box moves down by
+    // what it grew above).
+    let mixed = texts("Mixed");
+    let grew = |id: &str, of: &str| d.get(id).height - d.get(of).height;
+    let rise = plain[0].2 + grew("Mixed", "Plain") - mixed[0].2;
+    assert!(
+        mixed.len() == 1
+            && mixed[0].0 == "2x"
+            && (mixed[0].1 - 16.4).abs() < 0.01
+            && (rise - 20.0 / 3.0).abs() < 0.6,
+        "{mixed:?} {plain:?} rise {rise}"
+    );
+    // Inter has no subs: smaller and lowered a fifth of the size.
+    let (sub, off) = (texts("Sub"), texts("PosOff"));
+    let drop = sub[0].2 - off[0].2;
+    assert!(
+        sub.len() == 1 && (sub[0].1 - 16.4).abs() < 0.01 && (drop - 4.0).abs() < 0.6,
+        "{sub:?} {off:?} drop {drop}"
+    );
+    assert!(off.len() == 1 && off[0].1 == 20.0, "{off:?}");
+}

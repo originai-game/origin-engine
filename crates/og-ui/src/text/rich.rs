@@ -341,6 +341,7 @@ pub use ruby::{
     RubySide, RubyStyle, structure as ruby_structure,
 };
 pub(crate) use ruby::{ruby_box, ruby_extents};
+pub(crate) use spans::synthetic;
 pub use spans::{InlineAtom, TextSpan, TextSpanStyle, TextSpanValue};
 
 /// A unit lines break between: a span's word, space or CJK character.

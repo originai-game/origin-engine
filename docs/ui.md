@@ -2083,6 +2083,19 @@ normal` in the face to their sum, the font's own ascent and descent
 face without them keeps the UI's 1.2. `size-adjust` scales the overrides
 too.
 
+Where a face has no small-capital form of a lowercase letter
+(`font-variant-caps: small-caps`, Fonts 4 §6.3), or under `all-small-caps`
+none of a capital, the letter is drawn as its capital at 80 % of the size,
+letter by letter (Gecko's factor); a letter whose capital is more than one
+character (ß) keeps its own. Where a face lacks the superscript or
+subscript form of any character of a run but spaces
+(`font-variant-position`, §6.5), the whole run is drawn at 82 % of the
+size up to 20 px and two-thirds from 45 px (in proportion between; Gecko's
+ratios), its baseline a third of the paragraph's size above or a fifth
+below. A text that synthesises either is drawn as rich text.
+`font-synthesis-small-caps: none` and `font-synthesis-position: none` draw
+it as it is; petite capitals are not synthesised.
+
 ## 4. Shipped catalogue
 
 Every component and screen document under `packages/engine/src/ui/` is

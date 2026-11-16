@@ -641,7 +641,8 @@ impl Ui {
                             .unwrap_or_default()
                     });
                 } else if r.get("spans").is_none()
-                    && let Some((span, style)) = r.css_span(&base.text, &doc.sheet)
+                    && let Some((span, style)) =
+                        r.css_span(&base.text, &doc.sheet, self.fonts(), &desc)
                 {
                     self.apply_text_spans(
                         i,
@@ -1739,13 +1740,30 @@ impl Resolved {
 
     /// Its text as one span styled by its CSS (`font-style`,
     /// `text-decoration`, `-webkit-text-stroke`, `-webkit-text-fill-color`)
-    /// when the plain text path cannot draw that style.
+    /// when the plain text path cannot draw that style, or small capitals
+    /// or super- and subscripts its face of `desc` lacks the forms of
+    /// (rich text synthesises them).
     pub fn css_span(
         &self,
         text: &str,
         sheet: &crate::css::at_rules::Sheet,
+        fonts: &crate::Fonts,
+        desc: &LabelDesc,
     ) -> Option<(crate::TextSpan, crate::TextSpanStyle)> {
-        let t = self.text.as_deref().filter(|t| t.rich())?;
+        let t = self.text.as_deref()?;
+        if !t.rich() {
+            // A label's CSS sets its step (`label_desc`).
+            let step = desc.step?;
+            let query = crate::FontQuery::new(t.weight.unwrap_or(step.weight), false);
+            let font = fonts.for_styled(desc.font, query, text).0;
+            let allow = self
+                .text_style(t, sheet)
+                .synthesis
+                .unwrap_or(crate::Synth::ALL);
+            if crate::rich::synthetic(text, step.features, font, allow).is_empty() {
+                return None;
+            }
+        }
         let span = crate::TextSpan {
             name: "css".into(),
             position: 0,
@@ -1777,12 +1795,16 @@ impl Resolved {
                 .then(|| sheet.palette(t.palette.as_deref(), t.family.as_deref())),
             emoji: t.emoji,
             size_adjust: t.size_adjust,
-            synthesis: (t.synthesis[0].is_some() || t.synthesis[1].is_some()).then(|| {
-                crate::Synth {
+            synthesis: t
+                .synthesis
+                .iter()
+                .any(Option::is_some)
+                .then(|| crate::Synth {
                     bold: t.synthesis[0] != Some(false),
                     italic: t.synthesis[1] != Some(false),
-                }
-            }),
+                    small_caps: t.synthesis[2] != Some(false),
+                    position: t.synthesis[3] != Some(false),
+                }),
             color: t.fill.map(crate::paint::ColorRef::Literal),
             // A stroke centred on the glyphs' edge, over the fill (Compat
             // §5.4); `paint-order: stroke` paints it under, so only its
