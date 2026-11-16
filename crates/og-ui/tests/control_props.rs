@@ -867,6 +867,88 @@ fn button_dimensions_follow_media_and_text_scale() {
     });
 }
 
+/// CSS UI 4 §5.1: `appearance: none` drops a control's own frame, so its
+/// box, borders and background are the document's. A single-line field,
+/// a `<textarea>` and an open `<dialog>` each draw a filled frame of their
+/// own and inset their content under `auto`; beside them, their twins
+/// under `none` fill nothing inside their box, the field's text sits
+/// without the frame's inset (12 px in to 4) and the dialog's child at its
+/// corner.
+///
+/// Ways it could fail: `none` ignored by one kind (its frame still drawn,
+/// its content still inset), or read only together with another prop
+/// such as `tight`.
+#[test]
+fn appearance_none_drops_a_controls_own_frame() {
+    let text = r#"<meta name="component" content="t">
+<column id="Page">
+  <input id="Field" bind:value={$v} /><input id="BareField" bind:value={$v} />
+  <textarea id="Area" bind:value={$v}></textarea><textarea id="BareArea" bind:value={$v}></textarea>
+  <dialog id="Dlg" open aria-label="D"><div id="InDlg" class="in"></div></dialog>
+  <dialog id="BareDlg" open aria-label="B"><div id="InBareDlg" class="in"></div></dialog>
+</column>
+<style>
+#Page { width: 600px; gap: 8px; align-items: start; }
+input, textarea { width: 200px; }
+#BareField, #BareArea, #BareDlg { appearance: none; }
+dialog { position: static; }
+.in { width: 20px; height: 20px; }
+</style>"#;
+    let d = Doc::with_font(text, &[("v", json!("text"))], crate::support::test_font());
+    {
+        let fills_in = |id: &str| {
+            let e = d.get(id);
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|i| i.cmd.filled())
+                .filter(|(r, c)| {
+                    c[3] > 0.0
+                        && r.x >= e.x - 0.5
+                        && r.y >= e.y - 0.5
+                        && r.right() <= e.x + e.width + 0.5
+                        && r.bottom() <= e.y + e.height + 0.5
+                })
+                .count()
+        };
+        let text_x = |id: &str| {
+            let e = d.get(id);
+            d.ui.frame()
+                .items
+                .iter()
+                .find_map(|i| match i.cmd.unstyled() {
+                    DrawCmd::Text { text, bounds, .. }
+                        if text == "text"
+                            && (e.y..e.y + e.height)
+                                .contains(&(bounds.y + bounds.height / 2.0))
+                            && (e.x - 0.5..e.x + e.width).contains(&bounds.x) =>
+                    {
+                        Some(bounds.x - e.x)
+                    }
+                    _ => None,
+                })
+                .unwrap_or_else(|| panic!("{id}'s text"))
+        };
+        for (own, bare) in [
+            ("Field", "BareField"),
+            ("Area", "BareArea"),
+            ("Dlg", "BareDlg"),
+        ] {
+            assert!(fills_in(own) > 0, "{own} draws its frame");
+            assert_eq!(fills_in(bare), 0, "{bare} draws no frame of its own");
+        }
+        let (inset, edge) = (text_x("Field"), text_x("BareField"));
+        assert!(edge < inset - 4.0, "field text at {inset}, bare at {edge}");
+        let at = |inner: &str, outer: &str| {
+            let (i, o) = (d.get(inner), d.get(outer));
+            (i.x - o.x, i.y - o.y)
+        };
+        let (inset, edge) = (at("InDlg", "Dlg"), at("InBareDlg", "BareDlg"));
+        assert!(inset.0 > 2.0 && inset.1 > 2.0, "dialog padding: {inset:?}");
+        assert_eq!(edge, (0.0, 0.0), "bare dialog: its child at its corner");
+    }
+}
+
 #[test]
 fn dialogs_close_as_closedby_says() {
     let text = r#"<meta name="component" content="t">

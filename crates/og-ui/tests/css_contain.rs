@@ -16,11 +16,13 @@
 //!   resize moved, `max-width` ignored, or `resize` applied with overflow
 //!   visible → `a_resize_handle_drags_the_size_onto_the_element`
 //! - boxes painted in source order whatever their `z-index`, or `contain:
-//!   paint`, `overflow: clip` and `strict`/`content` not clipping, or
-//!   `overflow: overlay` not scrolling as `auto` →
+//!   paint`, `overflow: clip` and `strict`/`content` not clipping →
 //!   `z_index_orders_paint_and_clip_and_contain_cut_it`
+//! - `overflow: overlay` not scrolling as `auto` →
+//!   `overflow_overlay_scrolls_as_auto`
 
 use crate::support::{Doc, with_doc};
+use og_core::glam::Vec2;
 use og_ui::{DrawCmd, InputFrame};
 use serde_json::json;
 
@@ -180,8 +182,7 @@ fn a_resize_handle_drags_the_size_onto_the_element() {
 ///
 /// Ways it could fail: boxes painted in source order; a clip missing or
 /// at the content's size; `overflow: clip` scrolling like `hidden` does
-/// by script; `strict` or `content` read as one of their parts only;
-/// `overflow: overlay` refused or read as visible.
+/// by script; `strict` or `content` read as one of their parts only.
 #[test]
 fn z_index_orders_paint_and_clip_and_contain_cut_it() {
     let text = r#"<meta name="component" content="t">
@@ -192,8 +193,6 @@ fn z_index_orders_paint_and_clip_and_contain_cut_it() {
   <div id="Strict"><div class="big"></div></div>
   <div id="Content"><div class="big"></div></div>
   <div id="None"><div class="big"></div></div>
-  <div id="Ov"><div class="big"></div></div>
-  <div id="OvY"><div class="big"></div></div>
 </div></div>
 <style>
 #Root { width: 400px; }
@@ -207,8 +206,6 @@ fn z_index_orders_paint_and_clip_and_contain_cut_it() {
 #Strict { contain: strict; width: 70px; }
 #Content { contain: content; width: 80px; }
 #None { contain: none; width: 90px; }
-#Ov { overflow: overlay; width: 40px; height: 40px; }
-#OvY { overflow-y: overlay; width: 40px; height: 40px; }
 .big { width: 300px; height: 300px; background: #123456; }
 </style>"#;
     with_doc(text, &[], |d| {
@@ -264,6 +261,66 @@ fn z_index_orders_paint_and_clip_and_contain_cut_it() {
         assert!(
             d.ui.scroll_state(&oc.path).is_none(),
             "overflow: clip is no scroll container"
+        );
+    });
+}
+
+/// `overflow: overlay` is a legacy alias of `auto` (CSS Overflow 3 §3.1):
+/// `Ov` scrolls both ways, and `OvY`'s `overflow-y: overlay` makes its
+/// `visible` x compute to `auto`, so a wheel moves both. `Hidden` beside
+/// them, `overflow: hidden`, takes no wheel.
+///
+/// Ways it could fail: `overlay` refused, read as `visible` (no scroll
+/// container) or `hidden` (the wheel moves nothing), or `overflow-y`
+/// leaving x visible.
+#[test]
+fn overflow_overlay_scrolls_as_auto() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Ov"><div class="big"></div></div>
+  <div id="OvY"><div class="big"></div></div>
+  <div id="Hidden"><div class="big"></div></div>
+</div></div>
+<style>
+#Root { width: 400px; display: flex; gap: 10px; }
+#Ov { overflow: overlay; width: 40px; height: 40px; }
+#OvY { overflow-y: overlay; width: 40px; height: 40px; }
+#Hidden { overflow: hidden; width: 40px; height: 40px; }
+.big { width: 300px; height: 300px; background: #123456; flex: none; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        for id in ["Ov", "OvY", "Hidden"] {
+            let e = d.get(id);
+            let over = InputFrame::hover(e.x + 10.0, e.y + 10.0);
+            d.step(InputFrame {
+                wheel: Vec2::new(20.0, 30.0),
+                ..over.clone()
+            });
+            for _ in 0..40 {
+                d.step(over.clone());
+            }
+        }
+        for id in ["Ov", "OvY"] {
+            let s =
+                d.ui.scroll_state(&d.get(id).path)
+                    .unwrap_or_else(|| panic!("{id} is a scroll container"));
+            // (OvY, scrolling down only by what it wrote, keeps a
+            // vertical scroller's bar gutter beside its view.)
+            assert_eq!(
+                (s.view_height, s.content_width, s.content_height),
+                (40.0, 300.0, 300.0),
+                "{id}'s view and content"
+            );
+            assert_eq!(
+                (s.offset_x, s.offset_y),
+                (20.0, 30.0),
+                "{id} took the wheel"
+            );
+        }
+        let h = d.ui.scroll_state(&d.get("Hidden").path);
+        assert!(
+            h.is_none_or(|s| (s.offset_x, s.offset_y) == (0.0, 0.0)),
+            "hidden takes no wheel: {h:?}"
         );
     });
 }

@@ -36,6 +36,8 @@ const DOC: &str = r##"<meta name="component" content="sel">
   <div class="probe" id="Caseless" data-k="AbC"></div>
   <div class="probe" id="CaseExact" data-k="abc"></div>
   <div class="probe" id="CaseWrong" data-k="AbC" data-s="AbC"></div>
+  <input type="checkbox" id="TypeA"><div class="probe" id="TypeCaseless"></div>
+  <input type="checkbox" id="TypeB"><div class="probe" id="TypeExact"></div>
   <p lang="fr-CA" class="probe" id="Lang">x</p>
   <p dir="rtl" class="probe" id="Dir">x</p>
   <div class="probe" id="State" state:on={$on}></div>
@@ -48,6 +50,8 @@ const DOC: &str = r##"<meta name="component" content="sel">
   <input type="checkbox" id="Checked" checked><div class="probe" id="AfterChecked"></div>
   <input type="checkbox" id="Unchecked"><div class="probe" id="AfterUnchecked"></div>
   <input type="checkbox" id="Mixed" indeterminate><div class="probe" id="AfterMixed"></div>
+  <input type="checkbox" id="Def" checked><div class="probe" id="AfterDef"></div>
+  <input type="checkbox" id="Bound" bind:checked={$on}><div class="probe" id="AfterBound"></div>
   <input id="ReadOnly" readonly value="r"><div class="probe" id="AfterReadOnly"></div>
   <input id="Empty" placeholder="name"><div class="probe" id="AfterEmpty"></div>
   <input type="number" id="Over" min="0" max="5" value="9"><div class="probe" id="AfterOver"></div>
@@ -67,12 +71,15 @@ p.probe:nth-of-type(2) { width: 50px; }
 @scope (.card) to (.inner) { .probe { width: 50px; } }
 #Caseless[data-k="abc" i] { width: 50px; }
 .probe[data-k="abc" s] { width: 50px; }
+#TypeA[type="CHECKBOX"] + .probe { width: 50px; }
+#TypeB[type="CHECKBOX" s] + .probe { width: 50px; }
 .probe:lang(fr) { width: 50px; }
 .probe:dir(rtl) { width: 50px; }
 .probe:state(on) { width: 50px; }
 .probe:any-link { width: 50px; }
 .nest { & > .probe { width: 50px; } }
-input:checked + .probe, input:default + .probe, input:indeterminate + .probe { width: 50px; }
+input:checked + .probe, input:indeterminate + .probe { width: 50px; }
+input:default + .probe { height: 9px; }
 input:read-only:not([type]) + .probe { width: 50px; }
 input:placeholder-shown + .probe { width: 50px; }
 input:out-of-range + .probe { width: 50px; }
@@ -96,6 +103,7 @@ fn selectors_select_as_css_does() {
             "InScope",
             "Caseless",
             "CaseExact",
+            "TypeCaseless",
             "Lang",
             "Dir",
             "State",
@@ -119,6 +127,7 @@ fn selectors_select_as_css_does() {
             "Type1",
             "PastLimit",
             "CaseWrong",
+            "TypeExact",
             "StateOff",
             "AfterUnchecked",
             "AfterShut",
@@ -129,6 +138,12 @@ fn selectors_select_as_css_does() {
         // `:where()` matches with no specificity: its min-height holds, its
         // width loses to `.probe`.
         assert_eq!((width("Where"), d.get("Where").height), (10.0, 9.0));
+        // `:default` (height) is the checkbox its markup checks, apart from
+        // `:checked` (width): Bound is checked by its binding, not its
+        // markup.
+        let size = |id: &str| (d.get(id).width, d.get(id).height);
+        assert_eq!(size("AfterDef"), (50.0, 9.0), "checked and default");
+        assert_eq!(size("AfterBound"), (50.0, 4.0), "checked, not default");
     });
 }
 
@@ -172,6 +187,70 @@ fn active_view_transition_matches_the_root_while_it_runs() {
         d.step(InputFrame::default());
     }
     assert_eq!(widths(&d), [10.0; 6], "after it ends");
+}
+
+/// Cascade layers (CSS Cascade 5 §6.4) order a document's own rules: the
+/// layer declared later wins whatever the specificity or source order
+/// (`@layer a, b;` then a's `#Order` loses to b's `.probe`), unlayered
+/// rules beat every layer, `!important` reverses both (a's important beats
+/// b's, and a layer's beats an unlayered one), an anonymous layer takes
+/// its place where it first appears (after a, b and c), a layer's own
+/// rules beat its sublayers', and sublayers order among themselves as
+/// declared (`c.x, c.y`).
+///
+/// Ways it could fail: layers ignored (specificity or source order
+/// deciding), the order taken from the blocks rather than the first
+/// declaration, unlayered rules losing, important declarations not
+/// reversed, a nested layer ranked above its parent's own rules.
+#[test]
+fn cascade_layers_order_a_documents_rules() {
+    let doc = r##"<meta name="component" content="layers">
+<column id="Root">
+  <div class="probe" id="Order"></div>
+  <div class="probe" id="Unlayered"></div>
+  <div class="probe" id="Important"></div>
+  <div class="probe" id="ImportantUnlayered"></div>
+  <div class="probe" id="Anon"></div>
+  <div class="probe" id="Nested"></div>
+  <div class="probe" id="Sub"></div>
+</column>
+<style>
+@layer a, b, c;
+.probe { height: 4px; }
+[id="Unlayered"] { width: 30px; }
+#ImportantUnlayered { width: 51px !important; }
+@layer { #Anon { width: 60px; } }
+@layer c.x, c.y;
+@layer b {
+  .probe { width: 20px; }
+  #Unlayered.probe { width: 21px; }
+  #Important { width: 41px !important; }
+  #Anon { width: 61px; }
+}
+@layer a {
+  #Order.probe { width: 10px; }
+  #Important { width: 40px !important; }
+  #ImportantUnlayered { width: 50px !important; }
+}
+@layer c {
+  #Nested { width: 70px; }
+  @layer inner { #Nested.probe { width: 71px; } }
+}
+@layer c.y { #Sub { width: 75px; } }
+@layer c.x { #Sub.probe { width: 76px; } }
+</style>"##;
+    let d = Doc::new(doc, &[]);
+    let widths = [
+        "Order",
+        "Unlayered",
+        "Important",
+        "ImportantUnlayered",
+        "Anon",
+        "Nested",
+        "Sub",
+    ]
+    .map(|id| d.get(id).width);
+    assert_eq!(widths, [20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 75.0]);
 }
 
 /// The user-action, focus, user-validity and `:target` pseudo-classes

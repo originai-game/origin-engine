@@ -2572,6 +2572,45 @@ fn dynamic_range_limit_sets_the_frames_peak() {
     }
 }
 
+/// The frame's `dynamic-range-limit` follows the roots as they change and
+/// as documents mount: a bound class moving the root between `no-limit`
+/// and `standard` moves the 8x display's peak between 8x and 1x, and a
+/// second mounted document whose root asks for `constrained` holds the
+/// frame at 2x beside the first's `no-limit` (the most limiting root).
+///
+/// Ways it could fail: the limit read once at mount, a class change not
+/// restyling it, or the last mounted root, not the most limiting, ruling.
+#[test]
+fn dynamic_range_limit_follows_its_roots() {
+    let text = "<meta name=\"component\" content=\"t\">\n<column id=\"Root\" class={$c}></column>\n<style>.std { dynamic-range-limit: standard; } .free { dynamic-range-limit: no-limit; }</style>";
+    let mut d = Doc::new(text, &[("c", serde_json::json!("free"))]);
+    let peak = |d: &Doc| d.ui.range_limit().peak(8.0);
+    assert_eq!(peak(&d), 8.0, "no-limit");
+    d.set("c", serde_json::json!("std"));
+    assert_eq!(peak(&d), 1.0, "standard after the class changed");
+    d.set("c", serde_json::json!("free"));
+    assert_eq!(peak(&d), 8.0, "no-limit again");
+    let hud = d
+        .ui
+        .parse_document(
+            "ui/hud.svelte",
+            "<meta name=\"component\" content=\"hud\">\n<column id=\"Cap\"></column>\n<style>#Cap { dynamic-range-limit: constrained; }</style>",
+            Vec::new(),
+        )
+        .unwrap();
+    d.ui.define_document(hud);
+    d.ui.mount_document(
+        reactive::SourceId::new("test", "hud"),
+        "hud",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    d.step(InputFrame::default());
+    assert_eq!(peak(&d), 2.0, "the HUD's constrained holds the frame");
+}
+
 #[test]
 fn inline_boxes_draw_on_their_line_fragments() {
     // CSS 2 §10.8 and CSS Fragmentation 3 §5.4: an inline element's

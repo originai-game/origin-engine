@@ -1269,6 +1269,113 @@ fn drawn_right(l: &Line) -> f32 {
     l.x + (adv + l.glyphs[n - 1].advance - l.tracking) * l.size
 }
 
+/// CSS Color 4 §3.1: `color` is the ink a paragraph's text draws in,
+/// whatever syntax names it (`#f00`, `rgb(0 128 255)`, `hsl(120 100% 25%)`,
+/// `rebeccapurple`, a 50 % alpha), it inherits into a child paragraph and
+/// its span, and `currentcolor` reads it: a box's
+/// `background-color: currentcolor` fills in the box's own `color`.
+///
+/// Ways it could fail: a syntax read as another colour or dropped for the
+/// theme's ink, the alpha lost, the child keeping the theme's ink, or
+/// `currentcolor` taking the parent's colour rather than the element's.
+#[test]
+fn color_inks_text_and_is_currentcolor() {
+    let d = doc(
+        r#"<p id="Hex">a</p><p id="Rgb">a</p><p id="Hsl">a</p><p id="Named">a</p><p id="Alpha">a</p>
+<div id="Parent"><p id="Kid">a <span>b</span></p><div id="Box"></div></div>"#,
+        "#Hex { color: #f00; } #Rgb { color: rgb(0 128 255); } #Hsl { color: hsl(120 100% 25%); }
+#Named { color: rebeccapurple; } #Alpha { color: rgb(0 0 255 / 50%); } #Parent { color: #00ff00; }
+#Box { color: #ff8000; width: 20px; height: 20px; background-color: currentcolor; }",
+    );
+    for (id, want) in [
+        ("Hex", Srgba::rgb(255, 0, 0)),
+        ("Rgb", Srgba::rgb(0, 128, 255)),
+        ("Hsl", Srgba::rgb(0, 128, 0)),
+        ("Named", Srgba::rgb(102, 51, 153)),
+        ("Kid", Srgba::rgb(0, 255, 0)),
+    ] {
+        let runs = inked(&d, id);
+        assert!(
+            !runs.is_empty() && runs.iter().all(|(_, c, _)| near(*c, want)),
+            "{id}: {runs:?}"
+        );
+    }
+    let alpha = inked(&d, "Alpha");
+    assert!(
+        alpha
+            .iter()
+            .all(|(_, c, _)| near(*c, Srgba::rgb(0, 0, 255)) && (c[3] - 0.5).abs() < 0.01),
+        "{alpha:?}"
+    );
+    let b = d.get("Box");
+    let fill =
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|i| i.cmd.filled())
+            .find(|(r, _)| (r.x, r.y, r.width, r.height) == (b.x, b.y, b.width, b.height));
+    assert!(
+        fill.is_some_and(|(_, c)| near(c, Srgba::rgb(255, 128, 0))),
+        "currentcolor: {fill:?}"
+    );
+}
+
+/// CSS Text 3 §6.1: `text-align` places each line of a paragraph in its
+/// 400 px box: `left` and `start` at the left edge in left-to-right text,
+/// `right` and `end` at the right, `center` in the middle; in right-to-left
+/// text `start` (the initial value) is the right edge, `end` the left, and
+/// `left` stays left. It inherits: a paragraph in a centred `<div>` is
+/// centred, and `match-parent` takes its parent's `end` as the physical
+/// side the parent's direction gives it.
+///
+/// Ways it could fail: start and end read as left and right whatever the
+/// direction, `left` flipped in right-to-left text, the alignment not
+/// inherited, or only labels aligned and paragraphs left at the start.
+#[test]
+fn text_align_places_a_paragraphs_lines() {
+    let p = |id: &str, attrs: &str| format!(r#"<p id="{id}"{attrs}>word</p>"#);
+    let body = [
+        p("L", ""),
+        p("S", ""),
+        p("R", ""),
+        p("E", ""),
+        p("C", ""),
+        p("RtlStart", r#" dir="rtl""#),
+        p("RtlEnd", r#" dir="rtl""#),
+        p("RtlLeft", r#" dir="rtl""#),
+        r#"<div id="Centred"><p id="Kid">word</p></div>"#.into(),
+        r#"<div id="Ends" dir="rtl"><p id="Match" dir="ltr">word</p></div>"#.into(),
+    ]
+    .concat();
+    let d = doc(
+        &body,
+        "#L { text-align: left; } #S { text-align: start; } #R { text-align: right; }
+#E { text-align: end; } #C { text-align: center; } #RtlEnd { text-align: end; }
+#RtlLeft { text-align: left; } #Centred { text-align: center; }
+#Ends { text-align: end; } #Match { text-align: match-parent; }",
+    );
+    // Each line's left edge in its box, and its box's room beside it.
+    let at = |id: &str| {
+        let (r, l) = (d.get(id), lines(&d, id));
+        assert_eq!(l.len(), 1, "{id}: {l:?}");
+        (l[0].x - r.x, r.width - l[0].width)
+    };
+    let (_, room) = at("L");
+    assert!(room > 300.0, "a short word in 400 px: {room}");
+    let near = |a: f32, b: f32| (a - b).abs() < 0.5;
+    for id in ["L", "S", "RtlEnd", "RtlLeft", "Match"] {
+        assert!(near(at(id).0, 0.0), "{id} at the left: {:?}", at(id));
+    }
+    for id in ["R", "E", "RtlStart"] {
+        let (x, room) = at(id);
+        assert!(near(x, room), "{id} at the right: {x} of {room}");
+    }
+    for id in ["C", "Kid"] {
+        let (x, room) = at(id);
+        assert!(near(x, room / 2.0), "{id} centred: {x} of {room}");
+    }
+}
+
 /// CSS Text 3 §6.3: `text-align-last` aligns the last line (right,
 /// centre), `auto` under `justify` leaves it at the start and
 /// `justify-all` justifies it too; §7.4: a justified line ends at the

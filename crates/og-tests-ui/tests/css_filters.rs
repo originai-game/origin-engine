@@ -302,7 +302,7 @@ const CARD: &str = r##"<meta name="component" content="filters">
 }
 </style>"##;
 
-fn render(width: u32, height: u32) -> Rendered {
+fn render(width: u32, height: u32) -> (Rendered, Ui) {
     use og_render::*;
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
@@ -344,14 +344,53 @@ fn render(width: u32, height: u32) -> Rendered {
     );
     scene.ui.overlay = Some(overlay);
     on_backdrop(&ui, &mut scene);
-    render_frame(&scene, &sized(width, height))
+    (render_frame(&scene, &sized(width, height)), ui)
+}
+
+/// What the 1280 px frame shows, each against what it would show without
+/// the filter: #Mixed's grayscale(1) between its url()s leaves its warm
+/// gradient grey (the hue rotation after it keeps grey grey); #Glow's
+/// dilated, blurred gold halo lights the dark card 4 px outside its box;
+/// #PMatrix's channel rotation (R from B, G from R, B from G) turns the
+/// red start of its gradient green; #PMorph's 6 px horizontal erosion cuts
+/// its left edge to the card; and #PFlood's 60 % blue flood atop it turns
+/// its red-orange start blue.
+fn filters_show(frame: &Rendered, ui: &Ui) {
+    let at = |id: &str, x: f32, y: f32| {
+        let e = element(ui, id);
+        pixel(&frame.image, e.x + x, e.y + y)
+    };
+    let grey = at("Mixed", 20.0, 60.0);
+    let spread = grey.iter().max().unwrap() - grey.iter().min().unwrap();
+    assert!(spread < 12 && grey[0] > 40, "grayscale(1): {grey:?}");
+    let e = element(ui, "Glow");
+    let halo = pixel(&frame.image, e.x - 4.0, e.y + e.height / 2.0);
+    assert!(
+        halo[0] > 90 && halo[0] > halo[2] + 40,
+        "the gold halo outside the box: {halo:?}"
+    );
+    let turned = at("PMatrix", 6.0, 24.0);
+    assert!(turned[1] > 200 && turned[0] < 160, "R to G: {turned:?}");
+    let (cut, kept) = (at("PMorph", 3.0, 24.0), at("PMorph", 32.0, 24.0));
+    assert!(
+        cut[0] < 100 && kept[0] > 150,
+        "eroded edge {cut:?}, middle {kept:?}"
+    );
+    let flooded = at("PFlood", 16.0, 24.0);
+    assert!(
+        i32::from(flooded[2]) > i32::from(flooded[0]) + 15,
+        "blue flood atop: {flooded:?}"
+    );
 }
 
 #[test]
 #[ignore = "requires GPU"]
 fn css_filters_match_their_reference_frames() {
     for (width, height) in [(1280u32, 720u32), (390, 844)] {
-        let frame = render(width, height);
+        let (frame, ui) = render(width, height);
+        if width == 1280 {
+            filters_show(&frame, &ui);
+        }
         let name = format!("css-filters-{width}");
         matches_reference(&name, &frame.image, &frame.info, Against::Recorded);
     }

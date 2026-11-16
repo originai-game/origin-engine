@@ -71,6 +71,22 @@ pub fn render_ui(ui: &Ui, scene: &mut RenderScene, width: u32, height: u32) -> R
     render_frame(scene, &sized(width, height))
 }
 
+/// The colour of `image` at `(x, y)` in CSS px of a frame drawn at one
+/// device pixel per CSS px ([`render_ui`]), without its alpha.
+pub fn pixel(image: &RgbaImage, x: f32, y: f32) -> [u8; 3] {
+    let at = (y as usize * image.width as usize + x as usize) * 4;
+    [image.pixels[at], image.pixels[at + 1], image.pixels[at + 2]]
+}
+
+/// Element `id`'s laid-out box in `ui`'s last frame.
+pub fn element(ui: &Ui, id: &str) -> UiElement {
+    ui.elements()
+        .iter()
+        .find(|e| e.id == id)
+        .cloned()
+        .unwrap_or_else(|| panic!("no element {id}"))
+}
+
 /// `references/<tier>/`, where og-ui's reference frames are kept: in
 /// crates/og-tests-ui, whichever crate compiles this file (og-tests-cooked
 /// includes it by path).

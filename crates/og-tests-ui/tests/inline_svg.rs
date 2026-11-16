@@ -2,7 +2,8 @@
 //! `stroke-dashoffset` binds a store over `pathLength="1"`, a bar chart
 //! from a keyed `{#each}` with a `url(#…)` gradient, a line chart's path
 //! data bound to a store, a star `<polygon>` and an even-odd ring, each in
-//! a box CSS sizes. The frames match `references/vulkan/inline-svg-{1280,390}.png`
+//! a box CSS sizes (the ring's hole wound as its rim is, so only the fill
+//! rule leaves it empty). The frames match `references/vulkan/inline-svg-{1280,390}.png`
 //! (`OG_UI_CAPTURE=1` records them).
 //!
 //! Ways it could fail: the view box not fitted (shapes at their user-space
@@ -42,7 +43,7 @@ const CARD: &str = r##"<meta name="component" content="card">
     </svg>
     <svg id="Badge" viewBox="0 0 40 40">
       <path id="Hole" fill-rule="evenodd" fill="#f0b429"
-        d="M20 2a18 18 0 1 1 0 36a18 18 0 1 1 0-36zM20 10a10 10 0 1 0 0 20a10 10 0 1 0 0-20z"/>
+        d="M20 2a18 18 0 1 1 0 36a18 18 0 1 1 0-36zM20 10a10 10 0 1 1 0 20a10 10 0 1 1 0-20z"/>
       <polygon id="Star" points="20,12 22.4,17.2 28,17.6 23.6,21.2 25,26.6 20,23.6 15,26.6 16.4,21.2 12,17.6 17.6,17.2" fill="#fff"/>
     </svg>
   </row>
@@ -60,6 +61,26 @@ const CARD: &str = r##"<meta name="component" content="card">
   #Bars, #Line { width: 180px; height: 72px; }
 }
 </style>"##;
+
+/// What the 1280 px frame shows, each against what it would show without
+/// the feature: #Badge's 40-unit view box fitted to its 96 px box (2.4 px
+/// a unit) draws its even-odd ring gold 14 units from the centre and
+/// leaves the hole 8.5 units below it (under the star) unfilled; #Bars'
+/// tallest bar, its view box met in 220 x 96 (2.2 px a unit, 4 px down),
+/// runs the url(#Up) gradient from blue at its foot to green at its top.
+fn svg_shows(frame: &Rendered, ui: &Ui) {
+    let at = |id: &str, x: f32, y: f32| {
+        let e = element(ui, id);
+        pixel(&frame.image, e.x + x, e.y + y)
+    };
+    let gold = |p: [u8; 3]| p[0] > 200 && p[1] > 140 && p[2] < 100;
+    let (ring, hole) = (at("Badge", 48.0, 81.6), at("Badge", 48.0, 68.4));
+    assert!(gold(ring), "the ring: {ring:?}");
+    assert!(!gold(hole), "the even-odd hole: {hole:?}");
+    let (foot, top) = (at("Bars", 108.0, 88.0), at("Bars", 108.0, 21.0));
+    assert!(foot[2] > foot[1] + 20, "blue at the foot: {foot:?}");
+    assert!(top[1] > top[2] + 20, "green at the top: {top:?}");
+}
 
 fn send(ui: &mut Ui, command: serde_json::Value) {
     let reply = reactive::wire::decode(
@@ -127,6 +148,9 @@ fn inline_svg_matches_its_reference_frames() {
         assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
         let frame = render_ui(&ui, &mut scene, width, height);
         assert_eq!(frame.stats.missing_glyphs, 0);
+        if width == 1280 {
+            svg_shows(&frame, &ui);
+        }
         let name = format!("inline-svg-{width}");
         matches_reference(&name, &frame.image, &frame.info, Against::Recorded);
     }

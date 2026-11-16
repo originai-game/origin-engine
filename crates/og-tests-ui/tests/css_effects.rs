@@ -49,7 +49,7 @@ const CARD: &str = r##"<meta name="component" content="effects">
   background: linear-gradient(160deg, #1f2a44, #0d1117 70%); border-radius: 16px; }
 #Title { margin: 0; }
 #Blends { display: flex; flex-direction: row; gap: 16px; }
-.well { width: 112px; height: 80px; border-radius: 8px;
+.well { position: relative; width: 112px; height: 80px; border-radius: 8px;
   background: linear-gradient(to right, #f0b429, #58a6ff); }
 .dot { position: absolute; top: 12px; width: 56px; height: 56px; border-radius: 28px; }
 .a { inset-inline-start: 12px; background: #ff7b72; }
@@ -79,7 +79,7 @@ const CARD: &str = r##"<meta name="component" content="effects">
 }
 </style>"##;
 
-fn render(width: u32, height: u32) -> Rendered {
+fn render(width: u32, height: u32) -> (Rendered, Ui) {
     use og_render::*;
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
@@ -107,14 +107,96 @@ fn render(width: u32, height: u32) -> Rendered {
         (0, 0),
         "idle: {stats:?}"
     );
-    render_ui(&ui, &mut scene, width, height)
+    (render_ui(&ui, &mut scene, width, height), ui)
+}
+
+/// What the 1280 px frame shows, each against what it would show without
+/// the effect. In #Loose a multiplied dot darkens the gradient under it,
+/// while #Iso's isolated group multiplies its dots only with each other:
+/// a dot alone keeps its colour and the overlap is the dots' product.
+/// Each clip keeps the gradient (blue over 150) inside its shape and the
+/// card's dark backdrop (blue under 100) where it cuts, at points the
+/// unclipped box would cover: rect()'s 25 % left inset and 75 % bottom,
+/// xywh()'s 60 % width and 70 % height, shape()'s corners above its
+/// curve, content-box's border and padding (the green content kept),
+/// the <clipPath>'s gap between its rect and circle, and the
+/// objectBoundingBox diamond's corners.
+fn effects_show(frame: &Rendered, ui: &Ui) {
+    let at = |id: &str, x: f32, y: f32| {
+        let e = element(ui, id);
+        pixel(&frame.image, e.x + x, e.y + y)
+    };
+    let close = |got: [u8; 3], want: [f32; 3], tol: f32| {
+        got.iter()
+            .zip(want)
+            .all(|(g, w)| (f32::from(*g) - w).abs() <= tol)
+    };
+    // The well's gradient above the dots (they start 12 px down), and the
+    // dot over it 40 px down, where only dot a covers it.
+    let (under, dot) = (at("Loose", 24.0, 4.0), at("Loose", 24.0, 40.0));
+    let dot_a = [255.0, 123.0, 114.0];
+    let multiplied: [f32; 3] = std::array::from_fn(|k| f32::from(under[k]) * dot_a[k] / 255.0);
+    assert!(
+        close(dot, multiplied, 16.0),
+        "mix-blend-mode: multiply: {dot:?} over {under:?}, want {multiplied:?}"
+    );
+    let alone = at("Iso", 24.0, 40.0);
+    assert!(
+        close(alone, [255.0, 123.0, 114.0], 12.0),
+        "isolated dot a: {alone:?}"
+    );
+    let both = at("Iso", 56.0, 40.0);
+    assert!(
+        close(both, [126.0, 111.0, 60.0], 20.0),
+        "b multiplied by a only: {both:?}"
+    );
+    let kept = |p: [u8; 3]| p[2] > 150;
+    let cut = |p: [u8; 3]| p[2] < 100 && p[0] < 100;
+    for (id, inside, outside) in [
+        ("ByRect", [(50.0, 30.0)], [(10.0, 30.0), (50.0, 56.0)]),
+        ("ByXywh", [(30.0, 30.0)], [(70.0, 30.0), (30.0, 59.0)]),
+        ("ByShape", [(40.0, 50.0)], [(5.0, 5.0), (75.0, 5.0)]),
+        ("ByUrl", [(20.0, 30.0)], [(4.0, 4.0), (60.0, 60.0)]),
+        ("ByUnits", [(40.0, 32.0)], [(4.0, 4.0), (76.0, 60.0)]),
+    ] {
+        for (x, y) in inside {
+            assert!(
+                kept(at(id, x, y)),
+                "{id} keeps ({x}, {y}): {:?}",
+                at(id, x, y)
+            );
+        }
+        for (x, y) in outside {
+            assert!(
+                cut(at(id, x, y)),
+                "{id} cuts ({x}, {y}): {:?}",
+                at(id, x, y)
+            );
+        }
+    }
+    let b = element(ui, "ByBox");
+    for x in [2.0, 10.0] {
+        let p = at("ByBox", x, b.height / 2.0);
+        assert!(
+            cut(p),
+            "content-box cuts the border and padding at {x}: {p:?}"
+        );
+    }
+    let content = at("ByBox", b.width / 2.0, b.height / 2.0);
+    assert!(
+        content[1] > 200 && content[0] < 160,
+        "the content's green: {content:?}"
+    );
 }
 
 #[test]
 #[ignore = "requires GPU"]
 fn css_effects_match_their_reference_frames() {
     for (width, height) in [(1280u32, 720u32), (390, 844)] {
-        let frame = render(width, height);
+        let (frame, ui) = render(width, height);
+        if width == 1280 {
+            effects_show(&frame, &ui);
+        }
         let name = format!("css-effects-{width}");
         matches_reference(&name, &frame.image, &frame.info, Against::Recorded);
     }

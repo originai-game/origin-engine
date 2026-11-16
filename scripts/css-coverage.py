@@ -126,11 +126,11 @@ proof("masks visibility", "css_paint", "masks_hide_invisible_boxes_and_fade_imag
 proof("border-image", "css_paint", "flex_ratios_absolute_fades_and_state_border_images_render",
       "A real button hover changes rendered border pixels from a shorthand source to a longhand gradient source; this does not prove all border-image modes.")
 proof("focus-within", "css_interact", "focus_within_follows_real_focus_between_retained_ancestors",
-      "Real clicks transfer focus between nested retained branches; computed widths prove shared ancestors stay focused and old ancestors reset. Parts and the legacy immediate builder are not covered.")
+      "Real clicks transfer focus between nested retained branches; computed widths prove shared ancestors stay focused and old ancestors reset. Parts are not covered.")
 proof("object-view-box", "control_props", "an_image_shows_its_object_view_box",
-      "Both build paths emit asymmetric inset/calc crop UVs; the removed -og-uv property is rejected.")
+      "The document emits asymmetric inset/calc crop UVs; the removed -og-uv property is rejected.")
 proof("list-style", "html_text", "list_markers_follow_css_and_renumber_on_reorder",
-      "Both build paths assert marker text/shapes, position, inheritance and keyed reorder. Explicit initial resetting is tracked separately.")
+      "Asserts marker text/shapes, position, inheritance and keyed reorder. Explicit initial resetting is tracked separately.")
 proof("media-queries media-query-range-syntax prefers-reduced-motion", "documents", "media_queries_follow_dimensions_preferences_and_nested_intersections",
       "Computed widths at six viewport/preference combinations, including inclusive/exclusive range boundaries and nested queries.")
 proof("nth-child nth-child-of empty", "documents", "pushed_screens_match_sibling_and_structural_selectors_on_instantiated_rows",
@@ -150,44 +150,46 @@ proof("scrollbar-color", "box_decor", "a_wheel_stops_at_snap_stop_always_and_scr
 proof("overflow overflow-shorthand", "box_decor", "overflow_scrolls_and_clips",
       "Wheel input changes only the auto axis; computed viewport/content extents and offsets are asserted.")
 proof("isolation mix-blend-mode clip-path clip-path-boxes rect-xywh shape-function", "css_effects", "css_effects_match_their_reference_frames",
-      "References at 1280/390 compare isolated/grouped blends and rect, xywh, shape, content-box and SVG-reference clipping tiles.")
+      "GPU pixels at 1280 (css_effects::effects_show): a mix-blend-mode: multiply dot darkens the gradient under it to within 16 of their product; in an isolation: isolate group a dot alone keeps its own colour and the overlap is the two dots' product; rect(8px auto 75% 25%), xywh(10% 10% 60% 70%), shape(), content-box and url(#id) clips (user space and objectBoundingBox) keep the box inside their shape and show the card where they cut, at points the unclipped box covers. "
+      "The 1280 and 390 frames are also compared with their references for review.")
 proof("filter svg-filters", "css_filters", "css_filters_match_their_reference_frames",
-      "References at 1280/390 compare SVG filter graphs, primitive tiles and CSS function/url composition; this does not prove native glass backdrop chains.")
+      "GPU pixels at 1280 (css_filters::filters_show): grayscale(1) between two url()s leaves a warm gradient grey; an SVG filter's dilated, blurred gold flood lights the card 4px outside its box; a feColorMatrix channel rotation turns red green; feMorphology erode cuts 6px off an edge; a 60% feFlood composited atop turns red blue. The 1280 and 390 frames, including the other primitives, are compared with their references for review; native glass backdrop chains are not proved.")
 proof("font-size rem font-shorthand", "control_props", "root_relative_text_sizes_follow_the_root_not_the_parent",
-      "Both builders emit 1.75rem at 24.5/36.75 px under 100/150 percent text scale, distinct from 1.75em under a 10px parent; shorthand is checked too.")
+      "The document emits 1.75rem at 24.5/36.75 px under 100/150 percent text scale, distinct from 1.75em under a 10px parent; shorthand is checked too.")
 proof("text-shadow", "control_props", "scene_text_shadows_follow_the_font_size",
-      "Both builders emit the same shadows as independently resolved px values for em/lh and inherited font size; none removes them.")
+      "The document emits the same shadows as independently resolved px values for em/lh and inherited font size; none removes them.")
 proof("absolute-positioning relative-positioning fixed-positioning sticky-positioning anchor-positioning",
       "css_layout", "positioning_places_as_css_positioning_does",
-      "Both builders assert relative flow reservation, asymmetric absolute insets, viewport-fixed corners, sticky wheel scrolling, anchor()/anchor-size(), position-area and position-try. Anchor animation and visibility are not covered.")
+      "Asserts relative flow reservation, asymmetric absolute insets, viewport-fixed corners, sticky wheel scrolling, anchor()/anchor-size(), position-area and position-try. Anchor animation and visibility are not covered.")
 proof("writing-mode", "css_layout", "writing_modes_lay_out_as_css_writing_modes_does",
-      "Both builders assert vertical-rl/lr, sideways-lr, flex axes, logical padding/margins, orthogonal flow and vertical float geometry.")
+      "Asserts vertical-rl/lr, sideways-lr, flex axes, logical padding/margins, orthogonal flow and vertical float geometry.")
 proof("layout-direction-override", "css_layout", "direction_lays_out_as_css_writing_modes_does",
       "Computed flex positions, logical/physical margins and absolute placement distinguish dir and CSS direction on LTR/RTL surfaces.")
 proof("vertical-align", "css_layout", "vertical_align_places_inline_boxes_as_css_does",
-      "Both builders assert sup/sub text baselines, inline-block baseline/middle/top, px/percentage offsets and line-box growth.")
+      "Asserts sup/sub text baselines, inline-block baseline/middle/top, px/percentage offsets and line-box growth.")
 proof("float-clear", "css_layout", "floats_lay_out_as_css_floats_do",
       "Computed opposing/stacked floats, paragraph exclusion, flow-root avoidance, clear:both and enclosing float height. Rectangular exclusion only.")
 proof("viewport-units", "css_layout", "vi_and_vb_follow_the_roots_writing_mode",
       "Computed vi/vb dimensions follow the root writing mode on an 800x900 viewport, independently of child writing modes. Dynamic/small/large viewport units are not covered.")
 proof("border-radius corner-shape", "box_decor", "corners_take_css_radii_and_shapes",
-      "Both builders emit fill/stroke ellipse radii with overlap scaling, percentages, slash syntax and bevel corners.")
+      "The document emits fill/stroke ellipse radii with overlap scaling, percentages, slash syntax and bevel corners.")
 proof("box-shadow", "box_decor", "decorations_paint_in_css_order_over_any_draw",
-      "Both builders assert outer shadow offset/blur, inset spread and paint order relative to the fill.")
+      "Asserts outer shadow offset/blur, inset spread and paint order relative to the fill.")
 proof("pointer-events", "css_interact", "the_pointer_passes_through_none_and_hidden",
-      "Actual cursor routing through pointer-events:none and visibility:hidden, descendant overrides, URL priority/hotspot and accessibility presence. Immediate builder only; OS cursor loading is not covered.")
-proof("text-align", "control_props", "a_button_label_takes_text_align",
-      "Both builders assert emitted label positions for default centre, explicit start and menu item alignment; parent alignment does not override the button default.")
+      "Actual cursor routing through pointer-events:none and visibility:hidden, descendant overrides, URL priority/hotspot and accessibility presence. OS cursor loading is not covered.")
+proof("text-align", "css_text", "text_align_places_a_paragraphs_lines",
+      "Drawn line positions of one-word paragraphs in 400px boxes: left and start at the left edge in left-to-right text, right and end at the right, center centred; in right-to-left text start (the initial value) at the right, end and left at the left; a paragraph in a centred <div> is centred (inherited), and match-parent takes its right-to-left parent's end as the left. "
+      "control_props::a_button_label_takes_text_align proves a button label's default centre, explicit start and menu item alignment. Justification is text-align-last's and text-justify's rows.")
 proof("font-family", "runs", "ordered_named_families_preserve_primary_glyphs_and_inherit",
-      "Both builders assert exact glyph/font handles for inherited lists, rich spans, reversed named/generic order, names after generics and quoted generic names. Generics map to engine font roles, not installed system fonts.")
+      "Asserts exact glyph/font handles for inherited lists, rich spans, reversed named/generic order, names after generics and quoted generic names. Generics map to engine font roles, not installed system fonts.")
 proof("gradients", "css_paint", "repeating_gradients_repeat_the_stop_interval",
       "GPU pixels prove repeating radial intervals with positive/negative starts, all eight conic half-quadrants and collapsed linear stops. Subpixel periods and unbounded stop counts are not covered.")
 proof("gradient-interpolation", "css_paint", "gradients_mix_in_the_colour_space_they_name",
       "GPU pixels within deltaEOK 0.02 of CSS Color 4's formulas prove a full `in hsl longer hue` turn, `in hsl` red to blue the short way through magenta, and `in srgb` against the default Oklab. Other spaces and conic/radial forms are seen in review frames, not asserted.")
 proof("margin", "html_text", "block_margins_follow_the_ua_stylesheet_and_collapse",
-      "Both builders assert positive/negative sibling and parent-child margin collapse, padding/fixed-height boundaries, noncollapsing flex margins, UA em margins and keyed insertion.")
+      "Asserts positive/negative sibling and parent-child margin collapse, padding/fixed-height boundaries, noncollapsing flex margins, UA em margins and keyed insertion.")
 proof("text-wrap-balance text-wrap-pretty text-overflow", "html_text", "text_wrap_styles_and_overflow_strings_lay_out_as_css_does",
-      "Both builders inspect emitted lines: balance reduces width spread at the same line count; pretty avoids the final single-word line; custom overflow text replaces the ellipsis on one clipped line.")
+      "Inspects emitted lines: balance reduces width spread at the same line count; pretty avoids the final single-word line; custom overflow text replaces the ellipsis on one clipped line.")
 proof("stretch", "css_layout", "stretch_in_a_flex_line_is_its_stretch_fit_size",
       "Computed sizes of `stretch` across a flex line (filling it, the row laid out at the line's width), along one (the container's inner size, not floored by taller content nor shared with a sibling); a block's stretch height is asserted in css_layout::a_stretch_height_in_a_block_fills_its_containing_block. Grid areas and absolute boxes are not asserted.")
 proof("text-indent text-indent-each-line text-indent-hanging line-break", "css_layout", "text_indent_and_line_break_lay_out_as_css_text_does",
@@ -195,21 +197,22 @@ proof("text-indent text-indent-each-line text-indent-hanging line-break", "css_l
 proof("container-queries", "documents", "container_queries_restyle_lists_grids_and_rive_frames_before_paint",
       "Viewport changes immediately change list/grid padding and Rive visibility under a named inline-size query. Pushed-screen path; style/scroll-state queries and container units are not covered.")
 proof("scroll-driven-animations", "documents", "view_timelines_follow_the_subject_through_its_scroller",
-      "Both builders assert width and translation at rest and after wheel input for an anonymous view() cover timeline. Named timeline scopes and all range keywords are not covered.")
+      "Asserts width and translation at rest and after wheel input for an anonymous view() cover timeline. Named timeline scopes and all range keywords are not covered.")
 proof("animations-css cubic-bezier-easing", "documents", "scoped_css_motion_uses_shared_curves_emits_sound_and_restores",
       "A cubic-bezier(0,1,0,1) keyframe animation reaches 7/8 displacement at 1/8 duration; twelve subsequent positions replay exactly after checkpoint restoration. Pushed-screen path, not every animation mode.")
-proof("color", "dressing", "host_font_and_color_reach_button_ink_and_divider_output",
-      "Emitted button text and divider fill match authored hex colors; an explicit button part color overrides inherited host ink. This does not cover every color syntax or space.")
+proof("color", "css_text", "color_inks_text_and_is_currentcolor",
+      "Drawn text ink of paragraphs whose color is #f00, rgb(0 128 255), hsl(120 100% 25%), rebeccapurple and rgb(0 0 255 / 50%) (alpha 0.5), a child paragraph and its span inheriting a parent's #00ff00, and a box's background-color: currentcolor filled in its own color. "
+      "dressing::host_font_and_color_reach_button_ink_and_divider_output proves button text and a divider. Other colour spaces and functions are their own rows'.")
 proof("image-set", "css_paint", "image_sets_render_density_correct_backgrounds_masks_and_borders",
       "GPU pixels at DPR 1/2/1 prove density-correct background/mask tiles, MIME filtering before duplicate removal (including quoted parameters and malformed-type rejection), zero-resolution transparency, percentage border slices with auto widths and gradient selection. Resolution math covers calc/min/max/clamp with mixed x/dppx/dpi/dpcm units; retained output also tests fractional DPR.")
 proof("background-image", "css_paint", "image_urls_resolve_files_not_atlas_names_or_handles",
       "Retained drawing selects the registered relative file and numeric filename, rejects a missing path despite an atlas basename collision, and reports the missing asset. css_paint_matches_its_reference_frames covers background tiling and gradients on the GPU. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks proves cooked SVG pixels, imported masks and inline cursor URL provenance.")
 proof("cursor", "css_interact", "plain_boxes_choose_cursors_in_clipped_transformed_paint_order",
-      "Both builders assert cursor inheritance over noninteractive boxes, passive overlays above buttons, pointer-events:none, hidden and overflow-clipped children, 90-degree transforms and image hotspots. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks checks cooked SVG cursor pixels on a plain div. css_interact::cursors_apply_only_inside_clip_paths proves, in both builders, cursors only inside circle(), polygon() over content-box, evenodd path(), shape(), objectBoundingBox url(#id) and an ancestor's inset() clip. Clip-path press hit testing and every cursor keyword are not covered.")
+      "Asserts cursor inheritance over noninteractive boxes, passive overlays above buttons, pointer-events:none, hidden and overflow-clipped children, 90-degree transforms and image hotspots. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks checks cooked SVG cursor pixels on a plain div. css_interact::cursors_apply_only_inside_clip_paths proves cursors only inside circle(), polygon() over content-box, evenodd path(), shape(), objectBoundingBox url(#id) and an ancestor's inset() clip. Clip-path press hit testing and every cursor keyword are not covered.")
 proof("field-sizing", "control_props", "fields_size_to_displayed_content_and_respect_constraints",
-      "Both builders prove text-input value/placeholder sizing, caret-width empty inputs, textarea wrapping and newline heights, ignored rows, explicit dimensions, min/max width, noninheritance and removal of content sizing. Retained editing and checkpoint restore preserve focus/caret and update height. selects_files_and_vertical_fields_size_to_content proves, in both builders, a select fitting its shown option (fixed fills, explicit width wins), file inputs fitting chosen names while fixed keeps the default label width, and vertical-rl inputs/textareas sizing height to content with a line-wide width and caret-high empty height, wrapping into columns under a fixed height. Listbox selects and fixed sizing in vertical modes are not covered.")
+      "Proves text-input value/placeholder sizing, caret-width empty inputs, textarea wrapping and newline heights, ignored rows, explicit dimensions, min/max width, noninheritance and removal of content sizing. Retained editing and checkpoint restore preserve focus/caret and update height. selects_files_and_vertical_fields_size_to_content proves a select fitting its shown option (fixed fills, explicit width wins), file inputs fitting chosen names while fixed keeps the default label width, and vertical-rl inputs/textareas sizing height to content with a line-wide width and caret-high empty height, wrapping into columns under a fixed height. Listbox selects and fixed sizing in vertical modes are not covered.")
 proof("shape-outside shapes", "css_layout", "shape_outside_changes_line_exclusion_not_float_placement",
-      "Both builders prove triangular line exclusion, unchanged float stacking/BFC avoidance/clear, and dynamic none/restoration. shape_outside_uses_the_whole_line_band_and_reference_box proves circles, ellipses, insets, margin/border/content boxes, margin-box clipping, degenerate insets and dropping a wide line along a slope. shape_margin_expands_by_distance_and_clips_to_the_float_box proves distance-based shape-margin, containing-block percentages, clipping and dynamic zero restoration. shape_images_wrap_lines_around_their_alpha proves, in both builders, url() alpha contours per pixel row, shape-image-threshold as number and percentage, an empty shape, shape-margin around them, content-box placement and the box kept without alpha; runtime ui_configure::shape_outside_images_take_their_contour_from_cooked_alpha reads a cooked SVG's alpha natively. Gradient images, Basis textures on the web, other syntax, elliptical box corners and writing modes remain unverified.")
+      "Proves triangular line exclusion, unchanged float stacking/BFC avoidance/clear, and dynamic none/restoration. shape_outside_uses_the_whole_line_band_and_reference_box proves circles, ellipses, insets, margin/border/content boxes, margin-box clipping, degenerate insets and dropping a wide line along a slope. shape_margin_expands_by_distance_and_clips_to_the_float_box proves distance-based shape-margin, containing-block percentages, clipping and dynamic zero restoration. shape_images_wrap_lines_around_their_alpha proves url() alpha contours per pixel row, shape-image-threshold as number and percentage, an empty shape, shape-margin around them, content-box placement and the box kept without alpha; runtime ui_configure::shape_outside_images_take_their_contour_from_cooked_alpha reads a cooked SVG's alpha natively. Gradient images, Basis textures on the web, other syntax, elliptical box corners and writing modes remain unverified.")
 
 proof("accent-color", "css_paint", "accent_color_inks_the_built_in_controls_and_what_they_draw_on_it_reads",
       "A checked box, a switch that is on, a chosen radio, a range's filled track and a progress fill draw the accent set in <style>, in the style attribute or on an ancestor, in both schemes and through a scheme switch (light-dark()); an unaccented sibling keeps the style's primary; the check mark reads at least 4.5:1 on a light and a dark accent. css_paint::accent_color_is_derived_as_the_styles_primary_seed proves the accent is the style's derivation of it as --seed-primary, its tick at least 4.5:1, in both schemes. A pack's own ::part art over the accent is not covered.")
@@ -353,7 +356,8 @@ not_applicable("namespace",
 proof("dynamic-range-limit", "css_paint", "dynamic_range_limit_sets_the_frames_peak",
       "A document root's dynamic-range-limit is the frame's (Ui::range_limit, the most limiting of several roots); on an 8x display standard ends it at 1x, constrained at 2x (one stop), no-limit and none declared at 8x, "
       "an even mix at 2^1.5 and the spec's nested dynamic-range-limit-mix() at 2^1.9 (normalized weights mixed in stops); a mix without a percentage or over 100 % is refused. og-render's display unit test checks the transfer's clamp and the tone curves end at that peak per keyword. "
-      "A child element's own limit does not cap its content apart from the rest of the frame, and the frames on an HDR surface await the milestone's GPU look.")
+      "css_paint::dynamic_range_limit_follows_its_roots proves the frame's limit follows a root's class change (no-limit, standard, no-limit) and that a second mounted document's constrained root holds the frame at 2x. "
+      "A child element's own limit does not cap its content apart from the rest of the frame; the display pass that ends the frame at the peak runs only on an HDR surface, so no pixel is read here.")
 
 # animation and interaction
 proof("transitions transition-behavior starting-style linear-easing steps-easing display-animation animation-composition",
@@ -391,8 +395,9 @@ proof("interactivity", "css_interact", "interactivity_inert_stops_a_subtree_and_
       "A button inside a box with interactivity: inert sends nothing when pressed; a declared interactivity: auto on an [inert] box makes its button answer (the attribute is HTML's UA rule, which a declaration overrides); an [inert] box alone stays inert and a button outside both answers. Pointer presses only; keyboard focus skipping and find-in-page are not asserted.")
 proof("interest-invokers", "control_props", "interest_delays_time_when_a_hint_shows_and_leaves",
       "At 60 ticks a second, an interestfor control with interest-delay: 200ms 300ms shows its hint exactly 18 ticks before one with interest-delay-start: 500ms and hides it exactly 18 ticks after one with interest-delay-end: 0s; a one-value shorthand sets both; the fixed engine latency is at most 3 ticks to show and 2 to hide. control_props::titles_and_popovers_show_against_their_controls covers hover and keyboard-focus interest. The interest and loseinterest events, :interest-source/:interest-target and long-press interest on touch are not covered.")
-proof("appearance", "control_props", "dialogs_close_as_closedby_says",
-      "appearance: none drops a dialog's own frame: its content sits at the dialog's corner with no padding. dressing::a_tight_field_takes_its_components_text_parts proves it on a field: one line of its text tall with the placeholder at its edge, no inset. appearance applies to dialogs and fields (auto | none); the compat keywords (button, checkbox, menulist-button, textfield…) and base-select are not taken.")
+proof("appearance", "control_props", "appearance_none_drops_a_controls_own_frame",
+      "Emitted fills and positions: under appearance: none a single-line field, a <textarea> and an open <dialog> fill nothing inside their box where their auto twins draw a frame, the field's text drops its frame's inset (12px in to 4) and the dialog's child sits at its corner where auto pads it. "
+      "control_props::dialogs_close_as_closedby_says checks a modal dialog's. appearance applies to dialogs, fields and selects (base-select is customizable-select's row); the compat keywords (button, checkbox, menulist-button, textfield…) are not taken.")
 not_applicable("autofill", "og's fields are engine-drawn; no browser or OS autofill fills them, so there is no autofilled state to style.")
 proof("caret-shape", "css_paint", "caret_shape_draws_a_bar_block_or_underscore_over_the_next_character",
       "A focused 20px field with its caret before \"i\": bar and auto draw the same thin bar at the insertion point; block is the bar's full height and exactly the font's advance of \"i\" wide, starting at the bar and drawn before the text; underscore is that advance wide, at most 1px thick, its bottom on the bar's bottom, drawn after the text. At the end of the text both take 1ch (the advance of \"0\") at the bar's position. The shape inherits from a column. Text areas, right-to-left text and the caret shorthand are not covered; the block does not recolour the character it covers.")
@@ -473,8 +478,8 @@ proof("justify-self-block", "css_layout", "justify_self_aligns_block_level_boxes
       "Computed x and width of block-level boxes: justify-self end with a fixed width, center with an auto width shrunk to fit-content, auto and normal at the start, and justify-items: end as the default that justify-self: start overrides. Absolutely positioned boxes and right-to-left blocks are not asserted.")
 proof("line-clamp", "css_layout", "line_clamp_cuts_a_texts_lines",
       "Computed heights: line-clamp: 2 keeps two lines of a <p> and a <text> without text-overflow, the box those lines high; a text within the limit keeps its lines. A <div> holding text directly refuses line-clamp (it applies to text-bearing elements), and the drawn ellipsis is not asserted.")
-proof("overflow-overlay", "css_contain", "z_index_orders_paint_and_clip_and_contain_cut_it",
-      "overflow: overlay and overflow-y: overlay make scroll containers whose view and content heights are auto's.")
+proof("overflow-overlay", "css_contain", "overflow_overlay_scrolls_as_auto",
+      "Scroll state after a wheel of (20, 30): overflow: overlay and overflow-y: overlay make 40px scroll containers over 300px content that take both axes of it (overflow-y's visible x computes to auto), where overflow: hidden takes none.")
 proof("zoom", "css_layout", "zoom_scales_a_subtrees_lengths_as_css_does",
       "Computed screen boxes: zoom: 2 on a content-box 100px box with 5px padding and a 10px top margin makes it 220 wide 20 below its block's top, its child's width: 50% 100 wide at 10, 10, and its text twice its unzoomed size, the next box below it; a zoomed width: 50% stays 200 of 400; zoom: 1.5 inside zoom: 2 makes a 10px box 30; a zoomed flex item's content-box size and its padding floor are its parent's room; zoom: 50% halves and zoom: 0 is 1. The subtree lays out at its own lengths and is drawn scaled from the box's top left (its transforms act inside the zoom); a zoomed box starts its own float context, and a margin collapsing through it keeps only its sum's sign. getComputedStyle-style unscaled values are not exposed.")
 proof("frame-sizing", "css_layout", "frame_sizing_follows_an_embedded_documents_content",
@@ -501,7 +506,7 @@ proof("opacity-svg paint-order mask-type mask-border",
       "css_paint", "svg_paint_opacities_order_and_mask_types_draw_as_svg_says",
       "SVG fill-opacity and stroke-opacity (attributes, percentages and CSS) scale only their paint; paint-order draws a shape's stroke under its fill, on the shape or inherited, with omitted paints in default order; a <mask>'s mask-type attribute (alpha vs luminance) changes the emitted gradient mask; mask-border slices a gradient's border area. Text paint-order, mask-type in a stylesheet rule and non-gradient masks are not covered.")
 proof("svg", "inline_svg", "inline_svg_matches_its_reference_frames",
-      "References at 1280/390 compare inline SVG paths, polygons, a url(#) gradient fill, even-odd fill-rule, a pathLength dash offset and bound path data in CSS-sized boxes. css_paint::svg_paint_opacities_order_and_mask_types_draw_as_svg_says adds paint opacities, paint-order and mask types. The SVG DOM interfaces, <foreignObject>, <a>, <script>, <switch> and systemLanguage are not covered.")
+      "GPU pixels at 1280 (inline_svg::svg_shows): a 40-unit view box fitted to a 96px box draws an even-odd ring gold and leaves its hole unfilled, and a keyed {#each} bar's url(#Up) gradient runs blue at its foot to green at its top in a met view box. The 1280 and 390 frames, with the polygons, the pathLength dash offset and bound path data, are compared with their references for review. css_paint::svg_paint_opacities_order_and_mask_types_draw_as_svg_says adds paint opacities, paint-order and mask types. The SVG DOM interfaces, <foreignObject>, <a>, <script>, <switch> and systemLanguage are not covered.")
 proof("image-orientation", "css_paint", "image_orientation_turns_images_by_their_exif_or_draws_them_as_stored",
       "Emitted images read through og-render's own placement against a 2x1 texture carrying EXIF orientations 1, 3, 6 and 8: from-image turns it as EXIF defines (6 red on top, 8 blue on top, 3 blue on the left) with the turned natural size under object-fit: none; none, inherited from the parent, samples the texels as stored; a background follows the property too. og-cook textures::exif_orientation_is_kept_beside_the_texels_as_stored: the cook keeps the orientation beside unturned texels, a streamed tail too. The deprecated <angle> || flip form is refused; sprites and materials sample as stored; the GPU shader path is not pixel-checked.")
 proof("cross-fade", "css_paint", "cross_fade_sums_its_weighted_images_in_a_group",
@@ -528,11 +533,12 @@ not_applicable("svg-discouraged",
 # selectors and cascade
 proof("selectors has is where not nth-of-type root scope scope-pseudo case-insensitive-attributes case-sensitive-attributes lang dir-pseudo state link-selectors nesting input-selectors indeterminate default read-write-pseudos placeholder-shown open-pseudo",
       "css_selectors", "selectors_select_as_css_does",
-      "Computed widths, each against a decoy in the other state: type, class, id and attribute selectors with the child, adjacent and general sibling combinators; :has(> …); :is(); :not(); :where() matching with zero specificity; :nth-of-type(2) among other tags; a :root custom property; :scope; @scope (.card) to (.inner) stopping at its limit; [k=v i] and [k=v s]; :lang(fr) on fr-CA; :dir(rtl); :state(on) bound true and false; :any-link; nesting's &; :checked, :disabled, :enabled, :default and :indeterminate inputs; input:read-only; :placeholder-shown; :out-of-range; details:open. :visited and :link's history are not modelled (every link is unvisited). css_selectors::the_open_attribute_reflects_the_open_state proves [open] on <details> and <dialog> follows the open state as HTML reflects it: toggled by the player, held by bind:open, and a literal open the player closed.")
+      "Computed widths, each against a decoy in the other state: type, class, id and attribute selectors with the child, adjacent and general sibling combinators; :has(> …); :is(); :not(); :where() matching with zero specificity; :nth-of-type(2) among other tags; a :root custom property; :scope; @scope (.card) to (.inner) stopping at its limit; [k=v i] and [k=v s], with s refusing input[type=\"CHECKBOX\" s] that HTML's case-insensitive type matches without it; :lang(fr) on fr-CA; :dir(rtl); :state(on) bound true and false; :any-link; nesting's &; :checked, :disabled, :enabled and :indeterminate inputs; :default on a checkbox its markup checks and not on one only its binding checks; input:read-only; :placeholder-shown; :out-of-range; details:open. :visited and :link's history are not modelled (every link is unvisited). css_selectors::the_open_attribute_reflects_the_open_state proves [open] on <details> and <dialog> follows the open state as HTML reflects it: toggled by the player, held by bind:open, and a literal open the player closed.")
 proof("form-validity-pseudos", "input_types", "html_constraints_readonly_rows_and_label_checkboxes",
       "Computed widths: an empty required field and one under its minlength match :invalid, valid and empty optional fields do not. :valid, :in-range and :user-valid are not asserted here.")
-proof("cascade-layers", "style_pack", "a_rule_ranks_by_its_tree_context_then_its_layer",
-      "A built-in component's own rule (og-components) loses to a pack's (og-pack), a game's own unlayered rule beats it, and !important reverses the layers; a rule's tree context ranks before its layer (a button's own plate over the style's ::part(), a document's ::part() over the plate). Anonymous and nested layers are covered by documents::supports_charset_and_import_conditions_gate_their_rules.")
+proof("cascade-layers", "css_selectors", "cascade_layers_order_a_documents_rules",
+      "Computed widths under a document's own @layer rules: @layer a, b, c; orders them whatever the source order or specificity (a's #Order.probe loses to b's .probe), unlayered rules beat every layer, !important reverses both (a's important beats b's, and a layer's an unlayered one), an anonymous @layer {} takes its place where it first appears, a layer's own rules beat its nested @layer inner, and sublayers declared c.x, c.y rank in that order. "
+      "style_pack::a_rule_ranks_by_its_tree_context_then_its_layer proves the engine's own og-components and og-pack layers under a game's rules.")
 proof("shadow-parts", "dressing", "a_part_rule_reads_its_hosts_place_in_the_document",
       "A built-in control's parts are a shadow tree under its element: .shop button::part(base) and ul > li:first-child button::part(base) widen only the button they reach, from a document and from a pack, and follow a class change. part lists (one element under two names) are covered by the role parts' tests; A control in a control document exports its parts to the outer host with exportparts, renamed or not, one boundary deeper: control_documents::exportparts_makes_a_nested_part_the_outer_hosts.")
 proof("active-view-transition", "css_selectors", "active_view_transition_matches_the_root_while_it_runs",
@@ -580,10 +586,10 @@ part_proof("shadow-parts width-height individual-transforms font-size color opac
     "opacity keyframes, click ownership and remove/reinsert output. Limited to this button fixture.")
 part_proof("border-radius",
     "box_decor", "border_radius_rounds_a_dressed_button",
-    "Emitted button base radius replaces its default in both immediate and retained documents.")
+    "Emitted button base radius replaces its default in a mounted document.")
 part_proof("font-family",
     "runs", "ordered_named_families_preserve_primary_glyphs_and_inherit",
-    "Both builders emit button::part(base) glyphs from ordered named families, including a named fallback after an intervening generic.")
+    "The document emits button::part(base) glyphs from ordered named families, including a named fallback after an intervening generic.")
 part_proof("shadow-parts width-height padding borders background-color",
     "dressing", "tabs_and_select_parts_keep_boxes_states_and_host_input",
     "Tab indicator height, select group height, list padding+border inset, group text padding and distinct tab/option fills are asserted after real clicks. Semantic roles remain on hosts.")
