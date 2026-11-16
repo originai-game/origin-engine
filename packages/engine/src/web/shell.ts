@@ -104,6 +104,13 @@ export interface ShellOptions {
   readonly autoplay?: boolean;
   /** The URL base (as the Worker resolves it) whose `cooked/` bundle the Worker fetches before the engine starts. */
   readonly root?: string;
+  /**
+   * The integrity of `<root>/cooked/.cook.ogt` (`sha384-…`) when `root` is
+   * an asset base on another origin (docs/web-export.md §Asset base): the
+   * Worker fetches the manifest against it and every other file against
+   * the manifest's own integrity.
+   */
+  readonly rootIntegrity?: string;
   /** The Basis transcoder's script and module URLs (as the Worker resolves them). */
   readonly basis?: { readonly js: string; readonly wasm: string };
   /** The rav1d AV1 fallback's module URL (as the Worker resolves it), fetched only where WebCodecs cannot decode AV1. */

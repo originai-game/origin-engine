@@ -390,6 +390,34 @@ pub fn og_web_bundle_files(manifest: String) -> String {
     }
 }
 
+/// Each file of `manifest`'s bundle under `cooked/` with its Subresource
+/// Integrity metadata, as JSON `{ "<file>": "sha384-…" }`: every output,
+/// streaming group pack and og.motion's model. A boot from an asset base
+/// (docs/web-export.md §Asset base) fetches each file with its integrity,
+/// so the browser refuses bytes that differ from what was cooked. An empty
+/// `manifest` names the one last parsed; `{ "error" }` when it does not parse.
+#[wasm_bindgen]
+pub fn og_web_bundle_integrity(manifest: String) -> String {
+    let Some(bundle) = bundle_of(&manifest) else {
+        return format!(
+            "{{\"error\":{}}}",
+            json_string("the cook's manifest does not parse")
+        );
+    };
+    let m = bundle.manifest();
+    let files = m
+        .outputs()
+        .map(|o| (&o.file, &o.integrity))
+        .chain(m.streams.iter().map(|g| (&g.file, &g.integrity)))
+        .chain(m.motion.iter().map(|f| (&f.file, &f.integrity)));
+    let items: std::collections::BTreeMap<_, _> = files.collect();
+    let items: Vec<String> = items
+        .into_iter()
+        .map(|(f, i)| format!("{}:{}", json_string(f), json_string(i)))
+        .collect();
+    format!("{{{}}}", items.join(","))
+}
+
 /// The bundle of `manifest`, parsed once and kept (s58): the texture calls
 /// below run once or twice per texture of a boot with the same manifest,
 /// and `Bundle::from_manifest` of a large one costs milliseconds. An empty

@@ -25,6 +25,7 @@
 //!   loading_labels {        # the splash's caption per boot stage
 //!     fetch "下载中"          # fetch | transcode | prime | present
 //!   }
+//!   assets "https://cdn.example.com/runner/1.4.0"  # the asset base `cooked/` is served from
 //! }
 //! ```
 //!
@@ -55,6 +56,32 @@ fn word<'a>(e: &'a Entry, file: &str, allowed: &[&str]) -> Result<&'a str, Strin
 fn text<'a>(e: &'a Entry, file: &str) -> Result<&'a str, String> {
     e.string(0)
         .map_err(|_| format!("{file}:{}: publish.{} takes a quoted string", e.line, e.key))
+}
+
+/// An asset base as the export takes it (docs/web-export.md §Asset base):
+/// an absolute `https://` URL, or `http://` on localhost or 127.0.0.1 (a
+/// test server), with no credentials, query or fragment; the trailing `/`
+/// is dropped. `Err` says what is wrong, after the setting's name.
+pub fn asset_base(url: &str) -> Result<String, String> {
+    let (scheme, rest) = url.split_once("://").ok_or_else(|| {
+        format!(
+            "is \"{url}\"; give an absolute URL, such as \"https://cdn.example.com/my-game/1.0\""
+        )
+    })?;
+    let host = rest.split(['/', '?', '#']).next().unwrap_or("");
+    let name = host.rsplit_once(':').map_or(host, |(h, _)| h);
+    let local = matches!(name, "localhost" | "127.0.0.1" | "[::1]");
+    if !(scheme == "https" || scheme == "http" && local) {
+        return Err(format!(
+            "is \"{url}\"; a package from another origin is fetched over https (http only on localhost)"
+        ));
+    }
+    if host.is_empty() || host.contains('@') || rest.contains(['?', '#']) {
+        return Err(format!(
+            "is \"{url}\"; give the directory that holds cooked/, without credentials, query or fragment"
+        ));
+    }
+    Ok(url.trim_end_matches('/').to_string())
 }
 
 /// The settings JSON for `web-build.ts --settings`, from the project's manifest.
@@ -148,10 +175,14 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
                 json!(a)
             }
             "icon" => json!(text(e, &file)?),
+            "assets" => json!(
+                asset_base(text(e, &file)?)
+                    .map_err(|why| format!("{file}:{}: publish.assets {why}", e.line))?
+            ),
             "short_name" => json!(text(e, &file)?),
             other => {
                 return Err(format!(
-                    "{file}:{}: publish has no `{other}`; it takes probe, out, isolation, fit, aspect, aspect_min, aspect_max, orientation, dpr_cap, fullscreen, gate, made_with, icon, short_name, color_textures, telemetry, pipelines, loading and loading_labels",
+                    "{file}:{}: publish has no `{other}`; it takes probe, out, isolation, fit, aspect, aspect_min, aspect_max, orientation, dpr_cap, fullscreen, gate, made_with, icon, short_name, color_textures, telemetry, pipelines, loading, loading_labels and assets",
                     e.line
                 ));
             }
@@ -393,5 +424,30 @@ mod tests {
         let stage =
             settings_of("badstage", "  loading_labels {\n    unpack \"…\"\n  }\n").unwrap_err();
         assert!(stage.contains("no stage `unpack`"), "{stage}");
+    }
+
+    /// An asset base reaches the web build without its trailing `/`; one a
+    /// page could not fetch safely (plain http off localhost, credentials, a
+    /// query or fragment, not absolute) is refused with its line.
+    #[test]
+    fn an_asset_base_is_an_https_directory_or_local_http() {
+        let ok = settings_of("assets", "  assets \"https://cdn.example.com/g/1.4/\"\n").unwrap();
+        assert_eq!(ok["publish"]["assets"], "https://cdn.example.com/g/1.4");
+        for local in ["http://localhost:8080/g", "http://127.0.0.1:9/g"] {
+            assert_eq!(super::asset_base(local).as_deref(), Ok(local));
+        }
+        for bad in [
+            "http://cdn.example.com/g",
+            "http://localhost.evil.example/g",
+            "https://user:pw@cdn.example.com/g",
+            "https://cdn.example.com/g?v=1",
+            "https://cdn.example.com/g#x",
+            "cdn.example.com/g",
+            "https:///g",
+        ] {
+            assert!(super::asset_base(bad).is_err(), "{bad}");
+        }
+        let line = settings_of("bad-assets", "  assets \"http://cdn.example.com\"\n").unwrap_err();
+        assert!(line.contains(":7: publish.assets"), "{line}");
     }
 }

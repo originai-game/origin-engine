@@ -33,6 +33,8 @@ export interface Start {
   pipelines?: "sync" | "async" | "prewarm";
   /** The URL base whose `cooked/` bundle the engine opens (`.` next to the page). */
   root?: string;
+  /** `<root>/cooked/.cook.ogt`'s integrity: a package from an asset base, every file checked (shell.ts `rootIntegrity`). */
+  rootIntegrity?: string;
   /** The Basis transcoder's script and module. */
   basis?: { js: string; wasm: string };
   /** The rav1d fallback decoder's module URL (dist/av1/og-av1.wasm by default). */

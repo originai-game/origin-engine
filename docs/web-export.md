@@ -56,6 +56,7 @@ dates, no absolute paths, files in sorted order
   "probe": { "protocol": 5, "wire": 1, "build": "publish",
              "members": ["hello", "tick", "state", "pick", "entity", "input", "capture"] },
   "crossOriginIsolation": "preferred",
+  "assets": null,
   "display": { "fit": "fill", "aspect": null, "aspectMin": null, "aspectMax": null,
                "orientation": "any", "dprCap": 2,
                "fullscreen": "off", "gate": "tap", "madeWith": true, "loading": "engine" },
@@ -79,6 +80,8 @@ dates, no absolute paths, files in sorted order
   project.ogt's `engine`. `probe` is read from the copied wasm's own
   `hello` (`build` `publish`, or `release` for a dev build).
 - `variant` is `3d`, `2d`, or `full` for a dev build (§Variants).
+- `assets` is `null`, or `{ "base", "origin" }` for a build whose package
+  is served from an asset base (§Asset base).
 - `crossOriginIsolation`: `required`, `preferred` (the default) or `off`;
   without isolation a page still starts, single-threaded.
 - `files` lists every file beside it (not itself) with bytes and sha256;
@@ -133,6 +136,40 @@ chunks are fetched ahead of its playheads.
 - Never serve `sourcemaps/` (§Source maps).
 
 `_headers` carries all of these.
+
+### Asset base
+
+A build can boot its package from another origin, a CDN, instead of the
+page's directory: `og build --assets <url>`, else project.ogt `publish {
+assets "<url>" }`. The URL is the directory holding `cooked/`: absolute
+`https://` (`http://` only on localhost), without credentials, query or
+fragment (`crates/og-cli/src/publish.rs` `asset_base`).
+
+- **The cook** writes each output's, streaming pack's and og.motion
+  model's Subresource Integrity, `integrity "sha384-…"`, in
+  `cooked/.cook.ogt` beside its FNV hash.
+- **The build** writes the page's configuration `assets: { base,
+  manifest }` (the manifest's own integrity) and og-build.json's `assets:
+  { base, origin }`, and points the service worker's `cooked/` files at the
+  base. `cooked/` is still written beside the page; everything else (the
+  page, the engine, the code) is served next to the page as before.
+- **The platform** uploads `cooked/` to `<base>/cooked/`, every file under
+  its own name, answering CORS reads from the page's origin
+  (`Access-Control-Allow-Origin`, and `Cross-Origin-Resource-Policy:
+  cross-origin` under isolation), and lets the page's
+  Content-Security-Policy reach `origin` (`connect-src`). A release's base
+  should be immutable: the page pins its manifest's hash.
+- **The loader** (src/web/boot.ts) fetches the manifest against the
+  configuration's integrity, then every file it or the engine fetches
+  later (the first group, packs, sound and video chunks, `#mips`, font
+  faces) against the manifest's; the browser refuses bytes that differ,
+  and the file fails once, without retries, its load failure naming its
+  integrity. A changed manifest fails the boot.
+- Natively (`og run`, `og test`) the package is the project's `cooked/`;
+  the asset base is the web export's.
+
+`tests/web/asset-base.ts` boots a fixture's package from another origin in
+Chrome, intact, with one byte changed and with its manifest changed.
 
 ### Content-hashed names
 

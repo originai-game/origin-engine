@@ -1,4 +1,4 @@
-//! `og build [project] [--publish] [--out DIR] [--json] [--no-check]`: cook,
+//! `og build [project] [--publish] [--out DIR] [--assets URL] [--json] [--no-check]`: cook,
 //! type-check (crate::check; a type error builds nothing, and a publish
 //! build is always checked: `--publish` refuses `--no-check`), then export
 //! the game into `<project>/dist` (or `publish.out` of project.ogt): the
@@ -19,7 +19,8 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og build [project] [--publish] [--out DIR] [--json] [--no-check]";
+const USAGE: &str =
+    "usage: og build [project] [--publish] [--out DIR] [--assets URL] [--json] [--no-check]";
 
 pub fn run(args: &[&str]) -> ExitCode {
     let mut project = ".".to_string();
@@ -27,6 +28,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let mut json = false;
     let mut check = true;
     let mut out = None;
+    let mut assets = None;
     let mut i = 0;
     while i < args.len() {
         match args[i] {
@@ -39,6 +41,23 @@ pub fn run(args: &[&str]) -> ExitCode {
                     return ExitCode::from(2);
                 };
                 out = Some(o.to_string());
+                i += 1;
+            }
+            // The asset base, over project.ogt's `publish { assets }`: where
+            // the platform serves this build's cooked/ (docs/web-export.md
+            // §Asset base).
+            "--assets" => {
+                let Some(a) = args.get(i + 1) else {
+                    eprintln!("og build: --assets takes a URL. {USAGE}");
+                    return ExitCode::from(2);
+                };
+                match crate::publish::asset_base(a) {
+                    Ok(a) => assets = Some(a),
+                    Err(why) => {
+                        eprintln!("og build: --assets {why}");
+                        return ExitCode::from(2);
+                    }
+                }
                 i += 1;
             }
             a if a.starts_with('-') => {
@@ -69,13 +88,16 @@ pub fn run(args: &[&str]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let settings = match crate::publish::settings(&p.root.join("project.ogt")) {
+    let mut settings = match crate::publish::settings(&p.root.join("project.ogt")) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("og build: {e}");
             return ExitCode::FAILURE;
         }
     };
+    if let Some(a) = assets {
+        settings["publish"]["assets"] = serde_json::json!(a);
+    }
     if publish && let Err(e) = crate::publish::refuse_3d_world(&p.root, &settings) {
         eprintln!("og build --publish: {e}");
         return ExitCode::FAILURE;

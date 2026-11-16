@@ -210,6 +210,8 @@ export interface WebExtras {
   /** A document's http(s) image (og-runtime's world/remote.rs), answered with og_web_put_image or og_web_fail_image. */
   og_web_set_remote_fetcher?(fetch: (key: number, url: string, credentials: boolean, integrity: string, referrerPolicy: string) => void): void;
   og_web_bundle_files(manifest: string): string;
+  /** Each cooked file's integrity, `{ "<file>": "sha384-…" }` (or `{ error }`), for a package from an asset base. */
+  og_web_bundle_integrity(manifest: string): string;
   og_web_texture_ktx2(manifest: string, id: string, bytes: Uint8Array): Uint8Array;
   og_web_pack_ktx2?(engine: number | undefined, manifest: string, pack: Uint8Array): Array<string | Uint8Array>;
   og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, lowPower: boolean): Promise<string>;

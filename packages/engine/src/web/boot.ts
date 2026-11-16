@@ -117,26 +117,39 @@ export function onBar(stage: string, value: number): number {
   return a + (b - a) * Math.max(0, Math.min(1, value));
 }
 
-async function bytesOf(url: string, received?: Received, onChunk?: () => void): Promise<Uint8Array> {
+async function bytesOf(url: string, received?: Received, onChunk?: () => void, integrity?: string): Promise<Uint8Array> {
   // Fork s61: a fetch that failed (not refused: HTTP 4xx) is tried again, up to 5 times, backing off;
   // its bytes already counted come off the progress first.
   for (let attempt = 0; ; attempt++) {
     const before = received ? received.loaded : 0;
     try {
-      return await bytesOnce(url, received, onChunk);
+      return await bytesOnce(url, received, onChunk, integrity);
     } catch (e) {
       if (received) received.loaded = before;
-      if (attempt >= 5 || /HTTP 4\d\d/.test(String(e))) throw e;
+      // An integrity failure is the bytes, not the network: the same on every try.
+      if (attempt >= 5 || /HTTP 4\d\d|integrity/.test(String(e))) throw e;
       console.warn(`fetch ${url} failed (${e instanceof Error ? e.message : String(e)}), retry ${attempt + 1}`);
       await new Promise((ok) => setTimeout(ok, 500 * 2 ** attempt));
     }
   }
 }
 
-async function bytesOnce(url: string, received?: Received, onChunk?: () => void): Promise<Uint8Array> {
+async function bytesOnce(url: string, received?: Received, onChunk?: () => void, integrity?: string): Promise<Uint8Array> {
   // A cooked file's name may hold a `#` (`m.gltf.tex0#mips.ogb`, a flipbook's
   // `#array#layer<n>`): sent as is, the browser takes the rest as a fragment.
-  const r = await fetch(url.replaceAll("#", "%23"), typeof AbortSignal?.timeout === "function" ? { signal: AbortSignal.timeout(FETCH_DEADLINE_MS) } : {});
+  // With `integrity` (a package from an asset base) the browser refuses
+  // bytes whose hash differs: a TypeError, named here.
+  const init: RequestInit = {
+    ...(typeof AbortSignal?.timeout === "function" ? { signal: AbortSignal.timeout(FETCH_DEADLINE_MS) } : {}),
+    ...(integrity ? { integrity } : {}),
+  };
+  let r: Response;
+  try {
+    r = await fetch(url.replaceAll("#", "%23"), init);
+  } catch (e) {
+    if (integrity && e instanceof TypeError) throw new Error(`refused: the network, CORS or its integrity (${integrity.slice(0, 15)}…) failed (${e.message})`);
+    throw e;
+  }
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   if (received?.fromResponse && !r.headers.get("content-encoding")) {
     const length = Number(r.headers.get("content-length"));
@@ -214,6 +227,12 @@ export interface Fetched {
   readonly textures: ReadonlyArray<{ readonly id: string; readonly bytes: Uint8Array }>;
   /** Outputs of streaming groups, left for their packs (fetched when a group loads). */
   readonly streamed: number;
+  /**
+   * Each cooked file's integrity, by its path under `cooked/`, when the
+   * package came from an asset base (`manifest` integrity given): the
+   * fetcher fetches every later file against it. Null otherwise.
+   */
+  readonly integrity: Readonly<Record<string, string>> | null;
 }
 
 /**
@@ -235,22 +254,31 @@ export interface Fetched {
  * playhead needs soonest first, then the packs by their group's priority.
  */
 export async function preloadBundle(
-  glue: Pick<WebExtras, "og_web_put_file" | "og_web_fail_file" | "og_web_bundle_files">,
+  glue: Pick<WebExtras, "og_web_put_file" | "og_web_fail_file" | "og_web_bundle_files" | "og_web_bundle_integrity">,
   root: string,
   progress: (value: number, stage: string) => void,
   received?: Received,
+  manifestIntegrity?: string,
 ): Promise<Fetched> {
   const dir = cookedDir(root);
   const manifestPath = `${dir}/.cook.ogt`;
   let manifest: string;
   try {
-    manifest = new TextDecoder().decode(await bytesOf(manifestPath));
+    manifest = new TextDecoder().decode(await bytesOf(manifestPath, undefined, undefined, manifestIntegrity));
   } catch (e) {
     tellLoadFailure(manifestPath, e);
-    glue.og_web_fail_file(manifestPath, `cannot fetch ${manifestPath} (${e instanceof Error ? e.message : String(e)}); run og cook and serve cooked/ next to the page`);
-    return { files: 0, failed: 1, manifest: null, textures: [], streamed: 0 };
+    const hint = manifestIntegrity ? "the asset base must serve this build's cooked/ (og-build.json `assets`)" : "run og cook and serve cooked/ next to the page";
+    glue.og_web_fail_file(manifestPath, `cannot fetch ${manifestPath} (${e instanceof Error ? e.message : String(e)}); ${hint}`);
+    return { files: 0, failed: 1, manifest: null, textures: [], streamed: 0, integrity: null };
   }
   glue.og_web_put_file(manifestPath, new TextEncoder().encode(manifest));
+  // A package from an asset base: every file against the manifest's integrity.
+  let integrity: Record<string, string> | null = null;
+  if (manifestIntegrity) {
+    const listed = JSON.parse(glue.og_web_bundle_integrity(manifest)) as Record<string, string>;
+    if (typeof listed["error"] === "string") throw new Error(`${manifestPath}: ${listed["error"]}`);
+    integrity = listed;
+  }
   const all = JSON.parse(glue.og_web_bundle_files(manifest)) as Array<{ id: string; file: string; type: string; group?: string }> | { error: string };
   if (!Array.isArray(all)) throw new Error(`${manifestPath}: ${all.error}`);
   // A long sound's chunks (og.SoundChunk) are fetched as its playheads near
@@ -269,7 +297,7 @@ export async function preloadBundle(
   const one = async (file: string) => {
     const path = `${dir}/${file}`;
     try {
-      const bytes = await bytesOf(path, received, received ? () => progress(received.value, "fetch") : undefined);
+      const bytes = await bytesOf(path, received, received ? () => progress(received.value, "fetch") : undefined, integrity?.[file]);
       glue.og_web_put_file(path, bytes);
       blobs.set(file, bytes);
     } catch (e) {
@@ -286,7 +314,7 @@ export async function preloadBundle(
     }),
   );
   const textures = listed.filter((o) => o.type === "og.Texture" && blobs.has(o.file)).map((o) => ({ id: o.id, bytes: blobs.get(o.file)! }));
-  return { files: files.length - failed, failed, manifest, textures, streamed: all.length - listed.length };
+  return { files: files.length - failed, failed, manifest, textures, streamed: all.length - listed.length, integrity };
 }
 
 /**
@@ -446,7 +474,7 @@ function concat(parts: readonly Uint8Array[]): Uint8Array {
  * first, so that every texture in it is ready when the engine reads the
  * pack; any other file is handed over as fetched.
  */
-export function installFetcher(glue: WebExtras, manifest: string, basis: { js: string; wasm: string } | undefined, engine: () => number | null): void {
+export function installFetcher(glue: WebExtras, manifest: string, basis: { js: string; wasm: string } | undefined, engine: () => number | null, integrity: Readonly<Record<string, string>> | null = null): void {
   let transcoder: Promise<BasisTranscoder> | null = null;
   const loaded = (): Promise<BasisTranscoder> => {
     let loading = transcoder;
@@ -484,7 +512,9 @@ export function installFetcher(glue: WebExtras, manifest: string, basis: { js: s
   glue.og_web_set_fetcher((path: string) => {
     // Its bytes as they arrive, for og.stream.status's and og.load.progress's `received`.
     const got = glue.og_web_file_progress ? new Received(0, true) : undefined;
-    bytesOf(path, got, got ? () => glue.og_web_file_progress!(path, got.loaded, got.total) : undefined)
+    // A package from an asset base: its file under cooked/ against the manifest's integrity.
+    const sri = integrity ? integrity[path.slice(path.lastIndexOf("/cooked/") + "/cooked/".length)] : undefined;
+    bytesOf(path, got, got ? () => glue.og_web_file_progress!(path, got.loaded, got.total) : undefined, sri)
       .then((bytes) => put(path, bytes))
       .catch((e: unknown) => {
         tellLoadFailure(path, e);

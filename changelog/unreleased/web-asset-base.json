@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og build --assets and project.ogt publish { assets }",
+      "summary": "A web build can boot its cooked package from an asset base on another origin, such as a CDN: og build --assets <https url> (or publish { assets \"<url>\" }) writes the base and the manifest's integrity into the page and og-build.json's assets { base, origin }. The cook writes each cooked file's sha384 integrity into cooked/.cook.ogt, and the web loader fetches every file against it, so a changed file fails to load. The assets guide's §3 A package on a CDN; docs/web-export.md §Asset base."
+    }
+  ]
+}

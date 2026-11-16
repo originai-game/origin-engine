@@ -57,6 +57,8 @@ declare const OG_SW: {
   readonly lanes?: readonly string[];
   /** Each file's content (the first 16 hex digits of its sha256), by its relative path. */
   readonly hashes?: Readonly<Record<string, string>>;
+  /** The asset base `cooked/` is served from (og-build.json `assets`); absent: next to the page. */
+  readonly assets?: string;
 };
 
 import { laneChoice } from "../src/web/lanes.ts";
@@ -86,14 +88,17 @@ const choice = laneChoice(variants.lanes.length > 0, (globalThis as { crossOrigi
 const [mine, other] = "threads" in choice ? [variants.lanes, variants.single] : [variants.single, variants.lanes];
 // A cooked file's name may hold a `#` (`m.gltf.tex0#mips.ogb`), which the
 // worker fetches as %23: keyed the same here, not cut off as a fragment.
-const href = (f: string) => new URL(f.replaceAll("#", "%23"), base).href;
+// A build on an asset base (docs/web-export.md §Asset base) has `cooked/`
+// there: those files are cached under their URL on that origin.
+const packageBase = OG_SW.assets ? new URL(`${OG_SW.assets.replace(/\/$/, "")}/`) : base;
+const href = (f: string) => new URL(f.replaceAll("#", "%23"), f.startsWith("cooked/") ? packageBase : base).href;
 const urls = new Set([...OG_SW.files, ...mine].map(href));
 const lazy = new Set([...(OG_SW.lazy ?? []), ...other].map(href));
 const index = new URL("index.html", base).href;
 
 // Each cached file's content by its absolute URL, kept in the cache under
 // INDEX, so the next build's worker knows what it may carry over.
-const hashes = new Map(Object.entries(OG_SW.hashes ?? {}).map(([f, h]) => [new URL(f, base).href, h]));
+const hashes = new Map(Object.entries(OG_SW.hashes ?? {}).map(([f, h]) => [href(f), h]));
 const INDEX = new URL("og-sw-index.json", base).href;
 
 /**

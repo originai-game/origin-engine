@@ -126,8 +126,8 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     progress(data.expect ? received.value : 0.1, "bundle");
     let fetched: Fetched | null = null;
     if (data.root !== undefined) {
-      fetched = await preloadBundle(glue, data.root, progress, data.expect ? received : undefined);
-      installFetcher(glue, fetched.manifest ?? "", data.basis, () => (run.rendering && run.engine ? run.engine.id : null));
+      fetched = await preloadBundle(glue, data.root, progress, data.expect ? received : undefined, data.rootIntegrity);
+      installFetcher(glue, fetched.manifest ?? "", data.basis, () => (run.rendering && run.engine ? run.engine.id : null), fetched.integrity);
     }
     run.boot.phase("bundle");
     // A trace from the boot on records the boot scene's loads too.

@@ -71,7 +71,7 @@ declare const Bun: {
   spawn(cmd: string[], o: { stdin: Uint8Array; stdout: "pipe"; stderr: "ignore" }): { exited: Promise<number>; stdout: ReadableStream<Uint8Array> };
   gzipSync(data: Uint8Array, o?: { level?: number }): Uint8Array;
   which(cmd: string): string | null;
-  CryptoHasher: new (algorithm: string) => { update(data: Uint8Array | string): unknown; digest(encoding: "hex"): string };
+  CryptoHasher: new (algorithm: string) => { update(data: Uint8Array | string): unknown; digest(encoding: "hex" | "base64"): string };
   version: string;
 };
 
@@ -144,6 +144,13 @@ export interface PublishSettings {
   readonly loading: "engine" | "game" | "page";
   /** The splash's caption per boot stage (`fetch`, `transcode`, `prime`, `present`); null: "Loading". */
   readonly loadingLabels: Readonly<Record<string, string>> | null;
+  /**
+   * The asset base (docs/web-export.md §Asset base): the URL whose
+   * `cooked/` the page boots from instead of its own directory, an https
+   * origin (a CDN) or http on localhost; `og build --assets`, else
+   * project.ogt `publish { assets }`, as og checked it. Null: next to the page.
+   */
+  readonly assets: string | null;
 }
 
 export interface ProjectSettings {
@@ -173,6 +180,7 @@ export const DEFAULT_PUBLISH: PublishSettings = {
   pipelines: "auto",
   loading: "engine",
   loadingLabels: null,
+  assets: null,
 };
 
 /** The settings of a project read without og (tests): name, id, engine and profile; publish defaults. */
@@ -251,6 +259,14 @@ export interface BuildManifest {
   readonly names: Readonly<Record<string, string>>;
   readonly probe: { readonly protocol: 5; readonly wire: 1; readonly build: string; readonly members: readonly string[] };
   readonly crossOriginIsolation: "required" | "preferred" | "off";
+  /**
+   * Where the package is served from (docs/web-export.md §Asset base):
+   * upload `cooked/` to `<base>/cooked/`, every file under its own name,
+   * answering CORS reads from the page's origin; `origin` is what the
+   * page's Content-Security-Policy must allow (`connect-src`). Null: the
+   * package is next to the page.
+   */
+  readonly assets: { readonly base: string; readonly origin: string } | null;
   readonly display: {
     readonly fit: "letterbox" | "fill";
     readonly aspect: string | null;
@@ -475,6 +491,13 @@ function walk(dir: string): string[] {
     else out.push(path);
   }
   return out;
+}
+
+/** Subresource Integrity metadata of `data`: `sha384-<base64>`, as the cook writes it (og-cook's `integrity`). */
+export function integrityOf(data: Uint8Array | string): string {
+  const h = new Bun.CryptoHasher("sha384");
+  h.update(data);
+  return `sha384-${h.digest("base64")}`;
 }
 
 function sha256(data: Uint8Array | string): string {
@@ -996,6 +1019,9 @@ export async function webBuild(project: string, entry: string, out: string, publ
     serviceWorker: publish,
     expect: { wasm: wasmBytes, cooked: cookedBytes, lanes: lanes ? statSync(join(out, served("origin-engine-lanes_bg.wasm"))).size : 0 },
     files: names,
+    // The package on its asset base: the boot fetches the manifest against
+    // this integrity, and every other file against the manifest's.
+    ...(p.assets ? { assets: { base: p.assets, manifest: integrityOf(new Uint8Array(readFileSync(join(out, "cooked", ".cook.ogt")))) } } : {}),
   };
   writeFileSync(join(out, "index.html"), pageHtml({ settings, publish, config, icon, pwa: publish, play: served("play.js") }));
   writeFileSync(join(out, "_headers"), headersFile(p.isolation, Object.values(names)));
@@ -1036,7 +1062,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     // Each file's content, so a new build's worker carries what did not change over from the old cache.
     const known = new Set([...lists.files, ...lists.single, ...lists.lanes, ...lists.lazy]);
     const hashes = Object.fromEntries(rows.filter((f) => known.has(f.path)).map((f) => [f.path, f.sha256.slice(0, 16)]));
-    writeFileSync(join(out, "sw.js"), `const OG_SW=${JSON.stringify({ version: version.slice(0, 16), ...lists, hashes })};\n${sw}`);
+    writeFileSync(join(out, "sw.js"), `const OG_SW=${JSON.stringify({ version: version.slice(0, 16), ...lists, hashes, ...(p.assets ? { assets: p.assets } : {}) })};\n${sw}`);
     version = identity(fileRows());
   }
 
@@ -1056,6 +1082,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     names,
     probe: { protocol: 5, wire: 1, build: probe?.build ?? (publish ? "publish" : "release"), members: probe?.members ?? [] },
     crossOriginIsolation: p.isolation,
+    assets: p.assets ? { base: p.assets, origin: new URL(p.assets).origin } : null,
     display: { fit: p.fit, aspect: p.aspect, orientation: p.orientation, dprCap: p.dprCap, fullscreen: p.fullscreen, gate: p.gate, madeWith: p.madeWith },
     icons,
     pwa: publish ? { manifest: "manifest.webmanifest", serviceWorker: "sw.js" } : null,

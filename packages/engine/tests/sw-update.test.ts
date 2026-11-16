@@ -6,7 +6,7 @@
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { preloadBundle } from "../src/web/boot.ts";
+import { installFetcher, preloadBundle } from "../src/web/boot.ts";
 import { downloadsOf, serviceWorkerLists, streamGroupsOf } from "../src/node/web-build.ts";
 
 declare const Bun: { build(o: { entrypoints: string[]; target: string; format: string }): Promise<{ success: boolean; outputs: Array<{ text(): Promise<string> }> }> };
@@ -42,9 +42,11 @@ test("bundle preload fetches a shared file once but retains every texture id, an
         { id: "clips/intro.ogt#stream.0", file: "clips/intro.ogt.stream.0.ogb", type: "og.VideoChunk" },
         { id: "clips/intro.ogt#streamhevc.0", file: "clips/intro.ogt.streamhevc.0.ogb", type: "og.VideoChunk" },
       ]),
+      og_web_bundle_integrity: () => "{}",
       og_web_put_file: (path) => { stored.push(path); },
       og_web_fail_file: (path, reason) => { throw new Error(`${path}: ${reason}`); },
     }, "https://play.example", () => {});
+    expect(result.integrity).toBeNull();
     // The pack's index boots (it is a few hundred bytes); its face is fetched when the locale's chain needs it.
     expect(fetched).toEqual(["https://play.example/cooked/.cook.ogt", "https://play.example/cooked/a.png.ogb", "https://play.example/cooked/fonts/japanese/extension.json.ogb"]);
     expect(stored).toEqual(fetched);
@@ -53,6 +55,55 @@ test("bundle preload fetches a shared file once but retains every texture id, an
     expect(result.streamed).toBe(6);
     expect(result.textures.map((t) => t.id)).toEqual(["z.png", "a.png"]);
     expect(result.textures[0]!.bytes).toBe(result.textures[1]!.bytes);
+  } finally {
+    globalThis.fetch = fetchBefore;
+  }
+});
+
+// A package on an asset base (docs/web-export.md §Asset base): the manifest
+// is fetched against the page's integrity for it, and every file the boot
+// or the engine fetches later against the manifest's own, so the browser
+// refuses bytes that differ. A refusal is the bytes, not the network: one
+// fetch, never retried, and the file fails naming its integrity.
+test("a package from an asset base is fetched file by file against its integrity", async () => {
+  const fetchBefore = globalThis.fetch;
+  const asked: Array<[string, string | undefined]> = [];
+  const failed: string[] = [];
+  const base = "https://cdn.example/g/1";
+  const sri = { "a.png.ogb": "sha384-AAA", "b.png.ogb": "sha384-BBB", "stream/vale.ogb": "sha384-VVV" };
+  try {
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      asked.push([String(input), init?.integrity]);
+      if (String(input).endsWith("b.png.ogb")) throw new TypeError("Failed to fetch");
+      return new Response("bytes");
+    }) as typeof fetch;
+    const glue = {
+      og_web_bundle_files: () => JSON.stringify([
+        { id: "a.png", file: "a.png.ogb", type: "og.Texture" },
+        { id: "b.png", file: "b.png.ogb", type: "og.Texture" },
+        { id: "v.png", file: "a.png.ogb", type: "og.Texture", group: "vale" },
+      ]),
+      og_web_bundle_integrity: () => JSON.stringify(sri),
+      og_web_put_file: () => {},
+      og_web_fail_file: (path: string, reason: string) => void failed.push(`${path}: ${reason}`),
+    };
+    const result = await preloadBundle(glue, base, () => {}, undefined, "sha384-MMM");
+    expect(asked).toEqual([
+      [`${base}/cooked/.cook.ogt`, "sha384-MMM"],
+      [`${base}/cooked/a.png.ogb`, "sha384-AAA"],
+      [`${base}/cooked/b.png.ogb`, "sha384-BBB"],
+    ]);
+    expect(failed).toHaveLength(1);
+    expect(failed[0]).toContain(`${base}/cooked/b.png.ogb`);
+    expect(failed[0]).toContain("integrity");
+    expect(result.integrity).toEqual(sri);
+    // A pack the engine asks for later: against its integrity too.
+    let fetcher: ((path: string) => void) | undefined;
+    installFetcher({ ...glue, og_web_set_fetcher: (f: (path: string) => void) => void (fetcher = f) } as never, "", undefined, () => null, result.integrity);
+    asked.length = 0;
+    fetcher!(`${base}/cooked/stream/vale.ogb`);
+    await new Promise((ok) => setTimeout(ok, 0));
+    expect(asked).toEqual([[`${base}/cooked/stream/vale.ogb`, "sha384-VVV"]]);
   } finally {
     globalThis.fetch = fetchBefore;
   }
@@ -127,8 +178,10 @@ async function install(og: Record<string, unknown>, server: Record<string, strin
   const fetched: string[] = [];
   const fetchFn = async (input: string | Request) => {
     const url = typeof input === "string" ? input : input.url;
-    fetched.push(url.slice(SCOPE.length) || "./");
-    const body = server[url.slice(SCOPE.length) || "./"];
+    // A file on another origin (an asset base) by its whole URL.
+    const key = url.startsWith(SCOPE) ? url.slice(SCOPE.length) || "./" : url;
+    fetched.push(key);
+    const body = server[key];
     return body === undefined ? new Response("", { status: 404 }) : new Response(body);
   };
   storage.setFetch(fetchFn);
@@ -205,4 +258,29 @@ test("a new build's service worker downloads only what changed, carrying the res
   expect(now.get(`${SCOPE}cooked/stream/vale.ogb`)?.body).toBe("vale");
   expect(now.get(`${SCOPE}game.bbbbbbbbbbbb.js`)?.body).toBe("game 2");
   expect(now.get(`${SCOPE}cooked/.cook.ogt`)?.body).toBe("manifest 2");
+});
+
+// A build on an asset base keeps its page, engine and code next to the
+// page and its cooked/ on the base: the worker precaches and caches each
+// cooked file under its URL there (the URL the engine fetches), and a
+// later build carries an unchanged one over by its content.
+test("a build on an asset base caches its cooked files under their URLs on that base", async () => {
+  const storage = cacheStorage();
+  const cdn = "https://cdn.example/g/1/";
+  const og = {
+    version: "3333333333333333",
+    files: ["./", "index.html", "cooked/.cook.ogt", "cooked/hero.png.ogb"],
+    single: ["origin-engine_bg.111111111111.wasm"],
+    lanes: [],
+    lazy: ["cooked/stream/vale.ogb"],
+    hashes: { "index.html": "i3", "origin-engine_bg.111111111111.wasm": "e1", "cooked/.cook.ogt": "m3", "cooked/hero.png.ogb": "h1", "cooked/stream/vale.ogb": "v1" },
+    assets: "https://cdn.example/g/1",
+  };
+  const server = { "./": "page", "index.html": "page", "origin-engine_bg.111111111111.wasm": "engine", [`${cdn}cooked/.cook.ogt`]: "manifest", [`${cdn}cooked/hero.png.ogb`]: "hero" };
+  expect(await install(og, server, storage)).toEqual(["./", "https://cdn.example/g/1/cooked/.cook.ogt", "https://cdn.example/g/1/cooked/hero.png.ogb", "index.html", "origin-engine_bg.111111111111.wasm"]);
+  const cache = storage.stores.get([...storage.stores.keys()][0]!)!;
+  expect(cache.get(`${cdn}cooked/hero.png.ogb`)?.body).toBe("hero");
+  expect(cache.has(`${SCOPE}cooked/hero.png.ogb`)).toBeFalse();
+  // The index names the base's URL, so the next build carries the hero over.
+  expect(JSON.parse(cache.get(`${SCOPE}og-sw-index.json`)!.body)[`${cdn}cooked/hero.png.ogb`]).toBe("h1");
 });

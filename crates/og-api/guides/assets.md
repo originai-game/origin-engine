@@ -58,6 +58,17 @@ Escaped loader functions and namespaces retain every asset. Baked reflection
 probes remain because their ids depend on runtime placement; this is reported.
 The local `.og/publish-assets.json` plan is not shipped.
 
+### A package on a CDN
+
+`og build --assets "https://cdn.example.com/my-game/1.4.0"` (or `assets
+"<url>"` in the `publish` block) builds a page that boots its `cooked/` from
+that URL instead of its own directory. Upload the build's `cooked/` there
+unchanged, served with `Access-Control-Allow-Origin` for the page's origin.
+Every file is checked against the hash the cook wrote for it, so a stale
+or altered file fails to load and is never used; give each release its own
+URL rather than overwriting files in place. Game code does not change:
+`og.load` and scenes name assets exactly as before.
+
 ## 4. Cook cache
 
 Native cooks share BLAKE3-keyed actions and contents in

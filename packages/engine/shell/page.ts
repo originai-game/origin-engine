@@ -96,6 +96,13 @@ export interface ShellConfig {
    * §Content-hashed names).
    */
   readonly files: Readonly<Record<string, string>>;
+  /**
+   * The asset base the build's package is served from (`og build
+   * --assets`, project.ogt `publish { assets }`; docs/web-export.md §Asset
+   * base): `base` holds `cooked/`, and `manifest` is the integrity of
+   * `cooked/.cook.ogt`. Absent: `cooked/` next to the page.
+   */
+  readonly assets?: { readonly base: string; readonly manifest: string };
 }
 
 /** The URL of the build's file `name` (`game.js`), under the name the build serves it by. */
@@ -193,6 +200,7 @@ export function readConfig(doc: Document = document): ShellConfig {
     ...(c.pipelines === "sync" || c.pipelines === "async" || c.pipelines === "prewarm" ? { pipelines: c.pipelines } : {}),
     expect: { wasm: c.expect?.wasm ?? 0, cooked: c.expect?.cooked ?? 0, lanes: c.expect?.lanes ?? 0 },
     files: c.files && typeof c.files === "object" ? c.files : {},
+    ...(c.assets && typeof c.assets.base === "string" && typeof c.assets.manifest === "string" ? { assets: { base: c.assets.base, manifest: c.assets.manifest } } : {}),
   };
 }
 
@@ -692,7 +700,8 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
       glue: at("origin-engine.js"),
       wasm: at("origin-engine_bg.wasm"),
       ...(config.expect.lanes > 0 ? { lanes: { glue: at("origin-engine-lanes.js"), wasm: at("origin-engine-lanes_bg.wasm"), bytes: config.expect.lanes } } : {}),
-      root: new URL(".", location.href).href.replace(/\/$/, ""),
+      // The package: next to the page, or on its asset base, every file checked.
+      ...(config.assets ? { root: config.assets.base.replace(/\/$/, ""), rootIntegrity: config.assets.manifest } : { root: new URL(".", location.href).href.replace(/\/$/, "") }),
       basis: { js: at("basis/basis_transcoder.js"), wasm: at("basis/basis_transcoder.wasm") },
       av1: at("av1/og-av1.wasm"),
       autoplay: false,
