@@ -7,7 +7,7 @@ use crate::bind::InteractionState;
 use crate::doc::schema::Kind;
 use std::borrow::Cow;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 struct Rule {
     selector: String,
     body: String,
@@ -180,63 +180,282 @@ fn parsed_rules(rules: Vec<Rule>, layers: &[String]) -> Result<Vec<(Selector, Ru
     Ok(parsed)
 }
 
-/// A global part sheet, using the same reader, shorthand expansion and
-/// cascade order as a document's CSS.
-pub(crate) fn part_rules(css: &str) -> Result<(Vec<StyleRule>, super::at_rules::Sheet), String> {
-    part_rules_from("<part-css>", css, Vec::new())
+thread_local! {
+    /// The bytes of global stylesheet text this thread has read.
+    static TEXT_READ: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
+/// How much global stylesheet text this thread has read, in bytes: a
+/// sheet's own text and the stylesheets it was given to `@import`. A test
+/// of what is read once counts them.
+#[doc(hidden)]
+pub fn text_read() -> usize {
+    TEXT_READ.get()
+}
+
+/// One rule of a [`Reading`] under one of its selectors.
+#[derive(Clone, Debug, PartialEq)]
+struct ReadRule {
+    selector: Selector,
+    rule: Rule,
+    /// The line of its sheet it was written on.
+    line: usize,
+    /// Its body lowered with the sheet's keyframes known ([`lower`]): its
+    /// declarations, and the text of those checked as written.
+    declarations: Vec<StyleDeclaration>,
+    checked: String,
+}
+
+/// A global stylesheet read once: tokenized, its selectors parsed and its
+/// bodies lowered. The style's `::part()` rules ([`Reading::part_rules`])
+/// and what dresses a document's elements ([`Global`]) are both made from
+/// one reading, and the default style's ([`DEFAULT`]) is kept for every
+/// sheet that holds it.
+#[derive(Debug, PartialEq)]
+pub(crate) struct Reading {
+    source: String,
+    /// What its at-rules declare, its keyframes, and the stylesheets it
+    /// was given to `@import`.
+    sheet: super::at_rules::Sheet,
+    /// Its cascade layers in first-seen order, and the anonymous ones.
+    layers: Vec<String>,
+    anonymous: usize,
+    /// How many rules it read, HTML's user-agent rules (the first `ua`)
+    /// among them: a rule read after it is ordered from here.
+    count: usize,
+    ua: usize,
+    rules: Vec<ReadRule>,
+}
+
+/// The default style, read once in the process: the part sheet of a UI
+/// without a pack, and what a pack's rules and a part sheet that begins
+/// with it are laid beside ([`Reading::with_default`]).
+pub(crate) static DEFAULT: std::sync::LazyLock<Reading> = std::sync::LazyLock::new(|| {
+    let read = |css| {
+        Reading::read("<part-css>", css, 0, Vec::new())
+            .expect("generated default CSS is checked by the theme drift test")
+    };
+    let (default, empty) = (read(crate::DEFAULT_CSS), read(""));
+    // What lets its rules be laid beside another sheet's as they were read:
+    // nothing but their own text decides how they read.
+    assert!(
+        default.sheet == empty.sheet
+            && default.layers == empty.layers
+            && default.anonymous == 0
+            && !default
+                .rules
+                .iter()
+                .any(|r| r.rule.body.contains("animation")),
+        "the default style is rules in og-default: an at-rule that declares something, another layer or an animation in it needs Reading::with_default to carry it"
+    );
+    default
+});
+
+/// Where the default style's rules go beside a sheet's own.
+#[derive(Clone, Copy)]
+enum DefaultRules {
+    /// Before them: the sheet's text begins with the default style's.
+    Before,
+    /// After them, their lines counted from the line after this one: a
+    /// pack's sheets are read first.
+    After(usize),
+}
+
+impl Reading {
+    /// Reads `css` from `from` on (written beside `source`) with the
+    /// stylesheets it `@import`s.
+    fn read(
+        source: &str,
+        css: &str,
+        from: usize,
+        imports: Vec<(String, String)>,
+    ) -> Result<Self, String> {
+        let given = imports.iter().map(|(_, text)| text.len()).sum::<usize>();
+        TEXT_READ.set(TEXT_READ.get() + css.len() - from + given);
+        let breaks: Vec<usize> = css.match_indices('\n').map(|(at, _)| at).collect();
+        let line = |at: usize| breaks.partition_point(|&b| b < at) + 1;
+        let error = |(at, message): Error| format!("{source}:{}: {message}", line(at));
+        let mut sheet = super::at_rules::Sheet {
+            imports,
+            ..Default::default()
+        };
+        let mut rules = Vec::new();
+        let mut reader = Reader::new(&mut sheet, source);
+        reader.user_agent(&mut rules).map_err(error)?;
+        let ua = rules.len();
+        // What follows another sheet's rules is past its `@import`s.
+        reader.imports_open = from == 0;
+        reader
+            .rules(&css[from..], from, &Context::default(), &mut rules)
+            .map_err(error)?;
+        let (layers, anonymous) = (std::mem::take(&mut reader.layers), reader.anonymous);
+        let count = rules.len();
+        keyframes(&mut sheet, &mut rules).map_err(error)?;
+        let known = |name: &str| sheet.keyframe_rules.iter().any(|(n, ..)| n == name);
+        let mut out = Vec::new();
+        for (selector, rule) in selectors(rules).map_err(error)? {
+            let components = selector.compounds().0;
+            if !rule.ua {
+                if components.iter().flatten().any(|c| {
+                    matches!(c, super::selectors::Component::LocalName(tag) if tag.name.0 != tag.name.0.to_ascii_lowercase())
+                }) {
+                    return Err(error((rule.at, "use lowercase markup tags in global CSS".into())));
+                }
+                if components
+                    .iter()
+                    .flatten()
+                    .any(|c| matches!(c, super::selectors::Component::Part(_)))
+                {
+                    part_selector(&selector).map_err(|e| error((rule.at, e)))?;
+                }
+            }
+            let (declarations, checked) =
+                lower(&rule.body, &known).map_err(|e| error((rule.at, e)))?;
+            // Its place from here on is its line: a document it dresses
+            // has none for it.
+            let line = line(rule.at);
+            out.push(ReadRule {
+                line,
+                selector,
+                rule: Rule {
+                    at: 0,
+                    body_at: 0,
+                    ..rule
+                },
+                declarations,
+                checked,
+            });
+        }
+        Ok(Self {
+            source: source.to_owned(),
+            sheet,
+            layers,
+            anonymous,
+            count,
+            ua,
+            rules: out,
+        })
+    }
+
+    /// Reads a part sheet. One that begins with the default style's text
+    /// takes that from [`DEFAULT`] and reads only what follows it.
+    fn read_sheet(source: &str, css: &str, imports: Vec<(String, String)>) -> Result<Self, String> {
+        if css.starts_with(crate::DEFAULT_CSS) {
+            let own = Self::read(source, css, crate::DEFAULT_CSS.len(), imports)?;
+            Ok(own.with_default(DefaultRules::Before))
+        } else {
+            Self::read(source, css, 0, imports)
+        }
+    }
+
+    /// This sheet with the default style's rules beside its own, as
+    /// reading the two texts as one reads them.
+    fn with_default(mut self, place: DefaultRules) -> Self {
+        let default = &*DEFAULT;
+        let own = self.count - self.ua;
+        let rules = default.rules[default.ua_rules()..].iter().cloned();
+        match place {
+            DefaultRules::Before => {
+                let at = self.ua_rules();
+                for r in &mut self.rules[at..] {
+                    r.rule.order += default.count - default.ua;
+                }
+                self.rules.splice(at..at, rules);
+            }
+            DefaultRules::After(lines) => self.rules.extend(rules.map(|mut r| {
+                r.rule.order += own;
+                r.line += lines;
+                r
+            })),
+        }
+        self.count += default.count - default.ua;
+        self
+    }
+
+    /// How many of `rules` are HTML's user-agent rules, which come first.
+    fn ua_rules(&self) -> usize {
+        self.rules.iter().take_while(|r| r.rule.ua).count()
+    }
+
+    /// The style's part rules in cascade order, and what the sheet
+    /// declares.
+    fn part_rules(&self) -> (Vec<StyleRule>, super::at_rules::Sheet) {
+        let sheet = super::at_rules::Sheet {
+            layers: order_layers(&self.layers),
+            ..self.sheet.clone()
+        };
+        let mut rules: Vec<&ReadRule> = self.rules.iter().filter(|r| !r.rule.ua).collect();
+        rules.sort_by_key(|r| cascade_key(&r.selector, &r.rule, &sheet.layers));
+        let rules = rules
+            .into_iter()
+            .map(|r| StyleRule {
+                inline: false,
+                context: super::TreeContext::Tree,
+                depth: 0,
+                layer: rank(&sheet.layers, &r.rule.layer),
+                starting: r.rule.starting,
+                query: r.rule.query.clone(),
+                condition: None,
+                structure: Some(std::sync::Arc::new(r.selector.clone())),
+                instance_states: Vec::new(),
+                props: Vec::new(),
+                declarations: r.declarations.clone(),
+                line: r.line,
+            })
+            .collect();
+        (rules, sheet)
+    }
+}
+
+/// The part rules and sheet of a style, as a UI holds them.
+pub(crate) type PartSheet = (
+    std::sync::Arc<Vec<StyleRule>>,
+    std::sync::Arc<super::at_rules::Sheet>,
+);
+
+fn part_sheet(reading: &Reading) -> PartSheet {
+    let (rules, sheet) = reading.part_rules();
+    (std::sync::Arc::new(rules), std::sync::Arc::new(sheet))
+}
+
+/// The default style's part sheet.
+pub(crate) static DEFAULT_PART_SHEET: std::sync::LazyLock<PartSheet> =
+    std::sync::LazyLock::new(|| part_sheet(&DEFAULT));
+
+/// A global part sheet, using the same reader, shorthand expansion and
+/// cascade order as a document's CSS.
+pub(crate) fn part_rules(css: &str) -> Result<PartSheet, String> {
+    Reading::read_sheet("<part-css>", css, Vec::new()).map(|r| part_sheet(&r))
+}
+
+/// A style pack's sheets: `css` (its `@import`s of them, written beside
+/// `source`) over the default style. Its part sheet, and what dresses a
+/// document's elements under it, from one reading.
+pub(crate) fn pack_sheets(
+    source: &str,
+    css: &str,
+    imports: Vec<(String, String)>,
+) -> Result<(PartSheet, Global), String> {
+    let reading = pack_reading(source, css, imports)?;
+    Ok((part_sheet(&reading), Global::new(reading)?))
+}
+
+fn pack_reading(
+    source: &str,
+    css: &str,
+    imports: Vec<(String, String)>,
+) -> Result<Reading, String> {
+    let lines = css.lines().count();
+    Ok(Reading::read(source, css, 0, imports)?.with_default(DefaultRules::After(lines)))
+}
+
+/// Checks `css` as a part sheet reads it.
 pub fn part_rules_from(
     source: &str,
     css: &str,
     imports: Vec<(String, String)>,
 ) -> Result<(Vec<StyleRule>, super::at_rules::Sheet), String> {
-    let error = |(at, message)| format!("{source}:{}: {message}", syntax::location(css, at).0);
-    let mut sheet = super::at_rules::Sheet {
-        imports,
-        ..Default::default()
-    };
-    let rules = read(source, &mut sheet, &[(css.into(), 0)], None).map_err(error)?;
-    let parsed = parsed_rules(rules, &sheet.layers).map_err(error)?;
-    let mut out = Vec::new();
-    for (selector, rule) in parsed {
-        if rule.ua {
-            continue;
-        }
-        if selector.compounds().0.iter().flatten().any(|c| {
-            matches!(c, super::selectors::Component::LocalName(tag) if tag.name.0 != tag.name.0.to_ascii_lowercase())
-        }) {
-            return Err(error((rule.at, "use lowercase markup tags in global CSS".into())));
-        }
-        let (declarations, _) = lower(&rule.body, &|name| {
-            sheet.keyframe_rules.iter().any(|(n, ..)| n == name)
-        })
-        .map_err(|e| error((rule.at, e)))?;
-        let has_part = selector
-            .compounds()
-            .0
-            .iter()
-            .flatten()
-            .any(|c| matches!(c, super::selectors::Component::Part(_)));
-        if has_part {
-            part_selector(&selector).map_err(|e| error((rule.at, e)))?;
-        }
-        out.push(StyleRule {
-            inline: false,
-            context: super::TreeContext::Tree,
-            depth: 0,
-            layer: rank(&sheet.layers, &rule.layer),
-            starting: rule.starting,
-            query: rule.query,
-            condition: None,
-            structure: Some(std::sync::Arc::new(selector)),
-            instance_states: Vec::new(),
-            props: Vec::new(),
-            declarations,
-            line: syntax::location(css, rule.at).0,
-        });
-    }
-    Ok((out, sheet))
+    Reading::read_sheet(source, css, imports).map(|r| r.part_rules())
 }
 
 /// Visit this source's selectors using the stylesheet tokenizer and nesting
@@ -442,7 +661,6 @@ pub struct Global {
     anonymous: usize,
     /// How many rules it read: a document's rules are ordered after them.
     count: usize,
-    transitions: Vec<Rule>,
     rules: Vec<GlobalRule>,
 }
 
@@ -454,54 +672,75 @@ impl std::fmt::Debug for Global {
     }
 }
 
-/// The default style's role rules, for a document shown without a pack.
+/// The default style's role rules (`:where([part$=".frame"])` and the
+/// rest, its last section), for a document shown without a pack: what
+/// dresses a document's own elements. A style pack's sheet holds the whole
+/// default; a document without a pack takes these, and reads their tokens
+/// from the root cascade.
 pub(crate) static DEFAULT_GLOBAL: std::sync::LazyLock<Global> = std::sync::LazyLock::new(|| {
-    Global::read("", &crate::DEFAULT_ROLE_CSS, Vec::new()).expect("the default style's CSS reads")
+    let roles = crate::DEFAULT_CSS[..role_rules()].matches('\n').count() + 1;
+    let default = &*DEFAULT;
+    let rules = default.rules.iter();
+    Global::new(Reading {
+        source: default.source.clone(),
+        sheet: default.sheet.clone(),
+        layers: default.layers.clone(),
+        rules: rules
+            .filter(|r| r.rule.ua || r.line >= roles)
+            .cloned()
+            .collect(),
+        ..*default
+    })
+    .expect("the default style's CSS reads")
 });
 
+/// Where the default style's role rules begin in its text.
+fn role_rules() -> usize {
+    crate::DEFAULT_CSS
+        .find("/* Roles:")
+        .expect("the generated default CSS ends with its role rules")
+}
+
 impl Global {
-    /// Reads `css` (written beside `source`) with the stylesheets it
-    /// `@import`s.
-    pub fn read(source: &str, css: &str, imports: Vec<(String, String)>) -> Result<Self, String> {
-        let error = |(_, message): Error| format!("{source}: {message}");
-        let mut sheet = super::at_rules::Sheet {
-            imports,
-            ..Default::default()
-        };
-        let mut rules = Vec::new();
-        let mut reader = Reader::new(&mut sheet, source);
-        reader.user_agent(&mut rules).map_err(error)?;
-        let start = rules.len();
-        reader
-            .rules(css, 0, &Context::default(), &mut rules)
-            .map_err(error)?;
-        for rule in &mut rules[start..] {
-            rule.global = true;
-            rule.at = 0;
-            rule.body_at = 0;
-        }
-        let (layers, anonymous) = (std::mem::take(&mut reader.layers), reader.anonymous);
-        let count = rules.len();
-        keyframes(&mut sheet, &mut rules).map_err(error)?;
+    /// What dresses a document's elements, of a sheet as it was read.
+    fn new(reading: Reading) -> Result<Self, String> {
+        let Reading {
+            source,
+            mut sheet,
+            layers,
+            anonymous,
+            count,
+            rules,
+            ..
+        } = reading;
         sheet.imports.clear();
-        let (transitions, rules): (Vec<_>, Vec<_>) = rules
-            .into_iter()
-            .partition(|r| super::view_transition::selects(&r.selector));
         let line = syntax::location("", 0).0;
         let known = |name: &str| sheet.keyframe_rules.iter().any(|(n, ..)| n == name);
         let mut out = Vec::new();
-        for (selector, rule) in selectors(rules).map_err(error)? {
+        for read in rules {
+            let ReadRule {
+                mut selector,
+                mut rule,
+                declarations,
+                checked,
+                line: written,
+            } = read;
+            let error = |e| format!("{source}:{written}: {e}");
+            if !rule.ua {
+                rule.global = true;
+                selector.global = true;
+            }
             let lowered = if rule.selector.contains("::part(") {
                 None
             } else {
-                let own = lowered(&rule.body, line, &known).map_err(|e| error((0, e)))?;
+                let entries = css::declarations(&checked, line).map_err(error)?;
                 let boxed = match rule.pseudo {
                     Some(_) if !rule.boxed.is_empty() => {
-                        Some(lowered(&rule.boxed, line, &known).map_err(|e| error((0, e)))?)
+                        Some(lowered(&rule.boxed, line, &known).map_err(error)?)
                     }
                     _ => None,
                 };
-                Some((own, boxed))
+                Some(((declarations, entries), boxed))
             };
             out.push(GlobalRule {
                 selector: std::sync::Arc::new(selector),
@@ -515,7 +754,6 @@ impl Global {
             layers,
             anonymous,
             count,
-            transitions,
             rules: out,
         })
     }
@@ -575,35 +813,26 @@ fn keyframes(sheet: &mut super::at_rules::Sheet, rules: &mut Vec<Rule>) -> Resul
     Ok(())
 }
 
-/// Reads `styles` into `sheet` and answers their rules. After `global`,
-/// they continue its layers, its keyframes and its rule order, and what it
-/// declares is the sheet's; without one, HTML's user-agent rules come
-/// first.
+/// Reads a document's `styles` into `sheet` and answers their rules. They
+/// continue `global`'s layers, its keyframes and its rule order, and what
+/// it declares is the sheet's.
 fn read(
     source: &str,
     sheet: &mut super::at_rules::Sheet,
     styles: &[(String, usize)],
-    global: Option<&Global>,
+    global: &Global,
 ) -> Result<Vec<Rule>, Error> {
+    let imports = std::mem::take(&mut sheet.imports);
+    *sheet = super::at_rules::Sheet {
+        imports,
+        ..global.sheet.clone()
+    };
+    // Its rules' places, so the document's are ordered after them.
     let mut rules = Vec::new();
-    if let Some(global) = global {
-        let declared = global.sheet.clone();
-        let imports = std::mem::take(&mut sheet.imports);
-        *sheet = super::at_rules::Sheet {
-            imports,
-            ..declared
-        };
-        // Its rules' places, so the document's are ordered after them.
-        rules.resize_with(global.count, Rule::default);
-    }
+    rules.resize_with(global.count, Rule::default);
     let mut reader = Reader::new(sheet, source);
-    match global {
-        Some(global) => {
-            reader.layers.clone_from(&global.layers);
-            reader.anonymous = global.anonymous;
-        }
-        None => reader.user_agent(&mut rules)?,
-    }
+    reader.layers.clone_from(&global.layers);
+    reader.anonymous = global.anonymous;
     for (text, at) in styles {
         reader.imports_open = true;
         // A built-in component's rules sit below every pack's.
@@ -618,9 +847,7 @@ fn read(
     }
     let layers = order_layers(&reader.layers);
     sheet.layers = layers;
-    if let Some(global) = global {
-        rules.drain(..global.count);
-    }
+    rules.drain(..global.count);
     keyframes(sheet, &mut rules)?;
     Ok(rules)
 }
@@ -633,17 +860,12 @@ pub fn apply(
     styles: &[(String, usize)],
     global: &Global,
 ) -> Result<(), Error> {
-    let mut rules = read(&doc.source, &mut doc.sheet, styles, Some(global))?;
+    let mut rules = read(&doc.source, &mut doc.sheet, styles, global)?;
     doc.style_faces = global.sheet.font_faces.len();
     let layers = doc.sheet.layers.clone();
-    let transitions: Vec<(&str, &str, usize, bool)> = global
-        .transitions
+    let transitions: Vec<(&str, &str, usize, bool)> = rules
         .iter()
-        .chain(
-            rules
-                .iter()
-                .filter(|r| super::view_transition::selects(&r.selector)),
-        )
+        .filter(|r| super::view_transition::selects(&r.selector))
         .map(|r| {
             let conditional = r.query != AtQuery::default();
             (r.selector.as_str(), r.body.as_str(), r.at, conditional)
@@ -2985,4 +3207,143 @@ pub fn inline(
         }
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A pack's direct sheets and the stylesheets it may `@import`.
+    fn pack(name: &str) -> (String, Vec<(String, String)>) {
+        let directory = format!("styles/{name}");
+        let files = std::fs::read_dir(format!(
+            "{}/../../templates/{directory}",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .expect("a template style pack")
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|e| e == "css"))
+        .map(|path| {
+            (
+                format!(
+                    "{directory}/{}",
+                    path.file_name().unwrap().to_str().unwrap()
+                ),
+                std::fs::read_to_string(&path).unwrap(),
+            )
+        })
+        .collect();
+        (directory, files)
+    }
+
+    /// Rules that tie with the default style's and declare what a sheet
+    /// can: layers out of order, keyframes, a scheme, a query, a box
+    /// pseudo-element.
+    const OWN: &str = r#"
+@layer og-default { button::part(base) { padding: 3px; } :root { --own: 1; } [part$=".frame"] { gap: 3px; } }
+@layer og-pack.late, og-pack.early;
+@layer og-pack.early { .a { color: red; } }
+@layer { .anonymous { color: blue; } }
+@keyframes own-spin { to { rotate: 1turn; } }
+.b { animation: own-spin 1s; }
+button::part(base):hover { background: red; }
+@media (width < 600px) { :root { --narrow: 2; } }
+:root[data-scheme=light] { --light: 3; }
+.c::before { content: "x"; }
+"#;
+
+    /// A pack is read as its sheets' text before the default style's, and
+    /// the default style's is not read for it.
+    ///
+    /// Ways it could fail: the default style's rules ordered before the
+    /// pack's (a pack's rule in `og-default` then wins a tie it loses),
+    /// their lines not counted from the pack's `@import`s, a layer the
+    /// pack declares ranked apart from the whole text's.
+    #[test]
+    fn a_pack_reads_as_its_sheets_before_the_default_text() {
+        let synthetic = (
+            "styles/own".to_string(),
+            vec![
+                (
+                    "styles/own/a.css".to_string(),
+                    format!("@import \"sub/b.css\" layer(inner);\n{OWN}"),
+                ),
+                (
+                    "styles/own/sub/b.css".to_string(),
+                    ".d { width: 4px; }".to_string(),
+                ),
+            ],
+        );
+        for (directory, files) in ["cartoon", "fantasy", "scifi"]
+            .map(pack)
+            .into_iter()
+            .chain([synthetic])
+        {
+            let css = crate::style_pack::StylePack::sheet(&directory, &files).unwrap();
+            let source = format!("{directory}/");
+            std::sync::LazyLock::force(&DEFAULT);
+            let before = text_read();
+            let read = pack_reading(&source, &css, files.clone()).unwrap();
+            let own = css.len() + files.iter().map(|(_, text)| text.len()).sum::<usize>();
+            assert_eq!(text_read() - before, own, "{directory}: only its own text");
+            let whole = format!("{css}{}", crate::DEFAULT_CSS);
+            let whole = Reading::read(&source, &whole, 0, files).unwrap();
+            assert!(read == whole, "{directory}: as the whole text reads");
+            assert!(read.count > DEFAULT.count, "{directory}");
+        }
+    }
+
+    /// The role rules a document without a pack takes are those of the
+    /// default style's last section, from the process's one reading.
+    #[test]
+    fn the_role_rules_are_the_default_readings_last_section() {
+        let alone = format!(
+            "@layer og-default {{\n{}",
+            &crate::DEFAULT_CSS[role_rules()..]
+        );
+        let alone = Global::new(Reading::read("", &alone, 0, Vec::new()).unwrap()).unwrap();
+        // All but its place in the order, which counts the rules before it.
+        let rule = |g: &GlobalRule| {
+            let lowered = g.lowered.as_ref().map(|(own, _)| own.0.clone());
+            let rule = Rule {
+                order: 0,
+                ..g.rule.clone()
+            };
+            (g.selector.clone(), rule, lowered)
+        };
+        let rules = |g: &Global| g.rules.iter().map(rule).collect::<Vec<_>>();
+        assert!(rules(&alone).len() > 20 && rules(&alone) == rules(&DEFAULT_GLOBAL));
+        let orders = |g: &Global| g.rules.iter().map(|g| g.rule.order).collect::<Vec<_>>();
+        assert!(orders(&DEFAULT_GLOBAL).is_sorted());
+        assert!(DEFAULT_GLOBAL.count > *orders(&DEFAULT_GLOBAL).last().unwrap());
+    }
+
+    /// A part sheet that begins with the default style's text reads what
+    /// follows it, after the default style's rules, and refuses what the
+    /// whole text refuses.
+    #[test]
+    fn a_sheet_that_begins_with_the_default_text_reads_what_follows() {
+        let css = format!("{}\n{OWN}", crate::DEFAULT_CSS);
+        std::sync::LazyLock::force(&DEFAULT);
+        let before = text_read();
+        let read = Reading::read_sheet("<part-css>", &css, Vec::new()).unwrap();
+        assert_eq!(text_read() - before, OWN.len() + 1, "only what follows");
+        let whole = Reading::read("<part-css>", &css, 0, Vec::new()).unwrap();
+        assert!(read == whole, "as the whole text reads");
+        // The default style alone is the reading the process keeps.
+        let alone = Reading::read_sheet("<part-css>", crate::DEFAULT_CSS, Vec::new()).unwrap();
+        assert!(alone == *DEFAULT);
+        for refused in [
+            "@import \"x.css\";",
+            ".a { colour: red; }",
+            "Button { gap: 1px; }",
+        ] {
+            let css = format!("{}\n\n{refused}", crate::DEFAULT_CSS);
+            let imports = vec![("x.css".to_string(), String::new())];
+            let read = Reading::read_sheet("<part-css>", &css, imports.clone()).unwrap_err();
+            let whole = Reading::read("<part-css>", &css, 0, imports).unwrap_err();
+            assert_eq!(read, whole);
+            assert!(read.starts_with("<part-css>:"), "{read}");
+        }
+    }
 }

@@ -904,3 +904,82 @@ fn a_document_is_parsed_once_against_the_uis_pack() {
     assert_eq!(width(&mut ui, "A"), 73.0);
     assert_eq!(UiDocument::parses() - before, 7);
 }
+
+/// The default style's text is read once in the process. A UI, a style
+/// pack, a part sheet that begins with the default text and putting the
+/// default sheet back all take that reading, and a pack's own sheets are
+/// read once for its part rules and its documents' rules together.
+///
+/// Ways it could fail: a pack reading its text for the part rules and
+/// again for the documents' rules, or the default text with it; every UI
+/// or every return to the default style reading the default sheet; the
+/// sheet put back keeping a pack's token, or a pack's sheet the default
+/// style's alone.
+#[test]
+fn the_default_style_is_read_once_in_the_process() {
+    use og_ui::{
+        DEFAULT_CSS, UiDocument, Viewport, bind::NoEnv, doc::stylesheet::text_read,
+        reactive::SourceId,
+    };
+    // The `--own` token as the installed part sheet's root gives it, read
+    // by a document that carries no pack's rules.
+    let document = || {
+        UiDocument::parse(
+            "ui/Own.svelte",
+            "<meta name=\"component\" content=\"Own\"><div id=\"Box\"></div><style>#Box { width: var(--own, 5px); height: 20px; }</style>",
+        )
+        .unwrap()
+    };
+    let own = |ui: &mut Ui| {
+        let mount = SourceId::new("test", "Own");
+        // Mounted once; a later reading builds the same mount again.
+        let _ = ui.mount_document(mount, "Own", Default::default(), Default::default(), &NoEnv);
+        ui.begin(Default::default(), Viewport::new(300.0, 300.0));
+        ui.build_retained_documents(&NoEnv).unwrap();
+        ui.end();
+        let found = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.path == "test:Own")
+            .unwrap();
+        found.width
+    };
+    // The process's one reading, whichever test took it first.
+    drop(Ui::new(UiDesc::default()));
+    let before = text_read();
+    let mut ui = Ui::new(UiDesc::default());
+    ui.define_document(document());
+    assert_eq!(own(&mut ui), 5.0);
+    assert_eq!(text_read() - before, 0, "a UI takes the default reading");
+
+    let css = ":root { --own: 73px; } button::part(base) { padding-left: 31px; }";
+    let pack = StylePack::parse(
+        "styles/test",
+        vec![("styles/test/main.css".into(), css.into())],
+    )
+    .unwrap();
+    let read = text_read() - before;
+    // Its text, and the lines that import it.
+    assert!(
+        (css.len()..css.len() + 200).contains(&read),
+        "a pack reads its own text once: {read} bytes of {}",
+        css.len()
+    );
+    ui.set_style_pack(&pack).unwrap();
+    assert_eq!(own(&mut ui), 73.0, "the pack's token, over the default's");
+    assert!(ui.theme().palette.primary.alpha > 0.0, "and the default's");
+
+    ui.clear_style_pack();
+    ui.reset_part_css();
+    assert_eq!(own(&mut ui), 5.0, "the default sheet, without the pack");
+    let after = ":root { --own: 41px; }";
+    ui.set_part_css(&format!("{DEFAULT_CSS}\n{after}")).unwrap();
+    assert_eq!(own(&mut ui), 41.0);
+    ui.set_part_css(DEFAULT_CSS).unwrap();
+    assert_eq!(own(&mut ui), 5.0);
+    assert_eq!(
+        text_read() - before,
+        read + after.len() + 1,
+        "only what follows the default text"
+    );
+}

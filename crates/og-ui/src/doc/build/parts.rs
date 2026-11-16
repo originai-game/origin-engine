@@ -638,7 +638,7 @@ impl Ui {
         // (Theme::to_text_scale), so text sized by them (`font:
         // var(--text-sm)`) follows it as text sized in em does.
         cascade::values_with(
-            &self.style.part_rules,
+            self.style.part_rules.iter(),
             &cascade::Options {
                 inline: &inline,
                 inherited: &Default::default(),
@@ -666,16 +666,26 @@ impl Ui {
     }
 
     /// Replace the global part stylesheet. Invalid CSS leaves the current
-    /// sheet unchanged. This does not install a legacy dressing.
+    /// sheet unchanged. This does not install a legacy dressing. A sheet
+    /// that begins with [`crate::DEFAULT_CSS`] takes the default style as
+    /// the process read it and reads only what follows.
     pub fn set_part_css(&mut self, css: &str) -> Result<(), String> {
-        let (rules, sheet) = crate::doc::stylesheet::part_rules(css)?;
-        self.style.part_rules = rules;
-        self.style.part_sheet = sheet;
-        self.style.part_rules_changed();
+        let sheet = crate::doc::stylesheet::part_rules(css)?;
+        self.set_part_sheet(sheet);
+        Ok(())
+    }
+
+    /// Puts the default style's part stylesheet back, as the process
+    /// read it: nothing is read again.
+    pub fn reset_part_css(&mut self) {
+        self.set_part_sheet(crate::doc::stylesheet::DEFAULT_PART_SHEET.clone());
+    }
+
+    fn set_part_sheet(&mut self, sheet: crate::doc::stylesheet::PartSheet) {
+        self.style.set_part_sheet(sheet);
         self.style.root_inputs_changed();
         self.read_theme_tokens();
         self.tree.invalidation.epoch += 1;
-        Ok(())
     }
 
     /// Preserve the installed part stylesheet when rebuilding a UI.
@@ -756,8 +766,8 @@ impl Ui {
         {
             return m.clone();
         }
-        let mut rules = self.style.part_rules.clone();
-        let mut sheet = self.style.part_sheet.clone();
+        let mut rules = (*self.style.part_rules).clone();
+        let mut sheet = (*self.style.part_sheet).clone();
         let global_layers = sheet.layers.clone();
         for layer in &doc.sheet.layers {
             if !sheet.layers.contains(layer) {
@@ -882,8 +892,8 @@ impl Ui {
                     .get_or_insert_with(|| Arc::new(PartIndex::new(&self.style.part_rules)))
                     .clone();
                 (
-                    &self.style.part_rules,
-                    &self.style.part_sheet,
+                    &*self.style.part_rules,
+                    &*self.style.part_sheet,
                     &*global_index,
                 )
             }

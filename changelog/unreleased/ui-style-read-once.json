@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.load.style",
+      "summary": "A style pack is read once. Its sheets are read once for both its `::part()` rules and the rules it gives a document's elements, and the default style's CSS, which every pack sits on, is read once in the process. Before, loading a style read the pack and the whole default style twice, and the default style a third time for the UI."
+    }
+  ]
+}

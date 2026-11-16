@@ -10,11 +10,11 @@ use crate::doc::{
 #[derive(Clone, Debug)]
 pub struct StylePack {
     pub name: String,
-    pub sheet: Sheet,
+    pub sheet: std::sync::Arc<Sheet>,
     /// Its rules over the default style's, read once for every document
     /// it dresses.
     pub(crate) global: std::sync::Arc<crate::doc::stylesheet::Global>,
-    pub(crate) rules: Vec<StyleRule>,
+    pub(crate) rules: std::sync::Arc<Vec<StyleRule>>,
     /// Resolved asset IDs used by CSS url(), excluding imported stylesheets.
     pub assets: Vec<String>,
 }
@@ -35,6 +35,33 @@ impl StylePack {
     /// The cook stores these sources verbatim; runtime uses the same parser.
     pub fn parse(directory: &str, files: Vec<(String, String)>) -> Result<Self, String> {
         let directory = directory.trim_matches('/');
+        let css = Self::sheet(directory, &files)?;
+        let mut assets = std::collections::BTreeSet::new();
+        for (source, text) in &files {
+            crate::doc::stylesheet::pack_extensions(source, text)?;
+            for url in at_rules::urls(text) {
+                let id = at_rules::resolve(source, &url);
+                if !files.iter().any(|(path, _)| *path == id) {
+                    assets.insert(id);
+                }
+            }
+        }
+        let source = format!("{directory}/");
+        // Its sheets are read once, and laid over the default style as
+        // the process read it.
+        let ((rules, sheet), global) = crate::doc::stylesheet::pack_sheets(&source, &css, files)?;
+        Ok(Self {
+            name: directory.rsplit('/').next().unwrap_or(directory).to_owned(),
+            global: std::sync::Arc::new(global),
+            sheet,
+            rules,
+            assets: assets.into_iter().collect(),
+        })
+    }
+
+    /// The pack's own sheet: its direct child CSS files `@import`ed in
+    /// lexical order into `og-pack`. The default style's rules follow it.
+    pub(crate) fn sheet(directory: &str, files: &[(String, String)]) -> Result<String, String> {
         let mut entries: Vec<_> = files
             .iter()
             .filter(|(id, _)| {
@@ -57,28 +84,7 @@ impl StylePack {
                 cssparser::Token::QuotedString(format!("/{id}").into()).to_css_string()
             ));
         }
-        css.push_str(crate::DEFAULT_CSS);
-        let mut assets = std::collections::BTreeSet::new();
-        for (source, text) in &files {
-            crate::doc::stylesheet::pack_extensions(source, text)?;
-            for url in at_rules::urls(text) {
-                let id = at_rules::resolve(source, &url);
-                if !files.iter().any(|(path, _)| *path == id) {
-                    assets.insert(id);
-                }
-            }
-        }
-        let source = format!("{directory}/");
-        // The part rules first: their errors name the line.
-        let (rules, sheet) = crate::doc::stylesheet::part_rules_from(&source, &css, files.clone())?;
-        let global = crate::doc::stylesheet::Global::read(&source, &css, files)?;
-        Ok(Self {
-            name: directory.rsplit('/').next().unwrap_or(directory).to_owned(),
-            global: std::sync::Arc::new(global),
-            sheet,
-            rules,
-            assets: assets.into_iter().collect(),
-        })
+        Ok(css)
     }
 
     /// Parses a document against this pack: [`crate::UiDocument::parse_with_imports`]
@@ -123,8 +129,8 @@ impl crate::Ui {
     /// when.
     pub fn set_style_pack(&mut self, pack: &StylePack) -> Result<(), String> {
         self.docs.library.pack = Some(std::sync::Arc::new(pack.clone()));
-        self.style.part_rules_mut().clone_from(&pack.rules);
-        self.style.part_sheet_mut().clone_from(&pack.sheet);
+        self.style
+            .set_part_sheet((pack.rules.clone(), pack.sheet.clone()));
         self.style.root_inputs_changed();
         self.set_style_name(&pack.name);
         // A pack's faces back the roles it gives no font (its `--font-*`).

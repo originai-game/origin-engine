@@ -218,8 +218,8 @@ pub(crate) type DocumentPartRules = (
 #[derive(Clone, Debug)]
 pub struct Style {
     /// Global CSS part rules in cascade order and their at-rule descriptors.
-    pub(crate) part_rules: Vec<crate::doc::StyleRule>,
-    pub(crate) part_sheet: crate::css::at_rules::Sheet,
+    pub(crate) part_rules: std::sync::Arc<Vec<crate::doc::StyleRule>>,
+    pub(crate) part_sheet: std::sync::Arc<crate::css::at_rules::Sheet>,
     pub(crate) root_tokens: Vec<(String, String)>,
     pub(crate) root_type_tokens: [Vec<(String, String)>; 4],
     /// The root cascade of the four inputs above for one media context.
@@ -275,13 +275,12 @@ pub struct Style {
 
 /// The fields of style the documents (og-ui) reach.
 impl Style {
-    pub fn part_rules_mut(&mut self) -> &mut Vec<crate::doc::StyleRule> {
+    /// Takes a style's part rules and sheet as they were read: shared,
+    /// not copied.
+    pub(crate) fn set_part_sheet(&mut self, (rules, sheet): crate::doc::stylesheet::PartSheet) {
+        self.part_rules = rules;
+        self.part_sheet = sheet;
         self.part_rules_changed();
-        &mut self.part_rules
-    }
-    pub fn part_sheet_mut(&mut self) -> &mut crate::css::at_rules::Sheet {
-        self.part_rules_changed();
-        &mut self.part_sheet
     }
     /// Drops what is derived from `part_rules` and `part_sheet`.
     pub(crate) fn part_rules_changed(&mut self) {

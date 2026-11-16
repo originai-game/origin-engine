@@ -1,16 +1,8 @@
 use super::*;
 
-static DEFAULT_PART_SHEET: std::sync::LazyLock<(
-    Vec<crate::doc::StyleRule>,
-    crate::css::at_rules::Sheet,
-)> = std::sync::LazyLock::new(|| {
-    crate::doc::stylesheet::part_rules(crate::DEFAULT_CSS)
-        .expect("generated default CSS is checked by the theme drift test")
-});
-
 impl Ui {
     pub fn new(desc: UiDesc) -> Ui {
-        let (part_rules, part_sheet) = DEFAULT_PART_SHEET.clone();
+        let (part_rules, part_sheet) = crate::doc::stylesheet::DEFAULT_PART_SHEET.clone();
         let mut ui = Ui {
             env: Env {
                 configured: desc.theme,
