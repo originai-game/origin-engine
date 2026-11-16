@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "state pseudo-classes after a box pseudo-element",
+      "summary": "`dialog::backdrop:hover`, `select::picker(select):hover` and `::details-content:hover` are accepted and read the pseudo-element's own state: the pointer on the scrim, not on the dialog. `:hover`, `:active`, `:focus`, `:focus-visible`, `:disabled` and `:enabled` may follow `::backdrop`, `::picker(select)`, `::details-content`, `::-og-hold` and `::-og-arrow`. Before, any pseudo-class after a pseudo-element was refused."
+    },
+    {
+      "member": ":target-current, :target-before and :target-after",
+      "summary": "The scroll-marker pseudo-classes parse, on an element (`a:target-current`) and after a box pseudo-element. They match what `Ui::set_selector_state` marks; nothing marks an element yet, so they match nothing until scroll markers land."
+    }
+  ]
+}

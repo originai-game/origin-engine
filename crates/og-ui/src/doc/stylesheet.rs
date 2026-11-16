@@ -3,6 +3,7 @@ use super::StyleDeclaration;
 use super::selectors::Selector;
 use super::syntax::{Attr, Error};
 use super::*;
+use crate::bind::InteractionState;
 use crate::doc::schema::Kind;
 
 #[derive(Clone, Default)]
@@ -26,6 +27,9 @@ struct Rule {
     /// node ([`DocNode::pseudo`]) does.
     pseudo: Option<&'static str>,
     boxed: String,
+    /// The state pseudo-classes written after the pseudo-element
+    /// (`::backdrop:hover`): the pseudo-element's own states.
+    pseudo_states: Vec<InteractionState>,
 }
 
 /// Where a rule is read: the conditions, layer, scope and nesting parent
@@ -817,11 +821,33 @@ pub fn apply(
             };
             // The pseudo-element's box, when its element draws one: its
             // node takes the box declarations under the element's condition.
+            let stateful = !rule.pseudo_states.is_empty();
             let target = match (rule.pseudo, boxed) {
-                (Some(pseudo), Some(_)) if holds(pseudo, kind, &doc.nodes[*i]) => {
+                (Some(pseudo), boxed)
+                    if (boxed.is_some() || stateful) && holds(pseudo, kind, &doc.nodes[*i]) =>
+                {
                     Some(pseudo_node(doc, *i, pseudo))
                 }
                 _ => None,
+            };
+            // The pseudo-element's own states are read on its node: without
+            // one the rule has nothing to match.
+            let condition = match target {
+                Some(node) if stateful => {
+                    let own = rule.pseudo_states.iter().fold(
+                        condition.unwrap_or(Expr::Lit(true.into())),
+                        |all, &state| {
+                            super::selectors::combine(
+                                crate::bind::Op::And,
+                                all,
+                                Expr::InteractionAt { node, state },
+                            )
+                        },
+                    );
+                    Some(own)
+                }
+                None if stateful => continue,
+                _ => condition,
             };
             let mut parts = vec![(*i, kind, own)];
             if let (Some(node), Some(boxed)) = (target, boxed) {
@@ -1345,6 +1371,7 @@ impl<'a> Reader<'a> {
                     starting: false,
                     pseudo: None,
                     boxed: String::new(),
+                    pseudo_states: Vec::new(),
                 });
                 Ok(())
             }
@@ -1424,6 +1451,7 @@ impl<'a> Reader<'a> {
                 starting: context.starting,
                 pseudo: None,
                 boxed: String::new(),
+                pseudo_states: Vec::new(),
             });
         }
         for item in nested {
@@ -1981,24 +2009,76 @@ fn pseudo_node(doc: &mut UiDocument, i: usize, pseudo: &'static str) -> usize {
     at
 }
 
+/// The states a pseudo-class after an element-backed pseudo-element may
+/// name (Selectors 4 §3.6.4's user-action pseudo-classes, a control's
+/// `:disabled` and `:enabled`, and CSS Overflow 5's scroll-marker states):
+/// they are the pseudo-element's own, not its originating element's.
+const PSEUDO_STATES: [InteractionState; 9] = {
+    use InteractionState::*;
+    [
+        Hover,
+        Active,
+        Focus,
+        FocusVisible,
+        Disabled,
+        Enabled,
+        TargetCurrent,
+        TargetBefore,
+        TargetAfter,
+    ]
+};
+
+/// `selector` without the state pseudo-classes it ends with, and those
+/// states in the order written.
+fn trailing_states(selector: &str) -> (&str, Vec<InteractionState>) {
+    let (mut rest, mut states) = (selector, Vec::new());
+    while let Some(at) = rest.rfind(':') {
+        if at == 0 || rest.as_bytes()[at - 1] == b':' {
+            break;
+        }
+        let name = rest[at + 1..].to_ascii_lowercase();
+        let Some(state) = super::selectors::state(&name).filter(|s| PSEUDO_STATES.contains(s))
+        else {
+            break;
+        };
+        states.insert(0, state);
+        rest = &rest[..at];
+    }
+    (rest, states)
+}
+
 /// The element-backed pseudo-element a selector ends with
-/// ([`super::generated::PSEUDOS`], [`BOXES`]), and the selector without
-/// it. CSS 2's `:before`, `:after`, `:first-line` and `:first-letter`
-/// count too.
-fn pseudo_suffix(selector: &str) -> Option<(&'static str, &str)> {
+/// ([`super::generated::PSEUDOS`], [`BOXES`]), the selector without it,
+/// and the state pseudo-classes after it (`dialog::backdrop:hover`,
+/// `::scroll-marker:target-current`), which only a pseudo-element that is
+/// a box of its own beside its element's content takes. CSS 2's `:before`,
+/// `:after`, `:first-line` and `:first-letter` count too.
+fn pseudo_suffix(selector: &str) -> Option<(&'static str, &str, Vec<InteractionState>)> {
     let lower = selector.to_ascii_lowercase();
-    if let Some((written, name)) = BOXES[2..].iter().find(|(w, _)| lower.ends_with(w)) {
-        return Some((name, &selector[..selector.len() - written.len()]));
+    let boxed = |lower: &str| {
+        BOXES[2..]
+            .iter()
+            .find(|(w, _)| lower.ends_with(w))
+            .map(|(written, name)| (*name, lower.len() - written.len()))
+    };
+    if let Some((name, at)) = boxed(&lower) {
+        return Some((name, &selector[..at], Vec::new()));
+    }
+    let (stem, states) = trailing_states(&lower);
+    if !states.is_empty()
+        && let Some((name, at)) = boxed(stem)
+    {
+        return Some((name, &selector[..at], states));
     }
     super::generated::PSEUDOS.iter().find_map(|&p| {
         let double = format!("::{p}");
         if lower.ends_with(&double) {
-            return Some((p, &selector[..selector.len() - double.len()]));
+            return Some((p, &selector[..selector.len() - double.len()], Vec::new()));
         }
         let single = format!(":{p}");
         (matches!(p, "before" | "after" | "first-line" | "first-letter")
             && lower.ends_with(&single))
-        .then(|| (p, &selector[..selector.len() - single.len()]))
+        .then(|| (p, &selector[..selector.len() - single.len()], Vec::new()))
     })
 }
 
@@ -2012,13 +2092,13 @@ fn pseudo_suffix(selector: &str) -> Option<(&'static str, &str)> {
 /// ([`Rule::boxed`]), cascading under the same selector.
 fn pseudo_element(rule: &mut Rule) -> Result<(), (usize, String)> {
     let selectors: Vec<&str> = rule.selector.split(',').map(str::trim).collect();
-    let Some((pseudo, _)) = selectors.iter().find_map(|s| pseudo_suffix(s)) else {
+    let Some((pseudo, _, states)) = selectors.iter().find_map(|s| pseudo_suffix(s)) else {
         return Ok(());
     };
     let mut originating = Vec::new();
     for s in &selectors {
         match pseudo_suffix(s) {
-            Some((p, rest)) if p == pseudo => {
+            Some((p, rest, after)) if p == pseudo && after == states => {
                 originating.push(if rest.is_empty() { "*" } else { rest });
             }
             _ => {
@@ -2059,6 +2139,7 @@ fn pseudo_element(rule: &mut Rule) -> Result<(), (usize, String)> {
     if boxed {
         rule.pseudo = Some(pseudo);
         rule.boxed = own;
+        rule.pseudo_states = states;
     }
     Ok(())
 }

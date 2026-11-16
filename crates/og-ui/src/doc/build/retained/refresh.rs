@@ -240,15 +240,11 @@ impl RetainedHost {
         self.resolved = 0;
         self.css = CssWork::default();
         loop {
-            let topology = &self.topology;
+            let (topology, pseudo) = (&self.topology, &self.pseudo_nodes);
             let changes = self.bindings.refresh(
                 &mut ui.docs.state_mut().memory.reactive,
                 env,
-                |node, state| {
-                    topology
-                        .node(node)
-                        .is_some_and(|n| n.states.contains(&state))
-                },
+                |node, state| in_state(topology, pseudo, node, state),
             );
             self.evaluated += changes.evaluated;
             self.pending_bindings.extend(changes.changed);
@@ -415,6 +411,12 @@ impl RetainedHost {
             Active, ActiveViewTransition, Focus, FocusVisible, FocusWithin, Hover, PopoverOpen,
             Target,
         };
+        // The boxes styled as pseudo-elements since the last refresh.
+        for (styled, pseudo) in std::mem::take(&mut ui.docs.state_mut().pseudo_boxes) {
+            if self.pseudo_nodes.contains_key(&pseudo) {
+                self.pseudo_boxes.insert(styled, pseudo);
+            }
+        }
         let mut next: [Vec<u64>; 4] = [
             vec![ui.interaction.state().hot],
             vec![if ui.interaction.input().down {
@@ -446,17 +448,16 @@ impl RetainedHost {
         for (i, state) in [Hover, Active, Focus, FocusVisible].into_iter().enumerate() {
             let off = previous[i].iter().filter(|k| !next[i].contains(k));
             let on = next[i].iter().filter(|k| !previous[i].contains(k));
-            for (key, enabled) in off.map(|k| (k, false)).chain(on.map(|k| (k, true))) {
-                if let Some(node) = self.by_key.get(key) {
-                    self.topology.set_state(node, state, enabled)?;
-                    ui.docs
-                        .state_mut()
-                        .memory
-                        .reactive
-                        .graph
-                        .interaction_changed(node, state);
-                }
+            let changed: Vec<(u64, bool)> = off
+                .map(|k| (*k, false))
+                .chain(on.map(|k| (*k, true)))
+                .collect();
+            for (key, enabled) in changed {
+                self.set_key_state(ui, key, state, enabled)?;
             }
+        }
+        for (key, state, enabled) in std::mem::take(&mut ui.docs.state_mut().selector_states) {
+            self.set_key_state(ui, key, state, enabled)?;
         }
         let shown: Vec<(MountedNode, bool)> = self
             .popover_nodes

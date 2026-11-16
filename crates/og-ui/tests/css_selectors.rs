@@ -392,3 +392,144 @@ details[open] + .probe, dialog[open] + .probe { width: 50px; }
     d.step(InputFrame::default());
     assert_eq!(w(&d, "Own"), (140.0, 50.0), "restored open");
 }
+
+/// A state pseudo-class after a box pseudo-element reads the
+/// pseudo-element's own state (Selectors 4 §3.6.4): `dialog::backdrop:hover`
+/// while the pointer is on the scrim and not while it is on the dialog,
+/// and a state set for the pseudo-element from outside
+/// (`Ui::set_selector_state`), as the scroll markers' are.
+///
+/// Ways it could fail: the pseudo-class read on the originating element
+/// (the dialog hovered counting as its backdrop), the rule applying with
+/// no state at all, the state never cleared, a state set by the
+/// pseudo-element's key not reaching its rules.
+#[test]
+fn a_pseudo_class_after_a_box_pseudo_element_reads_its_own_state() {
+    let doc = r##"<meta name="component" content="pe">
+<column id="Root">
+  <dialog id="Ask" modal open aria-label="Quit?"><button id="Yes">Yes</button></dialog>
+</column>
+<style>
+dialog { width: 200px; }
+button { width: 80px; height: 30px; }
+dialog::backdrop { padding: 0; }
+dialog::backdrop:hover { padding-left: 200px; }
+dialog::backdrop:target-current { padding-left: 400px; }
+</style>"##;
+    let mut d = Doc::new(doc, &[]);
+    for _ in 0..30 {
+        d.step(InputFrame::default());
+    }
+    let middle = |d: &Doc| {
+        let p = d.get("Panel");
+        p.x + p.width / 2.0
+    };
+    let rest = middle(&d);
+    let at = |p: Vec2| InputFrame {
+        pointer: p,
+        pointer_inside: true,
+        ..InputFrame::default()
+    };
+    let settle = |d: &mut Doc, input: InputFrame| {
+        for _ in 0..4 {
+            d.step(input.clone());
+        }
+    };
+    settle(&mut d, at(Vec2::new(5.0, 5.0)));
+    assert_eq!(middle(&d), rest + 100.0, "the scrim hovered");
+    // A point on the dialog both where it stood and where the hovered
+    // backdrop's padding put it: leaving the backdrop does not re-enter it.
+    let panel = d.get("Panel");
+    settle(
+        &mut d,
+        at(Vec2::new(panel.x + 20.0, panel.y + panel.height / 2.0)),
+    );
+    assert_eq!(middle(&d), rest, "the dialog hovered, not its backdrop");
+    let backdrop = og_ui::id::key_of_path("test:t/Ask/::backdrop");
+    let current = og_ui::bind::InteractionState::TargetCurrent;
+    d.ui.set_selector_state(backdrop, current, true);
+    settle(&mut d, InputFrame::default());
+    assert_eq!(middle(&d), rest + 200.0, "a state set by its key");
+    d.ui.set_selector_state(backdrop, current, false);
+    settle(&mut d, InputFrame::default());
+    assert_eq!(middle(&d), rest, "and set off");
+    // A select's picker takes one too; a pseudo-class that is no state of
+    // a pseudo-element's own is still refused.
+    let parse = |rule: &str| {
+        og_ui::UiDocument::parse(
+            "ui/p.svelte",
+            &format!(
+                "<meta name=\"component\" content=\"p\">\n<column><select><option>a</option></select><dialog modal></dialog></column>\n<style>{rule}</style>"
+            ),
+        )
+    };
+    assert!(parse("select::picker(select):hover { height: 90px; }").is_ok());
+    assert!(parse("dialog::backdrop:checked { padding: 0; }").is_err());
+}
+
+/// `:target-current`, `:target-before` and `:target-after` match the
+/// elements the scroll-marker machinery marks (CSS Overflow 5 §3.1), in a
+/// rule lowered to a condition and in one matched on the instantiated tree.
+///
+/// Ways it could fail: a state set by key not reaching the element, the
+/// three states confused, a state surviving being set off.
+#[test]
+fn target_current_before_and_after_match_marked_elements() {
+    let doc = r##"<meta name="component" content="marks">
+<column id="Root">
+  <a href="#one" id="One">one</a><div class="probe" id="NextOne"></div>
+  <a href="#two" id="Two">two</a><div class="probe" id="NextTwo"></div>
+  <a href="#three" id="Three">three</a><div class="probe" id="NextThree"></div>
+</column>
+<style>
+.probe { width: 10px; height: 4px; }
+a { width: 20px; height: 20px; }
+a:target-before { width: 30px; }
+a:target-current { width: 50px; }
+a:target-after { width: 70px; }
+a:target-current + .probe { width: 50px; }
+</style>"##;
+    let mut d = Doc::new(doc, &[]);
+    let w = |d: &Doc| {
+        ["One", "Two", "Three", "NextOne", "NextTwo", "NextThree"].map(|id| d.get(id).width)
+    };
+    assert_eq!(w(&d), [20.0, 20.0, 20.0, 10.0, 10.0, 10.0], "unmarked");
+    use og_ui::bind::InteractionState::{TargetAfter, TargetBefore, TargetCurrent};
+    let key = |id: &str| og_ui::id::key_of_path(&format!("test:t/{id}"));
+    let mark = |d: &mut Doc, states: [(&str, og_ui::bind::InteractionState); 3]| {
+        for id in ["One", "Two", "Three"] {
+            for state in [TargetBefore, TargetCurrent, TargetAfter] {
+                let on = states.contains(&(id, state));
+                d.ui.set_selector_state(key(id), state, on);
+            }
+        }
+        d.step(InputFrame::default());
+        d.step(InputFrame::default());
+    };
+    mark(
+        &mut d,
+        [
+            ("One", TargetBefore),
+            ("Two", TargetCurrent),
+            ("Three", TargetAfter),
+        ],
+    );
+    assert_eq!(
+        w(&d),
+        [30.0, 50.0, 70.0, 10.0, 50.0, 10.0],
+        "the second is current"
+    );
+    mark(
+        &mut d,
+        [
+            ("One", TargetCurrent),
+            ("Two", TargetAfter),
+            ("Three", TargetAfter),
+        ],
+    );
+    assert_eq!(
+        w(&d),
+        [50.0, 70.0, 70.0, 50.0, 10.0, 10.0],
+        "the first is current"
+    );
+}

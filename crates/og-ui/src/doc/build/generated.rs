@@ -67,6 +67,8 @@ impl Ui {
         (at, node): &(usize, ResolvedNode),
     ) {
         let n = &b.doc.nodes[*at];
+        let styled = (self.tree.nodes()[i].key, node.key);
+        self.docs.state_mut().pseudo_boxes.push(styled);
         let mut built = node.probe.clone();
         let props = self.props_of(b, n, node.key, &node.values, &mut built);
         let fields = fields::RenderFields::capture(

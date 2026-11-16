@@ -53,17 +53,13 @@ impl RetainedHost {
             .clone();
         context.node.key = crate::id::child_key(parent.key, &format!("$if:{id}"));
         let identity = context.node.clone();
-        let topology = &self.topology;
+        let (topology, pseudo) = (&self.topology, &self.pseudo_nodes);
         let binding = self.bindings.insert(
             &mut ui.docs.state_mut().memory.reactive,
             context.clone(),
             expression.clone(),
             env,
-            |node, state| {
-                topology
-                    .node(node)
-                    .is_some_and(|node| node.states.contains(&state))
-            },
+            |node, state| in_state(topology, pseudo, node, state),
         );
         self.inputs
             .insert(binding, (identity.clone(), Input::Structure));
@@ -282,17 +278,13 @@ impl RetainedHost {
                 (collection.keys().to_vec(), collection.revision(), None)
             }
             ListRef::Nested { key, .. } => {
-                let topology = &self.topology;
+                let (topology, pseudo) = (&self.topology, &self.pseudo_nodes);
                 let binding = self.bindings.insert(
                     &mut ui.docs.state_mut().memory.reactive,
                     context.clone(),
                     read,
                     env,
-                    |node, state| {
-                        topology
-                            .node(node)
-                            .is_some_and(|node| node.states.contains(&state))
-                    },
+                    |node, state| in_state(topology, pseudo, node, state),
                 );
                 self.inputs
                     .insert(binding, (identity.clone(), Input::Structure));
@@ -520,6 +512,7 @@ impl RetainedHost {
                     !listeners.is_empty()
                 });
                 let element = self.elements.remove(&id).expect("mounted element");
+                self.forget_pseudo(&element);
                 for image in element.images {
                     self.images.remove(&image);
                     self.remove_child(ui, Child::Element(image));

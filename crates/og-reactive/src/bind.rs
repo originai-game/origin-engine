@@ -70,6 +70,17 @@ pub enum InteractionState {
     /// A screen document's root while its layer's view transition runs
     /// (`:active-view-transition`).
     ActiveViewTransition,
+    /// A scroll marker whose target is the current one of its group
+    /// (`:target-current`), set by what scrolls ([`TargetBefore`] and
+    /// [`TargetAfter`] with it).
+    ///
+    /// [`TargetBefore`]: InteractionState::TargetBefore
+    /// [`TargetAfter`]: InteractionState::TargetAfter
+    TargetCurrent,
+    /// A scroll marker before its group's current one (`:target-before`).
+    TargetBefore,
+    /// A scroll marker after its group's current one (`:target-after`).
+    TargetAfter,
 }
 
 /// What the host gives a binding beyond its viewmodel.

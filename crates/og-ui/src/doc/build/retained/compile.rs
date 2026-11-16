@@ -68,6 +68,18 @@ impl RetainedHost {
         let path = parent.map_or_else(|| id.clone(), |p| format!("{}/{id}", self.content_path(p)));
         context.node.key = crate::id::key_of_path(&path);
         Arc::make_mut(&mut context.selector_nodes).insert(index, context.node.clone());
+        // Its box pseudo-elements are selector nodes of their own: a
+        // pseudo-class after one reads the pseudo-element's states.
+        for &(which, at) in &node.pseudo {
+            let pseudo = MountedNode {
+                mount: context.node.mount.clone(),
+                key: crate::id::key_of_path(&format!("{path}/::{which}")),
+            };
+            Arc::make_mut(&mut context.selector_nodes).insert(at, pseudo.clone());
+            self.pseudo_nodes
+                .entry(pseudo.key)
+                .or_insert((pseudo, BTreeSet::new()));
+        }
         let identity = context.node.clone();
         let materialization = parent.map_or(Materialization::Visible, |parent| {
             let element = &self.elements[parent];

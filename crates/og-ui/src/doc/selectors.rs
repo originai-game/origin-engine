@@ -294,6 +294,9 @@ const STATES: &[(&str, InteractionState)] = {
         ("modal", Modal),
         ("target", Target),
         ("active-view-transition", ActiveViewTransition),
+        ("target-current", TargetCurrent),
+        ("target-before", TargetBefore),
+        ("target-after", TargetAfter),
     ]
 };
 
@@ -1027,7 +1030,7 @@ fn button_variant(name: &str) -> bool {
     )
 }
 
-fn combine(op: Op, a: Expr, b: Expr) -> Expr {
+pub(crate) fn combine(op: Op, a: Expr, b: Expr) -> Expr {
     let identity = op == Op::And;
     match (&a, &b) {
         (Expr::Lit(serde_json::Value::Bool(value)), _) => {

@@ -1347,6 +1347,13 @@ and the structural, form, `:open`, `:modal`, `:popover-open`, `:target`
   selector reads that ancestor's own interaction state.
 - A `<button>`'s `variant` is one of its classes, for its host's rules as
   for its parts': `button.primary` selects `<button variant="primary">`.
+- A state pseudo-class after a box pseudo-element reads the
+  pseudo-element's own state (`dialog::backdrop:hover` is the pointer on
+  the scrim, not on the dialog): `:hover`, `:active`, `:focus`,
+  `:focus-visible`, `:disabled`, `:enabled`, and a scroll marker's
+  `:target-current`, `:target-before` and `:target-after`, which also
+  match the elements marked so (`Ui::set_selector_state` sets them for
+  the machinery that decides them). `::before` and `::after` take none.
 - Structural selectors read the instantiated tree after `{#if}`, keyed
   `{#each}`, snippets and components (blocks are not siblings; `:empty`
   means no element children and no text) and never select `::part` spans.

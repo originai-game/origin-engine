@@ -426,7 +426,7 @@ MISSING = {
     "file-selector-button": "Accepted and styles nothing: a file input's button is not a stylable box.",
     "view-transitions-element-scoped": "No view-transition-scope or element-scoped transitions: a transition captures a whole layer.",
     "scroll-markers": "No ::scroll-marker or ::scroll-marker-group: the properties and pseudo-elements are refused.",
-    "scroll-marker-targets": "No :target-current, :target-before or :target-after (needs scroll markers; the selectors are engine-gaps').",
+    "scroll-marker-targets": ":target-current, :target-before and :target-after match an element or a box pseudo-element marked through Ui::set_selector_state (css_selectors::target_current_before_and_after_match_marked_elements), but no scroll marker sets them yet (the scroll-markers row).",
     "scroll-target-group": "No scroll-target-group: anchor links do not act as scroll markers.",
     "scroll-buttons": "No ::scroll-button(): a scroll container generates no buttons.",
     "scroll-triggered-animations": "No timeline-trigger or animation-trigger: scroll timelines drive animations (scroll-driven), but none starts or stops one.",

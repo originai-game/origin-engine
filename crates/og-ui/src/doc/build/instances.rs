@@ -2,7 +2,7 @@
 //! instances and registrations, and what the input pass remembers.
 
 use super::*;
-use crate::bind::Expr;
+use crate::bind::{Expr, InteractionState};
 use crate::doc::topology::{Materialization, Topology};
 use crate::reactive::{
     SourceId,
@@ -161,6 +161,14 @@ pub struct RetainedHost {
     /// The screen roots `:active-view-transition` matched last frame: their
     /// layers' view transitions were running.
     pub transitioning: Vec<MountedNode>,
+    /// The mounted elements' box pseudo-elements, by their key (their
+    /// element's path with `/::name`), with the states of their own a
+    /// pseudo-class after them reads (`::backdrop:hover`,
+    /// `::scroll-marker:target-current`).
+    pub pseudo_nodes: BTreeMap<u64, (MountedNode, BTreeSet<InteractionState>)>,
+    /// The box each pseudo-element styles, by its render key: the pointer
+    /// and the focus on that box are the pseudo-element's.
+    pub pseudo_boxes: BTreeMap<u64, u64>,
     pub viewport: Option<crate::doc::media::Context>,
     /// The safe area, the small and large viewports and the HUD band's
     /// sides last build: a change re-resolves what read the viewport

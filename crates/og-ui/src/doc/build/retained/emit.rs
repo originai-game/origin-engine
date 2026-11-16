@@ -390,7 +390,9 @@ impl RetainedHost {
             !listeners.is_empty()
         });
         for node in under {
-            self.elements.remove(&node);
+            if let Some(element) = self.elements.remove(&node) {
+                self.forget_pseudo(&element);
+            }
             self.by_key.remove(&node.key);
             self.dirty.remove(&node);
             self.emit.remove(&node);

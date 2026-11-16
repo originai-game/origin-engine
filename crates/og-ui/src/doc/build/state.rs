@@ -33,6 +33,13 @@ pub struct DocState {
     pub popovers: BTreeMap<u64, PopoverLink>,
     /// The id the last `#fragment` link named: CSS `:target`.
     pub target: Option<String>,
+    /// Selector states set from outside the documents this frame
+    /// ([`crate::Ui::set_selector_state`]): `(key, state, on)`, applied
+    /// when the documents next refresh.
+    pub selector_states: Vec<(u64, crate::bind::InteractionState, bool)>,
+    /// The boxes styled as a pseudo-element since the last refresh:
+    /// `(the box's render key, the pseudo-element's key)`.
+    pub pseudo_boxes: Vec<(u64, u64)>,
     /// The fields and disclosures whose own value or open state the player
     /// changed this frame ([`DocMemory::values`], [`DocMemory::open`]):
     /// their selector facts are read again.

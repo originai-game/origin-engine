@@ -78,6 +78,25 @@ impl Ui {
         std::mem::take(&mut self.docs.state_mut().media_ops)
     }
 
+    /// Sets a selector state of a mounted element (by its render key) or of
+    /// one of its box pseudo-elements (by the pseudo-element's key, its
+    /// element's path with `/::name`, or by the render key of the box it
+    /// styles), for the states the UI's own machinery decides: a scroll
+    /// marker's `:target-current`, `:target-before` and `:target-after`, a
+    /// scroll button's `:disabled`. It takes effect when the documents next
+    /// refresh and holds until it is set off.
+    pub fn set_selector_state(
+        &mut self,
+        key: u64,
+        state: crate::bind::InteractionState,
+        enabled: bool,
+    ) {
+        self.docs
+            .state_mut()
+            .selector_states
+            .push((key, state, enabled));
+    }
+
     pub fn take_doc_events(&mut self) -> Vec<DocEvent> {
         std::mem::take(&mut self.docs.state_mut().queued)
     }

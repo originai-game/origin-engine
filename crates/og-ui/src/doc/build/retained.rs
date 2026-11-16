@@ -1,5 +1,5 @@
 use super::*;
-use crate::bind::Expr;
+use crate::bind::{Expr, InteractionState};
 use crate::doc::topology::{Instance, Materialization, Topology};
 use crate::reactive::{
     SourceId,
@@ -24,7 +24,63 @@ pub(crate) mod values;
 pub(crate) mod virtualized;
 pub(crate) use super::instances::*;
 
+/// Whether `node`, a mounted element or one of its box pseudo-elements
+/// ([`RetainedHost::pseudo_nodes`]), is in `state`.
+pub(crate) fn in_state(
+    topology: &Topology,
+    pseudo: &BTreeMap<u64, (MountedNode, BTreeSet<InteractionState>)>,
+    node: &MountedNode,
+    state: InteractionState,
+) -> bool {
+    match topology.node(node) {
+        Some(n) => n.states.contains(&state),
+        None => pseudo
+            .get(&node.key)
+            .is_some_and(|(id, states)| id == node && states.contains(&state)),
+    }
+}
+
 impl RetainedHost {
+    /// Sets `state` on the element with render key `key`, on the box
+    /// pseudo-element with that key, or on the one whose box has it.
+    pub(crate) fn set_key_state(
+        &mut self,
+        ui: &mut Ui,
+        key: u64,
+        state: InteractionState,
+        enabled: bool,
+    ) -> Result<(), String> {
+        let graph = &mut ui.docs.state_mut().memory.reactive.graph;
+        if let Some(node) = self.by_key.get(&key)
+            && self.topology.node(node).is_some()
+        {
+            self.topology.set_state(node, state, enabled)?;
+            graph.interaction_changed(node, state);
+        }
+        let pseudo = self.pseudo_boxes.get(&key).copied().unwrap_or(key);
+        if let Some((node, states)) = self.pseudo_nodes.get_mut(&pseudo) {
+            let changed = if enabled {
+                states.insert(state)
+            } else {
+                states.remove(&state)
+            };
+            if changed {
+                graph.interaction_changed(node, state);
+            }
+        }
+        Ok(())
+    }
+
+    /// Forgets `element`'s box pseudo-elements: it is unmounted.
+    pub(crate) fn forget_pseudo(&mut self, element: &ElementInstance) {
+        for (which, _) in &element.document.nodes[element.index].pseudo {
+            let key = crate::id::key_of_path(&format!("{}/::{which}", element.path));
+            if self.pseudo_nodes.remove(&key).is_some() {
+                self.pseudo_boxes.retain(|_, pseudo| *pseudo != key);
+            }
+        }
+    }
+
     pub(crate) fn restore_instances(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
         while let Some(mount) = self.pending_mounts.first().cloned() {
             let registration = self.registrations[&mount].clone();
@@ -132,17 +188,13 @@ impl RetainedHost {
         if already_bound {
             return Ok(());
         }
-        let topology = &self.topology;
+        let (topology, pseudo) = (&self.topology, &self.pseudo_nodes);
         let id = self.bindings.insert_expression(
             &mut ui.docs.state_mut().memory.reactive,
             element.context.clone(),
             expression,
             env,
-            |node, state| {
-                topology
-                    .node(node)
-                    .is_some_and(|n| n.states.contains(&state))
-            },
+            |node, state| in_state(topology, pseudo, node, state),
         );
         self.inputs
             .insert(id, (element.context.node.clone(), input.clone()));
