@@ -288,6 +288,7 @@ impl Parser {
             part: None,
             atom: None,
             valign: None,
+            ruby: None,
         };
         self.runs(nodes, &base, &mut runs, &mut links, translated)?;
         // No space at either end, as a CSS block trims its line (an SVG
@@ -358,10 +359,99 @@ impl Parser {
                 || r.part.is_some()
                 || r.atom.is_some()
                 || r.valign.is_some()
+                || r.ruby.is_some()
         }) {
             self.doc.nodes[i].inline = runs;
             self.doc.nodes[i].links = links;
         }
+        Ok(())
+    }
+
+    /// A `<ruby>`'s runs (CSS Ruby 1 §2.3, HTML's pairing): the words
+    /// before each `<rt>` (in `<rb>`s or bare) its base, one run whose
+    /// annotation is the `<rt>`'s words; `<rp>`, a fallback for readers
+    /// without ruby, is not shown; words after the last `<rt>` are text.
+    /// Base and annotation each trim their white space at both ends.
+    fn ruby(
+        &mut self,
+        children: &[Node],
+        style: &InlineRun,
+        out: &mut Vec<InlineRun>,
+        links: &mut Vec<String>,
+        translated: bool,
+    ) -> Result<(), Error> {
+        // The runs' words as one expression: a trimmed literal when none is bound.
+        let joined = |runs: &[InlineRun]| {
+            if runs.iter().all(|r| matches!(r.text, Expr::Lit(_))) {
+                let text: String = runs
+                    .iter()
+                    .map(|r| match &r.text {
+                        Expr::Lit(v) => crate::bind::text(v),
+                        _ => String::new(),
+                    })
+                    .collect();
+                return Expr::Lit(text.trim().into());
+            }
+            runs.iter().fold(Expr::Lit("".into()), |acc, r| {
+                Expr::Bin(
+                    crate::bind::Op::Add,
+                    Box::new(acc),
+                    Box::new(r.text.clone()),
+                )
+            })
+        };
+        let mut base: Vec<InlineRun> = Vec::new();
+        for child in children {
+            match child {
+                Node::Element {
+                    tag,
+                    children: inner,
+                    at: rt,
+                    ..
+                } if tag == "rt" => {
+                    let mut words = Vec::new();
+                    self.runs(inner, style, &mut words, links, translated)?;
+                    let text = joined(&base);
+                    if text == Expr::Lit("".into()) {
+                        return Err((
+                            *rt,
+                            "an <rt> annotates the words before it in its <ruby>: give it a base"
+                                .into(),
+                        ));
+                    }
+                    out.push(InlineRun {
+                        text,
+                        ruby: Some(joined(&words)),
+                        ..style.clone()
+                    });
+                    base.clear();
+                }
+                Node::Element { tag, .. } if tag == "rp" => {}
+                Node::Element {
+                    tag,
+                    children: inner,
+                    ..
+                } if tag == "rb" => {
+                    self.runs(inner, style, &mut base, links, translated)?;
+                }
+                Node::Element { tag, at, .. } if matches!(tag.as_str(), "rtc" | "ruby") => {
+                    return Err((
+                        *at,
+                        format!(
+                            "<{tag}> inside a <ruby> is not supported: one level of <rt>, one ruby at a time"
+                        ),
+                    ));
+                }
+                child => self.runs(
+                    std::slice::from_ref(child),
+                    style,
+                    &mut base,
+                    links,
+                    translated,
+                )?,
+            }
+        }
+        out.extend(base);
         Ok(())
     }
 
@@ -405,6 +495,9 @@ impl Parser {
                     }
                 }
                 Node::Expression(value, at) => out.push(run(expression(value, *at)?)),
+                Node::Element { tag, children, .. } if tag == "ruby" && inline(node) => {
+                    self.ruby(children, style, out, links, translated)?;
+                }
                 Node::Element {
                     tag,
                     attrs,
@@ -528,7 +621,7 @@ impl Parser {
                     return Err((
                         *at,
                         format!(
-                            "<{tag}> cannot sit inside text: text holds words, {{expressions}} and the inline elements b, strong, i, em, u, s, del, br, a plain <span> and <a href>; put <{tag}> beside the text in a <div>"
+                            "<{tag}> cannot sit inside text: text holds words, {{expressions}} and the inline elements b, strong, i, em, u, s, del, sub, sup, br, ruby, a plain <span> and <a href>; put <{tag}> beside the text in a <div>"
                         ),
                     ));
                 }

@@ -2,7 +2,7 @@
 
 # The `localization` guide: Localization
 
-How a game speaks the player's language: string tables per locale, ICU messages, locale selection and fallback, the font chain and right-to-left layout, and formatting numbers, money, dates and durations without reading a clock. Fonts per script and checking a screen in other locales are in `screens §6`; dialogue lines are in `yarn §2`.
+How a game speaks the player's language: string tables per locale, ICU messages, locale selection and fallback, the font chain and right-to-left layout, ruby, vertical text and emphasis marks, and formatting numbers, money, dates and durations without reading a clock. Fonts per script and checking a screen in other locales are in `screens §6`; dialogue lines are in `yarn §2`.
 
 The API: `og api show i18n`.
 
@@ -52,7 +52,32 @@ string "coins" "{n, plural, =0 {コインなし} other {# コイン}}"
   the `arabic` charset carries.
 
 <a id="guide-localization-4"></a>
-### `localization §4` Formatting
+### `localization §4` Chinese and Japanese typesetting
+
+- Furigana and pinyin are HTML ruby inside a text: `<ruby>漢字<rt>かんじ</rt></ruby>`,
+  one `<rt>` after each base it annotates (`<rb>` optional, `<rp>` never
+  shown). A ruby is one unbreakable box; annotate word by word, not a whole
+  sentence, or the line cannot break inside it.
+- Leave room for ruby and emphasis marks in `line-height`. An annotation or
+  mark fits a line whose leading holds half an em on its side; a tighter
+  line grows by what it lacks, so a dialogue box whose height is its
+  lines' must allow for the taller line.
+- `ruby-overhang: auto` (the default) lets a long annotation hang over the
+  text beside it by up to one of its characters; use `none` where the text
+  beside a ruby is a number or a button label that must not be covered.
+- Vertical text: `writing-mode: vertical-rl` with the face's own vertical
+  forms (`vmtx`, `vert`), which the cooked CJK font packs keep. Set dates
+  and two-digit numbers upright with `text-combine-upright: digits 2`;
+  longer numbers lie sideways. Latin words lie sideways by default;
+  `text-orientation: upright` stacks them, which reads well only for short
+  initialisms.
+- Emphasis marks (`text-emphasis: filled`) sit over horizontal text and to
+  the right of vertical text. Chinese convention puts them under:
+  `text-emphasis-position: under right` on Chinese text; the engine does
+  not pick a side from the language.
+
+<a id="guide-localization-5"></a>
+### `localization §5` Formatting
 
 - formatCompact, formatCurrency, formatDate, formatTime, formatDuration,
   and the message styles `{n, number, compact}`,

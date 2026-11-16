@@ -264,6 +264,9 @@ pub(super) fn apply(doc: &mut UiDocument, consts: &[(usize, String, Expr)]) -> R
         }
         for run in &mut n.inline {
             substitute(&mut run.text, &scope).map_err(at_line)?;
+            if let Some(e) = &mut run.ruby {
+                substitute(e, &scope).map_err(at_line)?;
+            }
         }
     }
     Ok(())

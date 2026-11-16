@@ -1330,6 +1330,13 @@ impl Ui {
                 }
                 style.link = run.link.map(inline_link).or(style.link);
                 style.atom = run.atom.clone();
+                if let Some(e) = &run.ruby {
+                    let annotation = match e {
+                        crate::bind::Expr::Lit(v) => crate::bind::text(v),
+                        e => crate::bind::text(&b.eval(e)),
+                    };
+                    style.atom = Some(crate::rich::InlineAtom::Ruby(annotation));
+                }
                 r.span_styles.push((span.clone(), style));
                 spans.push(span);
             }

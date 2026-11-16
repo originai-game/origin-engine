@@ -133,13 +133,15 @@ impl TextOrientation {
 }
 
 /// How a vertical text sets its glyphs: its writing mode, its
-/// orientation, and `text-combine-upright: all` (all of it one upright
-/// em, side by side).
+/// orientation, `text-combine-upright` taking the whole text (all of it
+/// one upright em, side by side), and `digits`: the most digits a run of
+/// ASCII digits inside it may have to be combined so (0: none).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct VerticalText {
     pub mode: WritingMode,
     pub orient: TextOrientation,
     pub combine: bool,
+    pub digits: u8,
 }
 
 impl VerticalText {
@@ -173,6 +175,17 @@ pub(crate) fn initial(name: &str) -> Option<&'static str> {
     })
 }
 
+/// SVG 1.1's `glyph-orientation-vertical` (CSS Writing Modes 4 §5.1.3):
+/// the `text-orientation` it is an alias of; `None` for any other value.
+pub(crate) fn glyph_orientation(value: &str) -> Option<&'static str> {
+    Some(match value.trim() {
+        "auto" => "mixed",
+        "0deg" | "0" => "upright",
+        "90deg" | "90" => "sideways",
+        _ => return None,
+    })
+}
+
 /// Checks a flow property's value.
 pub(crate) fn check(name: &str, value: &str) -> Result<(), String> {
     let ok = match name {
@@ -189,9 +202,9 @@ pub(crate) fn check(name: &str, value: &str) -> Result<(), String> {
     }
 }
 
-/// CSS `text-combine-upright` (CSS Writing Modes 4 §9.1): `all` is true;
-/// `digits` (at risk in the specification) combines a text of digits only,
-/// up to its count (2 when not given).
+/// CSS `text-combine-upright` (CSS Writing Modes 4 §9.1): `all` combines
+/// the element's whole text; `digits` (at risk in the specification) each
+/// run of ASCII digits in it no longer than its count (2 when not given).
 pub(crate) fn combine(value: &str) -> Option<Combine> {
     let v = value.trim();
     Some(match v {
@@ -211,12 +224,14 @@ pub enum Combine {
     #[default]
     None,
     All,
-    /// A text of at most this many ASCII digits.
+    /// Each run of at most this many ASCII digits.
     Digits(u8),
 }
 
 impl Combine {
-    /// Whether it combines `text` (the element's own).
+    /// Whether it combines the whole of `text` (the element's own): any
+    /// text under `all`, a text that is one short run of digits under
+    /// `digits`.
     pub fn takes(self, text: &str) -> bool {
         match self {
             Combine::None => false,
@@ -277,6 +292,10 @@ impl Flow {
             mode: self.mode,
             orient: self.orient,
             combine: self.combine.takes(text),
+            digits: match self.combine {
+                Combine::Digits(n) => n,
+                _ => 0,
+            },
         })
     }
 

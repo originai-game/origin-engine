@@ -237,7 +237,7 @@ fn inline(node: &Node) -> bool {
     match node {
         Node::Text(..) | Node::Expression(..) => true,
         Node::Element { tag, attrs, .. } => match tag.as_str() {
-            "b" | "strong" | "i" | "em" | "u" | "s" | "del" | "sub" | "sup" | "br" => {
+            "b" | "strong" | "i" | "em" | "u" | "s" | "del" | "sub" | "sup" | "br" | "ruby" => {
                 attrs.is_empty()
             }
             // A plain span, or one naming its part for `text::part(name)`.

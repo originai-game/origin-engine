@@ -221,8 +221,9 @@ pub struct FontFile {
     /// The height of its capitals, em (OS/2 `sCapHeight`; 0 where the
     /// font gives none).
     cap_height: f32,
-    /// How far its descent reaches below the baseline, em (the line
-    /// metrics' descent, positive; 0 where the font gives none).
+    /// How far its ascent and descent reach above and below the baseline,
+    /// em (the line metrics', positive; 0 where the font gives none).
+    ascent: f32,
     descent: f32,
     /// The underline it suggests (`post`): its top's distance below the
     /// baseline and its thickness, em.
@@ -277,6 +278,7 @@ impl FontFile {
             .cap_height
             .filter(|x| *x > 0.0)
             .map_or(0.0, |x| x / units_per_em.max(1.0));
+        let ascent = (metrics.ascent / units_per_em.max(1.0)).max(0.0);
         let descent = (-metrics.descent / units_per_em.max(1.0)).max(0.0);
         let underline = metrics.underline.filter(|u| u.thickness > 0.0).map(|u| {
             (
@@ -299,6 +301,7 @@ impl FontFile {
             units_per_em,
             x_height,
             cap_height,
+            ascent,
             descent,
             underline,
             #[cfg(feature = "shaping")]
@@ -330,6 +333,11 @@ impl FontFile {
     /// How far its descent reaches below the baseline, em (0: none given).
     pub fn descent(&self) -> f32 {
         self.descent
+    }
+
+    /// How far its ascent reaches above the baseline, em (0: none given).
+    pub fn ascent(&self) -> f32 {
+        self.ascent
     }
 
     /// The underline it suggests: its top's distance below the baseline

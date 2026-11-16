@@ -31,6 +31,9 @@ pub enum Atom {
     Image(crate::ui::InlineImage),
     /// A key's name on a cap (an action's glyph with no icon).
     Cap(String),
+    /// The span's text with its annotation over or under it (HTML's
+    /// `<ruby>` and `<rt>`, CSS Ruby 1): one box, never broken.
+    Ruby(Ruby),
 }
 
 /// One resolved span: its text (or atom) in its own style.
@@ -94,6 +97,8 @@ pub struct RichContent {
     pub wrap: bool,
     pub indent: TextIndent,
     pub line_break: LineBreak,
+    /// Its text's emphasis marks (CSS `text-emphasis`).
+    pub emphasis: Option<crate::css::text_css::Emphasis>,
 }
 
 /// CSS `text-indent` (CSS Text 3 §8.1): the room its lines leave at
@@ -158,6 +163,11 @@ pub struct RichTextDesc {
     pub font: FontRole,
     pub indent: TextIndent,
     pub line_break: LineBreak,
+    /// CSS `text-emphasis`.
+    pub emphasis: Option<crate::css::text_css::Emphasis>,
+    /// CSS `ruby-position`, `ruby-align` and `ruby-overhang`: how its
+    /// inline `<ruby>` is set.
+    pub ruby: RubyStyle,
 }
 
 /// What a paragraph's links did this tick.
@@ -173,7 +183,11 @@ pub struct RichTextResponse {
     pub spans: Vec<TextSpan>,
 }
 
+pub(crate) mod emphasis;
+mod ruby;
 mod spans;
+pub use ruby::{Ruby, RubyAlign, RubyOverhang, RubyStyle};
+pub(crate) use ruby::{ruby_box, ruby_extents};
 pub use spans::{InlineAtom, TextSpan, TextSpanStyle, TextSpanValue};
 
 /// A unit lines break between: a span's word, space or CJK character.
@@ -215,6 +229,7 @@ pub(crate) fn span_advance(
     match &s.atom {
         Some(Atom::Icon(_) | Atom::Image(_)) => size * 1.1,
         Some(Atom::Cap(t)) => down(t, size * CAP_TEXT) + 2.0 * (CAP_MARGIN + CAP_PAD) * size,
+        Some(Atom::Ruby(r)) => ruby_box(s, r, size, fonts, Some(v)).advance,
         None => down(text, size),
     }
 }
@@ -229,6 +244,7 @@ pub(crate) fn span_width(s: &RichSpan, text: &str, fonts: &dyn Metrics) -> f32 {
             return m.measure_tracked(t, size * CAP_TEXT, 0.0)
                 + 2.0 * (CAP_MARGIN + CAP_PAD) * size;
         }
+        Some(Atom::Ruby(r)) => return ruby_box(s, r, size, fonts, None).advance,
         None => {}
     }
     let m = fonts.metrics_styled(s.font, s.query(), text);
@@ -283,6 +299,10 @@ pub(crate) fn synthetic_bold(size: f32, device: f32) -> (f32, f32) {
 
 pub(crate) fn span_metrics(s: &RichSpan, fonts: &dyn Metrics) -> (f32, f32, f32) {
     // (line height, ascent, descent) in CSS px.
+    if let Some(Atom::Ruby(r)) = &s.atom {
+        let (above, below) = ruby_extents(s, r, fonts);
+        return (above + below, above, -below);
+    }
     if s.atom.is_some() {
         return (s.step.line_height, s.step.size * 0.85, -s.step.size * 0.25);
     }
@@ -456,14 +476,16 @@ fn build_line(rc: &RichContent, fonts: &dyn Metrics, units: Vec<&Unit>) -> RichL
         x += u.width;
     }
     let (h, baseline) = place_line(rc, fonts, &mut pieces);
-    RichLine {
+    let mut line = RichLine {
         width: x,
         indent: 0.0,
         height: h,
         baseline,
         pieces,
         shaped: None,
-    }
+    };
+    emphasis::make_room(rc, fonts, &mut line);
+    line
 }
 
 /// A line's height and baseline from its pieces' spans, and each piece's
@@ -844,6 +866,15 @@ impl Ui {
             let link_key = s.link.as_deref().map(|l| child_key(n.key, l));
             let hot = link_key.is_some_and(|lk| self.interaction.state.hot == lk);
             let color = if hot { p.primary_hover } else { s.color };
+            if let Some(Atom::Ruby(ruby)) = &s.atom {
+                let at = ruby::RubyAt {
+                    rect: r,
+                    baseline,
+                    color,
+                };
+                self.ruby_commands(i, s, ruby, at, None, cmds);
+                continue;
+            }
             if let Some(Atom::Image(im)) = &s.atom {
                 // A picture in its own colours, one em tall on the baseline.
                 let h = s.step.size * n.placed.scale;
@@ -935,6 +966,47 @@ impl Ui {
             }
             let font = self.env.fonts.for_styled(s.font, s.query(), &text).0;
             let Some(handle) = font.handle else { continue };
+            // Emphasis marks over (or under) each cluster's middle.
+            if let Some(e) = &rc.emphasis {
+                let tracking = span_tracking(s, &text);
+                let xs = match &piece.glyphs {
+                    Some(glyphs) => {
+                        let mut pen = 0.0;
+                        emphasis::spots(
+                            &text,
+                            glyphs
+                                .iter()
+                                .map(|g| {
+                                    let x0 = pen;
+                                    pen += g.advance * size;
+                                    (g.index, x0, pen)
+                                })
+                                .collect::<Vec<_>>(),
+                        )
+                    }
+                    None => emphasis::spots(
+                        &text,
+                        crate::edit::boxes(
+                            &font.metrics,
+                            &text,
+                            og_i18n::Direction::Ltr,
+                            size,
+                            tracking,
+                        )
+                        .into_iter()
+                        .map(|g| (g.index, g.x0, g.x1)),
+                    ),
+                };
+                let (a, d) = ruby::content_edges(&font.metrics, &text);
+                let y = if e.under {
+                    baseline + d * size + size / 4.0
+                } else {
+                    baseline - a * size - size / 4.0
+                };
+                let centres: Vec<(f32, f32)> = xs.into_iter().map(|x| (r.x + x, y)).collect();
+                let ink = e.color.unwrap_or(color).fade(alpha).linear();
+                emphasis::marks(e, false, &centres, size, font, ink, clip, cmds);
+            }
             let first = cmds.len();
             let mixed = font.metrics.is_mixed();
             let m = &font.metrics;
@@ -1479,6 +1551,15 @@ impl Ui {
                     }
                     continue;
                 }
+                Some(Atom::Ruby(ruby)) => {
+                    let at = ruby::RubyAt {
+                        rect: r,
+                        baseline: mid,
+                        color,
+                    };
+                    self.ruby_commands(i, s, ruby, at, Some(v), cmds);
+                    continue;
+                }
                 Some(Atom::Cap(_)) => {
                     let m = CAP_MARGIN * em;
                     let plate = Rect::new(
@@ -1521,15 +1602,19 @@ impl Ui {
             };
             let first = cmds.len();
             let mut at = start;
-            for (range, up) in crate::text::vertical::runs(&text, v) {
+            // Each cluster's characters and its stretch down the column,
+            // for its emphasis mark.
+            let mut stretches: Vec<(usize, f32, f32)> = Vec::new();
+            for (range, set) in crate::text::vertical::runs(&text, v) {
+                let off = text[..range.start].chars().count();
                 at = crate::ui::vertical_run(
                     &run,
                     &text[range],
-                    up,
+                    set,
                     at,
                     &top,
                     &mut || 0.0,
-                    &mut |_, _, _| {},
+                    &mut |c, y0, y1| stretches.push((off + c.start, y0, y1)),
                     &mut |x, baseline, t, handle, placements, transform, bounds| {
                         let Some(font) = handle.filter(|_| !t.is_empty()) else {
                             return;
@@ -1561,6 +1646,24 @@ impl Ui {
                         });
                     },
                 );
+            }
+            // Emphasis marks beside each cluster: right or left in an
+            // upright line, over or under in a sideways one (its over the
+            // right, but the left in `sideways-lr`).
+            if let Some(e) = s.atom.is_none().then_some(rc.emphasis).flatten() {
+                use crate::layout::flow::WritingMode;
+                let right = if v.sideways() {
+                    e.under == (v.mode == WritingMode::SidewaysLr)
+                } else {
+                    !e.left
+                };
+                let x = mid + if right { 1.0 } else { -1.0 } * (size / 2.0 + size / 4.0);
+                let centres: Vec<(f32, f32)> = emphasis::spots(&text, stretches)
+                    .into_iter()
+                    .map(|y| (x, y))
+                    .collect();
+                let ink = e.color.unwrap_or(color).fade(alpha).linear();
+                emphasis::marks(&e, !v.sideways(), &centres, size, font, ink, clip, cmds);
             }
             // An outline from the distance field, as across.
             if let Some((w, oc, align)) = s.outline {
