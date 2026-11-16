@@ -1,6 +1,6 @@
 <meta name="component" content="PassTrack">
 <meta name="strings" content="./meta.en.ogt">
-<meta name="parts" content="PassTrack.frame PassTrack.band PassTrack.title PassTrack.season PassTrack.refresh PassTrack.progress PassTrack.track PassTrack.reward PassTrack.tier PassTrack.lane PassTrack.well PassTrack.icon PassTrack.name PassTrack.amount PassTrack.detail PassTrack.state PassTrack.claim PassTrack.upgrade">
+<meta name="parts" content="PassTrack.frame PassTrack.band PassTrack.title PassTrack.season PassTrack.refresh PassTrack.progress PassTrack.rewards PassTrack.reward PassTrack.tier PassTrack.lane PassTrack.well PassTrack.icon PassTrack.name PassTrack.amount PassTrack.detail PassTrack.state PassTrack.claim PassTrack.upgrade">
 <meta name="prop:title" content="string" data-default="" data-doc="Heading; empty uses Season pass.">
 <meta name="prop:season" content="string" data-default="" data-doc="The game's season name.">
 <meta name="prop:refresh" content="string" data-default="" data-doc="The game's already formatted time remaining; no clock runs here.">
@@ -28,7 +28,7 @@
   {:else if !rewards.length}<EmptyState title={t("meta.pass.empty")} icon="bag" />
   {:else}
     <div part="PassTrack.progress"><ProgressBar value={progress} label={t("meta.pass.progress")} valueText={progressText} showValue={true} /></div>
-    <ol part="PassTrack.track" class="track" aria-label={t("meta.pass.rewards")}>
+    <ol part="PassTrack.rewards" class="track" aria-label={t("meta.pass.rewards")}>
       {#each rewards as reward (reward.id)}<li part="PassTrack.reward" class="reward" data-state={reward.state} data-premium={reward.premium}>
         <div class="tier"><div part="PassTrack.tier">{t("meta.pass.tier", { tier: reward.tier })}</div><div part="PassTrack.lane" class="muted">{reward.premium ? t("meta.pass.premium") : t("meta.pass.free")}</div></div>
         <div part="PassTrack.well" class="well"><og-icon part="PassTrack.icon" class="icon" icon={reward.icon}></og-icon></div>

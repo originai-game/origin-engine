@@ -13,9 +13,15 @@ fn component_documents_build_from_their_fixtures() {
     let (docs, messages) = engine_documents(&["src/ui/components"]);
     assert!(!docs.is_empty());
     let mut failures = Vec::new();
-    // A group's documents (rpg/, shooter/) mount from their own fixtures,
-    // whose art is their sheet's, in packages/engine/tests/<group>.test.ts.
-    let top = |d: &&EngineDocument| !d.path["src/ui/components/".len()..].contains('/');
+    // A genre kit's documents (rpg/, shooter/) mount from their own
+    // fixtures, whose art is their sheet's, in
+    // packages/engine/tests/<kit>.test.ts; the by-function folders here.
+    let top = |d: &&EngineDocument| {
+        let path = &d.path["src/ui/components/".len()..];
+        ["base/", "hud/", "world/", "panels/", "meta/"].iter().any(|f| path.starts_with(f))
+            // Their fixtures draw the rpg sheet's item art (rpg.test.ts).
+            && !["panels/backpack.svelte", "panels/item-card.svelte"].contains(&path)
+    };
     for doc in docs.iter().filter(top) {
         for (width, height) in [(1280.0, 720.0), (390.0, 844.0)] {
             let mut ui = ui_with_font(test_font_metrics());
@@ -645,4 +651,163 @@ fn the_dead_zone_slider_shares_its_row_with_its_label() {
             row.x + row.width
         );
     }
+}
+
+/// A component's own `<style>` lays it out; its look comes from the roles
+/// (docs/ui.md §3.1 Role parts). A look property (a fill, a rim, a radius,
+/// a shadow, an ink, type, a filter) in a component's rule may only read a
+/// role's token (`var(--card-fill)`) or reset (`none`, `0`, `inherit`),
+/// so a style pack's tokens reach every component. Documents written
+/// before the rule carry a count in `component_look_backlog.tsv`, which
+/// only shrinks: a converted document lowers or drops its line.
+///
+/// Ways it could fail: a document that paints a box itself
+/// (`border-radius: var(--radius-card)`, `color: var(--ink-muted)`)
+/// instead of naming its part for the role that does.
+#[test]
+fn component_styles_lay_out_and_roles_dress() {
+    let roles: std::collections::BTreeSet<String> = {
+        let css = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../packages/design/tokens/role.css"),
+        )
+        .unwrap();
+        css.split("--role-")
+            .skip(1)
+            .filter_map(|s| s.split(':').next())
+            .filter(|n| n.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-'))
+            .map(str::to_string)
+            .collect()
+    };
+    let backlog_path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/component_look_backlog.tsv");
+    let backlog: std::collections::BTreeMap<String, usize> = std::fs::read_to_string(&backlog_path)
+        .unwrap()
+        .lines()
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .map(|l| {
+            let (path, n) = l.split_once('\t').expect("path<TAB>count");
+            (path.to_string(), n.parse().unwrap())
+        })
+        .collect();
+    let (docs, _) = engine_documents(&["src/ui/components"]);
+    let mut counts = std::collections::BTreeMap::new();
+    let mut examples = std::collections::BTreeMap::new();
+    for doc in &docs {
+        let path = doc.path["src/ui/components/".len()..].to_string();
+        let found = look_declarations(&doc.doc.text, &roles);
+        if !found.is_empty() {
+            examples.insert(path.clone(), found[0].clone());
+            counts.insert(path, found.len());
+        }
+    }
+    let mut failures = Vec::new();
+    for (path, n) in &counts {
+        let allowed = backlog.get(path).copied().unwrap_or(0);
+        if *n > allowed {
+            failures.push(format!(
+                "{path}: {n} look declarations outside the roles (backlog {allowed}), as `{}`",
+                examples[path]
+            ));
+        }
+    }
+    for (path, allowed) in &backlog {
+        let n = counts.get(path).copied().unwrap_or(0);
+        if n < *allowed {
+            failures.push(format!(
+                "{path}: now {n}; lower its backlog line from {allowed}"
+            ));
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The look declarations of a document's `<style>` that read no role
+/// token, as `property: value`. Keyframes are motion and custom
+/// properties are tokens, so neither counts.
+fn look_declarations(source: &str, roles: &std::collections::BTreeSet<String>) -> Vec<String> {
+    const LOOK: &[&str] = &[
+        "background",
+        "border",
+        "outline",
+        "box-shadow",
+        "color",
+        "font",
+        "letter-spacing",
+        "text-transform",
+        "text-shadow",
+        "text-decoration",
+        "filter",
+        "backdrop-filter",
+        "corner-shape",
+    ];
+    const RESETS: &[&str] = &[
+        "none",
+        "0",
+        "0px",
+        "inherit",
+        "unset",
+        "initial",
+        "revert-layer",
+        "currentColor",
+        "transparent",
+        "normal",
+    ];
+    let Some(start) = source.find("<style") else {
+        return Vec::new();
+    };
+    let css = &source[start..];
+    let css = &css[css.find('>').unwrap() + 1..css.find("</style>").unwrap_or(css.len())];
+    // Comments out, then each `@keyframes` block.
+    let mut text = String::new();
+    let mut rest = css;
+    while let Some(i) = rest.find("/*") {
+        text.push_str(&rest[..i]);
+        rest = rest[i..].find("*/").map_or("", |j| &rest[i + j + 2..]);
+    }
+    text.push_str(rest);
+    while let Some(i) = text.find("@keyframes") {
+        let open = i + text[i..].find('{').unwrap();
+        let (mut depth, mut end) = (0, open);
+        for (k, c) in text[open..].char_indices() {
+            match c {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = open + k + 1;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        text.replace_range(i..end, "");
+    }
+    let role_var = |v: &str| {
+        let v = v.trim();
+        v.strip_prefix("var(--")
+            .and_then(|r| r.strip_suffix(')'))
+            .is_some_and(|name| roles.contains(name))
+    };
+    let mut found = Vec::new();
+    for body in text.split('{').skip(1).filter_map(|b| b.split('}').next()) {
+        for decl in body.split(';') {
+            let Some((property, value)) = decl.split_once(':') else {
+                continue;
+            };
+            let (property, value) = (property.trim(), value.trim());
+            let look = LOOK
+                .iter()
+                .any(|l| property == *l || property.starts_with(&format!("{l}-")));
+            if !look || matches!(property, "border-collapse" | "border-spacing") {
+                continue;
+            }
+            if RESETS.contains(&value) || role_var(value) {
+                continue;
+            }
+            found.push(format!("{property}: {value}"));
+        }
+    }
+    found
 }

@@ -396,8 +396,10 @@
     --badge-corner-shape: round;
     --badge-fill: var(--control-strong);
     --badge-ink: var(--ink);
+    --badge-pad: 0 var(--space-xs);
     --badge-radius: var(--radius-capsule);
     --badge-shadow: none;
+    --badge-text: var(--text-caption);
     --band-end-finish-image: none;
     --band-end-start-image: none;
     --band-fill: none;
@@ -411,6 +413,16 @@
     --band-small-fill: none;
     --band-small-height: var(--size-md);
     --band-small-pad: var(--space-xxs) var(--space-md);
+    --caption-ink: var(--ink-muted);
+    --caption-text: var(--text-caption);
+    --card-corner-shape: round;
+    --card-fill: none;
+    --card-pad: var(--space-md);
+    --card-radius: var(--radius-card);
+    --card-rim: var(--line);
+    --card-rim-width: var(--stroke-thin);
+    --card-selected-rim: var(--focus);
+    --card-shadow: none;
     --cell-common-fill: var(--control);
     --cell-common-shadow: inset 0 0 0 var(--stroke-regular) var(--common);
     --cell-corner-shape: round;
@@ -434,9 +446,16 @@
     --cell-uncommon-fill: var(--control);
     --cell-uncommon-shadow: inset 0 0 0 var(--stroke-regular) var(--uncommon);
     --common: var(--line-strong);
+    --dot-fill: var(--well);
+    --dot-ink: var(--ink);
+    --dot-radius: var(--radius-capsule);
+    --dot-rim: transparent;
+    --dot-rim-width: 0px;
     --epic: var(--xp);
     --figure-font: var(--type-numeric-font);
     --figure-ink: var(--ink);
+    --fill-color: var(--primary);
+    --fill-gloss: linear-gradient(180deg, var(--sheen), transparent 50%, var(--shadow-30));
     --frame-corner-image: none;
     --frame-corner-shape: round;
     --frame-corner-size: var(--size-lg);
@@ -446,6 +465,9 @@
     --frame-rim: var(--line);
     --frame-rim-width: var(--stroke-hairline);
     --frame-shadow: var(--shadow-float);
+    --headline-ink: var(--ink);
+    --headline-text: var(--text-base);
+    --headline-weight: var(--font-weight-semibold);
     --ink-bright: var(--ink);
     --ink-disabled: var(--ink-faint);
     --ink-done: var(--ink-faint);
@@ -507,7 +529,14 @@
     --title-weight: var(--font-weight-semibold);
     --tone-crit: var(--warn);
     --tone-damage: var(--danger);
+    --tone-danger: var(--danger);
     --tone-heal: var(--success);
+    --tone-info: var(--info);
+    --tone-success: var(--success);
+    --tone-warn: var(--warn);
+    --track-fill: var(--control-strong);
+    --track-radius: var(--meter-radius);
+    --track-shadow: var(--meter-shadow);
     --trend-down: var(--danger);
     --trend-up: var(--success);
     --uncommon: var(--success);
@@ -1711,8 +1740,8 @@
   input[type=radio]::part(chosen) { border-width: var(--stroke-regular); border-style: solid; border-color: var(--radio-chosen-rim); background: var(--radio-chosen-fill, revert-layer); }
   /* Tabs::tab:selected */
   tabs::part(tab):checked { background: var(--tabs-tab-selected-fill); box-shadow: var(--tabs-tab-selected-shadow); color: var(--tabs-tab-selected-ink, revert-layer); }
-  /* Roles: frame, plate, band, title, row, cell, badge, well, figure, label,
-     heading, name, picture, tab. */
+  /* Roles: frame, plate, band, title, row, cell, card, badge, well, figure,
+     label, heading, headline, caption, name, picture, dot, track, fill, tab. */
   /* A separator (`<hr>`) is a line of its own colour across its container;
      `vertical` stands it up. `hr { color }` recolours it. */
   hr { inline-size: stretch; block-size: var(--stroke-hairline); color: var(--line); background: currentColor; }
@@ -1771,7 +1800,7 @@
   :where([part$=".row"]) { border-radius: var(--row-radius); corner-shape: var(--row-corner-shape); background: var(--row-fill); color: var(--ink); }
   :where([part$=".row"]:hover) { background: var(--row-hover-fill); }
   :where([part$=".row"]:active) { background: var(--row-pressed-fill); }
-  :where([part$=".row"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
+  :where([part$=".row"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) {
     background: var(--row-selected-fill);
     box-shadow: var(--row-selected-edge);
     color: var(--ink-selected);
@@ -1788,7 +1817,7 @@
   }
   :where([part$=".cell"]:hover) { box-shadow: var(--cell-hover-shadow); }
   :where([part$=".cell"]:active) { background: var(--cell-pressed-fill); }
-  :where([part$=".cell"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) { border-color: var(--cell-selected-rim); }
+  :where([part$=".cell"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) { border-color: var(--cell-selected-rim); }
   :where([part$=".cell"]:where([data-rarity=common])) { background: var(--cell-common-fill); box-shadow: var(--cell-common-shadow); }
   :where([part$=".cell"]:where([data-rarity=uncommon])) { background: var(--cell-uncommon-fill); box-shadow: var(--cell-uncommon-shadow); }
   :where([part$=".cell"]:where([data-rarity=rare])) { background: var(--cell-rare-fill); box-shadow: var(--cell-rare-shadow); }
@@ -1799,7 +1828,18 @@
   :where([part$=".cell"]:where(:disabled, [aria-disabled=true], [data-locked=true])) { box-shadow: var(--cell-empty-shadow); }
   /* A locked cell is still read (what it would do, why it is locked): only a disabled one fades its words. */
   :where([part$=".cell"]:where(:disabled, [aria-disabled=true])) { color: var(--ink-disabled); }
+  :where([part$=".card"]) {
+    box-sizing: border-box;
+    padding: var(--card-pad);
+    border: var(--card-rim-width) solid var(--card-rim);
+    border-radius: var(--card-radius); corner-shape: var(--card-corner-shape);
+    background: var(--card-fill);
+    box-shadow: var(--card-shadow);
+  }
+  :where([part$=".card"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) { border-color: var(--card-selected-rim); }
   :where([part$=".badge"]) {
+    padding: var(--badge-pad);
+    font: var(--badge-text);
     border-radius: var(--badge-radius); corner-shape: var(--badge-corner-shape);
     background: var(--badge-fill);
     box-shadow: var(--badge-shadow);
@@ -1810,9 +1850,20 @@
   /* A surface with a fill of its own holds its text: the halo a document
      drawn over the scene sets (`text-shadow: var(--tag-halo)`, inherited)
      stops at it. A bare frame has no fill and passes it on. */
-  :where([part$=".frame"]:not(.bare), [part$=".band"], [part$=".row"], [part$=".cell"],
+  :where([part$=".frame"]:not(.bare), [part$=".band"], [part$=".row"], [part$=".cell"], [part$=".card"],
          [part$=".badge"], [part$=".well"], [part$=".tab"], button, badge) { text-shadow: none; }
   :where([part$=".figure"]) { font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--figure-shadow, revert-layer); }
+  :where([part$=".headline"]) { font: var(--headline-text); font-weight: var(--headline-weight); color: var(--headline-ink); }
+  :where([part$=".caption"]) { font: var(--caption-text); color: var(--caption-ink); }
+  :where([part$=".dot"]) {
+    box-sizing: border-box;
+    border: var(--dot-rim-width) solid var(--dot-rim);
+    border-radius: var(--dot-radius);
+    background: var(--dot-fill);
+    color: var(--dot-ink);
+  }
+  :where([part$=".track"]) { border-radius: var(--track-radius); background: var(--track-fill); box-shadow: var(--track-shadow); }
+  :where([part$=".fill"]) { background: var(--fill-gloss), var(--fill-color); }
   :where([part$=".label"], [part$=".heading"]) {
     font-family: var(--label-font);
     letter-spacing: var(--label-tracking);
@@ -1829,7 +1880,7 @@
     color: var(--name-ink, revert-layer);
     text-shadow: var(--name-shadow, revert-layer);
   }
-  :where([part$=".name"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
+  :where([part$=".name"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) {
     color: var(--name-selected-ink, var(--name-ink, revert-layer));
   }
   /* A picture (a portrait, an avatar, a jacket, art), unset by default. */
@@ -1848,25 +1899,25 @@
     text-transform: var(--tabs-transform, revert-layer);
   }
   :where([part$=".tab"]:hover) { background: var(--tabs-tab-hover-fill, var(--tabs-tab-fill, revert-layer)); }
-  :where([part$=".tab"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
+  :where([part$=".tab"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) {
     background: var(--tabs-tab-selected-fill, revert-layer);
     color: var(--tabs-tab-selected-ink, revert-layer);
   }
   /* A role part on a team (`data-team=a|b`) wears the team's colour as its
      ink and rim. */
   :where(:is([part$=".frame"], [part$=".plate"], [part$=".band"], [part$=".title"], [part$=".row"], [part$=".cell"],
-              [part$=".badge"], [part$=".well"], [part$=".figure"], [part$=".label"], [part$=".heading"],
-              [part$=".name"], [part$=".picture"], [part$=".tab"])[data-team=a]) {
+              [part$=".card"], [part$=".badge"], [part$=".well"], [part$=".figure"], [part$=".label"], [part$=".heading"],
+              [part$=".headline"], [part$=".caption"], [part$=".name"], [part$=".picture"], [part$=".dot"], [part$=".tab"])[data-team=a]) {
     color: var(--team1); border-color: var(--team1);
   }
   :where(:is([part$=".frame"], [part$=".plate"], [part$=".band"], [part$=".title"], [part$=".row"], [part$=".cell"],
-              [part$=".badge"], [part$=".well"], [part$=".figure"], [part$=".label"], [part$=".heading"],
-              [part$=".name"], [part$=".picture"], [part$=".tab"])[data-team=b]) {
+              [part$=".card"], [part$=".badge"], [part$=".well"], [part$=".figure"], [part$=".label"], [part$=".heading"],
+              [part$=".headline"], [part$=".caption"], [part$=".name"], [part$=".picture"], [part$=".dot"], [part$=".tab"])[data-team=b]) {
     color: var(--team2); border-color: var(--team2);
   }
   /* A selected row's ground is the selection, too light for a team's ink
      in the dark scheme: it keeps the selected ink, its team in its rim. */
-  :where([part$=".row"][data-team]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
+  :where([part$=".row"][data-team]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) {
     color: var(--ink-selected);
   }
   :where([data-trend=up]) { color: var(--trend-up); }
@@ -1874,6 +1925,15 @@
   :where([data-tone=damage]) { color: var(--tone-damage); }
   :where([data-tone=heal]) { color: var(--tone-heal); }
   :where([data-tone=crit]) { color: var(--tone-crit); }
+  :where([data-tone=success]) { color: var(--tone-success); }
+  :where([data-tone=danger]) { color: var(--tone-danger); }
+  :where([data-tone=warn]) { color: var(--tone-warn); }
+  :where([data-tone=info]) { color: var(--tone-info); }
+  /* A meter's fill in a tone takes its colour. */
+  :where([part$=".fill"][data-tone=success]) { --fill-color: var(--tone-success); }
+  :where([part$=".fill"][data-tone=danger]) { --fill-color: var(--tone-danger); }
+  :where([part$=".fill"][data-tone=warn]) { --fill-color: var(--tone-warn); }
+  :where([part$=".fill"][data-tone=info]) { --fill-color: var(--tone-info); }
   /* A phone on its side: bands and titles one step down. */
   @media (height < 500px) {
     :where([part$=".band"]) { min-height: var(--band-small-height); padding-top: 0; padding-bottom: 0; }

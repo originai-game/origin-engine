@@ -1,6 +1,6 @@
 <meta name="component" content="Pips">
 <meta name="strings" content="./pips.en.ogt">
-<meta name="parts" content="Pips.frame Pips.label Pips.units Pips.unit Pips.empty Pips.fill Pips.state Pips.loading">
+<meta name="parts" content="Pips.frame Pips.label Pips.units Pips.unit Pips.empty Pips.full Pips.state Pips.loading">
 <meta name="prop:label" content="string" data-default="" data-doc="The resource's name; empty uses Resource.">
 <meta name="prop:icon" content="string" data-default="heart" data-doc="The atlas icon for a unit: heart, bullet, bolt or a game's own icon.">
 <meta name="prop:items" content="list" data-doc="Keyed units { id, value, label }: value is the filled fraction, 0 to 1; label names the unit for accessibility. The game supplies capacity, ordering and fractional units, with no fixed maximum.">
@@ -21,7 +21,7 @@
       {#each items as item (item.id)}
         <div class="unit" part="Pips.unit" role="meter" aria-label={item.label || label || t("base.pips.resource")} aria-valuemin="0" aria-valuemax="1" aria-valuenow={item.value < 0 ? 0 : item.value > 1 ? 1 : item.value} aria-valuetext={formatPercent(item.value < 0 ? 0 : item.value > 1 ? 1 : item.value)} style:--value={item.value}>
           <og-icon part="Pips.empty" icon={icon}></og-icon>
-          <og-icon part="Pips.fill" icon={icon}></og-icon>
+          <og-icon part="Pips.full" icon={icon}></og-icon>
         </div>
       {/each}
     </div>
@@ -36,9 +36,9 @@
 [part="Pips.loading"] { display: flex; align-items: center; gap: var(--space-sm); }
 [part="Pips.units"] { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 .unit { position: relative; inline-size: var(--pip-size, var(--size-sm)); block-size: var(--pip-size, var(--size-sm)); }
-[part="Pips.empty"], [part="Pips.fill"] { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
+[part="Pips.empty"], [part="Pips.full"] { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
 [part="Pips.empty"] { color: var(--ink-faint); }
-[part="Pips.fill"] { color: var(--pip-ink, var(--health)); clip-path: inset(0 calc((1 - clamp(0, var(--value), 1)) * 100%) 0 0); }
+[part="Pips.full"] { color: var(--pip-ink, var(--health)); clip-path: inset(0 calc((1 - clamp(0, var(--value), 1)) * 100%) 0 0); }
 .unavailable .unit { opacity: var(--state-disabled-opacity); }
 [part="Pips.state"] { font: var(--text-caption); color: var(--ink-muted); }
 </style>

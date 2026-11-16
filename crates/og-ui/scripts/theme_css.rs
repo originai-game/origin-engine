@@ -131,8 +131,8 @@ const PART_RULES: &[(&str, &str, &str)] = &[
 /// pack restyles all of them by setting values. Each selector sits in
 /// `:where()`: no specificity, so a component's or a pack's rule for its
 /// own part wins whatever the order.
-const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, badge, well, figure, label,
-     heading, name, picture, tab. */
+const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, card, badge, well, figure,
+     label, heading, headline, caption, name, picture, dot, track, fill, tab. */
   /* A separator (`<hr>`) is a line of its own colour across its container;
      `vertical` stands it up. `hr { color }` recolours it. */
   hr { inline-size: stretch; block-size: var(--stroke-hairline); color: var(--line); background: currentColor; }
@@ -191,7 +191,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
   :where([part$=".row"]) { border-radius: var(--row-radius); corner-shape: var(--row-corner-shape); background: var(--row-fill); color: var(--ink); }
   :where([part$=".row"]:hover) { background: var(--row-hover-fill); }
   :where([part$=".row"]:active) { background: var(--row-pressed-fill); }
-  :where([part$=".row"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
+  :where([part$=".row"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) {
     background: var(--row-selected-fill);
     box-shadow: var(--row-selected-edge);
     color: var(--ink-selected);
@@ -208,7 +208,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
   }
   :where([part$=".cell"]:hover) { box-shadow: var(--cell-hover-shadow); }
   :where([part$=".cell"]:active) { background: var(--cell-pressed-fill); }
-  :where([part$=".cell"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) { border-color: var(--cell-selected-rim); }
+  :where([part$=".cell"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) { border-color: var(--cell-selected-rim); }
   :where([part$=".cell"]:where([data-rarity=common])) { background: var(--cell-common-fill); box-shadow: var(--cell-common-shadow); }
   :where([part$=".cell"]:where([data-rarity=uncommon])) { background: var(--cell-uncommon-fill); box-shadow: var(--cell-uncommon-shadow); }
   :where([part$=".cell"]:where([data-rarity=rare])) { background: var(--cell-rare-fill); box-shadow: var(--cell-rare-shadow); }
@@ -219,7 +219,18 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
   :where([part$=".cell"]:where(:disabled, [aria-disabled=true], [data-locked=true])) { box-shadow: var(--cell-empty-shadow); }
   /* A locked cell is still read (what it would do, why it is locked): only a disabled one fades its words. */
   :where([part$=".cell"]:where(:disabled, [aria-disabled=true])) { color: var(--ink-disabled); }
+  :where([part$=".card"]) {
+    box-sizing: border-box;
+    padding: var(--card-pad);
+    border: var(--card-rim-width) solid var(--card-rim);
+    border-radius: var(--card-radius); corner-shape: var(--card-corner-shape);
+    background: var(--card-fill);
+    box-shadow: var(--card-shadow);
+  }
+  :where([part$=".card"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) { border-color: var(--card-selected-rim); }
   :where([part$=".badge"]) {
+    padding: var(--badge-pad);
+    font: var(--badge-text);
     border-radius: var(--badge-radius); corner-shape: var(--badge-corner-shape);
     background: var(--badge-fill);
     box-shadow: var(--badge-shadow);
@@ -230,9 +241,20 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
   /* A surface with a fill of its own holds its text: the halo a document
      drawn over the scene sets (`text-shadow: var(--tag-halo)`, inherited)
      stops at it. A bare frame has no fill and passes it on. */
-  :where([part$=".frame"]:not(.bare), [part$=".band"], [part$=".row"], [part$=".cell"],
+  :where([part$=".frame"]:not(.bare), [part$=".band"], [part$=".row"], [part$=".cell"], [part$=".card"],
          [part$=".badge"], [part$=".well"], [part$=".tab"], button, badge) { text-shadow: none; }
   :where([part$=".figure"]) { font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--figure-shadow, revert-layer); }
+  :where([part$=".headline"]) { font: var(--headline-text); font-weight: var(--headline-weight); color: var(--headline-ink); }
+  :where([part$=".caption"]) { font: var(--caption-text); color: var(--caption-ink); }
+  :where([part$=".dot"]) {
+    box-sizing: border-box;
+    border: var(--dot-rim-width) solid var(--dot-rim);
+    border-radius: var(--dot-radius);
+    background: var(--dot-fill);
+    color: var(--dot-ink);
+  }
+  :where([part$=".track"]) { border-radius: var(--track-radius); background: var(--track-fill); box-shadow: var(--track-shadow); }
+  :where([part$=".fill"]) { background: var(--fill-gloss), var(--fill-color); }
   :where([part$=".label"], [part$=".heading"]) {
     font-family: var(--label-font);
     letter-spacing: var(--label-tracking);
@@ -249,7 +271,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
     color: var(--name-ink, revert-layer);
     text-shadow: var(--name-shadow, revert-layer);
   }
-  :where([part$=".name"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
+  :where([part$=".name"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) {
     color: var(--name-selected-ink, var(--name-ink, revert-layer));
   }
   /* A picture (a portrait, an avatar, a jacket, art), unset by default. */
@@ -268,25 +290,25 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
     text-transform: var(--tabs-transform, revert-layer);
   }
   :where([part$=".tab"]:hover) { background: var(--tabs-tab-hover-fill, var(--tabs-tab-fill, revert-layer)); }
-  :where([part$=".tab"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
+  :where([part$=".tab"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) {
     background: var(--tabs-tab-selected-fill, revert-layer);
     color: var(--tabs-tab-selected-ink, revert-layer);
   }
   /* A role part on a team (`data-team=a|b`) wears the team's colour as its
      ink and rim. */
   :where(:is([part$=".frame"], [part$=".plate"], [part$=".band"], [part$=".title"], [part$=".row"], [part$=".cell"],
-              [part$=".badge"], [part$=".well"], [part$=".figure"], [part$=".label"], [part$=".heading"],
-              [part$=".name"], [part$=".picture"], [part$=".tab"])[data-team=a]) {
+              [part$=".card"], [part$=".badge"], [part$=".well"], [part$=".figure"], [part$=".label"], [part$=".heading"],
+              [part$=".headline"], [part$=".caption"], [part$=".name"], [part$=".picture"], [part$=".dot"], [part$=".tab"])[data-team=a]) {
     color: var(--team1); border-color: var(--team1);
   }
   :where(:is([part$=".frame"], [part$=".plate"], [part$=".band"], [part$=".title"], [part$=".row"], [part$=".cell"],
-              [part$=".badge"], [part$=".well"], [part$=".figure"], [part$=".label"], [part$=".heading"],
-              [part$=".name"], [part$=".picture"], [part$=".tab"])[data-team=b]) {
+              [part$=".card"], [part$=".badge"], [part$=".well"], [part$=".figure"], [part$=".label"], [part$=".heading"],
+              [part$=".headline"], [part$=".caption"], [part$=".name"], [part$=".picture"], [part$=".dot"], [part$=".tab"])[data-team=b]) {
     color: var(--team2); border-color: var(--team2);
   }
   /* A selected row's ground is the selection, too light for a team's ink
      in the dark scheme: it keeps the selected ink, its team in its rim. */
-  :where([part$=".row"][data-team]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
+  :where([part$=".row"][data-team]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) {
     color: var(--ink-selected);
   }
   :where([data-trend=up]) { color: var(--trend-up); }
@@ -294,6 +316,15 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
   :where([data-tone=damage]) { color: var(--tone-damage); }
   :where([data-tone=heal]) { color: var(--tone-heal); }
   :where([data-tone=crit]) { color: var(--tone-crit); }
+  :where([data-tone=success]) { color: var(--tone-success); }
+  :where([data-tone=danger]) { color: var(--tone-danger); }
+  :where([data-tone=warn]) { color: var(--tone-warn); }
+  :where([data-tone=info]) { color: var(--tone-info); }
+  /* A meter's fill in a tone takes its colour. */
+  :where([part$=".fill"][data-tone=success]) { --fill-color: var(--tone-success); }
+  :where([part$=".fill"][data-tone=danger]) { --fill-color: var(--tone-danger); }
+  :where([part$=".fill"][data-tone=warn]) { --fill-color: var(--tone-warn); }
+  :where([part$=".fill"][data-tone=info]) { --fill-color: var(--tone-info); }
   /* A phone on its side: bands and titles one step down. */
   @media (height < 500px) {
     :where([part$=".band"]) { min-height: var(--band-small-height); padding-top: 0; padding-bottom: 0; }

@@ -25,7 +25,7 @@
   <div id="Main" part="StatBar.frame" class:hud={!bare} class:bare={bare}>
     {#if icon}<og-icon id="Icon" icon={icon}></og-icon>{/if}
     {#if label}<span id="Label" part="StatBar.label">{label}</span>{/if}
-    <div id="Track" part="StatBar.track StatBar.well" style:--value={value / max} style:--heal={heal / max} style:--recoverable={recoverable / max} style:--block={segment / max}>
+    <div id="Track" part="StatBar.well StatBar.track" style:--value={value / max} style:--heal={heal / max} style:--recoverable={recoverable / max} style:--block={segment / max}>
       <div id="Recoverable"></div>
       <div id="Ghost"></div>
       {#if heal > 0}<div id="Heal"></div>{/if}
@@ -40,22 +40,22 @@
 
 <style>
 :host { text-shadow: var(--tag-halo); }
-:host { display: flex; flex-direction: column; inline-size: 100%; gap: var(--space-xxs); --meter: var(--health); }
-.mana { --meter: var(--mana); }
-.stamina { --meter: var(--success); }
-.xp { --meter: var(--xp); }
-.low { --meter: var(--warn); }
-.critical { --meter: var(--danger); }
+:host { display: flex; flex-direction: column; inline-size: 100%; gap: var(--space-xxs); --meter: var(--health); --fill-color: var(--meter); }
+.mana { --meter: var(--mana); --fill-color: var(--meter); }
+.stamina { --meter: var(--success); --fill-color: var(--meter); }
+.xp { --meter: var(--xp); --fill-color: var(--meter); }
+.low { --meter: var(--warn); --fill-color: var(--meter); }
+.critical { --meter: var(--danger); --fill-color: var(--meter); }
 [part="StatBar.shield"] { position: relative; block-size: var(--space-xs); border-radius: var(--meter-radius); background: var(--shadow-45); overflow: hidden; }
 #ShieldFill { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--shield) * 100%); background: var(--info); }
 [part="StatBar.frame"] { display: flex; gap: var(--space-sm); align-items: center; }
 #Icon { width: var(--size-xs); height: var(--size-xs); color: var(--meter); }
 [part="StatBar.label"] { font: var(--text-sm); font-family: var(--label-font); white-space: nowrap; text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
-[part="StatBar.track StatBar.well"] { position: relative; flex: 1; min-inline-size: 0; block-size: var(--space-lg); border-radius: var(--meter-radius); background: var(--control-strong); overflow: hidden; box-shadow: var(--meter-shadow); }
+[part="StatBar.well StatBar.track"] { position: relative; flex: 1; min-inline-size: 0; block-size: var(--space-lg); overflow: hidden; }
 #Recoverable, #Ghost, #Fill, #Heal, #Blocks, #Gloss { position: absolute; top: 0; bottom: 0; }
 #Recoverable { inset-inline-start: 0; width: calc(var(--recoverable) * 100%); background: var(--ink-muted); opacity: var(--opacity-muted); }
 #Ghost { inset-inline-start: 0; inline-size: 100%; background: var(--scene-ink); opacity: var(--opacity-soft); scale: var(--value) 1; transform-origin: 0% 50%; transition: scale var(--motion-duration-bounce) var(--motion-easing-in-out) var(--motion-duration-slow); }
-#Fill { inset-inline-start: 0; width: calc(var(--value) * 100%); background: linear-gradient(180deg, var(--sheen), transparent 50%, var(--shadow-30)), var(--meter); }
+#Fill { inset-inline-start: 0; width: calc(var(--value) * 100%); }
 #Heal { inset-inline-start: 0; width: calc((var(--value) + var(--heal)) * 100%); background: var(--success); opacity: var(--opacity-dim); animation-name: pulse; animation-duration: var(--motion-duration-turn); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
 #Blocks { inset-inline-start: 0; inline-size: 100%; background: repeating-linear-gradient(90deg, transparent 0% calc(var(--block) * 100% - 0.8%), var(--scene-shadow) calc(var(--block) * 100% - 0.8%) calc(var(--block) * 100%)); }
 /* Transforms and gradients are physical: right to left, the ghost shrinks towards

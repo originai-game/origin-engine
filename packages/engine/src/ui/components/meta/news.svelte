@@ -1,6 +1,6 @@
 <meta name="component" content="News">
 <meta name="strings" content="./meta.en.ogt">
-<meta name="parts" content="News.frame News.band News.title News.list News.article News.heading News.toggle News.headline News.date News.kind News.badge News.picture News.summary News.body News.action">
+<meta name="parts" content="News.frame News.band News.title News.list News.article News.card News.heading News.toggle News.headline News.date News.kind News.caption News.badge News.picture News.summary News.body News.action">
 <meta name="prop:title" content="string" data-default="" data-doc="Heading; empty uses News and updates.">
 <meta name="prop:entries" content="list" data-default="[]" data-doc="Keyed { id, title, date, kind, summary, body, image, unread, pinned, actionLabel } articles in the game's order. kind is game-formatted text (Patch notes, Event); body is plain multiline text, never HTML. image is a loaded texture handle or 0.">
 <meta name="prop:selected" content="string" data-default="" data-doc="Expanded article id, game-owned. A toggle reports choose with that key; the game may clear it to collapse.">
@@ -22,10 +22,10 @@
   {:else if error}<ErrorState body={error} />
   {:else if !entries.length}<EmptyState title={t("meta.news.empty")} icon="flag" />
   {:else}<ul part="News.list" class="list">
-    {#each entries as entry (entry.id)}<li><article part="News.article" class="article" data-unread={entry.unread} data-pinned={entry.pinned}>
-      <div class="meta"><span part="News.kind" class="muted">{entry.kind}</span><span part="News.date" class="muted">{entry.date}</span>{#if entry.pinned}<span part="News.badge" class="badge">{t("meta.news.pinned")}</span>{/if}{#if entry.unread}<span part="News.badge" class="badge">{t("meta.news.unread")}</span>{/if}</div>
+    {#each entries as entry (entry.id)}<li><article part="News.article News.card" class="article" data-unread={entry.unread} data-pinned={entry.pinned}>
+      <div class="meta"><span part="News.kind News.caption" class="kind">{entry.kind}</span><span part="News.date News.caption" class="date">{entry.date}</span>{#if entry.pinned}<span part="News.badge" class="badge">{t("meta.news.pinned")}</span>{/if}{#if entry.unread}<span part="News.badge" class="badge">{t("meta.news.unread")}</span>{/if}</div>
       <div part="News.heading" role="heading" aria-level="3"><button part="News.toggle" class="toggle" aria-expanded={entry.id == selected} aria-label={entry.title} disabled={disabled} onclick={choose}><span part="News.headline" class="headline">{entry.title}</span></button></div>
-      {#if entry.summary}<p part="News.summary" class="summary">{entry.summary}</p>{/if}
+      {#if entry.summary}<p part="News.summary News.caption" class="summary">{entry.summary}</p>{/if}
       {#if entry.id == selected}
         {#if entry.image}<img part="News.picture" class="picture" src={entry.image} alt="">{/if}
         {#if entry.body}<p part="News.body" class="body">{entry.body}</p>{/if}
@@ -39,15 +39,12 @@
 :host { display: flex; flex-direction: column; inline-size: stretch; gap: var(--space-md); }
 h2, h3, p { margin: 0; overflow-wrap: anywhere; }
 .list { display: flex; flex-direction: column; gap: var(--space-md); margin: 0; padding: 0; list-style: none; }
-.article { display: flex; flex-direction: column; align-items: start; gap: var(--space-sm); padding: var(--space-md); border: var(--stroke-thin) solid var(--line); border-radius: var(--radius-card); }
+.article { display: flex; flex-direction: column; align-items: start; gap: var(--space-sm); }
 .meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
-.muted { font: var(--text-sm); color: var(--ink-muted); }
-.badge { font: var(--text-caption); }
 [part="News.heading"] { inline-size: stretch; }
-.toggle { display: block; inline-size: stretch; min-block-size: var(--touch-target); text-align: start; white-space: normal; overflow-wrap: anywhere; font: var(--text-lg); }
+.toggle { display: block; inline-size: stretch; min-block-size: var(--touch-target); text-align: start; white-space: normal; overflow-wrap: anywhere; }
 .headline { display: block; inline-size: stretch; white-space: normal; overflow-wrap: anywhere; }
 .picture { inline-size: 100%; max-block-size: var(--size-6xl); aspect-ratio: 2; object-fit: cover; }
-.summary { color: var(--ink-muted); }
 .body { white-space: pre-wrap; }
 .action { max-inline-size: 100%; min-block-size: var(--touch-target); white-space: normal; }
 .wait { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-lg); }

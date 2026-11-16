@@ -21,7 +21,7 @@ They follow the screen conventions (`../screens/README.md`): each declares
 `<meta name="fixture:default">` JSON fixture. Every prop has a default, so
 `<StatBar />` draws an empty health bar and a game passes only what it
 shows; structure is scriptless markup,
-look is scoped CSS and tokens, rings and bars are inline SVG, world tags are
+look comes from role parts and tokens, rings and bars are inline SVG, world tags are
 `<anchor>`, ground marks `<ground>`, and overhead bars and damage numbers are
 `<anchor mass>` rows drawn on the GPU. Visible words come from the companion
 string table (`<meta name="strings" content="./<component>.en.ogt">`), which
@@ -135,6 +135,29 @@ stick, each an input source of the og-input action it names. It reports no
 events and shows only where the primary pointer is a finger (`always`
 shows it under a mouse too). Its parts are `frame`, `stick`, `actions` and
 `look`.
+
+## A component's own CSS lays it out; roles dress it
+
+A component's `<style>` holds layout only: `display`, grid and flex, gaps
+from the space tokens, sizing, positions, overflow. Its look (fills, rims,
+radii, shadows, ink, type, filters) comes from naming each part for its
+role (`News.card`, `Steps.dot`, `StatBar.fill`), which the default style
+dresses from that role's tokens (docs/ui.md §3.1 Role parts), so a style
+pack's tokens restyle every component at once. A part named for what it
+shows takes a role as the last name of a part list (`part="News.date
+News.caption"`). What only a component needs it sets as a role's token on
+itself (`--fill-color: var(--mana)`), never as a look property. A
+genre-wide or per-state colour is a `data-tone` (`success`, `danger`,
+`warn`, `info`) on the part. A look property in a component's `<style>`
+may read only a role token or reset (`none`, `0`, `inherit`); og-ui's
+`component_styles_lay_out_and_roles_dress` test checks this, and the
+documents written before the rule carry their remaining count in
+`crates/og-ui/tests/component_look_backlog.tsv`, which only shrinks.
+
+Adding, renaming or removing a component file, or changing what one
+includes (its strings tables, shared pieces), changes the generated
+`packages/engine/src/ui/manifest.json`: run `og api gen` and commit it in
+the same head.
 
 ## Parts
 

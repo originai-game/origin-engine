@@ -1550,7 +1550,12 @@ seed set on an element below it does not re-derive that subtree's colours.
 dresses every part of a role once, from that role's tokens
 (`packages/design/tokens/role.css`). A pack restyles all of them by
 setting the tokens; it writes a rule only for what one component alone
-wears. The role rules sit in `:where()`, so any pack or document rule wins.
+wears. A built-in component's own `<style>` therefore lays it out only
+(display, grid and flex, space-token gaps, sizing, positions, overflow):
+a look property there reads a role token or resets, and what one
+component needs it sets as a role token on itself (`--fill-color`) or a
+`data-tone` on the part (og-ui's `component_styles_lay_out_and_roles_dress`
+holds the built-ins to it). The role rules sit in `:where()`, so any pack or document rule wins.
 A part named for what it shows declares its role with a part list, as in
 HTML: `part="ArenaRoster.portrait ArenaRoster.picture"` is reached by
 `::part()` under either name, by its document's `[part~="ArenaRoster.portrait"]`,
@@ -1570,14 +1575,18 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 | `band`, `title` | `--band-fill/height/pad/rule/rule-width/rule-image/shadow/end-start-image/end-finish-image`, `--title-ink/font/size/weight/tracking/transform/shadow` | `class="lead"` and `class="small"` bands (`--band-lead-fill`, `--band-small-*`, `--title-lead-size`, `--title-small-size`), which set `--title-size` for the title inside them; one step down on a phone on its side |
 | `row` | `--row-fill/hover-fill/pressed-fill/selected-fill/selected-edge/radius` | hover, pressed, selected (`aria-selected`, `aria-current`, `data-selected`), disabled, `data-done` |
 | `cell` | `--cell-fill/rim/rim-width/selected-rim/radius/shadow/hover-shadow/pressed-fill/empty-shadow`, `--cell-<rarity>-fill/shadow` | hover, pressed, selected, `data-rarity`, `data-empty`, disabled or `data-locked` |
-| `badge`, `well`, `figure` | `--badge-fill/ink/radius/shadow`, `--well-fill/radius/shadow`, `--figure-ink/font/shadow` | |
+| `card` | `--card-fill/rim/rim-width/selected-rim/radius/shadow/pad` | selected or current (a step) |
+| `badge`, `well`, `figure` | `--badge-fill/ink/radius/shadow/pad/text`, `--well-fill/radius/shadow`, `--figure-ink/font/shadow` | |
+| `headline`, `caption` | `--headline-text/weight/ink`, `--caption-text/ink` | |
+| `dot` | `--dot-fill/ink/rim/rim-width/radius` | |
+| `track`, `fill` | `--track-fill/radius/shadow`, `--fill-color/gloss`; a meter sets `--fill-color` for what it measures | `data-tone` on a fill |
 | text over the scene (StatusGrid's time left, Nameplate's name and subtitle, Waypoint's label and distance) | `--tag-halo` its outline, `--tag-fill/pad/radius` a ground of its own (none in the default style) | |
 | text over a warn fill (Nameplate's spell) | `--ink-on-warn` | |
 | `label`, `heading` | `--label-font/tracking/transform`, `--ink-label` | |
 | `name` | `--name-font/size/tracking/transform/ink/shadow`, `--name-selected-ink` (all unset by default: the component's own type stands) | selected |
 | `picture` | `--picture-fill/rim/rim-width/radius/shadow` (unset by default) | |
 | `tab` | the core tabs' `--tabs-tab-fill/hover-fill/selected-fill/ink/selected-ink`, `--tabs-font/tracking/transform` | hover, selected |
-| any part | `--trend-up/down`, `--tone-damage/heal/crit` | `data-trend`, `data-tone` |
+| any part | `--trend-up/down`, `--tone-damage/heal/crit/success/danger/warn/info` | `data-trend`, `data-tone` |
 | any role part | `--team1`, `--team2` | `data-team=a` and `data-team=b`: the team's colour as its ink and rim |
 
 `--mark-*` are the small signs a pack supplies as images and `--sfx-*`

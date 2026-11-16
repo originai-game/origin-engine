@@ -1363,12 +1363,12 @@ fn a_role_part_on_a_team_wears_the_teams_colour() {
     .unwrap();
     let mut d = mounted(
         ui,
-        r#"<meta name="parts" content="t.heading t.figure t.caption">
+        r#"<meta name="parts" content="t.heading t.figure t.note">
 <column id="Root">
   <h2 part="t.heading" data-team="a">Wolves</h2>
   <span part="t.figure" data-team="b">12</span>
   <h2 part="t.heading">Neutral</h2>
-  <span part="t.caption" data-team="a">Plain</span>
+  <span part="t.note" data-team="a">Plain</span>
 </column>"#,
         &[],
         Viewport::new(400.0, 300.0),

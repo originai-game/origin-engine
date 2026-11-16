@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Built-in component role parts",
+      "summary": "New roles the default style dresses from tokens a style pack sets once: card (a rimmed surface holding one thing, --card-*), headline and caption (a card's or row's name and its supporting words, --headline-*, --caption-*), dot (a small round mark, --dot-*), track and fill (a meter's groove and its full part, --track-*, --fill-color, --fill-gloss), and badge's --badge-pad and --badge-text. data-tone takes success, danger, warn and info (--tone-*), and a fill in a tone takes its colour. A role's selected state also follows any aria-current but false (a step's aria-current=step). News, Steps and StatBar wear them; Pips' filled layer is the part full and PassTrack's reward strip the part rewards, so neither wears a role it is not."
+    }
+  ]
+}

@@ -90,13 +90,27 @@
   --role-cell-mythic-fill: var(--control);
   --role-cell-mythic-shadow: inset 0 0 0 var(--stroke-regular) var(--mythic);
 
-  /* Badge, well, figure: a count or state pinned to a thing; a sunken
-     ground for a bar or picture; a number read at a glance. */
+  /* Card: a surface inside a frame that holds one thing (an article, an
+     entry, a step, an offer), set apart by its rim. */
+  --role-card-fill: none;
+  --role-card-rim: var(--line);
+  --role-card-rim-width: var(--stroke-thin);
+  --role-card-selected-rim: var(--focus);
+  --role-card-radius: var(--radius-card);
+  --role-card-corner-shape: round;
+  --role-card-shadow: none;
+  --role-card-pad: var(--space-md);
+
+  /* Badge, well, figure: a count or state pinned to a thing (a pill: the
+     unread, the pinned, a stack's count); a sunken ground for a bar or
+     picture; a number read at a glance. */
   --role-badge-fill: var(--control-strong);
   --role-badge-ink: var(--ink);
   --role-badge-radius: var(--radius-capsule);
   --role-badge-corner-shape: round;
   --role-badge-shadow: none;
+  --role-badge-pad: 0 var(--space-xs);
+  --role-badge-text: var(--text-caption);
   --role-well-fill: var(--well);
   --role-well-radius: var(--radius-control);
   --role-well-corner-shape: round;
@@ -118,6 +132,34 @@
   --role-tag-fill: none;
   --role-tag-pad: 0px;
   --role-tag-radius: var(--radius-control);
+
+  /* Caption: the supporting words beside what they describe (a date, a
+     detail, a state, an empty list's note). */
+  --role-caption-text: var(--text-caption);
+  --role-caption-ink: var(--ink-muted);
+
+  /* Headline: the name a card or row leads with (an article's title, a
+     step's name), under a frame's title and over its captions. */
+  --role-headline-text: var(--text-base);
+  --role-headline-weight: var(--font-weight-semibold);
+  --role-headline-ink: var(--ink);
+
+  /* Dot: a small round mark (a step's number, a legend's dot, a node). */
+  --role-dot-fill: var(--well);
+  --role-dot-ink: var(--ink);
+  --role-dot-rim: transparent;
+  --role-dot-rim-width: 0px;
+  --role-dot-radius: var(--radius-capsule);
+
+  /* Track and fill: a meter's groove and the part of it that is full. A
+     component names what the fill measures by setting `--fill-color` on
+     the meter (`--fill-color: var(--mana)`); `--fill-gloss` is the light
+     over it, an image layer (`none` for a flat fill). */
+  --role-track-fill: var(--control-strong);
+  --role-track-radius: var(--meter-radius);
+  --role-track-shadow: var(--meter-shadow);
+  --role-fill-color: var(--primary);
+  --role-fill-gloss: linear-gradient(180deg, var(--sheen), transparent 50%, var(--shadow-30));
 
   /* Label: a caption or column heading. */
   --role-label-font: var(--type-label-font);
@@ -142,6 +184,12 @@
   --role-tone-damage: var(--danger);
   --role-tone-heal: var(--success);
   --role-tone-crit: var(--warn);
+  /* What a state means, on any part (`data-tone`): a step done or failed, a
+     check passed, a warning. */
+  --role-tone-success: var(--success);
+  --role-tone-danger: var(--danger);
+  --role-tone-warn: var(--warn);
+  --role-tone-info: var(--info);
 
   /* Marks: small drawn signs a pack supplies as images (none by default,
      where a component's own icon shows). */
