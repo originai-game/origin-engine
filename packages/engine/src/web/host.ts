@@ -209,6 +209,10 @@ export interface WebExtras {
   og_web_fail_image?(key: number, reason: string): void;
   /** A document's http(s) image (og-runtime's world/remote.rs), answered with og_web_put_image or og_web_fail_image. */
   og_web_set_remote_fetcher?(fetch: (key: number, url: string, credentials: boolean, integrity: string, referrerPolicy: string) => void): void;
+  /** A remote <iframe>'s document (og-runtime's world/remote.rs), answered with og_web_put_text or og_web_fail_text. */
+  og_web_set_remote_text_fetcher?(fetch: (key: number, url: string, credentials: boolean, integrity: string, referrerPolicy: string) => void): void;
+  og_web_put_text?(key: number, bytes: Uint8Array): void;
+  og_web_fail_text?(key: number, reason: string): void;
   og_web_bundle_files(manifest: string): string;
   /** Each cooked file's integrity, `{ "<file>": "sha384-…" }` (or `{ error }`), for a package from an asset base. */
   og_web_bundle_integrity(manifest: string): string;

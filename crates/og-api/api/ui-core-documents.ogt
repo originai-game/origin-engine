@@ -10,6 +10,17 @@
     field value Json "The new value (changed, set), the row's index (select); null otherwise."
   }
 
+  struct UiFrameMessage {
+    doc "Something the document of a remote `<iframe>` did (docs/ui.md §2.1 Frames, HTML's `postMessage` as a frame's events): it never reaches docEvents, so the game reads it here and decides what it does. A gameplay effect then goes through og.input.intent, so replays carry it."
+    field mount String "The embedding document's mount."
+    field frame String "The `<iframe>`'s path."
+    field origin String "The origin its document was loaded from, such as `https://events.example.com`: check it before acting."
+    field kind String "click, changed, select, emit, action or set, as a document event's kind."
+    field name String "The element's id (click), the prop (changed), the event or action's name."
+    field path String "The element's path inside the frame, after the iframe's."
+    field value Json "The new value (changed, set), the row's index (select); null otherwise."
+  }
+
   struct UiLayer {
     doc "A layer of the stack (docs/ui.md §2.1), as its screen declares it."
     field serial u32 "Its number, unique for the UI's life: what push answered."
@@ -131,6 +142,12 @@
     doc "Take the events of the documents built this frame: pushed layers and store-driven mounts."
     param world World "The world."
     returns List.UiDocEvent
+  }
+
+  fn frameMessages {
+    doc "Take what the documents of remote `<iframe>`s sent this frame: their clicks, changed controls and named events, each with the origin it came from."
+    param world World "The world."
+    returns List.UiFrameMessage
   }
 
   fn gameInput {

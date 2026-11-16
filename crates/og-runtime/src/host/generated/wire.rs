@@ -19969,6 +19969,64 @@ impl ToJson for UiDocEvent {
     }
 }
 
+/// `UiFrameMessage`: packages/knowledge/wiki/ui.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct UiFrameMessage {
+    pub mount: String,
+    pub frame: String,
+    pub origin: String,
+    pub kind: String,
+    pub name: String,
+    pub path: String,
+    pub value: Value,
+}
+
+impl Default for UiFrameMessage {
+    fn default() -> Self {
+        Self {
+            mount: Default::default(),
+            frame: Default::default(),
+            origin: Default::default(),
+            kind: Default::default(),
+            name: Default::default(),
+            path: Default::default(),
+            value: Default::default(),
+        }
+    }
+}
+
+impl FromJson for UiFrameMessage {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            mount: field(o, "mount", d.mount)?,
+            frame: field(o, "frame", d.frame)?,
+            origin: field(o, "origin", d.origin)?,
+            kind: field(o, "kind", d.kind)?,
+            name: field(o, "name", d.name)?,
+            path: field(o, "path", d.path)?,
+            value: field(o, "value", d.value)?,
+        })
+    }
+}
+
+impl ToJson for UiFrameMessage {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("mount".into(), self.mount.to_json());
+        o.insert("frame".into(), self.frame.to_json());
+        o.insert("origin".into(), self.origin.to_json());
+        o.insert("kind".into(), self.kind.to_json());
+        o.insert("name".into(), self.name.to_json());
+        o.insert("path".into(), self.path.to_json());
+        o.insert("value".into(), self.value.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `UiLayer`: packages/knowledge/wiki/ui.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct UiLayer {

@@ -314,6 +314,28 @@ pub fn og_web_set_remote_fetcher(fetch: js_sys::Function) {
     crate::REMOTE_FETCHER.with(|f| *f.borrow_mut() = Some(fetch));
 }
 
+/// The Worker's `fetchText(key, url, credentials, integrity,
+/// referrerPolicy)`, called for a remote `<iframe>`'s document
+/// (og-runtime's world/remote.rs): it `fetch()`es the URL as
+/// `og_web_set_remote_fetcher`'s does and answers with the response's
+/// bytes through `og_web_put_text`, or `og_web_fail_text`.
+#[wasm_bindgen]
+pub fn og_web_set_remote_text_fetcher(fetch: js_sys::Function) {
+    crate::REMOTE_TEXT_FETCHER.with(|f| *f.borrow_mut() = Some(fetch));
+}
+
+/// The bytes a remote document's fetch answered.
+#[wasm_bindgen]
+pub fn og_web_put_text(key: f64, bytes: Vec<u8>) {
+    crate::FETCHED_TEXTS.with(|m| m.borrow_mut().insert(key as u64, Ok(bytes)));
+}
+
+/// A remote document that did not arrive, and why.
+#[wasm_bindgen]
+pub fn og_web_fail_text(key: f64, reason: String) {
+    crate::FETCHED_TEXTS.with(|m| m.borrow_mut().insert(key as u64, Err(reason)));
+}
+
 /// What an image decode answered: RGBA8 rows top to bottom as the file
 /// stores them, and the EXIF orientation it names for them (1: upright).
 #[wasm_bindgen]

@@ -103,6 +103,45 @@ impl Ui {
         std::mem::take(&mut self.docs.state_mut().queued)
     }
 
+    /// Defines the document a remote `<iframe>` fetched, `text` from the
+    /// URL of `key` (its request key, as the frame names it), and builds
+    /// the frames that wait for it. Its relative urls are beside that URL.
+    /// Refused past [`crate::doc::frames::MAX_SOURCE`] or when it does not
+    /// parse; what it may hold is checked when a frame shows it
+    /// ([`crate::doc::frames::refusal`]).
+    /// Answers what it needs fetched in turn: its remote images and the
+    /// remote frames it embeds, by request key.
+    pub fn define_frame_document(
+        &mut self,
+        key: &str,
+        text: &str,
+    ) -> Result<(Vec<String>, Vec<String>), String> {
+        let url = key.split(' ').next().unwrap_or(key);
+        if text.len() > crate::doc::frames::MAX_SOURCE {
+            return Err(format!(
+                "{url}: its source is past {} KiB",
+                crate::doc::frames::MAX_SOURCE / 1024
+            ));
+        }
+        let mut doc = self
+            .parse_document(url, text, Vec::new())
+            .map_err(|e| e.join("; "))?;
+        doc.name = key.to_string();
+        let needs = (
+            doc.sheet.remote.iter().cloned().collect(),
+            doc.remote_frames(),
+        );
+        self.define_document(doc);
+        Ok(needs)
+    }
+
+    /// Takes what remote frames' documents sent since the last take
+    /// (docs/ui.md §2.1 Frames): their events, which never reach
+    /// [`Ui::take_doc_events`].
+    pub fn take_frame_messages(&mut self) -> Vec<crate::doc::frames::FrameMessage> {
+        std::mem::take(&mut self.docs.state_mut().frame_messages)
+    }
+
     /// What the mounted documents have built (the probe's `dump_ui`), in
     /// tree order.
     pub fn doc_built(&self) -> Vec<Built> {

@@ -225,7 +225,11 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
             "{file}: publish.aspect_min is wider than aspect_max; the narrowest comes first (aspect_min \"16:10\", aspect_max \"21:9\")"
         ));
     }
+    // The origins remote `<iframe>`s may load from: the platform sets its
+    // CSP to match (docs/web-export.md §Frames).
+    let frames = og_ui::doc::frames::project_origins(b).map_err(|e| format!("{file}:{e}"))?;
     Ok(json!({
+        "frames": frames,
         "name": s("name").unwrap_or_else(|| "Origin Engine game".into()),
         "id": s("id").unwrap_or_else(|| "game".into()),
         "engine": s("engine").unwrap_or_else(|| crate::VERSION.into()),

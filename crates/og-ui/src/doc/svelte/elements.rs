@@ -466,7 +466,30 @@ impl Parser {
                 crate::svg::smil::Animation::parse(tag, &literal, mpath).map_err(|e| (at, e))?;
             }
         }
+        // A remote `<iframe>`'s request attributes (HTML's `crossorigin`,
+        // `integrity`, `referrerpolicy`), as url()'s modifiers.
+        let mut request = Vec::new();
         for a in attrs {
+            if frame
+                && let Some(modifier) = match a.name.as_str() {
+                    "crossorigin" => Some("cross-origin"),
+                    "integrity" => Some("integrity"),
+                    "referrerpolicy" => Some("referrer-policy"),
+                    _ => None,
+                }
+            {
+                if a.bound {
+                    return Err((a.at, format!("an <iframe>'s {} is a literal", a.name)));
+                }
+                // HTML's empty or unknown `crossorigin` is anonymous.
+                let value = match (modifier, a.value.as_str()) {
+                    ("cross-origin", "use-credentials") => "use-credentials",
+                    ("cross-origin", _) => "anonymous",
+                    (_, value) => value,
+                };
+                request.push((modifier.to_string(), value.to_string(), a.at));
+                continue;
+            }
             if a.name == "id" {
                 if a.bound || a.value.is_empty() || a.value.contains(['/', '#']) {
                     return Err((
@@ -494,10 +517,24 @@ impl Parser {
                         "an <iframe>'s src is a literal path to a document of the game".into(),
                     ));
                 }
+                // In a remote document a relative src is beside it.
+                let remote = crate::css::request::is_remote(&self.doc.source);
+                if remote || crate::css::request::is_remote(&a.value) {
+                    let url = crate::css::request::join(&self.doc.source, &a.value);
+                    if !crate::css::request::secure(&url) {
+                        return Err((
+                            a.at,
+                            "a remote <iframe> loads over https:// (http:// only from localhost)"
+                                .into(),
+                        ));
+                    }
+                    self.doc.nodes[i].frame = Some(url);
+                    continue;
+                }
                 if a.value.contains(':') {
                     return Err((
                         a.at,
-                        "a remote <iframe> src comes with the project's frames allowlist; for now name a document of the game (src=\"news.svelte\")".into(),
+                        "an <iframe>'s src is a document of the game (src=\"news.svelte\") or an https:// URL".into(),
                     ));
                 }
                 let id = super::relative_id(&self.doc.source, &a.value)
@@ -943,6 +980,33 @@ impl Parser {
             return Err((
                 at,
                 "an <iframe> needs src naming a document of the game".into(),
+            ));
+        }
+        // A remote frame is named by its request key, as a remote url()
+        // image is; its document is given data, never a writable path.
+        if let Some(url) = self.doc.nodes[i].frame.clone()
+            && crate::css::request::is_remote(&url)
+        {
+            let modifiers: Vec<_> = request
+                .iter()
+                .map(|(n, v, _)| (n.clone(), v.clone()))
+                .collect();
+            let key = crate::css::request::UrlRequest::new(&url, &modifiers)
+                .map_err(|e| (at, e))?
+                .key();
+            self.doc.nodes[i].frame = Some(key);
+            if let Some(a) = attrs.iter().find(|a| a.name.starts_with("bind:")) {
+                return Err((
+                    a.at,
+                    "a remote <iframe> is given data, not a binding: pass the value, and read what it sends back from og.ui.frameMessages".into(),
+                ));
+            }
+        } else if let Some((name, _, at)) = request.first() {
+            return Err((
+                *at,
+                format!(
+                    "{name} applies to a remote <iframe> (an https:// src); the game's own document is not fetched"
+                ),
             ));
         }
         if inline_el {

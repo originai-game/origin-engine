@@ -151,10 +151,13 @@ impl RetainedHost {
 
     pub(crate) fn document_replaced(&mut self, ui: &mut Ui, document: &str) {
         self.profiles.remove(document);
+        let framing = self.framed.remove(document).unwrap_or_default();
         let mounts: Vec<_> = self
             .registrations
             .iter()
-            .filter(|(_, registration)| registration.document == document)
+            .filter(|(mount, registration)| {
+                registration.document == document || framing.contains(*mount)
+            })
             .map(|(mount, _)| mount.clone())
             .collect();
         for mount in mounts {

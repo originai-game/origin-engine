@@ -661,23 +661,37 @@ export const pageSvg = new PageSvg((m, transfer) => (globalThis as unknown as { 
  * upright, so it is drawn turned back, and CSS image-orientation turns it
  * at draw time as on the native host.
  */
-export function installRemoteFetcher(glue: Pick<WebExtras, "og_web_set_remote_fetcher" | "og_web_put_image" | "og_web_fail_image" | "og_web_image_orientation">, svg: (bytes: Uint8Array) => Promise<ImageBitmap>): boolean {
+export function installRemoteFetcher(glue: Pick<WebExtras, "og_web_set_remote_fetcher" | "og_web_put_image" | "og_web_fail_image" | "og_web_image_orientation" | "og_web_set_remote_text_fetcher" | "og_web_put_text" | "og_web_fail_text">, svg: (bytes: Uint8Array) => Promise<ImageBitmap>): boolean {
   const g = globalThis as { createImageBitmap?: (b: Blob, o?: Record<string, string>) => Promise<ImageBitmap>; OffscreenCanvas?: new (w: number, h: number) => OffscreenCanvas; location?: { href: string } };
   const { og_web_set_remote_fetcher: set, og_web_put_image: put, og_web_fail_image: fail } = glue;
   if (!g.createImageBitmap || !g.OffscreenCanvas || !set || !put || !fail) return false;
   const decode = g.createImageBitmap;
   const Canvas = g.OffscreenCanvas;
   const referrer = g.location ? new URL(".", g.location.href).href : undefined;
+  const init = (credentials: boolean, integrity: string, referrerPolicy: string): RequestInit => ({
+    mode: "cors",
+    credentials: credentials ? "include" : "same-origin",
+    ...(integrity ? { integrity } : {}),
+    ...(referrerPolicy ? { referrerPolicy: referrerPolicy as ReferrerPolicy } : {}),
+    ...(referrer ? { referrer } : {}),
+    ...(typeof AbortSignal?.timeout === "function" ? { signal: AbortSignal.timeout(FETCH_DEADLINE_MS) } : {}),
+  });
+  // The browser names no reason for a refused CORS or integrity check: a TypeError.
+  const reason = (e: unknown) => (e instanceof TypeError ? `refused or unreachable (${e.message}: the network, CORS or integrity)` : e instanceof Error ? e.message : String(e));
+  // A remote <iframe>'s document: its bytes, under the same request rules.
+  const { og_web_set_remote_text_fetcher: setText, og_web_put_text: putText, og_web_fail_text: failText } = glue;
+  if (setText && putText && failText) {
+    setText((key, url, credentials, integrity, referrerPolicy) => {
+      fetch(url, init(credentials, integrity, referrerPolicy))
+        .then(async (r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          putText(key, new Uint8Array(await r.arrayBuffer()));
+        })
+        .catch((e: unknown) => failText(key, reason(e)));
+    });
+  }
   set((key, url, credentials, integrity, referrerPolicy) => {
-    const init: RequestInit = {
-      mode: "cors",
-      credentials: credentials ? "include" : "same-origin",
-      ...(integrity ? { integrity } : {}),
-      ...(referrerPolicy ? { referrerPolicy: referrerPolicy as ReferrerPolicy } : {}),
-      ...(referrer ? { referrer } : {}),
-      ...(typeof AbortSignal?.timeout === "function" ? { signal: AbortSignal.timeout(FETCH_DEADLINE_MS) } : {}),
-    };
-    fetch(url, init)
+    fetch(url, init(credentials, integrity, referrerPolicy))
       .then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const bytes = new Uint8Array(await r.arrayBuffer());
@@ -687,11 +701,7 @@ export function installRemoteFetcher(glue: Pick<WebExtras, "og_web_set_remote_fe
         const t = texels(bitmap, Canvas, exif);
         put(key, t.width, t.height, t.rgba, exif);
       })
-      .catch((e: unknown) => {
-        // The browser names no reason for a refused CORS or integrity check: a TypeError.
-        const why = e instanceof TypeError ? `refused or unreachable (${e.message}: the network, CORS or integrity)` : e instanceof Error ? e.message : String(e);
-        fail(key, why);
-      });
+      .catch((e: unknown) => fail(key, reason(e)));
   });
   return true;
 }

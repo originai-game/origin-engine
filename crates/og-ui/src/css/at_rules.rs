@@ -787,10 +787,15 @@ pub fn resolve(base: &str, path: &str) -> String {
 
 /// Rewrite URL tokens, including those nested in image-set(), without
 /// interpreting quoted strings or comments as CSS functions.
+/// In a remote document (`base` an http(s) URL) a relative url() is a
+/// URL relative to the document's own.
 pub fn rebase_urls(base: &str, css: &str) -> String {
+    let remote = super::request::is_remote(base);
     map_urls(css, &mut |url| {
         if url.starts_with('#') || url.contains(':') {
             url.to_owned()
+        } else if remote {
+            super::request::join(base, url)
         } else {
             format!("/{}", resolve(base, url))
         }
@@ -813,6 +818,25 @@ pub fn urls(css: &str) -> Vec<String> {
         true,
     );
     out
+}
+
+/// The files of the package and the http(s) images (request keys) that
+/// `css`, written in the document or sheet `base`, names. In a remote
+/// document a relative url() is remote too, beside the document.
+pub fn sheet_urls(base: &str, css: &str) -> (Vec<String>, Vec<String>) {
+    let mut remote = remote_urls(css);
+    let relative = urls(css);
+    if super::request::is_remote(base) {
+        for url in relative {
+            let url = super::request::join(base, &url);
+            if !remote.contains(&url) {
+                remote.push(url);
+            }
+        }
+        return (Vec::new(), remote);
+    }
+    let assets = relative.iter().map(|url| resolve(base, url)).collect();
+    (assets, remote)
 }
 
 /// The http(s) images a declaration or stylesheet names, each as its

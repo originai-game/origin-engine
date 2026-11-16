@@ -10,6 +10,9 @@ pub use crate::css::{AtQuery, StyleDeclaration};
 pub mod build;
 pub(crate) use og_css::calc;
 pub mod catalogue;
+/// Remote `<iframe>`s: the project's allowed origins and what a remote
+/// document may be.
+pub mod frames;
 #[doc(hidden)]
 pub use crate::css::contain_css;
 pub use crate::css::container;

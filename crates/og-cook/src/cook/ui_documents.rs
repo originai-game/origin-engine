@@ -120,6 +120,7 @@ fn plan_document<'a>(
         style_tokens_hash,
         document_themes,
         components,
+        frames,
         ..
     } = *cx;
     let mut uses = Vec::new();
@@ -178,6 +179,16 @@ fn plan_document<'a>(
         }
         // Each document its <iframe>s embed is loaded with it.
         for id in doc.nodes.iter().filter_map(|n| n.frame.as_ref()) {
+            // A remote one is fetched at run time, from an origin the
+            // project lists (its CSP is set to match).
+            if og_ui::css::request::is_remote(id) {
+                let url = id.split(' ').next().unwrap_or(id);
+                if !og_ui::doc::frames::allowed(id, frames) {
+                    return Err(vec![format!("{}: <iframe src=\"{url}\"> loads from an origin project.ogt's `frames` does not list; add it (frames \"{}\")", s.rel, og_ui::css::request::origin(url).unwrap_or_default())]);
+                }
+                dependencies.push(format!("{url}=<iframe frames>"));
+                continue;
+            }
             if !sources.iter().any(|source| source.rel == *id && source.kind == &DOCUMENT) {
                 return Err(vec![format!("{}: <iframe src> names {id}, which is not a document of the project", s.rel)]);
             }

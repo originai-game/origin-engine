@@ -3843,3 +3843,97 @@ fn column_scroll_markers_scroll_to_their_columns() {
         "and the first back"
     );
 }
+
+/// A remote `<iframe>` (docs/ui.md §2.1 Frames) shows the document its host
+/// fetched once it is defined under the frame's request key, and until then
+/// only its own box. Its events reach the game only as frame messages, its
+/// relative url()s are beside it, and a document that reads a store of the
+/// game is refused with a warning while the page around it still builds.
+/// Fails when a remote document's click arrives as a document event, when
+/// a refused document stops the page's build or shows anything, or when a
+/// relative url() is read as a file of the package.
+#[test]
+fn a_remote_frame_shows_its_fetched_document_and_sends_only_messages() {
+    let ui = crate::support::ui_with_font(crate::support::test_font_metrics());
+    let page = r#"<meta name="component" content="t">
+<div><div id="Page">
+<iframe id="Event" src="https://events.example.com/og/halloween.svelte" title="Event" heading="Night"></iframe>
+<iframe id="Greedy" src="https://events.example.com/og/greedy.svelte"></iframe>
+</div><button id="Own" onclick={own}>own</button></div>
+<meta name="action:own" content="Own">
+<style>#Event { width: 200px; frame-sizing: content-height; }</style>"#;
+    let mut d = Doc::mounted(ui, page, &[]);
+    assert_eq!(
+        wh(&d, "Event"),
+        (200.0, 150.0),
+        "its box while it is fetched"
+    );
+    assert!(d.el("Join").is_none());
+    let event = r#"<meta name="screen" content="halloween">
+<meta name="responsive-embedded-sizing">
+<meta name="prop:heading" content="string">
+<meta name="action:join" content="Join">
+<div id="Card"><p id="Heading">{heading}</p><button id="Join" onclick={join}>join</button></div>
+<style>#Card { padding: 4px; background-image: url("art/banner.png"); } #Heading { margin: 0; } #Join { height: 30px; }</style>"#;
+    let (images, frames) =
+        d.ui.define_frame_document("https://events.example.com/og/halloween.svelte", event)
+            .unwrap();
+    assert_eq!(images, ["https://events.example.com/og/art/banner.png"]);
+    assert!(frames.is_empty());
+    let greedy = r#"<meta name="screen" content="greedy"><p id="Gold">{$gold}</p>"#;
+    d.ui.define_frame_document("https://events.example.com/og/greedy.svelte", greedy)
+        .unwrap();
+    d.step(InputFrame::default());
+    d.step(InputFrame::default());
+    assert_eq!(d.get("Heading").text, "Night", "its attribute is its prop");
+    let heading = d.get("Heading").height;
+    assert_eq!(wh(&d, "Event"), (200.0, heading + 30.0 + 8.0));
+    let events = d.click("Join");
+    assert!(
+        events.iter().all(|e| !e.path.contains("/Join")),
+        "{events:?}"
+    );
+    let messages = d.ui.take_frame_messages();
+    let emit = messages.iter().find(|m| m.kind == "emit").unwrap();
+    assert_eq!(emit.name, "join");
+    assert_eq!(emit.origin, "https://events.example.com");
+    assert!(emit.frame.ends_with("/Event"), "{}", emit.frame);
+    assert!(
+        d.el("Gold").is_none(),
+        "a frame that reads $gold shows nothing"
+    );
+    let warnings = &d.ui.frame().warnings;
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.contains("greedy.svelte") && w.contains("$gold")),
+        "{warnings:?}"
+    );
+    let events = d.click("Own");
+    assert!(
+        events.iter().any(|e| e.kind == "emit" && e.name == "own"),
+        "the page's own events are document events: {events:?}"
+    );
+    // A remote src is https (http only from localhost), given data rather
+    // than a binding; a local one takes no request attributes.
+    for (src, refused) in [
+        (r#"src="http://events.example.com/a.svelte""#, true),
+        (
+            r#"src="http://localhost:8080/a.svelte" integrity="sha384-x""#,
+            false,
+        ),
+        (
+            r#"src="https://events.example.com/a.svelte" bind:heading={x}"#,
+            true,
+        ),
+        (r#"src="news.svelte" referrerpolicy="no-referrer""#, true),
+    ] {
+        let text =
+            format!(r#"<meta name="component" content="t"><div><iframe {src}></iframe></div>"#);
+        assert_eq!(
+            og_ui::UiDocument::parse("ui/t.svelte", &text).is_err(),
+            refused,
+            "{src}"
+        );
+    }
+}

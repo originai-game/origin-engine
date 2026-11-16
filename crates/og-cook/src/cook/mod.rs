@@ -406,6 +406,7 @@ pub fn cook_project_with_texture_cache(
         story_functions_stamp: &project.story_functions_stamp,
         document_themes: &document_themes,
         components: &components,
+        frames: &project.frames,
     };
     let (
         plan,

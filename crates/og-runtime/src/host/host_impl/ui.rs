@@ -203,6 +203,9 @@ macro_rules! __og_host_bindings_ui {
             fn og_ui_doc_events(&self, world: u32) -> String {
                 $crate::host_impl::json($crate::og_ui_doc_events(world))
             }
+            fn og_ui_frame_messages(&self, world: u32) -> String {
+                $crate::host_impl::json($crate::og_ui_frame_messages(world))
+            }
             fn og_ui_game_input(&self, world: u32) -> bool {
                 $crate::og_ui_game_input(world)
             }

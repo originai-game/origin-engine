@@ -65,6 +65,85 @@ pub fn is_remote(url: &str) -> bool {
     lower(7).as_deref() == Some("http://") || lower(8).as_deref() == Some("https://")
 }
 
+/// A URL's origin, `scheme://host[:port]` lowercased with a default port
+/// dropped (HTML's ASCII serialisation); `None` for a URL that is not
+/// http(s) or names no host.
+pub fn origin(url: &str) -> Option<String> {
+    let (scheme, rest) = url.split_once("://")?;
+    let scheme = scheme.to_ascii_lowercase();
+    let default = match scheme.as_str() {
+        "http" => ":80",
+        "https" => ":443",
+        _ => return None,
+    };
+    let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    let authority = &rest[..end];
+    // Userinfo names no origin of its own, and a URL that carries it is
+    // refused rather than read.
+    if authority.is_empty() || authority.contains('@') || authority.contains(char::is_whitespace) {
+        return None;
+    }
+    let host = authority.to_ascii_lowercase();
+    let host = host.strip_suffix(default).unwrap_or(&host);
+    Some(format!("{scheme}://{host}"))
+}
+
+/// Whether `url` is a secure context's: `https:`, or `http:` to the
+/// loopback host (`localhost`, `127.0.0.1`, `[::1]`), as a browser counts
+/// one (Secure Contexts §3.2).
+pub fn secure(url: &str) -> bool {
+    let Some(origin) = origin(url) else {
+        return false;
+    };
+    if origin.starts_with("https://") {
+        return true;
+    }
+    let host = &origin["http://".len()..];
+    let host = match host.strip_prefix('[') {
+        Some(v6) => v6.split(']').next().unwrap_or(""),
+        None => host.split(':').next().unwrap_or(""),
+    };
+    matches!(host, "localhost" | "127.0.0.1" | "::1")
+}
+
+/// `reference` resolved against the absolute http(s) URL `base` (RFC 3986
+/// §5.2, without query or fragment merging): an absolute URL is itself, a
+/// path from `/` replaces the base's, and a relative path replaces its last
+/// segment, `.` and `..` read.
+pub fn join(base: &str, reference: &str) -> String {
+    if is_remote(reference) {
+        return reference.to_owned();
+    }
+    let Some(origin) = origin(base) else {
+        return reference.to_owned();
+    };
+    let (path, extra) = match reference.find(['?', '#']) {
+        Some(i) => reference.split_at(i),
+        None => (reference, ""),
+    };
+    let mut parts: Vec<&str> = Vec::new();
+    if !path.starts_with('/') {
+        let rest = &base[base.find("://").map_or(0, |i| i + 3)..];
+        let rest = &rest[rest.find('/').unwrap_or(rest.len())..];
+        let rest = &rest[..rest.find(['?', '#']).unwrap_or(rest.len())];
+        if let Some((dir, _)) = rest.rsplit_once('/') {
+            parts.extend(dir.split('/').filter(|p| !p.is_empty()));
+        }
+    }
+    let segments: Vec<&str> = path.split('/').collect();
+    for (i, part) in segments.iter().enumerate() {
+        match *part {
+            "." => {}
+            ".." => {
+                parts.pop();
+            }
+            "" if i + 1 < segments.len() => {}
+            part => parts.push(part),
+        }
+    }
+    format!("{origin}/{}{extra}", parts.join("/"))
+}
+
 impl UrlRequest {
     /// The request for `url` with its modifiers as written (`name`, its one
     /// argument: an identifier, or the string `integrity()` takes).

@@ -113,6 +113,11 @@ thread_local! {
     /// DECODED_IMAGES as a decode is.
     static REMOTE_FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     static DECODED_IMAGES: RefCell<IdMap<u64, Result<og_runtime::Decoded, String>>> = const { RefCell::new(IdMap::new()) };
+    /// The Worker's `fetchText(key, url, credentials, integrity,
+    /// referrerPolicy)` for a remote `<iframe>`'s document, and the bytes
+    /// it answered by key.
+    static REMOTE_TEXT_FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
+    static FETCHED_TEXTS: RefCell<IdMap<u64, Result<Vec<u8>, String>>> = const { RefCell::new(IdMap::new()) };
     /// `performance` and its `now`, where the global has them (Workers do).
     static PERFORMANCE: Option<(JsValue, js_sys::Function)> = {
         let performance = js_sys::Reflect::get(&js_sys::global(), &JsValue::from_str("performance")).ok();

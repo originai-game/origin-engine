@@ -27352,6 +27352,28 @@ export interface UiDocEvent {
   readonly value: unknown;
 }
 
+/**
+ * Something the document of a remote `<iframe>` did (docs/ui.md §2.1 Frames, HTML's `postMessage` as a frame's events): it never reaches docEvents, so the game reads it here and decides what it does. A gameplay effect then goes through og.input.intent, so replays carry it.
+ */
+export interface UiFrameMessage {
+  /** The embedding document's mount. */
+  readonly mount: string;
+  /** The `<iframe>`'s path. */
+  readonly frame: string;
+  /**
+   * The origin its document was loaded from, such as `https://events.example.com`: check it before acting.
+   */
+  readonly origin: string;
+  /** click, changed, select, emit, action or set, as a document event's kind. */
+  readonly kind: string;
+  /** The element's id (click), the prop (changed), the event or action's name. */
+  readonly name: string;
+  /** The element's path inside the frame, after the iframe's. */
+  readonly path: string;
+  /** The new value (changed, set), the row's index (select); null otherwise. */
+  readonly value: unknown;
+}
+
 /** A layer of the stack (docs/ui.md §2.1), as its screen declares it. */
 export interface UiLayer {
   /** Its number, unique for the UI's life: what push answered. */
@@ -27492,6 +27514,7 @@ export interface UiActionHint {
   /** It is a hold. */
   readonly hold: boolean;
 }
+
 
 
 
@@ -37851,6 +37874,12 @@ export declare namespace og {
      * @param world The world.
      */
     function docEvents(world: World): readonly UiDocEvent[];
+    /**
+     * Take what the documents of remote `<iframe>`s sent this frame: their clicks, changed controls and named events, each with the origin it came from.
+     *
+     * @param world The world.
+     */
+    function frameMessages(world: World): readonly UiFrameMessage[];
     /**
      * Gameplay takes input this tick: no layer whose input is `menu` is on the stack. Input goes to the top layer that takes it, once per tick.
      *

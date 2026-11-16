@@ -12,6 +12,8 @@ pub(crate) struct Project {
     pub(crate) budget_desc: String,
     pub(crate) story_functions: BTreeMap<String, og_story::yarn::types::Function>,
     pub(crate) story_functions_stamp: Vec<u8>,
+    /// `frames`: the origins remote `<iframe>`s may load from.
+    pub(crate) frames: Vec<String>,
 }
 
 impl Project {
@@ -28,6 +30,12 @@ impl Project {
             .as_ref()
             .and_then(|d| stats::Budgets::from_project(&d.body).ok())
             .unwrap_or_default();
+        let frames = doc
+            .as_ref()
+            .map(|d| og_ui::doc::frames::project_origins(&d.body))
+            .transpose()
+            .map_err(|e| CookError(format!("project.ogt:{e}")))?
+            .unwrap_or_default();
         let budget_desc = format!(
             "budgets triangles {} vertices {}",
             budgets.triangles, budgets.vertices
@@ -41,6 +49,7 @@ impl Project {
             budget_desc,
             story_functions,
             story_functions_stamp,
+            frames,
         })
     }
 }

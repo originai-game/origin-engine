@@ -128,7 +128,13 @@ impl Ui {
             self.keep_world_anchors();
             host = std::mem::take(&mut self.docs.state_mut().memory.retained);
             self.answer_dismiss_toast(&mut events);
-            self.docs.state_mut().queued.extend(events);
+            let state = self.docs.state_mut();
+            let events = crate::doc::frames::split_messages(
+                events,
+                &host.remote_frames,
+                &mut state.frame_messages,
+            );
+            state.queued.extend(events);
             for (context, path, value) in writes {
                 if let Err(error) =
                     context.write_model(&mut self.docs.state_mut().memory.reactive, &path, value)
@@ -146,6 +152,9 @@ impl Ui {
         self.out
             .warnings_mut()
             .extend(host.diagnostics.values().flatten().cloned());
+        self.out
+            .warnings_mut()
+            .extend(host.frame_warnings.values().cloned());
         self.docs.state_mut().memory.retained = host;
         result
     }

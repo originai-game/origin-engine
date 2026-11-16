@@ -260,7 +260,7 @@ impl RetainedHost {
         }
         let mut children = Vec::new();
         if node.frame.is_some() {
-            children.push(self.compile_frame(
+            children.extend(self.compile_frame(
                 ui,
                 (doc.clone(), index),
                 context.clone(),
