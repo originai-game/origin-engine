@@ -729,6 +729,12 @@ impl Ui {
                 {
                     el.align_content = Some(crate::Align::Stretch);
                 }
+                // Its items stretch across their line unless told otherwise
+                // (`align-items: normal`, CSS Flexbox §8.3): an item with an
+                // `auto` cross size fills it.
+                if source.kind == Some(Kind::Box) && display == "flex" && !r.has("cross") {
+                    el.cross = crate::layout::Cross::Stretch;
+                }
                 // A `display: block` box flows its children as CSS blocks.
                 el.block = initial == "box"
                     && el.direction == Direction::Column

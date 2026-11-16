@@ -2226,3 +2226,53 @@ fn stretch_in_a_flex_line_is_its_stretch_fit_size() {
         assert_eq!(d.get("Body").height, 200.0, "the whole line, not a share");
     });
 }
+
+/// A flex container that sets no `align-items` stretches its items across
+/// their line (`normal`, CSS Flexbox §8.3): in a column an `auto` width
+/// fills it, in a row an `auto` height takes the tallest item's; a definite
+/// cross size, `align-self` and an authored `align-items` keep theirs.
+///
+/// Ways it could fail: the initial value read as `flex-start` (items
+/// content-wide in a column, a row's short item at its own height), or the
+/// stretch overriding a definite size or an item's own `align-self`.
+#[test]
+fn flex_items_stretch_across_their_line_by_default() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="C"><p id="P">x</p><div id="Fixed"></div><div id="Own"><span>ab</span></div></div>
+  <div id="R"><div id="Tall"></div><div id="Short"></div></div>
+  <div id="S"><p id="Q">x</p></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#C, #S { display: flex; flex-direction: column; width: 300px; }
+#Fixed { width: 40px; height: 5px; }
+#Own { align-self: flex-start; }
+#R { display: flex; }
+#Tall { width: 10px; height: 50px; }
+#Short { width: 10px; }
+#S { align-items: start; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        assert_eq!(d.get("P").width, 300.0, "an auto width fills the column");
+        assert_eq!(
+            wh(d, "Fixed"),
+            (40.0, 5.0),
+            "a definite width keeps its size"
+        );
+        let q = d.get("Q").width;
+        assert!(
+            q > 0.0 && q < 300.0,
+            "align-items: start keeps the content's width: {q}"
+        );
+        assert!(
+            d.get("Own").width < 300.0,
+            "align-self: flex-start opts out"
+        );
+        assert_eq!(
+            d.get("Short").height,
+            50.0,
+            "a row's short item takes the line's height"
+        );
+    });
+}
