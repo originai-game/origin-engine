@@ -534,6 +534,39 @@ a:target-current + .probe { width: 50px; }
     );
 }
 
+/// `:heading` matches every `<h1>` to `<h6>` and `:heading(1, 3)` those of
+/// the listed levels, in a rule lowered to a condition and in one matched
+/// on the instantiated tree.
+#[test]
+fn heading_matches_headings_by_level() {
+    let doc = r##"<meta name="component" content="heads">
+<column id="Root">
+  <h1 id="H1">a</h1><div class="probe" id="NextH1"></div>
+  <h2 id="H2">b</h2><div class="probe" id="NextH2"></div>
+  <h3 id="H3">c</h3><div class="probe" id="NextH3"></div>
+  <p id="P">d</p><div class="probe" id="NextP"></div>
+</column>
+<style>
+.probe { width: 10px; height: 4px; }
+h1, h2, h3, p { width: 100px; margin-left: 0; }
+:heading { margin-left: 20px; }
+:heading(1, 3) { width: 150px; }
+:heading + .probe { width: 30px; }
+:heading(2) + .probe { width: 50px; }
+</style>"##;
+    with_doc(doc, &[], |d| {
+        let of = |id: &str| (d.get(id).x, d.get(id).width);
+        assert_eq!(
+            [of("H1"), of("H2"), of("H3"), of("P")],
+            [(20.0, 150.0), (20.0, 100.0), (20.0, 150.0), (0.0, 100.0)]
+        );
+        let next = ["NextH1", "NextH2", "NextH3", "NextP"].map(|id| d.get(id).width);
+        assert_eq!(next, [30.0, 50.0, 30.0, 10.0]);
+    });
+    let refused = "<meta name=\"component\" content=\"h\">\n<h1>a</h1>\n<style>:heading(0) { width: 1px; }</style>";
+    assert!(og_ui::UiDocument::parse("ui/h.svelte", refused).is_err());
+}
+
 /// `revert-rule` rolls a property back to what it is without the
 /// keyword's own rule (CSS Cascade 5 §7.3): the next rule's declaration,
 /// whatever its layer, where `revert-layer` would drop the whole layer.

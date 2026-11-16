@@ -76,6 +76,24 @@ pub enum PseudoClass {
     /// layer's view transition runs, when the screen's `@view-transition`
     /// declares one of the types.
     ViewTransitionType(Box<[Atom]>),
+    /// `:heading` (no levels) and `:heading(1, 2)`: an `<h1>` to `<h6>`,
+    /// of one of the levels.
+    Heading(Box<[u8]>),
+}
+
+/// The heading level of a tag: `h1` to `h6`.
+pub(crate) fn heading_level(tag: &str) -> Option<u8> {
+    match tag.as_bytes() {
+        [b'h' | b'H', level @ b'1'..=b'6'] => Some(level - b'0'),
+        _ => None,
+    }
+}
+
+impl PseudoClass {
+    /// Whether a `:heading` of `levels` matches an element of `tag`.
+    pub(crate) fn heading_matches(levels: &[u8], tag: &str) -> bool {
+        heading_level(tag).is_some_and(|l| levels.is_empty() || levels.contains(&l))
+    }
 }
 
 impl ToCss for PseudoClass {
@@ -100,6 +118,14 @@ impl ToCss for PseudoClass {
             }
             PseudoClass::Defined => dest.write_str(":defined"),
             PseudoClass::AnyLink => dest.write_str(":any-link"),
+            PseudoClass::Heading(levels) => {
+                dest.write_str(":heading")?;
+                if !levels.is_empty() {
+                    let list: Vec<String> = levels.iter().map(u8::to_string).collect();
+                    write!(dest, "({})", list.join(", "))?;
+                }
+                Ok(())
+            }
             PseudoClass::ViewTransitionType(types) => {
                 dest.write_str(":active-view-transition-type(")?;
                 for (i, t) in types.iter().enumerate() {
@@ -214,6 +240,7 @@ impl<'i> sp::Parser<'i> for OgParser {
         }
         match name.as_str() {
             "defined" => Ok(PseudoClass::Defined),
+            "heading" => Ok(PseudoClass::Heading(Box::default())),
             "any-link" | "link" => Ok(PseudoClass::AnyLink),
             _ => Err(message(format!(
                 "unsupported pseudo-class :{name}; see the selector list in docs/ui.md §2.4"
@@ -246,13 +273,22 @@ impl<'i> sp::Parser<'i> for OgParser {
                 }
             }
             "state" => Ok(PseudoClass::Custom(input.expect_ident()?.as_ref().into())),
+            "heading" => {
+                let levels = input.parse_comma_separated(|input| {
+                    let level = input.expect_integer()?;
+                    u8::try_from(level).ok().filter(|l| *l > 0).ok_or_else(|| {
+                        message(":heading() takes heading levels, as :heading(1, 2)")
+                    })
+                })?;
+                Ok(PseudoClass::Heading(levels.into()))
+            }
             "active-view-transition-type" => {
                 let types = input
                     .parse_comma_separated(|input| Ok(input.expect_ident()?.as_ref().into()))?;
                 Ok(PseudoClass::ViewTransitionType(types.into()))
             }
             name => Err(message(format!(
-                "unsupported pseudo-class :{name}(); supported functions are :not(), :is(), :where(), :has(), :nth-child(), :nth-last-child(), :nth-of-type(), :nth-last-of-type(), :lang(), :dir(), :state() and :active-view-transition-type()"
+                "unsupported pseudo-class :{name}(); supported functions are :not(), :is(), :where(), :has(), :nth-child(), :nth-last-child(), :nth-of-type(), :nth-last-of-type(), :lang(), :dir(), :state(), :heading() and :active-view-transition-type()"
             ))),
         }
     }
@@ -862,6 +898,9 @@ fn condition(
                     node: index,
                     state: *state,
                 },
+                Component::NonTSPseudoClass(PseudoClass::Heading(levels)) => {
+                    Expr::Lit(PseudoClass::heading_matches(levels, tag).into())
+                }
                 Component::NonTSPseudoClass(PseudoClass::ViewTransitionType(types)) => {
                     if doc
                         .layer

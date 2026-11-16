@@ -1352,8 +1352,9 @@ and attribute operator with `i`/`s` flags (HTML's case-insensitive
 attributes compare so unless `s`), `:not()`, `:is()`, `:where()`, `:has()`
 and the structural, form, `:open`, `:modal`, `:popover-open`, `:target`
 (the element the last `#fragment` link named), `:lang()` (RFC 4647),
-`:dir()`, `:active-view-transition` and `:active-view-transition-type()`
-(a screen's root while its layer's view transition runs, by the types its
+`:dir()`, `:heading` and `:heading(1, 2)` (an `<h1>` to `<h6>`, by level),
+`:active-view-transition` and `:active-view-transition-type()` (a
+screen's root while its layer's view transition runs, by the types its
 `@view-transition` declares) pseudo-classes. Engine meanings and limits:
 
 - `lang`, `dir`, `data-*` and `state:name={…}` are selector-only

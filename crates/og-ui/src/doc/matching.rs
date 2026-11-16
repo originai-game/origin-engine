@@ -285,6 +285,7 @@ impl<'a, T: Tree> Element for DocElement<'a, T> {
                 .get(&format!("state:{}", name.0))
                 .is_some_and(|v| crate::bind::truthy(v) && v.as_str() != Some("false")),
             PseudoClass::Defined => true,
+            PseudoClass::Heading(levels) => PseudoClass::heading_matches(levels, self.facts.tag),
             PseudoClass::AnyLink => self.is_link(),
             PseudoClass::ViewTransitionType(types) => {
                 self.facts
@@ -693,7 +694,7 @@ impl Profile {
                 PseudoClass::ViewTransitionType(_) => {
                     self.states.insert(InteractionState::ActiveViewTransition);
                 }
-                PseudoClass::Defined => {}
+                PseudoClass::Defined | PseudoClass::Heading(_) => {}
             },
             Component::Nth(nth) => self.nth(nth, false),
             Component::NthOf(nth) => {

@@ -431,6 +431,8 @@ proof("user-action-pseudos focus-visible user-pseudos target", "css_selectors", 
       "Computed widths, each beside a decoy: :hover under the pointer and :active only while it is down; a clicked button matches :focus but not :focus-visible, and the same button reached by Shift+Tab matches both; an untouched required email field is neither :user-invalid nor :user-valid, typed 'x' it is :user-invalid, typed on to 'x@y.z' it is :user-valid; following an <a href=\"#Goal\"> makes #Goal :target and not its sibling. A field's typed text counts as changed by the player once it is non-empty (no blur is waited for); css_selectors::an_unbound_field_keeps_its_own_value proves the same for a field without bind:value, across a snapshot.")
 proof("modal", "css_selectors", "modal_matches_only_a_modal_dialog",
       "Computed widths: a probe inside <dialog modal open> matches :modal .probe, one inside an in-place <dialog open> does not.")
+proof("heading-selectors", "css_selectors", "heading_matches_headings_by_level",
+      "Computed boxes of <h1>, <h2>, <h3> and a <p> decoy: :heading indents the three headings and not the paragraph, :heading(1, 3) widens h1 and h3 only, and :heading + .probe and :heading(2) + .probe (matched on the instantiated tree) reach the probes after the right headings. :heading(0) is refused.")
 proof("revert-rule", "css_selectors", "revert_rule_rolls_back_one_rule",
       "Computed widths: width: revert-rule shows the rule below's width; an earlier declaration of the same rule is rolled back with it; an unlayered rule below wins over a layered one (where revert-layer would pick the layer); a custom property and a var() fallback roll back the same way; font-size: revert-rule restores the rule below's size (read through an em width); with no rule below the property is as never declared while the rule's other declarations apply; a rule that does not match rolls nothing back.")
 not_applicable("host-context",
@@ -456,7 +458,6 @@ MISSING = {
     "host": ":host and :host() parse and match through the selectors crate, but a component instance's host element is not styled, so no output proves it.",
     "has-slotted": "A component's content is passed as snippets, not <slot> elements, so no :has-slotted output exists.",
     "slot": "A component's content is passed as snippets ({@render}), not <slot> elements, and no <slot> output is proved.",
-    "heading-selectors": ":heading and :heading() are not parsed yet.",
     "time-relative-selectors": ":past and :future match WebVTT cues during media playback; <video> draws no text track yet (motion is building WebVTT), and the selectors come with it.",
     "media-pseudos": "<video> plays footage, but :playing, :paused and the other media pseudo-classes are not parsed yet.",
 }

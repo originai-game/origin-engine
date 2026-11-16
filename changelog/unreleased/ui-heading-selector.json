@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": ":heading and :heading()",
+      "summary": "`:heading` selects every `<h1>` to `<h6>` and `:heading(1, 2)` those of the listed levels, in a document's and a style pack's rules. Before, both were refused as unsupported pseudo-classes."
+    }
+  ]
+}
