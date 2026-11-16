@@ -48,7 +48,7 @@
 </column>
 
 <style>
-#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-lg); }
+#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-lg); min-height: 0; }
 @media (width < 600px), (height < 600px) {
 #Screen { padding: var(--space-lg); gap: var(--space-md); }
 }
@@ -57,7 +57,7 @@
 @media (width < 600px), (height < 600px) {
 #SaveTitle, #LoadTitle { font-size: var(--type-xl-size); }
 }
-#Body { width: stretch; height: stretch; gap: var(--space-xl); grid-template-columns: 3fr 2fr; grid-template-rows: 1fr; }
+#Body { width: stretch; flex: 1; min-height: 0; gap: var(--space-xl); grid-template-columns: 3fr 2fr; grid-template-rows: 1fr; }
 @media (width < 600px) and (orientation: portrait) {
 #Body { grid-template-columns: 1fr; grid-template-rows: 1fr auto; gap: var(--space-md); }
 }
@@ -75,7 +75,7 @@
 @media (width < 600px), (height < 600px) {
 #Thumb { width: var(--size-xxl); }
 }
-#Text { width: stretch; gap: var(--space-xxs); }
+#Text { flex: 1; min-width: 0; gap: var(--space-xxs); }
 #Empty { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 #Name { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); line-clamp: 1; text-overflow: ellipsis; }
 #Place { color: var(--ink-muted); line-clamp: 1; text-overflow: ellipsis; }
