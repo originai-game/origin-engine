@@ -167,6 +167,24 @@ impl<'a, 'm> Tree<'a, 'm> {
             return tf::compute_hidden_layout(self, node);
         }
         let i = usize::from(node);
+        // CSS Viewport 1 §4: a zoomed box lays its subtree out at its own
+        // lengths in room `zoom` times smaller, as a context of its own,
+        // and answers its box `zoom` times as large (the place pass keeps
+        // its own size; drawing scales it about its top left).
+        let z = self.nodes[i].layout.used.zoom_factor();
+        if z != 1.0 {
+            return zoom_output(self.lay_flow(node, zoom_input(input, 1.0 / z), None), z);
+        }
+        self.lay_flow(node, input, ctx)
+    }
+
+    fn lay_flow(
+        &mut self,
+        node: tf::NodeId,
+        input: tf::LayoutInput,
+        ctx: Option<&mut tf::BlockContext<'_>>,
+    ) -> tf::LayoutOutput {
+        let i = usize::from(node);
         // An orthogonal flow (CSS Writing Modes 4 §7.3): its frame's axes
         // cross its parent's, so it lays out at the input turned into its
         // frame and answers its size turned back, in a context of its own.
@@ -822,6 +840,38 @@ fn flip_input(mut input: tf::LayoutInput) -> tf::LayoutInput {
     };
     input.vertical_margins_are_collapsible = tf::Line::FALSE;
     input
+}
+
+/// A layout input in a scale `k` times its own (a zoomed box's room).
+fn zoom_input(mut input: tf::LayoutInput, k: f32) -> tf::LayoutInput {
+    let size = |s: tf::Size<Option<f32>>| s.map(|v| v.map(|v| v * k));
+    input.known_dimensions = size(input.known_dimensions);
+    input.parent_size = size(input.parent_size);
+    input.available_space = input.available_space.map(|a| match a {
+        tf::AvailableSpace::Definite(v) => tf::AvailableSpace::Definite(v * k),
+        a => a,
+    });
+    input
+}
+
+/// A zoomed box's output in its parent's scale, `z` times its own.
+fn zoom_output(mut out: tf::LayoutOutput, z: f32) -> tf::LayoutOutput {
+    out.size = out.size.map(|v| v * z);
+    let r = out.scrollable_overflow_rect;
+    out.scrollable_overflow_rect = tf::Rect {
+        left: r.left * z,
+        right: r.right * z,
+        top: r.top * z,
+        bottom: r.bottom * z,
+    };
+    out.baselines.first = out.baselines.first.map(|v| v * z);
+    out.baselines.last = out.baselines.last.map(|v| v * z);
+    // A margin collapsing through it: one sign's set scales exactly.
+    let margin =
+        |m: tf::CollapsibleMarginSet| tf::CollapsibleMarginSet::from_margin(m.resolve() * z);
+    out.top_margin = margin(out.top_margin);
+    out.bottom_margin = margin(out.bottom_margin);
+    out
 }
 
 /// An orthogonal flow's output turned back: its size; no baseline and no

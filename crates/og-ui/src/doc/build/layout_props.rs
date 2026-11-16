@@ -266,6 +266,8 @@ impl Ui {
             }
         });
         el.order = r.num("order").unwrap_or(0.0) as i32;
+        // Any box's: `zoom` scales its whole subtree.
+        el.zoom = r.num("zoom").unwrap_or(0.0);
         el.reading_order = r.num("readingOrder").unwrap_or(0.0) as i32;
         el.align_self = r.str("alignSelf").map(cross_of);
         let logical = matches!(r.str("alignSelf"), Some("start" | "end")) && !r.flag("selfFlex");

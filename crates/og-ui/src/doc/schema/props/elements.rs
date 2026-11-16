@@ -244,6 +244,11 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Its place among its siblings in its parent's `reading-flow` (CSS `reading-order`), lower first; ties keep the flow's order."
     ),
     p!(
+        "zoom",
+        Ty::Num,
+        "How many times larger it and its subtree are (CSS `zoom`): every length under it, its text and its own size and margins grow by it and its parent makes room; a percentage or `auto` does not; zooms nest by multiplying; 0 is 1."
+    ),
+    p!(
         "alignSelf",
         Ty::Word(&[
             "start",

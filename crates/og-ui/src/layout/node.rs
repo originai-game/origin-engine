@@ -1187,6 +1187,22 @@ impl Node {
             }
         }
         u.part = self.part();
+        let z = u.zoom_factor();
+        if z != 1.0 {
+            // Its box in its parent's scale; a size the player or a
+            // placement gave is already in it.
+            let (w, h) = (u.width, u.height);
+            u = u.zoomed(z);
+            let given = |k: usize| {
+                self.layout.resized[k].is_some() || (placed && self.layout.placement.is_some())
+            };
+            if given(0) {
+                u.width = w;
+            }
+            if given(1) {
+                u.height = h;
+            }
+        }
         u
     }
 
@@ -1322,6 +1338,13 @@ impl Node {
     pub(crate) fn derive_used(&mut self) {
         self.layout.used = self.derived(true);
         self.layout.insets = self.props.insets;
+        let z = self.layout.used.zoom_factor();
+        if z != 1.0 {
+            let i = &mut self.layout.insets;
+            for v in [&mut i.start, &mut i.top, &mut i.end, &mut i.bottom] {
+                *v = v.map(|v| v * z);
+            }
+        }
         self.layout.varied = self.varied();
     }
 

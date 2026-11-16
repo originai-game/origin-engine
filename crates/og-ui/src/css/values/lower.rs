@@ -254,6 +254,25 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
             }
             v => Err(format!("order takes an integer, not '{}'", describe(&v))),
         },
+        // CSS Viewport 1 §4: a factor, a percentage its hundredth; 0 (and
+        // the legacy `normal`) is 1, and a negative one is invalid.
+        "zoom" => {
+            let z = match one(&t, name)? {
+                Tok::Ident(w) if w == "normal" => "1".to_owned(),
+                Tok::Num(n, u) if u == "%" => shift(&n, -2),
+                Tok::Num(n, u) if u.is_empty() => n,
+                v => {
+                    return Err(format!(
+                        "zoom takes a number or a percentage, not '{}'",
+                        describe(&v)
+                    ));
+                }
+            };
+            if z.starts_with('-') {
+                return Err(format!("zoom cannot be negative, not '{value}'"));
+            }
+            Ok(vec![e("zoom", vec![number(&z)?])])
+        }
         // CSS Display 4 §3.1, §3.2.
         "reading-flow" => {
             let tok = one(&t, name)?;

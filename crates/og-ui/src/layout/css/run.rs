@@ -768,7 +768,8 @@ fn place(
     {
         let n = &mut nodes[root];
         let s = n.layout.css.size;
-        (n.layout.w, n.layout.h) = (s.width, s.height);
+        let z = n.layout.used.zoom_factor();
+        (n.layout.w, n.layout.h) = (s.width / z, s.height / z);
     }
     nodes[root].placed.clip = clip;
     let mut stack = vec![root];
@@ -890,8 +891,10 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
         xy[ax] = px;
         let (ay, py) = along(s[0], l.location.y, l.size.height, size);
         xy[ay] = py;
+        let z = nodes[c].layout.used.zoom_factor();
         let k = &mut nodes[c].layout;
-        (k.w, k.h) = (w, h);
+        // A zoomed box keeps its own size: drawing scales it.
+        (k.w, k.h) = (w / z, h / z);
         k.x = x0 + xy[0] - sx;
         k.y = y0 + xy[1] - sy;
         k.margin_x = [l.margin.left, l.margin.right];
@@ -899,8 +902,9 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
     // Out of the flow: placed against its box in layout space.
     for &c in &out {
         let l = nodes[c].layout.css;
+        let z = nodes[c].layout.used.zoom_factor();
         let k = &mut nodes[c].layout;
-        (k.w, k.h) = (l.size.width, l.size.height);
+        (k.w, k.h) = (l.size.width / z, l.size.height / z);
         k.x = x0 + l.location.x;
         k.y = y0 + l.location.y;
         k.margin_x = [l.margin.left, l.margin.right];
@@ -1222,7 +1226,9 @@ fn mirror(nodes: &mut [Node], i: usize, sx: f32, flow: &[usize], out: &[usize]) 
             continue;
         }
         let [ml, mr] = k.layout.margin_x;
-        nodes[c].layout.x = 2.0 * x0 + width - k.layout.x - k.layout.w - mr + ml;
+        // A zoomed box's width in this box's scale.
+        let w = k.layout.w * k.layout.used.zoom_factor();
+        nodes[c].layout.x = 2.0 * x0 + width - k.layout.x - w - mr + ml;
     }
     let pl = nodes[i].layout.used.padding.left;
     for r in &mut nodes[i].layout.col_rules {

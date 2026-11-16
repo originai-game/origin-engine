@@ -117,6 +117,13 @@ impl Ui {
             let origin = (r.x + t.pivot_x * r.width, r.y + t.pivot_y * r.height);
             local = local.mul(&offset.matrix(r, cb, origin));
         }
+        let z = n.layout.used.zoom_factor();
+        if z != 1.0 {
+            // CSS `zoom`: laid out at its own lengths, its box and subtree
+            // drawn `z` times as large from its top left, where its parent
+            // made room for them; its transforms act in its own scale.
+            local = Affine::scale(z, z).about(r.x, r.y).mul(&local);
+        }
         if space.is_none() && ppersp.is_none() && pplane.is_none() {
             n.placed.plane = None;
             n.placed.world = if local.is_identity() {

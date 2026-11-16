@@ -3416,3 +3416,93 @@ fn gap_rules_in_flex_lines_and_rule_insets() {
         );
     });
 }
+
+/// CSS Viewport 1 §4: `zoom` multiplies every length of a box and its
+/// subtree (its size, padding, margins, its text) and never a percentage
+/// or `auto`; its parent lays the larger box out; nested zooms multiply;
+/// a percentage is its hundredth and 0 is 1.
+///
+/// Ways it could fail: lengths left alone (Z 110 wide), the parent laying
+/// out the unzoomed box under a box drawn larger (Z's margin 10), the box
+/// reading its own size in its parent's scale (Z's margin 40), a
+/// percentage zoomed (Pct 400, or Half 200 from a zoomed basis), a nested
+/// zoom replacing its ancestor's (NZ 15 or 20), a flex item's size or
+/// padding read unzoomed (B 280 or 270), the text measured at its own
+/// size, `50%` read as 50 or 0 kept as 0.
+#[test]
+fn zoom_scales_a_subtrees_lengths_as_css_does() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Z"><div id="Half"></div><span id="T2">Zoom</span></div>
+  <div id="After"></div>
+  <div id="Pct"></div>
+  <div id="Nest"><div id="NZ"></div></div>
+  <div id="Row"><div id="A"></div><div id="Pad"></div><div id="B"></div></div>
+  <span id="T1">Zoom</span>
+  <div id="Q"></div>
+  <div id="O"></div>
+</div></div>
+<style>
+#Root { width: 400px; display: flow-root; }
+#Z { zoom: 2; box-sizing: content-box; width: 100px; padding: 5px; margin-top: 10px; }
+#Half { width: 50%; height: 10px; }
+#T2, #T1 { display: block; width: max-content; }
+#After { height: 10px; }
+#Pct { zoom: 2; width: 50%; height: 10px; }
+#Nest { zoom: 2; }
+#NZ { zoom: 1.5; width: 10px; height: 10px; }
+#Row { display: flex; width: 400px; }
+#A { zoom: 2; flex: none; box-sizing: content-box; width: 50px; padding: 0 5px; height: 10px; }
+#Pad { zoom: 2; flex: none; width: 0; padding: 0 5px; height: 10px; }
+#B { flex: 1; height: 10px; }
+#Q { zoom: 50%; width: 100px; height: 100px; }
+#O { zoom: 0; width: 30px; height: 10px; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let (root, z, half, after) = (d.get("Root"), d.get("Z"), d.get("Half"), d.get("After"));
+        assert_eq!(z.y - root.y, 20.0, "Z's margin, zoomed");
+        assert_eq!(z.width, 220.0, "(100 + 2 × 5) × 2");
+        assert_eq!(
+            (half.x - z.x, half.y - z.y),
+            (10.0, 10.0),
+            "its padding, zoomed"
+        );
+        assert_eq!(
+            (half.width, half.height),
+            (100.0, 20.0),
+            "50% of its 100, then × 2"
+        );
+        let (t1, t2) = (d.get("T1"), d.get("T2"));
+        assert!(t1.width > 0.0 && t1.height > 0.0);
+        assert!(
+            (t2.width - 2.0 * t1.width).abs() <= 1.0 && (t2.height - 2.0 * t1.height).abs() <= 1.0,
+            "the text twice as large: {}×{} against {}×{}",
+            t2.width,
+            t2.height,
+            t1.width,
+            t1.height
+        );
+        assert_eq!(
+            after.y - z.y,
+            z.height,
+            "the box after it below its zoomed box"
+        );
+        assert_eq!(z.height, 40.0 + 2.0 * t1.height, "(5 + 10 + text + 5) × 2");
+        let pct = d.get("Pct");
+        assert_eq!(
+            (pct.width, pct.height),
+            (200.0, 20.0),
+            "50% of 400, never zoomed"
+        );
+        let nz = d.get("NZ");
+        assert_eq!((nz.width, nz.height), (30.0, 30.0), "10 × 1.5 × 2");
+        let (a, b) = (d.get("A"), d.get("B"));
+        assert_eq!(
+            (a.width, b.x - a.x, b.width),
+            (120.0, 140.0, 260.0),
+            "a zoomed flex item: (50 + 2 × 5) × 2, and one held to its padding, 2 × 5 × 2"
+        );
+        assert_eq!(d.get("Q").width, 50.0, "zoom: 50%");
+        assert_eq!(d.get("O").width, 30.0, "zoom: 0 is 1");
+    });
+}

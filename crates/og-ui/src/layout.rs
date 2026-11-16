@@ -129,6 +129,14 @@ impl Length {
     pub fn of(self, basis: f32) -> f32 {
         self.pct * basis + self.px
     }
+
+    /// Its px times `z`, its fraction as it was (CSS `zoom`).
+    pub(crate) fn zoomed(self, z: f32) -> Length {
+        Length {
+            pct: self.pct,
+            px: self.px * z,
+        }
+    }
 }
 
 /// How a [`Calc`] combines its lengths.
@@ -231,6 +239,15 @@ impl Calc {
         }
     }
 
+    /// Its lengths' px times `z` (CSS `zoom`): every function it
+    /// combines them with grows with them, so it is its value times `z`
+    /// against a basis `z` times as large.
+    pub(crate) fn zoomed(mut self, z: f32) -> Calc {
+        self.args = self.args.map(|a| a.zoomed(z));
+        self.add *= z;
+        self
+    }
+
     /// Its px with no basis (a percentage of an unknown size is 0, as CSS
     /// reads one for an intrinsic size).
     pub fn intrinsic(&self) -> f32 {
@@ -265,6 +282,13 @@ impl Margin {
     /// Its CSS px for an intrinsic size: a percentage and `auto` are 0.
     pub fn intrinsic(self) -> f32 {
         if self.auto { 0.0 } else { self.len.px }
+    }
+
+    pub(crate) fn zoomed(self, z: f32) -> Margin {
+        Margin {
+            len: self.len.zoomed(z),
+            auto: self.auto,
+        }
     }
 }
 
@@ -302,6 +326,34 @@ impl Size {
 
     pub const fn percent(f: f32) -> Size {
         Size::Percent(f)
+    }
+
+    /// Its px times `z`, a percentage and a content size as they were
+    /// (CSS Viewport 1 §4: `zoom` scales lengths, never `auto` or a
+    /// percentage).
+    pub(crate) fn zoomed(self, z: f32) -> Size {
+        match self {
+            Size::Fixed(v) => Size::Fixed(v * z),
+            Size::Calc(c) => Size::Calc(c.zoomed(z)),
+            Size::Fit { min, max } => Size::Fit {
+                min: min * z,
+                max: max * z,
+            },
+            Size::Grow { min, max } => Size::Grow {
+                min: min * z,
+                max: max * z,
+            },
+            Size::Stretch { min, max } => Size::Stretch {
+                min: min * z,
+                max: max * z,
+            },
+            Size::CalcSize { basis, scale, add } => Size::CalcSize {
+                basis,
+                scale,
+                add: add.zoomed(z),
+            },
+            s @ (Size::Percent(_) | Size::MinContent | Size::MaxContent) => s,
+        }
     }
 
     /// Its CSS px when it names one: a length, a percentage or calc() of
@@ -711,6 +763,12 @@ pub struct Element {
     pub flex: Option<FlexItem>,
     /// CSS `order`: flex and grid items lay out by it, then as built.
     pub order: i32,
+    /// CSS `zoom` (CSS Viewport 1 §4), its own factor; 0 is 1. Its parent
+    /// lays out its box `zoom` times as large ([`Element::zoomed`]); its
+    /// subtree lays out at its own lengths inside it and is drawn scaled
+    /// about its top left, so each length under it is `zoom` times as
+    /// large on the screen and a zoom under it multiplies.
+    pub zoom: f32,
     /// CSS `safe` alignment: bit 0 its `justify-content`, bit 1 its
     /// `align-items` (an item's `align-self`): overflow stays on the start
     /// side.
@@ -862,6 +920,25 @@ impl Element {
     pub(crate) fn line_gap(&self) -> f32 {
         let k = usize::from(self.direction == Direction::Row);
         self.gaps[k].unwrap_or(self.gap)
+    }
+
+    /// Its CSS `zoom` factor (1 where it sets none or 0).
+    pub(crate) fn zoom_factor(&self) -> f32 {
+        if self.zoom > 0.0 { self.zoom } else { 1.0 }
+    }
+
+    /// Its box as its parent lays it out under its `zoom` `z`: its size,
+    /// bounds, margins and flex basis `z` times its own (its padding, gaps
+    /// and content stay its own, the subtree's scale).
+    pub(crate) fn zoomed(mut self, z: f32) -> Element {
+        self.width = self.width.zoomed(z);
+        self.height = self.height.zoomed(z);
+        self.bounds = self.bounds.map(|a| a.map(|b| b.map(|s| s.zoomed(z))));
+        self.margin = self.margin.map(|m| m.zoomed(z));
+        if let Some(f) = &mut self.flex {
+            f.basis = f.basis.map(|b| b.zoomed(z));
+        }
+        self
     }
 
     pub fn row() -> Element {

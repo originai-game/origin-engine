@@ -392,6 +392,8 @@ proof("line-clamp", "css_layout", "line_clamp_cuts_a_texts_lines",
       "Computed heights: line-clamp: 2 keeps two lines of a <p> and a <text> without text-overflow, the box those lines high; a text within the limit keeps its lines. A <div> holding text directly refuses line-clamp (it applies to text-bearing elements), and the drawn ellipsis is not asserted.")
 proof("overflow-overlay", "css_contain", "z_index_orders_paint_and_clip_and_contain_cut_it",
       "overflow: overlay and overflow-y: overlay make scroll containers whose view and content heights are auto's.")
+proof("zoom", "css_layout", "zoom_scales_a_subtrees_lengths_as_css_does",
+      "Computed screen boxes: zoom: 2 on a content-box 100px box with 5px padding and a 10px top margin makes it 220 wide 20 below its block's top, its child's width: 50% 100 wide at 10, 10, and its text twice its unzoomed size, the next box below it; a zoomed width: 50% stays 200 of 400; zoom: 1.5 inside zoom: 2 makes a 10px box 30; a zoomed flex item's content-box size and its padding floor are its parent's room; zoom: 50% halves and zoom: 0 is 1. The subtree lays out at its own lengths and is drawn scaled from the box's top left (its transforms act inside the zoom); a zoomed box starts its own float context, and a margin collapsing through it keeps only its sum's sign. getComputedStyle-style unscaled values are not exposed.")
 not_applicable("frame-sizing",
                "Sizes an <iframe> to its embedded document: a game's UI embeds no other documents.")
 not_applicable("page-breaks page-break-aliases page-orientation page-selectors page-setup",

@@ -16,18 +16,27 @@ pub(super) mod slot {
     pub const MARGIN: usize = 6;
     pub const BASIS: usize = 10;
     pub const COUNT: usize = 11;
+    /// A slot plus `OWN`: the length as a zoomed node reads it in its own
+    /// scale, as its own container ([`View::zoom`]).
+    pub const OWN: usize = COUNT;
 }
 
 /// The handle Taffy keeps for slot `s` of node `i`: never dereferenced,
 /// an aligned address so Taffy's tag bits stay clear.
 pub(super) fn calc_ptr(i: usize, s: usize) -> *const () {
-    std::ptr::without_provenance((i * slot::COUNT + s + 1) << 3)
+    std::ptr::without_provenance((i * slot::COUNT * 2 + s + 1) << 3)
 }
 
 /// The CSS px a [`calc_ptr`] handle resolves to against `basis`.
 pub(super) fn calc_of(nodes: &[Node], p: *const (), basis: f32) -> f32 {
     let v = (p.addr() >> 3).saturating_sub(1);
-    let (i, s) = (v / slot::COUNT, v % slot::COUNT);
+    let (i, s) = (v / (slot::COUNT * 2), v % (slot::COUNT * 2));
+    if s >= slot::OWN {
+        // Its length in its parent's scale is `z` times its own against a
+        // basis `z` times as large ([`crate::layout::Size::zoomed`]).
+        let z = nodes.get(i).map_or(1.0, |n| n.layout.used.zoom_factor());
+        return calc_of(nodes, calc_ptr(i, s - slot::OWN), basis * z) / z;
+    }
     let Some(n) = nodes.get(i) else { return 0.0 };
     let el = &n.layout.used;
     let size = |s: Size| match s {
@@ -184,6 +193,13 @@ pub(crate) struct View<'a> {
     /// It is one of its own lines (`Tree::lines`): a bare flex line its
     /// boxes lie on, its size, bounds and padding its box's.
     pub line: bool,
+    /// Its CSS `zoom` and whether it is read as its own container. Its
+    /// used size, bounds and margins are in its parent's scale
+    /// ([`Element::zoomed`]) and its padding and border in its own: its
+    /// own reading takes the first over `zoom`, its parent's the second
+    /// times `zoom`.
+    pub zoom: f32,
+    pub own: bool,
 }
 
 impl<'a> View<'a> {
@@ -195,6 +211,8 @@ impl<'a> View<'a> {
             frame: frame_of(nodes, i),
             measured: false,
             line: false,
+            zoom: nodes[i].layout.used.zoom_factor(),
+            own: true,
         }
     }
 
@@ -206,6 +224,8 @@ impl<'a> View<'a> {
             frame: frame_of(nodes, nodes[i].up),
             measured: false,
             line: false,
+            zoom: nodes[i].layout.used.zoom_factor(),
+            own: false,
         }
     }
 
@@ -215,6 +235,27 @@ impl<'a> View<'a> {
 
     fn el(&self) -> &'a Element {
         &self.nodes[self.i].layout.used
+    }
+
+    /// Its own reading of a zoomed box: its sizes and margins over its
+    /// zoom.
+    fn unzooms(&self) -> bool {
+        self.own && self.zoom != 1.0
+    }
+
+    /// A size of its used box in the scale it is read in.
+    fn scaled(&self, s: Size) -> Size {
+        if self.unzooms() {
+            s.zoomed(1.0 / self.zoom)
+        } else {
+            s
+        }
+    }
+
+    /// The handle of its calc() length in slot `s`, in the scale it is
+    /// read in.
+    fn calc(&self, s: usize) -> *const () {
+        calc_ptr(self.i, if self.unzooms() { s + slot::OWN } else { s })
     }
 
     /// The physical axis (0 width, 1 height) its frame's axis `axis` runs on.
@@ -278,7 +319,7 @@ impl<'a> View<'a> {
         match s {
             Size::Fixed(v) => tf::Dimension::length(v),
             Size::Percent(p) => tf::Dimension::percent(p),
-            Size::Calc(_) => tf::Dimension::calc(calc_ptr(self.i, sl)),
+            Size::Calc(_) => tf::Dimension::calc(self.calc(sl)),
             Size::MinContent => tf::Dimension::min_content(),
             Size::MaxContent => tf::Dimension::max_content(),
             Size::Stretch { .. } => tf::Dimension::stretch(),
@@ -287,7 +328,7 @@ impl<'a> View<'a> {
             // block. Otherwise Taffy sizes it by its basis and
             // `Tree::calc_size` scales that.
             Size::CalcSize { .. } if self.calc_size_fills(usize::from(sl != slot::WIDTH)) => {
-                tf::Dimension::calc(calc_ptr(self.i, sl))
+                tf::Dimension::calc(self.calc(sl))
             }
             Size::CalcSize { basis, .. } => match basis {
                 SizeBasis::Auto => tf::Dimension::auto(),
@@ -309,7 +350,7 @@ impl<'a> View<'a> {
             && (axis == 0) == self.main_across();
         let axis = self.phys(axis);
         let el = self.el();
-        let size = [el.width, el.height][axis];
+        let size = self.scaled([el.width, el.height][axis]);
         let held = match (size, end) {
             (Size::Grow { min, .. }, 0) if along => Some(min),
             (Size::Fit { min, .. } | Size::Grow { min, .. } | Size::Stretch { min, .. }, 0)
@@ -325,7 +366,7 @@ impl<'a> View<'a> {
             _ => None,
         };
         let sl = slot::BOUNDS + axis * 2 + end;
-        match el.bounds[axis][end] {
+        match el.bounds[axis][end].map(|b| self.scaled(b)) {
             Some(Size::Fixed(v)) => tf::LengthPercentageAuto::length(v),
             Some(Size::Percent(p)) => tf::LengthPercentageAuto::percent(p),
             Some(
@@ -334,7 +375,7 @@ impl<'a> View<'a> {
                 | Size::MaxContent
                 | Size::Stretch { .. }
                 | Size::CalcSize { .. },
-            ) => tf::LengthPercentageAuto::calc(calc_ptr(self.i, sl)),
+            ) => tf::LengthPercentageAuto::calc(self.calc(sl)),
             Some(Size::Fit { .. } | Size::Grow { .. }) | None => held.map_or(
                 tf::LengthPercentageAuto::auto(),
                 tf::LengthPercentageAuto::length,
@@ -372,7 +413,7 @@ impl<'a> View<'a> {
     /// Its size along its frame's `axis`.
     pub(super) fn sized(&self, axis: usize) -> Size {
         let el = self.el();
-        [el.width, el.height][self.phys(axis)]
+        self.scaled([el.width, el.height][self.phys(axis)])
     }
 
     /// Its calc-size() along `axis` scales the room its containing block
@@ -647,7 +688,11 @@ impl tf::CoreStyle for View<'_> {
         let side = |k: usize| {
             let f = k;
             let k = self.side(k);
-            let m = el.margin[k];
+            let m = if self.unzooms() {
+                el.margin[k].zoomed(1.0 / self.zoom)
+            } else {
+                el.margin[k]
+            };
             if trimmed & (1 << f) != 0 {
                 tf::LengthPercentageAuto::length(0.0)
             } else if m.auto {
@@ -657,7 +702,7 @@ impl tf::CoreStyle for View<'_> {
             } else if m.len.px == 0.0 {
                 tf::LengthPercentageAuto::percent(m.len.pct)
             } else {
-                tf::LengthPercentageAuto::calc(calc_ptr(self.i, slot::MARGIN + k))
+                tf::LengthPercentageAuto::calc(self.calc(slot::MARGIN + k))
             }
         };
         tf::Rect {
@@ -674,7 +719,9 @@ impl tf::CoreStyle for View<'_> {
         }
         let p = self.el().padding;
         let v = [p.top, p.right, p.bottom, p.left];
-        let at = |k: usize| tf::LengthPercentage::length(v[self.side(k)]);
+        // Its own scale's: its parent reads a zoomed box's times its zoom.
+        let z = if self.own { 1.0 } else { self.zoom };
+        let at = |k: usize| tf::LengthPercentage::length(v[self.side(k)] * z);
         tf::Rect {
             top: at(0),
             right: at(1),

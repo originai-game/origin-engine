@@ -51,6 +51,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `order:` | `<number>` | Its place among its flex or grid siblings (CSS `order`). |
 | `reading-flow:` | `normal \| flex-visual \| flex-flow \| grid-rows \| grid-columns \| grid-order \| source-order` | The order Tab moves through a flex or grid container's items in (CSS `reading-flow`): by their places on screen (`flex-visual`, `grid-rows`, `grid-columns`), by `order` (`flex-flow`, `grid-order`) or the source (`source-order`), each item's `reading-order` first; `normal` keeps the source order. Pointer hits and arrow moves keep the source order. |
 | `reading-order:` | `<number>` | Its place among its siblings in its parent's `reading-flow` (CSS `reading-order`), lower first; ties keep the flow's order. |
+| `zoom:` | `<number>` | How many times larger it and its subtree are (CSS `zoom`): every length under it, its text and its own size and margins grow by it and its parent makes room; a percentage or `auto` does not; zooms nest by multiplying; 0 is 1. |
 | `align-self:` | `start \| center \| end \| stretch \| baseline \| last-baseline` | Where it sits across its flex line or down its grid area, over its parent's (CSS `align-self`). |
 | `justify-self:` | `start \| center \| end \| stretch \| baseline \| last-baseline` | Where it sits across its grid area or its absolute box, over its parent's (CSS `justify-self`). |
 | `background:` | `var(--<role>) \| #rrggbb[aa]` | Its fill. |
