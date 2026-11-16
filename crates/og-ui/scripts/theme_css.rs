@@ -227,6 +227,11 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
     font-family: var(--figure-font);
   }
   :where([part$=".well"]) { border-radius: var(--well-radius); corner-shape: var(--well-corner-shape); background: var(--well-fill); box-shadow: var(--well-shadow); }
+  /* A surface with a fill of its own holds its text: the halo a document
+     drawn over the scene sets (`text-shadow: var(--tag-halo)`, inherited)
+     stops at it. A bare frame has no fill and passes it on. */
+  :where([part$=".frame"]:not(.bare), [part$=".band"], [part$=".row"], [part$=".cell"],
+         [part$=".badge"], [part$=".well"], [part$=".tab"], button, badge) { text-shadow: none; }
   :where([part$=".figure"]) { font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--figure-shadow, revert-layer); }
   :where([part$=".label"], [part$=".heading"]) {
     font-family: var(--label-font);

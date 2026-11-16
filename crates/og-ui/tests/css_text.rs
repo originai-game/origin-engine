@@ -1615,3 +1615,47 @@ fn inline_blocks_align_by_their_baseline_source() {
         "center: {mid:?} in {line:?}"
     );
 }
+
+/// A halo a document drawn over the scene sets on its root (`text-shadow`
+/// inherits) stops at a surface with a fill of its own: a button and a
+/// frame part draw their text the same with the halo set or not, while
+/// bare text and a bare frame's text take it. Fails when the halo reaches
+/// the text on a panel or a button (outlined, blurred), or when the reset
+/// also strips the text it is for.
+#[test]
+fn a_halo_stops_at_a_surface_with_its_own_fill() {
+    let drawn = |halo: &str, body: &str| {
+        let parts = ["T.frame", "T.row"]
+            .iter()
+            .filter(|p| body.contains(*p))
+            .map(|p| format!("<meta name=\"parts\" content=\"{p}\">\n"))
+            .collect::<String>();
+        let text = format!(
+            "<meta name=\"component\" content=\"t\">\n{parts}<div id=\"Root\">{body}</div>\n<style>#Root {{ width: 400px; text-shadow: {halo}; }}</style>"
+        );
+        let d = Doc::with_font(&text, &[], face(NOTO));
+        format!("{:?}", d.ui.frame().items)
+    };
+    let halo = "0 0 4px #ff0000";
+    for held in [
+        r#"<button id="B">Go</button>"#,
+        r#"<div id="F" part="T.frame">Gold</div>"#,
+        r#"<div id="R" part="T.row">Gold</div>"#,
+    ] {
+        assert_eq!(
+            drawn("none", held),
+            drawn(halo, held),
+            "{held} takes the halo"
+        );
+    }
+    for bare in [
+        r#"<p id="S">Tag</p>"#,
+        r#"<div id="F" part="T.frame" class="bare">Gold</div>"#,
+    ] {
+        assert_ne!(
+            drawn("none", bare),
+            drawn(halo, bare),
+            "{bare} loses the halo"
+        );
+    }
+}
