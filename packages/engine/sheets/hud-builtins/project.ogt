@@ -1,0 +1,15 @@
+type project
+version 1
+---
+name "HUD builtins sheet"
+id "hud-builtins-sheet"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+ui {
+  screen "resources" "style:default;page:resources"
+  screen "resource-states" "style:default;page:resource-states"
+  screen "activity" "style:default;page:activity"
+  screen "activity-states" "style:default;page:activity-states"
+}
