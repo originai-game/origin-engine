@@ -25848,7 +25848,7 @@ export interface UiHighlight {
    */
   readonly ranges?: readonly UiHighlightRange[];
   /**
-   * Where its overlay stacks: higher priorities paint above, and of equal ones the highlight registered later is above. Every custom highlight paints under ::target-text and the selection.
+   * Where its overlay stacks: higher priorities paint above, and of equal ones the highlight registered later is above. Every custom highlight paints under the selection.
    *
    * @default 0
    */

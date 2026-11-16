@@ -415,10 +415,11 @@ impl Ui {
             {
                 continue;
             }
-            // A link's text fragment, followed this tick: its passages
-            // found in the boxes just laid out, laid out again with the
-            // first scrolled to.
-            if self.docs.state().text_directives.is_some() && self.follow_text_fragment() {
+            // A `#id` link, followed this tick: its element scrolled into
+            // view in the boxes just laid out, laid out again there.
+            if std::mem::take(&mut self.docs.state_mut().scroll_to_target)
+                && self.scroll_to_target_id()
+            {
                 continue;
             }
             let mut measure = Measure {
@@ -1338,7 +1339,6 @@ impl Ui {
                 .resolve_cursor(order, &self.env, &self.paint, &self.interaction)
         };
         let mut selected = self.interaction.mark_selection(&mut self.tree);
-        selected.extend(self.interaction.mark_target_text(&mut self.tree));
         selected.extend(self.mark_highlights());
         (cursor, cursor_images, selected)
     }

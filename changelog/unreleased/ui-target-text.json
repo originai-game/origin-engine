@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"Text fragments: a document link `href=\"#:~:text=[prefix-,]start[,end][,-suffix]\"` finds its passage in the laid-out text (ignoring case, accents and extra spaces, on word boundaries, across elements for a range), marks every match, scrolls the first to the middle of its scroller and makes the element holding it `:target`; with no match the id before `:~:` is `:target`. `::target-text` styles the marks with `background-color`, `color`, `text-decoration` and `text-shadow`. A codex or tutorial link can point at the sentence it means without an id on it."}
-  ]
-}

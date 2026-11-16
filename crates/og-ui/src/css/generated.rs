@@ -17,7 +17,7 @@ use std::sync::Arc;
 /// `::`. CSS 2's single-colon spellings of the first four are accepted too.
 /// `column` is CSS Multicol 2 §4.8's `::column`, and `column-scroll-marker`
 /// its `::column::scroll-marker`.
-pub const PSEUDOS: [&str; 15] = [
+pub const PSEUDOS: [&str; 14] = [
     "before",
     "after",
     "marker",
@@ -25,7 +25,6 @@ pub const PSEUDOS: [&str; 15] = [
     "first-line",
     "placeholder",
     "selection",
-    "target-text",
     "scroll-marker",
     "scroll-button-up",
     "scroll-button-down",
@@ -115,9 +114,9 @@ pub fn highlight_name(pseudo: &str) -> Option<&str> {
 }
 
 /// Whether `pseudo` is a highlight pseudo-element (CSS Pseudo-Elements 4
-/// §3): `::selection`, `::target-text` or a `::highlight()`.
+/// §3): `::selection` or a `::highlight()`.
 fn paints_range(pseudo: &str) -> bool {
-    matches!(pseudo, "selection" | "target-text") || highlight_name(pseudo).is_some()
+    pseudo == "selection" || highlight_name(pseudo).is_some()
 }
 
 /// The element properties of generated content that cascade per element
@@ -170,7 +169,7 @@ pub fn check(name: &str, value: &str) -> Result<(), String> {
 }
 
 /// A highlight pseudo-element's style as the draw paints it
-/// (`::selection`, `::target-text`): the highlight under its text, and
+/// (`::selection`, `::highlight()`): the highlight under its text, and
 /// its glyphs' ink, decoration lines and shadows (`None`: the text's own).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Selection {
@@ -228,7 +227,6 @@ pub struct Generated {
     pub first_line: Option<String>,
     pub placeholder: Option<String>,
     pub selection: Option<String>,
-    pub target_text: Option<String>,
     /// Each `::highlight(<name>)`'s declarations, by its custom highlight's
     /// name (CSS Custom Highlight API 1 §4.1).
     pub highlights: BTreeMap<String, String>,
@@ -333,7 +331,6 @@ impl Generated {
         out.first_line = styles.remove("first-line");
         out.placeholder = styles.remove("placeholder");
         out.selection = styles.remove("selection");
-        out.target_text = styles.remove("target-text");
         out.column = styles.remove("column");
         let mut take = |p: &str| {
             let (mut b, ops) = boxes.remove(p).unwrap_or_default();

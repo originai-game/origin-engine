@@ -44,8 +44,6 @@ impl Ui {
                 resize_moved: None,
                 text_target: None,
                 selected: Vec::new(),
-                target_text: Vec::new(),
-                target_marked: Vec::new(),
                 highlights: Vec::new(),
                 highlight_marked: Vec::new(),
                 drop_paths: IdMap::new(),
