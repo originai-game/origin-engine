@@ -385,11 +385,12 @@ fn emphasis_marks_sit_where_css_text_decoration_puts_them() {
     let d = doc(
         r#"<p id="Plain">日本、年 月</p><p id="Dot">日本、年 月</p><p id="Under">日本</p>
 <p id="Open">日</p><p id="Str">日本</p><p id="Down">日本</p><p id="Left">日</p>
-<div lang="zh-Hans"><p id="Zh">日本</p><p id="Ja" lang="ja">日本</p><p id="ZhDown">日</p></div>"#,
+<div lang="zh-Hans"><p id="Zh">日本</p><p id="Ja" lang="ja">日本</p><p id="ZhDown">日</p></div>
+<p id="Rb">あ<ruby>日本<rt>にほん</rt></ruby></p><p id="RbDown">日<ruby>本<rt>ほん</rt></ruby></p>"#,
         "#Dot { text-emphasis: dot #ff0000; } #Under { text-emphasis: filled; text-emphasis-position: under; color: #0000ff; }
 #Open { text-emphasis: open; } #Str { text-emphasis: \"*\"; }
 #Down, #Left, #ZhDown { writing-mode: vertical-rl; height: 100px; text-emphasis: filled; } #Left { text-emphasis-position: over left; }
-#Zh, #Ja { text-emphasis: filled; }",
+#Zh, #Ja, #Rb { text-emphasis: filled; } #RbDown { writing-mode: vertical-rl; height: 100px; text-emphasis: filled; }",
     );
     // Not on 、 or the space: four dots, centred on 日, 本, 年 and 月,
     // 0.15 of the mark's 10 px em across, red, 5 px over the content area.
@@ -472,6 +473,29 @@ fn emphasis_marks_sit_where_css_text_decoration_puts_them() {
     let m = marks(&d, "ZhDown");
     assert!(
         m.len() == 1 && close(m[0].0[0], g.x + 10.0 + 15.0),
+        "{m:?} {g:?}"
+    );
+    // A ruby's base takes marks outside its annotation (§3.4), one
+    // annotation em (10 px) further out than あ's; its <rt> takes none.
+    let rb = one(&d, "Rb", "あ").baseline;
+    let mut m = marks(&d, "Rb");
+    m.sort_by(|a, b| a.0[0].total_cmp(&b.0[0]));
+    let edge = rb - ASCENT * 20.0 - 5.0;
+    assert!(
+        m.len() == 3
+            && close(m[0].0[0], 10.0)
+            && (m[0].0[1] - edge).abs() <= 0.5
+            && close(m[1].0[0], 30.0)
+            && close(m[2].0[0], 50.0)
+            && m[1..].iter().all(|m| (m.0[1] - (edge - 10.0)).abs() <= 0.5),
+        "{m:?} {rb}"
+    );
+    // Down a column: right of 本's annotation, 10 px past 日's mark.
+    let g = one(&d, "RbDown", "日");
+    let mut m = marks(&d, "RbDown");
+    m.sort_by(|a, b| a.0[1].total_cmp(&b.0[1]));
+    assert!(
+        m.len() == 2 && close(m[0].0[0], g.x + 25.0) && close(m[1].0[0], g.x + 35.0),
         "{m:?} {g:?}"
     );
 }

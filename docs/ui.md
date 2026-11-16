@@ -378,7 +378,8 @@ engine differs or limits as follows:
   make each segment one unbreakable box of its line, with any number of
   levels and nested rubies; `ruby-merge` is not read (`separate`).
   Emphasis marks are drawn shapes; their side follows the content language through the user-agent rules (under for `zh`, over
-  for `ja` and `ko`), and a ruby's base takes none.
+  for `ja` and `ko`); a ruby's base takes them outside its annotations,
+  its `<rt>` none.
 - **Anchors.** Anchors are this frame's boxes; the winning
   `position-try` option and its side are kept per frame for a popover's
   arrow.

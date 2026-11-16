@@ -234,6 +234,7 @@ impl Ui {
                         InlineAtom::Ruby(r) => {
                             let mut r = r.clone();
                             r.resolve(desc.ruby);
+                            r.emphasis = desc.emphasis;
                             Some(crate::rich::Atom::Ruby(r))
                         }
                         InlineAtom::Image(name) => match self.env.images.get(name) {

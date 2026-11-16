@@ -162,6 +162,10 @@ pub struct Ruby {
     pub align: RubyAlign,
     /// Whether it may hang over what comes before and after it.
     pub overhang: [bool; 2],
+    /// Its text's emphasis marks, on its bases' characters outside its
+    /// annotations (CSS Text Decoration 4 §3.4); never on an annotation
+    /// (`rt { text-emphasis: none }`).
+    pub emphasis: Option<crate::css::text_css::Emphasis>,
 }
 
 impl Ruby {
@@ -598,6 +602,7 @@ impl<'a> Cx<'a> {
                 levels,
                 align: RubyAlign::default(),
                 overhang: [false; 2],
+                emphasis: None,
             },
         });
     }
@@ -1025,7 +1030,13 @@ pub(crate) fn ruby_extents(s: &RichSpan, r: &Ruby, fonts: &dyn Metrics) -> (f32,
         s.step.line_height
     };
     let lead = (lh - asc - desc) / 2.0;
-    let (over, under) = stacks(r, size, false);
+    let (mut over, mut under) = stacks(r, size, false);
+    // Its marks, half an em, outside its annotations.
+    match r.emphasis {
+        Some(e) if e.under => under += size / 2.0,
+        Some(_) => over += size / 2.0,
+        None => {}
+    }
     (
         asc + lead + (over - 2.0 * lead).max(0.0),
         desc + lead + (under - 2.0 * lead).max(0.0),
@@ -1191,6 +1202,19 @@ impl Ui {
                     ));
                 }
             }
+            if let Some(e) = &r.emphasis {
+                let (over, under) = stacks(r, size, false);
+                let y = if e.under {
+                    snap(at.baseline) + bd * size + under + size / 4.0
+                } else {
+                    snap(at.baseline) - ba * size - over - size / 4.0
+                };
+                let centres: Vec<(f32, f32)> = marked(&geometry.placed)
+                    .map(|p| (x0 + p.at + p.len / 2.0, y))
+                    .collect();
+                let ink = e.color.unwrap_or(at.color).fade(n.placed.alpha).linear();
+                super::emphasis::marks(e, false, &centres, size, base_font, ink, clip, cmds);
+            }
             return;
         };
         // Down a vertical line: each level's column beside the base's, on
@@ -1259,5 +1283,39 @@ impl Ui {
                 );
             }
         }
+        // Marks right or left of its bases (over or under a sideways
+        // line), outside the annotations on that side.
+        if let Some(e) = &r.emphasis {
+            let right = if v.sideways() {
+                e.under == (v.mode == WritingMode::SidewaysLr)
+            } else {
+                !e.left
+            };
+            let (o, u) = stacks(r, size, true);
+            let stack = if right == (over > 0.0) { o } else { u };
+            let x =
+                at.baseline + if right { 1.0 } else { -1.0 } * (size / 2.0 + stack + size / 4.0);
+            let centres: Vec<(f32, f32)> = marked(&geometry.placed)
+                .map(|p| {
+                    let y = geometry.column + p.at + p.len / 2.0;
+                    let y = if from_bottom {
+                        rect.bottom() - y
+                    } else {
+                        rect.y + y
+                    };
+                    (x, y)
+                })
+                .collect();
+            let ink = e.color.unwrap_or(at.color).fade(n.placed.alpha).linear();
+            super::emphasis::marks(e, !v.sideways(), &centres, size, base_font, ink, clip, cmds);
+        }
     }
+}
+
+/// A ruby's base characters that take an emphasis mark (CSS Text
+/// Decoration 4 §3.1): not its annotations', not punctuation or spaces.
+fn marked(placed: &[Placed]) -> impl Iterator<Item = &Placed> {
+    placed
+        .iter()
+        .filter(|p| p.place == Place::Base && og_i18n::takes_emphasis(&p.text))
 }
