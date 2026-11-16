@@ -962,7 +962,10 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
     };
     let parent_size = parent_num("font-size");
     let parent_weight = parent_num("font-weight").unwrap_or(f32::from(step.weight.max(400)));
-    for (name, value) in local {
+    // The element's own font size first: every other length's `em` and
+    // `%` is against it, wherever its rule declares it.
+    let sized = local.iter().filter(|(n, _)| n == "font-size");
+    for (name, value) in sized.chain(local.iter().filter(|(n, _)| n != "font-size")) {
         let value = value.trim();
         let computed_value = match value {
             "inherit" | "unset" if INHERITED.contains(&name.as_str()) => continue,
