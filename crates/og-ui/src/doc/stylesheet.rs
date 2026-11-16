@@ -640,6 +640,18 @@ pub fn apply(
         .collect();
     order.sort_by_key(|(selector, rule, _)| cascade_key(selector, rule, &layers));
     for (parsed, rule, kept) in order {
+        // A `:host` selector matched on the instantiated tree is matched
+        // there as the element it selects; what it asks of the host
+        // beside that is the rule's condition.
+        let hosted = match parsed.structural() {
+            true => parsed.without_host(doc).map_err(|e| (rule.at, e))?,
+            false => None,
+        };
+        let hosted = hosted.map(|(selector, condition)| (std::sync::Arc::new(selector), condition));
+        let (parsed, host) = match &hosted {
+            Some((selector, condition)) => (selector, Some(condition)),
+            None => (parsed, None),
+        };
         let structure = parsed.structural().then(|| parsed.clone());
         if let Some((parent, selector)) = rule.selector.split_once("::part(") {
             let parent = if parent.is_empty() { "text" } else { parent };
@@ -786,7 +798,7 @@ pub fn apply(
                     .map_err(|e| (rule.at, e))?
                 {
                     Expr::Lit(serde_json::Value::Bool(false)) => continue,
-                    _ => Expr::Lit(true.into()),
+                    _ => host.cloned().unwrap_or(Expr::Lit(true.into())),
                 },
                 None => match matches(doc, elements, *i, &rule.selector, rule.at)? {
                     Some(condition) => condition,
@@ -801,6 +813,23 @@ pub fn apply(
             // names an instance is refused; one that only sweeps over it
             // (`*`, a pack's global rule) passes it by.
             if let NodeKind::Use(component) = &doc.nodes[*i].kind {
+                let hosts = |c: &&super::selectors::Component| {
+                    matches!(c, super::selectors::Component::Host(_))
+                };
+                if parsed
+                    .compounds()
+                    .0
+                    .last()
+                    .is_some_and(|s| s.iter().any(hosts))
+                {
+                    return Err((
+                        rule.at,
+                        format!(
+                            "{} styles the component's root element, and this component's root is a <{component}> instance: wrap it in an element, or pass <{component}> a prop",
+                            parsed.source
+                        ),
+                    ));
+                }
                 let names = parsed.compounds().0.last().is_some_and(|subject| {
                     subject.iter().any(|c| {
                         matches!(

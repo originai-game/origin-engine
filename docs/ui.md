@@ -748,6 +748,23 @@ with those three as the fix; a rule that only sweeps over one (`*`,
 `#Root > *`) passes it by. `style:` is an element's directive and refused
 on an instance, as a bare `--name` is on an element.
 
+Inside the component, `:host` is the instance. An instance and its root
+are one element, so `:host { … }` styles the root's box as an ordinary
+rule of the component's sheet, and `:host(<compound>)` asks the instance:
+an attribute is the prop of that name as the instance passes it
+(`:host([tone=warn])`; absent while the prop is null or false), a class a
+word of its `class` (`<Card class="wide"/>` passes the component's `class`
+prop, which the component declares to read it), a state the root's own
+(`:host(:hover)`, `:host(:disabled)`), and a structural pseudo-class the
+instance's place among its siblings (`:host(:nth-child(2))`).
+`:host(…) .inner` and `:host > .child` follow from it. Two limits: host
+and root being one box, a property that `:host` and a root rule both set
+cascades to one value where a browser would apply each to its own box;
+and a host has no features inside its component, so `:host.wide` and
+`:host:hover` are refused for `:host(.wide)` and `:host(:hover)`, as are
+an attribute with no prop, an id, and `:host` in a component whose root
+is itself an instance.
+
 A screen opts into CSS View Transitions 1 and 2 with `@view-transition {
 navigation: auto; }`. The engine's mapping:
 

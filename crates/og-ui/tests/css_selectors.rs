@@ -834,3 +834,165 @@ video:buffering ~ #Never, video:stalled ~ #Never, video:volume-locked ~ #Never {
     }
     assert_eq!(w(&d), [50.0, 10.0, 50.0, 10.0, 10.0], "the seek arrived");
 }
+
+const CARD: &str = r##"<meta name="component" content="Card">
+<meta name="prop:tone" content="string" data-default="">
+<meta name="prop:wide" content="bool" data-default="false">
+<meta name="prop:class" content="string" data-default="">
+<div id="Frame" class="frame">
+  <div class="probe" id="Any"></div>
+  <div class="probe" id="Warn"></div>
+  <div class="probe" id="Wide"></div>
+  <div class="probe" id="Narrow"></div>
+  <div class="probe" id="Hover"></div>
+  <div class="probe" id="Class"></div>
+  <div class="probe" id="Tag"></div>
+  <div class="probe" id="OtherTag"></div>
+  <div class="probe" id="Second"></div>
+  <div class="frame" id="Inner"><div class="probe" id="Deep"></div></div>
+  <ul id="List"><li class="probe" id="A"></li><li class="probe" id="B"></li></ul>
+</div>
+<style>
+.probe { width: 10px; height: 4px; }
+:host { padding-left: 7px; --accent: 50px; }
+:host #Any { width: var(--accent); }
+:host([tone=warn]) #Warn { width: 50px; }
+:host([wide]) > #Wide { width: 50px; }
+:host(:not([wide])) #Narrow { width: 50px; }
+:host(:hover) #Hover { width: 50px; }
+:host(.featured) #Class { width: 50px; }
+:host(Card) #Tag, :host(Other) #OtherTag { width: 50px; }
+:host(:nth-child(2)) #Second { width: 50px; }
+:host > #Deep { width: 50px; }
+:host([tone=warn]) li:nth-child(2) { width: 50px; }
+</style>"##;
+
+/// `:host` selects a component's instance, whose box is the component's
+/// root: its declarations style that box, `:host(<compound>)` reads the
+/// attributes written on the instance (the component's props, `class`
+/// among them), the root's state and the instance's place among its
+/// siblings, and a rule that also reads sibling order inside the
+/// component holds only under the same host.
+///
+/// Ways it could fail: `:host` reading the root element's own class or
+/// tag instead of the instance's, a `false` or unpassed prop counting as
+/// present, the host's condition not following its store, `:host >`
+/// reaching past the root's children, one instance's host deciding for
+/// another, or the tree-matched rule ignoring the host.
+#[test]
+fn host_selects_the_instance() {
+    let page = r##"<meta name="component" content="page">
+<column id="Root">
+  <Card id="One" class="big featured" tone={$tone} wide={$wide} />
+  <Card id="Two" />
+</column>"##;
+    let stores = [("tone", json!("warn")), ("wide", json!(true))];
+    let mut d = Doc::with_components(&[CARD], page, &stores);
+    let ids = [
+        "Any",
+        "Warn",
+        "Wide",
+        "Narrow",
+        "Class",
+        "Tag",
+        "OtherTag",
+        "Second",
+        "Inner/Deep",
+        "List/A",
+        "List/B",
+    ];
+    let w = |d: &Doc, card: &str| ids.map(|id| d.get(&format!("{card}/{id}")).width);
+    assert_eq!(
+        w(&d, "One"),
+        [
+            50.0, 50.0, 50.0, 10.0, 50.0, 50.0, 10.0, 10.0, 10.0, 10.0, 50.0
+        ]
+    );
+    assert_eq!(
+        w(&d, "Two"),
+        [
+            50.0, 10.0, 10.0, 50.0, 10.0, 50.0, 10.0, 50.0, 10.0, 10.0, 10.0
+        ]
+    );
+    // The declarations are the root's box's: its content starts 7px in.
+    for card in ["One", "Two"] {
+        assert_eq!(d.get(&format!("{card}/Any")).x - d.get(card).x, 7.0);
+    }
+    d.set("tone", json!("calm"));
+    d.set("wide", json!(false));
+    assert_eq!(
+        w(&d, "One"),
+        [
+            50.0, 10.0, 10.0, 50.0, 50.0, 50.0, 10.0, 10.0, 10.0, 10.0, 10.0
+        ]
+    );
+}
+
+/// `:host(<state>)` reads the host's live state, not an attribute: a
+/// component whose root is a button is `:host(:hover)` under the pointer
+/// and `:host(:disabled)` while its root is disabled, and only that
+/// instance.
+#[test]
+fn host_reads_the_instances_state() {
+    let chip = r##"<meta name="component" content="Chip">
+<meta name="prop:off" content="bool" data-default="false">
+<button id="Face" disabled={off}>x</button>
+<style>
+:host { width: 40px; height: 20px; padding: 0; }
+:host(:hover) { width: 90px; }
+:host(:disabled) { height: 30px; }
+</style>"##;
+    let page = r##"<meta name="component" content="page">
+<column id="Root"><Chip id="One" /><Chip id="Two" off={$off} /></column>"##;
+    let mut d = Doc::with_components(&[chip], page, &[("off", json!(true))]);
+    let size = |d: &Doc| ["One", "Two"].map(|id| (d.get(id).width, d.get(id).height));
+    assert_eq!(size(&d), [(40.0, 20.0), (40.0, 30.0)]);
+    let one = d.get("One");
+    let over = InputFrame {
+        pointer: Vec2::new(one.x + 5.0, one.y + 5.0),
+        pointer_inside: true,
+        ..InputFrame::default()
+    };
+    d.step(over.clone());
+    d.step(over);
+    assert_eq!(size(&d), [(90.0, 20.0), (40.0, 30.0)]);
+    d.set("off", json!(false));
+    assert_eq!(size(&d)[1], (40.0, 20.0));
+}
+
+/// What `:host` cannot mean is refused with its fix: a feature beside
+/// `:host` (a host is featureless inside its component), an instance
+/// attribute the component declares no prop for, an id, and a component
+/// whose root is itself an instance.
+#[test]
+fn host_refusals_name_their_fix() {
+    let component = |css: &str, body: &str| {
+        let text = format!(
+            "<meta name=\"component\" content=\"Card\">\n<meta name=\"prop:tone\" content=\"string\" data-default=\"\">\n{body}\n<style>{css}</style>"
+        );
+        og_ui::UiDocument::parse("ui/card.svelte", &text)
+            .err()
+            .map(|e| e.join("\n"))
+            .unwrap_or_default()
+    };
+    let div = "<div id=\"Frame\"></div>";
+    for (css, said) in [
+        (":host.wide { width: 1px; }", "write `:host(.wide)`"),
+        (":host:hover { width: 1px; }", "write `:host(:hover)`"),
+        (":host([size=big]) { width: 1px; }", "prop:size"),
+        (":host(.wide) { width: 1px; }", "prop:class"),
+        (
+            ":host(#One) { width: 1px; }",
+            "an instance's id names its root's path",
+        ),
+    ] {
+        let error = component(css, div);
+        assert!(error.contains(said), "{css}: {error}");
+    }
+    assert_eq!(component(":host([tone=warn]) { width: 1px; }", div), "");
+    let error = component(":host { width: 1px; }", "<Other />");
+    assert!(
+        error.contains("this component's root is a <Other> instance"),
+        "{error}"
+    );
+}

@@ -448,6 +448,8 @@ proof("revert-rule", "css_selectors", "revert_rule_rolls_back_one_rule",
       "Computed widths: width: revert-rule shows the rule below's width; an earlier declaration of the same rule is rolled back with it; an unlayered rule below wins over a layered one (where revert-layer would pick the layer); a custom property and a var() fallback roll back the same way; font-size: revert-rule restores the rule below's size (read through an em width); with no rule below the property is as never declared while the rule's other declarations apply; a rule that does not match rolls nothing back.")
 proof("media-pseudos", "css_selectors", "media_pseudo_classes_follow_the_element",
       "Computed widths of sibling probes of a <video>: :paused while its bind:paused is true and :playing once it is false, :muted with bind:muted, :seeking from a bind:currentTime write until the seek reaches the player. :buffering, :stalled and :volume-locked parse and never match: a player reads a local asset and the engine mixes its own sound.")
+proof("host", "css_selectors", "host_selects_the_instance",
+      "Computed boxes in two instances of one component: :host's padding and custom property style the root's box and inherit; :host([tone=warn]) .x, :host([wide]) > .x and :host(:not([wide])) .x follow the props the instance passes (a false or unpassed prop is absent) and its store; :host(.featured) reads the instance's class; :host(Card) matches the component's name and :host(Other) never; :host(:nth-child(2)) is the instance's place among its siblings; :host > .x stops at the root's children; :host([tone=warn]) li:nth-child(2), matched on the instantiated tree, holds only under that host. css_selectors::host_reads_the_instances_state proves :host(:hover) and :host(:disabled) follow the root's live state per instance, and css_selectors::host_refusals_name_their_fix the refusals (:host.wide, :host:hover, an attribute with no prop, an id, a component whose root is an instance). An instance and its root are one element: there is no separate host box.")
 not_applicable("host-context",
                ":host-context() was dropped from CSS Scoping and Firefox never shipped it; :host() with an ancestor selector in the document covers the case.")
 not_applicable("autonomous-custom-elements",
@@ -467,7 +469,6 @@ MISSING = {
     # layout
     "backdrop-filter": "Ordinary staged backdrop chains have fixtures; native glass rejects chains requiring intermediate clamps, drop-shadow and SVG url filters.",
     "border-shape": "No border-shape: borders, border images, outlines and shadows follow border-radius and corner-shape only.",
-    "host": ":host and :host() parse and match through the selectors crate, but a component instance's host element is not styled, so no output proves it.",
     "has-slotted": "A component's content is passed as snippets, not <slot> elements, so no :has-slotted output exists.",
     "slot": "A component's content is passed as snippets ({@render}), not <slot> elements, and no <slot> output is proved.",
     "time-relative-selectors": ":past and :future match WebVTT cues during media playback; <video> draws no text track yet (motion is building WebVTT), and the selectors come with it.",

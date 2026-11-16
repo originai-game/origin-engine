@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": ":host and :host()",
+      "summary": "Inside a component, `:host` selects the instance, whose box is the component's root: `:host { padding: 8px; --accent: red }` styles that box, and `:host(<compound>)` reads the instance: `:host([tone=warn])` the prop the instance passes (absent while null or false), `:host(.wide)` a word of its `class`, `:host(:hover)` and other states the root's live state, `:host(:nth-child(2))` its place among its siblings. `:host(…) .inner` and `:host > .child` select inside it. Before, `:host` was refused and `:host(…)` matched nothing. `:host.wide` and `:host:hover` are refused with `:host(.wide)` and `:host(:hover)` as the fix."
+    },
+    {
+      "member": "class on a component instance",
+      "summary": "`<Card class=\"wide\"/>` (or `class={…}`) passes the component's `class` prop, which a component declares (`<meta name=\"prop:class\" content=\"string\">`) to read in `:host(.wide)` or its markup. Before, a class on an instance was read and dropped."
+    }
+  ]
+}

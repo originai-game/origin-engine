@@ -215,6 +215,10 @@ impl<'i> sp::Parser<'i> for OgParser {
         true
     }
 
+    fn parse_host(&self) -> bool {
+        true
+    }
+
     fn parse_nth_child_of(&self) -> bool {
         true
     }
@@ -467,8 +471,117 @@ pub fn nested(c: &Component) -> &[Inner] {
     match c {
         Component::Negation(list) | Component::Is(list) | Component::Where(list) => list.slice(),
         Component::NthOf(nth) => nth.selectors(),
+        Component::Host(Some(argument)) => std::slice::from_ref(argument),
         _ => &[],
     }
+}
+
+/// The element `:host` selects in `doc`. A component instance and its root
+/// are one element, so a component's host is its root: `:host(…)` reads the
+/// instance's attributes (the component's props) and the root's state. A
+/// document attached under a host element of its own answers that element
+/// here, bound in [`crate::bind::BindingContext::selector_nodes`].
+pub(crate) fn host_node(doc: &UiDocument) -> usize {
+    doc.root
+}
+
+/// What `:host(<compound>)` asks of the host, as a condition: `features`
+/// are the compound's simple selectors without those that need the
+/// instantiated tree. An attribute is the prop of that name as the
+/// instance passes it (absent while it is null or false), a class one of
+/// the words of its `class`, a state the host's own.
+fn host_features<'a>(
+    features: impl IntoIterator<Item = &'a Component>,
+    doc: &UiDocument,
+    runtime: &dyn Fn() -> String,
+) -> Result<Expr, String> {
+    // An instance's attributes are its component's props: one the
+    // component does not declare is never passed.
+    let prop = |name: &str, c: &Component| {
+        if doc.props.is_empty() || doc.props.iter().any(|p| p.name == name) {
+            return Ok(Box::new(Expr::Path(name.to_owned())));
+        }
+        Err(format!(
+            "`:host({})` reads the instance's {name}, which <{}> does not declare: add <meta name=\"prop:{name}\" content=\"string\">",
+            c.to_css_string(),
+            doc.name
+        ))
+    };
+    let mut all = Expr::Lit(true.into());
+    for c in features {
+        let test = match c {
+            Component::LocalName(name) => {
+                Expr::Lit(name.name.0.eq_ignore_ascii_case(&doc.name).into())
+            }
+            Component::ExplicitUniversalType
+            | Component::ExplicitAnyNamespace
+            | Component::ExplicitNoNamespace
+            | Component::DefaultNamespace(_)
+            | Component::Namespace(..)
+            | Component::ImplicitScope
+            | Component::NonTSPseudoClass(PseudoClass::Defined) => Expr::Lit(true.into()),
+            Component::ID(_) => {
+                return Err(format!(
+                    "`:host({})`: an instance's id names its root's path and is not passed to the component; select by a prop, as :host([name=value])",
+                    c.to_css_string()
+                ));
+            }
+            Component::Class(name) => Expr::HasToken(prop("class", c)?, name.0.clone()),
+            Component::AttributeInNoNamespaceExists { .. }
+            | Component::AttributeInNoNamespace { .. }
+            | Component::AttributeOther(_) => {
+                let (name, test) = attribute(c).expect("an attribute selector");
+                match test {
+                    None => combine(
+                        Op::And,
+                        Expr::Bin(
+                            Op::Ne,
+                            prop(name, c)?,
+                            Box::new(Expr::Lit(serde_json::Value::Null)),
+                        ),
+                        Expr::Bin(Op::Ne, prop(name, c)?, Box::new(Expr::Lit(false.into()))),
+                    ),
+                    Some(test) => Expr::AttrTest(prop(name, c)?, test),
+                }
+            }
+            Component::NonTSPseudoClass(PseudoClass::State(state)) => Expr::InteractionAt {
+                node: host_node(doc),
+                state: *state,
+            },
+            Component::NonTSPseudoClass(PseudoClass::Lang(ranges)) => {
+                Expr::Lang(None, ranges.to_vec())
+            }
+            Component::NonTSPseudoClass(PseudoClass::Dir(rtl)) => Expr::Dir(None, *rtl),
+            Component::Negation(_) | Component::Is(_) | Component::Where(_) => {
+                let mut any = Expr::Lit(false.into());
+                for inner in nested(c) {
+                    let inner = host_features(inner.iter_raw_parse_order_from(0), doc, runtime)?;
+                    any = combine(Op::Or, any, inner);
+                }
+                if matches!(c, Component::Negation(_)) {
+                    match any {
+                        Expr::Lit(serde_json::Value::Bool(value)) => Expr::Lit((!value).into()),
+                        value => Expr::Not(Box::new(value)),
+                    }
+                } else {
+                    any
+                }
+            }
+            Component::Nth(_) | Component::NthOf(_) | Component::Empty | Component::Has(_) => {
+                return Err(runtime());
+            }
+            _ => Expr::Lit(false.into()),
+        };
+        all = combine(Op::And, all, test);
+    }
+    Ok(all)
+}
+
+/// Whether `c` or a selector nested in it holds a component `f` accepts.
+fn walk_any(c: &Component, f: &dyn Fn(&Component) -> bool) -> bool {
+    f(c) || nested(c)
+        .iter()
+        .any(|s| s.iter_raw_parse_order_from(0).any(|c| walk_any(c, f)))
 }
 
 /// An attribute selector's name and value test.
@@ -603,6 +716,29 @@ fn explain(error: &ParseError<OgError>) -> String {
 
 /// og's own refusals of what the crate parses.
 fn check(selector: &Inner) -> Result<(), String> {
+    // Inside its component a host has no features of its own (CSS Scoping
+    // 1 §3.2.1): `:host.wide` and `:host:hover` never match, so they are
+    // an author's slip for `:host(.wide)` and `:host(:hover)`.
+    for (compound, _) in segments(selector) {
+        let featured = compound.iter().find(|c| {
+            !matches!(
+                c,
+                Component::Host(_)
+                    | Component::Part(_)
+                    | Component::PseudoElement(_)
+                    | Component::ImplicitScope
+                    | Component::ExplicitUniversalType
+            )
+        });
+        if let Some(feature) = featured
+            && compound.iter().any(|c| matches!(c, Component::Host(_)))
+        {
+            let feature = feature.to_css_string();
+            return Err(format!(
+                "`:host{feature}` never matches: inside its component a host has no features of its own; write `:host({feature})`"
+            ));
+        }
+    }
     for c in selector.iter_raw_parse_order_from(0) {
         if let Component::NthOf(nth) = c
             && let Some(bad) = nth.selectors().iter().find(|s| !compound_only(s))
@@ -686,6 +822,59 @@ impl Selector {
         let mut hash = std::collections::hash_map::DefaultHasher::new();
         self.source.hash(&mut hash);
         format!("--og-part-host-{:016x}", hash.finish())
+    }
+
+    /// For a selector with `:host` that is matched on the instantiated
+    /// tree: the selector with each `:host(…)` written as the element it
+    /// selects (`:root`, keeping what its argument reads of the tree, as
+    /// `:nth-child()`), and what the arguments ask of the host beside
+    /// that, as the condition the rule holds under.
+    pub(super) fn without_host(
+        &self,
+        doc: &UiDocument,
+    ) -> Result<Option<(Selector, Expr)>, String> {
+        let host = |c: &Component| matches!(c, Component::Host(_));
+        if !self.any_component(&mut |c| host(c)) {
+            return Ok(None);
+        }
+        let runtime = || unreachable!("structural simple selectors stay in the selector");
+        let mut text = String::new();
+        let mut condition = Expr::Lit(true.into());
+        for (compound, after) in segments(&self.inner) {
+            for c in compound {
+                match c {
+                    Component::Host(argument) => {
+                        text.push_str(":root");
+                        let simple = argument.iter().flat_map(|a| a.iter_raw_parse_order_from(0));
+                        let (tree, own): (Vec<_>, Vec<_>) =
+                            simple.partition(|c| structural_component(c));
+                        for c in tree {
+                            let _ = c.to_css(&mut text);
+                        }
+                        condition = combine(Op::And, condition, host_features(own, doc, &runtime)?);
+                    }
+                    c if nested(c)
+                        .iter()
+                        .any(|s| s.iter_raw_parse_order_from(0).any(|c| walk_any(c, &host))) =>
+                    {
+                        return Err(format!(
+                            "{}: write :host(…) outside :is(), :not(), :where() and :nth-child(… of) in a selector that reads sibling order or :has()",
+                            self.source
+                        ));
+                    }
+                    c => {
+                        let _ = c.to_css(&mut text);
+                    }
+                }
+            }
+            if let Some(combinator) = after {
+                let _ = combinator.to_css(&mut text);
+            }
+        }
+        let mut list = Selector::parse_list(&text)?;
+        let mut selector = list.swap_remove(0);
+        selector.global = self.global;
+        Ok(Some((selector, condition)))
     }
 
     /// Whether matching needs the instantiated sibling order ([`structural`]).
@@ -940,6 +1129,11 @@ fn condition(
                     } else {
                         matches
                     }
+                }
+                Component::Host(_) if index != host_node(doc) => Expr::Lit(false.into()),
+                Component::Host(None) => Expr::Lit(true.into()),
+                Component::Host(Some(argument)) => {
+                    host_features(argument.iter_raw_parse_order_from(0), doc, runtime)?
                 }
                 // Parts are matched against a part's Facts at runtime,
                 // never against its host as an ordinary document node.

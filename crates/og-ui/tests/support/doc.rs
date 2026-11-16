@@ -26,7 +26,26 @@ impl Doc {
 
     /// [`Doc::new`] with `font` (one with a handle draws its text).
     pub(crate) fn with_font(text: &str, stores: &[(&str, Value)], font: UiFont) -> Doc {
-        let mut ui = ui_with_font(font);
+        Doc::mounted(ui_with_font(font), text, stores)
+    }
+
+    /// [`Doc::new`] after defining `components`, which `text` uses by
+    /// their names (`<Card />`).
+    pub(crate) fn with_components(
+        components: &[&str],
+        text: &str,
+        stores: &[(&str, Value)],
+    ) -> Doc {
+        let mut ui = ui_with_font(test_font_metrics());
+        for (i, component) in components.iter().enumerate() {
+            let doc = UiDocument::parse(&format!("ui/c{i}.svelte"), component)
+                .unwrap_or_else(|e| panic!("{e:?}"));
+            ui.define_document(doc);
+        }
+        Doc::mounted(ui, text, stores)
+    }
+
+    fn mounted(mut ui: Ui, text: &str, stores: &[(&str, Value)]) -> Doc {
         let doc = UiDocument::parse("ui/t.svelte", text).unwrap_or_else(|e| panic!("{e:?}"));
         let name = doc.name.clone();
         ui.define_document(doc);

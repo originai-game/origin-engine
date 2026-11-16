@@ -460,8 +460,19 @@ impl Parser {
                 continue;
             }
             if a.name == "class" || a.name.starts_with("class:") {
-                if a.bound {
-                    expression(&a.value, a.at)?;
+                let bound = match a.bound {
+                    true => Some(expression(&a.value, a.at)?),
+                    false => None,
+                };
+                // An instance's class is the component's `class` prop,
+                // which its `:host(.name)` rules read.
+                if component && a.name == "class" {
+                    let value = match bound {
+                        Some(e) => PropValue::Bind(e, None),
+                        None => PropValue::Lit(Lit::Str(a.value.clone())),
+                    };
+                    let line = self.line(a.at);
+                    self.doc.nodes[i].args.push(("class".into(), value, line));
                 }
                 continue;
             }
