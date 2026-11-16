@@ -27,7 +27,7 @@ deep sky) and a light one (cream panels on a day sky):
 ## Tokens
 
 Only `base.css` writes values; `motion.css` and `sounds.css` name them with
-`var()` (`og style check` enforces it), so a variant restyles the pack by
+`var()`, so a variant restyles the pack by
 setting tokens alone.
 
 - The seeds: `--seed-primary` and `--seed-accent` (sunflower),

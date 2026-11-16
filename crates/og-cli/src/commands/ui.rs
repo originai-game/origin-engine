@@ -36,7 +36,7 @@
 //!
 //! Without `--screen`, every screen the project declares: project.ogt's
 //! `ui { screen "<name>" "<commands>" ... }` entries and its `screens { title
-//! "<commands>" play ... results ... }` block (og style check's); without
+//! "<commands>" play ... results ... }` block (og style check-project's); without
 //! those, ui-run.ts takes the values the game's show command enumerates in
 //! its usage (`<a|b|c>`, the kit's `show:`), else the screens the
 //! playtests take screenshots of, else the start screen.

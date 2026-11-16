@@ -56,16 +56,13 @@ cd "$gate"
 record 'full gate' "$logs/full.log" env OG_WASM_VARIANTS=all scripts/check.sh full --all || true
 printf 'reference mismatches: %s\n' "$(grep -c 'REFERENCE MISMATCH' "$logs/full.log" || true)" >> "$summary"
 
-# 2. Four-style screens and contrast counts on the same pinned head.
+# 2. Four-style screens on the same pinned head.
 if record 'release og' "$logs/og-build.log" cargo build -q --release -p og-cli --bin og; then
   og_gpu_acquire 'milestone screens'
   for style in default fantasy scifi cartoon; do
     record "screens $style" "$logs/screens-$style.log" target/release/og ui review screens --style "$style" --locales game --out "$art/screens4/$style" || true
   done
   og_lock_release
-  for style in default fantasy scifi cartoon; do
-    record "style check $style" "$logs/style-$style.log" target/release/og style check "$style" || true
-  done
 fi
 
 # 3. Dense-menu perf, final main against the last measured main.

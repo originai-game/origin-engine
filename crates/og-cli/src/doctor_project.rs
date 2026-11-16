@@ -6,7 +6,7 @@
 //! asset, the budget, the limit and the value where they apply, and the fix
 //! — as lines, or with `--json` as one JSON document. One more line is the
 //! style (`code` `style`): the cooked assets measured against the look's
-//! art contract, as `og style check` measures them (`info` when they meet
+//! art contract, as `og style check-project` measures them (`info` when they meet
 //! it or the project names no look, `warning` when one does not). The exit status is 1
 //! when any finding is an error (an asset that failed to cook, no report, a
 //! texture past the device limit), 0 otherwise: an asset over one of the

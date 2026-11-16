@@ -1,4 +1,4 @@
-//! `og style check`'s token rule: a pack's values live in `:root` (and
+//! Built-in pack token rule: a pack's values live in `:root` (and
 //! `:root[data-scheme=…]`) as custom properties; every other declaration
 //! names them with `var()`, so a variant restyles the pack by setting
 //! tokens alone. Outside a `:root` rule a declaration may not write a

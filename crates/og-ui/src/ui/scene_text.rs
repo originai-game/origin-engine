@@ -7,8 +7,7 @@
 //! the style sets one, a `--tag-fill` plate behind it, padded by
 //! `--tag-pad` and rounded by `--tag-radius`. The UI cannot see the scene,
 //! so it is read at its extremes: a sky as bright as white, a night as
-//! dark as black. A halo is read as [`halo_contrast`] reads it, the model
-//! `og style check` reports.
+//! dark as black. A halo is read by [`halo_contrast`].
 
 use super::*;
 use crate::paint::{ColorRef, Paint, TextShadow};

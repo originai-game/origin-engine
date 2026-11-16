@@ -9,7 +9,7 @@
 //! `--publish` takes the `publish` build of the web host, whose probe keeps
 //! only the player-facing members (hello, tick, state, pick, entity, input,
 //! capture), minifies, and adds the PWA (`manifest.webmanifest`, `sw.js`),
-//! and prints the asset part of `og style check` as warnings (it never
+//! and prints the asset part of `og style check-project` as warnings (it never
 //! refuses a build for them).
 //! project.ogt's `publish` block is checked here (`publish.rs`) and handed
 //! over as JSON; `packages/engine/src/node/web-build.ts` writes the files

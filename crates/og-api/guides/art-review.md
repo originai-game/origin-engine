@@ -119,7 +119,7 @@ the frame, these say what the assets themselves must be.
   spawner picking colours from ArtPalette.
 - Writing them changes neither the frame nor the simulation. The cook's
   conformance (§3), the run-time defaults taken from them and
-  `og style check` are docs/art.md §2.3 to §2.5.
+  `og style check-project` are docs/art.md §2.3 to §2.5.
 
 ## 7. Reviewing effects
 

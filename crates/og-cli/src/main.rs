@@ -207,15 +207,6 @@ commands:
   style new <name> [--look <preset>] [--scheme dark|light] [--finish <treatment>] [--out DIR]
                       write editable CSS with both palettes, core-control states and shared sounds;
                       finishes: flat, gradient, glass, hologram, neon, paper, bevel, brush
-  style check <directory|pack|default> [--json]
-                      validate CSS and asset URLs; report, without grading, each text's contrast on
-                      what the core sheet and the built-in documents draw under it (WCAG 2, APCA)
-                      and the team and state colours under each colour vision;
-                      outside :root a declaration names its colours, lengths (other than 0),
-                      durations and url()s with var(): the values are :root tokens (keywords,
-                      unitless numbers, percentages and angles stay; @font-face src and
-                      -og-sound declare assets and may name url()s anywhere)
-                      (style upgrade, art and pack are removed; use CSS images and border-image)
   style check-project [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH]
       [--no-frames] [--json]
                       cook, then measure every cooked asset against the art contract of the look

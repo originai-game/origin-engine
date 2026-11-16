@@ -805,7 +805,7 @@ pub(in crate::cook) fn scene_primitives(
 /// (ArtTexels.density's: a texture of `n` texels a side draws `n / span`
 /// texels per metre): over the triangles that sample it, in their UV set,
 /// the area-weighted median of `sqrt(world area / uv area)`, the measure
-/// `og style check` takes. A texture laid once across the model spans its
+/// `og style check-project` takes. A texture laid once across the model spans its
 /// longest side; an atlas of a crate's six faces less, a ground repeated
 /// ten times across 40 m 4 m. `None` with no triangle to measure (no UVs,
 /// or none that sample it): [`extent`] stands in.

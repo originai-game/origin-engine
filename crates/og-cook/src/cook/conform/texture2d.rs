@@ -306,7 +306,7 @@ pub(super) fn uses(
 }
 
 /// What the texture `s` is to conformance (docs/art.md §2.3), and its own
-/// `conform` line: the one decision the cook and `og style check` share
+/// `conform` line: the one decision the cook and `og style check-project` share
 /// (`super::texture_roles`). Its own role wins (`conform ui`, `conform
 /// sprite`); then who names it (a UI style, a 2D rig or a map's own tile
 /// set: a fixed layout; a flipbook or a tile set: its sheet); then a

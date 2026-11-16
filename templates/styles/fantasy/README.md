@@ -22,7 +22,7 @@ read these tokens.
 ## Tokens
 
 Only `base.css` writes values; `motion.css` and `sounds.css` name them with
-`var()` (`og style check` enforces it), so a variant restyles the pack by
+`var()`, so a variant restyles the pack by
 setting tokens alone (`templates/styles/tests/fantasy-frost`).
 
 - The seeds: `--seed-primary` (crimson), `--seed-accent` (brass),

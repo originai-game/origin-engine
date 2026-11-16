@@ -1270,9 +1270,8 @@ tokens times arbitrary constants and radius clamps with literal minima are
 not semantic tokens, and a token per arbitrary number does not meet this
 contract. When the API cannot express a semantic value, the core owner
 fixes the API before a component depends on it. A pack's `::part` and other
-rules read its tokens with `var()`; `og style check` fails a declaration
-outside a `:root` rule that uses a literal colour, a length other than 0, a
-duration or a `url()`.
+rules read its tokens with `var()` rather than using a literal colour,
+length other than 0, duration or `url()` outside a `:root` rule.
 
 The default stylesheet (`crates/og-ui/default.css`, generated from
 `packages/design/tokens/*.css`) sets every value the core controls and
@@ -1718,20 +1717,7 @@ rules, transitions and shared `-og-sound`s. Finishes: flat, gradient,
 glass, hologram, neon, paper, bevel, brush. `--scheme` picks the fallback
 root palette; `data-scheme` still selects at run time.
 
-`og style check <directory|pack|default> [--json]` checks CSS and asset
-URLs, fails literals outside `:root` (§3.1) and reports contrast as facts.
-It builds the core-control sheet's pages (every state held) and every
-built-in document from its `fixture:default` under the pack, in both
-schemes, without a GPU, and reads each drawn text on what is drawn under
-it, composited in linear light: fills, gradients and image texels where
-the text is, glass by its tint, layers by their opacity; a ground the UI
-covers only partly is read over black and over white and called `scene`.
-Each pair carries its WCAG 2 ratio, APCA Lc and, under a `text-shadow` or
-stroke, its ratio on that halo. It also reports how far apart (ΔEOK) the
-team and state colours stay under protanopia, deuteranopia and
-tritanopia (og-draw's simulation). Nothing is graded; the bars are the
-screens guide's (§5). `og style check-project` is the game's art-contract
-checker.
+`og style check-project` is the game's art-contract checker.
 
 `og ui sheet <pack>` renders a pack's core-control pages at desktopHd and
 phonePortrait at 100 % and 150 % text, scroll pages captured to the

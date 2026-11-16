@@ -27,7 +27,7 @@ and `world`.
 ## Tokens
 
 Only `base.css` writes values; `motion.css` and `sounds.css` name them with
-`var()` (`og style check` enforces it), so a variant restyles the pack by
+`var()`, so a variant restyles the pack by
 setting tokens alone.
 
 - The seeds: `--seed-primary` (cyan; a deeper teal in the light scheme),

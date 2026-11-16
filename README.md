@@ -46,7 +46,7 @@ Normative detail is in `docs/design.md` (and `docs/ui.md` for the UI).
 - **Built for an agent author.** Desc structs whose zero value is a sensible
   default, errors as values, three.js vocabulary, a generated wiki and guides
   behind `og api find`/`show`, and `og` commands that check what a reviewer checks
-  by eye (`og ui check`, `og style check`).
+  by eye (`og ui check`).
 
 ## Status
 

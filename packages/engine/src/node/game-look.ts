@@ -1,4 +1,4 @@
-// Declaration-only inspection for og style check: no host, world, tick or GPU.
+// Declaration-only inspection for og style check-project: no host, world, tick or GPU.
 import { writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { declaredGameLook } from "../runtime.ts";

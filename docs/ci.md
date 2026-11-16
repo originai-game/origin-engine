@@ -145,7 +145,7 @@ The runner fetches and pins one full `origin/main` SHA, creates clean sibling
 worktrees `l4-gate` and `l4-perf` if absent, and refuses to overwrite local
 changes. It leaves old integrator worktrees and `/home/user/gpu` untouched.
 In order: clean targets; full gate with `OG_WASM_VARIANTS=all` (rust-gpu
-included); release `og`, screens and style checks for default, fantasy,
+included); release `og` and screens for default, fantasy,
 scifi and cartoon; ignored og-ui perf against `2fb1c4819`; release native
 town bench twice against `6cc20b167`. GPU work uses `scripts/lock.sh`.
 The dense-menu budget is 0.85 ms. Reference movements are reported for

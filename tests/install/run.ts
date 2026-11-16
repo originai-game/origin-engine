@@ -24,7 +24,7 @@
 //   2. `og new demo --engine <v>` scaffolds from the dist's create/: the pin,
 //      no node_modules, `.og/engine` pointing at the dist's engine/
 //   3. `og --version` prints the version; `og doctor` passes (the renderer
-//      line may be `none`: then 4b's og style check must refuse, naming it)
+//      line may be `none`: then 4b's og style check-project must refuse, naming it)
 //   4. `og check`, `og test` (frames unchecked without a renderer), `og build
 //      --publish`: og-build.json names the version, the shipped publish wasm is
 //      the dist's byte for byte
@@ -233,27 +233,27 @@ function host(): void {
       // 4b. og ui check from the package (src/node/ui-run.ts): a reviewer's contrast numbers come from it, so the
       // package must carry it (0.7.8-dev.17 did not). It exits 0 whatever it found; its JSON names each
       // finding's box, the count of its measures, and every cell's frame.
-      step = new Step("4b og ui check, og style check --sizes, og frame measure");
+      step = new Step("4b og ui check, og style check-project --sizes, og frame measure");
       const ui = run(step, [...ogCmd, "ui", "check", ".", "--breakpoints", "desktop,phoneLandscape", "--locales", "game", "--scales", "100", "--json"], demo, { allowFail: true });
       if (ui.status !== 0) step.fail(`og ui check exited ${ui.status}\n${ui.stderr.slice(-2000)}`);
       const checked = JSON.parse(ui.stdout.trim().split("\n").at(-1)!) as { cells: number; findings: Array<{ at?: unknown[] }>; measures: number; frames?: Array<{ viewport: number[] }> };
       if (!(checked.cells > 0) || checked.frames?.length !== checked.cells || checked.measures !== 0) step.fail(`og ui check on the empty skeleton --json: ${ui.stdout.slice(0, 400)}`);
       if (checked.findings.some((f) => !Array.isArray(f.at))) step.fail("og ui check --json: a finding without its places (at)");
       log(`   og ui check: ${checked.cells} cell(s), ${checked.findings.length} finding(s)`);
-      // The reviewer's other two: og style check at desktop and phone size (labelled frames with their tier), and a region
+      // The reviewer's other two: og style check-project at desktop and phone size (labelled frames with their tier), and a region
       // of one of them measured by og frame measure.
-      const style = run(step, [...ogCmd, "style", "check", ".", "--title", "0.5:screenshot", "--sizes", "desktop,phone", "--json"], demo, { allowFail: true });
+      const style = run(step, [...ogCmd, "style", "check-project", ".", "--title", "0.5:screenshot", "--sizes", "desktop,phone", "--json"], demo, { allowFail: true });
       const styled = JSON.parse(style.stdout.trim().split("\n").at(-1)!) as { frames: Array<{ label: string; path: string; size: number[] }>; frameErrors?: string[] };
       if (renderer?.[1] === "none") {
-        // No GPU (the container, OG_RENDERER=none): og style check has no frame to judge, and must say so
+        // No GPU (the container, OG_RENDERER=none): og style check-project has no frame to judge, and must say so
         // rather than pass on nothing; og frame measure has no frame to read.
         const said = (styled.frameErrors ?? []).filter((e) => e.includes("no renderer"));
-        if (style.status !== 1 || styled.frames.length !== 0 || said.length !== 2) step.fail(`og style check without a renderer exited ${style.status}, framed ${styled.frames.length}, frameErrors ${JSON.stringify(styled.frameErrors)}`);
-        log(`   og style check without a renderer: refused, ${said.length} frame errors naming it`);
+        if (style.status !== 1 || styled.frames.length !== 0 || said.length !== 2) step.fail(`og style check-project without a renderer exited ${style.status}, framed ${styled.frames.length}, frameErrors ${JSON.stringify(styled.frameErrors)}`);
+        log(`   og style check-project without a renderer: refused, ${said.length} frame errors naming it`);
       } else {
-        if (style.status !== 0 && style.status !== 3) step.fail(`og style check exited ${style.status}\n${style.stderr.slice(-2000)}`);
+        if (style.status !== 0 && style.status !== 3) step.fail(`og style check-project exited ${style.status}\n${style.stderr.slice(-2000)}`);
         const labels = styled.frames.map((f) => f.label).sort();
-        if (labels.join(",") !== "title@desktop,title@phoneLandscape") step.fail(`og style check --sizes framed ${labels.join(", ")}`);
+        if (labels.join(",") !== "title@desktop,title@phoneLandscape") step.fail(`og style check-project --sizes framed ${labels.join(", ")}`);
         const measured = og(step, demo, "frame", "measure", styled.frames[0]!.path, "--units", "fraction", "--region", "0,0,0.5,0.5", "--json");
         const ratio = (JSON.parse(measured.stdout) as { metrics: { contrast: { ratio: number } } }).metrics.contrast.ratio;
         if (!(ratio >= 1)) step.fail(`og frame measure printed ${measured.stdout.slice(0, 200)}`);

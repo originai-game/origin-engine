@@ -53,7 +53,7 @@ impl ConformAction {
 }
 
 /// What a texture is to conformance (docs/art.md §2.3): which pass holds
-/// it to the art contract, and how `og style check` judges it.
+/// it to the art contract, and how `og style check-project` judges it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TextureRole {
     /// Drawn whole as a sprite (the 2D pass).
@@ -76,7 +76,7 @@ pub enum TextureRole {
 /// own (`.ktx2` files, which the cook passes through, and images whose
 /// import settings do not read are left out): the decision the cook's
 /// passes make, read from the project's sources as the cook reads them,
-/// for `og style check`.
+/// for `og style check-project`.
 pub fn texture_roles(root: &Path) -> Result<BTreeMap<String, TextureRole>, String> {
     let assets = root.join("assets");
     let mut sources = super::scan(&assets).map_err(|e| e.0)?.sources;
@@ -127,7 +127,7 @@ pub enum ModelRole {
 /// ([`model_role`]), by asset id: what the cook holds to
 /// `ArtShape.characterFaces` besides the skinned ones, and the effect
 /// meshes no face budget holds, read from the project's sources as the
-/// cook reads them, for `og style check`.
+/// cook reads them, for `og style check-project`.
 pub fn model_roles(root: &Path) -> Result<BTreeMap<String, ModelRole>, String> {
     let sources = super::scan(&root.join("assets")).map_err(|e| e.0)?.sources;
     let mut out = BTreeMap::new();

@@ -68,7 +68,7 @@ fn css(look: &str, scheme: &str, finish: Option<&str>) -> Result<String, String>
     }
     out.push_str(&format!(":root, :root[data-scheme=dark], :root[data-scheme=light] {{\n  --pack-accent: {accent};\n  --radius-button: {radius}; --radius-panel: {radius}; --radius-field: {radius};\n  --primary: var(--pack-accent);\n  --primary-hover: color-mix(in srgb, var(--pack-accent), white 20%);\n  --primary-active: color-mix(in srgb, var(--pack-accent), black 20%);\n  --on-primary: #101522;\n}}\n"));
     // The finish's values are root tokens; its rule names them with var(),
-    // as `og style check` requires (docs/ui.md §3.1).
+    // following the style contract (docs/ui.md §3.1).
     let (tokens, treatment) = match finish {
         "flat" => ("", "box-shadow: none;"),
         "gradient" => (
