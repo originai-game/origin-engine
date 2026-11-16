@@ -292,6 +292,7 @@ impl Ui {
         let nearest = r.object_css().1;
         // Asset paths were resolved beside their stylesheet before the cascade.
         let mut image = |what: &str, i: p::CssImage| -> Option<p::BgImage> {
+            let i = i.in_scheme(cx.dark);
             let Some((source, density)) = i.select(self.env.viewport.dpr()) else {
                 return (what == "mask" && matches!(i, p::CssImage::Set(_)))
                     .then_some(p::BgImage::Transparent);

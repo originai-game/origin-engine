@@ -178,6 +178,7 @@ impl BoxDecor {
                 || !c.masks.is_empty()
                 || c.mask_border.is_some()
                 || c.border_image.is_some()
+                || c.color_clip != crate::css::paint_css::BoxEdge::Border
         });
         match &self.background {
             Some(bg) if layered => {
