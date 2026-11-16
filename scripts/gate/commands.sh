@@ -353,6 +353,22 @@ step_check_conformance() {
   scripts/tsrs-diff.sh
 }
 
+# docs/ui.md's CSS checklist is exactly what scripts/css-coverage.py makes
+# of its proofs and their test entry points, so the head that leaves it
+# stale fails. Seconds, so it never skips on unchanged inputs. The pinned
+# WebDX archive comes from the host's gate cache, fetched once; with no
+# cached copy and no network the step is unchecked (SKIPPED, no green),
+# never passed, as a frame with no GPU is.
+step_css_coverage() {
+  python3 scripts/css-coverage.py --check
+  local rc=$?
+  if [ "$rc" = 3 ]; then
+    SKIP_NOTE="css-coverage unchecked: no cached WebDX archive and none could be fetched"
+    return $SKIP
+  fi
+  return $rc
+}
+
 step_bun_test() {
   require_wasm bun-test || return 1
   OG_GATE=1 sh packages/engine/scripts/build.sh || return 1

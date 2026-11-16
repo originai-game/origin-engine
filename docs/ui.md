@@ -2005,7 +2005,7 @@ Source: [WebDX web-features 3.45.0](https://www.npmjs.com/package/web-features/v
 
 Part applicability is proved only in the scopes named below: an element test does not prove that a widget `::part` lays out, transforms or paints the property. Inherited, pseudo-element, environment and lifecycle features need their own applicable part scenarios; there is no blanket all-properties claim.
 
-Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document drift. For offline use, pass `--archive <web-features-3.45.0.tgz>`; its SHA-256 is pinned in the script. Proof entries are manually reviewed assertions, not name matches. Tests below live in `crates/og-ui/tests/` (what the UI builds) or `crates/og-tests-ui/tests/` (the frames drawn of it), each one integration test binary; GPU proofs need a GPU and are judged against the frames recorded on the GPU host (the L4, Vulkan; docs/ci.md §Reference frames).
+Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document drift. The archive is fetched once per host into the gate cache (`~/.cache/og-gate`), or passed with `--archive <web-features-3.45.0.tgz>`; its SHA-256 is pinned in the script and checked on every read. Proof entries are manually reviewed assertions, not name matches. Tests below live in `crates/og-ui/tests/` (what the UI builds) or `crates/og-tests-ui/tests/` (the frames drawn of it), each one integration test binary; GPU proofs need a GPU and are judged against the frames recorded on the GPU host (the L4, Vulkan; docs/ci.md §Reference frames).
 
 | WebDX feature | Baseline | Document elements | Widget ::part | Proof scope or missing reason |
 | --- | --- | --- | --- | --- |

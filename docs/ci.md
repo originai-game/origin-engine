@@ -169,7 +169,7 @@ wasm products keyed by content. Neither lane partitions tests across machines.
 
 | Lane | Checks |
 |---|---|
-| `quick` | fmt, clippy, native test build, CPU tests, GPU tests outside og-tests, generated API drift, non-engine package tests, the lanes wasm type check, the wasm32 check of the wasm-only crates |
+| `quick` | fmt, clippy, native test build, CPU tests, GPU tests outside og-tests, generated API drift, non-engine package tests, the lanes wasm type check, the wasm32 check of the wasm-only crates, the CSS checklist |
 | `full` | quick plus og-tests, doctests, engine and extension Bun tests, bindgen-only wasm variants, fixtures, the browser tests of packages/engine's `test:browser` |
 
 `OG_GATE_SKIP` (comma-separated step names) drops those steps from a run.
@@ -242,6 +242,7 @@ split, and the lowest such crate is its cause.
 | `bun-quick` | Non-engine package tests, without rebuilding native artifacts. | quick, full |
 | `wasm-lanes-check` | `scripts/wasm-lanes.sh check` of each `lanes` variant in `scripts/wasm-crates.txt` whenever og-render, og-host-web or a crate they depend on changes, because under atomics wgpu's web types are not Send. | quick, full |
 | `wasm-check` | `cargo check --target wasm32-unknown-unknown -p og-tests-web` whenever it or a crate it depends on changes: the crate is empty natively, so the workspace's check and clippy never compile it. | quick, full |
+| `css-coverage` | `python3 scripts/css-coverage.py --check`: docs/ui.md's CSS checklist is what the proofs generate, so the head that leaves it stale fails. The pinned WebDX archive is read from the host's gate cache (`~/.cache/og-gate`, or `OG_GATE_CACHE`), fetched once and hash-checked on every read; with neither a cached copy nor the network the step is unchecked (SKIPPED, no green), never passed. | quick, full |
 | `wasm-build` | Build `scripts/wasm-crates.txt` modules in `wasm-test` into `target/og-wasm/raw`. `OG_WASM_VARIANTS` picks them: `dev` (the development module alone: bun-test's cross-host tests, a landing), `reference` (adds the 3D publish pair, web-reference alone), `all` (every publish and lanes variant: a run with `browser`, and `scripts/release-wasm.sh`). Tests that load a publish or lanes module skip without one. | full |
 | `wasm-bindgen` | Bindgen-only modules for all variants in `target/og-wasm/dev`. `dev-all.txt` lists every module; `dev.txt` selects publish and lanes variants. | full, web-reference prerequisite |
 | `size-gate` | Brotli-11 bytes of each shipping-profile bindgen module in `dev.txt`, checked against `wasm_core_brotli_bytes` before packing. | release only |

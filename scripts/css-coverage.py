@@ -4,19 +4,26 @@
 No parser or source-name scan grants support. PROVEN contains reviewed output
 assertions and their exact scope; everything else remains a missing proof.
 Usage: python3 scripts/css-coverage.py [--archive web-features-3.45.0.tgz] [--check]
+The archive is read from the host's gate cache, fetched into it once; exit
+status 3 means it is neither cached nor fetchable, so nothing was checked.
 """
 
 import argparse
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
+import sys
 import tarfile
 import urllib.request
 
 ROOT = Path(__file__).resolve().parent.parent
 URL = "https://registry.npmjs.org/web-features/-/web-features-3.45.0.tgz"
 SHA256 = "f1b743f337b877178e5ddc264151e9e6627af26096ba96cddda8ddd7e6907e25"
+# One download per host, by the pinned hash (scripts/lock.sh's gate cache).
+CACHE = Path(os.environ.get("OG_GATE_CACHE") or Path.home() / ".cache/og-gate") / f"web-features-{SHA256}.tgz"
+UNAVAILABLE = 3
 START = "<!-- css-coverage:start -->"
 END = "<!-- css-coverage:end -->"
 
@@ -394,14 +401,44 @@ def proof_source(module, test, kind):
     raise ValueError(f"missing {kind} entry point: {module}::{test}")
 
 
+def webdx(path):
+    """The pinned archive's bytes, hash-checked on every read: from path,
+    else the cache, else fetched and cached. A cached copy with another
+    hash is dropped and fetched again."""
+    if path:
+        data = path.read_bytes()
+    else:
+        try:
+            data = CACHE.read_bytes()
+        except OSError:
+            data = None
+        if data is not None and hashlib.sha256(data).hexdigest() != SHA256:
+            print(f"css-coverage: {CACHE} does not match the pinned hash; fetching it again", file=sys.stderr)
+            CACHE.unlink()
+            data = None
+        if data is None:
+            try:
+                data = urllib.request.urlopen(URL, timeout=60).read()
+            except OSError as error:
+                print(f"css-coverage: UNCHECKED: no cached WebDX archive and {URL} could not be fetched ({error})",
+                      file=sys.stderr)
+                sys.exit(UNAVAILABLE)
+            if hashlib.sha256(data).hexdigest() == SHA256:
+                CACHE.parent.mkdir(parents=True, exist_ok=True)
+                part = CACHE.with_name(f"{CACHE.name}.{os.getpid()}")
+                part.write_bytes(data)
+                part.replace(CACHE)
+    if hashlib.sha256(data).hexdigest() != SHA256:
+        raise ValueError("WebDX archive hash changed")
+    return data
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive", type=Path)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    archive = args.archive.read_bytes() if args.archive else urllib.request.urlopen(URL).read()
-    if hashlib.sha256(archive).hexdigest() != SHA256:
-        raise ValueError("WebDX archive hash changed")
+    archive = webdx(args.archive)
     with tarfile.open(fileobj=io.BytesIO(archive), mode="r:gz") as package:
         data = json.load(package.extractfile("package/data.json"))["features"]
     features = {key: value for key, value in data.items()
@@ -431,7 +468,7 @@ def main():
              "part scenarios; there is no blanket all-properties claim.",
              "",
              "Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document drift. "
-             "For offline use, pass `--archive <web-features-3.45.0.tgz>`; its SHA-256 is pinned in the script. "
+             "The archive is fetched once per host into the gate cache (`~/.cache/og-gate`), or passed with `--archive <web-features-3.45.0.tgz>`; its SHA-256 is pinned in the script and checked on every read. "
              "Proof entries are manually reviewed assertions, not name matches. Tests below live in "
              "`crates/og-ui/tests/` (what the UI builds) or `crates/og-tests-ui/tests/` (the frames drawn of it), "
              "each one integration test binary; GPU proofs need a GPU and are judged against the frames recorded on the GPU host (the L4, Vulkan; docs/ci.md §Reference frames).",
