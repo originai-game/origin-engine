@@ -21,25 +21,24 @@
   NodeGraph's pick (a room's key) and its zoom, pinch and pan.
 -->
 <section id="CardRunMap" part="CardRunMap.frame" aria-label={title || t("card.map.name")}>
-  <header part="CardRunMap.band"><h2 part="CardRunMap.title">{title}</h2><span part="CardRunMap.floor CardRunMap.label" hidden={!floor}>{floor}</span></header>
+  <header part="CardRunMap.band"><h2 part="CardRunMap.title">{title}</h2>{#if floor}<span part="CardRunMap.floor CardRunMap.label">{floor}</span>{/if}</header>
   <div part="CardRunMap.board CardRunMap.plate" class="board">
     <NodeGraph nodes={nodes} links={links} view={view} zoom={zoom} panX={panX} panY={panY} selected={selected} name={title || t("card.map.name")} />
   </div>
-  <div part="CardRunMap.legend CardRunMap.plate" role="list" hidden={!legend.length} aria-label={t("card.map.legend")}>
+  {#if legend.length}<div part="CardRunMap.legend CardRunMap.plate" role="list" aria-label={t("card.map.legend")}>
     {#each legend as l (l.id)}
       <div part="CardRunMap.row" role="listitem"><og-icon class="legend-icon" icon={l.icon}></og-icon><span class="legend-label">{l.label}</span></div>
     {/each}
-  </div>
+  </div>{/if}
 </section>
 
 <style>
-[part="CardRunMap.frame"][hidden], [part="CardRunMap.frame"] [hidden] { display: none; }
-[part="CardRunMap.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); }
+:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-sm); }
 [part="CardRunMap.band"] { display: flex; flex-wrap: wrap; width: stretch; align-items: baseline; justify-content: center; gap: var(--space-xs); flex: none; }
 [part="CardRunMap.title"] { margin: 0; text-align: center; }
 [part="CardRunMap.floor CardRunMap.label"] { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .board { display: flex; width: stretch; flex: 1; min-height: 0; align-items: center; justify-content: center; overflow: hidden; }
-[part="CardRunMap.legend CardRunMap.plate"] { display: flex; flex-wrap: wrap; width: stretch; flex: none; justify-content: center; gap: var(--space-md); }
+[part="CardRunMap.legend CardRunMap.plate"] { display: flex; flex-wrap: wrap; flex: none; justify-content: center; gap: var(--space-sm) var(--space-md); padding: var(--space-sm); border-radius: var(--well-radius); background: var(--well); }
 [part="CardRunMap.row"] { display: flex; align-items: center; gap: var(--space-xs); flex: none; }
 .legend-icon { width: var(--size-xs); height: var(--size-xs); }
 </style>

@@ -15,4 +15,7 @@ ui {
   screen "table-fantasy" "style:fantasy;page:table"
   screen "builder-fantasy" "style:fantasy;page:builder"
   screen "run-fantasy" "style:fantasy;page:run"
+  screen "table-default" "style:default;page:table"
+  screen "builder-default" "style:default;page:builder"
+  screen "run-default" "style:default;page:run"
 }

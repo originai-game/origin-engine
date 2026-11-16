@@ -24,13 +24,11 @@
 </nav>
 
 <style>
-[part="CardPiles.frame"] [hidden] { display: none; }
-[part="CardPiles.frame"] { display: flex; width: stretch; gap: var(--space-sm); align-items: flex-end; justify-content: space-between; }
+:host { display: flex; inline-size: stretch; gap: var(--space-sm); align-items: flex-end; justify-content: space-between; }
 [part="CardPiles.pile CardPiles.cell"] { flex: 0 1 auto; min-width: var(--size-touch); min-height: var(--size-touch); padding: var(--space-xs); align-items: center; justify-content: center; }
 [part="CardPiles.pile CardPiles.cell"] .face { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); min-width: 0; }
 .mark { position: relative; display: flex; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; }
 .icon { width: 70%; height: 70%; }
-[part="CardPiles.count CardPiles.figure"] { position: absolute; right: calc(var(--space-xs) * -1); bottom: calc(var(--space-xxs) * -1); min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
-[part="CardPiles.count CardPiles.figure"]:dir(rtl) { right: auto; left: calc(var(--space-xs) * -1); }
+[part="CardPiles.count CardPiles.figure"] { position: absolute; inset-inline-end: calc(var(--space-xs) * -1); bottom: calc(var(--space-xxs) * -1); min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; background: var(--panel-raised); border-radius: var(--radius-capsule); }
 [part="CardPiles.label"] { max-width: calc(var(--size-xxl) * 1.5); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; text-align: center; }
 </style>

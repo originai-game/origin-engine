@@ -39,7 +39,7 @@
                 <div part="CardHand.badge" class="unplayable" aria-label={t("card.hand.unplayable")}><og-icon icon="lock"></og-icon></div>
               </button>
             {/if}
-            <button class="play primary" hidden={!(c.id == selected && c.playable)} onclick={play}>{t("card.hand.play")}</button>
+            {#if c.id == selected && c.playable}<button class="play primary" onclick={play}>{t("card.hand.play")}</button>{/if}
           </div>
         </div>
       {/each}
@@ -50,8 +50,7 @@
 </section>
 
 <style>
-[part="CardHand.frame"][hidden], [part="CardHand.frame"] [hidden] { display: none; }
-[part="CardHand.frame"] { display: flex; width: stretch; height: stretch; align-items: flex-end; justify-content: center; container-type: size; }
+:host { display: flex; inline-size: stretch; block-size: stretch; align-items: flex-end; justify-content: center; container-type: size; }
 /* A card is the frame's height less the room the picked-up card rises
    into and the room the fan's end cards dip into, and 0.7 of that wide
    (a card's proportion), but at most 0.36 of the frame's width, so a
@@ -65,16 +64,14 @@
 [part="CardHand.slot"]:last-child { flex-shrink: 0; }
 [part="CardHand.slot"]:hover { translate: 0 calc(var(--space-sm) * -1); }
 [part="CardHand.slot"][data-selected=true] { rotate: 0deg; translate: 0 calc(var(--size-touch) * -1 - var(--space-xs)); z-index: 1; }
-.stack { position: absolute; left: 0; bottom: 0; width: var(--card-width); height: stretch; }
-.stack:dir(rtl) { left: auto; right: 0; }
+.stack { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; width: var(--card-width); }
 [part="CardHand.card"] { position: relative; width: stretch; height: stretch; padding: 0; align-items: stretch; justify-content: stretch; }
 [part="CardHand.card"] .face { width: stretch; height: stretch; min-width: 0; }
 /* Under the cost seal, on the edge the next card leaves uncovered. */
-.unplayable { position: absolute; left: var(--space-xxs); top: calc(var(--size-md) + var(--space-xs)); display: flex; width: var(--size-sm); height: var(--size-sm); align-items: center; justify-content: center; }
-.unplayable:dir(rtl) { left: auto; right: var(--space-xxs); }
+.unplayable { position: absolute; inset-inline-start: var(--space-xxs); top: calc(var(--size-md) + var(--space-xs)); display: flex; width: var(--size-sm); height: var(--size-sm); align-items: center; justify-content: center; }
 .unplayable og-icon { width: 70%; height: 70%; }
 /* Below the card's foot, in the room the lift leaves, so it never covers the rules text. */
-.play { position: absolute; left: 10%; top: calc(100% + var(--space-xxs)); width: 80%; min-height: var(--size-touch); }
+.play { position: absolute; inset-inline-start: 10%; top: calc(100% + var(--space-xxs)); width: 80%; min-height: var(--size-touch); }
 .empty { display: flex; width: stretch; height: stretch; align-items: center; justify-content: center; min-width: 0; }
 .empty-text { margin: 0; }
 @media (prefers-reduced-motion: reduce) { [part="CardHand.slot"] { transition: none; } }

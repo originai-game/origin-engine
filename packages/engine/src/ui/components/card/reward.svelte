@@ -38,14 +38,13 @@
       <p class="empty-text" role="status">{t("card.reward.empty")}</p>
     {/each}
   </div>
-  <footer class="foot" hidden={!skipLabel}>
+  {#if skipLabel}<footer class="foot">
     <button id="Skip" onclick={skip}>{skipLabel}</button>
-  </footer>
+  </footer>{/if}
 </section>
 
 <style>
-[part="CardReward.frame"][hidden], [part="CardReward.frame"] [hidden] { display: none; }
-[part="CardReward.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-lg); align-items: center; justify-content: center; container-type: size; }
+:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-lg); align-items: center; justify-content: center; container-type: size; }
 [part="CardReward.band"] { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
 [part="CardReward.title"] { margin: 0; text-align: center; }
 /* The offers share one row, each at most three icon sizes wide and no
@@ -56,7 +55,7 @@
 [part="CardReward.choice CardReward.cell"] .face { width: stretch; height: stretch; }
 [part="CardReward.relic"] { padding: var(--space-sm); align-items: center; justify-content: center; }
 .relic-face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: flex-start; gap: var(--space-xs); overflow: hidden; text-align: center; }
-.relic-mark { display: flex; width: 46%; aspect-ratio: 1; flex: none; align-items: center; justify-content: center; }
+.relic-mark { display: flex; width: 46%; aspect-ratio: 1; flex: none; align-items: center; justify-content: center; border-radius: var(--radius-capsule); background: var(--control-strong); }
 .relic-icon { width: 60%; height: 60%; }
 .relic-name, .relic-kind, .relic-text { width: stretch; text-align: center; }
 .relic-kind { flex: none; }
@@ -65,9 +64,9 @@
 .empty-text { margin: 0; text-align: center; }
 .foot { display: flex; flex: none; justify-content: center; }
 #Skip { min-width: calc(var(--size-xxl) * 2); min-height: var(--size-touch); }
-/* A phone: thirds of the row, so an offer that wraps keeps the others' size. */
+/* Narrow panels keep readable cards in one scrollable row, not tiny thirds. */
 @container (width < 640px) {
-  .choices { gap: var(--space-sm); }
-  [part="CardReward.choice CardReward.cell"], [part="CardReward.relic"] { flex: 0 0 calc((100% - var(--space-sm) * 2) / 3); min-width: 0; }
+  .choices { flex-wrap: nowrap; gap: var(--space-sm); overflow-x: auto; justify-content: start; scroll-snap-type: x mandatory; padding: var(--space-xs); }
+  [part="CardReward.choice CardReward.cell"], [part="CardReward.relic"] { flex: 0 0 60%; min-width: 0; scroll-snap-align: center; }
 }
 </style>

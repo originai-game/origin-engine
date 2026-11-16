@@ -26,13 +26,13 @@
 -->
 <section id="CardDeckList" part="CardDeckList.frame" aria-label={title}>
   <header part="CardDeckList.band"><h2 part="CardDeckList.title">{title}</h2></header>
-  <div part="CardDeckList.size" hidden={!limit} data-over={total > limit} data-under={total < limit}>
+  {#if limit}<div part="CardDeckList.size" data-over={total > limit} data-under={total < limit}>
     <span class="size-label">{t("card.deck.size")}</span>
     <span class="size-figure">{t("card.deck.count", { count: total, limit })}</span>
     <div class="bar" role="meter" aria-label={t("card.deck.size")} aria-valuetext={t("card.deck.count", { count: total, limit })} style:--fill={limit ? (total > limit ? 1 : total / limit) : 0}><div class="bar-fill"></div></div>
-  </div>
+  </div>{/if}
   {#if entries.length}
-    <scroll class="rows">
+    <div class="rows">
       <div class="list" role="list" aria-label={title}>
         {#each entries as e (e.id)}
           <div part="CardDeckList.row" role="listitem" data-type={e.type} data-rarity={e.rarity} data-selected={e.id == selected} aria-current={e.id == selected}>
@@ -46,25 +46,25 @@
           </div>
         {/each}
       </div>
-    </scroll>
+    </div>
   {:else}
     <div class="empty" role="status"><p class="empty-text">{t("card.deck.empty")}</p></div>
   {/if}
-  <footer class="foot" hidden={!confirmLabel}>
+  {#if confirmLabel}<footer class="foot">
     <button id="Confirm" class="primary" disabled={!canConfirm} onclick={confirm}>{confirmLabel}</button>
-  </footer>
+  </footer>{/if}
 </section>
 
 <style>
-[part="CardDeckList.frame"][hidden], [part="CardDeckList.frame"] [hidden] { display: none; }
-[part="CardDeckList.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); }
+:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-sm); }
 [part="CardDeckList.band"] { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
 [part="CardDeckList.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 [part="CardDeckList.size"] { display: grid; grid-template-columns: 1fr auto; width: stretch; flex: none; align-items: baseline; gap: var(--space-xs); padding: 0 var(--space-xs); }
 .size-figure { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.bar { grid-column: 1 / -1; width: stretch; height: var(--space-sm); }
-.bar-fill { width: calc(var(--fill, 0) * 100%); height: stretch; }
-.rows { width: stretch; flex: 1; min-height: 0; }
+.bar { position: relative; grid-column: 1 / -1; height: var(--space-sm); border-radius: var(--meter-radius); background: var(--control-strong); overflow: hidden; }
+.bar-fill { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--fill, 0) * 100%); background: var(--primary); }
+[data-over=true] .bar-fill { background: var(--danger); }
+.rows { flex: 1; min-height: 0; overflow-y: auto; }
 .list { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
 [part="CardDeckList.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-xxs); }
 .pick { flex: 1; min-width: 0; min-height: var(--size-touch); padding: 0 var(--space-sm); justify-content: flex-start; }

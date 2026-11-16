@@ -13,10 +13,10 @@ They are built into the engine: a game's page uses one by name
 
 ## Structure and appearance
 
-Each member's `<style>` holds structure only: layout, sizes and spacing,
-and at most a token background on a frame. It sets no colour, font or
-art, and it lands in the `og-components` layer. A style pack (`og-pack`,
-above it) supplies every appearance through the members' named parts
+Each member uses HTML with CSS: `:host` owns its root, optional content
+uses `{#if}`, and scroll containers use `overflow`. Its default appearance
+uses the shared design tokens for typography, surfaces and spacing, in the
+`og-components` layer. A style pack (`og-pack`, above it) can dress the named parts
 (docs/ui.md §3.2), qualified by their states and `data-*` attributes, for
 example `CardFace.frame[data-rarity=legendary]` or
 `button[aria-selected=true]::part(CardHand\.card)`. Each member lists its
@@ -61,11 +61,14 @@ Every member carries a `fixture:default` and the state fixtures that apply
 to it (`empty`, `single`, `disabled`, `overflow`, `full`, `relics`); the
 sheet and the tests mount them. The hand overlaps its cards as it grows,
 each slot shrinking while the last keeps the whole card, so eleven cards
-fit a phone; the collection's grid goes from five columns to four and three
+fit a phone; the collection's grid goes from five columns to four and two
 with its container; the reward's offers share a row no taller than the
-room left under the title, and on a phone wrap in thirds, and with no
+room left under the title, and in a narrow panel scroll in a single row, and with no
 offers the reward says so. The core `DataGrid` is a table of text rows, so
-the collection draws its own grid of faces.
+the collection draws its own grid of faces. Card names have two lines,
+rules are start-aligned, and collection counts have a footer of their own
+rather than covering the art. Deck size has a track-relative meter and an
+over-limit danger fill.
 
 ## Review sheet and tests
 
@@ -76,6 +79,10 @@ string tables for the locale cells.
 `og ui review card --style scifi` (or `--style cartoon`) renders the same
 pages in that pack, dressed by its tokens
 (`templates/styles/<pack>/base.css`).
+Pass `--screen 'builder-default=style:default;page:builder'` to
+`og ui preview packages/engine/sheets/card` for the default-style builder;
+`table` and `run` use the corresponding page command. The sheet supplies
+its own font and fallback icons when no pack is selected.
 
 `bun test tests/card.test.ts` (from `packages/engine`) mounts every member
 by name from a game page from each of its fixtures at desktop and phone,

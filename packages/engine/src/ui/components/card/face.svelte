@@ -21,23 +21,21 @@
   ratio); long names cut at one line and the rules text at the foot.
 -->
 <div id="CardFace" part="CardFace.frame" class="bare" data-type={type} data-rarity={rarity}>
-  <div class="window"><img class="picture" src={art} alt="" hidden={!art}><og-icon part="CardFace.art CardFace.picture" class="art" icon={icon} hidden={!!art}></og-icon></div>
+  <div class="window">{#if art}<img class="picture" src={art} alt="">{:else}<og-icon part="CardFace.art CardFace.picture" class="art" icon={icon}></og-icon>{/if}</div>
   <p part="CardFace.name" class="name">{name}</p>
-  <p part="CardFace.type CardFace.label" class="type" hidden={!typeLabel}>{typeLabel}</p>
+  {#if typeLabel}<p part="CardFace.type CardFace.label" class="type">{typeLabel}</p>{/if}
   <p part="CardFace.text" class="text">{text}</p>
-  <div part="CardFace.cost CardFace.figure" class="cost" hidden={!cost} aria-label={t("card.face.cost", { cost })}><span class="cost-figure">{cost}</span></div>
+  {#if cost}<div part="CardFace.cost CardFace.figure" class="cost" aria-label={t("card.face.cost", { cost })}><span class="cost-figure">{cost}</span></div>{/if}
 </div>
 
 <style>
-[part="CardFace.frame"][hidden], [part="CardFace.frame"] [hidden] { display: none; }
-[part="CardFace.frame"] { position: relative; display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-xxs); padding: var(--space-xs); overflow: hidden; background: var(--panel-raised); }
-.window { position: relative; display: flex; width: stretch; height: 46%; flex: none; align-items: center; justify-content: center; overflow: hidden; }
-.picture { width: stretch; height: stretch; object-fit: cover; }
+:host { position: relative; display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-xs); padding: var(--space-xs); overflow: hidden; background: var(--panel-raised); }
+.window { position: relative; display: flex; height: 46%; flex: none; align-items: center; justify-content: center; overflow: hidden; border-radius: var(--well-radius); background: radial-gradient(ellipse at center, var(--control-strong), var(--well)); }
+.picture { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: cover; }
 .art { width: 62%; height: 62%; }
-.name { margin: 0; width: stretch; flex: none; text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.type { margin: 0; width: stretch; flex: none; text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.text { margin: 0; width: stretch; flex: 1; min-height: 0; text-align: center; overflow: hidden; padding: 0 var(--space-xxs); }
-.cost { position: absolute; left: 0; top: 0; display: flex; width: var(--size-md); height: var(--size-md); align-items: center; justify-content: center; }
-.cost:dir(rtl) { left: auto; right: 0; }
+.name { margin: 0; flex: none; text-align: center; font: var(--text-sm); font-family: var(--label-font); line-clamp: 2; overflow: hidden; }
+.type { margin: 0; flex: none; text-align: center; font: var(--text-caption); color: var(--ink-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.text { margin: 0; flex: 1; min-height: 0; font: var(--text-sm); text-align: start; overflow: hidden; padding: var(--space-xxs); }
+.cost { position: absolute; inset-inline-start: 0; top: 0; display: flex; width: var(--size-md); height: var(--size-md); align-items: center; justify-content: center; }
 .cost-figure { font-variant-numeric: tabular-nums; white-space: nowrap; }
 </style>
