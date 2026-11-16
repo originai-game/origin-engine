@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.ui.configure",
+      "summary": "A call that keeps the style in effect (a scheme, a text scale, reduced motion) no longer installs it again, and one that returns to the default style takes the default stylesheet as already read. Before, every call without a style read the whole default stylesheet again."
+    }
+  ]
+}

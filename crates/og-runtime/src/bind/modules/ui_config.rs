@@ -305,16 +305,27 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
         // below.
         let restyle = !ui.styled_by(style.as_ref().map(|(pack, ..)| pack));
         if let Some((pack, _, textures, sounds)) = &style {
-            ui.set_style_pack(pack)?;
+            // The style in effect is installed already: a call that
+            // changes the text scale or the scheme reads no sheet.
+            if restyle {
+                ui.set_style_pack(pack)?;
+            }
             ui.set_css_sounds(sounds.clone());
             for (path, texture) in textures {
                 ui.define_texture(path, *texture);
             }
         } else {
-            ui.clear_style_pack();
-            ui.set_part_css(og_ui::DEFAULT_CSS)?;
+            if restyle {
+                ui.clear_style_pack();
+                ui.reset_part_css();
+                ui.set_style_name("");
+            }
             ui.set_css_sounds(Default::default());
-            ui.set_style_name("");
+        }
+        if !restyle {
+            // The theme's type steps name their families among the fonts
+            // set above (installing a style reads it again itself).
+            ui.read_theme_tokens();
         }
         ui.set_hud_max_aspect(u.hud_max_aspect);
         drop(ui);

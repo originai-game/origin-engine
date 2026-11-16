@@ -471,17 +471,25 @@ fn a_document_is_read_once_against_the_configured_style() {
         None,
     )));
     assert_eq!(width(), 61.0, "the configured pack's rule");
+    let sheets = og_ui::doc::stylesheet::text_read;
+    let read = sheets();
     configure(e, json!({ "reducedMotion": true }));
     configure(e, json!({ "scheme": "light" }));
     value(og_runtime::host_impl::answer(og_ui_configure(e, None)));
     assert_eq!(width(), 61.0);
     assert_eq!(parses() - before, 2, "a configure that keeps the style");
+    assert_eq!(sheets() - read, 0, "and reads no stylesheet");
     // Another style: the two loaded documents, once each.
     configure(e, json!({ "style": style("styles/copied") }));
     assert_eq!(parses() - before, 4);
     assert_eq!(width(), 62.0, "the new pack's rule, the screen still up");
     // None: once each again, and neither pack's rule is left.
+    let read = sheets();
     configure(e, json!({ "style": null }));
     assert_eq!(parses() - before, 6);
     assert!(![61.0, 62.0].contains(&width()));
+    // The default style is the process's reading of it, put back, and a
+    // call that keeps it reads nothing either.
+    configure(e, json!({ "scheme": "dark" }));
+    assert_eq!(sheets() - read, 0, "the default style is not read again");
 }
