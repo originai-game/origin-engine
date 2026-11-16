@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { og, type UiReadable, type UiScope, type UiWritable } from "@origingame/engine";
+import { defineSystem, og, type UiReadable, type UiScope, type UiWritable } from "@origingame/engine";
 import { beginBundle, createEngine, type GameToken } from "../src/runtime.ts";
 import { loadNativeHost } from "../src/node/index.ts";
 import { cookProject } from "./support/og-bin.ts";
@@ -109,6 +109,47 @@ function engine(desc: Parameters<typeof og.game>[0] = { systems: [] }) {
   if (!created.ok) throw new Error(created.reason);
   return created.value;
 }
+
+test("store writes settle synchronously inside systems and collection edits return refusals immediately", () => {
+  let scope!: UiScope, a!: UiWritable<number>;
+  const seen: number[] = [];
+  const update = defineSystem("SynchronousUiWrites", {}, () => {
+    expect(a.set(7).ok).toBe(true);
+    expect(seen).toEqual([1, 7]);
+    expect(scope.get(a)).toBe(7);
+    const rows = scope.collection("rows", [{ id: "a", n: 3 }]);
+    expect(rows.insert({ id: "a", n: 99 }).ok).toBe(false);
+    expect(rows.patch("a", { n: 11 }).ok).toBe(true);
+    expect(scope.get(rows)).toEqual([{ id: "a", n: 11 }]);
+  });
+  const e = engine({ systems: [update] });
+  try {
+    scope = og.ui.scope(e.world, "synchronous");
+    a = scope.writable("a", 1);
+    const stop = a.subscribe(value => seen.push(value));
+    const advanced = e.advance(1);
+    if (!advanced.ok) throw new Error(advanced.reason);
+    expect(seen).toEqual([1, 7]);
+    stop();
+  } finally { e.destroy(); }
+});
+
+test("an unencodable derived value finishes with an error and the next evaluation can recover", () => {
+  const e = engine();
+  try {
+    const scope = og.ui.scope(e.world, "encoding");
+    const count = scope.writable("count", 0);
+    const derived = scope.derived("invalid", count, n => n === 0 ? Infinity : n * 3, -1);
+    const seen: number[] = [];
+    const stop = derived.subscribe(value => seen.push(value));
+    expect(seen).toEqual([-1]);
+    expect(count.set(5).ok).toBe(true);
+    expect(seen).toEqual([-1, 15]);
+    expect(scope.get(derived)).toBe(15);
+    expect(scope.takeErrors().join("\n")).toContain("finite");
+    stop();
+  } finally { e.destroy(); }
+});
 
 test("named stores subscribe synchronously, stop at the last subscriber, and retain values on registration", () => {
   const e = engine();

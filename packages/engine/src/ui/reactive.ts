@@ -142,16 +142,29 @@ export class UiReactor {
   }
 
   send(command: object): Result<unknown> {
-    const encoded = encodeUiPatch([command]);
+    return this.sendBatch([command])[0]!;
+  }
+
+  private sendBatch(commands: readonly object[]): Result<unknown>[] {
+    const encoded = encodeUiPatch(commands);
     if (!encoded.ok) {
       this.send({ op: "fail", reason: encoded.reason });
-      return encoded;
+      return commands.map(() => encoded);
     }
+    return this.exchange(encoded.value, commands.length);
+  }
+
+  private exchange(bytes: Uint8Array, count: number): Result<unknown>[] {
     try {
-      const decoded = decodeUiPatch(this.transport(encoded.value));
-      if (!decoded.ok) return decoded;
-      return reply(Array.isArray(decoded.value) ? decoded.value[0] : decoded.value);
-    } catch (error) { return { ok: false, reason: `UI host operation failed: ${String(error)}` }; }
+      const decoded = decodeUiPatch(this.transport(bytes));
+      if (!decoded.ok) return Array.from({ length: count }, () => decoded);
+      if (Array.isArray(decoded.value) && decoded.value.length === count) return decoded.value.map(reply);
+      const refused = reply(decoded.value);
+      const error: Result<never> = refused.ok ? { ok: false, reason: "invalid UI patch reply count" } : refused;
+      return Array.from({ length: count }, () => error);
+    } catch (error) {
+      return Array.from({ length: count }, () => ({ ok: false, reason: `UI host operation failed: ${String(error)}` }));
+    }
   }
 
   error<T>(source: UiSource, reason: string): Result<T> {
@@ -168,9 +181,14 @@ export class UiReactor {
   }
 
   write(source: UiSource, command: object): Result<void> {
-    const result = this.operation(source, command);
-    if (!result.ok) return result;
-    this.flush();
+    // Reentrant subscription writes leave draining to the outer flush.
+    if (this.draining) {
+      const result = this.operation(source, command);
+      return result.ok ? { ok: true, value: undefined } : result;
+    }
+    const [result, next] = this.sendBatch([command, { op: "next" }]);
+    if (!result!.ok) return this.error(source, result!.reason);
+    this.flush(next);
     return { ok: true, value: undefined };
   }
 
@@ -189,24 +207,27 @@ export class UiReactor {
     this.evaluating++;
     try {
       if (!callback) error = "store callback has not re-registered";
-      else {
-        value = callback.run();
-        const encoded = encodeUiPatch(value);
-        if (!encoded.ok) { error = encoded.reason; value = null; }
-      }
+      else value = callback.run();
     } catch (caught) { error = String(caught); value = null; }
     finally { this.evaluating--; }
-    this.operation(source, { op: "finish", source, value, error });
+    const encoded = encodeUiPatch([{ op: "finish", source, value, error }]);
+    if (!encoded.ok) {
+      this.operation(source, { op: "finish", source, value: null, error: encoded.reason });
+    } else {
+      const result = this.exchange(encoded.value, 1)[0]!;
+      if (!result.ok) this.error(source, result.reason);
+    }
   }
 
-  flush(): void {
+  flush(first?: Result<unknown>): void {
     if (this.draining) return;
     this.draining = true;
     try {
+      let next = first ?? this.send({ op: "next" });
       for (;;) {
-        const next = this.send({ op: "next" });
         if (!next.ok || next.value === null || !isSource(next.value)) break;
         this.evaluate(next.value);
+        next = this.send({ op: "next" });
       }
     } finally { this.draining = false; }
   }
@@ -274,7 +295,7 @@ export class UiReactor {
 
   get<T>(store: UiReadable<T>): T {
     const own = this.handles.get(store);
-    if (own && this.evaluating) return own.read() as T;
+    if (own && (this.evaluating || own.kind === "writable" || own.kind === "collection")) return own.read() as T;
     // A svelte/store subscription synchronously supplies its initial value.
     let value!: T;
     const unsubscribe = store.subscribe(next => { value = next; });

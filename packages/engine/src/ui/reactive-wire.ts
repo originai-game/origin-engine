@@ -1,4 +1,4 @@
-// Binary value tags shared with og-ui/src/reactive/wire.rs. Values are copied
+// Binary value tags shared with og-reactive/src/reactive/wire.rs. Values are copied
 // at the boundary; functions, promises, accessors and cyclic objects are errors.
 import type { Result } from "../runtime.ts";
 
@@ -7,34 +7,53 @@ const utf8 = new TextEncoder();
 const text = new TextDecoder("utf-8", { fatal: true });
 
 export function encodeUiPatch(value: unknown): Result<Uint8Array> {
-  const bytes: number[] = [];
+  let bytes = new Uint8Array(256);
+  let view = new DataView(bytes.buffer);
+  let at = 0;
   const ancestors = new Set<object>();
+  const reserve = (n: number): void => {
+    if (n > LIMIT - at) throw new Error("UI patch exceeds 16 MiB");
+    if (at + n <= bytes.length) return;
+    const grown = new Uint8Array(Math.min(LIMIT, Math.max(at + n, bytes.length * 2)));
+    grown.set(bytes.subarray(0, at));
+    bytes = grown;
+    view = new DataView(bytes.buffer);
+  };
+  const tag = (n: number): void => { reserve(1); bytes[at++] = n; };
   const count = (n: number): void => {
-    bytes.push(n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255);
+    reserve(4);
+    view.setUint32(at, n, true);
+    at += 4;
   };
   const string = (s: string): void => {
-    const encoded = utf8.encode(s);
-    count(encoded.length);
-    for (const byte of encoded) bytes.push(byte);
+    count(0);
+    const lengthAt = at - 4;
+    // UTF-8 needs at most three bytes per UTF-16 unit. Clamp the reserve,
+    // not the input: near-limit ASCII can still fit in the remaining bytes.
+    reserve(Math.min(s.length * 3, LIMIT - at));
+    const encoded = utf8.encodeInto(s, bytes.subarray(at));
+    if (encoded.read !== s.length) throw new Error("UI patch exceeds 16 MiB");
+    at += encoded.written;
+    view.setUint32(lengthAt, encoded.written, true);
   };
   const write = (value: unknown, depth: number): string | null => {
     if (depth > 64) return "UI patch nesting exceeds 64";
-    if (value === null) bytes.push(0);
-    else if (typeof value === "boolean") bytes.push(value ? 2 : 1);
+    if (value === null) tag(0);
+    else if (typeof value === "boolean") tag(value ? 2 : 1);
     else if (typeof value === "number") {
       if (!Number.isFinite(value)) return "UI patch number must be finite";
-      bytes.push(3);
-      const buffer = new ArrayBuffer(8);
-      new DataView(buffer).setFloat64(0, value, true);
-      for (const byte of new Uint8Array(buffer)) bytes.push(byte);
+      tag(3);
+      reserve(8);
+      view.setFloat64(at, value, true);
+      at += 8;
     } else if (typeof value === "string") {
-      bytes.push(4);
+      tag(4);
       string(value);
     } else if (typeof value === "object") {
       if (ancestors.has(value)) return "UI patch value contains a cycle";
       ancestors.add(value);
       if (Array.isArray(value)) {
-        bytes.push(5);
+        tag(5);
         count(value.length);
         for (const item of value) {
           const error = write(item, depth + 1);
@@ -45,7 +64,7 @@ export function encodeUiPatch(value: unknown): Result<Uint8Array> {
         if (prototype !== null && prototype !== Object.prototype) return "UI patch values must be plain records";
         const descriptors = Object.getOwnPropertyDescriptors(value);
         const keys = Object.keys(descriptors).sort();
-        bytes.push(6);
+        tag(6);
         count(keys.length);
         for (const key of keys) {
           const descriptor = descriptors[key];
@@ -57,11 +76,11 @@ export function encodeUiPatch(value: unknown): Result<Uint8Array> {
       }
       ancestors.delete(value);
     } else return `UI patch cannot carry ${typeof value}`;
-    return bytes.length > LIMIT ? "UI patch exceeds 16 MiB" : null;
+    return null;
   };
   try {
     const reason = write(value, 0);
-    return reason ? { ok: false, reason } : { ok: true, value: Uint8Array.from(bytes) };
+    return reason ? { ok: false, reason } : { ok: true, value: bytes.subarray(0, at) };
   } catch (error) {
     return { ok: false, reason: `UI patch value could not be read: ${String(error)}` };
   }
