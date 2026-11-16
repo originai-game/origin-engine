@@ -32,6 +32,7 @@
 [part="RpgQuestTracker.title"] { margin: 0; text-align: start; font-size: var(--font-step-lg); }
 .tracker-steps { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; gap: var(--space-sm); }
 [part="RpgQuestTracker.row"] { display: flex; align-items: center; gap: var(--space-sm); }
+[part="RpgQuestTracker.row"][data-done=true] { color: var(--scene-ink); text-shadow: var(--tag-halo); }
 .tracker-mark { width: var(--size-xs); height: var(--size-xs); flex: none; color: var(--primary); }
 [part="RpgQuestTracker.row"][data-done=true] .tracker-mark { color: var(--success); }
 .tracker-text { flex: 1; min-width: 0; }

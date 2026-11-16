@@ -22,8 +22,8 @@
   <div class="ring">{#if portrait}<img class="portrait" src={portrait} alt="">{/if}</div>
   {#if level}<div class="badge"><span class="badge-level">{formatNumber(level)}</span></div>{/if}
   <div class="bars">
-    <div class="bar health" role="meter" aria-label={t("rpg.party.health")} aria-valuetext={t("rpg.party.figure", { now: health, max: healthMax })} style:--fill={healthMax > 0 ? health / healthMax : 0}><div class="bar-fill"></div>{#if plate == 'large'}<span class="bar-figure">{t("rpg.party.figure", { now: health, max: healthMax })}</span>{/if}</div>
-    {#if manaMax}<div class="bar mana" role="meter" aria-label={t("rpg.party.mana")} aria-valuetext={t("rpg.party.figure", { now: mana, max: manaMax })} style:--fill={mana / manaMax}><div class="bar-fill"></div>{#if plate == 'large'}<span class="bar-figure">{t("rpg.party.figure", { now: mana, max: manaMax })}</span>{/if}</div>{/if}
+    <div class="bar health" role="meter" aria-label={t("rpg.party.health")} aria-valuetext={t("rpg.party.figure", { now: health, max: healthMax })} style:--fill={healthMax > 0 ? health / healthMax : 0}><div class="bar-fill"></div>{#if plate == 'large'}<div class="bar-figure"><span>{t("rpg.party.figure", { now: health, max: healthMax })}</span></div>{/if}</div>
+    {#if manaMax}<div class="bar mana" role="meter" aria-label={t("rpg.party.mana")} aria-valuetext={t("rpg.party.figure", { now: mana, max: manaMax })} style:--fill={mana / manaMax}><div class="bar-fill"></div>{#if plate == 'large'}<div class="bar-figure"><span>{t("rpg.party.figure", { now: mana, max: manaMax })}</span></div>{/if}</div>{/if}
   </div>
 </div>
 
@@ -40,10 +40,10 @@
 .bars { display: flex; flex-direction: column; gap: var(--space-xxs); width: calc(var(--size-xxl) * 1.4); }
 [part="RpgVitals.frame"][data-plate=large] .bars { width: calc(var(--size-xxl) * 2.6); gap: var(--space-xs); }
 .bar { position: relative; display: flex; height: var(--space-sm); align-items: center; justify-content: center; border-radius: var(--meter-radius); overflow: hidden; background: var(--well); box-shadow: var(--shadow-well); }
-[part="RpgVitals.frame"][data-plate=large] .bar { height: calc(var(--space-md) * 1.6); }
+[part="RpgVitals.frame"][data-plate=large] .bar { height: calc(var(--space-md) * 1.6); min-block-size: var(--size-sm); }
 .bar-fill { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); background: var(--health); }
 .mana .bar-fill { background: var(--mana); }
-.bar-figure { position: relative; font-family: var(--figure-font); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--scene-ink); text-shadow: var(--tag-halo); }
+.bar-figure { position: relative; font-family: var(--figure-font); font-variant-numeric: tabular-nums; white-space: nowrap; padding-inline: var(--space-xs); background: var(--panel); color: var(--ink); border-radius: var(--radius-capsule); text-shadow: none; }
 @media (width < 600px), (height < 500px) {
   [part="RpgVitals.frame"][data-plate=compact] .bars { width: var(--size-xxl); }
   [part="RpgVitals.frame"][data-plate=large] .ring { width: calc(var(--size-xxl) * 1.05); height: calc(var(--size-xxl) * 1.05); }

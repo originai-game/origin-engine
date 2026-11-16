@@ -23,7 +23,7 @@
   lore and up to two buttons. The game words every figure and decides the
   trend; the card reports equip (the main button, X or pad Y) and
   discard (the second button). It fills the height it is given: the
-  figures and the lore scroll, the buttons keep the foot.
+  figures and the lore scroll when needed; the buttons follow the content.
 -->
 <article id="RpgItemCard" part="RpgItemCard.frame" data-rarity={rarity} aria-label={name} ondetails={equip}>
   <div class="hero"><div class="hero-glow"></div>{#if art}<img class="hero-picture" src={art} alt="">{:else}<og-icon class="hero-art" icon={icon}></og-icon>{/if}</div>
@@ -74,7 +74,7 @@
 .hero-art { position: relative; width: calc(var(--size-xxl) * 1.8); height: calc(var(--size-xxl) * 1.8); }
 .head { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); align-items: center; text-align: center; }
 [part="RpgItemCard.name"], .item-kind { margin: 0; }
-.body { display: flex; flex-direction: column; flex: 1; min-block-size: 0; overflow-y: auto; gap: var(--space-sm); }
+.body { display: flex; flex-direction: column; flex: 0 1 auto; min-block-size: 0; overflow-y: auto; gap: var(--space-sm); }
 [part="RpgItemCard.lead"] { display: flex; flex-wrap: wrap; width: stretch; align-items: center; row-gap: var(--space-xs); gap: var(--space-sm); padding: 0 0 var(--space-xxs); }
 .lead-main { display: flex; flex-direction: column; width: auto; flex: 1 0 auto; gap: var(--space-xxs); }
 .lead-figures { display: flex; align-items: baseline; gap: var(--space-sm); }

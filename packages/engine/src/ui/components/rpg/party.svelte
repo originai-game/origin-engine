@@ -19,8 +19,8 @@
           <div class="picture">{#if m.portrait}<img class="portrait" src={m.portrait} alt="">{/if}</div>
           <div class="seal" aria-label={m.down ? t("rpg.party.down") : t("rpg.party.level", { level: m.level })}>{#if !m.down}<span class="seal-lv">{t("rpg.party.lv")}</span><span class="seal-level">{formatNumber(m.level)}</span>{:else}<og-icon icon="skull"></og-icon>{/if}</div>
           <span class="member-name">{m.name}</span>
-          <div class="bar health" role="meter" aria-label={t("rpg.party.health")} style:--fill={m.healthMax > 0 ? m.health / m.healthMax : 0}><div class="bar-fill"></div><span class="bar-figure">{t("rpg.party.figure", { now: m.health, max: m.healthMax })}</span></div>
-          <div class="bar mana" role="meter" aria-label={t("rpg.party.mana")} style:--fill={m.manaMax > 0 ? m.mana / m.manaMax : 0}><div class="bar-fill"></div><span class="bar-figure">{t("rpg.party.figure", { now: m.mana, max: m.manaMax })}</span></div>
+          <div class="bar health" role="meter" aria-label={t("rpg.party.health")} style:--fill={m.healthMax > 0 ? m.health / m.healthMax : 0}><div class="bar-fill"></div><div class="bar-figure"><span>{t("rpg.party.figure", { now: m.health, max: m.healthMax })}</span></div></div>
+          <div class="bar mana" role="meter" aria-label={t("rpg.party.mana")} style:--fill={m.manaMax > 0 ? m.mana / m.manaMax : 0}><div class="bar-fill"></div><div class="bar-figure"><span>{t("rpg.party.figure", { now: m.mana, max: m.manaMax })}</span></div></div>
         </div></button>
       {/each}
     </div>
@@ -44,10 +44,10 @@
 [part="RpgParty.cell"] { background: var(--scene-plate); }
 [part="RpgParty.cell"][data-down=true] { opacity: var(--state-disabled-opacity); }
 .member-name { padding: var(--space-xxs) var(--space-xs); text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.bar { display: flex; position: relative; height: calc(var(--space-md) * 1.25); align-items: center; justify-content: center; background: var(--well); border-radius: var(--meter-radius); overflow: hidden; }
+.bar { display: flex; position: relative; height: calc(var(--space-md) * 1.25); min-block-size: var(--size-sm); align-items: center; justify-content: center; background: var(--well); border-radius: var(--meter-radius); overflow: hidden; }
 .bar-fill { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); background: var(--health); }
 .mana .bar-fill { background: var(--mana); }
-.bar-figure { position: relative; font-family: var(--figure-font); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--scene-ink); text-shadow: var(--tag-halo); }
+.bar-figure { position: relative; font-family: var(--figure-font); font-variant-numeric: tabular-nums; white-space: nowrap; padding-inline: var(--space-xs); background: var(--panel); color: var(--ink); border-radius: var(--radius-capsule); text-shadow: none; }
 .empty-text { margin: 0; }
 @media (height < 500px) { .picture { aspect-ratio: 2.4; } }
 @media (600px <= width) and (500px <= height < 800px) { .picture { aspect-ratio: 2; } }

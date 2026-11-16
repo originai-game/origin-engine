@@ -51,6 +51,7 @@
 [part="RpgWorldMap.marker RpgWorldMap.cell"] { position: absolute; left: calc(var(--x) * 100%); top: calc(var(--y) * 100%); width: var(--size-md); height: var(--size-md); padding: 0; translate: -50% -50%; align-items: center; justify-content: center; }
 [part="RpgWorldMap.marker RpgWorldMap.cell"] .face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: center; }
 .marker-mark { width: 45%; height: 45%; background: var(--primary); border-radius: var(--radius-capsule); }
+[data-kind=quest] .marker-mark, [data-kind=quest] .legend-mark { border-radius: 0; rotate: 45deg; }
 [data-kind=danger] .marker-mark { background: var(--danger); }
 [data-kind=player] .marker-mark { background: var(--success); }
 [part="RpgWorldMap.marker RpgWorldMap.cell"][aria-selected=true] { border-color: var(--focus); box-shadow: 0 0 0 var(--stroke-regular) var(--focus); }

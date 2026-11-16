@@ -80,7 +80,7 @@
   [part="RpgBackpack.tab"] { min-height: calc(var(--size-touch) * 0.85); }
 }
 .tabs-scroll { flex: 1; overflow-x: auto; overflow-y: hidden; min-inline-size: 0; }
-.tabs-row { display: flex; gap: var(--space-xs); min-inline-size: 100%; inline-size: max-content; }
+.tabs-row { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 [part="RpgBackpack.tab"] { flex: 1 0 auto; min-height: var(--size-touch); padding-inline: var(--space-sm); }
 [part="RpgBackpack.tab"][aria-selected=true] { background: var(--selection); box-shadow: inset 0 calc(var(--stroke-thick) * -1) 0 var(--primary); }
 .grid-scroll { flex: 1; min-block-size: 0; overflow-y: auto; }

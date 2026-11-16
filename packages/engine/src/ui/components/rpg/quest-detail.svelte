@@ -48,7 +48,7 @@
 :host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-md); }
 [part="RpgQuestDetail.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); flex: none; }
 .band-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
-.body { display: flex; flex-direction: column; flex: 1; min-block-size: 0; overflow-y: auto; gap: var(--space-lg); padding: 0 var(--space-sm); }
+.body { display: flex; flex-direction: column; flex: 1; min-block-size: 0; overflow-y: auto; gap: var(--space-sm); padding: 0 var(--space-sm); }
 .summary { margin: 0; }
 .part { display: flex; flex-direction: column; position: relative; flex: none; gap: var(--space-sm); }
 .part-head { margin: 0; }

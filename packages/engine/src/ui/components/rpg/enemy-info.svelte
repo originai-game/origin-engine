@@ -18,7 +18,7 @@
   <p part="RpgEnemyInfo.name">{name}</p>
   <div class="picture">{#if portrait}<img class="portrait" src={portrait} alt="">{/if}</div>
   <p class="enemy-level">{t("rpg.party.level", { level: level })}</p>
-  <div class="bar" role="meter" aria-label={t("rpg.party.health")} style:--fill={healthMax > 0 ? health / healthMax : 0}><div class="bar-fill"></div><span class="bar-figure">{t("rpg.party.figure", { now: health, max: healthMax })}</span></div>
+  <div class="bar" role="meter" aria-label={t("rpg.party.health")} style:--fill={healthMax > 0 ? health / healthMax : 0}><div class="bar-fill"></div><div class="bar-figure"><span>{t("rpg.party.figure", { now: health, max: healthMax })}</span></div></div>
   {#if effects.length}<ul class="effects">
     {#each effects as e (e.id)}
       <li part="RpgEnemyInfo.row" data-tone={e.tone}><og-icon class="effect-mark" icon={e.icon}></og-icon><span class="effect-label">{e.label}</span></li>
@@ -34,9 +34,9 @@
 [part="RpgEnemyInfo.name"], .enemy-level { margin: 0; text-align: center; }
 .picture { width: 46%; aspect-ratio: 1; overflow: hidden; }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
-.bar { position: relative; display: flex; align-self: stretch; height: calc(var(--space-md) * 1.4); align-items: center; justify-content: center; background: var(--well); border-radius: var(--meter-radius); overflow: hidden; }
+.bar { position: relative; display: flex; align-self: stretch; height: calc(var(--space-md) * 1.4); min-block-size: var(--size-sm); align-items: center; justify-content: center; background: var(--well); border-radius: var(--meter-radius); overflow: hidden; }
 .bar-fill { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); background: var(--health); }
-.bar-figure { position: relative; font-family: var(--figure-font); font-variant-numeric: tabular-nums; color: var(--scene-ink); text-shadow: var(--tag-halo); }
+.bar-figure { position: relative; font-family: var(--figure-font); font-variant-numeric: tabular-nums; padding-inline: var(--space-xs); background: var(--panel); color: var(--ink); border-radius: var(--radius-capsule); text-shadow: none; }
 .enemy-level { color: var(--ink-muted); font: var(--text-caption); }
 .effects { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xs); }
 [part="RpgEnemyInfo.row"] { display: flex; align-items: center; gap: var(--space-sm); }
