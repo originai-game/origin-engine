@@ -83,7 +83,7 @@ impl PartIndex {
                     _ => None,
                 })
             };
-            let subject = compounds.first();
+            let subject = compounds.last();
             if let Some(name) = subject.and_then(part) {
                 index.named.entry(name).or_default().push(i);
             } else if compounds.iter().any(|c| part(c).is_some()) {
@@ -635,7 +635,7 @@ impl Ui {
                 carry: false,
                 text_scale: self.css_text_scale(),
             },
-            |rule| self.part_matches(rule, &facts),
+            |rule| self.part_matches(rule, &facts, None),
         )
     }
 
@@ -687,14 +687,31 @@ impl Ui {
         self.part_draw_values(&self.part_values(part, None), size, None, None)
     }
 
-    fn part_matches(&self, rule: &crate::doc::StyleRule, facts: &Facts<'_>) -> bool {
+    /// Whether `rule` matches a part (or its host, when `facts` name no
+    /// part). A built-in control's parts are a shadow tree under `host`:
+    /// what a selector reads of the host's own tree (`.shop
+    /// button::part(base)`) was matched where the host stands in its
+    /// document, and the host declares the selector's marker while it
+    /// holds; the rest is matched on the part and its host's own facts.
+    fn part_matches(
+        &self,
+        rule: &crate::doc::StyleRule,
+        facts: &Facts<'_>,
+        host: Option<&PartHost>,
+    ) -> bool {
         rule.query
             .media
             .matches(self.media_context(), &mut Default::default())
             && rule.query.container.is_empty()
             && rule.structure.as_ref().is_some_and(|s| {
                 s.inner.is_part() == facts.part.is_some()
-                    && crate::doc::matching::matches_facts(facts, s)
+                    && match &s.local {
+                        Some(local) => {
+                            host.is_some_and(|h| h.own.contains(&s.host_marker()))
+                                && crate::doc::matching::matches_facts(facts, local)
+                        }
+                        None => crate::doc::matching::matches_facts(facts, s),
+                    }
             })
     }
 
@@ -703,7 +720,7 @@ impl Ui {
             self.style
                 .part_rules
                 .iter()
-                .filter(|rule| self.part_matches(rule, &facts))
+                .filter(|rule| self.part_matches(rule, &facts, None))
                 .collect()
         })
     }
@@ -927,6 +944,7 @@ impl Ui {
                             own_part: None,
                             ..facts
                         },
+                        host.map(|h| &**h),
                     )
                 },
             );
@@ -992,7 +1010,7 @@ impl Ui {
                 ..options
             };
             let mut values = cascade::values_with(index.candidates(rules, &facts), &options, |r| {
-                self.part_matches(r, &facts)
+                self.part_matches(r, &facts, host.map(|h| &**h))
             });
             // The host's `font` shorthand is not carried over: its
             // longhands come computed with the host's own (`h2 { font: … }`
@@ -1081,7 +1099,7 @@ impl Ui {
             }) {
                 let own = document.filter(|d| !d.part_rules.is_empty()).map(|d| {
                     let mut own = cascade::values_with(&d.part_rules, &options, |r| {
-                        self.part_matches(r, &facts)
+                        self.part_matches(r, &facts, Some(host))
                     });
                     cascade::route(&mut own, flow);
                     own.props

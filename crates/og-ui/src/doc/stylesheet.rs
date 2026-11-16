@@ -306,14 +306,18 @@ fn part_selector(selector: &Selector) -> Result<(), String> {
             selector.source
         )
     };
+    // The compounds before the host's read the host's own tree (its
+    // ancestors and siblings), as a shadow tree's part is matched through
+    // its host ([`Selector::local`]).
     let (compounds, _) = selector.compounds();
-    let [simples] = compounds.as_slice() else {
+    let Some(simples) = compounds.last() else {
         return Err(bad());
     };
     if selector.span > 0 {
         return Err(bad());
     }
-    if matches!(simples.first(), Some(Component::Root))
+    if compounds.len() == 1
+        && matches!(simples.first(), Some(Component::Root))
         && simples[1..].iter().all(|c| attribute(c).is_some())
     {
         return Ok(());
@@ -325,6 +329,7 @@ fn part_selector(selector: &Selector) -> Result<(), String> {
             }
             Component::ExplicitUniversalType | Component::Class(_) | Component::ID(_) if !part => {}
             c if !part && attribute(c).is_some() => {}
+            c if !part && super::selectors::structural_component(c) => {}
             Component::Negation(_) | Component::Is(_) | Component::Where(_)
                 if !part && nested(c).iter().all(|selector| !structural(selector)) => {}
             Component::Part(_) if !part => part = true,
@@ -625,16 +630,10 @@ pub fn apply(
     for (parsed, rule, kept) in order {
         let structure = parsed.structural().then(|| parsed.clone());
         if let Some((parent, selector)) = rule.selector.split_once("::part(") {
-            if structure.is_some() {
-                return Err((
-                    rule.at,
-                    format!(
-                        "{}: sibling combinators and structural pseudo-classes cannot select ::part spans; select the text element itself",
-                        parsed.source
-                    ),
-                ));
-            }
             let parent = if parent.is_empty() { "text" } else { parent };
+            let host = Selector::parse_list(parent)
+                .map_err(|e| (rule.at, e))?
+                .swap_remove(0);
             let compounds = parsed.compounds().0;
             let part_name = compounds.iter().flatten().find_map(|c| match c {
                 super::selectors::Component::Part(names) => names.first().map(|n| n.0.as_str()),
@@ -649,6 +648,23 @@ pub fn apply(
                     })
                 {
                     continue;
+                }
+                if structure.is_some() {
+                    if host
+                        .subject_filter()
+                        .condition(doc, elements, *i)
+                        .map_err(|e| (rule.at, e))?
+                        == Expr::Lit(false.into())
+                    {
+                        continue;
+                    }
+                    return Err((
+                        rule.at,
+                        format!(
+                            "{}: sibling combinators and structural pseudo-classes cannot select ::part spans; select the text element itself",
+                            parsed.source
+                        ),
+                    ));
                 }
                 let Some(condition) = matches(doc, elements, *i, parent, rule.at)? else {
                     continue;
@@ -676,6 +692,49 @@ pub fn apply(
                     declarations,
                     line: syntax::location(&doc.text, rule.at).0,
                 });
+            }
+            // What the selector reads of the host's tree is matched on the
+            // host, which declares the selector's marker while it holds.
+            if !text_span && parsed.local.is_some() {
+                let (declarations, _) = lower(&format!("{}: 1", parsed.host_marker()), &known)
+                    .map_err(|e| (rule.at, e))?;
+                let host_structure = (parsed.global || host.structural()).then(|| {
+                    std::sync::Arc::new(Selector {
+                        global: parsed.global,
+                        ..host.clone()
+                    })
+                });
+                let filter = host_structure.as_ref().map(|_| host.subject_filter());
+                for (i, _, _) in elements {
+                    if !matches!(doc.nodes[*i].kind, NodeKind::Element(_)) {
+                        continue;
+                    }
+                    let condition = match &filter {
+                        Some(filter) => match filter
+                            .condition(doc, elements, *i)
+                            .map_err(|e| (rule.at, e))?
+                        {
+                            Expr::Lit(serde_json::Value::Bool(false)) => continue,
+                            _ => None,
+                        },
+                        None => match matches(doc, elements, *i, parent, rule.at)? {
+                            Some(Expr::Lit(serde_json::Value::Bool(true))) => None,
+                            Some(condition) => Some(condition),
+                            None => continue,
+                        },
+                    };
+                    doc.nodes[*i].rules.push(StyleRule {
+                        inline: false,
+                        layer: rank(&layers, &rule.layer),
+                        starting: false,
+                        query: rule.query.clone(),
+                        condition,
+                        structure: host_structure.clone(),
+                        props: Vec::new(),
+                        declarations: declarations.clone(),
+                        line: syntax::location(&doc.text, rule.at).0,
+                    });
+                }
             }
             continue;
         }

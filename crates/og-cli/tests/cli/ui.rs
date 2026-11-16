@@ -616,7 +616,7 @@ fn og_check_fails_on_a_document_that_does_not_parse() {
 
     std::fs::write(
         dir.join("assets/ui/game.svelte"),
-        "<meta name='screen' content='game'>\n<column id='Box'><button id='Go'>Go</button></column>\n<style>\n#Box button::part(base) { }\n</style>\n",
+        "<meta name='screen' content='game'>\n<column id='Box'><button id='Go'>Go</button></column>\n<style>\n#Box button:lang(en)::part(base) { }\n</style>\n",
     )
     .unwrap();
     let out = check();
@@ -641,7 +641,7 @@ fn og_check_fails_on_a_document_that_does_not_parse() {
         report["diagnostics"][0]["message"]
             .as_str()
             .unwrap()
-            .starts_with("#Box button::part(base): "),
+            .starts_with("#Box button:lang(en)::part(base): "),
         "{report}"
     );
     let types = og().args(["ui", "types"]).arg(&dir).output().unwrap();

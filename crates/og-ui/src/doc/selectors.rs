@@ -306,6 +306,11 @@ pub struct Selector {
     /// (`text::part(name)[rarity="rare"]`, `super::spans`), which the
     /// crate does not parse. Each counts as an attribute selector.
     pub span: u32,
+    /// For a `::part()` selector whose host is matched in its own tree
+    /// (`.shop button::part(base)`, `li:first-child > button::part(base)`):
+    /// the host's compound as the part's shadow tree sees it, without what
+    /// reads the host's tree ([`Selector::host_marker`]).
+    pub local: Option<std::sync::Arc<Selector>>,
 }
 
 /// The selector without the attribute tests that follow its `::part()`,
@@ -489,6 +494,31 @@ pub fn compound_of<'a>(components: impl IntoIterator<Item = &'a Component>) -> S
     list.swap_remove(0)
 }
 
+/// A `::part()` selector's host compound with the part and what follows it,
+/// when the selector also reads the host's tree: its ancestors, siblings or
+/// position. A built-in control's parts are a shadow tree under the host,
+/// so that part of the selector is matched on the host where it stands in
+/// its document ([`Selector::host_marker`]), and this, on the part.
+fn part_local(selector: &Inner) -> Option<Selector> {
+    let (compounds, _) = compounds(selector);
+    let host = compounds.last()?;
+    if !host.iter().any(|c| matches!(c, Component::Part(_))) {
+        return None;
+    }
+    if compounds.len() == 1 && !host.iter().any(|c| structural_component(c)) {
+        return None;
+    }
+    let mut text = String::new();
+    for c in host.iter().filter(|c| !structural_component(c)) {
+        let _ = c.to_css(&mut text);
+    }
+    if text.starts_with("::") {
+        text.insert(0, '*');
+    }
+    let mut list = Selector::parse_list(&text).ok()?;
+    Some(list.swap_remove(0))
+}
+
 /// A parse error's message.
 fn explain(error: &ParseError<OgError>) -> String {
     match &error.kind {
@@ -540,11 +570,13 @@ impl Selector {
                 .parse_entirely(|input| Inner::parse(&OgParser, input))
                 .map_err(|e| fail(explain(&e)))?;
             check(&inner).map_err(fail)?;
+            let local = part_local(&inner).map(std::sync::Arc::new);
             list.push(Selector {
                 source: item.to_string(),
                 global: false,
                 inner,
                 span,
+                local,
             });
         }
         Ok(list)
@@ -570,6 +602,17 @@ impl Selector {
             })
         }
         walk(&self.inner, f)
+    }
+
+    /// The custom property a part's host declares on itself while the part of
+    /// this selector before `::part()` matches it where it stands in its
+    /// document ([`Selector::local`]): the part's cascade reads the host's
+    /// tree through it, as a shadow tree's part is matched through its host.
+    pub fn host_marker(&self) -> String {
+        use std::hash::{Hash, Hasher};
+        let mut hash = std::collections::hash_map::DefaultHasher::new();
+        self.source.hash(&mut hash);
+        format!("--og-part-host-{:016x}", hash.finish())
     }
 
     /// Whether matching needs the instantiated sibling order ([`structural`]).
