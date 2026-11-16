@@ -25,32 +25,33 @@
   <button id="Slot" part="AbilitySlot.cell" onclick={use} aria-label={name} aria-valuetext={locked ? t("component.ability-slot.locked") : disabled ? t("component.ability-slot.unavailable") : cooldown > 0 ? formatNumber(cooldown) : t("component.ability-slot.ready")} disabled={locked || disabled} class:cooling={cooldown > 0} class:active={active} class:tinted={unaffordable || outOfRange} class:locked={locked} class:off={disabled} class:full={ultimate >= 1}>
     <div id="Face">
       <div id="Art" part="AbilitySlot.well"><og-icon id="Icon" part="AbilitySlot.icon" icon={icon}></og-icon></div>
-      <svg id="Ultimate" part="AbilitySlot.ultimate" viewBox="0 0 64 64" hidden={ultimate < 0}><circle cx="32" cy="32" r="29" fill="none" stroke-width="4"></circle><circle id="UltimateFill" cx="32" cy="32" r="29" fill="none" stroke-width="4" pathLength="1" stroke-dasharray={ultimate + " 1"} transform="rotate(-90 32 32)"></circle></svg>
-      <svg id="Sweep" viewBox="0 0 56 56" hidden={!(cooldown > 0)}><circle cx="28" cy="28" r="20" fill="none" stroke-width="40" pathLength="1" stroke-dasharray={(cooldown / cooldownMax) + " 1"} transform="rotate(-90 28 28) scale(-1 1) translate(-56 0)"></circle></svg>
-      <span id="Time" part="AbilitySlot.figure" hidden={!(cooldown > 0)}>{cooldown < 10 ? formatNumber(cooldown) : formatCountdown(cooldown)}</span>
-      <div id="Charge"><span id="Percent" part="AbilitySlot.percent" hidden={!(ultimate >= 0 && ultimate < 1)}>{formatPercent(ultimate)}</span></div>
-      <svg id="Slash" viewBox="0 0 56 56" hidden={!disabled}><path d="M8 48L48 8" stroke-width="5" stroke-linecap="round"></path></svg>
-      <og-icon id="Lock" icon="lock" hidden={!locked}></og-icon>
-      <div id="Costs"><span id="Cost" part="AbilitySlot.badge" class="cost" class:short={unaffordable} hidden={!cost || cooldown > 0 || locked}>{cost}</span></div>
-      <span id="Charges" part="AbilitySlot.badge" class="charges" hidden={!(maxCharges > 1) || cooldown > 0 || locked}>{formatNumber(charges)}</span>
+      {#if ultimate >= 0}<svg id="Ultimate" part="AbilitySlot.ultimate" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="none" stroke-width="4"></circle><circle id="UltimateFill" cx="32" cy="32" r="29" fill="none" stroke-width="4" pathLength="1" stroke-dasharray={ultimate + " 1"} transform="rotate(-90 32 32)"></circle></svg>{/if}
+      {#if cooldown > 0}
+        <svg id="Sweep" viewBox="0 0 56 56"><circle cx="28" cy="28" r="20" fill="none" stroke-width="40" pathLength="1" stroke-dasharray={(cooldown / cooldownMax) + " 1"} transform="rotate(-90 28 28) scale(-1 1) translate(-56 0)"></circle></svg>
+        <span id="Time" part="AbilitySlot.figure">{cooldown < 10 ? formatNumber(cooldown) : formatCountdown(cooldown)}</span>
+      {/if}
+      <div id="Charge">{#if ultimate >= 0 && ultimate < 1}<span id="Percent" part="AbilitySlot.percent">{formatPercent(ultimate)}</span>{/if}</div>
+      {#if disabled}<svg id="Slash" viewBox="0 0 56 56"><path d="M8 48L48 8" stroke-width="5" stroke-linecap="round"></path></svg>{/if}
+      {#if locked}<og-icon id="Lock" icon="lock"></og-icon>{/if}
+      <div id="Costs">{#if cost && cooldown <= 0 && !locked}<span id="Cost" part="AbilitySlot.badge" class="cost" class:short={unaffordable}>{cost}</span>{/if}</div>
+      {#if maxCharges > 1 && cooldown <= 0 && !locked}<span id="Charges" part="AbilitySlot.badge" class="charges">{formatNumber(charges)}</span>{/if}
     </div>
   </button>
-  <div id="Pips" part="AbilitySlot.track AbilitySlot.well" hidden={!(maxLevel > 0)} style:--ranks={maxLevel} style:--level={level}><div id="Ranked" part="AbilitySlot.fill"></div></div>
-  <kbd id="Hotkey" part="AbilitySlot.label" data-action={action} hidden={!hotkey && !action}>{hotkey}</kbd>
+  {#if maxLevel > 0}<div id="Pips" part="AbilitySlot.track AbilitySlot.well" style:--ranks={maxLevel} style:--level={level}><div id="Ranked" part="AbilitySlot.fill"></div></div>{/if}
+  {#if hotkey || action}<kbd id="Hotkey" part="AbilitySlot.label" data-action={action}>{hotkey}</kbd>{/if}
 </div>
 
 <style>
-/* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-#Face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: center; min-width: 0; }
+#Face { position: relative; display: flex; flex-direction: column; inline-size: 100%; block-size: 100%; align-items: center; justify-content: center; }
 /* The slot grows with the player's text scale, as the text in it does,
    so its icon, badges and ring keep their proportions:
    --text-px is one CSS px at 100 % text (rem is the body type step, 14 px
    at 100 %, grown by the scale). */
-#AbilitySlot { display: flex; flex-direction: column; --text-px: var(--font-step-px); align-items: center; gap: var(--space-xxs); }
+:host { display: flex; flex-direction: column; --text-px: var(--font-step-px); align-items: center; gap: var(--space-xxs); }
 #Slot { width: calc(48 * var(--text-px)); height: calc(48 * var(--text-px)); padding: 0; overflow: hidden; transition-property: scale; transition-duration: var(--motion-duration-fast); transition-timing-function: var(--motion-easing-out); }
 .ultimate #Slot { width: calc(64 * var(--text-px)); height: calc(64 * var(--text-px)); border-radius: var(--radius-capsule); }
-#Art { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: center; }
+#Art { display: flex; flex-direction: column; inline-size: 100%; block-size: 100%; align-items: center; justify-content: center; }
 #Icon { width: calc(32 * var(--text-px)); height: calc(32 * var(--text-px)); color: var(--ink); }
 #Slot.tinted #Art { background: var(--danger-45); }
 #Slot.tinted #Icon { color: var(--danger); }
@@ -58,16 +59,16 @@
 #Slot.off #Art { filter: var(--filter-spent); }
 #Slot.active { box-shadow: 0 0 var(--space-md) var(--primary), inset 0 0 0 var(--stroke-regular) var(--primary); animation-name: breathe; animation-duration: var(--motion-duration-bounce); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
 #Slot.full { box-shadow: 0 0 var(--space-md) var(--gold), inset 0 0 0 var(--stroke-regular) var(--gold); animation-name: breathe; animation-duration: var(--motion-duration-bounce); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
-#Ultimate { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; stroke: var(--scrim); }
+#Ultimate { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; stroke: var(--scrim); }
 #UltimateFill { stroke: var(--gold); }
-#Sweep { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; stroke: var(--scrim); }
-#Time { position: absolute; top: calc(12 * var(--text-px)); inset-inline-start: 0; width: stretch; text-align: center; font-size: var(--font-step-xl); }
+#Sweep { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; stroke: var(--scrim); }
+#Time { position: absolute; top: calc(12 * var(--text-px)); inset-inline: 0; text-align: center; font-size: var(--font-step-xl); font-family: var(--figure-font); color: var(--scene-ink); text-shadow: var(--tag-halo); }
 /* The percent sits on a small ground of its own (a pack sets it with
    --ability-slot-percent-ground), so the ring's arc never runs through its
    digits, whatever size and shape a pack gives the ring. */
 #Charge { position: absolute; bottom: var(--space-xxs); inset-inline-start: 0; inset-inline-end: 0; display: flex; justify-content: center; }
 #Percent { padding: 0 var(--space-xs); border-radius: var(--radius-capsule); background: var(--ability-slot-percent-ground, var(--scrim)); font-size: var(--font-step-sm); color: var(--gold); }
-#Slash { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; stroke: var(--danger); }
+#Slash { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; stroke: var(--danger); }
 #Lock { position: absolute; top: calc(12 * var(--text-px)); inset-inline-start: calc(12 * var(--text-px)); width: calc(24 * var(--text-px)); height: calc(24 * var(--text-px)); color: var(--ink); }
 /* The cost sits in a row of its own: at the bottom's leading corner on a
    square slot; on an ultimate, whose percent takes the bottom, centred at

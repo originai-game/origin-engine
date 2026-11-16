@@ -10,7 +10,10 @@ and ordinary, warning and critical countdowns.
 The actions page covers cooldown, charges, unaffordable and locked slots.
 Buttons include enabled, disabled, optional holding text and long labels.
 Touch includes charged and disabled actions; navigation includes a compass,
-a plain map and a rotating player-up map.
+a plain map and a rotating player-up map. Tactics covers a selected radial
+command, an unaffordable command, a disabled command, selected map-layer
+legends and an unselected overlay bar. These are 2D captures, not a review
+of the world-projected documents; their world frames are checked on the L4.
 
 Render pages with their commands; mounting without a page command is
 not a review of the sheet:
@@ -23,6 +26,7 @@ og ui preview packages/engine/sheets/hud \
   --screen 'buttons-default=style:default;page:buttons' \
   --screen 'touch-default=style:default;page:touch' \
   --screen 'navigation-default=style:default;page:navigation' \
+  --screen 'tactics-default=style:default;page:tactics' \
   --breakpoints desktop,phonePortrait --locales game --scales 100
 ```
 

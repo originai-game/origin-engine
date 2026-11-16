@@ -45,7 +45,20 @@ export default og.game({
       { id: "me", kind: "poi", x: 0.5, y: 0.5, label: "You", tone: "neutral", player: true },
       { id: "quest", kind: "objective", x: 0.58, y: 0.55, label: "Camp", tone: "warn", player: false },
     ], { key: "id" });
-    must(scope.mount("sheet", "HudSheet", { page: scope.writable("page", "meters"), actions, slots, pois, markers }));
+    const items = scope.collection("items", [
+      { id: "heal", label: "Heal", icon: "heart", at: 0, cost: "", unaffordable: false, disabled: false },
+      { id: "ward", label: "Ward", icon: "shield", at: 1 / 6, cost: "150", unaffordable: false, disabled: false },
+      { id: "bomb", label: "Bomb", icon: "bomb", at: 2 / 6, cost: "300", unaffordable: true, disabled: false },
+      { id: "map", label: "Map", icon: "map", at: 3 / 6, cost: "", unaffordable: false, disabled: false },
+      { id: "bag", label: "Bag", icon: "bag", at: 4 / 6, cost: "", unaffordable: false, disabled: true },
+      { id: "rally", label: "Rally", icon: "flag", at: 5 / 6, cost: "", unaffordable: false, disabled: false },
+    ], { key: "id" });
+    const overlays = scope.collection("overlays", [
+      { id: "heat", name: "Heat", icon: "fire", image: 0, ramp: "var(--info), var(--warn), var(--danger)", low: "Cold", high: "Hot" },
+      { id: "water", name: "Water", icon: "drop", image: 0, ramp: "var(--panel), var(--info)", low: "Dry", high: "Flooded" },
+      { id: "value", name: "Land value", icon: "coin", image: 0, ramp: "var(--panel), var(--gold)", low: "Low", high: "High" },
+    ], { key: "id" });
+    must(scope.mount("sheet", "HudSheet", { page: scope.writable("page", "meters"), actions, slots, pois, markers, items, overlays }));
   },
   commands: {
     style,

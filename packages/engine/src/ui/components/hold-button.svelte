@@ -9,19 +9,22 @@
 <meta name="prop:disabled" content="bool" data-doc="Shown but inert.">
 <meta name="action:confirm" content="Confirm">
 <meta name="fixture:default" content='{"label":"Delete save","holding":"Keep holding…","hint":"Hold to delete","icon":"close","action":"","variant":"danger","disabled":false}'>
+<meta name="fixture:label-only" content='{"label":"Secure checkpoint","holding":"","hint":"Hold to secure","icon":"","action":"","variant":"primary","disabled":false}'>
+<meta name="fixture:disabled" content='{"label":"Delete save","holding":"Keep holding…","hint":"Unavailable during combat","icon":"close","action":"","variant":"danger","disabled":true}'>
+<meta name="fixture:overflow" content='{"label":"Abandon the current expedition","holding":"Keep holding to confirm","hint":"Hold to abandon the expedition","icon":"close","action":"","variant":"danger","disabled":false}'>
 
 <div id="HoldButton">
-  <button id="Button" part="HoldButton.base" data-hold="1200" data-action={action} onhold={confirm} aria-label={label} class:primary={variant == "primary"} class:secondary={variant == "secondary"} disabled={disabled}>
-    <og-icon id="Icon" part="HoldButton.icon" icon={icon} hidden={!icon}></og-icon>
+  <button id="Button" part="HoldButton.base" data-hold="1200" data-action={action} onhold={confirm} aria-label={label} class:primary={variant == "primary"} class:secondary={variant == "secondary"} class:hasHolding={!!holding} disabled={disabled}>
+    {#if icon}<og-icon id="Icon" part="HoldButton.icon" icon={icon}></og-icon>{/if}
     <span id="Label" part="HoldButton.label" class="rest">{label}</span>
-    <span id="Holding" part="HoldButton.label" class="held" hidden={!holding}>{holding}</span>
+    {#if holding}<span id="Holding" part="HoldButton.label" class="held">{holding}</span>{/if}
   </button>
-  <span id="Hint" part="HoldButton.hint" hidden={!hint}>{hint}</span>
+  {#if hint}<span id="Hint" part="HoldButton.hint">{hint}</span>{/if}
 </div>
 
 <style>
-#HoldButton { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); }
-[part="HoldButton.base"] { min-height: var(--touch-target); padding: 0 var(--space-lg); gap: var(--space-sm); align-items: center; justify-content: center; border-radius: var(--button-radius); border: var(--stroke-hairline) solid var(--danger); background: var(--panel-raised); color: var(--danger); }
+:host { display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); max-inline-size: 100%; }
+[part="HoldButton.base"] { min-height: var(--touch-target); max-inline-size: 100%; padding: var(--space-xs) var(--space-lg); gap: var(--space-sm); align-items: center; justify-content: center; border-radius: var(--button-radius); border: var(--stroke-hairline) solid var(--danger); background: var(--panel-raised); color: var(--danger); }
 [part="HoldButton.base"]::-og-hold { background: var(--danger-45); }
 [part="HoldButton.base"].primary { border-width: 0; background: var(--primary); color: var(--on-primary); }
 [part="HoldButton.base"].primary::-og-hold { background: var(--primary-active); }
@@ -33,8 +36,8 @@
 [part="HoldButton.icon"], [part="HoldButton.label"] { color: var(--danger); }
 .primary [part="HoldButton.icon"], .primary [part="HoldButton.label"] { color: var(--on-primary); }
 .secondary [part="HoldButton.icon"], .secondary [part="HoldButton.label"] { color: var(--ink); }
-[part="HoldButton.label"] { font: var(--text-body); white-space: nowrap; }
+[part="HoldButton.label"] { font: var(--text-body); text-align: center; }
 #Button:not(:active) #Holding { display: none; }
-#Button:active #Label { display: none; }
-[part="HoldButton.hint"] { font: var(--text-caption); color: var(--ink-muted); white-space: nowrap; }
+#Button.hasHolding:active #Label { display: none; }
+[part="HoldButton.hint"] { font: var(--text-caption); color: var(--ink-muted); text-align: center; }
 </style>

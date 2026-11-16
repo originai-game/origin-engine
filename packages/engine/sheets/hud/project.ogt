@@ -14,4 +14,5 @@ ui {
   screen "buttons-default" "style:default;page:buttons"
   screen "touch-default" "style:default;page:touch"
   screen "navigation-default" "style:default;page:navigation"
+  screen "tactics-default" "style:default;page:tactics"
 }

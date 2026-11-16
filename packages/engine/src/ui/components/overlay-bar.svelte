@@ -24,8 +24,8 @@
     {#each overlays as o (o.id)}
       <button id="Overlay" part="OverlayBar.option" class="overlay" aria-label={o.name} aria-pressed={o.id == selected} onclick={choose}>
         <div class="face">
-          <img class="art" part="OverlayBar.art OverlayBar.picture" src={o.image} hidden={!o.image}>
-          <div class="well" part="OverlayBar.well" hidden={!!o.image}><og-icon class="glyph" part="OverlayBar.icon" icon={o.icon}></og-icon></div>
+          {#if o.image}<img class="art" part="OverlayBar.art OverlayBar.picture" src={o.image}>
+          {:else}<div class="well" part="OverlayBar.well"><og-icon class="glyph" part="OverlayBar.icon" icon={o.icon}></og-icon></div>{/if}
           <span class="name" part="OverlayBar.name">{o.name}</span>
         </div>
       </button>
@@ -34,18 +34,17 @@
 </div>
 
 <style>
-/* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
-#OverlayBar { display: flex; flex-direction: column; gap: var(--space-sm); align-items: center; }
-[part="OverlayBar.frame"] { --title-size: var(--title-small-size); width: var(--measure-sm); gap: var(--space-xs); }
+:host { display: flex; flex-direction: column; gap: var(--space-sm); align-items: center; max-width: 100%; text-shadow: var(--tag-halo); }
+[part="OverlayBar.frame"] { display: flex; flex-direction: column; --title-size: var(--title-small-size); width: var(--measure-sm); max-width: 100%; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
 [part="OverlayBar.title"] { white-space: nowrap; }
-[part="OverlayBar.ramp"] { width: stretch; height: var(--space-sm); border-radius: var(--radius-capsule); background: var(--ramp); border: var(--stroke-hairline) solid var(--line); }
-#Ends { display: flex; gap: var(--space-md); width: stretch; }
-[part="OverlayBar.label"] { flex: 1; min-width: 0; font: var(--text-caption); white-space: nowrap; }
+[part="OverlayBar.ramp"] { height: var(--space-sm); border-radius: var(--radius-capsule); background: var(--ramp); border: var(--stroke-hairline) solid var(--line); }
+#Ends { display: flex; gap: var(--space-md); }
+[part="OverlayBar.label"] { flex: 1; font: var(--text-caption); }
 .high { text-align: end; }
-[part="OverlayBar.bar"] { display: flex; gap: var(--space-sm); padding: var(--space-sm); border-radius: var(--radius-capsule); backdrop-filter: blur(var(--glass-blur-thick)) saturate(var(--glass-saturation)); -og-material: glass thick lift; overflow-x: auto; scrollbar-width: none; }
+[part="OverlayBar.bar"] { display: flex; max-width: 100%; gap: var(--space-sm); padding: var(--space-sm); border-radius: var(--radius-capsule); backdrop-filter: blur(var(--glass-blur-thick)) saturate(var(--glass-saturation)); -og-material: glass thick lift; overflow-x: auto; scrollbar-width: none; }
 [part="OverlayBar.option"] { height: calc(var(--size-lg) + var(--space-xs) * 2); padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-xs); border-radius: var(--radius-capsule); background: var(--control); }
 [part="OverlayBar.option"][aria-pressed=true] { background: var(--button-selected-fill); outline: var(--stroke-regular) solid var(--primary); box-shadow: var(--shadow-slot-selected); }
+[part="OverlayBar.option"]:hover { background: var(--control-strong); }
 .face { display: flex; align-items: center; gap: var(--space-sm); }
 [part="OverlayBar.art OverlayBar.picture"], [part="OverlayBar.well"] { width: var(--size-lg); height: var(--size-lg); border-radius: var(--radius-capsule); }
 [part="OverlayBar.well"] { display: flex; flex-direction: column; align-items: center; justify-content: center; }

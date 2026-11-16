@@ -4,6 +4,8 @@
 <meta name="prop:slots" content="list">
 <meta name="prop:pois" content="list">
 <meta name="prop:markers" content="list">
+<meta name="prop:items" content="list">
+<meta name="prop:overlays" content="list">
 
 <div id="Page">
   <header><span class="eyebrow">EXPEDITION 07</span><h1>Field instruments</h1><p>Resources, recovery and time at a glance</p></header>
@@ -59,6 +61,15 @@
       <h2>Field controls</h2>
       <TouchControls move="move" actions={actions} always={true} />
       <TouchControls move="move" look="look" actions={actions} always={true} disabled={true} />
+    </section>{/if}
+    {#if page == 'tactics'}<section>
+      <h2>Quick commands</h2>
+      <RadialMenu items={items} span={0.1667} chosen="heal" />
+    </section>
+    <section>
+      <h2>Map layers</h2>
+      <OverlayBar overlays={overlays} selected={"heat"} />
+      <OverlayBar overlays={overlays} selected={""} />
     </section>{/if}
   </div>
 </div>

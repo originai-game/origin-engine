@@ -49,16 +49,16 @@
 </div>
 
 <style>
-#TouchControls { display: flex; width: stretch; justify-content: space-between; align-items: end; gap: var(--space-lg); padding: var(--space-lg); }
+:host { display: flex; inline-size: stretch; justify-content: space-between; align-items: end; gap: var(--space-lg); padding: var(--space-lg); }
 @media (pointer: fine) {
-  #TouchControls { display: none; }
-  #TouchControls.always { display: flex; }
+  :host { display: none; }
+  .always { display: flex; }
 }
-#Start { display: flex; align-items: end; }
-#End { display: flex; align-items: end; gap: var(--space-md); }
-#Actions { display: flex; flex-direction: row-reverse; flex-wrap: wrap-reverse; align-items: end; gap: var(--space-sm); max-width: calc(var(--action-size) * 3.25 + var(--space-sm) * 2); }
+#Start { display: flex; align-items: end; flex: none; }
+#End { display: flex; flex: 1; min-inline-size: 0; align-items: end; justify-content: flex-end; gap: var(--space-md); }
+#Actions { display: flex; min-inline-size: 0; flex-direction: row-reverse; flex-wrap: wrap-reverse; align-items: end; justify-content: flex-start; gap: var(--space-md); max-width: min(100%, calc(var(--action-size) * 3.25 + var(--space-md) * 2)); }
 @media (width < 600px) {
-  #TouchControls { padding: var(--space-md); gap: var(--space-md); }
-  #End { gap: var(--space-sm); }
+  :host { padding: var(--space-md); gap: var(--space-md); }
+  #End { gap: var(--space-sm); flex-wrap: wrap; justify-content: flex-end; }
 }
 </style>

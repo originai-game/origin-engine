@@ -40,7 +40,7 @@
 
 <style>
 :host { text-shadow: var(--tag-halo); }
-:host { display: flex; flex-direction: column; inline-size: var(--size-6xl); max-inline-size: 100%; gap: var(--space-xxs); --meter: var(--health); }
+:host { display: flex; flex-direction: column; inline-size: 100%; gap: var(--space-xxs); --meter: var(--health); }
 .mana { --meter: var(--mana); }
 .stamina { --meter: var(--success); }
 .xp { --meter: var(--xp); }
