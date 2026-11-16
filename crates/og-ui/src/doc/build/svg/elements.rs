@@ -334,6 +334,7 @@ impl Ui {
                         nowrap: true,
                         width: desc.width,
                         font,
+                        ..Default::default()
                     },
                     |span| {
                         let mut s = r

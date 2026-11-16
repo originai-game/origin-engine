@@ -76,6 +76,31 @@ pub struct RichContent {
     pub base: (TypeStep, FontRole),
     pub align: TextAlign,
     pub wrap: bool,
+    pub indent: TextIndent,
+    pub line_break: LineBreak,
+}
+
+/// CSS `text-indent` (CSS Text 3 §8.1): the room its lines leave at
+/// their start, in CSS px; `hanging` indents every line but the first,
+/// `each-line` the first after each forced break too.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct TextIndent {
+    pub px: f32,
+    pub hanging: bool,
+    pub each_line: bool,
+}
+
+/// CSS `line-break` (CSS Text 3 §5.3): how strictly CJK punctuation and
+/// small kana may start or end a line. `auto` is Parley's default,
+/// `strict`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum LineBreak {
+    #[default]
+    Auto,
+    Loose,
+    Normal,
+    Strict,
+    Anywhere,
 }
 
 /// A piece of one span on one line, `x` from the line's start.
@@ -93,14 +118,18 @@ pub struct Piece {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct RichLine {
     pub pieces: Vec<Piece>,
+    /// Its line box's width: its pieces and its indent.
     pub width: f32,
+    /// The room its `text-indent` leaves at its inline start, before its
+    /// pieces (CSS Text 3 §8.1).
+    pub indent: f32,
     pub height: f32,
     /// From the line's top to the shared baseline.
     pub baseline: f32,
     pub shaped: Option<Vec<Segment>>,
 }
 
-/// How rich text looks by default (`RichTextDesc` in the IDL).
+/// How rich text looks by default.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct RichTextDesc {
     /// `None`: `text-body`.
@@ -111,6 +140,8 @@ pub struct RichTextDesc {
     pub nowrap: bool,
     pub width: Size,
     pub font: FontRole,
+    pub indent: TextIndent,
+    pub line_break: LineBreak,
 }
 
 /// What a paragraph's links did this tick.
@@ -403,6 +434,7 @@ fn build_line(rc: &RichContent, fonts: &dyn Metrics, units: Vec<&Unit>) -> RichL
     let (h, baseline) = place_line(rc, fonts, &mut pieces);
     RichLine {
         width: x,
+        indent: 0.0,
         height: h,
         baseline,
         pieces,
@@ -675,7 +707,7 @@ impl Ui {
         let mut line_y = inner.y;
         for (k, line) in n.layout.rich_lines.iter().enumerate() {
             let segments = visual_segments(rc, &self.env.fonts, line, self.env.direction);
-            let width: f32 = segments.iter().map(|s| s.width).sum();
+            let width: f32 = segments.iter().map(|s| s.width).sum::<f32>() + line.indent;
             // Its line box: the room floats leave it (`Node::wrap_lines`,
             // its drop below the lines above), or its box.
             let (bx, bw, dy) = match n.layout.wrap_lines.get(k) {
@@ -693,7 +725,9 @@ impl Ui {
                     (TextAlign::Center, _) => free / 2.0,
                     (TextAlign::End, false) | (TextAlign::Start | TextAlign::Justify, true) => free,
                 };
-            let mut x = x0;
+            // The indent at its inline start: before the pieces, or after
+            // them in a right-to-left line set from the right.
+            let mut x = x0 + if rtl { 0.0 } else { line.indent * sk };
             for seg in segments {
                 out.push(DrawnPiece {
                     span: seg.span,

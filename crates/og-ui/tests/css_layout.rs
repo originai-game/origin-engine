@@ -1981,3 +1981,93 @@ fn a_named_part_keeps_the_flex_lines_and_gaps_its_document_wrote() {
         assert_eq!(["N1", "N2", "N3", "N4"].map(|id| at(id, "Named")), plain);
     });
 }
+
+/// `text-indent` and `line-break` (CSS Text 3 §8.1, §5.3), laid out by
+/// Parley: the indent is room at the first line's start (every line but
+/// the first under `hanging`, after each forced break too under
+/// `each-line`) that the line breaks around and a fitting box grows by,
+/// with `text-align` aligning the rest; `line-break: anywhere` breaks
+/// inside a word where `normal` breaks at the space.
+#[test]
+fn text_indent_and_line_break_lay_out_as_css_text_does() {
+    let words = "alpha beta gamma delta epsilon zeta eta theta iota kappa";
+    let text = format!(
+        r#"<meta name="component" content="t">
+<div><div id="Root">
+  <p id="First">{words}</p>
+  <p id="Hang">{words}</p>
+  <p id="Each">{{$each}}</p>
+  <p id="Right">{words}</p>
+  <p id="Fit">alpha</p>
+  <p id="Bare">alpha</p>
+  <p id="Any">alpha bravocharliedelta</p>
+  <p id="Norm">alpha bravocharliedelta</p>
+</div></div>
+<style>
+#Root {{ width: 200px; }}
+p {{ margin: 0; }}
+#First {{ text-indent: 40px; }}
+#Hang {{ text-indent: 40px hanging; }}
+#Each {{ white-space: pre-line; text-indent: 40px each-line; }}
+#Right {{ text-indent: 40px; text-align: right; }}
+#Fit, #Bare {{ width: max-content; }}
+#Fit {{ text-indent: 40px; }}
+#Any, #Norm {{ width: 100px; }}
+#Any {{ line-break: anywhere; }}
+</style>"#
+    );
+    let mut shaped = crate::features::font("Inter-Display.ttf");
+    shaped.handle = crate::support::test_font().handle;
+    let each = [("each", serde_json::json!("alpha\nbeta"))];
+    let d = Doc::with_font(&text, &each, shaped);
+    // Each drawn line of `id`: its left, right and text.
+    let lines = |id: &str| -> Vec<(f32, f32, String)> {
+        let r = d.get(id);
+        let mut out: Vec<(f32, f32, f32, String)> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|it| match it.cmd.unstyled() {
+                    og_ui::DrawCmd::Text { text, bounds, .. }
+                        if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0)) =>
+                    {
+                        Some((
+                            bounds.y,
+                            bounds.x - r.x,
+                            bounds.right() - r.x,
+                            text.trim().to_owned(),
+                        ))
+                    }
+                    _ => None,
+                })
+                .collect();
+        out.sort_by(|a, b| a.0.total_cmp(&b.0));
+        out.into_iter().map(|(_, l, r, t)| (l, r, t)).collect()
+    };
+    let first = lines("First");
+    assert!(first.len() >= 2, "{first:?}");
+    assert_eq!(
+        first[0].0, 40.0,
+        "the first line starts after its indent: {first:?}"
+    );
+    assert!(
+        first[0].1 <= 200.5,
+        "and breaks before the box's end: {first:?}"
+    );
+    assert!(first[1..].iter().all(|l| l.0 == 0.0), "{first:?}");
+    let hang = lines("Hang");
+    assert_eq!(hang[0].0, 0.0, "{hang:?}");
+    assert!(hang[1..].iter().all(|l| l.0 == 40.0), "{hang:?}");
+    let each = lines("Each");
+    assert_eq!(
+        each.iter().map(|l| l.0).collect::<Vec<_>>(),
+        [40.0, 40.0],
+        "{each:?}"
+    );
+    let right = lines("Right");
+    assert!(right.iter().all(|l| (l.1 - 200.0).abs() < 0.5), "{right:?}");
+    assert_eq!(d.get("Fit").width, d.get("Bare").width + 40.0);
+    assert_eq!(lines("Norm")[0].2, "alpha");
+    let any = lines("Any");
+    assert!(any[0].2.starts_with("alpha b"), "{any:?}");
+}

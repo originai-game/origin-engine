@@ -124,6 +124,8 @@ proof("margin", "html_text", "block_margins_follow_the_ua_stylesheet_and_collaps
       "Both builders assert positive/negative sibling and parent-child margin collapse, padding/fixed-height boundaries, noncollapsing flex margins, UA em margins and keyed insertion.")
 proof("text-wrap-balance text-wrap-pretty text-overflow", "html_text", "text_wrap_styles_and_overflow_strings_lay_out_as_css_does",
       "Both builders inspect emitted lines: balance reduces width spread at the same line count; pretty avoids the final single-word line; custom overflow text replaces the ellipsis on one clipped line.")
+proof("text-indent text-indent-each-line text-indent-hanging line-break", "css_layout", "text_indent_and_line_break_lay_out_as_css_text_does",
+      "Drawn lines of a shaped face show the first-line, hanging and each-line indents, a right-aligned indented line ending at its box, a max-content box growing by the indent, and line-break: anywhere filling a line mid-word. Strict/loose CJK punctuation rules are Parley's and not asserted; atlas-only and pixel faces are not indented.")
 proof("container-queries", "documents", "container_queries_restyle_lists_grids_and_rive_frames_before_paint",
       "Viewport changes immediately change list/grid padding and Rive visibility under a named inline-size query. Pushed-screen path; style/scroll-state queries and container units are not covered.")
 proof("scroll-driven-animations", "documents", "view_timelines_follow_the_subject_through_its_scroller",

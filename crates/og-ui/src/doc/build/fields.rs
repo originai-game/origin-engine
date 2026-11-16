@@ -529,37 +529,17 @@ impl Ui {
                         i,
                         &base.text,
                         std::slice::from_ref(&span),
-                        crate::RichTextDesc {
-                            step: desc.step,
-                            color: desc.color,
-                            align: desc.align,
-                            nowrap: desc.nowrap,
-                            width: desc.width,
-                            font: desc.font,
-                        },
+                        r.rich_desc(&desc),
                         |_| style.clone(),
                     );
                 } else if let Some(V::Spans(Ok(spans))) = r.get("spans") {
-                    self.apply_text_spans(
-                        i,
-                        &base.text,
-                        spans,
-                        crate::RichTextDesc {
-                            step: desc.step,
-                            color: desc.color,
-                            align: desc.align,
-                            nowrap: desc.nowrap,
-                            width: desc.width,
-                            font: desc.font,
-                        },
-                        |span| {
-                            r.span_styles
-                                .iter()
-                                .find(|(attribute, _)| attribute == span)
-                                .map(|(_, style)| style.clone())
-                                .unwrap_or_default()
-                        },
-                    );
+                    self.apply_text_spans(i, &base.text, spans, r.rich_desc(&desc), |span| {
+                        r.span_styles
+                            .iter()
+                            .find(|(attribute, _)| attribute == span)
+                            .map(|(_, style)| style.clone())
+                            .unwrap_or_default()
+                    });
                 } else {
                     let width = desc.width;
                     self.apply_label(i, &base.text, desc);
@@ -1367,6 +1347,26 @@ impl Resolved {
             fit_min: self.str("fitMin").and_then(|s| {
                 crate::style_file::ramp_step(&mut theme.type_ramp.clone(), s).copied()
             }),
+        }
+    }
+
+    /// The rich text a label of `desc` lays out as: its paragraph's
+    /// `text-indent` and `line-break` too.
+    pub fn rich_desc(&self, desc: &LabelDesc) -> crate::RichTextDesc {
+        let (indent, line_break) = self
+            .text
+            .as_deref()
+            .map(|t| t.paragraph())
+            .unwrap_or_default();
+        crate::RichTextDesc {
+            step: desc.step,
+            color: desc.color,
+            align: desc.align,
+            nowrap: desc.nowrap,
+            width: desc.width,
+            font: desc.font,
+            indent,
+            line_break,
         }
     }
 

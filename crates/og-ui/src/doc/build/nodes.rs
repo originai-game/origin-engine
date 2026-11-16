@@ -939,14 +939,7 @@ impl Ui {
                     id.as_str(),
                     &full,
                     &attributes,
-                    crate::RichTextDesc {
-                        step: desc.step,
-                        color: desc.color,
-                        align: desc.align,
-                        nowrap: desc.nowrap,
-                        width: desc.width,
-                        font: desc.font,
-                    },
+                    r.rich_desc(&desc),
                     |span| {
                         runs.iter()
                             .find(|(s, _)| s == span)
@@ -968,26 +961,13 @@ impl Ui {
                 }
             };
             resp = self
-                .rich_text_spans(
-                    id.as_str(),
-                    &text,
-                    spans,
-                    crate::RichTextDesc {
-                        step: desc.step,
-                        color: desc.color,
-                        align: desc.align,
-                        nowrap: desc.nowrap,
-                        width: desc.width,
-                        font: desc.font,
-                    },
-                    |span| {
-                        r.span_styles
-                            .iter()
-                            .find(|(attribute, _)| attribute == span)
-                            .map(|(_, style)| style.clone())
-                            .unwrap_or_default()
-                    },
-                )
+                .rich_text_spans(id.as_str(), &text, spans, r.rich_desc(&desc), |span| {
+                    r.span_styles
+                        .iter()
+                        .find(|(attribute, _)| attribute == span)
+                        .map(|(_, style)| style.clone())
+                        .unwrap_or_default()
+                })
                 .response;
         } else if let Some((span, style)) = r.css_span(&text) {
             resp = self
@@ -995,14 +975,7 @@ impl Ui {
                     id.as_str(),
                     &text,
                     std::slice::from_ref(&span),
-                    crate::RichTextDesc {
-                        step: desc.step,
-                        color: desc.color,
-                        align: desc.align,
-                        nowrap: desc.nowrap,
-                        width: desc.width,
-                        font: desc.font,
-                    },
+                    r.rich_desc(&desc),
                     |_| style.clone(),
                 )
                 .response;

@@ -10,7 +10,7 @@
 
 use super::VisualGlyph;
 use crate::layout::float::Broken;
-use crate::rich::{Piece, RichContent, RichLine, Segment};
+use crate::rich::{LineBreak, Piece, RichContent, RichLine, Segment, TextIndent};
 use og_i18n::Direction;
 use og_text::text::paragraph::{Brush, CONTEXT, Context};
 use parley::{BreakReason, Layout, PositionedLayoutItem, StyleProperty, YieldData};
@@ -86,7 +86,7 @@ fn laid_out(
                 }
                 let line = layout.lines().nth(k).expect("broken line");
                 let m = line.metrics();
-                let width = m.advance - m.hanging_advance + hyphens[span];
+                let width = m.advance - m.hanging_advance + m.indent + hyphens[span];
                 if width > b.shift[2] + 0.01 && reserve.get(k).is_none_or(|&r| r == 0.0) {
                     return Err((k, hyphens[span]));
                 }
@@ -163,7 +163,7 @@ fn break_beside(
                     continue;
                 }
                 let height = d.metrics.line_height;
-                let width = d.metrics.advance - d.metrics.hanging_advance;
+                let width = d.metrics.advance - d.metrics.hanging_advance + d.metrics.indent;
                 if next.is_some() && height > h + 0.01 {
                     lines.revert_to(start.clone());
                     h = height;
@@ -290,7 +290,10 @@ fn rich_line(
     }
     RichLine {
         pieces,
-        width: x,
+        // Its indent is room at its start (CSS Text 3 §8.1), part of
+        // the width its line box takes.
+        width: x + m.indent,
+        indent: m.indent,
         height: m.line_height,
         baseline: m.baseline - m.block_min_coord,
         shaped: Some(segments),
@@ -405,6 +408,12 @@ fn shaped<R>(
             });
         }
         builder.push_default(StyleProperty::OverflowWrap(parley::OverflowWrap::Anywhere));
+        builder.push_default(StyleProperty::LineBreak(match content.line_break {
+            LineBreak::Auto | LineBreak::Strict => parley::LineBreak::Strict,
+            LineBreak::Loose => parley::LineBreak::Loose,
+            LineBreak::Normal => parley::LineBreak::Normal,
+            LineBreak::Anywhere => parley::LineBreak::Anywhere,
+        }));
         builder.push_default(StyleProperty::FontFamily(strut.as_str().into()));
         builder.push_default(StyleProperty::FontSize(base.size));
         builder.push_default(StyleProperty::LineHeight(parley::LineHeight::Absolute(
@@ -447,6 +456,12 @@ fn shaped<R>(
             builder.push_inline_box(atom);
         }
         let mut layout = builder.build(&text);
+        let TextIndent {
+            px,
+            hanging,
+            each_line,
+        } = content.indent;
+        layout.set_text_indent(px, parley::IndentOptions { each_line, hanging });
         Some(f(&mut layout, &text, &indices))
     })
 }
@@ -472,8 +487,13 @@ fn planned_line(
         })
         .collect();
     let end = range.start + text[range.clone()].trim_end_matches([' ', '\t']).len();
+    // One line laid out alone: its own indent as a first line's.
     let mut out = RichContent {
         spans: Vec::new(),
+        indent: TextIndent {
+            px: line.metrics().indent,
+            ..TextIndent::default()
+        },
         ..content.clone()
     };
     let mut spans = Vec::new();

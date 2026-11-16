@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI CSS text-indent, line-break",
+      "summary": "`text-indent` (with `hanging` and `each-line`) and `line-break` (`auto`, `loose`, `normal`, `strict`, `anywhere`) now lay out (CSS Text 3 §8.1, §5.3). A text that sets either is laid out by Parley: its indent is room at the start of its first line, or of every line but the first under `hanging`, or after each forced break too under `each-line`. Lines break around that room, a fitting box grows by it, and `text-align` aligns the rest. `line-break` sets how strictly CJK punctuation and small kana may break, and `anywhere` breaks inside words. `text-indent` used to be accepted and ignored, and `line-break` was refused. Atlas-only and pixel faces, which Parley cannot shape, are not indented."
+    }
+  ]
+}

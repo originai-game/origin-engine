@@ -282,6 +282,8 @@ impl Ui {
             base: (desc.step.unwrap_or(t.type_ramp.body), desc.font),
             align: desc.align,
             wrap: !desc.nowrap,
+            indent: desc.indent,
+            line_break: desc.line_break,
         });
         node.layout.links.clear();
         for r in &node_runs_links(&node.content) {

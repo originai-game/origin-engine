@@ -41,6 +41,7 @@ pub(crate) const INHERITED: &[&str] = &[
     "tab-size",
     "hyphens",
     "word-break",
+    "line-break",
     "overflow-wrap",
     "text-justify",
     "font-variant-caps",
@@ -688,6 +689,7 @@ fn check(name: &str, v: &str) -> Result<(), String> {
             "normal" | "break-all" | "keep-all" | "break-word" | "auto-phrase"
         ),
         "overflow-wrap" => matches!(v, "normal" | "anywhere" | "break-word"),
+        "line-break" => matches!(v, "auto" | "loose" | "normal" | "strict" | "anywhere"),
         "text-justify" => matches!(
             v,
             "auto" | "none" | "inter-word" | "inter-character" | "distribute"
@@ -891,6 +893,7 @@ pub struct TextCss {
     pub tab_size: Option<f32>,
     pub hyphens: Option<String>,
     pub word_break: Option<String>,
+    pub line_break: Option<String>,
     pub overflow_wrap: Option<String>,
     pub justify: Option<String>,
     pub features: Vec<([u8; 4], u16)>,
@@ -1093,6 +1096,7 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         tab_size: num(get("tab-size")),
         hyphens: get("hyphens"),
         word_break: get("word-break"),
+        line_break: get("line-break"),
         overflow_wrap: get("overflow-wrap"),
         justify: get("text-justify"),
         kerning: get("font-kerning").map(|v| v != "none"),
@@ -1411,9 +1415,37 @@ impl TextCss {
     }
 
     /// Whether the text needs a span of its own (a style, a decoration,
-    /// a stroke or a fill the plain text path does not draw).
+    /// a stroke or a fill the plain text path does not draw), or is a
+    /// paragraph Parley lays out (an indent, a `line-break`).
     pub fn rich(&self) -> bool {
-        self.italic == Some(true) || self.decoration.any() || self.stroke.is_some()
+        let p = self.paragraph();
+        self.italic == Some(true)
+            || self.decoration.any()
+            || self.stroke.is_some()
+            || p.0 != Default::default()
+            || p.1 != Default::default()
+    }
+
+    /// Its paragraph's `text-indent` and `line-break`.
+    pub fn paragraph(&self) -> (crate::rich::TextIndent, crate::rich::LineBreak) {
+        use crate::rich::{LineBreak, TextIndent};
+        let indent = self
+            .indent
+            .map_or(TextIndent::default(), |(px, hanging, each_line)| {
+                TextIndent {
+                    px,
+                    hanging,
+                    each_line,
+                }
+            });
+        let line_break = match self.line_break.as_deref() {
+            Some("loose") => LineBreak::Loose,
+            Some("normal") => LineBreak::Normal,
+            Some("strict") => LineBreak::Strict,
+            Some("anywhere") => LineBreak::Anywhere,
+            _ => LineBreak::Auto,
+        };
+        (indent, line_break)
     }
 
     /// `text` as shown: transformed (CSS Text 3 §2.1) and its white space
