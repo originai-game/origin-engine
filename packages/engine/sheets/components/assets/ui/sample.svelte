@@ -34,6 +34,14 @@
       <TooltipCard title={$sample.title} subtitle={$sample.subtitle} rarity={$sample.rarity} icon={$sample.icon} image={$sample.image} body={$sample.body} stats={$sample_stats} compareTitle={$sample.compareTitle} compareStats={$sample_compareStats} footer={$sample.footer} hints={$sample_hints} />
     {:else if $member == 'actionHints'}
       <ActionHints hints={$sample_hints} label={$sample.label} />
+    {:else if $member == 'emptyState'}
+      <EmptyState title={$sample.title} body={$sample.body} hint={$sample.hint} icon={$sample.icon} actionLabel={$sample.actionLabel} disabled={$sample.disabled} />
+    {:else if $member == 'errorState'}
+      <ErrorState title={$sample.title} body={$sample.body} code={$sample.code} retryLabel={$sample.retryLabel} canRetry={$sample.canRetry} busy={$sample.busy} dismissLabel={$sample.dismissLabel} />
+    {:else if $member == 'listItem'}
+      <ListItem title={$sample.title} subtitle={$sample.subtitle} icon={$sample.icon} image={$sample.image} value={$sample.value} badge={$sample.badge} selected={$sample.selected} disabled={$sample.disabled} loading={$sample.loading} />
+    {:else if $member == 'steps'}
+      <Steps title={$sample.title} steps={$sample_steps} column={$sample.column} />
     {/if}
   </div>
 </section>

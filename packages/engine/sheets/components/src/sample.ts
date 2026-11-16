@@ -1,19 +1,20 @@
 // An isolated fixture for checking states without mounting the whole catalogue.
 import { og, type UiReadable, type World } from "@origingame/engine";
 import { FIXTURES, NAMES } from "./fixtures.ts";
+import { BASE_FIXTURES, BASE_NAMES } from "./base-fixtures.ts";
 
-const LISTS = ["items", "pages", "shots", "bars", "ticks", "columns", "rows", "entries", "stars", "buffs", "debuffs", "stats", "compareStats", "hints"];
-const MEMBERS = ["breadcrumbs", "carousel", "celebration", "chart", "dataGrid", "menu", "ribbon", "skeletonGroup", "spinner", "splitView", "starBar", "statusGrid", "tooltipCard", "actionHints"];
+const LISTS = ["items", "pages", "shots", "bars", "ticks", "columns", "rows", "entries", "stars", "buffs", "debuffs", "stats", "compareStats", "hints", "steps"];
+const MEMBERS = ["breadcrumbs", "carousel", "celebration", "chart", "dataGrid", "menu", "ribbon", "skeletonGroup", "spinner", "splitView", "starBar", "statusGrid", "tooltipCard", "actionHints", ...Object.keys(BASE_NAMES)];
 
 export function sample(world: World, args: readonly string[]): void {
   const member = args[0] || "tooltipCard";
   const state = args[1] || "default";
-  const fixture = FIXTURES[member]?.[state];
+  const fixture = (BASE_FIXTURES[member] || FIXTURES[member])?.[state];
   if (!MEMBERS.includes(member) || !fixture) throw new Error(`Unknown panel or feedback fixture: ${member} ${state}`);
   const scope = og.ui.scope(world, `sample-${member}-${state}`);
   const inputs: Record<string, UiReadable<unknown>> = {
     member: scope.writable("member", member),
-    caption: scope.writable("caption", `${NAMES[member]} · ${state}`),
+    caption: scope.writable("caption", `${BASE_NAMES[member] || NAMES[member]} · ${state}`),
     sample: scope.writable("sample", fixture),
   };
   for (const prop of LISTS) {
