@@ -95,18 +95,24 @@ fn a_var_that_resolves_to_revert_layer_rolls_the_cascade_back() {
 <div><div id="Root">
   <div id="Hook"></div>
   <div id="Set"></div>
+  <div id="Init"></div>
 </div></div>
 <style>
 @layer low, high;
-@layer low { #Hook, #Set { width: 40px; height: 40px; } }
+@layer low { #Hook, #Set, #Init { width: 40px; height: 40px; } }
 @layer high {
   #Hook { height: var(--unset-hook, revert-layer); }
   #Set { --set-hook: 70px; height: var(--set-hook, revert-layer); }
+  #Init { --init-hook: initial; height: var(--init-hook, revert-layer); }
 }
 </style>"#;
     with_doc(text, &[], |d| {
         assert_eq!(d.get("Hook").height, 40.0, "the layer below's");
         assert_eq!(d.get("Set").height, 70.0, "the variable's");
+        // A pack that sets its hook to `initial` (fantasy-light's
+        // `--figure-shadow: initial`) is guaranteed-invalid, so the var() takes
+        // its revert-layer fallback and rolls back just like the unset hook.
+        assert_eq!(d.get("Init").height, 40.0, "initial rolls back like unset");
         assert!(
             d.ui.frame().warnings.is_empty(),
             "{:?}",

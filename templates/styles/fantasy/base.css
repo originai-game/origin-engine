@@ -520,8 +520,9 @@
   --band-lead-fill: linear-gradient(90deg, #d9a796 0%, #e2b7a8 60%, #e2b7a800 100%);
   --band-small-fill: linear-gradient(90deg, #e2b7a800, #e2b7a8 18%, #e2b7a8 82%, #e2b7a800);
   --band-shadow: none;
-  /* Over the scene the ink is dark; the default --tag-halo outlines it. */
-  /* Inks for parchment grounds. */
+  /* Inks for parchment grounds. The dark ink is held over the scene by the
+     HUD's own --tag-halo on :host, which inherits into it (the role shadows
+     below are left to inherit, not set to none). */
   --title-ink: #3a2410;
   --ink-label: #5a3f18;
   --figure-ink: #2a1d12;
@@ -577,9 +578,12 @@
   --cell-pressed-fill: radial-gradient(circle at 50% 50%, #e6d6b2 0%, var(--well) 100%);
   --row-selected-fill: linear-gradient(90deg, #e9d29a 0%, #efdfb4 55%, #f1e6cc 100%);
   --badge-fill: radial-gradient(circle at 50% 35%, #fbf4e3, var(--well) 70%);
-  --title-shadow: none;
-  --name-shadow: none;
-  --figure-shadow: none;
+  /* On parchment panels these inherit nothing, so a title keeps no drop; over
+     the scene they inherit the HUD's --tag-halo. initial (not none) makes the
+     role rule's var(..., revert-layer) revert the pack layer and inherit. */
+  --title-shadow: initial;
+  --name-shadow: initial;
+  --figure-shadow: initial;
   --ground-fill:
     radial-gradient(ellipse at 50% 40%, #e8dcc000 40%, #c9b48c80 100%),
     #e8dcc0;

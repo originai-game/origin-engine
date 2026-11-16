@@ -757,7 +757,9 @@
   --ink-done: #666296;
   --ink-down: #8d8ab3;
   --figure-ink: #211d52;
-  --figure-shadow: none;
+  /* initial, not none: a figure on a panel inherits no drop, but one over the
+     scene inherits the HUD's --tag-halo (the role rule reverts the pack layer). */
+  --figure-shadow: initial;
   --trend-up: #15802a;
   --trend-down: #cc1f3a;
   --tone-damage: #cc1f3a;
@@ -770,8 +772,10 @@
   --cartoon-band: linear-gradient(180deg, #ffe46b 0%, #ffc71f 55%, #ffb300 100%) padding-box;
   --cartoon-band-lip: #d18400;
   --title-ink: #211d52;
-  --title-shadow: none;
-  --name-shadow: none;
+  /* initial, not none: a title or name on a panel inherits no drop, but one
+     over the scene inherits the HUD's --tag-halo. */
+  --title-shadow: initial;
+  --name-shadow: initial;
   --badge-ink: #ffffff;
   --cartoon-slate: linear-gradient(180deg, #ffffff 0%, #eef3ff 60%, #dfe7ff 100%) padding-box;
   --cartoon-slate-hover: linear-gradient(180deg, #ffffff 0%, #ffffff 60%, #eef3ff 100%) padding-box;
