@@ -298,6 +298,12 @@ impl Ui {
                     Some(crate::layout::Cross::Baseline | crate::layout::Cross::LastBaseline)
                 )
             });
+            // Items that only moved in CSS `order` keep their children as
+            // built, yet the trees' walk (`layout::preorder`) moves with
+            // them: its shape changed.
+            if self.tree.nodes[i].children != flow {
+                self.tree.index.shape += 1;
+            }
             let n = &mut self.tree.nodes[i];
             n.ordered_children = kept;
             n.children = flow;

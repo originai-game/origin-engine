@@ -858,7 +858,7 @@ impl crate::ui::Tree {
     /// The bounded frame's check: the kept orders and features are those
     /// the frame makes afresh.
     #[cfg(debug_assertions)]
-    pub(super) fn check_orders(&self, world: &crate::world::WorldUi, layout: &crate::ui::Layout) {
+    pub(crate) fn check_orders(&self, world: &crate::world::WorldUi, layout: &crate::ui::Layout) {
         let mut pre = crate::layout::preorder(&self.nodes, 0);
         for &f in &self.floating {
             pre.extend(crate::layout::preorder(&self.nodes, f));

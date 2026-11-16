@@ -1258,6 +1258,65 @@ mod tests {
     }
 
     #[test]
+    fn a_flex_item_moved_by_order_alone_moves_the_kept_tree_walk() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(
+            UiDocument::parse(
+                "order.svelte",
+                r#"
+            <meta name="component" content="order">
+            <div id="F" class={$swap ? 'swap' : ''}>
+                <div id="A">a</div><div id="B">b</div><div id="C">c</div><div id="D">d</div>
+            </div>
+            <style>
+                #F { display: flex; }
+                #C { order: -1; }
+                #F.swap #A { order: 5; }
+            </style>
+        "#,
+            )
+            .unwrap(),
+        );
+        let swap = SourceId::new("test", "swap");
+        ui.docs
+            .state_mut()
+            .memory
+            .reactive
+            .execute(Command::Signal {
+                source: swap.clone(),
+                initial: json!(false),
+                readable: false,
+            })
+            .unwrap();
+        ui.mount_document(
+            SourceId::new("test", "screen"),
+            "order",
+            BTreeMap::from([("swap".into(), swap.clone())]),
+            Default::default(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        // The items' children stay as built; only their CSS order moves A
+        // to the end, and the kept preorder must follow it.
+        for value in [false, true, false] {
+            ui.docs
+                .state_mut()
+                .memory
+                .reactive
+                .execute(Command::Set {
+                    source: swap.clone(),
+                    value: json!(value),
+                    force: false,
+                })
+                .unwrap();
+            ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end();
+            ui.tree.check_orders(&ui.world, &ui.layout);
+        }
+    }
+
+    #[test]
     fn mounted_store_updates_resolve_one_element_and_emit_current_text() {
         let mut ui = Ui::new(UiDesc::default());
         ui.define_document(UiDocument::parse("retained.svelte", r#"
