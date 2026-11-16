@@ -55,8 +55,8 @@
 #Rows { width: stretch; height: var(--size-6xl); }
 .row { width: stretch; height: var(--row); padding: 0 var(--space-md); justify-content: start; min-width: 0; }
 .cell { width: stretch; white-space: nowrap; text-overflow: ellipsis; }
-#Empty, #Error { width: stretch; padding: var(--space-xl); gap: var(--space-sm); align-items: center; }
-.mark { width: var(--size-lg); height: var(--size-lg); border-radius: var(--radius-capsule); align-items: center; justify-content: center; background: var(--control); }
+#Empty, #Error { display: flex; flex-direction: column; width: stretch; padding: var(--space-xl); gap: var(--space-sm); align-items: center; }
+.mark { display: flex; flex-direction: column; width: var(--size-lg); height: var(--size-lg); border-radius: var(--radius-capsule); align-items: center; justify-content: center; background: var(--control); }
 .mark.danger { color: var(--danger); }
 .title { margin: 0; font: var(--text-base); color: var(--ink); text-align: center; width: stretch; }
 .hint { margin: 0; font: var(--text-sm); color: var(--ink-muted); text-align: center; width: stretch; }

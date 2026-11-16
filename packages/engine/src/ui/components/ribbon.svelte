@@ -15,7 +15,7 @@
 [part="Ribbon.frame"].warn { --tone: var(--warn); }
 [part="Ribbon.frame"].danger { --tone: var(--danger); }
 [part="Ribbon.frame"].info { --tone: var(--info); }
-[part="Ribbon.ribbon"] { position: absolute; top: var(--space-lg); inset-inline-start: var(--space-3xl); width: var(--size-4xl); padding: var(--space-xxs) 0; align-items: center; background: linear-gradient(180deg, var(--sheen), var(--shadow-30)), var(--tone); border: var(--stroke-hairline) solid var(--sheen); box-shadow: 0 var(--space-xxs) var(--space-xs) var(--shadow-45); rotate: 45deg; animation-name: slap; animation-duration: var(--motion-duration-base); animation-timing-function: var(--motion-easing-out); }
+[part="Ribbon.ribbon"] { display: flex; flex-direction: column; position: absolute; top: var(--space-lg); inset-inline-start: var(--space-3xl); width: var(--size-4xl); padding: var(--space-xxs) 0; align-items: center; background: linear-gradient(180deg, var(--sheen), var(--shadow-30)), var(--tone); border: var(--stroke-hairline) solid var(--sheen); box-shadow: 0 var(--space-xxs) var(--space-xs) var(--shadow-45); rotate: 45deg; animation-name: slap; animation-duration: var(--motion-duration-base); animation-timing-function: var(--motion-easing-out); }
 .topLeft [part="Ribbon.ribbon"] { inset-inline-start: calc(var(--space-3xl) * -1); rotate: -45deg; }
 .bottomRight [part="Ribbon.ribbon"] { top: var(--size-xl); rotate: -45deg; }
 .bottomLeft [part="Ribbon.ribbon"] { top: var(--size-xl); inset-inline-start: calc(var(--space-3xl) * -1); rotate: 45deg; }

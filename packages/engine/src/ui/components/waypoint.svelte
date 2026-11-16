@@ -23,12 +23,12 @@
 
 <style>
 #Waypoint { align-items: center; }
-#Mark { align-items: center; gap: var(--space-xxs); --tone: var(--gold); }
+#Mark { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); --tone: var(--gold); }
 #Mark.ping { --tone: var(--info); }
 #Mark.danger { --tone: var(--danger); }
 #Mark.ally { --tone: var(--success); }
 #Mark.loot { --tone: var(--xp); }
-[part="Waypoint.pin"] { width: var(--size-sm); height: var(--size-sm); align-items: center; justify-content: center; }
+[part="Waypoint.pin"] { display: flex; flex-direction: column; width: var(--size-sm); height: var(--size-sm); align-items: center; justify-content: center; }
 .ping [part="Waypoint.pin"] { animation-name: pulse; animation-duration: var(--motion-duration-ping); animation-timing-function: var(--motion-easing-out); animation-iteration-count: infinite; }
 #Diamond { width: var(--size-sm); height: var(--size-sm); fill: var(--tone); stroke: var(--scene-shadow); stroke-width: 1.5; }
 #Icon { width: var(--size-sm); height: var(--size-sm); color: var(--tone); }

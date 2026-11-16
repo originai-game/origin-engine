@@ -30,7 +30,7 @@
 </div>
 
 <style>
-#Carousel { width: var(--measure-md); gap: var(--space-sm); align-items: center; }
+#Carousel { display: flex; flex-direction: column; width: var(--measure-md); gap: var(--space-sm); align-items: center; }
 #Viewport { display: flex; width: var(--measure-md); gap: var(--space-md); overflow-x: scroll; scroll-snap-type: x mandatory; }
 .page { width: var(--measure-sm); padding: var(--space-md); gap: var(--space-xs); scroll-snap-align: center; }
 .art, .well { width: stretch; height: var(--size-3xl); }

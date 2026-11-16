@@ -21,7 +21,7 @@
 </div>
 
 <style>
-[part="HudTimer.frame"] { align-items: center; --clock: var(--ink); }
+[part="HudTimer.frame"] { display: flex; flex-direction: column; align-items: center; --clock: var(--ink); }
 [part="HudTimer.frame"].warn { --clock: var(--warn); }
 [part="HudTimer.frame"].critical { --clock: var(--danger); }
 [part="HudTimer.label"] { font: var(--text-caption); white-space: nowrap; }

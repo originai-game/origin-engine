@@ -57,7 +57,7 @@
 .capacity, .full { flex: none; white-space: nowrap; padding: 0 var(--space-xs); font-variant-numeric: tabular-nums; }
 .items { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }
 [part="StrategyQueue.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) var(--space-xs); }
-[part="StrategyQueue.cell"] { position: relative; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; }
+[part="StrategyQueue.cell"] { display: flex; flex-direction: column; position: relative; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; }
 .mark { width: 70%; height: 70%; }
 .stack { position: absolute; inset-inline-end: 0; bottom: 0; padding: 0 var(--space-xxs); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .main { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: hidden; gap: var(--space-xxs); }

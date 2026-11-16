@@ -27,7 +27,7 @@
 
 <style>
 #ActionHints { flex-direction: row; flex-wrap: wrap; justify-content: end; align-items: center; gap: var(--space-lg); }
-.item { align-items: center; }
+.item { display: flex; flex-direction: column; align-items: center; }
 .hint { min-height: var(--control-lg); padding: var(--space-xxs) var(--space-sm); gap: var(--space-sm); align-items: center; }
 .hint:active { scale: var(--state-press-scale); }
 .hint::-og-hold { background: var(--selection); }

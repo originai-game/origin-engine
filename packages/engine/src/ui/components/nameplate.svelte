@@ -38,7 +38,7 @@
 
 <style>
 #Nameplate { align-items: center; }
-[part="Nameplate.frame"] { align-items: center; gap: var(--space-xxs); --tone: var(--warn); --bar: var(--size-xxl); }
+[part="Nameplate.frame"] { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); --tone: var(--warn); --bar: var(--size-xxl); }
 [part="Nameplate.frame"].friendly { --tone: var(--success); }
 [part="Nameplate.frame"].hostile { --tone: var(--danger); }
 [part="Nameplate.frame"].player { --tone: var(--info); }
@@ -57,7 +57,7 @@
 .boss #Health { border: var(--stroke-hairline) solid var(--gold); }
 [part="Nameplate.fill"] { width: calc(var(--hp) * var(--bar)); height: stretch; background: var(--tone); }
 [part="Nameplate.shield"] { position: absolute; top: 0; inset-inline-start: calc(var(--hp) * var(--bar)); width: calc(var(--shield) * var(--bar)); height: stretch; background: var(--scene-ink); }
-#Cast { height: var(--space-md); align-items: center; justify-content: center; }
+#Cast { display: flex; flex-direction: column; height: var(--space-md); align-items: center; justify-content: center; }
 [part="Nameplate.cast"] { position: absolute; top: 0; inset-inline-start: 0; width: calc(var(--cast) * var(--bar)); height: stretch; background: var(--warn); }
 /* Across the bar (a name longer than it ends in an ellipsis), its glyphs
    inked for the warn fill as far as the cast has run and in the well's

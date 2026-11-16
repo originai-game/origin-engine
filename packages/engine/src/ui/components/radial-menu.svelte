@@ -37,7 +37,7 @@
 .chosen .wedge { stroke: var(--primary); }
 /* The wedge is the slice's plate: its button draws none. */
 [part="RadialMenu.item RadialMenu.cell"] { position: absolute; top: var(--space-lg); inset-inline-start: calc(var(--size-4xl) * 0.75); width: calc(var(--size-4xl) / 2); height: calc(var(--size-4xl) / 2); padding: 0; background: none; border: none; box-shadow: none; rotate: calc(var(--at) * 360deg); transform-origin: 50% 180%; }
-.upright { width: stretch; height: stretch; align-items: center; justify-content: center; gap: var(--space-xxs); rotate: calc(var(--at) * -360deg); min-width: 0; }
+.upright { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: center; gap: var(--space-xxs); rotate: calc(var(--at) * -360deg); min-width: 0; }
 .icon { width: var(--size-sm); height: var(--size-sm); color: var(--ink); }
 [part="RadialMenu.label"] { font: var(--text-caption); font-family: var(--label-font); white-space: nowrap; }
 .cost { display: flex; gap: var(--space-xxs); align-items: center; color: var(--gold); }
@@ -48,6 +48,6 @@
 .disabled [part="RadialMenu.item RadialMenu.cell"] { opacity: var(--opacity-dim); }
 .chosen .icon { scale: var(--motion-scale-swell); color: var(--on-primary); }
 .chosen [part="RadialMenu.label"] { color: var(--on-primary); }
-[part="RadialMenu.centre"] { position: absolute; top: calc(var(--size-4xl) - var(--size-xxl) / 2); inset-inline-start: calc(var(--size-4xl) - var(--size-xxl) / 2); width: var(--size-xxl); height: var(--size-xxl); border-radius: var(--radius-capsule); background: var(--panel-raised); border: var(--stroke-hairline) solid var(--line-strong); align-items: center; justify-content: center; padding: var(--space-sm); }
+[part="RadialMenu.centre"] { display: flex; flex-direction: column; position: absolute; top: calc(var(--size-4xl) - var(--size-xxl) / 2); inset-inline-start: calc(var(--size-4xl) - var(--size-xxl) / 2); width: var(--size-xxl); height: var(--size-xxl); border-radius: var(--radius-capsule); background: var(--panel-raised); border: var(--stroke-hairline) solid var(--line-strong); align-items: center; justify-content: center; padding: var(--space-sm); }
 #Detail { font: var(--text-caption); color: var(--ink); text-align: center; }
 </style>

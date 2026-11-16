@@ -1,0 +1,18 @@
+{
+  "fixed": [
+    {
+      "member": "UI layout: built-in components",
+      "summary": "Built-in components that centre or end-align their content lay it out as they did before the CSS layout landed. Hold button, HUD timer, star bar, orb meter, minimap, compass, kill feed, chart, celebration, overlay bar, placement ghost, telemetry and others had moved their content to the left edge. Their `<div>`s named `align-items`, `justify-content` or `flex-direction` without `display: flex`; on a CSS block those do nothing. They now say `display: flex`."
+    },
+    {
+      "member": "UI CSS width/height: stretch",
+      "summary": "A `stretch` box clamped by its `max-width` or `max-height` across a flex line that is centred or end-aligned (`align-items: center`, `flex-end`) now sits where the line aligns it, as in CSS Box Alignment 3 §6.1. It used to sit at the line's start, which put the game-over, results, calibration and credits panels at the left of the screen."
+    }
+  ],
+  "added": [
+    {
+      "member": "UI document warnings",
+      "summary": "A `<div>` (or other block box) that names `align-items`, `justify-content` or `flex-direction` without `display: flex` is reported as a document warning: \"align-items does nothing on a block box; give it display: flex\". A browser ignores those properties on a block too."
+    }
+  ]
+}

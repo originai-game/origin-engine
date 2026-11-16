@@ -77,7 +77,7 @@
 .units { display: flex; flex-wrap: wrap; gap: var(--space-xs); padding: var(--space-xxs); }
 [part="StrategySelection.cell"] { flex: none; width: var(--size-xl); padding: var(--space-xxs); }
 [part="StrategySelection.cell"] .face { display: flex; flex-direction: column; position: relative; width: stretch; gap: var(--space-xxs); }
-[part="StrategySelection.portrait StrategySelection.picture"] { width: stretch; aspect-ratio: 1; align-items: center; justify-content: center; overflow: hidden; }
+[part="StrategySelection.portrait StrategySelection.picture"] { display: flex; flex-direction: column; width: stretch; aspect-ratio: 1; align-items: center; justify-content: center; overflow: hidden; }
 .art { width: stretch; height: stretch; object-fit: cover; }
 .mark { width: 62%; height: 62%; }
 .count { position: absolute; inset-inline-end: 0; bottom: 0; padding: 0 var(--space-xxs); white-space: nowrap; font-variant-numeric: tabular-nums; }

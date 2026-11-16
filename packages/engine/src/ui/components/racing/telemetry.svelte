@@ -63,14 +63,14 @@
    the boost ring off its lower corner and the shift badge over its top. */
 .gauge { position: relative; width: calc(var(--size-xxl) * 2.2); height: calc(var(--size-xxl) * 2.2); }
 .dial { position: absolute; left: 0; top: 0; width: stretch; height: stretch; }
-.centre { position: absolute; left: 0; top: 0; width: stretch; height: stretch; align-items: center; justify-content: center; gap: 0; padding: 0 calc(var(--size-xxl) * 0.35); }
+.centre { display: flex; flex-direction: column; position: absolute; left: 0; top: 0; width: stretch; height: stretch; align-items: center; justify-content: center; gap: 0; padding: 0 calc(var(--size-xxl) * 0.35); }
 .speed { font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1; }
 .units { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: stretch; }
-.gauge .gear { position: absolute; left: calc(50% - var(--size-md) * 0.75); bottom: 0; width: calc(var(--size-md) * 1.5); height: calc(var(--size-md) * 1.5); align-items: center; justify-content: center; }
+.gauge .gear { display: flex; flex-direction: column; position: absolute; left: calc(50% - var(--size-md) * 0.75); bottom: 0; width: calc(var(--size-md) * 1.5); height: calc(var(--size-md) * 1.5); align-items: center; justify-content: center; }
 .gear-value { white-space: nowrap; line-height: 1; }
 /* The boost ring stands beside the dial, clear of the redline, inside the frame's box. */
 [part="RacingTelemetry.frame"]:not([data-dial=bar]) { padding-inline-end: calc(var(--size-lg) + var(--space-sm)); }
-.boost-ring { position: absolute; inset-inline-start: calc(100% + var(--space-sm)); bottom: 0; align-items: center; gap: 0; }
+.boost-ring { display: flex; flex-direction: column; position: absolute; inset-inline-start: calc(100% + var(--space-sm)); bottom: 0; align-items: center; gap: 0; }
 .boost-dial { width: var(--size-lg); height: var(--size-lg); }
 .boost-label { white-space: nowrap; }
 .gauge .shift { position: absolute; left: 50%; top: 22%; translate: -50% 0; white-space: nowrap; padding: 0 var(--space-xs); }

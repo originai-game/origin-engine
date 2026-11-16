@@ -33,7 +33,7 @@
 </div>
 
 <style>
-#AmmoCounter { align-items: flex-end; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); background: var(--scene-plate); color: var(--scene-ink); min-width: calc(var(--size-xxl) * 1.75); }
+#AmmoCounter { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); background: var(--scene-plate); color: var(--scene-ink); min-width: calc(var(--size-xxl) * 1.75); }
 #Rounds { display: flex; align-items: baseline; gap: var(--space-sm); }
 /* The magazine is the largest number on the HUD; the reserve sits beside it,
    a step down and quieter, as Apex and Forza set a value beside its unit.

@@ -26,7 +26,7 @@
 </div>
 
 <style>
-#StarBar { align-items: center; gap: var(--space-xs); --bar: var(--measure-xs); --star: var(--size-md); }
+#StarBar { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); --bar: var(--measure-xs); --star: var(--size-md); }
 #StarBar.compact { display: flex; gap: var(--space-sm); --bar: var(--size-4xl); --star: var(--size-sm); }
 [part="StarBar.label"] { font: var(--text-caption); font-family: var(--label-font); }
 [part="StarBar.figure"] { font: var(--text-xl3); font-family: var(--figure-font); white-space: nowrap; }

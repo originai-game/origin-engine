@@ -733,6 +733,30 @@ impl Ui {
                 el.block = initial == "box"
                     && el.direction == Direction::Column
                     && !matches!(display, "grid" | "table");
+                // A block container lays its children out in its flow: the
+                // flex properties do nothing on it (CSS Flexbox 1 §7, CSS
+                // Box Alignment 3 §5.1, §6.1).
+                if el.block
+                    && source.kind == Some(Kind::Box)
+                    && !(r.has("visible") && !r.flag("visible"))
+                {
+                    let ignored: Vec<_> = [
+                        ("cross", "align-items"),
+                        ("align", "justify-content"),
+                        ("direction", "flex-direction"),
+                    ]
+                    .into_iter()
+                    .filter(|(k, _)| r.has(k))
+                    .map(|(_, css)| css)
+                    .collect();
+                    if !ignored.is_empty() {
+                        self.out.warnings.push(format!(
+                            "line {}: {} does nothing on a block box; give it display: flex",
+                            source.line,
+                            ignored.join(", ")
+                        ));
+                    }
+                }
                 el.bfc = source.kind == Some(Kind::Box) && r.str("display") == Some("flowRoot");
                 el.contents =
                     source.kind == Some(Kind::Box) && r.str("display") == Some("contents");

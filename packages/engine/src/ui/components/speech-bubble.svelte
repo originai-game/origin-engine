@@ -20,7 +20,7 @@
 
 <style>
 #SpeechBubble { align-items: center; }
-#Bubble { align-items: center; animation-name: pop; animation-duration: var(--motion-duration-fast); animation-timing-function: var(--motion-easing-out); }
+#Bubble { display: flex; flex-direction: column; align-items: center; animation-name: pop; animation-duration: var(--motion-duration-fast); animation-timing-function: var(--motion-easing-out); }
 [part="SpeechBubble.frame"] { max-width: var(--measure-sm); gap: var(--space-xxs); }
 /* A shout is the frame's rim, through its tokens, so a pack's frame still dresses it. */
 .shout [part="SpeechBubble.frame"] { --frame-rim: var(--warn); --frame-rim-width: var(--stroke-regular); }

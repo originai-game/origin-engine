@@ -34,7 +34,7 @@
 </div>
 
 <style>
-#OverlayBar { gap: var(--space-sm); align-items: center; }
+#OverlayBar { display: flex; flex-direction: column; gap: var(--space-sm); align-items: center; }
 [part="OverlayBar.frame"] { --title-size: var(--title-small-size); width: var(--measure-sm); gap: var(--space-xs); }
 [part="OverlayBar.title"] { white-space: nowrap; }
 [part="OverlayBar.ramp"] { width: stretch; height: var(--space-sm); border-radius: var(--radius-capsule); background: var(--ramp); border: var(--stroke-hairline) solid var(--line); }
@@ -46,7 +46,7 @@
 [part="OverlayBar.option"][aria-pressed=true] { background: var(--button-selected-fill); outline: var(--stroke-regular) solid var(--primary); box-shadow: var(--shadow-slot-selected); }
 .face { display: flex; align-items: center; gap: var(--space-sm); }
 [part="OverlayBar.art OverlayBar.picture"], [part="OverlayBar.well"] { width: var(--size-lg); height: var(--size-lg); border-radius: var(--radius-capsule); }
-[part="OverlayBar.well"] { align-items: center; justify-content: center; }
+[part="OverlayBar.well"] { display: flex; flex-direction: column; align-items: center; justify-content: center; }
 [part="OverlayBar.icon"] { width: var(--size-sm); height: var(--size-sm); color: var(--ink-muted); }
 [aria-pressed=true] [part="OverlayBar.icon"] { color: var(--button-selected-ink); }
 [part="OverlayBar.name"] { font: var(--text-sm); font-family: var(--font-display); color: var(--ink-muted); white-space: nowrap; }

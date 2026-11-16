@@ -40,7 +40,7 @@
 ul, ol { list-style-type: none; }
 #StatusGrid { gap: var(--space-xs); }
 #Buffs, #Debuffs { display: flex; gap: var(--space-xs); flex-wrap: wrap; max-width: var(--measure-sm); }
-.tile { align-items: center; gap: var(--space-xxs); width: calc(var(--size-md) + var(--space-xs)); --edge: var(--line-strong); }
+.tile { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); width: calc(var(--size-md) + var(--space-xs)); --edge: var(--line-strong); }
 .debuff { --edge: var(--danger); }
 .magic { --edge: var(--info); }
 .curse { --edge: var(--xp); }
@@ -48,7 +48,7 @@ ul, ol { list-style-type: none; }
 .disease { --edge: var(--warn); }
 .bleed { --edge: var(--danger); }
 /* A debuff's type is the cell's rim, through its token, so a pack's cell still dresses it. */
-[part="StatusGrid.cell"] { width: var(--size-md); height: var(--size-md); overflow: hidden; align-items: center; justify-content: center; --cell-rim: var(--edge); }
+[part="StatusGrid.cell"] { display: flex; flex-direction: column; width: var(--size-md); height: var(--size-md); overflow: hidden; align-items: center; justify-content: center; --cell-rim: var(--edge); }
 .icon { width: var(--size-sm); height: var(--size-sm); }
 .sweep { position: absolute; top: 0; inset-inline-start: 0; width: var(--size-md); height: var(--size-md); stroke: var(--scrim); }
 .notch { position: absolute; top: 0; inset-inline-start: 0; width: var(--space-sm); height: var(--space-sm); background: var(--edge); clip-path: polygon(0% 0%, 100% 0%, 0% 100%); }

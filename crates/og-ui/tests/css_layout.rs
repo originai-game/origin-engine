@@ -2097,6 +2097,53 @@ p {{ margin: 0; }}
 /// one line tall and a fitting column takes the row's content width. Along
 /// the line it is the container's inner size: content taller than that
 /// does not floor it, and a sibling does not share it (it overflows).
+/// A `stretch` box clamped by its max size is aligned by the line's
+/// `align-items` after it is sized (CSS Box Alignment 3 §6.1): in a
+/// centred column it sits in the middle, not at the start.
+#[test]
+fn a_clamped_stretch_box_takes_its_lines_alignment() {
+    let doc = r#"<meta name="component" content="t">
+<div><div id="Col"><div id="Mid"><p>Go</p></div></div><div id="Row"><div id="End"></div></div></div>
+<style>
+#Col { display: flex; flex-direction: column; align-items: center; width: 600px; }
+#Mid { width: stretch; max-width: 200px; }
+#Row { display: flex; align-items: flex-end; height: 300px; }
+#End { width: 10px; height: stretch; max-height: 100px; }
+</style>"#;
+    with_doc(doc, &[], |d| {
+        let (col, mid) = (d.get("Col"), d.get("Mid"));
+        assert_eq!(
+            (mid.x - col.x, mid.width),
+            (200.0, 200.0),
+            "centred, at its max"
+        );
+        let (row, end) = (d.get("Row"), d.get("End"));
+        assert_eq!(
+            (end.y - row.y, end.height),
+            (200.0, 100.0),
+            "at the line's end"
+        );
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+    });
+    // A block's flex properties do nothing (CSS Flexbox 1 §7): the
+    // document is told so.
+    let block = r#"<meta name="component" content="t">
+<div id="B"><p>Go</p></div>
+<style>#B { width: 600px; align-items: center; }</style>"#;
+    with_doc(block, &[], |d| {
+        let w = &d.ui.frame().warnings;
+        assert!(
+            w.iter()
+                .any(|w| w.contains("align-items does nothing on a block box")),
+            "{w:?}"
+        );
+    });
+}
+
 #[test]
 fn stretch_in_a_flex_line_is_its_stretch_fit_size() {
     let body = r#"<row id="Row"><text id="A">Store</text><text id="B">原点引擎</text></row>"#;

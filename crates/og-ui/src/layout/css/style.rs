@@ -341,6 +341,28 @@ impl<'a> View<'a> {
         (flex && !self.line && matches!(self.sized(axis), Size::Stretch { .. })).then_some(axis)
     }
 
+    /// A `stretch` size across a flex line that the line centres or puts at
+    /// its end, with no margins across it: its stretch-fit size is the
+    /// line's, clamped, and only then aligned (CSS Sizing 4 §3.1, CSS Box
+    /// Alignment 3 §6.1). Taffy's `align-self: stretch` would clamp it and
+    /// leave it at the line's start, so it is sized `100%` and keeps the
+    /// line's alignment.
+    fn stretch_aligned(&self) -> bool {
+        let Some(axis) = self.stretch_across() else {
+            return false;
+        };
+        let own = self.el().align_self;
+        let line = self.parent().map(|(p, _)| p.layout.used.cross);
+        let zero = tf::LengthPercentageAuto::length(0.0);
+        let m = tf::CoreStyle::margin(self);
+        let margins = if axis == 0 {
+            [m.left, m.right]
+        } else {
+            [m.top, m.bottom]
+        };
+        matches!(own.or(line), Some(Cross::Center | Cross::End)) && margins == [zero, zero]
+    }
+
     /// A `stretch` size across its parent's main axis stretches it there.
     fn grows_across(&self) -> bool {
         let cross = if self.main_across() {
@@ -485,6 +507,8 @@ impl tf::CoreStyle for View<'_> {
         // is measured with no width, so a stretched row's height came out
         // at its content's width.
         match self.stretch_across() {
+            Some(0) if self.stretch_aligned() => size.width = tf::Dimension::percent(1.0),
+            Some(_) if self.stretch_aligned() => size.height = tf::Dimension::percent(1.0),
             Some(0) => size.width = tf::Dimension::auto(),
             Some(_) => size.height = tf::Dimension::auto(),
             None => {}
@@ -676,7 +700,7 @@ impl tf::FlexboxItemStyle for View<'_> {
     fn align_self(&self) -> Option<tf::AlignSelf> {
         let el = self.el();
         // A box filling its line has no room to align in.
-        if self.stretch_across().is_some() {
+        if self.stretch_across().is_some() && !self.stretch_aligned() {
             return Some(tf::AlignItems::STRETCH);
         }
         match el.align_self {

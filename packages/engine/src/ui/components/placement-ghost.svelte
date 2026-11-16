@@ -22,10 +22,10 @@
 
 <style>
 #PlacementGhost { width: var(--measure-xs); height: var(--measure-xs); }
-#Room { width: var(--measure-xs); height: var(--measure-xs); align-items: center; justify-content: center; --tone: var(--success); --wash: color-mix(in srgb, var(--success) 20%, transparent); }
+#Room { display: flex; flex-direction: column; width: var(--measure-xs); height: var(--measure-xs); align-items: center; justify-content: center; --tone: var(--success); --wash: color-mix(in srgb, var(--success) 20%, transparent); }
 #Room.invalid { --tone: var(--danger); --wash: color-mix(in srgb, var(--danger) 25%, transparent); }
 [part="PlacementGhost.reach"] { position: absolute; top: 0; inset-inline-start: 0; width: var(--measure-xs); height: var(--measure-xs); stroke: var(--tone); }
-[part="PlacementGhost.footprint"] { width: calc(var(--k) * var(--measure-xs)); height: calc(var(--k) * var(--measure-xs)); border: var(--stroke-thick) solid var(--tone); background: var(--wash); align-items: center; justify-content: center; }
+[part="PlacementGhost.footprint"] { display: flex; flex-direction: column; width: calc(var(--k) * var(--measure-xs)); height: calc(var(--k) * var(--measure-xs)); border: var(--stroke-thick) solid var(--tone); background: var(--wash); align-items: center; justify-content: center; }
 .invalid [part="PlacementGhost.footprint"] { background: repeating-linear-gradient(45deg, var(--danger-45) 0, var(--danger-45) var(--space-sm), transparent var(--space-sm), transparent var(--space-lg)), var(--wash); }
 #Grid { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; opacity: var(--opacity-dim); --cell: calc(100% / var(--cells)); background: repeating-linear-gradient(0deg, var(--scene-ink) 0, var(--scene-ink) var(--stroke-hairline), transparent var(--stroke-hairline), transparent var(--cell)), repeating-linear-gradient(90deg, var(--scene-ink) 0, var(--scene-ink) var(--stroke-hairline), transparent var(--stroke-hairline), transparent var(--cell)); }
 /* In the world, over any ground: the badge takes the scene's plate. */

@@ -96,7 +96,7 @@
 [part="RacingGarage.band"] { display: flex; width: stretch; align-items: center; flex: none; }
 [part="RacingGarage.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .body { display: flex; width: stretch; flex: 1; min-height: 0; gap: var(--space-xl); align-items: flex-start; justify-content: center; }
-.show { flex: none; align-items: center; gap: var(--space-sm); width: calc(var(--size-xxl) * 3.6); max-width: stretch; }
+.show { display: flex; flex-direction: column; flex: none; align-items: center; gap: var(--space-sm); width: calc(var(--size-xxl) * 3.6); max-width: stretch; }
 [part="RacingGarage.hero RacingGarage.picture"] { display: flex; flex-direction: column; width: stretch; margin: 0; gap: var(--space-xxs); padding: var(--space-sm); }
 .art, .well { width: stretch; aspect-ratio: 1.8; }
 .art { object-fit: cover; }

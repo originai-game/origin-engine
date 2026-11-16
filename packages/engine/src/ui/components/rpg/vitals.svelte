@@ -33,7 +33,7 @@
 .ring { width: var(--size-xl); height: var(--size-xl); flex: none; overflow: hidden; border-radius: 50%; }
 [part="RpgVitals.frame"][data-plate=large] .ring { width: calc(var(--size-xxl) * 1.6); height: calc(var(--size-xxl) * 1.6); }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
-.badge { position: absolute; left: 0; top: calc(var(--size-xl) - var(--space-lg)); width: var(--space-xl); height: var(--space-xl); align-items: center; justify-content: center; }
+.badge { display: flex; flex-direction: column; position: absolute; left: 0; top: calc(var(--size-xl) - var(--space-lg)); width: var(--space-xl); height: var(--space-xl); align-items: center; justify-content: center; }
 [part="RpgVitals.frame"][data-plate=large] .badge { top: calc(var(--size-xxl) * 1.6 - var(--size-md)); width: var(--size-md); height: var(--size-md); }
 .bars { display: flex; flex-direction: column; gap: var(--space-xxs); width: calc(var(--size-xxl) * 1.4); }
 [part="RpgVitals.frame"][data-plate=large] .bars { width: calc(var(--size-xxl) * 2.6); gap: var(--space-xs); }

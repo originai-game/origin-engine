@@ -58,7 +58,7 @@
 </div>
 
 <style>
-#Compass { align-items: center; gap: 0; }
+#Compass { display: flex; flex-direction: column; align-items: center; gap: 0; }
 #Window { width: var(--measure-xl); aspect-ratio: 10.77; overflow: hidden; border-radius: var(--radius-control); background: linear-gradient(90deg, transparent, var(--hud) 18%, var(--hud) 82%, transparent); }
 #Strip { position: absolute; top: 0; inset-inline-start: 0; width: calc(var(--measure-xl) * 6); height: stretch; translate: calc(var(--h) * var(--measure-xl) * -0.3183099 - var(--measure-xl) * 1.5) 0; }
 #Laps { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; }
@@ -71,7 +71,7 @@
 .poi.enemy { --ink-mark: var(--danger); }
 .poi.ally { --ink-mark: var(--success); }
 .poi.loot { --ink-mark: var(--xp); }
-.copy { position: absolute; top: var(--space-lg); width: var(--size-lg); align-items: center; gap: 0; inset-inline-start: calc(var(--b) * var(--measure-xl) * 0.3183099 + var(--measure-xl) * 2 - var(--size-lg) * 0.5); }
+.copy { display: flex; flex-direction: column; position: absolute; top: var(--space-lg); width: var(--size-lg); align-items: center; gap: 0; inset-inline-start: calc(var(--b) * var(--measure-xl) * 0.3183099 + var(--measure-xl) * 2 - var(--size-lg) * 0.5); }
 .copy.back { inset-inline-start: calc(var(--b) * var(--measure-xl) * 0.3183099 - var(--size-lg) * 0.5); }
 .copy.ahead { inset-inline-start: calc(var(--b) * var(--measure-xl) * 0.3183099 + var(--measure-xl) * 4 - var(--size-lg) * 0.5); }
 .mark { width: var(--size-xs); height: var(--size-xs); color: var(--ink-mark); }

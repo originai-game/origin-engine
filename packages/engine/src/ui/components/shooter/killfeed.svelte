@@ -18,7 +18,7 @@
 </div>
 
 <style>
-#Killfeed { align-items: flex-end; gap: var(--space-xxs); pointer-events: none; max-width: stretch; }
+#Killfeed { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-xxs); pointer-events: none; max-width: stretch; }
 .row { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) var(--space-sm); border-radius: var(--radius-xs); background: var(--scene-plate); width: fit-content; max-width: stretch; }
 .name { font-size: var(--font-step-sm); line-height: var(--font-leading-normal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(var(--size-xxl) * 1.6); color: var(--scene-ink); text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
 /* Sides by place: the killer always leads the row; the pack inks each

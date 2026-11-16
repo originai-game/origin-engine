@@ -40,15 +40,15 @@
 </div>
 
 <style>
-#Face { width: stretch; height: stretch; align-items: center; justify-content: center; min-width: 0; }
+#Face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: center; min-width: 0; }
 /* The slot grows with the player's text scale, as the text in it does,
    so its icon, badges and ring keep their proportions:
    --text-px is one CSS px at 100 % text (rem is the body type step, 14 px
    at 100 %, grown by the scale). */
-#AbilitySlot { --text-px: var(--font-step-px); align-items: center; gap: var(--space-xxs); }
+#AbilitySlot { display: flex; flex-direction: column; --text-px: var(--font-step-px); align-items: center; gap: var(--space-xxs); }
 #Slot { width: calc(48 * var(--text-px)); height: calc(48 * var(--text-px)); padding: 0; overflow: hidden; transition-property: scale; transition-duration: var(--motion-duration-fast); transition-timing-function: var(--motion-easing-out); }
 .ultimate #Slot { width: calc(64 * var(--text-px)); height: calc(64 * var(--text-px)); border-radius: var(--radius-capsule); }
-#Art { width: stretch; height: stretch; align-items: center; justify-content: center; }
+#Art { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: center; }
 #Icon { width: calc(32 * var(--text-px)); height: calc(32 * var(--text-px)); color: var(--ink); }
 #Slot.tinted #Art { background: var(--danger-45); }
 #Slot.tinted #Icon { color: var(--danger); }

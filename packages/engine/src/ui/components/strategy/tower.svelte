@@ -64,7 +64,7 @@
 [part="StrategyTower.frame"][hidden], [part="StrategyTower.frame"] [hidden] { display: none; }
 [part="StrategyTower.frame"] { display: flex; flex-direction: column; width: stretch; min-width: 0; gap: var(--space-sm); container-type: inline-size; }
 [part="StrategyTower.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); flex: none; }
-[part="StrategyTower.portrait StrategyTower.picture"] { flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; overflow: hidden; }
+[part="StrategyTower.portrait StrategyTower.picture"] { display: flex; flex-direction: column; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; overflow: hidden; }
 .art { width: stretch; height: stretch; object-fit: cover; }
 .mark { width: 70%; height: 70%; }
 [part="StrategyTower.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }

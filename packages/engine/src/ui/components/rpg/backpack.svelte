@@ -87,10 +87,10 @@
 .grid-scroll { width: stretch; flex: 1; min-height: 0; }
 .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-sm); width: stretch; padding: var(--space-xs); }
 [part="RpgBackpack.cell"] { position: relative; width: stretch; aspect-ratio: 1; min-width: var(--size-touch); padding: var(--space-sm); align-items: center; justify-content: center; }
-[part="RpgBackpack.cell"] .face { position: relative; width: stretch; height: stretch; align-items: center; justify-content: center; }
+[part="RpgBackpack.cell"] .face { display: flex; flex-direction: column; position: relative; width: stretch; height: stretch; align-items: center; justify-content: center; }
 .art { width: stretch; height: stretch; }
 .count { position: absolute; right: var(--space-xxs); bottom: 0; width: fit-content; text-align: end; }
-.badge { position: absolute; align-items: center; justify-content: center; }
+.badge { display: flex; flex-direction: column; position: absolute; align-items: center; justify-content: center; }
 .badge og-icon { width: var(--space-md); height: var(--space-md); }
 .badge.equipped { left: var(--space-xxs); top: var(--space-xxs); width: var(--space-lg); height: var(--space-lg); }
 .badge.fresh { right: var(--space-xs); top: var(--space-xs); width: var(--space-sm); height: var(--space-sm); }

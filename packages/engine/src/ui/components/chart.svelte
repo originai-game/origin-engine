@@ -46,7 +46,7 @@
 #Plot { flex: 1; height: stretch; }
 .grid { position: absolute; inset-inline-start: 0; bottom: calc(var(--at) * var(--size-5xl)); width: stretch; height: var(--stroke-hairline); background: var(--line); }
 #Bars { display: flex; height: stretch; width: stretch; gap: var(--space-sm); align-items: end; padding: 0 var(--space-sm); }
-.column { flex: 1; min-width: 0; height: stretch; justify-content: end; }
+.column { display: flex; flex-direction: column; flex: 1; min-width: 0; height: stretch; justify-content: end; }
 .bar { width: stretch; height: calc(var(--v) * var(--size-5xl)); border-radius: var(--radius-control); background: var(--primary); opacity: var(--opacity-soft); }
 .bar.tinted { background: var(--c); }
 #Line { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; }

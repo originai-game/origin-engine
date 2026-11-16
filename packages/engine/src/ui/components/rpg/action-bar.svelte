@@ -36,7 +36,7 @@
 [part="RpgActionBar.frame"] { display: flex; align-items: flex-end; gap: var(--space-lg); width: fit-content; }
 .skills, .items { display: flex; gap: var(--space-xs); padding: var(--space-xs); }
 [part="RpgActionBar.skill RpgActionBar.cell"], [part="RpgActionBar.item RpgActionBar.cell"] { width: calc(var(--size-xl) * 0.85); height: calc(var(--size-xl) * 0.85); padding: 0; }
-.face { position: relative; width: stretch; height: stretch; align-items: center; justify-content: center; }
+.face { display: flex; flex-direction: column; position: relative; width: stretch; height: stretch; align-items: center; justify-content: center; }
 .skill-art { width: stretch; height: stretch; }
 .item-art { width: 84%; height: 84%; }
 .cool { position: absolute; left: 0; top: 0; width: stretch; height: calc(var(--cool) * 100%); }

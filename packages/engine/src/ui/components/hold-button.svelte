@@ -20,7 +20,7 @@
 </div>
 
 <style>
-#HoldButton { flex-direction: column; align-items: center; gap: var(--space-xs); }
+#HoldButton { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); }
 [part="HoldButton.base"] { min-height: var(--touch-target); padding: 0 var(--space-lg); gap: var(--space-sm); align-items: center; justify-content: center; border-radius: var(--button-radius); border: var(--stroke-hairline) solid var(--danger); background: var(--panel-raised); color: var(--danger); }
 [part="HoldButton.base"]::-og-hold { background: var(--danger-45); }
 [part="HoldButton.base"].primary { border-width: 0; background: var(--primary); color: var(--on-primary); }

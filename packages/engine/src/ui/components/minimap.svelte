@@ -21,7 +21,7 @@
 </div>
 
 <style>
-#Minimap { align-items: center; gap: var(--space-xs); --pip: var(--space-sm); }
+#Minimap { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); --pip: var(--space-sm); }
 [part="Minimap.frame"] { width: var(--size); height: var(--size); padding: 0; overflow: hidden; }
 #Map { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; object-view-box: inset(calc(var(--v0) * 100%) calc((1 - var(--u1)) * 100%) calc((1 - var(--v1)) * 100%) calc(var(--u0) * 100%)); }
 [part="Minimap.marker Minimap.cell"] { position: absolute; width: var(--pip); height: var(--pip); border-radius: var(--radius-capsule); inset-inline-start: calc(var(--x) * var(--size) - var(--pip) / 2); top: calc(var(--y) * var(--size) - var(--pip) / 2); background: var(--ink); border: var(--stroke-hairline) solid var(--scene-shadow); }

@@ -67,7 +67,7 @@
 .item { width: stretch; height: auto; min-height: var(--size-touch); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); min-width: 0; }
 .face { display: flex; width: stretch; align-items: center; gap: var(--space-md); }
 .icon { flex: none; width: var(--size-sm); height: var(--size-sm); color: var(--ink-muted); }
-.text { flex: 1; min-width: 0; gap: var(--space-xxs); align-items: flex-start; }
+.text { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xxs); align-items: flex-start; }
 .name { font-size: var(--font-step-md); line-height: var(--font-leading-normal); text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: stretch; }
 /* The tag drops under the figures when a long translation leaves no room beside them. */
 .sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xxs) var(--space-sm); }

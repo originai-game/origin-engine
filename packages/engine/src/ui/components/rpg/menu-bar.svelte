@@ -35,7 +35,7 @@
 .menu-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-xs); width: stretch; }
 [part="RpgMenuBar.tab"] { width: stretch; min-height: var(--size-touch); }
 .menu-close { width: var(--size-touch); height: var(--size-touch); flex: none; padding: 0; }
-.face { width: stretch; height: stretch; align-items: center; justify-content: center; }
+.face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: center; }
 .close-mark { width: 50%; height: 50%; }
 @media (width < 600px), (height < 500px) { [part="RpgMenuBar.frame"] { gap: var(--space-xs); } .menu-tabs { grid-auto-columns: max-content; width: max-content; } .menu-fade { display: block; } }
 </style>
