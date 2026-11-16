@@ -829,11 +829,11 @@ pub fn write_types(root: &Path) -> Result<Typed, String> {
                 continue;
             };
             for l in refs.literals {
-                if let Some(c) = index.values().find(|c| c.id == l.value)
-                    && c.doc.kind == og_ui::doc::DocKind::Screen
-                    && !docs.iter().chain(&builtin).any(|d| d.name == c.doc.name)
+                if let Some((name, c)) = index.iter().find(|(_, c)| c.id == l.value)
+                    && c.screen
+                    && !docs.iter().chain(&builtin).any(|d| d.name == *name)
                 {
-                    builtin.push(c.doc.clone());
+                    builtin.push(c.document()?.clone());
                 }
             }
         }
@@ -857,7 +857,7 @@ pub fn write_types(root: &Path) -> Result<Typed, String> {
     let lookup = |n: &str| {
         components.get(n).copied().or_else(|| {
             let index = og_cook::cook::ui_components::index().ok()?;
-            index.get(n).map(|c| &c.doc)
+            index.get(n)?.document().ok()
         })
     };
     let mut keep = std::collections::BTreeSet::new();

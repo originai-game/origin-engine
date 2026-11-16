@@ -31,30 +31,80 @@ pub const PREFIX: &str = "@ui/";
 /// The directories under `src/ui` that hold built-in documents.
 const ROOTS: [&str; 3] = ["components/", "controls/", "screens/"];
 
+type FileBytes = Vec<(String, Vec<u8>)>;
+
 /// One built-in document, a component or a screen.
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Component {
     /// Its bundle id, `@ui/<path under src/ui>`.
     pub id: String,
-    pub doc: og_ui::UiDocument,
+    pub screen: bool,
+    /// A control's small host selector, not its document's stylesheet.
+    pub control: Option<String>,
     /// The component names it uses.
     pub uses: BTreeSet<String>,
     /// Its own text and every file it names that sits beside it (string
     /// tables, `@import`ed sheets, `url()` art, materials, Rive files and
     /// their import settings), by bundle id.
-    pub files: Vec<(String, Vec<u8>)>,
+    pub files: Vec<String>,
+    pub imports: Vec<String>,
+    #[serde(skip)]
+    doc: OnceLock<Result<og_ui::UiDocument, String>>,
+    #[serde(skip)]
+    bytes: OnceLock<Result<FileBytes, String>>,
+}
+
+impl Component {
+    /// Parse only a document whose schema the caller actually needs.
+    pub fn document(&self) -> Result<&og_ui::UiDocument, String> {
+        self.doc
+            .get_or_init(|| {
+                let text = String::from_utf8(read(&self.id)?).map_err(|e| e.to_string())?;
+                let imports = self
+                    .imports
+                    .iter()
+                    .map(|id| {
+                        Ok((
+                            id.clone(),
+                            String::from_utf8(read(id)?).map_err(|e| e.to_string())?,
+                        ))
+                    })
+                    .collect::<Result<Vec<_>, String>>()?;
+                og_ui::UiDocument::parse_with_imports(&self.id, &text, imports)
+                    .map_err(|e| e.join("\n"))
+            })
+            .as_ref()
+            .map_err(Clone::clone)
+    }
+
+    fn bytes(&self) -> Result<&FileBytes, String> {
+        self.bytes
+            .get_or_init(|| {
+                self.files
+                    .iter()
+                    .map(|id| Ok((id.clone(), read(id)?)))
+                    .collect()
+            })
+            .as_ref()
+            .map_err(Clone::clone)
+    }
 }
 
 /// The documents a document uses, by name: the components its
 /// capitalised tags name and the built-in control documents its elements
 /// are hosts of.
 pub fn uses(doc: &og_ui::UiDocument) -> BTreeSet<String> {
-    let controls: Vec<&og_ui::UiDocument> = index().map_or_else(
+    let controls: Vec<(String, og_ui::doc::ControlHost)> = index().map_or_else(
         |_| Vec::new(),
         |index| {
             index
-                .values()
-                .map(|c| &c.doc)
-                .filter(|d| d.control.is_some())
+                .iter()
+                .filter_map(|(name, c)| {
+                    Some((
+                        name.clone(),
+                        og_ui::doc::ControlHost::parse(c.control.as_deref()?).ok()?,
+                    ))
+                })
                 .collect()
         },
     );
@@ -62,7 +112,10 @@ pub fn uses(doc: &og_ui::UiDocument) -> BTreeSet<String> {
 }
 
 /// [`uses`] with the control documents there are.
-fn uses_among(doc: &og_ui::UiDocument, controls: &[&og_ui::UiDocument]) -> BTreeSet<String> {
+fn uses_among(
+    doc: &og_ui::UiDocument,
+    controls: &[(String, og_ui::doc::ControlHost)],
+) -> BTreeSet<String> {
     let mut out = BTreeSet::new();
     for n in &doc.nodes {
         match &n.kind {
@@ -72,9 +125,8 @@ fn uses_among(doc: &og_ui::UiDocument, controls: &[&og_ui::UiDocument]) -> BTree
             og_ui::doc::NodeKind::Element(_) => out.extend(
                 controls
                     .iter()
-                    .filter(|c| c.name != doc.name)
-                    .filter(|c| c.control.as_ref().is_some_and(|host| host.hosts(n)))
-                    .map(|c| c.name.clone()),
+                    .filter(|(name, host)| *name != doc.name && host.hosts(n))
+                    .map(|(name, _)| name.clone()),
             ),
             _ => {}
         }
@@ -87,7 +139,7 @@ fn uses_among(doc: &og_ui::UiDocument, controls: &[&og_ui::UiDocument]) -> BTree
 pub fn ui_dir() -> Option<&'static Path> {
     static DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
     DIR.get_or_init(|| {
-        let ui = |p: PathBuf| p.join("components/README.md").is_file().then_some(p);
+        let ui = |p: PathBuf| p.join("manifest.json").is_file().then_some(p);
         if let Some(pkg) = std::env::var_os("OG_ENGINE_PACKAGE").map(PathBuf::from) {
             return ui(pkg.join("src/ui"));
         }
@@ -109,13 +161,15 @@ pub fn ui_dir() -> Option<&'static Path> {
 /// Where the built-in file `id` (`@ui/components/rpg/rpg.en.ogt`) is read
 /// from.
 pub fn path(id: &str) -> Result<PathBuf, String> {
-    let rel = id
-        .strip_prefix(PREFIX)
+    let dir = ui_dir().ok_or("the engine package has no src/ui")?;
+    Ok(dir.join(relative(id)?))
+}
+
+fn relative(id: &str) -> Result<&str, String> {
+    id.strip_prefix(PREFIX)
         .filter(|r| ROOTS.iter().any(|root| r.starts_with(root)))
         .filter(|r| !r.split('/').any(|c| c == ".." || c.is_empty()))
-        .ok_or_else(|| format!("'{id}' is not a built-in UI file"))?;
-    let dir = ui_dir().ok_or("the engine package has no src/ui")?;
-    Ok(dir.join(rel))
+        .ok_or_else(|| format!("'{id}' is not a built-in UI file"))
 }
 
 /// The bytes of the built-in file `id` (`@ui/components/rpg/rpg.en.ogt`).
@@ -123,21 +177,32 @@ pub fn read(id: &str) -> Result<Vec<u8>, String> {
     std::fs::read(path(id)?).map_err(|e| format!("{id}: {e}"))
 }
 
-/// Every built-in document by its name. An error names a document that
-/// does not parse, a screen among the components, or two that declare one
-/// name.
+/// Every built-in document by its name, read from the shipped manifest.
 pub fn index() -> Result<&'static BTreeMap<String, Component>, String> {
     static INDEX: OnceLock<Result<BTreeMap<String, Component>, String>> = OnceLock::new();
     INDEX
         .get_or_init(|| {
             let dir = ui_dir().ok_or("the engine package has no src/ui")?;
-            build(dir)
+            let file = dir.join("manifest.json");
+            let text = std::fs::read_to_string(&file)
+                .map_err(|e| format!("{}: {e}; regenerate with og api gen", file.display()))?;
+            serde_json::from_str(&text).map_err(|e| format!("{}: {e}", file.display()))
         })
         .as_ref()
         .map_err(Clone::clone)
 }
 
-fn build(dir: &Path) -> Result<BTreeMap<String, Component>, String> {
+/// The shipped index, regenerated and drift-checked alongside the API.
+pub const MANIFEST: &str = "packages/engine/src/ui/manifest.json";
+
+/// Generate from source, deliberately without reading the installed index.
+pub fn manifest(dir: &Path) -> Result<String, String> {
+    struct Parsed {
+        id: String,
+        doc: og_ui::UiDocument,
+        files: Vec<String>,
+        imports: Vec<String>,
+    }
     let mut files = Vec::new();
     let mut pending: Vec<String> = ROOTS.iter().map(|r| r.to_string()).collect();
     while let Some(prefix) = pending.pop() {
@@ -158,9 +223,11 @@ fn build(dir: &Path) -> Result<BTreeMap<String, Component>, String> {
         }
     }
     files.sort();
-    let mut out: BTreeMap<String, Component> = BTreeMap::new();
+    let mut out: BTreeMap<String, Parsed> = BTreeMap::new();
     for rel in files {
         let id = format!("{PREFIX}{rel}");
+        let read =
+            |id: &str| std::fs::read(dir.join(relative(id)?)).map_err(|e| format!("{id}: {e}"));
         let text = String::from_utf8(read(&id)?).map_err(|_| format!("{id}: not UTF-8"))?;
         let mut imports: Vec<(String, String)> = Vec::new();
         let mut wanted: Vec<(String, String)> = og_ui::UiDocument::imports(&text)
@@ -202,6 +269,7 @@ fn build(dir: &Path) -> Result<BTreeMap<String, Component>, String> {
                 .iter()
                 .flat_map(|f| f.src.iter().cloned()),
         );
+        let imported = imports.iter().map(|(id, _)| id.clone()).collect();
         let mut beside = Vec::new();
         for (path, css) in imports {
             beside.push((path, css.into_bytes()));
@@ -213,14 +281,15 @@ fn build(dir: &Path) -> Result<BTreeMap<String, Component>, String> {
                 beside.push((settings, bytes));
             }
         }
-        let mut component = Component {
+        let mut component = Parsed {
             id: id.clone(),
-            // Filled in below, once the control documents are known.
-            uses: BTreeSet::new(),
-            files: vec![(id.clone(), text.into_bytes())],
+            files: vec![id.clone()],
+            imports: imported,
             doc,
         };
-        component.files.extend(beside);
+        component.files.extend(beside.into_iter().map(|(id, _)| id));
+        component.files.sort();
+        component.files.dedup();
         let name = component.doc.name.clone();
         if let Some(other) = out.insert(name.clone(), component) {
             return Err(format!(
@@ -229,20 +298,36 @@ fn build(dir: &Path) -> Result<BTreeMap<String, Component>, String> {
             ));
         }
     }
-    let used: Vec<BTreeSet<String>> = {
-        let controls: Vec<&og_ui::UiDocument> = out
-            .values()
-            .map(|c| &c.doc)
-            .filter(|d| d.control.is_some())
-            .collect();
-        out.values()
-            .map(|c| uses_among(&c.doc, &controls))
-            .collect()
-    };
-    for (component, uses) in out.values_mut().zip(used) {
-        component.uses = uses;
-    }
-    Ok(out)
+    let controls: Vec<(String, og_ui::doc::ControlHost)> = out
+        .values()
+        .filter_map(|c| Some((c.doc.name.clone(), c.doc.control.clone()?)))
+        .collect();
+    let entries: BTreeMap<_, _> = out
+        .into_iter()
+        .map(|(name, c)| {
+            let uses = uses_among(&c.doc, &controls);
+            (
+                name,
+                Component {
+                    id: c.id,
+                    screen: c.doc.kind == og_ui::doc::DocKind::Screen,
+                    control: c.doc.control.map(|host| {
+                        host.document_name()
+                            .trim_start_matches("control:")
+                            .to_owned()
+                    }),
+                    uses,
+                    files: c.files,
+                    imports: c.imports,
+                    doc: OnceLock::new(),
+                    bytes: OnceLock::new(),
+                },
+            )
+        })
+        .collect();
+    serde_json::to_string_pretty(&entries)
+        .map(|text| text + "\n")
+        .map_err(|e| e.to_string())
 }
 
 /// The built-in documents a game reaches: every name its documents use and
@@ -267,8 +352,8 @@ pub fn resolve(
     for name in used {
         if name.starts_with(PREFIX) {
             // An id the code names: the built-in document it is, if any.
-            if let Some(c) = index()?.values().find(|c| c.id == name) {
-                pending.push(c.doc.name.clone());
+            if let Some((name, _)) = index()?.iter().find(|(_, c)| c.id == name) {
+                pending.push(name.clone());
             }
         } else {
             pending.push(name);
@@ -284,7 +369,7 @@ pub fn resolve(
             continue;
         };
         components.insert(name, c.id.clone());
-        for (id, bytes) in &c.files {
+        for (id, bytes) in c.bytes()? {
             files.insert(id.clone(), bytes.as_slice());
         }
         pending.extend(c.uses.iter().cloned());

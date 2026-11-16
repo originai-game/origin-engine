@@ -70,6 +70,23 @@ fn root_option(rest: &[&str]) -> Result<PathBuf, ExitCode> {
 /// Writes every generated file, or with `wiki` only the wiki pages, and
 /// removes wiki pages the IDL no longer generates (a deleted module's page).
 fn api_gen(root: &Path, wiki: bool) -> ExitCode {
+    if !wiki {
+        let path = og_cook::cook::ui_components::MANIFEST;
+        let text =
+            match og_cook::cook::ui_components::manifest(&root.join("packages/engine/src/ui")) {
+                Ok(text) => text,
+                Err(e) => {
+                    eprintln!("og api gen: {e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+        if std::fs::read_to_string(root.join(path)).ok().as_deref() != Some(&text)
+            && let Err(e) = std::fs::write(root.join(path), text)
+        {
+            eprintln!("og api gen: {path}: {e}");
+            return ExitCode::FAILURE;
+        }
+    }
     // The written guides (the component catalogue from og-ui's schema, the
     // effect packs from their manifests); the wiki reads them with the others.
     for (path, text) in written_guides(root) {
@@ -203,6 +220,18 @@ fn api_budget(root: &Path, list: bool) -> ExitCode {
 }
 
 fn api_check(root: &Path) -> ExitCode {
+    let path = og_cook::cook::ui_components::MANIFEST;
+    match og_cook::cook::ui_components::manifest(&root.join("packages/engine/src/ui")) {
+        Ok(text) if std::fs::read_to_string(root.join(path)).ok().as_deref() == Some(&text) => {}
+        Ok(_) => {
+            eprintln!("og api check: {path} differs; regenerate with og api gen");
+            return ExitCode::FAILURE;
+        }
+        Err(e) => {
+            eprintln!("og api check: {e}");
+            return ExitCode::FAILURE;
+        }
+    }
     let stale: Vec<og_idl::Drift> = written_guides(root)
         .into_iter()
         .filter(|(path, text)| {
