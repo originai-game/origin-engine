@@ -1114,7 +1114,42 @@ impl Ui {
                 }
             }
         };
+        // CSS UI 4 `caret-shape`: a bar sits between characters; a block
+        // covers the next visible character's advance (under the text, so
+        // the character stays legible), an underscore underlines it; with no
+        // next character both take 1ch after the last one.
+        let shape = self.tree.nearest(i, |n| n.caret_shape).unwrap_or_default();
+        use crate::css::text_css::CaretShape;
+        let caret = |cmds: &mut Vec<DrawCmd>| {
+            let (cx, li) = ed.caret(e.caret, e.upstream);
+            let thin = 1.0f32.max(1.0 / dpr);
+            let color = self.tree.nearest(i, |n| n.caret).unwrap_or(p.primary);
+            let (x, w, li) = match shape {
+                CaretShape::Auto | CaretShape::Bar => (cx, thin, li),
+                CaretShape::Block | CaretShape::Underscore => {
+                    match ed.spans(e.caret, e.caret + 1).first() {
+                        Some(&(x0, x1, li)) if x1 > x0 => (x0, x1 - x0, li),
+                        _ => {
+                            let w = mk.m.measure("0", mk.size);
+                            (if self.text_flow(i).0 { cx - w } else { cx }, w, li)
+                        }
+                    }
+                }
+            };
+            let (y, h) = match shape {
+                CaretShape::Underscore => (cy(li) + ch - thin, thin),
+                _ => (cy(li), ch),
+            };
+            mark("caret", Rect::new(mk.x + x, y, w, h), color, cmds);
+        };
+        let shown = e.caret_on && e.caret <= n;
+        let block = shape == CaretShape::Block;
         if mk.under {
+            // A block caret under the text it covers (over an empty
+            // field's, where nothing covers it).
+            if shown && block && n > 0 {
+                caret(cmds);
+            }
             let selection = self
                 .docs
                 .state
@@ -1129,16 +1164,8 @@ impl Ui {
             let th = (mk.size * 0.07).max(1.0 / dpr);
             span("composition", c, cmds, ch - th, th, p.ink);
         }
-        if e.caret_on && e.caret <= n {
-            let (cx, li) = ed.caret(e.caret, e.upstream);
-            let caret_w = 1.0f32.max(1.0 / dpr);
-            let caret = self.tree.nearest(i, |n| n.caret).unwrap_or(p.primary);
-            mark(
-                "caret",
-                Rect::new(mk.x + cx, cy(li), caret_w, ch),
-                caret,
-                cmds,
-            );
+        if shown && (!block || n == 0) {
+            caret(cmds);
         }
     }
 

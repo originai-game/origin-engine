@@ -69,6 +69,7 @@ pub(crate) const INHERITED: &[&str] = &[
     "-webkit-text-fill-color",
     "paint-order",
     "caret-color",
+    "caret-shape",
     "accent-color",
     "color-scheme",
     // The named families of `font-family` (its generic family is the
@@ -748,6 +749,7 @@ fn check(name: &str, v: &str) -> Result<(), String> {
                 || v.split_whitespace()
                     .all(|w| w == "only" || super::syntax::identifier(w))
         }
+        "caret-shape" => matches!(v, "auto" | "bar" | "block" | "underscore"),
         "caret-color" | "accent-color" if v == "auto" => true,
         "text-decoration-color"
         | "-webkit-text-stroke-color"
@@ -906,6 +908,7 @@ pub struct TextCss {
     pub fill: Option<Srgba>,
     pub paint_order: Option<String>,
     pub caret: Option<Srgba>,
+    pub caret_shape: Option<CaretShape>,
     pub accent: Option<Srgba>,
     /// The used colour scheme is dark (`None`: the style's).
     pub dark: Option<bool>,
@@ -913,6 +916,19 @@ pub struct TextCss {
     /// Named and generic families in authored order, skipping unavailable names.
     pub family: Option<Vec<crate::FontFamily>>,
     pub font_role: Option<crate::FontRole>,
+}
+
+/// CSS UI 4 `caret-shape`: how a focused field draws its caret (`auto`
+/// draws a bar).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CaretShape {
+    #[default]
+    Auto,
+    Bar,
+    /// Over the next character's advance, under the text.
+    Block,
+    /// A thin line under the next character's advance.
+    Underscore,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -1105,6 +1121,12 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         kerning: get("font-kerning").map(|v| v != "none"),
         optical_sizing: get("font-optical-sizing").map(|v| v != "none"),
         caret: color(get("caret-color")),
+        caret_shape: get("caret-shape").map(|v| match v.as_str() {
+            "bar" => CaretShape::Bar,
+            "block" => CaretShape::Block,
+            "underscore" => CaretShape::Underscore,
+            _ => CaretShape::Auto,
+        }),
         accent: color(get("accent-color")),
         fill: color(get("-webkit-text-fill-color")),
         paint_order: get("paint-order").filter(|v| v != "normal"),

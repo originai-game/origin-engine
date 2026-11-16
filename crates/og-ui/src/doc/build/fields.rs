@@ -521,6 +521,7 @@ impl Ui {
         let css = r.text.as_deref();
         self.tree.nodes[i].accent = css.and_then(|t| t.accent);
         self.tree.nodes[i].caret = css.and_then(|t| t.caret);
+        self.tree.nodes[i].caret_shape = css.and_then(|t| t.caret_shape);
         // `display: none` that a container query decides keeps its element
         // built, so settlement can show it again.
         self.tree.nodes[i].hidden = base.hidden || (r.has("visible") && !r.flag("visible"));

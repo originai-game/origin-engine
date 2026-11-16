@@ -465,7 +465,8 @@ and fill glyphs. Inherited properties pass down as custom properties do,
 re-resolving only their readers. `accent-color` inks checkboxes,
 switches, sliders, radios and progress, and what a control draws on its
 accent (a check mark) is `contrast-color()` of it; `caret-color` a
-field's caret; `color-scheme` picks `light-dark()`'s side.
+field's caret and `caret-shape` its form (a bar, a block under the next
+character's advance, or an underscore below it; 1ch at the end); `color-scheme` picks `light-dark()`'s side.
 
 Colours take all of CSS Color 4 and 5 (`crates/og-ui/src/style/css_color.rs`).
 Linebender's `color` crate parses absolute colours and owns every space,

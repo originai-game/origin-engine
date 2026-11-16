@@ -476,6 +476,111 @@ fn caret_color_paints_a_focused_fields_caret() {
     }
 }
 
+/// CSS UI 4 §5.2.3 `caret-shape`: `bar` (and `auto`) is a thin bar at the
+/// insertion point; `block` is a full-height rectangle over the next
+/// character's advance, drawn under the text so the character stays
+/// legible; `underscore` is a thin line under that advance at the bottom of
+/// the bar's box. With no next character both take 1ch after the last one.
+/// The shape inherits.
+#[test]
+fn caret_shape_draws_a_bar_block_or_underscore_over_the_next_character() {
+    let size = 20.0;
+    let font = test_font();
+    // The spec's widths, from the font: the next character's advance, 1ch.
+    let next = font.metrics.measure("i", size);
+    let zero = font.metrics.measure("0", size);
+    assert!(
+        (next - zero).abs() > 2.0,
+        "pick a next character unlike 1ch"
+    );
+    // The caret's rect and the index of its draw after `keys`, and the index
+    // of the field's first glyph run.
+    let caret = |shape: &str, keys: &[UiKey]| {
+        let text = format!(
+            r#"<meta name="component" content="t">
+<column style="caret-shape: {shape}">
+  <input id="F" value="aic" style="font-size: {size}px; caret-color: #00ff00; width: 400px" />
+</column>"#
+        );
+        let mut d = Doc::with_ui(ui_with_font(test_font()), &text);
+        d.focus = Some(d.get("F").path.clone());
+        for _ in 0..3 {
+            d.step(InputFrame::default());
+        }
+        d.step(InputFrame {
+            keys: keys.to_vec(),
+            ..InputFrame::default()
+        });
+        d.step(InputFrame::default());
+        let e = d.get("F");
+        let items = &d.ui.frame().items;
+        let glyphs = items
+            .iter()
+            .position(|it| matches!(it.cmd, DrawCmd::Text { .. } | DrawCmd::StyledText { .. }));
+        let (at, r) = items
+            .iter()
+            .enumerate()
+            .find_map(|(k, it)| match &it.cmd {
+                DrawCmd::Shape { shape, .. }
+                    if shape.mode == og_draw::UiMode::Fill
+                        && matches!(shape.paint, og_draw::UiPaint::Solid(c) if same(c, Srgba::rgb(0, 255, 0)))
+                        && (e.x..e.x + e.width).contains(&shape.center.x) =>
+                {
+                    Some((k, (shape.center - shape.half, shape.half * 2.0)))
+                }
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("{shape}: no caret drawn"));
+        (r, at, glyphs.expect("the field's text"))
+    };
+    let mid = [UiKey::Home, UiKey::Right];
+    let close = |a: f32, b: f32| (a - b).abs() <= 1.0;
+    // Before "i": the bar marks the insertion point.
+    let ((bar_at, bar), _, _) = caret("bar", &mid);
+    assert!(bar.x <= 1.0 && bar.y > 0.6 * size, "bar {bar_at:?} {bar:?}");
+    let ((auto_at, auto), _, _) = caret("auto", &mid);
+    assert!(
+        close(auto_at.x, bar_at.x) && close(auto.x, bar.x),
+        "auto draws the bar"
+    );
+    // A block over "i": its advance wide, the bar's height, under the glyphs.
+    let ((at, sz), k, glyphs) = caret("block", &mid);
+    assert!(
+        close(at.x, bar_at.x) && close(sz.x, next),
+        "block {at:?} {sz:?}, i {next}"
+    );
+    assert!(
+        close(at.y, bar_at.y) && close(sz.y, bar.y),
+        "block {at:?} {sz:?}"
+    );
+    assert!(
+        k < glyphs,
+        "the block draws under the text ({k} ≥ {glyphs})"
+    );
+    // An underscore under "i": its advance wide, thin, at the bar's bottom.
+    let ((at, sz), k, glyphs) = caret("underscore", &mid);
+    assert!(
+        close(at.x, bar_at.x) && close(sz.x, next),
+        "underscore {at:?} {sz:?}"
+    );
+    assert!(sz.y <= 1.0, "underscore thin: {sz:?}");
+    assert!(
+        close(at.y + sz.y, bar_at.y + bar.y),
+        "underscore at the bar's bottom"
+    );
+    assert!(k > glyphs, "the underscore draws over the text");
+    // At the end: no next character, so 1ch after the last one.
+    let ((end_at, _), _, _) = caret("bar", &[UiKey::End]);
+    assert!(end_at.x > bar_at.x + next, "the end lies past 'i'");
+    for shape in ["block", "underscore"] {
+        let ((at, sz), _, _) = caret(shape, &[UiKey::End]);
+        assert!(
+            close(at.x, end_at.x) && close(sz.x, zero),
+            "{shape} at the end: {at:?} {sz:?}, 1ch {zero}"
+        );
+    }
+}
+
 /// CSS Color 5's `contrast-color()` and `color-mix()` over any number of
 /// colours reach what a document draws: a mix of red, lime and blue is
 /// their average (85 85 85; a pairwise halving would draw 64 64 128), a

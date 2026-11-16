@@ -1037,10 +1037,12 @@ pub struct Node {
     pub props: Authored<crate::element::Props>,
     /// What style and motion sample for it this tick ([`StyleNode`]).
     pub style: StyleNode,
-    /// CSS `accent-color` and `caret-color` it declares or inherits as a
-    /// document element (controls under it read the nearest, [`crate::Ui`]).
+    /// CSS `accent-color`, `caret-color` and `caret-shape` it declares or
+    /// inherits as a document element (controls under it read the nearest,
+    /// [`crate::Ui`]).
     pub accent: Option<Srgba>,
     pub caret: Option<Srgba>,
+    pub caret_shape: Option<crate::css::text_css::CaretShape>,
     /// Its children out of the flow (absolute, anchored), in build order;
     /// `children` holds the ones in the flow once the frame ends, in CSS
     /// `order`.
@@ -1352,6 +1354,7 @@ impl Node {
             style: StyleNode::default(),
             accent: None,
             caret: None,
+            caret_shape: None,
             out: Vec::new(),
             placed: Placed::default(),
             anchor_point: None,

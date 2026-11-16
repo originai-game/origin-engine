@@ -229,6 +229,7 @@ pub(crate) fn inherited_property(name: &str) -> bool {
                 | "hyphens"
                 | "tab-size"
                 | "caret-color"
+                | "caret-shape"
                 | "accent-color"
                 | "color-scheme"
                 | "writing-mode"
