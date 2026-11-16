@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Built-in screens' dimmed buttons",
+      "summary": "Moves frames: a button that is not disabled no longer fades its words with opacity. CreatorTools' unselected tools and Leaderboard's unselected tabs drop their rim and keep their ink (scifi light 3.39 and 3.72:1 before); Calendar's days of the next or last month take --ink-muted instead of fading to 45 % (1.26–1.84:1 before). A disabled button still fades."
+    }
+  ]
+}

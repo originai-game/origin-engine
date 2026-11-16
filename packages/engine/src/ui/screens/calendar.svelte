@@ -29,6 +29,7 @@
 #Days { grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr; gap: var(--space-xxs); }
 .weekday { text-align: center; }
 .day { width: stretch; }
-.day.outside { opacity: var(--opacity-dim); }
+/* A day of the next or last month is quieter in its ink, not faded. */
+.day.outside { color: var(--ink-muted); }
 .day.marked { outline: var(--stroke-regular) solid var(--accent); outline-offset: calc(var(--stroke-regular) * -1); }
 </style>

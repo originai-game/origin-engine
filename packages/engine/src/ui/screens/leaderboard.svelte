@@ -68,12 +68,8 @@
 #Title { font-size: var(--type-xl-size); }
 }
 #Tabs { gap: var(--space-sm); }
-#Global.selection-off { opacity: var(--opacity-soft); }
-#Global.selection-on { opacity: 1; }
-#Friends.selection-off { opacity: var(--opacity-soft); }
-#Friends.selection-on { opacity: 1; }
-#League.selection-off { opacity: var(--opacity-soft); }
-#League.selection-on { opacity: 1; }
+/* An unselected tab keeps its words' ink; only its rim goes. */
+button.selection-off::part(base) { border-color: transparent; }
 #LeagueBar { width: stretch; gap: var(--space-md); padding: var(--space-md); align-items: center; flex-wrap: wrap; background: var(--panel-raised); border-radius: var(--radius-card); outline: var(--stroke-hairline) solid var(--line); outline-offset: calc(var(--stroke-hairline) * -1); }
 #LeagueBarName { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 #Lines { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }

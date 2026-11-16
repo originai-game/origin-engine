@@ -56,14 +56,8 @@ button.compact[variant="ghost"]::part(base) { padding-inline: calc(var(--space-l
 }
 #Editor { width: stretch; height: stretch; }
 #Toolbar { width: stretch; gap: var(--space-sm); align-items: center; flex-wrap: wrap; }
-#Select.selection-off { opacity: var(--opacity-soft); }
-#Select.selection-on { opacity: 1; }
-#Move.selection-off { opacity: var(--opacity-soft); }
-#Move.selection-on { opacity: 1; }
-#Rotate.selection-off { opacity: var(--opacity-soft); }
-#Rotate.selection-on { opacity: 1; }
-#Scale.selection-off { opacity: var(--opacity-soft); }
-#Scale.selection-on { opacity: 1; }
+/* An unselected tool keeps its words' ink; only its rim goes. */
+button.selection-off::part(base) { border-color: transparent; }
 #Play.run-stopped { opacity: 1; }
 #Play.run-playing { opacity: 0.8; }
 #Body { width: stretch; height: stretch; grid-template-columns: var(--measure-sm) 1fr var(--measure-md); grid-template-rows: 1fr var(--measure-xs); grid-template-areas: "tree view inspector" "tree catalogue inspector"; }
