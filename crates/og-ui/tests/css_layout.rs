@@ -1889,6 +1889,28 @@ fn if_takes_the_first_branch_whose_test_holds() {
     }
 }
 
+/// An `if()`'s `style()` test reads a custom property its element
+/// inherits: a change of the parent's bound `--mode` restyles the child on
+/// that frame, its own value and one of its custom properties alike.
+#[test]
+fn if_style_follows_a_parent_s_custom_property() {
+    let text = r#"<meta name="component" content="t">
+<div id="Parent" style:--mode={$mode}><div id="Child"></div><div id="Via"></div></div>
+<style>
+#Parent div { height: 1px; }
+#Child { width: if(style(--mode: wide): 80px; else: 8px); }
+#Via { --w: if(style(--mode: wide): 60px; else: 6px); width: var(--w); }
+</style>"#;
+    let mut d = Doc::new(text, &[("mode", serde_json::json!("wide"))]);
+    assert_eq!((d.get("Child").width, d.get("Via").width), (80.0, 60.0));
+    d.put("mode", serde_json::json!("narrow"));
+    d.step(Default::default());
+    assert_eq!((d.get("Child").width, d.get("Via").width), (8.0, 6.0));
+    d.put("mode", serde_json::json!("wide"));
+    d.step(Default::default());
+    assert_eq!((d.get("Child").width, d.get("Via").width), (80.0, 60.0));
+}
+
 /// CSS Values 4 §6.1.2's small, large and dynamic viewports: `sv*` read the
 /// surface with the host's controls shown, `lv*` with them hidden, `dv*`
 /// and the bare units the surface now, each axis and min/max apart.
