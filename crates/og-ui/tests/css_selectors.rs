@@ -437,6 +437,146 @@ p:target { margin-left: 7px; }
     assert!(drawn(&d).0.is_empty(), "marks cleared");
 }
 
+/// Custom highlights (CSS Custom Highlight API 1) paint as the spec's
+/// §4.2.5 example does. Each glyph of the test font's CJK text is 1em
+/// wide, so character k spans [20k, 20k + 20] px. `Foo` covers characters
+/// 0 to 6, blue on yellow, and `bar` covers 3 to 9 on orange; both are
+/// styled once at the root and reach the paragraph by highlight inheritance
+/// (CSS Pseudo-Elements 4 §3.5). Tied at priority 0, `bar`, registered
+/// later, is above: yellow under orange, with the glyphs blue over 0 to 6
+/// (orange sets no color). Once `Foo` has priority 1 it is above. A range
+/// that crosses into the next element paints only where that element
+/// styles its highlight, a collapsed range paints nothing, overlapping
+/// ranges paint as one band, and removing a highlight clears it.
+///
+/// Ways it could fail: the overlays stacked by registration alone, by name,
+/// or with the earlier registered above; `::highlight()` reaching only
+/// the element its rule matched; the name's case lost in the cascade; a
+/// range stopping at its first element; a union drawn twice; a collapsed
+/// range drawn; the marks staying after the highlight is removed.
+#[test]
+fn custom_highlights_paint_their_ranges_in_priority_order() {
+    let doc = r##"<meta name="component" content="hl">
+<column id="Root">
+  <p id="A">原字引擎文染渲点原</p>
+  <p id="B">字引擎</p>
+</column>
+<style>
+p { font-size: 20px; margin: 0; width: max-content; }
+:root::highlight(Foo) { color: #0000ff; background-color: #ffff00; }
+:root::highlight(bar) { background-color: #ffa500; }
+#B::highlight(baz) { background-color: #ff0000; }
+</style>"##;
+    let mut d = Doc::with_font(doc, &[], test_font());
+    let near = |a: [f32; 4], b: Srgba| {
+        let b = b.linear();
+        a.iter().zip(b).all(|(x, y)| (x - y).abs() < 0.02)
+    };
+    let (yellow, orange, red, blue) = (
+        Srgba::rgb(255, 255, 0),
+        Srgba::rgb(255, 165, 0),
+        Srgba::rgb(255, 0, 0),
+        Srgba::rgb(0, 0, 255),
+    );
+    // Each quad's colour and rect in drawing order, and the clips of the
+    // blue and the other glyphs.
+    let drawn = |d: &Doc| {
+        let (mut quads, mut ink, mut other) = (vec![], vec![], vec![]);
+        for item in &d.ui.frame().items {
+            let cmd = match &item.cmd {
+                DrawCmd::StyledText { text, .. } => text.as_ref(),
+                c => c,
+            };
+            match cmd {
+                DrawCmd::Quad { rect, color, .. } => {
+                    for (name, c) in [("yellow", yellow), ("orange", orange), ("red", red)] {
+                        if near(*color, c) {
+                            quads.push((name, *rect));
+                        }
+                    }
+                }
+                DrawCmd::Text { color, clip, .. } if near(*color, blue) => ink.push(*clip),
+                DrawCmd::Text { clip, .. } => other.push(*clip),
+                _ => {}
+            }
+        }
+        (quads, ink, other)
+    };
+    let (a, b) = (d.get("A"), d.get("B"));
+    assert_eq!((a.width, b.width), (180.0, 60.0), "1em glyphs");
+    let at = |k: u32| a.x + 20.0 * k as f32;
+    let range =
+        |el: &og_ui::UiElement, s: u32, e: &og_ui::UiElement, t: u32| og_ui::HighlightRange {
+            start: el.path.clone(),
+            start_offset: s,
+            end: e.path.clone(),
+            end_offset: t,
+        };
+    let set = |d: &mut Doc, name: &str, ranges: Vec<og_ui::HighlightRange>, priority: i32| {
+        d.ui.set_highlight(name, Some(og_ui::Highlight { ranges, priority }));
+        d.step(InputFrame::default());
+    };
+    assert!(drawn(&d).0.is_empty(), "nothing registered");
+
+    // Foo's two overlapping ranges and a collapsed one, then bar.
+    set(
+        &mut d,
+        "Foo",
+        vec![
+            range(&a, 0, &a, 4),
+            range(&a, 2, &a, 6),
+            range(&a, 8, &a, 8),
+        ],
+        0,
+    );
+    set(&mut d, "bar", vec![range(&a, 3, &a, 9)], 0);
+    let span = |r: &og_ui::Rect| (r.x, r.right());
+    let (quads, ink, other) = drawn(&d);
+    let names: Vec<_> = quads.iter().map(|q| q.0).collect();
+    assert_eq!(names, ["yellow", "orange"], "bar above Foo: {quads:?}");
+    assert_eq!(span(&quads[0].1), (at(0), at(6)), "one band for the union");
+    assert_eq!(span(&quads[1].1), (at(3), at(9)));
+    assert!((quads[0].1.y - a.y).abs() < 1.0, "{quads:?} {a:?}");
+    assert!(!ink.is_empty(), "no Foo ink");
+    for c in &ink {
+        assert!(c.x >= at(0) - 0.5 && c.right() <= at(6) + 0.5, "{c:?}");
+    }
+    assert!(
+        other
+            .iter()
+            .any(|c| c.x >= at(6) - 0.5 && c.x < at(9) && (c.y - a.y).abs() < a.height),
+        "the default ink past Foo: {other:?}"
+    );
+
+    // Foo at priority 1 rises above bar, keeping its ink.
+    set(
+        &mut d,
+        "Foo",
+        vec![range(&a, 0, &a, 4), range(&a, 2, &a, 6)],
+        1,
+    );
+    let (quads, ink, _) = drawn(&d);
+    let names: Vec<_> = quads.iter().map(|q| q.0).collect();
+    assert_eq!(names, ["orange", "yellow"], "Foo above bar: {quads:?}");
+    assert!(ink.iter().all(|c| c.right() <= at(6) + 0.5) && !ink.is_empty());
+
+    // A range from A's eighth character into B's second: only B styles
+    // baz, so only B's two characters are red.
+    set(&mut d, "baz", vec![range(&a, 7, &b, 2)], 0);
+    let (quads, ..) = drawn(&d);
+    let reds: Vec<_> = quads.iter().filter(|q| q.0 == "red").collect();
+    assert_eq!(reds.len(), 1, "{quads:?}");
+    assert_eq!(span(&reds[0].1), (b.x, b.x + 40.0));
+    assert!((reds[0].1.y - b.y).abs() < 1.0);
+
+    // Removed, a highlight leaves no mark.
+    for name in ["Foo", "bar", "baz"] {
+        d.ui.set_highlight(name, None);
+    }
+    d.step(InputFrame::default());
+    assert!(drawn(&d).0.is_empty(), "{:?}", drawn(&d).0);
+}
+
 /// `:modal` matches a dialog opened modally (it makes the rest of the page
 /// inert) and not one open in place.
 #[test]
