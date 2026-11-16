@@ -812,7 +812,17 @@ impl Ui {
                         ));
                     }
                 }
-                el.bfc = source.kind == Some(Kind::Box) && r.str("display") == Some("flowRoot");
+                // A formatting context of its own: a flow-root, a box whose
+                // overflow is neither `visible` nor `clip` (CSS Overflow 3
+                // §3), or one containing its layout or paint (box_of).
+                let independent = ["overflowX", "overflowY"]
+                    .iter()
+                    .any(|p| matches!(r.str(p), Some("hidden" | "auto" | "scroll" | "overlay")));
+                el.bfc = source.kind == Some(Kind::Box)
+                    && (r.str("display") == Some("flowRoot") || independent)
+                    || el
+                        .contain
+                        .has(crate::layout::Contain::LAYOUT | crate::layout::Contain::PAINT);
                 el.contents =
                     source.kind == Some(Kind::Box) && r.str("display") == Some("contents");
                 el.table = if source.kind == Some(Kind::Box) {

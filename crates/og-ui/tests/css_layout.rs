@@ -2812,3 +2812,43 @@ td {{ width: 20px; height: 10px; padding: 0; }}
         );
     });
 }
+
+/// CSS Overflow 3 §3, CSS Display 3 §2.3: a box whose overflow is not
+/// `visible` or `clip`, or that contains its layout or paint, starts a
+/// formatting context of its own, so its first child's margin stays inside
+/// it; an `overflow: clip` box does not, and the margin collapses through.
+///
+/// Ways it could fail: `hidden` read as `visible` (H's child at 0, H 5
+/// tall and moved down 20), containment's context dropped by the box's
+/// display, or `clip` treated as `hidden` (C keeps the margin).
+#[test]
+fn a_clipping_box_keeps_its_childs_margin() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="H" class="o"><div class="m"></div></div>
+  <div id="S" class="o"><div class="m"></div></div>
+  <div id="P" class="o"><div class="m"></div></div>
+  <div id="C" class="o"><div class="m"></div></div>
+</div></div>
+<style>
+#Root { width: 100px; }
+.m { margin-top: 20px; height: 5px; }
+#H { overflow: hidden; }
+#S { overflow-y: auto; }
+#P { contain: paint; }
+#C { overflow: clip; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let (root, h, s, p, c) = (
+            d.get("Root"),
+            d.get("H"),
+            d.get("S"),
+            d.get("P"),
+            d.get("C"),
+        );
+        assert_eq!((h.y - root.y, h.height), (0.0, 25.0), "hidden");
+        assert_eq!((s.y - h.y, s.height), (25.0, 25.0), "auto");
+        assert_eq!((p.y - s.y, p.height), (25.0, 25.0), "contain: paint");
+        assert_eq!((c.y - p.y, c.height), (45.0, 5.0), "clip collapses through");
+    });
+}
