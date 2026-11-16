@@ -51,6 +51,7 @@ for (const width of [1280, 390]) test(`Currency: all balances/states at ${width}
       expect(els.some((x) => x.role === "button")).toBeFalse();
       if (name === "loading" || name === "unavailable") {
         expect(texts).toContain(name === "loading" ? "Loading" : "Unavailable");
+        expect(els.some((x) => x.role === "progressbar")).toBe(name === "loading");
         expect(texts).not.toContain("999");
         expect(texts).not.toContain("+48/s");
       } else if (name === "empty") expect(texts).toContain("0");

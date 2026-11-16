@@ -1,6 +1,6 @@
 <meta name="component" content="Currency">
 <meta name="strings" content="./currency.en.ogt">
-<meta name="parts" content="Currency.frame Currency.icon Currency.name Currency.amount Currency.limit Currency.rate Currency.state">
+<meta name="parts" content="Currency.frame Currency.icon Currency.name Currency.amount Currency.limit Currency.rate Currency.state Currency.spinner">
 <meta name="prop:name" content="string" data-doc="Resource name; empty uses Currency.">
 <meta name="prop:icon" content="string" data-doc="Atlas icon; empty omits it.">
 <meta name="prop:amount" content="number" data-doc="Amount held; zero remains visible. Ignored when valueText is supplied.">
@@ -24,6 +24,7 @@
   <div class="body">
     <div part="Currency.name">{name || t("currency.name")}</div>
     {#if loading || unavailable}
+      {#if loading}<div part="Currency.spinner"><Spinner name={t("currency.loading")} /></div>{/if}
       <div part="Currency.state" role="status">{loading ? t("currency.loading") : t("currency.unavailable")}</div>
     {:else}
       <div class="figures">
@@ -47,4 +48,5 @@
 [part="Currency.limit"], [part="Currency.rate"], [part="Currency.state"] { font: var(--text-sm); }
 [part="Currency.limit"], [part="Currency.rate"] { color: var(--ink-muted); }
 [part="Currency.state"] { font-weight: var(--font-weight-semibold); }
+[part="Currency.spinner"] { display: flex; }
 </style>

@@ -1,0 +1,5 @@
+{
+  "added": [
+    { "member": "Currency", "summary": "Loading currency balances compose the shared Spinner as well as their localized Loading label, matching Avatar and ItemSlot without exposing stale amounts. The spinner has its own restylable part." }
+  ]
+}
