@@ -549,3 +549,134 @@ fn transforms_place_and_hit_by_the_specs_matrices() {
         assert_eq!(frame(&mut ui, at), cursor, "at {at}");
     }
 }
+
+/// Pointer Events 3 §9 `touch-action` and CSSOM View's `scroll-behavior`.
+/// A diagonal touch drag over a two-axis scroller pans only what the
+/// element it started on allows: `pan-y` drops the x move, `pan-left`
+/// keeps only a finger moving left (content offset growing), and a child's
+/// `pan-y` inside a `pan-x` parent intersects to none; a fine pointer pans
+/// freely. A scroll into view glides under `smooth` (more than one tick,
+/// monotonic, landing on the target and staying) and jumps under `auto`.
+/// Ways it could fail: an axis kept that the value drops, the direction
+/// of pan-left read as the content's, an ancestor's value ignored (a
+/// union instead of an intersection), touch-action applied to a mouse,
+/// a touch-action read off the scroll container instead of the element
+/// the touch landed on, a smooth scroll that jumps or stops short, or
+/// `auto` gliding.
+#[test]
+fn touch_action_filters_pans_and_scroll_behavior_glides() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root">
+  <div id="Pan" class="s"><div class="big"><div id="Y" class="hit"></div><div id="L" class="hit"></div><div id="X" class="hit"><div id="XY" class="hit"></div></div><div id="Free" class="hit"></div></div></div>
+  <div id="Smooth" class="s v"><div id="SmoothTall" class="tall"><button id="SmoothEnd" class="end">S</button></div></div>
+  <div id="Jump" class="s v"><div id="JumpTall" class="tall"><button id="JumpEnd" class="end">J</button></div></div>
+</div>
+<style>
+#Root { width: 800px; display: flex; flex-direction: row; align-items: start; gap: 10px; }
+.s { width: 200px; height: 200px; overflow: auto; scrollbar-width: none; }
+.big { position: relative; width: 1000px; height: 1000px; }
+.hit { position: absolute; width: 60px; height: 60px; }
+#Y { left: 10px; top: 10px; touch-action: pan-y; }
+#L { left: 100px; top: 10px; touch-action: pan-left; }
+#X { left: 10px; top: 100px; width: 80px; height: 80px; touch-action: pan-x; }
+#XY { left: 10px; top: 10px; touch-action: pan-y; }
+#Free { left: 100px; top: 100px; }
+.tall { height: 2000px; }
+.end { position: absolute; top: 1500px; width: 40px; height: 10px; }
+.tall { position: relative; }
+#Smooth { scroll-behavior: smooth; }
+</style>"#;
+    let run = |coarse: bool, id: &str, by: Vec2| {
+        let mut d = crate::support::Doc::new(text, &[]);
+        d.viewport.coarse_pointer = coarse;
+        d.step(InputFrame::default());
+        let e = d.get(id);
+        let from = Vec2::new(e.x + 30.0, e.y + 30.0);
+        let at = |d: &mut crate::support::Doc, p: Vec2, down, pressed, released| {
+            d.step(InputFrame {
+                pointer: p,
+                pointer_inside: true,
+                down,
+                pressed,
+                released,
+                ..InputFrame::default()
+            });
+        };
+        at(&mut d, from, true, true, false);
+        for k in 1..=8 {
+            at(&mut d, from + by * (k as f32 / 8.0), true, false, false);
+        }
+        // Read while still held: the release may fling on.
+        let path = d.get("Pan").path;
+        let s = d.ui.scroll_state(&path).unwrap();
+        at(&mut d, from + by, false, false, true);
+        (s.offset_x, s.offset_y)
+    };
+    // A finger moving up and left by 40: the content's offset grows by 40
+    // on each axis it may pan.
+    let finger = Vec2::new(-40.0, -40.0);
+    assert_eq!(run(true, "Free", finger), (40.0, 40.0), "auto pans both");
+    assert_eq!(run(true, "Y", finger), (0.0, 40.0), "pan-y");
+    assert_eq!(
+        run(true, "L", finger),
+        (40.0, 0.0),
+        "pan-left, finger moving left"
+    );
+    assert_eq!(
+        run(true, "L", Vec2::new(40.0, -40.0)).0,
+        0.0,
+        "pan-left drops a finger moving right"
+    );
+    assert_eq!(
+        run(true, "XY", finger),
+        (0.0, 0.0),
+        "pan-y inside pan-x is none"
+    );
+    assert_eq!(
+        run(false, "Y", finger),
+        (40.0, 40.0),
+        "a mouse drag ignores touch-action"
+    );
+    // scroll-behavior: the same scroll into view, smooth and auto.
+    let glide = |end: &str, scroller: &str| {
+        let mut d = crate::support::Doc::new(text, &[]);
+        d.step(InputFrame::default());
+        let path = format!("{}/{scroller}Tall/{end}", d.get(scroller).path);
+        d.ui.scroll_into_view_path(&path, false);
+        let scroller = d.get(scroller).path;
+        (0..180)
+            .map(|_| {
+                d.step(InputFrame::default());
+                d.ui.scroll_state(&scroller).unwrap().offset_y
+            })
+            .collect::<Vec<_>>()
+    };
+    // `auto` is at its end on the first tick: the button's bottom (1510)
+    // at the view's (200 down), with the focus ring's room.
+    let jump = glide("JumpEnd", "Jump");
+    let target = jump[0];
+    assert!(
+        (1310.0..1320.0).contains(&target) && jump.iter().all(|&y| y == target),
+        "auto jumps: {:?}",
+        &jump[..4]
+    );
+    let smooth = glide("SmoothEnd", "Smooth");
+    assert!(
+        smooth[0] > 0.0 && smooth[0] < target * 0.5,
+        "smooth starts gliding: {:?}",
+        &smooth[..4]
+    );
+    assert!(
+        smooth.windows(2).all(|w| w[1] >= w[0]),
+        "monotonic: {smooth:?}"
+    );
+    // CSSOM View leaves the curve to the UA: it lands (to f32 rounding)
+    // within three seconds and stays.
+    let end = *smooth.last().unwrap();
+    assert!((end - target).abs() < 0.01, "lands: {end} vs {target}");
+    assert!(
+        smooth[150..].iter().all(|&y| y == end),
+        "settles: {:?}",
+        &smooth[150..]
+    );
+}

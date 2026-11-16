@@ -284,6 +284,15 @@ impl Ui {
                 .flatten();
             grabbed = self.interaction.state.thumb.map(|t| t.key);
             self.interaction.state.drag_v = Vec2::ZERO;
+            // The element the touch landed on, whose touch-action the
+            // drag keeps to wherever it moves.
+            self.interaction.state.touch_key = if self.env.viewport.coarse_pointer {
+                self.tree
+                    .cursor_node(&self.tree.orders.draw, &self.paint, p)
+                    .map_or(0, |i| self.tree.nodes[i].key)
+            } else {
+                0
+            };
         }
         if let Some(t) = self.interaction.state.thumb {
             if input.down || input.pressed {
@@ -344,7 +353,6 @@ impl Ui {
         {
             if input.down && !input.pressed {
                 let d = self.interaction.touch_allows(
-                    active,
                     self.interaction.state.pointer - p,
                     &self.env,
                     &self.tree,
@@ -707,22 +715,17 @@ impl crate::ui::Interaction {
     /// velocity) and a fling, before interaction is decided. Answers the
     /// scroll container a press on a scrollbar grabbed (it holds the press).
     /// A touch drag's move `d` (content offset) as CSS `touch-action`
-    /// lets the element it started on pan: an axis or direction it does
-    /// not allow is dropped. A fine pointer pans freely.
-    fn touch_allows(
-        &self,
-        key: u64,
-        d: Vec2,
-        env: &crate::ui::Env,
-        tree: &crate::ui::Tree,
-    ) -> Vec2 {
+    /// lets the element it started on pan (its used value, intersected
+    /// with its ancestors'): an axis or direction it does not allow is
+    /// dropped. A fine pointer pans freely.
+    fn touch_allows(&self, d: Vec2, env: &crate::ui::Env, tree: &crate::ui::Tree) -> Vec2 {
         use crate::element::Interact as I;
         if !env.viewport.coarse_pointer {
             return d;
         }
         let Some(t) = tree
             .index
-            .find(key)
+            .find(self.state.touch_key)
             .and_then(|i| tree.orders.touch_of.get(i))
         else {
             return d;
