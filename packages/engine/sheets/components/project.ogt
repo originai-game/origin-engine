@@ -20,4 +20,5 @@ ui {
   screen "states-fantasy" "style:fantasy;page:states"
   screen "hud-default" "style:default;page:hud"
   screen "panels-default" "style:default;page:panels"
+  screen "states-default" "style:default;page:states"
 }

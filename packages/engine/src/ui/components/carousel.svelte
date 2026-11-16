@@ -10,36 +10,38 @@
 
 <div id="Carousel" part="Carousel.frame" class="bare" role="region" aria-label={label || t("component.carousel.name")} style:--index={index}>
   <div id="Viewport">
+    {#if !pages.length}<p class="empty body" part="Carousel.body" role="status">{t("component.carousel.empty")}</p>{/if}
     {#each pages as page (page.id)}
       <div part="Carousel.cell" class="page">
-        <img part="Carousel.art Carousel.picture" class="art" src={page.image} hidden={!page.image}>
-        <div part="Carousel.well" class="well" hidden={!!page.image}></div>
-        <span part="Carousel.title" class="title">{page.title}</span>
-        <span part="Carousel.body" class="body">{page.body}</span>
+        {#if page.image}<img part="Carousel.art Carousel.picture" class="art" src={page.image}>
+        {:else}<div part="Carousel.well" class="well"></div>{/if}
+        {#if page.title}<span part="Carousel.title" class="title">{page.title}</span>{/if}
+        {#if page.body}<span part="Carousel.body" class="body">{page.body}</span>{/if}
       </div>
     {/each}
   </div>
   <div id="Controls">
-    <button id="Prev" part="Carousel.prev" aria-label={t("component.carousel.prev")} onclick={prev}><og-icon icon="back"></og-icon></button>
+    <button id="Prev" part="Carousel.prev" aria-label={t("component.carousel.prev")} disabled={pages.length < 2} onclick={prev}><og-icon icon="back"></og-icon></button>
     <div id="Dots">
       {#each pages as page (page.id)}<div part="Carousel.dot" class="dot"></div>{/each}
-      <div id="Lit" part="Carousel.lit"></div>
+      {#if pages.length}<div id="Lit" part="Carousel.lit"></div>{/if}
     </div>
-    <button id="Next" part="Carousel.next" aria-label={t("component.carousel.next")} onclick={next}><og-icon id="NextIcon" icon="back"></og-icon></button>
+    <button id="Next" part="Carousel.next" aria-label={t("component.carousel.next")} disabled={pages.length < 2} onclick={next}><og-icon id="NextIcon" icon="back"></og-icon></button>
   </div>
 </div>
 
 <style>
-#Carousel { display: flex; flex-direction: column; width: var(--measure-md); gap: var(--space-sm); align-items: center; }
-#Viewport { display: flex; width: var(--measure-md); gap: var(--space-md); overflow-x: scroll; scroll-snap-type: x mandatory; }
-.page { flex: none; width: var(--measure-sm); padding: var(--space-md); gap: var(--space-xs); scroll-snap-align: center; }
-.art, .well { width: stretch; height: var(--size-3xl); }
+:host { display: flex; flex-direction: column; inline-size: var(--measure-md); max-inline-size: 100%; gap: var(--space-sm); align-items: center; }
+#Viewport { display: flex; inline-size: 100%; gap: var(--space-md); overflow-x: auto; scroll-snap-type: x mandatory; }
+.page { display: flex; flex-direction: column; flex: none; inline-size: var(--measure-sm); max-inline-size: 100%; padding: var(--space-md); gap: var(--space-xs); scroll-snap-align: center; }
+.art, .well { height: var(--size-3xl); }
 .art { border-radius: var(--well-radius); }
 .body { font: var(--text-sm); color: var(--ink-muted); }
+.empty { margin: 0; padding: var(--space-md); }
 #Controls { display: flex; gap: var(--space-md); align-items: center; }
 #Prev, #Next { width: var(--control-lg); height: var(--control-lg); padding: 0; border-radius: var(--radius-capsule); }
 #NextIcon { rotate: 180deg; }
-#Dots { display: flex; gap: var(--space-sm); }
+#Dots { position: relative; display: flex; gap: var(--space-sm); }
 .dot { width: var(--space-sm); height: var(--space-sm); border-radius: var(--radius-capsule); background: var(--ink-faint); }
 #Lit { position: absolute; top: 0; inset-inline-start: calc(var(--index) * var(--space-sm) * 2); width: var(--space-sm); height: var(--space-sm); border-radius: var(--radius-capsule); background: var(--primary); transition-property: translate; transition-duration: var(--motion-duration-fast); transition-timing-function: var(--motion-easing-out); }
 </style>

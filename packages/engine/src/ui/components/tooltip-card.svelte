@@ -30,51 +30,51 @@
   {/if}
   <section id="Card" part="TooltipCard.frame" class="card" class:common={rarity == "common"} class:uncommon={rarity == "uncommon"} class:rare={rarity == "rare"} class:epic={rarity == "epic"} class:legendary={rarity == "legendary"} class:mythic={rarity == "mythic"}>
     <header id="Header">
-      <div id="Well" part="TooltipCard.well" class="well" hidden={!image && icon == ""}>
-        <img id="Art" src={image} alt="" hidden={!image}>
-        <og-icon id="Icon" class="glyph" icon={icon} hidden={!!image}></og-icon>
-      </div>
+      {#if image || icon}<div id="Well" part="TooltipCard.well" class="well">
+        {#if image}<img id="Art" src={image} alt="">
+        {:else}<og-icon id="Icon" class="glyph" icon={icon}></og-icon>{/if}
+      </div>{/if}
       <div id="Names">
         <h3 id="Title" part="TooltipCard.title">{title}</h3>
-        <div id="Sub" hidden={subtitle == ""}>
+        {#if subtitle}<div id="Sub">
           <div id="Pips">
-            <span class="pip" hidden={rarity == "none" || rarity == ""}></span>
-            <span class="pip" hidden={rarity == "none" || rarity == "" || rarity == "common"}></span>
-            <span class="pip" hidden={rarity != "rare" && rarity != "epic" && rarity != "legendary" && rarity != "mythic"}></span>
-            <span class="pip" hidden={rarity != "epic" && rarity != "legendary" && rarity != "mythic"}></span>
-            <span class="pip" hidden={rarity != "legendary" && rarity != "mythic"}></span>
-            <span class="pip" hidden={rarity != "mythic"}></span>
+            {#if rarity != 'none' && rarity != ''}<span class="pip"></span>{/if}
+            {#if rarity != 'none' && rarity != '' && rarity != 'common'}<span class="pip"></span>{/if}
+            {#if rarity == 'rare' || rarity == 'epic' || rarity == 'legendary' || rarity == 'mythic'}<span class="pip"></span>{/if}
+            {#if rarity == 'epic' || rarity == 'legendary' || rarity == 'mythic'}<span class="pip"></span>{/if}
+            {#if rarity == 'legendary' || rarity == 'mythic'}<span class="pip"></span>{/if}
+            {#if rarity == 'mythic'}<span class="pip"></span>{/if}
           </div>
           <span id="Subtitle">{subtitle}</span>
-        </div>
+        </div>{/if}
       </div>
     </header>
     <div class="rule"></div>
-    <ul class="stats" hidden={stats.length == 0}>
+    {#if stats.length}<ul class="stats">
       {#each stats as s (s.id)}
         <li class="stat" part="TooltipCard.row">
           <span class="label" part="TooltipCard.label">{s.label}</span>
           <span class="value" part="TooltipCard.figure">{s.value}</span>
-          <div class="delta" class:good={s.better ? s.delta < 0 : s.delta > 0} class:bad={s.better ? s.delta > 0 : s.delta < 0} hidden={s.delta == 0}>
+          {#if s.delta != 0}<div class="delta" class:good={s.better ? s.delta < 0 : s.delta > 0} class:bad={s.better ? s.delta > 0 : s.delta < 0}>
             <svg class="mark" class:down={s.delta < 0} viewBox="0 0 8 7"><polygon points="4,0 8,7 0,7"></polygon></svg>
             <span class="amount">{s.deltaText}</span>
-          </div>
+          </div>{/if}
         </li>
       {/each}
-    </ul>
-    <p id="Body" hidden={body == ""}>{body}</p>
-    <p id="Footer" hidden={footer == ""}>{footer}</p>
-    <ul id="Hints" hidden={hints.length == 0}>
+    </ul>{/if}
+    {#if body}<p id="Body">{body}</p>{/if}
+    {#if footer}<p id="Footer">{footer}</p>{/if}
+    {#if hints.length}<ul id="Hints">
       {#each hints as h (h.id)}
-        <li class="hint" part="TooltipCard.badge"><kbd class="key" data-action={h.action} hidden={h.action == ""}></kbd><span>{h.text}</span></li>
+        <li class="hint" part="TooltipCard.badge">{#if h.action}<kbd class="key" data-action={h.action}></kbd>{/if}<span>{h.text}</span></li>
       {/each}
-    </ul>
+    </ul>{/if}
   </section>
 </div>
 
 <style>
-#TooltipCard { display: flex; flex-direction: row; align-items: start; gap: var(--space-sm); --rarity: var(--line-strong); }
-[part="TooltipCard.frame"] { display: flex; flex-direction: column; width: var(--measure-md); gap: var(--space-sm); }
+:host { display: flex; flex-direction: row; flex-wrap: wrap; align-items: start; gap: var(--space-sm); max-inline-size: 100%; --rarity: var(--line-strong); }
+[part="TooltipCard.frame"] { display: flex; flex-direction: column; width: var(--measure-md); max-width: 100%; gap: var(--space-sm); }
 .common { --rarity: var(--common); }
 .uncommon { --rarity: var(--uncommon); }
 .rare { --rarity: var(--rare); }
@@ -89,15 +89,15 @@
 #Art { width: var(--size-touch); height: var(--size-touch); }
 .glyph { width: var(--size-sm); height: var(--size-sm); color: var(--rarity); }
 #Names { display: flex; flex-direction: column; gap: var(--space-xxs); flex: 1; min-width: 0; }
-[part="TooltipCard.title"] { line-clamp: 2; }
-#Sub { display: flex; align-items: center; gap: var(--space-xs); }
+[part="TooltipCard.title"] { margin: 0; line-clamp: 2; }
+#Sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); }
 #Pips { display: flex; gap: var(--space-xs); }
 .pip { width: var(--space-xs); height: var(--space-xs); rotate: 45deg; background: var(--rarity); }
 #Subtitle { font: var(--text-sm); color: var(--ink-muted); line-clamp: 2; }
 .rule { width: stretch; height: var(--stroke-hairline); background: var(--rarity); opacity: var(--opacity-muted); }
 .stats { display: flex; flex-direction: column; gap: var(--space-xxs); width: stretch; margin: 0; padding: 0; list-style: none; }
 [part="TooltipCard.row"] { display: flex; align-items: center; gap: var(--space-sm); width: stretch; }
-[part="TooltipCard.label"] { flex: 1; min-width: 0; font: var(--text-base); font-family: var(--label-font); white-space: nowrap; text-overflow: ellipsis; }
+[part="TooltipCard.label"] { flex: 1; min-width: 0; font: var(--text-base); font-family: var(--label-font); overflow-wrap: anywhere; }
 [part="TooltipCard.figure"] { font: var(--text-base); font-family: var(--figure-font); white-space: nowrap; }
 .delta { display: flex; align-items: center; gap: var(--space-xxs); }
 .good { color: var(--trend-up); }

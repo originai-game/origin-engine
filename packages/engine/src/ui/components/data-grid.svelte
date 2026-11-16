@@ -32,7 +32,7 @@
     <div id="Empty" part="DataGrid.empty" role="status">
       <div part="DataGrid.mark" class="mark"><og-icon icon="bag"></og-icon></div>
       <p part="DataGrid.message" class="title">{empty || t("component.data-grid.empty")}</p>
-      <p part="DataGrid.hint" class="hint" hidden={!hint}>{hint}</p>
+      {#if hint}<p part="DataGrid.hint" class="hint">{hint}</p>{/if}
     </div>
   {:else}
     <list id="Rows">
@@ -48,18 +48,20 @@
 </section>
 
 <style>
-#DataGrid { width: stretch; }
+:host { display: flex; flex-direction: column; inline-size: stretch; }
 #Head, .cells { display: grid; grid-template-columns: var(--tracks); gap: var(--space-md); width: stretch; min-width: 0; }
+#Head { padding-inline: var(--space-md); }
 .heading { font-size: var(--font-step-sm); white-space: nowrap; }
 .numeric { text-align: end; font-family: var(--font-mono); }
 #Rows { width: stretch; height: var(--size-6xl); }
 .row { width: stretch; height: var(--row); padding: 0 var(--space-md); justify-content: start; min-width: 0; }
-.cell { width: stretch; white-space: nowrap; text-overflow: ellipsis; }
+.cell { width: stretch; text-align: start; white-space: nowrap; text-overflow: ellipsis; }
+.cell.numeric { text-align: end; }
 #Empty, #Error { display: flex; flex-direction: column; width: stretch; padding: var(--space-xl); gap: var(--space-sm); align-items: center; }
 .mark { display: flex; flex-direction: column; width: var(--size-lg); height: var(--size-lg); border-radius: var(--radius-capsule); align-items: center; justify-content: center; background: var(--control); }
 .mark.danger { color: var(--danger); }
 .title { margin: 0; font: var(--text-base); color: var(--ink); text-align: center; width: stretch; }
 .hint { margin: 0; font: var(--text-sm); color: var(--ink-muted); text-align: center; width: stretch; }
-#Loading { width: stretch; gap: var(--space-xs); padding: var(--space-xs) 0; }
+#Loading { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-xs) 0; }
 .ghost { width: stretch; height: var(--control-sm); border-radius: var(--radius-field); background: linear-gradient(90deg, transparent 30%, var(--sheen) 50%, transparent 70%), var(--control-strong); }
 </style>

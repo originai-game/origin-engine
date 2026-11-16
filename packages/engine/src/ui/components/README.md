@@ -22,6 +22,13 @@ look is scoped CSS and tokens, rings and bars are inline SVG, world tags are
 string table (`<meta name="strings" content="./<component>.en.ogt">`), which
 eject copies too.
 
+HTML elements own layout through scoped CSS: component roots use `:host`,
+optional pieces use `{#if}`, and positioned layers measure against their
+own positioned well or track. Filled surfaces and typography use shared
+default-style tokens; style packs restyle meaningful pieces through parts.
+The virtualised `<list>` and `<cells>` elements remain until their separate
+list conversion. World anchors, ground marks and mass rows remain primitives.
+
 Expressions compute no geometry, so the game hands in what geometry a
 component needs: a chart's line and a path line's route as SVG path data, a radial
 menu's slice positions (`at`, `span`), a split view's ratio from its
@@ -29,6 +36,29 @@ divider's pointer events, a ground mark's world centre.
 
 `og ui eject --list` prints these with the screens. The component document
 test cooks every one from its fixture at desktop and phone sizes.
+
+## Review pages
+
+Every named page below has a `<page>-default` screen with
+`style:default;page:<page>`; render desktop and `phonePortrait`. The
+components sheet also accepts `sample:<member>:<fixture>` to inspect one
+panel or feedback component at full viewport size, for example
+`style:default;sample:tooltipCard:overflow`. Its all-fixtures `states` page
+is a catalogue, not a substitute for an isolated state check.
+
+| Review area | Sheet and pages |
+| --- | --- |
+| HUD instruments (contained bars, centered rings/orbs, ordinary/warning/critical timers) | `sheets/hud`: `meters`, `objectives` |
+| Abilities and touch/button states (cooldown, charges, locked/unaffordable, held/disabled, overflow) | `sheets/hud`: `actions`, `buttons`, `touch` |
+| Compass and maps | `sheets/hud`: `navigation` |
+| Panels and data (breadcrumbs, grid, tooltip comparison, menu, chart, graph, carousel) | `sheets/components`: `panels`, isolated `sample` fixtures |
+| Feedback and loading (celebration, ribbon, skeletons, spinner, split panes, score thresholds, effects, action hints) | `sheets/components`: isolated `sample` fixtures |
+| Cards and run maps | `sheets/card`: `table`, `builder`, `run` |
+| Store, progression and social panels | `sheets/general`: `store`, `progress`, `social`, `states` |
+
+Shooter and racing keep their own group READMEs and sheets. World
+components keep anchor, ground and mass primitives; their 3D frames are
+reviewed on the L4, not the software-renderer sheet.
 
 | Purpose | Documents |
 |---|---|
@@ -92,10 +122,10 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `AbilitySlot` (`ability-slot.svelte`) | `frame` (`.ultimate`), `cell` (a button: `.active` `.cooling` `.full` `.locked` `.off` `.tinted` `:disabled`), `well`, `icon`, `ultimate`, `figure`, `percent`, `badge` (`.short`), `track`, `fill`, `label` |
 | `ActionButton` (`action-button.svelte`) | `disc` (a button: `.primary` `:disabled`), `charge`, `icon`, `text` |
 | `ActionHints` (`action-hints.svelte`) | `frame`, `row` (a button), `cap`, `label` |
-| `Breadcrumbs` (`breadcrumbs.svelte`) | `frame`, `crumb` (`.current`), `icon`, `link` (`[aria-current]`), `current`, `separator` |
-| `Carousel` (`carousel.svelte`) | `frame`, `cell`, `art`, `well`, `title`, `body`, `prev` (a button), `next` (a button), `dot`, `lit` |
+| `Breadcrumbs` (`breadcrumbs.svelte`) | `frame`, `crumb` (`.current`), `icon`, `link`, `current` (`[aria-current=page]`), `separator` |
+| `Carousel` (`carousel.svelte`) | `frame`, `cell`, `art`, `picture`, `well`, `title`, `body`, `prev` (a button: `:disabled` with fewer than two pages), `next` (a button: `:disabled` with fewer than two pages), `dot`, `lit` |
 | `Celebration` (`celebration.svelte`) | `ring`, `shell`, `stage`, `rays`, `halo`, `title`, `value` |
-| `Chart` (`chart.svelte`) | `frame`, `title`, `subtitle`, `tick`, `grid`, `bar` (`.tinted`), `area`, `line`, `label` |
+| `Chart` (`chart.svelte`) | `frame`, `title`, `subtitle`, `tick`, `grid`, `plate`, `bar` (`.tinted`), `area`, `line`, `label` |
 | `Compass` (`compass.svelte`) | `frame`, `window`, `poi` (`.ally` `.enemy` `.loot` `.objective` `.ping`), `distance`, `notch`, `badge` |
 | `Cooldown` (`cooldown.svelte`) | `cell` (a button: `.ready` `:disabled`), `icon`, `figure` |
 | `DamageNumbers` (`damage-numbers.svelte`) | `figure` (`.tinted`) |
@@ -121,11 +151,11 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `RadialMeter` (`radial-meter.svelte`) | `wheels` |
 | `Ribbon` (`ribbon.svelte`) | `frame` (`.bottomLeft` `.bottomRight` `.center` `.danger` `.info` `.success` `.topLeft` `.warn`), `ribbon`, `text` |
 | `SelectionRing` (`selection-ring.svelte`) | `ring` (`.hostile` `.hover` `.neutral` `.segmented`) |
-| `SkeletonGroup` (`skeleton-group.svelte`) | `art`, `line` |
+| `SkeletonGroup` (`skeleton-group.svelte`) | `art`, `picture`, `line` |
 | `SpeechBubble` (`speech-bubble.svelte`) | `frame`, `label`, `line`, `tail` |
 | `Spinner` (`spinner.svelte`) | `ring` |
 | `SplitView` (`split-view.svelte`) | `frame`, `start`, `divider`, `grip`, `end` |
-| `StarBar` (`star-bar.svelte`) | `label`, `figure`, `track`, `fill`, `star` (`.lit`) |
+| `StarBar` (`star-bar.svelte`) | `label`, `figure`, `track`, `well`, `fill`, `star` (`.lit`) |
 | `StatBar` (`stat-bar.svelte`) | `shield`, `frame` (`.bare` `.hud`), `label`, `track`, `fill`, `inside`, `figure` |
 | `StatusGrid` (`status-grid.svelte`) | `cell`, `badge`, `figure` |
 | `Telegraph` (`telegraph.svelte`) | `area` (`.friendly`) |

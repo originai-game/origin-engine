@@ -17,7 +17,7 @@
     <hr class="separator" part="Menu.separator">
   {/if}
   {#each entries as e (e.id)}
-    <div class="row" hidden={e.parent != submenu}>
+    {#if e.parent == submenu}<div class="row">
       {#if e.kind == "separator"}
         <hr class="separator" part="Menu.separator">
       {:else if e.kind == "header"}
@@ -25,21 +25,21 @@
       {:else}
         <button part="Menu.row" class="entry" class:danger={e.danger} role={e.kind == "check" ? "menuitemcheckbox" : e.kind == "radio" ? "menuitemradio" : "menuitem"} aria-checked={e.kind == "check" || e.kind == "radio" ? e.checked : null} aria-label={e.label} disabled={e.disabled} onclick={choose}><div class="face">
           <div class="slot">
-            <og-icon class="glyph" part="Menu.icon" icon={e.icon} hidden={e.icon == "" || e.kind == "check" || e.kind == "radio"}></og-icon>
-            <svg class="check" part="Menu.check" viewBox="0 0 12 12" hidden={e.kind != "check" || !e.checked}><polyline points="2,6.5 5,9.5 10,3"></polyline></svg>
-            <span class="dot" part="Menu.dot" hidden={e.kind != "radio" || !e.checked}></span>
+            {#if e.icon != "" && e.kind != "check" && e.kind != "radio"}<og-icon class="glyph" part="Menu.icon" icon={e.icon}></og-icon>{/if}
+            {#if e.kind == "check" && e.checked}<svg class="check" part="Menu.check" viewBox="0 0 12 12"><polyline points="2,6.5 5,9.5 10,3"></polyline></svg>{/if}
+            {#if e.kind == "radio" && e.checked}<span class="dot" part="Menu.dot"></span>{/if}
           </div>
           <span class="name">{e.label}</span>
-          <span class="shortcut" part="Menu.shortcut" hidden={e.shortcut == ""}>{e.shortcut}</span>
-          <svg class="chevron" part="Menu.chevron" viewBox="0 0 10 10" hidden={!e.more}><polyline points="3.5,1.5 7,5 3.5,8.5"></polyline></svg>
+          {#if e.shortcut}<span class="shortcut" part="Menu.shortcut">{e.shortcut}</span>{/if}
+          {#if e.more}<svg class="chevron" part="Menu.chevron" viewBox="0 0 10 10"><polyline points="3.5,1.5 7,5 3.5,8.5"></polyline></svg>{/if}
         </div></button>
       {/if}
-    </div>
+    </div>{/if}
   {/each}
 </menu>
 
 <style>
-[part="Menu.frame"] { display: flex; flex-direction: column; min-width: var(--measure-xs); max-width: var(--measure-md); margin: 0; padding: var(--space-xs); gap: 0; list-style: none; }
+:host { display: flex; flex-direction: column; min-inline-size: var(--measure-xs); max-inline-size: min(100%, var(--measure-md)); margin: 0; padding: var(--space-xs); gap: 0; list-style: none; }
 [part="Menu.row"] { width: stretch; height: var(--row); padding: 0 var(--space-md); min-width: 0; }
 .row { display: flex; flex-direction: column; width: stretch; }
 .face { display: flex; align-items: center; gap: var(--space-sm); width: stretch; height: stretch; }
@@ -53,6 +53,7 @@
 .name { flex: 1; min-width: 0; font: var(--text-base); text-align: start; white-space: nowrap; text-overflow: ellipsis; }
 [part="Menu.shortcut"] { font: var(--text-sm); color: var(--ink-muted); white-space: nowrap; }
 [part="Menu.chevron"] { width: var(--font-step-2xs); height: var(--font-step-2xs); fill: none; stroke: var(--ink-muted); stroke-width: var(--stroke-thin); }
+[part="Menu.chevron"]:dir(rtl) { scale: -1 1; }
 .back .name { color: var(--ink-muted); }
 [part="Menu.heading"] { padding: var(--space-sm) var(--space-md) var(--space-xs); font: var(--text-caption); }
 [part="Menu.separator"] { width: stretch; margin: var(--space-xs) 0; }

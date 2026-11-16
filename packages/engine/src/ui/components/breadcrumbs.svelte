@@ -10,17 +10,18 @@
   <ol id="Trail">
     {#each items as crumb (crumb.id)}
       <li part="Breadcrumbs.crumb" class="crumb" class:current={crumb.current}>
-        <og-icon part="Breadcrumbs.icon" class="icon" icon={crumb.icon} hidden={!crumb.icon}></og-icon>
-        <a part="Breadcrumbs.link" class="link" href={crumb.id} aria-current={crumb.current ? 'page' : ''} onclick={choose} hidden={crumb.current}>{crumb.label}</a>
-        <span part="Breadcrumbs.current" class="here" hidden={!crumb.current}>{crumb.label}</span>
-        <svg part="Breadcrumbs.separator" class="sep" viewBox="0 0 8 12" hidden={crumb.current}><path d="M2 1l4 5-4 5" fill="none" stroke-width="1.5" stroke-linecap="round"></path></svg>
+        {#if crumb.icon}<og-icon part="Breadcrumbs.icon" class="icon" icon={crumb.icon}></og-icon>{/if}
+        {#if crumb.current}<span part="Breadcrumbs.current" class="here" aria-current="page">{crumb.label}</span>
+        {:else}<a part="Breadcrumbs.link" class="link" href={crumb.id} onclick={choose}>{crumb.label}</a>
+        <svg part="Breadcrumbs.separator" class="sep" viewBox="0 0 8 12"><path d="M2 1l4 5-4 5" fill="none" stroke-width="1.5" stroke-linecap="round"></path></svg>{/if}
       </li>
     {/each}
   </ol>
 </nav>
 
 <style>
-ul, ol { list-style-type: none; }
+:host { display: block; }
+ol { margin: 0; padding: 0; list-style-type: none; }
 #Trail { display: flex; gap: var(--space-xs); align-items: center; flex-wrap: wrap; }
 .crumb { display: flex; gap: var(--space-xs); align-items: center; }
 .icon { width: var(--size-xs); height: var(--size-xs); color: var(--ink-muted); }
@@ -28,4 +29,5 @@ ul, ol { list-style-type: none; }
 .link:hover { color: var(--ink); }
 .here { font: var(--text-sm); color: var(--ink); }
 .sep { width: var(--space-sm); height: var(--space-md); stroke: var(--ink-faint); }
+.sep:dir(rtl) { scale: -1 1; }
 </style>

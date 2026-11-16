@@ -15,11 +15,12 @@
 
 import { og, type UiReadable, type World } from "@origingame/engine";
 import { FIXTURES, NAMES } from "./fixtures.ts";
+import { sample } from "./sample.ts";
 
 const PAGES = ["hud", "panels", "states"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 
-const DOCUMENTS = ["ui/hud.svelte", "ui/panels.svelte", "ui/states.svelte", "ui/sheet.svelte"];
+const DOCUMENTS = ["ui/hud.svelte", "ui/panels.svelte", "ui/states.svelte", "ui/sheet.svelte", "ui/sample.svelte"];
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }, what: string): T {
   if (!r.ok) throw new Error(`${what}: ${r.reason}`);
@@ -89,12 +90,15 @@ export default og.game({
   ui: show,
   commands: {
     style: (world, args) => setStyle(world, STYLES.includes(args[0] as never) ? args[0]! : "fantasy"),
+    sample,
     page: (world, args) => {
+      show(world);
       og.ui.scope(world, "sheet").writable("page", "hud").set(PAGES.includes(args[0] as never) ? args[0]! : "hud");
     },
     reduced: (world, args) => og.ui.configure(world, { reducedMotion: args[0] !== "off" }),
   },
   commandHelp: {
+    sample: { usage: "<member> [fixture]", doc: "One isolated panel or feedback fixture, such as tooltipCard overflow or starBar compact." },
     style: { usage: `<${STYLES.join("|")}>`, doc: "The style the pages are dressed in." },
     page: { usage: `<${PAGES.join("|")}>`, doc: "A review page of the ungrouped components." },
     reduced: { usage: "<on|off>", doc: "Reduced motion on or off." },
