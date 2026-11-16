@@ -1035,8 +1035,13 @@ impl Ui {
             // `painted`: its own commands are painted from the same inputs
             // (their kept ones are placed again where the frame puts them);
             // `own`: and placed where they were.
+            let (own_volatile, ring) = self.paints_alone(i);
+            // Erase a frame-owned effect on the tick it disappears,
+            // including when its subtree could otherwise be copied whole.
+            let ended = self.paint.cache.volatile.contains(&i) && !own_volatile;
             let kept = !early
                 && !volatile.contains(&i)
+                && !ended
                 && !self.tree.draws.contains_key(&i)
                 && !matches!(*node.content, Content::Rich(_));
             let (painted, own) = if !kept {
@@ -1077,7 +1082,6 @@ impl Ui {
             } else {
                 (f32::NAN, f32::NAN)
             };
-            let (own_volatile, ring) = self.paints_alone(i);
             let awaits = self.awaits_instance(node);
             let p = &mut self.paint.cache;
             if awaits {
@@ -1095,7 +1099,7 @@ impl Ui {
             } else {
                 p.ringed.remove(&i);
             }
-            let clean = !delta.0.is_nan() && !own_volatile && !volatile.contains(&i);
+            let clean = !delta.0.is_nan() && !own_volatile && !volatile.contains(&i) && !ended;
             r.set(i, same, clean, delta);
             r.painted[i] = painted;
             judged.push(i);
@@ -1145,7 +1149,8 @@ impl Ui {
     /// a focus ring or outline is drawn over it.
     fn paints_alone(&self, i: usize) -> (bool, bool) {
         let node = &self.tree.nodes[i];
-        let volatile = node.props.exit.is_some()
+        let volatile = self.world.placement.marks.contains_key(&node.key)
+            || node.props.exit.is_some()
             || !node.props.match_key.is_empty()
             || !node.props.view_transition_name.is_empty()
             || !node.layout.links.is_empty()

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI world effects",
+      "summary": "Retained frames remove expired particle bursts instead of replaying their last cached drawing. Frame-owned effects invalidate their drawing once more when they disappear."
+    }
+  ]
+}
