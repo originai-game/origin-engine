@@ -1981,7 +1981,7 @@ version is a decision of its own.
 
 Source: [WebDX web-features 3.45.0](https://www.npmjs.com/package/web-features/v/3.45.0). All 454 entries with a `css.*` compatibility key are included: 257 widely available (high), 56 newly available (low), and 141 not Baseline. Including the newer entries keeps game-UI requirements visible rather than treating Baseline as a ceiling.
 
-**Supported means the output assertion named in the row proves the listed scope.** It does not claim every syntax or subfeature grouped under that WebDX name. **Missing means an implementation gap or a missing output proof**, distinguished in the reason. A missing proof is not evidence that the implementation is absent. Parser acceptance, a property name in source, and an entire test file are not support evidence. This is a conservative, incomplete conformance inventory; unresolved rows stay visible.
+**Supported means the output assertion named in the row proves the listed scope.** It does not claim every syntax or subfeature grouped under that WebDX name. **Missing means an implementation gap or a missing output proof**, distinguished in the reason. A missing proof is not evidence that the implementation is absent. **Not applicable means the feature cannot apply to a game engine's UI** (print, cross-document navigation, browser chrome), with the reason in the row. Parser acceptance, a property name in source, and an entire test file are not support evidence. This is a conservative, incomplete conformance inventory; unresolved rows stay visible.
 
 Part applicability is proved only in the scopes named below: an element test does not prove that a widget `::part` lays out, transforms or paints the property. Inherited, pseudo-element, environment and lifecycle features need their own applicable part scenarios; there is no blanket all-properties claim.
 
@@ -2409,9 +2409,9 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `two-value-display` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::display_lays_out_as_css_display_does`](../crates/og-ui/tests/css_layout.rs). Computed contents flattening, inline flow-root, margin boundary, table spans and caption position; not border collapse/spacing. |
 | `unset-value` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `update` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `url-cross-origin` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `url-integrity` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `url-referrer-policy` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `url-cross-origin` | Not Baseline | Not applicable | Pending parts-as-nodes | Request modifiers for a network fetch: a game's url() names a file of its own cooked package, which is never fetched across origins, so CORS, subresource integrity and referrers do not arise. |
+| `url-integrity` | Not Baseline | Not applicable | Pending parts-as-nodes | Request modifiers for a network fetch: a game's url() names a file of its own cooked package, which is never fetched across origins, so CORS, subresource integrity and referrers do not arise. |
+| `url-referrer-policy` | Not Baseline | Not applicable | Pending parts-as-nodes | Request modifiers for a network fetch: a game's url() names a file of its own cooked package, which is never fetched across origins, so CORS, subresource integrity and referrers do not arise. |
 | `user-action-pseudos` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `user-pseudos` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `user-select` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |

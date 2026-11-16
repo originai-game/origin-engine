@@ -32,6 +32,18 @@ def proof(features, module, test, scope):
         PROVEN[feature] = (module, test, scope)
 
 
+# Feature: one-line reason it cannot apply to a game engine's UI (print,
+# cross-document navigation, WebXR, browser chrome). Neither a gap nor support.
+NOT_APPLICABLE = {}
+
+
+def not_applicable(features, reason):
+    for feature in features.split():
+        if feature in NOT_APPLICABLE:
+            raise ValueError(f"duplicate not applicable: {feature}")
+        NOT_APPLICABLE[feature] = reason
+
+
 proof("aspect-ratio box-sizing width-height min-max-width-height fit-content-function min-max-content logical-properties padding",
       "css_layout", "the_box_model_sizes_as_css_does",
       "Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths.")
@@ -154,6 +166,11 @@ proof("caret-color", "css_paint", "caret_color_paints_a_focused_fields_caret",
 proof("color-mix-variadic contrast-color", "css_paint", "contrast_color_and_variadic_color_mix_reach_the_frame",
       "A three-colour color-mix() draws the three's average (CSS Color 5 §3.3) and a mix with no space is OKLab's; contrast-color(var(--panel)) draws white text on the dark panel and black once the scheme turns light. og-css's color_mix_takes_any_number_of_colours covers omitted and under-100% percentages, one colour and all-0% (transparent); contrast_color_picks_the_ink_that_reads_most holds the pick at √21:1 or more over a grid of grounds.")
 
+# values, units, media and at-rules
+not_applicable("url-cross-origin url-integrity url-referrer-policy",
+               "Request modifiers for a network fetch: a game's url() names a file of its own cooked package, "
+               "which is never fetched across origins, so CORS, subresource integrity and referrers do not arise.")
+
 MISSING = {
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
@@ -165,6 +182,8 @@ MISSING = {
 
 if overlap := PROVEN.keys() & MISSING.keys():
     raise ValueError(f"a proof must state its remaining gaps, not hide MISSING: {sorted(overlap)}")
+if overlap := NOT_APPLICABLE.keys() & (PROVEN.keys() | MISSING.keys()):
+    raise ValueError(f"a feature is either not applicable or proved/missing: {sorted(overlap)}")
 
 PART_PROVEN = {}
 
@@ -218,7 +237,7 @@ def main():
         data = json.load(package.extractfile("package/data.json"))["features"]
     features = {key: value for key, value in data.items()
                 if any(name.startswith("css.") for name in value.get("compat_features", []))}
-    if len(features) != 454 or (PROVEN.keys() | MISSING.keys() | PART_PROVEN.keys()) - features.keys():
+    if len(features) != 454 or (PROVEN.keys() | MISSING.keys() | NOT_APPLICABLE.keys() | PART_PROVEN.keys()) - features.keys():
         raise ValueError("feature inventory drift")
     lines = [START,
              "## 8. Standard CSS output-proof checklist",
@@ -231,7 +250,9 @@ def main():
              "**Supported means the output assertion named in the row proves the listed scope.** "
              "It does not claim every syntax or subfeature grouped under that WebDX name. "
              "**Missing means an implementation gap or a missing output proof**, distinguished in the reason. "
-             "A missing proof is not evidence that the implementation is absent. Parser acceptance, "
+             "A missing proof is not evidence that the implementation is absent. "
+             "**Not applicable means the feature cannot apply to a game engine's UI** "
+             "(print, cross-document navigation, browser chrome), with the reason in the row. Parser acceptance, "
              "a property name in source, and an entire test file are not support evidence. "
              "This is a conservative, incomplete conformance inventory; unresolved rows stay visible.",
              "",
@@ -256,6 +277,9 @@ def main():
             source = proof_source(module, test, "proof")
             state = "Supported (scope →)"
             reason = f"[`{module}::{test}`](../{source}). {scope}"
+        elif key in NOT_APPLICABLE:
+            state = "Not applicable"
+            reason = NOT_APPLICABLE[key]
         else:
             state = "Missing"
             reason = MISSING.get(key, "Output proof not yet reviewed; implementation status unverified.")
@@ -280,7 +304,8 @@ def main():
             raise SystemExit("CSS checklist drift: run scripts/css-coverage.py")
     else:
         path.write_text(new)
-    print(f"454 CSS entries: {len(PROVEN)} scoped output proofs; {454 - len(PROVEN)} missing/gap rows")
+    print(f"454 CSS entries: {len(PROVEN)} scoped output proofs; {len(NOT_APPLICABLE)} not applicable; "
+          f"{454 - len(PROVEN) - len(NOT_APPLICABLE)} missing/gap rows")
 
 
 if __name__ == "__main__":
