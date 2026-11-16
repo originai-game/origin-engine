@@ -19,7 +19,7 @@ beforeAll(() => {
   writeFileSync(join(root, "assets/ui/slots.svelte"), `<meta name="screen" content="Slots" data-layer="menu" data-input="menu">
 <div style="display: flex; flex-wrap: wrap; gap: 24px; padding: 24px">{#each $items as item (item.id)}<ItemSlot name={item.name} icon="potion" count={item.count} cooldown={item.cooldown} cooldownMax={8} selected={item.selected} disabled={item.disabled} locked={item.locked} loading={item.loading} empty={item.empty} showName={true} />{/each}</div>`);
   writeFileSync(join(root, "assets/ui/avatar.svelte"), `<meta name="screen" content="Avatars" data-layer="menu" data-input="menu">
-<div style="display: flex; flex-wrap: wrap; gap: 24px; padding: 24px"><Avatar name={$name} level={12} status={$status} loading={$loading} /><Avatar /></div>`);
+<div style="display: flex; flex-wrap: wrap; gap: 24px; padding: 24px"><Avatar name={$name} level={12} status={$status} loading={$loading} /><Avatar /><Avatar name="Captionless player" showName={false} level={7} status="online" /></div>`);
   const screens = {
     crafting: '<RpgCrafting recipes={$rows} selected={$selected} ingredients={$ingredients} canIncrease={true} busy={$busy} />',
     trade: '<RpgTrade goods={$rows} selected={$selected} mode={$mode} busy={$busy} />',
@@ -93,6 +93,9 @@ test("avatar presence is worded, defaults have a name, and loading replaces pres
     const words = () => elements(engine).map((element) => element.text);
     expect(words()).toContain("Away");
     expect(words()).toContain("Player");
+    expect(words()).not.toContain("Captionless player");
+    expect(elements(engine).some((element) => element.name === "Captionless player")).toBe(true);
+    expect(words()).toContain("Online");
     expect(elements(engine).some((element) => element.role === "progressbar")).toBe(false);
     const scope = og.ui.scope(engine.world, "test");
     scope.writable("loading", false).set(true);

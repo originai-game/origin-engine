@@ -20,6 +20,7 @@
     <Avatar name="Maren" status="offline" />
     <Avatar name="Visitor" loading={true} />
     <Avatar />
+    <div class="identity"><Avatar name="Brenna Vale" portrait={$charPortrait} showName={false} level={12} status="online" /><h2>Brenna Vale</h2></div>
   </div>
 </section>
 
@@ -28,5 +29,6 @@
 h1, h2, .intro { margin: 0; }
 .intro { max-inline-size: var(--measure-md); color: var(--ink-muted); }
 .gallery { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-lg); padding: var(--space-xs); }
+.identity { display: flex; align-items: center; gap: var(--space-md); }
 @media (width < 600px) { .page { gap: var(--space-sm); } .gallery { gap: var(--space-md); --avatar-size: var(--size-xl); } }
 </style>

@@ -2,6 +2,7 @@
 <meta name="strings" content="./avatar.en.ogt">
 <meta name="parts" content="Avatar.frame Avatar.picture Avatar.clip Avatar.portrait Avatar.fallback Avatar.spinner Avatar.ring Avatar.level Avatar.name Avatar.status Avatar.mark Avatar.loading">
 <meta name="prop:name" content="string" data-default="" data-doc="The displayed and accessible name; empty uses the localized unnamed-player label.">
+<meta name="prop:showName" content="bool" data-default="true" data-doc="Shows the name caption; false keeps the accessible name for composition beside a heading.">
 <meta name="prop:portrait" content="number" data-default="0" data-doc="A loaded portrait texture; 0 shows the fallback icon.">
 <meta name="prop:icon" content="string" data-default="person" data-doc="Fallback atlas icon when there is no portrait.">
 <meta name="prop:level" content="number" data-default="0" data-doc="Level badge; 0 hides it.">
@@ -15,6 +16,7 @@
 <meta name="fixture:offline" content='{"name":"Maren","status":"offline"}'>
 <meta name="fixture:empty" content='{}'>
 <meta name="fixture:loading" content='{"name":"Loading companion","loading":true}'>
+<meta name="fixture:captionless" content='{"name":"Brenna Vale","showName":false,"level":12,"status":"online"}'>
 
 <figure id="Avatar" part="Avatar.frame" class="bare" data-frame={frame} data-status={status} aria-label={name || t("base.avatar.unnamed")} aria-busy={loading}>
   <div part="Avatar.picture" class="picture">
@@ -22,7 +24,7 @@
     {#if frame}<div part="Avatar.ring" data-frame={frame}></div>{/if}
     {#if level > 0}<div part="Avatar.level" aria-label={t("base.avatar.level", { level })}>{formatNumber(level)}</div>{/if}
   </div>
-  <p part="Avatar.name">{name || t("base.avatar.unnamed")}</p>
+  {#if showName}<p part="Avatar.name">{name || t("base.avatar.unnamed")}</p>{/if}
   {#if loading}<p part="Avatar.loading" role="status">{t("base.avatar.loading")}</p>
   {:else if status || statusText}<div part="Avatar.status"><div part="Avatar.mark"></div><span>{statusText || (status == 'online' ? t("base.avatar.online") : status == 'away' ? t("base.avatar.away") : status == 'busy' ? t("base.avatar.busy") : t("base.avatar.offline"))}</span></div>{/if}
 </figure>

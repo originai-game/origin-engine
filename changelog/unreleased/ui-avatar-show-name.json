@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui.Avatar",
+      "summary": "Adds showName (default true) to hide the visible caption when composing an avatar beside a heading, preserving its accessible name, level and status."
+    }
+  ]
+}

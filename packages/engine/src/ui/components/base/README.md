@@ -15,6 +15,8 @@ are exposed as data attributes; presence is also worded so it does not rely
 on colour. Native buttons supply focus, hover, press and keyboard/pad
 activation. A pack may replace the look without changing the documents.
 
+Avatar's `showName` defaults to true; set it to false beside a player heading to hide only the caption while preserving the figure's accessible name, level and status.
+
 Review: the RPG sheet's `primitives` page in the default style shows ready,
 selected/cooling, locked, unavailable, loading and empty slots; portrait and
 fallback avatars, level, four presence states and loading.
