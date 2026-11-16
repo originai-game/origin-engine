@@ -559,6 +559,10 @@ pub(crate) fn place_line(
 pub(crate) struct DrawnPiece {
     pub span: usize,
     pub text: String,
+    /// Its first character among the node's marks: its lines' pieces'
+    /// text, each line ended by one break ([`crate::ui::Tree::text_source`]).
+    /// A glyph's `index` counts from it.
+    pub at: usize,
     pub glyphs: Option<Vec<crate::text::VisualGlyph>>,
     pub rect: Rect,
     pub baseline: f32,
@@ -570,6 +574,9 @@ pub(crate) struct DrawnPiece {
 pub struct Segment {
     pub span: usize,
     pub text: String,
+    /// Its first character, counted over its line's pieces' text; its
+    /// glyphs' `index` counts from it.
+    pub at: usize,
     pub glyphs: Option<Vec<crate::text::VisualGlyph>>,
     pub width: f32,
     /// Its piece's rise above the line's baseline.
@@ -612,22 +619,33 @@ fn visual_segments(
             .iter()
             .all(|p| !crate::text::needs_visual(&p.text) && !mixed(p));
     if plain {
+        let mut at = 0;
         return line
             .pieces
             .iter()
-            .map(|p| Segment {
-                span: p.span,
-                text: p.text.clone(),
-                glyphs: None,
-                width: p.width,
-                rise: p.rise,
+            .map(|p| {
+                let s = Segment {
+                    span: p.span,
+                    text: p.text.clone(),
+                    at,
+                    glyphs: None,
+                    width: p.width,
+                    rise: p.rise,
+                };
+                at += p.text.chars().count();
+                s
             })
             .collect();
     }
     // The line's text and where each piece's text lies in it.
     let mut text = String::new();
     let mut ranges = Vec::with_capacity(line.pieces.len());
+    // Each piece's first character, counted over the pieces' text.
+    let mut starts = Vec::with_capacity(line.pieces.len());
+    let mut chars = 0;
     for p in &line.pieces {
+        starts.push(chars);
+        chars += p.text.chars().count();
         let start = text.len();
         if rc.spans[p.span].atom.is_some() {
             text.push('\u{fffc}');
@@ -654,10 +672,12 @@ fn visual_segments(
         for (k, r) in parts {
             let p = &line.pieces[k];
             let s = &rc.spans[p.span];
+            let at = starts[k] + text[ranges[k].start..r.start].chars().count();
             if s.atom.is_some() {
                 out.push(Segment {
                     span: p.span,
                     text: String::new(),
+                    at,
                     glyphs: None,
                     width: p.width,
                     rise: p.rise,
@@ -672,20 +692,21 @@ fn visual_segments(
                 out.push(Segment {
                     span: p.span,
                     text: piece_text.to_string(),
+                    at,
                     glyphs: None,
                     width: span_width(s, piece_text, fonts),
                     rise: p.rise,
                 });
                 continue;
             }
-            let first = text[ranges[k].start..r.start].chars().count();
-            let mut glyphs = m.run(piece_text, rtl, tracking, first);
+            let mut glyphs = m.run(piece_text, rtl, tracking, 0);
             glyphs.retain(|g| !og_i18n::is_bidi_control(g.ch));
             let width = glyphs.iter().map(|g| g.advance).sum::<f32>() * s.step.size
                 + bold_overhang(s, piece_text);
             out.push(Segment {
                 span: p.span,
                 text: piece_text.to_string(),
+                at,
                 glyphs: Some(glyphs),
                 width,
                 rise: p.rise,
@@ -748,6 +769,7 @@ impl Ui {
         let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let mut out = Vec::new();
         let mut line_y = inner.y;
+        let mut first = 0;
         for (k, line) in n.layout.rich_lines.iter().enumerate() {
             let segments = visual_segments(rc, &self.env.fonts, line, self.env.direction);
             let width: f32 = segments.iter().map(|s| s.width).sum::<f32>() + line.indent;
@@ -775,12 +797,19 @@ impl Ui {
                 out.push(DrawnPiece {
                     span: seg.span,
                     text: seg.text,
+                    at: first + seg.at,
                     glyphs: seg.glyphs,
                     rect: Rect::new(x, y, seg.width * sk, line.height * sk),
                     baseline: y + (line.baseline - seg.rise) * sk,
                 });
                 x += seg.width * sk;
             }
+            first += line
+                .pieces
+                .iter()
+                .map(|p| p.text.chars().count())
+                .sum::<usize>()
+                + 1;
             line_y += line.height * sk;
         }
         out
@@ -1287,16 +1316,28 @@ impl Ui {
         let mut out = Vec::new();
         let mut cols = Vec::with_capacity(n.layout.rich_lines.len());
         let mut line_at = 0.0;
+        let mut first = 0;
         for (k, line) in n.layout.rich_lines.iter().enumerate() {
+            let line_first = first;
+            first += line
+                .pieces
+                .iter()
+                .map(|p| p.text.chars().count())
+                .sum::<usize>()
+                + 1;
             let segments: Vec<Segment> = line
                 .pieces
                 .iter()
-                .map(|p| Segment {
-                    span: p.span,
-                    text: p.text.clone(),
-                    glyphs: None,
-                    width: p.width,
-                    rise: p.rise,
+                .scan(0, |at, p| {
+                    *at += p.text.chars().count();
+                    Some(Segment {
+                        span: p.span,
+                        text: p.text.clone(),
+                        at: *at - p.text.chars().count(),
+                        glyphs: None,
+                        width: p.width,
+                        rise: p.rise,
+                    })
                 })
                 .collect();
             let [dx, dy, room] = n.layout.wrap_lines.get(k).copied().unwrap_or([
@@ -1360,6 +1401,7 @@ impl Ui {
                     DrawnPiece {
                         span: seg.span,
                         text: seg.text,
+                        at: line_first + seg.at,
                         glyphs: seg.glyphs,
                         rect: Rect::new(col, y, across, len),
                         baseline: mid + seg.rise * sk,
@@ -1862,7 +1904,7 @@ impl crate::ui::Tree {
 }
 
 /// A text command's clip, through its effects.
-fn text_clip(c: &mut crate::draw::DrawCmd) -> Option<&mut Rect> {
+pub(crate) fn text_clip(c: &mut crate::draw::DrawCmd) -> Option<&mut Rect> {
     use crate::draw::DrawCmd;
     match c {
         DrawCmd::StyledText { text, .. } => match text.as_mut() {
@@ -1877,7 +1919,7 @@ fn text_clip(c: &mut crate::draw::DrawCmd) -> Option<&mut Rect> {
 /// One decoration line of `style` down a vertical line: from `y` for
 /// `length`, its left at `x` ([`decoration_line`] turned a quarter).
 #[allow(clippy::too_many_arguments)]
-fn vertical_decoration_line(
+pub(crate) fn vertical_decoration_line(
     x: f32,
     y: f32,
     length: f32,

@@ -24,6 +24,7 @@ pub(crate) mod scene_text;
 pub(crate) mod select;
 pub(crate) mod settlement;
 mod snapshot;
+pub(crate) mod target_text;
 mod text_controls;
 mod tree;
 pub(crate) mod visit;

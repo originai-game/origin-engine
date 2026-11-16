@@ -275,6 +275,7 @@ impl Ui {
         if matches!(n.widget, Widget::TextArea { .. }) {
             self.text_area_commands(i, rect, clip, cmds);
         }
+        let text_from = cmds.len();
         match &*n.content {
             Content::Text(_) if matches!(n.widget, Widget::TextArea { .. }) => {}
             // A framed text control's frame draws its text (`Ui::field_frame`).
@@ -778,6 +779,9 @@ impl Ui {
                 clip,
             }),
             Content::None => {}
+        }
+        if !n.marks.target_text.is_empty() {
+            self.target_text_commands(i, text_from, cmds);
         }
         self.shape_commands(n, cmds);
     }

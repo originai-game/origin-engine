@@ -369,35 +369,48 @@ impl Ui {
         }
     }
 
-    /// Records a built element's `::selection` style for the draw.
+    /// Records a built element's `::selection` and `::target-text`
+    /// styles for the draw.
     pub(crate) fn note_selection(&mut self, key: u64, r: &Resolved) {
-        let style = r
-            .generated
-            .as_ref()
-            .and_then(|g| g.selection.as_ref())
-            .and_then(|body| self.selection_style(body));
-        match style {
-            Some(s) => {
-                if self
-                    .docs
-                    .state()
-                    .selection
-                    .get(&key)
-                    .is_none_or(|old| **old != s)
-                {
-                    self.docs.state_mut().selection.insert(key, Arc::new(s));
+        let g = r.generated.as_ref();
+        for target in [false, true] {
+            let body = g.and_then(|g| {
+                if target {
+                    g.target_text.as_ref()
+                } else {
+                    g.selection.as_ref()
                 }
+            });
+            let style = body.and_then(|body| self.selection_style(body));
+            let state = self.docs.state();
+            let map = if target {
+                &state.target_text
+            } else {
+                &state.selection
+            };
+            let same = match &style {
+                Some(s) => map.get(&key).is_some_and(|old| **old == *s),
+                None => !map.contains_key(&key),
+            };
+            if same {
+                continue;
             }
-            None => {
-                if !self.docs.state().selection.is_empty() {
-                    self.docs.state_mut().selection.remove(&key);
-                }
-            }
+            let state = self.docs.state_mut();
+            let map = if target {
+                &mut state.target_text
+            } else {
+                &mut state.selection
+            };
+            match style {
+                Some(s) => map.insert(key, Arc::new(s)),
+                None => map.remove(&key),
+            };
         }
     }
 
-    /// `::selection`'s background, color, decoration and shadows (CSS
-    /// Pseudo-Elements 4 §3.2); `None` when it declares none of them.
+    /// A highlight pseudo-element's background, color, decoration and
+    /// shadows (CSS Pseudo-Elements 4 §3.2); `None` when it declares none
+    /// of them.
     pub(crate) fn selection_style(&self, body: &str) -> Option<crate::doc::generated::Selection> {
         let decls = crate::doc::css::split_decls(body).ok()?;
         let color = self.declared_color(&decls, &["color"]);

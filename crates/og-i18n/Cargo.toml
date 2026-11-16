@@ -22,6 +22,9 @@ icu_casemap = "2.3"
 # Text Decoration 4 §3.1), and a `::first-letter` takes the punctuation
 # around its letter; the version Parley's own data is built from.
 icu_properties = { version = "2.4", default-features = false, features = ["compiled_data"] }
+# Canonical decomposition (NFD) for accent-insensitive search
+# ([`text::search_fold`]); Parley already links it with the same data.
+icu_normalizer = { version = "2.4", default-features = false, features = ["compiled_data"] }
 icu_locale_core = "2.3"
 icu_plurals = "2.3"
 fixed_decimal = "0.7"

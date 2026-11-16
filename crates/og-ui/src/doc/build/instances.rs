@@ -157,7 +157,7 @@ pub struct RetainedHost {
     /// Popover elements by their popover key, for `:popover-open`.
     pub popover_nodes: BTreeMap<u64, MountedNode>,
     /// The `:target` element last applied, and the fragment it was for.
-    pub target: (Option<String>, Vec<MountedNode>),
+    pub target: (Option<super::state::FragmentTarget>, Vec<MountedNode>),
     /// The screen roots `:active-view-transition` matched last frame: their
     /// layers' view transitions were running.
     pub transitioning: Vec<MountedNode>,

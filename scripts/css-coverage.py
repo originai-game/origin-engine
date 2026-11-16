@@ -330,7 +330,8 @@ not_applicable("window-controls-overlay window-drag", "Installed web-app title-b
 not_applicable("picture-in-picture", "Styles a video in the browser's floating picture-in-picture window, which is browser chrome outside the game's surface.")
 not_applicable("fullscreen", "The Fullscreen API's :fullscreen and its ::backdrop style one element taken full screen by the browser; the game's surface is the screen, and the host decides whether its window is full screen.")
 not_applicable("resizable", "@media (resizable) asks whether script may resize the browser window; the host, not a document, owns the game's window.")
-not_applicable("target-text", "::target-text styles the text a URL scroll-to-text fragment matched on navigation; a game's documents are not navigated to by URL.")
+proof("target-text", "css_selectors", "a_text_fragment_marks_scrolls_to_and_targets_its_passage",
+      "Three links in a 100px scroller over two paragraphs. #:~:text=Gate-,IS,-shut marks only the second \"is\" of \"the gate is open and the gate is shut\" (the first fails its suffix): one ::target-text green band 70 to 90% along the line, red glyphs clipped inside it and the line's own ink on both sides; the paragraph becomes :target and its line's middle is within 2px of the scroller's. #:~:text=gate,open marks Near's last word and Far's first four (a range across elements, Far's band checked after scrolling to it), and their box, not either paragraph, is :target. #Near:~:text=nowhere marks nothing and makes Near :target. Matching is case-, accent- and space-insensitive on UAX #29 word boundaries in laid-out text; a rich line with right-to-left runs is searched in visual order; following an #id with no text does not scroll.")
 not_applicable("ime-mode", "Obsolete, non-standard IME switch that browsers ignore in favour of inputmode; og-ui fields take inputmode and the platform's text input.")
 
 # layout

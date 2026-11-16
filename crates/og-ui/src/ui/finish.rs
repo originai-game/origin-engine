@@ -407,6 +407,17 @@ impl Ui {
             {
                 continue;
             }
+            // A link's text fragment, followed this tick: its passages
+            // found in the boxes just laid out, laid out again with the
+            // first scrolled to.
+            if self.docs.state().text_directives.is_some() && self.follow_text_fragment() {
+                continue;
+            }
+            let mut measure = Measure {
+                fonts: &self.env.fonts,
+                texts: &mut self.layout.texts,
+                body: self.env.theme.type_ramp.body,
+            };
             // Scroll anchoring: a scrolled container follows its anchor
             // box (once a frame), laid out again where it moved.
             if !self.interaction.state.scroll_anchors.is_empty()
@@ -1309,7 +1320,8 @@ impl Ui {
             self.tree
                 .resolve_cursor(order, &self.env, &self.paint, &self.interaction)
         };
-        let selected = self.interaction.mark_selection(&mut self.tree);
+        let mut selected = self.interaction.mark_selection(&mut self.tree);
+        selected.extend(self.interaction.mark_target_text(&mut self.tree));
         (cursor, cursor_images, selected)
     }
 

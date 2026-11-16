@@ -3101,6 +3101,7 @@ dependencies = [
  "fixed_decimal",
  "icu_casemap",
  "icu_locale_core",
+ "icu_normalizer",
  "icu_plurals",
  "icu_properties",
  "icu_segmenter",

@@ -42,7 +42,8 @@ pub use plural::{PluralCategory, format_ordinal, plural_category};
 pub use table::{Catalog, MissingKey, STRINGS_TYPE, StringTable, base_table, check_tables};
 pub use text::{
     WordKind, WordSegment, graphemes, is_bidi_control, is_rtl_char, needs_shaping,
-    paragraph_direction, takes_emphasis, word_per_character, word_segments,
+    paragraph_direction, search_fold, takes_emphasis, word_per_character,
+    word_segments,
 };
 
 #[cfg(test)]
