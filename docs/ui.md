@@ -447,7 +447,7 @@ engine differs or limits as follows:
   of equal priorities, the highlight registered later is above. In all
   three, each property comes from the nearest of the text's element and
   its ancestors that declares it, `background-color` too (highlight
-  inheritance), so `:root::selection { … }` styles every element. `::file-selector-button` styles nothing. The CSS 2
+  inheritance), so `:root::selection { … }` styles every element. `::file-selector-button` is a file input's button, a box of its own beside the names chosen: its rules style it as they style a `<button>`, and the input takes the press and the focus. The CSS 2
   single-colon spellings work.
 - **Units.** Physical units are 96 px to the inch. Viewport units read the
   play surface; the small and large forms read it with the browser's

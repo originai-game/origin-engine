@@ -99,7 +99,7 @@ kinds! {
     Audio leaf "audio"
         "HTML's `<audio>`: the og.AudioSource entity `src` binds, played and paused by `paused`; drawn only with `controls`.";
     File leaf "file"
-        "A file input (`<input type=\"file\">`), built only where the host opens a file picker (og.ui.filePicker): a button whose press sends `filepick`; the host writes the names chosen to two-way `fileValue`.";
+        "A file input (`<input type=\"file\">`), built only where the host opens a file picker (og.ui.filePicker): its `::file-selector-button` (a button showing its text, \"Choose file…\" when it has none) and beside it the names chosen (\"No file chosen\" before any). A press anywhere on it sends `filepick`; the host writes the names chosen to two-way `fileValue`.";
     Radio leaf "radio"
         "One choice of a radio group with its caption: checked while its group (`bind:group`) holds its value, which a press writes.";
     Tabs leaf "tabs"

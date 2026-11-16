@@ -741,9 +741,9 @@ Its own props, beside every element's:
 | `loop` | `bool` | Starts again at its end. |
 | `controls` | `bool` | Draws a play and pause button and its time. |
 
-## 23. `<input type="file">` (`file`): A file input (`<input type="file">`), built only where the host opens a file picker (og.ui.filePicker): a button whose press sends `filepick`; the host writes the names chosen to two-way `fileValue`
+## 23. `<input type="file">` (`file`): A file input (`<input type="file">`), built only where the host opens a file picker (og.ui.filePicker): its `::file-selector-button` (a button showing its text, "Choose file…" when it has none) and beside it the names chosen ("No file chosen" before any). A press anywhere on it sends `filepick`; the host writes the names chosen to two-way `fileValue`
 
-A file input (`<input type="file">`), built only where the host opens a file picker (og.ui.filePicker): a button whose press sends `filepick`; the host writes the names chosen to two-way `fileValue`. A leaf; text-bearing controls accept text content: `<input type="file" id="Name" />`.
+A file input (`<input type="file">`), built only where the host opens a file picker (og.ui.filePicker): its `::file-selector-button` (a button showing its text, "Choose file…" when it has none) and beside it the names chosen ("No file chosen" before any). A press anywhere on it sends `filepick`; the host writes the names chosen to two-way `fileValue`. A leaf; text-bearing controls accept text content: `<input type="file" id="Name" />`.
 
 Its own props, beside every element's:
 

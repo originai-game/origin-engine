@@ -17,7 +17,7 @@ use std::sync::Arc;
 /// `::`. CSS 2's single-colon spellings of the first four are accepted too.
 /// `column` is CSS Multicol 2 §4.8's `::column`, and `column-scroll-marker`
 /// its `::column::scroll-marker`.
-pub const PSEUDOS: [&str; 16] = [
+pub const PSEUDOS: [&str; 15] = [
     "before",
     "after",
     "marker",
@@ -26,7 +26,6 @@ pub const PSEUDOS: [&str; 16] = [
     "placeholder",
     "selection",
     "target-text",
-    "file-selector-button",
     "scroll-marker",
     "scroll-button-up",
     "scroll-button-down",
@@ -91,9 +90,7 @@ pub fn allows(pseudo: &str, property: &str) -> bool {
             property,
             "background-color" | "background" | "color" | "text-decoration" | "text-shadow"
         ),
-        // Its control does not exist (a file input needs a host picker), so
-        // any property is accepted and styles nothing.
-        _ => true,
+        _ => false,
     }
 }
 
@@ -145,7 +142,6 @@ pub fn check(name: &str, value: &str) -> Result<(), String> {
         "counter-reset" | "counter-increment" | "counter-set" => {
             parse_ops(property, value).map(|_| ())
         }
-        _ if pseudo == Some("file-selector-button") => Ok(()),
         _ if pseudo == Some("column") => {
             super::css::declarations(&format!("{property}: {value};"), 0).map(|_| ())
         }

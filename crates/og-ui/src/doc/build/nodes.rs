@@ -1,4 +1,4 @@
-use super::fields::FILE_LABEL;
+use super::fields::{FILE_LABEL, NO_FILE};
 use super::*;
 use crate::doc::schema::Kind;
 
@@ -254,7 +254,7 @@ impl Ui {
                 resp = self.media_element(b, n, id.as_str(), key, &r, kind == Kind::Video);
             }
             Kind::File => {
-                resp = self.doc_file(b, n, &doc, &id, &path, &r, &text_of)?;
+                resp = self.doc_file(b, n, &doc, &id, &path, &r, styled, &text_of)?;
             }
             Kind::Datetime => {
                 resp = self.doc_datetime(b, n, i, &doc, &id, key, &r);
@@ -1316,6 +1316,7 @@ impl Ui {
         id: &String,
         path: &String,
         r: &Resolved,
+        styled: &Resolved,
         text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
     ) -> Option<crate::ui::Response> {
         if !self.env.file_picker() {
@@ -1325,13 +1326,27 @@ impl Ui {
             ));
             return None;
         }
-        let chosen = r.str("fileValue").unwrap_or_default();
+        let chosen = r.str("fileValue").filter(|c| !c.is_empty());
         let text = match text_of(r, b) {
             t if !t.is_empty() => t,
-            _ if !chosen.is_empty() => chosen.to_string(),
             _ => FILE_LABEL.to_string(),
         };
-        let resp = self.button(id.as_str(), &text, r.button_desc());
+        let label = crate::LabelDesc {
+            // `field-sizing: fixed` keeps the names at the width "none"
+            // takes; `content` fits them.
+            ellipsis: styled.str("fieldSizing") != Some("content"),
+            ..r.label_desc(self.theme(), self.fonts(), r.own_flow().rtl)
+        };
+        let names = chosen.unwrap_or(NO_FILE);
+        let (resp, button) = self.file_input(id.as_str(), &text, names, r.button_desc(), label);
+        // `::file-selector-button` styles the button: its box, and its
+        // plate as its host (a `<button>`'s plate declarations).
+        if let Some(pseudo) = self
+            .style
+            .pseudo_node(b, styled, path, "file-selector-button")
+        {
+            self.style_pseudo_box(b, button, &pseudo);
+        }
         if resp.clicked && !r.flag("disabled") {
             b.event(
                 path,

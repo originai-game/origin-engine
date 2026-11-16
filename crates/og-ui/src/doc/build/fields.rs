@@ -1297,40 +1297,8 @@ impl Ui {
                 *min = min.max(el.padding.vertical() + down);
             }
         }
-        if source.kind == Some(Kind::File) && !content {
-            self.fixed_file_width(i, &mut el, r);
-        }
         *self.tree.el_mut(i) = el;
         self.tree.nodes[i].decor = decor.map(Box::new);
-    }
-
-    /// `field-sizing: fixed` on a file input: it keeps the width its
-    /// default label takes whatever names are chosen, a longer one cut
-    /// with an ellipsis; `content` fits the names shown.
-    fn fixed_file_width(&mut self, i: usize, el: &mut Element, r: &Resolved) {
-        let chosen = r.str("fileValue").unwrap_or_default();
-        let slot = self.tree.nodes[i].content_slot;
-        if chosen.is_empty()
-            || slot == crate::layout::NONE
-            || self.tree.nodes[i].probe_text != chosen
-        {
-            return;
-        }
-        let Size::Fit { min, max } = el.width else {
-            return;
-        };
-        let Some(step) = self.tree.nodes[slot].text().map(|t| t.step) else {
-            return;
-        };
-        let crate::layout::Content::Text(shown) = self.tree.content_mut(slot) else {
-            return;
-        };
-        shown.ellipsis = true;
-        let mut label = shown.clone();
-        label.text = FILE_LABEL.into();
-        let pad = self.tree.nodes[slot].el.padding.horizontal() + el.padding.horizontal();
-        let w = crate::layout::text_preferred(label.at(step), &self.env.fonts) + pad;
-        el.width = Size::Fixed(w.min(max).max(min));
     }
 
     fn apply_document_semantics(&mut self, n: &DocNode, r: &Resolved, base: &RenderFields) {
@@ -1873,5 +1841,9 @@ fn text_align_of(a: &str, rtl: bool) -> TextAlign {
     }
 }
 
-/// A file input's label while it names no file and its text says nothing.
+/// A file input's `::file-selector-button` label while its text says
+/// nothing.
 pub const FILE_LABEL: &str = "Choose file…";
+
+/// What a file input shows beside its button while it names no file.
+pub const NO_FILE: &str = "No file chosen";

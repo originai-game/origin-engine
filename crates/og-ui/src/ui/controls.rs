@@ -1,4 +1,5 @@
 use super::*;
+use crate::doc::build::fields::NO_FILE;
 
 impl Ui {
     /// Text in MSDF, wrapping at its width unless `nowrap`.
@@ -139,6 +140,84 @@ impl Ui {
     pub(crate) fn close_button(&mut self) {
         self.front.button_ink.pop();
         self.close();
+    }
+
+    /// A file input (`<input type="file">`): its box takes the press and
+    /// the focus and holds, in a row, its `::file-selector-button` (a
+    /// button plate showing `text`, hovered and pressed with the input and
+    /// no stop of its own) and the `names` chosen. A `label`
+    /// with an ellipsis keeps the names at the width [`NO_FILE`] takes, a
+    /// longer one cut with "…". Answers the input's response and the
+    /// button's node.
+    pub(crate) fn file_input(
+        &mut self,
+        id: impl Into<Id>,
+        text: &str,
+        names: &str,
+        desc: ButtonDesc,
+        label: LabelDesc,
+    ) -> (Response, usize) {
+        let enabled = !desc.disabled;
+        let gap = self.env.theme.space.sm;
+        let i = self.push(
+            "file",
+            id.into(),
+            Element {
+                direction: Direction::Row,
+                cross: Cross::Center,
+                gap,
+                interactive: enabled,
+                focusable: enabled,
+                ..Element::default()
+            },
+        );
+        self.tree.stack.push(i);
+        self.tree.nodes[i].disabled = desc.disabled;
+        let r = if enabled {
+            self.nav_target(i, false)
+        } else {
+            Response::default()
+        };
+        let key = self.tree.nodes[i].key;
+        if desc.autofocus
+            && enabled
+            && self.interaction.state.scope == 0
+            && !self.interaction.state.hits.iter().any(|h| h.key == key)
+        {
+            self.interaction.request_focus = key;
+        }
+        let button = self.leaf("file-button", "Button".into(), Element::default());
+        let amounts = if enabled {
+            self.state_amounts(button, &r)
+        } else {
+            (0.0, 0.0)
+        };
+        let press = self.button_motion(button, r, false);
+        let plate = ButtonDesc {
+            width: None,
+            autofocus: false,
+            ..desc
+        };
+        self.apply_button(button, text, plate, r, amounts, press);
+        self.tree.el_mut(button).interactive = false;
+        let k = self.leaf("label", "Names".into(), Element::default());
+        let fixed = label.ellipsis;
+        self.apply_label(
+            k,
+            names,
+            LabelDesc {
+                nowrap: true,
+                ..label
+            },
+        );
+        if fixed && let Content::Text(shown) = &*self.tree.nodes[k].content {
+            let mut empty = shown.clone();
+            empty.text = NO_FILE.into();
+            let w = crate::layout::text_preferred(empty.at(shown.step), &self.env.fonts);
+            self.tree.el_mut(k).width = Size::Fixed(w);
+        }
+        self.close();
+        (r, button)
     }
 
     /// The ink a text or icon without its own colour takes: its button's

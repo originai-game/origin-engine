@@ -2634,12 +2634,13 @@ fn rule_props(entries: &[og_core::ogt::Entry], kind: Kind) -> Result<Vec<PropSet
 /// container's `::column::scroll-marker` (CSS Multicol 2 §4.8), by their
 /// name in [`DocNode::pseudo`]. Longer spellings come first: a selector is
 /// matched by its ending.
-const BOXES: [(&str, &str); 18] = [
+const BOXES: [(&str, &str); 19] = [
     ("::before", "before"),
     ("::after", "after"),
     ("::backdrop", "backdrop"),
     ("::picker(select)", "picker"),
     ("::details-content", "details-content"),
+    ("::file-selector-button", "file-selector-button"),
     ("::-og-hold", "hold"),
     ("::-og-arrow", "arrow"),
     ("::scroll-marker-group", "scroll-marker-group"),
@@ -2667,7 +2668,8 @@ const ANY_BUTTON: &str = "::scroll-button(*)";
 /// Whether `node`, an element of `kind`, draws `pseudo` as a box: a box
 /// element's `::before` and `::after` (a text element's join its text as
 /// runs), a dialog's or a popover's `::backdrop`, a select's `::picker(select)`, a
-/// details element's `::details-content`, a `data-hold` element's
+/// details element's `::details-content`, a file input's
+/// `::file-selector-button`, a `data-hold` element's
 /// `::-og-hold`, a popover's `::-og-arrow`.
 fn holds(pseudo: &str, kind: Kind, node: &DocNode) -> bool {
     match pseudo {
@@ -2679,6 +2681,7 @@ fn holds(pseudo: &str, kind: Kind, node: &DocNode) -> bool {
         "backdrop" => kind == Kind::Dialog || node.props.iter().any(|p| p.name() == "popover"),
         "picker" => kind == Kind::Select,
         "details-content" => kind == Kind::Details,
+        "file-selector-button" => kind == Kind::File,
         "hold" => node.props.iter().any(|p| p.name() == "dataHold"),
         "arrow" => node.props.iter().any(|p| p.name() == "popover"),
         // Any element may have a marker (its nearest scroll container
@@ -2728,6 +2731,13 @@ fn pseudo_node(doc: &mut UiDocument, i: usize, pseudo: &'static str) -> usize {
         frame: None,
         ..doc.nodes[i].clone()
     };
+    // A file input's button is a `<button>`: its box declarations are its
+    // plate's, as an HTML button's are. It is no element a selector
+    // reaches (those are the document's own, listed before this node).
+    if pseudo == "file-selector-button" {
+        node.kind = NodeKind::Element(Kind::Button);
+        node.selector_tag = Some("button".into());
+    }
     if matches!(pseudo, "before" | "after") {
         let entries = css::declarations("display: inline;", node.line).expect("a display");
         node.props = rule_props(&entries, Kind::Box).expect("a box display");
