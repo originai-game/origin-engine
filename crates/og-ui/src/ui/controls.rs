@@ -326,15 +326,16 @@ impl Ui {
         self.tree.nodes[i].probe_text = desc.label;
     }
 
-    /// A capsule track filled to `value` (0–1).
+    /// A capsule track filled to `value` (0–1) along its axis.
     pub(crate) fn progress(&mut self, id: impl Into<Id>, value: f32, desc: ProgressDesc) {
         let t = self.env.theme;
+        let (width, height) = desc.axis.size(Size::grow(), Size::Fixed(t.space.sm));
         let i = self.leaf(
             "progress",
             id.into(),
             Element {
-                width: desc.width.unwrap_or(Size::grow()),
-                height: Size::Fixed(t.space.sm),
+                width: desc.width.unwrap_or(width),
+                height: desc.height.unwrap_or(height),
                 ..Element::default()
             },
         );
@@ -361,7 +362,10 @@ impl Ui {
             self.set_anim(key, a);
             v = a.a;
         }
-        self.tree.nodes[i].widget = Widget::Progress { value: v };
+        self.tree.nodes[i].widget = Widget::Progress {
+            value: v,
+            axis: desc.axis,
+        };
         // The fill stays the track's drawing (`node_draw`): it is a fraction
         // of the track's device-pixel box, never narrower than it is tall.
         self.bar_track(

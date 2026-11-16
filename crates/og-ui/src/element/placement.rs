@@ -39,6 +39,9 @@ pub struct Edges {
     /// inset, if any, moves it). Layout places it, so it follows a parent
     /// whose width changed this frame: a slider's knob at its value.
     pub across: Option<f32>,
+    /// As `across`, down the parent's height (0: at its top, 1: at its
+    /// bottom; the top inset, if any, moves it): a vertical slider's knob.
+    pub down: Option<f32>,
 }
 
 impl Edges {
@@ -50,6 +53,7 @@ impl Edges {
             || self.center_x
             || self.center_y
             || self.across.is_some()
+            || self.down.is_some()
     }
 }
 

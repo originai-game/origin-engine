@@ -6,7 +6,8 @@ impl Ui {
     /// An HTML `<meter>`: a bar of `value` between `min` and `max` whose
     /// fill is dressed by the region [`MeterRegion::of`] puts the value in
     /// (`Meter.fill[region=optimum|suboptimum|poor]`, undressed success,
-    /// warn and danger) over `Meter.track`. Role meter with its range.
+    /// warn and danger) over `Meter.track`, along its [`ValueAxis`]. Role
+    /// meter with its range.
     pub(crate) fn gauge(&mut self, id: impl Into<Id>, desc: &GaugeDesc) {
         let t = self.env.theme;
         let p = t.palette;
@@ -22,15 +23,14 @@ impl Ui {
         } else {
             0.0
         };
-        let i = self.leaf(
-            "meter",
-            id.into(),
+        let i = self.leaf("meter", id.into(), {
+            let (width, height) = desc.axis.size(Size::Fixed(160.0), Size::Fixed(t.space.md));
             Element {
-                width: desc.width.unwrap_or(Size::Fixed(160.0)),
-                height: Size::Fixed(t.space.md),
+                width: desc.width.unwrap_or(width),
+                height: desc.height.unwrap_or(height),
                 ..Element::default()
-            },
-        );
+            }
+        });
         let (name, color) = match region {
             MeterRegion::Optimum => ("optimum", p.success),
             MeterRegion::Suboptimum => ("suboptimum", p.warn),
@@ -39,7 +39,7 @@ impl Ui {
         let mut shapes = Vec::new();
         if frac > 0.0 {
             shapes.push(Shape::Part {
-                frame: Frame::left(0.0, frac),
+                frame: Frame::along(desc.axis, 0.0, frac),
                 part: crate::dress::PartRef::new("Meter", "fill", crate::tokens::ElementClass::Bar)
                     .attr("region", name),
                 fill: Some(color),

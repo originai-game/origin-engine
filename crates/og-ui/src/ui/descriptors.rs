@@ -1551,8 +1551,11 @@ pub struct ImageDesc {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ProgressDesc {
-    /// `None`: grow.
+    /// `None`: grow along its axis, its thickness across it.
     pub width: Option<Size>,
+    /// `None`: as `width`, the other way.
+    pub height: Option<Size>,
+    pub axis: crate::widgets::ValueAxis,
 }
 
 /// Spinner behavior for an editable number field. Its raw string remains

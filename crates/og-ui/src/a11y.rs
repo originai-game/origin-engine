@@ -518,7 +518,7 @@ pub(crate) fn value_of(n: &Node) -> String {
         return v.clone();
     }
     match n.widget {
-        Widget::Progress { value } => format!("{:.0}%", value.clamp(0.0, 1.0) * 100.0),
+        Widget::Progress { value, .. } => format!("{:.0}%", value.clamp(0.0, 1.0) * 100.0),
         _ => String::new(),
     }
 }
@@ -531,7 +531,7 @@ pub(crate) fn range_of(n: &Node) -> Option<A11yRange> {
         return Some(r);
     }
     match n.widget {
-        Widget::Progress { value } => Some(A11yRange {
+        Widget::Progress { value, .. } => Some(A11yRange {
             min: Some(0.0),
             max: Some(100.0),
             now: (value.clamp(0.0, 1.0) * 100.0).round(),

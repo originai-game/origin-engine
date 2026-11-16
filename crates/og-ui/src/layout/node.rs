@@ -496,6 +496,7 @@ pub enum Widget {
     },
     Progress {
         value: f32,
+        axis: crate::widgets::ValueAxis,
     },
     Field(EditView),
     /// A multi-line text area: its text (the value with any composition),

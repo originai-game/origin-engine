@@ -467,6 +467,94 @@ fn details_content_styles_the_disclosures_content_box() {
     );
 }
 
+/// CSS Writing Modes 4 with HTML's vertical form controls: a range, a
+/// progress bar and a meter in a vertical writing mode stand up along
+/// their inline axis, their `height` its length. Left to right, the value
+/// runs top to bottom (min at the top); `direction: rtl` runs it bottom to
+/// top. A press a quarter of the way down the track (its knob's half kept
+/// at each end) sets 25 or 75 of 0–100, the knob's centre sits there, and
+/// a quarter-full bar or meter fills the top or bottom 50 of its 200 px.
+/// Ways it could fail: the control left lying across, `height` ignored,
+/// the pointer read across, or `rtl` not reversing the value.
+#[test]
+fn vertical_writing_modes_stand_bar_controls_up() {
+    let text = r#"<meta name="component" content="t">
+<row>
+  <input type="range" id="Down" min="0" max="100" step="1" show-value="false" bind:value={$down} />
+  <input type="range" id="Up" min="0" max="100" step="1" show-value="false" bind:value={$up} />
+  <progress id="PDown" value="0.25"></progress>
+  <progress id="PUp" value="0.25"></progress>
+  <meter id="MDown" min="0" max="100" value="25"></meter>
+  <meter id="MUp" min="0" max="100" value="25"></meter>
+</row>
+<style>
+input, progress, meter { writing-mode: vertical-lr; height: 200px; }
+#Up, #PUp, #MUp { direction: rtl; }
+</style>"#;
+    let mut d = crate::support::Doc::new(text, &[("down", json!(50)), ("up", json!(50))]);
+    for (id, store) in [("Down", "down"), ("Up", "up")] {
+        let track = d.get(&format!("{id}/Body/Track"));
+        assert_eq!(
+            track.height, 200.0,
+            "{id}: its height is the track's length"
+        );
+        assert!(track.width < 60.0, "{id}: standing up: {track:?}");
+        let knob = d.get(&format!("{id}/Body/Track/Knob")).height;
+        let quarter = track.y + knob / 2.0 + 0.25 * (track.height - knob);
+        d.click_at(og_core::glam::Vec2::new(
+            track.x + track.width / 2.0,
+            quarter,
+        ));
+        let want = if id == "Down" { 25.0 } else { 75.0 };
+        assert_eq!(d.read(store).as_f64(), Some(want), "{id}: a quarter down");
+        let k = d.get(&format!("{id}/Body/Track/Knob"));
+        assert!(
+            (k.y + k.height / 2.0 - quarter).abs() <= 0.5,
+            "{id}: the knob's centre at the press: {k:?} vs {quarter}"
+        );
+        // The ends: min at the top left to right, at the bottom right to left.
+        d.click_at(og_core::glam::Vec2::new(
+            track.x + track.width / 2.0,
+            track.y + 1.0,
+        ));
+        let top = if id == "Down" { 0.0 } else { 100.0 };
+        assert_eq!(d.read(store).as_f64(), Some(top), "{id}: its top end");
+    }
+    for (id, down) in [
+        ("PDown", true),
+        ("PUp", false),
+        ("MDown", true),
+        ("MUp", false),
+    ] {
+        let b = d.get(id);
+        assert_eq!(
+            (b.height, b.width < 60.0),
+            (200.0, true),
+            "{id}: standing up: {b:?}"
+        );
+        let inside = |r: &Rect| {
+            r.x >= b.x - 0.5
+                && r.right() <= b.x + b.width + 0.5
+                && r.y >= b.y - 0.5
+                && r.bottom() <= b.y + b.height + 0.5
+        };
+        let fill =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|i| i.cmd.filled())
+                .map(|(r, _)| r)
+                .find(|r| inside(r) && r.height < b.height - 1.0)
+                .unwrap_or_else(|| panic!("{id}: a fill short of the box"));
+        let want_y = if down { b.y } else { b.y + b.height - 50.0 };
+        assert_eq!(
+            (fill.x, fill.width, fill.y, fill.height),
+            (b.x, b.width, want_y, 50.0),
+            "{id}: a quarter, from its minimum end"
+        );
+    }
+}
+
 #[test]
 fn the_backdrop_pseudo_element_fills_the_scrim() {
     let doc = r#"<meta name="component" content="form">

@@ -200,14 +200,22 @@ impl Ui {
         // the track's snapped box, never narrower than it is tall.
         if let Some(owner) = n.part_box.as_ref().map(|p| p.owner)
             && self.tree.nodes[owner].content_slot == i
-            && let Widget::Progress { value } = self.tree.nodes[owner].widget
+            && let Widget::Progress { value, axis } = self.tree.nodes[owner].widget
             && value > 0.0
         {
             let fill =
                 crate::dress::PartRef::new("progress", "fill", crate::tokens::ElementClass::Bar)
                     .attr("kind", "primary");
-            let w = (rect.width * value).max(rect.height.min(rect.width));
-            let r = Rect::new(rect.x, rect.y, w, rect.height).snapped(dpr);
+            // From its minimum end along its axis.
+            let (len, thick) = if axis.vertical() {
+                (rect.height, rect.width)
+            } else {
+                (rect.width, rect.height)
+            };
+            let l = (len * value).max(thick.min(len));
+            let r = axis
+                .span(rect, 0.0, if len > 0.0 { l / len } else { 0.0 })
+                .snapped(dpr);
             self.part_commands(
                 Some(n.key),
                 &fill,

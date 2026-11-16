@@ -984,6 +984,19 @@ impl Frame {
         }
     }
 
+    /// A fraction `from`..`to` of the element along `axis` (from its
+    /// minimum end), whole across it.
+    pub fn along(axis: crate::widgets::ValueAxis, from: f32, to: f32) -> Frame {
+        let r = axis.span(Rect::new(0.0, 0.0, 1.0, 1.0), from, to);
+        Frame {
+            fx: r.x,
+            fy: r.y,
+            fw: r.width,
+            fh: r.height,
+            ..Frame::default()
+        }
+    }
+
     pub fn resolve(&self, r: &Rect) -> Rect {
         let rect = Rect::new(
             r.x + self.fx * r.width + self.x,

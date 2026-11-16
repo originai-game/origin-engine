@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"ui","summary":"CSS vertical form controls: a range input, a `<progress>` and a `<meter>` under `writing-mode: vertical-lr` or `vertical-rl` stand up, their `height` the track's length, with the value running top to bottom, or bottom to top under `direction: rtl` (`sideways-lr` the reverse). A press or drag reads the pointer down the track. A mixer's faders or a vertical health gauge are one CSS line."}
+  ]
+}

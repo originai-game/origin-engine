@@ -176,6 +176,8 @@ impl Ui {
         // Settlement can replace those fields without processing its input again.
         let styled = r;
         let r = styled.intrinsic();
+        // A bar control's way, by its flow (the intrinsic props leave CSS's).
+        let axis = crate::widgets::ValueAxis::of(styled.own_flow());
         let mut texture = None;
         self.tree.pending_host = styled.part_host.clone().map(|host| (key, host));
         *self.front.accent_mut() = styled.text.as_deref().and_then(|t| t.accent);
@@ -197,7 +199,7 @@ impl Ui {
                 self.doc_icon(&id, &r);
             }
             Kind::Meter => {
-                self.doc_meter(&id, &r);
+                self.doc_meter(&id, &r, axis);
             }
             Kind::Select if r.flag("dataCycle") => {
                 let changed = self.cycler(b, n, id.as_str(), &r);
@@ -210,13 +212,13 @@ impl Ui {
                 resp = self.doc_select(b, n, &id, &path, &r, styled);
             }
             Kind::Progress => {
-                self.doc_progress(&id, &r);
+                self.doc_progress(&id, &r, axis);
             }
             Kind::Slider if r.has("high") => {
-                resp = self.doc_slider_range(b, n, &id, &r, &text_of);
+                resp = self.doc_slider_range(b, n, &id, &r, axis, &text_of);
             }
             Kind::Slider => {
-                resp = self.doc_slider(b, n, &id, &r, &text_of);
+                resp = self.doc_slider(b, n, &id, &r, axis, &text_of);
             }
             Kind::Toggle => {
                 resp = self.doc_toggle(b, n, &id, &r, styled, &text_of);
@@ -401,7 +403,7 @@ impl Ui {
 
     /// The document's `meter` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
-    pub(crate) fn doc_meter(&mut self, id: &String, r: &Resolved) {
+    pub(crate) fn doc_meter(&mut self, id: &String, r: &Resolved, axis: crate::widgets::ValueAxis) {
         self.gauge(
             id.as_str(),
             &crate::widgets::GaugeDesc {
@@ -412,19 +414,28 @@ impl Ui {
                 high: r.num("high"),
                 optimum: r.num("optimum"),
                 width: r.size("width"),
+                height: r.size("height"),
+                axis,
             },
         );
     }
 
     /// The document's `progress` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
-    pub(crate) fn doc_progress(&mut self, id: &String, r: &Resolved) {
+    pub(crate) fn doc_progress(
+        &mut self,
+        id: &String,
+        r: &Resolved,
+        axis: crate::widgets::ValueAxis,
+    ) {
         let v = r.num("value").unwrap_or(0.0);
         self.progress(
             id.as_str(),
             v,
             crate::ui::ProgressDesc {
                 width: r.size("width"),
+                height: r.size("height"),
+                axis,
             },
         );
     }
@@ -437,6 +448,7 @@ impl Ui {
         n: &DocNode,
         id: &String,
         r: &Resolved,
+        axis: crate::widgets::ValueAxis,
         text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
     ) -> crate::ui::Response {
         let mut resp = crate::ui::Response::default();
@@ -454,6 +466,8 @@ impl Ui {
                 label: text_of(r, b),
                 show_value: !r.has("showValue") || r.flag("showValue"),
                 width: r.size("width"),
+                height: r.size("height"),
+                axis,
                 disabled: r.flag("disabled"),
                 ..crate::widgets::RangeSliderDesc::default()
             },
@@ -1129,6 +1143,7 @@ impl Ui {
         n: &DocNode,
         id: &String,
         r: &Resolved,
+        axis: crate::widgets::ValueAxis,
         text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
     ) -> crate::ui::Response {
         let v0 = r.num("value").unwrap_or(0.0);
@@ -1160,6 +1175,8 @@ impl Ui {
                 label: text_of(r, b),
                 show_value: !r.has("showValue") || r.flag("showValue"),
                 width: r.size("width"),
+                height: r.size("height"),
+                axis,
                 marks,
                 origin: r.num("dataFillOrigin"),
                 disabled: r.flag("disabled"),

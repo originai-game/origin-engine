@@ -4,6 +4,7 @@
 //! stepper repeats while held, faster the longer.
 
 use super::*;
+use crate::widgets::ValueAxis;
 
 /// A labelled point on a slider's track.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -69,8 +70,12 @@ pub struct ValueSliderDesc {
     /// Fill from this value rather than min (a bipolar slider).
     pub origin: Option<f32>,
     pub disabled: bool,
-    /// Its width; `None` grows.
+    /// Its width; `None` grows (fits when vertical).
     pub width: Option<Size>,
+    /// Its height when vertical, its track's the rest; `None`: 160 CSS px.
+    pub height: Option<Size>,
+    /// Which way its track runs from min ([`ValueAxis::of`] its flow).
+    pub axis: ValueAxis,
     /// A bubble over the knob with the value while it is dragged or focused.
     pub bubble: bool,
 }
@@ -89,6 +94,8 @@ impl Default for ValueSliderDesc {
             origin: None,
             disabled: false,
             width: None,
+            height: None,
+            axis: ValueAxis::Across,
             bubble: true,
         }
     }
@@ -120,6 +127,9 @@ pub struct RangeSliderDesc {
     pub format: ValueFormat,
     pub disabled: bool,
     pub width: Option<Size>,
+    /// Its height when vertical, its track's the rest; `None`: 160 CSS px.
+    pub height: Option<Size>,
+    pub axis: ValueAxis,
 }
 
 /// A range slider's values after this tick.
@@ -170,14 +180,63 @@ pub struct NumberResult {
     pub changed: bool,
 }
 
-/// A slider track's geometry: its height, the knob, the rail and the
-/// rail's width last tick (the track's less a knob).
+/// A slider track's geometry: its thickness, the knob, the rail, the
+/// rail's length last tick (the track's less a knob) and the way it runs.
 #[derive(Clone, Copy)]
 struct Geo {
     h: f32,
     knob: f32,
     rail: f32,
     width: f32,
+    axis: ValueAxis,
+}
+
+impl Geo {
+    fn new(ui: &Ui, knob: f32, track: Option<Rect>, axis: ValueAxis) -> Geo {
+        let (touch, c) = (ui.touch_frame(), ui.env.theme.controls);
+        Geo {
+            h: (knob + 8.0).max(if touch { ui.touch_target() } else { 28.0 }),
+            knob,
+            rail: if touch {
+                c.slider_rail_touch
+            } else {
+                c.slider_rail
+            },
+            width: track.map_or(0.0, |b| {
+                (if axis.vertical() { b.height } else { b.width } - knob).max(1.0)
+            }),
+            axis,
+        }
+    }
+
+    /// Insets `along` px from the track's minimum end and `side` px in
+    /// from its side.
+    fn at(&self, along: f32, side: f32) -> Edges {
+        match self.axis {
+            ValueAxis::Across => Edges {
+                start: Some(along),
+                top: Some(side),
+                ..Edges::default()
+            },
+            ValueAxis::Down => Edges {
+                top: Some(along),
+                start: Some(side),
+                ..Edges::default()
+            },
+            ValueAxis::Up => Edges {
+                bottom: Some(along),
+                start: Some(side),
+                ..Edges::default()
+            },
+        }
+    }
+
+    /// The track box's size: its thickness across, and along it the
+    /// room its slider leaves (a vertical slider's height, as a
+    /// horizontal one's width).
+    fn track(&self) -> (Size, Size) {
+        self.axis.size(Size::grow(), Size::px(self.h))
+    }
 }
 
 /// Ticks at every step of a stepped range (at most 20 steps), as fractions.
@@ -193,12 +252,20 @@ fn tick_fractions(min: f32, max: f32, step: f32, on: bool) -> Vec<f32> {
 }
 
 impl Ui {
-    /// A fraction across a track box for the frame's pointer, the knob's
-    /// half kept at each end; the writing direction's.
-    fn fraction_at(&self, b: Rect, knob: f32) -> f32 {
+    /// A fraction along a track box from its minimum end for the frame's
+    /// pointer, the knob's half kept at each end; across, the writing
+    /// direction's.
+    fn fraction_at(&self, b: Rect, knob: f32, axis: ValueAxis) -> f32 {
         let p = self.input().pointer;
-        let x = ((p.x - b.x - knob / 2.0) / (b.width - knob).max(1.0)).clamp(0.0, 1.0);
-        if self.rtl() { 1.0 - x } else { x }
+        let along = |at: f32, lo: f32, len: f32| {
+            ((at - lo - knob / 2.0) / (len - knob).max(1.0)).clamp(0.0, 1.0)
+        };
+        match axis {
+            ValueAxis::Across if self.rtl() => 1.0 - along(p.x, b.x, b.width),
+            ValueAxis::Across => along(p.x, b.x, b.width),
+            ValueAxis::Down => along(p.y, b.y, b.height),
+            ValueAxis::Up => 1.0 - along(p.y, b.y, b.height),
+        }
     }
 
     /// The rail, its fill between two fractions, and its ticks.
@@ -211,22 +278,26 @@ impl Ui {
         };
         let (on_primary, strong) = (self.role("onPrimary"), self.role("lineStrong"));
         let part = |s: &str| crate::dress::PartRef::parse(s, ElementClass::Bar).ok();
+        let (width, height) = g.axis.size(Size::grow(), Size::px(g.rail));
         self.open_part(
             "Rail",
             Element {
-                width: Size::grow(),
-                height: Size::px(g.rail),
+                width,
+                height,
                 radius: g.rail / 2.0,
                 background: Some(rail.srgba()),
                 part: part("input[type=range]::part(track)"),
                 ..Element::default()
             },
         );
+        let (width, height) = g
+            .axis
+            .size(Size::percent((to - from).clamp(0.0, 1.0)), Size::grow());
         self.open_part(
             "Fill",
             Element {
-                width: Size::percent((to - from).clamp(0.0, 1.0)),
-                height: Size::grow(),
+                width,
+                height,
                 radius: g.rail / 2.0,
                 background: Some(fill.srgba()),
                 part: part("input[type=range]::part(fill)"),
@@ -234,13 +305,14 @@ impl Ui {
             },
         );
         self.close();
+        let mut insets = g.at((from.clamp(0.0, 1.0) * g.width).round(), 0.0);
+        if g.axis.vertical() {
+            insets.end = Some(0.0);
+        } else {
+            insets.bottom = Some(0.0);
+        }
         self.over(Props {
-            insets: Edges {
-                start: Some((from.clamp(0.0, 1.0) * g.width).round()),
-                top: Some(0.0),
-                bottom: Some(0.0),
-                ..Edges::default()
-            },
+            insets,
             inert: true,
             ..Props::default()
         });
@@ -251,11 +323,15 @@ impl Ui {
                 &[passed.then_some("passed")],
                 ElementClass::Bar,
             );
+            let (width, height) = g.axis.size(
+                Size::px(self.env.theme.controls.slider_tick_width),
+                Size::px(g.rail + 6.0),
+            );
             self.open_part(
                 crate::ui_idi("Tick", i as u32),
                 Element {
-                    width: Size::px(self.env.theme.controls.slider_tick_width),
-                    height: Size::px(g.rail + 6.0),
+                    width,
+                    height,
                     radius: self.env.theme.controls.slider_tick_width / 2.0,
                     background: Some(if passed { on_primary } else { strong }.srgba()),
                     part: Some(p),
@@ -264,23 +340,29 @@ impl Ui {
             );
             self.close();
             self.over(Props {
-                insets: Edges {
-                    start: Some((tk * g.width).round() - 1.0),
-                    top: Some(-3.0),
-                    ..Edges::default()
-                },
+                insets: g.at((tk * g.width).round() - 1.0, -3.0),
                 inert: true,
                 z: 1,
                 ..Props::default()
             });
         }
         self.close();
+        let (end, side) = (g.knob / 2.0, (g.h - g.rail) / 2.0);
         self.over(Props {
-            insets: Edges {
-                start: Some(g.knob / 2.0),
-                end: Some(g.knob / 2.0),
-                top: Some((g.h - g.rail) / 2.0),
-                ..Edges::default()
+            insets: if g.axis.vertical() {
+                Edges {
+                    top: Some(end),
+                    bottom: Some(end),
+                    start: Some(side),
+                    ..Edges::default()
+                }
+            } else {
+                Edges {
+                    start: Some(end),
+                    end: Some(end),
+                    top: Some(side),
+                    ..Edges::default()
+                }
             },
             inert: true,
             ..Props::default()
@@ -343,11 +425,22 @@ impl Ui {
                 props: Props {
                     position: Position::Absolute,
                     // Along the track by layout, so it follows a track
-                    // whose width changed this frame.
-                    insets: Edges {
-                        across: Some(f.clamp(0.0, 1.0)),
-                        top: Some((g.h - g.knob) / 2.0),
-                        ..Edges::default()
+                    // whose length changed this frame.
+                    insets: match g.axis {
+                        ValueAxis::Across => Edges {
+                            across: Some(f.clamp(0.0, 1.0)),
+                            top: Some((g.h - g.knob) / 2.0),
+                            ..Edges::default()
+                        },
+                        ValueAxis::Down | ValueAxis::Up => Edges {
+                            down: Some(if g.axis == ValueAxis::Up {
+                                1.0 - f.clamp(0.0, 1.0)
+                            } else {
+                                f.clamp(0.0, 1.0)
+                            }),
+                            start: Some((g.h - g.knob) / 2.0),
+                            ..Edges::default()
+                        },
                     },
                     overlaps: if track.is_empty() {
                         Vec::new()
@@ -499,13 +592,20 @@ impl Ui {
         );
         self.close();
         let w = (label.chars().count() as f32 * 8.0 + t.space.sm * 2.0).max(32.0);
-        let top = -self.by_text(30.0);
+        // Over the knob; beside it on a vertical track.
+        let insets = if g.axis.vertical() {
+            g.at(
+                (f * g.width + g.knob / 2.0 - h / 2.0).round(),
+                g.h + t.space.xs,
+            )
+        } else {
+            g.at(
+                (f * g.width + g.knob / 2.0 - w / 2.0).round(),
+                -self.by_text(30.0),
+            )
+        };
         self.over(Props {
-            insets: Edges {
-                start: Some((f * g.width + g.knob / 2.0 - w / 2.0).round()),
-                top: Some(top),
-                ..Edges::default()
-            },
+            insets,
             inert: true,
             z: 5,
             enter: Some(crate::motion::PresenceSpec {
@@ -554,8 +654,14 @@ impl Ui {
             c.slider_knob
         });
         let unit = if step > 0.0 { step } else { span / 20.0 };
-        // Last tick's track, for the pointer and the rail's width.
-        let track_path = format!("{}/Track", self.child_path(&key));
+        let axis = desc.axis;
+        // Last tick's track, for the pointer and the rail's length; a
+        // vertical one stands in a row with its marks.
+        let track_path = format!(
+            "{}/{}Track",
+            self.child_path(&key),
+            if axis.vertical() { "Body/" } else { "" }
+        );
         let tb = self.bounds_of(&track_path);
         // The knob shows the reach's state as its part box last showed it.
         let reach = if disabled {
@@ -563,23 +669,14 @@ impl Ui {
         } else {
             self.interaction_at(&format!("{track_path}/::part(reach)#0"))
         };
-        let g = Geo {
-            h: (knob + 8.0).max(if touch { self.touch_target() } else { 28.0 }),
-            knob,
-            rail: if touch {
-                c.slider_rail_touch
-            } else {
-                c.slider_rail
-            },
-            width: tb.map_or(0.0, |b| (b.width - knob).max(1.0)),
-        };
+        let g = Geo::new(self, knob, tb, axis);
         let down = self.input().down;
         let held_mem = self.memory(&format!("{key}~held"), 0.0) > 0.0;
         let held = held_mem && down && !disabled;
         let (lo, hi) = (min.min(max), min.max(max));
         let mut v = if value.is_finite() { value } else { min }.clamp(lo, hi);
         if let (true, Some(b)) = (held, tb) {
-            v = snap(min + self.fraction_at(b, knob) * span, min, max, step);
+            v = snap(min + self.fraction_at(b, knob, axis) * span, min, max, step);
         }
         let shown = desc.format.show(v, min, step);
         let flash = self.memory(&format!("{key}~flash"), 0.0);
@@ -590,7 +687,16 @@ impl Ui {
             id,
             Element {
                 direction: Direction::Column,
-                width: desc.width.unwrap_or(Size::grow()),
+                width: desc.width.unwrap_or(if axis.vertical() {
+                    Size::fit()
+                } else {
+                    Size::grow()
+                }),
+                height: if axis.vertical() {
+                    desc.height.unwrap_or(Size::px(160.0))
+                } else {
+                    Size::fit()
+                },
                 gap: t.space.xs,
                 cross: Cross::Stretch,
                 ..Element::default()
@@ -657,6 +763,18 @@ impl Ui {
             desc.label.clone()
         });
         let show_bubble = desc.bubble && !disabled;
+        if axis.vertical() {
+            self.open(
+                "Body",
+                Element {
+                    direction: Direction::Row,
+                    height: Size::grow(),
+                    gap: t.space.sm,
+                    ..Element::default()
+                },
+            );
+        }
+        let (track_w, track_h) = g.track();
         let built = self.ctl(
             "Track",
             Ctl {
@@ -667,8 +785,8 @@ impl Ui {
                 cls: ElementClass::Badge,
                 disabled,
                 adjustable: true,
-                width: Some(Size::grow()),
-                height: Some(Size::px(g.h)),
+                width: Some(track_w),
+                height: Some(track_h),
                 fill: None,
                 wash: Some(None),
                 lift: 0.0,
@@ -694,7 +812,7 @@ impl Ui {
             },
         );
         if let (true, false, Some(b)) = (built.r.pressed, held, tb) {
-            v = snap(min + self.fraction_at(b, knob) * span, min, max, step);
+            v = snap(min + self.fraction_at(b, knob, axis) * span, min, max, step);
         }
         let stepped = built.r.adjust != 0 && !disabled;
         if stepped {
@@ -723,7 +841,10 @@ impl Ui {
             }
         }
         if !desc.marks.is_empty() {
-            self.slider_marks(&desc.marks, min, span, g);
+            self.slider_marks(&desc.marks, min, span, g, track_h);
+        }
+        if axis.vertical() {
+            self.close();
         }
         self.close();
         // Kept beside the slider, where they were read.
@@ -778,18 +899,10 @@ impl Ui {
         });
         let unit = if step > 0.0 { step } else { span / 20.0 };
         let gap = desc.min_gap.max(0.0);
+        let axis = desc.axis;
         let track_path = format!("{}/Track", self.child_path(&key));
         let tb = self.bounds_of(&track_path);
-        let g = Geo {
-            h: (knob + 8.0).max(if touch { self.touch_target() } else { 28.0 }),
-            knob,
-            rail: if touch {
-                c.slider_rail_touch
-            } else {
-                c.slider_rail
-            },
-            width: tb.map_or(0.0, |b| (b.width - knob).max(1.0)),
-        };
+        let g = Geo::new(self, knob, tb, axis);
         let down = self.input().down;
         // Which knob a held press moves: 1 low, 2 high.
         let active = self.memory(&format!("{key}~knob"), 0.0) as u8;
@@ -808,7 +921,7 @@ impl Ui {
         if let (true, false, Some(b)) = (active != 0 && down, disabled, tb) {
             place(
                 active,
-                min + self.fraction_at(b, knob) * span,
+                min + self.fraction_at(b, knob, axis) * span,
                 &mut lo,
                 &mut hi,
             );
@@ -819,7 +932,16 @@ impl Ui {
             id,
             Element {
                 direction: Direction::Column,
-                width: desc.width.unwrap_or(Size::grow()),
+                width: desc.width.unwrap_or(if axis.vertical() {
+                    Size::fit()
+                } else {
+                    Size::grow()
+                }),
+                height: if axis.vertical() {
+                    desc.height.unwrap_or(Size::px(160.0))
+                } else {
+                    Size::fit()
+                },
                 gap: t.space.xs,
                 cross: Cross::Stretch,
                 ..Element::default()
@@ -890,8 +1012,8 @@ impl Ui {
                 cls: ElementClass::Badge,
                 disabled,
                 focusable: false,
-                width: Some(Size::grow()),
-                height: Some(Size::px(g.h)),
+                width: Some(g.track().0),
+                height: Some(g.track().1),
                 fill: None,
                 wash: Some(None),
                 lift: 0.0,
@@ -943,7 +1065,7 @@ impl Ui {
         }
         if let (true, 0, Some(b), false) = (built.r.pressed, press, tb, disabled) {
             // A press on the track takes the nearer knob there.
-            let at = min + self.fraction_at(b, knob) * span;
+            let at = min + self.fraction_at(b, knob, axis) * span;
             press = if (at - lo).abs() <= (at - hi).abs() {
                 1
             } else {
@@ -974,21 +1096,28 @@ impl Ui {
     }
 
     /// Labelled points under a track.
-    fn slider_marks(&mut self, list: &[SliderMark], min: f32, span: f32, g: Geo) {
+    fn slider_marks(&mut self, list: &[SliderMark], min: f32, span: f32, g: Geo, len: Size) {
         let h = self.by_text(18.0);
         let t = self.env.theme;
+        let wide = |m: &SliderMark| (m.label.chars().count() as f32 * 8.0).max(24.0);
+        // Under the track; beside a vertical one, as wide as its widest.
+        let (width, height) = if g.axis.vertical() {
+            (Size::px(list.iter().map(wide).fold(0.0, f32::max)), len)
+        } else {
+            (Size::grow(), Size::px(h))
+        };
         self.open(
             "Marks",
             Element {
                 direction: Direction::Row,
-                width: Size::grow(),
-                height: Size::px(h),
+                width,
+                height,
                 ..Element::default()
             },
         );
         for (i, m) in list.iter().enumerate() {
             let f = ((m.value - min) / span).clamp(0.0, 1.0);
-            let w = (m.label.chars().count() as f32 * 8.0).max(24.0);
+            let w = wide(m);
             self.open(
                 crate::ui_idi("Mark", i as u32),
                 Element {
@@ -1011,15 +1140,12 @@ impl Ui {
                 );
             }
             self.close();
-            // At its point, centred under it; the end ones kept inside.
-            let at =
-                (f * g.width + g.knob / 2.0 - w / 2.0).clamp(0.0, (g.width + g.knob - w).max(0.0));
+            // At its point, centred on it; the end ones kept inside.
+            let size = if g.axis.vertical() { h } else { w };
+            let at = (f * g.width + g.knob / 2.0 - size / 2.0)
+                .clamp(0.0, (g.width + g.knob - size).max(0.0));
             self.over(Props {
-                insets: Edges {
-                    start: Some(at.round()),
-                    top: Some(0.0),
-                    ..Edges::default()
-                },
+                insets: g.at(at.round(), 0.0),
                 ..Props::default()
             });
         }

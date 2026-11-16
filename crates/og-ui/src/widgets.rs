@@ -189,6 +189,72 @@ pub struct ToastDesc {
     pub duration_ms: f32,
 }
 
+/// Which way a bar control (a slider, a progress bar, a meter) runs from
+/// its minimum, by its writing mode and direction (CSS Writing Modes 4,
+/// HTML's vertical form controls): along the line in a horizontal one;
+/// down a vertical one's inline axis, or up it when right-to-left (a
+/// `sideways-lr` line runs up, so the reverse).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ValueAxis {
+    #[default]
+    Across,
+    Down,
+    Up,
+}
+
+impl ValueAxis {
+    /// The axis an element's flow gives its bar control.
+    pub(crate) fn of(flow: crate::layout::Flow) -> ValueAxis {
+        use crate::layout::flow::WritingMode;
+        match flow.mode {
+            WritingMode::HorizontalTb => ValueAxis::Across,
+            WritingMode::SidewaysLr if flow.rtl => ValueAxis::Down,
+            WritingMode::SidewaysLr => ValueAxis::Up,
+            _ if flow.rtl => ValueAxis::Up,
+            _ => ValueAxis::Down,
+        }
+    }
+
+    pub fn vertical(self) -> bool {
+        self != ValueAxis::Across
+    }
+
+    /// A box's (width, height) `len` along the axis and `thick` across it.
+    pub(crate) fn size<T>(self, len: T, thick: T) -> (T, T) {
+        if self.vertical() {
+            (thick, len)
+        } else {
+            (len, thick)
+        }
+    }
+
+    /// The part of a `rect` from fraction `from` to `to` along the axis.
+    pub(crate) fn span(self, rect: crate::Rect, from: f32, to: f32) -> crate::Rect {
+        let a = from.clamp(0.0, 1.0);
+        let b = to.clamp(0.0, 1.0).max(a);
+        match self {
+            ValueAxis::Across => crate::Rect::new(
+                rect.x + a * rect.width,
+                rect.y,
+                (b - a) * rect.width,
+                rect.height,
+            ),
+            ValueAxis::Down => crate::Rect::new(
+                rect.x,
+                rect.y + a * rect.height,
+                rect.width,
+                (b - a) * rect.height,
+            ),
+            ValueAxis::Up => crate::Rect::new(
+                rect.x,
+                rect.bottom() - b * rect.height,
+                rect.width,
+                (b - a) * rect.height,
+            ),
+        }
+    }
+}
+
 /// An HTML `<meter>` ([`Ui::gauge`]): its value, range and regions.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GaugeDesc {
@@ -201,8 +267,12 @@ pub struct GaugeDesc {
     pub high: Option<f32>,
     /// The best value; `None`: the middle.
     pub optimum: Option<f32>,
-    /// Its width; `None`: 160 CSS px (HTML's 5em at 16 px is 80; a game bar is wider).
+    /// Its width; `None`: 160 CSS px along its axis (HTML's 5em at 16 px is
+    /// 80; a game bar is wider), its thickness across it.
     pub width: Option<Size>,
+    /// Its height; `None`: as `width`, the other way.
+    pub height: Option<Size>,
+    pub axis: ValueAxis,
 }
 
 impl Default for GaugeDesc {
@@ -215,6 +285,8 @@ impl Default for GaugeDesc {
             high: None,
             optimum: None,
             width: None,
+            height: None,
+            axis: ValueAxis::Across,
         }
     }
 }

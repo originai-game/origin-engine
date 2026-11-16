@@ -149,7 +149,10 @@ impl Tree<'_, '_> {
                     && ins.end.is_none()
                     && ins.across.is_none()
                     && !ins.center_x;
-                let free_y = ins.top.is_none() && ins.bottom.is_none() && !ins.center_y;
+                let free_y = ins.top.is_none()
+                    && ins.bottom.is_none()
+                    && ins.down.is_none()
+                    && !ins.center_y;
                 if free_x || free_y {
                     let (sx, sy) = static_position(self.nodes, i, c, w, h, size);
                     if free_x {
@@ -450,7 +453,7 @@ fn place_out(bx: &Rect, n: &Node, w: f32, h: f32) -> (f32, f32) {
     } else {
         at(bx.x, bx.width, w, ins.start, ins.end, [3, 1])
     };
-    let y = if ins.center_y {
+    let y = if ins.down.is_some() || ins.center_y {
         y
     } else {
         at(bx.y, bx.height, h, ins.top, ins.bottom, [0, 2])
@@ -613,7 +616,7 @@ pub(crate) fn on_screen(
     let (mut x, mut y) = place_out(screen, n, w, h);
     let ins = &n.layout.insets;
     let free_x = ins.start.is_none() && ins.end.is_none() && ins.across.is_none() && !ins.center_x;
-    let free_y = ins.top.is_none() && ins.bottom.is_none() && !ins.center_y;
+    let free_y = ins.top.is_none() && ins.bottom.is_none() && ins.down.is_none() && !ins.center_y;
     if (free_x || free_y) && n.up != NONE {
         let p = &nodes[n.up];
         let (sx, sy) = static_position(nodes, n.up, i, w, h, [p.layout.w, p.layout.h]);

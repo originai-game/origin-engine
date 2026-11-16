@@ -874,7 +874,9 @@ pub(super) fn place_in(
             _ => bx.x,
         }
     };
-    let y = if ins.center_y {
+    let y = if let Some(f) = ins.down {
+        bx.y + ((bx.height - h) * f).round() + ins.top.unwrap_or(0.0)
+    } else if ins.center_y {
         bx.y + (bx.height - h) / 2.0 + ins.top.unwrap_or(0.0)
     } else if let Some(t) = ins.top {
         bx.y + t

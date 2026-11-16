@@ -1154,6 +1154,13 @@ literal or bound `open`, or the player's toggle).
 suboptimum | poor]` (undressed: success, warn, danger), over `Meter.track`;
 `low` and `high` clamp into the range, `optimum` defaults to the middle.
 
+A range input, `<progress>` and `<meter>` in a vertical writing mode stand
+up (Writing Modes 4 vertical form controls): their `height` is the track's
+length (160 px by default), and the value runs top to bottom, or bottom to
+top under `direction: rtl` (`sideways-lr` the reverse). A slider's labelled
+marks stand beside its track, its bubble beside the knob. `<select>` stays
+across.
+
 ### 2.5 Split screen
 
 `og.ui.setPlayers(n)` turns pads 1 to 3 on; each pad moves its own focus
