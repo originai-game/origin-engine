@@ -101,6 +101,9 @@ and their pending L4 review are recorded explicitly in the world sheet.
 | Idle resources, generators, purchases, prestige, offline summary (`idle/README.md`) | `idle/resources`, `idle/generators`, `idle/purchases`, `idle/prestige`, `idle/offline` |
 | Rhythm song and difficulty selection, score HUD, judgement, results (`rhythm/README.md`) | `rhythm/song-select`, `rhythm/difficulty`, `rhythm/score-hud`, `rhythm/judgement`, `rhythm/results` |
 | Arena roster, draft, versus, lobby, round HUD, scoreboard (`arena/README.md`) | `arena/roster`, `arena/draft`, `arena/versus`, `arena/lobby`, `arena/round-hud`, `arena/scoreboard` |
+| Arena ready checks | `arena/ready` |
+| Arena map votes | `arena/vote` |
+| Arena spectator controls | `arena/spectator` |
 | Shop, achievements, daily quests and rewards, chat, friends (`general/README.md`) | `general/shop`, `general/shop-confirm`, `general/achievements`, `general/daily-quests`, `general/daily-rewards`, `general/chat`, `general/friends` |
 
 A chip, a tag or a filter toggle has no component: it is a
