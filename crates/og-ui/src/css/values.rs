@@ -173,6 +173,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("isolation", "isolation"),
     ("textShadow", "text-shadow"),
     ("clipPath", "clip-path"),
+    ("borderShape", "border-shape"),
     ("clipRect", "clip"),
     ("shapeOutside", "shape-outside"),
     ("shapeMargin", "shape-margin"),
@@ -563,6 +564,7 @@ fn conv(prop: &str) -> Conv {
         | "isolation"
         | "textShadow"
         | "clipPath"
+        | "borderShape"
         | "clipRect"
         | "material"
         | "scrollSnapType"
@@ -687,6 +689,9 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Raw if prop == "isolation" => "auto | isolate".into(),
         Conv::Raw if prop == "textShadow" => "<x> <y> [<blur>] [<colour>], … | none".into(),
         Conv::Raw if prop == "clipRect" => "auto | rect(<top>, <right>, <bottom>, <left>)".into(),
+        Conv::Raw if prop == "borderShape" => {
+            "[<basic-shape> [<geometry-box> | half-border-box]]{1,2} | none".into()
+        }
         Conv::Raw if prop == "clipPath" => {
             "[inset(…) | rect(…) | xywh(…) | circle(…) | ellipse(…) | polygon(…) | path(\"…\") | shape(…)] [<geometry-box>] | <geometry-box> | url(#id) | none".into()
         }

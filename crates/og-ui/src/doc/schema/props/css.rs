@@ -250,6 +250,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `clip-path`: a basic shape (`inset()`, `rect()`, `xywh()`, `circle()`, `ellipse()`, `polygon()`, `path()` or `shape()`) over a geometry box (`border-box` by default, `padding-box`, `content-box`, `margin-box`; `fill-box` is the content box, `stroke-box` and `view-box` the border box), a geometry box alone (that box with its corners), or `url(#id)` of a `<clipPath>` in the document. It cuts everything the element draws (shadows, background, borders) and its children, by the shape's coverage with either fill rule.",
     },
     PropSpec {
+        name: "borderShape",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `border-shape` (CSS Borders 4 §7): one basic shape strokes the border along its path, `half-border-box` by default, as wide as the first side in block-start, inline-start, block-end, inline-end order with a border style; two fill the border between them, the first over the border box and the second over the padding box by default, in that side's colour. The outer shape is the element's shape: its background, shadows and the cut `overflow: hidden` makes (at the inner shape) follow it, and its `border-radius` is ignored. Layout is unchanged.",
+    },
+    PropSpec {
         name: "clipRect",
         ty: Ty::Text,
         on: On::All,

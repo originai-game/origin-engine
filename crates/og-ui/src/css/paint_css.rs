@@ -32,7 +32,9 @@ use border::border_shorthand;
 pub(crate) use border::{
     BORDER_IMAGE_PROPS, BiLen, BorderSpec, MASK_BORDER_PROPS, border_source, border_spec, lower,
 };
-pub(crate) use clip::{OutsideShape, clip, legacy_clip, outside, shape_margin, shape_threshold};
+pub(crate) use clip::{
+    OutsideShape, border_shape, clip, legacy_clip, outside, shape_margin, shape_threshold,
+};
 pub use filters::text_shadows;
 use filters::*;
 pub(crate) use filters::{
@@ -555,6 +557,36 @@ pub struct CssPaint {
     pub clip_box: GeoBox,
     pub clip_ref: ([f32; 4], f32),
     pub layer: Option<Layer>,
+    /// `border-shape`.
+    pub border_shape: Option<Box<BorderShape>>,
+}
+
+/// CSS `border-shape` (CSS Borders 4 §7): one shape the border strokes
+/// along, or the outer and inner shapes it fills between.
+#[derive(Clone, Debug, PartialEq)]
+pub struct BorderShape {
+    /// Each shape, its reference box (`None`: `half-border-box`, the
+    /// border box in by half its border) and, once the element is laid
+    /// out, that box's insets from the border box (top, right, bottom,
+    /// left).
+    pub shapes: Vec<(CssClip, Option<GeoBox>, [f32; 4])>,
+    /// The side whose border width and colour it takes (0 top, 1 right,
+    /// 2 bottom, 3 left): the first of block-start, inline-start,
+    /// block-end and inline-end with a border style (§7.6).
+    pub side: usize,
+}
+
+impl BorderShape {
+    /// Its outer shape over a `w` × `h` border box, and its inner one
+    /// (`None`: one shape, stroked).
+    pub(crate) fn paths(&self, w: f32, h: f32) -> (ShapeKind, Option<ShapeKind>) {
+        let mut shapes = self
+            .shapes
+            .iter()
+            .map(|(shape, _, insets)| shape.resolve(w, h, (*insets, 0.0)));
+        let outer = shapes.next().expect("a border shape");
+        (outer, shapes.next())
+    }
 }
 
 /// `-og-material: <name>(<n> …[, <colour>])`: the element and its subtree

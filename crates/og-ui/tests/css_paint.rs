@@ -2253,3 +2253,137 @@ p {{ margin: 0; background: #ff0000; border: 2px solid #00ff00; padding: 3px; bo
         .expect("the second piece's first line");
     assert_eq!((fourteen.x, fourteen.y), (85.0, 5.0));
 }
+
+#[test]
+fn border_shape_strokes_one_shape_and_fills_between_two() {
+    // CSS Borders 4 §7: the spec's own examples. One shape is stroked
+    // along its path over the half-border box; two fill the border
+    // between the outer (over the border box) and the inner (over the
+    // padding box). The outer shape is the background's; the corner
+    // radius is ignored; layout is unchanged.
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Circle"></div>
+  <div id="Diamond"></div>
+  <div id="Side"></div>
+  <div id="Rtl" dir="rtl"><div id="Inner"></div></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#Circle { width: 100px; height: 100px; border: 5px solid #0000ff; border-shape: circle(50%); }
+#Diamond { width: 200px; height: 200px; border: 10px solid #dc143c; border-radius: 30px;
+  background: #ff0000;
+  border-shape: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%) polygon(50% 10%, 90% 50%, 50% 90%, 10% 50%); }
+#Side, #Inner { width: 40px; height: 40px; border-style: none solid solid solid;
+  border-width: 1px 2px 3px 4px; border-color: #ff00ff #00ff00 #00ffff #ffff00;
+  border-shape: inset(0); }
+#Inner { border-width: 1px 6px 3px 8px; }
+</style>"#;
+    let d = Doc::with_font(text, &[], test_font_metrics());
+    assert!(
+        d.ui.frame().warnings.is_empty(),
+        "{:?}",
+        d.ui.frame().warnings
+    );
+    // Layout is the border's as ever.
+    assert_eq!(
+        (d.get("Circle").width, d.get("Diamond").height),
+        (100.0, 200.0)
+    );
+    // Each shape drawn in `colour`: its geometry, mode and centre.
+    let shapes = |c: Srgba| -> Vec<(og_draw::UiGeometry, og_draw::UiMode, [f32; 2])> {
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                DrawCmd::Shape { shape, .. }
+                    if matches!(shape.paint, og_draw::UiPaint::Solid(p) if same(p, c)) =>
+                {
+                    Some((shape.geometry.clone(), shape.mode, shape.center.into()))
+                }
+                _ => None,
+            })
+            .collect()
+    };
+    // A filled path's contours, flattened, from the box's centre.
+    let contours = |g: &og_draw::UiGeometry| match g {
+        og_draw::UiGeometry::Path(p) => og_draw::polylines(p.path.iter(), 0.1)
+            .into_iter()
+            .map(|(pts, _)| pts.iter().map(|v| [v.x, v.y]).collect::<Vec<_>>())
+            .collect::<Vec<_>>(),
+        g => panic!("not a path: {g:?}"),
+    };
+    let has = |pts: &[[f32; 2]], want: [f32; 2]| {
+        pts.iter()
+            .any(|p| (p[0] - want[0]).abs() < 0.01 && (p[1] - want[1]).abs() < 0.01)
+    };
+
+    // Stroke mode: `circle(50%)` over the half-border box (100px in by
+    // 2.5px each side: 95px), radius 50% of its normalised diagonal, so
+    // 47.5px round the box's centre, the line 5px wide and centred on it.
+    let circle = d.get("Circle");
+    let blue = shapes(Srgba::rgb(0, 0, 255));
+    assert_eq!(blue.len(), 1, "one stroked shape, no rectangle ring");
+    let (g, mode, centre) = &blue[0];
+    assert_eq!(
+        *centre,
+        [circle.x + 50.0, circle.y + 50.0],
+        "centred on its box"
+    );
+    match mode {
+        og_draw::UiMode::Stroke(s) => {
+            assert_eq!((s.width, s.align), (5.0, og_draw::UiAlign::Center))
+        }
+        m => panic!("a stroke, not {m:?}"),
+    }
+    let og_draw::UiGeometry::Polyline { points, closed, .. } = g else {
+        panic!("a line along the circle, not {g:?}");
+    };
+    assert!(*closed && points.len() > 16);
+    for p in points {
+        assert!((p.length() - 47.5).abs() < 0.3, "{p:?} is off the circle");
+    }
+
+    // Fill mode: the diamond over the 200px border box and the inner one
+    // over the 180px padding box 10px in, the border between them
+    // (even-odd), and the background in the outer diamond, not the
+    // rounded rectangle.
+    let crimson = shapes(Srgba::rgb(220, 20, 60));
+    assert_eq!(crimson.len(), 1, "one filled border, no rectangle ring");
+    let (g, mode, _) = &crimson[0];
+    assert_eq!(*mode, og_draw::UiMode::Fill);
+    let og_draw::UiGeometry::Path(p) = g else {
+        panic!("a path, not {g:?}")
+    };
+    assert_eq!(p.fill_rule, og_draw::UiFillRule::EvenOdd);
+    let c = contours(g);
+    assert_eq!(c.len(), 2, "outer and inner contours: {c:?}");
+    for want in [[0.0, -100.0], [100.0, 0.0], [0.0, 100.0], [-100.0, 0.0]] {
+        assert!(has(&c[0], want), "outer {want:?} in {:?}", c[0]);
+    }
+    // 50% 10% of the padding box: 10 + 90, 10 + 18 from the top left.
+    for want in [[0.0, -72.0], [72.0, 0.0], [0.0, 72.0], [-72.0, 0.0]] {
+        assert!(has(&c[1], want), "inner {want:?} in {:?}", c[1]);
+    }
+    let red = shapes(Srgba::rgb(255, 0, 0));
+    assert_eq!(red.len(), 1, "the background: {red:?}");
+    let bg = contours(&red[0].0);
+    for want in [[0.0, -100.0], [100.0, 0.0], [0.0, 100.0], [-100.0, 0.0]] {
+        assert!(has(&bg[0], want), "background {want:?} in {:?}", bg[0]);
+    }
+
+    // §7.6: the first side with a style of block-start, inline-start,
+    // block-end, inline-end. The top's is none, so left to right the
+    // left's (4px yellow), right to left the right's (6px green).
+    let width = |c: Srgba| -> Vec<f32> {
+        shapes(c)
+            .iter()
+            .map(|(_, m, _)| match m {
+                og_draw::UiMode::Stroke(s) => s.width,
+                m => panic!("{m:?}"),
+            })
+            .collect()
+    };
+    assert_eq!(width(Srgba::rgb(255, 255, 0)), [4.0], "left to right: left");
+    assert_eq!(width(Srgba::rgb(0, 255, 0)), [6.0], "right to left: right");
+}

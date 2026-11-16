@@ -103,6 +103,50 @@ pub(crate) fn legacy_clip(text: &str) -> Result<Option<String>, String> {
     }
 }
 
+/// A border shape and its reference box (`None`: `half-border-box`).
+pub(crate) type ShapeItem = (CssClip, Option<GeoBox>);
+
+/// A `border-shape` (CSS Borders 4 §7.2): `none`, or one or two basic
+/// shapes, each with its reference box (`None`: `half-border-box`). One
+/// shape is over the half-border box by default; of two, the first is
+/// over the border box and the second over the padding box.
+pub(crate) fn border_shape(text: &str) -> Result<Option<Vec<ShapeItem>>, String> {
+    const FORMS: &str = "border-shape is none, or one or two of inset(), rect(), xywh(), circle(), ellipse(), polygon(), path() or shape(), each with an optional box (border-box, padding-box, content-box, margin-box or half-border-box)";
+    let t = tokens(text)?;
+    if matches!(t.as_slice(), [Tok::Ident(w)] if w == "none") {
+        return Ok(None);
+    }
+    // Each shape and the box after it.
+    let mut items: Vec<(&Tok, Option<&str>)> = Vec::new();
+    for tok in &t {
+        match (tok, items.last_mut()) {
+            (Tok::Func(f, _), _) if f != "url" => items.push((tok, None)),
+            (Tok::Ident(w), Some((_, b @ None))) => *b = Some(w),
+            _ => return Err(FORMS.into()),
+        }
+    }
+    if items.is_empty() || items.len() > 2 {
+        return Err(FORMS.into());
+    }
+    let two = items.len() == 2;
+    items
+        .into_iter()
+        .enumerate()
+        .map(|(k, (shape, b))| {
+            let geo = match b {
+                Some("half-border-box") => None,
+                Some(w) => Some(GeoBox::parse(w).ok_or_else(|| format!("'{w}': {FORMS}"))?),
+                None if !two => None,
+                None if k == 0 => Some(GeoBox::Border),
+                None => Some(GeoBox::Padding),
+            };
+            let (shape, _) = clip(&super::super::css::tok_text(shape))?.ok_or(FORMS)?;
+            Ok((shape, geo))
+        })
+        .collect::<Result<Vec<_>, String>>()
+        .map(Some)
+}
+
 pub(crate) fn clip(text: &str) -> Result<Option<(CssClip, GeoBox)>, String> {
     const FORMS: &str = "a clip-path is [inset() | rect() | xywh() | circle() | ellipse() | polygon() | path() | shape()] [<geometry-box>], a <geometry-box>, url(#id) or none";
     let t = tokens(text)?;
