@@ -10,6 +10,9 @@
 //!   rule, or a `::part()` rule loses to the document's own rule for the
 //!   part → `outer_rules_outrank_the_control_documents_own`
 //! - the host loses its role and value → `the_host_keeps_its_semantics`
+//! - a control held by a control document gets no inside of its own, or
+//!   the holding document's rules do not reach it
+//!   → `a_control_document_nests_another_control`
 
 use crate::support::*;
 use og_ui::*;
@@ -143,4 +146,54 @@ fn a_control_defined_after_its_host_is_mounted_takes_it_over() {
     d.ui.define_document(doc);
     d.step(InputFrame::default());
     assert_eq!(d.get("P/Track/Fill").width, 200.0);
+}
+
+#[test]
+fn a_control_document_nests_another_control() {
+    // A game's own meter, drawn with a progress bar: the bar inside takes
+    // its inside from its control document too, and the meter document's
+    // rules reach it as any document's rules reach a control it holds.
+    let meter = r#"<meta name="control" content="meter">
+<meta name="parts" content="frame">
+<meta name="prop:value" content="number">
+<meta name="prop:max" content="number" data-default="1">
+<div id="Frame" part="frame"><progress id="Bar" value={value / max}></progress></div>
+<style>
+:host { display: block; inline-size: 200px; }
+progress { block-size: 10px; }
+progress::part(fill) { border-radius: 0; background: #00ff00; }
+</style>"#;
+    let mut ui = with_control("progress");
+    let doc = ui
+        .parse_document("ui/controls/meter.svelte", meter, Vec::new())
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    assert!(doc.warnings.is_empty(), "{:?}", doc.warnings);
+    ui.define_document(doc);
+    let text = r#"<meta name="component" content="t">
+<div id="Form"><meter id="M" value={$v} max="100"></meter></div>
+<style>
+#Form { width: 400px; }
+</style>"#;
+    let mut d = Doc::mounted(ui, text, &[("v", json!(50))]);
+    d.step(InputFrame::default());
+    let bar = d.get("M/Frame/Bar");
+    assert_eq!(
+        (bar.width, bar.height),
+        (200.0, 10.0),
+        "the meter document sizes the bar it holds"
+    );
+    let fill = d.get("M/Frame/Bar/Track/Fill");
+    assert_eq!(fill.width, 100.0, "the bar reads the meter's props");
+    let green = Srgba::rgb(0, 255, 0).linear();
+    let fills = fills_in(&d.ui, Rect::new(fill.x, fill.y, fill.width, fill.height));
+    assert!(
+        fills.contains(&green),
+        "the meter document's ::part() rule paints the bar's fill: {fills:?}"
+    );
+    assert_eq!(d.a11y("M").role, "meter", "the outer host is the control");
+    d.set("v", json!(25));
+    for _ in 0..60 {
+        d.step(InputFrame::default());
+    }
+    assert_eq!(d.get("M/Frame/Bar/Track/Fill").width, 50.0);
 }
