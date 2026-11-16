@@ -570,6 +570,12 @@ pub struct Element {
     pub scroll: bool,
     /// Scrolls its content horizontally and clips it (with `scroll`: both ways).
     pub scroll_x: bool,
+    /// Its `scroll_x` is only CSS computing an unwritten `overflow-x:
+    /// visible` beside a scrolling `overflow-y` to `auto` (CSS Overflow 3
+    /// §3.1): it scrolls sideways, yet its vertical bar keeps the gutter a
+    /// vertical-only scroller takes. False for a two-way scroller, whose
+    /// bars draw over its content.
+    pub scroll_x_implied: bool,
     /// A scroll container that draws no scrollbars (a row of chips or tabs
     /// that shows its overflow by its cut edge, where a resting thumb read
     /// as a selection underline).

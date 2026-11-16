@@ -1417,7 +1417,9 @@ impl Ui {
 
 impl crate::ui::Layout {
     /// A vertical scroller's bar gutter beside its content, as its last
-    /// frame's range needs it: its used padding takes it on the right.
+    /// frame's range needs it: its used padding takes it on the right. A
+    /// two-way scroller draws its bars over its content; one that scrolls
+    /// sideways only because CSS computed its `overflow-x` takes a gutter.
     pub(crate) fn apply_gutter(
         &mut self,
         i: usize,
@@ -1426,7 +1428,8 @@ impl crate::ui::Layout {
         tree: &mut crate::ui::Tree,
     ) {
         let node = &tree.nodes[i];
-        let gutter = if node.el.scroll && !node.el.scroll_x && !node.el.hide_bars {
+        let el = &node.el;
+        let gutter = if el.scroll && (!el.scroll_x || el.scroll_x_implied) && !el.hide_bars {
             interaction.bar_gutter(node.key, node.el.scroll_css, env)
         } else {
             0.0

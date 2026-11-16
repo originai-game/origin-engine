@@ -2603,3 +2603,51 @@ fn out_of_flow_boxes_are_placed_in_their_containing_block() {
         );
     });
 }
+
+/// CSS Scrollbars 1 / CSS Overflow 4 §3: `scrollbar-gutter: stable`
+/// keeps the vertical bar's room beside the content of a box with
+/// `overflow-y: auto` while nothing overflows (its `overflow-x`, left
+/// `visible`, computes to `auto`); `both-edges` keeps the same room on the
+/// other side; `scrollbar-width: thin` makes the room narrower and `none`
+/// takes none; `scrollbar-gutter: auto` takes none while nothing overflows.
+///
+/// Ways it could fail: the computed `overflow-x: auto` read as a two-way
+/// scroller, whose bars draw over its content (no gutter at all), or
+/// `thin` and `none` not reaching the gutter.
+#[test]
+fn scrollbar_gutter_and_width_reserve_the_bars_room() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="S" class="s"><div id="Sk"></div></div>
+  <div id="B" class="s"><div id="Bk"></div></div>
+  <div id="T" class="s"><div id="Tk"></div></div>
+  <div id="N" class="s"><div id="Nk"></div></div>
+  <div id="A" class="s"><div id="Ak"></div></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+.s { width: 200px; height: 50px; overflow-y: auto; scrollbar-gutter: stable; }
+.s > div { height: 10px; }
+#B { scrollbar-gutter: stable both-edges; }
+#T { scrollbar-width: thin; }
+#N { scrollbar-width: none; }
+#A { scrollbar-gutter: auto; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let room = |id: &str, kid: &str| {
+            let (b, k) = (d.get(id), d.get(kid));
+            (k.x - b.x, b.x + b.width - (k.x + k.width))
+        };
+        let (s0, gutter) = room("S", "Sk");
+        assert_eq!(s0, 0.0);
+        assert!(gutter > 0.0, "stable keeps the bar's room: {gutter}");
+        assert_eq!(room("B", "Bk"), (gutter, gutter), "both-edges mirrors it");
+        let (_, thin) = room("T", "Tk");
+        assert!(
+            thin > 0.0 && thin < gutter,
+            "thin is narrower: {thin} of {gutter}"
+        );
+        assert_eq!(room("N", "Nk"), (0.0, 0.0), "none takes no room");
+        assert_eq!(room("A", "Ak"), (0.0, 0.0), "auto with nothing to scroll");
+    });
+}

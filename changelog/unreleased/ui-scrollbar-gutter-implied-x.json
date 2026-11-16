@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI CSS scrollbar-gutter",
+      "summary": "A box with `overflow-y: auto` or `scroll` and no `overflow-x` of its own now keeps its vertical bar's gutter (`scrollbar-gutter: stable`, and the room the bar takes while its content overflows), so the bar no longer draws over the content's right edge. CSS computes that box's `overflow-x` to `auto`, which og-ui read as a two-way scroller whose bars draw over its content. Content in such boxes is narrower by the bar's room."
+    }
+  ]
+}

@@ -231,7 +231,8 @@ impl Ui {
                 }
             }
             let (mut x, mut y) = (alias(x), alias(y));
-            if x == "visible" && y != "visible" {
+            let implied = x == "visible" && y != "visible";
+            if implied {
                 x = "auto";
             }
             if y == "visible" && x != "visible" {
@@ -241,6 +242,7 @@ impl Ui {
             if kind.is_some_and(Kind::container) {
                 el.scroll = scrolls(y);
                 el.scroll_x = scrolls(x);
+                el.scroll_x_implied = implied && el.scroll_x;
             }
             d.clip = matches!(x, "hidden" | "clip") || matches!(y, "hidden" | "clip");
         }

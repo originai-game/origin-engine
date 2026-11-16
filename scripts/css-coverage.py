@@ -293,6 +293,9 @@ not_applicable("ime-mode", "Obsolete, non-standard IME switch that browsers igno
 proof("position contain-layout",
       "css_layout", "out_of_flow_boxes_are_placed_in_their_containing_block",
       "Computed boxes: an absolute box with right: 0; bottom: 0 sits in the corner of its nearest position: relative ancestor, past an unpositioned parent with margins; a fixed box with left: 3px; top: 4px sits at 3, 4 in an ancestor with a transform, will-change: transform, contain: layout or contain: paint, and at 3, 4 on the viewport with none. The holder's rect is its border box (og-ui keeps no border widths apart from padding), so insets measure from its outer edge, not the padding edge; position: sticky and anchor-positioned boxes are other rows.")
+proof("scrollbar-gutter scrollbar-width",
+      "css_layout", "scrollbar_gutter_and_width_reserve_the_bars_room",
+      "Computed content boxes of overflow-y: auto boxes with nothing to scroll: scrollbar-gutter: stable keeps room on the end edge only, stable both-edges the same room on both, scrollbar-width: thin less room and none no room, scrollbar-gutter: auto none. The bar's width is og-ui's own (a theme spacing step), as CSS leaves it to the UA; a box that authors overflow on both axes draws its bars over its content and keeps no gutter, unlike a desktop browser's classic scrollbars.")
 proof("display static-positioning physical-properties align-content-block fit-content",
       "css_layout", "boxes_take_display_position_insets_and_fit_content_as_css_does",
       "Computed boxes: inline and inline-block boxes share a line and a block takes its own, full width; display: none makes no box and keeps no room; position: static ignores its insets; opposite insets size an auto box and an auto inset follows the other; block align-content: end; width: fit-content is max-content where it fits and the available width where it does not. fit-content on height and the min/max properties is not asserted.")
@@ -370,7 +373,6 @@ MISSING = {
     "highlight": "No ::highlight() or highlight registry: only ::selection paints a text range.",
     "webvtt": "No WebVTT captions or ::cue: a video draws no text track.",
     # layout
-    "scrollbar-gutter": "Gap: a box with overflow-y: auto or scroll and overflow-x left visible (which computes to auto) reserves no gutter, because a box that may scroll both ways draws its bars over its content.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
     "table": "Table spans/captions have computed output tests, but border-spacing and border-collapse have no implementation/output proof.",
     "backdrop-filter": "Ordinary staged backdrop chains have fixtures; native glass rejects chains requiring intermediate clamps, drop-shadow and SVG url filters.",
