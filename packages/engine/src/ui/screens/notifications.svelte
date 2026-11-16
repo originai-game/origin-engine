@@ -4,7 +4,7 @@
 <meta name="action:dismiss" content="Dismiss">
 <meta name="fixture:default" content="{&quot;items&quot;:[{&quot;id&quot;:&quot;1&quot;,&quot;title&quot;:&quot;Achievement&quot;,&quot;body&quot;:&quot;First blood&quot;,&quot;tone&quot;:&quot;success&quot;}]}">
 
-<column id="Notifications" role="log" aria-live="polite">
+<div id="Notifications" role="log" aria-live="polite">
   {#each items as n (n.id)}
     <article class="note" part="notifications.frame" class:success={n.tone == "success"} class:warn={n.tone == "warn"} class:danger={n.tone == "danger"}>
       <div class="text"><p class="title">{n.title}</p><small class="body" part="notifications.body">{n.body}</small></div>
@@ -16,14 +16,14 @@
       <button class="said" variant="quiet" onclick={dismissToast}>{t.text}</button>
     </article>
   {/each}
-</column>
+</div>
 
 <style>
-#Notifications { width: stretch; height: stretch; align-items: end; padding: var(--space-lg); gap: var(--space-sm); min-height: 0; }
-.note { display: flex; align-items: center; gap: var(--space-sm); width: var(--measure-md); border-left: var(--stroke-thick) solid var(--info); }
-.note.success { border-left-color: var(--success); }
-.note.warn { border-left-color: var(--warn); }
-.note.danger { border-left-color: var(--danger); }
+#Notifications { display: flex; flex-direction: column; align-items: end; gap: var(--space-sm); block-size: stretch; padding: calc(env(-og-hud-inset-top) + var(--space-lg)) calc(env(-og-hud-inset-right) + var(--space-lg)) calc(env(-og-hud-inset-bottom) + var(--space-lg)) calc(env(-og-hud-inset-left) + var(--space-lg)); }
+.note { display: flex; align-items: center; gap: var(--space-sm); width: var(--measure-md); border-inline-start: var(--stroke-thick) solid var(--info); }
+.note.success { border-inline-start-color: var(--success); }
+.note.warn { border-inline-start-color: var(--warn); }
+.note.danger { border-inline-start-color: var(--danger); }
 .note { animation: arrive var(--motion-enter) both; }
 @keyframes arrive { from { translate: var(--space-xl) 0; opacity: 0; } to { translate: 0 0; opacity: 1; } }
 .said { width: stretch; }

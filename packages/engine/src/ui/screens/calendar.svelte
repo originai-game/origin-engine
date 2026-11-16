@@ -14,19 +14,19 @@
     <h3 id="Month" part="calendar.title">{month}</h3>
     <button id="Next" variant="quiet" onclick={next} aria-label={month}><og-icon icon="chevronRight"/></button>
   </header>
-  <grid id="Days" role="grid">
+  <div id="Days" role="grid">
     {#each weekdays as w (w.id)}<small class="weekday" part="calendar.heading">{w.label}</small>{/each}
     {#each days as d (d.id)}
       <button id="Day" part="calendar.cell" class="day" class:outside={d.outside} class:marked={d.marked} variant={d.today ? "primary" : "quiet"} aria-current={d.today} onclick={pick}>{d.label}</button>
     {/each}
-  </grid>
+  </div>
 </section>
 
 <style>
 #Calendar { display: flex; flex-direction: column; gap: var(--space-sm); width: var(--measure-sm); }
 #Head { display: flex; align-items: center; }
-#Month { flex: 1; min-width: 0; text-align: center; }
-#Days { grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr; gap: var(--space-xxs); }
+#Month { flex: 1; text-align: center; }
+#Days { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-xxs); }
 .weekday { text-align: center; }
 .day { width: stretch; }
 /* A day of the next or last month is quieter in its ink, not faded. */

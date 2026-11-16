@@ -10,18 +10,18 @@
   <div id="Head" part="table.band" role="row">
     {#each columns as c (c.id)}<p class="heading" part="table.heading" role="columnheader">{c.label}</p>{/each}
   </div>
-  <scroll id="Body">
+  <div id="Body">
     <div id="Cells">
       {#each cells as c (c.id)}<button id="Cell" part="table.entry" class="cell" variant="quiet" role="cell" onclick={choose}>{c.text}</button>{/each}
     </div>
-  </scroll>
+  </div>
 </section>
 
 <style>
 #Table { display: flex; flex-direction: column; width: stretch; height: stretch; }
 #Head, #Cells { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-sm); width: stretch; }
-#Cells { padding: 0 var(--space-lg); }
+#Cells { padding-inline: var(--space-lg); }
 .heading { margin: 0; }
 .cell { width: stretch; justify-content: start; }
-#Body { width: stretch; flex: 1; min-height: 0; }
+#Body { flex: 1; min-block-size: 0; overflow-y: auto; }
 </style>
