@@ -64,6 +64,9 @@ pub(crate) const INHERITED: &[&str] = &[
     "font-synthesis-position",
     "font-size-adjust",
     "font-language-override",
+    // CSS Mobile Text Size Adjustment 1 §2: parsed and inherited; it has
+    // no effect, as the engine inflates no text.
+    "text-size-adjust",
     "text-underline-position",
     "text-underline-offset",
     "text-decoration-skip-ink",
@@ -797,6 +800,12 @@ fn check(name: &str, v: &str) -> Result<(), String> {
         | "font-synthesis-position" => matches!(v, "auto" | "none"),
         "font-size-adjust" => size_adjust(v).is_some(),
         "font-language-override" => v == "normal" || language_tag(v).is_some(),
+        "text-size-adjust" => {
+            matches!(v, "auto" | "none")
+                || v.strip_suffix('%')
+                    .and_then(|n| n.parse::<f32>().ok())
+                    .is_some_and(|n| n >= 0.0)
+        }
         "font-feature-settings" => v == "normal" || feature_settings(v).is_ok(),
         "font-variation-settings" => v == "normal" || variation_settings(v).is_ok(),
         "font-palette" => {

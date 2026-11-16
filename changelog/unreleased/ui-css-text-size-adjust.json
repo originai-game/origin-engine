@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS text-size-adjust",
+      "summary": "text-size-adjust (auto | none | <percentage>, inherited) is accepted instead of warned of as unsupported. It changes nothing: the engine never inflates text, which is the only case the property adjusts (CSS Mobile Text Size Adjustment 1 §2); a player's text scale stays its own setting."
+    }
+  ]
+}

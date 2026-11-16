@@ -1444,3 +1444,36 @@ fn justification_and_the_last_line_align_as_css_text_does() {
         "{none:?}"
     );
 }
+
+/// CSS Mobile Text Size Adjustment 1 §2: `text-size-adjust: auto | none
+/// | <percentage [0,∞]>`, inherited, applies only where the UA inflates
+/// text, and the engine inflates none (a player's text scale is its own
+/// explicit setting). Every value parses, an inherited one included, and
+/// a 14px text draws at 14px under each; a number or a negative
+/// percentage is refused. A wrong build ignores the property with a
+/// warning, or scales the size by the percentage (28px, 7px).
+#[test]
+fn text_size_adjust_parses_and_never_inflates() {
+    let d = doc(
+        r#"<p id="Auto">auto</p><p id="None">none</p><p id="Big">big</p><p id="Zero">zero</p><div id="Up"><p id="In">inherited</p></div>"#,
+        "p { font-size: 14px; } #Auto { text-size-adjust: auto; } #None { text-size-adjust: none; } #Big { text-size-adjust: 200%; } #Zero { text-size-adjust: 0%; } #Up { text-size-adjust: 50%; } #In { text-size-adjust: inherit; }",
+    );
+    for id in ["Auto", "None", "Big", "Zero", "In"] {
+        let l = lines(&d, id);
+        assert_eq!(l.len(), 1, "{id}: {l:?}");
+        assert_eq!(l[0].size, 14.0, "{id}: {l:?}");
+    }
+    for bad in ["2", "-10%", "large"] {
+        let text = format!(
+            "<meta name=\"component\" content=\"t\">\n<div><p id=\"P\">x</p></div>\n<style>p {{ text-size-adjust: {bad}; }}</style>"
+        );
+        let error = crate::support::ui_with_font(face(NOTO))
+            .parse_document("ui/t.svelte", &text, Vec::new())
+            .map(|_| ())
+            .unwrap_err();
+        assert!(
+            format!("{error:?}").contains("text-size-adjust"),
+            "{bad}: {error:?}"
+        );
+    }
+}
