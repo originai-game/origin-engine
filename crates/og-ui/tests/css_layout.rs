@@ -1631,6 +1631,83 @@ fn vi_and_vb_follow_the_roots_writing_mode() {
     });
 }
 
+/// CSS Values 5 §8.1's calc-size(): `size` is the box's size for the
+/// basis keyword (its max-content and min-content widths, fit-content in
+/// its room, stretch and a block's `auto` filling it, a height's `auto`
+/// its content's in a parent of auto height), a length basis or a nested
+/// calc-size() folds in, and min and max apply after. Content-box sizing
+/// scales the content box and adds the padding.
+#[test]
+fn calc_size_scales_its_basis_size() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root">
+  <div id="Max"><div class="w40"></div></div>
+  <div id="Min"><div class="w40"></div><div class="w40"></div></div>
+  <div id="Fit"><div class="w400"></div></div>
+  <div id="Stretch"></div>
+  <div id="Auto"></div>
+  <div id="Pct"></div>
+  <div id="Nested"><div class="w40"></div></div>
+  <div id="Capped"><div class="w40"></div></div>
+  <div id="Tall"><div class="h10"></div><div class="h10"></div><div class="h10"></div></div>
+  <div id="Boxed"><div class="h10"></div><div class="h10"></div><div class="h10"></div></div>
+  <div id="Row"><div id="Item"><div class="w40"></div></div><div id="Next"></div></div>
+</div>
+<style>
+#Root { width: 300px; }
+#Root div { height: 1px; }
+#Root .w40 { width: 40px; height: 4px; }
+#Root .w400 { width: 400px; }
+#Root .h10 { height: 10px; }
+#Max { width: calc-size(max-content, size + 10px); }
+#Min { display: flex; flex-wrap: wrap; width: calc-size(min-content, size * 2); }
+#Fit { width: calc-size(fit-content, size - 20px); }
+#Stretch { width: calc-size(stretch, size - 20px); }
+#Auto { width: calc-size(auto, size * 0.5); }
+#Pct { width: calc-size(50%, size + 5px); }
+#Nested { width: calc-size(calc-size(max-content, size + 10px), size * 2); }
+#Capped { width: calc-size(max-content, size * 3); max-width: 60px; }
+#Root #Tall { width: 50px; height: calc-size(auto, size * 0.5); }
+#Root #Boxed { width: 50px; box-sizing: content-box; padding: 10px; height: calc-size(auto, size / 2); }
+#Row { display: flex; width: 300px; }
+#Root #Next { width: 10px; }
+#Item { width: calc-size(max-content, size + 10px); }
+</style>"#;
+    with_doc(text, &[], |d| {
+        for (id, width) in [
+            ("Max", 50.0),
+            ("Min", 80.0),
+            // fit-content: min(max-content 400, max(min-content 400, 300)).
+            ("Fit", 380.0),
+            ("Stretch", 280.0),
+            ("Auto", 150.0),
+            ("Pct", 155.0),
+            ("Nested", 100.0),
+            ("Capped", 60.0),
+            ("Item", 50.0),
+        ] {
+            assert_eq!(d.get(id).width, width, "{id}");
+        }
+        // Its next sibling starts where the flex item's 50px end.
+        assert_eq!(d.get("Next").x - d.get("Item").x, 50.0);
+        assert_eq!(d.get("Tall").height, 15.0);
+        // 30px of content halved, then 10px of padding each side.
+        assert_eq!(d.get("Boxed").height, 35.0);
+    });
+    let error = |css: &str| {
+        og_ui::UiDocument::parse(
+            "ui/t.svelte",
+            &format!("<meta name=\"component\" content=\"t\"><div id=\"A\"></div><style>#A {{ {css} }}</style>"),
+        )
+        .unwrap_err()
+        .join("\n")
+    };
+    assert!(error("width: calc-size(auto, min(size, 10px));").contains("linear in size"));
+    assert!(error("width: calc-size(auto, size * size);").contains("plain number"));
+    assert!(error("min-width: calc-size(auto, size);").contains("bound them with a length"));
+    assert!(error("width: calc(size * 2);").contains("'size'"));
+}
+
 /// CSS Values 4 §6.1.2's small, large and dynamic viewports: `sv*` read the
 /// surface with the host's controls shown, `lv*` with them hidden, `dv*`
 /// and the bare units the surface now, each axis and min/max apart.

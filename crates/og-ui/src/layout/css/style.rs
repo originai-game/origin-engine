@@ -35,10 +35,19 @@ pub(super) fn calc_of(nodes: &[Node], p: *const (), basis: f32) -> f32 {
         Size::Percent(p) => p * basis,
         Size::Fixed(v) => v,
         // A content size a bound names: what layout measured last.
-        Size::MinContent | Size::MaxContent => basis,
+        Size::MinContent | Size::MaxContent | Size::CalcSize { .. } => basis,
         Size::Fit { .. } | Size::Grow { .. } | Size::Stretch { .. } => 0.0,
     };
+    // A calc-size() of the room (`View::calc_size_fills`): its
+    // stretch-fit size, the basis less the margins along its axis.
+    let fills = |axis: usize, scale: f32, add: Length| {
+        let [a, b] = if axis == 0 { [3, 1] } else { [0, 2] };
+        let room = basis - el.margin[a].len.of(basis) - el.margin[b].len.of(basis);
+        scale * room.max(0.0) + add.of(basis)
+    };
     match s {
+        slot::WIDTH if let Size::CalcSize { scale, add, .. } = el.width => fills(0, scale, add),
+        slot::HEIGHT if let Size::CalcSize { scale, add, .. } = el.height => fills(1, scale, add),
         slot::WIDTH => size(el.width),
         slot::HEIGHT => size(el.height),
         b if (slot::BOUNDS..slot::MARGIN).contains(&b) => {
@@ -250,6 +259,19 @@ impl<'a> View<'a> {
             Size::MaxContent => tf::Dimension::max_content(),
             Size::Stretch { .. } => tf::Dimension::stretch(),
             Size::Fit { .. } | Size::Grow { .. } => tf::Dimension::auto(),
+            // Of the room: a length Taffy resolves against its containing
+            // block. Otherwise Taffy sizes it by its basis and
+            // `Tree::calc_size` scales that.
+            Size::CalcSize { .. } if self.calc_size_fills(usize::from(sl != slot::WIDTH)) => {
+                tf::Dimension::calc(calc_ptr(self.i, sl))
+            }
+            Size::CalcSize { basis, .. } => match basis {
+                SizeBasis::Auto => tf::Dimension::auto(),
+                SizeBasis::MinContent => tf::Dimension::min_content(),
+                SizeBasis::MaxContent => tf::Dimension::max_content(),
+                SizeBasis::FitContent => tf::Dimension::fit_content(),
+                SizeBasis::Stretch => tf::Dimension::stretch(),
+            },
         }
     }
 
@@ -282,9 +304,13 @@ impl<'a> View<'a> {
         match el.bounds[axis][end] {
             Some(Size::Fixed(v)) => tf::LengthPercentageAuto::length(v),
             Some(Size::Percent(p)) => tf::LengthPercentageAuto::percent(p),
-            Some(Size::Calc(_) | Size::MinContent | Size::MaxContent | Size::Stretch { .. }) => {
-                tf::LengthPercentageAuto::calc(calc_ptr(self.i, sl))
-            }
+            Some(
+                Size::Calc(_)
+                | Size::MinContent
+                | Size::MaxContent
+                | Size::Stretch { .. }
+                | Size::CalcSize { .. },
+            ) => tf::LengthPercentageAuto::calc(calc_ptr(self.i, sl)),
             Some(Size::Fit { .. } | Size::Grow { .. }) | None => held.map_or(
                 tf::LengthPercentageAuto::auto(),
                 tf::LengthPercentageAuto::length,
@@ -320,9 +346,28 @@ impl<'a> View<'a> {
     }
 
     /// Its size along its frame's `axis`.
-    fn sized(&self, axis: usize) -> Size {
+    pub(super) fn sized(&self, axis: usize) -> Size {
         let el = self.el();
         [el.width, el.height][self.phys(axis)]
+    }
+
+    /// Its calc-size() along `axis` scales the room its containing block
+    /// leaves: a `stretch` basis, or an `auto` width in a block's flow.
+    pub(super) fn calc_size_fills(&self, axis: usize) -> bool {
+        let in_flow = self
+            .parent()
+            .is_some_and(|(_, k)| matches!(k, Kind::Block | Kind::Multicol));
+        match self.sized(axis) {
+            Size::CalcSize {
+                basis: SizeBasis::Stretch,
+                ..
+            } => true,
+            Size::CalcSize {
+                basis: SizeBasis::Auto,
+                ..
+            } => axis == 0 && in_flow,
+            _ => false,
+        }
     }
 
     /// Its frame axis that is a `stretch` size along its flex parent's
@@ -698,19 +743,32 @@ impl tf::FlexboxItemStyle for View<'_> {
     }
 
     fn align_self(&self) -> Option<tf::AlignSelf> {
+        use tf::FlexboxContainerStyle;
         let el = self.el();
         // A box filling its line has no room to align in.
         if self.stretch_across().is_some() && !self.stretch_aligned() {
             return Some(tf::AlignItems::STRETCH);
         }
-        match el.align_self {
+        let own = match el.align_self {
             Some(c) => Some(safe_items(
                 items_of(c, el.cross_logical & 2 != 0, el.cross_logical & 8 != 0),
                 el.safe & 2 != 0,
             )),
             None if self.grows_across() => Some(tf::AlignItems::STRETCH),
             None => None,
+        };
+        // `stretch` stretches an `auto` cross size only (CSS Flexbox 1
+        // §8.3); a calc-size() one, which Taffy sees as its basis, aligns
+        // as `flex-start`.
+        let across = if self.main_across() { 1 } else { 0 };
+        if matches!(self.sized(across), Size::CalcSize { .. }) && self.parent().is_some() {
+            let resolved =
+                own.unwrap_or_else(|| View::new(self.nodes, self.nodes[self.i].up).align_items());
+            if resolved == tf::AlignItems::STRETCH {
+                return Some(tf::AlignItems::FLEX_START);
+            }
         }
+        own
     }
 }
 

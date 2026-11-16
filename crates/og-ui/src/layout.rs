@@ -72,6 +72,42 @@ pub enum Size {
     MinContent,
     /// CSS `max-content`: its preferred size (a text unwrapped).
     MaxContent,
+    /// CSS `calc-size()` (CSS Values 5 §8.1): `scale` times its size for
+    /// `basis`, plus `add` against the size a percentage reads; its min
+    /// and max bounds then apply.
+    CalcSize {
+        basis: SizeBasis,
+        scale: f32,
+        add: Length,
+    },
+}
+
+/// The intrinsic size a [`Size::CalcSize`] scales.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SizeBasis {
+    /// The size `auto` gives it where it stands.
+    #[default]
+    Auto,
+    MinContent,
+    MaxContent,
+    FitContent,
+    Stretch,
+}
+
+impl SizeBasis {
+    /// Its size from the box's preferred and least sizes and the room it
+    /// has (`auto` there is its preferred size held to the room, as a box
+    /// sized by its parent shrinks to fit it, or the room itself where it
+    /// `fills`).
+    pub(crate) fn of(self, pref: f32, min: f32, room: f32, fills: bool) -> f32 {
+        match self {
+            SizeBasis::MinContent => min,
+            SizeBasis::MaxContent => pref,
+            SizeBasis::Stretch => room,
+            SizeBasis::Auto if fills => room,
+            SizeBasis::Auto | SizeBasis::FitContent => pref.min(room).max(min),
+        }
+    }
 }
 
 /// A CSS length as a linear sum: a fraction of a basis plus CSS px.
@@ -254,7 +290,18 @@ impl Size {
             Size::Calc(c) => basis.map(|b| c.of(b)),
             Size::MinContent => Some(min),
             Size::MaxContent => Some(pref),
-            Size::Fit { .. } | Size::Grow { .. } | Size::Stretch { .. } => None,
+            // A content basis is definite; a percentage of an indefinite
+            // basis is not.
+            Size::CalcSize {
+                basis: b @ (SizeBasis::MinContent | SizeBasis::MaxContent),
+                scale,
+                add,
+            } if add.pct == 0.0 || basis.is_some() => {
+                Some(scale * b.of(pref, min, 0.0, false) + add.of(basis.unwrap_or(0.0)))
+            }
+            Size::CalcSize { .. } | Size::Fit { .. } | Size::Grow { .. } | Size::Stretch { .. } => {
+                None
+            }
         }
     }
 }

@@ -234,7 +234,7 @@ impl Tree<'_, '_> {
             let room = (cw - mg[1] - mg[3]).max(0.0);
             let fills = !matches!(
                 self.nodes[c].layout.used.width,
-                Size::Fixed(_) | Size::Percent(_) | Size::Calc(_)
+                Size::Fixed(_) | Size::Percent(_) | Size::Calc(_) | Size::CalcSize { .. }
             );
             let size = self.lay_physical(
                 c,
@@ -387,6 +387,15 @@ pub(super) fn out_size(n: &Node, axis: usize, outer: f32, basis: f32) -> f32 {
         (_, _, Size::Fit { .. }) => pref.min(room).max(min).clamp(lo, hi),
         (_, _, Size::MinContent) => min,
         (_, _, Size::MaxContent) => pref,
+        (
+            a,
+            b,
+            Size::CalcSize {
+                basis: k,
+                scale,
+                add,
+            },
+        ) => scale * k.of(pref, min, room, a.is_some() && b.is_some()) + add.of(outer),
     };
     clamp_to(n, axis, Some(outer), v)
 }

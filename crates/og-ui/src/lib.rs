@@ -139,7 +139,7 @@ pub use layout::float::ImageAlpha;
 pub use layout::{
     Align, Anchor, Bidi, Calc, CalcOp, Contain, ContentVisibility, Cross, Direction, Element,
     Family, FlexItem, FloatSide, Flow, FontRole, Insets, Length, Margin, Multicol, Rect, Size,
-    TablePart, TextAlign, VerticalAlign,
+    SizeBasis, TablePart, TextAlign, VerticalAlign,
 };
 pub use motion::{
     Choreo, Ease, EventKind, GestureInfo, Key, KeyEase, MotionDump, MotionToken, MotionTokens,

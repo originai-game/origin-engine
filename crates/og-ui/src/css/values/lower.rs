@@ -173,7 +173,7 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
         | "-og-material" => lower_effects(name, value),
         "width" | "height" | "min-width" | "max-width" | "min-height" | "max-height"
         | "inline-size" | "block-size" | "min-inline-size" | "max-inline-size"
-        | "min-block-size" | "max-block-size" => lower_size(name, t),
+        | "min-block-size" | "max-block-size" => lower_size(name, value, t),
         "aspect-ratio" => lower_aspect_ratio(t),
         "padding-top"
         | "padding-right"
@@ -481,13 +481,40 @@ fn lower_effects(name: &str, value: &str) -> Result<Vec<Part>, String> {
 }
 
 /// Lowers the size family.
-fn lower_size(name: &str, t: Vec<Tok>) -> Result<Vec<Part>, String> {
+fn lower_size(name: &str, value: &str, t: Vec<Tok>) -> Result<Vec<Part>, String> {
     let axis = usize::from(!(name.ends_with("width") || name.ends_with("inline-size")));
     let v = one(&t, name)?;
     let bound = name
         .strip_prefix("min-")
         .map(|_| true)
         .or(name.strip_prefix("max-").map(|_| false));
+    // calc-size() (CSS Values 5 §8.1): its basis and its calculation,
+    // linear in `size`; a length basis is a plain calc().
+    if matches!(&v, Tok::Func(f, _) if f == "calc-size") {
+        if bound.is_some() {
+            return Err(format!(
+                "{name}: calc-size() sizes width and height; bound them with a length"
+            ));
+        }
+        let c = og_css::calc::calc_size(value).map_err(|e| format!("{name}: {e}"))?;
+        let n = |v: f64| number(&super::calc::number(v));
+        let vals = match c.basis {
+            Some(basis) => vec![
+                Value::Word("calcSize".into()),
+                Value::Word(basis.into()),
+                n(c.scale)?,
+                n(c.pct)?,
+                n(c.px)?,
+            ],
+            None => vec![
+                Value::Word("calc".into()),
+                Value::Word("sum".into()),
+                n(c.pct)?,
+                n(c.px)?,
+            ],
+        };
+        return Ok(vec![Part::Size(axis, SizeBit::Kind(vals))]);
+    }
     // `auto` (and a bound's `none`) is the initial value: the
     // element's own size, unbounded (CSS Sizing 3 §3.1).
     if matches!(&v, Tok::Ident(k) if k == "auto" || (k == "none" && bound == Some(false))) {
