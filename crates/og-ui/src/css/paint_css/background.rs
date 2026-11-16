@@ -15,6 +15,10 @@ pub(crate) enum CssImage {
     /// it; under it the rest is transparent) and a nested cross-fade()
     /// flattened into its parts, so no part is another cross-fade().
     CrossFade(Vec<(CssImage, f32)>),
+    /// `filter(<image>, <filter-value-list>)` (Filter Effects 1 §12): the
+    /// image through the filter functions, the first applied first; a
+    /// nested filter() is folded into one list.
+    Filter(Box<CssImage>, Vec<FilterFn>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -35,13 +39,14 @@ impl CssImage {
                     .map(|(i, w)| (i.in_scheme(dark), w))
                     .collect(),
             ),
+            Self::Filter(i, fns) => Self::Filter(Box::new(i.in_scheme(dark)), fns),
             i => i,
         }
     }
 
     pub(crate) fn select(&self, resolution: f32) -> Option<(&ImageSource, f32)> {
         match self {
-            Self::None | Self::LightDark(..) | Self::CrossFade(_) => None,
+            Self::None | Self::LightDark(..) | Self::CrossFade(_) | Self::Filter(..) => None,
             Self::Image(image) => Some((image, 1.0)),
             Self::Set(options) => options
                 .iter()
@@ -75,6 +80,7 @@ impl CssImage {
                 .collect(),
             Self::LightDark(l, d) => l.urls().into_iter().chain(d.urls()).collect(),
             Self::CrossFade(parts) => parts.iter().flat_map(|(i, _)| i.urls()).collect(),
+            Self::Filter(i, _) => i.urls(),
         }
     }
 }
@@ -270,7 +276,9 @@ pub(crate) type Background = (Vec<CssLayer>, Option<Tok>);
 
 pub(super) fn is_image(t: &Tok) -> bool {
     match t {
-        Tok::Func(f, _) if f == "url" || f == "image-set" || f == "cross-fade" => true,
+        Tok::Func(f, _) if matches!(f.as_str(), "url" | "image-set" | "cross-fade" | "filter") => {
+            true
+        }
         // `light-dark()` of images, not of colours.
         Tok::Func(f, a) if f == "light-dark" => a.iter().all(|a| {
             matches!(a.as_slice(), [t] if is_image(t) || matches!(t, Tok::Ident(w) if w == "none"))
@@ -345,6 +353,7 @@ pub(super) fn image(t: &Tok) -> Result<CssImage, String> {
             _ => Err("light-dark(<image>, <image>)".into()),
         },
         Tok::Func(f, args) if f == "cross-fade" => cross_fade(args),
+        Tok::Func(f, args) if f == "filter" => filter_image(args),
         Tok::Func(f, options) if f == "image-set" => {
             let mut out = Vec::new();
             for option in options {
@@ -483,6 +492,36 @@ fn cross_fade(args: &[Vec<Tok>]) -> Result<CssImage, String> {
         }
     }
     Ok(CssImage::CrossFade(out))
+}
+
+/// `filter( [<image> | <string>], <filter-value-list> )` (Filter Effects 1
+/// §12): a string is a url. A filter() of a filter() is one filter() of
+/// both lists; `url(#id)` filters are refused (they reference a
+/// document's `<filter>`, which an image does not carry).
+fn filter_image(args: &[Vec<Tok>]) -> Result<CssImage, String> {
+    const FORM: &str = "filter(<image>, <filter functions>)";
+    let [source, fns] = args else {
+        return Err(FORM.into());
+    };
+    let inner = match source.as_slice() {
+        [Tok::Str(u)] => CssImage::Image(ImageSource::Url(u.clone())),
+        [t] => match image(t)? {
+            CssImage::None => return Err(format!("{FORM}: none is not an image")),
+            i => i,
+        },
+        _ => return Err(FORM.into()),
+    };
+    let fns = filter_fn_tokens(fns.clone(), "filter()")?;
+    if fns.iter().any(|f| matches!(f, FilterFn::Url(_))) {
+        return Err("filter(): an image takes the filter functions, not url(#id)".into());
+    }
+    Ok(match inner {
+        CssImage::Filter(i, mut first) => {
+            first.extend(fns);
+            CssImage::Filter(i, first)
+        }
+        i => CssImage::Filter(Box::new(i), fns),
+    })
 }
 
 /// One axis of a `background-position` (`background-position-x`, `-y`).

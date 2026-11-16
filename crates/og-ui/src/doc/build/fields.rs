@@ -344,16 +344,18 @@ impl Ui {
                 }
             })
         };
-        // A cross-fade's parts each resolved; one that does not is an
-        // invalid image, transparent (CSS Images 4 §2).
-        let mut image = |what: &str, i: p::CssImage| match i.in_scheme(cx.dark) {
-            p::CssImage::CrossFade(parts) => Some(p::BgImage::CrossFade(
-                parts
-                    .into_iter()
-                    .map(|(i, w)| (one(what, i).unwrap_or(p::BgImage::Transparent), w))
-                    .collect(),
-            )),
-            i => one(what, i),
+        // A cross-fade's parts and a filter()'s image each resolved, its
+        // functions as the `filter` property's (no `url(#id)`).
+        let mut image = |what: &str, i: p::CssImage| {
+            let theme = self.theme();
+            let stages = |fns: &[p::FilterFn]| {
+                p::filter_layers(
+                    fns,
+                    |c| c.map_or(current.linear(), |c| c.resolve(theme)),
+                    |_| None,
+                )
+            };
+            p::bg_image(i.in_scheme(cx.dark), &mut |i| one(what, i), &stages)
         };
         let layer = |l: p::CssLayer, image: p::BgImage| p::BgLayer {
             image,

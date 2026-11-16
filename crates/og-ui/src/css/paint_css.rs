@@ -36,7 +36,8 @@ pub(crate) use clip::{OutsideShape, clip, legacy_clip, outside, shape_margin, sh
 pub use filters::text_shadows;
 use filters::*;
 pub(crate) use filters::{
-    backdrop_stages, blend, filter_fns, filter_layers, glass_effect, glass_material, isolation,
+    FilterFn, backdrop_stages, blend, filter_fns, filter_layers, glass_effect, glass_material,
+    isolation,
 };
 pub(crate) use gradients::color;
 use gradients::*;
@@ -132,23 +133,68 @@ pub enum BgImage {
     /// `cross-fade()` (CSS Images 4 §2.6): its images and their weights
     /// ([`CssImage::CrossFade`]); no part is another cross-fade.
     CrossFade(Vec<(BgImage, f32)>),
+    /// `filter()` (Filter Effects 1 §12): the image through these stages,
+    /// the first applied first ([`CssImage::Filter`]).
+    Filter(Box<BgImage>, Vec<Layer>),
 }
 
 impl BgImage {
-    /// Its paint as a box layer's, and a cross-fade's parts: `paint` each
-    /// image's paint, and the layer's paint with its parts (the paint
-    /// transparent when it has parts).
+    /// Its paint as a box layer's, the filter() stages it is drawn
+    /// through, and a cross-fade's parts: `paint` each image's paint (the
+    /// layer's paint transparent when it has parts).
     fn paints(
         &self,
-        paint: impl Fn(&BgImage) -> crate::paint::Paint,
-    ) -> (crate::paint::Paint, Vec<(crate::paint::Paint, f32)>) {
+        paint: &dyn Fn(&BgImage) -> crate::paint::Paint,
+    ) -> (crate::paint::Paint, Vec<Layer>, Vec<crate::paint::FadePart>) {
         match self {
+            BgImage::Filter(i, stages) => {
+                let (p, mut filters, parts) = i.paints(paint);
+                filters.extend(stages.iter().cloned());
+                (p, filters, parts)
+            }
             BgImage::CrossFade(parts) => (
                 crate::paint::Paint::Solid(ColorRef::Literal(Srgba::TRANSPARENT)),
-                parts.iter().map(|(i, w)| (paint(i), *w)).collect(),
+                Vec::new(),
+                parts
+                    .iter()
+                    .map(|(i, w)| {
+                        // A part is one image (a nested cross-fade was
+                        // flattened), through its own filter() stages.
+                        let (paint, filters, _) = i.paints(paint);
+                        crate::paint::FadePart {
+                            paint,
+                            weight: *w,
+                            filters,
+                        }
+                    })
+                    .collect(),
             ),
-            i => (paint(i), Vec::new()),
+            i => (paint(i), Vec::new(), Vec::new()),
         }
+    }
+}
+
+/// `i` as drawn: `leaf` resolves each image that is neither a cross-fade
+/// nor a filter() (a url, a set, a gradient), `stages` a filter()'s
+/// functions. A cross-fade's part that does not resolve is an invalid
+/// image, transparent (CSS Images 4 §2); a filter() of one is none.
+pub(crate) fn bg_image(
+    i: CssImage,
+    leaf: &mut dyn FnMut(CssImage) -> Option<BgImage>,
+    stages: &dyn Fn(&[FilterFn]) -> Vec<Layer>,
+) -> Option<BgImage> {
+    match i {
+        CssImage::CrossFade(parts) => Some(BgImage::CrossFade(
+            parts
+                .into_iter()
+                .map(|(i, w)| (bg_image(i, leaf, stages).unwrap_or(BgImage::Transparent), w))
+                .collect(),
+        )),
+        CssImage::Filter(i, fns) => Some(BgImage::Filter(
+            Box::new(bg_image(*i, leaf, stages)?),
+            stages(&fns),
+        )),
+        i => leaf(i),
     }
 }
 
@@ -193,7 +239,7 @@ impl BgLayer {
             area: [0.0; 4],
         };
         match image {
-            BgImage::Transparent | BgImage::CrossFade(_) => {
+            BgImage::Transparent | BgImage::CrossFade(_) | BgImage::Filter(..) => {
                 Paint::Solid(ColorRef::Literal(Srgba::TRANSPARENT))
             }
             BgImage::Gradient(g) => {
@@ -307,9 +353,10 @@ impl LayerFrame {
             }
             e => LayerClip::Box(self.edge(e)),
         };
-        let (paint, fade) = l.image.paints(|i| l.paint(i, size));
+        let (paint, filters, fade) = l.image.paints(&|i| l.paint(i, size));
         BoxLayer {
             paint,
+            filters,
             fade,
             area,
             clip,
@@ -327,6 +374,7 @@ impl LayerFrame {
         use crate::paint::{Area, BoxLayer, LayerClip};
         BoxLayer {
             paint,
+            filters: Vec::new(),
             fade: Vec::new(),
             area: Area::Box([0.0; 4]),
             clip: match clip {
@@ -382,7 +430,7 @@ impl LayerFrame {
                 fill: s.fill,
             });
             match image {
-                BgImage::Transparent | BgImage::CrossFade(_) => {
+                BgImage::Transparent | BgImage::CrossFade(_) | BgImage::Filter(..) => {
                     crate::paint::Paint::Solid(ColorRef::Literal(Srgba::TRANSPARENT))
                 }
                 BgImage::Gradient(g) => crate::paint::Paint::GradientImage {
@@ -410,10 +458,11 @@ impl LayerFrame {
                 }),
             }
         };
-        let (paint, fade) = b.image.paints(paint_of);
+        let (paint, filters, fade) = b.image.paints(&paint_of);
         let o = [-out[3], -out[0], -out[1], -out[2]];
         BoxLayer {
             paint,
+            filters,
             fade,
             area: Area::Box(o),
             clip: LayerClip::Rect(o),

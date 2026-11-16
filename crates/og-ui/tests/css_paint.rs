@@ -1671,3 +1671,172 @@ fn cross_fade_sums_its_weighted_images_in_a_group() {
     assert!(parse("cross-fade(none 50%, url(b.png))").is_err());
     assert!(parse("cross-fade(url(a.png) 50% 20%)").is_err());
 }
+
+/// `filter(<image>, <filter-value-list>)` (Filter Effects 1 §12) draws its
+/// image through the functions in order, as the `filter` property does: a
+/// layer per stage, the first applied innermost, the outermost
+/// composited as the background layer. Expected values from Filter
+/// Effects 1 §13: `grayscale(1)`'s first row is (0.2126, 0.7152, 0.0722),
+/// `blur(2px)` is a Gaussian of σ 2 (the layer blur's radius 2σ = 4);
+/// `invert(1)` maps a channel c to 1 − c and `opacity(50%)` halves alpha,
+/// so `filter(filter(url(a.png), invert(1)), opacity(50%))` is one list,
+/// invert then opacity. A cross-fade part filtered on its own is drawn
+/// through its stage, which adds at its weight.
+///
+/// Ways it could fail: the stages applied in reverse (blur innermost), a
+/// nested filter() list lost or reordered, the filter applied to the
+/// element rather than the layer's image, a cross-fade part's filter
+/// applied to the whole sum, or `url(#id)` (a document's filter) taken.
+#[test]
+fn filter_images_run_their_functions_in_order_on_the_image() {
+    let text = r#"<meta name="component" content="t">
+<column>
+  <div id="Chain" style="background-image: filter(url(a.png), grayscale(1) blur(2px))"></div>
+  <div id="Nested" style="background-image: filter(filter(url(a.png), invert(1)), opacity(50%))"></div>
+  <div id="Fade" style="background-image: cross-fade(filter(url(a.png), invert(1)) 40%, url(b.png))"></div>
+</column>
+<style>div { width: 20px; height: 20px; flex-shrink: 0; }</style>"#;
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut h = Handles::default();
+    let (a, b) = (h.texture(), h.texture());
+    ui.define_texture("ui/a.png", a);
+    ui.define_texture("ui/b.png", b);
+    let d = Doc::with_ui(ui, text);
+    assert!(
+        d.ui.frame().warnings.is_empty(),
+        "{:?}",
+        d.ui.frame().warnings
+    );
+    // The commands from just before the first shape in `id` to the end of
+    // its layers, as a short script: `[` a layer opening (its material),
+    // a shape (its texture, opacity and blend), `]` a layer closing (its
+    // opacity and blend).
+    #[derive(Debug, PartialEq)]
+    enum Step {
+        Open(og_draw::UiMaterial, [[f32; 4]; og_draw::UI_MATERIAL_PARAMS]),
+        Shape(&'static str, f32, og_draw::UiBlend),
+        Close(f32, og_draw::UiBlend),
+    }
+    let script = |id: &str| {
+        let e = d.get(id);
+        let inside = |s: &og_draw::UiShape| {
+            (e.x..=e.x + e.width).contains(&s.center.x)
+                && (e.y..=e.y + e.height).contains(&s.center.y)
+        };
+        let items = &d.ui.frame().items;
+        let first = items
+            .iter()
+            .position(|it| matches!(&it.cmd, DrawCmd::Shape { shape, .. } if inside(shape)))
+            .unwrap_or_else(|| panic!("{id} draws nothing"));
+        // Back over the layers opened right before it.
+        let start = (0..first)
+            .rev()
+            .take_while(|&k| matches!(items[k].cmd, DrawCmd::BeginLayer { .. }))
+            .last()
+            .unwrap_or(first);
+        let mut out = Vec::new();
+        let mut depth = 0i32;
+        for it in &items[start..] {
+            match &it.cmd {
+                DrawCmd::BeginLayer {
+                    material, params, ..
+                } => {
+                    depth += 1;
+                    out.push(Step::Open(*material, *params));
+                }
+                DrawCmd::Shape { shape, .. } if inside(shape) => {
+                    let name = match &shape.paint {
+                        og_draw::UiPaint::Image(im) if im.texture == a => "a",
+                        og_draw::UiPaint::Image(im) if im.texture == b => "b",
+                        p => panic!("{id}: {p:?}"),
+                    };
+                    out.push(Step::Shape(name, shape.opacity, shape.blend));
+                }
+                DrawCmd::EndLayer { opacity, blend, .. } => {
+                    depth -= 1;
+                    out.push(Step::Close(*opacity, *blend));
+                }
+                _ => {}
+            }
+            if depth == 0 {
+                break;
+            }
+        }
+        out
+    };
+    use og_draw::UiBlend::{Add, Normal};
+    let matrix = og_draw::UiMaterial::Builtin(og_draw::UiBuiltin::ColorMatrix);
+    let blur = og_draw::UiMaterial::Builtin(og_draw::UiBuiltin::Blur);
+    let near = |a: [f32; 4], b: [f32; 4]| a.iter().zip(b).all(|(x, y)| (x - y).abs() < 1e-4);
+
+    // grayscale innermost, blur outside it, the image inside both.
+    let chain = script("Chain");
+    assert_eq!(chain.len(), 5, "{chain:?}");
+    let Step::Open(m0, p0) = &chain[0] else {
+        panic!("{chain:?}")
+    };
+    let Step::Open(m1, p1) = &chain[1] else {
+        panic!("{chain:?}")
+    };
+    assert_eq!((*m0, *m1), (blur, matrix), "blur applied last");
+    assert_eq!(p0[0][0], 4.0, "σ 2");
+    assert!(near(p1[0], [0.2126, 0.7152, 0.0722, 0.0]), "{:?}", p1[0]);
+    assert_eq!(chain[2], Step::Shape("a", 1.0, Normal));
+    assert_eq!(
+        chain[3..],
+        [Step::Close(1.0, Normal), Step::Close(1.0, Normal)]
+    );
+
+    // invert then opacity: one colour matrix, or two in that order.
+    let nested = script("Nested");
+    let mut m = Vec::new();
+    for s in &nested {
+        if let Step::Open(mat, p) = s {
+            assert_eq!(*mat, matrix);
+            m.push(*p);
+        }
+    }
+    m.reverse(); // innermost (applied first) first
+    let (rows, alpha) = match m.as_slice() {
+        [one] => (one[0], one[3][0]),
+        [inv, op] => {
+            assert!(near(op[0], [1.0, 0.0, 0.0, 0.0]), "{op:?}");
+            (inv[0], op[3][0])
+        }
+        m => panic!("{m:?}"),
+    };
+    assert!(near(rows, [-1.0, 0.0, 0.0, 1.0]), "{rows:?}");
+    assert_eq!(alpha, 0.5);
+
+    // The part's own stage adds at its weight; b adds plainly.
+    let fade = script("Fade");
+    assert_eq!(
+        fade.iter()
+            .filter(|s| !matches!(s, Step::Open(..)))
+            .collect::<Vec<_>>(),
+        [
+            &Step::Shape("a", 1.0, Normal),
+            &Step::Close(0.4, Add),
+            &Step::Shape("b", 0.6, Add),
+            &Step::Close(1.0, Normal),
+        ]
+    );
+    let Step::Open(_, p) = &fade[1] else {
+        panic!("{fade:?}")
+    };
+    assert!(near(p[0], [-1.0, 0.0, 0.0, 1.0]), "{fade:?}");
+
+    let parse = |value: &str| {
+        UiDocument::parse(
+            "ui/t.svelte",
+            &format!(
+                "<meta name=\"component\" content=\"t\"><div id=\"A\"></div><style>#A {{ background-image: {value} }}</style>"
+            ),
+        )
+        .map(|_| ())
+    };
+    assert!(parse("filter('a.png', sepia(1))").is_ok());
+    assert!(parse("filter(url(a.png), url(#f))").is_err());
+    assert!(parse("filter(none, blur(1px))").is_err());
+    assert!(parse("filter(url(a.png))").is_err());
+}

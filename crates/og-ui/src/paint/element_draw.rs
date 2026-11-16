@@ -71,31 +71,24 @@ impl ElementDraw {
                             Blend::Normal,
                         ));
                     }
-                    if l.fade.is_empty() {
-                        out.push(shape(
-                            geometry,
-                            at.rect,
-                            l.resolve(theme, at.rect, at.rect),
-                            Blend::SourceOut,
-                        ));
-                    } else {
-                        // A cross-fade's parts summed, then kept off the
-                        // padding box as one image.
-                        out.push(plain_layer(None));
-                        for (part, w) in &l.fade {
-                            let mut s = shape(
-                                geometry.clone(),
-                                at.rect,
-                                l.resolve_part(part, theme, at.rect, at.rect),
-                                Blend::Add,
-                            );
-                            if let DrawCmd::Shape { shape, .. } = &mut s {
-                                shape.opacity = *w;
-                            }
-                            out.push(s);
+                    let part = |paint, o: f32, b| {
+                        let mut s = shape(geometry.clone(), at.rect, paint, b);
+                        if let DrawCmd::Shape { shape, .. } = &mut s {
+                            shape.opacity = o;
                         }
-                        out.push(end_layer(None, at, 1.0, Blend::SourceOut));
-                    }
+                        s
+                    };
+                    // The image (a filter()'s, a cross-fade's sum) kept off
+                    // the padding box.
+                    out.extend(self.layer_image(
+                        l,
+                        theme,
+                        at,
+                        at.rect,
+                        1.0,
+                        Blend::SourceOut,
+                        &part,
+                    ));
                     out.push(end_layer(None, at, opacity, blend(l)));
                     continue;
                 }
@@ -127,25 +120,45 @@ impl ElementDraw {
                 }),
                 clip: at.clip,
             };
-            if l.fade.is_empty() {
-                out.push(shape(l.resolve(theme, at.rect, r), opacity, blend(l)));
-                continue;
-            }
-            // A cross-fade (CSS Images 4 §2.6): each part scaled by its
-            // weight and added, premultiplied, in a group of their own (a
-            // weight short of 100% leaves the rest transparent), which
-            // then combines as one image.
-            out.push(plain_layer(None));
-            for (part, w) in &l.fade {
-                out.push(shape(
-                    l.resolve_part(part, theme, at.rect, r),
-                    *w,
-                    Blend::Add,
-                ));
-            }
-            out.push(end_layer(None, at, opacity, blend(l)));
+            out.extend(self.layer_image(l, theme, at, r, opacity, blend(l), &shape));
         }
         out
+    }
+
+    /// A box layer's image drawn in `r` by `shape` (its paint, opacity
+    /// and blend), composited with `opacity` and `blend`: one shape, or a
+    /// cross-fade (CSS Images 4 §2.6), each part scaled by its weight and
+    /// added, premultiplied, in a group of their own (a weight short of
+    /// 100% leaves the rest transparent); either drawn through its
+    /// `filter()` stages (Filter Effects 1 §12), and so is each part.
+    #[allow(clippy::too_many_arguments)]
+    fn layer_image(
+        &self,
+        l: &BoxLayer,
+        theme: &Theme,
+        at: &Placed,
+        r: Rect,
+        opacity: f32,
+        blend: Blend,
+        shape: &dyn Fn(og_draw::UiPaint, f32, Blend) -> DrawCmd,
+    ) -> Vec<DrawCmd> {
+        through(&l.filters, at, opacity, blend, |opacity, blend| {
+            if l.fade.is_empty() {
+                return vec![shape(l.resolve(theme, at.rect, r), opacity, blend)];
+            }
+            let mut out = vec![plain_layer(None)];
+            for part in &l.fade {
+                out.extend(through(
+                    &part.filters,
+                    at,
+                    part.weight,
+                    Blend::Add,
+                    |o, b| vec![shape(l.resolve_part(&part.paint, theme, at.rect, r), o, b)],
+                ));
+            }
+            out.push(end_layer(None, at, opacity, blend));
+            out
+        })
     }
 
     /// Its backgrounds cut to its text (`background-clip: text`) around
@@ -1179,4 +1192,47 @@ fn distance(c: &[Vec2], closed: bool, q: Vec2) -> f32 {
         best = best.min((a + ab * t).distance(q));
     }
     best
+}
+
+/// What `draw` draws (given the opacity and blend it composites with),
+/// through filter `stages`, the first applied first: each a layer whose
+/// material applies it, the outermost composited with `opacity` and
+/// `blend`, the rest and `draw` at 1 and normal inside it.
+fn through(
+    stages: &[Layer],
+    at: &Placed,
+    opacity: f32,
+    blend: Blend,
+    draw: impl FnOnce(f32, Blend) -> Vec<DrawCmd>,
+) -> Vec<DrawCmd> {
+    if stages.is_empty() {
+        return draw(opacity, blend);
+    }
+    let mut out: Vec<DrawCmd> = stages
+        .iter()
+        .rev()
+        .map(|l| {
+            let material = l.material.into();
+            DrawCmd::BeginLayer {
+                material,
+                params: l.params,
+                mask: None,
+                expand: expand_of(material, &l.params),
+                rect: Rect::default(),
+                filter: None,
+                role: Default::default(),
+            }
+        })
+        .collect();
+    out.extend(draw(1.0, Blend::Normal));
+    for k in 1..=stages.len() {
+        let last = k == stages.len();
+        out.push(end_layer(
+            None,
+            at,
+            if last { opacity } else { 1.0 },
+            if last { blend } else { Blend::Normal },
+        ));
+    }
+    out
 }

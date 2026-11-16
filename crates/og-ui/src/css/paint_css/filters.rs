@@ -20,7 +20,11 @@ pub(crate) enum FilterFn {
 
 /// `filter` or `backdrop-filter` (`what`): its functions in order, or none.
 pub(crate) fn filter_fns(text: &str, what: &str) -> Result<Vec<FilterFn>, String> {
-    let t = tokens(text)?;
+    filter_fn_tokens(tokens(text)?, what)
+}
+
+/// [`filter_fns`] of tokens already read.
+pub(super) fn filter_fn_tokens(t: Vec<Tok>, what: &str) -> Result<Vec<FilterFn>, String> {
     if matches!(t.as_slice(), [Tok::Ident(w)] if w == "none") {
         return Ok(Vec::new());
     }

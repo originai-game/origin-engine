@@ -313,11 +313,15 @@ pub struct BoxLayer {
     /// An image's or a gradient tile's fit is a CSS background's, its
     /// positioning area `area`.
     pub paint: Paint,
+    /// A `filter()` image's stages (Filter Effects 1 §12), the first
+    /// applied first: its image (or its cross-fade's sum) is drawn in
+    /// layers that apply them, the outermost combining as `paint` would.
+    pub filters: Vec<Layer>,
     /// A `cross-fade()`'s images and their weights (CSS Images 4 §2.6),
     /// each placed as `paint` would be: drawn scaled by its weight and
     /// summed in a group of their own, which then combines as `paint`
     /// would. Empty for one image; `paint` is transparent when it is not.
-    pub fade: Vec<(Paint, f32)>,
+    pub fade: Vec<FadePart>,
     /// The positioning area's edges in from the box's (left, top, right,
     /// bottom; CSS px, negative outside it), or a fixed one's rectangle
     /// on the screen.
@@ -328,6 +332,15 @@ pub struct BoxLayer {
     pub blend: Blend,
     /// Its luminance is its alpha (`mask-mode: luminance`).
     pub luminance: bool,
+}
+
+/// One image of a [`BoxLayer::fade`]: its paint, its weight and its own
+/// `filter()` stages.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FadePart {
+    pub paint: Paint,
+    pub weight: f32,
+    pub filters: Vec<Layer>,
 }
 
 /// [`BoxLayer::area`].
@@ -435,7 +448,7 @@ impl BoxLayer {
             return self
                 .fade
                 .iter()
-                .any(|(part, _)| covers(self.resolve_part(part, theme, b, r), pos, size));
+                .any(|part| covers(self.resolve_part(&part.paint, theme, b, r), pos, size));
         }
         covers(self.resolve(theme, b, r), pos, size)
     }
