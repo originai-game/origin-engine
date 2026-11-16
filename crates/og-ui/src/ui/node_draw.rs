@@ -106,6 +106,71 @@ impl Ui {
         background
     }
 
+    /// The pieces a column break split text `i` into (`Node::frag`) as
+    /// its background, border and shadows draw them, its box `rect` the
+    /// first piece (CSS Fragmentation 3 §5.4): under `slice` the box as if
+    /// unbroken, moved with each piece's lines and cut at its breaks;
+    /// under `clone` each piece's own box, its padding and border at the
+    /// breaks too. None for a box no break splits.
+    pub(super) fn decor_pieces(&self, i: usize, rect: Rect) -> Vec<DecorPiece> {
+        let n = &self.tree.nodes[i];
+        let Content::Text(tc) = &*n.content else {
+            return Vec::new();
+        };
+        if n.layout.frag.is_empty() {
+            return Vec::new();
+        }
+        let sk = n.placed.scale;
+        let lh = n.used_text(tc).line_height() * sk;
+        let pad = n.layout.used.padding;
+        let (above, below) = (pad.top * sk, pad.bottom * sk);
+        let lines = n.layout.lines.len();
+        let starts: Vec<(usize, [f32; 2])> = std::iter::once((0, [0.0; 2]))
+            .chain(
+                n.layout
+                    .frag
+                    .iter()
+                    .map(|&(l, d)| (l as usize, d.map(|v| v * sk))),
+            )
+            .collect();
+        let clone = n.layout.used.breaks & crate::layout::multicol::DECORATION_CLONE != 0;
+        let whole = above + lines as f32 * lh + below;
+        // Past the box's outer edges: a shadow there is not cut.
+        let far = 1e4;
+        (0..starts.len())
+            .map(|f| {
+                let (s, [dx, dy]) = starts[f];
+                let e = starts.get(f + 1).map_or(lines, |x| x.0);
+                let at = |top: f32, bottom: f32, out: f32| {
+                    Rect::new(
+                        rect.x - out + dx,
+                        rect.y + top + dy,
+                        rect.width + 2.0 * out,
+                        bottom - top,
+                    )
+                };
+                if clone {
+                    let top = if f == 0 { 0.0 } else { s as f32 * lh };
+                    DecorPiece {
+                        at: at(top, above + e as f32 * lh + below, 0.0),
+                        cut: None,
+                    }
+                } else {
+                    let top = if f == 0 { -far } else { above + s as f32 * lh };
+                    let bottom = if e == lines {
+                        whole + far
+                    } else {
+                        above + e as f32 * lh
+                    };
+                    DecorPiece {
+                        at: at(0.0, whole, 0.0),
+                        cut: Some(at(top, bottom, far)),
+                    }
+                }
+            })
+            .collect()
+    }
+
     /// The element's background (its fill or dressed atlas frame).
     fn background_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
         let t = self.paint_theme();
@@ -128,7 +193,15 @@ impl Ui {
             } else {
                 rect
             };
-            cmds.push(quad(r, n.style.sampled.radius, bg));
+            let pieces = self.decor_pieces(i, r);
+            if pieces.is_empty() {
+                cmds.push(quad(r, n.style.sampled.radius, bg));
+            }
+            for p in pieces {
+                cmds.extend(p.cut.map(cut_to));
+                cmds.push(quad(p.at, n.style.sampled.radius, bg));
+                cmds.extend(p.cut.map(|_| DrawCmd::PopClip));
+            }
         }
         // A multi-column container's rules, in the middle of its gaps.
         if let Some(m) = n.el.multicol
@@ -2108,4 +2181,24 @@ fn selected_runs(
         }
     }
     runs
+}
+
+/// One piece of a box a column break splits ([`Ui::decor_pieces`]): the
+/// box its decorations are drawn for, and the part of it shown (`None`:
+/// all of it).
+pub(super) struct DecorPiece {
+    pub at: Rect,
+    pub cut: Option<Rect>,
+}
+
+/// Cuts what follows, until its pop, to `r`.
+pub(super) fn cut_to(r: Rect) -> DrawCmd {
+    DrawCmd::PushClip {
+        geometry: og_draw::UiGeometry::Rect {
+            radii: [0.0; 4],
+            corner: og_draw::UiCorner::Round,
+        },
+        center: (r.x + r.width / 2.0, r.y + r.height / 2.0),
+        half: (r.width / 2.0, r.height / 2.0),
+    }
 }

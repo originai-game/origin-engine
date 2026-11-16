@@ -2123,3 +2123,133 @@ fn element_images_draw_the_element_in_each_tile() {
         );
     }
 }
+
+/// `box-decoration-break` (CSS Fragmentation 3 §5.4) on a text that two
+/// balanced columns split: 15 lines of 20 px, 3 px padding and a 2 px
+/// border (5 px a side), 80 px columns.
+///
+/// - `slice` (the initial value) draws the background and border of the
+///   box as if unbroken, 5 + 15 × 20 + 5 = 310 tall, and cuts it at the
+///   break: the first piece shows its top 5 + 8 × 20 = 165 (no bottom
+///   border), the second the rest moved into the next column, 0 to 145
+///   (no top border).
+/// - `clone` gives each piece its own box, padding and border included:
+///   the break needs 10 px more, so the columns balance at 170 (8 lines)
+///   and 150 (7 lines), each drawn whole.
+///
+/// Ways it could fail: one box for the first piece only (the second
+/// column bare); each piece cut from a box of its own size (borders at
+/// the break); clone's padding left out of the balancing.
+#[test]
+fn box_decoration_break_slices_or_clones_a_split_text() {
+    let doc = |mode: &str| {
+        let text = format!(
+            r#"<meta name="component" content="t">
+<div><div id="Tx"><p id="P">one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty</p></div></div>
+<style>
+#Tx {{ columns: 2; column-gap: 0; width: 160px; }}
+p {{ margin: 0; background: #ff0000; border: 2px solid #00ff00; padding: 3px; box-decoration-break: {mode}; }}
+</style>"#
+        );
+        let d = Doc::with_font(&text, &[], test_font());
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+        d
+    };
+    let r = |x: f32, y: f32, w: f32, h: f32| [x, y, w, h];
+    // Each red background and green border: its box, and what of it the
+    // clips it is drawn under leave.
+    let drawn = |d: &Doc| {
+        let mut clips: Vec<Rect> = Vec::new();
+        let mut out = Vec::new();
+        for it in &d.ui.frame().items {
+            let (rect, green) = match &it.cmd {
+                DrawCmd::PushClip { center, half, .. } => {
+                    clips.push(it.transform.map_rect(&Rect::new(
+                        center.0 - half.0,
+                        center.1 - half.1,
+                        2.0 * half.0,
+                        2.0 * half.1,
+                    )));
+                    continue;
+                }
+                DrawCmd::PopClip => {
+                    clips.pop();
+                    continue;
+                }
+                DrawCmd::Quad { rect, color, .. } if same(*color, Srgba::rgb(255, 0, 0)) => {
+                    (*rect, false)
+                }
+                DrawCmd::Shape { shape, .. } if matches!(shape.paint, og_draw::UiPaint::Solid(c) if same(c, Srgba::rgb(0, 255, 0))) => {
+                    (
+                        Rect::new(
+                            shape.center.x - shape.half.x,
+                            shape.center.y - shape.half.y,
+                            2.0 * shape.half.x,
+                            2.0 * shape.half.y,
+                        ),
+                        true,
+                    )
+                }
+                _ => continue,
+            };
+            let rect = it.transform.map_rect(&rect);
+            let shown = clips.iter().fold(rect, |a, c| a.intersect(c));
+            let q = |r: Rect| [r.x, r.y, r.width, r.height].map(|v| (v * 100.0).round() / 100.0);
+            out.push((green, q(rect), q(shown)));
+        }
+        out
+    };
+    let slice = doc("slice");
+    assert_eq!(
+        (slice.get("P").height, slice.get("Tx").height),
+        (165.0, 165.0)
+    );
+    let whole = r(0.0, 0.0, 80.0, 310.0);
+    let moved = r(80.0, -165.0, 80.0, 310.0);
+    let (first, second) = (r(0.0, 0.0, 80.0, 165.0), r(80.0, 0.0, 80.0, 145.0));
+    assert_eq!(
+        drawn(&slice),
+        [
+            (false, whole, first),
+            (false, moved, second),
+            (true, whole, first),
+            (true, moved, second)
+        ],
+        "slice: the unbroken box, cut at the break"
+    );
+    let clone = doc("clone");
+    assert_eq!(
+        (clone.get("P").height, clone.get("Tx").height),
+        (170.0, 170.0)
+    );
+    let (first, second) = (r(0.0, 0.0, 80.0, 170.0), r(80.0, 0.0, 80.0, 150.0));
+    assert_eq!(
+        drawn(&clone),
+        [
+            (false, first, first),
+            (false, second, second),
+            (true, first, first),
+            (true, second, second)
+        ],
+        "clone: a whole box for each piece"
+    );
+    // The second piece's first line sits inside its own padding and border.
+    let fourteen = clone
+        .ui
+        .frame()
+        .items
+        .iter()
+        .find_map(|it| match &it.cmd {
+            DrawCmd::StyledText { text, .. } => match &**text {
+                DrawCmd::Text { text, bounds, .. } if text == "fourteen" => Some(*bounds),
+                _ => None,
+            },
+            _ => None,
+        })
+        .expect("the second piece's first line");
+    assert_eq!((fourteen.x, fourteen.y), (85.0, 5.0));
+}

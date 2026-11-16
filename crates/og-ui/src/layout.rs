@@ -743,8 +743,9 @@ pub struct Element {
     /// CSS `column-span: all`: in a multi-column container, it spans
     /// every column.
     pub span_all: bool,
-    /// Its CSS `break-before`, `break-after` and `break-inside` in a
-    /// fragmented flow ([`multicol::BREAK_BEFORE`] …).
+    /// Its CSS `break-before`, `break-after`, `break-inside` and
+    /// `box-decoration-break` in a fragmented flow
+    /// ([`multicol::BREAK_BEFORE`] …).
     pub breaks: u8,
     /// Its CSS `orphans` and `widows`: the fewest of its text's lines a
     /// break inside it leaves before and after the break (0: the initial

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI CSS box-decoration-break",
+      "summary": "`box-decoration-break` (CSS Fragmentation 3 §5.4) on a text a multi-column break splits: `slice`, the initial value, draws its background, border and shadows as one unbroken box cut at the break, each piece showing its part in its own column; `clone` gives each piece its own whole box, with padding and border at the break taken into the column balancing. A split text drew one box for its first piece only, with a border at the break, and none in the next column."
+    }
+  ]
+}

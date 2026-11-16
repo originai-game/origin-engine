@@ -990,6 +990,7 @@ impl Ui {
                 "breakBefore",
                 "breakAfter",
                 "breakInside",
+                "boxDecorationBreak",
                 "orphans",
                 "widows",
             ] {

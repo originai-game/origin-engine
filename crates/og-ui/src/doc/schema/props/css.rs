@@ -677,6 +677,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `break-inside` (and `page-break-inside`): `avoid` keeps a text's lines in one column.",
     },
     PropSpec {
+        name: "boxDecorationBreak",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `box-decoration-break`: where a column break splits a text, `slice` (the default) draws its background, border and shadow as one box cut at the break; `clone` gives each piece its own, padding and border included.",
+    },
+    PropSpec {
         name: "fitTolerance",
         ty: Ty::Text,
         on: On::All,

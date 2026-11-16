@@ -268,6 +268,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `break-before:` | `<n>px \| <n>%` | CSS `break-before` (and `page-break-before`): `column`, `page` or `always` starts a new column in a multi-column flow. |
 | `break-after:` | `<n>px \| <n>%` | CSS `break-after` (and `page-break-after`): `column`, `page` or `always` puts what follows in a new column. |
 | `break-inside:` | `<n>px \| <n>%` | CSS `break-inside` (and `page-break-inside`): `avoid` keeps a text's lines in one column. |
+| `box-decoration-break:` | `<n>px \| <n>%` | CSS `box-decoration-break`: where a column break splits a text, `slice` (the default) draws its background, border and shadow as one box cut at the break; `clone` gives each piece its own, padding and border included. |
 | `fit-tolerance:` | `<n>px \| <n>%` | CSS `fit-tolerance` of a grid-lanes box (its `display` is `grid-lanes`): lanes whose filled length is within it of the shortest count as tied, and an item takes the first tied lane after the last item's (`normal`: 1em; `infinite`: strictly in order; a px or em length). |
 | `border-spacing:` | `<n>px \| <n>%` | CSS `border-spacing: <h> [<v>]` of a table: the room between its cells, and between its outer cells and its padding (0 by default). Inherited. |
 | `border-collapse:` | `<n>px \| <n>%` | CSS `border-collapse` of a table: `separate` (default) keeps `border-spacing`; `collapse` sets the cells edge to edge. Inherited. |

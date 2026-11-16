@@ -444,14 +444,39 @@ impl Ui {
                     }
                     None => &theme,
                 };
-                let mut out = d.enter(theme, &placed(n));
-                if !marked(n) {
-                    out.extend(d.strokes(theme, &placed(n)));
+                let at = placed(n);
+                let pieces = ui.decor_pieces(i, at.rect);
+                let mut out = d.begin(theme, &at);
+                // A box a column break splits draws its decorations in
+                // each piece (`box-decoration-break`).
+                let whole = [node_draw::DecorPiece {
+                    at: at.rect,
+                    cut: None,
+                }];
+                let pieces = if pieces.is_empty() {
+                    &whole[..]
+                } else {
+                    &pieces[..]
+                };
+                for p in pieces {
+                    let at = crate::paint::Placed { rect: p.at, ..at };
+                    out.extend(p.cut.map(node_draw::cut_to));
+                    let mut own = if d.element_image.is_none() {
+                        d.enter_box(theme, &at)
+                    } else {
+                        Vec::new()
+                    };
+                    if !marked(n) {
+                        own.extend(d.strokes(theme, &at));
+                    }
+                    undraw(&mut own, n.style.sampled.draw);
+                    out.extend(own);
+                    if let Some(decor) = &n.decor {
+                        out.extend(decor.lines(&at));
+                    }
+                    out.extend(p.cut.map(|_| DrawCmd::PopClip));
                 }
-                undraw(&mut out, n.style.sampled.draw);
-                if let Some(decor) = &n.decor {
-                    out.extend(decor.lines(&placed(n)));
-                }
+
                 out.into_iter().map(|c| (c, world)).collect()
             };
             let sig = crate::layout::DrawSig::of(n);
@@ -723,7 +748,20 @@ impl Ui {
                     }
                 }
                 if let Some(d) = self.paint.draw_of(j, &self.tree) {
-                    let at = placed(&self.tree.nodes[j]);
+                    let mut at = placed(&self.tree.nodes[j]);
+                    // A layer of a box a column break splits composites
+                    // over every piece.
+                    for p in self.decor_pieces(j, at.rect) {
+                        let r = p.cut.map_or(p.at, |c| c.intersect(&p.at));
+                        let (x, y) = (at.rect.x.min(r.x), at.rect.y.min(r.y));
+                        at.rect = Rect::new(
+                            x,
+                            y,
+                            at.rect.right().max(r.right()) - x,
+                            at.rect.bottom().max(r.bottom()) - y,
+                        );
+                        at.radius = 0.0;
+                    }
                     let hidden = self.tree.orders.hidden_of.get(j) == Some(&true)
                         || self.tree.orders.skip_of.get(j).is_some_and(|&s| s != 0);
                     let theme = &self.env.theme;

@@ -172,6 +172,14 @@ impl Ui {
                 }
             }
         }
+        if let Some(v) = r.str("boxDecorationBreak") {
+            use crate::layout::multicol::DECORATION_CLONE;
+            el.breaks = if v == "clone" {
+                el.breaks | DECORATION_CLONE
+            } else {
+                el.breaks & !DECORATION_CLONE
+            };
+        }
         for (k, name) in ["orphans", "widows"].into_iter().enumerate() {
             if let Some(n) = r.str(name).and_then(|v| v.parse::<u16>().ok()) {
                 el.keep[k] = n.clamp(1, 255) as u8;

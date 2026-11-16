@@ -121,6 +121,11 @@ pub(crate) fn lower(name: &str, value: &str) -> Option<Result<Vec<Lowered>, Stri
                 "'{v}' is no break-inside: auto, avoid, avoid-column or avoid-page"
             )),
         },
+        // CSS Fragmentation 3 §5.4.
+        "box-decoration-break" | "-webkit-box-decoration-break" => match v {
+            "slice" | "clone" => Ok(vec![("boxDecorationBreak", text(v))]),
+            v => Err(format!("'{v}' is no box-decoration-break: slice or clone")),
+        },
         // CSS Fragmentation 3 §4.4: a positive integer.
         "orphans" | "widows" => match v.parse::<u16>() {
             Ok(n) if n > 0 => Ok(vec![(

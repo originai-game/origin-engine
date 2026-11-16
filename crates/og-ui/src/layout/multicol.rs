@@ -53,6 +53,9 @@ pub struct Multicol {
 pub const BREAK_BEFORE: u8 = 1;
 pub const BREAK_AFTER: u8 = 2;
 pub const AVOID_INSIDE: u8 = 4;
+/// `box-decoration-break: clone` (CSS Fragmentation 3 §5.4): each piece
+/// of a box a break splits takes its padding and border at the break.
+pub const DECORATION_CLONE: u8 = 8;
 
 /// Lines a break inside a paragraph leaves before and after it by
 /// default (`orphans` and `widows`' initial value).
@@ -138,18 +141,30 @@ fn pieces(nodes: &[Node], run: &[usize], tops: &[f32], h: &dyn Fn(&Node) -> f32)
             });
             continue;
         }
-        // Breaks between lines `orphans..=lines - widows`.
-        let y0 = top + n.layout.used.padding.top;
+        // Breaks between lines `orphans..=lines - widows`. Under `clone`
+        // a piece takes its padding and border at a break too (CSS
+        // Fragmentation 3 §5.4).
+        let pad = n.layout.used.padding;
+        let (above, below) = if n.layout.used.breaks & DECORATION_CLONE != 0 {
+            (pad.top, pad.bottom)
+        } else {
+            (0.0, 0.0)
+        };
+        let y0 = top + pad.top;
         let mut starts = vec![0];
         starts.extend(orphans..=lines - widows);
         for (j, &s) in starts.iter().enumerate() {
             let e = starts.get(j + 1).copied().unwrap_or(lines);
             out.push(Piece {
-                top: if s == 0 { top } else { y0 + s as f32 * lh },
+                top: if s == 0 {
+                    top
+                } else {
+                    y0 + s as f32 * lh - above
+                },
                 bottom: if e == lines {
                     bottom
                 } else {
-                    y0 + e as f32 * lh
+                    y0 + e as f32 * lh + below
                 },
                 kid: k,
                 line: s,
@@ -382,11 +397,13 @@ pub(crate) fn place(nodes: &mut [Node], i: usize) {
             let [dx, dy] = moved[k].unwrap_or([0.0, -saved]);
             nodes[c].layout.x += dx;
             nodes[c].layout.y += dy;
-            // A split text's box is its first fragment.
+            // A split text's box is its first fragment, to the end of the
+            // piece before the break.
             if let Some(&(line, _)) = nodes[c].layout.frag.first()
-                && let Some(q) = p.iter().find(|q| q.kid == k && q.line == line as usize)
+                && let Some(q) = p.iter().position(|q| q.kid == k && q.line == line as usize)
+                && q > 0
             {
-                nodes[c].layout.h = q.top - tops[k];
+                nodes[c].layout.h = p[q - 1].bottom - tops[k];
             }
         }
         let flow = p.last().map_or(0.0, |q| q.bottom);
