@@ -24,10 +24,10 @@
                 <og-icon class="icon" icon={s.locked ? 'lock' : s.icon}></og-icon>
                 <div class="text">
                   <span class="name">{s.name}</span>
-                  <div class="sub" hidden={s.detail == '' && !s.equipped}>
-                    <span class="detail" part="Loadout.detail" hidden={s.detail == ''}>{s.detail}</span>
-                    <span class="badge" hidden={!s.equipped}>{t("shooter.loadout.equipped")}</span>
-                  </div>
+                  {#if s.detail != '' || s.equipped}<div class="sub">
+                    {#if s.detail != ''}<span class="detail" part="Loadout.detail">{s.detail}</span>{/if}
+                    {#if s.equipped}<span class="badge">{t("shooter.loadout.equipped")}</span>{/if}
+                  </div>{/if}
                 </div>
                 {#if s.cost != ''}<div class="cost"><og-icon class="coin" icon="coin"></og-icon><span class="price" part="Loadout.price Loadout.figure">{s.cost}</span></div>{/if}
               </div></button>
@@ -53,17 +53,17 @@
 </section>
 
 <style>
-#Loadout { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-lg); }
+:host { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-lg); }
 /* Sizes are steps in em of the surrounding text, so they follow the player's
    text scale (a --text-* step is px and does not). */
-#Title { font-size: var(--font-step-2xl); line-height: var(--font-leading-normal); font-family: var(--font-display); }
+#Title { margin: 0; font-size: var(--font-step-2xl); line-height: var(--font-leading-normal); font-family: var(--font-display); }
 #Body { display: flex; flex-direction: column; width: stretch; flex: 1; min-height: 0; gap: var(--space-lg); }
 /* The scrollbar is drawn on the right in either direction, so the room beside it is
    on the right too. */
 #Groups { width: stretch; flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding-right: var(--space-lg); container-type: scroll-state; gap: var(--space-xl); display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 3), 1fr)); align-content: start; }
-.group { gap: var(--space-sm); }
+.group { display: flex; flex-direction: column; gap: var(--space-sm); }
 .category { font-size: var(--font-step-sm); line-height: var(--font-leading-normal); color: var(--ink-faint); text-transform: uppercase; letter-spacing: var(--font-tracking-lg); }
-.items { gap: var(--space-xs); }
+.items { display: flex; flex-direction: column; gap: var(--space-xs); }
 .item { width: stretch; height: auto; min-height: var(--size-touch); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); min-width: 0; }
 .face { display: flex; width: stretch; align-items: center; gap: var(--space-md); }
 .icon { flex: none; width: var(--size-sm); height: var(--size-sm); color: var(--ink-muted); }
@@ -83,13 +83,13 @@
 /* The bottom edge fades while there is more to scroll, so a cut row reads as more below. */
 #Fade { grid-column: 1 / -1; position: sticky; bottom: 0; height: var(--size-xl); margin-top: calc(var(--size-xl) * -1); background: linear-gradient(to bottom, transparent, var(--backdrop)); pointer-events: none; opacity: 0; }
 @container scroll-state(scrollable: bottom) { #Fade { opacity: 1; } }
-#Actions { display: flex; width: stretch; justify-content: flex-end; gap: var(--space-sm); padding-bottom: env(safe-area-inset-bottom); }
+#Actions { display: flex; flex: none; justify-content: flex-end; gap: var(--space-sm); padding-bottom: env(safe-area-inset-bottom); }
 #Actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); }
 /* A landscape phone has height for a few rows only: the title takes less of it,
    and the actions stand beside the list, at its end under the thumb, so the
    list keeps the page's height. */
 @media (height < 600px) and (orientation: landscape) {
-  #Loadout { gap: var(--space-sm); }
+  :host { gap: var(--space-sm); }
   #Title { font-size: var(--font-step-xl); margin: 0; }
   .category { margin: 0; }
   #Body { flex-direction: row; gap: var(--space-md); }

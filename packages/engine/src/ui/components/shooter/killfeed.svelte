@@ -11,17 +11,16 @@
     <div class="row" part="Killfeed.row" class:self={r.self} aria-label={t("shooter.killfeed.row", { killer: r.killer, victim: r.victim, weapon: r.weapon })} in:fly={{ x: 24, duration: 200 }} out:fade={{ duration: 200 }} animate:flip={{ duration: 200 }}>
       <span class="name killer" part="Killfeed.name" class:ally={r.team == 'ally'} class:enemy={r.team != 'ally'}>{r.killer}</span>
       <span class="weapon" part="Killfeed.weapon Killfeed.label">{r.weapon}</span>
-      <og-icon class="headshot" part="Killfeed.headshot" icon="skull" aria-label={t("shooter.killfeed.headshot")} hidden={!r.headshot}></og-icon>
+      {#if r.headshot}<og-icon class="headshot" part="Killfeed.headshot" icon="skull" aria-label={t("shooter.killfeed.headshot")}></og-icon>{/if}
       <span class="name victim" part="Killfeed.name" class:ally={r.team != 'ally'} class:enemy={r.team == 'ally'}>{r.victim}</span>
     </div>
   {/each}
 </div>
 
 <style>
-/* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
-#Killfeed { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-xxs); pointer-events: none; max-width: stretch; }
-.row { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) var(--space-sm); border-radius: var(--radius-xs); background: var(--scene-plate); width: fit-content; max-width: stretch; }
+:host { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-xs); pointer-events: none; max-width: 100%; text-shadow: var(--tag-halo); }
+.row { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-control); background: var(--scene-plate); width: fit-content; max-width: 100%; border-inline-end: var(--stroke-regular) solid var(--line-strong); }
+.row.self { border-inline-end-color: var(--primary); background: var(--hud); }
 .name { font-size: var(--font-step-sm); line-height: var(--font-leading-normal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(var(--size-xxl) * 1.6); color: var(--scene-ink); text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
 /* Sides by place: the killer always leads the row; the pack inks each
    name by team (Killfeed::name.ally, .enemy). */

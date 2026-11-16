@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "ShooterAmmoCounter, ShooterCombatHud, ShooterCrosshair, ShooterDamageDirection, ShooterKillfeed, ShooterLoadout",
+    "summary": "Shooter components use HTML with CSS while retaining ids, parts and intents. Ammo and reload layers stay in their tracks, optional readouts leave no empty space, and a token-based reticle keyline keeps the aim visible against bright scenes. Loadout columns and the review sheet's non-shrinking footer remain usable at phone width."
+  }]
+}

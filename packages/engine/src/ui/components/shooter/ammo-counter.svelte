@@ -21,19 +21,19 @@
   <div id="Magazine" part="Ammo.track Ammo.well" style:--fill={capacity > 0 ? magazine / capacity : 0}><div id="MagazineFill" part="Ammo.magazine Ammo.well" class:low={magazine > 0 && magazine <= capacity * low}></div></div>
   <div id="Weapon">
     <span id="Name" part="Ammo.weapon Ammo.label">{weapon}</span>
-    <span id="Auto" class="mode" part="Ammo.mode" hidden={mode != 'auto'}>{t("shooter.ammo.auto")}</span>
-    <span id="Burst" class="mode" part="Ammo.mode" hidden={mode != 'burst'}>{t("shooter.ammo.burst")}</span>
-    <span id="Single" class="mode" part="Ammo.mode" hidden={mode != 'single'}>{t("shooter.ammo.single")}</span>
+    {#if mode == 'auto'}<span id="Auto" class="mode" part="Ammo.mode">{t("shooter.ammo.auto")}</span>{/if}
+    {#if mode == 'burst'}<span id="Burst" class="mode" part="Ammo.mode">{t("shooter.ammo.burst")}</span>{/if}
+    {#if mode == 'single'}<span id="Single" class="mode" part="Ammo.mode">{t("shooter.ammo.single")}</span>{/if}
   </div>
-  <div id="Reload" hidden={reloading < 0} style:--progress={reloading}>
+  {#if reloading >= 0}<div id="Reload" style:--progress={reloading}>
     <div id="ReloadTrack" part="Ammo.track Ammo.well"><div id="ReloadFill" part="Ammo.reload"></div></div>
     <span id="ReloadLabel" part="Ammo.label">{t("shooter.ammo.reloading")}</span>
-  </div>
-  <span id="Prompt" part="Ammo.prompt Ammo.label" hidden={!(magazine <= 0 && reloading < 0)}>{t("shooter.ammo.empty")}</span>
+  </div>{/if}
+  {#if magazine <= 0 && reloading < 0}<span id="Prompt" part="Ammo.prompt Ammo.label">{t("shooter.ammo.empty")}</span>{/if}
 </div>
 
 <style>
-#AmmoCounter { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); background: var(--scene-plate); color: var(--scene-ink); min-width: calc(var(--size-xxl) * 1.75); }
+:host { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-control); background: var(--scene-plate); color: var(--scene-ink); min-width: calc(var(--size-xxl) * 1.75); text-shadow: var(--tag-halo); border: var(--stroke-hairline) solid var(--line); }
 #Rounds { display: flex; align-items: baseline; gap: var(--space-sm); }
 /* The magazine is the largest number on the HUD; the reserve sits beside it,
    a step down and quieter, as Apex and Forza set a value beside its unit.
@@ -43,15 +43,15 @@
 #Count.low { color: var(--warn); }
 #Count.empty { color: var(--danger); }
 #Reserve { font-size: var(--font-step-xl); line-height: var(--font-leading-normal); font-family: var(--font-mono); color: var(--scene-ink); text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
-#Magazine { width: stretch; height: var(--stroke-thick); background: var(--sheen); }
-#MagazineFill { width: calc(var(--fill) * 100%); height: stretch; background: var(--scene-ink); transition: width var(--motion-ui-duration) var(--motion-ui-easing); }
+#Magazine { position: relative; align-self: stretch; height: var(--stroke-thick); background: var(--sheen); border-radius: var(--meter-radius); overflow: hidden; }
+#MagazineFill { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; width: calc(var(--fill) * 100%); background: var(--scene-ink); transition: width var(--motion-ui-duration) var(--motion-ui-easing); }
 .low #MagazineFill { background: var(--warn); }
 #Weapon { display: flex; align-items: baseline; gap: var(--space-sm); }
 #Name { font-size: var(--font-step-sm); line-height: var(--font-leading-normal); color: var(--scene-ink); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: calc(var(--size-xxl) * 2); }
 .mode { font-size: var(--font-step-sm); line-height: var(--font-leading-normal); text-transform: uppercase; }
-#Reload { width: stretch; gap: var(--space-xxs); align-items: flex-end; }
-#ReloadTrack { width: stretch; height: var(--stroke-thick); background: var(--sheen); }
-#ReloadFill { width: calc(var(--progress) * 100%); height: stretch; background: var(--scene-ink); }
+#Reload { display: flex; flex-direction: column; align-self: stretch; gap: var(--space-xxs); align-items: flex-end; }
+#ReloadTrack { position: relative; align-self: stretch; height: var(--stroke-thick); background: var(--sheen); }
+#ReloadFill { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; width: calc(var(--progress) * 100%); background: var(--info); }
 #ReloadLabel { font-size: var(--font-step-sm); line-height: var(--font-leading-normal); color: var(--scene-ink); text-transform: uppercase; }
 #Prompt { font-size: var(--font-step-sm); line-height: var(--font-leading-normal); color: var(--danger); text-transform: uppercase; }
 </style>

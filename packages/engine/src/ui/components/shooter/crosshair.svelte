@@ -33,7 +33,8 @@
    centre plus the spread's travel; the dressing gives the ink and keyline.
    The line's width is --weight: --line is the palette's rule colour, which a
    style pack's :root sets on this root too, above the component's layer. */
-#Crosshair {
+:host {
+  position: relative;
   --arm: var(--size-xs);
   --weight: var(--stroke-thick);
   --gap: calc(var(--space-xs) + var(--spread, 0) * var(--size-md));
@@ -41,6 +42,8 @@
   pointer-events: none;
 }
 .arm { position: absolute; background: var(--scene-ink); border-radius: var(--radius-xs); transition: translate var(--motion-ui-duration) var(--motion-ui-easing); }
+/* A keyline keeps the reticle legible over a bright scene, not just dark ground. */
+.arm, .tick, #Dot, #Ring { box-shadow: 0 0 0 var(--stroke-hairline) var(--scene-shadow); }
 .vertical { left: calc(50% - var(--weight) / 2); width: var(--weight); height: var(--arm); }
 .horizontal { top: calc(50% - var(--weight) / 2); width: var(--arm); height: var(--weight); }
 #Up { bottom: calc(50% + var(--gap)); }
@@ -54,7 +57,7 @@
 #Dot { position: absolute; left: calc(50% - var(--weight)); top: calc(50% - var(--weight)); width: calc(var(--weight) * 2); height: calc(var(--weight) * 2); border-radius: var(--radius-pill); background: var(--scene-ink); }
 /* Hit marks: four short diagonal ticks just outside the arms, shown while
    the game holds `hit`, popped in again by a new `hitAt`. */
-#Hit { position: absolute; left: 0; top: 0; width: stretch; height: stretch; opacity: 0; transition: opacity var(--motion-exit); }
+#Hit { position: absolute; inset: 0; opacity: 0; transition: opacity var(--motion-exit); }
 #Hit.shown { opacity: 1; scale: 1; transition: opacity var(--motion-enter), scale var(--motion-duration-spring) var(--motion-easing-spring); }
 @starting-style { #Hit.shown { opacity: 0; scale: 1.5; } }
 .tick { position: absolute; width: var(--weight); height: var(--space-md); background: var(--scene-ink); }

@@ -18,9 +18,9 @@
 /* Each hit is a stretch of a ring around the centre, turned to where the
    damage came from: the upper half circle's middle, its length and weight
    by the hit's strength. */
-#DamageDirection { width: stretch; height: stretch; min-width: calc(var(--size-xxl) * 2); min-height: calc(var(--size-xxl) * 2); pointer-events: none; }
-.hit { position: absolute; left: 0; top: 0; width: stretch; height: stretch; rotate: calc(var(--angle) * 1rad); opacity: calc(0.5 + var(--strength) * 0.5); }
-.ring { width: stretch; height: stretch; }
+:host { position: relative; width: 100%; height: 100%; min-width: calc(var(--size-xxl) * 2); min-height: calc(var(--size-xxl) * 2); pointer-events: none; }
+.hit { position: absolute; inset: 0; rotate: calc(var(--angle) * 1rad); opacity: calc(0.5 + var(--strength) * 0.5); }
+.ring { width: 100%; height: 100%; }
 .arc { stroke: var(--danger); stroke-width: 3; stroke-linecap: round; }
 .arc.shield { stroke: var(--info); }
 .arc.critical { stroke-width: 5; }

@@ -36,10 +36,10 @@
 /* The HUD keeps to the corners and the centre: vitals bottom left, ammunition
    bottom right, the feed top right, the reticle and hit directions centred.
    Edges sit inside the safe area, so a phone's notch and home bar stay clear. */
-#CombatHud { position: fixed; left: 0; top: 0; width: stretch; height: stretch; pointer-events: none; --edge: var(--space-xl); }
-@media (width < 600px) { #CombatHud { --edge: var(--space-md); } }
+:host { position: fixed; inset: 0; pointer-events: none; --edge: var(--space-xl); text-shadow: var(--tag-halo); }
+@media (width < 600px) { :host { --edge: var(--space-md); } }
 #Centre { position: absolute; left: calc(50% - var(--size-xxl) * 1.5); top: calc(50% - var(--size-xxl) * 1.5); width: calc(var(--size-xxl) * 3); height: calc(var(--size-xxl) * 3); }
-#Damage { position: absolute; left: 0; top: 0; width: stretch; height: stretch; }
+#Damage { position: absolute; inset: 0; }
 #Aim { position: absolute; left: calc(50% - var(--size-xxl) / 2); top: calc(50% - var(--size-xxl) / 2); }
 #Feed { position: absolute; right: calc(env(safe-area-inset-right) + var(--edge)); top: calc(env(safe-area-inset-top) + var(--edge)); max-width: calc(100% - var(--edge) * 2); }
 #Vitals { position: absolute; left: calc(env(safe-area-inset-left) + var(--edge)); bottom: calc(env(safe-area-inset-bottom) + var(--edge)); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); background: var(--scene-plate); width: fit-content; }

@@ -121,3 +121,13 @@ hit-mark replay, the ammunition states, the order of keyed collections,
 the safe area and spacing of the HUD on a desktop and on a phone both ways
 (where the feed shows three rows), in the default style and in a pack, and
 that the HUD's and the loadout's text follows the player's text scale.
+
+## Document layout
+
+The components use HTML with CSS, with `:host` styling the root and
+conditional content built with `{#if}`. Ammunition and reload fills belong
+to their own rounded tracks; the reticle and directional arcs own their
+positioned layers. The scene halo inherits from the HUD root. Local-player
+killfeed rows have a primary edge and extra breathing room, and loadout
+categories and items declare their columns explicitly. Its footer never
+shrinks into the phone's home area. Existing ids, parts and intents stay.
