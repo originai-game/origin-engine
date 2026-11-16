@@ -301,6 +301,21 @@ not_applicable("paint",
 not_applicable("svg-discouraged",
                "SVG 1.1 features SVG 2 removed (xlink: attributes, SVG fonts, SVGPathSeg and other DOM methods, zoomAndPan, baseProfile); documents are SVG 2 markup with no script DOM.")
 
+# selectors and cascade
+proof("selectors has is where not nth-of-type root scope scope-pseudo case-insensitive-attributes case-sensitive-attributes lang dir-pseudo state link-selectors nesting input-selectors indeterminate default read-write-pseudos placeholder-shown open-pseudo",
+      "css_selectors", "selectors_select_as_css_does",
+      "Computed widths, each against a decoy in the other state: type, class, id and attribute selectors with the child, adjacent and general sibling combinators; :has(> …); :is(); :not(); :where() matching with zero specificity; :nth-of-type(2) among other tags; a :root custom property; :scope; @scope (.card) to (.inner) stopping at its limit; [k=v i] and [k=v s]; :lang(fr) on fr-CA; :dir(rtl); :state(on) bound true and false; :any-link; nesting's &; :checked, :disabled, :enabled, :default and :indeterminate inputs; input:read-only; :placeholder-shown; :out-of-range; details:open. :visited and :link's history are not modelled (every link is unvisited).")
+proof("form-validity-pseudos", "input_types", "html_constraints_readonly_rows_and_label_checkboxes",
+      "Computed widths: an empty required field and one under its minlength match :invalid, valid and empty optional fields do not. :valid, :in-range and :user-valid are not asserted here.")
+proof("cascade-layers", "style_pack", "a_rule_ranks_by_its_tree_context_then_its_layer",
+      "A built-in component's own rule (og-components) loses to a pack's (og-pack), a game's own unlayered rule beats it, and !important reverses the layers; a rule's tree context ranks before its layer (a button's own plate over the style's ::part(), a document's ::part() over the plate). Anonymous and nested layers are covered by documents::supports_charset_and_import_conditions_gate_their_rules.")
+proof("shadow-parts", "dressing", "a_part_rule_reads_its_hosts_place_in_the_document",
+      "A built-in control's parts are a shadow tree under its element: .shop button::part(base) and ul > li:first-child button::part(base) widen only the button they reach, from a document and from a pack, and follow a class change. part lists (one element under two names) are covered by the role parts' tests; exportparts is not built (no component re-exports a part).")
+not_applicable("time-relative-selectors",
+               "WebVTT cue timing: :past and :future match text-track cues during media playback, and a game's <video> carries no text tracks.")
+not_applicable("autonomous-custom-elements",
+               "customElements.define() is a script API. A game's components are .svelte documents used by their own tag, with no script to register a class.")
+
 MISSING = {
     "will-change": "will-change on a stacking property draws a group layer, but neither half of its contract is observable yet: a transform does not make a containing block for fixed descendants, and z-index never lifts a child above its parent's later siblings (both routed to their streams).",
     "file-selector-button": "Accepted and styles nothing: a file input's button is not a stylable box.",
@@ -308,7 +323,6 @@ MISSING = {
     "view-transitions-element-scoped": "No view-transition-scope or element-scoped transitions: a transition captures a whole layer.",
     # layout
     "scrollbar-gutter": "Gap: a box with overflow-y: auto or scroll and overflow-x left visible (which computes to auto) reserves no gutter, because a box that may scroll both ways draws its bars over its content.",
-    "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
     "calc-size": "No calc-size evaluation or animated output proof.",
     "table": "Table spans/captions have computed output tests, but border-spacing and border-collapse have no implementation/output proof.",
@@ -320,7 +334,13 @@ MISSING = {
     "image-orientation": "The cook decodes images without their EXIF orientation and there is no image-orientation property; from-image and none are both unimplemented.",
     "border-shape": "No border-shape: borders, border images, outlines and shadows follow border-radius and corner-shape only.",
     "box-decoration-break": "Inline boxes and column fragments draw no per-fragment decorations, so neither slice nor clone is implemented.",
-    "shadow-parts": "Host/part/state selector registry is present; all-property part applicability awaits the parts-as-nodes stream and its output tests.",
+    "host": ":host and :host() parse and match through the selectors crate, but a component instance's host element is not styled, so no output proves it.",
+    "has-slotted": "A component's content is passed as snippets, not <slot> elements, so no :has-slotted output exists.",
+    "slot": "A component's content is passed as snippets ({@render}), not <slot> elements, and no <slot> output is proved.",
+    "host-context": ":host-context() is not parsed (Selectors 4 dropped it, and Firefox never shipped it).",
+    "heading-selectors": ":heading and :heading() are not parsed yet.",
+    "revert-rule": "The revert-rule keyword is not read yet.",
+    "media-pseudos": "<video> plays footage, but :playing, :paused and the other media pseudo-classes are not parsed yet.",
 }
 
 if overlap := PROVEN.keys() & MISSING.keys():
@@ -426,7 +446,7 @@ def main():
         else:
             state = "Missing"
             reason = MISSING.get(key, "Output proof not yet reviewed; implementation status unverified.")
-        part_state = "Pending parts-as-nodes"
+        part_state = "Not applicable" if key in NOT_APPLICABLE else "Missing"
         for module, test, scope in PART_PROVEN.get(key, []):
             source = proof_source(module, test, "part proof")
             part_state = "Supported (scope →)"
