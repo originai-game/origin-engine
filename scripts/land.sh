@@ -121,19 +121,73 @@ prefix() {
   [ "$lo" -gt "$known" ]
 }
 
+# Rebase what the push carries, tips[0..n] for the n landers in it, onto an
+# origin/main moved by a writer outside this queue (another orb's land.sh).
+# Each tip becomes the rebased copy of its last commit that survived (a
+# commit already on main is dropped); was keeps the old head. False on a
+# conflict that is not generated-only.
+retip() {
+  local n="${#landing[@]}"
+  was="$head"
+  tips=("${tips[@]:0:n+1}")
+  theirs=(${theirs[@]+"${theirs[@]:0:n}"}) files=(${files[@]+"${files[@]:0:n}"})
+  git checkout -q --detach "$head"
+  if ! python3 scripts/rebase-generated.py origin/main </dev/null || [ -n "$(git status --porcelain)" ]; then
+    git rebase --abort 2>/dev/null || true
+    git reset -q --hard
+    return 1
+  fi
+  head="$(git rev-parse HEAD)"
+  mapfile -t tips < <(python3 - "$was" "$head" "${tips[@]}" <<'PY'
+import subprocess
+import sys
+
+was, head, *tips = sys.argv[1:]
+def commits(end):
+    out = subprocess.check_output(['git', 'log', '--reverse', '--format=%H%x00%s', 'origin/main..' + end])
+    return [line.split('\0', 1) for line in out.decode().splitlines()]
+main = subprocess.check_output(['git', 'rev-parse', 'origin/main']).decode().strip()
+new, last, j, at = commits(head), main, 0, {}
+for commit, subject in commits(was):
+    if j < len(new) and new[j][1] == subject:
+        last, j = new[j][0], j + 1
+    at[commit] = last
+print(*[at.get(t, main) for t in tips[:-1]], head, sep='\n')
+PY
+)
+  [ "${#tips[@]}" = $((n + 1)) ] || return 1
+  # This lander's own branch follows its rebased head, as after the first rebase.
+  [ "$known" = 0 ] || git update-ref "refs/heads/$branch" "${tips[0]}"
+}
+
 # Push head; then tell each stacked lander in landing its commits landed.
+# When a writer outside this queue moved origin/main first, rebase onto it
+# and push again: without a gate when what landed is disjoint from the
+# pushed change, else after rechecking the steps the rebase affected. Stops
+# when that recheck fails (prefix lands any passing part of a stack).
 push() {
-  if git push origin "$head:refs/heads/main"; then
-    echo "land: pushed $head to origin/main"
-  else
+  local old
+  until git push origin "$head:refs/heads/main"; do
     # The push response may be lost; anything else is a writer outside the queue.
     git fetch origin main
-    if ! git merge-base --is-ancestor "$head" origin/main; then
-      echo 'land: origin/main moved outside scripts/land.sh; run it again' >&2
-      finish 1
+    if git merge-base --is-ancestor "$head" origin/main; then
+      echo "land: origin/main contains $head"
+      break
     fi
-    echo "land: origin/main contains $head"
-  fi
+    old="$(git merge-base "$head" origin/main)"
+    echo "land: origin/main moved to $(git rev-parse --short origin/main) outside this queue; rebasing onto it"
+    retip || {
+      echo 'land: the head conflicts with the new origin/main; rebase it and run scripts/land.sh again' >&2
+      finish 1
+    }
+    if disjoint "$old" "$was" origin/main; then
+      echo 'land: disjoint from what landed; pushing without a recheck'
+    else
+      echo 'land: overlapping or shared inputs; rechecking affected quick steps'
+      prefix "$known" || return 0
+    fi
+  done
+  echo "land: pushed $head to origin/main"
   for k in "${landing[@]+"${landing[@]}"}"; do
     printf '%s\n' "${tips[$((k + 1))]}" > "$queue/landed/${theirs[$k]}"
     rm -f "${files[$k]}"
@@ -221,9 +275,9 @@ if [ "$main" != "$base" ]; then
   head="$(git rev-parse HEAD)"
   if [ "$recheck" = 0 ]; then echo 'land: disjoint changes, reusing passing quick gate'; fi
 fi
+tips=("$head") known=-1
 if [ "$recheck" = 1 ]; then
   echo 'land: overlapping or shared inputs; rechecking affected quick steps at the head of the queue'
-  tips=("$head")
   stack
   if prefix -1; then push; fi
 else
@@ -234,7 +288,7 @@ fi
 while :; do
   git fetch -q origin main
   [ -n "$(offers)" ] || break
-  tips=("$(git rev-parse origin/main)")
+  tips=("$(git rev-parse origin/main)") known=0
   git checkout -q --detach "${tips[0]}"
   stack
   [ "${#theirs[@]}" -gt 0 ] || continue

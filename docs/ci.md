@@ -34,7 +34,11 @@ passing prefix and hands the first failing head back with a marker in
 pushed tree, never with a force push. A head whose tree passed the whole
 `full` lane with `--all` (the record `target/og-gate/green/lane.full`,
 which `scripts/gate/run.py` writes only when every step ran and passed)
-skips the opening quick; the recheck still runs what a rebase changed. Conflicts confined to generated
+skips the opening quick; the recheck still runs what a rebase changed.
+The queue does not span orbs: when a lander elsewhere pushes first, the
+push is retried on the new main, without a gate when what landed is
+disjoint from the head's inputs and after a recheck otherwise, until it
+lands or the recheck fails. Conflicts confined to generated
 files (`og_idl::OUTPUT_DIRS`, the UI theme) are regenerated; any other
 conflict stops for the author. `python3 scripts/test-landing.py` exercises
 concurrent landings against a disposable bare remote.

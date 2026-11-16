@@ -168,7 +168,7 @@ while [ -f "$CONTROL/$name.allow" ] && [ "$(wc -l < "$CONTROL/$name.allow")" -lt
         self.assertEqual(sorted(self.run_git(self.remote, 'log', '-3', '--format=%s').splitlines()),
                          ['first', 'second', 'third'])
 
-    def drain(self, breaker=False):
+    def drain(self, breaker=False, outside=False):
         # b rechecks at the head of the queue while c, then d, pass quick and
         # wait. b lands itself, then drains both as one stack. With d breaking
         # c, the stack fails: c (the passing prefix) lands, d goes back.
@@ -188,6 +188,8 @@ while [ -f "$CONTROL/$name.allow" ] && [ "$(wc -l < "$CONTROL/$name.allow")" -lt
         for name in jobs:
             self.ready(name)
         self.run_git(self.a, 'push', 'origin', 'main')
+        if outside:
+            self.outside(None, ('outside', 'o'))
         (self.root / 'b.go').touch()
         deadline = time.monotonic() + 15
         while self.calls('b') < 2:
@@ -224,6 +226,74 @@ while [ -f "$CONTROL/$name.allow" ] && [ "$(wc -l < "$CONTROL/$name.allow")" -lt
         self.assertEqual(self.run_git(self.remote, 'log', '-3', '--format=%s').splitlines(),
                          ['c', 'b', 'upstream'])
         self.assertFalse(list((self.a / '.git/og-landing/batch').iterdir()))
+
+    def outside(self, *writes):
+        # Another orb's lander: a separate clone, so a separate queue. Each
+        # push from a's Git directory is first beaten by the next of writes
+        # (a path and its text, committed on the remote's main from there),
+        # or let through by None.
+        o = self.root / 'o'
+        self.run_git(self.root, 'clone', '-q', str(self.remote), str(o))
+        for key, value in (('user.email', 'o@example.invalid'), ('user.name', 'Outside'), ('commit.gpgsign', 'false')):
+            self.run_git(o, 'config', key, value)
+        (self.root / 'outside').write_text(''.join('-\n' if w is None else f'{w[0]} {w[1]}\n' for w in writes))
+        hooks = self.root / 'hooks'
+        hooks.mkdir()
+        (hooks / 'pre-push').write_text('''#!/usr/bin/env bash
+set -e
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX
+q="$CONTROL/outside"
+[ -s "$q" ] || exit 0
+line="$(head -n 1 "$q")"; sed -i 1d "$q"
+[ "$line" != - ] || exit 0
+n="$(cat "$CONTROL/outside.n" 2>/dev/null || echo 0)"; echo $((n + 1)) > "$CONTROL/outside.n"
+cd "$CONTROL/o"
+git fetch -q origin && git checkout -q -B w origin/main
+mkdir -p "$(dirname "${line%% *}")"; echo "${line#* }" > "${line%% *}"
+git add -A && git commit -qm "outside $n" && git push -q origin HEAD:refs/heads/main
+''')
+        (hooks / 'pre-push').chmod(0o755)
+        self.run_git(self.a, 'config', 'core.hooksPath', str(hooks))
+
+    def outside_race(self, writes, change=('first', 'first\n'), ok=True):
+        (self.a / change[0]).parent.mkdir(parents=True, exist_ok=True)
+        (self.a / change[0]).write_text(change[1])
+        self.commit(self.a, 'first')
+        self.outside(*writes)
+        (self.root / 'a.go').touch()
+        output = self.finish(self.start(self.a), ok=ok)
+        return output, self.run_git(self.remote, 'log', '--format=%s', 'main').splitlines()
+
+    def test_outside_writer_disjoint_lands_without_a_recheck(self):
+        output, log = self.outside_race([('outside', 'o'), ('outside', 'o2')])
+        self.assertEqual(output.count('pushing without a recheck'), 2, output)
+        self.assertEqual(self.calls('a'), 1)
+        self.assertEqual(log[:3], ['first', 'outside 1', 'outside 0'])
+        self.assertEqual(self.run_git(self.a, 'rev-parse', 'main'), self.run_git(self.remote, 'rev-parse', 'main'))
+
+    def test_outside_writer_on_shared_inputs_rechecks_then_lands(self):
+        output, log = self.outside_race([('Cargo.toml', 'o')])
+        self.assertIn('rechecking affected quick steps', output)
+        self.assertEqual(self.calls('a'), 2)
+        self.assertEqual(log[:2], ['first', 'outside 0'])
+
+    def test_outside_writer_failing_recheck_never_pushes(self):
+        output, log = self.outside_race([('scripts/c', 'c')], change=('breaks-c', 'a\n'), ok=False)
+        self.assertEqual(self.calls('a'), 2)
+        self.assertEqual(log[0], 'outside 0')
+
+    def test_outside_writer_conflict_stops(self):
+        output, log = self.outside_race([('shared', 'outside')], change=('shared', 'first\n'), ok=False)
+        self.assertIn('conflicts with the new origin/main', output)
+        self.assertEqual(log[0], 'outside 0')
+
+    def test_outside_writer_during_a_drain_lands_the_stack(self):
+        # b's own push goes through; an outside write beats the stack's
+        # push. The stack's scripts/ are a shared input: one more recheck.
+        self.drain(outside=True)
+        self.assertEqual(self.calls('b'), 4)
+        self.assertEqual(self.run_git(self.remote, 'log', '-5', '--format=%s').splitlines(),
+                         ['d', 'c', 'outside 0', 'b', 'upstream'])
 
     def test_failed_gate_never_pushes(self):
         (self.a / 'first').write_text('first')
