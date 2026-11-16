@@ -231,6 +231,8 @@ proof("container-name-queries style-query-range-syntax", "documents", "container
       "@container <name> with no condition applies under the named container and not without one; style() ranges compare a property with a literal, two properties, a two-sided range and a length against calc(0.125in), and a length against a number is false. if(style()) ranges are not covered.")
 proof("calc-size", "css_layout", "calc_size_scales_its_basis_size",
       "width and height: max-content, min-content, fit-content, stretch and a block's auto width, an auto height in an auto-height parent, a percentage basis, a nested calc-size(), max-width after, content-box padding, and a flex row item's width, each the basis size through a calculation linear in size; non-linear calculations, size outside calc-size() and calc-size() in min-/max- bounds fail to cook. Not covered: flex-basis and bounds (refused), a flex item's cross axis (it aligns flex-start, CSS Flexbox 1 §8.3, not asserted), and animating to it (interpolate-size).")
+proof("all", "documents", "all_sets_every_property_but_direction",
+      "all: inherit takes the parent's width, height and font size; all: initial gives width auto (0 with no content) and the root's font size over a class's 10px; all: unset then width: 2em reads the inherited 20px, and width: 2em then all: unset loses; custom properties and direction (rtl under all: initial) are kept. revert and revert-layer through all are not asserted.")
 not_applicable("url-cross-origin url-integrity url-referrer-policy",
                "Request modifiers for a network fetch: a game's url() names a file of its own cooked package, "
                "which is never fetched across origins, so CORS, subresource integrity and referrers do not arise.")
