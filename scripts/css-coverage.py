@@ -349,6 +349,8 @@ proof("scroll-buttons", "css_interact", "scroll_markers_and_buttons_follow_the_s
       "::scroll-button(up) and (down) stand before the scroller after its group; a press pages by 0.85 of the 200px scrollport (200 to 30, then 30 to the 200 end, clamped); ::scroll-button(*):disabled matches up at offset 0 and down at the end and neither in between. Logical directions are read as horizontal-tb left to right; prev/next are not taken; focus order is the tree's.")
 proof("scroll-target-group", "css_interact", "scroll_markers_and_buttons_follow_the_scroll_position",
       "A scroll-target-group: auto list's <a href=\"#A\"> and <a href=\"#C\"> match :target-current, :target-before and :target-after for their sections in the scroller, by the same algorithm (A current at 0 and 100; C at 190, by step 6's second clause). Links whose targets are in no scroll container, or in several, are not grouped.")
+proof("scroll-triggered-animations", "motion", "scroll_triggered_animations_play_and_reverse_by_their_ranges",
+      "A trigger on a 100px subject 400px down a 200px scroller, timeline-trigger: --t view() contain / cover (activation 300-400, active 200-500): a 1000ms linear 0-120px width animation holds at exactly 0 until the offset is 350 (250, in cover only, does nothing), then grows 20px every 10 ticks; play-forwards play-backwards keeps playing at 250 and shrinks 20px every 10 ticks back to a held 0 at 100; replay reset goes to 0 and stays there on exit and restarts from 0 on the next entry; trigger-scope: --t on an ancestor keeps an animation inside at 0; animation-trigger: none plays at once; a checkpoint mid-play replays the same widths. One timeline per trigger (a list of several is not read); event triggers and the AnimationTrigger API are not built; an action takes effect one tick after the trigger changes; animation-trigger on a ::part plays at once.")
 not_applicable("webxr-dom-overlays", "Styles the DOM overlay of a WebXR session; the engine renders its own UI in its world and has no WebXR DOM layer.")
 not_applicable("window-controls-overlay window-drag", "Installed web-app title-bar integration (the OS window's caption buttons and drag regions); a game's UI is drawn inside its own surface, and the host owns its window.")
 not_applicable("picture-in-picture", "Styles a video in the browser's floating picture-in-picture window, which is browser chrome outside the game's surface.")
@@ -478,7 +480,6 @@ not_applicable("autonomous-custom-elements",
 MISSING = {
     "file-selector-button": "Accepted and styles nothing: a file input's button is not a stylable box.",
     "view-transitions-element-scoped": "No view-transition-scope or element-scoped transitions: a transition captures a whole layer.",
-    "scroll-triggered-animations": "No timeline-trigger or animation-trigger: scroll timelines drive animations (scroll-driven), but none starts or stops one.",
     "customizable-select": "::picker(select) styles the open list (control_props::a_select_takes_aria_invalid_and_its_picker_height), but appearance: base-select, ::picker-icon, ::checkmark and <selectedcontent> are not taken.",
     "highlight": "No ::highlight() or highlight registry: only ::selection paints a text range.",
     "webvtt": "No WebVTT captions or ::cue: a video draws no text track.",

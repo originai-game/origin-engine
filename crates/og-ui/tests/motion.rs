@@ -956,3 +956,115 @@ fn interpolate_size_moves_to_and_from_intrinsic_keywords() {
         d.step(InputFrame::default());
     }
 }
+
+/// CSS Animation Triggers 1: `timeline-trigger: --t view() contain / cover`
+/// on a 100 px subject 400 px down a 200 px scroller makes a trigger whose
+/// activation range (contain) spans offsets 300–400 and whose active range
+/// (cover) spans 200–500 (Scroll-driven Animations 1 §3.2). A
+/// `1000ms linear` width animation (0 → 120 px, 2 px a tick at 60 ticks a
+/// second) triggered by it holds at time 0 until the offset enters 300–400
+/// (entering cover alone at 250 does nothing); `play-forwards
+/// play-backwards` then runs it forwards, keeps running at 250 (still in
+/// cover), and runs it back to 0 once the offset leaves cover at 100.
+/// `replay reset` starts over from 0 on each entry and goes to 0, paused,
+/// on exit. `trigger-scope: --t` on an ancestor hides the global trigger
+/// from an animation inside it, and `animation-trigger: none` plays at
+/// once. A checkpoint taken mid-play replays the same widths.
+///
+/// Ways it could fail: the animation playing before its trigger (or from
+/// mount, not from activation), activation on the active range instead of
+/// the activation range, an exit inside the active range, a backwards
+/// run that jumps, reset not pausing or replay not restarting, the scope
+/// ignored, or the trigger state and playback lost by a restore.
+#[test]
+fn scroll_triggered_animations_play_and_reverse_by_their_ranges() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <div id="S"><div class="gap"></div><div id="Sub"></div><div class="tail"></div></div>
+  <div id="Box" class="bar"></div>
+  <div id="Again" class="bar"></div>
+  <div id="Free" class="bar"></div>
+  <div id="Scoped"><div id="Inner" class="bar"></div></div>
+</div>
+<style>
+#Page, #Scoped { display: block; }
+#Scoped { trigger-scope: --t; }
+#S { width: 100px; height: 200px; overflow-y: auto; scrollbar-width: none; }
+.gap { height: 400px; flex-shrink: 0; }
+#Sub { height: 100px; flex-shrink: 0; timeline-trigger: --t view() contain / cover; }
+.tail { height: 500px; flex-shrink: 0; }
+@keyframes grow { from { width: 0px; } to { width: 120px; } }
+.bar { height: 10px; animation: grow 1000ms linear both; animation-trigger: --t play-forwards play-backwards; }
+#Again { animation-trigger: --t replay reset; }
+#Free { animation-trigger: none; }
+</style>"#;
+    let mut d = Doc::new(text, &[]);
+    d.viewport = vp();
+    d.step(InputFrame::default());
+    let s = d.get("S");
+    let path = s.path.clone();
+    let wheel = |d: &mut Doc, by: f32| {
+        d.step(InputFrame {
+            pointer: og_core::glam::Vec2::new(s.x + 50.0, s.y + 50.0),
+            pointer_inside: true,
+            wheel: og_core::glam::Vec2::new(0.0, by),
+            ..InputFrame::default()
+        });
+        d.step(InputFrame::default());
+    };
+    let steps = |d: &mut Doc, n: usize| (0..n).for_each(|_| d.step(InputFrame::default()));
+    let w = |d: &Doc, id: &str| d.get(id).width;
+    let near = |a: f32, b: f32| (a - b).abs() <= 0.5;
+    // 10 ticks of a run at 2 px a tick, forwards (+) or backwards (-).
+    let rate = |d: &mut Doc, id: &str, sign: f32| {
+        let before = w(d, id);
+        steps(d, 10);
+        let after = w(d, id);
+        assert!(
+            near(after - before, 20.0 * sign),
+            "{id}: {before} → {after}"
+        );
+    };
+    steps(&mut d, 30);
+    for id in ["Box", "Again", "Inner"] {
+        assert_eq!(w(&d, id), 0.0, "{id} waits for its trigger");
+    }
+    assert!(w(&d, "Free") > 40.0, "untriggered plays at once");
+    // Into cover, short of contain: nothing activates.
+    wheel(&mut d, 250.0);
+    assert_eq!(d.ui.scroll_state(&path).unwrap().offset_y, 250.0);
+    steps(&mut d, 10);
+    assert_eq!((w(&d, "Box"), w(&d, "Again")), (0.0, 0.0), "cover alone");
+    // Into contain: both play forwards.
+    wheel(&mut d, 100.0);
+    assert_eq!(d.ui.scroll_state(&path).unwrap().offset_y, 350.0);
+    assert!(w(&d, "Box") <= 4.0, "from the start: {}", w(&d, "Box"));
+    rate(&mut d, "Box", 1.0);
+    rate(&mut d, "Again", 1.0);
+    assert_eq!(w(&d, "Inner"), 0.0, "trigger-scope hides --t");
+    // A checkpoint mid-play continues exactly.
+    let saved = d.ui.save_state();
+    steps(&mut d, 5);
+    let ahead = (w(&d, "Box"), w(&d, "Again"));
+    d.ui.restore_state(&saved).unwrap();
+    steps(&mut d, 5);
+    assert_eq!((w(&d, "Box"), w(&d, "Again")), ahead, "restored");
+    // Back to 250: out of contain, still in cover: it keeps playing.
+    wheel(&mut d, -100.0);
+    rate(&mut d, "Box", 1.0);
+    // Out of cover: Box runs back, Again resets and holds.
+    wheel(&mut d, -150.0);
+    assert_eq!(d.ui.scroll_state(&path).unwrap().offset_y, 100.0);
+    rate(&mut d, "Box", -1.0);
+    assert_eq!(w(&d, "Again"), 0.0, "reset");
+    steps(&mut d, 10);
+    assert_eq!(w(&d, "Again"), 0.0, "reset pauses");
+    steps(&mut d, 60);
+    assert_eq!(w(&d, "Box"), 0.0, "back at its start, and held");
+    // In again: replay from 0, and Box forwards again to its end.
+    wheel(&mut d, 250.0);
+    assert!(w(&d, "Again") <= 4.0, "replay from 0: {}", w(&d, "Again"));
+    rate(&mut d, "Again", 1.0);
+    steps(&mut d, 60);
+    assert_eq!((w(&d, "Box"), w(&d, "Again")), (120.0, 120.0), "at the end");
+}
