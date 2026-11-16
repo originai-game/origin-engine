@@ -1765,6 +1765,49 @@ fn progress_and_random_resolve_on_their_element() {
     assert_eq!((again.get("A").width, again.get("S1").width), (a, s));
 }
 
+/// CSS Values 5 §5 and §9.2: a progress() mixing % with px reads its
+/// basis at layout, and padding adds once to a content-box size after the
+/// function (round(down, 60% of 200px, 50px) is 100px, plus 20px); a
+/// random-item() is its item.
+#[test]
+fn percent_progress_and_random_item_resolve() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root">
+  <div class="w" style="width: 200px"><div id="Half"></div></div>
+  <div class="w" style="width: 600px"><div id="Clamped"></div></div>
+  <div class="w" style="width: 600px"><div id="Free"></div></div>
+  <div class="w" style="width: 400px"><div id="Scaled"></div></div>
+  <div class="w" style="width: 200px"><div id="Round"></div></div>
+  <div class="w" style="width: 200px"><div id="Padded"></div></div>
+  <div id="I1" class="i"></div><div id="I2" class="i"></div><div id="Braced"></div>
+</div>
+<style>
+#Root div { height: 1px; }
+#Half, #Clamped { width: calc(progress(50%, 0px, 200px) * 100px); }
+#Free { width: calc(progress(no-clamp 50%, 0px, 200px) * 100px); }
+#Scaled { width: calc(progress(100px, 0px, 100%) * 50%); }
+#Round { box-sizing: content-box; padding: 0 10px; width: round(down, 60%, 50px); }
+#Padded { box-sizing: content-box; padding: 0 10px; width: calc(progress(50%, 0px, 200px) * 100px); }
+.i { width: random-item(--pick, 10px, 20px, 30px); }
+#Braced { width: random-item(fixed 0.5, 10px, {calc(20px + 5px)}, 30px); }
+</style>"#;
+    let d = Doc::new(text, &[]);
+    for (id, width) in [
+        ("Half", 50.0),
+        ("Clamped", 100.0),
+        ("Free", 150.0),
+        ("Scaled", 50.0),
+        ("Round", 120.0),
+        ("Padded", 70.0),
+        ("Braced", 25.0),
+    ] {
+        assert_eq!(d.get(id).width, width, "{id}");
+    }
+    let i = d.get("I1").width;
+    assert!([10.0, 20.0, 30.0].contains(&i), "{i}");
+    assert_eq!(d.get("I2").width, i, "a --pick key is shared");
+}
+
 /// CSS Values 4 §6.1.2's small, large and dynamic viewports: `sv*` read the
 /// surface with the host's controls shown, `lv*` with them hidden, `dv*`
 /// and the bare units the surface now, each axis and min/max apart.

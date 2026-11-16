@@ -1762,6 +1762,20 @@ pub(super) fn lower(
 ) -> Result<(Vec<StyleDeclaration>, String), String> {
     let mut declarations = Vec::new();
     for declaration in variables::declarations(text)? {
+        // A random function's key names the property it is parsed for,
+        // a shorthand's before it expands (CSS Values 5 §9.4.1); a custom
+        // property's is named where it is substituted.
+        let declaration =
+            if declaration.name.starts_with("--") || !declaration.source.contains("random") {
+                declaration
+            } else {
+                let source = super::calc::random_keys(&declaration.source, &declaration.name);
+                StyleDeclaration {
+                    value: variables::Value::parse(&source)?,
+                    source,
+                    ..declaration
+                }
+            };
         if !declaration.name.starts_with("--") && wide_keyword(&declaration.source).is_some() {
             // A CSS-wide keyword applies to each longhand of a shorthand.
             let longhands: Vec<String> = match declaration.name.as_str() {

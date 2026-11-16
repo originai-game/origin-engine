@@ -307,10 +307,21 @@ impl Value {
         }
     }
 
+    /// Whether it substitutes when its element resolves: it reads a
+    /// `var()` or has a `random-item()`, which substitutes as `var()` does
+    /// (CSS Values 5 §9.2).
     pub fn has_variables(&self) -> bool {
         let mut names = BTreeSet::new();
         self.dependencies(&mut names);
-        !names.is_empty()
+        !names.is_empty() || self.has_function("random-item(")
+    }
+
+    fn has_function(&self, open: &str) -> bool {
+        self.0.iter().any(|piece| match piece {
+            Piece::Block(o, value, _) => o.eq_ignore_ascii_case(open) || value.has_function(open),
+            Piece::Var(_, Some(fallback)) => fallback.has_function(open),
+            _ => false,
+        })
     }
 
     /// Unresolved engine tokens can be supplied by the active style. The caller

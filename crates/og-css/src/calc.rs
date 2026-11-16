@@ -134,6 +134,10 @@ pub struct Basis {
     /// sets a `random()` apart from the same one on another element
     /// (CSS Values 5 §9.4).
     pub element: u64,
+    /// The document's identity (its mount's): the rest of a random
+    /// function's cache name, so a shared `--key` draws apart in another
+    /// document.
+    pub document: u64,
 }
 
 impl Basis {
@@ -162,9 +166,11 @@ pub struct Read {
 }
 
 /// Whether `text` has a number in a unit [`absolute`] resolves, an
-/// `env()`, or a `random()` whose key reads its element.
+/// `env()`, a `random-item()` or a `random()` whose key reads its element
+/// or document.
 pub fn has_absolute(text: &str) -> bool {
     text.contains("env(")
+        || text.contains("random-item(")
         || text
             .match_indices("random(")
             .any(|(at, f)| !text[at + f.len()..].trim_start().starts_with("fixed"))
@@ -192,7 +198,7 @@ pub fn per_element(name: &str, text: &str) -> bool {
 pub fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
     let mut read = Read::default();
     let text = env(text, basis, &mut read);
-    let text = random_bases(&text, basis.element, name, &mut 0);
+    let text = randoms(&text, basis, name);
     let mut out = String::with_capacity(text.len());
     let mut last = 0;
     let (em, lh) = basis.em();
@@ -292,70 +298,209 @@ pub fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
     (out, read)
 }
 
-/// `text` with each `random()`'s key written as its random base value,
-/// `random(fixed <base>, …)` (CSS Values 5 §9.4). The base is a hash of
-/// the random cache name, so it is the same each time the value resolves
-/// and on every host: `auto` (or no key) is `element-scoped
-/// property-index-scoped`, a `<dashed-ident>` alone is shared by every
-/// element, and `element-scoped`, `property-scoped` and
-/// `property-index-scoped` add the element, the property and the
-/// function's place among the declaration's `random()`s. `index` counts
-/// those places.
-fn random_bases(text: &str, element: u64, property: &str, index: &mut u32) -> String {
+/// `text`'s random functions resolved for an element (CSS Values 5 §9):
+/// each key still naming its property simplified ([`random_keys`]), each
+/// `random-item()` replaced by the item it picks and each `random()`'s key
+/// written as its random base value, `random(fixed <base>, …)`.
+pub fn randoms(text: &str, basis: Basis, property: &str) -> String {
+    if !text.contains("random") {
+        return text.into();
+    }
+    let text = random_keys(text, property);
+    let text = random_items(&text, basis);
+    random_bases(&text, basis)
+}
+
+/// The start of each `random(` or `random-item(` in `text` (not a longer
+/// name ending in one), its name and its closing `)`.
+fn random_calls(text: &str) -> impl Iterator<Item = (usize, &'static str, usize)> + '_ {
+    let mut from = 0;
+    std::iter::from_fn(move || {
+        while let Some(at) = text[from..].find("random").map(|at| from + at) {
+            from = at + 1;
+            let name = if text[at..].starts_with("random(") {
+                "random"
+            } else if text[at..].starts_with("random-item(") {
+                "random-item"
+            } else {
+                continue;
+            };
+            let boundary = at == 0 || {
+                let p = text.as_bytes()[at - 1];
+                !(p.is_ascii_alphanumeric() || p == b'-' || p == b'_')
+            };
+            if let Some(close) = closing(text, at + name.len()).filter(|_| boundary) {
+                return Some((at, name, close));
+            }
+        }
+        None
+    })
+}
+
+/// `text` (a declaration of `property`) with each random function's key
+/// simplified as at parse time (CSS Values 5 §9.4.1): `auto` (or none)
+/// is `element-scoped property-index-scoped`, `property-scoped` becomes
+/// `ua-<property>` and `property-index-scoped` `ua-<property>-<index>`,
+/// the index counting the declaration's random functions from 1 in the
+/// order written, before a shorthand expands. A key already simplified
+/// (where the declaration was parsed) is kept, and still counted.
+pub fn random_keys(text: &str, property: &str) -> String {
+    fn walk(text: &str, property: &str, index: &mut u32) -> String {
+        let mut out = String::with_capacity(text.len());
+        let mut last = 0;
+        for (at, name, close) in random_calls(text) {
+            if at < last {
+                continue;
+            }
+            *index += 1;
+            let place = *index;
+            let body = &text[at + name.len() + 1..close];
+            let (key, args) = match split_args(body).split_first() {
+                Some((k, rest)) if random_key(k).is_some() => (random_key(k), rest.to_vec()),
+                _ if name == "random-item" => (None, Vec::new()),
+                _ => (None, split_args(body)),
+            };
+            out.push_str(&text[last..at]);
+            last = close + 1;
+            let Some(key) = key.or((name == "random").then_some(RandomKey::AUTO)) else {
+                // A random-item() whose key is no key: left to fail.
+                out.push_str(&text[at..=close]);
+                continue;
+            };
+            let key = match key {
+                RandomKey::Fixed(_) => split_args(body)[0].trim().to_string(),
+                RandomKey::Name(mut n) => {
+                    let ua = match n.scope {
+                        Scope::None => n.ua.map(str::to_string),
+                        Scope::Property => Some(format!("ua-{property}")),
+                        Scope::Index => Some(format!("ua-{property}-{place}")),
+                    };
+                    n.scope = Scope::None;
+                    [n.dashed, if n.element { "element-scoped" } else { "" }]
+                        .into_iter()
+                        .filter(|w| !w.is_empty())
+                        .map(str::to_string)
+                        .chain(ua)
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                }
+            };
+            let args: Vec<String> = args
+                .iter()
+                .map(|a| walk(a.trim(), property, index))
+                .collect();
+            out.push_str(&format!("{name}({}, {})", key.trim(), args.join(", ")));
+        }
+        out.push_str(&text[last..]);
+        out
+    }
+    walk(text, property, &mut 0)
+}
+
+/// `text`'s top-level comma-separated arguments: commas inside brackets,
+/// braces or a string do not split.
+fn split_args(text: &str) -> Vec<&str> {
+    let (mut out, mut depth, mut quote, mut from) = (Vec::new(), 0i32, None, 0);
+    for (i, c) in text.char_indices() {
+        match (quote, c) {
+            (Some(q), c) if c == q => quote = None,
+            (Some(_), _) => {}
+            (None, '"' | '\'') => quote = Some(c),
+            (None, '(' | '[' | '{') => depth += 1,
+            (None, ')' | ']' | '}') => depth -= 1,
+            (None, ',') if depth == 0 => {
+                out.push(&text[from..i]);
+                from = i + 1;
+            }
+            _ => {}
+        }
+    }
+    out.push(&text[from..]);
+    out
+}
+
+/// The random base value (CSS Values 5 §9.4) of a simplified key on the
+/// element and document `basis` names: `fixed`'s number, else a uniform
+/// [0, 1) hashed from the random cache name, the tuple of its idents, the
+/// element when it is element-scoped, and the document.
+fn random_base(key: &RandomKey<'_>, basis: Basis) -> f64 {
+    let n = match key {
+        RandomKey::Fixed(r) => return *r,
+        RandomKey::Name(n) => n,
+    };
+    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    let mut eat = |bytes: &[u8]| {
+        for &b in bytes {
+            h = (h ^ b as u64).wrapping_mul(0x100_0000_01b3);
+        }
+        h = (h ^ 0xff).wrapping_mul(0x100_0000_01b3);
+    };
+    eat(n.dashed.as_bytes());
+    eat(n.ua.unwrap_or("").as_bytes());
+    eat(&if n.element { basis.element } else { 0 }.to_le_bytes());
+    eat(&basis.document.to_le_bytes());
+    // SplitMix64's finaliser, then 53 bits: a uniform [0, 1).
+    let mut z = h.wrapping_add(0x9e37_79b9_7f4a_7c15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    z ^= z >> 31;
+    (z >> 11) as f64 / (1u64 << 53) as f64
+}
+
+/// `text` with each `random-item(<key>, <item>#)` replaced by its item
+/// `floor(R × N)` (CSS Values 5 §9.2, §9.3), braces around an item
+/// dropped and the item's own random-items replaced in turn. One whose
+/// key is no key is kept, and fails where the value is read.
+fn random_items(text: &str, basis: Basis) -> String {
     let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    while let Some(at) = rest.find("random(") {
-        let boundary = at == 0 || {
-            let p = rest.as_bytes()[at - 1];
-            !(p.is_ascii_alphanumeric() || p == b'-' || p == b'_')
-        };
-        let open = at + "random".len();
-        let Some(close) = closing(rest, open).filter(|_| boundary) else {
-            out.push_str(&rest[..open + 1]);
-            rest = &rest[open + 1..];
+    let mut last = 0;
+    for (at, name, close) in random_calls(text) {
+        if at < last || name != "random-item" {
+            continue;
+        }
+        let args = split_args(&text[at + name.len() + 1..close]);
+        let Some(key) = random_key(args[0]).filter(|_| args.len() > 1) else {
             continue;
         };
-        *index += 1;
-        let place = *index;
-        let body = &rest[open + 1..close];
+        let items = &args[1..];
+        let i = ((random_base(&key, basis) * items.len() as f64) as usize).min(items.len() - 1);
+        let item = items[i].trim();
+        let item = item
+            .strip_prefix('{')
+            .and_then(|s| s.strip_suffix('}'))
+            .unwrap_or(item)
+            .trim();
+        out.push_str(&text[last..at]);
+        out.push_str(&random_items(item, basis));
+        last = close + 1;
+    }
+    out.push_str(&text[last..]);
+    out
+}
+
+/// `text` with each `random()`'s simplified key written as its random
+/// base value, `random(fixed <base>, …)` ([`random_base`]).
+fn random_bases(text: &str, basis: Basis) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut last = 0;
+    for (at, name, close) in random_calls(text) {
+        if at < last || name != "random" {
+            continue;
+        }
+        let body = &text[at + name.len() + 1..close];
         let (key, args) = match split_top(body) {
             Some((k, a)) if random_key(k).is_some() => (random_key(k), a),
             _ => (None, body),
         };
-        let base = match key.unwrap_or(RandomKey::Name("", true, Scope::Index)) {
-            RandomKey::Fixed(r) => r,
-            RandomKey::Name(ident, scoped, scope) => {
-                let mut h = 0xcbf2_9ce4_8422_2325u64;
-                let mut eat = |bytes: &[u8]| {
-                    for &b in bytes {
-                        h = (h ^ b as u64).wrapping_mul(0x100_0000_01b3);
-                    }
-                    h = (h ^ 0xff).wrapping_mul(0x100_0000_01b3);
-                };
-                eat(ident.as_bytes());
-                if scoped {
-                    eat(&element.to_le_bytes());
-                }
-                if scope != Scope::None {
-                    eat(property.as_bytes());
-                }
-                if scope == Scope::Index {
-                    eat(&place.to_le_bytes());
-                }
-                // SplitMix64's finaliser, then 53 bits: a uniform [0, 1).
-                let mut z = h.wrapping_add(0x9e37_79b9_7f4a_7c15);
-                z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-                z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-                z ^= z >> 31;
-                (z >> 11) as f64 / (1u64 << 53) as f64
-            }
-        };
-        let args = random_bases(args, element, property, index);
-        out.push_str(&rest[..at]);
-        out.push_str(&format!("random(fixed {base}, {})", args.trim()));
-        rest = &rest[close + 1..];
+        let base = random_base(&key.unwrap_or(RandomKey::AUTO), basis);
+        out.push_str(&text[last..at]);
+        out.push_str(&format!(
+            "random(fixed {base}, {})",
+            random_bases(args, basis).trim()
+        ));
+        last = close + 1;
     }
-    out.push_str(rest);
+    out.push_str(&text[last..]);
     out
 }
 
@@ -366,33 +511,60 @@ enum Scope {
     Index,
 }
 
-/// A `random()`'s `<random-key>` (CSS Values 5 §9.4): `fixed <number>`,
-/// else its dashed ident (`""`: none), whether it is element-scoped and
-/// how it reads its property. `None`: the argument is not a key.
-enum RandomKey<'a> {
-    Fixed(f64),
-    Name(&'a str, bool, Scope),
+/// A `<random-key>`'s cache name parts (CSS Values 5 §9.4): its
+/// `<dashed-ident>` (`""`: none), its `<random-ua-ident>` once simplified,
+/// whether it is element-scoped and how it still reads its property.
+#[derive(Clone, Copy)]
+struct KeyName<'a> {
+    dashed: &'a str,
+    ua: Option<&'a str>,
+    element: bool,
+    scope: Scope,
 }
 
+/// A random function's `<random-key>`: `fixed <number>` or a cache name.
+enum RandomKey<'a> {
+    Fixed(f64),
+    Name(KeyName<'a>),
+}
+
+impl RandomKey<'_> {
+    /// `auto`: `element-scoped property-index-scoped`.
+    const AUTO: RandomKey<'static> = RandomKey::Name(KeyName {
+        dashed: "",
+        ua: None,
+        element: true,
+        scope: Scope::Index,
+    });
+}
+
+/// `text` as a `<random-key>`; `None`: it is not one.
 fn random_key(text: &str) -> Option<RandomKey<'_>> {
     let words: Vec<&str> = text.split_whitespace().collect();
     match words.as_slice() {
-        ["auto"] => return Some(RandomKey::Name("", true, Scope::Index)),
+        ["auto"] => return Some(RandomKey::AUTO),
         ["fixed", n] => return n.parse().ok().map(RandomKey::Fixed),
         [] => return None,
         _ => {}
     }
-    let (mut ident, mut scoped, mut scope) = ("", false, Scope::None);
+    let mut n = KeyName {
+        dashed: "",
+        ua: None,
+        element: false,
+        scope: Scope::None,
+    };
     for w in words {
+        let unscoped = n.scope == Scope::None && n.ua.is_none();
         match w {
-            "element-scoped" if !scoped => scoped = true,
-            "property-scoped" if scope == Scope::None => scope = Scope::Property,
-            "property-index-scoped" if scope == Scope::None => scope = Scope::Index,
-            w if w.starts_with("--") && w.len() > 2 && ident.is_empty() => ident = w,
+            "element-scoped" if !n.element => n.element = true,
+            "property-scoped" if unscoped => n.scope = Scope::Property,
+            "property-index-scoped" if unscoped => n.scope = Scope::Index,
+            w if w.starts_with("ua-") && w.len() > 3 && unscoped => n.ua = Some(w),
+            w if w.starts_with("--") && w.len() > 2 && n.dashed.is_empty() => n.dashed = w,
             _ => return None,
         }
     }
-    Some(RandomKey::Name(ident, scoped, scope))
+    Some(RandomKey::Name(n))
 }
 
 /// `text` with each `env(<name>[, <fallback>])` replaced (CSS Environment
@@ -858,6 +1030,19 @@ pub fn sum_text(terms: &[(&str, f64)]) -> String {
 fn format(d: &Dim) -> String {
     match d {
         Dim::Sum(terms) => sum_text(terms),
+        Dim::Fn(name, args) if name.starts_with("progress") => {
+            let clamp = if *name == "progress" { "" } else { "no-clamp " };
+            let f = format!(
+                "progress({clamp}{}, {}, {})",
+                sum_text(&args[0]),
+                sum_text(&args[1]),
+                sum_text(&args[2])
+            );
+            match args[3].as_slice() {
+                [("", k)] if *k == 1.0 => f,
+                by => format!("calc({f} * {})", sum_text(by)),
+            }
+        }
         Dim::Fn(name, args) => {
             let list = args
                 .iter()
@@ -1061,6 +1246,12 @@ impl Parser<'_> {
                 .map_or("", |s| s[0].0);
             return Err(mixed(t[0].0, other));
         }
+        // A progress() of lengths that mix % with px is a number layout
+        // knows (`Size::Calc`), here times 1.
+        if name.starts_with("progress") {
+            sums.push(vec![("", 1.0)]);
+            return Ok(Dim::Fn(name, sums));
+        }
         if !LAYOUT_FUNCTIONS.contains(&name) {
             return Err(format!(
                 "{name}() of lengths in more than one unit ({}) has no value before layout; give it lengths in one unit",
@@ -1101,6 +1292,12 @@ impl Parser<'_> {
         loop {
             if self.eat(b'*') {
                 let b = self.value()?;
+                // A progress() that mixes % with px scales by the other side.
+                if is_progress(&a) || is_progress(&b) {
+                    let (p, by) = if is_progress(&a) { (a, b) } else { (b, a) };
+                    a = scale_progress(p, terms(by)?)?;
+                    continue;
+                }
                 let (x, y) = (terms(a)?, terms(b)?);
                 let (k, t) = match (x.as_slice(), y.as_slice()) {
                     ([("", k)], _) => (*k, y),
@@ -1126,6 +1323,10 @@ impl Parser<'_> {
                 };
                 if k == 0.0 {
                     return Err("calc() divides by zero".into());
+                }
+                if is_progress(&a) {
+                    a = scale_progress(a, vec![("", 1.0 / k)])?;
+                    continue;
                 }
                 a = Dim::Sum(terms(a)?.into_iter().map(|(u, v)| (u, v / k)).collect());
             } else {
@@ -1368,6 +1569,33 @@ fn terms(d: Dim) -> Result<Vec<(&'static str, f64)>, String> {
         Dim::Sum(t) => Ok(t),
         Dim::Fn(name, _) => Err(nested(name)),
     }
+}
+
+fn is_progress(d: &Dim) -> bool {
+    matches!(d, Dim::Fn(name, _) if name.starts_with("progress"))
+}
+
+/// A progress() left for layout times `by`: its scale (the last argument,
+/// a number until a length multiplies it) times `by`.
+fn scale_progress(p: Dim, by: Vec<(&'static str, f64)>) -> Result<Dim, String> {
+    let Dim::Fn(name, mut args) = p else {
+        unreachable!("a progress()")
+    };
+    let scale = args.pop().expect("a progress() keeps its scale");
+    let scale = match (scale.as_slice(), by.as_slice()) {
+        (_, [("", k)]) => scale.iter().map(|&(u, v)| (u, v * k)).collect(),
+        ([("", k)], _) if by.iter().all(|(u, _)| is_length(u)) => {
+            by.iter().map(|&(u, v)| (u, v * k)).collect()
+        }
+        _ => {
+            return Err(
+                "a progress() of lengths in more than one unit scales by one length or number"
+                    .into(),
+            );
+        }
+    };
+    args.push(scale);
+    Ok(Dim::Fn(name, args))
 }
 
 fn nested(name: &str) -> String {
@@ -1667,12 +1895,25 @@ mod tests {
             ("random(fixed 0.5, 0px, 10px, 0px)", "5px"),
             ("random(fixed 0.5, 0deg, 1turn)", "180deg"),
             ("random(fixed 0.25, 50px, 100%)", "calc(25% + 37.5px)"),
+            // Mixing % with px: a number layout knows, by its scale.
+            (
+                "calc(progress(50%, 0px, 200px) * 100px)",
+                "calc(progress(50%, 0px, 200px) * 100px)",
+            ),
+            (
+                "calc(2 * progress(no-clamp 50%, 10px, 200px) * 50% / 4)",
+                "calc(progress(no-clamp 50%, 10px, 200px) * 25%)",
+            ),
+            ("progress(50%, 0px, 100px)", "progress(50%, 0px, 100px)"),
+            ("progress(50%, 0%, 200%)", "0.25"),
         ] {
             assert_eq!(reduce(text).as_deref(), Ok(want), "{text}");
         }
         for bad in [
             "progress(1px, 0deg, 2px)",
-            "progress(50%, 0px, 100px)",
+            "calc(progress(50%, 0px, 200px) * 1px * 1px)",
+            "calc(progress(50%, 0px, 200px) + 1px)",
+            "min(progress(50%, 0px, 200px), 1)",
             "random(0px, 10px)",
             "random(fixed 2, 0px, 1px)",
             "random(fixed 0.5, 0px, 100%, 10px)",
@@ -1733,5 +1974,97 @@ mod tests {
         }
         assert!(seen.iter().all(|&n| (250..350).contains(&n)), "{seen:?}");
         assert!((sum / 900.0 - 0.5).abs() < 0.03, "{}", sum / 900.0);
+    }
+
+    /// CSS Values 5 §9.4.1: a key names the property it was parsed for
+    /// (a shorthand's, kept as it expands) and its place among the
+    /// declaration's random functions; the document is part of every name.
+    #[test]
+    fn random_keys_name_their_property_and_document() {
+        for (property, text, want) in [
+            (
+                "margin",
+                "random(0px, 10px) random(--k property-scoped, 1px, 2px)",
+                "random(element-scoped ua-margin-1, 0px, 10px) random(--k ua-margin, 1px, 2px)",
+            ),
+            (
+                "width",
+                "random(fixed 0.5, 0px, random(--a property-index-scoped element-scoped, 1px, 2px))",
+                "random(fixed 0.5, 0px, random(--a element-scoped ua-width-2, 1px, 2px))",
+            ),
+            (
+                "width",
+                "random-item(--x, a, b) calc(random(1px, 2px) * 2)",
+                "random-item(--x, a, b) calc(random(element-scoped ua-width-2, 1px, 2px) * 2)",
+            ),
+        ] {
+            let simple = random_keys(text, property);
+            assert_eq!(simple, want, "{text}");
+            // Simplified once, a key keeps its property in a longhand.
+            assert_eq!(random_keys(&simple, "margin-left"), want);
+        }
+        let at = |element: u64, document: u64, property: &str, text: &str| {
+            let basis = Basis {
+                element,
+                document,
+                ..Basis::default()
+            };
+            reduce(&absolute(text, basis, property).0).unwrap()
+        };
+        let shared = "random(--k, 0px, 100px)";
+        assert_eq!(at(1, 1, "width", shared), at(2, 1, "width", shared));
+        assert_ne!(at(1, 1, "width", shared), at(1, 2, "width", shared));
+        let scoped = "random(--k property-scoped, 0px, 100px)";
+        let margin = at(1, 1, "margin", scoped);
+        assert_ne!(margin, at(1, 1, "margin-left", scoped));
+        let expanded = random_keys(scoped, "margin");
+        assert_eq!(at(1, 1, "margin-left", &expanded), margin);
+    }
+
+    /// CSS Values 5 §9.2 and §9.3: random-item() is its item
+    /// `floor(R × N)`, braces dropped, picked uniformly per element.
+    #[test]
+    fn random_item_picks_its_item() {
+        let pick = |element: u64, text: &str| {
+            let basis = Basis {
+                element,
+                ..Basis::default()
+            };
+            randoms(text, basis, "font-family")
+        };
+        for (text, want) in [
+            ("random-item(fixed 0.5, a, b, c)", "b"),
+            ("random-item(fixed 0, a, b)", "a"),
+            ("random-item(fixed 1, a, b)", "b"),
+            (
+                "random-item(fixed 0.99, serif, {Times, serif})",
+                "Times, serif",
+            ),
+            (
+                "random-item(fixed 0.9, x, random-item(fixed 0.1, y, z))",
+                "y",
+            ),
+            ("random-item(fixed 0.5, a, , c)", ""),
+            ("1px random-item(fixed 0.7, \"a,b\", c) 2px", "1px c 2px"),
+            (
+                "random-item(not-a-key, a, b)",
+                "random-item(not-a-key, a, b)",
+            ),
+        ] {
+            assert_eq!(pick(0, text), want, "{text}");
+        }
+        assert!(has_absolute("random-item(--k, a, b)"));
+        let mut seen = [0; 3];
+        for el in 0..900 {
+            let v = pick(el, "random-item(auto, a, b, c)");
+            seen[["a", "b", "c"].iter().position(|w| *w == v).unwrap()] += 1;
+        }
+        assert!(seen.iter().all(|&n| (250..350).contains(&n)), "{seen:?}");
+        // A name shared with random() shares its base R: 100R px, and the
+        // item floor(4R).
+        let r = pick(3, "random(--s, 0px, 100px) random-item(--s, a, b, c, d)");
+        let (len, item) = r.rsplit_once(' ').unwrap();
+        let px: f64 = reduce(len).unwrap().trim_end_matches("px").parse().unwrap();
+        assert_eq!(item, ["a", "b", "c", "d"][(px / 25.0) as usize]);
     }
 }

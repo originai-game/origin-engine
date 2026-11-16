@@ -797,6 +797,8 @@ fn parse_size(vals: &[Value]) -> Result<Size, String> {
                 Some("rem") => crate::CalcOp::Rem,
                 Some("abs") => crate::CalcOp::Abs,
                 Some("hypot") => crate::CalcOp::Hypot,
+                Some("progress") => crate::CalcOp::Progress,
+                Some("progressNoClamp") => crate::CalcOp::ProgressNoClamp,
                 _ => return Err(HOW.into()),
             };
             let mut c = crate::Calc {

@@ -52,6 +52,48 @@ pub(super) fn margin_vals(t: &Tok) -> Result<Vec<Value>, String> {
 /// …`: `calc(100% - 12px)` → `calc sum 1 -12`, `min(100%, 600px)` → `calc
 /// min 1 0 0 600`.
 pub(super) fn size_calc(name: &str, f: &str, args: &[Vec<Tok>]) -> Result<Vec<Value>, String> {
+    // `calc(progress(V, S, E) * L)` that mixes % with px (CSS Values 5
+    // §5): `progress` V − S, E − S and L.
+    if f == "calc"
+        && let [arg] = args
+        && let [Tok::Func(p, inner), Tok::Ident(star), scale] = arg.as_slice()
+        && star == "*"
+        && p == "progress"
+    {
+        let mut inner = inner.clone();
+        let clamp = match inner.first().and_then(|a| a.first()) {
+            Some(Tok::Ident(w)) if w == "no-clamp" => {
+                inner[0].remove(0);
+                false
+            }
+            _ => true,
+        };
+        let lin = |toks: &[Tok]| match toks {
+            [t] => want_lin(t),
+            _ => Err(format!("{name}: progress() takes three lengths")),
+        };
+        let [v, s, e] = match inner.as_slice() {
+            [v, s, e] => [lin(v)?, lin(s)?, lin(e)?],
+            _ => return Err(format!("{name}: progress() takes three lengths")),
+        };
+        let scale = want_lin(scale)?;
+        if [v, s, e, scale].iter().any(|l| l[2] != 0.0) {
+            return Err(format!("{name} takes px and %, not em"));
+        }
+        let op = if clamp { "progress" } else { "progressNoClamp" };
+        let mut out = vec![Value::Word("calc".into()), Value::Word(op.into())];
+        for n in [
+            v[0] - s[0],
+            v[1] - s[1],
+            e[0] - s[0],
+            e[1] - s[1],
+            scale[0],
+            scale[1],
+        ] {
+            out.push(number(&super::calc::number(n))?);
+        }
+        return Ok(out);
+    }
     // `round(<strategy>, …)` names its strategy first.
     let (op, args) = match (f, args.first().map(Vec::as_slice)) {
         ("round", Some([Tok::Ident(s)])) => (

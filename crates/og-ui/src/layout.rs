@@ -153,6 +153,12 @@ pub enum CalcOp {
     Abs,
     /// The square root of the sum of the squares.
     Hypot,
+    /// `progress()` (CSS Values 5 §5) times a length: the first length
+    /// over the second (the value and the end, each less the start),
+    /// clamped to [0, 1] (0 where the second is 0), times the third.
+    Progress,
+    /// The same unclamped (`no-clamp`).
+    ProgressNoClamp,
 }
 
 /// Up to three lengths a CSS math function combines at layout.
@@ -162,11 +168,17 @@ pub struct Calc {
     pub args: [Length; 3],
     /// How many of `args` it reads.
     pub count: u8,
+    /// Px added to its result (a content-box size's padding).
+    pub add: f32,
 }
 
 impl Calc {
     /// Its CSS px against `basis`.
     pub fn of(&self, basis: f32) -> f32 {
+        self.op_of(basis) + self.add
+    }
+
+    fn op_of(&self, basis: f32) -> f32 {
         let v = self.args[..self.count.max(1) as usize]
             .iter()
             .map(|l| l.of(basis));
@@ -206,6 +218,16 @@ impl Calc {
             }
             CalcOp::Abs => self.args[0].of(basis).abs(),
             CalcOp::Hypot => v.map(|x| x * x).sum::<f32>().sqrt(),
+            CalcOp::Progress | CalcOp::ProgressNoClamp => {
+                let [a, b, scale] = self.args.map(|l| l.of(basis));
+                let p = match self.op {
+                    CalcOp::Progress if b == 0.0 => 0.0,
+                    CalcOp::Progress => (a / b).clamp(0.0, 1.0),
+                    _ if b == 0.0 && a == 0.0 => 0.0,
+                    _ => a / b,
+                };
+                (p * scale).clamp(-f32::MAX, f32::MAX)
+            }
         }
     }
 

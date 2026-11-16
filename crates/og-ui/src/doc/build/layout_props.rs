@@ -311,9 +311,7 @@ impl Ui {
                     ..crate::Calc::default()
                 }),
                 Size::Calc(mut c) => {
-                    for a in &mut c.args[..c.count.max(1) as usize] {
-                        a.px += p;
-                    }
+                    c.add += p;
                     Size::Calc(c)
                 }
                 Size::Fit { min, max } => Size::Fit {

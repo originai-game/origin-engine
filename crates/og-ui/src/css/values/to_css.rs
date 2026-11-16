@@ -245,6 +245,15 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
                         "roundUp" => format!("round(up, {list})"),
                         "roundDown" => format!("round(down, {list})"),
                         "roundToZero" => format!("round(to-zero, {list})"),
+                        "progress" => {
+                            format!("calc(progress({}, 0px, {}) * {})", sum(0), sum(1), sum(2))
+                        }
+                        "progressNoClamp" => format!(
+                            "calc(progress(no-clamp {}, 0px, {}) * {})",
+                            sum(0),
+                            sum(1),
+                            sum(2)
+                        ),
                         op => format!("{op}({list})"),
                     })
                 }

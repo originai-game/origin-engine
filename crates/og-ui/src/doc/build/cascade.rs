@@ -727,6 +727,8 @@ pub(crate) fn values_with<'r>(
         let value = value.and_then(|v| {
             let v = match winner {
                 Winner::Declared(d) if let Some(shorthand) = d.pending_shorthand => {
+                    // Random keys name the shorthand, before it splits.
+                    let v = crate::doc::calc::randoms(&v, basis.unwrap_or_default(), shorthand);
                     crate::doc::motion::substituted(shorthand, name, v)?
                 }
                 _ => v,
