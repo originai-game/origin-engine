@@ -79,6 +79,10 @@ not_needed("speak speak-as",
 not_needed("target-text",
            "Text fragments (#:~:text=) and ::target-text mark a passage a URL names, for browsers sharing links into "
            "pages. A game's links name ids, and a passage it wants marked is a custom highlight (::highlight()).")
+not_needed("text-decoration-spelling-grammar",
+           "spelling-error and grammar-error draw the lines a UA's spelling and grammar checker puts under text. "
+           "The engine has no spell checker, so nothing would ever produce them; a word puzzle marks a wrong word "
+           "with an underline style of its own.")
 not_needed("link-parameters",
            "Passes param() values through an image URL into an external SVG's var(). A game's SVG is inline markup "
            "or a cooked image, styled by its document, and no component or style pack parameterises one by URL.")
@@ -248,9 +252,7 @@ proof("text-decoration-skip-ink text-decoration-skip-ink-all", "css_text", "unde
       "Drawn underline pieces at 40px against Noto Sans's and Noto Sans SC's outlines read with fontTools: auto cuts the line where g, y and p put ink in its band, a thickness to either side (merging g's and y's), none draws it whole, a line-through never breaks, auto crosses CJK (Han and kana and Hangul, and Common characters in their run) and all cuts it. Variable instances are outlined at their location. Horizontal lines only: vertical text's lines and the ::selection decoration is not cut; a glyph from a face without its file is crossed.")
 proof("text-decoration-skip-spaces", "css_text", "decorations_skip_the_spaces_skip_spaces_names",
       "Drawn underline and line-through pieces at 40px against Noto Sans's HarfBuzz advances on a white-space: pre line: the initial start end leaves its leading and trailing spaces undecorated, all also the inner ones on both lines and the 4px letter spacing before each skipped run, none decorates every space. Spacers are Zs but U+202F (U+00A0 included), word separators CSS Text 3's. Line start and end are the visual ends of a horizontal rich line; vertical text and the ::selection decoration do not skip.")
-proof("text-decoration-spelling-grammar", "css_text", "error_lines_are_the_uas_and_blink_draws_none",
-      "Drawn lines: text-decoration-line: spelling-error and text-decoration: grammar-error draw a wavy underline in the theme's danger and success colours, starting within 4px under the baseline, whatever the author's decoration colour, style and 10px underline offset (which a plain underline beside them takes). The UA line replaces the box's other lines; there is no spellchecker, so the error rows of ::spelling-error and ::grammar-error stay separate.")
-proof("text-decoration-line-blink", "css_text", "error_lines_are_the_uas_and_blink_draws_none",
+proof("text-decoration-line-blink", "css_text", "blink_draws_no_line",
       "text-decoration-line: blink parses without a warning and draws its text with no line, and underline blink draws the underline alone: the text does not blink, as Text Decoration 4 §2.1 allows a conforming UA.")
 proof("text-decoration-selection", "user_select", "selection_ink_lines_and_shadows_cover_only_the_selected_run",
       "Drawn quads: p::selection's text-decoration: underline #00ff00 draws one green line under the selected word only, its top 0.12 em below the baseline and 0.07 em thick (Text Decoration 4's auto metrics) within a pixel. Only underline in that test; ::selection's line skips neither ink nor spaces.")
