@@ -1116,16 +1116,12 @@ impl Ui {
             // decoration lines (CSS Text Decoration 3 §2): across the piece
             // in its ink or the decoration's colour, in its style.
             let d = s.decoration.clone().unwrap_or_default();
-            let th = d
-                .thickness
-                .map_or((size * 0.07).max(1.0 / dpr), |t| t * n.placed.scale);
+            let (th, off) = d.placed(m, size, n.placed.scale, dpr);
             let ink = d.color.unwrap_or(color).fade(alpha).linear();
             let mut rule =
                 |y: f32| decoration_line(r.x, r.width, y, th, d.style, ink, clip, dpr, cmds);
             if link_key.is_some() || s.underline {
-                let off = d.offset.map_or(size * 0.12, |o| o * n.placed.scale);
-                let under = if d.under { size * 0.1 } else { 0.0 };
-                rule(baseline + off + under);
+                rule(baseline + off);
             }
             if d.overline {
                 rule(baseline - size * 0.95);
@@ -1678,9 +1674,13 @@ impl Ui {
                     }
                     // Its lines down the stretch, on the sides the span's take.
                     if let Some(d) = &sel.decoration {
-                        let th = d
-                            .thickness
-                            .map_or((size * 0.07).max(1.0 / dpr), |t| t * n.placed.scale);
+                        // Down a column the underline is on its line-left
+                        // side already, half an em from its middle.
+                        let (th, off) = crate::css::text_css::Decoration {
+                            under: false,
+                            ..d.clone()
+                        }
+                        .placed(&font.metrics, size, n.placed.scale, dpr);
                         let lc = d.color.unwrap_or(ink).fade(alpha).linear();
                         let (y0, y1) = (band.y.max(r.y), band.bottom().min(r.bottom()));
                         let mut rule = |x: f32| {
@@ -1697,10 +1697,7 @@ impl Ui {
                             )
                         };
                         if d.underline {
-                            rule(
-                                mid - size * 0.5
-                                    - d.offset.map_or(size * 0.12, |o| o * n.placed.scale),
-                            );
+                            rule(mid - size * 0.5 - off);
                         }
                         if d.overline {
                             rule(mid + size * 0.6);
@@ -1711,10 +1708,11 @@ impl Ui {
                     }
                 }
             }
-            let d = s.decoration.clone().unwrap_or_default();
-            let th = d
-                .thickness
-                .map_or((size * 0.07).max(1.0 / dpr), |t| t * n.placed.scale);
+            let d = crate::css::text_css::Decoration {
+                under: false,
+                ..s.decoration.clone().unwrap_or_default()
+            };
+            let (th, off) = d.placed(&font.metrics, size, n.placed.scale, dpr);
             let ink = d.color.unwrap_or(color).fade(alpha).linear();
             let mut rule = |x: f32| {
                 cmds.push(DrawCmd::Quad {
@@ -1725,7 +1723,6 @@ impl Ui {
                 })
             };
             if link_key.is_some() || s.underline {
-                let off = d.offset.map_or(size * 0.12, |o| o * n.placed.scale);
                 rule(mid - size * 0.5 - off);
             }
             if d.overline {

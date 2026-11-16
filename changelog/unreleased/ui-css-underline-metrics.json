@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "CSS text-underline-position and from-font",
+      "summary": "text-underline-position: under puts the underline at the font's descent, clear of every descender, with text-underline-offset measured from there; text-underline-offset: from-font and text-decoration-thickness: from-font take the font's own post underline position and thickness."
+    }
+  ]
+}

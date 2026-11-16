@@ -464,6 +464,23 @@ impl FontMetrics {
             .unwrap_or(self.ascender)
     }
 
+    /// How far below the baseline its text's under edge is, em: its file's
+    /// descent, else its lowest glyph's (CSS Text Decoration 4 §2.4
+    /// `text-underline-position: under`).
+    pub fn under_edge(&self) -> f32 {
+        self.file
+            .as_ref()
+            .map(|f| f.descent())
+            .filter(|d| *d > 0.0)
+            .unwrap_or(-self.descender)
+    }
+
+    /// The underline its file suggests (`post`): its top's distance below
+    /// the baseline and its thickness, em (CSS's `from-font`).
+    pub fn underline(&self) -> Option<(f32, f32)> {
+        self.file.as_ref().and_then(|f| f.underline())
+    }
+
     /// The baseline of a line of `text` at `size` in a line box `line_h`
     /// tall whose top is `top`: its [`FontMetrics::extents`] centred in the
     /// box.

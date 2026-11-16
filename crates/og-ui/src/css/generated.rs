@@ -155,7 +155,7 @@ pub fn selection_decoration(
             "dashed" => d.style = S::Dashed,
             "wavy" => d.style = S::Wavy,
             w => match w.strip_suffix("px").and_then(|n| n.parse::<f32>().ok()) {
-                Some(px) => d.thickness = Some(px),
+                Some(px) => d.thickness = super::text_css::DecorationLength::Px(px),
                 None => {
                     crate::css_color::parse_str(&word).map_err(|_| {
                         format!("::selection text-decoration: '{word}' is not a value")

@@ -221,6 +221,12 @@ pub struct FontFile {
     /// The height of its capitals, em (OS/2 `sCapHeight`; 0 where the
     /// font gives none).
     cap_height: f32,
+    /// How far its descent reaches below the baseline, em (the line
+    /// metrics' descent, positive; 0 where the font gives none).
+    descent: f32,
+    /// The underline it suggests (`post`): its top's distance below the
+    /// baseline and its thickness, em.
+    underline: Option<(f32, f32)>,
     #[cfg(feature = "shaping")]
     shaper: harfrust::ShaperData,
     #[cfg(feature = "shaping")]
@@ -271,6 +277,13 @@ impl FontFile {
             .cap_height
             .filter(|x| *x > 0.0)
             .map_or(0.0, |x| x / units_per_em.max(1.0));
+        let descent = (-metrics.descent / units_per_em.max(1.0)).max(0.0);
+        let underline = metrics.underline.filter(|u| u.thickness > 0.0).map(|u| {
+            (
+                -u.offset / units_per_em.max(1.0),
+                u.thickness / units_per_em.max(1.0),
+            )
+        });
         #[cfg(feature = "shaping")]
         let shaper = harfrust::ShaperData::new(&face);
         let colour = {
@@ -286,6 +299,8 @@ impl FontFile {
             units_per_em,
             x_height,
             cap_height,
+            descent,
+            underline,
             #[cfg(feature = "shaping")]
             shaper,
             #[cfg(feature = "shaping")]
@@ -310,6 +325,17 @@ impl FontFile {
     /// The height of its capitals, em (0: the font gives none).
     pub fn cap_height(&self) -> f32 {
         self.cap_height
+    }
+
+    /// How far its descent reaches below the baseline, em (0: none given).
+    pub fn descent(&self) -> f32 {
+        self.descent
+    }
+
+    /// The underline it suggests: its top's distance below the baseline
+    /// and its thickness, em.
+    pub fn underline(&self) -> Option<(f32, f32)> {
+        self.underline
     }
 
     /// The font file's bytes.

@@ -256,7 +256,9 @@ fn rules(d: &Doc, id: &str) -> Vec<(Rect, [f32; 4])> {
 
 /// CSS Text Decoration 3/4: an explicit `text-underline-offset` puts the
 /// underline's top that far below the alphabetic baseline, an explicit
-/// thickness is its height, `under` moves it below the text's descent;
+/// thickness is its height, `under` moves it to the font's descent (and
+/// a length offsets it from there), `from-font` takes the font's own
+/// underline position and thickness;
 /// overline runs above the capitals and line-through between the
 /// baseline and the x-height; double draws two lines a thickness apart;
 /// the colour is the decoration's own. Decorations propagate to the
@@ -266,13 +268,16 @@ fn decoration_lines_sit_where_css_text_decoration_puts_them() {
     let d = doc(
         r#"<p id="Off">under</p><p id="Auto">under</p><p id="Under">under</p>
 <p id="Over">under</p><p id="Thru">under</p><p id="Dbl">under</p>
-<div id="Prop"><p id="Kept">under</p></div>"#,
+<div id="Prop"><p id="Kept">under</p></div><p id="Font">under</p><p id="Low">under</p>"#,
         "p { margin-bottom: 16px; }
 #Off { text-decoration: underline 4px #ff0000; text-underline-offset: 5px; }
 #Auto { text-decoration: underline; } #Under { text-decoration: underline; text-underline-position: under; }
 #Over { text-decoration: overline; } #Thru { text-decoration: line-through; }
 #Dbl { text-decoration: underline double 2px; }
-#Prop { text-decoration: underline 2px; } #Kept { text-decoration: none; }",
+#Prop { text-decoration: underline 2px; } #Kept { text-decoration: none; }
+#Font, #Low { font-size: 40px; text-decoration: underline; }
+#Font { text-decoration-thickness: from-font; text-underline-offset: from-font; }
+#Low { text-underline-position: under; text-underline-offset: 3px; }",
     );
     let baseline = |id| lines(&d, id)[0].baseline;
     let off = rules(&d, "Off");
@@ -283,9 +288,28 @@ fn decoration_lines_sit_where_css_text_decoration_puts_them() {
         (off[0].0.width - lines(&d, "Off")[0].width).abs() <= 1.0,
         "across the text"
     );
+    // Noto Sans: post underline position -100 and thickness 50, hhea
+    // descent -293, of 1000 units to the em. `under` puts the line's top
+    // at the descent (14px × 0.293 = 4.1px), clear of every descender;
+    // a length offsets it from there. `from-font` takes the post metrics.
+    // The line and the baseline each snap to the pixel grid.
     let auto = rules(&d, "Auto")[0].0.y - baseline("Auto");
     let under = rules(&d, "Under")[0].0.y - baseline("Under");
-    assert!(auto > 0.0 && under > auto, "auto {auto}, under {under}");
+    assert!(
+        auto > 0.0 && (under - 4.102).abs() <= 1.0,
+        "auto {auto}, under {under}"
+    );
+    let low = rules(&d, "Low")[0].0;
+    assert!(
+        (low.y - baseline("Low") - (40.0 * 0.293 + 3.0)).abs() <= 1.0,
+        "{low:?}"
+    );
+    let font = rules(&d, "Font")[0].0;
+    assert_eq!(
+        (font.y - baseline("Font"), font.height),
+        (4.0, 2.0),
+        "40px × 0.1 and × 0.05"
+    );
     let em = 14.0;
     let over = rules(&d, "Over")[0].0;
     assert!(

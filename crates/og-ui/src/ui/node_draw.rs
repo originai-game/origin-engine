@@ -547,9 +547,7 @@ impl Ui {
                                     }
                                 }
                                 if let Some(d) = &sel.decoration {
-                                    let th = d
-                                        .thickness
-                                        .map_or((size * 0.07).max(1.0 / dpr), |t| t * sk);
+                                    let (th, off) = d.placed(m, size, sk, dpr);
                                     let lc = d.color.unwrap_or(ink).fade(alpha).linear();
                                     let mut rule = |y: f32| {
                                         crate::rich::decoration_line(
@@ -565,7 +563,7 @@ impl Ui {
                                         )
                                     };
                                     if d.underline {
-                                        rule(baseline + size * 0.12);
+                                        rule(baseline + off);
                                     }
                                     if d.overline {
                                         rule(baseline - size * 0.95);
@@ -1712,7 +1710,7 @@ impl Ui {
                 // under on its left, through its middle (CSS Text
                 // Decoration 4 §2.3); a solid rule whatever the style.
                 if let Some(d) = &sel.decoration {
-                    let th = d.thickness.map_or((size * 0.07).max(1.0 / dpr), |t| t * sk);
+                    let (th, _) = d.placed(m, size, sk, dpr);
                     let lc = d.color.unwrap_or(ink).fade(alpha).linear();
                     let mid = glyphs.col + lh / 2.0;
                     let mut rule = |x: f32| {

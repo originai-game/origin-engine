@@ -844,17 +844,66 @@ pub struct Decoration {
     pub style: DecorationStyle,
     /// `None`: the text's colour.
     pub color: Option<Srgba>,
-    /// `None`: auto (the font's, about a fifteenth of an em).
-    pub thickness: Option<f32>,
-    /// The underline's offset from the baseline (`None`: auto).
-    pub offset: Option<f32>,
+    /// `text-decoration-thickness`.
+    pub thickness: DecorationLength,
+    /// `text-underline-offset`: from the baseline, or from the under edge
+    /// when `under`.
+    pub offset: DecorationLength,
     /// `text-underline-position: under`.
     pub under: bool,
+}
+
+/// A decoration length: the engine's choice, the font's own metric, or px.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum DecorationLength {
+    #[default]
+    Auto,
+    FromFont,
+    Px(f32),
+}
+
+impl DecorationLength {
+    fn parse(v: Option<&str>) -> DecorationLength {
+        match v {
+            Some("from-font") => DecorationLength::FromFont,
+            v => v
+                .and_then(|v| v.trim_end_matches("px").parse().ok())
+                .map_or(DecorationLength::Auto, DecorationLength::Px),
+        }
+    }
 }
 
 impl Decoration {
     pub fn any(&self) -> bool {
         self.underline || self.overline || self.through
+    }
+
+    /// Its lines' thickness and its underline's top below the baseline,
+    /// px, for text `size` px tall in a font of metrics `m`, its px
+    /// lengths scaled by `scale` (CSS Text Decoration 4 §2.4, §2.6, §2.7).
+    /// `auto` is a fourteenth of an em thick, 0.12 em below the baseline;
+    /// `from-font` takes the font's `post` underline. `under` starts the
+    /// offset at the text's under edge, the font's descent, so the line
+    /// clears every descender.
+    pub fn placed(&self, m: &crate::FontMetrics, size: f32, scale: f32, dpr: f32) -> (f32, f32) {
+        let font = m.underline();
+        let thickness = match (self.thickness, font) {
+            (DecorationLength::Px(t), _) => t * scale,
+            (DecorationLength::FromFont, Some((_, t))) => (t * size).max(1.0 / dpr),
+            _ => (size * 0.07).max(1.0 / dpr),
+        };
+        let offset = match (self.offset, font) {
+            (DecorationLength::Px(o), _) => o * scale,
+            _ if self.under => 0.0,
+            (DecorationLength::FromFont, Some((top, _))) => top * size,
+            _ => size * 0.12,
+        };
+        let edge = if self.under {
+            m.under_edge() * size
+        } else {
+            0.0
+        };
+        (thickness, edge + offset)
     }
 }
 
@@ -1038,9 +1087,13 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
             .map(|c| c.resolve(&crate::css_color::Context::of(theme)))
             .map(super::css::hex)
             .unwrap_or_else(|| "-".into());
-        let thick = own("text-decoration-thickness")
-            .and_then(|v| length_of(&v, own_size, own_size))
-            .map_or("-".into(), |v| v.to_string());
+        let thick = own("text-decoration-thickness").map_or("-".into(), |v| {
+            if v.trim() == "from-font" {
+                "from-font".into()
+            } else {
+                length_of(&v, own_size, own_size).map_or("-".into(), |v| v.to_string())
+            }
+        });
         lines = format!("{lines}|{l};{style};{color};{thick}");
     }
     if lines != parent_lines.unwrap_or_default() {
@@ -1213,9 +1266,9 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
             _ => DecorationStyle::Solid,
         };
         d.color = f.get(2).and_then(|c| crate::style_file::parse_color(c));
-        d.thickness = f.get(3).and_then(|v| v.parse().ok());
+        d.thickness = DecorationLength::parse(f.get(3).copied());
     }
-    t.decoration.offset = num(get("text-underline-offset"));
+    t.decoration.offset = DecorationLength::parse(get("text-underline-offset").as_deref());
     t.decoration.under = get("text-underline-position").is_some_and(|v| v.contains("under"));
     if let Some(w) = num(get("-webkit-text-stroke-width")).filter(|w| *w > 0.0) {
         t.stroke = Some((w, color(get("-webkit-text-stroke-color"))));
@@ -1353,6 +1406,7 @@ fn compute(
             v => format!("{}px", px(v, own)?),
         },
         "letter-spacing" | "word-spacing" if v == "normal" => "0".into(),
+        "text-underline-offset" if v == "from-font" => v.into(),
         "letter-spacing"
         | "word-spacing"
         | "text-underline-offset"
