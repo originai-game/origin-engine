@@ -39,8 +39,12 @@ The queue does not span orbs: when a lander elsewhere pushes first, the
 push is retried on the new main, without a gate when what landed is
 disjoint from the head's inputs and after a recheck otherwise, until it
 lands or the recheck fails. Conflicts confined to generated
-files (`og_idl::OUTPUT_DIRS`, the UI theme) are regenerated; any other
-conflict stops for the author. `python3 scripts/test-landing.py` exercises
+files (`og_idl::OUTPUT_DIRS`, the UI theme) are regenerated, and so are
+conflicts inside docs/ui.md's CSS checklist (between its
+`css-coverage` markers) once `scripts/css-coverage.py` is merged, both
+sides kept where both added whole proof or MISSING entries at one place;
+the recheck then runs the steps this changed. Any other conflict,
+including one in docs/ui.md's written text, stops for the author. `python3 scripts/test-landing.py` exercises
 concurrent landings against a disposable bare remote.
 
 ## Toolchain
