@@ -16,6 +16,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import tarfile
 import urllib.request
@@ -604,12 +605,52 @@ part_proof("image-set", "css_paint", "image_sets_render_density_correct_backgrou
 
 
 def proof_source(module, test, kind):
-    """The file of `module` that defines `test`: og-ui's, the frame tests' (og-tests-ui), or the runtime's (og-runtime: what an engine fetches and loads)."""
+    """The file of `module` that defines `test`: og-ui's, the frame tests' (og-tests-ui), or the runtime's
+    (og-runtime: what an engine fetches and loads). The test must assert on what it built: an assert or
+    panic in its body or in a function of its file or its crate's test support that it calls. A reference
+    frame alone is not one: `matches_reference` reports a moved frame and passes. This finds a test that
+    checks nothing; it cannot tell an assertion about the feature from one beside it (a render helper's
+    no-warnings assert), which review of the PROVEN entry still owns."""
     for crate in ("og-ui", "og-tests-ui", "og-runtime"):
         source = f"crates/{crate}/tests/{module}.rs"
         if (ROOT / source).exists() and f"fn {test}(" in (ROOT / source).read_text():
+            texts = [(ROOT / source).read_text()]
+            texts += [f.read_text() for f in sorted((ROOT / f"crates/{crate}/tests/support").rglob("*.rs"))]
+            if not asserts(test, functions(texts)):
+                raise ValueError(f"{kind} {module}::{test} asserts nothing about its output")
             return source
     raise ValueError(f"missing {kind} entry point: {module}::{test}")
+
+
+FN = re.compile(r"\bfn (\w+)\s*[<(]")
+ASSERTS = re.compile(r"\b(assert(_eq|_ne)?|panic|unreachable)!|\.(unwrap_err|expect_err)\(")
+# Calls that check a frame only against its reference, which never fails on a moved frame.
+NOT_ASSERTING = {"matches_reference", "check_reference", "report_moved"}
+
+
+def functions(texts):
+    """Every `fn` of the Rust sources by name: its body, to its closing brace (nested functions inside)."""
+    out = {}
+    for text in texts:
+        for m in FN.finditer(text):
+            start = text.find("{", m.end())
+            depth, end = 0, start
+            for end in range(start, len(text)):
+                depth += {"{": 1, "}": -1}.get(text[end], 0)
+                if depth == 0:
+                    break
+            out.setdefault(m.group(1), text[start:end + 1])
+    return out
+
+
+def asserts(name, bodies, seen=None):
+    seen = set() if seen is None else seen
+    if name in seen or name in NOT_ASSERTING or name not in bodies:
+        return False
+    seen.add(name)
+    body = bodies[name]
+    return bool(ASSERTS.search(body)) or any(
+        asserts(callee, bodies, seen) for callee in re.findall(r"\b(\w+)\s*\(", body) if callee in bodies)
 
 
 def webdx(path):
