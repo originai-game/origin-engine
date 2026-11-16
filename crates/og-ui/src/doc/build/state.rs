@@ -34,7 +34,7 @@ pub struct DocState {
     /// The id the last `#fragment` link named: CSS `:target`.
     pub target: Option<String>,
     /// A `#fragment` link was followed this tick: the layout scrolls its
-    /// element into view ([`crate::ui::target_text`]).
+    /// element into view ([`crate::ui::fragment`]).
     pub(crate) scroll_to_target: bool,
     /// Selector states set from outside the documents this frame
     /// ([`crate::Ui::set_selector_state`]): `(key, state, on)`, applied
