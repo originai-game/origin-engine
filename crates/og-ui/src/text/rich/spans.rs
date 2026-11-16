@@ -424,6 +424,7 @@ impl Ui {
             emphasis: desc.emphasis,
             dominant: desc.dominant,
             spacing: desc.spacing,
+            hanging: desc.hanging,
         });
         node.layout.links.clear();
         for r in &node_runs_links(&node.content) {

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS hanging-punctuation",
+      "summary": "Horizontal rich paragraphs hang first opening punctuation, last closing punctuation, and line-end stops and commas with force-end or allow-end. Hanging punctuation is excluded from alignment width; allow-end hangs only when needed to fit, and inline padding prevents hanging."
+    }
+  ]
+}

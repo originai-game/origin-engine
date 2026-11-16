@@ -959,3 +959,44 @@ fn autospace_spaces_ideographs_from_latin_as_text_autospace_says() {
         pens(&d, "Fr")
     );
 }
+
+/// CSS Text 4 §9.2.1: hanging changes fit and alignment, but never
+/// admits a following glyph into an end punctuation's zero advance.
+#[test]
+fn hanging_punctuation_hangs_only_at_the_requested_line_edges() {
+    let d = doc(
+        r#"<p id="F" style="hanging-punctuation: first; width: 100px">「日日」</p>
+<p id="FE" style="hanging-punctuation: force-end; width: 100px">日日日日日。日</p>
+<p id="AE" style="hanging-punctuation: allow-end; width: 100px">日日日日日。日</p>
+<p id="AF" style="hanging-punctuation: allow-end; width: 120px">日日日日日。日</p>
+<p id="FF" style="hanging-punctuation: force-end; width: 120px">日日日日日。日</p>
+<p id="L" style="hanging-punctuation: last; width: 100px; text-align: right">“Hi”</p>
+<p id="N" style="hanging-punctuation: none; width: 100px">「日日」</p>
+<p id="P" style="hanging-punctuation: first"><span style="padding-left: 5px">「日日」</span></p>
+<p id="T" style="hanging-punctuation: first; text-spacing-trim: trim-all">「日日」</p>"#,
+        "",
+    );
+    for (id, c, x, advance) in [
+        ("F", '「', -20.0, 20.0),
+        ("F", '日', 0.0, 20.0),
+        ("N", '日', 20.0, 20.0),
+        ("P", '日', 25.0, 20.0),
+        ("T", '日', 0.0, 20.0),
+        ("FE", '。', 100.0, 0.0),
+        ("AE", '。', 100.0, 0.0),
+        ("AF", '。', 100.0, 20.0),
+        ("FF", '。', 100.0, 0.0),
+        ("L", '”', 100.0, 0.0),
+    ] {
+        let actual = pen(&d, id, c, 0);
+        assert!(
+            (actual.0 - x).abs() < 0.6 && (actual.1 - advance).abs() < 0.6,
+            "{id} {c}: {actual:?}, expected {x}, {advance}"
+        );
+    }
+    for id in ["FE", "AE", "AF", "FF"] {
+        assert_eq!(line(&d, id, 1), "日", "{id}: {:?}", pens(&d, id));
+        let days = pens(&d, id).into_iter().filter(|p| p.0 == '日').count();
+        assert_eq!(days, 6, "no character lost or doubled: {id}");
+    }
+}

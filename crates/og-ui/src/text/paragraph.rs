@@ -174,7 +174,9 @@ fn laid_out(
                     lines.push(RichLine::default());
                     continue;
                 }
-                lines.push(rich_line(content, fonts, text, indices, &line));
+                let mut drawn = rich_line(content, fonts, text, indices, &line);
+                super::hanging::finish(content, fonts, &mut drawn, b.range.clone(), &plan);
+                lines.push(drawn);
             }
             let shifts = broke.iter().map(|b| b.shift).collect();
             let rtl = layout.is_rtl();
@@ -692,9 +694,10 @@ fn shaped<R>(
                 range.clone(),
             );
         }
-        // CJK spacing (CSS Text 4 §8.4, §8.5): a trimmed punctuation's
-        // `halt`, and room after a unit beside its span's tracking and its
-        // owners' edges.
+        // Line edges ([`line_edges`]): a trimmed punctuation's `halt`
+        // (CSS Text 4 §8.5), and room after a unit beside its span's
+        // tracking and its owners' edges: its autospace (§8.4), less its
+        // width where it hangs (§9.2.1), so it takes none.
         let span_at = |at: usize| ranges.iter().position(|r| r.contains(&at));
         for r in &plan.halt {
             if let Some(k) = span_at(r.start) {
@@ -709,7 +712,14 @@ fn shaped<R>(
                 );
             }
         }
-        for (r, extra) in &plan.space {
+        let mut room: Vec<(std::ops::Range<usize>, f32)> = plan.space.clone();
+        for (r, w) in &plan.hang {
+            match room.iter_mut().find(|(at, _)| at == r) {
+                Some((_, extra)) => *extra -= w,
+                None => room.push((r.clone(), -w)),
+            }
+        }
+        for (r, extra) in &room {
             let Some(k) = span_at(r.start) else {
                 continue;
             };
@@ -739,7 +749,11 @@ fn shaped<R>(
             hanging,
             each_line,
         } = content.indent;
-        layout.set_text_indent(px, parley::IndentOptions { each_line, hanging });
+        // A first line's hanging punctuation sits in its indent (§9.2.1).
+        layout.set_text_indent(
+            px - plan.hang_start,
+            parley::IndentOptions { each_line, hanging },
+        );
         Some(f(&mut layout, &text, &indices))
     })
 }
