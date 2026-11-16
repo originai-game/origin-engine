@@ -26,6 +26,9 @@
 //!   → `the_backdrop_pseudo_element_fills_the_scrim`
 //! - `<option>` or `<summary>` accepted out of place, or a select's
 //!   `{#each}` accepted though it cannot list → `misplaced_parts_are_refused`
+//! - `::file-selector-button` styling the whole file input or nothing, the
+//!   names not beside the button, or a press on the names not opening the
+//!   picker → `file_selector_button_is_the_file_inputs_button_box`
 
 use crate::support;
 
@@ -308,6 +311,82 @@ fn meter_regions_follow_the_html_rules() {
     rig.set("hp", json!(80));
     let now = fill(&rig);
     assert!(now.contains(&palette.success.linear()) && !now.contains(&palette.danger.linear()));
+}
+
+/// CSS Pseudo-Elements 4 §3.4 `::file-selector-button`: a file input is
+/// its own box holding a button, which the pseudo-element styles, and the
+/// names chosen beside it (HTML's file upload state). The input's 4px
+/// padding places the button 4px inside it; the rule's red background
+/// fills the button's box alone while the input keeps its blue; the
+/// rule's 10px inline padding makes the button as wide as a `<button>`
+/// with that padding and the same label, and its 6px right margin moves
+/// the names 6px further than an unstyled input's. The names say none is
+/// chosen, then name the file; a press on them opens the picker, as a
+/// press anywhere on the input does, and the input alone is a stop.
+/// Ways it could fail: the rule ignored (it styled nothing before), the
+/// rule styling the whole input, the button a stop of its own, or only
+/// the button taking the press.
+#[test]
+fn file_selector_button_is_the_file_inputs_button_box() {
+    let text = r#"<meta name="component" content="t">
+<column>
+  <button id="Ref">Choose file…</button>
+  {#if $show}
+    <input type="file" id="F" bind:value={$files} />
+    <input type="file" id="G" />
+  {/if}
+</column>
+<style>
+input { padding: 4px; background: #0000ff; }
+#Ref { padding: 0 10px; }
+#F::file-selector-button { background: #ff0000; padding: 0 10px; margin-right: 6px; }
+</style>"#;
+    let mut d = support::Doc::new(text, &[("files", json!("")), ("show", json!(false))]);
+    d.ui.set_file_picker(true);
+    d.set("show", json!(true));
+    let fill = |d: &support::Doc, want: [f32; 3]| {
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|i| i.cmd.filled())
+            .filter(|(_, c)| [c[0], c[1], c[2]] == want)
+            .map(|(r, _)| (r.x, r.y, r.width, r.height))
+            .collect::<Vec<_>>()
+    };
+    let (f, button, names) = (d.get("F"), d.get("F/Button"), d.get("F/Names"));
+    assert_eq!(
+        (button.x - f.x, button.y - f.y),
+        (4.0, 4.0),
+        "{button:?} in {f:?}"
+    );
+    assert_eq!(button.text, "Choose file…");
+    assert_eq!(
+        fill(&d, [1.0, 0.0, 0.0]),
+        [(button.x, button.y, button.width, button.height)],
+        "the rule fills the button's box"
+    );
+    assert!(
+        fill(&d, [0.0, 0.0, 1.0]).contains(&(f.x, f.y, f.width, f.height)),
+        "the input keeps its own background"
+    );
+    assert_eq!(button.width, d.get("Ref").width, "10px inline padding");
+    let (g, gb) = (d.get("G/Names"), d.get("G/Button"));
+    assert_eq!(
+        (names.x - button.x - button.width) - (g.x - gb.x - gb.width),
+        6.0,
+        "its right margin"
+    );
+    assert_eq!(names.text, "No file chosen");
+    assert!(d.get("F").states.iter().any(|s| s == "focusable"));
+    assert_eq!(d.get("F").role, "button");
+    assert!(
+        !button.states.iter().any(|s| s == "focusable") && button.role.is_empty(),
+        "the button is no stop of its own: {button:?}"
+    );
+    let events = d.click("F/Names");
+    assert!(events.iter().any(|e| e.kind == "filepick"), "{events:?}");
+    d.set("files", json!("a.png"));
+    assert_eq!(d.get("F/Names").text, "a.png");
 }
 
 #[test]
