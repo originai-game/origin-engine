@@ -972,41 +972,7 @@ fn parse_size(vals: &[Value]) -> Result<Size, String> {
         },
         "fixed" => Size::Fixed(n(1).ok_or(HOW)?),
         "percent" => Size::Percent(n(1).ok_or(HOW)?),
-        "calc" => {
-            let op = match vals.get(1).and_then(Value::as_word) {
-                Some("sum") => crate::CalcOp::Sum,
-                Some("min") => crate::CalcOp::Min,
-                Some("max") => crate::CalcOp::Max,
-                Some("clamp") => crate::CalcOp::Clamp,
-                Some("round") => crate::CalcOp::Round,
-                Some("roundUp") => crate::CalcOp::RoundUp,
-                Some("roundDown") => crate::CalcOp::RoundDown,
-                Some("roundToZero") => crate::CalcOp::RoundToZero,
-                Some("mod") => crate::CalcOp::Mod,
-                Some("rem") => crate::CalcOp::Rem,
-                Some("abs") => crate::CalcOp::Abs,
-                Some("hypot") => crate::CalcOp::Hypot,
-                Some("progress") => crate::CalcOp::Progress,
-                Some("progressNoClamp") => crate::CalcOp::ProgressNoClamp,
-                _ => return Err(HOW.into()),
-            };
-            let mut c = crate::Calc {
-                op,
-                ..Default::default()
-            };
-            let terms = &vals[2..];
-            if terms.is_empty() || terms.len() % 2 != 0 || terms.len() > 6 {
-                return Err(HOW.into());
-            }
-            for (k, arg) in c.args.iter_mut().take(terms.len() / 2).enumerate() {
-                *arg = crate::Length {
-                    pct: n(2 + 2 * k).ok_or(HOW)?,
-                    px: n(3 + 2 * k).ok_or(HOW)?,
-                };
-            }
-            c.count = (terms.len() / 2) as u8;
-            Size::Calc(c)
-        }
+        "calc" => Size::Calc(crate::css::values::calc(vals).ok_or(HOW)?),
         _ => return Err(HOW.into()),
     })
 }

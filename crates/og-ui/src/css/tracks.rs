@@ -148,10 +148,31 @@ fn breadth(w: &str) -> Result<Breadth, String> {
         "auto" => Ok(Breadth::Auto),
         "min-content" => Ok(Breadth::MinContent),
         "max-content" => Ok(Breadth::MaxContent),
-        _ => Err(format!(
-            "'{w}' is not a track size: <length>, <n>%, <n>fr, auto, min-content, max-content, minmax(…) or fit-content(…)"
-        )),
+        _ => calc(w).unwrap_or_else(|| {
+            Err(format!(
+                "'{w}' is not a track size: <length>, <n>%, <n>fr, auto, min-content, max-content, a math function of px and %, minmax(…) or fit-content(…)"
+            ))
+        }),
     }
+}
+
+/// A math function of px and % (`min(240px, 100%)`, `calc(100% -
+/// 16px)`), which the grid resolves against its inner size at layout, as
+/// a width's is against its container's.
+fn calc(w: &str) -> Option<Result<Breadth, String>> {
+    let Ok(toks) = super::values::tokens(w) else {
+        return None;
+    };
+    let [super::values::Tok::Func(f, args)] = toks.as_slice() else {
+        return None;
+    };
+    Some(
+        super::values::size_calc("a track size", f, args).and_then(|vals| {
+            super::values::calc(&vals)
+                .map(Breadth::Calc)
+                .ok_or_else(|| format!("'{w}' is not a track size"))
+        }),
+    )
 }
 
 /// One `<track-size>` (or a house `minmax:<min>:<max>`).
@@ -180,7 +201,9 @@ fn track(w: &str) -> Result<Track, String> {
     if let Some(a) = args(w, "fit-content") {
         return match a.as_slice() {
             [l] => match breadth(l)? {
-                b @ (Breadth::Px(_) | Breadth::Percent(_)) => Ok(Track::FitContent(b)),
+                b @ (Breadth::Px(_) | Breadth::Percent(_) | Breadth::Calc(_)) => {
+                    Ok(Track::FitContent(b))
+                }
                 _ => Err("fit-content(<length> | <n>%)".into()),
             },
             _ => Err("fit-content(<length> | <n>%)".into()),
@@ -193,6 +216,7 @@ fn track(w: &str) -> Result<Track, String> {
         Breadth::Auto => Track::Auto,
         Breadth::MinContent => Track::MinContent,
         Breadth::MaxContent => Track::MaxContent,
+        c @ Breadth::Calc(_) => Track::Range { min: c, max: c },
     })
 }
 
@@ -268,8 +292,10 @@ pub fn parse(text: &str) -> Result<TrackList, String> {
                     }
                     if tracks.iter().any(|t| {
                         let (min, max, _) = t.breadths();
-                        !matches!(min, Breadth::Px(_) | Breadth::Percent(_))
-                            && !matches!(max, Breadth::Px(_) | Breadth::Percent(_))
+                        let fixed = |b| {
+                            matches!(b, Breadth::Px(_) | Breadth::Percent(_) | Breadth::Calc(_))
+                        };
+                        !fixed(min) && !fixed(max)
                     }) {
                         return Err(format!(
                             "repeat({n}, …) repeats fixed sizes: a length, a percentage or minmax() with one"
@@ -318,8 +344,18 @@ pub fn parse(text: &str) -> Result<TrackList, String> {
     if lines.iter().any(|l| !l.is_empty()) || out.lines.repeat.is_some() {
         out.lines.names = lines;
     }
+    let tracks = out.lines.repeat.iter().flat_map(|r| &r.tracks);
+    if crate::element::track_calcs(out.tracks.iter().chain(tracks)).count() > TRACK_CALCS {
+        return Err(format!(
+            "a track list takes at most {TRACK_CALCS} different math functions"
+        ));
+    }
     Ok(out)
 }
+
+/// The most different math functions a track list sizes its tracks by
+/// (each is a handle the layout resolves: [`crate::element::track_calcs`]).
+pub(crate) const TRACK_CALCS: usize = 16;
 
 /// The track list values of a `Ty::Tracks` prop (one CSS text, or the
 /// house's words and numbers).

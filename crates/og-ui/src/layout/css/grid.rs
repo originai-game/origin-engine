@@ -7,8 +7,31 @@ use super::super::*;
 use crate::element::{Breadth, GridFlow, GridLine, GridPlace, GridSpec, Template, Track};
 use taffy as tf;
 
-fn min_of(b: Breadth) -> tf::MinTrackSizingFunction {
+/// The math functions grid `spec`'s tracks are sized by, each once, in
+/// the order their handles number them ([`super::style::slot::TRACK`]).
+pub(super) fn calcs(spec: &GridSpec) -> impl Iterator<Item = crate::Calc> {
+    let repeat = |axis: usize| spec.lines[axis].repeat.iter().flat_map(|r| &r.tracks);
+    crate::element::track_calcs(
+        spec.columns
+            .iter()
+            .chain(repeat(0))
+            .chain(&spec.rows)
+            .chain(repeat(1))
+            .chain(&spec.auto_columns)
+            .chain(&spec.auto_rows)
+            .chain([&spec.auto_track]),
+    )
+}
+
+/// A grid's handle for each of its math functions ([`calcs`]).
+type Handles<'a> = &'a dyn Fn(crate::Calc) -> *const ();
+
+/// The handles of tracks sized by no math function (a table's).
+const NO_CALC: Handles = &|_| std::ptr::null();
+
+fn min_of(b: Breadth, calc: Handles) -> tf::MinTrackSizingFunction {
     match b {
+        Breadth::Calc(c) => tf::MinTrackSizingFunction::calc(calc(c)),
         Breadth::Px(v) => tf::MinTrackSizingFunction::length(v),
         Breadth::Percent(p) => tf::MinTrackSizingFunction::percent(p),
         Breadth::MinContent => tf::MinTrackSizingFunction::min_content(),
@@ -18,8 +41,9 @@ fn min_of(b: Breadth) -> tf::MinTrackSizingFunction {
     }
 }
 
-fn max_of(b: Breadth) -> tf::MaxTrackSizingFunction {
+fn max_of(b: Breadth, calc: Handles) -> tf::MaxTrackSizingFunction {
     match b {
+        Breadth::Calc(c) => tf::MaxTrackSizingFunction::calc(calc(c)),
         Breadth::Px(v) => tf::MaxTrackSizingFunction::length(v),
         Breadth::Percent(p) => tf::MaxTrackSizingFunction::percent(p),
         Breadth::Fr(f) => tf::MaxTrackSizingFunction::fr(f),
@@ -30,15 +54,16 @@ fn max_of(b: Breadth) -> tf::MaxTrackSizingFunction {
 }
 
 /// A track size as Taffy's `minmax()`.
-pub(crate) fn track(t: Track) -> tf::TrackSizingFunction {
+pub(crate) fn track(t: Track, calc: Handles) -> tf::TrackSizingFunction {
     let (lo, hi, fit) = t.breadths();
     let max = match fit {
         Some(Breadth::Px(v)) => tf::MaxTrackSizingFunction::fit_content_px(v),
         Some(Breadth::Percent(p)) => tf::MaxTrackSizingFunction::fit_content_percent(p),
-        _ => max_of(hi),
+        Some(Breadth::Calc(c)) => tf::MaxTrackSizingFunction::fit_content_calc(calc(c)),
+        _ => max_of(hi, calc),
     };
     tf::MinMax {
-        min: min_of(lo),
+        min: min_of(lo, calc),
         max,
     }
 }
@@ -48,11 +73,12 @@ pub(crate) fn track(t: Track) -> tf::TrackSizingFunction {
 fn template(
     spec: &GridSpec,
     axis: usize,
+    calc: Handles,
 ) -> (Vec<tf::GridTemplateComponent<String>>, Vec<Vec<String>>) {
     let tracks = if axis == 0 { &spec.columns } else { &spec.rows };
     let lines = &spec.lines[axis];
     let named = |k: usize| lines.names.get(k).cloned().unwrap_or_default();
-    let single = |t: &Track| tf::GridTemplateComponent::Single(track(*t));
+    let single = |t: &Track| tf::GridTemplateComponent::Single(track(*t, calc));
     let Some(rep) = &lines.repeat else {
         let names = if lines.names.is_empty() {
             Vec::new()
@@ -70,7 +96,7 @@ fn template(
             } else {
                 tf::RepetitionCount::AutoFill
             },
-            tracks: rep.tracks.iter().map(|t| track(*t)).collect(),
+            tracks: rep.tracks.iter().map(|t| track(*t, calc)).collect(),
             line_names: if rep.names.len() == rep.tracks.len() + 1 {
                 rep.names.clone()
             } else {
@@ -136,6 +162,11 @@ pub(crate) fn style(nodes: &[Node], i: usize, sub: [Option<&[f32]>; 2]) -> tf::S
     let n = &nodes[i];
     let el = &n.layout.used;
     let spec = n.grid();
+    let numbered: Vec<_> = calcs(spec).collect();
+    let calc = &|c| {
+        let k = numbered.iter().position(|n| *n == c).unwrap_or(0);
+        super::style::calc_ptr(i, super::style::slot::TRACK + k)
+    };
     let mut s = tf::Style::<String>::DEFAULT;
     s.display = tf::Display::Grid;
     for (axis, sub) in sub.into_iter().enumerate() {
@@ -143,11 +174,11 @@ pub(crate) fn style(nodes: &[Node], i: usize, sub: [Option<&[f32]>; 2]) -> tf::S
             Some(sizes) => (
                 sizes
                     .iter()
-                    .map(|&v| tf::GridTemplateComponent::Single(track(Track::Px(v))))
+                    .map(|&v| tf::GridTemplateComponent::Single(track(Track::Px(v), calc)))
                     .collect(),
                 Vec::new(),
             ),
-            None => template(spec, axis),
+            None => template(spec, axis, calc),
         };
         let auto = if axis == 0 {
             &spec.auto_columns
@@ -155,9 +186,9 @@ pub(crate) fn style(nodes: &[Node], i: usize, sub: [Option<&[f32]>; 2]) -> tf::S
             &spec.auto_rows
         };
         let auto: Vec<_> = if auto.is_empty() {
-            vec![track(spec.auto_track)]
+            vec![track(spec.auto_track, calc)]
         } else {
-            auto.iter().map(|t| track(*t)).collect()
+            auto.iter().map(|t| track(*t, calc)).collect()
         };
         if axis == 0 {
             s.grid_template_columns = tracks;
@@ -308,11 +339,11 @@ pub(crate) fn table_style(nodes: &[Node], i: usize) -> tf::Style<String> {
             } else {
                 Breadth::Auto
             };
-            tf::GridTemplateComponent::Single(track(Track::Range { min, max }))
+            tf::GridTemplateComponent::Single(track(Track::Range { min, max }, NO_CALC))
         })
         .collect();
     s.grid_template_rows = (0..t.nrows.max(1))
-        .map(|_| tf::GridTemplateComponent::Single(track(Track::Auto)))
+        .map(|_| tf::GridTemplateComponent::Single(track(Track::Auto, NO_CALC)))
         .collect();
     s.gap = tf::Size {
         width: tf::LengthPercentage::length(el.gaps[0].unwrap_or(el.gap)),

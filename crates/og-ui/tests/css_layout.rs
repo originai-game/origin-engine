@@ -636,6 +636,52 @@ fn grid_lays_out_as_css_grid_does() {
     });
 }
 
+/// A track size may be a math function of px and %, resolved against the
+/// grid's own inner size at layout (CSS Grid §7.2.2): Every Layout's grid,
+/// `repeat(auto-fill, minmax(min(<tile>, 100%), 1fr))`, shrinks its tile
+/// to a container narrower than one instead of overflowing it, and fits
+/// whole tiles in a wider one; nested `calc()` mixes % and px.
+#[test]
+fn grid_tracks_take_math_functions_of_the_grid_size() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Narrow" class="tiles"><div id="P1"></div><div id="P2"></div></div>
+  <div id="Wide" class="tiles"><div id="Q1"></div><div id="Q2"></div><div id="Q3"></div></div>
+  <div id="Mixed" class="mixed"><div id="M1"></div><div id="M2"></div><div id="M3"></div></div>
+  <div id="Half" class="mixed"><div id="H1"></div><div id="H2"></div><div id="H3"></div></div>
+</div></div>
+<style>
+#Root { width: 700px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); }
+.mixed { display: grid; grid-template-columns: min(calc(50% - 10px), 150px) calc(25% + 5px) 1fr; }
+#Narrow { width: 100px; }
+#Wide { width: 600px; }
+#Mixed { width: 400px; }
+#Half { width: 200px; }
+.tiles > div, .mixed > div { height: 5px; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let at = |id: &str, of: &str| {
+            let (e, p) = (d.get(id), d.get(of));
+            (e.x - p.x, e.y - p.y, e.width)
+        };
+        // One tile, as wide as the 100px grid: not 240px past its edge.
+        assert_eq!(at("P1", "Narrow"), (0.0, 0.0, 100.0));
+        assert_eq!(at("P2", "Narrow"), (0.0, 5.0, 100.0));
+        // 600px holds two 240px tiles, which share it.
+        assert_eq!(at("Q2", "Wide"), (300.0, 0.0, 300.0));
+        assert_eq!(at("Q3", "Wide"), (0.0, 5.0, 300.0));
+        // 400px: min(190, 150), 105, the rest.
+        assert_eq!(at("M1", "Mixed"), (0.0, 0.0, 150.0));
+        assert_eq!(at("M2", "Mixed"), (150.0, 0.0, 105.0));
+        assert_eq!(at("M3", "Mixed"), (255.0, 0.0, 145.0));
+        // 200px: min(90, 150), 55, the rest.
+        assert_eq!(at("H1", "Half"), (0.0, 0.0, 90.0));
+        assert_eq!(at("H2", "Half"), (90.0, 0.0, 55.0));
+        assert_eq!(at("H3", "Half"), (145.0, 0.0, 55.0));
+    });
+}
+
 #[test]
 fn display_lays_out_as_css_display_does() {
     let text = r#"<meta name="component" content="t">

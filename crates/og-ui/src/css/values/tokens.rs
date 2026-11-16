@@ -51,7 +51,7 @@ pub(super) fn margin_vals(t: &Tok) -> Result<Vec<Value>, String> {
 /// A size's reduced math function as its ogt form, `calc <op> <pct> <px>
 /// …`: `calc(100% - 12px)` → `calc sum 1 -12`, `min(100%, 600px)` → `calc
 /// min 1 0 0 600`.
-pub(super) fn size_calc(name: &str, f: &str, args: &[Vec<Tok>]) -> Result<Vec<Value>, String> {
+pub(crate) fn size_calc(name: &str, f: &str, args: &[Vec<Tok>]) -> Result<Vec<Value>, String> {
     // `calc(progress(V, S, E) * L)` that mixes % with px (CSS Values 5
     // §5): `progress` V − S, E − S and L.
     if f == "calc"
@@ -138,6 +138,44 @@ pub(super) fn size_calc(name: &str, f: &str, args: &[Vec<Tok>]) -> Result<Vec<Va
         out.push(number(&super::calc::number(px))?);
     }
     Ok(out)
+}
+
+/// A size's math function from its ogt form ([`size_calc`]'s).
+pub(crate) fn calc(vals: &[Value]) -> Option<crate::Calc> {
+    let n = |i: usize| vals.get(i).and_then(Value::as_number).map(Number::as_f32);
+    let op = match vals.get(1).and_then(Value::as_word)? {
+        "sum" => crate::CalcOp::Sum,
+        "min" => crate::CalcOp::Min,
+        "max" => crate::CalcOp::Max,
+        "clamp" => crate::CalcOp::Clamp,
+        "round" => crate::CalcOp::Round,
+        "roundUp" => crate::CalcOp::RoundUp,
+        "roundDown" => crate::CalcOp::RoundDown,
+        "roundToZero" => crate::CalcOp::RoundToZero,
+        "mod" => crate::CalcOp::Mod,
+        "rem" => crate::CalcOp::Rem,
+        "abs" => crate::CalcOp::Abs,
+        "hypot" => crate::CalcOp::Hypot,
+        "progress" => crate::CalcOp::Progress,
+        "progressNoClamp" => crate::CalcOp::ProgressNoClamp,
+        _ => return None,
+    };
+    let mut c = crate::Calc {
+        op,
+        ..Default::default()
+    };
+    let terms = vals.len().checked_sub(2)?;
+    if terms == 0 || terms % 2 != 0 || terms > 6 {
+        return None;
+    }
+    for (k, arg) in c.args.iter_mut().take(terms / 2).enumerate() {
+        *arg = crate::Length {
+            pct: n(2 + 2 * k)?,
+            px: n(3 + 2 * k)?,
+        };
+    }
+    c.count = (terms / 2) as u8;
+    Some(c)
 }
 
 /// A length as its fraction, px and em terms: `12px`, `50%`, `1.5em`, `0`,

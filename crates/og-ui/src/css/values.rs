@@ -19,6 +19,7 @@ use lower::*;
 pub use og_css::{Tok, camel, describe, quoted, tok_text, tokens};
 pub use to_css::decl_line;
 use tokens::*;
+pub(crate) use tokens::{calc, size_calc};
 pub(crate) use tokens::{paint_vals, want_len, want_lin, want_num};
 
 /// How a property's value is written.

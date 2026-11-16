@@ -109,6 +109,9 @@ pub enum Breadth {
     Auto,
     MinContent,
     MaxContent,
+    /// A math function of px and the grid's inner size (`min(240px,
+    /// 100%)`), resolved at layout.
+    Calc(crate::Calc),
 }
 
 impl Track {
@@ -132,6 +135,24 @@ impl Track {
             Track::Range { min, max } => (min, max, None),
         }
     }
+}
+
+/// The math functions `tracks` are sized by, each once, in order.
+pub(crate) fn track_calcs<'a>(
+    tracks: impl IntoIterator<Item = &'a Track>,
+) -> impl Iterator<Item = crate::Calc> {
+    let mut seen: Vec<crate::Calc> = Vec::new();
+    for t in tracks {
+        let (min, max, fit) = t.breadths();
+        for b in [Some(min), Some(max), fit].into_iter().flatten() {
+            if let Breadth::Calc(c) = b
+                && !seen.contains(&c)
+            {
+                seen.push(c);
+            }
+        }
+    }
+    seen.into_iter()
 }
 
 /// Which way auto-placed items fill a grid.

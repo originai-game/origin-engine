@@ -19,18 +19,30 @@ pub(super) mod slot {
     /// A slot plus `OWN`: the length as a zoomed node reads it in its own
     /// scale, as its own container ([`View::zoom`]).
     pub const OWN: usize = COUNT;
+    /// A grid's `k`th math function of its track sizes at `TRACK + k`
+    /// ([`super::grid::calcs`]): four lists of them, and the tracks a
+    /// widget adds past its declared ones.
+    pub const TRACK: usize = 2 * COUNT;
+    pub const ALL: usize = TRACK + 4 * crate::css::tracks::TRACK_CALCS + 3;
 }
 
 /// The handle Taffy keeps for slot `s` of node `i`: never dereferenced,
 /// an aligned address so Taffy's tag bits stay clear.
 pub(super) fn calc_ptr(i: usize, s: usize) -> *const () {
-    std::ptr::without_provenance((i * slot::COUNT * 2 + s + 1) << 3)
+    std::ptr::without_provenance((i * slot::ALL + s + 1) << 3)
 }
 
 /// The CSS px a [`calc_ptr`] handle resolves to against `basis`.
 pub(super) fn calc_of(nodes: &[Node], p: *const (), basis: f32) -> f32 {
     let v = (p.addr() >> 3).saturating_sub(1);
-    let (i, s) = (v / (slot::COUNT * 2), v % (slot::COUNT * 2));
+    let (i, s) = (v / slot::ALL, v % slot::ALL);
+    if s >= slot::TRACK {
+        return nodes.get(i).map_or(0.0, |n| {
+            super::grid::calcs(n.grid())
+                .nth(s - slot::TRACK)
+                .map_or(0.0, |c| c.of(basis))
+        });
+    }
     if s >= slot::OWN {
         // Its length in its parent's scale is `z` times its own against a
         // basis `z` times as large ([`crate::layout::Size::zoomed`]).

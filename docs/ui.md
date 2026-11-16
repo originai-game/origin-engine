@@ -517,9 +517,11 @@ engine differs or limits as follows:
   grow, and shrinks with its siblings when the line overflows. `order`
   keeps the document's reading order.
 - **Grid.** One `repeat(auto-fill | auto-fit, …)` per axis, of fixed
-  sizes or `minmax(<fixed>, <flexible>)` (`repeat(auto-fill, minmax(140px,
-  1fr))`). A track size is a length, a percentage, `fr`, a content keyword,
-  `minmax()` or `fit-content()`; `calc()`, `min()` and `max()` there fail.
+  sizes or `minmax(<fixed>, <flexible>)` (`repeat(auto-fill,
+  minmax(min(140px, 100%), 1fr))`, whose tile shrinks to a grid narrower
+  than one). A track size is a length, a percentage, a math function of px
+  and % (`calc()`, `min()`, `max()`, `clamp()`; its % reads the grid's
+  inner size), `fr`, a content keyword, `minmax()` or `fit-content()`.
   A masonry item keeps the width of the track it is first given.
 
 #### Borders, shadows, outlines and overflow
