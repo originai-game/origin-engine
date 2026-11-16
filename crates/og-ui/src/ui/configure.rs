@@ -7,6 +7,7 @@ impl Ui {
             env: Env {
                 configured: desc.theme,
                 theme: desc.theme,
+                configured_fonts: desc.fonts.clone(),
                 fonts: {
                     let mut f = desc.fonts;
                     f.link();
@@ -400,6 +401,9 @@ impl Ui {
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
+        if self.env.configured == theme {
+            return;
+        }
         self.style.write_theme_tokens(theme, &self.env);
         self.env.configured = theme;
         self.env.theme = effective_theme(theme, &self.env.viewport);
@@ -458,6 +462,10 @@ impl Ui {
     }
 
     pub fn set_fonts(&mut self, fonts: Fonts) {
+        if self.env.configured_fonts == fonts || self.env.fonts == fonts {
+            return;
+        }
+        self.env.configured_fonts = fonts.clone();
         self.env.fonts = fonts;
         // The theme's type steps name their families among these fonts.
         self.style.theme_read = None;

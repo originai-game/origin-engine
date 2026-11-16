@@ -837,7 +837,15 @@ mod text_cache {
         // their widths and the counter (which breaks only at \n) are kept.
         frame(&mut ui, 200.0, 2);
         assert_eq!(ui.text_measurements(), 2);
-        let fonts = ui.fonts().clone();
+        let mut fonts = ui.fonts().clone();
+        ui.set_fonts(fonts.clone());
+        frame(&mut ui, 200.0, 2);
+        assert_eq!(
+            ui.text_measurements(),
+            0,
+            "identical fonts keep measurements"
+        );
+        fonts.body = UiFont::unrendered(0.65);
         ui.set_fonts(fonts);
         frame(&mut ui, 200.0, 2);
         assert_eq!(ui.text_measurements(), 6, "new fonts measure everything");
@@ -870,7 +878,15 @@ mod text_cache {
         assert!(ui.layout.texts.lines.contains_key("score 1999"));
         assert!(!ui.layout.texts.lines.contains_key("score 1"));
         // New fonts forget every measurement.
-        let fonts = ui.fonts().clone();
+        let mut fonts = ui.fonts().clone();
+        let kept = ui.layout.texts.len();
+        ui.set_fonts(fonts.clone());
+        assert_eq!(
+            ui.layout.texts.len(),
+            kept,
+            "identical fonts keep the cache"
+        );
+        fonts.body = UiFont::unrendered(0.65);
         ui.set_fonts(fonts);
         assert_eq!(ui.layout.texts.len(), 0);
     }

@@ -10,6 +10,8 @@ pub struct Env {
     /// viewport's preferences applied.
     pub(crate) configured: Theme,
     pub(crate) theme: Theme,
+    /// Font inputs before role backing and linking add derived faces and caches.
+    pub(crate) configured_fonts: Fonts,
     pub(crate) fonts: Fonts,
     pub(crate) ticks_per_second: u32,
     pub(crate) viewport: Viewport,

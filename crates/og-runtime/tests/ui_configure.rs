@@ -486,6 +486,24 @@ fn a_document_is_read_once_against_the_configured_style() {
     assert_eq!(width(), 61.0);
     assert_eq!(parses() - before, 2, "a configure that keeps the style");
     assert_eq!(sheets() - read, 0, "and reads no stylesheet");
+    // Settle the screen, then an identical configure must not invalidate
+    // it, including the pack's named font faces and their linked caches.
+    width();
+    width();
+    value(og_runtime::host_impl::answer(og_ui_configure(e, None)));
+    assert_eq!(width(), 61.0);
+    assert_eq!(
+        og_runtime::shared_ui(e)
+            .unwrap()
+            .lock()
+            .docs
+            .state()
+            .memory
+            .retained
+            .resolved,
+        0,
+        "unchanged configure restyles no mounted element"
+    );
     // Another style: the two loaded documents, once each.
     configure(e, json!({ "style": style("styles/copied") }));
     assert_eq!(parses() - before, 4);

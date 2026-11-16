@@ -134,8 +134,9 @@ impl crate::Ui {
         self.style.root_inputs_changed();
         self.set_style_name(&pack.name);
         // A pack's faces back the roles it gives no font (its `--font-*`).
-        let fonts = self.fonts().clone();
-        self.set_fonts(fonts);
+        self.back_role_fonts();
+        self.env.fonts.link();
+        self.layout.texts.clear();
         self.read_theme_tokens();
         self.tree.invalidation_mut().epoch += 1;
         Ok(())

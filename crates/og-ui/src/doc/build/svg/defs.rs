@@ -253,6 +253,28 @@ pub fn filter_def(
         .map_err(|e| format!("#{id}: {e}"))
 }
 
+/// Whether a filter references an external texture, including one not
+/// loaded yet. Definition attributes are literal, as for `filter_def`.
+pub(crate) fn filter_reads_image(doc: &UiDocument, reference: &str, path: &str) -> bool {
+    fn reads(doc: &UiDocument, node: &DocNode, path: &str) -> bool {
+        (node.selector_tag.as_deref() == Some("feImage")
+            && literal_attrs(node).is_ok_and(|attrs| {
+                attrs.iter().any(|(name, value)| {
+                    matches!(name.as_str(), "href" | "xlink:href")
+                        && !value.starts_with('#')
+                        && crate::doc::at_rules::resolve(&doc.source, value) == path
+                })
+            }))
+            || node
+                .children
+                .iter()
+                .any(|&child| reads(doc, &doc.nodes[child], path))
+    }
+    url_id(reference)
+        .and_then(|id| def(doc, id, &["filter"]))
+        .is_some_and(|node| reads(doc, node, path))
+}
+
 /// CSS `filter: url(#id)` or `backdrop-filter: url(#id)` on a box: the
 /// `<filter>` in the box's user space (CSS px from its border box's top
 /// left; a percentage of user units is of 100 px).

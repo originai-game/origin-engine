@@ -35,7 +35,7 @@ impl Ui {
         // that lands after the first build) or with the old one: it
         // restyles, as for a new UI material.
         if previous != Some(texture) {
-            self.tree.invalidation_mut().epoch += 1;
+            self.dirty_texture_readers(path);
         }
     }
 
@@ -47,6 +47,73 @@ impl Ui {
             .library
             .alphas
             .insert(path.to_owned(), Arc::new(alpha));
+        self.dirty_texture_readers(path);
+    }
+
+    fn dirty_texture_readers(&mut self, path: &str) {
+        fn reads(values: &Resolved, doc: Option<&UiDocument>, path: &str) -> bool {
+            let names = |text: &str| {
+                crate::doc::at_rules::urls(text)
+                    .into_iter()
+                    .chain(crate::doc::at_rules::remote_urls(text))
+                    .any(|url| url.trim_start_matches('/') == path.trim_start_matches('/'))
+            };
+            [
+                "backgroundImage",
+                "maskImage",
+                "borderImageSource",
+                "maskBorderSource",
+                "shapeOutside",
+                "markerImage",
+            ]
+            .into_iter()
+            .any(|name| values.str(name).is_some_and(names))
+                || values.cascade.svg.iter().any(|(_, value)| {
+                    value.trim_start_matches('/') == path.trim_start_matches('/') || names(value)
+                })
+                || values
+                    .cascade
+                    .generated
+                    .iter()
+                    .any(|(_, value)| names(value))
+                || doc.is_some_and(|doc| {
+                    ["filter", "backdropFilter"].into_iter().any(|name| {
+                        let Some(text) = values.str(name) else {
+                            return false;
+                        };
+                        crate::doc::paint_css::filter_fns(text, name)
+                            .unwrap_or_default()
+                            .iter()
+                            .any(|filter| {
+                                matches!(filter, crate::doc::paint_css::FilterFn::Url(reference)
+                                if super::svg::filter_reads_image(doc, reference, path))
+                            })
+                    })
+                })
+                || values
+                    .pseudo
+                    .iter()
+                    .any(|(_, _, value)| reads(value, doc, path))
+                || values
+                    .instances
+                    .iter()
+                    .any(|(_, value)| reads(value, doc, path))
+        }
+        // Legacy widget parts keep their paint independently of mounted
+        // document styles. Drop only the inputs that used this asset.
+        self.paint
+            .part_inputs
+            .retain(|_, input| !reads(&input.values, None, path));
+        let retained = &mut self.docs.state_mut().memory.retained;
+        for (node, element) in &retained.elements {
+            if element
+                .resolved
+                .as_ref()
+                .is_some_and(|r| reads(&r.values, Some(&element.document), path))
+            {
+                retained.dirty.insert(node.clone());
+            }
+        }
     }
 
     /// Binds the UI material asset `path` a document's `-og-material`
@@ -434,5 +501,149 @@ impl Ui {
             }
             Ok(Value::Null)
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Fonts, Theme, UiDesc};
+
+    fn tick(ui: &mut Ui) -> usize {
+        ui.begin(Default::default(), crate::Viewport::new(400.0, 300.0));
+        ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+        ui.end();
+        ui.docs.state().memory.retained.resolved
+    }
+
+    fn mounted(ui: &mut Ui, source: &str) {
+        ui.define_document(
+            ui.parse_document("ui/test.svelte", source, Vec::new())
+                .unwrap(),
+        );
+        ui.mount_document(
+            SourceId::new("test", "page"),
+            "page",
+            Default::default(),
+            Default::default(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        tick(ui);
+        tick(ui);
+        assert_eq!(tick(ui), 0);
+    }
+
+    #[test]
+    fn unchanged_configuration_keeps_mounted_styles() {
+        let fonts = Fonts {
+            body: crate::UiFont::unrendered(0.6),
+            fallback: Some(crate::UiFont::unrendered(0.4)),
+            ..Default::default()
+        };
+        let mut ui = Ui::new(UiDesc {
+            fonts: fonts.clone(),
+            ..Default::default()
+        });
+        mounted(
+            &mut ui,
+            r#"<meta name="component" content="page"><div><text id="Label">Hello</text></div>"#,
+        );
+        ui.set_theme(Theme::default());
+        ui.set_fonts(fonts.clone());
+        assert_eq!(tick(&mut ui), 0, "raw font inputs, before linking");
+        ui.set_fonts(ui.fonts().clone());
+        assert_eq!(tick(&mut ui), 0, "the effective linked fonts");
+        ui.set_theme(Theme::light());
+        assert!(tick(&mut ui) > 0, "a changed theme still restyles");
+        let before = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.id == "Label")
+            .unwrap()
+            .width;
+        ui.set_fonts(Fonts {
+            body: crate::UiFont::unrendered(0.9),
+            ..fonts
+        });
+        assert!(tick(&mut ui) > 0, "a changed font still restyles");
+        assert!(
+            ui.probe_elements()
+                .into_iter()
+                .find(|e| e.id == "Label")
+                .unwrap()
+                .width
+                > before
+        );
+    }
+
+    #[test]
+    fn texture_binding_rebuilds_only_its_readers() {
+        let mut ui = Ui::default();
+        mounted(
+            &mut ui,
+            r#"<meta name="component" content="page">
+            <div><div id="Image"></div><div id="Other"></div></div>
+            <style>div { width: 20px; height: 20px; }
+            #Image { background-image: url(a.png); }
+            #Other { background-image: url(b.png); }</style>"#,
+        );
+        let a = og_draw::TextureHandle::from_index(0);
+        let b = og_draw::TextureHandle::from_index(1);
+        let images = |ui: &Ui| {
+            ui.frame()
+                .items
+                .iter()
+                .filter_map(|item| match &item.cmd {
+                    crate::DrawCmd::Shape { shape, .. } => match &shape.paint {
+                        og_draw::UiPaint::Image(image) => Some(image.texture),
+                        _ => None,
+                    },
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        };
+        ui.define_texture("ui/unused.png", b);
+        assert_eq!(tick(&mut ui), 0, "an unrelated document's texture");
+        ui.define_texture("ui/a.png", a);
+        assert_eq!(tick(&mut ui), 1);
+        assert_eq!(images(&ui), [a], "the previously missing texture now draws");
+        ui.define_texture("ui/a.png", a);
+        assert_eq!(tick(&mut ui), 0, "same binding");
+        ui.define_texture("ui/a.png", b);
+        assert_eq!(tick(&mut ui), 1);
+        assert_eq!(images(&ui), [b], "a replaced handle now draws");
+    }
+
+    #[test]
+    fn texture_readers_include_pseudos_remote_urls_and_filter_images() {
+        for (body, css, path) in [
+            (
+                "<div id=\"Image\"></div>",
+                "#Image::before { content: ''; width: 12px; height: 12px; background-image: url(a.png); }",
+                "ui/a.png",
+            ),
+            (
+                "<div id=\"Image\"></div>",
+                "#Image { background-image: url(https://example.com/a.png); }",
+                "https://example.com/a.png",
+            ),
+            (
+                r##"<svg><defs><filter id="Picture"><feImage href="a.png"/></filter></defs></svg><div id="Image"></div>"##,
+                "#Image { filter: url(#Picture); }",
+                "ui/a.png",
+            ),
+        ] {
+            let mut ui = Ui::default();
+            mounted(
+                &mut ui,
+                &format!(
+                    r#"<meta name="component" content="page"><div>{body}<text>url(a.png)</text></div><style>div {{ width: 20px; height: 20px; }} {css}</style>"#
+                ),
+            );
+            ui.define_texture(path, og_draw::TextureHandle::from_index(0));
+            assert_eq!(tick(&mut ui), 1, "{css}");
+            assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        }
     }
 }

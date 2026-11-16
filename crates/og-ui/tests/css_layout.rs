@@ -1443,7 +1443,10 @@ fn shape_images_wrap_lines_around_their_alpha() {
                 alpha: vec![255, 255, 100, 0, 255, 0, 0, 0],
             },
         );
-        d.set("mode", serde_json::json!("zero"));
+        // Loading the alpha itself updates the float; no binding or style
+        // change should be needed to make the newly available shape visible.
+        d.step(InputFrame::default());
+        assert_eq!(d.ui.docs.state().memory.retained.resolved, 1);
         assert_eq!((x(d, "A"), x(d, "B")), (75.0, 25.0));
         assert!(
             d.ui.frame().warnings.is_empty(),
