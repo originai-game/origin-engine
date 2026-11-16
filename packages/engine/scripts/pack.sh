@@ -18,7 +18,8 @@
 # (origin-engine.node, and the og binary when native/og.<platform>-<arch>
 # exists), then @origingame/engine itself (the TypeScript API, the runtime,
 # the web hosts in dist/web, dist/web-publish and dist/web-publish-2d (each
-# publish directory with its profile's lanes variant), the player shell, the Basis
+# publish directory with its profile's lanes variant) and their twins with
+# remote <iframe>s, dist/web-publish-frames and dist/web-publish-2d-frames, the player shell, the Basis
 # transcoder, the knowledge in knowledge/, the built-in UI styles in styles/,
 # og.motion's weights in motion/ (35 MB, f16); no native code: npm installs the platform package through
 # optionalDependencies). Prints each tarball with its size and sha256.
@@ -38,7 +39,9 @@ rm -rf "$out"
 mkdir -p "$out/stage"
 [ "$native_only" = 1 ] || for f in dist/web/origin-engine_bg.wasm dist/web-publish/origin-engine_bg.wasm dist/web-publish-2d/origin-engine_bg.wasm dist/web-publish-2d/origin-engine.js \
     dist/web-publish/origin-engine-lanes_bg.wasm dist/web-publish/origin-engine-lanes.js dist/web-publish/snippets \
-    dist/web-publish-2d/origin-engine-lanes_bg.wasm dist/web-publish-2d/origin-engine-lanes.js dist/web-publish-2d/snippets; do
+    dist/web-publish-2d/origin-engine-lanes_bg.wasm dist/web-publish-2d/origin-engine-lanes.js dist/web-publish-2d/snippets \
+    dist/web-publish-frames/origin-engine_bg.wasm dist/web-publish-frames/origin-engine-lanes_bg.wasm \
+    dist/web-publish-2d-frames/origin-engine_bg.wasm dist/web-publish-2d-frames/origin-engine-lanes_bg.wasm; do
   [ -e "$here/$f" ] || { echo "pack: $here/$f is missing; run OG_RELEASE=1 sh scripts/build.sh first" >&2; exit 1; }
 done
 sum() { if command -v sha256sum >/dev/null; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi; }

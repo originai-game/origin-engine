@@ -129,6 +129,7 @@ impl Ui {
             host = std::mem::take(&mut self.docs.state_mut().memory.retained);
             self.answer_dismiss_toast(&mut events);
             let state = self.docs.state_mut();
+            #[cfg(feature = "frames")]
             let events = crate::doc::frames::split_messages(
                 events,
                 &host.remote_frames,
@@ -152,6 +153,7 @@ impl Ui {
         self.out
             .warnings_mut()
             .extend(host.diagnostics.values().flatten().cloned());
+        #[cfg(feature = "frames")]
         self.out
             .warnings_mut()
             .extend(host.frame_warnings.values().cloned());

@@ -3878,6 +3878,7 @@ fn column_scroll_markers_scroll_to_their_columns() {
 /// a refused document stops the page's build or shows anything, or when a
 /// relative url() is read as a file of the package.
 #[test]
+#[cfg(feature = "frames")]
 fn a_remote_frame_shows_its_fetched_document_and_sends_only_messages() {
     let ui = crate::support::ui_with_font(crate::support::test_font_metrics());
     let page = r#"<meta name="component" content="t">

@@ -109,7 +109,9 @@ pub fn secure(url: &str) -> bool {
 /// `reference` resolved against the absolute http(s) URL `base` (RFC 3986
 /// §5.2, without query or fragment merging): an absolute URL is itself, a
 /// path from `/` replaces the base's, and a relative path replaces its last
-/// segment, `.` and `..` read.
+/// segment, `.` and `..` read. Only a remote document's urls are joined
+/// (og-ui's `frames` feature).
+#[cfg(feature = "frames")]
 pub fn join(base: &str, reference: &str) -> String {
     if is_remote(reference) {
         return reference.to_owned();

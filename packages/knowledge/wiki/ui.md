@@ -193,6 +193,7 @@ module ui {
 | [`og.ui.screenVm`](ui/fn-screenVm.md) | function | `<S extends ScreenName>(world: World, screen: S): ScreenValues<S> \| null` | A layer's viewmodel as its two-way bindings left it (the top layer of that screen); null when it is not on the stack. |
 | [`og.ui.docEvents`](ui/fn-docEvents.md) | function | `(world: World): readonly UiDocEvent[]` | Take the events of the documents built this frame: pushed layers and store-driven mounts. |
 | [`og.ui.frameMessages`](ui/fn-frameMessages.md) | function | `(world: World): readonly UiFrameMessage[]` | Take what the documents of remote `<iframe>`s sent this frame: their clicks, changed controls and named events, each with the origin it came from. |
+| [`og.ui.remoteFrames`](ui/fn-remoteFrames.md) | function | `(world: World): boolean` | Whether this engine shows remote `<iframe>`s (a capability query, the same on every host): true only for a game whose project.ogt lists `frames`, which og build ships the engine with remote frames to. |
 | [`og.ui.gameInput`](ui/fn-gameInput.md) | function | `(world: World): boolean` | Gameplay takes input this tick: no layer whose input is `menu` is on the stack. |
 | [`og.ui.paused`](ui/fn-paused.md) | function | `(world: World): boolean` | A layer that pauses the game (`pause`) is on the stack: the engine holds the time scale at 0 while one is, and gives back the one it had. |
 | [`og.ui.defineAction`](ui/fn-defineAction.md) | function | `(world: World, desc?: UiActionDesc): Result<void>` | Define (or redefine) a UI action. |

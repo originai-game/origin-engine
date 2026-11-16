@@ -844,7 +844,12 @@ KiB, 4,096 nodes, 64 images or 3 frames deep), the frame builds no child
 and warns. `bind:` on it is refused. Events from inside it leave the
 document events as `og.ui.frameMessages` (`FrameMessage`: frame path,
 origin, kind, name, inner path, value). `crates/og-ui-fuzz` fuzzes the
-parse and build of a document's text (docs/ci.md §Fuzzing).
+parse and build of a document's text (docs/ci.md §Fuzzing). All of this is
+og-ui's `frames` feature (og-runtime's and og-host-web's pass it on), in
+the engine a game gets only when its project.ogt lists `frames`
+(docs/web-export.md §Variants); without it a remote `src` is refused at
+parse (`frames::ABSENT`), the budgets, the nesting walk and the message
+split are not built, and `og.ui.remoteFrames` answers false.
 
 A screen opts into CSS View Transitions 1 and 2 with `@view-transition {
 navigation: auto; }`. The engine's mapping:

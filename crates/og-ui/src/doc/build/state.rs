@@ -100,6 +100,7 @@ pub struct DocState {
     /// code the next).
     pub queued: Vec<DocEvent>,
     /// What remote frames' documents sent, queued as `queued` is.
+    #[cfg(feature = "frames")]
     pub frame_messages: Vec<crate::doc::frames::FrameMessage>,
     /// Layer operations triggers asked for this tick, done after the build.
     pub ops: Vec<crate::layer_stack::LayerOp>,

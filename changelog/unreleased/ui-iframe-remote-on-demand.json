@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui.remoteFrames",
+      "summary": "Remote `<iframe>`s are on demand. `og build --publish` ships the engine with them only to a game whose project.ogt lists `frames`; every other game downloads none of their code (the document fetch, the frame budgets, the nesting walk, frame messages). The new capability query `og.ui.remoteFrames(world)` answers whether this engine shows them, the same on both hosts: true only for a game that lists `frames`. Where it answers false, a remote `src` is refused when its document loads and `og.ui.frameMessages` stays empty. Local `<iframe src=\"x.svelte\">` frames work in every game."
+    }
+  ]
+}

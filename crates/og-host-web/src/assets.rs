@@ -318,19 +318,24 @@ pub fn og_web_set_remote_fetcher(fetch: js_sys::Function) {
 /// referrerPolicy)`, called for a remote `<iframe>`'s document
 /// (og-runtime's world/remote.rs): it `fetch()`es the URL as
 /// `og_web_set_remote_fetcher`'s does and answers with the response's
-/// bytes through `og_web_put_text`, or `og_web_fail_text`.
+/// bytes through `og_web_put_text`, or `og_web_fail_text`. Only in a
+/// module with remote frames (the `frames` feature); the Worker installs
+/// it when the module exports it.
+#[cfg(feature = "frames")]
 #[wasm_bindgen]
 pub fn og_web_set_remote_text_fetcher(fetch: js_sys::Function) {
     crate::REMOTE_TEXT_FETCHER.with(|f| *f.borrow_mut() = Some(fetch));
 }
 
 /// The bytes a remote document's fetch answered.
+#[cfg(feature = "frames")]
 #[wasm_bindgen]
 pub fn og_web_put_text(key: f64, bytes: Vec<u8>) {
     crate::FETCHED_TEXTS.with(|m| m.borrow_mut().insert(key as u64, Ok(bytes)));
 }
 
 /// A remote document that did not arrive, and why.
+#[cfg(feature = "frames")]
 #[wasm_bindgen]
 pub fn og_web_fail_text(key: f64, reason: String) {
     crate::FETCHED_TEXTS.with(|m| m.borrow_mut().insert(key as u64, Err(reason)));

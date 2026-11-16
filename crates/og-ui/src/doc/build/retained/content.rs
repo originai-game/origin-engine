@@ -159,38 +159,44 @@ impl RetainedHost {
                 doc.source, node.line
             ));
         }
-        let path = self.content_path(frame);
-        if remote
-            || self
-                .remote_frames
-                .values()
-                .any(|(p, _)| path.starts_with(&format!("{p}/")))
-        {
-            let library = &ui.docs.library.documents;
-            let refused = if self.framing.len() >= crate::doc::frames::MAX_DEPTH {
-                Some(format!(
-                    "frames nest at most {} deep",
-                    crate::doc::frames::MAX_DEPTH
-                ))
-            } else {
-                crate::doc::frames::refusal(&instance, &|name| library.get(name).map(|d| &**d))
-                    .or_else(|| unpassed(&doc, index, &instance).err())
-            };
-            if let Some(why) = refused {
-                self.frame_warnings.insert(
-                    frame.clone(),
-                    format!(
-                        "{}:{}: <iframe src=\"{}\"> shows nothing: {why}",
-                        doc.source,
-                        node.line,
-                        src.split(' ').next().unwrap_or(src)
-                    ),
-                );
-                return Ok(None);
-            }
-            if remote {
-                self.remote_frames
-                    .insert(frame.clone(), (path, src.to_string()));
+        // Without og-ui's `frames` feature no src is remote (the parser
+        // refuses one), so neither the budgets nor the nesting walk are
+        // built; with it, a page that shows no remote frame walks nothing.
+        #[cfg(feature = "frames")]
+        if remote || !self.remote_frames.is_empty() {
+            let path = self.content_path(frame);
+            if remote
+                || self
+                    .remote_frames
+                    .values()
+                    .any(|(p, _)| path.starts_with(&format!("{p}/")))
+            {
+                let library = &ui.docs.library.documents;
+                let refused = if self.framing.len() >= crate::doc::frames::MAX_DEPTH {
+                    Some(format!(
+                        "frames nest at most {} deep",
+                        crate::doc::frames::MAX_DEPTH
+                    ))
+                } else {
+                    crate::doc::frames::refusal(&instance, &|name| library.get(name).map(|d| &**d))
+                        .or_else(|| unpassed(&doc, index, &instance).err())
+                };
+                if let Some(why) = refused {
+                    self.frame_warnings.insert(
+                        frame.clone(),
+                        format!(
+                            "{}:{}: <iframe src=\"{}\"> shows nothing: {why}",
+                            doc.source,
+                            node.line,
+                            src.split(' ').next().unwrap_or(src)
+                        ),
+                    );
+                    return Ok(None);
+                }
+                if remote {
+                    self.remote_frames
+                        .insert(frame.clone(), (path, src.to_string()));
+                }
             }
         }
         unpassed(&doc, index, &instance)?;

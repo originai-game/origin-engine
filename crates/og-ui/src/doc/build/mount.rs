@@ -111,6 +111,7 @@ impl Ui {
     /// ([`crate::doc::frames::refusal`]).
     /// Answers what it needs fetched in turn: its remote images and the
     /// remote frames it embeds, by request key.
+    #[cfg(feature = "frames")]
     pub fn define_frame_document(
         &mut self,
         key: &str,
@@ -138,8 +139,12 @@ impl Ui {
     /// Takes what remote frames' documents sent since the last take
     /// (docs/ui.md §2.1 Frames): their events, which never reach
     /// [`Ui::take_doc_events`].
+    /// Always empty without og-ui's `frames` feature.
     pub fn take_frame_messages(&mut self) -> Vec<crate::doc::frames::FrameMessage> {
-        std::mem::take(&mut self.docs.state_mut().frame_messages)
+        #[cfg(feature = "frames")]
+        return std::mem::take(&mut self.docs.state_mut().frame_messages);
+        #[cfg(not(feature = "frames"))]
+        Vec::new()
     }
 
     /// What the mounted documents have built (the probe's `dump_ui`), in

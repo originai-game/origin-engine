@@ -27537,6 +27537,7 @@ export interface UiActionHint {
 
 
 
+
 // ── systems ─────────────────────────────────────────────────────
 // Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
 
@@ -37875,11 +37876,17 @@ export declare namespace og {
      */
     function docEvents(world: World): readonly UiDocEvent[];
     /**
-     * Take what the documents of remote `<iframe>`s sent this frame: their clicks, changed controls and named events, each with the origin it came from.
+     * Take what the documents of remote `<iframe>`s sent this frame: their clicks, changed controls and named events, each with the origin it came from. Always empty where og.ui.remoteFrames answers false.
      *
      * @param world The world.
      */
     function frameMessages(world: World): readonly UiFrameMessage[];
+    /**
+     * Whether this engine shows remote `<iframe>`s (a capability query, the same on every host): true only for a game whose project.ogt lists `frames`, which og build ships the engine with remote frames to. Where false, a remote src is refused, no remote document is fetched and og.ui.frameMessages stays empty; local `<iframe src="x.svelte">` frames work everywhere.
+     *
+     * @param world The world.
+     */
+    function remoteFrames(world: World): boolean;
     /**
      * Gameplay takes input this tick: no layer whose input is `menu` is on the stack. Input goes to the top layer that takes it, once per tick.
      *

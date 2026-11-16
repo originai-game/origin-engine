@@ -47,6 +47,8 @@
     "dist/web",
     "dist/web-publish",
     "dist/web-publish-2d",
+    "dist/web-publish-frames",
+    "dist/web-publish-2d-frames",
     "dist/build-facts.json",
     "vendor",
     "knowledge",

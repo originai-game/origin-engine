@@ -182,7 +182,9 @@ the origins it may come from, `frames "https://events.example.com"` (each
 an `https://` origin with no path; `http://` only on localhost), none by
 default. The cook refuses an `<iframe src>` from any other origin, the
 runtime refuses one a remote document names, and og-build.json's `frames`
-carries the list.
+carries the list. Remote frames are on demand: only a game that lists
+`frames` ships the engine modules with them (§Variants), and only there
+does og.ui.remoteFrames answer true.
 
 - **The platform** lets the page's Content-Security-Policy reach each
   origin with `connect-src`: the engine Worker `fetch()`es the document and
@@ -251,6 +253,7 @@ game's physics profile (project.ogt `profile`), single-threaded and lanes:
 | 3D lanes | `dist/web-publish/origin-engine-lanes*`, `snippets/` | the same, wasm atomics (§Lanes) | rapier3d (`parallel`) |
 | 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d,profile2d,shaping` | rapier2d |
 | 2D lanes | `dist/web-publish-2d/origin-engine-lanes*`, `snippets/` | the same, wasm atomics | rapier2d (`parallel`) |
+| 3D or 2D, with remote frames | `dist/web-publish-frames/`, `dist/web-publish-2d-frames/` (each with its lanes module) | the same as its twin, with `frames` | its twin's |
 | dev | `dist/web/origin-engine*` | default features (both profiles) | both, not shipped |
 
 `publish` leaves out the probe's tool members, GPU timestamp queries and
@@ -259,7 +262,12 @@ the reflected field docs. `profile2d` leaves out the 3D world
 `2d` project whose scenes hold `Terrain`, `TerrainScatter`, `Water`,
 `WaterSurface` or `Fluid3D`, naming each by file and line. The variant is
 copied as `origin-engine.js` and `origin-engine_bg.wasm` and recorded as
-`variant`. The size budget (design §7, `scripts/budgets.txt`) holds per
+`variant`. A game whose project.ogt lists `frames` (§Frames) gets the
+twin with remote `<iframe>`s (og-host-web's `frames`: the document fetch,
+the frame budgets, the nesting walk and frame messages); every other game
+gets the module without them, which refuses a remote src and answers
+og.ui.remoteFrames false, so it carries none of their code. Local
+`<iframe src="x.svelte">` frames are in every module. The size budget (design §7, `scripts/budgets.txt`) holds per
 variant: what counts is the largest one a player downloads, never the sum
 (`scripts/size-gate.sh`, docs/ci.md).
 

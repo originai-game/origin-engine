@@ -30,7 +30,8 @@
 //!   `MAX_SOURCE` bytes, and defined in the UI under its key
 //!   (`Ui::define_frame_document`). The images and frames it names are
 //!   fetched in turn, frames at most `MAX_DEPTH` deep; an executor waits
-//!   for the whole chain.
+//!   for the whole chain. Only with the `frames` feature, which `og build`
+//!   ships to a game whose project.ogt lists `frames`.
 //! - **The game's own URL.** The origin a request is made from and the
 //!   referrer it is taken from are the engine's root when it is an http(s)
 //!   URL (a package served from an asset base, docs/web-export.md §Asset
@@ -49,9 +50,11 @@ use std::collections::BTreeMap;
 pub(crate) struct Remote {
     images: BTreeMap<String, Image>,
     /// Remote frames' documents, by request key, with how deep each is.
+    #[cfg(feature = "frames")]
     documents: BTreeMap<String, (Text, usize)>,
 }
 
+#[cfg(feature = "frames")]
 enum Text {
     Host(u64),
     #[cfg(not(target_arch = "wasm32"))]
@@ -102,6 +105,7 @@ pub(crate) fn request<'a>(eng: &Engine, keys: impl IntoIterator<Item = &'a Strin
 /// yet, `depth` frames deep (1: in a document of the game). One from an
 /// origin the project does not list, or nested too deep, warns and is
 /// never fetched: its frame stays empty.
+#[cfg(feature = "frames")]
 pub(crate) fn request_frames(eng: &Engine, keys: &[String], depth: usize) {
     let allowed = eng
         .state
@@ -137,6 +141,7 @@ pub(crate) fn request_frames(eng: &Engine, keys: &[String], depth: usize) {
     }
 }
 
+#[cfg(feature = "frames")]
 fn start_text(root: &str, request: &UrlRequest) -> Result<Text, String> {
     let key = next_key();
     if let Some(h) = hooks()
@@ -161,6 +166,7 @@ fn start_text(root: &str, request: &UrlRequest) -> Result<Text, String> {
 
 /// Defines every frame document that has landed (natively, every one
 /// started, and those they name in turn) and starts what each names.
+#[cfg(feature = "frames")]
 fn settle_documents(eng: &Engine, wait: bool) {
     loop {
         let waiting: Vec<String> = eng
@@ -236,6 +242,7 @@ fn settle_documents(eng: &Engine, wait: bool) {
     }
 }
 
+#[cfg(feature = "frames")]
 fn frame_warning(eng: &Engine, key: &str, why: &str) {
     let url = key.split(' ').next().unwrap_or(key);
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
@@ -275,6 +282,7 @@ pub(crate) fn settle(eng: &Engine) {
     let wait = cfg!(not(target_arch = "wasm32"));
     // A frame's document first: the images it names are then started and
     // (natively) waited for below.
+    #[cfg(feature = "frames")]
     settle_documents(eng, wait);
     let waiting: Vec<String> = eng
         .assets
@@ -360,14 +368,18 @@ pub(crate) fn settle(eng: &Engine) {
 /// (og.loading.idle is false).
 pub(crate) fn pending(eng: &Engine) -> bool {
     let a = eng.assets.borrow();
-    a.remote
+    let images = a
+        .remote
         .images
         .values()
-        .any(|i| !matches!(i, Image::Bound | Image::Failed))
+        .any(|i| !matches!(i, Image::Bound | Image::Failed));
+    #[cfg(feature = "frames")]
+    let images = images
         || a.remote
             .documents
             .values()
-            .any(|(t, _)| !matches!(t, Text::Done))
+            .any(|(t, _)| !matches!(t, Text::Done));
+    images
 }
 
 fn drop_warning(eng: &Engine, key: &str, why: &str) {

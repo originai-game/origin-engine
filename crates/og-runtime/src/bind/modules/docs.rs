@@ -374,6 +374,7 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
     }
     let faces = family_faces(eng, &doc)?;
     crate::world::remote::request(eng, &doc.sheet.remote);
+    #[cfg(feature = "frames")]
     crate::world::remote::request_frames(eng, &doc.remote_frames(), 1);
     {
         let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
@@ -543,6 +544,7 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
             Ok((rive, materials, textures, faces, doc)) => {
                 let alphas = read_shape_alphas(eng, &doc, &textures);
                 crate::world::remote::request(eng, &doc.sheet.remote);
+                #[cfg(feature = "frames")]
                 crate::world::remote::request_frames(eng, &doc.remote_frames(), 1);
                 let hashes: Vec<(String, u64)> =
                     rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
@@ -831,6 +833,20 @@ pub fn og_ui_device(world: u32) -> String {
 }
 
 /// No host opens a file picker yet: false on the web and natively.
+/// og.ui.remoteFrames: built in (the `frames` feature) and listed by the
+/// game's project.ogt, as on the web, where a game without `frames` ships
+/// the engine without them.
+pub fn og_ui_remote_frames(world: u32) -> bool {
+    cfg!(feature = "frames")
+        && engine(world).is_ok_and(|eng| {
+            eng.state
+                .borrow()
+                .project
+                .as_ref()
+                .is_some_and(|p| !p.frames.is_empty())
+        })
+}
+
 pub fn og_ui_file_picker(world: u32) -> bool {
     on_ui(world, |ui| ui.file_picker()).unwrap_or(false)
 }

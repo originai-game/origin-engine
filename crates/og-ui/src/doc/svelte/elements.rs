@@ -626,16 +626,21 @@ impl Parser {
                 // In a remote document a relative src is beside it.
                 let remote = crate::css::request::is_remote(&self.doc.source);
                 if remote || crate::css::request::is_remote(&a.value) {
-                    let url = crate::css::request::join(&self.doc.source, &a.value);
-                    if !crate::css::request::secure(&url) {
-                        return Err((
-                            a.at,
-                            "a remote <iframe> loads over https:// (http:// only from localhost)"
-                                .into(),
-                        ));
+                    #[cfg(not(feature = "frames"))]
+                    return Err((a.at, crate::doc::frames::ABSENT.into()));
+                    #[cfg(feature = "frames")]
+                    {
+                        let url = crate::css::request::join(&self.doc.source, &a.value);
+                        if !crate::css::request::secure(&url) {
+                            return Err((
+                                a.at,
+                                "a remote <iframe> loads over https:// (http:// only from localhost)"
+                                    .into(),
+                            ));
+                        }
+                        self.doc.nodes[i].frame = Some(url);
+                        continue;
                     }
-                    self.doc.nodes[i].frame = Some(url);
-                    continue;
                 }
                 if a.value.contains(':') {
                     return Err((
@@ -1090,9 +1095,14 @@ impl Parser {
         }
         // A remote frame is named by its request key, as a remote url()
         // image is; its document is given data, never a writable path.
-        if let Some(url) = self.doc.nodes[i].frame.clone()
-            && crate::css::request::is_remote(&url)
-        {
+        #[cfg(feature = "frames")]
+        let remote = self.doc.nodes[i]
+            .frame
+            .clone()
+            .filter(|url| crate::css::request::is_remote(url));
+        #[cfg(not(feature = "frames"))]
+        let remote: Option<String> = None;
+        if let Some(url) = remote {
             let modifiers: Vec<_> = request
                 .iter()
                 .map(|(n, v, _)| (n.clone(), v.clone()))

@@ -211,6 +211,7 @@ impl Hooks for WebHooks {
         })
     }
 
+    #[cfg(feature = "frames")]
     fn remote_text_start(&self, key: u64, request: &og_runtime::UrlRequest) -> bool {
         crate::REMOTE_TEXT_FETCHER.with(|f| match &*f.borrow() {
             Some(fetch) => fetch
@@ -220,6 +221,7 @@ impl Hooks for WebHooks {
         })
     }
 
+    #[cfg(feature = "frames")]
     fn fetch_take(&self, key: u64) -> Fetch<Vec<u8>> {
         match crate::FETCHED_TEXTS.with(|m| m.borrow_mut().remove(&key)) {
             Some(Ok(bytes)) => Fetch::Ready(bytes),

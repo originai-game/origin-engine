@@ -145,8 +145,10 @@ pub struct RetainedHost {
     pub framed: BTreeMap<String, BTreeSet<SourceId>>,
     /// Each remote frame shown: its path and its document's request key.
     /// Events from inside it leave as frame messages.
+    #[cfg(feature = "frames")]
     pub remote_frames: BTreeMap<MountedNode, (String, String)>,
     /// Why a frame shows nothing (a remote document refused), by frame.
+    #[cfg(feature = "frames")]
     pub frame_warnings: BTreeMap<MountedNode, String>,
     /// `use:` lifecycle events (made, params changed, gone) for the next
     /// build's answer.

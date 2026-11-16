@@ -7,7 +7,10 @@
 # origin-engine-lanes.js, origin-engine-lanes_bg.wasm, snippets/; wasm
 # atomics, scripts/wasm-lanes.sh, docs/web-export.md §Lanes) and
 # dist/web-publish-2d/ (the 2D publish variant and the 2D lanes variant
-# beside it; docs/web-export.md §Variants). Honours CARGO_TARGET_DIR.
+# beside it; docs/web-export.md §Variants), and each publish directory's
+# twin with remote <iframe>s, dist/web-publish-frames/ and
+# dist/web-publish-2d-frames/ (scripts/wasm-crates.txt `frames`). Honours
+# CARGO_TARGET_DIR.
 # Incremental.
 #
 #   sh scripts/build.sh                     dev when the gate has built, else release
@@ -154,7 +157,7 @@ fi
 variants="${OG_WASM_VARIANTS:-$(cat "$gate_wasm/variants" 2>/dev/null || echo all)}"
 if [ -f "$gate_wasm/bindgen/og_host_web/origin-engine_bg.wasm" ] \
     && { [ -f "$gate_modules/og_host_web-publish.wasm" ] || [ "$variants" = dev ]; }; then
-  rm -rf "$here/dist/web-publish"/* "$here/dist/web"/* "$here/dist/web-publish-2d"
+  rm -rf "$here/dist/web-publish"/* "$here/dist/web"/* "$here/dist/web-publish-2d" "$here/dist/web-publish-frames" "$here/dist/web-publish-2d-frames"
   cp "$gate_wasm/bindgen/og_host_web/"* "$here/dist/web/"
   [ "$variants" != dev ] || exit 0
   cp "$gate_wasm/bindgen/og_host_web-publish/"* "$here/dist/web-publish/"
@@ -180,9 +183,23 @@ if [ -f "$gate_wasm/bindgen/og_host_web/origin-engine_bg.wasm" ] \
   # without them every publish build here would quietly ship
   # single-threaded, so a missing one stops the build.
   lanes_expected="$(awk '{ sub(/#.*/, "") } $1 == "og-host-web" && $3 == "publish" && $4 == "lanes" { print 1 }' "$root/scripts/wasm-crates.txt")"
-  for v in "lanes web-publish" "lanes2d web-publish-2d"; do
+  # The twins with remote <iframe>s, for a game whose project.ogt lists
+  # `frames` (the reference variants leave them out).
+  for v in "publishframes web-publish-frames" "publish2dframes web-publish-2d-frames"; do
     set -- $v
-    [ "$variants" != reference ] || [ "$1" != lanes2d ] || continue
+    [ "$variants" != reference ] || continue
+    if [ -f "$gate_modules/og_host_web-$1.wasm" ]; then
+      mkdir -p "$here/dist/$2"
+      cp "$gate_wasm/bindgen/og_host_web-$1/"* "$here/dist/$2/"
+      cp "$gate_modules/og_host_web-$1.wasm" "$here/dist/$2/origin-engine_bg.wasm"
+    else
+      echo "build.sh: $gate_modules/og_host_web-$1.wasm is missing; prepare all wasm variants again (docs/web-export.md §Variants)" >&2
+      [ "${OG_WASM_STALE:-0}" = 1 ] || exit 1
+    fi
+  done
+  for v in "lanes web-publish" "lanes2d web-publish-2d" "lanesframes web-publish-frames" "lanes2dframes web-publish-2d-frames"; do
+    set -- $v
+    [ "$variants" != reference ] || { [ "$1" != lanes2d ] && [ "${1%frames}" = "$1" ]; } || continue
     if [ -f "$gate_modules/og_host_web-$1.wasm" ]; then
       cp "$gate_wasm/bindgen/og_host_web-$1/origin-engine-lanes.js" "$here/dist/$2/"
       cp -R "$gate_wasm/bindgen/og_host_web-$1/snippets" "$here/dist/$2/"

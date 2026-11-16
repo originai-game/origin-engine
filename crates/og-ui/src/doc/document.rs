@@ -234,6 +234,7 @@ impl UiDocument {
     }
 
     /// The remote `<iframe>`s it embeds, by request key, in tree order.
+    #[cfg(feature = "frames")]
     pub fn remote_frames(&self) -> Vec<String> {
         let mut out: Vec<String> = Vec::new();
         for key in self.nodes.iter().filter_map(|n| n.frame.as_ref()) {

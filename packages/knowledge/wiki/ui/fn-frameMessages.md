@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.frameMessages`
 
-Take what the documents of remote `<iframe>`s sent this frame: their clicks, changed controls and named events, each with the origin it came from.
+Take what the documents of remote `<iframe>`s sent this frame: their clicks, changed controls and named events, each with the origin it came from. Always empty where og.ui.remoteFrames answers false.
 
 ```ts
 og.ui.frameMessages(world: World): readonly UiFrameMessage[]
@@ -22,7 +22,7 @@ Binding symbol `og_ui_frame_messages` · publish builds: kept
 
 ```ogt
 fn frameMessages {
-  doc "Take what the documents of remote `<iframe>`s sent this frame: their clicks, changed controls and named events, each with the origin it came from."
+  doc "Take what the documents of remote `<iframe>`s sent this frame: their clicks, changed controls and named events, each with the origin it came from. Always empty where og.ui.remoteFrames answers false."
   param world World "The world."
   returns List.UiFrameMessage
 }

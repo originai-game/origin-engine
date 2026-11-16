@@ -116,7 +116,9 @@ thread_local! {
     /// The Worker's `fetchText(key, url, credentials, integrity,
     /// referrerPolicy)` for a remote `<iframe>`'s document, and the bytes
     /// it answered by key.
+    #[cfg(feature = "frames")]
     static REMOTE_TEXT_FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
+    #[cfg(feature = "frames")]
     static FETCHED_TEXTS: RefCell<IdMap<u64, Result<Vec<u8>, String>>> = const { RefCell::new(IdMap::new()) };
     /// `performance` and its `now`, where the global has them (Workers do).
     static PERFORMANCE: Option<(JsValue, js_sys::Function)> = {

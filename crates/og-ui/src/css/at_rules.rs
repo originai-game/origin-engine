@@ -790,15 +790,17 @@ pub fn resolve(base: &str, path: &str) -> String {
 /// In a remote document (`base` an http(s) URL) a relative url() is a
 /// URL relative to the document's own.
 pub fn rebase_urls(base: &str, css: &str) -> String {
+    #[cfg(feature = "frames")]
     let remote = super::request::is_remote(base);
     map_urls(css, &mut |url| {
         if url.starts_with('#') || url.contains(':') {
-            url.to_owned()
-        } else if remote {
-            super::request::join(base, url)
-        } else {
-            format!("/{}", resolve(base, url))
+            return url.to_owned();
         }
+        #[cfg(feature = "frames")]
+        if remote {
+            return super::request::join(base, url);
+        }
+        format!("/{}", resolve(base, url))
     })
 }
 
@@ -824,8 +826,10 @@ pub fn urls(css: &str) -> Vec<String> {
 /// `css`, written in the document or sheet `base`, names. In a remote
 /// document a relative url() is remote too, beside the document.
 pub fn sheet_urls(base: &str, css: &str) -> (Vec<String>, Vec<String>) {
+    #[cfg_attr(not(feature = "frames"), allow(unused_mut))]
     let mut remote = remote_urls(css);
     let relative = urls(css);
+    #[cfg(feature = "frames")]
     if super::request::is_remote(base) {
         for url in relative {
             let url = super::request::join(base, &url);

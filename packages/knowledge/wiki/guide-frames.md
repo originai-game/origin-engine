@@ -88,6 +88,13 @@ cook refuses any other:
 frames "https://events.example.com"
 ```
 
+Listing `frames` is also what puts remote frames into the game's engine:
+`og build` ships the engine with them only to a game that lists at least
+one origin, so a game without the line downloads none of their code.
+`og.ui.remoteFrames(world)` answers whether this engine has them; where
+it answers false, a remote `src` is refused when the document loads and
+`og.ui.frameMessages` stays empty. Local frames work in every game.
+
 `og build` writes the list into og-build.json, so the platform's page can
 reach those origins. The server answers CORS reads from the game's origin
 (`Access-Control-Allow-Origin`). `crossorigin`, `integrity` and

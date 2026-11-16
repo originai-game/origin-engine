@@ -238,19 +238,19 @@ fn engine(
     }
     markup.push_str(&format!("</div>\n<style>\n{css}</style>\n"));
     std::fs::write(dir.join("assets/ui/remote.svelte"), markup).unwrap();
-    std::fs::write(
-        dir.join("project.ogt"),
-        "type project\nversion 1\n---\nname \"remote images\"\nid \"remote-images\"\nentry \"main.ts\"\n",
-    )
-    .unwrap();
+    let project = "type project\nversion 1\n---\nname \"remote images\"\nid \"remote-images\"\nentry \"main.ts\"\n";
+    std::fs::write(dir.join("project.ogt"), project).unwrap();
     std::fs::write(dir.join("main.ts"), "").unwrap();
     let report = og_cook::cook_project(&dir, &og_cook::CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     set_hooks(Rc::new(Served { dir, host }));
     og_runtime::og_host_begin_bundle();
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
-    let options = json!({ "root": GAME }).to_string();
+    let options = json!({ "root": GAME, "project": project }).to_string();
     let e = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    // A game that lists no `frames` has no remote frames on any host
+    // (on the web its engine has none built in).
+    assert!(!og_runtime::og_ui_remote_frames(e));
     let sizes = Sizes::default();
     og_runtime::set_render_backend(e, Some(Box::new(Backend(sizes.clone())))).unwrap();
     value(og_runtime::host_impl::answer(og_runtime::og_load_document(
@@ -569,7 +569,7 @@ fn an_image_still_fetched_draws_the_fallback_until_it_lands() {
 /// integrity attribute dropped on the way to the request; a relative url()
 /// in the remote document read as a package file; the first frame drawn
 /// before the chain lands; a nested frame left unfetched.
-#[cfg(feature = "fetch")]
+#[cfg(all(feature = "fetch", feature = "frames"))]
 #[test]
 fn a_remote_frame_loads_its_document_chain_from_allowed_origins() {
     let cors = || vec![("Access-Control-Allow-Origin".to_string(), "*".to_string())];
@@ -632,6 +632,7 @@ iframe {{ width: 120px; height: 60px; }}
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": GAME, "project": project }).to_string();
     let e = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    assert!(og_runtime::og_ui_remote_frames(e), "it lists `frames`");
     let sizes = Sizes::default();
     og_runtime::set_render_backend(e, Some(Box::new(Backend(sizes.clone())))).unwrap();
     value(og_runtime::host_impl::answer(og_runtime::og_load_document(

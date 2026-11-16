@@ -233,6 +233,9 @@ macro_rules! __og_host_bindings_ui {
             fn og_ui_file_picker(&self, world: u32) -> bool {
                 $crate::og_ui_file_picker(world)
             }
+            fn og_ui_remote_frames(&self, world: u32) -> bool {
+                $crate::og_ui_remote_frames(world)
+            }
             fn og_ui_set_device(&self, world: u32, device: String) {
                 $crate::og_ui_set_device(world, device)
             }

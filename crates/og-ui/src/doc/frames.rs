@@ -7,7 +7,15 @@
 //! [`refusal`] finds nothing it could not show. It is given data only
 //! through its iframe's attributes and its events reach the game only as
 //! frame messages ([`crate::Ui::take_frame_messages`]).
+//!
+//! Showing one is og-ui's `frames` feature, which `og build` ships only
+//! to a game whose project.ogt lists `frames`: without it a remote src is
+//! refused when its document is parsed, and no budget, nesting walk or
+//! message split is built. The allowlist itself ([`project_origins`],
+//! [`allowed`]) and [`FrameMessage`] are always here, for the cook and
+//! for `og.ui.frameMessages`, which then stays empty.
 
+#[cfg(feature = "frames")]
 use super::{NodeKind, UiDocument};
 use crate::css::request;
 use og_core::ogt::Block;
@@ -37,11 +45,15 @@ pub struct FrameMessage {
 
 /// `events` without those from inside a remote frame of `frames` (path
 /// and request key by frame), which become messages of the innermost one.
+#[cfg(feature = "frames")]
 pub(crate) fn split_messages(
     events: Vec<super::build::DocEvent>,
     frames: &std::collections::BTreeMap<crate::reactive::graph::MountedNode, (String, String)>,
     messages: &mut Vec<FrameMessage>,
 ) -> Vec<super::build::DocEvent> {
+    if frames.is_empty() {
+        return events;
+    }
     events
         .into_iter()
         .filter(|e| {
@@ -67,6 +79,10 @@ pub(crate) fn split_messages(
         })
         .collect()
 }
+
+/// Why a remote `<iframe>` src is refused by an engine without og-ui's
+/// `frames` feature.
+pub const ABSENT: &str = "remote <iframe>s are not built into this engine: og build ships them to a game whose project.ogt lists `frames` (og-ui's `frames` feature)";
 
 /// The most bytes of source a remote document may have.
 pub const MAX_SOURCE: usize = 256 * 1024;
@@ -125,6 +141,7 @@ pub fn allowed(key: &str, allowed: &[String]) -> bool {
 /// budgets, reading a store (a frame is given data only through its
 /// attributes), or using a component that is not one of the engine's
 /// (`@ui/`) or that `defined` does not have. `None`: it compiles.
+#[cfg(feature = "frames")]
 pub fn refusal<'a>(
     doc: &UiDocument,
     defined: &dyn Fn(&str) -> Option<&'a UiDocument>,

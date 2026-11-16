@@ -8,12 +8,19 @@ description = "Origin Engine UI: screen and component documents laid out, styled
 autotests = false
 
 [features]
-default = ["shaping"]
+default = ["shaping", "frames"]
 # Run-time shaping with HarfRust: Arabic joining, Indic clusters and
 # conjuncts, marks placed by the font's GPOS. Without it a shaped script is
 # drawn unshaped (its characters in visual order); bidi, kerning and run-time
 # glyphs stay. og-runtime and og-host-web pass it on (`shaping`).
 shaping = ["og-text/shaping"]
+# Remote `<iframe>`s (src/doc/frames.rs, docs/ui.md §2.1 Frames): defining
+# a fetched document, its budgets and the nesting walk, and splitting its
+# events into frame messages. Without it a remote frame shows nothing and
+# warns, and frame messages stay empty; local frames are always built.
+# og-runtime and og-host-web pass it on (`frames`); `og build` ships it
+# only to a game whose project.ogt lists `frames`.
+frames = []
 
 [dependencies]
 og-core = { path = "../og-core" }

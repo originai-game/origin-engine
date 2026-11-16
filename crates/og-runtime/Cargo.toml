@@ -52,7 +52,7 @@ image = { workspace = true, features = ["exr", "webp"] }
 resvg = { version = "0.48.1", default-features = false, features = ["text", "raster-images"], optional = true }
 
 [features]
-default = ["shaping", "physics2d", "physics3d", "story", "video", "film", "destruction", "motion", "nav", "ai", "fetch"]
+default = ["shaping", "physics2d", "physics3d", "story", "video", "film", "destruction", "motion", "nav", "ai", "fetch", "frames"]
 # A published game: the probe keeps only its player-facing members, the
 # renderer times no pass on the GPU (og-render's `publish`), and the
 # reflected and record field docs are empty (og-core's and og-api's
@@ -102,6 +102,14 @@ ai = ["nav"]
 # fetches, so the wasm takes neither; a native build without it warns
 # that it fetches nothing.
 fetch = ["og-net/http", "dep:resvg"]
+# Remote <iframe>s (og-ui's `frames`; world/remote.rs): fetching a frame's
+# document from an origin project.ogt's `frames` lists, defining it, the
+# executor's wait for it, and og.ui.frameMessages. Without it a remote src
+# is refused when its document is parsed, og.ui.remoteFrames answers false
+# and og.ui.frameMessages stays empty; local frames are always built.
+# `og build` ships the web variants that have it only to a game whose
+# project.ogt lists `frames` (docs/web-export.md §Variants).
+frames = ["og-ui/frames"]
 
 [dev-dependencies]
 # tests/stream_release.rs cooks a small project with streaming groups.

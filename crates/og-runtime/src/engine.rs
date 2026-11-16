@@ -227,11 +227,13 @@ pub trait Hooks {
     /// bytes answered by [`Hooks::fetch_take`] under `key`: the web host's
     /// engine Worker `fetch()`es it in CORS mode. `false`: this host
     /// cannot, and the runtime fetches on a worker thread natively.
+    #[cfg(feature = "frames")]
     fn remote_text_start(&self, key: u64, request: &og_ui::css::request::UrlRequest) -> bool {
         let _ = (key, request);
         false
     }
     /// The bytes a started [`Hooks::remote_text_start`] answered, once.
+    #[cfg(feature = "frames")]
     fn fetch_take(&self, key: u64) -> Fetch<Vec<u8>> {
         Fetch::Failed(format!("fetch {key} was never started"))
     }

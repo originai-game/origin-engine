@@ -2664,6 +2664,11 @@ pub fn og_ui_frame_messages(world: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_remote_frames(world: u32) -> bool {
+    <Host as UiApi>::og_ui_remote_frames(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_game_input(world: u32) -> bool {
     <Host as UiApi>::og_ui_game_input(&Host, world)
 }
