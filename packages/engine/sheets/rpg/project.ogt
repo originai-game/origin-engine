@@ -17,6 +17,7 @@ ui {
   screen "equipment-default" "style:default;page:equipment"
   screen "explore-default" "style:default;page:explore"
   screen "combat-default" "style:default;page:combat"
+  screen "primitives-default" "style:default;page:primitives"
   screen "inventory-fantasy" "style:fantasy;page:inventory"
   screen "journal-fantasy" "style:fantasy;page:journal"
   screen "equipment-fantasy" "style:fantasy;page:equipment"

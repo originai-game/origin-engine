@@ -9,6 +9,8 @@
     <ExplorePage />
   {:else if $page == 'combat'}
     <CombatPage />
+  {:else if $page == 'primitives'}
+    <PrimitivesPage />
   {:else}
     <InventoryPage />
   {/if}

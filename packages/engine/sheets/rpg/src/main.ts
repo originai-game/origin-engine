@@ -10,7 +10,7 @@
 import { og, type World } from "@origingame/engine";
 import { CMD_NAMES, EQUIPMENT, localized, ITEM_NAMES, SKILL_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
 
-const PAGES = ["inventory", "journal", "equipment", "explore", "combat"] as const;
+const PAGES = ["inventory", "journal", "equipment", "explore", "combat", "primitives"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 
 const DOCUMENTS = [
@@ -19,6 +19,7 @@ const DOCUMENTS = [
   "ui/equipment.svelte",
   "ui/explore.svelte",
   "ui/combat.svelte",
+  "ui/primitives.svelte",
   "ui/sheet.svelte",
 ];
 
