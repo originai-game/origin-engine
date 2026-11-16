@@ -20,9 +20,9 @@
 </div>
 
 <style>
-#RadialMeter { width: var(--size-lg); height: var(--size-lg); --meter: var(--success); transition: opacity var(--motion-duration-slow) var(--motion-easing-out); }
-#RadialMeter.exhausted { --meter: var(--danger); }
-#RadialMeter.gone { opacity: 0; }
+:host { width: var(--size-lg); height: var(--size-lg); --meter: var(--success); transition: opacity var(--motion-duration-slow) var(--motion-easing-out); }
+.exhausted { --meter: var(--danger); }
+.gone { opacity: 0; }
 [part="RadialMeter.wheels"] { width: var(--size-lg); height: var(--size-lg); }
 .track { stroke: var(--scrim); }
 .fill { stroke: var(--meter); }

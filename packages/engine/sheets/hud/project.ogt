@@ -1,0 +1,17 @@
+type project
+version 1
+---
+name "HUD components sheet"
+id "hud-sheet"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+ui {
+  screen "meters-default" "style:default;page:meters"
+  screen "objectives-default" "style:default;page:objectives"
+  screen "actions-default" "style:default;page:actions"
+  screen "buttons-default" "style:default;page:buttons"
+  screen "touch-default" "style:default;page:touch"
+  screen "navigation-default" "style:default;page:navigation"
+}

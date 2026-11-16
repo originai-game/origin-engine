@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "StatBar, OrbMeter, RadialMeter, ProgressRing, HudTimer",
+      "summary": "HUD instruments use HTML with CSS and keep every existing id and part. StatBar's shield, healing and value layers are contained by their own tracks, orb values stay centered above contained liquid, and progress labels share the ring's center. Timers distinguish the caption from the numeric readout with consistent spacing and numeric typography. Optional labels and rings occupy no space when absent."
+    }
+  ]
+}
