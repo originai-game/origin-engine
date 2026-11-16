@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.ItemSlot, ui.Avatar",
+      "summary": "Gives loading slots and avatars distinct spinner parts, keeps inset unavailable labels inside a consistent slot silhouette, and shows nonempty avatar frame keys with a restylable token ring."
+    }
+  ]
+}

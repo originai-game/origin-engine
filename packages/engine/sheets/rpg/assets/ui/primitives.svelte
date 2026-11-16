@@ -18,7 +18,7 @@
     <Avatar name="Idris" level={8} status="away" />
     <Avatar name="Sela" status="busy" frame="veteran" />
     <Avatar name="Maren" status="offline" />
-    <Avatar name="Loading companion" loading={true} />
+    <Avatar name="Visitor" loading={true} />
     <Avatar />
   </div>
 </section>

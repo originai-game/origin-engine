@@ -60,6 +60,8 @@ for (const phone of [false, true]) test(`item slots preserve keyed selection and
     const button = (id: string) => elements(engine).find((element) => element.role === "button" && element.path.includes(`#${id}/`))!;
     expect(button("cooling").states).toContain("pressed");
     expect(button("locked").disabled).toBe(true);
+    expect(new Set(items.map((item) => button(item.id).height)).size).toBe(1);
+    expect(elements(engine).some((element) => element.role === "progressbar" && element.path.includes("#loading/"))).toBe(true);
     for (const item of items) tap(engine, button(item.id));
     expect(events.filter((event) => event.name === "choose").map((event) => event.rowKey)).toEqual(["cooling", "empty"]);
     const scope = og.ui.scope(engine.world, "test");
@@ -84,10 +86,12 @@ test("avatar presence is worded, defaults have a name, and loading replaces pres
     const words = () => elements(engine).map((element) => element.text);
     expect(words()).toContain("Away");
     expect(words()).toContain("Player");
+    expect(elements(engine).some((element) => element.role === "progressbar")).toBe(false);
     const scope = og.ui.scope(engine.world, "test");
     scope.writable("loading", false).set(true);
     engine.advance(3);
     expect(words()).toContain("Loading");
+    expect(elements(engine).some((element) => element.role === "progressbar")).toBe(true);
     expect(words()).not.toContain("Away");
     expect(words()).toContain("Brenna");
     expect(scope.takeErrors()).toEqual([]);
