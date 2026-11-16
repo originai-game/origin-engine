@@ -20,4 +20,5 @@ ui {
   screen "states-fantasy" "style:fantasy;page:states"
   screen "select-default" "style:default;page:select"
   screen "match-default" "style:default;page:match"
+  screen "states-default" "style:default;page:states"
 }

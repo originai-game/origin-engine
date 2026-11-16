@@ -16,9 +16,14 @@ change it; the game's copy of the same name wins.
 
 ## Structure and appearance
 
-Each member's `<style>` holds structure only: layout, sizes and spacing from
-tokens. It sets no colour, font or art, and lands in the `og-components`
-layer. A style pack (`og-pack`) supplies every appearance through the
+The documents use HTML elements with CSS: `:host` styles the root,
+`{#if}` mounts optional content, and parts and classes select the inner
+boxes. Scrolling is `overflow-y: auto` on a `div`. Element ids and parts
+remain stable when a game ejects a document.
+
+Each member's `<style>` supplies layout and a token-based default look:
+type hierarchy, spacing and quiet row surfaces, in the `og-components`
+layer. A style pack (`og-pack`) overrides appearance through the
 members' named parts (docs/ui.md §3.2), qualified by their states and
 `data-*` attributes, for example `[part="ArenaScoreboard.row"][data-local=true]`
 or `button::part(ArenaRoster\.cell)[data-taken=true]`. The fantasy pack dresses them
@@ -85,8 +90,8 @@ lobby or roster through `detail` and the empty states).
 normal page: roster, draft and lobby), `match` (the stress page: the round
 HUD with its won banner over a bright sky and a dark floor, the ten-player
 scoreboard and the five-a-side versus with long names) and `states` (every
-member in every fixture state), in the fantasy pack, and `select` and
-`match` in the core default style.
+member in every fixture state), in the fantasy pack. Each page also has a
+`-default` screen with its explicit `style:default;page:<page>` commands.
 `og ui review arena --style scifi` (or `--style cartoon`) renders the same
 pages in that pack, dressed by its tokens
 (`templates/styles/<pack>/base.css`).

@@ -26,26 +26,28 @@
   allows it. The game owns seats, readiness and when a match may start.
 -->
 <section id="ArenaLobby" part="ArenaLobby.frame" aria-label={title != '' ? title : t("arena.lobby.title")}>
-  <header part="ArenaLobby.band" class="band"><h2 part="ArenaLobby.title">{title != '' ? title : t("arena.lobby.title")}</h2><span class="detail" hidden={detail == ''}>{detail}</span></header>
+  <header part="ArenaLobby.band" class="band"><h2 part="ArenaLobby.title">{title != '' ? title : t("arena.lobby.title")}</h2>{#if detail != ''}<span class="detail">{detail}</span>{/if}</header>
   {#if slots.length}
-    <scroll class="list">
+    <div class="list">
       <div class="rows" role="list" aria-label={t("arena.lobby.players")}>
         {#each slots as s (s.id)}
           <div part="ArenaLobby.row" role="listitem" aria-current={s.local} data-open={s.open} data-local={s.local}>
-            <div part="ArenaLobby.portrait ArenaLobby.picture" class="portrait" data-open={s.open}><img class="art" src={s.portrait} alt="" hidden={!s.portrait || s.open}><og-icon class="glyph" icon={s.open ? 'plus' : s.icon} hidden={!!s.portrait && !s.open}></og-icon></div>
+            <div part="ArenaLobby.portrait ArenaLobby.picture" class="portrait" data-open={s.open}>{#if s.portrait && !s.open}<img class="art" src={s.portrait} alt="">{:else}<og-icon class="glyph" icon={s.open ? 'plus' : s.icon}></og-icon>{/if}</div>
             <div class="who">
               <span part="ArenaLobby.name" class="name">{s.open ? t("arena.lobby.open") : s.name}</span>
-              <div class="tags" hidden={!(s.host || s.local)}>
-                <span part="ArenaLobby.badge" class="tag" data-tag="host" hidden={!s.host}>{t("arena.lobby.host")}</span>
-                <span part="ArenaLobby.badge" class="tag" data-tag="you" hidden={!s.local}>{t("arena.you")}</span>
+              {#if s.host || s.local}
+              <div class="tags">
+                {#if s.host}<span part="ArenaLobby.badge" class="tag" data-tag="host">{t("arena.lobby.host")}</span>{/if}
+                {#if s.local}<span part="ArenaLobby.badge" class="tag" data-tag="you">{t("arena.you")}</span>{/if}
               </div>
+              {/if}
             </div>
-            <div part="ArenaLobby.state ArenaLobby.label" class="state" data-ready={s.ready} hidden={s.open}><og-icon class="check" icon={s.ready ? 'check' : 'clock'}></og-icon><span>{s.ready ? t("arena.lobby.ready") : t("arena.lobby.notReady")}</span></div>
-            <button id="Invite" variant="ghost" hidden={!(s.open && canInvite)} onclick={invite}><og-icon class="check" icon="plus"></og-icon><span>{t("arena.lobby.invite")}</span></button>
+            {#if !s.open}<div part="ArenaLobby.state ArenaLobby.label" class="state" data-ready={s.ready}><og-icon class="check" icon={s.ready ? 'check' : 'clock'}></og-icon><span>{s.ready ? t("arena.lobby.ready") : t("arena.lobby.notReady")}</span></div>{/if}
+            {#if s.open && canInvite}<button id="Invite" variant="ghost" onclick={invite}><og-icon class="check" icon="plus"></og-icon><span>{t("arena.lobby.invite")}</span></button>{/if}
           </div>
         {/each}
       </div>
-    </scroll>
+    </div>
   {:else}
     <p class="empty-text" role="status">{t("arena.lobby.empty")}</p>
   {/if}
@@ -55,30 +57,29 @@
     {:else}
       <button id="Ready" variant="ghost" disabled={!canReady} onclick={ready} ondetails={ready}><kbd class="key" data-action="details"></kbd><span>{t("arena.lobby.readyUp")}</span></button>
     {/if}
-    <button id="Start" variant="primary" hidden={!isHost} disabled={!isHost || !canStart} onclick={start}><span>{t("arena.lobby.start")}</span></button>
+    {#if isHost}<button id="Start" variant="primary" disabled={!isHost || !canStart} onclick={start}><span>{t("arena.lobby.start")}</span></button>{/if}
   </footer>
 </section>
 
 <style>
-[part="ArenaLobby.frame"][hidden], [part="ArenaLobby.frame"] [hidden] { display: none; }
-[part="ArenaLobby.frame"] { display: flex; flex-direction: column; width: stretch; min-width: 0; max-height: stretch; gap: var(--space-sm); container-type: inline-size; }
+:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; max-block-size: stretch; gap: var(--space-md); container-type: inline-size; }
 [part="ArenaLobby.band"] { display: flex; width: stretch; align-items: baseline; flex: none; flex-wrap: wrap; gap: var(--space-xxs) var(--space-md); }
 [part="ArenaLobby.title"] { margin: 0; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.detail { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.list { width: stretch; flex: 1; min-height: 0; }
+.detail { min-width: 0; font: var(--text-sm); color: var(--ink-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.list { overflow-y: auto; flex: 1; min-height: 0; }
 .rows { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }
-[part="ArenaLobby.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) var(--space-sm); min-height: var(--size-touch); }
+[part="ArenaLobby.row"] { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); min-height: var(--size-touch); border-radius: var(--radius-control); background: var(--control); }
 [part="ArenaLobby.portrait ArenaLobby.picture"] { display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; overflow: hidden; }
 .art { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .glyph { width: var(--size-sm); height: var(--size-sm); }
 .who { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xxs); }
-.name { width: stretch; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.tags { display: flex; gap: var(--space-xxs); }
+.name { font-weight: var(--font-weight-semibold); text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.tags { display: flex; gap: var(--space-xxs); font: var(--text-xs); }
 .tag { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
 [part="ArenaLobby.state ArenaLobby.label"] { display: flex; flex: none; align-items: center; gap: var(--space-xxs); white-space: nowrap; }
 .check { width: var(--size-xs); height: var(--size-xs); }
 #Invite { flex: none; min-height: var(--size-md); gap: var(--space-xxs); }
-.empty-text { margin: 0; padding: var(--space-lg); text-align: center; }
+.empty-text { margin: 0; padding: var(--space-lg); text-align: center; color: var(--ink-muted); }
 .actions { display: flex; width: stretch; flex: none; justify-content: flex-end; gap: var(--space-sm); padding-bottom: env(safe-area-inset-bottom); }
 .actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
 @media (pointer: coarse) { .key { display: none; } }

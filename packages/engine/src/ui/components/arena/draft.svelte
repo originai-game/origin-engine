@@ -30,10 +30,10 @@
   <header part="ArenaDraft.band" class="band">
     <div class="head">
       <h2 part="ArenaDraft.title">{title != '' ? title : t("arena.draft.title")}</h2>
-      <span part="ArenaDraft.badge" class="phase" data-phase={phase} hidden={!(phase == 'ban' || phase == 'pick' || phase == 'done')}>{phase == 'ban' ? t("arena.draft.ban") : (phase == 'pick' ? t("arena.draft.pick") : (phase == 'done' ? t("arena.draft.done") : ''))}</span>
-      <span class="turn" role="status" hidden={!(active == 'a' || active == 'b')}>{t("arena.draft.turn", { team: active == 'a' ? (nameA != '' ? nameA : t("arena.team.a")) : (nameB != '' ? nameB : t("arena.team.b")) })}</span>
+      {#if phase == 'ban' || phase == 'pick' || phase == 'done'}<span part="ArenaDraft.badge" class="phase" data-phase={phase}>{phase == 'ban' ? t("arena.draft.ban") : (phase == 'pick' ? t("arena.draft.pick") : (phase == 'done' ? t("arena.draft.done") : ''))}</span>{/if}
+      {#if active == 'a' || active == 'b'}<span class="turn" role="status">{t("arena.draft.turn", { team: active == 'a' ? (nameA != '' ? nameA : t("arena.team.a")) : (nameB != '' ? nameB : t("arena.team.b")) })}</span>{/if}
     </div>
-    <div class="clock" hidden={timeLeft < 0}><HudTimer seconds={timeLeft < 0 ? 0 : timeLeft} total={timeTotal} countdown={true} warnAt={10} paused={false} label={t("arena.draft.timeLeft")} /></div>
+    {#if timeLeft >= 0}<div class="clock"><HudTimer seconds={timeLeft < 0 ? 0 : timeLeft} total={timeTotal} countdown={true} warnAt={10} paused={false} label={t("arena.draft.timeLeft")} /></div>{/if}
   </header>
   {#if slots.length}
     <div class="teams">
@@ -45,12 +45,11 @@
             {#if s.team == 'a' && s.kind == 'ban'}
               <div part="ArenaDraft.slot" class="ban" role="listitem" aria-current={s.active} data-kind="ban" data-state={s.active ? 'active' : (s.name != '' ? 'banned' : 'empty')}>
                 <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait small" data-state={s.name != '' ? 'banned' : 'empty'}>
-                  <img class="art" src={s.portrait} alt="" hidden={!s.portrait}>
-                  <og-icon class="glyph" icon={s.icon} hidden={!!s.portrait || s.icon == ''}></og-icon>
-                  <og-icon class="strike" icon="close" hidden={s.name == ''}></og-icon>
+                  {#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}
+                  {#if s.name != ''}<og-icon class="strike" icon="close"></og-icon>{/if}
                 </div>
                 <span part="ArenaDraft.badge" class="tag" data-tag={s.active ? 'banning' : (s.name != '' ? 'banned' : 'open')}>{s.active ? t("arena.draft.banning") : (s.name != '' ? t("arena.draft.banned") : t("arena.draft.open"))}</span>
-                <span part="ArenaDraft.name" class="ban-name" hidden={s.name == ''}>{s.name}</span>
+                {#if s.name != ''}<span part="ArenaDraft.name" class="ban-name">{s.name}</span>{/if}
               </div>
             {/if}
           {/each}
@@ -61,14 +60,13 @@
             {#if s.team == 'a' && s.kind == 'pick'}
               <div part="ArenaDraft.slot" class="pick" role="listitem" aria-current={s.active} data-kind="pick" data-state={s.active ? 'active' : (s.name != '' ? 'filled' : 'empty')}>
                 <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait" data-state={s.name != '' ? 'filled' : 'empty'}>
-                  <img class="art" src={s.portrait} alt="" hidden={!s.portrait}>
-                  <og-icon class="glyph" icon={s.icon} hidden={!!s.portrait || s.icon == ''}></og-icon>
+                  {#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}
                 </div>
                 <div class="who">
                   <span part="ArenaDraft.name" class="pick-name">{s.name != '' ? s.name : t("arena.draft.open")}</span>
                   <div class="line">
-                    <span class="player" hidden={s.player == ''}>{s.player}</span>
-                    <span part="ArenaDraft.badge" class="tag" data-tag="picking" hidden={!s.active}>{t("arena.draft.picking")}</span>
+                    {#if s.player != ''}<span class="player">{s.player}</span>{/if}
+                    {#if s.active}<span part="ArenaDraft.badge" class="tag" data-tag="picking">{t("arena.draft.picking")}</span>{/if}
                   </div>
                 </div>
               </div>
@@ -84,12 +82,11 @@
             {#if s.team == 'b' && s.kind == 'ban'}
               <div part="ArenaDraft.slot" class="ban" role="listitem" aria-current={s.active} data-kind="ban" data-state={s.active ? 'active' : (s.name != '' ? 'banned' : 'empty')}>
                 <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait small" data-state={s.name != '' ? 'banned' : 'empty'}>
-                  <img class="art" src={s.portrait} alt="" hidden={!s.portrait}>
-                  <og-icon class="glyph" icon={s.icon} hidden={!!s.portrait || s.icon == ''}></og-icon>
-                  <og-icon class="strike" icon="close" hidden={s.name == ''}></og-icon>
+                  {#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}
+                  {#if s.name != ''}<og-icon class="strike" icon="close"></og-icon>{/if}
                 </div>
                 <span part="ArenaDraft.badge" class="tag" data-tag={s.active ? 'banning' : (s.name != '' ? 'banned' : 'open')}>{s.active ? t("arena.draft.banning") : (s.name != '' ? t("arena.draft.banned") : t("arena.draft.open"))}</span>
-                <span part="ArenaDraft.name" class="ban-name" hidden={s.name == ''}>{s.name}</span>
+                {#if s.name != ''}<span part="ArenaDraft.name" class="ban-name">{s.name}</span>{/if}
               </div>
             {/if}
           {/each}
@@ -100,14 +97,13 @@
             {#if s.team == 'b' && s.kind == 'pick'}
               <div part="ArenaDraft.slot" class="pick" role="listitem" aria-current={s.active} data-kind="pick" data-state={s.active ? 'active' : (s.name != '' ? 'filled' : 'empty')}>
                 <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait" data-state={s.name != '' ? 'filled' : 'empty'}>
-                  <img class="art" src={s.portrait} alt="" hidden={!s.portrait}>
-                  <og-icon class="glyph" icon={s.icon} hidden={!!s.portrait || s.icon == ''}></og-icon>
+                  {#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}
                 </div>
                 <div class="who">
                   <span part="ArenaDraft.name" class="pick-name">{s.name != '' ? s.name : t("arena.draft.open")}</span>
                   <div class="line">
-                    <span class="player" hidden={s.player == ''}>{s.player}</span>
-                    <span part="ArenaDraft.badge" class="tag" data-tag="picking" hidden={!s.active}>{t("arena.draft.picking")}</span>
+                    {#if s.player != ''}<span class="player">{s.player}</span>{/if}
+                    {#if s.active}<span part="ArenaDraft.badge" class="tag" data-tag="picking">{t("arena.draft.picking")}</span>{/if}
                   </div>
                 </div>
               </div>
@@ -119,29 +115,31 @@
   {:else}
     <p class="empty-text" role="status">{t("arena.draft.empty")}</p>
   {/if}
-  <footer class="actions" hidden={phase == 'done'}>
+  {#if phase != 'done'}<footer class="actions">
     <button id="Confirm" variant="primary" disabled={!canConfirm || phase == 'done'} onclick={confirm} ondetails={confirm}><kbd class="key" data-action="details"></kbd><span>{t("arena.draft.confirm")}</span></button>
-  </footer>
+  </footer>{/if}
 </section>
 
 <style>
-[part="ArenaDraft.frame"][hidden], [part="ArenaDraft.frame"] [hidden] { display: none; }
-[part="ArenaDraft.frame"] { display: flex; flex-direction: column; width: stretch; min-width: 0; max-height: stretch; gap: var(--space-sm); container-type: inline-size; }
+:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; max-block-size: stretch; gap: var(--space-md); container-type: inline-size; }
 [part="ArenaDraft.band"] { display: flex; width: stretch; align-items: center; justify-content: space-between; gap: var(--space-md); flex: none; }
 .head { display: flex; flex: 1; min-width: 0; align-items: center; flex-wrap: wrap; gap: var(--space-xs) var(--space-md); }
 [part="ArenaDraft.title"] { margin: 0; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .phase, .tag { flex: none; padding: 0 var(--space-xs); white-space: nowrap; }
-.turn { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.turn { min-width: 0; color: var(--ink-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .clock { flex: none; }
 .teams { display: flex; width: stretch; flex: 1; min-height: 0; gap: var(--space-md); overflow-y: auto; }
 [part="ArenaDraft.team ArenaDraft.plate"] { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; gap: var(--space-xs); padding: var(--space-sm); }
 [part="ArenaDraft.heading"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.section { white-space: nowrap; }
+.section { font: var(--text-sm); color: var(--ink-muted); white-space: nowrap; }
 .bans { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 .picks { display: flex; flex-direction: column; gap: var(--space-xs); }
 /* A ban is as wide as its words (Banned, the name), at any text size: the word is never cut, a long name wraps. */
 [part="ArenaDraft.slot"].ban { display: flex; flex-direction: column; flex: 0 1 auto; align-items: center; gap: var(--space-xxs); min-width: var(--size-xl); max-width: stretch; }
-[part="ArenaDraft.slot"].pick { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) var(--space-xs); min-height: var(--size-touch); }
+[part="ArenaDraft.slot"].pick { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); min-height: var(--size-touch); background: var(--control); border-radius: var(--radius-control); }
+.pick[aria-current=true] { box-shadow: var(--shadow-rim); }
+.pick-name { font-weight: var(--font-weight-semibold); }
+.player, .ban-name { font: var(--text-sm); color: var(--ink-muted); }
 [part="ArenaDraft.portrait ArenaDraft.picture"] { position: relative; display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; overflow: hidden; }
 [part="ArenaDraft.portrait ArenaDraft.picture"].small { width: var(--size-md); height: var(--size-md); }
 .art { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
@@ -153,7 +151,7 @@
 .pick-name, .player { min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .line { display: flex; flex-wrap: wrap; min-width: 0; align-items: center; gap: var(--space-xxs) var(--space-xs); }
 .line .tag { flex: none; }
-.empty-text { margin: 0; padding: var(--space-lg); text-align: center; }
+.empty-text { margin: 0; padding: var(--space-lg); text-align: center; color: var(--ink-muted); }
 .actions { display: flex; width: stretch; flex: none; justify-content: flex-end; padding-bottom: env(safe-area-inset-bottom); }
 .actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
 @media (pointer: coarse) { .key { display: none; } }

@@ -27,12 +27,12 @@
           <div class="cards" role="list">
             {#each sideA as f (f.id)}
               <div part="ArenaVersus.card" class="card" role="listitem" aria-current={f.local} data-local={f.local}>
-                <div part="ArenaVersus.portrait ArenaVersus.picture" class="portrait"><img class="art" src={f.portrait} alt="" hidden={!f.portrait}><og-icon class="glyph" icon={f.icon} hidden={!!f.portrait}></og-icon></div>
+                <div part="ArenaVersus.portrait ArenaVersus.picture" class="portrait">{#if f.portrait}<img class="art" src={f.portrait} alt="">{:else}<og-icon class="glyph" icon={f.icon}></og-icon>{/if}</div>
                 <div class="who">
                   <span part="ArenaVersus.name" class="name">{f.name}</span>
-                  <span class="character" hidden={f.character == ''}>{f.character}</span>
-                  <span part="ArenaVersus.rank ArenaVersus.label" class="rank" hidden={f.rank == ''}>{f.rank}</span>
-                  <span class="you" hidden={!f.local}>{t("arena.you")}</span>
+                  {#if f.character != ''}<span class="character">{f.character}</span>{/if}
+                  {#if f.rank != ''}<span part="ArenaVersus.rank ArenaVersus.label" class="rank">{f.rank}</span>{/if}
+                  {#if f.local}<span class="you">{t("arena.you")}</span>{/if}
                 </div>
               </div>
             {/each}
@@ -48,12 +48,12 @@
           <div class="cards" role="list">
             {#each sideB as f (f.id)}
               <div part="ArenaVersus.card" class="card" role="listitem" aria-current={f.local} data-local={f.local}>
-                <div part="ArenaVersus.portrait ArenaVersus.picture" class="portrait"><img class="art" src={f.portrait} alt="" hidden={!f.portrait}><og-icon class="glyph" icon={f.icon} hidden={!!f.portrait}></og-icon></div>
+                <div part="ArenaVersus.portrait ArenaVersus.picture" class="portrait">{#if f.portrait}<img class="art" src={f.portrait} alt="">{:else}<og-icon class="glyph" icon={f.icon}></og-icon>{/if}</div>
                 <div class="who">
                   <span part="ArenaVersus.name" class="name">{f.name}</span>
-                  <span class="character" hidden={f.character == ''}>{f.character}</span>
-                  <span part="ArenaVersus.rank ArenaVersus.label" class="rank" hidden={f.rank == ''}>{f.rank}</span>
-                  <span class="you" hidden={!f.local}>{t("arena.you")}</span>
+                  {#if f.character != ''}<span class="character">{f.character}</span>{/if}
+                  {#if f.rank != ''}<span part="ArenaVersus.rank ArenaVersus.label" class="rank">{f.rank}</span>{/if}
+                  {#if f.local}<span class="you">{t("arena.you")}</span>{/if}
                 </div>
               </div>
             {/each}
@@ -69,28 +69,30 @@
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="ArenaVersus.frame"][hidden], [part="ArenaVersus.frame"] [hidden] { display: none; }
-[part="ArenaVersus.frame"] { display: flex; width: stretch; min-width: 0; max-height: stretch; }
+:host { display: flex; inline-size: stretch; min-inline-size: 0; max-block-size: stretch; }
 .stage { display: flex; width: stretch; min-width: 0; align-items: center; gap: var(--space-lg); }
 [part="ArenaVersus.side ArenaVersus.plate"] { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; gap: var(--space-sm); padding: var(--space-md); animation-duration: var(--motion-duration-slow); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
 .side.a { animation-name: arena-from-start; }
 .side.b, .side.a:dir(rtl) { animation-name: arena-from-end; }
 .side.b:dir(rtl) { animation-name: arena-from-start; }
 [part="ArenaVersus.heading"] { margin: 0; text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.cards { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }
-[part="ArenaVersus.card"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xs); }
+.cards { display: flex; flex-direction: column; gap: var(--space-sm); }
+[part="ArenaVersus.card"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm); background: var(--control); border-radius: var(--radius-control); }
 .b [part="ArenaVersus.card"] { flex-direction: row-reverse; }
 [part="ArenaVersus.portrait ArenaVersus.picture"] { display: flex; flex: none; width: var(--size-xl); height: var(--size-xl); align-items: center; justify-content: center; overflow: hidden; }
 .art { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .glyph { width: var(--size-md); height: var(--size-md); }
-.who { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.name, .character, .rank { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; text-align: start; }
+.who { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xxs); }
+.name { font: var(--text-lg); font-weight: var(--font-weight-semibold); }
+.character, .rank { font: var(--text-sm); color: var(--ink-muted); }
+.name, .character, .rank { max-inline-size: stretch; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; text-align: start; }
+.rank { inline-size: stretch; white-space: normal; overflow-wrap: anywhere; }
 .b .name, .b .character, .b .rank { text-align: end; }
 .you { align-self: flex-start; white-space: nowrap; padding: 0 var(--space-xs); }
 .b .you { align-self: flex-end; }
-.waiting { margin: 0; padding: var(--space-lg); text-align: center; }
+.waiting { margin: 0; padding: var(--space-lg); text-align: center; color: var(--ink-muted); }
 .seal { display: flex; flex: none; width: var(--size-xl); height: var(--size-xl); align-items: center; justify-content: center; animation-name: arena-seal; animation-duration: var(--motion-duration-bounce); animation-timing-function: var(--motion-easing-snappy); animation-fill-mode: both; }
-.vs { white-space: nowrap; }
+.vs { font: var(--text-xl2); font-weight: var(--font-weight-bold); white-space: nowrap; }
 @keyframes arena-from-start { from { opacity: 0; translate: -12% 0; } to { opacity: 1; translate: 0 0; } }
 @keyframes arena-from-end { from { opacity: 0; translate: 12% 0; } to { opacity: 1; translate: 0 0; } }
 @keyframes arena-seal { from { opacity: 0; scale: 1.8; } to { opacity: 1; scale: 1; } }

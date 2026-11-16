@@ -33,54 +33,55 @@
   <div class="bar">
     <div part="ArenaRoundHud.team ArenaRoundHud.plate" class="team a" data-local={localTeam == 'a'} role="group" aria-label={nameA != '' ? nameA : t("arena.team.a")}>
       <span class="name">{nameA != '' ? nameA : t("arena.team.a")}</span>
-      <span part="ArenaRoundHud.badge" class="you" hidden={localTeam != 'a'}>{t("arena.you")}</span>
+      {#if localTeam == 'a'}<span part="ArenaRoundHud.badge" class="you">{t("arena.you")}</span>{/if}
       <span part="ArenaRoundHud.score ArenaRoundHud.figure" class="score" data-team="a" aria-description={t("arena.score.teamScore")}>{formatNumber(scoreA)}</span>
     </div>
     <div part="ArenaRoundHud.round ArenaRoundHud.plate" class="round">
       <span class="round-label">{rounds > 0 ? t("arena.round.roundOf", { round: round, rounds: rounds }) : t("arena.round.round", { round: round })}</span>
-      <div class="clock" hidden={timeLeft < 0}><HudTimer seconds={timeLeft < 0 ? 0 : timeLeft} total={timeTotal} countdown={true} warnAt={10} paused={false} label="" /></div>
+      {#if timeLeft >= 0}<div class="clock"><HudTimer seconds={timeLeft < 0 ? 0 : timeLeft} total={timeTotal} countdown={true} warnAt={10} paused={false} label="" /></div>{/if}
     </div>
     <div part="ArenaRoundHud.team ArenaRoundHud.plate" class="team b" data-local={localTeam == 'b'} role="group" aria-label={nameB != '' ? nameB : t("arena.team.b")}>
       <span part="ArenaRoundHud.score ArenaRoundHud.figure" class="score" data-team="b" aria-description={t("arena.score.teamScore")}>{formatNumber(scoreB)}</span>
-      <span part="ArenaRoundHud.badge" class="you" hidden={localTeam != 'b'}>{t("arena.you")}</span>
+      {#if localTeam == 'b'}<span part="ArenaRoundHud.badge" class="you">{t("arena.you")}</span>{/if}
       <span class="name">{nameB != '' ? nameB : t("arena.team.b")}</span>
     </div>
   </div>
   <div class="call" role="status" aria-live="assertive" aria-atomic="true">
+    {#if outcome == 'won' || outcome == 'lost' || outcome == 'draw'}
     {#key at}
-      <div part="ArenaRoundHud.banner ArenaRoundHud.plate" class="banner" hidden={!(outcome == 'won' || outcome == 'lost' || outcome == 'draw')} data-outcome={outcome}>
+      <div part="ArenaRoundHud.banner ArenaRoundHud.plate" class="banner" data-outcome={outcome}>
         <span part="ArenaRoundHud.title" class="outcome">{outcome == 'won' ? t("arena.round.won") : (outcome == 'lost' ? t("arena.round.lost") : (outcome == 'draw' ? t("arena.round.draw") : ''))}</span>
-        <span class="detail" hidden={detail == ''}>{detail}</span>
+        {#if detail != ''}<span class="detail">{detail}</span>{/if}
       </div>
     {/key}
+    {/if}
   </div>
 </div>
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="ArenaRoundHud.frame"][hidden], [part="ArenaRoundHud.frame"] [hidden] { display: none; }
-[part="ArenaRoundHud.frame"] { display: flex; flex-direction: column; width: stretch; min-width: 0; align-items: center; gap: var(--space-xl); pointer-events: none; }
+:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; align-items: center; gap: var(--space-xl); pointer-events: none; }
 .bar { display: flex; max-width: stretch; min-width: 0; align-items: stretch; justify-content: center; gap: var(--space-xxs); }
 [part="ArenaRoundHud.team ArenaRoundHud.plate"] { display: flex; flex: 0 1 auto; min-width: 0; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-md); }
 .team.a { justify-content: flex-end; }
 .team.b { justify-content: flex-start; }
 .name { min-width: 0; max-width: calc(var(--size-xxl) * 2.2); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .you { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
-[part="ArenaRoundHud.score ArenaRoundHud.figure"] { flex: none; min-width: var(--size-md); text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+[part="ArenaRoundHud.score ArenaRoundHud.figure"] { flex: none; min-width: var(--size-md); font: var(--text-xl3); font-weight: var(--font-weight-bold); text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
 [part="ArenaRoundHud.round ArenaRoundHud.plate"] { display: flex; flex-direction: column; flex: none; align-items: center; justify-content: center; gap: var(--space-xxs); padding: var(--space-xxs) var(--space-md); }
-.round-label { white-space: nowrap; }
+.round-label { font: var(--text-sm); color: var(--ink-muted); white-space: nowrap; }
 .call { display: flex; width: stretch; justify-content: center; }
 [part="ArenaRoundHud.banner ArenaRoundHud.plate"] { display: flex; flex-direction: column; align-items: center; max-width: stretch; gap: var(--space-xxs); padding: var(--space-sm) var(--space-3xl); animation-name: arena-banner; animation-duration: var(--motion-duration-slow); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
-.outcome { white-space: nowrap; }
-.detail { text-align: center; max-width: stretch; }
+.outcome { font: var(--text-xl3); font-weight: var(--font-weight-bold); white-space: nowrap; }
+.detail { font: var(--text-sm); color: var(--ink-muted); text-align: center; max-width: stretch; }
 @keyframes arena-banner { from { opacity: 0; scale: 1.3; } to { opacity: 1; scale: 1; } }
 @media (prefers-reduced-motion: reduce) { [part="ArenaRoundHud.banner ArenaRoundHud.plate"] { animation-name: none; } }
 /* The HUD spans the screen, so the screen's width decides. A phone keeps
    the scores and the round, and gives each team's name a line of its own
    over its score, so the name has the plate's whole width. */
 @media (width < 600px) {
-  [part="ArenaRoundHud.frame"] { gap: var(--space-lg); }
+  :host { gap: var(--space-lg); }
   /* The bar never outgrows the screen: the plates share the width, the round's words wrap. */
   .bar { width: stretch; }
   [part="ArenaRoundHud.team ArenaRoundHud.plate"] { flex: 1 1 0; flex-wrap: wrap; align-content: center; gap: var(--space-xxs) var(--space-xs); padding: var(--space-xxs) var(--space-xs); }

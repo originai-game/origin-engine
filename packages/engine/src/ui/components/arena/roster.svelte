@@ -24,29 +24,29 @@
 <section id="ArenaRoster" part="ArenaRoster.frame" aria-label={title != '' ? title : t("arena.roster.title")}>
   <header part="ArenaRoster.band"><h2 part="ArenaRoster.title">{title != '' ? title : t("arena.roster.title")}</h2></header>
   {#if characters.length}
-    <scroll class="grid-scroll">
+    <div class="grid-scroll">
       <div class="grid" role="listbox" aria-label={t("arena.roster.characters")}>
         {#each characters as c (c.id)}
           <button part="ArenaRoster.cell" role="option" aria-selected={c.id == selected} aria-label={c.name} aria-description={c.locked ? t("arena.roster.locked") : (c.takenBy != '' ? t("arena.roster.taken", { name: c.takenBy }) : c.roleLabel)} data-role={c.role} data-locked={c.locked} data-taken={c.takenBy != ''} disabled={c.locked || c.takenBy != ''} onclick={choose}><div class="face">
             <div part="ArenaRoster.portrait ArenaRoster.picture" class="portrait">
-              <img class="art" src={c.portrait} alt="" hidden={!c.portrait}>
-              <og-icon class="glyph" icon={c.icon} hidden={!!c.portrait}></og-icon>
+              {#if c.portrait}<img class="art" src={c.portrait} alt="">{:else}<og-icon class="glyph" icon={c.icon}></og-icon>{/if}
               <div class="marks">
                 {#each players as p (p.id)}
                   {#if p.at == c.id}
-                    <div part="ArenaRoster.mark" class="mark" data-slot={p.slot} data-ready={p.ready} aria-label={p.ready ? t("arena.roster.slotReady", { slot: p.slot }) : t("arena.roster.slotName", { slot: p.slot })}><span>{t("arena.roster.slot", { slot: p.slot })}</span><og-icon class="check" icon="check" hidden={!p.ready}></og-icon></div>
+                    <div part="ArenaRoster.mark" class="mark" data-slot={p.slot} data-ready={p.ready} aria-label={p.ready ? t("arena.roster.slotReady", { slot: p.slot }) : t("arena.roster.slotName", { slot: p.slot })}><span>{t("arena.roster.slot", { slot: p.slot })}</span>{#if p.ready}<og-icon class="check" icon="check"></og-icon>{/if}</div>
                   {/if}
                 {/each}
               </div>
             </div>
             <span part="ArenaRoster.name" class="name">{c.name}</span>
             <span part="ArenaRoster.role ArenaRoster.label" class="role" data-role={c.role}>{c.roleLabel}</span>
-            <span part="ArenaRoster.badge" class="tag" data-tag={c.locked ? 'locked' : 'taken'} hidden={!(c.locked || c.takenBy != '')}>{c.locked ? t("arena.roster.locked") : t("arena.roster.taken", { name: c.takenBy })}</span>
+            {#if c.locked || c.takenBy != ''}<span part="ArenaRoster.badge" class="tag" data-tag={c.locked ? 'locked' : 'taken'}>{c.locked ? t("arena.roster.locked") : t("arena.roster.taken", { name: c.takenBy })}</span>{/if}
           </div></button>
         {/each}
       </div>
-    </scroll>
-    <footer class="chosen" role="status" hidden={selected == ''}>
+    </div>
+    {#if selected != ''}
+    <footer class="chosen" role="status">
       {#each characters as c (c.id)}
         {#if c.id == selected}
           <span part="ArenaRoster.badge" class="tag" data-tag="selected">{t("arena.roster.chosen")}</span>
@@ -55,19 +55,19 @@
         {/if}
       {/each}
     </footer>
+    {/if}
   {:else}
     <p class="empty-text" role="status">{t("arena.roster.empty")}</p>
   {/if}
 </section>
 
 <style>
-[part="ArenaRoster.frame"][hidden], [part="ArenaRoster.frame"] [hidden] { display: none; }
-[part="ArenaRoster.frame"] { display: flex; flex-direction: column; width: stretch; min-width: 0; max-height: stretch; gap: var(--space-sm); container-type: inline-size; }
+:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; max-block-size: stretch; gap: var(--space-md); container-type: inline-size; }
 [part="ArenaRoster.band"] { display: flex; width: stretch; align-items: center; flex: none; }
 [part="ArenaRoster.title"] { margin: 0; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.grid-scroll { width: stretch; flex: 1; min-height: 0; }
-.grid { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-sm); width: stretch; padding: var(--space-xxs); }
-[part="ArenaRoster.cell"] { flex: none; width: calc(var(--size-xxl) * 1.25); padding: var(--space-xs); align-items: stretch; justify-content: flex-start; }
+.grid-scroll { overflow-y: auto; flex: 1; min-height: 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 1.25), 1fr)); gap: var(--space-sm); padding: var(--space-xxs); }
+[part="ArenaRoster.cell"] { padding: var(--space-sm); align-items: stretch; justify-content: flex-start; }
 [part="ArenaRoster.cell"] .face { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
 [part="ArenaRoster.portrait ArenaRoster.picture"] { position: relative; display: flex; width: stretch; aspect-ratio: 1; align-items: center; justify-content: center; overflow: hidden; }
 .art { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
@@ -75,19 +75,21 @@
 .marks { position: absolute; left: var(--space-xxs); right: var(--space-xxs); top: var(--space-xxs); display: flex; flex-wrap: wrap; gap: var(--space-xxs); }
 [part="ArenaRoster.mark"] { display: flex; align-items: center; gap: var(--space-xxs); padding: 0 var(--space-xs); white-space: nowrap; }
 .check { width: var(--size-xs); height: var(--size-xs); }
-.name, .role { width: stretch; text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.name { font-weight: var(--font-weight-semibold); }
+.role { font: var(--text-sm); color: var(--ink-muted); }
+.name, .role { text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 /* A badge wraps rather than lose its reason (Taken by …). */
 .tag { max-width: stretch; align-self: center; padding: 0 var(--space-xs); text-align: center; overflow-wrap: anywhere; }
-.chosen { display: flex; flex: none; width: stretch; align-items: baseline; justify-content: center; gap: var(--space-sm); min-width: 0; }
+.chosen { display: flex; flex: none; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: var(--space-xs) var(--space-sm); padding: var(--space-sm); background: var(--well); border-radius: var(--radius-control); }
 .chosen .tag { align-self: center; }
 .chosen-name { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .chosen-role { flex: none; white-space: nowrap; }
-.empty-text { margin: 0; padding: var(--space-lg); text-align: center; }
+.empty-text { margin: 0; padding: var(--space-lg); text-align: center; color: var(--ink-muted); }
 /* The roster sits in a panel: its own width, not the screen's, tightens it,
    once three whole cells no longer fit on a line. */
 @container (width < 380px) {
-  .grid { gap: var(--space-xs); }
-  [part="ArenaRoster.cell"] { width: calc(var(--size-xxl) * 0.95); padding: var(--space-xxs); }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xs); }
+  [part="ArenaRoster.cell"] { padding: var(--space-xs); }
   .glyph { width: var(--size-md); height: var(--size-md); }
   .chosen { flex-wrap: wrap; gap: var(--space-xs); }
 }
