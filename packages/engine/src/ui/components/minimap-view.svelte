@@ -31,6 +31,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 #MinimapView { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); --side: var(--size-5xl); --pip: var(--space-sm); }
 [part="MinimapView.bezel"] { width: calc(var(--side) + var(--space-xs) * 2); height: calc(var(--side) + var(--space-xs) * 2); padding: var(--space-xs); border-radius: var(--radius-capsule); background: linear-gradient(180deg, var(--panel-raised), var(--well)); box-shadow: var(--shadow-minimap); }
 .square [part="MinimapView.bezel"] { border-radius: var(--radius-panel); }

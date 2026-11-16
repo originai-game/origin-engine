@@ -39,6 +39,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 #StatBar { width: var(--size-6xl); gap: var(--space-xxs); --meter: var(--health); }
 #StatBar.mana { --meter: var(--mana); }
 #StatBar.stamina { --meter: var(--success); }

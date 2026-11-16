@@ -527,15 +527,15 @@ bars it does not hold, this guide does:
   embossed copy), so `0 0 2px, 0 1px 2px` reads as no halo at all; eight
   unblurred copies 1–1.5 px round the glyphs, in `contrast-color()` of the
   ink, read 12:1 over a white sky (the default `--tag-halo`). The engine
-  does this itself: a text whose ancestors' grounds (their fills, a
-  gradient at its most transparent stop) do not hold it 4.5:1 over black
-  and white, and whose own effects do not either, takes the style's
-  `--tag-halo` after its own shadows and, where the style sets
-  `--tag-fill`, that plate behind it (`--tag-pad`, `--tag-radius`). An
-  image, a vector or glass under it counts as a ground made for it; glass
-  holds the design language's bar over the brightest and darkest scenes.
-  Give a text a ground, or a halo of its own that holds, to draw it
-  otherwise; a style sets the treatment through the tag tokens.
+  draws a text as its CSS says and adds nothing over the scene: give text
+  that sits on nothing a ground, or the tag treatment,
+  `text-shadow: var(--tag-halo)` and, where the style sets one, a plate
+  (`background: var(--tag-fill); padding: var(--tag-pad); border-radius:
+  var(--tag-radius)`). `text-shadow` inherits, so a HUD writes it once on
+  its root and each text takes it in its own ink; a title or a figure
+  that its style gives a shadow of its own (`--title-shadow`,
+  `--figure-shadow`) draws that instead. The built-in HUD components do
+  this.
 - **`contrast-color()`** is white or black, whichever reads more on its
   ground: at least 4.58:1 on any opaque ground. Use it for ink on a
   colour the game or the player picks (a team colour, a dye). The default

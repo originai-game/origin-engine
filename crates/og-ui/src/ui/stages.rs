@@ -241,9 +241,6 @@ pub struct Style {
     /// read also depends on the root inputs above and on the fonts: a
     /// write of either drops it.
     pub(crate) theme_read: Option<Box<(ThemeSource, Theme)>>,
-    /// What text over the scene takes (the tag role's `:root` tokens), read
-    /// with the theme.
-    pub(crate) scene_text: crate::ui::scene_text::SceneText,
     /// Part samples read one before-change state throughout a frame. Commit
     /// their next state together after rendering the owning nodes.
     pub(crate) part_commits: std::cell::RefCell<

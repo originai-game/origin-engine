@@ -36,6 +36,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="RhythmJudgement.frame"][hidden], [part="RhythmJudgement.frame"] [hidden] { display: none; }
 [part="RhythmJudgement.frame"] { display: flex; flex-direction: column; width: stretch; align-items: center; gap: var(--space-xxs); pointer-events: none; }
 [part="RhythmJudgement.plate"] { display: flex; max-width: stretch; align-items: baseline; justify-content: center; gap: var(--space-xs); padding: var(--space-xxs) var(--space-lg); }

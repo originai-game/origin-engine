@@ -127,7 +127,6 @@ impl Ui {
                 root_cascade: Default::default(),
                 accent_palettes: Default::default(),
                 theme_read: None,
-                scene_text: Default::default(),
                 part_commits: Default::default(),
                 document_part_rules: Default::default(),
                 part_styles: Default::default(),

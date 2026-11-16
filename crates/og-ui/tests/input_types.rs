@@ -63,7 +63,7 @@ fn number_options_wrap_and_step_without_rewriting_formatted_text() {
         d.ui.frame()
             .items
             .iter()
-            .any(|item| matches!(item.cmd.unstyled(),
+            .any(|item| matches!(&item.cmd,
         DrawCmd::Text { text, .. } if text == "1 kg"))
     );
     for (shift, expected) in [(false, "0"), (true, "0.3")] {

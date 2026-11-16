@@ -48,6 +48,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="IdleResources.frame"][hidden], [part="IdleResources.frame"] [hidden] { display: none; }
 [part="IdleResources.frame"] { display: flex; width: stretch; }
 .chips { display: flex; flex-wrap: wrap; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xs); min-width: 0; }

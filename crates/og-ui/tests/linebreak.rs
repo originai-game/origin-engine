@@ -54,7 +54,7 @@ fn rich_soft_hyphens_reserve_the_styled_glyph_at_a_break() {
             .frame()
             .items
             .iter()
-            .filter_map(|item| match item.cmd.unstyled() {
+            .filter_map(|item| match &item.cmd {
                 DrawCmd::Text {
                     text,
                     color,
@@ -155,7 +155,7 @@ fn long_kerned_line_measurement_is_not_quadratic() {
             .frame()
             .items
             .iter()
-            .filter_map(|i| match i.cmd.unstyled() {
+            .filter_map(|i| match &i.cmd {
                 DrawCmd::Text { text, bounds, .. } => Some((text, bounds)),
                 _ => None,
             })

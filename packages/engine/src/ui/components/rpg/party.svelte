@@ -30,6 +30,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="RpgParty.frame"][hidden], [part="RpgParty.frame"] [hidden] { display: none; }
 [part="RpgParty.frame"] { width: stretch; }
 .cards { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-sm); width: stretch; }

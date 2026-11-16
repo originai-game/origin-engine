@@ -32,6 +32,8 @@
 </nav>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="RpgActionBar.frame"][hidden], [part="RpgActionBar.frame"] [hidden] { display: none; }
 [part="RpgActionBar.frame"] { display: flex; align-items: flex-end; gap: var(--space-lg); width: fit-content; }
 .skills, .items { display: flex; gap: var(--space-xs); padding: var(--space-xs); }

@@ -41,6 +41,8 @@
 </nav>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="PuzzleBoosters.frame"] [hidden] { display: none; }
 [part="PuzzleBoosters.frame"] { display: flex; width: stretch; min-width: 0; padding: var(--space-xs); container-type: inline-size; }
 .tray-scroll { width: stretch; min-width: 0; overflow-x: auto; overflow-y: hidden; }

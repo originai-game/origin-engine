@@ -221,38 +221,6 @@ impl Srgba {
         }
     }
 
-    /// The APCA lightness contrast (Lc) of this colour as text on the
-    /// opaque `ground`: positive for dark text on a light ground, negative
-    /// for light on dark, 0 under |Lc 10|; about 106 for black on white and
-    /// −108 for white on black. The base formula 0.0.98G-4g with its
-    /// constants as apca-w3 0.1.9 states them (Somers, Myndex); written
-    /// here from that statement, not copied.
-    pub fn apca(self, ground: Srgba) -> f32 {
-        // sRGB to APCA's screen luminance: a plain 2.4 power, then a soft
-        // clamp of near black.
-        let y = |c: Srgba| {
-            let [r, g, b] = c.rgb.map(|v| libm::powf(f32::from(v) / 255.0, 2.4));
-            let y = 0.212_672_9 * r + 0.715_152_2 * g + 0.072_175 * b;
-            if y > 0.022 {
-                y
-            } else {
-                y + libm::powf(0.022 - y, 1.414)
-            }
-        };
-        let (text, ground) = (y(self), y(ground));
-        if (ground - text).abs() < 0.0005 {
-            return 0.0;
-        }
-        let lc = if ground > text {
-            let s = (libm::powf(ground, 0.56) - libm::powf(text, 0.57)) * 1.14;
-            if s < 0.1 { 0.0 } else { s - 0.027 }
-        } else {
-            let s = (libm::powf(ground, 0.65) - libm::powf(text, 0.62)) * 1.14;
-            if s > -0.1 { 0.0 } else { s + 0.027 }
-        };
-        lc * 100.0
-    }
-
     pub const WHITE: Srgba = Srgba::rgb(255, 255, 255);
     pub const BLACK: Srgba = Srgba::rgb(0, 0, 0);
     pub const TRANSPARENT: Srgba = Srgba {

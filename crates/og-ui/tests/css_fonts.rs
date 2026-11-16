@@ -183,7 +183,7 @@ fn drawn(d: &Doc, id: &str) -> Vec<Drawn> {
         .frame()
         .items
         .iter()
-        .filter_map(|it| match it.cmd.unstyled() {
+        .filter_map(|it| match &it.cmd {
             DrawCmd::Text {
                 font,
                 x,
@@ -771,7 +771,7 @@ fn glyph_ids(d: &Doc, id: &str) -> Vec<Option<u16>> {
     d.ui.frame()
         .items
         .iter()
-        .filter_map(|it| match it.cmd.unstyled() {
+        .filter_map(|it| match &it.cmd {
             DrawCmd::Text {
                 bounds, placements, ..
             } if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0)) => {
@@ -934,7 +934,7 @@ fn font_size_adjust_sizes_each_face_by_its_metric() {
             d.ui.frame()
                 .items
                 .iter()
-                .filter_map(|it| match it.cmd.unstyled() {
+                .filter_map(|it| match &it.cmd {
                     DrawCmd::Text {
                         font,
                         x,
@@ -1026,7 +1026,7 @@ fn font_face_metric_overrides_set_the_faces_size_and_line_metrics() {
         d.ui.frame()
             .items
             .iter()
-            .filter_map(|it| match it.cmd.unstyled() {
+            .filter_map(|it| match &it.cmd {
                 DrawCmd::Text {
                     size,
                     baseline,
@@ -1112,7 +1112,7 @@ fn small_caps_and_super_and_subscripts_are_synthesised_where_the_face_lacks_them
             d.ui.frame()
                 .items
                 .iter()
-                .filter_map(|it| match it.cmd.unstyled() {
+                .filter_map(|it| match &it.cmd {
                     DrawCmd::Text {
                         text,
                         size,

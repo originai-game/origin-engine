@@ -31,6 +31,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 /* The HUD keeps to the corners and the centre: vitals bottom left, ammunition
    bottom right, the feed top right, the reticle and hit directions centred.
    Edges sit inside the safe area, so a phone's notch and home bar stay clear. */

@@ -21,6 +21,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 #Minimap { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); --pip: var(--space-sm); }
 [part="Minimap.frame"] { width: var(--size); height: var(--size); padding: 0; overflow: hidden; }
 #Map { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; object-view-box: inset(calc(var(--v0) * 100%) calc((1 - var(--u1)) * 100%) calc((1 - var(--v1)) * 100%) calc(var(--u0) * 100%)); }

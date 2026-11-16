@@ -3023,7 +3023,6 @@ name = "og-css"
 version = "0.7.7"
 dependencies = [
  "color",
- "libm",
  "og-core",
 ]
 

@@ -758,7 +758,7 @@ fn core_screen_readouts_preserve_units_and_unbroken_ranks() {
                 ui.end();
                 if tick == 5 {
                     counting = !ui.frame().items.iter().any(|item| {
-                        matches!(item.cmd.unstyled(), DrawCmd::Text { text, .. } if text == "48,210" || text == "62.5%")
+                        matches!(&item.cmd, DrawCmd::Text { text, .. } if text == "48,210" || text == "62.5%")
                     });
                 }
             }
@@ -767,7 +767,7 @@ fn core_screen_readouts_preserve_units_and_unbroken_ranks() {
                 .items
                 .iter()
                 .filter_map(|item| {
-                    if let DrawCmd::Text { text, .. } = item.cmd.unstyled() {
+                    if let DrawCmd::Text { text, .. } = &item.cmd {
                         Some(text.as_str())
                     } else {
                         None

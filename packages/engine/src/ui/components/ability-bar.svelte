@@ -24,6 +24,8 @@
 </ul>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 .face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: center; min-width: 0; }
 ul, ol { list-style-type: none; }
 /* The slots grow with the player's text scale, as AbilitySlot's do:

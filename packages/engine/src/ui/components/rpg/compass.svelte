@@ -21,6 +21,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="RpgCompass.frame"][hidden], [part="RpgCompass.frame"] [hidden] { display: none; }
 [part="RpgCompass.frame"] { position: relative; display: flex; width: stretch; height: var(--size-lg); align-items: center; }
 .end { width: var(--size-md); height: stretch; flex: none; }

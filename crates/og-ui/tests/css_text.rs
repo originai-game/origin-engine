@@ -62,6 +62,15 @@ struct Line {
     glyphs: Vec<og_draw::GlyphPlacement>,
 }
 
+/// The text a command draws: a text, or the text inside a styled one (a
+/// stroke, a shadow or an emphasis draws its text styled).
+fn text_of(c: &DrawCmd) -> &DrawCmd {
+    match c {
+        DrawCmd::StyledText { text, .. } => text,
+        c => c,
+    }
+}
+
 /// The lines drawn inside element `id`, top to bottom.
 fn lines(d: &Doc, id: &str) -> Vec<Line> {
     let r = d.get(id);
@@ -69,7 +78,7 @@ fn lines(d: &Doc, id: &str) -> Vec<Line> {
         d.ui.frame()
             .items
             .iter()
-            .filter_map(|it| match it.cmd.unstyled() {
+            .filter_map(|it| match text_of(&it.cmd) {
                 DrawCmd::Text {
                     text,
                     x,
@@ -163,7 +172,7 @@ fn inked(d: &Doc, id: &str) -> Vec<(String, [f32; 4], f32)> {
         d.ui.frame()
             .items
             .iter()
-            .filter_map(|it| match it.cmd.unstyled() {
+            .filter_map(|it| match &it.cmd {
                 DrawCmd::Text {
                     text,
                     x,
@@ -313,7 +322,7 @@ li::marker { content: counter(list-item, thumbs); color: #ff0000; }"#,
         d.ui.frame()
             .items
             .iter()
-            .find_map(|it| match it.cmd.unstyled() {
+            .find_map(|it| match &it.cmd {
                 DrawCmd::Text { text, color, .. } if text == want => Some(*color),
                 _ => None,
             })
@@ -1040,7 +1049,7 @@ fn text_stroke_and_fill_paint_as_the_compat_standard_does() {
         .frame()
         .items
         .iter()
-        .find_map(|it| match it.cmd.unstyled() {
+        .find_map(|it| match text_of(&it.cmd) {
             DrawCmd::Text {
                 color, baseline, ..
             } if *baseline == lines(&d, id)[0].baseline => Some(*color),

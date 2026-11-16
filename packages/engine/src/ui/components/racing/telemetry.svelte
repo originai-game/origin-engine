@@ -57,6 +57,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="RacingTelemetry.frame"][hidden], [part="RacingTelemetry.frame"] [hidden] { display: none; }
 [part="RacingTelemetry.frame"] { position: relative; width: fit-content; max-width: stretch; }
 /* Radial: the speed in the dial's centre, the gear in the gap at its foot,

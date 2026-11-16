@@ -34,6 +34,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 #Celebration { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inset-inline-end: 0; }
 .play { display: flex; flex-direction: column; position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inset-inline-end: 0; align-items: center; justify-content: center; animation-name: cheer; animation-duration: var(--motion-duration-instant); animation-fill-mode: both; }
 .level, .fireworks { animation-name: reward; }

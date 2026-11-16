@@ -1180,7 +1180,7 @@ fn rive_cmd(d: crate::rive::Drawn, clip: Rect) -> DrawCmd {
 
 /// A text effect's length (CSS px) in whole cells of `cell` px, at least
 /// one when it is not zero; `v` itself when `cell` is 0 (an outline font).
-pub(crate) fn snap_to_cells(v: f32, cell: f32) -> f32 {
+fn snap_to_cells(v: f32, cell: f32) -> f32 {
     if cell <= 0.0 || v == 0.0 {
         return v;
     }

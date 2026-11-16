@@ -48,6 +48,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="RacingLapHud.frame"][hidden], [part="RacingLapHud.frame"] [hidden] { display: none; }
 [part="RacingLapHud.frame"] { display: flex; flex-direction: column; width: fit-content; max-width: stretch; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
 .cells { display: flex; gap: var(--space-md); align-items: flex-end; }

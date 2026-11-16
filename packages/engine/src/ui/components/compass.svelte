@@ -58,6 +58,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 #Compass { display: flex; flex-direction: column; align-items: center; gap: 0; }
 #Window { width: var(--measure-xl); aspect-ratio: 10.77; overflow: hidden; border-radius: var(--radius-control); background: linear-gradient(90deg, transparent, var(--hud) 18%, var(--hud) 82%, transparent); }
 #Strip { position: absolute; top: 0; inset-inline-start: 0; width: calc(var(--measure-xl) * 6); height: stretch; translate: calc(var(--h) * var(--measure-xl) * -0.3183099 - var(--measure-xl) * 1.5) 0; }

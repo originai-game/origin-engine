@@ -40,6 +40,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 #Face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: center; min-width: 0; }
 /* The slot grows with the player's text scale, as the text in it does,
    so its icon, badges and ring keep their proportions:

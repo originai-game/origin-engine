@@ -86,7 +86,7 @@ fn measured(ui: &Ui, label: &str, ground: [f32; 3]) -> ([f32; 3], [f32; 3]) {
     let (k, color, centre) = items
         .iter()
         .enumerate()
-        .find_map(|(k, it)| match it.cmd.unstyled() {
+        .find_map(|(k, it)| match &it.cmd {
             DrawCmd::Text {
                 text,
                 color,

@@ -50,6 +50,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="PuzzleGoals.frame"] [hidden] { display: none; }
 [part="PuzzleGoals.frame"] { display: flex; width: stretch; container-type: inline-size; }
 .hud { display: flex; width: stretch; align-items: stretch; gap: var(--space-md); padding: var(--space-sm) var(--space-md); min-width: 0; }

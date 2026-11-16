@@ -57,6 +57,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="ArenaRoundHud.frame"][hidden], [part="ArenaRoundHud.frame"] [hidden] { display: none; }
 [part="ArenaRoundHud.frame"] { display: flex; flex-direction: column; width: stretch; min-width: 0; align-items: center; gap: var(--space-xl); pointer-events: none; }
 .bar { display: flex; max-width: stretch; min-width: 0; align-items: stretch; justify-content: center; gap: var(--space-xxs); }

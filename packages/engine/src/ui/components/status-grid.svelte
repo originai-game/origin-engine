@@ -37,6 +37,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 ul, ol { list-style-type: none; }
 #StatusGrid { gap: var(--space-xs); }
 #Buffs, #Debuffs { display: flex; gap: var(--space-xs); flex-wrap: wrap; max-width: var(--measure-sm); }

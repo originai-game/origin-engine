@@ -26,6 +26,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 #StarBar { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); --bar: var(--measure-xs); --star: var(--size-md); }
 #StarBar.compact { display: flex; gap: var(--space-sm); --bar: var(--size-4xl); --star: var(--size-sm); }
 [part="StarBar.label"] { font: var(--text-caption); font-family: var(--label-font); }

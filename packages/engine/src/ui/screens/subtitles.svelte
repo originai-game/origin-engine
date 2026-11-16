@@ -13,6 +13,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 /* The latest lines at the foot of the screen, centred. */
 :root { display: flex; flex-direction: column; justify-content: end; align-items: center; gap: var(--space-xs); block-size: stretch; padding: var(--space-3xl) var(--space-xl); }
 .line { display: flex; gap: var(--space-sm); padding: var(--space-xs) var(--space-md); max-width: var(--measure-xxl); background: var(--hud); border-radius: var(--radius-control); }

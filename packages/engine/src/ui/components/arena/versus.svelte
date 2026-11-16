@@ -67,6 +67,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="ArenaVersus.frame"][hidden], [part="ArenaVersus.frame"] [hidden] { display: none; }
 [part="ArenaVersus.frame"] { display: flex; width: stretch; min-width: 0; max-height: stretch; }
 .stage { display: flex; width: stretch; min-width: 0; align-items: center; gap: var(--space-lg); }

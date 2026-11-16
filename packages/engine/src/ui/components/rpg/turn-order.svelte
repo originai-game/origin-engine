@@ -27,6 +27,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="RpgTurnOrder.frame"][hidden], [part="RpgTurnOrder.frame"] [hidden] { display: none; }
 [part="RpgTurnOrder.frame"] { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); align-items: center; }
 .track { display: flex; width: stretch; align-items: center; gap: var(--space-xs); }

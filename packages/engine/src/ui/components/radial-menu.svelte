@@ -29,6 +29,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 /* The wheel is two --size-4xl across; every offset below is a share of that. */
 #RadialMenu { --wheel: calc(var(--size-4xl) * 2); width: var(--wheel); height: var(--wheel); }
 [part="RadialMenu.disc"] { position: absolute; top: 0; inset-inline-start: 0; width: var(--wheel); height: var(--wheel); fill: var(--hud); }

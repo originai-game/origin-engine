@@ -30,6 +30,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="RacingBanner.frame"][hidden], [part="RacingBanner.frame"] [hidden] { display: none; }
 [part="RacingBanner.frame"] { display: flex; width: stretch; align-items: center; justify-content: center; pointer-events: none; }
 .plate { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); max-width: stretch; padding: var(--space-sm) var(--space-3xl); animation-name: racing-call; animation-duration: var(--motion-duration-slow); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }

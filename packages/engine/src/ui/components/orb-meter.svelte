@@ -20,6 +20,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 #OrbMeter { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); --meter: var(--health); }
 #OrbMeter.mana { --meter: var(--mana); }
 [part="OrbMeter.orb"] { width: var(--size-xxl); height: var(--size-xxl); align-items: center; justify-content: center; clip-path: circle(50%); border: var(--stroke-thick) solid var(--line-strong); border-radius: var(--radius-capsule); }

@@ -17,6 +17,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 #Tracker { display: flex; flex-direction: column; gap: var(--space-sm); width: var(--measure-sm); }
 #Objectives { list-style: none; padding: 0; margin: 0; gap: var(--space-sm); }
 .label { margin: 0; }

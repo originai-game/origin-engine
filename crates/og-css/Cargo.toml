@@ -13,6 +13,3 @@ og-core = { path = "../og-core" }
 # colours and interpolation (linebender, as Servo uses it); libm, never
 # host floating-point math.
 color = { version = "0.3.3", default-features = false, features = ["libm"] }
-# Measurements the style check reports (APCA's powers), never host
-# floating-point math.
-libm = "0.2.16"

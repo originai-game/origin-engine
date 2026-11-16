@@ -28,6 +28,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="RpgVitals.frame"][hidden], [part="RpgVitals.frame"] [hidden] { display: none; }
 [part="RpgVitals.frame"] { position: relative; display: flex; align-items: center; gap: var(--space-xs); width: fit-content; }
 .ring { width: var(--size-xl); height: var(--size-xl); flex: none; overflow: hidden; border-radius: 50%; }

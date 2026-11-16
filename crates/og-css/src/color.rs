@@ -1031,22 +1031,6 @@ mod tests {
         assert_eq!(m.resolve(&Context::of(&Light)).rgb, [128; 3]);
     }
 
-    /// APCA-W3 0.0.98G-4g's own published examples (apca-w3's README).
-    #[test]
-    fn apca_matches_its_reference_values() {
-        let grey = Srgba::rgb(136, 136, 136);
-        let near = |a: f32, b: f32| (a - b).abs() < 0.01;
-        assert!(
-            near(grey.apca(Srgba::WHITE), 63.056),
-            "{}",
-            grey.apca(Srgba::WHITE)
-        );
-        assert!(near(Srgba::WHITE.apca(grey), -68.541));
-        assert!(near(Srgba::BLACK.apca(Srgba::WHITE), 106.041));
-        assert!(near(Srgba::WHITE.apca(Srgba::BLACK), -107.885));
-        assert_eq!(grey.apca(Srgba::rgb(137, 137, 137)), 0.0);
-    }
-
     /// Against P3 a colour outside sRGB keeps its gamut (Display P3 red is
     /// linear sRGB 1.2249, -0.0421, -0.0196 by CSS Color 4's matrices) and one
     /// outside P3 too is mapped onto P3's edge; sRGB colours draw as they

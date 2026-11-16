@@ -111,7 +111,7 @@ fn commands(frame: &UiFrame) -> Vec<(String, og_draw::FontHandle, f32, f32)> {
     frame
         .items
         .iter()
-        .filter_map(|i| match i.cmd.unstyled() {
+        .filter_map(|i| match &i.cmd {
             DrawCmd::Text {
                 text,
                 font,
@@ -298,7 +298,7 @@ fn a_weight_and_a_locale_pick_the_styles_real_faces() {
                 .frame()
                 .items
                 .iter()
-                .find_map(|item| match item.cmd.unstyled() {
+                .find_map(|item| match &item.cmd {
                     DrawCmd::Text {
                         font,
                         size,

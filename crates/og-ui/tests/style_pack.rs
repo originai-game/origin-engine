@@ -718,7 +718,7 @@ fn a_headings_flourish_part_draws_its_css_box_beside_the_line() {
     let items = &ui.frame().items;
     let title = items
         .iter()
-        .find_map(|item| match item.cmd.unstyled() {
+        .find_map(|item| match &item.cmd {
             DrawCmd::Text { text, bounds, .. } if text == "Title" => Some(*bounds),
             _ => None,
         })

@@ -18,6 +18,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="RpgCombatLog.frame"][hidden], [part="RpgCombatLog.frame"] [hidden] { display: none; }
 [part="RpgCombatLog.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-xs); }
 [part="RpgCombatLog.band"] { display: flex; width: stretch; align-items: center; flex: none; }

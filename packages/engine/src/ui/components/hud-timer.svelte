@@ -21,6 +21,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="HudTimer.frame"] { display: flex; flex-direction: column; align-items: center; --clock: var(--ink); }
 [part="HudTimer.frame"].warn { --clock: var(--warn); }
 [part="HudTimer.frame"].critical { --clock: var(--danger); }

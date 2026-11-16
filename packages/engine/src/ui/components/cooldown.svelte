@@ -18,6 +18,8 @@
 </button>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 #Face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: center; min-width: 0; }
 #Cooldown { width: var(--size-lg); height: var(--size-lg); padding: 0; overflow: hidden; }
 #Cooldown.ready { animation-name: ready; animation-duration: var(--motion-duration-slow); animation-timing-function: var(--motion-easing-out); box-shadow: 0 0 var(--space-sm) var(--primary); }

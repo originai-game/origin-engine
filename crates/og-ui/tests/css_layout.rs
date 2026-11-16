@@ -1039,7 +1039,7 @@ fn vertical_align_places_inline_boxes_as_css_does() {
         d.ui.frame()
             .items
             .iter()
-            .find_map(|i| match i.cmd.unstyled() {
+            .find_map(|i| match &i.cmd {
                 og_ui::DrawCmd::Text {
                     text,
                     baseline,
@@ -1058,7 +1058,7 @@ fn vertical_align_places_inline_boxes_as_css_does() {
             d.ui.frame()
                 .items
                 .iter()
-                .find_map(|i| match i.cmd.unstyled() {
+                .find_map(|i| match &i.cmd {
                     og_ui::DrawCmd::Text { text, baseline, .. }
                         if text == "x" && *baseline > p.y && *baseline < p.y + p.height =>
                     {
@@ -1113,7 +1113,7 @@ fn vertical_align_places_inline_boxes_as_css_does() {
         .frame()
         .items
         .iter()
-        .find_map(|i| match i.cmd.unstyled() {
+        .find_map(|i| match &i.cmd {
             og_ui::DrawCmd::Text { text, baseline, .. } if text == "ab" && *baseline > grow.y => {
                 Some(*baseline)
             }
@@ -2107,7 +2107,7 @@ p { margin: 0; }
         d.ui.frame()
             .items
             .iter()
-            .filter_map(|it| match it.cmd.unstyled() {
+            .filter_map(|it| match &it.cmd {
                 og_ui::DrawCmd::Text { text, .. } => Some(text.clone()),
                 _ => None,
             })
@@ -2310,7 +2310,7 @@ p { margin: 0; }
         d.ui.frame()
             .items
             .iter()
-            .filter_map(|it| match it.cmd.unstyled() {
+            .filter_map(|it| match &it.cmd {
                 og_ui::DrawCmd::Text { bounds, text, .. } if !text.trim().is_empty() => {
                     Some(bounds.bottom())
                 }
@@ -2350,7 +2350,7 @@ p {{ margin: 0; }}
         d.ui.frame()
             .items
             .iter()
-            .filter_map(|it| match it.cmd.unstyled() {
+            .filter_map(|it| match &it.cmd {
                 og_ui::DrawCmd::Text { text, bounds, .. } => Some((text.clone(), *bounds)),
                 _ => None,
             })
@@ -2502,7 +2502,7 @@ p {{ margin: 0; }}
             d.ui.frame()
                 .items
                 .iter()
-                .filter_map(|it| match it.cmd.unstyled() {
+                .filter_map(|it| match &it.cmd {
                     og_ui::DrawCmd::Text { text, bounds, .. }
                         if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0)) =>
                     {

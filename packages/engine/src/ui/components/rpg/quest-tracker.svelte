@@ -23,6 +23,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="RpgQuestTracker.frame"][hidden], [part="RpgQuestTracker.frame"] [hidden] { display: none; }
 [part="RpgQuestTracker.frame"] { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
 [part="RpgQuestTracker.title"] { margin: 0; text-align: center; }

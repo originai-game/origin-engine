@@ -981,7 +981,7 @@ input.poem::part(placeholder) {
         ui.frame()
             .items
             .iter()
-            .filter_map(|it| match it.cmd.unstyled() {
+            .filter_map(|it| match &it.cmd {
                 DrawCmd::Text {
                     text,
                     x,
@@ -1705,7 +1705,7 @@ fn a_buttons_content_follows_its_ink() {
             d.ui.frame()
                 .items
                 .iter()
-                .find_map(|i| match i.cmd.unstyled() {
+                .find_map(|i| match &i.cmd {
                     DrawCmd::Text { text, color, .. } if text == want => Some(*color),
                     _ => None,
                 })
@@ -2013,7 +2013,7 @@ fn a_kit_text_part_takes_its_ink_and_step() {
         ui.frame()
             .items
             .iter()
-            .find_map(|it| match it.cmd.unstyled() {
+            .find_map(|it| match &it.cmd {
                 DrawCmd::Text {
                     text, size, color, ..
                 } if text == want => Some((*size, *color)),
@@ -2846,7 +2846,7 @@ fn keycap_contrast(d: &Doc, below: Srgba) -> (f32, Srgba) {
     let (k, ink, centre) = items
         .iter()
         .enumerate()
-        .find_map(|(k, it)| match it.cmd.unstyled() {
+        .find_map(|(k, it)| match &it.cmd {
             DrawCmd::Text {
                 text,
                 color,

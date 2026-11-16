@@ -37,6 +37,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="RacingStandings.frame"][hidden], [part="RacingStandings.frame"] [hidden] { display: none; }
 [part="RacingStandings.frame"] { display: flex; flex-direction: column; width: stretch; max-height: stretch; gap: var(--space-xxs); }
 [part="RacingStandings.band"] { display: flex; width: stretch; align-items: center; flex: none; }

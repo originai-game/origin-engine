@@ -17,6 +17,8 @@
 </stack>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 #ProgressRing { width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; --tone: var(--primary); }
 #ProgressRing.success { --tone: var(--success); }
 #ProgressRing.warn { --tone: var(--warn); }

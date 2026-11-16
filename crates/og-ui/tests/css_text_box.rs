@@ -24,7 +24,7 @@ fn label(text: &str, css: &str) -> (f32, Vec<f32>) {
         d.ui.frame()
             .items
             .iter()
-            .filter_map(|it| match it.cmd.unstyled() {
+            .filter_map(|it| match &it.cmd {
                 DrawCmd::Text { baseline, .. } => Some(*baseline - r.y),
                 _ => None,
             })

@@ -38,6 +38,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="RhythmScoreHud.frame"][hidden], [part="RhythmScoreHud.frame"] [hidden] { display: none; }
 [part="RhythmScoreHud.frame"] { display: flex; flex-direction: column; min-width: calc(var(--size-xxl) * 3.2); max-width: stretch; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
 .cells { display: flex; flex-wrap: wrap; width: stretch; gap: var(--space-xxs) var(--space-lg); align-items: flex-end; }

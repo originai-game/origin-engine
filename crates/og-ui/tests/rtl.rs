@@ -237,7 +237,7 @@ fn an_arabic_line_is_drawn_as_wide_as_it_was_laid_out() {
             let drawn: Vec<(f32, f32, f32)> = frame
                 .items
                 .iter()
-                .filter_map(|i| match i.cmd.unstyled() {
+                .filter_map(|i| match &i.cmd {
                     DrawCmd::Text {
                         x,
                         baseline,

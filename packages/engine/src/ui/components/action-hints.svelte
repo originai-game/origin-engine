@@ -26,6 +26,8 @@
 </nav>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 #ActionHints { flex-direction: row; flex-wrap: wrap; justify-content: end; align-items: center; gap: var(--space-lg); }
 .item { display: flex; flex-direction: column; align-items: center; }
 .hint { min-height: var(--control-lg); padding: var(--space-xxs) var(--space-sm); gap: var(--space-sm); align-items: center; }

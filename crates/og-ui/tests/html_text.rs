@@ -920,7 +920,7 @@ p { margin: 0; }
             d.ui.frame()
                 .items
                 .iter()
-                .filter_map(|it| match it.cmd.unstyled() {
+                .filter_map(|it| match &it.cmd {
                     DrawCmd::Text { text, bounds, .. }
                         if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0))
                             && (r.x - 0.5..r.x + r.width + 0.5).contains(&bounds.x) =>

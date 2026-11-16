@@ -53,6 +53,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="StrategyWave.frame"][hidden], [part="StrategyWave.frame"] [hidden] { display: none; }
 [part="StrategyWave.frame"] { display: flex; flex-direction: column; width: fit-content; max-width: stretch; min-width: 0; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); }
 .head { display: flex; align-items: flex-end; gap: var(--space-md); flex-wrap: wrap; }

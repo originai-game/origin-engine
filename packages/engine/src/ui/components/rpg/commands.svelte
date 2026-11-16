@@ -19,6 +19,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="RpgCommands.frame"] { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }
 [part="RpgCommands.band"] { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
 .plates { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-xs); width: stretch; }

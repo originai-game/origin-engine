@@ -621,7 +621,7 @@ fn contrast_color_and_variadic_color_mix_reach_the_frame() {
         d.ui.frame()
             .items
             .iter()
-            .find_map(|it| match it.cmd.unstyled() {
+            .find_map(|it| match &it.cmd {
                 DrawCmd::Text { text, color, .. } if text == "Ink" => {
                     Some(Srgba::from_linear(*color))
                 }
@@ -655,118 +655,51 @@ fn text_effects(ui: &Ui, text: &str) -> (usize, Option<og_draw::UiTextEffects>) 
         .unwrap_or_else(|| panic!("no text {text}"))
 }
 
-/// Text drawn straight over the scene takes the style's tag treatment
-/// when nothing under it holds it 4.5:1 over a black and a white scene:
-/// the default's `--tag-halo`, eight hard copies in the contrast-color()
-/// of the text's own ink (black round pale or gold ink, white round
-/// navy). An opaque panel holds its text, which stays plain; a 30 % black
-/// plate does not (pale ink on it over white reads 2.3:1). A text's own
-/// soft shadow, which outlines nothing, keeps its place and gets the halo
-/// beside it. A pack that sets `--tag-fill` gives such text a plate.
+/// `text-shadow` inherits (CSS Text Decoration 3 §4): a halo written once
+/// on a HUD's root reaches each of its texts, its `currentColor` read as
+/// each text's own ink, so `contrast-color(currentColor)` is black round
+/// gold ink and white round navy, as a browser draws it. A text that sets
+/// `text-shadow: none` drops it and one with a shadow of its own draws
+/// that alone. The engine adds nothing to text drawn over the scene: what
+/// holds a text there is its document's CSS.
 ///
-/// Ways it could fail: every text outlined (a panel's ground not read),
-/// the halo in the style's ink-inverse instead of the text's own
-/// contrast (navy ink outlined in near-black read 1.4:1), a text with a
-/// shadow of its own left bare, or the plate drawn over the glyphs.
+/// Ways it could fail: the halo not inherited (the HUD's texts bare), its
+/// `currentColor` read once on the holder (gold and navy outlined alike),
+/// an inherited halo stacked on a text's own shadow, or text with no
+/// ground still dressed by the engine.
 #[test]
-fn text_over_the_scene_takes_the_tag_treatment() {
+fn a_text_shadow_is_inherited_in_each_texts_own_colour() {
     let text = r#"<meta name="component" content="t">
 <column>
-  <p id="Bare">Bare</p>
-  <div style="background: #1c1c1e"><p>Panel</p></div>
-  <div style="background: rgb(0 0 0 / 30%)"><p>Thin</p></div>
-  <p style="text-shadow: 0 1px 2px #000000">Soft</p>
-  <p style="color: #ffd60a">Gold</p>
-  <p style="color: #1a237e">Navy</p>
-  <div style="background: #1c1c1e; width: 40px; height: 40px"><p style="position: absolute; top: 48px">Under</p></div>
+  <p>Bare</p>
+  <div style="text-shadow: 1px 0 0 contrast-color(currentColor), -1px 0 0 contrast-color(currentColor)">
+    <p style="color: #ffd60a">Gold</p>
+    <div><p style="color: #1a237e">Navy</p></div>
+    <p style="text-shadow: none">Off</p>
+    <p style="text-shadow: 0 1px 2px #ff0000">Own</p>
+  </div>
 </column>"#;
     let d = Doc::with_font(text, &[], test_font());
-    let black = [0.0, 0.0, 0.0, 1.0];
-    let white = [1.0, 1.0, 1.0, 1.0];
-    for (t, color) in [
-        ("Bare", black),
-        ("Thin", black),
-        ("Gold", black),
-        ("Navy", white),
-        // Placed below its dark box: over the scene, not over the box.
-        ("Under", black),
-    ] {
-        let fx = text_effects(&d.ui, t)
+    let shadows = |t: &str| {
+        text_effects(&d.ui, t)
             .1
-            .unwrap_or_else(|| panic!("{t} is drawn bare"));
-        assert_eq!(fx.shadows.len(), 8, "{t}: {:?}", fx.shadows);
+            .map(|fx| fx.shadows)
+            .unwrap_or_default()
+    };
+    for (t, color) in [
+        ("Gold", [0.0, 0.0, 0.0, 1.0]),
+        ("Navy", [1.0, 1.0, 1.0, 1.0]),
+    ] {
+        let s = shadows(t);
         assert!(
-            fx.shadows.iter().all(|s| s.color == color && s.blur == 0.0),
-            "{t}: {:?}",
-            fx.shadows
+            s.len() == 2 && s.iter().all(|s| s.color == color),
+            "{t}: {s:?}"
         );
     }
-    assert!(
-        text_effects(&d.ui, "Panel")
-            .1
-            .is_none_or(|fx| fx.shadows.is_empty())
-    );
-    let soft = text_effects(&d.ui, "Soft").1.unwrap();
-    assert_eq!(soft.shadows.len(), 9, "its own first, then the halo");
-    assert_eq!(soft.shadows[0].blur, 2.0);
-
-    let mut ui = ui_with_font(test_font());
-    let pack = og_ui::style_pack::StylePack::parse(
-        "styles/test",
-        vec![(
-            "styles/test/main.css".into(),
-            ":root { --tag-halo: none; --tag-fill: #102030; --tag-pad: 2px 4px; --tag-radius: 3px; }".into(),
-        )],
-    );
-    ui.set_style_pack(&pack.unwrap()).unwrap();
-    let d = Doc::with_ui(ui, text);
-    let (k, fx) = text_effects(&d.ui, "Bare");
-    assert!(fx.is_none_or(|fx| fx.shadows.is_empty()));
-    let plate = Srgba::rgb(0x10, 0x20, 0x30).linear();
-    let DrawCmd::Quad {
-        rect,
-        radius,
-        color,
-        ..
-    } = &d.ui.frame().items[k - 1].cmd
-    else {
-        panic!(
-            "no plate under the text: {:?}",
-            d.ui.frame().items[k - 1].cmd
-        );
-    };
-    assert!(
-        same(*color, Srgba::from_linear(plate)) && *radius == 3.0,
-        "{color:?} {radius}"
-    );
-    let bare = d.get("Bare");
-    assert!(
-        rect.x < bare.x && rect.width > bare.width,
-        "{rect:?} {bare:?}"
-    );
-
-    // An image only in a plate's corner (a filigree) leaves its text on
-    // the thin fill, over the scene: it takes the halo. The same image
-    // tiled under the text is a ground its author drew, and stays bare.
-    let mut ui = ui_with_font(test_font());
-    ui.define_texture("ui/corner.png", Handles::default().texture());
-    let d = Doc::with_ui(
-        ui,
-        r#"<meta name="component" content="t">
-<column>
-  <div style="padding: 16px; background: url(corner.png) left top / 8px 8px no-repeat, rgb(0 0 0 / 30%)"><p>Cornered</p></div>
-  <div style="padding: 16px; background: url(corner.png) left top / 8px 8px repeat, rgb(0 0 0 / 30%)"><p>Tiled</p></div>
-</column>"#,
-    );
-    let fx = text_effects(&d.ui, "Cornered")
-        .1
-        .unwrap_or_else(|| panic!("Cornered is drawn bare"));
-    assert_eq!(fx.shadows.len(), 8, "{:?}", fx.shadows);
-    assert!(
-        text_effects(&d.ui, "Tiled")
-            .1
-            .is_none_or(|fx| fx.shadows.is_empty())
-    );
+    assert!(shadows("Bare").is_empty(), "{:?}", shadows("Bare"));
+    assert!(shadows("Off").is_empty(), "{:?}", shadows("Off"));
+    let own = shadows("Own");
+    assert!(own.len() == 1 && own[0].blur == 2.0, "{own:?}");
 }
 
 /// The colour `id` fills itself with: its one solid fill, as sRGB.
@@ -2244,10 +2177,7 @@ p {{ margin: 0; background: #ff0000; border: 2px solid #00ff00; padding: 3px; bo
         .items
         .iter()
         .find_map(|it| match &it.cmd {
-            DrawCmd::StyledText { text, .. } => match &**text {
-                DrawCmd::Text { text, bounds, .. } if text == "fourteen" => Some(*bounds),
-                _ => None,
-            },
+            DrawCmd::Text { text, bounds, .. } if text == "fourteen" => Some(*bounds),
             _ => None,
         })
         .expect("the second piece's first line");
@@ -2678,8 +2608,7 @@ p {{ margin: 0; font-size: 20px; width: 105px; }}
                     clips.pop();
                     continue;
                 }
-                DrawCmd::StyledText { text, .. } if matches!(&**text, DrawCmd::Text { text, .. } if text.contains('日')) =>
-                {
+                DrawCmd::Text { text, .. } if text.contains('日') => {
                     words.get_or_insert(k);
                     continue;
                 }

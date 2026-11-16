@@ -50,6 +50,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 [part="StrategyQueue.frame"][hidden], [part="StrategyQueue.frame"] [hidden] { display: none; }
 [part="StrategyQueue.frame"] { display: flex; flex-direction: column; width: stretch; min-width: 0; gap: var(--space-xs); }
 [part="StrategyQueue.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); flex: none; }

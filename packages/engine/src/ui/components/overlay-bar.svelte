@@ -34,6 +34,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 #OverlayBar { display: flex; flex-direction: column; gap: var(--space-sm); align-items: center; }
 [part="OverlayBar.frame"] { --title-size: var(--title-small-size); width: var(--measure-sm); gap: var(--space-xs); }
 [part="OverlayBar.title"] { white-space: nowrap; }

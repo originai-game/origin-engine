@@ -10,6 +10,8 @@
 </section>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 #Banner { display: flex; flex-direction: column; align-items: center; animation: enter var(--motion-named-panel-duration) ease-out both; }
 #Subtitle { margin: 0; color: var(--ink-muted); }
 @keyframes enter { from { scale: 0.8; opacity: 0; -og-sound: reward; } to { scale: 1; opacity: 1; } }

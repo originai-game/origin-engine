@@ -22,7 +22,6 @@ pub(crate) use node_draw::{VerticalLine, VerticalRun, cut_to, vertical_run};
 pub(crate) mod fragment;
 pub(crate) mod highlight;
 pub(crate) mod resize;
-pub(crate) mod scene_text;
 pub(crate) mod select;
 pub(crate) mod settlement;
 mod snapshot;

@@ -25,6 +25,8 @@
 </div>
 
 <style>
+/* Drawn over the scene: the style's tag halo holds its text there. */
+:host { text-shadow: var(--tag-halo); }
 /* A bar fills the width its container gives it. */
 :host { display: flex; flex-direction: column; gap: var(--space-xs); inline-size: stretch; min-inline-size: 0; --tone: var(--primary); }
 .success { --tone: var(--success); }
