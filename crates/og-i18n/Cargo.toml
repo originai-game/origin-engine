@@ -18,6 +18,9 @@ icu_segmenter = { version = "2.4", default-features = false, features = ["compil
 # Unicode full case mappings, including locale-sensitive Greek, Turkic
 # and Lithuanian context rules; the same compiled data on both hosts.
 icu_casemap = "2.3"
+# Canonical decomposition (NFD) for accent-insensitive search
+# ([`text::search_fold`]); Parley already links it with the same data.
+icu_normalizer = { version = "2.4", default-features = false, features = ["compiled_data"] }
 icu_locale_core = "2.3"
 icu_plurals = "2.3"
 fixed_decimal = "0.7"

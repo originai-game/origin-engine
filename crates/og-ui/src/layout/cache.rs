@@ -376,6 +376,8 @@ pub(crate) struct DrawSig {
     scale: f32,
     sampled: crate::layout::node::SampledStyle,
     selected: Option<(u32, u32)>,
+    /// Its text-fragment marks, hashed (they are a list).
+    target_text: u64,
 }
 
 impl DrawSig {
@@ -423,6 +425,13 @@ impl DrawSig {
             scale: n.placed.scale,
             sampled: n.style.sampled,
             selected: n.marks.selected,
+            target_text: n
+                .marks
+                .target_text
+                .iter()
+                .fold(0xcbf2_9ce4_8422_2325, |h, &(a, b)| {
+                    (h ^ (u64::from(a) << 32 | u64::from(b))).wrapping_mul(0x0100_0000_01b3)
+                }),
         }
     }
 }
@@ -462,6 +471,7 @@ pub(crate) fn painted_eq(a: &Node, b: &Node) -> bool {
         && a.decor == b.decor
         && a.layout.lines == b.layout.lines
         && a.marks.selected == b.marks.selected
+        && a.marks.target_text == b.marks.target_text
         && a.props.text_path == b.props.text_path
         && a.layout.rich_lines == b.layout.rich_lines
         && a.layout.col_rules == b.layout.col_rules

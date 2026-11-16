@@ -380,6 +380,18 @@ screen can wait for it.
   restyle list markers. `::first-letter`, `::first-line`, `::placeholder
   { color }` and `::selection { background-color; color; text-decoration;
   text-shadow }` style text.
+- A link `<a href="#rules">` makes `#rules` `:target`. Add a text
+  fragment to point at a passage instead: `href="#:~:text=the%20gate"`,
+  or `#:~:text=Gate-,is,-shut` (a prefix and a suffix pick one of several
+  "is"), or `#:~:text=chapter,end` (from "chapter" to the first "end"
+  after it, across paragraphs). The match ignores case, accents and runs
+  of spaces, and each term starts and ends on a word boundary. Every
+  `text=` match is marked, and the first scrolls to the middle of its
+  scroller. The element holding it becomes `:target`. Style the marks
+  with `::target-text { background-color; color; text-decoration;
+  text-shadow }` (by default the `Mark` colour behind the text). When
+  nothing matches, the id before `:~:` is `:target`. Percent-encode `-`,
+  `,` and `&` in a term.
 - Use `<meta name="screen" content="pause" data-layer="menu"
   data-focus="Menu/Resume" data-pause="true">` for a screen.
   Components use `name="component"`. Props use `name="prop:volume"`,

@@ -396,14 +396,24 @@ impl Ui {
 }
 
 impl crate::ui::Tree {
-    /// Node `i`'s selectable text: its source and its laid-out lines (a
-    /// plain text's, or a vertical rich text's, each line its pieces'
-    /// text); `None` for any other node.
+    /// Node `i`'s selectable text: its [`Self::text_source`], for a plain
+    /// text or a vertical rich text; `None` for any other node.
     pub(crate) fn select_source(&self, i: usize) -> Option<(String, Vec<crate::text::Line>)> {
         let n = &self.nodes[i];
         match &*n.content {
+            Content::Rich(_) if n.rich_vertical().is_none() => None,
+            _ => self.text_source(i),
+        }
+    }
+
+    /// Node `i`'s text: its source and its laid-out lines (a plain
+    /// text's, or a rich text's, each line its pieces' text); `None` for a
+    /// node without text.
+    pub(crate) fn text_source(&self, i: usize) -> Option<(String, Vec<crate::text::Line>)> {
+        let n = &self.nodes[i];
+        match &*n.content {
             Content::Text(tc) => Some((tc.text.clone(), n.layout.lines.clone())),
-            Content::Rich(rc) if n.rich_vertical().is_some() => {
+            Content::Rich(rc) => {
                 let source = rc.spans.iter().filter(|s| s.atom.is_none());
                 let lines = n
                     .layout
@@ -649,7 +659,7 @@ const SELECT_SLOP: f32 = 4.0;
 /// What stood between each two laid-out lines in the source: a line
 /// break, the spaces a wrap dropped (one space), or nothing (a break
 /// between CJK, inside a word too long for the line).
-fn line_breaks(source: &str, lines: &[crate::text::Line]) -> Vec<String> {
+pub(super) fn line_breaks(source: &str, lines: &[crate::text::Line]) -> Vec<String> {
     let mut out = Vec::with_capacity(lines.len().saturating_sub(1));
     let mut at = 0usize;
     let mut found = Vec::with_capacity(lines.len());

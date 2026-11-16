@@ -433,6 +433,11 @@ pub struct Interaction {
     pub(crate) text_target: Option<TextTarget>,
     /// The keys of the text elements last painted with a selection.
     pub(crate) selected: Vec<u64>,
+    /// The passages the last followed text fragment found
+    /// ([`crate::ui::target_text`]), and the text elements last marked
+    /// with them.
+    pub(crate) target_text: Vec<(crate::ui::select::SelectEnd, crate::ui::select::SelectEnd)>,
+    pub(crate) target_marked: Vec<u64>,
     /// Last frame's drop targets and dragged elements: their paths, and the
     /// tags each target takes.
     pub(crate) drop_paths: IdMap<u64, String>,

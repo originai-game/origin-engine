@@ -228,12 +228,15 @@ fn rich_line(
     line: &parley::Line<'_, Brush>,
 ) -> RichLine {
     let m = line.metrics();
-    let mut segments = Vec::new();
+    let mut segments: Vec<Segment> = Vec::new();
+    // Each segment's first character, counted over the segments' text.
+    let mut at = 0;
     for item in line.items() {
         match item {
             PositionedLayoutItem::InlineBox(b) => segments.push(Segment {
                 span: b.id as usize,
                 text: String::new(),
+                at,
                 glyphs: None,
                 width: b.width,
                 rise: m.baseline - (b.y + b.baseline.unwrap_or(b.height)),
@@ -268,11 +271,13 @@ fn rich_line(
                 }
                 segments.push(Segment {
                     span: brush.span,
-                    text: text[range].to_owned(),
+                    text: text[range.clone()].to_owned(),
+                    at,
                     glyphs: Some(glyphs),
                     width: glyph_run.advance(),
                     rise: m.baseline - glyph_run.baseline(),
                 });
+                at += text[range].chars().count();
             }
         }
     }

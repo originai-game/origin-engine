@@ -161,3 +161,19 @@ pub fn graphemes(text: &str) -> Vec<(usize, usize)> {
     }
     out
 }
+
+/// Character `c` as a search compares it at the Unicode Collation
+/// Algorithm's primary level, approximated: its full lowercase, canonically
+/// decomposed, without the combining marks of the diacritical blocks, so
+/// "É", "é" and "e" are one letter and "ß" stays "ß". A letter whose mark
+/// is part of it in its script (a Devanagari vowel sign, a Hebrew point)
+/// keeps it. Empty for a combining diacritic written on its own.
+pub fn search_fold(c: char) -> String {
+    let nfd = icu_normalizer::DecomposingNormalizerBorrowed::new_nfd();
+    nfd.normalize_iter(c.to_lowercase())
+        .filter(|&m| {
+            !matches!(m as u32,
+                0x0300..=0x036f | 0x1ab0..=0x1aff | 0x1dc0..=0x1dff | 0x20d0..=0x20ff | 0xfe20..=0xfe2f)
+        })
+        .collect()
+}

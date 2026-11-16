@@ -18,7 +18,7 @@
 
 use crate::support::*;
 use og_core::glam::Vec2;
-use og_ui::{InputFrame, UiKey};
+use og_ui::{DrawCmd, InputFrame, Srgba, UiKey};
 use serde_json::json;
 
 const DOC: &str = r##"<meta name="component" content="sel">
@@ -265,6 +265,163 @@ button, input, a { width: 80px; height: 30px; }
         [50.0, 10.0],
         "followed the link"
     );
+}
+
+/// A link's text fragment (`#:~:text=[prefix-,]start[,end][,-suffix]`)
+/// finds its passage in the laid-out text, marks it with `::target-text`'s
+/// background and ink, scrolls it to the middle of its scroll container
+/// and makes the element holding it `:target`; with no match, the id
+/// before `:~:` is `:target` and nothing is marked.
+///
+/// Ways it could fail: the first "is" marked though its context does not
+/// fit (a prefix or suffix ignored, or case read), a range stopping at
+/// its first element, the marks or the red ink covering the whole line,
+/// the passage left out of view, `:target` staying on the id when the
+/// text matched or the marks staying after a link that matches nothing.
+#[test]
+fn a_text_fragment_marks_scrolls_to_and_targets_its_passage() {
+    let doc = r##"<meta name="component" content="tt">
+<column id="Root">
+  <a href="#:~:text=Gate-,IS,-shut" id="Go">go</a>
+  <a href="#:~:text=gate,open" id="Range">range</a>
+  <a href="#Near:~:text=nowhere" id="Miss">miss</a>
+  <div id="Box">
+    <p id="Near">this is the gate</p>
+    <div class="pad"></div>
+    <p id="Far">the gate is open and the gate is shut</p>
+    <div class="pad"></div>
+  </div>
+</column>
+<style>
+a { width: 80px; height: 30px; }
+#Box { width: 700px; height: 100px; overflow: auto; scrollbar-width: none; }
+.pad { height: 300px; }
+p { width: max-content; margin: 0; }
+p:target { margin-left: 7px; }
+#Box:target { margin-left: 3px; }
+::target-text { background-color: #00ff00; color: #ff0000; }
+</style>"##;
+    let mut d = Doc::with_font(doc, &[], test_font());
+    let near = |a: [f32; 4], b: Srgba| {
+        let b = b.linear();
+        a.iter().zip(b).all(|(x, y)| (x - y).abs() < 0.02)
+    };
+    // The marks drawn: green bands, and the clips of red and other ink.
+    let drawn = |d: &Doc| {
+        let (mut bands, mut red, mut other) = (vec![], vec![], vec![]);
+        for item in &d.ui.frame().items {
+            let cmd = match &item.cmd {
+                DrawCmd::StyledText { text, .. } => text.as_ref(),
+                c => c,
+            };
+            match cmd {
+                DrawCmd::Quad { rect, color, .. } if near(*color, Srgba::rgb(0, 255, 0)) => {
+                    bands.push(*rect)
+                }
+                DrawCmd::Text { color, clip, .. } if near(*color, Srgba::rgb(255, 0, 0)) => {
+                    red.push(*clip)
+                }
+                DrawCmd::Text { clip, bounds, .. } => other.push((*clip, *bounds)),
+                _ => {}
+            }
+        }
+        (bands, red, other)
+    };
+    let follow = |d: &mut Doc, id: &str| {
+        let a = d.get(id);
+        d.click_at(Vec2::new(a.x + 3.0, a.y + a.height / 2.0));
+        for _ in 0..3 {
+            d.step(InputFrame::default());
+        }
+    };
+    let base = d.get("Near").x;
+    assert!(drawn(&d).0.is_empty(), "nothing marked yet");
+
+    // "is" after "Gate" and before "shut": the second "is" of Far, not
+    // Near's or Far's first.
+    follow(&mut d, "Go");
+    let (far, boxed) = (d.get("Far"), d.get("Box"));
+    // (The probe lists what is on screen: Near has scrolled away.)
+    assert_eq!(far.x, base + 7.0, "Far is :target");
+    let (bands, red, other) = drawn(&d);
+    assert_eq!(bands.len(), 1, "{bands:?}");
+    let band = bands[0];
+    assert!(
+        band.x > far.x + far.width * 0.7 && band.right() < far.x + far.width * 0.9,
+        "the second \"is\": {band:?} in {far:?}"
+    );
+    assert!((band.y - far.y).abs() < 1.0, "{band:?} {far:?}");
+    // Its glyphs in red, cut to the band; the rest of the line in its own ink.
+    assert!(!red.is_empty(), "no target-text ink");
+    for c in &red {
+        assert!(
+            c.x >= band.x - 0.5 && c.right() <= band.right() + 0.5,
+            "{c:?} {band:?}"
+        );
+    }
+    assert!(
+        other
+            .iter()
+            .any(|(c, b)| (b.y - far.y).abs() < 1.0 && c.right() <= band.x + 0.5)
+            && other
+                .iter()
+                .any(|(c, b)| (b.y - far.y).abs() < 1.0 && c.x >= band.right() - 0.5),
+        "Far's unmarked text on both sides"
+    );
+    // Scrolled so its line stands in the middle of the box.
+    let (mid, view) = (far.y + far.height / 2.0, boxed.y + boxed.height / 2.0);
+    assert!((mid - view).abs() < 2.0, "{mid} vs {view}");
+
+    // "gate" to the first "open" after it: Near's last word on to Far's
+    // "the gate is open", their box the element holding it. Scrolled to
+    // Near's line, Far is below the view.
+    follow(&mut d, "Range");
+    let n = d.get("Near");
+    assert_eq!(
+        (n.x, d.get("Box").x),
+        (base + 3.0, base + 3.0),
+        "Box is :target, not either paragraph"
+    );
+    let (bands, ..) = drawn(&d);
+    assert_eq!(bands.len(), 1, "Far is below the view: {bands:?}");
+    let a = bands[0];
+    assert!(
+        (a.y - n.y).abs() < 1.0
+            && a.x > n.x + n.width * 0.6
+            && (a.right() - (n.x + n.width)).abs() < 1.0,
+        "Near's \"gate\": {a:?} in {n:?}"
+    );
+    // Scrolled down to Far: its first four words marked.
+    let b = d.get("Box");
+    d.step(InputFrame {
+        pointer: Vec2::new(b.x + 50.0, b.y + 50.0),
+        pointer_inside: true,
+        wheel: Vec2::new(0.0, 280.0),
+        ..InputFrame::default()
+    });
+    d.step(InputFrame::default());
+    let far = d.get("Far");
+    let (bands, ..) = drawn(&d);
+    let b = *bands.last().expect("Far's band");
+    assert!(
+        (b.y - far.y).abs() < 1.0
+            && (b.x - far.x).abs() < 1.0
+            && b.width > far.width * 0.3
+            && b.width < far.width * 0.5,
+        "Far's \"the gate is open\": {b:?} in {far:?}"
+    );
+
+    // No match: the id is :target, and the marks are gone.
+    let b = d.get("Box");
+    d.step(InputFrame {
+        pointer: Vec2::new(b.x + 50.0, b.y + 50.0),
+        pointer_inside: true,
+        wheel: Vec2::new(0.0, -1000.0),
+        ..InputFrame::default()
+    });
+    follow(&mut d, "Miss");
+    assert_eq!(d.get("Near").x, base + 7.0);
+    assert!(drawn(&d).0.is_empty(), "marks cleared");
 }
 
 /// `:modal` matches a dialog opened modally (it makes the rest of the page

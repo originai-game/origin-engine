@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 /// The element-backed pseudo-elements a rule may select, as written after
 /// `::`. CSS 2's single-colon spellings of the first four are accepted too.
-pub const PSEUDOS: [&str; 8] = [
+pub const PSEUDOS: [&str; 9] = [
     "before",
     "after",
     "marker",
@@ -23,6 +23,7 @@ pub const PSEUDOS: [&str; 8] = [
     "first-line",
     "placeholder",
     "selection",
+    "target-text",
     "file-selector-button",
 ];
 
@@ -57,7 +58,7 @@ pub fn allows(pseudo: &str, property: &str) -> bool {
         "marker" => text || property == "content",
         "first-letter" | "first-line" => text,
         "placeholder" => property == "color",
-        "selection" => matches!(
+        "selection" | "target-text" => matches!(
             property,
             "background-color" | "background" | "color" | "text-decoration" | "text-shadow"
         ),
@@ -101,8 +102,10 @@ pub fn check(name: &str, value: &str) -> Result<(), String> {
             parse_ops(property, value).map(|_| ())
         }
         _ if pseudo == Some("file-selector-button") => Ok(()),
-        "text-decoration" if pseudo == Some("selection") => selection_decoration(value).map(|_| ()),
-        "text-shadow" if pseudo == Some("selection") => {
+        "text-decoration" if matches!(pseudo, Some("selection" | "target-text")) => {
+            selection_decoration(value).map(|_| ())
+        }
+        "text-shadow" if matches!(pseudo, Some("selection" | "target-text")) => {
             super::paint_css::text_shadows(value, crate::paint::ColorRef::token("ink")).map(|_| ())
         }
         // The text properties check as a span's do, when the element
@@ -123,9 +126,9 @@ pub fn check(name: &str, value: &str) -> Result<(), String> {
     }
 }
 
-/// `::selection`'s style as the draw paints it: the highlight under the
-/// selected text, and the selected glyphs' ink, decoration lines and
-/// shadows (`None`: the text's own).
+/// A highlight pseudo-element's style as the draw paints it
+/// (`::selection`, `::target-text`): the highlight under its text, and
+/// its glyphs' ink, decoration lines and shadows (`None`: the text's own).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Selection {
     pub background: Option<crate::style::Srgba>,
@@ -182,6 +185,7 @@ pub struct Generated {
     pub first_line: Option<String>,
     pub placeholder: Option<String>,
     pub selection: Option<String>,
+    pub target_text: Option<String>,
 }
 
 /// A pseudo-element's computed content and text style.
@@ -274,6 +278,7 @@ impl Generated {
         out.first_line = styles.remove("first-line");
         out.placeholder = styles.remove("placeholder");
         out.selection = styles.remove("selection");
+        out.target_text = styles.remove("target-text");
         out
     }
 

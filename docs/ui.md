@@ -395,7 +395,9 @@ engine differs or limits as follows:
   `::placeholder` takes `color`; `::selection` takes `background-color`,
   `color`, `text-decoration` and `text-shadow`, its glyphs redrawn clipped
   to the selected runs (without its own `text-shadow`, selected text keeps
-  the text's drop). `::file-selector-button` styles nothing. The CSS 2
+  the text's drop). `::target-text` takes the same four and marks what a
+  followed link's text fragment matched (below); its default background
+  is the `Mark` system colour. `::file-selector-button` styles nothing. The CSS 2
   single-colon spellings work.
 - **Units.** Physical units are 96 px to the inch. Viewport units read the
   play surface; the small and large forms read it with the browser's
@@ -1335,7 +1337,10 @@ behaviour; rules are document-scoped and never affect unrelated mounts.
 and attribute operator with `i`/`s` flags (HTML's case-insensitive
 attributes compare so unless `s`), `:not()`, `:is()`, `:where()`, `:has()`
 and the structural, form, `:open`, `:modal`, `:popover-open`, `:target`
-(the element the last `#fragment` link named), `:lang()` (RFC 4647),
+(the element the last `#fragment` link named; with a text fragment,
+`#id:~:text=[prefix-,]start[,end][,-suffix]` per URL Fragment Text
+Directives, the nearest element holding the first passage it matched,
+else the id's), `:lang()` (RFC 4647),
 `:dir()`, `:active-view-transition` and `:active-view-transition-type()`
 (a screen's root while its layer's view transition runs, by the types its
 `@view-transition` declares) pseudo-classes. Engine meanings and limits:

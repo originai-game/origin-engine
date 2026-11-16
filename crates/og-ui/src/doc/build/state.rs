@@ -31,8 +31,11 @@ pub struct DocState {
     pub happened: Vec<crate::doc::When>,
     /// The popovers documents name, by their key in their mount.
     pub popovers: BTreeMap<u64, PopoverLink>,
-    /// The id the last `#fragment` link named: CSS `:target`.
-    pub target: Option<String>,
+    /// What the last `#fragment` link indicated: CSS `:target`.
+    pub target: Option<FragmentTarget>,
+    /// The text directives of a link followed this tick, for the layout
+    /// to find ([`crate::ui::target_text`]).
+    pub(crate) text_directives: Option<Vec<crate::ui::target_text::TextDirective>>,
     /// The fields and disclosures whose own value or open state the player
     /// changed this frame ([`DocMemory::values`], [`DocMemory::open`]):
     /// their selector facts are read again.
@@ -76,6 +79,18 @@ pub struct DocState {
     pub placeholder_ink: Option<Srgba>,
     /// `::selection` styles by render key.
     pub selection: BTreeMap<u64, Arc<crate::doc::generated::Selection>>,
+    /// `::target-text` styles by render key.
+    pub target_text: BTreeMap<u64, Arc<crate::doc::generated::Selection>>,
+}
+
+/// The element a `#fragment` link indicates (CSS `:target`).
+#[derive(Clone, Debug, PartialEq)]
+pub enum FragmentTarget {
+    /// The element with this id.
+    Id(String),
+    /// The element (render key) holding the passage a text fragment
+    /// matched.
+    Element(u64),
 }
 
 impl DocState {
