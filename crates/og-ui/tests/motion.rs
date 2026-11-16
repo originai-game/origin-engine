@@ -534,6 +534,132 @@ fn view_transitions_morph_a_named_element_by_its_groups_timing() {
     }
 }
 
+/// CSS View Transitions 2 §4, scoped view transitions: a transition on
+/// `#Box` (`og.ui.startViewTransition`) moves the shared element in its
+/// subtree from its old box to its new one, every tick on
+/// `lerp(old, new, t / 400ms)` from the document's own
+/// `::view-transition-group(hero)` rule (no `@view-transition` opt-in: no
+/// layer navigates), both images drawn until it ends. A name outside
+/// `#Box` and one under a `view-transition-scope: all` element inside it
+/// are not discovered (§3.2): they snap to their new places. The groups
+/// paint after the root and its children and before what follows it
+/// (§6.3). A checkpoint taken mid-way replays the same frames.
+/// Ways it could fail: the transition capturing every name in the frame
+/// (as a layer's does), the scope ignored, the groups drawn over the whole
+/// frame instead of in the root's place, the document's rules not
+/// reaching it (the UA's 0.25s ease instead), or the wall clock timing it.
+#[test]
+fn scoped_view_transitions_move_only_their_subtrees_names() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page" class={$at}>
+  <div id="Box">
+    <div id="Card"></div>
+    <div id="Inner"><div id="Deep"></div></div>
+  </div>
+  <div id="Other"></div>
+  <div id="After"></div>
+</div>
+<style>
+#Page { position: relative; width: 800px; height: 600px; }
+#Box { position: absolute; left: 0; top: 0; width: 400px; height: 300px; background: #808080; }
+#Card { position: absolute; left: 40px; top: 40px; width: 100px; height: 50px; background: #ff0000; view-transition-name: hero; }
+.moved #Card { left: 300px; top: 200px; width: 200px; height: 100px; }
+#Inner { position: absolute; left: 0; top: 0; width: 400px; height: 300px; view-transition-scope: all; }
+#Deep { position: absolute; left: 10px; top: 250px; width: 20px; height: 20px; background: #00ff00; view-transition-name: deep; }
+.moved #Deep { left: 200px; }
+#Other { position: absolute; left: 500px; top: 400px; width: 20px; height: 20px; background: #0000ff; view-transition-name: other; }
+.moved #Other { left: 700px; }
+#After { position: absolute; left: 600px; top: 0; width: 10px; height: 10px; background: #ffff00; }
+::view-transition-group(hero) { animation-duration: 400ms; animation-timing-function: linear; }
+</style>"#;
+    // Each quad of one colour: its index among the frame's items, its box.
+    let quads = |d: &crate::support::Doc, want: [f32; 3]| -> Vec<(usize, [f32; 4])> {
+        d.ui.frame()
+            .items
+            .iter()
+            .enumerate()
+            .filter_map(|(k, it)| match &it.cmd {
+                DrawCmd::Quad { rect, color, .. }
+                    if want.iter().zip(color).all(|(w, c)| (w - c).abs() < 0.02) =>
+                {
+                    Some((k, [rect.x, rect.y, rect.width, rect.height]))
+                }
+                _ => None,
+            })
+            .collect()
+    };
+    let (red, grey, green, blue, yellow) = (
+        [1.0, 0.0, 0.0],
+        [0.2158605, 0.2158605, 0.2158605],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [1.0, 1.0, 0.0],
+    );
+    let (old, new) = ([40.0, 40.0, 100.0, 50.0], [300.0, 200.0, 200.0, 100.0]);
+    let run = |scoped: bool| {
+        let mut d = crate::support::Doc::new(text, &[("at", serde_json::json!(""))]);
+        for _ in 0..3 {
+            d.step(InputFrame::default());
+        }
+        if scoped {
+            let path = d.get("Box").path;
+            assert!(d.ui.start_element_view_transition(&path));
+        }
+        d.put("at", serde_json::json!("moved"));
+        let mut frames = Vec::new();
+        let mut saved = None;
+        for k in 0..30 {
+            d.step(InputFrame::default());
+            if k == 10 {
+                saved = Some(d.ui.save_state());
+            }
+            frames.push(d.ui.frame().items.clone());
+            let (cards, deep, other) = (quads(&d, red), quads(&d, green), quads(&d, blue));
+            assert_eq!(deep.len(), 1, "tick {k}: one deep image {deep:?}");
+            assert_eq!(
+                deep[0].1,
+                [200.0, 250.0, 20.0, 20.0],
+                "tick {k}: deep snaps"
+            );
+            assert_eq!(
+                other.iter().map(|q| q.1).collect::<Vec<_>>(),
+                [[700.0, 400.0, 20.0, 20.0]],
+                "tick {k}: other snaps"
+            );
+            let t = if scoped {
+                (k as f32 * 1000.0 / 60.0 / 400.0).min(1.0)
+            } else {
+                1.0
+            };
+            let want: [f32; 4] = std::array::from_fn(|i| old[i] + (new[i] - old[i]) * t);
+            let images = if t > 0.0 && t < 1.0 { 2 } else { 1 };
+            assert_eq!(cards.len(), images, "tick {k}: {cards:?}");
+            for (_, b) in &cards {
+                let close = b.iter().zip(want).all(|(a, w)| (a - w).abs() < 1e-3);
+                assert!(close, "tick {k}: {b:?} vs {want:?}");
+            }
+            // While it runs, in the root's place: over it and its
+            // children, under what follows it.
+            let (box_at, after) = (quads(&d, grey)[0].0, quads(&d, yellow)[0].0);
+            for (at, _) in cards.iter().filter(|_| t < 1.0) {
+                assert!(
+                    *at > box_at && *at > deep[0].0 && *at < after,
+                    "tick {k}: order"
+                );
+            }
+        }
+        if let Some(saved) = saved.filter(|_| scoped) {
+            d.ui.restore_state(&saved).unwrap();
+            for (k, want) in frames.iter().enumerate().skip(11) {
+                d.step(InputFrame::default());
+                assert_eq!(&d.ui.frame().items, want, "replayed tick {k}");
+            }
+        }
+    };
+    run(true);
+    run(false);
+}
+
 /// CSS Transitions over two value types the spec makes animatable, each
 /// checked every tick against its own interpolation (60 ticks a second,
 /// 600 ms linear, so t = tick / 36): `grid-template-columns` track by
