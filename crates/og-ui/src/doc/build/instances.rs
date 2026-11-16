@@ -145,7 +145,10 @@ pub struct RetainedHost {
     /// diagnostics, with where it is): a frame reports them all, not only
     /// those of the elements it resolved again.
     pub diagnostics: BTreeMap<MountedNode, Vec<String>>,
-    pub inherited: BTreeMap<(MountedNode, String), BTreeSet<MountedNode>>,
+    /// Who reads each inherited name through an element: by the element,
+    /// then the name, so a restyle asks after what is already read with
+    /// borrowed keys.
+    pub inherited: BTreeMap<MountedNode, BTreeMap<String, BTreeSet<MountedNode>>>,
     pub by_key: BTreeMap<u64, MountedNode>,
     /// The elements matching `:hover`, `:active`, `:focus` and
     /// `:focus-visible` last frame: the pointer's, the focus's and any the

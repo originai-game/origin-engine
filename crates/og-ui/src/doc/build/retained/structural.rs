@@ -541,12 +541,8 @@ impl RetainedHost {
                     readers.remove(&id);
                 }
                 // What it read of its parent, its own and through it.
-                if let Some(parent) = &parent {
-                    for ((_, _), readers) in self
-                        .inherited
-                        .range_mut((parent.clone(), String::new())..)
-                        .take_while(|((node, _), _)| node == parent)
-                    {
+                if let Some(names) = parent.as_ref().and_then(|p| self.inherited.get_mut(p)) {
+                    for readers in names.values_mut() {
                         readers.remove(&id);
                     }
                 }

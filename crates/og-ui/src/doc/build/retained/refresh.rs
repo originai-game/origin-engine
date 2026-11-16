@@ -522,26 +522,36 @@ impl RetainedHost {
     /// from its parent too, and so on up to the element that declares it,
     /// so a change there restyles what reads it below.
     fn read_through(&mut self, mut node: MountedNode, name: &str) {
-        while let Some(parent) = self.topology.parent(&node).cloned() {
+        while let Some(parent) = self.topology.parent(&node) {
+            // Read through already: a restyle mostly finds its reads kept.
+            if self
+                .inherited
+                .get(parent)
+                .and_then(|names| names.get(name))
+                .is_some_and(|readers| readers.contains(&node))
+            {
+                break;
+            }
             let computed = |n: &MountedNode| {
                 self.elements
                     .get(n)
                     .and_then(|e| e.resolved.as_ref())
-                    .map(|r| r.values.cascade.computed.clone())
+                    .map(|r| &r.values.cascade.computed)
             };
-            let passes = match (computed(&node), computed(&parent)) {
+            let passes = match (computed(&node), computed(parent)) {
                 (Some(own), Some(above)) => own.dependency(name) == above.dependency(name),
                 _ => false,
             };
-            if !passes
-                || !self
-                    .inherited
-                    .entry((parent.clone(), name.to_owned()))
-                    .or_default()
-                    .insert(node.clone())
-            {
+            if !passes {
                 break;
             }
+            let parent = parent.clone();
+            self.inherited
+                .entry(parent.clone())
+                .or_default()
+                .entry(name.to_owned())
+                .or_default()
+                .insert(node);
             node = parent;
         }
     }
@@ -694,14 +704,18 @@ impl RetainedHost {
             let empty = BTreeSet::new();
             let before = previous.map_or(&empty, |p| &p.inherited_reads);
             let now = &values.cascade.inherited_reads;
-            for name in before.difference(now) {
-                if let Some(readers) = self.inherited.get_mut(&(parent.clone(), name.clone())) {
-                    readers.remove(identity);
+            if let Some(names) = self.inherited.get_mut(parent) {
+                for name in before.difference(now) {
+                    if let Some(readers) = names.get_mut(name) {
+                        readers.remove(identity);
+                    }
                 }
             }
             for name in now.difference(before) {
                 self.inherited
-                    .entry((parent.clone(), name.clone()))
+                    .entry(parent.clone())
+                    .or_default()
+                    .entry(name.clone())
                     .or_default()
                     .insert(identity.clone());
             }
@@ -716,13 +730,37 @@ impl RetainedHost {
                 .collect(),
             None => Vec::new(),
         };
-        if let Some(previous) = previous {
-            for name in previous.computed.changed(&values.cascade.computed) {
-                if let Some(readers) = self.inherited.get(&(identity.clone(), name.clone())) {
-                    self.dirty.extend(readers.iter().cloned());
-                }
+        // The inherited values it hands down that changed (`None`: its
+        // first style, every one).
+        let changed: Option<Vec<String>> = previous.map(|previous| {
+            previous
+                .computed
+                .changed(&values.cascade.computed)
+                .into_iter()
+                .cloned()
+                .collect()
+        });
+        for name in changed.iter().flatten() {
+            if let Some(readers) = self.inherited.get(identity).and_then(|n| n.get(name)) {
+                self.dirty.extend(readers.iter().cloned());
             }
         }
+        // Whether it declares what it declared: then a value it hands down
+        // starts to pass through it only as the value changes.
+        let declares_as_before = previous.is_some_and(|p| {
+            let c = &values.cascade;
+            fn names(d: &[(String, String)]) -> impl Iterator<Item = &String> {
+                d.iter().map(|(name, _)| name)
+            }
+            p.local_names == c.local_names
+                && p.values
+                    .iter()
+                    .map(|v| &v.0)
+                    .eq(c.values.iter().map(|v| &v.0))
+                && names(&p.text).eq(names(&c.text))
+                && names(&p.svg).eq(names(&c.svg))
+                && names(&p.container).eq(names(&c.container))
+        });
         let resolved = ResolvedNode {
             id: e.id.clone(),
             path: e.path.clone(),
@@ -738,13 +776,19 @@ impl RetainedHost {
         }
         // What its children read through it, now that it may hand down
         // what it declared before.
-        let read: Vec<String> = self
-            .inherited
-            .range((identity.clone(), String::new())..)
-            .take_while(|((node, _), _)| node == identity)
-            .filter(|(_, readers)| !readers.is_empty())
-            .map(|((_, name), _)| name.clone())
-            .collect();
+        let read: Vec<String> = self.inherited.get(identity).map_or_else(Vec::new, |names| {
+            let reads = |name: &String| names.get(name).is_some_and(|r| !r.is_empty());
+            match changed {
+                Some(changed) if declares_as_before => {
+                    changed.into_iter().filter(|name| reads(name)).collect()
+                }
+                _ => names
+                    .iter()
+                    .filter(|(_, readers)| !readers.is_empty())
+                    .map(|(name, _)| name.clone())
+                    .collect(),
+            }
+        });
         for name in read {
             self.read_through(identity.clone(), &name);
         }

@@ -213,7 +213,7 @@ impl RetainedHost {
         self.by_key.retain(|_, node| &node.mount != mount);
         self.dirty.retain(|node| &node.mount != mount);
         self.diagnostics.retain(|node, _| &node.mount != mount);
-        self.inherited.retain(|(node, _), _| &node.mount != mount);
+        self.inherited.retain(|node, _| &node.mount != mount);
         for readers in &mut self.media {
             readers.retain(|node| &node.mount != mount);
         }
@@ -1128,6 +1128,80 @@ mod tests {
                 assert_eq!(ui.docs.state().memory.retained.evaluated, 2); // Class value and matching predicate.
                 assert_eq!(ui.docs.state().memory.retained.resolved, 2);
             }
+        }
+    }
+
+    #[test]
+    fn an_element_that_stops_declaring_an_equal_value_hands_its_parents_down() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(
+            UiDocument::parse(
+                "through.svelte",
+                r#"
+            <meta name="component" content="through">
+            <column id="Root" class={$wide ? 'wide' : ''}>
+                <column id="Mid" class={$own ? 'own' : ''}><text id="Label">x</text></column>
+            </column>
+            <style>
+                #Root { --measure: 30px; }
+                #Root.wide { --measure: 120px; }
+                #Mid.own { --measure: 120px; }
+                #Label { width: var(--measure); }
+            </style>
+        "#,
+            )
+            .unwrap(),
+        );
+        let wide = SourceId::new("test", "wide");
+        let own = SourceId::new("test", "own");
+        for source in [wide.clone(), own.clone()] {
+            ui.docs
+                .state_mut()
+                .memory
+                .reactive
+                .execute(Command::Signal {
+                    source,
+                    initial: json!(false),
+                    readable: false,
+                })
+                .unwrap();
+        }
+        ui.mount_document(
+            SourceId::new("test", "screen"),
+            "through",
+            BTreeMap::from([("wide".into(), wide.clone()), ("own".into(), own.clone())]),
+            Default::default(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        // Mid declares 120px over the root's 30px; the root moves to 120px
+        // under it; Mid stops declaring, its value the same; the root's
+        // next value reaches the label through it.
+        for (source, value, width) in [
+            (&own, true, 120.0),
+            (&wide, true, 120.0),
+            (&own, false, 120.0),
+            (&wide, false, 30.0),
+        ] {
+            ui.docs
+                .state_mut()
+                .memory
+                .reactive
+                .execute(Command::Set {
+                    source: source.clone(),
+                    value: json!(value),
+                    force: false,
+                })
+                .unwrap();
+            ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end();
+            let elements = ui.probe_elements();
+            let label = elements
+                .iter()
+                .find(|e| e.path.ends_with("/Label"))
+                .unwrap();
+            assert_eq!(label.width, width, "after {} = {value}", source.id);
         }
     }
 
