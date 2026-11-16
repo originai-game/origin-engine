@@ -329,7 +329,7 @@ impl Parser {
             }
             "label" if label_for.is_some() => Some(Kind::Label),
             "div" | "section" | "header" | "footer" | "nav" | "main" | "aside" | "article"
-            | "ul" | "ol" | "li" | "menu" | "summary" => Some(Kind::Box),
+            | "ul" | "ol" | "li" | "menu" | "summary" | "iframe" => Some(Kind::Box),
             "img" => Some(Kind::Image),
             "video" => Some(Kind::Video),
             "audio" => Some(Kind::Audio),
@@ -375,6 +375,20 @@ impl Parser {
                 ));
             }
         };
+        // An `<iframe>` shows its `src` document; HTML's fallback content
+        // between its tags has no place here.
+        let frame = tag == "iframe";
+        if frame
+            && children
+                .iter()
+                .any(|c| !matches!(c, Node::Text(text, _) if text.trim().is_empty()))
+        {
+            return Err((
+                at,
+                "an <iframe> shows the document its src names; write nothing between its tags"
+                    .into(),
+            ));
+        }
         let i = self.push(kind, parent, at);
         self.doc.nodes[i].selector_tag = Some(tag.into());
         if let Some(a) = label_for {
@@ -455,6 +469,29 @@ impl Parser {
                     ));
                 }
                 self.doc.nodes[i].id = a.value.clone();
+                continue;
+            }
+            if frame && a.name == "src" {
+                if a.bound {
+                    return Err((
+                        a.at,
+                        "an <iframe>'s src is a literal path to a document of the game".into(),
+                    ));
+                }
+                if a.value.contains(':') {
+                    return Err((
+                        a.at,
+                        "a remote <iframe> src comes with the project's frames allowlist; for now name a document of the game (src=\"news.svelte\")".into(),
+                    ));
+                }
+                let id = super::relative_id(&self.doc.source, &a.value)
+                    .filter(|id| id.ends_with(".svelte"))
+                    .ok_or((
+                        a.at,
+                        "an <iframe>'s src names a .svelte document within the game's asset directory"
+                            .into(),
+                    ))?;
+                self.doc.nodes[i].frame = Some(id);
                 continue;
             }
             // An animation's attributes are read as it plays (svg::smil).
@@ -818,6 +855,18 @@ impl Parser {
                 }
                 continue;
             }
+            // An `<iframe>`'s other attributes are its document's props,
+            // read here as a component's are: the only data it is given.
+            if frame && !reflected && model.is_none() {
+                let value = if a.bound {
+                    PropValue::Bind(expression(&a.value, a.at)?, None)
+                } else {
+                    PropValue::Lit(Lit::Str(a.value.clone()))
+                };
+                let line = self.line(a.at);
+                self.doc.nodes[i].args.push((name, value, line));
+                continue;
+            }
             let value = if model.is_some() {
                 let expr = expression(&a.value, a.at)?;
                 let Expr::Path(path) = expr else {
@@ -863,6 +912,12 @@ impl Parser {
             } else {
                 self.prop(i, internal, &name, value, a.at, &a.value)?;
             }
+        }
+        if frame && self.doc.nodes[i].frame.is_none() {
+            return Err((
+                at,
+                "an <iframe> needs src naming a document of the game".into(),
+            ));
         }
         // An action's glyph follows the device: it reads `$ui.device`.
         if internal == Some(Kind::Kbd) && attrs.iter().any(|a| a.name == "data-action") {

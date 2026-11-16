@@ -778,6 +778,22 @@ and a host has no features inside its component, so `:host.wide` and
 an attribute with no prop, an id, and `:host` in a component whose root
 is itself an instance.
 
+`<iframe src="news.svelte" items={$news}>` embeds another document of the
+game (the [frames guide](../crates/og-api/guides/frames.md)). `src` is a
+literal path relative to the embedder, which the cook bundles as it does a
+component and refuses when missing; a URL or a bound `src` is refused until
+remote frames land. The other attributes are the embedded document's
+props, read in the embedder's context; it reads no store of the mount, and
+its events reach the game as a component's do. The frame is a separate
+cascade: the embedder's rules never match inside, the topology's parent
+stops at the frame (so no selector inside, the style pack's included, sees
+the page around it), and inheritance stops at the frame's root. The style
+pack and colour scheme still apply. The `<iframe>` is a replaced box,
+300 × 150 px on an axis CSS leaves auto, `overflow: clip`; `frame-sizing:
+content-…` (CSS Sizing 4) makes that axis the document's laid-out size
+when the document declares `<meta name="responsive-embedded-sizing">`. A
+document never embeds one it is inside.
+
 A screen opts into CSS View Transitions 1 and 2 with `@view-transition {
 navigation: auto; }`. The engine's mapping:
 

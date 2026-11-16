@@ -886,4 +886,17 @@ pub const PROPS: &[PropSpec] = &[
         two_way: false,
         doc: "CSS `field-sizing`: `fixed` keeps a control's default preferred size (a file input its default label's width, a longer chosen name cut with an ellipsis); `content` sizes text inputs and textareas to their displayed value or placeholder along the writing mode's inline axis (a vertical one's height), ignoring rows, a select to the option it shows and a file input to the names chosen. Explicit CSS dimensions and min/max constraints still apply. Not inherited.",
     },
+    PropSpec {
+        name: "frameSizing",
+        ty: Ty::Word(&[
+            "auto",
+            "contentWidth",
+            "contentHeight",
+            "contentInlineSize",
+            "contentBlockSize",
+        ]),
+        on: On::All,
+        two_way: false,
+        doc: "CSS `frame-sizing` (CSS Sizing 4) on an `<iframe>`: `auto` gives a frame without a CSS width or height HTML's natural 300×150; `content-width` and `content-height` (or the logical `content-inline-size`, `content-block-size`) make that axis the embedded document's laid-out content size, when the document opts in with `<meta name=\"responsive-embedded-sizing\">`. Explicit CSS dimensions still apply. Not inherited.",
+    },
 ];

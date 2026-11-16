@@ -571,6 +571,10 @@ pub struct DocNode {
     /// and the synthetic node of each: a `box` outside [`Self::children`]
     /// whose rules are the pseudo-element's, matched against this element.
     pub pseudo: Vec<(&'static str, usize)>,
+    /// An `<iframe>`'s document: the asset id its `src` names (resolved
+    /// against this document's), whose root it shows in place of
+    /// children ([`crate::doc::build`]'s frames).
+    pub frame: Option<String>,
 }
 
 /// One run of a text element's inline content.
@@ -656,6 +660,11 @@ pub struct UiDocument {
     /// The global sheet whose rules its elements carry, by its id: the
     /// default style's, or the pack's it was parsed against.
     pub(crate) styled: u64,
+    /// `<meta name="responsive-embedded-sizing">`: shown in an `<iframe>`
+    /// with `frame-sizing: content-…`, its laid-out content size becomes
+    /// the frame's natural size (CSS Sizing 4); without it the frame keeps
+    /// 300×150, so its size never reaches an embedder it did not choose.
+    pub embedded_sizing: bool,
 }
 
 pub const NONE: usize = usize::MAX;

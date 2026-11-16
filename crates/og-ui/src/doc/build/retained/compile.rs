@@ -258,6 +258,15 @@ impl RetainedHost {
             self.use_events(&identity, "create", None);
         }
         let mut children = Vec::new();
+        if node.frame.is_some() {
+            children.push(self.compile_frame(
+                ui,
+                (doc.clone(), index),
+                context.clone(),
+                &identity,
+                env,
+            )?);
+        }
         for &child in &node.children {
             let n = &doc.nodes[child];
             let id = if n.id.is_empty() {

@@ -309,6 +309,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("resize", "resize"),
     ("overflowClipMargin", "overflow-clip-margin"),
     ("fieldSizing", "field-sizing"),
+    ("frameSizing", "frame-sizing"),
     ("willChange", "will-change"),
     ("offsetPath", "offset-path"),
     ("offsetDistance", "offset-distance"),
@@ -584,7 +585,7 @@ fn conv(prop: &str) -> Conv {
         "align" | "cross" | "direction" | "frame" | "textAlign" | "verticalAlign"
         | "captionSide" | "fit" | "display" | "markerPosition" | "userSelect" | "appearance"
         | "labelDirection" | "fitMin" => Conv::Kebab,
-        "fieldSizing" => Conv::Kebab,
+        "fieldSizing" | "frameSizing" => Conv::Kebab,
         "wrap" => Conv::Bool("wrap", "nowrap"),
         "uppercase" => Conv::Bool("uppercase", "none"),
         "nowrap" => Conv::Bool("nowrap", "normal"),

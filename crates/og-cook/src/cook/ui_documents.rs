@@ -176,6 +176,16 @@ fn plan_document<'a>(
                 uses.push(id.clone());
             }
         }
+        // Each document its <iframe>s embed is loaded with it.
+        for id in doc.nodes.iter().filter_map(|n| n.frame.as_ref()) {
+            if !sources.iter().any(|source| source.rel == *id && source.kind == &DOCUMENT) {
+                return Err(vec![format!("{}: <iframe src> names {id}, which is not a document of the project", s.rel)]);
+            }
+            if *id != s.rel && !uses.contains(id) {
+                dependencies.push(format!("{id}=<iframe>"));
+                uses.push(id.clone());
+            }
+        }
         if options.publish && !doc.warnings.is_empty() {
             Err(doc.warnings)
         } else {

@@ -247,6 +247,34 @@ fn a_game_component_of_a_built_in_name_wins() {
     assert_eq!(uses(&root, "ui/vitals.svelte"), ["ui/my-bar.svelte"]);
 }
 
+/// A document an `<iframe>` embeds loads with its embedder, and one that
+/// names no document of the project is refused at cook. Ways it could
+/// fail: the frame's document left out of the embedder's loads (the frame
+/// mounts nothing at run time), or a typo in `src` cooking clean.
+#[test]
+fn an_iframes_document_loads_with_its_embedder() {
+    let page = r#"<meta name="screen" content="page">
+<div><iframe src="news.svelte"></iframe></div>
+"#;
+    let news = r#"<meta name="screen" content="news">
+<div id="News"></div>
+"#;
+    let root = project(
+        "iframe",
+        &[("ui/page.svelte", page), ("ui/news.svelte", news)],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{}", report.errors().join("\n"));
+    assert_eq!(uses(&root, "ui/page.svelte"), ["ui/news.svelte"]);
+    let root = project("iframe-missing", &[("ui/page.svelte", page)]);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(
+        report.errors().iter().any(|e| e.contains("ui/news.svelte")),
+        "{:?}",
+        report.errors()
+    );
+}
+
 /// A document's `@import` is read from beside it (with the imports of the
 /// imported sheet) into its blob, and an edit to the stylesheet re-cooks
 /// the document. Ways it could fail: the runtime parsing the text without
