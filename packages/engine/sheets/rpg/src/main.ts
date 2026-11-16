@@ -9,8 +9,9 @@
 
 import { og, type World } from "@origingame/engine";
 import { CMD_NAMES, EQUIPMENT, localized, ITEM_NAMES, SKILL_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
+import { ECONOMY } from "./economy.ts";
 
-const PAGES = ["inventory", "journal", "equipment", "explore", "combat", "primitives"] as const;
+const PAGES = ["inventory", "journal", "equipment", "explore", "combat", "primitives", "crafting", "trade", "loot", "dialogue"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 
 const DOCUMENTS = [
@@ -20,6 +21,8 @@ const DOCUMENTS = [
   "ui/explore.svelte",
   "ui/combat.svelte",
   "ui/primitives.svelte",
+  "ui/economy.svelte",
+  "ui/dialogue.svelte",
   "ui/sheet.svelte",
 ];
 
@@ -50,7 +53,14 @@ let fixtures: Record<string, unknown> = {};
 
 function show(world: World): void {
   const scope = og.ui.scope(world, "sheet");
-  const data = { ...fixtures, page: "inventory" };
+  const data = {
+    ...fixtures, page: "inventory", scenario: "default",
+    shownRecipes: ECONOMY.craftRecipes,
+    shownIngredients: ECONOMY.craftIngredients,
+    shownGoods: ECONOMY.tradeGoods,
+    shownLoot: ECONOMY.lootItems,
+    shownHistory: ECONOMY.historyLines,
+  };
   const stores = Object.fromEntries(Object.entries(data).map(([k, v]) =>
     [k, Array.isArray(v) ? scope.collection(k, v as { id: string }[], { key: "id" }) : scope.writable(k, v)]));
   must(scope.mount("sheet", "RpgSheet", stores), "mount");
@@ -78,11 +88,29 @@ export default og.game({
     page: (world, args) => {
       og.ui.scope(world, "sheet").writable("page", "inventory").set(PAGES.includes(args[0] as never) ? args[0]! : "inventory");
     },
+    scenario: (world, args) => {
+      const scenario = args[0] ?? "default";
+      const scope = og.ui.scope(world, "sheet");
+      scope.writable("scenario", "default").set(scenario);
+      const collections = {
+        shownRecipes: scenario === "empty" ? [] : ECONOMY.craftRecipes,
+        shownIngredients: scenario === "missing" ? ECONOMY.craftMissing : ECONOMY.craftIngredients,
+        shownGoods: scenario === "empty" ? [] : scenario === "sell" ? ECONOMY.tradeOwned : ECONOMY.tradeGoods,
+        shownLoot: scenario === "empty" ? [] : scenario === "overflow" ? ECONOMY.lootOverflow : ECONOMY.lootItems,
+        shownHistory: scenario === "empty" ? [] : scenario === "overflow" ? ECONOMY.historyOverflow : ECONOMY.historyLines,
+      };
+      for (const [name, rows] of Object.entries(collections)) {
+        const collection = scope.collection(name, [] as { id: string }[], { key: "id" });
+        for (const key of collection.keys()) collection.remove(key);
+        for (const row of rows) collection.insert(row);
+      }
+    },
     reduced: (world, args) => og.ui.configure(world, { reducedMotion: args[0] !== "off" }),
   },
   commandHelp: {
     style: { usage: `<${STYLES.join("|")}>`, doc: "The style pack the pages are dressed in." },
     page: { usage: `<${PAGES.join("|")}>`, doc: "A review page of the rpg kit." },
+    scenario: { usage: "<default|missing|busy|loading|empty|overflow|sell|playing>", doc: "Economy and history state; legality, prices and playback are game-owned fixture data." },
     reduced: { usage: "<on|off>", doc: "Reduced motion on or off." },
   },
 });

@@ -1,0 +1,46 @@
+# RPG review sheet
+
+Run from the repository root, after building `og` and the native addon:
+
+```sh
+OG_ENGINE_PACKAGE="$PWD/packages/engine" OG_STYLES_DIR="$PWD/templates/styles" \
+  target/debug/og ui preview packages/engine/sheets/rpg \
+  --screen 'crafting=style:default;page:crafting' \
+  --screen 'trade=style:default;page:trade' \
+  --screen 'loot=style:default;page:loot' \
+  --screen 'history=style:default;page:dialogue' \
+  --breakpoints desktop,phonePortrait --locales game --scales 100
+```
+
+Each preview needs its `page` command. Append `;scenario:missing`, `busy`,
+`loading`, `empty`, `overflow`, `sell`, or `playing` to inspect those states.
+`sell` is the merchant's other side; `playing` is an active history replay.
+`overflow` supplies long loot descriptions and a long history. The sample
+game owns all prices, quantity limits, requirements and legality; components
+only render the data and return requests with stable row keys.
+
+## New panels
+
+- `RpgCrafting`: keyed `recipes`, `selected`, selected `ingredients`, batch
+  `quantity`, `canIncrease`/`canDecrease`, `cost`, `loading`/`busy`/`error`.
+  `choose`, `increase`, `decrease` and `craft` carry the recipe key. A
+  restricted recipe remains inspectable; only crafting is disabled.
+- `RpgTrade`: `mode` (`buy`/`sell`), formatted `wallet`, keyed `goods`,
+  `selected`, `loading`/`busy`/`error`. `choose`, `buy` and `sell` carry the
+  good's key. `switchMode` asks the game to replace goods and prices. Goods
+  may represent batches; the component never computes a price or balance.
+- `RpgLoot`: keyed `items`, `canTakeAll`, `loading`/`busy`/`error`. `take`
+  carries the item key; `takeAll` and `close` are panel intents. The game
+  removes collected rows and decides capacity. Close also responds to Back.
+- `RpgConversationBacklog`: chronological keyed `lines`, `playing`,
+  `hasOlder`, `loading`. `replay` and `stop` carry a line key; `older` and
+  `close` are panel intents. Audio playback and pagination remain game-owned.
+
+Each document lists its parts, defaults and state fixtures in metadata.
+Buttons inherit the default style's hover, press, focus and disabled states;
+selection and replay state are exposed through attributes for style packs.
+
+`bun test packages/engine/sheets/rpg/tests/components.test.ts` mounts these
+components through game documents and exercises keyed actions after row
+reordering, unavailable/pending suppression, history replay, and base slot
+and avatar states.

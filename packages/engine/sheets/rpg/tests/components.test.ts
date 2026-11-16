@@ -7,7 +7,7 @@ import { loadNativeHost } from "../../../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../../../src/runtime.ts";
 import { ogBin } from "../../../tests/support/og-bin.ts";
 
-type Element = { path: string; role: string; name: string; text: string; x: number; y: number; width: number; height: number; states?: string[]; disabled?: boolean };
+type Element = { path: string; part: string; role: string; name: string; text: string; x: number; y: number; width: number; height: number; states?: string[]; disabled?: boolean };
 type Intent = { name: string; rowKey: string };
 let root = "";
 beforeAll(() => {
@@ -20,6 +20,13 @@ beforeAll(() => {
 <div style="display: flex; flex-wrap: wrap; gap: 24px; padding: 24px">{#each $items as item (item.id)}<ItemSlot name={item.name} icon="potion" count={item.count} cooldown={item.cooldown} cooldownMax={8} selected={item.selected} disabled={item.disabled} locked={item.locked} loading={item.loading} empty={item.empty} showName={true} />{/each}</div>`);
   writeFileSync(join(root, "assets/ui/avatar.svelte"), `<meta name="screen" content="Avatars" data-layer="menu" data-input="menu">
 <div style="display: flex; flex-wrap: wrap; gap: 24px; padding: 24px"><Avatar name={$name} level={12} status={$status} loading={$loading} /><Avatar /></div>`);
+  const screens = {
+    crafting: '<RpgCrafting recipes={$rows} selected={$selected} ingredients={$ingredients} canIncrease={true} busy={$busy} />',
+    trade: '<RpgTrade goods={$rows} selected={$selected} mode={$mode} busy={$busy} />',
+    loot: '<RpgLoot items={$rows} canTakeAll={true} busy={$busy} />',
+    backlog: '<RpgConversationBacklog lines={$rows} playing={$playing} loading={$busy} hasOlder={true} />',
+  };
+  for (const [name, body] of Object.entries(screens)) writeFileSync(join(root, `assets/ui/${name}.svelte`), `<meta name="screen" content="${name}" data-layer="menu" data-input="menu"><div style="width: stretch; height: stretch; padding: 24px">${body}</div>`);
   const cook = Bun.spawnSync([ogBin(), "cook", root], { env: process.env, stdout: "ignore", stderr: "pipe" });
   if (cook.exitCode) throw new Error(new TextDecoder().decode(cook.stderr));
 });
@@ -37,7 +44,7 @@ function mount(page: string, data: Record<string, unknown>, phone = false): { en
     ui(world) {
       const scope = og.ui.scope(world, "test");
       const stores = Object.fromEntries(Object.entries(data).map(([key, value]) => [key, Array.isArray(value) ? scope.collection(key, value as { id: string }[], { key: "id" }) : scope.writable(key, value)]));
-      const mounted = scope.mount("page", page === "slots" ? "Slots" : "Avatars", stores);
+      const mounted = scope.mount("page", page === "slots" ? "Slots" : page === "avatar" ? "Avatars" : page, stores);
       if (!mounted.ok) throw new Error(mounted.reason);
     },
   }) as unknown as GameToken, { root });
@@ -95,5 +102,80 @@ test("avatar presence is worded, defaults have a name, and loading replaces pres
     expect(words()).not.toContain("Away");
     expect(words()).toContain("Brenna");
     expect(scope.takeErrors()).toEqual([]);
+  } finally { engine.destroy(); }
+});
+
+for (const phone of [false, true]) test(`economy actions retain item keys and pending transactions suppress repeats (${phone ? "phone" : "desktop"})`, () => {
+  for (const page of ["crafting", "trade", "loot"]) {
+    const rows = [
+      { id: "usable", name: "Healing draught", icon: "potion", description: "For the road.", canCraft: true, available: true, reason: "", price: "20 gold", stock: "8", count: 2 },
+      { id: "blocked", name: "Storm crystal", icon: "gem", description: "A rare catalyst.", canCraft: false, available: false, reason: "Inventory full", price: "80 gold", stock: "1", count: 1 },
+    ];
+    const { engine, events } = mount(page, { rows, ingredients: [], selected: "usable", mode: "buy", busy: false }, phone);
+    try {
+      const action = page === "crafting" ? "craft" : page === "trade" ? "buy" : "take";
+      const actionButton = () => elements(engine).find((e) => e.role === "button" && e.part.includes(`.${action}]`) && e.path.includes("#usable/"))!;
+      expect(actionButton()).toBeDefined();
+      tap(engine, actionButton());
+      expect(events.filter((e) => e.name === action).map((e) => e.rowKey)).toEqual(["usable"]);
+      const scope = og.ui.scope(engine.world, "test");
+      scope.collection("rows", rows, { key: "id" }).move("usable");
+      engine.advance(3);
+      tap(engine, actionButton());
+      expect(events.filter((e) => e.name === action).map((e) => e.rowKey)).toEqual(["usable", "usable"]);
+      scope.writable("busy", false).set(true);
+      engine.advance(3);
+      expect(actionButton().disabled).toBe(true);
+      tap(engine, actionButton());
+      expect(events.filter((e) => e.name === action)).toHaveLength(2);
+      scope.writable("busy", false).set(false);
+      scope.writable("selected", "usable").set("blocked");
+      engine.advance(3);
+      const blocked = elements(engine).find((e) => e.role === "button" && e.part.includes(`.${action}]`) && e.path.includes("#blocked/"))!;
+      expect(blocked.disabled).toBe(true);
+      expect(elements(engine).some((e) => e.text === "Inventory full")).toBe(true);
+      tap(engine, blocked);
+      expect(events.filter((e) => e.name === action)).toHaveLength(2);
+      expect(scope.takeErrors()).toEqual([]);
+    } finally { engine.destroy(); }
+  }
+});
+
+test("history replay follows entry keys and loading prevents new replays", () => {
+  const rows = [{ id: "voice", speaker: "Marissa", text: "Bring the bell home.", canReplay: true }, { id: "silent", speaker: "", text: "The marsh is silent.", canReplay: false }];
+  const { engine, events } = mount("backlog", { rows, playing: "", busy: false }, true);
+  try {
+    tap(engine, elements(engine).find((e) => e.role === "button" && e.name === "Replay Marissa")!);
+    expect(events.filter((e) => e.name === "replay").map((e) => e.rowKey)).toEqual(["voice"]);
+    og.ui.scope(engine.world, "test").writable("playing", "").set("voice");
+    engine.advance(3);
+    tap(engine, elements(engine).find((e) => e.role === "button" && e.name === "Stop replay")!);
+    expect(events.filter((e) => e.name === "stop").map((e) => e.rowKey)).toEqual(["voice"]);
+    const scope = og.ui.scope(engine.world, "test");
+    scope.writable("playing", "").set("");
+    scope.writable("busy", false).set(true);
+    engine.advance(3);
+    const replay = elements(engine).find((e) => e.role === "button" && e.name === "Replay Marissa")!;
+    expect(replay.disabled).toBe(true);
+    tap(engine, replay);
+    expect(events.filter((e) => e.name === "replay")).toHaveLength(1);
+  } finally { engine.destroy(); }
+});
+
+for (const phone of [false, true]) test(`long loot keeps collection and close actions visible (${phone ? "phone" : "desktop"})`, () => {
+  const rows = Array.from({ length: 24 }, (_, i) => ({ id: `relic-${i}`, name: `Abbey relic ${i + 1}`, icon: "gem", description: "A recovered relic.", count: 1, available: true, reason: "" }));
+  const { engine, events } = mount("loot", { rows, busy: false }, phone);
+  try {
+    const close = elements(engine).find((e) => e.role === "button" && e.name === "Close")!;
+    const all = elements(engine).find((e) => e.role === "button" && e.name === "Take all")!;
+    const first = elements(engine).find((e) => e.role === "button" && e.part.includes(".take]") && e.path.includes("#relic-0/"))!;
+    for (const button of [first, close, all]) {
+      expect(button.height).toBeGreaterThanOrEqual(44);
+      expect(button.y + button.height).toBeLessThanOrEqual(phone ? 844 : 720);
+    }
+    expect(first.y).toBeLessThan(close.y);
+    tap(engine, all);
+    tap(engine, close);
+    expect(events.filter((e) => e.name).map((e) => e.name)).toEqual(["takeAll", "close"]);
   } finally { engine.destroy(); }
 });
