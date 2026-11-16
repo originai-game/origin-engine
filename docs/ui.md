@@ -1322,7 +1322,8 @@ and the structural, form, `:open`, `:modal`, `:popover-open`, `:target`
 `:dir()` pseudo-classes. Engine meanings and limits:
 
 - `lang`, `dir`, `data-*` and `state:name={…}` are selector-only
-  attributes; `:state(name)` reads `state:name`; `:defined` matches every
+  attributes on every element (a field's `lang` also picks its
+  keyboard); `:state(name)` reads `state:name`; `:defined` matches every
   element, `:scope` the root, `:any-link` an `<a href>`. An ancestor
   selector reads that ancestor's own interaction state.
 - A `<button>`'s `variant` is one of its classes, for its host's rules as
@@ -1344,6 +1345,28 @@ and `selector()`), and `inherit`, `initial`, `unset`, `revert`,
 into its blob. `@property` registers syntax, inheritance and initial
 value. `@counter-style` and `@position-try` feed counters and anchor
 positioning.
+
+**Cascade order.** A declaration ranks by its importance, then its rule's
+tree context, then the style attribute, then its layer, specificity and
+order (Cascade 5 §6). The default style and a pack are adopted into every
+tree, so their rules rank there by layer: `og-default` < `og-components`
+(a built-in component's own `<style>`) < `og-pack` < `og-game` < a
+document's unlayered rules. A pack beats a built-in component's own rules
+and loses to a game's. A built-in control's parts are a shadow tree under
+its element. A `::part()` selector may read where that element stands in
+its document (`.shop button::part(base)`, `li:first-child >
+button::part(base)`), and three contexts rank a part's declarations, lowest
+first:
+
+1. the style's `::part()` rules;
+2. the control's own box declarations (a `<button>`'s plate, below);
+3. its document's own `::part()` rules.
+
+`!important` reverses the contexts, as it reverses layers. Servo's
+`selectors` crate parses and matches every selector. og adds three things
+on top of it. A selector that reads only the element and its ancestors is
+lowered to a reactive condition. The rest is matched on the mounted tree.
+And a dependency profile bounds what an edit restyles.
 
 `@font-face` (Fonts 4): the cook bundles each `url()` source, which must
 be a project font cooked by its own settings; `local()` names nothing (no
