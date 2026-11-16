@@ -593,6 +593,7 @@ impl crate::ui::Tree {
             justify: Default::default(),
             cut: None,
             vertical: None,
+            synthesize_bold: true,
         }
     }
 }

@@ -4,15 +4,9 @@ use super::*;
 pub(crate) trait Metrics {
     fn metrics_for(&self, role: FontRole, text: &str) -> &FontMetrics;
     /// The metrics of the face [`crate::Fonts::for_styled`] draws `text`
-    /// in at `weight` (0: the role's own) and `italic`.
-    fn metrics_styled(
-        &self,
-        role: FontRole,
-        weight: u16,
-        italic: bool,
-        text: &str,
-    ) -> &FontMetrics {
-        let _ = (weight, italic);
+    /// in for `query`.
+    fn metrics_styled(&self, role: FontRole, query: crate::FontQuery, text: &str) -> &FontMetrics {
+        let _ = query;
         self.metrics_for(role, text)
     }
 }

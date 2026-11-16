@@ -233,11 +233,11 @@ impl Ui {
             }
             Content::Text(tc) => {
                 let tc = n.used_text(tc);
-                let font = self
-                    .env
-                    .fonts
-                    .for_styled(tc.font, tc.step.weight, false, &tc.text)
-                    .0;
+                let (font, synth) = self.env.fonts.for_styled(
+                    tc.font,
+                    crate::FontQuery::new(tc.step.weight, false),
+                    &tc.text,
+                );
                 if font.handle.is_some() {
                     let m = &font.metrics;
                     let sk = n.placed.scale;
@@ -414,6 +414,16 @@ impl Ui {
                         // The style's thickening for the role (`textWeight`, device
                         // pixels: what a stroke between two pixels lacks), shadow included.
                         let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
+                        // A bold the face lacks: thickened, and drawn
+                        // again one device pixel right, as a rich text's
+                        // bold span is (CSS Fonts 4 §7.1).
+                        let (bold, smear) =
+                            if synth.bold && tc.synthesize_bold && tc.step.weight >= 700 {
+                                crate::rich::synthetic_bold(size, dpr)
+                            } else {
+                                (0.0, 0.0)
+                            };
+                        let weight = weight + bold;
                         // A style's text glow: the font's distance field, under the glyphs.
                         let glow = t.art.text_glows[role].map(|g| {
                             let c = g
@@ -429,9 +439,17 @@ impl Ui {
                                     glow,
                                     text_clip: Rect,
                                     cmds: &mut Vec<DrawCmd>| {
-                            for pc in &pieces {
+                            let copies = if smear > 0.0 {
+                                &[smear, 0.0][..]
+                            } else {
+                                &[0.0][..]
+                            };
+                            for (pc, &sx) in pieces
+                                .iter()
+                                .flat_map(|pc| copies.iter().map(move |sx| (pc, sx)))
+                            {
                                 let Some(font) = pc.font else { continue };
-                                let ox = pc.dx * size;
+                                let ox = pc.dx * size + sx;
                                 cmds.push(DrawCmd::Text {
                                     x: snap(x + dx) + ox,
                                     baseline: snap(baseline + dy),
@@ -1018,7 +1036,11 @@ impl Ui {
         let font = self
             .env
             .fonts
-            .for_styled(tc.font, tc.step.weight, false, &tc.text)
+            .for_styled(
+                tc.font,
+                crate::FontQuery::new(tc.step.weight, false),
+                &tc.text,
+            )
             .0;
         if font.handle.is_none() {
             return;
@@ -1277,7 +1299,11 @@ impl Ui {
         let font = self
             .env
             .fonts
-            .for_styled(tc.font, tc.step.weight, false, &tc.text)
+            .for_styled(
+                tc.font,
+                crate::FontQuery::new(tc.step.weight, false),
+                &tc.text,
+            )
             .0;
         let m = &font.metrics;
         let sk = n.placed.scale;
@@ -1525,7 +1551,11 @@ impl Ui {
         let font = self
             .env
             .fonts
-            .for_styled(tc.font, tc.step.weight, false, &tc.text)
+            .for_styled(
+                tc.font,
+                crate::FontQuery::new(tc.step.weight, false),
+                &tc.text,
+            )
             .0;
         if font.handle.is_none() {
             return;

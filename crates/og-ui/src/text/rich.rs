@@ -65,6 +65,13 @@ pub struct RichSpan {
     pub word_spacing: f32,
 }
 
+impl RichSpan {
+    /// What it asks of its font family: its weight and slant.
+    pub fn query(&self) -> crate::FontQuery {
+        crate::FontQuery::new(self.weight, self.italic)
+    }
+}
+
 /// An italic's slant: x moves by this much of the height above the baseline.
 const SLANT: f32 = 0.2;
 
@@ -192,7 +199,7 @@ pub(crate) fn span_advance(
     };
     let size = s.step.size;
     let down = |t: &str, size: f32| {
-        let m = fonts.metrics_styled(s.font, s.weight, s.italic, t);
+        let m = fonts.metrics_styled(s.font, s.query(), t);
         crate::text::vertical::measure(
             m,
             t,
@@ -221,7 +228,7 @@ pub(crate) fn span_width(s: &RichSpan, text: &str, fonts: &dyn Metrics) -> f32 {
         }
         None => {}
     }
-    let m = fonts.metrics_styled(s.font, s.weight, s.italic, text);
+    let m = fonts.metrics_styled(s.font, s.query(), text);
     m.measure_tracked(text, s.step.size, span_tracking(s, text)) + bold_overhang(s, text)
 }
 
@@ -263,12 +270,20 @@ fn bold_weight(size: f32, smear: f32) -> f32 {
     ((size * BOLD_GROWTH - smear) * 0.5).max(smear * 0.25)
 }
 
+/// A synthesised bold at `size` (the text's units), `device` device
+/// pixels to one of them: the thickening in the shader and how far right
+/// its second copy is drawn (one device pixel).
+pub(crate) fn synthetic_bold(size: f32, device: f32) -> (f32, f32) {
+    let smear = 1.0 / device.max(1e-3);
+    (bold_weight(size, smear), smear)
+}
+
 pub(crate) fn span_metrics(s: &RichSpan, fonts: &dyn Metrics) -> (f32, f32, f32) {
     // (line height, ascent, descent) in CSS px.
     if s.atom.is_some() {
         return (s.step.line_height, s.step.size * 0.85, -s.step.size * 0.25);
     }
-    let m = fonts.metrics_styled(s.font, s.weight, s.italic, &s.text);
+    let m = fonts.metrics_styled(s.font, s.query(), &s.text);
     let lh = if s.text.chars().any(crate::text::is_cjk) {
         s.step.cjk_line_height
     } else {
@@ -477,7 +492,7 @@ pub(crate) fn place_line(
     }
     let baseline = (h - (a - d)) / 2.0 + a;
     let (step, font) = rc.base;
-    let m = fonts.metrics_styled(font, step.weight, false, "");
+    let m = fonts.metrics_styled(font, crate::FontQuery::new(step.weight, false), "");
     let strut = Strut {
         size: step.size,
         ascent: m.ascender * step.size,
@@ -551,10 +566,7 @@ fn visual_segments(
     }
     let mixed = |p: &Piece| {
         let s = &rc.spans[p.span];
-        s.atom.is_none()
-            && fonts
-                .metrics_styled(s.font, s.weight, s.italic, &p.text)
-                .is_mixed()
+        s.atom.is_none() && fonts.metrics_styled(s.font, s.query(), &p.text).is_mixed()
     };
     // The line's paragraph direction is its first strong character's (the
     // UI's with none, and skipping isolates; left to right for a line with
@@ -628,7 +640,7 @@ fn visual_segments(
                 continue;
             }
             let piece_text = &text[r.clone()];
-            let m = fonts.metrics_styled(s.font, s.weight, s.italic, piece_text);
+            let m = fonts.metrics_styled(s.font, s.query(), piece_text);
             let tracking = span_tracking(s, piece_text);
             let needs = rtl || crate::text::needs_visual(piece_text) || m.is_mixed();
             if !needs {
@@ -918,11 +930,7 @@ impl Ui {
                 }
                 continue;
             }
-            let font = self
-                .env
-                .fonts
-                .for_styled(s.font, s.weight, s.italic, &text)
-                .0;
+            let font = self.env.fonts.for_styled(s.font, s.query(), &text).0;
             let Some(handle) = font.handle else { continue };
             let first = cmds.len();
             let mixed = font.metrics.is_mixed();
@@ -935,11 +943,10 @@ impl Ui {
             // in its view box's and scaled).
             let w = &n.placed.world;
             let device = dpr * (w.a * w.d - w.b * w.c).abs().sqrt().max(1e-3);
-            let smear = if s.synth.bold { 1.0 / device } else { 0.0 };
-            let weight = if s.synth.bold {
-                bold_weight(size, smear)
+            let (weight, smear) = if s.synth.bold {
+                synthetic_bold(size, device)
             } else {
-                0.0
+                (0.0, 0.0)
             };
             let glyph = |x: f32,
                          dy: f32,
@@ -1237,11 +1244,7 @@ impl Ui {
                     if sp.atom.is_some() {
                         return seg.width * sk;
                     }
-                    let font = self
-                        .env
-                        .fonts
-                        .for_styled(sp.font, sp.weight, sp.italic, &seg.text)
-                        .0;
+                    let font = self.env.fonts.for_styled(sp.font, sp.query(), &seg.text).0;
                     let size = sp.step.size * sk;
                     let r =
                         self.span_run(i, sp, font, &seg.text, size, v, (mid, col, across), false);
@@ -1322,11 +1325,7 @@ impl Ui {
             if s.atom.is_some() {
                 continue;
             }
-            let font = self
-                .env
-                .fonts
-                .for_styled(s.font, s.weight, s.italic, &piece.text)
-                .0;
+            let font = self.env.fonts.for_styled(s.font, s.query(), &piece.text).0;
             let r = piece.rect;
             let size = s.step.size * n.placed.scale;
             let run = self.span_run(
@@ -1500,11 +1499,7 @@ impl Ui {
                 }
                 _ => (piece.text.clone(), em, 0.0),
             };
-            let font = self
-                .env
-                .fonts
-                .for_styled(s.font, s.weight, s.italic, &text)
-                .0;
+            let font = self.env.fonts.for_styled(s.font, s.query(), &text).0;
             if font.handle.is_none() {
                 continue;
             }

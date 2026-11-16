@@ -220,6 +220,10 @@ pub struct TextContent {
     /// advances down the line ([`crate::text::vertical`]). `None`:
     /// horizontal.
     pub vertical: Option<crate::layout::flow::VerticalText>,
+    /// Whether a bold (700 or more) its face lacks is drawn thickened, as
+    /// a rich text's bold span is ([`crate::Synth::bold`]; CSS
+    /// `font-synthesis-weight: auto`).
+    pub synthesize_bold: bool,
 }
 
 /// CSS `text-wrap-style` (CSS Text 4 §6.2): `stable` lays out as `auto`.
@@ -292,7 +296,7 @@ pub(crate) fn snap_pixel_text(nodes: &mut [Node], fonts: &dyn Metrics, build: au
             }
             Content::Rich(r) => {
                 for s in r.spans.iter_mut().filter(|s| s.atom.is_none()) {
-                    let m = fonts.metrics_styled(s.font, s.weight, s.italic, &s.text);
+                    let m = fonts.metrics_styled(s.font, s.query(), &s.text);
                     if m.pixel_grid() > 0 {
                         snap(&mut s.step, m);
                     }
@@ -342,7 +346,11 @@ impl<'a> UsedText<'a> {
     /// The metrics of the face it is drawn in: its role's nearest its
     /// step's weight ([`crate::Fonts::for_styled`]).
     pub(crate) fn metrics<'m>(&self, fonts: &'m dyn Metrics) -> &'m FontMetrics {
-        fonts.metrics_styled(self.font, self.step.weight, false, &self.text)
+        fonts.metrics_styled(
+            self.font,
+            crate::FontQuery::new(self.step.weight, false),
+            &self.text,
+        )
     }
 
     /// The OpenType features the text is set with ([`text_features`]).

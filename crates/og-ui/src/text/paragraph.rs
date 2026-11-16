@@ -241,7 +241,7 @@ fn rich_line(
             PositionedLayoutItem::GlyphRun(glyph_run) => {
                 let brush = glyph_run.style().brush;
                 let s = &content.spans[brush.span];
-                let metrics = fonts.metrics_styled(s.font, s.weight, s.italic, &s.text);
+                let metrics = fonts.metrics_styled(s.font, s.query(), &s.text);
                 let font = metrics.part(brush.font as usize).expect("selected face");
                 let file = font.file.as_ref().expect("cooked font");
                 let run = glyph_run.run();
@@ -358,7 +358,7 @@ fn shaped<R>(
             });
         } else {
             text.push_str(&s.text);
-            let metrics = fonts.metrics_styled(s.font, s.weight, s.italic, &s.text);
+            let metrics = fonts.metrics_styled(s.font, s.query(), &s.text);
             for (range, k) in metrics.font_runs(&s.text) {
                 let m = metrics.part(k)?;
                 if m.fixed.is_some() || m.pixel != 0 {
@@ -379,7 +379,7 @@ fn shaped<R>(
     // The strut: the paragraph's own face at its step.
     let (base, role) = content.base;
     let strut = {
-        let m = fonts.metrics_styled(role, base.weight, false, "");
+        let m = fonts.metrics_styled(role, crate::FontQuery::new(base.weight, false), "");
         let part = m.part(0)?;
         if part.fixed.is_some() || part.pixel != 0 {
             return None;

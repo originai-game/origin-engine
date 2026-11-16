@@ -57,6 +57,7 @@ impl Ui {
             justify: Default::default(),
             cut: None,
             vertical: None,
+            synthesize_bold: true,
         });
         // The probe and screen readers read the whole text, cut or not.
         n.probe_text = text.to_owned();

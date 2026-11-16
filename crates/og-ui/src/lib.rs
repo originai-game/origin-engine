@@ -164,8 +164,8 @@ pub use text_path::{PathShape, TextPath};
 pub use tokens::StyleTokens;
 pub use ui::{
     ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP, CjkLocale, FaceStyle, FamilyFace, FeedbackPlay,
-    FontFace, FontFamily, Fonts, HUD_MAX_ASPECT, IconAtlas, IconCell, InlineImage, Synth, Ui,
-    UiDebugElement, UiDebugStyle, UiDesc, UiFrame, Viewport, debug_overlay,
+    FontFace, FontFamily, FontQuery, Fonts, HUD_MAX_ASPECT, IconAtlas, IconCell, InlineImage,
+    Synth, Ui, UiDebugElement, UiDebugStyle, UiDesc, UiFrame, Viewport, debug_overlay,
 };
 pub(crate) use ui::{ControlSize, ImageDesc, LabelDesc, NumberInputOptions, Response};
 pub use vcursor::VirtualCursorDesc;

@@ -1326,7 +1326,9 @@ impl crate::ui::Tree {
             .str("ellipsisText")
             .filter(|s| !s.is_empty())
             .map(str::to_owned);
+        let synthesize_bold = r.text.as_deref().and_then(|t| t.synthesis[0]) != Some(false);
         if let crate::layout::Content::Text(t) = self.content_mut(i) {
+            t.synthesize_bold = synthesize_bold;
             t.wrap_style = style;
             t.overflow_wrap = overflow_wrap;
             t.align_last = align_last;

@@ -245,7 +245,7 @@ impl Ui {
             let m = &self
                 .env
                 .fonts()
-                .for_styled(font, weight, italic, &text)
+                .for_styled(font, crate::FontQuery::new(weight, italic), &text)
                 .0
                 .metrics;
             m.extents(&text)

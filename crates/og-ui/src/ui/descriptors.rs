@@ -439,6 +439,20 @@ pub struct Synth {
     pub italic: bool,
 }
 
+/// What a text asks of its font family besides its characters (CSS Fonts
+/// 4 §5.2): its weight (0: the role's own face) and whether it is italic.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct FontQuery {
+    pub weight: u16,
+    pub italic: bool,
+}
+
+impl FontQuery {
+    pub const fn new(weight: u16, italic: bool) -> FontQuery {
+        FontQuery { weight, italic }
+    }
+}
+
 /// The candidate nearest `want` (CSS's rule: from 500 up a tie goes
 /// heavier, below it lighter), with its weight.
 fn nearest<'a>(
@@ -503,7 +517,7 @@ impl Fonts {
     pub fn get(&self, role: FontRole) -> &UiFont {
         match role {
             FontRole::Family(f) if self.family_lists.names.get(&f.id()).is_some() => {
-                self.for_styled(role, 400, false, "").0
+                self.for_styled(role, FontQuery::new(400, false), "").0
             }
             FontRole::Family(f) => match self.family_set(f, 400, false).0.first() {
                 Some(face) => &face.font,
@@ -535,7 +549,7 @@ impl Fonts {
     /// so only the characters no font has are missing.
     pub fn for_text(&self, role: FontRole, text: &str) -> &UiFont {
         if let FontRole::Family(_) = role {
-            return self.for_styled(role, 0, false, text).0;
+            return self.for_styled(role, FontQuery::new(0, false), text).0;
         }
         self.resolve(self.get(role), self.companion(role), text)
     }
@@ -689,13 +703,8 @@ impl Fonts {
     /// companion nearest the same weight; and what it could not find a
     /// real face for ([`Synth`]: a bold asked for 600 or more with no face
     /// within 100 of it, an italic with no italic face).
-    pub fn for_styled(
-        &self,
-        role: FontRole,
-        weight: u16,
-        italic: bool,
-        text: &str,
-    ) -> (&UiFont, Synth) {
+    pub fn for_styled(&self, role: FontRole, query: FontQuery, text: &str) -> (&UiFont, Synth) {
+        let FontQuery { weight, italic } = query;
         if let FontRole::Family(family) = role {
             if let Some(names) = self.family_lists.names.get(&family.id()) {
                 let key = (family.id(), family.fallback_index(), weight, italic);
@@ -760,7 +769,7 @@ impl Fonts {
             }
             let (set, got, slanted) = self.family_set(family, weight, italic);
             let Some(first) = set.first() else {
-                return self.for_styled(family.fallback(), weight, italic, text);
+                return self.for_styled(family.fallback(), FontQuery::new(weight, italic), text);
             };
             let drawn = || text.chars().filter(|c| !c.is_whitespace());
             // The face that sets the text whole, else the first that draws
@@ -1101,14 +1110,8 @@ impl Metrics for Fonts {
         &self.for_text(role, text).metrics
     }
 
-    fn metrics_styled(
-        &self,
-        role: FontRole,
-        weight: u16,
-        italic: bool,
-        text: &str,
-    ) -> &FontMetrics {
-        &self.for_styled(role, weight, italic, text).0.metrics
+    fn metrics_styled(&self, role: FontRole, query: FontQuery, text: &str) -> &FontMetrics {
+        &self.for_styled(role, query, text).0.metrics
     }
 }
 

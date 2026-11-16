@@ -233,6 +233,7 @@ impl Ui {
             justify: Default::default(),
             cut: None,
             vertical: None,
+            synthesize_bold: true,
         });
         n.probe_text = text;
         // The landing pop: a bump of `pop` over `motion.duration.fast`.

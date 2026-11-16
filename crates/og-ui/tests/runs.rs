@@ -316,7 +316,7 @@ fn a_weight_and_a_locale_pick_the_styles_real_faces() {
         }
     }
     let styled = |fonts: &Fonts, weight, italic, text| {
-        let (font, synth) = fonts.for_styled(FontRole::Body, weight, italic, text);
+        let (font, synth) = fonts.for_styled(FontRole::Body, FontQuery::new(weight, italic), text);
         (font.handle_of(0), synth)
     };
     // The weight picks the real face, which needs no thickening.
@@ -362,7 +362,7 @@ fn a_weight_and_a_locale_pick_the_styles_real_faces() {
     // Simplified Chinese: the style's own companion.
     let cjk = |fonts: &Fonts, weight| {
         let font = fonts
-            .for_styled(FontRole::Body, weight, false, "Score 原点")
+            .for_styled(FontRole::Body, FontQuery::new(weight, false), "Score 原点")
             .0;
         assert!(font.metrics.is_mixed());
         font.handle_of(1)
@@ -634,7 +634,7 @@ fn a_font_face_family_takes_its_faces_by_weight_and_range() {
         ],
         FontRole::Body,
     );
-    let (font, synth) = unnamed.for_styled(role, 700, false, "Go");
+    let (font, synth) = unnamed.for_styled(role, FontQuery::new(700, false), "Go");
     assert_eq!(font.handle, f.latin.handle);
     assert_eq!(
         synth,
@@ -642,7 +642,12 @@ fn a_font_face_family_takes_its_faces_by_weight_and_range() {
         "an unrendered generic must not double-bold a real heavy face"
     );
     let family = |name| FontRole::Family(Family::new(name, FontRole::Body));
-    let at = |w| fonts.for_styled(family("brand"), w, false, "Go").0.handle;
+    let at = |w| {
+        fonts
+            .for_styled(family("brand"), FontQuery::new(w, false), "Go")
+            .0
+            .handle
+    };
     assert_eq!(
         at(400),
         f.cjk.handle,

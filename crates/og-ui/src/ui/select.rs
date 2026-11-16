@@ -160,7 +160,11 @@ impl Ui {
         let font = self
             .env
             .fonts
-            .for_styled(tc.font, tc.step.weight, false, &tc.text)
+            .for_styled(
+                tc.font,
+                crate::FontQuery::new(tc.step.weight, false),
+                &tc.text,
+            )
             .0;
         let m = &font.metrics;
         let sk = n.placed.scale;
@@ -373,7 +377,11 @@ impl Ui {
         let font = self
             .env
             .fonts
-            .for_styled(tc.font, tc.step.weight, false, &tc.text)
+            .for_styled(
+                tc.font,
+                crate::FontQuery::new(tc.step.weight, false),
+                &tc.text,
+            )
             .0;
         // The selection on this line, in its own characters.
         let on = |k: u32| k.saturating_sub(first).min(count) as usize;

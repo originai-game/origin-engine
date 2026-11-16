@@ -12,6 +12,8 @@ mod component_documents;
 mod control_props;
 #[path = "../css_contain.rs"]
 mod css_contain;
+#[path = "../css_fonts.rs"]
+mod css_fonts;
 #[path = "../css_interact.rs"]
 mod css_interact;
 #[path = "../css_layout.rs"]

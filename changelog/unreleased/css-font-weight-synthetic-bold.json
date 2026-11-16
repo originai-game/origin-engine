@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "A document's plain text at a bold weight (700 or more) whose family has no face within 100 of it is drawn thickened, as a rich text's bold span already was, instead of in the regular face; font-synthesis-weight: none keeps it regular."
+    }
+  ]
+}

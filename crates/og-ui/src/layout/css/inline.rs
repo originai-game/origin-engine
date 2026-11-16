@@ -959,7 +959,7 @@ impl Tree<'_, '_> {
                 _ => None,
             })
             .unwrap_or((self.measure.body, FontRole::Body));
-        let m = fonts.metrics_styled(font, step.weight, false, "");
+        let m = fonts.metrics_styled(font, crate::FontQuery::new(step.weight, false), "");
         let strut = crate::layout::Strut {
             size: step.size,
             ascent: m.ascender * step.size,
