@@ -485,6 +485,18 @@
     --label-font: var(--type-label-font);
     --label-tracking: 0em;
     --label-transform: none;
+    --layout-anchor-inset: var(--space-xs);
+    --layout-gap: var(--space-sm);
+    --layout-gap-hair: var(--space-xxs);
+    --layout-gap-loose: var(--space-md);
+    --layout-gap-tight: var(--space-xs);
+    --layout-gap-wide: var(--space-lg);
+    --layout-measure: var(--measure-lg);
+    --layout-ratio: 16 / 9;
+    --layout-sidebar-content-min: 50%;
+    --layout-sidebar-width: 220px;
+    --layout-switch-at: 420px;
+    --layout-tile: 140px;
     --legendary: var(--warn);
     --mark-arrow: none;
     --mark-box: none;
@@ -1982,6 +1994,56 @@
   @keyframes og-spin { from { rotate: 0deg; } to { rotate: 360deg; } }
   @keyframes og-ping { from { opacity: 1; scale: var(--motion-scale-shrink); } to { opacity: 0; scale: 2; } }
   @keyframes og-shimmer { from { translate: -100% 0; } to { translate: 420% 0; } }
+  /* Layout primitives (Every Layout's): an element asks for a shape by
+     meaning (`data-layout`), never by its flex or grid lines, and spaces
+     its children by a step of the layout scale (`data-gap`), never by a
+     size. Each answers its own container's width without a query: a
+     sidebar, a switcher and a grid wrap where their container is too
+     narrow for the tokens' sizes, so one component sits in a sidebar and
+     full width alike. A pack retunes a primitive through its tokens. */
+  :where([data-layout=stack]) { display: flex; flex-direction: column; gap: var(--layout-gap); }
+  :where([data-layout=row]) { display: flex; align-items: center; gap: var(--layout-gap); }
+  :where([data-layout=cluster]) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--layout-gap); }
+  :where([data-layout=sidebar]) { display: flex; flex-wrap: wrap; gap: var(--layout-gap); }
+  :where([data-layout=switcher]) { display: flex; flex-wrap: wrap; gap: var(--layout-gap); }
+  :where([data-layout=grid]) { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--layout-tile), 1fr)); gap: var(--layout-gap); }
+  :where([data-layout=cover]) { display: flex; flex-direction: column; align-items: center; justify-content: center; block-size: stretch; gap: var(--layout-gap); }
+  :where([data-layout=cover] > [data-principal]) { margin-block: auto; }
+  :where([data-layout=center]) { display: flex; flex-direction: column; align-items: center; max-inline-size: var(--layout-measure); margin-inline: auto; gap: var(--layout-gap); }
+  :where([data-layout=ratio]) { display: flex; align-items: center; justify-content: center; aspect-ratio: var(--layout-ratio); overflow: hidden; }
+  :where([data-layout=ratio] > img) { inline-size: 100%; block-size: 100%; object-fit: cover; }
+  /* A shell fills its container, its `data-fill` child (or scroller)
+     takes what the others leave, and it is an inline-size container, so
+     a component's own `@container` rules read it with no declaration. */
+  :where([data-layout=shell]) { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--layout-gap); container-type: inline-size; }
+  :where([data-layout=scroll]) { display: flex; flex-direction: column; gap: var(--layout-gap); overflow-y: auto; overscroll-behavior: contain; min-block-size: 0; }
+  /* Children are placed by their own mark, never by position, so no rule
+     here is a candidate for an element that carries none. */
+  :where([data-layout] > [data-fill], [data-layout] > [data-layout=scroll]) { flex: 1 1 0; min-block-size: 0; min-inline-size: 0; }
+  :where([data-layout=sidebar] > [data-side]) { flex: 1 1 var(--layout-sidebar-width); }
+  :where([data-layout=sidebar] > [data-fill]) { flex: 999 1 0; min-inline-size: var(--layout-sidebar-content-min); }
+  :where([data-layout=switcher] > [data-fill]) { flex: 1 1 calc((var(--layout-switch-at) - 100%) * 999); }
+  /* An overlay lays its `data-anchor` children over itself, each at a
+     corner, an edge, its middle, or across it. A sidebar's side is its
+     `data-side` child and the rest its `data-fill` child; a switcher's
+     children that share its row are `data-fill`. */
+  :where([data-layout=overlay]) { position: relative; }
+  :where([data-anchor]) { position: absolute; }
+  :where([data-anchor=fill]) { inset: 0; }
+  :where([data-anchor=top-start]) { top: var(--layout-anchor-inset); left: var(--layout-anchor-inset); }
+  :where([data-anchor=top-end]) { top: var(--layout-anchor-inset); right: var(--layout-anchor-inset); }
+  :where([data-anchor=bottom-start]) { bottom: var(--layout-anchor-inset); left: var(--layout-anchor-inset); }
+  :where([data-anchor=bottom-end]) { bottom: var(--layout-anchor-inset); right: var(--layout-anchor-inset); }
+  :where([data-anchor=top]) { top: var(--layout-anchor-inset); left: 0; right: 0; display: flex; justify-content: center; }
+  :where([data-anchor=bottom]) { bottom: var(--layout-anchor-inset); left: 0; right: 0; display: flex; justify-content: center; }
+  :where([data-anchor=center]) { inset: 0; display: flex; align-items: center; justify-content: center; }
+  /* The gap scale, densest first; a pack (or a subtree's own value)
+     tightens a whole HUD by setting its steps. */
+  :where([data-layout][data-gap=none]) { gap: 0; }
+  :where([data-layout][data-gap=hair]) { gap: var(--layout-gap-hair); }
+  :where([data-layout][data-gap=tight]) { gap: var(--layout-gap-tight); }
+  :where([data-layout][data-gap=loose]) { gap: var(--layout-gap-loose); }
+  :where([data-layout][data-gap=wide]) { gap: var(--layout-gap-wide); }
   /* A phone on its side: bands and titles one step down. */
   @media (height < 500px) {
     :where([part$=".band"]) { min-height: var(--band-small-height); padding-top: 0; padding-bottom: 0; }

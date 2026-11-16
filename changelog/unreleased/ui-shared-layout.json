@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Shared layout primitives",
+      "summary": "The default style has layout primitives, after Every Layout, that every document can use and a style pack retunes through tokens. data-layout asks for a stack, row, cluster, sidebar, switcher, grid, cover, center, ratio, shell, scroll list or overlay (its children placed with data-anchor), and data-gap (none, hair, tight, loose, wide) spaces the children by a step of the layout scale (--layout-gap-*). Sidebar, switcher and grid wrap by their own container's width (the grid is repeat(auto-fill, minmax(--layout-tile, 1fr))), and a shell is the container a component's @container rules read. CardCollection, Friends and EmptyState use them."
+    }
+  ]
+}

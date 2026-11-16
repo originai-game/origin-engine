@@ -159,6 +159,21 @@ may read only a role token or reset (`none`, `0`, `inherit`); og-ui's
 documents written before the rule carry their remaining count in
 `crates/og-ui/tests/component_look_backlog.tsv`, which only shrinks.
 
+Its layout comes from the style too where a shared shape fits: an element
+asks for a primitive with `data-layout` (`stack`, `row`, `cluster`,
+`sidebar`, `switcher`, `grid`, `cover`, `center`, `ratio`, `shell`,
+`scroll`, `overlay`) and spaces its children by a step, `data-gap`
+(`none`, `hair`, `tight`, `loose`, `wide`; the default between tight and
+loose), never by a size (docs/ui.md §3.1 Role parts). A child marks its
+place with `data-side` (a sidebar's side), `data-fill` (takes the rest; a
+sidebar's main part, a switcher's shared children),
+`data-principal` (a cover's middle) or `data-anchor` (an overlay's
+corner, edge, centre or `fill`). The primitives wrap by their container's
+width, so a component works in a sidebar and full width; a `shell` root is
+the container its own `@container` rules read. What stays in the
+component's `<style>` is only its own: a grid template, positions, sizes
+in tokens.
+
 Adding, renaming or removing a component file, or changing what one
 includes (its strings tables, shared pieces), changes the generated
 `packages/engine/src/ui/manifest.json`: run `og api gen` and commit it in

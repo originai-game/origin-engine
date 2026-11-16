@@ -516,7 +516,10 @@ engine differs or limits as follows:
   item without `flex` properties is CSS's `flex: 0 1 auto`: it does not
   grow, and shrinks with its siblings when the line overflows. `order`
   keeps the document's reading order.
-- **Grid.** One `repeat(auto-fill | auto-fit, …)` of fixed sizes per axis.
+- **Grid.** One `repeat(auto-fill | auto-fit, …)` per axis, of fixed
+  sizes or `minmax(<fixed>, <flexible>)` (`repeat(auto-fill, minmax(140px,
+  1fr))`). A track size is a length, a percentage, `fr`, a content keyword,
+  `minmax()` or `fit-content()`; `calc()`, `min()` and `max()` there fail.
   A masonry item keeps the width of the track it is first given.
 
 #### Borders, shadows, outlines and overflow
@@ -1583,6 +1586,33 @@ pack's (`og-pack`) replaces the default style's (`og-default`), and a
 document's own keyframes of a name replace both. Under reduced motion
 every `data-motion` but `spin` stops. A built-in component defines no
 `@keyframes` of its own and names no keyframes in an `animation`. The role rules sit in `:where()`, so any pack or document rule wins.
+Layout is the style's as well. An element asks for a shape by meaning with
+`data-layout`, the primitives of Every Layout: `stack` (a column),
+`row` (a line, centred across), `cluster` (a wrapping line), `sidebar`
+(its `data-side` child `--layout-sidebar-width` wide beside its
+`data-fill` child, stacked once that would be under
+`--layout-sidebar-content-min`), `switcher` (its `data-fill` children in
+one row while it is at least `--layout-switch-at` wide, stacked below), `grid` (tiles at least
+`--layout-tile` wide, `repeat(auto-fill, minmax(…, 1fr))`), `cover`
+(centred in its height, a `data-principal` child in the middle), `center`
+(kept to `--layout-measure`), `ratio` (an `--layout-ratio` frame its image
+covers), `shell` (header, body, footer filling its container, which is an
+`inline-size` container), `scroll` (a column that scrolls, contained) and
+`overlay` (its `data-anchor` children laid over it at `top-start`,
+`top-end`, `bottom-start`, `bottom-end`, `top`, `bottom`, `center` or
+`fill`, `--layout-anchor-inset` in). A `data-fill` child of a primitive (and
+a `scroll`) takes the room the others leave. A child is placed by its own
+mark, never by its position, so a primitive's rules are candidates only for
+the elements that carry one. Children are spaced by a step
+of the layout scale, `data-gap` `none`, `hair`, `tight`, `loose` or
+`wide` (none given: `--layout-gap`, between tight and loose), never by a
+size, so a pack (or one
+subtree's own values) makes a whole HUD denser by setting the steps. The
+primitives answer their own container, not the viewport: a sidebar,
+switcher and grid wrap by their container's width with no query, and a
+component's own `@container` rules read its shell. A built-in
+component's `<style>` keeps only what is its own: its grid template, its
+positions and its sizes in tokens.
 A part named for what it shows declares its role with a part list, as in
 HTML: `part="ArenaRoster.portrait ArenaRoster.picture"` is reached by
 `::part()` under either name, by its document's `[part~="ArenaRoster.portrait"]`,
@@ -1615,6 +1645,7 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 | `tab` | the core tabs' `--tabs-tab-fill/hover-fill/selected-fill/ink/selected-ink`, `--tabs-font/tracking/transform` | hover, selected |
 | any part | `--trend-up/down`, `--tone-damage/heal/crit/success/danger/warn/info` | `data-trend`, `data-tone` |
 | any part, motion | `--change-motion`, `--cell-pressed-scale`, `--enter/exit/pop/stamp/beat/pulse/spin/ping/shimmer-motion`, `--pulse-opacity` | hover, pressed, selected (row, cell, card, tab, badge); `data-motion` |
+| `data-layout`, `data-gap` | `--layout-gap`, `--layout-gap-hair/tight/loose/wide`, `--layout-sidebar-width/sidebar-content-min/switch-at/tile/measure/ratio/anchor-inset` | `data-side`, `data-principal`, `data-fill`, `data-anchor` on a child |
 | any role part | `--team1`, `--team2` | `data-team=a` and `data-team=b`: the team's colour as its ink and rim |
 
 `--mark-*` are the small signs a pack supplies as images and `--sfx-*`

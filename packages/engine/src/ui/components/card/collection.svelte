@@ -25,11 +25,11 @@
   it is. The core DataGrid is a table of text rows, so the cards are a
   grid of their own.
 -->
-<section id="CardCollection" part="CardCollection.frame" aria-label={title || t("card.collection.cards")}>
+<section id="CardCollection" part="CardCollection.frame" data-layout="shell" aria-label={title || t("card.collection.cards")}>
   {#if title}<header part="CardCollection.band"><h2 part="CardCollection.title">{title}</h2></header>{/if}
   {#if filters.length}<div class="filters" role="tablist" aria-label={t("card.collection.filters")} ontabNext={tabNext} ontabPrev={tabPrev}>
     <div class="filters-scroll">
-      <div class="filters-row">
+      <div class="filters-row" data-layout="row" data-gap="tight">
         {#each filters as f (f.id)}
           <button part="CardCollection.filter CardCollection.cell" variant="quiet" role="tab" aria-selected={f.id == filter} onclick={choosefilter}>{f.label}</button>
         {/each}
@@ -37,21 +37,21 @@
     </div>
   </div>{/if}
   {#if cards.length}
-    <div class="grid-scroll">
-      <div class="grid" role="grid" aria-label={title || t("card.collection.cards")}>
+    <div class="grid-scroll" data-layout="scroll">
+      <div class="grid" data-layout="grid" data-gap="loose" role="grid" aria-label={title || t("card.collection.cards")}>
         {#each cards as c (c.id)}
           {#if c.canAdd}
-            <button part="CardCollection.cell" role="gridcell" data-type={c.type} data-rarity={c.rarity} data-can-add={c.canAdd} data-locked={c.locked} data-in-deck={c.inDeck > 0} aria-selected={c.id == selected} aria-label={c.name} aria-description={c.text} onclick={add} ondetails={inspect}><div class="cell-face">
-              <div class="face"><CardFace name={c.name} cost={c.cost} icon={c.icon} art={c.art} type={c.type} typeLabel={c.typeLabel} rarity={c.rarity} text={c.text} /></div>
-              <div class="badges">
+            <button part="CardCollection.cell" role="gridcell" data-type={c.type} data-rarity={c.rarity} data-can-add={c.canAdd} data-locked={c.locked} data-in-deck={c.inDeck > 0} aria-selected={c.id == selected} aria-label={c.name} aria-description={c.text} onclick={add} ondetails={inspect}><div class="cell-face" data-layout="stack" data-gap="none">
+              <div class="face" data-fill><CardFace name={c.name} cost={c.cost} icon={c.icon} art={c.art} type={c.type} typeLabel={c.typeLabel} rarity={c.rarity} text={c.text} /></div>
+              <div class="badges" data-layout="cluster" data-gap="hair">
                 {#if c.owned > 1}<span part="CardCollection.badge" class="owned">{t("card.collection.owned", { count: c.owned })}</span>{/if}
                 {#if c.inDeck > 0}<span part="CardCollection.badge" class="in-deck">{t("card.collection.inDeck", { count: c.inDeck })}</span>{/if}
               </div>
             </div></button>
           {:else}
-            <button part="CardCollection.cell" role="gridcell" data-type={c.type} data-rarity={c.rarity} data-can-add={c.canAdd} data-locked={c.locked} data-in-deck={c.inDeck > 0} aria-selected={c.id == selected} aria-label={c.name} aria-description={c.reason || (c.locked ? t("card.collection.locked") : t("card.collection.refused"))} onclick={inspect} ondetails={inspect}><div class="cell-face">
-              <div class="face"><CardFace name={c.name} cost={c.cost} icon={c.icon} art={c.art} type={c.type} typeLabel={c.typeLabel} rarity={c.rarity} text={c.text} /></div>
-              <div class="badges">
+            <button part="CardCollection.cell" role="gridcell" data-type={c.type} data-rarity={c.rarity} data-can-add={c.canAdd} data-locked={c.locked} data-in-deck={c.inDeck > 0} aria-selected={c.id == selected} aria-label={c.name} aria-description={c.reason || (c.locked ? t("card.collection.locked") : t("card.collection.refused"))} onclick={inspect} ondetails={inspect}><div class="cell-face" data-layout="stack" data-gap="none">
+              <div class="face" data-fill><CardFace name={c.name} cost={c.cost} icon={c.icon} art={c.art} type={c.type} typeLabel={c.typeLabel} rarity={c.rarity} text={c.text} /></div>
+              <div class="badges" data-layout="cluster" data-gap="hair">
                 {#if c.owned > 1}<span part="CardCollection.badge" class="owned">{t("card.collection.owned", { count: c.owned })}</span>{/if}
                 {#if c.inDeck > 0}<span part="CardCollection.badge" class="in-deck">{t("card.collection.inDeck", { count: c.inDeck })}</span>{/if}
               </div>
@@ -62,30 +62,25 @@
       </div>
     </div>
   {:else}
-    <div class="empty" role="status"><p class="empty-text">{empty || t("card.collection.empty")}</p></div>
+    <div class="empty" data-layout="cover" data-fill role="status"><p class="empty-text">{empty || t("card.collection.empty")}</p></div>
   {/if}
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-sm); container-type: inline-size; }
 [part="CardCollection.band"] { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
 [part="CardCollection.title"] { margin: 0; }
 .filters { display: flex; width: stretch; flex: none; }
 .filters-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; min-width: 0; }
-.filters-row { display: flex; gap: var(--space-xs); }
 [part="CardCollection.filter CardCollection.cell"] { flex: none; min-height: var(--size-touch); padding: 0 var(--space-md); }
-.grid-scroll { flex: 1; min-height: 0; overflow-y: auto; }
-.grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-md); width: stretch; padding: var(--space-xs); }
+/* A card is at least the tile wide: five to a desktop panel, two on a phone. */
+.grid { --layout-tile: var(--size-3xl); width: stretch; padding: var(--space-xs); }
 [part="CardCollection.cell"] { width: stretch; aspect-ratio: 0.7; padding: 0; align-items: stretch; justify-content: stretch; min-width: 0; }
-.cell-face { position: relative; display: flex; flex-direction: column; width: stretch; height: stretch; }
-.face { flex: 1; min-height: 0; }
+.cell-face { position: relative; width: stretch; height: stretch; }
 /* Counts have their own footer, never laid over art or rules. */
-.badges { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-xxs); padding: var(--space-xxs); }
+.badges { justify-content: center; padding: var(--space-xxs); }
 [part="CardCollection.badge"] { padding: 0 var(--space-xs); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .state { position: absolute; inset-inline-end: var(--space-xxs); top: var(--space-xxs); display: flex; width: var(--size-sm); height: var(--size-sm); padding: 0; align-items: center; justify-content: center; }
 .state og-icon { width: 70%; height: 70%; }
-.empty { display: flex; width: stretch; flex: 1; align-items: center; justify-content: center; }
+.empty { width: stretch; }
 .empty-text { margin: 0; }
-@container (width < 720px) { .grid { grid-template-columns: repeat(4, 1fr); gap: var(--space-sm); } }
-@container (width < 520px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>

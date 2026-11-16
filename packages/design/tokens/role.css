@@ -214,6 +214,26 @@
   --role-ping-motion: og-ping var(--motion-duration-ping) var(--motion-easing-out) infinite;
   --role-shimmer-motion: og-shimmer var(--motion-duration-sweep) var(--motion-easing-in-out) infinite;
 
+  /* Layout: the primitives' (`data-layout`) sizes. The gap scale runs
+     hair < tight < gap < loose < wide; a denser HUD is these steps set
+     smaller. A sidebar's side is `sidebar-width` wide until its content
+     would be under `sidebar-content-min`; a switcher lays its children in
+     one row while its container is at least `switch-at` wide; a grid's
+     tiles are at least `tile` wide; a centre keeps to `measure`; a ratio
+     frame holds `ratio`; an anchor sits `anchor-inset` from its edges. */
+  --role-layout-gap: var(--space-sm);
+  --role-layout-gap-hair: var(--space-xxs);
+  --role-layout-gap-tight: var(--space-xs);
+  --role-layout-gap-loose: var(--space-md);
+  --role-layout-gap-wide: var(--space-lg);
+  --role-layout-sidebar-width: 220px;
+  --role-layout-sidebar-content-min: 50%;
+  --role-layout-switch-at: 420px;
+  --role-layout-tile: 140px;
+  --role-layout-measure: var(--measure-lg);
+  --role-layout-ratio: 16 / 9;
+  --role-layout-anchor-inset: var(--space-xs);
+
   /* Marks: small drawn signs a pack supplies as images (none by default,
      where a component's own icon shows). */
   --role-mark-diamond: none;

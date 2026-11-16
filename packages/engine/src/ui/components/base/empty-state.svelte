@@ -13,7 +13,7 @@
 <meta name="fixture:disabled" content='{"title":"No saved builds","body":"Finish the tutorial before saving a build.","actionLabel":"Save build","disabled":true}'>
 <meta name="fixture:overflow" content='{"title":"No discoveries in the northern reaches of the Sunken Kingdom","body":"Explore the coast and investigate the old watchtowers to add discoveries to this collection.","hint":"Progress is shared across every character on your account.","actionLabel":"Return to the world map and choose a destination"}'>
 
-<section id="EmptyState" part="EmptyState.frame" role="status" aria-label={title || t("base.empty.title")}>
+<section id="EmptyState" part="EmptyState.frame" data-layout="stack" role="status" aria-label={title || t("base.empty.title")}>
   {#if icon}<og-icon part="EmptyState.mark" class="mark" icon={icon}></og-icon>{/if}
   <h3 part="EmptyState.title">{title || t("base.empty.title")}</h3>
   {#if body}<p part="EmptyState.body" class="body">{body}</p>{/if}
@@ -22,7 +22,7 @@
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); padding: var(--space-xl); text-align: center; }
+:host { align-items: center; padding: var(--space-xl); text-align: center; }
 .mark { inline-size: var(--size-lg); block-size: var(--size-lg); color: var(--ink-muted); }
 [part="EmptyState.title"] { margin: 0; font: var(--text-lg); }
 .body, .hint { margin: 0; align-self: center; max-inline-size: var(--measure-lg); text-align: center; overflow-wrap: anywhere; }
