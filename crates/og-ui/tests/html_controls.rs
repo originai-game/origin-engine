@@ -654,3 +654,108 @@ dialog::backdrop {{ {backdrop} }}
         Srgba::rgb(255, 0, 0).linear()
     );
 }
+
+/// A customizable select (`appearance: base-select`, HTML's customizable
+/// `<select>`) builds from its own children. Its `<button>` is the trigger,
+/// and its `<selectedcontent>` shows the chosen option's content, rich
+/// content included. A press opens `::picker(select)` under the select,
+/// holding the options, and the select matches `:open` while it is.
+/// The chosen option matches `:checked`, a disabled one `:disabled`, and
+/// pressing a disabled option does nothing. Pressing an enabled one writes
+/// its value to the binding, fires the change and closes the picker; a
+/// press outside closes it without a change. A select with no button
+/// shows the chosen option's label, and with no binding keeps the
+/// player's choice as its own.
+///
+/// Ways it could fail: the native dropdown drawn instead; the picker
+/// open from the start or not anchored below its select; the label
+/// written back instead of the value; a disabled option chosen; the
+/// trigger still showing the old option; `:checked` staying on the old
+/// option; light dismiss writing a value; an unbound select losing the
+/// choice.
+#[test]
+fn a_base_select_builds_its_trigger_picker_and_options_from_its_children() {
+    use og_core::glam::Vec2;
+    let doc = r#"<meta name="component" content="bs">
+<column id="Root">
+  <select id="S" bind:value={$pick}>
+    <button id="Trig"><selectedcontent id="Shown"></selectedcontent></button>
+    <option id="A" value="a"><b>alpha</b> one</option>
+    <option id="B" value="b" disabled>beta</option>
+    <option id="C" value="c">gamma</option>
+  </select>
+  <select id="U">
+    <option id="X">first</option>
+    <option id="Y" selected>second</option>
+  </select>
+  <p id="Away">away</p>
+</column>
+<style>
+select { appearance: base-select; width: 100px; height: 30px; }
+select:open { margin-left: 7px; }
+option { width: 40px; height: 20px; }
+option:checked { width: 60px; }
+option:disabled { width: 30px; }
+</style>"#;
+    let mut d = support::Doc::new(doc, &[("pick", json!("c"))]);
+    let texts = |d: &support::Doc, under: &str| -> Vec<String> {
+        d.ui.probe_elements()
+            .into_iter()
+            .filter(|e| e.path.contains(&format!("/{under}/")) && !e.text.is_empty())
+            .map(|e| e.text)
+            .collect()
+    };
+    let x0 = d.get("S").x;
+    assert!(d.el("A").is_none(), "the picker starts closed");
+    assert_eq!(texts(&d, "Shown"), ["gamma"], "the bound option's content");
+    assert_eq!(texts(&d, "U"), ["second"], "<option selected>'s label");
+
+    d.click("S");
+    let s = d.get("S");
+    assert_eq!(s.x, x0 + 7.0, "select:open");
+    let (a, b, c) = (d.get("A"), d.get("B"), d.get("C"));
+    assert!(
+        a.y >= s.y + s.height - 0.5 && a.y < s.y + s.height + 30.0,
+        "{a:?} under {s:?}"
+    );
+    assert!(b.y > a.y && c.y > b.y, "options in order");
+    assert_eq!(
+        (a.width, b.width, c.width),
+        (40.0, 30.0, 60.0),
+        ":checked, :disabled"
+    );
+
+    // A disabled option takes no press.
+    let events = d.click("B");
+    assert!(!events.iter().any(|e| e.kind == "changed"), "{events:?}");
+    assert_eq!(d.read("pick"), json!("c"));
+    assert!(d.el("A").is_some(), "still open");
+
+    let events = d.click("A");
+    assert_eq!(d.read("pick"), json!("a"), "the value, not the label");
+    assert!(events.iter().any(|e| e.kind == "changed"), "{events:?}");
+    assert!(d.el("A").is_none(), "a choice closes the picker");
+    assert_eq!(d.get("S").x, x0, "no longer :open");
+    assert_eq!(
+        texts(&d, "Shown"),
+        ["alpha one"],
+        "the chosen option's rich content"
+    );
+
+    d.click("S");
+    assert_eq!(
+        (d.get("A").width, d.get("C").width),
+        (60.0, 40.0),
+        ":checked moved"
+    );
+    let away = d.get("Away");
+    d.click_at(Vec2::new(away.x + away.width + 50.0, away.y + 2.0));
+    assert!(d.el("A").is_none(), "a press outside closes it");
+    assert_eq!(d.read("pick"), json!("a"));
+
+    // Unbound, with no button: its own value, shown as the chosen label.
+    d.click("U");
+    d.click("X");
+    assert!(d.el("X").is_none());
+    assert_eq!(texts(&d, "U"), ["first"]);
+}
