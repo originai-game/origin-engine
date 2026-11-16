@@ -47,8 +47,9 @@ pub fn selector_facts(
 }
 
 impl crate::ui::Docs {
-    /// A `<li>`'s number when its marker shows one: `count` reads it from
-    /// the mounted tree.
+    /// A `<li>`'s number when its marker shows one or its generated content
+    /// may read the implicit `list-item` counter: `count` reads it from the
+    /// mounted tree.
     pub fn ordinal_of(
         &self,
         n: &DocNode,
@@ -58,7 +59,8 @@ impl crate::ui::Docs {
         let profile = &self.library.structure;
         (profile.ordinals
             && n.selector_tag.as_deref() == Some("li")
-            && r.str("markerType").is_some_and(crate::doc::lists::numbered))
+            && (r.str("markerType").is_some_and(crate::doc::lists::numbered)
+                || r.generated.as_ref().is_some_and(|g| g.uses_run())))
         .then(|| count(&crate::doc::lists::items(), profile.item_values))
     }
 }

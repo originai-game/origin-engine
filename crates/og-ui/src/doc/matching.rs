@@ -848,7 +848,11 @@ impl Profile {
                 .iter()
                 .any(|n| n.selector_tag.as_deref() == Some(t))
         };
-        if tag("li") && (tag("ol") || document.text.contains("list-style")) {
+        if tag("li")
+            && (tag("ol")
+                || document.text.contains("list-style")
+                || document.text.contains("list-item"))
+        {
             profile.any = true;
             profile.ordinals = true;
             let items = super::lists::items();

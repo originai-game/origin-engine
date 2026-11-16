@@ -162,13 +162,15 @@ h3::before { content: counter(sec, upper-roman) ". "; }
 /// x, y, xx (bijective base 2); numeric 0 1 is 1, 10, 11 (binary);
 /// symbolic * + is *, +, ** (through the `list-style` shorthand). A
 /// string is the marker as written. An
-/// `@counter-style` name draws its own symbols. In `counter()` a `fixed` style past its symbols falls back to
+/// `@counter-style` name draws its own symbols, also through `::marker`'s
+/// `counter(list-item, …)` in a `<ul>`, whose items count 1, 2, 3 there
+/// too. In `counter()` a `fixed` style past its symbols falls back to
 /// `decimal`. The drawn marker leaves out its suffix's trailing space,
 /// which its gap stands for.
 ///
 /// Ways it could fail: `symbols()` refused or drawn as `decimal`, its
 /// suffix taken as `. ` (`*.`), a wrong default system, the string
-/// drawn with quotes.
+/// drawn with quotes, or `list-item` read as 0 in a `<ul>` (B, B, B).
 #[test]
 fn list_style_types_take_counter_styles_symbols_and_strings() {
     let d = doc(
@@ -203,6 +205,26 @@ fn list_style_types_take_counter_styles_symbols_and_strings() {
     assert_eq!(d.markers("Str"), ["→", "→"]);
     assert_eq!(d.markers("Short"), ["–\u{a0}"]);
     assert_eq!(drawn(&d, "P"), "*311 x");
+    // A `<ul>` alone: no `<ol>` or `list-style` makes its items count.
+    let d = doc(
+        r#"<ul id="U"><li>a</li><li>b</li><li>c</li></ul>"#,
+        r#"@counter-style thumbs { system: cyclic; symbols: "A" "B"; }
+li::marker { content: counter(list-item, thumbs); color: #ff0000; }"#,
+    );
+    assert_eq!(d.markers("U"), ["A", "B", "A"]);
+    // `::marker`'s color inks the marker, not the item.
+    let ink = |want: &str| {
+        d.ui.frame()
+            .items
+            .iter()
+            .find_map(|it| match it.cmd.unstyled() {
+                DrawCmd::Text { text, color, .. } if text == want => Some(*color),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("no {want}"))
+    };
+    assert!(near(ink("B"), Srgba::rgb(255, 0, 0)));
+    assert!(!near(ink("b"), Srgba::rgb(255, 0, 0)));
     for bad in ["symbols(alphabetic \"x\")", "symbols()", "12px", "thumbs thumbs"] {
         let errors = UiDocument::parse(
             "ui/t.svelte",
