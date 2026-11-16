@@ -327,10 +327,19 @@ impl Condition {
                 "@container {prelude}: a container name is followed by its condition; media types and `{first}` after it are not container syntax"
             ));
         }
+        // A name alone queries nothing: the rule applies when an ancestor
+        // container has the name (CSS Conditional 5 §6.1).
         if rest.trim().is_empty() {
-            return Err(format!(
-                "@container {prelude}: needs a size condition, for example (width > 400px)"
-            ));
+            if name.is_none() {
+                return Err(
+                    "@container needs a container name or a condition, for example (width > 400px)"
+                        .into(),
+                );
+            }
+            return Ok(Self {
+                name,
+                query: Query::All,
+            });
         }
         Ok(Self {
             name,
@@ -349,7 +358,7 @@ impl Condition {
             Feature::Height(..) => n.height = true,
             Feature::InlineSize(..) => n.inline = true,
             Feature::ScrollState { .. } => n.scroll = true,
-            Feature::Style(..) => {}
+            Feature::Style(..) | Feature::StyleRange(..) => {}
             _ => n.both = true,
         });
         n
@@ -405,16 +414,39 @@ impl Condition {
             height,
             ..Context::default()
         };
+        let property = |name: &String, read: &mut Read| {
+            let entry = container.map_or_else(|| name.clone(), |c| style_entry(c.key, name));
+            let actual = probe.inherited.get(&entry).cloned().flatten();
+            read.inherited.insert(entry);
+            actual
+        };
         self.query.test(&mut |feature| match feature {
-            Feature::Style(name, value) => {
-                let entry = container.map_or_else(|| name.clone(), |c| style_entry(c.key, name));
-                let actual = probe.inherited.get(&entry).cloned().flatten();
-                read.inherited.insert(entry);
-                match (value, actual) {
-                    (_, None) => false,
-                    (None, Some(_)) => true,
-                    (Some(v), Some(a)) => super::media::normalize(&a) == *v,
-                }
+            Feature::Style(name, value) => match (value, property(name, read)) {
+                (_, None) => false,
+                (None, Some(_)) => true,
+                (Some(v), Some(a)) => super::media::normalize(&a) == *v,
+            },
+            // Each side is a property's value or a literal; sides that are
+            // not numbers of one type compare false.
+            Feature::StyleRange(operands, comparisons) => {
+                let values: Option<Vec<_>> = operands
+                    .iter()
+                    .map(|o| {
+                        let text = if o.starts_with("--") {
+                            property(o, read)?
+                        } else {
+                            o.clone()
+                        };
+                        super::media::range_value(&text)
+                    })
+                    .collect();
+                values.is_some_and(|v| {
+                    v.iter().all(|(_, unit)| *unit == v[0].1)
+                        && super::media::Comparison::chain(
+                            comparisons,
+                            &v.iter().map(|(n, _)| *n).collect::<Vec<_>>(),
+                        )
+                })
             }
             &Feature::ScrollState { group, bits } => {
                 if bits == 0 {
@@ -592,7 +624,7 @@ mod tests {
             ("(prefers-reduced-motion)", "unsupported container feature"),
             ("screen and (width > 1px)", "not container syntax"),
             ("none (width > 1px)", "reserved"),
-            ("card", "needs a size condition"),
+            ("", "needs a container name or a condition"),
             ("(width > 10cqw)", "unsupported media length unit cqw"),
             (
                 "scroll-state(sticky: top)",
