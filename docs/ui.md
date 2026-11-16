@@ -11,16 +11,23 @@ and limits; what the parser does not support it refuses by name (§7).
 
 | Owner | Responsibility | Boundary |
 | --- | --- | --- |
-| Core | Elements, layout, drawing, controls, documents, layers, focus, gestures, motion, text, accessibility, semantic tokens, and public composition helpers | One control set and one API on native and web |
-| Built-in components (core) | Component documents by group (`rpg/`, `shooter/`…) and screen documents, built into the engine under `@ui/`: presentation composed from core controls, named parts, typed inputs, and returned intents | No gameplay rules, literal visual values, private engine imports, or second widget toolkit |
-| Style pack | Palette, typography, spacing, shape, dressings, art, icons, motion, sound, and haptic definitions, as `:root` tokens and `var()` part rules | No gameplay code or domain state |
+| Core (og-ui) | Capabilities: elements, layout, drawing, documents, layers, focus and navigation, gestures, scrolling, text editing, motion, text, accessibility roles, semantic tokens, and each control element's value, binding and behaviour | Draws no control's look and composes no control; one API on native and web |
+| Built-in library | Svelte documents built into the engine under `@ui/`: the control documents (`controls/`, each HTML control's inside, §2.4), the component documents by group (`rpg/`, `shooter/`…) and the screen documents: presentation composed from the controls, named parts, typed inputs, and returned intents | No gameplay rules, literal visual values or private engine imports; one document per control, and no second control for a role HTML names |
+| Style pack | Palette, typography, spacing, shape, dressings, art, icons, motion, sound, and haptic definitions, as `:root` tokens and `var()` part rules. Chosen when the game is created, or written for that game | No gameplay code or domain state; not switched while a game runs |
 | Game | Content, rules, world state, domain validation, and applying UI intents | Owns its screens and chosen style assets |
 | Platform | Accounts, money, publishing, threads, agent orchestration, and engine version selection | Consumes released archives and the public host ABI, never engine internals |
 
 The renderer owns the UI pass. `og-ui` owns layout, documents, interaction,
-and style interpretation. `packages/engine/src/ui/` composes the public
-controls. The public TypeScript API comes from `crates/og-api/api/` for
-both hosts. Game authors never need Rust.
+and style interpretation. `packages/engine/src/ui/` holds the library:
+`controls/`, `components/` and `screens/`. The public TypeScript API comes
+from `crates/og-api/api/` for both hosts. Game authors never need Rust.
+
+The library exists so that a game's author takes a finished piece instead
+of drawing one. Its bar is a polished look in the default style; how a
+piece looks in one game is that game's art, decided when the game is
+created, through its style pack's tokens and part rules (§3). A common
+game UI need with no built-in is a gap in the library, closed by adding
+the document, never by a hand-rolled copy inside another built-in.
 
 Screen UI, world anchors, world panels, and embedded camera views use the
 same element model. Backend limits are capability queries, not separate
@@ -669,11 +676,15 @@ module globals: two worlds cannot share selection, reordering or removing
 data cannot select a different object, and snapshots keep what an
 interaction needs to resume.
 
-Core owns buttons, fields, toggles, tabs, sliders, menus, selection,
-drag-and-drop, scrolling, focus, and keyboard and gamepad navigation;
-components compose them rather than draw substitutes. Generic meters,
-counters, timers, slots, lists, grids, tables, charts, tooltips, cards,
-rewards, confirmations, and node graphs stay in core. Domain names do not
+A control is its HTML element (§2.4): og-ui holds the element's value,
+binding, role, focus and behaviour, and the element's inside is a control
+document of the library. Selection, drag-and-drop, scrolling, focus, and
+keyboard and gamepad navigation are og-ui capabilities any element takes
+by attribute or CSS. Components compose the control elements rather than
+draw substitutes: a strip of buttons is not tabs, and a `<div>` with a
+width is not a `<progress>`. Generic meters, counters, timers, slots,
+lists, grids, tables, charts, tooltips, cards, rewards, confirmations,
+and node graphs are ungrouped library documents. Domain names do not
 justify duplicate controls.
 
 ### 2.1 Retained authoring model
@@ -1219,10 +1230,61 @@ of each update must announce the same.
 {#each $alerts as a (a.id)}<text role="alert">{a.text}</text>{/each}
 ```
 
-### 2.4 Select, dialog, details and meter
+### 2.4 Controls and control documents
 
-These are core controls with HTML's elements and attributes; components
-and packs dress them and never draw substitutes.
+A control is HTML's element with HTML's attributes: `<input>`, `<select>`,
+`<progress>`, `<meter>`, `<details>`, `<dialog>` and the rest keep their
+tags, bindings, roles and keys, and a game's markup names no component
+for them. og-ui keeps what a document cannot express: the value and its
+binding, the role, focus, the behaviour and the element's states. The
+element's inside is a control document of the library
+(`packages/engine/src/ui/controls/`), instantiated under every element its
+selector matches, as a browser's user-agent shadow tree is. Components and
+packs dress controls and never draw substitutes.
+
+A control document is a component document that names its host in place
+of a component name: `<meta name="control" content="progress">`, a tag
+with optional attribute tests (`input[type=range]`). Of two that match an
+element, the one with more tests is its control. Its contract:
+
+- **Props read the host.** A declared prop reads the host's authored
+  attribute of its name, bound or literal (`bind:value` passes a writable
+  prop), else its default; an `any` prop is null while the attribute is
+  absent. A state og-ui derives for the host is a prop of the same kind
+  (`<meter>`'s `region`). A control document takes no content prop its
+  host's element does not have.
+- **`:host`.** `:host` and `:host(<compound>)` select the host element,
+  and a `:host` rule takes every property there: the control's default
+  size and display are its document's. `:host([value])` reads the
+  attribute a prop of that name reads, `:host(:hover)` the host's live
+  state; the state goes inside the parentheses. `:host(<compound>) .inner`
+  styles an element of the document by the host.
+- **Parts.** An element with `part="track"` is the host's
+  `::part(track)`, listed in the document's `<meta name="parts">`. A part
+  keeps its name for as long as the control exists; where CSS names the
+  box with a standard pseudo-element (`::backdrop`, `::details-content`,
+  `::picker(select)`, `::placeholder`, `::selection`) the control takes
+  the standard name alone.
+- **Rank.** The document's own rules style its elements at depth 0
+  (§3.2), in the `og-components` layer. A `::part()` rule of the default
+  style, a pack or the document the host stands in reaches a part at
+  depth +1 and wins over them; the document's `:host` rules reach the
+  host at depth -1 and lose to every rule written for the host where it
+  stands.
+- **Inheritance.** The host's custom properties and inherited properties
+  pass into the document, so a token set on a control reaches its parts.
+- **Values.** Its `<style>` reads tokens only (§3.1), as every built-in
+  document's does; the control's hook tokens (`--meter-*`, `--slider-*`)
+  are what a pack sets.
+- **Loading.** The cook bundles a control document when a game's
+  documents use its element, and a screen's load brings the controls its
+  elements need. `og ui eject controls/<name>` copies one into the game,
+  whose copy then is the control for that element everywhere.
+
+An element with no control document loaded is drawn by og-ui's own
+fallback for its kind while the controls move to documents
+([roadmap](roadmap.md)); the documents so far are `progress` and
+`meter`.
 
 `<select bind:value>` lists literal `<option>`s in at most one level of
 `<optgroup>`, valued by text when `value` is absent; `selected` and
@@ -1540,11 +1602,28 @@ The default style and a pack are adopted into every
 tree, so their rules rank there by layer: `og-default` < `og-components`
 (a built-in component's own `<style>`) < `og-pack` < `og-game` < a
 document's unlayered rules. A pack beats a built-in component's own rules
-and loses to a game's. A built-in control's parts are a shadow tree under
-its element. A `::part()` selector may read where that element stands in
-its document (`.shop button::part(base)`, `li:first-child >
-button::part(base)`), and three contexts rank a part's declarations, lowest
+and loses to a game's. A control's parts are a shadow tree under its
+element. Where the control has a control document (§2.4), a part is an
+element of that document and three depths rank its declarations, lowest
 first:
+
+1. on the host only, the control document's `:host` rules (depth -1);
+2. the control document's own rules for the part (depth 0, in
+   `og-components`);
+3. the `::part()` rules that reach it from outside (depth +1): the
+   style's and a pack's, then those of the document its host stands in.
+
+`revert-layer` in a rule rolls back the layers of that rule's own depth
+and then falls to the depth below, so a style's
+`progress::part(fill) { background: var(--progress-fill, revert-layer) }`
+leaves the control document's own fill where the token is unset. A
+`::part()` selector that reads where the host stands among its siblings
+or what it holds is not yet matched for a control document's part.
+
+A control og-ui still draws itself has part boxes instead. There a
+`::part()` selector may read where the element stands in its document
+(`.shop button::part(base)`, `li:first-child > button::part(base)`), and
+three contexts rank a part's declarations, lowest first:
 
 1. the style's `::part()` rules;
 2. the control's own box declarations (a `<button>`'s plate, below);
