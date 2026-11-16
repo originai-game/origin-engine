@@ -377,12 +377,6 @@ pub fn cook_project_with_texture_cache(
         texture_encoder.as_deref().unwrap_or("none")
     );
     let document_themes = vec![og_ui::Theme::default()];
-    let mut style_tokens_hash = StableHasher::new();
-    for source in sources.iter().filter(|s| s.kind == &ui_documents::STYLE) {
-        style_tokens_hash.write_str(&source.rel);
-        style_tokens_hash.write(&source.hash.to_le_bytes());
-    }
-    let style_tokens_hash = style_tokens_hash.finish().to_le_bytes();
     let cx = Cx {
         root,
         assets_dir,
@@ -401,7 +395,6 @@ pub fn cook_project_with_texture_cache(
         font_desc: &font_desc,
         budget_desc: &project.budget_desc,
         schema_hash,
-        style_tokens_hash,
         story_functions: &project.story_functions,
         story_functions_stamp: &project.story_functions_stamp,
         document_themes: &document_themes,

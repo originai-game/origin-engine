@@ -45,6 +45,48 @@ fn a_screen_cooks_to_a_document_blob() {
 }
 
 #[test]
+fn pack_edits_leave_document_blobs_cached() {
+    let root = project(
+        "pack-stamp",
+        &[
+            ("ui/shop.svelte", SCREEN),
+            ("styles/test/main.css", "button { opacity: 0.5; }"),
+        ],
+    );
+    let cook = || {
+        let report = cook_project(&root, &CookOptions::default()).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        (
+            bundle.output("ui/shop.svelte").unwrap().stamp,
+            bundle.output("styles/test").unwrap().stamp,
+        )
+    };
+    let before = cook();
+    std::fs::write(
+        root.join("assets/styles/test/main.css"),
+        "button { opacity: 0.8; }",
+    )
+    .unwrap();
+    let after = cook();
+    assert_eq!(
+        before.0, after.0,
+        "documents are not lowered against a pack at cook time"
+    );
+    assert_ne!(before.1, after.1, "the changed pack must recook");
+    std::fs::write(
+        root.join("assets/ui/shop.svelte"),
+        SCREEN.replace("Gold", "Coins"),
+    )
+    .unwrap();
+    assert_ne!(
+        after.0,
+        cook().0,
+        "a document's own source still invalidates it"
+    );
+}
+
+#[test]
 fn string_table_edits_recook_the_document_and_missing_tables_fail() {
     let source = format!("<meta name='strings' content='./shop.en.ogt'>\n{SCREEN}");
     let english = "type strings\nversion 1\n---\nlocale \"en\"\nstring \"shop.title\" \"Shop\"\n";

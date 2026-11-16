@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "Editing a style pack no longer recooks unrelated UI documents; document stamps still track their own sources, imported stylesheets and referenced files."
+  ]
+}

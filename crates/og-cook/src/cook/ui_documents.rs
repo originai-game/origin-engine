@@ -117,7 +117,6 @@ fn plan_document<'a>(
         options,
         sources,
         known,
-        style_tokens_hash,
         document_themes,
         components,
         frames,
@@ -208,12 +207,7 @@ fn plan_document<'a>(
     }
     let dependencies = dependencies.join("\n");
     assets::record_dependencies(parsed_refs, &s.rel, &dependencies);
-    let st = stamp(&[
-        b"svelte document 1",
-        &hash,
-        &style_tokens_hash,
-        dependencies.as_bytes(),
-    ]);
+    let st = stamp(&[b"svelte document 1", &hash, dependencies.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::Document::NAME,
