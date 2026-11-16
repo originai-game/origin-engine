@@ -200,7 +200,7 @@ fn a_version_12_state_upgrades_and_restores() {
     // before the layer stack.
     let u32_at =
         |b: &[u8], at: usize| u32::from_le_bytes(b[at..at + 4].try_into().unwrap()) as usize;
-    assert_eq!(u32_at(&now, 0), 24);
+    assert_eq!(u32_at(&now, 0), 25);
     let scrolls = u32_at(&now, 44);
     let hits_at = 48 + scrolls * 12;
     let hits = u32_at(&now, hits_at);
@@ -235,8 +235,9 @@ fn a_version_12_state_upgrades_and_restores() {
     // virtual cursor, no HUD layouts or targets), version 16's (4: no
     // touch control holding a finger), version 17's (12: no typed
     // letters), version 18's (4: no Rive players), version 20's (69:
-    // nothing selected) and version 24's (8: no touch press).
-    v12.extend_from_slice(&now[at..docs - 61 - 122 - 4 - 12 - 4 - 69 - 8]);
+    // nothing selected), version 24's (8: no touch press) and version
+    // 25's (1: no drag axis).
+    v12.extend_from_slice(&now[at..docs - 61 - 122 - 4 - 12 - 4 - 69 - 8 - 1]);
     v12.extend_from_slice(&now[docs..]);
     assert_eq!(owners, 2, "both items had the grid as their owner");
 

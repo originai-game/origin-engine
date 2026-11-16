@@ -279,6 +279,8 @@ proof("appearance", "control_props", "dialogs_close_as_closedby_says",
 not_applicable("autofill", "og's fields are engine-drawn; no browser or OS autofill fills them, so there is no autofilled state to style.")
 proof("caret-shape", "css_paint", "caret_shape_draws_a_bar_block_or_underscore_over_the_next_character",
       "A focused 20px field with its caret before \"i\": bar and auto draw the same thin bar at the insertion point; block is the bar's full height and exactly the font's advance of \"i\" wide, starting at the bar and drawn before the text; underscore is that advance wide, at most 1px thick, its bottom on the bar's bottom, drawn after the text. At the end of the text both take 1ch (the advance of \"0\") at the bar's position. The shape inherits from a column. Text areas, right-to-left text and the caret shorthand are not covered; the block does not recolour the character it covers.")
+proof("scroll-axis-lock", "css_interact", "scroll_axis_lock_keeps_a_drag_to_the_axis_it_starts_along",
+      "Scroll offsets of a 200px scroller over 1000x1000 content, read while the drag is held: a first move 40 across and 19 down scrolls 40, 0 and one 19 across and 40 down 0, 40 (within a 2:1 slope the other axis is dropped); 40 by 21 moves both; a drag locked to x by its first move and then turned 50px down never moves y; the next press decides afresh; scroll-axis-lock: none follows every drag and the turn. Mouse drags only (a touch drag takes the same path after touch-action); the wheel and two-finger pans are not locked.")
 proof("scroll-initial-target", "css_interact", "a_scroller_starts_at_its_initial_target",
       "In a 100px scroller of 40px rows, the first scroll-initial-target: nearest row at 200px, with a 10px scroll-margin-top and the container's 5px scroll-padding-top, gives an offset of exactly 185 on the container's first frame, the row drawn 15px into the view; a later target loses; one near the end clamps to the 300px range; a target added to a container already shown leaves it at 0. Block-axis start alignment only (scroll-snap-align is not read); containers in floating layers are not covered.")
 not_applicable("webxr-dom-overlays", "Styles the DOM overlay of a WebXR session; the engine renders its own UI in its world and has no WebXR DOM layer.")
@@ -362,7 +364,6 @@ MISSING = {
     "scroll-marker-targets": "No :target-current, :target-before or :target-after (needs scroll markers; the selectors are engine-gaps').",
     "scroll-target-group": "No scroll-target-group: anchor links do not act as scroll markers.",
     "scroll-buttons": "No ::scroll-button(): a scroll container generates no buttons.",
-    "scroll-axis-lock": "No scroll-axis-lock property; how og-ui's pan treats a mostly-one-axis drag is not asserted either.",
     "scroll-triggered-animations": "No timeline-trigger or animation-trigger: scroll timelines drive animations (scroll-driven), but none starts or stops one.",
     "overflow-anchor": "No scroll anchoring: content inserted above the scrollport moves what is shown.",
     "details-content": "No ::details-content: a details element's content is not one stylable box.",

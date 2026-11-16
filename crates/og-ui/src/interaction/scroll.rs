@@ -91,6 +91,9 @@ pub struct ScrollCss {
     pub colors: Option<[crate::Srgba; 2]>,
     /// `scrollbar-gutter`: 0 auto, 1 stable, 2 stable both-edges.
     pub gutter: u8,
+    /// `scroll-axis-lock: none` (CSS Overflow 5 §4): a drag on it is never
+    /// locked to one axis.
+    pub free_axes: bool,
 }
 
 impl ScrollCss {
@@ -225,6 +228,37 @@ impl Ui {
         })
     }
 
+    /// CSS Overflow 5 §4 `scroll-axis-lock`: a drag on container `key`,
+    /// when it can scroll both ways, keeps to the axis its first move runs
+    /// along (within a 2:1 slope of it) until the press ends, the other
+    /// axis's delta dropped; a diagonal first move, `scroll-axis-lock:
+    /// none` or a container with room on one axis leaves it free.
+    fn axis_lock(&mut self, key: u64, d: Vec2) -> Vec2 {
+        if self.interaction.state.drag_axis == 0 && d != Vec2::ZERO {
+            let both = self
+                .interaction
+                .state
+                .scroll_info
+                .get(&key)
+                .is_some_and(|i| i.range.x > 0.0 && i.range.y > 0.0);
+            let free = !both || self.tree.scroll_css(key).free_axes;
+            self.interaction.state.drag_axis = if free {
+                3
+            } else if d.x.abs() >= 2.0 * d.y.abs() {
+                1
+            } else if d.y.abs() >= 2.0 * d.x.abs() {
+                2
+            } else {
+                3
+            };
+        }
+        match self.interaction.state.drag_axis {
+            1 => Vec2::new(d.x, 0.0),
+            2 => Vec2::new(0.0, d.y),
+            _ => d,
+        }
+    }
+
     /// The fraction of a fling's velocity a tick keeps off (1 − its decay).
     fn fling_keep(&self) -> f32 {
         let response = (crate::theme::SPRING_MOMENTUM.response_ms / 1000.0).max(1e-3);
@@ -313,6 +347,7 @@ impl Ui {
                 .flatten();
             grabbed = self.interaction.state.thumb.map(|t| t.key);
             self.interaction.state.drag_v = Vec2::ZERO;
+            self.interaction.state.drag_axis = 0;
             // The element the touch landed on, whose touch-action the
             // drag keeps to wherever it moves.
             self.interaction.state.touch_key = if self.env.viewport.coarse_pointer {
@@ -386,6 +421,7 @@ impl Ui {
                     &self.env,
                     &self.tree,
                 );
+                let d = self.axis_lock(active, d);
                 self.tree.scroll_chain_by(active, d, &mut self.interaction);
                 self.interaction.state.drag_v = self.interaction.state.drag_v * 0.5 + d * 0.5;
             } else if input.released {
