@@ -1087,17 +1087,17 @@ pub(crate) fn flow(
 /// ([`crate::css::memo`]): an element styled again into a state it had (a
 /// card lifted and set down) routes nothing again.
 pub(crate) fn route(out: &mut Cascade, flow: crate::layout::Flow) {
-    let key = (flow, std::mem::take(&mut out.values));
-    let kept = ROUTED.with_borrow(|m| m.get(&key).cloned());
+    let key = (flow, Winners(std::mem::take(&mut out.values)));
+    let kept = ROUTED.with_borrow_mut(|m| m.get(&key).cloned());
     let routed = match kept {
         Some(routed) => routed,
         None => {
-            let routed = std::sync::Arc::new(routed(&key.1, flow));
+            let routed = std::sync::Arc::new(routed(&key.1.0, flow));
             ROUTED.with_borrow_mut(|m| m.keep(key.clone(), routed.clone()));
             routed
         }
     };
-    out.values = key.1;
+    out.values = key.1.0;
     let Routed {
         text,
         motion,
@@ -1115,7 +1115,39 @@ pub(crate) fn route(out: &mut Cascade, flow: crate::layout::Flow) {
     out.svg.extend_from_slice(svg);
     out.generated.extend_from_slice(generated);
     out.props.extend_from_slice(props);
-    out.diagnostics.extend_from_slice(diagnostics);
+    // Each with the line of the winner it is about: the same winners on
+    // other lines route the same.
+    out.diagnostics
+        .extend(diagnostics.iter().map(|(winner, said)| match winner {
+            Some(i) => format!("line {}: {said}", out.values[*i].2),
+            None => said.clone(),
+        }));
+}
+
+/// A cascade's winners as [`route`] keeps them: by name and value, not by
+/// the line each was written on.
+#[derive(Clone)]
+struct Winners(Vec<(String, String, usize)>);
+
+impl PartialEq for Winners {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.len() == other.0.len()
+            && self
+                .0
+                .iter()
+                .zip(&other.0)
+                .all(|(a, b)| a.0 == b.0 && a.1 == b.1)
+    }
+}
+impl Eq for Winners {}
+impl std::hash::Hash for Winners {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_usize(self.0.len());
+        for (name, value, _) in &self.0 {
+            name.hash(state);
+            value.hash(state);
+        }
+    }
 }
 
 /// What [`route`] adds to a cascade's lists.
@@ -1128,19 +1160,22 @@ struct Routed {
     svg: Vec<(String, String)>,
     generated: Vec<(String, String)>,
     props: Vec<crate::doc::PropSet>,
-    diagnostics: Vec<String>,
+    /// What was wrong, with the place among the winners of the one it is
+    /// about.
+    diagnostics: Vec<(Option<usize>, String)>,
 }
 
 fn routed(values: &[(String, String, usize)], flow: crate::layout::Flow) -> Routed {
     let mut out = Routed::default();
     let mut body = String::new();
     // The winners stay with the cascade: the UI debugger names each one's
-    // line (`Ui::debug_element`).
+    // line (`Ui::debug_element`). Each is carried by its place among them.
     let values: Vec<(String, String, usize)> = values
         .iter()
-        .flat_map(|(name, value, line)| {
+        .enumerate()
+        .flat_map(|(winner, (name, value, _))| {
             match crate::layout::flow::physical(name, value, flow) {
-                Some(sides) => sides.into_iter().map(|(n, v)| (n, v, *line)).collect(),
+                Some(sides) => sides.into_iter().map(|(n, v)| (n, v, winner)).collect(),
                 None if name.starts_with("justify-") || name.starts_with("place-") => {
                     // `left` and `right` are the line's physical sides.
                     let side = |w: &str| match (w, flow.rtl) {
@@ -1149,36 +1184,37 @@ fn routed(values: &[(String, String, usize)], flow: crate::layout::Flow) -> Rout
                         (w, _) => w.to_string(),
                     };
                     let v: Vec<String> = value.split_whitespace().map(side).collect();
-                    vec![(name.clone(), v.join(" "), *line)]
+                    vec![(name.clone(), v.join(" "), winner)]
                 }
-                None => vec![(name.clone(), value.clone(), *line)],
+                None => vec![(name.clone(), value.clone(), winner)],
             }
         })
         .filter(|(name, ..)| !crate::layout::flow::longhand(name))
         .collect();
     let values = values
         .into_iter()
-        .flat_map(|(name, value, line)| {
+        .flat_map(|(name, value, winner)| {
             if name == "font" {
                 match crate::doc::text_css::font(&value) {
-                    Ok(values) => return values.into_iter().map(|(n, v)| (n, v, line)).collect(),
+                    Ok(values) => return values.into_iter().map(|(n, v)| (n, v, winner)).collect(),
                     Err(error) => {
-                        out.diagnostics.push(format!("line {line}: font: {error}"));
+                        out.diagnostics
+                            .push((Some(winner), format!("font: {error}")));
                         return Vec::new();
                     }
                 }
             }
-            vec![(name, value, line)]
+            vec![(name, value, winner)]
         })
         .collect::<Vec<_>>();
-    for (name, value, line) in values {
+    for (name, value, winner) in values {
         if name == "font-family" {
             match crate::doc::text_css::family_list(&value) {
                 Ok((_, role)) => {
                     out.text.push((name, value));
                     body.push_str(&format!("font-family: {role};"));
                 }
-                Err(error) => out.diagnostics.push(format!("line {line}: {error}")),
+                Err(error) => out.diagnostics.push((Some(winner), error)),
             }
             continue;
         }
@@ -1211,11 +1247,11 @@ fn routed(values: &[(String, String, usize)], flow: crate::layout::Flow) -> Rout
             continue;
         }
         let declaration = format!("{name}: {value};");
-        let valid = VALID.with_borrow(|v| v.get(declaration.as_str()).is_some());
+        let valid = VALID.with_borrow_mut(|v| v.get(declaration.as_str()).is_some());
         match if valid {
             Ok(())
         } else {
-            css::declarations(&declaration, line).map(|_| ())
+            css::declarations(&declaration, 0).map(|_| ())
         } {
             Ok(()) => {
                 if !valid {
@@ -1223,12 +1259,13 @@ fn routed(values: &[(String, String, usize)], flow: crate::layout::Flow) -> Rout
                 }
                 body.push_str(&declaration);
             }
-            Err(error) => out.diagnostics.push(format!(
-                "line {line}: {name} invalid at computed-value time: {error}"
+            Err(error) => out.diagnostics.push((
+                Some(winner),
+                format!("{name} invalid at computed-value time: {error}"),
             )),
         }
     }
-    let lowered = LOWERED.with_borrow(|l| l.get(body.as_str()).cloned());
+    let lowered = LOWERED.with_borrow_mut(|l| l.get(body.as_str()).cloned());
     let (props, said) = match lowered {
         Some(lowered) => lowered,
         None => {
@@ -1238,14 +1275,15 @@ fn routed(values: &[(String, String, usize)], flow: crate::layout::Flow) -> Rout
         }
     };
     out.props.extend(props);
-    out.diagnostics.extend(said);
+    out.diagnostics
+        .extend(said.into_iter().map(|said| (None, said)));
     out
 }
 
 /// What [`route`] knows of computed declarations, by their text
 /// ([`crate::css::memo`]): those that parse, and each body's props.
 type Lowered = (Vec<crate::doc::PropSet>, Vec<String>);
-type RouteKey = (crate::layout::Flow, Vec<(String, String, usize)>);
+type RouteKey = (crate::layout::Flow, Winners);
 thread_local! {
     static ROUTED: std::cell::RefCell<crate::css::memo::Memo<RouteKey, std::sync::Arc<Routed>>> =
         Default::default();

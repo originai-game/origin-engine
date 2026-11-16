@@ -689,9 +689,11 @@ pub(crate) fn resolve(
         static KEPT: std::cell::RefCell<super::memo::Memo<String, ByWinners>> =
             Default::default();
     }
-    if let Some((t, a, d)) =
-        KEPT.with_borrow(|kept| kept.get(document).and_then(|by| by.get(winners)).cloned())
-    {
+    if let Some((t, a, d)) = KEPT.with_borrow_mut(|kept| {
+        kept.get_mut(document)
+            .and_then(|by| by.get(winners))
+            .cloned()
+    }) {
         diagnostics.extend(d);
         return (t, a);
     }
