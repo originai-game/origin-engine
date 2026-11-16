@@ -46,19 +46,23 @@ panel or feedback component at full viewport size, for example
 `style:default;sample:tooltipCard:overflow`. Its all-fixtures `states` page
 is a catalogue, not a substitute for an isolated state check.
 
+The HUD sheet mounts `HudSheet`; its review command is
+`style:default;page:<page>`, with the HUD pages listed below.
+
 | Review area | Sheet and pages |
 | --- | --- |
 | HUD instruments (contained bars, centered rings/orbs, ordinary/warning/critical timers) | `sheets/hud`: `meters`, `objectives` |
 | Abilities and touch/button states (cooldown, charges, locked/unaffordable, held/disabled, overflow) | `sheets/hud`: `actions`, `buttons`, `touch` |
 | Compass and maps | `sheets/hud`: `navigation` |
+| Radial commands (chosen, disabled, unaffordable) and map-layer legend (selected, unselected) | `sheets/hud`: `tactics` |
 | Panels and data (breadcrumbs, grid, tooltip comparison, menu, chart, graph, carousel) | `sheets/components`: `panels`, isolated `sample` fixtures |
 | Feedback and loading (celebration, ribbon, skeletons, spinner, split panes, score thresholds, effects, action hints) | `sheets/components`: isolated `sample` fixtures |
 | Cards and run maps | `sheets/card`: `table`, `builder`, `run` |
 | Store, progression and social panels | `sheets/general`: `store`, `progress`, `social`, `states` |
 
 Shooter and racing keep their own group READMEs and sheets. World
-components keep anchor, ground and mass primitives; their 3D frames are
-reviewed on the L4, not the software-renderer sheet.
+components keep anchor, ground and mass primitives; missing world captures
+and their pending L4 review are recorded explicitly in the world sheet.
 
 | Purpose | Documents |
 |---|---|
@@ -147,7 +151,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `PlacementGhost` (`placement-ghost.svelte`) | `reach`, `footprint`, `badge` |
 | `ProgressBar` (`progress-bar.svelte`) | `label`, `figure`, `track`, `buffer`, `fill` |
 | `ProgressRing` (`progress-ring.svelte`) | `ring`, `figure` |
-| `RadialMenu` (`radial-menu.svelte`) | `disc`, `slice` (`.chosen` `.disabled`), `item` (a button: `:disabled`), `label`, `centre` |
+| `RadialMenu` (`radial-menu.svelte`) | `disc`, `slice` (`.chosen` `.disabled`), `item` / `cell` (one menuitem button: `[aria-current=true]` `:disabled`), `label`, `centre` (empty `detail` shows the chosen label) |
 | `RadialMeter` (`radial-meter.svelte`) | `wheels` |
 | `Ribbon` (`ribbon.svelte`) | `frame` (`.bottomLeft` `.bottomRight` `.center` `.danger` `.info` `.success` `.topLeft` `.warn`), `ribbon`, `text` |
 | `SelectionRing` (`selection-ring.svelte`) | `ring` (`.hostile` `.hover` `.neutral` `.segmented`) |
