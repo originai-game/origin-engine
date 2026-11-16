@@ -87,6 +87,10 @@ not_needed("forced-colors",
            "Forced colours mode replaces an author's colours with the OS's high-contrast palette. A game draws its own "
            "surface and offers contrast through its style and prefers-contrast; (forced-colors) answers none, as "
            "the engine is never in that mode, and forced-color-adjust is refused.")
+not_needed("url-cross-origin url-referrer-policy",
+           "cross-origin() and referrer-policy() set a remote url()'s CORS mode and Referer. The engine sends no "
+           "cookies, credentials or referrer (natively it sends no Origin or Referer; the web Worker fetches with "
+           "credentials omit and no-referrer), so they protect nothing; url() refuses them.")
 not_needed("link-parameters",
            "Passes param() values through an image URL into an external SVG's var(). A game's SVG is inline markup "
            "or a cooked image, styled by its document, and no component or style pack parameterises one by URL.")
@@ -340,17 +344,9 @@ proof("progress-function", "css_layout", "progress_and_random_resolve_on_their_e
       "width: calc(progress(…) * L): 50px between 0px and 200px is 0.25, 300px clamps to 1, no-clamp gives 1.5, and 1em reads the element's font size; og-css's progress_and_random_evaluate covers the low clamp, times, start = end (0) and mixed types refused. css_layout::percent_progress_and_random_item_resolve: progress(50%, 0px, 200px) * 100px reads its basis at layout (50px in 200px, 100px clamped in 600px, 150px no-clamp), progress(100px, 0px, 100%) * 50% is 50px in 400px, and content-box padding adds once after it.")
 proof("random-function", "css_layout", "progress_and_random_resolve_on_their_element",
       "Two elements' random(0px, 100px) widths differ and stay in range; a --k key with a step is shared and lands on a step; fixed 0.25 gives 125px; values hold through a re-resolve and in a second UI. og-css's random_keys_share_and_separate_values covers element-, property- and index-scoping, auto, fixed and uniformity over 900 elements; progress_and_random_evaluate the step epsilon, max below min and a mixed-unit linear form. random_keys_name_their_property_and_document: keys simplify as §9.4.1 says (auto to element-scoped ua-P-I, property-scoped to ua-P, index counted before a shorthand expands and kept in its longhands), and the document (the mount) is part of the cache name. random-item(): css_layout::percent_progress_and_random_item_resolve picks a shared --pick item and a braced item; random_item_picks_its_item covers floor(R × N), braces, nesting, empty items, a string with a comma and uniformity over 900 elements.")
-proof("url-cross-origin", "remote_images", "remote_images_load_under_their_request_modifiers",
-      "A document's url()s name PNG, JPEG, WebP and SVG images on another origin, fetched natively in CORS mode with the game's Origin and drawn on the first frame at their own size. "
-      "A response without Access-Control-Allow-Origin draws nothing and warns; cross-origin(use-credentials) is refused under * and loads with the origin named and Access-Control-Allow-Credentials: true, "
-      "where cross-origin(anonymous) loads either. remote_images::an_image_still_fetched_draws_the_fallback_until_it_lands proves the host's own fetch (the web's) is asked with the modifiers and the layer draws only its background colour until the image lands. "
-      "Credentials send no cookies natively; the web Worker's fetch() is not exercised here.")
 proof("url-integrity", "remote_images", "remote_images_load_under_their_request_modifiers",
       "integrity(\"sha384-…\") with the bytes' hash draws the image, a wrong hash draws nothing and warns with the bytes' hash, and metadata with a wrong sha256 beside a right sha384 loads (only the strongest algorithm counts). "
       "og-net's http unit tests cover base64url and unknown algorithms.")
-proof("url-referrer-policy", "remote_images", "remote_images_load_under_their_request_modifiers",
-      "The server records the Referer of requests from a game at http://127.0.0.1:9/game/ to another origin: none under no-referrer and same-origin, the whole URL under unsafe-url, and the origin alone by default (strict-origin-when-cross-origin). "
-      "og-net's http unit tests check all eight policies, same-origin and downgrade cases.")
 not_applicable("namespace",
                "A document's elements are in one namespace (a .svelte document is not XML), so @namespace prefixes "
                "select nothing apart; the rule is accepted and has no effect.")
