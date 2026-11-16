@@ -110,10 +110,13 @@ impl Ui {
                 .iter()
                 .any(|k| matches!(*k, "Enter" | "NumpadEnter" | "Space"))
                 || self.interaction.input().gamepad.held & crate::input::GamepadFrame::A != 0);
-        let pressing = (self.interaction.input().down && self.interaction.state().active == key)
-            || focused
-            || r.str("dataAction")
-                .is_some_and(|a| self.interaction.action_down(a));
+        // A disabled element holds nothing: disabled mid-press, its count
+        // starts over and it never fires (a timed prompt that expired).
+        let pressing = !r.flag("disabled")
+            && ((self.interaction.input().down && self.interaction.state().active == key)
+                || focused
+                || r.str("dataAction")
+                    .is_some_and(|a| self.interaction.action_down(a)));
         let memory = crate::id::child_key(key, "~hold");
         let ticks = if pressing { self.anim(memory).h + 1 } else { 0 };
         if pressing || self.has_anim(memory) {

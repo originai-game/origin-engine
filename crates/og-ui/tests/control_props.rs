@@ -2210,7 +2210,7 @@ fn core_controls_choose_step_hold_and_report() {
   <input type="number" id="Qty" max="3" data-format="{value, number} m" bind:value={$qty}>
   <input type="number" id="Lv" min="0" max="20" step="2" data-wrap data-large-step="6" bind:value={$lv}>
   <menu id="Menu"><button id="Copy">Copy</button></menu>
-  <button id="Buy" onhold={buy} data-hold="300" oncontextmenu={more}>Buy</button>
+  <button id="Buy" onhold={buy} data-hold="300" disabled={$sold} oncontextmenu={more}>Buy</button>
   <details id="More" summary="More" ontoggle={toggled}><p>x</p></details>
 </div>
 <style>
@@ -2222,6 +2222,7 @@ fn core_controls_choose_step_hold_and_report() {
         ("level", json!("easy")),
         ("qty", json!("2")),
         ("lv", json!("20")),
+        ("sold", json!(false)),
     ];
     let d = &mut Doc::with_font(text, &stores, crate::support::test_font());
     for _ in 0..5 {
@@ -2319,6 +2320,51 @@ fn core_controls_choose_step_hold_and_report() {
         "full at the hold: {fills:?}"
     );
     assert_eq!(hold_fill_width(d), 0.0, "released, no fill");
+    // Disabled during a hold, by pointer or by Enter, the hold is
+    // cancelled: it never fires, though the press goes on past its time (a
+    // timed prompt that expired).
+    for key in [false, true] {
+        if key {
+            d.focus = Some(buy.path.clone());
+            d.step(InputFrame::default());
+        }
+        let mut holds = Vec::new();
+        for tick in 0..40 {
+            if tick == 10 {
+                d.set("sold", json!(true));
+            }
+            d.step(if key {
+                InputFrame {
+                    keys_held: vec!["Enter"],
+                    ..InputFrame::default()
+                }
+            } else {
+                InputFrame {
+                    pointer: at,
+                    pointer_inside: true,
+                    down: true,
+                    pressed: tick == 0,
+                    ..InputFrame::default()
+                }
+            });
+            if d.events.iter().any(|e| e.name == "buy") {
+                holds.push(tick);
+            }
+            d.events.clear();
+        }
+        assert!(
+            holds.is_empty(),
+            "disabled mid-hold (key {key}), it fired at {holds:?}"
+        );
+        assert_eq!(hold_fill_width(d), 0.0, "disabled, no fill");
+        d.step(InputFrame {
+            pointer: at,
+            pointer_inside: true,
+            released: true,
+            ..InputFrame::default()
+        });
+        d.set("sold", json!(false));
+    }
     // A secondary press asks for the context menu; a primary one does not.
     let events = d.click("Buy");
     assert!(!events.iter().any(|e| e.name == "more"));
