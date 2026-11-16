@@ -100,6 +100,20 @@ impl Ui {
         {
             self.docs.state_mut().media_ops.push(op);
         }
+        // What the media pseudo-classes read (HTML §4.16.3): `:playing`
+        // and `:paused` follow the element's `paused`, as in a browser,
+        // not whether its player has frames left.
+        {
+            use crate::bind::InteractionState::{Muted, Paused, Playing, Seeking};
+            for (state, on) in [
+                (Playing, !paused),
+                (Paused, paused),
+                (Seeking, pending > 0),
+                (Muted, r.flag("muted")),
+            ] {
+                self.set_selector_state(key, state, on);
+            }
+        }
         self.docs
             .media_write_backs(b, n, r, &state, paused, pending > 0);
         let t = *self.env.theme();

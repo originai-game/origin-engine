@@ -435,6 +435,8 @@ proof("heading-selectors", "css_selectors", "heading_matches_headings_by_level",
       "Computed boxes of <h1>, <h2>, <h3> and a <p> decoy: :heading indents the three headings and not the paragraph, :heading(1, 3) widens h1 and h3 only, and :heading + .probe and :heading(2) + .probe (matched on the instantiated tree) reach the probes after the right headings. :heading(0) is refused.")
 proof("revert-rule", "css_selectors", "revert_rule_rolls_back_one_rule",
       "Computed widths: width: revert-rule shows the rule below's width; an earlier declaration of the same rule is rolled back with it; an unlayered rule below wins over a layered one (where revert-layer would pick the layer); a custom property and a var() fallback roll back the same way; font-size: revert-rule restores the rule below's size (read through an em width); with no rule below the property is as never declared while the rule's other declarations apply; a rule that does not match rolls nothing back.")
+proof("media-pseudos", "css_selectors", "media_pseudo_classes_follow_the_element",
+      "Computed widths of sibling probes of a <video>: :paused while its bind:paused is true and :playing once it is false, :muted with bind:muted, :seeking from a bind:currentTime write until the seek reaches the player. :buffering, :stalled and :volume-locked parse and never match: a player reads a local asset and the engine mixes its own sound.")
 not_applicable("host-context",
                ":host-context() was dropped from CSS Scoping and Firefox never shipped it; :host() with an ancestor selector in the document covers the case.")
 not_applicable("autonomous-custom-elements",
@@ -459,7 +461,6 @@ MISSING = {
     "has-slotted": "A component's content is passed as snippets, not <slot> elements, so no :has-slotted output exists.",
     "slot": "A component's content is passed as snippets ({@render}), not <slot> elements, and no <slot> output is proved.",
     "time-relative-selectors": ":past and :future match WebVTT cues during media playback; <video> draws no text track yet (motion is building WebVTT), and the selectors come with it.",
-    "media-pseudos": "<video> plays footage, but :playing, :paused and the other media pseudo-classes are not parsed yet.",
 }
 
 if overlap := PROVEN.keys() & MISSING.keys():

@@ -333,6 +333,13 @@ const STATES: &[(&str, InteractionState)] = {
         ("target-current", TargetCurrent),
         ("target-before", TargetBefore),
         ("target-after", TargetAfter),
+        ("playing", Playing),
+        ("paused", Paused),
+        ("seeking", Seeking),
+        ("muted", Muted),
+        ("buffering", Buffering),
+        ("stalled", Stalled),
+        ("volume-locked", VolumeLocked),
     ]
 };
 

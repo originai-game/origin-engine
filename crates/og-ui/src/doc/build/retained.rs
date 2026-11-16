@@ -52,7 +52,8 @@ impl RetainedHost {
     ) -> Result<(), String> {
         let graph = &mut ui.docs.state_mut().memory.reactive.graph;
         if let Some(node) = self.by_key.get(&key)
-            && self.topology.node(node).is_some()
+            && let Some(instance) = self.topology.node(node)
+            && instance.states.contains(&state) != enabled
         {
             self.topology.set_state(node, state, enabled)?;
             graph.interaction_changed(node, state);

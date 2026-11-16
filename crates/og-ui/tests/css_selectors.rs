@@ -620,3 +620,47 @@ fn revert_rule_rolls_back_one_rule() {
         );
     });
 }
+
+/// The media pseudo-classes follow a `<video>`'s own state (HTML
+/// §4.16.3): `:paused` until it plays and `:playing` after, `:muted` with
+/// its `muted`, `:seeking` while a seek is on its way. `:buffering`,
+/// `:stalled` and `:volume-locked` parse and never match: the engine's
+/// players read local assets and mix their own sound.
+#[test]
+fn media_pseudo_classes_follow_the_element() {
+    let doc = r##"<meta name="component" content="media">
+<column id="Root">
+  <video id="Clip" src={$player} bind:paused={$paused} bind:muted={$mute} bind:currentTime={$t}></video>
+  <div class="probe" id="Playing"></div><div class="probe" id="Paused"></div>
+  <div class="probe" id="Muted"></div><div class="probe" id="Seeking"></div>
+  <div class="probe" id="Never"></div>
+</column>
+<style>
+.probe { width: 10px; height: 4px; }
+video { width: 100px; height: 50px; }
+video:playing ~ #Playing, video:paused ~ #Paused, video:muted ~ #Muted, video:seeking ~ #Seeking { width: 50px; }
+video:buffering ~ #Never, video:stalled ~ #Never, video:volume-locked ~ #Never { width: 50px; }
+</style>"##;
+    let stores = [
+        ("player", json!(7)),
+        ("paused", json!(true)),
+        ("mute", json!(false)),
+        ("t", json!(0)),
+    ];
+    let mut d = Doc::new(doc, &stores);
+    d.step(InputFrame::default());
+    let w = |d: &Doc| ["Playing", "Paused", "Muted", "Seeking", "Never"].map(|id| d.get(id).width);
+    assert_eq!(w(&d), [10.0, 50.0, 10.0, 10.0, 10.0], "paused");
+    d.set("paused", json!(false));
+    d.step(InputFrame::default());
+    assert_eq!(w(&d), [50.0, 10.0, 10.0, 10.0, 10.0], "playing");
+    d.set("mute", json!(true));
+    d.step(InputFrame::default());
+    assert_eq!(w(&d), [50.0, 10.0, 50.0, 10.0, 10.0], "muted");
+    d.set("t", json!(5));
+    assert_eq!(w(&d)[3], 50.0, "seeking");
+    for _ in 0..4 {
+        d.step(InputFrame::default());
+    }
+    assert_eq!(w(&d), [50.0, 10.0, 50.0, 10.0, 10.0], "the seek arrived");
+}

@@ -81,6 +81,21 @@ pub enum InteractionState {
     TargetBefore,
     /// A scroll marker after its group's current one (`:target-after`).
     TargetAfter,
+    /// A `<video>` or `<audio>` that is not paused (`:playing`).
+    Playing,
+    /// A `<video>` or `<audio>` that is paused (`:paused`).
+    Paused,
+    /// A media element whose seek has not reached its player (`:seeking`).
+    Seeking,
+    /// A media element whose sound is muted (`:muted`).
+    Muted,
+    /// `:buffering` and `:stalled`: a media element waiting for data. The
+    /// engine's players read local assets, so none is ever in these.
+    Buffering,
+    Stalled,
+    /// `:volume-locked`: the platform refuses volume changes. The engine
+    /// mixes its own sound, so none ever is.
+    VolumeLocked,
 }
 
 /// What the host gives a binding beyond its viewmodel.

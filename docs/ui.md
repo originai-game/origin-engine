@@ -1371,6 +1371,12 @@ screen's root while its layer's view transition runs, by the types its
   `:target-current`, `:target-before` and `:target-after`, which also
   match the elements marked so (`Ui::set_selector_state` sets them for
   the machinery that decides them). `::before` and `::after` take none.
+- A `<video>` or `<audio>` matches `:paused` or `:playing` by its own
+  `paused` (not by whether its player has frames left), `:muted` by its
+  `muted`, and `:seeking` from a `currentTime` write until the seek
+  reaches its player. `:buffering`, `:stalled` and `:volume-locked` parse
+  and never match: a player reads a local asset, and the engine mixes its
+  own sound.
 - Structural selectors read the instantiated tree after `{#if}`, keyed
   `{#each}`, snippets and components (blocks are not siblings; `:empty`
   means no element children and no text) and never select `::part` spans.
