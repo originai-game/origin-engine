@@ -471,6 +471,51 @@ p { margin: 0; font-size: 15px; line-height: 20px; }
     assert_eq!(d.get("Dot").x, d.get("Ltr").x);
 }
 
+/// `all` (CSS Cascade 5 §3.2.1) sets every property but `direction`,
+/// `unicode-bidi` and the custom properties to its CSS-wide keyword, in
+/// its place in the block: a declaration after it wins, one before loses.
+#[test]
+fn all_sets_every_property_but_direction() {
+    use crate::support::Doc;
+    let text = r#"<meta name="component" content="t">
+<div id="Root"><div id="Row">
+  <div id="Inherit" class="c"></div><div id="Initial" class="c"></div>
+  <div id="After" class="c"></div><div id="Before" class="c"></div><div id="Size" class="c"></div>
+</div><div id="Rtl"><div id="Kept"><div id="Dot"></div></div></div></div>
+<style>
+#Row { display: flex; width: 300px; height: 5px; font-size: 20px; --gap: 7px; }
+.c { width: 30px; height: 1px; font-size: 10px; }
+#Inherit { all: inherit; }
+#Initial { all: initial; }
+#After { all: unset; width: 2em; height: var(--gap); }
+#Before { width: 2em; all: unset; }
+#Size { all: initial; width: 2em; height: 1px; }
+#Rtl { display: flex; direction: rtl; width: 100px; height: 1px; }
+#Kept { all: initial; display: flex; width: 50px; height: 1px; }
+#Dot { width: 10px; height: 1px; }
+</style>"#;
+    let d = Doc::new(text, &[]);
+    let root = d.ui.theme().type_ramp.body.size;
+    for (id, width, height) in [
+        // Width, height and font size come from the row.
+        ("Inherit", 300.0, 5.0),
+        // Width auto with no content; height auto, stretched to the
+        // row's 5px line.
+        ("Initial", 0.0, 5.0),
+        // font-size inherits 20px; --gap is not reset.
+        ("After", 40.0, 7.0),
+        ("Before", 0.0, 5.0),
+        // font-size initial is medium, the root's, not the class's 10px.
+        ("Size", 2.0 * root, 1.0),
+    ] {
+        let r = d.get(id);
+        assert_eq!((r.width, r.height), (width, height), "{id}");
+    }
+    // direction stays rtl under `all: initial`: the dot starts at the right.
+    let (kept, dot) = (d.get("Kept"), d.get("Dot"));
+    assert_eq!(dot.x - kept.x, 40.0);
+}
+
 /// `@container style()` (CSS Conditional 5 §6.2) reads the nearest
 /// ancestor's computed custom property, a bound one re-read when its store
 /// changes, an unset one never matching, and its ranges compare property

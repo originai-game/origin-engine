@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"ui","summary":"A document's CSS takes `all: inherit | initial | unset | revert | revert-layer` (CSS Cascade 5 §3.2.1). It sets every property but `direction`, `unicode-bidi` and the custom properties at its place in the block, so a declaration after it wins and one before it loses. Any other value, `var()` included, fails to cook."}
+  ]
+}

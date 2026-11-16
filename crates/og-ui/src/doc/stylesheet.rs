@@ -1684,6 +1684,43 @@ fn declaration_supported(name: &str, value: &str) -> bool {
     lower(&format!("{name}: {value};"), &|_| false).is_ok()
 }
 
+/// The properties `all` sets (CSS Cascade 5 §3.2.1): every longhand the
+/// cascade keeps but `direction`, `unicode-bidi` and the custom properties.
+fn all_longhands() -> impl Iterator<Item = &'static str> {
+    let mut names: Vec<&'static str> = css::STYLE
+        .iter()
+        .map(|&(_, name)| name)
+        .chain(super::motion::TRANSITION)
+        .chain(super::motion::ANIMATION)
+        .chain(super::motion::ANIMATION_EXTRA)
+        .chain(super::motion::TIMELINES)
+        .chain(super::container::LONGHANDS)
+        .chain(crate::transform3d::LONGHANDS)
+        .chain(super::text_css::INHERITED.iter().copied())
+        .chain(super::text_css::LOCAL.iter().copied())
+        .chain(super::extern_element::PRESENTATION.iter().copied())
+        .chain([
+            "text-anchor",
+            "dominant-baseline",
+            "writing-mode",
+            "text-orientation",
+            "text-combine-upright",
+            "scroll-initial-target",
+            "counter-reset",
+            "counter-increment",
+            "counter-set",
+            "quotes",
+            "list-style-image",
+            "list-style-type",
+            "list-style-position",
+        ])
+        .filter(|name| !matches!(*name, "direction" | "unicode-bidi"))
+        .collect();
+    names.sort_unstable();
+    names.dedup();
+    names.into_iter()
+}
+
 /// A rule body's declarations, expanded to the longhands the cascade
 /// keeps, and the text of those it can check at cook (no `var()`, no
 /// CSS-wide keyword). `keyframes`: whether a name is a defined
@@ -1714,6 +1751,7 @@ pub(super) fn lower(
                     "list-style-type".into(),
                     "list-style-position".into(),
                 ],
+                "all" => all_longhands().map(String::from).collect(),
                 name => vec![name.to_string()],
             };
             for name in longhands {
@@ -1723,6 +1761,12 @@ pub(super) fn lower(
                 });
             }
             continue;
+        }
+        if declaration.name == "all" {
+            return Err(format!(
+                "all takes only inherit, initial, unset, revert or revert-layer, written out, not {}",
+                declaration.source
+            ));
         }
         for declaration in super::container::expand(declaration).and_then(|ds| {
             let mut out = Vec::new();

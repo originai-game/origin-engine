@@ -34,7 +34,7 @@ pub(crate) const ANIMATION: [&str; 8] = [
 
 /// Animation longhands the `animation` shorthand does not set; it resets
 /// the timeline and range ones (CSS Scroll-driven Animations 1 §4.1).
-const ANIMATION_EXTRA: [&str; 4] = [
+pub(crate) const ANIMATION_EXTRA: [&str; 4] = [
     "animation-composition",
     "animation-timeline",
     "animation-range-start",
