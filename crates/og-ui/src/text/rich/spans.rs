@@ -81,6 +81,83 @@ pub struct TextSpanStyle {
     /// Whether a variable face's `opsz` follows the size (CSS
     /// `font-optical-sizing`).
     pub optical_sizing: Option<bool>,
+    /// Its element's own box, when it decorates one: background,
+    /// border, padding, corners and shadows drawn round each of its line
+    /// fragments.
+    pub inline_box: Option<InlineBoxStyle>,
+}
+
+/// An inline element's box as declared (CSS 2 §8, §10.8; CSS
+/// Fragmentation 3 §5.4): its decorations, drawn round each line
+/// fragment, and the room its inline padding and border take in the
+/// line. Colours stay symbolic until the paragraph builds; `None` is the
+/// text's colour (`currentColor`).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct InlineBoxStyle {
+    /// The element: spans of one element share one box.
+    pub id: u32,
+    pub background: Option<ColorRef>,
+    /// Top, right, bottom, left (CSS px; `None`: `medium`, 3px).
+    pub border_width: [Option<f32>; 4],
+    /// `None`: `none`, no border.
+    pub border_style: [Option<crate::decor::LineStyle>; 4],
+    pub border_color: [Option<ColorRef>; 4],
+    /// Top, right, bottom, left, CSS px.
+    pub padding: [f32; 4],
+    /// Each corner's horizontal and vertical radius (CSS px), top-left
+    /// first.
+    pub radius: [[f32; 2]; 4],
+    /// Its `box-shadow`s, the first on top, their colours apart.
+    pub shadows: Vec<(crate::decor::Shadow, Option<ColorRef>)>,
+    /// `box-decoration-break: clone`: each fragment a whole box.
+    pub clone: bool,
+}
+
+impl InlineBoxStyle {
+    /// Its box as drawn, its colours against `theme` and `currentColor`
+    /// the text's `ink`.
+    pub(crate) fn resolve(&self, ink: Srgba, theme: &crate::Theme) -> crate::rich::InlineBox {
+        use crate::decor::{BoxDecor, Corners, Line, Shadow};
+        let colour = |c: &Option<ColorRef>| c.as_ref().map_or(ink, |c| resolve_color(c, theme));
+        let borders = [0, 1, 2, 3].map(|k| {
+            let style = self.border_style[k]?;
+            let width = self.border_width[k].unwrap_or(3.0);
+            (width > 0.0).then(|| Line {
+                width,
+                style,
+                color: colour(&self.border_color[k]),
+            })
+        });
+        let w = |k: usize| borders[k].map_or(0.0, |b| b.width);
+        let p = self.padding;
+        let decor = BoxDecor {
+            borders,
+            shadows: self
+                .shadows
+                .iter()
+                .map(|(s, c)| Shadow {
+                    color: colour(c),
+                    ..*s
+                })
+                .collect(),
+            background: self
+                .background
+                .as_ref()
+                .map(|c| crate::paint::Paint::Solid(ColorRef::Literal(resolve_color(c, theme)))),
+            corners: (self.radius != [[0.0; 2]; 4]).then(|| Corners {
+                radii: self.radius.map(|[h, v]| [(h, 0.0), (v, 0.0)]),
+                shape: [1.0; 4],
+            }),
+            content: [w(3) + p[3], w(0) + p[0], w(1) + p[1], w(2) + p[2]],
+            ..Default::default()
+        };
+        crate::rich::InlineBox {
+            id: self.id,
+            decor,
+            clone: self.clone,
+            open: [false; 2],
+        }
+    }
 }
 
 /// An inline object of a text (a document's `<img>`, `<og-icon>` or `<kbd
@@ -185,6 +262,7 @@ impl Ui {
                 valign: crate::VerticalAlign::Baseline,
                 word_spacing: 0.0,
                 combine: None,
+                inline_box: None,
             };
             for (_, _, style) in ranges.iter().filter(|(a, b, _)| *a <= start && end <= *b) {
                 if let Some(c) = &style.color {
@@ -321,6 +399,14 @@ impl Ui {
                 }
             }
             s.bold = s.weight >= 700;
+            // Its element's box, its colours against the theme and its
+            // text's ink.
+            s.inline_box = ranges
+                .iter()
+                .filter(|(a, b, _)| *a <= start && end <= *b)
+                .filter_map(|(_, _, style)| style.inline_box.as_ref())
+                .next_back()
+                .map(|b| std::sync::Arc::new(b.resolve(s.color, &t)));
             s.synth = self.env.fonts.for_styled(s.font, s.query(), &s.text).1;
             if let Some(allow) = ranges
                 .iter()

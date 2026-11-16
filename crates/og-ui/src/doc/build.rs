@@ -1313,6 +1313,10 @@ impl Ui {
                 } else {
                     crate::TextSpanStyle::default()
                 };
+                // Its element's own box: one for all the element's runs.
+                if let Some(b) = &mut style.inline_box {
+                    b.id = run.element.unwrap_or_default();
+                }
                 let on = |b: bool, was: Option<bool>| if b { Some(true) } else { was };
                 style.bold = on(run.bold, style.bold);
                 style.italic = on(run.italic, style.italic);

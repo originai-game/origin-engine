@@ -286,6 +286,7 @@ impl Parser {
             color: None,
             link,
             part: None,
+            element: None,
             atom: None,
             valign: None,
             ruby: None,
@@ -519,6 +520,7 @@ impl Parser {
                                     return Err((a.at, "part names a span: an identifier".into()));
                                 }
                                 inner.part = Some(a.value.clone());
+                                inner.element = Some(*at as u32);
                             }
                         }
                         "br" => {

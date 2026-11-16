@@ -589,6 +589,9 @@ pub struct InlineRun {
     /// The `<span part="name">` it is in: its span's name, which
     /// `text::part(name)` rules style.
     pub part: Option<String>,
+    /// The `<span part>` element it is in, by its place in the source:
+    /// runs of one element share its inline box.
+    pub element: Option<u32>,
     /// An inline `<img>`, `<og-icon>` or `<kbd data-action>`: its text is the
     /// placeholder U+FFFC.
     pub atom: Option<crate::rich::InlineAtom>,

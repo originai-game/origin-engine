@@ -10,7 +10,7 @@
 
 use super::VisualGlyph;
 use crate::layout::float::Broken;
-use crate::rich::{LineBreak, Piece, RichContent, RichLine, Segment, TextIndent};
+use crate::rich::{Edge, LineBreak, Piece, RichContent, RichLine, Segment, TextIndent};
 use og_i18n::Direction;
 use og_text::text::paragraph::{Brush, CONTEXT, Context};
 use parley::{BreakReason, Layout, PositionedLayoutItem, StyleProperty, YieldData};
@@ -66,11 +66,25 @@ fn laid_out(
     // Each line's room held back for its hyphen, found by the passes
     // before (a line ending at a SHY whose hyphen does not fit).
     let mut reserve: Vec<f32> = Vec::new();
+    // What each line holds back or breaks within for its inline boxes'
+    // edges, found by the breaks before.
+    let mut fit: Vec<LineFit> = Vec::new();
+    let boxed = content.spans.iter().any(|s| s.inline_box.is_some());
     loop {
         let mut planned = Vec::new();
         let pass = shaped(content, fonts, direction, |layout, text, indices| {
             let widths = layout.calculate_content_widths();
-            let (broke, narrowed, drop) = break_beside(layout, content, &mut reserve, room);
+            // Broken again over the same shaping until each inline box's
+            // edges sit with its text (Parley may break beside any inline
+            // box); a bound stops a fit that will not settle.
+            let mut tries = 0;
+            let (broke, narrowed, drop) = loop {
+                let broken = break_beside(layout, content, &mut reserve, &mut fit, room);
+                tries += 1;
+                if !boxed || tries > 64 || !refit(&mut fit, content, layout, text, direction) {
+                    break broken;
+                }
+            };
             // A line ending at a SHY: its hyphen, which a pass must make
             // room for when it does not fit.
             for (k, b) in broke.iter().enumerate() {
@@ -101,7 +115,13 @@ fn laid_out(
                     lines.push(RichLine::default());
                     continue;
                 }
-                lines.push(rich_line(content, fonts, text, indices, &line));
+                let edges = if boxed {
+                    cloned(content, text, &b.range, direction)
+                } else {
+                    [None; 2]
+                };
+                let rtl = boxed && rtl_at(text, b.range.start, direction);
+                lines.push(rich_line(content, fonts, text, indices, &line, edges, rtl));
             }
             let shifts = broke.iter().map(|b| b.shift).collect();
             Ok(((lines, shifts, narrowed, drop), (widths.max, widths.min)))
@@ -136,6 +156,7 @@ fn break_beside(
     layout: &mut Layout<Brush>,
     content: &RichContent,
     reserve: &mut [f32],
+    fit: &mut [LineFit],
     room: Room<'_>,
 ) -> (Vec<Broke>, bool, f32) {
     let guess = content.base.0.line_height;
@@ -150,8 +171,9 @@ fn break_beside(
             loop {
                 let (l, avail, next) = room(y, h);
                 let held = reserve.get(out.len()).copied().unwrap_or(0.0).max(0.0);
+                let f = fit.get(out.len()).copied().unwrap_or_default();
                 let state = lines.state_mut();
-                state.set_line_max_advance((avail - held).max(0.0));
+                state.set_line_max_advance((avail - held - f.room).max(0.0).min(f.cap));
                 state.set_line_y(f64::from(y));
                 let Some(YieldData::LineBreak(d)) = lines.break_next() else {
                     break 'lines;
@@ -160,6 +182,13 @@ fn break_beside(
                     // No break leaves room for the hyphen.
                     lines.revert_to(start.clone());
                     reserve[out.len()] = -1.0;
+                    continue;
+                }
+                if f.cap.is_finite() && d.reason == BreakReason::Emergency {
+                    // No break keeps the edge with its text: it stays.
+                    lines.revert_to(start.clone());
+                    fit[out.len()].cap = f32::INFINITY;
+                    fit[out.len()].stuck = true;
                     continue;
                 }
                 let height = d.metrics.line_height;
@@ -220,12 +249,17 @@ fn ends_at_shy(content: &RichContent, text: &str, range: &std::ops::Range<usize>
 
 /// A Parley line as og-ui draws it: its runs and inline boxes in visual
 /// order, each raised from the line's baseline as Parley set it.
+/// `edges`: a cloned box's start and end edges where the line breaks
+/// inside it (their spans and widths), set at its start and end (`rtl`:
+/// from the right).
 fn rich_line(
     content: &RichContent,
     fonts: &dyn crate::layout::Metrics,
     text: &str,
     indices: &[usize],
     line: &parley::Line<'_, Brush>,
+    edges: [Option<(usize, f32)>; 2],
+    rtl: bool,
 ) -> RichLine {
     let m = line.metrics();
     let mut segments: Vec<Segment> = Vec::new();
@@ -233,14 +267,21 @@ fn rich_line(
     let mut at = 0;
     for item in line.items() {
         match item {
-            PositionedLayoutItem::InlineBox(b) => segments.push(Segment {
-                span: b.id as usize,
-                text: String::new(),
-                at,
-                glyphs: None,
-                width: b.width,
-                rise: m.baseline - (b.y + b.baseline.unwrap_or(b.height)),
-            }),
+            PositionedLayoutItem::InlineBox(b) => {
+                let (span, edge) = match edge_of(b.id) {
+                    Some((span, edge)) => (span, Some(edge)),
+                    None => (b.id as usize, None),
+                };
+                segments.push(Segment {
+                    span,
+                    text: String::new(),
+                    at,
+                    glyphs: None,
+                    width: b.width,
+                    rise: m.baseline - (b.y + b.baseline.unwrap_or(b.height)),
+                    edge,
+                });
+            }
             PositionedLayoutItem::GlyphRun(glyph_run) => {
                 let brush = glyph_run.style().brush;
                 let s = &content.spans[brush.span];
@@ -276,11 +317,38 @@ fn rich_line(
                     glyphs: Some(glyphs),
                     width: glyph_run.advance(),
                     rise: m.baseline - glyph_run.baseline(),
+                    edge: None,
                 });
                 at += text[range].chars().count();
             }
         }
     }
+    // A cloned box's edges at the break: its start before the line's
+    // first segment, its end after its last (the other way round from
+    // the right).
+    let edge = |(span, width): (usize, f32), edge: Edge, at: usize| Segment {
+        span,
+        text: String::new(),
+        at,
+        glyphs: None,
+        width,
+        rise: segments
+            .iter()
+            .find(|s| s.span == span)
+            .map_or(0.0, |s| s.rise),
+        edge: Some(edge),
+    };
+    let [start, end] = edges;
+    let (front, back) = if rtl {
+        ((end, Edge::End), (start, Edge::Start))
+    } else {
+        ((start, Edge::Start), (end, Edge::End))
+    };
+    let back = back.0.map(|e| edge(e, back.1, at));
+    if let Some(e) = front.0 {
+        segments.insert(0, edge(e, front.1, 0));
+    }
+    segments.extend(back);
     let mut pieces = Vec::new();
     let mut x = 0.0;
     for segment in &segments {
@@ -290,6 +358,7 @@ fn rich_line(
             x,
             width: segment.width,
             rise: segment.rise,
+            edge: segment.edge,
         });
         x += segment.width;
     }
@@ -351,8 +420,36 @@ fn shaped<R>(
     let mut ranges = Vec::new();
     let mut boxes = Vec::new();
     let mut selected = Vec::new();
+    // The inline boxes' edges among `boxes`, their widths set once the
+    // text is whole (they take their paragraph's direction).
+    let mut edges = Vec::new();
+    let same = |k: Option<usize>, b: &crate::rich::InlineBox| {
+        k.and_then(|k| content.spans.get(k)?.inline_box.as_ref())
+            .is_some_and(|o| o.id == b.id)
+    };
+    let mut edge = |boxes: &mut Vec<parley::InlineBox>, span: usize, at: usize, e: Edge| {
+        let s = &content.spans[span];
+        edges.push((boxes.len(), span, e));
+        boxes.push(parley::InlineBox {
+            id: edge_id(span, e),
+            index: at,
+            kind: parley::InlineBoxKind::InFlow,
+            width: 0.0,
+            height: 0.0,
+            baseline: Some(0.0),
+            vertical_align: valign(s.valign, s.step.size, s.step.line_height),
+        });
+    };
     for (span, s) in content.spans.iter().enumerate() {
         let start = text.len();
+        // An inline box's start edge before its first span, unless (on a
+        // hyphenated line alone) it began on a line before.
+        if let Some(b) = &s.inline_box
+            && !same(span.checked_sub(1), b)
+            && (!b.open[0] || b.clone)
+        {
+            edge(&mut boxes, span, start, Edge::Start);
+        }
         if s.atom.is_some() {
             // A ruby's box holds its base and, beyond the leading, its
             // annotation (CSS Ruby 1 §3.6).
@@ -390,7 +487,21 @@ fn shaped<R>(
                 ));
             }
         }
+        if let Some(b) = &s.inline_box
+            && !same(Some(span + 1), b)
+            && (!b.open[1] || b.clone)
+        {
+            edge(&mut boxes, span, text.len(), Edge::End);
+        }
         ranges.push(start..text.len());
+    }
+    for (k, span, e) in edges {
+        let b = content.spans[span]
+            .inline_box
+            .as_ref()
+            .expect("a boxed span");
+        let [start, end] = b.edges(rtl_at(&text, boxes[k].index, direction));
+        boxes[k].width = if e == Edge::Start { start } else { end };
     }
     // The strut: the paragraph's own face at its step.
     let (base, role) = content.base;
@@ -493,8 +604,8 @@ fn planned_line(
     let atoms: Vec<usize> = line
         .items()
         .filter_map(|item| match item {
-            PositionedLayoutItem::InlineBox(b) => Some(b.id as usize),
-            PositionedLayoutItem::GlyphRun(_) => None,
+            PositionedLayoutItem::InlineBox(b) if edge_of(b.id).is_none() => Some(b.id as usize),
+            _ => None,
         })
         .collect();
     let end = range.start + text[range.clone()].trim_end_matches([' ', '\t']).len();
@@ -524,6 +635,16 @@ fn planned_line(
         }
         let mut span = s.clone();
         span.text = text[a..b].to_owned();
+        // An inline box the line's ends cut: no edge there under slice.
+        if let Some(ib) = &mut span.inline_box {
+            let open = [
+                a == range.start && inside(content, text, a).is_some(),
+                b == end && inside(content, text, range.end).is_some(),
+            ];
+            if open != [false; 2] {
+                std::sync::Arc::make_mut(ib).open = open;
+            }
+        }
         if k == shy && b == end {
             span.text.pop();
             span.text.push('-');
@@ -563,4 +684,196 @@ fn hyphens(content: &RichContent, fonts: &dyn crate::layout::Metrics) -> Vec<f32
         .iter()
         .map(|s| crate::rich::span_width(s, "-", fonts))
         .collect()
+}
+
+/// Parley ids of inline boxes' edges: this bit, the span shifted up one
+/// and the end edge's bit (atoms' ids are their spans).
+const EDGE: u64 = 1 << 62;
+
+fn edge_id(span: usize, edge: Edge) -> u64 {
+    EDGE | (span as u64) << 1 | u64::from(edge == Edge::End)
+}
+
+/// An edge's span and side from its Parley id.
+fn edge_of(id: u64) -> Option<(usize, Edge)> {
+    (id & EDGE != 0).then(|| {
+        let edge = if id & 1 == 1 { Edge::End } else { Edge::Start };
+        (((id & !EDGE) >> 1) as usize, edge)
+    })
+}
+
+/// The span holding byte `at` of the paragraph's text (an atom holds
+/// none), and its byte range.
+fn span_at(content: &RichContent, at: usize) -> Option<(usize, std::ops::Range<usize>)> {
+    let mut start = 0;
+    for (k, s) in content.spans.iter().enumerate() {
+        let len = if s.atom.is_some() { 0 } else { s.text.len() };
+        if (start..start + len).contains(&at) {
+            return Some((k, start..start + len));
+        }
+        start += len;
+    }
+    None
+}
+
+/// Span `k`'s bytes in the paragraph's text (an atom's empty, where it
+/// sits).
+fn span_range(content: &RichContent, k: usize) -> std::ops::Range<usize> {
+    let len = |s: &crate::rich::RichSpan| if s.atom.is_some() { 0 } else { s.text.len() };
+    let start: usize = content.spans[..k].iter().map(len).sum();
+    start..start + len(&content.spans[k])
+}
+
+/// The spans before and after byte `at` when one inline box holds both: a
+/// break there is inside it.
+fn inside(content: &RichContent, text: &str, at: usize) -> Option<(usize, usize)> {
+    if at == 0 || at >= text.len() {
+        return None;
+    }
+    let (a, _) = span_at(content, at - 1)?;
+    let (b, _) = span_at(content, at)?;
+    let id = |k: usize| content.spans[k].inline_box.as_ref().map(|b| b.id);
+    (id(a).is_some() && id(a) == id(b)).then_some((a, b))
+}
+
+/// Whether the paragraph holding byte `at` runs right to left: the text
+/// between the forced breaks round it, or `direction` where it is set.
+fn rtl_at(text: &str, at: usize, direction: Option<Direction>) -> bool {
+    let d = direction.unwrap_or_else(|| {
+        let from = text[..at].rfind('\n').map_or(0, |p| p + 1);
+        let to = text[at..].find('\n').map_or(text.len(), |p| at + p);
+        og_i18n::paragraph_direction(&text[from..to], Direction::Ltr)
+    });
+    d == Direction::Rtl
+}
+
+/// A cloned inline box a line's range breaks inside (CSS Fragmentation 3
+/// §5.4): its start edge's span and width at the line's start, its end
+/// edge's at its end.
+fn cloned(
+    content: &RichContent,
+    text: &str,
+    range: &std::ops::Range<usize>,
+    direction: Option<Direction>,
+) -> [Option<(usize, f32)>; 2] {
+    let at = |byte: usize, end: bool| {
+        let (before, after) = inside(content, text, byte)?;
+        let b = content.spans[before].inline_box.as_ref()?;
+        let [s, e] = b.edges(rtl_at(text, byte, direction));
+        b.clone
+            .then_some(if end { (before, e) } else { (after, s) })
+    };
+    [at(range.start, false), at(range.end, true)]
+}
+
+/// What a line holds back for a cloned box's edges at its breaks, and the
+/// width it breaks within so an edge stays with its text (`stuck`: only
+/// an emergency break did, so it no longer tries).
+#[derive(Clone, Copy, Debug)]
+struct LineFit {
+    room: f32,
+    cap: f32,
+    stuck: bool,
+}
+
+impl Default for LineFit {
+    fn default() -> LineFit {
+        LineFit {
+            room: 0.0,
+            cap: f32::INFINITY,
+            stuck: false,
+        }
+    }
+}
+
+/// Fits the first line whose inline box edges do not sit with their text
+/// (CSS 2 §10.8: an inline box's start padding and border stay with its
+/// first character, its end with its last), for the next break; the
+/// lines after it fit again. Whether it changed one.
+fn refit(
+    fit: &mut Vec<LineFit>,
+    content: &RichContent,
+    layout: &Layout<Brush>,
+    text: &str,
+    direction: Option<Direction>,
+) -> bool {
+    let lines: Vec<_> = layout.lines().collect();
+    // Line `k`'s fit, the lines after it to fit again.
+    let at = |fit: &mut Vec<LineFit>, k: usize| -> LineFit {
+        fit.resize(fit.len().max(k + 1), LineFit::default());
+        fit.truncate(k + 1);
+        fit[k]
+    };
+    for (k, line) in lines.iter().enumerate() {
+        let range = line.text_range();
+        let m = line.metrics();
+        let width = |m: &parley::LineMetrics| m.advance - m.hanging_advance + m.indent;
+        let here = fit.get(k).copied().unwrap_or_default();
+        // A cloned box broken at its ends: its edges' room.
+        let need: f32 = cloned(content, text, &range, direction)
+            .iter()
+            .flatten()
+            .map(|(_, w)| w)
+            .sum();
+        if need > here.room + 0.01 {
+            at(fit, k);
+            fit[k].room = need;
+            return true;
+        }
+        // Only a break at a soft wrap opportunity moves an edge.
+        let last = k + 1 == lines.len() || line.break_reason() != BreakReason::Regular;
+        for item in line.items() {
+            let PositionedLayoutItem::InlineBox(b) = item else {
+                continue;
+            };
+            let Some((span, edge)) = edge_of(b.id) else {
+                continue;
+            };
+            let r = span_range(content, span);
+            let byte = if edge == Edge::Start { r.start } else { r.end };
+            match edge {
+                // A start edge the line ends at: it moves down with its text.
+                Edge::Start if !last && byte == range.end && !here.stuck => {
+                    at(fit, k);
+                    fit[k].cap = here.cap.min(width(m) - 0.5);
+                    return true;
+                }
+                // An end edge after a word it cannot break beside: the word
+                // moves down with it.
+                Edge::End
+                    if !last && byte == range.end && !here.stuck && !opportunity(text, byte) =>
+                {
+                    at(fit, k);
+                    fit[k].cap = here.cap.min(width(m) - 0.5);
+                    return true;
+                }
+                // An end edge alone at a line's start: its box's last word
+                // moves down to it.
+                Edge::End
+                    if k > 0
+                        && byte == range.start
+                        && lines[k - 1].break_reason() == BreakReason::Regular =>
+                {
+                    let before = fit.get(k - 1).copied().unwrap_or_default();
+                    if before.stuck {
+                        continue;
+                    }
+                    at(fit, k - 1);
+                    fit[k - 1].cap = before.cap.min(width(&lines[k - 1].metrics()) - 0.5);
+                    return true;
+                }
+                _ => {}
+            }
+        }
+    }
+    false
+}
+
+/// Whether a line may break at byte `at` beside an inline box's edge: a
+/// space or hyphen before it, a space after, or CJK on either side.
+fn opportunity(text: &str, at: usize) -> bool {
+    let before = text[..at].chars().next_back();
+    let after = text[at..].chars().next();
+    before.is_some_and(|c| c.is_whitespace() || c == '-' || crate::text::is_cjk(c))
+        || after.is_some_and(|c| c.is_whitespace() || crate::text::is_cjk(c))
 }

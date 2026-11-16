@@ -119,7 +119,8 @@ pub(super) fn parse(selector: &str, body: &str) -> Result<SpanRule, String> {
                 | "color"
                 | "font"
                 | "font-family"
-        ) {
+        ) && !box_prop(name)
+        {
             return Err(format!("unsupported text span property {name}"));
         }
         if !declaration.value.has_variables() {
@@ -266,13 +267,276 @@ fn apply_body(rule: &mut SpanRule, body: &str, fonts: Option<&crate::Fonts>) -> 
                 }
             }
             _ => {
-                return Err(format!(
-                    "{name} does not style a text span; use color, font, font-family, font-size, line-height, letter-spacing, font-weight, font-style, text-decoration-line, vertical-align, text-combine-upright or -og-text-motion"
-                ));
+                let b = rule.style.inline_box.get_or_insert_default();
+                if !inline_box(b, &name, &value)? {
+                    return Err(format!(
+                        "{name} does not style a text span; use color, font, font-family, font-size, line-height, letter-spacing, font-weight, font-style, text-decoration-line, vertical-align, text-combine-upright, -og-text-motion, or its box's background-color, border, padding, border-radius, box-shadow and box-decoration-break"
+                    ));
+                }
             }
         }
     }
     Ok(())
+}
+
+/// The properties of a span's own box ([`crate::rich::InlineBoxStyle`]),
+/// each with its sides' longhands (`border-top`, `padding-left`, …).
+const BOX: [&str; 8] = [
+    "background",
+    "background-color",
+    "border",
+    "padding",
+    "border-radius",
+    "box-shadow",
+    "box-decoration-break",
+    "-webkit-box-decoration-break",
+];
+
+const SIDES: [&str; 4] = ["top", "right", "bottom", "left"];
+
+/// Whether `name` is a property of a span's own box: one of [`BOX`],
+/// or a side's `padding-*`, `border-*` or its width, style or colour.
+fn box_prop(name: &str) -> bool {
+    let side = |r: &str| SIDES.contains(&r);
+    BOX.contains(&name)
+        || name.strip_prefix("padding-").is_some_and(side)
+        || name.strip_prefix("border-").is_some_and(|rest| {
+            matches!(rest, "width" | "style" | "color")
+                || match rest.split_once('-') {
+                    Some((s, part)) => side(s) && matches!(part, "width" | "style" | "color"),
+                    None => side(rest),
+                }
+        })
+}
+
+/// A length in CSS px (`0` alone needs no unit).
+fn px(t: &css::Tok) -> Result<f32, String> {
+    let bad = || format!("'{}' is not a length in px", css::describe(t));
+    match t {
+        css::Tok::Num(n, u) => {
+            let v: f32 = n.parse().map_err(|_| bad())?;
+            match u.as_str() {
+                "px" => Ok(v),
+                "" if v == 0.0 => Ok(0.0),
+                _ => Err(bad()),
+            }
+        }
+        _ => Err(bad()),
+    }
+}
+
+/// A border's width: `thin`, `medium`, `thick` or px.
+fn border_width(t: &css::Tok) -> Result<f32, String> {
+    match t {
+        css::Tok::Ident(w) if w == "thin" => Ok(1.0),
+        css::Tok::Ident(w) if w == "medium" => Ok(3.0),
+        css::Tok::Ident(w) if w == "thick" => Ok(5.0),
+        t => px(t).and_then(|v| {
+            if v < 0.0 {
+                Err("a border width is not negative".into())
+            } else {
+                Ok(v)
+            }
+        }),
+    }
+}
+
+/// A colour (`None`: `currentColor`).
+fn tok_colour(t: &css::Tok) -> Result<Option<crate::paint::ColorRef>, String> {
+    if matches!(t, css::Tok::Ident(c) if c.eq_ignore_ascii_case("currentcolor")) {
+        return Ok(None);
+    }
+    paint(&css::paint_vals(std::slice::from_ref(t))?)
+}
+
+fn paint(vals: &[og_core::ogt::Value]) -> Result<Option<crate::paint::ColorRef>, String> {
+    match parse_lit(Ty::Paint, vals)? {
+        Lit::Paint(p) => Ok(Some(p.color_ref())),
+        _ => Err("not a colour".into()),
+    }
+}
+
+fn colour(value: &str) -> Result<Option<crate::paint::ColorRef>, String> {
+    match css::tokens(value)?.as_slice() {
+        [t] => tok_colour(t),
+        _ => Err(format!("'{value}' is not a colour")),
+    }
+}
+
+/// A border's width, style and colour, any of them in any order (a
+/// shorthand resets those it leaves out).
+type BorderPart = (
+    Option<f32>,
+    Option<crate::decor::LineStyle>,
+    Option<crate::paint::ColorRef>,
+);
+
+fn border(value: &str) -> Result<BorderPart, String> {
+    let (mut w, mut style, mut c) = (None, None, None);
+    let (mut seen_style, mut seen_colour) = (false, false);
+    for t in css::tokens(value)? {
+        if !seen_style
+            && let css::Tok::Ident(word) = &t
+            && super::boxes::STYLES.contains(&word.as_str())
+        {
+            style = crate::decor::LineStyle::from_css(word);
+            seen_style = true;
+        } else if w.is_none()
+            && let Ok(v) = border_width(&t)
+        {
+            w = Some(v);
+        } else if !seen_colour {
+            c = tok_colour(&t)?;
+            seen_colour = true;
+        } else {
+            return Err("a border takes one width, one style and one colour".into());
+        }
+    }
+    Ok((w, style, c))
+}
+
+/// Sets the box property `name` of an inline element's box; `false`
+/// when it is no box property.
+fn inline_box(
+    b: &mut crate::rich::InlineBoxStyle,
+    name: &str,
+    value: &str,
+) -> Result<bool, String> {
+    let sides = |v: &str| -> Result<Vec<css::Tok>, String> { css::tokens(v) };
+    let side = |n: &str| SIDES.iter().position(|s| *s == n);
+    match name {
+        "background" | "background-color" => {
+            let v = value.trim();
+            b.background = match v {
+                "none" | "transparent" => None,
+                _ => Some(colour(v)?.ok_or(format!("{name} of a text span takes a colour"))?),
+            };
+        }
+        "padding" => {
+            let v = sides(value)?
+                .iter()
+                .map(px)
+                .collect::<Result<Vec<_>, _>>()?;
+            b.padding = super::boxes::four(name, v)?;
+            if b.padding.iter().any(|p| *p < 0.0) {
+                return Err("padding is not negative".into());
+            }
+        }
+        "border-radius" => {
+            let (h, v) = match value.split_once('/') {
+                Some((h, v)) => (h, Some(v)),
+                None => (value, None),
+            };
+            let h = super::boxes::four(
+                name,
+                sides(h)?.iter().map(px).collect::<Result<Vec<_>, _>>()?,
+            )?;
+            let v = match v {
+                Some(v) => super::boxes::four(
+                    name,
+                    sides(v)?.iter().map(px).collect::<Result<Vec<_>, _>>()?,
+                )?,
+                None => h,
+            };
+            b.radius = [0, 1, 2, 3].map(|k| [h[k].max(0.0), v[k].max(0.0)]);
+        }
+        "box-shadow" => {
+            b.shadows = Vec::new();
+            for s in super::boxes::shadows(value)? {
+                let c = match &s.color {
+                    Some(vals) => paint(vals)?,
+                    None => None,
+                };
+                b.shadows.push((
+                    crate::decor::Shadow {
+                        inset: s.inset,
+                        offset: s.offset,
+                        blur: s.blur,
+                        spread: s.spread,
+                        color: crate::Srgba::TRANSPARENT,
+                    },
+                    c,
+                ));
+            }
+        }
+        "box-decoration-break" | "-webkit-box-decoration-break" => {
+            b.clone = match value.trim() {
+                "slice" => false,
+                "clone" => true,
+                _ => return Err("box-decoration-break takes slice or clone".into()),
+            };
+        }
+        "border" => {
+            let (w, s, c) = border(value)?;
+            b.border_width = [w; 4];
+            b.border_style = [s; 4];
+            b.border_color = [c.clone(), c.clone(), c.clone(), c];
+        }
+        "border-width" => {
+            let v = sides(value)?
+                .iter()
+                .map(border_width)
+                .collect::<Result<Vec<_>, _>>()?;
+            b.border_width = super::boxes::four(name, v)?.map(Some);
+        }
+        "border-style" => {
+            let v = sides(value)?
+                .iter()
+                .map(|t| {
+                    super::boxes::want_style(t, false)
+                        .map(|s| crate::decor::LineStyle::from_css(&s))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            b.border_style = super::boxes::four(name, v)?;
+        }
+        "border-color" => {
+            let v = sides(value)?
+                .iter()
+                .map(tok_colour)
+                .collect::<Result<Vec<_>, _>>()?;
+            b.border_color = super::boxes::four(name, v)?;
+        }
+        _ => {
+            if let Some(k) = name.strip_prefix("padding-").and_then(side) {
+                let [t] = sides(value)?
+                    .try_into()
+                    .map_err(|_| format!("{name} takes one length"))?;
+                b.padding[k] = px(&t)?;
+                return Ok(true);
+            }
+            let Some(rest) = name.strip_prefix("border-") else {
+                return Ok(false);
+            };
+            let (s, part) = rest.split_once('-').unwrap_or((rest, ""));
+            let Some(k) = side(s) else {
+                return Ok(false);
+            };
+            match part {
+                "" => {
+                    let (w, s, c) = border(value)?;
+                    b.border_width[k] = w;
+                    b.border_style[k] = s;
+                    b.border_color[k] = c;
+                }
+                "width" => {
+                    let [t] = sides(value)?
+                        .try_into()
+                        .map_err(|_| format!("{name} takes one width"))?;
+                    b.border_width[k] = Some(border_width(&t)?);
+                }
+                "style" => {
+                    let [t] = sides(value)?
+                        .try_into()
+                        .map_err(|_| format!("{name} takes one style"))?;
+                    b.border_style[k] =
+                        crate::decor::LineStyle::from_css(&super::boxes::want_style(&t, false)?);
+                }
+                "color" => b.border_color[k] = colour(value)?,
+                _ => return Ok(false),
+            }
+        }
+    }
+    Ok(true)
 }
 
 /// A run's style from text declarations (`name: value;`), as a

@@ -73,9 +73,48 @@ pub struct RichSpan {
     pub valign: VerticalAlign,
     /// CSS `word-spacing`, px: added after each word separator.
     pub word_spacing: f32,
+    /// The decorated inline box it is in: its spans share it.
+    pub inline_box: Option<std::sync::Arc<InlineBox>>,
     /// Its own `text-combine-upright` (CSS Writing Modes 4 §9.1); `None`:
     /// its text's.
     pub combine: Option<crate::layout::flow::Combine>,
+}
+
+/// An inline element's box as drawn ([`InlineBoxStyle`] against the
+/// theme): drawn round each of its line fragments, under the text, its
+/// inline border and padding room at its start and end ([`Edge`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct InlineBox {
+    /// The element.
+    pub id: u32,
+    /// Its background, borders, corners and shadows; `content` holds its
+    /// border and padding (left, top, right, bottom).
+    pub decor: crate::decor::BoxDecor,
+    /// `box-decoration-break: clone`: each fragment a whole box, its
+    /// edges at every line break too.
+    pub clone: bool,
+    /// On a hyphenated line laid out alone: whether it started on a line
+    /// before and goes on past it, so that edge is not there (under
+    /// `slice`).
+    pub open: [bool; 2],
+}
+
+impl InlineBox {
+    /// The room its start and end edges take along a line of direction
+    /// `rtl`: its left and right border and padding, or the reverse.
+    pub(crate) fn edges(&self, rtl: bool) -> [f32; 2] {
+        let [l, _, r, _] = self.decor.content;
+        if rtl { [r, l] } else { [l, r] }
+    }
+}
+
+/// A decorated inline box's start or end edge, a segment of its own: its
+/// border and padding along the line (CSS 2 §10.8), its width the
+/// segment's.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Edge {
+    Start,
+    End,
 }
 
 impl RichSpan {
@@ -158,6 +197,8 @@ pub struct Piece {
     pub width: f32,
     /// How far its span's baseline is raised above the line's.
     pub rise: f32,
+    /// An inline box's edge: room, no text.
+    pub edge: Option<Edge>,
 }
 
 /// One laid-out line of a paragraph.
@@ -213,7 +254,7 @@ mod ruby;
 mod spans;
 pub use ruby::{Ruby, RubyAlign, RubyOverhang, RubyStyle};
 pub(crate) use ruby::{ruby_box, ruby_extents};
-pub use spans::{InlineAtom, TextSpan, TextSpanStyle, TextSpanValue};
+pub use spans::{InlineAtom, InlineBoxStyle, TextSpan, TextSpanStyle, TextSpanValue};
 
 /// A unit lines break between: a span's word, space or CJK character.
 struct Unit {
@@ -223,6 +264,8 @@ struct Unit {
     width: f32,
     /// Glued to the unit before it (the same word continued in another span).
     glued: bool,
+    /// An inline box's edge, glued to the text it starts or ends.
+    edge: Option<Edge>,
 }
 
 /// What a span's `text` takes along its line: its width across, or its
@@ -351,7 +394,38 @@ fn paragraphs(
     v: Option<crate::layout::flow::VerticalText>,
 ) -> Vec<Vec<Unit>> {
     let mut out: Vec<Vec<Unit>> = vec![Vec::new()];
+    // An inline box's edges take their room along a horizontal line, at
+    // its paragraph's direction (CSS 2 §10.8).
+    let rtl = rc.spans.iter().any(|s| s.inline_box.is_some())
+        && og_i18n::paragraph_direction(
+            &rc.spans.iter().map(|s| s.text.as_str()).collect::<String>(),
+            og_i18n::Direction::Ltr,
+        ) == og_i18n::Direction::Rtl;
+    let boxed = |k: usize| {
+        v.is_none()
+            .then(|| rc.spans.get(k)?.inline_box.as_ref())
+            .flatten()
+    };
+    let same = |k: Option<usize>, id: u32| k.and_then(boxed).is_some_and(|b| b.id == id);
+    let edge = |k: usize, e: Edge, glued: bool| {
+        boxed(k).map(|b| Unit {
+            span: k,
+            text: String::new(),
+            space: false,
+            width: b.edges(rtl)[usize::from(e == Edge::End)],
+            glued,
+            edge: Some(e),
+        })
+    };
     for (k, s) in rc.spans.iter().enumerate() {
+        if boxed(k).is_some_and(|b| !same(k.checked_sub(1), b.id)) {
+            let glued = out.last().and_then(|p| p.last()).is_some_and(|u| !u.space);
+            out.last_mut()
+                .expect("a paragraph")
+                .extend(edge(k, Edge::Start, glued));
+        }
+        let end =
+            edge(k, Edge::End, true).filter(|_| !boxed(k).is_some_and(|b| same(Some(k + 1), b.id)));
         // An atom, or a text composed in one em: one unit of the line.
         if s.atom.is_some() || s.combined(v) {
             let text = if s.atom.is_some() {
@@ -366,7 +440,9 @@ fn paragraphs(
                 text,
                 space: false,
                 glued,
+                edge: None,
             });
+            out.last_mut().expect("a paragraph").extend(end);
             continue;
         }
         for (n, para) in s.text.split('\n').enumerate() {
@@ -379,16 +455,18 @@ fn paragraphs(
                     && out
                         .last()
                         .and_then(|p| p.last())
-                        .is_some_and(|u| !u.space && u.span != k);
+                        .is_some_and(|u| !u.space && (u.span != k || u.edge.is_some()));
                 out.last_mut().expect("a paragraph").push(Unit {
                     span: k,
                     text: t.to_string(),
                     space,
                     width: span_advance(s, t, fonts, v),
                     glued,
+                    edge: None,
                 });
             }
         }
+        out.last_mut().expect("a paragraph").extend(end);
     }
     out
 }
@@ -493,7 +571,12 @@ fn build_line(rc: &RichContent, fonts: &dyn Metrics, units: Vec<&Unit>) -> RichL
     let mut x = 0.0;
     for u in units {
         match pieces.last_mut() {
-            Some(p) if p.span == u.span && rc.spans[u.span].atom.is_none() => {
+            Some(p)
+                if p.span == u.span
+                    && rc.spans[u.span].atom.is_none()
+                    && p.edge.is_none()
+                    && u.edge.is_none() =>
+            {
                 p.text.push_str(&u.text);
                 p.width += u.width;
             }
@@ -503,6 +586,7 @@ fn build_line(rc: &RichContent, fonts: &dyn Metrics, units: Vec<&Unit>) -> RichL
                 x,
                 width: u.width,
                 rise: 0.0,
+                edge: u.edge,
             }),
         }
         x += u.width;
@@ -598,6 +682,8 @@ pub(crate) struct DrawnPiece {
     pub glyphs: Option<Vec<crate::text::VisualGlyph>>,
     pub rect: Rect,
     pub baseline: f32,
+    /// An inline box's edge: room, no text.
+    pub edge: Option<Edge>,
 }
 
 /// One segment of a line in visual order: a piece, or the part of one in a
@@ -613,6 +699,8 @@ pub struct Segment {
     pub width: f32,
     /// Its piece's rise above the line's baseline.
     pub rise: f32,
+    /// An inline box's edge: room, no text.
+    pub edge: Option<Edge>,
 }
 
 /// A rich line's segments in visual order. A line of left-to-right text in
@@ -663,6 +751,7 @@ fn visual_segments(
                     glyphs: None,
                     width: p.width,
                     rise: p.rise,
+                    edge: p.edge,
                 };
                 at += p.text.chars().count();
                 s
@@ -679,7 +768,7 @@ fn visual_segments(
         starts.push(chars);
         chars += p.text.chars().count();
         let start = text.len();
-        if rc.spans[p.span].atom.is_some() {
+        if rc.spans[p.span].atom.is_some() || p.edge.is_some() {
             text.push('\u{fffc}');
         } else {
             text.push_str(&p.text);
@@ -705,7 +794,7 @@ fn visual_segments(
             let p = &line.pieces[k];
             let s = &rc.spans[p.span];
             let at = starts[k] + text[ranges[k].start..r.start].chars().count();
-            if s.atom.is_some() {
+            if s.atom.is_some() || p.edge.is_some() {
                 out.push(Segment {
                     span: p.span,
                     text: String::new(),
@@ -713,6 +802,7 @@ fn visual_segments(
                     glyphs: None,
                     width: p.width,
                     rise: p.rise,
+                    edge: p.edge,
                 });
                 continue;
             }
@@ -728,6 +818,7 @@ fn visual_segments(
                     glyphs: None,
                     width: span_width(s, piece_text, fonts),
                     rise: p.rise,
+                    edge: None,
                 });
                 continue;
             }
@@ -742,6 +833,7 @@ fn visual_segments(
                 glyphs: Some(glyphs),
                 width,
                 rise: p.rise,
+                edge: None,
             });
         }
     }
@@ -833,6 +925,7 @@ impl Ui {
                     glyphs: seg.glyphs,
                     rect: Rect::new(x, y, seg.width * sk, line.height * sk),
                     baseline: y + (line.baseline - seg.rise) * sk,
+                    edge: seg.edge,
                 });
                 x += seg.width * sk;
             }
@@ -877,6 +970,106 @@ impl Ui {
             .collect()
     }
 
+    /// The decorations of rich node `i`'s inline boxes, under its text
+    /// (CSS 2 §10.8, CSS Fragmentation 3 §5.4): each box's run of pieces
+    /// on a line is a fragment, as tall as its text's content area and
+    /// its block padding and border, as wide as its pieces with their
+    /// edges. A fragment with both edges draws the whole box; under
+    /// `slice` one cut by a line break draws the box as if unbroken,
+    /// moved with its pieces and cut at the break (no border, corner or
+    /// shadow there).
+    fn inline_box_commands(
+        &self,
+        i: usize,
+        rc: &RichContent,
+        pieces: &[DrawnPiece],
+        cmds: &mut Vec<crate::draw::DrawCmd>,
+    ) {
+        let n = &self.tree.nodes[i];
+        let t = self.paint_theme();
+        let sk = n.placed.scale;
+        let at = crate::paint::Placed {
+            rect: Rect::default(),
+            radius: 0.0,
+            clip: self.paint_clip(n),
+            alpha: n.placed.alpha,
+        };
+        let box_of = |p: &DrawnPiece| rc.spans[p.span].inline_box.as_ref();
+        let mut k = 0;
+        while k < pieces.len() {
+            let Some(b) = box_of(&pieces[k]) else {
+                k += 1;
+                continue;
+            };
+            // The fragment: the box's pieces on this line, side by side.
+            let line = pieces[k].rect.y;
+            let mut e = k + 1;
+            while e < pieces.len()
+                && pieces[e].rect.y == line
+                && box_of(&pieces[e]).is_some_and(|o| o.id == b.id)
+            {
+                e += 1;
+            }
+            let frag = &pieces[k..e];
+            k = e;
+            // Its content area: its text's ascent and descent at their
+            // baselines (an edge's where it holds no text).
+            let text: Vec<&DrawnPiece> = frag.iter().filter(|p| p.edge.is_none()).collect();
+            let measured = if text.is_empty() {
+                frag.iter().collect()
+            } else {
+                text
+            };
+            let (mut top, mut bottom) = (f32::INFINITY, f32::NEG_INFINITY);
+            for p in measured {
+                let (_, asc, desc) = span_metrics(&rc.spans[p.span], &self.env.fonts);
+                top = top.min(p.baseline - asc * sk);
+                bottom = bottom.max(p.baseline - desc * sk);
+            }
+            let [_, above, _, below] = b.decor.content;
+            let first = &frag[0];
+            let last = &frag[frag.len() - 1];
+            let rect = Rect::new(
+                first.rect.x,
+                top - above,
+                last.rect.right() - first.rect.x,
+                bottom - top + above + below,
+            );
+            let edges = [first.edge.is_some(), last.edge.is_some()];
+            // Past the box's outer edges: a shadow there is not cut.
+            let far = 1e4;
+            let (whole, cut) = if edges == [true; 2] {
+                (rect, None)
+            } else {
+                let [l, r] = edges.map(|e| if e { far } else { 0.0 });
+                let [gl, gr] = edges.map(|e| if e { 0.0 } else { far });
+                (
+                    Rect::new(rect.x - gl, rect.y, rect.width + gl + gr, rect.height),
+                    Some(Rect::new(
+                        rect.x - l,
+                        rect.y - far,
+                        rect.width + l + r,
+                        rect.height + 2.0 * far,
+                    )),
+                )
+            };
+            let at = crate::paint::Placed { rect: whole, ..at };
+            let d = b.decor.over(
+                None,
+                crate::css::paint_css::LayerFrame {
+                    size: [whole.width, whole.height],
+                    viewport: [self.env.viewport.width, self.env.viewport.height],
+                    ..Default::default()
+                },
+            );
+            cmds.extend(cut.map(crate::ui::cut_to));
+            cmds.extend(d.enter(t, &at));
+            cmds.extend(d.leave(t, &at));
+            cmds.extend(b.decor.lines(&at));
+            cmds.extend(cut.map(|_| crate::draw::DrawCmd::PopClip));
+        }
+    }
+
     /// The draw commands of rich node `i`: each piece in its span's font,
     /// ink, weight and tracking (a moving span glyph by glyph), icons from
     /// the atlas, links underlined (and ringed while focused by keys).
@@ -896,6 +1089,15 @@ impl Ui {
         let clip = self.paint_clip(n);
         let tick = self.interaction.state.tick as f32;
         let still = t.reduced_motion;
+        let pieces = if self.tree.rich_vertical(i).is_none() {
+            let pieces = self.rich_pieces(i);
+            if rc.spans.iter().any(|s| s.inline_box.is_some()) {
+                self.inline_box_commands(i, rc, &pieces, cmds);
+            }
+            pieces
+        } else {
+            Vec::new()
+        };
         // A link focused by keys or a pad: the focus ring around it, under the text.
         if self.interaction.state.focus_visible {
             for (l, r) in self.rich_links(i) {
@@ -920,7 +1122,10 @@ impl Ui {
             self.vertical_rich_commands(i, rc, v, cmds);
             return;
         }
-        for piece in self.rich_pieces(i) {
+        for piece in pieces {
+            if piece.edge.is_some() {
+                continue;
+            }
             let (k, text, r, baseline) = (piece.span, piece.text, piece.rect, piece.baseline);
             let s = &rc.spans[k];
             let size = s.step.size * n.placed.scale;
@@ -1369,6 +1574,7 @@ impl Ui {
                         glyphs: None,
                         width: p.width,
                         rise: p.rise,
+                        edge: None,
                     })
                 })
                 .collect();
@@ -1436,6 +1642,7 @@ impl Ui {
                         glyphs: seg.glyphs,
                         rect: Rect::new(col, y, across, len),
                         baseline: mid + seg.rise * sk,
+                        edge: None,
                     },
                 ));
                 at += len;

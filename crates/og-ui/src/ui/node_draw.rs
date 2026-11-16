@@ -2213,7 +2213,7 @@ pub(super) struct DecorPiece {
 }
 
 /// Cuts what follows, until its pop, to `r`.
-pub(super) fn cut_to(r: Rect) -> DrawCmd {
+pub(crate) fn cut_to(r: Rect) -> DrawCmd {
     DrawCmd::PushClip {
         geometry: og_draw::UiGeometry::Rect {
             radii: [0.0; 4],

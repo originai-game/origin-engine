@@ -149,7 +149,7 @@ pub use motion::{
 };
 pub use particles::{EmitFrom, ParticlesDesc};
 pub(crate) use rich::RichTextDesc;
-pub use rich::{InlineAtom, TextSpan, TextSpanStyle, TextSpanValue};
+pub use rich::{InlineAtom, InlineBoxStyle, TextSpan, TextSpanStyle, TextSpanValue};
 pub use slot::{Aspect, SlotKind, SlotSpec};
 pub use style::{
     Breakpoint, Contrast, Controls, Densities, Density, DensityMode, Durations, Palette, READABLE,
