@@ -1778,6 +1778,65 @@ fn a_figure_inside_a_button_takes_the_plates_ink() {
     }
 }
 
+/// A built-in control's parts are a shadow tree under its host, so a
+/// `::part()` rule reads the host where it stands in its document: its
+/// ancestors, its parent and its place among its siblings, from the
+/// document's own sheet and from the pack's, and again when they change.
+/// Wrong: the selector refused (a part's selector had one compound), or
+/// matched against the host's own facts alone, so every button or none
+/// takes the padding.
+#[test]
+fn a_part_rule_reads_its_hosts_place_in_the_document() {
+    let rules = ".shop button::part(base) { padding-inline: 40px; }
+        ul > li:first-child button::part(base) { padding-inline: 60px; }";
+    let pack = og_ui::style_pack::StylePack::parse(
+        "styles/test",
+        vec![("styles/test/main.css".into(), rules.into())],
+    )
+    .unwrap();
+    for with_pack in [false, true] {
+        let ui = ui_with_font(test_font());
+        let own = if with_pack {
+            String::new()
+        } else {
+            format!("<style>{rules}</style>")
+        };
+        let mut d = mounted(
+            ui,
+            &format!(
+                r#"<column id="Root"><div class:shop={{$on}}><button id="A">Buy</button></div><button id="B">Buy</button><ul><li><button id="C">Buy</button></li><li><button id="D">Buy</button></li></ul></column>{own}"#
+            ),
+            &[("on", json!(true))],
+            Viewport::new(400.0, 600.0),
+        );
+        if with_pack {
+            d.ui.set_style_pack(&pack).unwrap();
+        }
+        for _ in 0..3 {
+            d.step(InputFrame::default());
+        }
+        // The plate's padding is the button's: it widens it.
+        let width = |d: &Doc, id: &str| rect(&d.ui, id)[2];
+        let plain = width(&d, "B");
+        let case = format!("pack {with_pack}");
+        let (a, c) = (width(&d, "A"), width(&d, "C"));
+        assert!(
+            a >= 80.0 && plain < 80.0,
+            "{case}: A {a} under .shop, B {plain}"
+        );
+        assert!(
+            (c - a - 40.0).abs() < 0.5,
+            "{case}: C {c} first in its list, A {a}"
+        );
+        assert_eq!(width(&d, "D"), plain, "{case}: D is second");
+        set_store(&mut d.ui, "on", json!(false));
+        for _ in 0..3 {
+            d.step(InputFrame::default());
+        }
+        assert_eq!(width(&d, "A"), plain, "{case}: A once .shop is gone");
+    }
+}
+
 /// A quiet or ghost button is text on the surface, so it takes inks of its
 /// own: a pack whose plates are dark in a light scheme inks them dark while
 /// its plate buttons keep a light label. Wrong: a text button hovered in the

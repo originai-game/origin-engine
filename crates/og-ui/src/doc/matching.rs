@@ -682,6 +682,7 @@ impl Profile {
                         global: false,
                         inner: s.clone(),
                         span: 0,
+                        local: None,
                     })
                     .collect();
                 if !self.filters.contains(&filter) {

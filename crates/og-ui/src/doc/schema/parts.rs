@@ -173,6 +173,7 @@ fn validate_selector(
                         global: false,
                         inner: nested.clone(),
                         span: 0,
+                        local: None,
                     },
                     authored,
                 )?;
