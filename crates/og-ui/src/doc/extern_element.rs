@@ -144,9 +144,10 @@ pub const TEXT_PRESENTATION: &[&str] = &[
 ];
 
 /// A CSS property only SVG elements read (cascaded as text, read by the
-/// SVG build).
+/// SVG build). `dominant-baseline` is text's too (CSS Inline 3 §4.1): the
+/// text cascade hands it to SVG as one of [`TEXT_PRESENTATION`].
 pub(crate) fn svg_longhand(name: &str) -> bool {
-    PRESENTATION.contains(&name) || matches!(name, "text-anchor" | "dominant-baseline")
+    PRESENTATION.contains(&name) || name == "text-anchor"
 }
 
 /// A `<text>`'s literal `white-space` attribute (or `xml:space`): spaces

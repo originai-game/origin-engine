@@ -450,43 +450,101 @@ pub enum Cross {
     LastBaseline,
 }
 
-/// CSS `vertical-align` (CSS 2.1 §10.8.1, CSS Inline 3 §4): where an
-/// inline-level box sits in its line, against its parent's baseline or the
-/// line box.
+/// CSS `vertical-align` (CSS 2.1 §10.8.1, CSS Inline 3 §4.2): where an
+/// inline-level box sits in its line, as its three longhands give it.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum VerticalAlign {
-    #[default]
-    Baseline,
-    /// Its baseline a fifth of its parent's size below the parent's.
-    Sub,
-    /// Its baseline a third of its parent's size above the parent's.
-    Super,
-    /// Its top on the top of its parent's text (the font's ascent).
-    TextTop,
-    /// Its bottom on the bottom of its parent's text (the font's descent).
-    TextBottom,
-    /// Its middle half its parent's x-height above the parent's baseline.
-    Middle,
-    /// Its top on the line box's top.
-    Top,
-    /// Its bottom on the line box's bottom.
-    Bottom,
-    /// Its baseline raised this far, CSS px (negative: lowered).
+pub struct VerticalAlign {
+    /// `alignment-baseline`: the baseline of the box aligned with the same
+    /// baseline of its parent; `None` is `baseline`, the parent's
+    /// dominant baseline.
+    pub baseline: Option<Baseline>,
+    /// `baseline-shift`: how far it moves once aligned, or its place
+    /// against the line box.
+    pub shift: BaselineShift,
+    /// `baseline-source`: which of its baseline sets aligns it.
+    pub source: BaselineSource,
+}
+
+pub use og_text::baselines::Baseline;
+
+/// CSS `baseline-shift` (CSS Inline 3 §4.2.3).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum BaselineShift {
+    /// Raised this far, CSS px (negative: lowered).
     Px(f32),
     /// Raised this many of its own font size.
     Em(f32),
     /// Raised this fraction of its own line height (CSS's percentage).
     Percent(f32),
+    /// Lowered a fifth of its parent's font size.
+    Sub,
+    /// Raised a third of its parent's font size.
+    Super,
+    /// Its top on the line box's top.
+    Top,
+    /// Its centre on the line box's centre.
+    Center,
+    /// Its bottom on the line box's bottom.
+    Bottom,
+}
+
+impl Default for BaselineShift {
+    fn default() -> Self {
+        Self::Px(0.0)
+    }
+}
+
+/// CSS `baseline-source` (CSS Inline 3 §4.2.1): `auto` takes an inline
+/// block's last baseline and any other box's first.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum BaselineSource {
+    #[default]
+    Auto,
+    First,
+    Last,
 }
 
 /// The parent's text an inline box is aligned against: its font size,
-/// ascent and descent below the baseline, and x-height, CSS px.
+/// ascent and descent below the baseline, and x-height, CSS px; its
+/// baselines, CSS px above its alphabetic baseline; and its
+/// `dominant-baseline`.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Strut {
     pub size: f32,
     pub ascent: f32,
     pub descent: f32,
     pub x_height: f32,
+    pub baselines: og_text::baselines::Baselines,
+    pub dominant: Baseline,
+}
+
+impl Strut {
+    /// The strut of text in the first face of `m` at `size`.
+    pub(crate) fn of(m: &og_text::text::FontMetrics, size: f32, dominant: Baseline) -> Self {
+        Self {
+            size,
+            ascent: m.ascender * size,
+            descent: -m.descender * size,
+            x_height: m.x_height() * size,
+            baselines: baselines_of(m).scaled(size),
+            dominant,
+        }
+    }
+}
+
+/// The baselines of text in the first face of `m`, em of the text's size:
+/// its font file's at the face's own size (`font-size-adjust`), else
+/// synthesized from its metrics. The text-over and -under edges are its
+/// ascent and descent either way, so `@font-face` overrides move them.
+pub(crate) fn baselines_of(m: &og_text::text::FontMetrics) -> og_text::baselines::Baselines {
+    match &m.file {
+        Some(f) => og_text::baselines::Baselines {
+            text_top: m.ascender,
+            text_bottom: m.descender,
+            ..og_text::baselines::baselines(f).scaled(m.scale)
+        },
+        None => og_text::baselines::Baselines::synthesize(m.ascender, -m.descender, m.x_height()),
+    }
 }
 
 /// Where a box sits in a line once its `vertical-align` is resolved.
@@ -495,33 +553,75 @@ pub(crate) enum InlinePlace {
     /// Its baseline this far above the parent's (CSS px).
     Raised(f32),
     Top,
+    Center,
     Bottom,
 }
 
 impl VerticalAlign {
-    /// A CSS value (`text-top`, `-2px`, `0.3em`, `50%`) or the prop's word
-    /// (`textTop`); `None` for anything else.
+    /// The `vertical-align` shorthand (`[first | last] ||
+    /// <'alignment-baseline'> || <'baseline-shift'>`, CSS Inline 3 §4.2;
+    /// `text-top`, `-2px`, `0.3em`, `50%`, `central super`) or the prop's
+    /// word (`textTop`); `None` for anything else.
     pub(crate) fn parse(v: &str) -> Option<Self> {
-        let v = v.trim();
+        let mut out = Self::default();
+        let (mut source, mut baseline, mut shift) = (false, false, false);
+        let mut words = v.split_whitespace().peekable();
+        words.peek()?;
+        for w in words {
+            let w = match w {
+                "textTop" => "text-top",
+                "textBottom" => "text-bottom",
+                w => w,
+            };
+            if !source && let Some(s) = Self::source(w).filter(|s| *s != BaselineSource::Auto) {
+                (out.source, source) = (s, true);
+            } else if !baseline && let Some(b) = Self::alignment(w) {
+                (out.baseline, baseline) = (b, true);
+            } else if !shift && let Some(s) = Self::shift(w) {
+                (out.shift, shift) = (s, true);
+            } else {
+                return None;
+            }
+        }
+        Some(out)
+    }
+
+    /// An `alignment-baseline`: `Some(None)` for `baseline`.
+    pub(crate) fn alignment(v: &str) -> Option<Option<Baseline>> {
+        match v {
+            "baseline" => Some(None),
+            v => Baseline::parse(v).map(Some),
+        }
+    }
+
+    /// A `baseline-source`.
+    pub(crate) fn source(v: &str) -> Option<BaselineSource> {
+        Some(match v {
+            "auto" => BaselineSource::Auto,
+            "first" => BaselineSource::First,
+            "last" => BaselineSource::Last,
+            _ => return None,
+        })
+    }
+
+    /// A `baseline-shift`.
+    pub(crate) fn shift(v: &str) -> Option<BaselineShift> {
         let num = |s: &str| s.trim().parse::<f32>().ok().filter(|x| x.is_finite());
         Some(match v {
-            "baseline" => Self::Baseline,
-            "sub" => Self::Sub,
-            "super" => Self::Super,
-            "text-top" | "textTop" => Self::TextTop,
-            "text-bottom" | "textBottom" => Self::TextBottom,
-            "middle" => Self::Middle,
-            "top" => Self::Top,
-            "bottom" => Self::Bottom,
+            "sub" => BaselineShift::Sub,
+            "super" => BaselineShift::Super,
+            "top" => BaselineShift::Top,
+            "center" => BaselineShift::Center,
+            "bottom" => BaselineShift::Bottom,
             _ => {
                 if let Some(p) = v.strip_suffix('%') {
-                    Self::Percent(num(p)? / 100.0)
+                    BaselineShift::Percent(num(p)? / 100.0)
                 } else if let Some(em) = v.strip_suffix("em").filter(|e| !e.ends_with('r')) {
-                    Self::Em(num(em)?)
+                    BaselineShift::Em(num(em)?)
                 } else if let Some(px) = v.strip_suffix("px") {
-                    Self::Px(num(px)?)
+                    BaselineShift::Px(num(px)?)
                 } else if num(v) == Some(0.0) {
-                    Self::Px(0.0)
+                    BaselineShift::Px(0.0)
                 } else {
                     return None;
                 }
@@ -529,30 +629,49 @@ impl VerticalAlign {
         })
     }
 
+    /// Whether it leaves a box where baseline alignment on an alphabetic
+    /// dominant baseline puts it.
+    pub(crate) fn is_baseline(&self, dominant: Baseline) -> bool {
+        self.shift == BaselineShift::Px(0.0)
+            && self.baseline.unwrap_or(dominant) == Baseline::Alphabetic
+    }
+
     /// Where a box of its own font `size` and line height `line`, reaching
     /// `above` its baseline and `below` it (half its leading included, as
-    /// CSS 2.1 §10.8.1 measures an inline box), sits against `parent`.
+    /// CSS 2.1 §10.8.1 measures an inline box), with baselines `own` (CSS
+    /// px above its alphabetic one), sits against `parent`. Its alignment
+    /// baseline (the parent's dominant one for `baseline`) meets the
+    /// parent's: `middle`, `text-top` and `text-bottom` as CSS 2.1 places
+    /// a box (its midpoint at the parent's x-middle, its top or bottom at
+    /// the parent's content area's), the others by the two baseline
+    /// tables; then it shifts.
     pub(crate) fn place(
         self,
         parent: &Strut,
+        own: &og_text::baselines::Baselines,
         size: f32,
         line: f32,
         above: f32,
         below: f32,
     ) -> InlinePlace {
-        InlinePlace::Raised(match self {
-            Self::Baseline => 0.0,
-            Self::Sub => -parent.size / 5.0,
-            Self::Super => parent.size / 3.0,
-            Self::TextTop => parent.ascent - above,
-            Self::TextBottom => below - parent.descent,
-            Self::Middle => parent.x_height / 2.0 - (above - below) / 2.0,
-            Self::Top => return InlinePlace::Top,
-            Self::Bottom => return InlinePlace::Bottom,
-            Self::Px(px) => px,
-            Self::Em(em) => em * size,
-            Self::Percent(p) => p * line,
-        })
+        let shift = match self.shift {
+            BaselineShift::Top => return InlinePlace::Top,
+            BaselineShift::Center => return InlinePlace::Center,
+            BaselineShift::Bottom => return InlinePlace::Bottom,
+            BaselineShift::Px(px) => px,
+            BaselineShift::Em(em) => em * size,
+            BaselineShift::Percent(p) => p * line,
+            BaselineShift::Sub => -parent.size / 5.0,
+            BaselineShift::Super => parent.size / 3.0,
+        };
+        let align = match self.baseline.unwrap_or(parent.dominant) {
+            Baseline::Alphabetic => 0.0,
+            Baseline::TextTop => parent.ascent - above,
+            Baseline::TextBottom => below - parent.descent,
+            Baseline::Middle => parent.x_height / 2.0 - (above - below) / 2.0,
+            b => parent.baselines.at(b) - own.at(b),
+        };
+        InlinePlace::Raised(align + shift)
     }
 }
 
@@ -575,7 +694,7 @@ pub(crate) fn line_box(
     }
     let mut height = top + bottom;
     for &(p, above, below) in items {
-        if p == InlinePlace::Top {
+        if matches!(p, InlinePlace::Top | InlinePlace::Center) {
             height = height.max(above + below);
         }
     }
@@ -590,6 +709,7 @@ pub(crate) fn line_box(
         .map(|&(p, above, below)| match p {
             InlinePlace::Raised(r) => top - r,
             InlinePlace::Top => above,
+            InlinePlace::Center => (height + above - below) / 2.0,
             InlinePlace::Bottom => height - below,
         })
         .collect();
@@ -782,9 +902,14 @@ pub struct Element {
     /// block that holds one, it and the texts beside it lie in lines.
     pub inline: bool,
     /// Its CSS `vertical-align` in its parent's lines (an inline-level
-    /// box): `Top` and `Bottom` place it by `align_self` against the line,
-    /// the others against the line's baseline once it is laid out.
+    /// box): `top` and `bottom` place it by `align_self` against the line,
+    /// the others against the line's baseline once it is laid out. Its
+    /// `baseline-source` is resolved: `auto` is `last` for an inline
+    /// block, else `first`.
     pub valign: VerticalAlign,
+    /// Its CSS `dominant-baseline`: the baseline its inline-level
+    /// children align at by default (CSS Inline 3 §4.1).
+    pub dominant: Baseline,
     /// It establishes a block formatting context (`display: flow-root`):
     /// its children's margins do not collapse through its edges.
     pub bfc: bool,

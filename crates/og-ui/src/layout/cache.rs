@@ -661,6 +661,7 @@ fn el_layout_eq(a: &Element, b: &Element) -> bool {
         && a.safe == b.safe
         && a.inline == b.inline
         && a.valign == b.valign
+        && a.dominant == b.dominant
         && a.bfc == b.bfc
         && a.contents == b.contents
         && a.table == b.table

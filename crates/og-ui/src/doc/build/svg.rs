@@ -353,19 +353,28 @@ pub fn shape_draw(
 
 /// Where `dominant-baseline` puts `y` in a line box whose top is 0 and
 /// whose height is the font's extents (`ascender` to `descender`, em, at
-/// `size` CSS px): CSS px from the box's top.
-pub fn baseline_shift(base: &str, ascender: f32, descender: f32, size: f32) -> Result<f32, String> {
+/// `size` CSS px): CSS px from the box's top. The font's baselines
+/// `table` (em above its alphabetic one, CSS Inline 3 §3.2) place the
+/// middle, central, hanging, mathematical and ideographic ones.
+pub fn baseline_shift(
+    base: &str,
+    ascender: f32,
+    descender: f32,
+    size: f32,
+    table: &og_text::baselines::Baselines,
+) -> Result<f32, String> {
+    use og_text::baselines::Baseline as B;
     let alphabetic = ascender * size;
+    let at = |b: B| alphabetic - table.at(b) * size;
     Ok(match base {
         "auto" | "alphabetic" | "" => alphabetic,
-        // Half the x-height (0.5 em) over the baseline, as browsers take
-        // it without the font's OS/2 table.
-        "middle" => alphabetic - 0.25 * size,
-        "central" => (ascender - descender) * size / 2.0,
-        "hanging" => alphabetic - 0.8 * size,
-        "mathematical" => alphabetic - 0.5 * size,
+        "middle" => at(B::Middle),
+        "central" => at(B::Central),
+        "hanging" => at(B::Hanging),
+        "mathematical" => at(B::Mathematical),
+        "ideographic" => at(B::Ideographic),
         "text-before-edge" | "text-top" => 0.0,
-        "text-after-edge" | "text-bottom" | "ideographic" => (ascender - descender) * size,
+        "text-after-edge" | "text-bottom" => (ascender - descender) * size,
         other => {
             return Err(format!(
                 "dominant-baseline \"{other}\" is auto, alphabetic, middle, central, hanging, mathematical, ideographic, text-before-edge or text-after-edge"

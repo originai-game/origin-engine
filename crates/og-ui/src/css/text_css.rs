@@ -67,6 +67,8 @@ pub(crate) const INHERITED: &[&str] = &[
     // CSS Mobile Text Size Adjustment 1 §2: parsed and inherited; it has
     // no effect, as the engine inflates no text.
     "text-size-adjust",
+    // CSS Inline 3 §4.1.
+    "dominant-baseline",
     "text-underline-position",
     "text-underline-offset",
     "text-decoration-skip-ink",
@@ -105,7 +107,10 @@ pub(crate) const LOCAL: &[&str] = &[
     "text-decoration-style",
     "text-decoration-color",
     "text-decoration-thickness",
-    "vertical-align",
+    // CSS Inline 3 §4.2: `vertical-align`'s longhands.
+    "alignment-baseline",
+    "baseline-shift",
+    "baseline-source",
 ];
 
 /// Whether this module owns `name` (after shorthands expand).
@@ -157,6 +162,7 @@ pub(crate) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
             | "text-decoration"
             | "text-emphasis"
             | "-webkit-text-stroke"
+            | "vertical-align"
     );
     if name == "font" && d.value.has_variables() {
         return Ok(vec![d]);
@@ -345,6 +351,34 @@ fn shorthand_parts(name: &str, v: &str) -> Result<Vec<(String, String)>, String>
                 .collect()
         }
         "font" => font(v)?,
+        "vertical-align" => {
+            // CSS Inline 3 §4.2: `[first | last] || <'alignment-baseline'>
+            // || <'baseline-shift'>`, each omitted longhand its initial
+            // value.
+            use crate::VerticalAlign as V;
+            let (mut source, mut baseline, mut shift) = (None, None, None);
+            for w in &words {
+                let w = match *w {
+                    "textTop" => "text-top",
+                    "textBottom" => "text-bottom",
+                    w => w,
+                };
+                if source.is_none() && matches!(w, "first" | "last") {
+                    source = Some(w);
+                } else if baseline.is_none() && V::alignment(w).is_some() {
+                    baseline = Some(w);
+                } else if shift.is_none() && V::shift(w).is_some() {
+                    shift = Some(w);
+                } else {
+                    return Err(format!("vertical-align: '{w}' is not a value"));
+                }
+            }
+            all(&[
+                ("alignment-baseline", baseline.unwrap_or("baseline")),
+                ("baseline-shift", shift.unwrap_or("0")),
+                ("baseline-source", source.unwrap_or("auto")),
+            ])
+        }
         "text-emphasis" => {
             // CSS Text Decoration 4 §3.3: a style and a colour, each its
             // initial value when omitted.
@@ -800,6 +834,10 @@ fn check(name: &str, v: &str) -> Result<(), String> {
         | "font-synthesis-position" => matches!(v, "auto" | "none"),
         "font-size-adjust" => size_adjust(v).is_some(),
         "font-language-override" => v == "normal" || language_tag(v).is_some(),
+        "alignment-baseline" => alignment_baseline(v).is_some(),
+        "baseline-shift" => crate::VerticalAlign::shift(v).is_some(),
+        "baseline-source" => crate::VerticalAlign::source(v).is_some(),
+        "dominant-baseline" => v == "auto" || crate::layout::Baseline::parse(v).is_some(),
         "text-size-adjust" => {
             matches!(v, "auto" | "none")
                 || v.strip_suffix('%')
@@ -843,19 +881,6 @@ fn check(name: &str, v: &str) -> Result<(), String> {
             );
         }
         "text-decoration-style" => matches!(v, "solid" | "double" | "dotted" | "dashed" | "wavy"),
-        "vertical-align" => {
-            matches!(
-                v,
-                "baseline"
-                    | "sub"
-                    | "super"
-                    | "text-top"
-                    | "text-bottom"
-                    | "middle"
-                    | "top"
-                    | "bottom"
-            ) || length(v)
-        }
         "paint-order" => v == "normal" || words_in(name, v, &["fill", "stroke", "markers"]).is_ok(),
         "color-scheme" => {
             v == "normal"
@@ -1255,7 +1280,10 @@ pub struct TextCss {
     pub accent: Option<Srgba>,
     /// The used colour scheme is dark (`None`: the style's).
     pub dark: Option<bool>,
-    pub vertical_align: Option<String>,
+    /// Its own `vertical-align` longhands (`None`: none declared).
+    pub vertical_align: Option<crate::VerticalAlign>,
+    /// CSS `dominant-baseline` (`auto` is `alphabetic`: horizontal text).
+    pub dominant: crate::layout::Baseline,
     /// Named and generic families in authored order, skipping unavailable names.
     pub family: Option<Vec<crate::FontFamily>>,
     pub font_role: Option<crate::FontRole>,
@@ -1639,7 +1667,30 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
     t.dark = get("color-scheme")
         .map(|v| scheme_dark(&v, theme_dark))
         .filter(|d| *d != theme_dark);
-    t.vertical_align = own("vertical-align");
+    let trimmed = |n: &str| own(n).map(|v| v.trim().to_string());
+    let (alignment, shift, source) = (
+        trimmed("alignment-baseline"),
+        trimmed("baseline-shift"),
+        trimmed("baseline-source"),
+    );
+    if alignment.is_some() || shift.is_some() || source.is_some() {
+        t.vertical_align = Some(crate::VerticalAlign {
+            baseline: alignment.as_deref().and_then(alignment_baseline).flatten(),
+            shift: shift
+                .as_deref()
+                .and_then(crate::VerticalAlign::shift)
+                .unwrap_or_default(),
+            source: source
+                .as_deref()
+                .and_then(crate::VerticalAlign::source)
+                .unwrap_or_default(),
+        });
+    }
+    t.dominant = get("dominant-baseline")
+        .as_deref()
+        .map(str::trim)
+        .and_then(crate::layout::Baseline::parse)
+        .unwrap_or_default();
     let mark_color = get("text-emphasis-color")
         .filter(|c| !c.eq_ignore_ascii_case("currentcolor"))
         .and_then(|c| color(Some(c)));
@@ -1803,6 +1854,16 @@ fn size_adjust(v: &str) -> Option<Option<crate::text::SizeAdjust>> {
         ),
     };
     Some(Some(crate::text::SizeAdjust { metric, value }))
+}
+
+/// An `alignment-baseline` (`Some(None)`: `baseline`), with SVG's legacy
+/// `text-before-edge` and `text-after-edge` (CSS Inline 3 §4.2.2.1).
+fn alignment_baseline(v: &str) -> Option<Option<crate::layout::Baseline>> {
+    match v {
+        "text-before-edge" => Some(Some(crate::layout::Baseline::TextTop)),
+        "text-after-edge" => Some(Some(crate::layout::Baseline::TextBottom)),
+        v => crate::VerticalAlign::alignment(v),
+    }
 }
 
 /// `font-language-override`'s OpenType language system tag: a quoted one

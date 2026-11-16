@@ -206,7 +206,7 @@ impl Ui {
                 fx: SpanFx::None,
                 decoration: None,
                 hyphen: None,
-                valign: crate::VerticalAlign::Baseline,
+                valign: crate::VerticalAlign::default(),
                 word_spacing: 0.0,
                 combine: None,
                 owners: Vec::new(),
@@ -422,6 +422,7 @@ impl Ui {
             indent: desc.indent,
             line_break: desc.line_break,
             emphasis: desc.emphasis,
+            dominant: desc.dominant,
         });
         node.layout.links.clear();
         for r in &node_runs_links(&node.content) {
@@ -575,11 +576,13 @@ fn push_synthetic(
                     .step
                     .features
                     .with_settings(&[(*b"sups", 0), (*b"subs", 0)]);
-                if p.valign == crate::VerticalAlign::Baseline {
-                    p.valign = if *kind == Synthetic::Super {
-                        crate::VerticalAlign::Super
+                // On the baseline (no alignment or shift of its own): its
+                // `baseline-shift` is the form's.
+                if p.valign == crate::VerticalAlign::default() {
+                    p.valign.shift = if *kind == Synthetic::Super {
+                        crate::layout::BaselineShift::Super
                     } else {
-                        crate::VerticalAlign::Sub
+                        crate::layout::BaselineShift::Sub
                     };
                 }
             }

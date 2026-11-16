@@ -172,10 +172,21 @@ impl<'a, 'm> Tree<'a, 'm> {
         // and answers its box `zoom` times as large (the place pass keeps
         // its own size; drawing scales it about its top left).
         let z = self.nodes[i].layout.used.zoom_factor();
-        if z != 1.0 {
-            return zoom_output(self.lay_flow(node, zoom_input(input, 1.0 / z), None), z);
+        let mut out = if z != 1.0 {
+            zoom_output(self.lay_flow(node, zoom_input(input, 1.0 / z), None), z)
+        } else {
+            self.lay_flow(node, input, ctx)
+        };
+        if input.run_mode == tf::RunMode::PerformLayout {
+            self.nodes[i].layout.last_baseline = out.baselines.last;
         }
-        self.lay_flow(node, input, ctx)
+        // An inline-level box aligned by its last baseline set (CSS Inline 3
+        // §4.2.1) answers that baseline to the line it sits in.
+        let used = &self.nodes[i].layout.used;
+        if used.inline && used.valign.source == crate::layout::BaselineSource::Last {
+            out.baselines.first = out.baselines.last.or(out.baselines.first);
+        }
+        out
     }
 
     fn lay_flow(
@@ -518,6 +529,22 @@ impl<'a, 'm> Tree<'a, 'm> {
         out
     }
 
+    /// Block container `i`'s last baseline below its border box's top: its
+    /// last in-flow child's that has one, as it was last placed.
+    fn block_last_baseline(&self, i: usize) -> Option<f32> {
+        self.nodes[i].children.iter().rev().find_map(|&c| {
+            let k = &self.nodes[c];
+            let out = k.layout.used.float != FloatSide::None
+                || matches!(
+                    k.props.position,
+                    crate::element::Position::Absolute | crate::element::Position::Screen
+                )
+                || k.is_hidden();
+            (!out).then_some(())?;
+            Some(k.layout.css.location.y + k.layout.last_baseline?)
+        })
+    }
+
     /// Node `i` laid out by its kind's algorithm.
     fn dispatch(
         &mut self,
@@ -539,7 +566,25 @@ impl<'a, 'm> Tree<'a, 'm> {
                 }
             },
             Kind::Flex => self.flex(i, input),
-            Kind::Block => tf::compute_block_layout(self, node, input, ctx),
+            Kind::Block => {
+                let mut out = tf::compute_block_layout(self, node, input, ctx);
+                // Taffy gives a block its first baseline only. Its last is
+                // its last in-flow child's (CSS Align 3 §9.1), from where
+                // its children were placed: an inline box aligned by it
+                // places them first when only measured.
+                let used = &self.nodes[i].layout.used;
+                let wants =
+                    used.inline && used.valign.source == crate::layout::BaselineSource::Last;
+                if out.baselines.last.is_none() && (perform || wants) {
+                    if !perform {
+                        let mut full = input;
+                        full.run_mode = tf::RunMode::PerformLayout;
+                        tf::compute_block_layout(self, node, full, None);
+                    }
+                    out.baselines.last = self.block_last_baseline(i);
+                }
+                out
+            }
             Kind::Multicol => self.multicol(i, input),
             k @ (Kind::Grid | Kind::Masonry) => {
                 if !self.grids.contains_key(&i) {
@@ -641,6 +686,7 @@ impl<'a, 'm> Tree<'a, 'm> {
         let pad = n.layout.used.padding;
         if let Some(l) = &lines {
             out.baselines.first = text::first_baseline(n, l, measure.fonts).map(|b| b + pad.top);
+            out.baselines.last = text::last_baseline(n, l, measure.fonts).map(|b| b + pad.top);
         }
         if input.run_mode == tf::RunMode::PerformLayout {
             self.nodes[i].layout.beside = false;
@@ -1072,6 +1118,26 @@ mod text {
                 Some(t.metrics(fonts).baseline(&line.text, 0.0, lh, t.step.size))
             }
             (Lines::Rich(lines), _) => Some(lines.first()?.baseline),
+            _ => None,
+        }
+    }
+
+    /// A text's last baseline below its content box's top: its lines are
+    /// one line height apart, a rich text's each its own height.
+    pub(crate) fn last_baseline(n: &Node, l: &Lines, fonts: &dyn Metrics) -> Option<f32> {
+        match (l, &*n.content) {
+            (Lines::Text { lines, step }, Content::Text(t)) => {
+                let t = n.used_text(t);
+                let t = step.map_or(t, |s| t.at(s));
+                let line = lines.last()?;
+                let lh = t.line_height();
+                let above = (lines.len() - 1) as f32 * lh;
+                Some(above + t.metrics(fonts).baseline(&line.text, 0.0, lh, t.step.size))
+            }
+            (Lines::Rich(lines), _) => {
+                let (last, above) = lines.split_last()?;
+                Some(above.iter().map(|l| l.height).sum::<f32>() + last.baseline)
+            }
             _ => None,
         }
     }

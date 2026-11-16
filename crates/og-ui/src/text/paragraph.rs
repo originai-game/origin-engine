@@ -419,23 +419,39 @@ fn rich_line(
     line
 }
 
-/// Parley's `vertical-align` for a span of font `size` and line height
-/// `line`.
-fn valign(v: crate::VerticalAlign, size: f32, line: f32) -> parley::VerticalAlign {
-    use crate::VerticalAlign as V;
-    match v {
-        V::Baseline => parley::VerticalAlign::BASELINE,
-        V::Sub => parley::VerticalAlign::SUB,
-        V::Super => parley::VerticalAlign::SUPER,
-        V::TextTop => parley::VerticalAlign::TEXT_TOP,
-        V::TextBottom => parley::VerticalAlign::TEXT_BOTTOM,
-        V::Middle => parley::VerticalAlign::MIDDLE,
-        V::Top => parley::VerticalAlign::TOP,
-        V::Bottom => parley::VerticalAlign::BOTTOM,
-        V::Px(px) => parley::VerticalAlign::length(px),
-        V::Em(em) => parley::VerticalAlign::length(em * size),
-        V::Percent(p) => parley::VerticalAlign::length(p * line),
-    }
+/// A span's or atom's `vertical-align` as Parley places it against the
+/// paragraph's root text `parent`, with its own baselines `own` (CSS px
+/// above its alphabetic one), font `size` and line height `line`: the
+/// baselines Parley knows itself it aligns, the others the two tables'
+/// difference raises (CSS Inline 3 §4.2.2); a shift adds to that. Parley
+/// has no line-relative `center`: such a span keeps its baseline place.
+fn valign(
+    v: crate::VerticalAlign,
+    parent: &crate::layout::Strut,
+    own: &og_text::baselines::Baselines,
+    size: f32,
+    line: f32,
+) -> parley::VerticalAlign {
+    use crate::layout::{Baseline as B, BaselineShift as S};
+    use parley::AlignmentBaseline as A;
+    let shift = match v.shift {
+        S::Top => return parley::VerticalAlign::TOP,
+        S::Bottom => return parley::VerticalAlign::BOTTOM,
+        S::Center => 0.0,
+        S::Px(px) => px,
+        S::Em(em) => em * size,
+        S::Percent(p) => p * line,
+        S::Sub => -parent.size / 5.0,
+        S::Super => parent.size / 3.0,
+    };
+    let (alignment, raise) = match v.baseline.unwrap_or(parent.dominant) {
+        B::Alphabetic => (A::Baseline, 0.0),
+        B::TextTop => (A::TextTop, 0.0),
+        B::TextBottom => (A::TextBottom, 0.0),
+        B::Middle => (A::Middle, 0.0),
+        b => (A::Baseline, parent.baselines.at(b) - own.at(b)),
+    };
+    parley::VerticalAlign::new(alignment, parley::BaselineShift::Length(raise + shift))
 }
 
 /// A span's line height: its step's, or its CJK one for CJK text.
@@ -464,6 +480,10 @@ fn shaped<R>(
     let mut boxes = Vec::new();
     let mut selected = Vec::new();
     let mut scaled = Vec::new();
+    // The root text every span and atom aligns against.
+    let (base, role) = content.base;
+    let root = fonts.metrics_styled(role, crate::FontQuery::new(base.weight, false), "");
+    let parent = crate::layout::Strut::of(root, base.size, content.dominant);
     for (span, s) in content.spans.iter().enumerate() {
         let start = text.len();
         if s.atom.is_some() {
@@ -485,7 +505,13 @@ fn shaped<R>(
                 width: span_width(s, "", fonts) + before + after,
                 height,
                 baseline: Some(baseline),
-                vertical_align: valign(s.valign, s.step.size, s.step.line_height),
+                vertical_align: valign(
+                    s.valign,
+                    &parent,
+                    &og_text::baselines::Baselines::of_box(baseline, baseline - height),
+                    s.step.size,
+                    s.step.line_height,
+                ),
             });
         } else {
             text.push_str(&s.text);
@@ -515,7 +541,6 @@ fn shaped<R>(
         ranges.push(start..text.len());
     }
     // The strut: the paragraph's own face at its step.
-    let (base, role) = content.base;
     let strut = {
         let m = fonts.metrics_styled(role, crate::FontQuery::new(base.weight, false), "");
         let part = m.part(0)?;
@@ -570,8 +595,16 @@ fn shaped<R>(
                 StyleProperty::LineHeight(parley::LineHeight::Absolute(line_height(s))),
                 range.clone(),
             );
+            let own = crate::layout::baselines_of(fonts.metrics_styled(s.font, s.query(), &s.text))
+                .scaled(s.step.size);
             builder.push(
-                StyleProperty::VerticalAlign(valign(s.valign, s.step.size, line_height(s))),
+                StyleProperty::VerticalAlign(valign(
+                    s.valign,
+                    &parent,
+                    &own,
+                    s.step.size,
+                    line_height(s),
+                )),
                 range.clone(),
             );
             let tracking = span_tracking(s, &s.text) * s.step.size;

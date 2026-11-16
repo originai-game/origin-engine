@@ -229,8 +229,7 @@ impl Ui {
             style.vertical_align = run.path.iter().rev().find_map(|&e| {
                 element(e)
                     .and_then(|e| e.text.as_deref())
-                    .and_then(|t| t.vertical_align.as_deref())
-                    .and_then(crate::VerticalAlign::parse)
+                    .and_then(|t| t.vertical_align)
             });
             for &e in &run.path {
                 if let Some(p) = part(e) {
