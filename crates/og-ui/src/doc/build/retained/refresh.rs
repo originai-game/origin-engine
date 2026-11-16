@@ -394,7 +394,8 @@ impl RetainedHost {
 
     pub(crate) fn sync_interaction(&mut self, ui: &mut Ui) -> Result<(), String> {
         use crate::bind::InteractionState::{
-            Active, Focus, FocusVisible, FocusWithin, Hover, PopoverOpen, Target,
+            Active, ActiveViewTransition, Focus, FocusVisible, FocusWithin, Hover, PopoverOpen,
+            Target,
         };
         let mut next: [Vec<u64>; 4] = [
             vec![ui.interaction.state().hot],
@@ -496,6 +497,37 @@ impl RetainedHost {
                 }
             }
             self.target = (id, new);
+        }
+        // A layer's screen root is the document element of its view
+        // transition: it matches from the frame the transition starts to
+        // the frame it ends.
+        let transitioning: Vec<MountedNode> = ui
+            .docs
+            .layers
+            .layers
+            .iter()
+            .filter(|l| l.since != 0)
+            .filter_map(|l| match self.roots.get(&l.mount) {
+                Some(Child::Element(node)) => Some(node.clone()),
+                _ => None,
+            })
+            .collect();
+        if transitioning != self.transitioning {
+            let old = std::mem::replace(&mut self.transitioning, transitioning.clone());
+            let off = old.iter().filter(|n| !transitioning.contains(n));
+            let on = transitioning.iter().filter(|n| !old.contains(n));
+            for (node, enabled) in off.map(|n| (n, false)).chain(on.map(|n| (n, true))) {
+                if self.topology.node(node).is_some() {
+                    self.topology
+                        .set_state(node, ActiveViewTransition, enabled)?;
+                    ui.docs
+                        .state_mut()
+                        .memory
+                        .reactive
+                        .graph
+                        .interaction_changed(node, ActiveViewTransition);
+                }
+            }
         }
         if previous[2] != next[2] {
             let off = previous[2].iter().filter(|k| !next[2].contains(k));

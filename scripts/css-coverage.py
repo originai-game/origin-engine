@@ -365,6 +365,8 @@ proof("cascade-layers", "style_pack", "a_rule_ranks_by_its_tree_context_then_its
       "A built-in component's own rule (og-components) loses to a pack's (og-pack), a game's own unlayered rule beats it, and !important reverses the layers; a rule's tree context ranks before its layer (a button's own plate over the style's ::part(), a document's ::part() over the plate). Anonymous and nested layers are covered by documents::supports_charset_and_import_conditions_gate_their_rules.")
 proof("shadow-parts", "dressing", "a_part_rule_reads_its_hosts_place_in_the_document",
       "A built-in control's parts are a shadow tree under its element: .shop button::part(base) and ul > li:first-child button::part(base) widen only the button they reach, from a document and from a pack, and follow a class change. part lists (one element under two names) are covered by the role parts' tests; exportparts is not built (no component re-exports a part).")
+proof("active-view-transition", "css_selectors", "active_view_transition_matches_the_root_while_it_runs",
+      "Computed widths through a screen layer's default 250ms view transition: :active-view-transition and :root:active-view-transition-type(slide) descendant rules widen probes on the first frame and not after it ends; a type the screen's @view-transition does not declare (fade) never matches, a list matches by any of its types, the root alone matches (.probe:active-view-transition never does), and a sibling rule matched on the instantiated tree reads the types too.")
 not_applicable("time-relative-selectors",
                "WebVTT cue timing: :past and :future match text-track cues during media playback, and a game's <video> carries no text tracks.")
 not_applicable("autonomous-custom-elements",
@@ -373,7 +375,6 @@ not_applicable("autonomous-custom-elements",
 MISSING = {
     "will-change": "will-change on a stacking property draws a group layer, but neither half of its contract is observable yet: a transform does not make a containing block for fixed descendants, and z-index never lifts a child above its parent's later siblings (both routed to their streams).",
     "file-selector-button": "Accepted and styles nothing: a file input's button is not a stylable box.",
-    "active-view-transition": ":active-view-transition-type() qualifies only ::view-transition-* rules; :active-view-transition does not match elements during a transition (a selectors-side gap).",
     "view-transitions-element-scoped": "No view-transition-scope or element-scoped transitions: a transition captures a whole layer.",
     "scroll-markers": "No ::scroll-marker or ::scroll-marker-group: the properties and pseudo-elements are refused.",
     "scroll-marker-targets": "No :target-current, :target-before or :target-after (needs scroll markers; the selectors are engine-gaps').",

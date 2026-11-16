@@ -72,6 +72,10 @@ pub enum PseudoClass {
     Defined,
     /// `:any-link` and `:link`: an `<a>` or `<area>` with an `href`.
     AnyLink,
+    /// `:active-view-transition-type(…)`: a screen's root while its
+    /// layer's view transition runs, when the screen's `@view-transition`
+    /// declares one of the types.
+    ViewTransitionType(Box<[Atom]>),
 }
 
 impl ToCss for PseudoClass {
@@ -96,6 +100,16 @@ impl ToCss for PseudoClass {
             }
             PseudoClass::Defined => dest.write_str(":defined"),
             PseudoClass::AnyLink => dest.write_str(":any-link"),
+            PseudoClass::ViewTransitionType(types) => {
+                dest.write_str(":active-view-transition-type(")?;
+                for (i, t) in types.iter().enumerate() {
+                    if i > 0 {
+                        dest.write_str(", ")?;
+                    }
+                    t.to_css(dest)?;
+                }
+                dest.write_str(")")
+            }
         }
     }
 }
@@ -232,8 +246,13 @@ impl<'i> sp::Parser<'i> for OgParser {
                 }
             }
             "state" => Ok(PseudoClass::Custom(input.expect_ident()?.as_ref().into())),
+            "active-view-transition-type" => {
+                let types = input
+                    .parse_comma_separated(|input| Ok(input.expect_ident()?.as_ref().into()))?;
+                Ok(PseudoClass::ViewTransitionType(types.into()))
+            }
             name => Err(message(format!(
-                "unsupported pseudo-class :{name}(); supported functions are :not(), :is(), :where(), :has(), :nth-child(), :nth-last-child(), :nth-of-type(), :nth-last-of-type(), :lang(), :dir() and :state()"
+                "unsupported pseudo-class :{name}(); supported functions are :not(), :is(), :where(), :has(), :nth-child(), :nth-last-child(), :nth-of-type(), :nth-last-of-type(), :lang(), :dir(), :state() and :active-view-transition-type()"
             ))),
         }
     }
@@ -273,6 +292,7 @@ const STATES: &[(&str, InteractionState)] = {
         ("popover-open", PopoverOpen),
         ("modal", Modal),
         ("target", Target),
+        ("active-view-transition", ActiveViewTransition),
     ]
 };
 
@@ -819,6 +839,21 @@ fn condition(
                     node: index,
                     state: *state,
                 },
+                Component::NonTSPseudoClass(PseudoClass::ViewTransitionType(types)) => {
+                    if doc
+                        .layer
+                        .transition
+                        .as_ref()
+                        .is_some_and(|t| t.types.iter().any(|d| types.iter().any(|n| n.0 == *d)))
+                    {
+                        Expr::InteractionAt {
+                            node: index,
+                            state: InteractionState::ActiveViewTransition,
+                        }
+                    } else {
+                        Expr::Lit(false.into())
+                    }
+                }
                 Component::Negation(_) | Component::Is(_) | Component::Where(_) => {
                     let mut matches = Expr::Lit(false.into());
                     for inner in nested(c) {

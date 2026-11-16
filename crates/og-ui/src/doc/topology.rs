@@ -747,6 +747,11 @@ impl super::matching::Tree for Topology {
         Topology::parent(self, id)
     }
 
+    fn transition_types(&self, id: &MountedNode) -> &[String] {
+        let document = &self.entry(self.identities[id]).instance.document;
+        document.layer.transition.as_ref().map_or(&[], |t| &t.types)
+    }
+
     fn previous(&self, id: &MountedNode) -> Option<&MountedNode> {
         let at = self.position(id)?.checked_sub(1)?;
         self.child_at(Topology::parent(self, id), at)

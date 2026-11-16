@@ -17,6 +17,7 @@
 //!   state, or `~` reaching an earlier sibling → the same test
 
 use crate::support::*;
+use og_ui::InputFrame;
 use serde_json::json;
 
 const DOC: &str = r##"<meta name="component" content="sel">
@@ -128,4 +129,46 @@ fn selectors_select_as_css_does() {
         // width loses to `.probe`.
         assert_eq!((width("Where"), d.get("Where").height), (10.0, 9.0));
     });
+}
+
+/// `:active-view-transition` matches a screen's root from the frame its
+/// layer's view transition starts until it ends, and
+/// `:active-view-transition-type()` only when the screen's
+/// `@view-transition` declares one of the types.
+///
+/// Ways it could fail: the state never set or never cleared, set on every
+/// element and not only the root, a type the screen does not declare
+/// matching, or a sibling rule (matched on the instantiated tree) not
+/// seeing the types.
+#[test]
+fn active_view_transition_matches_the_root_while_it_runs() {
+    let doc = r##"<meta name="screen" content="t">
+<column id="Page">
+  <div class="probe" id="Any"></div>
+  <div class="probe" id="Typed"></div>
+  <div class="probe" id="Listed"></div>
+  <div class="probe" id="Other"></div>
+  <div class="probe" id="Own"></div>
+  <div class="probe" id="Sib"></div>
+</column>
+<style>
+@view-transition { navigation: auto; types: slide; }
+.probe { width: 10px; height: 4px; }
+:active-view-transition #Any { width: 50px; }
+:root:active-view-transition-type(slide) #Typed { width: 50px; }
+:active-view-transition-type(fade, slide) #Listed { width: 50px; }
+:active-view-transition-type(fade) #Other { width: 50px; }
+.probe:active-view-transition { width: 50px; }
+:active-view-transition-type(slide) #Own + #Sib { width: 50px; }
+</style>"##;
+    let mut d = Doc::new(doc, &[]);
+    let widths =
+        |d: &Doc| ["Any", "Typed", "Listed", "Other", "Own", "Sib"].map(|id| d.get(id).width);
+    let running = [50.0, 50.0, 50.0, 10.0, 10.0, 50.0];
+    assert_eq!(widths(&d), running, "mid-transition");
+    let ticks = d.ui.ticks_for(250.0) as usize;
+    for _ in 0..ticks + 3 {
+        d.step(InputFrame::default());
+    }
+    assert_eq!(widths(&d), [10.0; 6], "after it ends");
 }

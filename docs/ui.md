@@ -1318,8 +1318,10 @@ behaviour; rules are document-scoped and never affect unrelated mounts.
 and attribute operator with `i`/`s` flags (HTML's case-insensitive
 attributes compare so unless `s`), `:not()`, `:is()`, `:where()`, `:has()`
 and the structural, form, `:open`, `:modal`, `:popover-open`, `:target`
-(the element the last `#fragment` link named), `:lang()` (RFC 4647) and
-`:dir()` pseudo-classes. Engine meanings and limits:
+(the element the last `#fragment` link named), `:lang()` (RFC 4647),
+`:dir()`, `:active-view-transition` and `:active-view-transition-type()`
+(a screen's root while its layer's view transition runs, by the types its
+`@view-transition` declares) pseudo-classes. Engine meanings and limits:
 
 - `lang`, `dir`, `data-*` and `state:name={…}` are selector-only
   attributes on every element (a field's `lang` also picks its
