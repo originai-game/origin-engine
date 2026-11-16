@@ -225,6 +225,50 @@ fn a_screen_cooks_in_the_built_in_components_it_uses() {
     );
 }
 
+/// A document with a control element cooks in that element's control
+/// document (docs/ui.md §2.4), and a game's own control document for the
+/// element replaces the built-in one. Ways it could fail: the control left
+/// out (the element draws its fallback), every control bundled whatever
+/// the game shows, or the built-in one loaded beside the game's.
+#[test]
+fn a_document_cooks_in_the_controls_its_elements_need() {
+    let bar = r#"<meta name="screen" content="loading">
+<div id="Loading"><progress id="Done" value={$done}></progress></div>
+"#;
+    let root = project("control", &[("ui/loading.svelte", bar)]);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{}", report.errors().join("\n"));
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    assert!(bundle.output("@ui/controls/progress.svelte").is_ok());
+    assert!(
+        bundle.output("@ui/controls/meter.svelte").is_err(),
+        "only the controls it shows"
+    );
+    assert_eq!(
+        uses(&root, "ui/loading.svelte"),
+        ["@ui/controls/progress.svelte"]
+    );
+    let mine = r#"<meta name="control" content="progress">
+<meta name="prop:value" content="number" data-doc="Done, 0 to 1.">
+<div id="Mine"></div>
+"#;
+    let root = project(
+        "control-override",
+        &[
+            ("ui/loading.svelte", bar),
+            ("ui/controls/progress.svelte", mine),
+        ],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{}", report.errors().join("\n"));
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    assert!(bundle.output("@ui/controls/progress.svelte").is_err());
+    assert_eq!(
+        uses(&root, "ui/loading.svelte"),
+        ["ui/controls/progress.svelte"]
+    );
+}
+
 /// A game's own document declaring a built-in component's name (what
 /// `og ui eject` writes) replaces it: the screen loads the game's, and
 /// the engine's is not bundled. Ways it could fail: both bundled, and the

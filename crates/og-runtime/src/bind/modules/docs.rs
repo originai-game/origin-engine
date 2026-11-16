@@ -340,6 +340,7 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
     if let Some(rest) = id
         .strip_prefix("@ui/components/")
         .or_else(|| id.strip_prefix("@ui/screens/"))
+        .or_else(|| id.strip_prefix("@ui/controls/"))
         && eng.assets.borrow().bundle_for(&id).is_err()
     {
         id = format!("ui/{rest}");

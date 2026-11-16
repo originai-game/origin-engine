@@ -419,8 +419,9 @@ fn slots(args: &[&str]) -> ExitCode {
 }
 
 /// Where the library's screen and component documents sit in the engine
-/// package, in the order eject searches and lists them.
-const LIBRARY_DIRS: [&str; 2] = ["src/ui/screens", "src/ui/components"];
+/// package, in the order eject searches and lists them; `src/ui`'s own
+/// table names the control documents (`controls/progress`).
+const LIBRARY_DIRS: [&str; 3] = ["src/ui/screens", "src/ui/components", "src/ui"];
 
 /// One library document: its name (the file's stem), its README row and
 /// the directory it sits in.
@@ -797,6 +798,8 @@ pub fn write_types(root: &Path) -> Result<Typed, String> {
             .replace('\\', "/");
         let imports = document_imports(&assets, &id, &text);
         match og_ui::UiDocument::parse_with_imports(&id, &text, imports) {
+            // A control document is mounted by no code: it has no types.
+            Ok(d) if d.control.is_some() => {}
             Ok(d) => docs.push(d),
             Err(e) => {
                 let first = e.first().map(String::as_str).unwrap_or("it does not parse");
@@ -899,7 +902,7 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     /// The checkout's library (what the engine package ships).
-    fn library() -> [PathBuf; 2] {
+    fn library() -> [PathBuf; 3] {
         LIBRARY_DIRS.map(|d| {
             Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../packages/engine")
@@ -982,6 +985,12 @@ mod tests {
         for dir in library() {
             let mut found = Vec::new();
             super::collect_files(&dir, "svelte", &mut found);
+            // `src/ui` names what no directory inside it does: the controls.
+            found.retain(|f| {
+                !library()
+                    .iter()
+                    .any(|d| *d != dir && d.starts_with(&dir) && f.starts_with(d))
+            });
             files.extend(found.iter().map(|f| {
                 f.strip_prefix(&dir)
                     .unwrap()
