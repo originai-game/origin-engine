@@ -555,12 +555,12 @@ impl crate::ui::Interaction {
 }
 
 impl Ui {
-    /// The screen rectangles of the characters a text fragment marked on
-    /// node `i`, adjacent glyphs merged, and whether its lines run down
-    /// (each rectangle a stretch of a column) rather than across.
-    fn target_bands(&self, i: usize) -> (Vec<Rect>, bool) {
+    /// The screen rectangles of node `i`'s characters in `marks` (each
+    /// `[start, end)` as [`crate::layout::node::NodeMarks::selected`]
+    /// counts them), adjacent glyphs merged, and whether its lines run
+    /// down (each rectangle a stretch of a column) rather than across.
+    fn mark_bands(&self, i: usize, marks: &[(u32, u32)]) -> (Vec<Rect>, bool) {
         let n = &self.tree.nodes[i];
-        let marks = &n.marks.target_text;
         let hit = |k: usize| {
             marks
                 .iter()
@@ -637,39 +637,60 @@ impl Ui {
         (out, false)
     }
 
-    /// `::target-text` on node `i`, whose text commands start at
-    /// `text_from`: its background (the `Mark` system colour by default,
-    /// as a browser's) under each marked stretch, and with a color,
-    /// shadow or decoration the marked glyphs drawn again in it, the
-    /// text's own commands cut around them.
-    pub(super) fn target_text_commands(&self, i: usize, text_from: usize, cmds: &mut Vec<DrawCmd>) {
-        let (bands, down) = self.target_bands(i);
-        if bands.is_empty() {
-            return;
-        }
-        let n = &self.tree.nodes[i];
-        let (alpha, sk, dpr) = (n.placed.alpha, n.placed.scale, self.env.viewport.dpr());
-        let clip = self.paint_clip(n);
+    /// `::target-text` on node `i`, its overlay at `under`
+    /// ([`Self::overlay_commands`]): the `Mark` system colour under each
+    /// marked stretch by default, as a browser's.
+    pub(super) fn target_text_commands(&self, i: usize, under: usize, cmds: &mut Vec<DrawCmd>) {
         let owner = self.tree.nodes[self.text_owner(i)].key;
         let style = self.docs.state.target_text.get(&owner);
         let fill = style
             .and_then(|s| s.background)
-            .unwrap_or(self.paint_theme().palette.primary_soft);
-        let fills: Vec<DrawCmd> = bands
-            .iter()
-            .map(|r| DrawCmd::Quad {
-                rect: r.snapped(dpr),
-                radius: 0.0,
-                color: fill.fade(alpha).linear(),
-                clip,
+            .or(Some(self.paint_theme().palette.primary_soft));
+        let marks = &self.tree.nodes[i].marks.target_text;
+        self.overlay_commands(i, under, marks, style.map(|s| &**s), fill, cmds);
+    }
+
+    /// A highlight overlay (CSS Pseudo-Elements 4 §3.6) of node `i`'s
+    /// characters in `marks`, over the text commands from `under` on (the
+    /// text and the overlays below this one): `fill` under each marked
+    /// stretch, above the fills already there, and with `style`'s color,
+    /// shadow or decoration the marked glyphs drawn again in it, the
+    /// commands below cut around them. Where the next overlay's fills go.
+    pub(super) fn overlay_commands(
+        &self,
+        i: usize,
+        under: usize,
+        marks: &[(u32, u32)],
+        style: Option<&crate::doc::generated::Selection>,
+        fill: Option<crate::Srgba>,
+        cmds: &mut Vec<DrawCmd>,
+    ) -> usize {
+        let (bands, down) = self.mark_bands(i, marks);
+        if bands.is_empty() {
+            return under;
+        }
+        let n = &self.tree.nodes[i];
+        let (alpha, sk, dpr) = (n.placed.alpha, n.placed.scale, self.env.viewport.dpr());
+        let clip = self.paint_clip(n);
+        let fills: Vec<DrawCmd> = fill
+            .map(|fill| {
+                bands
+                    .iter()
+                    .map(|r| DrawCmd::Quad {
+                        rect: r.snapped(dpr),
+                        radius: 0.0,
+                        color: fill.fade(alpha).linear(),
+                        clip,
+                    })
+                    .collect()
             })
-            .collect();
-        let at = text_from + fills.len();
-        cmds.splice(text_from..text_from, fills);
+            .unwrap_or_default();
+        let at = under + fills.len();
+        cmds.splice(under..under, fills);
         let Some(sel) =
             style.filter(|s| s.color.is_some() || s.decoration.is_some() || s.shadows.is_some())
         else {
-            return;
+            return at;
         };
         // Along the line (x across, y down a column) and across it.
         let along = |r: &Rect| {
@@ -879,6 +900,7 @@ impl Ui {
                 }
             }
         }
+        at
     }
 }
 
