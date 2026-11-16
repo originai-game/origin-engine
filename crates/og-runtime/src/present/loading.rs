@@ -40,7 +40,7 @@ fn screen(eng: &Engine) -> LoadingScreen {
 }
 
 fn idle(eng: &Engine) -> bool {
-    hooks().is_none_or(|h| h.loading_idle(eng.id))
+    !crate::world::remote::pending(eng) && hooks().is_none_or(|h| h.loading_idle(eng.id))
 }
 
 /// `og.loading.stage`.

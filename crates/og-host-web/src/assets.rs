@@ -303,6 +303,17 @@ pub fn og_web_set_image_decoder(decode: js_sys::Function) {
     IMAGE_DECODER.with(|f| *f.borrow_mut() = Some(decode));
 }
 
+/// The Worker's `fetchImage(key, url, credentials, integrity,
+/// referrerPolicy)`, called for a document's http(s) image
+/// (og-runtime's world/remote.rs): it `fetch()`es the URL in CORS mode
+/// (`credentials` true: `include`, else `same-origin`) with the integrity
+/// metadata and referrer policy given (empty: none), decodes it with the
+/// browser, and answers with `og_web_put_image` or `og_web_fail_image`.
+#[wasm_bindgen]
+pub fn og_web_set_remote_fetcher(fetch: js_sys::Function) {
+    crate::REMOTE_FETCHER.with(|f| *f.borrow_mut() = Some(fetch));
+}
+
 /// What an image decode answered: RGBA8 rows top to bottom.
 #[wasm_bindgen]
 pub fn og_web_put_image(key: f64, width: u32, height: u32, rgba: Vec<u8>) {

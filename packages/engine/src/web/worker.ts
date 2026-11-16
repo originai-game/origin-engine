@@ -51,7 +51,7 @@
 import type { GameToken } from "../runtime.ts";
 import { boundHost } from "../runtime.ts";
 import { WorkerAudio } from "./audio.ts";
-import { basisJob } from "./boot.ts";
+import { basisJob, pageSvg } from "./boot.ts";
 import { callsOf } from "./worker/calls.ts";
 import { Gate } from "./worker/gate.ts";
 import { FrameLoop } from "./worker/loop.ts";
@@ -106,6 +106,10 @@ export function startWorker(game: GameToken): void {
     if ((data as { type: string }).type === "og-basis") return basisJob(data as unknown as Parameters<typeof basisJob>[0]);
     if (data.type === "start") {
       await start(game, data, run, gate, loop);
+      return;
+    }
+    if (data.type === "svg") {
+      pageSvg.answer(data);
       return;
     }
     const engine = run.engine;

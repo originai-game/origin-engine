@@ -106,6 +106,8 @@ mod publish;
 mod raycast_record_cost;
 #[path = "../region_volume.rs"]
 mod region_volume;
+#[path = "../remote_images.rs"]
+mod remote_images;
 #[path = "../render_interpolation.rs"]
 mod render_interpolation;
 #[path = "../render_origin.rs"]

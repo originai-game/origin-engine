@@ -184,6 +184,45 @@ language. The only appearance extensions are `-og-material` and
 Style a core widget through its exposed parts. The game's art-contract
 measurements are `og style check-project`.
 
+### Images on a CDN
+
+A `url()` may name an `http://` or `https://` image instead of a file of
+the package: PNG, JPEG, WebP or SVG, in a document, an inline `style`
+or a style pack, anywhere a package image goes (`background-image`,
+`mask-image`, `border-image-source`, `image-set()`). The engine fetches
+it when the document or pack loads, once per URL and modifiers, and the
+layer draws nothing until it arrives, so give the element a
+`background-color` or another layer to show meanwhile. An executor
+(`og test`, `og render`, captures) waits for every image a document named
+before it draws, so its frames do not depend on the network's speed.
+
+The server must allow the game's origin: a remote image is always read
+in CORS mode, so a response without `Access-Control-Allow-Origin` (`*`
+or the game's origin) is refused on both hosts. CSS's request modifiers
+go after the quoted URL:
+
+```css
+.event-banner {
+  background: #20232b url("https://cdn.example.com/art/banner.webp"
+              integrity("sha384-…") referrer-policy(no-referrer));
+}
+```
+
+- `integrity("sha384-…")`: the bytes must match (Subresource
+  Integrity), or the image is refused. Use it for art you publish
+  alongside a game version.
+- `cross-origin(use-credentials)`: send cookies; the server must then
+  name the game's origin (not `*`) and allow credentials. The default is
+  `anonymous`.
+- `referrer-policy(…)`: what `Referer` the request sends. The default is
+  `strict-origin-when-cross-origin` (the game's origin only).
+
+A refused or failed image is one warning in the log naming the URL and
+the reason (CORS, integrity, HTTP status, decoding); the element keeps
+its other layers. A package file takes no modifiers. `og.loading.idle`
+stays false while a remote image is still being fetched, so a loading
+screen can wait for it.
+
 <a id="guide-screens-4"></a>
 ### `screens §4` Structure and data
 

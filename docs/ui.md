@@ -1580,6 +1580,42 @@ Review frames before recording references. The
 [screens guide](../crates/og-api/guides/screens.md#3-style-packs) shows
 loading, selectors, tokens and asset URLs.
 
+#### Remote images
+
+A `url()` naming an `http(s)://` image (in a document, an inline style or
+a style pack) is fetched at run time, not cooked. og-ui reads the URL
+and CSS Values 5's request modifiers, `cross-origin()`, `integrity()` and
+`referrer-policy()`, into one request key (`crates/og-ui/src/css/request.rs`),
+which a sheet lists in `Sheet::remote`; a package file takes no
+modifiers. The runtime (`crates/og-runtime/src/world/remote.rs`) fetches
+each key once per engine when its document or pack loads and binds the
+decoded image under the key (`Ui::define_texture`, which restyles what is
+mounted); a layer naming an unbound key draws nothing and warns nothing.
+
+- **Fetch.** Always CORS mode (a texture needs readable pixels):
+  credentials `same-origin` by default, `include` under
+  `cross-origin(use-credentials)`, the integrity metadata, and the
+  referrer policy (`strict-origin-when-cross-origin` by default). The web
+  host fetches from the engine Worker and decodes with the browser (an
+  SVG on the page, which a Worker cannot draw); the native host fetches
+  with og-net's client (`crates/og-net/src/http.rs`), which applies the
+  Fetch standard's CORS check (redirect tainting included), the
+  Referrer Policy algorithm and SRI's strongest-hash match, and decodes
+  PNG, JPEG and WebP with `image` and SVG with resvg at its own size, as
+  the cook does. The request's origin and referrer are the engine's root
+  when it is an http(s) URL (the page's directory on the web); a game read
+  from files has an opaque origin and sends no referrer. Natively there
+  is no cookie jar.
+- **Presentation only.** An image is bound at a UI build (the `UI_END`
+  system) after it lands; nothing fetched reaches the world or a journal.
+  The native host waits there for every fetch started, so executors'
+  frames are the same on every run; the web draws what has landed.
+  `og.loading.idle` is false while one is pending.
+- **Failures** (CORS, integrity, HTTP status, decoding) are one warning
+  per key naming the URL and the reason.
+- A build without og-runtime's `fetch` feature fetches nothing natively
+  and warns per key.
+
 ### 3.4 Font packs
 
 Fonts ship as packs, one directory per script under `templates/fonts/`
