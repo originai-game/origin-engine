@@ -127,5 +127,6 @@ pub(crate) fn cook(
         file: FILE.to_string(),
         bytes: pack.len() as u64,
         hash: hash_bytes(&pack),
+        integrity: crate::cook::integrity(&pack),
     }))
 }

@@ -207,6 +207,7 @@ pub fn write_probe(
             file,
             stamp: st,
             hash: hash_bytes(&blob),
+            integrity: super::integrity(&blob),
             bytes: blob.len() as u64,
             group: None,
         }],

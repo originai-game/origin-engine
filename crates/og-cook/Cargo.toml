@@ -23,6 +23,9 @@ basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
 og-bundle = { path = "../og-bundle" }
 og-blob = { path = "../og-blob" }
 og-core = { path = "../og-core" }
+# SHA-384 for the manifest's Subresource Integrity metadata (a package
+# served from another origin, docs/web-export.md §Asset base).
+ring = "0.17"
 # The cooked data the renderer draws (docs/design.md §2.1, "Formats below
 # features"), not the renderer.
 og-render-data = { path = "../og-render-data" }

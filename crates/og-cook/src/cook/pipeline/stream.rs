@@ -327,6 +327,7 @@ pub(crate) fn manifest_entry(
     file: String,
     bytes: u64,
     hash: u64,
+    integrity: String,
     memory: u64,
     sounds: Vec<StreamSound>,
 ) -> ManifestStream {
@@ -338,6 +339,7 @@ pub(crate) fn manifest_entry(
         file,
         bytes,
         hash,
+        integrity,
         memory,
         assets: g.assets.clone(),
         sounds,

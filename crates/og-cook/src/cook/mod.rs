@@ -63,6 +63,14 @@ use crate::runtime::{MANIFEST, Manifest, ManifestAsset, ManifestOutput};
 use kinds::{Action, Exec, Job, KindDef};
 use og_core::Schema;
 use og_core::hash::{StableHasher, hash_bytes};
+
+/// A cooked file's Subresource Integrity metadata, `sha384-<base64>`: the
+/// manifest's `integrity`, which a loader checks a package from another
+/// origin against (docs/web-export.md §Asset base).
+pub fn integrity(bytes: &[u8]) -> String {
+    let digest = ring::digest::digest(&ring::digest::SHA384, bytes);
+    format!("sha384-{}", og_core::base64::encode(digest.as_ref()))
+}
 use og_core::ogt::Document;
 use output::*;
 use plan::*;

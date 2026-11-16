@@ -109,6 +109,10 @@ pub struct ManifestOutput {
     pub stamp: u64,
     /// FNV-1a of the file's bytes.
     pub hash: u64,
+    /// The file's Subresource Integrity metadata (`sha384-<base64>`): what a
+    /// loader checks bytes from another origin against (docs/web-export.md
+    /// §Asset base).
+    pub integrity: String,
     pub bytes: u64,
     /// The streaming group its asset belongs to (`None`: the first group,
     /// loaded at boot).
@@ -147,6 +151,8 @@ pub struct ManifestStream {
     pub file: String,
     pub bytes: u64,
     pub hash: u64,
+    /// Its pack's Subresource Integrity metadata, as an output's.
+    pub integrity: String,
     /// What its assets take once loaded (GPU textures and meshes, audio).
     pub memory: u64,
     /// Its asset ids.
@@ -201,6 +207,8 @@ pub struct ManifestFile {
     pub bytes: u64,
     /// FNV-1a of its bytes.
     pub hash: u64,
+    /// Its Subresource Integrity metadata, as an output's.
+    pub integrity: String,
 }
 
 fn hex(v: u64) -> String {
@@ -287,6 +295,7 @@ impl Manifest {
                     file: field(ob, "file", o.line)?,
                     stamp: hexf(ob, "stamp", o.line)?,
                     hash: hexf(ob, "hash", o.line)?,
+                    integrity: field(ob, "integrity", o.line)?,
                     bytes: num(ob, "bytes", o.line)?,
                     group: ob
                         .get("group")
@@ -343,6 +352,7 @@ impl Manifest {
                 file: field(b, "file", st.line)?,
                 bytes: num(b, "bytes", st.line)?,
                 hash: hexf(b, "hash", st.line)?,
+                integrity: field(b, "integrity", st.line)?,
                 memory: num(b, "memory", st.line)?,
                 assets: b
                     .get_all("asset")
@@ -387,6 +397,7 @@ impl Manifest {
                 file: e.string(0).map_err(|e| bad(e.to_string()))?.to_string(),
                 bytes: num(b, "bytes", e.line)?,
                 hash: hexf(b, "hash", e.line)?,
+                integrity: field(b, "integrity", e.line)?,
             });
         }
         Ok(m)
@@ -416,6 +427,7 @@ impl Manifest {
                     .with(Entry::new("file").with(s(&o.file)))
                     .with(Entry::new("stamp").with(s(&hex(o.stamp))))
                     .with(Entry::new("hash").with(s(&hex(o.hash))))
+                    .with(Entry::new("integrity").with(s(&o.integrity)))
                     .with(Entry::new("bytes").with(n(o.bytes)));
                 let ob = match &o.group {
                     Some(g) => ob.with(Entry::new("group").with(s(g))),
@@ -451,6 +463,7 @@ impl Manifest {
                 .with(Entry::new("file").with(s(&g.file)))
                 .with(Entry::new("bytes").with(n(g.bytes)))
                 .with(Entry::new("hash").with(s(&hex(g.hash))))
+                .with(Entry::new("integrity").with(s(&g.integrity)))
                 .with(Entry::new("memory").with(n(g.memory)));
             for a in &g.assets {
                 b.push(Entry::new("asset").with(s(a)));
@@ -470,7 +483,8 @@ impl Manifest {
         if let Some(m) = &self.motion {
             let b = Block::new()
                 .with(Entry::new("bytes").with(n(m.bytes)))
-                .with(Entry::new("hash").with(s(&hex(m.hash))));
+                .with(Entry::new("hash").with(s(&hex(m.hash))))
+                .with(Entry::new("integrity").with(s(&m.integrity)));
             doc.body
                 .push(Entry::new("motion").with(s(&m.file)).with_block(b));
         }
@@ -1656,6 +1670,7 @@ mod tests {
             file: "motion/model.ogb".into(),
             bytes: 35_354_000,
             hash: 0x0123_4567_89ab_cdef,
+            integrity: "sha384-AAAA".into(),
         });
         let text = m.to_text();
         assert!(text.contains("motion \"motion/model.ogb\""), "{text}");

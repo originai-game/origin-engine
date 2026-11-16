@@ -170,11 +170,11 @@ pub(crate) fn assemble(
                     (None, false, 0.0, 0.0, 0)
                 }
             };
-        let (size, hash) = match &bytes {
-            Some(b) => (b.len() as u64, hash_bytes(b)),
+        let (size, hash, sri) = match &bytes {
+            Some(b) => (b.len() as u64, hash_bytes(b), integrity(b)),
             None => {
                 let o = old_outputs[p.id.as_str()];
-                (o.bytes, o.hash)
+                (o.bytes, o.hash, o.integrity.clone())
             }
         };
         new_outputs.entry(p.source).or_default().push((
@@ -184,6 +184,7 @@ pub(crate) fn assemble(
                 file: p.file.clone(),
                 stamp: p.stamp,
                 hash,
+                integrity: sri,
                 bytes: size,
                 group: output_group(&p.id, &sources[p.source].rel, group_of),
             },
@@ -367,6 +368,7 @@ pub(crate) fn pack(
             file,
             pack.len() as u64,
             hash_bytes(&pack),
+            integrity(&pack),
             memory,
             sounds,
         );
