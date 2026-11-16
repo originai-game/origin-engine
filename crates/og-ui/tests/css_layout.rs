@@ -2762,3 +2762,53 @@ fn margin_trim_drops_the_margins_at_a_blocks_edges() {
         );
     });
 }
+
+/// CSS 2 §17.6.1: a separated table's `border-spacing: <h> <v>` lies
+/// between its cells and between its outer cells and its padding edge,
+/// and is inherited; `border-collapse: collapse` (§17.6.2) sets the cells
+/// edge to edge; a table ignores `gap`.
+///
+/// Ways it could fail: the spacing only between cells (the table 44 × 26),
+/// read in the wrong order (x and y swapped), not inherited from the
+/// table's parent, or kept under `collapse`.
+#[test]
+fn border_spacing_separates_table_cells() {
+    let table = |id: &str| {
+        format!(
+            r#"<table id="{id}"><tr><td id="{id}a"></td><td id="{id}b"></td></tr><tr><td id="{id}c"></td><td id="{id}d"></td></tr></table>"#
+        )
+    };
+    let text = format!(
+        r#"<meta name="component" content="t">
+<div><div id="Root">{}<div id="Inh">{}</div>{}</div></div>
+<style>
+#Root {{ width: 400px; }}
+td {{ width: 20px; height: 10px; padding: 0; }}
+#S {{ border-spacing: 4px 6px; gap: 30px; }}
+#Inh {{ border-spacing: 3px; }}
+#C {{ border-spacing: 4px 6px; border-collapse: collapse; }}
+</style>"#,
+        table("S"),
+        table("I"),
+        table("C"),
+    );
+    with_doc(&text, &[], |d| {
+        let at = |id: &str, of: &str| {
+            let (e, p) = (d.get(id), d.get(of));
+            (e.x - p.x, e.y - p.y)
+        };
+        assert_eq!(at("Sa", "S"), (4.0, 6.0));
+        assert_eq!(at("Sd", "S"), (28.0, 22.0));
+        assert_eq!(wh(d, "S"), (52.0, 38.0), "spacing at the edges too");
+        assert_eq!(
+            (at("Id", "I"), wh(d, "I")),
+            ((26.0, 16.0), (49.0, 29.0)),
+            "inherited from the table's parent"
+        );
+        assert_eq!(
+            (at("Cd", "C"), wh(d, "C")),
+            ((20.0, 10.0), (40.0, 20.0)),
+            "collapse"
+        );
+    });
+}

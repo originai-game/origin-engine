@@ -304,6 +304,8 @@ proof("grid-lanes", "css_layout", "grid_lanes_pack_items_within_their_fit_tolera
       "Computed item positions in display: grid-lanes with three column lanes: each auto-placed item goes to the least-filled lane, lanes within fit-tolerance (normal 1em, 0, infinite) of it tie, and a tie takes the first lane at or after the last item's end line, else the first. Row lanes (only grid-template-rows given) lay out as a grid; inline-grid-lanes, percentage tolerances and subgrid items in lanes are not asserted.")
 proof("margin-trim", "css_layout", "margin_trim_drops_the_margins_at_a_blocks_edges",
       "Computed boxes of a flow-root block: margin-trim: block drops the first in-flow block child's top margin and the last one's bottom margin, keeping the margin between them; block-start drops only the first; an absolutely positioned first child is skipped. Box 4 defines margin-trim for block containers only: the inline keywords and flex/grid trimming (Safari's extension) are refused, and a descendant margin collapsed through the trimmed one is not trimmed.")
+proof("table", "css_layout", "border_spacing_separates_table_cells",
+      "Computed cell and table boxes: border-spacing: 4px 6px lies between the cells and between the outer cells and the table's padding edge, an inherited single value applies to both axes, border-collapse: collapse puts the cells edge to edge, and a table ignores gap. Spans, captions and row groups are html_tables_lay_out_without_author_css and the computed table tests. Collapsed borders are not merged into one line (each cell draws its own), and the caption lies inside the spacing rather than outside the table box.")
 proof("display static-positioning physical-properties align-content-block fit-content",
       "css_layout", "boxes_take_display_position_insets_and_fit_content_as_css_does",
       "Computed boxes: inline and inline-block boxes share a line and a block takes its own, full width; display: none makes no box and keeps no room; position: static ignores its insets; opposite insets size an auto box and an auto inset follows the other; block align-content: end; width: fit-content is max-content where it fits and the available width where it does not. fit-content on height and the min/max properties is not asserted.")
@@ -382,7 +384,6 @@ MISSING = {
     "webvtt": "No WebVTT captions or ::cue: a video draws no text track.",
     # layout
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
-    "table": "Table spans/captions have computed output tests, but border-spacing and border-collapse have no implementation/output proof.",
     "backdrop-filter": "Ordinary staged backdrop chains have fixtures; native glass rejects chains requiring intermediate clamps, drop-shadow and SVG url filters.",
     "background-clip-text": "background-clip: text clips to the element's own glyphs only; CSS also clips to its descendants' text, which needs the subtree's text grouped where og-ui draws it (ui/commands.rs).",
     "filter-function": "No filter(<image>, <filter-function>) image: background and mask layers take url(), image-set(), gradients and light-dark() only.",

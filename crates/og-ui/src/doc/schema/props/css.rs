@@ -621,6 +621,20 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `fit-tolerance` of a grid-lanes box (its `display` is `grid-lanes`): lanes whose filled length is within it of the shortest count as tied, and an item takes the first tied lane after the last item's (`normal`: 1em; `infinite`: strictly in order; a px or em length).",
     },
     PropSpec {
+        name: "borderSpacing",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `border-spacing: <h> [<v>]` of a table: the room between its cells, and between its outer cells and its padding (0 by default). Inherited.",
+    },
+    PropSpec {
+        name: "borderCollapse",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `border-collapse` of a table: `separate` (default) keeps `border-spacing`; `collapse` sets the cells edge to edge. Inherited.",
+    },
+    PropSpec {
         name: "marginTrim",
         ty: Ty::Text,
         on: On::All,

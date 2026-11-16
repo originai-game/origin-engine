@@ -792,6 +792,26 @@ impl Ui {
                 } else {
                     crate::TablePart::None
                 };
+                // A separated table's `border-spacing` lies between its
+                // cells and around them inside its padding (CSS 2 §17.6.1);
+                // `collapse` has none (§17.6.2).
+                if el.table == crate::TablePart::Table
+                    && r.str("borderCollapse") != Some("collapse")
+                    && let Some(v) = r.str("borderSpacing")
+                {
+                    let px: Vec<f32> = v
+                        .split_whitespace()
+                        .map(|w| w.trim_end_matches("px").parse().unwrap_or(0.0))
+                        .collect();
+                    let (h, w) = (px[0], *px.get(1).unwrap_or(&px[0]));
+                    el.gaps = [Some(h), Some(w)];
+                    el.padding.left += h;
+                    el.padding.right += h;
+                    el.padding.top += w;
+                    el.padding.bottom += w;
+                } else if el.table == crate::TablePart::Table {
+                    el.gaps = [Some(0.0), Some(0.0)];
+                }
                 // A table cell's content sits in the middle of its row
                 // unless `vertical-align` says otherwise (HTML's UA sheet).
                 if el.table == crate::TablePart::Cell && !r.has("align") {

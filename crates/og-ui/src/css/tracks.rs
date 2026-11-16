@@ -346,6 +346,28 @@ pub(crate) fn lower(name: &str, value: &str) -> Option<Result<Vec<Lowered>, Stri
     Some(match name {
         "grid-template-columns" => checked(v).map(|v| vec![("columns", v)]),
         "grid-template-rows" => checked(v).map(|v| vec![("rows", v)]),
+        // CSS 2 §17.6: a table's `border-spacing: <h> [<v>]` (px, not
+        // negative) and `border-collapse: separate | collapse`.
+        "border-spacing" => {
+            let ws: Vec<&str> = v.split_whitespace().collect();
+            let len = |w: &str| {
+                w == "0"
+                    || w.strip_suffix("px")
+                        .and_then(|n| n.parse::<f32>().ok())
+                        .is_some_and(|n| n >= 0.0)
+            };
+            if (1..=2).contains(&ws.len()) && ws.iter().all(|w| len(w)) {
+                Ok(vec![("borderSpacing", text(v))])
+            } else {
+                Err(format!(
+                    "'{v}' is no border-spacing: one or two px lengths, not negative"
+                ))
+            }
+        }
+        "border-collapse" => match v {
+            "separate" | "collapse" => Ok(vec![("borderCollapse", text(v))]),
+            v => Err(format!("'{v}' is no border-collapse: separate or collapse")),
+        },
         // CSS Grid 3 §4.2: `normal | <length [0,∞]> | infinite`.
         "fit-tolerance" => match v {
             "normal" | "infinite" => Ok(vec![("fitTolerance", text(v))]),

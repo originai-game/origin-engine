@@ -257,7 +257,8 @@ pub(crate) fn inherited_property(name: &str) -> bool {
 /// parent's value through the cascade (CSS Scrollbars 1 §2:
 /// `scrollbar-color` inherits; CSS Images 3 §5.3 and §5.1:
 /// `image-rendering`, `image-orientation`; CSS Fragmentation 3 §4.4:
-/// `orphans` and `widows`). A document declaring one carries its
+/// `orphans` and `widows`; CSS 2 §17.6: `border-spacing` and
+/// `border-collapse`). A document declaring one carries its
 /// values, as one writing `inherit` does.
 pub const CARRIED_BY_DEFAULT: &[&str] = &[
     "scrollbar-color",
@@ -268,6 +269,8 @@ pub const CARRIED_BY_DEFAULT: &[&str] = &[
     "list-style-image",
     "orphans",
     "widows",
+    "border-spacing",
+    "border-collapse",
 ];
 
 /// The query names `prefers-reduced-motion`, evaluated or not.
