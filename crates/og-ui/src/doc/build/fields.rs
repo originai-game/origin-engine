@@ -248,10 +248,20 @@ impl Ui {
         }
         // Paint containment clips what it and its subtree draw to its box
         // (CSS Containment 2 §3.4).
-        if crate::doc::contain_css::contain(|p| r.str(p).map(str::to_owned))
-            .has(crate::layout::Contain::PAINT)
-        {
+        let paint = crate::doc::contain_css::contain(|p| r.str(p).map(str::to_owned))
+            .has(crate::layout::Contain::PAINT);
+        if paint {
             d.clip = true;
+        }
+        // `overflow-clip-margin` moves the edge of an `overflow: clip` or
+        // paint containment cut, not of `hidden` (CSS Overflow 4 §3.2).
+        let clips = [r.str("overflowX"), r.str("overflowY")].contains(&Some("clip"));
+        if (clips || paint)
+            && let Some(Ok(m)) = r
+                .str("overflowClipMargin")
+                .map(crate::doc::contain_css::clip_margin)
+        {
+            d.clip_margin = Some(m);
         }
         if let Some(Ok(s)) = r
             .str("scrollSnapType")
@@ -279,7 +289,9 @@ impl Ui {
         if r.has("radius") {
             d.radius = Some(el.radius);
         }
-        if d.css.is_some() {
+        // A layer's content box, and the edge a content-box clip margin
+        // starts from.
+        if d.css.is_some() || d.clip_margin.is_some() {
             let p = el.padding;
             d.content = [p.left, p.top, p.right, p.bottom];
         }
@@ -900,6 +912,7 @@ impl Ui {
                 "contain",
                 "contentVisibility",
                 "resize",
+                "overflowClipMargin",
                 "breakBefore",
                 "breakAfter",
                 "breakInside",

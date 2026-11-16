@@ -21,6 +21,7 @@ pub(crate) fn prop_of(css: &str) -> Option<&'static str> {
         "contain-intrinsic-height" => "containIntrinsicHeight",
         "resize" => "resize",
         "will-change" => "willChange",
+        "overflow-clip-margin" => "overflowClipMargin",
         _ => return None,
     })
 }
@@ -35,6 +36,7 @@ pub(crate) fn form(prop: &str) -> Option<&'static str> {
         }
         "resize" => "none | both | horizontal | vertical | block | inline",
         "willChange" => "auto | <property>, …",
+        "overflowClipMargin" => "<visual-box> || <n>px",
         _ => return None,
     })
 }
@@ -47,8 +49,42 @@ pub(crate) fn check(css: &str, value: &str) -> Result<(), String> {
         "contain-intrinsic-width" | "contain-intrinsic-height" => intrinsic(value).map(|_| ()),
         "resize" => resize(value).map(|_| ()),
         "will-change" => will_change(value).map(|_| ()),
+        "overflow-clip-margin" => clip_margin(value).map(|_| ()),
         _ => Ok(()),
     }
+}
+
+/// `overflow-clip-margin: <visual-box> || <length [0,∞]>` (CSS Overflow 4
+/// §3.2): the box its clip edge starts from (0 border, 1 padding (the
+/// default), 2 content) and how far past it the edge lies.
+pub(crate) fn clip_margin(value: &str) -> Result<(u8, f32), String> {
+    let (mut edge, mut len) = (None, None);
+    for w in value.split_whitespace() {
+        let e = match w {
+            "border-box" => Some(0),
+            "padding-box" => Some(1),
+            "content-box" => Some(2),
+            _ => None,
+        };
+        let l = (w == "0").then_some(0.0).or_else(|| {
+            w.strip_suffix("px")
+                .and_then(|n| n.parse::<f32>().ok())
+                .filter(|n| *n >= 0.0)
+        });
+        match (e, l) {
+            (Some(e), _) if edge.is_none() => edge = Some(e),
+            (_, Some(l)) if len.is_none() => len = Some(l),
+            _ => {
+                return Err(format!(
+                    "'{value}' is no overflow-clip-margin: a visual box (border-box, padding-box, content-box) and/or a px length, not negative"
+                ));
+            }
+        }
+    }
+    if edge.is_none() && len.is_none() {
+        return Err("overflow-clip-margin: a visual box and/or a px length".into());
+    }
+    Ok((edge.unwrap_or(1), len.unwrap_or(0.0)))
 }
 
 /// `contain-intrinsic-size` (`<width> [<height>]`), `-block-size` and

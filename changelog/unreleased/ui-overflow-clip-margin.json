@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI CSS overflow-clip-margin",
+      "summary": "`overflow-clip-margin: <visual-box> || <length>` lets what an `overflow: clip` or `contain: paint` box draws reach that far past its padding edge (or the `border-box` or `content-box` it names) before it is cut (CSS Overflow 4 §3.2). It was refused."
+    }
+  ]
+}

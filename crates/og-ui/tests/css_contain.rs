@@ -380,3 +380,64 @@ fn z_index_paints_in_the_nearest_stacking_context() {
         assert_eq!(hit(d), ["q"], "kept in, K is under Q");
     });
 }
+
+/// CSS Overflow 4 §3.2: `overflow-clip-margin` moves the cut of an
+/// `overflow: clip` or paint-contained box out from its padding edge, or
+/// from the `border-box` or `content-box` it names; `overflow: hidden`
+/// keeps its cut where it is.
+///
+/// Ways it could fail: the margin ignored (every cut on the box), applied
+/// to `hidden` too, or measured from the border box whatever box is named
+/// (the content-box cut 3px outside the box instead of 5px inside it).
+#[test]
+fn overflow_clip_margin_moves_the_clip_edge() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Om" class="o"><div class="big"></div></div>
+  <div id="Ob" class="o"><div class="big"></div></div>
+  <div id="Oc" class="o"><div class="big"></div></div>
+  <div id="Op" class="o"><div class="big"></div></div>
+  <div id="Oh" class="o"><div class="big"></div></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+.o { width: 60px; height: 20px; margin-bottom: 40px; overflow: clip; }
+#Om { overflow-clip-margin: 10px; }
+#Ob { border: 4px solid #000; overflow-clip-margin: border-box 2px; }
+#Oc { padding: 8px; overflow-clip-margin: 3px content-box; }
+#Op { overflow: visible; contain: paint; overflow-clip-margin: 6px; }
+#Oh { overflow: hidden; overflow-clip-margin: 10px; }
+.big { width: 300px; height: 300px; background: #123456; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let clips: Vec<(f32, f32, f32, f32)> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|i| match &i.cmd {
+                    DrawCmd::PushClip { center, half, .. } => Some((
+                        center.0 - half.0,
+                        center.1 - half.1,
+                        half.0 * 2.0,
+                        half.1 * 2.0,
+                    )),
+                    _ => None,
+                })
+                .collect();
+        let cut = |id: &str, out: f32| {
+            let e = d.get(id);
+            let want = (
+                e.x - out,
+                e.y - out,
+                e.width + 2.0 * out,
+                e.height + 2.0 * out,
+            );
+            assert!(clips.contains(&want), "{id} cut at {want:?}: {clips:?}");
+        };
+        cut("Om", 10.0);
+        cut("Ob", 2.0);
+        cut("Oc", -5.0);
+        cut("Op", 6.0);
+        cut("Oh", 0.0);
+    });
+}

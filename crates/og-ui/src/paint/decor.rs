@@ -83,6 +83,10 @@ pub struct BoxDecor {
     pub background: Option<Paint>,
     /// `overflow: hidden` or `clip`: its children are cut to its shape.
     pub clip: bool,
+    /// CSS `overflow-clip-margin` of that cut, as written: the box its
+    /// edge starts from (0 border, 1 padding, 2 content) and the length
+    /// past it.
+    pub clip_margin: Option<(u8, f32)>,
     /// A `border-radius` written over a dressed part (a `<button>`): its
     /// rectangle takes this corner instead of the dressing's.
     pub radius: Option<f32>,
@@ -283,6 +287,18 @@ impl BoxDecor {
         }
         if self.clip && d.clip == crate::paint::Clip::None {
             d.clip = crate::paint::Clip::Shape;
+            if let Some((edge, m)) = self.clip_margin {
+                // From its border box: in by its border (and padding), out
+                // by the margin; top, right, bottom, left.
+                let [l, t, r, b] = self.content;
+                let border = [0, 1, 2, 3].map(|k| self.borders[k].map_or(0.0, |b| b.width));
+                let pad = [t, r, b, l];
+                d.clip_outset = [0, 1, 2, 3].map(|k| match edge {
+                    0 => m,
+                    1 => m - border[k],
+                    _ => m - pad[k],
+                });
+            }
         }
         d
     }

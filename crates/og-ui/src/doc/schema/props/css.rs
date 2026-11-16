@@ -684,6 +684,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `contain-intrinsic-height` (and `contain-intrinsic-size`): as `containIntrinsicWidth`, down.",
     },
     PropSpec {
+        name: "overflowClipMargin",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `overflow-clip-margin` of a box whose `overflow` is `clip` or whose `contain` holds `paint`: how far past its padding edge (or the `border-box` or `content-box` it names) what it draws may reach before it is cut (`<visual-box> || <n>px`).",
+    },
+    PropSpec {
         name: "resize",
         ty: Ty::Text,
         on: On::All,

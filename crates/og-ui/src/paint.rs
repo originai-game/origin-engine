@@ -826,6 +826,9 @@ pub struct ElementDraw {
     pub opacity: f32,
     pub blend: Blend,
     pub clip: Clip,
+    /// How far its [`Clip::Shape`] cut lies past its box on each side
+    /// (top, right, bottom, left; CSS `overflow-clip-margin`).
+    pub clip_outset: [f32; 4],
     pub layer: Option<Layer>,
     /// Layers under [`ElementDraw::layer`], the first innermost: each
     /// composites what is inside it into the next (CSS's `filter`
@@ -948,6 +951,7 @@ impl Default for ElementDraw {
             opacity: 1.0,
             blend: Blend::Normal,
             clip: Clip::None,
+            clip_outset: [0.0; 4],
             layer: None,
             filters: Vec::new(),
             text: None,

@@ -755,7 +755,22 @@ impl ElementDraw {
         if self.clip != Clip::Shape || self.element_image.is_some() {
             return Vec::new();
         }
-        vec![self.clip_to(&self.shape, at)]
+        let [t, r, b, l] = self.clip_outset;
+        if [t, r, b, l] == [0.0; 4] {
+            return vec![self.clip_to(&self.shape, at)];
+        }
+        // Its corners round by their radius plus the margin.
+        let grown = Placed {
+            rect: Rect::new(
+                at.rect.x - l,
+                at.rect.y - t,
+                (at.rect.width + l + r).max(0.0),
+                (at.rect.height + t + b).max(0.0),
+            ),
+            radius: (at.radius + (t + r + b + l) / 4.0).max(0.0),
+            ..*at
+        };
+        vec![self.clip_to(&self.shape, &grown)]
     }
 
     /// Its CSS cut, unless a layer's composite cuts it.

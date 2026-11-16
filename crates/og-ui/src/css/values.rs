@@ -282,6 +282,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("containIntrinsicWidth", "contain-intrinsic-width"),
     ("containIntrinsicHeight", "contain-intrinsic-height"),
     ("resize", "resize"),
+    ("overflowClipMargin", "overflow-clip-margin"),
     ("fieldSizing", "field-sizing"),
     ("willChange", "will-change"),
     ("offsetPath", "offset-path"),
