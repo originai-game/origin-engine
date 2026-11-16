@@ -540,6 +540,42 @@ pub(crate) fn values_with<'r>(
     for (name, value) in resolved {
         computed.insert(name, value);
     }
+    // Then its custom function calls, in the element's context (CSS
+    // Custom Functions and Mixins 1 §3); a call that fails makes the
+    // property guaranteed-invalid.
+    let functions = o.sheet.map_or(&[][..], |s| s.functions.as_slice());
+    if !functions.is_empty() {
+        let mut called = Vec::new();
+        for name in specified.keys() {
+            let Some(text) = computed.get(name).cloned().flatten() else {
+                continue;
+            };
+            if !text.contains("--") {
+                continue;
+            }
+            let v = crate::doc::stylesheet::replace_functions(
+                &text,
+                functions,
+                &mut |n| {
+                    style_reads.insert(n.to_string());
+                    computed.get(n).cloned().flatten()
+                },
+                &mut |q| o.media.is_some_and(|c| q.matches(c, &mut media_reads)),
+                &mut Vec::new(),
+            );
+            match v {
+                Ok(v) if v != text => called.push((name.clone(), Some(v))),
+                Ok(_) => {}
+                Err(error) => {
+                    out.diagnostics.push(format!("{name}: {error}"));
+                    called.push((name.clone(), None));
+                }
+            }
+        }
+        for (name, value) in called {
+            computed.insert(name, value);
+        }
+    }
     out.viewport_reads.extend(media_reads);
     out.diagnostics.extend(diagnostics);
     out.inherited_reads = inherited_reads;
@@ -773,6 +809,34 @@ pub(crate) fn values_with<'r>(
                         computed.get(n).cloned().flatten()
                     },
                 },
+            );
+            out.viewport_reads.extend(media_reads);
+            for n in style_reads {
+                if !specified.contains_key(n.as_str()) {
+                    out.inherited_reads.insert(n.clone());
+                }
+                out.reads.insert(n);
+            }
+            v
+        });
+        // A custom function call is its result on this element.
+        let functions = o.sheet.map_or(&[][..], |s| s.functions.as_slice());
+        let value = value.and_then(|v| {
+            if functions.is_empty() || !v.contains("--") {
+                return Ok(v);
+            }
+            let computed = out.computed.clone();
+            let mut media_reads = crate::doc::media::Reads::default();
+            let mut style_reads = Vec::new();
+            let v = crate::doc::stylesheet::replace_functions(
+                &v,
+                functions,
+                &mut |n| {
+                    style_reads.push(n.to_string());
+                    computed.get(n).cloned().flatten()
+                },
+                &mut |q| o.media.is_some_and(|c| q.matches(c, &mut media_reads)),
+                &mut Vec::new(),
             );
             out.viewport_reads.extend(media_reads);
             for n in style_reads {
