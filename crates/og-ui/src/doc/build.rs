@@ -87,6 +87,10 @@ pub struct Resolved {
     part_host: Option<Arc<PartHost>>,
     /// Its text style for a part's type steps ([`Resolved::kept_part_text`]).
     text_kept: TextKept,
+    /// What its CSS colours resolve against: `currentColor` (its `color`,
+    /// declared or inherited) and whether its used colour scheme is dark
+    /// ([`Ui::resolve_element_colors`]).
+    pub(crate) used_color: Option<(Srgba, bool)>,
 }
 
 /// A part's text styles answered from its values, by type step and the
@@ -1077,9 +1081,17 @@ impl Ui {
         }
         sets.retain(|prop| !r.cascade.unset.contains(&prop.spec));
         sets.extend(&r.cascade.props);
+        // Colours that read `currentColor` or `light-dark()`, by their place
+        // in `vals`: resolved in the element once its values are in.
+        let mut contextual = Vec::new();
         for p in sets {
             let ty = PROPS[p.spec].ty;
             if let Some(v) = b.value(self, ty, &p.value) {
+                if let PropValue::Lit(Lit::Paint(Paint::Css(c))) = &p.value
+                    && (c.uses_current() || c.uses_scheme())
+                {
+                    contextual.push((r.vals.len(), c.clone()));
+                }
                 if !matches!(p.value, PropValue::Lit(_)) {
                     built.bindings.push((
                         p.name().to_string(),
@@ -1101,6 +1113,7 @@ impl Ui {
                 built.edits.push((e.prop.clone(), e.source.clone()));
             }
         }
+        self.resolve_element_colors(&mut r, &contextual);
         inherit_color(&mut r, &n.kind);
         r.part = Self::document_part(&r, n, b);
         if let Some(V::Spans(Ok(spans))) = r.get("spans") {
@@ -1316,7 +1329,7 @@ impl Ui {
                 .str("step")
                 .and_then(|s| crate::style_file::ramp_step(&mut ramp, s).copied())
                 .unwrap_or(self.env.theme.type_ramp.body);
-            let current = r.color("color").unwrap_or(self.env.theme.palette.ink);
+            let current = r.current(&self.env.theme);
             let text = cascade::Kept::text(
                 kept,
                 &mut r.cascade,

@@ -1195,19 +1195,24 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
     if let Some(w) = num(get("-webkit-text-stroke-width")).filter(|w| *w > 0.0) {
         t.stroke = Some((w, color(get("-webkit-text-stroke-color"))));
     }
-    t.dark = get("color-scheme").and_then(|v| {
-        let words: Vec<&str> = v.split_whitespace().filter(|w| *w != "only").collect();
-        let theme_dark = theme.scheme == crate::Scheme::Dark;
-        let has = |w: &str| words.contains(&w);
-        match (has("light"), has("dark")) {
-            (true, true) | (false, false) => None,
-            (true, false) => Some(false),
-            (false, true) => Some(true),
-        }
-        .filter(|d| *d != theme_dark)
-    });
+    let theme_dark = theme.scheme == crate::Scheme::Dark;
+    t.dark = get("color-scheme")
+        .map(|v| scheme_dark(&v, theme_dark))
+        .filter(|d| *d != theme_dark);
     t.vertical_align = own("vertical-align");
     t
+}
+
+/// The used colour scheme of a `color-scheme` value (CSS Color Adjust 1
+/// §2): one that names only `dark` (or only `light`) is it; `normal`, or
+/// both, is the style's (`style_dark`), the scheme the player chose.
+pub(crate) fn scheme_dark(value: &str, style_dark: bool) -> bool {
+    let has = |w: &str| value.split_whitespace().any(|v| v == w);
+    match (has("light"), has("dark")) {
+        (true, false) => false,
+        (false, true) => true,
+        _ => style_dark,
+    }
 }
 
 /// A variant keyword's OpenType features (CSS Fonts 4 §6.4–6.11).

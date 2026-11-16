@@ -97,6 +97,23 @@ pub struct CssGradient {
     interpolation: Option<(color::ColorSpaceTag, color::HueDirection)>,
 }
 
+impl CssGradient {
+    /// The gradient with the stops that read `currentColor` or
+    /// `light-dark()` resolved in `cx`, the element's: the rest stay
+    /// roles and expressions the style resolves when drawn.
+    pub(crate) fn bound(&self, cx: &crate::css_color::Context) -> CssGradient {
+        let mut g = self.clone();
+        for (c, _) in &mut g.stops {
+            if let ColorRef::Css(e) = c
+                && (e.uses_current() || e.uses_scheme())
+            {
+                *c = ColorRef::Literal(e.resolve(cx));
+            }
+        }
+        g
+    }
+}
+
 /// A layer's image as drawn: a gradient, or a texture region.
 #[derive(Clone, Debug, PartialEq)]
 pub enum BgImage {

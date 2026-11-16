@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI: currentColor and light-dark() in documents",
+      "summary": "currentColor is the element's own color, declared or inherited, in a background, a gradient's stops, a box shadow, a filter and color itself (whose currentColor is the inherited colour); it was the style's ink outside borders and outlines. light-dark() takes the element's used colour scheme: color-scheme: light or dark on it or an ancestor forces it, and light dark or none keeps the style's. It took the style's scheme everywhere."
+    }
+  ]
+}
