@@ -994,7 +994,19 @@ impl<'a> Reader<'a> {
         context: &Context,
         out: &mut Vec<Rule>,
     ) -> Result<(), Error> {
-        for item in items(text, base)? {
+        let items = items(text, base)?;
+        // `@custom-media` defines its name for the whole sheet, before or
+        // after a query that names it.
+        for item in &items {
+            if let Item::Statement(statement, at) = item
+                && let Some((name, rest)) = at_rule(statement)
+                && name == "custom-media"
+            {
+                let defined = super::media::Query::parse_custom(rest).map_err(|e| (*at, e))?;
+                self.sheet.custom_media.push(defined);
+            }
+        }
+        for item in items {
             match item {
                 Item::Statement(statement, at) => {
                     self.statement(statement, at, context, out)?;
@@ -1048,7 +1060,7 @@ impl<'a> Reader<'a> {
                 Ok(())
             }
             "import" => self.import(rest, at, context, out),
-            "charset" | "namespace" => Ok(()),
+            "charset" | "namespace" | "custom-media" => Ok(()),
             other => Err((at, format!("@{other} needs a {{ block }}"))),
         }
     }
@@ -1125,7 +1137,9 @@ impl<'a> Reader<'a> {
         while p.next().is_ok() {}
         let media = p.slice_from(start).trim();
         if !media.is_empty() {
-            let parsed = super::media::Query::parse(media).map_err(|e| (at, e))?;
+            let parsed = super::media::Query::parse(media)
+                .and_then(|q| q.resolve(&self.sheet.custom_media))
+                .map_err(|e| (at, e))?;
             inner.query.media = inner.query.media.clone().and(parsed);
         }
         let resolved = super::at_rules::resolve(&self.base, &path);
@@ -1198,7 +1212,9 @@ impl<'a> Reader<'a> {
         }
         match name.as_str() {
             "media" => {
-                let parsed = super::media::Query::parse(rest).map_err(|error| (at, error))?;
+                let parsed = super::media::Query::parse(rest)
+                    .and_then(|q| q.resolve(&self.sheet.custom_media))
+                    .map_err(|error| (at, error))?;
                 inner.query.media = context.query.media.clone().and(parsed);
                 descend(self, &inner, out)
             }

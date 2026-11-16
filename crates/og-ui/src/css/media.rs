@@ -220,6 +220,9 @@ pub enum Feature {
         group: u16,
         bits: u16,
     },
+    /// `(--name)`, a custom media query (Media Queries 5 §3), until
+    /// [`Query::resolve`] puts its `@custom-media` definition in its place.
+    Custom(String),
 }
 
 /// The scroll-state flags a container publishes, one bit per edge in the
@@ -275,6 +278,64 @@ impl Query {
         } else {
             Self::Or(queries)
         })
+    }
+
+    /// `@custom-media <name> <media-query-list> | true | false` after the
+    /// at-keyword: its name and query, unresolved.
+    pub fn parse_custom(source: &str) -> Result<(String, Self), String> {
+        let source = source.trim();
+        let (name, rest) = source
+            .split_once(char::is_whitespace)
+            .unwrap_or((source, ""));
+        if !name.starts_with("--") || name.len() < 3 {
+            return Err(format!(
+                "@custom-media names a query --name, not {name}: @custom-media --wide (width > 800px);"
+            ));
+        }
+        let query = match rest.trim() {
+            "true" => Self::All,
+            "false" => Self::Feature(Feature::Fixed(false)),
+            rest => Self::parse(rest)?,
+        };
+        Ok((name.to_string(), query))
+    }
+
+    /// Each `(--name)` replaced by the last `@custom-media` definition of
+    /// it in `defined`, itself resolved (Media Queries 5 §3.1). A name
+    /// never defined, or one whose definition reaches itself, is an error.
+    pub fn resolve(self, defined: &[(String, Self)]) -> Result<Self, String> {
+        fn walk(
+            q: Query,
+            defined: &[(String, Query)],
+            stack: &mut Vec<String>,
+        ) -> Result<Query, String> {
+            let all = |qs: Vec<Query>, stack: &mut Vec<String>| {
+                qs.into_iter()
+                    .map(|q| walk(q, defined, stack))
+                    .collect::<Result<Vec<_>, _>>()
+            };
+            Ok(match q {
+                Query::Feature(Feature::Custom(name)) => {
+                    if stack.contains(&name) {
+                        return Err(format!("@custom-media {name} refers to itself"));
+                    }
+                    let Some((_, q)) = defined.iter().rev().find(|(n, _)| *n == name) else {
+                        return Err(format!(
+                            "({name}) names no @custom-media; define it: @custom-media {name} (width > 800px);"
+                        ));
+                    };
+                    stack.push(name);
+                    let q = walk(q.clone(), defined, stack)?;
+                    stack.pop();
+                    q
+                }
+                Query::Not(q) => Query::Not(Box::new(walk(*q, defined, stack)?)),
+                Query::And(qs) => Query::And(all(qs, stack)?),
+                Query::Or(qs) => Query::Or(all(qs, stack)?),
+                q => q,
+            })
+        }
+        walk(self, defined, &mut Vec::new())
     }
 
     pub fn and(self, other: Self) -> Self {
@@ -389,7 +450,9 @@ impl Context {
                 }
                 Feature::Fixed(value) => value,
                 // Container-only features never parse in a media query.
-                Feature::Style(..) | Feature::ScrollState { .. } => false,
+                Feature::Style(..)
+                | Feature::ScrollState { .. }
+                | Feature::Custom(_) => false,
                 Feature::ColorVision(value) => {
                     reads.color_vision = true;
                     match value {
@@ -695,19 +758,58 @@ fn ranged(name: &str, cmp: Comparison, value: Value) -> Result<Query, Error> {
         ("aspect-ratio", Value::Ratio(n, d)) => Feature::AspectRatio(cmp, n, d),
         ("aspect-ratio", Value::Number(n)) if n >= 0.0 => Feature::AspectRatio(cmp, n, 1.0),
         ("resolution", Value::Resolution(n)) => Feature::Resolution(cmp, n),
+        (DPPX, Value::Number(n)) => Feature::Resolution(cmp, n),
         // Fixed integer features: 8 bits per colour component, no palette,
-        // not monochrome, a bitmap display.
-        ("color" | "monochrome" | "color-index" | "grid", Value::Number(n)) if n.fract() == 0.0 => {
-            let actual = if name == "color" { 8.0 } else { 0.0 };
+        // not monochrome, a bitmap display, 3D transforms (Compatibility
+        // §3.1), one viewport segment (no host reports a fold).
+        (
+            "color"
+            | "monochrome"
+            | "color-index"
+            | "grid"
+            | "-webkit-transform-3d"
+            | "horizontal-viewport-segments"
+            | "vertical-viewport-segments",
+            Value::Number(n),
+        ) if n.fract() == 0.0 => {
+            let actual = match name {
+                "color" => 8.0,
+                "monochrome" | "color-index" | "grid" => 0.0,
+                _ => 1.0,
+            };
             Feature::Fixed(cmp.test(actual, n))
         }
         _ => {
             return Err(ParseError::custom(format!(
-                "unsupported media feature or value for {name}; width/height need a length, aspect-ratio a nonnegative ratio, resolution a resolution, color/monochrome/color-index/grid an integer"
+                "unsupported media feature or value for {name}; width/height need a length, aspect-ratio a nonnegative ratio, resolution a resolution, -webkit-device-pixel-ratio a number, color/monochrome/color-index/grid/-webkit-transform-3d/*-viewport-segments an integer"
             )));
         }
     };
     Ok(Query::Feature(feature))
+}
+
+/// `-webkit-device-pixel-ratio` as parsed: `resolution` in dppx, a number.
+const DPPX: &str = "@dppx";
+
+/// A media feature that equals another here: Media Queries 4's deprecated
+/// `device-width`, `device-height` and `device-aspect-ratio` read the play
+/// surface (the output the game renders to, as a browser reports the
+/// screen of a page it fills), and Compatibility's
+/// `-webkit-device-pixel-ratio` is `resolution` in dppx (§3.2).
+fn alias(name: String) -> String {
+    let unprefixed = name.strip_prefix("-webkit-").unwrap_or(&name);
+    let (prefix, bare) = ["min-", "max-"]
+        .iter()
+        .find_map(|p| unprefixed.strip_prefix(p).map(|rest| (*p, rest)))
+        .unwrap_or(("", unprefixed));
+    let feature = match (bare, unprefixed.len() < name.len()) {
+        ("device-pixel-ratio", true) => DPPX,
+        ("device-width", false) => "width",
+        ("device-height", false) => "height",
+        ("device-aspect-ratio", false) => "aspect-ratio",
+        _ => return name,
+    };
+    format!("{prefix}{feature}")
 }
 
 /// A container condition's `inline-size` and `block-size` as parsed: names
@@ -738,6 +840,14 @@ fn logical(name: String, scope: Scope) -> Result<String, Error> {
 fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
     if let Ok(name) = input.try_parse(|p| p.expect_ident_cloned()) {
         let name = logical(name.to_ascii_lowercase(), scope)?;
+        let name = if scope == Scope::Media {
+            alias(name)
+        } else {
+            name
+        };
+        if input.is_exhausted() && scope == Scope::Media && name.starts_with("--") {
+            return Ok(Query::Feature(Feature::Custom(name)));
+        }
         if input.is_exhausted() {
             return match name.as_str() {
                 "width" | "height" | "aspect-ratio" | LOGICAL_INLINE | LOGICAL_BLOCK => {
@@ -767,7 +877,15 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
                 | "scripting"
                 | "display-mode"
                 | "prefers-color-scheme"
-                | "dynamic-range" => Ok(Query::Feature(Feature::Fixed(true))),
+                | "dynamic-range"
+                | "device-posture"
+                | "horizontal-viewport-segments"
+                | "vertical-viewport-segments"
+                | "-webkit-transform-3d" => Ok(Query::Feature(Feature::Fixed(true))),
+                DPPX => Ok(Query::Feature(Feature::Resolution(
+                    Comparison::Greater,
+                    0.0,
+                ))),
                 "forced-colors"
                 | "monochrome"
                 | "color-index"
@@ -887,6 +1005,7 @@ fn keyword_feature(name: &str, input: &mut Parser<'_>) -> Result<Option<Feature>
         "scripting" => &["none", "initial-only", "enabled"],
         "inverted-colors" => &["none", "inverted"],
         "prefers-reduced-data" => &["no-preference", "reduce"],
+        "device-posture" => &["continuous", "folded"],
         _ => return Ok(None),
     };
     let word = input.expect_ident_cloned()?.to_ascii_lowercase();
@@ -913,7 +1032,8 @@ fn keyword_feature(name: &str, input: &mut Parser<'_>) -> Result<Option<Feature>
         "dynamic-range" | "video-dynamic-range" if word == "high" => Feature::HighRange,
         // The play surface fills the display area with no browser chrome,
         // updates every frame and runs scripts; no forced or inverted
-        // colours or data saving.
+        // colours or data saving; no host reports a fold, so the device
+        // is flat (`continuous`).
         _ => Feature::Fixed(matches!(
             (name, word),
             ("forced-colors", "none")
@@ -924,6 +1044,7 @@ fn keyword_feature(name: &str, input: &mut Parser<'_>) -> Result<Option<Feature>
                 | ("scripting", "enabled")
                 | ("inverted-colors", "none")
                 | ("prefers-reduced-data", "no-preference")
+                | ("device-posture", "continuous")
         )),
     }))
 }

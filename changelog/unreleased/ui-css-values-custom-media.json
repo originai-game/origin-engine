@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"ui","summary":"`@custom-media --name <media-query-list>;` (also `true` or `false`) names a media query that `@media (--name)` and `@import … (--name)` use (Media Queries 5). A name can be used before it is defined and inside another definition, and its last definition wins. An undefined or self-referring name fails to cook."}
+  ]
+}
