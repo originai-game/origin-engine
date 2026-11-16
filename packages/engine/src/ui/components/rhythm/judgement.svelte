@@ -23,27 +23,30 @@
   word changes many times a second.
 -->
 <div id="RhythmJudgement" part="RhythmJudgement.frame" class="bare" role="group" aria-label={t("rhythm.judge.name")} data-judgement={judgement}>
-  {#key hit}
-    <div part="RhythmJudgement.plate" hidden={judgement == 'none'} data-judgement={judgement} data-timing={timing}>
+  {#if judgement != 'none'}
+    {#key hit}
+    <div part="RhythmJudgement.plate" data-judgement={judgement} data-timing={timing}>
       <span part="RhythmJudgement.title" class="word">{label != '' ? label : (judgement == 'perfect' ? t("rhythm.judge.perfect") : (judgement == 'great' ? t("rhythm.judge.great") : (judgement == 'good' ? t("rhythm.judge.good") : (judgement == 'bad' ? t("rhythm.judge.bad") : t("rhythm.judge.miss")))))}</span>
-      <span part="RhythmJudgement.badge" class="timing" data-timing={timing} hidden={timing == ''}>{timing == 'early' ? t("rhythm.judge.early") : t("rhythm.judge.late")}</span>
+      {#if timing != ''}<span part="RhythmJudgement.badge" class="timing" data-timing={timing}>{timing == 'early' ? t("rhythm.judge.early") : t("rhythm.judge.late")}</span>{/if}
     </div>
-  {/key}
-  <div part="RhythmJudgement.combo RhythmJudgement.figure" class="combo" hidden={!(combo > 0) && !broken} data-broken={broken}>
-    <span class="count" hidden={broken}>{formatNumber(combo)}</span>
+    {/key}
+  {/if}
+  {#if combo > 0 || broken}
+  <div part="RhythmJudgement.combo RhythmJudgement.figure" class="combo" data-broken={broken}>
+    {#if !broken}<span class="count">{formatNumber(combo)}</span>{/if}
     <span class="combo-word">{broken ? t("rhythm.judge.broken") : t("rhythm.judge.combo")}</span>
   </div>
+  {/if}
 </div>
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="RhythmJudgement.frame"][hidden], [part="RhythmJudgement.frame"] [hidden] { display: none; }
-[part="RhythmJudgement.frame"] { display: flex; flex-direction: column; width: stretch; align-items: center; gap: var(--space-xxs); pointer-events: none; }
+:host { display: flex; flex-direction: column; inline-size: stretch; align-items: center; gap: var(--space-sm); pointer-events: none; }
 [part="RhythmJudgement.plate"] { display: flex; max-width: stretch; align-items: baseline; justify-content: center; gap: var(--space-xs); padding: var(--space-xxs) var(--space-lg); }
-.word { min-width: 0; text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.timing { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
+.word { min-width: 0; font: var(--text-xl3); font-weight: var(--font-weight-bold); text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.timing { flex: none; font: var(--text-sm); white-space: nowrap; padding: var(--space-xxs) var(--space-xs); }
 [part="RhythmJudgement.combo RhythmJudgement.figure"] { display: flex; flex-direction: column; align-items: center; }
-.count { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.combo-word { white-space: nowrap; }
+.count { font: var(--text-xl4); font-weight: var(--font-weight-bold); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.combo-word { font: var(--text-sm); white-space: nowrap; color: var(--ink-muted); }
 </style>

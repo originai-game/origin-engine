@@ -19,42 +19,41 @@
 <section id="RhythmDifficulty" part="RhythmDifficulty.frame" aria-label={title != '' ? title : t("rhythm.difficulty.title")}>
   <header part="RhythmDifficulty.band"><h2 part="RhythmDifficulty.title">{title != '' ? title : t("rhythm.difficulty.title")}</h2></header>
   {#if levels.length}
-    <scroll class="list">
+    <div class="list">
       <div class="tiles" role="listbox" aria-label={t("rhythm.difficulty.list")}>
         {#each levels as l (l.id)}
           <button part="RhythmDifficulty.row" role="option" aria-selected={l.id == selected} aria-label={t("rhythm.difficulty.ratingName", { label: l.label, rating: l.rating })} disabled={l.locked} data-tier={l.tier} data-locked={l.locked} onclick={choose}><div class="face">
             <span part="RhythmDifficulty.name" class="name">{l.label}</span>
             <span part="RhythmDifficulty.rating RhythmDifficulty.figure" class="rating">{t("rhythm.difficulty.rating", { rating: l.rating })}</span>
             <div class="best">
-              <span part="RhythmDifficulty.badge" class="grade" data-tag="grade" hidden={l.grade == ''}>{l.grade}</span>
+              {#if l.grade != ''}<span part="RhythmDifficulty.badge" class="grade" data-tag="grade">{l.grade}</span>{/if}
               <span class="score">{l.score != '' ? l.score : t("rhythm.difficulty.unplayed")}</span>
             </div>
-            <span part="RhythmDifficulty.badge" data-tag="locked" hidden={!l.locked}>{t("rhythm.difficulty.locked")}</span>
-            <span part="RhythmDifficulty.badge" data-tag="selected" hidden={l.id != selected}>{t("rhythm.difficulty.selected")}</span>
+            {#if l.locked}<span part="RhythmDifficulty.badge" data-tag="locked">{t("rhythm.difficulty.locked")}</span>{/if}
+            {#if l.id == selected}<span part="RhythmDifficulty.badge" data-tag="selected">{t("rhythm.difficulty.selected")}</span>{/if}
           </div></button>
         {/each}
       </div>
-    </scroll>
+    </div>
   {:else}
     <p class="empty-text" role="status">{t("rhythm.difficulty.empty")}</p>
   {/if}
 </section>
 
 <style>
-[part="RhythmDifficulty.frame"][hidden], [part="RhythmDifficulty.frame"] [hidden] { display: none; }
-[part="RhythmDifficulty.frame"] { display: flex; flex-direction: column; width: stretch; min-width: 0; gap: var(--space-sm); }
+:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; gap: var(--space-md); }
 [part="RhythmDifficulty.band"] { display: flex; width: stretch; align-items: center; flex: none; }
 [part="RhythmDifficulty.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.list { width: stretch; min-width: 0; min-height: 0; flex: 0 1 auto; }
+.list { overflow-y: auto; min-height: 0; flex: 0 1 auto; }
 .tiles { display: flex; width: stretch; flex-wrap: wrap; gap: var(--space-sm); padding: var(--space-xxs); }
-[part="RhythmDifficulty.row"] { flex: 1; min-width: calc(var(--size-xxl) * 1.6); max-width: calc(var(--size-xxl) * 2.6); min-height: var(--size-touch); padding: var(--space-sm); }
-.face { display: flex; flex-direction: column; width: stretch; align-items: flex-start; gap: var(--space-xxs); }
-.name { max-width: stretch; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.rating { align-self: flex-start; text-align: start; white-space: nowrap; font-variant-numeric: tabular-nums; }
+[part="RhythmDifficulty.row"] { flex: 1; align-items: flex-start; justify-content: flex-start; min-width: calc(var(--size-xxl) * 1.6); max-width: calc(var(--size-xxl) * 2.6); min-height: var(--size-touch); padding: var(--space-sm); }
+.face { display: flex; flex-direction: column; width: stretch; block-size: stretch; align-items: flex-start; gap: var(--space-xs); }
+.name { max-width: stretch; font-weight: var(--font-weight-semibold); text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.rating { font: var(--text-xl2); align-self: flex-start; text-align: start; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .best { display: flex; max-width: stretch; align-items: center; gap: var(--space-xs); }
-.score { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-variant-numeric: tabular-nums; }
+.score { min-width: 0; font: var(--text-sm); color: var(--ink-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-variant-numeric: tabular-nums; }
 [part="RhythmDifficulty.badge"] { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
-.empty-text { margin: 0; padding: var(--space-md); text-align: center; }
+.empty-text { margin: 0; padding: var(--space-lg); text-align: center; color: var(--ink-muted); }
 /* A phone lists the charts one under another, each a full-width row. */
 @media (width < 600px) {
   .tiles { flex-direction: column; flex-wrap: nowrap; gap: var(--space-xs); }

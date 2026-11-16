@@ -30,29 +30,29 @@
 -->
 <section id="RhythmResults" part="RhythmResults.frame" aria-label={song != '' ? song : t("rhythm.results.title")} data-cleared={cleared} data-mark={mark}>
   <header part="RhythmResults.band"><h2 part="RhythmResults.title">{song != '' ? song : t("rhythm.results.title")}</h2></header>
-  <scroll class="body">
+  <div class="body">
     <div class="content">
       <div class="top">
       <div class="verdict">
-        <span part="RhythmResults.grade RhythmResults.figure" class="grade" hidden={grade == ''} aria-label={t("rhythm.results.gradeName", { grade: grade })} data-cleared={cleared}>{grade}</span>
+        {#if grade != ''}<span part="RhythmResults.grade RhythmResults.figure" class="grade" aria-label={t("rhythm.results.gradeName", { grade: grade })} data-cleared={cleared}>{grade}</span>{/if}
         <div class="words">
           <span part="RhythmResults.badge" data-tag={cleared ? 'cleared' : 'failed'}>{cleared ? t("rhythm.results.cleared") : t("rhythm.results.failed")}</span>
-          <span part="RhythmResults.badge" data-tag={mark} hidden={mark == ''}>{mark == 'allPerfect' ? t("rhythm.results.allPerfect") : t("rhythm.results.fullCombo")}</span>
+          {#if mark != ''}<span part="RhythmResults.badge" data-tag={mark}>{mark == 'allPerfect' ? t("rhythm.results.allPerfect") : t("rhythm.results.fullCombo")}</span>{/if}
         </div>
       </div>
       <div part="RhythmResults.readout RhythmResults.figure" class="score-cell" role="group" aria-label={t("rhythm.results.score")}>
         <span class="caption">{t("rhythm.results.score")}</span>
         <span part="RhythmResults.figure" class="score">{formatNumber(score)}</span>
         <div class="best">
-          <span part="RhythmResults.badge" data-tag="newBest" hidden={!newBest}>{t("rhythm.results.newBest")}</span>
-          <span class="previous" hidden={!(previous > 0)}>{t("rhythm.results.previous", { score: previous })}</span>
+          {#if newBest}<span part="RhythmResults.badge" data-tag="newBest">{t("rhythm.results.newBest")}</span>{/if}
+          {#if previous > 0}<span class="previous">{t("rhythm.results.previous", { score: previous })}</span>{/if}
         </div>
       </div>
       </div>
       <div class="lower">
       <div class="stats">
         <div part="RhythmResults.readout RhythmResults.figure" class="stat" role="group" aria-label={t("rhythm.results.maxCombo")}><span class="caption">{t("rhythm.results.maxCombo")}</span><span part="RhythmResults.figure" class="value">{formatNumber(maxCombo)}</span></div>
-        <div part="RhythmResults.readout RhythmResults.figure" class="stat" role="group" aria-label={t("rhythm.results.accuracy")} hidden={accuracy == ''}><span class="caption">{t("rhythm.results.accuracy")}</span><span part="RhythmResults.figure" class="value">{accuracy}</span></div>
+        {#if accuracy != ''}<div part="RhythmResults.readout RhythmResults.figure" class="stat" role="group" aria-label={t("rhythm.results.accuracy")}><span class="caption">{t("rhythm.results.accuracy")}</span><span part="RhythmResults.figure" class="value">{accuracy}</span></div>{/if}
       </div>
       {#if counts.length}
         <div class="counts" role="list" aria-label={t("rhythm.results.counts")}>
@@ -65,7 +65,7 @@
       {/if}
       </div>
     </div>
-  </scroll>
+  </div>
   <footer class="actions">
     <button id="Retry" variant="ghost" disabled={!canRetry} onclick={retry}><span>{t("rhythm.results.retry")}</span></button>
     <button id="Next" variant="primary" onclick={next} onback={next}><kbd class="key" data-action="back"></kbd><span>{t("rhythm.results.next")}</span></button>
@@ -73,30 +73,30 @@
 </section>
 
 <style>
-[part="RhythmResults.frame"][hidden], [part="RhythmResults.frame"] [hidden] { display: none; }
-[part="RhythmResults.frame"] { display: flex; flex-direction: column; width: stretch; min-width: 0; height: stretch; gap: var(--space-sm); container-type: inline-size; }
+:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; block-size: stretch; gap: var(--space-md); container-type: inline-size; }
 [part="RhythmResults.band"] { display: flex; width: stretch; align-items: center; flex: none; }
 [part="RhythmResults.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.body { width: stretch; flex: 1; min-height: 0; }
+.body { overflow-y: auto; flex: 1; min-height: 0; }
 .content { display: flex; flex-direction: column; width: stretch; gap: var(--space-md); padding: var(--space-xs); }
 /* The verdict and the score share a row and wrap rather than cut a figure. */
 .top { display: flex; flex-wrap: wrap; width: stretch; align-items: center; justify-content: space-between; gap: var(--space-sm) var(--space-xl); }
 .lower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); width: stretch; gap: var(--space-md) var(--space-xl); align-items: start; }
 .verdict { display: flex; flex: none; align-items: center; gap: var(--space-md); }
-[part="RhythmResults.grade RhythmResults.figure"] { flex: none; min-width: var(--size-xl); text-align: center; white-space: nowrap; }
+[part="RhythmResults.grade RhythmResults.figure"] { flex: none; min-width: var(--size-xl); font: var(--text-xl5); font-weight: var(--font-weight-bold); text-align: center; white-space: nowrap; }
 .words { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xxs); min-width: 0; }
 [part="RhythmResults.badge"] { white-space: nowrap; padding: 0 var(--space-xs); }
 .score-cell { display: flex; flex-direction: column; flex: none; max-width: stretch; align-items: flex-end; margin-inline-start: auto; }
-.score { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.score { font: var(--text-xl3); font-weight: var(--font-weight-semibold); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.caption, .previous { font: var(--text-sm); color: var(--ink-muted); }
 .best { display: flex; align-items: center; gap: var(--space-xs); flex-wrap: wrap; justify-content: flex-end; }
 .previous { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.stats { display: flex; flex-direction: column; gap: var(--space-xs); min-width: 0; }
+.stats { display: flex; flex-direction: column; gap: var(--space-sm); min-width: 0; padding: var(--space-sm); background: var(--well); border-radius: var(--radius-control); }
 .stat { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-sm); }
 .value, .count { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .counts { display: flex; flex-direction: column; gap: var(--space-xxs); min-width: 0; }
 [part="RhythmResults.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) var(--space-sm); }
 .label { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.empty-text { margin: 0; text-align: center; }
+.empty-text { margin: 0; padding: var(--space-md); text-align: center; color: var(--ink-muted); }
 .actions { display: flex; width: stretch; flex: none; justify-content: flex-end; gap: var(--space-sm); }
 .actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
 @media (pointer: coarse) { .key { display: none; } }

@@ -17,4 +17,7 @@ ui {
   screen "songs-fantasy" "style:fantasy;page:songs"
   screen "play-fantasy" "style:fantasy;page:play"
   screen "states-fantasy" "style:fantasy;page:states"
+  screen "songs-default" "style:default;page:songs"
+  screen "play-default" "style:default;page:play"
+  screen "states-default" "style:default;page:states"
 }

@@ -34,29 +34,29 @@
     {:else}
       {#if songs.length}
         <div class="body">
-          <scroll class="list">
+          <div class="list">
             <div class="rows" role="listbox" aria-label={t("rhythm.songs.list")}>
               {#each songs as s (s.id)}
                 <button part="RhythmSongSelect.row" role="option" aria-selected={s.id == selected} aria-label={s.title} aria-description={s.artist} disabled={s.locked} data-locked={s.locked} data-fresh={s.fresh} data-cleared={s.cleared} data-previewing={s.id == previewing} onclick={choose} ondetails={preview}><div class="face">
-                  <img part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="thumb" src={s.jacket} alt="" hidden={!s.jacket}><div part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="thumb well" hidden={!!s.jacket}></div>
+                  {#if s.jacket}<img part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="thumb" src={s.jacket} alt="">{:else}<div part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="thumb well"><og-icon class="jacket-icon" icon="music"></og-icon></div>{/if}
                   <div class="text"><span part="RhythmSongSelect.name" class="name">{s.title}</span><span class="artist">{s.artist}</span>
                   <div class="badges">
-                    <span part="RhythmSongSelect.badge" data-tag="selected" hidden={s.id != selected}>{t("rhythm.songs.selected")}</span>
-                    <span part="RhythmSongSelect.badge" data-tag="previewing" hidden={s.id != previewing}>{t("rhythm.songs.previewing")}</span>
-                    <span part="RhythmSongSelect.badge" data-tag="fresh" hidden={!s.fresh}>{t("rhythm.songs.fresh")}</span>
-                    <span part="RhythmSongSelect.badge" data-tag="cleared" hidden={!s.cleared}>{t("rhythm.songs.cleared")}</span>
-                    <span part="RhythmSongSelect.badge" data-tag="locked" hidden={!s.locked}>{t("rhythm.songs.locked")}</span>
+                    {#if s.id == selected}<span part="RhythmSongSelect.badge" data-tag="selected">{t("rhythm.songs.selected")}</span>{/if}
+                    {#if s.id == previewing}<span part="RhythmSongSelect.badge" data-tag="previewing">{t("rhythm.songs.previewing")}</span>{/if}
+                    {#if s.fresh}<span part="RhythmSongSelect.badge" data-tag="fresh">{t("rhythm.songs.fresh")}</span>{/if}
+                    {#if s.cleared}<span part="RhythmSongSelect.badge" data-tag="cleared">{t("rhythm.songs.cleared")}</span>{/if}
+                    {#if s.locked}<span part="RhythmSongSelect.badge" data-tag="locked">{t("rhythm.songs.locked")}</span>{/if}
                   </div></div>
                   <span class="bpm">{t("rhythm.songs.bpm", { bpm: s.bpm })}</span>
                 </div></button>
               {/each}
             </div>
-          </scroll>
-          <aside part="RhythmSongSelect.detail" class="detail" aria-label={t("rhythm.songs.none")} hidden={selected != ''}><p class="state-text">{t("rhythm.songs.none")}</p></aside>
+          </div>
+          {#if selected == ''}<aside part="RhythmSongSelect.detail" class="detail" aria-label={t("rhythm.songs.none")}><p class="state-text">{t("rhythm.songs.none")}</p></aside>{/if}
           {#each songs as s (s.id)}
             {#if s.id == selected}
               <aside part="RhythmSongSelect.detail" class="detail" aria-label={s.title} data-locked={s.locked} data-previewing={s.id == previewing}>
-                <img part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="cover" src={s.jacket} alt="" hidden={!s.jacket}><div part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="cover well" hidden={!!s.jacket}></div>
+                {#if s.jacket}<img part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="cover" src={s.jacket} alt="">{:else}<div part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="cover well"><og-icon class="jacket-icon" icon="music"></og-icon></div>{/if}
                 <div class="info">
                   <span class="detail-name">{s.title}</span>
                   <span class="detail-artist">{s.artist}</span>
@@ -78,23 +78,26 @@
 </section>
 
 <style>
-[part="RhythmSongSelect.frame"][hidden], [part="RhythmSongSelect.frame"] [hidden] { display: none; }
-[part="RhythmSongSelect.frame"] { display: flex; flex-direction: column; width: stretch; min-width: 0; height: stretch; gap: var(--space-md); container-type: inline-size; }
+:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; block-size: stretch; gap: var(--space-md); container-type: inline-size; }
 [part="RhythmSongSelect.band"] { display: flex; width: stretch; align-items: center; flex: none; }
 [part="RhythmSongSelect.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .body { display: flex; width: stretch; flex: 1; min-height: 0; gap: var(--space-lg); }
-.list { flex: 3; min-width: 0; height: stretch; }
+.list { overflow-y: auto; flex: 3; min-width: 0; }
 .rows { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); padding: var(--space-xxs); }
 [part="RhythmSongSelect.row"] { width: stretch; min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); min-width: 0; }
-.face { display: flex; width: stretch; align-items: center; gap: var(--space-sm); }
+.face { display: flex; width: stretch; align-items: center; gap: var(--space-md); }
 .thumb { flex: none; width: var(--size-lg); height: var(--size-lg); }
 img.thumb, img.cover { object-fit: cover; }
+.thumb.well, .cover.well { display: flex; align-items: center; justify-content: center; background: var(--control); border-radius: var(--radius-control); }
+.jacket-icon { inline-size: 50%; block-size: 50%; color: var(--ink-muted); }
 .text { display: flex; flex-direction: column; flex: 1; min-width: 0; align-items: flex-start; }
 .name, .artist { max-width: stretch; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.name, .detail-name { font: var(--text-lg); font-weight: var(--font-weight-semibold); }
+.artist, .detail-artist, .bpm { font: var(--text-sm); color: var(--ink-muted); }
 .bpm { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.badges { display: flex; flex-wrap: wrap; gap: var(--space-xxs); }
+.badges { display: flex; flex-wrap: wrap; gap: var(--space-xxs); margin-block-start: var(--space-xxs); font: var(--text-xs); }
 [part="RhythmSongSelect.badge"] { white-space: nowrap; padding: 0 var(--space-xs); }
-.detail { display: flex; flex-direction: column; flex: 2; min-width: 0; min-height: 0; overflow-y: auto; gap: var(--space-sm); padding: var(--space-sm); }
+.detail { display: flex; flex-direction: column; flex: 2; min-width: 0; min-height: 0; overflow-y: auto; gap: var(--space-md); padding: var(--space-md); background: var(--well); border-radius: var(--radius-control); }
 .cover { flex: none; width: stretch; max-width: calc(var(--size-xxl) * 1.8); aspect-ratio: 1; align-self: center; }
 .info { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); align-items: flex-start; }
 .detail-name { max-width: stretch; text-align: start; }
@@ -104,7 +107,7 @@ img.thumb, img.cover { object-fit: cover; }
 .value { white-space: nowrap; font-variant-numeric: tabular-nums; }
 #Preview, #Retry { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
 .state { display: flex; flex-direction: column; flex: 1; align-items: center; justify-content: center; gap: var(--space-md); }
-.state-text { margin: 0; text-align: center; }
+.state-text { margin: 0; text-align: center; color: var(--ink-muted); }
 @media (pointer: coarse) { .key { display: none; } }
 /* A narrow panel (a phone, or a side column on a wide screen) puts the
    selected song's details over the list, the cover small at the start. */
@@ -119,6 +122,6 @@ img.thumb, img.cover { object-fit: cover; }
 }
 /* The frame cannot ask its own width, so its gap follows the screen. */
 @media (width < 600px) {
-  [part="RhythmSongSelect.frame"] { gap: var(--space-sm); }
+  :host { gap: var(--space-sm); }
 }
 </style>

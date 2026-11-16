@@ -24,24 +24,30 @@
       <span part="RhythmScoreHud.title" class="caption">{t("rhythm.hud.score")}</span>
       <span part="RhythmScoreHud.figure" class="figure">{formatNumber(score)}</span>
     </div>
-    <div part="RhythmScoreHud.readout RhythmScoreHud.figure" class="accuracy" role="group" aria-label={t("rhythm.hud.accuracy")} hidden={accuracy == ''}>
+    {#if accuracy != ''}
+    <div part="RhythmScoreHud.readout RhythmScoreHud.figure" class="accuracy" role="group" aria-label={t("rhythm.hud.accuracy")}>
       <span part="RhythmScoreHud.title" class="caption">{t("rhythm.hud.accuracy")}</span>
       <span part="RhythmScoreHud.figure" class="figure">{accuracy}</span>
     </div>
+    {/if}
   </div>
-  <div part="RhythmScoreHud.row" class="life" hidden={life < 0} data-danger={danger} data-failed={failed}>
+  {#if life >= 0}
+  <div part="RhythmScoreHud.row" class="life" data-danger={danger} data-failed={failed}>
     <div class="gauge"><ProgressBar value={life} buffer={0} label={t("rhythm.hud.life")} valueText="" showValue={false} indeterminate={false} tone={danger || failed ? 'danger' : 'success'} /></div>
-    <span part="RhythmScoreHud.badge" data-tag="danger" hidden={!danger || failed}>{t("rhythm.hud.danger")}</span>
-    <span part="RhythmScoreHud.badge" data-tag="failed" hidden={!failed}>{t("rhythm.hud.failed")}</span>
+    {#if danger && !failed}<span part="RhythmScoreHud.badge" data-tag="danger">{t("rhythm.hud.danger")}</span>{/if}
+    {#if failed}<span part="RhythmScoreHud.badge" data-tag="failed">{t("rhythm.hud.failed")}</span>{/if}
   </div>
+  {/if}
   <div part="RhythmScoreHud.row" class="progress"><ProgressBar value={progress} buffer={0} label={t("rhythm.hud.progress")} valueText="" showValue={false} indeterminate={false} tone="info" /></div>
 </section>
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="RhythmScoreHud.frame"][hidden], [part="RhythmScoreHud.frame"] [hidden] { display: none; }
-[part="RhythmScoreHud.frame"] { display: flex; flex-direction: column; min-width: calc(var(--size-xxl) * 3.2); max-width: stretch; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
+:host { display: flex; flex-direction: column; min-inline-size: calc(var(--size-xxl) * 3.2); max-inline-size: stretch; gap: var(--space-md); padding: var(--space-md); }
+.caption { font: var(--text-sm); color: var(--ink-muted); }
+.score .figure { font: var(--text-xl3); font-weight: var(--font-weight-semibold); }
+.accuracy .figure { font: var(--text-xl); }
 .cells { display: flex; flex-wrap: wrap; width: stretch; gap: var(--space-xxs) var(--space-lg); align-items: flex-end; }
 [part="RhythmScoreHud.readout RhythmScoreHud.figure"] { display: flex; flex-direction: column; align-items: flex-start; }
 [part="RhythmScoreHud.readout RhythmScoreHud.figure"].score { flex: 1; }
@@ -52,7 +58,7 @@
 .gauge { flex: 1; min-width: 0; }
 [part="RhythmScoreHud.badge"] { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
 @media (width < 600px) {
-  [part="RhythmScoreHud.frame"] { width: stretch; min-width: 0; padding: var(--space-xs) var(--space-sm); }
+  :host { inline-size: stretch; min-inline-size: 0; padding: var(--space-sm); }
   .cells { gap: var(--space-sm); }
 }
 </style>

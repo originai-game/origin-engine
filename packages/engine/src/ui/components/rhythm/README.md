@@ -15,9 +15,14 @@ it; the game's copy of the same name wins.
 
 ## Structure and appearance
 
-Each member's `<style>` holds structure only: layout, sizes and spacing from
-tokens. It sets no colour, font or art, and lands in the `og-components`
-layer. A style pack (`og-pack`) supplies every appearance through the
+The documents use HTML elements with CSS: `:host` styles the root,
+`{#if}` mounts optional content, and parts and classes select the inner
+boxes. Scrolling is `overflow-y: auto` on a `div`. Element ids and parts
+remain stable when a game ejects a document.
+
+Each member's `<style>` supplies layout and a token-based default look:
+type hierarchy, spacing and quiet row surfaces, in the `og-components`
+layer. A style pack (`og-pack`) overrides appearance through the
 members' named parts (docs/ui.md §3.2), qualified by their states and
 `data-*` attributes, for example `RhythmResults::row[data-judgement=miss]` or
 `button::part(RhythmDifficulty\.row)[data-tier=expert]`. The fantasy pack dresses them
@@ -77,8 +82,9 @@ the fantasy pack: `songs` (the normal page: the song list with the selected
 song's details and its charts), `play` (the stress page: the judgement and
 the score HUD in danger over a bright sky and dark lanes, beside the
 overflow results) and `states` (every member in every fixture state).
-`style:default` and `hit:<judgement>:<early|late|->` are sheet commands for
-the default style and motion clips.
+Each page also has a `-default` screen with its explicit
+`style:default;page:<page>` commands. `hit:<judgement>:<early|late|->` is
+the sheet command for motion clips.
 `og ui review rhythm --style scifi` (or `--style cartoon`) renders the same
 pages in that pack, dressed by its tokens
 (`templates/styles/<pack>/base.css`).
