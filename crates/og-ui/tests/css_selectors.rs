@@ -437,6 +437,72 @@ p:target { margin-left: 7px; }
     assert!(drawn(&d).0.is_empty(), "marks cleared");
 }
 
+/// `::target-text` follows highlight inheritance (CSS Pseudo-Elements 4
+/// §3.5): the passage in #In, inside #Box, takes its green background
+/// from #Box and its red ink from :root. The passage in #Out takes the
+/// red ink from :root and keeps the default background, since #Box does
+/// not reach it.
+///
+/// Ways it could fail: only the text element's own rule read (default
+/// background, own ink); #Box's background reaching #Out; the ink not
+/// inherited because a nearer ancestor set only the background.
+#[test]
+fn target_text_styles_inherit_from_ancestors_property_by_property() {
+    let doc = r##"<meta name="component" content="tt">
+<column id="Root">
+  <a href="#:~:text=inside&text=outside" id="Go">go</a>
+  <div id="Box"><p id="In">we are inside now</p></div>
+  <p id="Out">we are outside now</p>
+</column>
+<style>
+a { width: 80px; height: 30px; }
+p { width: max-content; margin: 0; }
+:root::target-text { color: #ff0000; }
+#Box::target-text { background-color: #00ff00; }
+</style>"##;
+    let mut d = Doc::with_font(doc, &[], test_font());
+    let near = |a: [f32; 4], b: Srgba| {
+        let b = b.linear();
+        a.iter().zip(b).all(|(x, y)| (x - y).abs() < 0.02)
+    };
+    let go = d.get("Go");
+    d.click_at(Vec2::new(go.x + 3.0, go.y + go.height / 2.0));
+    for _ in 0..3 {
+        d.step(InputFrame::default());
+    }
+    let (inner, outer) = (d.get("In"), d.get("Out"));
+    let row = |r: &og_ui::Rect, e: &og_ui::UiElement| (r.y - e.y).abs() < 1.0;
+    let (mut green, mut red) = (vec![], vec![]);
+    for item in &d.ui.frame().items {
+        let cmd = match &item.cmd {
+            DrawCmd::StyledText { text, .. } => text.as_ref(),
+            c => c,
+        };
+        match cmd {
+            DrawCmd::Quad { rect, color, .. } if near(*color, Srgba::rgb(0, 255, 0)) => {
+                green.push(*rect)
+            }
+            DrawCmd::Text { color, bounds, .. } if near(*color, Srgba::rgb(255, 0, 0)) => {
+                red.push(*bounds)
+            }
+            _ => {}
+        }
+    }
+    assert_eq!(green.len(), 1, "#Box's background on #In only: {green:?}");
+    assert!(row(&green[0], &inner), "{green:?} {inner:?}");
+    assert!(
+        green[0].x > inner.x + inner.width * 0.3 && green[0].right() < inner.x + inner.width * 0.8,
+        "\"inside\": {green:?} {inner:?}"
+    );
+    for e in [&inner, &outer] {
+        assert!(
+            red.iter().any(|b| row(b, e)),
+            ":root's ink on {}: {red:?}",
+            e.id
+        );
+    }
+}
+
 /// Custom highlights (CSS Custom Highlight API 1) paint as the spec's
 /// §4.2.5 example does. Each glyph of the test font's CJK text is 1em
 /// wide, so character k spans [20k, 20k + 20] px. `Foo` covers characters

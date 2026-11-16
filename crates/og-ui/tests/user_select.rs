@@ -297,6 +297,97 @@ fn selection_ink_lines_and_shadows_cover_only_the_selected_run() {
     );
 }
 
+/// `::selection` follows highlight inheritance (CSS Pseudo-Elements 4
+/// §3.5): each property a paragraph's own rules leave unset comes from
+/// the nearest ancestor's `::selection` that sets it, `background-color`
+/// too, though it is not an inherited property. The word in #Word (inside
+/// #Box) is cyan with red ink, both from #Box over :root's yellow. The
+/// word in #Other, outside #Box, is yellow from :root, in its own ink.
+///
+/// Ways it could fail: only the text element's own rule read (no fill,
+/// no ink); a non-inherited background skipped on the way up; the
+/// farther ancestor winning; #Box's ink reaching a paragraph outside it.
+#[test]
+fn selection_styles_inherit_from_ancestors_property_by_property() {
+    let doc = r#"<meta name="component" content="sel">
+<column id="Doc">
+  <div id="Box"><p id="Word">Second paragraph</p></div>
+  <p id="Other">Other words</p>
+</column>
+<style>
+#Doc { user-select: text; padding: 16px; gap: 12px; width: 600px; }
+:root::selection { background-color: #ffff00; }
+#Box::selection { color: #ff0000; background-color: #00ffff; }
+</style>"#;
+    let mut rig = Rig::with(doc, desktop(), test_font());
+    let near = |a: [f32; 4], b: Srgba| {
+        let b = b.linear();
+        a.iter().zip(b).all(|(x, y)| (x - y).abs() < 0.02)
+    };
+    let (yellow, cyan, red) = (
+        Srgba::rgb(255, 255, 0),
+        Srgba::rgb(0, 255, 255),
+        Srgba::rgb(255, 0, 0),
+    );
+    // Over element `id`'s line: its fills in `fill` and its red glyphs.
+    let marks = |rig: &Rig, id: &str, fill: Srgba| {
+        let e = rig.el(id);
+        let on = |r: &Rect| r.y < e.y + e.height && r.bottom() > e.y;
+        let (mut fills, mut ink) = (vec![], vec![]);
+        for item in &rig.ui.frame().items {
+            let cmd = match &item.cmd {
+                DrawCmd::StyledText { text, .. } => text.as_ref(),
+                c => c,
+            };
+            match cmd {
+                DrawCmd::Text {
+                    color,
+                    clip,
+                    bounds,
+                    ..
+                } if on(bounds) && near(*color, red) => ink.push(*clip),
+                _ => {
+                    if let Some((rect, color)) = cmd.filled()
+                        && on(&rect)
+                        && near(color, fill)
+                    {
+                        fills.push(rect);
+                    }
+                }
+            }
+        }
+        (e, fills, ink)
+    };
+
+    rig.presses(rig.point("Word", 0.05, 0.5), 2);
+    assert_eq!(rig.selected(), "Second");
+    let (e, fills, ink) = marks(&rig, "Word", cyan);
+    assert_eq!(fills.len(), 1, "#Box's background: {fills:?}");
+    let f = fills[0];
+    assert!(
+        f.x >= e.x - 1.0 && f.right() < e.x + e.width * 0.6,
+        "{f:?} {e:?}"
+    );
+    assert!(!ink.is_empty(), "#Box's ink");
+    for c in &ink {
+        assert!(
+            c.x >= f.x - 0.5 && c.right() <= f.right() + 0.5,
+            "{c:?} {f:?}"
+        );
+    }
+    assert!(
+        marks(&rig, "Word", yellow).1.is_empty(),
+        "#Box is nearer than :root"
+    );
+
+    rig.presses(rig.point("Other", 0.05, 0.5), 2);
+    assert_eq!(rig.selected(), "Other");
+    let (e, fills, ink) = marks(&rig, "Other", yellow);
+    assert_eq!(fills.len(), 1, ":root's background: {fills:?}");
+    assert!(fills[0].x >= e.x - 1.0 && fills[0].right() < e.x + e.width * 0.7);
+    assert!(ink.is_empty(), "#Box's ink outside #Box: {ink:?}");
+}
+
 /// Vertical text takes the player's selection down its lines: a press
 /// picks the word under it along the column, the selection's fill runs
 /// down that column, and `::selection`'s ink covers only the word. A
