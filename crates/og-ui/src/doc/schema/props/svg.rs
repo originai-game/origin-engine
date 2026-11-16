@@ -53,6 +53,7 @@ const SVG_ATTRS: &[(&str, &str)] = &[
     ("mask", "svgMask"),
     ("clipPathUnits", "svgClipPathUnits"),
     ("maskContentUnits", "svgMaskContentUnits"),
+    ("mask-type", "svgMaskType"),
     ("patternUnits", "svgPatternUnits"),
     ("patternContentUnits", "svgPatternContentUnits"),
     ("patternTransform", "svgPatternTransform"),
@@ -542,6 +543,11 @@ pub const PROPS: &[PropSpec] = &[
     ),
     svg!("svgClipPathUnits", DEFS, "A clip path's `clipPathUnits`."),
     svg!("svgMaskContentUnits", DEFS, "A mask's `maskContentUnits`."),
+    svg!(
+        "svgMaskType",
+        DEFS,
+        "A mask's `mask-type`: `luminance` (default) or `alpha`."
+    ),
     svg!("svgPatternUnits", DEFS, "A pattern's `patternUnits`."),
     svg!(
         "svgPatternContentUnits",

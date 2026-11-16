@@ -77,6 +77,32 @@ pub(crate) fn shape_threshold(text: &str) -> Result<f32, String> {
 /// `clip-path`: `[<basic-shape> || <geometry-box>] | url(#id) | none`;
 /// the basic shapes `inset()`, `rect()`, `xywh()`, `circle()`,
 /// `ellipse()`, `polygon()`, `path()` and `shape()`.
+/// CSS 2's `clip` (CSS Masking 1 §8.1): `auto`, or `rect()` with its four
+/// offsets separated by commas or spaces, as the `clip-path` it is
+/// (`rect(<top> <right> <bottom> <left>)` over the border box); `None` for
+/// `auto`.
+pub(crate) fn legacy_clip(text: &str) -> Result<Option<String>, String> {
+    const HOW: &str = "clip is auto or rect(<top>, <right>, <bottom>, <left>)";
+    match tokens(text)?.as_slice() {
+        [Tok::Ident(w)] if w == "auto" => Ok(None),
+        [Tok::Func(f, args)] if f == "rect" => {
+            let edges: Vec<&Tok> = args.iter().flatten().collect();
+            if edges.len() != 4 || !(args.len() == 1 || args.len() == 4) {
+                return Err(HOW.into());
+            }
+            let text = edges
+                .iter()
+                .map(|t| super::super::css::tok_text(t))
+                .collect::<Vec<_>>()
+                .join(" ");
+            let shape = format!("rect({text})");
+            clip(&shape)?;
+            Ok(Some(shape))
+        }
+        _ => Err(HOW.into()),
+    }
+}
+
 pub(crate) fn clip(text: &str) -> Result<Option<(CssClip, GeoBox)>, String> {
     const FORMS: &str = "a clip-path is [inset() | rect() | xywh() | circle() | ellipse() | polygon() | path() | shape()] [<geometry-box>], a <geometry-box>, url(#id) or none";
     let t = tokens(text)?;

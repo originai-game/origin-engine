@@ -708,47 +708,100 @@ impl Ui {
             let tag = n.selector_tag.as_deref().unwrap_or("path");
             match shape_draw(&b.doc, tag, r, vb) {
                 Ok(ShapeOut {
-                    draw,
+                    mut draw,
                     tiles,
                     tile_box,
                     markers,
                 }) => {
+                    // `paint-order` other than fill, stroke, markers (SVG 2
+                    // §13.7): the shape draws its fill and its stroke as
+                    // children, in that order with its markers.
+                    let order = paint_order(r);
+                    let part = |draw: &mut ElementDraw, fill: bool| ElementDraw {
+                        shape: draw.shape.clone(),
+                        fills: if fill {
+                            std::mem::take(&mut draw.fills)
+                        } else {
+                            Vec::new()
+                        },
+                        strokes: if fill {
+                            Vec::new()
+                        } else {
+                            std::mem::take(&mut draw.strokes)
+                        },
+                        outlines: if fill {
+                            Vec::new()
+                        } else {
+                            std::mem::take(&mut draw.outlines)
+                        },
+                        opacity: draw.opacity,
+                        blend: draw.blend,
+                        view_box: draw.view_box,
+                        view_rect: draw.view_rect,
+                        ..ElementDraw::default()
+                    };
+                    let mut parts = order.map(|_| (part(&mut draw, true), part(&mut draw, false)));
                     if cut.is_some() {
                         over(self, "~shape");
                         self.set_draw(draw);
                     } else {
                         self.set_draw(filtered(draw));
                     }
-                    let boxed = !tiles.is_empty();
-                    if boxed {
-                        over(self, "~pattern");
-                        if let Some((shape, view_rect)) = tile_box {
-                            self.set_draw(ElementDraw {
-                                shape,
-                                clip: crate::paint::Clip::Shape,
-                                view_box: Some(vb),
-                                view_rect,
-                                ..ElementDraw::default()
-                            });
+                    let mut tiles = Some((tiles, tile_box));
+                    let mut markers = Some(markers);
+                    for step in order.unwrap_or([Paints::Fill, Paints::Stroke, Paints::Markers]) {
+                        match step {
+                            Paints::Fill => {
+                                if let Some((fill, _)) = &mut parts {
+                                    over(self, "~fill");
+                                    self.set_draw(std::mem::take(fill));
+                                    self.close();
+                                }
+                                let (tiles, tile_box) = tiles.take().unwrap_or_default();
+                                let boxed = !tiles.is_empty();
+                                if boxed {
+                                    over(self, "~pattern");
+                                    if let Some((shape, view_rect)) = tile_box {
+                                        self.set_draw(ElementDraw {
+                                            shape,
+                                            clip: crate::paint::Clip::Shape,
+                                            view_box: Some(vb),
+                                            view_rect,
+                                            ..ElementDraw::default()
+                                        });
+                                    }
+                                }
+                                for (k, (shape, paint)) in tiles.into_iter().enumerate() {
+                                    over(self, &format!("~tile{k}"));
+                                    self.set_draw(ElementDraw {
+                                        shape,
+                                        fills: vec![paint],
+                                        view_box: Some(vb),
+                                        ..ElementDraw::default()
+                                    });
+                                    self.close();
+                                }
+                                if boxed {
+                                    self.close();
+                                }
+                            }
+                            Paints::Stroke => {
+                                if let Some((_, stroke)) = &mut parts {
+                                    over(self, "~stroke");
+                                    self.set_draw(std::mem::take(stroke));
+                                    self.close();
+                                }
+                            }
+                            Paints::Markers => {
+                                for (k, draw) in
+                                    markers.take().unwrap_or_default().into_iter().enumerate()
+                                {
+                                    over(self, &format!("~marker{k}"));
+                                    self.set_draw(draw);
+                                    self.close();
+                                }
+                            }
                         }
-                    }
-                    for (k, (shape, paint)) in tiles.into_iter().enumerate() {
-                        over(self, &format!("~tile{k}"));
-                        self.set_draw(ElementDraw {
-                            shape,
-                            fills: vec![paint],
-                            view_box: Some(vb),
-                            ..ElementDraw::default()
-                        });
-                        self.close();
-                    }
-                    if boxed {
-                        self.close();
-                    }
-                    for (k, draw) in markers.into_iter().enumerate() {
-                        over(self, &format!("~marker{k}"));
-                        self.set_draw(draw);
-                        self.close();
                     }
                     if cut.is_some() {
                         self.close();
@@ -941,4 +994,43 @@ impl crate::ui::Docs {
             ..ElementDraw::default()
         }))
     }
+}
+
+/// What an SVG shape paints, in `paint-order`'s words.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Paints {
+    Fill,
+    Stroke,
+    Markers,
+}
+
+/// A shape's `paint-order` (SVG 2 §13.7), declared or inherited: `None`
+/// for `normal` or the default fill, stroke, markers. The paints it leaves
+/// out follow in their default order.
+fn paint_order(r: &Resolved) -> Option<[Paints; 3]> {
+    let value = r
+        .cascade
+        .computed
+        .get(&crate::doc::text_css::key("paint-order"))
+        .cloned()
+        .flatten()?;
+    let mut order = Vec::new();
+    for w in value.split_whitespace() {
+        let p = match w {
+            "fill" => Paints::Fill,
+            "stroke" => Paints::Stroke,
+            "markers" => Paints::Markers,
+            _ => return None,
+        };
+        if !order.contains(&p) {
+            order.push(p);
+        }
+    }
+    for p in [Paints::Fill, Paints::Stroke, Paints::Markers] {
+        if !order.contains(&p) {
+            order.push(p);
+        }
+    }
+    let order = [order[0], order[1], order[2]];
+    (order != [Paints::Fill, Paints::Stroke, Paints::Markers]).then_some(order)
 }
