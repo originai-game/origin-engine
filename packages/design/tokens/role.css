@@ -286,7 +286,7 @@
   --role-link-done-stroke: var(--success);
   --role-link-active-stroke: var(--primary);
 
-  /* Edge mask: how far a window (`data-edge`) fades to clear at its ends. */
+  /* Edge mask: how far a window (`data-fade-ends`) fades to clear at its ends. */
   --role-edge-fade: var(--size-xl);
 
   /* Layout: the primitives' (`data-layout`) sizes. The gap scale runs

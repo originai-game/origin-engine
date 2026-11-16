@@ -3007,7 +3007,7 @@ fn layout_primitives_are_the_styles_and_answer_their_container() {
   <div id="N" data-layout="switcher" style="width: 300px"><div id="N1" data-fill></div><div id="N2" data-fill></div></div>
   <div id="S" data-layout="sidebar" style="width: 300px"><div id="Side" data-side></div><div id="Main" data-fill></div></div>
   <div id="Sh" data-layout="shell" style="width: 300px; height: 60px"><div id="Q"></div><div id="Body" data-fill></div></div>
-  <div id="O" data-layout="overlay" style="height: 80px"><div id="Fade" part="t.fade" data-anchor="bottom-edge"></div></div>
+  <div id="O" data-layout="overlay" style="height: 80px"><div id="OS" data-layout="scroll"><div id="OI" style="height: 200px"></div></div><div id="Fade" part="t.fade" data-anchor="bottom-edge"></div></div>
 </div>
 <style>#Root { display: flex; flex-direction: column; width: 600px; } #G > div, #T1, #W > div, #N > div, #S > div, #Q { height: 10px; }
 @container (width < 400px) { #Q { width: 50px; } }</style>"#,
@@ -3016,12 +3016,28 @@ fn layout_primitives_are_the_styles_and_answer_their_container() {
         );
         [
             "G1", "G2", "G3", "T1", "W1", "W2", "N1", "N2", "Side", "Main", "Q", "Body", "O",
-            "Fade",
+            "Fade", "OS",
         ]
         .map(|p| at(&d.ui, p))
     };
     let e = laid(None);
-    let [g1, g2, g3, t1, w1, w2, n1, n2, side, main, q, body, o, fade] = &e;
+    let [
+        g1,
+        g2,
+        g3,
+        t1,
+        w1,
+        w2,
+        n1,
+        n2,
+        side,
+        main,
+        q,
+        body,
+        o,
+        fade,
+        os,
+    ] = &e;
     assert!(
         g1.y == g2.y && g2.y == g3.y && (g2.x - g1.x - g1.width - 4.0).abs() < 0.5,
         "three 140px tiles fit one 600px row, a tight gap apart: {g1:?} {g2:?}"
@@ -3042,6 +3058,7 @@ fn layout_primitives_are_the_styles_and_answer_their_container() {
         fade.width == o.width && fade.height == 16.0 && fade.y + fade.height == o.y + o.height,
         "a fade lies flush along its overlay's bottom, --fade-size tall: {fade:?} in {o:?}"
     );
+    assert_eq!(os.height, 80.0, "an overlay bounds the scroller it stacks");
     let e = laid(Some(
         ":root { --layout-tile: 250px; --layout-gap-tight: 20px; }",
     ));

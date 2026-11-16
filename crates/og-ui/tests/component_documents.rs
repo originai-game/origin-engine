@@ -814,3 +814,92 @@ fn look_declarations(source: &str, roles: &std::collections::BTreeSet<String>) -
     }
     found
 }
+
+/// A role dresses every built-in part whose last name ends in it, so a new
+/// role silently restyles parts named before it existed (a chart's text
+/// `tick` would have taken a box's fill from a meter's `tick` role). Each
+/// role in the default style is listed in `role_names.tsv` once the parts it
+/// dresses were checked to be meant for it; an unlisted role fails with the
+/// parts it would dress, and a listed role the style no longer has fails as
+/// stale. The default style's `data-` attributes must not be ones og-ui
+/// reads with a meaning of its own. Wrong: a role added to the default
+/// style that no review saw, or a style attribute that collides.
+#[test]
+fn component_parts_meant_for_a_role() {
+    let rule = regex_lite::Regex::new(r#"part\$="\.([a-z-]+)""#).unwrap();
+    let roles: std::collections::BTreeSet<String> = rule
+        .captures_iter(og_ui::DEFAULT_CSS)
+        .map(|c| c[1].to_string())
+        .collect();
+    let listed: std::collections::BTreeSet<String> = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/role_names.tsv"),
+    )
+    .unwrap()
+    .lines()
+    .filter(|l| !l.is_empty() && !l.starts_with('#'))
+    .map(|l| l.split('\t').next().unwrap().to_string())
+    .collect();
+    let parts_line = regex_lite::Regex::new(r#"<meta name="parts" content="([^"]*)""#).unwrap();
+    let (docs, _) = engine_documents(&["src/ui/components"]);
+    let mut wearers = std::collections::BTreeMap::<String, Vec<String>>::new();
+    for doc in &docs {
+        for line in parts_line.captures_iter(&doc.doc.text) {
+            for part in line[1].split_whitespace() {
+                if let Some((_, suffix)) = part.rsplit_once('.') {
+                    wearers
+                        .entry(suffix.to_string())
+                        .or_default()
+                        .push(part.to_string());
+                }
+            }
+        }
+    }
+    let mut problems = Vec::new();
+    for role in roles.difference(&listed) {
+        problems.push(format!(
+            "role `{role}` is not in tests/role_names.tsv; it dresses {:?}: list it once each is meant to wear it, or rename the role",
+            wearers.get(role).cloned().unwrap_or_default()
+        ));
+    }
+    for role in listed.difference(&roles) {
+        problems.push(format!(
+            "tests/role_names.tsv lists `{role}`, which the default style no longer has"
+        ));
+    }
+    // The same for the attributes the default style keys on: one og-ui
+    // already reads with a meaning of its own (a sheet's `data-edge`) is
+    // refused there with another's values. These three are og-ui's own
+    // states, which the style dresses on purpose.
+    let own: std::collections::BTreeSet<String> = {
+        let literal = regex_lite::Regex::new(r#""(data-[a-z-]+)"#).unwrap();
+        let mut found = std::collections::BTreeSet::new();
+        let mut dirs = vec![std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src")];
+        while let Some(dir) = dirs.pop() {
+            for entry in std::fs::read_dir(dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    dirs.push(path);
+                } else if path.extension().is_some_and(|e| e == "rs") {
+                    let text = std::fs::read_to_string(&path).unwrap();
+                    found.extend(literal.captures_iter(&text).map(|c| c[1].to_string()));
+                }
+            }
+        }
+        found
+    };
+    let keyed = regex_lite::Regex::new(r"\[(data-[a-z-]+)").unwrap();
+    for attribute in keyed
+        .captures_iter(og_ui::DEFAULT_CSS)
+        .map(|c| c[1].to_string())
+        .collect::<std::collections::BTreeSet<_>>()
+    {
+        if own.contains(&attribute)
+            && !["data-outline", "data-player", "data-scheme"].contains(&attribute.as_str())
+        {
+            problems.push(format!(
+                "the default style keys on `{attribute}`, which og-ui already reads with its own meaning: rename the style's"
+            ));
+        }
+    }
+    assert!(problems.is_empty(), "{problems:#?}");
+}

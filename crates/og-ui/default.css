@@ -2016,6 +2016,12 @@
   :where([part$=".fill"][data-tone=danger]) { --fill-color: var(--tone-danger); }
   :where([part$=".fill"][data-tone=warn]) { --fill-color: var(--tone-warn); }
   :where([part$=".fill"][data-tone=info]) { --fill-color: var(--tone-info); }
+  /* A dot in a tone fills with it. */
+  :where([part$=".dot"][data-tone=success]) { --dot-fill: var(--tone-success); }
+  :where([part$=".dot"][data-tone=danger]) { --dot-fill: var(--tone-danger); }
+  :where([part$=".dot"][data-tone=warn]) { --dot-fill: var(--tone-warn); }
+  :where([part$=".dot"][data-tone=info]) { --dot-fill: var(--tone-info); }
+  :where([part$=".dot"][data-tone=primary]) { --dot-fill: var(--primary); }
   /* Text over the scene: its halo, and a ground of its own where a pack
      gives one. */
   :where([part$=".tag"]) { text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); }
@@ -2166,8 +2172,8 @@
      buttons under a thumb), later rows above. */
   :where([data-layout=cluster][data-from=end]) { flex-direction: row-reverse; flex-wrap: wrap-reverse; }
   /* A window onto more (a compass strip, a reel) fades to clear at its ends. */
-  :where([data-edge=x]) { mask-image: linear-gradient(90deg, transparent, #000 var(--edge-fade), #000 calc(100% - var(--edge-fade)), transparent); }
-  :where([data-edge=y]) { mask-image: linear-gradient(transparent, #000 var(--edge-fade), #000 calc(100% - var(--edge-fade)), transparent); }
+  :where([data-fade-ends=x]) { mask-image: linear-gradient(90deg, transparent, #000 var(--edge-fade), #000 calc(100% - var(--edge-fade)), transparent); }
+  :where([data-fade-ends=y]) { mask-image: linear-gradient(transparent, #000 var(--edge-fade), #000 calc(100% - var(--edge-fade)), transparent); }
   /* Children are placed by their own mark, never by position, so no rule
      here is a candidate for an element that carries none. */
   :where([data-layout] > [data-fill], [data-layout] > [data-layout=scroll]) { flex: 1 1 0; min-block-size: 0; min-inline-size: 0; }
@@ -2178,7 +2184,9 @@
      corner, an edge, its middle, or across it. A sidebar's side is its
      `data-side` child and the rest its `data-fill` child; a switcher's
      children that share its row are `data-fill`. */
-  :where([data-layout=overlay]) { position: relative; }
+  /* It lays its other children out as a stack, so a scroller in it is
+     bounded and a fade can lie over it. */
+  :where([data-layout=overlay]) { position: relative; display: flex; flex-direction: column; gap: var(--layout-gap); }
   :where([data-anchor]) { position: absolute; }
   :where([data-anchor=fill]) { inset: 0; }
   :where([data-anchor=top-start]) { top: var(--layout-anchor-inset); left: var(--layout-anchor-inset); }

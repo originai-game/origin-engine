@@ -1,0 +1,44 @@
+# The default style's roles (`[part$=".<role>"]`, docs/ui.md §3.1). Every
+# built-in part whose last name ends in one wears it, so a role is listed
+# here only once each part it would dress was checked to be meant for it
+# (`component_parts_meant_for_a_role`). A name already taken by a part that
+# means something else (a chart's text tick) is renamed instead (notch).
+# role	what it dresses
+area	an SVG chart area
+badge	a small count or tag
+band	a panel's header strip
+caption	supporting text
+card	a raised tile a player reads as one
+cell	a tile a player picks or reads as one
+divider	a bar a player drags
+dot	a small status or step mark
+fade	a scroller's edge cue
+figure	a number
+fill	a meter's filled part
+former	a former value, struck
+frame	the panel a component stands in
+glyph	a stroked SVG mark
+gridline	an SVG chart's grid line
+grip	a divider's grip
+heading	a section heading
+headline	an item's title
+icon	an icon
+label	a short label
+link	an SVG graph's link
+name	a person's or thing's name
+notch	a mark across a meter (Compass.notch, its centre mark, checked)
+picture	a portrait or art
+plate	a HUD's light surface
+ribbon	a strip of strong colour
+row	a list row
+series	an SVG chart's line
+sheen	a skeleton's sweep
+skeleton	a stand-in while loading
+sweep	a cooldown's veil
+tab	a tab
+tag	text over the scene
+tail	a speech bubble's tail
+title	a band's title
+track	a meter's groove
+well	a recessed ground
+zone	an area marked on the world

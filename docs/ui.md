@@ -1587,7 +1587,7 @@ its keyframes: a keyframes name is its highest layer's definition, so a
 pack's (`og-pack`) replaces the default style's (`og-default`), and a
 document's own keyframes of a name replace both. Under reduced motion
 every `data-motion` but `spin` stops, and a `float` (a damage number flying off its anchor) fades where it stands. `data-motion=change` gives a part that is no interactive role `--change-motion`, which eases opacity, colours, shadows, scale, translate and rotate. A built-in component defines no
-`@keyframes` of its own and names no keyframes in an `animation`. The role rules sit in `:where()`, so any pack or document rule wins.
+`@keyframes` of its own and names no keyframes in an `animation`. The role rules sit in `:where()`, so any pack or document rule wins. A role dresses every built-in part whose last name ends in it, so a new role is listed in og-ui's `tests/role_names.tsv` only once each part it would dress was checked to be meant for it (`component_parts_meant_for_a_role` fails otherwise, naming those parts); a name that already means something else is renamed.
 Layout is the style's as well. An element asks for a shape by meaning with
 `data-layout`, the primitives of Every Layout: `stack` (a column),
 `row` (a line, centred across), `cluster` (a wrapping line), `sidebar`
@@ -1600,7 +1600,7 @@ one row while it is at least `--layout-switch-at` wide, stacked below), `grid` (
 (kept to `--layout-measure`), `ratio` (an `--layout-ratio` frame its image
 covers), `shell` (header, body, footer filling its container, which is an
 `inline-size` container), `scroll` (a column that scrolls, contained) and
-`overlay` (its `data-anchor` children laid over it at `top-start`,
+`overlay` (a stack whose `data-anchor` children are laid over it at `top-start`,
 `top-end`, `bottom-start`, `bottom-end`, `top`, `bottom`, `center` or
 `fill`, `--layout-anchor-inset` in). A `data-fill` child of a primitive (and
 a `scroll`) takes the room the others leave. A child is placed by its own
@@ -1643,7 +1643,7 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 | `card` | `--card-fill/rim/rim-width/selected-rim/radius/shadow/pad` | selected or current (a step) |
 | `badge`, `well`, `figure` | `--badge-fill/ink/radius/shadow/pad/text`, `--well-fill/radius/shadow`, `--figure-ink/font/shadow` | |
 | `headline`, `caption` | `--headline-text/weight/ink`, `--headline-card-text` (a headline in a card, its title), `--caption-text/ink` | |
-| `dot` | `--dot-fill/ink/rim/rim-width/radius` | |
+| `dot` | `--dot-fill/ink/rim/rim-width/radius` | `data-tone` fills it |
 | `track`, `fill` | `--track-fill/radius/shadow`, `--fill-color/gloss`; a meter sets `--fill-color` for what it measures | `data-tone` on a fill |
 | text over the scene (StatusGrid's time left, Nameplate's name and subtitle, Waypoint's label and distance) | `--tag-halo` its outline, `--tag-fill/pad/radius` a ground of its own (none in the default style) | |
 | text over a warn fill (Nameplate's spell) | `--ink-on-warn` | |
@@ -1665,7 +1665,7 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 | `glyph` (a stroked SVG mark: check, chevron) | `--glyph-width` | in its text's colour |
 | `picture` set back | `--picture-muted-opacity` | `data-muted` |
 | `figure`, `badge` numerals | `--figure-size/weight` (unset by default) | tabular numerals |
-| a window onto more (`data-edge` `x` or `y`) | `--edge-fade` | its ends fade to clear (a mask) |
+| a window onto more (`data-fade-ends` `x` or `y`) | `--edge-fade` | its ends fade to clear (a mask) |
 | `cell`, `dot` shape | `--cell-done-rim`, `--cell-active-rim/shadow` | `data-shape` round, square, hex (and diamond for a dot); `data-done`, `data-active` on a cell |
 | any row, cell, card or frame | `--disabled-content-opacity`, `--down-opacity` | disabled: its picture, icon and figure dim (a frame's words too); `data-down`: all of it dims |
 | a meter's `fill` | `--fill-ghost-color`, `--ghost-motion` | `data-ghost` (the loss left behind, shrinking after) |
