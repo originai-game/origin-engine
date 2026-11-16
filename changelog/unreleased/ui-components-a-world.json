@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "DamageNumbers, OverheadBars, Nameplate, SelectionRing, Telegraph, PathLine, PlacementGhost, InteractionPrompt, LootLabel, SpeechBubble",
+    "summary": "In-world documents retain their semantic anchors and ground projections while expressing their boxes in HTML with CSS. Nameplate health, shield and cast layers stay inside their tracks; placement grids and reach previews are contained by their footprint. Optional labels and shape branches occupy no blank space. Speech and interaction text use explicit spacing, loot counts have a distinct numeric readout, and overhead health bars follow the style's health token. All existing parts and ids remain available to style packs."
+  }]
+}

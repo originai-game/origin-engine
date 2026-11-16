@@ -14,29 +14,32 @@
 
 <ground id="Telegraph" entity={entity || null} at={at} size={(radius * 2) + " " + (radius * 2)} rotation={"0 " + direction + " 0"}>
   <svg id="Area" part="Telegraph.area" viewBox="0 0 200 200" class:friendly={friendly} style:--p={progress}>
-    <g hidden={!(shape == '' || shape == 'disc')}>
+    {#if shape == '' || shape == 'disc'}<g>
       <circle class="edge" cx="100" cy="100" r="98"></circle>
       <circle class="fill" cx="100" cy="100" r={98 * progress}></circle>
     </g>
-    <g hidden={shape != 'ring'}>
+    {/if}
+    {#if shape == 'ring'}<g>
       <circle class="band" cx="100" cy="100" r={49 * (1 + inner)} stroke-width={98 * (1 - inner)}></circle>
       <circle class="line" cx="100" cy="100" r="98"></circle>
       <circle class="line" cx="100" cy="100" r={98 * inner}></circle>
       <circle class="growth" cx="100" cy="100" r={98 * inner + 98 * (1 - inner) * progress}></circle>
     </g>
-    <g hidden={shape != 'cone'}>
+    {/if}
+    {#if shape == 'cone'}<g>
       <circle class="sector" cx="100" cy="100" r="49" stroke-width="98" pathLength="360" stroke-dasharray={angle + " 360"} transform={"rotate(" + (-90 - angle / 2) + " 100 100)"}></circle>
       <circle class="sector fill" cx="100" cy="100" r={49 * progress} stroke-width={98 * progress} pathLength="360" stroke-dasharray={angle + " 360"} transform={"rotate(" + (-90 - angle / 2) + " 100 100)"}></circle>
     </g>
-    <g hidden={shape != 'line'}>
+    {/if}
+    {#if shape == 'line'}<g>
       <rect class="edge" x={100 - 100 * width / 2} y="2" width={200 * width / 2} height="98"></rect>
       <rect class="fill" x={100 - 100 * width / 2} y={100 - 98 * progress} width={200 * width / 2} height={98 * progress}></rect>
-    </g>
+    </g>{/if}
   </svg>
 </ground>
 
 <style>
-#Telegraph { width: var(--measure-xs); height: var(--measure-xs); }
+:host { width: var(--measure-xs); height: var(--measure-xs); }
 [part="Telegraph.area"] { width: var(--measure-xs); height: var(--measure-xs); --tone: var(--danger); --wash: color-mix(in srgb, var(--danger) 25%, transparent); }
 [part="Telegraph.area"].friendly { --tone: var(--info); --wash: color-mix(in srgb, var(--info) 25%, transparent); }
 .edge { fill: var(--wash); stroke: var(--tone); stroke-width: 3; }

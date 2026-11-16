@@ -11,6 +11,7 @@
 </div>
 
 <style>
-.bar { color: var(--success); width: var(--size-xl); height: var(--space-xs); }
+:host { text-shadow: var(--tag-halo); }
+.bar { color: var(--health); width: var(--size-xl); height: var(--space-xs); }
 .bar.tinted { color: var(--tint); }
 </style>

@@ -16,18 +16,18 @@
     <kbd id="Glyph" part="InteractionPrompt.key InteractionPrompt.label" data-action={action}></kbd>
     <div id="Words">
       <span id="Verb" part="InteractionPrompt.verb">{verb}</span>
-      <span id="Name" part="InteractionPrompt.name" hidden={!name}>{name}</span>
-      <span id="Reason" part="InteractionPrompt.reason InteractionPrompt.label" hidden={!(disabled && reason)}>{reason}</span>
+      {#if name}<span id="Name" part="InteractionPrompt.name">{name}</span>{/if}
+      {#if disabled && reason}<span id="Reason" part="InteractionPrompt.reason InteractionPrompt.label">{reason}</span>{/if}
     </div>
   </div>
 </anchor>
 
 <style>
-#InteractionPrompt { align-items: center; }
+:host { text-shadow: var(--tag-halo); }
 [part="InteractionPrompt.frame"] { display: flex; gap: var(--space-sm); align-items: center; animation: in var(--motion-duration-fast) var(--motion-easing-out); }
 [part="InteractionPrompt.frame"].disabled { opacity: var(--opacity-dim); }
 [part="InteractionPrompt.key InteractionPrompt.label"] { font: var(--text-sm); }
-#Words { gap: 0; }
+#Words { display: flex; flex-direction: column; gap: var(--space-xxs); }
 [part="InteractionPrompt.verb"] { font: var(--text-sm); color: var(--ink); white-space: nowrap; }
 [part="InteractionPrompt.name"] { font: var(--text-caption); color: var(--ink-muted); white-space: nowrap; }
 [part="InteractionPrompt.reason InteractionPrompt.label"] { font: var(--text-caption); color: var(--danger); white-space: nowrap; }

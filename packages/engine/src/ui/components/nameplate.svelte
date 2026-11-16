@@ -20,24 +20,24 @@
 <anchor id="Nameplate" entity={entity || null} at={at} offset={"0 " + height + " 0"} occlusion="fade" declutter="stack" priority={targeted ? 1100 : 100} max-distance={maxDistance}>
   <div id="Plate" part="Nameplate.frame" class="bare" class:friendly={reaction == 'friendly'} class:hostile={reaction == 'hostile'} class:player={reaction == 'player'} class:boss={boss} class:targeted={targeted}>
     <div id="Head">
-      <og-icon id="Icon" part="Nameplate.icon" icon={icon} hidden={!icon}></og-icon>
-      <span id="Level" part="Nameplate.badge" hidden={!level}>{level}</span>
+      {#if icon}<og-icon id="Icon" part="Nameplate.icon" icon={icon}></og-icon>{/if}
+      {#if level}<span id="Level" part="Nameplate.badge">{level}</span>{/if}
       <span id="Name" part="Nameplate.name">{name}</span>
     </div>
-    <span id="Title" part="Nameplate.subtitle" hidden={!title}>{title}</span>
-    <div id="Health" part="Nameplate.well" hidden={health < 0} style:--hp={health} style:--shield={shield}>
+    {#if title}<span id="Title" part="Nameplate.subtitle">{title}</span>{/if}
+    {#if health >= 0}<div id="Health" part="Nameplate.well" style:--hp={health} style:--shield={shield}>
       <div id="Fill" part="Nameplate.fill"></div>
       <div id="Shield" part="Nameplate.shield"></div>
-    </div>
-    <div id="Cast" part="Nameplate.well" hidden={!castName} style:--cast={castProgress}>
+    </div>{/if}
+    {#if castName}<div id="Cast" part="Nameplate.well" style:--cast={castProgress}>
       <div id="CastFill" part="Nameplate.cast"></div>
       <span id="CastName" part="Nameplate.spell">{castName}</span>
-    </div>
+    </div>{/if}
   </div>
 </anchor>
 
 <style>
-#Nameplate { align-items: center; }
+:host { text-shadow: var(--tag-halo); }
 [part="Nameplate.frame"] { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); --tone: var(--warn); --bar: var(--size-xxl); }
 [part="Nameplate.frame"].friendly { --tone: var(--success); }
 [part="Nameplate.frame"].hostile { --tone: var(--danger); }
@@ -51,14 +51,14 @@
 [part="Nameplate.name"] { font: var(--text-sm); color: var(--tone); white-space: nowrap; text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); }
 .targeted [part="Nameplate.name"] { color: var(--scene-ink); }
 [part="Nameplate.subtitle"] { font: var(--text-caption); color: var(--ink-muted); white-space: nowrap; text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); }
-[part="Nameplate.well"] { width: var(--bar); overflow: hidden; }
+[part="Nameplate.well"] { position: relative; width: var(--bar); overflow: hidden; border-radius: var(--meter-radius); background: var(--scene-plate); }
 #Health { height: var(--space-sm); border: var(--stroke-hairline) solid transparent; }
 .targeted #Health { border: var(--stroke-hairline) solid var(--highlight); }
 .boss #Health { border: var(--stroke-hairline) solid var(--gold); }
-[part="Nameplate.fill"] { width: calc(var(--hp) * var(--bar)); height: stretch; background: var(--tone); }
-[part="Nameplate.shield"] { position: absolute; top: 0; inset-inline-start: calc(var(--hp) * var(--bar)); width: calc(var(--shield) * var(--bar)); height: stretch; background: var(--scene-ink); }
+[part="Nameplate.fill"] { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--hp) * 100%); background: var(--tone); }
+[part="Nameplate.shield"] { position: absolute; top: 0; bottom: 0; inset-inline-start: calc(var(--hp) * 100%); inline-size: calc(var(--shield) * 100%); background: var(--scene-ink); }
 #Cast { display: flex; flex-direction: column; height: var(--space-md); align-items: center; justify-content: center; }
-[part="Nameplate.cast"] { position: absolute; top: 0; inset-inline-start: 0; width: calc(var(--cast) * var(--bar)); height: stretch; background: var(--warn); }
+[part="Nameplate.cast"] { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--cast) * 100%); background: var(--warn); }
 /* Across the bar (a name longer than it ends in an ellipsis), its glyphs
    inked for the warn fill as far as the cast has run and in the well's
    ink past it: it reads over both. */

@@ -11,7 +11,7 @@
 <anchor id="SpeechBubble" entity={entity || null} at={at} offset={"0 " + height + " 0"} declutter="shift" occlusion="none" priority="200">
   <div id="Bubble" class:shout={shout} role="status">
     <div id="Box" part="SpeechBubble.frame">
-      <span id="Speaker" part="SpeechBubble.label" hidden={!speaker}>{speaker}</span>
+      {#if speaker}<span id="Speaker" part="SpeechBubble.label">{speaker}</span>{/if}
       <p id="Line" part="SpeechBubble.line">{text}</p>
     </div>
     <svg id="Tail" part="SpeechBubble.tail" viewBox="0 0 16 10"><path d="M0 0h16L8 10z"></path></svg>
@@ -19,9 +19,9 @@
 </anchor>
 
 <style>
-#SpeechBubble { align-items: center; }
+:host { text-shadow: var(--tag-halo); }
 #Bubble { display: flex; flex-direction: column; align-items: center; animation-name: pop; animation-duration: var(--motion-duration-fast); animation-timing-function: var(--motion-easing-out); }
-[part="SpeechBubble.frame"] { max-width: var(--measure-sm); gap: var(--space-xxs); }
+[part="SpeechBubble.frame"] { display: flex; flex-direction: column; max-width: var(--measure-sm); gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
 /* A shout is the frame's rim, through its tokens, so a pack's frame still dresses it. */
 .shout [part="SpeechBubble.frame"] { --frame-rim: var(--warn); --frame-rim-width: var(--stroke-regular); }
 [part="SpeechBubble.label"] { font: var(--text-caption); font-family: var(--label-font); }

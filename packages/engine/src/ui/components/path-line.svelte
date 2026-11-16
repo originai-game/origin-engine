@@ -13,15 +13,15 @@
 <ground id="PathLine" at={at} size={size + " " + size}>
   <svg id="Line" part="PathLine.line" viewBox="0 0 200 200" class:invalid={invalid}>
     <path id="Walk" d={path} fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="10 6"></path>
-    <path id="Past" d={reach} fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="10 6" hidden={!reach}></path>
-    <circle id="End" cx={endX} cy={endY} r="7" hidden={invalid}></circle>
-    <path id="Cross" d={"M" + (endX - 7) + " " + (endY - 7) + " l14 14 m0 -14 l-14 14"} stroke-width="4" stroke-linecap="round" hidden={!invalid}></path>
+    {#if reach}<path id="Past" d={reach} fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="10 6"></path>{/if}
+    {#if invalid}<path id="Cross" d={"M" + (endX - 7) + " " + (endY - 7) + " l14 14 m0 -14 l-14 14"} stroke-width="4" stroke-linecap="round"></path>
+    {:else}<circle id="End" cx={endX} cy={endY} r="7"></circle>{/if}
   </svg>
-  <span id="Label" part="PathLine.badge" hidden={!label} style:--x={endX} style:--y={endY}>{label}</span>
+  {#if label}<span id="Label" part="PathLine.badge" style:--x={endX} style:--y={endY}>{label}</span>{/if}
 </ground>
 
 <style>
-#PathLine { width: var(--measure-xs); height: var(--measure-xs); }
+:host { position: relative; width: var(--measure-xs); height: var(--measure-xs); text-shadow: var(--tag-halo); }
 [part="PathLine.line"] { width: var(--measure-xs); height: var(--measure-xs); --tone: var(--highlight); }
 [part="PathLine.line"].invalid { --tone: var(--danger); }
 #Walk { stroke: var(--tone); }

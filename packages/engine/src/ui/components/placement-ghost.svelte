@@ -12,22 +12,22 @@
 
 <ground id="PlacementGhost" at={at} size={(width * (range > 1 ? range : 1)) + " " + (depth * (range > 1 ? range : 1))} rotation={"0 " + rotation + " 0"}>
   <div id="Room" class:invalid={!valid}>
-    <svg id="Reach" part="PlacementGhost.reach" viewBox="0 0 200 200" hidden={!(range > 1)}><circle cx="100" cy="100" r="98" fill="none" stroke-width="2" stroke-dasharray="8 6"></circle></svg>
+    {#if range > 1}<svg id="Reach" part="PlacementGhost.reach" viewBox="0 0 200 200"><circle cx="100" cy="100" r="98" fill="none" stroke-width="2" stroke-dasharray="8 6"></circle></svg>{/if}
     <div id="Footprint" part="PlacementGhost.footprint" style:--cells={cells || 1} style:--k={range > 1 ? 1 / range : 1}>
-      <div id="Grid" hidden={!(cells > 0)}></div>
-      <span id="Label" part="PlacementGhost.badge" hidden={!label}>{label}</span>
+      {#if cells > 0}<div id="Grid"></div>{/if}
+      {#if label}<span id="Label" part="PlacementGhost.badge">{label}</span>{/if}
     </div>
   </div>
 </ground>
 
 <style>
-#PlacementGhost { width: var(--measure-xs); height: var(--measure-xs); }
-#Room { display: flex; flex-direction: column; width: var(--measure-xs); height: var(--measure-xs); align-items: center; justify-content: center; --tone: var(--success); --wash: color-mix(in srgb, var(--success) 20%, transparent); }
+:host { width: var(--measure-xs); height: var(--measure-xs); text-shadow: var(--tag-halo); }
+#Room { position: relative; display: flex; flex-direction: column; width: var(--measure-xs); height: var(--measure-xs); align-items: center; justify-content: center; --tone: var(--success); --wash: color-mix(in srgb, var(--success) 20%, transparent); }
 #Room.invalid { --tone: var(--danger); --wash: color-mix(in srgb, var(--danger) 25%, transparent); }
 [part="PlacementGhost.reach"] { position: absolute; top: 0; inset-inline-start: 0; width: var(--measure-xs); height: var(--measure-xs); stroke: var(--tone); }
-[part="PlacementGhost.footprint"] { display: flex; flex-direction: column; width: calc(var(--k) * var(--measure-xs)); height: calc(var(--k) * var(--measure-xs)); border: var(--stroke-thick) solid var(--tone); background: var(--wash); align-items: center; justify-content: center; }
+[part="PlacementGhost.footprint"] { position: relative; display: flex; flex-direction: column; width: calc(var(--k) * var(--measure-xs)); height: calc(var(--k) * var(--measure-xs)); border: var(--stroke-thick) solid var(--tone); background: var(--wash); align-items: center; justify-content: center; }
 .invalid [part="PlacementGhost.footprint"] { background: repeating-linear-gradient(45deg, var(--danger-45) 0, var(--danger-45) var(--space-sm), transparent var(--space-sm), transparent var(--space-lg)), var(--wash); }
-#Grid { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; opacity: var(--opacity-dim); --cell: calc(100% / var(--cells)); background: repeating-linear-gradient(0deg, var(--scene-ink) 0, var(--scene-ink) var(--stroke-hairline), transparent var(--stroke-hairline), transparent var(--cell)), repeating-linear-gradient(90deg, var(--scene-ink) 0, var(--scene-ink) var(--stroke-hairline), transparent var(--stroke-hairline), transparent var(--cell)); }
+#Grid { position: absolute; inset: 0; opacity: var(--opacity-dim); --cell: calc(100% / var(--cells)); background: repeating-linear-gradient(0deg, var(--scene-ink) 0, var(--scene-ink) var(--stroke-hairline), transparent var(--stroke-hairline), transparent var(--cell)), repeating-linear-gradient(90deg, var(--scene-ink) 0, var(--scene-ink) var(--stroke-hairline), transparent var(--stroke-hairline), transparent var(--cell)); }
 /* In the world, over any ground: the badge takes the scene's plate. */
 [part="PlacementGhost.badge"] { font: var(--text-lg); padding: var(--space-xxs) var(--space-sm); white-space: nowrap; --badge-fill: var(--scene-plate); --badge-ink: var(--tone); --badge-radius: var(--radius-control); }
 </style>

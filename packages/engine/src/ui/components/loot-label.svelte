@@ -12,12 +12,12 @@
 <anchor id="LootLabel" entity={entity || null} at={at} offset={"0 " + height + " 0"} declutter="stack" occlusion="fade" priority="10" max-distance="30">
   <button id="Tag" part="LootLabel.tag" onclick={pick} class:uncommon={rarity == 'uncommon'} class:rare={rarity == 'rare'} class:epic={rarity == 'epic'} class:legendary={rarity == 'legendary'}>
     <span id="Name" part="LootLabel.name">{name}</span>
-    <span id="Count" part="LootLabel.count LootLabel.figure" hidden={!(count > 1)}>{"×" + formatNumber(count)}</span>
+    {#if count > 1}<span id="Count" part="LootLabel.count LootLabel.figure">{"×" + formatNumber(count)}</span>{/if}
   </button>
 </anchor>
 
 <style>
-#LootLabel { align-items: center; }
+:host { text-shadow: var(--tag-halo); }
 [part="LootLabel.tag"] { gap: var(--space-xs); padding: var(--space-xxs) var(--space-sm); min-height: 0; border-radius: var(--radius-control); background: var(--scene-plate); border: var(--stroke-hairline) solid var(--rim); --tier: var(--scene-ink); --rim: var(--common); }
 [part="LootLabel.tag"].uncommon { --tier: var(--uncommon); --rim: var(--uncommon); }
 [part="LootLabel.tag"].rare { --tier: var(--rare); --rim: var(--rare); }
@@ -25,5 +25,5 @@
 [part="LootLabel.tag"].legendary { --tier: var(--legendary); --rim: var(--legendary); }
 [part="LootLabel.tag"]:hover { background: var(--panel-hover); }
 [part="LootLabel.name"] { font: var(--text-sm); color: var(--tier); white-space: nowrap; }
-[part="LootLabel.count LootLabel.figure"] { font: var(--text-caption); color: var(--ink-muted); }
+[part="LootLabel.count LootLabel.figure"] { font: var(--text-caption); font-family: var(--figure-font); color: var(--scene-ink); padding-inline-start: var(--space-xs); border-inline-start: var(--stroke-hairline) solid var(--line-strong); }
 </style>

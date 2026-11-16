@@ -16,7 +16,7 @@
 </ground>
 
 <style>
-#SelectionRing { width: var(--size-3xl); height: var(--size-3xl); }
+:host { width: var(--size-3xl); height: var(--size-3xl); }
 #Ring { width: var(--size-3xl); height: var(--size-3xl); --tone: var(--success); animation-name: land; animation-duration: var(--motion-duration-base); animation-timing-function: var(--motion-easing-out); }
 #Ring.hostile { --tone: var(--danger); }
 #Ring.neutral { --tone: var(--warn); }
