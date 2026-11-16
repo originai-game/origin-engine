@@ -166,14 +166,20 @@ PY
 # pushed change, else after rechecking the steps the rebase affected. Stops
 # when that recheck fails (prefix lands any passing part of a stack).
 push() {
-  local old
+  local old remote
+  remote="$(git rev-parse origin/main)"
   until git push origin "$head:refs/heads/main"; do
-    # The push response may be lost; anything else is a writer outside the queue.
+    # The push response may be lost; retry only when another writer moved main.
     git fetch origin main
     if git merge-base --is-ancestor "$head" origin/main; then
       echo "land: origin/main contains $head"
       break
     fi
+    if [ "$(git rev-parse origin/main)" = "$remote" ]; then
+      echo 'land: push failed and origin/main did not move; fix the push failure and run scripts/land.sh again' >&2
+      finish 1
+    fi
+    remote="$(git rev-parse origin/main)"
     old="$(git merge-base "$head" origin/main)"
     echo "land: origin/main moved to $(git rev-parse --short origin/main) outside this queue; rebasing onto it"
     retip || {

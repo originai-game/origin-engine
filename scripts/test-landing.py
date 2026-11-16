@@ -244,7 +244,8 @@ set -e
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX
 q="$CONTROL/outside"
 [ -s "$q" ] || exit 0
-line="$(head -n 1 "$q")"; sed -i 1d "$q"
+line="$(head -n 1 "$q")"
+tail -n +2 "$q" > "$q.next"; mv "$q.next" "$q"
 [ "$line" != - ] || exit 0
 n="$(cat "$CONTROL/outside.n" 2>/dev/null || echo 0)"; echo $((n + 1)) > "$CONTROL/outside.n"
 cd "$CONTROL/o"
@@ -286,6 +287,22 @@ git add -A && git commit -qm "outside $n" && git push -q origin HEAD:refs/heads/
         output, log = self.outside_race([('shared', 'outside')], change=('shared', 'first\n'), ok=False)
         self.assertIn('conflicts with the new origin/main', output)
         self.assertEqual(log[0], 'outside 0')
+
+    def test_rejected_push_without_a_remote_move_stops(self):
+        (self.a / 'first').write_text('first\n')
+        self.commit(self.a, 'first')
+        hooks = self.root / 'hooks'
+        hooks.mkdir()
+        hook = hooks / 'pre-push'
+        hook.write_text('#!/usr/bin/env bash\necho "push rejected by fixture" >&2\nexit 1\n')
+        hook.chmod(0o755)
+        self.run_git(self.a, 'config', 'core.hooksPath', str(hooks))
+        (self.root / 'a.go').touch()
+        output = self.finish(self.start(self.a), ok=False)
+        self.assertIn('origin/main did not move', output)
+        self.assertEqual(output.count('push rejected by fixture'), 1, output)
+        self.assertEqual(self.calls('a'), 1)
+        self.assertEqual(self.run_git(self.remote, 'log', '-1', '--format=%s'), 'seed')
 
     def test_outside_writer_during_a_drain_lands_the_stack(self):
         # b's own push goes through; an outside write beats the stack's
