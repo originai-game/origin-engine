@@ -223,7 +223,14 @@ impl Ui {
         // computes to `auto`.
         let (x, y) = (r.str("overflowX"), r.str("overflowY"));
         if x.is_some() || y.is_some() {
-            let (mut x, mut y) = (x.unwrap_or("visible"), y.unwrap_or("visible"));
+            // `overlay` is a legacy alias of `auto` (CSS Overflow 3 §3.1).
+            fn alias(a: Option<&str>) -> &str {
+                match a {
+                    Some("overlay") => "auto",
+                    a => a.unwrap_or("visible"),
+                }
+            }
+            let (mut x, mut y) = (alias(x), alias(y));
             if x == "visible" && y != "visible" {
                 x = "auto";
             }

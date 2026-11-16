@@ -724,11 +724,26 @@ impl tf::BlockContainerStyle for View<'_> {
             Some(a) => safe_content(content(a, true), el.safe & 1 != 0),
         }
     }
+
+    /// CSS Box Alignment 3 §6.1: the `justify-self: auto` of its block-level
+    /// children.
+    fn justify_items(&self) -> tf::AlignItems {
+        self.el()
+            .justify_items
+            .map_or(tf::AlignItems::NORMAL, |c| items(c, true))
+    }
 }
 
 impl tf::BlockItemStyle for View<'_> {
     fn is_table(&self) -> bool {
         self.el().table == TablePart::Table
+    }
+
+    /// CSS Box Alignment 3 §6.1.1: a block-level box aligned in its
+    /// containing block's inline axis; any value but `normal` or `stretch`
+    /// sizes an `auto` width as `fit-content`.
+    fn justify_self(&self) -> Option<tf::AlignSelf> {
+        self.el().justify_self.map(|c| items(c, true))
     }
 
     /// Its float side, physical: the lowering gives it before its

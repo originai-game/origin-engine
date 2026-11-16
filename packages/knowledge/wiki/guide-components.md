@@ -78,8 +78,8 @@ What every kind takes: its box, layout, paint, motion and input.
 | `outline-color:` | `var(--<role>) \| #rrggbb[aa]` | Its outline's colour (unset: its text colour). |
 | `outline-offset:` | `<n>px` | How far, CSS px, its outline stands off its box. |
 | `box-shadow:` | `[inset] <x> <y> [<blur> [<spread>]] [<colour>], … \| none` | Its shadows, as CSS box-shadow: `[inset] <x> <y> [<blur> [<spread>]] [<colour>]`, comma-separated, the first on top. |
-| `overflow-x:` | `visible \| hidden \| clip \| scroll \| auto` | What its content past its left and right edges does: visible, hidden or clip (cut), scroll or auto (scrolls). |
-| `overflow-y:` | `visible \| hidden \| clip \| scroll \| auto` | What its content past its top and bottom edges does: visible, hidden or clip (cut), scroll or auto (scrolls). |
+| `overflow-x:` | `visible \| hidden \| clip \| scroll \| auto \| overlay` | What its content past its left and right edges does: visible, hidden or clip (cut), scroll or auto (scrolls); overlay is a legacy alias of auto. |
+| `overflow-y:` | `visible \| hidden \| clip \| scroll \| auto \| overlay` | What its content past its top and bottom edges does: visible, hidden or clip (cut), scroll or auto (scrolls); overlay is a legacy alias of auto. |
 | `scrollbar-width:` | `auto \| thin \| none` | CSS `scrollbar-width`: thin draws its scrollbars at half the width (a half-width grab strip); none hides them (it still scrolls). |
 | `aspect-ratio:` | `<number>` | Width over height (0: none). |
 | `interactive` | `bool` | It reports clicks (`on click`). |

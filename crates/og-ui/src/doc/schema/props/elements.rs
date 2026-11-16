@@ -22,7 +22,7 @@ const BORDER_STYLES: &[&str] = &[
 const OUTLINE_STYLES: &[&str] = &[
     "none", "auto", "solid", "dashed", "dotted", "double", "groove", "ridge", "inset", "outset",
 ];
-const OVERFLOW: &[&str] = &["visible", "hidden", "clip", "scroll", "auto"];
+const OVERFLOW: &[&str] = &["visible", "hidden", "clip", "scroll", "auto", "overlay"];
 
 /// Every core prop, by kind group: the box, the element model (docs/ui.md
 /// §6.1), then each kind's own.
@@ -385,12 +385,12 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "overflowX",
         Ty::Word(OVERFLOW),
-        "What its content past its left and right edges does: visible, hidden or clip (cut), scroll or auto (scrolls)."
+        "What its content past its left and right edges does: visible, hidden or clip (cut), scroll or auto (scrolls); overlay is a legacy alias of auto."
     ),
     p!(
         "overflowY",
         Ty::Word(OVERFLOW),
-        "What its content past its top and bottom edges does: visible, hidden or clip (cut), scroll or auto (scrolls)."
+        "What its content past its top and bottom edges does: visible, hidden or clip (cut), scroll or auto (scrolls); overlay is a legacy alias of auto."
     ),
     p!(
         "scrollbarWidth",

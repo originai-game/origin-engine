@@ -411,6 +411,8 @@ pub(crate) fn lower(name: &str, value: &str, t: &[Tok]) -> Result<Entries, Strin
                 .iter()
                 .map(|v| match v {
                     Tok::Ident(w) if OVERFLOW.contains(&w.as_str()) => Ok(w.as_str()),
+                    // A legacy alias of `auto` (CSS Overflow 3 §3.1).
+                    Tok::Ident(w) if w == "overlay" => Ok("auto"),
                     v => Err(format!(
                         "'{}' is not an overflow: {}",
                         describe(v),

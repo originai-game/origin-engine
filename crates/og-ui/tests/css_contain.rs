@@ -16,7 +16,8 @@
 //!   resize moved, `max-width` ignored, or `resize` applied with overflow
 //!   visible → `a_resize_handle_drags_the_size_onto_the_element`
 //! - boxes painted in source order whatever their `z-index`, or `contain:
-//!   paint`, `overflow: clip` and `strict`/`content` not clipping →
+//!   paint`, `overflow: clip` and `strict`/`content` not clipping, or
+//!   `overflow: overlay` not scrolling as `auto` →
 //!   `z_index_orders_paint_and_clip_and_contain_cut_it`
 
 use crate::support::{Doc, with_doc};
@@ -179,7 +180,8 @@ fn a_resize_handle_drags_the_size_onto_the_element() {
 ///
 /// Ways it could fail: boxes painted in source order; a clip missing or
 /// at the content's size; `overflow: clip` scrolling like `hidden` does
-/// by script; `strict` or `content` read as one of their parts only.
+/// by script; `strict` or `content` read as one of their parts only;
+/// `overflow: overlay` refused or read as visible.
 #[test]
 fn z_index_orders_paint_and_clip_and_contain_cut_it() {
     let text = r#"<meta name="component" content="t">
@@ -190,6 +192,8 @@ fn z_index_orders_paint_and_clip_and_contain_cut_it() {
   <div id="Strict"><div class="big"></div></div>
   <div id="Content"><div class="big"></div></div>
   <div id="None"><div class="big"></div></div>
+  <div id="Ov"><div class="big"></div></div>
+  <div id="OvY"><div class="big"></div></div>
 </div></div>
 <style>
 #Root { width: 400px; }
@@ -203,6 +207,8 @@ fn z_index_orders_paint_and_clip_and_contain_cut_it() {
 #Strict { contain: strict; width: 70px; }
 #Content { contain: content; width: 80px; }
 #None { contain: none; width: 90px; }
+#Ov { overflow: overlay; width: 40px; height: 40px; }
+#OvY { overflow-y: overlay; width: 40px; height: 40px; }
 .big { width: 300px; height: 300px; background: #123456; }
 </style>"#;
     with_doc(text, &[], |d| {

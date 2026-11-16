@@ -2390,3 +2390,85 @@ fn boxes_take_display_position_insets_and_fit_content_as_css_does() {
         );
     });
 }
+
+/// `justify-self` and `justify-items` align a block container's block-level
+/// children in its inline axis (CSS Box Alignment 3 §6.1.1): a fixed width
+/// at the end, an `auto` width shrunk to `fit-content` and centred, `auto`
+/// and `normal` laid out by the block rules, and `justify-items` as the
+/// default of a child that sets none.
+///
+/// Ways it could fail: block layout ignoring them (every child at the
+/// start), a centred `auto` box kept at the container's width, or
+/// `justify-items` read only by grid.
+#[test]
+fn justify_self_aligns_block_level_boxes() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Js"><div id="End"></div><div id="Mid"><span id="Ab">ab</span></div><div id="Auto"></div><div id="Norm"></div></div>
+  <div id="Ji"><div id="JiK"></div><div id="JiS"></div></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#Js, #Ji { width: 300px; }
+#End { width: 50px; height: 5px; justify-self: end; }
+#Mid { height: 5px; justify-self: center; }
+#Auto { height: 5px; }
+#Norm { width: 40px; height: 5px; justify-self: normal; }
+#Ji { justify-items: end; }
+#JiK { width: 30px; height: 5px; }
+#JiS { width: 30px; height: 5px; justify-self: start; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let x = |id: &str, of: &str| d.get(id).x - d.get(of).x;
+        assert_eq!(x("End", "Js"), 250.0, "end: 300 - 50");
+        let ab = d.get("Ab").width;
+        assert_eq!(
+            d.get("Mid").width,
+            ab,
+            "a centred auto width fits its content"
+        );
+        assert_eq!(x("Mid", "Js"), (300.0 - ab) / 2.0);
+        assert_eq!(
+            (x("Auto", "Js"), d.get("Auto").width),
+            (0.0, 300.0),
+            "auto fills"
+        );
+        assert_eq!(x("Norm", "Js"), 0.0, "normal keeps the start");
+        assert_eq!(x("JiK", "Ji"), 270.0, "justify-items: end is the default");
+        assert_eq!(x("JiS", "Ji"), 0.0, "and justify-self overrides it");
+    });
+}
+
+/// `line-clamp: 2` keeps a text's first two lines, with or without
+/// `text-overflow: ellipsis` (CSS Overflow 4 §4.1: `max-lines` with
+/// `block-ellipsis: auto`), and its box is those lines' height; a text
+/// within the limit keeps its lines.
+///
+/// Ways it could fail: the lines cut only when `text-overflow: ellipsis`
+/// is set too (the box five lines tall), or a short text padded to the
+/// limit.
+#[test]
+fn line_clamp_cuts_a_texts_lines() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <p id="P">one two three four five six seven eight nine ten eleven twelve</p>
+  <text id="T">one two three four five six seven eight nine ten eleven twelve</text>
+  <p id="Short">one two</p>
+  <p id="Free">one two three four five six seven eight nine ten eleven twelve</p>
+</div></div>
+<style>
+#Root { width: 100px; }
+#P, #T, #Short { line-clamp: 2; margin: 0; }
+#Free { margin: 0; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let line = d.get("Short").height;
+        assert!(
+            d.get("Free").height >= 4.0 * line,
+            "the text needs more than two lines"
+        );
+        assert_eq!(d.get("P").height, 2.0 * line, "a <p> keeps two lines");
+        assert_eq!(d.get("T").height, 2.0 * line, "a <text> keeps two lines");
+        assert_eq!(d.get("T").y, d.get("P").y + 2.0 * line);
+    });
+}

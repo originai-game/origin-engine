@@ -123,7 +123,10 @@ pub(super) fn text_lines_at(t: UsedText<'_>, fonts: &dyn Metrics, width: f32) ->
     if t.wrap && lines.len() > 1 && t.wrap_style != WrapStyle::Auto {
         lines = rewrap(lines, t.wrap_style, width, at);
     }
-    if t.ellipsis {
+    // `line-clamp` is `max-lines` with `block-ellipsis: auto` (CSS
+    // Overflow 4 §4.1): lines past it go, the last kept one ellipsized,
+    // with or without `text-overflow: ellipsis`.
+    if t.ellipsis || (t.max_lines > 0 && lines.len() > t.max_lines as usize) {
         truncate_lines(&mut lines, t, m, width);
     }
     lines

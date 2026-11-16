@@ -245,6 +245,12 @@ proof("display static-positioning physical-properties align-content-block fit-co
       "Computed boxes: inline and inline-block boxes share a line and a block takes its own, full width; display: none makes no box and keeps no room; position: static ignores its insets; opposite insets size an auto box and an auto inset follows the other; block align-content: end; width: fit-content is max-content where it fits and the available width where it does not. fit-content on height and the min/max properties is not asserted.")
 proof("z-index contain contain-paint overflow-clip", "css_contain", "z_index_orders_paint_and_clip_and_contain_cut_it",
       "Drawn order of three overlapping positioned boxes is z-index -1, auto, 2 against their source order; contain: paint, overflow: clip, contain: strict and contain: content push a clip at their box and contain: none does not; strict sizes as if empty and content keeps its height; overflow: clip makes no scroll container. z-index: 0 and auto order alike (og-ui orders siblings, it keeps no separate stacking context for 0); overflow-clip-margin is a gap of its own.")
+proof("justify-self-block", "css_layout", "justify_self_aligns_block_level_boxes",
+      "Computed x and width of block-level boxes: justify-self end with a fixed width, center with an auto width shrunk to fit-content, auto and normal at the start, and justify-items: end as the default that justify-self: start overrides. Absolutely positioned boxes and right-to-left blocks are not asserted.")
+proof("line-clamp", "css_layout", "line_clamp_cuts_a_texts_lines",
+      "Computed heights: line-clamp: 2 keeps two lines of a <p> and a <text> without text-overflow, the box those lines high; a text within the limit keeps its lines. A <div> holding text directly refuses line-clamp (it applies to text-bearing elements), and the drawn ellipsis is not asserted.")
+proof("overflow-overlay", "css_contain", "z_index_orders_paint_and_clip_and_contain_cut_it",
+      "overflow: overlay and overflow-y: overlay make scroll containers whose view and content heights are auto's.")
 not_applicable("frame-sizing",
                "Sizes an <iframe> to its embedded document: a game's UI embeds no other documents.")
 not_applicable("page-breaks page-break-aliases page-orientation page-selectors page-setup",
@@ -287,7 +293,6 @@ MISSING = {
     # layout
     "position": "Gap: an absolutely positioned box is placed against its parent, not its nearest positioned ancestor (CSS Position 3 §2.1), and a fixed box against the viewport even under a transform or containment. Direct-parent cases are positioning_places_as_css_positioning_does.",
     "contain-layout": "Gap: contain: layout makes no containing block for its absolute and fixed descendants (CSS Containment 2 §3.2); they are placed against their parent or the viewport.",
-    "line-clamp": "Gap: line-clamp cuts a text's lines only when text-overflow: ellipsis is also set, and does not apply to a <div> block container (CSS Overflow 4 §4.1).",
     "scrollbar-gutter": "Gap: a box with overflow-y: auto or scroll and overflow-x left visible (which computes to auto) reserves no gutter, because a box that may scroll both ways draws its bars over its content.",
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
