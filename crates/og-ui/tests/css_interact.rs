@@ -646,6 +646,162 @@ fn scroll_anchoring_keeps_the_view_when_content_above_changes() {
     assert_eq!(d.get("R3").y, r3);
 }
 
+/// CSS Overflow 5 §3 scroll markers and buttons, against the spec's
+/// numbers. A 200px scroller of four 100px sections: their scroll-into-view
+/// positions 0, 100, 200 and 300 over a 200px range are redistributed
+/// (§3.1.8 step 5, over min(200/8, 200/2) = 25px at each end) to 0, 100,
+/// 180 and 200, so at offset 190 section 2 is current (section 1 without
+/// the redistribution) and at 200 section 3. A marker press scrolls its
+/// section to the start (section 1: 100) and keeps it current while the
+/// offset stays there, even where the algorithm would pick another
+/// (section 2 at 200, where section 3 is otherwise current). A button
+/// pages by 0.85 of the scrollport (170px) and matches `:disabled` at the
+/// end it cannot scroll past. The markers stand in a group before the
+/// scroller, in tree order, then the buttons (block-start, block-end). `scroll-target-group: auto`
+/// gives `<a href="#id">` links the same states. Ways it could fail: no
+/// redistribution, the last-reached rather than the pressed target kept
+/// current, a full page, `:disabled` never set or never cleared, markers
+/// out of tree order, the states missing from the links, or a restored
+/// checkpoint forgetting the pressed target or the states.
+#[test]
+fn scroll_markers_and_buttons_follow_the_scroll_position() {
+    let text = r##"<meta name="component" content="t">
+<div>
+  <div id="S"><div id="A" class="sec"></div><div id="B" class="sec"></div><div id="C" class="sec"></div><div id="D" class="sec"></div></div>
+  <div id="Toc"><a id="LA" href="#A">a</a><a id="LC" href="#C">c</a></div>
+</div>
+<style>
+#S { width: 100px; height: 200px; overflow-y: auto; scrollbar-width: none; scroll-marker-group: before; }
+.sec { height: 100px; flex-shrink: 0; }
+.sec::scroll-marker { content: ""; width: 10px; height: 10px; }
+.sec::scroll-marker:target-before { background: #0000ff; }
+.sec::scroll-marker:target-current { background: #00ff00; }
+.sec::scroll-marker:target-after { background: #ff0000; }
+#S::scroll-button(up) { content: ""; width: 20px; height: 20px; background: #00ffff; }
+#S::scroll-button(down) { content: ""; width: 20px; height: 20px; background: #00ffff; }
+#S::scroll-button(*):disabled { background: #ffff00; }
+#Toc { scroll-target-group: auto; }
+#Toc a { display: block; width: 30px; height: 30px; }
+#Toc a:target-before { background: #0000ff; }
+#Toc a:target-current { background: #00ff00; }
+#Toc a:target-after { background: #ff0000; }
+</style>"##;
+    let mut d = crate::support::Doc::new(text, &[]);
+    let settle = |d: &mut crate::support::Doc| {
+        for _ in 0..3 {
+            d.step(InputFrame::default());
+        }
+    };
+    settle(&mut d);
+    let path = d.get("S").path;
+    let offset = |d: &crate::support::Doc| d.ui.scroll_state(&path).unwrap().offset_y;
+    // The fills of a size, in reading order, as letters: b(efore), c(urrent),
+    // a(fter), d(isabled), e(nabled).
+    let fills = |d: &crate::support::Doc, size: f32| -> String {
+        let mut v: Vec<(f32, char)> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|i| i.cmd.filled())
+                .filter(|(r, _)| r.width == size && r.height == size)
+                .filter_map(|(r, c)| {
+                    let l = match [c[0], c[1], c[2]] {
+                        [0.0, 0.0, 1.0] => 'b',
+                        [0.0, 1.0, 0.0] => 'c',
+                        [1.0, 0.0, 0.0] => 'a',
+                        [1.0, 1.0, 0.0] => 'd',
+                        [0.0, 1.0, 1.0] => 'e',
+                        _ => return None,
+                    };
+                    Some((r.y * 1e4 + r.x, l))
+                })
+                .collect();
+        v.sort_by(|a, b| a.0.total_cmp(&b.0));
+        v.into_iter().map(|(_, l)| l).collect()
+    };
+    let s = d.get("S");
+    assert_eq!(
+        s.y, 50.0,
+        "the group (a 10px row) and two 20px buttons before it"
+    );
+    assert_eq!(fills(&d, 10.0), "caaa", "at 0: the first section");
+    assert_eq!(fills(&d, 20.0), "de", "up disabled at the top, down not");
+    assert_eq!(fills(&d, 30.0), "ca", "the links: A current");
+    let wheel = |d: &mut crate::support::Doc, by: f32| {
+        d.step(InputFrame {
+            pointer: Vec2::new(s.x + 50.0, s.y + 50.0),
+            pointer_inside: true,
+            wheel: Vec2::new(0.0, by),
+            ..InputFrame::default()
+        });
+        settle(d);
+    };
+    wheel(&mut d, 100.0);
+    assert_eq!(offset(&d), 100.0);
+    assert_eq!(fills(&d, 10.0), "bcaa", "at 100: the second");
+    assert_eq!(fills(&d, 20.0), "ee", "both ways open");
+    assert_eq!(
+        fills(&d, 30.0),
+        "ca",
+        "A, 0, is the largest at or before 100"
+    );
+    wheel(&mut d, 90.0);
+    assert_eq!(offset(&d), 190.0);
+    assert_eq!(
+        fills(&d, 10.0),
+        "bbca",
+        "at 190: the third, at its redistributed 180"
+    );
+    assert_eq!(
+        fills(&d, 30.0),
+        "bc",
+        "C at 200: its smaller neighbour 0 is over half a port back, and 200 within half ahead"
+    );
+    wheel(&mut d, 10.0);
+    assert_eq!(offset(&d), 200.0);
+    assert_eq!(fills(&d, 10.0), "bbbc", "at the end: the last, at 200");
+    assert_eq!(fills(&d, 20.0), "ed", "down disabled at the end");
+    // A marker press: the section scrolls to the start and is current.
+    d.click_at(Vec2::new(15.0, 5.0));
+    settle(&mut d);
+    assert_eq!(
+        offset(&d),
+        100.0,
+        "the second marker scrolls B to the start"
+    );
+    assert_eq!(fills(&d, 10.0), "bcaa");
+    d.click_at(Vec2::new(25.0, 5.0));
+    settle(&mut d);
+    assert_eq!(offset(&d), 200.0, "C is 200 down");
+    assert_eq!(
+        fills(&d, 10.0),
+        "bbca",
+        "the pressed C stays current where D would be"
+    );
+    // A checkpoint keeps the pressed target current and the states drawn
+    // on the first frame after it is restored.
+    let saved = d.ui.save_state();
+    d.click_at(Vec2::new(5.0, 5.0));
+    settle(&mut d);
+    d.ui.restore_state(&saved).unwrap();
+    d.step(InputFrame::default());
+    assert_eq!(offset(&d), 200.0);
+    assert_eq!(
+        (fills(&d, 10.0).as_str(), fills(&d, 20.0).as_str()),
+        ("bbca", "ed"),
+        "restored"
+    );
+    // The buttons: up a page of 0.85 × 200.
+    d.click_at(Vec2::new(10.0, 20.0));
+    settle(&mut d);
+    assert_eq!(offset(&d), 30.0, "200 − 170");
+    assert_eq!(fills(&d, 10.0), "caaa", "the pin let go: at 30, A");
+    d.click_at(Vec2::new(10.0, 40.0));
+    settle(&mut d);
+    assert_eq!(offset(&d), 200.0, "30 + 170, clamped to the range");
+    assert_eq!(fills(&d, 20.0), "ed");
+}
+
 /// CSS Overflow 5 §4 `scroll-axis-lock`: a drag on a scroller with room
 /// both ways keeps to the axis its first move runs along when that move is
 /// within a 2:1 slope of it, the other axis's delta dropped for the whole
