@@ -2925,7 +2925,7 @@ fn line_clamp_cuts_a_texts_lines() {
 fn out_of_flow_boxes_are_placed_in_their_containing_block() {
     let text = r#"<meta name="component" content="t">
 <div><div id="Root">
-  <div id="Rel"><div id="Pad"><div id="Abs"></div></div></div>
+  <div id="Rel"><div id="Pad"><div id="Abs"></div></div><div id="Abs2"></div></div>
   <div id="Tr"><div id="Fx"></div></div>
   <div id="Wc"><div id="FxW"></div></div>
   <div id="Cl"><div id="FxL"></div></div>
@@ -2934,9 +2934,10 @@ fn out_of_flow_boxes_are_placed_in_their_containing_block() {
 </div></div>
 <style>
 #Root { width: 400px; padding-top: 100px; }
-#Rel { position: relative; width: 300px; height: 100px; }
+#Rel { position: relative; width: 300px; height: 100px; border: solid #000; border-width: 3px 3px 4px 7px; }
 #Pad { margin: 20px 0 0 40px; width: 100px; height: 50px; }
 #Abs { position: absolute; right: 0; bottom: 0; width: 10px; height: 10px; }
+#Abs2 { position: absolute; left: 0; top: 0; width: 10%; height: 10px; }
 #Tr, #Wc, #Cl, #Cp, #Plain { width: 100px; height: 50px; margin-left: 50px; }
 #Tr { transform: translateX(0px); }
 #Wc { will-change: transform; }
@@ -2949,10 +2950,17 @@ fn out_of_flow_boxes_are_placed_in_their_containing_block() {
             let (e, p) = (d.get(id), d.get(of));
             (e.x - p.x, e.y - p.y)
         };
+        // Its insets and percentages are of the holder's padding box,
+        // inside its 3/3/4/7px border (CSS Position 3 §2.1).
         assert_eq!(
             at("Abs", "Rel"),
-            (290.0, 90.0),
+            (287.0, 86.0),
             "the positioned ancestor holds it"
+        );
+        assert_eq!(
+            (at("Abs2", "Rel"), d.get("Abs2").width),
+            ((7.0, 3.0), 29.0),
+            "inside the border, 10% of the 290px padding box"
         );
         for (fx, holder) in [("Fx", "Tr"), ("FxW", "Wc"), ("FxL", "Cl"), ("FxP", "Cp")] {
             assert_eq!(at(fx, holder), (3.0, 4.0), "{holder} holds {fx}");

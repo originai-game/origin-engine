@@ -100,37 +100,40 @@ impl Tree<'_, '_> {
         [l.pref_w, l.min_w, l.pref_h, l.min_h]
     }
 
-    /// Lays out node `i`'s out-of-flow children against its border box,
-    /// `size` (layout space): each sized as CSS sizes an absolutely
-    /// positioned box and placed by its insets, its place kept as its
-    /// layout from `i`'s top left in layout space.
+    /// Lays out node `i`'s out-of-flow children against its padding box,
+    /// inside its border box `size` (layout space; CSS Position 3 §2.1):
+    /// each sized as CSS sizes an absolutely positioned box and placed by
+    /// its insets, its place kept as its layout from `i`'s top left in
+    /// layout space.
     pub(super) fn out_of_flow(&mut self, i: usize, size: [f32; 2]) {
         let out = self.nodes[i].out.clone();
         if out.is_empty() {
             return;
         }
-        let bx = Rect::new(0.0, 0.0, size[0], size[1]);
+        let [t, r, b, l] = self.nodes[i].border_widths();
+        let bx = Rect::new(l, t, (size[0] - l - r).max(0.0), (size[1] - t - b).max(0.0));
+        let cb = [bx.width, bx.height];
         for c in out {
             if self.nodes[c].is_hidden() {
                 continue;
             }
-            self.intrinsic(c, [Some(size[0]), Some(size[1])]);
+            self.intrinsic(c, [Some(cb[0]), Some(cb[1])]);
             let n = &self.nodes[c];
-            let w = out_size(n, 0, size[0], size[0]);
-            let h0 = out_size(n, 1, size[1], size[0]);
+            let w = out_size(n, 0, cb[0], cb[0]);
+            let h0 = out_size(n, 1, cb[1], cb[0]);
             // Its height is its content's at its width unless set.
             let h_set = !auto_height(n);
             let got = self.lay_physical(
                 c,
                 tf::RunMode::PerformLayout,
                 [Some(w), h_set.then_some(h0)],
-                [Some(size[0]), Some(size[1])],
+                [Some(cb[0]), Some(cb[1])],
                 [
                     tf::AvailableSpace::Definite(w),
-                    tf::AvailableSpace::Definite(size[1]),
+                    tf::AvailableSpace::Definite(cb[1]),
                 ],
             );
-            let h = clamp_to(&self.nodes[c], 1, Some(size[1]), got.height);
+            let h = clamp_to(&self.nodes[c], 1, Some(cb[1]), got.height);
             let n = &self.nodes[c];
             let (x, y) = if let Some(v) = n.props.view_place {
                 // Its anchor on the point the view box shows `at` at
@@ -138,8 +141,8 @@ impl Tree<'_, '_> {
                 let [vx, vy, vw, vh] = v.view_box;
                 let k = (bx.width / vw.max(1e-6)).min(bx.height / vh.max(1e-6));
                 let off = (v.at[0] - (vx + vw / 2.0)) * k;
-                let x = bx.width / 2.0 + off - v.anchor_x * w;
-                let y = bx.height / 2.0 + (v.at[1] - (vy + vh / 2.0)) * k - v.anchor_y;
+                let x = bx.x + bx.width / 2.0 + off - v.anchor_x * w;
+                let y = bx.y + bx.height / 2.0 + (v.at[1] - (vy + vh / 2.0)) * k - v.anchor_y;
                 self.nodes[c].layout.fit = [k, v.anchor_x, v.anchor_y, off];
                 (x, y)
             } else {
@@ -164,7 +167,7 @@ impl Tree<'_, '_> {
                 }
                 (x, y)
             };
-            let m = self.nodes[c].layout.used.margin.map(|m| m.of(size[0]));
+            let m = self.nodes[c].layout.used.margin.map(|m| m.of(cb[0]));
             let mut l = tf::Layout::with_order(0);
             l.location = tf::Point { x, y };
             l.size = tf::Size {

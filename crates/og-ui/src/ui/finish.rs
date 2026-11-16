@@ -696,9 +696,19 @@ impl Ui {
                     continue;
                 }
                 let cb = match crate::layout::containing_block(&self.tree.nodes, i) {
+                    // Its padding box (CSS Position 3 §2.1): the holder's
+                    // border box less its border widths, which og-ui keeps
+                    // in its padding.
                     crate::layout::Holder::Node(a) => {
-                        let l = &self.tree.nodes[a].layout;
-                        Rect::new(l.x, l.y, l.w, l.h)
+                        let n = &self.tree.nodes[a];
+                        let l = &n.layout;
+                        let [t, rt, b, lt] = n.border_widths();
+                        Rect::new(
+                            l.x + lt,
+                            l.y + t,
+                            (l.w - lt - rt).max(0.0),
+                            (l.h - t - b).max(0.0),
+                        )
                     }
                     crate::layout::Holder::Own
                         if self.tree.nodes[i].props.position == Position::Screen =>

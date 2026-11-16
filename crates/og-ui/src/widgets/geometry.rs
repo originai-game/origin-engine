@@ -55,12 +55,15 @@ impl Ui {
                         } else {
                             1.0
                         };
+                    // Its insets are from the track's padding edge, inside
+                    // the border the track's CSS may give it.
+                    let [bt, _, _, bl] = self.tree.nodes[track].border_widths();
                     let part = self.tree.nodes[knob].part_box.as_mut().expect("knob part");
                     part.element.width = Size::px(diameter);
                     part.element.height = Size::px(diameter);
                     part.element.radius = diameter / 2.0;
-                    part.intrinsic_props.insets.start = Some(inset);
-                    part.intrinsic_props.insets.top = Some(inset);
+                    part.intrinsic_props.insets.start = Some(inset - bl);
+                    part.intrinsic_props.insets.top = Some(inset - bt);
                     for group in &mut part.intrinsic_props.states {
                         if group.name == "selection" {
                             for state in &mut group.states {

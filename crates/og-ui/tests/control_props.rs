@@ -702,7 +702,8 @@ fn switch_parts_drive_knob_mark_and_travel_after_resize() {
 #Switch::part(row) { padding: 0; }
 #Switch::part(track) { width: 80px; height: 40px; }
 #Switch::part(knob) { width: 32px; height: 32px; }
-#Switch.large::part(track) { width: 50%; height: 75%; }
+#Switch.large::part(track) { width: 50%; height: 75%; border-width: 0; }
+/* Of the track's padding box: the border is 0 so they stay square. */
 #Switch.large::part(knob) { width: 40%; height: 80%; }
 </style>"#;
     with_doc(

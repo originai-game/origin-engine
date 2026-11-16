@@ -1540,6 +1540,14 @@ impl Node {
     /// its `contain-intrinsic-*` length, its last remembered size for
     /// `auto` while it skips its contents, else 0 (CSS Containment 2
     /// §3.1, CSS Sizing 4 §5). `None` without size containment there.
+    /// Its CSS border widths, top, right, bottom, left: within its padding,
+    /// which holds them, its padding box's edges in from its border box.
+    pub(crate) fn border_widths(&self) -> [f32; 4] {
+        self.decor
+            .as_ref()
+            .map_or([0.0; 4], |d| d.borders.map(|e| e.map_or(0.0, |e| e.width)))
+    }
+
     pub(crate) fn contained_size(&self, axis: usize) -> Option<f32> {
         let c = &self.layout.used.contain;
         let bit = [
