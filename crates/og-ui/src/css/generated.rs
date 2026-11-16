@@ -329,9 +329,94 @@ fn unexpected<T>(what: &str, value: &str) -> Result<T, String> {
 /// A counter style name as written (`decimal` when omitted).
 fn style_name(p: &mut Parser<'_>) -> Result<String, ()> {
     if p.try_parse(|p| p.expect_comma()).is_ok() {
-        Ok(p.expect_ident_cloned().map_err(|_| ())?.to_string())
+        counter_style(p)
     } else {
         Ok("decimal".into())
+    }
+}
+
+/// `<counter-style> = <counter-style-name> | symbols()`, as written: an
+/// anonymous style is named by its `symbols(…)` text, which [`lookup`]
+/// reads again.
+fn counter_style(p: &mut Parser<'_>) -> Result<String, ()> {
+    p.skip_whitespace();
+    let start = p.position();
+    match p.next().map_err(|_| ())?.clone() {
+        Token::Ident(name) => Ok(name.to_string()),
+        Token::Function(f) if f.eq_ignore_ascii_case("symbols") => {
+            p.parse_nested_block(symbols).map_err(|_| ())?;
+            Ok(p.slice_from(start).to_string())
+        }
+        _ => Err(()),
+    }
+}
+
+/// `symbols( <symbols-type>? <string>+ )` (CSS Counter Styles 3 §6.1):
+/// an anonymous style of that system (`symbolic` when omitted; `fixed`
+/// starts at 1) with an empty prefix and a space for suffix; `alphabetic`
+/// and `numeric` need two symbols. Image symbols are not taken.
+fn symbols(p: &mut Parser<'_>) -> Result<CounterStyle, cssparser::ParseError<()>> {
+    let system = p
+        .try_parse(|p| {
+            let word = p.expect_ident()?.to_ascii_lowercase();
+            Ok::<_, cssparser::ParseError<()>>(match word.as_str() {
+                "cyclic" => System::Cyclic,
+                "numeric" => System::Numeric,
+                "alphabetic" => System::Alphabetic,
+                "symbolic" => System::Symbolic,
+                "fixed" => System::Fixed(1),
+                _ => return Err(cssparser::ParseError::custom(())),
+            })
+        })
+        .unwrap_or(System::Symbolic);
+    let mut symbols = Vec::new();
+    while !p.is_exhausted() {
+        symbols.push(p.expect_string()?.to_string());
+    }
+    let least = if matches!(system, System::Alphabetic | System::Numeric) {
+        2
+    } else {
+        1
+    };
+    if symbols.len() < least {
+        return Err(cssparser::ParseError::custom(()));
+    }
+    Ok(CounterStyle {
+        system,
+        symbols,
+        additive: Vec::new(),
+        negative: ("-".into(), String::new()),
+        prefix: String::new(),
+        suffix: " ".into(),
+        range: Vec::new(),
+        pad: None,
+        fallback: "decimal".into(),
+    })
+}
+
+/// The style a `symbols(…)` name declares.
+fn anonymous(name: &str) -> Option<CounterStyle> {
+    if !name.get(..8)?.eq_ignore_ascii_case("symbols(") {
+        return None;
+    }
+    let mut p = Parser::new(name);
+    p.expect_function_matching("symbols").ok()?;
+    p.parse_nested_block(symbols).ok()
+}
+
+/// Checks `list-style-type`: `<counter-style> | <string> | none` (CSS
+/// Lists 3 §3.3). A name no `@counter-style` declares draws as `decimal`.
+pub fn list_style_type(value: &str) -> Result<(), String> {
+    let mut p = Parser::new(value.trim());
+    let one = p
+        .try_parse(|p| p.expect_string().map(|_| ()).map_err(|_| ()))
+        .or_else(|_| counter_style(&mut p).map(|_| ()));
+    match one {
+        Ok(()) if p.is_exhausted() => Ok(()),
+        _ => Err(format!(
+            "list-style-type takes a counter style name, symbols(…), a \"string\" or none, not {}",
+            value.trim()
+        )),
     }
 }
 
@@ -921,6 +1006,9 @@ fn predefined(name: &str) -> Option<CounterStyle> {
 /// The counter style `name` declares: the document's `@counter-style`,
 /// else a predefined one, else `decimal`.
 fn lookup(name: &str, sheet: &Sheet) -> CounterStyle {
+    if let Some(style) = anonymous(name) {
+        return style;
+    }
     let style = sheet
         .counter(name)
         .cloned()
@@ -951,11 +1039,14 @@ pub fn format(n: i64, name: &str, sheet: &Sheet) -> String {
     represent(n, name, sheet, 0)
 }
 
-/// `n` as a list marker: the representation with the style's prefix and
-/// suffix.
+/// `n` as a list marker of `list-style-type` `name`: the representation
+/// with the style's prefix and suffix, or a `<string>` type's own text.
 pub fn marker(n: i64, name: &str, sheet: &Sheet) -> String {
     if name == "none" {
         return String::new();
+    }
+    if let Ok(text) = Parser::new(name).expect_string() {
+        return text.to_string();
     }
     let style = lookup(name, sheet);
     format!(

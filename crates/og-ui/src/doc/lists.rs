@@ -50,17 +50,6 @@ td, th { display: table-cell; padding: 1px; }
 th { font-weight: bold; text-align: center; }
 ";
 
-const TYPES: [&str; 9] = [
-    "none",
-    "disc",
-    "circle",
-    "square",
-    "decimal",
-    "lower-alpha",
-    "upper-alpha",
-    "lower-roman",
-    "upper-roman",
-];
 const POSITIONS: [&str; 2] = ["outside", "inside"];
 
 pub(super) fn initial(property: &str) -> Option<&'static str> {
@@ -104,7 +93,7 @@ pub(super) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
     match d.name.as_str() {
         "list-style-type" => {
             if !d.value.has_variables() {
-                checked(&d.name, &d.source, &TYPES)?;
+                crate::css::generated::list_style_type(&d.source)?;
             }
             Ok(vec![declaration(
                 &property("type"),
@@ -140,21 +129,23 @@ pub(super) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
                 );
             }
             // Omitted parts take their initial values, as CSS's shorthand does.
+            // A `none` sets the type, then the image (CSS Lists 3 §3.5).
             let (mut ty, mut position, mut picture) = (None, None, None);
-            for word in d.source.split_whitespace() {
+            for word in components(&d.source) {
                 if POSITIONS.contains(&word) && position.is_none() {
                     position = Some(word);
-                } else if TYPES.contains(&word) && ty.is_none() {
-                    ty = Some(word);
                 } else if (word.starts_with("url(") || word.starts_with("image("))
                     && picture.is_none()
                 {
                     image(word)?;
                     picture = Some(word);
+                } else if word == "none" && ty.is_some() && picture.is_none() {
+                    picture = Some(word);
+                } else if ty.is_none() && crate::css::generated::list_style_type(word).is_ok() {
+                    ty = Some(word);
                 } else {
                     return Err(format!(
-                        "list-style takes a type ({}) and a position (outside, inside), not {word}",
-                        TYPES.join(", ")
+                        "list-style takes a type (a counter style, symbols(…), a \"string\" or none), a position (outside, inside) and an image, not {word}"
                     ));
                 }
             }
@@ -169,6 +160,27 @@ pub(super) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
             ])
         }
         _ => Ok(vec![d]),
+    }
+}
+
+/// A value's top-level component values as written: a string or a
+/// function is one.
+fn components(value: &str) -> Vec<&str> {
+    let mut p = cssparser::Parser::new(value);
+    let mut out = Vec::new();
+    loop {
+        p.skip_whitespace();
+        let start = p.position();
+        let Ok(token) = p.next() else {
+            return out;
+        };
+        if matches!(token, cssparser::Token::Function(_)) {
+            let _ = p.parse_nested_block(|p| {
+                while p.next().is_ok() {}
+                Ok::<_, cssparser::ParseError<()>>(())
+            });
+        }
+        out.push(p.slice_from(start));
     }
 }
 
@@ -214,85 +226,9 @@ pub fn ordinal<T: Tree>(tree: &T, id: &T::Id, filter: &[Selector], values: bool)
     start + step * before as i64
 }
 
-fn alphabetic(mut n: i64, base: u8) -> String {
-    let mut out = Vec::new();
-    while n > 0 {
-        n -= 1;
-        out.push(base + (n % 26) as u8);
-        n /= 26;
-    }
-    out.reverse();
-    String::from_utf8(out).expect("ASCII letters")
-}
-
-fn roman(mut n: i64) -> String {
-    const DIGITS: [(i64, &str); 13] = [
-        (1000, "m"),
-        (900, "cm"),
-        (500, "d"),
-        (400, "cd"),
-        (100, "c"),
-        (90, "xc"),
-        (50, "l"),
-        (40, "xl"),
-        (10, "x"),
-        (9, "ix"),
-        (5, "v"),
-        (4, "iv"),
-        (1, "i"),
-    ];
-    let mut out = String::new();
-    for (value, digits) in DIGITS {
-        while n >= value {
-            out.push_str(digits);
-            n -= value;
-        }
-    }
-    out
-}
-
-/// What an item's marker shows for `kind` (a `markerType`) and its number,
-/// with CSS's suffix (a bullet's character, which is drawn as a shape);
-/// `None` for `none`. Alphabetic numbers need 1 or more
-/// and roman ones 1 to 3999; outside that range a marker falls back to
-/// decimal, as CSS's counter styles do.
-pub fn marker(kind: &str, n: i64) -> Option<String> {
-    let number = match kind {
-        "none" => return None,
-        "disc" => return Some("\u{2022}".into()),
-        "circle" => return Some("\u{25E6}".into()),
-        "square" => return Some("\u{25AA}".into()),
-        "lowerAlpha" if n >= 1 => alphabetic(n, b'a'),
-        "upperAlpha" if n >= 1 => alphabetic(n, b'A'),
-        "lowerRoman" if (1..4000).contains(&n) => roman(n),
-        "upperRoman" if (1..4000).contains(&n) => roman(n).to_uppercase(),
-        _ => n.to_string(),
-    };
-    Some(format!("{number}."))
-}
-
-/// Whether a marker of `kind` shows a number.
+/// Whether a marker of `list-style-type` `kind` is text: every type but
+/// `none` and the bullets drawn as shapes (which no `@counter-style` may
+/// redefine).
 pub fn numbered(kind: &str) -> bool {
     !matches!(kind, "none" | "disc" | "circle" | "square")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn counter_styles_follow_css() {
-        let m = |k: &str, n| marker(k, n).unwrap();
-        assert_eq!(m("decimal", 3), "3.");
-        assert_eq!(m("decimal", -2), "-2.");
-        assert_eq!(m("lowerAlpha", 1), "a.");
-        assert_eq!(m("lowerAlpha", 26), "z.");
-        assert_eq!(m("lowerAlpha", 27), "aa.");
-        assert_eq!(m("upperAlpha", 703), "AAA.");
-        assert_eq!(m("lowerAlpha", 0), "0.");
-        assert_eq!(m("lowerRoman", 4), "iv.");
-        assert_eq!(m("upperRoman", 1994), "MCMXCIV.");
-        assert_eq!(m("upperRoman", 4000), "4000.");
-        assert_eq!(marker("none", 1), None);
-    }
 }

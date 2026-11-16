@@ -448,7 +448,7 @@ fn conv(prop: &str) -> Conv {
         "outlineWidth" | "outlineOffset" => Conv::Len,
         "outlineColor" => Conv::Paint,
         "outlineStyle" | "overflowX" | "overflowY" | "scrollbarWidth" => Conv::Kebab,
-        "boxShadow" | "uv" | "sound" | "markerImage" => Conv::Raw,
+        "boxShadow" | "uv" | "sound" | "markerImage" | "markerType" => Conv::Raw,
         p if super::paint_css::C4_PROPS.contains(&p) || p == "ellipsisText" => Conv::Raw,
         "insetTop" | "insetRight" | "insetBottom" | "insetLeft" | "anchorName"
         | "positionAnchor" | "positionArea" | "positionTry" | "positionTryOrder"
@@ -489,7 +489,7 @@ fn conv(prop: &str) -> Conv {
         "rotate" => Conv::Angle,
         "background" | "fadeInto" | "color" | "ink" => Conv::Paint,
         "align" | "cross" | "direction" | "frame" | "textAlign" | "verticalAlign"
-        | "captionSide" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect"
+        | "captionSide" | "fit" | "display" | "markerPosition" | "userSelect"
         | "appearance" | "labelDirection" | "fitMin" => Conv::Kebab,
         "fieldSizing" => Conv::Kebab,
         "wrap" => Conv::Bool("wrap", "nowrap"),
@@ -562,6 +562,9 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         }
         Conv::Raw if prop == "uv" => "inset(<t>% [<r>% [<b>% [<l>%]]])".into(),
         Conv::Raw if prop == "markerImage" => "none | url(<image>)".into(),
+        Conv::Raw if prop == "markerType" => {
+            "none | <counter-style-name> | symbols(…) | \"<string>\"".into()
+        }
         Conv::Raw if prop == "maskImage" => {
             "linear-gradient(…) | radial-gradient(…) | conic-gradient(…) (repeating- too)".into()
         }

@@ -1360,19 +1360,9 @@ pub const CORE_PROPS: &[PropSpec] = &[
     ),
     p!(
         "markerType",
-        Ty::Word(&[
-            "none",
-            "disc",
-            "circle",
-            "square",
-            "decimal",
-            "lowerAlpha",
-            "upperAlpha",
-            "lowerRoman",
-            "upperRoman"
-        ]),
+        Ty::Text,
         [Box],
-        "An `<li>`'s marker, from the inherited `list-style-type` (`<ul>`: disc, nested circle then square; `<ol>`: decimal)."
+        "An `<li>`'s marker, from the inherited `list-style-type` as written: `none`, a counter style (predefined, an `@counter-style` name or `symbols(…)`) or a quoted string (`<ul>`: disc, nested circle then square; `<ol>`: decimal)."
     ),
     p!(
         "markerPosition",

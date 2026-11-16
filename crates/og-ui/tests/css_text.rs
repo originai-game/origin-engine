@@ -155,6 +155,65 @@ h3::before { content: counter(sec, upper-roman) ". "; }
     }
 }
 
+/// CSS Lists 3 §3.3: `list-style-type` takes a counter style or a
+/// string, and CSS Counter Styles 3 §6.1's `symbols()` declares an
+/// anonymous one (`symbolic` by default, an empty prefix, a space for
+/// suffix): cyclic * † over three items is *, †, *; alphabetic x y is
+/// x, y, xx (bijective base 2); numeric 0 1 is 1, 10, 11 (binary);
+/// symbolic * + is *, +, ** (through the `list-style` shorthand). A
+/// string is the marker as written. An
+/// `@counter-style` name draws its own symbols. In `counter()` a `fixed` style past its symbols falls back to
+/// `decimal`. The drawn marker leaves out its suffix's trailing space,
+/// which its gap stands for.
+///
+/// Ways it could fail: `symbols()` refused or drawn as `decimal`, its
+/// suffix taken as `. ` (`*.`), a wrong default system, the string
+/// drawn with quotes.
+#[test]
+fn list_style_types_take_counter_styles_symbols_and_strings() {
+    let d = doc(
+        r#"<ol id="Cyc"><li>a</li><li>b</li><li>c</li></ol>
+<ol id="Alpha"><li>a</li><li>b</li><li>c</li></ol>
+<ol id="Num"><li>a</li><li>b</li><li>c</li></ol>
+<ol id="Sym"><li>a</li><li>b</li><li>c</li></ol>
+<ol id="Named"><li>a</li><li>b</li><li>c</li></ol>
+<ul id="Str"><li>a</li><li>b</li></ul>
+<ul id="Short"><li>a</li></ul>
+<p id="P">x</p>"#,
+        r#"@counter-style thumbs { system: cyclic; symbols: "A" "B"; suffix: " "; }
+#Cyc { list-style-type: symbols(cyclic "*" "†"); }
+#Alpha { list-style-type: symbols(alphabetic "x" "y"); }
+#Num { list-style-type: symbols(numeric "0" "1"); }
+#Sym { list-style: symbols("*" "+") inside; list-style-position: outside; }
+#Named { list-style-type: thumbs; }
+#Str { list-style-type: "→ "; }
+#Short { list-style: inside "– "; }
+#P { counter-reset: c 3; }
+#P::before { content: counter(c, symbols(cyclic "*" "+")) counter(c, symbols(fixed "①" "②")) counters(c, ".", symbols(numeric "0" "1")) " "; }"#,
+    );
+    for (list, markers) in [
+        ("Cyc", ["*", "†", "*"]),
+        ("Alpha", ["x", "y", "xx"]),
+        ("Num", ["1", "10", "11"]),
+        ("Sym", ["*", "+", "**"]),
+        ("Named", ["A", "B", "A"]),
+    ] {
+        assert_eq!(d.markers(list), markers, "#{list}");
+    }
+    assert_eq!(d.markers("Str"), ["→", "→"]);
+    assert_eq!(d.markers("Short"), ["–\u{a0}"]);
+    assert_eq!(drawn(&d, "P"), "*311 x");
+    for bad in ["symbols(alphabetic \"x\")", "symbols()", "12px", "thumbs thumbs"] {
+        let errors = UiDocument::parse(
+            "ui/t.svelte",
+            &format!("<meta name=\"component\" content=\"t\"><ul><li>A</li></ul><style>li {{ list-style-type: {bad}; }}</style>"),
+        )
+        .unwrap_err()
+        .join("\n");
+        assert!(errors.contains("list-style-type"), "{bad}: {errors}");
+    }
+}
+
 /// CSS Lists 3 §4.4.2: `reversed(c)` with no value starts at the sum of
 /// the negated increments in its scope, up to the first element that
 /// sets it (whose value is added instead), plus the last non-zero

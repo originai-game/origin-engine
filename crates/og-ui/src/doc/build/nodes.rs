@@ -695,7 +695,13 @@ impl Ui {
             // `::marker { content }` replaces the list style's text;
             // its color inks either.
             let (content, ink) = self.marker_override(b, n, r);
-            let style = crate::doc::lists::marker(marker, r.ordinal.unwrap_or(1));
+            // The style's text without its suffix's trailing space: the
+            // marker's gap stands for it.
+            let style = (marker != "none").then(|| {
+                crate::doc::generated::marker(r.ordinal.unwrap_or(1), marker, &b.doc.sheet)
+                    .trim_end()
+                    .to_string()
+            });
             let inside = r.str("markerPosition") == Some("inside");
             // `list-style-image`: the picture stands for the marker.
             let picture = r

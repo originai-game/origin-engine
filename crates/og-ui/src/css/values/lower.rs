@@ -153,6 +153,13 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
                 vec![Value::String(value.trim().into())],
             )])
         }
+        "list-style-type" => {
+            crate::css::generated::list_style_type(value)?;
+            Ok(vec![e(
+                "markerType",
+                vec![Value::String(value.trim().into())],
+            )])
+        }
         "-og-sound" => {
             crate::sound_css::parse(value)?;
             Ok(vec![e(
