@@ -180,6 +180,7 @@ pub fn debug_overlay(
     let line = crate::Srgba {
         rgb: [242, 89, 140],
         alpha: 0.9,
+        p3: None,
     };
     for (k, r) in bounds.iter().enumerate() {
         outline(ui, &format!("Bound{k}"), *r, u, line);
@@ -210,6 +211,7 @@ pub fn debug_overlay(
                 crate::Srgba {
                     rgb: [245, 178, 107],
                     alpha: 0.45,
+                    p3: None,
                 },
             ),
             (
@@ -219,6 +221,7 @@ pub fn debug_overlay(
                 crate::Srgba {
                     rgb: [252, 217, 140],
                     alpha: 0.55,
+                    p3: None,
                 },
             ),
             (
@@ -228,6 +231,7 @@ pub fn debug_overlay(
                 crate::Srgba {
                     rgb: [194, 207, 138],
                     alpha: 0.6,
+                    p3: None,
                 },
             ),
             (
@@ -237,6 +241,7 @@ pub fn debug_overlay(
                 crate::Srgba {
                     rgb: [138, 178, 201],
                     alpha: 0.65,
+                    p3: None,
                 },
             ),
         ] {

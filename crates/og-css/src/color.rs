@@ -189,9 +189,14 @@ impl Color {
         }
     }
 
-    /// The sRGB colour it is in `cx`, gamut mapped.
+    /// The sRGB colour it is in `cx`, gamut mapped; outside sRGB in a P3
+    /// `cx`, it also keeps its gamut mapping into Display P3
+    /// ([`Srgba::p3`]), which [`Srgba::linear`] draws.
     pub fn resolve(&self, cx: &Context) -> Srgba {
-        to_srgba(self.eval(cx))
+        let c = self.eval(cx);
+        let p3 = (cx.gamut == Gamut::P3 && !in_srgb(c))
+            .then(|| gamut_map(c, Gamut::P3).map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8));
+        Srgba { p3, ..to_srgba(c) }
     }
 
     /// Linear RGBA (straight alpha) in `cx`'s gamut, what og-render draws:
@@ -312,6 +317,7 @@ fn to_srgba(c: DynamicColor) -> Srgba {
         rgb: gamut_map(c, Gamut::Srgb).map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8),
         // A missing alpha is zero (CSS Color 4 §4.4), as `color` keeps it.
         alpha: c.components[3].clamp(0.0, 1.0),
+        p3: None,
     }
 }
 

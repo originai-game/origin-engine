@@ -762,6 +762,7 @@ fn linear(c: u32, alpha: f32) -> [f32; 4] {
     let mut l = Srgba {
         rgb: [(c >> 16) as u8, (c >> 8) as u8, c as u8],
         alpha: 1.0,
+        p3: None,
     }
     .linear();
     l[3] = ((c >> 24) & 0xFF) as f32 / 255.0 * alpha;

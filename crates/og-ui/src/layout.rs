@@ -1016,6 +1016,7 @@ pub(crate) fn patch_box(el: &mut Element, p: &Patch) {
         let bg = el.background.unwrap_or(Srgba {
             rgb: [0, 0, 0],
             alpha: 0.0,
+            p3: None,
         });
         let c = |v: u8| f32::from(v) / 255.0;
         // Channels 8 to 12: the radius and the background (`read_values`).
@@ -1038,6 +1039,7 @@ pub(crate) fn patch_box(el: &mut Element, p: &Patch) {
         let bg = Srgba {
             rgb: [u(row[1]), u(row[2]), u(row[3])],
             alpha: row[4].clamp(0.0, 1.0),
+            p3: None,
         };
         if el.background.is_some() || bg.alpha > 0.0 {
             el.background = Some(bg);
@@ -1056,6 +1058,7 @@ pub(crate) fn values_of(s: &node::SampledStyle) -> [f32; crate::element::CHANNEL
     let bg = s.background.unwrap_or(Srgba {
         rgb: [0, 0, 0],
         alpha: 0.0,
+        p3: None,
     });
     let ink = s.ink;
     let c = |v: u8| f32::from(v) / 255.0;
@@ -1105,6 +1108,7 @@ pub(crate) fn set_values(s: &mut node::SampledStyle, v: &[f32; crate::element::C
     let bg = Srgba {
         rgb: [u(v[9]), u(v[10]), u(v[11])],
         alpha: v[12].clamp(0.0, 1.0),
+        p3: None,
     };
     if s.background.is_some() || bg.alpha > 0.0 {
         s.background = Some(bg);
@@ -1112,6 +1116,7 @@ pub(crate) fn set_values(s: &mut node::SampledStyle, v: &[f32; crate::element::C
     s.ink = Srgba {
         rgb: [u(v[13]), u(v[14]), u(v[15])],
         alpha: v[16].clamp(0.0, 1.0),
+        p3: None,
     };
     s.z = v[17].round() as i32;
     s.inert = v[18] >= 0.5;

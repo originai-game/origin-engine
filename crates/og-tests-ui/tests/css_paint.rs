@@ -826,3 +826,62 @@ fn accent_color_controls_match_their_reference_frames() {
         );
     }
 }
+
+#[test]
+fn a_p3_colour_reaches_the_renderer_on_a_p3_output() {
+    use og_render::*;
+    // A document's colours are resolved when it builds: on a Display P3
+    // output a colour outside sRGB keeps its gamut through the UI's style
+    // and layout, so og-render draws it (extended linear sRGB: a negative
+    // channel), and on an sRGB output it is gamut mapped into sRGB.
+    let solids = |wide: bool| {
+        let mut scene = RenderScene::new();
+        let mut ui = ui_with_font(add_test_font(&mut scene));
+        let text = r##"<meta name="component" content="p3"/>
+<div id="root"><div id="a" style="background: color(display-p3 1 0 0)"></div><div id="b"></div></div>
+<style>
+#a, #b { width: 32px; height: 32px; }
+#b { background: oklch(0.6 0.25 25); }
+</style>"##;
+        ui.define_document(UiDocument::parse("ui/p3.svelte", text).unwrap());
+        ui.mount_document(
+            reactive::SourceId::new("test", "p3"),
+            "p3",
+            Default::default(),
+            Default::default(),
+            &bind::NoEnv,
+        )
+        .unwrap();
+        let mut viewport = Viewport::new(64.0, 64.0);
+        viewport.wide_gamut = wide;
+        ui.begin(InputFrame::default(), viewport);
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+        let mut overlay = Overlay::new(64.0, 64.0, 1.0);
+        ui.frame().emit(&EmitDesc::default(), &mut overlay);
+        overlay
+            .ui
+            .shapes
+            .iter()
+            .filter_map(|s| match s.paint {
+                UiPaint::Solid(c) => Some(c),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    let p3 = solids(true);
+    assert_eq!(p3.len(), 2, "{p3:?}");
+    // Display P3's red, 1 0 0 in P3 (CSS Color 4 §10's matrix).
+    let red = p3[0];
+    assert!(
+        (red[0] - 1.2249).abs() < 0.01
+            && (red[1] + 0.0421).abs() < 0.01
+            && (red[2] + 0.0196).abs() < 0.01,
+        "{red:?}"
+    );
+    // The oklch red is outside sRGB too: a channel below zero.
+    assert!(p3[1][..3].iter().any(|v| *v < -0.001), "{:?}", p3[1]);
+    for c in solids(false) {
+        assert!(c[..3].iter().all(|v| (0.0..=1.0).contains(v)), "{c:?}");
+    }
+}

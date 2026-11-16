@@ -281,6 +281,7 @@ impl Ui {
         let color = color.or(Some(Srgba {
             rgb: [0; 3],
             alpha: 0.0,
+            p3: None,
         }));
         // Lines a kept line break starts align on the anchor too.
         let align = match anchor_x {
@@ -928,6 +929,7 @@ impl crate::ui::Docs {
                 tint: ColorRef::Literal(Srgba {
                     rgb: [255; 3],
                     alpha: 1.0,
+                    p3: None,
                 }),
                 fit,
                 focal: [0.5, 0.5],

@@ -36,6 +36,7 @@ fn srgba(c: [f32; 3], alpha: f32) -> crate::Srgba {
     crate::Srgba {
         rgb: c.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8),
         alpha,
+        p3: None,
     }
 }
 

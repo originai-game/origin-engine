@@ -558,6 +558,7 @@ pub(crate) fn mix_srgba(a: Srgba, b: Srgba, t: f32) -> Srgba {
     Srgba {
         rgb: [ch(0), ch(1), ch(2)],
         alpha,
+        p3: None,
     }
 }
 

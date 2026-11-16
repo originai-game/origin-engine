@@ -1072,6 +1072,7 @@ pub fn vision(pack: Option<&og_ui::style_pack::StylePack>) -> Result<Vec<Value>,
                     Some(f) => Srgba {
                         rgb: f.apply_srgb8(c.rgb),
                         alpha: 1.0,
+                        p3: None,
                     },
                     None => Srgba { alpha: 1.0, ..c },
                 };

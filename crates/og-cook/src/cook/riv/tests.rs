@@ -49,6 +49,7 @@ fn a_shape_draws_where_its_transforms_put_it() {
         og_ui::Srgba {
             rgb: [v; 3],
             alpha: 1.0,
+            p3: None,
         }
         .linear()
     };

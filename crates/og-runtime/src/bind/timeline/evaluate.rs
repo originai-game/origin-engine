@@ -382,6 +382,7 @@ pub(super) fn evaluate(
                         color: Some(og_ui::Srgba {
                             rgb: [byte(c.color.x), byte(c.color.y), byte(c.color.z)],
                             alpha: 1.0,
+                            p3: None,
                         }),
                         from: side[(c.from as usize).min(3)],
                         ..Default::default()

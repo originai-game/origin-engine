@@ -490,6 +490,7 @@ fn srgba(w: &str) -> Result<crate::style::Srgba, String> {
     Ok(crate::style::Srgba {
         rgb: [b(c[0]), b(c[1]), b(c[2])],
         alpha: c[3],
+        p3: None,
     })
 }
 

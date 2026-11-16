@@ -146,6 +146,7 @@ impl<'a> R<'a> {
                 Some(Srgba {
                     rgb,
                     alpha: self.f32()?,
+                    p3: None,
                 })
             }
         })

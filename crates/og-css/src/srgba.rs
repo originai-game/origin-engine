@@ -1,7 +1,7 @@
 //! An sRGB colour as a style authors it, and the conversions the UI and
 //! the renderer need.
 
-use color::{AlphaColor, DynamicColor, Srgb};
+use color::{AlphaColor, DisplayP3, DynamicColor, LinearSrgb, Srgb};
 use og_core::color::{linear_to_srgb8, srgb8_to_linear};
 
 /// An sRGB colour as a style authors it: 8-bit channels, straight alpha.
@@ -9,20 +9,38 @@ use og_core::color::{linear_to_srgb8, srgb8_to_linear};
 pub struct Srgba {
     pub rgb: [u8; 3],
     pub alpha: f32,
+    /// The colour in Display P3 (8-bit, on the sRGB curve) where it lies
+    /// outside sRGB and the output presents P3 ([`crate::color::Gamut`]):
+    /// `rgb` is then its gamut mapping into sRGB, which contrast, blending
+    /// and mixing read, and [`Self::linear`] draws this one. `None` for a
+    /// colour inside sRGB, or on an sRGB output.
+    pub p3: Option<[u8; 3]>,
 }
 
 impl Srgba {
-    /// Linear RGBA (straight alpha), what og-render's sprites and text take.
+    /// Linear RGBA (straight alpha), what og-render's sprites and text take:
+    /// a P3 colour as extended linear sRGB (a channel may be negative).
     pub fn linear(self) -> [f32; 4] {
-        let [r, g, b] = self.rgb.map(srgb8_to_linear);
+        let [r, g, b] = match self.p3 {
+            Some(p3) => {
+                let p3 = p3.map(|v| f32::from(v) / 255.0);
+                AlphaColor::<DisplayP3>::new([p3[0], p3[1], p3[2], 1.0])
+                    .convert::<LinearSrgb>()
+                    .components
+                    .first_chunk::<3>()
+                    .copied()
+                    .expect("four components")
+            }
+            None => self.rgb.map(srgb8_to_linear),
+        };
         [r, g, b, self.alpha]
     }
 
     /// The same colour with its alpha multiplied by `k` (at most opaque).
     pub fn fade(self, k: f32) -> Srgba {
         Srgba {
-            rgb: self.rgb,
             alpha: (self.alpha * k).min(1.0),
+            ..self
         }
     }
 
@@ -32,6 +50,7 @@ impl Srgba {
         Srgba {
             rgb: [r, g, b],
             alpha: 1.0,
+            p3: None,
         }
     }
 
@@ -46,11 +65,24 @@ impl Srgba {
         )
     }
 
-    /// A colour from linear RGBA (straight alpha), rounded to 8-bit sRGB.
+    /// A colour from linear RGBA (straight alpha), rounded to 8-bit sRGB;
+    /// extended linear sRGB outside sRGB (a negative channel, as
+    /// [`Self::linear`] gives a P3 colour) keeps its P3, clipped to P3.
     pub fn from_linear(c: [f32; 4]) -> Srgba {
+        let rgb = [c[0], c[1], c[2]];
+        let p3 = rgb
+            .iter()
+            .any(|v| !(-1e-4..=1.0 + 1e-4).contains(v))
+            .then(|| {
+                let p3 = AlphaColor::<LinearSrgb>::new([c[0], c[1], c[2], 1.0])
+                    .convert::<DisplayP3>()
+                    .components;
+                [p3[0], p3[1], p3[2]].map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8)
+            });
         Srgba {
-            rgb: [c[0], c[1], c[2]].map(linear_to_srgb8),
+            rgb: rgb.map(linear_to_srgb8),
             alpha: c[3].clamp(0.0, 1.0),
+            p3,
         }
     }
 
@@ -122,6 +154,7 @@ impl Srgba {
                 m(self.rgb[2], to.rgb[2]),
             ],
             alpha: self.alpha,
+            p3: None,
         }
     }
 
@@ -225,6 +258,7 @@ impl Srgba {
     pub const TRANSPARENT: Srgba = Srgba {
         rgb: [0, 0, 0],
         alpha: 0.0,
+        p3: None,
     };
 }
 
@@ -236,8 +270,15 @@ impl From<Srgba> for AlphaColor<Srgb> {
 }
 
 impl From<Srgba> for DynamicColor {
+    /// In Display P3 where the colour keeps it, so a mix of it keeps its range.
     fn from(c: Srgba) -> DynamicColor {
-        DynamicColor::from_alpha_color(AlphaColor::<Srgb>::from(c))
+        match c.p3 {
+            Some(p3) => {
+                let [r, g, b] = p3.map(|v| f32::from(v) / 255.0);
+                DynamicColor::from_alpha_color(AlphaColor::<DisplayP3>::new([r, g, b, c.alpha]))
+            }
+            None => DynamicColor::from_alpha_color(AlphaColor::<Srgb>::from(c)),
+        }
     }
 }
 
@@ -248,6 +289,7 @@ impl From<AlphaColor<Srgb>> for Srgba {
         Srgba {
             rgb: [r, g, b].map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8),
             alpha: alpha.clamp(0.0, 1.0),
+            p3: None,
         }
     }
 }

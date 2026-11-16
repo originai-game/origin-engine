@@ -403,6 +403,7 @@ pub(crate) fn srgba(c: [f32; 4], alpha: f32) -> Srgba {
     Srgba {
         rgb: [byte(c[0]), byte(c[1]), byte(c[2])],
         alpha: (c[3] * alpha).clamp(0.0, 1.0),
+        p3: None,
     }
 }
 

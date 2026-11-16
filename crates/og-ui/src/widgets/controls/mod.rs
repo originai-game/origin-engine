@@ -63,6 +63,7 @@ impl C {
         Srgba {
             rgb: [ch(self.r), ch(self.g), ch(self.b)],
             alpha: self.a.clamp(0.0, 1.0),
+            p3: None,
         }
     }
 

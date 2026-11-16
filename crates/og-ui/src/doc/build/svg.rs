@@ -214,6 +214,7 @@ pub fn cut(
                     *c = Srgba {
                         rgb: [255; 3],
                         alpha: c.alpha * lum,
+                        p3: None,
                     };
                 }
             }

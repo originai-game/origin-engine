@@ -617,11 +617,16 @@ const fn c(r: u8, g: u8, b: u8) -> Srgba {
     Srgba {
         rgb: [r, g, b],
         alpha: 1.0,
+        p3: None,
     }
 }
 
 const fn ca(r: u8, g: u8, b: u8, alpha: f32) -> Srgba {
-    Srgba { rgb: [r, g, b], alpha }
+    Srgba {
+        rgb: [r, g, b],
+        alpha,
+        p3: None,
+    }
 }
 
 macro_rules! palette {

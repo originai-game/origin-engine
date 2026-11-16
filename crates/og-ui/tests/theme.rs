@@ -149,6 +149,7 @@ fn the_tokens_glass_tints_are_og_renders_presets() {
             let want = Srgba {
                 rgb: [c[0], c[1], c[2]],
                 alpha: a.trim().parse().expect("an alpha"),
+                p3: None,
             }
             .linear();
             let (_, got) = UiGlassStyle {
@@ -397,6 +398,7 @@ fn css_tokens_and_theme_writes_share_the_same_values() {
     theme.palette.primary = Srgba {
         rgb: [17, 83, 149],
         alpha: 0.137,
+        p3: None,
     };
     theme.durations_ms.slow = 444.0;
     for bp in Breakpoint::ALL {
@@ -480,7 +482,11 @@ fn css_tokens_and_theme_writes_share_the_same_values() {
 #[test]
 fn any_seeds_keep_the_contrast_pairs() {
     let base = tokens();
-    let srgb = |rgb: [u8; 3], alpha: f32| Srgba { rgb, alpha };
+    let srgb = |rgb: [u8; 3], alpha: f32| Srgba {
+        rgb,
+        alpha,
+        p3: None,
+    };
     let hex = |s: &str| -> Option<Srgba> {
         let n = u32::from_str_radix(s.strip_prefix('#')?, 16).ok()?;
         Some(Srgba::rgb((n >> 16) as u8, (n >> 8) as u8, n as u8))

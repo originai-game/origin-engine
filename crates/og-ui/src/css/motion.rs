@@ -767,6 +767,7 @@ pub(crate) fn burst(value: &str) -> Result<(u32, f32, Option<crate::style::Srgba
             color = Some(crate::style::Srgba {
                 rgb: [b(c[0]), b(c[1]), b(c[2])],
                 alpha: c[3],
+                p3: None,
             });
         }
     }

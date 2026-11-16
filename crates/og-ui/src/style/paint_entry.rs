@@ -380,6 +380,7 @@ impl<'a> Cursor<'a> {
             ColorRef::Literal(crate::style::Srgba {
                 rgb: [255, 255, 255],
                 alpha: 1.0,
+                p3: None,
             })
         };
         match kind {
@@ -592,6 +593,7 @@ impl Effect {
                 let mut tint = ColorRef::Literal(crate::style::Srgba {
                     rgb: [0, 0, 0],
                     alpha: 0.0,
+                    p3: None,
                 });
                 let mut glass = crate::paint::GlassParts::default();
                 loop {
