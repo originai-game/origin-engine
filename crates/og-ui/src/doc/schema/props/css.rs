@@ -383,6 +383,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `scroll-padding-left` (`scroll-padding`, `-inline`, `-inline-start`).",
     },
     PropSpec {
+        name: "overflowAnchor",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `overflow-anchor: auto | none`: a scrolled container keeps what it shows in place when content above it changes size, by following an anchor box; `none` on the container turns that off, and on an element keeps it and its subtree from being the anchor.",
+    },
+    PropSpec {
         name: "scrollAxisLock",
         ty: Ty::Text,
         on: On::All,

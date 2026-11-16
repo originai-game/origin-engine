@@ -2,7 +2,8 @@
 //! `overflow` and scroll snap's type and alignment: `overscroll-behavior`
 //! (CSS Overscroll 1), `scroll-behavior`, `scroll-margin*`,
 //! `scroll-padding*` and `scroll-snap-stop` (CSS Scroll Snap 1, CSSOM
-//! View), `scroll-initial-target` (CSS Scroll Snap 2 §3), `scroll-axis-lock` (CSS Overflow 5 §4), `scrollbar-color` and `scrollbar-gutter` (CSS Scrollbars 1,
+//! View), `scroll-initial-target` (CSS Scroll Snap 2 §3), `scroll-axis-lock` (CSS Overflow 5 §4), `overflow-anchor` (CSS Scroll
+//! Anchoring 1 §3), `scrollbar-color` and `scrollbar-gutter` (CSS Scrollbars 1,
 //! CSS Overflow 3 §4).
 //!
 //! Each longhand is one reflected prop holding its CSS value as written,
@@ -14,7 +15,7 @@ use super::css::{Tok, describe, tokens};
 use crate::scroll::{Overscroll, ScrollCss};
 
 /// Each longhand's reflected prop and CSS name.
-pub(crate) const PROPS: [(&str, &str); 16] = [
+pub(crate) const PROPS: [(&str, &str); 17] = [
     ("overscrollBehaviorX", "overscroll-behavior-x"),
     ("overscrollBehaviorY", "overscroll-behavior-y"),
     ("scrollBehavior", "scroll-behavior"),
@@ -31,6 +32,7 @@ pub(crate) const PROPS: [(&str, &str); 16] = [
     ("scrollbarGutter", "scrollbar-gutter"),
     ("scrollInitialTarget", "scroll-initial-target"),
     ("scrollAxisLock", "scroll-axis-lock"),
+    ("overflowAnchor", "overflow-anchor"),
 ];
 
 const SIDES: [&str; 4] = ["Top", "Right", "Bottom", "Left"];
@@ -93,6 +95,7 @@ pub(crate) fn form(prop: &str) -> Option<&'static str> {
         "scrollbarGutter" => "auto | stable [both-edges]",
         "scrollInitialTarget" => "none | nearest",
         "scrollAxisLock" => "auto | none",
+        "overflowAnchor" => "auto | none",
         _ => return None,
     })
 }
@@ -172,6 +175,10 @@ fn check(css: &str, value: &str) -> Result<String, String> {
             w => Err(format!(
                 "scroll-initial-target: '{w}' is not none or nearest"
             )),
+        },
+        "overflowAnchor" => match word(value)?.as_str() {
+            "auto" | "none" => Ok(()),
+            w => Err(format!("overflow-anchor: '{w}' is not auto or none")),
         },
         "scrollAxisLock" => match word(value)?.as_str() {
             "auto" | "none" => Ok(()),
@@ -263,6 +270,7 @@ pub(crate) fn build<'a>(
     s.overscroll = [ov("overscrollBehaviorX"), ov("overscrollBehaviorY")];
     s.smooth = get("scrollBehavior").is_some_and(|v| v.eq_ignore_ascii_case("smooth"));
     s.snap_stop = get("scrollSnapStop").is_some_and(|v| v.eq_ignore_ascii_case("always"));
+    s.no_anchor = get("overflowAnchor").is_some_and(|v| v.eq_ignore_ascii_case("none"));
     s.free_axes = get("scrollAxisLock").is_some_and(|v| v.eq_ignore_ascii_case("none"));
     s.thin = get("scrollbarWidth").is_some_and(|v| v.eq_ignore_ascii_case("thin"));
     for (k, side) in SIDES.iter().enumerate() {

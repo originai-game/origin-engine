@@ -332,6 +332,10 @@ pub struct State {
     /// (container, target), first in tree order: their first layout
     /// takes them there. Empty between frames.
     pub initial_targets: Vec<(u64, u64)>,
+    /// Each scrolled container's scroll anchor (CSS Scroll Anchoring 1):
+    /// (container, anchor box, the anchor's top in the container's
+    /// content), chosen after last frame's layout.
+    pub scroll_anchors: Vec<(u64, u64, f32)>,
     /// A released drag's momentum: the container and its velocity per tick.
     pub fling: Option<(u64, Vec2)>,
     /// A snapping container the wheel moves and its offset before the
@@ -501,7 +505,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 25;
+const STATE_VERSION: u32 = 26;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,

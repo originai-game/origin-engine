@@ -554,6 +554,98 @@ fn transforms_place_and_hit_by_the_specs_matrices() {
     }
 }
 
+/// CSS Scroll Anchoring 1: a scrolled container keeps what it shows in
+/// place when content above it changes. In a 100px scroller of 40px rows
+/// scrolled to 100, the anchor is R2 (rows 80–120: the first box at least
+/// partly in view, with nothing inside it). A 50px block inserted above
+/// moves the offset to exactly 150 and leaves R3 drawn where it was, and
+/// removing it brings the offset back to 100. Not adjusted: under
+/// `overflow-anchor: none` on the container (R3 moves down 50), at offset 0
+/// (§2.1 step 2), or when the anchor grows below its own top (R3 moves
+/// down 40). With `overflow-anchor: none` on R2 the anchor is R3, so R2
+/// growing by 40 moves the offset by 40 instead. Ways it could fail: no
+/// anchoring, the adjustment applied twice or a frame late, the anchor's
+/// growth counted as movement, offset 0 anchored, or `none` ignored on
+/// either side.
+#[test]
+fn scroll_anchoring_keeps_the_view_when_content_above_changes() {
+    let doc = |scroller: &str, r2: &str| {
+        let text = format!(
+            r#"<meta name="component" content="t">
+<div><div id="S" style="{scroller}"><div id="Ins" class={{$ins}}></div><div id="R0" class="r"></div><div id="R1" class="r"></div><div id="R2" class={{$r2}} style="{r2}"></div><div id="R3" class="r"></div><div id="R4" class="r"></div><div id="R5" class="r"></div><div id="R6" class="r"></div><div id="R7" class="r"></div></div></div>
+<style>
+#S {{ width: 200px; height: 100px; overflow: auto; scrollbar-width: none; }}
+#Ins {{ height: 0px; }}
+#Ins.on {{ height: 50px; }}
+.r, #R2 {{ height: 40px; flex-shrink: 0; }}
+#R2.big {{ height: 80px; }}
+</style>"#
+        );
+        let mut d = crate::support::Doc::new(
+            &text,
+            &[
+                ("ins", serde_json::json!("")),
+                ("r2", serde_json::json!("")),
+            ],
+        );
+        d.step(InputFrame::default());
+        d
+    };
+    let wheel = |d: &mut crate::support::Doc, by: f32| {
+        let s = d.get("S");
+        d.step(InputFrame {
+            pointer: Vec2::new(s.x + 50.0, s.y + 50.0),
+            pointer_inside: true,
+            wheel: Vec2::new(0.0, by),
+            ..InputFrame::default()
+        });
+        d.step(InputFrame::default());
+    };
+    let offset = |d: &crate::support::Doc| {
+        let path = d.get("S").path;
+        d.ui.scroll_state(&path).unwrap().offset_y
+    };
+    // Anchored: the view stays put both ways.
+    let mut d = doc("", "");
+    wheel(&mut d, 100.0);
+    assert_eq!(offset(&d), 100.0);
+    let r3 = d.get("R3").y;
+    d.set("ins", serde_json::json!("on"));
+    assert_eq!(
+        offset(&d),
+        150.0,
+        "follows the anchor down by the insertion"
+    );
+    assert_eq!(d.get("R3").y, r3, "R3 stays where it was drawn");
+    d.set("ins", serde_json::json!(""));
+    assert_eq!(offset(&d), 100.0, "and back up when it goes");
+    assert_eq!(d.get("R3").y, r3);
+    // The anchor growing below its top moves nothing above it.
+    d.set("r2", serde_json::json!("big"));
+    assert_eq!(offset(&d), 100.0, "the anchor's own growth is not movement");
+    assert_eq!(d.get("R3").y, r3 + 40.0);
+    // overflow-anchor: none on the container.
+    let mut d = doc("overflow-anchor: none", "");
+    wheel(&mut d, 100.0);
+    let r3 = d.get("R3").y;
+    d.set("ins", serde_json::json!("on"));
+    assert_eq!(offset(&d), 100.0, "none: no anchoring");
+    assert_eq!(d.get("R3").y, r3 + 50.0);
+    // At offset 0 nothing is anchored.
+    let mut d = doc("", "");
+    let r1 = d.get("R1").y;
+    d.set("ins", serde_json::json!("on"));
+    assert_eq!(offset(&d), 0.0, "at its start the content moves");
+    assert_eq!(d.get("R1").y, r1 + 50.0);
+    // overflow-anchor: none on R2 makes R3 the anchor.
+    let mut d = doc("", "overflow-anchor: none");
+    wheel(&mut d, 100.0);
+    let r3 = d.get("R3").y;
+    d.set("r2", serde_json::json!("big"));
+    assert_eq!(offset(&d), 140.0, "R3 anchors past an excluded R2");
+    assert_eq!(d.get("R3").y, r3);
+}
+
 /// CSS Overflow 5 §4 `scroll-axis-lock`: a drag on a scroller with room
 /// both ways keeps to the axis its first move runs along when that move is
 /// within a 2:1 slope of it, the other axis's delta dropped for the whole

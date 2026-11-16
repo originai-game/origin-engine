@@ -574,7 +574,13 @@ again once); a target added to a container already shown does not move
 it, and floating layers' containers are not covered. A drag on a
 container that scrolls both ways keeps to the axis its first move runs
 along, within a 2:1 slope of it, until released (saved UI state);
-`scroll-axis-lock: none` (Overflow 5) lets it move freely. A modal
+`scroll-axis-lock: none` (Overflow 5) lets it move freely. A container
+scrolled down from its start follows an anchor box (Scroll Anchoring 1):
+the first box in view, searched inside the first one only partly in
+view; when content above it changes size, the offset moves by as much on
+the same frame (saved UI state). `overflow-anchor: none` turns it off on
+a container and keeps a subtree from anchoring; snapping containers and
+floating layers are not anchored. A modal
 `<dialog data-detents="40% 90%">` is a
 bottom sheet (full width, opened at its first detent, dragged between
 detents, swiped down to close, writing `open` back); `data-edge=
