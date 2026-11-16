@@ -74,7 +74,7 @@
 
 use crate::support::{Doc, with_doc};
 use og_core::glam::Vec2;
-use og_ui::{ImageAlpha, InputFrame};
+use og_ui::{ImageAlpha, InputFrame, UiKey};
 
 fn wh(d: &Doc, id: &str) -> (f32, f32) {
     let e = d.get(id);
@@ -3068,4 +3068,67 @@ fn column_height_wraps_columns_into_rows() {
         );
         assert_eq!(d.get("Sh").height, 40.0, "a short row keeps its height");
     });
+}
+
+/// CSS Display 4 §3: Tab follows a container's `reading-flow`, each
+/// item's `reading-order` first: `flex-visual` by where the items are,
+/// `grid-columns` down each column, `source-order` by the source with
+/// `reading-order` over it; `normal` keeps the source. A change to a
+/// reading key alone (`order`, `reading-order`) moves the Tab order on.
+///
+/// Ways it could fail: the flow ignored (Tab A B C), the visual order read
+/// from the source or from `order` alone, grid rows read for columns (X Y
+/// Z W), a `reading-order` change that moves no box left with the old
+/// order, or `order` read in a `normal` container.
+#[test]
+fn tab_follows_reading_flow() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="F" class:swap={$swap}><button id="A">a</button><button id="B">b</button><button id="C">c</button></div>
+  <div id="G"><button id="X">x</button><button id="Y">y</button><button id="Z">z</button><button id="W">w</button></div>
+  <div id="S"><button id="S1">s</button><button id="S2" class:late={$late}>s</button></div>
+  <div id="N"><button id="N1">n</button><button id="N2">n</button></div>
+</div></div>
+<style>
+#F { display: flex; reading-flow: flex-visual; }
+#C { order: -1; }
+#F.swap #A { order: 5; }
+#G { display: grid; grid-template-columns: 40px 40px; reading-flow: grid-columns; }
+#S { display: flex; reading-flow: source-order; }
+#S2.late { reading-order: -1; }
+#N { display: flex; }
+#N2 { order: -1; }
+</style>"#;
+    let mut d = Doc::new(
+        text,
+        &[
+            ("swap", serde_json::json!(false)),
+            ("late", serde_json::json!(false)),
+        ],
+    );
+    d.step(InputFrame::default());
+    // Eleven presses round from the focus, as ids, from C on.
+    let round = |d: &mut Doc| {
+        let mut seen = Vec::new();
+        for _ in 0..11 {
+            d.step(InputFrame {
+                keys: vec![UiKey::Tab],
+                ..InputFrame::default()
+            });
+            let path = d.ui.focus_path(0).to_owned();
+            seen.push(path.rsplit('/').next().unwrap_or("").to_owned());
+        }
+        let c = seen.iter().position(|s| s == "C").unwrap_or(0);
+        seen.rotate_left(c);
+        seen.join(" ")
+    };
+    assert_eq!(round(&mut d), "C A B X Z Y W S1 S2 N1 N2");
+    d.set("late", serde_json::json!(true));
+    assert_eq!(
+        round(&mut d),
+        "C A B X Z Y W S2 S1 N1 N2",
+        "reading-order alone"
+    );
+    d.set("swap", serde_json::json!(true));
+    assert_eq!(round(&mut d), "C B A X Z Y W S2 S1 N1 N2", "order swapped");
 }

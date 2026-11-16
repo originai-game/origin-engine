@@ -49,6 +49,8 @@ What every kind takes: its box, layout, paint, motion and input.
 | `flex-shrink:` | `<number>` | How much it gives up when a flex line overflows (CSS `flex-shrink`). |
 | `flex-basis:` | `auto \| fit-content \| fit-content(<n>px) \| min-content \| max-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) \| round(…) …` | Its size in a flex line before the free space is shared (CSS `flex-basis`). |
 | `order:` | `<number>` | Its place among its flex or grid siblings (CSS `order`). |
+| `reading-flow:` | `normal \| flex-visual \| flex-flow \| grid-rows \| grid-columns \| grid-order \| source-order` | The order Tab moves through a flex or grid container's items in (CSS `reading-flow`): by their places on screen (`flex-visual`, `grid-rows`, `grid-columns`), by `order` (`flex-flow`, `grid-order`) or the source (`source-order`), each item's `reading-order` first; `normal` keeps the source order. Pointer hits and arrow moves keep the source order. |
+| `reading-order:` | `<number>` | Its place among its siblings in its parent's `reading-flow` (CSS `reading-order`), lower first; ties keep the flow's order. |
 | `align-self:` | `start \| center \| end \| stretch \| baseline \| last-baseline` | Where it sits across its flex line or down its grid area, over its parent's (CSS `align-self`). |
 | `justify-self:` | `start \| center \| end \| stretch \| baseline \| last-baseline` | Where it sits across its grid area or its absolute box, over its parent's (CSS `justify-self`). |
 | `background:` | `var(--<role>) \| #rrggbb[aa]` | Its fill. |

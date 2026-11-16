@@ -47,6 +47,7 @@ impl Ui {
                 players: 1,
                 vcursor: None,
                 request_focus: 0,
+                reading: None,
                 gesture: false,
                 resize_moved: None,
                 text_target: None,

@@ -14,6 +14,7 @@ pub(crate) mod float;
 pub mod flow;
 pub(crate) mod multicol;
 mod node;
+pub(crate) mod reading;
 mod table;
 mod text;
 #[doc(hidden)]
@@ -34,6 +35,7 @@ pub(crate) use node::{
     step_tracking, text_features,
 };
 pub use node::{Family, FontRole};
+pub use reading::ReadingFlow;
 pub(crate) use table::{Table, derive_table, shown_children};
 pub(crate) use text::text_preferred;
 use text::*;
@@ -676,6 +678,12 @@ pub struct Element {
     pub justify_self: Option<Cross>,
     /// CSS `column-gap` and `row-gap` over `gap`.
     pub gaps: [Option<f32>; 2],
+    /// CSS `reading-flow`: the order sequential focus moves through its
+    /// items in, a flex or grid container's ([`crate::layout::reading`]).
+    pub reading_flow: ReadingFlow,
+    /// CSS `reading-order`: its place among its siblings in its parent's
+    /// reading flow, before the flow's own order.
+    pub reading_order: i32,
     /// Its CSS flex factors in a flex line (`None`: its `width`/`height`
     /// kind sizes it).
     pub flex: Option<FlexItem>,

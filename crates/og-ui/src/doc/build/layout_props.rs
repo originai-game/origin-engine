@@ -78,6 +78,9 @@ impl Ui {
                 *gap = Some(g);
             }
         }
+        if let Some(w) = r.str("readingFlow") {
+            el.reading_flow = crate::layout::ReadingFlow::from_word(w).unwrap_or_default();
+        }
         // CSS Multi-column: a column count or width makes it a
         // multi-column container; its gap is the column gap (`normal`: 1em).
         let px = |v: &str| match v {
@@ -255,6 +258,7 @@ impl Ui {
             }
         });
         el.order = r.num("order").unwrap_or(0.0) as i32;
+        el.reading_order = r.num("readingOrder").unwrap_or(0.0) as i32;
         el.align_self = r.str("alignSelf").map(cross_of);
         let logical = matches!(r.str("alignSelf"), Some("start" | "end")) && !r.flag("selfFlex");
         el.cross_logical = (el.cross_logical & !2) | u8::from(logical) << 1;

@@ -197,12 +197,9 @@ impl Ui {
     /// The controls keys and pads reach on the last frame's screen, in
     /// the order navigation walks them.
     fn reach(&self) -> Vec<u64> {
-        let top = self.interaction.state.scope;
         self.interaction
-            .state
-            .hits
+            .focusables()
             .iter()
-            .filter(|h| h.has(HIT_NAV | HIT_TEXT) && (top == 0 || h.scope == top))
             .map(|h| h.key)
             .collect()
     }

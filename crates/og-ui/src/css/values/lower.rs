@@ -254,6 +254,26 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
             }
             v => Err(format!("order takes an integer, not '{}'", describe(&v))),
         },
+        // CSS Display 4 §3.1, §3.2.
+        "reading-flow" => {
+            let tok = one(&t, name)?;
+            let w = want_ident(&tok, "a reading flow")?;
+            match crate::layout::ReadingFlow::from_word(&camel(w)) {
+                Some(_) => Ok(vec![e("readingFlow", vec![Value::Word(camel(w))])]),
+                None => Err(format!(
+                    "'{w}' is not a reading-flow: normal, flex-visual, flex-flow, grid-rows, grid-columns, grid-order or source-order"
+                )),
+            }
+        }
+        "reading-order" => match one(&t, name)? {
+            Tok::Num(n, u) if u.is_empty() && !n.contains('.') => {
+                Ok(vec![e("readingOrder", vec![number(&n)?])])
+            }
+            v => Err(format!(
+                "reading-order takes an integer, not '{}'",
+                describe(&v)
+            )),
+        },
         "gap" => lower_gap(t),
         "row-gap" | "column-gap" => lower_gap_axis(name, t),
         "justify-content" | "align-content" | "align-items" | "align-self" | "justify-items"

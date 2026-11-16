@@ -1144,13 +1144,43 @@ impl Ui {
                 hits_changed |= self.hit_step(i, touch_min, screen);
             }
         }
+        // A reading key changed alone (`order`, `reading-order`, a grid
+        // placement that moved no hit): the written node is a reading
+        // container's item, or one is laid out (CSS Display 4 §3).
+        let reads = |i: usize| {
+            let u = &self.tree.nodes[i].layout.used;
+            u.reading_flow != crate::layout::ReadingFlow::Normal || u.reading_order != 0
+        };
+        let reading =
+            self.interaction.reading.is_some() || self.tree.emitted.iter().any(|&i| reads(i));
+        hits_changed |= reading && !self.tree.emitted.is_empty();
         let o = &self.tree.orders;
-        if hits_changed || self.interaction.state.hits.is_empty() {
+        let rebuilt = hits_changed || self.interaction.state.hits.is_empty();
+        if rebuilt {
             self.interaction.state.hits = o
                 .hit_nodes
                 .iter()
                 .flat_map(|&i| o.hit_of[i].iter().copied())
                 .collect();
+        }
+        // Sequential focus in each `reading-flow` container's order: its
+        // own list, so pointer hits keep the tree's. Nothing to do while
+        // no container is written or kept.
+        if reading && rebuilt {
+            let mut seq = o.hit_nodes.clone();
+            let rtl = self.env.direction == og_i18n::Direction::Rtl;
+            self.interaction.reading =
+                crate::layout::reading::reorder(&self.tree.nodes, &mut seq, rtl).then(|| {
+                    let mut first = vec![0u32; self.tree.nodes.len()];
+                    let mut at = 0u32;
+                    for &i in &o.hit_nodes {
+                        first[i] = at;
+                        at += o.hit_of[i].len() as u32;
+                    }
+                    seq.iter()
+                        .flat_map(|&i| first[i]..first[i] + o.hit_of[i].len() as u32)
+                        .collect()
+                });
         }
         self.out
             .warnings

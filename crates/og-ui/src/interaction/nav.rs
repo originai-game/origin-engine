@@ -907,14 +907,20 @@ impl crate::ui::Interaction {
     }
 
     /// The focusable controls of last frame in reading order, inside the open scope.
+    /// A `reading-flow` container's items in its reading order.
     pub(crate) fn focusables(&self) -> Vec<Hit> {
         let scope = self.state.scope;
-        self.state
-            .hits
-            .iter()
-            .filter(|h| h.has(HIT_NAV | HIT_TEXT) && (scope == 0 || h.scope == scope))
-            .copied()
-            .collect()
+        let keep = |h: &&Hit| h.has(HIT_NAV | HIT_TEXT) && (scope == 0 || h.scope == scope);
+        let hits = &self.state.hits;
+        match &self.reading {
+            Some(order) if order.len() == hits.len() => order
+                .iter()
+                .map(|&k| &hits[k as usize])
+                .filter(keep)
+                .copied()
+                .collect(),
+            _ => hits.iter().filter(keep).copied().collect(),
+        }
     }
 
     /// Pad `pad`'s focusable controls (0: the keyboard's and the

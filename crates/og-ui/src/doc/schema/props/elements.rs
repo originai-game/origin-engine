@@ -226,6 +226,24 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Its place among its flex or grid siblings (CSS `order`)."
     ),
     p!(
+        "readingFlow",
+        Ty::Word(&[
+            "normal",
+            "flexVisual",
+            "flexFlow",
+            "gridRows",
+            "gridColumns",
+            "gridOrder",
+            "sourceOrder",
+        ]),
+        "The order Tab moves through a flex or grid container's items in (CSS `reading-flow`): by their places on screen (`flex-visual`, `grid-rows`, `grid-columns`), by `order` (`flex-flow`, `grid-order`) or the source (`source-order`), each item's `reading-order` first; `normal` keeps the source order. Pointer hits and arrow moves keep the source order."
+    ),
+    p!(
+        "readingOrder",
+        Ty::Num,
+        "Its place among its siblings in its parent's `reading-flow` (CSS `reading-order`), lower first; ties keep the flow's order."
+    ),
+    p!(
         "alignSelf",
         Ty::Word(&[
             "start",

@@ -424,6 +424,10 @@ pub struct Interaction {
     pub(crate) vcursor: Option<crate::vcursor::VirtualCursorDesc>,
     /// The control a widget asked to focus this frame.
     pub(crate) request_focus: u64,
+    /// `state.hits`' order for sequential focus where a container's
+    /// `reading-flow` changes it, as indices into them (`None`: theirs;
+    /// [`crate::layout::reading`]). Pointer hits keep the tree's order.
+    pub(crate) reading: Option<Vec<u32>>,
     /// Two touches move a scroller this tick: the primary pointer
     /// presses nothing.
     pub(crate) gesture: bool,
