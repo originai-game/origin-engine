@@ -805,7 +805,7 @@ impl Ui {
                 let initial = match (source.kind, display) {
                     (Some(Kind::Box), "flex") => "row",
                     (Some(Kind::Box), _)
-                        if source.tag == Some("li")
+                        if r.str("display") == Some("listItem")
                             && r.str("markerPosition") == Some("inside") =>
                     {
                         "row"

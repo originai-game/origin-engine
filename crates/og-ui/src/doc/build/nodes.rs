@@ -33,9 +33,19 @@ fn css_text<'a>(r: &Resolved, language: &str, raw: &'a str) -> std::borrow::Cow<
 pub(crate) enum Inner<'a> {
     /// Its children; a virtual container's with the props its rows take.
     Children(Option<Box<Props>>),
+    /// Those of its children in this range: a disclosure's `<summary>` in
+    /// its header, the rest in its content.
+    Range(std::ops::Range<usize>),
     /// An element image of its filters (`<feImage href="#id">`,
     /// [`Ui::build_element_images`]).
     Image(&'a mut super::svg::ElementImage),
+}
+
+/// Whether disclosure `n`'s first child is its `<summary>`.
+fn summary_of(b: &Build<'_>, n: &DocNode) -> bool {
+    n.children
+        .first()
+        .is_some_and(|&c| b.doc.nodes[c].selector_tag.as_deref() == Some("summary"))
 }
 
 impl Ui {
@@ -312,6 +322,15 @@ impl Ui {
             {
                 self.world_effects(b, n, styled, last, &path);
             }
+        }
+        // A text list item's marker outside hangs before it, a sibling
+        // anchored to it; inside it is the text's first run
+        // (`generated_text`).
+        if kind == Kind::Label
+            && styled.str("display") == Some("listItem")
+            && styled.str("markerPosition") != Some("inside")
+        {
+            self.item_marker(b, n, styled, &format!("{id}::marker"), &path);
         }
         self.popover_invoker(b, styled, key, resp);
         self.docs.note_built(built);
@@ -593,7 +612,8 @@ impl Ui {
                 Shell::Dialog
             }
             Kind::Details => {
-                (opened, shows_content) = self.doc_details(b, id, &path, key, r, &open_now, opened);
+                (opened, shows_content) =
+                    self.doc_details(b, n, id, &path, key, r, &open_now, opened, &mut build_inner);
                 Shell::Details
             }
             Kind::Button => {
@@ -707,59 +727,8 @@ impl Ui {
         }
         // A list item: an `<li>`, numbered by its list, or any box with
         // `display: list-item`, numbered by the run's `list-item` counter.
-        let li = n.selector_tag.as_deref() == Some("li");
         if kind == Kind::Box && r.str("display") == Some("listItem") {
-            let marker = r.str("markerType").unwrap_or("disc");
-            let ordinal = if li {
-                r.ordinal.unwrap_or(1)
-            } else {
-                self.docs.state_mut().run.read("list-item").unwrap_or(1)
-            };
-            // `::marker { content }` replaces the list style's text;
-            // its color inks either.
-            let (content, ink) = self.marker_override(b, n, r);
-            // The style's text without its suffix's trailing space: the
-            // marker's gap stands for it.
-            let style = (marker != "none").then(|| {
-                crate::doc::generated::marker(ordinal, marker, &b.doc.sheet)
-                    .trim_end()
-                    .to_string()
-            });
-            let inside = r.str("markerPosition") == Some("inside");
-            // `list-style-image`: the picture stands for the marker.
-            let picture = r
-                .str("markerImage")
-                .and_then(|v| crate::doc::lists::image(v).ok().flatten());
-            if let Some(name) = picture.filter(|_| content.is_none()) {
-                let text = if inside { "\u{FFFC}\u{a0}" } else { "\u{FFFC}" };
-                let span = crate::TextSpan {
-                    name: "marker".into(),
-                    position: 0,
-                    length: 1,
-                    properties: Default::default(),
-                };
-                let style = crate::TextSpanStyle {
-                    atom: Some(crate::rich::InlineAtom::Image(name)),
-                    ..Default::default()
-                };
-                self.rich_text_spans(
-                    "Marker",
-                    text,
-                    std::slice::from_ref(&span),
-                    crate::RichTextDesc::default(),
-                    |_| style.clone(),
-                );
-            } else {
-                match content {
-                    Some(Some(text)) => self.list_marker(&path, "decimal", &text, inside, ink),
-                    Some(None) => {}
-                    None => {
-                        if let Some(text) = style {
-                            self.list_marker(&path, marker, &text, inside, ink);
-                        }
-                    }
-                }
-            }
+            self.item_marker(b, n, r, "Marker", &path);
         }
         if let Some(id) = r.str("rive") {
             let at = self.tree.parent();
@@ -804,7 +773,12 @@ impl Ui {
             }
             let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
             self.generated_box(b, n, r, &path, true, &mut build_inner);
-            build_inner(self, b, Inner::Children(None));
+            // A disclosure's `<summary>` is in its header.
+            if kind == Kind::Details && summary_of(b, n) {
+                build_inner(self, b, Inner::Range(1..usize::MAX));
+            } else {
+                build_inner(self, b, Inner::Children(None));
+            }
             self.generated_box(b, n, r, &path, false, &mut build_inner);
             b.inherited = inherited;
         }
@@ -883,12 +857,14 @@ impl Ui {
     pub(crate) fn doc_details(
         &mut self,
         b: &mut Build<'_>,
+        n: &DocNode,
         id: &String,
         path: &str,
         key: u64,
         r: &Resolved,
         open_now: &impl Fn(&mut Ui) -> bool,
         mut opened: Option<bool>,
+        build_inner: &mut dyn FnMut(&mut Ui, &mut Build<'_>, Inner<'_>),
     ) -> (Option<bool>, bool) {
         let mut open = open_now(self);
         // An exclusive accordion (`<details name>`): the open one
@@ -901,6 +877,9 @@ impl Ui {
         let holder = group.map_or(0, |g| self.anim(g).h);
         let closing = open && holder != 0 && holder != key;
         open &= !closing;
+        // Its `<summary>`, a list item whose marker its style draws.
+        let own = summary_of(b, n);
+        let mut summary = |ui: &mut Ui| build_inner(ui, b, Inner::Range(0..1));
         let out = self.open_details(
             id.as_str(),
             &crate::widgets::DetailsDesc {
@@ -909,6 +888,7 @@ impl Ui {
                 disabled: r.flag("disabled"),
                 width: r.size("width"),
             },
+            own.then_some(&mut summary as &mut dyn FnMut(&mut Ui)),
         );
         // `::details-content` styles the content box the disclosure just
         // opened (its rules over the disclosure's own padding and gap).

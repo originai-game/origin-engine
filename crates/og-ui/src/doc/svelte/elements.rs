@@ -71,7 +71,7 @@ impl Parser {
             "option" | "optgroup" => {
                 return Err((at, format!("<{tag}> belongs inside a <select>")));
             }
-            "summary" => {
+            "summary" if self.parent_tag(parent) != Some("details") => {
                 return Err((at, "<summary> is the first child of a <details>".into()));
             }
             "datalist" => {
@@ -177,7 +177,9 @@ impl Parser {
                                     "a <details> takes one <summary>, as its first child".into(),
                                 ));
                             }
-                            summary = Some((text_value(inner, *at)?, *at));
+                            // Its text names the disclosure's button.
+                            summary = Some((text_value(inner, *at).ok().flatten(), *at));
+                            rest.insert(0, child.clone());
                         }
                         other => rest.push(other.clone()),
                     }
@@ -327,7 +329,7 @@ impl Parser {
             }
             "label" if label_for.is_some() => Some(Kind::Label),
             "div" | "section" | "header" | "footer" | "nav" | "main" | "aside" | "article"
-            | "ul" | "ol" | "li" | "menu" => Some(Kind::Box),
+            | "ul" | "ol" | "li" | "menu" | "summary" => Some(Kind::Box),
             "img" => Some(Kind::Image),
             "video" => Some(Kind::Video),
             "audio" => Some(Kind::Audio),

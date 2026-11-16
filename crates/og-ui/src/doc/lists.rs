@@ -27,6 +27,8 @@ use serde_json::Value;
 pub(super) const UA_CSS: &str = "
 ul, ol { padding: 0 0 0 40px; }
 li { display: list-item; }
+summary { display: list-item; counter-increment: list-item 0; list-style: disclosure-closed inside; }
+details[open] > summary { list-style-type: disclosure-open; }
 ul { list-style-type: disc; }
 ol { list-style-type: decimal; }
 ul ul, ol ul { list-style-type: circle; }
@@ -234,5 +236,8 @@ pub fn ordinal<T: Tree>(tree: &T, id: &T::Id, filter: &[Selector], values: bool)
 /// `none` and the bullets drawn as shapes (which no `@counter-style` may
 /// redefine).
 pub fn numbered(kind: &str) -> bool {
-    !matches!(kind, "none" | "disc" | "circle" | "square")
+    !matches!(
+        kind,
+        "none" | "disc" | "circle" | "square" | "disclosure-open" | "disclosure-closed"
+    )
 }
