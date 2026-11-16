@@ -1,11 +1,859 @@
-//! Parsed scoped selectors. Functional pseudo-classes contribute their argument
-//! specificity (`:where` contributes zero), not punctuation counts. Sibling
-//! combinators and structural pseudo-classes depend on the instantiated tree, so
-//! [`Selector::structural`] selectors are matched at runtime (`super::matching`)
-//! instead of being lowered to a reactive predicate here.
+//! Selectors, parsed and matched by Servo's `selectors` crate
+//! (third_party/selectors) over og's [`OgImpl`]: its interaction states,
+//! `:lang()`, `:dir()`, `:state()`, `:defined` and `:any-link`. Specificity
+//! is the crate's (Selectors 4 §16). Sibling combinators and structural
+//! pseudo-classes depend on the instantiated tree, so [`Selector::structural`]
+//! selectors are matched at runtime (`super::matching`) instead of being
+//! lowered to a reactive predicate here.
 use super::{NONE, UiDocument, syntax::Attr};
 use crate::bind::{AttrOp, AttrTest, Expr, InteractionState, Op};
-use cssparser::{ParseError, Parser, Token};
+use cssparser::{ParseError, ParseErrorKind, Parser as CssParser, ToCss, Token};
+use selectors::attr::{AttrSelectorOperator, ParsedAttrSelectorOperation, ParsedCaseSensitivity};
+use selectors::parser::{self as sp, SelectorParseErrorKind};
+use std::fmt;
+
+pub use selectors::parser::Combinator;
+/// One simple selector or combinator of a parsed selector.
+pub type Component = sp::Component<OgImpl>;
+/// A selector as the crate holds it.
+pub type Inner = sp::Selector<OgImpl>;
+
+/// An identifier, attribute value or tag name in a selector.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Atom(pub String);
+
+impl From<&str> for Atom {
+    fn from(s: &str) -> Self {
+        Atom(s.into())
+    }
+}
+
+impl AsRef<str> for Atom {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::borrow::Borrow<str> for Atom {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+
+impl ToCss for Atom {
+    fn to_css<W: fmt::Write>(&self, dest: &mut W) -> fmt::Result {
+        cssparser::serialize_identifier(&self.0, dest)
+    }
+}
+
+impl precomputed_hash::PrecomputedHash for Atom {
+    fn precomputed_hash(&self) -> u32 {
+        // FNV-1a: stable across runs, so matching stays deterministic.
+        self.0.bytes().fold(0x811c_9dc5, |h: u32, b| {
+            (h ^ u32::from(b)).wrapping_mul(0x0100_0193)
+        })
+    }
+}
+
+/// og's pseudo-classes beside the crate's own (`:root`, `:empty`, `:scope`,
+/// the `:nth-*` family, `:not()`, `:is()`, `:where()` and `:has()`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PseudoClass {
+    State(InteractionState),
+    /// `:lang(…)`: the nearest `lang` of the element or an ancestor, else
+    /// the locale.
+    Lang(Box<[String]>),
+    /// `:dir(rtl)` (true) or `:dir(ltr)`: the nearest `dir`, else the
+    /// locale's direction.
+    Dir(bool),
+    /// `:state(name)`: the element's `state:name={…}` is truthy.
+    Custom(Atom),
+    /// `:defined`: every element is.
+    Defined,
+    /// `:any-link` and `:link`: an `<a>` or `<area>` with an `href`.
+    AnyLink,
+}
+
+impl ToCss for PseudoClass {
+    fn to_css<W: fmt::Write>(&self, dest: &mut W) -> fmt::Result {
+        match self {
+            PseudoClass::State(state) => write!(dest, ":{}", state_name(*state)),
+            PseudoClass::Lang(ranges) => {
+                dest.write_str(":lang(")?;
+                for (i, range) in ranges.iter().enumerate() {
+                    if i > 0 {
+                        dest.write_str(", ")?;
+                    }
+                    cssparser::serialize_string(range, dest)?;
+                }
+                dest.write_str(")")
+            }
+            PseudoClass::Dir(rtl) => dest.write_str(if *rtl { ":dir(rtl)" } else { ":dir(ltr)" }),
+            PseudoClass::Custom(name) => {
+                dest.write_str(":state(")?;
+                name.to_css(dest)?;
+                dest.write_str(")")
+            }
+            PseudoClass::Defined => dest.write_str(":defined"),
+            PseudoClass::AnyLink => dest.write_str(":any-link"),
+        }
+    }
+}
+
+impl sp::NonTSPseudoClass for PseudoClass {
+    fn is_active_or_hover(&self) -> bool {
+        matches!(
+            self,
+            PseudoClass::State(InteractionState::Hover | InteractionState::Active)
+        )
+    }
+
+    fn is_user_action_state(&self) -> bool {
+        use InteractionState::*;
+        matches!(
+            self,
+            PseudoClass::State(Hover | Active | Focus | FocusVisible | FocusWithin)
+        )
+    }
+}
+
+/// og selectors take no pseudo-elements but `::part()`, which the crate
+/// parses itself; `::before` and the like are read off a rule before its
+/// selector is parsed (`stylesheet::pseudo_element`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PseudoElement {}
+
+impl ToCss for PseudoElement {
+    fn to_css<W: fmt::Write>(&self, _: &mut W) -> fmt::Result {
+        match *self {}
+    }
+}
+
+impl sp::PseudoElement for PseudoElement {}
+
+/// og's selector vocabulary for the crate.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OgImpl;
+
+impl sp::SelectorImpl for OgImpl {
+    type ExtraMatchingData<'a> = ();
+    type AttrValue = Atom;
+    type Identifier = Atom;
+    type LocalName = Atom;
+    type NamespaceUrl = Atom;
+    type NamespacePrefix = Atom;
+    type BorrowedNamespaceUrl = str;
+    type BorrowedLocalName = str;
+    type NonTSPseudoClass = PseudoClass;
+    type PseudoElement = PseudoElement;
+}
+
+/// A parse error: the crate's, or og's own message.
+#[derive(Clone, Debug)]
+pub enum OgError {
+    Kind(SelectorParseErrorKind),
+    Message(String),
+}
+
+impl From<SelectorParseErrorKind> for OgError {
+    fn from(kind: SelectorParseErrorKind) -> Self {
+        OgError::Kind(kind)
+    }
+}
+
+fn message(text: impl Into<String>) -> ParseError<OgError> {
+    ParseError::custom(OgError::Message(text.into()))
+}
+
+struct OgParser;
+
+impl<'i> sp::Parser<'i> for OgParser {
+    type Impl = OgImpl;
+    type Error = OgError;
+
+    fn parse_part(&self) -> bool {
+        true
+    }
+
+    fn parse_nth_child_of(&self) -> bool {
+        true
+    }
+
+    fn parse_is_and_where(&self) -> bool {
+        true
+    }
+
+    fn parse_has(&self) -> bool {
+        true
+    }
+
+    /// An argument that does not parse is an error, not a dropped
+    /// alternative: an author sees the typo.
+    fn allow_forgiving_selectors(&self) -> bool {
+        false
+    }
+
+    fn parse_non_ts_pseudo_class(&self, name: &str) -> Result<PseudoClass, ParseError<OgError>> {
+        let name = name.to_ascii_lowercase();
+        if let Some(state) = state(&name) {
+            return Ok(PseudoClass::State(state));
+        }
+        match name.as_str() {
+            "defined" => Ok(PseudoClass::Defined),
+            "any-link" | "link" => Ok(PseudoClass::AnyLink),
+            _ => Err(message(format!(
+                "unsupported pseudo-class :{name}; see the selector list in docs/ui.md §2.4"
+            ))),
+        }
+    }
+
+    fn parse_non_ts_functional_pseudo_class(
+        &self,
+        name: &str,
+        input: &mut CssParser<'i>,
+        _after_part: bool,
+    ) -> Result<PseudoClass, ParseError<OgError>> {
+        match name.to_ascii_lowercase().as_str() {
+            "lang" => {
+                let ranges = input.parse_comma_separated(|input| {
+                    Ok(match input.next()? {
+                        Token::Ident(v) | Token::QuotedString(v) => v.to_string(),
+                        _ => return Err(message(":lang() takes language ranges")),
+                    })
+                })?;
+                Ok(PseudoClass::Lang(ranges.into()))
+            }
+            "dir" => {
+                let word = input.expect_ident()?.to_ascii_lowercase();
+                match word.as_str() {
+                    "rtl" => Ok(PseudoClass::Dir(true)),
+                    "ltr" => Ok(PseudoClass::Dir(false)),
+                    _ => Err(message(format!(":dir() takes ltr or rtl, not {word}"))),
+                }
+            }
+            "state" => Ok(PseudoClass::Custom(input.expect_ident()?.as_ref().into())),
+            name => Err(message(format!(
+                "unsupported pseudo-class :{name}(); supported functions are :not(), :is(), :where(), :has(), :nth-child(), :nth-last-child(), :nth-of-type(), :nth-last-of-type(), :lang(), :dir() and :state()"
+            ))),
+        }
+    }
+
+    fn parse_pseudo_element(&self, name: &str) -> Result<PseudoElement, ParseError<OgError>> {
+        Err(message(format!(
+            "unsupported pseudo-element ::{name}; use ::part(name)"
+        )))
+    }
+}
+
+const STATES: &[(&str, InteractionState)] = {
+    use InteractionState::*;
+    &[
+        ("hover", Hover),
+        ("active", Active),
+        ("focus", Focus),
+        ("focus-visible", FocusVisible),
+        ("focus-within", FocusWithin),
+        ("disabled", Disabled),
+        ("enabled", Enabled),
+        ("checked", Checked),
+        ("selected", Selected),
+        ("invalid", Invalid),
+        ("valid", Valid),
+        ("user-invalid", UserInvalid),
+        ("placeholder-shown", PlaceholderShown),
+        ("required", Required),
+        ("optional", Optional),
+        ("read-only", ReadOnly),
+        ("read-write", ReadWrite),
+        ("in-range", InRange),
+        ("out-of-range", OutOfRange),
+        ("indeterminate", Indeterminate),
+        ("default", Default),
+        ("open", Open),
+        ("popover-open", PopoverOpen),
+        ("modal", Modal),
+        ("target", Target),
+    ]
+};
+
+pub(crate) fn state(name: &str) -> Option<InteractionState> {
+    STATES.iter().find(|(n, _)| *n == name).map(|(_, s)| *s)
+}
+
+fn state_name(state: InteractionState) -> &'static str {
+    STATES
+        .iter()
+        .find(|(_, s)| *s == state)
+        .map_or("", |(n, _)| n)
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Specificity(pub u32, pub u32, pub u32);
+
+impl From<u32> for Specificity {
+    fn from(v: u32) -> Self {
+        Self(v >> 20, (v >> 10) & 0x3ff, v & 0x3ff)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Selector {
+    pub source: String,
+    /// A global stylesheet may match across component document boundaries.
+    pub global: bool,
+    pub inner: Inner,
+    /// Attribute tests after `::part()`: a text span's properties
+    /// (`text::part(name)[rarity="rare"]`, `super::spans`), which the
+    /// crate does not parse. Each counts as an attribute selector.
+    pub span: u32,
+}
+
+/// The selector without the attribute tests that follow its `::part()`,
+/// and how many there were ([`Selector::span`]).
+fn span_tests(item: &str) -> (String, u32) {
+    let mut input = CssParser::new(item);
+    let mut colons = 0;
+    let mut after = None;
+    while let Ok(token) = input.next_including_whitespace() {
+        match token {
+            Token::Colon => colons += 1,
+            Token::Function(name) if colons == 2 && name.eq_ignore_ascii_case("part") => {
+                let _ = input.parse_nested_block(|i| {
+                    while i.next().is_ok() {}
+                    Ok::<(), ParseError<()>>(())
+                });
+                after = Some(input.position().byte_index());
+                break;
+            }
+            _ => colons = 0,
+        }
+    }
+    let Some(after) = after else {
+        return (item.to_string(), 0);
+    };
+    let (mut text, mut tests) = (item[..after].to_string(), 0);
+    loop {
+        let start = input.position().byte_index();
+        match input.next_including_whitespace() {
+            Ok(Token::SquareBracketBlock) => {
+                let _ = input.parse_nested_block(|i| {
+                    while i.next().is_ok() {}
+                    Ok::<(), ParseError<()>>(())
+                });
+                tests += 1;
+            }
+            Ok(_) => text.push_str(&item[start..input.position().byte_index()]),
+            Err(_) => break,
+        }
+    }
+    (if tests == 0 { item.to_string() } else { text }, tests)
+}
+
+/// A selector's compounds in source order, each with its components in
+/// source order and the combinator after it (the crate stores them in match
+/// order: the rightmost compound first).
+fn segments(selector: &Inner) -> Vec<(Vec<&Component>, Option<Combinator>)> {
+    let mut out: Vec<(Vec<&Component>, Option<Combinator>)> = vec![(Vec::new(), None)];
+    for c in selector.iter_raw_match_order() {
+        match c {
+            Component::Combinator(combinator) => out.push((Vec::new(), Some(*combinator))),
+            c => out.last_mut().expect("a compound").0.push(c),
+        }
+    }
+    // A combinator is stored before the compound on its left in source.
+    out.reverse();
+    out
+}
+
+/// Whether a combinator joins a compound to a pseudo-element of it
+/// (`::part()`) rather than to another element.
+fn joins(combinator: Combinator) -> bool {
+    matches!(
+        combinator,
+        Combinator::Part | Combinator::PseudoElement | Combinator::SlotAssignment
+    )
+}
+
+/// A selector's compounds in source order, a `::part()` kept in the compound
+/// of its host (`button.primary::part(base):hover` is one), and the
+/// combinators between them.
+pub fn compounds(selector: &Inner) -> (Vec<Vec<&Component>>, Vec<Combinator>) {
+    let mut compounds = vec![Vec::new()];
+    let mut combinators = Vec::new();
+    for (components, after) in segments(selector) {
+        compounds.last_mut().expect("a compound").extend(components);
+        if let Some(combinator) = after.filter(|c| !joins(*c)) {
+            combinators.push(combinator);
+            compounds.push(Vec::new());
+        }
+    }
+    (compounds, combinators)
+}
+
+/// The nested selector lists a component holds.
+pub fn nested(c: &Component) -> &[Inner] {
+    match c {
+        Component::Negation(list) | Component::Is(list) | Component::Where(list) => list.slice(),
+        Component::NthOf(nth) => nth.selectors(),
+        _ => &[],
+    }
+}
+
+/// An attribute selector's name and value test.
+pub fn attribute(c: &Component) -> Option<(&str, Option<AttrTest>)> {
+    match c {
+        Component::AttributeInNoNamespaceExists { local_name, .. } => Some((&local_name.0, None)),
+        Component::AttributeInNoNamespace {
+            local_name,
+            operator,
+            value,
+            case_sensitivity,
+        } => Some((
+            &local_name.0,
+            Some(attr_test(*operator, value, *case_sensitivity)),
+        )),
+        Component::AttributeOther(attr) => Some((
+            &attr.local_name.0,
+            match &attr.operation {
+                ParsedAttrSelectorOperation::Exists => None,
+                ParsedAttrSelectorOperation::WithValue {
+                    operator,
+                    case_sensitivity,
+                    value,
+                } => Some(attr_test(*operator, value, *case_sensitivity)),
+            },
+        )),
+        _ => None,
+    }
+}
+
+fn attr_test(op: AttrSelectorOperator, value: &Atom, case: ParsedCaseSensitivity) -> AttrTest {
+    AttrTest {
+        op: match op {
+            AttrSelectorOperator::Equal => AttrOp::Equals,
+            AttrSelectorOperator::Includes => AttrOp::Includes,
+            AttrSelectorOperator::DashMatch => AttrOp::Dash,
+            AttrSelectorOperator::Prefix => AttrOp::Prefix,
+            AttrSelectorOperator::Substring => AttrOp::Substring,
+            AttrSelectorOperator::Suffix => AttrOp::Suffix,
+        },
+        value: value.0.clone(),
+        insensitive: matches!(
+            case,
+            ParsedCaseSensitivity::AsciiCaseInsensitive
+                | ParsedCaseSensitivity::AsciiCaseInsensitiveIfInHtmlElementInHtmlDocument
+        ),
+    }
+}
+
+/// Whether a component needs the instantiated sibling order or children.
+pub fn structural_component(c: &Component) -> bool {
+    match c {
+        Component::Nth(_) | Component::NthOf(_) | Component::Empty | Component::Has(_) => true,
+        c => nested(c).iter().any(structural),
+    }
+}
+
+/// Whether matching needs the instantiated sibling order: a sibling
+/// combinator or a structural pseudo-class anywhere, including arguments.
+pub fn structural(selector: &Inner) -> bool {
+    selector.iter_raw_parse_order_from(0).any(|c| match c {
+        Component::Combinator(c) => c.is_sibling(),
+        c => structural_component(c),
+    })
+}
+
+/// One compound, recursively, that reads only the element's own facts.
+pub fn compound_only(selector: &Inner) -> bool {
+    !structural(selector)
+        && selector.iter_raw_parse_order_from(0).all(|c| match c {
+            Component::Combinator(_)
+            | Component::Part(_)
+            | Component::NonTSPseudoClass(PseudoClass::Lang(_) | PseudoClass::Dir(_)) => false,
+            c => nested(c).iter().all(compound_only),
+        })
+}
+
+/// Serializes components as one compound (`*` when none), parsed again.
+pub fn compound_of<'a>(components: impl IntoIterator<Item = &'a Component>) -> Selector {
+    let mut text = String::new();
+    for c in components {
+        if !matches!(c, Component::Combinator(_)) {
+            let _ = c.to_css(&mut text);
+        }
+    }
+    if text.is_empty() {
+        text.push('*');
+    }
+    let mut list = Selector::parse_list(&text).expect("a serialized compound parses");
+    list.swap_remove(0)
+}
+
+/// A parse error's message.
+fn explain(error: &ParseError<OgError>) -> String {
+    match &error.kind {
+        ParseErrorKind::Custom(OgError::Message(m)) => m.clone(),
+        ParseErrorKind::Custom(OgError::Kind(kind)) => format!("{kind:?}"),
+        ParseErrorKind::Basic(kind) => format!("{kind:?}"),
+    }
+}
+
+/// og's own refusals of what the crate parses.
+fn check(selector: &Inner) -> Result<(), String> {
+    for c in selector.iter_raw_parse_order_from(0) {
+        if let Component::NthOf(nth) = c
+            && let Some(bad) = nth.selectors().iter().find(|s| !compound_only(s))
+        {
+            return Err(format!(
+                "`of {}` takes compound selectors without combinators or structural pseudo-classes",
+                bad.to_css_string()
+            ));
+        }
+        for inner in nested(c) {
+            check(inner)?;
+        }
+        if let Component::Has(list) = c {
+            for relative in list.iter() {
+                check(&relative.selector)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+impl Selector {
+    pub fn parse_list(text: &str) -> Result<Vec<Self>, String> {
+        let fail = |e: String| format!("invalid selector `{text}`: {e}");
+        let mut input = CssParser::new(text);
+        let items = input
+            .parse_comma_separated(|input| {
+                let start = input.position();
+                while input.next().is_ok() {}
+                Ok::<_, ParseError<OgError>>(input.slice_from(start).trim())
+            })
+            .map_err(|e| fail(explain(&e)))?;
+        let mut list = Vec::with_capacity(items.len());
+        for item in items {
+            let (selector, span) = span_tests(item);
+            let mut input = CssParser::new(&selector);
+            let inner = input
+                .parse_entirely(|input| Inner::parse(&OgParser, input))
+                .map_err(|e| fail(explain(&e)))?;
+            check(&inner).map_err(fail)?;
+            list.push(Selector {
+                source: item.to_string(),
+                global: false,
+                inner,
+                span,
+            });
+        }
+        Ok(list)
+    }
+
+    pub fn specificity(&self) -> Specificity {
+        let Specificity(ids, classes, types) = self.inner.specificity().into();
+        Specificity(ids, classes + self.span, types)
+    }
+
+    /// Its compounds in parse order and the combinators between them
+    /// ([`compounds`]).
+    pub fn compounds(&self) -> (Vec<Vec<&Component>>, Vec<Combinator>) {
+        compounds(&self.inner)
+    }
+
+    /// Every component, nested lists included, in parse order.
+    pub fn any_component(&self, f: &mut impl FnMut(&Component) -> bool) -> bool {
+        fn walk(s: &Inner, f: &mut impl FnMut(&Component) -> bool) -> bool {
+            s.iter_raw_parse_order_from(0).any(|c| {
+                f(c) || nested(c).iter().any(|s| walk(s, f))
+                    || matches!(c, Component::Has(list) if list.iter().any(|r| walk(&r.selector, f)))
+            })
+        }
+        walk(&self.inner, f)
+    }
+
+    /// Whether matching needs the instantiated sibling order ([`structural`]).
+    pub fn structural(&self) -> bool {
+        structural(&self.inner)
+    }
+
+    /// The subject compound without what needs the instantiated tree: used at
+    /// cook to skip elements that can never be the subject.
+    pub(super) fn subject_filter(&self) -> Self {
+        let (compounds, _) = self.compounds();
+        let subject = compounds.last().expect("a selector has a compound");
+        let mut filter = compound_of(subject.iter().copied().filter(|c| !structural_component(c)));
+        filter.global = self.global;
+        filter
+    }
+
+    /// The selector with `f`'s text in place of the components it names;
+    /// `f` sees each component with the compound it is in.
+    pub(super) fn rewritten(
+        &self,
+        f: impl Fn(&[&Component], &Component) -> Option<&'static str>,
+    ) -> Self {
+        let (compounds, _) = self.compounds();
+        let mut text = String::new();
+        let mut k = 0;
+        for (components, after) in segments(&self.inner) {
+            for c in components {
+                match f(&compounds[k], c) {
+                    Some(replacement) => text.push_str(replacement),
+                    None => {
+                        let _ = c.to_css(&mut text);
+                    }
+                }
+            }
+            if let Some(combinator) = after {
+                let _ = combinator.to_css(&mut text);
+                k += usize::from(!joins(combinator));
+            }
+        }
+        let mut list = Self::parse_list(&text).expect("a rewritten selector parses");
+        let mut out = list.swap_remove(0);
+        out.source = self.source.clone();
+        out.global = self.global;
+        out.span = self.span;
+        out
+    }
+
+    pub(super) fn condition(
+        &self,
+        doc: &UiDocument,
+        elements: &[(usize, String, Vec<Attr>)],
+        index: usize,
+    ) -> Result<Expr, String> {
+        condition(&self.inner, &self.source, doc, elements, index)
+    }
+}
+
+fn condition(
+    selector: &Inner,
+    source: &str,
+    doc: &UiDocument,
+    elements: &[(usize, String, Vec<Attr>)],
+    index: usize,
+) -> Result<Expr, String> {
+    let runtime = || format!("{source} needs the instantiated tree; it is matched at runtime");
+    let (compounds, combinators) = compounds(selector);
+    #[allow(clippy::too_many_arguments)]
+    fn chain(
+        compounds: &[Vec<&Component>],
+        combinators: &[Combinator],
+        source: &str,
+        runtime: &dyn Fn() -> String,
+        doc: &UiDocument,
+        elements: &[(usize, String, Vec<Attr>)],
+        index: usize,
+        part: usize,
+    ) -> Result<Expr, String> {
+        let Some((_, tag, attrs)) = elements.iter().find(|(i, _, _)| *i == index) else {
+            return Ok(Expr::Lit(false.into()));
+        };
+        let mut own = Expr::Lit(true.into());
+        let expression = |attr: &Attr| {
+            super::syntax::expression(&attr.value, attr.at).map_err(|(_, error)| error)
+        };
+        let attribute_test = |name: &str, test: Option<AttrTest>| -> Result<Expr, String> {
+            Ok(match attrs.iter().find(|a| a.name == *name) {
+                None => Expr::Lit(false.into()),
+                Some(attr) if !attr.bound => {
+                    Expr::Lit(test.as_ref().is_none_or(|t| t.test(&attr.value)).into())
+                }
+                Some(attr) => {
+                    let value = attribute_value(attr).map_err(|(_, error)| error)?;
+                    match test {
+                        None => Expr::Bin(
+                            Op::Ne,
+                            Box::new(value),
+                            Box::new(Expr::Lit(serde_json::Value::Null)),
+                        ),
+                        Some(test) => Expr::AttrTest(Box::new(value), test),
+                    }
+                }
+            })
+        };
+        for c in &compounds[part] {
+            let test = match c {
+                Component::LocalName(name) => Expr::Lit((name.name.0 == *tag).into()),
+                Component::ExplicitUniversalType
+                | Component::ExplicitAnyNamespace
+                | Component::ExplicitNoNamespace
+                | Component::DefaultNamespace(_)
+                | Component::Namespace(..)
+                | Component::ImplicitScope
+                | Component::NonTSPseudoClass(PseudoClass::Defined) => Expr::Lit(true.into()),
+                Component::Root | Component::Scope => Expr::Lit((index == doc.root).into()),
+                Component::ID(name) => Expr::Lit(
+                    attrs
+                        .iter()
+                        .any(|a| a.name == "id" && a.value == name.0)
+                        .into(),
+                ),
+                Component::Class(name) => {
+                    let name = &name.0;
+                    let mut matches = Expr::Lit(false.into());
+                    if let Some(attr) = attrs.iter().find(|a| a.name == "class") {
+                        matches = if attr.bound {
+                            Expr::HasToken(Box::new(expression(attr)?), name.clone())
+                        } else {
+                            Expr::Lit(
+                                attr.value
+                                    .split_ascii_whitespace()
+                                    .any(|v| v == name)
+                                    .into(),
+                            )
+                        };
+                    }
+                    if let Some(attr) = attrs.iter().find(|a| a.name == format!("class:{name}")) {
+                        matches = combine(Op::Or, matches, expression(attr)?);
+                    }
+                    // A button's variant is one of its classes, as on
+                    // its parts (`button.primary::part(base)`); only a
+                    // variant's word can name one.
+                    if tag == "button"
+                        && button_variant(name)
+                        && let Some(attr) = attrs.iter().find(|a| a.name == "variant")
+                    {
+                        let variant = if attr.bound {
+                            Expr::HasToken(Box::new(expression(attr)?), name.clone())
+                        } else {
+                            Expr::Lit((attr.value == *name).into())
+                        };
+                        matches = combine(Op::Or, matches, variant);
+                    }
+                    matches
+                }
+                Component::AttributeInNoNamespaceExists { .. }
+                | Component::AttributeInNoNamespace { .. }
+                | Component::AttributeOther(_) => {
+                    let (name, test) = attribute(c).expect("an attribute selector");
+                    attribute_test(name, test)?
+                }
+                Component::NonTSPseudoClass(PseudoClass::AnyLink) => {
+                    if matches!(tag.as_str(), "a" | "area") {
+                        attribute_test("href", None)?
+                    } else {
+                        Expr::Lit(false.into())
+                    }
+                }
+                Component::NonTSPseudoClass(PseudoClass::Lang(ranges)) => {
+                    match inherited(doc, elements, index, "lang") {
+                        Some(attr) if !attr.bound => Expr::Lit(
+                            ranges
+                                .iter()
+                                .any(|r| crate::bind::lang_matches(r, &attr.value))
+                                .into(),
+                        ),
+                        Some(attr) => {
+                            Expr::Lang(Some(Box::new(expression(attr)?)), ranges.to_vec())
+                        }
+                        None => Expr::Lang(None, ranges.to_vec()),
+                    }
+                }
+                Component::NonTSPseudoClass(PseudoClass::Dir(rtl)) => {
+                    match inherited(doc, elements, index, "dir") {
+                        Some(attr)
+                            if !attr.bound && matches!(attr.value.as_str(), "ltr" | "rtl") =>
+                        {
+                            Expr::Lit(((attr.value == "rtl") == *rtl).into())
+                        }
+                        Some(attr) if attr.bound => {
+                            Expr::Dir(Some(Box::new(expression(attr)?)), *rtl)
+                        }
+                        _ => Expr::Dir(None, *rtl),
+                    }
+                }
+                Component::NonTSPseudoClass(PseudoClass::Custom(name)) => {
+                    match attrs.iter().find(|a| a.name == format!("state:{}", name.0)) {
+                        Some(attr) if attr.bound => expression(attr)?,
+                        Some(attr) => Expr::Lit((attr.value != "false").into()),
+                        None => Expr::Lit(false.into()),
+                    }
+                }
+                Component::NonTSPseudoClass(PseudoClass::State(state)) => Expr::InteractionAt {
+                    node: index,
+                    state: *state,
+                },
+                Component::Negation(_) | Component::Is(_) | Component::Where(_) => {
+                    let mut matches = Expr::Lit(false.into());
+                    for inner in nested(c) {
+                        matches = combine(
+                            Op::Or,
+                            matches,
+                            condition(inner, source, doc, elements, index)?,
+                        );
+                    }
+                    if matches!(c, Component::Negation(_)) {
+                        match matches {
+                            Expr::Lit(serde_json::Value::Bool(value)) => Expr::Lit((!value).into()),
+                            value => Expr::Not(Box::new(value)),
+                        }
+                    } else {
+                        matches
+                    }
+                }
+                // Parts are matched against a part's Facts at runtime,
+                // never against its host as an ordinary document node.
+                Component::Part(_) => Expr::Lit(false.into()),
+                Component::Nth(_)
+                | Component::NthOf(_)
+                | Component::Empty
+                | Component::Has(_)
+                | Component::RelativeSelectorAnchor => return Err(runtime()),
+                _ => Expr::Lit(false.into()),
+            };
+            own = combine(Op::And, own, test);
+        }
+        if part == 0 {
+            return Ok(own);
+        }
+        let combinator = combinators[part - 1];
+        if combinator.is_sibling() {
+            return Err(runtime());
+        }
+        let mut candidates = Vec::new();
+        let mut parent = doc.nodes[index].parent;
+        while parent != NONE {
+            if elements.iter().any(|(i, _, _)| *i == parent) {
+                candidates.push(parent);
+                if combinator == Combinator::Child {
+                    break;
+                }
+            }
+            parent = doc.nodes[parent].parent;
+        }
+        let mut matches = Expr::Lit(false.into());
+        for candidate in candidates {
+            matches = combine(
+                Op::Or,
+                matches,
+                chain(
+                    compounds,
+                    combinators,
+                    source,
+                    runtime,
+                    doc,
+                    elements,
+                    candidate,
+                    part - 1,
+                )?,
+            );
+        }
+        Ok(combine(Op::And, own, matches))
+    }
+    chain(
+        &compounds,
+        &combinators,
+        source,
+        &runtime,
+        doc,
+        elements,
+        index,
+        compounds.len() - 1,
+    )
+}
 
 /// The authored attribute as it exists in HTML, shared by compiled
 /// predicates and the retained selector tree. Bound boolean attributes
@@ -54,399 +902,6 @@ pub fn attribute_value(attr: &Attr) -> Result<Expr, super::syntax::Error> {
     )
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Specificity(pub u32, pub u32, pub u32);
-
-impl Specificity {
-    fn add(self, other: Self) -> Self {
-        Self(self.0 + other.0, self.1 + other.1, self.2 + other.2)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Combinator {
-    Descendant,
-    Child,
-    /// `+`: the immediately preceding element sibling.
-    Next,
-    /// `~`: any preceding element sibling.
-    Subsequent,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Simple {
-    Type(String),
-    Id(String),
-    Class(String),
-    /// `[name]`, or `[name op "value" i]` with a value test.
-    Attribute {
-        name: String,
-        test: Option<AttrTest>,
-    },
-    State(InteractionState),
-    Root,
-    Not(Vec<Selector>),
-    Is(Vec<Selector>),
-    Where(Vec<Selector>),
-    Part(String),
-    /// `:first-child`, `:last-child`, `:only-child`, `:nth-child()` and
-    /// `:nth-last-child()`: the element's 1-based index among its instantiated
-    /// element siblings (those matching `of` when given) is `a·n + b` for some
-    /// n ≥ 0. `:first-child` is `nth(0, 1)`; `:only-child` is both ends.
-    Nth(Nth),
-    /// `:only-child`, or `:only-of-type` among siblings of its own type.
-    Only {
-        of_type: bool,
-    },
-    /// `:empty`: no instantiated element children and no text.
-    Empty,
-    /// `:has(<relative selectors>)`: each argument starts at
-    /// [`Simple::Anchor`], the element being matched.
-    Has(Vec<Selector>),
-    /// The `:has()` anchor in a relative selector's first compound.
-    Anchor,
-    /// `:lang(…)`: the nearest `lang` of the element or an ancestor, else
-    /// the locale.
-    Lang(Vec<String>),
-    /// `:dir(rtl)` (true) or `:dir(ltr)`: the nearest `dir`, else the
-    /// locale's direction.
-    Dir(bool),
-    /// `:state(name)`: the element's `state:name={…}` is truthy.
-    Custom(String),
-    /// `:defined`: every element is.
-    Defined,
-    /// `:scope`: the root outside `@scope`.
-    Scope,
-    /// A pseudo-class that matches as `:is(list)` with a pseudo-class's
-    /// specificity (`:any-link`).
-    Pseudo(Vec<Selector>),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Nth {
-    pub a: i32,
-    pub b: i32,
-    pub last: bool,
-    /// `of S`: compound selectors that filter the counted siblings.
-    pub of: Option<Vec<Selector>>,
-    /// `:nth-of-type()`: count only siblings of the element's own type.
-    pub of_type: bool,
-}
-
-impl Nth {
-    /// Whether the 1-based `index` is `a·n + b` for some integer n ≥ 0.
-    pub fn matches(&self, index: usize) -> bool {
-        let (a, k) = (i64::from(self.a), index as i64 - i64::from(self.b));
-        if a == 0 {
-            k == 0
-        } else {
-            k % a == 0 && k / a >= 0
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Compound(pub Vec<Simple>);
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Selector {
-    pub source: String,
-    /// A global stylesheet may match across component document boundaries.
-    pub global: bool,
-    pub compounds: Vec<Compound>,
-    pub combinators: Vec<Combinator>,
-}
-
-impl Selector {
-    pub fn parse_list(text: &str) -> Result<Vec<Self>, String> {
-        Parser::new(text)
-            .parse_comma_separated(parse)
-            .map_err(|error| format!("invalid selector `{text}`: {error:?}"))
-    }
-
-    pub fn specificity(&self) -> Specificity {
-        self.compounds.iter().flat_map(|compound| &compound.0).fold(
-            Specificity::default(),
-            |sum, simple| {
-                sum.add(match simple {
-                    Simple::Id(_) => Specificity(1, 0, 0),
-                    Simple::Class(_)
-                    | Simple::Attribute { .. }
-                    | Simple::State(_)
-                    | Simple::Root
-                    | Simple::Only { .. }
-                    | Simple::Empty
-                    | Simple::Lang(_)
-                    | Simple::Dir(_)
-                    | Simple::Custom(_)
-                    | Simple::Defined
-                    | Simple::Scope
-                    | Simple::Pseudo(_) => Specificity(0, 1, 0),
-                    Simple::Anchor => Specificity::default(),
-                    Simple::Nth(nth) => Specificity(0, 1, 0).add(
-                        nth.of
-                            .iter()
-                            .flatten()
-                            .map(Self::specificity)
-                            .max()
-                            .unwrap_or_default(),
-                    ),
-                    Simple::Type(_) | Simple::Part(_) => Specificity(0, 0, 1),
-                    Simple::Not(list) | Simple::Is(list) | Simple::Has(list) => {
-                        list.iter().map(Self::specificity).max().unwrap_or_default()
-                    }
-                    Simple::Where(_) => Specificity::default(),
-                })
-            },
-        )
-    }
-
-    /// Whether matching needs the instantiated sibling order: a sibling
-    /// combinator or a structural pseudo-class anywhere, including arguments.
-    pub fn structural(&self) -> bool {
-        self.combinators
-            .iter()
-            .any(|c| matches!(c, Combinator::Next | Combinator::Subsequent))
-            || self
-                .compounds
-                .iter()
-                .flat_map(|compound| &compound.0)
-                .any(Simple::structural)
-    }
-
-    /// One compound, recursively, that reads only the element's own facts.
-    pub(super) fn compound_only(&self) -> bool {
-        self.compounds.len() == 1
-            && !self.structural()
-            && self.compounds[0].0.iter().all(|simple| match simple {
-                Simple::Part(_) | Simple::Lang(_) | Simple::Dir(_) => false,
-                Simple::Not(list)
-                | Simple::Is(list)
-                | Simple::Where(list)
-                | Simple::Pseudo(list) => list.iter().all(Self::compound_only),
-                _ => true,
-            })
-    }
-
-    /// The subject compound without what needs the instantiated tree: used at
-    /// cook to skip elements that can never be the subject.
-    pub(super) fn subject_filter(&self) -> Self {
-        let subject = self.compounds.last().expect("a selector has a compound");
-        Self {
-            source: self.source.clone(),
-            global: self.global,
-            compounds: vec![Compound(
-                subject
-                    .0
-                    .iter()
-                    .filter(|simple| !simple.structural())
-                    .cloned()
-                    .collect(),
-            )],
-            combinators: Vec::new(),
-        }
-    }
-
-    pub(super) fn condition(
-        &self,
-        doc: &UiDocument,
-        elements: &[(usize, String, Vec<Attr>)],
-        index: usize,
-    ) -> Result<Expr, String> {
-        fn chain(
-            selector: &Selector,
-            doc: &UiDocument,
-            elements: &[(usize, String, Vec<Attr>)],
-            index: usize,
-            part: usize,
-        ) -> Result<Expr, String> {
-            let Some((_, tag, attrs)) = elements.iter().find(|(i, _, _)| *i == index) else {
-                return Ok(Expr::Lit(false.into()));
-            };
-            let mut own = Expr::Lit(true.into());
-            let expression = |attr: &Attr| {
-                super::syntax::expression(&attr.value, attr.at).map_err(|(_, error)| error)
-            };
-            for simple in &selector.compounds[part].0 {
-                let test = match simple {
-                    Simple::Type(name) => Expr::Lit((name == tag).into()),
-                    Simple::Root => Expr::Lit((index == doc.root).into()),
-                    Simple::Id(name) => Expr::Lit(
-                        attrs
-                            .iter()
-                            .any(|a| a.name == "id" && a.value == *name)
-                            .into(),
-                    ),
-                    Simple::Class(name) => {
-                        let mut matches = Expr::Lit(false.into());
-                        if let Some(attr) = attrs.iter().find(|a| a.name == "class") {
-                            matches = if attr.bound {
-                                Expr::HasToken(Box::new(expression(attr)?), name.clone())
-                            } else {
-                                Expr::Lit(
-                                    attr.value
-                                        .split_ascii_whitespace()
-                                        .any(|v| v == name)
-                                        .into(),
-                                )
-                            };
-                        }
-                        if let Some(attr) = attrs.iter().find(|a| a.name == format!("class:{name}"))
-                        {
-                            matches = combine(Op::Or, matches, expression(attr)?);
-                        }
-                        // A button's variant is one of its classes, as on
-                        // its parts (`button.primary::part(base)`); only a
-                        // variant's word can name one.
-                        if tag == "button"
-                            && button_variant(name)
-                            && let Some(attr) = attrs.iter().find(|a| a.name == "variant")
-                        {
-                            let variant = if attr.bound {
-                                Expr::HasToken(Box::new(expression(attr)?), name.clone())
-                            } else {
-                                Expr::Lit((attr.value == *name).into())
-                            };
-                            matches = combine(Op::Or, matches, variant);
-                        }
-                        matches
-                    }
-                    Simple::Attribute { name, test } => {
-                        match attrs.iter().find(|a| a.name == *name) {
-                            None => Expr::Lit(false.into()),
-                            Some(attr) if !attr.bound => {
-                                Expr::Lit(test.as_ref().is_none_or(|t| t.test(&attr.value)).into())
-                            }
-                            Some(attr) => {
-                                let value = attribute_value(attr).map_err(|(_, error)| error)?;
-                                match test {
-                                    None => Expr::Bin(
-                                        Op::Ne,
-                                        Box::new(value),
-                                        Box::new(Expr::Lit(serde_json::Value::Null)),
-                                    ),
-                                    Some(test) => Expr::AttrTest(Box::new(value), test.clone()),
-                                }
-                            }
-                        }
-                    }
-                    Simple::Lang(ranges) => match inherited(doc, elements, index, "lang") {
-                        Some(attr) if !attr.bound => Expr::Lit(
-                            ranges
-                                .iter()
-                                .any(|r| crate::bind::lang_matches(r, &attr.value))
-                                .into(),
-                        ),
-                        Some(attr) => Expr::Lang(Some(Box::new(expression(attr)?)), ranges.clone()),
-                        None => Expr::Lang(None, ranges.clone()),
-                    },
-                    Simple::Dir(rtl) => match inherited(doc, elements, index, "dir") {
-                        Some(attr)
-                            if !attr.bound && matches!(attr.value.as_str(), "ltr" | "rtl") =>
-                        {
-                            Expr::Lit(((attr.value == "rtl") == *rtl).into())
-                        }
-                        Some(attr) if attr.bound => {
-                            Expr::Dir(Some(Box::new(expression(attr)?)), *rtl)
-                        }
-                        _ => Expr::Dir(None, *rtl),
-                    },
-                    Simple::Custom(name) => {
-                        match attrs.iter().find(|a| a.name == format!("state:{name}")) {
-                            Some(attr) if attr.bound => expression(attr)?,
-                            Some(attr) => Expr::Lit((attr.value != "false").into()),
-                            None => Expr::Lit(false.into()),
-                        }
-                    }
-                    Simple::Defined => Expr::Lit(true.into()),
-                    Simple::Scope => Expr::Lit((index == doc.root).into()),
-                    Simple::State(state) => Expr::InteractionAt {
-                        node: index,
-                        state: *state,
-                    },
-                    Simple::Not(list)
-                    | Simple::Is(list)
-                    | Simple::Where(list)
-                    | Simple::Pseudo(list) => {
-                        let mut matches = Expr::Lit(false.into());
-                        for inner in list {
-                            matches =
-                                combine(Op::Or, matches, inner.condition(doc, elements, index)?);
-                        }
-                        if matches!(simple, Simple::Not(_)) {
-                            match matches {
-                                Expr::Lit(serde_json::Value::Bool(value)) => {
-                                    Expr::Lit((!value).into())
-                                }
-                                value => Expr::Not(Box::new(value)),
-                            }
-                        } else {
-                            matches
-                        }
-                    }
-                    // Parts are matched against a part's Facts at runtime,
-                    // never against its host as an ordinary document node.
-                    Simple::Part(_) => Expr::Lit(false.into()),
-                    Simple::Nth(_)
-                    | Simple::Only { .. }
-                    | Simple::Empty
-                    | Simple::Has(_)
-                    | Simple::Anchor => {
-                        return Err(format!(
-                            "{} needs the instantiated tree; it is matched at runtime",
-                            selector.source
-                        ));
-                    }
-                };
-                own = combine(Op::And, own, test);
-            }
-            if part == 0 {
-                return Ok(own);
-            }
-            let combinator = selector.combinators[part - 1];
-            if matches!(combinator, Combinator::Next | Combinator::Subsequent) {
-                return Err(format!(
-                    "{} needs the instantiated tree; it is matched at runtime",
-                    selector.source
-                ));
-            }
-            let mut candidates = Vec::new();
-            let mut parent = doc.nodes[index].parent;
-            while parent != NONE {
-                if elements.iter().any(|(i, _, _)| *i == parent) {
-                    candidates.push(parent);
-                    if combinator == Combinator::Child {
-                        break;
-                    }
-                }
-                parent = doc.nodes[parent].parent;
-            }
-            let mut matches = Expr::Lit(false.into());
-            for candidate in candidates {
-                matches = combine(
-                    Op::Or,
-                    matches,
-                    chain(selector, doc, elements, candidate, part - 1)?,
-                );
-            }
-            Ok(combine(Op::And, own, matches))
-        }
-        chain(self, doc, elements, index, self.compounds.len() - 1)
-    }
-}
-
-impl Simple {
-    pub(super) fn structural(&self) -> bool {
-        match self {
-            Simple::Nth(_) | Simple::Only { .. } | Simple::Empty | Simple::Has(_) => true,
-            Simple::Not(list) | Simple::Is(list) | Simple::Where(list) | Simple::Pseudo(list) => {
-                list.iter().any(Selector::structural)
-            }
-            _ => false,
-        }
-    }
-}
-
 /// The `name` attribute of the element or its nearest ancestor that has
 /// one, within the document.
 fn inherited<'a>(
@@ -465,57 +920,6 @@ fn inherited<'a>(
     }
     None
 }
-
-/// HTML attributes whose values selectors compare ASCII case-insensitively
-/// (HTML §4.16.2), unless the selector has the `s` flag.
-const CASELESS: &[&str] = &[
-    "accept",
-    "accept-charset",
-    "align",
-    "alink",
-    "axis",
-    "bgcolor",
-    "charset",
-    "checked",
-    "clear",
-    "codetype",
-    "color",
-    "compact",
-    "declare",
-    "defer",
-    "dir",
-    "direction",
-    "disabled",
-    "enctype",
-    "face",
-    "frame",
-    "hreflang",
-    "http-equiv",
-    "lang",
-    "language",
-    "link",
-    "media",
-    "method",
-    "multiple",
-    "nohref",
-    "noresize",
-    "noshade",
-    "nowrap",
-    "readonly",
-    "rel",
-    "rev",
-    "rules",
-    "scope",
-    "scrolling",
-    "selected",
-    "shape",
-    "target",
-    "text",
-    "type",
-    "valign",
-    "valuetype",
-    "vlink",
-];
 
 /// Whether `name` is one of a button's variants (`variant="primary"`).
 fn button_variant(name: &str) -> bool {
@@ -546,359 +950,6 @@ fn combine(op: Op, a: Expr, b: Expr) -> Expr {
     }
 }
 
-fn parse(input: &mut Parser<'_>) -> Result<Selector, ParseError<String>> {
-    parse_selector(input, false)
-}
-
-/// A `:has()` argument: a selector that starts at the anchor, with an
-/// optional leading combinator (a descendant one when it has none).
-fn parse_relative(input: &mut Parser<'_>) -> Result<Selector, ParseError<String>> {
-    parse_selector(input, true)
-}
-
-fn nth(a: i32, b: i32, last: bool, of_type: bool) -> Simple {
-    Simple::Nth(Nth {
-        a,
-        b,
-        last,
-        of: None,
-        of_type,
-    })
-}
-
-pub(crate) fn state(name: &str) -> Option<InteractionState> {
-    use InteractionState::*;
-    Some(match name {
-        "hover" => Hover,
-        "active" => Active,
-        "focus" => Focus,
-        "focus-visible" => FocusVisible,
-        "focus-within" => FocusWithin,
-        "disabled" => Disabled,
-        "enabled" => Enabled,
-        "checked" => Checked,
-        "selected" => Selected,
-        "invalid" => Invalid,
-        "valid" => Valid,
-        "user-invalid" => UserInvalid,
-        "placeholder-shown" => PlaceholderShown,
-        "required" => Required,
-        "optional" => Optional,
-        "read-only" => ReadOnly,
-        "read-write" => ReadWrite,
-        "in-range" => InRange,
-        "out-of-range" => OutOfRange,
-        "indeterminate" => Indeterminate,
-        "default" => Default,
-        "open" => Open,
-        "popover-open" => PopoverOpen,
-        "modal" => Modal,
-        "target" => Target,
-        _ => return None,
-    })
-}
-
-fn attribute(input: &mut Parser<'_>, on_part: bool) -> Result<Simple, ParseError<String>> {
-    let name = input.expect_ident_cloned()?.to_string();
-    if input.is_exhausted() {
-        return Ok(Simple::Attribute { name, test: None });
-    }
-    let op = match input.next()? {
-        Token::Delim('=') => AttrOp::Equals,
-        Token::IncludeMatch => AttrOp::Includes,
-        Token::DashMatch => AttrOp::Dash,
-        Token::PrefixMatch => AttrOp::Prefix,
-        Token::SuffixMatch => AttrOp::Suffix,
-        Token::SubstringMatch => AttrOp::Substring,
-        token => {
-            return Err(ParseError::custom(format!(
-                "expected =, ~=, |=, ^=, $= or *= after [{name}, found {token:?}"
-            )));
-        }
-    };
-    let value = match input.next()? {
-        Token::Ident(value) | Token::QuotedString(value) => value.to_string(),
-        Token::Number { value, .. } if on_part => value.to_string(),
-        _ => {
-            return Err(ParseError::custom(
-                "quote the attribute value (numeric values are allowed on ::part)",
-            ));
-        }
-    };
-    let insensitive = match input.try_parse(|p| p.expect_ident_cloned()) {
-        Ok(flag) if flag.eq_ignore_ascii_case("i") => true,
-        Ok(flag) if flag.eq_ignore_ascii_case("s") => false,
-        Ok(flag) => {
-            return Err(ParseError::custom(format!(
-                "unknown attribute selector flag {flag}; use i or s"
-            )));
-        }
-        Err(_) => CASELESS.contains(&name.to_ascii_lowercase().as_str()),
-    };
-    input.expect_exhausted()?;
-    Ok(Simple::Attribute {
-        name,
-        test: Some(AttrTest {
-            op,
-            value,
-            insensitive,
-        }),
-    })
-}
-
-fn pseudo_function(
-    name: &str,
-    input: &mut Parser<'_>,
-    relative: bool,
-) -> Result<Simple, ParseError<String>> {
-    match name {
-        "nth-child" | "nth-last-child" => {
-            let last = name == "nth-last-child";
-            Ok(Simple::Nth(input.parse_nested_block(|input| {
-                let (a, b) = cssparser::parse_nth(input)?;
-                let of = if input.is_exhausted() {
-                    None
-                } else {
-                    input.expect_ident_matching("of")?;
-                    let list = input.parse_comma_separated(parse)?;
-                    if let Some(bad) = list.iter().find(|s| !s.compound_only()) {
-                        return Err(ParseError::custom(format!(
-                            "`of {}` in :{name}() takes compound selectors without combinators or structural pseudo-classes",
-                            bad.source
-                        )));
-                    }
-                    Some(list)
-                };
-                Ok(Nth {
-                    a,
-                    b,
-                    last,
-                    of,
-                    of_type: false,
-                })
-            })?))
-        }
-        "nth-of-type" | "nth-last-of-type" => {
-            let (a, b) = input.parse_nested_block(|input| Ok(cssparser::parse_nth(input)?))?;
-            Ok(nth(a, b, name == "nth-last-of-type", true))
-        }
-        "has" => {
-            if relative {
-                return Err(ParseError::custom(":has() cannot nest inside :has()"));
-            }
-            let list =
-                input.parse_nested_block(|input| input.parse_comma_separated(parse_relative))?;
-            Ok(Simple::Has(list))
-        }
-        "lang" => {
-            let ranges = input.parse_nested_block(|input| {
-                input.parse_comma_separated(|input| {
-                    Ok(match input.next()? {
-                        Token::Ident(v) | Token::QuotedString(v) => v.to_string(),
-                        _ => return Err(ParseError::custom(":lang() takes language ranges")),
-                    })
-                })
-            })?;
-            Ok(Simple::Lang(ranges))
-        }
-        "dir" => {
-            let word = input.parse_nested_block(|input| {
-                Ok(input.expect_ident_cloned()?.to_ascii_lowercase())
-            })?;
-            match word.as_str() {
-                "rtl" => Ok(Simple::Dir(true)),
-                "ltr" => Ok(Simple::Dir(false)),
-                _ => Err(ParseError::custom(format!(
-                    ":dir() takes ltr or rtl, not {word}"
-                ))),
-            }
-        }
-        "state" => Ok(Simple::Custom(input.parse_nested_block(|input| {
-            Ok(input.expect_ident_cloned()?.to_string())
-        })?)),
-        "not" | "is" | "where" => {
-            let list = input.parse_nested_block(|input| {
-                input.parse_comma_separated(|input| parse_selector(input, false))
-            })?;
-            if relative
-                && list
-                    .iter()
-                    .flat_map(|s| s.compounds.iter().flat_map(|c| &c.0))
-                    .any(|s| matches!(s, Simple::Has(_)))
-            {
-                return Err(ParseError::custom(":has() cannot nest inside :has()"));
-            }
-            Ok(match name {
-                "not" => Simple::Not(list),
-                "is" => Simple::Is(list),
-                _ => Simple::Where(list),
-            })
-        }
-        _ => Err(ParseError::custom(format!(
-            "unsupported pseudo-class :{name}(); supported functions are :not(), :is(), :where(), :has(), :nth-child(), :nth-last-child(), :nth-of-type(), :nth-last-of-type(), :lang(), :dir() and :state()"
-        ))),
-    }
-}
-
-fn pseudo_class(name: &str) -> Result<Simple, ParseError<String>> {
-    if let Some(state) = state(name) {
-        return Ok(Simple::State(state));
-    }
-    Ok(match name {
-        "root" => Simple::Root,
-        "scope" => Simple::Scope,
-        "defined" => Simple::Defined,
-        "first-child" => nth(0, 1, false, false),
-        "last-child" => nth(0, 1, true, false),
-        "only-child" => Simple::Only { of_type: false },
-        "first-of-type" => nth(0, 1, false, true),
-        "last-of-type" => nth(0, 1, true, true),
-        "only-of-type" => Simple::Only { of_type: true },
-        "empty" => Simple::Empty,
-        "any-link" | "link" => {
-            Simple::Pseudo(Selector::parse_list("a[href], area[href]").map_err(ParseError::custom)?)
-        }
-        _ => {
-            return Err(ParseError::custom(format!(
-                "unsupported pseudo-class :{name}; see the selector list in docs/ui.md §2.4"
-            )));
-        }
-    })
-}
-
-fn parse_selector(input: &mut Parser<'_>, relative: bool) -> Result<Selector, ParseError<String>> {
-    let start = input.position();
-    let mut selector = Selector {
-        source: String::new(),
-        global: false,
-        compounds: Vec::new(),
-        combinators: Vec::new(),
-    };
-    let mut compound = Vec::new();
-    let mut started = false;
-    let mut whitespace = false;
-    if relative {
-        compound.push(Simple::Anchor);
-        let leading = input.try_parse(|input| {
-            input.skip_whitespace();
-            match input.next()? {
-                Token::Delim(c @ ('>' | '+' | '~')) => Ok(*c),
-                _ => Err(ParseError::<String>::custom("no combinator")),
-            }
-        });
-        selector
-            .compounds
-            .push(Compound(std::mem::take(&mut compound)));
-        selector.combinators.push(match leading {
-            Ok('>') => Combinator::Child,
-            Ok('+') => Combinator::Next,
-            Ok('~') => Combinator::Subsequent,
-            _ => Combinator::Descendant,
-        });
-        started = false;
-        input.skip_whitespace();
-    }
-    while !input.is_exhausted() {
-        let token = input.next_including_whitespace_and_comments()?.clone();
-        if matches!(token, Token::Comment(_)) {
-            continue;
-        }
-        if matches!(token, Token::WhiteSpace(_)) {
-            whitespace |= started;
-            continue;
-        }
-        if let Token::Delim(c @ ('>' | '+' | '~')) = token {
-            if !started {
-                return Err(ParseError::custom(
-                    "a combinator needs a selector on both sides",
-                ));
-            }
-            selector
-                .compounds
-                .push(Compound(std::mem::take(&mut compound)));
-            selector.combinators.push(match c {
-                '>' => Combinator::Child,
-                '+' => Combinator::Next,
-                _ => Combinator::Subsequent,
-            });
-            started = false;
-            whitespace = false;
-            continue;
-        }
-        if whitespace {
-            selector
-                .compounds
-                .push(Compound(std::mem::take(&mut compound)));
-            selector.combinators.push(Combinator::Descendant);
-            started = false;
-            whitespace = false;
-        }
-        let simple = match token {
-            Token::Ident(name) if !started => Some(Simple::Type(name.to_string())),
-            Token::Delim('*') if !started => None,
-            Token::IDHash(name) => Some(Simple::Id(name.to_string())),
-            Token::Delim('.') => match input.next_including_whitespace()? {
-                Token::Ident(name) => Some(Simple::Class(name.to_string())),
-                _ => {
-                    return Err(ParseError::custom(
-                        "write a class name immediately after '.'",
-                    ));
-                }
-            },
-            Token::SquareBracketBlock => {
-                let on_part = compound.iter().any(|s| matches!(s, Simple::Part(_)));
-                Some(input.parse_nested_block(|input| attribute(input, on_part))?)
-            }
-            Token::Colon => {
-                let next = input.next_including_whitespace()?.clone();
-                if matches!(next, Token::Colon) {
-                    if relative {
-                        return Err(ParseError::custom(":has() takes no pseudo-elements"));
-                    }
-                    let Token::Function(name) = input.next_including_whitespace()?.clone() else {
-                        return Err(ParseError::custom("write ::part(name) without spaces"));
-                    };
-                    if name != "part" {
-                        return Err(ParseError::custom(format!(
-                            "unsupported pseudo-element ::{name}; use ::part(name)"
-                        )));
-                    }
-                    Some(Simple::Part(input.parse_nested_block(|input| {
-                        Ok(input.expect_ident_cloned()?.to_string())
-                    })?))
-                } else {
-                    match next {
-                        Token::Function(name) => Some(pseudo_function(
-                            &name.to_ascii_lowercase(),
-                            input,
-                            relative,
-                        )?),
-                        Token::Ident(name) => Some(pseudo_class(&name.to_ascii_lowercase())?),
-                        _ => return Err(ParseError::custom("a colon needs a pseudo-class name")),
-                    }
-                }
-            }
-            _ => {
-                return Err(ParseError::custom(format!(
-                    "unsupported selector token {token:?}"
-                )));
-            }
-        };
-        if let Some(simple) = simple {
-            compound.push(simple);
-        }
-        started = true;
-    }
-    if !started {
-        return Err(ParseError::custom(
-            "expected a selector after the combinator",
-        ));
-    }
-    selector.compounds.push(Compound(compound));
-    selector.source = input.slice_from(start).trim().to_string();
-    Ok(selector)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -909,7 +960,11 @@ mod tests {
         assert_eq!(selectors.len(), 2);
         assert_eq!(selectors[0].specificity(), Specificity(1, 3, 0));
         assert_eq!(selectors[1].specificity(), Specificity(0, 0, 2));
-        assert_eq!(selectors[0].combinators, vec![Combinator::Child]);
+        assert_eq!(selectors[0].compounds().1, vec![Combinator::Child]);
+        assert_eq!(
+            selectors[0].source,
+            ".card:hover>.title:not([label='a, b'], :is(#x, .other))"
+        );
         assert_eq!(
             Selector::parse_list("* > *").unwrap()[0].specificity(),
             Specificity::default()
@@ -920,43 +975,18 @@ mod tests {
         .unwrap();
         assert!(structural[0].structural());
         assert_eq!(
-            structural[0].combinators,
-            vec![Combinator::Next, Combinator::Subsequent, Combinator::Child]
+            structural[0].compounds().1,
+            vec![
+                Combinator::NextSibling,
+                Combinator::LaterSibling,
+                Combinator::Child
+            ]
         );
         assert_eq!(structural[0].specificity(), Specificity(0, 6, 1));
-        let Simple::Nth(nth) = &structural[0].compounds[0].0[1] else {
-            panic!("nth-child")
-        };
-        assert_eq!((nth.a, nth.b, nth.last), (2, 1, false));
-        assert_eq!(nth.of.as_ref().unwrap().len(), 2);
         assert!(!selectors[0].structural());
-        for (text, index, expected) in [
-            (":nth-child(2n+1)", 5, true),
-            (":nth-child(2n+1)", 4, false),
-            (":nth-child(-n+3)", 3, true),
-            (":nth-child(-n+3)", 4, false),
-            (":nth-last-child(3)", 3, true),
-            (":first-child", 1, true),
-            (":first-child", 2, false),
-            (":nth-child(even)", 2, true),
-            (":nth-child(n+4)", 3, false),
-        ] {
-            let Simple::Nth(nth) = &Selector::parse_list(text).unwrap()[0].compounds[0].0[0] else {
-                panic!("{text}")
-            };
-            assert_eq!(nth.matches(index), expected, "{text} at {index}");
-        }
         let has = &Selector::parse_list(".card:has(> .x + .y, .z)").unwrap()[0];
         assert!(has.structural());
         assert_eq!(has.specificity(), Specificity(0, 3, 0));
-        let Simple::Has(relative) = &has.compounds[0].0[1] else {
-            panic!("has")
-        };
-        assert_eq!(
-            relative[0].combinators,
-            vec![Combinator::Child, Combinator::Next]
-        );
-        assert_eq!(relative[1].combinators, vec![Combinator::Descendant]);
         for (text, actual, expected) in [
             ("[a~='b']", "x b y", true),
             ("[a~='b']", "xb", false),
@@ -971,10 +1001,9 @@ mod tests {
             ("[type='TEXT']", "text", true),
             ("[type='TEXT' s]", "text", false),
         ] {
-            let Simple::Attribute {
-                test: Some(test), ..
-            } = &Selector::parse_list(text).unwrap()[0].compounds[0].0[0]
-            else {
+            let selector = &Selector::parse_list(text).unwrap()[0];
+            let (compounds, _) = selector.compounds();
+            let Some((_, Some(test))) = attribute(compounds[0][0]) else {
                 panic!("{text}")
             };
             assert_eq!(test.test(actual), expected, "{text} on {actual}");
@@ -997,8 +1026,33 @@ mod tests {
             ": hover",
             ": :part(x)",
             ":: part(x)",
+            "::before",
         ] {
             assert!(Selector::parse_list(bad).is_err(), "accepted {bad}");
         }
+        // A part list names a part by every name (CSS Shadow Parts §4.1).
+        let parts = &Selector::parse_list("button.primary::part(base face):hover").unwrap()[0];
+        let (compounds, combinators) = parts.compounds();
+        assert_eq!((compounds.len(), combinators.len()), (1, 0));
+        assert_eq!(parts.specificity(), Specificity(0, 2, 2));
+    }
+
+    #[test]
+    fn serialized_compounds_and_rewrites_parse_back() {
+        let s = &Selector::parse_list(":root[data-scheme=light] .a:lang(en):state(open):hover")
+            .unwrap()[0];
+        let rewritten = s.rewritten(|compound, c| {
+            (compound.iter().any(|c| matches!(c, Component::Root))
+                && attribute(c).is_some_and(|(name, _)| name == "data-scheme"))
+            .then_some(":root")
+        });
+        assert_eq!(
+            rewritten.inner.to_css_string(),
+            ":root:root .a:lang(\"en\"):state(open):hover"
+        );
+        assert_eq!(rewritten.specificity(), s.specificity());
+        assert_eq!(rewritten.source, s.source);
+        let filter = Selector::parse_list(".a:first-child:hover").unwrap()[0].subject_filter();
+        assert_eq!(filter.inner.to_css_string(), ".a:hover");
     }
 }

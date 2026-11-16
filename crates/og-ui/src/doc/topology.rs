@@ -743,21 +743,22 @@ impl super::matching::Tree for Topology {
         }
     }
 
-    fn parent(&self, id: &MountedNode) -> Option<MountedNode> {
-        Topology::parent(self, id).cloned()
+    fn parent(&self, id: &MountedNode) -> Option<&MountedNode> {
+        Topology::parent(self, id)
     }
 
-    fn previous(&self, id: &MountedNode) -> Option<MountedNode> {
+    fn previous(&self, id: &MountedNode) -> Option<&MountedNode> {
         let at = self.position(id)?.checked_sub(1)?;
-        self.child_at(Topology::parent(self, id), at).cloned()
+        self.child_at(Topology::parent(self, id), at)
     }
 
-    fn position(&self, id: &MountedNode) -> (usize, usize) {
-        let parent = Topology::parent(self, id);
-        (
-            Topology::position(self, id).unwrap_or(0),
-            self.child_count(parent),
-        )
+    fn following(&self, id: &MountedNode) -> Option<&MountedNode> {
+        let at = Topology::position(self, id)? + 1;
+        self.child_at(Topology::parent(self, id), at)
+    }
+
+    fn first_child(&self, id: &MountedNode) -> Option<&MountedNode> {
+        self.child_at(Some(id), 0)
     }
 
     fn filtered(&self, id: &MountedNode, filter: &[super::selectors::Selector]) -> (usize, usize) {
@@ -777,19 +778,8 @@ impl super::matching::Tree for Topology {
         (before, total)
     }
 
-    fn has_children(&self, id: &MountedNode) -> bool {
-        self.child_count(Some(id)) > 0
-    }
-
-    fn children(&self, id: &MountedNode) -> Vec<MountedNode> {
-        Topology::children(self, Some(id), 0..usize::MAX)
-            .cloned()
-            .collect()
-    }
-
-    fn following(&self, id: &MountedNode) -> Option<MountedNode> {
-        let at = Topology::position(self, id)? + 1;
-        self.child_at(Topology::parent(self, id), at).cloned()
+    fn canonical(&self, id: &MountedNode) -> Option<&MountedNode> {
+        self.identities.get(id).map(|&i| self.identity(i))
     }
 }
 

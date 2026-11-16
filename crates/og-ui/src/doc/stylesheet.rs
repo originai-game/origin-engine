@@ -89,36 +89,43 @@ fn selectors(mut rules: Vec<Rule>) -> Result<Vec<(Selector, Rule)>, Error> {
 /// is replaced by a second `:root`, which keeps the selector's specificity.
 fn root_scheme(selector: &mut Selector, query: &mut AtQuery) {
     use super::media::{Feature, Query};
-    use super::selectors::Simple;
-    for compound in &mut selector.compounds {
-        if !compound.0.contains(&Simple::Root) {
-            continue;
-        }
-        for simple in &mut compound.0 {
-            let Simple::Attribute { name, test } = simple else {
-                continue;
-            };
-            if name != "data-scheme" {
-                continue;
-            }
-            let holds = |scheme: &str| test.as_ref().is_none_or(|t| t.test(scheme));
-            let scheme = match (holds("light"), holds("dark")) {
-                (true, true) => Query::All,
-                (false, true) => Query::Feature(Feature::Dark(true)),
-                (true, false) => Query::Feature(Feature::Dark(false)),
-                (false, false) => Query::Not(Box::new(Query::All)),
-            };
-            query.media = match std::mem::take(&mut query.media) {
-                Query::All => scheme,
-                Query::And(mut all) => {
-                    all.push(scheme);
-                    Query::And(all)
-                }
-                media => Query::And(vec![media, scheme]),
-            };
-            *simple = Simple::Root;
-        }
+    use super::selectors::{Component, attribute};
+    let scheme_on_root = |compound: &[&Component], c: &Component| {
+        compound.iter().any(|c| matches!(c, Component::Root))
+            && attribute(c).is_some_and(|(name, _)| name == "data-scheme")
+    };
+    let tests: Vec<_> = selector
+        .compounds()
+        .0
+        .iter()
+        .flat_map(|compound| {
+            compound
+                .iter()
+                .filter(|c| scheme_on_root(compound, c))
+                .map(|c| attribute(c).and_then(|(_, test)| test))
+        })
+        .collect();
+    if tests.is_empty() {
+        return;
     }
+    for test in tests {
+        let holds = |scheme: &str| test.as_ref().is_none_or(|t| t.test(scheme));
+        let scheme = match (holds("light"), holds("dark")) {
+            (true, true) => Query::All,
+            (false, true) => Query::Feature(Feature::Dark(true)),
+            (true, false) => Query::Feature(Feature::Dark(false)),
+            (false, false) => Query::Not(Box::new(Query::All)),
+        };
+        query.media = match std::mem::take(&mut query.media) {
+            Query::All => scheme,
+            Query::And(mut all) => {
+                all.push(scheme);
+                Query::And(all)
+            }
+            media => Query::And(vec![media, scheme]),
+        };
+    }
+    *selector = selector.rewritten(|compound, c| scheme_on_root(compound, c).then_some(":root"));
 }
 
 /// Where a rule sorts in the cascade: user-agent rules first, then by
@@ -161,8 +168,8 @@ pub fn part_rules_from(
         if rule.ua {
             continue;
         }
-        if selector.compounds.iter().flat_map(|c| &c.0).any(|simple| {
-            matches!(simple, super::selectors::Simple::Type(tag) if tag != &tag.to_ascii_lowercase())
+        if selector.compounds().0.iter().flatten().any(|c| {
+            matches!(c, super::selectors::Component::LocalName(tag) if tag.name.0 != tag.name.0.to_ascii_lowercase())
         }) {
             return Err(error((rule.at, "use lowercase markup tags in global CSS".into())));
         }
@@ -170,10 +177,12 @@ pub fn part_rules_from(
             sheet.keyframe_rules.iter().any(|(n, ..)| n == name)
         })
         .map_err(|e| error((rule.at, e)))?;
-        let has_part = selector.compounds.iter().any(|c| {
-            c.0.iter()
-                .any(|s| matches!(s, super::selectors::Simple::Part(_)))
-        });
+        let has_part = selector
+            .compounds()
+            .0
+            .iter()
+            .flatten()
+            .any(|c| matches!(c, super::selectors::Component::Part(_)));
         if has_part {
             part_selector(&selector).map_err(|e| error((rule.at, e)))?;
         }
@@ -290,33 +299,36 @@ pub fn pack_extensions(source: &str, css: &str) -> Result<(), String> {
 }
 
 fn part_selector(selector: &Selector) -> Result<(), String> {
-    use super::selectors::Simple;
+    use super::selectors::{Component, PseudoClass, attribute, nested, structural};
     let bad = || {
         format!(
             "{}: use a lowercase markup tag, host classes/attributes, ::part(name), then state pseudo-classes",
             selector.source
         )
     };
-    if selector.compounds.len() != 1 {
+    let (compounds, _) = selector.compounds();
+    let [simples] = compounds.as_slice() else {
+        return Err(bad());
+    };
+    if selector.span > 0 {
         return Err(bad());
     }
-    let simples = &selector.compounds[0].0;
-    if matches!(simples.first(), Some(Simple::Root))
-        && simples[1..]
-            .iter()
-            .all(|s| matches!(s, Simple::Attribute { .. }))
+    if matches!(simples.first(), Some(Component::Root))
+        && simples[1..].iter().all(|c| attribute(c).is_some())
     {
         return Ok(());
     }
     let mut part = false;
-    for simple in simples {
-        match simple {
-            Simple::Type(tag) if !part && tag == &tag.to_ascii_lowercase() => {}
-            Simple::Class(_) | Simple::Id(_) | Simple::Attribute { .. } if !part => {}
-            Simple::Not(list) | Simple::Is(list) | Simple::Where(list)
-                if !part && list.iter().all(|selector| !selector.structural()) => {}
-            Simple::Part(_) if !part => part = true,
-            Simple::State(_) => {}
+    for c in simples {
+        match c {
+            Component::LocalName(tag) if !part && tag.name.0 == tag.name.0.to_ascii_lowercase() => {
+            }
+            Component::ExplicitUniversalType | Component::Class(_) | Component::ID(_) if !part => {}
+            c if !part && attribute(c).is_some() => {}
+            Component::Negation(_) | Component::Is(_) | Component::Where(_)
+                if !part && nested(c).iter().all(|selector| !structural(selector)) => {}
+            Component::Part(_) if !part => part = true,
+            Component::NonTSPseudoClass(PseudoClass::State(_)) => {}
             _ => return Err(bad()),
         }
     }
@@ -623,12 +635,10 @@ pub fn apply(
                 ));
             }
             let parent = if parent.is_empty() { "text" } else { parent };
-            let part_name = parsed.compounds.iter().flat_map(|c| &c.0).find_map(|s| {
-                if let super::selectors::Simple::Part(name) = s {
-                    Some(name.as_str())
-                } else {
-                    None
-                }
+            let compounds = parsed.compounds().0;
+            let part_name = compounds.iter().flatten().find_map(|c| match c {
+                super::selectors::Component::Part(names) => names.first().map(|n| n.0.as_str()),
+                _ => None,
             });
             let mut text_span = false;
             for (i, _, _) in elements {
@@ -693,12 +703,12 @@ pub fn apply(
                 (&fresh.0, fresh.1.as_ref())
             }
         };
+        let subject_filter = structure.as_ref().map(|_| parsed.subject_filter());
         for (i, _, _) in elements {
-            let condition = match &structure {
+            let condition = match &subject_filter {
                 // The subject's static facts prune elements at cook; the whole
                 // selector is matched on the instantiated tree.
-                Some(_) => match parsed
-                    .subject_filter()
+                Some(filter) => match filter
                     .condition(doc, elements, *i)
                     .map_err(|e| (rule.at, e))?
                 {
@@ -718,15 +728,14 @@ pub fn apply(
             // names an instance is refused; one that only sweeps over it
             // (`*`, a pack's global rule) passes it by.
             if let NodeKind::Use(component) = &doc.nodes[*i].kind {
-                let names = parsed.compounds.last().is_some_and(|subject| {
-                    subject.0.iter().any(|simple| {
+                let names = parsed.compounds().0.last().is_some_and(|subject| {
+                    subject.iter().any(|c| {
                         matches!(
-                            simple,
-                            super::selectors::Simple::Type(_)
-                                | super::selectors::Simple::Id(_)
-                                | super::selectors::Simple::Class(_)
-                                | super::selectors::Simple::Attribute { .. }
-                        )
+                            c,
+                            super::selectors::Component::LocalName(_)
+                                | super::selectors::Component::ID(_)
+                                | super::selectors::Component::Class(_)
+                        ) || super::selectors::attribute(c).is_some()
                     })
                 });
                 if names && !parsed.global && !rule.ua {
@@ -1388,7 +1397,8 @@ fn resolve_nested(list: &str, parent: Option<&str>) -> String {
         return list.to_string();
     };
     let simple = !parent.contains(',')
-        && Selector::parse_list(parent).is_ok_and(|s| s.len() == 1 && s[0].compounds.len() == 1);
+        && Selector::parse_list(parent)
+            .is_ok_and(|s| s.len() == 1 && s[0].compounds().0.len() == 1);
     let replacement = if simple {
         parent.to_string()
     } else {

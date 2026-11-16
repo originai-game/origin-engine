@@ -188,10 +188,7 @@ pub fn ordinal<T: Tree>(tree: &T, id: &T::Id, filter: &[Selector], values: bool)
         return own;
     }
     let list = tree.parent(id);
-    let attribute = |name: &str| {
-        list.as_ref()
-            .and_then(|l| tree.facts(l).attributes.get(name).cloned())
-    };
+    let attribute = |name: &str| list.and_then(|l| tree.facts(l).attributes.get(name).cloned());
     let reversed = attribute("reversed")
         .is_some_and(|v| !matches!(v, Value::Null | Value::Bool(false)) && v != "false");
     let step = if reversed { -1 } else { 1 };
@@ -199,14 +196,14 @@ pub fn ordinal<T: Tree>(tree: &T, id: &T::Id, filter: &[Selector], values: bool)
         let mut between = 0;
         let mut previous = tree.previous(id);
         while let Some(p) = previous {
-            let facts = tree.facts(&p);
+            let facts = tree.facts(p);
             if matching::filter_matches(&facts, filter) {
                 between += 1;
                 if let Some(v) = integer(facts.attributes.get("value")) {
                     return v + step * between;
                 }
             }
-            previous = tree.previous(&p);
+            previous = tree.previous(p);
         }
     }
     let (before, total) = tree.filtered(id, filter);

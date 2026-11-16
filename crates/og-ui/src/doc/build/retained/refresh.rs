@@ -633,21 +633,15 @@ impl RetainedHost {
         };
         let topology = &self.topology;
         let mut work = crate::doc::matching::MatchWork::default();
+        let mut matcher =
+            crate::doc::matching::Matcher::new(topology, Some(&e.document.name), identity);
         let mut values = ui.resolve(
             &build,
             &e.document.nodes[e.index],
             &e.path,
             &mut probe,
             &build.inherited,
-            &mut |selector| {
-                crate::doc::matching::matches(
-                    topology,
-                    Some(&e.document.name),
-                    selector,
-                    identity,
-                    &mut work,
-                )
-            },
+            &mut |selector| matcher.matches(selector, &mut work),
             kept.as_mut().map(Arc::make_mut),
         );
         e.cascades = kept;

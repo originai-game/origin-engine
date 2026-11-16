@@ -1,6 +1,6 @@
 //! Exposed component parts use the document CSS cascade and box painter.
 use super::*;
-use crate::doc::matching::{Facts, own};
+use crate::doc::matching::Facts;
 use crate::doc::schema::Kind;
 
 impl Resolved {
@@ -72,37 +72,38 @@ enum Subject {
 
 impl PartIndex {
     pub(crate) fn new(rules: &[crate::doc::StyleRule]) -> Self {
-        use super::super::selectors::Simple;
+        use super::super::selectors::Component;
         let mut index = Self::default();
         for (i, rule) in rules.iter().enumerate() {
             let Some(s) = &rule.structure else { continue };
-            let part = |c: &super::super::selectors::Compound| {
-                c.0.iter().find_map(|simple| match simple {
-                    Simple::Part(name) => Some(name.clone()),
+            let (compounds, _) = s.compounds();
+            let part = |c: &Vec<&Component>| {
+                c.iter().find_map(|c| match c {
+                    Component::Part(names) => names.first().map(|n| n.0.clone()),
                     _ => None,
                 })
             };
-            let subject = s.compounds.first();
+            let subject = compounds.first();
             if let Some(name) = subject.and_then(part) {
                 index.named.entry(name).or_default().push(i);
-            } else if s.compounds.iter().any(|c| part(c).is_some()) {
+            } else if compounds.iter().any(|c| part(c).is_some()) {
                 index.loose.push(i);
             } else {
-                let simples = subject.map_or(&[][..], |c| &c.0);
-                let find = |f: fn(&Simple) -> Option<Subject>| simples.iter().find_map(f);
+                let simples = subject.map_or(&[][..], |c| &c[..]);
+                let find = |f: fn(&Component) -> Option<Subject>| simples.iter().find_map(|c| f(c));
                 let key = find(|x| match x {
-                    Simple::Id(n) => Some(Subject::Id(n.clone())),
+                    Component::ID(n) => Some(Subject::Id(n.0.clone())),
                     _ => None,
                 })
                 .or_else(|| {
                     find(|x| match x {
-                        Simple::Class(n) => Some(Subject::Class(n.clone())),
+                        Component::Class(n) => Some(Subject::Class(n.0.clone())),
                         _ => None,
                     })
                 })
                 .or_else(|| {
                     find(|x| match x {
-                        Simple::Type(n) => Some(Subject::Tag(n.clone())),
+                        Component::LocalName(n) => Some(Subject::Tag(n.name.0.clone())),
                         _ => None,
                     })
                 })
@@ -683,13 +684,8 @@ impl Ui {
             .matches(self.media_context(), &mut Default::default())
             && rule.query.container.is_empty()
             && rule.structure.as_ref().is_some_and(|s| {
-                let has_part = s
-                    .compounds
-                    .iter()
-                    .flat_map(|c| &c.0)
-                    .any(|simple| matches!(simple, super::super::selectors::Simple::Part(_)));
-                has_part == facts.part.is_some()
-                    && s.compounds[0].0.iter().all(|simple| own(facts, simple))
+                s.inner.is_part() == facts.part.is_some()
+                    && crate::doc::matching::matches_facts(facts, s)
             })
     }
 

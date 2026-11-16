@@ -79,7 +79,7 @@ fn default_css_is_generated_from_the_design_tokens() {
     );
     // The generated public selectors must be accepted by the same parser
     // packs use, with host facts before ::part and state after it.
-    use og_ui::doc::selectors::{Selector as CssSelector, Simple};
+    use og_ui::doc::selectors::{Component, PseudoClass, Selector as CssSelector, attribute};
     let comments = regex_lite::Regex::new(r"/\*[\s\S]*?\*/").unwrap();
     let sheet = comments.replace_all(&generated, "");
     let rules = regex_lite::Regex::new(r"([^{}]+)\{").unwrap();
@@ -89,34 +89,36 @@ fn default_css_is_generated_from_the_design_tokens() {
             continue;
         }
         for selector in CssSelector::parse_list(header).expect("valid CSS selector") {
+            let (compounds, _) = selector.compounds();
             // A role rule is made only of `:where()`, so it has no specificity
             // and any pack or document rule wins over it.
-            if matches!(&selector.compounds[0].0[0], Simple::Where(_)) {
+            if matches!(compounds[0][0], Component::Where(_)) {
                 assert!(
-                    selector
-                        .compounds
+                    compounds
                         .iter()
-                        .all(|c| matches!(c.0.as_slice(), [Simple::Where(_)])),
+                        .all(|c| matches!(c.as_slice(), [Component::Where(_)])),
                     "{header}"
                 );
                 continue;
             }
-            assert_eq!(selector.compounds.len(), 1, "{header}");
-            let simple = &selector.compounds[0].0;
-            assert!(matches!(&simple[0], Simple::Type(tag) if tag == &tag.to_lowercase()));
-            let Some(part) = simple.iter().position(|s| matches!(s, Simple::Part(_))) else {
+            assert_eq!(compounds.len(), 1, "{header}");
+            let simple = &compounds[0];
+            assert!(
+                matches!(simple[0], Component::LocalName(tag) if tag.name.0 == tag.name.0.to_lowercase())
+            );
+            let Some(part) = simple.iter().position(|c| matches!(c, Component::Part(_))) else {
                 continue;
             };
             assert!(
                 simple[1..part]
                     .iter()
-                    .all(|s| matches!(s, Simple::Class(_) | Simple::Attribute { .. })),
+                    .all(|c| matches!(c, Component::Class(_)) || attribute(c).is_some()),
                 "{header}"
             );
             assert!(
                 simple[part + 1..]
                     .iter()
-                    .all(|s| matches!(s, Simple::State(_))),
+                    .all(|c| matches!(c, Component::NonTSPseudoClass(PseudoClass::State(_)))),
                 "{header}"
             );
         }

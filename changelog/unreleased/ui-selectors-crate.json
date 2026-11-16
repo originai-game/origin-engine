@@ -1,0 +1,21 @@
+{
+  "breaking": [
+    {
+      "member": "ui documents (selectors)",
+      "change": "Selectors are parsed and matched by Servo's `selectors` crate, as Firefox's are. An unquoted number as an attribute value is refused (`[level=3]`). Inside `:is()`, `:where()` and `:not()` an argument that does not parse is an error, not a dropped alternative. A document's rules see its own tree, as a page's styles see its light tree. Content passed into a component has its nearest ancestor in the document as its parent, not the component's element that holds it. A component's own elements stay out of the document's rules.",
+      "fix": "Quote numeric attribute values (`[level=\"3\"]`), and correct a selector the error names.",
+      "find": [
+        "\\[[a-z-]+[~|^$*]?=[0-9]",
+        ":is(",
+        ":where(",
+        ":not("
+      ]
+    }
+  ],
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "Type selectors match a tag case-insensitively, as HTML's do."
+    }
+  ]
+}

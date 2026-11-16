@@ -1,17 +1,36 @@
 //! Runtime matching of structural selectors against an instantiated element
-//! tree: retained mounts read the logical [`super::topology::Topology`],
-//! pushed screens the sibling levels their build instantiates. Matching reads
-//! selector facts only (tag, attributes, classes, states, text); it never
-//! evaluates viewmodel expressions. Compounds match only elements of the
-//! rule's own document, so styles stay scoped across component boundaries,
-//! while every instantiated element counts as a sibling.
+//! tree, by the `selectors` crate over [`DocElement`]: retained mounts read
+//! the logical [`super::topology::Topology`]. Matching reads selector facts
+//! only (tag, attributes, classes, states, text); it never evaluates
+//! viewmodel expressions.
+//!
+//! A document's rules see its own tree, as a page's styles see its light
+//! tree: an instantiated component is a shadow root ([`DocElement`]), so its
+//! elements are past the document's ancestors, and content the document
+//! passes into it keeps the document's elements as its ancestors. Every
+//! instantiated element counts as a sibling; one of another document
+//! matches nothing of the rule. A global sheet matches the whole tree.
 use super::UiDocument;
-use super::selectors::{Combinator, Compound, Nth, Selector, Simple};
+use super::selectors::{
+    Atom, Combinator, Component, Inner, OgImpl, PseudoClass, Selector, compound_of, compounds,
+    nested, structural, structural_component,
+};
 use crate::bind::InteractionState;
+use cssparser::ToCss;
+use selectors::attr::{AttrSelectorOperation, CaseSensitivity, NamespaceConstraint};
+use selectors::bloom::BloomFilter;
+use selectors::context::{
+    MatchingContext, MatchingForInvalidation, MatchingMode, NeedsSelectorFlags, QuirksMode,
+    SelectorCaches,
+};
+use selectors::matching::{ElementSelectorFlags, matches_selector};
+use selectors::{Element, OpaqueElement};
 use serde_json::Value;
+use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 
 /// The selector inputs of one instantiated element.
+#[derive(Clone, Copy)]
 pub struct Facts<'a> {
     pub scope: &'a str,
     pub tag: &'a str,
@@ -25,32 +44,25 @@ pub struct Facts<'a> {
     pub text: &'a str,
 }
 
-/// An instantiated element tree in logical order.
+/// An instantiated element tree in logical order. Ids it answers are its
+/// own, so one element is one address ([`Tree::canonical`]).
 pub trait Tree {
-    type Id: Clone + PartialEq;
+    type Id: PartialEq + std::fmt::Debug;
     fn facts(&self, id: &Self::Id) -> Facts<'_>;
-    fn parent(&self, id: &Self::Id) -> Option<Self::Id>;
+    fn parent(&self, id: &Self::Id) -> Option<&Self::Id>;
     /// The immediately preceding element sibling.
-    fn previous(&self, id: &Self::Id) -> Option<Self::Id>;
-    /// The 0-based index among the element's siblings and their count.
-    fn position(&self, id: &Self::Id) -> (usize, usize);
+    fn previous(&self, id: &Self::Id) -> Option<&Self::Id>;
+    /// The immediately following element sibling.
+    fn following(&self, id: &Self::Id) -> Option<&Self::Id>;
+    fn first_child(&self, id: &Self::Id) -> Option<&Self::Id>;
     /// Siblings before the element that match `filter`, and all that do.
     fn filtered(&self, id: &Self::Id, filter: &[Selector]) -> (usize, usize);
-    fn has_children(&self, id: &Self::Id) -> bool;
-    /// The element's instantiated element children, in order (`:has()`).
-    fn children(&self, id: &Self::Id) -> Vec<Self::Id>;
-    /// The immediately following element sibling (`:has(+ …)`).
-    fn following(&self, id: &Self::Id) -> Option<Self::Id>;
-}
-
-/// The `of S` filter `:nth-of-type()` counts with: the element's own type.
-pub fn type_filter(tag: &str) -> Vec<Selector> {
-    vec![Selector {
-        source: tag.to_string(),
-        global: false,
-        compounds: vec![Compound(vec![Simple::Type(tag.to_string())])],
-        combinators: Vec::new(),
-    }]
+    /// The tree's own id for `id`.
+    fn canonical(&self, id: &Self::Id) -> Option<&Self::Id>;
+    /// The host a part is exposed by.
+    fn part_host(&self, _id: &Self::Id) -> Option<&Self::Id> {
+        None
+    }
 }
 
 /// Work done by structural matching, for bounded-cost tests.
@@ -62,276 +74,411 @@ pub struct MatchWork {
     pub candidates: usize,
 }
 
-/// Whether `id` is the subject of `selector`. Document sheets supply
-/// their scope; global sheets have no scope restriction.
-pub fn matches<T: Tree>(
-    tree: &T,
-    scope: Option<&str>,
-    selector: &Selector,
-    id: &T::Id,
-    work: &mut MatchWork,
-) -> bool {
-    work.selectors += 1;
-    chain(
-        tree,
-        scope.filter(|_| !selector.global),
-        selector,
-        selector.compounds.len() - 1,
-        id,
-        None,
-        work,
-    )
+/// What one match reads beside the tree.
+struct Context<'a> {
+    /// The rule's document; `None` for a global sheet's.
+    scope: Option<&'a str>,
+    candidates: Cell<usize>,
 }
 
-fn chain<T: Tree>(
-    tree: &T,
-    scope: Option<&str>,
-    selector: &Selector,
-    part: usize,
-    id: &T::Id,
-    anchor: Option<&T::Id>,
-    work: &mut MatchWork,
-) -> bool {
-    if !compound_at(tree, scope, &selector.compounds[part], id, anchor, work) {
-        return false;
-    }
-    if part == 0 {
-        return true;
-    }
-    let combinator = selector.combinators[part - 1];
-    let mut next = match combinator {
-        Combinator::Descendant | Combinator::Child => tree.parent(id),
-        Combinator::Next | Combinator::Subsequent => tree.previous(id),
-    };
-    while let Some(candidate) = next {
-        work.candidates += 1;
-        if chain(tree, scope, selector, part - 1, &candidate, anchor, work) {
-            return true;
-        }
-        next = match combinator {
-            Combinator::Descendant => tree.parent(&candidate),
-            Combinator::Subsequent => tree.previous(&candidate),
-            Combinator::Child | Combinator::Next => None,
-        };
-    }
-    false
+/// An element of a [`Tree`] as the `selectors` crate matches it.
+pub struct DocElement<'a, T: Tree> {
+    tree: &'a T,
+    id: &'a T::Id,
+    facts: Facts<'a>,
+    /// Of another document than the rule's: it matches nothing.
+    foreign: bool,
+    context: &'a Context<'a>,
 }
 
-/// Whether one compound matches the element's own facts and position.
-pub fn compound<T: Tree>(
-    tree: &T,
-    scope: Option<&str>,
-    compound: &Compound,
-    id: &T::Id,
-    work: &mut MatchWork,
-) -> bool {
-    compound_at(tree, scope, compound, id, None, work)
+impl<T: Tree> Clone for DocElement<'_, T> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
-fn compound_at<T: Tree>(
-    tree: &T,
-    scope: Option<&str>,
-    compound: &Compound,
-    id: &T::Id,
-    anchor: Option<&T::Id>,
-    work: &mut MatchWork,
-) -> bool {
-    let facts = tree.facts(id);
-    // The `:has()` anchor is the element it was matched from, whichever
-    // document styles it.
-    if let Some(anchor) = anchor
-        && compound.0.first() == Some(&Simple::Anchor)
-    {
-        return id == anchor;
+impl<T: Tree> Copy for DocElement<'_, T> {}
+
+impl<T: Tree> std::fmt::Debug for DocElement<'_, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<{} {:?}>", self.facts.tag, self.id)
     }
-    if scope.is_some_and(|scope| facts.scope != scope) {
-        return false;
-    }
-    compound.0.iter().all(|simple| match simple {
-        Simple::Nth(nth) => position(tree, scope, nth, id, work),
-        Simple::Only { of_type: false } => tree.position(id).1 == 1,
-        Simple::Only { of_type: true } => {
-            let filter = type_filter(facts.tag);
-            tree.filtered(id, &filter).1 == 1
-        }
-        Simple::Empty => facts.text.is_empty() && !tree.has_children(id),
-        Simple::Has(list) => list
-            .iter()
-            .any(|relative| has(tree, scope, relative, id, work)),
-        Simple::Lang(ranges) => match inherited(tree, id, "lang") {
-            Some(tag) => ranges.iter().any(|r| crate::bind::lang_matches(r, &tag)),
-            None => ranges.iter().any(|r| crate::bind::lang_matches(r, "en")),
-        },
-        Simple::Dir(rtl) => {
-            let written = inherited(tree, id, "dir");
-            (written.as_deref() == Some("rtl")) == *rtl
-        }
-        Simple::Pseudo(list) => list
-            .iter()
-            .any(|inner| matches(tree, scope, inner, id, work)),
-        Simple::Not(list) => !list
-            .iter()
-            .any(|inner| matches(tree, scope, inner, id, work)),
-        Simple::Is(list) | Simple::Where(list) => list
-            .iter()
-            .any(|inner| matches(tree, scope, inner, id, work)),
-        simple => own(&facts, simple),
-    })
 }
 
-/// The nearest `name` attribute of the element or an ancestor, as text.
-fn inherited<T: Tree>(tree: &T, id: &T::Id, name: &str) -> Option<String> {
-    let mut at = Some(id.clone());
-    while let Some(node) = at {
-        if let Some(value) = tree.facts(&node).attributes.get(name)
-            && !value.is_null()
-        {
-            return Some(crate::bind::text(value));
+impl<'a, T: Tree> DocElement<'a, T> {
+    fn new(tree: &'a T, id: &'a T::Id, facts: Facts<'a>, context: &'a Context<'a>) -> Self {
+        Self {
+            tree,
+            id,
+            facts,
+            foreign: context.scope.is_some_and(|s| s != facts.scope),
+            context,
         }
-        at = tree.parent(&node);
     }
-    None
-}
 
-/// Whether `relative` (a `:has()` argument) matches an element reached
-/// from `anchor`: the anchor's descendants for `>` and descendant
-/// combinators, its later siblings and their descendants for `+` and `~`.
-/// A selector of child or next-sibling steps only searches as deep or as
-/// far as its steps reach.
-fn has<T: Tree>(
-    tree: &T,
-    scope: Option<&str>,
-    relative: &Selector,
-    anchor: &T::Id,
-    work: &mut MatchWork,
-) -> bool {
-    let steps = &relative.combinators;
-    let sibling = matches!(steps[0], Combinator::Next | Combinator::Subsequent);
-    let down = steps
-        .iter()
-        .any(|c| matches!(c, Combinator::Descendant | Combinator::Child));
-    // How deep below the start the subject can be: unbounded when any
-    // step is a descendant combinator.
-    let depth = if steps.contains(&Combinator::Descendant) {
-        usize::MAX
-    } else {
-        steps.iter().filter(|c| **c == Combinator::Child).count()
-    };
-    let far = steps.contains(&Combinator::Subsequent);
-    let reach = steps.iter().filter(|c| **c == Combinator::Next).count();
-    let mut starts = Vec::new();
-    if sibling {
-        let mut next = tree.following(anchor);
-        let mut k = 0;
-        while let Some(s) = next {
-            k += 1;
-            if !far && k > reach {
-                break;
-            }
-            next = tree.following(&s);
-            starts.push((s, 0));
-        }
-    } else {
-        starts.extend(tree.children(anchor).into_iter().map(|c| (c, 1)));
+    fn at(&self, id: &'a T::Id) -> Self {
+        let count = &self.context.candidates;
+        count.set(count.get() + 1);
+        Self::new(self.tree, id, self.tree.facts(id), self.context)
     }
-    let subject = relative.compounds.len() - 1;
-    while let Some((id, level)) = starts.pop() {
-        work.candidates += 1;
-        if chain(tree, scope, relative, subject, &id, Some(anchor), work) {
-            return true;
-        }
-        if down && level < depth {
-            starts.extend(tree.children(&id).into_iter().map(|c| (c, level + 1)));
-        }
-    }
-    false
-}
 
-fn position<T: Tree>(
-    tree: &T,
-    scope: Option<&str>,
-    nth: &Nth,
-    id: &T::Id,
-    work: &mut MatchWork,
-) -> bool {
-    let (before, count) = match &nth.of {
-        None if nth.of_type => {
-            let filter = type_filter(tree.facts(id).tag);
-            tree.filtered(id, &filter)
-        }
-        None => tree.position(id),
-        Some(filter) => {
-            if !filter
-                .iter()
-                .any(|inner| compound(tree, scope, &inner.compounds[0], id, work))
+    fn foreign(&self) -> bool {
+        self.foreign
+    }
+
+    /// Whether the element is a component's root under its host, `parent`
+    /// in the instantiated tree: the first child of a shadow root.
+    fn shadow_child_of(&self, parent: &Facts<'_>) -> bool {
+        self.context.scope.is_some() && self.facts.root && parent.scope != self.facts.scope
+    }
+
+    fn shadow_child(&self) -> bool {
+        self.tree
+            .parent(self.id)
+            .is_some_and(|p| self.shadow_child_of(&self.tree.facts(p)))
+    }
+
+    /// The nearest `name` attribute of the element or an ancestor, as text.
+    fn inherited(&self, name: &str) -> Option<String> {
+        let mut at = Some(self.id);
+        while let Some(node) = at {
+            if let Some(value) = self.tree.facts(node).attributes.get(name)
+                && !value.is_null()
             {
-                return false;
+                return Some(crate::bind::text(value));
             }
-            tree.filtered(id, filter)
+            at = self.tree.parent(node);
         }
-    };
-    nth.matches(if nth.last { count - before } else { before + 1 })
+        None
+    }
 }
 
-/// A simple selector that reads only the element's own facts; also used to
-/// evaluate `of S` filters on a single element.
-pub fn own(facts: &Facts<'_>, simple: &Simple) -> bool {
-    match simple {
-        Simple::Type(name) => facts.tag == name,
-        // A part list names the element by each of its names (CSS Shadow
-        // Parts §4.1: `::part()` matches any of them).
-        Simple::Part(name) => {
-            facts
-                .part
-                .is_some_and(|p| p.split_ascii_whitespace().any(|n| n == name))
-                || facts.own_part == Some(name.as_str())
+impl<'a, T: Tree> Element for DocElement<'a, T> {
+    type Impl = OgImpl;
+
+    fn opaque(&self) -> OpaqueElement {
+        OpaqueElement::new(self.id)
+    }
+
+    /// The parent in the element's own tree: none for a component's root
+    /// (its parent is a shadow root); for content a document passed into a
+    /// component, its nearest ancestor of that document.
+    fn parent_element(&self) -> Option<Self> {
+        let mut parent = self.at(self.tree.parent(self.id)?);
+        if self.context.scope.is_none() || parent.facts.scope == self.facts.scope {
+            return Some(parent);
         }
-        Simple::Root => facts.root,
-        Simple::Id(name) => facts.attributes.get("id").and_then(Value::as_str) == Some(name),
-        Simple::Class(name) => facts
-            .attributes
-            .get("class")
-            .and_then(Value::as_str)
-            .is_some_and(|classes| classes.split_ascii_whitespace().any(|c| c == name)),
-        Simple::Attribute { name, test } => match (facts.attributes.get(name), test) {
+        if self.shadow_child_of(&parent.facts) {
+            return None;
+        }
+        loop {
+            parent = parent.at(self.tree.parent(parent.id)?);
+            if parent.facts.scope == self.facts.scope {
+                return Some(parent);
+            }
+        }
+    }
+
+    fn parent_node_is_shadow_root(&self) -> bool {
+        self.shadow_child()
+    }
+
+    fn containing_shadow_host(&self) -> Option<Self> {
+        if let Some(host) = self.tree.part_host(self.id) {
+            return Some(self.at(host));
+        }
+        self.context.scope?;
+        let mut at = self.id;
+        loop {
+            let parent = self.tree.parent(at)?;
+            if self.tree.facts(at).root && self.tree.facts(parent).scope != self.facts.scope {
+                return Some(self.at(parent));
+            }
+            at = parent;
+        }
+    }
+
+    fn is_pseudo_element(&self) -> bool {
+        false
+    }
+
+    fn prev_sibling_element(&self) -> Option<Self> {
+        self.tree.previous(self.id).map(|id| self.at(id))
+    }
+
+    fn next_sibling_element(&self) -> Option<Self> {
+        self.tree.following(self.id).map(|id| self.at(id))
+    }
+
+    fn first_element_child(&self) -> Option<Self> {
+        self.tree.first_child(self.id).map(|id| self.at(id))
+    }
+
+    /// Attribute values HTML compares caselessly do so here too (HTML
+    /// §4.16.2), unless the selector has the `s` flag.
+    fn is_html_element_in_html_document(&self) -> bool {
+        true
+    }
+
+    fn has_local_name(&self, name: &str) -> bool {
+        !self.foreign() && (self.facts.tag == name || self.facts.tag.eq_ignore_ascii_case(name))
+    }
+
+    fn has_namespace(&self, _: &str) -> bool {
+        true
+    }
+
+    fn is_same_type(&self, other: &Self) -> bool {
+        self.facts.tag == other.facts.tag
+    }
+
+    fn attr_matches(
+        &self,
+        _: &NamespaceConstraint<&Atom>,
+        name: &Atom,
+        operation: &AttrSelectorOperation<&Atom>,
+    ) -> bool {
+        if self.foreign() {
+            return false;
+        }
+        match (self.facts.attributes.get(&name.0), operation) {
             (None | Some(Value::Null), _) => false,
-            (Some(value), None)
+            // A bound boolean attribute is present while true.
+            (Some(value), AttrSelectorOperation::Exists)
                 if !value.is_string()
-                    && matches!(name.as_str(), "disabled" | "checked" | "selected") =>
+                    && matches!(name.0.as_str(), "disabled" | "checked" | "selected") =>
             {
                 crate::bind::truthy(value)
             }
-            (Some(_), None) => true,
-            (Some(actual), Some(test)) => test.test(&crate::bind::text(actual)),
-        },
-        Simple::State(state) => facts.states.contains(state),
-        Simple::Custom(name) => facts
-            .attributes
-            .get(&format!("state:{name}"))
-            .is_some_and(|v| crate::bind::truthy(v) && v.as_str() != Some("false")),
-        Simple::Defined => true,
-        Simple::Scope => facts.root,
-        Simple::Not(list) => !list
-            .iter()
-            .any(|s| s.compounds[0].0.iter().all(|x| own(facts, x))),
-        Simple::Is(list) | Simple::Where(list) | Simple::Pseudo(list) => list
-            .iter()
-            .any(|s| s.compounds[0].0.iter().all(|x| own(facts, x))),
-        Simple::Nth(_)
-        | Simple::Only { .. }
-        | Simple::Empty
-        | Simple::Has(_)
-        | Simple::Anchor
-        | Simple::Lang(_)
-        | Simple::Dir(_) => false,
+            (Some(_), AttrSelectorOperation::Exists) => true,
+            (Some(value), operation) => operation.eval_str(&crate::bind::text(value)),
+        }
     }
+
+    fn match_non_ts_pseudo_class(&self, pc: &PseudoClass, _: &mut MatchingContext<OgImpl>) -> bool {
+        if self.foreign() {
+            return false;
+        }
+        match pc {
+            PseudoClass::State(state) => self.facts.states.contains(state),
+            PseudoClass::Lang(ranges) => {
+                let tag = self.inherited("lang");
+                let tag = tag.as_deref().unwrap_or("en");
+                ranges.iter().any(|r| crate::bind::lang_matches(r, tag))
+            }
+            PseudoClass::Dir(rtl) => (self.inherited("dir").as_deref() == Some("rtl")) == *rtl,
+            PseudoClass::Custom(name) => self
+                .facts
+                .attributes
+                .get(&format!("state:{}", name.0))
+                .is_some_and(|v| crate::bind::truthy(v) && v.as_str() != Some("false")),
+            PseudoClass::Defined => true,
+            PseudoClass::AnyLink => self.is_link(),
+        }
+    }
+
+    fn match_pseudo_element(
+        &self,
+        pe: &super::selectors::PseudoElement,
+        _: &mut MatchingContext<OgImpl>,
+    ) -> bool {
+        match *pe {}
+    }
+
+    fn apply_selector_flags(&self, _: ElementSelectorFlags) {}
+
+    fn is_link(&self) -> bool {
+        !self.foreign()
+            && matches!(self.facts.tag, "a" | "area")
+            && self
+                .facts
+                .attributes
+                .get("href")
+                .is_some_and(|v| !v.is_null())
+    }
+
+    fn is_html_slot_element(&self) -> bool {
+        false
+    }
+
+    fn has_id(&self, id: &Atom, _: CaseSensitivity) -> bool {
+        !self.foreign() && self.facts.attributes.get("id").and_then(Value::as_str) == Some(&id.0)
+    }
+
+    fn has_class(&self, name: &Atom, _: CaseSensitivity) -> bool {
+        !self.foreign()
+            && self
+                .facts
+                .attributes
+                .get("class")
+                .and_then(Value::as_str)
+                .is_some_and(|classes| classes.split_ascii_whitespace().any(|c| c == name.0))
+    }
+
+    fn has_custom_state(&self, _: &Atom) -> bool {
+        false
+    }
+
+    fn imported_part(&self, _: &Atom) -> Option<Atom> {
+        None
+    }
+
+    /// A part list names the element by each of its names (CSS Shadow
+    /// Parts §4.1).
+    fn is_part(&self, name: &Atom) -> bool {
+        !self.foreign()
+            && (self
+                .facts
+                .part
+                .is_some_and(|p| p.split_ascii_whitespace().any(|n| n == name.0))
+                || self.facts.own_part == Some(name.0.as_str()))
+    }
+
+    fn is_empty(&self) -> bool {
+        !self.foreign() && self.facts.text.is_empty() && self.tree.first_child(self.id).is_none()
+    }
+
+    fn is_root(&self) -> bool {
+        !self.foreign() && self.facts.root
+    }
+
+    fn add_element_unique_hashes(&self, _: &mut BloomFilter) -> bool {
+        false
+    }
+}
+
+/// Matches selectors against one element of a tree: what every match reads
+/// of the element, and the crate's caches, are set up once.
+pub struct Matcher<'a, T: Tree> {
+    tree: &'a T,
+    subject: Option<(&'a T::Id, Facts<'a>)>,
+    /// The rule's document, for its own rules; none for a global sheet's.
+    scoped: Context<'a>,
+    global: Context<'a>,
+    caches: SelectorCaches,
+}
+
+impl<'a, T: Tree> Matcher<'a, T> {
+    /// Document sheets supply their scope; global sheets have no scope
+    /// restriction.
+    pub fn new(tree: &'a T, scope: Option<&'a str>, id: &T::Id) -> Self {
+        Self {
+            tree,
+            subject: tree.canonical(id).map(|id| (id, tree.facts(id))),
+            scoped: Context {
+                scope,
+                candidates: Cell::new(0),
+            },
+            global: Context {
+                scope: None,
+                candidates: Cell::new(0),
+            },
+            caches: SelectorCaches::default(),
+        }
+    }
+
+    /// Whether the element is the subject of `selector`.
+    pub fn matches(&mut self, selector: &Selector, work: &mut MatchWork) -> bool {
+        work.selectors += 1;
+        let Some((id, facts)) = self.subject else {
+            return false;
+        };
+        let context = if selector.global {
+            &self.global
+        } else {
+            &self.scoped
+        };
+        context.candidates.set(0);
+        let mut matching = MatchingContext::new(
+            MatchingMode::Normal,
+            None,
+            &mut self.caches,
+            QuirksMode::NoQuirks,
+            NeedsSelectorFlags::No,
+            MatchingForInvalidation::No,
+        );
+        let element = DocElement::new(self.tree, id, facts, context);
+        let hit = matches_selector(&selector.inner, 0, None, element, &mut matching);
+        work.candidates += context.candidates.get();
+        hit
+    }
+}
+
+/// One element's facts as a tree of its own: a part is exposed by a host
+/// that has the same facts.
+struct Lone<'f>(Facts<'f>);
+
+#[derive(Debug, PartialEq)]
+enum LoneNode {
+    Part,
+    Host,
+}
+
+static PART: LoneNode = LoneNode::Part;
+static HOST: LoneNode = LoneNode::Host;
+
+impl Tree for Lone<'_> {
+    type Id = LoneNode;
+
+    fn facts(&self, id: &LoneNode) -> Facts<'_> {
+        match id {
+            LoneNode::Part => self.0,
+            LoneNode::Host => Facts {
+                part: None,
+                own_part: None,
+                ..self.0
+            },
+        }
+    }
+
+    fn parent(&self, _: &LoneNode) -> Option<&LoneNode> {
+        None
+    }
+
+    fn previous(&self, _: &LoneNode) -> Option<&LoneNode> {
+        None
+    }
+
+    fn following(&self, _: &LoneNode) -> Option<&LoneNode> {
+        None
+    }
+
+    fn first_child(&self, _: &LoneNode) -> Option<&LoneNode> {
+        None
+    }
+
+    fn filtered(&self, _: &LoneNode, _: &[Selector]) -> (usize, usize) {
+        (0, 0)
+    }
+
+    fn canonical(&self, id: &LoneNode) -> Option<&LoneNode> {
+        Some(match id {
+            LoneNode::Part => &PART,
+            LoneNode::Host => &HOST,
+        })
+    }
+
+    fn part_host(&self, id: &LoneNode) -> Option<&LoneNode> {
+        (*id == LoneNode::Part).then_some(&HOST)
+    }
+}
+
+/// Whether an element's own facts match `selector`: its part, when the
+/// facts name one, under a host with the same facts.
+pub fn matches_facts(facts: &Facts<'_>, selector: &Selector) -> bool {
+    let subject = if facts.part.is_some() { &PART } else { &HOST };
+    let lone = Lone(*facts);
+    Matcher::new(&lone, None, subject).matches(selector, &mut MatchWork::default())
 }
 
 /// Whether an element's own facts match one `of S` filter list.
 pub fn filter_matches(facts: &Facts<'_>, filter: &[Selector]) -> bool {
-    filter
-        .iter()
-        .any(|s| s.compounds[0].0.iter().all(|simple| own(facts, simple)))
+    filter.iter().any(|s| matches_facts(facts, s))
+}
+
+/// The `of S` filter `:nth-of-type()` counts with: the element's own type.
+pub fn type_filter(tag: &str) -> Option<Vec<Selector>> {
+    Selector::parse_list(tag).ok()
 }
 
 /// What structural rules of a set of documents can depend on; it bounds the
@@ -400,47 +547,45 @@ pub struct HasContext {
     pub subject: Selector,
 }
 
-fn has_in(simple: &Simple) -> bool {
-    match simple {
-        Simple::Has(_) => true,
-        Simple::Not(l) | Simple::Is(l) | Simple::Where(l) | Simple::Pseudo(l) => l
+fn has_in(c: &Component) -> bool {
+    matches!(c, Component::Has(_))
+        || nested(c)
             .iter()
-            .flat_map(|s| s.compounds.iter().flat_map(|c| &c.0))
-            .any(has_in),
-        _ => false,
-    }
+            .any(|s| s.iter_raw_parse_order_from(0).any(has_in))
+}
+
+/// The relative selector's combinators, from the anchor out.
+fn relative_steps(relative: &Inner) -> Vec<Combinator> {
+    compounds(relative).1
 }
 
 impl Profile {
     pub fn add(&mut self, selector: &Selector) {
-        if !selector.structural() && !selector.global {
+        self.add_inner(&selector.inner, selector.global);
+    }
+
+    fn add_inner(&mut self, selector: &Inner, global: bool) {
+        if !structural(selector) && !global {
             return;
         }
         self.any = true;
-        let last = selector.compounds.len() - 1;
-        for (i, compound) in selector.compounds.iter().enumerate() {
-            if !compound.0.iter().any(has_in) {
+        let (compounds, combinators) = compounds(selector);
+        let last = compounds.len() - 1;
+        let own = |c: &[&Component]| {
+            compound_of(c.iter().copied().filter(|c| {
+                !structural_component(c)
+                    && !matches!(
+                        c,
+                        Component::NonTSPseudoClass(PseudoClass::Lang(_) | PseudoClass::Dir(_))
+                    )
+            }))
+        };
+        for (i, compound) in compounds.iter().enumerate() {
+            if !compound.iter().any(|c| has_in(c)) {
                 continue;
             }
-            let own = |c: &Compound| Selector {
-                source: selector.source.clone(),
-                global: selector.global,
-                compounds: vec![Compound(
-                    c.0.iter()
-                        .filter(|s| {
-                            !s.structural() && !matches!(s, Simple::Lang(_) | Simple::Dir(_))
-                        })
-                        .cloned()
-                        .collect(),
-                )],
-                combinators: Vec::new(),
-            };
-            let steps = &selector.combinators[i..];
-            if i == last
-                || steps
-                    .iter()
-                    .any(|c| matches!(c, Combinator::Next | Combinator::Subsequent))
-            {
+            let steps = &combinators[i..];
+            if i == last || steps.iter().any(Combinator::is_sibling) {
                 // The anchor is the subject, or its subject is beside the
                 // anchor's subtree: the anchor restyles, and with it what
                 // follows it.
@@ -449,7 +594,7 @@ impl Profile {
                 } else {
                     self.has_siblings = usize::MAX;
                     self.ancestors = true;
-                    own(&Compound(Vec::new()))
+                    own(&[])
                 };
                 if !self.has_anchors.contains(&anchor) {
                     self.has_anchors.push(anchor);
@@ -463,137 +608,140 @@ impl Profile {
                 } else {
                     steps.len()
                 },
-                subject: own(&selector.compounds[last]),
+                subject: own(&compounds[last]),
             };
             if !self.has_context.contains(&context) {
                 self.has_context.push(context);
             }
         }
-        for combinator in &selector.combinators {
+        for combinator in &combinators {
             match combinator {
-                Combinator::Next => self.next = true,
-                Combinator::Subsequent => self.subsequent = true,
-                Combinator::Descendant | Combinator::Child => self.ancestors = true,
+                Combinator::NextSibling => self.next = true,
+                Combinator::LaterSibling => self.subsequent = true,
+                _ => self.ancestors = true,
             }
         }
-        for simple in selector.compounds.iter().flat_map(|c| &c.0) {
-            self.simple(simple);
+        for c in compounds.iter().flatten() {
+            self.component(c);
         }
     }
 
-    /// Records one simple selector's reads; answers whether it is structural.
-    fn simple(&mut self, simple: &Simple) -> bool {
-        match simple {
-            Simple::Class(_) => {
+    /// Records one simple selector's reads.
+    fn component(&mut self, c: &Component) {
+        match c {
+            Component::Class(_) => {
                 self.attributes.insert("class".into());
                 self.attributes.insert("variant".into());
-                false
             }
-            Simple::Id(_) => {
+            Component::ID(_) => {
                 self.attributes.insert("id".into());
-                false
             }
-            Simple::Attribute { name, .. } => {
-                self.attributes.insert(name.clone());
-                false
-            }
-            Simple::State(state) => {
-                self.states.insert(*state);
-                false
-            }
-            Simple::Nth(nth) => {
-                self.of_type |= nth.of_type;
-                let end = nth.a == 0 && nth.b == 1 && nth.of.is_none() && !nth.of_type;
-                match (nth.last, end) {
-                    (_, true) => self.ends = true,
-                    (false, false) => self.forward = true,
-                    (true, false) => self.backward = true,
+            Component::AttributeInNoNamespaceExists { .. }
+            | Component::AttributeInNoNamespace { .. }
+            | Component::AttributeOther(_) => {
+                if let Some((name, _)) = super::selectors::attribute(c) {
+                    self.attributes.insert(name.into());
                 }
-                if let Some(filter) = &nth.of {
-                    for s in filter {
-                        for simple in &s.compounds[0].0 {
-                            self.simple(simple);
+            }
+            Component::NonTSPseudoClass(pc) => match pc {
+                PseudoClass::State(state) => {
+                    self.states.insert(*state);
+                }
+                PseudoClass::Lang(_) | PseudoClass::Dir(_) => {
+                    self.attributes.insert(
+                        if matches!(pc, PseudoClass::Lang(_)) {
+                            "lang"
+                        } else {
+                            "dir"
                         }
-                    }
-                    if !self.filters.contains(filter) {
-                        self.filters.push(filter.clone());
+                        .into(),
+                    );
+                    self.ancestors = true;
+                }
+                PseudoClass::Custom(name) => {
+                    self.attributes.insert(format!("state:{}", name.0));
+                }
+                PseudoClass::AnyLink => {
+                    self.attributes.insert("href".into());
+                }
+                PseudoClass::Defined => {}
+            },
+            Component::Nth(nth) => self.nth(nth, false),
+            Component::NthOf(nth) => {
+                self.nth(nth.nth_data(), true);
+                for s in nth.selectors() {
+                    for c in s.iter_raw_parse_order_from(0) {
+                        self.component(c);
                     }
                 }
-                true
-            }
-            Simple::Only { of_type } => {
-                self.ends = true;
-                if *of_type {
-                    self.of_type = true;
-                    self.forward = true;
-                    self.backward = true;
+                let filter: Vec<Selector> = nth
+                    .selectors()
+                    .iter()
+                    .map(|s| Selector {
+                        source: s.to_css_string(),
+                        global: false,
+                        inner: s.clone(),
+                        span: 0,
+                    })
+                    .collect();
+                if !self.filters.contains(&filter) {
+                    self.filters.push(filter);
                 }
-                true
             }
-            Simple::Has(list) => {
+            Component::Has(list) => {
                 self.has = true;
-                for relative in list {
-                    if matches!(
-                        relative.combinators[0],
-                        Combinator::Next | Combinator::Subsequent
-                    ) {
-                        let reach = if relative.combinators.contains(&Combinator::Subsequent) {
+                for relative in list.iter() {
+                    let steps = relative_steps(&relative.selector);
+                    if steps.first().is_some_and(Combinator::is_sibling) {
+                        let reach = if steps.contains(&Combinator::LaterSibling) {
                             usize::MAX
                         } else {
-                            relative
-                                .combinators
+                            steps
                                 .iter()
-                                .filter(|c| **c == Combinator::Next)
+                                .filter(|c| **c == Combinator::NextSibling)
                                 .count()
                         };
                         self.has_siblings = self.has_siblings.max(reach);
                     }
-                    for simple in relative.compounds.iter().flat_map(|c| &c.0) {
-                        self.simple(simple);
+                    for c in relative.selector.iter_raw_parse_order_from(0) {
+                        self.component(c);
                     }
                 }
-                true
             }
-            Simple::Lang(_) | Simple::Dir(_) => {
-                self.attributes.insert(
-                    if matches!(simple, Simple::Lang(_)) {
-                        "lang"
-                    } else {
-                        "dir"
-                    }
-                    .into(),
-                );
-                self.ancestors = true;
-                false
-            }
-            Simple::Custom(name) => {
-                self.attributes.insert(format!("state:{name}"));
-                false
-            }
-            Simple::Empty => {
-                self.empty = true;
-                true
-            }
-            Simple::Not(list) | Simple::Is(list) | Simple::Where(list) | Simple::Pseudo(list) => {
+            Component::Empty => self.empty = true,
+            Component::Negation(_) | Component::Is(_) | Component::Where(_) => {
                 // Nested complex selectors are anchored at this element; their
                 // own sibling and ancestor reads count as this selector's.
-                for selector in list {
-                    if selector.structural() {
-                        self.add(selector);
+                for selector in nested(c) {
+                    if structural(selector) {
+                        self.add_inner(selector, false);
                     } else {
-                        for simple in selector.compounds.iter().flat_map(|c| &c.0) {
-                            self.simple(simple);
+                        for c in selector.iter_raw_parse_order_from(0) {
+                            self.component(c);
                         }
                     }
                 }
-                list.iter().any(Selector::structural)
             }
-            Simple::Type(_)
-            | Simple::Root
-            | Simple::Part(_)
-            | Simple::Anchor
-            | Simple::Defined
-            | Simple::Scope => false,
+            _ => {}
+        }
+    }
+
+    fn nth(&mut self, nth: &selectors::parser::NthSelectorData, of: bool) {
+        let of_type = nth.ty.is_of_type();
+        self.of_type |= of_type;
+        if nth.ty.is_only() {
+            self.ends = true;
+            if of_type {
+                self.forward = true;
+                self.backward = true;
+            }
+            return;
+        }
+        let end = nth.an_plus_b.0 == 0 && nth.an_plus_b.1 == 1 && !of && !of_type;
+        match (nth.ty.is_from_end(), end) {
+            (_, true) => self.ends = true,
+            (false, false) => self.forward = true,
+            (true, false) => self.backward = true,
         }
     }
 
@@ -658,8 +806,7 @@ impl Profile {
                 .collect();
             tags.sort_unstable();
             tags.dedup();
-            for t in tags {
-                let filter = type_filter(t);
+            for filter in tags.into_iter().filter_map(type_filter) {
                 if !profile.filters.contains(&filter) {
                     profile.filters.push(filter);
                 }

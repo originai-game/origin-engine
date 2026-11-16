@@ -417,8 +417,8 @@ impl Ui {
         el.frame = None;
         self.matching_part_rules(&tagged).iter().any(|rule| {
             rule.structure.as_ref().is_some_and(|selector| {
-                selector.compounds.iter().flat_map(|compound| &compound.0).any(|simple| {
-                    matches!(simple, crate::doc::selectors::Simple::Attribute { name, .. } if name == key)
+                selector.compounds().0.iter().flatten().any(|c| {
+                    crate::doc::selectors::attribute(c).is_some_and(|(name, _)| name == key)
                 })
             })
         })

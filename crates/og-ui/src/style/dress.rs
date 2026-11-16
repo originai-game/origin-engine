@@ -219,34 +219,42 @@ impl PartRef {
     /// A concrete part named with standard CSS: host facts, then
     /// `::part(name)`, then state pseudo-classes.
     pub fn parse(text: &str, class: impl Into<Option<ElementClass>>) -> Result<PartRef, String> {
-        use crate::doc::selectors::{Selector, Simple};
+        use crate::doc::selectors::{Component, PseudoClass, Selector, attribute};
         let selectors = Selector::parse_list(text)?;
         let [selector] = selectors.as_slice() else {
             return Err("name one part".into());
         };
-        let [compound] = selector.compounds.as_slice() else {
+        if selector.span > 0 {
+            return Err("write host classes and attributes before ::part(name), and standard state pseudo-classes after it".into());
+        }
+        let (compounds, _) = selector.compounds();
+        let [compound] = compounds.as_slice() else {
             return Err("a part identity has one host".into());
         };
-        let Some(Simple::Type(host)) = compound.0.first() else {
+        let Some(Component::LocalName(host)) = compound.first() else {
             return Err("a part starts with its host tag".into());
         };
+        let host = &host.name.0;
         if host != &host.to_ascii_lowercase() {
             return Err("a part's host tag is lowercase".into());
         }
         let mut p = PartRef::of(intern(host), "", class.into());
-        for simple in &compound.0[1..] {
-            match simple {
-                Simple::Part(name) if p.part.is_empty() => p.part = intern(name),
-                Simple::Class(name) if p.part.is_empty() => p = p.flag(intern(name)),
-                Simple::Attribute { name, test } if p.part.is_empty() => {
-                    let value = match test {
+        for c in &compound[1..] {
+            match c {
+                Component::Part(names) if p.part.is_empty() && names.len() == 1 => {
+                    p.part = intern(&names[0].0)
+                }
+                Component::Class(name) if p.part.is_empty() => p = p.flag(intern(&name.0)),
+                c if p.part.is_empty() && attribute(c).is_some() => {
+                    let (name, test) = attribute(c).expect("an attribute selector");
+                    let value = match &test {
                         None => "true",
                         Some(test) if test.op == crate::bind::AttrOp::Equals => &test.value,
                         _ => return Err("a concrete part attribute uses =".into()),
                     };
                     p = p.attr(intern(name), intern(value));
                 }
-                Simple::State(state) if !p.part.is_empty() && *state != crate::bind::InteractionState::Selected => {
+                Component::NonTSPseudoClass(PseudoClass::State(state)) if !p.part.is_empty() && *state != crate::bind::InteractionState::Selected => {
                     let name = crate::css::values::kebab(&format!("{state:?}"));
                     p = p.flag(intern(name.trim_start_matches('-')));
                 }

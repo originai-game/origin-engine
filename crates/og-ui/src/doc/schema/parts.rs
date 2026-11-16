@@ -158,19 +158,28 @@ fn validate_selector(
     selector: &crate::doc::selectors::Selector,
     authored: &[(String, String)],
 ) -> Result<(), String> {
-    use crate::doc::selectors::Simple;
-    for compound in &selector.compounds {
-        for simple in &compound.0 {
-            if let Simple::Is(list) | Simple::Where(list) | Simple::Not(list) | Simple::Has(list) =
-                simple
-            {
-                for nested in list {
-                    validate_selector(nested, authored)?;
-                }
+    use crate::doc::selectors::{Component, PseudoClass, attribute, nested};
+    let (compounds, _) = selector.compounds();
+    for compound in &compounds {
+        for c in compound {
+            let lists: Vec<&crate::doc::selectors::Inner> = match c {
+                Component::Has(list) => list.iter().map(|r| &r.selector).collect(),
+                c => nested(c).iter().collect(),
+            };
+            for nested in lists {
+                validate_selector(
+                    &crate::doc::selectors::Selector {
+                        source: String::new(),
+                        global: false,
+                        inner: nested.clone(),
+                        span: 0,
+                    },
+                    authored,
+                )?;
             }
         }
-        let tag = compound.0.iter().find_map(|s| match s {
-            Simple::Type(tag) => Some(tag.as_str()),
+        let tag = compound.iter().find_map(|c| match c {
+            Component::LocalName(tag) => Some(tag.name.0.as_str()),
             _ => None,
         });
         // Custom-element names are an explicit author namespace, not misspelled
@@ -178,8 +187,8 @@ fn validate_selector(
         if tag.is_some_and(|tag| tag.contains('-')) {
             continue;
         }
-        let Some((index, name)) = compound.0.iter().enumerate().find_map(|(i, s)| match s {
-            Simple::Part(name) => Some((i, name.as_str())),
+        let Some((index, name)) = compound.iter().enumerate().find_map(|(i, c)| match c {
+            Component::Part(names) => names.first().map(|n| (i, n.0.as_str())),
             _ => None,
         }) else {
             continue;
@@ -208,11 +217,8 @@ fn validate_selector(
                 spec.name == name
                     && spec.reference(None).with_facts(|facts| {
                         tag.is_none_or(|tag| facts.tag == tag)
-                            && compound.0[..index].iter().all(|s| match s {
-                                Simple::Attribute {
-                                    name,
-                                    test: Some(test),
-                                } => facts
+                            && compound[..index].iter().all(|c| match attribute(c) {
+                                Some((name, Some(test))) => facts
                                     .attributes
                                     .get(name)
                                     .is_none_or(|value| test.test(&crate::bind::text(value))),
@@ -227,8 +233,8 @@ fn validate_selector(
                 tag.unwrap_or("*")
             ));
         }
-        for simple in &compound.0[index + 1..] {
-            if let Simple::State(state) = simple
+        for c in &compound[index + 1..] {
+            if let Component::NonTSPseudoClass(PseudoClass::State(state)) = c
                 && !candidates.iter().any(|spec| {
                     spec.states
                         .iter()
