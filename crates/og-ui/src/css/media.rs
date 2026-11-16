@@ -25,6 +25,9 @@ pub struct Context {
     /// What the surface presents: the Display P3 gamut (`color-gamut: p3`)
     /// and extended range (`dynamic-range: high`).
     pub display: Display,
+    /// Forced colours mode (`forced-colors: active`, CSS Color Adjust 1
+    /// §3): the viewport's `forced_colors`.
+    pub forced_colors: bool,
 }
 
 /// The surface's gamut and range, as the renderer configured it.
@@ -48,12 +51,13 @@ impl Default for Context {
             resolution: 1.0,
             pad: false,
             display: Display::default(),
+            forced_colors: false,
         }
     }
 }
 
 /// How many independent inputs a media query reads ([`Reads::axes`]).
-pub const AXES: usize = 11;
+pub const AXES: usize = 12;
 
 impl Context {
     /// Which inputs differ from `old`, in [`Reads::axes`] order.
@@ -70,6 +74,7 @@ impl Context {
             old.resolution != self.resolution,
             old.pad != self.pad,
             old.display != self.display,
+            old.forced_colors != self.forced_colors,
         ]
     }
 }
@@ -87,6 +92,7 @@ pub struct Reads {
     pub resolution: bool,
     pub pad: bool,
     pub display: bool,
+    pub forced_colors: bool,
 }
 
 impl Reads {
@@ -112,6 +118,7 @@ impl Reads {
             self.resolution,
             self.pad,
             self.display,
+            self.forced_colors,
         ]
     }
 
@@ -128,6 +135,7 @@ impl Reads {
             &mut self.resolution,
             &mut self.pad,
             &mut self.display,
+            &mut self.forced_colors,
         ]
         .into_iter()
         .nth(axis)
@@ -205,8 +213,10 @@ pub enum Feature {
     /// `(dynamic-range: high)` and `video-dynamic-range`: the surface
     /// presents extended range.
     HighRange,
+    /// `forced-colors`: `active` (true) or `none` (false).
+    ForcedColors(bool),
     /// A feature whose value is fixed for every play surface (the surface
-    /// is a fast-updating, scripted, full-surface display with no forced
+    /// is a fast-updating, scripted, full-surface display with no inverted
     /// colours, at least sRGB and standard range), already evaluated at parse.
     Fixed(bool),
     /// A container `style(--name)` (`None`: the property has a value) or
@@ -534,6 +544,10 @@ impl Context {
                 Feature::HighRange => {
                     reads.display = true;
                     context.display.high_range
+                }
+                Feature::ForcedColors(value) => {
+                    reads.forced_colors = true;
+                    context.forced_colors == value
                 }
                 Feature::Fixed(value) => value,
                 // Container-only features never parse in a media query.
@@ -1040,6 +1054,7 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
                 "prefers-reduced-transparency" => {
                     Ok(Query::Feature(Feature::ReducedTransparency(true)))
                 }
+                "forced-colors" => Ok(Query::Feature(Feature::ForcedColors(true))),
                 "resolution" => Ok(Query::Feature(Feature::Resolution(
                     Comparison::Greater,
                     0.0,
@@ -1063,8 +1078,7 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
                     Comparison::Greater,
                     0.0,
                 ))),
-                "forced-colors"
-                | "monochrome"
+                "monochrome"
                 | "color-index"
                 | "grid"
                 | "inverted-colors"
@@ -1208,14 +1222,14 @@ fn keyword_feature(name: &str, input: &mut Parser<'_>) -> Result<Option<Feature>
         // are what the renderer configured. Rec. 2020 is never presented.
         "color-gamut" if word == "p3" => Feature::WideGamut,
         "dynamic-range" | "video-dynamic-range" if word == "high" => Feature::HighRange,
+        "forced-colors" => Feature::ForcedColors(word == "active"),
         // The play surface fills the display area with no browser chrome,
-        // updates every frame and runs scripts; no forced or inverted
-        // colours or data saving; no host reports a fold, so the device
+        // updates every frame and runs scripts; no inverted colours or
+        // data saving; no host reports a fold, so the device
         // is flat (`continuous`).
         _ => Feature::Fixed(matches!(
             (name, word),
-            ("forced-colors", "none")
-                | ("color-gamut", "srgb")
+            ("color-gamut", "srgb")
                 | ("dynamic-range" | "video-dynamic-range", "standard")
                 | ("display-mode" | "display-state", "fullscreen")
                 | ("update", "fast")
@@ -1374,8 +1388,8 @@ mod tests {
             ("(min-resolution: 2dppx)", true, Some(8)),
             ("(resolution > 192dpi)", false, Some(8)),
             ("(1.5x < resolution)", true, Some(8)),
-            ("(forced-colors: none)", true, None),
-            ("(forced-colors)", false, None),
+            ("(forced-colors: none)", true, Some(11)),
+            ("(forced-colors)", false, Some(11)),
             ("(color-gamut: srgb)", true, None),
             ("(color-gamut: p3)", false, Some(10)),
             ("(color-gamut: rec2020)", false, None),
@@ -1406,7 +1420,7 @@ mod tests {
         assert_eq!(
             light.changes(&context),
             [
-                false, false, false, false, false, true, false, false, false, false, false
+                false, false, false, false, false, true, false, false, false, false, false, false
             ]
         );
         let p3 = Context {

@@ -408,6 +408,7 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
         reduced_motion: w.reduced_motion.unwrap_or(false),
         high_contrast: w.high_contrast.unwrap_or(false),
         reduced_transparency: w.reduced_transparency.unwrap_or(false),
+        forced_colors: w.forced_colors.unwrap_or(false),
         // Absent, the platform's own keys (the web host always says; a
         // native host's surface without a renderer, og-host-node's
         // og_node_attach_offscreen, leaves it to the platform, as

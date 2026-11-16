@@ -35,6 +35,10 @@ pub struct Viewport {
     /// configured (glass parts draw as opaque surfaces, scrims and
     /// translucent fills flat: `Theme::to_reduced_transparency`).
     pub reduced_transparency: bool,
+    /// The page is in forced colours mode (`forced-colors: active`):
+    /// documents' colours are forced to the palette's roles wherever
+    /// `forced-color-adjust` is `auto` (CSS Color Adjust 1 §3.1).
+    pub forced_colors: bool,
     /// Text controls take macOS's editing keys: Command for the shortcuts
     /// (A, C, X, Z) and with ←/→ for the line's ends (↑/↓ the text's),
     /// Option with ←/→, Backspace and Delete by words, Control+A and E the
@@ -72,6 +76,7 @@ impl Default for Viewport {
             reduced_motion: false,
             high_contrast: false,
             reduced_transparency: false,
+            forced_colors: false,
             mac_keys: false,
             covered: Rect::default(),
             wide_gamut: false,

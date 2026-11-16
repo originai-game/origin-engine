@@ -27,4 +27,4 @@ struct UiActionHint {
 }
 ```
 
-<sub>Module `ui` line 1718</sub>
+<sub>Module `ui` line 1721</sub>

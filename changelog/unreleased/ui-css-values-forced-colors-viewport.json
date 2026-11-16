@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"ui","summary":"`Viewport.forcedColors` (optional) says the page is in forced colours mode, and the web shell sets it from the page's `(forced-colors: active)`. A document's `(forced-colors: active)` and `(forced-colors: none)` answer from it. They used to be always none."}
+  ]
+}

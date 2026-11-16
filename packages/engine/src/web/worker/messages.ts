@@ -62,7 +62,7 @@ export interface Start {
   lowPower?: boolean;
 }
 
-export type Viewport = { width: number; height: number; dpr: number; safeArea?: Record<string, number>; smallWidth?: number; smallHeight?: number; largeWidth?: number; largeHeight?: number; covered?: Record<string, number>; coarsePointer?: boolean; reducedMotion?: boolean; highContrast?: boolean; reducedTransparency?: boolean; macKeys?: boolean };
+export type Viewport = { width: number; height: number; dpr: number; safeArea?: Record<string, number>; smallWidth?: number; smallHeight?: number; largeWidth?: number; largeHeight?: number; covered?: Record<string, number>; coarsePointer?: boolean; reducedMotion?: boolean; highContrast?: boolean; reducedTransparency?: boolean; forcedColors?: boolean; macKeys?: boolean };
 
 interface Call {
   type: "call";
