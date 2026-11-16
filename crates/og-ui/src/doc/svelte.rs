@@ -156,6 +156,10 @@ pub(crate) fn parse_with_pack(
                         .iter()
                         .map(|url| at_rules::resolve(source, url)),
                 );
+                p.doc
+                    .sheet
+                    .remote
+                    .extend(at_rules::remote_urls(&declaration.source));
             }
             p.doc.nodes[i].rules.push(StyleRule {
                 inline: true,
