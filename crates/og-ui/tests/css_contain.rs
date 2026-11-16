@@ -267,3 +267,116 @@ fn z_index_orders_paint_and_clip_and_contain_cut_it() {
         );
     });
 }
+
+/// Stacking contexts (CSS 2 §9.9.1, Appendix E; CSS Positioned Layout 3
+/// §4.1): a box with a stack level paints in its nearest ancestor that
+/// makes a stacking context, so `z-index: 1` lifts it over its parent's
+/// later sibling and `z-index: -1` puts it under its parent's own
+/// background; a parent that makes a context keeps both inside it
+/// (positive over its own paint, negative between its background and its
+/// in-flow content), under that later sibling. The parent makes one with
+/// a stack level, opacity under 1, a transform, a filter, a mask, a clip
+/// path, a blend mode, `isolation: isolate`, `will-change` naming one of
+/// those, or paint containment.
+///
+/// Ways it could fail: children ordered among their siblings only (a
+/// lifted child under the parent's later sibling); a negative child drawn
+/// over its parent's background; a trigger that lets its children out.
+#[test]
+fn z_index_paints_in_the_nearest_stacking_context() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="P" class={$p}><div id="K" class={$k} onpointerdown={k}></div></div>
+  <div id="Q" onpointerdown={q}></div>
+</div></div>
+<style>
+#Root { position: relative; width: 200px; height: 100px; }
+#P, #K, #Q { position: absolute; left: 0; top: 0; width: 40px; height: 40px; }
+#P { background: #0000ff; }
+#K { background: #ff0000; }
+#Q { background: #00ff00; }
+.up { z-index: 1; }
+.down { z-index: -1; }
+.level { z-index: 2; }
+.opacity { opacity: 0.5; }
+.transform { transform: translateX(1px); }
+.filter { filter: blur(1px); }
+.mask { mask-image: linear-gradient(#000, #000); }
+.clip { clip-path: inset(1px); }
+.blend { mix-blend-mode: multiply; }
+.isolate { isolation: isolate; }
+.will { will-change: opacity; }
+.paint { contain: paint; }
+</style>"#;
+    // Each case from the last one's frame: the drawing order is made again
+    // where a level or a context comes or goes.
+    fn order(d: &mut Doc, p: &str, k: &str) -> Vec<&'static str> {
+        d.set("p", json!(p));
+        d.set("k", json!(k));
+        let name = |c: [f32; 4]| match [c[0], c[1], c[2]] {
+            [1.0, 0.0, 0.0] => Some("K"),
+            [0.0, 0.0, 1.0] => Some("P"),
+            [0.0, 1.0, 0.0] => Some("Q"),
+            _ => None,
+        };
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|i| i.cmd.filled())
+            .filter_map(|(_, c)| name(c))
+            .collect()
+    }
+    // The box a click over all three reaches: the one drawn on top.
+    fn hit(d: &mut Doc) -> Vec<String> {
+        let events = d.click_at(og_core::glam::Vec2::new(20.0, 20.0));
+        events.into_iter().map(|e| e.name).collect()
+    }
+    let stores = [("p", json!("")), ("k", json!("up"))];
+    with_doc(text, &stores, |d| {
+        assert_eq!(
+            order(d, "", "up"),
+            ["P", "Q", "K"],
+            "lifted over P's later sibling"
+        );
+        assert_eq!(hit(d), ["k"], "and hit first");
+        assert_eq!(
+            order(d, "", "down"),
+            ["K", "P", "Q"],
+            "under P's own background"
+        );
+        assert_eq!(hit(d), ["q"]);
+        // With a level of its own P paints over Q, K still inside it.
+        assert_eq!(order(d, "level", "up"), ["Q", "P", "K"]);
+        assert_eq!(order(d, "level", "down"), ["Q", "P", "K"]);
+        assert_eq!(hit(d), ["k"]);
+        for context in [
+            "opacity",
+            "transform",
+            "filter",
+            "mask",
+            "clip",
+            "blend",
+            "isolate",
+            "will",
+            "paint",
+        ] {
+            assert_eq!(
+                order(d, context, "up"),
+                ["P", "K", "Q"],
+                "{context} keeps K in"
+            );
+            assert_eq!(
+                order(d, context, "down"),
+                ["P", "K", "Q"],
+                "{context} keeps K over P"
+            );
+            assert_eq!(
+                order(d, "", "up"),
+                ["P", "Q", "K"],
+                "{context} gone lets K out"
+            );
+        }
+        order(d, "isolate", "up");
+        assert_eq!(hit(d), ["q"], "kept in, K is under Q");
+    });
+}

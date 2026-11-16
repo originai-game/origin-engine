@@ -191,12 +191,7 @@ impl Ui {
         if self.tree.nodes.is_empty() {
             return Vec::new();
         }
-        let mut order = crate::layout::draw_order(&self.tree.nodes, 0);
-        for &f in &self.tree.floating {
-            order.extend(crate::layout::draw_order(&self.tree.nodes, f));
-        }
-        self.layout.world_order(&mut order, &self.world, &self.tree);
-        order
+        self.tree.drawing_order(&self.world, &self.layout)
     }
 
     /// The controls keys and pads reach on the last frame's screen, in

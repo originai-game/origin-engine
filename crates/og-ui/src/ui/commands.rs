@@ -905,6 +905,9 @@ impl Ui {
             .chain(&p.volatile)
             .chain(&p.ringed)
             .chain(o.with(visit::feat::RICH))
+            // Lifted out of its parent's run by a stacking context: no
+            // cover below a changed parent reaches it.
+            .chain(&o.lifted)
             .map(|&i| o.pos.get(i).copied().unwrap_or(u32::MAX))
             .filter(|&p| p != u32::MAX)
             .collect();
@@ -930,10 +933,14 @@ impl Ui {
             let i = order[q];
             let node = &self.tree.nodes[i];
             let up = node.parent;
+            // One drawn before its parent (a negative stack level) is
+            // judged first: its parent reads as changed.
+            let early = up != NONE && self.tree.orders.pos[up] > q as u32;
             // `painted`: its own commands are painted from the same inputs
             // (their kept ones are placed again where the frame puts them);
             // `own`: and placed where they were.
-            let kept = !volatile.contains(&i)
+            let kept = !early
+                && !volatile.contains(&i)
                 && !self.tree.draws.contains_key(&i)
                 && !matches!(*node.content, Content::Rich(_));
             let (painted, own) = if !kept {
@@ -961,7 +968,8 @@ impl Ui {
             let parent = (up != NONE).then(|| r.delta(up));
             let delta = if same {
                 (0.0, 0.0)
-            } else if !written(i)
+            } else if !early
+                && !written(i)
                 && !self.tree.draws.contains_key(&i)
                 && !matches!(*node.content, Content::Rich(_))
                 && let Some(Some((k, old))) = self.paint.cache.sigs.get(i)
@@ -1230,7 +1238,14 @@ impl crate::ui::Paint {
     fn ring_over(&self, i: usize, world: &crate::world::WorldUi, tree: &crate::ui::Tree) -> usize {
         let mut j = i;
         loop {
-            let parent = tree.nodes[j].parent;
+            let mut parent = tree.nodes[j].parent;
+            // Lifted out of its parent's run: drawn in its stacking
+            // context's.
+            if tree.orders.lifted_of.get(j) == Some(&true) {
+                while parent != NONE && !tree.orders.stacks(parent) {
+                    parent = tree.nodes[parent].parent;
+                }
+            }
             if parent == NONE || parent == 0 || world.world_marks(tree.nodes[j].key).is_some() {
                 return j;
             }

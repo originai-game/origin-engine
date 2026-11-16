@@ -152,10 +152,16 @@ pub(crate) struct Orders {
     pub pos: Vec<u32>,
     /// The trees' roots, in drawing order.
     pub roots: Vec<u64>,
-    /// Per slot: the `z` the drawing order sorted it by, and the world
-    /// panels it was made with.
-    z: Vec<i32>,
+    /// Per slot: the `z` the drawing order sorted it by and whether it
+    /// made a stacking context then (`layout::stacking_context`), and the
+    /// world panels the order was made with.
+    stack: Vec<(i32, bool)>,
     panels: Vec<usize>,
+    /// Per slot: whether a stacking context lifts it out of its parent's
+    /// run of the drawing order (drawn before its parent, or past the
+    /// parent's `ends`); and those nodes, in drawing order.
+    pub lifted_of: Vec<bool>,
+    pub lifted: Vec<usize>,
     draw_ok: bool,
     /// Per slot: its features (`feat`); and per feature its nodes, in
     /// preorder.
@@ -224,6 +230,12 @@ impl Orders {
             .map_or(&[], Vec::as_slice)
     }
 
+    /// Whether node `i` made a stacking context when the drawing order
+    /// was made.
+    pub(crate) fn stacks(&self, i: usize) -> bool {
+        self.stack.get(i).is_some_and(|s| s.1)
+    }
+
     /// The nodes that carry feature `f`, in drawing order.
     pub(crate) fn drawn(&self, f: u32) -> Vec<usize> {
         let mut out = self.with(f).to_vec();
@@ -233,9 +245,11 @@ impl Orders {
 }
 
 impl Ui {
-    /// Visits the nodes from `seeds` down in drawing order: `step` makes
-    /// a node's frame state again and answers whether its children's
-    /// changes with it. `None` visits every node in `order`.
+    /// Visits the drawn nodes from `seeds` down, parents before children
+    /// (in preorder: a stacking context draws some children before their
+    /// parent): `step` makes a node's frame state again and answers
+    /// whether its children's changes with it. `None` visits every node in
+    /// `order`, the drawing order.
     pub(super) fn visit(
         &mut self,
         order: &[usize],
@@ -243,8 +257,18 @@ impl Ui {
         mut step: impl FnMut(&mut Ui, usize) -> bool,
     ) -> Vec<usize> {
         let Some(seeds) = seeds else {
-            for &i in order {
-                step(self, i);
+            if self.tree.orders.lifted.is_empty() {
+                for &i in order {
+                    step(self, i);
+                }
+            } else {
+                let pre = std::mem::take(&mut self.tree.orders.pre);
+                for &i in &pre {
+                    if self.tree.orders.pos[i] != u32::MAX {
+                        step(self, i);
+                    }
+                }
+                self.tree.orders.pre = pre;
             }
             return order.to_vec();
         };
@@ -255,7 +279,7 @@ impl Ui {
             o.stamp = 1;
         }
         let stamp = o.stamp;
-        // The nodes still to visit by drawing position, taken lowest
+        // The nodes still to visit by preorder position, taken lowest
         // first: what a visit reaches is mostly whole subtrees, so a scan
         // up the positions finds them without ordering each one.
         let mut pending = std::mem::take(&mut o.pending);
@@ -269,8 +293,8 @@ impl Ui {
             p
         };
         for &i in seeds {
-            if o.pos[i] != u32::MAX {
-                at = at.min(mark(&mut pending, o.pos[i], i));
+            if o.pos[i] != u32::MAX && o.pre_pos[i] != u32::MAX {
+                at = at.min(mark(&mut pending, o.pre_pos[i], i));
             }
         }
         let mut out = Vec::new();
@@ -286,10 +310,10 @@ impl Ui {
             if step(self, i) {
                 for k in 0..self.tree.nodes[i].ordered_children.len() {
                     let c = self.tree.nodes[i].ordered_children[k];
-                    let cp = self.tree.orders.pos[c];
-                    if cp != u32::MAX && self.tree.orders.seen[c] != stamp {
-                        // One drawn before it is the next to take.
-                        p = p.min(mark(&mut pending, cp, c));
+                    let o = &self.tree.orders;
+                    if o.pos[c] != u32::MAX && o.pre_pos[c] != u32::MAX && o.seen[c] != stamp {
+                        // One before it (a layer's root) is the next to take.
+                        p = p.min(mark(&mut pending, o.pre_pos[c], c));
                     }
                 }
             }
@@ -323,10 +347,12 @@ impl Ui {
         } else {
             pr
         };
-        // A layer takes its anchor's group and recogniser where the
-        // anchor is drawn before it (one drawn after has none yet).
+        // A node takes its parent's group and recogniser, a layer its
+        // anchor's where the anchor is drawn and visited before it (one
+        // after has none yet).
         let up = if n.parent == NONE { n.anchor } else { n.parent };
-        let (pg, pr, pp) = if up == NONE || up >= nodes.len() || o.pos[up] > o.pos[i] {
+        let later = |up: usize| o.pos[up] > o.pos[i] || o.pre_pos[up] > o.pre_pos[i];
+        let (pg, pr, pp) = if up == NONE || up >= nodes.len() || (n.parent == NONE && later(up)) {
             (0, 0, 0)
         } else {
             (o.group_of[up], o.gesture_of[up], o.player_of[up])
@@ -740,9 +766,32 @@ impl crate::ui::Tree {
 }
 
 impl crate::ui::Tree {
+    /// Node `i`'s stack level and whether it makes a stacking context.
+    fn stack(&self, i: usize) -> (i32, bool) {
+        let n = &self.nodes[i];
+        let drawn = self.draws.contains_key(&i);
+        (n.style.sampled.z, crate::layout::stacking_context(n, drawn))
+    }
+
+    /// The trees in drawing order: the screen's, then each layer's, with
+    /// the world panels in their places (`Layout::world_order`).
+    pub(crate) fn drawing_order(
+        &self,
+        world: &crate::world::WorldUi,
+        layout: &crate::ui::Layout,
+    ) -> Vec<usize> {
+        let drawn = |i: usize| self.draws.contains_key(&i);
+        let mut draw = crate::layout::draw_order(&self.nodes, 0, &drawn);
+        for &f in &self.floating {
+            draw.extend(crate::layout::draw_order(&self.nodes, f, &drawn));
+        }
+        layout.world_order(&mut draw, world, self);
+        draw
+    }
+
     /// Brings the drawing order up to date once motion has set this
-    /// frame's `z`: made again where the shape, a `z` or the world panels
-    /// changed.
+    /// frame's `z`: made again where the shape, a `z`, a stacking context
+    /// or the world panels changed.
     pub(super) fn update_draw_order(
         &mut self,
         moved: &[usize],
@@ -750,31 +799,41 @@ impl crate::ui::Tree {
         layout: &crate::ui::Layout,
     ) {
         let n = self.nodes.len();
-        let o = &mut self.orders;
-        let nodes = &self.nodes;
-        let z_moved = moved
+        let o = &self.orders;
+        let restacked = moved
             .iter()
             .chain(&self.emitted)
-            .any(|&i| i < n && o.z[i] != nodes[i].style.sampled.z);
+            .any(|&i| i < n && o.stack[i] != self.stack(i));
         let panels = world.panel_nodes();
-        if o.draw_ok && !z_moved && panels == o.panels {
+        if o.draw_ok && !restacked && panels == o.panels {
             return;
         }
+        let draw = self.drawing_order(world, layout);
+        let stack: Vec<_> = draw.iter().map(|&i| (i, self.stack(i))).collect();
+        let o = &mut self.orders;
         o.draw_ok = true;
         o.panels = panels;
-        let mut draw = crate::layout::draw_order(nodes, 0);
-        for &f in &self.floating {
-            draw.extend(crate::layout::draw_order(nodes, f));
-        }
-        layout.world_order(&mut draw, world, self);
-        let o = &mut self.orders;
         o.pos.clear();
         o.pos.resize(n, u32::MAX);
         for (k, &i) in draw.iter().enumerate() {
             o.pos[i] = k as u32;
-            o.z[i] = self.nodes[i].style.sampled.z;
+        }
+        for (i, s) in stack {
+            o.stack[i] = s;
         }
         o.ends = crate::layout::subtree_ends(&self.nodes, &draw);
+        o.lifted.clear();
+        for (k, &i) in draw.iter().enumerate() {
+            let up = self.nodes[i].parent;
+            let lifted = up != NONE && {
+                let at = o.pos[up] as usize;
+                at > k || o.ends[at] <= k
+            };
+            o.lifted_of[i] = lifted;
+            if lifted {
+                o.lifted.push(i);
+            }
+        }
         o.roots = draw
             .iter()
             .filter(|&&i| self.nodes[i].parent == NONE)
@@ -805,11 +864,7 @@ impl crate::ui::Tree {
             pre.extend(crate::layout::preorder(&self.nodes, f));
         }
         assert_eq!(pre, self.orders.pre, "the kept preorder differs");
-        let mut draw = crate::layout::draw_order(&self.nodes, 0);
-        for &f in &self.floating {
-            draw.extend(crate::layout::draw_order(&self.nodes, f));
-        }
-        layout.world_order(&mut draw, world, self);
+        let draw = self.drawing_order(world, layout);
         assert_eq!(draw, self.orders.draw, "the kept drawing order differs");
         for &i in &pre {
             assert_eq!(
@@ -842,7 +897,8 @@ impl crate::ui::Tree {
         let o = &mut self.orders;
         if o.feat.len() < n {
             o.feat.resize(n, 0);
-            o.z.resize(n, 0);
+            o.stack.resize(n, (0, false));
+            o.lifted_of.resize(n, false);
             o.seen.resize(n, 0);
             o.scope_of.resize(n, 0);
             o.scroller_of.resize(n, 0);

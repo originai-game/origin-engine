@@ -958,31 +958,135 @@ pub(crate) fn all_children(n: &Node) -> Vec<usize> {
     n.ordered_children.clone()
 }
 
-/// The preorder with each node's children in drawing order: by `z`, then
-/// as built (a lifted card draws over its neighbours and is hit first).
-pub(crate) fn draw_order(nodes: &[Node], root: usize) -> Vec<usize> {
-    let mut order = Vec::new();
-    let mut stack = vec![root];
-    while let Some(i) = stack.pop() {
-        order.push(i);
-        let mut kids = all_children(&nodes[i]);
-        if kids.iter().any(|&c| nodes[c].style.sampled.z != 0) {
-            og_core::sort::sort_by_key(&mut kids, |&c| nodes[c].style.sampled.z);
-        }
-        stack.extend(kids.into_iter().rev());
-    }
-    order
+/// Whether `n` makes a stacking context, in which the stack levels (`z`)
+/// of the boxes below it are ordered (CSS 2 §9.9.1; CSS Positioned Layout
+/// 3 §4.1): a root, a stack level of its own, opacity under 1, a
+/// transform or perspective, a filter (or its blur moving), a mask, a clip
+/// path, a blend mode, `isolation: isolate` or a `will-change` naming one
+/// of these (both read as isolation), or paint containment. A box whose
+/// drawing brackets its subtree makes one too, so nothing leaves the
+/// bracket: an overflow clip with a shape, a scroll container, a dressed
+/// part or a game draw (`drawn`).
+pub(crate) fn stacking_context(n: &Node, drawn: bool) -> bool {
+    let s = &n.style.sampled;
+    let css = n.decor.as_ref().and_then(|d| d.css.as_deref());
+    n.parent == NONE
+        || s.z != 0
+        || s.opacity < 1.0
+        || !s.transform.is_identity()
+        || n.props.space3d.is_some()
+        || s.blur > 0.0
+        || n.el.contain.has(Contain::PAINT)
+        || n.decor.as_ref().is_some_and(|d| d.clip)
+        || css.is_some_and(|c| {
+            !c.filters.is_empty()
+                || !c.masks.is_empty()
+                || c.mask_border.is_some()
+                || c.clip.is_some()
+                || c.blend.is_some()
+                || c.isolate
+                || c.layer.is_some()
+        })
+        || n.scrolls()
+        || n.part().is_some()
+        || n.el.frame.is_some()
+        || drawn
 }
 
-/// For each position of `order` (a preorder), the position just past its
-/// subtree.
+/// The nodes from `root` in drawing order (CSS 2 Appendix E): each
+/// stacking context ([`stacking_context`]; `drawn`: whether a node has a
+/// game draw) paints itself, then the boxes below it with a negative stack
+/// level, then the rest of its subtree in tree order (a context among them
+/// whole, where it stands), then those with a positive level; equal levels
+/// in tree order. A box with a level paints in its nearest ancestor that
+/// makes a context, not among its siblings: a lifted card draws over its
+/// parent's later siblings and is hit first. Parents no longer always come
+/// before their children: one with a negative level comes before a parent
+/// that makes no context ([`subtree_ends`] reads the order so).
+pub(crate) fn draw_order(nodes: &[Node], root: usize, drawn: &dyn Fn(usize) -> bool) -> Vec<usize> {
+    struct Walk<'a> {
+        nodes: &'a [Node],
+        drawn: &'a dyn Fn(usize) -> bool,
+        order: Vec<usize>,
+        scratch: Vec<usize>,
+    }
+    impl Walk<'_> {
+        fn z(&self, i: usize) -> i32 {
+            self.nodes[i].style.sampled.z
+        }
+        fn context(&self, i: usize) -> bool {
+            stacking_context(&self.nodes[i], (self.drawn)(i))
+        }
+        fn kids(&self, i: usize) -> &[usize] {
+            &self.nodes[i].ordered_children
+        }
+        fn context_of(&mut self, c: usize) {
+            self.order.push(c);
+            // Its boxes with a level, in tree order: what lies below one is
+            // its own, as is what lies below a box that makes a context.
+            let mut levelled = Vec::new();
+            let mut stack = std::mem::take(&mut self.scratch);
+            stack.extend(self.kids(c).iter().rev());
+            while let Some(i) = stack.pop() {
+                if self.z(i) != 0 {
+                    levelled.push(i);
+                } else if !self.context(i) {
+                    stack.extend(self.kids(i).iter().rev());
+                }
+            }
+            self.scratch = stack;
+            og_core::sort::sort_by_key(&mut levelled, |&i| self.z(i));
+            let under = levelled.partition_point(|&i| self.z(i) < 0);
+            for &i in &levelled[..under] {
+                self.context_of(i);
+            }
+            self.flow(c);
+            for &i in &levelled[under..] {
+                self.context_of(i);
+            }
+        }
+        fn flow(&mut self, i: usize) {
+            for k in 0..self.kids(i).len() {
+                let c = self.kids(i)[k];
+                if self.z(c) != 0 {
+                } else if self.context(c) {
+                    self.context_of(c);
+                } else {
+                    self.order.push(c);
+                    self.flow(c);
+                }
+            }
+        }
+    }
+    let mut w = Walk {
+        nodes,
+        drawn,
+        order: Vec::new(),
+        scratch: Vec::new(),
+    };
+    w.context_of(root);
+    w.order
+}
+
+/// For each position of `order` (a preorder, or a [`draw_order`]), the
+/// position just past the run of its descendants that follows it: its
+/// whole subtree, less what a stacking context lifts out of it.
 pub(crate) fn subtree_ends(nodes: &[Node], order: &[usize]) -> Vec<usize> {
+    let above = |a: usize, mut i: usize| {
+        while i != NONE {
+            if i == a {
+                return true;
+            }
+            i = nodes[i].parent;
+        }
+        false
+    };
     let mut ends = vec![order.len(); order.len()];
     let mut open: Vec<usize> = Vec::new();
     for (k, &i) in order.iter().enumerate() {
         let parent = nodes[i].parent;
         while let Some(&top) = open.last() {
-            if order[top] == parent {
+            if above(order[top], parent) {
                 break;
             }
             ends[top] = k;

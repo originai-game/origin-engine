@@ -233,11 +233,12 @@ impl crate::ui::Interaction {
     pub(crate) fn collect_input_specs(&mut self, out: &mut crate::ui::Out, tree: &crate::ui::Tree) {
         let o = &tree.orders;
         // A group's parent group: its parent's (a layer's anchor's, where
-        // the anchor is drawn before it).
+        // the anchor is drawn and visited before it: `Ui::scope_step`).
         let around = |i: usize, of: &[u64]| {
             let n = &tree.nodes[i];
             let up = if n.parent == NONE { n.anchor } else { n.parent };
-            if up == NONE || up >= tree.nodes.len() || o.pos[up] > o.pos[i] {
+            let later = |up: usize| o.pos[up] > o.pos[i] || o.pre_pos[up] > o.pre_pos[i];
+            if up == NONE || up >= tree.nodes.len() || (n.parent == NONE && later(up)) {
                 0
             } else {
                 of[up]
