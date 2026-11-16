@@ -717,7 +717,7 @@
   --ink-inverse: #ffffff;
   --control: #ffffff;
   --control-strong: #e6eeff;
-  --selection: #4ccaff;
+  --selection: #6ad3ff;
   --on-selection: #211d52;
   --hud: #fffaf0eb;
   /* A layer's dim is a day veil, as the ink on it is dark. */
@@ -737,7 +737,7 @@
   --uncommon: #15802a;
   --rare: #0e6bcf;
   --epic: #8f35d6;
-  --legendary: #b86200;
+  --legendary: #a35400;
   --mythic: #d11f4a;
   --neutral: #7f4600;
   --gloss: #ffffffa6;
@@ -771,6 +771,7 @@
   --cartoon-band-lip: #d18400;
   --title-ink: #211d52;
   --title-shadow: none;
+  --name-shadow: none;
   --badge-ink: #ffffff;
   --cartoon-slate: linear-gradient(180deg, #ffffff 0%, #eef3ff 60%, #dfe7ff 100%) padding-box;
   --cartoon-slate-hover: linear-gradient(180deg, #ffffff 0%, #ffffff 60%, #eef3ff 100%) padding-box;

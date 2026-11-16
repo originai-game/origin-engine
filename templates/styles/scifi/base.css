@@ -86,13 +86,14 @@
   /* Frost: the glass and plates that blur what is behind them
      (--frame-glass, --panel-glass, --plate-glass). The blur keeps a scene's
      detail and another panel's text from ghosting through, so a frame's and
-     a panel's frost is thin enough for the blurred scene to read through,
-     while its ink keeps 4.5:1. The HUD's frost stays denser: it stands over
-     the bright world, a sky or a lit wall, where a caption still has to read. */
-  --scifi-frost-hi: #10253ab3;
-  --scifi-frost-lo: #07121cc4;
-  --scifi-frost-plate-hi: #0a1a29e0;
-  --scifi-frost-plate-lo: #050d16e8;
+     a panel's frost lets the blurred scene glow through as soft colour,
+     while its ink, the muted ink too, keeps 4.5:1 over the brightest scene
+     (a white sky): about 96 % in the dark scheme. The HUD's frost is
+     denser still. */
+  --scifi-frost-hi: #10253af5;
+  --scifi-frost-lo: #07121cf7;
+  --scifi-frost-plate-hi: #0a1a29f2;
+  --scifi-frost-plate-lo: #050d16f5;
   --scifi-cell-hi: #143044;
   --scifi-cell-lo: #0a1824;
   --scifi-cell-pressed: #071019;
