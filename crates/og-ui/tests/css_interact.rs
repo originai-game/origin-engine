@@ -757,3 +757,41 @@ input::placeholder, textarea::placeholder { color: #ff0000; }
     assert_eq!(ink("Full"), [blue], "the value");
     assert_eq!(ink("Area"), [red], "a text area's placeholder");
 }
+
+/// CSS UI 4 §6.1: `interactivity: inert` makes an element and its subtree
+/// inert, so a button inside it sends nothing when pressed; HTML's `inert`
+/// attribute is the UA rule `[inert] { interactivity: inert }`, so a
+/// declared `interactivity: auto` on an `[inert]` box makes its button
+/// answer again, and a button outside both answers as ever.
+///
+/// Ways it could fail: the property refused or ignored, the box inert but
+/// not its descendants, the attribute winning over a declaration, or every
+/// button going quiet.
+#[test]
+fn interactivity_inert_stops_a_subtree_and_overrides_the_attribute() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <div id="Locked" class="locked"><button id="Buy" onclick={buy}>Buy</button></div>
+  <div id="Back" inert><button id="Sell" onclick={sell}>Sell</button></div>
+  <div id="Gone" inert><button id="Drop" onclick={drop}>Drop</button></div>
+  <button id="Free" onclick={free}>Free</button>
+</div>
+<style>
+#Page { padding: 20px; gap: 20px; }
+.locked { interactivity: inert; }
+#Back { interactivity: auto; }
+</style>"#;
+    let mut d = crate::support::Doc::new(text, &[]);
+    d.step(InputFrame::default());
+    let sent = |d: &mut crate::support::Doc, id: &str| {
+        d.click(id)
+            .into_iter()
+            .filter(|e| e.kind == "emit")
+            .map(|e| e.name)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(sent(&mut d, "Buy"), Vec::<String>::new(), "inert by CSS");
+    assert_eq!(sent(&mut d, "Sell"), vec!["sell"], "auto overrides [inert]");
+    assert_eq!(sent(&mut d, "Drop"), Vec::<String>::new(), "[inert] alone");
+    assert_eq!(sent(&mut d, "Free"), vec!["free"]);
+}

@@ -623,7 +623,14 @@ impl Ui {
                 }
             }
         }
-        p.inert = r.flag("inert");
+        // HTML's `[inert] { interactivity: inert }`: a declared value wins.
+        p.inert = match r
+            .str("interactivity")
+            .map(crate::doc::interact_css::interactivity)
+        {
+            Some(Ok(inert)) => inert,
+            _ => r.flag("inert"),
+        };
         let link = |name: &str| r.str(name).unwrap_or_default().to_string();
         p.nav = crate::element::NavLinks {
             up: link("navUp"),

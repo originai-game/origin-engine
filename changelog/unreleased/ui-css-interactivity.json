@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"ui","summary":"CSS `interactivity: inert | auto`: `inert` makes an element and its subtree take no input, as the `inert` attribute does, and a declared value overrides that attribute (HTML's `[inert] { interactivity: inert }`)."}
+  ]
+}

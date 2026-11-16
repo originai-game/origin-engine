@@ -1,6 +1,7 @@
 //! CSS interaction properties on document elements (CSS UI 4 §5,
-//! Pointer Events 3 §9, CSS Display 3 §7): `cursor` with `url()` images,
-//! `pointer-events`, `touch-action` and `visibility`.
+//! Pointer Events 3 §9, CSS Display 3 §7, CSS UI 4 §6.1): `cursor` with
+//! `url()` images, `pointer-events`, `touch-action`, `visibility` and
+//! `interactivity`.
 //!
 //! Each is one reflected prop holding its CSS value as written, checked
 //! here when the stylesheet is lowered and read here again when the
@@ -18,6 +19,7 @@ pub(crate) fn prop_of(css: &str) -> Option<&'static str> {
         "pointer-events" => "pointerEvents",
         "touch-action" => "touchAction",
         "visibility" => "visibility",
+        "interactivity" => "interactivity",
         _ => return None,
     })
 }
@@ -35,6 +37,7 @@ pub(crate) fn form(prop: &str) -> Option<&'static str> {
             "auto | none | [pan-x | pan-left | pan-right] || [pan-y | pan-up | pan-down] || pinch-zoom | manipulation"
         }
         "visibility" => "visible | hidden | collapse",
+        "interactivity" => "auto | inert",
         _ => return None,
     })
 }
@@ -46,6 +49,7 @@ pub(crate) fn check(css: &str, value: &str) -> Result<(), String> {
         "pointer-events" => pointer_events(value).map(|_| ()),
         "touch-action" => touch_action(value).map(|_| ()),
         "visibility" => visibility(value).map(|_| ()),
+        "interactivity" => interactivity(value).map(|_| ()),
         _ => Ok(()),
     }
 }
@@ -190,6 +194,16 @@ pub(crate) fn visibility(value: &str) -> Result<Visibility, String> {
         w => Err(format!(
             "visibility: '{w}' is not visible, hidden or collapse"
         )),
+    }
+}
+
+/// `interactivity`: whether the element and its subtree are inert (CSS
+/// UI 4 §6.1, HTML's `[inert] { interactivity: inert }`).
+pub(crate) fn interactivity(value: &str) -> Result<bool, String> {
+    match word(value)?.as_str() {
+        "auto" => Ok(false),
+        "inert" => Ok(true),
+        w => Err(format!("interactivity: '{w}' is not auto or inert")),
     }
 }
 

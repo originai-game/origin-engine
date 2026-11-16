@@ -639,6 +639,11 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "CSS `touch-action`: the pans (pan-x, pan-left…, pan-y…) and pinch-zoom a touch starting on it may make; none keeps the touch for its own handlers. The used value intersects its ancestors'."
     ),
     p!(
+        "interactivity",
+        Ty::Text,
+        "CSS `interactivity`: inert makes it and its subtree take no pointer, focus or keys (as the `inert` attribute, which it overrides when declared); auto is the default."
+    ),
+    p!(
         "imageRendering",
         Ty::Text,
         "CSS `image-rendering`, inherited: pixelated or crisp-edges samples every image it draws (its image, art, background and border image) at the nearest texel, so pixel art scaled up stays sharp; auto, smooth and high-quality keep the texture's own sampling."

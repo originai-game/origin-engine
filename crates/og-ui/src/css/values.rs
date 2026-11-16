@@ -265,6 +265,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("cursor", "cursor"),
     ("pointerEvents", "pointer-events"),
     ("touchAction", "touch-action"),
+    ("interactivity", "interactivity"),
     ("visibility", "visibility"),
     ("imageRendering", "image-rendering"),
     ("contain", "contain"),

@@ -999,6 +999,9 @@ against their geometry. `touch-action` (Pointer Events 3) applies on a
 coarse pointer, intersected with ancestors'. `visibility` follows CSS;
 the `visible false` prop removes an element from layout. These are read
 from the frame's orders, so a declared value costs nothing while idle.
+`interactivity: inert` (CSS UI 4) makes an element and its subtree inert
+as the `inert` attribute does; a declared value wins over the attribute,
+as HTML's `[inert] { interactivity: inert }` rule has it.
 
 #### Containment, resize and will-change
 
@@ -2216,7 +2219,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `initial-value` | Widely | Supported (scope →) | Pending parts-as-nodes | [`documents::css_wide_keywords_inherit_reset_and_revert`](../crates/og-ui/tests/documents.rs). inherit takes the parent's width and font size; initial gives width auto and font-size medium (the root's size); unset inherits font-size and resets width; revert rolls a p's margin back to the user agent's 1em. revert-layer: custom_properties::a_var_that_resolves_to_revert_layer_rolls_the_cascade_back. |
 | `input-selectors` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `interaction` | Widely | Supported (scope →) | Pending parts-as-nodes | [`documents::preference_and_display_media_features_follow_the_theme_and_surface`](../crates/og-ui/tests/documents.rs). Under two settings (light, standard contrast, opaque, 1dppx, sRGB, SDR, mouse; and dark, high contrast, reduced transparency, 2dppx, P3, HDR, touch), each value and the boolean form of prefers-color-scheme, prefers-contrast (less never), prefers-reduced-transparency, resolution in dppx/x/dpi/dpcm, color-gamut, dynamic-range, hover/any-hover and pointer/any-pointer match the theme and surface. inverted-colors, scripting, update, display-mode and prefers-reduced-data take the one answer the host gives (none, enabled, fast, fullscreen, no-preference). |
-| `interactivity` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `interactivity` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_interact::interactivity_inert_stops_a_subtree_and_overrides_the_attribute`](../crates/og-ui/tests/css_interact.rs). A button inside a box with interactivity: inert sends nothing when pressed; a declared interactivity: auto on an [inert] box makes its button answer (the attribute is HTML's UA rule, which a declaration overrides); an [inert] box alone stays inert and a button outside both answers. Pointer presses only; keyboard focus skipping and find-in-page are not asserted. |
 | `interest-invokers` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `interpolate-size` | Not Baseline | Missing | Pending parts-as-nodes | No intrinsic-size interpolation implementation or output proof. |
 | `inverted-colors` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`documents::preference_and_display_media_features_follow_the_theme_and_surface`](../crates/og-ui/tests/documents.rs). Under two settings (light, standard contrast, opaque, 1dppx, sRGB, SDR, mouse; and dark, high contrast, reduced transparency, 2dppx, P3, HDR, touch), each value and the boolean form of prefers-color-scheme, prefers-contrast (less never), prefers-reduced-transparency, resolution in dppx/x/dpi/dpcm, color-gamut, dynamic-range, hover/any-hover and pointer/any-pointer match the theme and surface. inverted-colors, scripting, update, display-mode and prefers-reduced-data take the one answer the host gives (none, enabled, fast, fullscreen, no-preference). |
