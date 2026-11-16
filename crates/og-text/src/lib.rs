@@ -5,6 +5,7 @@
 //! forms a face has (`FontFile::has_variant`).
 //! og-ui lays out and draws its text with it.
 
+pub mod baselines;
 pub mod glyphs;
 pub mod ink;
 mod ot_languages;
