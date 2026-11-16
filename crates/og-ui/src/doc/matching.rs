@@ -63,6 +63,11 @@ pub trait Tree {
     fn part_host(&self, _id: &Self::Id) -> Option<&Self::Id> {
         None
     }
+    /// The view-transition types the element's screen declares
+    /// (`@view-transition { types }`).
+    fn transition_types(&self, _id: &Self::Id) -> &[String] {
+        &[]
+    }
 }
 
 /// Work done by structural matching, for bounded-cost tests.
@@ -274,6 +279,16 @@ impl<'a, T: Tree> Element for DocElement<'a, T> {
                 .is_some_and(|v| crate::bind::truthy(v) && v.as_str() != Some("false")),
             PseudoClass::Defined => true,
             PseudoClass::AnyLink => self.is_link(),
+            PseudoClass::ViewTransitionType(types) => {
+                self.facts
+                    .states
+                    .contains(&InteractionState::ActiveViewTransition)
+                    && self
+                        .tree
+                        .transition_types(self.id)
+                        .iter()
+                        .any(|d| types.iter().any(|t| t.0 == *d))
+            }
         }
     }
 
@@ -663,6 +678,9 @@ impl Profile {
                 }
                 PseudoClass::AnyLink => {
                     self.attributes.insert("href".into());
+                }
+                PseudoClass::ViewTransitionType(_) => {
+                    self.states.insert(InteractionState::ActiveViewTransition);
                 }
                 PseudoClass::Defined => {}
             },

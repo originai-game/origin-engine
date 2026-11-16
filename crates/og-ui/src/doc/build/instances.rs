@@ -158,6 +158,9 @@ pub struct RetainedHost {
     pub popover_nodes: BTreeMap<u64, MountedNode>,
     /// The `:target` element last applied, and the fragment it was for.
     pub target: (Option<String>, Vec<MountedNode>),
+    /// The screen roots `:active-view-transition` matched last frame: their
+    /// layers' view transitions were running.
+    pub transitioning: Vec<MountedNode>,
     pub viewport: Option<crate::doc::media::Context>,
     /// The safe area, the small and large viewports and the HUD band's
     /// sides last build: a change re-resolves what read the viewport

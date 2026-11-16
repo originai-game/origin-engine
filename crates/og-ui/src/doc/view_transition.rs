@@ -54,6 +54,9 @@ pub struct ViewTransition {
     pub rules: Vec<Rule>,
     /// The document, which qualifies its keyframes' names.
     pub document: String,
+    /// Its `types`: what `:active-view-transition-type()` matches while
+    /// it runs.
+    pub types: Vec<String>,
 }
 
 /// Which pseudo-element a rule styles.
@@ -447,6 +450,7 @@ pub(super) fn apply(
             .filter(|r| r.part != Part::Overlay)
             .collect(),
         document: doc.name.clone(),
+        types,
     };
     // The root: the layer's own animations. Its group and image pair give
     // only their timing (the layer is its group and its images at once).

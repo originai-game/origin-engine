@@ -65,6 +65,9 @@ pub enum InteractionState {
     Modal,
     /// The element a `#fragment` link activated last (`:target`).
     Target,
+    /// A screen document's root while its layer's view transition runs
+    /// (`:active-view-transition`).
+    ActiveViewTransition,
 }
 
 /// What the host gives a binding beyond its viewmodel.
