@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"`initial` on `direction`, `unicode-bidi`, `writing-mode`, `text-orientation` and `text-combine-upright` now gives the property's initial value (`ltr`, `normal`, `horizontal-tb`, `mixed`, `none`). It used to keep the parent's value, as `inherit` does: `direction: initial` under an rtl parent stayed rtl."}
+  ]
+}

@@ -683,7 +683,9 @@ pub(crate) fn values_with<'r>(
                     keyword == "inherit" || (keyword == "unset" && inherited_property(name));
                 if !inherit {
                     // `initial`: the property's own default.
-                    if let Some(value) = crate::doc::lists::initial(name) {
+                    if let Some(value) = crate::doc::lists::initial(name)
+                        .or_else(|| crate::layout::flow::initial(name))
+                    {
                         out.values.push((name.into(), value.into(), line));
                     }
                     continue;

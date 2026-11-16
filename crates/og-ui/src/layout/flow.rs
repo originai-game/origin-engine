@@ -159,6 +159,20 @@ pub(crate) fn longhand(name: &str) -> bool {
     )
 }
 
+/// A flow property's initial value (CSS Writing Modes 4 §2.1, §3.1, §5.1,
+/// §9.1): what `initial` declares, where an inherited property would
+/// otherwise keep its parent's.
+pub(crate) fn initial(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "direction" => "ltr",
+        "unicode-bidi" => "normal",
+        "writing-mode" => "horizontal-tb",
+        "text-orientation" => "mixed",
+        "text-combine-upright" => "none",
+        _ => return None,
+    })
+}
+
 /// Checks a flow property's value.
 pub(crate) fn check(name: &str, value: &str) -> Result<(), String> {
     let ok = match name {

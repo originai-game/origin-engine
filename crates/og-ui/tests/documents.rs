@@ -432,7 +432,8 @@ fn css_wide_keywords_inherit_reset_and_revert() {
 <div id="Root"><div id="Row">
   <div id="Inherit" class="c"></div><div id="Initial" class="c"></div><div id="Unset" class="c"></div>
   <div id="SizeUnset" class="c"></div><div id="SizeInitial" class="c"></div><div id="SizeInherit" class="c"></div>
-</div><p id="Zero">x</p><p id="Revert">x</p><div id="After"></div></div>
+</div><p id="Zero">x</p><p id="Revert">x</p><div id="After"></div>
+<div id="Rtl"><div id="Ltr"><div id="Dot"></div></div></div></div>
 <style>
 #Row { display: flex; width: 300px; font-size: 20px; }
 .c { width: 30px; height: 1px; font-size: 10px; }
@@ -445,6 +446,9 @@ fn css_wide_keywords_inherit_reset_and_revert() {
 p { margin: 0; font-size: 15px; line-height: 20px; }
 #Revert { margin: revert; }
 #After { height: 1px; }
+#Rtl { display: flex; direction: rtl; width: 100px; height: 1px; }
+#Ltr { direction: initial; display: flex; width: 50px; height: 1px; }
+#Dot { width: 10px; height: 1px; }
 </style>"#;
     let d = Doc::new(text, &[]);
     let root = d.ui.theme().type_ramp.body.size;
@@ -462,6 +466,9 @@ p { margin: 0; font-size: 15px; line-height: 20px; }
     let (zero, revert, after) = (d.get("Zero"), d.get("Revert"), d.get("After"));
     assert_eq!(revert.y - (zero.y + zero.height), 15.0);
     assert_eq!(after.y - (revert.y + revert.height), 15.0);
+    // `initial` on an inherited property is its initial value, not the
+    // parent's: direction ltr under an rtl parent, so the dot starts left.
+    assert_eq!(d.get("Dot").x, d.get("Ltr").x);
 }
 
 /// `@container style()` (CSS Conditional 5 §6.2) reads the nearest
