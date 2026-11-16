@@ -59,13 +59,13 @@
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; max-block-size: stretch; min-block-size: 0; gap: var(--space-lg); padding: var(--space-lg); background: var(--panel); text-shadow: none; }
+:host { display: flex; flex-direction: column; inline-size: stretch; max-block-size: stretch; min-block-size: 0; gap: var(--space-lg); padding: var(--space-lg); background: var(--panel); }
 [part="PuzzleSummary.band"] { display: flex; flex: none; flex-direction: column; align-items: center; gap: var(--space-xxs); padding: var(--space-sm) var(--space-lg); }
 [part="PuzzleSummary.title"] { margin: 0; text-align: center; }
 [part="PuzzleSummary.level PuzzleSummary.label"] { margin: 0; align-self: stretch; text-align: center; color: var(--ink-muted); line-clamp: 2; }
 [part="PuzzleSummary.stars"] { display: flex; flex: none; flex-direction: column; align-items: center; gap: var(--space-xs); }
 [part="PuzzleSummary.earned PuzzleSummary.label"], [part="PuzzleSummary.record PuzzleSummary.label"] { white-space: nowrap; }
-[part="PuzzleSummary.record PuzzleSummary.label"] { padding: var(--space-xs) var(--space-md); border-radius: var(--radius-capsule); background: var(--selection); color: var(--ink); font-weight: var(--font-weight-semibold); text-shadow: none; }
+[part="PuzzleSummary.record PuzzleSummary.label"] { padding: var(--space-xs) var(--space-md); border-radius: var(--radius-capsule); background: var(--selection); color: var(--ink); font-weight: var(--font-weight-semibold); }
 .breakdown-shell { position: relative; display: flex; flex-direction: column; flex: 1 1 auto; min-block-size: 0; }
 .breakdown-fade { position: absolute; inset-inline: 0; bottom: 0; block-size: var(--space-lg); pointer-events: none; background: linear-gradient(transparent, var(--panel)); }
 [part="PuzzleSummary.breakdown"] { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; }
@@ -75,7 +75,7 @@
 [part="PuzzleSummary.rowLabel"], .total-label { flex: 1; min-width: 0; text-align: start; }
 [part="PuzzleSummary.rowValue"], .total-value { flex: none; text-align: end; white-space: nowrap; font-family: var(--figure-font); font-variant-numeric: tabular-nums; }
 [part="PuzzleSummary.actions"] { display: flex; flex: none; gap: var(--space-sm); justify-content: center; }
-[part="PuzzleSummary.actions"] button { flex: 1; min-width: 0; min-height: var(--size-touch); text-shadow: none; }
+[part="PuzzleSummary.actions"] button { flex: 1; min-width: 0; min-height: var(--size-touch); }
 @media (width < 600px) {
   :host { padding: var(--space-md); gap: var(--space-sm); }
   [part="PuzzleSummary.actions"] { gap: var(--space-xs); }
