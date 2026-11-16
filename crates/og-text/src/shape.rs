@@ -133,6 +133,9 @@ pub struct FontFile {
     /// The height of its lowercase letters, em (OS/2 `sxHeight`; half an
     /// em where the font gives none, as CSS Values 4 §6.1.1 assumes).
     x_height: f32,
+    /// The height of its capitals, em (OS/2 `sCapHeight`; 0 where the
+    /// font gives none).
+    cap_height: f32,
     #[cfg(feature = "shaping")]
     shaper: harfrust::ShaperData,
     #[cfg(feature = "shaping")]
@@ -179,6 +182,10 @@ impl FontFile {
             .x_height
             .filter(|x| *x > 0.0)
             .map_or(0.5, |x| x / units_per_em.max(1.0));
+        let cap_height = metrics
+            .cap_height
+            .filter(|x| *x > 0.0)
+            .map_or(0.0, |x| x / units_per_em.max(1.0));
         #[cfg(feature = "shaping")]
         let shaper = harfrust::ShaperData::new(&face);
         let colour = {
@@ -193,6 +200,7 @@ impl FontFile {
             colour,
             units_per_em,
             x_height,
+            cap_height,
             #[cfg(feature = "shaping")]
             shaper,
             #[cfg(feature = "shaping")]
@@ -212,6 +220,11 @@ impl FontFile {
     /// The height of its lowercase letters, em.
     pub fn x_height(&self) -> f32 {
         self.x_height
+    }
+
+    /// The height of its capitals, em (0: the font gives none).
+    pub fn cap_height(&self) -> f32 {
+        self.cap_height
     }
 
     /// The font file's bytes.

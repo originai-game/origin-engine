@@ -264,6 +264,55 @@ fn calc_reduces_once_its_variables_are_known() {
     assert!(mixed.contains("calc() mixes % and ms"), "{mixed}");
 }
 
+/// Each row's width against the value CSS Values 4 gives, to ±0.5px (layout
+/// snaps to device pixels).
+fn widths_near(d: &Doc, expected: &[(&str, f64)]) {
+    for (id, want) in expected {
+        let got = f64::from(d.get(id).width);
+        assert!((got - want).abs() <= 0.5, "{id}: {got}, CSS gives {want}");
+    }
+}
+
+/// CSS Values 4 §6.1.1's font-relative units read the element's face:
+/// Inter Display's OS/2 x-height (1056/2048 em), cap height (1490/2048),
+/// its `0` advance (1306/2048) and, as it has no 水, 1em for `ic`; the
+/// root forms read the root's size (the body type step) and line height.
+#[test]
+fn font_relative_units_read_the_faces_own_metrics() {
+    let (x, cap, zero) = (1056.0 / 2048.0, 1490.0 / 2048.0, 1306.0 / 2048.0);
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Ch"></div><div id="Ex"></div><div id="Cap"></div><div id="Ic"></div>
+  <div id="Rch"></div><div id="Rex"></div><div id="Rcap"></div><div id="Ric"></div><div id="Rlh"></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#Root div { height: 1px; font-size: 100px; }
+#Ch { width: 1ch; } #Ex { width: 1ex; } #Cap { width: 1cap; } #Ic { width: 1ic; }
+#Rch { width: 10rch; } #Rex { width: 10rex; } #Rcap { width: 10rcap; } #Ric { width: 2ric; }
+#Rlh { width: 3rlh; }
+</style>"#;
+    let mut font = crate::features::font("Inter-Display.ttf");
+    font.handle = crate::support::test_font().handle;
+    let d = Doc::with_font(text, &[], font);
+    let body = d.ui.theme().type_ramp.body;
+    let (rem, rlh) = (f64::from(body.size), f64::from(body.line_height));
+    widths_near(
+        &d,
+        &[
+            ("Ch", 100.0 * zero),
+            ("Ex", 100.0 * x),
+            ("Cap", 100.0 * cap),
+            ("Ic", 100.0),
+            ("Rch", 10.0 * zero * rem),
+            ("Rex", 10.0 * x * rem),
+            ("Rcap", 10.0 * cap * rem),
+            ("Ric", 2.0 * rem),
+            ("Rlh", 3.0 * rlh),
+        ],
+    );
+}
+
 #[test]
 fn safe_area_insets_clear_the_hosts_covered_control() {
     // A HUD at the insets' corners, as a document places one: the page's

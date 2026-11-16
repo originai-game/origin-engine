@@ -808,7 +808,9 @@ impl Ui {
         }));
         let body = self.theme().type_ramp.body;
         let face = &self.fonts().body.metrics;
-        let ratio = |s: &str| face.measure(s, 100.0) / 100.0;
+        // A glyph's advance; 0, so the unit takes CSS Values 4 §6.1.1's
+        // fallback, where the face has none.
+        let ratio = |c: char| if face.has(c) { face.advance(c) } else { 0.0 };
         let [small, large] = vp.extremes();
         let basis = super::calc::Basis {
             width: vp.width,
@@ -817,9 +819,10 @@ impl Ui {
             large,
             rem: body.size,
             rlh: body.line_height,
-            ch: ratio("0"),
-            cap: face.ascender,
-            ic: ratio("\u{6C34}"),
+            ch: ratio('0'),
+            cap: face.cap_height(),
+            ex: face.x_height(),
+            ic: ratio('\u{6C34}'),
             safe: {
                 let s = vp.env_insets();
                 [s.top, s.right, s.bottom, s.left]

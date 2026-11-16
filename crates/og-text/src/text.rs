@@ -454,6 +454,16 @@ impl FontMetrics {
         self.file.as_ref().map_or(0.5, |f| f.x_height())
     }
 
+    /// The height of its capitals, em: its file's, else its ascent (as
+    /// CSS Values 4 §6.1.1 assumes for `cap`).
+    pub fn cap_height(&self) -> f32 {
+        self.file
+            .as_ref()
+            .map(|f| f.cap_height())
+            .filter(|c| *c > 0.0)
+            .unwrap_or(self.ascender)
+    }
+
     /// The baseline of a line of `text` at `size` in a line box `line_h`
     /// tall whose top is `top`: its [`FontMetrics::extents`] centred in the
     /// box.
