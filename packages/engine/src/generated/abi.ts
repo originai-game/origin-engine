@@ -962,6 +962,8 @@ export interface HostAbi<A, V> {
   og_ui_set_focus(path: string): void;
   /** `og.ui.scrollIntoView` */
   og_ui_scroll_into_view(path: string, center: boolean): void;
+  /** `og.ui.startViewTransition` */
+  og_ui_start_view_transition(path: string): boolean;
   /** `og.ui.setHighlight` */
   og_ui_set_highlight(name: string, highlight: string): void;
   /** `og.ui.frameDirection` */
@@ -1810,6 +1812,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_seconds",
   "og_ui_set_focus",
   "og_ui_scroll_into_view",
+  "og_ui_start_view_transition",
   "og_ui_set_highlight",
   "og_ui_frame_direction",
   "og_ui_frame_theme",

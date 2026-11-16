@@ -273,6 +273,13 @@ pub fn og_ui_scroll_into_view(path: String, center: bool) {
     });
 }
 
+pub fn og_ui_start_view_transition(path: String) -> bool {
+    with_ui("og.ui.startViewTransition", |ui| {
+        ui.start_element_view_transition(&path)
+    })
+    .unwrap_or(false)
+}
+
 pub fn og_ui_set_highlight(name: String, highlight: String) {
     let h = crate::host::wire::arg::<Option<crate::host::wire::UiHighlight>>(
         Some(&highlight),

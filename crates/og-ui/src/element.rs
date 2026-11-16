@@ -303,6 +303,9 @@ pub struct Props {
     pub view_transition_class: Vec<String>,
     /// CSS `view-transition-group` (empty: normal): where its group nests.
     pub view_transition_group: String,
+    /// CSS `view-transition-scope: all`: only a view transition it or an
+    /// element inside it hosts discovers the names in its subtree.
+    pub view_transition_scope: bool,
     pub drag: Option<DragSpec>,
     pub pinch: Option<PinchSpec>,
     pub drop: Option<DropSpec>,
@@ -407,6 +410,7 @@ impl Default for Props {
             dense: false,
             match_key: String::new(),
             view_transition_name: String::new(),
+            view_transition_scope: false,
             view_transition_class: Vec::new(),
             view_transition_group: String::new(),
             drag: None,

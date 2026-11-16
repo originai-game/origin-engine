@@ -68,6 +68,7 @@ pub(crate) fn parse_with_pack(
                 root: NONE,
                 warnings: Vec::new(),
                 embedded_sizing: false,
+                view_transitions: None,
             },
             ids: BTreeSet::new(),
             selectors: Vec::new(),

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "ui",
+      "summary": "Scoped view transitions (CSS View Transitions 2): `og.ui.startViewTransition(path)` starts a view transition on one element, like `element.startViewTransition()`. The `view-transition-name` elements in its subtree morph from where the last frame drew them to where they are now, drawn just after the element and styled by its document's `::view-transition-*` rules, a component's included. Several run at once, beside a screen's. `view-transition-scope: all` keeps the names under an element to its own transitions."
+    }
+  ]
+}

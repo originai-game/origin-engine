@@ -82,6 +82,9 @@ macro_rules! __og_host_bindings_ui {
             fn og_ui_set_players(&self, count: u32) {
                 $crate::og_ui_set_players(count)
             }
+            fn og_ui_start_view_transition(&self, path: String) -> bool {
+                $crate::og_ui_start_view_transition(path)
+            }
             fn og_ui_set_highlight(&self, name: String, highlight: String) {
                 $crate::og_ui_set_highlight(name, highlight)
             }

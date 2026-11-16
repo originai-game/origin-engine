@@ -509,6 +509,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `view-transition-group`: where its view-transition group nests (empty: `normal`, in the nearest shared ancestor's that is not normal; `contain`: as normal, and its own nest in it; `nearest`: in the nearest shared ancestor's; a name: in that ancestor's). A nested group moves with its parent, inside its `::view-transition-group-children`.",
     },
     PropSpec {
+        name: "viewTransitionScope",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `view-transition-scope`: `all` keeps the view-transition names in its subtree (its own too) for the view transitions it hosts itself (og.ui.startViewTransition on it or inside it): a layer's transition or one an ancestor hosts finds none of them. `none` (the default) leaves them to the transitions outside.",
+    },
+    PropSpec {
         name: "anchorName",
         ty: Ty::Text,
         on: On::All,

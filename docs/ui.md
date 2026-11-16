@@ -896,9 +896,22 @@ navigation: auto; }`. The engine's mapping:
   pair's is its own; `-old` and `-new` refuse it); a nested image pair is
   its own layer.
 - Reduced motion ends finite animations at once, makes covers fade and
-  skips shared elements unless the style keeps motion. A component cannot
-  declare a view transition. Capturing costs nothing until a transition
-  starts; a running one is saved with the UI state.
+  skips shared elements unless the style keeps motion. Only a screen opts
+  its layer in. Capturing costs nothing until a transition starts; a
+  running one is saved with the UI state.
+- Scoped view transitions (Level 2 §4): `og.ui.startViewTransition(path)`
+  is `element.startViewTransition()`, the update being whatever the game
+  changes in the same tick. Its old view is the shared elements of that
+  element's subtree in last frame's commands; its groups draw right after
+  the element's own commands (over its children, outside its clip and
+  opacity, under what follows) and are styled by the `::view-transition-*`
+  rules of the element's document, a component's too (the UA's without
+  any). Any number run at once, beside a layer's; starting one on the
+  same element replaces it. A name is found by the transition of the
+  nearest of its element and its ancestors with `view-transition-scope:
+  all` or a running scoped transition, else by a layer's. The element is
+  not given layout containment: og-ui lays out the whole frame each tick,
+  so nothing outside it moves with its subtree.
 
 #### Inline SVG
 

@@ -405,6 +405,12 @@ screen can wait for it.
   `::view-transition-group-children(card) { overflow: clip; }` keeps it
   inside. `::view-transition { background-image:
   url("ui/covers/stars.png"); }` covers with a texture instead of a colour.
+  Within one screen, `og.ui.startViewTransition("<element path>")` and a
+  state change in the same tick morph the named elements inside that
+  element only (a reordered inventory grid, a card flipping into its
+  detail), styled by the document's `::view-transition-group(...)` rules;
+  `view-transition-scope: all` keeps a panel's names to its own
+  transitions.
 - Compose with components and snippets, not code callbacks:
   `<Card title={item.name}>{#snippet body()}<p>{item.desc}</p>{/snippet}</Card>`,
   rendered in `Card` with `{@render body?.()}`. Pass content to a mount by

@@ -283,6 +283,7 @@ impl Ui {
         let ghosts = std::mem::take(&mut self.interaction.state.motion.ghosts);
         let mut drawn = vec![false; ghosts.len()];
         self.paint.cache.named.clear();
+        self.paint.cache.scope_roots.clear();
         let mut frozen: IdMap<u64, crate::motion::state::Frozen> = IdMap::new();
         // Open subtrees: (node, its first command, the order position past
         // it, where its commands began in last frame's list).
@@ -750,7 +751,7 @@ impl Ui {
                                 r.0 += by;
                             }
                         }
-                        shift_named(&mut self.paint.cache.named, over, by);
+                        shift_named(&mut self.paint.cache, over, by);
                         cmds.splice(over..over, group);
                     }
                 }
@@ -861,7 +862,7 @@ impl Ui {
                     // Every later command moves one place: no span is kept.
                     self.paint.kept_spans.retain(|r| r.end <= first);
                     self.paint.cache.aligned.retain(|r| r.end <= first);
-                    shift_named(&mut self.paint.cache.named, first, 1);
+                    shift_named(&mut self.paint.cache, first, 1);
                     cmds.insert(first, (begin, nj.placed.world));
                     cmds.push((end, nj.placed.world));
                 }
@@ -873,7 +874,7 @@ impl Ui {
                         blur_layer(nj.style.sampled.blur, nj.placed.rect, nj.placed.clip);
                     self.paint.kept_spans.retain(|r| r.end <= first);
                     self.paint.cache.aligned.retain(|r| r.end <= first);
-                    shift_named(&mut self.paint.cache.named, first, 1);
+                    shift_named(&mut self.paint.cache, first, 1);
                     cmds.insert(first, (begin, nj.placed.world));
                     cmds.push((end, nj.placed.world));
                 }
@@ -885,10 +886,25 @@ impl Ui {
                         "auto" | "match-element" => crate::view_transition::element_name(key),
                         n => n.to_string(),
                     };
+                    // Its key and its ancestors', up to the first that
+                    // bounds where its name is found.
+                    let (mut chain, mut bounded, mut at) = (Vec::new(), false, j);
+                    while at != NONE {
+                        let n = &self.tree.nodes[at];
+                        chain.push(n.key);
+                        let runs = &self.interaction.state.scoped_view_transitions;
+                        if n.props.view_transition_scope || runs.iter().any(|r| r.root == n.key) {
+                            bounded = true;
+                            break;
+                        }
+                        at = n.parent;
+                    }
                     self.paint.cache.named.push(crate::view_transition::Named {
                         node: j,
                         key,
                         name,
+                        chain,
+                        bounded,
                         classes: nj.props.view_transition_class.clone(),
                         group: nj.props.view_transition_group.clone(),
                         parent: None,
@@ -901,6 +917,11 @@ impl Ui {
                             self.tree.nodes[nj.parent].placed.alpha
                         },
                     });
+                }
+                // A scoped view transition's root: its groups draw after it.
+                let runs = &self.interaction.state.scoped_view_transitions;
+                if runs.iter().any(|r| r.root == key) {
+                    (self.paint.cache.scope_roots).push((key, j, first..cmds.len()));
                 }
                 // Its range for the next frame, from its parent's start.
                 let base = open.last().map_or(0, |o| o.1);
@@ -1153,6 +1174,7 @@ impl Ui {
             || node.props.exit.is_some()
             || !node.props.match_key.is_empty()
             || !node.props.view_transition_name.is_empty()
+            || (self.interaction.state.scoped_view_transitions.iter()).any(|r| r.root == node.key)
             || !node.layout.links.is_empty()
             || node.fx.is_some_and(|f| f.glitch > 0.0)
             || node.style.sampled.blur > 0.0
@@ -2120,10 +2142,13 @@ fn reference_box(n: &crate::layout::Node, b: crate::transform3d::TransformBox) -
     }
 }
 
-/// The shared elements' ranges after a command was inserted at `at`.
-pub(super) fn shift_named(named: &mut [crate::view_transition::Named], at: usize, by: usize) {
-    for n in named.iter_mut().filter(|n| n.range.start >= at) {
-        n.range = n.range.start + by..n.range.end + by;
+/// The shared elements' and scoped roots' ranges after a command was
+/// inserted at `at`.
+pub(super) fn shift_named(cache: &mut crate::layout::PaintCache, at: usize, by: usize) {
+    let ranges = (cache.named.iter_mut().map(|n| &mut n.range))
+        .chain(cache.scope_roots.iter_mut().map(|r| &mut r.2));
+    for range in ranges.filter(|r| r.start >= at) {
+        *range = range.start + by..range.end + by;
     }
 }
 

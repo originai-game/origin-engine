@@ -231,6 +231,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("viewTransitionName", "view-transition-name"),
     ("viewTransitionClass", "view-transition-class"),
     ("viewTransitionGroup", "view-transition-group"),
+    ("viewTransitionScope", "view-transition-scope"),
     ("positionAnchor", "position-anchor"),
     ("positionArea", "position-area"),
     ("positionTry", "position-try-fallbacks"),

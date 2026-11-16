@@ -144,7 +144,7 @@ impl Ui {
             for c in self.paint.cache.copied.iter_mut().filter(|c| c.0 >= at) {
                 c.0 += by;
             }
-            super::commands::shift_named(&mut self.paint.cache.named, at, by);
+            super::commands::shift_named(&mut self.paint.cache, at, by);
             self.grow_ranges(h.node, by, order, ends);
             cmds.splice(at..at, copy);
         }

@@ -2394,6 +2394,11 @@ pub fn og_ui_scroll_into_view(path: String, center: bool) {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_start_view_transition(path: String) -> bool {
+    <Host as UiApi>::og_ui_start_view_transition(&Host, path)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_set_highlight(name: String, highlight: String) {
     <Host as UiApi>::og_ui_set_highlight(&Host, name, highlight)
 }

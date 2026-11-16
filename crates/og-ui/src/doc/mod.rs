@@ -781,6 +781,10 @@ pub struct UiDocument {
     /// the frame's natural size (CSS Sizing 4); without it the frame keeps
     /// 300×150, so its size never reaches an embedder it did not choose.
     pub embedded_sizing: bool,
+    /// Its view-transition rules (`::view-transition-*`), which style the
+    /// scoped view transitions of its elements (`og.ui.startViewTransition`)
+    /// whether or not it opts its layer in; `None` without any.
+    pub view_transitions: Option<view_transition::ViewTransition>,
 }
 
 pub const NONE: usize = usize::MAX;

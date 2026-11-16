@@ -24,6 +24,16 @@
 //! untouched. Two elements with one name in the old or the new view skip
 //! the transition (the spec's `InvalidStateError`), as reduced motion does
 //! (unless the style keeps motion).
+//!
+//! An element can host a transition of its own (Level 2's scoped view
+//! transitions, `og.ui.startViewTransition`): it captures only the shared
+//! elements in its subtree, its groups draw right after the root's own
+//! drawing (over its children, outside its clip and its opacity, under
+//! what follows it) and are styled by its document's rules. Scoped
+//! transitions run beside each other and beside a layer's. A name is
+//! discovered only by the transition of the nearest of its element and
+//! that element's ancestors that has `view-transition-scope: all` or
+//! roots a running scoped transition (a layer's when none does).
 
 use crate::doc::view_transition::{FADE_IN, FADE_OUT, GROUP_ANIM, GroupStyle};
 use crate::draw::DrawCmd;
@@ -50,6 +60,11 @@ pub(crate) struct Named {
     /// once the frame's shared elements are known ([`Ui::nest_named`]).
     pub parent: Option<String>,
     pub range: Range<usize>,
+    /// Its key and its ancestors', up to the first of them that bounds
+    /// the discovery of its name (`view-transition-scope: all`, or the
+    /// root of a scoped transition running), the last when `bounded`.
+    pub chain: Vec<u64>,
+    pub bounded: bool,
     /// Its box on the screen.
     pub screen: Rect,
     /// Its border's widths on the screen (left, top, right, bottom): its
@@ -59,6 +74,22 @@ pub(crate) struct Named {
     /// snapshot is the element's own drawing, without them.
     pub inherited: f32,
 }
+
+impl Named {
+    /// Whether the transition rooted at element `root` (0: a layer's)
+    /// discovers its name.
+    pub(crate) fn in_scope(&self, root: u64) -> bool {
+        if root == 0 {
+            !self.bounded
+        } else {
+            self.chain.contains(&root)
+        }
+    }
+}
+
+/// The root of a scoped transition running, as a frame drew it: its key,
+/// its node and where its commands are in the frame's list.
+pub(crate) type ScopeRoot = (u64, usize, Range<usize>);
 
 /// `cmds` without the opacity `inherited` their ancestors gave them.
 fn own(cmds: &[(DrawCmd, Affine)], inherited: f32) -> Vec<(DrawCmd, Affine)> {
@@ -146,9 +177,27 @@ pub struct Capture {
     pub cmds: Vec<(DrawCmd, Affine)>,
 }
 
-/// A frame's groups (drawn over its trees) and the ranges of its trees
-/// the live elements taking part draw (left out of its items).
-pub(crate) type Groups = (Vec<(DrawCmd, Affine)>, Vec<Range<usize>>);
+/// A frame's view transitions: a layer's groups (drawn over its trees),
+/// the ranges of its trees the live elements taking part draw (left out
+/// of its items), and the scoped transitions' groups, each to go in
+/// before the command of the trees at its index.
+pub(crate) type Groups = (Cmds, Vec<Range<usize>>, Vec<(usize, Cmds)>);
+
+/// Draw commands, each with its map onto the screen.
+pub(crate) type Cmds = Vec<(DrawCmd, Affine)>;
+
+/// Old element `n`'s capture from last frame's commands `last`.
+fn capture(last: &[(DrawCmd, Affine)], n: &Named, named: &[Named]) -> Capture {
+    Capture {
+        key: n.key,
+        name: n.name.clone(),
+        classes: n.classes.clone(),
+        parent: n.parent.clone(),
+        screen: n.screen,
+        inset: n.inset,
+        cmds: image(last, n, named),
+    }
+}
 
 /// The view transition running.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -160,6 +209,8 @@ pub struct Running {
     pub old: Vec<Capture>,
     /// Skipped (a name twice): its layers end their transitions at once.
     pub skipped: bool,
+    /// The element whose transition it is (a scoped one); 0: a layer's.
+    pub root: u64,
 }
 
 impl Running {
@@ -185,7 +236,10 @@ impl Running {
                 })
             })
             .collect();
-        json!({ "since": self.since, "screen": self.screen, "skipped": self.skipped, "old": old })
+        json!({
+            "since": self.since, "screen": self.screen, "skipped": self.skipped,
+            "root": self.root.to_string(), "old": old,
+        })
     }
 
     /// Reads what [`Running::save`] wrote.
@@ -219,6 +273,10 @@ impl Running {
             screen: v["screen"].as_str()?.to_string(),
             old,
             skipped: v["skipped"].as_bool()?,
+            root: match v.get("root") {
+                Some(r) => r.as_str()?.parse().ok()?,
+                None => 0,
+            },
         })
     }
 }
@@ -546,12 +604,100 @@ fn draw(
     ));
 }
 
+/// Why a transition is skipped: a name on two elements of one view.
+fn duplicate(old: &[Capture], new: &[Named]) -> Option<String> {
+    let twice = |names: Vec<&String>| {
+        names
+            .iter()
+            .enumerate()
+            .find(|(k, n)| names[..*k].contains(n))
+            .map(|(_, n)| (*n).clone())
+    };
+    let (name, view) = twice(old.iter().map(|c| &c.name).collect())
+        .map(|n| (n, "old"))
+        .or_else(|| twice(new.iter().map(|n| &n.name).collect()).map(|n| (n, "new")))?;
+    let name = if name.starts_with('#') {
+        "auto"
+    } else {
+        name.as_str()
+    };
+    Some(format!(
+        "view-transition-name '{name}' is on two elements of the {view} view: the view transition is skipped (each name names one element)"
+    ))
+}
+
 impl Ui {
-    /// The running view transition's groups this frame, drawn over the
-    /// frame's trees, and the ranges of `trees` the live elements taking
-    /// part draw (left out of the frame's items). `None` when none runs
-    /// (or it has just ended).
+    /// The view transitions running this frame: a layer's groups drawn
+    /// over the frame's trees, the ranges of `trees` the live elements
+    /// taking part draw (left out of the frame's items), and each scoped
+    /// transition's groups after its root's commands. `None` when none
+    /// runs (or those running have just ended).
     pub(crate) fn view_transition_frame(&mut self, trees: &[(DrawCmd, Affine)]) -> Option<Groups> {
+        let layer = self.layer_transition_frame(trees);
+        let running = layer.is_some();
+        let (tail, mut hidden) = layer.unwrap_or_default();
+        let mut inserts = Vec::new();
+        let runs = std::mem::take(&mut self.interaction.state.scoped_view_transitions);
+        for run in runs {
+            // Its root gone, it ends (the spec skips it).
+            let Some((_, node, range)) = self
+                .paint
+                .cache
+                .scope_roots
+                .iter()
+                .find(|r| r.0 == run.root)
+                .cloned()
+            else {
+                continue;
+            };
+            // Its root's document's rules style it.
+            let document = self.tree.nodes[node]
+                .part_host
+                .as_ref()
+                .map_or(run.screen.clone(), |h| h.document.clone());
+            let style = self
+                .docs
+                .library
+                .documents
+                .get(&document)
+                .and_then(|d| d.view_transitions.clone())
+                .unwrap_or_else(|| crate::doc::view_transition::ViewTransition::of(&document));
+            let new: Vec<Named> = self
+                .paint
+                .cache
+                .named
+                .iter()
+                .filter(|n| n.in_scope(run.root))
+                .cloned()
+                .collect();
+            if let Some(warning) = duplicate(&run.old, &new) {
+                self.out.warnings.push(warning);
+                continue;
+            }
+            let t = self.transition_ms(run.since);
+            let (groups, end, h) = self.groups(&run, &style, &new, trees, t);
+            if t >= end {
+                continue;
+            }
+            inserts.push((range.end, groups));
+            hidden.extend(h);
+            self.interaction.state.scoped_view_transitions.push(run);
+        }
+        (running || !inserts.is_empty()).then_some((tail, hidden, inserts))
+    }
+
+    /// Ms since the tick `since`.
+    fn transition_ms(&self, since: u64) -> f32 {
+        self.interaction.state.tick.saturating_sub(since) as f32 * 1000.0
+            / self.env.ticks_per_second.max(1) as f32
+    }
+
+    /// A layer's view transition this frame: its groups and the ranges of
+    /// `trees` its live elements draw.
+    fn layer_transition_frame(
+        &mut self,
+        trees: &[(DrawCmd, Affine)],
+    ) -> Option<(Cmds, Vec<Range<usize>>)> {
         let run = self.interaction.state.view_transition.take()?;
         if run.skipped {
             // Kept while its layers may still read it.
@@ -566,9 +712,9 @@ impl Ui {
             .documents
             .get(&run.screen)
             .and_then(|d| d.layer.transition.clone())?;
-        let t = self.interaction.state.tick.saturating_sub(run.since) as f32 * 1000.0
-            / self.env.ticks_per_second.max(1) as f32;
-        // The new view: this frame's shared elements but a leaving layer's.
+        let t = self.transition_ms(run.since);
+        // The new view: this frame's shared elements but a leaving layer's
+        // and those another transition discovers.
         let leaving: Vec<String> = self
             .docs
             .layers
@@ -591,28 +737,11 @@ impl Ui {
             .cache
             .named
             .iter()
-            .filter(|n| leaving.is_empty() || !in_leaving(self, n.node))
+            .filter(|n| n.in_scope(0) && (leaving.is_empty() || !in_leaving(self, n.node)))
             .cloned()
             .collect();
-        let twice = |names: Vec<&String>| {
-            names
-                .iter()
-                .enumerate()
-                .find(|(k, n)| names[..*k].contains(n))
-                .map(|(_, n)| (*n).clone())
-        };
-        let duplicate = twice(run.old.iter().map(|c| &c.name).collect())
-            .map(|n| (n, "old"))
-            .or_else(|| twice(new.iter().map(|n| &n.name).collect()).map(|n| (n, "new")));
-        if let Some((name, view)) = duplicate {
-            let name = if name.starts_with('#') {
-                "auto"
-            } else {
-                name.as_str()
-            };
-            self.out.warnings.push(format!(
-                "view-transition-name '{name}' is on two elements of the {view} view: the view transition is skipped (each name names one element)"
-            ));
+        if let Some(warning) = duplicate(&run.old, &new) {
+            self.out.warnings.push(warning);
             self.interaction.state.view_transition = Some(Running {
                 skipped: true,
                 old: Vec::new(),
@@ -620,11 +749,31 @@ impl Ui {
             });
             return None;
         }
+        let (tail, end, hidden) = self.groups(&run, &style, &new, trees, t);
+        if t >= end {
+            return None;
+        }
+        self.interaction.state.view_transition = Some(run);
+        Some((tail, hidden))
+    }
+
+    /// Transition `run`'s groups at `t` ms, styled by `style`, with `new`
+    /// its live shared elements: their commands, when the last of their
+    /// animations ends and the ranges of `trees` its live and old
+    /// elements draw (left out of the frame).
+    fn groups(
+        &self,
+        run: &Running,
+        style: &crate::doc::view_transition::ViewTransition,
+        new: &[Named],
+        trees: &[(DrawCmd, Affine)],
+        t: f32,
+    ) -> (Cmds, f32, Vec<Range<usize>>) {
         // The groups: the old view's names in its order, then the new
         // view's others; each nested in its parent (the new view's, else
         // the old's).
         let mut names: Vec<&String> = run.old.iter().map(|c| &c.name).collect();
-        for n in &new {
+        for n in new {
             if !names.contains(&&n.name) {
                 names.push(&n.name);
             }
@@ -675,21 +824,50 @@ impl Ui {
                 draw(self, &groups, k, Affine::IDENTITY, t, trees, all, &mut tail);
             }
         }
-        if t >= end {
-            return None;
-        }
-        let hidden = self
-            .paint
-            .cache
-            .named
+        let hidden = all
             .iter()
             .filter(|n| {
                 new.iter().any(|m| m.key == n.key) || run.old.iter().any(|c| c.key == n.key)
             })
             .map(|n| n.range.clone())
             .collect();
-        self.interaction.state.view_transition = Some(run);
-        Some((tail, hidden))
+        (tail, end, hidden)
+    }
+
+    /// Starts a view transition scoped to the element at `path` (CSS View
+    /// Transitions 2 §4, `element.startViewTransition()`): the shared
+    /// elements of its subtree as last frame drew them are the old view,
+    /// and from this tick's frame on its subtree is the new one. One
+    /// already running on that element is replaced, as the spec skips it.
+    /// Answers whether it started: not without the element in last frame,
+    /// nor under reduced motion (unless the style keeps motion).
+    pub fn start_element_view_transition(&mut self, path: &str) -> bool {
+        let root = crate::id::key_of_path(path);
+        let theme = &self.env.theme;
+        if self.tree.index.find(root).is_none()
+            || theme.reduced_motion && theme.motion.reduced != crate::motion::Reduced::Keep
+        {
+            return false;
+        }
+        let (last, named) = (&self.paint.cache.last_cmds, &self.paint.cache.named);
+        let old = named
+            .iter()
+            .filter(|n| n.range.end <= last.len() && n.in_scope(root))
+            .map(|n| capture(last, n, named))
+            .collect();
+        // Its first frame is the tick it starts: this one while a frame
+        // builds, else the next.
+        let since = self.interaction.state.tick + u64::from(!self.tree.building);
+        let runs = &mut self.interaction.state.scoped_view_transitions;
+        runs.retain(|r| r.root != root);
+        runs.push(Running {
+            since,
+            screen: String::new(),
+            old,
+            skipped: false,
+            root,
+        });
+        true
     }
 }
 
@@ -755,22 +933,15 @@ impl crate::ui::Style {
         let (last, named) = (&paint.cache.last_cmds, &paint.cache.named);
         let old = named
             .iter()
-            .filter(|n| n.range.end <= last.len())
-            .map(|n| Capture {
-                key: n.key,
-                name: n.name.clone(),
-                classes: n.classes.clone(),
-                parent: n.parent.clone(),
-                screen: n.screen,
-                inset: n.inset,
-                cmds: image(last, n, named),
-            })
+            .filter(|n| n.range.end <= last.len() && n.in_scope(0))
+            .map(|n| capture(last, n, named))
             .collect();
         interaction.state.view_transition = Some(Running {
             since: tick,
             screen: screen.to_string(),
             old,
             skipped: false,
+            root: 0,
         });
     }
 }

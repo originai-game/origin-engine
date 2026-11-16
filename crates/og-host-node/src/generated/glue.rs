@@ -2871,6 +2871,12 @@ pub fn og_ui_scroll_into_view(env: Env, path: String, center: bool) {
     <Host as UiApi>::og_ui_scroll_into_view(&Host, path, center)
 }
 
+#[napi(js_name = "og_ui_start_view_transition")]
+pub fn og_ui_start_view_transition(env: Env, path: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_start_view_transition(&Host, path)
+}
+
 #[napi(js_name = "og_ui_set_highlight")]
 pub fn og_ui_set_highlight(env: Env, name: String, highlight: String) {
     let _env = crate::EnvScope::enter(&env);

@@ -315,6 +315,9 @@ pub(crate) struct PaintCache {
     /// Last frame's shared elements of view transitions and where each
     /// drew in `last_cmds` (crate::view_transition).
     pub named: Vec<crate::view_transition::Named>,
+    /// Last frame's roots of scoped view transitions running, and where
+    /// each drew in `last_cmds`.
+    pub scope_roots: Vec<crate::view_transition::ScopeRoot>,
     pub ranges: crate::id::KeyMap<(usize, usize, u32)>,
     /// Per slot: the key and signature it was last painted with.
     pub sigs: Vec<Option<(u64, DrawSig)>>,

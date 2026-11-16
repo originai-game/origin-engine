@@ -1077,6 +1077,8 @@ pub trait UiApi: Wire {
     fn og_ui_set_focus(&self, path: String);
     /// `og.ui.scrollIntoView`
     fn og_ui_scroll_into_view(&self, path: String, center: bool);
+    /// `og.ui.startViewTransition`
+    fn og_ui_start_view_transition(&self, path: String) -> bool;
     /// `og.ui.setHighlight`
     fn og_ui_set_highlight(&self, name: String, highlight: String);
     /// `og.ui.frameDirection`
@@ -1998,6 +2000,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_seconds",
     "og_ui_set_focus",
     "og_ui_scroll_into_view",
+    "og_ui_start_view_transition",
     "og_ui_set_highlight",
     "og_ui_frame_direction",
     "og_ui_frame_theme",

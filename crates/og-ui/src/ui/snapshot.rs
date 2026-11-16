@@ -332,6 +332,10 @@ impl Ui {
         if let Some(v) = &s.view_transition {
             docs["viewTransition"] = v.save();
         }
+        if !s.scoped_view_transitions.is_empty() {
+            docs["scopedViewTransitions"] =
+                s.scoped_view_transitions.iter().map(|r| r.save()).collect();
+        }
         if !s.virtual_lists.is_empty() {
             docs["virtualLists"] = serde_json::to_value(&s.virtual_lists).expect("finite extents");
         }
@@ -407,6 +411,15 @@ impl Ui {
                 crate::view_transition::Running::restore(v)
                     .ok_or_else(|| bad("malformed view transition".into()))?,
             );
+        }
+        if let Some(runs) = docs.get("scopedViewTransitions") {
+            s.scoped_view_transitions = runs
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(crate::view_transition::Running::restore)
+                .collect::<Option<_>>()
+                .ok_or_else(|| bad("malformed scoped view transitions".into()))?;
         }
         if let Some(lists) = docs.get("virtualLists") {
             s.virtual_lists = serde_json::from_value(lists.clone())

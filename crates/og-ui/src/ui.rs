@@ -286,6 +286,8 @@ pub struct RiveSlot {
 pub struct State {
     /// The view transition running (its shared elements' groups).
     pub view_transition: Option<crate::view_transition::Running>,
+    /// The scoped view transitions running, each on its own root element.
+    pub scoped_view_transitions: Vec<crate::view_transition::Running>,
     pub hot: u64,
     pub active: u64,
     pub focus: u64,

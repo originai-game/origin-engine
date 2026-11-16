@@ -1469,7 +1469,7 @@ impl Ui {
             self.cover_commands(&c, &mut cover);
             tail.extend(cover.into_iter().map(|c| (c, Affine::IDENTITY)));
         }
-        if let Some((groups, _)) = &view {
+        if let Some((groups, ..)) = &view {
             tail.extend(groups.iter().cloned());
         }
         let mut over = Vec::new();
@@ -1511,16 +1511,29 @@ impl Ui {
             let missing_glyphs =
                 self.layout
                     .missing_glyphs(&cmds, &self.env, &mut self.out, &mut self.paint);
-            if let Some((_, hidden)) = &view {
+            if let Some((_, hidden, scoped)) = &view {
                 let mut shown = vec![true; cmds.len()];
                 for r in hidden {
                     shown[r.clone()].fill(false);
                 }
-                let mut k = 0;
-                cmds.retain(|_| {
-                    k += 1;
-                    shown[k - 1]
-                });
+                // A scoped transition's groups go in after its root's
+                // commands, before what follows it.
+                let mut inserts: Vec<&(usize, Vec<(DrawCmd, Affine)>)> = scoped.iter().collect();
+                inserts.sort_by_key(|(at, _)| *at);
+                let mut out = Vec::with_capacity(cmds.len());
+                let mut inserts = inserts.into_iter().peekable();
+                for (k, c) in cmds.into_iter().enumerate() {
+                    while let Some((_, groups)) = inserts.next_if(|(at, _)| *at == k) {
+                        out.extend(groups.iter().cloned().map(|(c, m)| bake(c, m)));
+                    }
+                    if shown[k] {
+                        out.push(c);
+                    }
+                }
+                for (_, groups) in inserts {
+                    out.extend(groups.iter().cloned().map(|(c, m)| bake(c, m)));
+                }
+                cmds = out;
             }
             let (items, levels) = crate::draw::assign_levels_kept(cmds);
             // Levels of a list with elements left out are no base for the

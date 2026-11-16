@@ -25815,6 +25815,7 @@ export interface UiPointer {
 
 
 
+
 /**
  * A range of laid-out text for og.ui.setHighlight, from a character of one text element to a character of the same element or a later one in document order.
  */
@@ -37537,6 +37538,12 @@ export declare namespace og {
      * @param center Centre it in the view, as far as the range allows; false scrolls by the least that shows it.
      */
     function scrollIntoView(path: string, center: boolean): void;
+    /**
+     * Start a view transition scoped to the element at a full path, like CSS's element.startViewTransition(): the shared elements (`view-transition-name`) in its subtree as the last frame drew them are the old view, and what the subtree draws from this tick on is the new one, so change the state it shows in the same tick. Each name morphs as a `::view-transition-group(name)` drawn just after the element, over its children and outside its clip, styled by the `::view-transition-*` rules of the element's document (the user agent's 0.25s cross-fade and move without any). Transitions on different elements run at once, beside a screen's; one already running on this element is replaced. Names under a `view-transition-scope: all` element below it are left to that element's transitions. Returns false, starting none, when the last frame drew nothing at the path or under reduced motion.
+     *
+     * @param path The element's full path (og.ui.focus, the probe's dump).
+     */
+    function startViewTransition(path: string): boolean;
     /**
      * Register a named custom highlight, like CSS.highlights.set: from the next frame, its ranges paint with `::highlight(<name>)` rules. Each property comes from the nearest element or ancestor declaring it; `:root::highlight(found) { … }` styles every element. No rule means no paint. Setting a name again replaces its highlight without changing its registration order. It lasts until replaced or removed and is presentation only: snapshots do not carry it. Use it for search hits, tutorial words or spell-check marks.
      *

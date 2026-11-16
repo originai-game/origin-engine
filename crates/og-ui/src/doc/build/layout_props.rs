@@ -650,6 +650,7 @@ impl Ui {
         if let Some(g) = r.str("viewTransitionGroup") {
             p.view_transition_group = g.to_string();
         }
+        p.view_transition_scope = r.str("viewTransitionScope") == Some("all");
         if let Some(V::Transition(t)) = r.get("motion") {
             p.motion = Some(*t);
         }

@@ -59,6 +59,22 @@ pub struct ViewTransition {
     pub types: Vec<String>,
 }
 
+impl ViewTransition {
+    /// A view transition of `document` without rules of its own: the
+    /// user agent's (a 0.25s cross-fade and move).
+    pub fn of(document: &str) -> ViewTransition {
+        ViewTransition {
+            old: Vec::new(),
+            new: Vec::new(),
+            color: None,
+            image: None,
+            rules: Vec::new(),
+            document: document.to_string(),
+            types: Vec::new(),
+        }
+    }
+}
+
 /// Which pseudo-element a rule styles.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Part {
@@ -205,17 +221,20 @@ pub(super) fn selects(selector: &str) -> bool {
     selector.starts_with("@view-transition") || selector.contains("::view-transition")
 }
 
-/// `view-transition-name`, `view-transition-class` and
-/// `view-transition-group` on an element, as the props
-/// `viewTransitionName` (empty: none), `viewTransitionClass` and
-/// `viewTransitionGroup` (empty: normal).
+/// `view-transition-name`, `view-transition-class`,
+/// `view-transition-group` and `view-transition-scope` on an element, as
+/// the props `viewTransitionName` (empty: none), `viewTransitionClass`,
+/// `viewTransitionGroup` (empty: normal) and `viewTransitionScope`.
 pub(crate) fn lower(
     name: &str,
     value: &str,
 ) -> Option<Result<Vec<super::tracks::Lowered>, String>> {
     if !matches!(
         name,
-        "view-transition-name" | "view-transition-class" | "view-transition-group"
+        "view-transition-name"
+            | "view-transition-class"
+            | "view-transition-group"
+            | "view-transition-scope"
     ) || value.contains("bind(")
     {
         return None;
@@ -256,6 +275,9 @@ pub(crate) fn lower(
             Ok(vec![("viewTransitionGroup", text(String::new()))])
         }
         ("view-transition-group", [w]) => Ok(vec![("viewTransitionGroup", text(w.clone()))]),
+        ("view-transition-scope", [w]) if w == "none" || w == "all" => {
+            Ok(vec![("viewTransitionScope", text(w.clone()))])
+        }
         _ => Err(format!("{name} takes {}", form(name).unwrap_or_default())),
     })
 }
@@ -266,6 +288,7 @@ pub(crate) fn form(prop: &str) -> Option<&'static str> {
         "viewTransitionName" | "view-transition-name" => "none | auto | match-element | <name>",
         "viewTransitionClass" | "view-transition-class" => "none | <name>+",
         "viewTransitionGroup" | "view-transition-group" => "normal | contain | nearest | <name>",
+        "viewTransitionScope" | "view-transition-scope" => "none | all",
         _ => return None,
     })
 }
@@ -406,11 +429,7 @@ pub(super) fn apply(
             },
         ));
     }
-    if !opted {
-        doc.layer.transition = None;
-        return Ok(());
-    }
-    if doc.kind != DocKind::Screen {
+    if opted && doc.kind != DocKind::Screen {
         return Err((
             rules[0].2,
             "a view transition is a screen's: its layer is the root that joins and leaves the stack"
@@ -460,7 +479,8 @@ pub(super) fn apply(
         return Err((rules[0].2, error.clone()));
     }
     (t.old, t.new) = (root.old, root.new);
-    doc.layer.transition = Some(t);
+    doc.view_transitions = (!rules.is_empty()).then(|| t.clone());
+    doc.layer.transition = opted.then_some(t);
     Ok(())
 }
 
