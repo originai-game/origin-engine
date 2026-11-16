@@ -1477,3 +1477,38 @@ fn text_size_adjust_parses_and_never_inflates() {
         );
     }
 }
+
+/// CSS Generated Content 3 §1.2: `content`'s list after `/` is the
+/// alternative text assistive technology reads in place of what is drawn;
+/// an empty one makes the content decorative. The drawn text keeps the
+/// content, the accessibility name takes the alternative: a `::before`
+/// and an `::after` of a paragraph, one from `attr()` and `counter()`,
+/// a container's `::before`, and a decorative one, which leaves the
+/// tree. A wrong build reads the drawn glyphs ("★ sword", "▶"), drops
+/// the alternative's attr() or counter, or keeps the decorative glyph.
+#[test]
+fn generated_content_alternative_text_names_it() {
+    let d = doc(
+        r#"<p id="P">sword</p><p id="Q">Next</p><p id="C" data-hint="Hint">x</p><div id="D"><p>body</p></div><div id="E"><p>plain</p></div>"#,
+        r##"#P::before { content: "★ " / "Featured: "; }
+#Q::after { content: " →" / ""; }
+#C { counter-reset: tip 4; }
+#C::before { content: "i " / attr(data-hint) " " counter(tip, upper-roman) ": "; }
+#D::before { content: "▶" / "Play"; }
+#E::before { content: "◆" / ""; }"##,
+    );
+    assert_eq!(drawn(&d, "P"), "★ sword");
+    assert_eq!(d.a11y("P").name, "Featured: sword");
+    assert_eq!(drawn(&d, "Q"), "Next →");
+    assert_eq!(d.a11y("Q").name, "Next");
+    assert_eq!(drawn(&d, "C"), "i x");
+    assert_eq!(d.a11y("C").name, "Hint IV: x");
+    assert_eq!(drawn(&d, "D"), "▶|body");
+    assert_eq!(d.a11y("D/::before").name, "Play");
+    assert_eq!(drawn(&d, "E"), "◆|plain");
+    let tree = &d.ui.a11y().nodes;
+    assert!(
+        !tree.iter().any(|n| n.path.contains("/E/::before")),
+        "{tree:?}"
+    );
+}

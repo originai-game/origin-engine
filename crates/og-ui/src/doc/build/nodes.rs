@@ -1064,7 +1064,7 @@ impl Ui {
         }
         // `::before`, `::after` and `::first-letter` join the text
         // as styled runs.
-        if let Some((full, runs)) = self.generated_text(b, n, styled, key, &text) {
+        if let Some(((full, runs), spoken)) = self.generated_text(b, n, styled, key, &text) {
             let attributes: Vec<crate::TextSpan> =
                 runs.iter().map(|(span, _)| span.clone()).collect();
             resp = self
@@ -1081,6 +1081,8 @@ impl Ui {
                     },
                 )
                 .response;
+            let i = self.tree.last_closed;
+            self.tree.nodes[i].a11y.spoken = spoken;
             // Its CSS-owned fields style these runs again
             // (`apply_document_fields`), not a plain label.
             generated = Some(std::sync::Arc::new((full, runs)));

@@ -26,7 +26,7 @@ impl Ui {
         let Some(which) = (if before { &g.before } else { &g.after }) else {
             return;
         };
-        let Some(text) = self.docs.pseudo_text(b, n, r, which) else {
+        let Some((text, alt)) = self.docs.pseudo_content(b, n, r, which) else {
             return;
         };
         let style = self.pseudo_style(&which.style, r);
@@ -45,6 +45,8 @@ impl Ui {
                 crate::RichTextDesc::default(),
                 |_| style.clone(),
             );
+            let i = ui.tree.last_closed;
+            ui.tree.nodes[i].a11y.spoken = alt.clone();
         };
         match self.style.pseudo_node(b, r, path, &name[2..]) {
             Some((at, node)) => {
@@ -124,9 +126,10 @@ impl Ui {
     }
 
     /// A text element's text with its inside `::marker` and its `::before`
-    /// and `::after` content, and the runs that style them and its
-    /// `::first-letter` and `::first-line`; `None` when it generates
-    /// nothing.
+    /// and `::after` content, the runs that style them and its
+    /// `::first-letter` and `::first-line`, and what the text reads as
+    /// when a pseudo-element's alternative text replaces its content
+    /// ([`crate::a11y::A11y::spoken`]); `None` when it generates nothing.
     pub(crate) fn generated_text(
         &mut self,
         b: &Build<'_>,
@@ -134,7 +137,7 @@ impl Ui {
         r: &Resolved,
         key: u64,
         text: &str,
-    ) -> Option<(String, Vec<(crate::TextSpan, crate::TextSpanStyle)>)> {
+    ) -> Option<(fields::GeneratedRuns, Option<String>)> {
         // A text list item's inside marker is its first run.
         let marker = (r.str("display") == Some("listItem")
             && r.str("markerPosition") == Some("inside"))
@@ -148,11 +151,11 @@ impl Ui {
         let pre = g
             .before
             .as_ref()
-            .and_then(|w| Some((self.docs.pseudo_text(b, n, r, w)?, w)));
+            .and_then(|w| Some((self.docs.pseudo_content(b, n, r, w)?, w)));
         let post = g
             .after
             .as_ref()
-            .and_then(|w| Some((self.docs.pseudo_text(b, n, r, w)?, w)));
+            .and_then(|w| Some((self.docs.pseudo_content(b, n, r, w)?, w)));
         if marker.is_none()
             && pre.is_none()
             && post.is_none()
@@ -179,14 +182,31 @@ impl Ui {
         }
         let marked = full.chars().count();
         let mut at = marked as u32;
+        let alts = pre.iter().chain(&post).any(|((_, alt), _)| alt.is_some());
+        let mut spoken = alts.then(|| full.clone());
         let parts = [
-            pre.as_ref()
-                .map(|(s, w)| (s.as_str(), Some(w.style.as_str()), "::before")),
-            Some((text, None, "")),
-            post.as_ref()
-                .map(|(s, w)| (s.as_str(), Some(w.style.as_str()), "::after")),
+            pre.as_ref().map(|((s, alt), w)| {
+                (
+                    s.as_str(),
+                    alt.as_deref(),
+                    Some(w.style.as_str()),
+                    "::before",
+                )
+            }),
+            Some((text, None, None, "")),
+            post.as_ref().map(|((s, alt), w)| {
+                (
+                    s.as_str(),
+                    alt.as_deref(),
+                    Some(w.style.as_str()),
+                    "::after",
+                )
+            }),
         ];
-        for (s, style, name) in parts.into_iter().flatten() {
+        for (s, alt, style, name) in parts.into_iter().flatten() {
+            if let Some(spoken) = &mut spoken {
+                spoken.push_str(alt.unwrap_or(s));
+            }
             let length = s.chars().count() as u32;
             match style {
                 Some(style) if length > 0 => {
@@ -261,7 +281,7 @@ impl Ui {
             span.position += body_at;
             spans.push((span, style.clone()));
         }
-        Some((full, spans))
+        Some(((full, spans), spoken))
     }
 
     /// `::marker`'s content and ink for a list item: `None` content keeps
@@ -280,7 +300,7 @@ impl Ui {
         let content = match &m.content {
             Content::Normal => None,
             Content::None => Some(None),
-            Content::Pieces(_) => Some(self.docs.pseudo_text(b, n, r, &m)),
+            Content::Pieces { .. } => Some(self.docs.pseudo_text(b, n, r, &m)),
         };
         (content, ink)
     }
@@ -337,7 +357,19 @@ impl crate::ui::Docs {
         r: &Resolved,
         which: &PseudoBox,
     ) -> Option<String> {
-        let Content::Pieces(pieces) = &which.content else {
+        self.pseudo_content(b, n, r, which).map(|(text, _)| text)
+    }
+
+    /// [`Self::pseudo_text`] and its alternative text (CSS Generated
+    /// Content 3 §1.2), evaluated at the same place in the run.
+    pub(crate) fn pseudo_content(
+        &mut self,
+        b: &Build<'_>,
+        n: &DocNode,
+        r: &Resolved,
+        which: &PseudoBox,
+    ) -> Option<(String, Option<String>)> {
+        let Content::Pieces { pieces, alt } = &which.content else {
             return None;
         };
         if hidden(&which.style) {
@@ -363,8 +395,11 @@ impl crate::ui::Docs {
         run.enter();
         run.apply(&which.ops);
         let text = run.evaluate(pieces, &quotes, &b.doc.sheet, &attr, r.ordinal);
+        let alt = alt
+            .as_ref()
+            .map(|alt| run.evaluate(alt, &quotes, &b.doc.sheet, &attr, r.ordinal));
         run.exit();
-        Some(text)
+        Some((text, alt))
     }
 }
 
