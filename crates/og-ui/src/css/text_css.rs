@@ -1524,7 +1524,13 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
     let mut lines = parent_lines.clone().unwrap_or_default();
     if let Some(l) = own("text-decoration-line").filter(|l| l != "none") {
         let style = own("text-decoration-style").unwrap_or_else(|| "solid".into());
+        // `currentColor` (the initial value) is the colour of the box the
+        // lines come from (§2.4), not of the text they are later drawn
+        // across, so it resolves here.
+        reads.insert(key("color"));
         let color = own("text-decoration-color")
+            .filter(|c| !c.trim().eq_ignore_ascii_case("currentcolor"))
+            .or_else(|| computed.get(&key("color")).cloned().flatten())
             .and_then(|c| crate::css_color::parse_str(&c).ok())
             .map(|c| c.resolve(&crate::css_color::Context::of(theme)))
             .map(super::css::hex)

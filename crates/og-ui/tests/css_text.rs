@@ -749,14 +749,16 @@ fn rules(d: &Doc, id: &str) -> Vec<(Rect, [f32; 4])> {
 /// underline position and thickness;
 /// overline runs above the capitals and line-through between the
 /// baseline and the x-height; double draws two lines a thickness apart;
-/// the colour is the decoration's own. Decorations propagate to the
+/// the colour is the decoration's own, or the colour of the box that
+/// declares it. Decorations propagate to the
 /// text inside (§2.1): a child's `text-decoration: none` keeps them.
 #[test]
 fn decoration_lines_sit_where_css_text_decoration_puts_them() {
     let d = doc(
         r#"<p id="Off">under</p><p id="Auto">under</p><p id="Under">under</p>
 <p id="Over">under</p><p id="Thru">under</p><p id="Dbl">under</p>
-<div id="Prop"><p id="Kept">under</p></div><p id="Font">under</p><p id="Low">under</p>"#,
+<div id="Prop"><p id="Kept">under</p></div><p id="Font">under</p><p id="Low">under</p>
+<p id="Red">under</p><div id="Blue"><p id="Inner">under</p></div>"#,
         "p { margin-bottom: 16px; }
 #Off { text-decoration: underline 4px #ff0000; text-underline-offset: 5px; }
 #Auto { text-decoration: underline; } #Under { text-decoration: underline; text-underline-position: under; }
@@ -765,9 +767,19 @@ fn decoration_lines_sit_where_css_text_decoration_puts_them() {
 #Prop { text-decoration: underline 2px; } #Kept { text-decoration: none; }
 #Font, #Low { font-size: 40px; text-decoration: underline; }
 #Font { text-decoration-thickness: from-font; text-underline-offset: from-font; }
-#Low { text-underline-position: under; text-underline-offset: 3px; }",
+#Low { text-underline-position: under; text-underline-offset: 3px; }
+#Red { color: #ff0000; text-decoration: line-through; }
+#Blue { color: #0000ff; text-decoration: underline; } #Inner { color: #ff0000; }",
     );
     let baseline = |id| lines(&d, id)[0].baseline;
+    // currentColor is the colour of the box the lines come from (§2.4): an
+    // element's own, and an ancestor's for the lines it propagates.
+    assert!(near(rules(&d, "Red")[0].1, Srgba::rgb(255, 0, 0)));
+    assert!(
+        near(rules(&d, "Inner")[0].1, Srgba::rgb(0, 0, 255)),
+        "{:?}",
+        rules(&d, "Inner")
+    );
     let off = rules(&d, "Off");
     assert_eq!(off.len(), 1, "{off:?}");
     assert_eq!((off[0].0.y - baseline("Off"), off[0].0.height), (5.0, 4.0));
