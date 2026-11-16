@@ -364,6 +364,9 @@ pub struct Paint {
     /// text goes when the subtree closes), and the keys of the nodes
     /// whose next-frame ranges start from its own (moved with the group).
     pub(crate) text_clips: Vec<(usize, usize, Vec<u64>)>,
+    /// This frame's command pass drew a CSS `element()` image's group,
+    /// filled when the pass ends (`Ui::fill_element_images`).
+    pub(crate) element_images: bool,
     /// What each part of this frame draws through the UI pass, by node
     /// (made at `end` from its dressing, or the tokens).
     pub(crate) part_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,

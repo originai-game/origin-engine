@@ -143,6 +143,37 @@ impl ElementDraw {
         shape: &dyn Fn(og_draw::UiPaint, f32, Blend) -> DrawCmd,
     ) -> Vec<DrawCmd> {
         through(&l.filters, at, opacity, blend, |opacity, blend| {
+            if l.fade.is_empty()
+                && matches!(l.paint, Paint::Element { .. })
+                && let Some(slot) = self.slot_of(l)
+                && let DrawCmd::Shape { shape: s, .. } =
+                    shape(og_draw::UiPaint::Solid([0.0; 4]), opacity, blend)
+            {
+                // A group cut to where the layer paints, which the frame
+                // fills with the element's drawing in each tile
+                // (`Ui::fill_element_images`).
+                return vec![
+                    DrawCmd::BeginLayer {
+                        material: og_draw::UiMaterial::Plain,
+                        params: [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS],
+                        mask: None,
+                        expand: 0.0,
+                        rect: Rect::default(),
+                        filter: None,
+                        role: crate::draw::LayerRole::Element {
+                            node: u32::MAX,
+                            slot,
+                        },
+                    },
+                    DrawCmd::PushClip {
+                        geometry: s.geometry,
+                        center: (s.center.x, s.center.y),
+                        half: (s.half.x, s.half.y),
+                    },
+                    DrawCmd::PopClip,
+                    end_layer(None, at, s.opacity, s.blend),
+                ];
+            }
             if l.fade.is_empty() {
                 return vec![shape(l.resolve(theme, at.rect, r), opacity, blend)];
             }
@@ -159,6 +190,51 @@ impl ElementDraw {
             out.push(end_layer(None, at, opacity, blend));
             out
         })
+    }
+
+    /// Whether a box layer of it is an `element()` image.
+    pub(crate) fn has_element_images(&self) -> bool {
+        self.boxes.as_ref().is_some_and(|b| {
+            b.backgrounds
+                .iter()
+                .chain(&b.masks)
+                .any(|l| matches!(l.paint, Paint::Element { .. }))
+        })
+    }
+
+    /// The number of box layer `l` among its background layers then its
+    /// mask layers ([`crate::draw::LayerRole::Element`]).
+    fn slot_of(&self, l: &BoxLayer) -> Option<u32> {
+        let b = self.boxes.as_ref()?;
+        b.backgrounds
+            .iter()
+            .chain(&b.masks)
+            .position(|m| m == l)
+            .map(|k| k as u32)
+    }
+
+    /// Its box layer `slot` ([`ElementDraw::slot_of`]) when it is an
+    /// `element()` image drawn in `r` on its box `b`: the element's id and
+    /// how the layer places it ([`og_draw::UiBackground`], its positioning
+    /// area made `r`'s).
+    pub(crate) fn element_layer(
+        &self,
+        slot: u32,
+        b: Rect,
+        r: Rect,
+    ) -> Option<(&str, og_draw::UiBackground)> {
+        let bx = self.boxes.as_ref()?;
+        let l = bx.backgrounds.iter().chain(&bx.masks).nth(slot as usize)?;
+        let Paint::Element {
+            id,
+            fit: og_draw::UiFit::Background(bg),
+        } = &l.paint
+        else {
+            return None;
+        };
+        let mut bg = *bg;
+        bg.area = l.area_in(b, r);
+        Some((id, bg))
     }
 
     /// Whether a background layer of it is cut to text

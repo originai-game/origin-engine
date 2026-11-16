@@ -604,6 +604,7 @@ impl Ui {
         }
         self.interaction.state.motion.ghosts = ghosts;
         self.interaction.state.motion.frozen = frozen;
+        self.fill_element_images(&mut cmds, order, &ends);
         self.style.nest_named(&mut self.paint, &self.tree);
         // The same trees as last frame, each drawn whole as it was.
         let same_roots = self.tree.orders.roots == self.paint.cache.last_roots;
@@ -733,6 +734,13 @@ impl Ui {
                     };
                     undraw(&mut leave, self.tree.nodes[j].style.sampled.draw);
                     cmds.extend(leave.into_iter().map(|c| (c, w)));
+                }
+                if self
+                    .paint
+                    .draw_of(j, &self.tree)
+                    .is_some_and(|d| d.has_element_images())
+                {
+                    self.own_element_images(&mut cmds[first..], j);
                 }
                 // Focus rings over everything their subtree drew: later
                 // siblings, a scroll's fade and bars (an outline's paint
@@ -1086,7 +1094,10 @@ impl Ui {
             || !node.layout.links.is_empty()
             || node.fx.is_some_and(|f| f.glitch > 0.0)
             || node.style.sampled.blur > 0.0
-            || node.decor.as_ref().is_some_and(|d| d.fixed())
+            || node
+                .decor
+                .as_ref()
+                .is_some_and(|d| d.fixed() || d.element_images())
             || (node.scrolls() && (node.el.fade > 0.0 || !node.el.hide_bars))
             || node.el.resize != 0;
         let (framed, field_ring) = self.field_rings(i);
@@ -2006,7 +2017,7 @@ impl crate::ui::Tree {
 }
 
 /// Everything: no clip.
-const INFINITE: Rect = Rect {
+pub(super) const INFINITE: Rect = Rect {
     x: -1e9,
     y: -1e9,
     width: 2e9,
@@ -2031,7 +2042,7 @@ fn reference_box(n: &crate::layout::Node, b: crate::transform3d::TransformBox) -
 }
 
 /// The shared elements' ranges after a command was inserted at `at`.
-fn shift_named(named: &mut [crate::view_transition::Named], at: usize, by: usize) {
+pub(super) fn shift_named(named: &mut [crate::view_transition::Named], at: usize, by: usize) {
     for n in named.iter_mut().filter(|n| n.range.start >= at) {
         n.range = n.range.start + by..n.range.end + by;
     }

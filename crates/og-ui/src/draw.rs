@@ -183,6 +183,12 @@ pub enum LayerRole {
     /// reads ([`crate::svg::filter::element_layer`]): what follows is
     /// drawn and composited nowhere; the filter reads it.
     Image(u32),
+    /// A CSS `element()` image's group (CSS Images 4 §2.7): node `node`'s
+    /// box layer `slot` ([`crate::paint::ElementDraw::element_layer`]),
+    /// filled with the element's drawing once the frame's command pass has
+    /// drawn it, then an ordinary [`LayerRole::Draw`]. Its node is
+    /// `u32::MAX` until the pass places it.
+    Element { node: u32, slot: u32 },
 }
 
 /// Where a layer's composite is laid by a quad of the frame

@@ -1972,3 +1972,154 @@ fn background_clip_text_cuts_to_the_descendants_text() {
         );
     }
 }
+
+/// `element(#id)` (CSS Images 4 §2.7) draws that element's rendering as a
+/// background image: natural size its border box (here 20×10), tiled as
+/// CSS Backgrounds 3 places an image (`5px 0 repeat-x` in a 50 px box:
+/// tiles at x = −15, 5, 25 and 45), without its own transform (a 30°
+/// turn), each tile its drawing scaled from that box. The image follows
+/// the element on the frame it changes. An element that holds the
+/// image's own group (itself, its ancestor) is an invalid image: nothing.
+///
+/// The copies go into the group once the pass has drawn every element,
+/// which moves every later command; so each frame here is compared with
+/// the same state built whole, when the element changes (a) and when
+/// only a sibling after the group changes (b), whose earlier siblings
+/// are copied from last frame across the insert. Run with
+/// `OG_UI_CHECK_BOUNDED=1` too.
+///
+/// Ways it could fail: tiles placed from the wrong size or origin; the
+/// element's transform or its ancestors' kept; last frame's drawing in
+/// the tiles; a kept sibling copied from where it stood before last
+/// frame's copies; or a self-reference drawing itself without end.
+#[test]
+fn element_images_draw_the_element_in_each_tile() {
+    let text = r#"<meta name="component" content="t">
+<meta name="prop:label" content="string">
+<meta name="prop:other" content="string">
+<column>
+  <div id="Dst"></div>
+  <div id="Src"><p>{label}</p></div>
+  <p id="Mid">mid</p>
+  <p id="After">{other}</p>
+  <div id="Self"></div>
+  <div id="Up"><div id="Down"></div></div>
+</column>
+<style>
+#Src { width: 20px; height: 10px; flex-shrink: 0; background: #ff0000; transform: rotate(30deg); }
+#Src p { margin: 0; font-size: 4px; }
+#Dst { width: 50px; height: 25px; flex-shrink: 0; background: element(#Src) 5px 0 repeat-x; }
+#Self { width: 10px; height: 10px; background: element(#Self) #00ff00; }
+#Up { width: 10px; height: 10px; background: #00ff00; }
+#Down { width: 10px; height: 10px; background: element(#Up); }
+</style>"#;
+    let doc = |label: &str, other: &str| {
+        Doc::with_font(
+            text,
+            &[
+                ("label", serde_json::json!(label)),
+                ("other", serde_json::json!(other)),
+            ],
+            test_font(),
+        )
+    };
+    let red = |c: &DrawCmd| match c {
+        DrawCmd::Quad { color, .. } => same(*color, Srgba::rgb(255, 0, 0)),
+        DrawCmd::Shape { shape, .. } => {
+            matches!(shape.paint, og_draw::UiPaint::Solid(c) if same(c, Srgba::rgb(255, 0, 0)))
+        }
+        _ => false,
+    };
+    let screen = |it: &DrawItem| {
+        let r = match &it.cmd {
+            DrawCmd::Quad { rect, .. } => *rect,
+            DrawCmd::Shape { shape, .. } => Rect::new(
+                shape.center.x - shape.half.x,
+                shape.center.y - shape.half.y,
+                2.0 * shape.half.x,
+                2.0 * shape.half.y,
+            ),
+            _ => unreachable!(),
+        };
+        let r = it.transform.map_rect(&r);
+        [r.x, r.y, r.width, r.height].map(|v| (v * 100.0).round() / 100.0)
+    };
+    let check = |d: &Doc, label: &str| {
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+        let items = &d.ui.frame().items;
+        let dst = d.get("Dst");
+        let src = d.get("Src");
+        // The tiles: the red background, unturned, at the border box's size.
+        let mut tiles: Vec<[f32; 4]> = items
+            .iter()
+            .filter(|it| red(&it.cmd))
+            .map(screen)
+            .filter(|r| (r[1] - dst.y).abs() < 0.01)
+            .collect();
+        tiles.sort_by(|a, b| a[0].total_cmp(&b[0]));
+        let want: Vec<[f32; 4]> = [-15.0, 5.0, 25.0, 45.0]
+            .iter()
+            .map(|x| [dst.x + x, dst.y, 20.0, 10.0])
+            .collect();
+        assert_eq!(tiles, want, "one copy a tile, from the 20×10 border box");
+        // The element itself still draws turned where it is.
+        let turned = items
+            .iter()
+            .filter(|it| red(&it.cmd))
+            .map(screen)
+            .find(|r| (r[1] - dst.y).abs() >= 0.01)
+            .expect("the element's own drawing");
+        assert!(turned[2] > 20.5 && turned[3] > 10.5, "{turned:?} {src:?}");
+        // Its text in each tile is this frame's.
+        let texts = items
+            .iter()
+            .filter(|it| {
+                matches!(&it.cmd, DrawCmd::StyledText { text, .. }
+                if matches!(&**text, DrawCmd::Text { text, .. } if text == label))
+                    || matches!(&it.cmd, DrawCmd::Text { text, .. } if text == label)
+            })
+            .count();
+        assert_eq!(texts, 5, "the element's text and one in each tile");
+        // No tile more; and itself and its ancestor give no image: only
+        // their own colours draw.
+        let reds = items.iter().filter(|it| red(&it.cmd)).count();
+        assert_eq!(reds, 5);
+        let green = |c: &DrawCmd| match c {
+            DrawCmd::Quad { color, .. } => same(*color, Srgba::rgb(0, 255, 0)),
+            DrawCmd::Shape { shape, .. } => {
+                matches!(shape.paint, og_draw::UiPaint::Solid(c) if same(c, Srgba::rgb(0, 255, 0)))
+            }
+            _ => false,
+        };
+        assert_eq!(
+            items.iter().filter(|it| green(&it.cmd)).count(),
+            2,
+            "a cycle is no image"
+        );
+    };
+    let mut d = doc("one", "x");
+    check(&d, "one");
+    // (a) The element changes: its tiles follow on that frame.
+    d.set("label", serde_json::json!("two"));
+    check(&d, "two");
+    assert_eq!(d.ui.frame().items, doc("two", "x").ui.frame().items);
+    // (b) Only a later sibling changes: the siblings between are kept and
+    // copied across the group's copies.
+    for other in ["y", "z"] {
+        d.set("other", serde_json::json!(other));
+        assert!(
+            d.ui.frame().stats.kept_commands > 0,
+            "the siblings are kept"
+        );
+        check(&d, "two");
+        assert_eq!(
+            d.ui.frame().items,
+            doc("two", other).ui.frame().items,
+            "a frame keeping the siblings is the whole one"
+        );
+    }
+}

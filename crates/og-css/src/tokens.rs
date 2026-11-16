@@ -102,7 +102,9 @@ fn tokens_in(c: &[char], i: &mut usize, func: bool) -> Result<(Vec<Vec<Tok>>, bo
         } else if ch == '#' {
             let start = *i;
             *i += 1;
-            while *i < c.len() && c[*i].is_ascii_alphanumeric() {
+            // Name code points (CSS Syntax 3 §4.2): a colour's hex
+            // digits, or an id (`element(#hud-map)`).
+            while *i < c.len() && (c[*i].is_alphanumeric() || matches!(c[*i], '-' | '_')) {
                 *i += 1;
             }
             args.last_mut()

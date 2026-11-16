@@ -14,6 +14,7 @@ mod css_tokens;
 mod debug;
 mod descriptors;
 mod dressing;
+mod element_image;
 mod finish;
 mod inspect;
 mod node_draw;

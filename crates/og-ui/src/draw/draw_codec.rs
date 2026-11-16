@@ -1306,6 +1306,11 @@ impl DrawWrite for W<'_> {
                         w.u8(2);
                         w.u32(*n);
                     }
+                    crate::LayerRole::Element { node, slot } => {
+                        w.u8(3);
+                        w.u32(*node);
+                        w.u32(*slot);
+                    }
                 }
             }
             // A ground's quad is the frame's, not the element's: a frozen
@@ -1405,6 +1410,10 @@ impl DrawRead for R<'_> {
                         0 => crate::LayerRole::Draw,
                         1 => crate::LayerRole::Backdrop,
                         2 => crate::LayerRole::Image(r.u32()?),
+                        3 => crate::LayerRole::Element {
+                            node: r.u32()?,
+                            slot: r.u32()?,
+                        },
                         _ => return None,
                     },
                 }

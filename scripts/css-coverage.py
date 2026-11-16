@@ -398,6 +398,8 @@ proof("filter-function", "css_paint", "filter_images_run_their_functions_in_orde
       "Emitted output: filter(<image>, ...) draws the layer's image through one layer per stage, the first applied innermost, with Filter Effects 1 §13's matrices (grayscale(1)'s first row, invert then opacity) and blur's sigma; a nested filter() folds into one list; a cross-fade part filtered on its own adds through its stage at its weight; url(#id) and none are refused. A string source is a url. The filtered image keeps the unfiltered one's size and placement; a blur or drop shadow may spill past the image within its painting area; filter(cross-fade()) used as a cross-fade part loses the inner sum. GPU pixels are not checked.")
 proof("background-clip-text", "css_paint", "background_clip_text_cuts_to_the_descendants_text",
       "Emitted output: a box whose text is all in two child paragraphs draws its gradient in one group under both paragraphs' glyphs, opaque white without glow (its bottom layer kept on them by source-in, later layers cut to them again), before each paragraph's own text, which draws once over it; a frame that keeps the box's subtree while a sibling changes equals the same state built whole, also under OG_UI_CHECK_BOUNDED. Text drawn by a scene, a list marker or a control's own parts is not asserted; GPU pixels are not checked.")
+proof("element", "css_paint", "element_images_draw_the_element_in_each_tile",
+      "Emitted output: element(#id) as a background draws the first drawn element of that id in each tile CSS Backgrounds 3 places at its border box size (5px 0 repeat-x over 50 px: tiles at x = -15, 5, 25, 45, each 20x10), without its own transform or its ancestors' opacity and clips, its live drawing on the frame it changes; itself or an ancestor (a cycle) is an invalid image. Frames that keep the element or the siblings after the image's group equal the same state built whole, also under OG_UI_CHECK_BOUNDED. Mask layers take element() the same way but are not asserted; a border image or a cross-fade() part of element() draws nothing, an element() inside the element drawn is empty in the copy, paint sources (a <canvas> or an undrawn <img>) are not read, the decorated box is the border box (no border-image outset), at most 256 tiles draw, and GPU pixels are not checked.")
 not_applicable("color-adjust print-color-adjust",
                "Print colour economy: a game draws to its screen, never to paper or a printer's economy mode.")
 not_applicable("paint",
@@ -439,7 +441,6 @@ MISSING = {
     "webvtt": "No WebVTT captions or ::cue: a video draws no text track.",
     # layout
     "backdrop-filter": "Ordinary staged backdrop chains have fixtures; native glass rejects chains requiring intermediate clamps, drop-shadow and SVG url filters.",
-    "element": "No element() image; feImage's element images exist for SVG filters but no background or border layer reads a live element.",
     "border-shape": "No border-shape: borders, border images, outlines and shadows follow border-radius and corner-shape only.",
     "box-decoration-break": "Inline boxes and column fragments draw no per-fragment decorations, so neither slice nor clone is implemented.",
     "host": ":host and :host() parse and match through the selectors crate, but a component instance's host element is not styled, so no output proves it.",

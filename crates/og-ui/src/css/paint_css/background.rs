@@ -19,6 +19,9 @@ pub(crate) enum CssImage {
     /// image through the filter functions, the first applied first; a
     /// nested filter() is folded into one list.
     Filter(Box<CssImage>, Vec<FilterFn>),
+    /// `element(#id)` (CSS Images 4 §2.7): the rendering of the
+    /// document's first element of that id, as an image.
+    Element(String),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -46,7 +49,11 @@ impl CssImage {
 
     pub(crate) fn select(&self, resolution: f32) -> Option<(&ImageSource, f32)> {
         match self {
-            Self::None | Self::LightDark(..) | Self::CrossFade(_) | Self::Filter(..) => None,
+            Self::None
+            | Self::LightDark(..)
+            | Self::CrossFade(_)
+            | Self::Filter(..)
+            | Self::Element(_) => None,
             Self::Image(image) => Some((image, 1.0)),
             Self::Set(options) => options
                 .iter()
@@ -71,7 +78,7 @@ impl CssImage {
             }
         }
         match self {
-            Self::None => Vec::new(),
+            Self::None | Self::Element(_) => Vec::new(),
             Self::Image(image) => url(image).into_iter().collect(),
             Self::Set(options) => options
                 .iter()
@@ -163,6 +170,20 @@ pub enum BgSize {
     Contain,
     /// `None` is `auto`.
     Given([Option<Pos>; 2]),
+}
+
+impl BgSize {
+    /// The size of an image with natural dimensions in a positioning area
+    /// `aw` × `ah` CSS px: percentages of the area, `auto` the image's.
+    pub(crate) fn natural(&self, aw: f32, ah: f32) -> og_draw::UiBackgroundSize {
+        match self {
+            BgSize::Cover => og_draw::UiBackgroundSize::Cover,
+            BgSize::Contain => og_draw::UiBackgroundSize::Contain,
+            BgSize::Given([x, y]) => {
+                og_draw::UiBackgroundSize::Given([x.map(|p| p.at(aw)), y.map(|p| p.at(ah))])
+            }
+        }
+    }
 }
 
 /// `background-position` on one axis: `align × (box − image) + offset`
@@ -276,7 +297,12 @@ pub(crate) type Background = (Vec<CssLayer>, Option<Tok>);
 
 pub(super) fn is_image(t: &Tok) -> bool {
     match t {
-        Tok::Func(f, _) if matches!(f.as_str(), "url" | "image-set" | "cross-fade" | "filter") => {
+        Tok::Func(f, _)
+            if matches!(
+                f.as_str(),
+                "url" | "image-set" | "cross-fade" | "filter" | "element"
+            ) =>
+        {
             true
         }
         // `light-dark()` of images, not of colours.
@@ -354,6 +380,13 @@ pub(super) fn image(t: &Tok) -> Result<CssImage, String> {
         },
         Tok::Func(f, args) if f == "cross-fade" => cross_fade(args),
         Tok::Func(f, args) if f == "filter" => filter_image(args),
+        Tok::Func(f, args) if f == "element" => match args.as_slice() {
+            [a] => match a.as_slice() {
+                [Tok::Hash(h)] if h.len() > 1 => Ok(CssImage::Element(h[1..].to_string())),
+                _ => Err("element(#id) names one element by its id".into()),
+            },
+            _ => Err("element(#id) names one element by its id".into()),
+        },
         Tok::Func(f, options) if f == "image-set" => {
             let mut out = Vec::new();
             for option in options {

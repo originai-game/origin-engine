@@ -175,6 +175,17 @@ impl BoxDecor {
         })
     }
 
+    /// Whether a layer is an `element()` image: it shows another
+    /// element's drawing, so it is drawn again each frame.
+    pub(crate) fn element_images(&self) -> bool {
+        self.css.as_ref().is_some_and(|c| {
+            c.images
+                .iter()
+                .chain(&c.masks)
+                .any(|l| matches!(l.image, crate::css::paint_css::BgImage::Element(_)))
+        })
+    }
+
     /// The draw it paints over: `base` (the element's draw or dressing)
     /// with its background, shadows and clip added; a plain rectangle
     /// when there is none.

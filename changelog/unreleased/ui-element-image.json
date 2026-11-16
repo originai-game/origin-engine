@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI CSS element()",
+      "summary": "`element(#id)` (CSS Images 4 §2.7) is a background image: the document's first drawn element of that id, drawn live in each tile the layer places at the element's border box size (background-size, -position and -repeat as for any image), without its own transform or its ancestors' opacity and clips. An element that holds the image (itself, an ancestor, or a cycle of element() images) draws nothing. A hash in a CSS value now takes `-` and `_`, so `element(#hud-map)` names `hud-map`."
+    }
+  ]
+}

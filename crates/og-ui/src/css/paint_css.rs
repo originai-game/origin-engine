@@ -136,6 +136,10 @@ pub enum BgImage {
     /// `filter()` (Filter Effects 1 §12): the image through these stages,
     /// the first applied first ([`CssImage::Filter`]).
     Filter(Box<BgImage>, Vec<Layer>),
+    /// `element(#id)` (CSS Images 4 §2.7): that element's rendering,
+    /// drawn where the layer places it once the frame has drawn it
+    /// ([`CssImage::Element`]).
+    Element(String),
 }
 
 impl BgImage {
@@ -194,6 +198,7 @@ pub(crate) fn bg_image(
             Box::new(bg_image(*i, leaf, stages)?),
             stages(&fns),
         )),
+        CssImage::Element(id) => Some(BgImage::Element(id)),
         i => leaf(i),
     }
 }
@@ -242,6 +247,12 @@ impl BgLayer {
             BgImage::Transparent | BgImage::CrossFade(_) | BgImage::Filter(..) => {
                 Paint::Solid(ColorRef::Literal(Srgba::TRANSPARENT))
             }
+            // Sized as an image of natural size (its decorated box), which
+            // only the frame knows.
+            BgImage::Element(id) => Paint::Element {
+                id: id.clone(),
+                fit: og_draw::UiFit::Background(bg(self.size.natural(aw, ah))),
+            },
             BgImage::Gradient(g) => {
                 let [w, h] = match self.size {
                     BgSize::Cover | BgSize::Contain => [aw, ah],
@@ -271,13 +282,7 @@ impl BgLayer {
                 size: [0.0; 2],
                 density: *density,
                 tint: ColorRef::Literal(Srgba::WHITE),
-                fit: og_draw::UiFit::Background(bg(match self.size {
-                    BgSize::Cover => og_draw::UiBackgroundSize::Cover,
-                    BgSize::Contain => og_draw::UiBackgroundSize::Contain,
-                    BgSize::Given([x, y]) => {
-                        og_draw::UiBackgroundSize::Given([x.map(|p| p.at(aw)), y.map(|p| p.at(ah))])
-                    }
-                })),
+                fit: og_draw::UiFit::Background(bg(self.size.natural(aw, ah))),
                 focal: [0.5; 2],
                 offset: [0.0; 2],
                 nearest: *nearest,
@@ -430,7 +435,12 @@ impl LayerFrame {
                 fill: s.fill,
             });
             match image {
-                BgImage::Transparent | BgImage::CrossFade(_) | BgImage::Filter(..) => {
+                // A border image of an element is not drawn (an invalid
+                // image).
+                BgImage::Transparent
+                | BgImage::CrossFade(_)
+                | BgImage::Filter(..)
+                | BgImage::Element(_) => {
                     crate::paint::Paint::Solid(ColorRef::Literal(Srgba::TRANSPARENT))
                 }
                 BgImage::Gradient(g) => crate::paint::Paint::GradientImage {

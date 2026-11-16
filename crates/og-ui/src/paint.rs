@@ -242,6 +242,15 @@ pub enum Paint {
         size: [f32; 2],
         fit: Fit,
     },
+    /// CSS `element(#id)` (CSS Images 4 §2.7) as a box layer's image:
+    /// the rendering of the element of that id, placed by `fit` (a CSS
+    /// background's) at the element's border box size. The frame draws it
+    /// ([`ElementDraw::element_layer`]); as a shape's paint it is
+    /// transparent.
+    Element {
+        id: String,
+        fit: Fit,
+    },
 }
 
 /// [`Paint::Atlas`]: `uv` the region `[u0, v0, u1, v1]`, `size` its CSS px
@@ -274,6 +283,7 @@ impl Paint {
                 orient: im.orient,
             }),
             Paint::Vector { tint, .. } => og_draw::UiPaint::Solid(tint.resolve(theme)),
+            Paint::Element { .. } => og_draw::UiPaint::Solid([0.0; 4]),
             Paint::Atlas(a) => match theme.art.atlas {
                 Some(texture) => og_draw::UiPaint::Image(og_draw::UiImage {
                     texture,
@@ -398,17 +408,7 @@ impl BoxLayer {
     /// cross-fade's parts.
     fn resolve_part(&self, paint: &Paint, theme: &Theme, b: Rect, d: Rect) -> og_draw::UiPaint {
         let mut p = paint.resolve(theme);
-        let area = match self.area {
-            Area::Box([l, t, r, bt]) => [
-                l - (d.x - b.x),
-                t - (d.y - b.y),
-                r - (b.right() - d.right()),
-                bt - (b.bottom() - d.bottom()),
-            ],
-            Area::Fixed([x, y, w, h]) => {
-                [x - d.x, y - d.y, d.right() - (x + w), d.bottom() - (y + h)]
-            }
-        };
+        let area = self.area_in(b, d);
         let fit = match &mut p {
             og_draw::UiPaint::Image(im) => {
                 im.luminance = self.luminance;
@@ -424,6 +424,22 @@ impl BoxLayer {
             bg.area = area;
         }
         p
+    }
+
+    /// Its positioning area's edges in from `d`'s (left, top, right,
+    /// bottom), drawn in `d` on the box `b`.
+    pub(crate) fn area_in(&self, b: Rect, d: Rect) -> [f32; 4] {
+        match self.area {
+            Area::Box([l, t, r, bt]) => [
+                l - (d.x - b.x),
+                t - (d.y - b.y),
+                r - (b.right() - d.right()),
+                bt - (b.bottom() - d.bottom()),
+            ],
+            Area::Fixed([x, y, w, h]) => {
+                [x - d.x, y - d.y, d.right() - (x + w), d.bottom() - (y + h)]
+            }
+        }
     }
 
     /// Whether it paints at `p` (CSS px) on the box `b`, placed as
