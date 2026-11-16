@@ -20,6 +20,7 @@
 <section id="IdleGenerators" part="IdleGenerators.frame" aria-label={title != '' ? title : t("idle.generators.name")}>
   <header part="IdleGenerators.band"><h2 part="IdleGenerators.title">{title != '' ? title : t("idle.generators.name")}</h2></header>
   {#if generators.length}
+    <div class="rows-shell">
     <div class="rows-scroll">
       <div class="rows" role="listbox" aria-label={title != '' ? title : t("idle.generators.name")}>
         {#each generators as g (g.id)}
@@ -45,6 +46,8 @@
         {/each}
       </div>
     </div>
+    <div class="scroll-fade"></div>
+    </div>
   {:else}
     <p class="empty-text" role="status">{t("idle.generators.empty")}</p>
   {/if}
@@ -54,8 +57,10 @@
 :host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-md); min-block-size: 0; container-type: inline-size; }
 [part="IdleGenerators.band"] { display: flex; width: stretch; align-items: center; flex: none; }
 [part="IdleGenerators.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.rows-shell { position: relative; display: flex; flex-direction: column; flex: 1; min-block-size: 0; }
 .rows-scroll { overflow-y: auto; flex: 1; min-height: 0; }
-.rows { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-xxs); }
+.scroll-fade { position: absolute; inset-inline: 0; bottom: 0; block-size: var(--space-lg); pointer-events: none; background: linear-gradient(transparent, var(--panel)); }
+.rows { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-xxs); padding-block-end: var(--space-lg); }
 [part="IdleGenerators.row"] { width: stretch; min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); min-width: 0; }
 .face { display: flex; width: stretch; align-items: center; gap: var(--space-sm); }
 .art { display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; }

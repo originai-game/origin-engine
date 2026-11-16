@@ -60,5 +60,6 @@
 @media (width < 600px) {
   :host { inline-size: stretch; min-inline-size: 0; padding: var(--space-sm); }
   .cells { gap: var(--space-sm); }
+  .progress { flex: none; padding: var(--space-sm); background: var(--well); border-radius: var(--radius-control); }
 }
 </style>

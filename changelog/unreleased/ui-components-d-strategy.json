@@ -1,0 +1,3 @@
+{
+  "fixed": [{ "member": "Strategy components", "summary": "Moves frames: strategy documents use HTML with CSS and conditional content. Selection health fills measure against their own positioned tracks; cooldown text no longer covers command icons. Production rows, tower stats and upgrade paths have clearer grouping, wave counts have clearer hierarchy, and phone actions wrap their text. Tower upgrade paths scroll within the height given, keeping long descriptions and disabled buy controls reachable above Sell. Review sheets load the default font. Ids, parts and gameplay intents are unchanged." }]
+}

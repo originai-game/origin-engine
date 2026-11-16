@@ -19,5 +19,6 @@ ui {
   screen "states-fantasy" "style:fantasy;page:states"
   screen "play-default" "style:default;page:play"
   screen "reset-default" "style:default;page:reset"
+  screen "offline-default" "style:default;page:offline"
   screen "states-default" "style:default;page:states"
 }

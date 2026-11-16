@@ -28,53 +28,56 @@
   <div class="head">
     <div part="StrategyWave.readout StrategyWave.figure" class="count" role="group" aria-label={waves > 0 ? t("strategy.wave.ofName", { wave: wave, waves: waves }) : t("strategy.wave.nName", { wave: wave })}>
       <span part="StrategyWave.title" class="caption">{t("strategy.wave.wave")}</span>
-      <div class="figure"><span class="now">{formatNumber(wave)}</span><span class="of" hidden={!(waves > 0)}>{t("strategy.wave.of", { total: waves })}</span></div>
+      <div class="figure"><span class="now">{formatNumber(wave)}</span>{#if waves > 0}<span class="of">{t("strategy.wave.of", { total: waves })}</span>{/if}</div>
     </div>
     <div class="status">
       <span part="StrategyWave.badge" class="phase" data-phase={phase} role="status">{phase == 'done' ? t("strategy.wave.done") : (phase == 'active' ? t("strategy.wave.active") : t("strategy.wave.countdown"))}</span>
-      <span part="StrategyWave.badge" class="final" hidden={!finalWave}>{t("strategy.wave.final")}</span>
+      {#if finalWave}<span part="StrategyWave.badge" class="final">{t("strategy.wave.final")}</span>{/if}
     </div>
-    <div class="clock" hidden={next < 0 || phase == 'done'}><HudTimer seconds={next < 0 ? 0 : next} total={nextTotal} countdown={true} warnAt={warnAt} paused={false} label={t("strategy.wave.next")} /></div>
+    {#if next >= 0 && phase != 'done'}<div class="clock"><HudTimer seconds={next < 0 ? 0 : next} total={nextTotal} countdown={true} warnAt={warnAt} paused={false} label={t("strategy.wave.next")} /></div>{/if}
   </div>
-  <div class="incoming" hidden={!enemies.length || phase == 'done'}>
+  {#if enemies.length && phase != 'done'}
+  <div class="incoming">
     <span part="StrategyWave.title" class="caption">{t("strategy.wave.incoming")}</span>
     <div class="enemies" role="list" aria-label={t("strategy.wave.incoming")}>
       {#each enemies as e (e.id)}
         <div part="StrategyWave.row" role="listitem" aria-label={e.scouted ? t("strategy.wave.enemyName", { count: e.count, name: e.name }) : t("strategy.wave.unknown")} data-boss={e.boss} data-scouted={e.scouted}>
           <og-icon class="mark" icon={e.icon}></og-icon>
           <span part="StrategyWave.name" class="enemy-name">{e.scouted ? e.name : t("strategy.wave.unknown")}</span>
-          <span part="StrategyWave.badge" class="boss" hidden={!e.boss}>{t("strategy.wave.boss")}</span>
-          <span class="enemy-count" hidden={!e.scouted}>{t("strategy.wave.enemyCount", { count: e.count })}</span>
+          {#if e.boss}<span part="StrategyWave.badge" class="boss">{t("strategy.wave.boss")}</span>{/if}
+          {#if e.scouted}<span class="enemy-count">{t("strategy.wave.enemyCount", { count: e.count })}</span>{/if}
         </div>
       {/each}
     </div>
   </div>
-  <button id="CallEarly" variant="primary" hidden={!canCallEarly || phase == 'done'} onclick={callEarly}><span>{t("strategy.wave.callEarly")}</span><span class="reward" hidden={reward == ''}>{reward}</span></button>
+  {/if}
+  {#if canCallEarly && phase != 'done'}<button id="CallEarly" variant="primary" onclick={callEarly}><span>{t("strategy.wave.callEarly")}</span>{#if reward != ''}<span class="reward">{reward}</span>{/if}</button>{/if}
 </section>
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="StrategyWave.frame"][hidden], [part="StrategyWave.frame"] [hidden] { display: none; }
-[part="StrategyWave.frame"] { display: flex; flex-direction: column; width: fit-content; max-width: stretch; min-width: 0; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); }
+:host { display: flex; flex-direction: column; inline-size: fit-content; max-inline-size: stretch; min-inline-size: 0; gap: var(--space-md); padding: var(--space-md); }
 .head { display: flex; align-items: flex-end; gap: var(--space-md); flex-wrap: wrap; }
 [part="StrategyWave.readout StrategyWave.figure"] { display: flex; flex-direction: column; align-items: flex-start; gap: 0; flex: none; }
-.caption { white-space: nowrap; }
+.caption { font: var(--text-sm); color: var(--ink-muted); white-space: nowrap; }
+.now { font: var(--text-xl2); font-weight: var(--font-weight-semibold); }
+.of { color: var(--ink-muted); }
 .figure { display: flex; align-items: baseline; gap: var(--space-xxs); white-space: nowrap; }
 .now, .of, .enemy-count { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .status { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xxs); min-width: 0; }
 .phase, .final, .boss { white-space: nowrap; padding: 0 var(--space-xs); }
 .clock { flex: none; }
-.incoming { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); min-width: 0; }
-.enemies { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); min-width: 0; }
+.incoming { display: flex; flex-direction: column; gap: var(--space-xs); }
+.enemies { display: flex; flex-direction: column; gap: var(--space-xs); }
 [part="StrategyWave.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-xs); min-width: 0; }
 .mark { flex: none; width: var(--size-sm); height: var(--size-sm); }
 .enemy-name { flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .enemy-count { flex: none; min-width: var(--size-lg); text-align: end; }
-#CallEarly { align-self: flex-start; min-height: var(--size-touch); gap: var(--space-xs); max-width: stretch; }
-.reward { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; min-width: 0; }
+#CallEarly { align-self: stretch; flex-wrap: wrap; min-height: var(--size-touch); gap: var(--space-xxs) var(--space-sm); max-width: stretch; }
+.reward { font: var(--text-sm); overflow-wrap: anywhere; }
 @media (width < 600px) {
-  [part="StrategyWave.frame"] { padding: var(--space-xs) var(--space-sm); gap: var(--space-xs); }
+  :host { inline-size: stretch; padding: var(--space-sm); gap: var(--space-sm); }
   .head { gap: var(--space-sm); }
   #CallEarly { align-self: stretch; }
 }

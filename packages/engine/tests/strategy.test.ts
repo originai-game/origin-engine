@@ -24,7 +24,7 @@ import { loadNativeHost, native } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { ogBin } from "./support/og-bin.ts";
 
-type El = { id: string; path: string; text: string; x: number; y: number; width: number; height: number; states?: string[]; disabled?: boolean; name?: string; role?: string };
+type El = { id: string; path: string; text: string; x: number; y: number; width: number; height: number; clipped?: boolean; states?: string[]; disabled?: boolean; name?: string; role?: string };
 type Event = { mount: string; path: string; rowKey: string; kind: string; name: string };
 
 const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -236,11 +236,26 @@ test("StrategyWave: wave n of m, the countdown, the enemies by kind, and Call ea
 });
 
 for (const pack of PACKS) for (const textScale of [1, 1.5]) {
-  test(`on a phone at ${textScale * 100} % text in ${pack}, long names and reasons never push a row's or a command's button off the screen`, () => {
+  test(`on a phone at ${textScale * 100} % text in ${pack}, long names and reasons keep every row's or command's button reachable inside its panel`, () => {
     for (const [name, list] of [["queue", "items"], ["tower", "paths"], ["selection", "commands"]] as const) {
       run(member(name, "overflow", { view: PHONE, textScale, pack }), (e) => {
         for (const { id } of MEMBERS[name]!.fixtures.overflow![list] as { id: string }[]) {
-          const b = rowButton(e, id);
+          let b = rowButton(e, id);
+          if (name === "tower") {
+            // Wrapped descriptions may need more than one screen. Scroll even
+            // disabled paths into view, then check their whole buy button.
+            const paths = elements(e).find((x) => x.role === "list" && x.name === "Upgrades")!;
+            expect(paths).toBeDefined();
+            for (let step = 0; step < 24 && (!b || b.clipped); step++) {
+              e.probe.commands(`0:touch_move:${centre(paths)};0.02:scroll:0,64`);
+              e.advance(12);
+              b = rowButton(e, id);
+            }
+            expect(b).toBeDefined();
+            expect(b.clipped).toBeFalse();
+            expect(b.x).toBeGreaterThanOrEqual(paths.x - 0.5);
+            expect(b.x + b.width).toBeLessThanOrEqual(paths.x + paths.width + 0.5);
+          }
           expect(`${textScale} ${name} ${id} ${!!b && b.x >= -0.5 && b.x + b.width <= PHONE.width + 0.5}`).toBe(`${textScale} ${name} ${id} true`);
         }
         // Command plates keep to their grid tracks: none overlaps the next.

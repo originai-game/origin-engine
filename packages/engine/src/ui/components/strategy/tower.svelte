@@ -25,15 +25,17 @@
 -->
 <section id="StrategyTower" part="StrategyTower.frame" aria-label={name != '' ? name : t("strategy.tower.name")}>
   <header part="StrategyTower.band">
-    <div part="StrategyTower.portrait StrategyTower.picture" class="picture"><img class="art" src={portrait} alt="" hidden={!portrait}><og-icon class="mark" icon={icon} hidden={!!portrait}></og-icon></div>
+    <div part="StrategyTower.portrait StrategyTower.picture" class="picture">{#if portrait}<img class="art" src={portrait} alt="">{:else}<og-icon class="mark" icon={icon}></og-icon>{/if}</div>
     <h2 part="StrategyTower.title">{name != '' ? name : t("strategy.tower.name")}</h2>
-    <span part="StrategyTower.badge" class="level" hidden={!(level > 0)}>{t("strategy.tower.level", { level: level })}</span>
+    {#if level > 0}<span part="StrategyTower.badge" class="level">{t("strategy.tower.level", { level: level })}</span>{/if}
   </header>
-  <div class="stats" role="list" aria-label={t("strategy.tower.stats")} hidden={!stats.length}>
+  {#if stats.length}
+  <div class="stats" role="list" aria-label={t("strategy.tower.stats")}>
     {#each stats as s (s.id)}
-      <div part="StrategyTower.row" role="listitem" data-next={s.next != ''}><span class="label">{s.label}</span><span class="value">{s.value}</span><span class="next" hidden={s.next == ''} aria-label={t("strategy.tower.nextName", { next: s.next })}>{t("strategy.tower.next", { next: s.next })}</span></div>
+      <div part="StrategyTower.row" role="listitem" data-next={s.next != ''}><span class="label">{s.label}</span><span class="value">{s.value}</span>{#if s.next != ''}<span class="next" aria-label={t("strategy.tower.nextName", { next: s.next })}>{t("strategy.tower.next", { next: s.next })}</span>{/if}</div>
     {/each}
   </div>
+  {/if}
   {#if paths.length}
     <div class="paths" role="list" aria-label={t("strategy.tower.paths")}>
       {#each paths as p (p.id)}
@@ -41,13 +43,13 @@
           <og-icon class="path-mark" icon={p.icon}></og-icon>
           <div class="path-main">
             <span part="StrategyTower.name" class="path-name">{p.name}</span>
-            <span class="detail" hidden={p.detail == ''}>{p.detail}</span>
+            {#if p.detail != ''}<span class="detail">{p.detail}</span>{/if}
             <div class="pips" role="meter" aria-label={t("strategy.tower.tierName", { tier: p.tier, tiers: p.tiers })} aria-valuemin="0" aria-valuemax={p.tiers} aria-valuenow={p.tier}><span class="tier">{t("strategy.tower.tier", { tier: p.tier, tiers: p.tiers })}</span><div class="track" style:--fill={p.tiers > 0 ? p.tier / p.tiers : 0}><div class="fill"></div></div></div>
-            <span part="StrategyTower.reason" class="reason" hidden={p.state != 'locked' || p.reason == ''}>{p.reason}</span>
+            {#if p.state == 'locked' && p.reason != ''}<span part="StrategyTower.reason" class="reason">{p.reason}</span>{/if}
           </div>
           <button class="buy" variant={p.state == 'affordable' ? 'primary' : 'secondary'} disabled={p.state != 'affordable'} aria-label={t("strategy.tower.upgrade", { name: p.name })} aria-description={p.state == 'locked' ? p.reason : p.cost} data-state={p.state} onclick={upgrade}><div class="buy-face">
-            <span part="StrategyTower.badge" class="state" data-state={p.state} hidden={p.state == 'affordable'}>{p.state == 'maxed' ? t("strategy.tower.maxed") : (p.state == 'locked' ? t("strategy.tower.locked") : t("strategy.tower.short"))}</span>
-            <span part="StrategyTower.cost StrategyTower.figure" class="cost" data-state={p.state} hidden={p.state == 'maxed' || p.cost == ''}>{p.cost}</span>
+            {#if p.state != 'affordable'}<span part="StrategyTower.badge" class="state" data-state={p.state}>{p.state == 'maxed' ? t("strategy.tower.maxed") : (p.state == 'locked' ? t("strategy.tower.locked") : t("strategy.tower.short"))}</span>{/if}
+            {#if p.state != 'maxed' && p.cost != ''}<span part="StrategyTower.cost StrategyTower.figure" class="cost" data-state={p.state}>{p.cost}</span>{/if}
           </div></button>
         </div>
       {/each}
@@ -56,49 +58,50 @@
     <p class="empty-text" role="status">{t("strategy.tower.empty")}</p>
   {/if}
   <div class="actions">
-    <button id="Sell" variant="ghost" disabled={!canSell} onclick={sell}><span>{t("strategy.tower.sell")}</span><span class="refund" hidden={sellText == ''}>{sellText}</span></button>
+    <button id="Sell" variant="ghost" disabled={!canSell} onclick={sell}><span>{t("strategy.tower.sell")}</span>{#if sellText != ''}<span class="refund">{sellText}</span>{/if}</button>
   </div>
 </section>
 
 <style>
-[part="StrategyTower.frame"][hidden], [part="StrategyTower.frame"] [hidden] { display: none; }
-[part="StrategyTower.frame"] { display: flex; flex-direction: column; width: stretch; min-width: 0; gap: var(--space-sm); container-type: inline-size; }
+:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; max-block-size: stretch; min-block-size: 0; gap: var(--space-md); container-type: inline-size; }
 [part="StrategyTower.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); flex: none; }
 [part="StrategyTower.portrait StrategyTower.picture"] { display: flex; flex-direction: column; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; overflow: hidden; }
 .art { width: stretch; height: stretch; object-fit: cover; }
 .mark { width: 70%; height: 70%; }
 [part="StrategyTower.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .level { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
-.stats { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
+.stats { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-sm); background: var(--well); border-radius: var(--radius-control); }
 [part="StrategyTower.row"] { display: flex; width: stretch; align-items: baseline; gap: var(--space-sm); }
-.label { flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.label { flex: 1; min-width: 0; color: var(--ink-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .value, .next { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.paths { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }
-[part="StrategyTower.path"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm); }
+.paths { display: flex; flex-direction: column; gap: var(--space-sm); overflow-y: auto; min-block-size: 0; }
+[part="StrategyTower.path"] { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--control); border-radius: var(--radius-control); }
 .path-mark { flex: none; width: var(--size-md); height: var(--size-md); }
 .path-main { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: hidden; gap: var(--space-xxs); }
-.path-name, .detail { width: stretch; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.path-name { font-weight: var(--font-weight-semibold); }
+.detail { font: var(--text-sm); color: var(--ink-muted); }
+.path-name, .detail { overflow-wrap: anywhere; }
 /* A reason wraps: it is the one line that says why, so it is never cut. */
-.reason { width: stretch; min-width: 0; white-space: normal; }
+.reason { white-space: normal; font: var(--text-sm); color: var(--ink-muted); }
 .pips { display: flex; width: stretch; align-items: center; gap: var(--space-xs); }
 .tier { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.track { flex: 1; min-width: 0; height: var(--space-xs); overflow: hidden; }
-.fill { position: absolute; inset-inline-start: 0; top: 0; width: calc(var(--fill) * 100%); height: stretch; }
+.track { position: relative; flex: 1; min-width: 0; block-size: var(--space-xs); overflow: hidden; background: var(--well); border-radius: var(--meter-radius); }
+.fill { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); background: var(--primary); }
 /* The buy plate fits its cost and state word, up to two fifths of the row. */
 .buy { flex: none; min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.3); max-width: 40%; padding: var(--space-xxs) var(--space-md); }
-.buy-face { display: flex; flex-direction: column; width: stretch; align-items: center; gap: 0; }
+.buy-face { display: flex; flex-direction: column; width: stretch; align-items: center; gap: var(--space-xxs); }
 .state, .cost { max-width: stretch; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 /* The cost is a badge on the buy plate: on an affordable path the plate is
    the primary, so the cost takes its ink rather than the badge's. */
 .cost[data-state="affordable"] { color: var(--on-primary); }
 .state { padding: 0 var(--space-xxs); }
-.actions { display: flex; width: stretch; justify-content: flex-end; }
+.actions { display: flex; flex: none; width: stretch; justify-content: flex-end; }
 #Sell { min-height: var(--size-touch); gap: var(--space-xs); max-width: stretch; }
 .refund { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; min-width: 0; }
-.empty-text { margin: 0; }
+.empty-text { margin: 0; padding: var(--space-md); text-align: center; color: var(--ink-muted); }
 @container (width < 600px) {
-  [part="StrategyTower.path"] { padding: var(--space-xxs) var(--space-xs); gap: var(--space-xs); }
-  .buy { min-width: var(--size-xxl); max-width: 45%; padding: var(--space-xxs) var(--space-sm); }
+  [part="StrategyTower.path"] { display: grid; grid-template-columns: auto minmax(0, 1fr); padding: var(--space-sm); gap: var(--space-sm); }
+  .buy { grid-column: 2; min-width: 0; max-width: none; padding: var(--space-xs) var(--space-sm); }
   .actions { justify-content: stretch; }
   #Sell { width: stretch; }
 }

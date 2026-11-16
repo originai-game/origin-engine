@@ -78,7 +78,10 @@ resource bar over generators and the upgrade shop), reset (prestige asking
 to confirm and the welcome-back panel, then their long forms) and states
 (every member in every fixture state, a scrolling page). Each page also
 has a `-default` screen with its explicit `style:default;page:<page>`
-commands. The commands
+commands. `page:offline` (`offline-default`) isolates Welcome back in a
+viewport-bounded slot, so both claim actions can be reviewed on a phone
+without the preceding prestige panel. The generator and purchase lists
+have stationary bottom fade cues when their phone slots scroll. The commands
 `page:states-resources`, `-generators`, `-purchases`, `-prestige` and
 `-offline` show one member's states on one desktop screen for `og ui
 preview --screen "x=style:fantasy;page:states-purchases"`.

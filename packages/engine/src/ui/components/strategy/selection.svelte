@@ -21,43 +21,45 @@
   The game binds the hotkeys and decides every flag, figure and reason.
 -->
 <section id="StrategySelection" part="StrategySelection.frame" aria-label={title != '' ? title : t("strategy.selection.title")}>
-  <header part="StrategySelection.band"><h2 part="StrategySelection.title">{title != '' ? title : t("strategy.selection.title")}</h2><span part="StrategySelection.badge" class="summary" hidden={summary == ''}>{summary}</span></header>
+  <header part="StrategySelection.band"><h2 part="StrategySelection.title">{title != '' ? title : t("strategy.selection.title")}</h2>{#if summary != ''}<span part="StrategySelection.badge" class="summary">{summary}</span>{/if}</header>
   {#if units.length}
     <div class="body">
       <div class="left">
-        <scroll class="roster">
+        <div class="roster">
           <div class="units" role="listbox" aria-label={t("strategy.selection.units")}>
             {#each units as u (u.id)}
               <button part="StrategySelection.cell" role="option" aria-selected={u.id == focused} aria-label={u.name} aria-description={t("strategy.selection.unitValue", { count: u.count, now: u.health, max: u.healthMax })} data-kind={u.kind} onclick={choose}><div class="face">
-                <div part="StrategySelection.portrait StrategySelection.picture" class="picture"><img class="art" src={u.portrait} alt="" hidden={!u.portrait}><og-icon class="mark" icon={u.icon} hidden={!!u.portrait}></og-icon><span part="StrategySelection.badge" class="count" hidden={!(u.count > 1)}>{t("strategy.selection.count", { count: u.count })}</span></div>
+                <div part="StrategySelection.portrait StrategySelection.picture" class="picture">{#if u.portrait}<img class="art" src={u.portrait} alt="">{:else}<og-icon class="mark" icon={u.icon}></og-icon>{/if}{#if u.count > 1}<span part="StrategySelection.badge" class="count">{t("strategy.selection.count", { count: u.count })}</span>{/if}</div>
                 <div part="StrategySelection.meter StrategySelection.well" class="health" role="meter" aria-label={t("strategy.selection.health")} aria-valuemin="0" aria-valuemax={u.healthMax} aria-valuenow={u.health} style:--fill={u.healthMax > 0 ? u.health / u.healthMax : 0}><div class="fill"></div></div>
               </div></button>
             {/each}
           </div>
-        </scroll>
+        </div>
         {#each units as u (u.id)}
           {#if u.id == focused}
             <div part="StrategySelection.detail" class="detail" data-kind={u.kind}>
               <span part="StrategySelection.name" class="unit-name">{u.name}</span>
-              <span class="line" hidden={u.line == ''}>{u.line}</span>
-              <span class="status" hidden={u.status == ''}>{u.status}</span>
+              {#if u.line != ''}<span class="line">{u.line}</span>{/if}
+              {#if u.status != ''}<span class="status">{u.status}</span>{/if}
               <div class="vital"><StatBar value={u.health} max={u.healthMax} kind="health" segment={0} shield={0} shieldMax={0} heal={0} recoverable={0} label="" icon="" showValue={true} valueInside={false} valueText={t("strategy.selection.healthValue", { now: u.health, max: u.healthMax })} low={0} critical={0} bare={true} name={t("strategy.selection.health")} /></div>
             </div>
           {/if}
         {/each}
       </div>
-      <div part="StrategySelection.grid StrategySelection.plate" class="commands" role="toolbar" aria-label={t("strategy.selection.commands")} hidden={!commands.length}>
+      {#if commands.length}
+      <div part="StrategySelection.grid StrategySelection.plate" class="commands" role="toolbar" aria-label={t("strategy.selection.commands")}>
         {#each commands as c (c.id)}
           <button part="StrategySelection.command StrategySelection.cell" aria-label={c.label} aria-description={c.reason != '' ? c.reason : c.cooldownText} aria-pressed={c.active} disabled={!c.enabled} data-active={c.active} data-cooling={c.cooldown > 0} onclick={command}><div class="face">
-            <div class="cool" hidden={!(c.cooldown > 0)} style:--cool={c.cooldown}></div>
-            <div class="top"><kbd part="StrategySelection.key StrategySelection.label" class="key" data-action={c.action} hidden={c.action == '' && c.hotkey == ''}>{c.hotkey}</kbd><span class="on" hidden={!c.active}>{t("strategy.selection.active")}</span></div>
+            {#if c.cooldown > 0}<div class="cool" style:--cool={c.cooldown}></div>{/if}
+            <div class="top">{#if c.action != '' || c.hotkey != ''}<kbd part="StrategySelection.key StrategySelection.label" class="key" data-action={c.action}>{c.hotkey}</kbd>{/if}{#if c.active}<span class="on">{t("strategy.selection.active")}</span>{/if}</div>
             <og-icon class="command-art" icon={c.icon}></og-icon>
-            <span class="cool-text" hidden={c.cooldownText == ''}>{c.cooldownText}</span>
+            {#if c.cooldownText != ''}<span class="cool-text">{c.cooldownText}</span>{/if}
             <span class="command-label">{c.label}</span>
-            <span part="StrategySelection.reason" class="reason" hidden={c.enabled || c.reason == ''}>{c.reason}</span>
+            {#if !c.enabled && c.reason != ''}<span part="StrategySelection.reason" class="reason">{c.reason}</span>{/if}
           </div></button>
         {/each}
       </div>
+      {/if}
     </div>
   {:else}
     <p class="empty-text" role="status">{t("strategy.selection.empty")}</p>
@@ -65,43 +67,44 @@
 </section>
 
 <style>
-[part="StrategySelection.frame"][hidden], [part="StrategySelection.frame"] [hidden] { display: none; }
-[part="StrategySelection.frame"] { display: flex; flex-direction: column; width: stretch; min-width: 0; gap: var(--space-sm); container-type: inline-size; }
+:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; gap: var(--space-md); container-type: inline-size; }
 [part="StrategySelection.band"] { display: flex; width: stretch; align-items: baseline; gap: var(--space-sm); flex: none; }
 [part="StrategySelection.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .summary { flex: none; max-width: 50%; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.body { display: flex; width: stretch; gap: var(--space-md); align-items: flex-start; }
+.body { display: flex; gap: var(--space-lg); align-items: flex-start; }
 .left { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-sm); }
 /* The roster scrolls past two rows and never shrinks below one. */
-.roster { width: stretch; min-height: calc(var(--size-xl) * 1.3); max-height: calc(var(--size-xl) * 2.6); flex: none; contain: inline-size; }
+.roster { overflow-y: auto; min-height: calc(var(--size-xl) * 1.3); max-height: calc(var(--size-xl) * 2.6); flex: none; contain: inline-size; }
 .units { display: flex; flex-wrap: wrap; gap: var(--space-xs); padding: var(--space-xxs); }
 [part="StrategySelection.cell"] { flex: none; width: var(--size-xl); padding: var(--space-xxs); }
 [part="StrategySelection.cell"] .face { display: flex; flex-direction: column; position: relative; width: stretch; gap: var(--space-xxs); }
-[part="StrategySelection.portrait StrategySelection.picture"] { display: flex; flex-direction: column; width: stretch; aspect-ratio: 1; align-items: center; justify-content: center; overflow: hidden; }
+[part="StrategySelection.portrait StrategySelection.picture"] { position: relative; display: flex; flex-direction: column; aspect-ratio: 1; align-items: center; justify-content: center; overflow: hidden; }
 .art { width: stretch; height: stretch; object-fit: cover; }
 .mark { width: 62%; height: 62%; }
 .count { position: absolute; inset-inline-end: 0; bottom: 0; padding: 0 var(--space-xxs); white-space: nowrap; font-variant-numeric: tabular-nums; }
-[part="StrategySelection.meter StrategySelection.well"] { width: stretch; height: var(--space-xs); overflow: hidden; }
-[part="StrategySelection.meter StrategySelection.well"] .fill { position: absolute; inset-inline-start: 0; top: 0; width: calc(var(--fill) * 100%); height: stretch; }
+[part="StrategySelection.meter StrategySelection.well"] { position: relative; block-size: var(--space-xs); overflow: hidden; border-radius: var(--meter-radius); }
+[part="StrategySelection.meter StrategySelection.well"] .fill { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); background: var(--success); }
 [part="StrategySelection.detail"] { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); padding: var(--space-xs) var(--space-sm); }
-.unit-name, .line, .status { width: stretch; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.unit-name { font: var(--text-lg); font-weight: var(--font-weight-semibold); }
+.line, .status { font: var(--text-sm); color: var(--ink-muted); }
+.unit-name, .line, .status { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .vital { width: stretch; max-width: calc(var(--size-xxl) * 3); overflow: hidden; }
 /* The command card: plates four across, rows as the game fills them. */
 [part="StrategySelection.grid StrategySelection.plate"] { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-xs); flex: none; width: calc(var(--size-xl) * 5.6); }
 [part="StrategySelection.command StrategySelection.cell"] { width: stretch; min-width: 0; overflow: hidden; min-height: calc(var(--size-xl) * 1.15); padding: var(--space-xxs); }
-[part="StrategySelection.command StrategySelection.cell"] .face { display: flex; flex-direction: column; position: relative; width: stretch; height: stretch; align-items: center; gap: 0; }
+[part="StrategySelection.command StrategySelection.cell"] .face { display: flex; flex-direction: column; position: relative; width: stretch; align-items: center; gap: var(--space-xxs); }
 .command-art { width: var(--size-md); height: var(--size-md); }
-.cool { position: absolute; left: 0; bottom: 0; width: stretch; height: calc(var(--cool) * 100%); }
+.cool { position: absolute; inset-inline: 0; bottom: 0; block-size: calc(var(--cool) * 100%); background: var(--control-strong); opacity: var(--opacity-muted); pointer-events: none; }
 /* The key cap and the On word share a top row, so neither covers the icon. */
 .top { display: flex; width: stretch; min-height: var(--size-xs); align-items: center; justify-content: space-between; gap: var(--space-xxs); }
 .key { flex: none; }
 .on { flex: none; margin-inline-start: auto; padding: 0 var(--space-xxs); white-space: nowrap; }
-/* The time left sits over the icon, on the cooldown's shade. */
-.cool-text { position: absolute; left: 0; top: calc(var(--size-xs) + var(--space-xxs)); width: stretch; height: var(--size-md); text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* The time left has its own line, so it never obscures the command icon. */
+.cool-text { font: var(--text-xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .command-label { width: stretch; text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 /* A reason wraps: it is the one line that says why, so it is never cut. */
-.reason { width: stretch; min-width: 0; text-align: center; white-space: normal; }
-.empty-text { margin: 0; padding: var(--space-md) 0; }
+.reason { text-align: center; white-space: normal; font: var(--text-xs); }
+.empty-text { margin: 0; padding: var(--space-lg); text-align: center; color: var(--ink-muted); }
 @media (pointer: coarse) { .key { display: none; } }
 /* A narrow panel stacks the selection over the command card, which takes the width. */
 @container (width < 600px) {

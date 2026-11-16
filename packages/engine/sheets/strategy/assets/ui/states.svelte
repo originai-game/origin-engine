@@ -30,7 +30,7 @@
 
 <style>
 #Page { width: stretch; height: stretch; }
-#Cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 4.4), 1fr)); gap: var(--space-lg); padding: var(--space-lg); }
+#Cells { display: grid; width: stretch; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 4.4), 1fr)); gap: var(--space-lg); padding: var(--space-lg); }
 .cell { display: flex; flex-direction: column; gap: var(--space-xs); min-width: 0; }
 .cell[data-member=selection] { grid-column: span 2; }
 .caption { font: var(--text-caption); color: var(--ink-muted); }

@@ -18,4 +18,7 @@ ui {
   screen "field-fantasy" "style:fantasy;page:field"
   screen "defence-fantasy" "style:fantasy;page:defence"
   screen "states-fantasy" "style:fantasy;page:states"
+  screen "field-default" "style:default;page:field"
+  screen "defence-default" "style:default;page:defence"
+  screen "states-default" "style:default;page:states"
 }

@@ -27,6 +27,7 @@
   #Page { flex-direction: column; gap: var(--space-sm); padding: var(--space-sm); }
   #Field { flex: none; width: stretch; height: 42%; }
   #Hud { left: var(--space-xs); top: var(--space-xs); right: var(--space-xs); }
+  #Judge { top: 64%; }
   #Results { flex: 1; min-height: 0; width: stretch; height: auto; }
 }
 </style>

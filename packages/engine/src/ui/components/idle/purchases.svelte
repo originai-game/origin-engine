@@ -33,6 +33,7 @@
     {/if}
   </header>
   {#if upgrades.length}
+    <div class="rows-shell">
     <div class="rows-scroll">
       <ul class="rows" aria-label={title != '' ? title : t("idle.purchases.name")}>
         {#each upgrades as u (u.id)}
@@ -60,6 +61,8 @@
         {/each}
       </ul>
     </div>
+    <div class="scroll-fade"></div>
+    </div>
   {:else}
     <p class="empty-text" role="status">{t("idle.purchases.empty")}</p>
   {/if}
@@ -71,8 +74,10 @@
 [part="IdlePurchases.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .amounts { display: flex; flex: none; gap: var(--space-xxs); }
 [part="IdlePurchases.amount IdlePurchases.figure"] { min-height: var(--size-touch); min-width: var(--size-touch); padding: 0 var(--space-sm); }
+.rows-shell { position: relative; display: flex; flex-direction: column; flex: 1; min-block-size: 0; }
 .rows-scroll { overflow-y: auto; flex: 1; min-height: 0; }
-.rows { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xs); }
+.scroll-fade { position: absolute; inset-inline: 0; bottom: 0; block-size: var(--space-lg); pointer-events: none; background: linear-gradient(transparent, var(--panel)); }
+.rows { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; padding-block-end: var(--space-lg); list-style: none; gap: var(--space-xs); }
 [part="IdlePurchases.row"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm); background: var(--control); border-radius: var(--radius-control); }
 .art { display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; }
 .icon { width: var(--size-md); height: var(--size-md); }

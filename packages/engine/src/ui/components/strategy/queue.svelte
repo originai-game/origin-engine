@@ -23,22 +23,22 @@
 <section id="StrategyQueue" part="StrategyQueue.frame" class="hud" aria-label={title != '' ? title : t("strategy.queue.title")} data-full={full}>
   <header part="StrategyQueue.band">
     <h2 part="StrategyQueue.title">{title != '' ? title : t("strategy.queue.title")}</h2>
-    <span part="StrategyQueue.badge" class="capacity" data-full={full} hidden={!(limit > 0)} aria-label={t("strategy.queue.capacityName", { count: queued, limit: limit })}>{t("strategy.queue.capacity", { count: queued, limit: limit })}</span>
-    <span part="StrategyQueue.badge" class="full" hidden={!full} role="status">{t("strategy.queue.full")}</span>
+    {#if limit > 0}<span part="StrategyQueue.badge" class="capacity" data-full={full} aria-label={t("strategy.queue.capacityName", { count: queued, limit: limit })}>{t("strategy.queue.capacity", { count: queued, limit: limit })}</span>{/if}
+    {#if full}<span part="StrategyQueue.badge" class="full" role="status">{t("strategy.queue.full")}</span>{/if}
   </header>
   {#if items.length}
     <div class="items" role="list" aria-label={t("strategy.queue.items")}>
       {#each items as q (q.id)}
         <div part="StrategyQueue.row" role="listitem" aria-label={q.name} data-state={q.state}>
-          <div part="StrategyQueue.cell" class="picture"><og-icon class="mark" icon={q.icon}></og-icon><span part="StrategyQueue.badge" class="stack" hidden={!(q.count > 1)}>{t("strategy.queue.stack", { count: q.count })}</span></div>
+          <div part="StrategyQueue.cell" class="picture"><og-icon class="mark" icon={q.icon}></og-icon>{#if q.count > 1}<span part="StrategyQueue.badge" class="stack">{t("strategy.queue.stack", { count: q.count })}</span>{/if}</div>
           <div class="main">
             <div class="line">
               <span part="StrategyQueue.name" class="order-name">{q.name}</span>
-              <span part="StrategyQueue.badge" class="state" data-state={q.state} hidden={q.state == 'building'}>{q.state == 'paused' ? t("strategy.queue.paused") : (q.state == 'blocked' ? t("strategy.queue.blocked") : t("strategy.queue.waiting"))}</span>
-              <span class="time" hidden={q.timeText == ''}>{q.timeText}</span>
+              {#if q.state != 'building'}<span part="StrategyQueue.badge" class="state" data-state={q.state}>{q.state == 'paused' ? t("strategy.queue.paused") : (q.state == 'blocked' ? t("strategy.queue.blocked") : t("strategy.queue.waiting"))}</span>{/if}
+              {#if q.timeText != ''}<span class="time">{q.timeText}</span>{/if}
             </div>
             <div class="bar"><ProgressBar value={q.progress} buffer={0} label="" valueText={q.timeText} showValue={false} indeterminate={false} tone={q.state == 'paused' ? 'warn' : (q.state == 'blocked' ? 'danger' : '')} /></div>
-            <span part="StrategyQueue.reason" class="reason" hidden={q.reason == ''}>{q.reason}</span>
+            {#if q.reason != ''}<span part="StrategyQueue.reason" class="reason">{q.reason}</span>{/if}
           </div>
           <button class="cancel" variant="ghost" aria-label={t("strategy.queue.cancel", { name: q.name })} onclick={cancel}><og-icon class="cancel-mark" icon="close"></og-icon></button>
         </div>
@@ -52,25 +52,23 @@
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="StrategyQueue.frame"][hidden], [part="StrategyQueue.frame"] [hidden] { display: none; }
-[part="StrategyQueue.frame"] { display: flex; flex-direction: column; width: stretch; min-width: 0; gap: var(--space-xs); }
-[part="StrategyQueue.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); flex: none; }
+:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; gap: var(--space-sm); }
+[part="StrategyQueue.band"] { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs) var(--space-sm); flex: none; }
 [part="StrategyQueue.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .capacity, .full { flex: none; white-space: nowrap; padding: 0 var(--space-xs); font-variant-numeric: tabular-nums; }
-.items { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }
-[part="StrategyQueue.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) var(--space-xs); }
+.items { display: flex; flex-direction: column; gap: var(--space-sm); }
+[part="StrategyQueue.row"] { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs); border-radius: var(--radius-control); background: var(--control); }
 [part="StrategyQueue.cell"] { display: flex; flex-direction: column; position: relative; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; }
 .mark { width: 70%; height: 70%; }
 .stack { position: absolute; inset-inline-end: 0; bottom: 0; padding: 0 var(--space-xxs); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .main { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: hidden; gap: var(--space-xxs); }
-.line { display: flex; width: stretch; align-items: baseline; gap: var(--space-xs); }
-.order-name { flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.state { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
-.time { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.bar { width: stretch; }
+.line { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-xxs) var(--space-sm); }
+.order-name { flex: 1 1 auto; min-width: 0; font-weight: var(--font-weight-semibold); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.state { flex: none; white-space: nowrap; padding: 0 var(--space-xs); font: var(--text-xs); }
+.time { flex: none; margin-inline-start: auto; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ink-muted); }
 /* A reason wraps: it is the one line that says why, so it is never cut. */
-.reason { width: stretch; min-width: 0; white-space: normal; }
+.reason { white-space: normal; font: var(--text-sm); color: var(--ink-muted); }
 .cancel { flex: none; width: var(--size-touch); height: var(--size-touch); padding: 0; }
 .cancel-mark { width: var(--size-xs); height: var(--size-xs); }
-.empty-text { margin: 0; padding: var(--space-sm) 0; }
+.empty-text { margin: 0; padding: var(--space-lg); text-align: center; color: var(--ink-muted); }
 </style>

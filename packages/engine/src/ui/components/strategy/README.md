@@ -16,9 +16,15 @@ game's copy of the same name wins.
 
 ## Structure and appearance
 
-Each member's `<style>` holds structure only: layout, sizes and spacing from
-tokens. It sets no colour, font or art, and lands in the `og-components`
-layer. A style pack (`og-pack`) supplies every appearance through the
+The documents use HTML elements with CSS: `:host` styles the root,
+`{#if}` mounts optional content, and parts and classes select the inner
+boxes. Scrolling is `overflow-y: auto` on a `div`. Meter fills measure
+against their positioned tracks, not the screen. Element ids and parts
+remain stable when a game ejects a document.
+
+Each member's `<style>` supplies layout and a token-based default look:
+type hierarchy, spacing and quiet row surfaces, in the `og-components`
+layer. A style pack (`og-pack`) overrides appearance through the
 members' named parts (docs/ui.md §3.2), qualified by their states and
 `data-*` attributes, for example `StrategyTower::path[data-state=locked]` or
 `button[data-active=true]::part(StrategySelection\.command)`. The fantasy pack dresses them
@@ -58,6 +64,11 @@ detail over a full-width command card and Sell takes the width. The wave's
 Call early takes the width by a media query: its frame is sized by its
 contents.
 
+The tower keeps its upgrade paths inside the height given by its parent.
+Long descriptions wrap, the paths scroll, and Sell remains outside that
+scroller. Each path's buy button stays inside the tower's width when brought
+into view, including disabled paths.
+
 Every member carries a `fixture:default` and the states that apply
 (selection: single, empty, disabled, overflow; queue: empty, full, paused,
 overflow; wave: active, final, done, empty, overflow; tower: maxed,
@@ -71,8 +82,8 @@ by the fantasy pack: `field` (the normal page: the queue, the wave readout
 and the selection with its command card over a bright meadow and a dark
 forest), `defence` (the stress page: an endless wave with five-digit
 counts, an overflowing queue and a tier-ten tower with long names) and
-`states` (every member in every fixture state). `style:default` is a sheet
-command for the default style.
+`states` (every member in every fixture state). Each page also has a
+`-default` screen with its explicit `style:default;page:<page>` commands.
 `og ui review strategy --style scifi` (or `--style cartoon`) renders the same
 pages in that pack, dressed by its tokens
 (`templates/styles/<pack>/base.css`).
@@ -81,4 +92,6 @@ pages in that pack, dressed by its tokens
 member by name from a game page in every fixture at desktop and phone,
 checks the declared parts, the intents and their keys, the disabled and
 refused states, keyed selection through a reorder, keyboard focus and
-confirm, and that each state is a word.
+confirm, and that each state is a word. The phone overflow check scrolls to
+each tower path before checking that its whole buy button is unclipped and
+within the paths' width.

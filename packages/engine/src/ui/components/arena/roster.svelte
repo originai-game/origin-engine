@@ -24,6 +24,7 @@
 <section id="ArenaRoster" part="ArenaRoster.frame" aria-label={title != '' ? title : t("arena.roster.title")}>
   <header part="ArenaRoster.band"><h2 part="ArenaRoster.title">{title != '' ? title : t("arena.roster.title")}</h2></header>
   {#if characters.length}
+    <div class="grid-shell">
     <div class="grid-scroll">
       <div class="grid" role="listbox" aria-label={t("arena.roster.characters")}>
         {#each characters as c (c.id)}
@@ -45,6 +46,8 @@
         {/each}
       </div>
     </div>
+    <div class="scroll-fade"></div>
+    </div>
     {#if selected != ''}
     <footer class="chosen" role="status">
       {#each characters as c (c.id)}
@@ -65,8 +68,10 @@
 :host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; max-block-size: stretch; gap: var(--space-md); container-type: inline-size; }
 [part="ArenaRoster.band"] { display: flex; width: stretch; align-items: center; flex: none; }
 [part="ArenaRoster.title"] { margin: 0; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.grid-shell { position: relative; display: flex; flex-direction: column; flex: 1; min-block-size: 0; }
 .grid-scroll { overflow-y: auto; flex: 1; min-height: 0; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 1.25), 1fr)); gap: var(--space-sm); padding: var(--space-xxs); }
+.scroll-fade { position: absolute; inset-inline: 0; bottom: 0; block-size: var(--space-lg); pointer-events: none; background: linear-gradient(transparent, var(--panel)); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 1.25), 1fr)); gap: var(--space-sm); padding: var(--space-xxs); padding-block-end: var(--space-lg); }
 [part="ArenaRoster.cell"] { padding: var(--space-sm); align-items: stretch; justify-content: flex-start; }
 [part="ArenaRoster.cell"] .face { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
 [part="ArenaRoster.portrait ArenaRoster.picture"] { position: relative; display: flex; width: stretch; aspect-ratio: 1; align-items: center; justify-content: center; overflow: hidden; }

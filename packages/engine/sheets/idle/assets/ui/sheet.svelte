@@ -1,7 +1,7 @@
 <meta name="component" content="IdleSheet">
 
 <div id="Sheet">
-  {#if $page == 'reset'}
+  {#if $page == 'reset' || $page == 'offline'}
     <IdleResetPage />
   {:else}
     {#if $page == 'states' || $page == 'states-resources' || $page == 'states-generators' || $page == 'states-purchases' || $page == 'states-prestige' || $page == 'states-offline'}

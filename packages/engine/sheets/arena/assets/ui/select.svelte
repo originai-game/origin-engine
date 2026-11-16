@@ -18,7 +18,8 @@
 #Draft { flex: 4; min-width: 0; }
 #Lobby { flex: 3; min-width: 0; }
 @media (width < 600px) {
-  #Grid { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: var(--space-md); padding: var(--space-xs); padding-top: env(safe-area-inset-top); }
+  #Grid { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: var(--space-md); padding: var(--space-xs); }
   #Roster, #Draft, #Lobby { flex: none; }
+  #Roster { block-size: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--space-sm)); }
 }
 </style>
