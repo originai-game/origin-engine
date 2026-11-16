@@ -244,6 +244,10 @@ impl Renderer {
                     multiview_mask: None,
                 });
                 first = false;
+                // The uniform uses the used size, not the allocation's:
+                // keep that pixel grid in the target's top-left rectangle.
+                pass.set_viewport(0.0, 0.0, plan.size.0 as f32, plan.size.1 as f32, 0.0, 1.0);
+                pass.set_scissor_rect(0, 0, plan.size.0, plan.size.1);
                 draws += self.draw_overlay_runs(
                     &mut pass,
                     scene,

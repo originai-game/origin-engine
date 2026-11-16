@@ -32,6 +32,8 @@ struct LayerParams {
     params: [[f32; 4]; super::UI_MATERIAL_PARAMS],
     info: [f32; 4],
     mask_uv: [f32; 4],
+    /// Used UV extent (xy) and half a target texel (zw).
+    sample_uv: [f32; 4],
     /// A projected layer's drape (`info.w` 1, 2 on its plane only,
     /// [`super::UiDrape`]): its
     /// rows `a` with the scale's x and y and the reach in w, then its
@@ -104,6 +106,20 @@ fn layer_mips(material: UiMaterial) -> bool {
         material,
         UiMaterial::Builtin(UiBuiltin::Blur | UiBuiltin::DropShadow)
     )
+}
+
+/// Single-level layers keep their pixel grid inside a 64-px bucket.
+/// Mipmapped materials keep exact extents: padding would change every
+/// downsampled level (especially NPOT targets), not just its UV mapping.
+fn layer_target_size(size: (u32, u32), mips: bool, limit: u32) -> (u32, u32) {
+    if mips {
+        size
+    } else {
+        (
+            size.0.div_ceil(64).saturating_mul(64).min(limit),
+            size.1.div_ceil(64).saturating_mul(64).min(limit),
+        )
+    }
 }
 
 /// What one frame bound: the group 0 of the output and of each layer,

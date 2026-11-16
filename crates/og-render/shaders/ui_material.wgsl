@@ -15,6 +15,8 @@ struct LayerParams {
   info: vec4<f32>,
   // The mask image's uv rectangle.
   mask_uv: vec4<f32>,
+  // Used UV extent (xy) and half a target texel (zw).
+  sample_uv: vec4<f32>,
   // A projected layer's drape (UiDrape): rows a (xyz) with the scale's x,
   // y and the reach in w, then rows b. A screen point (x, y) at view
   // depth d lies at a·(x, y, 1) + d·b·(x, y, 1): the rect's CSS px, and
@@ -39,7 +41,10 @@ struct MaterialInput {
 
 // The layer at `uv`, premultiplied (what was drawn into it).
 fn layer_premultiplied(uv: vec2<f32>) -> vec4<f32> {
-  return textureSampleLevel(layer_tex, layer_sampler, uv, 0.0);
+  // Clamp to the used texels, just as an exact-size target's sampler
+  // clamps to its edge: neither padding nor the preceding frame can bleed in.
+  let r = layer_params.sample_uv;
+  return textureSampleLevel(layer_tex, layer_sampler, clamp(uv * r.xy, r.zw, r.xy - r.zw), 0.0);
 }
 
 // The layer at `uv`: linear colour, straight alpha.

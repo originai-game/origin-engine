@@ -1,5 +1,6 @@
 //! A frame's UI tables and layer targets on the device.
 
+use super::super::filter::LayerInput;
 use super::*;
 
 impl UiRenderer {
@@ -189,21 +190,27 @@ impl UiRenderer {
                 continue;
             }
             let with_mips = wants_mips(plan);
-            let found = self.targets.iter().enumerate().position(|(i, t)| {
-                !used[i] && t.size == plan.size && t.chain.is_some() == with_mips
-            });
+            let size = layer_target_size(
+                plan.size,
+                with_mips,
+                device.limits().max_texture_dimension_2d,
+            );
+            let found =
+                self.targets.iter().enumerate().position(|(i, t)| {
+                    !used[i] && t.size == size && t.chain.is_some() == with_mips
+                });
             let i = match found {
                 Some(i) => i,
                 None => {
                     let texture = device.create_texture(&wgpu::TextureDescriptor {
                         label: Some("ui layer"),
                         size: wgpu::Extent3d {
-                            width: plan.size.0,
-                            height: plan.size.1,
+                            width: size.0,
+                            height: size.1,
                             depth_or_array_layers: 1,
                         },
                         mip_level_count: if with_mips {
-                            crate::mips::mip_count(plan.size.0, plan.size.1)
+                            crate::mips::mip_count(size.0, size.1)
                         } else {
                             1
                         },
@@ -223,7 +230,7 @@ impl UiRenderer {
                         (sampled.clone(), None)
                     };
                     self.targets.push(LayerTarget {
-                        size: plan.size,
+                        size,
                         texture: texture.clone(),
                         view,
                         sampled,
@@ -257,7 +264,14 @@ impl UiRenderer {
                     .iter()
                     .enumerate()
                     .position(|(i, t)| {
-                        !taken[i] && t.size == plan.size && t.chain.is_some() == wants_mips(plan)
+                        !taken[i]
+                            && t.size
+                                == layer_target_size(
+                                    plan.size,
+                                    wants_mips(plan),
+                                    device.limits().max_texture_dimension_2d,
+                                )
+                            && t.chain.is_some() == wants_mips(plan)
                     })
                     .expect("kept above");
                 taken[i] = true;
@@ -267,13 +281,18 @@ impl UiRenderer {
         self.filters.begin();
         // A layer's target as it is sampled: its view, top left and scale.
         let plan_of = |k: u32| frame.layers.iter().position(|p| p.index == k);
-        let sampled = |n: usize| -> Option<(wgpu::TextureView, [f32; 2], f32)> {
+        let sampled = |n: usize| -> Option<LayerInput> {
             let plan = &frame.layers[n];
             let view = match plan.target {
                 Some(t) => panel_view(t)?,
                 None => self.targets.get(target_of[n])?.sampled.clone(),
             };
-            Some((view, plan.origin, plan.scale))
+            Some(LayerInput {
+                view,
+                origin: plan.origin,
+                scale: plan.scale,
+                size: plan.size,
+            })
         };
         let layer_input = |k: u32| plan_of(k).and_then(sampled);
         let inputs = super::super::filter::Inputs {
@@ -309,6 +328,7 @@ impl UiRenderer {
                 params: layer.params,
                 info: [builtin, 0.0, 0.0, 0.0],
                 mask_uv: [0.0, 0.0, 1.0, 1.0],
+                sample_uv: [0.0; 4],
                 drape: [[0.0; 4]; 6],
             };
             if let Some(g) = &layer.ground {
@@ -336,7 +356,6 @@ impl UiRenderer {
                 }
                 None => {}
             }
-            queue.write_buffer(&self.layer_params[n], 0, bytemuck::bytes_of(&params));
             // A world panel composites nowhere: its group samples white.
             let mut target = self
                 .targets
@@ -348,21 +367,29 @@ impl UiRenderer {
             let backdrop_of = frame.backdrops.contains(&plan.index);
             let parent = match plan.parent {
                 _ if !backdrop_of => None,
-                0 => backdrop
-                    .map(|(_, _, source, decode)| (source.clone(), [0.0; 2], plan.scale, decode)),
-                j => plan_of(j - 1)
-                    .and_then(sampled)
-                    .map(|(v, o, s)| (v, o, s, false)),
+                0 => backdrop.map(|(_, _, source, decode)| {
+                    (
+                        LayerInput {
+                            view: source.clone(),
+                            origin: [0.0; 2],
+                            scale: plan.scale,
+                            size: (uniform[0] as u32, uniform[1] as u32),
+                        },
+                        decode,
+                    )
+                }),
+                j => plan_of(j - 1).and_then(sampled).map(|input| (input, false)),
             };
             let source = match (&parent, self.targets.get(target_of[n])) {
-                (Some((view, origin, scale, decode)), _) => Some(
-                    super::super::filter::Source::Capture(super::super::filter::Capture {
-                        view,
-                        origin: *origin,
-                        scale: *scale,
+                (Some((input, decode)), _) => Some(super::super::filter::Source::Capture(
+                    super::super::filter::Capture {
+                        view: &input.view,
+                        origin: input.origin,
+                        scale: input.scale,
                         decode: *decode,
-                    }),
-                ),
+                        size: input.size,
+                    },
+                )),
                 (None, Some(t)) if !backdrop_of => {
                     Some(super::super::filter::Source::Drawn(&t.sampled))
                 }
@@ -387,6 +414,14 @@ impl UiRenderer {
             } else if backdrop_of {
                 continue;
             }
+            let size = target.texture().size();
+            params.sample_uv = [
+                plan.size.0 as f32 / size.width as f32,
+                plan.size.1 as f32 / size.height as f32,
+                0.5 / size.width as f32,
+                0.5 / size.height as f32,
+            ];
+            queue.write_buffer(&self.layer_params[n], 0, bytemuck::bytes_of(&params));
             let composite = crate::bind_group(
                 device,
                 "ui layer composite",

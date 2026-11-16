@@ -29,6 +29,8 @@ struct FilterParams {
   m: array<vec4<f32>, 5>,
   // Component transfer tables: 16 values per channel.
   table: array<vec4<f32>, 16>,
+  // Used pixels: in1/in2 (xy), an element-layer auxiliary input (zw).
+  extent: vec4<f32>,
 };
 
 @group(0) @binding(0) var in1_tex: texture_2d<f32>;
@@ -82,8 +84,8 @@ fn space_out(c: vec4<f32>) -> vec4<f32> {
   return vec4<f32>(to_linear(u.rgb) * u.a, u.a);
 }
 
-fn texel(t: texture_2d<f32>, p: vec2<i32>) -> vec4<f32> {
-  let size = vec2<i32>(textureDimensions(t));
+fn texel(t: texture_2d<f32>, p: vec2<i32>, extent: vec2<f32>) -> vec4<f32> {
+  let size = vec2<i32>(extent);
   if ((f.op.y & FLAG_CLAMP) != 0u) {
     return textureLoad(t, clamp(p, vec2<i32>(0), size - 1), 0);
   }
@@ -95,17 +97,17 @@ fn texel(t: texture_2d<f32>, p: vec2<i32>) -> vec4<f32> {
 
 // Bilinear at device position `p` (pixel centres at .5), transparent
 // outside.
-fn bilinear(t: texture_2d<f32>, p: vec2<f32>) -> vec4<f32> {
+fn bilinear(t: texture_2d<f32>, p: vec2<f32>, extent: vec2<f32>) -> vec4<f32> {
   let q = p - 0.5;
   let i = vec2<i32>(floor(q));
   let w = q - floor(q);
-  let a = mix(texel(t, i), texel(t, i + vec2<i32>(1, 0)), w.x);
-  let b = mix(texel(t, i + vec2<i32>(0, 1)), texel(t, i + vec2<i32>(1, 1)), w.x);
+  let a = mix(texel(t, i, extent), texel(t, i + vec2<i32>(1, 0), extent), w.x);
+  let b = mix(texel(t, i + vec2<i32>(0, 1), extent), texel(t, i + vec2<i32>(1, 1), extent), w.x);
   return mix(a, b, w.y);
 }
 
 fn in1_at(p: vec2<f32>) -> vec4<f32> {
-  var c = bilinear(in1_tex, p);
+  var c = bilinear(in1_tex, p, f.extent.xy);
   if ((f.op.y & FLAG_IN1_ALPHA) != 0u) {
     c = vec4<f32>(0.0, 0.0, 0.0, c.a);
   }
@@ -113,7 +115,7 @@ fn in1_at(p: vec2<f32>) -> vec4<f32> {
 }
 
 fn in2_at(p: vec2<f32>) -> vec4<f32> {
-  var c = bilinear(in2_tex, p);
+  var c = bilinear(in2_tex, p, f.extent.xy);
   if ((f.op.y & FLAG_IN2_ALPHA) != 0u) {
     c = vec4<f32>(0.0, 0.0, 0.0, c.a);
   }
@@ -146,7 +148,7 @@ fn device_vec(v: vec2<f32>) -> vec2<f32> {
 
 // in1's texel `i` (a morphology keeps the values it finds).
 fn in1_texel(i: vec2<i32>) -> vec4<f32> {
-  var c = texel(in1_tex, i);
+  var c = texel(in1_tex, i, f.extent.xy);
   if ((f.op.y & FLAG_IN1_ALPHA) != 0u) {
     c = vec4<f32>(0.0, 0.0, 0.0, c.a);
   }
@@ -262,7 +264,7 @@ fn turbulence(k: i32, point: vec2<f32>) -> f32 {
 // in the filter's space
 
 fn alpha_at(p: vec2<f32>) -> f32 {
-  return bilinear(in1_tex, p).a;
+  return bilinear(in1_tex, p, f.extent.xy).a;
 }
 
 // The Sobel normal over cells whose edges are m[2] (device px), each
@@ -493,7 +495,7 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
     case 8u: {
       // Displacement of in1 by in2's channels (unpremultiplied), a.x
       // units of the space per unit.
-      let m = unpremul(bilinear(in2_tex, p));
+      let m = unpremul(bilinear(in2_tex, p, f.extent.xy));
       let d = vec2<f32>(m[f.op.z], m[f.op.w]) - 0.5;
       out = in1_at(p + device_vec(f.a.x * d));
     }
@@ -511,7 +513,7 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
       let t = (l - f.a.xy) / max(f.a.zw, vec2<f32>(1e-4));
       if (all(t >= vec2<f32>(0.0)) && all(t <= vec2<f32>(1.0))) {
         let size = vec2<f32>(textureDimensions(aux_tex));
-        let c = bilinear(aux_tex, mix(f.b.xy, f.b.zw, t) * size);
+        let c = bilinear(aux_tex, mix(f.b.xy, f.b.zw, t) * size, size);
         out = space_in(vec4<f32>(c.rgb * c.a, c.a));
       }
     }
@@ -528,7 +530,7 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
       // device px per CSS px; transparent outside it.
       if (f.a.z > 0.0) {
         let at = (q - f.a.xy) * f.a.z;
-        let size = vec2<f32>(textureDimensions(aux_tex));
+        let size = f.extent.zw;
         if (all(at >= vec2<f32>(0.0)) && all(at <= size)) {
           let c = textureLoad(aux_tex, clamp(vec2<i32>(floor(at)), vec2<i32>(0), vec2<i32>(size) - 1), 0);
           out = space_in(c);
@@ -539,7 +541,7 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
       // A backdrop's capture: in1 is the target under the layer, its top
       // left a.xy (CSS px) and a.z device px per CSS px, sRGB-encoded
       // when a.w is 1; premultiplied linear out.
-      var c = bilinear(in1_tex, (q - f.a.xy) * f.a.z);
+      var c = bilinear(in1_tex, (q - f.a.xy) * f.a.z, f.extent.xy);
       if (f.a.w > 0.5) {
         let u = unpremul(c);
         c = vec4<f32>(to_linear(u.rgb) * u.a, u.a);
@@ -552,7 +554,7 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
       // preserve alpha, m[2] a cell's edges (device px); the kernel in
       // table, row-major.
       let order = vec2<i32>(i32(f.op.z), i32(f.op.w));
-      let size = vec2<f32>(textureDimensions(in1_tex));
+      let size = f.extent.xy;
       let keep = f.b.y > 0.5;
       let edge = u32(f.b.x);
       var sum = vec4<f32>(0.0);
@@ -564,7 +566,7 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
           } else if (edge == 1u) {
             s = s - floor(s / size) * size;
           }
-          var c = bilinear(in1_tex, s);
+          var c = bilinear(in1_tex, s, f.extent.xy);
           if ((f.op.y & FLAG_IN1_ALPHA) != 0u) {
             c = vec4<f32>(0.0, 0.0, 0.0, c.a);
           }

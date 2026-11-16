@@ -39,6 +39,8 @@ struct FilterParams {
     c: [f32; 4],
     m: [[f32; 4]; 5],
     table: [[f32; 4]; 16],
+    /// Used pixels: in1/in2 (xy), an element-layer auxiliary input (zw).
+    extent: [f32; 4],
 }
 
 const FLAG_SRGB: u32 = 1;
@@ -458,6 +460,15 @@ pub(crate) struct Capture<'a> {
     pub origin: [f32; 2],
     pub scale: f32,
     pub decode: bool,
+    pub size: (u32, u32),
+}
+
+/// A layer read by a filter: its used pixel rectangle in a pooled target.
+pub(crate) struct LayerInput {
+    pub view: wgpu::TextureView,
+    pub origin: [f32; 2],
+    pub scale: f32,
+    pub size: (u32, u32),
 }
 
 /// What a filter's primitives read besides their inputs: `white` for a
@@ -467,7 +478,7 @@ pub(crate) struct Capture<'a> {
 pub(crate) struct Inputs<'a> {
     pub white: &'a wgpu::TextureView,
     pub texture_view: &'a dyn Fn(TextureHandle) -> Option<wgpu::TextureView>,
-    pub layer: &'a dyn Fn(u32) -> Option<(wgpu::TextureView, [f32; 2], f32)>,
+    pub layer: &'a dyn Fn(u32) -> Option<LayerInput>,
 }
 
 /// The filter pipeline, its result targets and parameters, and the
@@ -693,6 +704,7 @@ impl FilterRunner {
                     subregion: [-1.0e9, -1.0e9, 2.0e9, 2.0e9],
                     space: [1.0, 0.0, 0.0, 1.0],
                     inverse: [1.0, 0.0, 0.0, 1.0],
+                    extent: [c.size.0 as f32, c.size.1 as f32, 0.0, 0.0],
                     a: [
                         c.origin[0],
                         c.origin[1],
@@ -741,9 +753,11 @@ impl FilterRunner {
                     (inputs.texture_view)(*texture).unwrap_or_else(|| inputs.white.clone())
                 }
                 UiFilterOp::Layer { layer } => match (inputs.layer)(*layer) {
-                    Some((view, at, s)) => {
-                        steps[0].a = [at[0], at[1], s, 0.0];
-                        view
+                    Some(input) => {
+                        steps[0].a = [input.origin[0], input.origin[1], input.scale, 0.0];
+                        steps[0].extent[2] = input.size.0 as f32;
+                        steps[0].extent[3] = input.size.1 as f32;
+                        input.view
                     }
                     // Not drawn: transparent.
                     None => inputs.white.clone(),
@@ -754,7 +768,9 @@ impl FilterRunner {
             let in2 = input(p.inputs[1], &results, &self.pool);
             let last = steps.len() - 1;
             let mut out = 0;
-            for (n, params) in steps.into_iter().enumerate() {
+            for (n, mut params) in steps.into_iter().enumerate() {
+                params.extent[0] = size.0 as f32;
+                params.extent[1] = size.1 as f32;
                 out = self.take(device, size);
                 let u = self.uniform(device, queue, &params);
                 let group = crate::bind_group(

@@ -122,3 +122,120 @@ fn nearest_keeps_texels_sharp_and_scale_down_and_offset_place_the_image() {
     assert!(at(&px, 30, 28)[0] < 5, "where it was centred");
     assert!(at(&px, 39, 34)[0] < 5, "below it");
 }
+
+/// Changing a layer's used extent must not stretch its pixel grid or let
+/// the unused part of a reused target enter a composite (including nested
+/// layers, custom material samples past the edge, and filter inputs).
+#[test]
+#[ignore = "requires GPU"]
+fn resized_layers_keep_their_pixel_grid_and_clamp_to_the_used_edges() {
+    use og_render::{
+        UiBuiltin, UiFilter, UiFilterInput, UiFilterOp, UiFilterPrimitive, UiLayer, UiMaterial,
+        UiMaterialShader,
+    };
+    let mut scene = RenderScene::new();
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.look.post.tonemap = Tonemap::None;
+    let edge = scene.add_ui_material(UiMaterialShader {
+        name: "used-edge".into(),
+        code: "fn material(m: MaterialInput, p: Params) -> vec4<f32> {
+            return layer(m.uv + vec2<f32>(4.0));
+        }"
+        .into(),
+        params: Vec::new(),
+    });
+    let mut r = Renderer::new_blocking(&RenderDesc {
+        width: W,
+        height: W,
+        ..Default::default()
+    })
+    .expect("renderer");
+    let mut flat = Renderer::new_blocking(&RenderDesc {
+        width: W,
+        height: W,
+        ..Default::default()
+    })
+    .expect("flat renderer");
+    // Both sides of 64, a new bucket, then shrinking into a reused one.
+    for width in [63, 64, 65, 97, 33, 64, 63] {
+        for filtered in [false, true] {
+            let rect = [7.0, 11.0, width as f32, 73.0];
+            let inner = [12.0, 19.0, 17.0, 31.0];
+            let mut o = Overlay::new(W as f32, W as f32, 1.0);
+            o.ui.shapes
+                .push(UiShape::rect(rect, 0.0, [1.0, 0.0, 0.0, 1.0]));
+            let mut child = UiShape::rect(inner, 0.0, [0.0, 1.0, 0.0, 1.0]);
+            child.layer = 1;
+            o.ui.shapes.push(child);
+            scene.ui.overlay = Some(o.clone());
+            flat.render(&scene, &RenderTarget::Offscreen)
+                .expect("flat render");
+            let expected = flat.read_offscreen().expect("flat pixels").pixels;
+            let layer = |rect, capture, material| UiLayer {
+                rect,
+                capture,
+                material,
+                params: [[0.0; 4]; 4],
+                mask: None,
+                target: None,
+                ground: None,
+                backdrop: false,
+                filter: None,
+            };
+            o.ui.layers
+                .push(layer(rect, [0, 2], UiMaterial::Builtin(UiBuiltin::None)));
+            o.ui.layers
+                .push(layer(inner, [1, 1], UiMaterial::Custom(edge)));
+            if filtered {
+                o.ui.layers[0].filter = Some(UiFilter {
+                    primitives: vec![UiFilterPrimitive {
+                        op: UiFilterOp::Offset { d: [0.0, 0.0] },
+                        inputs: [UiFilterInput::Source; 2],
+                        subregion: [0.0, 0.0, W as f32, W as f32],
+                        srgb: false,
+                    }],
+                    ..Default::default()
+                });
+                // Sample two pixels to the right with edge duplication.
+                // The green child stays green through its final column;
+                // using allocated dimensions here would read padding.
+                o.ui.layers[1].filter = Some(UiFilter {
+                    primitives: vec![UiFilterPrimitive {
+                        op: UiFilterOp::Convolve {
+                            order: [3, 1],
+                            kernel: vec![1.0, 0.0, 0.0],
+                            divisor: 1.0,
+                            bias: 0.0,
+                            target: [0, 0],
+                            edge: 0,
+                            preserve_alpha: false,
+                            kernel_unit: None,
+                        },
+                        inputs: [UiFilterInput::Source; 2],
+                        subregion: [0.0, 0.0, W as f32, W as f32],
+                        srgb: false,
+                    }],
+                    ..Default::default()
+                });
+            }
+            for (index, rect, level) in [(1, inner, 2), (0, rect, 3)] {
+                let mut s = UiShape::rect(rect, 0.0, [1.0; 4]);
+                s.paint = UiPaint::Layer(index);
+                s.layer = level;
+                o.ui.shapes.push(s);
+            }
+            scene.ui.overlay = Some(o);
+            r.render(&scene, &RenderTarget::Offscreen)
+                .expect("layered render");
+            // Custom pipelines can finish asynchronously: settle the
+            // published material before checking its pixels.
+            og_render::settle_pipelines();
+            r.render(&scene, &RenderTarget::Offscreen)
+                .expect("settled render");
+            assert!(r.ui_material_errors(&scene).is_empty());
+            let actual = r.read_offscreen().expect("layered pixels").pixels;
+            let changed = actual.iter().zip(&expected).filter(|(a, b)| a != b).count();
+            assert_eq!(changed, 0, "width {width}, filter {filtered}");
+        }
+    }
+}
