@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ProgressBar",
+      "summary": "The built-in ProgressBar is HTML with CSS: its track is the fill's and buffer's containing block, so the fill starts at the track's edge and is exactly its value's share of the track (it was measured against the screen), and the label row and the sheen are built only when shown ({#if}). Its parts are unchanged."
+    }
+  ]
+}

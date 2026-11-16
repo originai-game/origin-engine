@@ -11,32 +11,35 @@
 <meta name="fixture:default" content='{"value":0.42,"buffer":0.6,"label":"Downloading","valueText":"","showValue":true,"indeterminate":false,"tone":""}'>
 
 <div id="ProgressBar" role="progressbar" aria-label={label || t("component.progress-bar.name")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={value * 100} aria-valuetext={valueText || formatPercent(value)} aria-busy={indeterminate} class:done={value >= 1 && !indeterminate} class:indeterminate={indeterminate} class:success={tone == 'success'} class:warn={tone == 'warn'} class:danger={tone == 'danger'} class:info={tone == 'info'}>
-  <div id="Head" hidden={!(label || showValue)}>
-    <span id="Label" part="ProgressBar.label">{label}</span>
-    <span id="Value" part="ProgressBar.figure" hidden={!showValue || indeterminate}>{valueText || formatPercent(value)}</span>
-  </div>
+  {#if label || showValue}
+    <div id="Head">
+      <span id="Label" part="ProgressBar.label">{label}</span>
+      {#if showValue && !indeterminate}<span id="Value" part="ProgressBar.figure">{valueText || formatPercent(value)}</span>{/if}
+    </div>
+  {/if}
   <div id="Track" part="ProgressBar.track ProgressBar.well" style:--value={value} style:--buffer={buffer}>
-    <div id="Buffer" part="ProgressBar.buffer" hidden={indeterminate}></div>
+    {#if !indeterminate}<div id="Buffer" part="ProgressBar.buffer"></div>{/if}
     <div id="Fill" part="ProgressBar.fill"></div>
-    <div id="Sheen" hidden={indeterminate || value >= 1}></div>
+    {#if !indeterminate && value < 1}<div id="Sheen"></div>{/if}
   </div>
 </div>
 
 <style>
-#ProgressBar { width: stretch; gap: var(--space-xs); --tone: var(--primary); min-width: 0; }
-#ProgressBar.success { --tone: var(--success); }
-#ProgressBar.warn { --tone: var(--warn); }
-#ProgressBar.danger { --tone: var(--danger); }
-#ProgressBar.info { --tone: var(--info); }
-#Head { display: flex; width: stretch; gap: var(--space-sm); align-items: end; }
-[part="ProgressBar.label"] { font: var(--text-sm); font-family: var(--label-font); flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; }
+/* A bar fills the width its container gives it. */
+:host { display: flex; flex-direction: column; gap: var(--space-xs); inline-size: stretch; min-inline-size: 0; --tone: var(--primary); }
+.success { --tone: var(--success); }
+.warn { --tone: var(--warn); }
+.danger { --tone: var(--danger); }
+.info { --tone: var(--info); }
+#Head { display: flex; gap: var(--space-sm); align-items: end; }
+[part="ProgressBar.label"] { font: var(--text-sm); font-family: var(--label-font); flex: 1; white-space: nowrap; text-overflow: ellipsis; }
 [part="ProgressBar.figure"] { font: var(--text-sm); font-family: var(--figure-font); white-space: nowrap; }
-[part="ProgressBar.track ProgressBar.well"] { width: stretch; height: var(--space-sm); border-radius: var(--meter-radius); background: var(--control-strong); overflow: hidden; box-shadow: var(--meter-shadow); }
+[part="ProgressBar.track ProgressBar.well"] { position: relative; block-size: var(--space-sm); border-radius: var(--meter-radius); background: var(--control-strong); overflow: hidden; box-shadow: var(--meter-shadow); }
 @media (width < 600px) { [part="ProgressBar.track ProgressBar.well"] { height: calc(var(--space-xs) + var(--space-xxs)); } }
-[part="ProgressBar.buffer"] { position: absolute; inset-inline-start: 0; top: 0; width: calc(var(--buffer) * 100%); height: stretch; border-radius: var(--meter-radius); background: var(--tone); opacity: var(--opacity-faint); }
-[part="ProgressBar.fill"] { position: absolute; inset-inline-start: 0; top: 0; width: calc(var(--value) * 100%); height: stretch; border-radius: var(--meter-radius); background: linear-gradient(180deg, var(--sheen), transparent 55%, var(--shadow-30)), var(--tone); box-shadow: var(--meter-fill-shadow); }
-#Sheen { position: absolute; top: 0; inset-inline-start: 0; width: 24%; height: stretch; background: linear-gradient(90deg, transparent, var(--sheen), transparent); mix-blend-mode: screen; animation-name: sweep; animation-duration: var(--motion-duration-sheen); animation-timing-function: linear; animation-iteration-count: infinite; }
+[part="ProgressBar.buffer"] { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--buffer) * 100%); border-radius: var(--meter-radius); background: var(--tone); opacity: var(--opacity-faint); }
+[part="ProgressBar.fill"] { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--value) * 100%); border-radius: var(--meter-radius); background: linear-gradient(180deg, var(--sheen), transparent 55%, var(--shadow-30)), var(--tone); box-shadow: var(--meter-fill-shadow); }
+#Sheen { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: 24%; background: linear-gradient(90deg, transparent, var(--sheen), transparent); mix-blend-mode: screen; animation-name: sweep; animation-duration: var(--motion-duration-sheen); animation-timing-function: linear; animation-iteration-count: infinite; }
 .done [part="ProgressBar.fill"] { box-shadow: 0 0 var(--space-sm) var(--tone); }
-.indeterminate [part="ProgressBar.fill"] { width: 36%; background: linear-gradient(90deg, transparent, var(--tone), transparent); box-shadow: none; animation-name: sweep; animation-duration: var(--motion-duration-sweep); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; }
+.indeterminate [part="ProgressBar.fill"] { inline-size: 36%; background: linear-gradient(90deg, transparent, var(--tone), transparent); box-shadow: none; animation-name: sweep; animation-duration: var(--motion-duration-sweep); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; }
 @keyframes sweep { from { translate: -100% 0; } to { translate: 420% 0; } }
 </style>
