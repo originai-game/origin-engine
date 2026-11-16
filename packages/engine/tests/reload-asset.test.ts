@@ -115,10 +115,9 @@ test.skipIf(SLOW || gpuUnavailable)("og dev shows a glTF edit after the reload",
     swap(glb, RED, GREY);
     await until(() => reloads() >= 2);
   } finally {
-    // og dev stops its game itself after the second reload; on a failure
-    // before that, the game it started would outlive it.
+    // Stop only the og dev we spawned. Its signal relay stops its own game
+    // process group too; a pattern kill could reach another checkout.
     dev.kill();
     await dev.exited;
-    Bun.spawnSync(["pkill", "-f", "--", `--port ${port} --realtime`], { cwd: repo });
   }
 }, 600_000);
